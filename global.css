@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #FF4CCF;
+    --secondary: #3A7BFF;
+    --text: #1A1A1A;
+    --bg: #FFFFFF;
+    --black: #1A1A1A;
+    --white: #FFFFFF;
+    --background: #FFFFFF;
+    
+    --card: 32px;
+    --button: 24px;
+    --input: 30px;
+  }
+}
