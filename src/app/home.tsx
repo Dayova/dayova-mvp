@@ -328,8 +328,12 @@ export default function HomeScreen() {
           </Text>
         ) : (
           selectedEntries.map((entry, index) => (
-            <View
+            <TouchableOpacity
               key={entry.id}
+              activeOpacity={0.86}
+              onPress={() => router.push(getEntryUrl(entry))}
+              accessibilityRole="button"
+              accessibilityLabel={`${entry.title} öffnen`}
               className={`${index === 0 ? "mt-6" : "mt-3"} flex-row items-center justify-between rounded-xl px-5 py-3`}
               style={{
                 backgroundColor: "rgba(255,255,255,0.92)",
@@ -353,9 +357,8 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => router.push(getEntryUrl(entry))}
+              <View
+                pointerEvents="none"
                 className="w-10 h-10 rounded-full items-center justify-center mr-2"
                 style={{
                   backgroundColor: "rgba(255,255,255,0.28)",
@@ -364,8 +367,8 @@ export default function HomeScreen() {
                 }}
               >
                 <ArrowUpRight size={18} color="#1A1A1A" strokeWidth={2.4} />
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
           ))
         )}
       </View>
