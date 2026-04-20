@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -102,6 +102,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState("");
   const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
+  const formScrollRef = useRef<ScrollView | null>(null);
+  const birthDateFieldY = useRef(0);
 
   const switchMode = (next: Mode) => {
     Keyboard.dismiss();
@@ -112,6 +114,16 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   };
 
   const closeBirthDatePicker = () => setShowBirthDatePicker(false);
+  const openBirthDatePicker = () => {
+    Keyboard.dismiss();
+    setTimeout(() => {
+      formScrollRef.current?.scrollTo({
+        y: Math.max(birthDateFieldY.current - 24, 0),
+        animated: true,
+      });
+      setShowBirthDatePicker(true);
+    }, 80);
+  };
 
   const handleBirthDateChange = (
     event: DateTimePickerEvent,
@@ -196,9 +208,9 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     <View className="flex-1 bg-background">
       <StatusBar style="light" />
 
-      <View className="bg-black pt-44 pb-10 items-center justify-center">
+      <View className="bg-black pt-[90px] pb-10 items-center justify-center">
         <View className="flex-row mb-10 items-center">
-          <Text className="text-white font-dmsans font-bold text-40 mr-3">
+          <Text className="text-white font-dmsans font-bold text-40">
             Dayova
           </Text>
           <Image
@@ -211,8 +223,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 140 : 0}
+        enabled={false}
       >
         <View className="flex-1 px-8 pt-8 -mt-10 rounded-[36px] bg-background">
           <View className="mb-2.5 shadow-sm">
@@ -229,6 +240,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
             >
               <View className="flex-row">
                 <TouchableOpacity
+                  activeOpacity={1}
                   onPress={() => switchMode("login")}
                   className={`flex-1 h-14 rounded-[26px] items-center justify-center ${mode === "login" ? "bg-white" : ""}`}
                 >
@@ -240,6 +252,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                 </TouchableOpacity>
 
                 <TouchableOpacity
+                  activeOpacity={1}
                   onPress={() => switchMode("register")}
                   className={`flex-1 h-14 rounded-[26px] items-center justify-center ${mode === "register" ? "bg-white" : ""}`}
                 >
@@ -254,11 +267,13 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
           </View>
 
           <ScrollView
+            ref={formScrollRef}
             className="flex-1"
-            contentContainerStyle={{ paddingBottom: 16 }}
+            contentContainerStyle={{ paddingBottom: 0 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           >
             <View className="space-y-6">
               {mode === "register" ? (
@@ -391,16 +406,18 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
               ) : null}
 
               {mode === "register" ? (
-                <View className="mb-6">
+                <View
+                  className="mb-6"
+                  onLayout={(event) => {
+                    birthDateFieldY.current = event.nativeEvent.layout.y;
+                  }}
+                >
                   <Text className="text-black/80 font-poppins text-12 mb-2 ml-2 uppercase tracking-widest">
                     Geburtsdatum
                   </Text>
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setShowBirthDatePicker(true);
-                    }}
+                    onPress={openBirthDatePicker}
                     className="relative h-14 px-6 justify-center overflow-hidden"
                     style={getInputStyle(Boolean(errors.birthDate))}
                   >
@@ -511,25 +528,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
               </Text>
             </TouchableOpacity>
           </ScrollView>
-
-          <View className="mt-8 pb-10">
-            <View className="flex-row justify-center gap-10">
-              <View className="w-20 h-20 rounded-full  bg-white items-center justify-center shadow-sm">
-                <Image
-                  source={require("../../assets/apple-color-svgrepo-com.png")}
-                  style={{ width: 36, height: 36 }}
-                  resizeMode="contain"
-                />
-              </View>
-              <View className="w-20 h-20 rounded-full  bg-white items-center justify-center shadow-sm">
-                <Image
-                  source={require("../../assets/google-color-svgrepo-com.png")}
-                  style={{ width: 36, height: 36 }}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
-          </View>
 
           {showBirthDatePicker &&
           mode === "register" &&
