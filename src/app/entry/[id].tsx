@@ -2,6 +2,7 @@ import { ScrollView, TouchableOpacity, View } from "react-native";
 import type { ReactNode } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowLeft,
   BookOpen,
@@ -10,7 +11,6 @@ import {
   NotebookPen,
   Timer,
 } from "lucide-react-native";
-import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { getDayEntryById } from "~/store/dayEntriesStore";
 
@@ -51,6 +51,7 @@ function DetailRow({
 
 export default function EntryDetailScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     id?: string;
     title?: string;
@@ -83,7 +84,7 @@ export default function EntryDetailScreen() {
         contentContainerStyle={{
           paddingHorizontal: 32,
           paddingTop: 76,
-          paddingBottom: 36,
+          paddingBottom: Math.max(insets.bottom + 36, 56),
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -136,11 +137,6 @@ export default function EntryDetailScreen() {
         />
       </ScrollView>
 
-      <View className="px-8 pb-8">
-        <Button onPress={() => router.back()}>
-          <Text>Zurück</Text>
-        </Button>
-      </View>
     </View>
   );
 }
