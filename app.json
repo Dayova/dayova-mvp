@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Dayova-MVP",
-    "slug": "Dayova-MVP",
-    "scheme": "dayova-mvp",
+    "name": "Dayova",
+    "slug": "Dayova",
+    "scheme": "dayova",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,7 +23,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.DayovaMVP"
     },
     "web": {
       "favicon": "./assets/favicon.png"
