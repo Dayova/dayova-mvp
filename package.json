@@ -3,11 +3,15 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "convex dev --start \"expo start\"",
-    "expo": "convex dev --start \"expo start\"",
-    "android": "convex dev --start \"expo run:android\"",
-    "ios": "convex dev --start \"expo run:ios\"",
-    "web": "convex dev --start \"expo start --web\"",
+    "start": "run-p expo:start convex:dev",
+    "android": "run-p expo:android convex:dev",
+    "ios": "run-p expo:ios convex:dev",
+    "convex:dev": "convex dev",
+    "expo:start": "expo start",
+    "expo:android": "expo run:android",
+    "expo:ios": "expo run:ios",
+    "expo:web": "expo run:web",
+    "web": "run-p expo:web convex:dev",
     "postinstall": "patch-package"
   },
   "dependencies": {
