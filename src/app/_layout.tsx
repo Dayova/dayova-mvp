@@ -1,19 +1,29 @@
 import "~/global.css";
 import { Stack } from "expo-router";
+import { ThemeProvider } from "@react-navigation/native";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { useColorScheme } from "nativewind";
 import { AuthProvider } from "~/context/AuthContext";
+import { NAV_THEME } from "~/lib/theme";
+import { PortalHost } from "@rn-primitives/portal";
 
-// Fallback für Build-Phase
+// Fallback for the build phase.
 const convexUrl =
   process.env.EXPO_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud";
 const convex = new ConvexReactClient(convexUrl);
 
 export default function RootLayout() {
+  const { colorScheme } = useColorScheme();
+  const theme = NAV_THEME[colorScheme ?? "light"];
+
   return (
     <ConvexProvider client={convex}>
-      <AuthProvider>
-        <Stack screenOptions={{ headerShown: false }} />
-      </AuthProvider>
+      <ThemeProvider value={theme}>
+        <AuthProvider>
+          <Stack screenOptions={{ headerShown: false }} />
+          <PortalHost />
+        </AuthProvider>
+      </ThemeProvider>
     </ConvexProvider>
   );
 }
