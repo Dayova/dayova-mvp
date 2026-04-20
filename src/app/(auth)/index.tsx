@@ -1,6 +1,8 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { Button } from "~/components/ui/button";
+import { Text as UiText } from "~/components/ui/text";
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -33,21 +35,20 @@ export default function WelcomeScreen() {
         </View>
 
         {/* Action Buttons */}
-        <TouchableOpacity 
+        <Button 
           onPress={() => router.push("/login")}
-          activeOpacity={0.8}
-          className="bg-primary h-14 rounded-button items-center justify-center mt-10 shadow-lg shadow-primary/30"
+          className="mt-10"
         >
-          <Text className="text-white font-dmsans font-semibold text-20">Weiter</Text>
-        </TouchableOpacity>
+          <UiText>Weiter</UiText>
+        </Button>
 
-        <TouchableOpacity 
+        <Button
+          variant="outline"
           onPress={() => router.push("/login")}
-          activeOpacity={0.7}
-          className="h-14 border-2 border-primary/50 rounded-button items-center justify-center mt-4"
+          className="mt-4 bg-transparent"
         >
-          <Text className="text-white font-dmsans font-semibold text-20">Überspringen</Text>
-        </TouchableOpacity>
+          <UiText className="text-white">Überspringen</UiText>
+        </Button>
       </View>
     </View>
   );

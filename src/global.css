@@ -4,16 +4,98 @@
 
 @layer base {
   :root {
-    --primary: #FF4CCF;
-    --secondary: #3A7BFF;
-    --text: #1A1A1A;
-    --bg: #FFFFFF;
-    --black: #1A1A1A;
-    --white: #FFFFFF;
-    --background: #FFFFFF;
-    
-    --card: 32px;
-    --button: 24px;
-    --input: 30px;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10.2%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10.2%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10.2%;
+    --primary: 220.2 100% 61.4%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 316.1 100% 64.9%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 15.8% 96.3%;
+    --muted-foreground: 0 0% 42.7%;
+    --accent: 321.4 100% 97.3%;
+    --accent-foreground: 220.2 100% 37%;
+    --destructive: 3.2 100% 59.4%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 226.7 22% 92%;
+    --input: 226.7 22% 92%;
+    --ring: 220.2 100% 61.4%;
+    --radius: 1.5rem;
+    --chart-1: 220.2 100% 61.4%;
+    --chart-2: 316.1 100% 64.9%;
+    --chart-3: 228 100% 93.1%;
+    --chart-4: 321.4 100% 97.3%;
+    --chart-5: 0 0% 10.2%;
+
+    --primary-100: 220.2 100% 61.4%;
+    --primary-90: 220.6 100% 65.3%;
+    --primary-80: 220.2 100% 69%;
+    --primary-70: 220.4 100% 72.9%;
+    --primary-60: 220 100% 76.9%;
+    --primary-50: 220 100% 80.8%;
+    --primary-40: 220.5 100% 84.7%;
+    --primary-30: 220 100% 88.6%;
+    --secondary-100: 316.1 100% 64.9%;
+    --secondary-90: 316.2 100% 68.4%;
+    --secondary-80: 316 100% 71.8%;
+    --secondary-70: 316.2 100% 75.3%;
+    --secondary-60: 316.4 100% 78.8%;
+    --secondary-50: 316 100% 82.4%;
+    --secondary-40: 316 100% 85.9%;
+    --secondary-30: 316.4 100% 89.2%;
+    --black-100: 0 0% 10.2%;
+    --black-90: 0 0% 19.2%;
+    --black-80: 0 0% 28.2%;
+    --black-70: 0 0% 37.3%;
+    --black-60: 0 0% 46.3%;
+    --black-50: 0 0% 55.3%;
+    --black-40: 0 0% 64.3%;
+    --black-30: 0 0% 73.3%;
+    --black-20: 0 0% 82.4%;
+    --black-10: 0 0% 91.4%;
+    --white-100: 0 0% 100%;
+    --white-90: 0 0% 91%;
+    --white-80: 0 0% 82%;
+    --white-70: 0 0% 73%;
+    --white-60: 0 0% 64%;
+    --white-50: 0 0% 55%;
+    --white-40: 0 0% 46%;
+    --white-30: 0 0% 37%;
+    --white-20: 0 0% 28%;
+    --white-10: 0 0% 19%;
+
+    --card-radius: 32px;
+    --button-radius: 24px;
+    --input-radius: 30px;
+  }
+
+  .dark:root {
+    --background: 0 0% 10.2%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 13.7%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 13.7%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 220.2 100% 61.4%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 316.1 100% 64.9%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 17%;
+    --muted-foreground: 0 0% 72%;
+    --accent: 220.2 57% 22%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 3.2 100% 59.4%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 22%;
+    --input: 0 0% 22%;
+    --ring: 220.2 100% 61.4%;
+    --chart-1: 220.2 100% 61.4%;
+    --chart-2: 316.1 100% 64.9%;
+    --chart-3: 228 100% 93.1%;
+    --chart-4: 321.4 100% 97.3%;
+    --chart-5: 0 0% 100%;
   }
 }

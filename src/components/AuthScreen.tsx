@@ -16,8 +16,9 @@ import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { useAuth } from "~/context/AuthContext";
+import { Button } from "~/components/ui/button";
+import { Text as UiText } from "~/components/ui/text";
 
 type Mode = "login" | "register";
 type FieldErrors = {
@@ -488,45 +489,19 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
               </View>
             </View>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
+            <Button
               onPress={mode === "login" ? handleLogin : handleRegister}
               disabled={isLoading}
-              className="h-14 rounded-2xl items-center justify-center mt-10 shadow-lg overflow-hidden"
+              className="mt-10"
             >
-              <Svg
-                width="100%"
-                height="100%"
-                style={{ position: "absolute", top: 0, left: 0 }}
-              >
-                <Defs>
-                  <LinearGradient
-                    id="loginButtonGradient"
-                    x1="0%"
-                    y1="50%"
-                    x2="100%"
-                    y2="50%"
-                  >
-                    <Stop offset="0%" stopColor="#3A7BFF" />
-                    <Stop offset="100%" stopColor="#FF4CCF" />
-                  </LinearGradient>
-                </Defs>
-                <Rect
-                  x="0"
-                  y="0"
-                  width="100%"
-                  height="100%"
-                  fill="url(#loginButtonGradient)"
-                />
-              </Svg>
-              <Text className="text-white font-poppins font-bold text-16 tracking-widest uppercase">
+              <UiText>
                 {isLoading
                   ? "Lädt..."
                   : mode === "login"
                     ? "Anmelden"
                     : "Registrieren"}
-              </Text>
-            </TouchableOpacity>
+              </UiText>
+            </Button>
           </ScrollView>
 
           {showBirthDatePicker &&

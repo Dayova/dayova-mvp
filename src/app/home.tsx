@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Modal,
+  Pressable,
   ScrollView,
   View,
   Text,
@@ -14,10 +16,15 @@ import {
   ArrowUpRight,
   BookOpen,
   CalendarDays,
+  ClipboardList,
+  GraduationCap,
   Plus,
   UserRound,
+  X,
 } from "lucide-react-native";
 import { useAuth } from "~/context/AuthContext";
+import { Button } from "~/components/ui/button";
+import { Text as UiText } from "~/components/ui/text";
 import { getDayEntriesMap, type DayEntry } from "../store/dayEntriesStore";
 
 const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -74,6 +81,7 @@ export default function HomeScreen() {
   const [activeNav, setActiveNav] = useState<"calendar" | "profile">(
     "calendar",
   );
+  const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
   const [navBarWidth, setNavBarWidth] = useState(0);
   const navIndicatorProgress = useRef(new Animated.Value(0)).current;
   const dayScrollX = useRef(new Animated.Value(0)).current;
@@ -114,7 +122,25 @@ export default function HomeScreen() {
     const dayLabel = selectedDay
       ? `${selectedDay.fullLabel} ${selectedDay.dayOfMonth}`
       : "";
-    return `/entry/${encodeURIComponent(entry.id)}?title=${encodeURIComponent(entry.title)}&time=${encodeURIComponent(entry.time)}&day=${encodeURIComponent(dayLabel)}`;
+    const details = [
+      ["title", entry.title],
+      ["time", entry.time],
+      ["day", dayLabel],
+    ];
+    if (entry.kind) details.push(["kind", entry.kind]);
+    if (entry.notes) details.push(["notes", entry.notes]);
+    if (entry.dueDateLabel) details.push(["dueDate", entry.dueDateLabel]);
+    if (entry.plannedDateLabel) {
+      details.push(["plannedDate", entry.plannedDateLabel]);
+    }
+    if (entry.durationMinutes) {
+      details.push(["duration", `${entry.durationMinutes}`]);
+    }
+    const query = details
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join("&");
+
+    return `/entry/${encodeURIComponent(entry.id)}?${query}`;
   };
   const firstName =
     typeof user?.name === "string" && user.name.trim().length > 0
@@ -124,6 +150,15 @@ export default function HomeScreen() {
   const handleLogout = async () => {
     await logout();
     router.replace("/login");
+  };
+  const getCreateEntryUrl = (type: "homework" | "exam") =>
+    `/entry/new?type=${type}&dayKey=${encodeURIComponent(selectedDay?.key ?? "")}&dayLabel=${encodeURIComponent(
+      selectedDay ? `${selectedDay.fullLabel} ${selectedDay.dayOfMonth}` : "",
+    )}`;
+
+  const selectCreateType = (type: "homework" | "exam") => {
+    setShowCreateTypePicker(false);
+    router.push(getCreateEntryUrl(type));
   };
 
   useEffect(() => {
@@ -293,8 +328,12 @@ export default function HomeScreen() {
           </Text>
         ) : (
           selectedEntries.map((entry, index) => (
-            <View
+            <TouchableOpacity
               key={entry.id}
+              activeOpacity={0.86}
+              onPress={() => router.push(getEntryUrl(entry))}
+              accessibilityRole="button"
+              accessibilityLabel={`${entry.title} öffnen`}
               className={`${index === 0 ? "mt-6" : "mt-3"} flex-row items-center justify-between rounded-xl px-5 py-3`}
               style={{
                 backgroundColor: "rgba(255,255,255,0.92)",
@@ -318,9 +357,8 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => router.push(getEntryUrl(entry))}
+              <View
+                pointerEvents="none"
                 className="w-10 h-10 rounded-full items-center justify-center mr-2"
                 style={{
                   backgroundColor: "rgba(255,255,255,0.28)",
@@ -329,21 +367,18 @@ export default function HomeScreen() {
                 }}
               >
                 <ArrowUpRight size={18} color="#1A1A1A" strokeWidth={2.4} />
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
           ))
         )}
       </View>
 
-      <TouchableOpacity
+      <Button
         onPress={handleLogout}
-        activeOpacity={0.8}
-        className="mt-10 h-14 rounded-2xl items-center justify-center bg-black"
+        className="mt-10"
       >
-        <Text className="text-white font-poppins font-bold text-16 uppercase tracking-widest">
-          Ausloggen
-        </Text>
-      </TouchableOpacity>
+        <UiText>Ausloggen</UiText>
+      </Button>
 
       <View
         className="absolute bottom-6 left-0 right-0 flex-row items-center justify-center"
@@ -467,15 +502,7 @@ export default function HomeScreen() {
         </View>
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={() =>
-            router.push(
-              `/entry/new?dayKey=${encodeURIComponent(selectedDay?.key ?? "")}&dayLabel=${encodeURIComponent(
-                selectedDay
-                  ? `${selectedDay.fullLabel} ${selectedDay.dayOfMonth}`
-                  : "",
-              )}`,
-            )
-          }
+          onPress={() => setShowCreateTypePicker(true)}
           className="ml-3 rounded-full items-center justify-center overflow-hidden"
           style={{
             width: 65,
@@ -519,6 +546,86 @@ export default function HomeScreen() {
           <Plus size={30} color="#FFFFFF" strokeWidth={2.6} />
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={showCreateTypePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCreateTypePicker(false)}
+      >
+        <View className="flex-1 justify-end">
+          <Pressable
+            className="absolute inset-0 bg-black/25"
+            onPress={() => setShowCreateTypePicker(false)}
+          />
+          <View
+            className="mx-5 mb-7 rounded-[32px] bg-white px-5 pt-5 pb-6"
+            style={{
+              borderWidth: 1,
+              borderColor: "rgba(0,0,0,0.08)",
+              shadowColor: "#000000",
+              shadowOpacity: 0.16,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: 8 },
+              elevation: 12,
+            }}
+          >
+            <View className="mb-4 flex-row items-start justify-between">
+              <View className="flex-1 pr-4">
+                <UiText className="font-dmsans text-24 font-bold text-text">
+                  Was möchtest du planen?
+                </UiText>
+                <UiText className="mt-2 font-poppins text-14 text-text/65">
+                  Wähle zuerst die Art aus.
+                </UiText>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => setShowCreateTypePicker(false)}
+                className="h-10 w-10 items-center justify-center rounded-full bg-black/5"
+              >
+                <X size={18} color="#1A1A1A" strokeWidth={2.3} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.86}
+              className="mb-3 min-h-[88px] flex-row items-center rounded-[24px] bg-primary px-5 py-4"
+              onPress={() => selectCreateType("homework")}
+            >
+              <View className="h-11 w-11 items-center justify-center rounded-full bg-white/20">
+                <ClipboardList size={22} color="#FFFFFF" strokeWidth={2.2} />
+              </View>
+              <View className="ml-3 flex-1">
+                <UiText className="font-poppins text-16 font-bold text-white">
+                  Neue Hausaufgabe
+                </UiText>
+                <UiText className="mt-1 font-poppins text-12 text-white/78">
+                  Fälligkeit, Fach und Lernzeit planen.
+                </UiText>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.86}
+              className="min-h-[88px] flex-row items-center rounded-[24px] border border-black/10 bg-white px-5 py-4"
+              onPress={() => selectCreateType("exam")}
+            >
+              <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
+                <GraduationCap size={23} color="#3A7BFF" strokeWidth={2.2} />
+              </View>
+              <View className="ml-3 flex-1">
+                <UiText className="font-poppins text-16 font-bold text-text">
+                  Neuer Test / neue Klausur
+                </UiText>
+                <UiText className="mt-1 font-poppins text-12 text-text/58">
+                  Datum, Fach und Themen eintragen.
+                </UiText>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
