@@ -4,6 +4,10 @@ export type DayEntry = {
   time: string;
   kind?: string;
   notes?: string;
+  dueDateKey?: string;
+  dueDateLabel?: string;
+  plannedDateLabel?: string;
+  durationMinutes?: number;
 };
 
 type StoredDayEntry = DayEntry & {
@@ -12,10 +16,44 @@ type StoredDayEntry = DayEntry & {
 
 const entriesByDay: Record<string, StoredDayEntry[]> = {};
 
+type AddDayEntryInput = {
+  dayKey: string;
+  title: string;
+  time: string;
+  kind?: string;
+  notes?: string;
+  dueDateKey?: string;
+  dueDateLabel?: string;
+  plannedDateLabel?: string;
+  durationMinutes?: number;
+};
+
+const toPublicEntry = ({
+  id,
+  title,
+  time,
+  kind,
+  notes,
+  dueDateKey,
+  dueDateLabel,
+  plannedDateLabel,
+  durationMinutes,
+}: StoredDayEntry): DayEntry => ({
+  id,
+  title,
+  time,
+  kind,
+  notes,
+  dueDateKey,
+  dueDateLabel,
+  plannedDateLabel,
+  durationMinutes,
+});
+
 /**
  * Adds a new day entry to the in-memory store.
  */
-export const addDayEntry = (input: { dayKey: string; title: string; time: string; kind?: string; notes?: string }): DayEntry => {
+export const addDayEntry = (input: AddDayEntryInput): DayEntry => {
   const entry: StoredDayEntry = {
     id: `${input.dayKey}-${Date.now()}`,
     dayKey: input.dayKey,
@@ -23,12 +61,16 @@ export const addDayEntry = (input: { dayKey: string; title: string; time: string
     time: input.time,
     kind: input.kind,
     notes: input.notes,
+    dueDateKey: input.dueDateKey,
+    dueDateLabel: input.dueDateLabel,
+    plannedDateLabel: input.plannedDateLabel,
+    durationMinutes: input.durationMinutes,
   };
 
   const current = entriesByDay[input.dayKey] ?? [];
   entriesByDay[input.dayKey] = [...current, entry];
 
-  return { id: entry.id, title: entry.title, time: entry.time, kind: entry.kind, notes: entry.notes };
+  return toPublicEntry(entry);
 };
 
 /**
@@ -38,8 +80,17 @@ export const getDayEntriesMap = (): Record<string, DayEntry[]> => {
   const grouped: Record<string, DayEntry[]> = {};
 
   Object.entries(entriesByDay).forEach(([dayKey, entries]) => {
-    grouped[dayKey] = entries.map(({ id, title, time, kind, notes }) => ({ id, title, time, kind, notes }));
+    grouped[dayKey] = entries.map(toPublicEntry);
   });
 
   return grouped;
+};
+
+export const getDayEntryById = (id: string): DayEntry | undefined => {
+  for (const entries of Object.values(entriesByDay)) {
+    const entry = entries.find((item) => item.id === id);
+    if (entry) return toPublicEntry(entry);
+  }
+
+  return undefined;
 };
