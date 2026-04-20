@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   View,
@@ -87,6 +88,7 @@ export default function HomeScreen() {
   const dayScrollX = useRef(new Animated.Value(0)).current;
   const dayScrollRef = useRef<ScrollView | null>(null);
   const hasAlignedInitialDay = useRef(false);
+  const pendingProgrammaticDayIndex = useRef<number | null>(null);
   const { width: screenWidth } = useWindowDimensions();
   const weekDays = useMemo(() => getCurrentWeek(new Date()), []);
   const [selectedDayKey, setSelectedDayKey] = useState(
@@ -102,8 +104,8 @@ export default function HomeScreen() {
   const selectedEntries = selectedDay
     ? (entriesByDay[selectedDay.key] ?? [])
     : [];
-  const DAY_ITEM_SIZE = 64;
-  const DAY_ITEM_STEP = 76;
+  const DAY_ITEM_SIZE = 62;
+  const DAY_ITEM_STEP = 74;
   const daySidePadding = Math.max((screenWidth - DAY_ITEM_SIZE) / 2, 0);
   const scrollToDayIndex = (index: number, animated: boolean) => {
     dayScrollRef.current?.scrollTo({ x: index * DAY_ITEM_STEP, animated });
@@ -113,10 +115,11 @@ export default function HomeScreen() {
     const nextDay = weekDays[boundedIndex];
     if (!nextDay) return;
 
-    scrollToDayIndex(boundedIndex, true);
     if (nextDay.key !== selectedDayKey) {
       setSelectedDayKey(nextDay.key);
     }
+    pendingProgrammaticDayIndex.current = boundedIndex;
+    scrollToDayIndex(boundedIndex, true);
   };
   const getEntryUrl = (entry: DayEntry) => {
     const dayLabel = selectedDay
@@ -163,9 +166,15 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (typeof params.dayKey === "string" && params.dayKey) {
+      const nextIndex = weekDays.findIndex((day) => day.key === params.dayKey);
       setSelectedDayKey(params.dayKey);
+      if (nextIndex >= 0) {
+        requestAnimationFrame(() => {
+          scrollToDayIndex(nextIndex, false);
+        });
+      }
     }
-  }, [params.dayKey]);
+  }, [params.dayKey, weekDays]);
 
   useEffect(() => {
     Animated.spring(navIndicatorProgress, {
@@ -178,32 +187,56 @@ export default function HomeScreen() {
   }, [activeNav, navIndicatorProgress]);
 
   useEffect(() => {
-    if (hasAlignedInitialDay.current) {
-      scrollToDayIndex(selectedDayIndex, true);
+    if (!hasAlignedInitialDay.current) return;
+
+    requestAnimationFrame(() => {
+      scrollToDayIndex(selectedDayIndex, false);
+    });
+  }, [screenWidth]);
+
+  const settleCarouselAtOffset = (offsetX: number) => {
+    const nextIndex = Math.round(offsetX / DAY_ITEM_STEP);
+    const boundedIndex = Math.min(Math.max(nextIndex, 0), weekDays.length - 1);
+    const nextDay = weekDays[boundedIndex];
+    if (!nextDay) return;
+
+    if (pendingProgrammaticDayIndex.current === boundedIndex) {
+      pendingProgrammaticDayIndex.current = null;
     }
-  }, [selectedDayIndex]);
+
+    if (nextDay.key !== selectedDayKey) {
+      setSelectedDayKey(nextDay.key);
+    }
+  };
 
   return (
     <View className="flex-1 bg-background px-8 pt-24 pb-28">
       <StatusBar style="dark" />
 
-      <View className="mt-20 mb-6">
-        <Text className="text-text font-dmsans font-bold text-24 text-center">
+      <View className="mt-20 mb-2 items-center">
+        <Text className="text-center text-text font-dmsans font-bold text-24">
           Hallo, {firstName} 👋
+        </Text>
+        <Text className="mt-1 text-center text-text font-dmsans font-bold text-18">
+          Diese Woche
         </Text>
       </View>
 
-      <View className="mt-12">
-        <View className="mt-6 h-[96px] -mx-8 overflow-hidden">
+      <View className="mt-5">
+        <View className="-mx-8 h-[104px]">
           <Animated.ScrollView
             ref={dayScrollRef}
             horizontal
             bounces={false}
+            removeClippedSubviews={false}
             showsHorizontalScrollIndicator={false}
             keyboardShouldPersistTaps="always"
             snapToInterval={DAY_ITEM_STEP}
             decelerationRate="fast"
-            contentContainerStyle={{ paddingHorizontal: daySidePadding }}
+            contentContainerStyle={{
+              paddingHorizontal: daySidePadding,
+              alignItems: "center",
+            }}
             onScroll={Animated.event(
               [{ nativeEvent: { contentOffset: { x: dayScrollX } } }],
               {
@@ -218,52 +251,26 @@ export default function HomeScreen() {
               }
             }}
             onMomentumScrollEnd={(event) => {
-              const nextIndex = Math.round(
-                event.nativeEvent.contentOffset.x / DAY_ITEM_STEP,
-              );
-              const boundedIndex = Math.min(
-                Math.max(nextIndex, 0),
-                weekDays.length - 1,
-              );
-              const nextDay = weekDays[boundedIndex];
-              if (nextDay && nextDay.key !== selectedDayKey) {
-                setSelectedDayKey(nextDay.key);
-              }
+              settleCarouselAtOffset(event.nativeEvent.contentOffset.x);
             }}
           >
             {weekDays.map((day, index) => {
               const isSelected = index === selectedDayIndex;
+              const inputRange = [
+                (index - 2) * DAY_ITEM_STEP,
+                (index - 1) * DAY_ITEM_STEP,
+                index * DAY_ITEM_STEP,
+                (index + 1) * DAY_ITEM_STEP,
+                (index + 2) * DAY_ITEM_STEP,
+              ];
               const scale = dayScrollX.interpolate({
-                inputRange: [
-                  (index - 2) * DAY_ITEM_STEP,
-                  (index - 1) * DAY_ITEM_STEP,
-                  index * DAY_ITEM_STEP,
-                  (index + 1) * DAY_ITEM_STEP,
-                  (index + 2) * DAY_ITEM_STEP,
-                ],
-                outputRange: [0.74, 0.88, 1, 0.88, 0.74],
-                extrapolate: "clamp",
-              });
-              const opacity = dayScrollX.interpolate({
-                inputRange: [
-                  (index - 2) * DAY_ITEM_STEP,
-                  (index - 1) * DAY_ITEM_STEP,
-                  index * DAY_ITEM_STEP,
-                  (index + 1) * DAY_ITEM_STEP,
-                  (index + 2) * DAY_ITEM_STEP,
-                ],
-                outputRange: [0.24, 0.58, 1, 0.58, 0.24],
+                inputRange,
+                outputRange: [0.82, 0.92, 1, 0.92, 0.82],
                 extrapolate: "clamp",
               });
               const translateY = dayScrollX.interpolate({
-                inputRange: [
-                  (index - 2) * DAY_ITEM_STEP,
-                  (index - 1) * DAY_ITEM_STEP,
-                  index * DAY_ITEM_STEP,
-                  (index + 1) * DAY_ITEM_STEP,
-                  (index + 2) * DAY_ITEM_STEP,
-                ],
-                outputRange: [12, 6, 0, 6, 12],
+                inputRange,
+                outputRange: [8, 3, 0, 3, 8],
                 extrapolate: "clamp",
               });
               return (
@@ -273,8 +280,6 @@ export default function HomeScreen() {
                     width: DAY_ITEM_SIZE,
                     height: DAY_ITEM_SIZE,
                     marginHorizontal: (DAY_ITEM_STEP - DAY_ITEM_SIZE) / 2,
-                    zIndex: 100 - Math.abs(index - selectedDayIndex),
-                    opacity,
                     transform: [{ scale }, { translateY }],
                   }}
                 >
@@ -285,26 +290,32 @@ export default function HomeScreen() {
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={{
                       backgroundColor: isSelected
-                        ? "rgba(58,123,255,0.16)"
-                        : "rgba(255,255,255,0.90)",
-                      borderWidth: isSelected ? 1.8 : 1,
+                        ? "#E8F0FF"
+                        : "#FFFFFF",
+                      borderWidth: 1,
                       borderColor: isSelected
-                        ? "rgba(26,26,26,0.02)"
+                        ? "#DCE7FF"
                         : "rgba(0,0,0,0.08)",
                       shadowColor: "#000000",
-                      shadowOpacity: isSelected ? 0.16 : 0.08,
-                      shadowRadius: isSelected ? 10 : 5,
-                      shadowOffset: { width: 0, height: isSelected ? 6 : 3 },
-                      elevation: isSelected ? 8 : 4,
+                      shadowOpacity:
+                        Platform.OS === "ios" ? (isSelected ? 0.12 : 0.045) : 0,
+                      shadowRadius:
+                        Platform.OS === "ios" ? (isSelected ? 9 : 4) : 0,
+                      shadowOffset: {
+                        width: 0,
+                        height:
+                          Platform.OS === "ios" ? (isSelected ? 5 : 2) : 0,
+                      },
+                      elevation: 0,
                     }}
                   >
                     <Text
-                      className={`font-poppins ${isSelected ? "text-11 text-text/75" : "text-10 text-text/65"}`}
+                      className={`font-poppins ${isSelected ? "text-11 text-text/70" : "text-10 text-text/40"}`}
                     >
                       {day.label}
                     </Text>
                     <Text
-                      className={`mt-1 font-dmsans font-bold ${isSelected ? "text-19 text-text" : "text-16 text-text/80"}`}
+                      className={`mt-1 font-dmsans font-bold ${isSelected ? "text-18 text-text" : "text-15 text-text/50"}`}
                     >
                       {day.dayOfMonth}
                     </Text>
