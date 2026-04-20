@@ -1,4 +1,4 @@
-import AuthScreen from "../../src/components/AuthScreen";
+import AuthScreen from "~/components/AuthScreen";
 
 export default function RegisterScreen() {
   return <AuthScreen initialMode="register" />;

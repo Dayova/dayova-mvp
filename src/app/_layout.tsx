@@ -1,10 +1,11 @@
-import "../global.css";
+import "~/global.css";
 import { Stack } from "expo-router";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { AuthProvider } from "../src/context/AuthContext";
+import { AuthProvider } from "~/context/AuthContext";
 
 // Fallback für Build-Phase
-const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud";
+const convexUrl =
+  process.env.EXPO_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud";
 const convex = new ConvexReactClient(convexUrl);
 
 export default function RootLayout() {

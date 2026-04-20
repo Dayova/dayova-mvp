@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useAction } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { api } from "#convex/_generated/api";
 
 type LoginInput = {
   email: string;
@@ -25,7 +25,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const loginAction = useAction(api.auth.loginWithPassword);
@@ -49,7 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loginAction({
         email: input.email,
         password: input.password,
-      })
+      }),
     );
     setUser(authenticatedUser);
   };
@@ -62,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: input.name,
         phone: input.phone,
         birthDate: input.birthDate,
-      })
+      }),
     );
     setUser(registeredUser);
   };

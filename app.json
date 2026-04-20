@@ -24,7 +24,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.DayovaMVP"
+      "package": "com.dayova"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -32,7 +32,8 @@
     "plugins": [
       "expo-router",
       "expo-web-browser",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "./plugins/withNinjaLongPaths"
     ]
   }
 }
