@@ -3,12 +3,11 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "node ./scripts/show-auth-port.mjs && convex dev --start \"expo start\"",
-    "expo": "node ./scripts/show-auth-port.mjs && convex dev --start \"expo start\"",
-    "android": "node ./scripts/show-auth-port.mjs && convex dev --start \"expo run:android\"",
-    "ios": "node ./scripts/show-auth-port.mjs && convex dev --start \"expo run:ios\"",
-    "web": "node ./scripts/show-auth-port.mjs && convex dev --start \"expo start --web\"",
-    "auth:port": "node ./scripts/show-auth-port.mjs",
+    "start": "convex dev --start \"expo start\"",
+    "expo": "convex dev --start \"expo start\"",
+    "android": "convex dev --start \"expo run:android\"",
+    "ios": "convex dev --start \"expo run:ios\"",
+    "web": "convex dev --start \"expo start --web\"",
     "postinstall": "patch-package"
   },
   "dependencies": {
