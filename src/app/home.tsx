@@ -15,8 +15,9 @@ import { StatusBar } from "expo-status-bar";
 import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
 import {
   ArrowUpRight,
-  BookOpen,
+  Bell,
   CalendarDays,
+  Clock3,
   ClipboardList,
   GraduationCap,
   Plus,
@@ -24,7 +25,6 @@ import {
   X,
 } from "lucide-react-native";
 import { useAuth } from "~/context/AuthContext";
-import { Button } from "~/components/ui/button";
 import { Text as UiText } from "~/components/ui/text";
 import { getDayEntriesMap, type DayEntry } from "../store/dayEntriesStore";
 
@@ -75,10 +75,62 @@ const getCurrentWeek = (referenceDate: Date): WeekDayItem[] => {
   });
 };
 
+/**
+ * Converts a HH:mm time label into minutes to enable chronological sorting.
+ */
+const timeToMinutes = (timeLabel: string) => {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(timeLabel.trim());
+  if (!match) return Number.MAX_SAFE_INTEGER;
+
+  return Number(match[1]) * 60 + Number(match[2]);
+};
+
+/**
+ * Returns the hour portion of a HH:mm label.
+ */
+const getHourFromTimeLabel = (timeLabel: string) => {
+  if (timeLabel.trim().toLowerCase() === "ganztägig") return 8;
+  const match = /^(\d{1,2}):(\d{2})$/.exec(timeLabel.trim());
+  if (!match) return null;
+  const hour = Number(match[1]);
+  if (Number.isNaN(hour) || hour < 0 || hour > 23) return null;
+  return hour;
+};
+
+const isLearningSlotEntry = (entry: DayEntry) =>
+  /lern/i.test(`${entry.kind ?? ""} ${entry.title}`);
+
+const getSubjectFromEntry = (entry: DayEntry) => {
+  const fromTitle = entry.title
+    .replace(/\s*(Hausaufgabe|Test\/Klausur|Test|Klausur|Lernen|Lernslot)\s*$/i, "")
+    .trim();
+  if (fromTitle.length > 0) return fromTitle;
+  if (!entry.kind) return "Allgemein";
+  return entry.kind.replace(/\/Klausur/i, "").trim();
+};
+
+const getEntryLabel = (entry: DayEntry) => {
+  const subject = getSubjectFromEntry(entry);
+  if (isLearningSlotEntry(entry)) return `Lernen ${subject}`;
+  const isTest = /test|klausur/i.test(`${entry.kind ?? ""} ${entry.title}`);
+  return `${isTest ? "Test" : "HA"} ${subject}`;
+};
+
+const getLearningRangeLabel = (entry: DayEntry) => {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(entry.time.trim());
+  if (!match) return entry.time;
+
+  const startMinutes = Number(match[1]) * 60 + Number(match[2]);
+  const endMinutes = startMinutes + (entry.durationMinutes ?? 45);
+  const endHour = Math.floor((endMinutes % (24 * 60)) / 60);
+  const endMinute = endMinutes % 60;
+  return `${entry.time} - ${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ refresh?: string; dayKey?: string }>();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [activeNav, setActiveNav] = useState<"calendar" | "profile">(
     "calendar",
   );
@@ -104,9 +156,43 @@ export default function HomeScreen() {
   const selectedEntries = selectedDay
     ? (entriesByDay[selectedDay.key] ?? [])
     : [];
-  const DAY_ITEM_SIZE = 62;
-  const DAY_ITEM_STEP = 74;
-  const daySidePadding = Math.max((screenWidth - DAY_ITEM_SIZE) / 2, 0);
+  const sortedSelectedEntries = useMemo(
+    () => [...selectedEntries].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time)),
+    [selectedEntries],
+  );
+  const selectedDateLabel = useMemo(() => {
+    if (!selectedDay?.key) return "";
+
+    return new Intl.DateTimeFormat("de-DE", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+    })
+      .format(new Date(selectedDay.key))
+      .replace(/[.,]/g, "");
+  }, [selectedDay?.key]);
+  const entriesByHour = useMemo(() => {
+    const grouped: Record<number, DayEntry[]> = {};
+    sortedSelectedEntries.forEach((entry) => {
+      const hour = getHourFromTimeLabel(entry.time);
+      if (hour === null) return;
+      grouped[hour] = [...(grouped[hour] ?? []), entry];
+    });
+    return grouped;
+  }, [sortedSelectedEntries]);
+  const timelineHours = useMemo(() => {
+    const entryHours = sortedSelectedEntries
+      .map((entry) => getHourFromTimeLabel(entry.time))
+      .filter((hour): hour is number => hour !== null);
+    const startHour = Math.min(6, ...(entryHours.length ? entryHours : [6]));
+    const endHour = Math.max(22, ...(entryHours.length ? entryHours : [22]));
+    return Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index);
+  }, [sortedSelectedEntries]);
+  const DAY_ITEM_WIDTH = 59;
+  const DAY_ITEM_HEIGHT = 89;
+  const DAY_ITEM_GAP = 12;
+  const DAY_ITEM_STEP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
+  const daySidePadding = Math.max((screenWidth - DAY_ITEM_STEP) / 2, 0);
   const scrollToDayIndex = (index: number, animated: boolean) => {
     dayScrollRef.current?.scrollTo({ x: index * DAY_ITEM_STEP, animated });
   };
@@ -150,10 +236,6 @@ export default function HomeScreen() {
       ? user.name.trim().split(/\s+/)[0]
       : "du";
 
-  const handleLogout = async () => {
-    await logout();
-    router.replace("/login");
-  };
   const getCreateEntryUrl = (type: "homework" | "exam") =>
     `/entry/new?type=${type}&dayKey=${encodeURIComponent(selectedDay?.key ?? "")}&dayLabel=${encodeURIComponent(
       selectedDay ? `${selectedDay.fullLabel} ${selectedDay.dayOfMonth}` : "",
@@ -210,186 +292,293 @@ export default function HomeScreen() {
   };
 
   return (
-    <View className="flex-1 bg-background px-8 pt-24 pb-28">
+    <View
+      className="flex-1 pt-16"
+      style={{ backgroundColor: "#F5F3F6" }}
+    >
       <StatusBar style="dark" />
 
-      <View className="mt-20 mb-2 items-center">
-        <Text className="text-center text-text font-dmsans font-bold text-24">
-          Hallo, {firstName} 👋
-        </Text>
-        <Text className="mt-1 text-center text-text font-dmsans font-bold text-18">
-          Diese Woche
-        </Text>
-      </View>
-
-      <View className="mt-5">
-        <View className="-mx-8 h-[104px]">
-          <Animated.ScrollView
-            ref={dayScrollRef}
-            horizontal
-            bounces={false}
-            removeClippedSubviews={false}
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="always"
-            snapToInterval={DAY_ITEM_STEP}
-            decelerationRate="fast"
-            contentContainerStyle={{
-              paddingHorizontal: daySidePadding,
-              alignItems: "center",
-            }}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: dayScrollX } } }],
-              {
-                useNativeDriver: true,
-              },
-            )}
-            scrollEventThrottle={16}
-            onLayout={() => {
-              if (!hasAlignedInitialDay.current) {
-                scrollToDayIndex(selectedDayIndex, false);
-                hasAlignedInitialDay.current = true;
-              }
-            }}
-            onMomentumScrollEnd={(event) => {
-              settleCarouselAtOffset(event.nativeEvent.contentOffset.x);
+      <View className="px-8">
+        <View className="mt-[65px] mb-1 flex-row ml-9 items-center justify-between">
+          <View>
+            <Text className="text-text font-poppins font-medium text-22">
+              Hi, {firstName} 👋
+            </Text>
+            <Text className="mt-1 text-text font-poppins font-bold text-16">
+              {sortedSelectedEntries.length === 0
+                ? "Keine Aufgaben"
+                : `${sortedSelectedEntries.length} ${sortedSelectedEntries.length === 1 ? "Aufgabe" : "Aufgaben"}`}
+            </Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.86}
+            accessibilityRole="button"
+            accessibilityLabel="Benachrichtigungen öffnen"
+            className="h-12 w-12 items-center justify-center rounded-full"
+            style={{
+              marginLeft: -4,
             }}
           >
-            {weekDays.map((day, index) => {
-              const isSelected = index === selectedDayIndex;
-              const inputRange = [
-                (index - 2) * DAY_ITEM_STEP,
-                (index - 1) * DAY_ITEM_STEP,
-                index * DAY_ITEM_STEP,
-                (index + 1) * DAY_ITEM_STEP,
-                (index + 2) * DAY_ITEM_STEP,
-              ];
-              const scale = dayScrollX.interpolate({
-                inputRange,
-                outputRange: [0.82, 0.92, 1, 0.92, 0.82],
-                extrapolate: "clamp",
-              });
-              const translateY = dayScrollX.interpolate({
-                inputRange,
-                outputRange: [8, 3, 0, 3, 8],
-                extrapolate: "clamp",
-              });
-              return (
-                <Animated.View
-                  key={day.key}
-                  style={{
-                    width: DAY_ITEM_SIZE,
-                    height: DAY_ITEM_SIZE,
-                    marginHorizontal: (DAY_ITEM_STEP - DAY_ITEM_SIZE) / 2,
-                    transform: [{ scale }, { translateY }],
-                  }}
-                >
-                  <TouchableOpacity
-                    className="w-full h-full items-center justify-center rounded-2xl"
-                    activeOpacity={0.85}
-                    onPress={() => selectDayAtIndex(index)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            <View
+              className="h-[55px] w-[55px] mr-20 pl-0.5 items-center justify-center rounded-full"
+              style={{
+                backgroundColor: "#FFFFFF",
+                borderWidth: 1,
+                borderColor: "rgba(0,0,0,0.08)",
+                shadowColor: "#000000",
+                shadowOpacity: Platform.OS === "ios" ? 0.1 : 0,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 4 },
+                elevation: 2,
+              }}
+            >
+              <Bell
+                size={22}
+                color="#1A1A1A"
+                strokeWidth={2.3}
+                style={{ marginLeft: -2 }}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <View className="mt-10">
+          <View className="-mx-8 h-[116px]">
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: -12,
+                left: 0,
+                right: 0,
+                alignItems: "center",
+                zIndex: 2,
+              }}
+            >
+              <View
+                style={{
+                  width: 0,
+                  height: 0,
+                  borderLeftWidth: 6,
+                  borderRightWidth: 6,
+                  borderBottomWidth: 8,
+                  borderLeftColor: "transparent",
+                  borderRightColor: "transparent",
+                  borderBottomColor: "#979797",
+                  opacity: 0.55,
+                  transform: [{ rotate: "180deg" }],
+                }}
+              />
+            </View>
+            <Animated.ScrollView
+              ref={dayScrollRef}
+              horizontal
+              bounces={false}
+              removeClippedSubviews={false}
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="always"
+              snapToInterval={DAY_ITEM_STEP}
+              decelerationRate="fast"
+              contentContainerStyle={{
+                paddingHorizontal: daySidePadding,
+                alignItems: "center",
+              }}
+              onScroll={Animated.event(
+                [{ nativeEvent: { contentOffset: { x: dayScrollX } } }],
+                {
+                  useNativeDriver: true,
+                },
+              )}
+              scrollEventThrottle={16}
+              onLayout={() => {
+                if (!hasAlignedInitialDay.current) {
+                  scrollToDayIndex(selectedDayIndex, false);
+                  hasAlignedInitialDay.current = true;
+                }
+              }}
+              onMomentumScrollEnd={(event) => {
+                settleCarouselAtOffset(event.nativeEvent.contentOffset.x);
+              }}
+            >
+              {weekDays.map((day, index) => {
+                const isSelected = index === selectedDayIndex;
+                const inputRange = [
+                  (index - 2) * DAY_ITEM_STEP,
+                  (index - 1) * DAY_ITEM_STEP,
+                  index * DAY_ITEM_STEP,
+                  (index + 1) * DAY_ITEM_STEP,
+                  (index + 2) * DAY_ITEM_STEP,
+                ];
+                const scale = dayScrollX.interpolate({
+                  inputRange,
+                  outputRange: [0.74, 0.88, 1.12, 0.88, 0.74],
+                  extrapolate: "clamp",
+                });
+                const translateY = dayScrollX.interpolate({
+                  inputRange,
+                  outputRange: [14, 7, 0, 7, 14],
+                  extrapolate: "clamp",
+                });
+                return (
+                  <Animated.View
+                    key={day.key}
                     style={{
-                      backgroundColor: isSelected
-                        ? "#E8F0FF"
-                        : "#FFFFFF",
-                      borderWidth: 1,
-                      borderColor: isSelected
-                        ? "#DCE7FF"
-                        : "rgba(0,0,0,0.08)",
-                      shadowColor: "#000000",
-                      shadowOpacity:
-                        Platform.OS === "ios" ? (isSelected ? 0.12 : 0.045) : 0,
-                      shadowRadius:
-                        Platform.OS === "ios" ? (isSelected ? 9 : 4) : 0,
-                      shadowOffset: {
-                        width: 0,
-                        height:
-                          Platform.OS === "ios" ? (isSelected ? 5 : 2) : 0,
-                      },
-                      elevation: 0,
+                      width: DAY_ITEM_WIDTH,
+                      height: DAY_ITEM_HEIGHT,
+                      marginHorizontal: DAY_ITEM_GAP / 2,
+                      alignItems: "center",
+                      justifyContent: "flex-start",
+                      transform: [{ scale }, { translateY }],
                     }}
                   >
-                    <Text
-                      className={`font-poppins ${isSelected ? "text-11 text-text/70" : "text-10 text-text/40"}`}
+                    <TouchableOpacity
+                      className="h-full w-full items-center justify-start"
+                      activeOpacity={0.85}
+                      onPress={() => selectDayAtIndex(index)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={{
+                        backgroundColor: "#FFFFFF",
+                        borderRadius: 30,
+                        paddingTop: 2,
+                        paddingBottom: 22,
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.08)",
+                        shadowColor: "#000000",
+                        shadowOpacity: Platform.OS === "ios" ? 0.05 : 0,
+                        shadowRadius: 4,
+                        shadowOffset: { width: 0, height: 2 },
+                        elevation: 0,
+                      }}
                     >
-                      {day.label}
-                    </Text>
-                    <Text
-                      className={`mt-1 font-dmsans font-bold ${isSelected ? "text-18 text-text" : "text-15 text-text/50"}`}
-                    >
-                      {day.dayOfMonth}
-                    </Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            })}
-          </Animated.ScrollView>
+                      <Text
+                        className={`font-poppins font-bold ${isSelected ? "text-20 text-white" : "text-16 text-text/70"}`}
+                        style={{
+                          marginTop: 5,
+                          width: isSelected ? 44 : 38,
+                          height: isSelected ? 44 : 38,
+                          borderRadius: 999,
+                          textAlign: "center",
+                          textAlignVertical: "center",
+                          lineHeight: isSelected ? 46 : 38,
+                          backgroundColor: isSelected
+                            ? "hsl(316.1 100% 64.9%)"
+                            : "transparent",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {day.dayOfMonth}
+                      </Text>
+                      <Text
+                        className={`mt-2 font-poppins ${isSelected ? "text-11 text-text/80" : "text-10 text-text/45"}`}
+                        style={{ marginBottom: 6 }}
+                      >
+                        {day.label}
+                      </Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              })}
+            </Animated.ScrollView>
+          </View>
         </View>
       </View>
 
-      <View className="mt-12">
-        <Text className="text-text font-dmsans font-bold text-20 mb-2 text-center">
-          {selectedDay
-            ? `${selectedDay.fullLabel} ${selectedDay.dayOfMonth}`
-            : ""}
+      <View
+        className="mt-14 flex-1 rounded-t-[36px] bg-white px-6 pt-6 pb-8"
+        style={{
+          shadowColor: "#000000",
+          shadowOpacity: Platform.OS === "ios" ? 0.07 : 0,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: -2 },
+          elevation: 2,
+        }}
+      >
+        <Text className="text-text font-poppins text-28 font-bold capitalize">
+          {selectedDateLabel}
         </Text>
-        {selectedEntries.length === 0 ? (
-          <Text className="text-text/70 font-poppins text-13 mt-6">
-            Keine Einträge für diesen Tag.
-          </Text>
-        ) : (
-          selectedEntries.map((entry, index) => (
-            <TouchableOpacity
-              key={entry.id}
-              activeOpacity={0.86}
-              onPress={() => router.push(getEntryUrl(entry))}
-              accessibilityRole="button"
-              accessibilityLabel={`${entry.title} öffnen`}
-              className={`${index === 0 ? "mt-6" : "mt-3"} flex-row items-center justify-between rounded-xl px-5 py-3`}
-              style={{
-                backgroundColor: "rgba(255,255,255,0.92)",
-                borderWidth: 1.2,
-                borderColor: "rgba(0,0,0,0.12)",
-                shadowColor: "#000000",
-                shadowOpacity: 0.07,
-                shadowRadius: 5,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 3,
-              }}
-            >
-              <View className="flex-1 pr-3 pl-0.5">
-                <Text className="text-text font-poppins font-bold text-14">
-                  {entry.title}
-                </Text>
-                <View className="mt-2 flex-row items-center">
-                  <BookOpen size={12} color="#4A4A4A" strokeWidth={2.2} />
-                  <Text className="ml-1.5 text-text/80 font-poppins font-bold text-11 tracking-wide">
-                    {entry.kind ?? "Allgemein"}
+
+        <ScrollView
+          className="mt-5 flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 120 }}
+        >
+          {timelineHours.map((hour, hourIndex) => {
+            const hourEntries = entriesByHour[hour] ?? [];
+            return (
+              <View
+                key={`hour-${hour}`}
+                className={`${hourIndex === 0 ? "" : "mt-2"} flex-row`}
+              >
+                <View className="w-20 pt-1.5 pr-2">
+                  <Text
+                    className="font-poppins text-14 font-medium text-text/78"
+                    style={{ marginLeft: 10 }}
+                  >
+                    {`${hour.toString().padStart(2, "0")}:00`}
                   </Text>
                 </View>
+                <View className="flex-1 pb-3">
+                  <View
+                    className="mb-2 mt-2 h-[2px] w-full rounded-full"
+                    style={{
+                      backgroundColor:
+                        hourEntries.length > 0 ? "#3A7BFF" : "rgba(58,123,255,0.20)",
+                    }}
+                  />
+                  {hourEntries.length > 0 ? (
+                    hourEntries.map((entry, entryIndex) => (
+                      (() => {
+                        const isLearning = isLearningSlotEntry(entry);
+                        return (
+                          <View
+                            key={entry.id}
+                            className={`${entryIndex === 0 ? "" : "mt-2"} ml-4 rounded-[30px] px-4 py-3`}
+                            style={{
+                              backgroundColor: isLearning ? "rgba(246,178,122,0.2)" : "rgba(95,201,176,0.2)",
+                            }}
+                          >
+                            <View className="flex-row items-center justify-between">
+                              <View className="flex-1 pr-3">
+                                <Text
+                                  className="font-poppins text-15 font-semibold text-[#1A1A1A]"
+                                  style={{ marginLeft: 24 }}
+                                >
+                                  {getEntryLabel(entry)}
+                                </Text>
+                                <View className="mt-1 flex-row items-center">
+                                  <Clock3
+                                    size={12}
+                                    color="#1A1A1A"
+                                    strokeWidth={2.2}
+                                    style={{ marginLeft: 24 }}
+                                  />
+                                  <Text className="ml-1.5 font-poppins text-12 text-[#1A1A1A]/85">
+                                    {isLearning ? getLearningRangeLabel(entry) : entry.time}
+                                  </Text>
+                                </View>
+                              </View>
+                              <TouchableOpacity
+                                activeOpacity={0.86}
+                                onPress={() => router.push(getEntryUrl(entry))}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${entry.title} öffnen`}
+                                className="mr-2 h-10 w-10 items-center justify-center rounded-full"
+                                style={{ backgroundColor: "#5FC9B0" }}
+                              >
+                                <ArrowUpRight size={20} color="#FFFFFF" strokeWidth={2.4} />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        );
+                      })()
+                    ))
+                  ) : <View className="h-6" />}
+                </View>
               </View>
-              <View
-                pointerEvents="none"
-                className="w-10 h-10 rounded-full items-center justify-center mr-2"
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.28)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.45)",
-                }}
-              >
-                <ArrowUpRight size={18} color="#1A1A1A" strokeWidth={2.4} />
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
+            );
+          })}
+        </ScrollView>
       </View>
-
-      <Button
-        onPress={handleLogout}
-        className="mt-10"
-      >
-        <UiText>Ausloggen</UiText>
-      </Button>
 
       <View
         className="absolute bottom-6 left-0 right-0 flex-row items-center justify-center"
@@ -471,17 +660,21 @@ export default function HomeScreen() {
           >
             <CalendarDays
               size={22}
-              color={
-                activeNav === "calendar" ? "#1A1A1A" : "rgba(26,26,26,0.72)"
-              }
+              color="#1A1A1A"
               strokeWidth={2.3}
+              style={{
+                marginBottom: 3,
+                shadowColor: "#979797",
+                shadowOpacity: 0.35,
+                shadowRadius: 2,
+                shadowOffset: { width: 0, height: 1 },
+              }}
             />
             <Text
-              className="mt-0.5 font-poppins text-[11px]"
+              className={`mt-0.5 font-poppins text-[11px] ${activeNav === "calendar" ? "font-bold" : "font-medium"}`}
               style={{
                 color:
                   activeNav === "calendar" ? "#1A1A1A" : "rgba(26,26,26,0.82)",
-                fontWeight: activeNav === "calendar" ? "700" : "500",
               }}
             >
               Kalender
@@ -494,17 +687,21 @@ export default function HomeScreen() {
           >
             <UserRound
               size={22}
-              color={
-                activeNav === "profile" ? "#1A1A1A" : "rgba(26,26,26,0.72)"
-              }
+              color="#1A1A1A"
               strokeWidth={2.2}
+              style={{
+                marginBottom: 3,
+                shadowColor: "#979797",
+                shadowOpacity: 0.35,
+                shadowRadius: 2,
+                shadowOffset: { width: 0, height: 1 },
+              }}
             />
             <Text
-              className="mt-0.5 font-poppins text-[11px]"
+              className={`mt-0.5 font-poppins text-[11px] ${activeNav === "profile" ? "font-bold" : "font-medium"}`}
               style={{
                 color:
                   activeNav === "profile" ? "#1A1A1A" : "rgba(26,26,26,0.82)",
-                fontWeight: activeNav === "profile" ? "700" : "500",
               }}
             >
               Profil
@@ -583,7 +780,7 @@ export default function HomeScreen() {
           >
             <View className="mb-4 flex-row items-start justify-between">
               <View className="flex-1 pr-4">
-                <UiText className="font-dmsans text-24 font-bold text-text">
+                <UiText className="font-poppins text-24 font-bold text-text">
                   Was möchtest du planen?
                 </UiText>
                 <UiText className="mt-2 font-poppins text-14 text-text/65">
