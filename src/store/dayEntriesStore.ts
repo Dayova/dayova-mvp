@@ -1,13 +1,14 @@
 export type DayEntry = {
   id: string;
   title: string;
-  time: string;
+  time?: string;
   kind?: string;
   notes?: string;
   dueDateKey?: string;
   dueDateLabel?: string;
   plannedDateLabel?: string;
   durationMinutes?: number;
+  examTypeLabel?: string;
 };
 
 type StoredDayEntry = DayEntry & {
@@ -19,13 +20,14 @@ const entriesByDay: Record<string, StoredDayEntry[]> = {};
 type AddDayEntryInput = {
   dayKey: string;
   title: string;
-  time: string;
+  time?: string;
   kind?: string;
   notes?: string;
   dueDateKey?: string;
   dueDateLabel?: string;
   plannedDateLabel?: string;
   durationMinutes?: number;
+  examTypeLabel?: string;
 };
 
 const toPublicEntry = ({
@@ -38,6 +40,7 @@ const toPublicEntry = ({
   dueDateLabel,
   plannedDateLabel,
   durationMinutes,
+  examTypeLabel,
 }: StoredDayEntry): DayEntry => ({
   id,
   title,
@@ -48,6 +51,7 @@ const toPublicEntry = ({
   dueDateLabel,
   plannedDateLabel,
   durationMinutes,
+  examTypeLabel,
 });
 
 /**
@@ -65,6 +69,7 @@ export const addDayEntry = (input: AddDayEntryInput): DayEntry => {
     dueDateLabel: input.dueDateLabel,
     plannedDateLabel: input.plannedDateLabel,
     durationMinutes: input.durationMinutes,
+    examTypeLabel: input.examTypeLabel,
   };
 
   const current = entriesByDay[input.dayKey] ?? [];
@@ -90,6 +95,23 @@ export const getDayEntryById = (id: string): DayEntry | undefined => {
   for (const entries of Object.values(entriesByDay)) {
     const entry = entries.find((item) => item.id === id);
     if (entry) return toPublicEntry(entry);
+  }
+
+  return undefined;
+};
+
+export const deleteDayEntry = (id: string): string | undefined => {
+  for (const [dayKey, entries] of Object.entries(entriesByDay)) {
+    const nextEntries = entries.filter((entry) => entry.id !== id);
+    if (nextEntries.length === entries.length) continue;
+
+    if (nextEntries.length === 0) {
+      delete entriesByDay[dayKey];
+    } else {
+      entriesByDay[dayKey] = nextEntries;
+    }
+
+    return dayKey;
   }
 
   return undefined;

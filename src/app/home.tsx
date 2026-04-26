@@ -104,9 +104,17 @@ const getHourFromTimeLabel = (timeLabel: string) => {
 const isLearningSlotEntry = (entry: DayEntry) =>
   /lern/i.test(`${entry.kind ?? ""} ${entry.title}`);
 
+const isExamEntry = (entry: DayEntry) =>
+  /leistungskontrolle|test|klausur|quiz|mündlich|muendlich/i.test(
+    `${entry.kind ?? ""} ${entry.title}`,
+  );
+
 const getSubjectFromEntry = (entry: DayEntry) => {
   const fromTitle = entry.title
-    .replace(/\s*(Hausaufgabe|Test\/Klausur|Test|Klausur|Lernen|Lernslot)\s*$/i, "")
+    .replace(
+      /\s*(Hausaufgabe|Leistungskontrolle|Kurzkontrolle|Test\/Klausur|Test|Klausur Deutsch\/Kunst\/Fremdsprache|Klausur|Quiz|Mündliche Prüfung|Muendliche Pruefung|Praktische Prüfung|Praktische Pruefung|Komplexe Leistung|Abschlussprüfung HSA\/Quali\/RSA|Abschlusspruefung HSA\/Quali\/RSA|Vorabi Grundkurs|Vorabi Leistungskurs|Abitur Grundkurs schriftlich|Abitur Leistungskurs schriftlich|Lernen|Lernslot)\s*$/i,
+      "",
+    )
     .trim();
   if (fromTitle.length > 0) return fromTitle;
   if (!entry.kind) return "Allgemein";
@@ -116,11 +124,12 @@ const getSubjectFromEntry = (entry: DayEntry) => {
 const getEntryLabel = (entry: DayEntry) => {
   const subject = getSubjectFromEntry(entry);
   if (isLearningSlotEntry(entry)) return `Lernen ${subject}`;
-  const isTest = /test|klausur/i.test(`${entry.kind ?? ""} ${entry.title}`);
-  return `${isTest ? "Test" : "HA"} ${subject}`;
+  return `${isExamEntry(entry) ? "LK" : "HA"} ${subject}`;
 };
 
 const getEntryTimeLabel = (entry: DayEntry) => entry.time ?? ALL_DAY_TIME_LABEL;
+const getEntryDisplayTimeLabel = (entry: DayEntry) =>
+  entry.time ?? (entry.durationMinutes ? `${entry.durationMinutes} Min.` : ALL_DAY_TIME_LABEL);
 
 const getLearningRangeLabel = (entry: DayEntry) => {
   const timeLabel = getEntryTimeLabel(entry);
@@ -565,7 +574,7 @@ export default function HomeScreen() {
                                     style={{ marginLeft: 24 }}
                                   />
                                   <Text className="ml-1.5 font-poppins text-12 text-[#1A1A1A]/85">
-                                    {isLearning ? getLearningRangeLabel(entry) : getEntryTimeLabel(entry)}
+                                    {isLearning ? getLearningRangeLabel(entry) : getEntryDisplayTimeLabel(entry)}
                                   </Text>
                                 </View>
                               </View>

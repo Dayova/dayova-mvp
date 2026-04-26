@@ -18,11 +18,11 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
-  Clock3,
   ClipboardList,
-  ImagePlus,
+  Clock3,
   GraduationCap,
   NotebookPen,
+  Sparkles,
   Timer,
 } from "lucide-react-native";
 import { Button } from "~/components/ui/button";
@@ -32,18 +32,20 @@ import { Toggle } from "~/components/ui/toggle";
 import { addDayEntry } from "~/store/dayEntriesStore";
 
 type EntryType = "homework" | "exam";
-type HomeworkStep = "basics" | "planning" | "success";
-type PickerTarget = "dueDate" | "plannedDate" | "plannedTime" | "examDate";
+type EntryStep = "basics" | "planning" | "examDecision" | "success";
+type PickerTarget = "dueDate" | "plannedDate" | "plannedTime";
 
 const SUBJECTS = ["Mathe", "Deutsch", "Englisch", "Bio", "Geschichte"];
-const DURATIONS = [15, 30, 45, 60];
-const SUBJECT_CHIP_WIDTHS: Record<string, number> = {
-  Mathe: 96,
-  Deutsch: 122,
-  Englisch: 128,
-  Bio: 86,
-  Geschichte: 158,
-};
+const DURATION_PRESETS = [15, 30, 45, 90, 180, 240];
+const HOMEWORK_DURATIONS = [15, 30, 45, 60];
+const COMMON_EXAM_TYPE_PRESETS = [
+  { label: "Kurzkontrolle", durationMinutes: 15 },
+  { label: "Test", durationMinutes: 30 },
+  { label: "Leistungskontrolle", durationMinutes: 45 },
+  { label: "Klassenarbeit", durationMinutes: 45 },
+  { label: "Klausur", durationMinutes: 90 },
+  { label: "Prüfung", durationMinutes: 90 },
+];
 
 const startOfDay = (date: Date) => {
   const next = new Date(date);
@@ -73,6 +75,9 @@ const formatTime = (date: Date) =>
     minute: "2-digit",
   }).format(date);
 
+const getChipMinWidth = (label: string) =>
+  Math.min(Math.max(label.length * 10 + 42, 92), 300);
+
 const inputFrameStyle = {
   borderWidth: 1.4,
   borderColor: "rgba(0,0,0,0.10)",
@@ -83,13 +88,7 @@ const inputFrameStyle = {
   elevation: 5,
 };
 
-function FieldLabel({
-  icon,
-  label,
-}: {
-  icon: ReactNode;
-  label: string;
-}) {
+function FieldLabel({ icon, label }: { icon: ReactNode; label: string }) {
   return (
     <View className="mb-2 ml-1 flex-row items-center">
       {icon}
@@ -129,13 +128,11 @@ function DateButton({
 
 function ChoiceChip({
   label,
-  value,
   selected,
   onPress,
   minWidth,
 }: {
   label: string;
-  value: string;
   selected: boolean;
   onPress: () => void;
   minWidth: number;
@@ -149,6 +146,7 @@ function ChoiceChip({
       }`}
       style={{
         minWidth,
+        maxWidth: "100%",
         height: 52,
         flexGrow: 0,
         flexShrink: 0,
@@ -159,7 +157,7 @@ function ChoiceChip({
     >
       <Text
         numberOfLines={1}
-        ellipsizeMode="clip"
+        ellipsizeMode="tail"
         className={`font-poppins text-14 font-bold ${
           selected ? "text-white" : "text-text/72"
         }`}
@@ -193,11 +191,10 @@ function SubjectPicker({
           return (
             <ChoiceChip
               key={subject}
-              value={subject}
               label={subject}
               selected={isSelected}
               onPress={() => onChange(subject)}
-              minWidth={SUBJECT_CHIP_WIDTHS[subject]}
+              minWidth={getChipMinWidth(subject)}
             />
           );
         })}
@@ -209,6 +206,117 @@ function SubjectPicker({
         className="mt-3 bg-white"
         style={inputFrameStyle}
       />
+    </View>
+  );
+}
+
+function ExamTypePicker({
+  value,
+  onChange,
+  onSelectPreset,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  onSelectPreset: (label: string, durationMinutes: number) => void;
+  showAdvanced: boolean;
+  onToggleAdvanced: () => void;
+}) {
+  return (
+    <View className="mb-6">
+      <FieldLabel
+        icon={<GraduationCap size={15} color="#3A7BFF" strokeWidth={2.3} />}
+        label="Art der Prüfung"
+      />
+      <View
+        className="flex-row flex-wrap items-start"
+        style={{ columnGap: 8, rowGap: 8 }}
+      >
+        {COMMON_EXAM_TYPE_PRESETS.map((preset) => {
+          const isSelected = value === preset.label;
+          return (
+            <ChoiceChip
+              key={preset.label}
+              label={preset.label}
+              selected={isSelected}
+              onPress={() =>
+                onSelectPreset(preset.label, preset.durationMinutes)
+              }
+              minWidth={getChipMinWidth(preset.label)}
+            />
+          );
+        })}
+      </View>
+      <Input
+        value={value}
+        onChangeText={onChange}
+        placeholder="Oder eigene Prüfungsart eintragen"
+        className="mt-3 bg-white"
+        style={inputFrameStyle}
+      />
+    </View>
+  );
+}
+
+function DurationPicker({
+  value,
+  onChange,
+  presets = DURATION_PRESETS,
+}: {
+  value: number | null;
+  onChange: (next: number | null) => void;
+  presets?: number[];
+}) {
+  const customValue = value === null ? "" : `${value}`;
+  const handleCustomDurationChange = (next: string) => {
+    const digitsOnly = next.replace(/\D/g, "");
+    if (!digitsOnly) {
+      onChange(null);
+      return;
+    }
+
+    onChange(Math.min(Number(digitsOnly), 600));
+  };
+
+  return (
+    <View className="mb-8">
+      <FieldLabel
+        icon={<Timer size={15} color="#3A7BFF" strokeWidth={2.3} />}
+        label="Bearbeitungszeit"
+      />
+      <View
+        className="flex-row flex-wrap items-start"
+        style={{ columnGap: 10, rowGap: 10 }}
+      >
+        {presets.map((duration) => {
+          const isSelected = value === duration;
+          return (
+            <ChoiceChip
+              key={duration}
+              label={`${duration} Min.`}
+              selected={isSelected}
+              onPress={() => onChange(duration)}
+              minWidth={150}
+            />
+          );
+        })}
+      </View>
+      <View
+        className="mt-3 h-14 flex-row items-center rounded-input bg-white px-5"
+        style={inputFrameStyle}
+      >
+        <TextInput
+          value={customValue}
+          onChangeText={handleCustomDurationChange}
+          keyboardType="number-pad"
+          placeholder="Eigene Dauer"
+          placeholderTextColor="rgba(26,26,26,0.42)"
+          className="flex-1 font-poppins text-16 text-text"
+          style={{ padding: 0, margin: 0 }}
+        />
+        <Text className="font-poppins text-14 font-bold text-text/48">
+          Min.
+        </Text>
+      </View>
     </View>
   );
 }
@@ -253,6 +361,96 @@ function MultilineEntryInput({
   );
 }
 
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="flex-row items-center justify-between">
+      <Text className="font-poppins text-13 uppercase text-text/48">
+        {label}
+      </Text>
+      <Text className="ml-4 flex-1 text-right font-poppins text-14 font-bold text-text">
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function ActionCard({
+  icon,
+  title,
+  description,
+  onPress,
+  disabled = false,
+  primary = false,
+  badge,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  onPress?: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+  badge?: string;
+}) {
+  return (
+    <TouchableOpacity
+      activeOpacity={disabled ? 1 : 0.9}
+      disabled={disabled}
+      onPress={onPress}
+      className={`rounded-[28px] px-5 py-5 ${primary ? "bg-primary" : "bg-white"}`}
+      style={{
+        borderWidth: 1.2,
+        borderColor: primary ? "#3A7BFF" : "rgba(0,0,0,0.10)",
+        shadowColor: primary ? "#3A7BFF" : "#000000",
+        shadowOpacity: primary ? 0.22 : 0.08,
+        shadowRadius: primary ? 16 : 10,
+        shadowOffset: { width: 0, height: primary ? 9 : 4 },
+        elevation: primary ? 8 : 3,
+        opacity: disabled ? 0.72 : 1,
+      }}
+    >
+      <View className="flex-row items-start justify-between">
+        <View
+          className={`h-12 w-12 items-center justify-center rounded-full ${
+            primary ? "bg-white/16" : "bg-primary/12"
+          }`}
+        >
+          {icon}
+        </View>
+        {badge ? (
+          <View
+            className={`rounded-full px-3 py-1 ${
+              primary ? "bg-white/16" : "bg-black/5"
+            }`}
+          >
+            <Text
+              className={`font-poppins text-11 font-bold uppercase ${
+                primary ? "text-white" : "text-text/62"
+              }`}
+            >
+              {badge}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      <Text
+        className={`mt-4 font-dmsans text-24 font-bold ${
+          primary ? "text-white" : "text-text"
+        }`}
+      >
+        {title}
+      </Text>
+      <Text
+        className={`mt-2 font-poppins text-14 ${
+          primary ? "text-white/80" : "text-text/62"
+        }`}
+      >
+        {description}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function NewEntryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -261,12 +459,16 @@ export default function NewEntryScreen() {
     dayLabel?: string;
   }>();
   const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
-  const initialDate = useMemo(() => parseDateKey(params.dayKey), [params.dayKey]);
-
-  const [step, setStep] = useState<HomeworkStep>(
-    entryType === "homework" ? "basics" : "planning",
+  const isHomework = entryType === "homework";
+  const initialDate = useMemo(
+    () => parseDateKey(params.dayKey),
+    [params.dayKey],
   );
+
+  const [step, setStep] = useState<EntryStep>("basics");
   const [subject, setSubject] = useState("");
+  const [examTypeLabel, setExamTypeLabel] = useState("");
+  const [showAdvancedExamTypes, setShowAdvancedExamTypes] = useState(false);
   const [note, setNote] = useState("");
   const [dueDate, setDueDate] = useState(initialDate);
   const [plannedDate, setPlannedDate] = useState(initialDate);
@@ -275,15 +477,45 @@ export default function NewEntryScreen() {
     next.setHours(16, 0, 0, 0);
     return next;
   });
-  const [durationMinutes, setDurationMinutes] = useState(30);
+  const [durationMinutes, setDurationMinutes] = useState<number | null>(
+    isHomework ? 30 : null,
+  );
   const [createdDayKey, setCreatedDayKey] = useState(getDateKey(initialDate));
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
 
-  const title =
-    entryType === "homework" ? "Hausaufgabe eintragen" : "Test/Klausur eintragen";
-  const canContinue = subject.trim().length > 0;
+  const trimmedSubject = subject.trim();
+  const trimmedExamType = examTypeLabel.trim();
+  const secondStepActive = step === "planning" || step === "examDecision";
+  const canContinueFromBasics = isHomework
+    ? trimmedSubject.length > 0
+    : trimmedSubject.length > 0 &&
+      trimmedExamType.length > 0 &&
+      durationMinutes !== null &&
+      durationMinutes > 0;
+  const canCreateHomework =
+    trimmedSubject.length > 0 && durationMinutes !== null && durationMinutes > 0;
+  const canCreateExam =
+    trimmedSubject.length > 0 &&
+    trimmedExamType.length > 0 &&
+    durationMinutes !== null &&
+    durationMinutes > 0;
+
+  const title = isHomework
+    ? "Hausaufgabe eintragen"
+    : "Leistungskontrolle eintragen";
+  const subtitle = isHomework
+    ? step === "basics"
+      ? "Trage zuerst Fälligkeit, Fach und Notiz ein."
+      : "Plane jetzt, wann du daran arbeitest."
+    : step === "basics"
+      ? "Trage Datum, Uhrzeit, Fach, Prüfungsart und Bearbeitungszeit ein."
+      : "Du kannst die LK jetzt direkt eintragen oder später einen Lernplan ergänzen.";
 
   const closePicker = () => setPickerTarget(null);
+  const selectExamTypePreset = (label: string, nextDurationMinutes: number) => {
+    setExamTypeLabel(label);
+    setDurationMinutes(nextDurationMinutes);
+  };
 
   const handlePickerChange = (
     event: DateTimePickerEvent,
@@ -293,8 +525,8 @@ export default function NewEntryScreen() {
     if (event.type === "dismissed" || !selectedDate || !pickerTarget) return;
 
     if (pickerTarget === "dueDate") setDueDate(startOfDay(selectedDate));
-    if (pickerTarget === "plannedDate") setPlannedDate(startOfDay(selectedDate));
-    if (pickerTarget === "examDate") setPlannedDate(startOfDay(selectedDate));
+    if (pickerTarget === "plannedDate")
+      setPlannedDate(startOfDay(selectedDate));
     if (pickerTarget === "plannedTime") {
       const next = new Date(plannedTime);
       next.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
@@ -303,23 +535,24 @@ export default function NewEntryScreen() {
   };
 
   const createEntry = () => {
-    const trimmedSubject = subject.trim();
-    if (!trimmedSubject) return;
+    if (isHomework && !canCreateHomework) return;
+    if (!isHomework && !canCreateExam) return;
+    if (durationMinutes === null) return;
 
     const nextDayKey = getDateKey(plannedDate);
-    const isHomework = entryType === "homework";
     addDayEntry({
       dayKey: nextDayKey,
       title: isHomework
         ? `${trimmedSubject} Hausaufgabe`
-        : `${trimmedSubject} Test/Klausur`,
-      time: isHomework ? formatTime(plannedTime) : "Ganztägig",
-      kind: isHomework ? "Hausaufgabe" : "Test/Klausur",
+        : `${trimmedSubject} ${trimmedExamType}`,
+      time: formatTime(plannedTime),
+      kind: isHomework ? "Hausaufgabe" : "Leistungskontrolle",
       notes: note.trim() || undefined,
-      dueDateKey: isHomework ? getDateKey(dueDate) : nextDayKey,
-      dueDateLabel: isHomework ? formatDate(dueDate) : formatDate(plannedDate),
+      dueDateKey: isHomework ? getDateKey(dueDate) : undefined,
+      dueDateLabel: isHomework ? formatDate(dueDate) : undefined,
       plannedDateLabel: formatDate(plannedDate),
-      durationMinutes: isHomework ? durationMinutes : undefined,
+      durationMinutes,
+      examTypeLabel: isHomework ? undefined : trimmedExamType,
     });
 
     setCreatedDayKey(nextDayKey);
@@ -339,6 +572,15 @@ export default function NewEntryScreen() {
     );
   };
 
+  const handleBack = () => {
+    if (step === "planning" || step === "examDecision") {
+      setStep("basics");
+      return;
+    }
+
+    router.back();
+  };
+
   const renderPicker = () => {
     if (!pickerTarget) return null;
 
@@ -353,7 +595,10 @@ export default function NewEntryScreen() {
     if (Platform.OS === "ios") {
       return (
         <View className="absolute inset-0 z-50 justify-end">
-          <Pressable className="absolute inset-0 bg-black/28" onPress={closePicker} />
+          <Pressable
+            className="absolute inset-0 bg-black/28"
+            onPress={closePicker}
+          />
           <View className="rounded-t-[32px] bg-white px-4 pt-3 pb-7">
             <View className="mb-1 flex-row justify-end">
               <TouchableOpacity onPress={closePicker} className="px-3 py-2">
@@ -430,148 +675,178 @@ export default function NewEntryScreen() {
         <View className="mb-9 flex-row items-center justify-between">
           <TouchableOpacity
             activeOpacity={0.75}
-            onPress={() => (step === "planning" && entryType === "homework" ? setStep("basics") : router.back())}
+            onPress={handleBack}
             className="h-11 w-11 items-center justify-center rounded-full bg-black/5"
           >
             <ArrowLeft size={20} color="#1A1A1A" strokeWidth={2.3} />
           </TouchableOpacity>
           <View className="flex-row gap-2">
             <View className="h-2 w-8 rounded-full bg-primary" />
-            {entryType === "homework" ? (
-              <View
-                className={`h-2 w-8 rounded-full ${
-                  step === "planning" ? "bg-primary" : "bg-black/10"
-                }`}
-              />
-            ) : null}
+            <View
+              className={`h-2 w-8 rounded-full ${
+                secondStepActive ? "bg-primary" : "bg-black/10"
+              }`}
+            />
           </View>
         </View>
 
         <View className="mb-9">
           <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-primary/12">
-            {entryType === "homework" ? (
+            {isHomework ? (
               <ClipboardList size={27} color="#3A7BFF" strokeWidth={2.2} />
             ) : (
               <GraduationCap size={29} color="#3A7BFF" strokeWidth={2.2} />
             )}
           </View>
-          <Text className="font-dmsans text-32 font-bold text-text">{title}</Text>
+          <Text className="font-dmsans text-32 font-bold text-text">
+            {title}
+          </Text>
           <Text className="mt-3 font-poppins text-14 text-text/62">
-            {entryType === "homework"
-              ? step === "basics"
-                ? "Trage zuerst Fälligkeit, Fach und Notiz ein."
-                : "Plane jetzt, wann du daran arbeitest."
-              : "Trage Datum, Fach und eine optionale Notiz ein."}
+            {subtitle}
           </Text>
         </View>
 
         {step === "basics" ? (
           <>
             <DateButton
-              label="Fälligkeitsdatum"
-              value={formatDate(dueDate)}
-              icon={<CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />}
-              onPress={() => setPickerTarget("dueDate")}
+              label={isHomework ? "Fälligkeitsdatum" : "Datum"}
+              value={formatDate(isHomework ? dueDate : plannedDate)}
+              icon={
+                <CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />
+              }
+              onPress={() =>
+                setPickerTarget(isHomework ? "dueDate" : "plannedDate")
+              }
             />
+            {isHomework ? null : (
+              <DateButton
+                label="Uhrzeit"
+                value={formatTime(plannedTime)}
+                icon={<Clock3 size={15} color="#3A7BFF" strokeWidth={2.3} />}
+                onPress={() => setPickerTarget("plannedTime")}
+              />
+            )}
             <SubjectPicker value={subject} onChange={setSubject} />
-            <View className="mb-8">
-              <FieldLabel
-                icon={<NotebookPen size={15} color="#3A7BFF" strokeWidth={2.3} />}
-                label="Notiz"
-              />
-              <MultilineEntryInput
-                value={note}
-                onChangeText={setNote}
-                placeholder="Kurze Notiz hinzufügen"
-              />
-            </View>
-            <Button disabled={!canContinue} onPress={() => setStep("planning")}>
+            {isHomework ? null : (
+              <>
+                <ExamTypePicker
+                  value={examTypeLabel}
+                  onChange={setExamTypeLabel}
+                  onSelectPreset={selectExamTypePreset}
+                  showAdvanced={showAdvancedExamTypes}
+                  onToggleAdvanced={() =>
+                    setShowAdvancedExamTypes((current) => !current)
+                  }
+                />
+                <DurationPicker
+                  value={durationMinutes}
+                  onChange={setDurationMinutes}
+                />
+              </>
+            )}
+            {isHomework ? (
+              <View className="mb-8">
+                <FieldLabel
+                  icon={
+                    <NotebookPen size={15} color="#3A7BFF" strokeWidth={2.3} />
+                  }
+                  label="Notiz"
+                />
+                <MultilineEntryInput
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder="Kurze Notiz hinzufügen"
+                />
+              </View>
+            ) : null}
+            <Button
+              disabled={!canContinueFromBasics}
+              onPress={() => setStep(isHomework ? "planning" : "examDecision")}
+            >
               <Text>Weiter</Text>
             </Button>
           </>
-        ) : (
+        ) : null}
+
+        {step === "planning" ? (
           <>
             <DateButton
-              label={entryType === "homework" ? "Datum" : "Datum"}
+              label="Datum"
               value={formatDate(plannedDate)}
-              icon={<CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />}
-              onPress={() =>
-                setPickerTarget(entryType === "homework" ? "plannedDate" : "examDate")
+              icon={
+                <CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />
               }
+              onPress={() => setPickerTarget("plannedDate")}
             />
-            {entryType === "exam" ? (
-              <>
-                <SubjectPicker value={subject} onChange={setSubject} />
-                <View className="mb-6">
-                  <FieldLabel
-                    icon={<NotebookPen size={15} color="#3A7BFF" strokeWidth={2.3} />}
-                    label="Was kommt dran?"
-                  />
-                  <MultilineEntryInput
-                    value={note}
-                    onChangeText={setNote}
-                    placeholder="Kapitel, Themen, Aufgabenbereiche"
-                  />
-                </View>
-                <View className="mb-10">
-                  <FieldLabel
-                    icon={<ImagePlus size={15} color="#3A7BFF" strokeWidth={2.3} />}
-                    label="Anhänge / Bilder"
-                  />
-                  <View
-                    className="h-14 flex-row items-center justify-between rounded-input bg-white px-5"
-                    style={inputFrameStyle}
-                  >
-                    <Text className="font-poppins text-16 text-text/48">
-                      Kommt später
-                    </Text>
-                    <ImagePlus
-                      size={19}
-                      color="rgba(26,26,26,0.38)"
-                      strokeWidth={2.2}
-                    />
-                  </View>
-                </View>
-              </>
-            ) : (
-              <>
-                <DateButton
-                  label="Uhrzeit"
-                  value={formatTime(plannedTime)}
-                  icon={<Clock3 size={15} color="#3A7BFF" strokeWidth={2.3} />}
-                  onPress={() => setPickerTarget("plannedTime")}
-                />
-                <View className="mb-8">
-                  <FieldLabel
-                    icon={<Timer size={15} color="#3A7BFF" strokeWidth={2.3} />}
-                    label="Bearbeitungszeit"
-                  />
-                  <View
-                    className="flex-row flex-wrap items-start"
-                    style={{ columnGap: 10, rowGap: 10 }}
-                  >
-                    {DURATIONS.map((duration) => {
-                      const isSelected = durationMinutes === duration;
-                      return (
-                        <ChoiceChip
-                          key={duration}
-                          value={`${duration}`}
-                          label={`${duration} Min.`}
-                          selected={isSelected}
-                          onPress={() => setDurationMinutes(duration)}
-                          minWidth={150}
-                        />
-                      );
-                    })}
-                  </View>
-                </View>
-              </>
-            )}
-            <Button disabled={!canContinue} onPress={createEntry}>
-              <Text>{entryType === "homework" ? "HA eintragen" : "Eintragen"}</Text>
+            <DateButton
+              label="Uhrzeit"
+              value={formatTime(plannedTime)}
+              icon={<Clock3 size={15} color="#3A7BFF" strokeWidth={2.3} />}
+              onPress={() => setPickerTarget("plannedTime")}
+            />
+            <DurationPicker
+              value={durationMinutes}
+              onChange={setDurationMinutes}
+              presets={HOMEWORK_DURATIONS}
+            />
+            <Button disabled={!canCreateHomework} onPress={createEntry}>
+              <Text>HA eintragen</Text>
             </Button>
           </>
-        )}
+        ) : null}
+
+        {step === "examDecision" ? (
+          <>
+            <View
+              className="mb-6 rounded-[28px] bg-white px-5 py-5"
+              style={{
+                borderWidth: 1.2,
+                borderColor: "rgba(0,0,0,0.10)",
+                shadowColor: "#000000",
+                shadowOpacity: 0.06,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 4 },
+                elevation: 3,
+              }}
+            >
+              <Text className="font-dmsans text-22 font-bold text-text">
+                Deine LK auf einen Blick
+              </Text>
+              <View className="mt-4" style={{ rowGap: 14 }}>
+                <SummaryRow label="Datum" value={formatDate(plannedDate)} />
+                <SummaryRow label="Uhrzeit" value={formatTime(plannedTime)} />
+                <SummaryRow label="Fach" value={trimmedSubject} />
+                <SummaryRow label="Prüfungsart" value={trimmedExamType} />
+                <SummaryRow
+                  label="Bearbeitungszeit"
+                  value={`${durationMinutes} Min.`}
+                />
+              </View>
+              <Text className="mt-4 font-poppins text-13 text-text/56">
+                Einen Lernplan kannst du später jederzeit ergänzen.
+              </Text>
+            </View>
+
+            <View style={{ rowGap: 14 }}>
+              <ActionCard
+                icon={
+                  <CheckCircle2 size={24} color="#FFFFFF" strokeWidth={2.2} />
+                }
+                title="LK eintragen"
+                description="Die Leistungskontrolle wird direkt im Kalender gespeichert."
+                onPress={createEntry}
+                primary
+              />
+              <ActionCard
+                icon={<Sparkles size={24} color="#3A7BFF" strokeWidth={2.2} />}
+                title="Lernplan erstellen"
+                description="Diese Auswahl folgt als Nächstes. Für jetzt bleibt sie sichtbar, ist aber noch nicht aktiv."
+                disabled
+                badge="Später"
+              />
+            </View>
+          </>
+        ) : null}
       </ScrollView>
       {renderPicker()}
     </KeyboardAvoidingView>

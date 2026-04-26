@@ -1,4 +1,4 @@
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
 import type { ReactNode } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -10,9 +10,11 @@ import {
   Clock3,
   NotebookPen,
   Timer,
+  Trash2,
 } from "lucide-react-native";
+import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
-import { getDayEntryById } from "~/store/dayEntriesStore";
+import { deleteDayEntry, getDayEntryById } from "~/store/dayEntriesStore";
 
 function DetailRow({
   icon,
@@ -77,6 +79,40 @@ export default function EntryDetailScreen() {
     entry?.durationMinutes || params.duration
       ? `${entry?.durationMinutes ?? params.duration} Min.`
       : undefined;
+  const isDeletableKind =
+    kind === "Hausaufgabe" ||
+    kind === "Leistungskontrolle" ||
+    Boolean(examType);
+  const canDelete = Boolean(entry && id && isDeletableKind);
+
+  const handleDelete = () => {
+    if (!canDelete || !id) return;
+
+    Alert.alert(
+      title,
+      "Möchtest du diesen Eintrag wirklich löschen?",
+      [
+        {
+          text: "Abbrechen",
+          style: "cancel",
+        },
+        {
+          text: "Löschen",
+          style: "destructive",
+          onPress: () => {
+            const deletedDayKey = deleteDayEntry(id);
+            router.replace(
+              `/home?refresh=${Date.now()}${
+                deletedDayKey
+                  ? `&dayKey=${encodeURIComponent(deletedDayKey)}`
+                  : ""
+              }`,
+            );
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <View className="flex-1 bg-background">
@@ -142,6 +178,12 @@ export default function EntryDetailScreen() {
           label="Notiz"
           value={notes}
         />
+        {canDelete ? (
+          <Button className="mt-5" variant="destructive" onPress={handleDelete}>
+            <Trash2 size={18} color="#FFFFFF" strokeWidth={2.3} />
+            <Text>Eintrag löschen</Text>
+          </Button>
+        ) : null}
       </ScrollView>
 
     </View>
