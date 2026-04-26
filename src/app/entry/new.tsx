@@ -662,7 +662,7 @@ export default function NewEntryScreen() {
             {isHomework ? (
               <Field className="mb-8">
                 <FieldLabel>Notizen</FieldLabel>
-                <FieldControl className="min-h-[168px] items-start px-5 pt-4 pb-4">
+                <FieldControl className="min-h-[154px] items-start px-[18px] pt-[14px] pb-4">
                   <Textarea
                     value={note}
                     onChangeText={setNote}

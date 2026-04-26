@@ -22,14 +22,25 @@ function Textarea({
       multiline
       textAlignVertical="top"
       className={cn(
-        "min-h-[120px] flex-1 font-poppins text-16 text-text",
+        "min-h-[112px] flex-1 font-poppins text-14 text-text",
         Platform.select({
           web: "outline-none",
         }),
         props.editable === false && "opacity-50",
         className,
       )}
-      style={[{ margin: 0, padding: 0, lineHeight: 24 }, style]}
+      style={[
+        {
+          margin: 0,
+          paddingTop: 0,
+          paddingBottom: 0,
+          paddingHorizontal: 0,
+          lineHeight: 20,
+          letterSpacing: 0,
+          includeFontPadding: false,
+        },
+        style,
+      ]}
       placeholderTextColor={
         placeholderTextColor ?? `${DAYOVA_DESIGN_SYSTEM.colors.text}5C`
       }
