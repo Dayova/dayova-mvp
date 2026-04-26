@@ -1,49 +1,46 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
-  Keyboard,
+  ScrollView,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
-import DateTimePicker, {
-  DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
-import { useAuth } from "~/context/AuthContext";
+import {
+  ChevronDown,
+  CircleAlert,
+  Eye,
+  EyeOff,
+  Mail,
+  Phone,
+  UserRound,
+} from "lucide-react-native";
 import { Button } from "~/components/ui/button";
-import { Text as UiText } from "~/components/ui/text";
+import {
+  Field,
+  FieldAccessory,
+  FieldMessage,
+  FieldTrigger,
+} from "~/components/ui/field";
+import { Text } from "~/components/ui/text";
+import { InsetTextField } from "~/components/ui/text-field";
+import { useAuth } from "~/context/AuthContext";
 
 type Mode = "login" | "register";
+
 type FieldErrors = {
   name?: string;
   email?: string;
   phone?: string;
   birthDate?: string;
 };
-
-const baseInputStyle = {
-  backgroundColor: "rgba(255,255,255,1)",
-  borderColor: "rgba(153,163,178,0.45)",
-  borderWidth: 1.5,
-  borderRadius: 22,
-  shadowColor: "#3A7BFF",
-  shadowOpacity: 0.22,
-  shadowRadius: 16,
-  shadowOffset: { width: 0, height: 8 },
-  elevation: 7,
-};
-
-const getInputStyle = (hasError = false) => ({
-  ...baseInputStyle,
-  borderColor: hasError ? "rgba(239,68,68,0.8)" : baseInputStyle.borderColor,
-});
 
 const formatBirthDate = (date: Date) => {
   const day = `${date.getDate()}`.padStart(2, "0");
@@ -90,6 +87,46 @@ const isInternalBackendError = (message: string) => {
   );
 };
 
+function ModeButton({
+  active,
+  label,
+  onPress,
+}: {
+  active: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={onPress}
+      className={`min-h-[54px] flex-1 items-center justify-center rounded-full px-4 ${
+        active ? "bg-white" : "bg-transparent"
+      }`}
+      style={
+        active
+          ? {
+              shadowColor: "#111827",
+              shadowOpacity: 0.08,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 3,
+            }
+          : undefined
+      }
+    >
+      <Text
+        className={`w-full text-center font-poppins text-[15px] font-bold ${
+          active ? "text-primary" : "text-text/56"
+        }`}
+        style={{ lineHeight: 20, includeFontPadding: false }}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const { login, register: registerUser, isLoading } = useAuth();
 
@@ -102,18 +139,28 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState("");
   const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const formScrollRef = useRef<ScrollView | null>(null);
   const birthDateFieldY = useRef(0);
 
+  const isRegisterMode = mode === "register";
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
   const switchMode = (next: Mode) => {
+    if (next === mode) return;
     Keyboard.dismiss();
     setShowBirthDatePicker(false);
     setSubmitError("");
     setErrors({});
     setMode(next);
+    router.replace(next === "login" ? "/login" : "/register");
   };
 
   const closeBirthDatePicker = () => setShowBirthDatePicker(false);
+
   const openBirthDatePicker = () => {
     Keyboard.dismiss();
     setTimeout(() => {
@@ -132,8 +179,9 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     if (Platform.OS === "android") setShowBirthDatePicker(false);
     if (event.type === "dismissed" || !selectedDate) return;
     setBirthDateValue(selectedDate);
-    if (errors.birthDate)
+    if (errors.birthDate) {
       setErrors((prev) => ({ ...prev, birthDate: undefined }));
+    }
   };
 
   const handleLogin = async () => {
@@ -165,15 +213,19 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       ? formatBirthDate(birthDateValue)
       : "";
 
-    if (trimmedName.length < 2 || !/^[A-Za-zÀ-ÿ' -]+$/.test(trimmedName))
+    if (trimmedName.length < 2 || !/^[A-Za-zÀ-ÿ' -]+$/.test(trimmedName)) {
       nextErrors.name = "Bitte einen gültigen Namen eingeben.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail))
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       nextErrors.email = "Bitte eine gültige E-Mail eingeben.";
-    if (!/^\+?[0-9()\-.\s]{7,20}$/.test(trimmedPhone))
+    }
+    if (!/^\+?[0-9()\-.\s]{7,20}$/.test(trimmedPhone)) {
       nextErrors.phone = "Bitte eine gültige Telefonnummer eingeben.";
-    if (!isValidBirthDate(trimmedBirthDate))
+    }
+    if (!isValidBirthDate(trimmedBirthDate)) {
       nextErrors.birthDate =
         "Bitte ein gültiges Geburtsdatum (TT.MM.JJJJ) eingeben.";
+    }
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -205,347 +257,284 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   };
 
   return (
-    <View className="flex-1 bg-background">
+    <KeyboardAvoidingView
+      className="flex-1 bg-background"
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       <StatusBar style="light" />
 
-      <View className="bg-black pt-[90px] pb-10 items-center justify-center">
-        <View className="flex-row mb-10 items-center">
-          <Text className="text-white font-dmsans font-bold text-40">
-            Dayova
-          </Text>
-          <Image
-            source={require("../../assets/dayova-logo.png")}
-            style={{ width: 78, height: 78 }}
-            resizeMode="contain"
-          />
+      <View className="bg-black px-8 pb-16 pt-[88px]">
+        <View className="items-center justify-center">
+          <View className="flex-row items-center">
+            <Image
+              source={require("../../assets/dayova-logo.png")}
+              style={{ width: 108, height: 108 }}
+              resizeMode="contain"
+            />
+            <Text
+              className="-ml-3 font-dmsans font-bold text-white"
+              style={{
+                fontSize: 56,
+                lineHeight: 68,
+              }}
+            >
+              Dayova
+            </Text>
+          </View>
         </View>
       </View>
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        enabled={false}
-      >
-        <View className="flex-1 px-8 pt-8 -mt-10 rounded-[36px] bg-background">
-          <View className="mb-2.5 shadow-sm">
-            <ExpoLinearGradient
-              colors={["#3A7BFF", "#FF4CCF"]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={{
-                borderRadius: 32,
-                marginBottom: 16,
-                padding: 12,
-                overflow: "hidden",
+      <View className="-mt-8 flex-1 rounded-t-[34px] bg-background px-8 pt-6">
+        <View
+          className="mb-6 rounded-full bg-[#EEF2F7] p-1.5"
+          style={{
+            minHeight: 60,
+            borderWidth: 1,
+            borderColor: "rgba(17,24,39,0.06)",
+            shadowColor: "#111827",
+            shadowOpacity: 0.06,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 5 },
+            elevation: 2,
+          }}
+        >
+          <View className="flex-row">
+            <ModeButton
+              active={!isRegisterMode}
+              label="Anmelden"
+              onPress={() => switchMode("login")}
+            />
+            <ModeButton
+              active={isRegisterMode}
+              label="Registrieren"
+              onPress={() => switchMode("register")}
+            />
+          </View>
+        </View>
+
+        <ScrollView
+          ref={formScrollRef}
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={
+            Platform.OS === "ios" ? "interactive" : "on-drag"
+          }
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+        >
+          {isRegisterMode ? (
+            <InsetTextField
+              label="Name"
+              invalid={Boolean(errors.name)}
+              message={errors.name}
+              accessory={<UserRound size={18} color="rgba(26,26,26,0.34)" />}
+              value={name}
+              onChangeText={(value) => {
+                setName(value);
+                if (errors.name) {
+                  setErrors((prev) => ({ ...prev, name: undefined }));
+                }
+              }}
+              onFocus={closeBirthDatePicker}
+              placeholder="Max Mustermann"
+              autoCapitalize="words"
+              autoComplete="name"
+              textContentType="name"
+            />
+          ) : null}
+
+          <InsetTextField
+            label="E-Mail"
+            invalid={isRegisterMode && Boolean(errors.email)}
+            message={isRegisterMode ? errors.email : undefined}
+            accessory={<Mail size={18} color="rgba(26,26,26,0.34)" />}
+            value={email}
+            onChangeText={(value) => {
+              setEmail(value);
+              if (submitError) setSubmitError("");
+              if (errors.email) {
+                setErrors((prev) => ({ ...prev, email: undefined }));
+              }
+            }}
+            onFocus={closeBirthDatePicker}
+            placeholder="name@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+          />
+
+          {isRegisterMode ? (
+            <InsetTextField
+              label="Telefon"
+              invalid={Boolean(errors.phone)}
+              message={errors.phone}
+              accessory={<Phone size={18} color="rgba(26,26,26,0.34)" />}
+              value={phone}
+              onChangeText={(value) => {
+                setPhone(value);
+                if (errors.phone) {
+                  setErrors((prev) => ({ ...prev, phone: undefined }));
+                }
+              }}
+              onFocus={closeBirthDatePicker}
+              placeholder="+49 123 4567890"
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+              autoComplete="tel"
+              textContentType="telephoneNumber"
+            />
+          ) : null}
+
+          {isRegisterMode ? (
+            <Field
+              onLayout={(event) => {
+                birthDateFieldY.current = event.nativeEvent.layout.y;
               }}
             >
-              <View className="flex-row">
-                <TouchableOpacity
-                  activeOpacity={1}
-                  onPress={() => switchMode("login")}
-                  className={`flex-1 h-14 rounded-[26px] items-center justify-center ${mode === "login" ? "bg-white" : ""}`}
-                >
-                  <Text
-                    className={`font-poppins font-bold text-16 ${mode === "login" ? "text-secondary" : "text-white"}`}
-                  >
-                    Anmelden
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  activeOpacity={1}
-                  onPress={() => switchMode("register")}
-                  className={`flex-1 h-14 rounded-[26px] items-center justify-center ${mode === "register" ? "bg-white" : ""}`}
-                >
-                  <Text
-                    className={`font-poppins font-bold text-16 ${mode === "register" ? "text-secondary" : "text-white"}`}
-                  >
-                    Registrieren
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ExpoLinearGradient>
-          </View>
-
-          <ScrollView
-            ref={formScrollRef}
-            className="flex-1"
-            contentContainerStyle={{ paddingBottom: 0 }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-            automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
-          >
-            <View className="space-y-6">
-              {mode === "register" ? (
-                <View className="mb-6">
-                  <Text className="text-black/80 font-poppins text-12 mb-2 ml-2 uppercase tracking-widest">
-                    Name
-                  </Text>
-                  <View
-                    className="relative h-14 px-6 justify-center overflow-hidden"
-                    style={getInputStyle(Boolean(errors.name))}
-                  >
-                    <View
-                      pointerEvents="none"
-                      style={{
-                        position: "absolute",
-                        top: 1,
-                        left: 10,
-                        right: 10,
-                        height: 1,
-                        backgroundColor: "rgba(255,255,255,1)",
-                      }}
-                    />
-                    <TextInput
-                      value={name}
-                      onChangeText={(v) => {
-                        setName(v);
-                        if (errors.name)
-                          setErrors((p) => ({ ...p, name: undefined }));
-                      }}
-                      onFocus={closeBirthDatePicker}
-                      placeholder="Max Mustermann"
-                      placeholderTextColor="rgba(26,26,26,0.68)"
-                      autoCapitalize="words"
-                      className="text-text font-poppins text-16"
-                    />
-                  </View>
-                  {errors.name ? (
-                    <Text className="text-red-500 text-12 mt-2 ml-2">
-                      {errors.name}
-                    </Text>
-                  ) : null}
-                </View>
-              ) : null}
-
-              <View className="mb-6">
-                <Text className="text-black/80 font-poppins text-12 mb-2 ml-2 uppercase tracking-widest">
-                  E-Mail
-                </Text>
-                <View
-                  className="relative h-14 px-6 justify-center overflow-hidden"
-                  style={getInputStyle(
-                    mode === "register" && Boolean(errors.email),
-                  )}
-                >
-                  <View
-                    pointerEvents="none"
-                    style={{
-                      position: "absolute",
-                      top: 1,
-                      left: 10,
-                      right: 10,
-                      height: 1,
-                      backgroundColor: "rgba(255,255,255,1)",
-                    }}
-                  />
-                  <TextInput
-                    value={email}
-                    onChangeText={(v) => {
-                      setEmail(v);
-                      if (submitError) setSubmitError("");
-                      if (errors.email)
-                        setErrors((p) => ({ ...p, email: undefined }));
-                    }}
-                    onFocus={closeBirthDatePicker}
-                    placeholder="name@example.com"
-                    placeholderTextColor="rgba(26,26,26,0.68)"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    className="text-text font-poppins text-16"
-                  />
-                </View>
-                {mode === "register" && errors.email ? (
-                  <Text className="text-red-500 text-12 mt-2 ml-2">
-                    {errors.email}
-                  </Text>
-                ) : null}
-              </View>
-
-              {mode === "register" ? (
-                <View className="mb-6">
-                  <Text className="text-black/80 font-poppins text-12 mb-2 ml-2 uppercase tracking-widest">
-                    Telefon
-                  </Text>
-                  <View
-                    className="relative h-14 px-6 justify-center overflow-hidden"
-                    style={getInputStyle(Boolean(errors.phone))}
-                  >
-                    <View
-                      pointerEvents="none"
-                      style={{
-                        position: "absolute",
-                        top: 1,
-                        left: 10,
-                        right: 10,
-                        height: 1,
-                        backgroundColor: "rgba(255,255,255,1)",
-                      }}
-                    />
-                    <TextInput
-                      value={phone}
-                      onChangeText={(v) => {
-                        setPhone(v);
-                        if (errors.phone)
-                          setErrors((p) => ({ ...p, phone: undefined }));
-                      }}
-                      onFocus={closeBirthDatePicker}
-                      placeholder="+49 123 4567890"
-                      placeholderTextColor="rgba(26,26,26,0.68)"
-                      keyboardType="phone-pad"
-                      autoCapitalize="none"
-                      className="text-text font-poppins text-16"
-                    />
-                  </View>
-                  {errors.phone ? (
-                    <Text className="text-red-500 text-12 mt-2 ml-2">
-                      {errors.phone}
-                    </Text>
-                  ) : null}
-                </View>
-              ) : null}
-
-              {mode === "register" ? (
-                <View
-                  className="mb-6"
-                  onLayout={(event) => {
-                    birthDateFieldY.current = event.nativeEvent.layout.y;
-                  }}
-                >
-                  <Text className="text-black/80 font-poppins text-12 mb-2 ml-2 uppercase tracking-widest">
+              <FieldTrigger
+                activeOpacity={0.82}
+                onPress={openBirthDatePicker}
+                invalid={Boolean(errors.birthDate)}
+                className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3"
+              >
+                <View className="flex-1">
+                  <Text className="font-poppins text-[11px] text-text/42">
                     Geburtsdatum
                   </Text>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={openBirthDatePicker}
-                    className="relative h-14 px-6 justify-center overflow-hidden"
-                    style={getInputStyle(Boolean(errors.birthDate))}
+                  <Text
+                    className={`mt-1 font-poppins text-16 ${
+                      birthDateValue ? "text-text" : "text-text/36"
+                    }`}
                   >
-                    <View
-                      pointerEvents="none"
-                      style={{
-                        position: "absolute",
-                        top: 1,
-                        left: 10,
-                        right: 10,
-                        height: 1,
-                        backgroundColor: "rgba(255,255,255,1)",
-                      }}
-                    />
-                    <Text
-                      className={`font-poppins text-16 ${birthDateValue ? "text-text" : "text-black/50"}`}
-                    >
-                      {birthDateValue
-                        ? formatBirthDate(birthDateValue)
-                        : "Geburtsdatum auswählen"}
-                    </Text>
-                  </TouchableOpacity>
-                  {errors.birthDate ? (
-                    <Text className="text-red-500 text-12 mt-2 ml-2">
-                      {errors.birthDate}
-                    </Text>
-                  ) : null}
-                </View>
-              ) : null}
-
-              <View>
-                <Text className="text-black/80 font-poppins text-12 mb-2 ml-2 uppercase tracking-widest">
-                  Passwort
-                </Text>
-                <View
-                  className="relative h-14 px-6 justify-center overflow-hidden"
-                  style={getInputStyle(false)}
-                >
-                  <View
-                    pointerEvents="none"
-                    style={{
-                      position: "absolute",
-                      top: 1,
-                      left: 10,
-                      right: 10,
-                      height: 1,
-                      backgroundColor: "rgba(255,255,255,1)",
-                    }}
-                  />
-                  <TextInput
-                    value={password}
-                    onChangeText={(v) => {
-                      setPassword(v);
-                      if (submitError) setSubmitError("");
-                    }}
-                    onFocus={closeBirthDatePicker}
-                    placeholder="••••••••"
-                    secureTextEntry
-                    placeholderTextColor="rgba(26,26,26,0.68)"
-                    className="text-text font-poppins text-16"
-                  />
-                </View>
-                {submitError ? (
-                  <Text className="text-red-500 text-12 mt-2 ml-1">
-                    {submitError}
+                    {birthDateValue
+                      ? formatBirthDate(birthDateValue)
+                      : "Geburtsdatum auswählen"}
                   </Text>
-                ) : null}
-              </View>
-            </View>
-
-            <Button
-              onPress={mode === "login" ? handleLogin : handleRegister}
-              disabled={isLoading}
-              className="mt-10"
-            >
-              <UiText>
-                {isLoading
-                  ? "Lädt..."
-                  : mode === "login"
-                    ? "Anmelden"
-                    : "Registrieren"}
-              </UiText>
-            </Button>
-          </ScrollView>
-
-          {showBirthDatePicker &&
-          mode === "register" &&
-          Platform.OS === "ios" ? (
-            <View className="absolute inset-0 z-50 justify-end">
-              <TouchableOpacity
-                className="absolute inset-0 bg-black/30"
-                activeOpacity={1}
-                onPress={closeBirthDatePicker}
-              />
-              <View className="bg-white rounded-t-3xl px-4 pt-3 pb-6">
-                <View className="flex-row justify-end mb-2">
-                  <TouchableOpacity
-                    onPress={closeBirthDatePicker}
-                    className="px-3 py-1.5"
-                  >
-                    <Text className="text-secondary font-poppins font-bold text-16">
-                      Fertig
-                    </Text>
-                  </TouchableOpacity>
                 </View>
-                <DateTimePicker
-                  value={birthDateValue ?? new Date(2000, 0, 1)}
-                  mode="date"
-                  display="spinner"
-                  maximumDate={new Date()}
-                  onChange={handleBirthDateChange}
-                />
-              </View>
-            </View>
+                <FieldAccessory className="ml-3 self-center">
+                  <ChevronDown
+                    size={18}
+                    color="rgba(26,26,26,0.42)"
+                    strokeWidth={2.2}
+                  />
+                </FieldAccessory>
+              </FieldTrigger>
+              {errors.birthDate ? (
+                <FieldMessage>{errors.birthDate}</FieldMessage>
+              ) : null}
+            </Field>
           ) : null}
-          {showBirthDatePicker &&
-          mode === "register" &&
-          Platform.OS === "android" ? (
+
+          <InsetTextField
+            label="Passwort"
+            message={submitError || undefined}
+            accessory={
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => setPasswordVisible((current) => !current)}
+              >
+                {passwordVisible ? (
+                  <Eye size={18} color="rgba(26,26,26,0.34)" />
+                ) : (
+                  <EyeOff size={18} color="rgba(26,26,26,0.34)" />
+                )}
+              </TouchableOpacity>
+            }
+            value={password}
+            onChangeText={(value) => {
+              setPassword(value);
+              if (submitError) setSubmitError("");
+            }}
+            onFocus={closeBirthDatePicker}
+            placeholder="••••••••"
+            secureTextEntry={!passwordVisible}
+            autoCapitalize="none"
+            autoComplete={isRegisterMode ? "new-password" : "current-password"}
+            textContentType={isRegisterMode ? "newPassword" : "password"}
+          />
+
+          <View
+            className="mb-6 mt-2 rounded-[20px] bg-[#F7F8FA] px-[18px] py-4"
+            style={{
+              borderWidth: 1,
+              borderColor: "rgba(17,24,39,0.05)",
+            }}
+          >
+            <View className="flex-row items-center">
+              <View className="h-6 w-6 items-center justify-center">
+                <CircleAlert size={16} color="#3A7BFF" strokeWidth={2.1} />
+              </View>
+              <Text
+                className="ml-2.5 flex-1 font-poppins text-[13px] text-text/62"
+                style={{ lineHeight: 19, includeFontPadding: false }}
+              >
+                {isRegisterMode
+                  ? "Mit der Registrierung erstellst du dein persönliches Lernprofil."
+                  : "Falls etwas nicht klappt, prüfe zuerst E-Mail-Adresse und Passwort."}
+              </Text>
+            </View>
+          </View>
+
+          <Button
+            onPress={isRegisterMode ? handleRegister : handleLogin}
+            disabled={isLoading}
+            className="mt-1"
+          >
+            <Text>
+              {isLoading ? "Lädt..." : isRegisterMode ? "Weiter" : "Anmelden"}
+            </Text>
+          </Button>
+
+          <View className="pb-2 pt-5">
+            <Text className="text-center font-poppins text-12 text-text/46">
+              {isRegisterMode
+                ? "Schon ein Konto? Oben kannst du direkt zum Login wechseln."
+                : "Noch kein Konto? Wechsle oben zur Registrierung."}
+            </Text>
+          </View>
+        </ScrollView>
+      </View>
+
+      {showBirthDatePicker && isRegisterMode && Platform.OS === "ios" ? (
+        <View className="absolute inset-0 z-50 justify-end">
+          <TouchableOpacity
+            className="absolute inset-0 bg-black/28"
+            activeOpacity={1}
+            onPress={closeBirthDatePicker}
+          />
+          <View className="rounded-t-[32px] bg-white px-4 pt-3 pb-7">
+            <View className="mb-1 flex-row justify-end">
+              <TouchableOpacity
+                onPress={closeBirthDatePicker}
+                className="px-3 py-2"
+              >
+                <Text className="font-poppins text-16 font-bold text-primary">
+                  Fertig
+                </Text>
+              </TouchableOpacity>
+            </View>
             <DateTimePicker
               value={birthDateValue ?? new Date(2000, 0, 1)}
               mode="date"
-              display="default"
+              display="spinner"
               maximumDate={new Date()}
               onChange={handleBirthDateChange}
             />
-          ) : null}
+          </View>
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      ) : null}
+
+      {showBirthDatePicker && isRegisterMode && Platform.OS === "android" ? (
+        <DateTimePicker
+          value={birthDateValue ?? new Date(2000, 0, 1)}
+          mode="date"
+          display="default"
+          maximumDate={new Date()}
+          onChange={handleBirthDateChange}
+        />
+      ) : null}
+    </KeyboardAvoidingView>
   );
 }

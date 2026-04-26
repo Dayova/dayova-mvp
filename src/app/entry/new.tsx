@@ -4,7 +4,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,17 +16,22 @@ import {
   ArrowLeft,
   CalendarDays,
   CheckCircle2,
-  ChevronRight,
   ClipboardList,
   Clock3,
   GraduationCap,
-  NotebookPen,
   Sparkles,
-  Timer,
 } from "lucide-react-native";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import {
+  Field,
+  FieldAccessory,
+  FieldControl,
+  FieldLabel,
+  FieldTrigger,
+} from "~/components/ui/field";
+import { Textarea } from "~/components/ui/textarea";
 import { Text } from "~/components/ui/text";
+import { TextField } from "~/components/ui/text-field";
 import { Toggle } from "~/components/ui/toggle";
 import { addDayEntry } from "~/store/dayEntriesStore";
 
@@ -78,27 +82,6 @@ const formatTime = (date: Date) =>
 const getChipMinWidth = (label: string) =>
   Math.min(Math.max(label.length * 10 + 42, 92), 300);
 
-const inputFrameStyle = {
-  borderWidth: 1.4,
-  borderColor: "rgba(0,0,0,0.10)",
-  shadowColor: "#3A7BFF",
-  shadowOpacity: 0.12,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 6 },
-  elevation: 5,
-};
-
-function FieldLabel({ icon, label }: { icon: ReactNode; label: string }) {
-  return (
-    <View className="mb-2 ml-1 flex-row items-center">
-      {icon}
-      <Text className="ml-2 font-poppins text-12 font-bold uppercase text-text/62">
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 function DateButton({
   label,
   value,
@@ -111,18 +94,13 @@ function DateButton({
   onPress: () => void;
 }) {
   return (
-    <View className="mb-6">
-      <FieldLabel icon={icon} label={label} />
-      <TouchableOpacity
-        activeOpacity={0.82}
-        onPress={onPress}
-        className="h-14 flex-row items-center justify-between rounded-input bg-white px-5"
-        style={inputFrameStyle}
-      >
-        <Text className="font-poppins text-16 text-text">{value}</Text>
-        <ChevronRight size={19} color="rgba(26,26,26,0.48)" strokeWidth={2.3} />
-      </TouchableOpacity>
-    </View>
+    <Field>
+      <FieldLabel>{label}</FieldLabel>
+      <FieldTrigger onPress={onPress} activeOpacity={0.82}>
+        <Text className="font-poppins text-16 text-text/68">{value}</Text>
+        <FieldAccessory>{icon}</FieldAccessory>
+      </FieldTrigger>
+    </Field>
   );
 }
 
@@ -177,13 +155,16 @@ function SubjectPicker({
   onChange: (next: string) => void;
 }) {
   return (
-    <View className="mb-6">
-      <FieldLabel
-        icon={<NotebookPen size={15} color="#3A7BFF" strokeWidth={2.3} />}
-        label="Fach"
+    <>
+      <TextField
+        className="mb-3"
+        label="Schulfach"
+        value={value}
+        onChangeText={onChange}
+        placeholder="Wähle das Fach aus"
       />
       <View
-        className="flex-row flex-wrap items-start"
+        className="mb-6 flex-row flex-wrap items-start"
         style={{ columnGap: 8, rowGap: 8 }}
       >
         {SUBJECTS.map((subject) => {
@@ -199,14 +180,7 @@ function SubjectPicker({
           );
         })}
       </View>
-      <Input
-        value={value}
-        onChangeText={onChange}
-        placeholder="Oder eigenes Fach eintragen"
-        className="mt-3 bg-white"
-        style={inputFrameStyle}
-      />
-    </View>
+    </>
   );
 }
 
@@ -218,17 +192,18 @@ function ExamTypePicker({
   value: string;
   onChange: (next: string) => void;
   onSelectPreset: (label: string, durationMinutes: number) => void;
-  showAdvanced: boolean;
-  onToggleAdvanced: () => void;
 }) {
   return (
-    <View className="mb-6">
-      <FieldLabel
-        icon={<GraduationCap size={15} color="#3A7BFF" strokeWidth={2.3} />}
-        label="Art der Prüfung"
+    <>
+      <TextField
+        className="mb-3"
+        label="Prüfungsart"
+        value={value}
+        onChangeText={onChange}
+        placeholder="Wähle die Prüfungsart aus"
       />
       <View
-        className="flex-row flex-wrap items-start"
+        className="mb-6 flex-row flex-wrap items-start"
         style={{ columnGap: 8, rowGap: 8 }}
       >
         {COMMON_EXAM_TYPE_PRESETS.map((preset) => {
@@ -246,14 +221,7 @@ function ExamTypePicker({
           );
         })}
       </View>
-      <Input
-        value={value}
-        onChangeText={onChange}
-        placeholder="Oder eigene Prüfungsart eintragen"
-        className="mt-3 bg-white"
-        style={inputFrameStyle}
-      />
-    </View>
+    </>
   );
 }
 
@@ -278,13 +246,22 @@ function DurationPicker({
   };
 
   return (
-    <View className="mb-8">
-      <FieldLabel
-        icon={<Timer size={15} color="#3A7BFF" strokeWidth={2.3} />}
+    <>
+      <TextField
+        className="mb-3"
         label="Bearbeitungszeit"
+        value={customValue}
+        onChangeText={handleCustomDurationChange}
+        keyboardType="number-pad"
+        placeholder="Eigene Dauer"
+        accessory={
+          <Text className="font-poppins text-14 font-bold text-text/44">
+            Min.
+          </Text>
+        }
       />
       <View
-        className="flex-row flex-wrap items-start"
+        className="mb-8 flex-row flex-wrap items-start"
         style={{ columnGap: 10, rowGap: 10 }}
       >
         {presets.map((duration) => {
@@ -300,64 +277,7 @@ function DurationPicker({
           );
         })}
       </View>
-      <View
-        className="mt-3 h-14 flex-row items-center rounded-input bg-white px-5"
-        style={inputFrameStyle}
-      >
-        <TextInput
-          value={customValue}
-          onChangeText={handleCustomDurationChange}
-          keyboardType="number-pad"
-          placeholder="Eigene Dauer"
-          placeholderTextColor="rgba(26,26,26,0.42)"
-          className="flex-1 font-poppins text-16 text-text"
-          style={{ padding: 0, margin: 0 }}
-        />
-        <Text className="font-poppins text-14 font-bold text-text/48">
-          Min.
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function MultilineEntryInput({
-  value,
-  onChangeText,
-  placeholder,
-}: {
-  value: string;
-  onChangeText: (next: string) => void;
-  placeholder: string;
-}) {
-  return (
-    <View
-      className="rounded-input bg-white"
-      style={[
-        inputFrameStyle,
-        {
-          minHeight: 104,
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: 14,
-        },
-      ]}
-    >
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="rgba(26,26,26,0.42)"
-        multiline
-        textAlignVertical="top"
-        className="min-h-[72px] font-poppins text-16 text-text"
-        style={{
-          lineHeight: 24,
-          padding: 0,
-          margin: 0,
-        }}
-      />
-    </View>
+    </>
   );
 }
 
@@ -468,7 +388,6 @@ export default function NewEntryScreen() {
   const [step, setStep] = useState<EntryStep>("basics");
   const [subject, setSubject] = useState("");
   const [examTypeLabel, setExamTypeLabel] = useState("");
-  const [showAdvancedExamTypes, setShowAdvancedExamTypes] = useState(false);
   const [note, setNote] = useState("");
   const [dueDate, setDueDate] = useState(initialDate);
   const [plannedDate, setPlannedDate] = useState(initialDate);
@@ -709,10 +628,10 @@ export default function NewEntryScreen() {
         {step === "basics" ? (
           <>
             <DateButton
-              label={isHomework ? "Fälligkeitsdatum" : "Datum"}
+              label={isHomework ? "Fälligkeitsdatum" : "Prüfungsdatum"}
               value={formatDate(isHomework ? dueDate : plannedDate)}
               icon={
-                <CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />
+                <CalendarDays size={18} color="#3A7BFF" strokeWidth={2.2} />
               }
               onPress={() =>
                 setPickerTarget(isHomework ? "dueDate" : "plannedDate")
@@ -722,7 +641,7 @@ export default function NewEntryScreen() {
               <DateButton
                 label="Uhrzeit"
                 value={formatTime(plannedTime)}
-                icon={<Clock3 size={15} color="#3A7BFF" strokeWidth={2.3} />}
+                icon={<Clock3 size={18} color="#A3A3A3" strokeWidth={2.1} />}
                 onPress={() => setPickerTarget("plannedTime")}
               />
             )}
@@ -733,10 +652,6 @@ export default function NewEntryScreen() {
                   value={examTypeLabel}
                   onChange={setExamTypeLabel}
                   onSelectPreset={selectExamTypePreset}
-                  showAdvanced={showAdvancedExamTypes}
-                  onToggleAdvanced={() =>
-                    setShowAdvancedExamTypes((current) => !current)
-                  }
                 />
                 <DurationPicker
                   value={durationMinutes}
@@ -745,19 +660,16 @@ export default function NewEntryScreen() {
               </>
             )}
             {isHomework ? (
-              <View className="mb-8">
-                <FieldLabel
-                  icon={
-                    <NotebookPen size={15} color="#3A7BFF" strokeWidth={2.3} />
-                  }
-                  label="Notiz"
-                />
-                <MultilineEntryInput
-                  value={note}
-                  onChangeText={setNote}
-                  placeholder="Kurze Notiz hinzufügen"
-                />
-              </View>
+              <Field className="mb-8">
+                <FieldLabel>Notizen</FieldLabel>
+                <FieldControl className="min-h-[168px] items-start px-5 pt-4 pb-4">
+                  <Textarea
+                    value={note}
+                    onChangeText={setNote}
+                    placeholder="Kurze Notiz hinzufügen"
+                  />
+                </FieldControl>
+              </Field>
             ) : null}
             <Button
               disabled={!canContinueFromBasics}
@@ -774,14 +686,14 @@ export default function NewEntryScreen() {
               label="Datum"
               value={formatDate(plannedDate)}
               icon={
-                <CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />
+                <CalendarDays size={18} color="#3A7BFF" strokeWidth={2.2} />
               }
               onPress={() => setPickerTarget("plannedDate")}
             />
             <DateButton
               label="Uhrzeit"
               value={formatTime(plannedTime)}
-              icon={<Clock3 size={15} color="#3A7BFF" strokeWidth={2.3} />}
+              icon={<Clock3 size={18} color="#A3A3A3" strokeWidth={2.1} />}
               onPress={() => setPickerTarget("plannedTime")}
             />
             <DurationPicker
