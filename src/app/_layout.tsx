@@ -1,9 +1,13 @@
 import "~/global.css";
 import { Stack } from "expo-router";
 import { ThemeProvider } from "@react-navigation/native";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { useColorScheme } from "nativewind";
-import { AuthProvider } from "~/context/AuthContext";
+import {
+  AuthProvider,
+  AuthSessionProvider,
+  useConvexWorkosAuth,
+} from "~/context/AuthContext";
 import { NAV_THEME } from "~/lib/theme";
 import { PortalHost } from "@rn-primitives/portal";
 
@@ -17,13 +21,15 @@ export default function RootLayout() {
   const theme = NAV_THEME[colorScheme ?? "light"];
 
   return (
-    <ConvexProvider client={convex}>
-      <ThemeProvider value={theme}>
-        <AuthProvider>
-          <Stack screenOptions={{ headerShown: false }} />
-          <PortalHost />
-        </AuthProvider>
-      </ThemeProvider>
-    </ConvexProvider>
+    <AuthSessionProvider>
+      <ConvexProviderWithAuth client={convex} useAuth={useConvexWorkosAuth}>
+        <ThemeProvider value={theme}>
+          <AuthProvider>
+            <Stack screenOptions={{ headerShown: false }} />
+            <PortalHost />
+          </AuthProvider>
+        </ThemeProvider>
+      </ConvexProviderWithAuth>
+    </AuthSessionProvider>
   );
 }

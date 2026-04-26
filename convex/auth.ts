@@ -54,6 +54,39 @@ const getClientId = () => {
   return clientId;
 };
 
+const clientUserFromWorkosUser = (user: {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  profilePictureUrl?: string | null;
+}) => {
+  const name = fullNameFromParts(user.firstName, user.lastName);
+  return {
+    workosId: user.id,
+    email: user.email,
+    ...(name !== undefined ? { name } : {}),
+    ...(user.profilePictureUrl ? { avatarUrl: user.profilePictureUrl } : {}),
+  };
+};
+
+const isInvalidCredentialsError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : `${error}`;
+  return message.toLowerCase().includes("invalid credentials");
+};
+
+const loginFailure = (error: string) => ({
+  ok: false as const,
+  error,
+});
+
+const loginSuccess = (user: ReturnType<typeof clientUserFromWorkosUser> & {
+  accessToken: string;
+}) => ({
+  ok: true as const,
+  user,
+});
+
 export const registerWithPassword = action({
   args: {
     email: v.string(),
@@ -97,6 +130,11 @@ export const registerWithPassword = action({
         birthDate: trimmedBirthDate,
       },
     });
+    const authentication = await workos.userManagement.authenticateWithPassword({
+      clientId: getClientId(),
+      email: normalizedEmail,
+      password: args.password,
+    });
 
     await ctx.runMutation(api.users.storeUser, {
       workosId: created.id,
@@ -104,16 +142,18 @@ export const registerWithPassword = action({
       name: fullNameFromParts(created.firstName, created.lastName) ?? trimmedName,
       phone: trimmedPhone,
       birthDate: trimmedBirthDate,
-      avatarUrl: created.profilePictureUrl ?? undefined,
+      ...(created.profilePictureUrl ? { avatarUrl: created.profilePictureUrl } : {}),
     });
 
     return {
-      workosId: created.id,
-      email: created.email,
-      name: fullNameFromParts(created.firstName, created.lastName) ?? trimmedName,
+      ...clientUserFromWorkosUser(authentication.user),
+      name: fullNameFromParts(
+        authentication.user.firstName,
+        authentication.user.lastName,
+      ) ?? trimmedName,
       phone: trimmedPhone,
       birthDate: trimmedBirthDate,
-      avatarUrl: created.profilePictureUrl ?? undefined,
+      accessToken: authentication.accessToken,
     };
   },
 });
@@ -127,25 +167,40 @@ export const loginWithPassword = action({
     const workos = getWorkOS();
     const clientId = getClientId();
     const normalizedEmail = normalizeEmail(args.email);
+    const password = args.password;
 
-    const authentication = await workos.userManagement.authenticateWithPassword({
-      clientId,
-      email: normalizedEmail,
-      password: args.password,
-    });
+    if (!normalizedEmail) {
+      return loginFailure("Bitte eine E-Mail-Adresse eingeben.");
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return loginFailure("Bitte eine gültige E-Mail eingeben.");
+    }
+    if (!password) {
+      return loginFailure("Bitte ein Passwort eingeben.");
+    }
+
+    let authentication;
+    try {
+      authentication = await workos.userManagement.authenticateWithPassword({
+        clientId,
+        email: normalizedEmail,
+        password,
+      });
+    } catch (error) {
+      if (isInvalidCredentialsError(error)) {
+        return loginFailure("E-Mail oder Passwort ist falsch.");
+      }
+
+      throw error;
+    }
 
     await ctx.runMutation(api.users.storeUser, {
-      workosId: authentication.user.id,
-      email: authentication.user.email,
-      name: fullNameFromParts(authentication.user.firstName, authentication.user.lastName),
-      avatarUrl: authentication.user.profilePictureUrl ?? undefined,
+      ...clientUserFromWorkosUser(authentication.user),
     });
 
-    return {
-      workosId: authentication.user.id,
-      email: authentication.user.email,
-      name: fullNameFromParts(authentication.user.firstName, authentication.user.lastName),
-      avatarUrl: authentication.user.profilePictureUrl ?? undefined,
-    };
+    return loginSuccess({
+      ...clientUserFromWorkosUser(authentication.user),
+      accessToken: authentication.accessToken,
+    });
   },
 });

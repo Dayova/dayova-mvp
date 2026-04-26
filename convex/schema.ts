@@ -12,4 +12,20 @@ export default defineSchema({
   })
     .index("by_workosId", ["workosId"])
     .index("by_email", ["email"]),
+  dayEntries: defineTable({
+    ownerTokenIdentifier: v.string(),
+    dayKey: v.string(),
+    title: v.string(),
+    time: v.optional(v.string()),
+    kind: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    dueDateKey: v.optional(v.string()),
+    dueDateLabel: v.optional(v.string()),
+    plannedDateLabel: v.optional(v.string()),
+    durationMinutes: v.optional(v.number()),
+    examTypeLabel: v.optional(v.string()),
+  }).index("by_ownerTokenIdentifier_and_dayKey", [
+    "ownerTokenIdentifier",
+    "dayKey",
+  ]),
 });

@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { useAction } from "convex/react";
 import { api } from "#convex/_generated/api";
 
@@ -15,45 +21,134 @@ type RegisterInput = {
   birthDate?: string;
 };
 
+type AuthUser = {
+  workosId: string;
+  email: string;
+  name?: string;
+  phone?: string;
+  birthDate?: string;
+  avatarUrl?: string;
+};
+
+type AuthResult = AuthUser & {
+  accessToken: string;
+};
+
 interface AuthContextType {
-  user: any;
+  user: AuthUser | null;
   isLoading: boolean;
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+type AuthSessionContextType = {
+  user: AuthUser | null;
+  accessToken: string | null;
+  isLoading: boolean;
+  setIsLoading: (next: boolean) => void;
+  setSession: (result: AuthResult) => void;
+  clearSession: () => void;
+};
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthSessionContext = createContext<AuthSessionContextType | undefined>(
+  undefined,
+);
+
+const userFromResult = ({
+  accessToken: _accessToken,
+  ...user
+}: AuthResult): AuthUser => user;
+
+export const AuthSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const loginAction = useAction(api.auth.loginWithPassword);
-  const registerAction = useAction(api.auth.registerWithPassword);
 
   useEffect(() => {
     setIsLoading(false);
   }, []);
 
+  const setSession = (result: AuthResult) => {
+    setUser(userFromResult(result));
+    setAccessToken(result.accessToken);
+  };
+
+  const clearSession = () => {
+    setUser(null);
+    setAccessToken(null);
+  };
+
+  return (
+    <AuthSessionContext.Provider
+      value={{
+        user,
+        accessToken,
+        isLoading,
+        setIsLoading,
+        setSession,
+        clearSession,
+      }}
+    >
+      {children}
+    </AuthSessionContext.Provider>
+  );
+};
+
+const useAuthSession = () => {
+  const context = useContext(AuthSessionContext);
+  if (!context) {
+    throw new Error("useAuthSession must be used within an AuthSessionProvider");
+  }
+  return context;
+};
+
+export const useConvexWorkosAuth = () => {
+  const { accessToken, isLoading, user } = useAuthSession();
+  const fetchAccessToken = useCallback(async () => accessToken, [accessToken]);
+
+  return {
+    isLoading,
+    isAuthenticated: Boolean(user && accessToken),
+    fetchAccessToken,
+  };
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const session = useAuthSession();
+  const loginAction = useAction(api.auth.loginWithPassword);
+  const registerAction = useAction(api.auth.registerWithPassword);
+
   const withLoading = async <TResult,>(task: () => Promise<TResult>) => {
-    setIsLoading(true);
+    session.setIsLoading(true);
     try {
       return await task();
     } finally {
-      setIsLoading(false);
+      session.setIsLoading(false);
     }
   };
 
   const login = async (input: LoginInput) => {
-    const authenticatedUser = await withLoading(() =>
+    const result = await withLoading(() =>
       loginAction({
         email: input.email,
         password: input.password,
       }),
     );
-    setUser(authenticatedUser);
+    if (!result?.ok) {
+      throw new Error(result.error);
+    }
+
+    if (!result.user) {
+      throw new Error("Anmeldung fehlgeschlagen.");
+    }
+
+    session.setSession(result.user);
   };
 
   const register = async (input: RegisterInput) => {
@@ -66,15 +161,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         birthDate: input.birthDate,
       }),
     );
-    setUser(registeredUser);
+    session.setSession(registeredUser);
   };
 
   const logout = async () => {
-    setUser(null);
+    session.clearSession();
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user: session.user,
+        isLoading: session.isLoading,
+        login,
+        register,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

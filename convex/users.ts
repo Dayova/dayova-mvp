@@ -3,6 +3,18 @@ import { v } from "convex/values";
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
+const optionalUserFields = (args: {
+  name?: string;
+  phone?: string;
+  birthDate?: string;
+  avatarUrl?: string;
+}) => ({
+  ...(args.name !== undefined ? { name: args.name } : {}),
+  ...(args.phone !== undefined ? { phone: args.phone } : {}),
+  ...(args.birthDate !== undefined ? { birthDate: args.birthDate } : {}),
+  ...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
+});
+
 export const storeUser = mutation({
   args: {
     workosId: v.string(),
@@ -21,10 +33,7 @@ export const storeUser = mutation({
     if (user !== null) {
       await ctx.db.patch(user._id, {
         email: normalizeEmail(args.email),
-        name: args.name,
-        phone: args.phone,
-        birthDate: args.birthDate,
-        avatarUrl: args.avatarUrl,
+        ...optionalUserFields(args),
       });
       return user._id;
     }
@@ -32,10 +41,7 @@ export const storeUser = mutation({
     return await ctx.db.insert("users", {
       workosId: args.workosId,
       email: normalizeEmail(args.email),
-      name: args.name,
-      phone: args.phone,
-      birthDate: args.birthDate,
-      avatarUrl: args.avatarUrl,
+      ...optionalUserFields(args),
     });
   },
 });
@@ -62,10 +68,7 @@ export const removeLegacyPasswordField = mutation({
       await ctx.db.replace(user._id, {
         workosId: user.workosId,
         email: user.email,
-        name: user.name,
-        phone: user.phone,
-        birthDate: user.birthDate,
-        avatarUrl: user.avatarUrl,
+        ...optionalUserFields(user),
       });
       updated += 1;
     }

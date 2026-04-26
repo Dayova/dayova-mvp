@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
   ArrowLeft,
   BookOpen,
@@ -12,9 +13,11 @@ import {
   Timer,
   Trash2,
 } from "lucide-react-native";
+import { api } from "#convex/_generated/api";
+import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
-import { deleteDayEntry, getDayEntryById } from "~/store/dayEntriesStore";
+import { useAuth } from "~/context/AuthContext";
 
 function DetailRow({
   icon,
@@ -54,6 +57,9 @@ function DetailRow({
 export default function EntryDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+  const deleteDayEntry = useMutation(api.dayEntries.remove);
   const params = useLocalSearchParams<{
     id?: string;
     title?: string;
@@ -67,7 +73,15 @@ export default function EntryDetailScreen() {
     duration?: string;
   }>();
   const id = typeof params.id === "string" ? params.id : "";
-  const entry = id ? getDayEntryById(id) : undefined;
+  const entry =
+    useQuery(
+      api.dayEntries.get,
+      user?.workosId && isConvexAuthenticated && id
+        ? {
+            id: id as Id<"dayEntries">,
+          }
+        : "skip",
+    ) ?? undefined;
   const title = entry?.title ?? params.title ?? "Eintrag";
   const kind = entry?.kind ?? params.kind;
   const time = entry?.time ?? params.time;
@@ -86,7 +100,7 @@ export default function EntryDetailScreen() {
   const canDelete = Boolean(entry && id && isDeletableKind);
 
   const handleDelete = () => {
-    if (!canDelete || !id) return;
+    if (!canDelete || !id || !user?.workosId || !isConvexAuthenticated) return;
 
     Alert.alert(
       title,
@@ -99,12 +113,14 @@ export default function EntryDetailScreen() {
         {
           text: "Löschen",
           style: "destructive",
-          onPress: () => {
-            const deletedDayKey = deleteDayEntry(id);
+          onPress: async () => {
+            const deletedDayKey = await deleteDayEntry({
+              id: id as Id<"dayEntries">,
+            });
             router.replace(
-              `/home?refresh=${Date.now()}${
+              `/home${
                 deletedDayKey
-                  ? `&dayKey=${encodeURIComponent(deletedDayKey)}`
+                  ? `?dayKey=${encodeURIComponent(deletedDayKey)}`
                   : ""
               }`,
             );

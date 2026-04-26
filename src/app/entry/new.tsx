@@ -12,6 +12,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useConvexAuth, useMutation } from "convex/react";
 import {
   ArrowLeft,
   CalendarDays,
@@ -21,6 +22,7 @@ import {
   GraduationCap,
   Sparkles,
 } from "lucide-react-native";
+import { api } from "#convex/_generated/api";
 import { Button } from "~/components/ui/button";
 import {
   Field,
@@ -33,7 +35,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Text } from "~/components/ui/text";
 import { TextField } from "~/components/ui/text-field";
 import { Toggle } from "~/components/ui/toggle";
-import { addDayEntry } from "~/store/dayEntriesStore";
+import { useAuth } from "~/context/AuthContext";
 
 type EntryType = "homework" | "exam";
 type EntryStep = "basics" | "planning" | "examDecision" | "success";
@@ -373,6 +375,9 @@ function ActionCard({
 
 export default function NewEntryScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+  const createDayEntry = useMutation(api.dayEntries.create);
   const params = useLocalSearchParams<{
     type?: string;
     dayKey?: string;
@@ -400,6 +405,7 @@ export default function NewEntryScreen() {
     isHomework ? 30 : null,
   );
   const [createdDayKey, setCreatedDayKey] = useState(getDateKey(initialDate));
+  const [isCreating, setIsCreating] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
 
   const trimmedSubject = subject.trim();
@@ -418,6 +424,7 @@ export default function NewEntryScreen() {
     trimmedExamType.length > 0 &&
     durationMinutes !== null &&
     durationMinutes > 0;
+  const canWriteEntries = Boolean(user?.workosId && isConvexAuthenticated);
 
   const title = isHomework
     ? "Hausaufgabe eintragen"
@@ -453,26 +460,38 @@ export default function NewEntryScreen() {
     }
   };
 
-  const createEntry = () => {
+  const createEntry = async () => {
     if (isHomework && !canCreateHomework) return;
     if (!isHomework && !canCreateExam) return;
     if (durationMinutes === null) return;
+    if (!canWriteEntries || isCreating) return;
 
     const nextDayKey = getDateKey(plannedDate);
-    addDayEntry({
-      dayKey: nextDayKey,
-      title: isHomework
-        ? `${trimmedSubject} Hausaufgabe`
-        : `${trimmedSubject} ${trimmedExamType}`,
-      time: formatTime(plannedTime),
-      kind: isHomework ? "Hausaufgabe" : "Leistungskontrolle",
-      notes: note.trim() || undefined,
-      dueDateKey: isHomework ? getDateKey(dueDate) : undefined,
-      dueDateLabel: isHomework ? formatDate(dueDate) : undefined,
-      plannedDateLabel: formatDate(plannedDate),
-      durationMinutes,
-      examTypeLabel: isHomework ? undefined : trimmedExamType,
-    });
+    const trimmedNote = note.trim();
+
+    try {
+      setIsCreating(true);
+      await createDayEntry({
+        dayKey: nextDayKey,
+        title: isHomework
+          ? `${trimmedSubject} Hausaufgabe`
+          : `${trimmedSubject} ${trimmedExamType}`,
+        time: formatTime(plannedTime),
+        kind: isHomework ? "Hausaufgabe" : "Leistungskontrolle",
+        ...(trimmedNote ? { notes: trimmedNote } : {}),
+        ...(isHomework
+          ? {
+              dueDateKey: getDateKey(dueDate),
+              dueDateLabel: formatDate(dueDate),
+            }
+          : {}),
+        plannedDateLabel: formatDate(plannedDate),
+        durationMinutes,
+        ...(!isHomework ? { examTypeLabel: trimmedExamType } : {}),
+      });
+    } finally {
+      setIsCreating(false);
+    }
 
     setCreatedDayKey(nextDayKey);
     if (isHomework) {
@@ -480,15 +499,11 @@ export default function NewEntryScreen() {
       return;
     }
 
-    router.replace(
-      `/home?refresh=${Date.now()}&dayKey=${encodeURIComponent(nextDayKey)}`,
-    );
+    router.replace(`/home?dayKey=${encodeURIComponent(nextDayKey)}`);
   };
 
   const finish = () => {
-    router.replace(
-      `/home?refresh=${Date.now()}&dayKey=${encodeURIComponent(createdDayKey)}`,
-    );
+    router.replace(`/home?dayKey=${encodeURIComponent(createdDayKey)}`);
   };
 
   const handleBack = () => {
@@ -701,7 +716,10 @@ export default function NewEntryScreen() {
               onChange={setDurationMinutes}
               presets={HOMEWORK_DURATIONS}
             />
-            <Button disabled={!canCreateHomework} onPress={createEntry}>
+            <Button
+              disabled={!canCreateHomework || isCreating || !canWriteEntries}
+              onPress={createEntry}
+            >
               <Text>HA eintragen</Text>
             </Button>
           </>
@@ -747,6 +765,7 @@ export default function NewEntryScreen() {
                 title="LK eintragen"
                 description="Die Leistungskontrolle wird direkt im Kalender gespeichert."
                 onPress={createEntry}
+                disabled={isCreating || !canWriteEntries}
                 primary
               />
               <ActionCard

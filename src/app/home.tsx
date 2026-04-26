@@ -13,6 +13,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
+import { useConvexAuth, useQuery } from "convex/react";
 import {
   ArrowUpRight,
   Bell,
@@ -24,9 +25,10 @@ import {
   UserRound,
   X,
 } from "lucide-react-native";
+import { api } from "#convex/_generated/api";
 import { useAuth } from "~/context/AuthContext";
 import { Text as UiText } from "~/components/ui/text";
-import { getDayEntriesMap, type DayEntry } from "../store/dayEntriesStore";
+import type { DayEntry } from "~/types/dayEntries";
 
 const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const WEEKDAY_FULL_LABELS = [
@@ -145,8 +147,9 @@ const getLearningRangeLabel = (entry: DayEntry) => {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ refresh?: string; dayKey?: string }>();
+  const params = useLocalSearchParams<{ dayKey?: string }>();
   const { user } = useAuth();
+  const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
   const [activeNav, setActiveNav] = useState<"calendar" | "profile">(
     "calendar",
   );
@@ -159,6 +162,7 @@ export default function HomeScreen() {
   const pendingProgrammaticDayIndex = useRef<number | null>(null);
   const { width: screenWidth } = useWindowDimensions();
   const weekDays = useMemo(() => getCurrentWeek(new Date()), []);
+  const dayKeys = useMemo(() => weekDays.map((day) => day.key), [weekDays]);
   const [selectedDayKey, setSelectedDayKey] = useState(
     () => weekDays.find((day) => day.isToday)?.key ?? weekDays[0]?.key ?? "",
   );
@@ -166,7 +170,11 @@ export default function HomeScreen() {
     const index = weekDays.findIndex((day) => day.key === selectedDayKey);
     return index < 0 ? 0 : index;
   }, [selectedDayKey, weekDays]);
-  const entriesByDay = useMemo(() => getDayEntriesMap(), [params.refresh]);
+  const entriesByDay =
+    useQuery(
+      api.dayEntries.listByDayKeys,
+      user?.workosId && isConvexAuthenticated ? { dayKeys } : "skip",
+    ) ?? {};
   const selectedDay =
     weekDays.find((day) => day.key === selectedDayKey) ?? weekDays[0];
   const selectedEntries = selectedDay
