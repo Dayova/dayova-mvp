@@ -72,7 +72,6 @@ const isCredentialError = (message: string) => {
   const normalized = message.toLowerCase();
   return (
     normalized.includes("falsch") ||
-    normalized.includes("ungueltig") ||
     normalized.includes("ungültig") ||
     normalized.includes("invalid") ||
     normalized.includes("benutzer nicht gefunden") ||
@@ -167,14 +166,14 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       : "";
 
     if (trimmedName.length < 2 || !/^[A-Za-zÀ-ÿ' -]+$/.test(trimmedName))
-      nextErrors.name = "Bitte einen gueltigen Namen eingeben.";
+      nextErrors.name = "Bitte einen gültigen Namen eingeben.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail))
-      nextErrors.email = "Bitte eine gueltige E-Mail eingeben.";
+      nextErrors.email = "Bitte eine gültige E-Mail eingeben.";
     if (!/^\+?[0-9()\-.\s]{7,20}$/.test(trimmedPhone))
-      nextErrors.phone = "Bitte eine gueltige Telefonnummer eingeben.";
+      nextErrors.phone = "Bitte eine gültige Telefonnummer eingeben.";
     if (!isValidBirthDate(trimmedBirthDate))
       nextErrors.birthDate =
-        "Bitte ein gueltiges Geburtsdatum (TT.MM.JJJJ) eingeben.";
+        "Bitte ein gültiges Geburtsdatum (TT.MM.JJJJ) eingeben.";
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {

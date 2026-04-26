@@ -59,6 +59,7 @@ export default function EntryDetailScreen() {
     day?: string;
     kind?: string;
     notes?: string;
+    examType?: string;
     dueDate?: string;
     plannedDate?: string;
     duration?: string;
@@ -69,6 +70,7 @@ export default function EntryDetailScreen() {
   const kind = entry?.kind ?? params.kind;
   const time = entry?.time ?? params.time;
   const plannedDate = entry?.plannedDateLabel ?? params.plannedDate ?? params.day;
+  const examType = entry?.examTypeLabel ?? params.examType;
   const dueDate = entry?.dueDateLabel ?? params.dueDate;
   const notes = entry?.notes ?? params.notes;
   const duration =
@@ -114,6 +116,11 @@ export default function EntryDetailScreen() {
           icon={<CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />}
           label={kind === "Hausaufgabe" ? "Geplant am" : "Datum"}
           value={plannedDate}
+        />
+        <DetailRow
+          icon={<BookOpen size={15} color="#3A7BFF" strokeWidth={2.3} />}
+          label="Prüfungsart"
+          value={examType}
         />
         <DetailRow
           icon={<Clock3 size={15} color="#3A7BFF" strokeWidth={2.3} />}

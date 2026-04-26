@@ -71,16 +71,16 @@ export const registerWithPassword = action({
     const trimmedBirthDate = (args.birthDate ?? "").trim();
 
     if (trimmedName.length < 2 || !/^[A-Za-zÀ-ÿ' -]+$/.test(trimmedName)) {
-      throw new Error("Bitte einen gueltigen Namen eingeben.");
+      throw new Error("Bitte einen gültigen Namen eingeben.");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      throw new Error("Bitte eine gueltige E-Mail eingeben.");
+      throw new Error("Bitte eine gültige E-Mail eingeben.");
     }
     if (!/^\+?[0-9()\-.\s]{7,20}$/.test(trimmedPhone)) {
-      throw new Error("Bitte eine gueltige Telefonnummer eingeben.");
+      throw new Error("Bitte eine gültige Telefonnummer eingeben.");
     }
     if (!isValidBirthDate(trimmedBirthDate)) {
-      throw new Error("Bitte ein gueltiges Geburtsdatum (TT.MM.JJJJ) eingeben.");
+      throw new Error("Bitte ein gültiges Geburtsdatum (TT.MM.JJJJ) eingeben.");
     }
     if (args.password.length < 8) {
       throw new Error("Passwort muss mindestens 8 Zeichen haben.");

@@ -839,7 +839,7 @@ export default function HomeScreen() {
                   Neue Leistungskontrolle
                 </UiText>
                 <UiText className="mt-1 font-poppins text-12 text-text/58">
-                  Datum, Fach und Pruefungsart eintragen.
+                  Datum, Fach und Prüfungsart eintragen.
                 </UiText>
               </View>
             </TouchableOpacity>
