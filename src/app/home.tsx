@@ -38,6 +38,7 @@ const WEEKDAY_FULL_LABELS = [
   "Samstag",
   "Sonntag",
 ];
+const ALL_DAY_TIME_LABEL = "Ganztägig";
 
 type WeekDayItem = {
   key: string;
@@ -79,6 +80,9 @@ const getCurrentWeek = (referenceDate: Date): WeekDayItem[] => {
  * Converts a HH:mm time label into minutes to enable chronological sorting.
  */
 const timeToMinutes = (timeLabel: string) => {
+  if (timeLabel.trim().toLowerCase() === ALL_DAY_TIME_LABEL.toLowerCase()) {
+    return 8 * 60;
+  }
   const match = /^(\d{1,2}):(\d{2})$/.exec(timeLabel.trim());
   if (!match) return Number.MAX_SAFE_INTEGER;
 
@@ -116,15 +120,18 @@ const getEntryLabel = (entry: DayEntry) => {
   return `${isTest ? "Test" : "HA"} ${subject}`;
 };
 
+const getEntryTimeLabel = (entry: DayEntry) => entry.time ?? ALL_DAY_TIME_LABEL;
+
 const getLearningRangeLabel = (entry: DayEntry) => {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(entry.time.trim());
-  if (!match) return entry.time;
+  const timeLabel = getEntryTimeLabel(entry);
+  const match = /^(\d{1,2}):(\d{2})$/.exec(timeLabel.trim());
+  if (!match) return timeLabel;
 
   const startMinutes = Number(match[1]) * 60 + Number(match[2]);
   const endMinutes = startMinutes + (entry.durationMinutes ?? 45);
   const endHour = Math.floor((endMinutes % (24 * 60)) / 60);
   const endMinute = endMinutes % 60;
-  return `${entry.time} - ${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
+  return `${timeLabel} - ${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
 };
 
 export default function HomeScreen() {
@@ -157,7 +164,11 @@ export default function HomeScreen() {
     ? (entriesByDay[selectedDay.key] ?? [])
     : [];
   const sortedSelectedEntries = useMemo(
-    () => [...selectedEntries].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time)),
+    () =>
+      [...selectedEntries].sort(
+        (a, b) =>
+          timeToMinutes(getEntryTimeLabel(a)) - timeToMinutes(getEntryTimeLabel(b)),
+      ),
     [selectedEntries],
   );
   const selectedDateLabel = useMemo(() => {
@@ -174,7 +185,7 @@ export default function HomeScreen() {
   const entriesByHour = useMemo(() => {
     const grouped: Record<number, DayEntry[]> = {};
     sortedSelectedEntries.forEach((entry) => {
-      const hour = getHourFromTimeLabel(entry.time);
+      const hour = getHourFromTimeLabel(getEntryTimeLabel(entry));
       if (hour === null) return;
       grouped[hour] = [...(grouped[hour] ?? []), entry];
     });
@@ -182,7 +193,7 @@ export default function HomeScreen() {
   }, [sortedSelectedEntries]);
   const timelineHours = useMemo(() => {
     const entryHours = sortedSelectedEntries
-      .map((entry) => getHourFromTimeLabel(entry.time))
+      .map((entry) => getHourFromTimeLabel(getEntryTimeLabel(entry)))
       .filter((hour): hour is number => hour !== null);
     const startHour = Math.min(6, ...(entryHours.length ? entryHours : [6]));
     const endHour = Math.max(22, ...(entryHours.length ? entryHours : [22]));
@@ -211,13 +222,13 @@ export default function HomeScreen() {
     const dayLabel = selectedDay
       ? `${selectedDay.fullLabel} ${selectedDay.dayOfMonth}`
       : "";
-    const details = [
+    const details: Array<[string, string]> = [
       ["title", entry.title],
-      ["time", entry.time],
       ["day", dayLabel],
     ];
     if (entry.kind) details.push(["kind", entry.kind]);
     if (entry.notes) details.push(["notes", entry.notes]);
+    if (entry.examTypeLabel) details.push(["examType", entry.examTypeLabel]);
     if (entry.dueDateLabel) details.push(["dueDate", entry.dueDateLabel]);
     if (entry.plannedDateLabel) {
       details.push(["plannedDate", entry.plannedDateLabel]);
@@ -225,6 +236,7 @@ export default function HomeScreen() {
     if (entry.durationMinutes) {
       details.push(["duration", `${entry.durationMinutes}`]);
     }
+    if (entry.time) details.push(["time", entry.time]);
     const query = details
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join("&");
@@ -553,7 +565,7 @@ export default function HomeScreen() {
                                     style={{ marginLeft: 24 }}
                                   />
                                   <Text className="ml-1.5 font-poppins text-12 text-[#1A1A1A]/85">
-                                    {isLearning ? getLearningRangeLabel(entry) : entry.time}
+                                    {isLearning ? getLearningRangeLabel(entry) : getEntryTimeLabel(entry)}
                                   </Text>
                                 </View>
                               </View>
@@ -824,10 +836,10 @@ export default function HomeScreen() {
               </View>
               <View className="ml-3 flex-1">
                 <UiText className="font-poppins text-16 font-bold text-text">
-                  Neuer Test / neue Klausur
+                  Neue Leistungskontrolle
                 </UiText>
                 <UiText className="mt-1 font-poppins text-12 text-text/58">
-                  Datum, Fach und Themen eintragen.
+                  Datum, Fach und Pruefungsart eintragen.
                 </UiText>
               </View>
             </TouchableOpacity>
