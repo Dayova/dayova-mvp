@@ -12,6 +12,7 @@
     "expo:ios": "expo run:ios",
     "expo:web": "expo run:web",
     "web": "run-p expo:web convex:dev",
+    "typecheck": "tsc --noEmit",
     "postinstall": "patch-package"
   },
   "dependencies": {
