@@ -14,20 +14,20 @@ export default function TabSwitcher({ activeTab }: TabSwitcherProps) {
       <View className="absolute inset-0 bg-[#3A7BFF]" /> 
       
       <TouchableOpacity 
-        onPress={() => router.push("/login")}
-        className={`flex-1 h-11 items-center justify-center rounded-tab ${activeTab === 'login' ? 'bg-white' : ''}`}
-      >
-        <Text className={`font-poppins font-semibold text-12 ${activeTab === 'login' ? 'text-primary' : 'text-white'}`}>
-          Anmelden
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
         onPress={() => router.push("/register")}
         className={`flex-1 h-11 items-center justify-center rounded-tab ${activeTab === 'register' ? 'bg-white' : ''}`}
       >
         <Text className={`font-poppins font-semibold text-12 ${activeTab === 'register' ? 'text-primary' : 'text-white'}`}>
           Registrieren
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        onPress={() => router.push("/login")}
+        className={`flex-1 h-11 items-center justify-center rounded-tab ${activeTab === 'login' ? 'bg-white' : ''}`}
+      >
+        <Text className={`font-poppins font-semibold text-12 ${activeTab === 'login' ? 'text-primary' : 'text-white'}`}>
+          Anmelden
         </Text>
       </TouchableOpacity>
     </View>

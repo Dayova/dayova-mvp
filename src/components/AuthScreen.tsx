@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -100,20 +101,7 @@ function ModeButton({
     <TouchableOpacity
       activeOpacity={0.85}
       onPress={onPress}
-      className={`min-h-[54px] flex-1 items-center justify-center rounded-full px-4 ${
-        active ? "bg-white" : "bg-transparent"
-      }`}
-      style={
-        active
-          ? {
-              shadowColor: "#111827",
-              shadowOpacity: 0.08,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 3,
-            }
-          : undefined
-      }
+      className="min-h-[54px] flex-1 items-center justify-center rounded-full px-4"
     >
       <Text
         className={`w-full text-center font-poppins text-[15px] font-bold ${
@@ -131,6 +119,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const { login, register: registerUser, isLoading } = useAuth();
 
   const [mode, setMode] = useState<Mode>(initialMode);
+  const [tabWidth, setTabWidth] = useState(0);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -140,13 +129,21 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [submitError, setSubmitError] = useState("");
   const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const tabProgress = useRef(
+    new Animated.Value(initialMode === "login" ? 1 : 0),
+  ).current;
   const formScrollRef = useRef<ScrollView | null>(null);
   const birthDateFieldY = useRef(0);
 
   const isRegisterMode = mode === "register";
+  const tabIndicatorTranslateX = tabProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, tabWidth],
+  });
 
   useEffect(() => {
     setMode(initialMode);
+    tabProgress.setValue(initialMode === "login" ? 1 : 0);
   }, [initialMode]);
 
   const switchMode = (next: Mode) => {
@@ -156,7 +153,13 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     setSubmitError("");
     setErrors({});
     setMode(next);
-    router.replace(next === "login" ? "/login" : "/register");
+    Animated.spring(tabProgress, {
+      toValue: next === "login" ? 1 : 0,
+      damping: 18,
+      mass: 0.8,
+      stiffness: 180,
+      useNativeDriver: true,
+    }).start();
   };
 
   const closeBirthDatePicker = () => setShowBirthDatePicker(false);
@@ -258,7 +261,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-background"
+      className="flex-1 bg-black"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar style="light" />
@@ -298,24 +301,47 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
             elevation: 2,
           }}
         >
-          <View className="flex-row">
-            <ModeButton
-              active={!isRegisterMode}
-              label="Anmelden"
-              onPress={() => switchMode("login")}
-            />
+          <View
+            className="min-h-[54px] flex-row rounded-full"
+            onLayout={(event) => {
+              setTabWidth(event.nativeEvent.layout.width / 2);
+            }}
+          >
+            {tabWidth > 0 ? (
+              <Animated.View
+                pointerEvents="none"
+                className="absolute rounded-full bg-white"
+                style={{
+                  bottom: 2,
+                  left: 2,
+                  top: 2,
+                  width: Math.max(tabWidth - 4, 0),
+                  transform: [{ translateX: tabIndicatorTranslateX }],
+                  shadowColor: "#111827",
+                  shadowOpacity: 0.08,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 3 },
+                  elevation: 3,
+                }}
+              />
+            ) : null}
             <ModeButton
               active={isRegisterMode}
               label="Registrieren"
               onPress={() => switchMode("register")}
+            />
+            <ModeButton
+              active={!isRegisterMode}
+              label="Anmelden"
+              onPress={() => switchMode("login")}
             />
           </View>
         </View>
 
         <ScrollView
           ref={formScrollRef}
-          className="flex-1"
-          contentContainerStyle={{ paddingBottom: 40 }}
+          className="-mx-2 flex-1"
+          contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 8 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={

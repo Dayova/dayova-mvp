@@ -36,7 +36,7 @@ export default function WelcomeScreen() {
 
         {/* Action Buttons */}
         <Button 
-          onPress={() => router.push("/login")}
+          onPress={() => router.push("/register")}
           className="mt-10"
         >
           <UiText>Weiter</UiText>
@@ -44,7 +44,7 @@ export default function WelcomeScreen() {
 
         <Button
           variant="outline"
-          onPress={() => router.push("/login")}
+          onPress={() => router.push("/register")}
           className="mt-4 bg-transparent"
         >
           <UiText className="text-white">Überspringen</UiText>
