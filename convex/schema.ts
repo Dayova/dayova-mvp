@@ -1,6 +1,19 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const planQuestionValidator = v.object({
+  id: v.string(),
+  prompt: v.string(),
+  targetInsight: v.string(),
+});
+
+const planInsightValidator = v.object({
+  summary: v.string(),
+  strengths: v.array(v.string()),
+  gaps: v.array(v.string()),
+  strategy: v.string(),
+});
+
 export default defineSchema({
   users: defineTable({
     workosId: v.string(),
@@ -24,8 +37,75 @@ export default defineSchema({
     plannedDateLabel: v.optional(v.string()),
     durationMinutes: v.optional(v.number()),
     examTypeLabel: v.optional(v.string()),
+    relatedLearningPlanId: v.optional(v.id("learningPlans")),
+    relatedLearningPlanSessionId: v.optional(v.id("learningPlanSessions")),
   }).index("by_ownerTokenIdentifier_and_dayKey", [
     "ownerTokenIdentifier",
     "dayKey",
   ]),
+  learningPlans: defineTable({
+    ownerTokenIdentifier: v.string(),
+    subject: v.string(),
+    examTypeLabel: v.string(),
+    examDateKey: v.string(),
+    examDateLabel: v.string(),
+    examTime: v.string(),
+    durationMinutes: v.number(),
+    topicDescription: v.string(),
+    notes: v.optional(v.string()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("questionsReady"),
+      v.literal("generated"),
+      v.literal("accepted"),
+    ),
+    knowledgeQuestions: v.optional(v.array(planQuestionValidator)),
+    knowledgeAnswersJson: v.optional(v.string()),
+    sourceSummary: v.optional(v.string()),
+    insight: v.optional(planInsightValidator),
+    examDayEntryId: v.optional(v.id("dayEntries")),
+    acceptedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+    .index("by_ownerTokenIdentifier_and_status", [
+      "ownerTokenIdentifier",
+      "status",
+    ]),
+  learningPlanDocuments: defineTable({
+    ownerTokenIdentifier: v.string(),
+    learningPlanId: v.id("learningPlans"),
+    storageId: v.string(),
+    storageProvider: v.union(v.literal("convex"), v.literal("r2")),
+    fileName: v.string(),
+    fileType: v.string(),
+    fileSizeBytes: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_learningPlanId", ["learningPlanId"])
+    .index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+  learningPlanSessions: defineTable({
+    ownerTokenIdentifier: v.string(),
+    learningPlanId: v.id("learningPlans"),
+    phase: v.union(
+      v.literal("theory"),
+      v.literal("practice"),
+      v.literal("rehearsal"),
+    ),
+    title: v.string(),
+    dateKey: v.string(),
+    dateLabel: v.string(),
+    startTime: v.string(),
+    durationMinutes: v.number(),
+    goal: v.string(),
+    tasks: v.array(v.string()),
+    expectedOutcome: v.string(),
+    sortOrder: v.number(),
+    dayEntryId: v.optional(v.id("dayEntries")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_learningPlanId_and_sortOrder", ["learningPlanId", "sortOrder"])
+    .index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 });

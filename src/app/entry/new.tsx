@@ -502,6 +502,22 @@ export default function NewEntryScreen() {
     router.replace(`/home?dayKey=${encodeURIComponent(nextDayKey)}`);
   };
 
+  const createLearningPlan = () => {
+    if (!canCreateExam || durationMinutes === null) return;
+
+    const query = [
+      ["subject", trimmedSubject],
+      ["examTypeLabel", trimmedExamType],
+      ["examDateKey", getDateKey(plannedDate)],
+      ["examDateLabel", formatDate(plannedDate)],
+      ["examTime", formatTime(plannedTime)],
+      ["durationMinutes", `${durationMinutes}`],
+    ]
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join("&");
+    router.push(`/entry/learning-plan?${query}`);
+  };
+
   const finish = () => {
     router.replace(`/home?dayKey=${encodeURIComponent(createdDayKey)}`);
   };
@@ -771,9 +787,9 @@ export default function NewEntryScreen() {
               <ActionCard
                 icon={<Sparkles size={24} color="#3A7BFF" strokeWidth={2.2} />}
                 title="Lernplan erstellen"
-                description="Diese Auswahl folgt als Nächstes. Für jetzt bleibt sie sichtbar, ist aber noch nicht aktiv."
-                disabled
-                badge="Später"
+                description="Dayova erstellt einen Plan aus Thema, Material und Wissensanalyse."
+                onPress={createLearningPlan}
+                disabled={isCreating || !canCreateExam}
               />
             </View>
           </>

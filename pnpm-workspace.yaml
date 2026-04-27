@@ -1,3 +1,5 @@
 allowBuilds:
   esbuild: true
   postinstall-postinstall: true
+patchedDependencies:
+  '@gilhrpenner/convex-files-control': patches/@gilhrpenner__convex-files-control.patch
