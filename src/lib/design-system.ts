@@ -17,16 +17,37 @@ export const DAYOVA_DESIGN_SYSTEM = {
     background: "#FFFFFF",
   },
   typography: {
-    body: {
+    fontFamily: "Poppins",
+    headline: {
       desktop: {
-        lg: { fontSize: 18, lineHeight: 25.2 },
-        md: { fontSize: 16, lineHeight: 22.4 },
-        sm: { fontSize: 14, lineHeight: 19.6 },
+        h1: { fontSize: 56, lineHeight: 67.2, fontWeight: "700" },
+        h2: { fontSize: 40, lineHeight: 48, fontWeight: "700" },
+        h3: { fontSize: 28, lineHeight: 33.6, fontWeight: "700" },
+        h4: { fontSize: 20, lineHeight: 24, fontWeight: "700" },
       },
       mobile: {
-        lg: { fontSize: 16, lineHeight: 22.4 },
-        md: { fontSize: 14, lineHeight: 19.6 },
-        sm: { fontSize: 12, lineHeight: 16.8 },
+        h1: { fontSize: 32, lineHeight: 38.4, fontWeight: "700" },
+        h2: { fontSize: 28, lineHeight: 33.6, fontWeight: "700" },
+        h3: { fontSize: 24, lineHeight: 28.8, fontWeight: "700" },
+        h4: { fontSize: 20, lineHeight: 24, fontWeight: "700" },
+      },
+    },
+    body: {
+      desktop: {
+        lg: { fontSize: 18, lineHeight: 25.2, fontWeight: "400" },
+        lgBold: { fontSize: 18, lineHeight: 25.2, fontWeight: "700" },
+        md: { fontSize: 16, lineHeight: 22.4, fontWeight: "400" },
+        mdBold: { fontSize: 16, lineHeight: 22.4, fontWeight: "700" },
+        sm: { fontSize: 14, lineHeight: 19.6, fontWeight: "400" },
+        smBold: { fontSize: 14, lineHeight: 19.6, fontWeight: "700" },
+      },
+      mobile: {
+        lg: { fontSize: 16, lineHeight: 22.4, fontWeight: "400" },
+        lgBold: { fontSize: 16, lineHeight: 22.4, fontWeight: "700" },
+        md: { fontSize: 14, lineHeight: 19.6, fontWeight: "400" },
+        mdBold: { fontSize: 14, lineHeight: 19.6, fontWeight: "700" },
+        sm: { fontSize: 12, lineHeight: 16.8, fontWeight: "400" },
+        smBold: { fontSize: 12, lineHeight: 16.8, fontWeight: "700" },
       },
     },
     button: {

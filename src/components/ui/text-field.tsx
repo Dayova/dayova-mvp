@@ -78,7 +78,7 @@ function InsetTextField({
         )}
       >
         <View className="flex-1">
-          <Text className="font-poppins text-[11px] text-text/42">{label}</Text>
+          <Text className="font-poppins text-12 leading-4 text-text/42">{label}</Text>
           <Input
             accessibilityLabel={accessibilityLabel ?? label}
             className={cn("mt-1 flex-none text-16", inputClassName)}

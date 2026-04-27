@@ -286,7 +286,7 @@ function DurationPicker({
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <View className="flex-row items-center justify-between">
-      <Text className="font-poppins text-13 uppercase text-text/48">
+      <Text className="font-poppins text-12 uppercase text-text/48">
         {label}
       </Text>
       <Text className="ml-4 flex-1 text-right font-poppins text-14 font-bold text-text">
@@ -345,7 +345,7 @@ function ActionCard({
             }`}
           >
             <Text
-              className={`font-poppins text-11 font-bold uppercase ${
+              className={`font-poppins text-12 font-bold uppercase ${
                 primary ? "text-white" : "text-text/62"
               }`}
             >
@@ -739,7 +739,7 @@ export default function NewEntryScreen() {
                 elevation: 3,
               }}
             >
-              <Text className="font-poppins text-22 font-bold text-text">
+              <Text className="font-poppins text-20 font-bold text-text">
                 Deine LK auf einen Blick
               </Text>
               <View className="mt-4" style={{ rowGap: 14 }}>
@@ -752,7 +752,7 @@ export default function NewEntryScreen() {
                   value={`${durationMinutes} Min.`}
                 />
               </View>
-              <Text className="mt-4 font-poppins text-13 text-text/56">
+              <Text className="mt-4 font-poppins text-14 text-text/56">
                 Einen Lernplan kannst du später jederzeit ergänzen.
               </Text>
             </View>

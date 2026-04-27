@@ -55,7 +55,7 @@ const buttonVariants = cva(
 
 const buttonTextVariants = cva(
   cn(
-    'font-poppins text-16 font-bold uppercase text-foreground',
+    'font-poppins text-16 font-bold uppercase leading-6 text-foreground',
     Platform.select({ web: 'pointer-events-none transition-colors' })
   ),
   {

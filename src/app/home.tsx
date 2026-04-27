@@ -330,7 +330,7 @@ export default function HomeScreen() {
       <View className="px-8">
         <View className="mt-[65px] mb-1 flex-row ml-9 items-center justify-between">
           <View>
-            <Text className="text-text font-poppins font-medium text-22">
+            <Text className="text-text font-poppins text-20 font-medium">
               Hi, {firstName} 👋
             </Text>
             <Text className="mt-1 text-text font-poppins font-bold text-16">
@@ -498,7 +498,7 @@ export default function HomeScreen() {
                         {day.dayOfMonth}
                       </Text>
                       <Text
-                        className={`mt-2 font-poppins ${isSelected ? "text-11 text-text/80" : "text-10 text-text/45"}`}
+                        className={`mt-2 font-poppins text-12 ${isSelected ? "text-text/80" : "text-text/45"}`}
                         style={{ marginBottom: 6 }}
                       >
                         {day.label}
@@ -569,7 +569,7 @@ export default function HomeScreen() {
                             <View className="flex-row items-center justify-between">
                               <View className="flex-1 pr-3">
                                 <Text
-                                  className="font-poppins text-15 font-semibold text-[#1A1A1A]"
+                                  className="font-poppins text-14 font-semibold text-[#1A1A1A]"
                                   style={{ marginLeft: 24 }}
                                 >
                                   {getEntryLabel(entry)}
@@ -700,7 +700,7 @@ export default function HomeScreen() {
               }}
             />
             <Text
-              className={`mt-0.5 font-poppins text-[11px] ${activeNav === "calendar" ? "font-bold" : "font-medium"}`}
+              className={`mt-0.5 font-poppins text-12 ${activeNav === "calendar" ? "font-bold" : "font-medium"}`}
               style={{
                 color:
                   activeNav === "calendar" ? "#1A1A1A" : "rgba(26,26,26,0.82)",
@@ -727,7 +727,7 @@ export default function HomeScreen() {
               }}
             />
             <Text
-              className={`mt-0.5 font-poppins text-[11px] ${activeNav === "profile" ? "font-bold" : "font-medium"}`}
+              className={`mt-0.5 font-poppins text-12 ${activeNav === "profile" ? "font-bold" : "font-medium"}`}
               style={{
                 color:
                   activeNav === "profile" ? "#1A1A1A" : "rgba(26,26,26,0.82)",

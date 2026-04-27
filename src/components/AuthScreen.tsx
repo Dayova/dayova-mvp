@@ -106,10 +106,10 @@ function ModeButton({
       className="min-h-[54px] flex-1 items-center justify-center rounded-full px-4"
     >
       <Text
-        className={`w-full text-center font-poppins text-[15px] font-bold ${
+        className={`w-full text-center font-poppins text-16 font-bold ${
           active ? "text-primary" : "text-text/56"
         }`}
-        style={{ lineHeight: 20, includeFontPadding: false }}
+        style={{ lineHeight: 22.4, includeFontPadding: false }}
       >
         {label}
       </Text>
@@ -436,7 +436,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                 className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3"
               >
                 <View className="flex-1">
-                  <Text className="font-poppins text-[11px] text-text/42">
+                  <Text className="font-poppins text-12 leading-4 text-text/42">
                     Geburtsdatum
                   </Text>
                   <Text
@@ -466,7 +466,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
           <Field>
             <FieldControl className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3">
               <View className="flex-1">
-                <Text className="font-poppins text-[11px] text-text/42">
+                <Text className="font-poppins text-12 leading-4 text-text/42">
                   Passwort
                 </Text>
                 {/*
@@ -537,8 +537,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                 <CircleAlert size={16} color="#3A7BFF" strokeWidth={2.1} />
               </View>
               <Text
-                className="ml-2.5 flex-1 font-poppins text-[13px] text-text/62"
-                style={{ lineHeight: 19, includeFontPadding: false }}
+                className="ml-2.5 flex-1 font-poppins text-14 text-text/62"
+                style={{ lineHeight: 19.6, includeFontPadding: false }}
               >
                 {isRegisterMode
                   ? "Mit der Registrierung erstellst du dein persönliches Lernprofil."
