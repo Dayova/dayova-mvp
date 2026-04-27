@@ -27,7 +27,24 @@ function Input({
         props.editable === false && "opacity-50",
         className,
       )}
-      style={[{ margin: 0, padding: 0 }, style]}
+      style={[
+        {
+          margin: 0,
+          paddingTop: 0,
+          paddingBottom: 0,
+          paddingHorizontal: 0,
+          fontSize: DAYOVA_DESIGN_SYSTEM.typography.field.placeholder.fontSize,
+          lineHeight: DAYOVA_DESIGN_SYSTEM.typography.field.placeholder.lineHeight,
+          letterSpacing: 0,
+          ...Platform.select({
+            android: {
+              includeFontPadding: false,
+              textAlignVertical: "center" as const,
+            },
+          }),
+        },
+        style,
+      ]}
       placeholderTextColor={
         placeholderTextColor ?? `${DAYOVA_DESIGN_SYSTEM.colors.text}5C`
       }

@@ -22,7 +22,7 @@ function Textarea({
       multiline
       textAlignVertical="top"
       className={cn(
-        "min-h-[112px] flex-1 font-poppins text-14 text-text",
+        "min-h-[112px] w-full flex-1 self-stretch font-poppins text-14 text-text",
         Platform.select({
           web: "outline-none",
         }),
@@ -32,15 +32,16 @@ function Textarea({
       style={[
         {
           margin: 0,
-          paddingTop: 0,
-          paddingBottom: 0,
+          paddingTop: Platform.OS === "ios" ? 2 : 0,
+          paddingBottom: 2,
           paddingHorizontal: 0,
-          lineHeight: 20,
+          lineHeight: 22,
           letterSpacing: 0,
-          includeFontPadding: false,
+          verticalAlign: "top",
         },
         style,
       ]}
+      underlineColorAndroid="transparent"
       placeholderTextColor={
         placeholderTextColor ?? `${DAYOVA_DESIGN_SYSTEM.colors.text}5C`
       }

@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -27,6 +28,7 @@ import { Button } from "~/components/ui/button";
 import {
   Field,
   FieldAccessory,
+  FieldControl,
   FieldMessage,
   FieldTrigger,
 } from "~/components/ui/field";
@@ -161,6 +163,14 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       useNativeDriver: true,
     }).start();
   };
+
+  const updatePassword = (nextValue: string) => {
+    setPassword(nextValue);
+    if (submitError) setSubmitError("");
+  };
+
+  const togglePasswordVisibility = () =>
+    setPasswordVisible((current) => !current);
 
   const closeBirthDatePicker = () => setShowBirthDatePicker(false);
 
@@ -453,33 +463,67 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
             </Field>
           ) : null}
 
-          <InsetTextField
-            label="Passwort"
-            message={submitError || undefined}
-            accessory={
-              <TouchableOpacity
-                activeOpacity={0.75}
-                onPress={() => setPasswordVisible((current) => !current)}
-              >
-                {passwordVisible ? (
-                  <Eye size={18} color="rgba(26,26,26,0.34)" />
-                ) : (
-                  <EyeOff size={18} color="rgba(26,26,26,0.34)" />
-                )}
-              </TouchableOpacity>
-            }
-            value={password}
-            onChangeText={(value) => {
-              setPassword(value);
-              if (submitError) setSubmitError("");
-            }}
-            onFocus={closeBirthDatePicker}
-            placeholder="••••••••"
-            secureTextEntry={!passwordVisible}
-            autoCapitalize="none"
-            autoComplete={isRegisterMode ? "new-password" : "current-password"}
-            textContentType={isRegisterMode ? "newPassword" : "password"}
-          />
+          <Field>
+            <FieldControl className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3">
+              <View className="flex-1">
+                <Text className="font-poppins text-[11px] text-text/42">
+                  Passwort
+                </Text>
+                {/*
+                  Keep this as a native TextInput instead of InsetTextField/Input.
+                  The shared Input's Poppins font metrics make hidden secure text
+                  render invisible on device while the cursor remains visible.
+                  Native secureTextEntry is still required for correct editing,
+                  paste, keyboard, accessibility, and password-manager behavior.
+                */}
+                <TextInput
+                  accessibilityLabel="Passwort"
+                  value={password}
+                  onChangeText={updatePassword}
+                  onFocus={closeBirthDatePicker}
+                  placeholder="••••••••"
+                  secureTextEntry={!passwordVisible}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete={
+                    isRegisterMode ? "new-password" : "current-password"
+                  }
+                  textContentType={isRegisterMode ? "newPassword" : "password"}
+                  placeholderTextColor="rgba(26,26,26,0.36)"
+                  selectionColor="#3A7BFF"
+                  style={{
+                    color: "#1A1A1A",
+                    fontSize: 16,
+                    height: 30,
+                    margin: 0,
+                    marginTop: 4,
+                    paddingHorizontal: 0,
+                    paddingVertical: 0,
+                    ...Platform.select({
+                      android: {
+                        fontFamily: "sans-serif",
+                        includeFontPadding: true,
+                        textAlignVertical: "center" as const,
+                      },
+                    }),
+                  }}
+                />
+              </View>
+              <FieldAccessory className="ml-3 self-center">
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={togglePasswordVisibility}
+                >
+                  {passwordVisible ? (
+                    <Eye size={18} color="rgba(26,26,26,0.34)" />
+                  ) : (
+                    <EyeOff size={18} color="rgba(26,26,26,0.34)" />
+                  )}
+                </TouchableOpacity>
+              </FieldAccessory>
+            </FieldControl>
+            {submitError ? <FieldMessage>{submitError}</FieldMessage> : null}
+          </Field>
 
           <View
             className="mb-6 mt-2 rounded-[20px] bg-[#F7F8FA] px-[18px] py-4"
