@@ -154,7 +154,7 @@ export default function EntryDetailScreen() {
           <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-primary/12">
             <BookOpen size={27} color="#3A7BFF" strokeWidth={2.2} />
           </View>
-          <Text className="font-dmsans text-32 font-bold text-text">
+          <Text className="font-poppins text-32 font-bold text-text">
             {title}
           </Text>
           {kind ? (

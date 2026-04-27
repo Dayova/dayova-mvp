@@ -32,8 +32,51 @@
     "plugins": [
       "expo-router",
       "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
+          "photosPermission": "Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst."
+        }
+      ],
       "@react-native-community/datetimepicker",
-      "./plugins/withNinjaLongPaths"
+      "./plugins/withNinjaLongPaths",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Poppins-Regular.ttf",
+            "./assets/fonts/Poppins-Medium.ttf",
+            "./assets/fonts/Poppins-SemiBold.ttf",
+            "./assets/fonts/Poppins-Bold.ttf"
+          ],
+          "android": {
+            "fonts": [
+              {
+                "fontFamily": "Poppins",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Poppins-Regular.ttf",
+                    "weight": 400
+                  },
+                  {
+                    "path": "./assets/fonts/Poppins-Medium.ttf",
+                    "weight": 500
+                  },
+                  {
+                    "path": "./assets/fonts/Poppins-SemiBold.ttf",
+                    "weight": 600
+                  },
+                  {
+                    "path": "./assets/fonts/Poppins-Bold.ttf",
+                    "weight": 700
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
     ]
   }
 }

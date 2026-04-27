@@ -356,7 +356,7 @@ function ActionCard({
       </View>
 
       <Text
-        className={`mt-4 font-dmsans text-24 font-bold ${
+        className={`mt-4 font-poppins text-24 font-bold ${
           primary ? "text-white" : "text-text"
         }`}
       >
@@ -576,7 +576,7 @@ export default function NewEntryScreen() {
           >
             <CheckCircle2 size={34} color="#3A7BFF" strokeWidth={2.2} />
           </View>
-          <Text className="text-center font-dmsans text-20 font-bold text-text">
+          <Text className="text-center font-poppins text-20 font-bold text-text">
             Hausaufgabe eingetragen
           </Text>
           <Text className="mt-[10px] text-center font-poppins text-14 text-text/66">
@@ -632,7 +632,7 @@ export default function NewEntryScreen() {
               <GraduationCap size={29} color="#3A7BFF" strokeWidth={2.2} />
             )}
           </View>
-          <Text className="font-dmsans text-32 font-bold text-text">
+          <Text className="font-poppins text-32 font-bold text-text">
             {title}
           </Text>
           <Text className="mt-3 font-poppins text-14 text-text/62">
@@ -739,7 +739,7 @@ export default function NewEntryScreen() {
                 elevation: 3,
               }}
             >
-              <Text className="font-dmsans text-22 font-bold text-text">
+              <Text className="font-poppins text-22 font-bold text-text">
                 Deine LK auf einen Blick
               </Text>
               <View className="mt-4" style={{ rowGap: 14 }}>

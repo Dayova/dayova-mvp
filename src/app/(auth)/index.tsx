@@ -14,16 +14,16 @@ export default function WelcomeScreen() {
       {/* Visual Placeholder (Top) */}
       <View className="flex-1 justify-center items-center">
         <View className="w-64 h-64 bg-primary/10 rounded-full items-center justify-center border border-primary/20">
-             <Text className="text-white/20 font-dmsans font-bold text-24">Visual 17:628</Text>
+             <Text className="text-white/20 font-poppins font-bold text-24">Visual 17:628</Text>
         </View>
       </View>
 
       {/* Bottom Content Card (17:627) */}
       <View className="bg-[#16181B] px-10 pt-12 pb-16 rounded-t-card border-t border-white/10">
-        <Text className="text-white font-dmsans font-semibold text-24 text-center leading-tight">
+        <Text className="text-white font-poppins font-semibold text-24 text-center leading-tight">
           Entdecke neue Lernwege
         </Text>
-        <Text className="text-white/60 font-dmsans text-16 mt-4 text-center leading-6">
+        <Text className="text-white/60 font-poppins text-16 mt-4 text-center leading-6">
           Lernen ist für alle da! Melde dich an und erhalte Zugriff auf unsere besten Lernmethoden und Kurse.
         </Text>
 

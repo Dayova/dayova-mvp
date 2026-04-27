@@ -275,7 +275,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
               resizeMode="contain"
             />
             <Text
-              className="-ml-3 font-dmsans font-bold text-white"
+              className="-ml-3 font-poppins font-bold text-white"
               style={{
                 fontSize: 56,
                 lineHeight: 68,

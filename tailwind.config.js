@@ -85,9 +85,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        poppins: ["Poppins-Regular", "Poppins"],
-        dmsans: ["DMSans-Regular", "DM Sans"],
-        inter: ["Inter-Regular", "Inter"],
+        poppins: ["Poppins"],
       },
       fontSize: {
         '12': ['12px', { lineHeight: '16px' }],
