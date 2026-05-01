@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
@@ -15,7 +15,7 @@ const optionalUserFields = (args: {
   ...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
 });
 
-export const storeUser = mutation({
+export const storeUser = internalMutation({
   args: {
     workosId: v.string(),
     email: v.string(),
@@ -47,19 +47,24 @@ export const storeUser = mutation({
 });
 
 export const getMe = query({
-  args: { workosId: v.string() },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Nicht authentifiziert.");
+    }
+
     return await ctx.db
       .query("users")
-      .withIndex("by_workosId", (q) => q.eq("workosId", args.workosId))
+      .withIndex("by_workosId", (q) => q.eq("workosId", identity.subject))
       .unique();
   },
 });
 
-export const removeLegacyPasswordField = mutation({
+export const removeLegacyPasswordField = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const users = await ctx.db.query("users").collect();
+    const users = await ctx.db.query("users").take(100);
     let updated = 0;
 
     for (const user of users) {

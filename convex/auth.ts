@@ -2,7 +2,7 @@
 
 import { v } from "convex/values";
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { WorkOS } from "@workos-inc/node";
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
@@ -82,9 +82,20 @@ const loginFailure = (error: string) => ({
 
 const loginSuccess = (user: ReturnType<typeof clientUserFromWorkosUser> & {
   accessToken: string;
+  refreshToken: string;
 }) => ({
   ok: true as const,
   user,
+});
+
+const clientSessionFromAuthentication = (authentication: {
+  user: Parameters<typeof clientUserFromWorkosUser>[0];
+  accessToken: string;
+  refreshToken: string;
+}) => ({
+  ...clientUserFromWorkosUser(authentication.user),
+  accessToken: authentication.accessToken,
+  refreshToken: authentication.refreshToken,
 });
 
 export const registerWithPassword = action({
@@ -136,7 +147,7 @@ export const registerWithPassword = action({
       password: args.password,
     });
 
-    await ctx.runMutation(api.users.storeUser, {
+    await ctx.runMutation(internal.users.storeUser, {
       workosId: created.id,
       email: created.email,
       name: fullNameFromParts(created.firstName, created.lastName) ?? trimmedName,
@@ -154,6 +165,7 @@ export const registerWithPassword = action({
       phone: trimmedPhone,
       birthDate: trimmedBirthDate,
       accessToken: authentication.accessToken,
+      refreshToken: authentication.refreshToken,
     };
   },
 });
@@ -194,13 +206,35 @@ export const loginWithPassword = action({
       throw error;
     }
 
-    await ctx.runMutation(api.users.storeUser, {
+    await ctx.runMutation(internal.users.storeUser, {
       ...clientUserFromWorkosUser(authentication.user),
     });
 
     return loginSuccess({
-      ...clientUserFromWorkosUser(authentication.user),
-      accessToken: authentication.accessToken,
+      ...clientSessionFromAuthentication(authentication),
     });
+  },
+});
+
+export const refreshSession = action({
+  args: {
+    refreshToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const trimmedRefreshToken = args.refreshToken.trim();
+    if (!trimmedRefreshToken) {
+      throw new Error("Keine gültige Sitzung vorhanden.");
+    }
+
+    const authentication = await getWorkOS().userManagement.authenticateWithRefreshToken({
+      clientId: getClientId(),
+      refreshToken: trimmedRefreshToken,
+    });
+
+    await ctx.runMutation(internal.users.storeUser, {
+      ...clientUserFromWorkosUser(authentication.user),
+    });
+
+    return clientSessionFromAuthentication(authentication);
   },
 });
