@@ -426,7 +426,6 @@ export default function NewEntryScreen() {
     trimmedExamType.length > 0 &&
     durationMinutes !== null &&
     durationMinutes > 0;
-  console.log({ user: Boolean(user), isConvexAuthenticated, isCreating });
   const canWriteEntries = Boolean(user && isConvexAuthenticated);
 
   const title = isHomework
