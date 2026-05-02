@@ -10,6 +10,21 @@ const { withGradleProperties } = require("expo/config-plugins");
 // Both jars include this Java 9 multi-release OSGi metadata file. It is not
 // application code, native code, assets, or runtime configuration that the APK
 // needs, so excluding it from the final Android package is the lowest-risk fix.
+//
+// This plugin can be removed only after the current Android dependency graph no
+// longer produces this duplicate Java resource. The practical verification is:
+//
+//   cd android
+//   ./gradlew :app:mergeDebugJavaResource --rerun-tasks \
+//     -Pandroid.packagingOptions.excludes= --stacktrace
+//
+// On Windows PowerShell, quote the arguments instead:
+//
+//   .\gradlew.bat ":app:mergeDebugJavaResource" "--rerun-tasks" `
+//     "-Pandroid.packagingOptions.excludes=" "--stacktrace"
+//
+// If that succeeds, remove this plugin from app.json, delete this file, then run
+// the normal Android debug build to confirm the full app still assembles.
 const DUPLICATE_OSGI_MANIFEST = "META-INF/versions/9/OSGI-INF/MANIFEST.MF";
 
 // android/app/build.gradle already contains Expo's generated hook that reads
