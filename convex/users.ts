@@ -7,7 +7,7 @@ const normalizeEmail = (email?: string) => email?.trim().toLowerCase() ?? "";
 const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
-    throw new Error("Not authenticated");
+    throw new Error("Nicht authentifiziert.");
   }
   return identity;
 };
@@ -36,7 +36,7 @@ export const syncCurrentUser = mutation({
     const email = normalizeEmail(identity.email);
 
     if (!email) {
-      throw new Error("Authenticated user is missing an email address");
+      throw new Error("Beim angemeldeten Konto fehlt die E-Mail-Adresse.");
     }
 
     const existingUser = await ctx.db

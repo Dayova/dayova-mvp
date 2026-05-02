@@ -893,7 +893,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
           <View className="pb-2 pt-5">
             <Text className="text-center font-poppins text-12 text-text/46">
               {isRegisterMode
-                ? "Schon ein Konto? Oben kannst du direkt zum Login wechseln."
+                ? "Schon ein Konto? Oben kannst du direkt zur Anmeldung wechseln."
                 : "Noch kein Konto? Wechsle oben zur Registrierung."}
             </Text>
           </View>

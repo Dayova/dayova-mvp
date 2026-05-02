@@ -74,13 +74,135 @@ const splitName = (name?: string) => {
   };
 };
 
+const getGermanClerkErrorByCode = (code?: string) => {
+  switch (code) {
+    case "form_identifier_not_found":
+      return "Wir konnten kein Konto mit diesen Daten finden. Bitte prüfe deine E-Mail-Adresse und dein Passwort.";
+    case "form_password_incorrect":
+      return "E-Mail oder Passwort ist falsch.";
+    case "form_identifier_exists":
+    case "form_email_address_exists":
+      return "Für diese E-Mail-Adresse gibt es bereits ein Konto.";
+    case "form_identifier_invalid":
+    case "form_param_format_invalid":
+      return "Bitte gib eine gültige E-Mail-Adresse ein.";
+    case "form_password_length_too_short":
+      return "Das Passwort ist zu kurz.";
+    case "form_password_validation_failed":
+      return "Das Passwort erfüllt die Anforderungen nicht.";
+    case "form_password_pwned":
+      return "Dieses Passwort wurde in einem Datenleck gefunden. Bitte wähle ein anderes.";
+    case "verification_failed":
+    case "verification_invalid":
+      return "Der Code ist ungültig. Bitte prüfe ihn und versuche es erneut.";
+    case "verification_expired":
+      return "Der Code ist abgelaufen. Bitte fordere einen neuen Code an.";
+    case "too_many_requests":
+    case "rate_limit_exceeded":
+      return "Zu viele Versuche. Bitte warte kurz und versuche es erneut.";
+    default:
+      return null;
+  }
+};
+
+const getGermanAuthErrorMessage = (
+  message: string,
+  fallback: string,
+  options: { allowOriginal?: boolean } = {},
+) => {
+  const normalized = message.trim().replace(/\s+/g, " ").toLowerCase();
+  if (!normalized) return fallback;
+  const allowOriginal = options.allowOriginal ?? true;
+
+  if (
+    normalized.includes("couldn't find your account") ||
+    normalized.includes("could not find your account") ||
+    normalized.includes("account not found") ||
+    normalized.includes("user not found")
+  ) {
+    return "Wir konnten kein Konto mit diesen Daten finden. Bitte prüfe deine E-Mail-Adresse und dein Passwort.";
+  }
+
+  if (
+    normalized.includes("password is incorrect") ||
+    normalized.includes("incorrect password") ||
+    normalized.includes("invalid password")
+  ) {
+    return "E-Mail oder Passwort ist falsch.";
+  }
+
+  if (
+    normalized.includes("email address is taken") ||
+    normalized.includes("already exists") ||
+    normalized.includes("identifier already exists")
+  ) {
+    return "Für diese E-Mail-Adresse gibt es bereits ein Konto.";
+  }
+
+  if (
+    normalized.includes("identifier is invalid") ||
+    normalized.includes("email address is invalid") ||
+    normalized.includes("invalid email")
+  ) {
+    return "Bitte gib eine gültige E-Mail-Adresse ein.";
+  }
+
+  if (
+    normalized.includes("verification code is invalid") ||
+    normalized.includes("code is invalid") ||
+    normalized.includes("verification failed")
+  ) {
+    return "Der Code ist ungültig. Bitte prüfe ihn und versuche es erneut.";
+  }
+
+  if (normalized.includes("expired") && normalized.includes("code")) {
+    return "Der Code ist abgelaufen. Bitte fordere einen neuen Code an.";
+  }
+
+  if (
+    normalized.includes("too many requests") ||
+    normalized.includes("rate limit")
+  ) {
+    return "Zu viele Versuche. Bitte warte kurz und versuche es erneut.";
+  }
+
+  if (
+    normalized.includes("network request failed") ||
+    normalized.includes("failed to fetch")
+  ) {
+    return "Verbindung fehlgeschlagen. Bitte prüfe deine Internetverbindung und versuche es erneut.";
+  }
+
+  if (normalized.includes("server error")) {
+    return fallback;
+  }
+
+  if (normalized.includes("password") && normalized.includes("too short")) {
+    return "Das Passwort ist zu kurz.";
+  }
+
+  if (normalized.includes("password") && normalized.includes("breach")) {
+    return "Dieses Passwort wurde in einem Datenleck gefunden. Bitte wähle ein anderes.";
+  }
+
+  return allowOriginal ? message : fallback;
+};
+
 const getClerkErrorMessage = (error: unknown, fallback: string) => {
   if (isClerkAPIResponseError(error)) {
+    const clerkError = error.errors[0];
     return (
-      error.errors[0]?.longMessage ?? error.errors[0]?.message ?? fallback
+      getGermanClerkErrorByCode(clerkError?.code) ??
+      getGermanAuthErrorMessage(
+        clerkError?.longMessage ?? clerkError?.message ?? "",
+        fallback,
+        { allowOriginal: false },
+      )
     );
   }
-  return error instanceof Error ? error.message : fallback;
+  return error instanceof Error
+    ? getGermanAuthErrorMessage(error.message, fallback)
+    : fallback;
 };
 
 const definedProfileFields = (profile: RegisterProfile) => ({
