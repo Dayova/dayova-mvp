@@ -424,7 +424,7 @@ export default function NewEntryScreen() {
     trimmedExamType.length > 0 &&
     durationMinutes !== null &&
     durationMinutes > 0;
-  const canWriteEntries = Boolean(user?.workosId && isConvexAuthenticated);
+  const canWriteEntries = Boolean(user && isConvexAuthenticated);
 
   const title = isHomework
     ? "Hausaufgabe eintragen"

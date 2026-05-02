@@ -173,7 +173,7 @@ export default function HomeScreen() {
   const entriesByDay =
     useQuery(
       api.dayEntries.listByDayKeys,
-      user?.workosId && isConvexAuthenticated ? { dayKeys } : "skip",
+      user && isConvexAuthenticated ? { dayKeys } : "skip",
     ) ?? {};
   const selectedDay =
     weekDays.find((day) => day.key === selectedDayKey) ?? weekDays[0];

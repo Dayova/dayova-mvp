@@ -118,7 +118,14 @@ function ModeButton({
 }
 
 export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
-  const { login, register: registerUser, isLoading } = useAuth();
+  const {
+    login,
+    register: registerUser,
+    verifyEmailCode,
+    resendVerification,
+    pendingVerification,
+    isLoading,
+  } = useAuth();
 
   const [mode, setMode] = useState<Mode>(initialMode);
   const [tabWidth, setTabWidth] = useState(0);
@@ -127,6 +134,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [phone, setPhone] = useState("");
   const [birthDateValue, setBirthDateValue] = useState<Date | null>(null);
   const [password, setPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState("");
   const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
@@ -138,6 +146,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const birthDateFieldY = useRef(0);
 
   const isRegisterMode = mode === "register";
+  const isVerificationPending = Boolean(pendingVerification);
   const tabIndicatorTranslateX = tabProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [0, tabWidth],
@@ -150,6 +159,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
   const switchMode = (next: Mode) => {
     if (next === mode) return;
+    if (isVerificationPending) return;
     Keyboard.dismiss();
     setShowBirthDatePicker(false);
     setSubmitError("");
@@ -166,6 +176,11 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
   const updatePassword = (nextValue: string) => {
     setPassword(nextValue);
+    if (submitError) setSubmitError("");
+  };
+
+  const updateVerificationCode = (nextValue: string) => {
+    setVerificationCode(nextValue.replace(/\D/g, "").slice(0, 8));
     if (submitError) setSubmitError("");
   };
 
@@ -200,8 +215,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const handleLogin = async () => {
     try {
       setSubmitError("");
-      await login({ email: email.trim(), password });
-      router.replace("/home");
+      const result = await login({ email: email.trim(), password });
+      if (result.status === "complete") {
+        router.replace("/home");
+        return;
+      }
+      setSubmitError(result.message);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Anmeldung fehlgeschlagen.";
@@ -248,14 +267,19 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
     try {
       setSubmitError("");
-      await registerUser({
+      const result = await registerUser({
         name: trimmedName,
         email: trimmedEmail,
         phone: trimmedPhone,
         birthDate: trimmedBirthDate,
         password,
       });
-      router.replace("/home");
+      if (result.status === "complete") {
+        router.replace("/home");
+        return;
+      }
+      setVerificationCode("");
+      setSubmitError(result.message);
     } catch (error) {
       const message =
         error instanceof Error
@@ -266,6 +290,36 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
           ? "Registrierung fehlgeschlagen. Bitte versuche es erneut."
           : message,
       );
+    }
+  };
+
+  const handleVerifyEmailCode = async () => {
+    try {
+      setSubmitError("");
+      const result = await verifyEmailCode(verificationCode);
+      if (result.status === "complete") {
+        router.replace("/home");
+        return;
+      }
+      setSubmitError(result.message);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Bestätigung fehlgeschlagen.";
+      setSubmitError(message);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    try {
+      setSubmitError("");
+      await resendVerification();
+      setSubmitError("Ein neuer Code wurde gesendet.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Code konnte nicht gesendet werden.";
+      setSubmitError(message);
     }
   };
 
@@ -525,6 +579,33 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
             {submitError ? <FieldMessage>{submitError}</FieldMessage> : null}
           </Field>
 
+          {isVerificationPending ? (
+            <View>
+              <InsetTextField
+                label="Bestätigungscode"
+                accessory={<Mail size={18} color="rgba(26,26,26,0.34)" />}
+                value={verificationCode}
+                onChangeText={updateVerificationCode}
+                onFocus={closeBirthDatePicker}
+                placeholder="Code eingeben"
+                keyboardType="number-pad"
+                autoCapitalize="none"
+                autoComplete="one-time-code"
+                textContentType="oneTimeCode"
+              />
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={handleResendVerification}
+                disabled={isLoading}
+                className="-mt-2 mb-4 self-start px-1 py-2"
+              >
+                <Text className="font-poppins text-13 font-bold text-primary">
+                  Code erneut senden
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           <View
             className="mb-6 mt-2 rounded-[20px] bg-[#F7F8FA] px-[18px] py-4"
             style={{
@@ -541,19 +622,36 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                 style={{ lineHeight: 19.6, includeFontPadding: false }}
               >
                 {isRegisterMode
-                  ? "Mit der Registrierung erstellst du dein persönliches Lernprofil."
+                  ? isVerificationPending
+                    ? `Gib den Code ein, den wir an ${pendingVerification?.email} gesendet haben.`
+                    : "Mit der Registrierung erstellst du dein persönliches Lernprofil."
                   : "Falls etwas nicht klappt, prüfe zuerst E-Mail-Adresse und Passwort."}
               </Text>
             </View>
           </View>
 
           <Button
-            onPress={isRegisterMode ? handleRegister : handleLogin}
-            disabled={isLoading}
+            onPress={
+              isVerificationPending
+                ? handleVerifyEmailCode
+                : isRegisterMode
+                  ? handleRegister
+                  : handleLogin
+            }
+            disabled={
+              isLoading ||
+              (isVerificationPending && verificationCode.trim().length === 0)
+            }
             className="mt-1"
           >
             <Text>
-              {isLoading ? "Lädt..." : isRegisterMode ? "Weiter" : "Anmelden"}
+              {isLoading
+                ? "Lädt..."
+                : isVerificationPending
+                  ? "Code bestätigen"
+                  : isRegisterMode
+                    ? "Weiter"
+                    : "Anmelden"}
             </Text>
           </Button>
 

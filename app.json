@@ -31,7 +31,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-web-browser",
+      "@clerk/expo",
       [
         "expo-image-picker",
         {

@@ -1,9 +1,18 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 
-const normalizeEmail = (email: string) => email.trim().toLowerCase();
+const normalizeEmail = (email?: string) => email?.trim().toLowerCase() ?? "";
 
-const optionalUserFields = (args: {
+const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new Error("Not authenticated");
+  }
+  return identity;
+};
+
+const profileFields = (args: {
   name?: string;
   phone?: string;
   birthDate?: string;
@@ -15,64 +24,55 @@ const optionalUserFields = (args: {
   ...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
 });
 
-export const storeUser = mutation({
+export const syncCurrentUser = mutation({
   args: {
-    workosId: v.string(),
-    email: v.string(),
     name: v.optional(v.string()),
     phone: v.optional(v.string()),
     birthDate: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workosId", (q) => q.eq("workosId", args.workosId))
-      .unique();
+    const identity = await requireIdentity(ctx);
+    const email = normalizeEmail(identity.email);
 
-    if (user !== null) {
-      await ctx.db.patch(user._id, {
-        email: normalizeEmail(args.email),
-        ...optionalUserFields(args),
-      });
-      return user._id;
+    if (!email) {
+      throw new Error("Authenticated user is missing an email address");
     }
 
-    return await ctx.db.insert("users", {
-      workosId: args.workosId,
-      email: normalizeEmail(args.email),
-      ...optionalUserFields(args),
-    });
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+
+    const user = {
+      tokenIdentifier: identity.tokenIdentifier,
+      clerkId: identity.subject,
+      email,
+      name: args.name ?? identity.name,
+      ...profileFields(args),
+    };
+
+    if (existingUser) {
+      await ctx.db.patch(existingUser._id, user);
+      return existingUser._id;
+    }
+
+    return await ctx.db.insert("users", user);
   },
 });
 
 export const getMe = query({
-  args: { workosId: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("users")
-      .withIndex("by_workosId", (q) => q.eq("workosId", args.workosId))
-      .unique();
-  },
-});
-
-export const removeLegacyPasswordField = mutation({
   args: {},
   handler: async (ctx) => {
-    const users = await ctx.db.query("users").collect();
-    let updated = 0;
+    const identity = await requireIdentity(ctx);
 
-    for (const user of users) {
-      if (!("password" in user)) continue;
-
-      await ctx.db.replace(user._id, {
-        workosId: user.workosId,
-        email: user.email,
-        ...optionalUserFields(user),
-      });
-      updated += 1;
-    }
-
-    return { updated, total: users.length };
+    return await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
   },
 });
