@@ -442,14 +442,14 @@ export default function LearningPlanScreen() {
 
   const snapshot = (useQuery(
     api.learningPlans.getSnapshot,
-    user?.workosId && isConvexAuthenticated && learningPlanId
+    user && isConvexAuthenticated && learningPlanId
       ? { id: learningPlanId }
       : "skip",
   ) ?? null) as LearningPlanSnapshot | null;
 
   const questions = snapshot?.plan.knowledgeQuestions ?? [];
   const currentQuestion = questions[questionIndex] ?? null;
-  const canWrite = Boolean(user?.workosId && isConvexAuthenticated);
+  const canWrite = Boolean(user && isConvexAuthenticated);
   const canContinueTopic = topicDescription.trim().length >= 8 && canWrite;
   const canUploadMaterial = canWrite && !isBusy;
 
