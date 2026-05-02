@@ -103,6 +103,9 @@ const findEmailAddressId = (factors: unknown) => {
   return factor?.emailAddressId ?? null;
 };
 
+const wait = (milliseconds: number) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -162,15 +165,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     if (!user || !isConvexAuthenticated) return;
 
-    void syncCurrentUser({
+    const profile = {
       ...definedProfileFields({
         name: pendingProfile?.name ?? user.name,
         phone: pendingProfile?.phone ?? user.phone,
         birthDate: pendingProfile?.birthDate ?? user.birthDate,
       }),
       ...(user.avatarUrl !== undefined ? { avatarUrl: user.avatarUrl } : {}),
-    }).catch(() => {
+    };
+
+    void syncCurrentUser(profile).catch(async (error: unknown) => {
       // Convex auth can lag behind Clerk briefly during session activation.
+      await wait(750);
+      try {
+        await syncCurrentUser(profile);
+      } catch (retryError) {
+        console.warn("Failed to sync authenticated user profile.", retryError);
+        if (retryError !== error) {
+          console.warn("Initial user profile sync error.", error);
+        }
+      }
     });
   }, [isConvexAuthenticated, pendingProfile, syncCurrentUser, user]);
 
