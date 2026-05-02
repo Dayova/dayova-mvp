@@ -103,6 +103,48 @@ const findEmailAddressId = (factors: unknown) => {
   return factor?.emailAddressId ?? null;
 };
 
+const getAuthFactorDescription = (factor: unknown) => {
+  if (
+    typeof factor !== "object" ||
+    factor === null ||
+    !("strategy" in factor) ||
+    typeof factor.strategy !== "string"
+  ) {
+    return null;
+  }
+
+  const labelByStrategy: Record<string, string> = {
+    backup_code: "Backup-Code",
+    email_code: "E-Mail-Code",
+    email_link: "E-Mail-Link",
+    enterprise_sso: "SSO",
+    passkey: "Passkey",
+    password: "Passwort",
+    phone_code: "SMS-Code",
+    reset_password_email_code: "Passwort-Zurücksetzung per E-Mail",
+    reset_password_phone_code: "Passwort-Zurücksetzung per SMS",
+    totp: "Authenticator-App",
+    web3_metamask_signature: "Web3-Wallet",
+  };
+  const label = labelByStrategy[factor.strategy] ?? factor.strategy;
+  const safeIdentifier =
+    "safeIdentifier" in factor && typeof factor.safeIdentifier === "string"
+      ? factor.safeIdentifier
+      : null;
+
+  return safeIdentifier ? `${label} (${safeIdentifier})` : label;
+};
+
+const getAuthFactorList = (factors: unknown) => {
+  if (!Array.isArray(factors)) return "keine unterstützte Methode";
+  const descriptions = factors
+    .map(getAuthFactorDescription)
+    .filter((description): description is string => Boolean(description));
+  return descriptions.length > 0
+    ? descriptions.join(", ")
+    : "keine unterstützte Methode";
+};
+
 const wait = (milliseconds: number) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -203,10 +245,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("Authentifizierung ist noch nicht bereit.");
       }
 
+      const normalizedEmail = input.email.trim().toLowerCase();
+
       try {
         const signIn = await clerk.client.signIn.create({
           strategy: "password",
-          identifier: input.email.trim().toLowerCase(),
+          identifier: normalizedEmail,
           password: input.password,
         });
 
@@ -215,13 +259,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           return { status: "complete" };
         }
 
-        if (signIn.status === "needs_second_factor") {
+        if (
+          signIn.status === "needs_second_factor" ||
+          signIn.status === "needs_client_trust"
+        ) {
           const emailAddressId = findEmailAddressId(
             signIn.supportedSecondFactors,
           );
           if (!emailAddressId) {
             throw new Error(
-              "Diese zweite Authentifizierung wird noch nicht unterstützt.",
+              `Diese Anmeldung erfordert eine zusätzliche Sicherheitsprüfung: ${getAuthFactorList(
+                signIn.supportedSecondFactors,
+              )}. Die App unterstützt aktuell E-Mail-Code für diesen Schritt.`,
             );
           }
           await signIn.prepareSecondFactor({
@@ -230,16 +279,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           });
           setPendingVerification({
             mode: "login",
-            email: input.email.trim().toLowerCase(),
+            email: normalizedEmail,
           });
           setPendingLoginStage("second_factor");
           return {
             status: "needs_verification",
-            message: "Bitte gib den Code aus deiner E-Mail ein.",
+            message:
+              signIn.status === "needs_client_trust"
+                ? "Neues Gerät erkannt. Bitte gib den Sicherheitscode aus deiner E-Mail ein."
+                : "Bitte gib den Code aus deiner E-Mail ein.",
           };
         }
 
-        throw new Error("Anmeldung konnte nicht abgeschlossen werden.");
+        if (signIn.status === "needs_first_factor") {
+          const emailAddressId = findEmailAddressId(signIn.supportedFirstFactors);
+          if (!emailAddressId) {
+            throw new Error(
+              `Diese Anmeldung erfordert eine andere Anmeldemethode: ${getAuthFactorList(
+                signIn.supportedFirstFactors,
+              )}. Die App unterstützt aktuell E-Mail-Code als zusätzlichen Schritt.`,
+            );
+          }
+
+          await signIn.prepareFirstFactor({
+            strategy: "email_code",
+            emailAddressId,
+          });
+          setPendingVerification({
+            mode: "login",
+            email: normalizedEmail,
+          });
+          setPendingLoginStage("first_factor");
+          return {
+            status: "needs_verification",
+            message: "Wir haben dir einen Anmeldecode per E-Mail gesendet.",
+          };
+        }
+
+        if (signIn.status === "needs_identifier") {
+          throw new Error("Bitte gib deine E-Mail-Adresse ein.");
+        }
+
+        if (signIn.status === "needs_new_password") {
+          throw new Error(
+            "Für dieses Konto muss zuerst ein neues Passwort gesetzt werden.",
+          );
+        }
+
+        throw new Error(
+          `Anmeldung konnte nicht abgeschlossen werden. Unerwarteter Clerk-Status: ${
+            signIn.status ?? "unbekannt"
+          }.`,
+        );
       } catch (error) {
         throw new Error(getClerkErrorMessage(error, "Anmeldung fehlgeschlagen."));
       }

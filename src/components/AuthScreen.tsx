@@ -6,9 +6,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
   TextInput,
   TouchableOpacity,
   View,
+  type TextInputProps,
 } from "react-native";
 import DateTimePicker, {
   type DateTimePickerEvent,
@@ -16,12 +18,20 @@ import DateTimePicker, {
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
+  CodeField,
+  Cursor,
+  useBlurOnFulfill,
+  useClearByFocusCell,
+} from "react-native-confirmation-code-field";
+import {
   ChevronDown,
   CircleAlert,
   Eye,
   EyeOff,
   Mail,
+  MailCheck,
   Phone,
+  ShieldCheck,
   UserRound,
 } from "lucide-react-native";
 import { Button } from "~/components/ui/button";
@@ -44,6 +54,24 @@ type FieldErrors = {
   phone?: string;
   birthDate?: string;
 };
+
+type VerificationFeedback = {
+  tone: "neutral" | "success" | "error";
+  message: string;
+};
+
+const VERIFICATION_CODE_LENGTH = 6;
+const otpAutoComplete = Platform.select<TextInputProps["autoComplete"]>({
+  android: "sms-otp",
+  default: "one-time-code",
+});
+
+const otpStyles = StyleSheet.create({
+  root: {
+    flexDirection: "row",
+    gap: 8,
+  },
+});
 
 const formatBirthDate = (date: Date) => {
   const day = `${date.getDate()}`.padStart(2, "0");
@@ -117,6 +145,127 @@ function ModeButton({
   );
 }
 
+function OtpCodeInput({
+  value,
+  onChangeText,
+  disabled,
+  inputRef,
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  disabled?: boolean;
+  inputRef: React.RefObject<TextInput | null>;
+}) {
+  const codeFieldRef = useBlurOnFulfill<TextInput>({
+    value,
+    cellCount: VERIFICATION_CODE_LENGTH,
+  });
+  const [cellProps, getCellOnLayoutHandler] = useClearByFocusCell({
+    value,
+    setValue: onChangeText,
+  });
+
+  useEffect(() => {
+    inputRef.current = codeFieldRef.current;
+  }, [codeFieldRef, inputRef]);
+
+  return (
+    <CodeField
+      ref={codeFieldRef}
+      {...cellProps}
+      accessibilityLabel="Bestätigungscode eingeben"
+      value={value}
+      onChangeText={onChangeText}
+      cellCount={VERIFICATION_CODE_LENGTH}
+      rootStyle={otpStyles.root}
+      keyboardType="number-pad"
+      textContentType="oneTimeCode"
+      autoComplete={otpAutoComplete}
+      editable={!disabled}
+      autoFocus
+      renderCell={({ index, symbol, isFocused }) => (
+        <View
+          key={index}
+          onLayout={getCellOnLayoutHandler(index)}
+          className="h-[64px] flex-1 items-center justify-center rounded-[18px] bg-white"
+          style={{
+            borderWidth: isFocused ? 1.8 : 1.2,
+            borderColor: isFocused ? "#1A1A1A" : "rgba(17,24,39,0.12)",
+            shadowColor: "#111827",
+            shadowOpacity: symbol ? 0.1 : 0.04,
+            shadowRadius: symbol ? 14 : 8,
+            shadowOffset: { width: 0, height: symbol ? 8 : 4 },
+            elevation: symbol ? 4 : 2,
+          }}
+        >
+          <Text
+            className="font-poppins text-28 font-semibold text-text"
+            style={{ includeFontPadding: false, lineHeight: 36 }}
+          >
+            {symbol || (isFocused ? <Cursor cursorSymbol="" /> : null)}
+          </Text>
+        </View>
+      )}
+    />
+  );
+}
+
+function VerificationFeedbackPill({
+  feedback,
+}: {
+  feedback: VerificationFeedback;
+}) {
+  const palette = {
+    neutral: {
+      background: "#F3F7FF",
+      border: "rgba(58,123,255,0.14)",
+      icon: "#3A7BFF",
+      text: "rgba(26,26,26,0.68)",
+    },
+    success: {
+      background: "#F1FAF5",
+      border: "rgba(22,163,74,0.14)",
+      icon: "#16A34A",
+      text: "rgba(26,26,26,0.68)",
+    },
+    error: {
+      background: "#FFF5F5",
+      border: "rgba(239,68,68,0.16)",
+      icon: "#EF4444",
+      text: "#B42318",
+    },
+  }[feedback.tone];
+
+  return (
+    <View
+      className="mt-6 flex-row items-center rounded-[20px] px-4 py-3"
+      style={{
+        backgroundColor: palette.background,
+        borderColor: palette.border,
+        borderWidth: 1,
+      }}
+    >
+      <View className="h-6 w-6 items-center justify-center">
+        {feedback.tone === "error" ? (
+          <CircleAlert size={16} color={palette.icon} strokeWidth={2.2} />
+        ) : (
+          <MailCheck size={16} color={palette.icon} strokeWidth={2.2} />
+        )}
+      </View>
+      <Text
+        className="ml-2.5 flex-1 font-poppins text-13"
+        style={{
+          color: palette.text,
+          includeFontPadding: false,
+          lineHeight: 18.2,
+        }}
+      >
+        {feedback.message}
+      </Text>
+    </View>
+  );
+}
+
 export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const {
     login,
@@ -135,6 +284,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [birthDateValue, setBirthDateValue] = useState<Date | null>(null);
   const [password, setPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
+  const [verificationFeedback, setVerificationFeedback] =
+    useState<VerificationFeedback | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState("");
   const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
@@ -143,6 +294,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     new Animated.Value(initialMode === "login" ? 1 : 0),
   ).current;
   const formScrollRef = useRef<ScrollView | null>(null);
+  const otpInputRef = useRef<TextInput | null>(null);
   const birthDateFieldY = useRef(0);
 
   const isRegisterMode = mode === "register";
@@ -156,6 +308,14 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     setMode(initialMode);
     tabProgress.setValue(initialMode === "login" ? 1 : 0);
   }, [initialMode]);
+
+  useEffect(() => {
+    if (!isVerificationPending) return;
+    const focusTimer = setTimeout(() => {
+      otpInputRef.current?.focus();
+    }, 280);
+    return () => clearTimeout(focusTimer);
+  }, [isVerificationPending]);
 
   const switchMode = (next: Mode) => {
     if (next === mode) return;
@@ -180,8 +340,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   };
 
   const updateVerificationCode = (nextValue: string) => {
-    setVerificationCode(nextValue.replace(/\D/g, "").slice(0, 8));
-    if (submitError) setSubmitError("");
+    setVerificationCode(
+      nextValue.replace(/\D/g, "").slice(0, VERIFICATION_CODE_LENGTH),
+    );
+    if (verificationFeedback?.tone === "error") setVerificationFeedback(null);
   };
 
   const togglePasswordVisibility = () =>
@@ -220,7 +382,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
         router.replace("/home");
         return;
       }
-      setSubmitError(result.message);
+      setVerificationCode("");
+      setVerificationFeedback({ tone: "neutral", message: result.message });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Anmeldung fehlgeschlagen.";
@@ -279,7 +442,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
         return;
       }
       setVerificationCode("");
-      setSubmitError(result.message);
+      setVerificationFeedback({ tone: "neutral", message: result.message });
     } catch (error) {
       const message =
         error instanceof Error
@@ -295,33 +458,145 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
   const handleVerifyEmailCode = async () => {
     try {
-      setSubmitError("");
+      setVerificationFeedback(null);
       const result = await verifyEmailCode(verificationCode);
       if (result.status === "complete") {
         router.replace("/home");
         return;
       }
-      setSubmitError(result.message);
+      setVerificationFeedback({ tone: "neutral", message: result.message });
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : "Bestätigung fehlgeschlagen.";
-      setSubmitError(message);
+      setVerificationFeedback({ tone: "error", message });
     }
   };
 
   const handleResendVerification = async () => {
     try {
-      setSubmitError("");
+      setVerificationFeedback(null);
       await resendVerification();
-      setSubmitError("Ein neuer Code wurde gesendet.");
+      setVerificationCode("");
+      setVerificationFeedback({
+        tone: "success",
+        message: `Ein neuer Code wurde an ${pendingVerification?.email} gesendet.`,
+      });
+      otpInputRef.current?.focus();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Code konnte nicht gesendet werden.";
-      setSubmitError(message);
+      setVerificationFeedback({ tone: "error", message });
     }
   };
+
+  if (isVerificationPending) {
+    const emailAddress = pendingVerification?.email ?? "deine E-Mail-Adresse";
+    const canSubmitCode =
+      verificationCode.length === VERIFICATION_CODE_LENGTH && !isLoading;
+
+    return (
+      <KeyboardAvoidingView
+        className="flex-1 bg-black"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <StatusBar style="light" />
+
+        <View className="flex-1 bg-black pt-[72px]">
+          <View className="items-center px-8">
+            <View className="flex-row items-center">
+              <Image
+                source={require("../../assets/dayova-logo.png")}
+                style={{ width: 72, height: 72 }}
+                resizeMode="contain"
+              />
+              <Text
+                className="-ml-2 font-poppins text-32 font-bold text-white"
+                style={{ includeFontPadding: false, lineHeight: 40 }}
+              >
+                Dayova
+              </Text>
+            </View>
+          </View>
+
+          <View className="mt-10 flex-1 rounded-t-[36px] bg-background px-8 pt-8">
+            <ScrollView
+              contentContainerStyle={{ paddingBottom: 36 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View className="items-center">
+                <View
+                  className="h-20 w-20 items-center justify-center rounded-[28px] bg-[#F3F7FF]"
+                  style={{
+                    borderColor: "rgba(58,123,255,0.12)",
+                    borderWidth: 1,
+                  }}
+                >
+                  <ShieldCheck size={34} color="#3A7BFF" strokeWidth={2.1} />
+                </View>
+
+                <Text
+                  className="mt-7 text-center font-poppins text-28 font-bold text-text"
+                  style={{ includeFontPadding: false, lineHeight: 34 }}
+                >
+                  E-Mail bestätigen
+                </Text>
+                <Text
+                  className="mt-3 text-center font-poppins text-14 text-text/60"
+                  style={{ lineHeight: 21, includeFontPadding: false }}
+                >
+                  Gib den 6-stelligen Code ein, den wir an{" "}
+                  <Text className="font-poppins text-14 font-bold text-text">
+                    {emailAddress}
+                  </Text>{" "}
+                  gesendet haben.
+                </Text>
+              </View>
+
+              <View className="mt-10">
+                <OtpCodeInput
+                  value={verificationCode}
+                  onChangeText={updateVerificationCode}
+                  disabled={isLoading}
+                  inputRef={otpInputRef}
+                />
+              </View>
+
+              {verificationFeedback ? (
+                <VerificationFeedbackPill feedback={verificationFeedback} />
+              ) : null}
+
+              <View className="mt-8 flex-row justify-center">
+                <Text className="font-poppins text-14 text-text/52">
+                  Kein Code angekommen?
+                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.72}
+                  onPress={handleResendVerification}
+                  disabled={isLoading}
+                  className="ml-1"
+                >
+                  <Text className="font-poppins text-14 font-bold text-primary">
+                    Erneut senden
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <Button
+                onPress={handleVerifyEmailCode}
+                disabled={!canSubmitCode}
+                className="mt-10"
+              >
+                <Text>{isLoading ? "Prüft..." : "Code bestätigen"}</Text>
+              </Button>
+            </ScrollView>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -579,33 +854,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
             {submitError ? <FieldMessage>{submitError}</FieldMessage> : null}
           </Field>
 
-          {isVerificationPending ? (
-            <View>
-              <InsetTextField
-                label="Bestätigungscode"
-                accessory={<Mail size={18} color="rgba(26,26,26,0.34)" />}
-                value={verificationCode}
-                onChangeText={updateVerificationCode}
-                onFocus={closeBirthDatePicker}
-                placeholder="Code eingeben"
-                keyboardType="number-pad"
-                autoCapitalize="none"
-                autoComplete="one-time-code"
-                textContentType="oneTimeCode"
-              />
-              <TouchableOpacity
-                activeOpacity={0.75}
-                onPress={handleResendVerification}
-                disabled={isLoading}
-                className="-mt-2 mb-4 self-start px-1 py-2"
-              >
-                <Text className="font-poppins text-13 font-bold text-primary">
-                  Code erneut senden
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-
           <View
             className="mb-6 mt-2 rounded-[20px] bg-[#F7F8FA] px-[18px] py-4"
             style={{
@@ -622,34 +870,21 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                 style={{ lineHeight: 19.6, includeFontPadding: false }}
               >
                 {isRegisterMode
-                  ? isVerificationPending
-                    ? `Gib den Code ein, den wir an ${pendingVerification?.email} gesendet haben.`
-                    : "Mit der Registrierung erstellst du dein persönliches Lernprofil."
+                  ? "Mit der Registrierung erstellst du dein persönliches Lernprofil."
                   : "Falls etwas nicht klappt, prüfe zuerst E-Mail-Adresse und Passwort."}
               </Text>
             </View>
           </View>
 
           <Button
-            onPress={
-              isVerificationPending
-                ? handleVerifyEmailCode
-                : isRegisterMode
-                  ? handleRegister
-                  : handleLogin
-            }
-            disabled={
-              isLoading ||
-              (isVerificationPending && verificationCode.trim().length === 0)
-            }
+            onPress={isRegisterMode ? handleRegister : handleLogin}
+            disabled={isLoading}
             className="mt-1"
           >
             <Text>
               {isLoading
                 ? "Lädt..."
-                : isVerificationPending
-                  ? "Code bestätigen"
-                  : isRegisterMode
+                : isRegisterMode
                     ? "Weiter"
                     : "Anmelden"}
             </Text>
