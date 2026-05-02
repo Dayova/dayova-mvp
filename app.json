@@ -41,6 +41,7 @@
       ],
       "@react-native-community/datetimepicker",
       "./plugins/withNinjaLongPaths",
+      "./plugins/withAndroidPackagingOptions",
       [
         "expo-font",
         {
