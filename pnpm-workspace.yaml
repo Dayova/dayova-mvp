@@ -1,5 +1,11 @@
 allowBuilds:
+  '@clerk/shared': true
+  browser-tabs-lock: true
+  bufferutil: true
+  core-js: true
   esbuild: true
   postinstall-postinstall: true
+  tesseract.js: true
+  utf-8-validate: true
 patchedDependencies:
   '@gilhrpenner/convex-files-control': patches/@gilhrpenner__convex-files-control.patch

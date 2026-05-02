@@ -170,11 +170,14 @@ export default function HomeScreen() {
     const index = weekDays.findIndex((day) => day.key === selectedDayKey);
     return index < 0 ? 0 : index;
   }, [selectedDayKey, weekDays]);
-  const entriesByDay =
-    useQuery(
-      api.dayEntries.listByDayKeys,
-      user?.workosId && isConvexAuthenticated ? { dayKeys } : "skip",
-    ) ?? {};
+  const entriesByDayResult = useQuery(
+    api.dayEntries.listByDayKeys,
+    user && isConvexAuthenticated ? { dayKeys } : "skip",
+  );
+  const entriesByDay = entriesByDayResult ?? {};
+  const areEntriesLoading =
+    Boolean(user) &&
+    (!isConvexAuthenticated || entriesByDayResult === undefined);
   const selectedDay =
     weekDays.find((day) => day.key === selectedDayKey) ?? weekDays[0];
   const selectedEntries = selectedDay
@@ -264,6 +267,13 @@ export default function HomeScreen() {
     typeof user?.name === "string" && user.name.trim().length > 0
       ? user.name.trim().split(/\s+/)[0]
       : "du";
+  const taskSummary = areEntriesLoading
+    ? "Aufgaben werden geladen"
+    : sortedSelectedEntries.length === 0
+      ? "Keine Aufgaben"
+      : `${sortedSelectedEntries.length} ${
+          sortedSelectedEntries.length === 1 ? "Aufgabe" : "Aufgaben"
+        }`;
 
   const getCreateEntryUrl = (type: "homework" | "exam") =>
     `/entry/new?type=${type}&dayKey=${encodeURIComponent(selectedDay?.key ?? "")}&dayLabel=${encodeURIComponent(
@@ -334,9 +344,7 @@ export default function HomeScreen() {
               Hi, {firstName} 👋
             </Text>
             <Text className="mt-1 text-text font-poppins font-bold text-16">
-              {sortedSelectedEntries.length === 0
-                ? "Keine Aufgaben"
-                : `${sortedSelectedEntries.length} ${sortedSelectedEntries.length === 1 ? "Aufgabe" : "Aufgaben"}`}
+              {taskSummary}
             </Text>
           </View>
           <TouchableOpacity

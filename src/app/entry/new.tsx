@@ -418,13 +418,15 @@ export default function NewEntryScreen() {
       durationMinutes !== null &&
       durationMinutes > 0;
   const canCreateHomework =
-    trimmedSubject.length > 0 && durationMinutes !== null && durationMinutes > 0;
+    trimmedSubject.length > 0 &&
+    durationMinutes !== null &&
+    durationMinutes > 0;
   const canCreateExam =
     trimmedSubject.length > 0 &&
     trimmedExamType.length > 0 &&
     durationMinutes !== null &&
     durationMinutes > 0;
-  const canWriteEntries = Boolean(user?.workosId && isConvexAuthenticated);
+  const canWriteEntries = Boolean(user && isConvexAuthenticated);
 
   const title = isHomework
     ? "Hausaufgabe eintragen"

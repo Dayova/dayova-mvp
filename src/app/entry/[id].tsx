@@ -76,7 +76,7 @@ export default function EntryDetailScreen() {
   const entry =
     useQuery(
       api.dayEntries.get,
-      user?.workosId && isConvexAuthenticated && id
+      user && isConvexAuthenticated && id
         ? {
             id: id as Id<"dayEntries">,
           }
@@ -100,7 +100,7 @@ export default function EntryDetailScreen() {
   const canDelete = Boolean(entry && id && isDeletableKind);
 
   const handleDelete = () => {
-    if (!canDelete || !id || !user?.workosId || !isConvexAuthenticated) return;
+    if (!canDelete || !id || !user || !isConvexAuthenticated) return;
 
     Alert.alert(
       title,
