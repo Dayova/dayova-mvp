@@ -48,8 +48,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       convex:
-        specifier: ^1.35.1
-        version: 1.35.1(react@19.1.0)
+        specifier: ^1.37.0
+        version: 1.37.0(@clerk/react@6.5.0(react-dom@19.2.5(react@19.1.0))(react@19.1.0))(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6)
       expo:
         specifier: ~54.0.33
         version: 54.0.33(@babel/core@7.29.0)(@expo/dom-webview@55.0.5)(@expo/metro-runtime@6.1.2)(expo-router@6.0.23)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
@@ -2030,14 +2030,14 @@ packages:
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
-  convex@1.35.1:
-    resolution: {integrity: sha512-g23KrTjBiXqRHzWIN0PVFagKjrmFxWUaOSiBsAWPTpXX2rXl0L1F4PR0YpAcMJEzMgfZR9AGymJvLTM+KA6lsQ==}
+  convex@1.37.0:
+    resolution: {integrity: sha512-xGSx5edIsXCEex3OU2U2N0oyB/cOa9qGwKiImF9yOWqjqZgOkx39idtpdlwNBTBSt4S30oAvs4yeXY5xxPIX3A==}
     engines: {node: '>=18.0.0', npm: '>=7.0.0'}
     hasBin: true
     peerDependencies:
       '@auth0/auth0-react': ^2.0.1
       '@clerk/clerk-react': ^4.12.8 || ^5.0.0
-      '@clerk/react': ^6.0.0
+      '@clerk/react': ^6.4.3
       react: ^18.0.0 || ^19.0.0-0 || ^19.0.0
     peerDependenciesMeta:
       '@auth0/auth0-react':
@@ -6563,11 +6563,11 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex@1.35.1(react@19.1.0):
+  convex@1.37.0(@clerk/react@6.5.0(react-dom@19.2.5(react@19.1.0))(react@19.1.0))(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6):
     dependencies:
       esbuild: 0.27.0
       prettier: 3.8.3
-      ws: 8.18.0
+      ws: 8.18.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     optionalDependencies:
       react: 19.1.0
     transitivePeerDependencies:
