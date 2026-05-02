@@ -46,6 +46,7 @@ type PendingLoginStage = "first_factor" | "second_factor";
 interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
+  isSessionLoading: boolean;
   pendingVerification: PendingVerification | null;
   login: (input: LoginInput) => Promise<AuthFlowResult>;
   register: (input: RegisterInput) => Promise<AuthFlowResult>;
@@ -275,10 +276,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const clerk = useClerk();
   const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
-  const {
-    isLoading: isConvexAuthLoading,
-    isAuthenticated: isConvexAuthenticated,
-  } = useConvexAuth();
+  const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
   const syncCurrentUser = useMutation(api.users.syncCurrentUser);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingVerification, setPendingVerification] =
@@ -592,17 +590,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     await clerk.signOut();
   };
 
-  const isLoading =
-    !clerk.loaded ||
-    !isUserLoaded ||
-    isSubmitting ||
-    (Boolean(clerkUser) && isConvexAuthLoading);
+  const isSessionLoading = !clerk.loaded || !isUserLoaded;
+  const isLoading = isSessionLoading || isSubmitting;
 
   return (
     <AuthContext.Provider
       value={{
         user,
         isLoading,
+        isSessionLoading,
         pendingVerification,
         login,
         register,

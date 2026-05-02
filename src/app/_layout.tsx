@@ -20,10 +20,10 @@ const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 function AppNavigator() {
   const router = useRouter();
   const segments = useSegments();
-  const { user, isLoading } = useAuth();
+  const { user, isSessionLoading } = useAuth();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isSessionLoading) return;
 
     const isAuthRoute = segments[0] === "(auth)";
     if (!user && !isAuthRoute) {
@@ -33,7 +33,7 @@ function AppNavigator() {
     if (user && isAuthRoute) {
       router.replace("/home");
     }
-  }, [isLoading, router, segments, user]);
+  }, [isSessionLoading, router, segments, user]);
 
   return (
     <>
