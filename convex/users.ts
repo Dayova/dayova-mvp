@@ -33,11 +33,6 @@ export const syncCurrentUser = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
-    const email = normalizeEmail(identity.email);
-
-    if (!email) {
-      throw new Error("Beim angemeldeten Konto fehlt die E-Mail-Adresse.");
-    }
 
     const existingUser = await ctx.db
       .query("users")
@@ -45,6 +40,12 @@ export const syncCurrentUser = mutation({
         q.eq("tokenIdentifier", identity.tokenIdentifier),
       )
       .unique();
+
+    const email = normalizeEmail(identity.email) || existingUser?.email;
+
+    if (!email) {
+      throw new Error("Beim angemeldeten Konto fehlt die E-Mail-Adresse.");
+    }
 
     const user = {
       tokenIdentifier: identity.tokenIdentifier,
