@@ -31,7 +31,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-web-browser",
+      "@clerk/expo",
       [
         "expo-image-picker",
         {
@@ -41,6 +41,7 @@
       ],
       "@react-native-community/datetimepicker",
       "./plugins/withNinjaLongPaths",
+      "./plugins/withAndroidPackagingOptions",
       [
         "expo-font",
         {
