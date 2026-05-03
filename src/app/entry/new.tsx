@@ -36,6 +36,7 @@ import { Text } from "~/components/ui/text";
 import { TextField } from "~/components/ui/text-field";
 import { Toggle } from "~/components/ui/toggle";
 import { useAuth } from "~/context/AuthContext";
+import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 
 type EntryType = "homework" | "exam";
 type EntryStep = "basics" | "planning" | "examDecision" | "success";
@@ -53,19 +54,8 @@ const COMMON_EXAM_TYPE_PRESETS = [
   { label: "Prüfung", durationMinutes: 90 },
 ];
 
-const startOfDay = (date: Date) => {
-  const next = new Date(date);
-  next.setHours(0, 0, 0, 0);
-  return next;
-};
-
-const getDateKey = (date: Date) => startOfDay(date).toISOString();
-
 const parseDateKey = (value?: string) => {
-  if (!value) return startOfDay(new Date());
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return startOfDay(new Date());
-  return startOfDay(parsed);
+  return parseDayKey(value) ?? startOfLocalDay(new Date());
 };
 
 const formatDate = (date: Date) =>
@@ -404,7 +394,7 @@ export default function NewEntryScreen() {
   const [durationMinutes, setDurationMinutes] = useState<number | null>(
     isHomework ? 30 : null,
   );
-  const [createdDayKey, setCreatedDayKey] = useState(getDateKey(initialDate));
+  const [createdDayKey, setCreatedDayKey] = useState(getDayKey(initialDate));
   const [isCreating, setIsCreating] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
 
@@ -452,9 +442,9 @@ export default function NewEntryScreen() {
     if (Platform.OS === "android") closePicker();
     if (event.type === "dismissed" || !selectedDate || !pickerTarget) return;
 
-    if (pickerTarget === "dueDate") setDueDate(startOfDay(selectedDate));
+    if (pickerTarget === "dueDate") setDueDate(startOfLocalDay(selectedDate));
     if (pickerTarget === "plannedDate")
-      setPlannedDate(startOfDay(selectedDate));
+      setPlannedDate(startOfLocalDay(selectedDate));
     if (pickerTarget === "plannedTime") {
       const next = new Date(plannedTime);
       next.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
@@ -468,7 +458,7 @@ export default function NewEntryScreen() {
     if (durationMinutes === null) return;
     if (!canWriteEntries || isCreating) return;
 
-    const nextDayKey = getDateKey(plannedDate);
+    const nextDayKey = getDayKey(plannedDate);
     const trimmedNote = note.trim();
 
     try {
@@ -483,7 +473,7 @@ export default function NewEntryScreen() {
         ...(trimmedNote ? { notes: trimmedNote } : {}),
         ...(isHomework
           ? {
-              dueDateKey: getDateKey(dueDate),
+              dueDateKey: getDayKey(dueDate),
               dueDateLabel: formatDate(dueDate),
             }
           : {}),

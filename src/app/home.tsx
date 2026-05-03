@@ -8,7 +8,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -27,56 +26,22 @@ import {
 } from "lucide-react-native";
 import { api } from "#convex/_generated/api";
 import { useAuth } from "~/context/AuthContext";
+import {
+  DayCarousel,
+  type DayCarouselHandle,
+  type DayCarouselItem,
+  getDayItem,
+  getDayItemFromKey,
+} from "~/components/day-carousel";
+import {
+  getDayKey,
+  parseDayKey,
+  useCurrentLocalDay,
+} from "~/lib/day-key";
 import { Text as UiText } from "~/components/ui/text";
 import type { DayEntry } from "~/types/dayEntries";
 
-const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-const WEEKDAY_FULL_LABELS = [
-  "Montag",
-  "Dienstag",
-  "Mittwoch",
-  "Donnerstag",
-  "Freitag",
-  "Samstag",
-  "Sonntag",
-];
 const ALL_DAY_TIME_LABEL = "Ganztägig";
-
-type WeekDayItem = {
-  key: string;
-  label: string;
-  fullLabel: string;
-  dayOfMonth: string;
-  isToday: boolean;
-};
-
-/**
- * Builds the current calendar week (Monday-Sunday) for the compact week view.
- */
-const getCurrentWeek = (referenceDate: Date): WeekDayItem[] => {
-  const ref = new Date(referenceDate);
-  ref.setHours(0, 0, 0, 0);
-
-  const mondayOffset = (ref.getDay() + 6) % 7;
-  const monday = new Date(ref);
-  monday.setDate(ref.getDate() - mondayOffset);
-
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + index);
-    date.setHours(0, 0, 0, 0);
-
-    const isToday = date.getTime() === ref.getTime();
-
-    return {
-      key: date.toISOString(),
-      label: WEEKDAY_LABELS[index],
-      fullLabel: WEEKDAY_FULL_LABELS[index],
-      dayOfMonth: `${date.getDate()}`,
-      isToday,
-    };
-  });
-};
 
 /**
  * Converts a HH:mm time label into minutes to enable chronological sorting.
@@ -131,7 +96,10 @@ const getEntryLabel = (entry: DayEntry) => {
 
 const getEntryTimeLabel = (entry: DayEntry) => entry.time ?? ALL_DAY_TIME_LABEL;
 const getEntryDisplayTimeLabel = (entry: DayEntry) =>
-  entry.time ?? (entry.durationMinutes ? `${entry.durationMinutes} Min.` : ALL_DAY_TIME_LABEL);
+  entry.time ??
+  (entry.durationMinutes
+    ? `${entry.durationMinutes} Min.`
+    : ALL_DAY_TIME_LABEL);
 
 const getLearningRangeLabel = (entry: DayEntry) => {
   const timeLabel = getEntryTimeLabel(entry);
@@ -154,54 +122,80 @@ export default function HomeScreen() {
     "calendar",
   );
   const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
+  const [isReturningToToday, setIsReturningToToday] = useState(false);
   const [navBarWidth, setNavBarWidth] = useState(0);
   const navIndicatorProgress = useRef(new Animated.Value(0)).current;
-  const dayScrollX = useRef(new Animated.Value(0)).current;
-  const dayScrollRef = useRef<ScrollView | null>(null);
-  const hasAlignedInitialDay = useRef(false);
-  const pendingProgrammaticDayIndex = useRef<number | null>(null);
-  const { width: screenWidth } = useWindowDimensions();
-  const weekDays = useMemo(() => getCurrentWeek(new Date()), []);
-  const dayKeys = useMemo(() => weekDays.map((day) => day.key), [weekDays]);
-  const [selectedDayKey, setSelectedDayKey] = useState(
-    () => weekDays.find((day) => day.isToday)?.key ?? weekDays[0]?.key ?? "",
+  const dayCarouselRef = useRef<DayCarouselHandle | null>(null);
+  const previousEntriesByDay = useRef<Record<string, DayEntry[]> | null>(null);
+  const today = useCurrentLocalDay();
+  const todayKey = useMemo(() => getDayKey(today), [today]);
+  const initialDayKey = useMemo(() => {
+    const initialDate =
+      typeof params.dayKey === "string" ? parseDayKey(params.dayKey) : null;
+    return getDayKey(initialDate ?? today);
+  }, [params.dayKey, today]);
+  const [selectedDayKey, setSelectedDayKey] = useState(initialDayKey);
+  const selectedDay = useMemo(
+    () => getDayItemFromKey(selectedDayKey, today),
+    [selectedDayKey, today],
   );
-  const selectedDayIndex = useMemo(() => {
-    const index = weekDays.findIndex((day) => day.key === selectedDayKey);
-    return index < 0 ? 0 : index;
-  }, [selectedDayKey, weekDays]);
+  const selectedDayQueryKeys = useMemo(() => {
+    const selectedDate = parseDayKey(selectedDayKey);
+    const legacyIsoDayKey = selectedDate?.toISOString();
+
+    return legacyIsoDayKey && legacyIsoDayKey !== selectedDayKey
+      ? [selectedDayKey, legacyIsoDayKey]
+      : [selectedDayKey];
+  }, [selectedDayKey]);
   const entriesByDayResult = useQuery(
     api.dayEntries.listByDayKeys,
-    user && isConvexAuthenticated ? { dayKeys } : "skip",
+    user && isConvexAuthenticated
+      ? {
+          dayKeys: selectedDayQueryKeys,
+        }
+      : "skip",
   );
-  const entriesByDay = entriesByDayResult ?? {};
+  useEffect(() => {
+    if (!user) {
+      previousEntriesByDay.current = null;
+      return;
+    }
+
+    if (entriesByDayResult !== undefined) {
+      previousEntriesByDay.current = entriesByDayResult;
+    }
+  }, [entriesByDayResult, user]);
+  const entriesByDay = entriesByDayResult ?? previousEntriesByDay.current ?? {};
   const areEntriesLoading =
     Boolean(user) &&
     (!isConvexAuthenticated || entriesByDayResult === undefined);
-  const selectedDay =
-    weekDays.find((day) => day.key === selectedDayKey) ?? weekDays[0];
-  const selectedEntries = selectedDay
-    ? (entriesByDay[selectedDay.key] ?? [])
-    : [];
+  const isSelectedToday = selectedDayKey === todayKey;
+  const selectedEntries = useMemo(
+    () =>
+      selectedDayQueryKeys.flatMap((dayKey) => entriesByDay[dayKey] ?? []),
+    [entriesByDay, selectedDayQueryKeys],
+  );
   const sortedSelectedEntries = useMemo(
     () =>
       [...selectedEntries].sort(
         (a, b) =>
-          timeToMinutes(getEntryTimeLabel(a)) - timeToMinutes(getEntryTimeLabel(b)),
+          timeToMinutes(getEntryTimeLabel(a)) -
+          timeToMinutes(getEntryTimeLabel(b)),
       ),
     [selectedEntries],
   );
   const selectedDateLabel = useMemo(() => {
-    if (!selectedDay?.key) return "";
+    const selectedDate = parseDayKey(selectedDayKey);
+    if (!selectedDate) return "";
 
     return new Intl.DateTimeFormat("de-DE", {
       weekday: "long",
       day: "2-digit",
       month: "long",
     })
-      .format(new Date(selectedDay.key))
+      .format(selectedDate)
       .replace(/[.,]/g, "");
-  }, [selectedDay?.key]);
+  }, [selectedDayKey]);
   const entriesByHour = useMemo(() => {
     const grouped: Record<number, DayEntry[]> = {};
     sortedSelectedEntries.forEach((entry) => {
@@ -217,26 +211,25 @@ export default function HomeScreen() {
       .filter((hour): hour is number => hour !== null);
     const startHour = Math.min(6, ...(entryHours.length ? entryHours : [6]));
     const endHour = Math.max(22, ...(entryHours.length ? entryHours : [22]));
-    return Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index);
+    return Array.from(
+      { length: endHour - startHour + 1 },
+      (_, index) => startHour + index,
+    );
   }, [sortedSelectedEntries]);
-  const DAY_ITEM_WIDTH = 59;
-  const DAY_ITEM_HEIGHT = 89;
-  const DAY_ITEM_GAP = 12;
-  const DAY_ITEM_STEP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
-  const daySidePadding = Math.max((screenWidth - DAY_ITEM_STEP) / 2, 0);
-  const scrollToDayIndex = (index: number, animated: boolean) => {
-    dayScrollRef.current?.scrollTo({ x: index * DAY_ITEM_STEP, animated });
+  const selectDay = (day: DayCarouselItem) => {
+    setSelectedDayKey(day.key);
   };
-  const selectDayAtIndex = (index: number) => {
-    const boundedIndex = Math.min(Math.max(index, 0), weekDays.length - 1);
-    const nextDay = weekDays[boundedIndex];
-    if (!nextDay) return;
+  const centerOnDay = (dayKey: string) => {
+    requestAnimationFrame(() => {
+      dayCarouselRef.current?.scrollToDay(dayKey, true);
+    });
+  };
+  const returnToToday = () => {
+    if (isReturningToToday) return;
 
-    if (nextDay.key !== selectedDayKey) {
-      setSelectedDayKey(nextDay.key);
-    }
-    pendingProgrammaticDayIndex.current = boundedIndex;
-    scrollToDayIndex(boundedIndex, true);
+    setIsReturningToToday(true);
+    selectDay(getDayItem(today));
+    centerOnDay(todayKey);
   };
   const getEntryUrl = (entry: DayEntry) => {
     const dayLabel = selectedDay
@@ -287,15 +280,24 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (typeof params.dayKey === "string" && params.dayKey) {
-      const nextIndex = weekDays.findIndex((day) => day.key === params.dayKey);
-      setSelectedDayKey(params.dayKey);
-      if (nextIndex >= 0) {
-        requestAnimationFrame(() => {
-          scrollToDayIndex(nextIndex, false);
-        });
-      }
+      const nextDate = parseDayKey(params.dayKey);
+      if (!nextDate) return;
+
+      const nextDayKey = getDayKey(nextDate);
+      selectDay(getDayItem(nextDate));
+      centerOnDay(nextDayKey);
     }
-  }, [params.dayKey, weekDays]);
+  }, [params.dayKey]);
+
+  useEffect(() => {
+    if (!isReturningToToday || selectedDayKey !== todayKey) return;
+
+    const timeoutId = setTimeout(() => {
+      setIsReturningToToday(false);
+    }, 120);
+
+    return () => clearTimeout(timeoutId);
+  }, [isReturningToToday, selectedDayKey, todayKey]);
 
   useEffect(() => {
     Animated.spring(navIndicatorProgress, {
@@ -307,34 +309,8 @@ export default function HomeScreen() {
     }).start();
   }, [activeNav, navIndicatorProgress]);
 
-  useEffect(() => {
-    if (!hasAlignedInitialDay.current) return;
-
-    requestAnimationFrame(() => {
-      scrollToDayIndex(selectedDayIndex, false);
-    });
-  }, [screenWidth]);
-
-  const settleCarouselAtOffset = (offsetX: number) => {
-    const nextIndex = Math.round(offsetX / DAY_ITEM_STEP);
-    const boundedIndex = Math.min(Math.max(nextIndex, 0), weekDays.length - 1);
-    const nextDay = weekDays[boundedIndex];
-    if (!nextDay) return;
-
-    if (pendingProgrammaticDayIndex.current === boundedIndex) {
-      pendingProgrammaticDayIndex.current = null;
-    }
-
-    if (nextDay.key !== selectedDayKey) {
-      setSelectedDayKey(nextDay.key);
-    }
-  };
-
   return (
-    <View
-      className="flex-1 pt-16"
-      style={{ backgroundColor: "#F5F3F6" }}
-    >
+    <View className="flex-1 pt-16" style={{ backgroundColor: "#F5F3F6" }}>
       <StatusBar style="dark" />
 
       <View className="px-8">
@@ -380,148 +356,47 @@ export default function HomeScreen() {
         </View>
 
         <View className="mt-10">
-          <View className="-mx-8 h-[116px]">
-            <View
-              pointerEvents="none"
-              style={{
-                position: "absolute",
-                top: -12,
-                left: 0,
-                right: 0,
-                alignItems: "center",
-                zIndex: 2,
-              }}
-            >
-              <View
+          <DayCarousel
+            ref={dayCarouselRef}
+            initialDayKey={initialDayKey}
+            onSelectedDayChange={selectDay}
+            selectedDayKey={selectedDayKey}
+          />
+          {!isSelectedToday && !isReturningToToday ? (
+            <View className="mt-1 items-center">
+              <TouchableOpacity
+                activeOpacity={0.88}
+                accessibilityRole="button"
+                accessibilityLabel="Zum heutigen Tag im Datumskarussell springen"
+                onPressIn={returnToToday}
+                className="flex-row items-center rounded-full bg-white px-5 py-3"
                 style={{
-                  width: 0,
-                  height: 0,
-                  borderLeftWidth: 6,
-                  borderRightWidth: 6,
-                  borderBottomWidth: 8,
-                  borderLeftColor: "transparent",
-                  borderRightColor: "transparent",
-                  borderBottomColor: "#979797",
-                  opacity: 0.55,
-                  transform: [{ rotate: "180deg" }],
+                  borderWidth: 1,
+                  borderColor: "rgba(58,123,255,0.18)",
+                  shadowColor: "#3A7BFF",
+                  shadowOpacity: Platform.OS === "ios" ? 0.12 : 0,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 2,
                 }}
-              />
+              >
+                <View
+                  className="mr-2 h-6 w-6 items-center justify-center rounded-full"
+                  style={{ backgroundColor: "rgba(58,123,255,0.12)" }}
+                >
+                  <CalendarDays size={13} color="#3A7BFF" strokeWidth={2.5} />
+                </View>
+                <Text className="font-poppins text-13 font-bold text-[#2F68E8]">
+                  Zurück zu heute
+                </Text>
+              </TouchableOpacity>
             </View>
-            <Animated.ScrollView
-              ref={dayScrollRef}
-              horizontal
-              bounces={false}
-              removeClippedSubviews={false}
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="always"
-              snapToInterval={DAY_ITEM_STEP}
-              decelerationRate="fast"
-              contentContainerStyle={{
-                paddingHorizontal: daySidePadding,
-                alignItems: "center",
-              }}
-              onScroll={Animated.event(
-                [{ nativeEvent: { contentOffset: { x: dayScrollX } } }],
-                {
-                  useNativeDriver: true,
-                },
-              )}
-              scrollEventThrottle={16}
-              onLayout={() => {
-                if (!hasAlignedInitialDay.current) {
-                  scrollToDayIndex(selectedDayIndex, false);
-                  hasAlignedInitialDay.current = true;
-                }
-              }}
-              onMomentumScrollEnd={(event) => {
-                settleCarouselAtOffset(event.nativeEvent.contentOffset.x);
-              }}
-            >
-              {weekDays.map((day, index) => {
-                const isSelected = index === selectedDayIndex;
-                const inputRange = [
-                  (index - 2) * DAY_ITEM_STEP,
-                  (index - 1) * DAY_ITEM_STEP,
-                  index * DAY_ITEM_STEP,
-                  (index + 1) * DAY_ITEM_STEP,
-                  (index + 2) * DAY_ITEM_STEP,
-                ];
-                const scale = dayScrollX.interpolate({
-                  inputRange,
-                  outputRange: [0.74, 0.88, 1.12, 0.88, 0.74],
-                  extrapolate: "clamp",
-                });
-                const translateY = dayScrollX.interpolate({
-                  inputRange,
-                  outputRange: [14, 7, 0, 7, 14],
-                  extrapolate: "clamp",
-                });
-                return (
-                  <Animated.View
-                    key={day.key}
-                    style={{
-                      width: DAY_ITEM_WIDTH,
-                      height: DAY_ITEM_HEIGHT,
-                      marginHorizontal: DAY_ITEM_GAP / 2,
-                      alignItems: "center",
-                      justifyContent: "flex-start",
-                      transform: [{ scale }, { translateY }],
-                    }}
-                  >
-                    <TouchableOpacity
-                      className="h-full w-full items-center justify-start"
-                      activeOpacity={0.85}
-                      onPress={() => selectDayAtIndex(index)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      style={{
-                        backgroundColor: "#FFFFFF",
-                        borderRadius: 30,
-                        paddingTop: 2,
-                        paddingBottom: 22,
-                        borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.08)",
-                        shadowColor: "#000000",
-                        shadowOpacity: Platform.OS === "ios" ? 0.05 : 0,
-                        shadowRadius: 4,
-                        shadowOffset: { width: 0, height: 2 },
-                        elevation: 0,
-                      }}
-                    >
-                      <Text
-                        className={`font-poppins font-bold ${isSelected ? "text-20 text-white" : "text-16 text-text/70"}`}
-                        style={{
-                          marginTop: 5,
-                          width: isSelected ? 44 : 38,
-                          height: isSelected ? 44 : 38,
-                          borderRadius: 999,
-                          textAlign: "center",
-                          textAlignVertical: "center",
-                          lineHeight: isSelected ? 46 : 38,
-                          backgroundColor: isSelected
-                            ? "hsl(316.1 100% 64.9%)"
-                            : "transparent",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {day.dayOfMonth}
-                      </Text>
-                      <Text
-                        className={`mt-2 font-poppins text-12 ${isSelected ? "text-text/80" : "text-text/45"}`}
-                        style={{ marginBottom: 6 }}
-                      >
-                        {day.label}
-                      </Text>
-                    </TouchableOpacity>
-                  </Animated.View>
-                );
-              })}
-            </Animated.ScrollView>
-          </View>
+          ) : null}
         </View>
       </View>
 
       <View
-        className="mt-14 flex-1 rounded-t-[36px] bg-white px-6 pt-6 pb-8"
+        className={`${isSelectedToday ? "mt-12" : "mt-7"} flex-1 rounded-t-[36px] bg-white px-6 pt-6 pb-8`}
         style={{
           shadowColor: "#000000",
           shadowOpacity: Platform.OS === "ios" ? 0.07 : 0,
@@ -530,9 +405,11 @@ export default function HomeScreen() {
           elevation: 2,
         }}
       >
-        <Text className="text-text font-poppins text-28 font-bold capitalize">
-          {selectedDateLabel}
-        </Text>
+        <View>
+          <Text className="text-text font-poppins text-28 font-bold capitalize">
+            {selectedDateLabel}
+          </Text>
+        </View>
 
         <ScrollView
           className="mt-5 flex-1"
@@ -559,11 +436,13 @@ export default function HomeScreen() {
                     className="mb-2 mt-2 h-[2px] w-full rounded-full"
                     style={{
                       backgroundColor:
-                        hourEntries.length > 0 ? "#3A7BFF" : "rgba(58,123,255,0.20)",
+                        hourEntries.length > 0
+                          ? "#3A7BFF"
+                          : "rgba(58,123,255,0.20)",
                     }}
                   />
                   {hourEntries.length > 0 ? (
-                    hourEntries.map((entry, entryIndex) => (
+                    hourEntries.map((entry, entryIndex) =>
                       (() => {
                         const isLearning = isLearningSlotEntry(entry);
                         return (
@@ -571,7 +450,9 @@ export default function HomeScreen() {
                             key={entry.id}
                             className={`${entryIndex === 0 ? "" : "mt-2"} ml-4 rounded-[30px] px-4 py-3`}
                             style={{
-                              backgroundColor: isLearning ? "rgba(246,178,122,0.2)" : "rgba(95,201,176,0.2)",
+                              backgroundColor: isLearning
+                                ? "rgba(246,178,122,0.2)"
+                                : "rgba(95,201,176,0.2)",
                             }}
                           >
                             <View className="flex-row items-center justify-between">
@@ -590,7 +471,9 @@ export default function HomeScreen() {
                                     style={{ marginLeft: 24 }}
                                   />
                                   <Text className="ml-1.5 font-poppins text-12 text-[#1A1A1A]/85">
-                                    {isLearning ? getLearningRangeLabel(entry) : getEntryDisplayTimeLabel(entry)}
+                                    {isLearning
+                                      ? getLearningRangeLabel(entry)
+                                      : getEntryDisplayTimeLabel(entry)}
                                   </Text>
                                 </View>
                               </View>
@@ -602,14 +485,20 @@ export default function HomeScreen() {
                                 className="mr-2 h-10 w-10 items-center justify-center rounded-full"
                                 style={{ backgroundColor: "#5FC9B0" }}
                               >
-                                <ArrowUpRight size={20} color="#FFFFFF" strokeWidth={2.4} />
+                                <ArrowUpRight
+                                  size={20}
+                                  color="#FFFFFF"
+                                  strokeWidth={2.4}
+                                />
                               </TouchableOpacity>
                             </View>
                           </View>
                         );
-                      })()
-                    ))
-                  ) : <View className="h-6" />}
+                      })(),
+                    )
+                  ) : (
+                    <View className="h-6" />
+                  )}
                 </View>
               </View>
             );

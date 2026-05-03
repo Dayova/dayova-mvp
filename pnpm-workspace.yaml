@@ -5,3 +5,5 @@ allowBuilds:
   core-js: true
   esbuild: true
   utf-8-validate: true
+patchedDependencies:
+  expo-keep-awake@15.0.8: patches/expo-keep-awake@15.0.8.patch
