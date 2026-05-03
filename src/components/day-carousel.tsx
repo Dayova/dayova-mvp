@@ -48,7 +48,6 @@ type DayCarouselProps = {
   onRangeChange: (range: DayCarouselRange) => void;
   onSelectedDayChange: (day: DayCarouselItem) => void;
   selectedDayKey: string;
-  sidePadding: number;
 };
 
 export const startOfLocalDay = (date: Date) => {
@@ -101,7 +100,6 @@ export function DayCarousel({
   onRangeChange,
   onSelectedDayChange,
   selectedDayKey,
-  sidePadding,
 }: DayCarouselProps) {
   const today = useMemo(() => startOfLocalDay(new Date()), []);
   const scrollViewRef = useRef<ScrollView | null>(null);
@@ -112,15 +110,23 @@ export function DayCarousel({
   const isLoadingPreviousDays = useRef(false);
   const isLoadingNextDays = useRef(false);
   const pressStartX = useRef<number | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(0);
   const [days, setDays] = useState(() => {
     const initialDate = parseDayKey(initialDayKey) ?? today;
     return getDayRange(addDays(initialDate, -DAY_WINDOW_SIZE - DAY_WINDOW_RADIUS), MAX_DAY_COUNT, today);
   });
+  const sidePadding = Math.max((viewportWidth - DAY_ITEM_STEP) / 2, 0);
 
   const selectedIndex = useMemo(() => {
     const index = days.findIndex((day) => day.key === selectedDayKey);
     return index < 0 ? DAY_WINDOW_SIZE + DAY_WINDOW_RADIUS : index;
   }, [days, selectedDayKey]);
+
+  const snapOffsets = useMemo(
+    () => days.map((_, index) => index * DAY_ITEM_STEP),
+    [days],
+  );
+
   const scrollToDayIndex = (index: number, animated: boolean) => {
     const offsetX = index * DAY_ITEM_STEP;
     latestOffsetX.current = offsetX;
@@ -258,10 +264,17 @@ export function DayCarousel({
     return Math.min(Math.max(nextIndex, 0), days.length - 1);
   };
 
-  const settleAtOffset = (offsetX: number) => {
+  const settleAtOffset = (offsetX: number, shouldSnap: boolean) => {
     const nextIndex = getBoundedDayIndexAtOffset(offsetX);
     const nextDay = days[nextIndex];
     if (!nextDay) return;
+
+    if (
+      shouldSnap &&
+      Math.abs(offsetX - nextIndex * DAY_ITEM_STEP) > 0.5
+    ) {
+      scrollToDayIndex(nextIndex, true);
+    }
 
     if (nextDay.key !== latestSelectedDayKey.current) {
       latestSelectedDayKey.current = nextDay.key;
@@ -299,7 +312,7 @@ export function DayCarousel({
   const settleAndMaintainWindow = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
-    settleAtOffset(event.nativeEvent.contentOffset.x);
+    settleAtOffset(event.nativeEvent.contentOffset.x, false);
     maintainWindowAfterSettle(event);
   };
 
@@ -334,8 +347,15 @@ export function DayCarousel({
       <ScrollView
         ref={scrollViewRef}
         horizontal
-        onLayout={() => {
-          if (hasHandledInitialLayout.current) return;
+        onLayout={(event) => {
+          const nextViewportWidth = event.nativeEvent.layout.width;
+          setViewportWidth((currentViewportWidth) =>
+            Math.abs(currentViewportWidth - nextViewportWidth) < 1
+              ? currentViewportWidth
+              : nextViewportWidth,
+          );
+
+          if (hasHandledInitialLayout.current || nextViewportWidth <= 0) return;
           hasHandledInitialLayout.current = true;
           requestAnimationFrame(() => {
             scrollToDayIndex(selectedIndex, false);
@@ -346,13 +366,14 @@ export function DayCarousel({
         onScrollEndDrag={(event) => {
           const velocityX = Math.abs(event.nativeEvent.velocity?.x ?? 0);
           if (velocityX < 0.05) {
-            settleAndMaintainWindow(event);
+            settleAtOffset(event.nativeEvent.contentOffset.x, true);
+            maintainWindowAfterSettle(event);
           }
         }}
         scrollEventThrottle={48}
         bounces={false}
         showsHorizontalScrollIndicator={false}
-        snapToInterval={DAY_ITEM_STEP}
+        snapToOffsets={snapOffsets}
         decelerationRate="fast"
         style={{ height: 116 }}
         contentContainerStyle={{
@@ -367,9 +388,8 @@ export function DayCarousel({
             <View
               key={day.key}
               style={{
-                width: DAY_ITEM_WIDTH,
+                width: DAY_ITEM_STEP,
                 height: DAY_ITEM_HEIGHT,
-                marginHorizontal: DAY_ITEM_GAP / 2,
                 alignItems: "center",
                 justifyContent: "flex-start",
                 transform: [
@@ -379,7 +399,7 @@ export function DayCarousel({
               }}
             >
               <Pressable
-                className="h-full w-full items-center justify-start"
+                className="items-center justify-start"
                 onPressIn={(event) => {
                   pressStartX.current = event.nativeEvent.pageX;
                 }}
@@ -408,6 +428,8 @@ export function DayCarousel({
                   shadowRadius: 4,
                   shadowOffset: { width: 0, height: 2 },
                   elevation: 0,
+                  height: DAY_ITEM_HEIGHT,
+                  width: DAY_ITEM_WIDTH,
                 }}
               >
                 <Text

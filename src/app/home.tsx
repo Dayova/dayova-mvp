@@ -8,7 +8,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -125,7 +124,6 @@ export default function HomeScreen() {
   const [navBarWidth, setNavBarWidth] = useState(0);
   const navIndicatorProgress = useRef(new Animated.Value(0)).current;
   const previousEntriesByDay = useRef<Record<string, DayEntry[]> | null>(null);
-  const { width: screenWidth } = useWindowDimensions();
   const today = useMemo(() => startOfLocalDay(new Date()), []);
   const todayKey = useMemo(() => getDayKey(today), [today]);
   const [centerRequestId, setCenterRequestId] = useState(0);
@@ -202,10 +200,6 @@ export default function HomeScreen() {
       (_, index) => startHour + index,
     );
   }, [sortedSelectedEntries]);
-  const DAY_ITEM_WIDTH = 59;
-  const DAY_ITEM_GAP = 12;
-  const DAY_ITEM_STEP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
-  const daySidePadding = Math.max((screenWidth - DAY_ITEM_STEP) / 2, 0);
   const selectDay = (day: DayCarouselItem) => {
     setSelectedDayKey(day.key);
     setSelectedDay(day);
@@ -353,7 +347,6 @@ export default function HomeScreen() {
             onRangeChange={setDayRange}
             onSelectedDayChange={selectDay}
             selectedDayKey={selectedDayKey}
-            sidePadding={daySidePadding}
           />
           {!isSelectedToday && !isReturningToToday ? (
             <View className="mt-1 items-center">
