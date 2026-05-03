@@ -27,56 +27,20 @@ import {
 } from "lucide-react-native";
 import { api } from "#convex/_generated/api";
 import { useAuth } from "~/context/AuthContext";
+import {
+  DayCarousel,
+  type DayCarouselItem,
+  type DayCarouselRange,
+  getDayItem,
+  getDayItemFromKey,
+  getDayKey,
+  parseDayKey,
+  startOfLocalDay,
+} from "~/components/day-carousel";
 import { Text as UiText } from "~/components/ui/text";
 import type { DayEntry } from "~/types/dayEntries";
 
-const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-const WEEKDAY_FULL_LABELS = [
-  "Montag",
-  "Dienstag",
-  "Mittwoch",
-  "Donnerstag",
-  "Freitag",
-  "Samstag",
-  "Sonntag",
-];
 const ALL_DAY_TIME_LABEL = "Ganztägig";
-
-type WeekDayItem = {
-  key: string;
-  label: string;
-  fullLabel: string;
-  dayOfMonth: string;
-  isToday: boolean;
-};
-
-/**
- * Builds the current calendar week (Monday-Sunday) for the compact week view.
- */
-const getCurrentWeek = (referenceDate: Date): WeekDayItem[] => {
-  const ref = new Date(referenceDate);
-  ref.setHours(0, 0, 0, 0);
-
-  const mondayOffset = (ref.getDay() + 6) % 7;
-  const monday = new Date(ref);
-  monday.setDate(ref.getDate() - mondayOffset);
-
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + index);
-    date.setHours(0, 0, 0, 0);
-
-    const isToday = date.getTime() === ref.getTime();
-
-    return {
-      key: date.toISOString(),
-      label: WEEKDAY_LABELS[index],
-      fullLabel: WEEKDAY_FULL_LABELS[index],
-      dayOfMonth: `${date.getDate()}`,
-      isToday,
-    };
-  });
-};
 
 /**
  * Converts a HH:mm time label into minutes to enable chronological sorting.
@@ -156,30 +120,43 @@ export default function HomeScreen() {
   const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
   const [navBarWidth, setNavBarWidth] = useState(0);
   const navIndicatorProgress = useRef(new Animated.Value(0)).current;
-  const dayScrollX = useRef(new Animated.Value(0)).current;
-  const dayScrollRef = useRef<ScrollView | null>(null);
-  const hasAlignedInitialDay = useRef(false);
-  const pendingProgrammaticDayIndex = useRef<number | null>(null);
+  const previousEntriesByDay = useRef<Record<string, DayEntry[]> | null>(null);
   const { width: screenWidth } = useWindowDimensions();
-  const weekDays = useMemo(() => getCurrentWeek(new Date()), []);
-  const dayKeys = useMemo(() => weekDays.map((day) => day.key), [weekDays]);
+  const today = useMemo(() => startOfLocalDay(new Date()), []);
+  const todayKey = useMemo(() => getDayKey(today), [today]);
+  const [centerRequestId, setCenterRequestId] = useState(0);
+  const [centerDayKey, setCenterDayKey] = useState<string | null>(null);
+  const initialDayKey = useMemo(() => {
+    const initialDate =
+      typeof params.dayKey === "string" ? parseDayKey(params.dayKey) : null;
+    return getDayKey(initialDate ?? today);
+  }, [params.dayKey, today]);
   const [selectedDayKey, setSelectedDayKey] = useState(
-    () => weekDays.find((day) => day.isToday)?.key ?? weekDays[0]?.key ?? "",
+    initialDayKey,
   );
-  const selectedDayIndex = useMemo(() => {
-    const index = weekDays.findIndex((day) => day.key === selectedDayKey);
-    return index < 0 ? 0 : index;
-  }, [selectedDayKey, weekDays]);
+  const [selectedDay, setSelectedDay] = useState<DayCarouselItem>(() =>
+    getDayItemFromKey(initialDayKey, today),
+  );
+  const [dayRange, setDayRange] = useState<DayCarouselRange | null>(null);
   const entriesByDayResult = useQuery(
-    api.dayEntries.listByDayKeys,
-    user && isConvexAuthenticated ? { dayKeys } : "skip",
+    api.dayEntries.listByDayRange,
+    user && isConvexAuthenticated && dayRange ? dayRange : "skip",
   );
-  const entriesByDay = entriesByDayResult ?? {};
+  useEffect(() => {
+    if (!user) {
+      previousEntriesByDay.current = null;
+      return;
+    }
+
+    if (entriesByDayResult !== undefined) {
+      previousEntriesByDay.current = entriesByDayResult;
+    }
+  }, [entriesByDayResult, user]);
+  const entriesByDay = entriesByDayResult ?? previousEntriesByDay.current ?? {};
   const areEntriesLoading =
     Boolean(user) &&
     (!isConvexAuthenticated || entriesByDayResult === undefined);
-  const selectedDay =
-    weekDays.find((day) => day.key === selectedDayKey) ?? weekDays[0];
+  const isSelectedToday = selectedDayKey === todayKey;
   const selectedEntries = selectedDay
     ? (entriesByDay[selectedDay.key] ?? [])
     : [];
@@ -220,23 +197,20 @@ export default function HomeScreen() {
     return Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index);
   }, [sortedSelectedEntries]);
   const DAY_ITEM_WIDTH = 59;
-  const DAY_ITEM_HEIGHT = 89;
   const DAY_ITEM_GAP = 12;
   const DAY_ITEM_STEP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
   const daySidePadding = Math.max((screenWidth - DAY_ITEM_STEP) / 2, 0);
-  const scrollToDayIndex = (index: number, animated: boolean) => {
-    dayScrollRef.current?.scrollTo({ x: index * DAY_ITEM_STEP, animated });
+  const selectDay = (day: DayCarouselItem) => {
+    setSelectedDayKey(day.key);
+    setSelectedDay(day);
   };
-  const selectDayAtIndex = (index: number) => {
-    const boundedIndex = Math.min(Math.max(index, 0), weekDays.length - 1);
-    const nextDay = weekDays[boundedIndex];
-    if (!nextDay) return;
-
-    if (nextDay.key !== selectedDayKey) {
-      setSelectedDayKey(nextDay.key);
-    }
-    pendingProgrammaticDayIndex.current = boundedIndex;
-    scrollToDayIndex(boundedIndex, true);
+  const centerOnDay = (dayKey: string) => {
+    setCenterDayKey(dayKey);
+    setCenterRequestId((requestId) => requestId + 1);
+  };
+  const returnToToday = () => {
+    selectDay(getDayItem(today, today));
+    centerOnDay(todayKey);
   };
   const getEntryUrl = (entry: DayEntry) => {
     const dayLabel = selectedDay
@@ -287,15 +261,14 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (typeof params.dayKey === "string" && params.dayKey) {
-      const nextIndex = weekDays.findIndex((day) => day.key === params.dayKey);
-      setSelectedDayKey(params.dayKey);
-      if (nextIndex >= 0) {
-        requestAnimationFrame(() => {
-          scrollToDayIndex(nextIndex, false);
-        });
-      }
+      const nextDate = parseDayKey(params.dayKey);
+      if (!nextDate) return;
+
+      const nextDayKey = getDayKey(nextDate);
+      selectDay(getDayItem(nextDate, today));
+      centerOnDay(nextDayKey);
     }
-  }, [params.dayKey, weekDays]);
+  }, [params.dayKey, today]);
 
   useEffect(() => {
     Animated.spring(navIndicatorProgress, {
@@ -306,29 +279,6 @@ export default function HomeScreen() {
       useNativeDriver: true,
     }).start();
   }, [activeNav, navIndicatorProgress]);
-
-  useEffect(() => {
-    if (!hasAlignedInitialDay.current) return;
-
-    requestAnimationFrame(() => {
-      scrollToDayIndex(selectedDayIndex, false);
-    });
-  }, [screenWidth]);
-
-  const settleCarouselAtOffset = (offsetX: number) => {
-    const nextIndex = Math.round(offsetX / DAY_ITEM_STEP);
-    const boundedIndex = Math.min(Math.max(nextIndex, 0), weekDays.length - 1);
-    const nextDay = weekDays[boundedIndex];
-    if (!nextDay) return;
-
-    if (pendingProgrammaticDayIndex.current === boundedIndex) {
-      pendingProgrammaticDayIndex.current = null;
-    }
-
-    if (nextDay.key !== selectedDayKey) {
-      setSelectedDayKey(nextDay.key);
-    }
-  };
 
   return (
     <View
@@ -380,143 +330,15 @@ export default function HomeScreen() {
         </View>
 
         <View className="mt-10">
-          <View className="-mx-8 h-[116px]">
-            <View
-              pointerEvents="none"
-              style={{
-                position: "absolute",
-                top: -12,
-                left: 0,
-                right: 0,
-                alignItems: "center",
-                zIndex: 2,
-              }}
-            >
-              <View
-                style={{
-                  width: 0,
-                  height: 0,
-                  borderLeftWidth: 6,
-                  borderRightWidth: 6,
-                  borderBottomWidth: 8,
-                  borderLeftColor: "transparent",
-                  borderRightColor: "transparent",
-                  borderBottomColor: "#979797",
-                  opacity: 0.55,
-                  transform: [{ rotate: "180deg" }],
-                }}
-              />
-            </View>
-            <Animated.ScrollView
-              ref={dayScrollRef}
-              horizontal
-              bounces={false}
-              removeClippedSubviews={false}
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="always"
-              snapToInterval={DAY_ITEM_STEP}
-              decelerationRate="fast"
-              contentContainerStyle={{
-                paddingHorizontal: daySidePadding,
-                alignItems: "center",
-              }}
-              onScroll={Animated.event(
-                [{ nativeEvent: { contentOffset: { x: dayScrollX } } }],
-                {
-                  useNativeDriver: true,
-                },
-              )}
-              scrollEventThrottle={16}
-              onLayout={() => {
-                if (!hasAlignedInitialDay.current) {
-                  scrollToDayIndex(selectedDayIndex, false);
-                  hasAlignedInitialDay.current = true;
-                }
-              }}
-              onMomentumScrollEnd={(event) => {
-                settleCarouselAtOffset(event.nativeEvent.contentOffset.x);
-              }}
-            >
-              {weekDays.map((day, index) => {
-                const isSelected = index === selectedDayIndex;
-                const inputRange = [
-                  (index - 2) * DAY_ITEM_STEP,
-                  (index - 1) * DAY_ITEM_STEP,
-                  index * DAY_ITEM_STEP,
-                  (index + 1) * DAY_ITEM_STEP,
-                  (index + 2) * DAY_ITEM_STEP,
-                ];
-                const scale = dayScrollX.interpolate({
-                  inputRange,
-                  outputRange: [0.74, 0.88, 1.12, 0.88, 0.74],
-                  extrapolate: "clamp",
-                });
-                const translateY = dayScrollX.interpolate({
-                  inputRange,
-                  outputRange: [14, 7, 0, 7, 14],
-                  extrapolate: "clamp",
-                });
-                return (
-                  <Animated.View
-                    key={day.key}
-                    style={{
-                      width: DAY_ITEM_WIDTH,
-                      height: DAY_ITEM_HEIGHT,
-                      marginHorizontal: DAY_ITEM_GAP / 2,
-                      alignItems: "center",
-                      justifyContent: "flex-start",
-                      transform: [{ scale }, { translateY }],
-                    }}
-                  >
-                    <TouchableOpacity
-                      className="h-full w-full items-center justify-start"
-                      activeOpacity={0.85}
-                      onPress={() => selectDayAtIndex(index)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      style={{
-                        backgroundColor: "#FFFFFF",
-                        borderRadius: 30,
-                        paddingTop: 2,
-                        paddingBottom: 22,
-                        borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.08)",
-                        shadowColor: "#000000",
-                        shadowOpacity: Platform.OS === "ios" ? 0.05 : 0,
-                        shadowRadius: 4,
-                        shadowOffset: { width: 0, height: 2 },
-                        elevation: 0,
-                      }}
-                    >
-                      <Text
-                        className={`font-poppins font-bold ${isSelected ? "text-20 text-white" : "text-16 text-text/70"}`}
-                        style={{
-                          marginTop: 5,
-                          width: isSelected ? 44 : 38,
-                          height: isSelected ? 44 : 38,
-                          borderRadius: 999,
-                          textAlign: "center",
-                          textAlignVertical: "center",
-                          lineHeight: isSelected ? 46 : 38,
-                          backgroundColor: isSelected
-                            ? "hsl(316.1 100% 64.9%)"
-                            : "transparent",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {day.dayOfMonth}
-                      </Text>
-                      <Text
-                        className={`mt-2 font-poppins text-12 ${isSelected ? "text-text/80" : "text-text/45"}`}
-                        style={{ marginBottom: 6 }}
-                      >
-                        {day.label}
-                      </Text>
-                    </TouchableOpacity>
-                  </Animated.View>
-                );
-              })}
-            </Animated.ScrollView>
-          </View>
+          <DayCarousel
+            centerDayKey={centerDayKey}
+            centerRequestId={centerRequestId}
+            initialDayKey={initialDayKey}
+            onRangeChange={setDayRange}
+            onSelectedDayChange={selectDay}
+            selectedDayKey={selectedDayKey}
+            sidePadding={daySidePadding}
+          />
         </View>
       </View>
 
@@ -530,9 +352,29 @@ export default function HomeScreen() {
           elevation: 2,
         }}
       >
-        <Text className="text-text font-poppins text-28 font-bold capitalize">
-          {selectedDateLabel}
-        </Text>
+        <View className="flex-row items-center justify-between gap-4">
+          <Text className="text-text flex-1 font-poppins text-28 font-bold capitalize">
+            {selectedDateLabel}
+          </Text>
+          {!isSelectedToday ? (
+            <TouchableOpacity
+              activeOpacity={0.86}
+              accessibilityRole="button"
+              accessibilityLabel="Zum heutigen Tag springen"
+              onPress={returnToToday}
+              className="rounded-full px-4 py-2"
+              style={{
+                backgroundColor: "rgba(58,123,255,0.12)",
+                borderWidth: 1,
+                borderColor: "rgba(58,123,255,0.26)",
+              }}
+            >
+              <Text className="font-poppins text-12 font-bold text-[#3A7BFF]">
+                Heute
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
         <ScrollView
           className="mt-5 flex-1"
