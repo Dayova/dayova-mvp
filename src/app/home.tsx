@@ -28,14 +28,16 @@ import { api } from "#convex/_generated/api";
 import { useAuth } from "~/context/AuthContext";
 import {
   DayCarousel,
+  type DayCarouselHandle,
   type DayCarouselItem,
-  type DayCarouselRange,
   getDayItem,
   getDayItemFromKey,
+} from "~/components/day-carousel";
+import {
   getDayKey,
   parseDayKey,
-  startOfLocalDay,
-} from "~/components/day-carousel";
+  useCurrentLocalDay,
+} from "~/lib/day-key";
 import { Text as UiText } from "~/components/ui/text";
 import type { DayEntry } from "~/types/dayEntries";
 
@@ -123,24 +125,35 @@ export default function HomeScreen() {
   const [isReturningToToday, setIsReturningToToday] = useState(false);
   const [navBarWidth, setNavBarWidth] = useState(0);
   const navIndicatorProgress = useRef(new Animated.Value(0)).current;
+  const dayCarouselRef = useRef<DayCarouselHandle | null>(null);
   const previousEntriesByDay = useRef<Record<string, DayEntry[]> | null>(null);
-  const today = useMemo(() => startOfLocalDay(new Date()), []);
+  const today = useCurrentLocalDay();
   const todayKey = useMemo(() => getDayKey(today), [today]);
-  const [centerRequestId, setCenterRequestId] = useState(0);
-  const [centerDayKey, setCenterDayKey] = useState<string | null>(null);
   const initialDayKey = useMemo(() => {
     const initialDate =
       typeof params.dayKey === "string" ? parseDayKey(params.dayKey) : null;
     return getDayKey(initialDate ?? today);
   }, [params.dayKey, today]);
   const [selectedDayKey, setSelectedDayKey] = useState(initialDayKey);
-  const [selectedDay, setSelectedDay] = useState<DayCarouselItem>(() =>
-    getDayItemFromKey(initialDayKey, today),
+  const selectedDay = useMemo(
+    () => getDayItemFromKey(selectedDayKey, today),
+    [selectedDayKey, today],
   );
-  const [dayRange, setDayRange] = useState<DayCarouselRange | null>(null);
+  const selectedDayQueryKeys = useMemo(() => {
+    const selectedDate = parseDayKey(selectedDayKey);
+    const legacyIsoDayKey = selectedDate?.toISOString();
+
+    return legacyIsoDayKey && legacyIsoDayKey !== selectedDayKey
+      ? [selectedDayKey, legacyIsoDayKey]
+      : [selectedDayKey];
+  }, [selectedDayKey]);
   const entriesByDayResult = useQuery(
-    api.dayEntries.listByDayRange,
-    user && isConvexAuthenticated && dayRange ? dayRange : "skip",
+    api.dayEntries.listByDayKeys,
+    user && isConvexAuthenticated
+      ? {
+          dayKeys: selectedDayQueryKeys,
+        }
+      : "skip",
   );
   useEffect(() => {
     if (!user) {
@@ -157,9 +170,11 @@ export default function HomeScreen() {
     Boolean(user) &&
     (!isConvexAuthenticated || entriesByDayResult === undefined);
   const isSelectedToday = selectedDayKey === todayKey;
-  const selectedEntries = selectedDay
-    ? (entriesByDay[selectedDay.key] ?? [])
-    : [];
+  const selectedEntries = useMemo(
+    () =>
+      selectedDayQueryKeys.flatMap((dayKey) => entriesByDay[dayKey] ?? []),
+    [entriesByDay, selectedDayQueryKeys],
+  );
   const sortedSelectedEntries = useMemo(
     () =>
       [...selectedEntries].sort(
@@ -170,16 +185,17 @@ export default function HomeScreen() {
     [selectedEntries],
   );
   const selectedDateLabel = useMemo(() => {
-    if (!selectedDay?.key) return "";
+    const selectedDate = parseDayKey(selectedDayKey);
+    if (!selectedDate) return "";
 
     return new Intl.DateTimeFormat("de-DE", {
       weekday: "long",
       day: "2-digit",
       month: "long",
     })
-      .format(new Date(selectedDay.key))
+      .format(selectedDate)
       .replace(/[.,]/g, "");
-  }, [selectedDay?.key]);
+  }, [selectedDayKey]);
   const entriesByHour = useMemo(() => {
     const grouped: Record<number, DayEntry[]> = {};
     sortedSelectedEntries.forEach((entry) => {
@@ -202,17 +218,17 @@ export default function HomeScreen() {
   }, [sortedSelectedEntries]);
   const selectDay = (day: DayCarouselItem) => {
     setSelectedDayKey(day.key);
-    setSelectedDay(day);
   };
   const centerOnDay = (dayKey: string) => {
-    setCenterDayKey(dayKey);
-    setCenterRequestId((requestId) => requestId + 1);
+    requestAnimationFrame(() => {
+      dayCarouselRef.current?.scrollToDay(dayKey, true);
+    });
   };
   const returnToToday = () => {
     if (isReturningToToday) return;
 
     setIsReturningToToday(true);
-    selectDay(getDayItem(today, today));
+    selectDay(getDayItem(today));
     centerOnDay(todayKey);
   };
   const getEntryUrl = (entry: DayEntry) => {
@@ -268,10 +284,10 @@ export default function HomeScreen() {
       if (!nextDate) return;
 
       const nextDayKey = getDayKey(nextDate);
-      selectDay(getDayItem(nextDate, today));
+      selectDay(getDayItem(nextDate));
       centerOnDay(nextDayKey);
     }
-  }, [params.dayKey, today]);
+  }, [params.dayKey]);
 
   useEffect(() => {
     if (!isReturningToToday || selectedDayKey !== todayKey) return;
@@ -341,10 +357,8 @@ export default function HomeScreen() {
 
         <View className="mt-10">
           <DayCarousel
-            centerDayKey={centerDayKey}
-            centerRequestId={centerRequestId}
+            ref={dayCarouselRef}
             initialDayKey={initialDayKey}
-            onRangeChange={setDayRange}
             onSelectedDayChange={selectDay}
             selectedDayKey={selectedDayKey}
           />

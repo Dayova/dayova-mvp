@@ -13,7 +13,6 @@
     "expo:web": "expo run:web",
     "web": "run-p expo:web convex:dev",
     "typecheck": "tsc --noEmit",
-    "postinstall": "patch-package",
     "knip": "knip"
   },
   "dependencies": {
@@ -41,7 +40,6 @@
     "expo-system-ui": "~6.0.9",
     "expo-updates": "~29.0.17",
     "nativewind": "^4.2.3",
-    "patch-package": "^8.0.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",

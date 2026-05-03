@@ -93,36 +93,6 @@ export const listByDayKeys = query({
   },
 });
 
-export const listByDayRange = query({
-  args: {
-    startDayKey: v.string(),
-    endDayKey: v.string(),
-  },
-  handler: async (ctx, args) => {
-    if (args.startDayKey > args.endDayKey) {
-      throw new Error("Starttag muss vor Endtag liegen.");
-    }
-
-    const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
-    const entries = await ctx.db
-      .query("dayEntries")
-      .withIndex("by_ownerTokenIdentifier_and_dayKey", (q) =>
-        q
-          .eq("ownerTokenIdentifier", ownerTokenIdentifier)
-          .gte("dayKey", args.startDayKey)
-          .lte("dayKey", args.endDayKey),
-      )
-      .take(1000);
-
-    const grouped: Record<string, PublicDayEntry[]> = {};
-    for (const entry of entries) {
-      grouped[entry.dayKey] = [...(grouped[entry.dayKey] ?? []), publicEntry(entry)];
-    }
-
-    return grouped;
-  },
-});
-
 export const get = query({
   args: {
     id: v.id("dayEntries"),
