@@ -113,7 +113,11 @@ export function DayCarousel({
   const [viewportWidth, setViewportWidth] = useState(0);
   const [days, setDays] = useState(() => {
     const initialDate = parseDayKey(initialDayKey) ?? today;
-    return getDayRange(addDays(initialDate, -DAY_WINDOW_SIZE - DAY_WINDOW_RADIUS), MAX_DAY_COUNT, today);
+    return getDayRange(
+      addDays(initialDate, -DAY_WINDOW_SIZE - DAY_WINDOW_RADIUS),
+      MAX_DAY_COUNT,
+      today,
+    );
   });
   const sidePadding = Math.max((viewportWidth - DAY_ITEM_STEP) / 2, 0);
 
@@ -145,6 +149,13 @@ export function DayCarousel({
     });
   };
 
+  const notifySelectedDay = (day: DayCarouselItem) => {
+    if (day.key === latestSelectedDayKey.current) return;
+
+    latestSelectedDayKey.current = day.key;
+    onSelectedDayChange(day);
+  };
+
   useEffect(() => {
     latestSelectedDayKey.current = selectedDayKey;
   }, [selectedDayKey]);
@@ -167,7 +178,9 @@ export function DayCarousel({
 
     lastCenterRequestId.current = centerRequestId;
     const centerDate = parseDayKey(centerDayKey) ?? today;
-    const existingIndex = days.findIndex((day) => day.key === getDayKey(centerDate));
+    const existingIndex = days.findIndex(
+      (day) => day.key === getDayKey(centerDate),
+    );
     if (existingIndex >= 0) {
       scrollToDayIndex(existingIndex, true);
       return;
@@ -186,11 +199,7 @@ export function DayCarousel({
   }, [centerDayKey, centerRequestId, days, today]);
 
   const selectDay = (day: DayCarouselItem, index: number) => {
-    if (day.key !== latestSelectedDayKey.current) {
-      latestSelectedDayKey.current = day.key;
-      onSelectedDayChange(day);
-    }
-
+    notifySelectedDay(day);
     scrollToDayIndex(index, true);
   };
 
@@ -212,12 +221,16 @@ export function DayCarousel({
         today,
       );
       const combinedDays = [...previousDays, ...currentDays];
-      const daysToTrim = Math.max(combinedDays.length - MAX_CACHED_DAY_COUNT, 0);
+      const daysToTrim = Math.max(
+        combinedDays.length - MAX_CACHED_DAY_COUNT,
+        0,
+      );
       const nextDays =
         daysToTrim > 0
           ? combinedDays.slice(0, combinedDays.length - daysToTrim)
           : combinedDays;
-      const nextOffsetX = latestOffsetX.current + previousDays.length * DAY_ITEM_STEP;
+      const nextOffsetX =
+        latestOffsetX.current + previousDays.length * DAY_ITEM_STEP;
 
       requestAnimationFrame(() => {
         scrollToOffset(nextOffsetX, false);
@@ -246,7 +259,10 @@ export function DayCarousel({
         today,
       );
       const combinedDays = [...currentDays, ...nextAddedDays];
-      const daysToTrim = Math.max(combinedDays.length - MAX_CACHED_DAY_COUNT, 0);
+      const daysToTrim = Math.max(
+        combinedDays.length - MAX_CACHED_DAY_COUNT,
+        0,
+      );
       const nextDays =
         daysToTrim > 0 ? combinedDays.slice(daysToTrim) : combinedDays;
       const nextOffsetX = latestOffsetX.current - daysToTrim * DAY_ITEM_STEP;
@@ -276,14 +292,12 @@ export function DayCarousel({
       scrollToDayIndex(nextIndex, true);
     }
 
-    if (nextDay.key !== latestSelectedDayKey.current) {
-      latestSelectedDayKey.current = nextDay.key;
-      onSelectedDayChange(nextDay);
-    }
+    notifySelectedDay(nextDay);
   };
 
   const updateScrollOffset = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    latestOffsetX.current = event.nativeEvent.contentOffset.x;
+    const offsetX = event.nativeEvent.contentOffset.x;
+    latestOffsetX.current = offsetX;
   };
 
   const maintainWindowAfterSettle = (
@@ -365,12 +379,18 @@ export function DayCarousel({
         onScroll={updateScrollOffset}
         onScrollEndDrag={(event) => {
           const velocityX = Math.abs(event.nativeEvent.velocity?.x ?? 0);
+          const targetOffsetX = event.nativeEvent.targetContentOffset?.x;
+          if (typeof targetOffsetX === "number") {
+            settleAtOffset(targetOffsetX, false);
+            return;
+          }
+
           if (velocityX < 0.05) {
             settleAtOffset(event.nativeEvent.contentOffset.x, true);
             maintainWindowAfterSettle(event);
           }
         }}
-        scrollEventThrottle={48}
+        scrollEventThrottle={16}
         bounces={false}
         showsHorizontalScrollIndicator={false}
         snapToOffsets={snapOffsets}
