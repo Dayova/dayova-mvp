@@ -339,11 +339,41 @@ export default function HomeScreen() {
             selectedDayKey={selectedDayKey}
             sidePadding={daySidePadding}
           />
+          {!isSelectedToday ? (
+            <View className="mt-1 items-center">
+              <TouchableOpacity
+                activeOpacity={0.88}
+                accessibilityRole="button"
+                accessibilityLabel="Zum heutigen Tag im Datumskarussell springen"
+                onPress={returnToToday}
+                className="flex-row items-center rounded-full bg-white px-5 py-3"
+                style={{
+                  borderWidth: 1,
+                  borderColor: "rgba(58,123,255,0.18)",
+                  shadowColor: "#3A7BFF",
+                  shadowOpacity: Platform.OS === "ios" ? 0.12 : 0,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 2,
+                }}
+              >
+                <View
+                  className="mr-2 h-6 w-6 items-center justify-center rounded-full"
+                  style={{ backgroundColor: "rgba(58,123,255,0.12)" }}
+                >
+                  <CalendarDays size={13} color="#3A7BFF" strokeWidth={2.5} />
+                </View>
+                <Text className="font-poppins text-13 font-bold text-[#2F68E8]">
+                  Zurück zu heute
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </View>
       </View>
 
       <View
-        className="mt-14 flex-1 rounded-t-[36px] bg-white px-6 pt-6 pb-8"
+        className={`${isSelectedToday ? "mt-12" : "mt-7"} flex-1 rounded-t-[36px] bg-white px-6 pt-6 pb-8`}
         style={{
           shadowColor: "#000000",
           shadowOpacity: Platform.OS === "ios" ? 0.07 : 0,
@@ -352,28 +382,10 @@ export default function HomeScreen() {
           elevation: 2,
         }}
       >
-        <View className="flex-row items-center justify-between gap-4">
-          <Text className="text-text flex-1 font-poppins text-28 font-bold capitalize">
+        <View>
+          <Text className="text-text font-poppins text-28 font-bold capitalize">
             {selectedDateLabel}
           </Text>
-          {!isSelectedToday ? (
-            <TouchableOpacity
-              activeOpacity={0.86}
-              accessibilityRole="button"
-              accessibilityLabel="Zum heutigen Tag springen"
-              onPress={returnToToday}
-              className="rounded-full px-4 py-2"
-              style={{
-                backgroundColor: "rgba(58,123,255,0.12)",
-                borderWidth: 1,
-                borderColor: "rgba(58,123,255,0.26)",
-              }}
-            >
-              <Text className="font-poppins text-12 font-bold text-[#3A7BFF]">
-                Heute
-              </Text>
-            </TouchableOpacity>
-          ) : null}
         </View>
 
         <ScrollView
