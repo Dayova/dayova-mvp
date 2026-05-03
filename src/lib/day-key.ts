@@ -52,7 +52,7 @@ export const parseDayKey = (dayKey?: string) => {
   return startOfLocalDay(parsed);
 };
 
-export const getCurrentLocalDay = () => startOfLocalDay(new Date());
+const getCurrentLocalDay = () => startOfLocalDay(new Date());
 
 const getMsUntilNextLocalDay = () => {
   const now = new Date();

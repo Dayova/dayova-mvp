@@ -43,6 +43,7 @@ const DAY_ITEM_STEP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
 
 export type DayCarouselItem = {
   key: string;
+  accessibilityLabel: string;
   label: string;
   fullLabel: string;
   dayOfMonth: string;
@@ -71,6 +72,12 @@ export const getDayItem = (date: Date): DayCarouselItem => {
 
   return {
     key: getDayKey(localDate),
+    accessibilityLabel: new Intl.DateTimeFormat("de-DE", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(localDate),
     label: WEEKDAY_LABELS[labelIndex],
     fullLabel: WEEKDAY_FULL_LABELS[labelIndex],
     dayOfMonth: `${localDate.getDate()}`,
@@ -110,6 +117,9 @@ const DayCell = memo(function DayCell({
     >
       <Pressable
         className="items-center justify-start"
+        accessibilityRole="button"
+        accessibilityLabel={day.accessibilityLabel}
+        accessibilityState={{ selected: isSelected }}
         onPressIn={(event) => {
           pressStartX.current = event.nativeEvent.pageX;
         }}

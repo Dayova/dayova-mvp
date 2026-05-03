@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   expo-keep-awake@15.0.8:
-    hash: be202a35ffbc290b7eb19375a3cab3f88f91f008181a756ed30b312260da81f4
+    hash: 3a20a3f86e4b3d10809b4c0aed2c19508bd4e2600ab489442a93c49735a6a6c1
     path: patches/expo-keep-awake@15.0.8.patch
 
 importers:
@@ -8161,7 +8161,7 @@ snapshots:
 
   expo-json-utils@0.15.0: {}
 
-  expo-keep-awake@15.0.8(patch_hash=be202a35ffbc290b7eb19375a3cab3f88f91f008181a756ed30b312260da81f4)(expo@54.0.34)(react@19.1.0):
+  expo-keep-awake@15.0.8(patch_hash=3a20a3f86e4b3d10809b4c0aed2c19508bd4e2600ab489442a93c49735a6a6c1)(expo@54.0.34)(react@19.1.0):
     dependencies:
       expo: 54.0.34(@babel/core@7.29.0)(@expo/dom-webview@55.0.5)(@expo/metro-runtime@6.1.2)(bufferutil@4.1.0)(expo-router@6.0.23)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
       react: 19.1.0
@@ -8319,7 +8319,7 @@ snapshots:
       expo-constants: 18.0.13(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))
       expo-file-system: 19.0.22(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))
       expo-font: 14.0.11(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
-      expo-keep-awake: 15.0.8(patch_hash=be202a35ffbc290b7eb19375a3cab3f88f91f008181a756ed30b312260da81f4)(expo@54.0.34)(react@19.1.0)
+      expo-keep-awake: 15.0.8(patch_hash=3a20a3f86e4b3d10809b4c0aed2c19508bd4e2600ab489442a93c49735a6a6c1)(expo@54.0.34)(react@19.1.0)
       expo-modules-autolinking: 3.0.25
       expo-modules-core: 3.0.30(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       pretty-format: 29.7.0
