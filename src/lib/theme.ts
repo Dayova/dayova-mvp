@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, type Theme } from "@react-navigation/native";
 
-export const THEME = {
+const THEME = {
   light: {
     background: "hsl(0 0% 100%)",
     foreground: "hsl(0 0% 10.2%)",
