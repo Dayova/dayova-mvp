@@ -202,7 +202,7 @@ function OtpCodeInput({
             className="font-poppins text-28 font-semibold text-text"
             style={{ includeFontPadding: false, lineHeight: 36 }}
           >
-            {symbol || (isFocused ? <Cursor cursorSymbol="" /> : null)}
+            {symbol || (isFocused ? <Cursor /> : null)}
           </Text>
         </View>
       )}
