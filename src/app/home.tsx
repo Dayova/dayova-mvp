@@ -95,7 +95,10 @@ const getEntryLabel = (entry: DayEntry) => {
 
 const getEntryTimeLabel = (entry: DayEntry) => entry.time ?? ALL_DAY_TIME_LABEL;
 const getEntryDisplayTimeLabel = (entry: DayEntry) =>
-  entry.time ?? (entry.durationMinutes ? `${entry.durationMinutes} Min.` : ALL_DAY_TIME_LABEL);
+  entry.time ??
+  (entry.durationMinutes
+    ? `${entry.durationMinutes} Min.`
+    : ALL_DAY_TIME_LABEL);
 
 const getLearningRangeLabel = (entry: DayEntry) => {
   const timeLabel = getEntryTimeLabel(entry);
@@ -118,6 +121,7 @@ export default function HomeScreen() {
     "calendar",
   );
   const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
+  const [isReturningToToday, setIsReturningToToday] = useState(false);
   const [navBarWidth, setNavBarWidth] = useState(0);
   const navIndicatorProgress = useRef(new Animated.Value(0)).current;
   const previousEntriesByDay = useRef<Record<string, DayEntry[]> | null>(null);
@@ -131,9 +135,7 @@ export default function HomeScreen() {
       typeof params.dayKey === "string" ? parseDayKey(params.dayKey) : null;
     return getDayKey(initialDate ?? today);
   }, [params.dayKey, today]);
-  const [selectedDayKey, setSelectedDayKey] = useState(
-    initialDayKey,
-  );
+  const [selectedDayKey, setSelectedDayKey] = useState(initialDayKey);
   const [selectedDay, setSelectedDay] = useState<DayCarouselItem>(() =>
     getDayItemFromKey(initialDayKey, today),
   );
@@ -164,7 +166,8 @@ export default function HomeScreen() {
     () =>
       [...selectedEntries].sort(
         (a, b) =>
-          timeToMinutes(getEntryTimeLabel(a)) - timeToMinutes(getEntryTimeLabel(b)),
+          timeToMinutes(getEntryTimeLabel(a)) -
+          timeToMinutes(getEntryTimeLabel(b)),
       ),
     [selectedEntries],
   );
@@ -194,7 +197,10 @@ export default function HomeScreen() {
       .filter((hour): hour is number => hour !== null);
     const startHour = Math.min(6, ...(entryHours.length ? entryHours : [6]));
     const endHour = Math.max(22, ...(entryHours.length ? entryHours : [22]));
-    return Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index);
+    return Array.from(
+      { length: endHour - startHour + 1 },
+      (_, index) => startHour + index,
+    );
   }, [sortedSelectedEntries]);
   const DAY_ITEM_WIDTH = 59;
   const DAY_ITEM_GAP = 12;
@@ -209,6 +215,9 @@ export default function HomeScreen() {
     setCenterRequestId((requestId) => requestId + 1);
   };
   const returnToToday = () => {
+    if (isReturningToToday) return;
+
+    setIsReturningToToday(true);
     selectDay(getDayItem(today, today));
     centerOnDay(todayKey);
   };
@@ -271,6 +280,16 @@ export default function HomeScreen() {
   }, [params.dayKey, today]);
 
   useEffect(() => {
+    if (!isReturningToToday || selectedDayKey !== todayKey) return;
+
+    const timeoutId = setTimeout(() => {
+      setIsReturningToToday(false);
+    }, 120);
+
+    return () => clearTimeout(timeoutId);
+  }, [isReturningToToday, selectedDayKey, todayKey]);
+
+  useEffect(() => {
     Animated.spring(navIndicatorProgress, {
       toValue: activeNav === "calendar" ? 0 : 1,
       stiffness: 220,
@@ -281,10 +300,7 @@ export default function HomeScreen() {
   }, [activeNav, navIndicatorProgress]);
 
   return (
-    <View
-      className="flex-1 pt-16"
-      style={{ backgroundColor: "#F5F3F6" }}
-    >
+    <View className="flex-1 pt-16" style={{ backgroundColor: "#F5F3F6" }}>
       <StatusBar style="dark" />
 
       <View className="px-8">
@@ -339,13 +355,13 @@ export default function HomeScreen() {
             selectedDayKey={selectedDayKey}
             sidePadding={daySidePadding}
           />
-          {!isSelectedToday ? (
+          {!isSelectedToday && !isReturningToToday ? (
             <View className="mt-1 items-center">
               <TouchableOpacity
                 activeOpacity={0.88}
                 accessibilityRole="button"
                 accessibilityLabel="Zum heutigen Tag im Datumskarussell springen"
-                onPress={returnToToday}
+                onPressIn={returnToToday}
                 className="flex-row items-center rounded-full bg-white px-5 py-3"
                 style={{
                   borderWidth: 1,
@@ -413,11 +429,13 @@ export default function HomeScreen() {
                     className="mb-2 mt-2 h-[2px] w-full rounded-full"
                     style={{
                       backgroundColor:
-                        hourEntries.length > 0 ? "#3A7BFF" : "rgba(58,123,255,0.20)",
+                        hourEntries.length > 0
+                          ? "#3A7BFF"
+                          : "rgba(58,123,255,0.20)",
                     }}
                   />
                   {hourEntries.length > 0 ? (
-                    hourEntries.map((entry, entryIndex) => (
+                    hourEntries.map((entry, entryIndex) =>
                       (() => {
                         const isLearning = isLearningSlotEntry(entry);
                         return (
@@ -425,7 +443,9 @@ export default function HomeScreen() {
                             key={entry.id}
                             className={`${entryIndex === 0 ? "" : "mt-2"} ml-4 rounded-[30px] px-4 py-3`}
                             style={{
-                              backgroundColor: isLearning ? "rgba(246,178,122,0.2)" : "rgba(95,201,176,0.2)",
+                              backgroundColor: isLearning
+                                ? "rgba(246,178,122,0.2)"
+                                : "rgba(95,201,176,0.2)",
                             }}
                           >
                             <View className="flex-row items-center justify-between">
@@ -444,7 +464,9 @@ export default function HomeScreen() {
                                     style={{ marginLeft: 24 }}
                                   />
                                   <Text className="ml-1.5 font-poppins text-12 text-[#1A1A1A]/85">
-                                    {isLearning ? getLearningRangeLabel(entry) : getEntryDisplayTimeLabel(entry)}
+                                    {isLearning
+                                      ? getLearningRangeLabel(entry)
+                                      : getEntryDisplayTimeLabel(entry)}
                                   </Text>
                                 </View>
                               </View>
@@ -456,14 +478,20 @@ export default function HomeScreen() {
                                 className="mr-2 h-10 w-10 items-center justify-center rounded-full"
                                 style={{ backgroundColor: "#5FC9B0" }}
                               >
-                                <ArrowUpRight size={20} color="#FFFFFF" strokeWidth={2.4} />
+                                <ArrowUpRight
+                                  size={20}
+                                  color="#FFFFFF"
+                                  strokeWidth={2.4}
+                                />
                               </TouchableOpacity>
                             </View>
                           </View>
                         );
-                      })()
-                    ))
-                  ) : <View className="h-6" />}
+                      })(),
+                    )
+                  ) : (
+                    <View className="h-6" />
+                  )}
                 </View>
               </View>
             );
