@@ -120,5 +120,4 @@ export {
   FieldLabel,
   FieldMessage,
   FieldTrigger,
-  fieldSurfaceStyle,
 };
