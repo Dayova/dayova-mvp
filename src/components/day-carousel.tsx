@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  FlatList,
-  LayoutAnimation,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   View,
   type NativeScrollEvent,
@@ -23,6 +22,7 @@ const WEEKDAY_FULL_LABELS = [
 const DAY_WINDOW_RADIUS = 15;
 const DAY_WINDOW_SIZE = DAY_WINDOW_RADIUS * 2 + 1;
 const MAX_DAY_COUNT = DAY_WINDOW_SIZE * 3;
+const MAX_CACHED_DAY_COUNT = DAY_WINDOW_SIZE * 7;
 const DAY_ITEM_WIDTH = 59;
 const DAY_ITEM_HEIGHT = 89;
 const DAY_ITEM_GAP = 12;
@@ -94,15 +94,6 @@ const getDayRange = (startDate: Date, dayCount: number, today: Date) =>
     getDayItem(addDays(startDate, index), today),
   );
 
-const configureSelectionAnimation = () => {
-  LayoutAnimation.configureNext({
-    duration: 120,
-    update: {
-      type: LayoutAnimation.Types.easeInEaseOut,
-    },
-  });
-};
-
 export function DayCarousel({
   centerDayKey,
   centerRequestId,
@@ -113,8 +104,10 @@ export function DayCarousel({
   sidePadding,
 }: DayCarouselProps) {
   const today = useMemo(() => startOfLocalDay(new Date()), []);
-  const listRef = useRef<FlatList<DayCarouselItem> | null>(null);
+  const scrollViewRef = useRef<ScrollView | null>(null);
   const latestSelectedDayKey = useRef(selectedDayKey);
+  const latestOffsetX = useRef(0);
+  const hasHandledInitialLayout = useRef(false);
   const lastCenterRequestId = useRef(centerRequestId);
   const isLoadingPreviousDays = useRef(false);
   const isLoadingNextDays = useRef(false);
@@ -129,8 +122,19 @@ export function DayCarousel({
     return index < 0 ? DAY_WINDOW_SIZE + DAY_WINDOW_RADIUS : index;
   }, [days, selectedDayKey]);
   const scrollToDayIndex = (index: number, animated: boolean) => {
-    listRef.current?.scrollToOffset({
-      offset: index * DAY_ITEM_STEP,
+    const offsetX = index * DAY_ITEM_STEP;
+    latestOffsetX.current = offsetX;
+    scrollViewRef.current?.scrollTo({
+      x: offsetX,
+      animated,
+    });
+  };
+
+  const scrollToOffset = (offsetX: number, animated: boolean) => {
+    const boundedOffsetX = Math.max(offsetX, 0);
+    latestOffsetX.current = boundedOffsetX;
+    scrollViewRef.current?.scrollTo({
+      x: boundedOffsetX,
       animated,
     });
   };
@@ -157,6 +161,12 @@ export function DayCarousel({
 
     lastCenterRequestId.current = centerRequestId;
     const centerDate = parseDayKey(centerDayKey) ?? today;
+    const existingIndex = days.findIndex((day) => day.key === getDayKey(centerDate));
+    if (existingIndex >= 0) {
+      scrollToDayIndex(existingIndex, true);
+      return;
+    }
+
     const nextDays = getDayRange(
       addDays(centerDate, -DAY_WINDOW_SIZE - DAY_WINDOW_RADIUS),
       MAX_DAY_COUNT,
@@ -167,11 +177,10 @@ export function DayCarousel({
     requestAnimationFrame(() => {
       scrollToDayIndex(DAY_WINDOW_SIZE + DAY_WINDOW_RADIUS, true);
     });
-  }, [centerDayKey, centerRequestId, today]);
+  }, [centerDayKey, centerRequestId, days, today]);
 
   const selectDay = (day: DayCarouselItem, index: number) => {
     if (day.key !== latestSelectedDayKey.current) {
-      configureSelectionAnimation();
       latestSelectedDayKey.current = day.key;
       onSelectedDayChange(day);
     }
@@ -185,22 +194,27 @@ export function DayCarousel({
 
     setDays((currentDays) => {
       const firstDay = currentDays[0];
-      if (!firstDay) return currentDays;
+      if (!firstDay) {
+        isLoadingPreviousDays.current = false;
+        return currentDays;
+      }
 
       const firstDate = parseDayKey(firstDay.key) ?? today;
-      const nextDays = getDayRange(
+      const previousDays = getDayRange(
         addDays(firstDate, -DAY_WINDOW_SIZE),
-        MAX_DAY_COUNT,
+        DAY_WINDOW_SIZE,
         today,
       );
+      const combinedDays = [...previousDays, ...currentDays];
+      const daysToTrim = Math.max(combinedDays.length - MAX_CACHED_DAY_COUNT, 0);
+      const nextDays =
+        daysToTrim > 0
+          ? combinedDays.slice(0, combinedDays.length - daysToTrim)
+          : combinedDays;
+      const nextOffsetX = latestOffsetX.current + previousDays.length * DAY_ITEM_STEP;
 
       requestAnimationFrame(() => {
-        const nextSelectedIndex = nextDays.findIndex(
-          (day) => day.key === latestSelectedDayKey.current,
-        );
-        if (nextSelectedIndex >= 0) {
-          scrollToDayIndex(nextSelectedIndex, false);
-        }
+        scrollToOffset(nextOffsetX, false);
         isLoadingPreviousDays.current = false;
       });
 
@@ -214,18 +228,25 @@ export function DayCarousel({
 
     setDays((currentDays) => {
       const lastDay = currentDays[currentDays.length - 1];
-      if (!lastDay) return currentDays;
+      if (!lastDay) {
+        isLoadingNextDays.current = false;
+        return currentDays;
+      }
 
-      const firstKeptDay = currentDays[DAY_WINDOW_SIZE];
-      const firstKeptDate = parseDayKey(firstKeptDay?.key) ?? today;
-      const nextDays = getDayRange(firstKeptDate, MAX_DAY_COUNT, today);
+      const lastDate = parseDayKey(lastDay.key) ?? today;
+      const nextAddedDays = getDayRange(
+        addDays(lastDate, 1),
+        DAY_WINDOW_SIZE,
+        today,
+      );
+      const combinedDays = [...currentDays, ...nextAddedDays];
+      const daysToTrim = Math.max(combinedDays.length - MAX_CACHED_DAY_COUNT, 0);
+      const nextDays =
+        daysToTrim > 0 ? combinedDays.slice(daysToTrim) : combinedDays;
+      const nextOffsetX = latestOffsetX.current - daysToTrim * DAY_ITEM_STEP;
+
       requestAnimationFrame(() => {
-        const nextSelectedIndex = nextDays.findIndex(
-          (day) => day.key === latestSelectedDayKey.current,
-        );
-        if (nextSelectedIndex >= 0) {
-          scrollToDayIndex(nextSelectedIndex, false);
-        }
+        scrollToOffset(nextOffsetX, false);
         isLoadingNextDays.current = false;
       });
       return nextDays;
@@ -243,19 +264,26 @@ export function DayCarousel({
     if (!nextDay) return;
 
     if (nextDay.key !== latestSelectedDayKey.current) {
-      configureSelectionAnimation();
       latestSelectedDayKey.current = nextDay.key;
       onSelectedDayChange(nextDay);
     }
   };
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const updateScrollOffset = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    latestOffsetX.current = event.nativeEvent.contentOffset.x;
+  };
+
+  const maintainWindowAfterSettle = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const startThreshold = DAY_ITEM_STEP * 4;
-    const endThreshold = DAY_ITEM_STEP * 4;
+    latestOffsetX.current = contentOffset.x;
+    const startThreshold = DAY_ITEM_STEP * 2;
+    const endThreshold = DAY_ITEM_STEP * 2;
 
     if (contentOffset.x < startThreshold) {
       prependDays();
+      return;
     }
 
     if (
@@ -266,6 +294,13 @@ export function DayCarousel({
     ) {
       appendDays();
     }
+  };
+
+  const settleAndMaintainWindow = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    settleAtOffset(event.nativeEvent.contentOffset.x);
+    maintainWindowAfterSettle(event);
   };
 
   return (
@@ -296,52 +331,41 @@ export function DayCarousel({
           }}
         />
       </View>
-      <FlatList
-        ref={listRef}
-        data={days}
+      <ScrollView
+        ref={scrollViewRef}
         horizontal
-        keyExtractor={(day) => day.key}
-        ListFooterComponent={<View style={{ width: sidePadding }} />}
-        ListHeaderComponent={<View style={{ width: sidePadding }} />}
         onLayout={() => {
+          if (hasHandledInitialLayout.current) return;
+          hasHandledInitialLayout.current = true;
           requestAnimationFrame(() => {
             scrollToDayIndex(selectedIndex, false);
           });
         }}
-        onMomentumScrollEnd={(event) => {
-          settleAtOffset(event.nativeEvent.contentOffset.x);
-        }}
-        onScroll={handleScroll}
+        onMomentumScrollEnd={settleAndMaintainWindow}
+        onScroll={updateScrollOffset}
         onScrollEndDrag={(event) => {
           const velocityX = Math.abs(event.nativeEvent.velocity?.x ?? 0);
           if (velocityX < 0.05) {
-            settleAtOffset(event.nativeEvent.contentOffset.x);
+            settleAndMaintainWindow(event);
           }
         }}
         scrollEventThrottle={48}
         bounces={false}
-        initialNumToRender={15}
-        maxToRenderPerBatch={12}
-        windowSize={7}
-        removeClippedSubviews={false}
         showsHorizontalScrollIndicator={false}
         snapToInterval={DAY_ITEM_STEP}
         decelerationRate="fast"
-        getItemLayout={(_, index) => ({
-          length: DAY_ITEM_STEP,
-          offset: DAY_ITEM_STEP * index,
-          index,
-        })}
-        extraData={selectedDayKey}
         style={{ height: 116 }}
         contentContainerStyle={{
           alignItems: "center",
           minHeight: 116,
         }}
-        renderItem={({ item: day, index }) => {
+      >
+        <View style={{ width: sidePadding }} />
+        {days.map((day, index) => {
           const isSelected = day.key === selectedDayKey;
           return (
             <View
+              key={day.key}
               style={{
                 width: DAY_ITEM_WIDTH,
                 height: DAY_ITEM_HEIGHT,
@@ -413,8 +437,9 @@ export function DayCarousel({
               </Pressable>
             </View>
           );
-        }}
-      />
+        })}
+        <View style={{ width: sidePadding }} />
+      </ScrollView>
     </View>
   );
 }
