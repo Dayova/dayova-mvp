@@ -22,7 +22,7 @@ import {
 	X,
 	Zap,
 } from "lucide-react-native";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	KeyboardAvoidingView,
@@ -33,6 +33,15 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import Animated, {
+	Easing,
+	interpolate,
+	type SharedValue,
+	useAnimatedStyle,
+	useSharedValue,
+	withSequence,
+	withTiming,
+} from "react-native-reanimated";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
@@ -104,6 +113,10 @@ const ANALYSIS_ORBITS = Array.from({ length: 9 }, (_, index) => ({
 	id: `analysis-orbit-${index}`,
 	rotation: index * 40,
 }));
+const ORBIT_COLLAPSE_DURATION = 2400;
+const ORBIT_EXPAND_DURATION = 2200;
+const ORBIT_CYCLE_DURATION = 5000;
+const ORBIT_ROTATION_STEP = 48;
 
 const phaseIcon = {
 	theory: BookOpen,
@@ -391,6 +404,84 @@ function SessionCard({
 	);
 }
 
+function AnalysisOrbitPetal({
+	rotation,
+	expansion,
+}: {
+	rotation: number;
+	expansion: SharedValue<number>;
+}) {
+	const petalStyle = useAnimatedStyle(() => ({
+		transform: [
+			{ rotate: `${rotation}deg` },
+			{ translateY: -34 * expansion.value },
+			{ scale: interpolate(expansion.value, [0, 1], [0.92, 1]) },
+		],
+	}));
+
+	return (
+		<Animated.View
+			className="absolute h-[92px] w-[92px] rounded-full bg-primary/55"
+			style={petalStyle}
+		/>
+	);
+}
+
+function AnalysisOrbitLoader() {
+	const expansion = useSharedValue(1);
+	const flowerRotation = useSharedValue(0);
+	const rotationTarget = useRef(0);
+
+	useEffect(() => {
+		const runCycle = () => {
+			rotationTarget.current += ORBIT_ROTATION_STEP;
+			flowerRotation.value = withTiming(rotationTarget.current, {
+				duration: ORBIT_COLLAPSE_DURATION,
+				easing: Easing.inOut(Easing.cubic),
+			});
+			expansion.value = withSequence(
+				withTiming(0, {
+					duration: ORBIT_COLLAPSE_DURATION,
+					easing: Easing.inOut(Easing.cubic),
+				}),
+				withTiming(1, {
+					duration: ORBIT_EXPAND_DURATION,
+					easing: Easing.out(Easing.cubic),
+				}),
+			);
+		};
+
+		const initialCycle = setTimeout(runCycle, 180);
+		const cycle = setInterval(runCycle, ORBIT_CYCLE_DURATION);
+
+		return () => {
+			clearTimeout(initialCycle);
+			clearInterval(cycle);
+		};
+	}, [expansion, flowerRotation]);
+
+	const flowerStyle = useAnimatedStyle(() => ({
+		transform: [{ rotate: `${flowerRotation.value}deg` }],
+	}));
+
+	return (
+		<View className="mb-10 h-[190px] w-[190px] items-center justify-center">
+			<Animated.View
+				className="h-full w-full items-center justify-center"
+				style={flowerStyle}
+			>
+				{ANALYSIS_ORBITS.map((orbit) => (
+					<AnalysisOrbitPetal
+						key={orbit.id}
+						rotation={orbit.rotation}
+						expansion={expansion}
+					/>
+				))}
+			</Animated.View>
+		</View>
+	);
+}
+
 export default function LearningPlanScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{
@@ -454,6 +545,8 @@ export default function LearningPlanScreen() {
 
 	const questions = snapshot?.plan.knowledgeQuestions ?? EMPTY_QUESTIONS;
 	const currentQuestion = questions[questionIndex] ?? null;
+	const visibleStep =
+		step === "analysisIntro" && currentQuestion ? "question" : step;
 	const canWrite = Boolean(user && isConvexAuthenticated);
 	const canContinueTopic = topicDescription.trim().length >= 8 && canWrite;
 	const canUploadMaterial = canWrite && !isBusy;
@@ -645,8 +738,10 @@ export default function LearningPlanScreen() {
 			"Die Wissensanalyse konnte nicht vorbereitet werden.",
 			async () => {
 				const id = await ensurePlan();
-				await generateKnowledgeQuestions({ learningPlanId: id });
+				setQuestionIndex(0);
+				setAnswers({});
 				setStep("analysisIntro");
+				await generateKnowledgeQuestions({ learningPlanId: id });
 			},
 		);
 	};
@@ -798,11 +893,11 @@ export default function LearningPlanScreen() {
 	};
 
 	const goBack = () => {
-		if (step === "topic") {
+		if (visibleStep === "topic") {
 			router.back();
 			return;
 		}
-		if (step === "question" && questionIndex > 0) {
+		if (visibleStep === "question" && questionIndex > 0) {
 			setQuestionIndex((value) => value - 1);
 			return;
 		}
@@ -826,11 +921,11 @@ export default function LearningPlanScreen() {
 				showsVerticalScrollIndicator={false}
 			>
 				<Header
-					title={step === "plan" ? "Lernplan" : "Prüfungsthema"}
+					title={visibleStep === "plan" ? "Lernplan" : "Prüfungsthema"}
 					onBack={goBack}
 				/>
 
-				{step === "topic" ? (
+				{visibleStep === "topic" ? (
 					<>
 						<SectionTitle
 							title="Lernplan erstellen"
@@ -923,35 +1018,27 @@ export default function LearningPlanScreen() {
 					</>
 				) : null}
 
-				{step === "analysisIntro" ? (
+				{visibleStep === "analysisIntro" ? (
 					<View className="flex-1 items-center pt-8">
-						<View className="mb-10 h-[190px] w-[190px] items-center justify-center">
-							{ANALYSIS_ORBITS.map((orbit) => (
-								<View
-									key={orbit.id}
-									className="absolute h-[92px] w-[92px] rounded-full bg-primary/55"
-									style={{
-										transform: [
-											{ rotate: `${orbit.rotation}deg` },
-											{ translateY: -34 },
-										],
-									}}
-								/>
-							))}
-						</View>
+						<AnalysisOrbitLoader />
 						<Text className="self-start font-bold font-poppins text-18 text-text">
 							Beantworte 5 kurze Fragen für deinen persönlichen Lernplan.
 						</Text>
-						<Button
-							className="mt-10 w-full"
-							onPress={() => setStep("question")}
-						>
-							<Text>Starten</Text>
-						</Button>
+						{errorMessage ? (
+							<Text className="mt-6 self-start font-poppins text-12 text-destructive">
+								{errorMessage}
+							</Text>
+						) : (
+							<View className="mt-10 w-full items-center">
+								<Text className="text-center font-poppins text-14 text-text/55">
+									Die Fragen werden gerade erstellt.
+								</Text>
+							</View>
+						)}
 					</View>
 				) : null}
 
-				{step === "question" && currentQuestion ? (
+				{visibleStep === "question" && currentQuestion ? (
 					<>
 						<View className="mb-7 items-center">
 							<View className="h-16 w-16 items-center justify-center rounded-full bg-primary/55">
@@ -999,7 +1086,7 @@ export default function LearningPlanScreen() {
 					</>
 				) : null}
 
-				{step === "generating" ? (
+				{visibleStep === "generating" ? (
 					<View className="flex-1 items-center justify-center pt-24">
 						<View className="mb-7 h-20 w-20 items-center justify-center rounded-full bg-primary/12">
 							<Sparkles size={34} color="#3A7BFF" strokeWidth={2.2} />
@@ -1022,7 +1109,7 @@ export default function LearningPlanScreen() {
 					</View>
 				) : null}
 
-				{step === "plan" ? (
+				{visibleStep === "plan" ? (
 					<>
 						<SectionTitle
 							title="Lernplan erstellen"

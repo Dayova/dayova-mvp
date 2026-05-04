@@ -11,6 +11,6 @@ export type DayEntry = {
 	plannedDateLabel?: string;
 	durationMinutes?: number;
 	examTypeLabel?: string;
-    relatedLearningPlanId?: Id<"learningPlans">;
-    relatedLearningPlanSessionId?: Id<"learningPlanSessions">;
+	relatedLearningPlanId?: Id<"learningPlans">;
+	relatedLearningPlanSessionId?: Id<"learningPlanSessions">;
 };
