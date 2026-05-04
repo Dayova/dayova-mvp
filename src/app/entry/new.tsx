@@ -483,25 +483,25 @@ export default function NewEntryScreen() {
 		router.replace(`/home?dayKey=${encodeURIComponent(nextDayKey)}`);
 	};
 
-  const createLearningPlan = () => {
-    if (!canCreateExam || durationMinutes === null) return;
+	const createLearningPlan = () => {
+		if (!canCreateExam || durationMinutes === null) return;
 
-    const query = [
-      ["subject", trimmedSubject],
-      ["examTypeLabel", trimmedExamType],
-      ["examDateKey", getDateKey(plannedDate)],
-      ["examDateLabel", formatDate(plannedDate)],
-      ["examTime", formatTime(plannedTime)],
-      ["durationMinutes", `${durationMinutes}`],
-    ]
-      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-      .join("&");
-    router.push(`/entry/learning-plan?${query}`);
-  };
+		const query = [
+			["subject", trimmedSubject],
+			["examTypeLabel", trimmedExamType],
+			["examDateKey", getDayKey(plannedDate)],
+			["examDateLabel", formatDate(plannedDate)],
+			["examTime", formatTime(plannedTime)],
+			["durationMinutes", `${durationMinutes}`],
+		]
+			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+			.join("&");
+		router.push(`/entry/learning-plan?${query}`);
+	};
 
-  const finish = () => {
-	  router.replace(`/home?dayKey=${encodeURIComponent(createdDayKey)}`);
-  };
+	const finish = () => {
+		router.replace(`/home?dayKey=${encodeURIComponent(createdDayKey)}`);
+	};
 
 	const handleBack = () => {
 		if (step === "planning" || step === "examDecision") {

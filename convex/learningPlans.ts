@@ -161,7 +161,7 @@ export const updateBasics = mutation({
   },
   handler: async (ctx, args) => {
     const ownerTokenIdentifier = await requireOwnerTokenIdentifierForMutation(ctx);
-    const plan = await ctx.db.get(args.id);
+    const plan = await ctx.db.get("learningPlans", args.id);
     if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
       throw new Error("Lernplan nicht gefunden.");
     }
@@ -172,7 +172,7 @@ export const updateBasics = mutation({
     const topicDescription = args.topicDescription.trim();
     const notes = args.notes?.trim() ?? "";
 
-    await ctx.db.patch(args.id, {
+    await ctx.db.patch("learningPlans", args.id, {
       topicDescription,
       notes,
       updatedAt: Date.now(),
@@ -186,7 +186,7 @@ export const getSnapshot = query({
   },
   handler: async (ctx, args) => {
     const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
-    const plan = await ctx.db.get(args.id);
+    const plan = await ctx.db.get("learningPlans", args.id);
     if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
       return null;
     }
@@ -232,7 +232,7 @@ export const generateUploadUrl = mutation({
   },
   handler: async (ctx, args) => {
     const ownerTokenIdentifier = await requireOwnerTokenIdentifierForMutation(ctx);
-    const plan = await ctx.db.get(args.learningPlanId);
+    const plan = await ctx.db.get("learningPlans", args.learningPlanId);
     if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
       throw new Error("Lernplan nicht gefunden.");
     }
@@ -258,7 +258,7 @@ export const getUploadRegistrationContext = internalQuery({
       throw new Error("Nicht authentifiziert.");
     }
 
-    const plan = await ctx.db.get(args.learningPlanId);
+    const plan = await ctx.db.get("learningPlans", args.learningPlanId);
     if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
       throw new Error("Lernplan nicht gefunden.");
     }
@@ -337,7 +337,7 @@ export const removeDocument = mutation({
   },
   handler: async (ctx, args) => {
     const ownerTokenIdentifier = await requireOwnerTokenIdentifierForMutation(ctx);
-    const document = await ctx.db.get(args.id);
+    const document = await ctx.db.get("learningPlanDocuments", args.id);
     if (!document || document.ownerTokenIdentifier !== ownerTokenIdentifier) {
       return null;
     }
@@ -346,7 +346,7 @@ export const removeDocument = mutation({
       storageId: document.storageId,
       storageProvider: document.storageProvider,
     });
-    await ctx.db.delete(args.id);
+    await ctx.db.delete("learningPlanDocuments", args.id);
     return document.learningPlanId;
   },
 });
@@ -361,7 +361,7 @@ export const getAiContext = internalQuery({
       throw new Error("Nicht authentifiziert.");
     }
 
-    const plan = await ctx.db.get(args.learningPlanId);
+    const plan = await ctx.db.get("learningPlans", args.learningPlanId);
     if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
       throw new Error("Lernplan nicht gefunden.");
     }
@@ -388,10 +388,10 @@ export const storeKnowledgeQuestions = internalMutation({
     sourceSummary: v.string(),
   },
   handler: async (ctx, args) => {
-    const plan = await ctx.db.get(args.learningPlanId);
+    const plan = await ctx.db.get("learningPlans", args.learningPlanId);
     if (!plan) throw new Error("Lernplan nicht gefunden.");
 
-    await ctx.db.patch(args.learningPlanId, {
+    await ctx.db.patch("learningPlans", args.learningPlanId, {
       knowledgeQuestions: args.questions,
       sourceSummary: args.sourceSummary,
       status: "questionsReady",
@@ -409,7 +409,7 @@ export const replaceGeneratedSessions = internalMutation({
     sessions: v.array(generatedSessionValidator),
   },
   handler: async (ctx, args) => {
-    const plan = await ctx.db.get(args.learningPlanId);
+    const plan = await ctx.db.get("learningPlans", args.learningPlanId);
     if (!plan) throw new Error("Lernplan nicht gefunden.");
 
     const existingSessions = await ctx.db
@@ -419,7 +419,7 @@ export const replaceGeneratedSessions = internalMutation({
       )
       .take(20);
     for (const session of existingSessions) {
-      await ctx.db.delete(session._id);
+      await ctx.db.delete("learningPlanSessions", session._id);
     }
 
     const now = Date.now();
@@ -434,7 +434,7 @@ export const replaceGeneratedSessions = internalMutation({
       });
     }
 
-    await ctx.db.patch(args.learningPlanId, {
+    await ctx.db.patch("learningPlans", args.learningPlanId, {
       knowledgeAnswersJson: args.knowledgeAnswersJson,
       sourceSummary: args.sourceSummary,
       insight: args.insight,
@@ -454,7 +454,7 @@ export const updateSession = mutation({
   },
   handler: async (ctx, args) => {
     const ownerTokenIdentifier = await requireOwnerTokenIdentifierForMutation(ctx);
-    const session = await ctx.db.get(args.id);
+    const session = await ctx.db.get("learningPlanSessions", args.id);
     if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
       throw new Error("Lerntag nicht gefunden.");
     }
@@ -462,7 +462,7 @@ export const updateSession = mutation({
       throw new Error("Die Dauer muss größer als 0 sein.");
     }
 
-    await ctx.db.patch(args.id, {
+    await ctx.db.patch("learningPlanSessions", args.id, {
       dateKey: args.dateKey,
       dateLabel: args.dateLabel,
       startTime: args.startTime,
@@ -478,15 +478,15 @@ export const removeSession = mutation({
   },
   handler: async (ctx, args) => {
     const ownerTokenIdentifier = await requireOwnerTokenIdentifierForMutation(ctx);
-    const session = await ctx.db.get(args.id);
+    const session = await ctx.db.get("learningPlanSessions", args.id);
     if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
       return null;
     }
 
     if (session.dayEntryId) {
-      await ctx.db.delete(session.dayEntryId);
+      await ctx.db.delete("dayEntries", session.dayEntryId);
     }
-    await ctx.db.delete(args.id);
+    await ctx.db.delete("learningPlanSessions", args.id);
     return session.learningPlanId;
   },
 });
@@ -497,7 +497,7 @@ export const acceptPlan = mutation({
   },
   handler: async (ctx, args) => {
     const ownerTokenIdentifier = await requireOwnerTokenIdentifierForMutation(ctx);
-    const plan = await ctx.db.get(args.learningPlanId);
+    const plan = await ctx.db.get("learningPlans", args.learningPlanId);
     if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
       throw new Error("Lernplan nicht gefunden.");
     }
@@ -549,13 +549,13 @@ export const acceptPlan = mutation({
         relatedLearningPlanSessionId: session._id,
       });
 
-      await ctx.db.patch(session._id, {
+      await ctx.db.patch("learningPlanSessions", session._id, {
         dayEntryId,
         updatedAt: now,
       });
     }
 
-    await ctx.db.patch(args.learningPlanId, {
+    await ctx.db.patch("learningPlans", args.learningPlanId, {
       status: "accepted",
       examDayEntryId,
       acceptedAt: now,
