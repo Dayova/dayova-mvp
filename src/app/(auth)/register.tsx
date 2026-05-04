@@ -1,5 +1,5 @@
 import AuthScreen from "~/components/AuthScreen";
 
 export default function RegisterScreen() {
-  return <AuthScreen initialMode="register" />;
+	return <AuthScreen initialMode="register" />;
 }

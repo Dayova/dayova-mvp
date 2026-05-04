@@ -1,55 +1,55 @@
-import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { Text, View } from "react-native";
 import { Button } from "~/components/ui/button";
 import { Text as UiText } from "~/components/ui/text";
 
 export default function WelcomeScreen() {
-  const router = useRouter();
+	const router = useRouter();
 
-  return (
-    <View className="flex-1 bg-black">
-      <StatusBar style="light" />
-      
-      {/* Visual Placeholder (Top) */}
-      <View className="flex-1 justify-center items-center">
-        <View className="w-64 h-64 bg-primary/10 rounded-full items-center justify-center border border-primary/20">
-             <Text className="text-white/20 font-poppins font-bold text-24">Visual 17:628</Text>
-        </View>
-      </View>
+	return (
+		<View className="flex-1 bg-black">
+			<StatusBar style="light" />
 
-      {/* Bottom Content Card (17:627) */}
-      <View className="bg-[#16181B] px-10 pt-12 pb-16 rounded-t-card border-t border-white/10">
-        <Text className="text-white font-poppins font-semibold text-24 text-center leading-tight">
-          Entdecke neue Lernwege
-        </Text>
-        <Text className="text-white/60 font-poppins text-16 mt-4 text-center leading-6">
-          Lernen ist für alle da! Melde dich an und erhalte Zugriff auf unsere besten Lernmethoden und Kurse.
-        </Text>
+			{/* Visual Placeholder (Top) */}
+			<View className="flex-1 items-center justify-center">
+				<View className="h-64 w-64 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
+					<Text className="font-bold font-poppins text-24 text-white/20">
+						Visual 17:628
+					</Text>
+				</View>
+			</View>
 
-        {/* Pagination Dots (17:631) */}
-        <View className="flex-row justify-center mt-8 space-x-2">
-          <View className="w-4 h-2 bg-white rounded-full" />
-          <View className="w-2 h-2 bg-white/30 rounded-full" />
-          <View className="w-2 h-2 bg-white/30 rounded-full" />
-        </View>
+			{/* Bottom Content Card (17:627) */}
+			<View className="rounded-t-card border-white/10 border-t bg-[#16181B] px-10 pt-12 pb-16">
+				<Text className="text-center font-poppins font-semibold text-24 text-white leading-tight">
+					Entdecke neue Lernwege
+				</Text>
+				<Text className="mt-4 text-center font-poppins text-16 text-white/60 leading-6">
+					Lernen ist für alle da! Melde dich an und erhalte Zugriff auf unsere
+					besten Lernmethoden und Kurse.
+				</Text>
 
-        {/* Action Buttons */}
-        <Button 
-          onPress={() => router.push("/register")}
-          className="mt-10"
-        >
-          <UiText>Weiter</UiText>
-        </Button>
+				{/* Pagination Dots (17:631) */}
+				<View className="mt-8 flex-row justify-center space-x-2">
+					<View className="h-2 w-4 rounded-full bg-white" />
+					<View className="h-2 w-2 rounded-full bg-white/30" />
+					<View className="h-2 w-2 rounded-full bg-white/30" />
+				</View>
 
-        <Button
-          variant="outline"
-          onPress={() => router.push("/register")}
-          className="mt-4 bg-transparent"
-        >
-          <UiText className="text-white">Überspringen</UiText>
-        </Button>
-      </View>
-    </View>
-  );
+				{/* Action Buttons */}
+				<Button onPress={() => router.push("/register")} className="mt-10">
+					<UiText>Weiter</UiText>
+				</Button>
+
+				<Button
+					variant="outline"
+					onPress={() => router.push("/register")}
+					className="mt-4 bg-transparent"
+				>
+					<UiText className="text-white">Überspringen</UiText>
+				</Button>
+			</View>
+		</View>
+	);
 }

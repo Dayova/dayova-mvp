@@ -5,6 +5,6 @@ const config = getDefaultConfig(__dirname);
 config.resolver.unstable_enableSymlinks = true;
 
 module.exports = withNativeWind(config, {
-  input: "./src/global.css",
-  inlineRem: 16,
+	input: "./src/global.css",
+	inlineRem: 16,
 });
