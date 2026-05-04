@@ -1,13 +1,7 @@
 {
-  "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": [
-    "babel.config.js",
-    "plugins/*.js"
-  ],
-  "ignore": [
-    ".agents/**"
-  ],
-  "tags": [
-    "-lintignore"
-  ]
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"entry": ["plugins/*.js"],
+	"ignore": [".agents/**"],
+	"ignoreDependencies": ["expo-splash-screen"],
+	"tags": ["-lintignore"]
 }

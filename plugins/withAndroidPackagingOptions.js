@@ -34,41 +34,41 @@ const DUPLICATE_OSGI_MANIFEST = "META-INF/versions/9/OSGI-INF/MANIFEST.MF";
 const PACKAGING_EXCLUDES_PROPERTY = "android.packagingOptions.excludes";
 
 module.exports = function withAndroidPackagingOptions(config) {
-  // withGradleProperties lets an Expo config plugin mutate the generated
-  // android/gradle.properties file during `expo prebuild` / `expo run:android`.
-  return withGradleProperties(config, (config) => {
-    // Expo represents gradle.properties as an array of parsed entries rather
-    // than a plain object so it can preserve comments and file structure.
-    const existingProperty = config.modResults.find(
-      (property) =>
-        property.type === "property" &&
-        property.key === PACKAGING_EXCLUDES_PROPERTY,
-    );
+	// withGradleProperties lets an Expo config plugin mutate the generated
+	// android/gradle.properties file during `expo prebuild` / `expo run:android`.
+	return withGradleProperties(config, (config) => {
+		// Expo represents gradle.properties as an array of parsed entries rather
+		// than a plain object so it can preserve comments and file structure.
+		const existingProperty = config.modResults.find(
+			(property) =>
+				property.type === "property" &&
+				property.key === PACKAGING_EXCLUDES_PROPERTY,
+		);
 
-    if (existingProperty) {
-      // Do not overwrite an existing excludes list. Other plugins or future
-      // project changes may add their own packaging excludes, so merge ours in.
-      const existingExcludes = existingProperty.value
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean);
+		if (existingProperty) {
+			// Do not overwrite an existing excludes list. Other plugins or future
+			// project changes may add their own packaging excludes, so merge ours in.
+			const existingExcludes = existingProperty.value
+				.split(",")
+				.map((value) => value.trim())
+				.filter(Boolean);
 
-      // Keep the plugin idempotent. Expo config plugins may run repeatedly, and
-      // duplicate comma-separated values would make the generated file noisy.
-      if (!existingExcludes.includes(DUPLICATE_OSGI_MANIFEST)) {
-        existingExcludes.push(DUPLICATE_OSGI_MANIFEST);
-        existingProperty.value = existingExcludes.join(",");
-      }
-    } else {
-      // No excludes property exists yet, so create the exact property consumed
-      // by the generated android/app/build.gradle packagingOptions bridge.
-      config.modResults.push({
-        type: "property",
-        key: PACKAGING_EXCLUDES_PROPERTY,
-        value: DUPLICATE_OSGI_MANIFEST,
-      });
-    }
+			// Keep the plugin idempotent. Expo config plugins may run repeatedly, and
+			// duplicate comma-separated values would make the generated file noisy.
+			if (!existingExcludes.includes(DUPLICATE_OSGI_MANIFEST)) {
+				existingExcludes.push(DUPLICATE_OSGI_MANIFEST);
+				existingProperty.value = existingExcludes.join(",");
+			}
+		} else {
+			// No excludes property exists yet, so create the exact property consumed
+			// by the generated android/app/build.gradle packagingOptions bridge.
+			config.modResults.push({
+				type: "property",
+				key: PACKAGING_EXCLUDES_PROPERTY,
+				value: DUPLICATE_OSGI_MANIFEST,
+			});
+		}
 
-    return config;
-  });
+		return config;
+	});
 };
