@@ -13,7 +13,7 @@ import {
 	UserRound,
 	X,
 } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Animated,
 	Modal,
@@ -28,8 +28,6 @@ import { api } from "#convex/_generated/api";
 import {
 	DayCarousel,
 	type DayCarouselHandle,
-	type DayCarouselItem,
-	getDayItem,
 	getDayItemFromKey,
 } from "~/components/day-carousel";
 import { Text as UiText } from "~/components/ui/text";
@@ -124,17 +122,14 @@ export default function HomeScreen() {
 	const [navIndicatorProgress] = useState(() => new Animated.Value(0));
 	const dayCarouselRef = useRef<DayCarouselHandle | null>(null);
 	const today = useCurrentLocalDay();
-	const todayKey = useMemo(() => getDayKey(today), [today]);
-	const initialDayKey = useMemo(() => {
+	const todayKey = getDayKey(today);
+	const initialDayKey = (() => {
 		const initialDate =
 			typeof params.dayKey === "string" ? parseDayKey(params.dayKey) : null;
 		return getDayKey(initialDate ?? today);
-	}, [params.dayKey, today]);
+	})();
 	const [selectedDayKey, setSelectedDayKey] = useState(initialDayKey);
-	const selectedDay = useMemo(
-		() => getDayItemFromKey(selectedDayKey, today),
-		[selectedDayKey, today],
-	);
+	const selectedDay = getDayItemFromKey(selectedDayKey, today);
 	const selectedDayQueryKeys = useMemo(() => {
 		const selectedDate = parseDayKey(selectedDayKey);
 		const legacyIsoDayKey = selectedDate?.toISOString();
@@ -169,18 +164,16 @@ export default function HomeScreen() {
 			),
 		[selectedEntries],
 	);
-	const selectedDateLabel = useMemo(() => {
-		const selectedDate = parseDayKey(selectedDayKey);
-		if (!selectedDate) return "";
-
-		return new Intl.DateTimeFormat("de-DE", {
-			weekday: "long",
-			day: "2-digit",
-			month: "long",
-		})
-			.format(selectedDate)
-			.replace(/[.,]/g, "");
-	}, [selectedDayKey]);
+	const selectedDate = parseDayKey(selectedDayKey);
+	const selectedDateLabel = selectedDate
+		? new Intl.DateTimeFormat("de-DE", {
+				weekday: "long",
+				day: "2-digit",
+				month: "long",
+			})
+				.format(selectedDate)
+				.replace(/[.,]/g, "")
+		: "";
 	const entriesByHour = useMemo(() => {
 		const grouped: Record<number, DayEntry[]> = {};
 		sortedSelectedEntries.forEach((entry) => {
@@ -201,20 +194,14 @@ export default function HomeScreen() {
 			(_, index) => startHour + index,
 		);
 	}, [sortedSelectedEntries]);
-	const selectDay = useCallback((day: DayCarouselItem) => {
-		setSelectedDayKey(day.key);
-	}, []);
-	const centerOnDay = useCallback((dayKey: string) => {
-		requestAnimationFrame(() => {
-			dayCarouselRef.current?.scrollToDay(dayKey, true);
-		});
-	}, []);
 	const returnToToday = () => {
 		if (isReturningToToday) return;
 
 		setIsReturningToToday(true);
-		selectDay(getDayItem(today));
-		centerOnDay(todayKey);
+		setSelectedDayKey(todayKey);
+		requestAnimationFrame(() => {
+			dayCarouselRef.current?.scrollToDay(todayKey, true);
+		});
 	};
 	const getEntryUrl = (entry: DayEntry) => {
 		const dayLabel = selectedDay
@@ -270,13 +257,13 @@ export default function HomeScreen() {
 
 			const nextDayKey = getDayKey(nextDate);
 			const frame = requestAnimationFrame(() => {
-				selectDay(getDayItem(nextDate));
-				centerOnDay(nextDayKey);
+				setSelectedDayKey(nextDayKey);
+				dayCarouselRef.current?.scrollToDay(nextDayKey, true);
 			});
 
 			return () => cancelAnimationFrame(frame);
 		}
-	}, [centerOnDay, params.dayKey, selectDay]);
+	}, [params.dayKey]);
 
 	useEffect(() => {
 		if (!isReturningToToday || selectedDayKey !== todayKey) return;
@@ -348,7 +335,7 @@ export default function HomeScreen() {
 					<DayCarousel
 						ref={dayCarouselRef}
 						initialDayKey={initialDayKey}
-						onSelectedDayChange={selectDay}
+						onSelectedDayChange={(day) => setSelectedDayKey(day.key)}
 						selectedDayKey={selectedDayKey}
 					/>
 					{!isSelectedToday && !isReturningToToday ? (
@@ -395,7 +382,7 @@ export default function HomeScreen() {
 				}}
 			>
 				<View>
-					<Text className="font-bold font-poppins text-28 text-text capitalize">
+					<Text className="font-medium font-poppins text-28 text-text capitalize">
 						{selectedDateLabel}
 					</Text>
 				</View>

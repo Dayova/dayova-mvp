@@ -13,7 +13,7 @@ import {
 	GraduationCap,
 	Sparkles,
 } from "lucide-react-native";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
 	KeyboardAvoidingView,
 	Platform,
@@ -367,10 +367,7 @@ export default function NewEntryScreen() {
 	}>();
 	const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
 	const isHomework = entryType === "homework";
-	const initialDate = useMemo(
-		() => parseDateKey(params.dayKey),
-		[params.dayKey],
-	);
+	const [initialDate] = useState(() => parseDateKey(params.dayKey));
 
 	const [step, setStep] = useState<EntryStep>("basics");
 	const [subject, setSubject] = useState("");
