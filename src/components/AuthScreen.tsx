@@ -599,10 +599,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   }
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-black"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
+    <View className="flex-1 bg-black">
       <StatusBar style="light" />
 
       <View className="bg-black px-8 pb-16 pt-[88px]">
@@ -938,6 +935,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
           onChange={handleBirthDateChange}
         />
       ) : null}
-    </KeyboardAvoidingView>
+    </View>
   );
 }

@@ -1,7 +1,7 @@
 {
   "name": "dayova-mvp",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "run-p expo:start convex:dev",
     "android": "run-p expo:android convex:dev",
