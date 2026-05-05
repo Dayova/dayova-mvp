@@ -9,7 +9,7 @@ import {
 	NotebookPen,
 	Timer,
 	Trash2,
-} from "lucide-react-native";
+} from "~/components/ui/icon";
 import type { ReactNode } from "react";
 import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

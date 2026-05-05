@@ -13,7 +13,7 @@ import {
 	Phone,
 	ShieldCheck,
 	UserRound,
-} from "lucide-react-native";
+} from "~/components/ui/icon";
 import { useEffect, useRef, useState } from "react";
 import {
 	Animated,
