@@ -153,10 +153,7 @@ export default function WelcomeScreen() {
 	}, [height, width]);
 
 	useEffect(() => {
-		if (!isInputStep) {
-			setIsKeyboardVisible(false);
-			return;
-		}
+		if (!isInputStep) return;
 
 		const showEvent =
 			Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -176,6 +173,7 @@ export default function WelcomeScreen() {
 	}, [isInputStep]);
 
 	const handleContinue = () => {
+		if (isInputStep) Keyboard.dismiss();
 		if (activeIndex < FLOW_STEPS.length - 1) {
 			setActiveIndex((current) => current + 1);
 			return;
@@ -186,6 +184,7 @@ export default function WelcomeScreen() {
 
 	const handleBack = () => {
 		if (activeIndex === 0) return;
+		if (isInputStep) Keyboard.dismiss();
 		setActiveIndex((current) => current - 1);
 	};
 
