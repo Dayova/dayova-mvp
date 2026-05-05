@@ -12,7 +12,7 @@ import {
 	Plus,
 	UserRound,
 	X,
-} from "lucide-react-native";
+} from "~/components/ui/icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Animated,

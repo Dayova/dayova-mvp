@@ -12,7 +12,7 @@ import {
 	Clock3,
 	GraduationCap,
 	Sparkles,
-} from "lucide-react-native";
+} from "~/components/ui/icon";
 import { type ReactNode, useState } from "react";
 import {
 	KeyboardAvoidingView,
