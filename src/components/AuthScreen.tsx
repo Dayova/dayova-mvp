@@ -30,10 +30,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-	CodeField,
 	Cursor,
-	useBlurOnFulfill,
-	useClearByFocusCell,
 } from "react-native-confirmation-code-field";
 import { Button } from "~/components/ui/button";
 import {
@@ -157,37 +154,32 @@ function OtpCodeInput({
 	disabled?: boolean;
 	inputRef: React.RefObject<TextInput | null>;
 }) {
-	const codeFieldRef = useBlurOnFulfill<TextInput>({
-		value,
-		cellCount: VERIFICATION_CODE_LENGTH,
-	});
-	const [cellProps, getCellOnLayoutHandler] = useClearByFocusCell({
-		value,
-		setValue: onChangeText,
-	});
-
 	useEffect(() => {
-		inputRef.current = codeFieldRef.current;
-	}, [codeFieldRef, inputRef]);
+		if (!inputRef.current) return;
+		inputRef.current.setNativeProps?.({
+			text: value,
+		});
+	}, [inputRef, value]);
 
 	return (
-		<CodeField
-			ref={codeFieldRef}
-			{...cellProps}
+		<TouchableOpacity
+			activeOpacity={1}
+			onPress={() => inputRef.current?.focus()}
+			accessibilityRole="button"
 			accessibilityLabel="Bestätigungscode eingeben"
-			value={value}
-			onChangeText={onChangeText}
-			cellCount={VERIFICATION_CODE_LENGTH}
-			rootStyle={otpStyles.root}
-			keyboardType="number-pad"
-			textContentType="oneTimeCode"
-			autoComplete={otpAutoComplete}
-			editable={!disabled}
-			autoFocus
-			renderCell={({ index, symbol, isFocused }) => (
+		>
+			<View style={otpStyles.root}>
+				{Array.from({ length: VERIFICATION_CODE_LENGTH }, (_, index) => {
+					const symbol = value[index] ?? "";
+					const isFocused =
+						!disabled &&
+						(value.length === index ||
+							(value.length === VERIFICATION_CODE_LENGTH &&
+								index === VERIFICATION_CODE_LENGTH - 1));
+
+					return (
 				<View
 					key={index}
-					onLayout={getCellOnLayoutHandler(index)}
 					className="h-[64px] flex-1 items-center justify-center rounded-[18px] bg-white"
 					style={{
 						borderWidth: isFocused ? 1.8 : 1.2,
@@ -206,8 +198,31 @@ function OtpCodeInput({
 						{symbol || (isFocused ? <Cursor /> : null)}
 					</Text>
 				</View>
-			)}
-		/>
+					);
+				})}
+			</View>
+
+			<TextInput
+				ref={inputRef}
+				value={value}
+				onChangeText={onChangeText}
+				editable={!disabled}
+				keyboardType="number-pad"
+				textContentType="oneTimeCode"
+				autoComplete={otpAutoComplete}
+				autoCorrect={false}
+				autoCapitalize="none"
+				caretHidden
+				maxLength={VERIFICATION_CODE_LENGTH}
+				selectionColor="transparent"
+				style={{
+					position: "absolute",
+					opacity: 0.01,
+					width: 1,
+					height: 1,
+				}}
+			/>
+		</TouchableOpacity>
 	);
 }
 
@@ -292,6 +307,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const [submitError, setSubmitError] = useState("");
 	const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
 	const [passwordVisible, setPasswordVisible] = useState(false);
+	const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 	const [tabProgress] = useState(
 		() => new Animated.Value(initialMode === "login" ? 1 : 0),
 	);
@@ -301,11 +317,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 	const isRegisterMode = mode === "register";
 	const isVerificationPending = Boolean(pendingVerification);
-	const keyboardAvoidingBehavior = isVerificationPending
-		? Platform.OS === "ios"
-			? "padding"
-			: undefined
-		: undefined;
 	const tabIndicatorTranslateX = tabProgress.interpolate({
 		inputRange: [0, 1],
 		outputRange: [0, tabWidth],
@@ -317,6 +328,37 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 			otpInputRef.current?.focus();
 		}, 280);
 		return () => clearTimeout(focusTimer);
+	}, [isVerificationPending]);
+
+	useEffect(() => {
+		if (!isVerificationPending || !isKeyboardVisible) return;
+		const refocusTimer = setTimeout(() => {
+			otpInputRef.current?.focus();
+		}, 80);
+		return () => clearTimeout(refocusTimer);
+	}, [isKeyboardVisible, isVerificationPending]);
+
+	useEffect(() => {
+		if (!isVerificationPending) {
+			setIsKeyboardVisible(false);
+			return;
+		}
+
+		const showEvent =
+			Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+		const hideEvent =
+			Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+		const showSubscription = Keyboard.addListener(showEvent, () => {
+			setIsKeyboardVisible(true);
+		});
+		const hideSubscription = Keyboard.addListener(hideEvent, () => {
+			setIsKeyboardVisible(false);
+		});
+
+		return () => {
+			showSubscription.remove();
+			hideSubscription.remove();
+		};
 	}, [isVerificationPending]);
 
 	const switchMode = (next: Mode) => {
@@ -497,18 +539,26 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		const emailAddress = pendingVerification?.email ?? "deine E-Mail-Adresse";
 		const canSubmitCode =
 			verificationCode.length === VERIFICATION_CODE_LENGTH && !isLoading;
+		const otpTopPadding = isKeyboardVisible
+			? Math.max(insets.top + 16, 28)
+			: Math.max(insets.top + 40, 72);
+		const otpCardMarginTop = isKeyboardVisible ? 18 : 40;
+		const otpCardPaddingTop = isKeyboardVisible ? 24 : 32;
+		const otpContentPaddingBottom = isKeyboardVisible ? 24 : 36;
+		const otpIconSize = isKeyboardVisible ? 64 : 80;
+		const otpTitleMarginTop = isKeyboardVisible ? 20 : 28;
+		const otpFieldMarginTop = isKeyboardVisible ? 8 : 16;
+		const otpButtonMarginTop = isKeyboardVisible ? 28 : 40;
 
 		return (
 			<KeyboardAvoidingView
 				className="flex-1 bg-black"
-				behavior={keyboardAvoidingBehavior}
-				keyboardVerticalOffset={insets.top}
 			>
 				<StatusBar style="light" />
 
 				<View
 					className="flex-1 bg-black"
-					style={{ paddingTop: Math.max(insets.top + 40, 72) }}
+					style={{ paddingTop: otpTopPadding }}
 				>
 					<View className="items-center px-8">
 						<View className="flex-row items-center">
@@ -526,17 +576,28 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 						</View>
 					</View>
 
-					<View className="mt-10 flex-1 rounded-t-[36px] bg-background px-8 pt-8">
+					<View
+						className="flex-1 rounded-t-[36px] bg-background px-8"
+						style={{ marginTop: otpCardMarginTop, paddingTop: otpCardPaddingTop }}
+					>
 						<ScrollView
-							contentContainerStyle={{ flexGrow: 1, paddingBottom: 36 }}
+							contentContainerStyle={{
+								flexGrow: 1,
+								paddingBottom: otpContentPaddingBottom,
+							}}
 							keyboardShouldPersistTaps="handled"
 							showsVerticalScrollIndicator={false}
+							keyboardDismissMode={
+								Platform.OS === "ios" ? "interactive" : "on-drag"
+							}
 							automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
 						>
 							<View className="items-center">
 								<View
-									className="h-20 w-20 items-center justify-center rounded-[28px] bg-[#F3F7FF]"
+									className="items-center justify-center rounded-[28px] bg-[#F3F7FF]"
 									style={{
+										width: otpIconSize,
+										height: otpIconSize,
 										borderColor: "rgba(58,123,255,0.12)",
 										borderWidth: 1,
 									}}
@@ -545,8 +606,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								</View>
 
 								<Text
-									className="mt-7 text-center font-bold font-poppins text-28 text-text"
-									style={{ includeFontPadding: false, lineHeight: 34 }}
+									className="text-center font-bold font-poppins text-28 text-text"
+									style={{
+										marginTop: otpTitleMarginTop,
+										includeFontPadding: false,
+										lineHeight: 34,
+									}}
 								>
 									E-Mail bestätigen
 								</Text>
@@ -562,7 +627,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								</Text>
 							</View>
 
-							<View className="mt-10">
+							<View style={{ marginTop: otpFieldMarginTop }}>
 								<OtpCodeInput
 									value={verificationCode}
 									onChangeText={updateVerificationCode}
@@ -595,6 +660,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								onPress={handleVerifyEmailCode}
 								disabled={!canSubmitCode}
 								className="mt-10"
+								style={{ marginTop: otpButtonMarginTop }}
 							>
 								<Text>{isLoading ? "Prüft..." : "Code bestätigen"}</Text>
 							</Button>
@@ -608,8 +674,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	return (
 		<KeyboardAvoidingView
 			className="flex-1 bg-black"
-			behavior={keyboardAvoidingBehavior}
-			keyboardVerticalOffset={insets.top}
 		>
 			<StatusBar style="light" />
 
@@ -720,316 +784,192 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							textContentType="name"
 						/>
 					) : null}
+					<InsetTextField
+						label="E-Mail"
+						invalid={isRegisterMode && Boolean(errors.email)}
+						message={isRegisterMode ? errors.email : undefined}
+						accessory={<Mail size={18} color="rgba(26,26,26,0.34)" />}
+						value={email}
+						onChangeText={(value) => {
+							setEmail(value);
+							if (submitError) setSubmitError("");
+							if (errors.email) {
+								setErrors((prev) => ({ ...prev, email: undefined }));
+							}
+						}}
+						onFocus={closeBirthDatePicker}
+						placeholder="name@example.com"
+						keyboardType="email-address"
+						autoCapitalize="none"
+						autoComplete="email"
+						textContentType="emailAddress"
+					/>
 
-        {isRegisterMode ? (
-          <ScrollView
-            ref={formScrollRef}
-            className="-mx-2 flex-1"
-            contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 8 }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode={
-              Platform.OS === "ios" ? "interactive" : "on-drag"
-            }
-            automaticallyAdjustKeyboardInsets={false}
-          >
-            <InsetTextField
-              label="Name"
-              invalid={Boolean(errors.name)}
-              message={errors.name}
-              accessory={<UserRound size={18} color="rgba(26,26,26,0.34)" />}
-              value={name}
-              onChangeText={(value) => {
-                setName(value);
-                if (errors.name) {
-                  setErrors((prev) => ({ ...prev, name: undefined }));
-                }
-              }}
-              onFocus={closeBirthDatePicker}
-              placeholder="Max Mustermann"
-              autoCapitalize="words"
-              autoComplete="name"
-              textContentType="name"
-            />
+					{isRegisterMode ? (
+						<InsetTextField
+							label="Telefon"
+							invalid={Boolean(errors.phone)}
+							message={errors.phone}
+							accessory={<Phone size={18} color="rgba(26,26,26,0.34)" />}
+							value={phone}
+							onChangeText={(value) => {
+								setPhone(value);
+								if (errors.phone) {
+									setErrors((prev) => ({ ...prev, phone: undefined }));
+								}
+							}}
+							onFocus={closeBirthDatePicker}
+							placeholder="+49 123 4567890"
+							keyboardType="phone-pad"
+							autoCapitalize="none"
+							autoComplete="tel"
+							textContentType="telephoneNumber"
+						/>
+					) : null}
 
-            <InsetTextField
-              label="E-Mail"
-              invalid={Boolean(errors.email)}
-              message={errors.email}
-              accessory={<Mail size={18} color="rgba(26,26,26,0.34)" />}
-              value={email}
-              onChangeText={(value) => {
-                setEmail(value);
-                if (submitError) setSubmitError("");
-                if (errors.email) {
-                  setErrors((prev) => ({ ...prev, email: undefined }));
-                }
-              }}
-              onFocus={closeBirthDatePicker}
-              placeholder="name@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              textContentType="emailAddress"
-            />
+					{isRegisterMode ? (
+						<Field
+							onLayout={(event) => {
+								birthDateFieldY.current = event.nativeEvent.layout.y;
+							}}
+						>
+							<FieldTrigger
+								activeOpacity={0.82}
+								onPress={openBirthDatePicker}
+								invalid={Boolean(errors.birthDate)}
+								className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3"
+							>
+								<View className="flex-1">
+									<Text className="font-poppins text-12 text-text/42 leading-4">
+										Geburtsdatum
+									</Text>
+									<Text
+										className={`mt-1 font-poppins text-16 ${
+											birthDateValue ? "text-text" : "text-text/36"
+										}`}
+									>
+										{birthDateValue
+											? formatBirthDate(birthDateValue)
+											: "Geburtsdatum auswählen"}
+									</Text>
+								</View>
+								<FieldAccessory className="ml-3 self-center">
+									<ChevronDown
+										size={18}
+										color="rgba(26,26,26,0.42)"
+										strokeWidth={2.2}
+									/>
+								</FieldAccessory>
+							</FieldTrigger>
+							{errors.birthDate ? (
+								<FieldMessage>{errors.birthDate}</FieldMessage>
+							) : null}
+						</Field>
+					) : null}
 
-            <InsetTextField
-              label="Telefon"
-              invalid={Boolean(errors.phone)}
-              message={errors.phone}
-              accessory={<Phone size={18} color="rgba(26,26,26,0.34)" />}
-              value={phone}
-              onChangeText={(value) => {
-                setPhone(value);
-                if (errors.phone) {
-                  setErrors((prev) => ({ ...prev, phone: undefined }));
-                }
-              }}
-              onFocus={closeBirthDatePicker}
-              placeholder="+49 123 4567890"
-              keyboardType="phone-pad"
-              autoCapitalize="none"
-              autoComplete="tel"
-              textContentType="telephoneNumber"
-            />
+					<Field>
+						<FieldControl className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3">
+							<View className="flex-1">
+								<Text className="font-poppins text-12 text-text/42 leading-4">
+									Passwort
+								</Text>
+								{/*
+                  Keep this as a native TextInput instead of InsetTextField/Input.
+                  The shared Input's Poppins font metrics make hidden secure text
+                  render invisible on device while the cursor remains visible.
+                  Native secureTextEntry is still required for correct editing,
+                  paste, keyboard, accessibility, and password-manager behavior.
+                */}
+								<TextInput
+									accessibilityLabel="Passwort"
+									value={password}
+									onChangeText={updatePassword}
+									onFocus={closeBirthDatePicker}
+									placeholder="••••••••"
+									secureTextEntry={!passwordVisible}
+									autoCapitalize="none"
+									autoCorrect={false}
+									autoComplete={
+										isRegisterMode ? "new-password" : "current-password"
+									}
+									textContentType={isRegisterMode ? "newPassword" : "password"}
+									placeholderTextColor="rgba(26,26,26,0.36)"
+									selectionColor="#3A7BFF"
+									style={{
+										color: "#1A1A1A",
+										fontSize: 16,
+										height: 30,
+										margin: 0,
+										marginTop: 4,
+										paddingHorizontal: 0,
+										paddingVertical: 0,
+										...Platform.select({
+											android: {
+												fontFamily: "sans-serif",
+												includeFontPadding: true,
+												textAlignVertical: "center" as const,
+											},
+										}),
+									}}
+								/>
+							</View>
+							<FieldAccessory className="ml-3 self-center">
+								<TouchableOpacity
+									activeOpacity={0.75}
+									onPress={togglePasswordVisibility}
+								>
+									{passwordVisible ? (
+										<Eye size={18} color="rgba(26,26,26,0.34)" />
+									) : (
+										<EyeOff size={18} color="rgba(26,26,26,0.34)" />
+									)}
+								</TouchableOpacity>
+							</FieldAccessory>
+						</FieldControl>
+						{submitError ? <FieldMessage>{submitError}</FieldMessage> : null}
+					</Field>
 
-            <Field
-              onLayout={(event) => {
-                birthDateFieldY.current = event.nativeEvent.layout.y;
-              }}
-            >
-              <FieldTrigger
-                activeOpacity={0.82}
-                onPress={openBirthDatePicker}
-                invalid={Boolean(errors.birthDate)}
-                className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3"
-              >
-                <View className="flex-1">
-                  <Text className="font-poppins text-12 leading-4 text-text/42">
-                    Geburtsdatum
-                  </Text>
-                  <Text
-                    className={`mt-1 font-poppins text-16 ${
-                      birthDateValue ? "text-text" : "text-text/36"
-                    }`}
-                  >
-                    {birthDateValue
-                      ? formatBirthDate(birthDateValue)
-                      : "Geburtsdatum auswählen"}
-                  </Text>
-                </View>
-                <FieldAccessory className="ml-3 self-center">
-                  <ChevronDown
-                    size={18}
-                    color="rgba(26,26,26,0.42)"
-                    strokeWidth={2.2}
-                  />
-                </FieldAccessory>
-              </FieldTrigger>
-              {errors.birthDate ? (
-                <FieldMessage>{errors.birthDate}</FieldMessage>
-              ) : null}
-            </Field>
+					<View
+						className="mt-2 mb-6 rounded-[20px] bg-[#F7F8FA] px-[18px] py-4"
+						style={{
+							borderWidth: 1,
+							borderColor: "rgba(17,24,39,0.05)",
+						}}
+					>
+						<View className="flex-row items-center">
+							<View className="h-6 w-6 items-center justify-center">
+								<CircleAlert size={16} color="#3A7BFF" strokeWidth={2.1} />
+							</View>
+							<Text
+								className="ml-2.5 flex-1 font-poppins text-14 text-text/62"
+								style={{ lineHeight: 19.6, includeFontPadding: false }}
+							>
+								{isRegisterMode
+									? "Mit der Registrierung erstellst du dein persönliches Lernprofil."
+									: "Falls etwas nicht klappt, prüfe zuerst E-Mail-Adresse und Passwort."}
+							</Text>
+						</View>
+					</View>
 
-            <Field>
-              <FieldControl className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3">
-                <View className="flex-1">
-                  <Text className="font-poppins text-12 leading-4 text-text/42">
-                    Passwort
-                  </Text>
-                  {/*
-                    Keep this as a native TextInput instead of InsetTextField/Input.
-                    The shared Input's Poppins font metrics make hidden secure text
-                    render invisible on device while the cursor remains visible.
-                    Native secureTextEntry is still required for correct editing,
-                    paste, keyboard, accessibility, and password-manager behavior.
-                  */}
-                  <TextInput
-                    accessibilityLabel="Passwort"
-                    value={password}
-                    onChangeText={updatePassword}
-                    onFocus={closeBirthDatePicker}
-                    placeholder="••••••••"
-                    secureTextEntry={!passwordVisible}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="new-password"
-                    textContentType="newPassword"
-                    placeholderTextColor="rgba(26,26,26,0.36)"
-                    selectionColor="#3A7BFF"
-                    style={{
-                      color: "#1A1A1A",
-                      fontSize: 16,
-                      height: 30,
-                      margin: 0,
-                      marginTop: 4,
-                      paddingHorizontal: 0,
-                      paddingVertical: 0,
-                      ...Platform.select({
-                        android: {
-                          fontFamily: "sans-serif",
-                          includeFontPadding: true,
-                          textAlignVertical: "center" as const,
-                        },
-                      }),
-                    }}
-                  />
-                </View>
-                <FieldAccessory className="ml-3 self-center">
-                  <TouchableOpacity
-                    activeOpacity={0.75}
-                    onPress={togglePasswordVisibility}
-                  >
-                    {passwordVisible ? (
-                      <Eye size={18} color="rgba(26,26,26,0.34)" />
-                    ) : (
-                      <EyeOff size={18} color="rgba(26,26,26,0.34)" />
-                    )}
-                  </TouchableOpacity>
-                </FieldAccessory>
-              </FieldControl>
-              {submitError ? <FieldMessage>{submitError}</FieldMessage> : null}
-            </Field>
+					<Button
+						onPress={isRegisterMode ? handleRegister : handleLogin}
+						disabled={isLoading}
+						className="mt-1"
+					>
+						<Text>
+							{isLoading ? "Lädt..." : isRegisterMode ? "Weiter" : "Anmelden"}
+						</Text>
+					</Button>
 
-            <View
-              className="mb-6 mt-2 rounded-[20px] bg-[#F7F8FA] px-[18px] py-4"
-              style={{
-                borderWidth: 1,
-                borderColor: "rgba(17,24,39,0.05)",
-              }}
-            >
-              <View className="flex-row items-center">
-                <View className="h-6 w-6 items-center justify-center">
-                  <CircleAlert size={16} color="#3A7BFF" strokeWidth={2.1} />
-                </View>
-                <Text
-                  className="ml-2.5 flex-1 font-poppins text-14 text-text/62"
-                  style={{ lineHeight: 19.6, includeFontPadding: false }}
-                >
-                  Mit der Registrierung erstellst du dein persönliches Lernprofil.
-                </Text>
-              </View>
-            </View>
-
-            <Button
-              onPress={handleRegister}
-              disabled={isLoading}
-              className="mt-1"
-            >
-              <Text>{isLoading ? "Lädt..." : "Weiter"}</Text>
-            </Button>
-
-            <View className="pb-2 pt-5">
-              <Text className="text-center font-poppins text-12 text-text/46">
-                Schon ein Konto? Oben kannst du direkt zur Anmeldung wechseln.
-              </Text>
-            </View>
-          </ScrollView>
-        ) : (
-          <View className="-mx-2 flex-1 px-2">
-            <InsetTextField
-              label="E-Mail"
-              accessory={<Mail size={18} color="rgba(26,26,26,0.34)" />}
-              value={email}
-              onChangeText={(value) => {
-                setEmail(value);
-                if (submitError) setSubmitError("");
-              }}
-              onFocus={closeBirthDatePicker}
-              placeholder="name@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete={Platform.OS === "ios" ? "off" : "email"}
-              textContentType={Platform.OS === "ios" ? "none" : "emailAddress"}
-            />
-
-            <Field>
-              <FieldControl className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3">
-                <View className="flex-1">
-                  <Text className="font-poppins text-12 leading-4 text-text/42">
-                    Passwort
-                  </Text>
-                  <TextInput
-                    accessibilityLabel="Passwort"
-                    value={password}
-                    onChangeText={updatePassword}
-                  onFocus={closeBirthDatePicker}
-                  placeholder="••••••••"
-                  secureTextEntry={!passwordVisible}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete={
-                    Platform.OS === "ios" ? "off" : "current-password"
-                  }
-                  textContentType={Platform.OS === "ios" ? "none" : "password"}
-                  placeholderTextColor="rgba(26,26,26,0.36)"
-                  selectionColor="#3A7BFF"
-                    style={{
-                      color: "#1A1A1A",
-                      fontSize: 16,
-                      height: 30,
-                      margin: 0,
-                      marginTop: 4,
-                      paddingHorizontal: 0,
-                      paddingVertical: 0,
-                      ...Platform.select({
-                        android: {
-                          fontFamily: "sans-serif",
-                          includeFontPadding: true,
-                          textAlignVertical: "center" as const,
-                        },
-                      }),
-                    }}
-                  />
-                </View>
-                <FieldAccessory className="ml-3 self-center">
-                  <TouchableOpacity
-                    activeOpacity={0.75}
-                    onPress={togglePasswordVisibility}
-                  >
-                    {passwordVisible ? (
-                      <Eye size={18} color="rgba(26,26,26,0.34)" />
-                    ) : (
-                      <EyeOff size={18} color="rgba(26,26,26,0.34)" />
-                    )}
-                  </TouchableOpacity>
-                </FieldAccessory>
-              </FieldControl>
-              {submitError ? <FieldMessage>{submitError}</FieldMessage> : null}
-            </Field>
-
-            <View
-              className="mb-6 mt-2 rounded-[20px] bg-[#F7F8FA] px-[18px] py-4"
-              style={{
-                borderWidth: 1,
-                borderColor: "rgba(17,24,39,0.05)",
-              }}
-            >
-              <View className="flex-row items-center">
-                <View className="h-6 w-6 items-center justify-center">
-                  <CircleAlert size={16} color="#3A7BFF" strokeWidth={2.1} />
-                </View>
-                <Text
-                  className="ml-2.5 flex-1 font-poppins text-14 text-text/62"
-                  style={{ lineHeight: 19.6, includeFontPadding: false }}
-                >
-                  Falls etwas nicht klappt, prüfe zuerst E-Mail-Adresse und Passwort.
-                </Text>
-              </View>
-            </View>
-
-            <Button onPress={handleLogin} disabled={isLoading} className="mt-1">
-              <Text>{isLoading ? "Lädt..." : "Anmelden"}</Text>
-            </Button>
-
-            <View className="pb-2 pt-5">
-              <Text className="text-center font-poppins text-12 text-text/46">
-                Noch kein Konto? Wechsle oben zur Registrierung.
-              </Text>
-            </View>
-          </View>
-        )}
-      </View>
+					<View className="pt-5 pb-2">
+						<Text className="text-center font-poppins text-12 text-text/46">
+							{isRegisterMode
+								? "Schon ein Konto? Oben kannst du direkt zur Anmeldung wechseln."
+								: "Noch kein Konto? Wechsle oben zur Registrierung."}
+						</Text>
+					</View>
+				</ScrollView>
+			</View>
 
 			{showBirthDatePicker && isRegisterMode && Platform.OS === "ios" ? (
 				<View className="absolute inset-0 z-50 justify-end">
