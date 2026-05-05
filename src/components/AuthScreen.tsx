@@ -28,6 +28,7 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
 	CodeField,
 	Cursor,
@@ -267,6 +268,7 @@ function VerificationFeedbackPill({
 }
 
 export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
+	const insets = useSafeAreaInsets();
 	const {
 		login,
 		register: registerUser,
@@ -299,6 +301,11 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 	const isRegisterMode = mode === "register";
 	const isVerificationPending = Boolean(pendingVerification);
+	const keyboardAvoidingBehavior = isVerificationPending
+		? Platform.OS === "ios"
+			? "padding"
+			: undefined
+		: undefined;
 	const tabIndicatorTranslateX = tabProgress.interpolate({
 		inputRange: [0, 1],
 		outputRange: [0, tabWidth],
@@ -494,11 +501,15 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		return (
 			<KeyboardAvoidingView
 				className="flex-1 bg-black"
-				behavior={Platform.OS === "ios" ? "padding" : "height"}
+				behavior={keyboardAvoidingBehavior}
+				keyboardVerticalOffset={insets.top}
 			>
 				<StatusBar style="light" />
 
-				<View className="flex-1 bg-black pt-[72px]">
+				<View
+					className="flex-1 bg-black"
+					style={{ paddingTop: Math.max(insets.top + 40, 72) }}
+				>
 					<View className="items-center px-8">
 						<View className="flex-row items-center">
 							<Image
@@ -517,9 +528,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 					<View className="mt-10 flex-1 rounded-t-[36px] bg-background px-8 pt-8">
 						<ScrollView
-							contentContainerStyle={{ paddingBottom: 36 }}
+							contentContainerStyle={{ flexGrow: 1, paddingBottom: 36 }}
 							keyboardShouldPersistTaps="handled"
 							showsVerticalScrollIndicator={false}
+							automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
 						>
 							<View className="items-center">
 								<View
@@ -596,11 +608,15 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	return (
 		<KeyboardAvoidingView
 			className="flex-1 bg-black"
-			behavior={Platform.OS === "ios" ? "padding" : "height"}
+			behavior={keyboardAvoidingBehavior}
+			keyboardVerticalOffset={insets.top}
 		>
 			<StatusBar style="light" />
 
-			<View className="bg-black px-8 pt-[88px] pb-16">
+			<View
+				className="bg-black px-8 pb-16"
+				style={{ paddingTop: Math.max(insets.top + 44, 88) }}
+			>
 				<View className="items-center justify-center">
 					<View className="flex-row items-center">
 						<Image
@@ -610,10 +626,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 						/>
 						<Text
 							className="-ml-3 font-bold font-poppins text-white"
-							style={{
-								fontSize: 56,
-								lineHeight: 68,
-							}}
+							style={{ fontSize: 56, lineHeight: 68 }}
 						>
 							Dayova
 						</Text>
@@ -675,7 +688,11 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 				<ScrollView
 					ref={formScrollRef}
 					className="-mx-2 flex-1"
-					contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 8 }}
+					contentContainerStyle={{
+						flexGrow: 1,
+						paddingBottom: 40,
+						paddingHorizontal: 8,
+					}}
 					showsVerticalScrollIndicator={false}
 					keyboardShouldPersistTaps="handled"
 					keyboardDismissMode={
