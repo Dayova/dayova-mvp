@@ -21,7 +21,7 @@ import {
 	Trash2,
 	X,
 	Zap,
-} from "lucide-react-native";
+} from "~/components/ui/icon";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
