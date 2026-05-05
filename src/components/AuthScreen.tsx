@@ -49,10 +49,10 @@ import { useAuth } from "~/context/AuthContext";
 type Mode = "login" | "register";
 
 type FieldErrors = {
-  name?: string;
-  email?: string;
-  phone?: string;
-  birthDate?: string;
+	name?: string;
+	email?: string;
+	phone?: string;
+	birthDate?: string;
 };
 
 type VerificationFeedback = {

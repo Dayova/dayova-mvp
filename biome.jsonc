@@ -1,0 +1,75 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": true,
+		"includes": [
+			"src/**",
+			"convex/**",
+			"plugins/**",
+			"app.json",
+			"babel.config.js",
+			"biome.jsonc",
+			"components.json",
+			"index.ts",
+			"knip.json",
+			"metro.config.js",
+			"package.json",
+			"tailwind.config.js",
+			"tsconfig.json",
+			"!convex/_generated"
+		]
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"correctness": {
+				"noReactPropAssignments": "error",
+				"useExhaustiveDependencies": "error",
+				"useHookAtTopLevel": "error"
+			},
+			"suspicious": {
+				"noUnknownAtRules": {
+					"level": "error",
+					"options": {
+						"ignore": ["tailwind"]
+					}
+				}
+			},
+			"nursery": {
+				"useSortedClasses": {
+					"level": "error",
+					"fix": "unsafe",
+					"options": {
+						"functions": [
+							"cn",
+							"clsx",
+							"cva",
+							"twMerge",
+							"tailwindMerge",
+							"tailwindmerge"
+						]
+					}
+				}
+			}
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	}
+}
