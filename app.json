@@ -1,83 +1,84 @@
 {
-  "expo": {
-    "name": "Dayova",
-    "slug": "Dayova",
-    "scheme": "dayova",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/dayova-logo.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.Dayova-MVP"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.dayova"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-router",
-      "@clerk/expo",
-      [
-        "expo-image-picker",
-        {
-          "cameraPermission": "Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
-          "photosPermission": "Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst."
-        }
-      ],
-      "@react-native-community/datetimepicker",
-      "./plugins/withNinjaLongPaths",
-      "./plugins/withAndroidPackagingOptions",
-      [
-        "expo-font",
-        {
-          "fonts": [
-            "./assets/fonts/Poppins-Regular.ttf",
-            "./assets/fonts/Poppins-Medium.ttf",
-            "./assets/fonts/Poppins-SemiBold.ttf",
-            "./assets/fonts/Poppins-Bold.ttf"
-          ],
-          "android": {
-            "fonts": [
-              {
-                "fontFamily": "Poppins",
-                "fontDefinitions": [
-                  {
-                    "path": "./assets/fonts/Poppins-Regular.ttf",
-                    "weight": 400
-                  },
-                  {
-                    "path": "./assets/fonts/Poppins-Medium.ttf",
-                    "weight": 500
-                  },
-                  {
-                    "path": "./assets/fonts/Poppins-SemiBold.ttf",
-                    "weight": 600
-                  },
-                  {
-                    "path": "./assets/fonts/Poppins-Bold.ttf",
-                    "weight": 700
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      ]
-    ]
-  }
+	"expo": {
+		"name": "Dayova",
+		"slug": "Dayova",
+		"scheme": "dayova",
+		"version": "1.0.0",
+		"orientation": "portrait",
+		"platforms": ["ios", "android"],
+		"icon": "./assets/dayova-logo.png",
+		"userInterfaceStyle": "light",
+		"newArchEnabled": true,
+		"experiments": {
+			"reactCompiler": true
+		},
+		"splash": {
+			"image": "./assets/dayova-logo.png",
+			"resizeMode": "contain",
+			"backgroundColor": "#ffffff"
+		},
+		"ios": {
+			"supportsTablet": true,
+			"bundleIdentifier": "com.anonymous.Dayova-MVP"
+		},
+		"android": {
+			"adaptiveIcon": {
+				"foregroundImage": "./assets/dayova-logo.png",
+				"backgroundColor": "#ffffff"
+			},
+			"edgeToEdgeEnabled": true,
+			"predictiveBackGestureEnabled": false,
+			"package": "com.dayova"
+		},
+		"plugins": [
+			"expo-router",
+			"@clerk/expo",
+			[
+				"expo-image-picker",
+				{
+					"cameraPermission": "Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
+					"photosPermission": "Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst."
+				}
+			],
+			"@react-native-community/datetimepicker",
+			"./plugins/withNinjaLongPaths",
+			"./plugins/withAndroidPackagingOptions",
+			[
+				"expo-font",
+				{
+					"fonts": [
+						"./assets/fonts/Poppins-Regular.ttf",
+						"./assets/fonts/Poppins-Medium.ttf",
+						"./assets/fonts/Poppins-SemiBold.ttf",
+						"./assets/fonts/Poppins-Bold.ttf"
+					],
+					"android": {
+						"fonts": [
+							{
+								"fontFamily": "Poppins",
+								"fontDefinitions": [
+									{
+										"path": "./assets/fonts/Poppins-Regular.ttf",
+										"weight": 400
+									},
+									{
+										"path": "./assets/fonts/Poppins-Medium.ttf",
+										"weight": 500
+									},
+									{
+										"path": "./assets/fonts/Poppins-SemiBold.ttf",
+										"weight": 600
+									},
+									{
+										"path": "./assets/fonts/Poppins-Bold.ttf",
+										"weight": 700
+									}
+								]
+							}
+						]
+					}
+				}
+			]
+		]
+	}
 }
