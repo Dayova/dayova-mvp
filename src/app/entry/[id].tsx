@@ -73,16 +73,20 @@ export default function EntryDetailScreen() {
 		duration?: string;
 	}>();
 	const id = typeof params.id === "string" ? params.id : "";
+	const isVirtualEntry = id === "learning-plan";
 	const entry =
 		useQuery(
 			api.dayEntries.get,
-			user && isConvexAuthenticated && id
+			user && isConvexAuthenticated && id && !isVirtualEntry
 				? {
 						id: id as Id<"dayEntries">,
 					}
 				: "skip",
 		) ?? undefined;
-	const title = entry?.title ?? params.title ?? "Eintrag";
+	const title =
+		entry?.title ??
+		params.title ??
+		(isVirtualEntry ? "Lernplan" : "Eintrag");
 	const kind = entry?.kind ?? params.kind;
 	const time = entry?.time ?? params.time;
 	const plannedDate =
@@ -98,7 +102,7 @@ export default function EntryDetailScreen() {
 		kind === "Hausaufgabe" ||
 		kind === "Leistungskontrolle" ||
 		Boolean(examType);
-	const canDelete = Boolean(entry && id && isDeletableKind);
+	const canDelete = Boolean(entry && id && !isVirtualEntry && isDeletableKind);
 
 	const handleDelete = () => {
 		if (!canDelete || !id || !user || !isConvexAuthenticated) return;

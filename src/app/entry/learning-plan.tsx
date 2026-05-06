@@ -2,8 +2,6 @@ import DateTimePicker, {
 	type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
-import * as DocumentPicker from "expo-document-picker";
-import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -201,6 +199,26 @@ const retryOnceAfterAuthResume = async <TResult,>(
 
 		await wait(700);
 		return await task();
+	}
+};
+
+const loadDocumentPicker = async () => {
+	try {
+		return await import("expo-document-picker");
+	} catch {
+		throw new Error(
+			"Der Dokumenten-Picker ist im aktuellen Build nicht verfuegbar. Bitte die App neu bauen.",
+		);
+	}
+};
+
+const loadImagePicker = async () => {
+	try {
+		return await import("expo-image-picker");
+	} catch {
+		throw new Error(
+			"Der Kamera-Upload ist im aktuellen Build nicht verfuegbar. Bitte die App neu bauen.",
+		);
 	}
 };
 
@@ -672,6 +690,7 @@ export default function LearningPlanScreen() {
 		await runWithErrorHandling(
 			"Die Datei konnte nicht hochgeladen werden.",
 			async () => {
+				const DocumentPicker = await loadDocumentPicker();
 				const id = await ensurePlan();
 				const result = await DocumentPicker.getDocumentAsync({
 					type: ACCEPTED_FILE_TYPES,
@@ -702,6 +721,7 @@ export default function LearningPlanScreen() {
 		await runWithErrorHandling(
 			"Das Foto konnte nicht hochgeladen werden.",
 			async () => {
+				const ImagePicker = await loadImagePicker();
 				const permission = await ImagePicker.requestCameraPermissionsAsync();
 				if (!permission.granted) {
 					throw new Error("Kamerazugriff wurde nicht erlaubt.");
