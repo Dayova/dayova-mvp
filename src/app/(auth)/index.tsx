@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { InsetTextField } from "~/components/ui/text-field";
 import { Text } from "~/components/ui/text";
 import { ArrowLeft } from "~/components/ui/icon";
+import { useOnboarding } from "~/context/OnboardingContext";
 
 type IntroStep = {
 	kind: "intro";
@@ -39,7 +40,7 @@ type InputStep = {
 	kind: "input";
 	title: string;
 	description?: string;
-	field: "name" | "state";
+	field: "state";
 	label: string;
 	placeholder: string;
 };
@@ -103,13 +104,6 @@ const FLOW_STEPS: readonly FlowStep[] = [
 	},
 	{
 		kind: "input",
-		title: "Wie heißt du?",
-		field: "name",
-		label: "Vorname",
-		placeholder: "Dein Vorname",
-	},
-	{
-		kind: "input",
 		title: "Aus welchem Bundesland kommst du?",
 		field: "state",
 		label: "Bundesland",
@@ -125,14 +119,7 @@ export default function WelcomeScreen() {
 	const { width, height } = useWindowDimensions();
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-	const [answers, setAnswers] = useState({
-		studyTime: "",
-		strength: "",
-		challenge: "",
-		goal: "",
-		name: "",
-		state: "",
-	});
+	const { answers, setAnswer } = useOnboarding();
 
 	const activeStep = FLOW_STEPS[activeIndex];
 	const isIntroStep = activeStep.kind === "intro";
@@ -186,13 +173,6 @@ export default function WelcomeScreen() {
 		if (activeIndex === 0) return;
 		if (isInputStep) Keyboard.dismiss();
 		setActiveIndex((current) => current - 1);
-	};
-
-	const updateAnswer = (
-		field: keyof typeof answers,
-		value: string,
-	) => {
-		setAnswers((current) => ({ ...current, [field]: value }));
 	};
 
 	return (
@@ -368,7 +348,7 @@ export default function WelcomeScreen() {
 												<TouchableOpacity
 													key={option}
 													activeOpacity={0.86}
-													onPress={() => updateAnswer(activeStep.field, option)}
+													onPress={() => setAnswer(activeStep.field, option)}
 													className="min-h-[60px] justify-center rounded-[22px] px-5"
 													style={{
 														backgroundColor: isSelected ? "#3A7BFF" : "#FFFFFF",
@@ -403,22 +383,12 @@ export default function WelcomeScreen() {
 									<InsetTextField
 										label={activeStep.label}
 										value={answers[activeStep.field]}
-										onChangeText={(value) =>
-											updateAnswer(activeStep.field, value)
-										}
+										onChangeText={(value) => setAnswer(activeStep.field, value)}
 										placeholder={activeStep.placeholder}
 										autoCapitalize="words"
 										autoCorrect={false}
-										autoComplete={
-											activeStep.field === "name"
-												? "name"
-												: "street-address"
-										}
-										textContentType={
-											activeStep.field === "name"
-												? "givenName"
-												: "addressState"
-										}
+										autoComplete="street-address"
+										textContentType="addressState"
 										returnKeyType="done"
 										controlClassName="bg-white"
 										inputClassName="text-[18px]"

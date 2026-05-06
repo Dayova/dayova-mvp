@@ -14,6 +14,22 @@ export default defineSchema({
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
 		.index("by_clerkId", ["clerkId"])
 		.index("by_email", ["email"]),
+	onboardingQuestions: defineTable({
+		key: v.string(),
+		prompt: v.string(),
+		kind: v.union(v.literal("select"), v.literal("input")),
+		order: v.number(),
+		options: v.optional(v.array(v.string())),
+	})
+		.index("by_key", ["key"])
+		.index("by_order", ["order"]),
+	userOnboardingAnswers: defineTable({
+		userId: v.id("users"),
+		questionId: v.id("onboardingQuestions"),
+		answer: v.string(),
+	})
+		.index("by_userId", ["userId"])
+		.index("by_userId_and_questionId", ["userId", "questionId"]),
 	dayEntries: defineTable({
 		ownerTokenIdentifier: v.string(),
 		dayKey: v.string(),

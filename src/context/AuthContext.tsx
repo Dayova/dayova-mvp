@@ -10,6 +10,7 @@ import {
 	useState,
 } from "react";
 import { api } from "#convex/_generated/api";
+import { useOnboarding } from "~/context/OnboardingContext";
 
 type LoginInput = {
 	email: string;
@@ -281,6 +282,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const syncCurrentUser = useMutation(api.users.syncCurrentUser);
+	const saveOnboardingAnswers = useMutation(api.users.saveOnboardingAnswers);
+	const { answers: onboardingAnswers, clearAnswers, hasAnswers } = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [pendingVerification, setPendingVerification] =
 		useState<PendingVerification | null>(null);
@@ -352,6 +355,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			}
 		});
 	}, [isConvexAuthenticated, pendingProfile, syncCurrentUser, user]);
+
+	useEffect(() => {
+		if (!user || !isConvexAuthenticated || !hasAnswers) return;
+
+		void saveOnboardingAnswers({
+			answers: onboardingAnswers,
+		})
+			.then(() => {
+				clearAnswers();
+			})
+			.catch(async (error: unknown) => {
+				await wait(750);
+				try {
+					await saveOnboardingAnswers({
+						answers: onboardingAnswers,
+					});
+					clearAnswers();
+				} catch (retryError) {
+					console.warn("Failed to save onboarding answers.", retryError);
+					if (retryError !== error) {
+						console.warn("Initial onboarding answer save error.", error);
+					}
+				}
+			});
+	}, [
+		clearAnswers,
+		hasAnswers,
+		isConvexAuthenticated,
+		onboardingAnswers,
+		saveOnboardingAnswers,
+		user,
+	]);
 
 	const withSubmitting = async <TResult,>(task: () => Promise<TResult>) => {
 		setIsSubmitting(true);

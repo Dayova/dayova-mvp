@@ -9,6 +9,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
+import { OnboardingProvider } from "~/context/OnboardingContext";
 import { NAV_THEME } from "~/lib/theme";
 
 // Fallback for the build phase.
@@ -55,9 +56,11 @@ export default function RootLayout() {
 		<ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
 			<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
 				<ThemeProvider value={theme}>
-					<AuthProvider>
-						<AppNavigator />
-					</AuthProvider>
+					<OnboardingProvider>
+						<AuthProvider>
+							<AppNavigator />
+						</AuthProvider>
+					</OnboardingProvider>
 				</ThemeProvider>
 			</ConvexProviderWithClerk>
 		</ClerkProvider>
