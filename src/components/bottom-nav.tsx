@@ -1,18 +1,17 @@
 import { usePathname, useRouter } from "expo-router";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CalendarDays, Home, Route2, Settings } from "~/components/ui/icon";
+import { Home, Route2, Settings } from "~/components/ui/icon";
 
-type BottomNavKey = "home" | "calendar" | "learningPath" | "settings";
+type BottomNavKey = "home" | "learningPath" | "settings";
 
 const NAV_ITEMS: Array<{
 	key: BottomNavKey;
 	icon: typeof Home;
-	href?: "/home" | "/settings";
+	href: "/home" | "/learning-plans" | "/settings";
 }> = [
 	{ key: "home", icon: Home, href: "/home" },
-	{ key: "calendar", icon: CalendarDays },
-	{ key: "learningPath", icon: Route2 },
+	{ key: "learningPath", icon: Route2, href: "/learning-plans" },
 	{ key: "settings", icon: Settings, href: "/settings" },
 ];
 
@@ -22,7 +21,11 @@ export function BottomNav() {
 	const pathname = usePathname();
 
 	const activeKey: BottomNavKey =
-		pathname === "/settings" ? "settings" : "home";
+		pathname === "/settings"
+			? "settings"
+			: pathname === "/learning-plans"
+				? "learningPath"
+				: "home";
 
 	return (
 		<View

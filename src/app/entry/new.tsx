@@ -4,6 +4,7 @@ import DateTimePicker, {
 import { useConvexAuth, useMutation } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import type { Id } from "#convex/_generated/dataModel";
 import {
 	ArrowLeft,
 	CalendarDays,
@@ -360,6 +361,7 @@ export default function NewEntryScreen() {
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDayEntry = useMutation(api.dayEntries.create);
+	const createLearningPlan = useMutation(api.learningPlans.createForExam);
 	const params = useLocalSearchParams<{
 		type?: string;
 		dayKey?: string;
@@ -441,7 +443,9 @@ export default function NewEntryScreen() {
 		}
 	};
 
-	const createEntry = async () => {
+	const createEntry = async ({
+		redirectToHome = true,
+	}: { redirectToHome?: boolean } = {}) => {
 		if (isHomework && !canCreateHomework) return;
 		if (!isHomework && !canCreateExam) return;
 		if (durationMinutes === null) return;
@@ -449,14 +453,16 @@ export default function NewEntryScreen() {
 
 		const nextDayKey = getDayKey(plannedDate);
 		const trimmedNote = note.trim();
+		const entryTitle = isHomework
+			? `${trimmedSubject} Hausaufgabe`
+			: `${trimmedSubject} ${trimmedExamType}`;
+		let createdEntryId: Id<"dayEntries"> | null = null;
 
 		try {
 			setIsCreating(true);
-			await createDayEntry({
+			createdEntryId = await createDayEntry({
 				dayKey: nextDayKey,
-				title: isHomework
-					? `${trimmedSubject} Hausaufgabe`
-					: `${trimmedSubject} ${trimmedExamType}`,
+				title: entryTitle,
 				time: formatTime(plannedTime),
 				kind: isHomework ? "Hausaufgabe" : "Leistungskontrolle",
 				...(trimmedNote ? { notes: trimmedNote } : {}),
@@ -480,7 +486,37 @@ export default function NewEntryScreen() {
 			return;
 		}
 
-		router.replace(`/home?dayKey=${encodeURIComponent(nextDayKey)}`);
+		const result = {
+			createdDayKey: nextDayKey,
+			createdEntryId,
+			entryTitle,
+		};
+		if (redirectToHome) {
+			router.replace(`/home?dayKey=${encodeURIComponent(nextDayKey)}`);
+		}
+		return result;
+	};
+
+	const createExamLearningPlan = async () => {
+		if (isHomework || !canCreateExam || durationMinutes === null) return;
+		if (!canWriteEntries || isCreating) return;
+
+		const result = await createEntry({ redirectToHome: false });
+		if (!result) return;
+
+		await createLearningPlan({
+			title: result.entryTitle,
+			subject: trimmedSubject,
+			examTypeLabel: trimmedExamType,
+			durationMinutes,
+			dueDateKey: result.createdDayKey,
+			dueDateLabel: formatDate(plannedDate),
+			...(result.createdEntryId
+				? { sourceDayEntryId: result.createdEntryId }
+				: {}),
+		});
+
+		router.replace("/learning-plans");
 	};
 
 	const finish = () => {
@@ -697,7 +733,9 @@ export default function NewEntryScreen() {
 						/>
 						<Button
 							disabled={!canCreateHomework || isCreating || !canWriteEntries}
-							onPress={createEntry}
+							onPress={() => {
+								void createEntry();
+							}}
 						>
 							<Text>HA eintragen</Text>
 						</Button>
@@ -743,16 +781,18 @@ export default function NewEntryScreen() {
 								}
 								title="LK eintragen"
 								description="Die Leistungskontrolle wird direkt im Kalender gespeichert."
-								onPress={createEntry}
+								onPress={() => {
+									void createEntry();
+								}}
 								disabled={isCreating || !canWriteEntries}
 								primary
 							/>
 							<ActionCard
 								icon={<Sparkles size={24} color="#3A7BFF" strokeWidth={2.2} />}
 								title="Lernplan erstellen"
-								description="Diese Auswahl folgt als Nächstes. Für jetzt bleibt sie sichtbar, ist aber noch nicht aktiv."
-								disabled
-								badge="Später"
+								description="Die Leistungskontrolle wird gespeichert und direkt in deine Lernpläne übernommen."
+								onPress={createExamLearningPlan}
+								disabled={isCreating || !canWriteEntries}
 							/>
 						</View>
 					</>
