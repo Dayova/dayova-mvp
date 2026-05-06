@@ -5,7 +5,12 @@ import { ThemeProvider } from "@react-navigation/native";
 import { PortalHost } from "@rn-primitives/portal";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { Stack, useRouter, useSegments } from "expo-router";
+import {
+	Stack,
+	useRootNavigationState,
+	useRouter,
+	useSegments,
+} from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
@@ -21,20 +26,22 @@ const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 function AppNavigator() {
 	const router = useRouter();
 	const segments = useSegments();
+	const rootNavigationState = useRootNavigationState();
 	const { user, isSessionLoading } = useAuth();
 
 	useEffect(() => {
-		if (isSessionLoading) return;
+		if (isSessionLoading || !rootNavigationState?.key) return;
 
 		const isAuthRoute = segments[0] === "(auth)";
-		if (!user && !isAuthRoute) {
-			router.replace("/login");
-			return;
-		}
-		if (user && isAuthRoute) {
-			router.replace("/home");
-		}
-	}, [isSessionLoading, router, segments, user]);
+		const targetRoute = !user && !isAuthRoute ? "/login" : user && isAuthRoute ? "/home" : null;
+		if (!targetRoute) return;
+
+		const frame = requestAnimationFrame(() => {
+			router.replace(targetRoute);
+		});
+
+		return () => cancelAnimationFrame(frame);
+	}, [isSessionLoading, rootNavigationState?.key, router, segments, user]);
 
 	return (
 		<>
