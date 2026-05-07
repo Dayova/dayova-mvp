@@ -7,9 +7,9 @@ import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import {
 	Stack,
+	usePathname,
 	useRootNavigationState,
 	useRouter,
-	useSegments,
 } from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
@@ -22,17 +22,20 @@ const convexUrl =
 	process.env.EXPO_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud";
 const convex = new ConvexReactClient(convexUrl);
 const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register"]);
+
+const isPublicAuthPath = (pathname: string) => PUBLIC_AUTH_PATHS.has(pathname);
 
 function AppNavigator() {
 	const router = useRouter();
-	const segments = useSegments();
+	const pathname = usePathname();
 	const rootNavigationState = useRootNavigationState();
 	const { user, isSessionLoading } = useAuth();
 
 	useEffect(() => {
 		if (isSessionLoading || !rootNavigationState?.key) return;
 
-		const isAuthRoute = segments[0] === "(auth)";
+		const isAuthRoute = isPublicAuthPath(pathname);
 		const targetRoute =
 			!user && !isAuthRoute ? "/login" : user && isAuthRoute ? "/home" : null;
 		if (!targetRoute) return;
@@ -42,7 +45,7 @@ function AppNavigator() {
 		});
 
 		return () => cancelAnimationFrame(frame);
-	}, [isSessionLoading, rootNavigationState?.key, router, segments, user]);
+	}, [isSessionLoading, pathname, rootNavigationState?.key, router, user]);
 
 	return (
 		<>
