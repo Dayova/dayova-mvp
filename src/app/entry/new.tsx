@@ -2,11 +2,10 @@ import DateTimePicker, {
 	type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useConvexAuth, useMutation } from "convex/react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import type { Id } from "#convex/_generated/dataModel";
 import {
-	ArrowLeft,
 	CalendarDays,
 	CheckCircle2,
 	ClipboardList,
@@ -14,7 +13,7 @@ import {
 	GraduationCap,
 	Sparkles,
 } from "~/components/ui/icon";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import {
 	KeyboardAvoidingView,
 	Platform,
@@ -24,7 +23,7 @@ import {
 	View,
 } from "react-native";
 import { api } from "#convex/_generated/api";
-import { Button } from "~/components/ui/button";
+import { BackButton, Button } from "~/components/ui/button";
 import {
 	Field,
 	FieldAccessory,
@@ -38,6 +37,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Toggle } from "~/components/ui/toggle";
 import { useAuth } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
+import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 
 type EntryType = "homework" | "exam";
 type EntryStep = "basics" | "planning" | "examDecision" | "success";
@@ -304,6 +304,10 @@ function ActionCard({
 }) {
 	return (
 		<TouchableOpacity
+			accessibilityHint={description}
+			accessibilityLabel={title}
+			accessibilityRole="button"
+			accessibilityState={{ disabled }}
 			activeOpacity={disabled ? 1 : 0.9}
 			disabled={disabled}
 			onPress={onPress}
@@ -444,7 +448,9 @@ export default function NewEntryScreen() {
 
 	const createEntry = async ({
 		redirectToHome = true,
-	}: { redirectToHome?: boolean } = {}) => {
+	}: {
+		redirectToHome?: boolean;
+	} = {}) => {
 		if (isHomework && !canCreateHomework) return;
 		if (!isHomework && !canCreateExam) return;
 		if (durationMinutes === null) return;
@@ -516,14 +522,25 @@ export default function NewEntryScreen() {
 		router.replace(`/home?dayKey=${encodeURIComponent(createdDayKey)}`);
 	};
 
-	const handleBack = () => {
-		if (step === "planning" || step === "examDecision") {
-			setStep("basics");
-			return;
+	const handleBack = useCallback(() => {
+		if (pickerTarget) {
+			setPickerTarget(null);
+			return true;
 		}
 
-		router.back();
-	};
+		if (step === "planning" || step === "examDecision") {
+			setStep("basics");
+			return true;
+		}
+
+		goBackOrReplace(router, "/home");
+		return true;
+	}, [pickerTarget, router, step]);
+
+	useBackIntent(
+		Boolean(pickerTarget || (step !== "basics" && step !== "success")),
+		handleBack,
+	);
 
 	const renderPicker = () => {
 		if (!pickerTarget) return null;
@@ -545,7 +562,13 @@ export default function NewEntryScreen() {
 					/>
 					<View className="rounded-t-[32px] bg-white px-4 pt-3 pb-7">
 						<View className="mb-1 flex-row justify-end">
-							<TouchableOpacity onPress={closePicker} className="px-3 py-2">
+							<TouchableOpacity
+								accessibilityLabel="Datumsauswahl schließen"
+								accessibilityRole="button"
+								hitSlop={8}
+								onPress={closePicker}
+								className="px-3 py-2"
+							>
 								<Text className="font-bold font-poppins text-16 text-primary">
 									Fertig
 								</Text>
@@ -605,6 +628,7 @@ export default function NewEntryScreen() {
 			className="flex-1 bg-background"
 			behavior={Platform.OS === "ios" ? "padding" : "height"}
 		>
+			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 			<ScrollView
 				className="flex-1"
@@ -617,13 +641,7 @@ export default function NewEntryScreen() {
 				showsVerticalScrollIndicator={false}
 			>
 				<View className="mb-9 flex-row items-center justify-between">
-					<TouchableOpacity
-						activeOpacity={0.75}
-						onPress={handleBack}
-						className="h-11 w-11 items-center justify-center rounded-full bg-black/5"
-					>
-						<ArrowLeft size={20} color="#1A1A1A" strokeWidth={2.3} />
-					</TouchableOpacity>
+					<BackButton onPress={handleBack} />
 					<View className="flex-row gap-2">
 						<View className="h-2 w-8 rounded-full bg-primary" />
 						<View

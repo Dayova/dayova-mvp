@@ -1,6 +1,6 @@
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	Image,
 	Keyboard,
@@ -11,10 +11,11 @@ import {
 	useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BackButton } from "~/components/ui/button";
 import { InsetTextField } from "~/components/ui/text-field";
 import { Text } from "~/components/ui/text";
-import { ArrowLeft } from "~/components/ui/icon";
 import { useOnboarding } from "~/context/OnboardingContext";
+import { useBackIntent } from "~/lib/navigation";
 
 type IntroStep = {
 	kind: "intro";
@@ -113,6 +114,7 @@ const FLOW_STEPS: readonly FlowStep[] = [
 
 const INTRO_STEP_COUNT = 3;
 const QUESTION_STEP_COUNT = FLOW_STEPS.length - INTRO_STEP_COUNT;
+const INTRO_PROGRESS_KEYS = ["intro-progress-1", "intro-progress-2", "intro-progress-3"];
 
 export default function WelcomeScreen() {
 	const insets = useSafeAreaInsets();
@@ -166,20 +168,24 @@ export default function WelcomeScreen() {
 			return;
 		}
 
-		router.push("/login");
+		router.replace("/login");
 	};
 
-	const handleBack = () => {
-		if (activeIndex === 0) return;
+	const handleBack = useCallback(() => {
+		if (activeIndex === 0) return false;
 		if (isInputStep) Keyboard.dismiss();
 		setActiveIndex((current) => current - 1);
-	};
+		return true;
+	}, [activeIndex, isInputStep]);
+
+	useBackIntent(activeIndex > 0, handleBack);
 
 	return (
 		<KeyboardAvoidingView
 			className="flex-1 bg-[#FCFCFD]"
 			behavior={isInputStep && Platform.OS === "ios" ? "padding" : undefined}
 		>
+			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 
 			<View
@@ -219,9 +225,9 @@ export default function WelcomeScreen() {
 							}}
 						>
 							<View className="flex-row" style={{ columnGap: 8 }}>
-								{Array.from({ length: INTRO_STEP_COUNT }, (_, index) => (
+								{INTRO_PROGRESS_KEYS.map((key, index) => (
 									<View
-										key={index}
+										key={key}
 										className="rounded-full"
 										style={{
 											width: 8,
@@ -235,7 +241,7 @@ export default function WelcomeScreen() {
 
 							<View style={{ rowGap: 18 }}>
 								<Text
-									className="font-poppins font-bold text-[#111111]"
+									className="font-bold font-poppins text-[#111111]"
 									style={{
 										fontSize: 25,
 										lineHeight: 33,
@@ -266,19 +272,16 @@ export default function WelcomeScreen() {
 				) : (
 					<>
 						<View className="flex-row items-center">
-							<TouchableOpacity
-								activeOpacity={0.82}
+							<BackButton
 								onPress={handleBack}
-								className="h-9 w-9 items-center justify-center rounded-full bg-white"
 								style={{
 									borderWidth: 1,
 									borderColor: "rgba(17,24,39,0.06)",
 									boxShadow: "0 8px 18px rgba(22, 34, 68, 0.06)",
 								}}
-							>
-								<ArrowLeft size={18} color="#1A1A1A" strokeWidth={2.2} />
-							</TouchableOpacity>
-
+								iconSize={18}
+								strokeWidth={2.2}
+							/>
 							<View className="ml-4 flex-1">
 								<View
 									className="h-[4px] overflow-hidden rounded-full bg-[#E6EDFF]"
@@ -293,7 +296,6 @@ export default function WelcomeScreen() {
 								</View>
 							</View>
 						</View>
-
 						<View className="flex-1">
 							<View
 								style={{
@@ -309,7 +311,7 @@ export default function WelcomeScreen() {
 									Sag mal...
 								</Text>
 								<Text
-									className="text-center font-poppins font-bold text-[#111111]"
+									className="text-center font-bold font-poppins text-[#111111]"
 									style={{
 										fontSize: 25,
 										lineHeight: 31,
@@ -347,6 +349,9 @@ export default function WelcomeScreen() {
 											return (
 												<TouchableOpacity
 													key={option}
+													accessibilityLabel={option}
+													accessibilityRole="radio"
+													accessibilityState={{ selected: isSelected }}
 													activeOpacity={0.86}
 													onPress={() => setAnswer(activeStep.field, option)}
 													className="min-h-[60px] justify-center rounded-[22px] px-5"
@@ -454,6 +459,9 @@ function PrimaryAction({
 }) {
 	return (
 		<TouchableOpacity
+			accessibilityLabel={label}
+			accessibilityRole="button"
+			accessibilityState={{ disabled }}
 			activeOpacity={disabled ? 1 : 0.9}
 			onPress={onPress}
 			disabled={disabled}
@@ -465,7 +473,7 @@ function PrimaryAction({
 			}}
 		>
 			<Text
-				className="font-poppins font-bold text-white"
+				className="font-bold font-poppins text-white"
 				style={{ fontSize: 22, lineHeight: 30, includeFontPadding: false }}
 			>
 				{label}

@@ -10,13 +10,11 @@ import {
 	Clock3,
 	GraduationCap,
 	Plus,
-	Sparkles,
 	X,
 } from "~/components/ui/icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Modal,
-	Platform,
 	Pressable,
 	ScrollView,
 	TouchableOpacity,
@@ -258,7 +256,7 @@ export default function HomeScreen() {
 				<View className="flex-row items-start justify-between">
 					<View className="max-w-[230px]">
 						<Text
-							className="font-poppins font-bold text-[#17171C]"
+							className="font-bold font-poppins text-[#17171C]"
 							style={{
 								fontSize: 26,
 								lineHeight: 27,
@@ -268,7 +266,7 @@ export default function HomeScreen() {
 							{`Hi ${firstName}, schön`}
 						</Text>
 						<Text
-							className="font-poppins font-bold text-[#8D8F98]"
+							className="font-bold font-poppins text-[#8D8F98]"
 							style={{
 								fontSize: 26,
 								lineHeight: 27,
@@ -329,7 +327,7 @@ export default function HomeScreen() {
 
 						<View className="mt-7 max-w-[215px]">
 							<Text
-								className="font-poppins font-bold text-white"
+								className="font-bold font-poppins text-white"
 								style={{
 									fontSize: 23,
 									lineHeight: 24,
@@ -342,6 +340,12 @@ export default function HomeScreen() {
 
 						<View className="mt-7 flex-row items-center justify-between">
 							<TouchableOpacity
+								accessibilityLabel={
+									featuredEntry
+										? `${getEntryLabel(featuredEntry)} als erledigt markieren`
+										: "Geplante Aufgabe als erledigt markieren"
+								}
+								accessibilityRole="button"
 								activeOpacity={0.88}
 								className="h-14 w-14 items-center justify-center rounded-full bg-white"
 								style={{ boxShadow: "0 10px 18px rgba(0,0,0,0.10)" }}
@@ -350,6 +354,12 @@ export default function HomeScreen() {
 							</TouchableOpacity>
 
 							<TouchableOpacity
+								accessibilityLabel={
+									featuredEntry
+										? `${getEntryLabel(featuredEntry)} öffnen`
+										: "Neuen Eintrag erstellen"
+								}
+								accessibilityRole="button"
 								activeOpacity={0.9}
 								onPress={() =>
 									featuredEntry
@@ -391,7 +401,7 @@ export default function HomeScreen() {
 					<View className="flex-row items-start justify-between">
 						<View>
 							<Text
-								className="font-poppins font-bold text-[#17171C]"
+								className="font-bold font-poppins text-[#17171C]"
 								style={{ fontSize: 22, lineHeight: 24, includeFontPadding: false }}
 							>
 								{monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}
@@ -405,6 +415,8 @@ export default function HomeScreen() {
 						</View>
 
 						<TouchableOpacity
+							accessibilityLabel="Neuen Eintrag erstellen"
+							accessibilityRole="button"
 							activeOpacity={0.9}
 							onPress={() => setShowCreateTypePicker(true)}
 							className="h-14 w-14 items-center justify-center rounded-full bg-[#17171C]"
@@ -424,6 +436,8 @@ export default function HomeScreen() {
 						{!isSelectedToday && !isReturningToToday ? (
 							<View className="mt-2 items-center">
 								<TouchableOpacity
+									accessibilityLabel="Zurück zu heute"
+									accessibilityRole="button"
 									activeOpacity={0.88}
 									onPressIn={returnToToday}
 									className="rounded-full bg-[#EEF4FF] px-4 py-2"
@@ -444,6 +458,13 @@ export default function HomeScreen() {
 							visibleEntries.map((entry, index) => (
 								<TouchableOpacity
 									key={entry.id}
+									accessibilityHint="Öffnet die Details dieses Eintrags."
+									accessibilityLabel={`${getEntryLabel(entry)}, ${
+										isLearningSlotEntry(entry)
+											? getLearningRangeLabel(entry)
+											: getEntryTimeLabel(entry)
+									}`}
+									accessibilityRole="button"
 									activeOpacity={0.88}
 									onPress={() => router.push(getEntryUrl(entry))}
 									className="rounded-[24px] bg-white px-4 py-4"
@@ -559,7 +580,7 @@ export default function HomeScreen() {
 					>
 						<View className="mb-4 flex-row items-start justify-between">
 							<View className="flex-1 pr-4">
-								<Text className="font-poppins font-bold text-24 text-text">
+								<Text className="font-bold font-poppins text-24 text-text">
 									Was möchtest du planen?
 								</Text>
 								<Text className="mt-2 font-poppins text-14 text-text/65">
@@ -567,15 +588,21 @@ export default function HomeScreen() {
 								</Text>
 							</View>
 							<TouchableOpacity
+								accessibilityLabel="Auswahl schließen"
+								accessibilityRole="button"
+								hitSlop={8}
 								activeOpacity={0.75}
 								onPress={() => setShowCreateTypePicker(false)}
-								className="h-10 w-10 items-center justify-center rounded-full bg-black/5"
+								className="h-11 w-11 items-center justify-center rounded-full bg-black/5"
 							>
 								<X size={18} color="#1A1A1A" strokeWidth={2.3} />
 							</TouchableOpacity>
 						</View>
 
 						<TouchableOpacity
+							accessibilityHint="Startet den Dialog zum Eintragen einer neuen Hausaufgabe."
+							accessibilityLabel="Neue Hausaufgabe"
+							accessibilityRole="button"
 							activeOpacity={0.86}
 							className="mb-3 min-h-[88px] flex-row items-center rounded-[24px] bg-primary px-5 py-4"
 							onPress={() => selectCreateType("homework")}
@@ -584,7 +611,7 @@ export default function HomeScreen() {
 								<ClipboardList size={22} color="#FFFFFF" strokeWidth={2.2} />
 							</View>
 							<View className="ml-3 flex-1">
-								<Text className="font-poppins font-bold text-16 text-white">
+								<Text className="font-bold font-poppins text-16 text-white">
 									Neue Hausaufgabe
 								</Text>
 								<Text className="mt-1 font-poppins text-12 text-white/78">
@@ -594,6 +621,9 @@ export default function HomeScreen() {
 						</TouchableOpacity>
 
 						<TouchableOpacity
+							accessibilityHint="Startet den Dialog zum Eintragen einer neuen Leistungskontrolle."
+							accessibilityLabel="Neue Leistungskontrolle"
+							accessibilityRole="button"
 							activeOpacity={0.86}
 							className="min-h-[88px] flex-row items-center rounded-[24px] border border-black/10 bg-white px-5 py-4"
 							onPress={() => selectCreateType("exam")}
@@ -602,7 +632,7 @@ export default function HomeScreen() {
 								<GraduationCap size={23} color="#3A7BFF" strokeWidth={2.2} />
 							</View>
 							<View className="ml-3 flex-1">
-								<Text className="font-poppins font-bold text-16 text-text">
+								<Text className="font-bold font-poppins text-16 text-text">
 									Neue Leistungskontrolle
 								</Text>
 								<Text className="mt-1 font-poppins text-12 text-text/58">

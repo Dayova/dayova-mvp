@@ -27,10 +27,13 @@ function SettingsRow({
 
 	return (
 		<TouchableOpacity
+			accessibilityLabel={label}
+			accessibilityRole={onPress ? "button" : "text"}
+			accessibilityState={{ disabled: !onPress }}
 			activeOpacity={0.85}
 			onPress={onPress}
 			disabled={!onPress}
-			className="min-h-[76px] flex-row items-center rounded-full bg-white pl-7 pr-5"
+			className="min-h-[76px] flex-row items-center rounded-full bg-white pr-5 pl-7"
 			style={{
 				borderWidth: 1,
 				borderColor: "rgba(17,24,39,0.04)",
