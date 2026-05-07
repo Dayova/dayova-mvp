@@ -1,4 +1,5 @@
 import { router, Stack } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -51,9 +52,9 @@ type FlowStep = IntroStep | InfoStep | SelectStep | InputStep;
 const FLOW_STEPS: readonly FlowStep[] = [
 	{
 		kind: "intro",
-		title: "Herzlich willkommen bei Dayova.",
+		title: "Keine Motivation.\nKein Plan. Zu viel Stress?",
 		description:
-			"Mit deinem persönlichen Lernkalender planst du Schule, Lernen und Fortschritte an einem Ort.",
+			"Prokrastination, Ablenkung und Unklarheit halten dich davon ab wirklich voranzukommen",
 	},
 	{
 		kind: "intro",
@@ -63,9 +64,9 @@ const FLOW_STEPS: readonly FlowStep[] = [
 	},
 	{
 		kind: "intro",
-		title: "Genau dabei helfen wir dir.",
+		title: "Dayova bringt dich ans Ziel.",
 		description:
-			"Jetzt startet eine kurze Informationsumfrage, damit wir deinen Lernkalender passend zu dir erstellen können.",
+			"Individuell, strukturiert und motiviert - mehr Fortschritt, weniger Stress und echte Erfolge",
 	},
 	{
 		kind: "select",
@@ -118,7 +119,7 @@ const INTRO_PROGRESS_KEYS = ["intro-progress-1", "intro-progress-2", "intro-prog
 
 export default function WelcomeScreen() {
 	const insets = useSafeAreaInsets();
-	const { width, height } = useWindowDimensions();
+	const { height } = useWindowDimensions();
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 	const { answers, setAnswer } = useOnboarding();
@@ -134,12 +135,6 @@ export default function WelcomeScreen() {
 			: activeStep.kind === "input"
 				? !answers[activeStep.field].trim()
 				: false;
-
-	const heroSize = useMemo(() => {
-		if (height < 760) return 122;
-		if (width > 420) return 168;
-		return 146;
-	}, [height, width]);
 
 	useEffect(() => {
 		if (!isInputStep) return;
@@ -197,22 +192,145 @@ export default function WelcomeScreen() {
 			>
 				{isIntroStep ? (
 					<>
-						<View className="flex-1 items-center justify-center">
-							<View
-								className="items-center justify-center rounded-full"
-								style={{
-									width: heroSize,
-									height: heroSize,
-									backgroundColor: "rgba(255,255,255,0.92)",
-									boxShadow: "0 20px 55px rgba(50, 90, 180, 0.08)",
-								}}
-							>
-								<Image
-									source={require("../../../assets/dayova-logo.png")}
-									style={{ width: heroSize * 0.38, height: heroSize * 0.38 }}
-									resizeMode="contain"
-								/>
-							</View>
+						<View
+							className={`flex-1 items-center ${
+								activeIndex === 1 ? "justify-start" : "justify-center"
+							}`}
+						>
+							{activeIndex === 0 ? (
+								<View
+									className="relative self-stretch overflow-hidden"
+									style={{
+										height: height < 760 ? 300 : 360,
+										marginHorizontal: -22,
+									}}
+								>
+									<Image
+										source={require("../../../assets/no-motivation.png")}
+										style={{
+											width: "100%",
+											height: "100%",
+										}}
+										resizeMode="cover"
+									/>
+
+									<LinearGradient
+										colors={["rgba(252,252,253,1)", "rgba(252,252,253,0)"]}
+										start={{ x: 0.5, y: 0 }}
+										end={{ x: 0.5, y: 1 }}
+										pointerEvents="none"
+										style={{
+											position: "absolute",
+											left: 0,
+											right: 0,
+											top: 0,
+											height: 116,
+										}}
+									/>
+									<LinearGradient
+										colors={["rgba(252,252,253,0)", "rgba(252,252,253,1)"]}
+										start={{ x: 0.5, y: 0 }}
+										end={{ x: 0.5, y: 1 }}
+										pointerEvents="none"
+										style={{
+											position: "absolute",
+											left: 0,
+											right: 0,
+											bottom: 0,
+											height: 138,
+										}}
+									/>
+								</View>
+							) : activeIndex === 1 ? (
+								<View
+									className="relative self-stretch overflow-hidden"
+									style={{
+										height: height < 760 ? 248 : 304,
+										marginTop: 8,
+										marginHorizontal: -22,
+									}}
+								>
+									<Image
+										source={require("../../../assets/problems.png")}
+										style={{
+											width: "100%",
+											height: "100%",
+										}}
+										resizeMode="cover"
+									/>
+
+									<LinearGradient
+										colors={["rgba(252,252,253,1)", "rgba(252,252,253,0)"]}
+										start={{ x: 0.5, y: 0 }}
+										end={{ x: 0.5, y: 1 }}
+										pointerEvents="none"
+										style={{
+											position: "absolute",
+											left: 0,
+											right: 0,
+											top: 0,
+											height: 116,
+										}}
+									/>
+									<LinearGradient
+										colors={["rgba(252,252,253,0)", "rgba(252,252,253,1)"]}
+										start={{ x: 0.5, y: 0 }}
+										end={{ x: 0.5, y: 1 }}
+										pointerEvents="none"
+										style={{
+											position: "absolute",
+											left: 0,
+											right: 0,
+											bottom: 0,
+											height: 138,
+										}}
+									/>
+								</View>
+							) : (
+								<View
+									className="relative self-stretch overflow-hidden"
+									style={{
+										height: height < 760 ? 300 : 360,
+										marginHorizontal: -22,
+									}}
+								>
+									<Image
+										source={require("../../../assets/motivation.png")}
+										style={{
+											width: "100%",
+											height: "100%",
+										}}
+										resizeMode="cover"
+									/>
+
+									<LinearGradient
+										colors={["rgba(252,252,253,1)", "rgba(252,252,253,0)"]}
+										start={{ x: 0.5, y: 0 }}
+										end={{ x: 0.5, y: 1 }}
+										pointerEvents="none"
+										style={{
+											position: "absolute",
+											left: 0,
+											right: 0,
+											top: 0,
+											height: 116,
+										}}
+									/>
+									<LinearGradient
+										colors={["rgba(252,252,253,0)", "rgba(252,252,253,1)"]}
+										start={{ x: 0.5, y: 0 }}
+										end={{ x: 0.5, y: 1 }}
+										pointerEvents="none"
+										style={{
+											position: "absolute",
+											left: 0,
+											right: 0,
+											bottom: 0,
+											height: 138,
+										}}
+									/>
+								</View>
+							)}
 						</View>
 
 						<View
