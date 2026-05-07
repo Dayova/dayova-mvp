@@ -316,6 +316,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 	const isRegisterMode = mode === "register";
 	const isVerificationPending = Boolean(pendingVerification);
+	const isOtpKeyboardVisible = isVerificationPending && isKeyboardVisible;
 	const tabIndicatorTranslateX = tabProgress.interpolate({
 		inputRange: [0, 1],
 		outputRange: [0, tabWidth],
@@ -330,18 +331,15 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	}, [isVerificationPending]);
 
 	useEffect(() => {
-		if (!isVerificationPending || !isKeyboardVisible) return;
+		if (!isOtpKeyboardVisible) return;
 		const refocusTimer = setTimeout(() => {
 			otpInputRef.current?.focus();
 		}, 80);
 		return () => clearTimeout(refocusTimer);
-	}, [isKeyboardVisible, isVerificationPending]);
+	}, [isOtpKeyboardVisible]);
 
 	useEffect(() => {
-		if (!isVerificationPending) {
-			setIsKeyboardVisible(false);
-			return;
-		}
+		if (!isVerificationPending) return;
 
 		const showEvent =
 			Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -421,13 +419,14 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		try {
 			setSubmitError("");
 			const result = await login({ email: email.trim(), password });
-			if (result.status === "complete") {
-				router.replace("/home");
-				return;
-			}
-			setVerificationCode("");
-			setVerificationFeedback({ tone: "neutral", message: result.message });
-		} catch (error) {
+		if (result.status === "complete") {
+			router.replace("/home");
+			return;
+		}
+		setIsKeyboardVisible(false);
+		setVerificationCode("");
+		setVerificationFeedback({ tone: "neutral", message: result.message });
+	} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Anmeldung fehlgeschlagen.";
 			if (isCredentialError(message)) {
@@ -538,16 +537,16 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		const emailAddress = pendingVerification?.email ?? "deine E-Mail-Adresse";
 		const canSubmitCode =
 			verificationCode.length === VERIFICATION_CODE_LENGTH && !isLoading;
-		const otpTopPadding = isKeyboardVisible
+		const otpTopPadding = isOtpKeyboardVisible
 			? Math.max(insets.top + 16, 28)
 			: Math.max(insets.top + 40, 72);
-		const otpCardMarginTop = isKeyboardVisible ? 18 : 40;
-		const otpCardPaddingTop = isKeyboardVisible ? 24 : 32;
-		const otpContentPaddingBottom = isKeyboardVisible ? 24 : 36;
-		const otpIconSize = isKeyboardVisible ? 64 : 80;
-		const otpTitleMarginTop = isKeyboardVisible ? 20 : 28;
-		const otpFieldMarginTop = isKeyboardVisible ? 8 : 16;
-		const otpButtonMarginTop = isKeyboardVisible ? 28 : 40;
+		const otpCardMarginTop = isOtpKeyboardVisible ? 18 : 40;
+		const otpCardPaddingTop = isOtpKeyboardVisible ? 24 : 32;
+		const otpContentPaddingBottom = isOtpKeyboardVisible ? 24 : 36;
+		const otpIconSize = isOtpKeyboardVisible ? 64 : 80;
+		const otpTitleMarginTop = isOtpKeyboardVisible ? 20 : 28;
+		const otpFieldMarginTop = isOtpKeyboardVisible ? 8 : 16;
+		const otpButtonMarginTop = isOtpKeyboardVisible ? 28 : 40;
 
 		return (
 			<KeyboardAvoidingView className="flex-1 bg-black">

@@ -176,7 +176,7 @@ export const saveOnboardingAnswers = mutation({
 				.unique();
 
 			if (existingQuestion) {
-				await ctx.db.patch(existingQuestion._id, {
+				await ctx.db.patch("onboardingQuestions", existingQuestion._id, {
 					prompt: question.prompt,
 					kind: question.kind,
 					order: question.order,
@@ -213,7 +213,9 @@ export const saveOnboardingAnswers = mutation({
 				.unique();
 
 			if (existingAnswer) {
-				await ctx.db.patch(existingAnswer._id, { answer: normalizedAnswer });
+				await ctx.db.patch("userOnboardingAnswers", existingAnswer._id, {
+					answer: normalizedAnswer,
+				});
 				continue;
 			}
 
