@@ -16,7 +16,6 @@ import {
 	Clock3,
 	MoreHorizontal,
 	Plus,
-	Sparkles,
 	Trash2,
 	X,
 	Zap,
@@ -39,6 +38,7 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import Svg, { Circle, Path } from "react-native-svg";
 import Animated, {
 	Easing,
 	interpolate,
@@ -121,10 +121,55 @@ const ANALYSIS_ORBITS = Array.from({ length: 9 }, (_, index) => ({
 	id: `analysis-orbit-${index}`,
 	rotation: index * 40,
 }));
+const ANALYSIS_ORBIT_LOADER_SIZE = 360;
+const ANALYSIS_ORBIT_PETAL_SIZE = 174;
+const ANALYSIS_ORBIT_PETAL_DISTANCE = 64;
 const ORBIT_COLLAPSE_DURATION = 2400;
 const ORBIT_EXPAND_DURATION = 2200;
 const ORBIT_CYCLE_DURATION = 5000;
 const ORBIT_ROTATION_STEP = 48;
+const TOPIC_TEXTAREA_HEIGHT = 160;
+const TOPIC_TEXTAREA_CARD_HEIGHT = 202;
+const ANSWER_TEXTAREA_HEIGHT = 112;
+const ANSWER_TEXTAREA_CARD_HEIGHT = 142;
+const QUESTION_PROGRESS_SIZE = 112;
+const QUESTION_PROGRESS_RADIUS = QUESTION_PROGRESS_SIZE / 2;
+const QUESTION_PROGRESS_CENTER = QUESTION_PROGRESS_SIZE / 2;
+
+const getQuestionProgressPath = (progress: number) => {
+	const normalizedProgress = Math.max(0, Math.min(progress, 1));
+	if (normalizedProgress >= 1) return null;
+
+	const angle = normalizedProgress * 2 * Math.PI - Math.PI / 2;
+	const endX =
+		QUESTION_PROGRESS_CENTER + QUESTION_PROGRESS_RADIUS * Math.cos(angle);
+	const endY =
+		QUESTION_PROGRESS_CENTER + QUESTION_PROGRESS_RADIUS * Math.sin(angle);
+	const largeArcFlag = normalizedProgress > 0.5 ? 1 : 0;
+
+	return [
+		`M ${QUESTION_PROGRESS_CENTER} ${QUESTION_PROGRESS_CENTER}`,
+		`L ${QUESTION_PROGRESS_CENTER} 0`,
+		`A ${QUESTION_PROGRESS_RADIUS} ${QUESTION_PROGRESS_RADIUS} 0 ${largeArcFlag} 1 ${endX} ${endY}`,
+		"Z",
+	].join(" ");
+};
+
+const getHeaderTitle = (visibleStep: FlowStep) => {
+	if (visibleStep === "plan" || visibleStep === "generating") {
+		return "Lernplan";
+	}
+
+	if (visibleStep === "question") {
+		return "Quiz";
+	}
+
+	if (visibleStep === "analysisIntro") {
+		return "Wissensanalyse";
+	}
+
+	return "Prüfungsthema";
+};
 
 const phaseIcon = {
 	theory: BookOpen,
@@ -404,15 +449,21 @@ function AnalysisOrbitPetal({
 	const petalStyle = useAnimatedStyle(() => ({
 		transform: [
 			{ rotate: `${rotation}deg` },
-			{ translateY: -34 * expansion.value },
+			{ translateY: -ANALYSIS_ORBIT_PETAL_DISTANCE * expansion.value },
 			{ scale: interpolate(expansion.value, [0, 1], [0.92, 1]) },
 		],
 	}));
 
 	return (
 		<Animated.View
-			className="absolute h-[92px] w-[92px] rounded-full bg-primary/55"
-			style={petalStyle}
+			className="absolute rounded-full bg-primary/55"
+			style={[
+				{
+					height: ANALYSIS_ORBIT_PETAL_SIZE,
+					width: ANALYSIS_ORBIT_PETAL_SIZE,
+				},
+				petalStyle,
+			]}
 		/>
 	);
 }
@@ -455,7 +506,13 @@ function AnalysisOrbitLoader() {
 	}));
 
 	return (
-		<View className="mb-10 h-[190px] w-[190px] items-center justify-center">
+		<View
+			className="mb-12 items-center justify-center"
+			style={{
+				height: ANALYSIS_ORBIT_LOADER_SIZE,
+				width: ANALYSIS_ORBIT_LOADER_SIZE,
+			}}
+		>
 			<Animated.View
 				className="h-full w-full items-center justify-center"
 				style={flowerStyle}
@@ -536,6 +593,9 @@ export default function LearningPlanScreen() {
 
 	const questions = snapshot?.plan.knowledgeQuestions ?? EMPTY_QUESTIONS;
 	const currentQuestion = questions[questionIndex] ?? null;
+	const questionProgress =
+		questions.length > 0 ? (questionIndex + 1) / questions.length : 0;
+	const questionProgressPath = getQuestionProgressPath(questionProgress);
 	const visibleStep =
 		step === "analysisIntro" && currentQuestion ? "question" : step;
 	const canWrite = Boolean(user && isConvexAuthenticated);
@@ -961,10 +1021,7 @@ export default function LearningPlanScreen() {
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
 			>
-				<Header
-					title={visibleStep === "plan" ? "Lernplan" : "Prüfungsthema"}
-					onBack={goBack}
-				/>
+				<Header title={getHeaderTitle(visibleStep)} onBack={goBack} />
 
 				{visibleStep === "topic" ? (
 					<>
@@ -976,8 +1033,9 @@ export default function LearningPlanScreen() {
 							Thema beschreiben
 						</Text>
 						<View
-							className="mb-7 min-h-[202px] items-start rounded-[36px] bg-white px-[24px] pt-[19px] pb-5"
+							className="mb-7 items-start rounded-[36px] bg-white px-[24px] pt-[19px] pb-5"
 							style={{
+								height: TOPIC_TEXTAREA_CARD_HEIGHT,
 								shadowColor: "#000000",
 								shadowOpacity: 0.08,
 								shadowRadius: 13,
@@ -989,7 +1047,7 @@ export default function LearningPlanScreen() {
 								value={topicDescription}
 								onChangeText={setTopicDescription}
 								placeholder="Kurze Beschreibung hinzufügen"
-								className="min-h-[160px]"
+								style={{ height: TOPIC_TEXTAREA_HEIGHT }}
 							/>
 						</View>
 
@@ -1076,30 +1134,50 @@ export default function LearningPlanScreen() {
 				) : null}
 
 				{visibleStep === "analysisIntro" ? (
-					<View className="flex-1 items-center pt-8">
+					<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
 						<AnalysisOrbitLoader />
-						<Text className="self-start font-bold font-poppins text-18 text-text">
+						<Text
+							className="text-center font-bold font-poppins text-text"
+							style={{ fontSize: 26, lineHeight: 31 }}
+						>
 							Beantworte 5 kurze Fragen für deinen persönlichen Lernplan.
 						</Text>
 						{errorMessage ? (
-							<Text className="mt-6 self-start font-poppins text-12 text-destructive">
+							<Text className="mt-6 text-center font-poppins text-12 text-destructive">
 								{errorMessage}
 							</Text>
-						) : (
-							<View className="mt-10 w-full items-center">
-								<Text className="text-center font-poppins text-14 text-text/55">
-									Die Fragen werden gerade erstellt.
-								</Text>
-							</View>
-						)}
+						) : null}
 					</View>
 				) : null}
 
 				{visibleStep === "question" && currentQuestion ? (
 					<>
 						<View className="mb-7 items-center">
-							<View className="h-16 w-16 items-center justify-center rounded-full bg-primary/55">
-								<Text className="font-bold font-poppins text-20 text-white">
+							<View
+								className="items-center justify-center overflow-hidden rounded-full bg-primary/55"
+								style={{
+									width: QUESTION_PROGRESS_SIZE,
+									height: QUESTION_PROGRESS_SIZE,
+								}}
+							>
+								<Svg
+									width={QUESTION_PROGRESS_SIZE}
+									height={QUESTION_PROGRESS_SIZE}
+									style={{ position: "absolute" }}
+									viewBox={`0 0 ${QUESTION_PROGRESS_SIZE} ${QUESTION_PROGRESS_SIZE}`}
+								>
+									{questionProgressPath ? (
+										<Path d={questionProgressPath} fill="#3A7BFF" />
+									) : (
+										<Circle
+											cx={QUESTION_PROGRESS_CENTER}
+											cy={QUESTION_PROGRESS_CENTER}
+											r={QUESTION_PROGRESS_RADIUS}
+											fill="#3A7BFF"
+										/>
+									)}
+								</Svg>
+								<Text className="font-bold font-poppins text-40 text-white">
 									{questionIndex + 1}
 								</Text>
 							</View>
@@ -1113,7 +1191,10 @@ export default function LearningPlanScreen() {
 						<Text className="mt-7 mb-3 font-bold font-poppins text-12 text-text">
 							Antwort
 						</Text>
-						<View className="mb-8 min-h-[138px] items-start rounded-[28px] bg-white px-[18px] pt-[14px] pb-4">
+						<View
+							className="mb-8 items-start rounded-[28px] bg-white px-[18px] pt-[14px] pb-4"
+							style={{ height: ANSWER_TEXTAREA_CARD_HEIGHT }}
+						>
 							<Textarea
 								value={answers[currentQuestion.id] ?? ""}
 								onChangeText={(value) =>
@@ -1123,6 +1204,7 @@ export default function LearningPlanScreen() {
 									}))
 								}
 								placeholder="Schreibe hier deine Antwort rein..."
+								style={{ height: ANSWER_TEXTAREA_HEIGHT }}
 							/>
 						</View>
 						{errorMessage ? (
@@ -1150,25 +1232,14 @@ export default function LearningPlanScreen() {
 				) : null}
 
 				{visibleStep === "generating" ? (
-					<View className="flex-1 items-center justify-center pt-24">
-						<View className="mb-7 h-20 w-20 items-center justify-center rounded-full bg-primary/12">
-							<Sparkles size={34} color="#3A7BFF" strokeWidth={2.2} />
-						</View>
-						<Text className="text-center font-bold font-poppins text-20 text-text">
-							Dein Lernplan wird erstellt
+					<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
+						<AnalysisOrbitLoader />
+						<Text
+							className="text-center font-poppins font-semibold text-text/70"
+							style={{ fontSize: 23, lineHeight: 26 }}
+						>
+							Aus deinen Antworten erstellen wir deinen persönlichen Lernplan.
 						</Text>
-						<Text className="mt-3 text-center font-poppins text-14 text-text/55">
-							Dayova analysiert deine Antworten und das Material.
-						</Text>
-						<ActivityIndicator className="mt-8" color="#3A7BFF" />
-						{errorMessage ? (
-							<Button
-								className="mt-8 w-full"
-								onPress={() => setStep("question")}
-							>
-								<Text>Zurück</Text>
-							</Button>
-						) : null}
 					</View>
 				) : null}
 
