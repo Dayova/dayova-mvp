@@ -283,7 +283,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const syncCurrentUser = useMutation(api.users.syncCurrentUser);
 	const saveOnboardingAnswers = useMutation(api.users.saveOnboardingAnswers);
-	const { answers: onboardingAnswers, clearAnswers, hasAnswers } = useOnboarding();
+	const {
+		answers: onboardingAnswers,
+		clearAnswers,
+		hasAnswers,
+	} = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [pendingVerification, setPendingVerification] =
 		useState<PendingVerification | null>(null);

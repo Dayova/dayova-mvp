@@ -29,9 +29,7 @@ import {
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-	Cursor,
-} from "react-native-confirmation-code-field";
+import { Cursor } from "react-native-confirmation-code-field";
 import { Button } from "~/components/ui/button";
 import {
 	Field,
@@ -179,26 +177,26 @@ function OtpCodeInput({
 								index === VERIFICATION_CODE_LENGTH - 1));
 
 					return (
-				<View
-					key={cellKey}
-					className="h-[64px] flex-1 items-center justify-center rounded-[18px] bg-white"
-					style={{
-						borderWidth: isFocused ? 1.8 : 1.2,
-						borderColor: isFocused ? "#1A1A1A" : "rgba(17,24,39,0.12)",
-						shadowColor: "#111827",
-						shadowOpacity: symbol ? 0.1 : 0.04,
-						shadowRadius: symbol ? 14 : 8,
-						shadowOffset: { width: 0, height: symbol ? 8 : 4 },
-						elevation: symbol ? 4 : 2,
-					}}
-				>
-					<Text
-						className="font-poppins font-semibold text-28 text-text"
-						style={{ includeFontPadding: false, lineHeight: 36 }}
-					>
-						{symbol || (isFocused ? <Cursor /> : null)}
-					</Text>
-				</View>
+						<View
+							key={cellKey}
+							className="h-[64px] flex-1 items-center justify-center rounded-[18px] bg-white"
+							style={{
+								borderWidth: isFocused ? 1.8 : 1.2,
+								borderColor: isFocused ? "#1A1A1A" : "rgba(17,24,39,0.12)",
+								shadowColor: "#111827",
+								shadowOpacity: symbol ? 0.1 : 0.04,
+								shadowRadius: symbol ? 14 : 8,
+								shadowOffset: { width: 0, height: symbol ? 8 : 4 },
+								elevation: symbol ? 4 : 2,
+							}}
+						>
+							<Text
+								className="font-poppins font-semibold text-28 text-text"
+								style={{ includeFontPadding: false, lineHeight: 36 }}
+							>
+								{symbol || (isFocused ? <Cursor /> : null)}
+							</Text>
+						</View>
 					);
 				})}
 			</View>
@@ -552,15 +550,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		const otpButtonMarginTop = isKeyboardVisible ? 28 : 40;
 
 		return (
-			<KeyboardAvoidingView
-				className="flex-1 bg-black"
-			>
+			<KeyboardAvoidingView className="flex-1 bg-black">
 				<StatusBar style="light" />
 
-				<View
-					className="flex-1 bg-black"
-					style={{ paddingTop: otpTopPadding }}
-				>
+				<View className="flex-1 bg-black" style={{ paddingTop: otpTopPadding }}>
 					<View className="items-center px-8">
 						<View className="flex-row items-center">
 							<Image
@@ -579,7 +572,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 					<View
 						className="flex-1 rounded-t-[36px] bg-background px-8"
-						style={{ marginTop: otpCardMarginTop, paddingTop: otpCardPaddingTop }}
+						style={{
+							marginTop: otpCardMarginTop,
+							paddingTop: otpCardPaddingTop,
+						}}
 					>
 						<ScrollView
 							contentContainerStyle={{
@@ -673,9 +669,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	}
 
 	return (
-		<KeyboardAvoidingView
-			className="flex-1 bg-black"
-		>
+		<KeyboardAvoidingView className="flex-1 bg-black">
 			<StatusBar style="light" />
 
 			<View

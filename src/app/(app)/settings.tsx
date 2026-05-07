@@ -3,12 +3,7 @@ import { useState } from "react";
 import { useRouter } from "expo-router";
 import { ScrollView, Switch, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-	Bell,
-	CalendarAdd,
-	Logout,
-	Settings,
-} from "~/components/ui/icon";
+import { Bell, CalendarAdd, Logout, Settings } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 
@@ -18,7 +13,11 @@ function SettingsRow({
 	trailing,
 	onPress,
 }: {
-	icon: (props: { size?: number; color?: string; strokeWidth?: number }) => React.JSX.Element;
+	icon: (props: {
+		size?: number;
+		color?: string;
+		strokeWidth?: number;
+	}) => React.JSX.Element;
 	label: string;
 	trailing?: React.JSX.Element;
 	onPress?: () => void;
@@ -116,7 +115,6 @@ export default function SettingsScreen() {
 					/>
 				</View>
 			</ScrollView>
-
 		</View>
 	);
 }

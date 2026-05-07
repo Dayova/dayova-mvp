@@ -1,7 +1,7 @@
 import { router, Stack } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
 	Image,
 	Keyboard,
@@ -72,7 +72,12 @@ const FLOW_STEPS: readonly FlowStep[] = [
 		kind: "select",
 		title: "Wie viel lernst du aktuell pro Tag?",
 		field: "studyTime",
-		options: ["Unter 30 Min.", "30 bis 60 Min.", "1 bis 2 Stunden", "Mehr als 2 Stunden"],
+		options: [
+			"Unter 30 Min.",
+			"30 bis 60 Min.",
+			"1 bis 2 Stunden",
+			"Mehr als 2 Stunden",
+		],
 	},
 	{
 		kind: "info",
@@ -84,7 +89,12 @@ const FLOW_STEPS: readonly FlowStep[] = [
 		kind: "select",
 		title: "Wo liegen deine Stärken?",
 		field: "strength",
-		options: ["Sprachen", "Mathematik", "Naturwissenschaften", "Kreative Fächer"],
+		options: [
+			"Sprachen",
+			"Mathematik",
+			"Naturwissenschaften",
+			"Kreative Fächer",
+		],
 	},
 	{
 		kind: "select",
@@ -96,7 +106,12 @@ const FLOW_STEPS: readonly FlowStep[] = [
 		kind: "select",
 		title: "Was möchtest du mit uns erreichen?",
 		field: "goal",
-		options: ["Bessere Noten", "Mehr Struktur", "Weniger Stress", "Konstant dranbleiben"],
+		options: [
+			"Bessere Noten",
+			"Mehr Struktur",
+			"Weniger Stress",
+			"Konstant dranbleiben",
+		],
 	},
 	{
 		kind: "info",
@@ -115,7 +130,11 @@ const FLOW_STEPS: readonly FlowStep[] = [
 
 const INTRO_STEP_COUNT = 3;
 const QUESTION_STEP_COUNT = FLOW_STEPS.length - INTRO_STEP_COUNT;
-const INTRO_PROGRESS_KEYS = ["intro-progress-1", "intro-progress-2", "intro-progress-3"];
+const INTRO_PROGRESS_KEYS = [
+	"intro-progress-1",
+	"intro-progress-2",
+	"intro-progress-3",
+];
 
 export default function WelcomeScreen() {
 	const insets = useSafeAreaInsets();
@@ -381,10 +400,7 @@ export default function WelcomeScreen() {
 								</Text>
 							</View>
 
-							<PrimaryAction
-								label="Weiter"
-								onPress={handleContinue}
-							/>
+							<PrimaryAction label="Weiter" onPress={handleContinue} />
 						</View>
 					</>
 				) : (
@@ -424,7 +440,11 @@ export default function WelcomeScreen() {
 							<View className="items-center" style={{ rowGap: 10 }}>
 								<Text
 									className="font-poppins text-[#A0A4AE]"
-									style={{ fontSize: 11, lineHeight: 16, includeFontPadding: false }}
+									style={{
+										fontSize: 11,
+										lineHeight: 16,
+										includeFontPadding: false,
+									}}
 								>
 									Sag mal...
 								</Text>

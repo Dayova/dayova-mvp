@@ -18,7 +18,12 @@ const NAV_ITEMS: Array<{
 		href: "/learning-plans",
 		label: "Lernpläne",
 	},
-	{ key: "settings", icon: Settings, href: "/settings", label: "Einstellungen" },
+	{
+		key: "settings",
+		icon: Settings,
+		href: "/settings",
+		label: "Einstellungen",
+	},
 ];
 
 export function BottomNav() {

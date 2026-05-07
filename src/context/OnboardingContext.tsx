@@ -40,7 +40,9 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
 				setAnswers((current) => ({ ...current, [field]: value }));
 			},
 			clearAnswers: () => setAnswers(emptyAnswers),
-			hasAnswers: Object.values(answers).some((value) => value.trim().length > 0),
+			hasAnswers: Object.values(answers).some(
+				(value) => value.trim().length > 0,
+			),
 		}),
 		[answers],
 	);

@@ -33,7 +33,8 @@ function AppNavigator() {
 		if (isSessionLoading || !rootNavigationState?.key) return;
 
 		const isAuthRoute = segments[0] === "(auth)";
-		const targetRoute = !user && !isAuthRoute ? "/login" : user && isAuthRoute ? "/home" : null;
+		const targetRoute =
+			!user && !isAuthRoute ? "/login" : user && isAuthRoute ? "/home" : null;
 		if (!targetRoute) return;
 
 		const frame = requestAnimationFrame(() => {

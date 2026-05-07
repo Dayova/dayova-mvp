@@ -149,7 +149,9 @@ export default function HomeScreen() {
 			null,
 		[sortedSelectedEntries],
 	);
-	const featuredSubject = featuredEntry ? getSubjectFromEntry(featuredEntry) : "dein Fach";
+	const featuredSubject = featuredEntry
+		? getSubjectFromEntry(featuredEntry)
+		: "dein Fach";
 	const featuredDurationLabel = featuredEntry?.durationMinutes
 		? `${featuredEntry.durationMinutes}min`
 		: featuredEntry
@@ -374,7 +376,10 @@ export default function HomeScreen() {
 						</View>
 					</ExpoLinearGradient>
 
-					<View className="mt-3 flex-row items-center justify-center" style={{ columnGap: 6 }}>
+					<View
+						className="mt-3 flex-row items-center justify-center"
+						style={{ columnGap: 6 }}
+					>
 						<View
 							className="rounded-full"
 							style={{ width: 22, height: 7, backgroundColor: "#1A1A1A" }}
@@ -402,13 +407,21 @@ export default function HomeScreen() {
 						<View>
 							<Text
 								className="font-bold font-poppins text-[#17171C]"
-								style={{ fontSize: 22, lineHeight: 24, includeFontPadding: false }}
+								style={{
+									fontSize: 22,
+									lineHeight: 24,
+									includeFontPadding: false,
+								}}
 							>
 								{monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}
 							</Text>
 							<Text
 								className="mt-1 font-poppins text-[#9599A4]"
-								style={{ fontSize: 13, lineHeight: 18, includeFontPadding: false }}
+								style={{
+									fontSize: 13,
+									lineHeight: 18,
+									includeFontPadding: false,
+								}}
 							>
 								{taskSummary}
 							</Text>
@@ -444,7 +457,11 @@ export default function HomeScreen() {
 								>
 									<Text
 										className="font-poppins font-semibold text-[#3A7BFF]"
-										style={{ fontSize: 12, lineHeight: 16, includeFontPadding: false }}
+										style={{
+											fontSize: 12,
+											lineHeight: 16,
+											includeFontPadding: false,
+										}}
 									>
 										Zurück zu heute
 									</Text>
@@ -495,11 +512,7 @@ export default function HomeScreen() {
 													{getEntryLabel(entry)}
 												</Text>
 												<View className="mt-1 flex-row items-center">
-													<Clock3
-														size={12}
-														color="#9A9DA8"
-														strokeWidth={2.1}
-													/>
+													<Clock3 size={12} color="#9A9DA8" strokeWidth={2.1} />
 													<Text
 														className="ml-1.5 font-poppins text-[#9A9DA8]"
 														style={{
@@ -538,18 +551,24 @@ export default function HomeScreen() {
 								</TouchableOpacity>
 							))
 						) : (
-							<View
-								className="rounded-[24px] px-5 py-8"
-							>
+							<View className="rounded-[24px] px-5 py-8">
 								<Text
 									className="text-center font-poppins font-semibold text-[#202127]"
-									style={{ fontSize: 17, lineHeight: 22, includeFontPadding: false }}
+									style={{
+										fontSize: 17,
+										lineHeight: 22,
+										includeFontPadding: false,
+									}}
 								>
 									Heute ist noch nichts geplant.
 								</Text>
 								<Text
 									className="mt-2 text-center font-poppins text-[#9599A4]"
-									style={{ fontSize: 13, lineHeight: 18, includeFontPadding: false }}
+									style={{
+										fontSize: 13,
+										lineHeight: 18,
+										includeFontPadding: false,
+									}}
 								>
 									Lege eine Hausaufgabe oder Lernsession an, um hier zu starten.
 								</Text>

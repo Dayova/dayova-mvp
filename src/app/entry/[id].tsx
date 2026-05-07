@@ -84,9 +84,7 @@ export default function EntryDetailScreen() {
 				: "skip",
 		) ?? undefined;
 	const title =
-		entry?.title ??
-		params.title ??
-		(isVirtualEntry ? "Lernplan" : "Eintrag");
+		entry?.title ?? params.title ?? (isVirtualEntry ? "Lernplan" : "Eintrag");
 	const kind = entry?.kind ?? params.kind;
 	const time = entry?.time ?? params.time;
 	const plannedDate =
