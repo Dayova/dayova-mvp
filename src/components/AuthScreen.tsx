@@ -28,11 +28,9 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-	CodeField,
 	Cursor,
-	useBlurOnFulfill,
-	useClearByFocusCell,
 } from "react-native-confirmation-code-field";
 import { Button } from "~/components/ui/button";
 import {
@@ -156,37 +154,32 @@ function OtpCodeInput({
 	disabled?: boolean;
 	inputRef: React.RefObject<TextInput | null>;
 }) {
-	const codeFieldRef = useBlurOnFulfill<TextInput>({
-		value,
-		cellCount: VERIFICATION_CODE_LENGTH,
-	});
-	const [cellProps, getCellOnLayoutHandler] = useClearByFocusCell({
-		value,
-		setValue: onChangeText,
-	});
-
 	useEffect(() => {
-		inputRef.current = codeFieldRef.current;
-	}, [codeFieldRef, inputRef]);
+		if (!inputRef.current) return;
+		inputRef.current.setNativeProps?.({
+			text: value,
+		});
+	}, [inputRef, value]);
 
 	return (
-		<CodeField
-			ref={codeFieldRef}
-			{...cellProps}
+		<TouchableOpacity
+			activeOpacity={1}
+			onPress={() => inputRef.current?.focus()}
+			accessibilityRole="button"
 			accessibilityLabel="Bestätigungscode eingeben"
-			value={value}
-			onChangeText={onChangeText}
-			cellCount={VERIFICATION_CODE_LENGTH}
-			rootStyle={otpStyles.root}
-			keyboardType="number-pad"
-			textContentType="oneTimeCode"
-			autoComplete={otpAutoComplete}
-			editable={!disabled}
-			autoFocus
-			renderCell={({ index, symbol, isFocused }) => (
+		>
+			<View style={otpStyles.root}>
+				{Array.from({ length: VERIFICATION_CODE_LENGTH }, (_, index) => {
+					const symbol = value[index] ?? "";
+					const isFocused =
+						!disabled &&
+						(value.length === index ||
+							(value.length === VERIFICATION_CODE_LENGTH &&
+								index === VERIFICATION_CODE_LENGTH - 1));
+
+					return (
 				<View
 					key={index}
-					onLayout={getCellOnLayoutHandler(index)}
 					className="h-[64px] flex-1 items-center justify-center rounded-[18px] bg-white"
 					style={{
 						borderWidth: isFocused ? 1.8 : 1.2,
@@ -205,8 +198,31 @@ function OtpCodeInput({
 						{symbol || (isFocused ? <Cursor /> : null)}
 					</Text>
 				</View>
-			)}
-		/>
+					);
+				})}
+			</View>
+
+			<TextInput
+				ref={inputRef}
+				value={value}
+				onChangeText={onChangeText}
+				editable={!disabled}
+				keyboardType="number-pad"
+				textContentType="oneTimeCode"
+				autoComplete={otpAutoComplete}
+				autoCorrect={false}
+				autoCapitalize="none"
+				caretHidden
+				maxLength={VERIFICATION_CODE_LENGTH}
+				selectionColor="transparent"
+				style={{
+					position: "absolute",
+					opacity: 0.01,
+					width: 1,
+					height: 1,
+				}}
+			/>
+		</TouchableOpacity>
 	);
 }
 
@@ -267,6 +283,7 @@ function VerificationFeedbackPill({
 }
 
 export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
+	const insets = useSafeAreaInsets();
 	const {
 		login,
 		register: registerUser,
@@ -290,6 +307,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const [submitError, setSubmitError] = useState("");
 	const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
 	const [passwordVisible, setPasswordVisible] = useState(false);
+	const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 	const [tabProgress] = useState(
 		() => new Animated.Value(initialMode === "login" ? 1 : 0),
 	);
@@ -310,6 +328,37 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 			otpInputRef.current?.focus();
 		}, 280);
 		return () => clearTimeout(focusTimer);
+	}, [isVerificationPending]);
+
+	useEffect(() => {
+		if (!isVerificationPending || !isKeyboardVisible) return;
+		const refocusTimer = setTimeout(() => {
+			otpInputRef.current?.focus();
+		}, 80);
+		return () => clearTimeout(refocusTimer);
+	}, [isKeyboardVisible, isVerificationPending]);
+
+	useEffect(() => {
+		if (!isVerificationPending) {
+			setIsKeyboardVisible(false);
+			return;
+		}
+
+		const showEvent =
+			Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+		const hideEvent =
+			Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+		const showSubscription = Keyboard.addListener(showEvent, () => {
+			setIsKeyboardVisible(true);
+		});
+		const hideSubscription = Keyboard.addListener(hideEvent, () => {
+			setIsKeyboardVisible(false);
+		});
+
+		return () => {
+			showSubscription.remove();
+			hideSubscription.remove();
+		};
 	}, [isVerificationPending]);
 
 	const switchMode = (next: Mode) => {
@@ -490,15 +539,27 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		const emailAddress = pendingVerification?.email ?? "deine E-Mail-Adresse";
 		const canSubmitCode =
 			verificationCode.length === VERIFICATION_CODE_LENGTH && !isLoading;
+		const otpTopPadding = isKeyboardVisible
+			? Math.max(insets.top + 16, 28)
+			: Math.max(insets.top + 40, 72);
+		const otpCardMarginTop = isKeyboardVisible ? 18 : 40;
+		const otpCardPaddingTop = isKeyboardVisible ? 24 : 32;
+		const otpContentPaddingBottom = isKeyboardVisible ? 24 : 36;
+		const otpIconSize = isKeyboardVisible ? 64 : 80;
+		const otpTitleMarginTop = isKeyboardVisible ? 20 : 28;
+		const otpFieldMarginTop = isKeyboardVisible ? 8 : 16;
+		const otpButtonMarginTop = isKeyboardVisible ? 28 : 40;
 
 		return (
 			<KeyboardAvoidingView
 				className="flex-1 bg-black"
-				behavior={Platform.OS === "ios" ? "padding" : "height"}
 			>
 				<StatusBar style="light" />
 
-				<View className="flex-1 bg-black pt-[72px]">
+				<View
+					className="flex-1 bg-black"
+					style={{ paddingTop: otpTopPadding }}
+				>
 					<View className="items-center px-8">
 						<View className="flex-row items-center">
 							<Image
@@ -515,16 +576,28 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 						</View>
 					</View>
 
-					<View className="mt-10 flex-1 rounded-t-[36px] bg-background px-8 pt-8">
+					<View
+						className="flex-1 rounded-t-[36px] bg-background px-8"
+						style={{ marginTop: otpCardMarginTop, paddingTop: otpCardPaddingTop }}
+					>
 						<ScrollView
-							contentContainerStyle={{ paddingBottom: 36 }}
+							contentContainerStyle={{
+								flexGrow: 1,
+								paddingBottom: otpContentPaddingBottom,
+							}}
 							keyboardShouldPersistTaps="handled"
 							showsVerticalScrollIndicator={false}
+							keyboardDismissMode={
+								Platform.OS === "ios" ? "interactive" : "on-drag"
+							}
+							automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
 						>
 							<View className="items-center">
 								<View
-									className="h-20 w-20 items-center justify-center rounded-[28px] bg-[#F3F7FF]"
+									className="items-center justify-center rounded-[28px] bg-[#F3F7FF]"
 									style={{
+										width: otpIconSize,
+										height: otpIconSize,
 										borderColor: "rgba(58,123,255,0.12)",
 										borderWidth: 1,
 									}}
@@ -533,8 +606,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								</View>
 
 								<Text
-									className="mt-7 text-center font-bold font-poppins text-28 text-text"
-									style={{ includeFontPadding: false, lineHeight: 34 }}
+									className="text-center font-bold font-poppins text-28 text-text"
+									style={{
+										marginTop: otpTitleMarginTop,
+										includeFontPadding: false,
+										lineHeight: 34,
+									}}
 								>
 									E-Mail bestätigen
 								</Text>
@@ -550,7 +627,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								</Text>
 							</View>
 
-							<View className="mt-10">
+							<View style={{ marginTop: otpFieldMarginTop }}>
 								<OtpCodeInput
 									value={verificationCode}
 									onChangeText={updateVerificationCode}
@@ -583,6 +660,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								onPress={handleVerifyEmailCode}
 								disabled={!canSubmitCode}
 								className="mt-10"
+								style={{ marginTop: otpButtonMarginTop }}
 							>
 								<Text>{isLoading ? "Prüft..." : "Code bestätigen"}</Text>
 							</Button>
@@ -596,11 +674,13 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	return (
 		<KeyboardAvoidingView
 			className="flex-1 bg-black"
-			behavior={Platform.OS === "ios" ? "padding" : "height"}
 		>
 			<StatusBar style="light" />
 
-			<View className="bg-black px-8 pt-[88px] pb-16">
+			<View
+				className="bg-black px-8 pb-16"
+				style={{ paddingTop: Math.max(insets.top + 44, 88) }}
+			>
 				<View className="items-center justify-center">
 					<View className="flex-row items-center">
 						<Image
@@ -610,10 +690,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 						/>
 						<Text
 							className="-ml-3 font-bold font-poppins text-white"
-							style={{
-								fontSize: 56,
-								lineHeight: 68,
-							}}
+							style={{ fontSize: 56, lineHeight: 68 }}
 						>
 							Dayova
 						</Text>
@@ -675,7 +752,11 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 				<ScrollView
 					ref={formScrollRef}
 					className="-mx-2 flex-1"
-					contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 8 }}
+					contentContainerStyle={{
+						flexGrow: 1,
+						paddingBottom: 40,
+						paddingHorizontal: 8,
+					}}
 					showsVerticalScrollIndicator={false}
 					keyboardShouldPersistTaps="handled"
 					keyboardDismissMode={
@@ -703,7 +784,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							textContentType="name"
 						/>
 					) : null}
-
 					<InsetTextField
 						label="E-Mail"
 						invalid={isRegisterMode && Boolean(errors.email)}
