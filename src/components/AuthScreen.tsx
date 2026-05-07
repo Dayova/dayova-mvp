@@ -171,6 +171,7 @@ function OtpCodeInput({
 			<View style={otpStyles.root}>
 				{Array.from({ length: VERIFICATION_CODE_LENGTH }, (_, index) => {
 					const symbol = value[index] ?? "";
+					const cellKey = `verification-code-cell-${index + 1}`;
 					const isFocused =
 						!disabled &&
 						(value.length === index ||
@@ -179,7 +180,7 @@ function OtpCodeInput({
 
 					return (
 				<View
-					key={index}
+					key={cellKey}
 					className="h-[64px] flex-1 items-center justify-center rounded-[18px] bg-white"
 					style={{
 						borderWidth: isFocused ? 1.8 : 1.2,

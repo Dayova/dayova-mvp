@@ -1,11 +1,12 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { Platform, Pressable } from "react-native";
+import { Platform, Pressable, type ViewStyle } from "react-native";
+import { ArrowLeft } from "~/components/ui/icon";
 import { TextClassContext } from "~/components/ui/text";
 import { cn } from "~/lib/utils";
 
 const buttonVariants = cva(
 	cn(
-		"group h-14 shrink-0 flex-row items-center justify-center gap-2 rounded-button px-6 shadow-primary/20 shadow-sm",
+		"group h-[67px] shrink-0 flex-row items-center justify-center gap-2 rounded-[32px] px-6 shadow-primary/20 shadow-sm",
 		Platform.select({
 			web: "whitespace-nowrap outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
 		}),
@@ -40,7 +41,10 @@ const buttonVariants = cva(
 				link: "",
 			},
 			size: {
-				default: cn("h-14 px-6", Platform.select({ web: "has-[>svg]:px-5" })),
+				default: cn(
+					"h-[67px] px-6",
+					Platform.select({ web: "has-[>svg]:px-5" }),
+				),
 				sm: cn(
 					"h-11 gap-1.5 rounded-button px-4",
 					Platform.select({ web: "has-[>svg]:px-3" }),
@@ -61,7 +65,7 @@ const buttonVariants = cva(
 
 const buttonTextVariants = cva(
 	cn(
-		"font-bold font-poppins text-16 text-foreground uppercase leading-6",
+		"font-bold font-poppins text-16 text-foreground leading-6",
 		Platform.select({ web: "pointer-events-none transition-colors" }),
 	),
 	{
@@ -99,10 +103,22 @@ const buttonTextVariants = cva(
 type ButtonProps = React.ComponentProps<typeof Pressable> &
 	VariantProps<typeof buttonVariants>;
 
-function Button({ className, variant, size, ...props }: ButtonProps) {
+function Button({
+	accessibilityState,
+	className,
+	variant,
+	size,
+	...props
+}: ButtonProps) {
 	return (
 		<TextClassContext.Provider value={buttonTextVariants({ variant, size })}>
 			<Pressable
+				accessibilityRole="button"
+				accessibilityState={
+					props.disabled
+						? { ...accessibilityState, disabled: true }
+						: accessibilityState
+				}
 				className={cn(
 					props.disabled && "opacity-50",
 					buttonVariants({ variant, size }),
@@ -115,4 +131,48 @@ function Button({ className, variant, size, ...props }: ButtonProps) {
 	);
 }
 
-export { Button };
+type BackButtonProps = Omit<ButtonProps, "children" | "variant" | "size"> & {
+	iconSize?: number;
+	strokeWidth?: number;
+};
+
+function BackButton({
+	className,
+	iconSize = 20,
+	strokeWidth = 2.4,
+	style,
+	...props
+}: BackButtonProps) {
+	const baseStyle: ViewStyle = {
+		width: 48,
+		height: 48,
+		minWidth: 48,
+		minHeight: 48,
+		borderRadius: 24,
+	};
+	const resolvedStyle =
+		typeof style === "function"
+			? (state: Parameters<typeof style>[0]) => [baseStyle, style(state)]
+			: [baseStyle, style];
+
+	return (
+		<Button
+			accessibilityHint="Geht zum vorherigen Schritt oder Bildschirm zurück."
+			accessibilityLabel="Zurück"
+			hitSlop={8}
+			className={cn(
+				"items-center justify-center rounded-full bg-white px-0 shadow-black/10 shadow-sm active:bg-white/80",
+				Platform.select({ web: "hover:bg-white/90" }),
+				className,
+			)}
+			variant="ghost"
+			size="icon"
+			style={resolvedStyle}
+			{...props}
+		>
+			<ArrowLeft size={iconSize} color="#1A1A1A" strokeWidth={strokeWidth} />
+		</Button>
+	);
+}
+
+export { BackButton, Button };

@@ -9,10 +9,16 @@ const NAV_ITEMS: Array<{
 	key: BottomNavKey;
 	icon: typeof Home;
 	href: "/home" | "/learning-plans" | "/settings";
+	label: string;
 }> = [
-	{ key: "home", icon: Home, href: "/home" },
-	{ key: "learningPath", icon: Route2, href: "/learning-plans" },
-	{ key: "settings", icon: Settings, href: "/settings" },
+	{ key: "home", icon: Home, href: "/home", label: "Startseite" },
+	{
+		key: "learningPath",
+		icon: Route2,
+		href: "/learning-plans",
+		label: "Lernpläne",
+	},
+	{ key: "settings", icon: Settings, href: "/settings", label: "Einstellungen" },
 ];
 
 export function BottomNav() {
@@ -29,7 +35,8 @@ export function BottomNav() {
 
 	return (
 		<View
-			className="absolute left-0 right-0 items-center"
+			accessibilityRole="tablist"
+			className="absolute right-0 left-0 items-center"
 			style={{ bottom: Math.max(insets.bottom + 2, 8) }}
 		>
 			<View
@@ -48,6 +55,9 @@ export function BottomNav() {
 					return (
 						<TouchableOpacity
 							key={item.key}
+							accessibilityLabel={item.label}
+							accessibilityRole="tab"
+							accessibilityState={{ selected: active }}
 							activeOpacity={0.84}
 							onPress={() => {
 								if (!item.href || pathname === item.href) return;

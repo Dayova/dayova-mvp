@@ -4,6 +4,7 @@ allowBuilds:
   bufferutil: true
   core-js: true
   esbuild: true
+  tesseract.js: true
   utf-8-validate: true
 patchedDependencies:
   expo-keep-awake@15.0.8: patches/expo-keep-awake@15.0.8.patch
