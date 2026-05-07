@@ -44,6 +44,8 @@
 		--popover-foreground: 0 0% 10.2%;
 		--primary: 220.2 100% 61.4%;
 		--primary-foreground: 0 0% 100%;
+		--button-neutral: 0 0% 88.6%;
+		--button-neutral-foreground: 0 0% 10.2%;
 		--secondary: 316.1 100% 64.9%;
 		--secondary-foreground: 0 0% 100%;
 		--muted: 220 15.8% 96.3%;
@@ -100,7 +102,7 @@
 		--white-10: 0 0% 19%;
 
 		--card-radius: 32px;
-		--button-radius: 24px;
+		--button-radius: 32px;
 		--input-radius: 30px;
 	}
 
@@ -113,6 +115,8 @@
 		--popover-foreground: 0 0% 100%;
 		--primary: 220.2 100% 61.4%;
 		--primary-foreground: 0 0% 100%;
+		--button-neutral: 0 0% 88.6%;
+		--button-neutral-foreground: 0 0% 10.2%;
 		--secondary: 316.1 100% 64.9%;
 		--secondary-foreground: 0 0% 100%;
 		--muted: 0 0% 17%;

@@ -288,6 +288,7 @@ function MaterialCard({
 				accessibilityLabel={`${name} entfernen`}
 				accessibilityRole="button"
 				activeOpacity={0.75}
+				hitSlop={8}
 				onPress={onRemove}
 				className="h-9 w-9 items-center justify-center rounded-full bg-black/5"
 			>
@@ -1048,6 +1049,12 @@ export default function LearningPlanScreen() {
 							</Text>
 						) : null}
 						<Button
+							accessibilityLabel={isBusy ? "Weiter, wird geladen" : "Weiter"}
+							accessibilityLiveRegion={isBusy ? "polite" : undefined}
+							accessibilityState={{
+								busy: isBusy,
+								disabled: !canContinueTopic || isBusy,
+							}}
 							className="mt-12"
 							disabled={!canContinueTopic || isBusy}
 							onPress={continueToAnalysis}
@@ -1124,6 +1131,12 @@ export default function LearningPlanScreen() {
 							</Text>
 						) : null}
 						<Button
+							accessibilityLabel={isBusy ? "Weiter, wird geladen" : "Weiter"}
+							accessibilityLiveRegion={isBusy ? "polite" : undefined}
+							accessibilityState={{
+								busy: isBusy,
+								disabled: !(answers[currentQuestion.id] ?? "").trim() || isBusy,
+							}}
 							disabled={!(answers[currentQuestion.id] ?? "").trim() || isBusy}
 							onPress={continueQuestion}
 						>
@@ -1188,6 +1201,16 @@ export default function LearningPlanScreen() {
 							</Text>
 						) : null}
 						<Button
+							accessibilityLabel={
+								isBusy
+									? "Lernplan übernehmen, wird geladen"
+									: "Lernplan übernehmen"
+							}
+							accessibilityLiveRegion={isBusy ? "polite" : undefined}
+							accessibilityState={{
+								busy: isBusy,
+								disabled: isBusy || !snapshot?.sessions.length,
+							}}
 							disabled={isBusy || !snapshot?.sessions.length}
 							onPress={acceptGeneratedPlan}
 						>
@@ -1277,15 +1300,24 @@ export default function LearningPlanScreen() {
 
 						<View className="flex-row" style={{ columnGap: 10 }}>
 							<Button
-								variant="secondary"
-								className="flex-1 bg-black/5 shadow-none"
+								variant="neutral"
+								className="flex-1 shadow-none"
 								onPress={() =>
 									editingSession && setDeleteSession(editingSession)
 								}
 							>
 								<Text className="text-text">Entfernen</Text>
 							</Button>
-							<Button className="flex-1" onPress={saveEdit} disabled={isBusy}>
+							<Button
+								accessibilityLabel={
+									isBusy ? "Speichern, wird geladen" : "Speichern"
+								}
+								accessibilityLiveRegion={isBusy ? "polite" : undefined}
+								accessibilityState={{ busy: isBusy, disabled: isBusy }}
+								className="flex-1"
+								onPress={saveEdit}
+								disabled={isBusy}
+							>
 								{isBusy ? (
 									<ActivityIndicator color="#FFFFFF" />
 								) : (
@@ -1390,13 +1422,18 @@ export default function LearningPlanScreen() {
 						</Text>
 						<View className="mt-6 flex-row" style={{ columnGap: 10 }}>
 							<Button
-								variant="secondary"
-								className="flex-1 bg-black/5 shadow-none"
+								variant="neutral"
+								className="flex-1 shadow-none"
 								onPress={() => setDeleteSession(null)}
 							>
 								<Text className="text-text">Abbrechen</Text>
 							</Button>
 							<Button
+								accessibilityLabel={
+									isBusy ? "Entfernen, wird geladen" : "Entfernen"
+								}
+								accessibilityLiveRegion={isBusy ? "polite" : undefined}
+								accessibilityState={{ busy: isBusy, disabled: isBusy }}
 								className="flex-1"
 								onPress={confirmDelete}
 								disabled={isBusy}

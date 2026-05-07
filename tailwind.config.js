@@ -27,6 +27,10 @@ module.exports = {
 					40: "hsl(var(--primary-40))",
 					30: "hsl(var(--primary-30))",
 				},
+				"button-neutral": {
+					DEFAULT: "hsl(var(--button-neutral))",
+					foreground: "hsl(var(--button-neutral-foreground))",
+				},
 				secondary: {
 					DEFAULT: "hsl(var(--secondary))",
 					foreground: "hsl(var(--secondary-foreground))",
@@ -124,7 +128,7 @@ module.exports = {
 				md: "calc(var(--radius) - 2px)",
 				sm: "calc(var(--radius) - 4px)",
 				card: "32px",
-				button: "24px",
+				button: "32px",
 				input: "30px",
 				tab: "30px",
 			},

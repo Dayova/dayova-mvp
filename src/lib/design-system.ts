@@ -6,6 +6,9 @@ export const DAYOVA_DESIGN_SYSTEM = {
 	},
 	colors: {
 		primary: "#3A7BFF",
+		primaryForeground: "#FFFFFF",
+		buttonNeutral: "#E2E2E2",
+		buttonNeutralForeground: "#1A1A1A",
 		secondary: "#FF4CCF",
 		text: "#1A1A1A",
 		background: "#FFFFFF",
@@ -46,11 +49,12 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		},
 		button: {
 			desktop: {
-				default: { fontSize: 20, lineHeight: 24, fontWeight: "500" },
-				small: { fontSize: 16, lineHeight: 24, fontWeight: "500" },
+				default: { fontSize: 16, lineHeight: 24, fontWeight: "600" },
+				small: { fontSize: 16, lineHeight: 24, fontWeight: "600" },
 			},
 			mobile: {
-				small: { fontSize: 16, lineHeight: 24, fontWeight: "500" },
+				default: { fontSize: 16, lineHeight: 24, fontWeight: "600" },
+				small: { fontSize: 16, lineHeight: 24, fontWeight: "600" },
 			},
 		},
 		field: {
@@ -62,6 +66,11 @@ export const DAYOVA_DESIGN_SYSTEM = {
 	radius: {
 		inner: 64,
 		outer: 96,
-		button: 50,
+		button: 32,
+	},
+	size: {
+		button: {
+			defaultHeight: 64,
+		},
 	},
 } as const;

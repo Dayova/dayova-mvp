@@ -12,7 +12,7 @@ import {
 	useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BackButton } from "~/components/ui/button";
+import { BackButton, Button } from "~/components/ui/button";
 import { InsetTextField } from "~/components/ui/text-field";
 import { Text } from "~/components/ui/text";
 import { useOnboarding } from "~/context/OnboardingContext";
@@ -596,26 +596,13 @@ function PrimaryAction({
 	disabled?: boolean;
 }) {
 	return (
-		<TouchableOpacity
+		<Button
 			accessibilityLabel={label}
-			accessibilityRole="button"
 			accessibilityState={{ disabled }}
-			activeOpacity={disabled ? 1 : 0.9}
 			onPress={onPress}
 			disabled={disabled}
-			className="items-center justify-center rounded-full bg-primary"
-			style={{
-				minHeight: 56,
-				opacity: disabled ? 0.45 : 1,
-				boxShadow: "0 10px 24px rgba(58, 123, 255, 0.28)",
-			}}
 		>
-			<Text
-				className="font-bold font-poppins text-white"
-				style={{ fontSize: 22, lineHeight: 30, includeFontPadding: false }}
-			>
-				{label}
-			</Text>
-		</TouchableOpacity>
+			<Text>{label}</Text>
+		</Button>
 	);
 }

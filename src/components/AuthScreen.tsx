@@ -419,14 +419,14 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		try {
 			setSubmitError("");
 			const result = await login({ email: email.trim(), password });
-		if (result.status === "complete") {
-			router.replace("/home");
-			return;
-		}
-		setIsKeyboardVisible(false);
-		setVerificationCode("");
-		setVerificationFeedback({ tone: "neutral", message: result.message });
-	} catch (error) {
+			if (result.status === "complete") {
+				router.replace("/home");
+				return;
+			}
+			setIsKeyboardVisible(false);
+			setVerificationCode("");
+			setVerificationFeedback({ tone: "neutral", message: result.message });
+		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Anmeldung fehlgeschlagen.";
 			if (isCredentialError(message)) {
@@ -653,6 +653,16 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							</View>
 
 							<Button
+								accessibilityLabel={
+									isLoading
+										? "Code bestätigen, wird geprüft"
+										: "Code bestätigen"
+								}
+								accessibilityLiveRegion={isLoading ? "polite" : undefined}
+								accessibilityState={{
+									busy: isLoading,
+									disabled: !canSubmitCode,
+								}}
 								onPress={handleVerifyEmailCode}
 								disabled={!canSubmitCode}
 								className="mt-10"
@@ -946,6 +956,17 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 					</View>
 
 					<Button
+						accessibilityLabel={
+							isLoading
+								? isRegisterMode
+									? "Weiter, wird geladen"
+									: "Anmelden, wird geladen"
+								: isRegisterMode
+									? "Weiter"
+									: "Anmelden"
+						}
+						accessibilityLiveRegion={isLoading ? "polite" : undefined}
+						accessibilityState={{ busy: isLoading, disabled: isLoading }}
 						onPress={isRegisterMode ? handleRegister : handleLogin}
 						disabled={isLoading}
 						className="mt-1"
