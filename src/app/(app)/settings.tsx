@@ -98,7 +98,11 @@ export default function SettingsScreen() {
 				<View style={{ height: 240 }} />
 
 				<View style={{ rowGap: 20 }}>
-					<SettingsRow icon={Settings} label="Profil" />
+					<SettingsRow
+						icon={Settings}
+						label="Profil"
+						onPress={() => router.push("/profile")}
+					/>
 					<SettingsRow
 						icon={Logout}
 						label="Logout"

@@ -20,6 +20,8 @@ export function BottomNav() {
 	const router = useRouter();
 	const pathname = usePathname();
 
+	if (pathname === "/profile") return null;
+
 	const activeKey: BottomNavKey =
 		pathname === "/settings"
 			? "settings"
