@@ -22,7 +22,7 @@ const convexUrl =
 	process.env.EXPO_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud";
 const convex = new ConvexReactClient(convexUrl);
 const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register"]);
+const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
 
 const isPublicAuthPath = (pathname: string) => PUBLIC_AUTH_PATHS.has(pathname);
 
@@ -37,7 +37,7 @@ function AppNavigator() {
 
 		const isAuthRoute = isPublicAuthPath(pathname);
 		const targetRoute =
-			!user && !isAuthRoute ? "/login" : user && isAuthRoute ? "/home" : null;
+			!user && !isAuthRoute ? "/" : user && isAuthRoute ? "/home" : null;
 		if (!targetRoute) return;
 
 		const frame = requestAnimationFrame(() => {

@@ -317,18 +317,18 @@ function UploadAction({
 			activeOpacity={0.86}
 			onPress={onPress}
 			disabled={disabled}
-			className="min-h-[68px] flex-1 items-center justify-center rounded-[10px] bg-white px-3 py-4"
+			className="h-[80px] flex-1 items-center justify-center rounded-[12px] bg-white px-3 py-3"
 			style={{
 				shadowColor: "#000000",
-				shadowOpacity: 0.08,
-				shadowRadius: 10,
-				shadowOffset: { width: 0, height: 4 },
-				elevation: 3,
+				shadowOpacity: 0.09,
+				shadowRadius: 8,
+				shadowOffset: { width: 0, height: 5 },
+				elevation: 4,
 				opacity: disabled ? 0.55 : 1,
 			}}
 		>
 			{icon}
-			<Text className="mt-2 text-center font-poppins font-semibold text-12 text-text">
+			<Text className="mt-2 text-center font-bold font-poppins text-12 text-text">
 				{label}
 			</Text>
 		</TouchableOpacity>
@@ -1341,13 +1341,13 @@ export default function LearningPlanScreen() {
 						onPress={() => setIsUploadSheetVisible(false)}
 					/>
 					<View
-						className="mx-8 mb-8 rounded-t-[28px] rounded-b-[24px] bg-[#FBFAFC] px-4 pt-12 pb-8"
+						className="mx-[42px] mb-12 rounded-t-[30px] rounded-b-[32px] bg-[#FBFAFC] px-5 pt-[74px] pb-9"
 						style={{
 							shadowColor: "#3A7BFF",
-							shadowOpacity: 0.32,
-							shadowRadius: 16,
-							shadowOffset: { width: 0, height: 9 },
-							elevation: 8,
+							shadowOpacity: 0.5,
+							shadowRadius: 18,
+							shadowOffset: { width: 0, height: 10 },
+							elevation: 10,
 						}}
 					>
 						<TouchableOpacity
@@ -1356,24 +1356,24 @@ export default function LearningPlanScreen() {
 							hitSlop={8}
 							activeOpacity={0.78}
 							onPress={() => setIsUploadSheetVisible(false)}
-							className="absolute top-3 right-3 h-11 w-11 items-center justify-center rounded-full bg-black/5"
+							className="absolute top-5 right-5 h-9 w-9 items-center justify-center rounded-full bg-[#ECECEF]"
 							style={{
 								shadowColor: "#000000",
-								shadowOpacity: 0.13,
-								shadowRadius: 6,
-								shadowOffset: { width: 0, height: 3 },
-								elevation: 2,
+								shadowOpacity: 0.12,
+								shadowRadius: 8,
+								shadowOffset: { width: 0, height: 4 },
+								elevation: 3,
 							}}
 						>
-							<X size={18} color="#1A1A1A" strokeWidth={2.2} />
+							<X size={18} color="#1A1A1A" strokeWidth={2.4} />
 						</TouchableOpacity>
-						<Text className="text-center font-bold font-poppins text-16 text-text">
+						<Text className="text-center font-bold font-poppins text-17 text-text">
 							Hochladen
 						</Text>
-						<Text className="mt-2 text-center font-poppins text-12 text-text/45">
+						<Text className="mt-2 text-center font-poppins text-12 text-text/45 leading-4">
 							Lade hier deine Unterlagen hoch oder{"\n"}Scanne sie.
 						</Text>
-						<View className="mt-5 flex-row" style={{ columnGap: 12 }}>
+						<View className="mt-6 flex-row" style={{ columnGap: 14 }}>
 							<UploadAction
 								label="Scannen"
 								onPress={chooseScanMaterial}
@@ -1382,7 +1382,7 @@ export default function LearningPlanScreen() {
 									isBusy ? (
 										<ActivityIndicator color="#3A7BFF" />
 									) : (
-										<Camera size={24} color="#3A7BFF" strokeWidth={2.4} />
+										<Camera size={25} color="#3A7BFF" strokeWidth={2.2} />
 									)
 								}
 							/>
@@ -1394,7 +1394,7 @@ export default function LearningPlanScreen() {
 									isBusy ? (
 										<ActivityIndicator color="#3A7BFF" />
 									) : (
-										<FileText size={24} color="#3A7BFF" strokeWidth={2.4} />
+										<FileText size={25} color="#3A7BFF" strokeWidth={2.2} />
 									)
 								}
 							/>

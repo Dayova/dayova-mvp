@@ -110,7 +110,7 @@ export default function SettingsScreen() {
 						label="Logout"
 						onPress={async () => {
 							await logout();
-							router.replace("/login");
+							router.replace("/");
 						}}
 					/>
 				</View>
