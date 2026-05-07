@@ -2,7 +2,6 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
-	ArrowLeft,
 	BookOpen,
 	CalendarDays,
 	Clock3,
@@ -11,13 +10,14 @@ import {
 	Trash2,
 } from "~/components/ui/icon";
 import type { ReactNode } from "react";
-import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { Button } from "~/components/ui/button";
+import { BackButton, Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { goBackOrReplace } from "~/lib/navigation";
 
 function DetailRow({
 	icon,
@@ -73,16 +73,18 @@ export default function EntryDetailScreen() {
 		duration?: string;
 	}>();
 	const id = typeof params.id === "string" ? params.id : "";
+	const isVirtualEntry = id === "learning-plan";
 	const entry =
 		useQuery(
 			api.dayEntries.get,
-			user && isConvexAuthenticated && id
+			user && isConvexAuthenticated && id && !isVirtualEntry
 				? {
 						id: id as Id<"dayEntries">,
 					}
 				: "skip",
 		) ?? undefined;
-	const title = entry?.title ?? params.title ?? "Eintrag";
+	const title =
+		entry?.title ?? params.title ?? (isVirtualEntry ? "Lernplan" : "Eintrag");
 	const kind = entry?.kind ?? params.kind;
 	const time = entry?.time ?? params.time;
 	const plannedDate =
@@ -98,7 +100,7 @@ export default function EntryDetailScreen() {
 		kind === "Hausaufgabe" ||
 		kind === "Leistungskontrolle" ||
 		Boolean(examType);
-	const canDelete = Boolean(entry && id && isDeletableKind);
+	const canDelete = Boolean(entry && id && !isVirtualEntry && isDeletableKind);
 
 	const handleDelete = () => {
 		if (!canDelete || !id || !user || !isConvexAuthenticated) return;
@@ -135,13 +137,10 @@ export default function EntryDetailScreen() {
 				}}
 				showsVerticalScrollIndicator={false}
 			>
-				<TouchableOpacity
-					activeOpacity={0.75}
-					onPress={() => router.back()}
-					className="mb-9 h-11 w-11 items-center justify-center rounded-full bg-black/5"
-				>
-					<ArrowLeft size={20} color="#1A1A1A" strokeWidth={2.3} />
-				</TouchableOpacity>
+				<BackButton
+					className="mb-9"
+					onPress={() => goBackOrReplace(router, "/home")}
+				/>
 
 				<View className="mb-8">
 					<View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-primary/12">

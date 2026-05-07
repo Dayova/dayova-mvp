@@ -12,6 +12,8 @@ type OptionalEntryFields = {
 	plannedDateLabel?: string;
 	durationMinutes?: number;
 	examTypeLabel?: string;
+	relatedLearningPlanId?: Id<"learningPlans">;
+	relatedLearningPlanSessionId?: Id<"learningPlanSessions">;
 };
 
 type PublicDayEntry = OptionalEntryFields & {
@@ -38,6 +40,12 @@ const optionalEntryFields = (
 	...(entry.examTypeLabel !== undefined
 		? { examTypeLabel: entry.examTypeLabel }
 		: {}),
+	...(entry.relatedLearningPlanId !== undefined
+		? { relatedLearningPlanId: entry.relatedLearningPlanId }
+		: {}),
+	...(entry.relatedLearningPlanSessionId !== undefined
+		? { relatedLearningPlanSessionId: entry.relatedLearningPlanSessionId }
+		: {}),
 });
 
 const publicEntry = (entry: Doc<"dayEntries">): PublicDayEntry => ({
@@ -56,6 +64,8 @@ const entryFields = {
 	plannedDateLabel: v.optional(v.string()),
 	durationMinutes: v.optional(v.number()),
 	examTypeLabel: v.optional(v.string()),
+	relatedLearningPlanId: v.optional(v.id("learningPlans")),
+	relatedLearningPlanSessionId: v.optional(v.id("learningPlanSessions")),
 };
 
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {

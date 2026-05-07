@@ -2,10 +2,10 @@ import DateTimePicker, {
 	type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useConvexAuth, useMutation } from "convex/react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import type { Id } from "#convex/_generated/dataModel";
 import {
-	ArrowLeft,
 	CalendarDays,
 	CheckCircle2,
 	ClipboardList,
@@ -13,7 +13,7 @@ import {
 	GraduationCap,
 	Sparkles,
 } from "~/components/ui/icon";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import {
 	KeyboardAvoidingView,
 	Platform,
@@ -23,7 +23,7 @@ import {
 	View,
 } from "react-native";
 import { api } from "#convex/_generated/api";
-import { Button } from "~/components/ui/button";
+import { BackButton, Button } from "~/components/ui/button";
 import {
 	Field,
 	FieldAccessory,
@@ -37,6 +37,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Toggle } from "~/components/ui/toggle";
 import { useAuth } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
+import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 
 type EntryType = "homework" | "exam";
 type EntryStep = "basics" | "planning" | "examDecision" | "success";
@@ -303,6 +304,10 @@ function ActionCard({
 }) {
 	return (
 		<TouchableOpacity
+			accessibilityHint={description}
+			accessibilityLabel={title}
+			accessibilityRole="button"
+			accessibilityState={{ disabled }}
 			activeOpacity={disabled ? 1 : 0.9}
 			disabled={disabled}
 			onPress={onPress}
@@ -441,7 +446,11 @@ export default function NewEntryScreen() {
 		}
 	};
 
-	const createEntry = async () => {
+	const createEntry = async ({
+		redirectToHome = true,
+	}: {
+		redirectToHome?: boolean;
+	} = {}) => {
 		if (isHomework && !canCreateHomework) return;
 		if (!isHomework && !canCreateExam) return;
 		if (durationMinutes === null) return;
@@ -449,14 +458,16 @@ export default function NewEntryScreen() {
 
 		const nextDayKey = getDayKey(plannedDate);
 		const trimmedNote = note.trim();
+		const entryTitle = isHomework
+			? `${trimmedSubject} Hausaufgabe`
+			: `${trimmedSubject} ${trimmedExamType}`;
+		let createdEntryId: Id<"dayEntries"> | null = null;
 
 		try {
 			setIsCreating(true);
-			await createDayEntry({
+			createdEntryId = await createDayEntry({
 				dayKey: nextDayKey,
-				title: isHomework
-					? `${trimmedSubject} Hausaufgabe`
-					: `${trimmedSubject} ${trimmedExamType}`,
+				title: entryTitle,
 				time: formatTime(plannedTime),
 				kind: isHomework ? "Hausaufgabe" : "Leistungskontrolle",
 				...(trimmedNote ? { notes: trimmedNote } : {}),
@@ -480,21 +491,56 @@ export default function NewEntryScreen() {
 			return;
 		}
 
-		router.replace(`/home?dayKey=${encodeURIComponent(nextDayKey)}`);
+		const result = {
+			createdDayKey: nextDayKey,
+			createdEntryId,
+			entryTitle,
+		};
+		if (redirectToHome) {
+			router.replace(`/home?dayKey=${encodeURIComponent(nextDayKey)}`);
+		}
+		return result;
+	};
+
+	const createLearningPlan = () => {
+		if (!canCreateExam || durationMinutes === null) return;
+
+		const query = [
+			["subject", trimmedSubject],
+			["examTypeLabel", trimmedExamType],
+			["examDateKey", getDayKey(plannedDate)],
+			["examDateLabel", formatDate(plannedDate)],
+			["examTime", formatTime(plannedTime)],
+			["durationMinutes", `${durationMinutes}`],
+		]
+			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+			.join("&");
+		router.push(`/entry/learning-plan?${query}`);
 	};
 
 	const finish = () => {
 		router.replace(`/home?dayKey=${encodeURIComponent(createdDayKey)}`);
 	};
 
-	const handleBack = () => {
-		if (step === "planning" || step === "examDecision") {
-			setStep("basics");
-			return;
+	const handleBack = useCallback(() => {
+		if (pickerTarget) {
+			setPickerTarget(null);
+			return true;
 		}
 
-		router.back();
-	};
+		if (step === "planning" || step === "examDecision") {
+			setStep("basics");
+			return true;
+		}
+
+		goBackOrReplace(router, "/home");
+		return true;
+	}, [pickerTarget, router, step]);
+
+	useBackIntent(
+		Boolean(pickerTarget || (step !== "basics" && step !== "success")),
+		handleBack,
+	);
 
 	const renderPicker = () => {
 		if (!pickerTarget) return null;
@@ -516,7 +562,13 @@ export default function NewEntryScreen() {
 					/>
 					<View className="rounded-t-[32px] bg-white px-4 pt-3 pb-7">
 						<View className="mb-1 flex-row justify-end">
-							<TouchableOpacity onPress={closePicker} className="px-3 py-2">
+							<TouchableOpacity
+								accessibilityLabel="Datumsauswahl schließen"
+								accessibilityRole="button"
+								hitSlop={8}
+								onPress={closePicker}
+								className="px-3 py-2"
+							>
 								<Text className="font-bold font-poppins text-16 text-primary">
 									Fertig
 								</Text>
@@ -576,6 +628,7 @@ export default function NewEntryScreen() {
 			className="flex-1 bg-background"
 			behavior={Platform.OS === "ios" ? "padding" : "height"}
 		>
+			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 			<ScrollView
 				className="flex-1"
@@ -588,13 +641,7 @@ export default function NewEntryScreen() {
 				showsVerticalScrollIndicator={false}
 			>
 				<View className="mb-9 flex-row items-center justify-between">
-					<TouchableOpacity
-						activeOpacity={0.75}
-						onPress={handleBack}
-						className="h-11 w-11 items-center justify-center rounded-full bg-black/5"
-					>
-						<ArrowLeft size={20} color="#1A1A1A" strokeWidth={2.3} />
-					</TouchableOpacity>
+					<BackButton onPress={handleBack} />
 					<View className="flex-row gap-2">
 						<View className="h-2 w-8 rounded-full bg-primary" />
 						<View
@@ -697,7 +744,9 @@ export default function NewEntryScreen() {
 						/>
 						<Button
 							disabled={!canCreateHomework || isCreating || !canWriteEntries}
-							onPress={createEntry}
+							onPress={() => {
+								void createEntry();
+							}}
 						>
 							<Text>HA eintragen</Text>
 						</Button>
@@ -743,16 +792,18 @@ export default function NewEntryScreen() {
 								}
 								title="LK eintragen"
 								description="Die Leistungskontrolle wird direkt im Kalender gespeichert."
-								onPress={createEntry}
+								onPress={() => {
+									void createEntry();
+								}}
 								disabled={isCreating || !canWriteEntries}
 								primary
 							/>
 							<ActionCard
 								icon={<Sparkles size={24} color="#3A7BFF" strokeWidth={2.2} />}
 								title="Lernplan erstellen"
-								description="Diese Auswahl folgt als Nächstes. Für jetzt bleibt sie sichtbar, ist aber noch nicht aktiv."
-								disabled
-								badge="Später"
+								description="Dayova erstellt einen Plan aus Thema, Material und Wissensanalyse."
+								onPress={createLearningPlan}
+								disabled={isCreating || !canCreateExam}
 							/>
 						</View>
 					</>
