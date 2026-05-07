@@ -336,7 +336,7 @@ export const registerUploadedDocument = action({
 			storageProvider: finalizedUpload.storageProvider,
 			fileName: args.fileName,
 			fileType: args.fileType || "application/octet-stream",
-			fileSizeBytes: args.fileSizeBytes,
+			fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
 		});
 	},
 });

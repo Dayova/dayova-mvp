@@ -39,8 +39,21 @@ const getFileExtension = (fileName: string) => {
 };
 
 export const formatFileSize = (sizeBytes: number) => {
+	if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+		return "0 B";
+	}
+
+	if (sizeBytes < 1000) {
+		return `${Math.round(sizeBytes)} B`;
+	}
+
+	if (sizeBytes < 1024 * 1024) {
+		const value = sizeBytes / 1000;
+		return `${value >= 10 ? value.toFixed(1) : value.toFixed(2)} kB`;
+	}
+
 	const value = sizeBytes / (1024 * 1024);
-	return `${value.toFixed(1)} MiB`;
+	return `${value >= 10 ? value.toFixed(1) : value.toFixed(2)} MiB`;
 };
 
 export const validateUploadFile = (file: {

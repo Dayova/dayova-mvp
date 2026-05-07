@@ -1,4 +1,5 @@
 import {
+	Attachment01Icon,
 	AlertCircleIcon,
 	ArrowLeft01Icon,
 	ArrowRight01Icon,
@@ -33,6 +34,7 @@ import {
 	ViewIcon,
 	ViewOffIcon,
 	ArrowDown01Icon,
+	ScanImageIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type HugeiconsProps } from "@hugeicons/react-native";
 
@@ -42,6 +44,7 @@ const createIcon = (icon: HugeiconsProps["icon"]) => (props: IconProps) => (
 	<HugeiconsIcon icon={icon} {...props} />
 );
 
+export const Attachment = createIcon(Attachment01Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
 export const ArrowRight = createIcon(ArrowRight01Icon);
 export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
@@ -69,6 +72,7 @@ export const NotebookPen = createIcon(NotebookIcon);
 export const Phone = createIcon(TelephoneIcon);
 export const Plus = createIcon(PlusSignIcon);
 export const Route2 = createIcon(Route02Icon);
+export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(CogIcon);
 export const ShieldCheck = createIcon(ShieldCheckIcon);
 export const Sparkles = createIcon(SparklesIcon);
