@@ -1,7 +1,7 @@
 "use node";
 
 import { createVertex } from "@ai-sdk/google-vertex";
-import { generateText, Output } from "ai";
+import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { parseOffice } from "officeparser";
 import { z } from "zod";
 import { internal } from "./_generated/api";
@@ -74,7 +74,7 @@ const generatedPlanSchema = z.object({
 	sourceSummary: z.string().min(20),
 	insight: z.object({
 		summary: z.string().min(20),
-		strengths: z.array(z.string()).min(1).max(4),
+		strengths: z.array(z.string()).max(4),
 		gaps: z.array(z.string()).min(1).max(5),
 		strategy: z.string().min(20),
 	}),
@@ -145,6 +145,26 @@ const createVertexModel = () => {
 		project,
 		location: readOptionalEnv("GOOGLE_VERTEX_LOCATION") ?? "global",
 	});
+};
+
+const withStructuredOutputErrorHandling = async <TResult>(
+	task: () => Promise<TResult>,
+	fallbackMessage: string,
+) => {
+	try {
+		return await task();
+	} catch (error) {
+		if (NoObjectGeneratedError.isInstance(error)) {
+			console.warn("AI structured output validation failed", {
+				finishReason: error.finishReason,
+				text: error.text?.slice(0, 500),
+				cause: error.cause,
+			});
+			throw new Error(fallbackMessage);
+		}
+
+		throw error;
+	}
 };
 
 const compactText = (value: string, maxChars: number) => {
@@ -384,17 +404,21 @@ Die Fragen müssen sich konkret auf Prüfungsthema und Material beziehen. Keine 
 		}
 		userContent.push(...fileParts);
 
-		const result = await generateText({
-			model: model(MODEL_ID),
-			temperature: 0.2,
-			maxOutputTokens: 1_800,
-			timeout: { totalMs: LLM_GENERATION_TIMEOUT_MS },
-			providerOptions: vertexProviderOptions,
-			output: Output.object({ schema: questionsSchema }),
-			system:
-				"Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Antworte ausschließlich im vorgegebenen JSON-Schema.",
-			messages: [{ role: "user", content: userContent }],
-		});
+		const result = await withStructuredOutputErrorHandling(
+			() =>
+				generateText({
+					model: model(MODEL_ID),
+					temperature: 0.2,
+					maxOutputTokens: 1_800,
+					timeout: { totalMs: LLM_GENERATION_TIMEOUT_MS },
+					providerOptions: vertexProviderOptions,
+					output: Output.object({ schema: questionsSchema }),
+					system:
+						"Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Antworte ausschließlich im vorgegebenen JSON-Schema.",
+					messages: [{ role: "user", content: userContent }],
+				}),
+			"Die Wissensanalyse konnte nicht zuverlässig erstellt werden. Formuliere das Prüfungsthema etwas konkreter und versuche es erneut.",
+		);
 
 		const questions = result.output.questions.map((question, index) => ({
 			id: `q${index + 1}`,
@@ -469,6 +493,7 @@ MVP-Vorgabe:
 - Die Generalprobe soll wie ein fertiger Test/Probetest formuliert sein.
 - Jeder Lernblock braucht konkrete Aufgaben, die der Schüler in diesem Slot abarbeitet.
 - Nutze dayOffsetBeforeExam relativ zum Prüfungstag: 1 = einen Tag vor der Prüfung.
+- Wenn Antworten nur Platzhalter oder Unsinn enthalten, erstelle trotzdem einen remedialen Grundlagenplan und setze strengths auf [].
 - Wenn zu wenig Zeit bleibt, reduziere die Anzahl der Sessions, aber bleibe konkret.`,
 			},
 		];
@@ -481,17 +506,21 @@ MVP-Vorgabe:
 		}
 		userContent.push(...fileParts);
 
-		const result = await generateText({
-			model: model(MODEL_ID),
-			temperature: 0.25,
-			maxOutputTokens: 3_200,
-			timeout: { totalMs: LLM_GENERATION_TIMEOUT_MS },
-			providerOptions: vertexProviderOptions,
-			output: Output.object({ schema: generatedPlanSchema }),
-			system:
-				"Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.",
-			messages: [{ role: "user", content: userContent }],
-		});
+		const result = await withStructuredOutputErrorHandling(
+			() =>
+				generateText({
+					model: model(MODEL_ID),
+					temperature: 0.25,
+					maxOutputTokens: 3_200,
+					timeout: { totalMs: LLM_GENERATION_TIMEOUT_MS },
+					providerOptions: vertexProviderOptions,
+					output: Output.object({ schema: generatedPlanSchema }),
+					system:
+						"Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.",
+					messages: [{ role: "user", content: userContent }],
+				}),
+			"Aus diesen Antworten konnte kein stabiler Lernplan erstellt werden. Ergänze mindestens ein paar konkrete Stichworte zu deinem Wissenstand und versuche es erneut.",
+		);
 
 		const sessions = normalizeSessions(
 			context.plan.examDateKey,
