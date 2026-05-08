@@ -2,16 +2,6 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import {
-	ArrowUpRight,
-	Bell,
-	CheckCircle2,
-	ClipboardList,
-	Clock3,
-	GraduationCap,
-	Plus,
-	X,
-} from "~/components/ui/icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Modal,
@@ -27,6 +17,16 @@ import {
 	type DayCarouselHandle,
 	getDayItemFromKey,
 } from "~/components/day-carousel";
+import {
+	ArrowUpRight,
+	Bell,
+	CheckCircle2,
+	ClipboardList,
+	Clock3,
+	GraduationCap,
+	Plus,
+	X,
+} from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
@@ -623,17 +623,17 @@ export default function HomeScreen() {
 							accessibilityLabel="Neue Hausaufgabe"
 							accessibilityRole="button"
 							activeOpacity={0.86}
-							className="mb-3 min-h-[88px] flex-row items-center rounded-[24px] bg-primary px-5 py-4"
+							className="mb-3 min-h-[88px] flex-row items-center rounded-[24px] border border-black/10 bg-white px-5 py-4"
 							onPress={() => selectCreateType("homework")}
 						>
-							<View className="h-11 w-11 items-center justify-center rounded-full bg-white/20">
-								<ClipboardList size={22} color="#FFFFFF" strokeWidth={2.2} />
+							<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
+								<ClipboardList size={22} color="#3A7BFF" strokeWidth={2.2} />
 							</View>
 							<View className="ml-3 flex-1">
-								<Text className="font-bold font-poppins text-16 text-white">
+								<Text className="font-bold font-poppins text-16 text-text">
 									Neue Hausaufgabe
 								</Text>
-								<Text className="mt-1 font-poppins text-12 text-white/78">
+								<Text className="mt-1 font-poppins text-12 text-text/58">
 									Fälligkeit, Fach und Lernzeit planen.
 								</Text>
 							</View>

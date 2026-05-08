@@ -22,6 +22,9 @@ export default defineSchema({
 		name: v.optional(v.string()),
 		phone: v.optional(v.string()),
 		birthDate: v.optional(v.string()),
+		grade: v.optional(v.string()),
+		schoolType: v.optional(v.string()),
+		state: v.optional(v.string()),
 		avatarUrl: v.optional(v.string()),
 	})
 		.index("by_tokenIdentifier", ["tokenIdentifier"])

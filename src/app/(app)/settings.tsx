@@ -1,11 +1,38 @@
-import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
+import type * as ExpoNotifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import { ScrollView, Switch, TouchableOpacity, View } from "react-native";
+import * as SecureStore from "expo-secure-store";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
+import {
+	Alert,
+	Linking,
+	Platform,
+	ScrollView,
+	Switch,
+	TouchableOpacity,
+	View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bell, CalendarAdd, Logout, Settings } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+
+const NOTIFICATION_SETTING_KEY = "dayova.notifications.enabled";
+
+const getNotificationsModule = () => {
+	try {
+		return require("expo-notifications") as typeof ExpoNotifications;
+	} catch {
+		return null;
+	}
+};
+
+const hasNotificationPermission = (
+	notifications: typeof ExpoNotifications,
+	permissions: ExpoNotifications.NotificationPermissionsStatus,
+) =>
+	permissions.granted ||
+	permissions.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL;
 
 function SettingsRow({
 	icon,
@@ -67,6 +94,96 @@ export default function SettingsScreen() {
 	const router = useRouter();
 	const { logout } = useAuth();
 	const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+	const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
+
+	useEffect(() => {
+		let isMounted = true;
+
+		const loadNotificationState = async () => {
+			const notifications = getNotificationsModule();
+			if (!notifications) {
+				if (isMounted) setNotificationsEnabled(false);
+				return;
+			}
+
+			const [savedPreference, permissions] = await Promise.all([
+				SecureStore.getItemAsync(NOTIFICATION_SETTING_KEY),
+				notifications.getPermissionsAsync(),
+			]);
+
+			if (!isMounted) return;
+			setNotificationsEnabled(
+				savedPreference === "true" &&
+					hasNotificationPermission(notifications, permissions),
+			);
+		};
+
+		void loadNotificationState();
+
+		return () => {
+			isMounted = false;
+		};
+	}, []);
+
+	const enableNotifications = async () => {
+		const notifications = getNotificationsModule();
+		if (!notifications) {
+			await SecureStore.setItemAsync(NOTIFICATION_SETTING_KEY, "false");
+			setNotificationsEnabled(false);
+			Alert.alert(
+				"Mitteilungen noch nicht bereit",
+				"Bitte baue den iOS/Android Dev Client einmal neu, damit expo-notifications als natives Modul verfügbar ist.",
+			);
+			return;
+		}
+
+		if (Platform.OS === "android") {
+			await notifications.setNotificationChannelAsync("default", {
+				name: "Dayova",
+				importance: notifications.AndroidImportance.DEFAULT,
+			});
+		}
+
+		const currentPermissions = await notifications.getPermissionsAsync();
+		const permissions = hasNotificationPermission(
+			notifications,
+			currentPermissions,
+		)
+			? currentPermissions
+			: await notifications.requestPermissionsAsync();
+
+		if (!hasNotificationPermission(notifications, permissions)) {
+			await SecureStore.setItemAsync(NOTIFICATION_SETTING_KEY, "false");
+			setNotificationsEnabled(false);
+			Alert.alert(
+				"Mitteilungen deaktiviert",
+				"Du kannst Push-Mitteilungen in den Systemeinstellungen aktivieren.",
+				[
+					{ text: "Abbrechen", style: "cancel" },
+					{ text: "Einstellungen", onPress: () => Linking.openSettings() },
+				],
+			);
+			return;
+		}
+
+		await SecureStore.setItemAsync(NOTIFICATION_SETTING_KEY, "true");
+		setNotificationsEnabled(true);
+	};
+
+	const updateNotificationPreference = async (nextValue: boolean) => {
+		setIsUpdatingNotifications(true);
+		try {
+			if (nextValue) {
+				await enableNotifications();
+				return;
+			}
+
+			await SecureStore.setItemAsync(NOTIFICATION_SETTING_KEY, "false");
+			setNotificationsEnabled(false);
+		} finally {
+			setIsUpdatingNotifications(false);
+		}
+	};
 
 	return (
 		<View className="flex-1 bg-[#F6F4F7]">
@@ -88,7 +205,8 @@ export default function SettingsScreen() {
 						trailing={
 							<Switch
 								value={notificationsEnabled}
-								onValueChange={setNotificationsEnabled}
+								onValueChange={updateNotificationPreference}
+								disabled={isUpdatingNotifications}
 								trackColor={{ false: "#D3D6DC", true: "#CFE0FF" }}
 								thumbColor="#FFFFFF"
 								ios_backgroundColor="#D3D6DC"

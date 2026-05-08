@@ -78,14 +78,22 @@ const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 };
 
 const profileFields = (args: {
+	email?: string;
 	name?: string;
 	phone?: string;
 	birthDate?: string;
+	grade?: string;
+	schoolType?: string;
+	state?: string;
 	avatarUrl?: string;
 }) => ({
+	...(args.email !== undefined ? { email: normalizeEmail(args.email) } : {}),
 	...(args.name !== undefined ? { name: args.name } : {}),
 	...(args.phone !== undefined ? { phone: args.phone } : {}),
 	...(args.birthDate !== undefined ? { birthDate: args.birthDate } : {}),
+	...(args.grade !== undefined ? { grade: args.grade } : {}),
+	...(args.schoolType !== undefined ? { schoolType: args.schoolType } : {}),
+	...(args.state !== undefined ? { state: args.state } : {}),
 	...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
 });
 
@@ -94,6 +102,9 @@ export const syncCurrentUser = mutation({
 		name: v.optional(v.string()),
 		phone: v.optional(v.string()),
 		birthDate: v.optional(v.string()),
+		grade: v.optional(v.string()),
+		schoolType: v.optional(v.string()),
+		state: v.optional(v.string()),
 		avatarUrl: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
@@ -126,6 +137,33 @@ export const syncCurrentUser = mutation({
 		}
 
 		return await ctx.db.insert("users", user);
+	},
+});
+
+export const updateProfile = mutation({
+	args: {
+		email: v.optional(v.string()),
+		name: v.optional(v.string()),
+		birthDate: v.optional(v.string()),
+		grade: v.optional(v.string()),
+		schoolType: v.optional(v.string()),
+		state: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const identity = await requireIdentity(ctx);
+		const user = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) =>
+				q.eq("tokenIdentifier", identity.tokenIdentifier),
+			)
+			.unique();
+
+		if (!user) {
+			throw new Error("Der Nutzer konnte nicht gefunden werden.");
+		}
+
+		await ctx.db.patch("users", user._id, profileFields(args));
+		return { success: true };
 	},
 });
 
