@@ -988,10 +988,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 										activeOpacity={0.75}
 										onPress={togglePasswordVisibility}
 										className="-my-3 -ml-6 h-11 w-11 items-end justify-center pr-0"
-										hitSlop={{ top: 4, bottom: 4, left: 4, right: 0 }}
+										hitSlop={{ top: 6, bottom: 6, left: 6, right: 0 }}
 										accessibilityRole="button"
 										accessibilityLabel={
-											passwordVisible ? "Passwort verbergen" : "Passwort anzeigen"
+											passwordVisible
+												? "Passwort verbergen"
+												: "Passwort anzeigen"
 										}
 									>
 										{passwordVisible ? (
