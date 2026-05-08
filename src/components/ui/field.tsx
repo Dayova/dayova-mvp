@@ -93,10 +93,4 @@ function FieldMessage({
 	);
 }
 
-export {
-	Field,
-	FieldAccessory,
-	FieldControl,
-	FieldMessage,
-	FieldTrigger,
-};
+export { Field, FieldAccessory, FieldControl, FieldMessage, FieldTrigger };
