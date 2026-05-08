@@ -106,6 +106,17 @@ export default defineSchema({
 	})
 		.index("by_learningPlanId", ["learningPlanId"])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+	learningPlanAnswers: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		questionId: v.string(),
+		answer: v.string(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_learningPlanId", ["learningPlanId"])
+		.index("by_learningPlanId_and_questionId", ["learningPlanId", "questionId"])
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	learningPlanSessions: defineTable({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),

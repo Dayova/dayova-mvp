@@ -55,6 +55,12 @@ type PublicDocument = {
 	fileSizeBytes: number;
 };
 
+type PublicAnswer = {
+	id: Id<"learningPlanAnswers">;
+	questionId: string;
+	answer: string;
+};
+
 type PublicSession = {
 	id: Id<"learningPlanSessions">;
 	phase: "theory" | "practice" | "rehearsal";
@@ -94,6 +100,12 @@ const publicDocument = (
 	fileName: document.fileName,
 	fileType: document.fileType,
 	fileSizeBytes: document.fileSizeBytes,
+});
+
+const publicAnswer = (answer: Doc<"learningPlanAnswers">): PublicAnswer => ({
+	id: answer._id,
+	questionId: answer.questionId,
+	answer: answer.answer,
 });
 
 const publicSession = (
@@ -218,6 +230,11 @@ export const getSnapshot = query({
 			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
 			.order("asc")
 			.take(20);
+		const answers = await ctx.db
+			.query("learningPlanAnswers")
+			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
+			.order("asc")
+			.take(20);
 		const sessions = await ctx.db
 			.query("learningPlanSessions")
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
@@ -243,8 +260,66 @@ export const getSnapshot = query({
 				insight: plan.insight,
 			},
 			documents: documents.map(publicDocument),
+			answers: answers.map(publicAnswer),
 			sessions: sessions.map(publicSession),
 		};
+	},
+});
+
+export const saveKnowledgeAnswer = mutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		questionId: v.string(),
+		answer: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throw new Error("Lernplan nicht gefunden.");
+		}
+		if (plan.status === "accepted") {
+			throw new Error("Dieser Lernplan wurde bereits eingetragen.");
+		}
+
+		const questionExists = (plan.knowledgeQuestions ?? []).some(
+			(question) => question.id === args.questionId,
+		);
+		if (!questionExists) {
+			throw new Error("Frage nicht gefunden.");
+		}
+
+		const answer = args.answer.trim();
+		if (!answer) {
+			throw new Error("Antwort fehlt.");
+		}
+
+		const existingAnswer = await ctx.db
+			.query("learningPlanAnswers")
+			.withIndex("by_learningPlanId_and_questionId", (q) =>
+				q
+					.eq("learningPlanId", args.learningPlanId)
+					.eq("questionId", args.questionId),
+			)
+			.unique();
+		const now = Date.now();
+		if (existingAnswer) {
+			await ctx.db.patch("learningPlanAnswers", existingAnswer._id, {
+				answer,
+				updatedAt: now,
+			});
+			return existingAnswer._id;
+		}
+
+		return await ctx.db.insert("learningPlanAnswers", {
+			ownerTokenIdentifier,
+			learningPlanId: args.learningPlanId,
+			questionId: args.questionId,
+			answer,
+			createdAt: now,
+			updatedAt: now,
+		});
 	},
 });
 
@@ -405,6 +480,35 @@ export const getAiContext = internalQuery({
 			documents,
 			accessKey: buildPlanAccessKey(args.learningPlanId),
 		};
+	},
+});
+
+export const getStoredKnowledgeAnswers = internalQuery({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+	},
+	handler: async (ctx, args) => {
+		const identity = await ctx.auth.getUserIdentity();
+		if (identity === null) {
+			throw new Error("Nicht authentifiziert.");
+		}
+
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
+			throw new Error("Lernplan nicht gefunden.");
+		}
+
+		const answers = await ctx.db
+			.query("learningPlanAnswers")
+			.withIndex("by_learningPlanId", (q) =>
+				q.eq("learningPlanId", args.learningPlanId),
+			)
+			.take(20);
+
+		return answers.map((answer) => ({
+			questionId: answer.questionId,
+			answer: answer.answer,
+		}));
 	},
 });
 

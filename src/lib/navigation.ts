@@ -12,10 +12,7 @@ export const goBackOrReplace = (router: Router, fallback: Href) => {
 	router.replace(fallback);
 };
 
-const useAndroidBackHandler = (
-	enabled: boolean,
-	onBack: () => boolean,
-) => {
+const useAndroidBackHandler = (enabled: boolean, onBack: () => boolean) => {
 	useFocusEffect(
 		useCallback(() => {
 			if (!enabled || Platform.OS !== "android") return undefined;

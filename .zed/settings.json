@@ -1,0 +1,12 @@
+{
+  "prettier": {
+    "allowed": true,
+  },
+  "lsp": {
+    "biome": {
+      "settings": {
+        "config_path": "biome.jsonc",
+      },
+    },
+  },
+}
