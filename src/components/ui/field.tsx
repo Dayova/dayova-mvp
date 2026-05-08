@@ -1,4 +1,3 @@
-import type * as React from "react";
 import {
 	TouchableOpacity,
 	type TouchableOpacityProps,
@@ -6,7 +5,6 @@ import {
 	type ViewProps,
 	type ViewStyle,
 } from "react-native";
-import { Label } from "~/components/ui/label";
 import { Text } from "~/components/ui/text";
 import { cn } from "~/lib/utils";
 
@@ -26,27 +24,6 @@ const fieldInvalidStyle: ViewStyle = {
 
 function Field({ className, ...props }: ViewProps) {
 	return <View className={cn("mb-6", className)} {...props} />;
-}
-
-function FieldLabel({
-	className,
-	icon,
-	...props
-}: React.ComponentProps<typeof Label> & {
-	icon?: React.ReactNode;
-}) {
-	return (
-		<View className="mb-3 flex-row items-center gap-2">
-			{icon}
-			<Label
-				className={cn(
-					"font-bold font-poppins text-12 text-text uppercase tracking-[1.2px]",
-					className,
-				)}
-				{...props}
-			/>
-		</View>
-	);
 }
 
 function FieldControl({
@@ -120,7 +97,6 @@ export {
 	Field,
 	FieldAccessory,
 	FieldControl,
-	FieldLabel,
 	FieldMessage,
 	FieldTrigger,
 };

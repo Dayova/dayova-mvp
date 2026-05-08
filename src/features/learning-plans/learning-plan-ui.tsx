@@ -1,5 +1,5 @@
-import { type ReactNode, useEffect, useRef } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import Animated, {
 	Easing,
 	interpolate,
@@ -9,10 +9,16 @@ import Animated, {
 	withSequence,
 	withTiming,
 } from "react-native-reanimated";
+import { Button } from "~/components/ui/button";
+import { CalendarDays, ChevronDown, Clock3 } from "~/components/ui/icon";
 import { Attachment, PropertyEdit, X } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
-import type { PlanSession } from "~/features/learning-plans/types";
+import type {
+	PlanSession,
+	SessionPhase,
+} from "~/features/learning-plans/types";
 import {
+	formatDate,
 	formatDayOfMonth,
 	formatShortWeekday,
 	minutesFromTime,
@@ -20,6 +26,23 @@ import {
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
 import { formatFileSize } from "~/lib/upload-policy";
+
+const phaseEditCopy: Record<
+	SessionPhase,
+	{ actionLabel: string; fieldLabel: string }
+> = {
+	theory: { actionLabel: "Lernen", fieldLabel: "Theorie" },
+	practice: { actionLabel: "Üben", fieldLabel: "Üben" },
+	rehearsal: { actionLabel: "Testmodus", fieldLabel: "Testmodus" },
+};
+
+const getSessionEditTitle = (session: PlanSession) =>
+	`${session.sortOrder + 1}. ${phaseEditCopy[session.phase].actionLabel} bearbeiten`;
+
+const getSessionPhaseLabel = (phase: SessionPhase) =>
+	phaseEditCopy[phase].fieldLabel;
+
+const sessionPhaseOptions: SessionPhase[] = ["theory", "practice", "rehearsal"];
 
 const ANALYSIS_ORBITS = Array.from({ length: 9 }, (_, index) => ({
 	id: `analysis-orbit-${index}`,
@@ -190,6 +213,178 @@ export function SessionCard({
 				<PropertyEdit size={19} color="#1A1A1A" strokeWidth={1.5} />
 			</View>
 		</TouchableOpacity>
+	);
+}
+
+function SessionEditPill({
+	value,
+	icon,
+	onPress,
+	accessibilityLabel,
+	className,
+}: {
+	value: string;
+	icon: ReactNode;
+	onPress: () => void;
+	accessibilityLabel: string;
+	className?: string;
+}) {
+	return (
+		<TouchableOpacity
+			accessibilityLabel={accessibilityLabel}
+			accessibilityRole="button"
+			activeOpacity={0.86}
+			onPress={onPress}
+			className={`h-14 flex-row items-center justify-between rounded-[28px] bg-white px-5 ${className ?? ""}`}
+			style={{
+				borderWidth: 1,
+				borderColor: "rgba(17,24,39,0.04)",
+				shadowColor: "#111827",
+				shadowOpacity: 0.08,
+				shadowRadius: 12,
+				shadowOffset: { width: 0, height: 6 },
+				elevation: 3,
+			}}
+		>
+			<Text className="font-poppins text-14 text-text/55" numberOfLines={1}>
+				{value}
+			</Text>
+			{icon}
+		</TouchableOpacity>
+	);
+}
+
+export function SessionEditForm({
+	session,
+	editDate,
+	editStart,
+	editEnd,
+	editPhase,
+	isSaving,
+	onChangeDate,
+	onChangeStart,
+	onChangeEnd,
+	onChangePhase,
+	onRemove,
+	onSave,
+}: {
+	session: PlanSession;
+	editDate: Date;
+	editStart: string;
+	editEnd: string;
+	editPhase: SessionPhase;
+	isSaving: boolean;
+	onChangeDate: () => void;
+	onChangeStart: () => void;
+	onChangeEnd: () => void;
+	onChangePhase: (phase: SessionPhase) => void;
+	onRemove: () => void;
+	onSave: () => void;
+}) {
+	const [isPhaseMenuOpen, setIsPhaseMenuOpen] = useState(false);
+
+	return (
+		<View className="flex-1">
+			<Text className="font-bold font-poppins text-16 text-text">
+				{getSessionEditTitle({ ...session, phase: editPhase })}
+			</Text>
+			<Text className="mt-2 mb-7 font-poppins text-14 text-text/42">
+				Hier kannst du individuell deinen Lernplan anpassen, so wie es passt
+			</Text>
+
+			<Text className="mb-3 font-poppins font-semibold text-16 text-text">
+				Lerndatum
+			</Text>
+			<SessionEditPill
+				accessibilityLabel="Lerndatum ändern"
+				value={formatDate(editDate)}
+				icon={<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />}
+				onPress={onChangeDate}
+			/>
+			<View className="mt-3 mb-7 flex-row" style={{ columnGap: 8 }}>
+				<View className="flex-1">
+					<SessionEditPill
+						accessibilityLabel="Startzeit ändern"
+						value={editStart}
+						icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
+						onPress={onChangeStart}
+					/>
+				</View>
+				<View className="flex-1">
+					<SessionEditPill
+						accessibilityLabel="Endzeit ändern"
+						value={editEnd}
+						icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
+						onPress={onChangeEnd}
+					/>
+				</View>
+			</View>
+
+			<Text className="mb-3 font-poppins font-semibold text-16 text-text">
+				Lernphase
+			</Text>
+			<View>
+				<SessionEditPill
+					accessibilityLabel="Lernphase ändern"
+					value={getSessionPhaseLabel(editPhase)}
+					icon={<ChevronDown size={20} color="#202127" strokeWidth={2.1} />}
+					onPress={() => setIsPhaseMenuOpen((value) => !value)}
+				/>
+				{isPhaseMenuOpen ? (
+					<View className="mt-2 gap-2">
+						{sessionPhaseOptions.map((phase) => (
+							<TouchableOpacity
+								key={phase}
+								accessibilityLabel={`Lernphase ${getSessionPhaseLabel(phase)} auswählen`}
+								accessibilityRole="button"
+								accessibilityState={{ selected: phase === editPhase }}
+								activeOpacity={0.86}
+								onPress={() => {
+									onChangePhase(phase);
+									setIsPhaseMenuOpen(false);
+								}}
+								className="h-12 justify-center rounded-[24px] bg-white px-5"
+								style={{
+									borderWidth: phase === editPhase ? 1.5 : 1,
+									borderColor:
+										phase === editPhase ? "#3A7BFF" : "rgba(17,24,39,0.04)",
+								}}
+							>
+								<Text className="font-poppins text-14 text-text/70">
+									{getSessionPhaseLabel(phase)}
+								</Text>
+							</TouchableOpacity>
+						))}
+					</View>
+				) : null}
+			</View>
+
+			<View className="mt-auto flex-row pt-8" style={{ columnGap: 10 }}>
+				<Button
+					variant="neutral"
+					className="flex-1 shadow-none"
+					onPress={onRemove}
+				>
+					<Text className="text-text">Entfernen</Text>
+				</Button>
+				<Button
+					accessibilityLabel={
+						isSaving ? "Speichern, wird geladen" : "Speichern"
+					}
+					accessibilityLiveRegion={isSaving ? "polite" : undefined}
+					accessibilityState={{ busy: isSaving, disabled: isSaving }}
+					className="flex-1"
+					onPress={onSave}
+					disabled={isSaving}
+				>
+					{isSaving ? (
+						<ActivityIndicator color="#FFFFFF" />
+					) : (
+						<Text>Speichern</Text>
+					)}
+				</Button>
+			</View>
+		</View>
 	);
 }
 

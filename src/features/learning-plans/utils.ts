@@ -1,4 +1,4 @@
-export const startOfDay = (date: Date) => {
+const startOfDay = (date: Date) => {
 	const next = new Date(date);
 	next.setHours(0, 0, 0, 0);
 	return next;
@@ -59,10 +59,10 @@ export const dateWithTime = (dateKey: string, time: string) => {
 export const getErrorMessage = (error: unknown, fallback: string) =>
 	error instanceof Error ? error.message : fallback;
 
-export const wait = (milliseconds: number) =>
+const wait = (milliseconds: number) =>
 	new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
-export const isUnauthenticatedError = (error: unknown) =>
+const isUnauthenticatedError = (error: unknown) =>
 	error instanceof Error && error.message.includes("Nicht authentifiziert");
 
 export const retryOnceAfterAuthResume = async <TResult>(

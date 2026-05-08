@@ -120,9 +120,6 @@ export default function HomeScreen() {
 			: "skip",
 	);
 	const entriesByDay = entriesByDayResult ?? EMPTY_ENTRIES_BY_DAY;
-	const areEntriesLoading =
-		Boolean(user) &&
-		(!isConvexAuthenticated || entriesByDayResult === undefined);
 	const isSelectedToday = selectedDayKey === todayKey;
 	const selectedEntries = useMemo(
 		() => selectedDayQueryKeys.flatMap((dayKey) => entriesByDay[dayKey] ?? []),

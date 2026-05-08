@@ -577,6 +577,7 @@ export const replaceGeneratedSessions = internalMutation({
 export const updateSession = mutation({
 	args: {
 		id: v.id("learningPlanSessions"),
+		phase: phaseValidator,
 		dateKey: v.string(),
 		dateLabel: v.string(),
 		startTime: v.string(),
@@ -594,6 +595,7 @@ export const updateSession = mutation({
 		}
 
 		await ctx.db.patch("learningPlanSessions", args.id, {
+			phase: args.phase,
 			dateKey: args.dateKey,
 			dateLabel: args.dateLabel,
 			startTime: args.startTime,

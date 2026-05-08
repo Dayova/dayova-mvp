@@ -113,7 +113,7 @@ function HomeworkPillField({
 		<Field className="mb-5">
 			{label ? (
 				<Text
-					className="mb-3 font-semibold font-poppins text-text"
+					className="mb-3 font-poppins font-semibold text-text"
 					style={{ fontSize: 15, lineHeight: 20, includeFontPadding: false }}
 				>
 					{label}
@@ -158,7 +158,7 @@ function HomeworkScreenHeader({
 	return (
 		<View className="mb-7 flex-row items-center justify-between">
 			<BackButton onPress={onBack} />
-			<Text className="font-semibold font-poppins text-16 text-text">
+			<Text className="font-poppins font-semibold text-16 text-text">
 				{title}
 			</Text>
 			<View style={{ width: 48 }} />
@@ -359,22 +359,22 @@ export default function NewEntryScreen() {
 		handleBack,
 	);
 
-	const scrollToFocusedField = (offsetY: number) => {
+	const scrollToFocusedField = useCallback((offsetY: number) => {
 		requestAnimationFrame(() => {
 			scrollViewRef.current?.scrollTo({
 				y: Math.max(0, offsetY - 36),
 				animated: true,
 			});
 		});
-	};
+	}, []);
 
 	const handleSubjectInputFocus = useCallback(() => {
 		scrollToFocusedField(subjectInputOffsetY.current);
-	}, []);
+	}, [scrollToFocusedField]);
 
 	const handleNoteInputFocus = useCallback(() => {
 		scrollToFocusedField(noteInputOffsetY.current);
-	}, []);
+	}, [scrollToFocusedField]);
 
 	const handleSubjectInputLayout = useCallback((event: LayoutChangeEvent) => {
 		subjectInputOffsetY.current = event.nativeEvent.layout.y;
@@ -500,7 +500,7 @@ export default function NewEntryScreen() {
 								<HomeworkScreenHeader title="Abgabe" onBack={handleBack} />
 								<View className="mb-7">
 									<Text
-										className="font-semibold font-poppins text-text"
+										className="font-poppins font-semibold text-text"
 										style={{
 											fontSize: 15,
 											lineHeight: 20,
@@ -526,7 +526,7 @@ export default function NewEntryScreen() {
 								<View onLayout={handleSubjectInputLayout}>
 									<Field>
 										<Text
-											className="mb-3 font-semibold font-poppins text-text"
+											className="mb-3 font-poppins font-semibold text-text"
 											style={{
 												fontSize: 15,
 												lineHeight: 20,
@@ -556,7 +556,7 @@ export default function NewEntryScreen() {
 
 								<Field className="mb-8" onLayout={handleNoteInputLayout}>
 									<Text
-										className="mb-3 font-semibold font-poppins text-text"
+										className="mb-3 font-poppins font-semibold text-text"
 										style={{
 											fontSize: 15,
 											lineHeight: 20,
@@ -587,7 +587,7 @@ export default function NewEntryScreen() {
 								<HomeworkScreenHeader title="Erledigen" onBack={handleBack} />
 								<View className="mb-5">
 									<Text
-										className="font-semibold font-poppins text-text"
+										className="font-poppins font-semibold text-text"
 										style={{
 											fontSize: 15,
 											lineHeight: 20,
@@ -654,7 +654,7 @@ export default function NewEntryScreen() {
 										<Bell size={23} color="#202127" strokeWidth={2} />
 									</View>
 									<Text
-										className="ml-3 flex-1 font-semibold font-poppins text-[#17171C]"
+										className="ml-3 flex-1 font-poppins font-semibold text-[#17171C]"
 										style={{
 											fontSize: 18,
 											lineHeight: 22,
@@ -683,7 +683,7 @@ export default function NewEntryScreen() {
 							/>
 							<View className="mb-7">
 								<Text
-									className="font-semibold font-poppins text-text"
+									className="font-poppins font-semibold text-text"
 									style={{
 										fontSize: 15,
 										lineHeight: 20,
@@ -736,7 +736,7 @@ export default function NewEntryScreen() {
 
 							<Field>
 								<Text
-									className="mb-3 font-semibold font-poppins text-text"
+									className="mb-3 font-poppins font-semibold text-text"
 									style={{
 										fontSize: 15,
 										lineHeight: 20,
@@ -767,7 +767,7 @@ export default function NewEntryScreen() {
 
 							<Field className="mb-8">
 								<Text
-									className="mb-3 font-semibold font-poppins text-text"
+									className="mb-3 font-poppins font-semibold text-text"
 									style={{
 										fontSize: 15,
 										lineHeight: 20,

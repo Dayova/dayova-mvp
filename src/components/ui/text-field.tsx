@@ -4,7 +4,6 @@ import {
 	Field,
 	FieldAccessory,
 	FieldControl,
-	FieldLabel,
 	FieldMessage,
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
@@ -23,38 +22,6 @@ type BaseTextFieldProps = Omit<InputProps, "className"> & {
 	inputClassName?: string;
 	accessoryClassName?: string;
 };
-
-function TextField({
-	label,
-	message,
-	invalid,
-	accessory,
-	className,
-	controlClassName,
-	inputClassName,
-	accessoryClassName,
-	accessibilityLabel,
-	...inputProps
-}: BaseTextFieldProps) {
-	return (
-		<Field className={className}>
-			<FieldLabel>{label}</FieldLabel>
-			<FieldControl invalid={invalid} className={controlClassName}>
-				<Input
-					accessibilityLabel={accessibilityLabel ?? label}
-					className={inputClassName}
-					{...inputProps}
-				/>
-				{accessory ? (
-					<FieldAccessory className={accessoryClassName}>
-						{accessory}
-					</FieldAccessory>
-				) : null}
-			</FieldControl>
-			{message ? <FieldMessage>{message}</FieldMessage> : null}
-		</Field>
-	);
-}
 
 function InsetTextField({
 	label,
@@ -100,4 +67,4 @@ function InsetTextField({
 	);
 }
 
-export { InsetTextField, TextField };
+export { InsetTextField };

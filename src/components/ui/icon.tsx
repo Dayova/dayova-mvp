@@ -23,7 +23,6 @@ import {
 	PropertyEditIcon,
 	Route02Icon,
 	ShieldCheck as ShieldCheckIcon,
-	SparklesIcon,
 	Task01Icon,
 	Tick02Icon,
 	UserCircleIcon,
@@ -67,7 +66,6 @@ export const Route2 = createIcon(Route02Icon);
 export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(CogIcon);
 export const ShieldCheck = createIcon(ShieldCheckIcon);
-export const Sparkles = createIcon(SparklesIcon);
 export const Timer = createIcon(Clock03Icon);
 export const Trash2 = createIcon(Delete02Icon);
 export const UserRound = createIcon(UserCircleIcon);

@@ -1,17 +1,12 @@
 import type { Id } from "#convex/_generated/dataModel";
 
-export type FlowStep =
-	| "topic"
-	| "analysisIntro"
-	| "question"
-	| "generating"
-	| "plan";
-
 export type PickerTarget = "editDate" | "editStart" | "editEnd";
+
+export type SessionPhase = "theory" | "practice" | "rehearsal";
 
 export type PlanSession = {
 	id: Id<"learningPlanSessions">;
-	phase: "theory" | "practice" | "rehearsal";
+	phase: SessionPhase;
 	title: string;
 	dateKey: string;
 	dateLabel: string;
@@ -23,7 +18,7 @@ export type PlanSession = {
 	sortOrder: number;
 };
 
-export type LearningPlanDocument = {
+type LearningPlanDocument = {
 	id: Id<"learningPlanDocuments">;
 	fileName: string;
 	fileType: string;
@@ -43,7 +38,7 @@ export type QuizQuestion = {
 	targetInsight: string;
 };
 
-export type LearningPlanAnswer = {
+type LearningPlanAnswer = {
 	id: Id<"learningPlanAnswers">;
 	questionId: string;
 	answer: string;
