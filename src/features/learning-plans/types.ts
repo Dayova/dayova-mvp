@@ -67,7 +67,6 @@ export type LearningPlanSnapshot = {
 			summary: string;
 			strengths: string[];
 			gaps: string[];
-			strategy: string;
 		};
 	};
 	documents: LearningPlanDocument[];

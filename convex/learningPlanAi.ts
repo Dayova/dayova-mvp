@@ -104,7 +104,6 @@ const generatedPlanSchema = z.object({
 		summary: z.string().min(20),
 		strengths: atMostArray(z.string(), 4),
 		gaps: boundedArray(z.string(), 1, 5),
-		strategy: z.string().min(20),
 	}),
 	sessions: boundedArray(
 		z.object({

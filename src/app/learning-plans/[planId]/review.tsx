@@ -295,16 +295,6 @@ export default function LearningPlanReviewScreen() {
 						onEdit={() => openEdit(session)}
 					/>
 				))}
-				{snapshot?.plan.insight ? (
-					<View className="mt-1 mb-5 rounded-[24px] bg-white/70 px-5 py-4">
-						<Text className="font-bold font-poppins text-14 text-text">
-							Strategie
-						</Text>
-						<Text className="mt-2 font-poppins text-14 text-text/60">
-							{snapshot.plan.insight.strategy}
-						</Text>
-					</View>
-				) : null}
 				{errorMessage ? (
 					<Text className="mb-4 font-poppins text-12 text-destructive">
 						{errorMessage}

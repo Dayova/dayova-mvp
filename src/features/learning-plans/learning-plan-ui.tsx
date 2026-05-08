@@ -120,7 +120,7 @@ export function UploadAction({
 			activeOpacity={0.86}
 			onPress={onPress}
 			disabled={disabled}
-			className="h-[80px] flex-1 items-center justify-center rounded-[12px] bg-white px-3 py-3"
+			className="h-[100px] flex-1 items-center justify-center rounded-[12px] bg-white px-3 py-3"
 			style={{
 				shadowColor: "#000000",
 				shadowOpacity: 0.09,

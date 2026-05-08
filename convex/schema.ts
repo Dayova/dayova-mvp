@@ -11,7 +11,6 @@ const planInsightValidator = v.object({
 	summary: v.string(),
 	strengths: v.array(v.string()),
 	gaps: v.array(v.string()),
-	strategy: v.string(),
 });
 
 export default defineSchema({

@@ -409,7 +409,7 @@ export default function NewLearningPlanScreen() {
 						onPress={() => setIsUploadSheetVisible(false)}
 					/>
 					<View
-						className="mx-9 mb-20 min-h-[325px] rounded-t-[30px] rounded-b-[32px] bg-[#FBFAFC] px-5 pt-[108px] pb-14"
+						className="mx-9 mb-20 min-h-[325px] rounded-t-[30px] rounded-b-[32px] bg-[#FBFAFC] px-5 pt-20 pb-14"
 						style={{
 							shadowColor: "#3A7BFF",
 							shadowOpacity: 0.5,
@@ -453,7 +453,7 @@ export default function NewLearningPlanScreen() {
 									isBusy ? (
 										<ActivityIndicator color="#3A7BFF" />
 									) : (
-										<ScanImage size={25} color="#3A7BFF" strokeWidth={2} />
+										<ScanImage size={30} color="#3A7BFF" strokeWidth={2} />
 									)
 								}
 							/>
@@ -468,7 +468,7 @@ export default function NewLearningPlanScreen() {
 									isBusy ? (
 										<ActivityIndicator color="#3A7BFF" />
 									) : (
-										<Attachment size={25} color="#3A7BFF" strokeWidth={2} />
+										<Attachment size={30} color="#3A7BFF" strokeWidth={2} />
 									)
 								}
 							/>
