@@ -642,6 +642,7 @@ export default function LearningPlanScreen() {
 	const runWithErrorHandling = async (
 		fallback: string,
 		task: () => Promise<void>,
+		onError?: () => void,
 	) => {
 		setIsBusy(true);
 		setErrorMessage(null);
@@ -649,6 +650,7 @@ export default function LearningPlanScreen() {
 			await task();
 		} catch (error) {
 			setErrorMessage(getErrorMessage(error, fallback));
+			onError?.();
 		} finally {
 			setIsBusy(false);
 		}
@@ -726,22 +728,23 @@ export default function LearningPlanScreen() {
 				const id = await ensurePlan();
 				const result = await DocumentPicker.getDocumentAsync({
 					type: ACCEPTED_FILE_TYPES,
-					multiple: false,
+					multiple: true,
 					copyToCacheDirectory: true,
 				});
 				if (result.canceled) return;
 
-				const asset = result.assets[0];
-				if (!asset) return;
-
-				await uploadLearningPlanAsset(
-					{
-						uri: asset.uri,
-						name: asset.name,
-						mimeType: asset.mimeType,
-						size: asset.size,
-					},
-					id,
+				await Promise.all(
+					result.assets.map((asset) =>
+						uploadLearningPlanAsset(
+							{
+								uri: asset.uri,
+								name: asset.name,
+								mimeType: asset.mimeType,
+								size: asset.size,
+							},
+							id,
+						),
+					),
 				);
 			},
 		);
@@ -828,6 +831,7 @@ export default function LearningPlanScreen() {
 				});
 				setStep("plan");
 			},
+			() => setStep("question"),
 		);
 	};
 
@@ -1137,7 +1141,7 @@ export default function LearningPlanScreen() {
 					<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
 						<AnalysisOrbitLoader />
 						<Text
-							className="text-center font-bold font-poppins text-text"
+							className="text-center font-poppins font-semibold text-text"
 							style={{ fontSize: 26, lineHeight: 31 }}
 						>
 							Beantworte 5 kurze Fragen für deinen persönlichen Lernplan.
