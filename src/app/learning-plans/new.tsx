@@ -7,17 +7,6 @@ import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
-	Attachment,
-	CalendarDays,
-	ScanImage,
-	Check,
-	Clock3,
-	Plus,
-	PropertyEdit,
-	Trash2,
-	X,
-} from "~/components/ui/icon";
-import {
 	type ReactNode,
 	useCallback,
 	useEffect,
@@ -35,7 +24,6 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import Svg, { Circle, Path } from "react-native-svg";
 import Animated, {
 	Easing,
 	interpolate,
@@ -45,10 +33,22 @@ import Animated, {
 	withSequence,
 	withTiming,
 } from "react-native-reanimated";
+import Svg, { Circle, Path } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
+import {
+	Attachment,
+	CalendarDays,
+	Check,
+	Clock3,
+	Plus,
+	PropertyEdit,
+	ScanImage,
+	Trash2,
+	X,
+} from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuth } from "~/context/AuthContext";
