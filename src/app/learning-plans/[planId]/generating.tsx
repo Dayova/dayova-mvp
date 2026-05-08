@@ -31,6 +31,9 @@ export default function LearningPlanGeneratingScreen() {
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const didStartRef = useRef(false);
+	const missingAnswerRedirectTimeoutRef = useRef<ReturnType<
+		typeof setTimeout
+	> | null>(null);
 
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
@@ -52,6 +55,11 @@ export default function LearningPlanGeneratingScreen() {
 		void retryAttempt;
 		if (!planId || !snapshot || didStartRef.current) return;
 
+		if (missingAnswerRedirectTimeoutRef.current) {
+			clearTimeout(missingAnswerRedirectTimeoutRef.current);
+			missingAnswerRedirectTimeoutRef.current = null;
+		}
+
 		if (snapshot.plan.status === "generated") {
 			router.replace(planPath(planId, "review"));
 			return;
@@ -59,7 +67,9 @@ export default function LearningPlanGeneratingScreen() {
 
 		const missingAnswerIndex = answerList.findIndex((item) => !item.answer);
 		if (missingAnswerIndex >= 0) {
-			router.replace(quizPath(planId, missingAnswerIndex));
+			missingAnswerRedirectTimeoutRef.current = setTimeout(() => {
+				router.replace(quizPath(planId, missingAnswerIndex));
+			}, 600);
 			return;
 		}
 
@@ -86,6 +96,14 @@ export default function LearningPlanGeneratingScreen() {
 				.finally(() => setIsBusy(false));
 		});
 	}, [answerList, generatePlan, planId, retryAttempt, router, snapshot]);
+
+	useEffect(() => {
+		return () => {
+			if (missingAnswerRedirectTimeoutRef.current) {
+				clearTimeout(missingAnswerRedirectTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	const goBack = () => {
 		if (planId) {
