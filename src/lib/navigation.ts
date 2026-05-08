@@ -3,6 +3,12 @@ import type { Href, Router } from "expo-router";
 import { useCallback, useRef } from "react";
 import { BackHandler, Platform } from "react-native";
 
+const BACK_REMOVAL_ACTION_TYPES = new Set(["GO_BACK", "POP", "POP_TO_TOP"]);
+
+const isBackRemovalAction = (event: {
+	data?: { action?: { type?: string } };
+}) => BACK_REMOVAL_ACTION_TYPES.has(event.data?.action?.type ?? "");
+
 export const goBackOrReplace = (router: Router, fallback: Href) => {
 	if (router.canGoBack()) {
 		router.back();
@@ -40,6 +46,8 @@ export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
 			if (!enabled) return undefined;
 
 			const unsubscribe = navigation.addListener("beforeRemove", (event) => {
+				if (!isBackRemovalAction(event)) return;
+
 				if (isHandlingNativeBackRef.current) {
 					event.preventDefault();
 					return;

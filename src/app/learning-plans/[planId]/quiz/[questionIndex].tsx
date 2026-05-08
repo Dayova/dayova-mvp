@@ -1,7 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -69,7 +69,7 @@ export default function LearningPlanQuizScreen() {
 		}
 	}, [planId, questionIndex, questions.length, router, snapshot]);
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (!currentQuestion) return;
 		if (loadedQuestionIdRef.current === currentQuestion.id) return;
 
@@ -128,6 +128,7 @@ export default function LearningPlanQuizScreen() {
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
+					flexGrow: 1,
 					paddingHorizontal: 32,
 					paddingTop: 80,
 					paddingBottom: 60,

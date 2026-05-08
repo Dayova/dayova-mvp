@@ -1,4 +1,4 @@
-import { type FC, useEffect, useRef } from "react";
+import { type FC, useEffect, useState } from "react";
 import { Animated, Easing, View } from "react-native";
 import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
 
@@ -16,8 +16,8 @@ interface MascotProps {
 }
 
 export const Mascot: FC<MascotProps> = ({ size = 120, pose = "default" }) => {
-	const floatAnim = useRef(new Animated.Value(0)).current;
-	const moodAnim = useRef(new Animated.Value(0)).current;
+	const [floatAnim] = useState(() => new Animated.Value(0));
+	const [moodAnim] = useState(() => new Animated.Value(0));
 
 	useEffect(() => {
 		const floatLoop = Animated.loop(
