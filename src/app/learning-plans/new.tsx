@@ -3,7 +3,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	ActivityIndicator,
 	KeyboardAvoidingView,
@@ -40,6 +40,7 @@ import {
 	retryOnceAfterAuthResume,
 } from "~/features/learning-plans/utils";
 import { goBackOrReplace } from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
 
 const TOPIC_TEXTAREA_HEIGHT = 160;
@@ -51,6 +52,7 @@ const planPath = (id: Id<"learningPlans">, step: string) =>
 export default function NewLearningPlanScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{
+		examDayEntryId?: string;
 		subject?: string;
 		examTypeLabel?: string;
 		examDateKey?: string;
@@ -75,6 +77,7 @@ export default function NewLearningPlanScreen() {
 		params.examDateLabel || formatDate(parseDateKey(examDateKey));
 	const examTime = params.examTime || "17:00";
 	const durationMinutes = Number(params.durationMinutes ?? 45) || 45;
+	const examDayEntryId = params.examDayEntryId as Id<"dayEntries"> | undefined;
 
 	const [learningPlanId, setLearningPlanId] =
 		useState<Id<"learningPlans"> | null>(null);
@@ -91,10 +94,21 @@ export default function NewLearningPlanScreen() {
 	) ?? null) as LearningPlanSnapshot | null;
 
 	const canWrite = Boolean(user && isConvexAuthenticated);
+	const hasExamEntry = Boolean(examDayEntryId);
 	const canContinueTopic = topicDescription.trim().length >= 8 && canWrite;
 	const canUploadMaterial = canWrite && !isBusy;
 
+	useEffect(() => {
+		if (!hasExamEntry) {
+			router.replace(ROUTES.createExam);
+		}
+	}, [hasExamEntry, router]);
+
 	const ensurePlan = async () => {
+		if (!examDayEntryId) {
+			throw new Error("Erstelle zuerst eine Prüfung.");
+		}
+
 		if (learningPlanId) {
 			await retryOnceAfterAuthResume(() =>
 				updateBasics({
@@ -108,6 +122,7 @@ export default function NewLearningPlanScreen() {
 
 		const id = await retryOnceAfterAuthResume(() =>
 			startPlan({
+				examDayEntryId,
 				subject,
 				examTypeLabel,
 				examDateKey,
@@ -273,8 +288,10 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const goBack = () => {
-		goBackOrReplace(router, "/home");
+		goBackOrReplace(router, ROUTES.createExam);
 	};
+
+	if (!hasExamEntry) return null;
 
 	return (
 		<KeyboardAvoidingView

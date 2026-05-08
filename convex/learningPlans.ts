@@ -144,6 +144,7 @@ const getDateKey = (date: Date) => startOfDay(date).toISOString();
 
 export const start = mutation({
 	args: {
+		examDayEntryId: v.id("dayEntries"),
 		subject: v.string(),
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
@@ -156,6 +157,14 @@ export const start = mutation({
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
 			await requireOwnerTokenIdentifierForMutation(ctx);
+		const examEntry = await ctx.db.get(args.examDayEntryId);
+		if (!examEntry || examEntry.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throw new Error("Prüfung nicht gefunden.");
+		}
+		if (examEntry.kind !== "Leistungskontrolle") {
+			throw new Error("Ein Lernplan braucht zuerst eine Prüfung.");
+		}
+
 		const subject = args.subject.trim();
 		const examTypeLabel = args.examTypeLabel.trim();
 		const topicDescription = args.topicDescription.trim();
@@ -168,7 +177,7 @@ export const start = mutation({
 		}
 
 		const now = Date.now();
-		return await ctx.db.insert("learningPlans", {
+		const learningPlanId = await ctx.db.insert("learningPlans", {
 			ownerTokenIdentifier,
 			subject,
 			examTypeLabel,
@@ -179,9 +188,14 @@ export const start = mutation({
 			topicDescription,
 			notes,
 			status: "draft",
+			examDayEntryId: args.examDayEntryId,
 			createdAt: now,
 			updatedAt: now,
 		});
+		await ctx.db.patch(args.examDayEntryId, {
+			relatedLearningPlanId: learningPlanId,
+		});
+		return learningPlanId;
 	},
 });
 

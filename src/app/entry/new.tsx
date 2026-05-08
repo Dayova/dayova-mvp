@@ -319,10 +319,14 @@ export default function NewEntryScreen() {
 		return result;
 	};
 
-	const createLearningPlan = () => {
-		if (!canCreateExam) return;
+	const createLearningPlan = async () => {
+		if (!canCreateExam || isCreating || !canWriteEntries) return;
+
+		const createdExam = await createEntry({ redirectToHome: false });
+		if (!createdExam?.createdEntryId) return;
 
 		const query = [
+			["examDayEntryId", createdExam.createdEntryId],
 			["subject", trimmedSubject],
 			["examTypeLabel", trimmedExamType],
 			["examDateKey", getDayKey(plannedDate)],
@@ -845,8 +849,10 @@ export default function NewEntryScreen() {
 					</Button>
 					<Button
 						className="flex-1"
-						disabled={!canCreateExam || isCreating}
-						onPress={createLearningPlan}
+						disabled={!canCreateExam || isCreating || !canWriteEntries}
+						onPress={() => {
+							void createLearningPlan();
+						}}
 					>
 						<Text>Lernplan</Text>
 					</Button>

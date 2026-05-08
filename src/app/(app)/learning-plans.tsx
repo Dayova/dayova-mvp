@@ -198,7 +198,7 @@ export default function LearningPlansScreen() {
 								accessibilityRole="button"
 								accessibilityLabel="Lernplan erstellen"
 								activeOpacity={0.9}
-								onPress={() => router.push(ROUTES.createLearningPlan)}
+								onPress={() => router.push(ROUTES.createExam)}
 								className="mt-5 flex-row items-center rounded-full bg-[#17171C] px-5 py-3"
 								style={{ columnGap: 8 }}
 							>
