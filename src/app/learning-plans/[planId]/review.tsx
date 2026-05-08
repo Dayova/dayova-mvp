@@ -276,6 +276,7 @@ export default function LearningPlanReviewScreen() {
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
+					flexGrow: 1,
 					paddingHorizontal: 32,
 					paddingTop: 80,
 					paddingBottom: 60,
@@ -283,24 +284,26 @@ export default function LearningPlanReviewScreen() {
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
 			>
-				<Header title="Lernplan" onBack={goBack} />
+				<Header title="Lernplan" onBack={goBack} showBack={false} />
 				<SectionTitle
 					title="Lernplan erstellen"
 					description="Passe deine Lerntage an und trage den Plan danach in den Kalender ein."
 				/>
-				{snapshot?.sessions.map((session) => (
-					<SessionCard
-						key={session.id}
-						session={session}
-						onEdit={() => openEdit(session)}
-					/>
-				))}
+				<View className="flex-1 gap-6">
+					{snapshot?.sessions.map((session) => (
+						<SessionCard
+							key={session.id}
+							session={session}
+							onEdit={() => openEdit(session)}
+						/>
+					))}
+				</View>
 				{errorMessage ? (
 					<Text className="mb-4 font-poppins text-12 text-destructive">
 						{errorMessage}
 					</Text>
 				) : null}
-				<View className="flex-row items-center gap-3">
+				<View className="mt-auto flex-row items-center gap-3 pt-8">
 					<Button
 						accessibilityLabel={
 							isBusy ? "Lernplan erstellen, wird geladen" : "Lernplan erstellen"

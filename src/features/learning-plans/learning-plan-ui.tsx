@@ -42,7 +42,9 @@ export function SectionTitle({
 }) {
 	return (
 		<View className="mb-7">
-			<Text className="font-bold font-poppins text-18 text-text">{title}</Text>
+			<Text className="font-poppins font-semibold text-18 text-text">
+				{title}
+			</Text>
 			<Text className="mt-2 font-poppins text-14 text-text/55">
 				{description}
 			</Text>
@@ -157,7 +159,7 @@ export function SessionCard({
 			accessibilityRole="button"
 			activeOpacity={0.88}
 			onPress={onEdit}
-			className="mb-4 flex-row items-center rounded-[28px] bg-white px-5 py-5"
+			className="flex-row items-center rounded-[28px] bg-white px-5 py-5"
 			style={{
 				borderWidth: 1,
 				borderColor: "rgba(0,0,0,0.07)",
@@ -176,8 +178,8 @@ export function SessionCard({
 					{formatShortWeekday(sessionDate)}
 				</Text>
 			</View>
-			<View className="ml-4 flex-1">
-				<Text className="font-bold font-poppins text-16 text-text">
+			<View className="flex-1 px-3">
+				<Text className="font-medium font-poppins text-14 text-text">
 					{session.title}
 				</Text>
 				<Text className="mt-0.5 font-poppins text-12 text-text/55">
@@ -185,7 +187,7 @@ export function SessionCard({
 				</Text>
 			</View>
 			<View className="h-11 w-11 items-center justify-center rounded-full border border-black/10">
-				<PropertyEdit size={19} color="#1A1A1A" strokeWidth={2.2} />
+				<PropertyEdit size={19} color="#1A1A1A" strokeWidth={1.5} />
 			</View>
 		</TouchableOpacity>
 	);
