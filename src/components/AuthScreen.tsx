@@ -987,6 +987,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 									<TouchableOpacity
 										activeOpacity={0.75}
 										onPress={togglePasswordVisibility}
+										className="-my-3 -ml-6 h-11 w-11 items-end justify-center pr-0"
+										hitSlop={{ top: 4, bottom: 4, left: 4, right: 0 }}
+										accessibilityRole="button"
+										accessibilityLabel={
+											passwordVisible ? "Passwort verbergen" : "Passwort anzeigen"
+										}
 									>
 										{passwordVisible ? (
 											<Eye size={18} color="rgba(26,26,26,0.34)" />
