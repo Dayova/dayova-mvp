@@ -1034,22 +1034,24 @@ export default function WelcomeScreen() {
 								</Text>
 							</TouchableOpacity>
 						</View>
-						<DateTimePicker
-							value={selectedBirthDate ?? new Date(2010, 0, 1)}
-							mode="date"
-							display="spinner"
-							maximumDate={new Date()}
-							onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
-								if (event.type === "dismissed" || !selectedDate) return;
-								setAnswer("birthDate", formatBirthDate(selectedDate));
-								if (errors.birthDate) {
-									setErrors((current) => ({
-										...current,
-										birthDate: undefined,
-									}));
-								}
-							}}
-						/>
+						<View className="items-center">
+							<DateTimePicker
+								value={selectedBirthDate ?? new Date(2010, 0, 1)}
+								mode="date"
+								display="spinner"
+								maximumDate={new Date()}
+								onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
+									if (event.type === "dismissed" || !selectedDate) return;
+									setAnswer("birthDate", formatBirthDate(selectedDate));
+									if (errors.birthDate) {
+										setErrors((current) => ({
+											...current,
+											birthDate: undefined,
+										}));
+									}
+								}}
+							/>
+						</View>
 					</View>
 				</View>
 			) : null}

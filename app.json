@@ -19,7 +19,8 @@
 		},
 		"ios": {
 			"supportsTablet": true,
-			"bundleIdentifier": "com.anonymous.Dayova-MVP"
+			"bundleIdentifier": "com.anonymous.Dayova-MVP",
+			"runtimeVersion": "1.0.0"
 		},
 		"android": {
 			"adaptiveIcon": {

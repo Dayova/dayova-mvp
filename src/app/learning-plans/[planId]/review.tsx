@@ -222,12 +222,14 @@ export default function LearningPlanReviewScreen() {
 								</Text>
 							</TouchableOpacity>
 						</View>
-						<DateTimePicker
-							value={value}
-							mode={isDate ? "date" : "time"}
-							display="spinner"
-							onChange={handlePickerChange}
-						/>
+						<View className="items-center">
+							<DateTimePicker
+								value={value}
+								mode={isDate ? "date" : "time"}
+								display="spinner"
+								onChange={handlePickerChange}
+							/>
+						</View>
 					</View>
 				</View>
 			);

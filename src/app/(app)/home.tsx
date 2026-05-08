@@ -160,11 +160,9 @@ export default function HomeScreen() {
 	const heroHeadline = featuredEntry
 		? `Heute musst du für ${featuredSubject} lernen!`
 		: "Heute wartet dein nächster Lernschritt auf dich!";
-	const taskSummary = areEntriesLoading
-		? "Aufgaben werden geladen"
-		: `${sortedSelectedEntries.length} ${
-				sortedSelectedEntries.length === 1 ? "Aufgabe" : "Aufgaben"
-			}`;
+	const taskSummary = `${sortedSelectedEntries.length} ${
+		sortedSelectedEntries.length === 1 ? "Aufgabe" : "Aufgaben"
+	}`;
 	const firstName =
 		typeof user?.name === "string" && user.name.trim().length > 0
 			? user.name.trim().split(/\s+/)[0]

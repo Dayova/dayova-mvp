@@ -1100,13 +1100,15 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								</Text>
 							</TouchableOpacity>
 						</View>
-						<DateTimePicker
-							value={birthDateValue ?? new Date(2000, 0, 1)}
-							mode="date"
-							display="spinner"
-							maximumDate={new Date()}
-							onChange={handleBirthDateChange}
-						/>
+						<View className="items-center">
+							<DateTimePicker
+								value={birthDateValue ?? new Date(2000, 0, 1)}
+								mode="date"
+								display="spinner"
+								maximumDate={new Date()}
+								onChange={handleBirthDateChange}
+							/>
+						</View>
 					</View>
 				</View>
 			) : null}
