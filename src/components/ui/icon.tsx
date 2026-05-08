@@ -9,10 +9,10 @@ import {
 	Cancel01Icon,
 	CheckmarkCircle02Icon,
 	Clock03Icon,
-	CogIcon,
+	Settings01Icon,
 	Delete02Icon,
 	FlashIcon,
-	Home01Icon,
+	Home02Icon,
 	Logout03Icon,
 	Mail01Icon,
 	MailValidation01Icon,
@@ -55,7 +55,7 @@ export const Clock3 = createIcon(Clock03Icon);
 export const Eye = createIcon(ViewIcon);
 export const EyeOff = createIcon(ViewOffIcon);
 export const GraduationCap = createIcon(Mortarboard01Icon);
-export const Home = createIcon(Home01Icon);
+export const Home = createIcon(Home02Icon);
 export const Logout = createIcon(Logout03Icon);
 export const Mail = createIcon(Mail01Icon);
 export const MailCheck = createIcon(MailValidation01Icon);
@@ -64,7 +64,7 @@ export const Plus = createIcon(PlusSignIcon);
 export const PropertyEdit = createIcon(PropertyEditIcon);
 export const Route2 = createIcon(Route02Icon);
 export const ScanImage = createIcon(ScanImageIcon);
-export const Settings = createIcon(CogIcon);
+export const Settings = createIcon(Settings01Icon);
 export const ShieldCheck = createIcon(ShieldCheckIcon);
 export const Timer = createIcon(Clock03Icon);
 export const Trash2 = createIcon(Delete02Icon);

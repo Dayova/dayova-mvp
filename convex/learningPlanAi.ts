@@ -112,9 +112,19 @@ const generatedPlanSchema = z.object({
 			dayOffsetBeforeExam: z.number().int().min(0).max(120),
 			startTime: z.string().regex(/^\d{2}:\d{2}$/),
 			durationMinutes: z.number().int().min(15).max(180),
-			goal: z.string().min(20),
+			goal: z
+				.string()
+				.min(20)
+				.describe(
+					"Deutsch mit korrekten Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.",
+				),
 			tasks: boundedArray(z.string().min(8), 2, 5),
-			expectedOutcome: z.string().min(12),
+			expectedOutcome: z
+				.string()
+				.min(12)
+				.describe(
+					"Deutsch mit korrekten Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.",
+				),
 		}),
 		1,
 		5,
@@ -585,6 +595,7 @@ MVP-Vorgabe:
 - Der größte Block soll die Übungsphase sein.
 - Die Generalprobe soll wie ein fertiger Test/Probetest formuliert sein.
 - Jeder Lernblock braucht konkrete Aufgaben, die der Schüler in diesem Slot abarbeitet.
+- Formuliere goal und expectedOutcome in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.
 - Session-Titel müssen kurze UI-Labels mit maximal ${MAX_SESSION_TITLE_CHARS} Zeichen sein.
 - insight.strengths darf maximal 4 Punkte enthalten, insight.gaps maximal 5 Punkte.
 - Jeder Lernblock darf maximal 5 Aufgaben enthalten, der gesamte Plan maximal 5 Lernblöcke.

@@ -265,6 +265,30 @@ export const getSnapshot = query({
 	},
 });
 
+export const listOverview = query({
+	args: {},
+	handler: async (ctx) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const plans = await ctx.db
+			.query("learningPlans")
+			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("status", "accepted"),
+			)
+			.order("desc")
+			.take(50);
+
+		return plans.map((plan) => ({
+			id: plan._id,
+			subject: plan.subject,
+			examTypeLabel: plan.examTypeLabel,
+			status: plan.status,
+			updatedAt: plan.updatedAt,
+		}));
+	},
+});
+
 export const saveKnowledgeAnswer = mutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),

@@ -17,9 +17,9 @@ import {
 	type DayCarouselHandle,
 	getDayItemFromKey,
 } from "~/components/day-carousel";
+import { NotificationButton } from "~/components/notification-button";
 import {
 	ArrowUpRight,
-	Bell,
 	CheckCircle2,
 	ClipboardList,
 	Clock3,
@@ -274,19 +274,7 @@ export default function HomeScreen() {
 						</Text>
 					</View>
 
-					<TouchableOpacity
-						activeOpacity={0.86}
-						accessibilityRole="button"
-						accessibilityLabel="Benachrichtigungen öffnen"
-						className="h-14 w-14 items-center justify-center rounded-full bg-white"
-						style={{
-							borderWidth: 1,
-							borderColor: "rgba(17,24,39,0.06)",
-							boxShadow: "0 10px 22px rgba(21, 29, 48, 0.08)",
-						}}
-					>
-						<Bell size={22} color="#1A1A1A" strokeWidth={2.2} />
-					</TouchableOpacity>
+					<NotificationButton />
 				</View>
 
 				<View>
