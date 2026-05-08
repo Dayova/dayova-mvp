@@ -14,6 +14,7 @@ import { readOptionalEnv, readRequiredEnv } from "./env";
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
 const MAX_PROMPT_CONTEXT_CHARS = 70_000;
+const MAX_SESSION_TITLE_CHARS = 28;
 const LLM_GENERATION_TIMEOUT_MS = 60_000;
 const MODEL_ID = "gemini-3-flash-preview";
 
@@ -82,7 +83,7 @@ const generatedPlanSchema = z.object({
 		.array(
 			z.object({
 				phase: sessionPhaseSchema,
-				title: z.string().min(3).max(28),
+				title: z.string().min(3),
 				dayOffsetBeforeExam: z.number().int().min(0).max(120),
 				startTime: z.string().regex(/^\d{2}:\d{2}$/),
 				durationMinutes: z.number().int().min(15).max(180),
@@ -176,6 +177,30 @@ const compactText = (value: string, maxChars: number) => {
 	if (normalized.length <= maxChars) return normalized;
 
 	return `${normalized.slice(0, maxChars)}\n\n[Inhalt wurde gekürzt.]`;
+};
+
+const compactSingleLine = (value: string, maxChars: number) => {
+	const normalized = value.replace(/\s+/g, " ").trim();
+	if (normalized.length <= maxChars) return normalized;
+
+	const ellipsis = "...";
+	const contentMaxChars = maxChars - ellipsis.length;
+	const clipped = normalized.slice(0, contentMaxChars).trimEnd();
+	const lastSpace = clipped.lastIndexOf(" ");
+	const compacted =
+		lastSpace >= Math.floor(contentMaxChars * 0.55)
+			? clipped.slice(0, lastSpace).trimEnd()
+			: clipped;
+	return `${compacted}${ellipsis}`;
+};
+
+const fallbackTitleByPhase: Record<
+	z.infer<typeof sessionPhaseSchema>,
+	string
+> = {
+	theory: "Theorie-Block",
+	practice: "Übungsblock",
+	rehearsal: "Generalprobe",
 };
 
 const fileExtension = (fileName: string) => {
@@ -336,7 +361,9 @@ const normalizeSessions = (
 			const date = buildDateFromOffset(examDateKey, boundedOffset);
 			return {
 				phase: session.phase,
-				title: session.title.trim(),
+				title:
+					compactSingleLine(session.title, MAX_SESSION_TITLE_CHARS) ||
+					fallbackTitleByPhase[session.phase],
 				dateKey: date.toISOString(),
 				dateLabel: formatDateLabel(date),
 				startTime: session.startTime,
@@ -492,6 +519,7 @@ MVP-Vorgabe:
 - Der größte Block soll die Übungsphase sein.
 - Die Generalprobe soll wie ein fertiger Test/Probetest formuliert sein.
 - Jeder Lernblock braucht konkrete Aufgaben, die der Schüler in diesem Slot abarbeitet.
+- Session-Titel müssen kurze UI-Labels mit maximal ${MAX_SESSION_TITLE_CHARS} Zeichen sein.
 - Nutze dayOffsetBeforeExam relativ zum Prüfungstag: 1 = einen Tag vor der Prüfung.
 - Wenn Antworten nur Platzhalter oder Unsinn enthalten, erstelle trotzdem einen remedialen Grundlagenplan und setze strengths auf [].
 - Wenn zu wenig Zeit bleibt, reduziere die Anzahl der Sessions, aber bleibe konkret.`,

@@ -115,7 +115,8 @@ const isInternalBackendError = (message: string) => {
 	);
 };
 
-const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const isValidEmail = (value: string) =>
+	/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 const isValidName = (value: string) =>
 	value.length >= 2 && /^[A-Za-zÀ-ÿ' -]+$/.test(value);
@@ -444,8 +445,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 			nextErrors.email = "Bitte eine gültige E-Mail eingeben.";
 		}
 		if (!isValidBirthDate(trimmedBirthDate)) {
-			nextErrors.birthDate =
-				"Bitte ein gültiges Geburtsdatum auswählen.";
+			nextErrors.birthDate = "Bitte ein gültiges Geburtsdatum auswählen.";
 		}
 
 		setErrors(nextErrors);
@@ -841,8 +841,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								className="mt-2 font-poppins text-14 text-text/62"
 								style={{ includeFontPadding: false, lineHeight: 20 }}
 							>
-								Im ersten Schritt brauchen wir deinen Namen, deine E-Mail und dein
-								Alter.
+								Im ersten Schritt brauchen wir deinen Namen, deine E-Mail und
+								dein Alter.
 							</Text>
 						</View>
 					) : null}
@@ -869,24 +869,24 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 					) : null}
 					{!isRegisterPasswordStep ? (
 						<InsetTextField
-						label="E-Mail"
-						invalid={isRegisterMode && Boolean(errors.email)}
-						message={isRegisterMode ? errors.email : undefined}
-						accessory={<Mail size={18} color="rgba(26,26,26,0.34)" />}
-						value={email}
-						onChangeText={(value) => {
-							setEmail(value);
-							if (submitError) setSubmitError("");
-							if (errors.email) {
-								setErrors((prev) => ({ ...prev, email: undefined }));
-							}
-						}}
-						onFocus={closeBirthDatePicker}
-						placeholder="name@example.com"
-						keyboardType="email-address"
-						autoCapitalize="none"
-						autoComplete="email"
-						textContentType="emailAddress"
+							label="E-Mail"
+							invalid={isRegisterMode && Boolean(errors.email)}
+							message={isRegisterMode ? errors.email : undefined}
+							accessory={<Mail size={18} color="rgba(26,26,26,0.34)" />}
+							value={email}
+							onChangeText={(value) => {
+								setEmail(value);
+								if (submitError) setSubmitError("");
+								if (errors.email) {
+									setErrors((prev) => ({ ...prev, email: undefined }));
+								}
+							}}
+							onFocus={closeBirthDatePicker}
+							placeholder="name@example.com"
+							keyboardType="email-address"
+							autoCapitalize="none"
+							autoComplete="email"
+							textContentType="emailAddress"
 						/>
 					) : null}
 
@@ -913,7 +913,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 									>
 										{birthDateValue
 											? `${Math.max(
-													new Date().getFullYear() - birthDateValue.getFullYear(),
+													new Date().getFullYear() -
+														birthDateValue.getFullYear(),
 													0,
 												)} Jahre`
 											: "Alter auswählen"}
@@ -935,66 +936,70 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 					{!isRegisterIdentityStep ? (
 						<Field>
-						<FieldControl className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3">
-							<View className="flex-1">
-								<Text className="font-poppins text-12 text-text/42 leading-4">
-									Passwort
-								</Text>
-								{/*
+							<FieldControl className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3">
+								<View className="flex-1">
+									<Text className="font-poppins text-12 text-text/42 leading-4">
+										Passwort
+									</Text>
+									{/*
                   Keep this as a native TextInput instead of InsetTextField/Input.
                   The shared Input's Poppins font metrics make hidden secure text
                   render invisible on device while the cursor remains visible.
                   Native secureTextEntry is still required for correct editing,
                   paste, keyboard, accessibility, and password-manager behavior.
                 */}
-								<TextInput
-									accessibilityLabel="Passwort"
-									value={password}
-									onChangeText={updatePassword}
-									onFocus={closeBirthDatePicker}
-									placeholder="••••••••"
-									secureTextEntry={!passwordVisible}
-									autoCapitalize="none"
-									autoCorrect={false}
-									autoComplete={
-										isRegisterMode ? "new-password" : "current-password"
-									}
-									textContentType={isRegisterMode ? "newPassword" : "password"}
-									placeholderTextColor="rgba(26,26,26,0.36)"
-									selectionColor="#3A7BFF"
-									style={{
-										color: "#1A1A1A",
-										fontSize: 16,
-										height: 30,
-										margin: 0,
-										marginTop: 4,
-										paddingHorizontal: 0,
-										paddingVertical: 0,
-										...Platform.select({
-											android: {
-												fontFamily: "sans-serif",
-												includeFontPadding: true,
-												textAlignVertical: "center" as const,
-											},
-										}),
-									}}
-								/>
-							</View>
-							<FieldAccessory className="ml-3 self-center">
-								<TouchableOpacity
-									activeOpacity={0.75}
-									onPress={togglePasswordVisibility}
-								>
-									{passwordVisible ? (
-										<Eye size={18} color="rgba(26,26,26,0.34)" />
-									) : (
-										<EyeOff size={18} color="rgba(26,26,26,0.34)" />
-									)}
-								</TouchableOpacity>
-							</FieldAccessory>
-						</FieldControl>
-						{errors.password ? <FieldMessage>{errors.password}</FieldMessage> : null}
-						{submitError ? <FieldMessage>{submitError}</FieldMessage> : null}
+									<TextInput
+										accessibilityLabel="Passwort"
+										value={password}
+										onChangeText={updatePassword}
+										onFocus={closeBirthDatePicker}
+										placeholder="••••••••"
+										secureTextEntry={!passwordVisible}
+										autoCapitalize="none"
+										autoCorrect={false}
+										autoComplete={
+											isRegisterMode ? "new-password" : "current-password"
+										}
+										textContentType={
+											isRegisterMode ? "newPassword" : "password"
+										}
+										placeholderTextColor="rgba(26,26,26,0.36)"
+										selectionColor="#3A7BFF"
+										style={{
+											color: "#1A1A1A",
+											fontSize: 16,
+											height: 30,
+											margin: 0,
+											marginTop: 4,
+											paddingHorizontal: 0,
+											paddingVertical: 0,
+											...Platform.select({
+												android: {
+													fontFamily: "sans-serif",
+													includeFontPadding: true,
+													textAlignVertical: "center" as const,
+												},
+											}),
+										}}
+									/>
+								</View>
+								<FieldAccessory className="ml-3 self-center">
+									<TouchableOpacity
+										activeOpacity={0.75}
+										onPress={togglePasswordVisibility}
+									>
+										{passwordVisible ? (
+											<Eye size={18} color="rgba(26,26,26,0.34)" />
+										) : (
+											<EyeOff size={18} color="rgba(26,26,26,0.34)" />
+										)}
+									</TouchableOpacity>
+								</FieldAccessory>
+							</FieldControl>
+							{errors.password ? (
+								<FieldMessage>{errors.password}</FieldMessage>
+							) : null}
+							{submitError ? <FieldMessage>{submitError}</FieldMessage> : null}
 						</Field>
 					) : null}
 
@@ -1017,9 +1022,9 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 									? "Diese Angaben helfen uns, dein Konto passend für dich einzurichten."
 									: isRegisterPasswordStep
 										? "Lege jetzt noch dein Passwort fest, dann ist dein Konto startklar."
-									: isRegisterMode
-									? "Mit der Registrierung erstellst du dein persönliches Lernprofil."
-									: "Falls etwas nicht klappt, prüfe zuerst E-Mail-Adresse und Passwort."}
+										: isRegisterMode
+											? "Mit der Registrierung erstellst du dein persönliches Lernprofil."
+											: "Falls etwas nicht klappt, prüfe zuerst E-Mail-Adresse und Passwort."}
 							</Text>
 						</View>
 					</View>
