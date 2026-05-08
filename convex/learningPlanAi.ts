@@ -319,7 +319,7 @@ const buildModelInputFromDocuments = async (
 				buffer,
 			);
 			if (extractedText) {
-				textSections.push(`Datei: ${document.fileName}\n${extractedText}`);
+				textSections.push(extractedText);
 			}
 		} catch {
 			// Images and some PDFs are still useful as native model inputs.
@@ -483,7 +483,9 @@ export const generateKnowledgeQuestions = action({
 				text: `${buildBaseContext(context)}
 
 Erstelle genau 5 kurze Wissensanalyse-Fragen. Ziel ist nicht Notengebung, sondern herauszufinden, welche Lernblöcke der Lernplan braucht.
-Die Fragen müssen sich konkret auf Prüfungsthema und Material beziehen. Keine Multiple-Choice-Fragen. Keine Diktierfunktion erwähnen.`,
+Die Fragen müssen sich konkret auf Prüfungsthema und Inhalte aus dem Material beziehen, aber wie normale Prüfungs- oder Verständnisfragen formuliert sein.
+Verweise in den Fragen nie direkt auf Quellen oder Uploads: keine Formulierungen wie "laut Material", "im Dokument", "auf dem Bild", "in der Datei", "Material 3 sagt" und keine Dateinamen.
+Keine Multiple-Choice-Fragen.`,
 			},
 		];
 
