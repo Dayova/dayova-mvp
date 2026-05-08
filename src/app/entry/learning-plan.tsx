@@ -30,14 +30,18 @@ import {
 } from "react";
 import {
 	ActivityIndicator,
+	Keyboard,
 	KeyboardAvoidingView,
+	type LayoutChangeEvent,
 	Modal,
 	Platform,
 	Pressable,
 	ScrollView,
 	TouchableOpacity,
+	useWindowDimensions,
 	View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 import Animated, {
 	Easing,
@@ -64,6 +68,7 @@ import {
 
 type FlowStep = "topic" | "analysisIntro" | "question" | "generating" | "plan";
 type PickerTarget = "editDate" | "editStart" | "editEnd";
+type TextareaTarget = "topic" | "answer";
 
 type PlanSession = {
 	id: Id<"learningPlanSessions">;
@@ -132,6 +137,10 @@ const TOPIC_TEXTAREA_HEIGHT = 160;
 const TOPIC_TEXTAREA_CARD_HEIGHT = 202;
 const ANSWER_TEXTAREA_HEIGHT = 112;
 const ANSWER_TEXTAREA_CARD_HEIGHT = 142;
+const SCROLL_BOTTOM_PADDING = 60;
+const TEXTAREA_KEYBOARD_VISIBLE_HEIGHT_RATIO = 0.44;
+const TEXTAREA_KEYBOARD_CLEARANCE = 28;
+const TEXTAREA_KEYBOARD_SCROLL_DELAY_MS = 120;
 const QUESTION_PROGRESS_SIZE = 112;
 const QUESTION_PROGRESS_RADIUS = QUESTION_PROGRESS_SIZE / 2;
 const QUESTION_PROGRESS_CENTER = QUESTION_PROGRESS_SIZE / 2;
@@ -531,6 +540,15 @@ function AnalysisOrbitLoader() {
 
 export default function LearningPlanScreen() {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
+	const { height: windowHeight } = useWindowDimensions();
+	const scrollViewRef = useRef<ScrollView | null>(null);
+	const textareaScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+		null,
+	);
+	const textareaLayoutsRef = useRef<
+		Partial<Record<TextareaTarget, { y: number; height: number }>>
+	>({});
 	const params = useLocalSearchParams<{
 		subject?: string;
 		examTypeLabel?: string;
@@ -571,6 +589,8 @@ export default function LearningPlanScreen() {
 	const notes = "";
 	const [questionIndex, setQuestionIndex] = useState(0);
 	const [answers, setAnswers] = useState<Record<string, string>>({});
+	const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+	const [keyboardHeight, setKeyboardHeight] = useState(0);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -593,6 +613,7 @@ export default function LearningPlanScreen() {
 
 	const questions = snapshot?.plan.knowledgeQuestions ?? EMPTY_QUESTIONS;
 	const currentQuestion = questions[questionIndex] ?? null;
+	const currentQuestionId = currentQuestion?.id;
 	const questionProgress =
 		questions.length > 0 ? (questionIndex + 1) / questions.length : 0;
 	const questionProgressPath = getQuestionProgressPath(questionProgress);
@@ -601,6 +622,126 @@ export default function LearningPlanScreen() {
 	const canWrite = Boolean(user && isConvexAuthenticated);
 	const canContinueTopic = topicDescription.trim().length >= 8 && canWrite;
 	const canUploadMaterial = canWrite && !isBusy;
+	const baseScrollBottomPadding = Math.max(
+		insets.bottom + SCROLL_BOTTOM_PADDING,
+		SCROLL_BOTTOM_PADDING,
+	);
+	const keyboardReserveHeight = Math.max(
+		keyboardHeight,
+		isKeyboardVisible
+			? Math.round(windowHeight * TEXTAREA_KEYBOARD_VISIBLE_HEIGHT_RATIO)
+			: 0,
+	);
+	const isTextareaStep = visibleStep === "topic" || visibleStep === "question";
+	const scrollBottomPadding =
+		isTextareaStep && isKeyboardVisible
+			? Math.max(
+					baseScrollBottomPadding,
+					keyboardReserveHeight + insets.bottom + SCROLL_BOTTOM_PADDING,
+				)
+			: baseScrollBottomPadding;
+
+	const setTextareaLayout = useCallback(
+		(target: TextareaTarget, event: LayoutChangeEvent) => {
+			const { y, height } = event.nativeEvent.layout;
+			textareaLayoutsRef.current[target] = { y, height };
+		},
+		[],
+	);
+
+	const scrollTextareaIntoView = useCallback(
+		(target: TextareaTarget) => {
+			if (
+				(target === "topic" && visibleStep !== "topic") ||
+				(target === "answer" && visibleStep !== "question")
+			) {
+				return;
+			}
+
+			const layout = textareaLayoutsRef.current[target];
+			if (!layout) return;
+
+			const visibleHeight = Math.max(
+				windowHeight -
+					keyboardReserveHeight -
+					insets.top -
+					insets.bottom -
+					TEXTAREA_KEYBOARD_CLEARANCE,
+				ANSWER_TEXTAREA_CARD_HEIGHT,
+			);
+			const nextScrollY = Math.max(
+				0,
+				layout.y + layout.height - visibleHeight,
+			);
+
+			scrollViewRef.current?.scrollTo({ y: nextScrollY, animated: true });
+		},
+		[
+			insets.bottom,
+			insets.top,
+			keyboardReserveHeight,
+			visibleStep,
+			windowHeight,
+		],
+	);
+
+	const scheduleTextareaScrollIntoView = useCallback(
+		(target: TextareaTarget) => {
+			if (textareaScrollTimeoutRef.current) {
+				clearTimeout(textareaScrollTimeoutRef.current);
+			}
+			textareaScrollTimeoutRef.current = setTimeout(() => {
+				scrollTextareaIntoView(target);
+				textareaScrollTimeoutRef.current = null;
+			}, TEXTAREA_KEYBOARD_SCROLL_DELAY_MS);
+		},
+		[scrollTextareaIntoView],
+	);
+
+	useEffect(() => {
+		const showEvent =
+			Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+		const hideEvent =
+			Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+		const showSubscription = Keyboard.addListener(
+			showEvent,
+			(event) => {
+				setKeyboardHeight(event.endCoordinates.height);
+				setIsKeyboardVisible(true);
+			},
+		);
+		const hideSubscription = Keyboard.addListener(hideEvent, () => {
+			setKeyboardHeight(0);
+			setIsKeyboardVisible(false);
+		});
+
+		return () => {
+			if (textareaScrollTimeoutRef.current) {
+				clearTimeout(textareaScrollTimeoutRef.current);
+			}
+			showSubscription.remove();
+			hideSubscription.remove();
+		};
+	}, []);
+
+	useEffect(() => {
+		if (
+			!isKeyboardVisible ||
+			!isTextareaStep ||
+			(visibleStep === "question" && !currentQuestionId)
+		) {
+			return;
+		}
+		scheduleTextareaScrollIntoView(
+			visibleStep === "topic" ? "topic" : "answer",
+		);
+	}, [
+		currentQuestionId,
+		isKeyboardVisible,
+		isTextareaStep,
+		scheduleTextareaScrollIntoView,
+		visibleStep,
+	]);
 
 	const answerList = useMemo(
 		() =>
@@ -1016,12 +1157,15 @@ export default function LearningPlanScreen() {
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 			<ScrollView
+				ref={scrollViewRef}
 				className="flex-1"
 				contentContainerStyle={{
 					paddingHorizontal: 32,
 					paddingTop: 80,
-					paddingBottom: 60,
+					paddingBottom: scrollBottomPadding,
 				}}
+				automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+				contentInsetAdjustmentBehavior="automatic"
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
 			>
@@ -1038,6 +1182,7 @@ export default function LearningPlanScreen() {
 						</Text>
 						<View
 							className="mb-7 items-start rounded-[36px] bg-white px-[24px] pt-[19px] pb-5"
+							onLayout={(event) => setTextareaLayout("topic", event)}
 							style={{
 								height: TOPIC_TEXTAREA_CARD_HEIGHT,
 								shadowColor: "#000000",
@@ -1049,7 +1194,13 @@ export default function LearningPlanScreen() {
 						>
 							<Textarea
 								value={topicDescription}
-								onChangeText={setTopicDescription}
+								onChangeText={(value) => {
+									setTopicDescription(value);
+									if (isKeyboardVisible) {
+										scheduleTextareaScrollIntoView("topic");
+									}
+								}}
+								onFocus={() => scheduleTextareaScrollIntoView("topic")}
 								placeholder="Kurze Beschreibung hinzufügen"
 								style={{ height: TOPIC_TEXTAREA_HEIGHT }}
 							/>
@@ -1197,16 +1348,21 @@ export default function LearningPlanScreen() {
 						</Text>
 						<View
 							className="mb-8 items-start rounded-[28px] bg-white px-[18px] pt-[14px] pb-4"
+							onLayout={(event) => setTextareaLayout("answer", event)}
 							style={{ height: ANSWER_TEXTAREA_CARD_HEIGHT }}
 						>
 							<Textarea
 								value={answers[currentQuestion.id] ?? ""}
-								onChangeText={(value) =>
+								onFocus={() => scheduleTextareaScrollIntoView("answer")}
+								onChangeText={(value) => {
 									setAnswers((current) => ({
 										...current,
 										[currentQuestion.id]: value,
-									}))
-								}
+									}));
+									if (isKeyboardVisible) {
+										scheduleTextareaScrollIntoView("answer");
+									}
+								}}
 								placeholder="Schreibe hier deine Antwort rein..."
 								style={{ height: ANSWER_TEXTAREA_HEIGHT }}
 							/>

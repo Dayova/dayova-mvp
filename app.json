@@ -22,6 +22,7 @@
 			"bundleIdentifier": "com.anonymous.Dayova-MVP"
 		},
 		"android": {
+			"softwareKeyboardLayoutMode": "resize",
 			"adaptiveIcon": {
 				"foregroundImage": "./assets/dayova-logo.png",
 				"backgroundColor": "#ffffff"
