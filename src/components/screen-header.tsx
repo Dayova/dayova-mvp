@@ -7,18 +7,22 @@ export function ScreenHeader({
 	title,
 	onBack,
 	right,
+	showBack = true,
 	className = "mb-7",
 }: {
 	title?: string;
 	onBack: () => void;
 	right?: ReactNode;
+	showBack?: boolean;
 	className?: string;
 }) {
 	return (
 		<View className={`relative min-h-12 justify-center ${className}`}>
-			<View className="absolute left-0 z-10">
-				<BackButton onPress={onBack} />
-			</View>
+			{showBack ? (
+				<View className="absolute left-0 z-10">
+					<BackButton onPress={onBack} />
+				</View>
+			) : null}
 			{title ? (
 				<Text
 					accessibilityRole="header"

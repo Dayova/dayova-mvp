@@ -8,17 +8,14 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
 	Attachment,
-	BookOpen,
 	CalendarDays,
 	ScanImage,
 	Check,
-	CheckCircle2,
 	Clock3,
-	MoreHorizontal,
 	Plus,
+	PropertyEdit,
 	Trash2,
 	X,
-	Zap,
 } from "~/components/ui/icon";
 import {
 	type ReactNode,
@@ -171,18 +168,6 @@ const getHeaderTitle = (visibleStep: FlowStep) => {
 	return "Prüfungsthema";
 };
 
-const phaseIcon = {
-	theory: BookOpen,
-	practice: Zap,
-	rehearsal: CheckCircle2,
-};
-
-const phaseColor = {
-	theory: "#1A1A1A",
-	practice: "#5FC9B0",
-	rehearsal: "#3A7BFF",
-};
-
 const startOfDay = (date: Date) => {
 	const next = new Date(date);
 	next.setHours(0, 0, 0, 0);
@@ -204,6 +189,14 @@ const formatDate = (date: Date) =>
 		month: "long",
 		year: "numeric",
 	}).format(date);
+
+const formatDayOfMonth = (date: Date) =>
+	new Intl.DateTimeFormat("de-DE", { day: "numeric" }).format(date);
+
+const formatShortWeekday = (date: Date) =>
+	new Intl.DateTimeFormat("de-DE", { weekday: "short" })
+		.format(date)
+		.replace(".", "");
 
 const formatTime = (date: Date) =>
 	new Intl.DateTimeFormat("de-DE", {
@@ -387,11 +380,10 @@ function SessionCard({
 	session: PlanSession;
 	onEdit: () => void;
 }) {
-	const Icon = phaseIcon[session.phase];
-	const color = phaseColor[session.phase];
 	const endTime = timeFromMinutes(
 		minutesFromTime(session.startTime) + session.durationMinutes,
 	);
+	const sessionDate = parseDateKey(session.dateKey);
 
 	return (
 		<TouchableOpacity
@@ -400,7 +392,7 @@ function SessionCard({
 			accessibilityRole="button"
 			activeOpacity={0.88}
 			onPress={onEdit}
-			className="mb-4 flex-row items-center rounded-[28px] bg-white px-4 py-4"
+			className="mb-4 flex-row items-center rounded-[28px] bg-white px-5 py-5"
 			style={{
 				borderWidth: 1,
 				borderColor: "rgba(0,0,0,0.07)",
@@ -411,29 +403,24 @@ function SessionCard({
 				elevation: 2,
 			}}
 		>
-			<View className="h-14 w-14 items-center justify-center rounded-full bg-[#1A1A1A]">
-				<Text className="font-bold font-poppins text-14 text-white">
-					{session.dateLabel.split(" ")[0]}
+			<View className="h-14 w-14 items-center justify-center rounded-full bg-[#3A3A3A]">
+				<Text className="font-bold font-poppins text-16 text-white">
+					{formatDayOfMonth(sessionDate)}
+				</Text>
+				<Text className="-mt-0.5 font-medium font-poppins text-11 text-white">
+					{formatShortWeekday(sessionDate)}
 				</Text>
 			</View>
 			<View className="ml-4 flex-1">
-				<View className="flex-row items-center">
-					<Text className="font-bold font-poppins text-16 text-text">
-						{session.title}
-					</Text>
-					<Icon
-						size={18}
-						color={color}
-						strokeWidth={2.2}
-						style={{ marginLeft: 6 }}
-					/>
-				</View>
-				<Text className="mt-1 font-poppins text-12 text-text/55">
+				<Text className="font-bold font-poppins text-16 text-text">
+					{session.title}
+				</Text>
+				<Text className="mt-0.5 font-poppins text-12 text-text/55">
 					{session.startTime} - {endTime}
 				</Text>
 			</View>
 			<View className="h-11 w-11 items-center justify-center rounded-full border border-black/10">
-				<MoreHorizontal size={19} color="#1A1A1A" strokeWidth={2.2} />
+				<PropertyEdit size={19} color="#1A1A1A" strokeWidth={2.2} />
 			</View>
 		</TouchableOpacity>
 	);
@@ -553,6 +540,7 @@ export default function LearningPlanScreen() {
 	);
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
 	const updateSession = useMutation(api.learningPlans.updateSession);
+	const addSession = useMutation(api.learningPlans.addSession);
 	const removeSession = useMutation(api.learningPlans.removeSession);
 	const acceptPlan = useMutation(api.learningPlans.acceptPlan);
 
@@ -895,6 +883,21 @@ export default function LearningPlanScreen() {
 		);
 	};
 
+	const addRecommendedSession = async () => {
+		if (!learningPlanId || isBusy) return;
+
+		await runWithErrorHandling(
+			"Der zusätzliche Lerntag konnte nicht erstellt werden.",
+			async () => {
+				const sessionId = await addSession({ learningPlanId });
+				const createdSession = snapshot?.sessions.find(
+					(session) => session.id === sessionId,
+				);
+				if (createdSession) openEdit(createdSession);
+			},
+		);
+	};
+
 	const handlePickerChange = (
 		event: DateTimePickerEvent,
 		selectedDate?: Date,
@@ -1025,7 +1028,11 @@ export default function LearningPlanScreen() {
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
 			>
-				<Header title={getHeaderTitle(visibleStep)} onBack={goBack} />
+				<Header
+					title={getHeaderTitle(visibleStep)}
+					onBack={goBack}
+					showBack={false}
+				/>
 
 				{visibleStep === "topic" ? (
 					<>
@@ -1275,29 +1282,56 @@ export default function LearningPlanScreen() {
 								{errorMessage}
 							</Text>
 						) : null}
-						<Button
-							accessibilityLabel={
-								isBusy
-									? "Lernplan übernehmen, wird geladen"
-									: "Lernplan übernehmen"
-							}
-							accessibilityLiveRegion={isBusy ? "polite" : undefined}
-							accessibilityState={{
-								busy: isBusy,
-								disabled: isBusy || !snapshot?.sessions.length,
-							}}
-							disabled={isBusy || !snapshot?.sessions.length}
-							onPress={acceptGeneratedPlan}
-						>
-							{isBusy ? (
-								<ActivityIndicator color="#FFFFFF" />
-							) : (
-								<>
-									<Check size={18} color="#FFFFFF" strokeWidth={2.4} />
-									<Text>Übernehmen</Text>
-								</>
-							)}
-						</Button>
+						<View className="flex-row items-center gap-3">
+							<Button
+								accessibilityLabel={
+									isBusy
+										? "Lernplan erstellen, wird geladen"
+										: "Lernplan erstellen"
+								}
+								accessibilityLiveRegion={isBusy ? "polite" : undefined}
+								accessibilityState={{
+									busy: isBusy,
+									disabled: isBusy || !snapshot?.sessions.length,
+								}}
+								disabled={isBusy || !snapshot?.sessions.length}
+								onPress={acceptGeneratedPlan}
+								variant="neutral"
+								className="h-14 flex-1"
+								style={{
+									minWidth: 0,
+								}}
+							>
+								{isBusy ? (
+									<ActivityIndicator color="#1A1A1A" />
+								) : (
+									<Text className="font-bold font-poppins text-15 text-text">
+										Lernplan erstellen
+									</Text>
+								)}
+							</Button>
+							<TouchableOpacity
+								accessibilityLabel="Lerntag hinzufügen"
+								accessibilityRole="button"
+								accessibilityState={{
+									disabled: isBusy || !snapshot?.sessions.length,
+								}}
+								activeOpacity={0.86}
+								disabled={isBusy || !snapshot?.sessions.length}
+								onPress={addRecommendedSession}
+								className="h-14 w-14 items-center justify-center rounded-full bg-primary"
+								style={{
+									shadowColor: "#3A7BFF",
+									shadowOpacity: 0.32,
+									shadowRadius: 16,
+									shadowOffset: { width: 0, height: 7 },
+									elevation: 5,
+									opacity: isBusy || !snapshot?.sessions.length ? 0.55 : 1,
+								}}
+							>
+								<Plus size={28} color="#FFFFFF" strokeWidth={2.4} />
+							</TouchableOpacity>
+						</View>
 					</>
 				) : null}
 			</ScrollView>

@@ -24,6 +24,7 @@ import {
 	NotebookIcon,
 	Notification01Icon,
 	PlusSignIcon,
+	PropertyEditIcon,
 	Route02Icon,
 	ShieldCheck as ShieldCheckIcon,
 	SparklesIcon,
@@ -71,6 +72,7 @@ export const MoreHorizontal = createIcon(MoreHorizontalIcon);
 export const NotebookPen = createIcon(NotebookIcon);
 export const Phone = createIcon(TelephoneIcon);
 export const Plus = createIcon(PlusSignIcon);
+export const PropertyEdit = createIcon(PropertyEditIcon);
 export const Route2 = createIcon(Route02Icon);
 export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(CogIcon);

@@ -115,6 +115,22 @@ const publicSession = (
 const buildPlanAccessKey = (learningPlanId: Id<"learningPlans">) =>
 	`learningPlan:${learningPlanId}`;
 
+const startOfDay = (date: Date) => {
+	const next = new Date(date);
+	next.setHours(0, 0, 0, 0);
+	return next;
+};
+
+const formatDateLabel = (date: Date) =>
+	new Intl.DateTimeFormat("de-DE", {
+		timeZone: "Europe/Berlin",
+		day: "numeric",
+		month: "long",
+		year: "numeric",
+	}).format(date);
+
+const getDateKey = (date: Date) => startOfDay(date).toISOString();
+
 export const start = mutation({
 	args: {
 		subject: v.string(),
@@ -480,6 +496,65 @@ export const updateSession = mutation({
 			startTime: args.startTime,
 			durationMinutes: args.durationMinutes,
 			updatedAt: Date.now(),
+		});
+	},
+});
+
+export const addSession = mutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throw new Error("Lernplan nicht gefunden.");
+		}
+
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", args.learningPlanId),
+			)
+			.take(20);
+		const lastSession = sessions.at(-1);
+		const parsedExamDate = startOfDay(new Date(plan.examDateKey));
+		const examDate = Number.isNaN(parsedExamDate.getTime())
+			? startOfDay(new Date(Date.now() + 86_400_000))
+			: parsedExamDate;
+		const baseDate = lastSession
+			? startOfDay(new Date(lastSession.dateKey))
+			: startOfDay(new Date());
+		const nextDate = new Date(baseDate);
+		nextDate.setDate(nextDate.getDate() + 1);
+		if (nextDate.getTime() >= examDate.getTime()) {
+			nextDate.setDate(examDate.getDate() - 1);
+		}
+		if (Number.isNaN(nextDate.getTime())) {
+			nextDate.setTime(startOfDay(new Date()).getTime());
+		}
+
+		const now = Date.now();
+		return await ctx.db.insert("learningPlanSessions", {
+			ownerTokenIdentifier,
+			learningPlanId: args.learningPlanId,
+			phase: "practice",
+			title: "Zusatzübung",
+			dateKey: getDateKey(nextDate),
+			dateLabel: formatDateLabel(nextDate),
+			startTime: lastSession?.startTime ?? "17:00",
+			durationMinutes: lastSession?.durationMinutes ?? 45,
+			goal: "Zusätzlichen Lernblock ergänzen und individuell bearbeiten.",
+			tasks: ["Aufgaben festlegen", "Ergebnis kontrollieren"],
+			expectedOutcome: "Ein zusätzlicher Lernblock ist im Plan ergänzt.",
+			sortOrder:
+				sessions.reduce(
+					(maxSortOrder, session) => Math.max(maxSortOrder, session.sortOrder),
+					-1,
+				) + 1,
+			createdAt: now,
+			updatedAt: now,
 		});
 	},
 });

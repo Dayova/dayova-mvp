@@ -2,26 +2,30 @@ import { usePathname, useRouter } from "expo-router";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Home, Route2, Settings } from "~/components/ui/icon";
+import { ROUTES } from "~/lib/routes";
 
 type BottomNavKey = "home" | "learningPath" | "settings";
 
 const NAV_ITEMS: Array<{
 	key: BottomNavKey;
 	icon: typeof Home;
-	href: "/home" | "/learning-plans" | "/settings";
+	href:
+		| typeof ROUTES.home
+		| typeof ROUTES.learningPlans
+		| typeof ROUTES.settings;
 	label: string;
 }> = [
-	{ key: "home", icon: Home, href: "/home", label: "Startseite" },
+	{ key: "home", icon: Home, href: ROUTES.home, label: "Startseite" },
 	{
 		key: "learningPath",
 		icon: Route2,
-		href: "/learning-plans",
+		href: ROUTES.learningPlans,
 		label: "Lernpläne",
 	},
 	{
 		key: "settings",
 		icon: Settings,
-		href: "/settings",
+		href: ROUTES.settings,
 		label: "Einstellungen",
 	},
 ];
@@ -34,9 +38,9 @@ export function BottomNav() {
 	if (pathname === "/profile") return null;
 
 	const activeKey: BottomNavKey =
-		pathname === "/settings"
+		pathname === ROUTES.settings
 			? "settings"
-			: pathname === "/learning-plans"
+			: pathname === ROUTES.learningPlans
 				? "learningPath"
 				: "home";
 

@@ -57,43 +57,69 @@ const extensionToMediaType: Record<string, string> = {
 	webp: "image/webp",
 };
 
+const sessionPhaseSchema = z.enum(["theory", "practice", "rehearsal"]);
+
+const atMostArray = <TItem extends z.ZodType>(
+	itemSchema: TItem,
+	maxItems: number,
+) =>
+	z.preprocess(
+		(value) => (Array.isArray(value) ? value.slice(0, maxItems) : value),
+		z.array(itemSchema).max(maxItems),
+	);
+
+const boundedArray = <TItem extends z.ZodType>(
+	itemSchema: TItem,
+	minItems: number,
+	maxItems: number,
+) =>
+	z.preprocess(
+		(value) => (Array.isArray(value) ? value.slice(0, maxItems) : value),
+		z.array(itemSchema).min(minItems).max(maxItems),
+	);
+
+const exactArray = <TItem extends z.ZodType>(
+	itemSchema: TItem,
+	itemCount: number,
+) =>
+	z.preprocess(
+		(value) => (Array.isArray(value) ? value.slice(0, itemCount) : value),
+		z.array(itemSchema).length(itemCount),
+	);
+
 const questionsSchema = z.object({
 	sourceSummary: z.string().min(20),
-	questions: z
-		.array(
-			z.object({
-				prompt: z.string().min(12),
-				targetInsight: z.string().min(8),
-			}),
-		)
-		.length(5),
+	questions: exactArray(
+		z.object({
+			prompt: z.string().min(12),
+			targetInsight: z.string().min(8),
+		}),
+		5,
+	),
 });
-
-const sessionPhaseSchema = z.enum(["theory", "practice", "rehearsal"]);
 
 const generatedPlanSchema = z.object({
 	sourceSummary: z.string().min(20),
 	insight: z.object({
 		summary: z.string().min(20),
-		strengths: z.array(z.string()).max(4),
-		gaps: z.array(z.string()).min(1).max(5),
+		strengths: atMostArray(z.string(), 4),
+		gaps: boundedArray(z.string(), 1, 5),
 		strategy: z.string().min(20),
 	}),
-	sessions: z
-		.array(
-			z.object({
-				phase: sessionPhaseSchema,
-				title: z.string().min(3),
-				dayOffsetBeforeExam: z.number().int().min(0).max(120),
-				startTime: z.string().regex(/^\d{2}:\d{2}$/),
-				durationMinutes: z.number().int().min(15).max(180),
-				goal: z.string().min(20),
-				tasks: z.array(z.string().min(8)).min(2).max(5),
-				expectedOutcome: z.string().min(12),
-			}),
-		)
-		.min(1)
-		.max(5),
+	sessions: boundedArray(
+		z.object({
+			phase: sessionPhaseSchema,
+			title: z.string().min(3),
+			dayOffsetBeforeExam: z.number().int().min(0).max(120),
+			startTime: z.string().regex(/^\d{2}:\d{2}$/),
+			durationMinutes: z.number().int().min(15).max(180),
+			goal: z.string().min(20),
+			tasks: boundedArray(z.string().min(8), 2, 5),
+			expectedOutcome: z.string().min(12),
+		}),
+		1,
+		5,
+	),
 });
 
 type LearningPlanAiContext = {
@@ -346,19 +372,58 @@ const buildDateFromOffset = (
 	return date;
 };
 
+const distributeSessionOffsets = (
+	availableDays: number,
+	sessions: z.infer<typeof generatedPlanSchema>["sessions"],
+) => {
+	const maxOffset = Math.max(availableDays, 0);
+	if (maxOffset === 0) return sessions.map(() => 0);
+
+	const usedOffsets = new Set<number>();
+	return sessions.map((session, index) => {
+		const fallbackOffset = Math.max(
+			1,
+			Math.round(((sessions.length - index) / sessions.length) * maxOffset),
+		);
+		const preferredOffset = Math.min(
+			Math.max(session.dayOffsetBeforeExam || fallbackOffset, 1),
+			maxOffset,
+		);
+		if (!usedOffsets.has(preferredOffset)) {
+			usedOffsets.add(preferredOffset);
+			return preferredOffset;
+		}
+
+		for (let distance = 1; distance <= maxOffset; distance += 1) {
+			const earlierOffset = preferredOffset + distance;
+			if (earlierOffset <= maxOffset && !usedOffsets.has(earlierOffset)) {
+				usedOffsets.add(earlierOffset);
+				return earlierOffset;
+			}
+
+			const laterOffset = preferredOffset - distance;
+			if (laterOffset >= 1 && !usedOffsets.has(laterOffset)) {
+				usedOffsets.add(laterOffset);
+				return laterOffset;
+			}
+		}
+
+		return preferredOffset;
+	});
+};
+
 const normalizeSessions = (
 	examDateKey: string,
 	availableDays: number,
 	sessions: z.infer<typeof generatedPlanSchema>["sessions"],
 ) => {
-	const maxOffset = Math.max(availableDays, 0);
+	const distributedOffsets = distributeSessionOffsets(availableDays, sessions);
 	return sessions
-		.map((session) => {
-			const boundedOffset = Math.min(
-				Math.max(session.dayOffsetBeforeExam, availableDays > 0 ? 1 : 0),
-				maxOffset,
+		.map((session, index) => {
+			const date = buildDateFromOffset(
+				examDateKey,
+				distributedOffsets[index] ?? 0,
 			);
-			const date = buildDateFromOffset(examDateKey, boundedOffset);
 			return {
 				phase: session.phase,
 				title:
@@ -520,7 +585,10 @@ MVP-Vorgabe:
 - Die Generalprobe soll wie ein fertiger Test/Probetest formuliert sein.
 - Jeder Lernblock braucht konkrete Aufgaben, die der Schüler in diesem Slot abarbeitet.
 - Session-Titel müssen kurze UI-Labels mit maximal ${MAX_SESSION_TITLE_CHARS} Zeichen sein.
+- insight.strengths darf maximal 4 Punkte enthalten, insight.gaps maximal 5 Punkte.
+- Jeder Lernblock darf maximal 5 Aufgaben enthalten, der gesamte Plan maximal 5 Lernblöcke.
 - Nutze dayOffsetBeforeExam relativ zum Prüfungstag: 1 = einen Tag vor der Prüfung.
+- Verteile mehrere Sessions auf unterschiedliche Kalendertage, solange genug Tage verfügbar sind. Wiederhole dayOffsetBeforeExam nicht, wenn eine Alternative möglich ist.
 - Wenn Antworten nur Platzhalter oder Unsinn enthalten, erstelle trotzdem einen remedialen Grundlagenplan und setze strengths auf [].
 - Wenn zu wenig Zeit bleibt, reduziere die Anzahl der Sessions, aber bleibe konkret.`,
 			},

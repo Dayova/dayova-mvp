@@ -4,15 +4,6 @@ import DateTimePicker, {
 import { useConvexAuth, useMutation } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import type { Id } from "#convex/_generated/dataModel";
-import {
-	CalendarDays,
-	CheckCircle2,
-	ClipboardList,
-	Clock3,
-	GraduationCap,
-	Sparkles,
-} from "~/components/ui/icon";
 import { type ReactNode, useCallback, useState } from "react";
 import {
 	KeyboardAvoidingView,
@@ -23,6 +14,7 @@ import {
 	View,
 } from "react-native";
 import { api } from "#convex/_generated/api";
+import type { Id } from "#convex/_generated/dataModel";
 import { BackButton, Button } from "~/components/ui/button";
 import {
 	Field,
@@ -31,6 +23,14 @@ import {
 	FieldLabel,
 	FieldTrigger,
 } from "~/components/ui/field";
+import {
+	CalendarDays,
+	CheckCircle2,
+	ClipboardList,
+	Clock3,
+	GraduationCap,
+	Sparkles,
+} from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { TextField } from "~/components/ui/text-field";
 import { Textarea } from "~/components/ui/textarea";
@@ -38,6 +38,7 @@ import { Toggle } from "~/components/ui/toggle";
 import { useAuth } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 
 type EntryType = "homework" | "exam";
 type EntryStep = "basics" | "planning" | "examDecision" | "success";
@@ -515,7 +516,7 @@ export default function NewEntryScreen() {
 		]
 			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
 			.join("&");
-		router.push(`/entry/learning-plan?${query}`);
+		router.push(`${ROUTES.createLearningPlan}?${query}`);
 	};
 
 	const finish = () => {

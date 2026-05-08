@@ -1,6 +1,12 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import type { ReactNode } from "react";
+import { Alert, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { api } from "#convex/_generated/api";
+import type { Id } from "#convex/_generated/dataModel";
+import { BackButton, Button } from "~/components/ui/button";
 import {
 	BookOpen,
 	CalendarDays,
@@ -9,12 +15,6 @@ import {
 	Timer,
 	Trash2,
 } from "~/components/ui/icon";
-import type { ReactNode } from "react";
-import { Alert, ScrollView, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "#convex/_generated/api";
-import type { Id } from "#convex/_generated/dataModel";
-import { BackButton, Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { goBackOrReplace } from "~/lib/navigation";
@@ -73,18 +73,16 @@ export default function EntryDetailScreen() {
 		duration?: string;
 	}>();
 	const id = typeof params.id === "string" ? params.id : "";
-	const isVirtualEntry = id === "learning-plan";
 	const entry =
 		useQuery(
 			api.dayEntries.get,
-			user && isConvexAuthenticated && id && !isVirtualEntry
+			user && isConvexAuthenticated && id
 				? {
 						id: id as Id<"dayEntries">,
 					}
 				: "skip",
 		) ?? undefined;
-	const title =
-		entry?.title ?? params.title ?? (isVirtualEntry ? "Lernplan" : "Eintrag");
+	const title = entry?.title ?? params.title ?? "Eintrag";
 	const kind = entry?.kind ?? params.kind;
 	const time = entry?.time ?? params.time;
 	const plannedDate =
@@ -100,7 +98,7 @@ export default function EntryDetailScreen() {
 		kind === "Hausaufgabe" ||
 		kind === "Leistungskontrolle" ||
 		Boolean(examType);
-	const canDelete = Boolean(entry && id && !isVirtualEntry && isDeletableKind);
+	const canDelete = Boolean(entry && id && isDeletableKind);
 
 	const handleDelete = () => {
 		if (!canDelete || !id || !user || !isConvexAuthenticated) return;
