@@ -25,18 +25,34 @@ type RegisterInput = {
 	birthDate?: string;
 };
 
+type UpdateProfileInput = {
+	email: string;
+	name: string;
+	birthDate: string;
+	grade: string;
+	schoolType: string;
+	state: string;
+};
+
 type AuthUser = {
 	clerkId: string;
 	email: string;
 	name?: string;
 	phone?: string;
 	birthDate?: string;
+	grade?: string;
+	schoolType?: string;
+	state?: string;
 	avatarUrl?: string;
 };
 
 type AuthFlowResult =
 	| { status: "complete" }
 	| { status: "needs_verification"; message: string };
+
+type ProfileUpdateResult =
+	| { status: "complete" }
+	| { status: "needs_email_verification"; message: string };
 
 type PendingVerification = {
 	mode: "login" | "register";
@@ -52,6 +68,8 @@ interface AuthContextType {
 	pendingVerification: PendingVerification | null;
 	login: (input: LoginInput) => Promise<AuthFlowResult>;
 	register: (input: RegisterInput) => Promise<AuthFlowResult>;
+	updateProfile: (input: UpdateProfileInput) => Promise<ProfileUpdateResult>;
+	verifyProfileEmailCode: (code: string) => Promise<void>;
 	verifyEmailCode: (code: string) => Promise<AuthFlowResult>;
 	resendVerification: () => Promise<void>;
 	logout: () => Promise<void>;
@@ -61,6 +79,18 @@ type RegisterProfile = {
 	name?: string;
 	phone?: string;
 	birthDate?: string;
+	grade?: string;
+	schoolType?: string;
+	state?: string;
+};
+
+type PendingProfileEmail = {
+	email: string;
+	emailAddress: {
+		id: string;
+		attemptVerification: (params: { code: string }) => Promise<{ id: string }>;
+	};
+	profile: UpdateProfileInput;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -214,6 +244,11 @@ const definedProfileFields = (profile: RegisterProfile) => ({
 	...(profile.name !== undefined ? { name: profile.name } : {}),
 	...(profile.phone !== undefined ? { phone: profile.phone } : {}),
 	...(profile.birthDate !== undefined ? { birthDate: profile.birthDate } : {}),
+	...(profile.grade !== undefined ? { grade: profile.grade } : {}),
+	...(profile.schoolType !== undefined
+		? { schoolType: profile.schoolType }
+		: {}),
+	...(profile.state !== undefined ? { state: profile.state } : {}),
 });
 
 const findEmailAddressId = (factors: unknown) => {
@@ -283,6 +318,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const syncCurrentUser = useMutation(api.users.syncCurrentUser);
 	const saveOnboardingAnswers = useMutation(api.users.saveOnboardingAnswers);
+	const updateConvexProfile = useMutation(api.users.updateProfile);
 	const {
 		answers: onboardingAnswers,
 		clearAnswers,
@@ -296,6 +332,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const [pendingProfile, setPendingProfile] = useState<RegisterProfile | null>(
 		null,
 	);
+	const [pendingProfileEmail, setPendingProfileEmail] =
+		useState<PendingProfileEmail | null>(null);
 
 	const user = useMemo<AuthUser | null>(() => {
 		if (!clerkUser) return null;
@@ -317,6 +355,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				getMetadataString(unsafeMetadata, "phone") ??
 				clerkUser.primaryPhoneNumber?.phoneNumber,
 			birthDate: getMetadataString(unsafeMetadata, "birthDate"),
+			grade: getMetadataString(unsafeMetadata, "grade"),
+			schoolType: getMetadataString(unsafeMetadata, "schoolType"),
+			state: getMetadataString(unsafeMetadata, "state"),
 			avatarUrl: clerkUser.imageUrl,
 		};
 	}, [clerkUser]);
@@ -342,6 +383,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				name: pendingProfile?.name ?? user.name,
 				phone: pendingProfile?.phone ?? user.phone,
 				birthDate: pendingProfile?.birthDate ?? user.birthDate,
+				grade: pendingProfile?.grade ?? user.grade,
+				schoolType: pendingProfile?.schoolType ?? user.schoolType,
+				state: pendingProfile?.state ?? user.state,
 			}),
 			...(user.avatarUrl !== undefined ? { avatarUrl: user.avatarUrl } : {}),
 		};
@@ -562,6 +606,136 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			}
 		});
 
+	const persistProfileToConvex = async (profile: UpdateProfileInput) => {
+		if (!isConvexAuthenticated) return;
+		await updateConvexProfile({
+			email: profile.email,
+			name: profile.name,
+			birthDate: profile.birthDate,
+			grade: profile.grade,
+			schoolType: profile.schoolType,
+			state: profile.state,
+		});
+	};
+
+	const updateProfile = async (
+		input: UpdateProfileInput,
+	): Promise<ProfileUpdateResult> =>
+		withSubmitting(async () => {
+			if (!clerkUser) {
+				throw new Error("Du bist nicht angemeldet.");
+			}
+
+			const normalizedProfile = {
+				email: input.email.trim().toLowerCase(),
+				name: input.name.trim(),
+				birthDate: input.birthDate.trim(),
+				grade: input.grade.trim(),
+				schoolType: input.schoolType.trim(),
+				state: input.state.trim(),
+			};
+			const { firstName, lastName } = splitName(normalizedProfile.name);
+			const unsafeMetadata = {
+				...(clerkUser.unsafeMetadata ?? {}),
+				birthDate: normalizedProfile.birthDate,
+				grade: normalizedProfile.grade,
+				schoolType: normalizedProfile.schoolType,
+				state: normalizedProfile.state,
+			};
+
+			try {
+				await clerkUser.update({
+					firstName,
+					lastName,
+					unsafeMetadata,
+				});
+
+				const currentEmail =
+					clerkUser.primaryEmailAddress?.emailAddress.trim().toLowerCase() ??
+					"";
+				if (
+					normalizedProfile.email &&
+					normalizedProfile.email !== currentEmail
+				) {
+					const existingEmail = clerkUser.emailAddresses.find(
+						(emailAddress) =>
+							emailAddress.emailAddress.trim().toLowerCase() ===
+							normalizedProfile.email,
+					);
+					const emailAddress =
+						existingEmail ??
+						(await clerkUser.createEmailAddress({
+							email: normalizedProfile.email,
+						}));
+
+					if (emailAddress.verification?.status !== "verified") {
+						await emailAddress.prepareVerification({ strategy: "email_code" });
+						setPendingProfileEmail({
+							email: normalizedProfile.email,
+							emailAddress,
+							profile: normalizedProfile,
+						});
+						return {
+							status: "needs_email_verification",
+							message:
+								"Wir haben dir einen Code an die neue E-Mail-Adresse gesendet.",
+						};
+					}
+
+					await clerkUser.update({
+						primaryEmailAddressId: emailAddress.id,
+					});
+				}
+
+				await persistProfileToConvex(normalizedProfile);
+				setPendingProfile({
+					name: normalizedProfile.name,
+					birthDate: normalizedProfile.birthDate,
+					grade: normalizedProfile.grade,
+					schoolType: normalizedProfile.schoolType,
+					state: normalizedProfile.state,
+				});
+				return { status: "complete" };
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"Profil konnte nicht gespeichert werden.",
+					),
+				);
+			}
+		});
+
+	const verifyProfileEmailCode = async (code: string) =>
+		withSubmitting(async () => {
+			if (!pendingProfileEmail || !clerkUser) {
+				throw new Error("Es gibt keine offene E-Mail-Bestätigung.");
+			}
+
+			try {
+				const verifiedEmail =
+					await pendingProfileEmail.emailAddress.attemptVerification({
+						code: code.trim(),
+					});
+				await clerkUser.update({
+					primaryEmailAddressId: verifiedEmail.id,
+				});
+				await persistProfileToConvex(pendingProfileEmail.profile);
+				setPendingProfile({
+					name: pendingProfileEmail.profile.name,
+					birthDate: pendingProfileEmail.profile.birthDate,
+					grade: pendingProfileEmail.profile.grade,
+					schoolType: pendingProfileEmail.profile.schoolType,
+					state: pendingProfileEmail.profile.state,
+				});
+				setPendingProfileEmail(null);
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(error, "E-Mail konnte nicht bestätigt werden."),
+				);
+			}
+		});
+
 	const verifyEmailCode = async (code: string): Promise<AuthFlowResult> =>
 		withSubmitting(async () => {
 			if (!pendingVerification || !clerk.client) {
@@ -661,6 +835,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				pendingVerification,
 				login,
 				register,
+				updateProfile,
+				verifyProfileEmailCode,
 				verifyEmailCode,
 				resendVerification,
 				logout,
