@@ -38,7 +38,7 @@ export default function LearningPlanAnalysisScreen() {
 
 	useEffect(() => {
 		void retryAttempt;
-		if (!planId || !snapshot || didStartRef.current) return;
+		if (!planId || !snapshot) return;
 
 		if (snapshot.plan.status === "generated") {
 			router.replace(planPath(planId, "review"));
@@ -48,15 +48,13 @@ export default function LearningPlanAnalysisScreen() {
 			router.replace(`/learning-plans/${planId}/quiz/0`);
 			return;
 		}
+		if (didStartRef.current) return;
 
 		didStartRef.current = true;
 		queueMicrotask(() => {
 			setIsBusy(true);
 			setErrorMessage(null);
 			void generateKnowledgeQuestions({ learningPlanId: planId })
-				.then(() => {
-					router.replace(`/learning-plans/${planId}/quiz/0`);
-				})
 				.catch((error: unknown) => {
 					setErrorMessage(
 						getErrorMessage(

@@ -53,7 +53,7 @@ export default function LearningPlanGeneratingScreen() {
 
 	useEffect(() => {
 		void retryAttempt;
-		if (!planId || !snapshot || didStartRef.current) return;
+		if (!planId || !snapshot) return;
 
 		if (missingAnswerRedirectTimeoutRef.current) {
 			clearTimeout(missingAnswerRedirectTimeoutRef.current);
@@ -72,6 +72,7 @@ export default function LearningPlanGeneratingScreen() {
 			}, 600);
 			return;
 		}
+		if (didStartRef.current) return;
 
 		didStartRef.current = true;
 		queueMicrotask(() => {
@@ -81,9 +82,6 @@ export default function LearningPlanGeneratingScreen() {
 				learningPlanId: planId,
 				answers: answerList,
 			})
-				.then(() => {
-					router.replace(planPath(planId, "review"));
-				})
 				.catch((error: unknown) => {
 					setErrorMessage(
 						getErrorMessage(
