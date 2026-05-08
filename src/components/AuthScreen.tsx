@@ -4,13 +4,13 @@ import DateTimePicker, {
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
+	ArrowLeft,
 	ChevronDown,
 	CircleAlert,
 	Eye,
 	EyeOff,
 	Mail,
 	MailCheck,
-	Phone,
 	ShieldCheck,
 	UserRound,
 } from "~/components/ui/icon";
@@ -41,14 +41,15 @@ import {
 import { Text } from "~/components/ui/text";
 import { InsetTextField } from "~/components/ui/text-field";
 import { useAuth } from "~/context/AuthContext";
+import { Mascot } from "./Mascot";
 
 type Mode = "login" | "register";
 
 type FieldErrors = {
 	name?: string;
 	email?: string;
-	phone?: string;
 	birthDate?: string;
+	password?: string;
 };
 
 type VerificationFeedback = {
@@ -113,6 +114,13 @@ const isInternalBackendError = (message: string) => {
 		normalized.includes("uncaught error")
 	);
 };
+
+const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+const isValidName = (value: string) =>
+	value.length >= 2 && /^[A-Za-zÀ-ÿ' -]+$/.test(value);
+
+const isValidPassword = (value: string) => value.trim().length >= 8;
 
 function ModeButton({
 	active,
@@ -296,9 +304,9 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const [tabWidth, setTabWidth] = useState(0);
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
-	const [phone, setPhone] = useState("");
 	const [birthDateValue, setBirthDateValue] = useState<Date | null>(null);
 	const [password, setPassword] = useState("");
+	const [registerStep, setRegisterStep] = useState(0);
 	const [verificationCode, setVerificationCode] = useState("");
 	const [verificationFeedback, setVerificationFeedback] =
 		useState<VerificationFeedback | null>(null);
@@ -315,6 +323,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const birthDateFieldY = useRef(0);
 
 	const isRegisterMode = mode === "register";
+	const isRegisterIdentityStep = isRegisterMode && registerStep === 0;
+	const isRegisterPasswordStep = isRegisterMode && registerStep === 1;
 	const isVerificationPending = Boolean(pendingVerification);
 	const isOtpKeyboardVisible = isVerificationPending && isKeyboardVisible;
 	const tabIndicatorTranslateX = tabProgress.interpolate({
@@ -365,6 +375,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		setShowBirthDatePicker(false);
 		setSubmitError("");
 		setErrors({});
+		setRegisterStep(0);
 		setMode(next);
 		Animated.spring(tabProgress, {
 			toValue: next === "login" ? 1 : 0,
@@ -378,6 +389,9 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const updatePassword = (nextValue: string) => {
 		setPassword(nextValue);
 		if (submitError) setSubmitError("");
+		if (errors.password) {
+			setErrors((prev) => ({ ...prev, password: undefined }));
+		}
 	};
 
 	const updateVerificationCode = (nextValue: string) => {
@@ -415,6 +429,42 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		}
 	};
 
+	const validateRegisterIdentityStep = () => {
+		const nextErrors: FieldErrors = {};
+		const trimmedName = name.trim();
+		const trimmedEmail = email.trim().toLowerCase();
+		const trimmedBirthDate = birthDateValue
+			? formatBirthDate(birthDateValue)
+			: "";
+
+		if (!isValidName(trimmedName)) {
+			nextErrors.name = "Bitte einen gültigen Namen eingeben.";
+		}
+		if (!isValidEmail(trimmedEmail)) {
+			nextErrors.email = "Bitte eine gültige E-Mail eingeben.";
+		}
+		if (!isValidBirthDate(trimmedBirthDate)) {
+			nextErrors.birthDate =
+				"Bitte ein gültiges Geburtsdatum auswählen.";
+		}
+
+		setErrors(nextErrors);
+		return Object.keys(nextErrors).length === 0;
+	};
+
+	const goToRegisterPasswordStep = () => {
+		setSubmitError("");
+		if (!validateRegisterIdentityStep()) return;
+		setRegisterStep(1);
+	};
+
+	const goBackRegisterStep = () => {
+		if (!isRegisterPasswordStep) return;
+		setSubmitError("");
+		setErrors({});
+		setRegisterStep(0);
+	};
+
 	const handleLogin = async () => {
 		try {
 			setSubmitError("");
@@ -442,30 +492,21 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	};
 
 	const handleRegister = async () => {
-		const nextErrors: FieldErrors = {};
 		const trimmedName = name.trim();
 		const trimmedEmail = email.trim().toLowerCase();
-		const trimmedPhone = phone.trim();
 		const trimmedBirthDate = birthDateValue
 			? formatBirthDate(birthDateValue)
 			: "";
 
-		if (trimmedName.length < 2 || !/^[A-Za-zÀ-ÿ' -]+$/.test(trimmedName)) {
-			nextErrors.name = "Bitte einen gültigen Namen eingeben.";
+		if (!validateRegisterIdentityStep()) {
+			setSubmitError("");
+			return;
 		}
-		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-			nextErrors.email = "Bitte eine gültige E-Mail eingeben.";
-		}
-		if (!/^\+?[0-9()\-.\s]{7,20}$/.test(trimmedPhone)) {
-			nextErrors.phone = "Bitte eine gültige Telefonnummer eingeben.";
-		}
-		if (!isValidBirthDate(trimmedBirthDate)) {
-			nextErrors.birthDate =
-				"Bitte ein gültiges Geburtsdatum (TT.MM.JJJJ) eingeben.";
-		}
-
-		setErrors(nextErrors);
-		if (Object.keys(nextErrors).length > 0) {
+		if (!isValidPassword(password)) {
+			setErrors((prev) => ({
+				...prev,
+				password: "Bitte ein Passwort mit mindestens 8 Zeichen eingeben.",
+			}));
 			setSubmitError("");
 			return;
 		}
@@ -475,7 +516,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 			const result = await registerUser({
 				name: trimmedName,
 				email: trimmedEmail,
-				phone: trimmedPhone,
 				birthDate: trimmedBirthDate,
 				password,
 			});
@@ -553,7 +593,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 				<StatusBar style="light" />
 
 				<View className="flex-1 bg-black" style={{ paddingTop: otpTopPadding }}>
-					<View className="items-center px-8">
+					<View className="flex-row items-center justify-between px-8">
 						<View className="flex-row items-center">
 							<Image
 								source={require("../../assets/dayova-logo.png")}
@@ -567,6 +607,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								Dayova
 							</Text>
 						</View>
+						<Mascot size={60} />
 					</View>
 
 					<View
@@ -689,12 +730,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 					<View className="flex-row items-center">
 						<Image
 							source={require("../../assets/dayova-logo.png")}
-							style={{ width: 108, height: 108 }}
+							style={{ width: 80, height: 80 }}
 							resizeMode="contain"
 						/>
 						<Text
 							className="-ml-3 font-bold font-poppins text-white"
-							style={{ fontSize: 56, lineHeight: 68 }}
+							style={{ fontSize: 42, lineHeight: 52 }}
 						>
 							Dayova
 						</Text>
@@ -703,6 +744,9 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 			</View>
 
 			<View className="-mt-8 flex-1 rounded-t-[34px] bg-background px-8 pt-6">
+				<View className="mb-4 items-center">
+					<Mascot size={60} />
+				</View>
 				<View
 					className="mb-6 rounded-full bg-[#EEF2F7] p-1.5"
 					style={{
@@ -768,7 +812,42 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 					}
 					automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
 				>
-					{isRegisterMode ? (
+					{isRegisterPasswordStep ? (
+						<TouchableOpacity
+							activeOpacity={0.78}
+							onPress={goBackRegisterStep}
+							className="mb-5 flex-row items-center self-start rounded-full bg-[#F3F5F8] px-4 py-3"
+							style={{
+								borderWidth: 1,
+								borderColor: "rgba(17,24,39,0.05)",
+							}}
+						>
+							<ArrowLeft size={16} color="#1A1A1A" strokeWidth={2.2} />
+							<Text className="ml-2 font-poppins font-semibold text-14 text-text">
+								Zurück
+							</Text>
+						</TouchableOpacity>
+					) : null}
+
+					{isRegisterIdentityStep ? (
+						<View className="mb-5 rounded-[20px] bg-[#F7F8FA] px-[18px] py-4">
+							<Text
+								className="font-poppins font-semibold text-16 text-text"
+								style={{ includeFontPadding: false, lineHeight: 22 }}
+							>
+								Erzähl uns kurz etwas über dich
+							</Text>
+							<Text
+								className="mt-2 font-poppins text-14 text-text/62"
+								style={{ includeFontPadding: false, lineHeight: 20 }}
+							>
+								Im ersten Schritt brauchen wir deinen Namen, deine E-Mail und dein
+								Alter.
+							</Text>
+						</View>
+					) : null}
+
+					{isRegisterIdentityStep ? (
 						<InsetTextField
 							label="Name"
 							invalid={Boolean(errors.name)}
@@ -788,7 +867,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							textContentType="name"
 						/>
 					) : null}
-					<InsetTextField
+					{!isRegisterPasswordStep ? (
+						<InsetTextField
 						label="E-Mail"
 						invalid={isRegisterMode && Boolean(errors.email)}
 						message={isRegisterMode ? errors.email : undefined}
@@ -807,31 +887,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 						autoCapitalize="none"
 						autoComplete="email"
 						textContentType="emailAddress"
-					/>
-
-					{isRegisterMode ? (
-						<InsetTextField
-							label="Telefon"
-							invalid={Boolean(errors.phone)}
-							message={errors.phone}
-							accessory={<Phone size={18} color="rgba(26,26,26,0.34)" />}
-							value={phone}
-							onChangeText={(value) => {
-								setPhone(value);
-								if (errors.phone) {
-									setErrors((prev) => ({ ...prev, phone: undefined }));
-								}
-							}}
-							onFocus={closeBirthDatePicker}
-							placeholder="+49 123 4567890"
-							keyboardType="phone-pad"
-							autoCapitalize="none"
-							autoComplete="tel"
-							textContentType="telephoneNumber"
 						/>
 					) : null}
 
-					{isRegisterMode ? (
+					{isRegisterIdentityStep ? (
 						<Field
 							onLayout={(event) => {
 								birthDateFieldY.current = event.nativeEvent.layout.y;
@@ -845,7 +904,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							>
 								<View className="flex-1">
 									<Text className="font-poppins text-12 text-text/42 leading-4">
-										Geburtsdatum
+										Alter
 									</Text>
 									<Text
 										className={`mt-1 font-poppins text-16 ${
@@ -853,8 +912,11 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 										}`}
 									>
 										{birthDateValue
-											? formatBirthDate(birthDateValue)
-											: "Geburtsdatum auswählen"}
+											? `${Math.max(
+													new Date().getFullYear() - birthDateValue.getFullYear(),
+													0,
+												)} Jahre`
+											: "Alter auswählen"}
 									</Text>
 								</View>
 								<FieldAccessory className="ml-3 self-center">
@@ -871,7 +933,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 						</Field>
 					) : null}
 
-					<Field>
+					{!isRegisterIdentityStep ? (
+						<Field>
 						<FieldControl className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3">
 							<View className="flex-1">
 								<Text className="font-poppins text-12 text-text/42 leading-4">
@@ -930,8 +993,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								</TouchableOpacity>
 							</FieldAccessory>
 						</FieldControl>
+						{errors.password ? <FieldMessage>{errors.password}</FieldMessage> : null}
 						{submitError ? <FieldMessage>{submitError}</FieldMessage> : null}
-					</Field>
+						</Field>
+					) : null}
 
 					<View
 						className="mt-2 mb-6 rounded-[20px] bg-[#F7F8FA] px-[18px] py-4"
@@ -948,7 +1013,11 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								className="ml-2.5 flex-1 font-poppins text-14 text-text/62"
 								style={{ lineHeight: 19.6, includeFontPadding: false }}
 							>
-								{isRegisterMode
+								{isRegisterIdentityStep
+									? "Diese Angaben helfen uns, dein Konto passend für dich einzurichten."
+									: isRegisterPasswordStep
+										? "Lege jetzt noch dein Passwort fest, dann ist dein Konto startklar."
+									: isRegisterMode
 									? "Mit der Registrierung erstellst du dein persönliches Lernprofil."
 									: "Falls etwas nicht klappt, prüfe zuerst E-Mail-Adresse und Passwort."}
 							</Text>
@@ -962,17 +1031,31 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 									? "Weiter, wird geladen"
 									: "Anmelden, wird geladen"
 								: isRegisterMode
-									? "Weiter"
+									? isRegisterIdentityStep
+										? "Weiter"
+										: "Konto erstellen"
 									: "Anmelden"
 						}
 						accessibilityLiveRegion={isLoading ? "polite" : undefined}
 						accessibilityState={{ busy: isLoading, disabled: isLoading }}
-						onPress={isRegisterMode ? handleRegister : handleLogin}
+						onPress={
+							isRegisterIdentityStep
+								? goToRegisterPasswordStep
+								: isRegisterMode
+									? handleRegister
+									: handleLogin
+						}
 						disabled={isLoading}
 						className="mt-1"
 					>
 						<Text>
-							{isLoading ? "Lädt..." : isRegisterMode ? "Weiter" : "Anmelden"}
+							{isLoading
+								? "Lädt..."
+								: isRegisterIdentityStep
+									? "Weiter"
+									: isRegisterMode
+										? "Konto erstellen"
+										: "Anmelden"}
 						</Text>
 					</Button>
 

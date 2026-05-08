@@ -7,6 +7,10 @@ export type OnboardingAnswers = {
 	challenge: string;
 	goal: string;
 	state: string;
+	name: string;
+	email: string;
+	birthDate: string;
+	password: string;
 };
 
 const emptyAnswers: OnboardingAnswers = {
@@ -15,6 +19,10 @@ const emptyAnswers: OnboardingAnswers = {
 	challenge: "",
 	goal: "",
 	state: "",
+	name: "",
+	email: "",
+	birthDate: "",
+	password: "",
 };
 
 type OnboardingContextValue = {

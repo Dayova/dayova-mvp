@@ -364,7 +364,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		if (!user || !isConvexAuthenticated || !hasAnswers) return;
 
 		void saveOnboardingAnswers({
-			answers: onboardingAnswers,
+			answers: {
+				studyTime: onboardingAnswers.studyTime,
+				strength: onboardingAnswers.strength,
+				challenge: onboardingAnswers.challenge,
+				goal: onboardingAnswers.goal,
+				state: onboardingAnswers.state,
+			},
 		})
 			.then(() => {
 				clearAnswers();
@@ -373,7 +379,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				await wait(750);
 				try {
 					await saveOnboardingAnswers({
-						answers: onboardingAnswers,
+						answers: {
+							studyTime: onboardingAnswers.studyTime,
+							strength: onboardingAnswers.strength,
+							challenge: onboardingAnswers.challenge,
+							goal: onboardingAnswers.goal,
+							state: onboardingAnswers.state,
+						},
 					});
 					clearAnswers();
 				} catch (retryError) {
