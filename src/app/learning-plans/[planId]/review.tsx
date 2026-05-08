@@ -199,8 +199,8 @@ export default function LearningPlanReviewScreen() {
 				<View className="flex-1 justify-end">
 					<View className="absolute inset-0 bg-black/30" />
 					<View className="mx-8 mb-9 items-center rounded-[30px] bg-white px-5 pt-8 pb-5">
-						<View className="mb-6 h-16 w-16 items-center justify-center rounded-full bg-green-100">
-							<Check size={31} color="#28C76F" strokeWidth={1.9} />
+						<View className="h-28 w-28 items-center justify-center rounded-full bg-green-100 py-6">
+							<Check size={48} color="#28C76F" strokeWidth={1.9} />
 						</View>
 						<Text className="font-bold font-poppins text-18 text-text">
 							Lernplan ist eingetragen
