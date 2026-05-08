@@ -1,48 +1,53 @@
-import { usePathname, useRouter } from "expo-router";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Home, Route2, Settings } from "~/components/ui/icon";
-import { ROUTES } from "~/lib/routes";
 
 type BottomNavKey = "home" | "learningPath" | "settings";
+type AppTabRouteName = "home" | "learning-plans" | "settings";
+type AppTabRoute = {
+	key: string;
+	name: string;
+	params?: object;
+};
+type BottomNavProps = {
+	state: {
+		index: number;
+		routes: AppTabRoute[];
+	};
+	navigation: {
+		emit: (options: {
+			type: "tabPress";
+			target: string;
+			canPreventDefault: true;
+		}) => { defaultPrevented: boolean };
+		navigate: (name: string, params?: object) => void;
+	};
+};
 
 const NAV_ITEMS: Array<{
 	key: BottomNavKey;
 	icon: typeof Home;
-	href:
-		| typeof ROUTES.home
-		| typeof ROUTES.learningPlans
-		| typeof ROUTES.settings;
+	routeName: AppTabRouteName;
 	label: string;
 }> = [
-	{ key: "home", icon: Home, href: ROUTES.home, label: "Startseite" },
+	{ key: "home", icon: Home, routeName: "home", label: "Startseite" },
 	{
 		key: "learningPath",
 		icon: Route2,
-		href: ROUTES.learningPlans,
+		routeName: "learning-plans",
 		label: "Lernpläne",
 	},
 	{
 		key: "settings",
 		icon: Settings,
-		href: ROUTES.settings,
+		routeName: "settings",
 		label: "Einstellungen",
 	},
 ];
 
-export function BottomNav() {
+export function BottomNav({ state, navigation }: BottomNavProps) {
 	const insets = useSafeAreaInsets();
-	const router = useRouter();
-	const pathname = usePathname();
-
-	if (pathname === "/profile") return null;
-
-	const activeKey: BottomNavKey =
-		pathname === ROUTES.settings
-			? "settings"
-			: pathname === ROUTES.learningPlans
-				? "learningPath"
-				: "home";
+	const activeRouteName = state.routes[state.index]?.name;
 
 	return (
 		<View
@@ -61,7 +66,10 @@ export function BottomNav() {
 			>
 				{NAV_ITEMS.map((item) => {
 					const Icon = item.icon;
-					const active = activeKey === item.key;
+					const active = activeRouteName === item.routeName;
+					const route = state.routes.find(
+						(candidate) => candidate.name === item.routeName,
+					);
 
 					return (
 						<TouchableOpacity
@@ -71,8 +79,17 @@ export function BottomNav() {
 							accessibilityState={{ selected: active }}
 							activeOpacity={0.84}
 							onPress={() => {
-								if (!item.href || pathname === item.href) return;
-								router.navigate(item.href);
+								if (!route || active) return;
+
+								const event = navigation.emit({
+									type: "tabPress",
+									target: route.key,
+									canPreventDefault: true,
+								});
+
+								if (!event.defaultPrevented) {
+									navigation.navigate(route.name, route.params);
+								}
 							}}
 							className="items-center justify-center rounded-full"
 							style={{

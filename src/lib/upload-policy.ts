@@ -1,5 +1,5 @@
-export const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
-export const MAX_UPLOAD_FILE_LABEL = "7 MiB";
+const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
+const MAX_UPLOAD_FILE_LABEL = "7 MiB";
 
 export const ACCEPTED_FILE_TYPES = [
 	"application/pdf",

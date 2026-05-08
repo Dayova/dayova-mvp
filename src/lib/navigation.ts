@@ -12,7 +12,7 @@ export const goBackOrReplace = (router: Router, fallback: Href) => {
 	router.replace(fallback);
 };
 
-export const useAndroidBackHandler = (
+const useAndroidBackHandler = (
 	enabled: boolean,
 	onBack: () => boolean,
 ) => {

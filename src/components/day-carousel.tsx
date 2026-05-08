@@ -42,7 +42,7 @@ const DAY_ITEM_HEIGHT = 89;
 const DAY_ITEM_GAP = 12;
 const DAY_ITEM_STEP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
 
-export type DayCarouselItem = {
+type DayCarouselItem = {
 	key: string;
 	accessibilityLabel: string;
 	label: string;
@@ -67,7 +67,7 @@ type DayCellProps = {
 	onSelect: (day: DayCarouselItem, index: number) => void;
 };
 
-export const getDayItem = (date: Date): DayCarouselItem => {
+const getDayItem = (date: Date): DayCarouselItem => {
 	const localDate = startOfLocalDay(date);
 	const labelIndex = (localDate.getDay() + 6) % 7;
 
