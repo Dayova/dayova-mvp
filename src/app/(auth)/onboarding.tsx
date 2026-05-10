@@ -32,6 +32,8 @@ import {
 	ShieldCheck,
 	Timer,
 	Zap,
+	Eye,
+	EyeOff,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { InsetTextField } from "~/components/ui/text-field";
@@ -365,13 +367,18 @@ export default function WelcomeScreen() {
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 	const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
+	const [passwordVisible, setPasswordVisible] = useState(false);
+	const [passwordFocused, setPasswordFocused] = useState(false);
 	const [isCompletingOnboarding, setIsCompletingOnboarding] = useState(false);
 	const [errors, setErrors] = useState<StepErrors>({});
 	const { answers, setAnswer } = useOnboarding();
 	const { register, isLoading } = useAuth();
 
 	const activeStep = FLOW_STEPS[activeIndex];
-	const mascotPose = getMascotPose(activeStep, activeIndex);
+	const mascotPose =
+		activeStep.kind === "password" && passwordFocused && !passwordVisible
+			? "hiding-eyes"
+			: getMascotPose(activeStep, activeIndex);
 	const insightSolution = getInsightSolution(answers);
 	const isIntroStep = activeStep.kind === "intro";
 	const isInputStep =
@@ -958,14 +965,30 @@ export default function WelcomeScreen() {
 												}));
 											}
 										}}
+										onFocus={() => setPasswordFocused(true)}
+										onBlur={() => setPasswordFocused(false)}
 										placeholder="Mindestens 8 Zeichen"
 										autoCapitalize="none"
 										autoCorrect={false}
 										autoComplete="new-password"
 										textContentType="newPassword"
-										secureTextEntry
+										secureTextEntry={!passwordVisible}
 										invalid={Boolean(errors.password)}
 										message={errors.password}
+										accessory={
+											<FieldTrigger
+												onPress={() => setPasswordVisible(!passwordVisible)}
+												className="h-full px-5 opacity-40"
+												hitSlop={12}
+											>
+												{passwordVisible ? (
+													<EyeOff size={18} color="rgba(26,26,26,0.34)" />
+												) : (
+													<Eye size={18} color="rgba(26,26,26,0.34)" />
+												)}
+											</FieldTrigger>
+										}
+										accessoryClassName="-ml-3 mr-0 px-0"
 									/>
 								) : null}
 

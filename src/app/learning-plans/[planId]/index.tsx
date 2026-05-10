@@ -40,7 +40,10 @@ function SessionOverviewCard({ session }: { session: PlanSession }) {
 				rowGap: 14,
 			}}
 		>
-			<View className="flex-row items-start justify-between" style={{ gap: 14 }}>
+			<View
+				className="flex-row items-start justify-between"
+				style={{ gap: 14 }}
+			>
 				<View className="flex-1">
 					<Text
 						className="font-poppins font-semibold text-[#202127]"
@@ -143,7 +146,9 @@ export default function LearningPlanSessionsScreen() {
 					>
 						{snapshot
 							? `${snapshot.sessions.length} ${
-									snapshot.sessions.length === 1 ? "Lerneinheit" : "Lerneinheiten"
+									snapshot.sessions.length === 1
+										? "Lerneinheit"
+										: "Lerneinheiten"
 								}`
 							: "Lerneinheiten werden geladen"}
 					</Text>

@@ -315,6 +315,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const [submitError, setSubmitError] = useState("");
 	const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
 	const [passwordVisible, setPasswordVisible] = useState(false);
+	const [passwordFocused, setPasswordFocused] = useState(false);
 	const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 	const [tabProgress] = useState(
 		() => new Animated.Value(initialMode === "login" ? 1 : 0),
@@ -328,6 +329,13 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const isRegisterPasswordStep = isRegisterMode && registerStep === 1;
 	const isVerificationPending = Boolean(pendingVerification);
 	const isOtpKeyboardVisible = isVerificationPending && isKeyboardVisible;
+
+	const mascotPose =
+		passwordFocused && !passwordVisible
+			? "hiding-eyes"
+			: isRegisterPasswordStep || (!isRegisterMode && password)
+				? "secure"
+				: "default";
 	const tabIndicatorTranslateX = tabProgress.interpolate({
 		inputRange: [0, 1],
 		outputRange: [0, tabWidth],
@@ -607,7 +615,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								Dayova
 							</Text>
 						</View>
-						<Mascot size={60} />
+						<Mascot size={60} pose={mascotPose} />
 					</View>
 
 					<View
@@ -745,7 +753,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 			<View className="-mt-8 flex-1 rounded-t-[34px] bg-background px-8 pt-6">
 				<View className="mb-4 items-center">
-					<Mascot size={60} />
+					<Mascot size={60} pose={mascotPose} />
 				</View>
 				<View
 					className="mb-6 rounded-full bg-[#EEF2F7] p-1.5"
@@ -952,7 +960,11 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 										accessibilityLabel="Passwort"
 										value={password}
 										onChangeText={updatePassword}
-										onFocus={closeBirthDatePicker}
+										onFocus={() => {
+											closeBirthDatePicker();
+											setPasswordFocused(true);
+										}}
+										onBlur={() => setPasswordFocused(false)}
 										placeholder="••••••••"
 										secureTextEntry={!passwordVisible}
 										autoCapitalize="none"

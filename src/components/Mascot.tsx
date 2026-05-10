@@ -12,7 +12,8 @@ interface MascotProps {
 		| "celebrating"
 		| "writing"
 		| "secure"
-		| "thumbs-up";
+		| "thumbs-up"
+		| "hiding-eyes";
 }
 
 export const Mascot: FC<MascotProps> = ({ size = 120, pose = "default" }) => {
@@ -80,7 +81,10 @@ export const Mascot: FC<MascotProps> = ({ size = 120, pose = "default" }) => {
 
 	return (
 		<View
+			accessible={false}
+			accessibilityElementsHidden
 			className="items-center justify-center"
+			importantForAccessibility="no-hide-descendants"
 			style={{ height: size, width: size }}
 		>
 			<Animated.View
@@ -221,6 +225,28 @@ function Arms({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 		);
 	}
 
+	if (pose === "hiding-eyes") {
+		return (
+			<G>
+				<Path
+					d="M34 79 Q23 60 50 47"
+					stroke="#6043D8"
+					strokeWidth="10"
+					strokeLinecap="round"
+					fill="none"
+				/>
+				<Path
+					d="M84 78 Q96 60 70 47"
+					stroke="#6043D8"
+					strokeWidth="10"
+					strokeLinecap="round"
+					fill="none"
+				/>
+				<Circle cx="50" cy="47" r="7.5" fill="#F4A36B" />
+				<Circle cx="70" cy="47" r="7.5" fill="#F4A36B" />
+			</G>
+		);
+	}
 	return (
 		<G>
 			<Path
@@ -282,8 +308,8 @@ function Face({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 		pose === "celebrating" ||
 		pose === "thumbs-up" ||
 		pose === "default";
-	const focused = pose === "writing" || pose === "secure";
-
+	const focused =
+		pose === "writing" || pose === "secure" || pose === "hiding-eyes";
 	return (
 		<G>
 			<Path
