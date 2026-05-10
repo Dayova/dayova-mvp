@@ -80,7 +80,10 @@ export const Mascot: FC<MascotProps> = ({ size = 120, pose = "default" }) => {
 
 	return (
 		<View
+			accessible={false}
+			accessibilityElementsHidden
 			className="items-center justify-center"
+			importantForAccessibility="no-hide-descendants"
 			style={{ height: size, width: size }}
 		>
 			<Animated.View
