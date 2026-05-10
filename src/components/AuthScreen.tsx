@@ -3,17 +3,6 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import {
-	ArrowLeft,
-	ChevronDown,
-	CircleAlert,
-	Eye,
-	EyeOff,
-	Mail,
-	MailCheck,
-	ShieldCheck,
-	UserRound,
-} from "~/components/ui/icon";
 import { useEffect, useRef, useState } from "react";
 import {
 	Animated,
@@ -28,16 +17,25 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Cursor } from "react-native-confirmation-code-field";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
 import {
 	Field,
 	FieldAccessory,
-	FieldControl,
 	FieldMessage,
 	FieldTrigger,
 } from "~/components/ui/field";
+import {
+	ArrowLeft,
+	ChevronDown,
+	CircleAlert,
+	Mail,
+	MailCheck,
+	ShieldCheck,
+	UserRound,
+} from "~/components/ui/icon";
+import { PasswordField } from "~/components/ui/password-field";
 import { Text } from "~/components/ui/text";
 import { InsetTextField } from "~/components/ui/text-field";
 import { useAuth } from "~/context/AuthContext";
@@ -315,6 +313,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const [submitError, setSubmitError] = useState("");
 	const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
 	const [passwordVisible, setPasswordVisible] = useState(false);
+	const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 	const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 	const [tabProgress] = useState(
 		() => new Animated.Value(initialMode === "login" ? 1 : 0),
@@ -327,6 +326,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const isRegisterIdentityStep = isRegisterMode && registerStep === 0;
 	const isRegisterPasswordStep = isRegisterMode && registerStep === 1;
 	const isVerificationPending = Boolean(pendingVerification);
+	const isPasswordFieldVisible =
+		!isRegisterIdentityStep && !isVerificationPending;
+	const mascotPose =
+		isPasswordFieldVisible && isPasswordFocused && !passwordVisible
+			? "cover-eyes"
+			: "default";
 	const isOtpKeyboardVisible = isVerificationPending && isKeyboardVisible;
 	const tabIndicatorTranslateX = tabProgress.interpolate({
 		inputRange: [0, 1],
@@ -407,6 +412,11 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 	const closeBirthDatePicker = () => setShowBirthDatePicker(false);
 
+	const focusPasswordField = () => {
+		setIsPasswordFocused(true);
+		closeBirthDatePicker();
+	};
+
 	const openBirthDatePicker = () => {
 		Keyboard.dismiss();
 		setTimeout(() => {
@@ -455,6 +465,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const goToRegisterPasswordStep = () => {
 		setSubmitError("");
 		if (!validateRegisterIdentityStep()) return;
+		setIsPasswordFocused(false);
 		setRegisterStep(1);
 	};
 
@@ -462,6 +473,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		if (!isRegisterPasswordStep) return;
 		setSubmitError("");
 		setErrors({});
+		setIsPasswordFocused(false);
 		setRegisterStep(0);
 	};
 
@@ -745,7 +757,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 			<View className="-mt-8 flex-1 rounded-t-[34px] bg-background px-8 pt-6">
 				<View className="mb-4 items-center">
-					<Mascot size={60} />
+					<Mascot size={60} pose={mascotPose} />
 				</View>
 				<View
 					className="mb-6 rounded-full bg-[#EEF2F7] p-1.5"
@@ -935,80 +947,21 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 					) : null}
 
 					{!isRegisterIdentityStep ? (
-						<Field>
-							<FieldControl className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3">
-								<View className="flex-1">
-									<Text className="font-poppins text-12 text-text/42 leading-4">
-										Passwort
-									</Text>
-									{/*
-                  Keep this as a native TextInput instead of InsetTextField/Input.
-                  The shared Input's Poppins font metrics make hidden secure text
-                  render invisible on device while the cursor remains visible.
-                  Native secureTextEntry is still required for correct editing,
-                  paste, keyboard, accessibility, and password-manager behavior.
-                */}
-									<TextInput
-										accessibilityLabel="Passwort"
-										value={password}
-										onChangeText={updatePassword}
-										onFocus={closeBirthDatePicker}
-										placeholder="••••••••"
-										secureTextEntry={!passwordVisible}
-										autoCapitalize="none"
-										autoCorrect={false}
-										autoComplete={
-											isRegisterMode ? "new-password" : "current-password"
-										}
-										textContentType={
-											isRegisterMode ? "newPassword" : "password"
-										}
-										placeholderTextColor="rgba(26,26,26,0.36)"
-										selectionColor="#3A7BFF"
-										style={{
-											color: "#1A1A1A",
-											fontSize: 16,
-											height: 30,
-											margin: 0,
-											marginTop: 4,
-											paddingHorizontal: 0,
-											paddingVertical: 0,
-											...Platform.select({
-												android: {
-													fontFamily: "sans-serif",
-													includeFontPadding: true,
-													textAlignVertical: "center" as const,
-												},
-											}),
-										}}
-									/>
-								</View>
-								<FieldAccessory className="ml-3 self-center">
-									<TouchableOpacity
-										activeOpacity={0.75}
-										onPress={togglePasswordVisibility}
-										className="-my-3 -ml-6 h-11 w-11 items-end justify-center pr-0"
-										hitSlop={{ top: 6, bottom: 6, left: 6, right: 0 }}
-										accessibilityRole="button"
-										accessibilityLabel={
-											passwordVisible
-												? "Passwort verbergen"
-												: "Passwort anzeigen"
-										}
-									>
-										{passwordVisible ? (
-											<Eye size={18} color="rgba(26,26,26,0.34)" />
-										) : (
-											<EyeOff size={18} color="rgba(26,26,26,0.34)" />
-										)}
-									</TouchableOpacity>
-								</FieldAccessory>
-							</FieldControl>
-							{errors.password ? (
-								<FieldMessage>{errors.password}</FieldMessage>
-							) : null}
-							{submitError ? <FieldMessage>{submitError}</FieldMessage> : null}
-						</Field>
+						<PasswordField
+							value={password}
+							onChangeText={updatePassword}
+							onFocus={focusPasswordField}
+							onBlur={() => setIsPasswordFocused(false)}
+							visible={passwordVisible}
+							onToggleVisible={togglePasswordVisibility}
+							autoComplete={
+								isRegisterMode ? "new-password" : "current-password"
+							}
+							textContentType={isRegisterMode ? "newPassword" : "password"}
+							invalid={Boolean(errors.password)}
+							message={errors.password}
+							submitMessage={submitError}
+						/>
 					) : null}
 
 					<View

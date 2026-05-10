@@ -1,5 +1,14 @@
-import { type FC, useEffect, useState } from "react";
-import { Animated, Easing, View } from "react-native";
+import { type FC, useEffect } from "react";
+import { View } from "react-native";
+import Animated, {
+	cancelAnimation,
+	Easing,
+	useAnimatedStyle,
+	useSharedValue,
+	withRepeat,
+	withSequence,
+	withTiming,
+} from "react-native-reanimated";
 import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
 
 interface MascotProps {
@@ -12,71 +21,62 @@ interface MascotProps {
 		| "celebrating"
 		| "writing"
 		| "secure"
+		| "cover-eyes"
 		| "thumbs-up";
 }
 
 export const Mascot: FC<MascotProps> = ({ size = 120, pose = "default" }) => {
-	const [floatAnim] = useState(() => new Animated.Value(0));
-	const [moodAnim] = useState(() => new Animated.Value(0));
+	const floatProgress = useSharedValue(0);
+	const moodProgress = useSharedValue(0);
 
 	useEffect(() => {
-		const floatLoop = Animated.loop(
-			Animated.sequence([
-				Animated.timing(floatAnim, {
-					toValue: 1,
-					duration: pose === "celebrating" ? 760 : 2100,
-					easing: Easing.inOut(Easing.quad),
-					useNativeDriver: true,
-				}),
-				Animated.timing(floatAnim, {
-					toValue: 0,
-					duration: pose === "celebrating" ? 760 : 2100,
-					easing: Easing.inOut(Easing.quad),
-					useNativeDriver: true,
-				}),
-			]),
-		);
-		const moodLoop = Animated.loop(
-			Animated.sequence([
-				Animated.timing(moodAnim, {
-					toValue: 1,
-					duration: 680,
-					easing: Easing.inOut(Easing.quad),
-					useNativeDriver: true,
-				}),
-				Animated.timing(moodAnim, {
-					toValue: 0,
-					duration: 680,
-					easing: Easing.inOut(Easing.quad),
-					useNativeDriver: true,
-				}),
-			]),
-		);
+		const floatDuration = pose === "celebrating" ? 760 : 2100;
 
-		floatLoop.start();
-		moodLoop.start();
+		floatProgress.value = withRepeat(
+			withSequence(
+				withTiming(1, {
+					duration: floatDuration,
+					easing: Easing.inOut(Easing.quad),
+				}),
+				withTiming(0, {
+					duration: floatDuration,
+					easing: Easing.inOut(Easing.quad),
+				}),
+			),
+			-1,
+		);
+		moodProgress.value = withRepeat(
+			withSequence(
+				withTiming(1, {
+					duration: 680,
+					easing: Easing.inOut(Easing.quad),
+				}),
+				withTiming(0, {
+					duration: 680,
+					easing: Easing.inOut(Easing.quad),
+				}),
+			),
+			-1,
+		);
 
 		return () => {
-			floatLoop.stop();
-			moodLoop.stop();
+			cancelAnimation(floatProgress);
+			cancelAnimation(moodProgress);
 		};
-	}, [floatAnim, moodAnim, pose]);
+	}, [floatProgress, moodProgress, pose]);
 
-	const translateY = floatAnim.interpolate({
-		inputRange: [0, 1],
-		outputRange: [0, pose === "celebrating" ? -14 : -7],
-	});
-	const rotate = moodAnim.interpolate({
-		inputRange: [0, 1],
-		outputRange: [
-			pose === "thinking" ? "-4deg" : "-2deg",
-			pose === "curious" || pose === "celebrating" ? "5deg" : "2deg",
-		],
-	});
-	const scale = moodAnim.interpolate({
-		inputRange: [0, 1],
-		outputRange: [1, pose === "celebrating" ? 1.07 : 1.025],
-	});
+	const animatedStyle = useAnimatedStyle(() => {
+		const translateY =
+			floatProgress.value * (pose === "celebrating" ? -14 : -7);
+		const rotateStart = pose === "thinking" ? -4 : -2;
+		const rotateEnd = pose === "curious" || pose === "celebrating" ? 5 : 2;
+		const rotate = rotateStart + (rotateEnd - rotateStart) * moodProgress.value;
+		const scale = 1 + moodProgress.value * (pose === "celebrating" ? 0.07 : 0.025);
+
+		return {
+			transform: [{ translateY }, { rotate: `${rotate}deg` }, { scale }],
+		};
+	}, [pose]);
 
 	return (
 		<View
@@ -86,15 +86,14 @@ export const Mascot: FC<MascotProps> = ({ size = 120, pose = "default" }) => {
 			importantForAccessibility="no-hide-descendants"
 			style={{ height: size, width: size }}
 		>
-			<Animated.View
-				style={{ transform: [{ translateY }, { rotate }, { scale }] }}
-			>
+			<Animated.View style={animatedStyle}>
 				<Svg width={size} height={size} viewBox="0 0 120 120">
 					<MoodEffects pose={pose} />
 					<Body pose={pose} />
 					<Arms pose={pose} />
 					<Head pose={pose} />
 					<Face pose={pose} />
+					<FaceCover pose={pose} />
 					<Props pose={pose} />
 				</Svg>
 			</Animated.View>
@@ -141,7 +140,8 @@ function MoodEffects({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 }
 
 function Body({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
-	const hoodie = pose === "secure" ? "#4D3AAE" : "#6043D8";
+	const hoodie =
+		pose === "secure" || pose === "cover-eyes" ? "#4D3AAE" : "#6043D8";
 
 	return (
 		<G>
@@ -176,6 +176,8 @@ function Body({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 }
 
 function Arms({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
+	if (pose === "cover-eyes") return null;
+
 	if (pose === "celebrating") {
 		return (
 			<G>
@@ -265,7 +267,7 @@ function Head({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 			<Path d="M52 25 Q61 7 73 23 Q63 27 52 25Z" fill="#6A3C2A" />
 			<Path d="M66 25 Q83 14 86 36 Q76 30 66 25Z" fill="#4B2A1E" />
 			<Path d="M29 45 Q30 35 37 29 Q35 44 40 55 Q32 54 29 45Z" fill="#2A1711" />
-			{pose === "secure" ? (
+			{pose === "secure" || pose === "cover-eyes" ? (
 				<Path
 					d="M39 20 Q60 7 81 20"
 					stroke="#DDE7FF"
@@ -285,7 +287,8 @@ function Face({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 		pose === "celebrating" ||
 		pose === "thumbs-up" ||
 		pose === "default";
-	const focused = pose === "writing" || pose === "secure";
+	const focused =
+		pose === "writing" || pose === "secure" || pose === "cover-eyes";
 
 	return (
 		<G>
@@ -360,6 +363,37 @@ function Face({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 			)}
 			<Ellipse cx="43" cy="56" rx="4" ry="2.5" fill="#EF7C6E" opacity="0.35" />
 			<Ellipse cx="77" cy="56" rx="4" ry="2.5" fill="#EF7C6E" opacity="0.35" />
+		</G>
+	);
+}
+
+function FaceCover({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
+	if (pose !== "cover-eyes") return null;
+
+	return (
+		<G>
+			<Path
+				d="M35 82 Q38 64 50 52"
+				stroke="#4D3AAE"
+				strokeWidth="10"
+				strokeLinecap="round"
+				fill="none"
+			/>
+			<Path
+				d="M85 82 Q82 64 70 52"
+				stroke="#4D3AAE"
+				strokeWidth="10"
+				strokeLinecap="round"
+				fill="none"
+			/>
+			<Ellipse cx="51" cy="48" rx="9" ry="6.5" fill="#F4A36B" />
+			<Ellipse cx="69" cy="48" rx="9" ry="6.5" fill="#F4A36B" />
+			<Path
+				d="M45 47 L56 47 M64 47 L75 47"
+				stroke="#E28E5C"
+				strokeWidth="1.4"
+				strokeLinecap="round"
+			/>
 		</G>
 	);
 }

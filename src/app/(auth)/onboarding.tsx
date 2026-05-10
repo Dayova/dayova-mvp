@@ -33,6 +33,7 @@ import {
 	Timer,
 	Zap,
 } from "~/components/ui/icon";
+import { PasswordField } from "~/components/ui/password-field";
 import { Text } from "~/components/ui/text";
 import { InsetTextField } from "~/components/ui/text-field";
 import { useAuth } from "~/context/AuthContext";
@@ -366,12 +367,17 @@ export default function WelcomeScreen() {
 	const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 	const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
 	const [isCompletingOnboarding, setIsCompletingOnboarding] = useState(false);
+	const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+	const [passwordVisible, setPasswordVisible] = useState(false);
 	const [errors, setErrors] = useState<StepErrors>({});
 	const { answers, setAnswer } = useOnboarding();
 	const { register, isLoading } = useAuth();
 
 	const activeStep = FLOW_STEPS[activeIndex];
-	const mascotPose = getMascotPose(activeStep, activeIndex);
+	const mascotPose =
+		activeStep.kind === "password" && isPasswordFocused && !passwordVisible
+			? "cover-eyes"
+			: getMascotPose(activeStep, activeIndex);
 	const insightSolution = getInsightSolution(answers);
 	const isIntroStep = activeStep.kind === "intro";
 	const isInputStep =
@@ -418,6 +424,7 @@ export default function WelcomeScreen() {
 
 	const handleContinue = async () => {
 		if (isInputStep) Keyboard.dismiss();
+		if (activeStep.kind !== "password") setIsPasswordFocused(false);
 		if (activeStep.kind === "profileInput") {
 			if (activeStep.field === "name" && !isValidName(answers.name.trim())) {
 				setErrors({ name: "Bitte einen gültigen Namen eingeben." });
@@ -486,10 +493,14 @@ export default function WelcomeScreen() {
 	const handleBack = useCallback(() => {
 		if (activeIndex === 0) return false;
 		setShowBirthDatePicker(false);
+		setIsPasswordFocused(false);
 		if (isInputStep) Keyboard.dismiss();
 		setActiveIndex((current) => current - 1);
 		return true;
 	}, [activeIndex, isInputStep]);
+
+	const togglePasswordVisibility = () =>
+		setPasswordVisible((current) => !current);
 
 	useBackIntent(activeIndex > 0 && !isCompletingOnboarding, handleBack);
 
@@ -946,8 +957,7 @@ export default function WelcomeScreen() {
 								) : null}
 
 								{activeStep.kind === "password" ? (
-									<InsetTextField
-										label="Passwort"
+									<PasswordField
 										value={answers.password}
 										onChangeText={(value) => {
 											setAnswer("password", value);
@@ -959,11 +969,12 @@ export default function WelcomeScreen() {
 											}
 										}}
 										placeholder="Mindestens 8 Zeichen"
-										autoCapitalize="none"
-										autoCorrect={false}
 										autoComplete="new-password"
 										textContentType="newPassword"
-										secureTextEntry
+										visible={passwordVisible}
+										onToggleVisible={togglePasswordVisibility}
+										onFocus={() => setIsPasswordFocused(true)}
+										onBlur={() => setIsPasswordFocused(false)}
 										invalid={Boolean(errors.password)}
 										message={errors.password}
 									/>
