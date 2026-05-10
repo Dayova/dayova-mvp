@@ -157,7 +157,7 @@ export const start = mutation({
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
 			await requireOwnerTokenIdentifierForMutation(ctx);
-		const examEntry = await ctx.db.get(args.examDayEntryId);
+		const examEntry = await ctx.db.get("dayEntries", args.examDayEntryId);
 		if (!examEntry || examEntry.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throw new Error("Prüfung nicht gefunden.");
 		}
@@ -192,7 +192,7 @@ export const start = mutation({
 			createdAt: now,
 			updatedAt: now,
 		});
-		await ctx.db.patch(args.examDayEntryId, {
+		await ctx.db.patch("dayEntries", args.examDayEntryId, {
 			relatedLearningPlanId: learningPlanId,
 		});
 		return learningPlanId;
