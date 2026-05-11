@@ -3,6 +3,7 @@ allowBuilds:
   browser-tabs-lock: true
   bufferutil: true
   core-js: true
+  dtrace-provider: false
   esbuild: true
   tesseract.js: true
   utf-8-validate: true

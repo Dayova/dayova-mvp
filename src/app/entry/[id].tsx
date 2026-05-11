@@ -254,32 +254,26 @@ export default function EntryDetailScreen() {
 				</View>
 
 				<View style={{ rowGap: 14 }}>
-					<View className="flex-row" style={{ columnGap: 14 }}>
-						<DetailTile
-							icon={
-								<CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />
-							}
-							label={kind === "Hausaufgabe" ? "Geplant" : "Datum"}
-							value={plannedDate}
-						/>
-						<DetailTile
-							icon={<Clock3 size={15} color="#3A7BFF" strokeWidth={2.3} />}
-							label="Uhrzeit"
-							value={time}
-						/>
-					</View>
-					<View className="flex-row" style={{ columnGap: 14 }}>
-						<DetailTile
-							icon={<Timer size={15} color="#3A7BFF" strokeWidth={2.3} />}
-							label="Dauer"
-							value={duration}
-						/>
-						<DetailTile
-							icon={<BookOpen size={15} color="#3A7BFF" strokeWidth={2.3} />}
-							label="Prüfung"
-							value={examType}
-						/>
-					</View>
+					<DetailTile
+						icon={<CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />}
+						label={kind === "Hausaufgabe" ? "Geplant" : "Datum"}
+						value={plannedDate}
+					/>
+					<DetailTile
+						icon={<Clock3 size={15} color="#3A7BFF" strokeWidth={2.3} />}
+						label="Uhrzeit"
+						value={time}
+					/>
+					<DetailTile
+						icon={<Timer size={15} color="#3A7BFF" strokeWidth={2.3} />}
+						label="Dauer"
+						value={duration}
+					/>
+					<DetailTile
+						icon={<BookOpen size={15} color="#3A7BFF" strokeWidth={2.3} />}
+						label="Prüfung"
+						value={examType}
+					/>
 					<DetailTile
 						icon={<CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />}
 						label={kind === "Hausaufgabe" ? "Fällig am" : "Termin"}
