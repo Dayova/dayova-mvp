@@ -7,5 +7,14 @@ allowBuilds:
   esbuild: true
   tesseract.js: true
   utf-8-validate: true
+
+onlyBuiltDependencies:
+  - '@clerk/shared'
+  - browser-tabs-lock
+  - core-js
+  - dtrace-provider
+  - esbuild
+  - tesseract.js
+
 patchedDependencies:
   expo-keep-awake@15.0.8: patches/expo-keep-awake@15.0.8.patch
