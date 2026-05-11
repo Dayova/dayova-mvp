@@ -16,13 +16,7 @@ type LearningPlanOverview = {
 	subject: string;
 	examTypeLabel: string;
 	status: "draft" | "questionsReady" | "generated" | "accepted";
-};
-
-const STATUS_PROGRESS: Record<LearningPlanOverview["status"], number> = {
-	draft: 12,
-	questionsReady: 33,
-	generated: 72,
-	accepted: 100,
+	progressPercent: number;
 };
 
 const getPlanHref = (plan: LearningPlanOverview) => {
@@ -70,7 +64,7 @@ function ProgressRing({ progress }: { progress: number }) {
 
 function LearningPlanCard({ plan }: { plan: LearningPlanOverview }) {
 	const router = useRouter();
-	const progress = STATUS_PROGRESS[plan.status];
+	const progress = Math.max(0, Math.min(plan.progressPercent, 100));
 
 	return (
 		<TouchableOpacity

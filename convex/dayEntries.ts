@@ -12,12 +12,13 @@ type OptionalEntryFields = {
 	plannedDateLabel?: string;
 	durationMinutes?: number;
 	examTypeLabel?: string;
+	completed?: boolean;
 	relatedLearningPlanId?: Id<"learningPlans">;
 	relatedLearningPlanSessionId?: Id<"learningPlanSessions">;
 };
 
 type PublicDayEntry = OptionalEntryFields & {
-	id: Id<"dayEntries">;
+	id: Id<"dayEntries"> | Id<"learningPlanSessions">;
 	title: string;
 };
 
@@ -40,6 +41,7 @@ const optionalEntryFields = (
 	...(entry.examTypeLabel !== undefined
 		? { examTypeLabel: entry.examTypeLabel }
 		: {}),
+	...(entry.completed !== undefined ? { completed: entry.completed } : {}),
 	...(entry.relatedLearningPlanId !== undefined
 		? { relatedLearningPlanId: entry.relatedLearningPlanId }
 		: {}),
@@ -54,6 +56,42 @@ const publicEntry = (entry: Doc<"dayEntries">): PublicDayEntry => ({
 	...optionalEntryFields(entry),
 });
 
+const publicLearningSessionEntry = (
+	plan: Doc<"learningPlans">,
+	session: Doc<"learningPlanSessions">,
+): PublicDayEntry => ({
+	id: session._id,
+	title: `${plan.subject} ${session.title}`,
+	time: session.startTime,
+	kind: "Lernen",
+	notes: [
+		session.goal,
+		...session.tasks.map((task) => `- ${task}`),
+		session.expectedOutcome,
+	].join("\n"),
+	plannedDateLabel: session.dateLabel,
+	durationMinutes: session.durationMinutes,
+	completed: session.completed ?? false,
+	relatedLearningPlanId: session.learningPlanId,
+	relatedLearningPlanSessionId: session._id,
+});
+
+const dayKeyPattern = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+const getDayKeyQueryVariants = (dayKey: string) => {
+	const variants = new Set([dayKey]);
+	const match = dayKeyPattern.exec(dayKey);
+	if (match) {
+		variants.add(
+			new Date(
+				Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])),
+			).toISOString(),
+		);
+	}
+
+	return [...variants];
+};
+
 const entryFields = {
 	title: v.string(),
 	time: v.optional(v.string()),
@@ -64,6 +102,7 @@ const entryFields = {
 	plannedDateLabel: v.optional(v.string()),
 	durationMinutes: v.optional(v.number()),
 	examTypeLabel: v.optional(v.string()),
+	completed: v.optional(v.boolean()),
 	relatedLearningPlanId: v.optional(v.id("learningPlans")),
 	relatedLearningPlanSessionId: v.optional(v.id("learningPlanSessions")),
 };
@@ -88,17 +127,58 @@ export const listByDayKeys = query({
 
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
 		const grouped: Record<string, PublicDayEntry[]> = {};
+		const queryKeyToRequestedDayKey = new Map<string, string>();
 		for (const dayKey of args.dayKeys) {
-			const entries = await ctx.db
-				.query("dayEntries")
-				.withIndex("by_ownerTokenIdentifier_and_dayKey", (q) =>
-					q
-						.eq("ownerTokenIdentifier", ownerTokenIdentifier)
-						.eq("dayKey", dayKey),
-				)
-				.take(100);
+			grouped[dayKey] = [];
+			for (const queryDayKey of getDayKeyQueryVariants(dayKey)) {
+				queryKeyToRequestedDayKey.set(queryDayKey, dayKey);
+				const entries = await ctx.db
+					.query("dayEntries")
+					.withIndex("by_ownerTokenIdentifier_and_dayKey", (q) =>
+						q
+							.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+							.eq("dayKey", queryDayKey),
+					)
+					.take(100);
 
-			grouped[dayKey] = entries.map(publicEntry);
+				grouped[dayKey].push(...entries.map(publicEntry));
+			}
+		}
+		for (const dayKey of args.dayKeys) {
+			const seenEntryIds = new Set<string>();
+			grouped[dayKey] = grouped[dayKey].filter((entry) => {
+				if (seenEntryIds.has(entry.id)) return false;
+				seenEntryIds.add(entry.id);
+				return true;
+			});
+		}
+
+		const learningSessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(200);
+		const planCache = new Map<
+			Id<"learningPlans">,
+			Doc<"learningPlans"> | null
+		>();
+		for (const session of learningSessions) {
+			if (session.dayEntryId) continue;
+			const requestedDayKey = queryKeyToRequestedDayKey.get(session.dateKey);
+			if (!requestedDayKey) continue;
+
+			let plan = planCache.get(session.learningPlanId);
+			if (plan === undefined) {
+				plan = await ctx.db.get(session.learningPlanId);
+				planCache.set(session.learningPlanId, plan);
+			}
+			if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) continue;
+
+			grouped[requestedDayKey] = [
+				...(grouped[requestedDayKey] ?? []),
+				publicLearningSessionEntry(plan, session),
+			];
 		}
 
 		return grouped;

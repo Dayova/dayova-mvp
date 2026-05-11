@@ -1,4 +1,4 @@
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -25,6 +25,7 @@ import {
 	Clock3,
 	GraduationCap,
 	Plus,
+	Check,
 	X,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
@@ -46,15 +47,18 @@ const timeToMinutes = (timeLabel: string) => {
 };
 
 const isLearningSlotEntry = (entry: DayEntry) =>
-	/lern/i.test(`${entry.kind ?? ""} ${entry.title}`);
+	/lern/i.test(`${entry.kind ?? ""} ${getEntryTitle(entry)}`);
 
 const isExamEntry = (entry: DayEntry) =>
 	/leistungskontrolle|test|klausur|quiz|mündlich|muendlich/i.test(
-		`${entry.kind ?? ""} ${entry.title}`,
+		`${entry.kind ?? ""} ${getEntryTitle(entry)}`,
 	);
 
+const getEntryTitle = (entry: DayEntry) =>
+	typeof entry.title === "string" ? entry.title : "";
+
 const getSubjectFromEntry = (entry: DayEntry) => {
-	const fromTitle = entry.title
+	const fromTitle = getEntryTitle(entry)
 		.replace(
 			/\s*(Hausaufgabe|Leistungskontrolle|Kurzkontrolle|Test\/Klausur|Test|Klausur Deutsch\/Kunst\/Fremdsprache|Klausur|Quiz|Mündliche Prüfung|Muendliche Pruefung|Praktische Prüfung|Praktische Pruefung|Komplexe Leistung|Abschlussprüfung HSA\/Quali\/RSA|Abschlusspruefung HSA\/Quali\/RSA|Vorabi Grundkurs|Vorabi Leistungskurs|Abitur Grundkurs schriftlich|Abitur Leistungskurs schriftlich|Lernen|Lernslot)\s*$/i,
 			"",
@@ -91,6 +95,9 @@ export default function HomeScreen() {
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const setSessionCompleted = useMutation(
+		api.learningPlans.setSessionCompleted,
+	);
 	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
 	const [isReturningToToday, setIsReturningToToday] = useState(false);
 	const dayCarouselRef = useRef<DayCarouselHandle | null>(null);
@@ -148,15 +155,13 @@ export default function HomeScreen() {
 	);
 	const featuredSubject = featuredEntry
 		? getSubjectFromEntry(featuredEntry)
-		: "dein Fach";
+		: "";
 	const featuredDurationLabel = featuredEntry?.durationMinutes
 		? `${featuredEntry.durationMinutes}min`
-		: featuredEntry
-			? "30min"
-			: "30min";
+		: null;
 	const heroHeadline = featuredEntry
 		? `Heute musst du für ${featuredSubject} lernen!`
-		: "Heute wartet dein nächster Lernschritt auf dich!";
+		: "Heute stehen keine Aufgaben an";
 	const taskSummary = `${sortedSelectedEntries.length} ${
 		sortedSelectedEntries.length === 1 ? "Aufgabe" : "Aufgaben"
 	}`;
@@ -166,11 +171,18 @@ export default function HomeScreen() {
 			: "Fabius";
 
 	const getEntryUrl = (entry: DayEntry) => {
+		if (
+			entry.relatedLearningPlanId &&
+			entry.relatedLearningPlanSessionId === entry.id
+		) {
+			return `/learning-plans/${encodeURIComponent(entry.relatedLearningPlanId)}`;
+		}
+
 		const dayLabel = selectedDay
 			? `${selectedDay.fullLabel} ${selectedDay.dayOfMonth}`
 			: "";
 		const details: Array<[string, string]> = [
-			["title", entry.title],
+			["title", getEntryTitle(entry) || getEntryLabel(entry)],
 			["day", dayLabel],
 		];
 		if (entry.kind) details.push(["kind", entry.kind]);
@@ -199,6 +211,14 @@ export default function HomeScreen() {
 	const selectCreateType = (type: "homework" | "exam") => {
 		setShowCreateTypePicker(false);
 		router.push(getCreateEntryUrl(type));
+	};
+
+	const toggleEntryCompleted = (entry: DayEntry) => {
+		if (!entry.relatedLearningPlanSessionId) return;
+		void setSessionCompleted({
+			sessionId: entry.relatedLearningPlanSessionId,
+			completed: !entry.completed,
+		});
 	};
 
 	const returnToToday = () => {
@@ -291,24 +311,26 @@ export default function HomeScreen() {
 							boxShadow: "0 20px 36px rgba(79, 142, 246, 0.22)",
 						}}
 					>
-						<View
-							className="self-start rounded-full px-5 py-3"
-							style={{ backgroundColor: "rgba(255,255,255,0.24)" }}
-						>
-							<View className="flex-row items-center">
-								<Clock3 size={16} color="#FFFFFF" strokeWidth={2.1} />
-								<Text
-									className="ml-2 font-poppins text-white"
-									style={{
-										fontSize: 19,
-										lineHeight: 22,
-										includeFontPadding: false,
-									}}
-								>
-									{featuredDurationLabel}
-								</Text>
+						{featuredDurationLabel ? (
+							<View
+								className="self-start rounded-full px-5 py-3"
+								style={{ backgroundColor: "rgba(255,255,255,0.24)" }}
+							>
+								<View className="flex-row items-center">
+									<Clock3 size={16} color="#FFFFFF" strokeWidth={2.1} />
+									<Text
+										className="ml-2 font-poppins text-white"
+										style={{
+											fontSize: 19,
+											lineHeight: 22,
+											includeFontPadding: false,
+										}}
+									>
+										{featuredDurationLabel}
+									</Text>
+								</View>
 							</View>
-						</View>
+						) : null}
 
 						<View className="mt-7 max-w-[215px]">
 							<Text
@@ -324,19 +346,25 @@ export default function HomeScreen() {
 						</View>
 
 						<View className="mt-7 flex-row items-center justify-between">
-							<TouchableOpacity
-								accessibilityLabel={
-									featuredEntry
-										? `${getEntryLabel(featuredEntry)} als erledigt markieren`
-										: "Geplante Aufgabe als erledigt markieren"
-								}
-								accessibilityRole="button"
-								activeOpacity={0.88}
-								className="h-14 w-14 items-center justify-center rounded-full bg-white"
-								style={{ boxShadow: "0 10px 18px rgba(0,0,0,0.10)" }}
-							>
-								<CheckCircle2 size={22} color="#1A1A1A" strokeWidth={2.3} />
-							</TouchableOpacity>
+							{featuredEntry ? (
+								<TouchableOpacity
+									accessibilityLabel={`${getEntryLabel(featuredEntry)} ${featuredEntry.completed ? "als offen markieren" : "als erledigt markieren"}`}
+									accessibilityRole="button"
+									accessibilityState={{ checked: featuredEntry.completed }}
+									activeOpacity={0.88}
+									onPress={() => toggleEntryCompleted(featuredEntry)}
+									className="h-14 w-14 items-center justify-center rounded-full bg-white"
+									style={{ boxShadow: "0 10px 18px rgba(0,0,0,0.10)" }}
+								>
+									{featuredEntry.completed ? (
+										<Check size={23} color="#28C76F" strokeWidth={2.8} />
+									) : (
+										<CheckCircle2 size={22} color="#1A1A1A" strokeWidth={2.3} />
+									)}
+								</TouchableOpacity>
+							) : (
+								<View style={{ width: 56 }} />
+							)}
 
 							<TouchableOpacity
 								accessibilityLabel={
@@ -429,31 +457,9 @@ export default function HomeScreen() {
 							onSelectedDayChange={(day) => setSelectedDayKey(day.key)}
 							selectedDayKey={selectedDayKey}
 						/>
-						{!isSelectedToday && !isReturningToToday ? (
-							<View className="mt-2 items-center">
-								<TouchableOpacity
-									accessibilityLabel="Zurück zu heute"
-									accessibilityRole="button"
-									activeOpacity={0.88}
-									onPressIn={returnToToday}
-									className="rounded-full bg-[#EEF4FF] px-4 py-2"
-								>
-									<Text
-										className="font-poppins font-semibold text-[#3A7BFF]"
-										style={{
-											fontSize: 12,
-											lineHeight: 16,
-											includeFontPadding: false,
-										}}
-									>
-										Zurück zu heute
-									</Text>
-								</TouchableOpacity>
-							</View>
-						) : null}
 					</View>
 
-					<View className="mt-5" style={{ rowGap: 14 }}>
+					<View className="mt-6" style={{ rowGap: 18 }}>
 						{visibleEntries.length > 0 ? (
 							visibleEntries.map((entry, index) => (
 								<TouchableOpacity
@@ -467,7 +473,7 @@ export default function HomeScreen() {
 									accessibilityRole="button"
 									activeOpacity={0.88}
 									onPress={() => router.push(getEntryUrl(entry))}
-									className="rounded-[24px] bg-white px-4 py-4"
+									className="rounded-[26px] bg-white px-6 py-6"
 									style={{
 										borderWidth: 1,
 										borderColor: "rgba(17,24,39,0.05)",
@@ -477,7 +483,7 @@ export default function HomeScreen() {
 									<View className="flex-row items-center justify-between">
 										<View className="flex-1 flex-row items-center">
 											<View
-												className="mr-3 h-10 w-1 rounded-full"
+												className="mr-5 h-14 w-1 rounded-full"
 												style={{
 													backgroundColor:
 														index % 2 === 0 ? "#79DFC7" : "#FFB380",
@@ -512,48 +518,51 @@ export default function HomeScreen() {
 											</View>
 										</View>
 
-										<View
-											className="rounded-full px-4 py-2"
+										<TouchableOpacity
+											accessibilityLabel={`${getEntryLabel(entry)} ${entry.completed ? "als offen markieren" : "als erledigt markieren"}`}
+											accessibilityRole="checkbox"
+											accessibilityState={{ checked: entry.completed }}
+											activeOpacity={0.82}
+											disabled={!entry.relatedLearningPlanSessionId}
+											onPress={(event) => {
+												event.stopPropagation();
+												toggleEntryCompleted(entry);
+											}}
+											className="ml-4 h-11 w-11 items-center justify-center rounded-full"
 											style={{
 												borderWidth: 1,
-												borderColor: "rgba(17,24,39,0.08)",
+												borderColor: entry.completed
+													? "rgba(40,199,111,0.24)"
+													: "rgba(17,24,39,0.08)",
+												backgroundColor: entry.completed
+													? "#EAFBF1"
+													: "#FFFFFF",
 											}}
 										>
-											<Text
-												className="font-poppins text-[#202127]"
-												style={{
-													fontSize: 13,
-													lineHeight: 16,
-													includeFontPadding: false,
-												}}
-											>
-												Starte
-											</Text>
-										</View>
+											{entry.completed ? (
+												<Check size={19} color="#28C76F" strokeWidth={2.8} />
+											) : (
+												<CheckCircle2
+													size={19}
+													color="#202127"
+													strokeWidth={2.2}
+												/>
+											)}
+										</TouchableOpacity>
 									</View>
 								</TouchableOpacity>
 							))
 						) : (
-							<View className="rounded-[24px] px-5 py-8">
+							<View className="rounded-[24px] bg-[#F7F8FB] px-5 py-6">
 								<Text
 									className="text-center font-poppins font-semibold text-[#202127]"
 									style={{
-										fontSize: 17,
-										lineHeight: 22,
+										fontSize: 16,
+										lineHeight: 21,
 										includeFontPadding: false,
 									}}
 								>
-									Heute ist noch nichts geplant.
-								</Text>
-								<Text
-									className="mt-2 text-center font-poppins text-[#9599A4]"
-									style={{
-										fontSize: 13,
-										lineHeight: 18,
-										includeFontPadding: false,
-									}}
-								>
-									Lege eine Hausaufgabe oder Lernsession an, um hier zu starten.
+									Keine Aufgaben
 								</Text>
 							</View>
 						)}

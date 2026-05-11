@@ -57,6 +57,7 @@ export default defineSchema({
 		plannedDateLabel: v.optional(v.string()),
 		durationMinutes: v.optional(v.number()),
 		examTypeLabel: v.optional(v.string()),
+		completed: v.optional(v.boolean()),
 		relatedLearningPlanId: v.optional(v.id("learningPlans")),
 		relatedLearningPlanSessionId: v.optional(v.id("learningPlanSessions")),
 	}).index("by_ownerTokenIdentifier_and_dayKey", [
@@ -132,6 +133,7 @@ export default defineSchema({
 		goal: v.string(),
 		tasks: v.array(v.string()),
 		expectedOutcome: v.string(),
+		completed: v.optional(v.boolean()),
 		sortOrder: v.number(),
 		dayEntryId: v.optional(v.id("dayEntries")),
 		createdAt: v.number(),

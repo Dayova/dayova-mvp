@@ -1,8 +1,8 @@
 import type { Id } from "#convex/_generated/dataModel";
 
 export type DayEntry = {
-	id: Id<"dayEntries">;
-	title: string;
+	id: Id<"dayEntries"> | Id<"learningPlanSessions">;
+	title?: unknown;
 	time?: string;
 	kind?: string;
 	notes?: string;
@@ -11,6 +11,7 @@ export type DayEntry = {
 	plannedDateLabel?: string;
 	durationMinutes?: number;
 	examTypeLabel?: string;
+	completed?: boolean;
 	relatedLearningPlanId?: Id<"learningPlans">;
 	relatedLearningPlanSessionId?: Id<"learningPlanSessions">;
 };
