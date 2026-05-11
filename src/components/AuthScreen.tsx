@@ -11,7 +11,6 @@ import {
 	EyeOff,
 	Mail,
 	MailCheck,
-	ShieldCheck,
 	UserRound,
 } from "~/components/ui/icon";
 import { useEffect, useRef, useState } from "react";
@@ -324,6 +323,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const birthDateFieldY = useRef(0);
 
 	const isRegisterMode = mode === "register";
+	const isLoginOnlyScreen = initialMode === "login";
 	const isRegisterIdentityStep = isRegisterMode && registerStep === 0;
 	const isRegisterPasswordStep = isRegisterMode && registerStep === 1;
 	const isVerificationPending = Boolean(pendingVerification);
@@ -583,7 +583,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		const otpCardMarginTop = isOtpKeyboardVisible ? 18 : 40;
 		const otpCardPaddingTop = isOtpKeyboardVisible ? 24 : 32;
 		const otpContentPaddingBottom = isOtpKeyboardVisible ? 24 : 36;
-		const otpIconSize = isOtpKeyboardVisible ? 64 : 80;
 		const otpTitleMarginTop = isOtpKeyboardVisible ? 20 : 28;
 		const otpFieldMarginTop = isOtpKeyboardVisible ? 8 : 16;
 		const otpButtonMarginTop = isOtpKeyboardVisible ? 28 : 40;
@@ -593,7 +592,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 				<StatusBar style="light" />
 
 				<View className="flex-1 bg-black" style={{ paddingTop: otpTopPadding }}>
-					<View className="flex-row items-center justify-between px-8">
+					<View className="flex-row items-center justify-center px-8">
 						<View className="flex-row items-center">
 							<Image
 								source={require("../../assets/dayova-logo.png")}
@@ -607,7 +606,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								Dayova
 							</Text>
 						</View>
-						<Mascot size={60} />
 					</View>
 
 					<View
@@ -630,18 +628,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
 						>
 							<View className="items-center">
-								<View
-									className="items-center justify-center rounded-[28px] bg-[#F3F7FF]"
-									style={{
-										width: otpIconSize,
-										height: otpIconSize,
-										borderColor: "rgba(58,123,255,0.12)",
-										borderWidth: 1,
-									}}
-								>
-									<ShieldCheck size={34} color="#3A7BFF" strokeWidth={2.1} />
-								</View>
-
 								<Text
 									className="text-center font-bold font-poppins text-28 text-text"
 									style={{
@@ -664,7 +650,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								</Text>
 							</View>
 
-							<View style={{ marginTop: otpFieldMarginTop }}>
+							<View  style={{ marginTop: otpFieldMarginTop }}>
 								<OtpCodeInput
 									value={verificationCode}
 									onChangeText={updateVerificationCode}
@@ -744,58 +730,62 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 			</View>
 
 			<View className="-mt-8 flex-1 rounded-t-[34px] bg-background px-8 pt-6">
-				<View className="mb-4 items-center">
-					<Mascot size={60} />
-				</View>
-				<View
-					className="mb-6 rounded-full bg-[#EEF2F7] p-1.5"
-					style={{
-						minHeight: 60,
-						borderWidth: 1,
-						borderColor: "rgba(17,24,39,0.06)",
-						shadowColor: "#111827",
-						shadowOpacity: 0.06,
-						shadowRadius: 10,
-						shadowOffset: { width: 0, height: 5 },
-						elevation: 2,
-					}}
-				>
-					<View
-						className="min-h-[54px] flex-row rounded-full"
-						onLayout={(event) => {
-							setTabWidth(event.nativeEvent.layout.width / 2);
-						}}
-					>
-						{tabWidth > 0 ? (
-							<Animated.View
-								pointerEvents="none"
-								className="absolute rounded-full bg-white"
-								style={{
-									bottom: 2,
-									left: 2,
-									top: 2,
-									width: Math.max(tabWidth - 4, 0),
-									transform: [{ translateX: tabIndicatorTranslateX }],
-									shadowColor: "#111827",
-									shadowOpacity: 0.08,
-									shadowRadius: 8,
-									shadowOffset: { width: 0, height: 3 },
-									elevation: 3,
+				{isLoginOnlyScreen ? null : (
+					<>
+						<View className="mb-4 items-center">
+							<Mascot size={60} />
+						</View>
+						<View
+							className="mb-6 rounded-full bg-[#EEF2F7] p-1.5"
+							style={{
+								minHeight: 60,
+								borderWidth: 1,
+								borderColor: "rgba(17,24,39,0.06)",
+								shadowColor: "#111827",
+								shadowOpacity: 0.06,
+								shadowRadius: 10,
+								shadowOffset: { width: 0, height: 5 },
+								elevation: 2,
+							}}
+						>
+							<View
+								className="min-h-[54px] flex-row rounded-full"
+								onLayout={(event) => {
+									setTabWidth(event.nativeEvent.layout.width / 2);
 								}}
-							/>
-						) : null}
-						<ModeButton
-							active={isRegisterMode}
-							label="Registrieren"
-							onPress={() => switchMode("register")}
-						/>
-						<ModeButton
-							active={!isRegisterMode}
-							label="Anmelden"
-							onPress={() => switchMode("login")}
-						/>
-					</View>
-				</View>
+							>
+								{tabWidth > 0 ? (
+									<Animated.View
+										pointerEvents="none"
+										className="absolute rounded-full bg-white"
+										style={{
+											bottom: 2,
+											left: 2,
+											top: 2,
+											width: Math.max(tabWidth - 4, 0),
+											transform: [{ translateX: tabIndicatorTranslateX }],
+											shadowColor: "#111827",
+											shadowOpacity: 0.08,
+											shadowRadius: 8,
+											shadowOffset: { width: 0, height: 3 },
+											elevation: 3,
+										}}
+									/>
+								) : null}
+								<ModeButton
+									active={isRegisterMode}
+									label="Registrieren"
+									onPress={() => switchMode("register")}
+								/>
+								<ModeButton
+									active={!isRegisterMode}
+									label="Anmelden"
+									onPress={() => switchMode("login")}
+								/>
+							</View>
+						</View>
+					</>
+				)}
 
 				<ScrollView
 					ref={formScrollRef}
@@ -1072,13 +1062,15 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 						</Text>
 					</Button>
 
-					<View className="pt-5 pb-2">
-						<Text className="text-center font-poppins text-12 text-text/46">
-							{isRegisterMode
-								? "Schon ein Konto? Oben kannst du direkt zur Anmeldung wechseln."
-								: "Noch kein Konto? Wechsle oben zur Registrierung."}
-						</Text>
-					</View>
+					{isLoginOnlyScreen ? null : (
+						<View className="pt-5 pb-2">
+							<Text className="text-center font-poppins text-12 text-text/46">
+								{isRegisterMode
+									? "Schon ein Konto? Oben kannst du direkt zur Anmeldung wechseln."
+									: "Noch kein Konto? Wechsle oben zur Registrierung."}
+							</Text>
+						</View>
+					)}
 				</ScrollView>
 			</View>
 

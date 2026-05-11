@@ -30,9 +30,24 @@ import {
 	CheckCircle2,
 	Clock3,
 	Bell,
+	BookOpen,
+	Calculator,
+	Chemistry,
 	ChevronDown,
+	ClipboardList,
+	Code,
+	Dna,
+	Earth,
+	Football,
+	Language,
+	Maps,
+	Mic,
+	MusicNote,
+	PaintBrush,
+	Pencil,
+	TimeManagement,
 } from "~/components/ui/icon";
-import { Input } from "~/components/ui/input";
+import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuth } from "~/context/AuthContext";
@@ -47,6 +62,49 @@ type PickerTarget =
 	| "plannedDate"
 	| "plannedTime"
 	| "plannedEndTime";
+type SelectTarget = "subject" | "examType";
+
+const SUBJECT_OPTIONS = [
+	"Mathematik",
+	"Deutsch",
+	"Englisch",
+	"Biologie",
+	"Chemie",
+	"Physik",
+	"Geschichte",
+	"Erdkunde",
+	"Sozialkunde",
+	"Informatik",
+	"Kunst",
+	"Musik",
+	"Sport",
+];
+
+const EXAM_TYPE_OPTIONS = [
+	"Test",
+	"Kurzkontrolle",
+	"Leistungskontrolle",
+	"Klassenarbeit",
+	"Klausur",
+	"Mündliche Prüfung",
+	"Präsentation",
+];
+
+const subjectIconByOption = {
+	Mathematik: Calculator,
+	Deutsch: Pencil,
+	Englisch: Language,
+	Biologie: Dna,
+	Chemie: Chemistry,
+	Physik: Earth,
+	Geschichte: TimeManagement,
+	Erdkunde: Maps,
+	Sozialkunde: Mic,
+	Informatik: Code,
+	Kunst: PaintBrush,
+	Musik: MusicNote,
+	Sport: Football,
+} satisfies Record<(typeof SUBJECT_OPTIONS)[number], typeof BookOpen>;
 
 const parseDateKey = (value?: string) => {
 	return parseDayKey(value) ?? startOfLocalDay(new Date());
@@ -201,8 +259,8 @@ export default function NewEntryScreen() {
 	const [createdDayKey, setCreatedDayKey] = useState(getDayKey(initialDate));
 	const [isCreating, setIsCreating] = useState(false);
 	const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
+	const [selectTarget, setSelectTarget] = useState<SelectTarget | null>(null);
 	const scrollViewRef = useRef<ScrollView | null>(null);
-	const subjectInputOffsetY = useRef(0);
 	const noteInputOffsetY = useRef(0);
 
 	const trimmedSubject = subject.trim();
@@ -226,6 +284,7 @@ export default function NewEntryScreen() {
 		: "Trage zuerst Fälligkeit, Fach und Notiz ein.";
 
 	const closePicker = () => setPickerTarget(null);
+	const closeSelect = () => setSelectTarget(null);
 
 	const handlePickerChange = (
 		event: DateTimePickerEvent,
@@ -344,6 +403,11 @@ export default function NewEntryScreen() {
 	};
 
 	const handleBack = useCallback(() => {
+		if (selectTarget) {
+			setSelectTarget(null);
+			return true;
+		}
+
 		if (pickerTarget) {
 			setPickerTarget(null);
 			return true;
@@ -356,10 +420,12 @@ export default function NewEntryScreen() {
 
 		goBackOrReplace(router, "/home");
 		return true;
-	}, [pickerTarget, router, step]);
+	}, [pickerTarget, router, selectTarget, step]);
 
 	useBackIntent(
-		Boolean(pickerTarget || (step !== "basics" && step !== "success")),
+		Boolean(
+			selectTarget || pickerTarget || (step !== "basics" && step !== "success"),
+		),
 		handleBack,
 	);
 
@@ -372,17 +438,9 @@ export default function NewEntryScreen() {
 		});
 	}, []);
 
-	const handleSubjectInputFocus = useCallback(() => {
-		scrollToFocusedField(subjectInputOffsetY.current);
-	}, [scrollToFocusedField]);
-
 	const handleNoteInputFocus = useCallback(() => {
 		scrollToFocusedField(noteInputOffsetY.current);
 	}, [scrollToFocusedField]);
-
-	const handleSubjectInputLayout = useCallback((event: LayoutChangeEvent) => {
-		subjectInputOffsetY.current = event.nativeEvent.layout.y;
-	}, []);
 
 	const handleNoteInputLayout = useCallback((event: LayoutChangeEvent) => {
 		noteInputOffsetY.current = event.nativeEvent.layout.y;
@@ -444,6 +502,57 @@ export default function NewEntryScreen() {
 				mode={mode}
 				display="default"
 				onChange={handlePickerChange}
+			/>
+		);
+	};
+
+	const renderSelectSheet = () => {
+		if (!selectTarget) return null;
+
+		const isSubjectSelect = selectTarget === "subject";
+		const title = isSubjectSelect
+			? "Schulfach auswählen"
+			: "Prüfungsart auswählen";
+		const options = isSubjectSelect ? SUBJECT_OPTIONS : EXAM_TYPE_OPTIONS;
+		const selectedValue = isSubjectSelect ? subject : examTypeLabel;
+
+		return (
+			<SelectSheet
+				visible
+				title={title}
+				options={options}
+				selectedValue={selectedValue}
+				onClose={closeSelect}
+				onSelect={(option) => {
+					if (isSubjectSelect) {
+						setSubject(option);
+					} else {
+						setExamTypeLabel(option);
+					}
+				}}
+				renderOptionIcon={(option, isSelected) => {
+					if (isSubjectSelect) {
+						const SubjectIcon =
+							subjectIconByOption[option as keyof typeof subjectIconByOption] ??
+							BookOpen;
+
+						return (
+							<SubjectIcon
+								size={19}
+								color={isSelected ? "#3A7BFF" : "#6B7280"}
+								strokeWidth={2}
+							/>
+						);
+					}
+
+					return (
+						<ClipboardList
+							size={19}
+							color={isSelected ? "#3A7BFF" : "#6B7280"}
+							strokeWidth={2}
+						/>
+					);
+				}}
 			/>
 		);
 	};
@@ -527,36 +636,46 @@ export default function NewEntryScreen() {
 									onPress={() => setPickerTarget("dueDate")}
 								/>
 
-								<View onLayout={handleSubjectInputLayout}>
-									<Field>
+								<Field>
+									<Text
+										className="mb-3 font-poppins font-semibold text-text"
+										style={{
+											fontSize: 15,
+											lineHeight: 20,
+											includeFontPadding: false,
+										}}
+									>
+										Schulfach
+									</Text>
+									<FieldTrigger
+										activeOpacity={0.86}
+										onPress={() => setSelectTarget("subject")}
+										className="min-h-[76px] rounded-full px-7"
+										style={{
+											borderWidth: 1,
+											borderColor: "rgba(17,24,39,0.04)",
+											boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
+										}}
+									>
 										<Text
-											className="mb-3 font-poppins font-semibold text-text"
+											className="flex-1 font-poppins text-16"
+											numberOfLines={1}
 											style={{
-												fontSize: 15,
-												lineHeight: 20,
+												color: subject ? "#202127" : "rgba(17,24,39,0.32)",
 												includeFontPadding: false,
 											}}
 										>
-											Schulfach
+											{subject || "Wähle das Fach aus"}
 										</Text>
-										<FieldControl
-											className="min-h-[76px] rounded-full px-7"
-											style={{
-												borderWidth: 1,
-												borderColor: "rgba(17,24,39,0.04)",
-												boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
-											}}
-										>
-											<Input
-												accessibilityLabel="Schulfach"
-												value={subject}
-												onChangeText={setSubject}
-												onFocus={handleSubjectInputFocus}
-												placeholder="Schreibe das Fach hierhin"
+										<FieldAccessory>
+											<ChevronDown
+												size={20}
+												color="#202127"
+												strokeWidth={2.1}
 											/>
-										</FieldControl>
-									</Field>
-								</View>
+										</FieldAccessory>
+									</FieldTrigger>
+								</Field>
 
 								<Field className="mb-8" onLayout={handleNoteInputLayout}>
 									<Text
@@ -749,7 +868,9 @@ export default function NewEntryScreen() {
 								>
 									Schulfach
 								</Text>
-								<FieldControl
+								<FieldTrigger
+									activeOpacity={0.86}
+									onPress={() => setSelectTarget("subject")}
 									className="min-h-[76px] rounded-full px-7"
 									style={{
 										borderWidth: 1,
@@ -757,16 +878,20 @@ export default function NewEntryScreen() {
 										boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
 									}}
 								>
-									<Input
-										accessibilityLabel="Schulfach"
-										value={subject}
-										onChangeText={setSubject}
-										placeholder="Wähle das Fach aus"
-									/>
+									<Text
+										className="flex-1 font-poppins text-16"
+										numberOfLines={1}
+										style={{
+											color: subject ? "#202127" : "rgba(17,24,39,0.32)",
+											includeFontPadding: false,
+										}}
+									>
+										{subject || "Wähle das Fach aus"}
+									</Text>
 									<FieldAccessory>
 										<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
 									</FieldAccessory>
-								</FieldControl>
+								</FieldTrigger>
 							</Field>
 
 							<Field className="mb-8">
@@ -780,7 +905,9 @@ export default function NewEntryScreen() {
 								>
 									Prüfungsart
 								</Text>
-								<FieldControl
+								<FieldTrigger
+									activeOpacity={0.86}
+									onPress={() => setSelectTarget("examType")}
 									className="min-h-[76px] rounded-full px-7"
 									style={{
 										borderWidth: 1,
@@ -788,16 +915,20 @@ export default function NewEntryScreen() {
 										boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
 									}}
 								>
-									<Input
-										accessibilityLabel="Prüfungsart"
-										value={examTypeLabel}
-										onChangeText={setExamTypeLabel}
-										placeholder="Wähle die Prüfungsart aus"
-									/>
+									<Text
+										className="flex-1 font-poppins text-16"
+										numberOfLines={1}
+										style={{
+											color: examTypeLabel ? "#202127" : "rgba(17,24,39,0.32)",
+											includeFontPadding: false,
+										}}
+									>
+										{examTypeLabel || "Wähle die Prüfungsart aus"}
+									</Text>
 									<FieldAccessory>
 										<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
 									</FieldAccessory>
-								</FieldControl>
+								</FieldTrigger>
 							</Field>
 						</>
 					) : null}
@@ -859,6 +990,7 @@ export default function NewEntryScreen() {
 				</View>
 			)}
 			{renderPicker()}
+			{renderSelectSheet()}
 		</View>
 	);
 }

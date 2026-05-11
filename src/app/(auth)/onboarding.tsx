@@ -678,13 +678,6 @@ export default function WelcomeScreen() {
 										/>
 									))}
 								</View>
-								<View className="-mt-16 -mr-2">
-									<Mascot
-										key={`intro-mascot-${activeIndex}`}
-										size={55}
-										pose={mascotPose}
-									/>
-								</View>
 							</View>
 
 							<View style={{ rowGap: 18 }}>
