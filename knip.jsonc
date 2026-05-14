@@ -1,0 +1,10 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"entry": ["plugins/*.js"],
+	"ignore": [".agents/**"],
+	// Required by the EAS/Xcode iOS build path even though app source does not
+	// import it directly. Removing it can fail Babel startup with:
+	// [BABEL] /Users/expo/workingdir/build/index.ts: Cannot find module '@babel/plugin-transform-react-jsx'
+	"ignoreDependencies": ["@babel/plugin-transform-react-jsx"],
+	"tags": ["-lintignore"]
+}
