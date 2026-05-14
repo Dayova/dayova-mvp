@@ -113,4 +113,3 @@ pnpm patch oxc-parser@<version>
 pnpm patch-commit "<temporary patch directory printed by pnpm>"
 pnpm check:unused
 ```
-

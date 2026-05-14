@@ -78,6 +78,7 @@
 	},
 	"devDependencies": {
 		"@babel/core": "^7.29.0",
+		"@babel/plugin-transform-react-jsx": "^7.28.6",
 		"@biomejs/biome": "^2.4.14",
 		"@convex-dev/eslint-plugin": "^2.0.0",
 		"@types/node": "^25.6.0",

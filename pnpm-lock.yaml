@@ -158,6 +158,9 @@ importers:
       '@babel/core':
         specifier: ^7.29.0
         version: 7.29.0
+      '@babel/plugin-transform-react-jsx':
+        specifier: ^7.28.6
+        version: 7.28.6(@babel/core@7.29.0)
       '@biomejs/biome':
         specifier: ^2.4.14
         version: 2.4.14
