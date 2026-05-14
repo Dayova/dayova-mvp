@@ -650,7 +650,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								</Text>
 							</View>
 
-							<View  style={{ marginTop: otpFieldMarginTop }}>
+							<View style={{ marginTop: otpFieldMarginTop }}>
 								<OtpCodeInput
 									value={verificationCode}
 									onChangeText={updateVerificationCode}

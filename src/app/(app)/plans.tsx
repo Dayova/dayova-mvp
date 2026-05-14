@@ -101,7 +101,8 @@ export default function PlansScreen() {
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningPlans = useQuery(
-		((api as any)["learningPlans"]?.list ?? api.dayEntries.listByDayKeys) as any,
+		((api as any)["learningPlans"]?.list ??
+			api.dayEntries.listByDayKeys) as any,
 		user && isConvexAuthenticated ? {} : "skip",
 	) as LearningPlanItem[] | undefined;
 
@@ -119,7 +120,7 @@ export default function PlansScreen() {
 			>
 				<View className="flex-row items-center justify-between">
 					<Text
-						className="font-poppins font-bold text-[#202127]"
+						className="font-bold font-poppins text-[#202127]"
 						style={{ fontSize: 24, lineHeight: 28, includeFontPadding: false }}
 					>
 						Deine Lernpläne

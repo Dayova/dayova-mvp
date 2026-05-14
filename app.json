@@ -1,97 +1,97 @@
 {
-  "expo": {
-    "name": "Dayova",
-    "slug": "dayova",
-    "scheme": "dayova",
-    "version": "1.0.0",
-    "owner": "dayova",
-    "orientation": "portrait",
-    "platforms": ["ios", "android"],
-    "icon": "./assets/dayova-logo.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "experiments": {
-      "reactCompiler": true
-    },
-    "extra": {
-      "eas": {
-        "projectId": "d3d06b26-c8da-4192-a50d-e1bb0ca4902c"
-      }
-    },
-    "splash": {
-      "image": "./assets/dayova-logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "de.dayova.app",
-      "runtimeVersion": "1.0.0",
-      "usesAppleSignIn": true,
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/dayova-logo.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": true,
-      "package": "com.dayova",
-      "permissions": ["android.permission.RECORD_AUDIO"]
-    },
-    "plugins": [
-      "expo-router",
-      "@clerk/expo",
-      "expo-notifications",
-      [
-        "expo-image-picker",
-        {
-          "cameraPermission": "Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
-          "photosPermission": "Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst."
-        }
-      ],
-      "@react-native-community/datetimepicker",
-      "./plugins/withNinjaLongPaths",
-      "./plugins/withAndroidPackagingOptions",
-      [
-        "expo-font",
-        {
-          "fonts": [
-            "./assets/fonts/Poppins-Regular.ttf",
-            "./assets/fonts/Poppins-Medium.ttf",
-            "./assets/fonts/Poppins-SemiBold.ttf",
-            "./assets/fonts/Poppins-Bold.ttf"
-          ],
-          "android": {
-            "fonts": [
-              {
-                "fontFamily": "Poppins",
-                "fontDefinitions": [
-                  {
-                    "path": "./assets/fonts/Poppins-Regular.ttf",
-                    "weight": 400
-                  },
-                  {
-                    "path": "./assets/fonts/Poppins-Medium.ttf",
-                    "weight": 500
-                  },
-                  {
-                    "path": "./assets/fonts/Poppins-SemiBold.ttf",
-                    "weight": 600
-                  },
-                  {
-                    "path": "./assets/fonts/Poppins-Bold.ttf",
-                    "weight": 700
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      ]
-    ]
-  }
+	"expo": {
+		"name": "Dayova",
+		"slug": "dayova",
+		"scheme": "dayova",
+		"version": "1.0.0",
+		"owner": "dayova",
+		"orientation": "portrait",
+		"platforms": ["ios", "android"],
+		"icon": "./assets/dayova-logo.png",
+		"userInterfaceStyle": "light",
+		"newArchEnabled": true,
+		"experiments": {
+			"reactCompiler": true
+		},
+		"extra": {
+			"eas": {
+				"projectId": "d3d06b26-c8da-4192-a50d-e1bb0ca4902c"
+			}
+		},
+		"splash": {
+			"image": "./assets/dayova-logo.png",
+			"resizeMode": "contain",
+			"backgroundColor": "#ffffff"
+		},
+		"ios": {
+			"supportsTablet": true,
+			"bundleIdentifier": "de.dayova.app",
+			"runtimeVersion": "1.0.0",
+			"usesAppleSignIn": true,
+			"infoPlist": {
+				"ITSAppUsesNonExemptEncryption": false
+			}
+		},
+		"android": {
+			"adaptiveIcon": {
+				"foregroundImage": "./assets/dayova-logo.png",
+				"backgroundColor": "#ffffff"
+			},
+			"edgeToEdgeEnabled": true,
+			"predictiveBackGestureEnabled": true,
+			"package": "com.dayova",
+			"permissions": ["android.permission.RECORD_AUDIO"]
+		},
+		"plugins": [
+			"expo-router",
+			"@clerk/expo",
+			"expo-notifications",
+			[
+				"expo-image-picker",
+				{
+					"cameraPermission": "Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
+					"photosPermission": "Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst."
+				}
+			],
+			"@react-native-community/datetimepicker",
+			"./plugins/withNinjaLongPaths",
+			"./plugins/withAndroidPackagingOptions",
+			[
+				"expo-font",
+				{
+					"fonts": [
+						"./assets/fonts/Poppins-Regular.ttf",
+						"./assets/fonts/Poppins-Medium.ttf",
+						"./assets/fonts/Poppins-SemiBold.ttf",
+						"./assets/fonts/Poppins-Bold.ttf"
+					],
+					"android": {
+						"fonts": [
+							{
+								"fontFamily": "Poppins",
+								"fontDefinitions": [
+									{
+										"path": "./assets/fonts/Poppins-Regular.ttf",
+										"weight": 400
+									},
+									{
+										"path": "./assets/fonts/Poppins-Medium.ttf",
+										"weight": 500
+									},
+									{
+										"path": "./assets/fonts/Poppins-SemiBold.ttf",
+										"weight": 600
+									},
+									{
+										"path": "./assets/fonts/Poppins-Bold.ttf",
+										"weight": 700
+									}
+								]
+							}
+						]
+					}
+				}
+			]
+		]
+	}
 }
