@@ -1,6 +1,4 @@
-import DateTimePicker, {
-	type DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
+import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { useConvexAuth, useMutation } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -9,16 +7,15 @@ import {
 	KeyboardAvoidingView,
 	type LayoutChangeEvent,
 	Platform,
-	Pressable,
 	ScrollView,
 	Switch,
-	TouchableOpacity,
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { BackButton, Button } from "~/components/ui/button";
+import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import {
 	Field,
 	FieldAccessory,
@@ -462,46 +459,13 @@ export default function NewEntryScreen() {
 						? plannedEndTime
 						: plannedDate;
 
-		if (Platform.OS === "ios") {
-			return (
-				<View className="absolute inset-0 z-50 justify-end">
-					<Pressable
-						className="absolute inset-0 bg-black/28"
-						onPress={closePicker}
-					/>
-					<View className="rounded-t-[32px] bg-white px-4 pt-3 pb-7">
-						<View className="mb-1 flex-row justify-end">
-							<TouchableOpacity
-								accessibilityLabel="Datumsauswahl schließen"
-								accessibilityRole="button"
-								hitSlop={8}
-								onPress={closePicker}
-								className="px-3 py-2"
-							>
-								<Text className="font-bold font-poppins text-16 text-primary">
-									Fertig
-								</Text>
-							</TouchableOpacity>
-						</View>
-						<View className="items-center">
-							<DateTimePicker
-								value={value}
-								mode={mode}
-								display="spinner"
-								onChange={handlePickerChange}
-							/>
-						</View>
-					</View>
-				</View>
-			);
-		}
-
 		return (
-			<DateTimePicker
+			<DateTimePickerSheet
+				visible
 				value={value}
 				mode={mode}
-				display="default"
 				onChange={handlePickerChange}
+				onClose={closePicker}
 			/>
 		);
 	};

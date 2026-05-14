@@ -1,6 +1,4 @@
-import DateTimePicker, {
-	type DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
+import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -11,13 +9,13 @@ import {
 	Platform,
 	Pressable,
 	ScrollView,
-	TouchableOpacity,
 	View,
 } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
+import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { X } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
@@ -162,46 +160,13 @@ function LoadedSessionEditScreen({
 					pickerTarget === "editStart" ? editStart : editEnd,
 				);
 
-		if (Platform.OS === "ios") {
-			return (
-				<View className="absolute inset-0 z-50 justify-end">
-					<Pressable
-						className="absolute inset-0 bg-black/30"
-						onPress={() => setPickerTarget(null)}
-					/>
-					<View className="rounded-t-[32px] bg-white px-4 pt-3 pb-7">
-						<View className="mb-1 flex-row justify-end">
-							<TouchableOpacity
-								accessibilityLabel="Auswahl schließen"
-								accessibilityRole="button"
-								hitSlop={8}
-								onPress={() => setPickerTarget(null)}
-								className="px-3 py-2"
-							>
-								<Text className="font-bold font-poppins text-16 text-primary">
-									Fertig
-								</Text>
-							</TouchableOpacity>
-						</View>
-						<View className="items-center">
-							<DateTimePicker
-								value={value}
-								mode={isDate ? "date" : "time"}
-								display="spinner"
-								onChange={handlePickerChange}
-							/>
-						</View>
-					</View>
-				</View>
-			);
-		}
-
 		return (
-			<DateTimePicker
+			<DateTimePickerSheet
+				visible
 				value={value}
 				mode={isDate ? "date" : "time"}
-				display="default"
 				onChange={handlePickerChange}
+				onClose={() => setPickerTarget(null)}
 			/>
 		);
 	};

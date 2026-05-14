@@ -194,7 +194,7 @@ const syncSessionDayEntry = async (
 		return dayEntryId;
 	}
 
-	const existingEntry = await ctx.db.get(session.dayEntryId);
+	const existingEntry = await ctx.db.get("dayEntries", session.dayEntryId);
 	if (
 		!existingEntry ||
 		existingEntry.ownerTokenIdentifier !== session.ownerTokenIdentifier
@@ -207,7 +207,7 @@ const syncSessionDayEntry = async (
 		return dayEntryId;
 	}
 
-	await ctx.db.patch(session.dayEntryId, {
+	await ctx.db.patch("dayEntries", session.dayEntryId, {
 		dayKey: session.dateKey,
 		title: getSessionDayEntryTitle(plan, session),
 		time: session.startTime,
@@ -690,9 +690,9 @@ export const replaceGeneratedSessions = internalMutation({
 			.take(20);
 		for (const session of existingSessions) {
 			if (session.dayEntryId) {
-				const dayEntry = await ctx.db.get(session.dayEntryId);
+				const dayEntry = await ctx.db.get("dayEntries", session.dayEntryId);
 				if (dayEntry) {
-					await ctx.db.delete(session.dayEntryId);
+					await ctx.db.delete("dayEntries", session.dayEntryId);
 				}
 			}
 			await ctx.db.delete("learningPlanSessions", session._id);
@@ -708,7 +708,10 @@ export const replaceGeneratedSessions = internalMutation({
 				createdAt: now,
 				updatedAt: now,
 			});
-			const createdSession = await ctx.db.get(sessionId);
+			const createdSession = await ctx.db.get(
+				"learningPlanSessions",
+				sessionId,
+			);
 			if (createdSession) {
 				await syncSessionDayEntry(ctx, plan, createdSession);
 			}
@@ -740,7 +743,7 @@ export const updateSession = mutation({
 		if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throw new Error("Lerntag nicht gefunden.");
 		}
-		const plan = await ctx.db.get(session.learningPlanId);
+		const plan = await ctx.db.get("learningPlans", session.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throw new Error("Lernplan nicht gefunden.");
 		}
@@ -756,7 +759,7 @@ export const updateSession = mutation({
 			durationMinutes: args.durationMinutes,
 			updatedAt: Date.now(),
 		});
-		const updatedSession = await ctx.db.get(args.id);
+		const updatedSession = await ctx.db.get("learningPlanSessions", args.id);
 		if (updatedSession) {
 			await syncSessionDayEntry(ctx, plan, updatedSession);
 		}
@@ -819,7 +822,7 @@ export const addSession = mutation({
 			createdAt: now,
 			updatedAt: now,
 		});
-		const createdSession = await ctx.db.get(sessionId);
+		const createdSession = await ctx.db.get("learningPlanSessions", sessionId);
 		if (createdSession) {
 			await syncSessionDayEntry(ctx, plan, createdSession);
 		}
@@ -834,7 +837,7 @@ export const syncSessionsToCalendar = mutation({
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
 			await requireOwnerTokenIdentifierForMutation(ctx);
-		const plan = await ctx.db.get(args.learningPlanId);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throw new Error("Lernplan nicht gefunden.");
 		}
@@ -863,19 +866,19 @@ export const setSessionCompleted = mutation({
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
 			await requireOwnerTokenIdentifierForMutation(ctx);
-		const session = await ctx.db.get(args.sessionId);
+		const session = await ctx.db.get("learningPlanSessions", args.sessionId);
 		if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throw new Error("Lernblock nicht gefunden.");
 		}
 
-		await ctx.db.patch(args.sessionId, {
+		await ctx.db.patch("learningPlanSessions", args.sessionId, {
 			completed: args.completed,
 			updatedAt: Date.now(),
 		});
 		if (session.dayEntryId) {
-			const dayEntry = await ctx.db.get(session.dayEntryId);
+			const dayEntry = await ctx.db.get("dayEntries", session.dayEntryId);
 			if (dayEntry?.ownerTokenIdentifier === ownerTokenIdentifier) {
-				await ctx.db.patch(session.dayEntryId, {
+				await ctx.db.patch("dayEntries", session.dayEntryId, {
 					completed: args.completed,
 				});
 			}

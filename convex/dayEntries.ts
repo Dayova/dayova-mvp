@@ -170,7 +170,7 @@ export const listByDayKeys = query({
 
 			let plan = planCache.get(session.learningPlanId);
 			if (plan === undefined) {
-				plan = await ctx.db.get(session.learningPlanId);
+				plan = await ctx.db.get("learningPlans", session.learningPlanId);
 				planCache.set(session.learningPlanId, plan);
 			}
 			if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) continue;

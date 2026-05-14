@@ -17,4 +17,4 @@ onlyBuiltDependencies:
   - tesseract.js
 
 patchedDependencies:
-  expo-keep-awake@15.0.8: patches/expo-keep-awake@15.0.8.patch
+  oxc-parser@0.130.0: patches/oxc-parser@0.130.0.patch

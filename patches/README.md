@@ -1,262 +1,116 @@
-# Dependency Patches
+# Package Patches
 
-This directory contains pnpm-native dependency patches registered in
-`pnpm-workspace.yaml` under `patchedDependencies`.
+This directory contains patches applied by `pnpm` through the
+`patchedDependencies` section in `pnpm-workspace.yaml`.
 
-Do not use `patch-package` for these patches. This project uses pnpm, and pnpm
-applies these patch files during `pnpm install` without a `postinstall` hook.
+When a patched package is installed, pnpm applies the matching `.patch` file to
+the package contents in `node_modules`. Keep each patch documented here so future
+dependency updates can decide whether the patch is still needed.
 
-## `expo-keep-awake@15.0.8.patch`
+## `oxc-parser@0.130.0.patch`
 
-### Summary
+### Why This Patch Exists
 
-This patch prevents an Expo development-time keep-awake failure from becoming an
-unhandled promise rejection surfaced by the React Native / Expo error overlay.
+`pnpm check:unused` runs Knip, and Knip 6.13.1 uses `oxc-parser` to parse
+JavaScript and TypeScript files. On Node.js 24.14.1, `oxc-parser@0.130.0`
+reports that its experimental raw-transfer parser is supported, so Knip enables
+it.
 
-This was observed as a runtime error during development. The evidence does not
-show a native process crash. The concern is that an optional keep-awake failure
-is shown as an app-level error and can interrupt development or manual testing.
-
-The patch changes `expo-keep-awake/src/index.ts` inside `useKeepAwake` from:
-
-```ts
-activateKeepAwakeAsync(tagOrDefault).then(() => {
-  // ...
-});
-```
-
-to:
-
-```ts
-activateKeepAwakeAsync(tagOrDefault)
-  .then(() => {
-    // ...
-  })
-  .catch((error) => {
-    if (typeof __DEV__ !== "undefined" && __DEV__) {
-      console.warn(
-        "[expo-keep-awake] Unable to activate keep awake. This optional development feature failed, so the device may sleep normally.",
-        error,
-      );
-    }
-  });
-```
-
-This means: if native keep-awake activation fails, the hook no longer lets that
-failure escape as an unhandled promise rejection. The device may still sleep
-normally; the app should continue.
-
-In development builds, the failure is still logged with `console.warn` so a
-developer can see that the optional keep-awake feature failed. The warning is
-not intended as an end-user notification and should not be shown in production.
-
-### Original Symptom
-
-The app reported this development runtime error:
+The raw-transfer path allocates a transfer buffer with this size:
 
 ```text
-ERROR [Error: Uncaught (in promise, id: 0) Error: Unable to activate keep awake]
+BLOCK_SIZE + BLOCK_ALIGN
+= 2,147,483,632 + 4,294,967,296
+= 6,442,450,928 bytes
 ```
 
-The stack pointed into Expo module error construction:
+That is roughly 6 GiB of virtual address space per parse operation. On this
+Windows development environment, the support check returns `true`, but the real
+allocation fails immediately:
 
 ```text
-expo-modules-core/src/errors/CodedError.ts
+RangeError: Array buffer allocation failed
+    at new ArrayBuffer
+    at createBuffer (.../oxc-parser/src-js/raw-transfer/common.js:276:23)
 ```
 
-There was no evidence that the app process terminated, and there was no
-app-level use of `expo-keep-awake`, `useKeepAwake`,
-`activateKeepAwake`, or `activateKeepAwakeAsync`.
+The first observed crash happened while Knip was parsing `babel.config.js`, so
+Knip failed before it could report unused files, exports, or dependencies.
 
-### Root Cause
+### What The Patch Changes
 
-Expo's dev launcher/dev tools wrapper imports `expo-keep-awake` when it is
-available. In Expo SDK 54, this comes from Expo's own dev wrapper, roughly:
+The patch updates `src-js/raw-transfer/supported.js` inside `oxc-parser`.
 
-```ts
-const { useKeepAwake, ExpoKeepAwakeTag } = require("expo-keep-awake");
-return () => useKeepAwake(ExpoKeepAwakeTag, {
-  suppressDeactivateWarnings: true,
-});
-```
+Before the patch, `rawTransferSupported()` returned `true` when:
 
-That hook calls `activateKeepAwakeAsync(tagOrDefault).then(...)` but does not
-attach a rejection handler. If the native module rejects with `"Unable to
-activate keep awake"`, JavaScript sees an unhandled promise rejection. In
-development, Expo/React Native can surface that as a redbox/error overlay.
+- the runtime looked compatible, and
+- the native binding reported raw-transfer support.
 
-The important point: this is not business logic and not part of the calendar
-feature. It is development/runtime infrastructure trying to keep the screen
-awake while the app is running.
+After the patch, it also performs a real allocation probe for
+`BLOCK_SIZE + BLOCK_ALIGN`. If that allocation throws, raw transfer is treated as
+unsupported and callers fall back to the normal `oxc-parser` parser path.
 
-### Why We Patch It
+The patch does not change parsing semantics. It only prevents selecting an
+experimental fast path that cannot actually allocate its required buffer in this
+environment.
 
-The app should not show an app-level runtime error because an optional screen
-wake-lock could not be activated.
+### Why This Approach
 
-Keep-awake is a convenience feature. If activation fails, the worst acceptable
-outcome is that the device is allowed to sleep normally. It should not be
-presented as a product/runtime failure during app startup, navigation, or UI
-interactions.
+This keeps Knip's normal plugin coverage intact. Disabling Knip plugins such as
+Babel would avoid the first crash site, but it would also reduce unused-code
+coverage and would not address later source-file parsing that could hit the same
+raw-transfer path.
 
-The patch preserves the successful path exactly:
+The allocation probe is intentionally local to `oxc-parser`'s existing support
+check. That means any consumer of `rawTransferSupported()` gets the safer answer,
+while consumers that do not opt into raw transfer are unaffected.
 
-- If `activateKeepAwakeAsync` succeeds, listener registration still runs.
-- If the component unmounts, deactivation logic remains unchanged.
-- If activation fails, the unhandled rejection is suppressed.
-- In development, failed activation is still reported with `console.warn`.
+### How To Verify
 
-### Why This Patch Is Safe
-
-This patch does not change application data, navigation, Convex queries,
-authentication, or rendering logic.
-
-The behavioral tradeoff is narrow:
-
-- Before the patch: failed keep-awake activation can surface as an unhandled
-  promise rejection / Expo error overlay.
-- After the patch: failed keep-awake activation is handled by the hook and logged
-  as a development-only warning.
-
-Handling activation failure is acceptable because keep-awake is optional. The
-screen may sleep according to OS settings, but the optional keep-awake failure
-is not promoted to an app-level error.
-
-### Known Limitations
-
-This patch does not make the native keep-awake module succeed.
-
-If the underlying platform, emulator, dev client, or native module state cannot
-activate keep-awake, that condition can still exist. The patch only prevents
-that optional failure from becoming an unhandled promise rejection surfaced as
-an app-level development runtime error.
-
-The patch intentionally logs only in development. Do not throw from the catch
-handler, and do not add user-facing UI for this failure unless keep-awake becomes
-a product requirement.
-
-### Why pnpm Native Patches Are Used
-
-The project uses pnpm and has `pnpm-lock.yaml`. `patch-package` expects npm or
-yarn lockfiles and produced this error when attempted:
-
-```text
-No package-lock.json, npm-shrinkwrap.json, or yarn.lock file.
-```
-
-Therefore this patch is managed by pnpm's built-in patch system:
-
-```yaml
-patchedDependencies:
-  expo-keep-awake@15.0.8: patches/expo-keep-awake@15.0.8.patch
-```
-
-This is why `package.json` should not contain a `postinstall` script for
-`patch-package`, and `patch-package` should not be installed just for this.
-
-### How To Verify The Patch Is Applied
-
-After `pnpm install`, verify pnpm resolves `expo-keep-awake` to a patched package
-and that the patched source includes the development warning:
+Run:
 
 ```sh
-node -e "const p=require.resolve('expo-keep-awake/package.json',{paths:[require.resolve('expo/package.json')]}); const fs=require('fs'); const path=require('path'); const src=fs.readFileSync(path.join(path.dirname(p),'src/index.ts'),'utf8'); console.log(p); console.log(src.includes('[expo-keep-awake] Unable to activate keep awake'));"
+pnpm check:unused
 ```
 
-Expected output:
+Expected result: Knip completes normally. If there are unused-code findings, Knip
+may still exit non-zero for those findings, but it should not crash with
+`RangeError: Array buffer allocation failed`.
 
-```text
-...expo-keep-awake...
-true
-```
-
-Also run:
-
-```sh
-pnpm typecheck
-```
-
-### When This Patch Can Be Removed
-
-Remove this patch only when all of these are true:
-
-1. The installed `expo-keep-awake` version no longer has an unhandled
-   `activateKeepAwakeAsync(...).then(...)` path in `useKeepAwake`.
-2. Expo's dev wrapper either no longer calls `useKeepAwake`, handles activation
-   failure itself, or depends on a fixed `expo-keep-awake` implementation.
-3. The app has been run in the environment that originally reproduced the error
-   and no longer logs:
-
-```text
-Unable to activate keep awake
-Uncaught (in promise)
-```
-
-4. `pnpm install` succeeds without needing this `patchedDependencies` entry.
-
-### How To Remove It
-
-1. Upgrade Expo / `expo-keep-awake` to the candidate fixed version.
-2. Inspect the installed package:
-
-```sh
-node -e "const p=require.resolve('expo-keep-awake/package.json',{paths:[require.resolve('expo/package.json')]}); console.log(p)"
-```
-
-3. Confirm `useKeepAwake` handles rejected activation promises or no longer uses
-   the problematic promise chain.
-4. Delete this line from `pnpm-workspace.yaml`:
-
-```yaml
-patchedDependencies:
-  expo-keep-awake@15.0.8: patches/expo-keep-awake@15.0.8.patch
-```
-
-If there are no remaining patched dependencies, remove the entire
-`patchedDependencies` block.
-
-5. Delete `patches/expo-keep-awake@15.0.8.patch`.
-6. Run:
+To specifically confirm the patch is active after reinstalling dependencies:
 
 ```sh
 pnpm install
-pnpm typecheck
+pnpm check:unused
 ```
 
-7. Restart Metro with a cleared cache:
+### How To Update Or Remove
+
+When upgrading Knip or `oxc-parser`, check whether upstream has fixed the
+raw-transfer support detection. The patch can be removed when one of these is
+true:
+
+- `oxc-parser` no longer reports raw transfer as supported unless the required
+  transfer buffer can actually be allocated.
+- Knip stops enabling `experimentalRawTransfer` based only on
+  `rawTransferSupported()`.
+- The project pins a Node/runtime combination where `pnpm check:unused` passes
+  without this patch.
+
+Removal checklist:
+
+1. Delete `patches/oxc-parser@0.130.0.patch`.
+2. Remove the `oxc-parser@0.130.0` entry from `patchedDependencies` in
+   `pnpm-workspace.yaml`.
+3. Run `pnpm install` to update `pnpm-lock.yaml`.
+4. Run `pnpm check:unused` to confirm Knip still completes normally.
+
+If the patch must be regenerated for a new `oxc-parser` version, use:
 
 ```sh
-pnpm expo:start --clear
+pnpm patch oxc-parser@<version>
+# edit src-js/raw-transfer/supported.js in the temporary patch directory
+pnpm patch-commit "<temporary patch directory printed by pnpm>"
+pnpm check:unused
 ```
 
-8. Re-test the app in the environment that originally reproduced the issue.
-
-### When Not To Remove It
-
-Do not remove this patch just because:
-
-- The error is not currently visible on one device.
-- A clean Metro cache temporarily hides the issue.
-- A native rebuild changes timing.
-- The app itself does not import `expo-keep-awake`.
-
-The original call path was through Expo's dev/runtime wrapper, not app code.
-Removal should be based on the dependency implementation being fixed or no
-longer used.
-
-### Recreating Or Updating The Patch
-
-Use pnpm's patch workflow:
-
-```sh
-pnpm patch expo-keep-awake@15.0.8
-```
-
-Edit the temporary package directory printed by pnpm, then commit it:
-
-```sh
-pnpm patch-commit "<path printed by pnpm patch>"
-```
-
-Do not manually edit files inside `node_modules/.pnpm/...` as the permanent
-fix. Direct `node_modules` edits are overwritten by install operations.

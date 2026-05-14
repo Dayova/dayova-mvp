@@ -8,12 +8,6 @@ import { Bell, Route2 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 
-type LearningPlanItem = {
-	id: string;
-	title: string;
-	progressPercent: number;
-};
-
 function ProgressRing({ progressPercent }: { progressPercent: number }) {
 	const size = 52;
 	const strokeWidth = 4;
@@ -56,12 +50,16 @@ function ProgressRing({ progressPercent }: { progressPercent: number }) {
 }
 
 function LearningPlanCard({
-	title,
+	subject,
+	examTypeLabel,
 	progressPercent,
 }: {
-	title: string;
+	subject: string;
+	examTypeLabel: string;
 	progressPercent: number;
 }) {
+	const title = `${subject} ${examTypeLabel}`.trim();
+
 	return (
 		<TouchableOpacity
 			activeOpacity={0.88}
@@ -101,10 +99,9 @@ export default function PlansScreen() {
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningPlans = useQuery(
-		((api as any)["learningPlans"]?.list ??
-			api.dayEntries.listByDayKeys) as any,
+		api.learningPlans.listOverview,
 		user && isConvexAuthenticated ? {} : "skip",
-	) as LearningPlanItem[] | undefined;
+	);
 
 	return (
 		<View className="flex-1 bg-[#F6F4F7]">
@@ -143,7 +140,8 @@ export default function PlansScreen() {
 					{learningPlans?.map((plan) => (
 						<LearningPlanCard
 							key={plan.id}
-							title={plan.title}
+							subject={plan.subject}
+							examTypeLabel={plan.examTypeLabel}
 							progressPercent={plan.progressPercent}
 						/>
 					)) ?? null}

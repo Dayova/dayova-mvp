@@ -1,0 +1,35 @@
+diff --git a/src-js/raw-transfer/supported.js b/src-js/raw-transfer/supported.js
+index 33d5e2b05af2b881a2e1ddf543508ace709c251e..9eab3409ba3199aab2f9f408b4fae3b787c93142 100644
+--- a/src-js/raw-transfer/supported.js
++++ b/src-js/raw-transfer/supported.js
+@@ -1,4 +1,5 @@
+ import { rawTransferSupported as rawTransferSupportedBinding } from "../bindings.js";
++import { BLOCK_ALIGN, BLOCK_SIZE } from "../generated/constants.js";
+ 
+ let rawTransferIsSupported = null;
+ 
+@@ -19,11 +20,23 @@ let rawTransferIsSupported = null;
+  */
+ export function rawTransferSupported() {
+   if (rawTransferIsSupported === null) {
+-    rawTransferIsSupported = rawTransferRuntimeSupported() && rawTransferSupportedBinding();
++    rawTransferIsSupported =
++      rawTransferRuntimeSupported() &&
++      rawTransferSupportedBinding() &&
++      rawTransferBufferAllocationSupported();
+   }
+   return rawTransferIsSupported;
+ }
+ 
++function rawTransferBufferAllocationSupported() {
++  try {
++    new ArrayBuffer(BLOCK_SIZE + BLOCK_ALIGN);
++    return true;
++  } catch {
++    return false;
++  }
++}
++
+ // Checks copied from:
+ // https://github.com/unjs/std-env/blob/ab15595debec9e9115a9c1d31bc7597a8e71dbfd/src/runtimes.ts
+ // MIT license: https://github.com/unjs/std-env/blob/ab15595debec9e9115a9c1d31bc7597a8e71dbfd/LICENCE

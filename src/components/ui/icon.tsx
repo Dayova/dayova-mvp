@@ -30,23 +30,18 @@ import {
 	ViewOffIcon,
 	ArrowDown01Icon,
 	ScanImageIcon,
-	Atom01Icon,
-	BookAIcon,
 	Calculator01Icon,
 	Chemistry01Icon,
 	CodeIcon,
 	Dna01Icon,
 	EarthIcon,
 	FootballIcon,
-	GlobeIcon,
 	LanguageCircleIcon,
 	MapsCircle01Icon,
 	Mic01Icon,
 	MusicNote01Icon,
 	PaintBrush01Icon,
 	PencilIcon,
-	Presentation01Icon,
-	RunningShoesIcon,
 	TimeManagementCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type HugeiconsProps } from "@hugeicons/react-native";
@@ -58,11 +53,9 @@ const createIcon = (icon: HugeiconsProps["icon"]) => (props: IconProps) => (
 );
 
 export const Attachment = createIcon(Attachment01Icon);
-export const Atom = createIcon(Atom01Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
 export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
 export const Bell = createIcon(Notification01Icon);
-export const BookA = createIcon(BookAIcon);
 export const BookOpen = createIcon(BookOpen01Icon);
 export const CalendarAdd = createIcon(CalendarAdd01Icon);
 export const CalendarDays = createIcon(Calendar03Icon);
@@ -80,7 +73,6 @@ export const Earth = createIcon(EarthIcon);
 export const Eye = createIcon(ViewIcon);
 export const EyeOff = createIcon(ViewOffIcon);
 export const Football = createIcon(FootballIcon);
-export const Globe = createIcon(GlobeIcon);
 export const GraduationCap = createIcon(Mortarboard01Icon);
 export const Home = createIcon(Home02Icon);
 export const Language = createIcon(LanguageCircleIcon);
@@ -94,10 +86,8 @@ export const NotebookPen = createIcon(NotebookIcon);
 export const PaintBrush = createIcon(PaintBrush01Icon);
 export const Pencil = createIcon(PencilIcon);
 export const Plus = createIcon(PlusSignIcon);
-export const Presentation = createIcon(Presentation01Icon);
 export const PropertyEdit = createIcon(PropertyEditIcon);
 export const Route2 = createIcon(Route02Icon);
-export const RunningShoes = createIcon(RunningShoesIcon);
 export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(Settings01Icon);
 export const ShieldCheck = createIcon(ShieldCheckIcon);

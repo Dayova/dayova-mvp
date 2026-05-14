@@ -1,6 +1,7 @@
-import DateTimePicker, {
+import {
+	DateTimePickerSheet,
 	type DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
+} from "~/components/ui/date-time-picker-sheet";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -1008,64 +1009,21 @@ export default function WelcomeScreen() {
 
 			{showBirthDatePicker &&
 			activeStep.kind === "profileInput" &&
-			activeStep.field === "birthDate" &&
-			Platform.OS === "ios" ? (
-				<View className="absolute inset-0 z-50 justify-end">
-					<TouchableOpacity
-						className="absolute inset-0 bg-black/28"
-						activeOpacity={1}
-						onPress={() => setShowBirthDatePicker(false)}
-					/>
-					<View className="rounded-t-[32px] bg-white px-4 pt-3 pb-7">
-						<View className="mb-1 flex-row justify-end">
-							<TouchableOpacity
-								onPress={() => setShowBirthDatePicker(false)}
-								className="px-3 py-2"
-							>
-								<Text className="font-bold font-poppins text-16 text-primary">
-									Fertig
-								</Text>
-							</TouchableOpacity>
-						</View>
-						<View className="items-center">
-							<DateTimePicker
-								value={selectedBirthDate ?? new Date(2010, 0, 1)}
-								mode="date"
-								display="spinner"
-								maximumDate={new Date()}
-								onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
-									if (event.type === "dismissed" || !selectedDate) return;
-									setAnswer("birthDate", formatBirthDate(selectedDate));
-									if (errors.birthDate) {
-										setErrors((current) => ({
-											...current,
-											birthDate: undefined,
-										}));
-									}
-								}}
-							/>
-						</View>
-					</View>
-				</View>
-			) : null}
-
-			{showBirthDatePicker &&
-			activeStep.kind === "profileInput" &&
-			activeStep.field === "birthDate" &&
-			Platform.OS === "android" ? (
-				<DateTimePicker
+			activeStep.field === "birthDate" ? (
+				<DateTimePickerSheet
+					visible
 					value={selectedBirthDate ?? new Date(2010, 0, 1)}
 					mode="date"
-					display="default"
 					maximumDate={new Date()}
 					onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
-						setShowBirthDatePicker(false);
+						if (Platform.OS === "android") setShowBirthDatePicker(false);
 						if (event.type === "dismissed" || !selectedDate) return;
 						setAnswer("birthDate", formatBirthDate(selectedDate));
 						if (errors.birthDate) {
 							setErrors((current) => ({ ...current, birthDate: undefined }));
 						}
 					}}
+					onClose={() => setShowBirthDatePicker(false)}
 				/>
 			) : null}
 		</KeyboardAvoidingView>

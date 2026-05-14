@@ -9,7 +9,6 @@
 		"platforms": ["ios", "android"],
 		"icon": "./assets/dayova-logo.png",
 		"userInterfaceStyle": "light",
-		"newArchEnabled": true,
 		"experiments": {
 			"reactCompiler": true
 		},
@@ -17,11 +16,6 @@
 			"eas": {
 				"projectId": "d3d06b26-c8da-4192-a50d-e1bb0ca4902c"
 			}
-		},
-		"splash": {
-			"image": "./assets/dayova-logo.png",
-			"resizeMode": "contain",
-			"backgroundColor": "#ffffff"
 		},
 		"ios": {
 			"supportsTablet": true,
@@ -37,7 +31,6 @@
 				"foregroundImage": "./assets/dayova-logo.png",
 				"backgroundColor": "#ffffff"
 			},
-			"edgeToEdgeEnabled": true,
 			"predictiveBackGestureEnabled": true,
 			"package": "com.dayova",
 			"permissions": ["android.permission.RECORD_AUDIO"]
@@ -53,7 +46,6 @@
 					"photosPermission": "Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst."
 				}
 			],
-			"@react-native-community/datetimepicker",
 			"./plugins/withNinjaLongPaths",
 			"./plugins/withAndroidPackagingOptions",
 			[
@@ -90,6 +82,15 @@
 							}
 						]
 					}
+				}
+			],
+			"expo-secure-store",
+			[
+				"expo-splash-screen",
+				{
+					"image": "./assets/dayova-logo.png",
+					"resizeMode": "contain",
+					"backgroundColor": "#ffffff"
 				}
 			]
 		]

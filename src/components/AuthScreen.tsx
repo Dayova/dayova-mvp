@@ -1,6 +1,7 @@
-import DateTimePicker, {
+import {
+	DateTimePickerSheet,
 	type DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
+} from "~/components/ui/date-time-picker-sheet";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -1074,44 +1075,14 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 				</ScrollView>
 			</View>
 
-			{showBirthDatePicker && isRegisterMode && Platform.OS === "ios" ? (
-				<View className="absolute inset-0 z-50 justify-end">
-					<TouchableOpacity
-						className="absolute inset-0 bg-black/28"
-						activeOpacity={1}
-						onPress={closeBirthDatePicker}
-					/>
-					<View className="rounded-t-[32px] bg-white px-4 pt-3 pb-7">
-						<View className="mb-1 flex-row justify-end">
-							<TouchableOpacity
-								onPress={closeBirthDatePicker}
-								className="px-3 py-2"
-							>
-								<Text className="font-bold font-poppins text-16 text-primary">
-									Fertig
-								</Text>
-							</TouchableOpacity>
-						</View>
-						<View className="items-center">
-							<DateTimePicker
-								value={birthDateValue ?? new Date(2000, 0, 1)}
-								mode="date"
-								display="spinner"
-								maximumDate={new Date()}
-								onChange={handleBirthDateChange}
-							/>
-						</View>
-					</View>
-				</View>
-			) : null}
-
-			{showBirthDatePicker && isRegisterMode && Platform.OS === "android" ? (
-				<DateTimePicker
+			{showBirthDatePicker && isRegisterMode ? (
+				<DateTimePickerSheet
+					visible
 					value={birthDateValue ?? new Date(2000, 0, 1)}
 					mode="date"
-					display="default"
 					maximumDate={new Date()}
 					onChange={handleBirthDateChange}
+					onClose={closeBirthDatePicker}
 				/>
 			) : null}
 		</KeyboardAvoidingView>

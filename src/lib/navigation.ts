@@ -1,7 +1,9 @@
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import type { Href, Router } from "expo-router";
+import type { Href } from "expo-router";
+import { useFocusEffect, useNavigation } from "expo-router/react-navigation";
 import { useCallback, useRef } from "react";
 import { BackHandler, Platform } from "react-native";
+
+type Router = typeof import("expo-router").router;
 
 const BACK_REMOVAL_ACTION_TYPES = new Set(["GO_BACK", "POP", "POP_TO_TOP"]);
 

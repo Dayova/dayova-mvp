@@ -99,10 +99,8 @@ export default function HomeScreen() {
 		api.learningPlans.setSessionCompleted,
 	);
 	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
-	const [isReturningToToday, setIsReturningToToday] = useState(false);
 	const dayCarouselRef = useRef<DayCarouselHandle | null>(null);
 	const today = useCurrentLocalDay();
-	const todayKey = getDayKey(today);
 	const initialDayKey = (() => {
 		const initialDate =
 			typeof params.dayKey === "string" ? parseDayKey(params.dayKey) : null;
@@ -127,7 +125,6 @@ export default function HomeScreen() {
 			: "skip",
 	);
 	const entriesByDay = entriesByDayResult ?? EMPTY_ENTRIES_BY_DAY;
-	const isSelectedToday = selectedDayKey === todayKey;
 	const selectedEntries = useMemo(
 		() => selectedDayQueryKeys.flatMap((dayKey) => entriesByDay[dayKey] ?? []),
 		[entriesByDay, selectedDayQueryKeys],
@@ -221,16 +218,6 @@ export default function HomeScreen() {
 		});
 	};
 
-	const returnToToday = () => {
-		if (isReturningToToday) return;
-
-		setIsReturningToToday(true);
-		setSelectedDayKey(todayKey);
-		requestAnimationFrame(() => {
-			dayCarouselRef.current?.scrollToDay(todayKey, true);
-		});
-	};
-
 	useEffect(() => {
 		if (typeof params.dayKey === "string" && params.dayKey) {
 			const nextDate = parseDayKey(params.dayKey);
@@ -245,16 +232,6 @@ export default function HomeScreen() {
 			return () => cancelAnimationFrame(frame);
 		}
 	}, [params.dayKey]);
-
-	useEffect(() => {
-		if (!isReturningToToday || selectedDayKey !== todayKey) return;
-
-		const timeoutId = setTimeout(() => {
-			setIsReturningToToday(false);
-		}, 120);
-
-		return () => clearTimeout(timeoutId);
-	}, [isReturningToToday, selectedDayKey, todayKey]);
 
 	return (
 		<View className="flex-1" style={{ backgroundColor: "#F6F4F7" }}>

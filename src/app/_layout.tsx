@@ -1,7 +1,7 @@
 import "~/global.css";
 import { ClerkProvider, useAuth as useClerkAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
-import { ThemeProvider } from "@react-navigation/native";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
@@ -11,8 +11,10 @@ import {
 	useRootNavigationState,
 	useRouter,
 } from "expo-router";
+import { ThemeProvider } from "expo-router/react-navigation";
 import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
 import { NAV_THEME } from "~/lib/theme";
@@ -64,16 +66,23 @@ export default function RootLayout() {
 	}
 
 	return (
-		<ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
-			<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
-				<ThemeProvider value={theme}>
-					<OnboardingProvider>
-						<AuthProvider>
-							<AppNavigator />
-						</AuthProvider>
-					</OnboardingProvider>
-				</ThemeProvider>
-			</ConvexProviderWithClerk>
-		</ClerkProvider>
+		<GestureHandlerRootView style={{ flex: 1 }}>
+			<ClerkProvider
+				publishableKey={clerkPublishableKey}
+				tokenCache={tokenCache}
+			>
+				<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
+					<ThemeProvider value={theme}>
+						<BottomSheetModalProvider>
+							<OnboardingProvider>
+								<AuthProvider>
+									<AppNavigator />
+								</AuthProvider>
+							</OnboardingProvider>
+						</BottomSheetModalProvider>
+					</ThemeProvider>
+				</ConvexProviderWithClerk>
+			</ClerkProvider>
+		</GestureHandlerRootView>
 	);
 }

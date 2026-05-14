@@ -1,7 +1,12 @@
-import type { ReactNode } from "react";
+import {
+	BottomSheetBackdrop,
+	type BottomSheetBackdropProps,
+	BottomSheetModal,
+	BottomSheetScrollView,
+} from "@gorhom/bottom-sheet";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
 import {
 	Pressable,
-	ScrollView,
 	TouchableOpacity,
 	useWindowDimensions,
 	View,
@@ -29,33 +34,58 @@ function SelectSheet<T extends string>({
 	onClose,
 	renderOptionIcon,
 }: SelectSheetProps<T>) {
+	const sheetRef = useRef<BottomSheetModal>(null);
 	const insets = useSafeAreaInsets();
 	const { height: windowHeight } = useWindowDimensions();
 
-	if (!visible) return null;
-
 	const sheetMaxHeight = Math.min(windowHeight * 0.68, 560);
+	const snapPoints = useMemo(() => [sheetMaxHeight], [sheetMaxHeight]);
+
+	useEffect(() => {
+		if (visible) {
+			sheetRef.current?.present();
+			return;
+		}
+
+		sheetRef.current?.dismiss();
+	}, [visible]);
+
+	const renderBackdrop = useCallback(
+		(props: BottomSheetBackdropProps) => (
+			<BottomSheetBackdrop
+				{...props}
+				appearsOnIndex={0}
+				disappearsOnIndex={-1}
+				opacity={0.28}
+				pressBehavior="close"
+			/>
+		),
+		[],
+	);
 
 	return (
-		<View className="absolute inset-0 z-50 justify-end">
-			<Pressable className="absolute inset-0 bg-black/28" onPress={onClose} />
+		<BottomSheetModal
+			ref={sheetRef}
+			backgroundStyle={{ backgroundColor: "#FFFFFF" }}
+			backdropComponent={renderBackdrop}
+			enableDynamicSizing={false}
+			enablePanDownToClose
+			handleIndicatorStyle={{ backgroundColor: "#D7D8DE", width: 44 }}
+			onDismiss={onClose}
+			snapPoints={snapPoints}
+		>
 			<View
-				className="w-full rounded-t-[30px] bg-white px-5 pt-4"
-				style={{
-					maxHeight: sheetMaxHeight,
-					paddingBottom: Math.max(insets.bottom + 18, 28),
-					borderWidth: 1,
-					borderColor: "rgba(17,24,39,0.06)",
-					boxShadow: "0 -18px 42px rgba(17, 24, 39, 0.14)",
-				}}
+				className="flex-1 bg-white px-5 pt-1"
+				style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}
 			>
-				<View className="mb-4 items-center">
-					<View className="h-1 w-11 rounded-full bg-[#D7D8DE]" />
-				</View>
 				<View className="mb-3 w-full flex-row items-center justify-between">
 					<Text
 						className="font-poppins font-semibold text-text"
-						style={{ fontSize: 17, lineHeight: 22, includeFontPadding: false }}
+						style={{
+							fontSize: 17,
+							lineHeight: 22,
+							includeFontPadding: false,
+						}}
 					>
 						{title}
 					</Text>
@@ -72,9 +102,12 @@ function SelectSheet<T extends string>({
 						</Text>
 					</TouchableOpacity>
 				</View>
-				<ScrollView
-					showsVerticalScrollIndicator={false}
+				<BottomSheetScrollView
+					bounces={false}
 					contentContainerStyle={{ paddingBottom: 6, gap: 10 }}
+					nestedScrollEnabled
+					showsVerticalScrollIndicator={false}
+					style={{ flex: 1 }}
 				>
 					{options.map((option) => {
 						const isSelected = selectedValue === option;
@@ -122,9 +155,9 @@ function SelectSheet<T extends string>({
 							</Pressable>
 						);
 					})}
-				</ScrollView>
+				</BottomSheetScrollView>
 			</View>
-		</View>
+		</BottomSheetModal>
 	);
 }
 
