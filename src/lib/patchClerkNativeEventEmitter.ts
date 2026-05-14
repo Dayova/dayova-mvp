@@ -1,8 +1,28 @@
-import { TurboModuleRegistry } from "react-native";
+import { Platform, TurboModuleRegistry } from "react-native";
 
 type EventEmitterCompatibleNativeModule = {
 	addListener?: (eventName: string) => void;
 	removeListeners?: (count: number) => void;
+};
+
+const clerkExpoJsOnlyModule = {
+	configure: () =>
+		Promise.reject(
+			new Error("Native ClerkExpo is disabled; Dayova uses Clerk JS auth."),
+		),
+	getSession: () => Promise.resolve(null),
+	getClientToken: () => Promise.resolve(null),
+	signOut: () => Promise.resolve(),
+	presentAuth: () =>
+		Promise.reject(
+			new Error("Native Clerk auth views are disabled in this app."),
+		),
+	presentUserProfile: () =>
+		Promise.reject(
+			new Error("Native Clerk profile views are disabled in this app."),
+		),
+	addListener: () => {},
+	removeListeners: () => {},
 };
 
 type MutableTurboModuleRegistry = {
@@ -40,6 +60,13 @@ function addEventEmitterHooks(module: unknown) {
 }
 
 registry.get = (name: string) => {
+	if (name === "ClerkExpo" && Platform.OS === "ios") {
+		// Dayova uses Clerk through the JS SDK. Keeping the iOS ClerkExpo TurboModule
+		// visible makes @clerk/expo configure ClerkKit during production startup, which
+		// can abort under the New Architecture before React can surface a JS error.
+		return clerkExpoJsOnlyModule;
+	}
+
 	const module = originalGet(name);
 
 	if (name === "ClerkExpo") {

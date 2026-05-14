@@ -6,10 +6,7 @@
     "version": "1.0.0",
     "owner": "dayova",
     "orientation": "portrait",
-    "platforms": [
-      "ios",
-      "android"
-    ],
+    "platforms": ["ios", "android"],
     "icon": "./assets/dayova-logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -43,9 +40,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": true,
       "package": "com.dayova",
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ]
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "plugins": [
       "expo-router",
