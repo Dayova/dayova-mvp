@@ -188,6 +188,9 @@ importers:
       npm-run-all2:
         specifier: ^8.0.4
         version: 8.0.4
+      only-allow:
+        specifier: ^1.2.2
+        version: 1.2.2
       typescript:
         specifier: ~5.9.2
         version: 5.9.3
@@ -4812,6 +4815,10 @@ packages:
     resolution: {integrity: sha512-oyyPpiMaKARvvcgip+JV+7zci5L8D1W9RZIz2l1o08AM3pfspitVWnPt3mzHcBPp12oYMTy0pqrFs/C+m3EwsQ==}
     engines: {node: '>=4'}
 
+  only-allow@1.2.2:
+    resolution: {integrity: sha512-uxyNYDsCh5YIJ780G7hC5OHjVUr9reHsbZNMM80L9tZlTpb3hUzb36KXgW4ZUGtJKQnGA3xegmWg1BxhWV0jJA==}
+    hasBin: true
+
   open@7.4.2:
     resolution: {integrity: sha512-MVHddDVweXZF3awtlAS+6pgKLlm/JgxZ90+/NBurBoQctVOOB/zDdVjcyPzQ+0laDGbsWgrRkflI65sQeOgT9Q==}
     engines: {node: '>=8'}
@@ -5760,6 +5767,10 @@ packages:
 
   which-module@2.0.1:
     resolution: {integrity: sha512-iBdZ57RDvnOR9AGBhML2vFZf7h8vmBjhoaZqODJBFWHVtKkDmKuHai3cx5PgVMrX5YDNp27AofYbAwctSS+vhQ==}
+
+  which-pm-runs@1.1.0:
+    resolution: {integrity: sha512-n1brCuqClxfFfq/Rb0ICg9giSZqCS+pLtccdag6C2HyufBrh3fBOiy9nb6ggRMvWOVH5GrdJskj5iGTZNxd7SA==}
+    engines: {node: '>=4'}
 
   which-typed-array@1.1.20:
     resolution: {integrity: sha512-LYfpUkmqwl0h9A2HL09Mms427Q1RZWuOHsukfVcKRq9q95iQxdw0ix1JQrqbcDR9PH1QDwf5Qo8OZb5lksZ8Xg==}
@@ -11601,6 +11612,10 @@ snapshots:
     dependencies:
       mimic-fn: 1.2.0
 
+  only-allow@1.2.2:
+    dependencies:
+      which-pm-runs: 1.1.0
+
   open@7.4.2:
     dependencies:
       is-docker: 2.2.1
@@ -12605,6 +12620,8 @@ snapshots:
       webidl-conversions: 3.0.1
 
   which-module@2.0.1: {}
+
+  which-pm-runs@1.1.0: {}
 
   which-typed-array@1.1.20:
     dependencies:

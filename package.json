@@ -3,6 +3,7 @@
 	"version": "1.0.0",
 	"main": "index.ts",
 	"scripts": {
+		"preinstall": "only-allow pnpm",
 		"start": "run-p expo:start convex:dev",
 		"android": "run-p expo:android convex:dev",
 		"ios": "run-p expo:ios convex:dev",
@@ -87,6 +88,7 @@
 		"eslint-plugin-react-hooks": "^7.1.1",
 		"knip": "^6.11.0",
 		"npm-run-all2": "^8.0.4",
+		"only-allow": "^1.2.2",
 		"typescript": "~5.9.2",
 		"typescript-eslint": "^8.59.1"
 	},
