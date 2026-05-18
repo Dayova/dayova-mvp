@@ -1,52 +1,275 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+	type GestureResponderEvent,
 	Modal,
+	type NativeScrollEvent,
+	type NativeSyntheticEvent,
 	Pressable,
 	ScrollView,
 	TouchableOpacity,
+	useWindowDimensions,
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
-import {
-	DayCarousel,
-	type DayCarouselHandle,
-	getDayItemFromKey,
-} from "~/components/day-carousel";
 import { NotificationButton } from "~/components/notification-button";
 import {
-	ArrowUpRight,
-	CheckCircle2,
-	ClipboardList,
-	Clock3,
+	ClipboardEdit,
 	GraduationCap,
+	NotebookPen,
 	Plus,
-	Check,
 	X,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
-import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
+import {
+	addDays,
+	getDayKey,
+	parseDayKey,
+	useCurrentLocalDay,
+} from "~/lib/day-key";
 import type { DayEntry } from "~/types/dayEntries";
 
-const ALL_DAY_TIME_LABEL = "Ganztägig";
 const EMPTY_ENTRIES_BY_DAY: Record<string, DayEntry[]> = {};
+const ALL_DAY_TIME_LABEL = "Ganztägig";
+const HATCH_LINES = [
+	"hatch-0",
+	"hatch-1",
+	"hatch-2",
+	"hatch-3",
+	"hatch-4",
+	"hatch-5",
+	"hatch-6",
+	"hatch-7",
+];
+const TIMELINE_MARKER_HOURS = Array.from({ length: 25 }, (_, hour) => hour);
 
-const timeToMinutes = (timeLabel: string) => {
-	if (timeLabel.trim().toLowerCase() === ALL_DAY_TIME_LABEL.toLowerCase()) {
-		return 8 * 60;
-	}
-	const match = /^(\d{1,2}):(\d{2})$/.exec(timeLabel.trim());
-	if (!match) return Number.MAX_SAFE_INTEGER;
+const clamp = (value: number, min: number, max: number) =>
+	Math.min(Math.max(value, min), max);
 
-	return Number(match[1]) * 60 + Number(match[2]);
+type CreateTypeOptionProps = {
+	icon: typeof ClipboardEdit;
+	title: string;
+	description: string;
+	onPress: () => void;
+	scale: number;
 };
 
-const isLearningSlotEntry = (entry: DayEntry) =>
+function CreateTypeOption({
+	icon: Icon,
+	title,
+	description,
+	onPress,
+	scale,
+}: CreateTypeOptionProps) {
+	return (
+		<TouchableOpacity
+			accessibilityLabel={title}
+			accessibilityRole="button"
+			activeOpacity={0.86}
+			onPress={onPress}
+			className="flex-row items-center bg-white"
+			style={{
+				width: 297 * scale,
+				height: 96 * scale,
+				borderRadius: 40 * scale,
+				paddingHorizontal: 16 * scale,
+				paddingVertical: 12 * scale,
+				columnGap: 16 * scale,
+				boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+			}}
+		>
+			<View
+				className="items-center justify-center rounded-full bg-[#EAF3FF]"
+				style={{
+					width: 48 * scale,
+					height: 48 * scale,
+					boxShadow:
+						"0 2px 4px -2px rgba(24, 39, 75, 0.12), 0 4px 4px -2px rgba(24, 39, 75, 0.08)",
+				}}
+			>
+				<Icon size={24 * scale} color="#3A7BFF" strokeWidth={1.5} />
+			</View>
+			<View style={{ width: 177 * scale, rowGap: 4 * scale }}>
+				<Text
+					className="font-medium font-poppins text-black"
+					style={{
+						fontSize: 16 * scale,
+						lineHeight: 24 * scale,
+						includeFontPadding: false,
+					}}
+				>
+					{title}
+				</Text>
+				<Text
+					className="font-poppins text-[#7E7E7E]"
+					style={{
+						fontSize: 12 * scale,
+						lineHeight: 18 * scale,
+						includeFontPadding: false,
+					}}
+				>
+					{description}
+				</Text>
+			</View>
+		</TouchableOpacity>
+	);
+}
+
+type DragStartSliderProps = {
+	scale: number;
+	compactScale: number;
+	onComplete: () => void;
+};
+
+function DragStartSlider({
+	scale,
+	compactScale,
+	onComplete,
+}: DragStartSliderProps) {
+	const [dragX, setDragX] = useState(0);
+	const knobWidth = 110 * scale;
+	const trackWidth = 228 * scale;
+	const maxDrag = trackWidth - knobWidth - 8 * scale;
+	const startXRef = useRef(0);
+	const completedRef = useRef(false);
+
+	const resetSlider = useCallback(() => {
+		setDragX(0);
+		completedRef.current = false;
+	}, []);
+
+	const updateDrag = useCallback(
+		(event: GestureResponderEvent) => {
+			const nextValue = clamp(
+				event.nativeEvent.pageX - startXRef.current,
+				0,
+				maxDrag,
+			);
+			setDragX(nextValue);
+			return nextValue;
+		},
+		[maxDrag],
+	);
+
+	const releaseDrag = useCallback(
+		(event: GestureResponderEvent) => {
+			const nextValue = updateDrag(event);
+			if (nextValue >= maxDrag * 0.72 && !completedRef.current) {
+				completedRef.current = true;
+				setDragX(maxDrag);
+				requestAnimationFrame(() => {
+					onComplete();
+					resetSlider();
+				});
+				return;
+			}
+
+			resetSlider();
+		},
+		[maxDrag, onComplete, resetSlider, updateDrag],
+	);
+
+	return (
+		<View
+			accessibilityRole="adjustable"
+			accessibilityLabel="Zum Starten nach rechts ziehen"
+			className="justify-center rounded-full bg-[#EDFDFC]"
+			style={{
+				width: trackWidth,
+				height: 56 * scale,
+				marginTop: 24 * compactScale,
+				padding: 4 * scale,
+				boxShadow: "0 8px 18px rgba(0, 0, 0, 0.10)",
+			}}
+			onStartShouldSetResponder={() => true}
+			onMoveShouldSetResponder={() => true}
+			onResponderGrant={(event) => {
+				startXRef.current = event.nativeEvent.pageX;
+				setDragX(0);
+			}}
+			onResponderMove={updateDrag}
+			onResponderRelease={releaseDrag}
+			onResponderTerminate={resetSlider}
+		>
+			<View
+				className="absolute flex-row items-center"
+				style={{ right: 34 * scale }}
+				pointerEvents="none"
+			>
+				{[0.2, 0.6, 1].map((opacity, index) => (
+					<Text
+						key={opacity}
+						className="font-poppins font-semibold text-[#3A7BFF]"
+						style={{
+							marginLeft: index === 0 ? 0 : -4 * scale,
+							fontSize: 24 * scale,
+							opacity,
+						}}
+					>
+						›
+					</Text>
+				))}
+			</View>
+			<View
+				style={{
+					width: knobWidth,
+					height: 48 * scale,
+					borderRadius: 100,
+					overflow: "hidden",
+					transform: [{ translateX: dragX }],
+				}}
+			>
+				<LinearGradient
+					colors={["#3A7BFF", "#59D6CF"]}
+					start={{ x: 0, y: 0.5 }}
+					end={{ x: 1, y: 0.5 }}
+					style={{
+						flex: 1,
+						alignItems: "center",
+						justifyContent: "center",
+					}}
+				>
+					<Text
+						className="font-bold font-poppins text-white"
+						style={{
+							fontSize: 16 * scale,
+							lineHeight: 17 * scale,
+							includeFontPadding: false,
+							textShadowColor: "rgba(0,0,0,0.15)",
+							textShadowOffset: { width: 2, height: 4 },
+							textShadowRadius: 8,
+						}}
+					>
+						Starten
+					</Text>
+				</LinearGradient>
+			</View>
+		</View>
+	);
+}
+
+const getEntryTitle = (entry: DayEntry) =>
+	typeof entry.title === "string" && entry.title.trim().length > 0
+		? entry.title.trim()
+		: "Aufgabe";
+
+const getSubjectFromEntry = (entry: DayEntry) => {
+	const title = getEntryTitle(entry)
+		.replace(
+			/\s*(Hausaufgabe|Leistungskontrolle|Kurzkontrolle|Test\/Klausur|Test|Klausur Deutsch\/Kunst\/Fremdsprache|Klausur|Quiz|Mündliche Prüfung|Muendliche Pruefung|Praktische Prüfung|Praktische Pruefung|Komplexe Leistung|Abschlussprüfung HSA\/Quali\/RSA|Abschlusspruefung HSA\/Quali\/RSA|Vorabi Grundkurs|Vorabi Leistungskurs|Abitur Grundkurs schriftlich|Abitur Leistungskurs schriftlich|Lernen|Lernslot|Theorie|Übung|Uebung|Probe)\s*$/i,
+			"",
+		)
+		.trim();
+	if (title.length > 0) return title;
+	return entry.kind?.trim() || "Allgemein";
+};
+
+const isLearningEntry = (entry: DayEntry) =>
 	/lern/i.test(`${entry.kind ?? ""} ${getEntryTitle(entry)}`);
 
 const isExamEntry = (entry: DayEntry) =>
@@ -54,495 +277,794 @@ const isExamEntry = (entry: DayEntry) =>
 		`${entry.kind ?? ""} ${getEntryTitle(entry)}`,
 	);
 
-const getEntryTitle = (entry: DayEntry) =>
-	typeof entry.title === "string" ? entry.title : "";
-
-const getSubjectFromEntry = (entry: DayEntry) => {
-	const fromTitle = getEntryTitle(entry)
-		.replace(
-			/\s*(Hausaufgabe|Leistungskontrolle|Kurzkontrolle|Test\/Klausur|Test|Klausur Deutsch\/Kunst\/Fremdsprache|Klausur|Quiz|Mündliche Prüfung|Muendliche Pruefung|Praktische Prüfung|Praktische Pruefung|Komplexe Leistung|Abschlussprüfung HSA\/Quali\/RSA|Abschlusspruefung HSA\/Quali\/RSA|Vorabi Grundkurs|Vorabi Leistungskurs|Abitur Grundkurs schriftlich|Abitur Leistungskurs schriftlich|Lernen|Lernslot)\s*$/i,
-			"",
-		)
-		.trim();
-	if (fromTitle.length > 0) return fromTitle;
-	if (!entry.kind) return "Allgemein";
-	return entry.kind.replace(/\/Klausur/i, "").trim();
+const getEntryDisplayTitle = (entry: DayEntry) => {
+	if (isLearningEntry(entry)) return `${getSubjectFromEntry(entry)} • lernen`;
+	if (isExamEntry(entry)) return `${getSubjectFromEntry(entry)} • Prüfung`;
+	return getEntryTitle(entry);
 };
 
-const getEntryLabel = (entry: DayEntry) => {
-	const subject = getSubjectFromEntry(entry);
-	if (isLearningSlotEntry(entry)) return `Lernen ${subject}`;
-	return `${isExamEntry(entry) ? "LK" : "HA"} ${subject}`;
-};
-
-const getEntryTimeLabel = (entry: DayEntry) => entry.time ?? ALL_DAY_TIME_LABEL;
-
-const getLearningRangeLabel = (entry: DayEntry) => {
-	const timeLabel = getEntryTimeLabel(entry);
+const parseTimeToMinutes = (timeLabel?: string) => {
+	if (!timeLabel || timeLabel.trim().toLowerCase() === "ganztägig") return null;
 	const match = /^(\d{1,2}):(\d{2})$/.exec(timeLabel.trim());
-	if (!match) return timeLabel;
-
-	const startMinutes = Number(match[1]) * 60 + Number(match[2]);
-	const endMinutes = startMinutes + (entry.durationMinutes ?? 45);
-	const endHour = Math.floor((endMinutes % (24 * 60)) / 60);
-	const endMinute = endMinutes % 60;
-	return `${timeLabel} - ${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
+	if (!match) return null;
+	const hour = Number(match[1]);
+	const minute = Number(match[2]);
+	if (hour > 23 || minute > 59) return null;
+	return hour * 60 + minute;
 };
+
+const getEntryStartMinutes = (entry: DayEntry) =>
+	parseTimeToMinutes(entry.time) ?? 8 * 60;
+
+const getEntryEndMinutes = (entry: DayEntry) =>
+	getEntryStartMinutes(entry) + (entry.durationMinutes ?? 45);
+
+const getEntryDurationMinutes = (entry: DayEntry) =>
+	Math.max(entry.durationMinutes ?? 45, 15);
+
+const formatMinutes = (minutes: number) => {
+	const boundedMinutes = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60);
+	const hour = Math.floor(boundedMinutes / 60);
+	const minute = boundedMinutes % 60;
+	return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+};
+
+const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
+	if (entry.relatedLearningPlanId) {
+		return `/learning-plans/${encodeURIComponent(entry.relatedLearningPlanId)}`;
+	}
+
+	const details: Array<[string, string]> = [
+		["title", getEntryTitle(entry)],
+		["day", selectedDayLabel],
+	];
+	if (entry.kind) details.push(["kind", entry.kind]);
+	if (entry.notes) details.push(["notes", entry.notes]);
+	if (entry.examTypeLabel) details.push(["examType", entry.examTypeLabel]);
+	if (entry.dueDateLabel) details.push(["dueDate", entry.dueDateLabel]);
+	if (entry.plannedDateLabel)
+		details.push(["plannedDate", entry.plannedDateLabel]);
+	if (entry.durationMinutes)
+		details.push(["duration", `${entry.durationMinutes}`]);
+	if (entry.time) details.push(["time", entry.time]);
+
+	const query = details
+		.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+		.join("&");
+	return `/entry/${encodeURIComponent(entry.id)}?${query}`;
+};
+
+const isEntryActiveNow = (entry: DayEntry, now: Date) => {
+	const startMinutes = parseTimeToMinutes(entry.time);
+	if (startMinutes === null) return false;
+	const nowMinutes = now.getHours() * 60 + now.getMinutes();
+	return (
+		nowMinutes >= startMinutes &&
+		nowMinutes <= startMinutes + (entry.durationMinutes ?? 45)
+	);
+};
+
+const getTimelineRow = (index: number) => index % 3;
 
 export default function HomeScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const params = useLocalSearchParams<{ dayKey?: string }>();
+	const { width, height } = useWindowDimensions();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const today = useCurrentLocalDay();
+	const [now, setNow] = useState(() => new Date());
+	const [selectedDayKey, setSelectedDayKey] = useState(() => getDayKey(today));
+	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
+	const timelineScrollRef = useRef<ScrollView | null>(null);
+	const hasCenteredTimelineRef = useRef(false);
+	const pendingTimelineSelectionRef = useRef<string | null>(null);
 	const setSessionCompleted = useMutation(
 		api.learningPlans.setSessionCompleted,
 	);
-	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
-	const dayCarouselRef = useRef<DayCarouselHandle | null>(null);
-	const today = useCurrentLocalDay();
-	const initialDayKey = (() => {
-		const initialDate =
-			typeof params.dayKey === "string" ? parseDayKey(params.dayKey) : null;
-		return getDayKey(initialDate ?? today);
-	})();
-	const [selectedDayKey, setSelectedDayKey] = useState(initialDayKey);
-	const selectedDay = getDayItemFromKey(selectedDayKey, today);
-	const selectedDayQueryKeys = useMemo(() => {
-		const selectedDate = parseDayKey(selectedDayKey);
-		const legacyIsoDayKey = selectedDate?.toISOString();
 
-		return legacyIsoDayKey && legacyIsoDayKey !== selectedDayKey
-			? [selectedDayKey, legacyIsoDayKey]
-			: [selectedDayKey];
-	}, [selectedDayKey]);
+	useEffect(() => {
+		const timer = setInterval(() => setNow(new Date()), 60_000);
+		return () => clearInterval(timer);
+	}, []);
+
+	const visibleDays = useMemo(
+		() =>
+			Array.from({ length: 7 }, (_, index) => {
+				const date = addDays(today, index - 3);
+				const key = getDayKey(date);
+				return {
+					key,
+					date,
+					weekday: new Intl.DateTimeFormat("de-DE", {
+						weekday: "short",
+					})
+						.format(date)
+						.replace(".", ""),
+					dayOfMonth: date.getDate().toString(),
+					isToday: key === getDayKey(today),
+				};
+			}),
+		[today],
+	);
+	const visibleDayKeys = useMemo(
+		() => visibleDays.map((day) => day.key),
+		[visibleDays],
+	);
 	const entriesByDayResult = useQuery(
 		api.dayEntries.listByDayKeys,
-		user && isConvexAuthenticated
-			? {
-					dayKeys: selectedDayQueryKeys,
-				}
-			: "skip",
+		user && isConvexAuthenticated ? { dayKeys: visibleDayKeys } : "skip",
 	);
 	const entriesByDay = entriesByDayResult ?? EMPTY_ENTRIES_BY_DAY;
-	const selectedEntries = useMemo(
-		() => selectedDayQueryKeys.flatMap((dayKey) => entriesByDay[dayKey] ?? []),
-		[entriesByDay, selectedDayQueryKeys],
-	);
-	const sortedSelectedEntries = useMemo(
-		() =>
-			[...selectedEntries].sort(
-				(a, b) =>
-					timeToMinutes(getEntryTimeLabel(a)) -
-					timeToMinutes(getEntryTimeLabel(b)),
-			),
-		[selectedEntries],
-	);
 	const selectedDate = parseDayKey(selectedDayKey) ?? today;
-	const monthLabel = new Intl.DateTimeFormat("de-DE", {
+	const timelineEntries = useMemo(
+		() =>
+			visibleDays.flatMap((day, dayIndex) =>
+				[...(entriesByDay[day.key] ?? [])]
+					.sort((a, b) => getEntryStartMinutes(a) - getEntryStartMinutes(b))
+					.map((entry, entryIndex) => ({
+						day,
+						dayIndex,
+						entry,
+						row: getTimelineRow(entryIndex),
+					})),
+			),
+		[entriesByDay, visibleDays],
+	);
+	const todayEntries = useMemo(
+		() =>
+			[...(entriesByDay[getDayKey(today)] ?? [])].sort(
+				(a, b) => getEntryStartMinutes(a) - getEntryStartMinutes(b),
+			),
+		[entriesByDay, today],
+	);
+	const heroEntry = useMemo(() => {
+		const incompleteLearningEntries = todayEntries.filter(
+			(entry) => isLearningEntry(entry) && !entry.completed,
+		);
+		return (
+			incompleteLearningEntries.find((entry) => isEntryActiveNow(entry, now)) ??
+			incompleteLearningEntries.find(
+				(entry) =>
+					getEntryStartMinutes(entry) >= now.getHours() * 60 + now.getMinutes(),
+			) ??
+			incompleteLearningEntries[0] ??
+			todayEntries.find((entry) => !entry.completed) ??
+			null
+		);
+	}, [todayEntries, now]);
+	const screenScale = clamp(width / 393, 0.86, 1.08);
+	const heightScale = clamp(height / 852, 0.82, 1.08);
+	const compactScale = Math.min(screenScale, heightScale);
+	const horizontalPadding = clamp((width - 369 * screenScale) / 2, 12, 24);
+	const headerInset = clamp(24 * screenScale - horizontalPadding, 0, 12);
+	const lessonCardWidth = Math.min(
+		width - horizontalPadding * 2,
+		345 * screenScale,
+	);
+	const planCardWidth = Math.min(
+		width - horizontalPadding * 2,
+		369 * screenScale,
+	);
+	const planInnerWidth = planCardWidth - 40 * screenScale;
+	const scheduleScale = clamp(planInnerWidth / 297, 0.82, 1.08);
+	const timelineViewportWidth = planInnerWidth;
+	const hourWidth = 72 * scheduleScale;
+	const dayWidth = hourWidth * 24;
+	const timelineContentWidth = dayWidth * visibleDays.length;
+	const timelineHeight = 176 * compactScale;
+	const timelineRowHeight = 35 * compactScale;
+	const timelineBlockHeight = 32 * screenScale;
+	const timelineTopOffset = 32 * compactScale;
+	const navClearance = Math.max(insets.bottom + 108 * screenScale, 132);
+	const modalScale = clamp(width / 393, 0.88, 1);
+	const modalWidth = 345 * modalScale;
+	const modalHeight = 334 * modalScale;
+	const modalBottom = Math.max(
+		insets.bottom + 92 * modalScale,
+		96 * modalScale,
+	);
+	const selectedDayLabel = new Intl.DateTimeFormat("de-DE", {
+		weekday: "long",
+		day: "numeric",
 		month: "long",
 	}).format(selectedDate);
-	const visibleEntries = sortedSelectedEntries.slice(0, 4);
-	const featuredEntry = useMemo(
-		() =>
-			sortedSelectedEntries.find(isLearningSlotEntry) ??
-			sortedSelectedEntries[0] ??
-			null,
-		[sortedSelectedEntries],
-	);
-	const featuredSubject = featuredEntry
-		? getSubjectFromEntry(featuredEntry)
-		: "";
-	const featuredDurationLabel = featuredEntry?.durationMinutes
-		? `${featuredEntry.durationMinutes}min`
-		: null;
-	const heroHeadline = featuredEntry
-		? `Heute musst du für ${featuredSubject} lernen!`
-		: "Heute stehen keine Aufgaben an";
-	const taskSummary = `${sortedSelectedEntries.length} ${
-		sortedSelectedEntries.length === 1 ? "Aufgabe" : "Aufgaben"
-	}`;
 	const firstName =
 		typeof user?.name === "string" && user.name.trim().length > 0
 			? user.name.trim().split(/\s+/)[0]
-			: "Fabius";
+			: "Max";
+	const currentMinute = now.getHours() * 60 + now.getMinutes();
+	const todayIndex = visibleDays.findIndex(
+		(day) => day.key === getDayKey(today),
+	);
+	const currentTimelineX =
+		Math.max(todayIndex, 0) * dayWidth + (currentMinute / 60) * hourWidth;
 
-	const getEntryUrl = (entry: DayEntry) => {
-		if (
-			entry.relatedLearningPlanId &&
-			entry.relatedLearningPlanSessionId === entry.id
-		) {
-			return `/learning-plans/${encodeURIComponent(entry.relatedLearningPlanId)}`;
-		}
+	const scrollTimelineToX = useCallback(
+		(x: number, animated = true) => {
+			const maxScrollX = Math.max(
+				timelineContentWidth - timelineViewportWidth,
+				0,
+			);
+			timelineScrollRef.current?.scrollTo({
+				x: clamp(x - timelineViewportWidth / 2, 0, maxScrollX),
+				animated,
+			});
+		},
+		[timelineContentWidth, timelineViewportWidth],
+	);
 
-		const dayLabel = selectedDay
-			? `${selectedDay.fullLabel} ${selectedDay.dayOfMonth}`
-			: "";
-		const details: Array<[string, string]> = [
-			["title", getEntryTitle(entry) || getEntryLabel(entry)],
-			["day", dayLabel],
-		];
-		if (entry.kind) details.push(["kind", entry.kind]);
-		if (entry.notes) details.push(["notes", entry.notes]);
-		if (entry.examTypeLabel) details.push(["examType", entry.examTypeLabel]);
-		if (entry.dueDateLabel) details.push(["dueDate", entry.dueDateLabel]);
-		if (entry.plannedDateLabel) {
-			details.push(["plannedDate", entry.plannedDateLabel]);
-		}
-		if (entry.durationMinutes) {
-			details.push(["duration", `${entry.durationMinutes}`]);
-		}
-		if (entry.time) details.push(["time", entry.time]);
-		const query = details
-			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-			.join("&");
+	const updateSelectedDayFromTimelineScroll = useCallback(
+		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+			if (dayWidth <= 0 || visibleDays.length === 0) return;
 
-		return `/entry/${encodeURIComponent(entry.id)}?${query}`;
+			const centerX =
+				event.nativeEvent.contentOffset.x + timelineViewportWidth / 2;
+			const centeredDayIndex = clamp(
+				Math.floor(centerX / dayWidth),
+				0,
+				visibleDays.length - 1,
+			);
+			const centeredDayKey = visibleDays[centeredDayIndex]?.key;
+			if (!centeredDayKey) return;
+			if (
+				pendingTimelineSelectionRef.current &&
+				centeredDayKey !== pendingTimelineSelectionRef.current
+			) {
+				return;
+			}
+
+			pendingTimelineSelectionRef.current = null;
+
+			setSelectedDayKey((currentDayKey) =>
+				currentDayKey === centeredDayKey ? currentDayKey : centeredDayKey,
+			);
+		},
+		[dayWidth, timelineViewportWidth, visibleDays],
+	);
+
+	useEffect(() => {
+		if (hasCenteredTimelineRef.current || timelineContentWidth <= 0) return;
+		const frame = requestAnimationFrame(() => {
+			scrollTimelineToX(currentTimelineX, false);
+			hasCenteredTimelineRef.current = true;
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [currentTimelineX, scrollTimelineToX, timelineContentWidth]);
+
+	const selectVisibleDay = (dayKey: string, dayIndex: number) => {
+		pendingTimelineSelectionRef.current = dayKey;
+		setSelectedDayKey(dayKey);
+		const minuteToCenter =
+			dayKey === getDayKey(today) ? currentMinute : 12 * 60;
+		scrollTimelineToX(dayIndex * dayWidth + (minuteToCenter / 60) * hourWidth);
 	};
-
-	const getCreateEntryUrl = (type: "homework" | "exam") =>
-		`/entry/new?type=${type}&dayKey=${encodeURIComponent(selectedDay?.key ?? "")}&dayLabel=${encodeURIComponent(
-			selectedDay ? `${selectedDay.fullLabel} ${selectedDay.dayOfMonth}` : "",
-		)}`;
 
 	const selectCreateType = (type: "homework" | "exam") => {
 		setShowCreateTypePicker(false);
-		router.push(getCreateEntryUrl(type));
+		router.push(
+			`/entry/new?type=${type}&dayKey=${encodeURIComponent(selectedDayKey)}&dayLabel=${encodeURIComponent(selectedDayLabel)}`,
+		);
 	};
 
-	const toggleEntryCompleted = (entry: DayEntry) => {
-		if (!entry.relatedLearningPlanSessionId) return;
+	const openEntry = (entry: DayEntry) => {
+		router.push(getEntryUrl(entry, selectedDayLabel));
+	};
+
+	const completeHeroEntry = () => {
+		if (!heroEntry?.relatedLearningPlanSessionId) return;
 		void setSessionCompleted({
-			sessionId: entry.relatedLearningPlanSessionId,
-			completed: !entry.completed,
+			sessionId: heroEntry.relatedLearningPlanSessionId,
+			completed: true,
 		});
 	};
 
-	useEffect(() => {
-		if (typeof params.dayKey === "string" && params.dayKey) {
-			const nextDate = parseDayKey(params.dayKey);
-			if (!nextDate) return;
-
-			const nextDayKey = getDayKey(nextDate);
-			const frame = requestAnimationFrame(() => {
-				setSelectedDayKey(nextDayKey);
-				dayCarouselRef.current?.scrollToDay(nextDayKey, true);
-			});
-
-			return () => cancelAnimationFrame(frame);
-		}
-	}, [params.dayKey]);
-
 	return (
-		<View className="flex-1" style={{ backgroundColor: "#F6F4F7" }}>
+		<View className="flex-1 bg-[#F4F8FB]">
 			<StatusBar style="dark" />
 			<ScrollView
 				className="flex-1"
 				contentInsetAdjustmentBehavior="automatic"
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={{
-					paddingTop: Math.max(insets.top + 12, 20),
-					paddingBottom: Math.max(insets.bottom + 120, 150),
-					paddingHorizontal: 24,
-					rowGap: 22,
+					paddingTop: Math.max(
+						insets.top + 16 * heightScale,
+						48 * compactScale,
+					),
+					paddingBottom: navClearance,
+					paddingHorizontal: horizontalPadding,
 				}}
 			>
-				<View className="flex-row items-start justify-between">
-					<View className="max-w-[230px]">
+				<View
+					className="flex-row items-start justify-between"
+					style={{ paddingHorizontal: headerInset }}
+				>
+					<View>
 						<Text
-							className="font-bold font-poppins text-[#17171C]"
+							className="font-poppins font-semibold text-text"
 							style={{
-								fontSize: 26,
-								lineHeight: 27,
+								fontSize: 24 * screenScale,
+								lineHeight: 29 * screenScale,
 								includeFontPadding: false,
 							}}
 						>
-							{`Hi ${firstName}, schön`}
+							{`Hi ${firstName},`}
 						</Text>
 						<Text
-							className="font-bold font-poppins text-[#8D8F98]"
+							className="font-poppins text-[#7E7E7E]"
 							style={{
-								fontSize: 26,
-								lineHeight: 27,
+								fontSize: 16 * screenScale,
+								lineHeight: 20 * screenScale,
 								includeFontPadding: false,
 							}}
 						>
-							{`das du da bist`}
+							schön dass du da bist
 						</Text>
 					</View>
-
 					<NotificationButton />
 				</View>
 
-				<View>
-					<ExpoLinearGradient
-						colors={["#6AA4FF", "#4F8EF6"]}
-						start={{ x: 0, y: 0 }}
-						end={{ x: 1, y: 1 }}
+				<View className="items-center" style={{ marginTop: 28 * compactScale }}>
+					<View
+						className="items-center bg-white"
 						style={{
-							borderRadius: 34,
-							paddingHorizontal: 20,
-							paddingTop: 18,
-							paddingBottom: 18,
-							minHeight: 232,
-							boxShadow: "0 20px 36px rgba(79, 142, 246, 0.22)",
+							width: lessonCardWidth,
+							justifyContent: "center",
+							minHeight: 273 * compactScale,
+							borderRadius: 40 * screenScale,
+							paddingHorizontal: 24 * screenScale,
+							paddingVertical: 32 * compactScale,
+							boxShadow: "0 16px 22px rgba(0, 0, 0, 0.10)",
 						}}
 					>
-						{featuredDurationLabel ? (
-							<View
-								className="self-start rounded-full px-5 py-3"
-								style={{ backgroundColor: "rgba(255,255,255,0.24)" }}
-							>
-								<View className="flex-row items-center">
-									<Clock3 size={16} color="#FFFFFF" strokeWidth={2.1} />
-									<Text
-										className="ml-2 font-poppins text-white"
-										style={{
-											fontSize: 19,
-											lineHeight: 22,
-											includeFontPadding: false,
-										}}
-									>
-										{featuredDurationLabel}
-									</Text>
-								</View>
-							</View>
-						) : null}
+						<View
+							className="items-center justify-center rounded-full bg-[#EAF3FF]"
+							style={{
+								width: 48 * screenScale,
+								height: 48 * screenScale,
+								boxShadow: "0 8px 18px rgba(58, 123, 255, 0.12)",
+							}}
+						>
+							<NotebookPen
+								size={24 * screenScale}
+								color="#3A7BFF"
+								strokeWidth={1.7}
+							/>
+						</View>
 
-						<View className="mt-7 max-w-[215px]">
+						<View
+							className="items-center"
+							style={{
+								marginTop: heroEntry ? 24 * compactScale : 18 * compactScale,
+							}}
+						>
 							<Text
-								className="font-bold font-poppins text-white"
+								className="text-center font-poppins font-semibold text-[#0D062D]"
+								numberOfLines={1}
+								adjustsFontSizeToFit
 								style={{
-									fontSize: 23,
-									lineHeight: 24,
+									width: 274 * screenScale,
+									fontSize: 24 * screenScale,
+									lineHeight: 32 * screenScale,
 									includeFontPadding: false,
 								}}
 							>
-								{heroHeadline}
+								{heroEntry ? getEntryDisplayTitle(heroEntry) : "Heute ist frei"}
+							</Text>
+							<Text
+								className="mt-1 text-center font-poppins text-[#787486]"
+								style={{
+									maxWidth: 274 * screenScale,
+									fontSize: 12 * screenScale,
+									lineHeight: 18 * screenScale,
+									includeFontPadding: false,
+								}}
+							>
+								{heroEntry
+									? `${heroEntry.time ?? ALL_DAY_TIME_LABEL}${heroEntry.durationMinutes ? ` • ${heroEntry.durationMinutes} Min.` : ""} • ${new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" }).format(today)}`
+									: "Keine offenen Aufgaben oder Lernblöcke für heute."}
 							</Text>
 						</View>
 
-						<View className="mt-7 flex-row items-center justify-between">
-							{featuredEntry ? (
-								<TouchableOpacity
-									accessibilityLabel={`${getEntryLabel(featuredEntry)} ${featuredEntry.completed ? "als offen markieren" : "als erledigt markieren"}`}
-									accessibilityRole="button"
-									accessibilityState={{ checked: featuredEntry.completed }}
-									activeOpacity={0.88}
-									onPress={() => toggleEntryCompleted(featuredEntry)}
-									className="h-14 w-14 items-center justify-center rounded-full bg-white"
-									style={{ boxShadow: "0 10px 18px rgba(0,0,0,0.10)" }}
-								>
-									{featuredEntry.completed ? (
-										<Check size={23} color="#28C76F" strokeWidth={2.8} />
-									) : (
-										<CheckCircle2 size={22} color="#1A1A1A" strokeWidth={2.3} />
-									)}
-								</TouchableOpacity>
-							) : (
-								<View style={{ width: 56 }} />
-							)}
+						{heroEntry ? (
+							<DragStartSlider
+								scale={screenScale}
+								compactScale={compactScale}
+								onComplete={() => openEntry(heroEntry)}
+							/>
+						) : null}
 
+						{heroEntry?.relatedLearningPlanSessionId ? (
 							<TouchableOpacity
-								accessibilityLabel={
-									featuredEntry
-										? `${getEntryLabel(featuredEntry)} öffnen`
-										: "Neuen Eintrag erstellen"
-								}
 								accessibilityRole="button"
-								activeOpacity={0.9}
-								onPress={() =>
-									featuredEntry
-										? router.push(getEntryUrl(featuredEntry))
-										: setShowCreateTypePicker(true)
-								}
-								className="h-14 w-14 items-center justify-center rounded-full bg-white"
-								style={{ boxShadow: "0 10px 18px rgba(0,0,0,0.10)" }}
+								accessibilityLabel="Lernblock als erledigt markieren"
+								activeOpacity={0.76}
+								onPress={completeHeroEntry}
+								style={{ marginTop: 12 * compactScale }}
 							>
-								<ArrowUpRight size={22} color="#1A1A1A" strokeWidth={2.3} />
+								<Text
+									className="font-poppins font-semibold text-[#3A7BFF]"
+									style={{
+										fontSize: 12 * screenScale,
+										lineHeight: 16 * screenScale,
+										includeFontPadding: false,
+									}}
+								>
+									Als erledigt markieren
+								</Text>
 							</TouchableOpacity>
-						</View>
-					</ExpoLinearGradient>
+						) : null}
+					</View>
 
 					<View
-						className="mt-3 flex-row items-center justify-center"
-						style={{ columnGap: 6 }}
+						className="flex-row items-center"
+						style={{ marginTop: 25 * compactScale, columnGap: 7 * screenScale }}
 					>
 						<View
-							className="rounded-full"
-							style={{ width: 22, height: 7, backgroundColor: "#1A1A1A" }}
+							className="rounded-full bg-[#0A0A0A]"
+							style={{ width: 7 * screenScale, height: 7 * screenScale }}
 						/>
 						<View
-							className="rounded-full"
-							style={{ width: 7, height: 7, backgroundColor: "#A9ADB8" }}
+							className="rounded-full bg-black/15"
+							style={{ width: 7 * screenScale, height: 7 * screenScale }}
 						/>
 						<View
-							className="rounded-full"
-							style={{ width: 7, height: 7, backgroundColor: "#D5D8E0" }}
+							className="rounded-full bg-black/15"
+							style={{ width: 7 * screenScale, height: 7 * screenScale }}
 						/>
 					</View>
 				</View>
 
 				<View
-					className="rounded-[34px] bg-white px-6 pt-6 pb-6"
+					className="self-center bg-white"
 					style={{
-						borderWidth: 1,
-						borderColor: "rgba(17,24,39,0.05)",
-						boxShadow: "0 16px 35px rgba(19, 28, 45, 0.08)",
+						width: planCardWidth,
+						minHeight: 345 * compactScale,
+						marginTop: 31 * compactScale,
+						borderRadius: 42 * screenScale,
+						paddingHorizontal: 20 * screenScale,
+						paddingTop: 24 * compactScale,
+						paddingBottom: 24 * compactScale,
+						boxShadow: "0 16px 28px rgba(0, 0, 0, 0.10)",
 					}}
 				>
 					<View className="flex-row items-start justify-between">
-						<View>
-							<Text
-								className="font-bold font-poppins text-[#17171C]"
-								style={{
-									fontSize: 22,
-									lineHeight: 24,
-									includeFontPadding: false,
-								}}
-							>
-								{monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}
-							</Text>
-							<Text
-								className="mt-1 font-poppins text-[#9599A4]"
-								style={{
-									fontSize: 13,
-									lineHeight: 18,
-									includeFontPadding: false,
-								}}
-							>
-								{taskSummary}
-							</Text>
-						</View>
-
-						<TouchableOpacity
-							accessibilityLabel="Neuen Eintrag erstellen"
-							accessibilityRole="button"
-							activeOpacity={0.9}
-							onPress={() => setShowCreateTypePicker(true)}
-							className="h-14 w-14 items-center justify-center rounded-full bg-[#17171C]"
-							style={{ boxShadow: "0 14px 28px rgba(23, 23, 28, 0.18)" }}
+						<Text
+							className="font-poppins font-semibold text-[#1A1A1A]"
+							style={{
+								fontSize: 24 * screenScale,
+								lineHeight: 36 * screenScale,
+								includeFontPadding: false,
+							}}
 						>
-							<Plus size={24} color="#FFFFFF" strokeWidth={2.5} />
+							Mein Plan
+						</Text>
+						<TouchableOpacity
+							activeOpacity={0.9}
+							accessibilityRole="button"
+							accessibilityLabel="Neuen Eintrag erstellen"
+							onPress={() => setShowCreateTypePicker(true)}
+							className="items-center justify-center rounded-full bg-[#3B7CFF]"
+							style={{
+								width: 48 * screenScale,
+								height: 48 * screenScale,
+								marginTop: -4 * compactScale,
+								marginRight: -4 * screenScale,
+								boxShadow: "0 8px 18px rgba(58, 123, 255, 0.18)",
+							}}
+						>
+							<Plus size={24 * screenScale} color="#FFFFFF" strokeWidth={1.7} />
 						</TouchableOpacity>
 					</View>
 
-					<View className="mt-4">
-						<DayCarousel
-							ref={dayCarouselRef}
-							initialDayKey={initialDayKey}
-							onSelectedDayChange={(day) => setSelectedDayKey(day.key)}
-							selectedDayKey={selectedDayKey}
-						/>
-					</View>
-
-					<View className="mt-6" style={{ rowGap: 18 }}>
-						{visibleEntries.length > 0 ? (
-							visibleEntries.map((entry, index) => (
+					<View style={{ marginTop: 24 * compactScale }}>
+						<View className="flex-row items-center justify-between">
+							{visibleDays.map((day, dayIndex) => (
 								<TouchableOpacity
-									key={entry.id}
-									accessibilityHint="Öffnet die Details dieses Eintrags."
-									accessibilityLabel={`${getEntryLabel(entry)}, ${
-										isLearningSlotEntry(entry)
-											? getLearningRangeLabel(entry)
-											: getEntryTimeLabel(entry)
-									}`}
+									key={day.key}
+									activeOpacity={0.82}
 									accessibilityRole="button"
-									activeOpacity={0.88}
-									onPress={() => router.push(getEntryUrl(entry))}
-									className="rounded-[26px] bg-white px-6 py-6"
-									style={{
-										borderWidth: 1,
-										borderColor: "rgba(17,24,39,0.05)",
-										boxShadow: "0 10px 24px rgba(20, 28, 48, 0.07)",
-									}}
+									accessibilityState={{ selected: selectedDayKey === day.key }}
+									accessibilityLabel={`${day.weekday}, ${day.dayOfMonth}`}
+									onPress={() => selectVisibleDay(day.key, dayIndex)}
+									className="items-center"
+									style={{ width: (day.isToday ? 96 : 32) * scheduleScale }}
 								>
-									<View className="flex-row items-center justify-between">
-										<View className="flex-1 flex-row items-center">
-											<View
-												className="mr-5 h-14 w-1 rounded-full"
-												style={{
-													backgroundColor:
-														index % 2 === 0 ? "#79DFC7" : "#FFB380",
-												}}
-											/>
-											<View className="flex-1">
-												<Text
-													className="font-poppins font-semibold text-[#202127]"
-													style={{
-														fontSize: 16,
-														lineHeight: 20,
-														includeFontPadding: false,
-													}}
-												>
-													{getEntryLabel(entry)}
-												</Text>
-												<View className="mt-1 flex-row items-center">
-													<Clock3 size={12} color="#9A9DA8" strokeWidth={2.1} />
-													<Text
-														className="ml-1.5 font-poppins text-[#9A9DA8]"
-														style={{
-															fontSize: 12,
-															lineHeight: 16,
-															includeFontPadding: false,
-														}}
-													>
-														{isLearningSlotEntry(entry)
-															? getLearningRangeLabel(entry)
-															: getEntryTimeLabel(entry)}
-													</Text>
-												</View>
-											</View>
-										</View>
-
-										<TouchableOpacity
-											accessibilityLabel={`${getEntryLabel(entry)} ${entry.completed ? "als offen markieren" : "als erledigt markieren"}`}
-											accessibilityRole="checkbox"
-											accessibilityState={{ checked: entry.completed }}
-											activeOpacity={0.82}
-											disabled={!entry.relatedLearningPlanSessionId}
-											onPress={(event) => {
-												event.stopPropagation();
-												toggleEntryCompleted(entry);
-											}}
-											className="ml-4 h-11 w-11 items-center justify-center rounded-full"
+									<Text
+										className="font-poppins text-black"
+										style={{
+											fontSize: 12 * screenScale,
+											lineHeight: 12 * screenScale,
+											includeFontPadding: false,
+										}}
+									>
+										{day.weekday}
+									</Text>
+								</TouchableOpacity>
+							))}
+						</View>
+						<View
+							className="flex-row items-center justify-between"
+							style={{ marginTop: 10 * compactScale }}
+						>
+							{visibleDays.map((day, dayIndex) => {
+								const selected = selectedDayKey === day.key;
+								const content = (
+									<Text
+										key={`${day.key}-label`}
+										className={`font-poppins ${selected ? "text-white" : "text-[#1A1A1A]"}`}
+										style={{
+											fontSize: 12 * screenScale,
+											lineHeight: 12 * screenScale,
+											includeFontPadding: false,
+										}}
+									>
+										{day.isToday ? `Heute ${day.dayOfMonth}` : day.dayOfMonth}
+									</Text>
+								);
+								const itemWidth = (day.isToday ? 96 : 32) * scheduleScale;
+								return selected ? (
+									<TouchableOpacity
+										key={day.key}
+										activeOpacity={0.82}
+										onPress={() => selectVisibleDay(day.key, dayIndex)}
+									>
+										<LinearGradient
+											colors={["#3A7BFF", "#59D6CF"]}
+											start={{ x: 0, y: 0.5 }}
+											end={{ x: 1, y: 0.5 }}
 											style={{
-												borderWidth: 1,
-												borderColor: entry.completed
-													? "rgba(40,199,111,0.24)"
-													: "rgba(17,24,39,0.08)",
-												backgroundColor: entry.completed
-													? "#EAFBF1"
-													: "#FFFFFF",
+												width: itemWidth,
+												height: 32 * screenScale,
+												borderRadius: 20,
+												alignItems: "center",
+												justifyContent: "center",
 											}}
 										>
-											{entry.completed ? (
-												<Check size={19} color="#28C76F" strokeWidth={2.8} />
-											) : (
-												<CheckCircle2
-													size={19}
-													color="#202127"
-													strokeWidth={2.2}
-												/>
-											)}
-										</TouchableOpacity>
+											{content}
+										</LinearGradient>
+									</TouchableOpacity>
+								) : (
+									<TouchableOpacity
+										key={day.key}
+										activeOpacity={0.82}
+										onPress={() => selectVisibleDay(day.key, dayIndex)}
+										className="items-center justify-center rounded-full bg-[#F2F2F2]"
+										style={{
+											width: itemWidth,
+											height: 32 * screenScale,
+										}}
+									>
+										{content}
+									</TouchableOpacity>
+								);
+							})}
+						</View>
+					</View>
+
+					<View
+						style={{
+							marginTop: 18 * compactScale,
+							height: timelineHeight,
+							width: timelineViewportWidth,
+						}}
+					>
+						<ScrollView
+							ref={timelineScrollRef}
+							horizontal
+							showsHorizontalScrollIndicator={false}
+							decelerationRate="fast"
+							onScroll={updateSelectedDayFromTimelineScroll}
+							scrollEventThrottle={16}
+							nestedScrollEnabled
+						>
+							<View
+								className="relative"
+								style={{
+									width: timelineContentWidth,
+									height: timelineHeight,
+								}}
+							>
+								{visibleDays.map((day, dayIndex) => (
+									<View
+										key={`${day.key}-background`}
+										className="absolute top-0 bottom-0"
+										style={{
+											left: dayIndex * dayWidth,
+											width: dayWidth,
+											borderLeftWidth: dayIndex === 0 ? 0 : 1,
+											borderColor: "rgba(0,0,0,0.08)",
+											backgroundColor:
+												day.key === selectedDayKey
+													? "rgba(58, 123, 255, 0.04)"
+													: "transparent",
+										}}
+									>
+										<Text
+											className="absolute font-poppins font-semibold text-[#1A1A1A]"
+											style={{
+												left: 8 * scheduleScale,
+												top: 0,
+												fontSize: 12 * screenScale,
+												lineHeight: 12 * screenScale,
+												includeFontPadding: false,
+											}}
+										>
+											{day.isToday
+												? "Heute"
+												: `${day.weekday} ${day.dayOfMonth}`}
+										</Text>
 									</View>
-								</TouchableOpacity>
-							))
-						) : (
-							<View className="rounded-[24px] bg-[#F7F8FB] px-5 py-6">
-								<Text
-									className="text-center font-poppins font-semibold text-[#202127]"
+								))}
+
+								{visibleDays.flatMap((day, dayIndex) =>
+									TIMELINE_MARKER_HOURS.map((hour) => (
+										<View
+											key={`${day.key}-${hour}`}
+											className="absolute"
+											style={{
+												left: dayIndex * dayWidth + hour * hourWidth,
+												top: 18 * compactScale,
+												bottom: 20 * compactScale,
+												width: hour === 24 ? 0 : 1,
+												backgroundColor:
+													hour === 0 ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.05)",
+											}}
+										>
+											<Text
+												className="absolute font-poppins text-black"
+												style={{
+													left: -20 * scheduleScale,
+													bottom: -18 * compactScale,
+													width: 40 * scheduleScale,
+													fontSize: 12 * screenScale,
+													lineHeight: 12 * screenScale,
+													textAlign: "center",
+													includeFontPadding: false,
+												}}
+											>
+												{formatMinutes(hour * 60)}
+											</Text>
+										</View>
+									)),
+								)}
+
+								{timelineEntries.map(({ day, dayIndex, entry, row }) => {
+									const start = getEntryStartMinutes(entry);
+									const duration = getEntryDurationMinutes(entry);
+									const blockLeft =
+										dayIndex * dayWidth + (start / 60) * hourWidth;
+									const blockWidth = Math.max(
+										(duration / 60) * hourWidth,
+										72 * scheduleScale,
+									);
+									const isPast =
+										day.key < getDayKey(today) ||
+										(day.key === getDayKey(today) &&
+											getEntryEndMinutes(entry) < currentMinute);
+
+									return (
+										<TouchableOpacity
+											key={`${day.key}-${entry.id}`}
+											activeOpacity={0.86}
+											accessibilityRole="button"
+											accessibilityLabel={`${getEntryDisplayTitle(entry)}, ${entry.time ?? ALL_DAY_TIME_LABEL}`}
+											onPress={() => {
+												setSelectedDayKey(day.key);
+												openEntry(entry);
+											}}
+											className="absolute justify-center rounded-full"
+											style={{
+												top: timelineTopOffset + row * timelineRowHeight,
+												left: blockLeft,
+												width: Math.min(
+													blockWidth,
+													timelineContentWidth - blockLeft,
+												),
+												height: timelineBlockHeight,
+												paddingHorizontal: 12 * scheduleScale,
+												backgroundColor: isPast
+													? "rgba(0,0,0,0.08)"
+													: isLearningEntry(entry)
+														? "#DDF4F3"
+														: "#EAF3FF",
+											}}
+										>
+											<Text
+												className="font-poppins text-[#1A1A1A]"
+												numberOfLines={1}
+												style={{
+													fontSize: 12 * screenScale,
+													lineHeight: 12 * screenScale,
+													includeFontPadding: false,
+												}}
+											>
+												{getEntryDisplayTitle(entry)}
+											</Text>
+										</TouchableOpacity>
+									);
+								})}
+
+								{todayIndex >= 0 ? (
+									<View
+										className="absolute items-center"
+										style={{
+											top: 9 * compactScale,
+											left: currentTimelineX,
+										}}
+									>
+										<View
+											className="items-center justify-center rounded-full border border-[#3A7BFF] bg-white"
+											style={{
+												width: 14 * screenScale,
+												height: 14 * screenScale,
+											}}
+										>
+											<View
+												className="rounded-full border border-white bg-[#3A7BFF]"
+												style={{
+													width: 10 * screenScale,
+													height: 10 * screenScale,
+												}}
+											/>
+										</View>
+										<View
+											className="bg-[#3A7BFF]"
+											style={{
+												width: 4 * screenScale,
+												height: 112 * compactScale,
+											}}
+										/>
+									</View>
+								) : null}
+
+								{timelineEntries.length === 0 ? (
+									<View
+										className="absolute items-center"
+										style={{
+											left: currentTimelineX - timelineViewportWidth / 2,
+											top: 58 * compactScale,
+											width: timelineViewportWidth,
+										}}
+									>
+										<Text
+											className="font-poppins text-[#787486]"
+											style={{
+												fontSize: 13 * screenScale,
+												lineHeight: 18 * screenScale,
+												includeFontPadding: false,
+											}}
+										>
+											Keine Einträge in diesen 7 Tagen
+										</Text>
+									</View>
+								) : null}
+
+								<View
+									className="absolute overflow-hidden"
 									style={{
-										fontSize: 16,
-										lineHeight: 21,
-										includeFontPadding: false,
+										top: 74 * compactScale,
+										right: 8 * scheduleScale,
+										width: 57 * scheduleScale,
+										height: 32 * screenScale,
 									}}
 								>
-									Keine Aufgaben
-								</Text>
+									{HATCH_LINES.map((line, index) => (
+										<View
+											key={line}
+											className="absolute bg-black/10"
+											style={{
+												width: 2 * screenScale,
+												height: 44 * screenScale,
+												left: index * 8 * scheduleScale,
+												top: -6 * screenScale,
+												transform: [{ rotate: "24deg" }],
+											}}
+										/>
+									))}
+								</View>
 							</View>
-						)}
+						</ScrollView>
 					</View>
 				</View>
 			</ScrollView>
@@ -553,25 +1075,46 @@ export default function HomeScreen() {
 				animationType="fade"
 				onRequestClose={() => setShowCreateTypePicker(false)}
 			>
-				<View className="flex-1 justify-end">
+				<View className="flex-1 items-center">
 					<Pressable
 						className="absolute inset-0 bg-black/25"
 						onPress={() => setShowCreateTypePicker(false)}
 					/>
 					<View
-						className="mx-5 mb-7 rounded-[32px] bg-white px-5 pt-5 pb-6"
+						className="absolute bg-[#F4F8FB]"
 						style={{
-							borderWidth: 1,
-							borderColor: "rgba(0,0,0,0.08)",
-							boxShadow: "0 20px 34px rgba(0,0,0,0.16)",
+							width: modalWidth,
+							height: modalHeight,
+							bottom: modalBottom,
+							borderRadius: 40 * modalScale,
+							paddingTop: 24 * modalScale,
+							paddingHorizontal: 24 * modalScale,
+							boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
 						}}
 					>
-						<View className="mb-4 flex-row items-start justify-between">
-							<View className="flex-1 pr-4">
-								<Text className="font-bold font-poppins text-24 text-text">
+						<View
+							className="flex-row items-start justify-between gap-5"
+							style={{ height: 46 * modalScale }}
+						>
+							<View style={{ width: 211 * modalScale, rowGap: 4 * modalScale }}>
+								<Text
+									className="font-medium font-poppins text-black"
+									style={{
+										fontSize: 16 * modalScale,
+										lineHeight: 24 * modalScale,
+										includeFontPadding: false,
+									}}
+								>
 									Was möchtest du planen?
 								</Text>
-								<Text className="mt-2 font-poppins text-14 text-text/65">
+								<Text
+									className="font-poppins text-[#7E7E7E]"
+									style={{
+										fontSize: 12 * modalScale,
+										lineHeight: 18 * modalScale,
+										includeFontPadding: false,
+									}}
+								>
 									Wähle zuerst die Art aus.
 								</Text>
 							</View>
@@ -581,53 +1124,35 @@ export default function HomeScreen() {
 								hitSlop={8}
 								activeOpacity={0.75}
 								onPress={() => setShowCreateTypePicker(false)}
-								className="h-11 w-11 items-center justify-center rounded-full bg-black/5"
+								className="items-center justify-center rounded-full bg-[#D9D9D9]"
+								style={{
+									width: 40 * modalScale,
+									height: 40 * modalScale,
+									boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+								}}
 							>
-								<X size={18} color="#1A1A1A" strokeWidth={2.3} />
+								<X size={24 * modalScale} color="#1A1A1A" strokeWidth={2} />
 							</TouchableOpacity>
 						</View>
 
-						<TouchableOpacity
-							accessibilityHint="Startet den Dialog zum Eintragen einer neuen Hausaufgabe."
-							accessibilityLabel="Neue Hausaufgabe"
-							accessibilityRole="button"
-							activeOpacity={0.86}
-							className="mb-3 min-h-[88px] flex-row items-center rounded-[24px] border border-black/10 bg-white px-5 py-4"
-							onPress={() => selectCreateType("homework")}
+						<View
+							style={{ marginTop: 24 * modalScale, rowGap: 24 * modalScale }}
 						>
-							<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
-								<ClipboardList size={22} color="#3A7BFF" strokeWidth={2.2} />
-							</View>
-							<View className="ml-3 flex-1">
-								<Text className="font-bold font-poppins text-16 text-text">
-									Neue Hausaufgabe
-								</Text>
-								<Text className="mt-1 font-poppins text-12 text-text/58">
-									Fälligkeit, Fach und Lernzeit planen.
-								</Text>
-							</View>
-						</TouchableOpacity>
-
-						<TouchableOpacity
-							accessibilityHint="Startet den Dialog zum Eintragen einer neuen Leistungskontrolle."
-							accessibilityLabel="Neue Leistungskontrolle"
-							accessibilityRole="button"
-							activeOpacity={0.86}
-							className="min-h-[88px] flex-row items-center rounded-[24px] border border-black/10 bg-white px-5 py-4"
-							onPress={() => selectCreateType("exam")}
-						>
-							<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
-								<GraduationCap size={23} color="#3A7BFF" strokeWidth={2.2} />
-							</View>
-							<View className="ml-3 flex-1">
-								<Text className="font-bold font-poppins text-16 text-text">
-									Neue Leistungskontrolle
-								</Text>
-								<Text className="mt-1 font-poppins text-12 text-text/58">
-									Datum, Fach und Prüfungsart eintragen.
-								</Text>
-							</View>
-						</TouchableOpacity>
+							<CreateTypeOption
+								icon={ClipboardEdit}
+								title="Neue Hausaufgabe"
+								description="Fälligkeit, Fach und Lernzeit planen."
+								scale={modalScale}
+								onPress={() => selectCreateType("homework")}
+							/>
+							<CreateTypeOption
+								icon={GraduationCap}
+								title="Neue Prüfung"
+								description="Datum, Fach und Prüfungsart eintragen."
+								scale={modalScale}
+								onPress={() => selectCreateType("exam")}
+							/>
+						</View>
 					</View>
 				</View>
 			</Modal>

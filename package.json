@@ -93,5 +93,8 @@
 		"typescript-eslint": "^8.59.1"
 	},
 	"private": true,
+	"engines": {
+		"node": ">=22 <24"
+	},
 	"packageManager": "pnpm@10.25.0"
 }

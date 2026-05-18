@@ -1,4 +1,4 @@
-import { TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Home, Route2, Settings } from "~/components/ui/icon";
 
@@ -45,23 +45,30 @@ const NAV_ITEMS: Array<{
 	},
 ];
 
+const clamp = (value: number, min: number, max: number) =>
+	Math.min(Math.max(value, min), max);
+
 export function BottomNav({ state, navigation }: BottomNavProps) {
 	const insets = useSafeAreaInsets();
+	const { width } = useWindowDimensions();
+	const scale = clamp(width / 393, 0.88, 1.08);
 	const activeRouteName = state.routes[state.index]?.name;
 
 	return (
 		<View
 			accessibilityRole="tablist"
 			className="absolute right-0 left-0 items-center"
-			style={{ bottom: Math.max(insets.bottom + 2, 8) }}
+			style={{ bottom: Math.max(insets.bottom + 2 * scale, 8) }}
 		>
 			<View
-				className="flex-row items-center rounded-full bg-white px-[10px] py-[8px]"
+				className="flex-row items-center rounded-full bg-white"
 				style={{
+					paddingHorizontal: 10 * scale,
+					paddingVertical: 8 * scale,
 					borderWidth: 1,
 					borderColor: "rgba(17,24,39,0.05)",
 					boxShadow: "0 18px 36px rgba(20, 28, 48, 0.12)",
-					columnGap: 8,
+					columnGap: 8 * scale,
 				}}
 			>
 				{NAV_ITEMS.map((item) => {
@@ -93,8 +100,8 @@ export function BottomNav({ state, navigation }: BottomNavProps) {
 							}}
 							className="items-center justify-center rounded-full"
 							style={{
-								height: active ? 56 : 48,
-								width: active ? 56 : 48,
+								height: (active ? 56 : 48) * scale,
+								width: (active ? 56 : 48) * scale,
 								backgroundColor: active ? "#FFFFFF" : "transparent",
 								borderWidth: active ? 1 : 0,
 								borderColor: active ? "rgba(58,123,255,0.10)" : "transparent",
@@ -104,7 +111,7 @@ export function BottomNav({ state, navigation }: BottomNavProps) {
 							}}
 						>
 							<Icon
-								size={active ? 24 : 22}
+								size={(active ? 24 : 22) * scale}
 								color={active ? "#3A7BFF" : "#202127"}
 								strokeWidth={active ? 2.15 : 2}
 							/>
