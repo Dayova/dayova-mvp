@@ -13,7 +13,7 @@ import {
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Bell, CalendarAdd, Logout, Settings } from "~/components/ui/icon";
+import { Bell, Logout, Settings } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 
@@ -198,7 +198,6 @@ export default function SettingsScreen() {
 				}}
 			>
 				<View style={{ rowGap: 20 }}>
-					<SettingsRow icon={CalendarAdd} label="Lernzeiten" />
 					<SettingsRow
 						icon={Bell}
 						label="Mitteilungen"

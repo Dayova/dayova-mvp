@@ -1,5 +1,4 @@
 import DateTimePicker, {
-	DateTimePickerAndroid,
 	type DateTimePickerEvent,
 } from "@expo/ui/community/datetime-picker";
 import { type ReactNode } from "react";
