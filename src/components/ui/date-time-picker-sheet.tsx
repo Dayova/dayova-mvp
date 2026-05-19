@@ -1,4 +1,5 @@
 import DateTimePicker, {
+	DateTimePickerAndroid,
 	type DateTimePickerEvent,
 } from "@expo/ui/community/datetime-picker";
 import { type ReactNode } from "react";
@@ -13,16 +14,40 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "~/components/ui/text";
 
+type DateTimePickerDisplay =
+	| "default"
+	| "spinner"
+	| "compact"
+	| "inline"
+	| "calendar"
+	| "clock";
+
 type DateTimePickerSheetProps = {
 	visible: boolean;
 	value: Date;
 	mode: "date" | "time" | "datetime";
-	display?: "default" | "spinner" | "compact" | "inline" | "calendar" | "clock";
+	display?: DateTimePickerDisplay;
 	maximumDate?: Date;
 	minimumDate?: Date;
 	doneLabel?: ReactNode;
 	onChange: (event: DateTimePickerEvent, selectedDate?: Date) => void;
 	onClose: () => void;
+};
+
+const normalizeAndroidDisplay = (display?: DateTimePickerDisplay) => {
+	if (display === "calendar" || display === "clock" || display === "spinner") {
+		return display;
+	}
+
+	return "default";
+};
+
+const normalizeIosDisplay = (display?: DateTimePickerDisplay) => {
+	if (display === "compact" || display === "inline" || display === "default") {
+		return display;
+	}
+
+	return "spinner";
 };
 
 function DateTimePickerSheet({
@@ -46,12 +71,10 @@ function DateTimePickerSheet({
 			<DateTimePicker
 				value={value}
 				mode={mode}
-				display={display ?? "default"}
+				display={normalizeAndroidDisplay(display)}
 				maximumDate={maximumDate}
 				minimumDate={minimumDate}
-				presentation="dialog"
 				onChange={onChange}
-				onDismiss={onClose}
 			/>
 		);
 	}
@@ -74,7 +97,8 @@ function DateTimePickerSheet({
 						paddingBottom: Math.max(insets.bottom + 14, 24),
 					}}
 				>
-					<View className="mb-1 flex-row justify-end">
+					<View className="self-center rounded-full bg-black/12 h-1.5 w-14" />
+					<View className="mb-1 flex-row justify-end pt-4">
 						<TouchableOpacity
 							accessibilityLabel="Auswahl schließen"
 							accessibilityRole="button"
@@ -91,9 +115,10 @@ function DateTimePickerSheet({
 						<DateTimePicker
 							value={value}
 							mode={mode}
-							display={display ?? "spinner"}
+							display={normalizeIosDisplay(display)}
 							maximumDate={maximumDate}
 							minimumDate={minimumDate}
+							locale="de-DE"
 							onChange={onChange}
 							style={{
 								width: width - 32,

@@ -36,6 +36,7 @@
 		"@gorhom/bottom-sheet": "^5.2.14",
 		"@hugeicons/core-free-icons": "^4.1.1",
 		"@hugeicons/react-native": "^1.0.13",
+		"@react-native-community/datetimepicker": "9.1.0",
 		"@rn-primitives/portal": "^1.4.0",
 		"@rn-primitives/slot": "^1.4.0",
 		"ai": "^6.0.168",
