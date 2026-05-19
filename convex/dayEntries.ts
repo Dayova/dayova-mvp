@@ -78,6 +78,26 @@ const publicLearningSessionEntry = (
 
 const dayKeyPattern = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+const getBerlinDayKey = (value: string) => {
+	if (dayKeyPattern.test(value)) return value;
+
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return null;
+
+	const parts = new Intl.DateTimeFormat("en-US", {
+		timeZone: "Europe/Berlin",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).formatToParts(date);
+	const year = parts.find((part) => part.type === "year")?.value;
+	const month = parts.find((part) => part.type === "month")?.value;
+	const day = parts.find((part) => part.type === "day")?.value;
+	if (!year || !month || !day) return null;
+
+	return `${year}-${month}-${day}`;
+};
+
 const getDayKeyQueryVariants = (dayKey: string) => {
 	const variants = new Set([dayKey]);
 	const match = dayKeyPattern.exec(dayKey);
@@ -90,6 +110,19 @@ const getDayKeyQueryVariants = (dayKey: string) => {
 	}
 
 	return [...variants];
+};
+
+const getRequestedDayKey = (
+	storedDayKey: string,
+	queryKeyToRequestedDayKey: Map<string, string>,
+) => {
+	const directMatch = queryKeyToRequestedDayKey.get(storedDayKey);
+	if (directMatch) return directMatch;
+
+	const berlinDayKey = getBerlinDayKey(storedDayKey);
+	return berlinDayKey
+		? queryKeyToRequestedDayKey.get(berlinDayKey)
+		: undefined;
 };
 
 const entryFields = {
@@ -164,9 +197,18 @@ export const listByDayKeys = query({
 			Doc<"learningPlans"> | null
 		>();
 		for (const session of learningSessions) {
-			if (session.dayEntryId) continue;
-			const requestedDayKey = queryKeyToRequestedDayKey.get(session.dateKey);
+			const requestedDayKey = getRequestedDayKey(
+				session.dateKey,
+				queryKeyToRequestedDayKey,
+			);
 			if (!requestedDayKey) continue;
+			if (
+				grouped[requestedDayKey]?.some(
+					(entry) => entry.relatedLearningPlanSessionId === session._id,
+				)
+			) {
+				continue;
+			}
 
 			let plan = planCache.get(session.learningPlanId);
 			if (plan === undefined) {
