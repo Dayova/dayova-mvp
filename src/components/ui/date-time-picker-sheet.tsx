@@ -1,25 +1,52 @@
 import DateTimePicker, {
+	DateTimePickerAndroid,
 	type DateTimePickerEvent,
-} from "@expo/ui/community/datetime-picker";
-import { type ReactNode, useEffect, useRef } from "react";
-import { Platform, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+} from "@react-native-community/datetimepicker";
+import { type ReactNode, useEffect } from "react";
 import {
-	BottomSheetModal,
-	BottomSheetView,
-} from "@expo/ui/community/bottom-sheet";
+	Modal,
+	Platform,
+	Pressable,
+	TouchableOpacity,
+	View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "~/components/ui/text";
+
+type DateTimePickerDisplay =
+	| "default"
+	| "spinner"
+	| "compact"
+	| "inline"
+	| "calendar"
+	| "clock";
 
 type DateTimePickerSheetProps = {
 	visible: boolean;
 	value: Date;
 	mode: "date" | "time" | "datetime";
-	display?: "default" | "spinner" | "compact" | "inline" | "calendar" | "clock";
+	display?: DateTimePickerDisplay;
 	maximumDate?: Date;
 	minimumDate?: Date;
 	doneLabel?: ReactNode;
 	onChange: (event: DateTimePickerEvent, selectedDate?: Date) => void;
 	onClose: () => void;
+};
+
+const normalizeAndroidDisplay = (display?: DateTimePickerDisplay) => {
+	if (display === "calendar" || display === "clock" || display === "spinner") {
+		return display;
+	}
+
+	return "default";
+};
+
+const normalizeIosDisplay = (display?: DateTimePickerDisplay) => {
+	if (display === "compact" || display === "inline" || display === "default") {
+		return display;
+	}
+
+	return "spinner";
 };
 
 function DateTimePickerSheet({
@@ -33,19 +60,17 @@ function DateTimePickerSheet({
 	onChange,
 	onClose,
 }: DateTimePickerSheetProps) {
-	const sheetRef = useRef<BottomSheetModal>(null);
 	const insets = useSafeAreaInsets();
 
 	useEffect(() => {
-		if (Platform.OS !== "ios") return;
-
-		if (visible) {
-			sheetRef.current?.present();
+		if (!visible || Platform.OS !== "android") {
 			return;
 		}
 
-		sheetRef.current?.dismiss();
-	}, [visible]);
+		return () => {
+			DateTimePickerAndroid.dismiss(mode === "datetime" ? "date" : mode);
+		};
+	}, [mode, visible]);
 
 	if (!visible) return null;
 
@@ -54,30 +79,30 @@ function DateTimePickerSheet({
 			<DateTimePicker
 				value={value}
 				mode={mode}
-				display={display ?? "default"}
+				display={normalizeAndroidDisplay(display)}
 				maximumDate={maximumDate}
 				minimumDate={minimumDate}
-				presentation="dialog"
 				onChange={onChange}
-				onDismiss={onClose}
 			/>
 		);
 	}
 
 	return (
-		<BottomSheetModal
-			ref={sheetRef}
-			enablePanDownToClose
-			enableDynamicSizing
-			onClose={onClose}
-			backgroundStyle={{ backgroundColor: "#FFFFFF" }}
+		<Modal
+			visible={visible}
+			transparent
+			animationType="fade"
+			presentationStyle="overFullScreen"
+			onRequestClose={onClose}
 		>
-			<BottomSheetView>
+			<View className="flex-1 justify-end bg-black/20">
+				<Pressable className="flex-1" onPress={onClose} />
 				<View
-					className="bg-white px-4 pt-3 pb-7"
-					style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}
+					className="overflow-hidden rounded-t-[34px] bg-white px-4 pt-3"
+					style={{ paddingBottom: Math.max(insets.bottom + 14, 24) }}
 				>
-					<View className="mb-1 flex-row justify-end">
+					<View className="self-center rounded-full bg-black/12 h-1.5 w-14" />
+					<View className="mb-1 flex-row justify-end pt-4">
 						<TouchableOpacity
 							accessibilityLabel="Auswahl schließen"
 							accessibilityRole="button"
@@ -94,15 +119,18 @@ function DateTimePickerSheet({
 						<DateTimePicker
 							value={value}
 							mode={mode}
-							display={display ?? "spinner"}
+							display={normalizeIosDisplay(display)}
 							maximumDate={maximumDate}
 							minimumDate={minimumDate}
+							locale="de-DE"
 							onChange={onChange}
+							style={{ height: 216, width: "100%" }}
+							themeVariant="light"
 						/>
 					</View>
 				</View>
-			</BottomSheetView>
-		</BottomSheetModal>
+			</View>
+		</Modal>
 	);
 }
 
