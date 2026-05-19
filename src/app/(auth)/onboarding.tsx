@@ -24,23 +24,11 @@ import {
 	FieldMessage,
 	FieldTrigger,
 } from "~/components/ui/field";
-import {
-	Bell,
-	CalendarAdd,
-	CheckCircle2,
-	ChevronDown,
-	ClipboardList,
-	ShieldCheck,
-	Timer,
-	Zap,
-} from "~/components/ui/icon";
+import { ChevronDown } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { InsetTextField } from "~/components/ui/text-field";
 import { useAuth } from "~/context/AuthContext";
-import {
-	type OnboardingAnswers,
-	useOnboarding,
-} from "~/context/OnboardingContext";
+import { useOnboarding } from "~/context/OnboardingContext";
 import { useBackIntent } from "~/lib/navigation";
 
 type MascotPose = ComponentProps<typeof Mascot>["pose"];
@@ -286,80 +274,6 @@ const getMascotPose = (step: FlowStep, index: number): MascotPose => {
 	return "default";
 };
 
-const getInsightSolution = (answers: OnboardingAnswers) => {
-	if (answers.challenge) {
-		if (answers.challenge === "Konzentration") {
-			return {
-				icon: Timer,
-				label: "Konzentration",
-				title: "Fokus-Sprints statt Dauerstress",
-				description:
-					"Dayova teilt deine Aufgaben in kurze Lernblöcke mit klaren Pausen ein.",
-				accent: "#3A7BFF",
-			};
-		}
-		if (answers.challenge === "Motivation") {
-			return {
-				icon: Zap,
-				label: "Keine Motivation",
-				title: "Tägliche Erinnerungen",
-				description:
-					"Du bekommst kleine machbare Schritte, die dich jeden Tag wieder reinbringen.",
-				accent: "#FFB02E",
-			};
-		}
-		if (answers.challenge === "Organisation") {
-			return {
-				icon: CalendarAdd,
-				label: "Zu wenig Struktur",
-				title: "Ein Plan, der dich führt",
-				description:
-					"Dayova sortiert deine Themen und zeigt dir, was heute wirklich dran ist.",
-				accent: "#18A058",
-			};
-		}
-		return {
-			icon: ShieldCheck,
-			label: "Prüfungsstress",
-			title: "Sicher in die Prüfung",
-			description:
-				"Wir planen Wiederholungen so, dass du früher vorbereitet bist und ruhiger bleibst.",
-			accent: "#7C5CFF",
-		};
-	}
-
-	if (answers.studyTime === "Unter 30 Min.") {
-		return {
-			icon: Bell,
-			label: "Wenig Zeit",
-			title: "Mini-Routine mit Reminder",
-			description:
-				"Schon 15 Minuten am Tag reichen, wenn Dayova dich zur richtigen Aufgabe schickt.",
-			accent: "#3A7BFF",
-		};
-	}
-
-	if (answers.goal) {
-		return {
-			icon: ClipboardList,
-			label: answers.goal,
-			title: "Dein Ziel wird zum Plan",
-			description:
-				"Dayova macht aus deinem Ziel konkrete Schritte, die du einfach abhaken kannst.",
-			accent: "#18A058",
-		};
-	}
-
-	return {
-		icon: CheckCircle2,
-		label: "Gute Nachricht",
-		title: "Kleine Schritte wirken",
-		description:
-			"Dayova hält dich mit klaren Aufgaben, Feedback und Struktur auf Kurs.",
-		accent: "#3A7BFF",
-	};
-};
-
 export default function WelcomeScreen() {
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
@@ -373,7 +287,6 @@ export default function WelcomeScreen() {
 
 	const activeStep = FLOW_STEPS[activeIndex];
 	const mascotPose = getMascotPose(activeStep, activeIndex);
-	const insightSolution = getInsightSolution(answers);
 	const isIntroStep = activeStep.kind === "intro";
 	const isInputStep =
 		activeStep.kind === "input" ||
@@ -652,15 +565,7 @@ export default function WelcomeScreen() {
 							)}
 						</View>
 
-						<View
-							className="rounded-[34px] bg-white px-7 pt-7 pb-6"
-							style={{
-								borderWidth: 1,
-								borderColor: "rgba(17,24,39,0.05)",
-								boxShadow: "0 18px 45px rgba(22, 34, 68, 0.08)",
-								rowGap: 18,
-							}}
-						>
+						<View className="px-7 pt-7 pb-6" style={{ rowGap: 18 }}>
 							<View className="flex-row justify-between">
 								<View
 									className="flex-row"
@@ -963,32 +868,7 @@ export default function WelcomeScreen() {
 									/>
 								) : null}
 
-								{activeStep.kind === "info" ? (
-									<View
-										className="rounded-[28px] bg-white px-6 py-7"
-										style={{
-											borderWidth: 1.2,
-											borderColor: "rgba(17,24,39,0.06)",
-											boxShadow: "0 14px 32px rgba(20, 28, 48, 0.06)",
-											rowGap: 18,
-										}}
-									>
-										<View>
-											<Text
-												className="text-center font-poppins font-semibold text-[#111111]"
-												style={{
-													fontSize: 20,
-													lineHeight: 28,
-													includeFontPadding: false,
-												}}
-											>
-												{activeStep.title}
-											</Text>
-										</View>
-
-										<SolutionCard solution={insightSolution} />
-									</View>
-								) : null}
+								{activeStep.kind === "info" ? <View /> : null}
 							</View>
 
 							<PrimaryAction
@@ -1048,61 +928,5 @@ function PrimaryAction({
 		>
 			<Text>{label}</Text>
 		</Button>
-	);
-}
-
-function SolutionCard({
-	solution,
-}: {
-	solution: ReturnType<typeof getInsightSolution>;
-}) {
-	const Icon = solution.icon;
-
-	return (
-		<View
-			className="overflow-hidden rounded-[24px] px-4 py-4"
-			style={{
-				backgroundColor: `${solution.accent}10`,
-				borderWidth: 1,
-				borderColor: `${solution.accent}22`,
-			}}
-		>
-			<View className="flex-row items-center" style={{ columnGap: 14 }}>
-				<View
-					className="items-center justify-center rounded-[18px]"
-					style={{
-						height: 54,
-						width: 54,
-						backgroundColor: solution.accent,
-					}}
-				>
-					<Icon size={28} color="#FFFFFF" strokeWidth={2.2} />
-				</View>
-
-				<View className="flex-1">
-					<Text
-						className="font-poppins font-semibold"
-						style={{
-							color: solution.accent,
-							fontSize: 12,
-							lineHeight: 16,
-							includeFontPadding: false,
-						}}
-					>
-						{solution.label}
-					</Text>
-					<Text
-						className="mt-1 font-bold font-poppins text-[#111111]"
-						style={{
-							fontSize: 16,
-							lineHeight: 21,
-							includeFontPadding: false,
-						}}
-					>
-						{solution.title}
-					</Text>
-				</View>
-			</View>
-		</View>
 	);
 }
