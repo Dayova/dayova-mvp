@@ -120,9 +120,7 @@ const getRequestedDayKey = (
 	if (directMatch) return directMatch;
 
 	const berlinDayKey = getBerlinDayKey(storedDayKey);
-	return berlinDayKey
-		? queryKeyToRequestedDayKey.get(berlinDayKey)
-		: undefined;
+	return berlinDayKey ? queryKeyToRequestedDayKey.get(berlinDayKey) : undefined;
 };
 
 const entryFields = {

@@ -126,43 +126,6 @@ export function MaterialCard({
 	);
 }
 
-export function UploadAction({
-	icon,
-	label,
-	onPress,
-	disabled,
-}: {
-	icon: ReactNode;
-	label: string;
-	onPress: () => void;
-	disabled: boolean;
-}) {
-	return (
-		<TouchableOpacity
-			accessibilityLabel={label}
-			accessibilityRole="button"
-			accessibilityState={{ disabled }}
-			activeOpacity={0.86}
-			onPress={onPress}
-			disabled={disabled}
-			className="h-[100px] flex-1 items-center justify-center rounded-[12px] bg-white px-3 py-3"
-			style={{
-				shadowColor: "#000000",
-				shadowOpacity: 0.09,
-				shadowRadius: 8,
-				shadowOffset: { width: 0, height: 5 },
-				elevation: 4,
-				opacity: disabled ? 0.55 : 1,
-			}}
-		>
-			{icon}
-			<Text className="mt-2 text-center font-medium font-poppins text-12 text-text">
-				{label}
-			</Text>
-		</TouchableOpacity>
-	);
-}
-
 export function SessionCard({
 	session,
 	onEdit,

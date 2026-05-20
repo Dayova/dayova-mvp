@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	ActivityIndicator,
 	KeyboardAvoidingView,
@@ -23,6 +23,8 @@ export default function ProfileScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { user, isLoading, updateProfile, verifyProfileEmailCode } = useAuth();
+	const userDraftKey = `${user?.clerkId ?? ""}:${user?.name ?? ""}:${user?.email ?? ""}`;
+	const [draftUserKey, setDraftUserKey] = useState(userDraftKey);
 	const [name, setName] = useState(user?.name ?? "");
 	const [email, setEmail] = useState(user?.email ?? "");
 	const [code, setCode] = useState("");
@@ -39,11 +41,11 @@ export default function ProfileScreen() {
 	const [isEmailVerificationPending, setIsEmailVerificationPending] =
 		useState(false);
 
-	useEffect(() => {
-		if (!user) return;
-		setName(user.name ?? "");
-		setEmail(user.email ?? "");
-	}, [user]);
+	if (draftUserKey !== userDraftKey) {
+		setDraftUserKey(userDraftKey);
+		setName(user?.name ?? "");
+		setEmail(user?.email ?? "");
+	}
 
 	const normalizedEmail = email.trim().toLowerCase();
 	const normalizedName = name.trim();
@@ -187,7 +189,8 @@ export default function ProfileScreen() {
 					onChangeText={(value) => {
 						setName(value);
 						setFeedback(null);
-						if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+						if (errors.name)
+							setErrors((prev) => ({ ...prev, name: undefined }));
 					}}
 					invalid={Boolean(errors.name)}
 					message={errors.name}

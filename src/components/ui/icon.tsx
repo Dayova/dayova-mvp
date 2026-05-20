@@ -2,12 +2,10 @@ import {
 	AlertCircleIcon,
 	ArrowDown01Icon,
 	ArrowLeft01Icon,
-	ArrowUpRight01Icon,
 	Attachment01Icon,
 	BookOpen01Icon,
 	Calculator01Icon,
 	Calendar03Icon,
-	CalendarAdd01Icon,
 	Cancel01Icon,
 	CheckmarkCircle02Icon,
 	Chemistry01Icon,
@@ -16,7 +14,6 @@ import {
 	Delete02Icon,
 	Dna01Icon,
 	EarthIcon,
-	FlashIcon,
 	FootballIcon,
 	Home02Icon,
 	LanguageCircleIcon,
@@ -36,7 +33,6 @@ import {
 	Route02Icon,
 	ScanImageIcon,
 	Settings01Icon,
-	ShieldCheck as ShieldCheckIcon,
 	Task01Icon,
 	TaskEdit01Icon,
 	Tick02Icon,
@@ -55,10 +51,8 @@ const createIcon = (icon: HugeiconsProps["icon"]) => (props: IconProps) => (
 
 export const Attachment = createIcon(Attachment01Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
-export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
 export const Bell = createIcon(Notification01Icon);
 export const BookOpen = createIcon(BookOpen01Icon);
-export const CalendarAdd = createIcon(CalendarAdd01Icon);
 export const CalendarDays = createIcon(Calendar03Icon);
 export const Calculator = createIcon(Calculator01Icon);
 export const Check = createIcon(Tick02Icon);
@@ -92,10 +86,8 @@ export const PropertyEdit = createIcon(PropertyEditIcon);
 export const Route2 = createIcon(Route02Icon);
 export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(Settings01Icon);
-export const ShieldCheck = createIcon(ShieldCheckIcon);
 export const TimeManagement = createIcon(TimeManagementCircleIcon);
 export const Timer = createIcon(Clock03Icon);
 export const Trash2 = createIcon(Delete02Icon);
 export const UserRound = createIcon(UserCircleIcon);
 export const X = createIcon(Cancel01Icon);
-export const Zap = createIcon(FlashIcon);

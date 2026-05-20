@@ -180,7 +180,10 @@ export default function NewLearningPlanScreen() {
 	const canUploadMaterial = canWrite && !isBusy;
 	const modalScale = clamp(width / 393, 0.88, 1.06);
 	const uploadOptionWidth = Math.min(width - 48 * modalScale, 345 * modalScale);
-	const uploadSheetBottomPadding = Math.max(insets.bottom + 28 * modalScale, 42);
+	const uploadSheetBottomPadding = Math.max(
+		insets.bottom + 28 * modalScale,
+		42,
+	);
 
 	useEffect(() => {
 		if (!hasExamEntry) {

@@ -1,7 +1,7 @@
 import DateTimePicker, {
 	type DateTimePickerEvent,
 } from "@expo/ui/community/datetime-picker";
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
 	Modal,
 	Platform,
@@ -96,7 +96,7 @@ function DateTimePickerSheet({
 						paddingBottom: Math.max(insets.bottom + 14, 24),
 					}}
 				>
-					<View className="self-center rounded-full bg-black/12 h-1.5 w-14" />
+					<View className="h-1.5 w-14 self-center rounded-full bg-black/12" />
 					<View className="mb-1 flex-row justify-end pt-4">
 						<TouchableOpacity
 							accessibilityLabel="Auswahl schließen"
