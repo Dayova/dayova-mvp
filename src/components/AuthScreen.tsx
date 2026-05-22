@@ -601,7 +601,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								resizeMode="contain"
 							/>
 							<Text
-								className="-ml-2 font-bold font-poppins text-32 text-white"
+								className="font-bold font-poppins text-32 text-white"
 								style={{ includeFontPadding: false, lineHeight: 40 }}
 							>
 								Dayova
@@ -721,7 +721,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							resizeMode="contain"
 						/>
 						<Text
-							className="-ml-3 font-bold font-poppins text-white"
+							className="font-bold font-poppins text-white"
 							style={{ fontSize: 42, lineHeight: 52 }}
 						>
 							Dayova
