@@ -19,7 +19,7 @@
 		"lint:plugins:fix": "eslint src convex index.ts --fix",
 		"format": "run-s format:biome format:tailwind",
 		"format:biome": "biome format . --write",
-		"format:tailwind": "biome lint . --only=nursery/useSortedClasses --write --unsafe",
+		"format:tailwind": "biome lint . --only=nursery/useSortedClasses --write",
 		"format:check": "run-s format:biome:check format:tailwind:check",
 		"format:biome:check": "biome format .",
 		"format:tailwind:check": "biome lint . --only=nursery/useSortedClasses",
