@@ -12,6 +12,25 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		secondary: "#FF4CCF",
 		text: "#1A1A1A",
 		background: "#FFFFFF",
+		appBackground: "#F5F3F6",
+		surface: "#FFFFFF",
+		mutedSurface: "#F7F8FA",
+	},
+	elevation: {
+		surface: {
+			shadowColor: "#000000",
+			shadowOpacity: 0.08,
+			shadowRadius: 13,
+			shadowOffset: { width: 0, height: 6 },
+			elevation: 3,
+		},
+		soft: {
+			shadowColor: "#000000",
+			shadowOpacity: 0.05,
+			shadowRadius: 10,
+			shadowOffset: { width: 0, height: 4 },
+			elevation: 2,
+		},
 	},
 	typography: {
 		fontFamily: "Poppins",

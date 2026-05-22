@@ -1,12 +1,13 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ScrollView, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
 import { Clock3, Route2 } from "~/components/ui/icon";
+import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import type {
@@ -31,15 +32,7 @@ function SessionOverviewCard({ session }: { session: PlanSession }) {
 	);
 
 	return (
-		<View
-			className="rounded-[28px] bg-white px-5 py-5"
-			style={{
-				borderWidth: 1,
-				borderColor: "rgba(17,24,39,0.05)",
-				boxShadow: "0 14px 28px rgba(21, 29, 48, 0.08)",
-				rowGap: 14,
-			}}
-		>
+		<Surface className="rounded-[28px] px-5 py-5" style={{ rowGap: 14 }}>
 			<View
 				className="flex-row items-start justify-between"
 				style={{ gap: 14 }}
@@ -84,13 +77,12 @@ function SessionOverviewCard({ session }: { session: PlanSession }) {
 			>
 				{session.goal}
 			</Text>
-		</View>
+		</Surface>
 	);
 }
 
 export default function LearningPlanSessionsScreen() {
 	const router = useRouter();
-	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuth();
@@ -105,30 +97,19 @@ export default function LearningPlanSessionsScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-[#F6F4F7]">
+		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
-			<ScrollView
-				className="flex-1"
+			<ScreenScroll
 				contentInsetAdjustmentBehavior="automatic"
-				contentContainerStyle={{
-					paddingHorizontal: 24,
-					paddingTop: Math.max(insets.top + 22, 46),
-					paddingBottom: Math.max(insets.bottom + 90, 120),
-					rowGap: 24,
-				}}
-				showsVerticalScrollIndicator={false}
+				horizontalPadding={24}
+				topPadding={46}
+				bottomPadding={120}
+				contentContainerStyle={{ rowGap: 24 }}
 			>
 				<ScreenHeader title="Lernplan" onBack={goBack} className="mb-0" />
 
-				<View
-					className="rounded-[34px] bg-white px-5 py-6"
-					style={{
-						borderWidth: 1,
-						borderColor: "rgba(17,24,39,0.05)",
-						boxShadow: "0 16px 32px rgba(21, 29, 48, 0.08)",
-					}}
-				>
+				<Surface className="rounded-[34px] px-5 py-6">
 					<View className="mb-5 h-14 w-14 items-center justify-center rounded-full bg-[#FFEAF8]">
 						<Route2 size={27} color="#FF42C8" strokeWidth={2.2} />
 					</View>
@@ -152,7 +133,7 @@ export default function LearningPlanSessionsScreen() {
 								}`
 							: "Lerneinheiten werden geladen"}
 					</Text>
-				</View>
+				</Surface>
 
 				<View style={{ rowGap: 14 }}>
 					{snapshot?.sessions.map((session) => (
@@ -167,7 +148,7 @@ export default function LearningPlanSessionsScreen() {
 						</Text>
 					</View>
 				) : null}
-			</ScrollView>
-		</View>
+			</ScreenScroll>
+		</Screen>
 	);
 }

@@ -126,7 +126,7 @@ export default function LearningPlansScreen() {
 	const visiblePlans = plans ?? [];
 
 	return (
-		<View className="flex-1 bg-[#F6F4F7]">
+		<View className="flex-1 bg-[#F5F3F6]">
 			<StatusBar style="dark" />
 			<ScrollView
 				className="flex-1"

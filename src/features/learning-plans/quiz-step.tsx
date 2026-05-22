@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Animated, Easing, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { Button } from "~/components/ui/button";
+import { FieldControl, FieldLabel } from "~/components/ui/field";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import type { QuizQuestion } from "~/features/learning-plans/types";
@@ -120,12 +121,13 @@ export function QuizStep({
 				<Text className="mt-2 font-bold font-poppins text-18 text-text">
 					{question.prompt}
 				</Text>
-				<Text className="mt-7 mb-3 font-poppins font-semibold text-12 text-text">
-					Antwort
-				</Text>
-				<View
-					className="mb-8 items-start rounded-[28px] bg-white px-[18px] pt-[14px] pb-4"
-					style={{ height: ANSWER_TEXTAREA_CARD_HEIGHT }}
+				<FieldLabel className="mt-7">Antwort</FieldLabel>
+				<FieldControl
+					className="mb-8 items-start rounded-[28px] px-5 pt-4 pb-4"
+					style={{
+						height: ANSWER_TEXTAREA_CARD_HEIGHT,
+						boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
+					}}
 				>
 					<Textarea
 						value={answer}
@@ -133,7 +135,7 @@ export function QuizStep({
 						placeholder="Schreibe hier deine Antwort rein..."
 						style={{ height: ANSWER_TEXTAREA_HEIGHT }}
 					/>
-				</View>
+				</FieldControl>
 				{errorMessage ? (
 					<Text className="mb-4 font-poppins text-12 text-destructive">
 						{errorMessage}

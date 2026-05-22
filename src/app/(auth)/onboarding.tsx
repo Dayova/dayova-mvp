@@ -21,6 +21,7 @@ import { BackButton, Button } from "~/components/ui/button";
 import {
 	Field,
 	FieldAccessory,
+	FieldLabel,
 	FieldMessage,
 	FieldTrigger,
 } from "~/components/ui/field";
@@ -762,6 +763,7 @@ export default function WelcomeScreen() {
 								{activeStep.kind === "profileInput" ? (
 									activeStep.field === "birthDate" ? (
 										<Field>
+											<FieldLabel>{activeStep.label}</FieldLabel>
 											<FieldTrigger
 												activeOpacity={0.82}
 												onPress={() => {
@@ -769,16 +771,15 @@ export default function WelcomeScreen() {
 													setShowBirthDatePicker(true);
 												}}
 												invalid={Boolean(errors.birthDate)}
-												className="min-h-[74px] items-start rounded-[22px] bg-white px-5 pt-3 pb-3"
+												className="min-h-[64px] rounded-[28px] bg-white px-5"
 											>
 												<View className="flex-1">
-													<Text className="font-poppins text-12 text-text/42 leading-4">
-														{activeStep.label}
-													</Text>
 													<Text
-														className={`mt-1 font-poppins text-16 ${
+														className={`font-poppins text-16 ${
 															selectedBirthDate ? "text-text" : "text-text/36"
 														}`}
+														numberOfLines={1}
+														style={{ includeFontPadding: false, lineHeight: 24 }}
 													>
 														{selectedBirthDate
 															? `${getAgeFromBirthDate(selectedBirthDate)} Jahre`

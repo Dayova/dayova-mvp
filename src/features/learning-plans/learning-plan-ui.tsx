@@ -10,8 +10,10 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 import { Button } from "~/components/ui/button";
+import { FieldAccessory, FieldLabel, FieldTrigger } from "~/components/ui/field";
 import { CalendarDays, ChevronDown, Clock3 } from "~/components/ui/icon";
 import { Attachment, PropertyEdit, X } from "~/components/ui/icon";
+import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import type {
 	PlanSession,
@@ -85,18 +87,7 @@ export function MaterialCard({
 	onRemove: () => void;
 }) {
 	return (
-		<View
-			className="mb-3 flex-row items-center rounded-[24px] bg-white px-4 py-4"
-			style={{
-				borderWidth: 1,
-				borderColor: "rgba(0,0,0,0.08)",
-				shadowColor: "#000000",
-				shadowOpacity: 0.05,
-				shadowRadius: 8,
-				shadowOffset: { width: 0, height: 3 },
-				elevation: 2,
-			}}
-		>
+		<Surface className="mb-3 flex-row items-center rounded-[24px] px-4 py-4" variant="soft">
 			<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
 				<Attachment size={21} color="#3A7BFF" strokeWidth={2.2} />
 			</View>
@@ -122,7 +113,7 @@ export function MaterialCard({
 			>
 				<X size={16} color="#1A1A1A" strokeWidth={2.3} />
 			</TouchableOpacity>
-		</View>
+		</Surface>
 	);
 }
 
@@ -139,22 +130,14 @@ export function SessionCard({
 	const sessionDate = parseDateKey(session.dateKey);
 
 	return (
-		<TouchableOpacity
+		<ActionSurface
 			accessibilityHint="Öffnet die Bearbeitung für diesen Lerntag."
 			accessibilityLabel={`${session.title}, ${session.dateLabel}, ${session.startTime} bis ${endTime} bearbeiten`}
 			accessibilityRole="button"
 			activeOpacity={0.88}
 			onPress={onEdit}
-			className="flex-row items-center rounded-[28px] bg-white px-5 py-5"
-			style={{
-				borderWidth: 1,
-				borderColor: "rgba(0,0,0,0.07)",
-				shadowColor: "#000000",
-				shadowOpacity: 0.05,
-				shadowRadius: 10,
-				shadowOffset: { width: 0, height: 4 },
-				elevation: 2,
-			}}
+			className="flex-row items-center rounded-[28px] px-5 py-5"
+			variant="soft"
 		>
 			<View className="h-14 w-14 items-center justify-center rounded-full bg-[#3A3A3A]">
 				<Text className="font-bold font-poppins text-16 text-white">
@@ -175,7 +158,7 @@ export function SessionCard({
 			<View className="h-11 w-11 items-center justify-center rounded-full border border-black/10">
 				<PropertyEdit size={19} color="#1A1A1A" strokeWidth={1.5} />
 			</View>
-		</TouchableOpacity>
+		</ActionSurface>
 	);
 }
 
@@ -193,27 +176,25 @@ function SessionEditPill({
 	className?: string;
 }) {
 	return (
-		<TouchableOpacity
+		<FieldTrigger
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
 			activeOpacity={0.86}
 			onPress={onPress}
-			className={`h-14 flex-row items-center justify-between rounded-[28px] bg-white px-5 ${className ?? ""}`}
+			className={`min-h-[64px] rounded-[28px] px-5 ${className ?? ""}`}
 			style={{
-				borderWidth: 1,
-				borderColor: "rgba(17,24,39,0.04)",
-				shadowColor: "#111827",
-				shadowOpacity: 0.08,
-				shadowRadius: 12,
-				shadowOffset: { width: 0, height: 6 },
-				elevation: 3,
+				boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 			}}
 		>
-			<Text className="font-poppins text-14 text-text/55" numberOfLines={1}>
+			<Text
+				className="flex-1 font-poppins text-16 text-text"
+				numberOfLines={1}
+				style={{ includeFontPadding: false, lineHeight: 24 }}
+			>
 				{value}
 			</Text>
-			{icon}
-		</TouchableOpacity>
+			<FieldAccessory>{icon}</FieldAccessory>
+		</FieldTrigger>
 	);
 }
 
@@ -255,22 +236,21 @@ export function SessionEditForm({
 				Hier kannst du individuell deinen Lernplan anpassen, so wie es passt
 			</Text>
 
-			<Text className="mb-3 font-poppins font-semibold text-16 text-text">
-				Lerndatum
-			</Text>
+			<FieldLabel>Lerndatum</FieldLabel>
 			<SessionEditPill
 				accessibilityLabel="Lerndatum ändern"
 				value={formatDate(editDate)}
 				icon={<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />}
 				onPress={onChangeDate}
 			/>
-			<View className="mt-3 mb-7 flex-row" style={{ columnGap: 8 }}>
+			<View className="mt-5 mb-7 flex-row" style={{ columnGap: 12 }}>
 				<View className="flex-1">
 					<SessionEditPill
 						accessibilityLabel="Startzeit ändern"
 						value={editStart}
 						icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
 						onPress={onChangeStart}
+						className="min-h-[64px] px-5"
 					/>
 				</View>
 				<View className="flex-1">
@@ -279,13 +259,12 @@ export function SessionEditForm({
 						value={editEnd}
 						icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
 						onPress={onChangeEnd}
+						className="min-h-[64px] px-5"
 					/>
 				</View>
 			</View>
 
-			<Text className="mb-3 font-poppins font-semibold text-16 text-text">
-				Lernphase
-			</Text>
+			<FieldLabel>Lernphase</FieldLabel>
 			<View>
 				<SessionEditPill
 					accessibilityLabel="Lernphase ändern"

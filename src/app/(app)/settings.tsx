@@ -7,14 +7,12 @@ import {
 	Alert,
 	Linking,
 	Platform,
-	ScrollView,
 	Switch,
-	TouchableOpacity,
 	View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bell, Logout, Settings } from "~/components/ui/icon";
-import { Text } from "~/components/ui/text";
+import { ListRow } from "~/components/ui/list-row";
+import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { useAuth } from "~/context/AuthContext";
 
 const NOTIFICATION_SETTING_KEY = "dayova.notifications.enabled";
@@ -34,12 +32,7 @@ const hasNotificationPermission = (
 	permissions.granted ||
 	permissions.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL;
 
-function SettingsRow({
-	icon,
-	label,
-	trailing,
-	onPress,
-}: {
+function SettingsRow({ icon, label, trailing, onPress }: {
 	icon: (props: {
 		size?: number;
 		color?: string;
@@ -52,45 +45,17 @@ function SettingsRow({
 	const Icon = icon;
 
 	return (
-		<TouchableOpacity
-			accessibilityLabel={label}
-			accessibilityRole={onPress ? "button" : "text"}
-			accessibilityState={{ disabled: !onPress }}
-			activeOpacity={0.85}
+		<ListRow
+			icon={<Icon size={22} color="#202127" strokeWidth={2} />}
+			label={label}
 			onPress={onPress}
 			disabled={!onPress}
-			className="min-h-[76px] flex-row items-center rounded-full bg-white pr-5 pl-7"
-			style={{
-				borderWidth: 1,
-				borderColor: "rgba(17,24,39,0.04)",
-				boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
-			}}
-		>
-			<View
-				className="h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white"
-				style={{
-					borderWidth: 1,
-					borderColor: "rgba(17,24,39,0.05)",
-					boxShadow: "0 8px 18px rgba(22, 29, 48, 0.08)",
-				}}
-			>
-				<Icon size={23} color="#202127" strokeWidth={2} />
-			</View>
-			<Text
-				className="ml-3 flex-1 font-poppins font-semibold text-[#17171C]"
-				style={{ fontSize: 18, lineHeight: 22, includeFontPadding: false }}
-			>
-				{label}
-			</Text>
-			<View className="self-center" style={{ marginTop: 2 }}>
-				{trailing}
-			</View>
-		</TouchableOpacity>
+			trailing={trailing}
+		/>
 	);
 }
 
 export default function SettingsScreen() {
-	const insets = useSafeAreaInsets();
 	const router = useRouter();
 	const { logout } = useAuth();
 	const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -186,17 +151,9 @@ export default function SettingsScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-[#F6F4F7]">
+		<Screen>
 			<StatusBar style="dark" />
-			<ScrollView
-				className="flex-1"
-				showsVerticalScrollIndicator={false}
-				contentContainerStyle={{
-					paddingTop: Math.max(insets.top + 56, 118),
-					paddingHorizontal: 24,
-					paddingBottom: 150,
-				}}
-			>
+			<ScreenScroll topPadding={118} bottomPadding={150} horizontalPadding={24}>
 				<View style={{ rowGap: 20 }}>
 					<SettingsRow
 						icon={Bell}
@@ -231,7 +188,7 @@ export default function SettingsScreen() {
 						}}
 					/>
 				</View>
-			</ScrollView>
-		</View>
+			</ScreenScroll>
+		</Screen>
 	);
 }

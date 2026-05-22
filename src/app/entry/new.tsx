@@ -1,4 +1,3 @@
-import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { useConvexAuth, useMutation } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -15,23 +14,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { BackButton, Button } from "~/components/ui/button";
+import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import {
 	Field,
 	FieldAccessory,
 	FieldControl,
+	FieldLabel,
 	FieldTrigger,
 } from "~/components/ui/field";
 import {
-	CalendarDays,
-	CheckCircle2,
-	Clock3,
 	Bell,
 	BookOpen,
 	Calculator,
+	CalendarDays,
+	CheckCircle2,
 	Chemistry,
 	ChevronDown,
 	ClipboardList,
+	Clock3,
 	Code,
 	Dna,
 	Earth,
@@ -167,33 +168,24 @@ function HomeworkPillField({
 	return (
 		<Field className="mb-5">
 			{label ? (
-				<Text
-					className="mb-3 font-poppins font-semibold text-text"
-					style={{ fontSize: 15, lineHeight: 20, includeFontPadding: false }}
-				>
-					{label}
-				</Text>
+				<FieldLabel>{label}</FieldLabel>
 			) : null}
 			{onPress ? (
 				<FieldTrigger
 					activeOpacity={0.86}
 					onPress={onPress}
-					className={`min-h-[76px] rounded-full px-7 ${className ?? ""}`}
+					className={`min-h-[64px] rounded-[28px] px-5 ${className ?? ""}`}
 					style={{
-						borderWidth: 1,
-						borderColor: "rgba(17,24,39,0.04)",
-						boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
+						boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 					}}
 				>
 					{content}
 				</FieldTrigger>
 			) : (
 				<FieldControl
-					className={`min-h-[76px] rounded-full px-7 ${className ?? ""}`}
+					className={`min-h-[64px] rounded-[28px] px-5 ${className ?? ""}`}
 					style={{
-						borderWidth: 1,
-						borderColor: "rgba(17,24,39,0.04)",
-						boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
+						boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 					}}
 				>
 					{content}
@@ -550,7 +542,7 @@ export default function NewEntryScreen() {
 	}
 
 	return (
-		<View className="flex-1 bg-background">
+		<View className="flex-1 bg-[#F5F3F6]">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 			<KeyboardAvoidingView
@@ -564,7 +556,7 @@ export default function NewEntryScreen() {
 					automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
 					contentContainerStyle={{
 						paddingHorizontal: 32,
-						paddingTop: isHomework ? Math.max(insets.top + 28, 58) : 76,
+						paddingTop: isHomework ? Math.max(insets.top + 28, 58) : 80,
 						paddingBottom: isHomework ? 168 : 80,
 					}}
 					keyboardShouldPersistTaps="handled"
@@ -601,24 +593,13 @@ export default function NewEntryScreen() {
 								/>
 
 								<Field>
-									<Text
-										className="mb-3 font-poppins font-semibold text-text"
-										style={{
-											fontSize: 15,
-											lineHeight: 20,
-											includeFontPadding: false,
-										}}
-									>
-										Schulfach
-									</Text>
+									<FieldLabel>Schulfach</FieldLabel>
 									<FieldTrigger
 										activeOpacity={0.86}
 										onPress={() => setSelectTarget("subject")}
-										className="min-h-[76px] rounded-full px-7"
+										className="min-h-[64px] rounded-[28px] px-5"
 										style={{
-											borderWidth: 1,
-											borderColor: "rgba(17,24,39,0.04)",
-											boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
+											boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 										}}
 									>
 										<Text
@@ -642,22 +623,11 @@ export default function NewEntryScreen() {
 								</Field>
 
 								<Field className="mb-8" onLayout={handleNoteInputLayout}>
-									<Text
-										className="mb-3 font-poppins font-semibold text-text"
-										style={{
-											fontSize: 15,
-											lineHeight: 20,
-											includeFontPadding: false,
-										}}
-									>
-										Notizen
-									</Text>
+									<FieldLabel>Notizen</FieldLabel>
 									<FieldControl
-										className="min-h-[162px] items-start rounded-[32px] px-7 pt-5 pb-5"
+										className="min-h-[150px] items-start rounded-[28px] px-5 pt-4 pb-4"
 										style={{
-											borderWidth: 1,
-											borderColor: "rgba(17,24,39,0.04)",
-											boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
+											boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 										}}
 									>
 										<Textarea
@@ -723,11 +693,9 @@ export default function NewEntryScreen() {
 								</View>
 
 								<View
-									className="min-h-[76px] flex-row items-center rounded-full bg-white pr-5 pl-7"
+									className="min-h-[64px] flex-row items-center rounded-[28px] bg-white pr-4 pl-5"
 									style={{
-										borderWidth: 1,
-										borderColor: "rgba(17,24,39,0.04)",
-										boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
+										boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 									}}
 								>
 									<View
@@ -770,9 +738,8 @@ export default function NewEntryScreen() {
 							/>
 							<View className="mb-7">
 								<Text
-									className="font-poppins font-semibold text-text"
+									className="font-poppins font-semibold text-16 text-text"
 									style={{
-										fontSize: 15,
 										lineHeight: 20,
 										includeFontPadding: false,
 									}}
@@ -822,24 +789,13 @@ export default function NewEntryScreen() {
 							</View>
 
 							<Field>
-								<Text
-									className="mb-3 font-poppins font-semibold text-text"
-									style={{
-										fontSize: 15,
-										lineHeight: 20,
-										includeFontPadding: false,
-									}}
-								>
-									Schulfach
-								</Text>
+								<FieldLabel>Schulfach</FieldLabel>
 								<FieldTrigger
 									activeOpacity={0.86}
 									onPress={() => setSelectTarget("subject")}
-									className="min-h-[76px] rounded-full px-7"
+									className="min-h-[64px] rounded-[28px] px-5"
 									style={{
-										borderWidth: 1,
-										borderColor: "rgba(17,24,39,0.04)",
-										boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
+										boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 									}}
 								>
 									<Text
@@ -859,24 +815,13 @@ export default function NewEntryScreen() {
 							</Field>
 
 							<Field className="mb-8">
-								<Text
-									className="mb-3 font-poppins font-semibold text-text"
-									style={{
-										fontSize: 15,
-										lineHeight: 20,
-										includeFontPadding: false,
-									}}
-								>
-									Prüfungsart
-								</Text>
+								<FieldLabel>Prüfungsart</FieldLabel>
 								<FieldTrigger
 									activeOpacity={0.86}
 									onPress={() => setSelectTarget("examType")}
-									className="min-h-[76px] rounded-full px-7"
+									className="min-h-[64px] rounded-[28px] px-5"
 									style={{
-										borderWidth: 1,
-										borderColor: "rgba(17,24,39,0.04)",
-										boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
+										boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 									}}
 								>
 									<Text

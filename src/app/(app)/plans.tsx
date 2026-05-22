@@ -1,10 +1,11 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { StatusBar } from "expo-status-bar";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import { Bell, Route2 } from "~/components/ui/icon";
+import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 
@@ -61,14 +62,9 @@ function LearningPlanCard({
 	const title = `${subject} ${examTypeLabel}`.trim();
 
 	return (
-		<TouchableOpacity
+		<ActionSurface
 			activeOpacity={0.88}
-			className="rounded-[32px] bg-white px-5 py-4"
-			style={{
-				borderWidth: 1,
-				borderColor: "rgba(17,24,39,0.04)",
-				boxShadow: "0 16px 34px rgba(22, 29, 48, 0.10)",
-			}}
+			className="px-5 py-4"
 		>
 			<View className="flex-row items-center">
 				<View
@@ -90,12 +86,11 @@ function LearningPlanCard({
 
 				<ProgressRing progressPercent={progressPercent} />
 			</View>
-		</TouchableOpacity>
+		</ActionSurface>
 	);
 }
 
 export default function PlansScreen() {
-	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningPlans = useQuery(
@@ -104,17 +99,9 @@ export default function PlansScreen() {
 	);
 
 	return (
-		<View className="flex-1 bg-[#F6F4F7]">
+		<Screen>
 			<StatusBar style="dark" />
-			<ScrollView
-				className="flex-1"
-				showsVerticalScrollIndicator={false}
-				contentContainerStyle={{
-					paddingTop: Math.max(insets.top + 28, 84),
-					paddingHorizontal: 24,
-					paddingBottom: 150,
-				}}
-			>
+			<ScreenScroll topPadding={84} bottomPadding={150} horizontalPadding={24}>
 				<View className="flex-row items-center justify-between">
 					<Text
 						className="font-bold font-poppins text-[#202127]"
@@ -146,7 +133,7 @@ export default function PlansScreen() {
 						/>
 					)) ?? null}
 				</View>
-			</ScrollView>
-		</View>
+			</ScreenScroll>
+		</Screen>
 	);
 }

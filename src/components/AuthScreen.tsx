@@ -25,6 +25,7 @@ import {
 	Field,
 	FieldAccessory,
 	FieldControl,
+	FieldLabel,
 	FieldMessage,
 	FieldTrigger,
 } from "~/components/ui/field";
@@ -887,20 +888,20 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								birthDateFieldY.current = event.nativeEvent.layout.y;
 							}}
 						>
+							<FieldLabel>Alter</FieldLabel>
 							<FieldTrigger
 								activeOpacity={0.82}
 								onPress={openBirthDatePicker}
 								invalid={Boolean(errors.birthDate)}
-								className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3"
+								className="min-h-[64px] rounded-[28px] px-5"
 							>
 								<View className="flex-1">
-									<Text className="font-poppins text-12 text-text/42 leading-4">
-										Alter
-									</Text>
 									<Text
-										className={`mt-1 font-poppins text-16 ${
+										className={`font-poppins text-16 ${
 											birthDateValue ? "text-text" : "text-text/36"
 										}`}
+										numberOfLines={1}
+										style={{ includeFontPadding: false, lineHeight: 24 }}
 									>
 										{birthDateValue
 											? `${Math.max(
@@ -927,11 +928,9 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 					{!isRegisterIdentityStep ? (
 						<Field>
-							<FieldControl className="min-h-[74px] items-start rounded-[22px] px-5 pt-3 pb-3">
+							<FieldLabel>Passwort</FieldLabel>
+							<FieldControl className="min-h-[64px] rounded-[28px] px-5 py-0">
 								<View className="flex-1">
-									<Text className="font-poppins text-12 text-text/42 leading-4">
-										Passwort
-									</Text>
 									{/*
                   Keep this as a native TextInput instead of InsetTextField/Input.
                   The shared Input's Poppins font metrics make hidden secure text
@@ -961,7 +960,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 											fontSize: 16,
 											height: 30,
 											margin: 0,
-											marginTop: 4,
 											paddingHorizontal: 0,
 											paddingVertical: 0,
 											...Platform.select({

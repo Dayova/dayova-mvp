@@ -5,13 +5,13 @@ import {
 	ActivityIndicator,
 	KeyboardAvoidingView,
 	Platform,
-	ScrollView,
 	View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { Mail, UserRound } from "~/components/ui/icon";
+import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { SectionHeader } from "~/components/ui/section-header";
 import { InsetTextField } from "~/components/ui/text-field";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
@@ -21,7 +21,6 @@ const isValidName = (value: string) => value.trim().length >= 2;
 
 export default function ProfileScreen() {
 	const router = useRouter();
-	const insets = useSafeAreaInsets();
 	const { user, isLoading, updateProfile, verifyProfileEmailCode } = useAuth();
 	const userDraftKey = `${user?.clerkId ?? ""}:${user?.name ?? ""}:${user?.email ?? ""}`;
 	const [draftUserKey, setDraftUserKey] = useState(userDraftKey);
@@ -150,38 +149,23 @@ export default function ProfileScreen() {
 
 	return (
 		<KeyboardAvoidingView
-			className="flex-1 bg-[#F6F4F7]"
+			className="flex-1"
 			behavior={Platform.OS === "ios" ? "padding" : "height"}
 		>
-			<StatusBar style="dark" />
-			<ScrollView
-				className="flex-1"
-				contentContainerStyle={{
-					paddingTop: Math.max(insets.top + 28, 72),
-					paddingHorizontal: 28,
-					paddingBottom: Math.max(insets.bottom + 52, 82),
-				}}
-				keyboardShouldPersistTaps="handled"
-				keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-				automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
-				showsVerticalScrollIndicator={false}
-			>
+			<Screen>
+				<StatusBar style="dark" />
+				<ScreenScroll
+					bottomPadding={82}
+					keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+					automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+				>
 				<Header title="Profil" onBack={goBack} />
 
-				<View className="mb-8">
-					<Text
-						className="font-poppins font-semibold text-[#17171C]"
-						style={{ fontSize: 26, lineHeight: 32, includeFontPadding: false }}
-					>
-						Deine Daten
-					</Text>
-					<Text
-						className="mt-2 font-poppins text-[#787486]"
-						style={{ fontSize: 14, lineHeight: 20, includeFontPadding: false }}
-					>
-						Ändere deinen Namen oder deine E-Mail-Adresse.
-					</Text>
-				</View>
+				<SectionHeader
+					title="Deine Daten"
+					description="Ändere deinen Namen oder deine E-Mail-Adresse."
+					titleSize="sm"
+				/>
 
 				<InsetTextField
 					label="Name"
@@ -199,7 +183,8 @@ export default function ProfileScreen() {
 					autoComplete="name"
 					textContentType="name"
 					accessory={<UserRound size={18} color="rgba(26,26,26,0.34)" />}
-					className="mb-4"
+					className="mb-3"
+					controlClassName="min-h-[60px] rounded-[24px] px-5"
 				/>
 
 				<InsetTextField
@@ -220,10 +205,12 @@ export default function ProfileScreen() {
 					autoComplete="email"
 					textContentType="emailAddress"
 					accessory={<Mail size={18} color="rgba(26,26,26,0.34)" />}
+					className="mb-3"
+					controlClassName="min-h-[60px] rounded-[24px] px-5"
 				/>
 
 				{isEmailVerificationPending ? (
-					<View className="mt-5">
+					<View>
 						<InsetTextField
 							label="Bestätigungscode"
 							value={code}
@@ -238,6 +225,7 @@ export default function ProfileScreen() {
 							keyboardType="number-pad"
 							autoCapitalize="none"
 							textContentType="oneTimeCode"
+							controlClassName="min-h-[60px] rounded-[24px] px-5"
 						/>
 					</View>
 				) : null}
@@ -281,7 +269,7 @@ export default function ProfileScreen() {
 				) : null}
 
 				<Button
-					className="mt-10"
+					className="mt-8 h-[56px]"
 					disabled={isEmailVerificationPending ? !canVerifyCode : !canSave}
 					accessibilityState={{
 						busy: isSaving,
@@ -290,10 +278,10 @@ export default function ProfileScreen() {
 					onPress={isEmailVerificationPending ? verifyEmail : saveProfile}
 					style={{
 						shadowColor: "#3A7BFF",
-						shadowOpacity: 0.3,
-						shadowRadius: 14,
-						shadowOffset: { width: 0, height: 7 },
-						elevation: 5,
+						shadowOpacity: canSave || canVerifyCode ? 0.22 : 0,
+						shadowRadius: 12,
+						shadowOffset: { width: 0, height: 5 },
+						elevation: canSave || canVerifyCode ? 4 : 0,
 					}}
 				>
 					{isSaving ? (
@@ -304,7 +292,8 @@ export default function ProfileScreen() {
 						</Text>
 					)}
 				</Button>
-			</ScrollView>
+				</ScreenScroll>
+			</Screen>
 		</KeyboardAvoidingView>
 	);
 }

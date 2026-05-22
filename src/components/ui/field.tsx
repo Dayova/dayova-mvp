@@ -6,17 +6,10 @@ import {
 	type ViewStyle,
 } from "react-native";
 import { Text } from "~/components/ui/text";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
 
-const fieldSurfaceStyle: ViewStyle = {
-	borderWidth: 1.4,
-	borderColor: "rgba(17,24,39,0.06)",
-	shadowColor: "#111827",
-	shadowOpacity: 0.08,
-	shadowRadius: 12,
-	shadowOffset: { width: 0, height: 6 },
-	elevation: 4,
-};
+const fieldSurfaceStyle: ViewStyle = DAYOVA_DESIGN_SYSTEM.elevation.surface;
 
 const fieldInvalidStyle: ViewStyle = {
 	borderColor: "rgba(239,68,68,0.72)",
@@ -24,6 +17,23 @@ const fieldInvalidStyle: ViewStyle = {
 
 function Field({ className, ...props }: ViewProps) {
 	return <View className={cn("mb-6", className)} {...props} />;
+}
+
+function FieldLabel({
+	className,
+	style,
+	...props
+}: React.ComponentProps<typeof Text>) {
+	return (
+		<Text
+			className={cn(
+				"mb-3 font-poppins font-semibold text-16 text-text",
+				className,
+			)}
+			style={[{ lineHeight: 22, includeFontPadding: false }, style]}
+			{...props}
+		/>
+	);
 }
 
 function FieldControl({
@@ -39,7 +49,7 @@ function FieldControl({
 	return (
 		<View
 			className={cn(
-				"min-h-14 flex-row items-center rounded-input bg-white px-5",
+				"min-h-[64px] flex-row items-center rounded-[28px] bg-white px-5",
 				disabled && "opacity-50",
 				className,
 			)}
@@ -63,7 +73,7 @@ function FieldTrigger({
 		<TouchableOpacity
 			activeOpacity={activeOpacity}
 			className={cn(
-				"min-h-14 flex-row items-center rounded-input bg-white px-5",
+				"min-h-[64px] flex-row items-center rounded-[28px] bg-white px-5",
 				disabled && "opacity-50",
 				className,
 			)}
@@ -93,4 +103,11 @@ function FieldMessage({
 	);
 }
 
-export { Field, FieldAccessory, FieldControl, FieldMessage, FieldTrigger };
+export {
+	Field,
+	FieldAccessory,
+	FieldControl,
+	FieldLabel,
+	FieldMessage,
+	FieldTrigger,
+};

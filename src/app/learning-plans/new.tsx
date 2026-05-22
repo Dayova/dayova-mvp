@@ -11,7 +11,6 @@ import {
 	Modal,
 	Platform,
 	Pressable,
-	ScrollView,
 	TouchableOpacity,
 	useWindowDimensions,
 	View,
@@ -21,7 +20,10 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
+import { FieldControl, FieldLabel } from "~/components/ui/field";
 import { Attachment, Plus, ScanImage, X } from "~/components/ui/icon";
+import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuth } from "~/context/AuthContext";
@@ -385,38 +387,24 @@ export default function NewLearningPlanScreen() {
 
 	return (
 		<KeyboardAvoidingView
-			className="flex-1 bg-[#F5F3F6]"
+			className="flex-1"
 			behavior={Platform.OS === "ios" ? "padding" : "height"}
 		>
-			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
-			<ScrollView
-				className="flex-1"
-				contentContainerStyle={{
-					paddingHorizontal: 32,
-					paddingTop: 80,
-					paddingBottom: 60,
-				}}
-				keyboardShouldPersistTaps="handled"
-				showsVerticalScrollIndicator={false}
-			>
+			<Screen>
+				<Stack.Screen options={{ gestureEnabled: true }} />
+				<StatusBar style="dark" />
+				<ScreenScroll>
 				<Header title="Prüfungsthema" onBack={goBack} />
 				<SectionTitle
 					title="Lernplan erstellen"
 					description="Beschreibe den Prüfungsinhalt und lade optional Schulmaterial hoch."
 				/>
-				<Text className="pb-3 font-medium font-poppins text-14 text-text">
-					Thema beschreiben
-				</Text>
-				<View
-					className="mb-7 items-start rounded-[36px] bg-white px-[24px] pt-[19px] pb-5"
+				<FieldLabel>Thema beschreiben</FieldLabel>
+				<FieldControl
+					className="mb-7 min-h-[150px] items-start rounded-[28px] px-5 pt-4 pb-4"
 					style={{
 						height: TOPIC_TEXTAREA_CARD_HEIGHT,
-						shadowColor: "#000000",
-						shadowOpacity: 0.08,
-						shadowRadius: 13,
-						shadowOffset: { width: 0, height: 6 },
-						elevation: 3,
+						boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 					}}
 				>
 					<Textarea
@@ -425,27 +413,17 @@ export default function NewLearningPlanScreen() {
 						placeholder="Kurze Beschreibung hinzufügen"
 						style={{ height: TOPIC_TEXTAREA_HEIGHT }}
 					/>
-				</View>
+				</FieldControl>
 
-				<Text className="pb-3 font-medium font-poppins text-14 text-text">
-					Notizen
-				</Text>
-				<TouchableOpacity
+				<FieldLabel>Notizen</FieldLabel>
+				<ActionSurface
 					accessibilityLabel="Material hochladen"
 					accessibilityRole="button"
 					accessibilityState={{ disabled: !canUploadMaterial }}
 					activeOpacity={0.86}
 					disabled={!canUploadMaterial}
 					onPress={() => setIsUploadSheetVisible(true)}
-					className="mb-5 items-center justify-center rounded-[32px] bg-white py-[40px]"
-					style={{
-						shadowColor: "#000000",
-						shadowOpacity: 0.08,
-						shadowRadius: 13,
-						shadowOffset: { width: 0, height: 6 },
-						elevation: 3,
-						opacity: canUploadMaterial ? 1 : 0.55,
-					}}
+					className="mb-5 items-center justify-center py-[40px]"
 				>
 					<View
 						className="items-center justify-center"
@@ -470,7 +448,7 @@ export default function NewLearningPlanScreen() {
 					<Text className="mt-3 text-center font-poppins text-13 text-[#8C8C8C]">
 						Lade deine Mitschriften hoch
 					</Text>
-				</TouchableOpacity>
+				</ActionSurface>
 
 				{snapshot?.documents.map((document) => (
 					<MaterialCard
@@ -505,7 +483,7 @@ export default function NewLearningPlanScreen() {
 				>
 					{isBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text>Weiter</Text>}
 				</Button>
-			</ScrollView>
+				</ScreenScroll>
 
 			<Modal
 				visible={isUploadSheetVisible}
@@ -624,6 +602,7 @@ export default function NewLearningPlanScreen() {
 					</View>
 				</View>
 			</Modal>
+			</Screen>
 		</KeyboardAvoidingView>
 	);
 }
