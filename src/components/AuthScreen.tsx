@@ -1,19 +1,5 @@
-import {
-	DateTimePickerSheet,
-	type DateTimePickerEvent,
-} from "~/components/ui/date-time-picker-sheet";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import {
-	ArrowLeft,
-	ChevronDown,
-	CircleAlert,
-	Eye,
-	EyeOff,
-	Mail,
-	MailCheck,
-	UserRound,
-} from "~/components/ui/icon";
 import { useEffect, useRef, useState } from "react";
 import {
 	Animated,
@@ -28,9 +14,13 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Cursor } from "react-native-confirmation-code-field";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
+import {
+	type DateTimePickerEvent,
+	DateTimePickerSheet,
+} from "~/components/ui/date-time-picker-sheet";
 import {
 	Field,
 	FieldAccessory,
@@ -38,6 +28,16 @@ import {
 	FieldMessage,
 	FieldTrigger,
 } from "~/components/ui/field";
+import {
+	ArrowLeft,
+	ChevronDown,
+	CircleAlert,
+	Eye,
+	EyeOff,
+	Mail,
+	MailCheck,
+	UserRound,
+} from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { InsetTextField } from "~/components/ui/text-field";
 import { useAuth } from "~/context/AuthContext";
