@@ -1,5 +1,5 @@
 import DateTimePicker, {
-	type DateTimePickerEvent,
+	type DateTimePickerChangeEvent,
 } from "@expo/ui/community/datetime-picker";
 import type { ReactNode } from "react";
 import {
@@ -21,6 +21,10 @@ type DateTimePickerDisplay =
 	| "calendar"
 	| "clock";
 
+type DateTimePickerSheetEvent =
+	| (DateTimePickerChangeEvent & { type: "set" })
+	| { type: "dismissed" };
+
 type DateTimePickerSheetProps = {
 	visible: boolean;
 	value: Date;
@@ -29,7 +33,7 @@ type DateTimePickerSheetProps = {
 	maximumDate?: Date;
 	minimumDate?: Date;
 	doneLabel?: ReactNode;
-	onChange: (event: DateTimePickerEvent, selectedDate?: Date) => void;
+	onChange: (event: DateTimePickerSheetEvent, selectedDate?: Date) => void;
 	onClose: () => void;
 };
 
@@ -62,6 +66,13 @@ function DateTimePickerSheet({
 }: DateTimePickerSheetProps) {
 	const insets = useSafeAreaInsets();
 	const { width } = useWindowDimensions();
+	const handleValueChange = (event: DateTimePickerChangeEvent, date: Date) => {
+		onChange({ ...event, type: "set" }, date);
+	};
+
+	const handleDismiss = () => {
+		onChange({ type: "dismissed" });
+	};
 
 	if (!visible) return null;
 
@@ -73,7 +84,8 @@ function DateTimePickerSheet({
 				display={normalizeAndroidDisplay(display)}
 				maximumDate={maximumDate}
 				minimumDate={minimumDate}
-				onChange={onChange}
+				onValueChange={handleValueChange}
+				onDismiss={handleDismiss}
 			/>
 		);
 	}
@@ -118,7 +130,7 @@ function DateTimePickerSheet({
 							maximumDate={maximumDate}
 							minimumDate={minimumDate}
 							locale="de-DE"
-							onChange={onChange}
+							onValueChange={handleValueChange}
 							style={{
 								width: width - 32,
 								height: mode === "datetime" ? 260 : 216,
@@ -132,4 +144,4 @@ function DateTimePickerSheet({
 }
 
 export { DateTimePickerSheet };
-export type { DateTimePickerEvent };
+export type { DateTimePickerSheetEvent as DateTimePickerEvent };
