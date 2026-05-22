@@ -405,7 +405,7 @@ export default function NewLearningPlanScreen() {
 					title="Lernplan erstellen"
 					description="Beschreibe den Prüfungsinhalt und lade optional Schulmaterial hoch."
 				/>
-				<Text className="mb-3 font-medium font-poppins text-14 text-text">
+				<Text className="pb-3 font-medium font-poppins text-14 text-text">
 					Thema beschreiben
 				</Text>
 				<View
@@ -427,7 +427,7 @@ export default function NewLearningPlanScreen() {
 					/>
 				</View>
 
-				<Text className="mb-3 font-medium font-poppins text-14 text-text">
+				<Text className="pb-3 font-medium font-poppins text-14 text-text">
 					Notizen
 				</Text>
 				<TouchableOpacity
@@ -437,12 +437,8 @@ export default function NewLearningPlanScreen() {
 					activeOpacity={0.86}
 					disabled={!canUploadMaterial}
 					onPress={() => setIsUploadSheetVisible(true)}
-					className="mb-5 flex-row items-center rounded-[40px] bg-white"
+					className="mb-5 items-center justify-center rounded-[32px] bg-white py-[40px]"
 					style={{
-						height: 96,
-						paddingHorizontal: 16,
-						paddingVertical: 12,
-						columnGap: 16,
 						shadowColor: "#000000",
 						shadowOpacity: 0.08,
 						shadowRadius: 13,
@@ -452,29 +448,28 @@ export default function NewLearningPlanScreen() {
 					}}
 				>
 					<View
-						className="h-12 w-12 items-center justify-center rounded-full bg-[#EAF3FF]"
+						className="items-center justify-center"
 						style={{
+							width: 48,
+							height: 48,
+							borderRadius: 24,
+							backgroundColor: "#3A7BFF",
 							shadowColor: "#3A7BFF",
-							shadowOpacity: 0.12,
+							shadowOpacity: 0.24,
 							shadowRadius: 12,
 							shadowOffset: { width: 0, height: 4 },
 							elevation: 3,
 						}}
 					>
 						{isBusy ? (
-							<ActivityIndicator color="#3A7BFF" />
+							<ActivityIndicator color="#FFFFFF" />
 						) : (
-							<Plus size={26} color="#3A7BFF" strokeWidth={2.1} />
+							<Plus size={26} color="#FFFFFF" strokeWidth={2.1} />
 						)}
 					</View>
-					<View className="flex-1">
-						<Text className="font-medium font-poppins text-16 text-black">
-							Mitschriften hochladen
-						</Text>
-						<Text className="mt-1 font-poppins text-12 text-[#7E7E7E]">
-							Scannen oder Datei auswählen.
-						</Text>
-					</View>
+					<Text className="mt-3 text-center font-poppins text-13 text-[#8C8C8C]">
+						Lade deine Mitschriften hoch
+					</Text>
 				</TouchableOpacity>
 
 				{snapshot?.documents.map((document) => (
@@ -498,7 +493,6 @@ export default function NewLearningPlanScreen() {
 						busy: isBusy,
 						disabled: !canContinueTopic || isBusy,
 					}}
-					className="mt-12"
 					disabled={!canContinueTopic || isBusy}
 					onPress={continueToAnalysis}
 					style={{
@@ -537,10 +531,10 @@ export default function NewLearningPlanScreen() {
 						}}
 					>
 						<View
-							className="flex-row items-start justify-between gap-5"
-							style={{ minHeight: 46 * modalScale }}
+							className="flex-row items-start justify-between"
+							style={{ minHeight: 46 * modalScale, columnGap: 16 * modalScale }}
 						>
-							<View style={{ width: 311 * modalScale }}>
+							<View className="flex-1">
 								<Text
 									className="font-medium font-poppins text-black"
 									style={{
@@ -572,7 +566,6 @@ export default function NewLearningPlanScreen() {
 								style={{
 									width: 40 * modalScale,
 									height: 40 * modalScale,
-									marginRight: 10 * modalScale,
 									boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
 								}}
 							>
