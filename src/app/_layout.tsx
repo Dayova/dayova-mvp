@@ -15,8 +15,11 @@ import { ThemeProvider } from "expo-router/react-navigation";
 import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { PostHogProvider } from "posthog-react-native";
+import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
+import { isPostHogConfigured, postHogHost } from "~/lib/analytics";
 import { NAV_THEME } from "~/lib/theme";
 
 // Fallback for the build phase.
@@ -74,11 +77,23 @@ export default function RootLayout() {
 				<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
 					<ThemeProvider value={theme}>
 						<BottomSheetModalProvider>
-							<OnboardingProvider>
-								<AuthProvider>
-									<AppNavigator />
-								</AuthProvider>
-							</OnboardingProvider>
+							<PostHogProvider
+								apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? ""}
+								options={{
+									host: postHogHost,
+									disabled: !isPostHogConfigured,
+									captureAppLifecycleEvents: false,
+								}}
+								autocapture={false}
+							>
+								<OnboardingProvider>
+									<AuthProvider>
+										<AnalyticsIdentity>
+											<AppNavigator />
+										</AnalyticsIdentity>
+									</AuthProvider>
+								</OnboardingProvider>
+							</PostHogProvider>
 						</BottomSheetModalProvider>
 					</ThemeProvider>
 				</ConvexProviderWithClerk>

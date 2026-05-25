@@ -12,6 +12,7 @@ import { useAuth } from "~/context/AuthContext";
 import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useValidationAnalytics } from "~/lib/analytics";
 import { goBackOrReplace } from "~/lib/navigation";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
@@ -25,12 +26,14 @@ export default function LearningPlanGeneratingScreen() {
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuth();
+	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const didStartRef = useRef(false);
+	const capturedGeneratedPlanIdRef = useRef<Id<"learningPlans"> | null>(null);
 	const missingAnswerRedirectTimeoutRef = useRef<ReturnType<
 		typeof setTimeout
 	> | null>(null);
@@ -61,6 +64,13 @@ export default function LearningPlanGeneratingScreen() {
 		}
 
 		if (snapshot.plan.status === "generated") {
+			if (capturedGeneratedPlanIdRef.current !== planId) {
+				capture("study_plan_generated", {
+					learning_plan_id: planId,
+					session_count: snapshot.sessions.length,
+				});
+				capturedGeneratedPlanIdRef.current = planId;
+			}
 			router.replace(planPath(planId, "review"));
 			return;
 		}
@@ -93,7 +103,7 @@ export default function LearningPlanGeneratingScreen() {
 				})
 				.finally(() => setIsBusy(false));
 		});
-	}, [answerList, generatePlan, planId, retryAttempt, router, snapshot]);
+	}, [answerList, capture, generatePlan, planId, retryAttempt, router, snapshot]);
 
 	useEffect(() => {
 		return () => {
