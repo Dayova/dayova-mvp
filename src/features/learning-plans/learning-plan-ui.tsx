@@ -10,9 +10,19 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 import { Button } from "~/components/ui/button";
-import { FieldAccessory, FieldLabel, FieldTrigger } from "~/components/ui/field";
-import { CalendarDays, ChevronDown, Clock3 } from "~/components/ui/icon";
-import { Attachment, PropertyEdit, X } from "~/components/ui/icon";
+import {
+	FieldAccessory,
+	FieldLabel,
+	FieldTrigger,
+} from "~/components/ui/field";
+import {
+	Attachment,
+	CalendarDays,
+	ChevronDown,
+	Clock3,
+	PropertyEdit,
+	X,
+} from "~/components/ui/icon";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import type {
@@ -27,6 +37,7 @@ import {
 	parseDateKey,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
+import { formatGermanUiText } from "~/lib/german-ui-text";
 import { formatFileSize } from "~/lib/upload-policy";
 
 const phaseEditCopy: Record<
@@ -87,7 +98,10 @@ export function MaterialCard({
 	onRemove: () => void;
 }) {
 	return (
-		<Surface className="mb-3 flex-row items-center rounded-[24px] px-4 py-4" variant="soft">
+		<Surface
+			className="mb-3 flex-row items-center rounded-[24px] px-4 py-4"
+			variant="soft"
+		>
 			<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
 				<Attachment size={21} color="#3A7BFF" strokeWidth={2.2} />
 			</View>
@@ -128,11 +142,12 @@ export function SessionCard({
 		minutesFromTime(session.startTime) + session.durationMinutes,
 	);
 	const sessionDate = parseDateKey(session.dateKey);
+	const title = formatGermanUiText(session.title);
 
 	return (
 		<ActionSurface
 			accessibilityHint="Öffnet die Bearbeitung für diesen Lerntag."
-			accessibilityLabel={`${session.title}, ${session.dateLabel}, ${session.startTime} bis ${endTime} bearbeiten`}
+			accessibilityLabel={`${title}, ${session.dateLabel}, ${session.startTime} bis ${endTime} bearbeiten`}
 			accessibilityRole="button"
 			activeOpacity={0.88}
 			onPress={onEdit}
@@ -149,7 +164,7 @@ export function SessionCard({
 			</View>
 			<View className="flex-1 px-3">
 				<Text className="font-medium font-poppins text-14 text-text">
-					{session.title}
+					{title}
 				</Text>
 				<Text className="mt-0.5 font-poppins text-12 text-text/55">
 					{session.startTime} - {endTime}

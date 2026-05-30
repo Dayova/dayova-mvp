@@ -32,6 +32,7 @@ import {
 	parseDayKey,
 	useCurrentLocalDay,
 } from "~/lib/day-key";
+import { formatGermanUiText } from "~/lib/german-ui-text";
 import type { DayEntry } from "~/types/dayEntries";
 
 const EMPTY_ENTRIES_BY_DAY: Record<string, DayEntry[]> = {};
@@ -257,7 +258,7 @@ function DragStartSlider({
 
 const getEntryTitle = (entry: DayEntry) =>
 	typeof entry.title === "string" && entry.title.trim().length > 0
-		? entry.title.trim()
+		? formatGermanUiText(entry.title.trim())
 		: "Aufgabe";
 
 const getSubjectFromEntry = (entry: DayEntry) => {
@@ -268,7 +269,9 @@ const getSubjectFromEntry = (entry: DayEntry) => {
 		)
 		.trim();
 	if (title.length > 0) return title;
-	return entry.kind?.trim() || "Allgemein";
+	return entry.kind?.trim()
+		? formatGermanUiText(entry.kind.trim())
+		: "Allgemein";
 };
 
 const isLearningEntry = (entry: DayEntry) => {
@@ -325,9 +328,10 @@ const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 		["title", getEntryTitle(entry)],
 		["day", selectedDayLabel],
 	];
-	if (entry.kind) details.push(["kind", entry.kind]);
+	if (entry.kind) details.push(["kind", formatGermanUiText(entry.kind)]);
 	if (entry.notes) details.push(["notes", entry.notes]);
-	if (entry.examTypeLabel) details.push(["examType", entry.examTypeLabel]);
+	if (entry.examTypeLabel)
+		details.push(["examType", formatGermanUiText(entry.examTypeLabel)]);
 	if (entry.dueDateLabel) details.push(["dueDate", entry.dueDateLabel]);
 	if (entry.plannedDateLabel)
 		details.push(["plannedDate", entry.plannedDateLabel]);

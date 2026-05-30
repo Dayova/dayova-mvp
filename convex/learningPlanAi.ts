@@ -2,14 +2,14 @@
 
 import { createVertex } from "@ai-sdk/google-vertex";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
+import { v } from "convex/values";
 import { parseOffice } from "officeparser";
 import { z } from "zod";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { action, type ActionCtx } from "./_generated/server";
-import { v } from "convex/values";
-import { createManagedReadUrl, type StorageProvider } from "./fileStorage";
+import { type ActionCtx, action } from "./_generated/server";
 import { readOptionalEnv, readRequiredEnv } from "./env";
+import { createManagedReadUrl, type StorageProvider } from "./fileStorage";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
@@ -17,6 +17,90 @@ const MAX_PROMPT_CONTEXT_CHARS = 70_000;
 const MAX_SESSION_TITLE_CHARS = 28;
 const LLM_GENERATION_TIMEOUT_MS = 60_000;
 const MODEL_ID = "gemini-3-flash-preview";
+const GERMAN_UI_TEXT_RULE =
+	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
+const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return exactly five short diagnostic questions that reveal what the learning plan needs to cover.`;
+const GENERATED_PLAN_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return a realistic, calendar-ready German learning plan with concrete study sessions.`;
+
+const GERMAN_UI_REPLACEMENTS: ReadonlyArray<[RegExp, string]> = [
+	[/\bAbschlusspruef/g, "Abschlussprüf"],
+	[/\babschlusspruef/g, "abschlussprüf"],
+	[/\bEinschaetz/g, "Einschätz"],
+	[/\beinschaetz/g, "einschätz"],
+	[/\bErloes/g, "Erlös"],
+	[/\berloes/g, "erlös"],
+	[/\bFaeh/g, "Fäh"],
+	[/\bfaeh/g, "fäh"],
+	[/\bDurchfuehrung\b/g, "Durchführung"],
+	[/\bdurchfuehrung\b/g, "durchführung"],
+	[/\bDurchfuehrungen\b/g, "Durchführungen"],
+	[/\bdurchfuehrungen\b/g, "durchführungen"],
+	[/\bLoesung\b/g, "Lösung"],
+	[/\bloesung\b/g, "lösung"],
+	[/\bLoesungen\b/g, "Lösungen"],
+	[/\bloesungen\b/g, "lösungen"],
+	[/\bLoesungsmenge\b/g, "Lösungsmenge"],
+	[/\bloesungsmenge\b/g, "lösungsmenge"],
+	[/\bLoesungsmengen\b/g, "Lösungsmengen"],
+	[/\bloesungsmengen\b/g, "lösungsmengen"],
+	[/\bLoesen\b/g, "Lösen"],
+	[/\bloesen\b/g, "lösen"],
+	[/\bMuendliche\b/g, "Mündliche"],
+	[/\bmuendliche\b/g, "mündliche"],
+	[/\bLoes/g, "Lös"],
+	[/\bloes/g, "lös"],
+	[/\bPlausibilitaet/g, "Plausibilität"],
+	[/\bplausibilitaet/g, "plausibilität"],
+	[/\bPruef/g, "Prüf"],
+	[/\bpruef/g, "prüf"],
+	[/\bUeber/g, "Über"],
+	[/\bueber/g, "über"],
+	[/\bVerstaend/g, "Verständ"],
+	[/\bverstaend/g, "verständ"],
+	[/\bVollstaend/g, "Vollständ"],
+	[/\bvollstaend/g, "vollständ"],
+	[/\bFuer\b/g, "Für"],
+	[/\bfuer\b/g, "für"],
+	[/\bGeraet\b/g, "Gerät"],
+	[/\bgeraet\b/g, "gerät"],
+	[/\bGeraete\b/g, "Geräte"],
+	[/\bgeraete\b/g, "geräte"],
+	[/\bgroessere\b/g, "größere"],
+	[/\bGroessere\b/g, "Größere"],
+	[/\bgroesseren\b/g, "größeren"],
+	[/\bGroesseren\b/g, "Größeren"],
+	[/\bgroesste\b/g, "größte"],
+	[/\bGroesste\b/g, "Größte"],
+	[/\bgroessten\b/g, "größten"],
+	[/\bGroessten\b/g, "Größten"],
+	[/\bgrosse\b/g, "große"],
+	[/\bGrosse\b/g, "Große"],
+	[/\bgrossen\b/g, "großen"],
+	[/\bGrossen\b/g, "Großen"],
+	[/\bgrosser\b/g, "großer"],
+	[/\bGrosser\b/g, "Großer"],
+	[/\bgrosses\b/g, "großes"],
+	[/\bGrosses\b/g, "Großes"],
+	[/\bSchueler\b/g, "Schüler"],
+	[/\bschueler\b/g, "schüler"],
+	[/\bStrasse\b/g, "Straße"],
+	[/\bstrasse\b/g, "straße"],
+	[/\bStrassen\b/g, "Straßen"],
+	[/\bstrassen\b/g, "straßen"],
+	[/\bUebung\b/g, "Übung"],
+	[/\buebung\b/g, "übung"],
+	[/\bUebungen\b/g, "Übungen"],
+	[/\buebungen\b/g, "übungen"],
+	[/\bUeben\b/g, "Üben"],
+	[/\bueben\b/g, "üben"],
+];
+
+const formatGermanUiText = (value: string) =>
+	GERMAN_UI_REPLACEMENTS.reduce(
+		(formatted, [pattern, replacement]) =>
+			formatted.replace(pattern, replacement),
+		value,
+	);
 
 const vertexProviderOptions = {
 	google: {
@@ -87,49 +171,101 @@ const exactArray = <TItem extends z.ZodType>(
 		z.array(itemSchema).length(itemCount),
 	);
 
-const questionsSchema = z.object({
-	sourceSummary: z.string().min(20),
-	questions: exactArray(
-		z.object({
-			prompt: z.string().min(12),
-			targetInsight: z.string().min(8),
-		}),
-		5,
-	),
-});
+const questionsSchema = z
+	.object({
+		sourceSummary: z
+			.string()
+			.min(20)
+			.describe("Brief German summary of the uploaded learning material."),
+		questions: exactArray(
+			z.object({
+				prompt: z
+					.string()
+					.min(12)
+					.describe(
+						"Short German diagnostic question for the student. No multiple choice and no references to files or uploads.",
+					),
+				targetInsight: z
+					.string()
+					.min(8)
+					.describe(
+						"What this answer reveals about the student's strengths, gaps, or needed learning blocks.",
+					),
+			}),
+			5,
+		),
+	})
+	.describe(KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION);
 
-const generatedPlanSchema = z.object({
-	sourceSummary: z.string().min(20),
-	insight: z.object({
-		summary: z.string().min(20),
-		strengths: atMostArray(z.string(), 4),
-		gaps: boundedArray(z.string(), 1, 5),
-	}),
-	sessions: boundedArray(
-		z.object({
-			phase: sessionPhaseSchema,
-			title: z.string().min(3),
-			dayOffsetBeforeExam: z.number().int().min(0).max(120),
-			startTime: z.string().regex(/^\d{2}:\d{2}$/),
-			durationMinutes: z.number().int().min(15).max(180),
-			goal: z
+const generatedPlanSchema = z
+	.object({
+		sourceSummary: z
+			.string()
+			.min(20)
+			.describe("Brief German summary of the material used for this plan."),
+		insight: z.object({
+			summary: z
 				.string()
 				.min(20)
-				.describe(
-					"Deutsch mit korrekten Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.",
-				),
-			tasks: boundedArray(z.string().min(8), 2, 5),
-			expectedOutcome: z
-				.string()
-				.min(12)
-				.describe(
-					"Deutsch mit korrekten Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.",
-				),
+				.describe("German summary of the student's current readiness."),
+			strengths: atMostArray(
+				z
+					.string()
+					.describe(
+						"Specific topic or skill the student already handles well.",
+					),
+				4,
+			),
+			gaps: boundedArray(
+				z
+					.string()
+					.describe(
+						"Specific gap that should shape the generated study sessions.",
+					),
+				1,
+				5,
+			),
 		}),
-		1,
-		5,
-	),
-});
+		sessions: boundedArray(
+			z.object({
+				phase: sessionPhaseSchema,
+				title: z
+					.string()
+					.min(3)
+					.describe(
+						`Short German UI label for this study session. Max ${MAX_SESSION_TITLE_CHARS} characters.`,
+					),
+				dayOffsetBeforeExam: z.number().int().min(0).max(120),
+				startTime: z.string().regex(/^\d{2}:\d{2}$/),
+				durationMinutes: z.number().int().min(15).max(180),
+				goal: z
+					.string()
+					.min(20)
+					.describe(
+						"Student-facing goal for this session, tied to the student's answers and exam topic.",
+					),
+				tasks: boundedArray(
+					z
+						.string()
+						.min(8)
+						.describe(
+							"Concrete task the student can complete during this study session.",
+						),
+					2,
+					5,
+				),
+				expectedOutcome: z
+					.string()
+					.min(12)
+					.describe(
+						"Observable result the student should have after finishing this session.",
+					),
+			}),
+			1,
+			5,
+		),
+	})
+	.describe(GENERATED_PLAN_OUTPUT_DESCRIPTION);
 
 type LearningPlanAiContext = {
 	plan: {
@@ -436,15 +572,19 @@ const normalizeSessions = (
 			return {
 				phase: session.phase,
 				title:
-					compactSingleLine(session.title, MAX_SESSION_TITLE_CHARS) ||
-					fallbackTitleByPhase[session.phase],
+					compactSingleLine(
+						formatGermanUiText(session.title),
+						MAX_SESSION_TITLE_CHARS,
+					) || fallbackTitleByPhase[session.phase],
 				dateKey: date.toISOString(),
 				dateLabel: formatDateLabel(date),
 				startTime: session.startTime,
 				durationMinutes: session.durationMinutes,
-				goal: session.goal.trim(),
-				tasks: session.tasks.map((task) => task.trim()).filter(Boolean),
-				expectedOutcome: session.expectedOutcome.trim(),
+				goal: formatGermanUiText(session.goal.trim()),
+				tasks: session.tasks
+					.map((task) => formatGermanUiText(task.trim()))
+					.filter(Boolean),
+				expectedOutcome: formatGermanUiText(session.expectedOutcome.trim()),
 			};
 		})
 		.sort((left, right) => left.dateKey.localeCompare(right.dateKey));
@@ -495,7 +635,8 @@ export const generateKnowledgeQuestions = action({
 Erstelle genau 5 kurze Wissensanalyse-Fragen. Ziel ist nicht Notengebung, sondern herauszufinden, welche Lernblöcke der Lernplan braucht.
 Die Fragen müssen sich konkret auf Prüfungsthema und Inhalte aus dem Material beziehen, aber wie normale Prüfungs- oder Verständnisfragen formuliert sein.
 Verweise in den Fragen nie direkt auf Quellen oder Uploads: keine Formulierungen wie "laut Material", "im Dokument", "auf dem Bild", "in der Datei", "Material 3 sagt" und keine Dateinamen.
-Keine Multiple-Choice-Fragen.`,
+Keine Multiple-Choice-Fragen.
+Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.`,
 			},
 		];
 
@@ -525,14 +666,14 @@ Keine Multiple-Choice-Fragen.`,
 
 		const questions = result.output.questions.map((question, index) => ({
 			id: `q${index + 1}`,
-			prompt: question.prompt,
-			targetInsight: question.targetInsight,
+			prompt: formatGermanUiText(question.prompt),
+			targetInsight: formatGermanUiText(question.targetInsight),
 		}));
 
 		await ctx.runMutation(internal.learningPlans.storeKnowledgeQuestions, {
 			learningPlanId: args.learningPlanId,
 			questions,
-			sourceSummary: result.output.sourceSummary,
+			sourceSummary: formatGermanUiText(result.output.sourceSummary),
 		});
 
 		return { questionCount: questions.length };
@@ -595,7 +736,7 @@ MVP-Vorgabe:
 - Der größte Block soll die Übungsphase sein.
 - Die Generalprobe soll wie ein fertiger Test/Probetest formuliert sein.
 - Jeder Lernblock braucht konkrete Aufgaben, die der Schüler in diesem Slot abarbeitet.
-- Formuliere goal und expectedOutcome in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.
+- Formuliere alle sichtbaren Texte (sourceSummary, insight, Titel, goal, tasks, expectedOutcome) in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.
 - Session-Titel müssen kurze UI-Labels mit maximal ${MAX_SESSION_TITLE_CHARS} Zeichen sein.
 - insight.strengths darf maximal 4 Punkte enthalten, insight.gaps maximal 5 Punkte.
 - Jeder Lernblock darf maximal 5 Aufgaben enthalten, der gesamte Plan maximal 5 Lernblöcke.
@@ -642,8 +783,12 @@ MVP-Vorgabe:
 		await ctx.runMutation(internal.learningPlans.replaceGeneratedSessions, {
 			learningPlanId: args.learningPlanId,
 			knowledgeAnswersJson: JSON.stringify(args.answers),
-			sourceSummary: result.output.sourceSummary,
-			insight: result.output.insight,
+			sourceSummary: formatGermanUiText(result.output.sourceSummary),
+			insight: {
+				summary: formatGermanUiText(result.output.insight.summary),
+				strengths: result.output.insight.strengths.map(formatGermanUiText),
+				gaps: result.output.insight.gaps.map(formatGermanUiText),
+			},
 			sessions,
 		});
 
