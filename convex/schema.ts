@@ -25,6 +25,7 @@ export default defineSchema({
 		schoolType: v.optional(v.string()),
 		state: v.optional(v.string()),
 		avatarUrl: v.optional(v.string()),
+		validationStudentCode: v.optional(v.string()),
 	})
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
 		.index("by_clerkId", ["clerkId"])

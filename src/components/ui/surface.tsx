@@ -64,4 +64,3 @@ function ActionSurface({
 }
 
 export { ActionSurface, Surface };
-export type { SurfaceVariant };

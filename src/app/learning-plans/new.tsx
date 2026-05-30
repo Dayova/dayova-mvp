@@ -43,6 +43,7 @@ import {
 	parseDateKey,
 	retryOnceAfterAuthResume,
 } from "~/features/learning-plans/utils";
+import { useValidationAnalytics } from "~/lib/analytics";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
@@ -144,6 +145,7 @@ export default function NewLearningPlanScreen() {
 		durationMinutes?: string;
 	}>();
 	const { user } = useAuth();
+	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const startPlan = useMutation(api.learningPlans.start);
 	const updateBasics = useMutation(api.learningPlans.updateBasics);
@@ -299,6 +301,11 @@ export default function NewLearningPlanScreen() {
 				fileSizeBytes,
 			}),
 		);
+		capture("material_uploaded", {
+			learning_plan_id: id,
+			file_type: fileType,
+			file_size_bytes: fileSizeBytes,
+		});
 	};
 
 	const uploadMaterial = async () => {
