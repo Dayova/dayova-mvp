@@ -17,6 +17,7 @@ import {
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
 
 type ParsedNotes = {
@@ -26,8 +27,8 @@ type ParsedNotes = {
 
 const parseNotes = (value?: string): ParsedNotes => {
 	const lines =
-		value
-			?.split("\n")
+		formatGermanUiText(value ?? "")
+			.split("\n")
 			.map((line) => line.trim())
 			.filter(Boolean) ?? [];
 
@@ -181,12 +182,14 @@ export default function EntryDetailScreen() {
 					}
 				: "skip",
 		) ?? undefined;
-	const title = entry?.title ?? params.title ?? "Eintrag";
+	const title = formatGermanUiText(entry?.title ?? params.title ?? "Eintrag");
 	const kind = entry?.kind ?? params.kind;
+	const displayKind = kind ? formatGermanUiText(kind) : undefined;
 	const time = entry?.time ?? params.time;
 	const plannedDate =
 		entry?.plannedDateLabel ?? params.plannedDate ?? params.day;
 	const examType = entry?.examTypeLabel ?? params.examType;
+	const displayExamType = examType ? formatGermanUiText(examType) : undefined;
 	const dueDate = entry?.dueDateLabel ?? params.dueDate;
 	const notes = entry?.notes ?? params.notes;
 	const duration =
@@ -246,9 +249,9 @@ export default function EntryDetailScreen() {
 					>
 						{title}
 					</Text>
-					{kind ? (
+					{displayKind ? (
 						<Text className="mt-3 font-bold font-poppins text-14 text-primary uppercase">
-							{kind}
+							{displayKind}
 						</Text>
 					) : null}
 				</View>
@@ -272,7 +275,7 @@ export default function EntryDetailScreen() {
 					<DetailTile
 						icon={<BookOpen size={15} color="#3A7BFF" strokeWidth={2.3} />}
 						label="Prüfung"
-						value={examType}
+						value={displayExamType}
 					/>
 					<DetailTile
 						icon={<CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />}

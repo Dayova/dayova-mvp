@@ -2,14 +2,14 @@
 
 import { createVertex } from "@ai-sdk/google-vertex";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
+import { v } from "convex/values";
 import { parseOffice } from "officeparser";
 import { z } from "zod";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { action, type ActionCtx } from "./_generated/server";
-import { v } from "convex/values";
-import { createManagedReadUrl, type StorageProvider } from "./fileStorage";
+import { type ActionCtx, action } from "./_generated/server";
 import { readOptionalEnv, readRequiredEnv } from "./env";
+import { createManagedReadUrl, type StorageProvider } from "./fileStorage";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
@@ -17,6 +17,52 @@ const MAX_PROMPT_CONTEXT_CHARS = 70_000;
 const MAX_SESSION_TITLE_CHARS = 28;
 const LLM_GENERATION_TIMEOUT_MS = 60_000;
 const MODEL_ID = "gemini-3-flash-preview";
+
+const GERMAN_UI_REPLACEMENTS: ReadonlyArray<[RegExp, string]> = [
+	[/\bMuendliche\b/g, "Mündliche"],
+	[/\bmuendliche\b/g, "mündliche"],
+	[/\bFuer\b/g, "Für"],
+	[/\bfuer\b/g, "für"],
+	[/\bGeraet\b/g, "Gerät"],
+	[/\bgeraet\b/g, "gerät"],
+	[/\bGeraete\b/g, "Geräte"],
+	[/\bgeraete\b/g, "geräte"],
+	[/\bgroesste\b/g, "größte"],
+	[/\bGroesste\b/g, "Größte"],
+	[/\bgroessten\b/g, "größten"],
+	[/\bGroessten\b/g, "Größten"],
+	[/\bGross\b/g, "Groß"],
+	[/\bgross\b/g, "groß"],
+	[/\bPruefung\b/g, "Prüfung"],
+	[/\bpruefung\b/g, "prüfung"],
+	[/\bPruefungen\b/g, "Prüfungen"],
+	[/\bpruefungen\b/g, "prüfungen"],
+	[/\bPruefungsart\b/g, "Prüfungsart"],
+	[/\bpruefungsart\b/g, "prüfungsart"],
+	[/\bPruefungstag\b/g, "Prüfungstag"],
+	[/\bpruefungstag\b/g, "prüfungstag"],
+	[/\bSchueler\b/g, "Schüler"],
+	[/\bschueler\b/g, "schüler"],
+	[/\bStrasse\b/g, "Straße"],
+	[/\bstrasse\b/g, "straße"],
+	[/\bAbschlusspruefung\b/g, "Abschlussprüfung"],
+	[/\babschlusspruefung\b/g, "abschlussprüfung"],
+	[/\bUebung\b/g, "Übung"],
+	[/\buebung\b/g, "übung"],
+	[/\bUebungen\b/g, "Übungen"],
+	[/\buebungen\b/g, "übungen"],
+	[/\bUeben\b/g, "Üben"],
+	[/\bueben\b/g, "üben"],
+	[/\bWeiss\b/g, "Weiß"],
+	[/\bweiss\b/g, "weiß"],
+];
+
+const formatGermanUiText = (value: string) =>
+	GERMAN_UI_REPLACEMENTS.reduce(
+		(formatted, [pattern, replacement]) =>
+			formatted.replace(pattern, replacement),
+		value,
+	);
 
 const vertexProviderOptions = {
 	google: {
@@ -91,7 +137,12 @@ const questionsSchema = z.object({
 	sourceSummary: z.string().min(20),
 	questions: exactArray(
 		z.object({
-			prompt: z.string().min(12),
+			prompt: z
+				.string()
+				.min(12)
+				.describe(
+					"Deutsch mit korrekten Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.",
+				),
 			targetInsight: z.string().min(8),
 		}),
 		5,
@@ -108,7 +159,12 @@ const generatedPlanSchema = z.object({
 	sessions: boundedArray(
 		z.object({
 			phase: sessionPhaseSchema,
-			title: z.string().min(3),
+			title: z
+				.string()
+				.min(3)
+				.describe(
+					"Kurzes deutsches UI-Label mit korrekten Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.",
+				),
 			dayOffsetBeforeExam: z.number().int().min(0).max(120),
 			startTime: z.string().regex(/^\d{2}:\d{2}$/),
 			durationMinutes: z.number().int().min(15).max(180),
@@ -118,7 +174,16 @@ const generatedPlanSchema = z.object({
 				.describe(
 					"Deutsch mit korrekten Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.",
 				),
-			tasks: boundedArray(z.string().min(8), 2, 5),
+			tasks: boundedArray(
+				z
+					.string()
+					.min(8)
+					.describe(
+						"Deutsch mit korrekten Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.",
+					),
+				2,
+				5,
+			),
 			expectedOutcome: z
 				.string()
 				.min(12)
@@ -436,15 +501,18 @@ const normalizeSessions = (
 			return {
 				phase: session.phase,
 				title:
-					compactSingleLine(session.title, MAX_SESSION_TITLE_CHARS) ||
-					fallbackTitleByPhase[session.phase],
+					formatGermanUiText(
+						compactSingleLine(session.title, MAX_SESSION_TITLE_CHARS),
+					) || fallbackTitleByPhase[session.phase],
 				dateKey: date.toISOString(),
 				dateLabel: formatDateLabel(date),
 				startTime: session.startTime,
 				durationMinutes: session.durationMinutes,
-				goal: session.goal.trim(),
-				tasks: session.tasks.map((task) => task.trim()).filter(Boolean),
-				expectedOutcome: session.expectedOutcome.trim(),
+				goal: formatGermanUiText(session.goal.trim()),
+				tasks: session.tasks
+					.map((task) => formatGermanUiText(task.trim()))
+					.filter(Boolean),
+				expectedOutcome: formatGermanUiText(session.expectedOutcome.trim()),
 			};
 		})
 		.sort((left, right) => left.dateKey.localeCompare(right.dateKey));
@@ -495,7 +563,8 @@ export const generateKnowledgeQuestions = action({
 Erstelle genau 5 kurze Wissensanalyse-Fragen. Ziel ist nicht Notengebung, sondern herauszufinden, welche Lernblöcke der Lernplan braucht.
 Die Fragen müssen sich konkret auf Prüfungsthema und Inhalte aus dem Material beziehen, aber wie normale Prüfungs- oder Verständnisfragen formuliert sein.
 Verweise in den Fragen nie direkt auf Quellen oder Uploads: keine Formulierungen wie "laut Material", "im Dokument", "auf dem Bild", "in der Datei", "Material 3 sagt" und keine Dateinamen.
-Keine Multiple-Choice-Fragen.`,
+Keine Multiple-Choice-Fragen.
+Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.`,
 			},
 		];
 
@@ -525,8 +594,8 @@ Keine Multiple-Choice-Fragen.`,
 
 		const questions = result.output.questions.map((question, index) => ({
 			id: `q${index + 1}`,
-			prompt: question.prompt,
-			targetInsight: question.targetInsight,
+			prompt: formatGermanUiText(question.prompt),
+			targetInsight: formatGermanUiText(question.targetInsight),
 		}));
 
 		await ctx.runMutation(internal.learningPlans.storeKnowledgeQuestions, {
@@ -595,7 +664,7 @@ MVP-Vorgabe:
 - Der größte Block soll die Übungsphase sein.
 - Die Generalprobe soll wie ein fertiger Test/Probetest formuliert sein.
 - Jeder Lernblock braucht konkrete Aufgaben, die der Schüler in diesem Slot abarbeitet.
-- Formuliere goal und expectedOutcome in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.
+- Formuliere alle sichtbaren Texte (sourceSummary, insight, Titel, goal, tasks, expectedOutcome) in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.
 - Session-Titel müssen kurze UI-Labels mit maximal ${MAX_SESSION_TITLE_CHARS} Zeichen sein.
 - insight.strengths darf maximal 4 Punkte enthalten, insight.gaps maximal 5 Punkte.
 - Jeder Lernblock darf maximal 5 Aufgaben enthalten, der gesamte Plan maximal 5 Lernblöcke.
@@ -642,8 +711,12 @@ MVP-Vorgabe:
 		await ctx.runMutation(internal.learningPlans.replaceGeneratedSessions, {
 			learningPlanId: args.learningPlanId,
 			knowledgeAnswersJson: JSON.stringify(args.answers),
-			sourceSummary: result.output.sourceSummary,
-			insight: result.output.insight,
+			sourceSummary: formatGermanUiText(result.output.sourceSummary),
+			insight: {
+				summary: formatGermanUiText(result.output.insight.summary),
+				strengths: result.output.insight.strengths.map(formatGermanUiText),
+				gaps: result.output.insight.gaps.map(formatGermanUiText),
+			},
 			sessions,
 		});
 

@@ -2,13 +2,14 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ScrollView, TouchableOpacity, View } from "react-native";
-import Svg, { Circle } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import { NotificationButton } from "~/components/notification-button";
 import { Plus, Route2 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
 
 type LearningPlanOverview = {
@@ -65,11 +66,14 @@ function ProgressRing({ progress }: { progress: number }) {
 function LearningPlanCard({ plan }: { plan: LearningPlanOverview }) {
 	const router = useRouter();
 	const progress = Math.max(0, Math.min(plan.progressPercent, 100));
+	const title = formatGermanUiText(
+		`${plan.subject} ${plan.examTypeLabel}`.trim(),
+	);
 
 	return (
 		<TouchableOpacity
 			accessibilityHint="Öffnet diesen Lernplan."
-			accessibilityLabel={`${plan.subject} ${plan.examTypeLabel}, ${progress} Prozent`}
+			accessibilityLabel={`${title}, ${progress} Prozent`}
 			accessibilityRole="button"
 			activeOpacity={0.9}
 			onPress={() => router.push(getPlanHref(plan))}
@@ -97,7 +101,7 @@ function LearningPlanCard({ plan }: { plan: LearningPlanOverview }) {
 					numberOfLines={1}
 					style={{ fontSize: 15, lineHeight: 20, includeFontPadding: false }}
 				>
-					{`${plan.subject} ${plan.examTypeLabel}`.trim()}
+					{title}
 				</Text>
 			</View>
 
