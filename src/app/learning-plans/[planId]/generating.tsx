@@ -33,7 +33,6 @@ export default function LearningPlanGeneratingScreen() {
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const didStartRef = useRef(false);
-	const capturedGeneratedPlanIdRef = useRef<Id<"learningPlans"> | null>(null);
 	const missingAnswerRedirectTimeoutRef = useRef<ReturnType<
 		typeof setTimeout
 	> | null>(null);
@@ -64,13 +63,6 @@ export default function LearningPlanGeneratingScreen() {
 		}
 
 		if (snapshot.plan.status === "generated") {
-			if (capturedGeneratedPlanIdRef.current !== planId) {
-				capture("study_plan_generated", {
-					learning_plan_id: planId,
-					session_count: snapshot.sessions.length,
-				});
-				capturedGeneratedPlanIdRef.current = planId;
-			}
 			router.replace(planPath(planId, "review"));
 			return;
 		}
@@ -92,6 +84,12 @@ export default function LearningPlanGeneratingScreen() {
 				learningPlanId: planId,
 				answers: answerList,
 			})
+				.then((result) => {
+					capture("study_plan_generated", {
+						learning_plan_id: planId,
+						session_count: result.sessionCount,
+					});
+				})
 				.catch((error: unknown) => {
 					setErrorMessage(
 						getErrorMessage(

@@ -1,4 +1,4 @@
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import type React from "react";
 import { useEffect, useRef } from "react";
@@ -12,7 +12,11 @@ import {
 export function AnalyticsIdentity({ children }: { children: React.ReactNode }) {
 	const posthog = usePostHog();
 	const { user, isSessionLoading } = useAuth();
-	const convexUser = useQuery(api.users.getMe, user ? {} : "skip");
+	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const convexUser = useQuery(
+		api.users.getMe,
+		user && isConvexAuthenticated ? {} : "skip",
+	);
 	const identifiedClerkIdRef = useRef<string | null>(null);
 
 	useEffect(() => {
@@ -25,6 +29,8 @@ export function AnalyticsIdentity({ children }: { children: React.ReactNode }) {
 			}
 			return;
 		}
+
+		if (!isConvexAuthenticated || convexUser === undefined) return;
 
 		posthog.identify(
 			user.clerkId,
@@ -42,7 +48,7 @@ export function AnalyticsIdentity({ children }: { children: React.ReactNode }) {
 			}),
 		);
 		identifiedClerkIdRef.current = user.clerkId;
-	}, [convexUser, isSessionLoading, posthog, user]);
+	}, [convexUser, isConvexAuthenticated, isSessionLoading, posthog, user]);
 
 	return children;
 }

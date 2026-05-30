@@ -42,13 +42,18 @@ export function definedAnalyticsProperties(properties: AnalyticsPropertiesInput)
 export function useValidationAnalytics() {
 	const posthog = usePostHog();
 	const { user } = useAuth();
+	const clerkId = user?.clerkId;
 
 	const capture = useCallback(
 		(eventName: ValidationEventName, properties?: AnalyticsProperties) => {
-			if (!isPostHogConfigured || !user?.clerkId) return;
-			posthog.capture(eventName, properties);
+			if (!isPostHogConfigured || !clerkId) return;
+			posthog.identify(clerkId);
+			posthog.capture(eventName, {
+				...properties,
+				clerk_id: clerkId,
+			});
 		},
-		[posthog, user?.clerkId],
+		[clerkId, posthog],
 	);
 
 	return { capture };
