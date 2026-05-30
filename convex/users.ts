@@ -86,6 +86,7 @@ const profileFields = (args: {
 	schoolType?: string;
 	state?: string;
 	avatarUrl?: string;
+	validationStudentCode?: string;
 }) => ({
 	...(args.email !== undefined ? { email: normalizeEmail(args.email) } : {}),
 	...(args.name !== undefined ? { name: args.name } : {}),
@@ -95,6 +96,9 @@ const profileFields = (args: {
 	...(args.schoolType !== undefined ? { schoolType: args.schoolType } : {}),
 	...(args.state !== undefined ? { state: args.state } : {}),
 	...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
+	...(args.validationStudentCode !== undefined
+		? { validationStudentCode: args.validationStudentCode }
+		: {}),
 });
 
 export const syncCurrentUser = mutation({
@@ -106,6 +110,7 @@ export const syncCurrentUser = mutation({
 		schoolType: v.optional(v.string()),
 		state: v.optional(v.string()),
 		avatarUrl: v.optional(v.string()),
+		validationStudentCode: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const identity = await requireIdentity(ctx);
