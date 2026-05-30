@@ -329,7 +329,7 @@ const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 		["day", selectedDayLabel],
 	];
 	if (entry.kind) details.push(["kind", formatGermanUiText(entry.kind)]);
-	if (entry.notes) details.push(["notes", formatGermanUiText(entry.notes)]);
+	if (entry.notes) details.push(["notes", entry.notes]);
 	if (entry.examTypeLabel)
 		details.push(["examType", formatGermanUiText(entry.examTypeLabel)]);
 	if (entry.dueDateLabel) details.push(["dueDate", entry.dueDateLabel]);

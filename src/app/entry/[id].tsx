@@ -26,7 +26,7 @@ type ParsedNotes = {
 };
 
 const parseNotes = (value?: string): ParsedNotes => {
-	const lines = formatGermanUiText(value ?? "")
+	const lines = (value ?? "")
 		.split("\n")
 		.map((line) => line.trim())
 		.filter(Boolean);
