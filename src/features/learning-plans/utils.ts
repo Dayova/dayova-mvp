@@ -56,8 +56,23 @@ export const dateWithTime = (dateKey: string, time: string) => {
 	return next;
 };
 
-export const getErrorMessage = (error: unknown, fallback: string) =>
-	error instanceof Error ? error.message : fallback;
+const cleanConvexErrorMessage = (message: string) => {
+	const uncaughtErrorMatch =
+		/Uncaught Error:\s*([\s\S]*?)(?:\n\s*at |\n\s*Called by client|$)/.exec(
+			message,
+		);
+	const cleaned = (uncaughtErrorMatch?.[1] ?? message)
+		.replace(/^\[CONVEX[^\n]*\]\s*/i, "")
+		.replace(/^Server Error\s*/i, "")
+		.trim();
+
+	return cleaned || null;
+};
+
+export const getErrorMessage = (error: unknown, fallback: string) => {
+	if (!(error instanceof Error)) return fallback;
+	return cleanConvexErrorMessage(error.message) ?? fallback;
+};
 
 const wait = (milliseconds: number) =>
 	new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
