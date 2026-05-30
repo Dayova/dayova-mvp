@@ -32,12 +32,17 @@ function Textarea({
 			style={[
 				{
 					margin: 0,
-					paddingTop: Platform.OS === "ios" ? 2 : 0,
-					paddingBottom: 2,
+					paddingTop: 4,
+					paddingBottom: 4,
 					paddingHorizontal: 0,
 					lineHeight: 22,
 					letterSpacing: 0,
 					verticalAlign: "top",
+					...Platform.select({
+						android: {
+							includeFontPadding: false,
+						},
+					}),
 				},
 				style,
 			]}
