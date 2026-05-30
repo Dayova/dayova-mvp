@@ -37,6 +37,32 @@ test("manual timed entry overlapping an existing entry is rejected with conflict
 	);
 });
 
+test("manual timed entry conflicts with Berlin-midnight ISO day keys", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-05-30T22:00:00.000Z",
+		title: "Englisch Kurzkontrolle",
+		time: "16:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "31. Mai 2026",
+		durationMinutes: 30,
+	});
+
+	await expect(
+		t.mutation(api.dayEntries.create, {
+			dayKey: "2026-05-31",
+			title: "Mathe Hausaufgabe",
+			time: "16:15",
+			kind: "Hausaufgabe",
+			plannedDateLabel: "31. Mai 2026",
+			durationMinutes: 30,
+		}),
+	).rejects.toThrow(
+		'Dieser Zeitraum überschneidet sich mit "Englisch Kurzkontrolle" am 31. Mai 2026 von 16:00 bis 16:30.',
+	);
+});
+
 test("manual timed entry adjacent to an existing entry is allowed", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 

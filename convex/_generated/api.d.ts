@@ -9,6 +9,7 @@
  */
 
 import type * as dayEntries from "../dayEntries.js";
+import type * as dayKeyVariants from "../dayKeyVariants.js";
 import type * as env from "../env.js";
 import type * as fileStorage from "../fileStorage.js";
 import type * as learningPlanAi from "../learningPlanAi.js";
@@ -24,6 +25,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   dayEntries: typeof dayEntries;
+  dayKeyVariants: typeof dayKeyVariants;
   env: typeof env;
   fileStorage: typeof fileStorage;
   learningPlanAi: typeof learningPlanAi;

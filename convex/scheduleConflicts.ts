@@ -1,8 +1,8 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
+import { getDayKeyQueryVariants } from "./dayKeyVariants";
 
 const timePattern = /^(\d{1,2}):(\d{2})$/;
-const dayKeyPattern = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const minutesFromTime = (time: string) => {
 	const match = timePattern.exec(time.trim());
@@ -58,44 +58,6 @@ const getConflictMessage = (
 	interval: { start: number; end: number },
 ) =>
 	`Dieser Zeitraum überschneidet sich mit "${entry.title}" am ${getConflictDateLabel(entry)} von ${timeFromMinutes(interval.start)} bis ${timeFromMinutes(interval.end)}.`;
-
-const getBerlinDayKey = (value: string) => {
-	if (dayKeyPattern.test(value)) return value;
-
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) return null;
-
-	const parts = new Intl.DateTimeFormat("en-US", {
-		timeZone: "Europe/Berlin",
-		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-	}).formatToParts(date);
-	const year = parts.find((part) => part.type === "year")?.value;
-	const month = parts.find((part) => part.type === "month")?.value;
-	const day = parts.find((part) => part.type === "day")?.value;
-	if (!year || !month || !day) return null;
-
-	return `${year}-${month}-${day}`;
-};
-
-const getDayKeyQueryVariants = (dayKey: string) => {
-	const variants = new Set([dayKey]);
-	const berlinDayKey = getBerlinDayKey(dayKey);
-	if (berlinDayKey) {
-		variants.add(berlinDayKey);
-		const match = dayKeyPattern.exec(berlinDayKey);
-		if (match) {
-			variants.add(
-				new Date(
-					Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])),
-				).toISOString(),
-			);
-		}
-	}
-
-	return [...variants];
-};
 
 export const assertNoScheduleConflict = async (
 	ctx: MutationCtx,

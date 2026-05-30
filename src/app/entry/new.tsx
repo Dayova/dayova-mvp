@@ -857,7 +857,11 @@ export default function NewEntryScreen() {
 					}}
 				>
 					{errorMessage ? (
-						<Text className="mb-3 text-center font-poppins text-12 text-destructive">
+						<Text
+							accessibilityRole="alert"
+							accessibilityLiveRegion="polite"
+							className="mb-3 text-center font-poppins text-12 text-destructive"
+						>
 							{errorMessage}
 						</Text>
 					) : null}
@@ -887,7 +891,11 @@ export default function NewEntryScreen() {
 					}}
 				>
 					{errorMessage ? (
-						<Text className="mb-3 text-center font-poppins text-12 text-destructive">
+						<Text
+							accessibilityRole="alert"
+							accessibilityLiveRegion="polite"
+							className="mb-3 text-center font-poppins text-12 text-destructive"
+						>
 							{errorMessage}
 						</Text>
 					) : null}

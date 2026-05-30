@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
 import { assertNoScheduleConflict } from "./scheduleConflicts";
 
 type OptionalEntryFields = {
@@ -76,42 +77,6 @@ const publicLearningSessionEntry = (
 	relatedLearningPlanId: session.learningPlanId,
 	relatedLearningPlanSessionId: session._id,
 });
-
-const dayKeyPattern = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-const getBerlinDayKey = (value: string) => {
-	if (dayKeyPattern.test(value)) return value;
-
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) return null;
-
-	const parts = new Intl.DateTimeFormat("en-US", {
-		timeZone: "Europe/Berlin",
-		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-	}).formatToParts(date);
-	const year = parts.find((part) => part.type === "year")?.value;
-	const month = parts.find((part) => part.type === "month")?.value;
-	const day = parts.find((part) => part.type === "day")?.value;
-	if (!year || !month || !day) return null;
-
-	return `${year}-${month}-${day}`;
-};
-
-const getDayKeyQueryVariants = (dayKey: string) => {
-	const variants = new Set([dayKey]);
-	const match = dayKeyPattern.exec(dayKey);
-	if (match) {
-		variants.add(
-			new Date(
-				Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])),
-			).toISOString(),
-		);
-	}
-
-	return [...variants];
-};
 
 const getRequestedDayKey = (
 	storedDayKey: string,
