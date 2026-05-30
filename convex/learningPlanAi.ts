@@ -31,6 +31,20 @@ const GERMAN_UI_REPLACEMENTS: ReadonlyArray<[RegExp, string]> = [
 	[/\berloes/g, "erlös"],
 	[/\bFaeh/g, "Fäh"],
 	[/\bfaeh/g, "fäh"],
+	[/\bDurchfuehrung\b/g, "Durchführung"],
+	[/\bdurchfuehrung\b/g, "durchführung"],
+	[/\bDurchfuehrungen\b/g, "Durchführungen"],
+	[/\bdurchfuehrungen\b/g, "durchführungen"],
+	[/\bLoesung\b/g, "Lösung"],
+	[/\bloesung\b/g, "lösung"],
+	[/\bLoesungen\b/g, "Lösungen"],
+	[/\bloesungen\b/g, "lösungen"],
+	[/\bLoesungsmenge\b/g, "Lösungsmenge"],
+	[/\bloesungsmenge\b/g, "lösungsmenge"],
+	[/\bLoesungsmengen\b/g, "Lösungsmengen"],
+	[/\bloesungsmengen\b/g, "lösungsmengen"],
+	[/\bLoesen\b/g, "Lösen"],
+	[/\bloesen\b/g, "lösen"],
 	[/\bMuendliche\b/g, "Mündliche"],
 	[/\bmuendliche\b/g, "mündliche"],
 	[/\bLoes/g, "Lös"],
@@ -197,7 +211,9 @@ const generatedPlanSchema = z
 			strengths: atMostArray(
 				z
 					.string()
-					.describe("Specific topic or skill the student already handles well."),
+					.describe(
+						"Specific topic or skill the student already handles well.",
+					),
 				4,
 			),
 			gaps: boundedArray(
