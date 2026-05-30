@@ -13,6 +13,7 @@ import type * as env from "../env.js";
 import type * as fileStorage from "../fileStorage.js";
 import type * as learningPlanAi from "../learningPlanAi.js";
 import type * as learningPlans from "../learningPlans.js";
+import type * as scheduleConflicts from "../scheduleConflicts.js";
 import type * as users from "../users.js";
 
 import type {
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   fileStorage: typeof fileStorage;
   learningPlanAi: typeof learningPlanAi;
   learningPlans: typeof learningPlans;
+  scheduleConflicts: typeof scheduleConflicts;
   users: typeof users;
 }>;
 

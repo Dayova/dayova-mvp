@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { assertNoScheduleConflict } from "./scheduleConflicts";
 
 type OptionalEntryFields = {
 	time?: string;
@@ -251,6 +252,12 @@ export const create = mutation({
 		if (!title) {
 			throw new Error("Titel darf nicht leer sein.");
 		}
+		await assertNoScheduleConflict(ctx, {
+			ownerTokenIdentifier,
+			dayKey: args.dayKey,
+			time: args.time,
+			durationMinutes: args.durationMinutes,
+		});
 
 		return await ctx.db.insert("dayEntries", {
 			ownerTokenIdentifier,
