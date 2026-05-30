@@ -147,93 +147,99 @@ const exactArray = <TItem extends z.ZodType>(
 		z.array(itemSchema).length(itemCount),
 	);
 
-const questionsSchema = z.object({
-	sourceSummary: z
-		.string()
-		.min(20)
-		.describe("Brief German summary of the uploaded learning material."),
-	questions: exactArray(
-		z.object({
-			prompt: z
-				.string()
-				.min(12)
-				.describe(
-					"Short German diagnostic question for the student. No multiple choice and no references to files or uploads.",
-				),
-			targetInsight: z
-				.string()
-				.min(8)
-				.describe(
-					"What this answer reveals about the student's strengths, gaps, or needed learning blocks.",
-				),
-		}),
-		5,
-	),
-});
-
-const generatedPlanSchema = z.object({
-	sourceSummary: z
-		.string()
-		.min(20)
-		.describe("Brief German summary of the material used for this plan."),
-	insight: z.object({
-		summary: z
+const questionsSchema = z
+	.object({
+		sourceSummary: z
 			.string()
 			.min(20)
-			.describe("German summary of the student's current readiness."),
-		strengths: atMostArray(
-			z
-				.string()
-				.describe("Specific topic or skill the student already handles well."),
-			4,
-		),
-		gaps: boundedArray(
-			z
-				.string()
-				.describe("Specific gap that should shape the generated study sessions."),
-			1,
-			5,
-		),
-	}),
-	sessions: boundedArray(
-		z.object({
-			phase: sessionPhaseSchema,
-			title: z
-				.string()
-				.min(3)
-				.describe(
-					`Short German UI label for this study session. Max ${MAX_SESSION_TITLE_CHARS} characters.`,
-				),
-			dayOffsetBeforeExam: z.number().int().min(0).max(120),
-			startTime: z.string().regex(/^\d{2}:\d{2}$/),
-			durationMinutes: z.number().int().min(15).max(180),
-			goal: z
-				.string()
-				.min(20)
-				.describe(
-					"Student-facing goal for this session, tied to the student's answers and exam topic.",
-				),
-			tasks: boundedArray(
-				z
+			.describe("Brief German summary of the uploaded learning material."),
+		questions: exactArray(
+			z.object({
+				prompt: z
+					.string()
+					.min(12)
+					.describe(
+						"Short German diagnostic question for the student. No multiple choice and no references to files or uploads.",
+					),
+				targetInsight: z
 					.string()
 					.min(8)
 					.describe(
-						"Concrete task the student can complete during this study session.",
+						"What this answer reveals about the student's strengths, gaps, or needed learning blocks.",
 					),
-				2,
+			}),
+			5,
+		),
+	})
+	.describe(KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION);
+
+const generatedPlanSchema = z
+	.object({
+		sourceSummary: z
+			.string()
+			.min(20)
+			.describe("Brief German summary of the material used for this plan."),
+		insight: z.object({
+			summary: z
+				.string()
+				.min(20)
+				.describe("German summary of the student's current readiness."),
+			strengths: atMostArray(
+				z
+					.string()
+					.describe("Specific topic or skill the student already handles well."),
+				4,
+			),
+			gaps: boundedArray(
+				z
+					.string()
+					.describe(
+						"Specific gap that should shape the generated study sessions.",
+					),
+				1,
 				5,
 			),
-			expectedOutcome: z
-				.string()
-				.min(12)
-				.describe(
-					"Observable result the student should have after finishing this session.",
-				),
 		}),
-		1,
-		5,
-	),
-});
+		sessions: boundedArray(
+			z.object({
+				phase: sessionPhaseSchema,
+				title: z
+					.string()
+					.min(3)
+					.describe(
+						`Short German UI label for this study session. Max ${MAX_SESSION_TITLE_CHARS} characters.`,
+					),
+				dayOffsetBeforeExam: z.number().int().min(0).max(120),
+				startTime: z.string().regex(/^\d{2}:\d{2}$/),
+				durationMinutes: z.number().int().min(15).max(180),
+				goal: z
+					.string()
+					.min(20)
+					.describe(
+						"Student-facing goal for this session, tied to the student's answers and exam topic.",
+					),
+				tasks: boundedArray(
+					z
+						.string()
+						.min(8)
+						.describe(
+							"Concrete task the student can complete during this study session.",
+						),
+					2,
+					5,
+				),
+				expectedOutcome: z
+					.string()
+					.min(12)
+					.describe(
+						"Observable result the student should have after finishing this session.",
+					),
+			}),
+			1,
+			5,
+		),
+	})
+	.describe(GENERATED_PLAN_OUTPUT_DESCRIPTION);
 
 type LearningPlanAiContext = {
 	plan: {
@@ -624,11 +630,7 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 					maxOutputTokens: 1_800,
 					timeout: { totalMs: LLM_GENERATION_TIMEOUT_MS },
 					providerOptions: vertexProviderOptions,
-					output: Output.object({
-						name: "KnowledgeQuestions",
-						description: KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION,
-						schema: questionsSchema,
-					}),
+					output: Output.object({ schema: questionsSchema }),
 					system:
 						"Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Antworte ausschließlich im vorgegebenen JSON-Schema.",
 					messages: [{ role: "user", content: userContent }],
@@ -735,11 +737,7 @@ MVP-Vorgabe:
 					maxOutputTokens: 3_200,
 					timeout: { totalMs: LLM_GENERATION_TIMEOUT_MS },
 					providerOptions: vertexProviderOptions,
-					output: Output.object({
-						name: "GeneratedLearningPlan",
-						description: GENERATED_PLAN_OUTPUT_DESCRIPTION,
-						schema: generatedPlanSchema,
-					}),
+					output: Output.object({ schema: generatedPlanSchema }),
 					system:
 						"Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.",
 					messages: [{ role: "user", content: userContent }],
