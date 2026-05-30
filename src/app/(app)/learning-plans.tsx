@@ -2,8 +2,8 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ScrollView, TouchableOpacity, View } from "react-native";
-import Svg, { Circle } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import { NotificationButton } from "~/components/notification-button";
 import { Plus, Route2 } from "~/components/ui/icon";
@@ -164,7 +164,7 @@ export default function LearningPlansScreen() {
 								boxShadow: "0 14px 28px rgba(21, 29, 48, 0.08)",
 							}}
 						>
-							<View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-[#EEF4FF]">
+							<View className="h-16 w-16 items-center justify-center rounded-full bg-[#EEF4FF] pb-5">
 								<Route2 size={30} color="#3A7BFF" strokeWidth={2.2} />
 							</View>
 							<Text
