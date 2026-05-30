@@ -1,21 +1,21 @@
-import { components } from "./_generated/api";
-import { internal } from "./_generated/api";
+import { v } from "convex/values";
+import { components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
 	action,
 	internalMutation,
 	internalQuery,
-	mutation,
-	query,
 	type MutationCtx,
+	mutation,
 	type QueryCtx,
+	query,
 } from "./_generated/server";
-import { v } from "convex/values";
 import {
 	deleteManagedFile,
 	getConfiguredStorageProvider,
 	getR2ConfigOrThrow,
 } from "./fileStorage";
+import { assertNoScheduleConflict } from "./scheduleConflicts";
 
 const phaseValidator = v.union(
 	v.literal("theory"),
@@ -185,6 +185,15 @@ const syncSessionDayEntry = async (
 	plan: Doc<"learningPlans">,
 	session: Doc<"learningPlanSessions">,
 ) => {
+	await assertNoScheduleConflict(ctx, {
+		ownerTokenIdentifier: session.ownerTokenIdentifier,
+		dayKey: session.dateKey,
+		time: session.startTime,
+		durationMinutes: session.durationMinutes,
+		excludeDayEntryId: session.dayEntryId,
+		excludeLearningPlanSessionId: session._id,
+	});
+
 	if (!session.dayEntryId) {
 		const dayEntryId = await createSessionDayEntry(ctx, plan, session);
 		await ctx.db.patch("learningPlanSessions", session._id, {
@@ -750,6 +759,14 @@ export const updateSession = mutation({
 		if (args.durationMinutes <= 0) {
 			throw new Error("Die Dauer muss größer als 0 sein.");
 		}
+		await assertNoScheduleConflict(ctx, {
+			ownerTokenIdentifier,
+			dayKey: args.dateKey,
+			time: args.startTime,
+			durationMinutes: args.durationMinutes,
+			excludeDayEntryId: session.dayEntryId,
+			excludeLearningPlanSessionId: session._id,
+		});
 
 		await ctx.db.patch("learningPlanSessions", args.id, {
 			phase: args.phase,
@@ -802,15 +819,25 @@ export const addSession = mutation({
 		}
 
 		const now = Date.now();
+		const dateKey = getDateKey(nextDate);
+		const startTime = lastSession?.startTime ?? "17:00";
+		const durationMinutes = lastSession?.durationMinutes ?? 45;
+		await assertNoScheduleConflict(ctx, {
+			ownerTokenIdentifier,
+			dayKey: dateKey,
+			time: startTime,
+			durationMinutes,
+		});
+
 		const sessionId = await ctx.db.insert("learningPlanSessions", {
 			ownerTokenIdentifier,
 			learningPlanId: args.learningPlanId,
 			phase: "practice",
 			title: "Zusatzübung",
-			dateKey: getDateKey(nextDate),
+			dateKey,
 			dateLabel: formatDateLabel(nextDate),
-			startTime: lastSession?.startTime ?? "17:00",
-			durationMinutes: lastSession?.durationMinutes ?? 45,
+			startTime,
+			durationMinutes,
 			goal: "Zusätzlichen Lernblock ergänzen und individuell bearbeiten.",
 			tasks: ["Aufgaben festlegen", "Ergebnis kontrollieren"],
 			expectedOutcome: "Ein zusätzlicher Lernblock ist im Plan ergänzt.",
@@ -934,6 +961,12 @@ export const acceptPlan = mutation({
 		const now = Date.now();
 		let examDayEntryId = plan.examDayEntryId;
 		if (!examDayEntryId) {
+			await assertNoScheduleConflict(ctx, {
+				ownerTokenIdentifier,
+				dayKey: plan.examDateKey,
+				time: plan.examTime,
+				durationMinutes: plan.durationMinutes,
+			});
 			examDayEntryId = await ctx.db.insert("dayEntries", {
 				ownerTokenIdentifier,
 				dayKey: plan.examDateKey,
