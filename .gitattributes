@@ -1,0 +1,19 @@
+# Keep text files normalized in the repository and checked out with LF across
+# Windows, WSL, macOS, and Linux. This avoids per-install core.autocrlf drift.
+* text=auto eol=lf
+
+# Binary assets should never be line-ending normalized.
+*.avif binary
+*.gif binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.mp3 binary
+*.mp4 binary
+*.otf binary
+*.pdf binary
+*.png binary
+*.ttf binary
+*.webp binary
+*.woff binary
+*.woff2 binary
