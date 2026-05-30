@@ -27,12 +27,22 @@ const GERMAN_UI_REPLACEMENTS: ReadonlyArray<[RegExp, string]> = [
 	[/\bgeraet\b/g, "gerät"],
 	[/\bGeraete\b/g, "Geräte"],
 	[/\bgeraete\b/g, "geräte"],
+	[/\bgroessere\b/g, "größere"],
+	[/\bGroessere\b/g, "Größere"],
+	[/\bgroesseren\b/g, "größeren"],
+	[/\bGroesseren\b/g, "Größeren"],
 	[/\bgroesste\b/g, "größte"],
 	[/\bGroesste\b/g, "Größte"],
 	[/\bgroessten\b/g, "größten"],
 	[/\bGroessten\b/g, "Größten"],
-	[/\bGross\b/g, "Groß"],
-	[/\bgross\b/g, "groß"],
+	[/\bgrosse\b/g, "große"],
+	[/\bGrosse\b/g, "Große"],
+	[/\bgrossen\b/g, "großen"],
+	[/\bGrossen\b/g, "Großen"],
+	[/\bgrosser\b/g, "großer"],
+	[/\bGrosser\b/g, "Großer"],
+	[/\bgrosses\b/g, "großes"],
+	[/\bGrosses\b/g, "Großes"],
 	[/\bPruefung\b/g, "Prüfung"],
 	[/\bpruefung\b/g, "prüfung"],
 	[/\bPruefungen\b/g, "Prüfungen"],
@@ -45,6 +55,8 @@ const GERMAN_UI_REPLACEMENTS: ReadonlyArray<[RegExp, string]> = [
 	[/\bschueler\b/g, "schüler"],
 	[/\bStrasse\b/g, "Straße"],
 	[/\bstrasse\b/g, "straße"],
+	[/\bStrassen\b/g, "Straßen"],
+	[/\bstrassen\b/g, "straßen"],
 	[/\bAbschlusspruefung\b/g, "Abschlussprüfung"],
 	[/\babschlusspruefung\b/g, "abschlussprüfung"],
 	[/\bUebung\b/g, "Übung"],
@@ -53,8 +65,6 @@ const GERMAN_UI_REPLACEMENTS: ReadonlyArray<[RegExp, string]> = [
 	[/\buebungen\b/g, "übungen"],
 	[/\bUeben\b/g, "Üben"],
 	[/\bueben\b/g, "üben"],
-	[/\bWeiss\b/g, "Weiß"],
-	[/\bweiss\b/g, "weiß"],
 ];
 
 const formatGermanUiText = (value: string) =>
@@ -501,8 +511,9 @@ const normalizeSessions = (
 			return {
 				phase: session.phase,
 				title:
-					formatGermanUiText(
-						compactSingleLine(session.title, MAX_SESSION_TITLE_CHARS),
+					compactSingleLine(
+						formatGermanUiText(session.title),
+						MAX_SESSION_TITLE_CHARS,
 					) || fallbackTitleByPhase[session.phase],
 				dateKey: date.toISOString(),
 				dateLabel: formatDateLabel(date),

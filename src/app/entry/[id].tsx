@@ -26,11 +26,10 @@ type ParsedNotes = {
 };
 
 const parseNotes = (value?: string): ParsedNotes => {
-	const lines =
-		formatGermanUiText(value ?? "")
-			.split("\n")
-			.map((line) => line.trim())
-			.filter(Boolean) ?? [];
+	const lines = formatGermanUiText(value ?? "")
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean);
 
 	const summary: string[] = [];
 	const tasks: string[] = [];
