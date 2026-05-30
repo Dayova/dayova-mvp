@@ -58,7 +58,7 @@ function ActionModal({
 				)}
 				<View
 					className={cn(
-						"mx-8 mb-9 items-center gap-5 rounded-[30px] bg-white px-5 pt-8 pb-5",
+						"mx-8 mb-9 items-center gap-5 rounded-[40px] bg-white px-5 pt-10 pb-[40px]",
 						cardClassName,
 					)}
 				>
