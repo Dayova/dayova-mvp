@@ -168,7 +168,7 @@ export default function LearningPlansScreen() {
 								boxShadow: "0 14px 28px rgba(21, 29, 48, 0.08)",
 							}}
 						>
-							<View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-[#EEF4FF]">
+							<View className="h-16 w-16 items-center justify-center rounded-full bg-[#EEF4FF] pb-5">
 								<Route2 size={30} color="#3A7BFF" strokeWidth={2.2} />
 							</View>
 							<Text
