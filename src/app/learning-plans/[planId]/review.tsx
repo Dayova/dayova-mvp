@@ -4,7 +4,6 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
-	Modal,
 	ScrollView,
 	TouchableOpacity,
 	View,
@@ -12,6 +11,7 @@ import {
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
+import { ActionModal } from "~/components/ui/action-modal";
 import { Button } from "~/components/ui/button";
 import { Check, CircleAlert, Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
@@ -224,32 +224,23 @@ export default function LearningPlanReviewScreen() {
 				</View>
 			</ScrollView>
 
-			<Modal visible={Boolean(successDayKey)} transparent animationType="fade">
-				<View className="flex-1 justify-end">
-					<View className="absolute inset-0 bg-black/30" />
-					<View className="mx-8 mb-9 items-center rounded-[30px] bg-white px-5 pt-8 pb-5">
-						<View className="h-28 w-28 items-center justify-center rounded-full bg-green-100 py-6">
-							<Check size={48} color="#28C76F" strokeWidth={1.9} />
-						</View>
-						<Text className="font-bold font-poppins text-18 text-text">
-							Lernplan ist eingetragen
-						</Text>
-						<Text className="mt-2 text-center font-poppins text-12 text-text/45">
-							Deine Lernplan wurde erfolgreich eingetragen.
-						</Text>
-						<Button
-							className="mt-6 w-full"
-							onPress={() =>
-								router.replace(
-									`/home${successDayKey ? `?dayKey=${encodeURIComponent(successDayKey)}` : ""}`,
-								)
-							}
-						>
-							<Text>Fertig</Text>
-						</Button>
-					</View>
-				</View>
-			</Modal>
+			<ActionModal
+				visible={Boolean(successDayKey)}
+				title="Lernplan ist eingetragen"
+				description="Deine Lernplan wurde erfolgreich eingetragen."
+				icon={<Check size={48} color="#28C76F" strokeWidth={1.9} />}
+			>
+				<Button
+					className="mt-6 w-full"
+					onPress={() =>
+						router.replace(
+							`/home${successDayKey ? `?dayKey=${encodeURIComponent(successDayKey)}` : ""}`,
+						)
+					}
+				>
+					<Text>Fertig</Text>
+				</Button>
+			</ActionModal>
 		</View>
 	);
 }

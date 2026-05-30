@@ -6,6 +6,7 @@ import { FieldControl, FieldLabel } from "~/components/ui/field";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import type { QuizQuestion } from "~/features/learning-plans/types";
+import { formatGermanUiText } from "~/lib/german-ui-text";
 
 const ANSWER_TEXTAREA_HEIGHT = 176;
 const ANSWER_TEXTAREA_CARD_HEIGHT = 206;
@@ -57,6 +58,7 @@ export function QuizStep({
 	const questionProgressPath = getQuestionProgressPath(questionProgress);
 	const trimmedAnswer = answer.trim();
 	const questionId = question.id;
+	const prompt = formatGermanUiText(question.prompt);
 	const [transition] = useState(() => new Animated.Value(1));
 
 	useEffect(() => {
@@ -119,7 +121,7 @@ export function QuizStep({
 					Frage {questionNumber} von {questionCount}
 				</Text>
 				<Text className="mt-2 font-bold font-poppins text-18 text-text">
-					{question.prompt}
+					{prompt}
 				</Text>
 				<FieldLabel className="mt-7">Antwort</FieldLabel>
 				<FieldControl

@@ -791,7 +791,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 				<ScrollView
 					ref={formScrollRef}
-					className="-mx-2 flex-1"
+					className="flex-1"
 					contentContainerStyle={{
 						flexGrow: 1,
 						paddingBottom: 40,

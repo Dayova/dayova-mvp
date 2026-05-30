@@ -8,6 +8,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { formatGermanUiText } from "~/lib/german-ui-text";
 
 function ProgressRing({ progressPercent }: { progressPercent: number }) {
 	const size = 52;
@@ -59,13 +60,10 @@ function LearningPlanCard({
 	examTypeLabel: string;
 	progressPercent: number;
 }) {
-	const title = `${subject} ${examTypeLabel}`.trim();
+	const title = formatGermanUiText(`${subject} ${examTypeLabel}`.trim());
 
 	return (
-		<ActionSurface
-			activeOpacity={0.88}
-			className="px-5 py-4"
-		>
+		<ActionSurface activeOpacity={0.88} className="px-5 py-4">
 			<View className="flex-row items-center">
 				<View
 					className="h-12 w-12 items-center justify-center rounded-full"

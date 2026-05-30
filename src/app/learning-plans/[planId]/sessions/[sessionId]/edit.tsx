@@ -1,20 +1,14 @@
-import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useState } from "react";
-import {
-	ActivityIndicator,
-	Modal,
-	Platform,
-	Pressable,
-	ScrollView,
-	View,
-} from "react-native";
+import { ActivityIndicator, Platform, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
+import { ActionModal } from "~/components/ui/action-modal";
 import { Button } from "~/components/ui/button";
+import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { X } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
@@ -208,51 +202,42 @@ function LoadedSessionEditScreen({
 				) : null}
 			</ScrollView>
 
-			<Modal visible={isDeleteVisible} transparent animationType="fade">
-				<View className="flex-1 justify-end">
-					<Pressable
-						className="absolute inset-0 bg-black/35"
+			<ActionModal
+				visible={isDeleteVisible}
+				dismissible
+				onClose={() => setIsDeleteVisible(false)}
+				accessibilityLabel="Entfernen-Dialog schließen"
+				title="Bist du dir sicher?"
+				description="Klicke auf Entfernen wenn du dir sicher bist den Lerntag zu entfernen."
+				icon={<X size={48} color="#FF5147" strokeWidth={1.8} />}
+				iconContainerClassName="bg-red-100"
+			>
+				<View className="mt-6 flex-row" style={{ columnGap: 10 }}>
+					<Button
+						variant="neutral"
+						className="flex-1 shadow-none"
 						onPress={() => setIsDeleteVisible(false)}
-					/>
-					<View className="mx-8 mb-9 items-center rounded-[30px] bg-white px-5 pt-7 pb-5">
-						<View className="mb-5 h-16 w-16 items-center justify-center rounded-full bg-red-100">
-							<X size={31} color="#FF5147" strokeWidth={1.8} />
-						</View>
-						<Text className="font-bold font-poppins text-18 text-text">
-							Bist du dir sicher?
-						</Text>
-						<Text className="mt-2 text-center font-poppins text-12 text-text/45">
-							Klicke auf Entfernen wenn du dir sicher bist den Lerntag zu
-							entfernen.
-						</Text>
-						<View className="mt-6 flex-row" style={{ columnGap: 10 }}>
-							<Button
-								variant="neutral"
-								className="flex-1 shadow-none"
-								onPress={() => setIsDeleteVisible(false)}
-							>
-								<Text className="text-text">Abbrechen</Text>
-							</Button>
-							<Button
-								accessibilityLabel={
-									isBusy ? "Entfernen, wird geladen" : "Entfernen"
-								}
-								accessibilityLiveRegion={isBusy ? "polite" : undefined}
-								accessibilityState={{ busy: isBusy, disabled: isBusy }}
-								className="flex-1"
-								onPress={confirmDelete}
-								disabled={isBusy}
-							>
-								{isBusy ? (
-									<ActivityIndicator color="#FFFFFF" />
-								) : (
-									<Text>Entfernen</Text>
-								)}
-							</Button>
-						</View>
-					</View>
+					>
+						<Text className="text-text">Abbrechen</Text>
+					</Button>
+					<Button
+						accessibilityLabel={
+							isBusy ? "Entfernen, wird geladen" : "Entfernen"
+						}
+						accessibilityLiveRegion={isBusy ? "polite" : undefined}
+						accessibilityState={{ busy: isBusy, disabled: isBusy }}
+						className="flex-1"
+						onPress={confirmDelete}
+						disabled={isBusy}
+					>
+						{isBusy ? (
+							<ActivityIndicator color="#FFFFFF" />
+						) : (
+							<Text>Entfernen</Text>
+						)}
+					</Button>
 				</View>
-			</Modal>
+			</ActionModal>
 
 			{renderPicker()}
 		</View>

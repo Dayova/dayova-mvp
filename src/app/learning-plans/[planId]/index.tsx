@@ -18,6 +18,7 @@ import {
 	minutesFromTime,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
+import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
@@ -31,6 +32,9 @@ function SessionOverviewCard({ session }: { session: PlanSession }) {
 		minutesFromTime(session.startTime) + session.durationMinutes,
 	);
 
+	const title = formatGermanUiText(session.title);
+	const goal = formatGermanUiText(session.goal);
+
 	return (
 		<Surface className="rounded-[28px] px-5 py-5" style={{ rowGap: 14 }}>
 			<View
@@ -42,7 +46,7 @@ function SessionOverviewCard({ session }: { session: PlanSession }) {
 						className="font-poppins font-semibold text-[#202127]"
 						style={{ fontSize: 16, lineHeight: 21, includeFontPadding: false }}
 					>
-						{session.title}
+						{title}
 					</Text>
 					<Text
 						className="mt-2 font-poppins text-[#8D8F98]"
@@ -75,7 +79,7 @@ function SessionOverviewCard({ session }: { session: PlanSession }) {
 				className="font-poppins text-[#6F727C]"
 				style={{ fontSize: 13, lineHeight: 19, includeFontPadding: false }}
 			>
-				{session.goal}
+				{goal}
 			</Text>
 		</Surface>
 	);
@@ -91,6 +95,12 @@ export default function LearningPlanSessionsScreen() {
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;
+
+	const title = snapshot
+		? formatGermanUiText(
+				`${snapshot.plan.subject} ${snapshot.plan.examTypeLabel}`.trim(),
+			)
+		: "Lernplan";
 
 	const goBack = () => {
 		goBackOrReplace(router, "/learning-plans");
@@ -117,9 +127,7 @@ export default function LearningPlanSessionsScreen() {
 						className="font-bold font-poppins text-[#202127]"
 						style={{ fontSize: 25, lineHeight: 30, includeFontPadding: false }}
 					>
-						{snapshot
-							? `${snapshot.plan.subject} ${snapshot.plan.examTypeLabel}`.trim()
-							: "Lernplan"}
+						{title}
 					</Text>
 					<Text
 						className="mt-2 font-poppins text-[#8D8F98]"

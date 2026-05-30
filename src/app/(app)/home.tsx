@@ -4,7 +4,6 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-	type GestureResponderEvent,
 	Modal,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
@@ -14,6 +13,13 @@ import {
 	useWindowDimensions,
 	View,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+	runOnJS,
+	useAnimatedStyle,
+	useSharedValue,
+	withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import { NotificationButton } from "~/components/notification-button";
@@ -32,6 +38,7 @@ import {
 	parseDayKey,
 	useCurrentLocalDay,
 } from "~/lib/day-key";
+import { formatGermanUiText } from "~/lib/german-ui-text";
 import type { DayEntry } from "~/types/dayEntries";
 
 const EMPTY_ENTRIES_BY_DAY: Record<string, DayEntry[]> = {};
@@ -133,131 +140,129 @@ function DragStartSlider({
 	compactScale,
 	onComplete,
 }: DragStartSliderProps) {
-	const [dragX, setDragX] = useState(0);
 	const knobWidth = 110 * scale;
 	const trackWidth = 228 * scale;
 	const maxDrag = trackWidth - knobWidth - 8 * scale;
-	const startXRef = useRef(0);
-	const completedRef = useRef(false);
+	const dragX = useSharedValue(0);
+	const isCompleting = useSharedValue(false);
 
-	const resetSlider = useCallback(() => {
-		setDragX(0);
-		completedRef.current = false;
-	}, []);
+	const panGesture = Gesture.Pan()
+		.activeOffsetX([-8 * scale, 8 * scale])
+		.failOffsetY([-14 * scale, 14 * scale])
+		.onBegin(() => {
+			"worklet";
+			dragX.value = 0;
+			isCompleting.value = false;
+		})
+		.onUpdate((event) => {
+			"worklet";
+			dragX.value = Math.min(Math.max(event.translationX, 0), maxDrag);
+		})
+		.onEnd((event) => {
+			"worklet";
+			const nextValue = Math.min(Math.max(event.translationX, 0), maxDrag);
+			const shouldComplete =
+				nextValue >= maxDrag * 0.72 ||
+				(event.velocityX > 650 && nextValue >= maxDrag * 0.35);
 
-	const updateDrag = useCallback(
-		(event: GestureResponderEvent) => {
-			const nextValue = clamp(
-				event.nativeEvent.pageX - startXRef.current,
-				0,
-				maxDrag,
-			);
-			setDragX(nextValue);
-			return nextValue;
-		},
-		[maxDrag],
-	);
+			if (!shouldComplete || isCompleting.value) return;
 
-	const releaseDrag = useCallback(
-		(event: GestureResponderEvent) => {
-			const nextValue = updateDrag(event);
-			if (nextValue >= maxDrag * 0.72 && !completedRef.current) {
-				completedRef.current = true;
-				setDragX(maxDrag);
-				requestAnimationFrame(() => {
-					onComplete();
-					resetSlider();
-				});
-				return;
-			}
+			isCompleting.value = true;
+			dragX.value = withTiming(maxDrag, { duration: 90 }, (finished) => {
+				"worklet";
+				if (!finished) return;
+				runOnJS(onComplete)();
+				dragX.value = withTiming(0, { duration: 120 });
+				isCompleting.value = false;
+			});
+		})
+		.onFinalize(() => {
+			"worklet";
+			if (isCompleting.value) return;
+			dragX.value = withTiming(0, { duration: 160 });
+		});
 
-			resetSlider();
-		},
-		[maxDrag, onComplete, resetSlider, updateDrag],
-	);
+	const knobAnimatedStyle = useAnimatedStyle(() => ({
+		transform: [{ translateX: dragX.value }],
+	}));
 
 	return (
-		<View
-			accessibilityRole="adjustable"
-			accessibilityLabel="Zum Starten nach rechts ziehen"
-			className="justify-center rounded-full bg-[#EDFDFC]"
-			style={{
-				width: trackWidth,
-				height: 56 * scale,
-				marginTop: 24 * compactScale,
-				padding: 4 * scale,
-				boxShadow: "0 8px 18px rgba(0, 0, 0, 0.10)",
-			}}
-			onStartShouldSetResponder={() => true}
-			onMoveShouldSetResponder={() => true}
-			onResponderGrant={(event) => {
-				startXRef.current = event.nativeEvent.pageX;
-				setDragX(0);
-			}}
-			onResponderMove={updateDrag}
-			onResponderRelease={releaseDrag}
-			onResponderTerminate={resetSlider}
-		>
+		<GestureDetector gesture={panGesture}>
 			<View
-				className="absolute flex-row items-center"
-				style={{ right: 34 * scale }}
-				pointerEvents="none"
-			>
-				{[0.2, 0.6, 1].map((opacity, index) => (
-					<Text
-						key={opacity}
-						className="font-poppins font-semibold text-[#3A7BFF]"
-						style={{
-							marginLeft: index === 0 ? 0 : -4 * scale,
-							fontSize: 24 * scale,
-							opacity,
-						}}
-					>
-						›
-					</Text>
-				))}
-			</View>
-			<View
+				accessibilityRole="adjustable"
+				accessibilityLabel="Zum Starten nach rechts ziehen"
+				className="justify-center rounded-full bg-[#EDFDFC]"
 				style={{
-					width: knobWidth,
-					height: 48 * scale,
-					borderRadius: 100,
-					overflow: "hidden",
-					transform: [{ translateX: dragX }],
+					width: trackWidth,
+					height: 56 * scale,
+					marginTop: 24 * compactScale,
+					padding: 4 * scale,
+					boxShadow: "0 8px 18px rgba(0, 0, 0, 0.10)",
 				}}
 			>
-				<LinearGradient
-					colors={["#3A7BFF", "#59D6CF"]}
-					start={{ x: 0, y: 0.5 }}
-					end={{ x: 1, y: 0.5 }}
-					style={{
-						flex: 1,
-						alignItems: "center",
-						justifyContent: "center",
-					}}
+				<View
+					className="absolute flex-row items-center"
+					style={{ right: 34 * scale }}
+					pointerEvents="none"
 				>
-					<Text
-						className="font-bold font-poppins text-white"
+					{[0.2, 0.6, 1].map((opacity, index) => (
+						<Text
+							key={opacity}
+							className="font-poppins font-semibold text-[#3A7BFF]"
+							style={{
+								marginLeft: index === 0 ? 0 : -4 * scale,
+								fontSize: 24 * scale,
+								opacity,
+							}}
+						>
+							›
+						</Text>
+					))}
+				</View>
+				<Animated.View
+					style={[
+						{
+							width: knobWidth,
+							height: 48 * scale,
+							borderRadius: 100,
+							overflow: "hidden",
+						},
+						knobAnimatedStyle,
+					]}
+				>
+					<LinearGradient
+						colors={["#3A7BFF", "#59D6CF"]}
+						start={{ x: 0, y: 0.5 }}
+						end={{ x: 1, y: 0.5 }}
 						style={{
-							fontSize: 16 * scale,
-							lineHeight: 17 * scale,
-							includeFontPadding: false,
-							textShadowColor: "rgba(0,0,0,0.15)",
-							textShadowOffset: { width: 2, height: 4 },
-							textShadowRadius: 8,
+							flex: 1,
+							alignItems: "center",
+							justifyContent: "center",
 						}}
 					>
-						Starten
-					</Text>
-				</LinearGradient>
+						<Text
+							className="font-bold font-poppins text-white"
+							style={{
+								fontSize: 16 * scale,
+								lineHeight: 17 * scale,
+								includeFontPadding: false,
+								textShadowColor: "rgba(0,0,0,0.15)",
+								textShadowOffset: { width: 2, height: 4 },
+								textShadowRadius: 8,
+							}}
+						>
+							Starten
+						</Text>
+					</LinearGradient>
+				</Animated.View>
 			</View>
-		</View>
+		</GestureDetector>
 	);
 }
 
 const getEntryTitle = (entry: DayEntry) =>
 	typeof entry.title === "string" && entry.title.trim().length > 0
-		? entry.title.trim()
+		? formatGermanUiText(entry.title.trim())
 		: "Aufgabe";
 
 const getSubjectFromEntry = (entry: DayEntry) => {
@@ -268,7 +273,9 @@ const getSubjectFromEntry = (entry: DayEntry) => {
 		)
 		.trim();
 	if (title.length > 0) return title;
-	return entry.kind?.trim() || "Allgemein";
+	return entry.kind?.trim()
+		? formatGermanUiText(entry.kind.trim())
+		: "Allgemein";
 };
 
 const isLearningEntry = (entry: DayEntry) => {
@@ -325,9 +332,10 @@ const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 		["title", getEntryTitle(entry)],
 		["day", selectedDayLabel],
 	];
-	if (entry.kind) details.push(["kind", entry.kind]);
+	if (entry.kind) details.push(["kind", formatGermanUiText(entry.kind)]);
 	if (entry.notes) details.push(["notes", entry.notes]);
-	if (entry.examTypeLabel) details.push(["examType", entry.examTypeLabel]);
+	if (entry.examTypeLabel)
+		details.push(["examType", formatGermanUiText(entry.examTypeLabel)]);
 	if (entry.dueDateLabel) details.push(["dueDate", entry.dueDateLabel]);
 	if (entry.plannedDateLabel)
 		details.push(["plannedDate", entry.plannedDateLabel]);
