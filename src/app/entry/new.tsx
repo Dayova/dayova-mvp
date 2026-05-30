@@ -49,6 +49,7 @@ import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuth } from "~/context/AuthContext";
+import { getErrorMessage } from "~/features/learning-plans/utils";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
@@ -167,9 +168,7 @@ function HomeworkPillField({
 
 	return (
 		<Field className="mb-5">
-			{label ? (
-				<FieldLabel>{label}</FieldLabel>
-			) : null}
+			{label ? <FieldLabel>{label}</FieldLabel> : null}
 			{onPress ? (
 				<FieldTrigger
 					activeOpacity={0.86}
@@ -247,6 +246,7 @@ export default function NewEntryScreen() {
 	const [remindMe, setRemindMe] = useState(false);
 	const [createdDayKey, setCreatedDayKey] = useState(getDayKey(initialDate));
 	const [isCreating, setIsCreating] = useState(false);
+	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
 	const [selectTarget, setSelectTarget] = useState<SelectTarget | null>(null);
 	const scrollViewRef = useRef<ScrollView | null>(null);
@@ -330,6 +330,7 @@ export default function NewEntryScreen() {
 
 		try {
 			setIsCreating(true);
+			setErrorMessage(null);
 			createdEntryId = await createDayEntry({
 				dayKey: nextDayKey,
 				title: entryTitle,
@@ -346,6 +347,11 @@ export default function NewEntryScreen() {
 				durationMinutes: resolvedDurationMinutes,
 				...(!isHomework ? { examTypeLabel: trimmedExamType } : {}),
 			});
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(error, "Der Eintrag konnte nicht gespeichert werden."),
+			);
+			return;
 		} finally {
 			setIsCreating(false);
 		}
@@ -850,6 +856,11 @@ export default function NewEntryScreen() {
 						paddingBottom: Math.max(insets.bottom + 10, 24),
 					}}
 				>
+					{errorMessage ? (
+						<Text className="mb-3 text-center font-poppins text-12 text-destructive">
+							{errorMessage}
+						</Text>
+					) : null}
 					<Button
 						className="w-full"
 						disabled={
@@ -870,32 +881,37 @@ export default function NewEntryScreen() {
 				</View>
 			) : (
 				<View
-					className="flex-row"
 					style={{
-						columnGap: 12,
 						paddingHorizontal: 24,
 						paddingBottom: Math.max(insets.bottom + 10, 24),
 					}}
 				>
-					<Button
-						className="flex-1"
-						variant="neutral"
-						disabled={!canCreateExam || isCreating || !canWriteEntries}
-						onPress={() => {
-							void createEntry();
-						}}
-					>
-						<Text>Eintragen</Text>
-					</Button>
-					<Button
-						className="flex-1"
-						disabled={!canCreateExam || isCreating || !canWriteEntries}
-						onPress={() => {
-							void createLearningPlan();
-						}}
-					>
-						<Text>Lernplan</Text>
-					</Button>
+					{errorMessage ? (
+						<Text className="mb-3 text-center font-poppins text-12 text-destructive">
+							{errorMessage}
+						</Text>
+					) : null}
+					<View className="flex-row" style={{ columnGap: 12 }}>
+						<Button
+							className="flex-1"
+							variant="neutral"
+							disabled={!canCreateExam || isCreating || !canWriteEntries}
+							onPress={() => {
+								void createEntry();
+							}}
+						>
+							<Text>Eintragen</Text>
+						</Button>
+						<Button
+							className="flex-1"
+							disabled={!canCreateExam || isCreating || !canWriteEntries}
+							onPress={() => {
+								void createLearningPlan();
+							}}
+						>
+							<Text>Lernplan</Text>
+						</Button>
+					</View>
 				</View>
 			)}
 			{renderPicker()}

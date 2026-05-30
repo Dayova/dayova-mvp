@@ -1,16 +1,15 @@
-import { components } from "./_generated/api";
-import { internal } from "./_generated/api";
+import { v } from "convex/values";
+import { components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
 	action,
 	internalMutation,
 	internalQuery,
-	mutation,
-	query,
 	type MutationCtx,
+	mutation,
 	type QueryCtx,
+	query,
 } from "./_generated/server";
-import { v } from "convex/values";
 import {
 	deleteManagedFile,
 	getConfiguredStorageProvider,
@@ -962,6 +961,12 @@ export const acceptPlan = mutation({
 		const now = Date.now();
 		let examDayEntryId = plan.examDayEntryId;
 		if (!examDayEntryId) {
+			await assertNoScheduleConflict(ctx, {
+				ownerTokenIdentifier,
+				dayKey: plan.examDateKey,
+				time: plan.examTime,
+				durationMinutes: plan.durationMinutes,
+			});
 			examDayEntryId = await ctx.db.insert("dayEntries", {
 				ownerTokenIdentifier,
 				dayKey: plan.examDateKey,
