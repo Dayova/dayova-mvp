@@ -10,7 +10,7 @@ import {
 	Switch,
 	View,
 } from "react-native";
-import { Bell, Logout, Settings } from "~/components/ui/icon";
+import { Bell, Logout, Settings, Timer } from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { useAuth } from "~/context/AuthContext";
@@ -168,6 +168,11 @@ export default function SettingsScreen() {
 								ios_backgroundColor="#D3D6DC"
 							/>
 						}
+					/>
+					<SettingsRow
+						icon={Timer}
+						label="Lernzeiten"
+						onPress={() => router.push("/learning-times")}
 					/>
 				</View>
 

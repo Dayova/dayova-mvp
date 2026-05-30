@@ -351,6 +351,7 @@ export const getSnapshot = query({
 				knowledgeQuestions: plan.knowledgeQuestions ?? [],
 				sourceSummary: plan.sourceSummary,
 				insight: plan.insight,
+				planningHint: plan.planningHint,
 			},
 			documents: documents.map(publicDocument),
 			answers: answers.map(publicAnswer),
@@ -613,10 +614,17 @@ export const getAiContext = internalQuery({
 				q.eq("learningPlanId", args.learningPlanId),
 			)
 			.take(20);
+		const learningTimes = await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
+			)
+			.take(7);
 
 		return {
 			plan,
 			documents,
+			learningTimes,
 			accessKey: buildPlanAccessKey(args.learningPlanId),
 		};
 	},
@@ -676,6 +684,7 @@ export const replaceGeneratedSessions = internalMutation({
 		knowledgeAnswersJson: v.string(),
 		sourceSummary: v.string(),
 		insight: planInsightValidator,
+		planningHint: v.optional(v.string()),
 		sessions: v.array(generatedSessionValidator),
 	},
 	handler: async (ctx, args) => {
@@ -721,6 +730,7 @@ export const replaceGeneratedSessions = internalMutation({
 			knowledgeAnswersJson: args.knowledgeAnswersJson,
 			sourceSummary: args.sourceSummary,
 			insight: args.insight,
+			planningHint: args.planningHint,
 			status: "generated",
 			updatedAt: now,
 		});

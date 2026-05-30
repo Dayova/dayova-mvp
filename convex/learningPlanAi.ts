@@ -17,6 +17,8 @@ const MAX_PROMPT_CONTEXT_CHARS = 70_000;
 const MAX_SESSION_TITLE_CHARS = 28;
 const LLM_GENERATION_TIMEOUT_MS = 60_000;
 const MODEL_ID = "gemini-3-flash-preview";
+const MIN_LEARNING_SLOT_MINUTES = 10;
+const MAX_GENERATED_SESSIONS = 20;
 
 const vertexProviderOptions = {
 	google: {
@@ -154,6 +156,11 @@ type LearningPlanAiContext = {
 		fileName: string;
 		fileType: string;
 		fileSizeBytes: number;
+	}>;
+	learningTimes: Array<{
+		dayOfWeek: number;
+		startTime: string;
+		endTime: string;
 	}>;
 	accessKey: string;
 };
@@ -369,6 +376,51 @@ const formatDateLabel = (date: Date) =>
 		year: "numeric",
 	}).format(date);
 
+const formatDateKey = (date: Date) => date.toISOString().slice(0, 10);
+
+const formatTimeFromMinutes = (minutes: number) => {
+	const hours = Math.floor(minutes / 60);
+	const rest = minutes % 60;
+	return `${hours.toString().padStart(2, "0")}:${rest
+		.toString()
+		.padStart(2, "0")}`;
+};
+
+const parseTimeToMinutes = (time: string) => {
+	const [hours, minutes] = time.split(":").map(Number);
+	if (
+		!Number.isInteger(hours) ||
+		!Number.isInteger(minutes) ||
+		hours < 0 ||
+		hours > 23 ||
+		minutes < 0 ||
+		minutes > 59
+	) {
+		return null;
+	}
+
+	return hours * 60 + minutes;
+};
+
+const getBerlinDayOfWeek = (date: Date) => {
+	const value = new Intl.DateTimeFormat("en-US", {
+		timeZone: "Europe/Berlin",
+		weekday: "short",
+	}).format(date);
+
+	return (
+		{
+			Mon: 1,
+			Tue: 2,
+			Wed: 3,
+			Thu: 4,
+			Fri: 5,
+			Sat: 6,
+			Sun: 7,
+		} as Record<string, number>
+	)[value] ?? 1;
+};
+
 const buildDateFromOffset = (
 	examDateKey: string,
 	dayOffsetBeforeExam: number,
@@ -379,6 +431,88 @@ const buildDateFromOffset = (
 	}
 	date.setUTCDate(date.getUTCDate() - dayOffsetBeforeExam);
 	return date;
+};
+
+type LearningTimeWindow = LearningPlanAiContext["learningTimes"][number];
+
+type LearningSlot = {
+	date: Date;
+	dateKey: string;
+	dayOfWeek: number;
+	startMinutes: number;
+	endMinutes: number;
+	nextStartMinutes: number;
+};
+
+const buildLearningSlots = (
+	examDateKey: string,
+	availableDays: number,
+	learningTimes: LearningTimeWindow[],
+) => {
+	const windowsByDay = new Map<number, LearningTimeWindow[]>();
+	for (const learningTime of learningTimes) {
+		const startMinutes = parseTimeToMinutes(learningTime.startTime);
+		const endMinutes = parseTimeToMinutes(learningTime.endTime);
+		if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+			continue;
+		}
+
+		const windows = windowsByDay.get(learningTime.dayOfWeek) ?? [];
+		windows.push(learningTime);
+		windowsByDay.set(learningTime.dayOfWeek, windows);
+	}
+
+	const slots: LearningSlot[] = [];
+	for (let offset = availableDays; offset >= 1; offset -= 1) {
+		const date = buildDateFromOffset(examDateKey, offset);
+		const dayOfWeek = getBerlinDayOfWeek(date);
+		const windows = windowsByDay.get(dayOfWeek) ?? [];
+		for (const window of windows) {
+			const startMinutes = parseTimeToMinutes(window.startTime);
+			const endMinutes = parseTimeToMinutes(window.endTime);
+			if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+				continue;
+			}
+
+			slots.push({
+				date,
+				dateKey: formatDateKey(date),
+				dayOfWeek,
+				startMinutes,
+				endMinutes,
+				nextStartMinutes: startMinutes,
+			});
+		}
+	}
+
+	return slots.sort(
+		(left, right) =>
+			left.dateKey.localeCompare(right.dateKey) ||
+			left.startMinutes - right.startMinutes,
+	);
+};
+
+const describeLearningTimes = (learningTimes: LearningTimeWindow[]) => {
+	if (learningTimes.length === 0) return "Keine persönlichen Lernzeiten hinterlegt.";
+
+	const dayLabels: Record<number, string> = {
+		1: "Montag",
+		2: "Dienstag",
+		3: "Mittwoch",
+		4: "Donnerstag",
+		5: "Freitag",
+		6: "Samstag",
+		7: "Sonntag",
+	};
+
+	return learningTimes
+		.slice()
+		.sort((left, right) => left.dayOfWeek - right.dayOfWeek)
+		.map(
+			(time) =>
+				`${dayLabels[time.dayOfWeek] ?? "Lerntag"} ${time.startTime}-${time.endTime}`,
+		)
+		.join("\n");
 };
 
 const distributeSessionOffsets = (
@@ -425,29 +559,82 @@ const normalizeSessions = (
 	examDateKey: string,
 	availableDays: number,
 	sessions: z.infer<typeof generatedPlanSchema>["sessions"],
+	learningTimes: LearningTimeWindow[],
 ) => {
+	const slots = buildLearningSlots(examDateKey, availableDays, learningTimes);
+	const requestedMinutes = sessions.reduce(
+		(total, session) => total + session.durationMinutes,
+		0,
+	);
+	const availableMinutes = slots.reduce(
+		(total, slot) => total + (slot.endMinutes - slot.startMinutes),
+		0,
+	);
 	const distributedOffsets = distributeSessionOffsets(availableDays, sessions);
-	return sessions
-		.map((session, index) => {
-			const date = buildDateFromOffset(
-				examDateKey,
-				distributedOffsets[index] ?? 0,
-			);
+	const prioritizedSessions = sessions
+		.map((session, index) => ({
+			session,
+			preferredDateKey: formatDateKey(
+				buildDateFromOffset(examDateKey, distributedOffsets[index] ?? 0),
+			),
+		}))
+		.sort((left, right) =>
+			left.preferredDateKey.localeCompare(right.preferredDateKey),
+		);
+	const normalizedSessions = slots
+		.filter(
+			(slot) =>
+				slot.endMinutes - slot.startMinutes >= MIN_LEARNING_SLOT_MINUTES,
+		)
+		.slice(0, MAX_GENERATED_SESSIONS)
+		.map((slot, index) => {
+			const source =
+				prioritizedSessions.find(
+					(item) => item.preferredDateKey <= slot.dateKey,
+				)?.session ??
+				prioritizedSessions[index % Math.max(prioritizedSessions.length, 1)]
+					?.session ??
+				sessions[index % Math.max(sessions.length, 1)];
+			const phase = source?.phase ?? "practice";
+			const durationMinutes = slot.endMinutes - slot.startMinutes;
+
 			return {
-				phase: session.phase,
+				phase,
 				title:
-					compactSingleLine(session.title, MAX_SESSION_TITLE_CHARS) ||
-					fallbackTitleByPhase[session.phase],
-				dateKey: date.toISOString(),
-				dateLabel: formatDateLabel(date),
-				startTime: session.startTime,
-				durationMinutes: session.durationMinutes,
-				goal: session.goal.trim(),
-				tasks: session.tasks.map((task) => task.trim()).filter(Boolean),
-				expectedOutcome: session.expectedOutcome.trim(),
+					compactSingleLine(
+						source?.title ?? fallbackTitleByPhase[phase],
+						MAX_SESSION_TITLE_CHARS,
+					) || fallbackTitleByPhase[phase],
+				dateKey: slot.date.toISOString(),
+				dateLabel: formatDateLabel(slot.date),
+				startTime: formatTimeFromMinutes(slot.startMinutes),
+				durationMinutes,
+				goal:
+					source?.goal.trim() ??
+					"Nutze diese kurze Lernzeit, um dich gezielt auf die Prüfung vorzubereiten.",
+				tasks: source?.tasks.map((task) => task.trim()).filter(Boolean) ?? [
+					"Wiederhole die wichtigsten Begriffe.",
+					"Löse eine kurze passende Übungsaufgabe.",
+				],
+				expectedOutcome:
+					source?.expectedOutcome.trim() ??
+					"Du hast einen kleinen, konkreten Fortschritt für die Prüfung gemacht.",
 			};
 		})
 		.sort((left, right) => left.dateKey.localeCompare(right.dateKey));
+
+	const plannedMinutes = normalizedSessions.reduce(
+		(total, session) => total + session.durationMinutes,
+		0,
+	);
+	const planningHint =
+		learningTimes.length === 0
+			? "Du hast noch keine persönlichen Lernzeiten hinterlegt. Der Lernplan kann erst konkrete Lerneinheiten erstellen, wenn du in den Einstellungen Lernzeiten anlegst."
+			: plannedMinutes < requestedMinutes || availableMinutes < requestedMinutes
+				? `Deine hinterlegten Lernzeiten reichen nicht für den vollständigen empfohlenen Plan. Geplant wurden ${plannedMinutes} von ${requestedMinutes} Minuten innerhalb deiner verfügbaren Lernzeiten.`
+				: undefined;
+
+	return { sessions: normalizedSessions, planningHint };
 };
 
 const buildBaseContext = (context: LearningPlanAiContext) => {
@@ -575,6 +762,7 @@ export const generatePlan = action({
 			context.accessKey,
 		);
 		const availableDays = getAvailableDays(context.plan.examDateKey);
+		const personalLearningTimes = describeLearningTimes(context.learningTimes);
 		const model = createVertexModel();
 		const userContent: Array<
 			| { type: "text"; text: string }
@@ -584,6 +772,8 @@ export const generatePlan = action({
 				type: "text",
 				text: `${buildBaseContext(context)}
 Verfügbare Tage bis zur Prüfung: ${availableDays}
+Persönliche Lernzeiten aus den Einstellungen:
+${personalLearningTimes}
 
 Wissensanalyse:
 ${qaText}
@@ -599,6 +789,8 @@ MVP-Vorgabe:
 - Session-Titel müssen kurze UI-Labels mit maximal ${MAX_SESSION_TITLE_CHARS} Zeichen sein.
 - insight.strengths darf maximal 4 Punkte enthalten, insight.gaps maximal 5 Punkte.
 - Jeder Lernblock darf maximal 5 Aufgaben enthalten, der gesamte Plan maximal 5 Lernblöcke.
+- Plane ausschließlich innerhalb der persönlichen Lernzeiten aus den Einstellungen. Verwende keine anderen Tage oder Uhrzeiten.
+- Wenn die persönlichen Lernzeiten nicht für den gesamten empfohlenen Plan reichen, plane nur so viel wie in diese Lernzeiten passt.
 - Nutze dayOffsetBeforeExam relativ zum Prüfungstag: 1 = einen Tag vor der Prüfung.
 - Verteile mehrere Sessions auf unterschiedliche Kalendertage, solange genug Tage verfügbar sind. Wiederhole dayOffsetBeforeExam nicht, wenn eine Alternative möglich ist.
 - Wenn Antworten nur Platzhalter oder Unsinn enthalten, erstelle trotzdem einen remedialen Grundlagenplan und setze strengths auf [].
@@ -630,20 +822,19 @@ MVP-Vorgabe:
 			"Aus diesen Antworten konnte kein stabiler Lernplan erstellt werden. Ergänze mindestens ein paar konkrete Stichworte zu deinem Wissenstand und versuche es erneut.",
 		);
 
-		const sessions = normalizeSessions(
+		const { sessions, planningHint } = normalizeSessions(
 			context.plan.examDateKey,
 			availableDays,
 			result.output.sessions,
+			context.learningTimes,
 		);
-		if (sessions.length === 0) {
-			throw new Error("Die KI hat keine nutzbaren Lerntage erzeugt.");
-		}
 
 		await ctx.runMutation(internal.learningPlans.replaceGeneratedSessions, {
 			learningPlanId: args.learningPlanId,
 			knowledgeAnswersJson: JSON.stringify(args.answers),
 			sourceSummary: result.output.sourceSummary,
 			insight: result.output.insight,
+			planningHint,
 			sessions,
 		});
 

@@ -13,7 +13,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
-import { Check, Plus } from "~/components/ui/icon";
+import { Check, CircleAlert, Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import {
@@ -25,7 +25,7 @@ import type {
 	PlanSession,
 } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { goBackOrReplace } from "~/lib/navigation";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -131,8 +131,6 @@ export default function LearningPlanReviewScreen() {
 		return true;
 	}, [planId, router]);
 
-	useBackIntent(Boolean(planId), goBack);
-
 	return (
 		<View className="flex-1 bg-[#F5F3F6]">
 			<Stack.Screen options={{ gestureEnabled: true }} />
@@ -153,6 +151,17 @@ export default function LearningPlanReviewScreen() {
 					title="Lernplan erstellen"
 					description="Passe deine Lerntage an und trage den Plan danach in den Kalender ein."
 				/>
+				{snapshot?.plan.planningHint ? (
+					<View className="mb-5 flex-row rounded-[24px] bg-white px-5 py-4" style={{ gap: 12 }}>
+						<CircleAlert size={20} color="#F59E0B" strokeWidth={2.2} />
+						<Text
+							className="flex-1 font-poppins text-[#7A5A12]"
+							style={{ fontSize: 13, lineHeight: 19, includeFontPadding: false }}
+						>
+							{snapshot.plan.planningHint}
+						</Text>
+					</View>
+				) : null}
 				<View className="flex-1 gap-6">
 					{snapshot?.sessions.map((session) => (
 						<SessionCard
