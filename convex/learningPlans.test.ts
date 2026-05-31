@@ -2,7 +2,7 @@
 
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -117,4 +117,108 @@ test("updating a learning plan session at its own synced time is allowed", async
 			durationMinutes: session.durationMinutes,
 		}),
 	).resolves.toBeNull();
+});
+
+test("generated knowledge questions reject malformed control characters before storage", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await expect(
+		t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+			learningPlanId,
+			sourceSummary:
+				"Die Unterlagen behandeln Ger\u0004teklassen und inklusive Arbeitspl\u0004tze.",
+			questions: [
+				{
+					id: "q1",
+					prompt:
+						"Welche technischen Hilfsmittel k\u0004nnten f\u0004r eine Person mit Sehbeeintr\u0004chtigung zum Einsatz kommen?",
+					targetInsight:
+						"Pr\u0004ft das Verst\u0004ndnis f\u0004r konkrete L\u0004sungsans\u0004tze.",
+				},
+			],
+		}),
+	).rejects.toThrow("ungültige Sonderzeichen");
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+
+	expect(snapshot?.plan.status).toBe("draft");
+	expect(snapshot?.plan.knowledgeQuestions).toEqual([]);
+});
+
+test("generated plan sessions reject malformed control characters without replacing the existing plan", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Zusammenfassung für Geräteklassen.",
+		insight: {
+			summary: "Verständnis für Lösungen prüfen.",
+			strengths: ["Schueler erkennt Geraete."],
+			gaps: ["Lösungen für Arbeitsplätze"],
+		},
+		sessions: [
+			{
+				phase: "practice",
+				title: "Übung für Geräte",
+				dateKey: "2026-06-03T00:00:00.000Z",
+				dateLabel: "3. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 45,
+				goal: "Prüfe Lösungen für Geräteklassen.",
+				tasks: ["Loesungen sammeln", "Hilfsmittel für Arbeitsplätze bewerten"],
+				expectedOutcome: "Schüler kennt Lösungsansätze.",
+			},
+		],
+	});
+
+	await expect(
+		t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+			learningPlanId,
+			knowledgeAnswersJson: "[]",
+			sourceSummary: "Zusammenfassung f\u0004r Ger\u0004teklassen.",
+			insight: {
+				summary: "Verständnis für Lösungen prüfen.",
+				strengths: [],
+				gaps: ["Lösungen für Arbeitsplätze"],
+			},
+			sessions: [
+				{
+					phase: "practice",
+					title: "Übung für Geräte",
+					dateKey: "2026-06-04T00:00:00.000Z",
+					dateLabel: "4. Juni 2026",
+					startTime: "18:00",
+					durationMinutes: 45,
+					goal: "Prüfe Lösungen für Geräteklassen.",
+					tasks: ["Lösungen sammeln"],
+					expectedOutcome: "Schüler kennt Lösungsansätze.",
+				},
+			],
+		}),
+	).rejects.toThrow("ungültige Sonderzeichen");
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+
+	expect(snapshot?.plan.sourceSummary).toBe(
+		"Zusammenfassung für Geräteklassen.",
+	);
+	expect(snapshot?.plan.insight).toEqual({
+		summary: "Verständnis für Lösungen prüfen.",
+		strengths: ["Schüler erkennt Geräte."],
+		gaps: ["Lösungen für Arbeitsplätze"],
+	});
+	expect(snapshot?.sessions).toHaveLength(1);
+	expect(snapshot?.sessions[0]).toMatchObject({
+		title: "Übung für Geräte",
+		goal: "Prüfe Lösungen für Geräteklassen.",
+		tasks: ["Lösungen sammeln", "Hilfsmittel für Arbeitsplätze bewerten"],
+		expectedOutcome: "Schüler kennt Lösungsansätze.",
+	});
 });

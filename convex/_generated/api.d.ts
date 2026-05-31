@@ -12,6 +12,8 @@ import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
 import type * as env from "../env.js";
 import type * as fileStorage from "../fileStorage.js";
+import type * as generatedGermanText from "../generatedGermanText.js";
+import type * as generatedGermanTextRepair from "../generatedGermanTextRepair.js";
 import type * as learningPlanAi from "../learningPlanAi.js";
 import type * as learningPlans from "../learningPlans.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
@@ -28,6 +30,8 @@ declare const fullApi: ApiFromModules<{
   dayKeyVariants: typeof dayKeyVariants;
   env: typeof env;
   fileStorage: typeof fileStorage;
+  generatedGermanText: typeof generatedGermanText;
+  generatedGermanTextRepair: typeof generatedGermanTextRepair;
   learningPlanAi: typeof learningPlanAi;
   learningPlans: typeof learningPlans;
   scheduleConflicts: typeof scheduleConflicts;
