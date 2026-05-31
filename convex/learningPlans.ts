@@ -10,12 +10,12 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
-import { getDayKeyQueryVariants } from "./dayKeyVariants";
 import {
 	deleteManagedFile,
 	getConfiguredStorageProvider,
 	getR2ConfigOrThrow,
 } from "./fileStorage";
+import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { assertNoScheduleConflict } from "./scheduleConflicts";
 
 const phaseValidator = v.union(
@@ -747,8 +747,12 @@ export const storeKnowledgeQuestions = internalMutation({
 		if (!plan) throw new Error("Lernplan nicht gefunden.");
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
-			knowledgeQuestions: args.questions,
-			sourceSummary: args.sourceSummary,
+			knowledgeQuestions: args.questions.map((question) => ({
+				...question,
+				prompt: normalizeGeneratedGermanText(question.prompt),
+				targetInsight: normalizeGeneratedGermanText(question.targetInsight),
+			})),
+			sourceSummary: normalizeGeneratedGermanText(args.sourceSummary),
 			status: "questionsReady",
 			updatedAt: Date.now(),
 		});
@@ -768,6 +772,28 @@ export const replaceGeneratedSessions = internalMutation({
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan) throw new Error("Lernplan nicht gefunden.");
 
+		const normalizedSourceSummary = normalizeGeneratedGermanText(
+			args.sourceSummary,
+		);
+		const normalizedInsight = {
+			summary: normalizeGeneratedGermanText(args.insight.summary),
+			strengths: args.insight.strengths.map((strength) =>
+				normalizeGeneratedGermanText(strength),
+			),
+			gaps: args.insight.gaps.map((gap) => normalizeGeneratedGermanText(gap)),
+		};
+		const normalizedSessions = args.sessions.map((session) => ({
+			phase: session.phase,
+			title: normalizeGeneratedGermanText(session.title),
+			dateKey: session.dateKey,
+			dateLabel: session.dateLabel,
+			startTime: session.startTime,
+			durationMinutes: session.durationMinutes,
+			goal: normalizeGeneratedGermanText(session.goal),
+			tasks: session.tasks.map((task) => normalizeGeneratedGermanText(task)),
+			expectedOutcome: normalizeGeneratedGermanText(session.expectedOutcome),
+		}));
+
 		const existingSessions = await ctx.db
 			.query("learningPlanSessions")
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
@@ -785,7 +811,7 @@ export const replaceGeneratedSessions = internalMutation({
 		}
 
 		const now = Date.now();
-		for (const [index, session] of args.sessions.entries()) {
+		for (const [index, session] of normalizedSessions.entries()) {
 			await ctx.db.insert("learningPlanSessions", {
 				ownerTokenIdentifier: plan.ownerTokenIdentifier,
 				learningPlanId: args.learningPlanId,
@@ -798,9 +824,9 @@ export const replaceGeneratedSessions = internalMutation({
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
 			knowledgeAnswersJson: args.knowledgeAnswersJson,
-			sourceSummary: args.sourceSummary,
-			insight: args.insight,
 			planningHint: args.planningHint,
+			sourceSummary: normalizedSourceSummary,
+			insight: normalizedInsight,
 			status: "generated",
 			updatedAt: now,
 		});

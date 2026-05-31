@@ -10,102 +10,25 @@ import type { Id } from "./_generated/dataModel";
 import { type ActionCtx, action } from "./_generated/server";
 import { readOptionalEnv, readRequiredEnv } from "./env";
 import { createManagedReadUrl, type StorageProvider } from "./fileStorage";
+import {
+	isInvalidGeneratedGermanTextError,
+	normalizeGeneratedGermanText,
+} from "./generatedGermanText";
+import { repairGeneratedGermanTextFromAsciiShadow } from "./generatedGermanTextRepair";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
 const MAX_PROMPT_CONTEXT_CHARS = 70_000;
 const MAX_SESSION_TITLE_CHARS = 28;
 const LLM_GENERATION_TIMEOUT_MS = 60_000;
+const MAX_GENERATED_TEXT_ATTEMPTS = 3;
 const MODEL_ID = "gemini-3-flash-preview";
-const MIN_LEARNING_SLOT_MINUTES = 10;
-const MAX_GENERATED_SESSIONS = 20;
-const MAX_RECOMMENDED_SESSION_MINUTES = 720;
-const ALTERNATIVE_SLOT_MINUTES = 30;
-const MAX_ALTERNATIVE_SESSIONS = 2;
 const GERMAN_UI_TEXT_RULE =
 	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
+const GERMAN_TEXT_SHADOW_RULE =
+	"For every generated German text object, `text` is the visible German text and `asciiShadow` is the exact same wording with only ä->ae, ö->oe, ü->ue, Ä->Ae, Ö->Oe, Ü->Ue, ß->ss transliterated.";
 const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return exactly five short diagnostic questions that reveal what the learning plan needs to cover.`;
 const GENERATED_PLAN_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return a realistic, calendar-ready German learning plan with concrete study sessions.`;
-
-const GERMAN_UI_REPLACEMENTS: ReadonlyArray<[RegExp, string]> = [
-	[/\bAbschlusspruef/g, "Abschlussprüf"],
-	[/\babschlusspruef/g, "abschlussprüf"],
-	[/\bEinschaetz/g, "Einschätz"],
-	[/\beinschaetz/g, "einschätz"],
-	[/\bErloes/g, "Erlös"],
-	[/\berloes/g, "erlös"],
-	[/\bFaeh/g, "Fäh"],
-	[/\bfaeh/g, "fäh"],
-	[/\bDurchfuehrung\b/g, "Durchführung"],
-	[/\bdurchfuehrung\b/g, "durchführung"],
-	[/\bDurchfuehrungen\b/g, "Durchführungen"],
-	[/\bdurchfuehrungen\b/g, "durchführungen"],
-	[/\bLoesung\b/g, "Lösung"],
-	[/\bloesung\b/g, "lösung"],
-	[/\bLoesungen\b/g, "Lösungen"],
-	[/\bloesungen\b/g, "lösungen"],
-	[/\bLoesungsmenge\b/g, "Lösungsmenge"],
-	[/\bloesungsmenge\b/g, "lösungsmenge"],
-	[/\bLoesungsmengen\b/g, "Lösungsmengen"],
-	[/\bloesungsmengen\b/g, "lösungsmengen"],
-	[/\bLoesen\b/g, "Lösen"],
-	[/\bloesen\b/g, "lösen"],
-	[/\bMuendliche\b/g, "Mündliche"],
-	[/\bmuendliche\b/g, "mündliche"],
-	[/\bLoes/g, "Lös"],
-	[/\bloes/g, "lös"],
-	[/\bPlausibilitaet/g, "Plausibilität"],
-	[/\bplausibilitaet/g, "plausibilität"],
-	[/\bPruef/g, "Prüf"],
-	[/\bpruef/g, "prüf"],
-	[/\bUeber/g, "Über"],
-	[/\bueber/g, "über"],
-	[/\bVerstaend/g, "Verständ"],
-	[/\bverstaend/g, "verständ"],
-	[/\bVollstaend/g, "Vollständ"],
-	[/\bvollstaend/g, "vollständ"],
-	[/\bFuer\b/g, "Für"],
-	[/\bfuer\b/g, "für"],
-	[/\bGeraet\b/g, "Gerät"],
-	[/\bgeraet\b/g, "gerät"],
-	[/\bGeraete\b/g, "Geräte"],
-	[/\bgeraete\b/g, "geräte"],
-	[/\bgroessere\b/g, "größere"],
-	[/\bGroessere\b/g, "Größere"],
-	[/\bgroesseren\b/g, "größeren"],
-	[/\bGroesseren\b/g, "Größeren"],
-	[/\bgroesste\b/g, "größte"],
-	[/\bGroesste\b/g, "Größte"],
-	[/\bgroessten\b/g, "größten"],
-	[/\bGroessten\b/g, "Größten"],
-	[/\bgrosse\b/g, "große"],
-	[/\bGrosse\b/g, "Große"],
-	[/\bgrossen\b/g, "großen"],
-	[/\bGrossen\b/g, "Großen"],
-	[/\bgrosser\b/g, "großer"],
-	[/\bGrosser\b/g, "Großer"],
-	[/\bgrosses\b/g, "großes"],
-	[/\bGrosses\b/g, "Großes"],
-	[/\bSchueler\b/g, "Schüler"],
-	[/\bschueler\b/g, "schüler"],
-	[/\bStrasse\b/g, "Straße"],
-	[/\bstrasse\b/g, "straße"],
-	[/\bStrassen\b/g, "Straßen"],
-	[/\bstrassen\b/g, "straßen"],
-	[/\bUebung\b/g, "Übung"],
-	[/\buebung\b/g, "übung"],
-	[/\bUebungen\b/g, "Übungen"],
-	[/\buebungen\b/g, "übungen"],
-	[/\bUeben\b/g, "Üben"],
-	[/\bueben\b/g, "üben"],
-];
-
-const formatGermanUiText = (value: string) =>
-	GERMAN_UI_REPLACEMENTS.reduce(
-		(formatted, [pattern, replacement]) =>
-			formatted.replace(pattern, replacement),
-		value,
-	);
 
 const vertexProviderOptions = {
 	google: {
@@ -176,26 +99,40 @@ const exactArray = <TItem extends z.ZodType>(
 		z.array(itemSchema).length(itemCount),
 	);
 
+const germanTextSchema = (minLength: number, description: string) =>
+	z
+		.object({
+			text: z
+				.string()
+				.min(minLength)
+				.describe(`${description} ${GERMAN_UI_TEXT_RULE}`),
+			asciiShadow: z
+				.string()
+				.min(minLength)
+				.describe(
+					`Exact non-visible transliteration for the text field. ${GERMAN_TEXT_SHADOW_RULE}`,
+				),
+		})
+		.describe(`${description} ${GERMAN_TEXT_SHADOW_RULE}`);
+
+type GeneratedGermanText = z.infer<ReturnType<typeof germanTextSchema>>;
+
 const questionsSchema = z
 	.object({
-		sourceSummary: z
-			.string()
-			.min(20)
-			.describe("Brief German summary of the uploaded learning material."),
+		sourceSummary: germanTextSchema(
+			20,
+			"Brief German summary of the uploaded learning material.",
+		),
 		questions: exactArray(
 			z.object({
-				prompt: z
-					.string()
-					.min(12)
-					.describe(
-						"Short German diagnostic question for the student. No multiple choice and no references to files or uploads.",
-					),
-				targetInsight: z
-					.string()
-					.min(8)
-					.describe(
-						"What this answer reveals about the student's strengths, gaps, or needed learning blocks.",
-					),
+				prompt: germanTextSchema(
+					12,
+					"Short German diagnostic question for the student. No multiple choice and no references to files or uploads.",
+				),
+				targetInsight: germanTextSchema(
+					8,
+					"What this answer reveals about the student's strengths, gaps, or needed learning blocks.",
+				),
 			}),
 			5,
 		),
@@ -204,29 +141,27 @@ const questionsSchema = z
 
 const generatedPlanSchema = z
 	.object({
-		sourceSummary: z
-			.string()
-			.min(20)
-			.describe("Brief German summary of the material used for this plan."),
+		sourceSummary: germanTextSchema(
+			20,
+			"Brief German summary of the material used for this plan.",
+		),
 		insight: z.object({
-			summary: z
-				.string()
-				.min(20)
-				.describe("German summary of the student's current readiness."),
+			summary: germanTextSchema(
+				20,
+				"German summary of the student's current readiness.",
+			),
 			strengths: atMostArray(
-				z
-					.string()
-					.describe(
-						"Specific topic or skill the student already handles well.",
-					),
+				germanTextSchema(
+					1,
+					"Specific topic or skill the student already handles well.",
+				),
 				4,
 			),
 			gaps: boundedArray(
-				z
-					.string()
-					.describe(
-						"Specific gap that should shape the generated study sessions.",
-					),
+				germanTextSchema(
+					1,
+					"Specific gap that should shape the generated study sessions.",
+				),
 				1,
 				5,
 			),
@@ -234,41 +169,29 @@ const generatedPlanSchema = z
 		sessions: boundedArray(
 			z.object({
 				phase: sessionPhaseSchema,
-				title: z
-					.string()
-					.min(3)
-					.describe(
-						`Short German UI label for this study session. Max ${MAX_SESSION_TITLE_CHARS} characters.`,
-					),
+				title: germanTextSchema(
+					3,
+					`Short German UI label for this study session. Max ${MAX_SESSION_TITLE_CHARS} characters.`,
+				),
 				dayOffsetBeforeExam: z.number().int().min(0).max(120),
 				startTime: z.string().regex(/^\d{2}:\d{2}$/),
-				durationMinutes: z
-					.number()
-					.int()
-					.min(MIN_LEARNING_SLOT_MINUTES)
-					.max(MAX_RECOMMENDED_SESSION_MINUTES),
-				goal: z
-					.string()
-					.min(20)
-					.describe(
-						"Student-facing goal for this session, tied to the student's answers and exam topic.",
-					),
+				durationMinutes: z.number().int().min(15).max(180),
+				goal: germanTextSchema(
+					20,
+					"Student-facing goal for this session, tied to the student's answers and exam topic.",
+				),
 				tasks: boundedArray(
-					z
-						.string()
-						.min(8)
-						.describe(
-							"Concrete task the student can complete during this study session.",
-						),
+					germanTextSchema(
+						8,
+						"Concrete task the student can complete during this study session.",
+					),
 					2,
 					5,
 				),
-				expectedOutcome: z
-					.string()
-					.min(12)
-					.describe(
-						"Observable result the student should have after finishing this session.",
-					),
+				expectedOutcome: germanTextSchema(
+					12,
+					"Observable result the student should have after finishing this session.",
+				),
 			}),
 			1,
 			5,
@@ -300,16 +223,6 @@ type LearningPlanAiContext = {
 		fileType: string;
 		fileSizeBytes: number;
 	}>;
-	learningTimes: Array<{
-		dayOfWeek: number;
-		startTime: string;
-		endTime: string;
-	}>;
-	occupiedEntries: Array<{
-		dayKey: string;
-		time?: string;
-		durationMinutes?: number;
-	}>;
 	accessKey: string;
 };
 
@@ -320,8 +233,6 @@ type ModelDocumentInput = {
 	fileType: string;
 	fileSizeBytes: number;
 };
-
-type GeneratedPlan = z.infer<typeof generatedPlanSchema>;
 
 const createVertexModel = () => {
 	const apiKey = readOptionalEnv("GOOGLE_VERTEX_API_KEY");
@@ -359,6 +270,61 @@ const withStructuredOutputErrorHandling = async <TResult>(
 		throw error;
 	}
 };
+
+const generatedTextRetrySystemInstruction = (attempt: number) =>
+	attempt === 0
+		? ""
+		: " Die vorherige Ausgabe enthielt ungültige oder widersprüchliche Sonderzeichen. Erzeuge alle text/asciiShadow-Paare vollständig neu: text mit echten Unicode-Zeichen wie ä, ö, ü, Ä, Ö, Ü und ß; asciiShadow mit exakt derselben Formulierung und nur ae/oe/ue/Ae/Oe/Ue/ss als Umschrift.";
+
+const withGeneratedTextRetry = async <TResult>(
+	task: (attempt: number) => Promise<TResult>,
+	fallbackMessage: string,
+) => {
+	for (let attempt = 0; attempt < MAX_GENERATED_TEXT_ATTEMPTS; attempt += 1) {
+		try {
+			return await withStructuredOutputErrorHandling(
+				() => task(attempt),
+				fallbackMessage,
+			);
+		} catch (error) {
+			if (
+				isInvalidGeneratedGermanTextError(error) &&
+				attempt < MAX_GENERATED_TEXT_ATTEMPTS - 1
+			) {
+				continue;
+			}
+
+			if (isInvalidGeneratedGermanTextError(error)) {
+				throw new Error(fallbackMessage);
+			}
+
+			throw error;
+		}
+	}
+
+	throw new Error(fallbackMessage);
+};
+
+const withLlmTimeout = async <TResult>(
+	task: (abortSignal: AbortSignal) => Promise<TResult>,
+) => {
+	const controller = new AbortController();
+	const timeoutId = setTimeout(
+		() => controller.abort(),
+		LLM_GENERATION_TIMEOUT_MS,
+	);
+
+	try {
+		return await task(controller.signal);
+	} finally {
+		clearTimeout(timeoutId);
+	}
+};
+
+const normalizeAiGeneratedGermanText = (value: GeneratedGermanText) =>
+	normalizeGeneratedGermanText(
+		repairGeneratedGermanTextFromAsciiShadow(value.text, value.asciiShadow),
+	);
 
 const compactText = (value: string, maxChars: number) => {
 	const normalized = value
@@ -526,51 +492,6 @@ const formatDateLabel = (date: Date) =>
 		year: "numeric",
 	}).format(date);
 
-const formatDateKey = (date: Date) => date.toISOString().slice(0, 10);
-
-const formatTimeFromMinutes = (minutes: number) => {
-	const hours = Math.floor(minutes / 60);
-	const rest = minutes % 60;
-	return `${hours.toString().padStart(2, "0")}:${rest
-		.toString()
-		.padStart(2, "0")}`;
-};
-
-const parseTimeToMinutes = (time: string) => {
-	const [hours, minutes] = time.split(":").map(Number);
-	if (
-		!Number.isInteger(hours) ||
-		!Number.isInteger(minutes) ||
-		hours < 0 ||
-		hours > 23 ||
-		minutes < 0 ||
-		minutes > 59
-	) {
-		return null;
-	}
-
-	return hours * 60 + minutes;
-};
-
-const getBerlinDayOfWeek = (date: Date) => {
-	const value = new Intl.DateTimeFormat("en-US", {
-		timeZone: "Europe/Berlin",
-		weekday: "short",
-	}).format(date);
-
-	return (
-		{
-			Mon: 1,
-			Tue: 2,
-			Wed: 3,
-			Thu: 4,
-			Fri: 5,
-			Sat: 6,
-			Sun: 7,
-		} as Record<string, number>
-	)[value] ?? 1;
-};
-
 const buildDateFromOffset = (
 	examDateKey: string,
 	dayOffsetBeforeExam: number,
@@ -581,255 +502,6 @@ const buildDateFromOffset = (
 	}
 	date.setUTCDate(date.getUTCDate() - dayOffsetBeforeExam);
 	return date;
-};
-
-type LearningTimeWindow = LearningPlanAiContext["learningTimes"][number];
-
-type LearningSlot = {
-	date: Date;
-	dateKey: string;
-	dayOfWeek: number;
-	startMinutes: number;
-	endMinutes: number;
-	nextStartMinutes: number;
-	isAlternative?: boolean;
-};
-
-type OccupiedEntry = LearningPlanAiContext["occupiedEntries"][number];
-
-const getOccupiedIntervalsByDay = (occupiedEntries: OccupiedEntry[]) => {
-	const intervalsByDay = new Map<string, Array<{ start: number; end: number }>>();
-
-	for (const entry of occupiedEntries) {
-		if (!entry.time || !entry.durationMinutes || entry.durationMinutes <= 0) {
-			continue;
-		}
-
-		const start = parseTimeToMinutes(entry.time);
-		if (start === null) continue;
-
-		const intervals = intervalsByDay.get(entry.dayKey) ?? [];
-		intervals.push({ start, end: start + entry.durationMinutes });
-		intervalsByDay.set(entry.dayKey, intervals);
-	}
-
-	return intervalsByDay;
-};
-
-const subtractOccupiedIntervals = (
-	startMinutes: number,
-	endMinutes: number,
-	occupiedIntervals: Array<{ start: number; end: number }>,
-) => {
-	let freeIntervals = [{ start: startMinutes, end: endMinutes }];
-
-	for (const occupied of occupiedIntervals) {
-		freeIntervals = freeIntervals.flatMap((free) => {
-			if (occupied.start >= free.end || occupied.end <= free.start) {
-				return [free];
-			}
-
-			return [
-				{ start: free.start, end: Math.max(free.start, occupied.start) },
-				{ start: Math.min(free.end, occupied.end), end: free.end },
-			].filter(
-				(interval) => interval.end - interval.start >= MIN_LEARNING_SLOT_MINUTES,
-			);
-		});
-	}
-
-	return freeIntervals;
-};
-
-const overlapsInterval = (
-	first: { start: number; end: number },
-	second: { start: number; end: number },
-) => first.start < second.end && first.end > second.start;
-
-const buildAlternativeLearningSlots = (
-	examDateKey: string,
-	availableDays: number,
-	windowsByDay: Map<number, LearningTimeWindow[]>,
-	occupiedIntervalsByDay: Map<string, Array<{ start: number; end: number }>>,
-) => {
-	const slots: LearningSlot[] = [];
-
-	for (let offset = availableDays; offset >= 1; offset -= 1) {
-		const date = buildDateFromOffset(examDateKey, offset);
-		const dateKey = formatDateKey(date);
-		const dayOfWeek = getBerlinDayOfWeek(date);
-		const windows = windowsByDay.get(dayOfWeek) ?? [];
-		const occupiedIntervals = occupiedIntervalsByDay.get(dateKey) ?? [];
-
-		for (const window of windows) {
-			const startMinutes = parseTimeToMinutes(window.startTime);
-			const endMinutes = parseTimeToMinutes(window.endTime);
-			if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-				continue;
-			}
-
-			const blockingIntervals = occupiedIntervals.filter((interval) =>
-				overlapsInterval(interval, { start: startMinutes, end: endMinutes }),
-			);
-			if (blockingIntervals.length === 0) continue;
-
-			const candidateStart = Math.max(
-				endMinutes,
-				...blockingIntervals.map((interval) => interval.end),
-			);
-			const candidate = {
-				start: candidateStart,
-				end: candidateStart + ALTERNATIVE_SLOT_MINUTES,
-			};
-			if (
-				candidate.end > 22 * 60 ||
-				occupiedIntervals.some((interval) => overlapsInterval(candidate, interval))
-			) {
-				continue;
-			}
-
-			slots.push({
-				date,
-				dateKey,
-				dayOfWeek,
-				startMinutes: candidate.start,
-				endMinutes: candidate.end,
-				nextStartMinutes: candidate.start,
-				isAlternative: true,
-			});
-			if (slots.length >= MAX_ALTERNATIVE_SESSIONS) return slots;
-		}
-	}
-
-	return slots;
-};
-
-const buildLearningSlots = (
-	examDateKey: string,
-	availableDays: number,
-	learningTimes: LearningTimeWindow[],
-	occupiedEntries: OccupiedEntry[],
-) => {
-	const windowsByDay = new Map<number, LearningTimeWindow[]>();
-	for (const learningTime of learningTimes) {
-		const startMinutes = parseTimeToMinutes(learningTime.startTime);
-		const endMinutes = parseTimeToMinutes(learningTime.endTime);
-		if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-			continue;
-		}
-
-		const windows = windowsByDay.get(learningTime.dayOfWeek) ?? [];
-		windows.push(learningTime);
-		windowsByDay.set(learningTime.dayOfWeek, windows);
-	}
-
-	const occupiedIntervalsByDay = getOccupiedIntervalsByDay(occupiedEntries);
-	const slots: LearningSlot[] = [];
-	for (let offset = availableDays; offset >= 1; offset -= 1) {
-		const date = buildDateFromOffset(examDateKey, offset);
-		const dateKey = formatDateKey(date);
-		const dayOfWeek = getBerlinDayOfWeek(date);
-		const windows = windowsByDay.get(dayOfWeek) ?? [];
-		for (const window of windows) {
-			const startMinutes = parseTimeToMinutes(window.startTime);
-			const endMinutes = parseTimeToMinutes(window.endTime);
-			if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-				continue;
-			}
-
-			const freeIntervals = subtractOccupiedIntervals(
-				startMinutes,
-				endMinutes,
-				occupiedIntervalsByDay.get(dateKey) ?? [],
-			);
-			for (const interval of freeIntervals) {
-				slots.push({
-					date,
-					dateKey,
-					dayOfWeek,
-					startMinutes: interval.start,
-					endMinutes: interval.end,
-					nextStartMinutes: interval.start,
-				});
-			}
-		}
-	}
-
-	if (slots.length === 0) {
-		slots.push(
-			...buildAlternativeLearningSlots(
-				examDateKey,
-				availableDays,
-				windowsByDay,
-				occupiedIntervalsByDay,
-			),
-		);
-	}
-
-	return slots.sort(
-		(left, right) =>
-			left.dateKey.localeCompare(right.dateKey) ||
-			left.startMinutes - right.startMinutes,
-	);
-};
-
-const describeLearningTimes = (learningTimes: LearningTimeWindow[]) => {
-	if (learningTimes.length === 0) return "Keine persönlichen Lernzeiten hinterlegt.";
-
-	const dayLabels: Record<number, string> = {
-		1: "Montag",
-		2: "Dienstag",
-		3: "Mittwoch",
-		4: "Donnerstag",
-		5: "Freitag",
-		6: "Samstag",
-		7: "Sonntag",
-	};
-
-	return learningTimes
-		.slice()
-		.sort((left, right) => left.dayOfWeek - right.dayOfWeek)
-		.map(
-			(time) =>
-				`${dayLabels[time.dayOfWeek] ?? "Lerntag"} ${time.startTime}-${time.endTime}`,
-		)
-		.join("\n");
-};
-
-const buildFallbackGeneratedPlan = (
-	context: LearningPlanAiContext,
-	answers: Array<{ questionId: string; answer: string }>,
-): GeneratedPlan => {
-	const answeredCount = answers.filter((answer) => answer.answer.trim()).length;
-	return {
-		sourceSummary:
-			"Der Lernplan basiert auf den beantworteten Wissensfragen und den verfügbaren Lernzeiten.",
-		insight: {
-			summary: `Du hast ${answeredCount} Antworten gegeben. Daraus wird ein vorsichtiger Alternativplan erstellt, der sich an deinen freien Lernzeiten orientiert.`,
-			strengths: [],
-			gaps: [
-				"Die verfügbaren Lernzeiten sind knapp oder bereits belegt. Nutze die vorgeschlagenen kurzen Alternativen gezielt zur Wiederholung.",
-			],
-		},
-		sessions: [
-			{
-				phase: "practice",
-				title: "Kurz üben",
-				dayOffsetBeforeExam: Math.min(
-					Math.max(getAvailableDays(context.plan.examDateKey), 1),
-					120,
-				),
-				startTime: "17:00",
-				durationMinutes: 30,
-				goal: "Wiederhole die wichtigsten Punkte aus deinen Antworten in einem kurzen Lernblock.",
-				tasks: [
-					"Markiere die wichtigsten Begriffe.",
-					"Löse eine kurze passende Übungsaufgabe.",
-				],
-				expectedOutcome: "Du hast eine konkrete Wiederholung abgeschlossen.",
-			},
-		],
-	};
 };
 
 const distributeSessionOffsets = (
@@ -876,96 +548,35 @@ const normalizeSessions = (
 	examDateKey: string,
 	availableDays: number,
 	sessions: z.infer<typeof generatedPlanSchema>["sessions"],
-	learningTimes: LearningTimeWindow[],
-	occupiedEntries: OccupiedEntry[],
 ) => {
-	const slots = buildLearningSlots(
-		examDateKey,
-		availableDays,
-		learningTimes,
-		occupiedEntries,
-	);
-	const requestedMinutes = sessions.reduce(
-		(total, session) => total + session.durationMinutes,
-		0,
-	);
-	const availableLearningTimeMinutes = slots
-		.filter((slot) => !slot.isAlternative)
-		.reduce((total, slot) => total + (slot.endMinutes - slot.startMinutes), 0);
 	const distributedOffsets = distributeSessionOffsets(availableDays, sessions);
-	const prioritizedSessions = sessions
-		.map((session, index) => ({
-			session,
-			preferredDateKey: formatDateKey(
-				buildDateFromOffset(examDateKey, distributedOffsets[index] ?? 0),
-			),
-		}))
-		.sort((left, right) =>
-			left.preferredDateKey.localeCompare(right.preferredDateKey),
-		);
-	const normalizedSessions = slots
-		.filter(
-			(slot) =>
-				slot.endMinutes - slot.startMinutes >= MIN_LEARNING_SLOT_MINUTES,
-		)
-		.slice(0, MAX_GENERATED_SESSIONS)
-		.map((slot, index) => {
-			const source =
-				prioritizedSessions.find(
-					(item) => item.preferredDateKey <= slot.dateKey,
-				)?.session ??
-				prioritizedSessions[index % Math.max(prioritizedSessions.length, 1)]
-					?.session ??
-				sessions[index % Math.max(sessions.length, 1)];
-			const phase = source?.phase ?? "practice";
-			const durationMinutes = slot.endMinutes - slot.startMinutes;
-
+	return sessions
+		.map((session, index) => {
+			const date = buildDateFromOffset(
+				examDateKey,
+				distributedOffsets[index] ?? 0,
+			);
 			return {
-				phase,
+				phase: session.phase,
 				title:
 					compactSingleLine(
-						formatGermanUiText(
-							slot.isAlternative
-								? `Alternative: ${source?.title ?? fallbackTitleByPhase[phase]}`
-								: (source?.title ?? fallbackTitleByPhase[phase]),
-						),
+						normalizeAiGeneratedGermanText(session.title),
 						MAX_SESSION_TITLE_CHARS,
-					) || fallbackTitleByPhase[phase],
-				dateKey: slot.date.toISOString(),
-				dateLabel: formatDateLabel(slot.date),
-				startTime: formatTimeFromMinutes(slot.startMinutes),
-				durationMinutes,
-				goal:
-					formatGermanUiText(source?.goal.trim() ?? "") ||
-					"Nutze diese kurze Lernzeit, um dich gezielt auf die Prüfung vorzubereiten.",
-				tasks:
-					source?.tasks
-						.map((task) => formatGermanUiText(task.trim()))
-						.filter(Boolean) ?? [
-						"Wiederhole die wichtigsten Begriffe.",
-						"Löse eine kurze passende Übungsaufgabe.",
-					],
-				expectedOutcome:
-					formatGermanUiText(source?.expectedOutcome.trim() ?? "") ||
-					"Du hast einen kleinen, konkreten Fortschritt für die Prüfung gemacht.",
+					) || fallbackTitleByPhase[session.phase],
+				dateKey: date.toISOString(),
+				dateLabel: formatDateLabel(date),
+				startTime: session.startTime,
+				durationMinutes: session.durationMinutes,
+				goal: normalizeAiGeneratedGermanText(session.goal).trim(),
+				tasks: session.tasks
+					.map((task) => normalizeAiGeneratedGermanText(task).trim())
+					.filter(Boolean),
+				expectedOutcome: normalizeAiGeneratedGermanText(
+					session.expectedOutcome,
+				).trim(),
 			};
 		})
 		.sort((left, right) => left.dateKey.localeCompare(right.dateKey));
-
-	const plannedMinutes = normalizedSessions.reduce(
-		(total, session) => total + session.durationMinutes,
-		0,
-	);
-	const planningHint =
-		learningTimes.length === 0
-			? "Du hast noch keine persönlichen Lernzeiten hinterlegt. Der Lernplan kann erst konkrete Lerneinheiten erstellen, wenn du in den Einstellungen Lernzeiten anlegst."
-			: availableLearningTimeMinutes === 0
-				? "Deine hinterlegte Lernzeit ist aktuell vollständig durch andere Termine belegt. Wir schlagen dir deshalb alternative Lernblöcke vor, die du vor dem Eintragen noch prüfen kannst."
-			: plannedMinutes < requestedMinutes || availableLearningTimeMinutes < requestedMinutes
-				? `Deine hinterlegten Lernzeiten reichen nicht für den vollständigen empfohlenen Plan. Geplant wurden ${plannedMinutes} von ${requestedMinutes} Minuten innerhalb deiner verfügbaren Lernzeiten.`
-				: undefined;
-
-	return { sessions: normalizedSessions, planningHint };
 };
 
 const buildBaseContext = (context: LearningPlanAiContext) => {
@@ -1014,7 +625,8 @@ Erstelle genau 5 kurze Wissensanalyse-Fragen. Ziel ist nicht Notengebung, sonder
 Die Fragen müssen sich konkret auf Prüfungsthema und Inhalte aus dem Material beziehen, aber wie normale Prüfungs- oder Verständnisfragen formuliert sein.
 Verweise in den Fragen nie direkt auf Quellen oder Uploads: keine Formulierungen wie "laut Material", "im Dokument", "auf dem Bild", "in der Datei", "Material 3 sagt" und keine Dateinamen.
 Keine Multiple-Choice-Fragen.
-Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.`,
+Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.
+Für jedes text/asciiShadow-Objekt gilt: text ist die sichtbare Fassung; asciiShadow ist exakt dieselbe Formulierung, nur mit ä->ae, ö->oe, ü->ue, Ä->Ae, Ö->Oe, Ü->Ue und ß->ss.`,
 			},
 		];
 
@@ -1026,35 +638,41 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 		}
 		userContent.push(...fileParts);
 
-		const result = await withStructuredOutputErrorHandling(
-			() =>
+		const generatedQuestions = await withGeneratedTextRetry(async (attempt) => {
+			const result = await withLlmTimeout((abortSignal) =>
 				generateText({
 					model: model(MODEL_ID),
 					temperature: 0.2,
-					maxOutputTokens: 1_800,
-					timeout: { totalMs: LLM_GENERATION_TIMEOUT_MS },
+					maxOutputTokens: 2_600,
+					abortSignal,
 					providerOptions: vertexProviderOptions,
 					output: Output.object({ schema: questionsSchema }),
-					system:
-						"Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Antworte ausschließlich im vorgegebenen JSON-Schema.",
+					system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 					messages: [{ role: "user", content: userContent }],
 				}),
-			"Die Wissensanalyse konnte nicht zuverlässig erstellt werden. Formuliere das Prüfungsthema etwas konkreter und versuche es erneut.",
-		);
+			);
 
-		const questions = result.output.questions.map((question, index) => ({
-			id: `q${index + 1}`,
-			prompt: formatGermanUiText(question.prompt),
-			targetInsight: formatGermanUiText(question.targetInsight),
-		}));
+			const questions = result.output.questions.map((question, index) => ({
+				id: `q${index + 1}`,
+				prompt: normalizeAiGeneratedGermanText(question.prompt),
+				targetInsight: normalizeAiGeneratedGermanText(question.targetInsight),
+			}));
+
+			return {
+				questions,
+				sourceSummary: normalizeAiGeneratedGermanText(
+					result.output.sourceSummary,
+				),
+			};
+		}, "Die Wissensanalyse konnte nicht zuverlässig erstellt werden. Formuliere das Prüfungsthema etwas konkreter und versuche es erneut.");
 
 		await ctx.runMutation(internal.learningPlans.storeKnowledgeQuestions, {
 			learningPlanId: args.learningPlanId,
-			questions,
-			sourceSummary: formatGermanUiText(result.output.sourceSummary),
+			questions: generatedQuestions.questions,
+			sourceSummary: generatedQuestions.sourceSummary,
 		});
 
-		return { questionCount: questions.length };
+		return { questionCount: generatedQuestions.questions.length };
 	},
 });
 
@@ -1094,7 +712,6 @@ export const generatePlan = action({
 			context.accessKey,
 		);
 		const availableDays = getAvailableDays(context.plan.examDateKey);
-		const personalLearningTimes = describeLearningTimes(context.learningTimes);
 		const model = createVertexModel();
 		const userContent: Array<
 			| { type: "text"; text: string }
@@ -1104,8 +721,6 @@ export const generatePlan = action({
 				type: "text",
 				text: `${buildBaseContext(context)}
 Verfügbare Tage bis zur Prüfung: ${availableDays}
-Persönliche Lernzeiten aus den Einstellungen:
-${personalLearningTimes}
 
 Wissensanalyse:
 ${qaText}
@@ -1118,12 +733,10 @@ MVP-Vorgabe:
 - Die Generalprobe soll wie ein fertiger Test/Probetest formuliert sein.
 - Jeder Lernblock braucht konkrete Aufgaben, die der Schüler in diesem Slot abarbeitet.
 - Formuliere alle sichtbaren Texte (sourceSummary, insight, Titel, goal, tasks, expectedOutcome) in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.
+- Für jedes text/asciiShadow-Objekt gilt: text ist die sichtbare Fassung; asciiShadow ist exakt dieselbe Formulierung, nur mit ä->ae, ö->oe, ü->ue, Ä->Ae, Ö->Oe, Ü->Ue und ß->ss.
 - Session-Titel müssen kurze UI-Labels mit maximal ${MAX_SESSION_TITLE_CHARS} Zeichen sein.
 - insight.strengths darf maximal 4 Punkte enthalten, insight.gaps maximal 5 Punkte.
 - Jeder Lernblock darf maximal 5 Aufgaben enthalten, der gesamte Plan maximal 5 Lernblöcke.
-- Plane ausschließlich innerhalb der persönlichen Lernzeiten aus den Einstellungen. Verwende keine anderen Tage oder Uhrzeiten.
-- Wenn die persönlichen Lernzeiten nicht für den gesamten empfohlenen Plan reichen, plane nur so viel wie in diese Lernzeiten passt.
-- Wenn ein empfohlener Lernblock länger als eine verfügbare Lernzeit wäre, teile ihn gedanklich auf oder kürze ihn. Der Kalender darf kurze Alternativ-Sessions enthalten.
 - Nutze dayOffsetBeforeExam relativ zum Prüfungstag: 1 = einen Tag vor der Prüfung.
 - Verteile mehrere Sessions auf unterschiedliche Kalendertage, solange genug Tage verfügbar sind. Wiederhole dayOffsetBeforeExam nicht, wenn eine Alternative möglich ist.
 - Wenn Antworten nur Platzhalter oder Unsinn enthalten, erstelle trotzdem einen remedialen Grundlagenplan und setze strengths auf [].
@@ -1139,60 +752,56 @@ MVP-Vorgabe:
 		}
 		userContent.push(...fileParts);
 
-		let generatedPlan: GeneratedPlan;
-		let usedFallbackPlan = false;
-		try {
-			const result = await generateText({
+		const generatedPlan = await withGeneratedTextRetry(async (attempt) => {
+			const result = await withLlmTimeout((abortSignal) =>
+				generateText({
 					model: model(MODEL_ID),
 					temperature: 0.25,
-					maxOutputTokens: 3_200,
-					timeout: { totalMs: LLM_GENERATION_TIMEOUT_MS },
+					maxOutputTokens: 4_800,
+					abortSignal,
 					providerOptions: vertexProviderOptions,
 					output: Output.object({ schema: generatedPlanSchema }),
-					system:
-						"Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.",
+					system: `Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 					messages: [{ role: "user", content: userContent }],
-				});
-			generatedPlan = result.output;
-		} catch (error) {
-			if (!NoObjectGeneratedError.isInstance(error)) {
-				throw error;
+				}),
+			);
+
+			const sessions = normalizeSessions(
+				context.plan.examDateKey,
+				availableDays,
+				result.output.sessions,
+			);
+			if (sessions.length === 0) {
+				throw new Error("Die KI hat keine nutzbaren Lerntage erzeugt.");
 			}
 
-			console.warn("AI plan structured output validation failed", {
-				finishReason: error.finishReason,
-				text: error.text?.slice(0, 500),
-				cause: error.cause,
-			});
-			generatedPlan = buildFallbackGeneratedPlan(context, args.answers);
-			usedFallbackPlan = true;
-		}
-
-		const { sessions, planningHint } = normalizeSessions(
-			context.plan.examDateKey,
-			availableDays,
-			generatedPlan.sessions,
-			context.learningTimes,
-			context.occupiedEntries,
-		);
+			return {
+				sourceSummary: normalizeAiGeneratedGermanText(
+					result.output.sourceSummary,
+				),
+				insight: {
+					summary: normalizeAiGeneratedGermanText(
+						result.output.insight.summary,
+					),
+					strengths: result.output.insight.strengths.map((strength) =>
+						normalizeAiGeneratedGermanText(strength),
+					),
+					gaps: result.output.insight.gaps.map((gap) =>
+						normalizeAiGeneratedGermanText(gap),
+					),
+				},
+				sessions,
+			};
+		}, "Aus diesen Antworten konnte kein stabiler Lernplan erstellt werden. Ergänze mindestens ein paar konkrete Stichworte zu deinem Wissenstand und versuche es erneut.");
 
 		await ctx.runMutation(internal.learningPlans.replaceGeneratedSessions, {
 			learningPlanId: args.learningPlanId,
 			knowledgeAnswersJson: JSON.stringify(args.answers),
-			sourceSummary: formatGermanUiText(generatedPlan.sourceSummary),
-			insight: {
-				summary: formatGermanUiText(generatedPlan.insight.summary),
-				strengths: generatedPlan.insight.strengths.map(formatGermanUiText),
-				gaps: generatedPlan.insight.gaps.map(formatGermanUiText),
-			},
-			planningHint:
-				planningHint ??
-				(usedFallbackPlan
-					? "Es wurden alternative Lernblöcke vorgeschlagen."
-					: undefined),
-			sessions,
+			sourceSummary: generatedPlan.sourceSummary,
+			insight: generatedPlan.insight,
+			sessions: generatedPlan.sessions,
 		});
 
-		return { sessionCount: sessions.length };
+		return { sessionCount: generatedPlan.sessions.length };
 	},
 });

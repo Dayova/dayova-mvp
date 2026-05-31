@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { ActionModal } from "~/components/ui/action-modal";
 import { BackButton, Button } from "~/components/ui/button";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
@@ -25,7 +26,7 @@ import {
 	BookOpen,
 	Calculator,
 	CalendarDays,
-	CheckCircle2,
+	Check,
 	Chemistry,
 	ChevronDown,
 	ClipboardList,
@@ -518,34 +519,6 @@ export default function NewEntryScreen() {
 		);
 	};
 
-	if (step === "success") {
-		return (
-			<View className="flex-1 bg-background px-8 pt-24 pb-10">
-				<StatusBar style="dark" />
-				<View className="flex-1 items-center justify-center">
-					<View
-						className="mb-[36px] h-[72px] w-[72px] items-center justify-center rounded-full bg-primary/12"
-						style={{
-							borderWidth: 1,
-							borderColor: "rgba(58,123,255,0.18)",
-						}}
-					>
-						<CheckCircle2 size={34} color="#3A7BFF" strokeWidth={2.2} />
-					</View>
-					<Text className="text-center font-bold font-poppins text-20 text-text">
-						Hausaufgabe eingetragen
-					</Text>
-					<Text className="mt-[10px] text-center font-poppins text-14 text-text/66">
-						Deine Hausaufgabe wurde erfolgreich geplant.
-					</Text>
-				</View>
-				<Button onPress={finish}>
-					<Text>Fertig</Text>
-				</Button>
-			</View>
-		);
-	}
-
 	return (
 		<View className="flex-1 bg-[#F5F3F6]">
 			<Stack.Screen options={{ gestureEnabled: true }} />
@@ -721,6 +694,20 @@ export default function NewEntryScreen() {
 									/>
 								</View>
 							</View>
+
+							<ActionModal
+								visible={step === "success"}
+								dismissible
+								onClose={finish}
+								accessibilityLabel="Entfernen-Dialog schließen"
+								title="Hausaufgabe ist eingetragen"
+								description="Deine Hausaufgabe wurde erfolgreich eingetragen."
+								icon={<Check size={48} color="#28C76F" strokeWidth={1.2} />}
+							>
+								<Button className="mt-6 w-full" onPress={finish}>
+									<Text>Fertig</Text>
+								</Button>
+							</ActionModal>
 						</>
 					)
 				) : (

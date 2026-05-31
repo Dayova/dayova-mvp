@@ -40,9 +40,12 @@ describe("repairGeneratedGermanTextFromAsciiShadow", () => {
 	});
 
 	test("uses the paired transliteration to resolve ambiguous words", () => {
-		expect(repairAndNormalize("Die K\u0004che ist modern.", "Die Kueche ist modern.")).toBe(
-			"Die Küche ist modern.",
-		);
+		expect(
+			repairAndNormalize(
+				"Die K\u0004che ist modern.",
+				"Die Kueche ist modern.",
+			),
+		).toBe("Die Küche ist modern.");
 		expect(
 			repairAndNormalize(
 				"Die K\u0004che planen den Ablauf.",

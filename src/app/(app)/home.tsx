@@ -15,12 +15,12 @@ import {
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-	runOnJS,
 	useAnimatedStyle,
 	useSharedValue,
 	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import { NotificationButton } from "~/components/notification-button";
 import {
@@ -171,7 +171,7 @@ function DragStartSlider({
 			dragX.value = withTiming(maxDrag, { duration: 90 }, (finished) => {
 				"worklet";
 				if (!finished) return;
-				runOnJS(onComplete)();
+				scheduleOnRN(onComplete);
 				dragX.value = withTiming(0, { duration: 120 });
 				isCompleting.value = false;
 			});
