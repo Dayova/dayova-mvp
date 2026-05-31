@@ -26,12 +26,14 @@ import type {
 } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { goBackOrReplace } from "~/lib/navigation";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
 export default function LearningPlanReviewScreen() {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuth();
@@ -141,7 +143,7 @@ export default function LearningPlanReviewScreen() {
 					flexGrow: 1,
 					paddingHorizontal: 32,
 					paddingTop: 80,
-					paddingBottom: 60,
+					paddingBottom: 150,
 				}}
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
@@ -176,53 +178,58 @@ export default function LearningPlanReviewScreen() {
 						{errorMessage}
 					</Text>
 				) : null}
-				<View className="mt-auto flex-row items-center gap-3 pt-8">
-					<Button
-						accessibilityLabel={
-							isBusy ? "Lernplan erstellen, wird geladen" : "Lernplan erstellen"
-						}
-						accessibilityLiveRegion={isBusy ? "polite" : undefined}
-						accessibilityState={{
-							busy: isBusy,
-							disabled: isBusy || !snapshot?.sessions.length,
-						}}
-						disabled={isBusy || !snapshot?.sessions.length}
-						onPress={acceptGeneratedPlan}
-						variant="neutral"
-						className="h-14 flex-1"
-						style={{ minWidth: 0 }}
-					>
-						{isBusy ? (
-							<ActivityIndicator color="#1A1A1A" />
-						) : (
-							<Text className="font-bold font-poppins text-15 text-text">
-								Lernplan erstellen
-							</Text>
-						)}
-					</Button>
-					<TouchableOpacity
-						accessibilityLabel="Lerntag hinzufügen"
-						accessibilityRole="button"
-						accessibilityState={{
-							disabled: isBusy || !snapshot?.sessions.length,
-						}}
-						activeOpacity={0.86}
-						disabled={isBusy || !snapshot?.sessions.length}
-						onPress={addRecommendedSession}
-						className="h-14 w-14 items-center justify-center rounded-full bg-primary"
-						style={{
-							shadowColor: "#3A7BFF",
-							shadowOpacity: 0.32,
-							shadowRadius: 16,
-							shadowOffset: { width: 0, height: 7 },
-							elevation: 5,
-							opacity: isBusy || !snapshot?.sessions.length ? 0.55 : 1,
-						}}
-					>
-						<Plus size={28} color="#FFFFFF" strokeWidth={2.4} />
-					</TouchableOpacity>
-				</View>
 			</ScrollView>
+
+			<View
+				pointerEvents="box-none"
+				className="absolute right-0 bottom-0 left-0 flex-row items-center px-10"
+				style={{ gap: 12, paddingBottom: Math.max(insets.bottom + 24, 36) }}
+			>
+				<Button
+					accessibilityLabel={
+						isBusy ? "Lernplan erstellen, wird geladen" : "Lernplan erstellen"
+					}
+					accessibilityLiveRegion={isBusy ? "polite" : undefined}
+					accessibilityState={{
+						busy: isBusy,
+						disabled: isBusy || !snapshot?.sessions.length,
+					}}
+					disabled={isBusy || !snapshot?.sessions.length}
+					onPress={acceptGeneratedPlan}
+					variant="neutral"
+					className="h-14 flex-1"
+					style={{ minWidth: 0 }}
+				>
+					{isBusy ? (
+						<ActivityIndicator color="#1A1A1A" />
+					) : (
+						<Text className="font-bold font-poppins text-15 text-text">
+							Lernplan erstellen
+						</Text>
+					)}
+				</Button>
+				<TouchableOpacity
+					accessibilityLabel="Lerntag hinzufügen"
+					accessibilityRole="button"
+					accessibilityState={{
+						disabled: isBusy || !snapshot?.sessions.length,
+					}}
+					activeOpacity={0.86}
+					disabled={isBusy || !snapshot?.sessions.length}
+					onPress={addRecommendedSession}
+					className="h-14 w-14 items-center justify-center rounded-full bg-primary"
+					style={{
+						shadowColor: "#3A7BFF",
+						shadowOpacity: 0.32,
+						shadowRadius: 16,
+						shadowOffset: { width: 0, height: 7 },
+						elevation: 5,
+						opacity: isBusy || !snapshot?.sessions.length ? 0.55 : 1,
+					}}
+				>
+					<Plus size={28} color="#FFFFFF" strokeWidth={2.4} />
+				</TouchableOpacity>
+			</View>
 
 			<ActionModal
 				visible={Boolean(successDayKey)}
