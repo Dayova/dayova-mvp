@@ -20,6 +20,8 @@ const MODEL_ID = "gemini-3-flash-preview";
 const MIN_LEARNING_SLOT_MINUTES = 10;
 const MAX_GENERATED_SESSIONS = 20;
 const MAX_RECOMMENDED_SESSION_MINUTES = 720;
+const ALTERNATIVE_SLOT_MINUTES = 30;
+const MAX_ALTERNATIVE_SESSIONS = 2;
 const GERMAN_UI_TEXT_RULE =
 	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
 const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return exactly five short diagnostic questions that reveal what the learning plan needs to cover.`;
@@ -590,6 +592,7 @@ type LearningSlot = {
 	startMinutes: number;
 	endMinutes: number;
 	nextStartMinutes: number;
+	isAlternative?: boolean;
 };
 
 type OccupiedEntry = LearningPlanAiContext["occupiedEntries"][number];
@@ -636,6 +639,69 @@ const subtractOccupiedIntervals = (
 	}
 
 	return freeIntervals;
+};
+
+const overlapsInterval = (
+	first: { start: number; end: number },
+	second: { start: number; end: number },
+) => first.start < second.end && first.end > second.start;
+
+const buildAlternativeLearningSlots = (
+	examDateKey: string,
+	availableDays: number,
+	windowsByDay: Map<number, LearningTimeWindow[]>,
+	occupiedIntervalsByDay: Map<string, Array<{ start: number; end: number }>>,
+) => {
+	const slots: LearningSlot[] = [];
+
+	for (let offset = availableDays; offset >= 1; offset -= 1) {
+		const date = buildDateFromOffset(examDateKey, offset);
+		const dateKey = formatDateKey(date);
+		const dayOfWeek = getBerlinDayOfWeek(date);
+		const windows = windowsByDay.get(dayOfWeek) ?? [];
+		const occupiedIntervals = occupiedIntervalsByDay.get(dateKey) ?? [];
+
+		for (const window of windows) {
+			const startMinutes = parseTimeToMinutes(window.startTime);
+			const endMinutes = parseTimeToMinutes(window.endTime);
+			if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+				continue;
+			}
+
+			const blockingIntervals = occupiedIntervals.filter((interval) =>
+				overlapsInterval(interval, { start: startMinutes, end: endMinutes }),
+			);
+			if (blockingIntervals.length === 0) continue;
+
+			const candidateStart = Math.max(
+				endMinutes,
+				...blockingIntervals.map((interval) => interval.end),
+			);
+			const candidate = {
+				start: candidateStart,
+				end: candidateStart + ALTERNATIVE_SLOT_MINUTES,
+			};
+			if (
+				candidate.end > 22 * 60 ||
+				occupiedIntervals.some((interval) => overlapsInterval(candidate, interval))
+			) {
+				continue;
+			}
+
+			slots.push({
+				date,
+				dateKey,
+				dayOfWeek,
+				startMinutes: candidate.start,
+				endMinutes: candidate.end,
+				nextStartMinutes: candidate.start,
+				isAlternative: true,
+			});
+			if (slots.length >= MAX_ALTERNATIVE_SESSIONS) return slots;
+		}
+	}
+
+	return slots;
 };
 
 const buildLearningSlots = (
@@ -687,6 +753,17 @@ const buildLearningSlots = (
 				});
 			}
 		}
+	}
+
+	if (slots.length === 0) {
+		slots.push(
+			...buildAlternativeLearningSlots(
+				examDateKey,
+				availableDays,
+				windowsByDay,
+				occupiedIntervalsByDay,
+			),
+		);
 	}
 
 	return slots.sort(
@@ -812,10 +889,9 @@ const normalizeSessions = (
 		(total, session) => total + session.durationMinutes,
 		0,
 	);
-	const availableMinutes = slots.reduce(
-		(total, slot) => total + (slot.endMinutes - slot.startMinutes),
-		0,
-	);
+	const availableLearningTimeMinutes = slots
+		.filter((slot) => !slot.isAlternative)
+		.reduce((total, slot) => total + (slot.endMinutes - slot.startMinutes), 0);
 	const distributedOffsets = distributeSessionOffsets(availableDays, sessions);
 	const prioritizedSessions = sessions
 		.map((session, index) => ({
@@ -848,7 +924,11 @@ const normalizeSessions = (
 				phase,
 				title:
 					compactSingleLine(
-						formatGermanUiText(source?.title ?? fallbackTitleByPhase[phase]),
+						formatGermanUiText(
+							slot.isAlternative
+								? `Alternative: ${source?.title ?? fallbackTitleByPhase[phase]}`
+								: (source?.title ?? fallbackTitleByPhase[phase]),
+						),
 						MAX_SESSION_TITLE_CHARS,
 					) || fallbackTitleByPhase[phase],
 				dateKey: slot.date.toISOString(),
@@ -879,9 +959,9 @@ const normalizeSessions = (
 	const planningHint =
 		learningTimes.length === 0
 			? "Du hast noch keine persönlichen Lernzeiten hinterlegt. Der Lernplan kann erst konkrete Lerneinheiten erstellen, wenn du in den Einstellungen Lernzeiten anlegst."
-			: availableMinutes === 0
-				? "Deine hinterlegte Lernzeit ist aktuell vollständig durch andere Termine belegt. Passe deine Lernzeiten an oder verschiebe bestehende Termine, damit wir passende Lernblöcke vorschlagen können."
-			: plannedMinutes < requestedMinutes || availableMinutes < requestedMinutes
+			: availableLearningTimeMinutes === 0
+				? "Deine hinterlegte Lernzeit ist aktuell vollständig durch andere Termine belegt. Wir schlagen dir deshalb alternative Lernblöcke vor, die du vor dem Eintragen noch prüfen kannst."
+			: plannedMinutes < requestedMinutes || availableLearningTimeMinutes < requestedMinutes
 				? `Deine hinterlegten Lernzeiten reichen nicht für den vollständigen empfohlenen Plan. Geplant wurden ${plannedMinutes} von ${requestedMinutes} Minuten innerhalb deiner verfügbaren Lernzeiten.`
 				: undefined;
 

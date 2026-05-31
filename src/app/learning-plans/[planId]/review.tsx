@@ -134,11 +134,14 @@ export default function LearningPlanReviewScreen() {
 					description="Passe deine Lerntage an und trage den Plan danach in den Kalender ein."
 				/>
 				{snapshot?.plan.planningHint ? (
-					<View className="mb-5 flex-row rounded-[24px] bg-white px-5 py-4" style={{ gap: 12 }}>
+					<View
+						className="mb-6 flex-row rounded-[24px] bg-white px-6 py-5"
+						style={{ gap: 14 }}
+					>
 						<CircleAlert size={20} color="#F59E0B" strokeWidth={2.2} />
 						<Text
 							className="flex-1 font-poppins text-[#7A5A12]"
-							style={{ fontSize: 13, lineHeight: 19, includeFontPadding: false }}
+							style={{ fontSize: 13, lineHeight: 20, includeFontPadding: false }}
 						>
 							{snapshot.plan.planningHint}
 						</Text>
@@ -152,23 +155,6 @@ export default function LearningPlanReviewScreen() {
 							onEdit={() => openEdit(session)}
 						/>
 					))}
-					{snapshot && snapshot.sessions.length === 0 ? (
-						<View className="rounded-[24px] bg-white px-5 py-5">
-							<Text
-								className="text-center font-poppins font-semibold text-[#202127]"
-								style={{ fontSize: 16, lineHeight: 22, includeFontPadding: false }}
-							>
-								Lernzeit vollständig belegt
-							</Text>
-							<Text
-								className="mt-2 text-center font-poppins text-[#8C8F98]"
-								style={{ fontSize: 13, lineHeight: 19, includeFontPadding: false }}
-							>
-								Aktuell sind alle hinterlegten Lernzeiten durch andere Termine belegt.
-								Passe deine Lernzeiten an oder verschiebe bestehende Termine.
-							</Text>
-						</View>
-					) : null}
 				</View>
 				{errorMessage ? (
 					<Text className="mb-4 font-poppins text-12 text-destructive">
