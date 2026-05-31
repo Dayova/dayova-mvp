@@ -1,7 +1,3 @@
-import {
-	DateTimePickerSheet,
-	type DateTimePickerEvent,
-} from "~/components/ui/date-time-picker-sheet";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -9,7 +5,6 @@ import { type ComponentProps, useCallback, useEffect, useState } from "react";
 import {
 	Image,
 	Keyboard,
-	KeyboardAvoidingView,
 	Platform,
 	TouchableOpacity,
 	useWindowDimensions,
@@ -19,6 +14,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Mascot } from "~/components/Mascot";
 import { BackButton, Button } from "~/components/ui/button";
 import {
+	type DateTimePickerEvent,
+	DateTimePickerSheet,
+} from "~/components/ui/date-time-picker-sheet";
+import {
 	Field,
 	FieldAccessory,
 	FieldLabel,
@@ -26,6 +25,7 @@ import {
 	FieldTrigger,
 } from "~/components/ui/field";
 import { ChevronDown } from "~/components/ui/icon";
+import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { Text } from "~/components/ui/text";
 import { InsetTextField } from "~/components/ui/text-field";
 import { useAuth } from "~/context/AuthContext";
@@ -409,10 +409,7 @@ export default function WelcomeScreen() {
 	useBackIntent(activeIndex > 0 && !isCompletingOnboarding, handleBack);
 
 	return (
-		<KeyboardAvoidingView
-			className="flex-1 bg-[#FCFCFD]"
-			behavior={isInputStep && Platform.OS === "ios" ? "padding" : undefined}
-		>
+		<View className="flex-1 bg-[#FCFCFD]">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 
@@ -615,7 +612,11 @@ export default function WelcomeScreen() {
 						</View>
 					</>
 				) : (
-					<>
+					<KeyboardSafeScrollView
+						className="flex-1"
+						bottomOffset={112}
+						contentContainerStyle={{ flexGrow: 1 }}
+					>
 						<View className="flex-row items-center">
 							<BackButton
 								onPress={handleBack}
@@ -779,7 +780,10 @@ export default function WelcomeScreen() {
 															selectedBirthDate ? "text-text" : "text-text/36"
 														}`}
 														numberOfLines={1}
-														style={{ includeFontPadding: false, lineHeight: 24 }}
+														style={{
+															includeFontPadding: false,
+															lineHeight: 24,
+														}}
 													>
 														{selectedBirthDate
 															? `${getAgeFromBirthDate(selectedBirthDate)} Jahre`
@@ -884,7 +888,7 @@ export default function WelcomeScreen() {
 								disabled={shouldDisableContinue}
 							/>
 						</View>
-					</>
+					</KeyboardSafeScrollView>
 				)}
 			</View>
 
@@ -907,7 +911,7 @@ export default function WelcomeScreen() {
 					onClose={() => setShowBirthDatePicker(false)}
 				/>
 			) : null}
-		</KeyboardAvoidingView>
+		</View>
 	);
 }
 

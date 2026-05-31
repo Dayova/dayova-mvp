@@ -1,19 +1,14 @@
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useMemo, useState } from "react";
-import {
-	ActivityIndicator,
-	KeyboardAvoidingView,
-	Platform,
-	View,
-} from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { Mail, UserRound } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SectionHeader } from "~/components/ui/section-header";
-import { InsetTextField } from "~/components/ui/text-field";
 import { Text } from "~/components/ui/text";
+import { InsetTextField } from "~/components/ui/text-field";
 import { useAuth } from "~/context/AuthContext";
 
 const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value.trim());
@@ -148,17 +143,9 @@ export default function ProfileScreen() {
 	};
 
 	return (
-		<KeyboardAvoidingView
-			className="flex-1"
-			behavior={Platform.OS === "ios" ? "padding" : "height"}
-		>
-			<Screen>
-				<StatusBar style="dark" />
-				<ScreenScroll
-					bottomPadding={82}
-					keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-					automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
-				>
+		<Screen>
+			<StatusBar style="dark" />
+			<ScreenScroll bottomPadding={82}>
 				<Header title="Profil" onBack={goBack} />
 
 				<SectionHeader
@@ -292,8 +279,7 @@ export default function ProfileScreen() {
 						</Text>
 					)}
 				</Button>
-				</ScreenScroll>
-			</Screen>
-		</KeyboardAvoidingView>
+			</ScreenScroll>
+		</Screen>
 	);
 }

@@ -3,13 +3,7 @@ import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import {
-	Alert,
-	Linking,
-	Platform,
-	Switch,
-	View,
-} from "react-native";
+import { Alert, Linking, Platform, Switch, View } from "react-native";
 import { Bell, Logout, Settings } from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
@@ -32,7 +26,12 @@ const hasNotificationPermission = (
 	permissions.granted ||
 	permissions.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL;
 
-function SettingsRow({ icon, label, trailing, onPress }: {
+function SettingsRow({
+	icon,
+	label,
+	trailing,
+	onPress,
+}: {
 	icon: (props: {
 		size?: number;
 		color?: string;

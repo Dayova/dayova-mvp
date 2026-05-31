@@ -2,10 +2,11 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
+import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { useAuth } from "~/context/AuthContext";
 import { QuizStep } from "~/features/learning-plans/quiz-step";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
@@ -119,22 +120,18 @@ export default function LearningPlanQuizScreen() {
 	};
 
 	return (
-		<KeyboardAvoidingView
-			className="flex-1 bg-[#F5F3F6]"
-			behavior={Platform.OS === "ios" ? "padding" : "height"}
-		>
+		<View className="flex-1 bg-[#F5F3F6]">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
-			<ScrollView
+			<KeyboardSafeScrollView
 				className="flex-1"
+				bottomOffset={32}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,
 					paddingTop: 80,
 					paddingBottom: 60,
 				}}
-				keyboardShouldPersistTaps="handled"
-				showsVerticalScrollIndicator={false}
 			>
 				<Header title="Quiz" onBack={goBack} showBack={questionIndex > 0} />
 				{currentQuestion ? (
@@ -149,7 +146,7 @@ export default function LearningPlanQuizScreen() {
 						onContinue={continueQuestion}
 					/>
 				) : null}
-			</ScrollView>
-		</KeyboardAvoidingView>
+			</KeyboardSafeScrollView>
+		</View>
 	);
 }

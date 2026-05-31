@@ -15,6 +15,7 @@ import { ThemeProvider } from "expo-router/react-navigation";
 import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
 import { NAV_THEME } from "~/lib/theme";
@@ -67,22 +68,24 @@ export default function RootLayout() {
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
-			<ClerkProvider
-				publishableKey={clerkPublishableKey}
-				tokenCache={tokenCache}
-			>
-				<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
-					<ThemeProvider value={theme}>
-						<BottomSheetModalProvider>
-							<OnboardingProvider>
-								<AuthProvider>
-									<AppNavigator />
-								</AuthProvider>
-							</OnboardingProvider>
-						</BottomSheetModalProvider>
-					</ThemeProvider>
-				</ConvexProviderWithClerk>
-			</ClerkProvider>
+			<KeyboardProvider preload={false}>
+				<ClerkProvider
+					publishableKey={clerkPublishableKey}
+					tokenCache={tokenCache}
+				>
+					<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
+						<ThemeProvider value={theme}>
+							<BottomSheetModalProvider>
+								<OnboardingProvider>
+									<AuthProvider>
+										<AppNavigator />
+									</AuthProvider>
+								</OnboardingProvider>
+							</BottomSheetModalProvider>
+						</ThemeProvider>
+					</ConvexProviderWithClerk>
+				</ClerkProvider>
+			</KeyboardProvider>
 		</GestureHandlerRootView>
 	);
 }

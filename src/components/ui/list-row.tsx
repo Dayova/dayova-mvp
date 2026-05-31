@@ -40,7 +40,10 @@ function ListRow({
 					{label}
 				</Text>
 				{description ? (
-					<Text className="mt-1 font-poppins text-12 text-text/50" numberOfLines={2}>
+					<Text
+						className="mt-1 font-poppins text-12 text-text/50"
+						numberOfLines={2}
+					>
 						{description}
 					</Text>
 				) : null}
