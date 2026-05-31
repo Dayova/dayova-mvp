@@ -7,7 +7,6 @@ import {
 	Calculator01Icon,
 	Calendar03Icon,
 	Cancel01Icon,
-	CheckmarkCircle02Icon,
 	Chemistry01Icon,
 	Clock03Icon,
 	CodeIcon,
@@ -56,7 +55,6 @@ export const BookOpen = createIcon(BookOpen01Icon);
 export const CalendarDays = createIcon(Calendar03Icon);
 export const Calculator = createIcon(Calculator01Icon);
 export const Check = createIcon(Tick02Icon);
-export const CheckCircle2 = createIcon(CheckmarkCircle02Icon);
 export const Chemistry = createIcon(Chemistry01Icon);
 export const ChevronDown = createIcon(ArrowDown01Icon);
 export const CircleAlert = createIcon(AlertCircleIcon);

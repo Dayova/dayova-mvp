@@ -219,7 +219,7 @@ export default function LearningPlanReviewScreen() {
 				visible={Boolean(successDayKey)}
 				title="Lernplan ist eingetragen"
 				description="Deine Lernplan wurde erfolgreich eingetragen."
-				icon={<Check size={48} color="#28C76F" strokeWidth={1.9} />}
+				icon={<Check size={48} color="#28C76F" strokeWidth={1.2} />}
 			>
 				<Button
 					className="mt-6 w-full"
