@@ -1,5 +1,6 @@
-import { ScrollView, View, type ScrollViewProps, type ViewProps } from "react-native";
+import { type ScrollViewProps, View, type ViewProps } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
 
@@ -32,7 +33,7 @@ function ScreenScroll({
 	const insets = useSafeAreaInsets();
 
 	return (
-		<ScrollView
+		<KeyboardSafeScrollView
 			className={cn("flex-1", className)}
 			contentContainerStyle={[
 				{
@@ -42,8 +43,6 @@ function ScreenScroll({
 				},
 				contentContainerStyle,
 			]}
-			keyboardShouldPersistTaps="handled"
-			showsVerticalScrollIndicator={false}
 			{...props}
 		/>
 	);

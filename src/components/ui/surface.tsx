@@ -55,7 +55,11 @@ function ActionSurface({
 	return (
 		<TouchableOpacity
 			activeOpacity={activeOpacity}
-			className={cn("rounded-[32px] bg-white", disabled && "opacity-55", className)}
+			className={cn(
+				"rounded-[32px] bg-white",
+				disabled && "opacity-55",
+				className,
+			)}
 			disabled={disabled}
 			style={getSurfaceStyle(variant, style)}
 			{...props}
@@ -64,4 +68,3 @@ function ActionSurface({
 }
 
 export { ActionSurface, Surface };
-export type { SurfaceVariant };

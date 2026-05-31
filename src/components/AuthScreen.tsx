@@ -5,9 +5,7 @@ import {
 	Animated,
 	Image,
 	Keyboard,
-	KeyboardAvoidingView,
 	Platform,
-	ScrollView,
 	StyleSheet,
 	TextInput,
 	type TextInputProps,
@@ -15,6 +13,7 @@ import {
 	View,
 } from "react-native";
 import { Cursor } from "react-native-confirmation-code-field";
+import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
 import {
@@ -39,6 +38,7 @@ import {
 	MailCheck,
 	UserRound,
 } from "~/components/ui/icon";
+import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { Text } from "~/components/ui/text";
 import { InsetTextField } from "~/components/ui/text-field";
 import { useAuth } from "~/context/AuthContext";
@@ -320,7 +320,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 	const [tabProgress] = useState(
 		() => new Animated.Value(initialMode === "login" ? 1 : 0),
 	);
-	const formScrollRef = useRef<ScrollView | null>(null);
+	const formScrollRef = useRef<KeyboardAwareScrollViewRef | null>(null);
 	const otpInputRef = useRef<TextInput | null>(null);
 	const birthDateFieldY = useRef(0);
 
@@ -590,7 +590,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 		const otpButtonMarginTop = isOtpKeyboardVisible ? 28 : 40;
 
 		return (
-			<KeyboardAvoidingView className="flex-1 bg-black">
+			<View className="flex-1 bg-black">
 				<StatusBar style="light" />
 
 				<View className="flex-1 bg-black" style={{ paddingTop: otpTopPadding }}>
@@ -617,17 +617,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							paddingTop: otpCardPaddingTop,
 						}}
 					>
-						<ScrollView
+						<KeyboardSafeScrollView
+							bottomOffset={40}
 							contentContainerStyle={{
 								flexGrow: 1,
 								paddingBottom: otpContentPaddingBottom,
 							}}
-							keyboardShouldPersistTaps="handled"
-							showsVerticalScrollIndicator={false}
-							keyboardDismissMode={
-								Platform.OS === "ios" ? "interactive" : "on-drag"
-							}
-							automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
 						>
 							<View className="items-center">
 								<Text
@@ -699,15 +694,15 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							>
 								<Text>{isLoading ? "Prüft..." : "Code bestätigen"}</Text>
 							</Button>
-						</ScrollView>
+						</KeyboardSafeScrollView>
 					</View>
 				</View>
-			</KeyboardAvoidingView>
+			</View>
 		);
 	}
 
 	return (
-		<KeyboardAvoidingView className="flex-1 bg-black">
+		<View className="flex-1 bg-black">
 			<StatusBar style="light" />
 
 			<View
@@ -789,20 +784,15 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 					</>
 				)}
 
-				<ScrollView
+				<KeyboardSafeScrollView
 					ref={formScrollRef}
 					className="flex-1"
+					bottomOffset={40}
 					contentContainerStyle={{
 						flexGrow: 1,
 						paddingBottom: 40,
 						paddingHorizontal: 8,
 					}}
-					showsVerticalScrollIndicator={false}
-					keyboardShouldPersistTaps="handled"
-					keyboardDismissMode={
-						Platform.OS === "ios" ? "interactive" : "on-drag"
-					}
-					automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
 				>
 					{isRegisterPasswordStep ? (
 						<TouchableOpacity
@@ -1070,7 +1060,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							</Text>
 						</View>
 					)}
-				</ScrollView>
+				</KeyboardSafeScrollView>
 			</View>
 
 			{showBirthDatePicker && isRegisterMode ? (
@@ -1083,6 +1073,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 					onClose={closeBirthDatePicker}
 				/>
 			) : null}
-		</KeyboardAvoidingView>
+		</View>
 	);
 }

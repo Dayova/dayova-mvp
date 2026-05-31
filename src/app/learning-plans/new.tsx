@@ -7,9 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import {
 	ActivityIndicator,
-	KeyboardAvoidingView,
 	Modal,
-	Platform,
 	Pressable,
 	TouchableOpacity,
 	useWindowDimensions,
@@ -386,14 +384,10 @@ export default function NewLearningPlanScreen() {
 	if (!hasExamEntry) return null;
 
 	return (
-		<KeyboardAvoidingView
-			className="flex-1"
-			behavior={Platform.OS === "ios" ? "padding" : "height"}
-		>
-			<Screen>
-				<Stack.Screen options={{ gestureEnabled: true }} />
-				<StatusBar style="dark" />
-				<ScreenScroll>
+		<Screen>
+			<Stack.Screen options={{ gestureEnabled: true }} />
+			<StatusBar style="dark" />
+			<ScreenScroll>
 				<Header title="Prüfungsthema" onBack={goBack} />
 				<SectionTitle
 					title="Lernplan erstellen"
@@ -483,7 +477,7 @@ export default function NewLearningPlanScreen() {
 				>
 					{isBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text>Weiter</Text>}
 				</Button>
-				</ScreenScroll>
+			</ScreenScroll>
 
 			<Modal
 				visible={isUploadSheetVisible}
@@ -602,7 +596,6 @@ export default function NewLearningPlanScreen() {
 					</View>
 				</View>
 			</Modal>
-			</Screen>
-		</KeyboardAvoidingView>
+		</Screen>
 	);
 }

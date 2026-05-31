@@ -10,7 +10,7 @@ import {
 	Switch,
 	View,
 } from "react-native";
-import { Bell, Logout, Settings, Timer } from "~/components/ui/icon";
+import { Bell, Logout, Settings } from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { useAuth } from "~/context/AuthContext";
@@ -32,7 +32,12 @@ const hasNotificationPermission = (
 	permissions.granted ||
 	permissions.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL;
 
-function SettingsRow({ icon, label, trailing, onPress }: {
+function SettingsRow({
+	icon,
+	label,
+	trailing,
+	onPress,
+}: {
 	icon: (props: {
 		size?: number;
 		color?: string;

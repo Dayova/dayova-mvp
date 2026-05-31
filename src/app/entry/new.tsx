@@ -2,14 +2,11 @@ import { useConvexAuth, useMutation } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { type ReactNode, useCallback, useRef, useState } from "react";
+import { type LayoutChangeEvent, Platform, Switch, View } from "react-native";
 import {
-	KeyboardAvoidingView,
-	type LayoutChangeEvent,
-	Platform,
-	ScrollView,
-	Switch,
-	View,
-} from "react-native";
+	type KeyboardAwareScrollViewRef,
+	KeyboardStickyView,
+} from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -45,6 +42,8 @@ import {
 	Pencil,
 	TimeManagement,
 } from "~/components/ui/icon";
+import { shouldUseKeyboardStickyActions } from "~/components/ui/keyboard-safe-scroll";
+import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
@@ -249,7 +248,7 @@ export default function NewEntryScreen() {
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
 	const [selectTarget, setSelectTarget] = useState<SelectTarget | null>(null);
-	const scrollViewRef = useRef<ScrollView | null>(null);
+	const scrollViewRef = useRef<KeyboardAwareScrollViewRef | null>(null);
 	const noteInputOffsetY = useRef(0);
 
 	const trimmedSubject = subject.trim();
@@ -551,248 +550,44 @@ export default function NewEntryScreen() {
 		<View className="flex-1 bg-[#F5F3F6]">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
-			<KeyboardAvoidingView
+			<KeyboardSafeScrollView
+				ref={scrollViewRef}
 				className="flex-1"
-				behavior={Platform.OS === "android" ? "height" : undefined}
-				keyboardVerticalOffset={0}
+				bottomOffset={128}
+				contentContainerStyle={{
+					paddingHorizontal: 32,
+					paddingTop: isHomework ? Math.max(insets.top + 28, 58) : 80,
+					paddingBottom: isHomework ? 168 : 80,
+				}}
 			>
-				<ScrollView
-					ref={scrollViewRef}
-					className="flex-1"
-					automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
-					contentContainerStyle={{
-						paddingHorizontal: 32,
-						paddingTop: isHomework ? Math.max(insets.top + 28, 58) : 80,
-						paddingBottom: isHomework ? 168 : 80,
-					}}
-					keyboardShouldPersistTaps="handled"
-					keyboardDismissMode="interactive"
-					showsVerticalScrollIndicator={false}
-				>
-					{isHomework ? (
-						step === "basics" ? (
-							<>
-								<HomeworkScreenHeader title="Abgabe" onBack={handleBack} />
-								<View className="mb-7">
-									<Text
-										className="font-poppins font-semibold text-text"
-										style={{
-											fontSize: 15,
-											lineHeight: 20,
-											includeFontPadding: false,
-										}}
-									>
-										Hausaufgabe eintragen
-									</Text>
-									<Text className="mt-2 font-poppins text-14 text-text/42">
-										Trage zuerst Fälligkeit, Fach und Notiz ein.
-									</Text>
-								</View>
-
-								<HomeworkPillField
-									label="Fälligkeitsdatum"
-									value={formatCompactDate(dueDate)}
-									icon={
-										<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
-									}
-									onPress={() => setPickerTarget("dueDate")}
-								/>
-
-								<Field>
-									<FieldLabel>Schulfach</FieldLabel>
-									<FieldTrigger
-										activeOpacity={0.86}
-										onPress={() => setSelectTarget("subject")}
-										className="min-h-[64px] rounded-[28px] px-5"
-										style={{
-											boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-										}}
-									>
-										<Text
-											className="flex-1 font-poppins text-16"
-											numberOfLines={1}
-											style={{
-												color: subject ? "#202127" : "rgba(17,24,39,0.32)",
-												includeFontPadding: false,
-											}}
-										>
-											{subject || "Wähle das Fach aus"}
-										</Text>
-										<FieldAccessory>
-											<ChevronDown
-												size={20}
-												color="#202127"
-												strokeWidth={2.1}
-											/>
-										</FieldAccessory>
-									</FieldTrigger>
-								</Field>
-
-								<Field className="mb-8" onLayout={handleNoteInputLayout}>
-									<FieldLabel>Notizen</FieldLabel>
-									<FieldControl
-										className="min-h-[150px] items-start rounded-[28px] px-5 pt-4 pb-4"
-										style={{
-											boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-										}}
-									>
-										<Textarea
-											value={note}
-											onChangeText={setNote}
-											onFocus={handleNoteInputFocus}
-											placeholder="Kurze Notiz hinzufügen"
-										/>
-									</FieldControl>
-								</Field>
-							</>
-						) : (
-							<>
-								<HomeworkScreenHeader title="Erledigen" onBack={handleBack} />
-								<View className="mb-5">
-									<Text
-										className="font-poppins font-semibold text-text"
-										style={{
-											fontSize: 15,
-											lineHeight: 20,
-											includeFontPadding: false,
-										}}
-									>
-										Hausaufgabe eintragen
-									</Text>
-									<Text className="mt-2 font-poppins text-14 text-text/42">
-										Trage nun ein wann du es machst.
-									</Text>
-								</View>
-
-								<HomeworkPillField
-									label="Erledigungsdatum"
-									value={formatCompactDate(plannedDate)}
-									icon={
-										<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
-									}
-									onPress={() => setPickerTarget("plannedDate")}
-								/>
-
-								<View className="mb-5 flex-row" style={{ columnGap: 12 }}>
-									<View className="flex-1">
-										<HomeworkPillField
-											value={formatTime(plannedTime)}
-											placeholder="Von..."
-											icon={
-												<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
-											}
-											onPress={() => setPickerTarget("plannedTime")}
-											className="min-h-[64px] px-5"
-										/>
-									</View>
-									<View className="flex-1">
-										<HomeworkPillField
-											value={formatTime(plannedEndTime)}
-											placeholder="Bis..."
-											icon={
-												<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
-											}
-											onPress={() => setPickerTarget("plannedEndTime")}
-											className="min-h-[64px] px-5"
-										/>
-									</View>
-								</View>
-
-								<View
-									className="min-h-[64px] flex-row items-center rounded-[28px] bg-white pr-4 pl-5"
-									style={{
-										boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-									}}
-								>
-									<View
-										className="h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white"
-										style={{
-											borderWidth: 1,
-											borderColor: "rgba(17,24,39,0.05)",
-											boxShadow: "0 8px 18px rgba(22, 29, 48, 0.08)",
-										}}
-									>
-										<Bell size={23} color="#202127" strokeWidth={2} />
-									</View>
-									<Text
-										className="ml-3 flex-1 font-poppins font-semibold text-[#17171C]"
-										style={{
-											fontSize: 18,
-											lineHeight: 22,
-											includeFontPadding: false,
-										}}
-									>
-										Erinnere mich
-									</Text>
-									<View className="self-center" style={{ marginTop: 2 }}>
-										<Switch
-											value={remindMe}
-											onValueChange={setRemindMe}
-											trackColor={{ false: "#D7D8DC", true: "#CFE0FF" }}
-											thumbColor="#FFFFFF"
-											ios_backgroundColor="#D7D8DC"
-										/>
-									</View>
-								</View>
-							</>
-						)
-					) : (
+				{isHomework ? (
+					step === "basics" ? (
 						<>
-							<HomeworkScreenHeader
-								title="Prüfungstermin"
-								onBack={handleBack}
-							/>
+							<HomeworkScreenHeader title="Abgabe" onBack={handleBack} />
 							<View className="mb-7">
 								<Text
-									className="font-poppins font-semibold text-16 text-text"
+									className="font-poppins font-semibold text-text"
 									style={{
+										fontSize: 15,
 										lineHeight: 20,
 										includeFontPadding: false,
 									}}
 								>
-									{title}
+									Hausaufgabe eintragen
 								</Text>
 								<Text className="mt-2 font-poppins text-14 text-text/42">
-									{subtitle}
+									Trage zuerst Fälligkeit, Fach und Notiz ein.
 								</Text>
 							</View>
-						</>
-					)}
 
-					{!isHomework && step === "basics" ? (
-						<>
 							<HomeworkPillField
-								label="Prüfungsdatum"
-								value={formatCompactDate(plannedDate)}
+								label="Fälligkeitsdatum"
+								value={formatCompactDate(dueDate)}
 								icon={
 									<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
 								}
-								onPress={() => setPickerTarget("plannedDate")}
+								onPress={() => setPickerTarget("dueDate")}
 							/>
-							<View className="mb-5 flex-row" style={{ columnGap: 12 }}>
-								<View className="flex-1">
-									<HomeworkPillField
-										value={formatTime(plannedTime)}
-										placeholder="Von..."
-										icon={
-											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
-										}
-										onPress={() => setPickerTarget("plannedTime")}
-										className="min-h-[64px] px-5"
-									/>
-								</View>
-								<View className="flex-1">
-									<HomeworkPillField
-										value={formatTime(plannedEndTime)}
-										placeholder="Bis..."
-										icon={
-											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
-										}
-										onPress={() => setPickerTarget("plannedEndTime")}
-										className="min-h-[64px] px-5"
-									/>
-								</View>
-							</View>
 
 							<Field>
 								<FieldLabel>Schulfach</FieldLabel>
@@ -820,108 +615,294 @@ export default function NewEntryScreen() {
 								</FieldTrigger>
 							</Field>
 
-							<Field className="mb-8">
-								<FieldLabel>Prüfungsart</FieldLabel>
-								<FieldTrigger
-									activeOpacity={0.86}
-									onPress={() => setSelectTarget("examType")}
-									className="min-h-[64px] rounded-[28px] px-5"
+							<Field className="mb-8" onLayout={handleNoteInputLayout}>
+								<FieldLabel>Notizen</FieldLabel>
+								<FieldControl
+									className="min-h-[150px] items-start rounded-[28px] px-5 pt-4 pb-4"
 									style={{
 										boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 									}}
 								>
-									<Text
-										className="flex-1 font-poppins text-16"
-										numberOfLines={1}
-										style={{
-											color: examTypeLabel ? "#202127" : "rgba(17,24,39,0.32)",
-											includeFontPadding: false,
-										}}
-									>
-										{examTypeLabel || "Wähle die Prüfungsart aus"}
-									</Text>
-									<FieldAccessory>
-										<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
-									</FieldAccessory>
-								</FieldTrigger>
+									<Textarea
+										value={note}
+										onChangeText={setNote}
+										onFocus={handleNoteInputFocus}
+										placeholder="Kurze Notiz hinzufügen"
+									/>
+								</FieldControl>
 							</Field>
 						</>
-					) : null}
-				</ScrollView>
-			</KeyboardAvoidingView>
-			{isHomework ? (
-				<View
-					style={{
-						paddingHorizontal: 24,
-						paddingBottom: Math.max(insets.bottom + 10, 24),
-					}}
-				>
-					{errorMessage ? (
-						<Text
-							accessibilityRole="alert"
-							accessibilityLiveRegion="polite"
-							className="mb-3 text-center font-poppins text-12 text-destructive"
-						>
-							{errorMessage}
-						</Text>
-					) : null}
-					<Button
-						className="w-full"
-						disabled={
-							step === "basics"
-								? !canContinueFromBasics
-								: isCreating || !canWriteEntries
-						}
-						onPress={() => {
-							if (step === "basics") {
-								setStep("planning");
-								return;
+					) : (
+						<>
+							<HomeworkScreenHeader title="Erledigen" onBack={handleBack} />
+							<View className="mb-5">
+								<Text
+									className="font-poppins font-semibold text-text"
+									style={{
+										fontSize: 15,
+										lineHeight: 20,
+										includeFontPadding: false,
+									}}
+								>
+									Hausaufgabe eintragen
+								</Text>
+								<Text className="mt-2 font-poppins text-14 text-text/42">
+									Trage nun ein wann du es machst.
+								</Text>
+							</View>
+
+							<HomeworkPillField
+								label="Erledigungsdatum"
+								value={formatCompactDate(plannedDate)}
+								icon={
+									<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
+								}
+								onPress={() => setPickerTarget("plannedDate")}
+							/>
+
+							<View className="mb-5 flex-row" style={{ columnGap: 12 }}>
+								<View className="flex-1">
+									<HomeworkPillField
+										value={formatTime(plannedTime)}
+										placeholder="Von..."
+										icon={
+											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
+										}
+										onPress={() => setPickerTarget("plannedTime")}
+										className="min-h-[64px] px-5"
+									/>
+								</View>
+								<View className="flex-1">
+									<HomeworkPillField
+										value={formatTime(plannedEndTime)}
+										placeholder="Bis..."
+										icon={
+											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
+										}
+										onPress={() => setPickerTarget("plannedEndTime")}
+										className="min-h-[64px] px-5"
+									/>
+								</View>
+							</View>
+
+							<View
+								className="min-h-[64px] flex-row items-center rounded-[28px] bg-white pr-4 pl-5"
+								style={{
+									boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
+								}}
+							>
+								<View
+									className="h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white"
+									style={{
+										borderWidth: 1,
+										borderColor: "rgba(17,24,39,0.05)",
+										boxShadow: "0 8px 18px rgba(22, 29, 48, 0.08)",
+									}}
+								>
+									<Bell size={23} color="#202127" strokeWidth={2} />
+								</View>
+								<Text
+									className="ml-3 flex-1 font-poppins font-semibold text-[#17171C]"
+									style={{
+										fontSize: 18,
+										lineHeight: 22,
+										includeFontPadding: false,
+									}}
+								>
+									Erinnere mich
+								</Text>
+								<View className="self-center" style={{ marginTop: 2 }}>
+									<Switch
+										value={remindMe}
+										onValueChange={setRemindMe}
+										trackColor={{ false: "#D7D8DC", true: "#CFE0FF" }}
+										thumbColor="#FFFFFF"
+										ios_backgroundColor="#D7D8DC"
+									/>
+								</View>
+							</View>
+						</>
+					)
+				) : (
+					<>
+						<HomeworkScreenHeader title="Prüfungstermin" onBack={handleBack} />
+						<View className="mb-7">
+							<Text
+								className="font-poppins font-semibold text-16 text-text"
+								style={{
+									lineHeight: 20,
+									includeFontPadding: false,
+								}}
+							>
+								{title}
+							</Text>
+							<Text className="mt-2 font-poppins text-14 text-text/42">
+								{subtitle}
+							</Text>
+						</View>
+					</>
+				)}
+
+				{!isHomework && step === "basics" ? (
+					<>
+						<HomeworkPillField
+							label="Prüfungsdatum"
+							value={formatCompactDate(plannedDate)}
+							icon={
+								<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
 							}
-							void createEntry();
+							onPress={() => setPickerTarget("plannedDate")}
+						/>
+						<View className="mb-5 flex-row" style={{ columnGap: 12 }}>
+							<View className="flex-1">
+								<HomeworkPillField
+									value={formatTime(plannedTime)}
+									placeholder="Von..."
+									icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
+									onPress={() => setPickerTarget("plannedTime")}
+									className="min-h-[64px] px-5"
+								/>
+							</View>
+							<View className="flex-1">
+								<HomeworkPillField
+									value={formatTime(plannedEndTime)}
+									placeholder="Bis..."
+									icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
+									onPress={() => setPickerTarget("plannedEndTime")}
+									className="min-h-[64px] px-5"
+								/>
+							</View>
+						</View>
+
+						<Field>
+							<FieldLabel>Schulfach</FieldLabel>
+							<FieldTrigger
+								activeOpacity={0.86}
+								onPress={() => setSelectTarget("subject")}
+								className="min-h-[64px] rounded-[28px] px-5"
+								style={{
+									boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
+								}}
+							>
+								<Text
+									className="flex-1 font-poppins text-16"
+									numberOfLines={1}
+									style={{
+										color: subject ? "#202127" : "rgba(17,24,39,0.32)",
+										includeFontPadding: false,
+									}}
+								>
+									{subject || "Wähle das Fach aus"}
+								</Text>
+								<FieldAccessory>
+									<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
+								</FieldAccessory>
+							</FieldTrigger>
+						</Field>
+
+						<Field className="mb-8">
+							<FieldLabel>Prüfungsart</FieldLabel>
+							<FieldTrigger
+								activeOpacity={0.86}
+								onPress={() => setSelectTarget("examType")}
+								className="min-h-[64px] rounded-[28px] px-5"
+								style={{
+									boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
+								}}
+							>
+								<Text
+									className="flex-1 font-poppins text-16"
+									numberOfLines={1}
+									style={{
+										color: examTypeLabel ? "#202127" : "rgba(17,24,39,0.32)",
+										includeFontPadding: false,
+									}}
+								>
+									{examTypeLabel || "Wähle die Prüfungsart aus"}
+								</Text>
+								<FieldAccessory>
+									<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
+								</FieldAccessory>
+							</FieldTrigger>
+						</Field>
+					</>
+				) : null}
+			</KeyboardSafeScrollView>
+			<KeyboardStickyView enabled={shouldUseKeyboardStickyActions(Platform.OS)}>
+				{isHomework ? (
+					<View
+						style={{
+							paddingHorizontal: 24,
+							paddingBottom: Math.max(insets.bottom + 10, 24),
 						}}
 					>
-						<Text>Weiter</Text>
-					</Button>
-				</View>
-			) : (
-				<View
-					style={{
-						paddingHorizontal: 24,
-						paddingBottom: Math.max(insets.bottom + 10, 24),
-					}}
-				>
-					{errorMessage ? (
-						<Text
-							accessibilityRole="alert"
-							accessibilityLiveRegion="polite"
-							className="mb-3 text-center font-poppins text-12 text-destructive"
-						>
-							{errorMessage}
-						</Text>
-					) : null}
-					<View className="flex-row" style={{ columnGap: 12 }}>
+						{errorMessage ? (
+							<Text
+								accessibilityRole="alert"
+								accessibilityLiveRegion="polite"
+								className="mb-3 text-center font-poppins text-12 text-destructive"
+							>
+								{errorMessage}
+							</Text>
+						) : null}
 						<Button
-							className="flex-1"
-							variant="neutral"
-							disabled={!canCreateExam || isCreating || !canWriteEntries}
+							className="w-full"
+							disabled={
+								step === "basics"
+									? !canContinueFromBasics
+									: isCreating || !canWriteEntries
+							}
 							onPress={() => {
+								if (step === "basics") {
+									setStep("planning");
+									return;
+								}
 								void createEntry();
 							}}
 						>
-							<Text>Eintragen</Text>
-						</Button>
-						<Button
-							className="flex-1"
-							disabled={!canCreateExam || isCreating || !canWriteEntries}
-							onPress={() => {
-								void createLearningPlan();
-							}}
-						>
-							<Text>Lernplan</Text>
+							<Text>Weiter</Text>
 						</Button>
 					</View>
-				</View>
-			)}
+				) : (
+					<View
+						style={{
+							paddingHorizontal: 24,
+							paddingBottom: Math.max(insets.bottom + 10, 24),
+						}}
+					>
+						{errorMessage ? (
+							<Text
+								accessibilityRole="alert"
+								accessibilityLiveRegion="polite"
+								className="mb-3 text-center font-poppins text-12 text-destructive"
+							>
+								{errorMessage}
+							</Text>
+						) : null}
+						<View className="flex-row" style={{ columnGap: 12 }}>
+							<Button
+								className="flex-1"
+								variant="neutral"
+								disabled={!canCreateExam || isCreating || !canWriteEntries}
+								onPress={() => {
+									void createEntry();
+								}}
+							>
+								<Text>Eintragen</Text>
+							</Button>
+							<Button
+								className="flex-1"
+								disabled={!canCreateExam || isCreating || !canWriteEntries}
+								onPress={() => {
+									void createLearningPlan();
+								}}
+							>
+								<Text>Lernplan</Text>
+							</Button>
+						</View>
+					</View>
+				)}
+			</KeyboardStickyView>
 			{renderPicker()}
 			{renderSelectSheet()}
 		</View>
