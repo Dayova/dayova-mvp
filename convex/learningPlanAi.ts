@@ -14,6 +14,7 @@ import {
 	isInvalidGeneratedGermanTextError,
 	normalizeGeneratedGermanText,
 } from "./generatedGermanText";
+import { repairGeneratedGermanTextFromAsciiShadow } from "./generatedGermanTextRepair";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
@@ -24,6 +25,8 @@ const MAX_GENERATED_TEXT_ATTEMPTS = 3;
 const MODEL_ID = "gemini-3-flash-preview";
 const GERMAN_UI_TEXT_RULE =
 	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
+const GERMAN_TEXT_SHADOW_RULE =
+	"For every generated German text object, `text` is the visible German text and `asciiShadow` is the exact same wording with only ä->ae, ö->oe, ü->ue, Ä->Ae, Ö->Oe, Ü->Ue, ß->ss transliterated.";
 const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return exactly five short diagnostic questions that reveal what the learning plan needs to cover.`;
 const GENERATED_PLAN_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return a realistic, calendar-ready German learning plan with concrete study sessions.`;
 
@@ -96,26 +99,40 @@ const exactArray = <TItem extends z.ZodType>(
 		z.array(itemSchema).length(itemCount),
 	);
 
+const germanTextSchema = (minLength: number, description: string) =>
+	z
+		.object({
+			text: z
+				.string()
+				.min(minLength)
+				.describe(`${description} ${GERMAN_UI_TEXT_RULE}`),
+			asciiShadow: z
+				.string()
+				.min(minLength)
+				.describe(
+					`Exact non-visible transliteration for the text field. ${GERMAN_TEXT_SHADOW_RULE}`,
+				),
+		})
+		.describe(`${description} ${GERMAN_TEXT_SHADOW_RULE}`);
+
+type GeneratedGermanText = z.infer<ReturnType<typeof germanTextSchema>>;
+
 const questionsSchema = z
 	.object({
-		sourceSummary: z
-			.string()
-			.min(20)
-			.describe("Brief German summary of the uploaded learning material."),
+		sourceSummary: germanTextSchema(
+			20,
+			"Brief German summary of the uploaded learning material.",
+		),
 		questions: exactArray(
 			z.object({
-				prompt: z
-					.string()
-					.min(12)
-					.describe(
-						"Short German diagnostic question for the student. No multiple choice and no references to files or uploads.",
-					),
-				targetInsight: z
-					.string()
-					.min(8)
-					.describe(
-						"What this answer reveals about the student's strengths, gaps, or needed learning blocks.",
-					),
+				prompt: germanTextSchema(
+					12,
+					"Short German diagnostic question for the student. No multiple choice and no references to files or uploads.",
+				),
+				targetInsight: germanTextSchema(
+					8,
+					"What this answer reveals about the student's strengths, gaps, or needed learning blocks.",
+				),
 			}),
 			5,
 		),
@@ -124,29 +141,27 @@ const questionsSchema = z
 
 const generatedPlanSchema = z
 	.object({
-		sourceSummary: z
-			.string()
-			.min(20)
-			.describe("Brief German summary of the material used for this plan."),
+		sourceSummary: germanTextSchema(
+			20,
+			"Brief German summary of the material used for this plan.",
+		),
 		insight: z.object({
-			summary: z
-				.string()
-				.min(20)
-				.describe("German summary of the student's current readiness."),
+			summary: germanTextSchema(
+				20,
+				"German summary of the student's current readiness.",
+			),
 			strengths: atMostArray(
-				z
-					.string()
-					.describe(
-						"Specific topic or skill the student already handles well.",
-					),
+				germanTextSchema(
+					1,
+					"Specific topic or skill the student already handles well.",
+				),
 				4,
 			),
 			gaps: boundedArray(
-				z
-					.string()
-					.describe(
-						"Specific gap that should shape the generated study sessions.",
-					),
+				germanTextSchema(
+					1,
+					"Specific gap that should shape the generated study sessions.",
+				),
 				1,
 				5,
 			),
@@ -154,37 +169,29 @@ const generatedPlanSchema = z
 		sessions: boundedArray(
 			z.object({
 				phase: sessionPhaseSchema,
-				title: z
-					.string()
-					.min(3)
-					.describe(
-						`Short German UI label for this study session. Max ${MAX_SESSION_TITLE_CHARS} characters.`,
-					),
+				title: germanTextSchema(
+					3,
+					`Short German UI label for this study session. Max ${MAX_SESSION_TITLE_CHARS} characters.`,
+				),
 				dayOffsetBeforeExam: z.number().int().min(0).max(120),
 				startTime: z.string().regex(/^\d{2}:\d{2}$/),
 				durationMinutes: z.number().int().min(15).max(180),
-				goal: z
-					.string()
-					.min(20)
-					.describe(
-						"Student-facing goal for this session, tied to the student's answers and exam topic.",
-					),
+				goal: germanTextSchema(
+					20,
+					"Student-facing goal for this session, tied to the student's answers and exam topic.",
+				),
 				tasks: boundedArray(
-					z
-						.string()
-						.min(8)
-						.describe(
-							"Concrete task the student can complete during this study session.",
-						),
+					germanTextSchema(
+						8,
+						"Concrete task the student can complete during this study session.",
+					),
 					2,
 					5,
 				),
-				expectedOutcome: z
-					.string()
-					.min(12)
-					.describe(
-						"Observable result the student should have after finishing this session.",
-					),
+				expectedOutcome: germanTextSchema(
+					12,
+					"Observable result the student should have after finishing this session.",
+				),
 			}),
 			1,
 			5,
@@ -267,7 +274,7 @@ const withStructuredOutputErrorHandling = async <TResult>(
 const generatedTextRetrySystemInstruction = (attempt: number) =>
 	attempt === 0
 		? ""
-		: " Die vorherige Ausgabe enthielt ungültige Steuerzeichen in sichtbarem Text. Erzeuge alle sichtbaren Texte vollständig neu und verwende echte Unicode-Zeichen wie ä, ö, ü, Ä, Ö, Ü und ß.";
+		: " Die vorherige Ausgabe enthielt ungültige oder widersprüchliche Sonderzeichen. Erzeuge alle text/asciiShadow-Paare vollständig neu: text mit echten Unicode-Zeichen wie ä, ö, ü, Ä, Ö, Ü und ß; asciiShadow mit exakt derselben Formulierung und nur ae/oe/ue/Ae/Oe/Ue/ss als Umschrift.";
 
 const withGeneratedTextRetry = async <TResult>(
 	task: (attempt: number) => Promise<TResult>,
@@ -313,6 +320,11 @@ const withLlmTimeout = async <TResult>(
 		clearTimeout(timeoutId);
 	}
 };
+
+const normalizeAiGeneratedGermanText = (value: GeneratedGermanText) =>
+	normalizeGeneratedGermanText(
+		repairGeneratedGermanTextFromAsciiShadow(value.text, value.asciiShadow),
+	);
 
 const compactText = (value: string, maxChars: number) => {
 	const normalized = value
@@ -548,20 +560,20 @@ const normalizeSessions = (
 				phase: session.phase,
 				title:
 					compactSingleLine(
-						normalizeGeneratedGermanText(session.title),
+						normalizeAiGeneratedGermanText(session.title),
 						MAX_SESSION_TITLE_CHARS,
 					) || fallbackTitleByPhase[session.phase],
 				dateKey: date.toISOString(),
 				dateLabel: formatDateLabel(date),
 				startTime: session.startTime,
 				durationMinutes: session.durationMinutes,
-				goal: normalizeGeneratedGermanText(session.goal.trim()),
+				goal: normalizeAiGeneratedGermanText(session.goal).trim(),
 				tasks: session.tasks
-					.map((task) => normalizeGeneratedGermanText(task.trim()))
+					.map((task) => normalizeAiGeneratedGermanText(task).trim())
 					.filter(Boolean),
-				expectedOutcome: normalizeGeneratedGermanText(
-					session.expectedOutcome.trim(),
-				),
+				expectedOutcome: normalizeAiGeneratedGermanText(
+					session.expectedOutcome,
+				).trim(),
 			};
 		})
 		.sort((left, right) => left.dateKey.localeCompare(right.dateKey));
@@ -613,7 +625,8 @@ Erstelle genau 5 kurze Wissensanalyse-Fragen. Ziel ist nicht Notengebung, sonder
 Die Fragen müssen sich konkret auf Prüfungsthema und Inhalte aus dem Material beziehen, aber wie normale Prüfungs- oder Verständnisfragen formuliert sein.
 Verweise in den Fragen nie direkt auf Quellen oder Uploads: keine Formulierungen wie "laut Material", "im Dokument", "auf dem Bild", "in der Datei", "Material 3 sagt" und keine Dateinamen.
 Keine Multiple-Choice-Fragen.
-Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.`,
+Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.
+Für jedes text/asciiShadow-Objekt gilt: text ist die sichtbare Fassung; asciiShadow ist exakt dieselbe Formulierung, nur mit ä->ae, ö->oe, ü->ue, Ä->Ae, Ö->Oe, Ü->Ue und ß->ss.`,
 			},
 		];
 
@@ -630,7 +643,7 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 				generateText({
 					model: model(MODEL_ID),
 					temperature: 0.2,
-					maxOutputTokens: 1_800,
+					maxOutputTokens: 2_600,
 					abortSignal,
 					providerOptions: vertexProviderOptions,
 					output: Output.object({ schema: questionsSchema }),
@@ -641,13 +654,13 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 
 			const questions = result.output.questions.map((question, index) => ({
 				id: `q${index + 1}`,
-				prompt: normalizeGeneratedGermanText(question.prompt),
-				targetInsight: normalizeGeneratedGermanText(question.targetInsight),
+				prompt: normalizeAiGeneratedGermanText(question.prompt),
+				targetInsight: normalizeAiGeneratedGermanText(question.targetInsight),
 			}));
 
 			return {
 				questions,
-				sourceSummary: normalizeGeneratedGermanText(
+				sourceSummary: normalizeAiGeneratedGermanText(
 					result.output.sourceSummary,
 				),
 			};
@@ -720,6 +733,7 @@ MVP-Vorgabe:
 - Die Generalprobe soll wie ein fertiger Test/Probetest formuliert sein.
 - Jeder Lernblock braucht konkrete Aufgaben, die der Schüler in diesem Slot abarbeitet.
 - Formuliere alle sichtbaren Texte (sourceSummary, insight, Titel, goal, tasks, expectedOutcome) in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.
+- Für jedes text/asciiShadow-Objekt gilt: text ist die sichtbare Fassung; asciiShadow ist exakt dieselbe Formulierung, nur mit ä->ae, ö->oe, ü->ue, Ä->Ae, Ö->Oe, Ü->Ue und ß->ss.
 - Session-Titel müssen kurze UI-Labels mit maximal ${MAX_SESSION_TITLE_CHARS} Zeichen sein.
 - insight.strengths darf maximal 4 Punkte enthalten, insight.gaps maximal 5 Punkte.
 - Jeder Lernblock darf maximal 5 Aufgaben enthalten, der gesamte Plan maximal 5 Lernblöcke.
@@ -743,7 +757,7 @@ MVP-Vorgabe:
 				generateText({
 					model: model(MODEL_ID),
 					temperature: 0.25,
-					maxOutputTokens: 3_200,
+					maxOutputTokens: 4_800,
 					abortSignal,
 					providerOptions: vertexProviderOptions,
 					output: Output.object({ schema: generatedPlanSchema }),
@@ -762,16 +776,18 @@ MVP-Vorgabe:
 			}
 
 			return {
-				sourceSummary: normalizeGeneratedGermanText(
+				sourceSummary: normalizeAiGeneratedGermanText(
 					result.output.sourceSummary,
 				),
 				insight: {
-					summary: normalizeGeneratedGermanText(result.output.insight.summary),
+					summary: normalizeAiGeneratedGermanText(
+						result.output.insight.summary,
+					),
 					strengths: result.output.insight.strengths.map((strength) =>
-						normalizeGeneratedGermanText(strength),
+						normalizeAiGeneratedGermanText(strength),
 					),
 					gaps: result.output.insight.gaps.map((gap) =>
-						normalizeGeneratedGermanText(gap),
+						normalizeAiGeneratedGermanText(gap),
 					),
 				},
 				sessions,
