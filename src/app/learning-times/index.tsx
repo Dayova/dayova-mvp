@@ -101,7 +101,7 @@ export default function LearningTimesOverviewScreen() {
 
 	const goBack = () => {
 		if (router.canGoBack()) {
-			router.back();
+			router.push("/settings");
 			return;
 		}
 
@@ -180,21 +180,8 @@ export default function LearningTimesOverviewScreen() {
 
 			<View
 				pointerEvents="box-none"
-				className="absolute right-0 bottom-0 left-0 flex-row items-center px-6 pb-24"
-				style={{ gap: 36 }}
+				className="absolute right-0 bottom-0 left-0 flex-col items-end px-6 pb-24"
 			>
-				<Button
-					variant="neutral"
-					className="h-[64px] flex-1 rounded-[32px]"
-					onPress={() => router.replace("/settings")}
-				>
-					<Text
-						className="font-poppins font-semibold text-[#08090D]"
-						style={{ fontSize: 17, lineHeight: 23, includeFontPadding: false }}
-					>
-						Übernehmen
-					</Text>
-				</Button>
 				<Button
 					accessibilityLabel="Lernzeit hinzufügen"
 					className="h-[74px] w-[74px] rounded-full px-0"

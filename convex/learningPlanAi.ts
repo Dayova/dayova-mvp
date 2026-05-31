@@ -19,6 +19,7 @@ const LLM_GENERATION_TIMEOUT_MS = 60_000;
 const MODEL_ID = "gemini-3-flash-preview";
 const MIN_LEARNING_SLOT_MINUTES = 10;
 const MAX_GENERATED_SESSIONS = 20;
+const MAX_RECOMMENDED_SESSION_MINUTES = 720;
 const GERMAN_UI_TEXT_RULE =
 	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
 const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return exactly five short diagnostic questions that reveal what the learning plan needs to cover.`;
@@ -239,7 +240,11 @@ const generatedPlanSchema = z
 					),
 				dayOffsetBeforeExam: z.number().int().min(0).max(120),
 				startTime: z.string().regex(/^\d{2}:\d{2}$/),
-				durationMinutes: z.number().int().min(15).max(180),
+				durationMinutes: z
+					.number()
+					.int()
+					.min(MIN_LEARNING_SLOT_MINUTES)
+					.max(MAX_RECOMMENDED_SESSION_MINUTES),
 				goal: z
 					.string()
 					.min(20)
@@ -298,6 +303,11 @@ type LearningPlanAiContext = {
 		startTime: string;
 		endTime: string;
 	}>;
+	occupiedEntries: Array<{
+		dayKey: string;
+		time?: string;
+		durationMinutes?: number;
+	}>;
 	accessKey: string;
 };
 
@@ -308,6 +318,8 @@ type ModelDocumentInput = {
 	fileType: string;
 	fileSizeBytes: number;
 };
+
+type GeneratedPlan = z.infer<typeof generatedPlanSchema>;
 
 const createVertexModel = () => {
 	const apiKey = readOptionalEnv("GOOGLE_VERTEX_API_KEY");
@@ -580,10 +592,57 @@ type LearningSlot = {
 	nextStartMinutes: number;
 };
 
+type OccupiedEntry = LearningPlanAiContext["occupiedEntries"][number];
+
+const getOccupiedIntervalsByDay = (occupiedEntries: OccupiedEntry[]) => {
+	const intervalsByDay = new Map<string, Array<{ start: number; end: number }>>();
+
+	for (const entry of occupiedEntries) {
+		if (!entry.time || !entry.durationMinutes || entry.durationMinutes <= 0) {
+			continue;
+		}
+
+		const start = parseTimeToMinutes(entry.time);
+		if (start === null) continue;
+
+		const intervals = intervalsByDay.get(entry.dayKey) ?? [];
+		intervals.push({ start, end: start + entry.durationMinutes });
+		intervalsByDay.set(entry.dayKey, intervals);
+	}
+
+	return intervalsByDay;
+};
+
+const subtractOccupiedIntervals = (
+	startMinutes: number,
+	endMinutes: number,
+	occupiedIntervals: Array<{ start: number; end: number }>,
+) => {
+	let freeIntervals = [{ start: startMinutes, end: endMinutes }];
+
+	for (const occupied of occupiedIntervals) {
+		freeIntervals = freeIntervals.flatMap((free) => {
+			if (occupied.start >= free.end || occupied.end <= free.start) {
+				return [free];
+			}
+
+			return [
+				{ start: free.start, end: Math.max(free.start, occupied.start) },
+				{ start: Math.min(free.end, occupied.end), end: free.end },
+			].filter(
+				(interval) => interval.end - interval.start >= MIN_LEARNING_SLOT_MINUTES,
+			);
+		});
+	}
+
+	return freeIntervals;
+};
+
 const buildLearningSlots = (
 	examDateKey: string,
 	availableDays: number,
 	learningTimes: LearningTimeWindow[],
+	occupiedEntries: OccupiedEntry[],
 ) => {
 	const windowsByDay = new Map<number, LearningTimeWindow[]>();
 	for (const learningTime of learningTimes) {
@@ -598,9 +657,11 @@ const buildLearningSlots = (
 		windowsByDay.set(learningTime.dayOfWeek, windows);
 	}
 
+	const occupiedIntervalsByDay = getOccupiedIntervalsByDay(occupiedEntries);
 	const slots: LearningSlot[] = [];
 	for (let offset = availableDays; offset >= 1; offset -= 1) {
 		const date = buildDateFromOffset(examDateKey, offset);
+		const dateKey = formatDateKey(date);
 		const dayOfWeek = getBerlinDayOfWeek(date);
 		const windows = windowsByDay.get(dayOfWeek) ?? [];
 		for (const window of windows) {
@@ -610,14 +671,21 @@ const buildLearningSlots = (
 				continue;
 			}
 
-			slots.push({
-				date,
-				dateKey: formatDateKey(date),
-				dayOfWeek,
+			const freeIntervals = subtractOccupiedIntervals(
 				startMinutes,
 				endMinutes,
-				nextStartMinutes: startMinutes,
-			});
+				occupiedIntervalsByDay.get(dateKey) ?? [],
+			);
+			for (const interval of freeIntervals) {
+				slots.push({
+					date,
+					dateKey,
+					dayOfWeek,
+					startMinutes: interval.start,
+					endMinutes: interval.end,
+					nextStartMinutes: interval.start,
+				});
+			}
 		}
 	}
 
@@ -649,6 +717,42 @@ const describeLearningTimes = (learningTimes: LearningTimeWindow[]) => {
 				`${dayLabels[time.dayOfWeek] ?? "Lerntag"} ${time.startTime}-${time.endTime}`,
 		)
 		.join("\n");
+};
+
+const buildFallbackGeneratedPlan = (
+	context: LearningPlanAiContext,
+	answers: Array<{ questionId: string; answer: string }>,
+): GeneratedPlan => {
+	const answeredCount = answers.filter((answer) => answer.answer.trim()).length;
+	return {
+		sourceSummary:
+			"Der Lernplan basiert auf den beantworteten Wissensfragen und den verfügbaren Lernzeiten.",
+		insight: {
+			summary: `Du hast ${answeredCount} Antworten gegeben. Daraus wird ein vorsichtiger Alternativplan erstellt, der sich an deinen freien Lernzeiten orientiert.`,
+			strengths: [],
+			gaps: [
+				"Die verfügbaren Lernzeiten sind knapp oder bereits belegt. Nutze die vorgeschlagenen kurzen Alternativen gezielt zur Wiederholung.",
+			],
+		},
+		sessions: [
+			{
+				phase: "practice",
+				title: "Kurz üben",
+				dayOffsetBeforeExam: Math.min(
+					Math.max(getAvailableDays(context.plan.examDateKey), 1),
+					120,
+				),
+				startTime: "17:00",
+				durationMinutes: 30,
+				goal: "Wiederhole die wichtigsten Punkte aus deinen Antworten in einem kurzen Lernblock.",
+				tasks: [
+					"Markiere die wichtigsten Begriffe.",
+					"Löse eine kurze passende Übungsaufgabe.",
+				],
+				expectedOutcome: "Du hast eine konkrete Wiederholung abgeschlossen.",
+			},
+		],
+	};
 };
 
 const distributeSessionOffsets = (
@@ -696,8 +800,14 @@ const normalizeSessions = (
 	availableDays: number,
 	sessions: z.infer<typeof generatedPlanSchema>["sessions"],
 	learningTimes: LearningTimeWindow[],
+	occupiedEntries: OccupiedEntry[],
 ) => {
-	const slots = buildLearningSlots(examDateKey, availableDays, learningTimes);
+	const slots = buildLearningSlots(
+		examDateKey,
+		availableDays,
+		learningTimes,
+		occupiedEntries,
+	);
 	const requestedMinutes = sessions.reduce(
 		(total, session) => total + session.durationMinutes,
 		0,
@@ -769,6 +879,8 @@ const normalizeSessions = (
 	const planningHint =
 		learningTimes.length === 0
 			? "Du hast noch keine persönlichen Lernzeiten hinterlegt. Der Lernplan kann erst konkrete Lerneinheiten erstellen, wenn du in den Einstellungen Lernzeiten anlegst."
+			: availableMinutes === 0
+				? "Deine hinterlegte Lernzeit ist aktuell vollständig durch andere Termine belegt. Passe deine Lernzeiten an oder verschiebe bestehende Termine, damit wir passende Lernblöcke vorschlagen können."
 			: plannedMinutes < requestedMinutes || availableMinutes < requestedMinutes
 				? `Deine hinterlegten Lernzeiten reichen nicht für den vollständigen empfohlenen Plan. Geplant wurden ${plannedMinutes} von ${requestedMinutes} Minuten innerhalb deiner verfügbaren Lernzeiten.`
 				: undefined;
@@ -931,6 +1043,7 @@ MVP-Vorgabe:
 - Jeder Lernblock darf maximal 5 Aufgaben enthalten, der gesamte Plan maximal 5 Lernblöcke.
 - Plane ausschließlich innerhalb der persönlichen Lernzeiten aus den Einstellungen. Verwende keine anderen Tage oder Uhrzeiten.
 - Wenn die persönlichen Lernzeiten nicht für den gesamten empfohlenen Plan reichen, plane nur so viel wie in diese Lernzeiten passt.
+- Wenn ein empfohlener Lernblock länger als eine verfügbare Lernzeit wäre, teile ihn gedanklich auf oder kürze ihn. Der Kalender darf kurze Alternativ-Sessions enthalten.
 - Nutze dayOffsetBeforeExam relativ zum Prüfungstag: 1 = einen Tag vor der Prüfung.
 - Verteile mehrere Sessions auf unterschiedliche Kalendertage, solange genug Tage verfügbar sind. Wiederhole dayOffsetBeforeExam nicht, wenn eine Alternative möglich ist.
 - Wenn Antworten nur Platzhalter oder Unsinn enthalten, erstelle trotzdem einen remedialen Grundlagenplan und setze strengths auf [].
@@ -946,9 +1059,10 @@ MVP-Vorgabe:
 		}
 		userContent.push(...fileParts);
 
-		const result = await withStructuredOutputErrorHandling(
-			() =>
-				generateText({
+		let generatedPlan: GeneratedPlan;
+		let usedFallbackPlan = false;
+		try {
+			const result = await generateText({
 					model: model(MODEL_ID),
 					temperature: 0.25,
 					maxOutputTokens: 3_200,
@@ -958,27 +1072,44 @@ MVP-Vorgabe:
 					system:
 						"Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.",
 					messages: [{ role: "user", content: userContent }],
-				}),
-			"Aus diesen Antworten konnte kein stabiler Lernplan erstellt werden. Ergänze mindestens ein paar konkrete Stichworte zu deinem Wissenstand und versuche es erneut.",
-		);
+				});
+			generatedPlan = result.output;
+		} catch (error) {
+			if (!NoObjectGeneratedError.isInstance(error)) {
+				throw error;
+			}
+
+			console.warn("AI plan structured output validation failed", {
+				finishReason: error.finishReason,
+				text: error.text?.slice(0, 500),
+				cause: error.cause,
+			});
+			generatedPlan = buildFallbackGeneratedPlan(context, args.answers);
+			usedFallbackPlan = true;
+		}
 
 		const { sessions, planningHint } = normalizeSessions(
 			context.plan.examDateKey,
 			availableDays,
-			result.output.sessions,
+			generatedPlan.sessions,
 			context.learningTimes,
+			context.occupiedEntries,
 		);
 
 		await ctx.runMutation(internal.learningPlans.replaceGeneratedSessions, {
 			learningPlanId: args.learningPlanId,
 			knowledgeAnswersJson: JSON.stringify(args.answers),
-			sourceSummary: formatGermanUiText(result.output.sourceSummary),
+			sourceSummary: formatGermanUiText(generatedPlan.sourceSummary),
 			insight: {
-				summary: formatGermanUiText(result.output.insight.summary),
-				strengths: result.output.insight.strengths.map(formatGermanUiText),
-				gaps: result.output.insight.gaps.map(formatGermanUiText),
+				summary: formatGermanUiText(generatedPlan.insight.summary),
+				strengths: generatedPlan.insight.strengths.map(formatGermanUiText),
+				gaps: generatedPlan.insight.gaps.map(formatGermanUiText),
 			},
-			planningHint,
+			planningHint:
+				planningHint ??
+				(usedFallbackPlan
+					? "Es wurden alternative Lernblöcke vorgeschlagen."
+					: undefined),
 			sessions,
 		});
 

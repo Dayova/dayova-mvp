@@ -179,7 +179,13 @@ export const listByDayKeys = query({
 				plan = await ctx.db.get("learningPlans", session.learningPlanId);
 				planCache.set(session.learningPlanId, plan);
 			}
-			if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) continue;
+			if (
+				!plan ||
+				plan.ownerTokenIdentifier !== ownerTokenIdentifier ||
+				plan.status !== "accepted"
+			) {
+				continue;
+			}
 
 			grouped[requestedDayKey] = [
 				...(grouped[requestedDayKey] ?? []),

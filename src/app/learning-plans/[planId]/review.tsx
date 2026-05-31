@@ -1,7 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
 	ActivityIndicator,
 	ScrollView,
@@ -40,10 +40,6 @@ export default function LearningPlanReviewScreen() {
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const addSession = useMutation(api.learningPlans.addSession);
 	const acceptPlan = useMutation(api.learningPlans.acceptPlan);
-	const syncSessionsToCalendar = useMutation(
-		api.learningPlans.syncSessionsToCalendar,
-	);
-	const syncedPlanIds = useRef(new Set<string>());
 
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -64,22 +60,6 @@ export default function LearningPlanReviewScreen() {
 			router.replace(planPath(planId, "analysis"));
 		}
 	}, [planId, router, snapshot]);
-
-	useEffect(() => {
-		if (!planId || !snapshot?.sessions.length) return;
-		if (syncedPlanIds.current.has(planId)) return;
-
-		syncedPlanIds.current.add(planId);
-		void syncSessionsToCalendar({ learningPlanId: planId }).catch((error) => {
-			syncedPlanIds.current.delete(planId);
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die Lernblöcke konnten nicht in den Kalender eingetragen werden.",
-				),
-			);
-		});
-	}, [planId, snapshot?.sessions.length, syncSessionsToCalendar]);
 
 	const runWithErrorHandling = async (
 		fallback: string,
@@ -172,6 +152,23 @@ export default function LearningPlanReviewScreen() {
 							onEdit={() => openEdit(session)}
 						/>
 					))}
+					{snapshot && snapshot.sessions.length === 0 ? (
+						<View className="rounded-[24px] bg-white px-5 py-5">
+							<Text
+								className="text-center font-poppins font-semibold text-[#202127]"
+								style={{ fontSize: 16, lineHeight: 22, includeFontPadding: false }}
+							>
+								Lernzeit vollständig belegt
+							</Text>
+							<Text
+								className="mt-2 text-center font-poppins text-[#8C8F98]"
+								style={{ fontSize: 13, lineHeight: 19, includeFontPadding: false }}
+							>
+								Aktuell sind alle hinterlegten Lernzeiten durch andere Termine belegt.
+								Passe deine Lernzeiten an oder verschiebe bestehende Termine.
+							</Text>
+						</View>
+					) : null}
 				</View>
 				{errorMessage ? (
 					<Text className="mb-4 font-poppins text-12 text-destructive">
