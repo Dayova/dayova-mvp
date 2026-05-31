@@ -10,97 +10,22 @@ import type { Id } from "./_generated/dataModel";
 import { type ActionCtx, action } from "./_generated/server";
 import { readOptionalEnv, readRequiredEnv } from "./env";
 import { createManagedReadUrl, type StorageProvider } from "./fileStorage";
+import {
+	isInvalidGeneratedGermanTextError,
+	normalizeGeneratedGermanText,
+} from "./generatedGermanText";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
 const MAX_PROMPT_CONTEXT_CHARS = 70_000;
 const MAX_SESSION_TITLE_CHARS = 28;
 const LLM_GENERATION_TIMEOUT_MS = 60_000;
+const MAX_GENERATED_TEXT_ATTEMPTS = 3;
 const MODEL_ID = "gemini-3-flash-preview";
 const GERMAN_UI_TEXT_RULE =
 	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
 const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return exactly five short diagnostic questions that reveal what the learning plan needs to cover.`;
 const GENERATED_PLAN_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return a realistic, calendar-ready German learning plan with concrete study sessions.`;
-
-const GERMAN_UI_REPLACEMENTS: ReadonlyArray<[RegExp, string]> = [
-	[/\bAbschlusspruef/g, "Abschlussprüf"],
-	[/\babschlusspruef/g, "abschlussprüf"],
-	[/\bEinschaetz/g, "Einschätz"],
-	[/\beinschaetz/g, "einschätz"],
-	[/\bErloes/g, "Erlös"],
-	[/\berloes/g, "erlös"],
-	[/\bFaeh/g, "Fäh"],
-	[/\bfaeh/g, "fäh"],
-	[/\bDurchfuehrung\b/g, "Durchführung"],
-	[/\bdurchfuehrung\b/g, "durchführung"],
-	[/\bDurchfuehrungen\b/g, "Durchführungen"],
-	[/\bdurchfuehrungen\b/g, "durchführungen"],
-	[/\bLoesung\b/g, "Lösung"],
-	[/\bloesung\b/g, "lösung"],
-	[/\bLoesungen\b/g, "Lösungen"],
-	[/\bloesungen\b/g, "lösungen"],
-	[/\bLoesungsmenge\b/g, "Lösungsmenge"],
-	[/\bloesungsmenge\b/g, "lösungsmenge"],
-	[/\bLoesungsmengen\b/g, "Lösungsmengen"],
-	[/\bloesungsmengen\b/g, "lösungsmengen"],
-	[/\bLoesen\b/g, "Lösen"],
-	[/\bloesen\b/g, "lösen"],
-	[/\bMuendliche\b/g, "Mündliche"],
-	[/\bmuendliche\b/g, "mündliche"],
-	[/\bLoes/g, "Lös"],
-	[/\bloes/g, "lös"],
-	[/\bPlausibilitaet/g, "Plausibilität"],
-	[/\bplausibilitaet/g, "plausibilität"],
-	[/\bPruef/g, "Prüf"],
-	[/\bpruef/g, "prüf"],
-	[/\bUeber/g, "Über"],
-	[/\bueber/g, "über"],
-	[/\bVerstaend/g, "Verständ"],
-	[/\bverstaend/g, "verständ"],
-	[/\bVollstaend/g, "Vollständ"],
-	[/\bvollstaend/g, "vollständ"],
-	[/\bFuer\b/g, "Für"],
-	[/\bfuer\b/g, "für"],
-	[/\bGeraet\b/g, "Gerät"],
-	[/\bgeraet\b/g, "gerät"],
-	[/\bGeraete\b/g, "Geräte"],
-	[/\bgeraete\b/g, "geräte"],
-	[/\bgroessere\b/g, "größere"],
-	[/\bGroessere\b/g, "Größere"],
-	[/\bgroesseren\b/g, "größeren"],
-	[/\bGroesseren\b/g, "Größeren"],
-	[/\bgroesste\b/g, "größte"],
-	[/\bGroesste\b/g, "Größte"],
-	[/\bgroessten\b/g, "größten"],
-	[/\bGroessten\b/g, "Größten"],
-	[/\bgrosse\b/g, "große"],
-	[/\bGrosse\b/g, "Große"],
-	[/\bgrossen\b/g, "großen"],
-	[/\bGrossen\b/g, "Großen"],
-	[/\bgrosser\b/g, "großer"],
-	[/\bGrosser\b/g, "Großer"],
-	[/\bgrosses\b/g, "großes"],
-	[/\bGrosses\b/g, "Großes"],
-	[/\bSchueler\b/g, "Schüler"],
-	[/\bschueler\b/g, "schüler"],
-	[/\bStrasse\b/g, "Straße"],
-	[/\bstrasse\b/g, "straße"],
-	[/\bStrassen\b/g, "Straßen"],
-	[/\bstrassen\b/g, "straßen"],
-	[/\bUebung\b/g, "Übung"],
-	[/\buebung\b/g, "übung"],
-	[/\bUebungen\b/g, "Übungen"],
-	[/\buebungen\b/g, "übungen"],
-	[/\bUeben\b/g, "Üben"],
-	[/\bueben\b/g, "üben"],
-];
-
-const formatGermanUiText = (value: string) =>
-	GERMAN_UI_REPLACEMENTS.reduce(
-		(formatted, [pattern, replacement]) =>
-			formatted.replace(pattern, replacement),
-		value,
-	);
 
 const vertexProviderOptions = {
 	google: {
@@ -339,6 +264,56 @@ const withStructuredOutputErrorHandling = async <TResult>(
 	}
 };
 
+const generatedTextRetrySystemInstruction = (attempt: number) =>
+	attempt === 0
+		? ""
+		: " Die vorherige Ausgabe enthielt ungültige Steuerzeichen in sichtbarem Text. Erzeuge alle sichtbaren Texte vollständig neu und verwende echte Unicode-Zeichen wie ä, ö, ü, Ä, Ö, Ü und ß.";
+
+const withGeneratedTextRetry = async <TResult>(
+	task: (attempt: number) => Promise<TResult>,
+	fallbackMessage: string,
+) => {
+	for (let attempt = 0; attempt < MAX_GENERATED_TEXT_ATTEMPTS; attempt += 1) {
+		try {
+			return await withStructuredOutputErrorHandling(
+				() => task(attempt),
+				fallbackMessage,
+			);
+		} catch (error) {
+			if (
+				isInvalidGeneratedGermanTextError(error) &&
+				attempt < MAX_GENERATED_TEXT_ATTEMPTS - 1
+			) {
+				continue;
+			}
+
+			if (isInvalidGeneratedGermanTextError(error)) {
+				throw new Error(fallbackMessage);
+			}
+
+			throw error;
+		}
+	}
+
+	throw new Error(fallbackMessage);
+};
+
+const withLlmTimeout = async <TResult>(
+	task: (abortSignal: AbortSignal) => Promise<TResult>,
+) => {
+	const controller = new AbortController();
+	const timeoutId = setTimeout(
+		() => controller.abort(),
+		LLM_GENERATION_TIMEOUT_MS,
+	);
+
+	try {
+		return await task(controller.signal);
+	} finally {
+		clearTimeout(timeoutId);
+	}
+};
+
 const compactText = (value: string, maxChars: number) => {
 	const normalized = value
 		.replace(/\r/g, "")
@@ -573,18 +548,20 @@ const normalizeSessions = (
 				phase: session.phase,
 				title:
 					compactSingleLine(
-						formatGermanUiText(session.title),
+						normalizeGeneratedGermanText(session.title),
 						MAX_SESSION_TITLE_CHARS,
 					) || fallbackTitleByPhase[session.phase],
 				dateKey: date.toISOString(),
 				dateLabel: formatDateLabel(date),
 				startTime: session.startTime,
 				durationMinutes: session.durationMinutes,
-				goal: formatGermanUiText(session.goal.trim()),
+				goal: normalizeGeneratedGermanText(session.goal.trim()),
 				tasks: session.tasks
-					.map((task) => formatGermanUiText(task.trim()))
+					.map((task) => normalizeGeneratedGermanText(task.trim()))
 					.filter(Boolean),
-				expectedOutcome: formatGermanUiText(session.expectedOutcome.trim()),
+				expectedOutcome: normalizeGeneratedGermanText(
+					session.expectedOutcome.trim(),
+				),
 			};
 		})
 		.sort((left, right) => left.dateKey.localeCompare(right.dateKey));
@@ -648,35 +625,41 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 		}
 		userContent.push(...fileParts);
 
-		const result = await withStructuredOutputErrorHandling(
-			() =>
+		const generatedQuestions = await withGeneratedTextRetry(async (attempt) => {
+			const result = await withLlmTimeout((abortSignal) =>
 				generateText({
 					model: model(MODEL_ID),
 					temperature: 0.2,
 					maxOutputTokens: 1_800,
-					timeout: { totalMs: LLM_GENERATION_TIMEOUT_MS },
+					abortSignal,
 					providerOptions: vertexProviderOptions,
 					output: Output.object({ schema: questionsSchema }),
-					system:
-						"Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Antworte ausschließlich im vorgegebenen JSON-Schema.",
+					system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 					messages: [{ role: "user", content: userContent }],
 				}),
-			"Die Wissensanalyse konnte nicht zuverlässig erstellt werden. Formuliere das Prüfungsthema etwas konkreter und versuche es erneut.",
-		);
+			);
 
-		const questions = result.output.questions.map((question, index) => ({
-			id: `q${index + 1}`,
-			prompt: formatGermanUiText(question.prompt),
-			targetInsight: formatGermanUiText(question.targetInsight),
-		}));
+			const questions = result.output.questions.map((question, index) => ({
+				id: `q${index + 1}`,
+				prompt: normalizeGeneratedGermanText(question.prompt),
+				targetInsight: normalizeGeneratedGermanText(question.targetInsight),
+			}));
+
+			return {
+				questions,
+				sourceSummary: normalizeGeneratedGermanText(
+					result.output.sourceSummary,
+				),
+			};
+		}, "Die Wissensanalyse konnte nicht zuverlässig erstellt werden. Formuliere das Prüfungsthema etwas konkreter und versuche es erneut.");
 
 		await ctx.runMutation(internal.learningPlans.storeKnowledgeQuestions, {
 			learningPlanId: args.learningPlanId,
-			questions,
-			sourceSummary: formatGermanUiText(result.output.sourceSummary),
+			questions: generatedQuestions.questions,
+			sourceSummary: generatedQuestions.sourceSummary,
 		});
 
-		return { questionCount: questions.length };
+		return { questionCount: generatedQuestions.questions.length };
 	},
 });
 
@@ -755,43 +738,54 @@ MVP-Vorgabe:
 		}
 		userContent.push(...fileParts);
 
-		const result = await withStructuredOutputErrorHandling(
-			() =>
+		const generatedPlan = await withGeneratedTextRetry(async (attempt) => {
+			const result = await withLlmTimeout((abortSignal) =>
 				generateText({
 					model: model(MODEL_ID),
 					temperature: 0.25,
 					maxOutputTokens: 3_200,
-					timeout: { totalMs: LLM_GENERATION_TIMEOUT_MS },
+					abortSignal,
 					providerOptions: vertexProviderOptions,
 					output: Output.object({ schema: generatedPlanSchema }),
-					system:
-						"Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.",
+					system: `Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 					messages: [{ role: "user", content: userContent }],
 				}),
-			"Aus diesen Antworten konnte kein stabiler Lernplan erstellt werden. Ergänze mindestens ein paar konkrete Stichworte zu deinem Wissenstand und versuche es erneut.",
-		);
+			);
 
-		const sessions = normalizeSessions(
-			context.plan.examDateKey,
-			availableDays,
-			result.output.sessions,
-		);
-		if (sessions.length === 0) {
-			throw new Error("Die KI hat keine nutzbaren Lerntage erzeugt.");
-		}
+			const sessions = normalizeSessions(
+				context.plan.examDateKey,
+				availableDays,
+				result.output.sessions,
+			);
+			if (sessions.length === 0) {
+				throw new Error("Die KI hat keine nutzbaren Lerntage erzeugt.");
+			}
+
+			return {
+				sourceSummary: normalizeGeneratedGermanText(
+					result.output.sourceSummary,
+				),
+				insight: {
+					summary: normalizeGeneratedGermanText(result.output.insight.summary),
+					strengths: result.output.insight.strengths.map((strength) =>
+						normalizeGeneratedGermanText(strength),
+					),
+					gaps: result.output.insight.gaps.map((gap) =>
+						normalizeGeneratedGermanText(gap),
+					),
+				},
+				sessions,
+			};
+		}, "Aus diesen Antworten konnte kein stabiler Lernplan erstellt werden. Ergänze mindestens ein paar konkrete Stichworte zu deinem Wissenstand und versuche es erneut.");
 
 		await ctx.runMutation(internal.learningPlans.replaceGeneratedSessions, {
 			learningPlanId: args.learningPlanId,
 			knowledgeAnswersJson: JSON.stringify(args.answers),
-			sourceSummary: formatGermanUiText(result.output.sourceSummary),
-			insight: {
-				summary: formatGermanUiText(result.output.insight.summary),
-				strengths: result.output.insight.strengths.map(formatGermanUiText),
-				gaps: result.output.insight.gaps.map(formatGermanUiText),
-			},
-			sessions,
+			sourceSummary: generatedPlan.sourceSummary,
+			insight: generatedPlan.insight,
+			sessions: generatedPlan.sessions,
 		});
 
-		return { sessionCount: sessions.length };
+		return { sessionCount: generatedPlan.sessions.length };
 	},
 });
