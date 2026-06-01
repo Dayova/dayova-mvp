@@ -18,6 +18,7 @@ import {
 import { getDayKeyQueryVariants } from "./dayKeyVariants";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { assertNoScheduleConflict } from "./scheduleConflicts";
+import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const phaseValidator = v.union(
 	v.literal("theory"),
@@ -301,6 +302,7 @@ export const start = mutation({
 
 		if (!subject) throw new Error("Fach fehlt.");
 		if (!examTypeLabel) throw new Error("Prüfungsart fehlt.");
+		assertMeaningfulTopicDescription(topicDescription);
 		if (args.durationMinutes <= 0) {
 			throw new Error("Die Bearbeitungszeit muss größer als 0 sein.");
 		}
@@ -347,6 +349,7 @@ export const updateBasics = mutation({
 
 		const topicDescription = args.topicDescription.trim();
 		const notes = args.notes?.trim() ?? "";
+		assertMeaningfulTopicDescription(topicDescription);
 
 		await ctx.db.patch("learningPlans", args.id, {
 			topicDescription,
