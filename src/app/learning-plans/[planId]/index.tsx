@@ -5,7 +5,7 @@ import { View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
-import { Clock3, Route2 } from "~/components/ui/icon";
+import { CircleAlert, Clock3, Route2 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -142,6 +142,18 @@ export default function LearningPlanSessionsScreen() {
 							: "Lerneinheiten werden geladen"}
 					</Text>
 				</Surface>
+
+				{snapshot?.plan.planningHint ? (
+					<Surface className="flex-row rounded-[24px] px-5 py-4" style={{ gap: 12 }}>
+						<CircleAlert size={20} color="#F59E0B" strokeWidth={2.2} />
+						<Text
+							className="flex-1 font-poppins text-[#7A5A12]"
+							style={{ fontSize: 13, lineHeight: 19, includeFontPadding: false }}
+						>
+							{snapshot.plan.planningHint}
+						</Text>
+					</Surface>
+				) : null}
 
 				<View style={{ rowGap: 14 }}>
 					{snapshot?.sessions.map((session) => (

@@ -119,6 +119,134 @@ test("updating a learning plan session at its own synced time is allowed", async
 	).resolves.toBeNull();
 });
 
+test("generated draft sessions are not synced as calendar entries before acceptance", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await expect(
+		t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+			learningPlanId,
+			knowledgeAnswersJson: "[]",
+			sourceSummary: "Testmaterial",
+			insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+			sessions: [
+				{
+					phase: "practice",
+					title: "Üben",
+					dateKey: "2026-06-05",
+					dateLabel: "5. Juni 2026",
+					startTime: "09:00",
+					durationMinutes: 30,
+					goal: "Kurz wiederholen.",
+					tasks: ["Begriffe prüfen"],
+					expectedOutcome: "Du bist vorbereitet.",
+				},
+			],
+		}),
+	).resolves.toBeNull();
+
+	const createdId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-06-05",
+		title: "Physik Test",
+		time: "11:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "5. Juni 2026",
+		durationMinutes: 45,
+		examTypeLabel: "Test",
+	});
+
+	expect(createdId).toBeTruthy();
+});
+
+test("AI context includes occupied entries during the plan scheduling window", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-06-01",
+		title: "Informatik Grundlagen IT-Systeme",
+		time: "17:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "1. Juni 2026",
+		durationMinutes: 30,
+		examTypeLabel: "Test",
+	});
+
+	const context = await t.query(internal.learningPlans.getAiContext, {
+		learningPlanId,
+	});
+
+	expect(context.occupiedEntries).toContainEqual({
+		dayKey: "2026-06-01",
+		time: "17:00",
+		durationMinutes: 30,
+	});
+});
+
+test("review sessions are only synced after the plan is accepted", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		sessions: [
+			{
+				phase: "practice",
+				title: "Üben",
+				dateKey: "2026-06-04",
+				dateLabel: "4. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 30,
+				goal: "Kurz wiederholen.",
+				tasks: ["Begriffe prüfen"],
+				expectedOutcome: "Du bist vorbereitet.",
+			},
+		],
+	});
+
+	await expect(
+		t.mutation(api.learningPlans.syncSessionsToCalendar, { learningPlanId }),
+	).rejects.toThrow("Bestätige den Lernplan zuerst.");
+
+	const beforeAccept = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-06-04"],
+	});
+	expect(beforeAccept["2026-06-04"]).toHaveLength(0);
+
+	await t.mutation(api.learningPlans.acceptPlan, { learningPlanId });
+
+	const afterAccept = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-06-04"],
+	});
+	expect(afterAccept["2026-06-04"]).toHaveLength(1);
+	expect(afterAccept["2026-06-04"]?.[0]?.kind).toBe("Lernen");
+});
+
+test("generated plans can advance to review without available sessions", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		planningHint: "Keine freie Lernzeit gefunden.",
+		sessions: [],
+	});
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+
+	expect(snapshot?.plan.status).toBe("generated");
+	expect(snapshot?.sessions).toHaveLength(0);
+	expect(snapshot?.plan.planningHint).toBe("Keine freie Lernzeit gefunden.");
+});
+
 test("generated knowledge questions reject malformed control characters before storage", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);

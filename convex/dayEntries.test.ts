@@ -86,3 +86,27 @@ test("manual timed entry adjacent to an existing entry is allowed", async () => 
 
 	expect(createdId).toBeTruthy();
 });
+
+test("retrying the same create returns the existing entry instead of conflicting with itself", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	const payload = {
+		dayKey: "2026-06-15",
+		title: "Informatik Mündliche Prüfung",
+		time: "12:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "Montag, 15. Juni",
+		durationMinutes: 30,
+		examTypeLabel: "Mündliche Prüfung",
+	};
+
+	const createdId = await t.mutation(api.dayEntries.create, payload);
+	const retriedId = await t.mutation(api.dayEntries.create, payload);
+
+	expect(retriedId).toBe(createdId);
+
+	const entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-06-15"],
+	});
+	expect(entries["2026-06-15"]).toHaveLength(1);
+});

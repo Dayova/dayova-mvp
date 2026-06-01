@@ -45,6 +45,19 @@ export default defineSchema({
 	})
 		.index("by_userId", ["userId"])
 		.index("by_userId_and_questionId", ["userId", "questionId"]),
+	userLearningTimes: defineTable({
+		ownerTokenIdentifier: v.string(),
+		dayOfWeek: v.number(),
+		startTime: v.string(),
+		endTime: v.string(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_ownerTokenIdentifier_and_dayOfWeek", [
+			"ownerTokenIdentifier",
+			"dayOfWeek",
+		]),
 	dayEntries: defineTable({
 		ownerTokenIdentifier: v.string(),
 		dayKey: v.string(),
@@ -84,6 +97,7 @@ export default defineSchema({
 		knowledgeAnswersJson: v.optional(v.string()),
 		sourceSummary: v.optional(v.string()),
 		insight: v.optional(planInsightValidator),
+		planningHint: v.optional(v.string()),
 		examDayEntryId: v.optional(v.id("dayEntries")),
 		acceptedAt: v.optional(v.number()),
 		createdAt: v.number(),

@@ -89,6 +89,60 @@ const getRequestedDayKey = (
 	return berlinDayKey ? queryKeyToRequestedDayKey.get(berlinDayKey) : undefined;
 };
 
+const optionalValuesMatch = <TValue>(
+	left: TValue | undefined,
+	right: TValue | undefined,
+) => (left ?? undefined) === (right ?? undefined);
+
+const isSameCreatePayload = (
+	entry: Doc<"dayEntries">,
+	args: OptionalEntryFields & { title: string },
+) =>
+	entry.title === args.title &&
+	optionalValuesMatch(entry.time, args.time) &&
+	optionalValuesMatch(entry.kind, args.kind) &&
+	optionalValuesMatch(entry.notes, args.notes) &&
+	optionalValuesMatch(entry.dueDateKey, args.dueDateKey) &&
+	optionalValuesMatch(entry.dueDateLabel, args.dueDateLabel) &&
+	optionalValuesMatch(entry.plannedDateLabel, args.plannedDateLabel) &&
+	optionalValuesMatch(entry.durationMinutes, args.durationMinutes) &&
+	optionalValuesMatch(entry.examTypeLabel, args.examTypeLabel) &&
+	optionalValuesMatch(entry.completed, args.completed) &&
+	optionalValuesMatch(entry.relatedLearningPlanId, args.relatedLearningPlanId) &&
+	optionalValuesMatch(
+		entry.relatedLearningPlanSessionId,
+		args.relatedLearningPlanSessionId,
+	);
+
+const findExistingSameEntry = async (
+	ctx: QueryCtx | MutationCtx,
+	{
+		ownerTokenIdentifier,
+		dayKey,
+		args,
+	}: {
+		ownerTokenIdentifier: string;
+		dayKey: string;
+		args: OptionalEntryFields & { title: string };
+	},
+) => {
+	for (const queryDayKey of getDayKeyQueryVariants(dayKey)) {
+		const entries = await ctx.db
+			.query("dayEntries")
+			.withIndex("by_ownerTokenIdentifier_and_dayKey", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("dayKey", queryDayKey),
+			)
+			.take(100);
+
+		const existing = entries.find((entry) => isSameCreatePayload(entry, args));
+		if (existing) return existing;
+	}
+
+	return null;
+};
+
 const entryFields = {
 	title: v.string(),
 	time: v.optional(v.string()),
@@ -179,7 +233,13 @@ export const listByDayKeys = query({
 				plan = await ctx.db.get("learningPlans", session.learningPlanId);
 				planCache.set(session.learningPlanId, plan);
 			}
-			if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) continue;
+			if (
+				!plan ||
+				plan.ownerTokenIdentifier !== ownerTokenIdentifier ||
+				plan.status !== "accepted"
+			) {
+				continue;
+			}
 
 			grouped[requestedDayKey] = [
 				...(grouped[requestedDayKey] ?? []),
@@ -217,6 +277,15 @@ export const create = mutation({
 		if (!title) {
 			throw new Error("Titel darf nicht leer sein.");
 		}
+		const existingSameEntry = await findExistingSameEntry(ctx, {
+			ownerTokenIdentifier,
+			dayKey: args.dayKey,
+			args: { ...args, title },
+		});
+		if (existingSameEntry) {
+			return existingSameEntry._id;
+		}
+
 		await assertNoScheduleConflict(ctx, {
 			ownerTokenIdentifier,
 			dayKey: args.dayKey,

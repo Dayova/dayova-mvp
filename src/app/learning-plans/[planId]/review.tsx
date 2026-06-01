@@ -1,7 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
 	ActivityIndicator,
 	ScrollView,
@@ -13,7 +13,7 @@ import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { ActionModal } from "~/components/ui/action-modal";
 import { Button } from "~/components/ui/button";
-import { Check, Plus } from "~/components/ui/icon";
+import { Check, CircleAlert, Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import {
@@ -25,23 +25,21 @@ import type {
 	PlanSession,
 } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { goBackOrReplace } from "~/lib/navigation";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
 export default function LearningPlanReviewScreen() {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const addSession = useMutation(api.learningPlans.addSession);
 	const acceptPlan = useMutation(api.learningPlans.acceptPlan);
-	const syncSessionsToCalendar = useMutation(
-		api.learningPlans.syncSessionsToCalendar,
-	);
-	const syncedPlanIds = useRef(new Set<string>());
 
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -62,22 +60,6 @@ export default function LearningPlanReviewScreen() {
 			router.replace(planPath(planId, "analysis"));
 		}
 	}, [planId, router, snapshot]);
-
-	useEffect(() => {
-		if (!planId || !snapshot?.sessions.length) return;
-		if (syncedPlanIds.current.has(planId)) return;
-
-		syncedPlanIds.current.add(planId);
-		void syncSessionsToCalendar({ learningPlanId: planId }).catch((error) => {
-			syncedPlanIds.current.delete(planId);
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die Lernblöcke konnten nicht in den Kalender eingetragen werden.",
-				),
-			);
-		});
-	}, [planId, snapshot?.sessions.length, syncSessionsToCalendar]);
 
 	const runWithErrorHandling = async (
 		fallback: string,
@@ -131,8 +113,6 @@ export default function LearningPlanReviewScreen() {
 		return true;
 	}, [planId, router]);
 
-	useBackIntent(Boolean(planId), goBack);
-
 	return (
 		<View className="flex-1 bg-[#F5F3F6]">
 			<Stack.Screen options={{ gestureEnabled: true }} />
@@ -143,7 +123,7 @@ export default function LearningPlanReviewScreen() {
 					flexGrow: 1,
 					paddingHorizontal: 32,
 					paddingTop: 80,
-					paddingBottom: 60,
+					paddingBottom: 150,
 				}}
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
@@ -153,6 +133,20 @@ export default function LearningPlanReviewScreen() {
 					title="Lernplan erstellen"
 					description="Passe deine Lerntage an und trage den Plan danach in den Kalender ein."
 				/>
+				{snapshot?.plan.planningHint ? (
+					<View
+						className="mb-6 flex-row rounded-[24px] bg-white px-6 py-5"
+						style={{ gap: 14 }}
+					>
+						<CircleAlert size={20} color="#F59E0B" strokeWidth={2.2} />
+						<Text
+							className="flex-1 font-poppins text-[#7A5A12]"
+							style={{ fontSize: 13, lineHeight: 20, includeFontPadding: false }}
+						>
+							{snapshot.plan.planningHint}
+						</Text>
+					</View>
+				) : null}
 				<View className="flex-1 gap-6">
 					{snapshot?.sessions.map((session) => (
 						<SessionCard
@@ -167,53 +161,58 @@ export default function LearningPlanReviewScreen() {
 						{errorMessage}
 					</Text>
 				) : null}
-				<View className="mt-auto flex-row items-center gap-3 pt-8">
-					<Button
-						accessibilityLabel={
-							isBusy ? "Lernplan erstellen, wird geladen" : "Lernplan erstellen"
-						}
-						accessibilityLiveRegion={isBusy ? "polite" : undefined}
-						accessibilityState={{
-							busy: isBusy,
-							disabled: isBusy || !snapshot?.sessions.length,
-						}}
-						disabled={isBusy || !snapshot?.sessions.length}
-						onPress={acceptGeneratedPlan}
-						variant="neutral"
-						className="h-14 flex-1"
-						style={{ minWidth: 0 }}
-					>
-						{isBusy ? (
-							<ActivityIndicator color="#1A1A1A" />
-						) : (
-							<Text className="font-bold font-poppins text-15 text-text">
-								Lernplan erstellen
-							</Text>
-						)}
-					</Button>
-					<TouchableOpacity
-						accessibilityLabel="Lerntag hinzufügen"
-						accessibilityRole="button"
-						accessibilityState={{
-							disabled: isBusy || !snapshot?.sessions.length,
-						}}
-						activeOpacity={0.86}
-						disabled={isBusy || !snapshot?.sessions.length}
-						onPress={addRecommendedSession}
-						className="h-14 w-14 items-center justify-center rounded-full bg-primary"
-						style={{
-							shadowColor: "#3A7BFF",
-							shadowOpacity: 0.32,
-							shadowRadius: 16,
-							shadowOffset: { width: 0, height: 7 },
-							elevation: 5,
-							opacity: isBusy || !snapshot?.sessions.length ? 0.55 : 1,
-						}}
-					>
-						<Plus size={28} color="#FFFFFF" strokeWidth={2.4} />
-					</TouchableOpacity>
-				</View>
 			</ScrollView>
+
+			<View
+				pointerEvents="box-none"
+				className="absolute right-0 bottom-0 left-0 flex-row items-center px-10"
+				style={{ gap: 12, paddingBottom: Math.max(insets.bottom + 24, 36) }}
+			>
+				<Button
+					accessibilityLabel={
+						isBusy ? "Lernplan erstellen, wird geladen" : "Lernplan erstellen"
+					}
+					accessibilityLiveRegion={isBusy ? "polite" : undefined}
+					accessibilityState={{
+						busy: isBusy,
+						disabled: isBusy || !snapshot?.sessions.length,
+					}}
+					disabled={isBusy || !snapshot?.sessions.length}
+					onPress={acceptGeneratedPlan}
+					variant="neutral"
+					className="h-14 flex-1"
+					style={{ minWidth: 0 }}
+				>
+					{isBusy ? (
+						<ActivityIndicator color="#1A1A1A" />
+					) : (
+						<Text className="font-bold font-poppins text-15 text-text">
+							Lernplan erstellen
+						</Text>
+					)}
+				</Button>
+				<TouchableOpacity
+					accessibilityLabel="Lerntag hinzufügen"
+					accessibilityRole="button"
+					accessibilityState={{
+						disabled: isBusy || !snapshot?.sessions.length,
+					}}
+					activeOpacity={0.86}
+					disabled={isBusy || !snapshot?.sessions.length}
+					onPress={addRecommendedSession}
+					className="h-14 w-14 items-center justify-center rounded-full bg-primary"
+					style={{
+						shadowColor: "#3A7BFF",
+						shadowOpacity: 0.32,
+						shadowRadius: 16,
+						shadowOffset: { width: 0, height: 7 },
+						elevation: 5,
+						opacity: isBusy || !snapshot?.sessions.length ? 0.55 : 1,
+					}}
+				>
+					<Plus size={28} color="#FFFFFF" strokeWidth={2.4} />
+				</TouchableOpacity>
+			</View>
 
 			<ActionModal
 				visible={Boolean(successDayKey)}
