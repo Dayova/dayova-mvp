@@ -3,7 +3,7 @@
 		"name": "Dayova",
 		"slug": "dayova",
 		"scheme": "dayova",
-		"version": "1.0.0",
+		"version": "1.0.1",
 		"owner": "dayova",
 		"orientation": "portrait",
 		"platforms": ["ios", "android"],
@@ -20,7 +20,7 @@
 		"ios": {
 			"supportsTablet": true,
 			"bundleIdentifier": "de.dayova.app",
-			"runtimeVersion": "1.0.0",
+			"runtimeVersion": "1.0.1",
 			"usesAppleSignIn": true,
 			"infoPlist": {
 				"ITSAppUsesNonExemptEncryption": false
