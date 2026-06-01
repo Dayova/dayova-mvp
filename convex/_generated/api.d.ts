@@ -18,6 +18,7 @@ import type * as learningPlanAi from "../learningPlanAi.js";
 import type * as learningPlans from "../learningPlans.js";
 import type * as learningTimes from "../learningTimes.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
+import type * as topicDescriptionValidation from "../topicDescriptionValidation.js";
 import type * as users from "../users.js";
 
 import type {
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   learningPlans: typeof learningPlans;
   learningTimes: typeof learningTimes;
   scheduleConflicts: typeof scheduleConflicts;
+  topicDescriptionValidation: typeof topicDescriptionValidation;
   users: typeof users;
 }>;
 

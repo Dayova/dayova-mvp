@@ -15,6 +15,7 @@ import {
 	normalizeGeneratedGermanText,
 } from "./generatedGermanText";
 import { repairGeneratedGermanTextFromAsciiShadow } from "./generatedGermanTextRepair";
+import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
@@ -1046,6 +1047,7 @@ export const generateKnowledgeQuestions = action({
 		if (!context.plan.topicDescription.trim()) {
 			throw new Error("Beschreibe zuerst das Prüfungsthema.");
 		}
+		assertMeaningfulTopicDescription(context.plan.topicDescription);
 
 		const { fileParts, sourceContext } = await buildModelInputFromDocuments(
 			ctx,

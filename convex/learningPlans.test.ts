@@ -119,6 +119,32 @@ test("updating a learning plan session at its own synced time is allowed", async
 	).resolves.toBeNull();
 });
 
+test("starting a learning plan rejects vague exam topic descriptions", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const examDayEntryId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-06-05",
+		title: "Mathe Klausur",
+		time: "09:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "5. Juni 2026",
+		durationMinutes: 90,
+		examTypeLabel: "Klausur",
+	});
+
+	await expect(
+		t.mutation(api.learningPlans.start, {
+			examDayEntryId,
+			subject: "Mathe",
+			examTypeLabel: "Klausur",
+			examDateKey: "2026-06-05",
+			examDateLabel: "5. Juni 2026",
+			examTime: "09:00",
+			durationMinutes: 90,
+			topicDescription: "asdf test",
+		}),
+	).rejects.toThrow("Beschreibe das Prüfungsthema bitte genauer.");
+});
+
 test("generated draft sessions are not synced as calendar entries before acceptance", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
