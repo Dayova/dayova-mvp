@@ -168,12 +168,14 @@ export default function NewLearningPlanScreen() {
 
 	const [learningPlanId, setLearningPlanId] =
 		useState<Id<"learningPlans"> | null>(initialLearningPlanId ?? null);
-	const [topicDescription, setTopicDescription] = useState(
-		params.topicDescription ?? "",
-	);
+	const [topicDescriptionInput, setTopicDescriptionInput] = useState<
+		string | null
+	>(params.topicDescription ?? null);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
-	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [errorMessage, setErrorMessage] = useState<string | null>(
+		params.errorMessage ?? null,
+	);
 
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
@@ -184,6 +186,8 @@ export default function NewLearningPlanScreen() {
 
 	const canWrite = Boolean(user && isConvexAuthenticated);
 	const hasExamEntry = Boolean(examDayEntryId || learningPlanId);
+	const topicDescription =
+		topicDescriptionInput ?? snapshot?.plan.topicDescription ?? "";
 	const canContinueTopic = topicDescription.trim().length >= 8 && canWrite;
 	const canUploadMaterial = canWrite && !isBusy;
 	const modalScale = clamp(width / 393, 0.88, 1.06);
@@ -198,19 +202,6 @@ export default function NewLearningPlanScreen() {
 			router.replace(ROUTES.createExam);
 		}
 	}, [hasExamEntry, router]);
-
-	useEffect(() => {
-		if (params.errorMessage) {
-			setErrorMessage(params.errorMessage);
-		}
-	}, [params.errorMessage]);
-
-	useEffect(() => {
-		if (!snapshot) return;
-		setTopicDescription((current) =>
-			current.trim() ? current : snapshot.plan.topicDescription,
-		);
-	}, [snapshot]);
 
 	const ensurePlan = async () => {
 		if (learningPlanId) {
@@ -424,7 +415,7 @@ export default function NewLearningPlanScreen() {
 				>
 					<Textarea
 						value={topicDescription}
-						onChangeText={setTopicDescription}
+						onChangeText={setTopicDescriptionInput}
 						placeholder="Kurze Beschreibung hinzufügen"
 						style={{ height: TOPIC_TEXTAREA_HEIGHT }}
 					/>
