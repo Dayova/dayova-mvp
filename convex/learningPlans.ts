@@ -15,6 +15,7 @@ import {
 	getConfiguredStorageProvider,
 	getR2ConfigOrThrow,
 } from "./fileStorage";
+import { getDayKeyQueryVariants } from "./dayKeyVariants";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { assertNoScheduleConflict } from "./scheduleConflicts";
 

@@ -51,6 +51,10 @@ import { Textarea } from "~/components/ui/textarea";
 import { useAuth } from "~/context/AuthContext";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
+import {
+	getDurationBetweenTimes,
+	shiftEndTimeForStartChange,
+} from "~/lib/entry-time";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 
@@ -128,15 +132,6 @@ const formatCompactDate = (date: Date) =>
 		month: "long",
 		year: "numeric",
 	}).format(date);
-
-const getMinutesSinceStartOfDay = (date: Date) =>
-	date.getHours() * 60 + date.getMinutes();
-
-const getDurationBetweenTimes = (start: Date, end: Date) => {
-	const startMinutes = getMinutesSinceStartOfDay(start);
-	const endMinutes = getMinutesSinceStartOfDay(end);
-	return Math.max(endMinutes - startMinutes, 15);
-};
 
 function HomeworkPillField({
 	label,
@@ -289,20 +284,13 @@ export default function NewEntryScreen() {
 			const next = new Date(plannedTime);
 			next.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
 			setPlannedTime(next);
-			if (isHomework) {
-				const nextEnd = new Date(plannedEndTime);
-				const nextEndMinutes = getMinutesSinceStartOfDay(nextEnd);
-				const nextStartMinutes = getMinutesSinceStartOfDay(next);
-				if (nextEndMinutes <= nextStartMinutes) {
-					nextEnd.setHours(
-						selectedDate.getHours(),
-						selectedDate.getMinutes() + 30,
-						0,
-						0,
-					);
-					setPlannedEndTime(nextEnd);
-				}
-			}
+			setPlannedEndTime(
+				shiftEndTimeForStartChange({
+					previousStart: plannedTime,
+					previousEnd: plannedEndTime,
+					nextStart: next,
+				}),
+			);
 		}
 		if (pickerTarget === "plannedEndTime") {
 			const next = new Date(plannedEndTime);
