@@ -4,6 +4,9 @@ const { getDefaultConfig } = require("expo/metro-config");
 // change-event shape that crashes Metro 0.84. This makes css-interop use its
 // filesystem-backed watcher path instead.
 process.env.REACT_NATIVE_IDE_LIB_PATH ??= "nativewind-file-system";
+if (process.env.CONFIGURATION && !process.env.CONFIGURATION.includes("Debug")) {
+	process.env.NATIVEWIND_DISABLE_WATCH ??= "true";
+}
 
 const { withNativeWind } = require("nativewind/metro");
 

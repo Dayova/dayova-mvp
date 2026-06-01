@@ -1,0 +1,168 @@
+diff --git a/dist/metro/tailwind/v3/child.js b/dist/metro/tailwind/v3/child.js
+index 5ca031b1d4ec12f21c0acf151ddabf4027221f2f..bbe3f859c8c2cf0309fbfb27903dd1322d776bcd 100644
+--- a/dist/metro/tailwind/v3/child.js
++++ b/dist/metro/tailwind/v3/child.js
+@@ -3,6 +3,10 @@
+     const fs = require("fs");
+     const fakeOutput = "FAKE_OUTPUT";
+     let currentContents = "";
++    const isWatchMode = process.env.NATIVEWIND_WATCH === "true";
++    if (!isWatchMode) {
++        setTimeout(() => process.exit(0), 30000);
++    }
+     const originalReadFile = fs.promises.readFile;
+     fs.promises.readFile = async (path, encoding) => {
+         if (path === fakeOutput) {
+@@ -29,6 +33,9 @@
+         if (previousData !== newData) {
+             previousData = newData;
+             process.send(newData);
++            if (!isWatchMode) {
++                process.exit(0);
++            }
+         }
+         return;
+     };
+@@ -37,9 +44,12 @@
+         "--input": process.env.NATIVEWIND_INPUT,
+         "--output": fakeOutput,
+     };
+-    if (process.env.NATIVEWIND_WATCH === "true") {
++    if (isWatchMode) {
+         args["--watch"] = true;
+     }
+     await build(args);
++    if (!isWatchMode) {
++        process.exit(0);
++    }
+ })();
+ //# sourceMappingURL=child.js.map
+\ No newline at end of file
+diff --git a/dist/metro/tailwind/v3/index.js b/dist/metro/tailwind/v3/index.js
+index 7e21e741ffedce14ecbe4aa0072412146bfad61e..09d07b20e5f69bc6591c3aceff40b947ba673167 100644
+--- a/dist/metro/tailwind/v3/index.js
++++ b/dist/metro/tailwind/v3/index.js
+@@ -5,11 +5,14 @@ exports.tailwindConfigV3 = tailwindConfigV3;
+ const child_process_1 = require("child_process");
+ const child_file = __dirname + "/child.js";
+ const getEnv = (options) => {
++    const shouldWatch = process.env.NATIVEWIND_DISABLE_WATCH === "true"
++        ? false
++        : Boolean(options.onChange);
+     return {
+         ...process.env,
+         NATIVEWIND_INPUT: options.input,
+         NATIVEWIND_OS: options.platform,
+-        NATIVEWIND_WATCH: options.onChange ? "true" : "false",
++        NATIVEWIND_WATCH: shouldWatch ? "true" : "false",
+         BROWSERSLIST: options.browserslist ?? undefined,
+         BROWSERSLIST_ENV: options.browserslistEnv ?? undefined,
+     };
+@@ -45,12 +48,22 @@ const tailwindCliV3 = function (debug) {
+                             resolve(message.toString());
+                             initialMessage = false;
+                             debug("Finished initial development Tailwind CLI");
++                            if (!options.onChange) {
++                                child.kill();
++                            }
+                         }
+                         else if (options.onChange) {
+                             debug("Tailwind CLI detected new styles");
+                             options.onChange(message.toString());
+                         }
+                     });
++                    child.on("exit", () => {
++                        if (initialMessage && !options.onChange) {
++                            resolve("");
++                            initialMessage = false;
++                            debug("Finished Tailwind CLI without CSS output");
++                        }
++                    });
+                 }
+                 catch (e) {
+                     reject(e);
+diff --git a/src/metro/tailwind/v3/child.ts b/src/metro/tailwind/v3/child.ts
+index 4ad57b7742d30b21c8949aaa62bfb766e7e4a505..a250a08e029927768004af7143bb3b7bb08febed 100644
+--- a/src/metro/tailwind/v3/child.ts
++++ b/src/metro/tailwind/v3/child.ts
+@@ -6,6 +6,11 @@
+ 
+   const fakeOutput = "FAKE_OUTPUT";
+   let currentContents = "";
++  const isWatchMode = process.env.NATIVEWIND_WATCH === "true";
++
++  if (!isWatchMode) {
++    setTimeout(() => process.exit(0), 30_000);
++  }
+ 
+   const originalReadFile = fs.promises.readFile;
+   fs.promises.readFile = async (path: string, encoding: string) => {
+@@ -42,6 +47,9 @@
+     if (previousData !== newData) {
+       previousData = newData;
+       process.send(newData);
++      if (!isWatchMode) {
++        process.exit(0);
++      }
+     }
+ 
+     return;
+@@ -53,9 +61,12 @@
+     "--output": fakeOutput,
+   };
+ 
+-  if (process.env.NATIVEWIND_WATCH === "true") {
++  if (isWatchMode) {
+     args["--watch"] = true;
+   }
+ 
+   await build(args);
++  if (!isWatchMode) {
++    process.exit(0);
++  }
+ })();
+diff --git a/src/metro/tailwind/v3/index.ts b/src/metro/tailwind/v3/index.ts
+index ae34a047c8975be8a1bca180f0a118c79042a8e5..a5cb7c53138fa8a227cd25f88f710d819b803f42 100644
+--- a/src/metro/tailwind/v3/index.ts
++++ b/src/metro/tailwind/v3/index.ts
+@@ -21,11 +21,16 @@ import { TailwindCliOptions } from "../types";
+ const child_file = __dirname + "/child.js";
+ 
+ const getEnv = (options: TailwindCliOptions) => {
++  const shouldWatch =
++    process.env.NATIVEWIND_DISABLE_WATCH === "true"
++      ? false
++      : Boolean(options.onChange);
++
+   return {
+     ...process.env,
+     NATIVEWIND_INPUT: options.input,
+     NATIVEWIND_OS: options.platform,
+-    NATIVEWIND_WATCH: options.onChange ? "true" : "false",
++    NATIVEWIND_WATCH: shouldWatch ? "true" : "false",
+     BROWSERSLIST: options.browserslist ?? undefined,
+     BROWSERSLIST_ENV: options.browserslistEnv ?? undefined,
+   };
+@@ -65,11 +70,22 @@ export const tailwindCliV3 = function (debug: Debugger) {
+               resolve(message.toString());
+               initialMessage = false;
+               debug("Finished initial development Tailwind CLI");
++              if (!options.onChange) {
++                child.kill();
++              }
+             } else if (options.onChange) {
+               debug("Tailwind CLI detected new styles");
+               options.onChange(message.toString());
+             }
+           });
++
++          child.on("exit", () => {
++            if (initialMessage && !options.onChange) {
++              resolve("");
++              initialMessage = false;
++              debug("Finished Tailwind CLI without CSS output");
++            }
++          });
+         } catch (e) {
+           reject(e);
+         }

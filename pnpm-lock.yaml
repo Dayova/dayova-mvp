@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
+  nativewind@4.2.3:
+    hash: c2045c72c9abacb9347d92d0e80f014cb462e8ea3af0d1b237b7ea467ce26449
+    path: patches/nativewind@4.2.3.patch
   oxc-parser@0.130.0:
     hash: 94ef07f41312654af2c6505f501f15ebb2e6f7f959449d6ed08c7dfdec525a58
     path: patches/oxc-parser@0.130.0.patch
@@ -108,7 +111,7 @@ importers:
         version: 56.0.17(expo-dev-client@56.0.18(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3)))(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
       nativewind:
         specifier: ^4.2.3
-        version: 4.2.3(react-native-reanimated@4.3.1(react-native-worklets@0.8.3(@babel/core@7.29.0)(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native-safe-area-context@5.7.0(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native-svg@15.15.4(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)(tailwindcss@3.4.1)
+        version: 4.2.3(patch_hash=c2045c72c9abacb9347d92d0e80f014cb462e8ea3af0d1b237b7ea467ce26449)(react-native-reanimated@4.3.1(react-native-worklets@0.8.3(@babel/core@7.29.0)(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native-safe-area-context@5.7.0(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native-svg@15.15.4(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)(tailwindcss@3.4.1)
       officeparser:
         specifier: ^6.1.0
         version: 6.1.1
@@ -10846,7 +10849,7 @@ snapshots:
 
   nanoid@3.3.12: {}
 
-  nativewind@4.2.3(react-native-reanimated@4.3.1(react-native-worklets@0.8.3(@babel/core@7.29.0)(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native-safe-area-context@5.7.0(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native-svg@15.15.4(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)(tailwindcss@3.4.1):
+  nativewind@4.2.3(patch_hash=c2045c72c9abacb9347d92d0e80f014cb462e8ea3af0d1b237b7ea467ce26449)(react-native-reanimated@4.3.1(react-native-worklets@0.8.3(@babel/core@7.29.0)(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native-safe-area-context@5.7.0(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native-svg@15.15.4(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)(tailwindcss@3.4.1):
     dependencies:
       comment-json: 4.6.2
       debug: 4.4.3
