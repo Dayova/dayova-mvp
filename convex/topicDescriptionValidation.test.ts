@@ -3,9 +3,9 @@ import { isMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 describe("isMeaningfulTopicDescription", () => {
 	test("accepts concrete exam topics", () => {
-		expect(isMeaningfulTopicDescription("Lineare Funktionen und Gleichungen")).toBe(
-			true,
-		);
+		expect(
+			isMeaningfulTopicDescription("Lineare Funktionen und Gleichungen"),
+		).toBe(true);
 		expect(
 			isMeaningfulTopicDescription("Subnetting, Netzadressen und Binärlogik"),
 		).toBe(true);

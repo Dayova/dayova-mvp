@@ -56,7 +56,9 @@ describe("learning plan AI scheduling", () => {
 						germanText("Löse einen kompakten Probetest."),
 						germanText("Notiere offene Fragen."),
 					],
-					expectedOutcome: germanText("Du weißt, was du noch wiederholen musst."),
+					expectedOutcome: germanText(
+						"Du weißt, was du noch wiederholen musst.",
+					),
 				},
 			],
 			[

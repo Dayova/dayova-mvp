@@ -555,16 +555,18 @@ const getBerlinDayOfWeek = (date: Date) => {
 	}).format(date);
 
 	return (
-		{
-			Mon: 1,
-			Tue: 2,
-			Wed: 3,
-			Thu: 4,
-			Fri: 5,
-			Sat: 6,
-			Sun: 7,
-		} as Record<string, number>
-	)[value] ?? 1;
+		(
+			{
+				Mon: 1,
+				Tue: 2,
+				Wed: 3,
+				Thu: 4,
+				Fri: 5,
+				Sat: 6,
+				Sun: 7,
+			} as Record<string, number>
+		)[value] ?? 1
+	);
 };
 
 const buildDateFromOffset = (
@@ -591,7 +593,10 @@ type LearningSlot = {
 };
 
 const getOccupiedIntervalsByDay = (occupiedEntries: OccupiedEntry[]) => {
-	const intervalsByDay = new Map<string, Array<{ start: number; end: number }>>();
+	const intervalsByDay = new Map<
+		string,
+		Array<{ start: number; end: number }>
+	>();
 
 	for (const entry of occupiedEntries) {
 		if (!entry.time || !entry.durationMinutes || entry.durationMinutes <= 0) {
@@ -626,7 +631,8 @@ const subtractOccupiedIntervals = (
 				{ start: free.start, end: Math.max(free.start, occupied.start) },
 				{ start: Math.min(free.end, occupied.end), end: free.end },
 			].filter(
-				(interval) => interval.end - interval.start >= MIN_LEARNING_SLOT_MINUTES,
+				(interval) =>
+					interval.end - interval.start >= MIN_LEARNING_SLOT_MINUTES,
 			);
 		});
 	}
@@ -659,7 +665,11 @@ const buildAlternativeLearningSlots = (
 		for (const window of windows) {
 			const startMinutes = parseTimeToMinutes(window.startTime);
 			const endMinutes = parseTimeToMinutes(window.endTime);
-			if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+			if (
+				startMinutes === null ||
+				endMinutes === null ||
+				endMinutes <= startMinutes
+			) {
 				continue;
 			}
 
@@ -725,7 +735,11 @@ const buildLearningSlots = (
 	for (const learningTime of learningTimes) {
 		const startMinutes = parseTimeToMinutes(learningTime.startTime);
 		const endMinutes = parseTimeToMinutes(learningTime.endTime);
-		if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+		if (
+			startMinutes === null ||
+			endMinutes === null ||
+			endMinutes <= startMinutes
+		) {
 			continue;
 		}
 
@@ -744,7 +758,11 @@ const buildLearningSlots = (
 		for (const window of windows) {
 			const startMinutes = parseTimeToMinutes(window.startTime);
 			const endMinutes = parseTimeToMinutes(window.endTime);
-			if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+			if (
+				startMinutes === null ||
+				endMinutes === null ||
+				endMinutes <= startMinutes
+			) {
 				continue;
 			}
 
@@ -781,7 +799,10 @@ const buildLearningSlots = (
 	}
 
 	return slots
-		.filter((slot) => slot.endMinutes - slot.startMinutes >= MIN_LEARNING_SLOT_MINUTES)
+		.filter(
+			(slot) =>
+				slot.endMinutes - slot.startMinutes >= MIN_LEARNING_SLOT_MINUTES,
+		)
 		.sort(
 			(left, right) =>
 				left.dateKey.localeCompare(right.dateKey) ||
@@ -896,13 +917,12 @@ const normalizeSessions = (
 				goal:
 					(source ? normalizeAiGeneratedGermanText(source.goal).trim() : "") ||
 					"Nutze diese Lernzeit, um dich gezielt auf die Prüfung vorzubereiten.",
-				tasks:
-					source?.tasks
-						.map((task) => normalizeAiGeneratedGermanText(task).trim())
-						.filter(Boolean) ?? [
-						"Wiederhole die wichtigsten Begriffe.",
-						"Löse eine passende Übungsaufgabe.",
-					],
+				tasks: source?.tasks
+					.map((task) => normalizeAiGeneratedGermanText(task).trim())
+					.filter(Boolean) ?? [
+					"Wiederhole die wichtigsten Begriffe.",
+					"Löse eine passende Übungsaufgabe.",
+				],
 				expectedOutcome:
 					(source
 						? normalizeAiGeneratedGermanText(source.expectedOutcome).trim()
@@ -916,11 +936,16 @@ const normalizeSessions = (
 		(total, session) => total + session.durationMinutes,
 		0,
 	);
-	const totalLearningTimeMinutes = learningTimes.reduce((total, learningTime) => {
-		const start = parseTimeToMinutes(learningTime.startTime);
-		const end = parseTimeToMinutes(learningTime.endTime);
-		return start === null || end === null || end <= start ? total : total + end - start;
-	}, 0);
+	const totalLearningTimeMinutes = learningTimes.reduce(
+		(total, learningTime) => {
+			const start = parseTimeToMinutes(learningTime.startTime);
+			const end = parseTimeToMinutes(learningTime.endTime);
+			return start === null || end === null || end <= start
+				? total
+				: total + end - start;
+		},
+		0,
+	);
 	const busyLearningTimeMinutes = Math.max(
 		0,
 		totalLearningTimeMinutes - availableLearningTimeMinutes,
@@ -1013,7 +1038,8 @@ const buildBaseContext = (context: LearningPlanAiContext) => {
 };
 
 const describeLearningTimes = (learningTimes: LearningTimeWindow[]) => {
-	if (learningTimes.length === 0) return "Keine persönlichen Lernzeiten hinterlegt.";
+	if (learningTimes.length === 0)
+		return "Keine persönlichen Lernzeiten hinterlegt.";
 
 	const dayLabels: Record<number, string> = {
 		1: "Montag",

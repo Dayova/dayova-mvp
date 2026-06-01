@@ -108,7 +108,10 @@ const isSameCreatePayload = (
 	optionalValuesMatch(entry.durationMinutes, args.durationMinutes) &&
 	optionalValuesMatch(entry.examTypeLabel, args.examTypeLabel) &&
 	optionalValuesMatch(entry.completed, args.completed) &&
-	optionalValuesMatch(entry.relatedLearningPlanId, args.relatedLearningPlanId) &&
+	optionalValuesMatch(
+		entry.relatedLearningPlanId,
+		args.relatedLearningPlanId,
+	) &&
 	optionalValuesMatch(
 		entry.relatedLearningPlanSessionId,
 		args.relatedLearningPlanSessionId,

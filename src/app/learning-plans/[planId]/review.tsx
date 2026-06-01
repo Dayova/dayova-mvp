@@ -141,7 +141,11 @@ export default function LearningPlanReviewScreen() {
 						<CircleAlert size={20} color="#F59E0B" strokeWidth={2.2} />
 						<Text
 							className="flex-1 font-poppins text-[#7A5A12]"
-							style={{ fontSize: 13, lineHeight: 20, includeFontPadding: false }}
+							style={{
+								fontSize: 13,
+								lineHeight: 20,
+								includeFontPadding: false,
+							}}
 						>
 							{snapshot.plan.planningHint}
 						</Text>

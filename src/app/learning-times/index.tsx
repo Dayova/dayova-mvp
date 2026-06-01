@@ -95,8 +95,7 @@ export default function LearningTimesOverviewScreen() {
 		}) ?? [];
 	const firstMissingDay =
 		LEARNING_DAYS.find(
-			(day) =>
-				!learningTimes?.some((entry) => entry.dayOfWeek === day.value),
+			(day) => !learningTimes?.some((entry) => entry.dayOfWeek === day.value),
 		)?.value ?? 1;
 
 	const goBack = () => {
