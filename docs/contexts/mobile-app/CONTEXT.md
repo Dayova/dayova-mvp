@@ -8,8 +8,14 @@ Confluence is the current cross-functional documentation hub. Keep this file foc
 
 - `docs/bottom-sheets.md`
 - `docs/styling.md`
+- `patches/README.md` for patched package behavior that affects Expo/Metro
+  builds, including the NativeWind release-build patch.
 
 ## Notes
 
 - Capture app architecture, routing, UI, and native behavior decisions here.
 - Put mobile-app ADRs in `docs/contexts/mobile-app/adr/`.
+- NativeWind is part of the build pipeline, not only runtime styling. Release
+  build issues around Metro, Tailwind generation, or `expo-updates` should check
+  `metro.config.js` and the NativeWind patch documentation before changing EAS
+  profiles.

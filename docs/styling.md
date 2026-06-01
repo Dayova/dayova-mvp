@@ -2,6 +2,23 @@
 
 This app uses NativeWind with Tailwind CSS utilities. Shared class strings should be composed with `cn()` from `src/lib/utils.ts`, not with direct `clsx()` or string joins, when classes can come from multiple sources.
 
+## NativeWind Release-Build Patch
+
+This project patches `nativewind@4.2.3` through `pnpm-workspace.yaml` and
+`patches/nativewind@4.2.3.patch`.
+
+The patch fixes an iOS release-build hang in NativeWind's Tailwind v3 Metro
+integration. During `expo-updates` embedded resource generation, NativeWind could
+finish producing CSS and still leave its child Tailwind process alive. EAS Build
+then remained stuck in the `Generate updates resources for expo-updates` phase.
+
+`metro.config.js` sets `NATIVEWIND_DISABLE_WATCH=true` for non-Debug native
+builds so the patch uses one-shot Tailwind generation. Metro development and
+Debug builds keep NativeWind watch mode.
+
+See `patches/README.md` for the full diagnosis, verification commands, and
+upgrade/removal checklist.
+
 ## Text Classes And `tailwind-merge`
 
 Tailwind uses the `text-*` prefix for multiple utility groups:
