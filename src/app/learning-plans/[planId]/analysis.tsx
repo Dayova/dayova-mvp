@@ -17,6 +17,27 @@ import { goBackOrReplace } from "~/lib/navigation";
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
+const buildEditPlanPath = (
+	id: Id<"learningPlans">,
+	snapshot: LearningPlanSnapshot,
+	errorMessage: string,
+) => {
+	const query = [
+		["learningPlanId", id],
+		["subject", snapshot.plan.subject],
+		["examTypeLabel", snapshot.plan.examTypeLabel],
+		["examDateKey", snapshot.plan.examDateKey],
+		["examDateLabel", snapshot.plan.examDateLabel],
+		["examTime", snapshot.plan.examTime],
+		["durationMinutes", `${snapshot.plan.durationMinutes}`],
+		["topicDescription", snapshot.plan.topicDescription],
+		["errorMessage", errorMessage],
+	]
+		.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+		.join("&");
+	return `/learning-plans/new?${query}` as const;
+};
+
 export default function LearningPlanAnalysisScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ planId?: string }>();
@@ -56,13 +77,13 @@ export default function LearningPlanAnalysisScreen() {
 			setErrorMessage(null);
 			void generateKnowledgeQuestions({ learningPlanId: planId })
 				.catch((error: unknown) => {
-					setErrorMessage(
-						getErrorMessage(
-							error,
-							"Die Wissensanalyse konnte nicht vorbereitet werden.",
-						),
+					const message = getErrorMessage(
+						error,
+						"Die Wissensanalyse konnte nicht vorbereitet werden.",
 					);
+					setErrorMessage(message);
 					didStartRef.current = false;
+					router.replace(buildEditPlanPath(planId, snapshot, message));
 				})
 				.finally(() => setIsBusy(false));
 		});

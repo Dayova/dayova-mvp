@@ -133,6 +133,7 @@ export default function NewLearningPlanScreen() {
 	const insets = useSafeAreaInsets();
 	const { width } = useWindowDimensions();
 	const params = useLocalSearchParams<{
+		learningPlanId?: string;
 		examDayEntryId?: string;
 		subject?: string;
 		examTypeLabel?: string;
@@ -140,6 +141,8 @@ export default function NewLearningPlanScreen() {
 		examDateLabel?: string;
 		examTime?: string;
 		durationMinutes?: string;
+		topicDescription?: string;
+		errorMessage?: string;
 	}>();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -159,10 +162,15 @@ export default function NewLearningPlanScreen() {
 	const examTime = params.examTime || "17:00";
 	const durationMinutes = Number(params.durationMinutes ?? 45) || 45;
 	const examDayEntryId = params.examDayEntryId as Id<"dayEntries"> | undefined;
+	const initialLearningPlanId = params.learningPlanId as
+		| Id<"learningPlans">
+		| undefined;
 
 	const [learningPlanId, setLearningPlanId] =
-		useState<Id<"learningPlans"> | null>(null);
-	const [topicDescription, setTopicDescription] = useState("");
+		useState<Id<"learningPlans"> | null>(initialLearningPlanId ?? null);
+	const [topicDescription, setTopicDescription] = useState(
+		params.topicDescription ?? "",
+	);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -175,7 +183,7 @@ export default function NewLearningPlanScreen() {
 	) ?? null) as LearningPlanSnapshot | null;
 
 	const canWrite = Boolean(user && isConvexAuthenticated);
-	const hasExamEntry = Boolean(examDayEntryId);
+	const hasExamEntry = Boolean(examDayEntryId || learningPlanId);
 	const canContinueTopic = topicDescription.trim().length >= 8 && canWrite;
 	const canUploadMaterial = canWrite && !isBusy;
 	const modalScale = clamp(width / 393, 0.88, 1.06);
@@ -191,11 +199,20 @@ export default function NewLearningPlanScreen() {
 		}
 	}, [hasExamEntry, router]);
 
-	const ensurePlan = async () => {
-		if (!examDayEntryId) {
-			throw new Error("Erstelle zuerst eine Prüfung.");
+	useEffect(() => {
+		if (params.errorMessage) {
+			setErrorMessage(params.errorMessage);
 		}
+	}, [params.errorMessage]);
 
+	useEffect(() => {
+		if (!snapshot) return;
+		setTopicDescription((current) =>
+			current.trim() ? current : snapshot.plan.topicDescription,
+		);
+	}, [snapshot]);
+
+	const ensurePlan = async () => {
 		if (learningPlanId) {
 			await retryOnceAfterAuthResume(() =>
 				updateBasics({
@@ -205,6 +222,10 @@ export default function NewLearningPlanScreen() {
 				}),
 			);
 			return learningPlanId;
+		}
+
+		if (!examDayEntryId) {
+			throw new Error("Erstelle zuerst eine Prüfung.");
 		}
 
 		const id = await retryOnceAfterAuthResume(() =>
@@ -372,7 +393,7 @@ export default function NewLearningPlanScreen() {
 			"Die Wissensanalyse konnte nicht vorbereitet werden.",
 			async () => {
 				const id = await ensurePlan();
-				router.replace(planPath(id, "analysis"));
+				router.push(planPath(id, "analysis"));
 			},
 		);
 	};
