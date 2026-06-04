@@ -51,7 +51,10 @@ const cleanPlainMessage = (message: string) => {
 
 	const normalized = normalizeDiagnosticText(cleaned);
 	if (PRODUCTION_CONVEX_NOISE.has(normalized)) return null;
-	if (normalized.includes("[convex") || normalized.includes("called by client")) {
+	if (
+		normalized.includes("[convex") ||
+		normalized.includes("called by client")
+	) {
 		return null;
 	}
 
@@ -64,7 +67,10 @@ export const extractUserFacingErrorMessage = (error: unknown) => {
 
 	if (!(error instanceof Error)) return null;
 
-	return getDevelopmentConvexMessage(error.message) ?? cleanPlainMessage(error.message);
+	return (
+		getDevelopmentConvexMessage(error.message) ??
+		cleanPlainMessage(error.message)
+	);
 };
 
 export const getUserFacingErrorMessage = (

@@ -17,7 +17,10 @@ describe("getUserFacingErrorMessage", () => {
 		};
 
 		expect(
-			getUserFacingErrorMessage(error, "Der Eintrag konnte nicht gespeichert werden."),
+			getUserFacingErrorMessage(
+				error,
+				"Der Eintrag konnte nicht gespeichert werden.",
+			),
 		).toBe(
 			'Dieser Zeitraum überschneidet sich mit "Mathe Hausaufgabe" am 23. Mai 2026 von 16:00 bis 16:30.',
 		);

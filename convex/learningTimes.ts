@@ -112,12 +112,12 @@ export const removeMine = mutation({
 	},
 	handler: async (ctx, args) => {
 		if (
-		!Number.isInteger(args.dayOfWeek) ||
-		args.dayOfWeek < 1 ||
-		args.dayOfWeek > 7
-	) {
-		throwUserFacingError("Bitte wähle einen gültigen Lerntag aus.");
-	}
+			!Number.isInteger(args.dayOfWeek) ||
+			args.dayOfWeek < 1 ||
+			args.dayOfWeek > 7
+		) {
+			throwUserFacingError("Bitte wähle einen gültigen Lerntag aus.");
+		}
 
 		const identity = await requireIdentity(ctx);
 		const existing = await ctx.db

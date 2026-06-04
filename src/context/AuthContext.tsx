@@ -441,20 +441,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					});
 					clearAnswers();
 				} catch (retryError) {
-					logDiagnosticError(
-						"Failed to save onboarding answers.",
-						retryError,
-						{ source: "auth.saveOnboardingAnswers", level: "warn" },
-					);
+					logDiagnosticError("Failed to save onboarding answers.", retryError, {
+						source: "auth.saveOnboardingAnswers",
+						level: "warn",
+					});
 					if (retryError !== error) {
-						logDiagnosticError(
-							"Initial onboarding answer save error.",
-							error,
-							{
-								source: "auth.saveOnboardingAnswers.initial",
-								level: "warn",
-							},
-						);
+						logDiagnosticError("Initial onboarding answer save error.", error, {
+							source: "auth.saveOnboardingAnswers.initial",
+							level: "warn",
+						});
 					}
 				}
 			});

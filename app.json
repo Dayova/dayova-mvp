@@ -33,7 +33,13 @@
 			},
 			"predictiveBackGestureEnabled": true,
 			"package": "com.dayova",
-			"permissions": ["android.permission.RECORD_AUDIO"]
+			"permissions": [
+				"android.permission.RECORD_AUDIO",
+				"android.permission.RECORD_AUDIO"
+			],
+			"runtimeVersion": {
+				"policy": "appVersion"
+			}
 		},
 		"plugins": [
 			"expo-router",
@@ -93,6 +99,9 @@
 					"backgroundColor": "#ffffff"
 				}
 			]
-		]
+		],
+		"updates": {
+			"url": "https://u.expo.dev/d3d06b26-c8da-4192-a50d-e1bb0ca4902c"
+		}
 	}
 }
