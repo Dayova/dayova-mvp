@@ -97,6 +97,69 @@ const requireOwnerTokenIdentifierForMutation = async (ctx: MutationCtx) => {
 	return identity.tokenIdentifier;
 };
 
+type CreateLearningPlanArgs = {
+	examDayEntryId: Id<"dayEntries">;
+	subject: string;
+	examTypeLabel: string;
+	examDateKey: string;
+	examDateLabel: string;
+	examTime: string;
+	durationMinutes: number;
+	topicDescription: string;
+	notes?: string;
+};
+
+const createLearningPlan = async (
+	ctx: MutationCtx,
+	args: CreateLearningPlanArgs,
+	options: { requireMeaningfulTopic: boolean },
+) => {
+	const ownerTokenIdentifier =
+		await requireOwnerTokenIdentifierForMutation(ctx);
+	const examEntry = await ctx.db.get("dayEntries", args.examDayEntryId);
+	if (!examEntry || examEntry.ownerTokenIdentifier !== ownerTokenIdentifier) {
+		throwUserFacingError("Prüfung nicht gefunden.");
+	}
+	if (examEntry.kind !== "Leistungskontrolle") {
+		throwUserFacingError("Ein Lernplan braucht zuerst eine Prüfung.");
+	}
+
+	const subject = args.subject.trim();
+	const examTypeLabel = args.examTypeLabel.trim();
+	const topicDescription = args.topicDescription.trim();
+	const notes = args.notes?.trim() ?? "";
+
+	if (!subject) throwUserFacingError("Fach fehlt.");
+	if (!examTypeLabel) throwUserFacingError("Prüfungsart fehlt.");
+	if (options.requireMeaningfulTopic) {
+		assertMeaningfulTopicDescription(topicDescription);
+	}
+	if (args.durationMinutes <= 0) {
+		throwUserFacingError("Die Bearbeitungszeit muss größer als 0 sein.");
+	}
+
+	const now = Date.now();
+	const learningPlanId = await ctx.db.insert("learningPlans", {
+		ownerTokenIdentifier,
+		subject,
+		examTypeLabel,
+		examDateKey: args.examDateKey,
+		examDateLabel: args.examDateLabel,
+		examTime: args.examTime,
+		durationMinutes: args.durationMinutes,
+		topicDescription,
+		notes,
+		status: "draft",
+		examDayEntryId: args.examDayEntryId,
+		createdAt: now,
+		updatedAt: now,
+	});
+	await ctx.db.patch("dayEntries", args.examDayEntryId, {
+		relatedLearningPlanId: learningPlanId,
+	});
+	return learningPlanId;
+};
+
 const publicDocument = (
 	document: Doc<"learningPlanDocuments">,
 ): PublicDocument => ({
@@ -286,48 +349,28 @@ export const start = mutation({
 		notes: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const ownerTokenIdentifier =
-			await requireOwnerTokenIdentifierForMutation(ctx);
-		const examEntry = await ctx.db.get("dayEntries", args.examDayEntryId);
-		if (!examEntry || examEntry.ownerTokenIdentifier !== ownerTokenIdentifier) {
-			throwUserFacingError("Prüfung nicht gefunden.");
-		}
-		if (examEntry.kind !== "Leistungskontrolle") {
-			throwUserFacingError("Ein Lernplan braucht zuerst eine Prüfung.");
-		}
-
-		const subject = args.subject.trim();
-		const examTypeLabel = args.examTypeLabel.trim();
-		const topicDescription = args.topicDescription.trim();
-		const notes = args.notes?.trim() ?? "";
-
-		if (!subject) throwUserFacingError("Fach fehlt.");
-		if (!examTypeLabel) throwUserFacingError("Prüfungsart fehlt.");
-		assertMeaningfulTopicDescription(topicDescription);
-		if (args.durationMinutes <= 0) {
-			throwUserFacingError("Die Bearbeitungszeit muss größer als 0 sein.");
-		}
-
-		const now = Date.now();
-		const learningPlanId = await ctx.db.insert("learningPlans", {
-			ownerTokenIdentifier,
-			subject,
-			examTypeLabel,
-			examDateKey: args.examDateKey,
-			examDateLabel: args.examDateLabel,
-			examTime: args.examTime,
-			durationMinutes: args.durationMinutes,
-			topicDescription,
-			notes,
-			status: "draft",
-			examDayEntryId: args.examDayEntryId,
-			createdAt: now,
-			updatedAt: now,
+		return await createLearningPlan(ctx, args, {
+			requireMeaningfulTopic: true,
 		});
-		await ctx.db.patch("dayEntries", args.examDayEntryId, {
-			relatedLearningPlanId: learningPlanId,
+	},
+});
+
+export const createDraft = mutation({
+	args: {
+		examDayEntryId: v.id("dayEntries"),
+		subject: v.string(),
+		examTypeLabel: v.string(),
+		examDateKey: v.string(),
+		examDateLabel: v.string(),
+		examTime: v.string(),
+		durationMinutes: v.number(),
+		topicDescription: v.string(),
+		notes: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		return await createLearningPlan(ctx, args, {
+			requireMeaningfulTopic: false,
 		});
-		return learningPlanId;
 	},
 });
 

@@ -154,6 +154,38 @@ test("starting a learning plan rejects vague exam topic descriptions", async () 
 	});
 });
 
+test("creating a draft learning plan allows incomplete exam topic descriptions", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const examDayEntryId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-06-05",
+		title: "Mathe Klausur",
+		time: "09:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "5. Juni 2026",
+		durationMinutes: 90,
+		examTypeLabel: "Klausur",
+	});
+
+	const learningPlanId = await t.mutation(api.learningPlans.createDraft, {
+		examDayEntryId,
+		subject: "Mathe",
+		examTypeLabel: "Klausur",
+		examDateKey: "2026-06-05",
+		examDateLabel: "5. Juni 2026",
+		examTime: "09:00",
+		durationMinutes: 90,
+		topicDescription: "Mathe",
+	});
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+
+	expect(snapshot?.plan).toMatchObject({
+		status: "draft",
+		topicDescription: "Mathe",
+	});
+});
+
 test("generated draft sessions are not synced as calendar entries before acceptance", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);

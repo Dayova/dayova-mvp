@@ -1,4 +1,4 @@
-export const getMinutesSinceStartOfDay = (date: Date) =>
+const getMinutesSinceStartOfDay = (date: Date) =>
 	date.getHours() * 60 + date.getMinutes();
 
 export const getDurationBetweenTimes = (start: Date, end: Date) => {

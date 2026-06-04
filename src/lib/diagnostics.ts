@@ -57,9 +57,7 @@ export const setDiagnosticSink = (sink: DiagnosticSink) => {
 	};
 };
 
-export const logDiagnosticEvent = (
-	event: Omit<DiagnosticEvent, "timestamp">,
-) => {
+const logDiagnosticEvent = (event: Omit<DiagnosticEvent, "timestamp">) => {
 	diagnosticSink({
 		...event,
 		timestamp: new Date().toISOString(),

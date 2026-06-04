@@ -54,6 +54,13 @@ const clamp = (value: number, min: number, max: number) =>
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
+type PreparedUploadAsset = {
+	asset: UploadAsset;
+	file: File;
+	fileSizeBytes: number;
+	fileType: string;
+};
+
 function UploadSheetOption({
 	icon,
 	title,
@@ -147,6 +154,7 @@ export default function NewLearningPlanScreen() {
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const startPlan = useMutation(api.learningPlans.start);
+	const createDraftPlan = useMutation(api.learningPlans.createDraft);
 	const updateBasics = useMutation(api.learningPlans.updateBasics);
 	const generateUploadUrl = useMutation(api.learningPlans.generateUploadUrl);
 	const registerUploadedDocument = useAction(
@@ -203,15 +211,21 @@ export default function NewLearningPlanScreen() {
 		}
 	}, [hasExamEntry, router]);
 
-	const ensurePlan = async () => {
+	const ensurePlan = async ({
+		requireMeaningfulTopic = true,
+	}: {
+		requireMeaningfulTopic?: boolean;
+	} = {}) => {
 		if (learningPlanId) {
-			await retryOnceAfterAuthResume(() =>
-				updateBasics({
-					id: learningPlanId,
-					topicDescription,
-					notes: "",
-				}),
-			);
+			if (requireMeaningfulTopic) {
+				await retryOnceAfterAuthResume(() =>
+					updateBasics({
+						id: learningPlanId,
+						topicDescription,
+						notes: "",
+					}),
+				);
+			}
 			return learningPlanId;
 		}
 
@@ -219,8 +233,9 @@ export default function NewLearningPlanScreen() {
 			throw new Error("Erstelle zuerst eine Prüfung.");
 		}
 
+		const createPlan = requireMeaningfulTopic ? startPlan : createDraftPlan;
 		const id = await retryOnceAfterAuthResume(() =>
-			startPlan({
+			createPlan({
 				examDayEntryId,
 				subject,
 				examTypeLabel,
@@ -251,11 +266,7 @@ export default function NewLearningPlanScreen() {
 		}
 	};
 
-	const uploadLearningPlanAsset = async (
-		asset: UploadAsset,
-		existingLearningPlanId?: Id<"learningPlans">,
-	) => {
-		const id = existingLearningPlanId ?? (await ensurePlan());
+	const prepareUploadAsset = (asset: UploadAsset): PreparedUploadAsset => {
 		const file = new File(asset.uri);
 		const fileSizeBytes = asset.size ?? file.info().size ?? 0;
 		const fileType = asset.mimeType || "application/octet-stream";
@@ -265,6 +276,18 @@ export default function NewLearningPlanScreen() {
 			size: fileSizeBytes,
 		});
 		if (!validation.valid) throw new Error(validation.message);
+
+		return { asset, file, fileSizeBytes, fileType };
+	};
+
+	const uploadLearningPlanAsset = async (
+		preparedAsset: PreparedUploadAsset,
+		existingLearningPlanId?: Id<"learningPlans">,
+	) => {
+		const id =
+			existingLearningPlanId ??
+			(await ensurePlan({ requireMeaningfulTopic: false }));
+		const { asset, file, fileSizeBytes, fileType } = preparedAsset;
 
 		const uploadData = await retryOnceAfterAuthResume(() =>
 			generateUploadUrl({ learningPlanId: id }),
@@ -317,7 +340,6 @@ export default function NewLearningPlanScreen() {
 		await runWithErrorHandling(
 			"Die Datei konnte nicht hochgeladen werden.",
 			async () => {
-				const id = await ensurePlan();
 				const result = await DocumentPicker.getDocumentAsync({
 					type: ACCEPTED_FILE_TYPES,
 					multiple: true,
@@ -325,18 +347,18 @@ export default function NewLearningPlanScreen() {
 				});
 				if (result.canceled) return;
 
+				const preparedAssets = result.assets.map((asset) =>
+					prepareUploadAsset({
+						uri: asset.uri,
+						name: asset.name,
+						mimeType: asset.mimeType,
+						size: asset.size,
+					}),
+				);
+				const id = await ensurePlan({ requireMeaningfulTopic: false });
+
 				await Promise.all(
-					result.assets.map((asset) =>
-						uploadLearningPlanAsset(
-							{
-								uri: asset.uri,
-								name: asset.name,
-								mimeType: asset.mimeType,
-								size: asset.size,
-							},
-							id,
-						),
-					),
+					preparedAssets.map((asset) => uploadLearningPlanAsset(asset, id)),
 				);
 			},
 		);
@@ -353,7 +375,6 @@ export default function NewLearningPlanScreen() {
 					throw new Error("Kamerazugriff wurde nicht erlaubt.");
 				}
 
-				const id = await ensurePlan();
 				const result = await ImagePicker.launchCameraAsync({
 					mediaTypes: ["images"],
 					allowsEditing: false,
@@ -365,13 +386,12 @@ export default function NewLearningPlanScreen() {
 				if (!asset) return;
 
 				await uploadLearningPlanAsset(
-					{
+					prepareUploadAsset({
 						uri: asset.uri,
 						name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
 						mimeType: asset.mimeType ?? "image/jpeg",
 						size: asset.fileSize,
-					},
-					id,
+					}),
 				);
 			},
 		);
