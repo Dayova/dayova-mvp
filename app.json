@@ -33,10 +33,6 @@
 			},
 			"predictiveBackGestureEnabled": true,
 			"package": "com.dayova",
-			"permissions": [
-				"android.permission.RECORD_AUDIO",
-				"android.permission.RECORD_AUDIO"
-			],
 			"runtimeVersion": {
 				"policy": "appVersion"
 			}
@@ -49,6 +45,7 @@
 				"expo-image-picker",
 				{
 					"cameraPermission": "Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
+					"microphonePermission": false,
 					"photosPermission": "Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst."
 				}
 			],
