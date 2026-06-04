@@ -467,6 +467,10 @@ const buildModelInputFromDocuments = async (
 				storageProvider: document.storageProvider,
 			},
 			accessKey,
+			{
+				fileName: document.fileName,
+				userFacingMessage: `Die Datei "${document.fileName}" konnte nicht gelesen werden. Lade sie bitte erneut hoch.`,
+			},
 		);
 		const response = await fetch(downloadUrl);
 		if (!response.ok) {

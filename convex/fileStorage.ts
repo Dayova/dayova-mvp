@@ -1,6 +1,7 @@
 import { components } from "./_generated/api";
 import type { ActionCtx, MutationCtx } from "./_generated/server";
 import { readOptionalEnv } from "./env";
+import { logDiagnosticError, throwUserFacingError } from "./errors";
 
 export type StorageProvider = "convex" | "r2";
 
@@ -21,9 +22,17 @@ type RunMutationContext = {
 	runMutation: ActionCtx["runMutation"] | MutationCtx["runMutation"];
 };
 
+type ManagedReadUrlOptions = {
+	fileName?: string;
+	userFacingMessage?: string;
+	metadata?: Record<string, unknown>;
+};
+
 const STORAGE_PROVIDER_VALUES = new Set<StorageProvider>(["convex", "r2"]);
 const R2_JURISDICTION_VALUES = new Set(["eu", "fedramp"]);
 const DOWNLOAD_GRANT_TTL_MS = 5 * 60 * 1000;
+const MANAGED_READ_FAILURE_MESSAGE =
+	"Die Datei konnte nicht für die KI-Verarbeitung gelesen werden. Lade sie bitte erneut hoch.";
 
 export const getConfiguredStorageProvider = (): StorageProvider => {
 	const configuredValue = readOptionalEnv(
@@ -73,30 +82,69 @@ export const createManagedReadUrl = async (
 	ctx: RunMutationContext,
 	reference: ManagedStorageReference,
 	accessKey: string,
+	options: ManagedReadUrlOptions = {},
 ) => {
 	const r2Config = maybeGetR2Config(reference.storageProvider);
-	const downloadGrant = await ctx.runMutation(
-		components.convexFilesControl.download.createDownloadGrant,
-		{
-			storageId: reference.storageId,
-			maxUses: 1,
-			expiresAt: Date.now() + DOWNLOAD_GRANT_TTL_MS,
-		},
-	);
+	const userFacingMessage =
+		options.userFacingMessage ?? MANAGED_READ_FAILURE_MESSAGE;
+	const diagnosticMetadata = (
+		metadata?: Record<string, unknown>,
+	): Record<string, unknown> => ({
+		storageId: reference.storageId,
+		storageProvider: reference.storageProvider,
+		...(options.fileName ? { fileName: options.fileName } : {}),
+		...options.metadata,
+		...metadata,
+	});
 
-	const consumeResult = await ctx.runMutation(
-		components.convexFilesControl.download.consumeDownloadGrantForUrl,
-		{
-			downloadToken: downloadGrant.downloadToken,
-			accessKey,
-			...(r2Config ? { r2Config } : {}),
-		},
-	);
+	let downloadGrant: { downloadToken: string };
+	try {
+		downloadGrant = await ctx.runMutation(
+			components.convexFilesControl.download.createDownloadGrant,
+			{
+				storageId: reference.storageId,
+				maxUses: 1,
+				expiresAt: Date.now() + DOWNLOAD_GRANT_TTL_MS,
+			},
+		);
+	} catch (error) {
+		logDiagnosticError(
+			"fileStorage.createDownloadGrant",
+			error,
+			diagnosticMetadata(),
+		);
+		throwUserFacingError(userFacingMessage);
+	}
+
+	let consumeResult: { status: string; downloadUrl?: string | null };
+	try {
+		consumeResult = await ctx.runMutation(
+			components.convexFilesControl.download.consumeDownloadGrantForUrl,
+			{
+				downloadToken: downloadGrant.downloadToken,
+				accessKey,
+				...(r2Config ? { r2Config } : {}),
+			},
+		);
+	} catch (error) {
+		logDiagnosticError(
+			"fileStorage.consumeDownloadGrant",
+			error,
+			diagnosticMetadata(),
+		);
+		throwUserFacingError(userFacingMessage);
+	}
 
 	if (consumeResult.status !== "ok" || !consumeResult.downloadUrl) {
-		throw new Error(
-			"Datei konnte nicht für die KI-Verarbeitung gelesen werden.",
+		logDiagnosticError(
+			"fileStorage.createManagedReadUrl",
+			new Error("Managed download URL could not be created."),
+			diagnosticMetadata({
+				status: consumeResult.status,
+				hasDownloadUrl: Boolean(consumeResult.downloadUrl),
+			}),
 		);
+		throwUserFacingError(userFacingMessage);
 	}
 
 	return consumeResult.downloadUrl;
