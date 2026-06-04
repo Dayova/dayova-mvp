@@ -3,6 +3,7 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
+import { USER_FACING_ERROR_KIND } from "./errors";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -131,7 +132,7 @@ test("starting a learning plan rejects vague exam topic descriptions", async () 
 		examTypeLabel: "Klausur",
 	});
 
-	await expect(
+	const startWithVagueTopic = () =>
 		t.mutation(api.learningPlans.start, {
 			examDayEntryId,
 			subject: "Mathe",
@@ -141,8 +142,16 @@ test("starting a learning plan rejects vague exam topic descriptions", async () 
 			examTime: "09:00",
 			durationMinutes: 90,
 			topicDescription: "asdf test",
-		}),
-	).rejects.toThrow("Beschreibe das Prüfungsthema bitte genauer.");
+		});
+	await expect(startWithVagueTopic()).rejects.toThrow(
+		"Beschreibe das Prüfungsthema bitte genauer.",
+	);
+	await expect(startWithVagueTopic()).rejects.toMatchObject({
+		data: {
+			kind: USER_FACING_ERROR_KIND,
+			message: "Beschreibe das Prüfungsthema bitte genauer.",
+		},
+	});
 });
 
 test("generated draft sessions are not synced as calendar entries before acceptance", async () => {

@@ -1,6 +1,7 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { getDayKeyQueryVariants } from "./dayKeyVariants";
+import { throwUserFacingError } from "./errors";
 
 const timePattern = /^(\d{1,2}):(\d{2})$/;
 
@@ -108,7 +109,7 @@ export const assertNoScheduleConflict = async (
 
 		const existingInterval = getInterval(entry);
 		if (existingInterval && overlaps(newInterval, existingInterval)) {
-			throw new Error(getConflictMessage(entry, existingInterval));
+			throwUserFacingError(getConflictMessage(entry, existingInterval));
 		}
 	}
 };

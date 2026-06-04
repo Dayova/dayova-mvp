@@ -1,13 +1,14 @@
 import { v } from "convex/values";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { throwUserFacingError } from "./errors";
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
 	if (!identity) {
-		throw new Error("Nicht authentifiziert.");
+		throwUserFacingError("Nicht authentifiziert.");
 	}
 	return identity;
 };
@@ -29,17 +30,17 @@ const validateLearningTime = (args: {
 		args.dayOfWeek < 1 ||
 		args.dayOfWeek > 7
 	) {
-		throw new Error("Bitte wähle einen gültigen Lerntag aus.");
+		throwUserFacingError("Bitte wähle einen gültigen Lerntag aus.");
 	}
 
 	const startMinutes = parseTimeToMinutes(args.startTime);
 	const endMinutes = parseTimeToMinutes(args.endTime);
 	if (startMinutes === null || endMinutes === null) {
-		throw new Error("Bitte gib gültige Uhrzeiten ein.");
+		throwUserFacingError("Bitte gib gültige Uhrzeiten ein.");
 	}
 
 	if (endMinutes <= startMinutes) {
-		throw new Error("Die Endzeit muss nach der Startzeit liegen.");
+		throwUserFacingError("Die Endzeit muss nach der Startzeit liegen.");
 	}
 };
 
@@ -111,12 +112,12 @@ export const removeMine = mutation({
 	},
 	handler: async (ctx, args) => {
 		if (
-			!Number.isInteger(args.dayOfWeek) ||
-			args.dayOfWeek < 1 ||
-			args.dayOfWeek > 7
-		) {
-			throw new Error("Bitte wähle einen gültigen Lerntag aus.");
-		}
+		!Number.isInteger(args.dayOfWeek) ||
+		args.dayOfWeek < 1 ||
+		args.dayOfWeek > 7
+	) {
+		throwUserFacingError("Bitte wähle einen gültigen Lerntag aus.");
+	}
 
 		const identity = await requireIdentity(ctx);
 		const existing = await ctx.db

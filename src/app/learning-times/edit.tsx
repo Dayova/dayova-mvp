@@ -27,6 +27,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 const LEARNING_DAYS = [
 	{ label: "Montag", value: 1 },
@@ -188,7 +189,9 @@ export default function LearningTimesScreen() {
 		} catch (error) {
 			Alert.alert(
 				"Lernzeit konnte nicht gespeichert werden",
-				error instanceof Error ? error.message : "Bitte versuche es erneut.",
+				getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
+					source: "learning-times.save",
+				}),
 			);
 		} finally {
 			setIsSaving(false);
@@ -207,7 +210,9 @@ export default function LearningTimesScreen() {
 		} catch (error) {
 			Alert.alert(
 				"Lernzeit konnte nicht entfernt werden",
-				error instanceof Error ? error.message : "Bitte versuche es erneut.",
+				getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
+					source: "learning-times.remove",
+				}),
 			);
 		} finally {
 			setIsSaving(false);

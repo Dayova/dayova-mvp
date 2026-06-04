@@ -4,6 +4,12 @@ This context covers the Expo app, Expo Router, navigation, native UI, styling, c
 
 Confluence is the current cross-functional documentation hub. Keep this file focused on implementation-facing terminology, conventions, and assumptions that agents need while working in this repo.
 
+## Language
+
+**User-facing error message**:
+A German, actionable message shown to the learner when they can recover by changing their input or trying a clear next step.
+_Avoid_: Called by client, Server Error, raw stack trace
+
 ## Existing Docs
 
 - `docs/bottom-sheets.md`

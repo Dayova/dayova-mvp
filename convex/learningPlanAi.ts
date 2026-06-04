@@ -9,6 +9,11 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { type ActionCtx, action } from "./_generated/server";
 import { readOptionalEnv, readRequiredEnv } from "./env";
+import {
+	getUserFacingBackendErrorMessage,
+	logDiagnosticError,
+	throwUserFacingError,
+} from "./errors";
 import { createManagedReadUrl, type StorageProvider } from "./fileStorage";
 import {
 	isInvalidGeneratedGermanTextError,
@@ -274,12 +279,12 @@ const withStructuredOutputErrorHandling = async <TResult>(
 		return await task();
 	} catch (error) {
 		if (NoObjectGeneratedError.isInstance(error)) {
-			console.warn("AI structured output validation failed", {
+			logDiagnosticError("learningPlanAi.structuredOutput", error, {
 				finishReason: error.finishReason,
 				text: error.text?.slice(0, 500),
 				cause: error.cause,
 			});
-			throw new Error(fallbackMessage);
+			throwUserFacingError(fallbackMessage);
 		}
 
 		throw error;
@@ -310,14 +315,17 @@ const withGeneratedTextRetry = async <TResult>(
 			}
 
 			if (isInvalidGeneratedGermanTextError(error)) {
-				throw new Error(fallbackMessage);
+				logDiagnosticError("learningPlanAi.generatedGermanText", error, {
+					attempts: MAX_GENERATED_TEXT_ATTEMPTS,
+				});
+				throwUserFacingError(fallbackMessage);
 			}
 
 			throw error;
 		}
 	}
 
-	throw new Error(fallbackMessage);
+	throwUserFacingError(fallbackMessage);
 };
 
 const withLlmTimeout = async <TResult>(
@@ -447,7 +455,7 @@ const buildModelInputFromDocuments = async (
 
 	for (const document of documents) {
 		if (document.fileSizeBytes > MAX_UPLOAD_FILE_BYTES) {
-			throw new Error(
+			throwUserFacingError(
 				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
 			);
 		}
@@ -462,12 +470,24 @@ const buildModelInputFromDocuments = async (
 		);
 		const response = await fetch(downloadUrl);
 		if (!response.ok) {
-			throw new Error(`Datei-Download fehlgeschlagen: ${document.fileName}`);
+			logDiagnosticError(
+				"learningPlanAi.documentDownload",
+				new Error(`Datei-Download fehlgeschlagen: ${document.fileName}`),
+				{
+					fileName: document.fileName,
+					status: response.status,
+					statusText: response.statusText,
+					storageProvider: document.storageProvider,
+				},
+			);
+			throwUserFacingError(
+				`Die Datei "${document.fileName}" konnte nicht gelesen werden. Lade sie bitte erneut hoch.`,
+			);
 		}
 
 		const arrayBuffer = await response.arrayBuffer();
 		if (arrayBuffer.byteLength > MAX_UPLOAD_FILE_BYTES) {
-			throw new Error(
+			throwUserFacingError(
 				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
 			);
 		}
@@ -1071,7 +1091,7 @@ export const generateKnowledgeQuestions = action({
 			{ learningPlanId: args.learningPlanId },
 		);
 		if (!context.plan.topicDescription.trim()) {
-			throw new Error("Beschreibe zuerst das Prüfungsthema.");
+			throwUserFacingError("Beschreibe zuerst das Prüfungsthema.");
 		}
 		assertMeaningfulTopicDescription(context.plan.topicDescription);
 
@@ -1161,7 +1181,7 @@ export const generatePlan = action({
 		);
 		const questions = context.plan.knowledgeQuestions ?? [];
 		if (questions.length !== 5) {
-			throw new Error("Die Wissensanalyse-Fragen fehlen noch.");
+			throwUserFacingError("Die Wissensanalyse-Fragen fehlen noch.");
 		}
 
 		const answersByQuestion = new Map(
@@ -1275,7 +1295,7 @@ MVP-Vorgabe:
 				return normalizeGeneratedPlan(result.output);
 			}, planFallbackMessage);
 		} catch (error) {
-			if (!(error instanceof Error) || error.message !== planFallbackMessage) {
+			if (getUserFacingBackendErrorMessage(error) !== planFallbackMessage) {
 				throw error;
 			}
 

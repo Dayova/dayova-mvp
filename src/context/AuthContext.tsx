@@ -11,6 +11,7 @@ import {
 } from "react";
 import { api } from "#convex/_generated/api";
 import { useOnboarding } from "~/context/OnboardingContext";
+import { logDiagnosticError } from "~/lib/diagnostics";
 
 type LoginInput = {
 	email: string;
@@ -396,9 +397,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			try {
 				await syncCurrentUser(profile);
 			} catch (retryError) {
-				console.warn("Failed to sync authenticated user profile.", retryError);
+				logDiagnosticError(
+					"Failed to sync authenticated user profile.",
+					retryError,
+					{ source: "auth.syncCurrentUser", level: "warn" },
+				);
 				if (retryError !== error) {
-					console.warn("Initial user profile sync error.", error);
+					logDiagnosticError("Initial user profile sync error.", error, {
+						source: "auth.syncCurrentUser.initial",
+						level: "warn",
+					});
 				}
 			}
 		});
@@ -433,9 +441,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					});
 					clearAnswers();
 				} catch (retryError) {
-					console.warn("Failed to save onboarding answers.", retryError);
+					logDiagnosticError(
+						"Failed to save onboarding answers.",
+						retryError,
+						{ source: "auth.saveOnboardingAnswers", level: "warn" },
+					);
 					if (retryError !== error) {
-						console.warn("Initial onboarding answer save error.", error);
+						logDiagnosticError(
+							"Initial onboarding answer save error.",
+							error,
+							{
+								source: "auth.saveOnboardingAnswers.initial",
+								level: "warn",
+							},
+						);
 					}
 				}
 			});

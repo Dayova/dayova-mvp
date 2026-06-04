@@ -1,3 +1,5 @@
+import { throwUserFacingError } from "./errors";
+
 const MIN_TOPIC_DESCRIPTION_CHARS = 12;
 const MIN_MEANINGFUL_WORDS = 2;
 
@@ -47,6 +49,6 @@ export const isMeaningfulTopicDescription = (value: string) => {
 
 export const assertMeaningfulTopicDescription = (value: string) => {
 	if (!isMeaningfulTopicDescription(value)) {
-		throw new Error("Beschreibe das Prüfungsthema bitte genauer.");
+		throwUserFacingError("Beschreibe das Prüfungsthema bitte genauer.");
 	}
 };

@@ -3,6 +3,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
+import { throwUserFacingError } from "./errors";
 import { assertNoScheduleConflict } from "./scheduleConflicts";
 
 type OptionalEntryFields = {
@@ -164,7 +165,7 @@ const entryFields = {
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
 	if (identity === null) {
-		throw new Error("Nicht authentifiziert.");
+		throwUserFacingError("Nicht authentifiziert.");
 	}
 
 	return identity.tokenIdentifier;
@@ -176,7 +177,7 @@ export const listByDayKeys = query({
 	},
 	handler: async (ctx, args) => {
 		if (args.dayKeys.length > 31) {
-			throw new Error("Zu viele Tage auf einmal angefragt.");
+			throwUserFacingError("Zu viele Tage auf einmal angefragt.");
 		}
 
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -278,7 +279,7 @@ export const create = mutation({
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
 		const title = args.title.trim();
 		if (!title) {
-			throw new Error("Titel darf nicht leer sein.");
+			throwUserFacingError("Titel darf nicht leer sein.");
 		}
 		const existingSameEntry = await findExistingSameEntry(ctx, {
 			ownerTokenIdentifier,

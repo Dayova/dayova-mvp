@@ -1,3 +1,8 @@
+import {
+	extractUserFacingErrorMessage,
+	getUserFacingErrorMessage,
+} from "../../lib/user-facing-errors";
+
 const startOfDay = (date: Date) => {
 	const next = new Date(date);
 	next.setHours(0, 0, 0, 0);
@@ -56,29 +61,18 @@ export const dateWithTime = (dateKey: string, time: string) => {
 	return next;
 };
 
-const cleanConvexErrorMessage = (message: string) => {
-	const uncaughtErrorMatch =
-		/Uncaught Error:\s*([\s\S]*?)(?:\n\s*at |\n\s*Called by client|$)/.exec(
-			message,
-		);
-	const cleaned = (uncaughtErrorMatch?.[1] ?? message)
-		.replace(/^\[CONVEX[^\n]*\]\s*/i, "")
-		.replace(/^Server Error\s*/i, "")
-		.trim();
-
-	return cleaned || null;
-};
-
 export const getErrorMessage = (error: unknown, fallback: string) => {
-	if (!(error instanceof Error)) return fallback;
-	return cleanConvexErrorMessage(error.message) ?? fallback;
+	return getUserFacingErrorMessage(error, fallback, {
+		source: "learning-plans",
+	});
 };
 
 const wait = (milliseconds: number) =>
 	new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
 const isUnauthenticatedError = (error: unknown) =>
-	error instanceof Error && error.message.includes("Nicht authentifiziert");
+	extractUserFacingErrorMessage(error)?.includes("Nicht authentifiziert") ??
+	false;
 
 export const retryOnceAfterAuthResume = async <TResult>(
 	task: () => Promise<TResult>,

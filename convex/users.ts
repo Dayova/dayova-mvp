@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { throwUserFacingError } from "./errors";
 
 const normalizeEmail = (email?: string) => email?.trim().toLowerCase() ?? "";
 type OnboardingQuestionKey =
@@ -72,7 +73,7 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
 	if (!identity) {
-		throw new Error("Nicht authentifiziert.");
+		throwUserFacingError("Nicht authentifiziert.");
 	}
 	return identity;
 };
@@ -120,7 +121,7 @@ export const syncCurrentUser = mutation({
 		const email = normalizeEmail(identity.email) || existingUser?.email;
 
 		if (!email) {
-			throw new Error("Beim angemeldeten Konto fehlt die E-Mail-Adresse.");
+			throwUserFacingError("Beim angemeldeten Konto fehlt die E-Mail-Adresse.");
 		}
 
 		const user = {
@@ -159,7 +160,7 @@ export const updateProfile = mutation({
 			.unique();
 
 		if (!user) {
-			throw new Error("Der Nutzer konnte nicht gefunden werden.");
+			throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
 		}
 
 		await ctx.db.patch("users", user._id, profileFields(args));
@@ -201,7 +202,7 @@ export const saveOnboardingAnswers = mutation({
 			.unique();
 
 		if (!user) {
-			throw new Error("Der Nutzer konnte nicht gefunden werden.");
+			throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
 		}
 
 		const questionIdsByKey: Partial<

@@ -3,6 +3,7 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "./_generated/api";
+import { USER_FACING_ERROR_KIND } from "./errors";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -35,6 +36,37 @@ test("manual timed entry overlapping an existing entry is rejected with conflict
 	).rejects.toThrow(
 		'Dieser Zeitraum überschneidet sich mit "Mathe Hausaufgabe" am 23. Mai 2026 von 16:00 bis 16:30.',
 	);
+});
+
+test("manual timed entry conflicts are marked as user-facing backend errors", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-05-23",
+		title: "Mathe Hausaufgabe",
+		time: "16:00",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "23. Mai 2026",
+		durationMinutes: 30,
+	});
+
+	const expectedMessage =
+		'Dieser Zeitraum überschneidet sich mit "Mathe Hausaufgabe" am 23. Mai 2026 von 16:00 bis 16:30.';
+	await expect(
+		t.mutation(api.dayEntries.create, {
+			dayKey: "2026-05-23",
+			title: "Deutsch Hausaufgabe",
+			time: "16:15",
+			kind: "Hausaufgabe",
+			plannedDateLabel: "23. Mai 2026",
+			durationMinutes: 30,
+		}),
+	).rejects.toMatchObject({
+		data: {
+			kind: USER_FACING_ERROR_KIND,
+			message: expectedMessage,
+		},
+	});
 });
 
 test("manual timed entry conflicts with Berlin-midnight ISO day keys", async () => {

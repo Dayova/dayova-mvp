@@ -16,6 +16,7 @@ import {
 	getR2ConfigOrThrow,
 } from "./fileStorage";
 import { getDayKeyQueryVariants } from "./dayKeyVariants";
+import { throwUserFacingError } from "./errors";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { assertNoScheduleConflict } from "./scheduleConflicts";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
@@ -81,7 +82,7 @@ type PublicSession = {
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
 	if (identity === null) {
-		throw new Error("Nicht authentifiziert.");
+		throwUserFacingError("Nicht authentifiziert.");
 	}
 
 	return identity.tokenIdentifier;
@@ -90,7 +91,7 @@ const requireOwnerTokenIdentifier = async (ctx: QueryCtx) => {
 const requireOwnerTokenIdentifierForMutation = async (ctx: MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
 	if (identity === null) {
-		throw new Error("Nicht authentifiziert.");
+		throwUserFacingError("Nicht authentifiziert.");
 	}
 
 	return identity.tokenIdentifier;
@@ -289,10 +290,10 @@ export const start = mutation({
 			await requireOwnerTokenIdentifierForMutation(ctx);
 		const examEntry = await ctx.db.get("dayEntries", args.examDayEntryId);
 		if (!examEntry || examEntry.ownerTokenIdentifier !== ownerTokenIdentifier) {
-			throw new Error("Prüfung nicht gefunden.");
+			throwUserFacingError("Prüfung nicht gefunden.");
 		}
 		if (examEntry.kind !== "Leistungskontrolle") {
-			throw new Error("Ein Lernplan braucht zuerst eine Prüfung.");
+			throwUserFacingError("Ein Lernplan braucht zuerst eine Prüfung.");
 		}
 
 		const subject = args.subject.trim();
@@ -300,11 +301,11 @@ export const start = mutation({
 		const topicDescription = args.topicDescription.trim();
 		const notes = args.notes?.trim() ?? "";
 
-		if (!subject) throw new Error("Fach fehlt.");
-		if (!examTypeLabel) throw new Error("Prüfungsart fehlt.");
+		if (!subject) throwUserFacingError("Fach fehlt.");
+		if (!examTypeLabel) throwUserFacingError("Prüfungsart fehlt.");
 		assertMeaningfulTopicDescription(topicDescription);
 		if (args.durationMinutes <= 0) {
-			throw new Error("Die Bearbeitungszeit muss größer als 0 sein.");
+			throwUserFacingError("Die Bearbeitungszeit muss größer als 0 sein.");
 		}
 
 		const now = Date.now();
@@ -341,10 +342,10 @@ export const updateBasics = mutation({
 			await requireOwnerTokenIdentifierForMutation(ctx);
 		const plan = await ctx.db.get("learningPlans", args.id);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
-			throw new Error("Lernplan nicht gefunden.");
+			throwUserFacingError("Lernplan nicht gefunden.");
 		}
 		if (plan.status !== "draft" && plan.status !== "questionsReady") {
-			throw new Error("Dieser Lernplan wurde bereits erstellt.");
+			throwUserFacingError("Dieser Lernplan wurde bereits erstellt.");
 		}
 
 		const topicDescription = args.topicDescription.trim();
@@ -469,22 +470,22 @@ export const saveKnowledgeAnswer = mutation({
 			await requireOwnerTokenIdentifierForMutation(ctx);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
-			throw new Error("Lernplan nicht gefunden.");
+			throwUserFacingError("Lernplan nicht gefunden.");
 		}
 		if (plan.status === "accepted") {
-			throw new Error("Dieser Lernplan wurde bereits eingetragen.");
+			throwUserFacingError("Dieser Lernplan wurde bereits eingetragen.");
 		}
 
 		const questionExists = (plan.knowledgeQuestions ?? []).some(
 			(question) => question.id === args.questionId,
 		);
 		if (!questionExists) {
-			throw new Error("Frage nicht gefunden.");
+			throwUserFacingError("Frage nicht gefunden.");
 		}
 
 		const answer = args.answer.trim();
 		if (!answer) {
-			throw new Error("Antwort fehlt.");
+			throwUserFacingError("Antwort fehlt.");
 		}
 
 		const existingAnswer = await ctx.db
@@ -524,7 +525,7 @@ export const generateUploadUrl = mutation({
 			await requireOwnerTokenIdentifierForMutation(ctx);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
-			throw new Error("Lernplan nicht gefunden.");
+			throwUserFacingError("Lernplan nicht gefunden.");
 		}
 
 		const storageProvider = getConfiguredStorageProvider();
@@ -545,12 +546,12 @@ export const getUploadRegistrationContext = internalQuery({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (identity === null) {
-			throw new Error("Nicht authentifiziert.");
+			throwUserFacingError("Nicht authentifiziert.");
 		}
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
-			throw new Error("Lernplan nicht gefunden.");
+			throwUserFacingError("Lernplan nicht gefunden.");
 		}
 
 		return {
@@ -609,7 +610,7 @@ export const registerUploadedDocument = action({
 		);
 
 		if (finalizedUpload.storageId !== args.storageId) {
-			throw new Error("Upload konnte nicht verifiziert werden.");
+			throwUserFacingError("Upload konnte nicht verifiziert werden.");
 		}
 
 		return await ctx.runMutation(internal.learningPlans.storeUploadedDocument, {
@@ -652,12 +653,12 @@ export const getAiContext = internalQuery({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (identity === null) {
-			throw new Error("Nicht authentifiziert.");
+			throwUserFacingError("Nicht authentifiziert.");
 		}
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
-			throw new Error("Lernplan nicht gefunden.");
+			throwUserFacingError("Lernplan nicht gefunden.");
 		}
 
 		const documents = await ctx.db
@@ -718,12 +719,12 @@ export const getStoredKnowledgeAnswers = internalQuery({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (identity === null) {
-			throw new Error("Nicht authentifiziert.");
+			throwUserFacingError("Nicht authentifiziert.");
 		}
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
-			throw new Error("Lernplan nicht gefunden.");
+			throwUserFacingError("Lernplan nicht gefunden.");
 		}
 
 		const answers = await ctx.db
@@ -748,7 +749,7 @@ export const storeKnowledgeQuestions = internalMutation({
 	},
 	handler: async (ctx, args) => {
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
-		if (!plan) throw new Error("Lernplan nicht gefunden.");
+		if (!plan) throwUserFacingError("Lernplan nicht gefunden.");
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
 			knowledgeQuestions: args.questions.map((question) => ({
@@ -774,7 +775,7 @@ export const replaceGeneratedSessions = internalMutation({
 	},
 	handler: async (ctx, args) => {
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
-		if (!plan) throw new Error("Lernplan nicht gefunden.");
+		if (!plan) throwUserFacingError("Lernplan nicht gefunden.");
 
 		const normalizedSourceSummary = normalizeGeneratedGermanText(
 			args.sourceSummary,
@@ -851,14 +852,14 @@ export const updateSession = mutation({
 			await requireOwnerTokenIdentifierForMutation(ctx);
 		const session = await ctx.db.get("learningPlanSessions", args.id);
 		if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
-			throw new Error("Lerntag nicht gefunden.");
+			throwUserFacingError("Lerntag nicht gefunden.");
 		}
 		const plan = await ctx.db.get("learningPlans", session.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
-			throw new Error("Lernplan nicht gefunden.");
+			throwUserFacingError("Lernplan nicht gefunden.");
 		}
 		if (args.durationMinutes <= 0) {
-			throw new Error("Die Dauer muss größer als 0 sein.");
+			throwUserFacingError("Die Dauer muss größer als 0 sein.");
 		}
 		await assertNoScheduleConflict(ctx, {
 			ownerTokenIdentifier,
@@ -895,7 +896,7 @@ export const addSession = mutation({
 			await requireOwnerTokenIdentifierForMutation(ctx);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
-			throw new Error("Lernplan nicht gefunden.");
+			throwUserFacingError("Lernplan nicht gefunden.");
 		}
 
 		const sessions = await ctx.db
@@ -969,10 +970,10 @@ export const syncSessionsToCalendar = mutation({
 			await requireOwnerTokenIdentifierForMutation(ctx);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
-			throw new Error("Lernplan nicht gefunden.");
+			throwUserFacingError("Lernplan nicht gefunden.");
 		}
 		if (plan.status !== "accepted") {
-			throw new Error("Bestätige den Lernplan zuerst.");
+			throwUserFacingError("Bestätige den Lernplan zuerst.");
 		}
 
 		const sessions = await ctx.db
@@ -1001,7 +1002,7 @@ export const setSessionCompleted = mutation({
 			await requireOwnerTokenIdentifierForMutation(ctx);
 		const session = await ctx.db.get("learningPlanSessions", args.sessionId);
 		if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
-			throw new Error("Lernblock nicht gefunden.");
+			throwUserFacingError("Lernblock nicht gefunden.");
 		}
 
 		await ctx.db.patch("learningPlanSessions", args.sessionId, {
@@ -1050,7 +1051,7 @@ export const acceptPlan = mutation({
 			await requireOwnerTokenIdentifierForMutation(ctx);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
-			throw new Error("Lernplan nicht gefunden.");
+			throwUserFacingError("Lernplan nicht gefunden.");
 		}
 
 		const sessions = await ctx.db
@@ -1061,7 +1062,7 @@ export const acceptPlan = mutation({
 			.order("asc")
 			.take(20);
 		if (sessions.length === 0) {
-			throw new Error("Es gibt noch keine Lerntage zum Eintragen.");
+			throwUserFacingError("Es gibt noch keine Lerntage zum Eintragen.");
 		}
 
 		const now = Date.now();
