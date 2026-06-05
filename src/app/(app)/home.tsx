@@ -708,23 +708,6 @@ export default function HomeScreen() {
 						) : null}
 					</View>
 
-					<View
-						className="flex-row items-center"
-						style={{ marginTop: 25 * compactScale, columnGap: 7 * screenScale }}
-					>
-						<View
-							className="rounded-full bg-[#0A0A0A]"
-							style={{ width: 7 * screenScale, height: 7 * screenScale }}
-						/>
-						<View
-							className="rounded-full bg-black/15"
-							style={{ width: 7 * screenScale, height: 7 * screenScale }}
-						/>
-						<View
-							className="rounded-full bg-black/15"
-							style={{ width: 7 * screenScale, height: 7 * screenScale }}
-						/>
-					</View>
 				</View>
 
 				<View
