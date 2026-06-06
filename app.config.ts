@@ -40,7 +40,7 @@ const config: ExpoConfig = {
 			backgroundColor: BACKGROUND_COLOR,
 		},
 		predictiveBackGestureEnabled: true,
-		package: isProduction ? "com.dayova" : "com.dayova-dev",
+		package: isProduction ? "com.dayova" : "com.dayova.dev",
 		runtimeVersion: {
 			policy: "appVersion",
 		},
