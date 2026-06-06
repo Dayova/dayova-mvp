@@ -17,11 +17,11 @@ Development builds need this process to stay alive when Metro supplies an
 `onChange` callback, because it watches Tailwind input and sends regenerated CSS
 back to Metro.
 
-Release builds are different. During iOS EAS Build, `expo-updates` runs this
+Release builds are different. During native EAS Build, `expo-updates` runs this
 script while generating embedded update resources:
 
 ```text
-node node_modules/expo-updates/utils/build/createUpdatesResources.js ios ...
+node node_modules/expo-updates/utils/build/createUpdatesResources.js <platform> ...
 ```
 
 That script asks Metro to bundle the app and write update resources such as
@@ -66,16 +66,24 @@ In `child.js` / `child.ts`, it:
 - Adds a 30-second non-watch timeout as a final guard against another indefinite
   Tailwind child process.
 
-The patch is activated for non-Debug native builds by `metro.config.js`:
+The patch is activated for release-like native bundles by `metro.config.js`:
 
 ```js
-if (process.env.CONFIGURATION && !process.env.CONFIGURATION.includes("Debug")) {
+const nativeBuildConfiguration = process.env.CONFIGURATION;
+const isDebugNativeBuild = nativeBuildConfiguration?.includes("Debug") ?? false;
+const isReleaseLikeBundle =
+  (nativeBuildConfiguration && !isDebugNativeBuild) ||
+  process.env.EAS_BUILD === "true" ||
+  process.env.NODE_ENV === "production";
+
+if (isReleaseLikeBundle) {
   process.env.NATIVEWIND_DISABLE_WATCH ??= "true";
 }
 ```
 
 Debug builds and Metro development sessions keep watch behavior, because they
-either do not set `CONFIGURATION` or set it to a value containing `Debug`.
+do not set `NODE_ENV=production`/`EAS_BUILD=true`, or set `CONFIGURATION` to a
+value containing `Debug`.
 
 ### Why This Approach
 
@@ -95,8 +103,9 @@ Run the same resource-generation path that EAS hits:
 ```powershell
 $dest = Join-Path $env:TEMP ('dayova-updates-resources-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
-$env:CONFIGURATION = 'Release'
-node node_modules/expo-updates/utils/build/createUpdatesResources.js ios (Get-Location).Path $dest all index.ts
+$env:EAS_BUILD = 'true'
+Remove-Item Env:\CONFIGURATION -ErrorAction SilentlyContinue
+node node_modules/expo-updates/utils/build/createUpdatesResources.js android (Get-Location).Path $dest all index.ts
 ```
 
 Expected result: the command exits normally, writes `app.manifest` under `$dest`,
@@ -130,7 +139,7 @@ When upgrading NativeWind, check the new package before removing this patch:
 3. Confirm the child process exits in non-watch mode after initial CSS
    generation.
 4. Run the `createUpdatesResources.js` reproduction above with
-   `CONFIGURATION=Release`.
+   `EAS_BUILD=true` and no `CONFIGURATION`.
 5. Run `pnpm check`, `pnpm test`, and `npx expo-doctor`.
 
 Useful commands:

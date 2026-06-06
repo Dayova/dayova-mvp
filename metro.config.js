@@ -6,11 +6,18 @@ const { getDefaultConfig } = require("expo/metro-config");
 process.env.REACT_NATIVE_IDE_LIB_PATH ??= "nativewind-file-system";
 
 // Release builds do not need NativeWind's long-lived Tailwind watcher. Without
-// this flag, expo-updates' iOS resource generation can finish writing
-// app.manifest but keep waiting on NativeWind's child Tailwind process. The
-// pnpm patch for nativewind@4.2.3 reads this flag and forces one-shot Tailwind
-// generation during non-Debug native builds. See patches/README.md.
-if (process.env.CONFIGURATION && !process.env.CONFIGURATION.includes("Debug")) {
+// this flag, expo-updates resource generation can finish writing app.manifest
+// but keep waiting on NativeWind's child Tailwind process. Android does not
+// always set CONFIGURATION for that task, so EAS/production bundles are also
+// treated as one-shot generation. See patches/README.md.
+const nativeBuildConfiguration = process.env.CONFIGURATION;
+const isDebugNativeBuild = nativeBuildConfiguration?.includes("Debug") ?? false;
+const isReleaseLikeBundle =
+	(nativeBuildConfiguration && !isDebugNativeBuild) ||
+	process.env.EAS_BUILD === "true" ||
+	process.env.NODE_ENV === "production";
+
+if (isReleaseLikeBundle) {
 	process.env.NATIVEWIND_DISABLE_WATCH ??= "true";
 }
 
