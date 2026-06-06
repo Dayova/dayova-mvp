@@ -707,7 +707,6 @@ export default function HomeScreen() {
 							</TouchableOpacity>
 						) : null}
 					</View>
-
 				</View>
 
 				<View
