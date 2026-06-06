@@ -23,6 +23,13 @@
         "buildType": "apk"
       },
       "channel": "apk-test"
+    },
+    "production-apk": {
+      "extends": "production",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {
