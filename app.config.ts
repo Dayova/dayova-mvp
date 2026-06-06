@@ -5,7 +5,7 @@ const BACKGROUND_COLOR = "#ffffff";
 const DAYOVA_LOGO = "./assets/dayova-logo.png";
 const PROJECT_ID = "d3d06b26-c8da-4192-a50d-e1bb0ca4902c";
 
-const isProduction = process.env.EAS_BUILD_PROFILE === "production-apk";
+const isProduction = process.env.EAS_BUILD_PROFILE === "production";
 
 const config: ExpoConfig = {
 	name: "Dayova",
