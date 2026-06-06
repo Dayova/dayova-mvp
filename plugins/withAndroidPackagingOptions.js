@@ -23,7 +23,7 @@ const { withGradleProperties } = require("expo/config-plugins");
 //   .\gradlew.bat ":app:mergeDebugJavaResource" "--rerun-tasks" `
 //     "-Pandroid.packagingOptions.excludes=" "--stacktrace"
 //
-// If that succeeds, remove this plugin from app.json, delete this file, then run
+// If that succeeds, remove this plugin from app.config.ts, delete this file, then run
 // the normal Android debug build to confirm the full app still assembles.
 const DUPLICATE_OSGI_MANIFEST = "META-INF/versions/9/OSGI-INF/MANIFEST.MF";
 
