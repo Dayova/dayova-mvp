@@ -7,6 +7,9 @@ const BACKGROUND_COLOR = "#ffffff";
 const DAYOVA_LOGO = isProduction
 	? "./assets/dayova-logo.png"
 	: "./assets/dayova-logo-dev.png";
+const DAYOVA_ANDROID_FOREGROUND = isProduction
+	? "./assets/dayova-logo-android-foreground.png"
+	: "./assets/dayova-logo-dev-android-foreground.png";
 const PROJECT_ID = "d3d06b26-c8da-4192-a50d-e1bb0ca4902c";
 
 const config: ExpoConfig = {
@@ -38,7 +41,7 @@ const config: ExpoConfig = {
 	},
 	android: {
 		adaptiveIcon: {
-			foregroundImage: DAYOVA_LOGO,
+			foregroundImage: DAYOVA_ANDROID_FOREGROUND,
 			backgroundColor: BACKGROUND_COLOR,
 		},
 		predictiveBackGestureEnabled: true,
