@@ -1,0 +1,38 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - ready_for_review
+      - reopened
+      - synchronize
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+concurrency:
+  cancel_in_progress: true
+  group: ${{ workflow.filename }}-${{ github.ref }}
+
+defaults:
+  tools:
+    node: "22"
+    pnpm: "10.25.0"
+
+jobs:
+  checks:
+    name: Lint, typecheck, Convex Deploy
+    type: custom
+    runs_on: linux-medium
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Run lint and typecheck
+        run: pnpm check
+      - name: Deploy Convex
+        run: pnpm convex deploy
