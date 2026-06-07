@@ -1,6 +1,20 @@
 import type { ExpoConfig } from "expo/config";
 
-const isProduction = process.env.EAS_BUILD_PROFILE === "production";
+const {
+	validatePublicEnvForRelease,
+}: typeof import("./src/lib/runtime-config") =
+	require("./src/lib/runtime-config.ts");
+
+const PRODUCTION_BUILD_PROFILES = new Set(["production", "production-apk"]);
+
+const easBuildProfile = process.env.EAS_BUILD_PROFILE;
+const isProduction = PRODUCTION_BUILD_PROFILES.has(easBuildProfile ?? "");
+const isReleaseConfig =
+	process.env.EAS_BUILD === "true" || process.env.NODE_ENV === "production";
+
+if (isReleaseConfig) {
+	validatePublicEnvForRelease();
+}
 
 const APP_VERSION = "1.0.1";
 const BACKGROUND_COLOR = "#ffffff";

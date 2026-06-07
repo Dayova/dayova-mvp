@@ -14,17 +14,18 @@ import {
 import { ThemeProvider } from "expo-router/react-navigation";
 import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
+import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { NAV_THEME } from "~/lib/theme";
 
-// Fallback for the build phase.
-const convexUrl =
-	process.env.EXPO_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud";
-const convex = new ConvexReactClient(convexUrl);
-const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+// ConvexReactClient needs a syntactically valid URL even when config is absent.
+const convex = new ConvexReactClient(
+	env.EXPO_PUBLIC_CONVEX_URL?.trim() || "https://placeholder.convex.cloud",
+);
 const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
 
 const isPublicAuthPath = (pathname: string) => PUBLIC_AUTH_PATHS.has(pathname);
@@ -58,19 +59,36 @@ function AppNavigator() {
 	);
 }
 
+function MissingConfigurationScreen() {
+	return (
+		<GestureHandlerRootView style={styles.root}>
+			<View style={styles.configurationScreen}>
+				<Text style={styles.configurationTitle}>App kann nicht starten</Text>
+				<Text style={styles.configurationMessage}>
+					Dayova ist gerade nicht richtig konfiguriert. Bitte aktualisiere die
+					App und versuche es erneut.
+				</Text>
+			</View>
+		</GestureHandlerRootView>
+	);
+}
+
 export default function RootLayout() {
 	const { colorScheme } = useColorScheme();
 	const theme = NAV_THEME[colorScheme ?? "light"];
 
-	if (!clerkPublishableKey) {
-		throw new Error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY");
+	if (missingPublicRuntimeConfig.length > 0) {
+		console.error(
+			`Missing public runtime config: ${missingPublicRuntimeConfig.join(", ")}`,
+		);
+		return <MissingConfigurationScreen />;
 	}
 
 	return (
-		<GestureHandlerRootView style={{ flex: 1 }}>
+		<GestureHandlerRootView style={styles.root}>
 			<KeyboardProvider preload={false}>
 				<ClerkProvider
-					publishableKey={clerkPublishableKey}
+					publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
 					tokenCache={tokenCache}
 				>
 					<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
@@ -89,3 +107,31 @@ export default function RootLayout() {
 		</GestureHandlerRootView>
 	);
 }
+
+const styles = StyleSheet.create({
+	root: {
+		flex: 1,
+	},
+	configurationScreen: {
+		alignItems: "center",
+		backgroundColor: "#ffffff",
+		flex: 1,
+		justifyContent: "center",
+		paddingHorizontal: 24,
+	},
+	configurationTitle: {
+		color: "#19191a",
+		fontFamily: "Poppins",
+		fontSize: 20,
+		fontWeight: "600",
+		textAlign: "center",
+	},
+	configurationMessage: {
+		color: "#4b5563",
+		fontFamily: "Poppins",
+		fontSize: 15,
+		lineHeight: 22,
+		marginTop: 12,
+		textAlign: "center",
+	},
+});
