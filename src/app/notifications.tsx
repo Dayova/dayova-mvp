@@ -4,7 +4,12 @@ import type * as ExpoNotifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Linking, TouchableOpacity, View } from "react-native";
+import {
+	ActivityIndicator,
+	Linking,
+	TouchableOpacity,
+	View,
+} from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -236,7 +241,10 @@ function NotificationCard({
 					<NotificationIcon category={notification.category} />
 				</View>
 				<View className="flex-1" style={{ gap: 4 }}>
-					<View className="flex-row items-start justify-between" style={{ gap: 8 }}>
+					<View
+						className="flex-row items-start justify-between"
+						style={{ gap: 8 }}
+					>
 						<Text
 							className="flex-1 font-bold font-poppins text-[#1A1A1A]"
 							style={{
@@ -297,7 +305,9 @@ export default function NotificationsScreen() {
 		let isMounted = true;
 		void notifications.getPermissionsAsync().then((permissions) => {
 			if (!isMounted) return;
-			setHasSystemPermission(hasNotificationPermission(notifications, permissions));
+			setHasSystemPermission(
+				hasNotificationPermission(notifications, permissions),
+			);
 		});
 
 		return () => {

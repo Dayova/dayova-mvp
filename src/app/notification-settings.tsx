@@ -341,7 +341,11 @@ export default function NotificationSettingsScreen() {
 
 	const preferencesForRender = visiblePreferences;
 
+	const areNotificationDetailsDisabled =
+		preferencesForRender?.systemNotificationsEnabled === false;
 	const isReminderOffsetPending = isPreferencePending("reminderOffsetMinutes");
+	const areReminderOffsetsDisabled =
+		areNotificationDetailsDisabled || isReminderOffsetPending;
 
 	return (
 		<Screen>
@@ -358,129 +362,161 @@ export default function NotificationSettingsScreen() {
 							onValueChange={updateSystemNotificationsFromSwitch}
 						/>
 
-						<SectionIntro
-							title="Tagesüberblick"
-							description="Dein Tagesüberblick zeigt dir alle Lernzeiten, Prüfungen, Abgabetermine und Hausaufgaben-Bearbeitungszeiten, die für den Tag anstehen."
-						/>
-						<SwitchRow
-							label="Tagesüberblick"
-							value={preferencesForRender.dailyBriefingEnabled}
-							disabled={isPreferencePending("dailyBriefingEnabled")}
-							onValueChange={handleDailyBriefingEnabledChange}
-						/>
-						<TouchableOpacity
-							accessibilityRole="button"
-							accessibilityLabel="Uhrzeit für Tagesüberblick ändern"
-							activeOpacity={0.84}
-							onPress={openBriefingTimePicker}
+						<View
+							style={{
+								gap: 22,
+								opacity: areNotificationDetailsDisabled ? 0.46 : 1,
+							}}
 						>
-							<SettingsCard>
-								<View className="flex-row items-center justify-between">
-									<Text
-										className="font-poppins font-semibold text-[#1A1A1A]"
-										style={{
-											fontSize: 14,
-											lineHeight: 20,
-											includeFontPadding: false,
-										}}
-									>
-										Uhrzeit
-									</Text>
-									<View className="flex-row items-center" style={{ gap: 8 }}>
+							<SectionIntro
+								title="Tagesüberblick"
+								description="Dein Tagesüberblick zeigt dir alle Lernzeiten, Prüfungen, Abgabetermine und Hausaufgaben-Bearbeitungszeiten, die für den Tag anstehen."
+							/>
+							<SwitchRow
+								label="Tagesüberblick"
+								value={preferencesForRender.dailyBriefingEnabled}
+								disabled={
+									areNotificationDetailsDisabled ||
+									isPreferencePending("dailyBriefingEnabled")
+								}
+								onValueChange={handleDailyBriefingEnabledChange}
+							/>
+							<TouchableOpacity
+								accessibilityRole="button"
+								accessibilityLabel="Uhrzeit für Tagesüberblick ändern"
+								accessibilityState={{
+									disabled: areNotificationDetailsDisabled,
+								}}
+								activeOpacity={0.84}
+								disabled={areNotificationDetailsDisabled}
+								onPress={openBriefingTimePicker}
+							>
+								<SettingsCard>
+									<View className="flex-row items-center justify-between">
 										<Text
-											className="font-poppins text-[#8C8F98]"
+											className="font-poppins font-semibold text-[#1A1A1A]"
 											style={{
-												fontSize: 12,
-												lineHeight: 18,
+												fontSize: 14,
+												lineHeight: 20,
 												includeFontPadding: false,
 											}}
 										>
-											{preferencesForRender.dailyBriefingTime}
+											Uhrzeit
 										</Text>
-										<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
+										<View className="flex-row items-center" style={{ gap: 8 }}>
+											<Text
+												className="font-poppins text-[#8C8F98]"
+												style={{
+													fontSize: 12,
+													lineHeight: 18,
+													includeFontPadding: false,
+												}}
+											>
+												{preferencesForRender.dailyBriefingTime}
+											</Text>
+											<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
+										</View>
 									</View>
-								</View>
-							</SettingsCard>
-						</TouchableOpacity>
+								</SettingsCard>
+							</TouchableOpacity>
 
-						<SectionIntro
-							title="Mitteilungen anpassen"
-							description="Hier kannst du entscheiden, woran dich die App erinnern soll."
-						/>
-						<SwitchRow
-							label="Vor Prüfung"
-							value={preferencesForRender.beforeExamEnabled}
-							disabled={isPreferencePending("beforeExamEnabled")}
-							onValueChange={handleBeforeExamEnabledChange}
-						/>
-						<SwitchRow
-							label="Vor Lernzeit"
-							value={preferencesForRender.beforeLearningTimeEnabled}
-							disabled={isPreferencePending("beforeLearningTimeEnabled")}
-							onValueChange={handleBeforeLearningTimeEnabledChange}
-						/>
-						<SwitchRow
-							label="Vor Bearbeitung Hausaufgabe"
-							value={preferencesForRender.beforeHomeworkWorkEnabled}
-							disabled={isPreferencePending("beforeHomeworkWorkEnabled")}
-							onValueChange={handleBeforeHomeworkWorkEnabledChange}
-						/>
-						<SwitchRow
-							label="Vor Abgabe Hausaufgabe"
-							value={preferencesForRender.beforeHomeworkDueEnabled}
-							disabled={isPreferencePending("beforeHomeworkDueEnabled")}
-							onValueChange={handleBeforeHomeworkDueEnabledChange}
-						/>
+							<SectionIntro
+								title="Mitteilungen anpassen"
+								description="Hier kannst du entscheiden, woran dich die App erinnern soll."
+							/>
+							<SwitchRow
+								label="Vor Prüfung"
+								value={preferencesForRender.beforeExamEnabled}
+								disabled={
+									areNotificationDetailsDisabled ||
+									isPreferencePending("beforeExamEnabled")
+								}
+								onValueChange={handleBeforeExamEnabledChange}
+							/>
+							<SwitchRow
+								label="Vor Lernzeit"
+								value={preferencesForRender.beforeLearningTimeEnabled}
+								disabled={
+									areNotificationDetailsDisabled ||
+									isPreferencePending("beforeLearningTimeEnabled")
+								}
+								onValueChange={handleBeforeLearningTimeEnabledChange}
+							/>
+							<SwitchRow
+								label="Vor Bearbeitung Hausaufgabe"
+								value={preferencesForRender.beforeHomeworkWorkEnabled}
+								disabled={
+									areNotificationDetailsDisabled ||
+									isPreferencePending("beforeHomeworkWorkEnabled")
+								}
+								onValueChange={handleBeforeHomeworkWorkEnabledChange}
+							/>
+							<SwitchRow
+								label="Vor Abgabe Hausaufgabe"
+								value={preferencesForRender.beforeHomeworkDueEnabled}
+								disabled={
+									areNotificationDetailsDisabled ||
+									isPreferencePending("beforeHomeworkDueEnabled")
+								}
+								onValueChange={handleBeforeHomeworkDueEnabledChange}
+							/>
 
-						<SectionIntro
-							description="Hier kannst du einstellen, wie viele Minuten vorher dich die App an einzelne Ereignisse erinnern soll."
-							title="Erinnerungszeit"
-						/>
-						<View className="flex-row flex-wrap" style={{ gap: 8 }}>
-							{OFFSET_OPTIONS.map((minutes) => {
-								const selected =
-									preferencesForRender.reminderOffsetMinutes === minutes;
-								return (
-									<TouchableOpacity
-										key={minutes}
-										accessibilityRole="button"
-										accessibilityState={{ selected }}
-										activeOpacity={0.84}
-										disabled={isReminderOffsetPending}
-										onPress={() => updateReminderOffset(minutes)}
-										className="rounded-full px-4 py-3"
-										style={{
-											backgroundColor: selected ? "#3A7BFF" : "#FFFFFF",
-											boxShadow: selected
-												? "0 8px 16px rgba(58, 123, 255, 0.18)"
-												: "0 6px 14px rgba(20, 28, 48, 0.06)",
-										}}
-									>
-										<Text
-											className={`font-poppins font-semibold ${selected ? "text-white" : "text-[#1A1A1A]"}`}
+							<SectionIntro
+								description="Hier kannst du einstellen, wie viele Minuten vorher dich die App an einzelne Ereignisse erinnern soll."
+								title="Erinnerungszeit"
+							/>
+							<View className="flex-row flex-wrap" style={{ gap: 8 }}>
+								{OFFSET_OPTIONS.map((minutes) => {
+									const selected =
+										preferencesForRender.reminderOffsetMinutes === minutes;
+									return (
+										<TouchableOpacity
+											key={minutes}
+											accessibilityRole="button"
+											accessibilityState={{
+												disabled: areReminderOffsetsDisabled,
+												selected,
+											}}
+											activeOpacity={0.84}
+											disabled={areReminderOffsetsDisabled}
+											onPress={() => updateReminderOffset(minutes)}
+											className="rounded-full px-4 py-3"
 											style={{
-												fontSize: 13,
-												lineHeight: 18,
-												includeFontPadding: false,
+												backgroundColor: selected ? "#3A7BFF" : "#FFFFFF",
+												boxShadow: selected
+													? "0 8px 16px rgba(58, 123, 255, 0.18)"
+													: "0 6px 14px rgba(20, 28, 48, 0.06)",
 											}}
 										>
-											{minutes} min
-										</Text>
-									</TouchableOpacity>
-								);
-							})}
-						</View>
+											<Text
+												className={`font-poppins font-semibold ${selected ? "text-white" : "text-[#1A1A1A]"}`}
+												style={{
+													fontSize: 13,
+													lineHeight: 18,
+													includeFontPadding: false,
+												}}
+											>
+												{minutes} min
+											</Text>
+										</TouchableOpacity>
+									);
+								})}
+							</View>
 
-						<SectionIntro
-							title="Event vergessen"
-							description="Falls du mal eine Aufgabe vergessen hast, erinnert Dayova dich nach dem Ende nochmal freundlich daran."
-						/>
-						<SwitchRow
-							label="Event vergessen"
-							value={preferencesForRender.forgottenEventEnabled}
-							disabled={isPreferencePending("forgottenEventEnabled")}
-							onValueChange={handleForgottenEventEnabledChange}
-						/>
+							<SectionIntro
+								title="Event vergessen"
+								description="Falls du mal eine Aufgabe vergessen hast, erinnert Dayova dich nach dem Ende nochmal freundlich daran."
+							/>
+							<SwitchRow
+								label="Event vergessen"
+								value={preferencesForRender.forgottenEventEnabled}
+								disabled={
+									areNotificationDetailsDisabled ||
+									isPreferencePending("forgottenEventEnabled")
+								}
+								onValueChange={handleForgottenEventEnabledChange}
+							/>
+						</View>
 					</View>
 				) : (
 					<View className="items-center py-10">
