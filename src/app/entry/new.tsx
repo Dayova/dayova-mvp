@@ -2,7 +2,7 @@ import { useConvexAuth, useMutation } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { type ReactNode, useCallback, useRef, useState } from "react";
-import { type LayoutChangeEvent, Platform, Switch, View } from "react-native";
+import { type LayoutChangeEvent, Platform, View } from "react-native";
 import {
 	type KeyboardAwareScrollViewRef,
 	KeyboardStickyView,
@@ -22,7 +22,6 @@ import {
 	FieldTrigger,
 } from "~/components/ui/field";
 import {
-	Bell,
 	BookOpen,
 	Calculator,
 	CalendarDays,
@@ -238,7 +237,6 @@ export default function NewEntryScreen() {
 		next.setHours(16, 30, 0, 0);
 		return next;
 	});
-	const [remindMe, setRemindMe] = useState(false);
 	const [createdDayKey, setCreatedDayKey] = useState(getDayKey(initialDate));
 	const [isCreating, setIsCreating] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -642,43 +640,6 @@ export default function NewEntryScreen() {
 										}
 										onPress={() => setPickerTarget("plannedEndTime")}
 										className="min-h-[64px] px-5"
-									/>
-								</View>
-							</View>
-
-							<View
-								className="min-h-[64px] flex-row items-center rounded-[28px] bg-white pr-4 pl-5"
-								style={{
-									boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-								}}
-							>
-								<View
-									className="h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white"
-									style={{
-										borderWidth: 1,
-										borderColor: "rgba(17,24,39,0.05)",
-										boxShadow: "0 8px 18px rgba(22, 29, 48, 0.08)",
-									}}
-								>
-									<Bell size={23} color="#202127" strokeWidth={2} />
-								</View>
-								<Text
-									className="ml-3 flex-1 font-poppins font-semibold text-[#17171C]"
-									style={{
-										fontSize: 18,
-										lineHeight: 22,
-										includeFontPadding: false,
-									}}
-								>
-									Erinnere mich
-								</Text>
-								<View className="self-center" style={{ marginTop: 2 }}>
-									<Switch
-										value={remindMe}
-										onValueChange={setRemindMe}
-										trackColor={{ false: "#D7D8DC", true: "#CFE0FF" }}
-										thumbColor="#FFFFFF"
-										ios_backgroundColor="#D7D8DC"
 									/>
 								</View>
 							</View>

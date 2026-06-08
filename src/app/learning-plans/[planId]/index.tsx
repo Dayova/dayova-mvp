@@ -1,11 +1,11 @@
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
-import { CircleAlert, Clock3, Route2 } from "~/components/ui/icon";
+import { Check, CircleAlert, Clock3, Route2 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -27,7 +27,13 @@ const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	rehearsal: "Testmodus",
 };
 
-function SessionOverviewCard({ session }: { session: PlanSession }) {
+function SessionOverviewCard({
+	session,
+	onToggleCompleted,
+}: {
+	session: PlanSession;
+	onToggleCompleted: () => void;
+}) {
 	const endTime = timeFromMinutes(
 		minutesFromTime(session.startTime) + session.durationMinutes,
 	);
@@ -81,6 +87,34 @@ function SessionOverviewCard({ session }: { session: PlanSession }) {
 			>
 				{goal}
 			</Text>
+
+			<TouchableOpacity
+				accessibilityRole="button"
+				accessibilityLabel={
+					session.completed
+						? "Lerneinheit als offen markieren"
+						: "Lerneinheit als erledigt markieren"
+				}
+				activeOpacity={0.84}
+				onPress={onToggleCompleted}
+				className="mt-1 flex-row items-center justify-center rounded-full px-4 py-3"
+				style={{
+					backgroundColor: session.completed ? "#E8EAEE" : "#3A7BFF",
+					gap: 8,
+				}}
+			>
+				<Check
+					size={16}
+					color={session.completed ? "#1A1A1A" : "#FFFFFF"}
+					strokeWidth={2.2}
+				/>
+				<Text
+					className={`font-poppins font-semibold ${session.completed ? "text-[#1A1A1A]" : "text-white"}`}
+					style={{ fontSize: 13, lineHeight: 18, includeFontPadding: false }}
+				>
+					{session.completed ? "Als offen markieren" : "Als erledigt markieren"}
+				</Text>
+			</TouchableOpacity>
 		</Surface>
 	);
 }
@@ -91,6 +125,9 @@ export default function LearningPlanSessionsScreen() {
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const setSessionCompleted = useMutation(
+		api.learningPlans.setSessionCompleted,
+	);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
@@ -164,7 +201,16 @@ export default function LearningPlanSessionsScreen() {
 
 				<View style={{ rowGap: 14 }}>
 					{snapshot?.sessions.map((session) => (
-						<SessionOverviewCard key={session.id} session={session} />
+						<SessionOverviewCard
+							key={session.id}
+							session={session}
+							onToggleCompleted={() =>
+								void setSessionCompleted({
+									sessionId: session.id,
+									completed: !session.completed,
+								})
+							}
+						/>
 					))}
 				</View>
 

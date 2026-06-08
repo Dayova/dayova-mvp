@@ -22,6 +22,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
+import type { Id } from "#convex/_generated/dataModel";
 import { NotificationButton } from "~/components/notification-button";
 import {
 	ClipboardEdit,
@@ -377,6 +378,7 @@ export default function HomeScreen() {
 	const setSessionCompleted = useMutation(
 		api.learningPlans.setSessionCompleted,
 	);
+	const setDayEntryCompleted = useMutation(api.dayEntries.setCompleted);
 
 	useEffect(() => {
 		const timer = setInterval(() => setNow(new Date()), 60_000);
@@ -564,9 +566,17 @@ export default function HomeScreen() {
 	};
 
 	const completeHeroEntry = () => {
-		if (!heroEntry?.relatedLearningPlanSessionId) return;
-		void setSessionCompleted({
-			sessionId: heroEntry.relatedLearningPlanSessionId,
+		if (!heroEntry) return;
+		if (heroEntry.relatedLearningPlanSessionId) {
+			void setSessionCompleted({
+				sessionId: heroEntry.relatedLearningPlanSessionId,
+				completed: true,
+			});
+			return;
+		}
+
+		void setDayEntryCompleted({
+			id: heroEntry.id as Id<"dayEntries">,
 			completed: true,
 		});
 	};
@@ -686,10 +696,10 @@ export default function HomeScreen() {
 							/>
 						) : null}
 
-						{heroEntry?.relatedLearningPlanSessionId ? (
+						{heroEntry ? (
 							<TouchableOpacity
 								accessibilityRole="button"
-								accessibilityLabel="Lernblock als erledigt markieren"
+								accessibilityLabel="Eintrag als erledigt markieren"
 								activeOpacity={0.76}
 								onPress={completeHeroEntry}
 								style={{ marginTop: 12 * compactScale }}

@@ -58,6 +58,51 @@ export default defineSchema({
 			"ownerTokenIdentifier",
 			"dayOfWeek",
 		]),
+	notificationPreferences: defineTable({
+		ownerTokenIdentifier: v.string(),
+		systemNotificationsEnabled: v.boolean(),
+		dailyBriefingEnabled: v.boolean(),
+		dailyBriefingTime: v.string(),
+		beforeExamEnabled: v.boolean(),
+		beforeLearningTimeEnabled: v.boolean(),
+		beforeHomeworkWorkEnabled: v.boolean(),
+		beforeHomeworkDueEnabled: v.boolean(),
+		reminderOffsetMinutes: v.number(),
+		forgottenEventEnabled: v.boolean(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	}).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+	notificationHistory: defineTable({
+		ownerTokenIdentifier: v.string(),
+		eventKey: v.string(),
+		category: v.union(
+			v.literal("learningPlan"),
+			v.literal("task"),
+			v.literal("message"),
+		),
+		type: v.union(
+			v.literal("dailyBriefing"),
+			v.literal("beforeEvent"),
+			v.literal("forgottenEvent"),
+		),
+		title: v.string(),
+		body: v.string(),
+		relatedDayEntryId: v.optional(v.id("dayEntries")),
+		relatedLearningPlanId: v.optional(v.id("learningPlans")),
+		relatedLearningPlanSessionId: v.optional(v.id("learningPlanSessions")),
+		triggeredAt: v.number(),
+		readAt: v.optional(v.number()),
+		deletedAt: v.optional(v.number()),
+		createdAt: v.number(),
+	})
+		.index("by_ownerTokenIdentifier_and_createdAt", [
+			"ownerTokenIdentifier",
+			"createdAt",
+		])
+		.index("by_ownerTokenIdentifier_and_eventKey", [
+			"ownerTokenIdentifier",
+			"eventKey",
+		]),
 	dayEntries: defineTable({
 		ownerTokenIdentifier: v.string(),
 		dayKey: v.string(),

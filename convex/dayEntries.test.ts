@@ -142,3 +142,39 @@ test("retrying the same create returns the existing entry instead of conflicting
 	});
 	expect(entries["2026-06-15"]).toHaveLength(1);
 });
+
+test("manual entries can be marked completed and uncompleted", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const entryId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-06-16",
+		title: "Mathe Hausaufgabe",
+		time: "16:00",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "16. Juni 2026",
+		durationMinutes: 45,
+	});
+
+	await expect(
+		t.mutation(api.dayEntries.setCompleted, {
+			id: entryId,
+			completed: true,
+		}),
+	).resolves.toBe(true);
+
+	let entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-06-16"],
+	});
+	expect(entries["2026-06-16"]?.[0]?.completed).toBe(true);
+
+	await expect(
+		t.mutation(api.dayEntries.setCompleted, {
+			id: entryId,
+			completed: false,
+		}),
+	).resolves.toBe(false);
+
+	entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-06-16"],
+	});
+	expect(entries["2026-06-16"]?.[0]?.completed).toBe(false);
+});

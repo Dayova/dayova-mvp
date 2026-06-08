@@ -306,6 +306,39 @@ export const create = mutation({
 	},
 });
 
+export const setCompleted = mutation({
+	args: {
+		id: v.id("dayEntries"),
+		completed: v.boolean(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const entry = await ctx.db.get("dayEntries", args.id);
+		if (entry === null || entry.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Eintrag nicht gefunden.");
+		}
+
+		await ctx.db.patch("dayEntries", args.id, {
+			completed: args.completed,
+		});
+
+		if (entry.relatedLearningPlanSessionId) {
+			const session = await ctx.db.get(
+				"learningPlanSessions",
+				entry.relatedLearningPlanSessionId,
+			);
+			if (session?.ownerTokenIdentifier === ownerTokenIdentifier) {
+				await ctx.db.patch("learningPlanSessions", session._id, {
+					completed: args.completed,
+					updatedAt: Date.now(),
+				});
+			}
+		}
+
+		return args.completed;
+	},
+});
+
 export const remove = mutation({
 	args: {
 		id: v.id("dayEntries"),

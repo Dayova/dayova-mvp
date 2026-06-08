@@ -18,6 +18,7 @@ import type * as generatedGermanTextRepair from "../generatedGermanTextRepair.js
 import type * as learningPlanAi from "../learningPlanAi.js";
 import type * as learningPlans from "../learningPlans.js";
 import type * as learningTimes from "../learningTimes.js";
+import type * as notifications from "../notifications.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
 import type * as topicDescriptionValidation from "../topicDescriptionValidation.js";
 import type * as users from "../users.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   learningPlanAi: typeof learningPlanAi;
   learningPlans: typeof learningPlans;
   learningTimes: typeof learningTimes;
+  notifications: typeof notifications;
   scheduleConflicts: typeof scheduleConflicts;
   topicDescriptionValidation: typeof topicDescriptionValidation;
   users: typeof users;

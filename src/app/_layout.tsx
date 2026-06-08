@@ -17,6 +17,7 @@ import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { NotificationSync } from "~/components/notification-sync";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
@@ -51,6 +52,7 @@ function AppNavigator() {
 
 	return (
 		<>
+			<NotificationSync />
 			<Stack screenOptions={{ headerShown: false }} />
 			<PortalHost />
 		</>
