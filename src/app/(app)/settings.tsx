@@ -185,7 +185,7 @@ export default function SettingsScreen() {
 					/>
 					<SettingsRow
 						icon={Logout}
-						label="Logout"
+						label="Abmelden"
 						onPress={async () => {
 							await logout();
 							router.replace("/");

@@ -692,7 +692,9 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								className="mt-10"
 								style={{ marginTop: otpButtonMarginTop }}
 							>
-								<Text>{isLoading ? "Prüft..." : "Code bestätigen"}</Text>
+								<Text>
+									{isLoading ? "Code wird geprüft..." : "Code bestätigen"}
+								</Text>
 							</Button>
 						</KeyboardSafeScrollView>
 					</View>
@@ -1042,7 +1044,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 					>
 						<Text>
 							{isLoading
-								? "Lädt..."
+								? "Wird geladen..."
 								: isRegisterIdentityStep
 									? "Weiter"
 									: isRegisterMode

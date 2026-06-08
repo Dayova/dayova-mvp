@@ -8,7 +8,7 @@ import { Text } from "~/components/ui/text";
 export default function AuthChoiceScreen() {
 	return (
 		<SafeAreaView className="flex-1 bg-[#F7F6F8]">
-			<Stack.Screen options={{ title: "MVP Login / Registrierung" }} />
+			<Stack.Screen options={{ title: "Anmelden / Registrieren" }} />
 			<StatusBar style="dark" />
 
 			<ScrollView
@@ -41,7 +41,7 @@ export default function AuthChoiceScreen() {
 					<View className="gap-64">
 						<View className="items-center gap-[14px]">
 							<Text className="max-w-[260px] text-center font-bold font-poppins text-[#0B0B0F] text-[22px] leading-[27px]">
-								Du hast schon einen{"\n"}Account?
+								Du hast schon ein{"\n"}Konto?
 							</Text>
 							<Text className="text-center font-poppins text-[#8C8A91] text-[11px] leading-4">
 								Melde dich direkt an und mach dort weiter, wo du aufgehört hast.
@@ -49,11 +49,11 @@ export default function AuthChoiceScreen() {
 						</View>
 
 						<Button
-							accessibilityLabel="Login"
+							accessibilityLabel="Anmelden"
 							onPress={() => router.push("/login")}
 							variant="neutral"
 						>
-							<Text>Login</Text>
+							<Text>Anmelden</Text>
 						</Button>
 					</View>
 				</View>

@@ -174,7 +174,7 @@ export default function LearningPlanReviewScreen() {
 			>
 				<Button
 					accessibilityLabel={
-						isBusy ? "Lernplan erstellen, wird geladen" : "Lernplan erstellen"
+						isBusy ? "Lernplan eintragen, wird geladen" : "Lernplan eintragen"
 					}
 					accessibilityLiveRegion={isBusy ? "polite" : undefined}
 					accessibilityState={{
@@ -191,7 +191,7 @@ export default function LearningPlanReviewScreen() {
 						<ActivityIndicator color="#1A1A1A" />
 					) : (
 						<Text className="font-bold font-poppins text-15 text-text">
-							Lernplan erstellen
+							Lernplan eintragen
 						</Text>
 					)}
 				</Button>
@@ -221,7 +221,7 @@ export default function LearningPlanReviewScreen() {
 			<ActionModal
 				visible={Boolean(successDayKey)}
 				title="Lernplan ist eingetragen"
-				description="Deine Lernplan wurde erfolgreich eingetragen."
+				description="Dein Lernplan wurde erfolgreich eingetragen."
 				icon={<Check size={48} color="#28C76F" strokeWidth={1.2} />}
 			>
 				<Button

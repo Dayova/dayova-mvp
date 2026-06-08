@@ -248,7 +248,7 @@ export function SessionEditForm({
 				{getSessionEditTitle({ ...session, phase: editPhase })}
 			</Text>
 			<Text className="mt-2 mb-7 font-poppins text-14 text-text/42">
-				Hier kannst du individuell deinen Lernplan anpassen, so wie es passt
+				Passe deinen Lernplan so an, wie er für dich passt.
 			</Text>
 
 			<FieldLabel>Lerndatum</FieldLabel>
