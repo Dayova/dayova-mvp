@@ -3,7 +3,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type * as ExpoNotifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
 	Alert,
@@ -21,6 +21,13 @@ import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
 import { goBackOrReplace } from "~/lib/navigation";
+import {
+	applyNotificationPreferencePatch,
+	clearConfirmedNotificationPreferencePatch,
+	getNotificationPreferencePatchKeys,
+	removeNotificationPreferencePatchKeys,
+	type NotificationPreferenceKey,
+} from "~/lib/notification-preferences";
 import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
 
 const OFFSET_OPTIONS = [5, 10, 15, 30, 60];
@@ -91,7 +98,17 @@ function SectionIntro({
 	);
 }
 
-function SwitchRow({
+const addPendingPreferenceKeys = (
+	currentKeys: NotificationPreferenceKey[],
+	nextKeys: NotificationPreferenceKey[],
+) => Array.from(new Set([...currentKeys, ...nextKeys]));
+
+const removePendingPreferenceKeys = (
+	currentKeys: NotificationPreferenceKey[],
+	doneKeys: NotificationPreferenceKey[],
+) => currentKeys.filter((key) => !doneKeys.includes(key));
+
+const SwitchRow = memo(function SwitchRow({
 	label,
 	value,
 	disabled,
@@ -122,7 +139,7 @@ function SwitchRow({
 			</View>
 		</SettingsCard>
 	);
-}
+});
 
 export default function NotificationSettingsScreen() {
 	const router = useRouter();
@@ -133,73 +150,191 @@ export default function NotificationSettingsScreen() {
 		api.notifications.getPreferences,
 		user && isConvexAuthenticated ? {} : "skip",
 	) as NotificationPlanningPreferences | undefined;
-	const [isUpdating, setIsUpdating] = useState(false);
+	const [pendingPreferenceKeys, setPendingPreferenceKeys] = useState<
+		NotificationPreferenceKey[]
+	>([]);
+	const [optimisticPreferencePatch, setOptimisticPreferencePatch] = useState<
+		Partial<NotificationPlanningPreferences>
+	>({});
 	const [showBriefingTimePicker, setShowBriefingTimePicker] = useState(false);
+	const visiblePreferences = useMemo(
+		() =>
+			preferences
+				? applyNotificationPreferencePatch(
+						preferences,
+						optimisticPreferencePatch,
+					)
+				: undefined,
+		[optimisticPreferencePatch, preferences],
+	);
 	const briefingTimeDate = useMemo(
-		() => timeToDate(preferences?.dailyBriefingTime ?? "07:30"),
-		[preferences?.dailyBriefingTime],
+		() => timeToDate(visiblePreferences?.dailyBriefingTime ?? "07:30"),
+		[visiblePreferences?.dailyBriefingTime],
 	);
 
-	const goBack = () => goBackOrReplace(router, "/settings");
+	useEffect(() => {
+		if (!preferences) return;
+		setOptimisticPreferencePatch((currentPatch) =>
+			clearConfirmedNotificationPreferencePatch(currentPatch, preferences),
+		);
+	}, [preferences]);
 
-	const update = async (patch: Partial<NotificationPlanningPreferences>) => {
-		setIsUpdating(true);
-		try {
-			await updatePreferences(patch);
-		} finally {
-			setIsUpdating(false);
-		}
-	};
+	const update = useCallback(
+		async (patch: Partial<NotificationPlanningPreferences>) => {
+			const patchKeys = getNotificationPreferencePatchKeys(patch);
+			if (patchKeys.length === 0) return;
 
-	const updateSystemNotifications = async (nextValue: boolean) => {
-		if (!nextValue) {
-			await update({ systemNotificationsEnabled: false });
-			return;
-		}
-
-		const notifications = getNotificationsModule();
-		if (!notifications) {
-			Alert.alert(
-				"Mitteilungen noch nicht bereit",
-				"Bitte baue den iOS/Android Dev Client einmal neu, damit System-Mitteilungen verfügbar sind.",
+			setOptimisticPreferencePatch((currentPatch) => ({
+				...currentPatch,
+				...patch,
+			}));
+			setPendingPreferenceKeys((currentKeys) =>
+				addPendingPreferenceKeys(currentKeys, patchKeys),
 			);
-			await update({ systemNotificationsEnabled: false });
-			return;
-		}
 
-		if (Platform.OS === "android") {
-			await notifications.setNotificationChannelAsync(
-				DAYOVA_NOTIFICATION_CHANNEL_ID,
-				{
-					name: "Dayova Erinnerungen",
-					importance: notifications.AndroidImportance.DEFAULT,
-				},
-			);
-		}
+			try {
+				await updatePreferences(patch);
+			} catch (error) {
+				setOptimisticPreferencePatch((currentPatch) =>
+					removeNotificationPreferencePatchKeys(currentPatch, patchKeys),
+				);
+				throw error;
+			} finally {
+				setPendingPreferenceKeys((currentKeys) =>
+					removePendingPreferenceKeys(currentKeys, patchKeys),
+				);
+			}
+		},
+		[updatePreferences],
+	);
 
-		const currentPermissions = await notifications.getPermissionsAsync();
-		const permissions = hasNotificationPermission(
-			notifications,
-			currentPermissions,
-		)
-			? currentPermissions
-			: await notifications.requestPermissionsAsync();
+	const updateSystemNotifications = useCallback(
+		async (nextValue: boolean) => {
+			if (!nextValue) {
+				await update({ systemNotificationsEnabled: false });
+				return;
+			}
 
-		if (!hasNotificationPermission(notifications, permissions)) {
-			Alert.alert(
-				"System-Mitteilungen sind deaktiviert",
-				"Du bekommst Mitteilungen weiterhin im Dayova-Postfach. Aktiviere System-Mitteilungen in den Einstellungen, wenn Dayova dich außerhalb der App erinnern soll.",
-				[
-					{ text: "Abbrechen", style: "cancel" },
-					{ text: "Einstellungen", onPress: () => Linking.openSettings() },
-				],
-			);
-			await update({ systemNotificationsEnabled: false });
-			return;
-		}
+			const notifications = getNotificationsModule();
+			if (!notifications) {
+				Alert.alert(
+					"Mitteilungen noch nicht bereit",
+					"Bitte baue den iOS/Android Dev Client einmal neu, damit System-Mitteilungen verfügbar sind.",
+				);
+				await update({ systemNotificationsEnabled: false });
+				return;
+			}
 
-		await update({ systemNotificationsEnabled: true });
-	};
+			if (Platform.OS === "android") {
+				await notifications.setNotificationChannelAsync(
+					DAYOVA_NOTIFICATION_CHANNEL_ID,
+					{
+						name: "Dayova Erinnerungen",
+						importance: notifications.AndroidImportance.DEFAULT,
+					},
+				);
+			}
+
+			const currentPermissions = await notifications.getPermissionsAsync();
+			const permissions = hasNotificationPermission(
+				notifications,
+				currentPermissions,
+			)
+				? currentPermissions
+				: await notifications.requestPermissionsAsync();
+
+			if (!hasNotificationPermission(notifications, permissions)) {
+				Alert.alert(
+					"System-Mitteilungen sind deaktiviert",
+					"Du bekommst Mitteilungen weiterhin im Dayova-Postfach. Aktiviere System-Mitteilungen in den Einstellungen, wenn Dayova dich außerhalb der App erinnern soll.",
+					[
+						{ text: "Abbrechen", style: "cancel" },
+						{ text: "Einstellungen", onPress: () => Linking.openSettings() },
+					],
+				);
+				await update({ systemNotificationsEnabled: false });
+				return;
+			}
+
+			await update({ systemNotificationsEnabled: true });
+		},
+		[update],
+	);
+
+	const handleDailyBriefingEnabledChange = useCallback(
+		(value: boolean) => void update({ dailyBriefingEnabled: value }),
+		[update],
+	);
+	const handleBeforeExamEnabledChange = useCallback(
+		(value: boolean) => void update({ beforeExamEnabled: value }),
+		[update],
+	);
+	const handleBeforeLearningTimeEnabledChange = useCallback(
+		(value: boolean) => void update({ beforeLearningTimeEnabled: value }),
+		[update],
+	);
+	const handleBeforeHomeworkWorkEnabledChange = useCallback(
+		(value: boolean) => void update({ beforeHomeworkWorkEnabled: value }),
+		[update],
+	);
+	const handleBeforeHomeworkDueEnabledChange = useCallback(
+		(value: boolean) => void update({ beforeHomeworkDueEnabled: value }),
+		[update],
+	);
+	const handleForgottenEventEnabledChange = useCallback(
+		(value: boolean) => void update({ forgottenEventEnabled: value }),
+		[update],
+	);
+
+	const updateSystemNotificationsFromSwitch = useCallback(
+		(value: boolean) => void updateSystemNotifications(value),
+		[updateSystemNotifications],
+	);
+
+	const isPreferencePending = useCallback(
+		(key: NotificationPreferenceKey) => pendingPreferenceKeys.includes(key),
+		[pendingPreferenceKeys],
+	);
+
+	const updateBriefingTime = useCallback(
+		(selectedDate: Date) => {
+			void update({ dailyBriefingTime: formatTime(selectedDate) });
+		},
+		[update],
+	);
+
+	const updateReminderOffset = useCallback(
+		(minutes: number) => {
+			void update({ reminderOffsetMinutes: minutes });
+		},
+		[update],
+	);
+
+	const openBriefingTimePicker = useCallback(() => {
+		setShowBriefingTimePicker(true);
+	}, []);
+
+	const closeBriefingTimePicker = useCallback(() => {
+		setShowBriefingTimePicker(false);
+	}, []);
+
+	const handleBriefingTimeChange = useCallback(
+		(event: { type: "set" | "dismissed" }, selectedDate?: Date) => {
+			if (event.type === "dismissed") {
+				setShowBriefingTimePicker(false);
+				return;
+			}
+			if (!selectedDate) return;
+			updateBriefingTime(selectedDate);
+		},
+		[updateBriefingTime],
+	);
+
+	const goBack = useCallback(() => goBackOrReplace(router, "/settings"), [router]);
+
+	const preferencesForRender = visiblePreferences;
+
+	const isReminderOffsetPending = isPreferencePending("reminderOffsetMinutes");
 
 	return (
 		<Screen>
@@ -207,13 +342,13 @@ export default function NotificationSettingsScreen() {
 			<ScreenScroll topPadding={72} bottomPadding={120} horizontalPadding={24}>
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
 
-				{preferences ? (
+				{preferencesForRender ? (
 					<View style={{ gap: 22 }}>
 						<SwitchRow
 							label="System-Mitteilungen"
-							value={preferences.systemNotificationsEnabled}
-							disabled={isUpdating}
-							onValueChange={(value) => void updateSystemNotifications(value)}
+							value={preferencesForRender.systemNotificationsEnabled}
+							disabled={isPreferencePending("systemNotificationsEnabled")}
+							onValueChange={updateSystemNotificationsFromSwitch}
 						/>
 
 						<SectionIntro
@@ -222,17 +357,15 @@ export default function NotificationSettingsScreen() {
 						/>
 						<SwitchRow
 							label="Tagesüberblick"
-							value={preferences.dailyBriefingEnabled}
-							disabled={isUpdating}
-							onValueChange={(value) =>
-								void update({ dailyBriefingEnabled: value })
-							}
+							value={preferencesForRender.dailyBriefingEnabled}
+							disabled={isPreferencePending("dailyBriefingEnabled")}
+							onValueChange={handleDailyBriefingEnabledChange}
 						/>
 						<TouchableOpacity
 							accessibilityRole="button"
 							accessibilityLabel="Uhrzeit für Tagesüberblick ändern"
 							activeOpacity={0.84}
-							onPress={() => setShowBriefingTimePicker(true)}
+							onPress={openBriefingTimePicker}
 						>
 							<SettingsCard>
 								<View className="flex-row items-center justify-between">
@@ -255,7 +388,7 @@ export default function NotificationSettingsScreen() {
 												includeFontPadding: false,
 											}}
 										>
-											{preferences.dailyBriefingTime}
+											{preferencesForRender.dailyBriefingTime}
 										</Text>
 										<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
 									</View>
@@ -269,48 +402,42 @@ export default function NotificationSettingsScreen() {
 						/>
 						<SwitchRow
 							label="Vor Prüfung"
-							value={preferences.beforeExamEnabled}
-							disabled={isUpdating}
-							onValueChange={(value) => void update({ beforeExamEnabled: value })}
+							value={preferencesForRender.beforeExamEnabled}
+							disabled={isPreferencePending("beforeExamEnabled")}
+							onValueChange={handleBeforeExamEnabledChange}
 						/>
 						<SwitchRow
 							label="Vor Lernzeit"
-							value={preferences.beforeLearningTimeEnabled}
-							disabled={isUpdating}
-							onValueChange={(value) =>
-								void update({ beforeLearningTimeEnabled: value })
-							}
+							value={preferencesForRender.beforeLearningTimeEnabled}
+							disabled={isPreferencePending("beforeLearningTimeEnabled")}
+							onValueChange={handleBeforeLearningTimeEnabledChange}
 						/>
 						<SwitchRow
 							label="Vor Bearbeitung Hausaufgabe"
-							value={preferences.beforeHomeworkWorkEnabled}
-							disabled={isUpdating}
-							onValueChange={(value) =>
-								void update({ beforeHomeworkWorkEnabled: value })
-							}
+							value={preferencesForRender.beforeHomeworkWorkEnabled}
+							disabled={isPreferencePending("beforeHomeworkWorkEnabled")}
+							onValueChange={handleBeforeHomeworkWorkEnabledChange}
 						/>
 						<SwitchRow
 							label="Vor Abgabe Hausaufgabe"
-							value={preferences.beforeHomeworkDueEnabled}
-							disabled={isUpdating}
-							onValueChange={(value) =>
-								void update({ beforeHomeworkDueEnabled: value })
-							}
+							value={preferencesForRender.beforeHomeworkDueEnabled}
+							disabled={isPreferencePending("beforeHomeworkDueEnabled")}
+							onValueChange={handleBeforeHomeworkDueEnabledChange}
 						/>
 
 						<SectionIntro description="Hier kannst du einstellen, wie viele Minuten vorher dich die App an einzelne Ereignisse erinnern soll." title="Erinnerungszeit" />
 						<View className="flex-row flex-wrap" style={{ gap: 8 }}>
 							{OFFSET_OPTIONS.map((minutes) => {
-								const selected = preferences.reminderOffsetMinutes === minutes;
+								const selected =
+									preferencesForRender.reminderOffsetMinutes === minutes;
 								return (
 									<TouchableOpacity
 										key={minutes}
 										accessibilityRole="button"
 										accessibilityState={{ selected }}
 										activeOpacity={0.84}
-										onPress={() =>
-											void update({ reminderOffsetMinutes: minutes })
-										}
+										disabled={isReminderOffsetPending}
+										onPress={() => updateReminderOffset(minutes)}
 										className="rounded-full px-4 py-3"
 										style={{
 											backgroundColor: selected ? "#3A7BFF" : "#FFFFFF",
@@ -340,11 +467,9 @@ export default function NotificationSettingsScreen() {
 						/>
 						<SwitchRow
 							label="Event vergessen"
-							value={preferences.forgottenEventEnabled}
-							disabled={isUpdating}
-							onValueChange={(value) =>
-								void update({ forgottenEventEnabled: value })
-							}
+							value={preferencesForRender.forgottenEventEnabled}
+							disabled={isPreferencePending("forgottenEventEnabled")}
+							onValueChange={handleForgottenEventEnabledChange}
 						/>
 					</View>
 				) : (
@@ -359,15 +484,8 @@ export default function NotificationSettingsScreen() {
 				value={briefingTimeDate}
 				mode="time"
 				display="spinner"
-				onClose={() => setShowBriefingTimePicker(false)}
-				onChange={(event, selectedDate) => {
-					if (event.type === "dismissed") {
-						setShowBriefingTimePicker(false);
-						return;
-					}
-					if (!selectedDate) return;
-					void update({ dailyBriefingTime: formatTime(selectedDate) });
-				}}
+				onClose={closeBriefingTimePicker}
+				onChange={handleBriefingTimeChange}
 			/>
 		</Screen>
 	);
