@@ -267,8 +267,7 @@ export default function LearningTimesScreen() {
 								includeFontPadding: false,
 							}}
 						>
-							Hier kannst du individuell deine Lernzeiten anpassen, so wie es
-							passt.
+							Passe deine Lernzeiten so an, wie sie für dich passen.
 						</Text>
 					</View>
 
@@ -360,7 +359,7 @@ export default function LearningTimesScreen() {
 					<Text>Entfernen</Text>
 				</Button>
 				<Button className="flex-1" disabled={!canSave} onPress={save}>
-					<Text>{isSaving ? "Speichern..." : "Speichern"}</Text>
+					<Text>{isSaving ? "Speichert..." : "Speichern"}</Text>
 				</Button>
 			</View>
 

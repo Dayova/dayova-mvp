@@ -66,7 +66,7 @@ function SessionOverviewCard({
 						className="font-poppins font-semibold text-[#3A7BFF]"
 						style={{ fontSize: 12, lineHeight: 15, includeFontPadding: false }}
 					>
-						{`${session.durationMinutes} min`}
+						{`${session.durationMinutes} Min.`}
 					</Text>
 				</View>
 			</View>

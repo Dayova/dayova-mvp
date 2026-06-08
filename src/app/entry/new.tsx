@@ -262,8 +262,8 @@ export default function NewEntryScreen() {
 	const subtitle = isHomework
 		? step === "basics"
 			? "Trage zuerst Fälligkeit, Fach und Notiz ein."
-			: "Plane jetzt, wann du daran arbeitest."
-		: "Trage zuerst Fälligkeit, Fach und Notiz ein.";
+			: "Plane jetzt, wann du die Hausaufgabe erledigst."
+		: "Trage Datum, Uhrzeit, Fach und Prüfungsart ein.";
 
 	const closePicker = () => setPickerTarget(null);
 	const closeSelect = () => setSelectTarget(null);
@@ -606,7 +606,7 @@ export default function NewEntryScreen() {
 									Hausaufgabe eintragen
 								</Text>
 								<Text className="mt-2 font-poppins text-14 text-text/42">
-									Trage nun ein wann du es machst.
+									Plane jetzt, wann du die Hausaufgabe erledigst.
 								</Text>
 							</View>
 
@@ -623,7 +623,7 @@ export default function NewEntryScreen() {
 								<View className="flex-1">
 									<HomeworkPillField
 										value={formatTime(plannedTime)}
-										placeholder="Von..."
+										placeholder="Von"
 										icon={
 											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
 										}
@@ -634,7 +634,7 @@ export default function NewEntryScreen() {
 								<View className="flex-1">
 									<HomeworkPillField
 										value={formatTime(plannedEndTime)}
-										placeholder="Bis..."
+										placeholder="Bis"
 										icon={
 											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
 										}
@@ -648,7 +648,7 @@ export default function NewEntryScreen() {
 								visible={step === "success"}
 								dismissible
 								onClose={finish}
-								accessibilityLabel="Entfernen-Dialog schließen"
+								accessibilityLabel="Erfolgsdialog schließen"
 								title="Hausaufgabe ist eingetragen"
 								description="Deine Hausaufgabe wurde erfolgreich eingetragen."
 								icon={<Check size={48} color="#28C76F" strokeWidth={1.2} />}
@@ -693,7 +693,7 @@ export default function NewEntryScreen() {
 							<View className="flex-1">
 								<HomeworkPillField
 									value={formatTime(plannedTime)}
-									placeholder="Von..."
+									placeholder="Von"
 									icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
 									onPress={() => setPickerTarget("plannedTime")}
 									className="min-h-[64px] px-5"
@@ -702,7 +702,7 @@ export default function NewEntryScreen() {
 							<View className="flex-1">
 								<HomeworkPillField
 									value={formatTime(plannedEndTime)}
-									placeholder="Bis..."
+									placeholder="Bis"
 									icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
 									onPress={() => setPickerTarget("plannedEndTime")}
 									className="min-h-[64px] px-5"

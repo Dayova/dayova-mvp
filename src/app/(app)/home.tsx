@@ -620,7 +620,7 @@ export default function HomeScreen() {
 								includeFontPadding: false,
 							}}
 						>
-							schön dass du da bist
+							schön, dass du da bist!
 						</Text>
 					</View>
 					<NotificationButton />
