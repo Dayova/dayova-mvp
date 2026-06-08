@@ -189,8 +189,8 @@ export default function LearningPlansScreen() {
 									includeFontPadding: false,
 								}}
 							>
-								Erstelle einen Lernplan aus einer Leistungskontrolle, damit er
-								hier als Übersicht erscheint.
+								Erstelle einen Lernplan aus einer Prüfung, damit er hier als
+								Übersicht erscheint.
 							</Text>
 							<TouchableOpacity
 								accessibilityRole="button"

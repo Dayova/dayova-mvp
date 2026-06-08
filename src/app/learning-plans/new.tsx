@@ -441,7 +441,7 @@ export default function NewLearningPlanScreen() {
 					/>
 				</FieldControl>
 
-				<FieldLabel>Notizen</FieldLabel>
+				<FieldLabel>Materialien</FieldLabel>
 				<ActionSurface
 					accessibilityLabel="Material hochladen"
 					accessibilityRole="button"
@@ -557,7 +557,7 @@ export default function NewLearningPlanScreen() {
 										includeFontPadding: false,
 									}}
 								>
-									Wähle zuerst die Art aus.
+									Wähle aus, wie du deine Unterlagen hinzufügen möchtest.
 								</Text>
 							</View>
 							<TouchableOpacity

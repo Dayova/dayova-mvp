@@ -208,7 +208,7 @@ function LoadedSessionEditScreen({
 				onClose={() => setIsDeleteVisible(false)}
 				accessibilityLabel="Entfernen-Dialog schließen"
 				title="Bist du dir sicher?"
-				description="Klicke auf Entfernen wenn du dir sicher bist den Lerntag zu entfernen."
+				description="Tippe auf Entfernen, wenn du diesen Lerntag wirklich löschen möchtest."
 				icon={<X size={48} color="#FF5147" strokeWidth={1.8} />}
 				iconContainerClassName="bg-red-100"
 			>

@@ -91,7 +91,7 @@ const FLOW_STEPS: readonly FlowStep[] = [
 		kind: "intro",
 		title: "Keine Motivation.\nKein Plan. Zu viel Stress?",
 		description:
-			"Prokrastination, Ablenkung und Unklarheit halten dich davon ab wirklich voranzukommen",
+			"Prokrastination, Ablenkung und Unklarheit halten dich davon ab, wirklich voranzukommen.",
 	},
 	{
 		kind: "intro",
@@ -103,7 +103,7 @@ const FLOW_STEPS: readonly FlowStep[] = [
 		kind: "intro",
 		title: "Dayova bringt dich ans Ziel.",
 		description:
-			"Individuell, strukturiert und motiviert - mehr Fortschritt, weniger Stress und echte Erfolge",
+			"Individuell, strukturiert und motivierend: mehr Fortschritt, weniger Stress und echte Erfolge.",
 	},
 	{
 		kind: "select",
@@ -118,9 +118,9 @@ const FLOW_STEPS: readonly FlowStep[] = [
 	},
 	{
 		kind: "info",
-		title: "Das ist toll! Pro Tag 30min reichen aus um....",
+		title: "Schon 30 Minuten am Tag können viel bewirken.",
 		description:
-			"Schon kurze, regelmäßige Lerneinheiten können einen großen Unterschied machen.",
+			"Regelmäßige kurze Lerneinheiten helfen dir, ohne zusätzlichen Stress dranzubleiben.",
 	},
 	{
 		kind: "select",
@@ -135,7 +135,7 @@ const FLOW_STEPS: readonly FlowStep[] = [
 	},
 	{
 		kind: "select",
-		title: "Was sind deine größten Baustellen in der Schule",
+		title: "Was sind deine größten Baustellen in der Schule?",
 		field: "challenge",
 		options: ["Konzentration", "Motivation", "Organisation", "Prüfungsstress"],
 	},
@@ -152,9 +152,9 @@ const FLOW_STEPS: readonly FlowStep[] = [
 	},
 	{
 		kind: "info",
-		title: "Gute Nachricht, eine Studie zeigt, dass...",
+		title: "Gute Nachricht: Kleine Routinen helfen.",
 		description:
-			"kleine Routinen und ein klarer Plan oft wichtiger sind als besonders lange Lernsessions.",
+			"Ein klarer Plan ist oft wichtiger als besonders lange Lernsessions.",
 	},
 	{
 		kind: "input",
@@ -666,7 +666,7 @@ export default function WelcomeScreen() {
 										includeFontPadding: false,
 									}}
 								>
-									{activeStep.kind === "info" ? "Gute Nachricht" : "Sag mal..."}
+									{activeStep.kind === "info" ? "Gute Nachricht" : "Sag mal"}
 								</Text>
 								<Text
 									className="text-center font-bold font-poppins text-[#111111]"
@@ -880,7 +880,7 @@ export default function WelcomeScreen() {
 								label={
 									activeStep.kind === "password"
 										? isLoading || isCompletingOnboarding
-											? "Registriert..."
+											? "Konto wird erstellt..."
 											: "Konto erstellen"
 										: "Weiter"
 								}
