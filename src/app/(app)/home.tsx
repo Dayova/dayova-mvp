@@ -1,4 +1,4 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQueries } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -41,7 +41,6 @@ import {
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import type { DayEntry } from "~/types/dayEntries";
 
-const EMPTY_ENTRIES_BY_DAY: Record<string, DayEntry[]> = {};
 const ALL_DAY_TIME_LABEL = "Ganztägig";
 const HATCH_LINES = [
 	"hatch-0",
@@ -54,9 +53,23 @@ const HATCH_LINES = [
 	"hatch-7",
 ];
 const TIMELINE_MARKER_HOURS = Array.from({ length: 25 }, (_, hour) => hour);
+const TIMELINE_PAST_DAYS = 3;
+const TIMELINE_FUTURE_DAYS = 27;
+const TIMELINE_LOAD_MORE_DAYS = 30;
+const TIMELINE_LOAD_MORE_THRESHOLD_DAYS = 8;
+const MAX_TIMELINE_FUTURE_DAYS = 365;
+const DAY_ENTRY_QUERY_BATCH_SIZE = 31;
 
 const clamp = (value: number, min: number, max: number) =>
 	Math.min(Math.max(value, min), max);
+
+const chunkArray = <T,>(items: T[], chunkSize: number) => {
+	const chunks: T[][] = [];
+	for (let index = 0; index < items.length; index += chunkSize) {
+		chunks.push(items.slice(index, index + chunkSize));
+	}
+	return chunks;
+};
 
 type CreateTypeOptionProps = {
 	icon: typeof ClipboardEdit;
@@ -371,7 +384,11 @@ export default function HomeScreen() {
 	const [now, setNow] = useState(() => new Date());
 	const [selectedDayKey, setSelectedDayKey] = useState(() => getDayKey(today));
 	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
+	const [timelineFutureDays, setTimelineFutureDays] =
+		useState(TIMELINE_FUTURE_DAYS);
 	const timelineScrollRef = useRef<ScrollView | null>(null);
+	const dayStripScrollRef = useRef<ScrollView | null>(null);
+	const requestedTimelineFutureDaysRef = useRef(TIMELINE_FUTURE_DAYS);
 	const hasCenteredTimelineRef = useRef(false);
 	const pendingTimelineSelectionRef = useRef<string | null>(null);
 	const setSessionCompleted = useMutation(
@@ -385,32 +402,56 @@ export default function HomeScreen() {
 
 	const visibleDays = useMemo(
 		() =>
-			Array.from({ length: 7 }, (_, index) => {
-				const date = addDays(today, index - 3);
-				const key = getDayKey(date);
-				return {
-					key,
-					date,
-					weekday: new Intl.DateTimeFormat("de-DE", {
-						weekday: "short",
-					})
-						.format(date)
-						.replace(".", ""),
-					dayOfMonth: date.getDate().toString(),
-					isToday: key === getDayKey(today),
-				};
-			}),
-		[today],
+			Array.from(
+				{ length: TIMELINE_PAST_DAYS + timelineFutureDays + 1 },
+				(_, index) => {
+					const date = addDays(today, index - TIMELINE_PAST_DAYS);
+					const key = getDayKey(date);
+					return {
+						key,
+						date,
+						weekday: new Intl.DateTimeFormat("de-DE", {
+							weekday: "short",
+						})
+							.format(date)
+							.replace(".", ""),
+						dayOfMonth: date.getDate().toString(),
+						isToday: key === getDayKey(today),
+					};
+				},
+			),
+		[timelineFutureDays, today],
 	);
 	const visibleDayKeys = useMemo(
 		() => visibleDays.map((day) => day.key),
 		[visibleDays],
 	);
-	const entriesByDayResult = useQuery(
-		api.dayEntries.listByDayKeys,
-		user && isConvexAuthenticated ? { dayKeys: visibleDayKeys } : "skip",
+	const dayKeyBatches = useMemo(
+		() => chunkArray(visibleDayKeys, DAY_ENTRY_QUERY_BATCH_SIZE),
+		[visibleDayKeys],
 	);
-	const entriesByDay = entriesByDayResult ?? EMPTY_ENTRIES_BY_DAY;
+	const entriesByDayResults = useQueries(
+		user && isConvexAuthenticated
+			? Object.fromEntries(
+					dayKeyBatches.map((dayKeys, index) => [
+						`days_${index}`,
+						{
+							query: api.dayEntries.listByDayKeys,
+							args: { dayKeys },
+						},
+					]),
+				)
+			: {},
+	);
+	const entriesByDay = useMemo(() => {
+		const grouped: Record<string, DayEntry[]> = {};
+		for (const result of Object.values(entriesByDayResults)) {
+			if (result instanceof Error) throw result;
+			if (result === undefined) continue;
+			Object.assign(grouped, result);
+		}
+		return grouped;
+	}, [entriesByDayResults]);
 	const selectedDate = parseDayKey(selectedDayKey) ?? today;
 	const timelineEntries = useMemo(
 		() =>
@@ -471,6 +512,22 @@ export default function HomeScreen() {
 	const timelineRowHeight = 35 * compactScale;
 	const timelineBlockHeight = 32 * screenScale;
 	const timelineTopOffset = 32 * compactScale;
+	const dayStripGap = 10 * scheduleScale;
+	const getDayStripItemWidth = useCallback(
+		(isToday: boolean) => (isToday ? 96 : 40) * scheduleScale,
+		[scheduleScale],
+	);
+	const dayStripOffsets = useMemo(() => {
+		let offset = 0;
+		return visibleDays.map((day) => {
+			const dayOffset = offset;
+			offset += getDayStripItemWidth(day.isToday) + dayStripGap;
+			return dayOffset;
+		});
+	}, [dayStripGap, getDayStripItemWidth, visibleDays]);
+	const dayStripContentWidth =
+		dayStripOffsets[dayStripOffsets.length - 1] +
+		getDayStripItemWidth(visibleDays[visibleDays.length - 1]?.isToday ?? false);
 	const navClearance = Math.max(insets.bottom + 108 * screenScale, 132);
 	const modalScale = clamp(width / 393, 0.88, 1);
 	const modalWidth = width;
@@ -506,9 +563,79 @@ export default function HomeScreen() {
 		[timelineContentWidth, timelineViewportWidth],
 	);
 
+	const scrollDayStripToIndex = useCallback(
+		(dayIndex: number, animated = true) => {
+			const itemOffset = dayStripOffsets[dayIndex] ?? 0;
+			const itemWidth = getDayStripItemWidth(
+				visibleDays[dayIndex]?.isToday ?? false,
+			);
+			const maxScrollX = Math.max(
+				dayStripContentWidth - timelineViewportWidth,
+				0,
+			);
+			dayStripScrollRef.current?.scrollTo({
+				x: clamp(
+					itemOffset + itemWidth / 2 - timelineViewportWidth / 2,
+					0,
+					maxScrollX,
+				),
+				animated,
+			});
+		},
+		[
+			dayStripContentWidth,
+			dayStripOffsets,
+			getDayStripItemWidth,
+			timelineViewportWidth,
+			visibleDays,
+		],
+	);
+
+	const loadMoreTimelineDays = useCallback(() => {
+		const nextFutureDays = Math.min(
+			requestedTimelineFutureDaysRef.current + TIMELINE_LOAD_MORE_DAYS,
+			MAX_TIMELINE_FUTURE_DAYS,
+		);
+		if (nextFutureDays === requestedTimelineFutureDaysRef.current) return;
+
+		requestedTimelineFutureDaysRef.current = nextFutureDays;
+		setTimelineFutureDays(nextFutureDays);
+	}, []);
+
+	const loadMoreTimelineDaysNearEnd = useCallback(
+		(
+			event: NativeSyntheticEvent<NativeScrollEvent>,
+			thresholdWidth: number,
+		) => {
+			const { contentOffset, layoutMeasurement, contentSize } =
+				event.nativeEvent;
+			const distanceFromRight =
+				contentSize.width - (contentOffset.x + layoutMeasurement.width);
+			if (distanceFromRight < thresholdWidth) {
+				loadMoreTimelineDays();
+			}
+		},
+		[loadMoreTimelineDays],
+	);
+
+	const updateDayStripFromScroll = useCallback(
+		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+			loadMoreTimelineDaysNearEnd(
+				event,
+				getDayStripItemWidth(false) * TIMELINE_LOAD_MORE_THRESHOLD_DAYS,
+			);
+		},
+		[getDayStripItemWidth, loadMoreTimelineDaysNearEnd],
+	);
+
 	const updateSelectedDayFromTimelineScroll = useCallback(
 		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
 			if (dayWidth <= 0 || visibleDays.length === 0) return;
+
+			loadMoreTimelineDaysNearEnd(
+				event,
+				dayWidth * TIMELINE_LOAD_MORE_THRESHOLD_DAYS,
+			);
 
 			const centerX =
 				event.nativeEvent.contentOffset.x + timelineViewportWidth / 2;
@@ -519,6 +646,12 @@ export default function HomeScreen() {
 			);
 			const centeredDayKey = visibleDays[centeredDayIndex]?.key;
 			if (!centeredDayKey) return;
+			if (
+				visibleDays.length - centeredDayIndex <=
+				TIMELINE_LOAD_MORE_THRESHOLD_DAYS
+			) {
+				loadMoreTimelineDays();
+			}
 			if (
 				pendingTimelineSelectionRef.current &&
 				centeredDayKey !== pendingTimelineSelectionRef.current
@@ -531,18 +664,33 @@ export default function HomeScreen() {
 			setSelectedDayKey((currentDayKey) =>
 				currentDayKey === centeredDayKey ? currentDayKey : centeredDayKey,
 			);
+			scrollDayStripToIndex(centeredDayIndex);
 		},
-		[dayWidth, timelineViewportWidth, visibleDays],
+		[
+			dayWidth,
+			loadMoreTimelineDays,
+			loadMoreTimelineDaysNearEnd,
+			scrollDayStripToIndex,
+			timelineViewportWidth,
+			visibleDays,
+		],
 	);
 
 	useEffect(() => {
 		if (hasCenteredTimelineRef.current || timelineContentWidth <= 0) return;
 		const frame = requestAnimationFrame(() => {
 			scrollTimelineToX(currentTimelineX, false);
+			scrollDayStripToIndex(todayIndex, false);
 			hasCenteredTimelineRef.current = true;
 		});
 		return () => cancelAnimationFrame(frame);
-	}, [currentTimelineX, scrollTimelineToX, timelineContentWidth]);
+	}, [
+		currentTimelineX,
+		scrollDayStripToIndex,
+		scrollTimelineToX,
+		timelineContentWidth,
+		todayIndex,
+	]);
 
 	const selectVisibleDay = (dayKey: string, dayIndex: number) => {
 		pendingTimelineSelectionRef.current = dayKey;
@@ -550,6 +698,7 @@ export default function HomeScreen() {
 		const minuteToCenter =
 			dayKey === getDayKey(today) ? currentMinute : 12 * 60;
 		scrollTimelineToX(dayIndex * dayWidth + (minuteToCenter / 60) * hourWidth);
+		scrollDayStripToIndex(dayIndex);
 	};
 
 	const selectCreateType = (type: "homework" | "exam") => {
@@ -751,38 +900,25 @@ export default function HomeScreen() {
 						</TouchableOpacity>
 					</View>
 
-					<View style={{ marginTop: 24 * compactScale }}>
-						<View className="flex-row items-center justify-between">
-							{visibleDays.map((day, dayIndex) => (
-								<TouchableOpacity
-									key={day.key}
-									activeOpacity={0.82}
-									accessibilityRole="button"
-									accessibilityState={{ selected: selectedDayKey === day.key }}
-									accessibilityLabel={`${day.weekday}, ${day.dayOfMonth}`}
-									onPress={() => selectVisibleDay(day.key, dayIndex)}
-									className="items-center"
-									style={{ width: (day.isToday ? 96 : 32) * scheduleScale }}
-								>
-									<Text
-										className="font-poppins text-black"
-										style={{
-											fontSize: 12 * screenScale,
-											lineHeight: 12 * screenScale,
-											includeFontPadding: false,
-										}}
-									>
-										{day.weekday}
-									</Text>
-								</TouchableOpacity>
-							))}
-						</View>
+					<ScrollView
+						ref={dayStripScrollRef}
+						horizontal
+						showsHorizontalScrollIndicator={false}
+						onScroll={updateDayStripFromScroll}
+						scrollEventThrottle={16}
+						style={{ marginTop: 24 * compactScale }}
+						contentContainerStyle={{ width: dayStripContentWidth }}
+					>
 						<View
-							className="flex-row items-center justify-between"
-							style={{ marginTop: 10 * compactScale }}
+							className="flex-row"
+							style={{
+								columnGap: dayStripGap,
+								width: dayStripContentWidth,
+							}}
 						>
 							{visibleDays.map((day, dayIndex) => {
 								const selected = selectedDayKey === day.key;
+								const itemWidth = getDayStripItemWidth(day.isToday);
 								const content = (
 									<Text
 										key={`${day.key}-label`}
@@ -796,45 +932,62 @@ export default function HomeScreen() {
 										{day.isToday ? `Heute ${day.dayOfMonth}` : day.dayOfMonth}
 									</Text>
 								);
-								const itemWidth = (day.isToday ? 96 : 32) * scheduleScale;
-								return selected ? (
-									<TouchableOpacity
+
+								return (
+									<View
 										key={day.key}
-										activeOpacity={0.82}
-										onPress={() => selectVisibleDay(day.key, dayIndex)}
+										className="items-center"
+										style={{ width: itemWidth, rowGap: 10 * compactScale }}
 									>
-										<LinearGradient
-											colors={["#3A7BFF", "#59D6CF"]}
-											start={{ x: 0, y: 0.5 }}
-											end={{ x: 1, y: 0.5 }}
+										<Text
+											className="font-poppins text-black"
 											style={{
-												width: itemWidth,
-												height: 32 * screenScale,
-												borderRadius: 20,
-												alignItems: "center",
-												justifyContent: "center",
+												fontSize: 12 * screenScale,
+												lineHeight: 12 * screenScale,
+												includeFontPadding: false,
 											}}
 										>
-											{content}
-										</LinearGradient>
-									</TouchableOpacity>
-								) : (
-									<TouchableOpacity
-										key={day.key}
-										activeOpacity={0.82}
-										onPress={() => selectVisibleDay(day.key, dayIndex)}
-										className="items-center justify-center rounded-full bg-[#F2F2F2]"
-										style={{
-											width: itemWidth,
-											height: 34 * screenScale,
-										}}
-									>
-										{content}
-									</TouchableOpacity>
+											{day.weekday}
+										</Text>
+										<TouchableOpacity
+											activeOpacity={0.82}
+											accessibilityRole="button"
+											accessibilityState={{ selected }}
+											accessibilityLabel={`${day.weekday}, ${day.dayOfMonth}`}
+											onPress={() => selectVisibleDay(day.key, dayIndex)}
+										>
+											{selected ? (
+												<LinearGradient
+													colors={["#3A7BFF", "#59D6CF"]}
+													start={{ x: 0, y: 0.5 }}
+													end={{ x: 1, y: 0.5 }}
+													style={{
+														width: itemWidth,
+														height: 32 * screenScale,
+														borderRadius: 20,
+														alignItems: "center",
+														justifyContent: "center",
+													}}
+												>
+													{content}
+												</LinearGradient>
+											) : (
+												<View
+													className="items-center justify-center rounded-full bg-[#F2F2F2]"
+													style={{
+														width: itemWidth,
+														height: 34 * screenScale,
+													}}
+												>
+													{content}
+												</View>
+											)}
+										</TouchableOpacity>
+									</View>
 								);
 							})}
 						</View>
-					</View>
+					</ScrollView>
 
 					<View
 						style={{
