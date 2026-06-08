@@ -100,7 +100,7 @@ See `./references/route-structure.md` for detailed route conventions.
 ## Behavior
 
 - Use expo-haptics conditionally on iOS to make more delightful experiences
-- Use views with built-in haptics like `<Switch />` from React Native and `@react-native-community/datetimepicker`
+- Use native controls with built-in haptics. For switches, prefer the universal Expo UI `Switch` from `@expo/ui` wrapped in `Host`; do not use `Switch` from `react-native`.
 - When a route belongs to a Stack, its first child should almost always be a ScrollView with `contentInsetAdjustmentBehavior="automatic"` set
 - When adding a `ScrollView` to the page it should almost always be the first component inside the route component
 - Prefer `headerSearchBarOptions` in Stack.Screen options to add a search bar

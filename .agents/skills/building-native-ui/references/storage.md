@@ -77,14 +77,18 @@ export function useStorage<T>(
 Usage:
 
 ```tsx
+import { Host, Switch } from "@expo/ui";
+
 function Settings() {
   const [theme, setTheme] = useStorage("theme", "light");
 
   return (
-    <Switch
-      value={theme === "dark"}
-      onValueChange={(dark) => setTheme(dark ? "dark" : "light")}
-    />
+    <Host matchContents>
+      <Switch
+        value={theme === "dark"}
+        onValueChange={(dark) => setTheme(dark ? "dark" : "light")}
+      />
+    </Host>
   );
 }
 ```

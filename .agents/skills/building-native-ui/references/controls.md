@@ -4,28 +4,27 @@ Native iOS controls provide built-in haptics, accessibility, and platform-approp
 
 ## Switch
 
-Use for binary on/off settings. Has built-in haptics.
+Use for binary on/off settings. Use the universal Expo UI switch so the app gets
+the current native control for each OS.
 
 ```tsx
-import { Switch } from "react-native";
+import { Host, Switch } from "@expo/ui";
 import { useState } from "react";
 
 const [enabled, setEnabled] = useState(false);
 
-<Switch value={enabled} onValueChange={setEnabled} />;
+<Host matchContents>
+  <Switch value={enabled} onValueChange={setEnabled} />
+</Host>;
 ```
 
-### Customization
+### Rules
 
-```tsx
-<Switch
-  value={enabled}
-  onValueChange={setEnabled}
-  trackColor={{ false: "#767577", true: "#81b0ff" }}
-  thumbColor={enabled ? "#f5dd4b" : "#f4f3f4"}
-  ios_backgroundColor="#3e3e3e"
-/>
-```
+- Do not import or use `Switch` from `react-native`.
+- Keep the default native styling unless the app has a documented design-system
+  reason to do otherwise.
+- When embedding in a React Native screen, wrap the switch in `Host` with
+  `matchContents`.
 
 ## Segmented Control
 
@@ -262,7 +261,7 @@ const [selected, setSelected] = useState("js");
 
 ## Best Practices
 
-- **Haptics**: Switch and DateTimePicker have built-in haptics — don't add extra
+- **Haptics**: Expo UI Switch and DateTimePicker have built-in haptics — don't add extra
 - **Accessibility**: Native controls have proper accessibility labels by default
 - **Dark Mode**: Avoid custom colors — native styling adapts automatically
 - **Spacing**: Use consistent padding around controls (12-16pt)
