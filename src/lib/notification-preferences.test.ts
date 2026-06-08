@@ -1,11 +1,11 @@
 import { describe, expect, test } from "vitest";
+import type { NotificationPlanningPreferences } from "./notification-planner";
 import {
 	applyNotificationPreferencePatch,
 	clearConfirmedNotificationPreferencePatch,
 	getNotificationPreferencePatchKeys,
 	removeNotificationPreferencePatchKeys,
 } from "./notification-preferences";
-import type { NotificationPlanningPreferences } from "./notification-planner";
 
 const preferences: NotificationPlanningPreferences = {
 	systemNotificationsEnabled: true,

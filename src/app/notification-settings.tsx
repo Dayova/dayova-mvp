@@ -21,14 +21,14 @@ import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
 import { goBackOrReplace } from "~/lib/navigation";
+import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
 import {
 	applyNotificationPreferencePatch,
 	clearConfirmedNotificationPreferencePatch,
 	getNotificationPreferencePatchKeys,
-	removeNotificationPreferencePatchKeys,
 	type NotificationPreferenceKey,
+	removeNotificationPreferencePatchKeys,
 } from "~/lib/notification-preferences";
-import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
 
 const OFFSET_OPTIONS = [5, 10, 15, 30, 60];
 
@@ -121,7 +121,10 @@ const SwitchRow = memo(function SwitchRow({
 }) {
 	return (
 		<SettingsCard>
-			<View className="flex-row items-center justify-between" style={{ gap: 12 }}>
+			<View
+				className="flex-row items-center justify-between"
+				style={{ gap: 12 }}
+			>
 				<Text
 					className="flex-1 font-poppins font-semibold text-[#1A1A1A]"
 					style={{ fontSize: 14, lineHeight: 20, includeFontPadding: false }}
@@ -174,6 +177,7 @@ export default function NotificationSettingsScreen() {
 
 	useEffect(() => {
 		if (!preferences) return;
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- Reconcile optimistic UI state after the Convex subscription confirms it.
 		setOptimisticPreferencePatch((currentPatch) =>
 			clearConfirmedNotificationPreferencePatch(currentPatch, preferences),
 		);
@@ -330,7 +334,10 @@ export default function NotificationSettingsScreen() {
 		[updateBriefingTime],
 	);
 
-	const goBack = useCallback(() => goBackOrReplace(router, "/settings"), [router]);
+	const goBack = useCallback(
+		() => goBackOrReplace(router, "/settings"),
+		[router],
+	);
 
 	const preferencesForRender = visiblePreferences;
 
@@ -425,7 +432,10 @@ export default function NotificationSettingsScreen() {
 							onValueChange={handleBeforeHomeworkDueEnabledChange}
 						/>
 
-						<SectionIntro description="Hier kannst du einstellen, wie viele Minuten vorher dich die App an einzelne Ereignisse erinnern soll." title="Erinnerungszeit" />
+						<SectionIntro
+							description="Hier kannst du einstellen, wie viele Minuten vorher dich die App an einzelne Ereignisse erinnern soll."
+							title="Erinnerungszeit"
+						/>
 						<View className="flex-row flex-wrap" style={{ gap: 8 }}>
 							{OFFSET_OPTIONS.map((minutes) => {
 								const selected =
