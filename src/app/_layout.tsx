@@ -22,10 +22,8 @@ import { OnboardingProvider } from "~/context/OnboardingContext";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { NAV_THEME } from "~/lib/theme";
 
-// ConvexReactClient needs a syntactically valid URL even when config is absent.
-const convex = new ConvexReactClient(
-	env.EXPO_PUBLIC_CONVEX_URL?.trim() || "https://placeholder.convex.cloud",
-);
+const convexUrl = env.EXPO_PUBLIC_CONVEX_URL?.trim();
+const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
 
 const isPublicAuthPath = (pathname: string) => PUBLIC_AUTH_PATHS.has(pathname);
@@ -77,9 +75,13 @@ export default function RootLayout() {
 	const { colorScheme } = useColorScheme();
 	const theme = NAV_THEME[colorScheme ?? "light"];
 
-	if (missingPublicRuntimeConfig.length > 0) {
+	if (missingPublicRuntimeConfig.length > 0 || !convex) {
+		const missingConfigKeys =
+			missingPublicRuntimeConfig.length > 0
+				? missingPublicRuntimeConfig
+				: ["EXPO_PUBLIC_CONVEX_URL"];
 		console.error(
-			`Missing public runtime config: ${missingPublicRuntimeConfig.join(", ")}`,
+			`Missing public runtime config: ${missingConfigKeys.join(", ")}`,
 		);
 		return <MissingConfigurationScreen />;
 	}
