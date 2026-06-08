@@ -354,7 +354,7 @@ export default function NotificationSettingsScreen() {
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
 
 				{preferencesForRender ? (
-					<View style={{ gap: 22 }}>
+					<View style={{ gap: 24 }}>
 						<SwitchRow
 							label="System-Mitteilungen"
 							value={preferencesForRender.systemNotificationsEnabled}
@@ -364,7 +364,7 @@ export default function NotificationSettingsScreen() {
 
 						<View
 							style={{
-								gap: 22,
+								gap: 24,
 								opacity: areNotificationDetailsDisabled ? 0.46 : 1,
 							}}
 						>
@@ -381,44 +381,57 @@ export default function NotificationSettingsScreen() {
 								}
 								onValueChange={handleDailyBriefingEnabledChange}
 							/>
-							<TouchableOpacity
-								accessibilityRole="button"
-								accessibilityLabel="Uhrzeit für Tagesüberblick ändern"
-								accessibilityState={{
-									disabled: areNotificationDetailsDisabled,
-								}}
-								activeOpacity={0.84}
-								disabled={areNotificationDetailsDisabled}
-								onPress={openBriefingTimePicker}
-							>
-								<SettingsCard>
-									<View className="flex-row items-center justify-between">
+							<View style={{ gap: 16 }}>
+								<Text
+									className="font-poppins text-[#8C8F98]"
+									style={{
+										fontSize: 12,
+										lineHeight: 17,
+										includeFontPadding: false,
+									}}
+								>
+									Wähle aus, wann du deinen Tagesüberblick erhalten möchtest.
+								</Text>
+								<TouchableOpacity
+									accessibilityRole="button"
+									accessibilityLabel="Uhrzeit für Tagesüberblick ändern"
+									accessibilityState={{
+										disabled: areNotificationDetailsDisabled,
+									}}
+									activeOpacity={0.84}
+									className="min-h-[56px] flex-row items-center justify-between rounded-[24px] bg-white px-5"
+									disabled={areNotificationDetailsDisabled}
+									onPress={openBriefingTimePicker}
+									style={{
+										boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)",
+									}}
+								>
+									<Text
+										className="flex-1 font-poppins font-semibold text-[#1A1A1A]"
+										numberOfLines={1}
+										style={{
+											fontSize: 14,
+											lineHeight: 20,
+											includeFontPadding: false,
+										}}
+									>
+										Uhrzeit
+									</Text>
+									<View className="flex-row items-center" style={{ gap: 8 }}>
 										<Text
-											className="font-poppins font-semibold text-[#1A1A1A]"
+											className="font-poppins text-[#8C8F98]"
 											style={{
-												fontSize: 14,
-												lineHeight: 20,
+												fontSize: 12,
+												lineHeight: 18,
 												includeFontPadding: false,
 											}}
 										>
-											Uhrzeit
+											{preferencesForRender.dailyBriefingTime}
 										</Text>
-										<View className="flex-row items-center" style={{ gap: 8 }}>
-											<Text
-												className="font-poppins text-[#8C8F98]"
-												style={{
-													fontSize: 12,
-													lineHeight: 18,
-													includeFontPadding: false,
-												}}
-											>
-												{preferencesForRender.dailyBriefingTime}
-											</Text>
-											<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
-										</View>
+										<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
 									</View>
-								</SettingsCard>
-							</TouchableOpacity>
+								</TouchableOpacity>
+							</View>
 
 							<SectionIntro
 								title="Mitteilungen anpassen"
