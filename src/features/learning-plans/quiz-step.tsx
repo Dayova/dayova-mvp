@@ -134,7 +134,7 @@ export function QuizStep({
 					<Textarea
 						value={answer}
 						onChangeText={onAnswerChange}
-						placeholder="Schreibe hier deine Antwort rein..."
+						placeholder="Schreibe hier deine Antwort."
 						style={{ height: ANSWER_TEXTAREA_HEIGHT }}
 					/>
 				</FieldControl>

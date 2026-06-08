@@ -160,7 +160,7 @@ export default function LearningTimesOverviewScreen() {
 									includeFontPadding: false,
 								}}
 							>
-								Füge mit dem Plus deine erste wiederkehrende Lernzeit hinzu.
+								Füge über das Plus deine erste wiederkehrende Lernzeit hinzu.
 							</Text>
 						</View>
 					) : null}
