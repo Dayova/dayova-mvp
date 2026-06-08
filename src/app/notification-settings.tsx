@@ -1,4 +1,3 @@
-import { Host, Switch } from "@expo/ui";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type * as ExpoNotifications from "expo-notifications";
 import { useRouter } from "expo-router";
@@ -17,6 +16,7 @@ import { ScreenHeader as Header } from "~/components/screen-header";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { ChevronDown } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { Switch } from "~/components/ui/switch";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
@@ -132,13 +132,11 @@ const SwitchRow = memo(function SwitchRow({
 				>
 					{label}
 				</Text>
-				<Host matchContents>
-					<Switch
-						value={value}
-						disabled={disabled}
-						onValueChange={onValueChange}
-					/>
-				</Host>
+				<Switch
+					value={value}
+					disabled={disabled}
+					onValueChange={onValueChange}
+				/>
 			</View>
 		</SettingsCard>
 	);

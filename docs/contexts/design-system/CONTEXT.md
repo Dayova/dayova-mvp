@@ -11,14 +11,14 @@ Confluence is the current cross-functional documentation hub. Keep this file foc
 
 ## Native controls
 
-All app switches must use the universal Expo UI `Switch` from `@expo/ui`.
-When a switch is embedded in a React Native screen, wrap it in `Host` from
-`@expo/ui` with `matchContents`. Do not import or use `Switch` from
-`react-native`.
+All app switches must use `Switch` from `src/components/ui/switch`. Do not
+import or use `Switch` from `react-native`, and do not render Expo UI switches
+directly from app screens.
 
-Switches should keep Expo UI's default native styling unless a screen has a
-specific documented design reason to do otherwise. This keeps the control
-aligned with the latest OS-native switch behavior on iOS, Android, and web.
+The app `Switch` wraps Expo UI native controls with `Host matchContents`.
+Android uses the Jetpack Compose switch with explicit Dayova-blue colors so
+Material You wallpaper colors cannot override the brand. iOS keeps the native
+SwiftUI toggle shape and applies Dayova blue through the SwiftUI tint modifier.
 
 ## Notes
 
