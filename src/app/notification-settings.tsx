@@ -14,8 +14,9 @@ import {
 import { api } from "#convex/_generated/api";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
-import { ChevronDown } from "~/components/ui/icon";
+import { ChevronDown, Timer } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { SelectSheet } from "~/components/ui/select-sheet";
 import { Switch } from "~/components/ui/switch";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
@@ -158,6 +159,7 @@ export default function NotificationSettingsScreen() {
 		Partial<NotificationPlanningPreferences>
 	>({});
 	const [showBriefingTimePicker, setShowBriefingTimePicker] = useState(false);
+	const [showReminderOffsetSheet, setShowReminderOffsetSheet] = useState(false);
 	const visiblePreferences = useMemo(
 		() =>
 			preferences
@@ -320,6 +322,14 @@ export default function NotificationSettingsScreen() {
 		setShowBriefingTimePicker(false);
 	}, []);
 
+	const openReminderOffsetSheet = useCallback(() => {
+		setShowReminderOffsetSheet(true);
+	}, []);
+
+	const closeReminderOffsetSheet = useCallback(() => {
+		setShowReminderOffsetSheet(false);
+	}, []);
+
 	const handleBriefingTimeChange = useCallback(
 		(event: { type: "set" | "dismissed" }, selectedDate?: Date) => {
 			if (event.type === "dismissed") {
@@ -476,43 +486,43 @@ export default function NotificationSettingsScreen() {
 								description="Hier kannst du einstellen, wie viele Minuten vorher dich die App an einzelne Ereignisse erinnern soll."
 								title="Erinnerungszeit"
 							/>
-							<View className="flex-row flex-wrap" style={{ gap: 8 }}>
-								{OFFSET_OPTIONS.map((minutes) => {
-									const selected =
-										preferencesForRender.reminderOffsetMinutes === minutes;
-									return (
-										<TouchableOpacity
-											key={minutes}
-											accessibilityRole="button"
-											accessibilityState={{
-												disabled: areReminderOffsetsDisabled,
-												selected,
-											}}
-											activeOpacity={0.84}
-											disabled={areReminderOffsetsDisabled}
-											onPress={() => updateReminderOffset(minutes)}
-											className="rounded-full px-4 py-3"
-											style={{
-												backgroundColor: selected ? "#3A7BFF" : "#FFFFFF",
-												boxShadow: selected
-													? "0 8px 16px rgba(58, 123, 255, 0.18)"
-													: "0 6px 14px rgba(20, 28, 48, 0.06)",
-											}}
-										>
-											<Text
-												className={`font-poppins font-semibold ${selected ? "text-white" : "text-[#1A1A1A]"}`}
-												style={{
-													fontSize: 13,
-													lineHeight: 18,
-													includeFontPadding: false,
-												}}
-											>
-												{minutes} min
-											</Text>
-										</TouchableOpacity>
-									);
-								})}
-							</View>
+							<TouchableOpacity
+								accessibilityRole="button"
+								accessibilityLabel="Erinnerungszeit ändern"
+								accessibilityState={{ disabled: areReminderOffsetsDisabled }}
+								activeOpacity={0.84}
+								className="min-h-[56px] flex-row items-center justify-between rounded-[24px] bg-white px-5"
+								disabled={areReminderOffsetsDisabled}
+								onPress={openReminderOffsetSheet}
+								style={{
+									boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)",
+								}}
+							>
+								<Text
+									className="flex-1 font-poppins font-semibold text-[#1A1A1A]"
+									numberOfLines={1}
+									style={{
+										fontSize: 14,
+										lineHeight: 20,
+										includeFontPadding: false,
+									}}
+								>
+									Vorher erinnern
+								</Text>
+								<View className="flex-row items-center" style={{ gap: 8 }}>
+									<Text
+										className="font-poppins text-[#8C8F98]"
+										style={{
+											fontSize: 12,
+											lineHeight: 18,
+											includeFontPadding: false,
+										}}
+									>
+										{preferencesForRender.reminderOffsetMinutes} min
+									</Text>
+									<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
+								</View>
+							</TouchableOpacity>
 
 							<SectionIntro
 								title="Event vergessen"
@@ -543,6 +553,22 @@ export default function NotificationSettingsScreen() {
 				display="spinner"
 				onClose={closeBriefingTimePicker}
 				onChange={handleBriefingTimeChange}
+			/>
+			<SelectSheet
+				visible={showReminderOffsetSheet}
+				title="Erinnerungszeit auswählen"
+				options={OFFSET_OPTIONS}
+				selectedValue={preferencesForRender?.reminderOffsetMinutes ?? ""}
+				onClose={closeReminderOffsetSheet}
+				onSelect={updateReminderOffset}
+				formatOptionLabel={(minutes) => `${minutes} min`}
+				renderOptionIcon={(_, isSelected) => (
+					<Timer
+						size={19}
+						color={isSelected ? "#3A7BFF" : "#6B7280"}
+						strokeWidth={2}
+					/>
+				)}
 			/>
 		</Screen>
 	);

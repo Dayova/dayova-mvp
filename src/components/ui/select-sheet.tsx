@@ -4,7 +4,8 @@ import {
 	BottomSheetModal,
 	BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
 	Pressable,
 	TouchableOpacity,
@@ -15,23 +16,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 
-type SelectSheetProps<T extends string> = {
+type SelectSheetProps<T extends string | number> = {
 	visible: boolean;
 	title: string;
 	options: readonly T[];
 	selectedValue: T | "";
 	onSelect: (value: T) => void;
 	onClose: () => void;
+	formatOptionLabel?: (option: T) => string;
 	renderOptionIcon?: (option: T, isSelected: boolean) => ReactNode;
 };
 
-function SelectSheet<T extends string>({
+function SelectSheet<T extends string | number>({
 	visible,
 	title,
 	options,
 	selectedValue,
 	onSelect,
 	onClose,
+	formatOptionLabel,
 	renderOptionIcon,
 }: SelectSheetProps<T>) {
 	const sheetRef = useRef<BottomSheetModal>(null);
@@ -42,13 +45,18 @@ function SelectSheet<T extends string>({
 	const snapPoints = useMemo(() => [sheetMaxHeight], [sheetMaxHeight]);
 
 	useEffect(() => {
-		if (visible) {
-			sheetRef.current?.present();
-			return;
-		}
+		if (!visible) return;
 
-		sheetRef.current?.dismiss();
+		const frame = requestAnimationFrame(() => {
+			sheetRef.current?.present();
+		});
+
+		return () => cancelAnimationFrame(frame);
 	}, [visible]);
+
+	const dismiss = useCallback(() => {
+		sheetRef.current?.dismiss();
+	}, []);
 
 	const renderBackdrop = useCallback(
 		(props: BottomSheetBackdropProps) => (
@@ -62,6 +70,8 @@ function SelectSheet<T extends string>({
 		),
 		[],
 	);
+
+	if (!visible) return null;
 
 	return (
 		<BottomSheetModal
@@ -93,7 +103,7 @@ function SelectSheet<T extends string>({
 						accessibilityLabel="Auswahl schließen"
 						accessibilityRole="button"
 						hitSlop={8}
-						onPress={onClose}
+						onPress={dismiss}
 						className="h-10 min-w-16 items-center justify-center rounded-full px-3"
 						style={{ backgroundColor: "rgba(58,123,255,0.08)" }}
 					>
@@ -117,7 +127,7 @@ function SelectSheet<T extends string>({
 								key={option}
 								onPress={() => {
 									onSelect(option);
-									onClose();
+									dismiss();
 								}}
 								accessibilityRole="button"
 								accessibilityState={{ selected: isSelected }}
@@ -145,7 +155,7 @@ function SelectSheet<T extends string>({
 										fontWeight: isSelected ? "600" : "400",
 									}}
 								>
-									{option}
+									{formatOptionLabel ? formatOptionLabel(option) : option}
 								</Text>
 								{isSelected ? (
 									<View className="ml-4 h-7 w-7 items-center justify-center rounded-full bg-primary">
