@@ -39,6 +39,7 @@ import {
 	parseDayKey,
 	useCurrentLocalDay,
 } from "~/lib/day-key";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import type { DayEntry } from "~/types/dayEntries";
 
@@ -55,6 +56,8 @@ const HATCH_LINES = [
 	"hatch-7",
 ];
 const TIMELINE_MARKER_HOURS = Array.from({ length: 25 }, (_, hour) => hour);
+const PRIMARY_INTERACTIVE_GRADIENT =
+	DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 
 const clamp = (value: number, min: number, max: number) =>
 	Math.min(Math.max(value, min), max);
@@ -232,9 +235,9 @@ function DragStartSlider({
 					]}
 				>
 					<LinearGradient
-						colors={["#3A7BFF", "#59D6CF"]}
-						start={{ x: 0, y: 0.5 }}
-						end={{ x: 1, y: 0.5 }}
+						colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
+						start={PRIMARY_INTERACTIVE_GRADIENT.start}
+						end={PRIMARY_INTERACTIVE_GRADIENT.end}
 						style={{
 							flex: 1,
 							alignItems: "center",
@@ -814,9 +817,9 @@ export default function HomeScreen() {
 										onPress={() => selectVisibleDay(day.key, dayIndex)}
 									>
 										<LinearGradient
-											colors={["#3A7BFF", "#59D6CF"]}
-											start={{ x: 0, y: 0.5 }}
-											end={{ x: 1, y: 0.5 }}
+											colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
+											start={PRIMARY_INTERACTIVE_GRADIENT.start}
+											end={PRIMARY_INTERACTIVE_GRADIENT.end}
 											style={{
 												width: itemWidth,
 												height: 32 * screenScale,

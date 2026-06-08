@@ -1,9 +1,10 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { LinearGradient } from "expo-linear-gradient";
 import type * as ExpoNotifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Linking, TouchableOpacity, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -18,6 +19,7 @@ import {
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace } from "~/lib/navigation";
 import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
 
@@ -39,6 +41,8 @@ const CATEGORIES: Array<{ key: InboxCategory; label: string }> = [
 	{ key: "learningPlan", label: "Lernpläne" },
 	{ key: "task", label: "Aufgaben" },
 ];
+const PRIMARY_INTERACTIVE_GRADIENT =
+	DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 
 const getNotificationsModule = () => {
 	try {
@@ -81,10 +85,16 @@ function NotificationIcon({
 	return <Mail size={22} color="#3A7BFF" strokeWidth={2} />;
 }
 
-function WarningBanner() {
+function WarningBanner({
+	ctaLabel,
+	onPressCta,
+}: {
+	ctaLabel: string;
+	onPressCta: () => void;
+}) {
 	return (
 		<View
-			className="flex-row rounded-[24px] bg-[#FFF7E0] px-5 py-4"
+			className="flex-row rounded-[24px] bg-[#FFF7E0] px-5 py-5"
 			style={{ gap: 12 }}
 		>
 			<CircleAlert size={22} color="#F59E0B" strokeWidth={2.2} />
@@ -102,6 +112,25 @@ function WarningBanner() {
 					Du bekommst Mitteilungen weiterhin hier im Postfach. Aktiviere
 					System-Mitteilungen, wenn Dayova dich außerhalb der App erinnern soll.
 				</Text>
+				<TouchableOpacity
+					accessibilityRole="button"
+					accessibilityLabel={ctaLabel}
+					activeOpacity={0.82}
+					onPress={onPressCta}
+					className="mt-2 self-start rounded-full bg-white"
+					style={{
+						minHeight: 38,
+						paddingHorizontal: 20,
+						paddingVertical: 10,
+					}}
+				>
+					<Text
+						className="font-poppins font-semibold text-[#7A5A12]"
+						style={{ fontSize: 12, lineHeight: 16, includeFontPadding: false }}
+					>
+						{ctaLabel}
+					</Text>
+				</TouchableOpacity>
 			</View>
 		</View>
 	);
@@ -116,11 +145,25 @@ function CategoryTabs({
 }) {
 	return (
 		<View
-			className="flex-row rounded-full bg-white p-1"
-			style={{ boxShadow: "0 6px 16px rgba(20, 28, 48, 0.06)" }}
+			className="flex-row rounded-full bg-white"
+			style={{
+				minHeight: 60,
+				paddingHorizontal: 4,
+				paddingVertical: 6,
+				boxShadow: "0 6px 16px rgba(20, 28, 48, 0.06)",
+			}}
 		>
 			{CATEGORIES.map((category) => {
 				const selected = value === category.key;
+				const label = (
+					<Text
+						className={`font-poppins font-semibold ${selected ? "text-white" : "text-[#1A1A1A]"}`}
+						style={{ fontSize: 13, lineHeight: 18, includeFontPadding: false }}
+					>
+						{category.label}
+					</Text>
+				);
+
 				return (
 					<TouchableOpacity
 						key={category.key}
@@ -128,15 +171,32 @@ function CategoryTabs({
 						accessibilityState={{ selected }}
 						activeOpacity={0.84}
 						onPress={() => onChange(category.key)}
-						className="h-10 flex-1 items-center justify-center rounded-full"
-						style={{ backgroundColor: selected ? "#3A7BFF" : "transparent" }}
+						className="overflow-hidden rounded-full"
+						style={{ flexGrow: 1, flexBasis: 0, height: 48, minHeight: 48 }}
 					>
-						<Text
-							className={`font-poppins font-semibold ${selected ? "text-white" : "text-[#1A1A1A]"}`}
-							style={{ fontSize: 13, lineHeight: 18, includeFontPadding: false }}
-						>
-							{category.label}
-						</Text>
+						{selected ? (
+							<LinearGradient
+								colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
+								start={PRIMARY_INTERACTIVE_GRADIENT.start}
+								end={PRIMARY_INTERACTIVE_GRADIENT.end}
+								style={{
+									height: 48,
+									minHeight: 48,
+									width: "100%",
+									alignItems: "center",
+									justifyContent: "center",
+								}}
+							>
+								{label}
+							</LinearGradient>
+						) : (
+							<View
+								className="items-center justify-center"
+								style={{ height: 48, minHeight: 48, width: "100%" }}
+							>
+								{label}
+							</View>
+						)}
 					</TouchableOpacity>
 				);
 			})}
@@ -253,6 +313,16 @@ export default function NotificationsScreen() {
 	const showWarning =
 		preferences !== undefined &&
 		(!preferences.systemNotificationsEnabled || !hasSystemPermission);
+	const warningCtaLabel = preferences?.systemNotificationsEnabled
+		? "System-Einstellungen öffnen"
+		: "In Dayova aktivieren";
+	const openNotificationFix = () => {
+		if (!preferences?.systemNotificationsEnabled) {
+			router.push("/notification-settings");
+			return;
+		}
+		void Linking.openSettings();
+	};
 	const goBack = () => goBackOrReplace(router, "/home");
 	const visibleInbox = useMemo(() => inbox ?? [], [inbox]);
 
@@ -262,7 +332,12 @@ export default function NotificationsScreen() {
 			<ScreenScroll topPadding={72} bottomPadding={120} horizontalPadding={24}>
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
 				<View style={{ gap: 18 }}>
-					{showWarning ? <WarningBanner /> : null}
+					{showWarning ? (
+						<WarningBanner
+							ctaLabel={warningCtaLabel}
+							onPressCta={openNotificationFix}
+						/>
+					) : null}
 					<CategoryTabs value={category} onChange={setCategory} />
 
 					{inbox === null ? (
@@ -272,7 +347,7 @@ export default function NotificationsScreen() {
 					) : null}
 
 					{inbox !== null && visibleInbox.length === 0 ? (
-						<View className="items-center rounded-[24px] bg-white px-6 py-8">
+						<View className="items-center rounded-[24px] bg-white px-6 py-11">
 							<Text
 								className="text-center font-bold font-poppins text-[#1A1A1A]"
 								style={{
