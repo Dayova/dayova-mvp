@@ -1,12 +1,27 @@
+import { useConvexAuth, useQuery } from "convex/react";
+import { useRouter } from "expo-router";
 import { TouchableOpacity } from "react-native";
+import { View } from "react-native";
+import { api } from "#convex/_generated/api";
 import { Bell } from "~/components/ui/icon";
+import { useAuth } from "~/context/AuthContext";
 
 export function NotificationButton() {
+	const router = useRouter();
+	const { user } = useAuth();
+	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const unreadSummary = useQuery(
+		api.notifications.getUnreadSummary,
+		user && isConvexAuthenticated ? {} : "skip",
+	);
+	const hasUnread = unreadSummary?.hasUnread === true;
+
 	return (
 		<TouchableOpacity
 			activeOpacity={0.86}
 			accessibilityRole="button"
 			accessibilityLabel="Benachrichtigungen öffnen"
+			onPress={() => router.push("/notifications")}
 			className="h-14 w-14 items-center justify-center rounded-full bg-white"
 			style={{
 				borderWidth: 1,
@@ -15,6 +30,20 @@ export function NotificationButton() {
 			}}
 		>
 			<Bell size={22} color="#1A1A1A" strokeWidth={2.2} />
+			{hasUnread ? (
+				<View
+					accessibilityLabel="Neue Mitteilungen"
+					className="absolute rounded-full bg-[#FF4D67]"
+					style={{
+						top: 14,
+						right: 14,
+						width: 10,
+						height: 10,
+						borderWidth: 2,
+						borderColor: "#FFFFFF",
+					}}
+				/>
+			) : null}
 		</TouchableOpacity>
 	);
 }

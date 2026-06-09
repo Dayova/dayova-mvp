@@ -16,6 +16,7 @@ export type PlanSession = {
 	tasks: string[];
 	expectedOutcome: string;
 	sortOrder: number;
+	completed: boolean;
 };
 
 type LearningPlanDocument = {

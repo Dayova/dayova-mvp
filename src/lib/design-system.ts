@@ -16,6 +16,13 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		surface: "#FFFFFF",
 		mutedSurface: "#F7F8FA",
 	},
+	gradients: {
+		primaryInteractive: {
+			colors: ["#3A7BFF", "#59D6CF"],
+			start: { x: 0, y: 0.5 },
+			end: { x: 1, y: 0.5 },
+		},
+	},
 	elevation: {
 		surface: {
 			shadowColor: "#000000",

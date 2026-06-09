@@ -67,7 +67,13 @@ const config: ExpoConfig = {
 	plugins: [
 		"expo-router",
 		"@clerk/expo",
-		"expo-notifications",
+		[
+			"expo-notifications",
+			{
+				icon: "./assets/dayova-notification-icon.png",
+				color: "#3A7BFF",
+			},
+		],
 		[
 			"expo-image-picker",
 			{

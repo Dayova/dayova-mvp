@@ -10,6 +10,7 @@ import { BackButton, Button } from "~/components/ui/button";
 import {
 	BookOpen,
 	CalendarDays,
+	Check,
 	Clock3,
 	NotebookPen,
 	Timer,
@@ -159,6 +160,7 @@ export default function EntryDetailScreen() {
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const deleteDayEntry = useMutation(api.dayEntries.remove);
+	const setDayEntryCompleted = useMutation(api.dayEntries.setCompleted);
 	const params = useLocalSearchParams<{
 		id?: string;
 		title?: string;
@@ -200,6 +202,8 @@ export default function EntryDetailScreen() {
 		kind === "Leistungskontrolle" ||
 		Boolean(examType);
 	const canDelete = Boolean(entry && id && isDeletableKind);
+	const canToggleCompleted = Boolean(entry && id);
+	const isCompleted = entry?.completed === true;
 
 	const handleDelete = () => {
 		if (!canDelete || !id || !user || !isConvexAuthenticated) return;
@@ -222,6 +226,14 @@ export default function EntryDetailScreen() {
 				},
 			},
 		]);
+	};
+
+	const toggleCompleted = () => {
+		if (!canToggleCompleted || !id || !user || !isConvexAuthenticated) return;
+		void setDayEntryCompleted({
+			id: id as Id<"dayEntries">,
+			completed: !isCompleted,
+		});
 	};
 
 	return (
@@ -284,6 +296,22 @@ export default function EntryDetailScreen() {
 				</View>
 
 				<NotesCard value={notes} />
+				{canToggleCompleted ? (
+					<Button
+						className="mt-5"
+						variant={isCompleted ? "neutral" : "default"}
+						onPress={toggleCompleted}
+					>
+						<Check
+							size={18}
+							color={isCompleted ? "#1A1A1A" : "#FFFFFF"}
+							strokeWidth={2.3}
+						/>
+						<Text>
+							{isCompleted ? "Als offen markieren" : "Als erledigt markieren"}
+						</Text>
+					</Button>
+				) : null}
 				{canDelete ? (
 					<Button className="mt-5" variant="destructive" onPress={handleDelete}>
 						<Trash2 size={18} color="#FFFFFF" strokeWidth={2.3} />
