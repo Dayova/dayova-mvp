@@ -8,22 +8,34 @@
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
-      "environment": "development"
+      "environment": "development",
+      "env": {
+        "APP_VARIANT": "development"
+      }
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
-      "environment": "preview"
+      "environment": "preview",
+      "env": {
+        "APP_VARIANT": "preview"
+      }
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
-      "environment": "production"
+      "environment": "production",
+      "env": {
+        "APP_VARIANT": "production"
+      }
     },
     "apk-test": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "preview"
       },
       "channel": "apk-test"
     },
@@ -31,6 +43,9 @@
       "extends": "production",
       "environment": "production",
       "distribution": "internal",
+      "env": {
+        "APP_VARIANT": "production"
+      },
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease -x lintVitalAnalyzeRelease"

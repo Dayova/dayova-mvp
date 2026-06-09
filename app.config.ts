@@ -5,10 +5,8 @@ const {
 }: typeof import("./src/lib/runtime-config") =
 	require("./src/lib/runtime-config.ts");
 
-const PRODUCTION_BUILD_PROFILES = new Set(["production", "production-apk"]);
-
-const easBuildProfile = process.env.EAS_BUILD_PROFILE;
-const isProduction = PRODUCTION_BUILD_PROFILES.has(easBuildProfile ?? "");
+const APP_VARIANT = process.env.APP_VARIANT ?? "development";
+const isProduction = APP_VARIANT === "production";
 const isReleaseConfig =
 	process.env.EAS_BUILD === "true" || process.env.NODE_ENV === "production";
 
