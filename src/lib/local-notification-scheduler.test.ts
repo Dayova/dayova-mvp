@@ -33,7 +33,7 @@ test("syncPlannedLocalNotifications replaces Dayova-owned scheduled notification
 	];
 
 	await expect(
-		syncPlannedLocalNotifications(notifications, plan),
+		syncPlannedLocalNotifications(notifications, plan, "user-1"),
 	).resolves.toEqual({ cancelled: 1, scheduled: 1 });
 	expect(cancelScheduledNotificationAsync).toHaveBeenCalledWith("old-dayova");
 	expect(cancelScheduledNotificationAsync).not.toHaveBeenCalledWith(
@@ -45,6 +45,7 @@ test("syncPlannedLocalNotifications replaces Dayova-owned scheduled notification
 			body: "Deine Mathe Hausaufgabe startet in 15 Minuten.",
 			data: {
 				dayovaNotificationKey: "before:entry-1",
+				dayovaOwnerId: "user-1",
 				type: "beforeEvent",
 				category: "task",
 				relatedEntryId: "entry-1",

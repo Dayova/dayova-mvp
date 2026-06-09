@@ -217,6 +217,54 @@ test("inbox notifications can be marked read and deleted", async () => {
 	).resolves.toEqual([]);
 });
 
+test("delivered local notifications are recorded once after their entry was deleted", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const entryId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-06-16",
+		title: "Deutsch Hausaufgabe",
+		time: "16:00",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "16. Juni 2026",
+		durationMinutes: 45,
+	});
+	await t.mutation(api.dayEntries.remove, { id: entryId });
+
+	const deliveredNotification = {
+		eventKey: `before:${entryId}`,
+		category: "task" as const,
+		type: "beforeEvent" as const,
+		title: "Hausaufgabe",
+		body: "Deine Deutsch Hausaufgabe startet in 15 Minuten.",
+		relatedDayEntryId: entryId,
+		triggeredAt: "2026-06-16T15:45:00.000Z",
+	};
+
+	await expect(
+		t.mutation(
+			api.notifications.recordDeliveredNotification,
+			deliveredNotification,
+		),
+	).resolves.toEqual({ created: true });
+	await expect(
+		t.mutation(
+			api.notifications.recordDeliveredNotification,
+			deliveredNotification,
+		),
+	).resolves.toEqual({ created: false });
+
+	const inbox = await t.query(api.notifications.listInbox, { category: "all" });
+	expect(inbox).toMatchObject([
+		{
+			category: "task",
+			type: "beforeEvent",
+			title: "Hausaufgabe",
+			body: "Deine Deutsch Hausaufgabe startet in 15 Minuten.",
+			relatedDayEntryId: entryId,
+			triggeredAt: new Date(deliveredNotification.triggeredAt).getTime(),
+		},
+	]);
+});
+
 test("daily briefing summarizes today's entries at the configured time", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 

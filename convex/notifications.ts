@@ -41,6 +41,18 @@ const inboxCategoryValidator = v.union(
 	v.literal("message"),
 );
 
+const notificationCategoryValidator = v.union(
+	v.literal("learningPlan"),
+	v.literal("task"),
+	v.literal("message"),
+);
+
+const notificationTypeValidator = v.union(
+	v.literal("dailyBriefing"),
+	v.literal("beforeEvent"),
+	v.literal("forgottenEvent"),
+);
+
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
 	if (identity === null) {
@@ -204,6 +216,20 @@ const insertNotificationOnce = async (
 	return true;
 };
 
+const hasMatchingEventKey = (eventKey: string, type: NotificationType) => {
+	if (type === "dailyBriefing") return eventKey.startsWith("briefing:");
+	if (type === "beforeEvent") return eventKey.startsWith("before:");
+	return eventKey.startsWith("forgotten:");
+};
+
+const hasMatchingCategory = (
+	category: NotificationCategory,
+	type: NotificationType,
+) =>
+	type === "dailyBriefing"
+		? category === "message"
+		: category === "learningPlan" || category === "task";
+
 export const getPreferences = query({
 	args: {},
 	handler: async (ctx) => {
@@ -363,6 +389,63 @@ export const deleteNotification = mutation({
 		});
 
 		return args.id;
+	},
+});
+
+export const recordDeliveredNotification = mutation({
+	args: {
+		eventKey: v.string(),
+		category: notificationCategoryValidator,
+		type: notificationTypeValidator,
+		title: v.string(),
+		body: v.string(),
+		relatedDayEntryId: v.optional(v.id("dayEntries")),
+		triggeredAt: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		if (
+			!hasMatchingEventKey(args.eventKey, args.type) ||
+			!hasMatchingCategory(args.category, args.type) ||
+			!args.title.trim() ||
+			!args.body.trim()
+		) {
+			throwUserFacingError("Ungültige Mitteilung.");
+		}
+
+		const triggeredAt = parseTimestamp(args.triggeredAt);
+		let relatedLearningPlanId: Id<"learningPlans"> | undefined;
+		let relatedLearningPlanSessionId: Id<"learningPlanSessions"> | undefined;
+		if (args.relatedDayEntryId) {
+			const entry = await ctx.db.get("dayEntries", args.relatedDayEntryId);
+
+			if (!entry) {
+				throwUserFacingError("Zugehöriger Eintrag nicht gefunden.");
+			}
+
+			if (entry.ownerTokenIdentifier !== ownerTokenIdentifier) {
+				throwUserFacingError("Mitteilung gehört zu einem anderen Konto.");
+			}
+
+			relatedLearningPlanId = entry.relatedLearningPlanId;
+			relatedLearningPlanSessionId = entry.relatedLearningPlanSessionId;
+		}
+
+		const created = await insertNotificationOnce(ctx, {
+			ownerTokenIdentifier,
+			eventKey: args.eventKey,
+			category: args.category,
+			type: args.type,
+			title: args.title.trim(),
+			body: args.body.trim(),
+			relatedDayEntryId: args.relatedDayEntryId,
+			relatedLearningPlanId,
+			relatedLearningPlanSessionId,
+			triggeredAt,
+			createdAt: triggeredAt,
+		});
+
+		return { created };
 	},
 });
 
