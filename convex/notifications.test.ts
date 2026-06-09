@@ -92,6 +92,46 @@ test("due entry reminders create one unread in-app notification", async () => {
 	]);
 });
 
+test("changing reminder offset does not duplicate an already-created before-event notification", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-06-16",
+		title: "Mathe Hausaufgabe",
+		time: "16:00",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "16. Juni 2026",
+		durationMinutes: 45,
+	});
+
+	await expect(
+		t.mutation(api.notifications.syncDueNotifications, {
+			now: "2026-06-16T15:45:00.000Z",
+			localDayKey: "2026-06-16",
+			localMinutes: 15 * 60 + 45,
+		}),
+	).resolves.toEqual({ created: 1 });
+
+	await t.mutation(api.notifications.updatePreferences, {
+		reminderOffsetMinutes: 30,
+	});
+
+	await expect(
+		t.mutation(api.notifications.syncDueNotifications, {
+			now: "2026-06-16T15:46:00.000Z",
+			localDayKey: "2026-06-16",
+			localMinutes: 15 * 60 + 46,
+		}),
+	).resolves.toEqual({ created: 0 });
+
+	const inbox = await t.query(api.notifications.listInbox, { category: "all" });
+	expect(inbox).toHaveLength(1);
+	expect(inbox[0]).toMatchObject({
+		type: "beforeEvent",
+		body: "Mathe Hausaufgabe startet in 15 Minuten.",
+	});
+});
+
 test("forgotten event notifications are created only for incomplete entries", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 

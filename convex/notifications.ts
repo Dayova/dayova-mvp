@@ -441,7 +441,7 @@ export const syncDueNotifications = mutation({
 				) {
 					const didCreate = await insertNotificationOnce(ctx, {
 						ownerTokenIdentifier,
-						eventKey: `before:${entry._id}:${preferences.reminderOffsetMinutes}`,
+						eventKey: `before:${entry._id}`,
 						category: getEntryNotificationCategory(entry),
 						type: "beforeEvent",
 						title: getBeforeEventTitle(entry),

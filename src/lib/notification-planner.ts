@@ -156,7 +156,7 @@ export const buildLocalNotificationPlan = ({
 				if (beforeDate && beforeDate.getTime() > now.getTime()) {
 					const eventTitle = getEventTitle(entry);
 					plan.push({
-						key: `before:${entry.id}:${preferences.reminderOffsetMinutes}`,
+						key: `before:${entry.id}`,
 						type: "beforeEvent",
 						category: getCategory(entry),
 						title: eventTitle,
