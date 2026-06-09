@@ -56,7 +56,20 @@ jobs:
       - id: ota_guard
         name: Check OTA safety
         run: |
-          changed_files="$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")"
+          before_sha="${{ github.event.before }}"
+          current_sha="${{ github.sha }}"
+
+          if [ -n "$before_sha" ] && [ "$before_sha" != "0000000000000000000000000000000000000000" ]; then
+            git fetch --depth=1 origin "$before_sha" || true
+          fi
+
+          if [ -n "$before_sha" ] && git cat-file -e "$before_sha^{commit}" 2>/dev/null; then
+            changed_files="$(git diff --name-only "$before_sha" "$current_sha")"
+          else
+            echo "Previous commit is unavailable in checkout. Treating update as not OTA-safe."
+            changed_files="app.config.ts"
+          fi
+
           printf '%s\n' "$changed_files"
 
           if printf '%s\n' "$changed_files" | grep -E '^(app\.config\..*|app\.json|eas\.json|package\.json|pnpm-lock\.yaml|android/|ios/|plugins/|assets/.*(icon|splash|logo)|src/lib/runtime-config\.ts)' >/dev/null; then
@@ -64,6 +77,7 @@ jobs:
             set-output ota_safe false
           else
             set-output ota_safe true
+          fi
 
   deploy_convex:
     name: Deploy Convex
