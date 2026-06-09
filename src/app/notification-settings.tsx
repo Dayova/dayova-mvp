@@ -64,8 +64,12 @@ const formatTime = (date: Date) =>
 function SettingsCard({ children }: { children: React.ReactNode }) {
 	return (
 		<View
-			className="rounded-[24px] bg-white px-6 py-5"
-			style={{ boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)" }}
+			className="rounded-[24px] bg-white"
+			style={{
+				paddingHorizontal: Platform.OS === "ios" ? 24 : 20,
+				paddingVertical: Platform.OS === "ios" ? 20 : 16,
+				boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)",
+			}}
 		>
 			{children}
 		</View>
@@ -407,10 +411,13 @@ export default function NotificationSettingsScreen() {
 										disabled: areNotificationDetailsDisabled,
 									}}
 									activeOpacity={0.84}
-									className="min-h-[64px] flex-row items-center justify-between rounded-[24px] bg-white px-6 py-4"
+									className="flex-row items-center justify-between rounded-[24px] bg-white"
 									disabled={areNotificationDetailsDisabled}
 									onPress={openBriefingTimePicker}
 									style={{
+										minHeight: Platform.OS === "ios" ? 64 : 56,
+										paddingHorizontal: Platform.OS === "ios" ? 24 : 20,
+										...(Platform.OS === "ios" ? { paddingVertical: 16 } : {}),
 										boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)",
 									}}
 								>
@@ -491,10 +498,13 @@ export default function NotificationSettingsScreen() {
 								accessibilityLabel="Erinnerungszeit ändern"
 								accessibilityState={{ disabled: areReminderOffsetsDisabled }}
 								activeOpacity={0.84}
-								className="min-h-[64px] flex-row items-center justify-between rounded-[24px] bg-white px-6 py-4"
+								className="flex-row items-center justify-between rounded-[24px] bg-white"
 								disabled={areReminderOffsetsDisabled}
 								onPress={openReminderOffsetSheet}
 								style={{
+									minHeight: Platform.OS === "ios" ? 64 : 56,
+									paddingHorizontal: Platform.OS === "ios" ? 24 : 20,
+									...(Platform.OS === "ios" ? { paddingVertical: 16 } : {}),
 									boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)",
 								}}
 							>
