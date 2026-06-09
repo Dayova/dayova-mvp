@@ -64,7 +64,6 @@ jobs:
             set-output ota_safe false
           else
             set-output ota_safe true
-          fi
 
   deploy_convex:
     name: Deploy Convex
