@@ -58,4 +58,9 @@ test("local notification planner creates briefing, before-event, and forgotten r
 		"Hausaufgabe",
 		"Hausaufgabe nicht vergessen",
 	]);
+	expect(plan.map((notification) => notification.body)).toEqual([
+		"Heute steht 1 Eintrag an: Mathe Hausaufgabe um 16:00.",
+		"Deine Mathe Hausaufgabe startet in 15 Minuten.",
+		"Du kannst deine Mathe Hausaufgabe noch als erledigt markieren.",
+	]);
 });

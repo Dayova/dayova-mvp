@@ -128,8 +128,12 @@ const getDailyBriefingBody = (entries: Doc<"dayEntries">[]) => {
 		sortedEntries.length > preview.length
 			? ` und ${sortedEntries.length - preview.length} weitere`
 			: "";
+	const briefingLead =
+		sortedEntries.length === 1
+			? "Heute steht 1 Eintrag an"
+			: `Heute stehen ${sortedEntries.length} Einträge an`;
 
-	return `Heute stehen ${sortedEntries.length} Einträge an: ${preview.join(", ")}${suffix}.`;
+	return `${briefingLead}: ${preview.join(", ")}${suffix}.`;
 };
 
 const shouldCreateBeforeEvent = (
@@ -445,7 +449,7 @@ export const syncDueNotifications = mutation({
 						category: getEntryNotificationCategory(entry),
 						type: "beforeEvent",
 						title: getBeforeEventTitle(entry),
-						body: `${entry.title} startet in ${preferences.reminderOffsetMinutes} Minuten.`,
+						body: `Deine ${entry.title} startet in ${preferences.reminderOffsetMinutes} Minuten.`,
 						relatedDayEntryId: entry._id,
 						relatedLearningPlanId: entry.relatedLearningPlanId,
 						relatedLearningPlanSessionId: entry.relatedLearningPlanSessionId,
@@ -469,7 +473,7 @@ export const syncDueNotifications = mutation({
 							category: getEntryNotificationCategory(entry),
 							type: "forgottenEvent",
 							title: `${getBeforeEventTitle(entry)} nicht vergessen`,
-							body: `Du kannst ${entry.title} noch als erledigt markieren.`,
+							body: `Du kannst deine ${entry.title} noch als erledigt markieren.`,
 							relatedDayEntryId: entry._id,
 							relatedLearningPlanId: entry.relatedLearningPlanId,
 							relatedLearningPlanSessionId: entry.relatedLearningPlanSessionId,

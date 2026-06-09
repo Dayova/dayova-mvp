@@ -26,7 +26,7 @@ test("syncPlannedLocalNotifications replaces Dayova-owned scheduled notification
 			type: "beforeEvent",
 			category: "task",
 			title: "Hausaufgabe",
-			body: "Mathe Hausaufgabe startet in 15 Minuten.",
+			body: "Deine Mathe Hausaufgabe startet in 15 Minuten.",
 			triggerAt: new Date(2026, 5, 16, 15, 45),
 			relatedEntryId: "entry-1",
 		},
@@ -42,7 +42,7 @@ test("syncPlannedLocalNotifications replaces Dayova-owned scheduled notification
 	expect(scheduleNotificationAsync).toHaveBeenCalledWith({
 		content: {
 			title: "Hausaufgabe",
-			body: "Mathe Hausaufgabe startet in 15 Minuten.",
+			body: "Deine Mathe Hausaufgabe startet in 15 Minuten.",
 			data: {
 				dayovaNotificationKey: "before:entry-1",
 				type: "beforeEvent",

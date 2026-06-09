@@ -85,7 +85,7 @@ test("due entry reminders create one unread in-app notification", async () => {
 			category: "task",
 			type: "beforeEvent",
 			title: "Hausaufgabe",
-			body: "Mathe Hausaufgabe startet in 15 Minuten.",
+			body: "Deine Mathe Hausaufgabe startet in 15 Minuten.",
 			readAt: null,
 			deletedAt: null,
 		},
@@ -128,7 +128,7 @@ test("changing reminder offset does not duplicate an already-created before-even
 	expect(inbox).toHaveLength(1);
 	expect(inbox[0]).toMatchObject({
 		type: "beforeEvent",
-		body: "Mathe Hausaufgabe startet in 15 Minuten.",
+		body: "Deine Mathe Hausaufgabe startet in 15 Minuten.",
 	});
 });
 
@@ -170,7 +170,7 @@ test("forgotten event notifications are created only for incomplete entries", as
 			category: "task",
 			type: "forgottenEvent",
 			title: "Hausaufgabe nicht vergessen",
-			body: "Du kannst Mathe Hausaufgabe noch als erledigt markieren.",
+			body: "Du kannst deine Mathe Hausaufgabe noch als erledigt markieren.",
 		},
 	]);
 });
@@ -250,6 +250,39 @@ test("daily briefing summarizes today's entries at the configured time", async (
 			type: "dailyBriefing",
 			title: "Tagesüberblick",
 			body: "Heute stehen 2 Einträge an: Englisch Test um 10:00, Mathe Hausaufgabe um 16:00.",
+		},
+	]);
+});
+
+test("daily briefing uses singular wording for one entry", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-06-16",
+		title: "Deutsch Hausaufgabe",
+		time: "17:14",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "16. Juni 2026",
+		durationMinutes: 45,
+	});
+
+	await expect(
+		t.mutation(api.notifications.syncDueNotifications, {
+			now: "2026-06-16T07:30:00.000Z",
+			localDayKey: "2026-06-16",
+			localMinutes: 7 * 60 + 30,
+		}),
+	).resolves.toEqual({ created: 1 });
+
+	const inbox = await t.query(api.notifications.listInbox, {
+		category: "all",
+	});
+	expect(inbox).toMatchObject([
+		{
+			category: "message",
+			type: "dailyBriefing",
+			title: "Tagesüberblick",
+			body: "Heute steht 1 Eintrag an: Deutsch Hausaufgabe um 17:14.",
 		},
 	]);
 });

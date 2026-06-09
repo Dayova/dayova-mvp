@@ -107,8 +107,12 @@ const getBriefingBody = (entries: NotificationPlanningEntry[]) => {
 		sortedEntries.length > preview.length
 			? ` und ${sortedEntries.length - preview.length} weitere`
 			: "";
+	const briefingLead =
+		sortedEntries.length === 1
+			? "Heute steht 1 Eintrag an"
+			: `Heute stehen ${sortedEntries.length} Einträge an`;
 
-	return `Heute stehen ${sortedEntries.length} Einträge an: ${preview.join(", ")}${suffix}.`;
+	return `${briefingLead}: ${preview.join(", ")}${suffix}.`;
 };
 
 export const buildLocalNotificationPlan = ({
@@ -160,7 +164,7 @@ export const buildLocalNotificationPlan = ({
 						type: "beforeEvent",
 						category: getCategory(entry),
 						title: eventTitle,
-						body: `${getEntryTitle(entry)} startet in ${preferences.reminderOffsetMinutes} Minuten.`,
+						body: `Deine ${getEntryTitle(entry)} startet in ${preferences.reminderOffsetMinutes} Minuten.`,
 						triggerAt: beforeDate,
 						relatedEntryId: entry.id,
 					});
@@ -183,7 +187,7 @@ export const buildLocalNotificationPlan = ({
 						type: "forgottenEvent",
 						category: getCategory(entry),
 						title: `${eventTitle} nicht vergessen`,
-						body: `Du kannst ${getEntryTitle(entry)} noch als erledigt markieren.`,
+						body: `Du kannst deine ${getEntryTitle(entry)} noch als erledigt markieren.`,
 						triggerAt: forgottenDate,
 						relatedEntryId: entry.id,
 					});
