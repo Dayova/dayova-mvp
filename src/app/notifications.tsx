@@ -222,62 +222,72 @@ function NotificationCard({
 			accessibilityLabel="Mitteilung löschen"
 			activeOpacity={0.9}
 			onPress={onDelete}
-			className="my-1 w-24 items-center justify-center rounded-r-[24px] bg-[#FF1E1E]"
+			className="w-24 items-center justify-center rounded-r-[24px] bg-[#FF1E1E]"
 		>
 			<Trash2 size={28} color="#FFFFFF" strokeWidth={2.2} />
 		</TouchableOpacity>
 	);
 
 	return (
-		<Swipeable renderRightActions={renderRightActions} overshootRight={false}>
-			<View
-				className="my-1 flex-row rounded-[24px] bg-white px-5 py-4"
-				style={{
-					gap: 14,
-					boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)",
-				}}
+		<View
+			className="my-1 rounded-[24px]"
+			style={{ boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)" }}
+		>
+			<Swipeable
+				renderRightActions={renderRightActions}
+				overshootRight={false}
+				containerStyle={{ borderRadius: 24 }}
 			>
-				<View className="h-10 w-10 items-center justify-center rounded-full bg-[#EFF5FF]">
-					<NotificationIcon category={notification.category} />
-				</View>
-				<View className="flex-1" style={{ gap: 4 }}>
-					<View
-						className="flex-row items-start justify-between"
-						style={{ gap: 8 }}
-					>
-						<Text
-							className="flex-1 font-bold font-poppins text-[#1A1A1A]"
-							style={{
-								fontSize: 15,
-								lineHeight: 20,
-								includeFontPadding: false,
-							}}
-							numberOfLines={1}
+				<View
+					className="flex-row rounded-[24px] bg-white px-5 py-12"
+					style={{ gap: 14 }}
+				>
+					<View className="h-10 w-10 items-center justify-center rounded-full bg-[#EFF5FF]">
+						<NotificationIcon category={notification.category} />
+					</View>
+					<View className="flex-1" style={{ gap: 4 }}>
+						<View
+							className="flex-row items-start justify-between"
+							style={{ gap: 8 }}
 						>
-							{notification.title}
-						</Text>
-						<View className="rounded-full bg-[#F4F4F5] px-3 py-1">
 							<Text
-								className="font-poppins text-[#70727A]"
+								className="flex-1 font-bold font-poppins text-[#1A1A1A]"
 								style={{
-									fontSize: 11,
-									lineHeight: 15,
+									fontSize: 15,
+									lineHeight: 20,
 									includeFontPadding: false,
 								}}
+								numberOfLines={1}
 							>
-								{formatRelativeTime(notification.triggeredAt)}
+								{notification.title}
 							</Text>
+							<View className="rounded-full bg-[#F4F4F5] px-3 py-1">
+								<Text
+									className="font-poppins text-[#70727A]"
+									style={{
+										fontSize: 11,
+										lineHeight: 15,
+										includeFontPadding: false,
+									}}
+								>
+									{formatRelativeTime(notification.triggeredAt)}
+								</Text>
+							</View>
 						</View>
+						<Text
+							className="font-poppins text-[#7A7D86]"
+							style={{
+								fontSize: 12,
+								lineHeight: 18,
+								includeFontPadding: false,
+							}}
+						>
+							{notification.body}
+						</Text>
 					</View>
-					<Text
-						className="font-poppins text-[#7A7D86]"
-						style={{ fontSize: 12, lineHeight: 18, includeFontPadding: false }}
-					>
-						{notification.body}
-					</Text>
 				</View>
-			</View>
-		</Swipeable>
+			</Swipeable>
+		</View>
 	);
 }
 
@@ -342,13 +352,13 @@ export default function NotificationsScreen() {
 			<ScreenScroll topPadding={72} bottomPadding={120} horizontalPadding={24}>
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
 				<View style={{ gap: 18 }}>
+					<CategoryTabs value={category} onChange={setCategory} />
 					{showWarning ? (
 						<WarningBanner
 							ctaLabel={warningCtaLabel}
 							onPressCta={openNotificationFix}
 						/>
 					) : null}
-					<CategoryTabs value={category} onChange={setCategory} />
 
 					{inbox === null ? (
 						<View className="items-center py-10">
