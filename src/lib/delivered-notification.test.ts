@@ -10,9 +10,7 @@ const notification = {
 			data: {
 				dayovaNotificationKey: "forgotten:entry-1",
 				dayovaOwnerId: "user-1",
-				type: "forgottenEvent",
-				category: "task",
-				relatedEntryId: "entry-1",
+				dayovaNotificationRegistrationId: "registration-1",
 			},
 		},
 	},
@@ -20,12 +18,7 @@ const notification = {
 
 test("extracts a delivered Dayova notification", () => {
 	expect(getDeliveredNotificationInput(notification, "user-1")).toEqual({
-		eventKey: "forgotten:entry-1",
-		category: "task",
-		type: "forgottenEvent",
-		title: "Hausaufgabe nicht vergessen",
-		body: "Du kannst deine Deutsch Hausaufgabe noch als erledigt markieren.",
-		relatedDayEntryId: "entry-1",
+		registrationId: "registration-1",
 		triggeredAt: "2026-06-09T18:06:21.750Z",
 	});
 });
@@ -41,7 +34,24 @@ test("ignores notification payloads that are not owned by Dayova", () => {
 			request: {
 				content: {
 					...notification.request.content,
-					data: { type: "forgottenEvent", category: "task" },
+					data: { dayovaNotificationRegistrationId: "registration-1" },
+				},
+			},
+		}),
+	).toBeNull();
+});
+
+test("ignores legacy notifications without a server registration", () => {
+	expect(
+		getDeliveredNotificationInput({
+			...notification,
+			request: {
+				content: {
+					...notification.request.content,
+					data: {
+						dayovaNotificationKey: "forgotten:entry-1",
+						dayovaOwnerId: "user-1",
+					},
 				},
 			},
 		}),

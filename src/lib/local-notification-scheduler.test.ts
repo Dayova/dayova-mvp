@@ -1,6 +1,8 @@
 import { expect, test, vi } from "vitest";
-import { syncPlannedLocalNotifications } from "./local-notification-scheduler";
-import type { PlannedLocalNotification } from "./notification-planner";
+import {
+	type RegisteredLocalNotification,
+	syncPlannedLocalNotifications,
+} from "./local-notification-scheduler";
 
 test("syncPlannedLocalNotifications replaces Dayova-owned scheduled notifications", async () => {
 	const cancelScheduledNotificationAsync = vi.fn();
@@ -20,7 +22,7 @@ test("syncPlannedLocalNotifications replaces Dayova-owned scheduled notification
 		cancelScheduledNotificationAsync,
 		scheduleNotificationAsync,
 	};
-	const plan: PlannedLocalNotification[] = [
+	const plan: RegisteredLocalNotification[] = [
 		{
 			key: "before:entry-1",
 			type: "beforeEvent",
@@ -29,6 +31,7 @@ test("syncPlannedLocalNotifications replaces Dayova-owned scheduled notification
 			body: "Deine Mathe Hausaufgabe startet in 15 Minuten.",
 			triggerAt: new Date(2026, 5, 16, 15, 45),
 			relatedEntryId: "entry-1",
+			registrationId: "registration-1",
 		},
 	];
 
@@ -46,9 +49,7 @@ test("syncPlannedLocalNotifications replaces Dayova-owned scheduled notification
 			data: {
 				dayovaNotificationKey: "before:entry-1",
 				dayovaOwnerId: "user-1",
-				type: "beforeEvent",
-				category: "task",
-				relatedEntryId: "entry-1",
+				dayovaNotificationRegistrationId: "registration-1",
 			},
 		},
 		trigger: {

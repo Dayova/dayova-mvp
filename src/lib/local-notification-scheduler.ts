@@ -3,6 +3,11 @@ import type { PlannedLocalNotification } from "./notification-planner";
 export const DAYOVA_NOTIFICATION_CHANNEL_ID = "dayova-reminders";
 const DAYOVA_NOTIFICATION_KEY = "dayovaNotificationKey";
 const DAYOVA_NOTIFICATION_OWNER_ID = "dayovaOwnerId";
+const DAYOVA_NOTIFICATION_REGISTRATION_ID = "dayovaNotificationRegistrationId";
+
+export type RegisteredLocalNotification = PlannedLocalNotification & {
+	registrationId: string;
+};
 
 type ScheduledNotificationRequest = {
 	identifier: string;
@@ -44,7 +49,7 @@ const isDayovaScheduledNotification = (request: ScheduledNotificationRequest) =>
 
 export const syncPlannedLocalNotifications = async (
 	notifications: LocalNotificationsModule,
-	plan: PlannedLocalNotification[],
+	plan: RegisteredLocalNotification[],
 	ownerId?: string,
 ) => {
 	const scheduled = await notifications.getAllScheduledNotificationsAsync();
@@ -64,11 +69,7 @@ export const syncPlannedLocalNotifications = async (
 				data: {
 					[DAYOVA_NOTIFICATION_KEY]: notification.key,
 					...(ownerId ? { [DAYOVA_NOTIFICATION_OWNER_ID]: ownerId } : {}),
-					type: notification.type,
-					category: notification.category,
-					...(notification.relatedEntryId
-						? { relatedEntryId: notification.relatedEntryId }
-						: {}),
+					[DAYOVA_NOTIFICATION_REGISTRATION_ID]: notification.registrationId,
 				},
 			},
 			trigger: {

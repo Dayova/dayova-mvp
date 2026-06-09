@@ -61,6 +61,9 @@ export function NotificationSync() {
 	const recordDeliveredNotification = useMutation(
 		api.notifications.recordDeliveredNotification,
 	);
+	const registerLocalNotificationPlan = useMutation(
+		api.notifications.registerLocalNotificationPlan,
+	);
 	const syncDueNotifications = useMutation(
 		api.notifications.syncDueNotifications,
 	);
@@ -88,15 +91,11 @@ export function NotificationSync() {
 				user.clerkId,
 			);
 			if (!deliveredNotification) return;
-			const { relatedDayEntryId, ...notificationArgs } = deliveredNotification;
 
 			await recordDeliveredNotification({
-				...notificationArgs,
-				...(relatedDayEntryId
-					? {
-							relatedDayEntryId: relatedDayEntryId as Id<"dayEntries">,
-						}
-					: {}),
+				registrationId:
+					deliveredNotification.registrationId as Id<"localNotificationSchedules">,
+				triggeredAt: deliveredNotification.triggeredAt,
 			});
 		},
 		[isConvexAuthenticated, recordDeliveredNotification, user],
@@ -225,7 +224,42 @@ export function NotificationSync() {
 				preferences,
 				entriesByDay,
 			});
-			await syncPlannedLocalNotifications(notifications, plan, user.clerkId);
+			const registrations = await registerLocalNotificationPlan({
+				notifications: plan.map((notification) => ({
+					eventKey: notification.key,
+					category: notification.category,
+					type: notification.type,
+					title: notification.title,
+					body: notification.body,
+					...(notification.relatedEntryId
+						? {
+								relatedDayEntryId:
+									notification.relatedEntryId as Id<"dayEntries">,
+							}
+						: {}),
+					scheduledFor: notification.triggerAt.toISOString(),
+				})),
+			});
+			const registrationBySchedule = new Map(
+				registrations.map((registration) => [
+					`${registration.eventKey}\0${registration.scheduledFor}`,
+					registration.registrationId,
+				]),
+			);
+			const registeredPlan = plan.map((notification) => {
+				const registrationId = registrationBySchedule.get(
+					`${notification.key}\0${notification.triggerAt.getTime()}`,
+				);
+				if (!registrationId) {
+					throw new Error("Missing local notification registration.");
+				}
+				return { ...notification, registrationId };
+			});
+			await syncPlannedLocalNotifications(
+				notifications,
+				registeredPlan,
+				user.clerkId,
+			);
 		};
 
 		const syncKey = JSON.stringify({
@@ -251,6 +285,7 @@ export function NotificationSync() {
 		isConvexAuthenticated,
 		preferences,
 		reconcilePresentedNotifications,
+		registerLocalNotificationPlan,
 		syncDueNotifications,
 		user,
 	]);

@@ -6,6 +6,11 @@ import { getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const dailyBriefingEventKeyPattern =
+	/^briefing:\d{4}-\d{2}-\d{2}:([01]\d|2[0-3]):[0-5]\d$/;
+const maxLocalNotificationPlanSize = 256;
+const localNotificationRetentionMs = 30 * 24 * 60 * 60 * 1000;
+const localNotificationEarlyToleranceMs = 5 * 60 * 1000;
 
 type NotificationPreferences = {
 	systemNotificationsEnabled: boolean;
@@ -52,6 +57,16 @@ const notificationTypeValidator = v.union(
 	v.literal("beforeEvent"),
 	v.literal("forgottenEvent"),
 );
+
+const localNotificationPlanItemValidator = v.object({
+	eventKey: v.string(),
+	category: notificationCategoryValidator,
+	type: notificationTypeValidator,
+	title: v.string(),
+	body: v.string(),
+	relatedDayEntryId: v.optional(v.id("dayEntries")),
+	scheduledFor: v.string(),
+});
 
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
@@ -230,6 +245,71 @@ const hasMatchingCategory = (
 		? category === "message"
 		: category === "learningPlan" || category === "task";
 
+const hasMatchingRelatedEntry = (
+	eventKey: string,
+	type: NotificationType,
+	relatedDayEntryId?: Id<"dayEntries">,
+) => {
+	if (type === "dailyBriefing") {
+		return (
+			relatedDayEntryId === undefined &&
+			dailyBriefingEventKeyPattern.test(eventKey)
+		);
+	}
+	if (!relatedDayEntryId) return false;
+	const prefix = type === "beforeEvent" ? "before" : "forgotten";
+	return eventKey === `${prefix}:${relatedDayEntryId}`;
+};
+
+type LocalNotificationScheduleData = {
+	eventKey: string;
+	scheduledFor: number;
+	category: NotificationCategory;
+	type: NotificationType;
+	title: string;
+	body: string;
+	relatedDayEntryId?: Id<"dayEntries">;
+	relatedLearningPlanId?: Id<"learningPlans">;
+	relatedLearningPlanSessionId?: Id<"learningPlanSessions">;
+};
+
+const getLocalNotificationScheduleFingerprint = async (
+	schedule: LocalNotificationScheduleData,
+) => {
+	const serialized = JSON.stringify([
+		schedule.eventKey,
+		schedule.scheduledFor,
+		schedule.category,
+		schedule.type,
+		schedule.title,
+		schedule.body,
+		schedule.relatedDayEntryId ?? null,
+		schedule.relatedLearningPlanId ?? null,
+		schedule.relatedLearningPlanSessionId ?? null,
+	]);
+	const digest = await crypto.subtle.digest(
+		"SHA-256",
+		new TextEncoder().encode(serialized),
+	);
+	return Array.from(new Uint8Array(digest), (byte) =>
+		byte.toString(16).padStart(2, "0"),
+	).join("");
+};
+
+const matchesLocalNotificationSchedule = (
+	schedule: Doc<"localNotificationSchedules">,
+	args: LocalNotificationScheduleData,
+) =>
+	schedule.eventKey === args.eventKey &&
+	schedule.scheduledFor === args.scheduledFor &&
+	schedule.category === args.category &&
+	schedule.type === args.type &&
+	schedule.title === args.title &&
+	schedule.body === args.body &&
+	schedule.relatedDayEntryId === args.relatedDayEntryId &&
+	schedule.relatedLearningPlanId === args.relatedLearningPlanId &&
+	schedule.relatedLearningPlanSessionId === args.relatedLearningPlanSessionId;
+
 export const getPreferences = query({
 	args: {},
 	handler: async (ctx) => {
@@ -392,55 +472,173 @@ export const deleteNotification = mutation({
 	},
 });
 
+export const registerLocalNotificationPlan = mutation({
+	args: {
+		notifications: v.array(localNotificationPlanItemValidator),
+	},
+	handler: async (ctx, args) => {
+		if (args.notifications.length > maxLocalNotificationPlanSize) {
+			throwUserFacingError("Zu viele Mitteilungen auf einmal geplant.");
+		}
+
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const now = Date.now();
+		const expiredSchedules = await ctx.db
+			.query("localNotificationSchedules")
+			.withIndex("by_ownerTokenIdentifier_and_expiresAt", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier).lt("expiresAt", now),
+			)
+			.take(100);
+		for (const schedule of expiredSchedules) {
+			await ctx.db.delete("localNotificationSchedules", schedule._id);
+		}
+
+		const seenScheduleKeys = new Set<string>();
+		const entryCache = new Map<Id<"dayEntries">, Doc<"dayEntries"> | null>();
+		const registrations: Array<{
+			eventKey: string;
+			scheduledFor: number;
+			registrationId: Id<"localNotificationSchedules">;
+		}> = [];
+
+		for (const notification of args.notifications) {
+			const title = notification.title.trim();
+			const body = notification.body.trim();
+			const scheduledFor = parseTimestamp(notification.scheduledFor);
+			const scheduleKey = `${notification.eventKey}\0${scheduledFor}`;
+			if (
+				seenScheduleKeys.has(scheduleKey) ||
+				!hasMatchingEventKey(notification.eventKey, notification.type) ||
+				!hasMatchingCategory(notification.category, notification.type) ||
+				!hasMatchingRelatedEntry(
+					notification.eventKey,
+					notification.type,
+					notification.relatedDayEntryId,
+				) ||
+				!title ||
+				!body
+			) {
+				throwUserFacingError("Ungültige Mitteilung.");
+			}
+			seenScheduleKeys.add(scheduleKey);
+
+			let relatedLearningPlanId: Id<"learningPlans"> | undefined;
+			let relatedLearningPlanSessionId: Id<"learningPlanSessions"> | undefined;
+			if (notification.relatedDayEntryId) {
+				let entry = entryCache.get(notification.relatedDayEntryId);
+				if (entry === undefined) {
+					entry = await ctx.db.get(
+						"dayEntries",
+						notification.relatedDayEntryId,
+					);
+					entryCache.set(notification.relatedDayEntryId, entry);
+				}
+				if (!entry) {
+					throwUserFacingError("Zugehöriger Eintrag nicht gefunden.");
+				}
+				if (entry.ownerTokenIdentifier !== ownerTokenIdentifier) {
+					throwUserFacingError("Mitteilung gehört zu einem anderen Konto.");
+				}
+				if (getEntryNotificationCategory(entry) !== notification.category) {
+					throwUserFacingError("Ungültige Mitteilung.");
+				}
+
+				relatedLearningPlanId = entry.relatedLearningPlanId;
+				relatedLearningPlanSessionId = entry.relatedLearningPlanSessionId;
+			}
+
+			const scheduleData: LocalNotificationScheduleData = {
+				eventKey: notification.eventKey,
+				scheduledFor,
+				category: notification.category,
+				type: notification.type,
+				title,
+				body,
+				relatedDayEntryId: notification.relatedDayEntryId,
+				relatedLearningPlanId,
+				relatedLearningPlanSessionId,
+			};
+			const fingerprint =
+				await getLocalNotificationScheduleFingerprint(scheduleData);
+			const existing = await ctx.db
+				.query("localNotificationSchedules")
+				.withIndex("by_ownerTokenIdentifier_and_fingerprint", (q) =>
+					q
+						.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+						.eq("fingerprint", fingerprint),
+				)
+				.unique();
+			if (
+				existing &&
+				!matchesLocalNotificationSchedule(existing, scheduleData)
+			) {
+				throw new Error("Local notification schedule fingerprint collision.");
+			}
+
+			let registrationId: Id<"localNotificationSchedules">;
+			if (existing) {
+				registrationId = existing._id;
+				if (existing.expiresAt < now) {
+					await ctx.db.patch("localNotificationSchedules", existing._id, {
+						expiresAt:
+							Math.max(scheduledFor, now) + localNotificationRetentionMs,
+						createdAt: now,
+					});
+				}
+			} else {
+				registrationId = await ctx.db.insert("localNotificationSchedules", {
+					ownerTokenIdentifier,
+					fingerprint,
+					...scheduleData,
+					expiresAt: Math.max(scheduledFor, now) + localNotificationRetentionMs,
+					createdAt: now,
+				});
+			}
+
+			registrations.push({
+				eventKey: notification.eventKey,
+				scheduledFor,
+				registrationId,
+			});
+		}
+
+		return registrations;
+	},
+});
+
 export const recordDeliveredNotification = mutation({
 	args: {
-		eventKey: v.string(),
-		category: notificationCategoryValidator,
-		type: notificationTypeValidator,
-		title: v.string(),
-		body: v.string(),
-		relatedDayEntryId: v.optional(v.id("dayEntries")),
+		registrationId: v.id("localNotificationSchedules"),
 		triggeredAt: v.string(),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
-		if (
-			!hasMatchingEventKey(args.eventKey, args.type) ||
-			!hasMatchingCategory(args.category, args.type) ||
-			!args.title.trim() ||
-			!args.body.trim()
-		) {
+		const schedule = await ctx.db.get(
+			"localNotificationSchedules",
+			args.registrationId,
+		);
+		if (!schedule || schedule.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Ungültige Mitteilung.");
 		}
 
 		const triggeredAt = parseTimestamp(args.triggeredAt);
-		let relatedLearningPlanId: Id<"learningPlans"> | undefined;
-		let relatedLearningPlanSessionId: Id<"learningPlanSessions"> | undefined;
-		if (args.relatedDayEntryId) {
-			const entry = await ctx.db.get("dayEntries", args.relatedDayEntryId);
-
-			if (!entry) {
-				throwUserFacingError("Zugehöriger Eintrag nicht gefunden.");
-			}
-
-			if (entry.ownerTokenIdentifier !== ownerTokenIdentifier) {
-				throwUserFacingError("Mitteilung gehört zu einem anderen Konto.");
-			}
-
-			relatedLearningPlanId = entry.relatedLearningPlanId;
-			relatedLearningPlanSessionId = entry.relatedLearningPlanSessionId;
+		if (
+			triggeredAt < schedule.scheduledFor - localNotificationEarlyToleranceMs ||
+			triggeredAt > schedule.expiresAt
+		) {
+			throwUserFacingError("Ungültige Mitteilung.");
 		}
 
 		const created = await insertNotificationOnce(ctx, {
 			ownerTokenIdentifier,
-			eventKey: args.eventKey,
-			category: args.category,
-			type: args.type,
-			title: args.title.trim(),
-			body: args.body.trim(),
-			relatedDayEntryId: args.relatedDayEntryId,
-			relatedLearningPlanId,
-			relatedLearningPlanSessionId,
+			eventKey: schedule.eventKey,
+			category: schedule.category,
+			type: schedule.type,
+			title: schedule.title,
+			body: schedule.body,
+			relatedDayEntryId: schedule.relatedDayEntryId,
+			relatedLearningPlanId: schedule.relatedLearningPlanId,
+			relatedLearningPlanSessionId: schedule.relatedLearningPlanSessionId,
 			triggeredAt,
 			createdAt: triggeredAt,
 		});

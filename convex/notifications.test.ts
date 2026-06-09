@@ -227,29 +227,35 @@ test("delivered local notifications are recorded once after their entry was dele
 		plannedDateLabel: "16. Juni 2026",
 		durationMinutes: 45,
 	});
-	await t.mutation(api.dayEntries.remove, { id: entryId });
 
-	const deliveredNotification = {
+	const scheduledNotification = {
 		eventKey: `before:${entryId}`,
 		category: "task" as const,
 		type: "beforeEvent" as const,
 		title: "Hausaufgabe",
 		body: "Deine Deutsch Hausaufgabe startet in 15 Minuten.",
 		relatedDayEntryId: entryId,
-		triggeredAt: "2026-06-16T15:45:00.000Z",
+		scheduledFor: "2026-06-16T15:45:00.000Z",
 	};
+	const [registration] = await t.mutation(
+		api.notifications.registerLocalNotificationPlan,
+		{ notifications: [scheduledNotification] },
+	);
+	if (!registration) throw new Error("Expected notification registration.");
+
+	await t.mutation(api.dayEntries.remove, { id: entryId });
 
 	await expect(
-		t.mutation(
-			api.notifications.recordDeliveredNotification,
-			deliveredNotification,
-		),
+		t.mutation(api.notifications.recordDeliveredNotification, {
+			registrationId: registration.registrationId,
+			triggeredAt: scheduledNotification.scheduledFor,
+		}),
 	).resolves.toEqual({ created: true });
 	await expect(
-		t.mutation(
-			api.notifications.recordDeliveredNotification,
-			deliveredNotification,
-		),
+		t.mutation(api.notifications.recordDeliveredNotification, {
+			registrationId: registration.registrationId,
+			triggeredAt: scheduledNotification.scheduledFor,
+		}),
 	).resolves.toEqual({ created: false });
 
 	const inbox = await t.query(api.notifications.listInbox, { category: "all" });
@@ -260,9 +266,147 @@ test("delivered local notifications are recorded once after their entry was dele
 			title: "Hausaufgabe",
 			body: "Deine Deutsch Hausaufgabe startet in 15 Minuten.",
 			relatedDayEntryId: entryId,
-			triggeredAt: new Date(deliveredNotification.triggeredAt).getTime(),
+			triggeredAt: new Date(scheduledNotification.scheduledFor).getTime(),
 		},
 	]);
+});
+
+test("local notification plans cannot reference another user's entry", async () => {
+	const t = convexTest(schema, modules);
+	const otherUser = {
+		...user,
+		subject: "other-user",
+		tokenIdentifier: "https://clerk.example|other-user",
+	};
+	const entryId = await t
+		.withIdentity(otherUser)
+		.mutation(api.dayEntries.create, {
+			dayKey: "2026-06-16",
+			title: "Private Hausaufgabe",
+			time: "16:00",
+			kind: "Hausaufgabe",
+			plannedDateLabel: "16. Juni 2026",
+			durationMinutes: 45,
+		});
+
+	await expect(
+		t
+			.withIdentity(user)
+			.mutation(api.notifications.registerLocalNotificationPlan, {
+				notifications: [
+					{
+						eventKey: `before:${entryId}`,
+						category: "task",
+						type: "beforeEvent",
+						title: "Hausaufgabe",
+						body: "Deine Hausaufgabe startet in 15 Minuten.",
+						relatedDayEntryId: entryId,
+						scheduledFor: "2026-06-16T15:45:00.000Z",
+					},
+				],
+			}),
+	).rejects.toThrow("Mitteilung gehört zu einem anderen Konto.");
+});
+
+test("delivered local notifications require an owner-scoped registration", async () => {
+	const t = convexTest(schema, modules);
+	const otherUser = {
+		...user,
+		subject: "other-user",
+		tokenIdentifier: "https://clerk.example|other-user",
+	};
+	const [registration] = await t
+		.withIdentity(otherUser)
+		.mutation(api.notifications.registerLocalNotificationPlan, {
+			notifications: [
+				{
+					eventKey: "briefing:2026-06-16:07:30",
+					category: "message",
+					type: "dailyBriefing",
+					title: "Tagesüberblick",
+					body: "Heute stehen keine offenen Einträge an.",
+					scheduledFor: "2026-06-16T05:30:00.000Z",
+				},
+			],
+		});
+	if (!registration) throw new Error("Expected notification registration.");
+
+	await expect(
+		t
+			.withIdentity(user)
+			.mutation(api.notifications.recordDeliveredNotification, {
+				registrationId: registration.registrationId,
+				triggeredAt: "2026-06-16T05:30:00.000Z",
+			}),
+	).rejects.toThrow("Ungültige Mitteilung.");
+});
+
+test("registering the same local notification plan reuses its authorization", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const notifications = [
+		{
+			eventKey: "briefing:2026-06-16:07:30",
+			category: "message" as const,
+			type: "dailyBriefing" as const,
+			title: "Tagesüberblick",
+			body: "Heute stehen keine offenen Einträge an.",
+			scheduledFor: "2026-06-16T05:30:00.000Z",
+		},
+	];
+
+	const [first] = await t.mutation(
+		api.notifications.registerLocalNotificationPlan,
+		{ notifications },
+	);
+	const [second] = await t.mutation(
+		api.notifications.registerLocalNotificationPlan,
+		{ notifications },
+	);
+
+	expect(first?.registrationId).toBe(second?.registrationId);
+});
+
+test("local notification authorization reuse is not limited by prior content variants", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const registrations = [];
+
+	for (let index = 0; index < 11; index += 1) {
+		const [registration] = await t.mutation(
+			api.notifications.registerLocalNotificationPlan,
+			{
+				notifications: [
+					{
+						eventKey: "briefing:2026-06-16:07:30",
+						category: "message",
+						type: "dailyBriefing",
+						title: "Tagesüberblick",
+						body: `Variante ${index}`,
+						scheduledFor: "2026-06-16T05:30:00.000Z",
+					},
+				],
+			},
+		);
+		if (!registration) throw new Error("Expected notification registration.");
+		registrations.push(registration);
+	}
+
+	const [reused] = await t.mutation(
+		api.notifications.registerLocalNotificationPlan,
+		{
+			notifications: [
+				{
+					eventKey: "briefing:2026-06-16:07:30",
+					category: "message",
+					type: "dailyBriefing",
+					title: "Tagesüberblick",
+					body: "Variante 10",
+					scheduledFor: "2026-06-16T05:30:00.000Z",
+				},
+			],
+		},
+	);
+
+	expect(reused?.registrationId).toBe(registrations[10]?.registrationId);
 });
 
 test("daily briefing summarizes today's entries at the configured time", async () => {

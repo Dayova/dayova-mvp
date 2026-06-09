@@ -72,6 +72,37 @@ export default defineSchema({
 		createdAt: v.number(),
 		updatedAt: v.number(),
 	}).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+	localNotificationSchedules: defineTable({
+		ownerTokenIdentifier: v.string(),
+		fingerprint: v.string(),
+		eventKey: v.string(),
+		category: v.union(
+			v.literal("learningPlan"),
+			v.literal("task"),
+			v.literal("message"),
+		),
+		type: v.union(
+			v.literal("dailyBriefing"),
+			v.literal("beforeEvent"),
+			v.literal("forgottenEvent"),
+		),
+		title: v.string(),
+		body: v.string(),
+		relatedDayEntryId: v.optional(v.id("dayEntries")),
+		relatedLearningPlanId: v.optional(v.id("learningPlans")),
+		relatedLearningPlanSessionId: v.optional(v.id("learningPlanSessions")),
+		scheduledFor: v.number(),
+		expiresAt: v.number(),
+		createdAt: v.number(),
+	})
+		.index("by_ownerTokenIdentifier_and_fingerprint", [
+			"ownerTokenIdentifier",
+			"fingerprint",
+		])
+		.index("by_ownerTokenIdentifier_and_expiresAt", [
+			"ownerTokenIdentifier",
+			"expiresAt",
+		]),
 	notificationHistory: defineTable({
 		ownerTokenIdentifier: v.string(),
 		eventKey: v.string(),
