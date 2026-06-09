@@ -44,7 +44,7 @@ test("local notification planner creates briefing, before-event, and forgotten r
 
 	expect(plan.map((notification) => notification.key)).toEqual([
 		"briefing:2026-06-16:07:30",
-		"before:entry-1:15",
+		"before:entry-1",
 		"forgotten:entry-1",
 	]);
 	expect(plan.map((notification) => notification.triggerAt.getHours())).toEqual([

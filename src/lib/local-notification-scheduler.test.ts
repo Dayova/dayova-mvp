@@ -22,7 +22,7 @@ test("syncPlannedLocalNotifications replaces Dayova-owned scheduled notification
 	};
 	const plan: PlannedLocalNotification[] = [
 		{
-			key: "before:entry-1:15",
+			key: "before:entry-1",
 			type: "beforeEvent",
 			category: "task",
 			title: "Hausaufgabe",
@@ -44,7 +44,7 @@ test("syncPlannedLocalNotifications replaces Dayova-owned scheduled notification
 			title: "Hausaufgabe",
 			body: "Mathe Hausaufgabe startet in 15 Minuten.",
 			data: {
-				dayovaNotificationKey: "before:entry-1:15",
+				dayovaNotificationKey: "before:entry-1",
 				type: "beforeEvent",
 				category: "task",
 				relatedEntryId: "entry-1",
