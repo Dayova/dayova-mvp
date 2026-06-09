@@ -86,7 +86,7 @@ jobs:
     needs:
       - main_checks
       - deploy_convex
-    if: ${{ needs.main_checks.outputs.ota_safe == 'true' }}
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && needs.main_checks.outputs.ota_safe == 'true' }}
     environment: production
     steps:
       - uses: eas/checkout
