@@ -10,7 +10,15 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
+import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
+import Animated, {
+	Easing,
+	interpolateColor,
+	type SharedValue,
+	useAnimatedStyle,
+	useSharedValue,
+	withTiming,
+} from "react-native-reanimated";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
@@ -148,9 +156,33 @@ function CategoryTabs({
 	value: InboxCategory;
 	onChange: (category: InboxCategory) => void;
 }) {
+	const selectedIndex = CATEGORIES.findIndex(
+		(category) => category.key === value,
+	);
+	const indicatorWidth = useSharedValue(0);
+	const selectionPosition = useSharedValue(selectedIndex);
+	const indicatorStyle = useAnimatedStyle(() => ({
+		width: indicatorWidth.value,
+		transform: [{ translateX: selectionPosition.value * indicatorWidth.value }],
+	}));
+
+	useEffect(() => {
+		selectionPosition.set(
+			withTiming(selectedIndex, {
+				duration: 240,
+				easing: Easing.out(Easing.cubic),
+			}),
+		);
+	}, [selectedIndex, selectionPosition]);
+
 	return (
 		<View
 			className="flex-row rounded-full bg-white"
+			onLayout={({ nativeEvent }) => {
+				const nextIndicatorWidth =
+					(nativeEvent.layout.width - 8) / CATEGORIES.length;
+				indicatorWidth.set(nextIndicatorWidth);
+			}}
 			style={{
 				minHeight: 60,
 				paddingHorizontal: 4,
@@ -158,16 +190,29 @@ function CategoryTabs({
 				boxShadow: "0 6px 16px rgba(20, 28, 48, 0.06)",
 			}}
 		>
-			{CATEGORIES.map((category) => {
+			<Animated.View
+				pointerEvents="none"
+				style={[
+					{
+						position: "absolute",
+						left: 4,
+						top: 6,
+						height: 48,
+						borderRadius: 999,
+						overflow: "hidden",
+					},
+					indicatorStyle,
+				]}
+			>
+				<LinearGradient
+					colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
+					start={PRIMARY_INTERACTIVE_GRADIENT.start}
+					end={PRIMARY_INTERACTIVE_GRADIENT.end}
+					style={{ flex: 1 }}
+				/>
+			</Animated.View>
+			{CATEGORIES.map((category, index) => {
 				const selected = value === category.key;
-				const label = (
-					<Text
-						className={`font-poppins font-semibold ${selected ? "text-white" : "text-[#1A1A1A]"}`}
-						style={{ fontSize: 13, lineHeight: 18, includeFontPadding: false }}
-					>
-						{category.label}
-					</Text>
-				);
 
 				return (
 					<TouchableOpacity
@@ -176,36 +221,54 @@ function CategoryTabs({
 						accessibilityState={{ selected }}
 						activeOpacity={0.84}
 						onPress={() => onChange(category.key)}
-						className="overflow-hidden rounded-full"
-						style={{ flexGrow: 1, flexBasis: 0, height: 48, minHeight: 48 }}
+						className="items-center justify-center rounded-full"
+						style={{
+							zIndex: 1,
+							flexGrow: 1,
+							flexBasis: 0,
+							height: 48,
+							minHeight: 48,
+						}}
 					>
-						{selected ? (
-							<LinearGradient
-								colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
-								start={PRIMARY_INTERACTIVE_GRADIENT.start}
-								end={PRIMARY_INTERACTIVE_GRADIENT.end}
-								style={{
-									height: 48,
-									minHeight: 48,
-									width: "100%",
-									alignItems: "center",
-									justifyContent: "center",
-								}}
-							>
-								{label}
-							</LinearGradient>
-						) : (
-							<View
-								className="items-center justify-center"
-								style={{ height: 48, minHeight: 48, width: "100%" }}
-							>
-								{label}
-							</View>
-						)}
+						<CategoryTabLabel
+							index={index}
+							label={category.label}
+							selectionPosition={selectionPosition}
+						/>
 					</TouchableOpacity>
 				);
 			})}
 		</View>
+	);
+}
+
+function CategoryTabLabel({
+	index,
+	label,
+	selectionPosition,
+}: {
+	index: number;
+	label: string;
+	selectionPosition: SharedValue<number>;
+}) {
+	const animatedStyle = useAnimatedStyle(() => ({
+		color: interpolateColor(
+			Math.min(Math.abs(selectionPosition.value - index), 1),
+			[0, 1],
+			["#FFFFFF", "#1A1A1A"],
+		),
+	}));
+
+	return (
+		<Animated.Text
+			className="font-poppins font-semibold"
+			style={[
+				{ fontSize: 13, lineHeight: 18, includeFontPadding: false },
+				animatedStyle,
+			]}
+		>
+			{label}
+		</Animated.Text>
 	);
 }
 
