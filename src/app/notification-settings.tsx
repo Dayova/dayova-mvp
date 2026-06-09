@@ -64,7 +64,7 @@ const formatTime = (date: Date) =>
 function SettingsCard({ children }: { children: React.ReactNode }) {
 	return (
 		<View
-			className="rounded-[24px] bg-white px-5 py-4"
+			className="rounded-[24px] bg-white px-6 py-5"
 			style={{ boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)" }}
 		>
 			{children}
@@ -407,7 +407,7 @@ export default function NotificationSettingsScreen() {
 										disabled: areNotificationDetailsDisabled,
 									}}
 									activeOpacity={0.84}
-									className="min-h-[56px] flex-row items-center justify-between rounded-[24px] bg-white px-5"
+									className="min-h-[64px] flex-row items-center justify-between rounded-[24px] bg-white px-6 py-4"
 									disabled={areNotificationDetailsDisabled}
 									onPress={openBriefingTimePicker}
 									style={{
@@ -491,7 +491,7 @@ export default function NotificationSettingsScreen() {
 								accessibilityLabel="Erinnerungszeit ändern"
 								accessibilityState={{ disabled: areReminderOffsetsDisabled }}
 								activeOpacity={0.84}
-								className="min-h-[56px] flex-row items-center justify-between rounded-[24px] bg-white px-5"
+								className="min-h-[64px] flex-row items-center justify-between rounded-[24px] bg-white px-6 py-4"
 								disabled={areReminderOffsetsDisabled}
 								onPress={openReminderOffsetSheet}
 								style={{
