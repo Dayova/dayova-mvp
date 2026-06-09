@@ -10,15 +10,20 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	Easing,
+	FadeOut,
+	interpolate,
 	interpolateColor,
+	LinearTransition,
 	type SharedValue,
 	useAnimatedStyle,
 	useSharedValue,
+	withSpring,
 	withTiming,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
@@ -56,6 +61,10 @@ const CATEGORIES: Array<{ key: InboxCategory; label: string }> = [
 ];
 const PRIMARY_INTERACTIVE_GRADIENT =
 	DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
+const SWIPE_DELETE_MIN_DISTANCE = 96;
+const SWIPE_DELETE_MAX_DISTANCE = 132;
+const SWIPE_DELETE_FLING_DISTANCE = 40;
+const SWIPE_DELETE_FLING_VELOCITY = -700;
 
 const getNotificationsModule = () => {
 	try {
@@ -277,33 +286,154 @@ function NotificationCard({
 	onDelete,
 }: {
 	notification: InboxNotification;
-	onDelete: () => void;
+	onDelete: () => Promise<unknown>;
 }) {
-	const renderRightActions = () => (
-		<TouchableOpacity
-			accessibilityRole="button"
-			accessibilityLabel="Mitteilung löschen"
-			activeOpacity={0.9}
-			onPress={onDelete}
-			className="w-24 items-center justify-center rounded-r-[24px] bg-[#FF1E1E]"
-		>
-			<Trash2 size={28} color="#FFFFFF" strokeWidth={2.2} />
-		</TouchableOpacity>
-	);
+	const [isLocallyDeleted, setIsLocallyDeleted] = useState(false);
+	const translateX = useSharedValue(0);
+	const cardWidth = useSharedValue(1);
+	const isDeleting = useSharedValue(false);
+	const commitDelete = () => {
+		setIsLocallyDeleted(true);
+		void onDelete().catch(() => {
+			translateX.set(0);
+			isDeleting.set(false);
+			setIsLocallyDeleted(false);
+		});
+	};
+
+	const panGesture = Gesture.Pan()
+		.activeOffsetX([-10, 10])
+		.failOffsetY([-12, 12])
+		.onUpdate((event) => {
+			"worklet";
+			if (isDeleting.value) return;
+
+			translateX.value = Math.max(
+				Math.min(event.translationX, 0),
+				-cardWidth.value,
+			);
+		})
+		.onEnd((event) => {
+			"worklet";
+			if (isDeleting.value) return;
+
+			const distance = -translateX.value;
+			const deleteThreshold = Math.min(
+				Math.max(cardWidth.value * 0.3, SWIPE_DELETE_MIN_DISTANCE),
+				SWIPE_DELETE_MAX_DISTANCE,
+			);
+			const shouldDelete =
+				distance >= deleteThreshold ||
+				(event.velocityX <= SWIPE_DELETE_FLING_VELOCITY &&
+					distance >= SWIPE_DELETE_FLING_DISTANCE);
+
+			if (!shouldDelete) return;
+
+			isDeleting.value = true;
+			translateX.value = withTiming(
+				-cardWidth.value - 24,
+				{
+					duration: 180,
+					easing: Easing.out(Easing.cubic),
+				},
+				(finished) => {
+					"worklet";
+					if (finished) scheduleOnRN(commitDelete);
+				},
+			);
+		})
+		.onFinalize(() => {
+			"worklet";
+			if (isDeleting.value) return;
+
+			translateX.value = withSpring(0, {
+				damping: 20,
+				mass: 0.7,
+				overshootClamping: true,
+				stiffness: 260,
+			});
+		});
+
+	const cardAnimatedStyle = useAnimatedStyle(() => ({
+		transform: [{ translateX: translateX.value }],
+	}));
+	const deleteBackgroundAnimatedStyle = useAnimatedStyle(() => {
+		const deleteThreshold = Math.min(
+			Math.max(cardWidth.value * 0.3, SWIPE_DELETE_MIN_DISTANCE),
+			SWIPE_DELETE_MAX_DISTANCE,
+		);
+		const progress = Math.min(-translateX.value / deleteThreshold, 1);
+
+		return {
+			backgroundColor: interpolateColor(
+				progress,
+				[0, 0.6, 1],
+				["#FFB8B8", "#FF5A5F", "#E11D48"],
+			),
+		};
+	});
+	const deleteIconAnimatedStyle = useAnimatedStyle(() => {
+		const deleteThreshold = Math.min(
+			Math.max(cardWidth.value * 0.3, SWIPE_DELETE_MIN_DISTANCE),
+			SWIPE_DELETE_MAX_DISTANCE,
+		);
+		const progress = Math.min(-translateX.value / deleteThreshold, 1);
+
+		return {
+			opacity: interpolate(progress, [0, 0.18, 1], [0, 1, 1], "clamp"),
+			transform: [
+				{
+					translateX: interpolate(progress, [0, 1], [18, 0], "clamp"),
+				},
+				{
+					scale: interpolate(
+						progress,
+						[0, 0.75, 1],
+						[0.72, 0.95, 1.12],
+						"clamp",
+					),
+				},
+			],
+		};
+	});
+
+	if (isLocallyDeleted) return null;
 
 	return (
-		<View
+		<Animated.View
 			className="my-1 rounded-[24px]"
+			exiting={FadeOut.duration(90)}
+			layout={LinearTransition.springify().damping(20).stiffness(180)}
 			style={{ boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)" }}
 		>
-			<Swipeable
-				renderRightActions={renderRightActions}
-				overshootRight={false}
-				containerStyle={{ borderRadius: 24 }}
+			<Animated.View
+				pointerEvents="none"
+				className="absolute inset-0 items-end justify-center overflow-hidden rounded-[24px]"
+				style={deleteBackgroundAnimatedStyle}
 			>
-				<View
+				<Animated.View
+					className="mr-5 h-[52px] w-[52px] items-center justify-center rounded-full bg-white/20"
+					style={deleteIconAnimatedStyle}
+				>
+					<Trash2 size={27} color="#FFFFFF" strokeWidth={2.3} />
+				</Animated.View>
+			</Animated.View>
+			<GestureDetector gesture={panGesture}>
+				<Animated.View
+					accessible
+					accessibilityActions={[
+						{ name: "delete", label: "Mitteilung löschen" },
+					]}
+					accessibilityHint="Zum Löschen nach links wischen"
+					accessibilityLabel={`${notification.title}. ${notification.body}`}
+					onAccessibilityAction={(event) => {
+						if (event.nativeEvent.actionName === "delete") commitDelete();
+					}}
+					onLayout={({ nativeEvent }) => {
+						cardWidth.set(nativeEvent.layout.width);
+					}}
 					className="flex-row rounded-[24px] bg-white px-5 py-12"
-					style={{ gap: 14 }}
+					style={[{ gap: 14 }, cardAnimatedStyle]}
 				>
 					<View className="h-10 w-10 items-center justify-center rounded-full bg-[#EFF5FF]">
 						<NotificationIcon category={notification.category} />
@@ -348,9 +478,9 @@ function NotificationCard({
 							{notification.body}
 						</Text>
 					</View>
-				</View>
-			</Swipeable>
-		</View>
+				</Animated.View>
+			</GestureDetector>
+		</Animated.View>
 	);
 }
 
@@ -459,7 +589,7 @@ export default function NotificationsScreen() {
 							key={notification.id}
 							notification={notification}
 							onDelete={() =>
-								void deleteNotification({
+								deleteNotification({
 									id: notification.id,
 									now: new Date().toISOString(),
 								})

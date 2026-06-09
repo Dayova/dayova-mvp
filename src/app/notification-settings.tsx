@@ -332,14 +332,14 @@ export default function NotificationSettingsScreen() {
 
 	const handleBriefingTimeChange = useCallback(
 		(event: { type: "set" | "dismissed" }, selectedDate?: Date) => {
-			if (event.type === "dismissed") {
-				setShowBriefingTimePicker(false);
-				return;
+			if (Platform.OS === "android" || event.type === "dismissed") {
+				closeBriefingTimePicker();
 			}
+			if (event.type === "dismissed") return;
 			if (!selectedDate) return;
 			updateBriefingTime(selectedDate);
 		},
-		[updateBriefingTime],
+		[closeBriefingTimePicker, updateBriefingTime],
 	);
 
 	const goBack = useCallback(
