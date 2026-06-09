@@ -54,10 +54,7 @@ const HATCH_LINES = [
 ];
 const TIMELINE_MARKER_HOURS = Array.from({ length: 25 }, (_, hour) => hour);
 const TIMELINE_PAST_DAYS = 3;
-const TIMELINE_FUTURE_DAYS = 27;
-const TIMELINE_LOAD_MORE_DAYS = 30;
-const TIMELINE_LOAD_MORE_THRESHOLD_DAYS = 8;
-const MAX_TIMELINE_FUTURE_DAYS = 365;
+const TIMELINE_FUTURE_DAYS = 14;
 const DAY_ENTRY_QUERY_BATCH_SIZE = 31;
 
 const clamp = (value: number, min: number, max: number) =>
@@ -384,11 +381,8 @@ export default function HomeScreen() {
 	const [now, setNow] = useState(() => new Date());
 	const [selectedDayKey, setSelectedDayKey] = useState(() => getDayKey(today));
 	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
-	const [timelineFutureDays, setTimelineFutureDays] =
-		useState(TIMELINE_FUTURE_DAYS);
 	const timelineScrollRef = useRef<ScrollView | null>(null);
 	const dayStripScrollRef = useRef<ScrollView | null>(null);
-	const requestedTimelineFutureDaysRef = useRef(TIMELINE_FUTURE_DAYS);
 	const hasCenteredTimelineRef = useRef(false);
 	const pendingTimelineSelectionRef = useRef<string | null>(null);
 	const setSessionCompleted = useMutation(
@@ -403,7 +397,7 @@ export default function HomeScreen() {
 	const visibleDays = useMemo(
 		() =>
 			Array.from(
-				{ length: TIMELINE_PAST_DAYS + timelineFutureDays + 1 },
+				{ length: TIMELINE_PAST_DAYS + TIMELINE_FUTURE_DAYS + 1 },
 				(_, index) => {
 					const date = addDays(today, index - TIMELINE_PAST_DAYS);
 					const key = getDayKey(date);
@@ -420,7 +414,7 @@ export default function HomeScreen() {
 					};
 				},
 			),
-		[timelineFutureDays, today],
+		[today],
 	);
 	const visibleDayKeys = useMemo(
 		() => visibleDays.map((day) => day.key),
@@ -591,51 +585,9 @@ export default function HomeScreen() {
 		],
 	);
 
-	const loadMoreTimelineDays = useCallback(() => {
-		const nextFutureDays = Math.min(
-			requestedTimelineFutureDaysRef.current + TIMELINE_LOAD_MORE_DAYS,
-			MAX_TIMELINE_FUTURE_DAYS,
-		);
-		if (nextFutureDays === requestedTimelineFutureDaysRef.current) return;
-
-		requestedTimelineFutureDaysRef.current = nextFutureDays;
-		setTimelineFutureDays(nextFutureDays);
-	}, []);
-
-	const loadMoreTimelineDaysNearEnd = useCallback(
-		(
-			event: NativeSyntheticEvent<NativeScrollEvent>,
-			thresholdWidth: number,
-		) => {
-			const { contentOffset, layoutMeasurement, contentSize } =
-				event.nativeEvent;
-			const distanceFromRight =
-				contentSize.width - (contentOffset.x + layoutMeasurement.width);
-			if (distanceFromRight < thresholdWidth) {
-				loadMoreTimelineDays();
-			}
-		},
-		[loadMoreTimelineDays],
-	);
-
-	const updateDayStripFromScroll = useCallback(
-		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
-			loadMoreTimelineDaysNearEnd(
-				event,
-				getDayStripItemWidth(false) * TIMELINE_LOAD_MORE_THRESHOLD_DAYS,
-			);
-		},
-		[getDayStripItemWidth, loadMoreTimelineDaysNearEnd],
-	);
-
 	const updateSelectedDayFromTimelineScroll = useCallback(
 		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
 			if (dayWidth <= 0 || visibleDays.length === 0) return;
-
-			loadMoreTimelineDaysNearEnd(
-				event,
-				dayWidth * TIMELINE_LOAD_MORE_THRESHOLD_DAYS,
-			);
 
 			const centerX =
 				event.nativeEvent.contentOffset.x + timelineViewportWidth / 2;
@@ -646,12 +598,6 @@ export default function HomeScreen() {
 			);
 			const centeredDayKey = visibleDays[centeredDayIndex]?.key;
 			if (!centeredDayKey) return;
-			if (
-				visibleDays.length - centeredDayIndex <=
-				TIMELINE_LOAD_MORE_THRESHOLD_DAYS
-			) {
-				loadMoreTimelineDays();
-			}
 			if (
 				pendingTimelineSelectionRef.current &&
 				centeredDayKey !== pendingTimelineSelectionRef.current
@@ -666,14 +612,7 @@ export default function HomeScreen() {
 			);
 			scrollDayStripToIndex(centeredDayIndex);
 		},
-		[
-			dayWidth,
-			loadMoreTimelineDays,
-			loadMoreTimelineDaysNearEnd,
-			scrollDayStripToIndex,
-			timelineViewportWidth,
-			visibleDays,
-		],
+		[dayWidth, scrollDayStripToIndex, timelineViewportWidth, visibleDays],
 	);
 
 	useEffect(() => {
@@ -904,8 +843,6 @@ export default function HomeScreen() {
 						ref={dayStripScrollRef}
 						horizontal
 						showsHorizontalScrollIndicator={false}
-						onScroll={updateDayStripFromScroll}
-						scrollEventThrottle={16}
 						style={{ marginTop: 24 * compactScale }}
 						contentContainerStyle={{ width: dayStripContentWidth }}
 					>
