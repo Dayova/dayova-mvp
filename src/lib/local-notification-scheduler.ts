@@ -37,9 +37,9 @@ const getDataRecord = (value: unknown): Record<string, unknown> =>
 		? (value as Record<string, unknown>)
 		: {};
 
-const isDayovaScheduledNotification = (
-	request: ScheduledNotificationRequest,
-) => typeof getDataRecord(request.content.data)[DAYOVA_NOTIFICATION_KEY] === "string";
+const isDayovaScheduledNotification = (request: ScheduledNotificationRequest) =>
+	typeof getDataRecord(request.content.data)[DAYOVA_NOTIFICATION_KEY] ===
+	"string";
 
 export const syncPlannedLocalNotifications = async (
 	notifications: LocalNotificationsModule,

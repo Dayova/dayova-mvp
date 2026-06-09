@@ -307,7 +307,9 @@ export default function EntryDetailScreen() {
 							color={isCompleted ? "#1A1A1A" : "#FFFFFF"}
 							strokeWidth={2.3}
 						/>
-						<Text>{isCompleted ? "Als offen markieren" : "Als erledigt markieren"}</Text>
+						<Text>
+							{isCompleted ? "Als offen markieren" : "Als erledigt markieren"}
+						</Text>
 					</Button>
 				) : null}
 				{canDelete ? (

@@ -81,7 +81,8 @@ const shouldPlanBeforeEvent = (
 ) => {
 	if (isLearningEntry(entry)) return preferences.beforeLearningTimeEnabled;
 	if (isExamEntry(entry)) return preferences.beforeExamEnabled;
-	if (entry.kind === "Hausaufgabe") return preferences.beforeHomeworkWorkEnabled;
+	if (entry.kind === "Hausaufgabe")
+		return preferences.beforeHomeworkWorkEnabled;
 	return true;
 };
 

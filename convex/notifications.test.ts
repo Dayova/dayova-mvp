@@ -164,7 +164,9 @@ test("forgotten event notifications are created only for incomplete entries", as
 		}),
 	).resolves.toEqual({ created: 1 });
 
-	const inbox = await t.query(api.notifications.listInbox, { category: "task" });
+	const inbox = await t.query(api.notifications.listInbox, {
+		category: "task",
+	});
 	expect(inbox).toMatchObject([
 		{
 			category: "task",

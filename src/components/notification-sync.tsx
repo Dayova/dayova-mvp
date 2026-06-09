@@ -33,7 +33,8 @@ const hasNotificationPermission = (
 	permissions.granted ||
 	permissions.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL;
 
-const getLocalMinutes = (date: Date) => date.getHours() * 60 + date.getMinutes();
+const getLocalMinutes = (date: Date) =>
+	date.getHours() * 60 + date.getMinutes();
 
 const ensureNotificationChannel = async (
 	notifications: typeof ExpoNotifications,

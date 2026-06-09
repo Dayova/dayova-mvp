@@ -142,7 +142,8 @@ const shouldCreateBeforeEvent = (
 ) => {
 	if (isLearningEntry(entry)) return preferences.beforeLearningTimeEnabled;
 	if (isExamEntry(entry)) return preferences.beforeExamEnabled;
-	if (entry.kind === "Hausaufgabe") return preferences.beforeHomeworkWorkEnabled;
+	if (entry.kind === "Hausaufgabe")
+		return preferences.beforeHomeworkWorkEnabled;
 	return true;
 };
 
@@ -431,25 +432,49 @@ export const syncDueNotifications = mutation({
 		}
 
 		for (const entry of entriesForToday) {
-				if (entry.completed === true) continue;
+			if (entry.completed === true) continue;
 
-				const startMinutes = parseTimeToMinutes(entry.time);
-				if (startMinutes === null) continue;
+			const startMinutes = parseTimeToMinutes(entry.time);
+			if (startMinutes === null) continue;
 
-				const beforeEventTriggerMinutes =
-					startMinutes - preferences.reminderOffsetMinutes;
-				if (
-					shouldCreateBeforeEvent(entry, preferences) &&
-					args.localMinutes >= beforeEventTriggerMinutes &&
-					args.localMinutes <= startMinutes
-				) {
+			const beforeEventTriggerMinutes =
+				startMinutes - preferences.reminderOffsetMinutes;
+			if (
+				shouldCreateBeforeEvent(entry, preferences) &&
+				args.localMinutes >= beforeEventTriggerMinutes &&
+				args.localMinutes <= startMinutes
+			) {
+				const didCreate = await insertNotificationOnce(ctx, {
+					ownerTokenIdentifier,
+					eventKey: `before:${entry._id}`,
+					category: getEntryNotificationCategory(entry),
+					type: "beforeEvent",
+					title: getBeforeEventTitle(entry),
+					body: `Deine ${entry.title} startet in ${preferences.reminderOffsetMinutes} Minuten.`,
+					relatedDayEntryId: entry._id,
+					relatedLearningPlanId: entry.relatedLearningPlanId,
+					relatedLearningPlanSessionId: entry.relatedLearningPlanSessionId,
+					triggeredAt: now,
+					createdAt: now,
+				});
+				if (didCreate) created += 1;
+			}
+
+			const durationMinutes = entry.durationMinutes;
+			if (
+				preferences.forgottenEventEnabled &&
+				durationMinutes !== undefined &&
+				durationMinutes > 0
+			) {
+				const forgottenTriggerMinutes = startMinutes + durationMinutes + 15;
+				if (args.localMinutes >= forgottenTriggerMinutes) {
 					const didCreate = await insertNotificationOnce(ctx, {
 						ownerTokenIdentifier,
-						eventKey: `before:${entry._id}`,
+						eventKey: `forgotten:${entry._id}`,
 						category: getEntryNotificationCategory(entry),
-						type: "beforeEvent",
-						title: getBeforeEventTitle(entry),
-						body: `Deine ${entry.title} startet in ${preferences.reminderOffsetMinutes} Minuten.`,
+						type: "forgottenEvent",
+						title: `${getBeforeEventTitle(entry)} nicht vergessen`,
+						body: `Du kannst deine ${entry.title} noch als erledigt markieren.`,
 						relatedDayEntryId: entry._id,
 						relatedLearningPlanId: entry.relatedLearningPlanId,
 						relatedLearningPlanSessionId: entry.relatedLearningPlanSessionId,
@@ -458,31 +483,7 @@ export const syncDueNotifications = mutation({
 					});
 					if (didCreate) created += 1;
 				}
-
-				const durationMinutes = entry.durationMinutes;
-				if (
-					preferences.forgottenEventEnabled &&
-					durationMinutes !== undefined &&
-					durationMinutes > 0
-				) {
-					const forgottenTriggerMinutes = startMinutes + durationMinutes + 15;
-					if (args.localMinutes >= forgottenTriggerMinutes) {
-						const didCreate = await insertNotificationOnce(ctx, {
-							ownerTokenIdentifier,
-							eventKey: `forgotten:${entry._id}`,
-							category: getEntryNotificationCategory(entry),
-							type: "forgottenEvent",
-							title: `${getBeforeEventTitle(entry)} nicht vergessen`,
-							body: `Du kannst deine ${entry.title} noch als erledigt markieren.`,
-							relatedDayEntryId: entry._id,
-							relatedLearningPlanId: entry.relatedLearningPlanId,
-							relatedLearningPlanSessionId: entry.relatedLearningPlanSessionId,
-							triggeredAt: now,
-							createdAt: now,
-						});
-						if (didCreate) created += 1;
-					}
-				}
+			}
 		}
 
 		return { created };
