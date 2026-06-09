@@ -16,7 +16,7 @@ if (isReleaseConfig) {
 	validatePublicEnvForRelease();
 }
 
-const APP_VERSION = "1.0.1";
+const APP_VERSION = "1.0.2";
 const BACKGROUND_COLOR = "#ffffff";
 const DAYOVA_LOGO = isProduction
 	? "./assets/dayova-logo.png"
