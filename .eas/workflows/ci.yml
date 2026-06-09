@@ -25,14 +25,78 @@ defaults:
 
 jobs:
   checks:
-    name: Lint, typecheck, Convex Deploy
+    name: Lint, typecheck, and test
     type: custom
     runs_on: linux-medium
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
       - name: Run lint and typecheck
         run: pnpm check
+      - name: Run tests
+        run: pnpm test
+
+  main_checks:
+    name: Main branch gates
+    type: custom
+    runs_on: linux-medium
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    outputs:
+      ota_safe: ${{ steps.ota_guard.outputs.ota_safe }}
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Run lint and typecheck
+        run: pnpm check
+      - name: Run tests
+        run: pnpm test
+      - name: Verify Expo export
+        run: pnpm exec expo export --platform all --output-dir dist
+      - id: ota_guard
+        name: Check OTA safety
+        run: |
+          changed_files="$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")"
+          printf '%s\n' "$changed_files"
+
+          if printf '%s\n' "$changed_files" | grep -E '^(app\.config\..*|app\.json|eas\.json|package\.json|pnpm-lock\.yaml|android/|ios/|plugins/|assets/.*(icon|splash|logo)|src/lib/runtime-config\.ts)' >/dev/null; then
+            echo "Native or runtime-sensitive files changed. Skipping automatic OTA update."
+            set-output ota_safe false
+          else
+            set-output ota_safe true
+          fi
+
+  deploy_convex:
+    name: Deploy Convex
+    type: custom
+    runs_on: linux-medium
+    needs:
+      - main_checks
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
       - name: Deploy Convex
-        run: pnpm convex deploy
+        run: pnpm convex deploy --typecheck enable
+
+  send_updates:
+    name: Send updates
+    type: custom
+    runs_on: linux-medium
+    needs:
+      - main_checks
+      - deploy_convex
+    if: ${{ needs.main_checks.outputs.ota_safe == 'true' }}
+    environment: production
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Send production OTA rollout
+        run: |
+          pnpm dlx eas-cli@18.11.0 update \
+            --branch production \
+            --environment production \
+            --platform all \
+            --rollout-percentage 10 \
+            --message "Production OTA from ${{ github.sha }}" \
+            --non-interactive
