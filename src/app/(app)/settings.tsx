@@ -38,41 +38,46 @@ export default function SettingsScreen() {
 	const router = useRouter();
 	const { logout } = useAuth();
 	const { height } = useWindowDimensions();
-	const sectionGap = Math.min(Math.max(height * 0.075, 44), 80);
+	const contentMinHeight = Math.max(height - 268, 360);
 
 	return (
 		<Screen>
 			<StatusBar style="dark" />
 			<ScreenScroll topPadding={118} bottomPadding={150} horizontalPadding={24}>
-				<View style={{ rowGap: 20 }}>
-					<SettingsRow
-						icon={Bell}
-						label="Mitteilungen"
-						onPress={() => router.push("/notification-settings")}
-					/>
-					<SettingsRow
-						icon={Timer}
-						label="Lernzeiten"
-						onPress={() => router.push("/learning-times")}
-					/>
-				</View>
+				<View
+					style={{
+						minHeight: contentMinHeight,
+						justifyContent: "space-between",
+					}}
+				>
+					<View style={{ rowGap: 20 }}>
+						<SettingsRow
+							icon={Bell}
+							label="Mitteilungen"
+							onPress={() => router.push("/notification-settings")}
+						/>
+						<SettingsRow
+							icon={Timer}
+							label="Lernzeiten"
+							onPress={() => router.push("/learning-times")}
+						/>
+					</View>
 
-				<View style={{ height: sectionGap }} />
-
-				<View style={{ rowGap: 20 }}>
-					<SettingsRow
-						icon={Settings}
-						label="Profil"
-						onPress={() => router.push("/profile")}
-					/>
-					<SettingsRow
-						icon={Logout}
-						label="Abmelden"
-						onPress={async () => {
-							await logout();
-							router.replace("/");
-						}}
-					/>
+					<View style={{ rowGap: 20 }}>
+						<SettingsRow
+							icon={Settings}
+							label="Profil"
+							onPress={() => router.push("/profile")}
+						/>
+						<SettingsRow
+							icon={Logout}
+							label="Abmelden"
+							onPress={async () => {
+								await logout();
+								router.replace("/");
+							}}
+						/>
+					</View>
 				</View>
 			</ScreenScroll>
 		</Screen>
