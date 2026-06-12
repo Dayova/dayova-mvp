@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import { Bell, Logout, Settings, Timer } from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
@@ -37,6 +37,8 @@ function SettingsRow({
 export default function SettingsScreen() {
 	const router = useRouter();
 	const { logout } = useAuth();
+	const { height } = useWindowDimensions();
+	const sectionGap = Math.min(Math.max(height * 0.075, 44), 80);
 
 	return (
 		<Screen>
@@ -55,7 +57,7 @@ export default function SettingsScreen() {
 					/>
 				</View>
 
-				<View style={{ height: 240 }} />
+				<View style={{ height: sectionGap }} />
 
 				<View style={{ rowGap: 20 }}>
 					<SettingsRow
