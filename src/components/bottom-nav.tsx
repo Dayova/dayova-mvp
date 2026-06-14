@@ -1,9 +1,16 @@
+import { useEffect } from "react";
 import { TouchableOpacity, useWindowDimensions, View } from "react-native";
+import Animated, {
+	useAnimatedStyle,
+	useSharedValue,
+	withSpring,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Home, Route2, Settings } from "~/components/ui/icon";
 
 type BottomNavKey = "home" | "learningPath" | "settings";
 type AppTabRouteName = "home" | "learning-plans" | "settings";
+type BottomNavIcon = typeof Home;
 type AppTabRoute = {
 	key: string;
 	name: string;
@@ -26,7 +33,7 @@ type BottomNavProps = {
 
 const NAV_ITEMS: Array<{
 	key: BottomNavKey;
-	icon: typeof Home;
+	icon: BottomNavIcon;
 	routeName: AppTabRouteName;
 	label: string;
 }> = [
@@ -48,11 +55,75 @@ const NAV_ITEMS: Array<{
 const clamp = (value: number, min: number, max: number) =>
 	Math.min(Math.max(value, min), max);
 
+const ITEM_SIZE = 56;
+const ITEM_GAP = 8;
+const BAR_PADDING_HORIZONTAL = 10;
+const BAR_PADDING_VERTICAL = 8;
+
+function AnimatedTabIcon({
+	active,
+	Icon,
+	scale,
+}: {
+	active: boolean;
+	Icon: BottomNavIcon;
+	scale: number;
+}) {
+	const focusProgress = useSharedValue(active ? 1 : 0);
+
+	useEffect(() => {
+		focusProgress.value = withSpring(active ? 1 : 0, {
+			damping: 14,
+			mass: 0.55,
+			stiffness: 260,
+		});
+	}, [active, focusProgress]);
+
+	const animatedStyle = useAnimatedStyle(() => ({
+		opacity: 0.76 + focusProgress.value * 0.24,
+		transform: [
+			{ translateY: focusProgress.value * -2 * scale },
+			{ scale: 1 + focusProgress.value * 0.1 },
+		],
+	}));
+
+	return (
+		<Animated.View style={animatedStyle}>
+			<Icon
+				size={22 * scale}
+				color={active ? "#3A7BFF" : "#202127"}
+				strokeWidth={active ? 2.15 : 2}
+			/>
+		</Animated.View>
+	);
+}
+
 export function BottomNav({ state, navigation }: BottomNavProps) {
 	const insets = useSafeAreaInsets();
 	const { width } = useWindowDimensions();
 	const scale = clamp(width / 393, 0.88, 1.08);
 	const activeRouteName = state.routes[state.index]?.name;
+	const activeItemIndex = Math.max(
+		NAV_ITEMS.findIndex((item) => item.routeName === activeRouteName),
+		0,
+	);
+	const indicatorPosition = useSharedValue(activeItemIndex);
+
+	useEffect(() => {
+		indicatorPosition.value = withSpring(activeItemIndex, {
+			damping: 17,
+			mass: 0.72,
+			stiffness: 210,
+		});
+	}, [activeItemIndex, indicatorPosition]);
+
+	const indicatorStyle = useAnimatedStyle(() => ({
+		transform: [
+			{
+				translateX: indicatorPosition.value * (ITEM_SIZE + ITEM_GAP) * scale,
+			},
+		],
+	}));
 
 	return (
 		<View
@@ -63,14 +134,32 @@ export function BottomNav({ state, navigation }: BottomNavProps) {
 			<View
 				className="flex-row items-center rounded-full bg-white"
 				style={{
-					paddingHorizontal: 10 * scale,
-					paddingVertical: 8 * scale,
+					paddingHorizontal: BAR_PADDING_HORIZONTAL * scale,
+					paddingVertical: BAR_PADDING_VERTICAL * scale,
 					borderWidth: 1,
 					borderColor: "rgba(17,24,39,0.05)",
 					boxShadow: "0 18px 36px rgba(20, 28, 48, 0.12)",
-					columnGap: 8 * scale,
+					columnGap: ITEM_GAP * scale,
 				}}
 			>
+				<Animated.View
+					pointerEvents="none"
+					style={[
+						{
+							position: "absolute",
+							left: BAR_PADDING_HORIZONTAL * scale,
+							top: BAR_PADDING_VERTICAL * scale,
+							height: ITEM_SIZE * scale,
+							width: ITEM_SIZE * scale,
+							borderRadius: ITEM_SIZE * scale * 0.5,
+							backgroundColor: "#FFFFFF",
+							borderWidth: 1,
+							borderColor: "rgba(58,123,255,0.12)",
+							boxShadow: "0 8px 20px rgba(33, 37, 48, 0.10)",
+						},
+						indicatorStyle,
+					]}
+				/>
 				{NAV_ITEMS.map((item) => {
 					const Icon = item.icon;
 					const active = activeRouteName === item.routeName;
@@ -100,21 +189,11 @@ export function BottomNav({ state, navigation }: BottomNavProps) {
 							}}
 							className="items-center justify-center rounded-full"
 							style={{
-								height: (active ? 56 : 48) * scale,
-								width: (active ? 56 : 48) * scale,
-								backgroundColor: active ? "#FFFFFF" : "transparent",
-								borderWidth: active ? 1 : 0,
-								borderColor: active ? "rgba(58,123,255,0.10)" : "transparent",
-								boxShadow: active
-									? "0 8px 20px rgba(33, 37, 48, 0.08)"
-									: "none",
+								height: ITEM_SIZE * scale,
+								width: ITEM_SIZE * scale,
 							}}
 						>
-							<Icon
-								size={(active ? 24 : 22) * scale}
-								color={active ? "#3A7BFF" : "#202127"}
-								strokeWidth={active ? 2.15 : 2}
-							/>
+							<AnimatedTabIcon active={active} Icon={Icon} scale={scale} />
 						</TouchableOpacity>
 					);
 				})}
