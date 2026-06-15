@@ -72,20 +72,25 @@ function AnimatedTabIcon({
 	const focusProgress = useSharedValue(active ? 1 : 0);
 
 	useEffect(() => {
-		focusProgress.value = withSpring(active ? 1 : 0, {
-			damping: 14,
-			mass: 0.55,
-			stiffness: 260,
-		});
+		focusProgress.set(
+			withSpring(active ? 1 : 0, {
+				damping: 14,
+				mass: 0.55,
+				stiffness: 260,
+			}),
+		);
 	}, [active, focusProgress]);
 
-	const animatedStyle = useAnimatedStyle(() => ({
-		opacity: 0.76 + focusProgress.value * 0.24,
-		transform: [
-			{ translateY: focusProgress.value * -2 * scale },
-			{ scale: 1 + focusProgress.value * 0.1 },
-		],
-	}));
+	const animatedStyle = useAnimatedStyle(() => {
+		const progress = focusProgress.get();
+		return {
+			opacity: 0.76 + progress * 0.24,
+			transform: [
+				{ translateY: progress * -2 * scale },
+				{ scale: 1 + progress * 0.1 },
+			],
+		};
+	});
 
 	return (
 		<Animated.View style={animatedStyle}>
@@ -110,17 +115,19 @@ export function BottomNav({ state, navigation }: BottomNavProps) {
 	const indicatorPosition = useSharedValue(activeItemIndex);
 
 	useEffect(() => {
-		indicatorPosition.value = withSpring(activeItemIndex, {
-			damping: 17,
-			mass: 0.72,
-			stiffness: 210,
-		});
+		indicatorPosition.set(
+			withSpring(activeItemIndex, {
+				damping: 17,
+				mass: 0.72,
+				stiffness: 210,
+			}),
+		);
 	}, [activeItemIndex, indicatorPosition]);
 
 	const indicatorStyle = useAnimatedStyle(() => ({
 		transform: [
 			{
-				translateX: indicatorPosition.value * (ITEM_SIZE + ITEM_GAP) * scale,
+				translateX: indicatorPosition.get() * (ITEM_SIZE + ITEM_GAP) * scale,
 			},
 		],
 	}));

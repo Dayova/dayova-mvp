@@ -1,14 +1,17 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import Animated, {
+	cancelAnimation,
 	Easing,
-	interpolate,
-	type SharedValue,
 	useAnimatedStyle,
+	useReducedMotion,
 	useSharedValue,
+	withDelay,
+	withRepeat,
 	withSequence,
 	withTiming,
 } from "react-native-reanimated";
+import Svg, { Circle } from "react-native-svg";
 import { Button } from "~/components/ui/button";
 import {
 	FieldAccessory,
@@ -57,17 +60,23 @@ const getSessionPhaseLabel = (phase: SessionPhase) =>
 
 const sessionPhaseOptions: SessionPhase[] = ["theory", "practice", "rehearsal"];
 
-const ANALYSIS_ORBITS = Array.from({ length: 9 }, (_, index) => ({
-	id: `analysis-orbit-${index}`,
-	rotation: index * 40,
-}));
 const ANALYSIS_ORBIT_LOADER_SIZE = 360;
 const ANALYSIS_ORBIT_PETAL_SIZE = 174;
 const ANALYSIS_ORBIT_PETAL_DISTANCE = 64;
 const ORBIT_COLLAPSE_DURATION = 2400;
 const ORBIT_EXPAND_DURATION = 2200;
 const ORBIT_CYCLE_DURATION = 5000;
-const ORBIT_ROTATION_STEP = 48;
+const ORBIT_REST_DURATION =
+	ORBIT_CYCLE_DURATION - ORBIT_COLLAPSE_DURATION - ORBIT_EXPAND_DURATION;
+const ANALYSIS_ORBIT_CENTER = ANALYSIS_ORBIT_LOADER_SIZE / 2;
+const ANALYSIS_ORBIT_PETALS = Array.from({ length: 9 }, (_, index) => {
+	const angle = (index * 40 * Math.PI) / 180;
+	return {
+		id: `analysis-orbit-${index}`,
+		cx: ANALYSIS_ORBIT_CENTER + Math.sin(angle) * ANALYSIS_ORBIT_PETAL_DISTANCE,
+		cy: ANALYSIS_ORBIT_CENTER - Math.cos(angle) * ANALYSIS_ORBIT_PETAL_DISTANCE,
+	};
+});
 
 export function SectionTitle({
 	title,
@@ -345,71 +354,65 @@ export function SessionEditForm({
 	);
 }
 
-function AnalysisOrbitPetal({
-	rotation,
-	expansion,
-}: {
-	rotation: number;
-	expansion: SharedValue<number>;
-}) {
-	const petalStyle = useAnimatedStyle(() => ({
-		transform: [
-			{ rotate: `${rotation}deg` },
-			{ translateY: -ANALYSIS_ORBIT_PETAL_DISTANCE * expansion.value },
-			{ scale: interpolate(expansion.value, [0, 1], [0.92, 1]) },
-		],
-	}));
-
-	return (
-		<Animated.View
-			className="absolute rounded-full bg-primary/55"
-			style={[
-				{
-					height: ANALYSIS_ORBIT_PETAL_SIZE,
-					width: ANALYSIS_ORBIT_PETAL_SIZE,
-				},
-				petalStyle,
-			]}
-		/>
-	);
-}
-
 export function AnalysisOrbitLoader() {
-	const expansion = useSharedValue(1);
+	const flowerScale = useSharedValue(1);
 	const flowerRotation = useSharedValue(0);
-	const rotationTarget = useRef(0);
+	const reduceMotion = useReducedMotion();
 
 	useEffect(() => {
-		const runCycle = () => {
-			rotationTarget.current += ORBIT_ROTATION_STEP;
-			flowerRotation.value = withTiming(rotationTarget.current, {
-				duration: ORBIT_COLLAPSE_DURATION,
-				easing: Easing.inOut(Easing.cubic),
-			});
-			expansion.value = withSequence(
-				withTiming(0, {
-					duration: ORBIT_COLLAPSE_DURATION,
-					easing: Easing.inOut(Easing.cubic),
-				}),
-				withTiming(1, {
-					duration: ORBIT_EXPAND_DURATION,
-					easing: Easing.out(Easing.cubic),
-				}),
-			);
-		};
+		if (reduceMotion) {
+			flowerRotation.set(0);
+			flowerScale.set(1);
+			return;
+		}
 
-		const initialCycle = setTimeout(runCycle, 180);
-		const cycle = setInterval(runCycle, ORBIT_CYCLE_DURATION);
+		flowerRotation.set(
+			withRepeat(
+				withSequence(
+					withTiming(40, {
+						duration: ORBIT_COLLAPSE_DURATION,
+						easing: Easing.inOut(Easing.cubic),
+					}),
+					withDelay(
+						ORBIT_EXPAND_DURATION + ORBIT_REST_DURATION,
+						withTiming(0, { duration: 0 }),
+					),
+				),
+				-1,
+			),
+		);
+		flowerScale.set(
+			withRepeat(
+				withSequence(
+					withTiming(0, {
+						duration: ORBIT_COLLAPSE_DURATION,
+						easing: Easing.inOut(Easing.cubic),
+					}),
+					withTiming(1, {
+						duration: ORBIT_EXPAND_DURATION,
+						easing: Easing.out(Easing.cubic),
+					}),
+					withDelay(ORBIT_REST_DURATION, withTiming(1, { duration: 0 })),
+				),
+				-1,
+			),
+		);
 
 		return () => {
-			clearTimeout(initialCycle);
-			clearInterval(cycle);
+			cancelAnimation(flowerRotation);
+			cancelAnimation(flowerScale);
 		};
-	}, [expansion, flowerRotation]);
+	}, [flowerRotation, flowerScale, reduceMotion]);
 
-	const flowerStyle = useAnimatedStyle(() => ({
-		transform: [{ rotate: `${flowerRotation.value}deg` }],
-	}));
+	const flowerStyle = useAnimatedStyle(() => {
+		const scaleProgress = flowerScale.get();
+		return {
+			transform: [
+				{ rotate: `${flowerRotation.get()}deg` },
+				{ scale: 0.62 + scaleProgress * 0.38 },
+			],
+		};
+	});
 
 	return (
 		<View
@@ -423,13 +426,22 @@ export function AnalysisOrbitLoader() {
 				className="h-full w-full items-center justify-center"
 				style={flowerStyle}
 			>
-				{ANALYSIS_ORBITS.map((orbit) => (
-					<AnalysisOrbitPetal
-						key={orbit.id}
-						rotation={orbit.rotation}
-						expansion={expansion}
-					/>
-				))}
+				<Svg
+					width={ANALYSIS_ORBIT_LOADER_SIZE}
+					height={ANALYSIS_ORBIT_LOADER_SIZE}
+					viewBox={`0 0 ${ANALYSIS_ORBIT_LOADER_SIZE} ${ANALYSIS_ORBIT_LOADER_SIZE}`}
+				>
+					{ANALYSIS_ORBIT_PETALS.map((petal) => (
+						<Circle
+							key={petal.id}
+							cx={petal.cx}
+							cy={petal.cy}
+							r={ANALYSIS_ORBIT_PETAL_SIZE / 2}
+							fill="#3A7BFF"
+							fillOpacity={0.55}
+						/>
+					))}
+				</Svg>
 			</Animated.View>
 		</View>
 	);

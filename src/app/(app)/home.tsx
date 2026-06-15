@@ -165,12 +165,12 @@ function DragStartSlider({
 		.failOffsetY([-14 * scale, 14 * scale])
 		.onBegin(() => {
 			"worklet";
-			dragX.value = 0;
-			isCompleting.value = false;
+			dragX.set(0);
+			isCompleting.set(false);
 		})
 		.onUpdate((event) => {
 			"worklet";
-			dragX.value = Math.min(Math.max(event.translationX, 0), maxDrag);
+			dragX.set(Math.min(Math.max(event.translationX, 0), maxDrag));
 		})
 		.onEnd((event) => {
 			"worklet";
@@ -179,25 +179,27 @@ function DragStartSlider({
 				nextValue >= maxDrag * 0.72 ||
 				(event.velocityX > 650 && nextValue >= maxDrag * 0.35);
 
-			if (!shouldComplete || isCompleting.value) return;
+			if (!shouldComplete || isCompleting.get()) return;
 
-			isCompleting.value = true;
-			dragX.value = withTiming(maxDrag, { duration: 90 }, (finished) => {
-				"worklet";
-				if (!finished) return;
-				scheduleOnRN(onComplete);
-				dragX.value = withTiming(0, { duration: 120 });
-				isCompleting.value = false;
-			});
+			isCompleting.set(true);
+			dragX.set(
+				withTiming(maxDrag, { duration: 90 }, (finished) => {
+					"worklet";
+					if (!finished) return;
+					scheduleOnRN(onComplete);
+					dragX.set(withTiming(0, { duration: 120 }));
+					isCompleting.set(false);
+				}),
+			);
 		})
 		.onFinalize(() => {
 			"worklet";
-			if (isCompleting.value) return;
-			dragX.value = withTiming(0, { duration: 160 });
+			if (isCompleting.get()) return;
+			dragX.set(withTiming(0, { duration: 160 }));
 		});
 
 	const knobAnimatedStyle = useAnimatedStyle(() => ({
-		transform: [{ translateX: dragX.value }],
+		transform: [{ translateX: dragX.get() }],
 	}));
 
 	return (
