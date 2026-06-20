@@ -107,7 +107,7 @@ function MoodEffects({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 		return (
 			<G>
 				<Circle cx="18" cy="24" r="3" fill="#FFB02E" />
-				<Circle cx="101" cy="28" r="2.5" fill="#3A7BFF" />
+				<Circle cx="101" cy="28" r="2.5" fill="#00BAFF" />
 				<Path d="M28 15 L32 23 L23 22 Z" fill="#18A058" />
 				<Path
 					d="M88 17 L94 12 L99 19"
@@ -127,7 +127,7 @@ function MoodEffects({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 				<Circle cx="103" cy="15" r="10" fill="#FFFFFF" />
 				<Path
 					d="M100 11 Q107 11 107 17 Q107 21 102 24 M102 29 L102 29"
-					stroke="#3A7BFF"
+					stroke="#00BAFF"
 					strokeWidth="3"
 					strokeLinecap="round"
 					strokeLinejoin="round"
@@ -145,7 +145,7 @@ function Body({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 
 	return (
 		<G>
-			<Ellipse cx="60" cy="113" rx="36" ry="5" fill="#DDE7FF" opacity="0.7" />
+			<Ellipse cx="60" cy="113" rx="36" ry="5" fill="#EAF8FF" opacity="0.7" />
 			<Path
 				d="M34 68 Q36 50 60 50 Q84 50 86 68 L91 105 Q74 113 60 113 Q46 113 29 105 Z"
 				fill={hoodie}
@@ -268,7 +268,7 @@ function Head({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 			{pose === "secure" ? (
 				<Path
 					d="M39 20 Q60 7 81 20"
-					stroke="#DDE7FF"
+					stroke="#EAF8FF"
 					strokeWidth="3"
 					strokeLinecap="round"
 					fill="none"
@@ -371,7 +371,7 @@ function Props({ pose }: { pose: NonNullable<MascotProps["pose"]> }) {
 				<Rect x="34" y="96" width="48" height="13" rx="4" fill="#FFFFFF" />
 				<Path
 					d="M40 101 L60 101 M40 105 L56 105"
-					stroke="#DDE7FF"
+					stroke="#EAF8FF"
 					strokeWidth="1.5"
 					strokeLinecap="round"
 				/>

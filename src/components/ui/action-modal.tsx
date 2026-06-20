@@ -58,14 +58,14 @@ function ActionModal({
 				)}
 				<View
 					className={cn(
-						"mx-8 mb-9 items-center gap-5 rounded-[40px] bg-white px-5 pt-10 pb-[40px]",
+						"mx-8 mb-9 items-center gap-5 rounded-[40px] bg-card px-5 pt-10 pb-10",
 						cardClassName,
 					)}
 				>
 					{icon ? (
 						<View
 							className={cn(
-								"h-[96px] w-[96px] items-center justify-center rounded-full bg-green-100 py-6",
+								"h-24 w-24 items-center justify-center rounded-full bg-success-subtle py-6",
 								iconContainerClassName,
 							)}
 						>
@@ -75,7 +75,7 @@ function ActionModal({
 					<View className="items-center">
 						<Text
 							className={cn(
-								"text-center font-bold font-poppins text-20 text-text",
+								"text-center font-poppins font-semibold text-body-1 text-text",
 								titleClassName,
 							)}
 						>
@@ -84,7 +84,7 @@ function ActionModal({
 						{description ? (
 							<Text
 								className={cn(
-									"mt-2 text-center font-poppins text-14 text-text/45",
+									"mt-2 text-center font-poppins text-body-3 text-text/45",
 									descriptionClassName,
 								)}
 							>
