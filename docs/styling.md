@@ -86,7 +86,7 @@ With that configuration:
 - Use `text-heading-1`, `text-heading-2`, `text-body-1`, `text-body-2`, `text-body-3`, `text-body-4`, and `text-body-5` for text hierarchy.
 - Use `cn()` for component class merging so variants, defaults, and caller-provided classes resolve consistently.
 - Do not replace `cn()` with direct `clsx()` in shared components unless you explicitly want to preserve all conflicting utilities.
-- Prefer pairing size and color explicitly on `Text` components, for example `text-14 text-text/60`, instead of relying on inherited defaults when readability matters.
+- Prefer pairing size and color explicitly on `Text` components, for example `text-body-3 text-text/60`, instead of relying on inherited defaults when readability matters.
 - Avoid adding color names that look like size names, and avoid adding size names that look like color names. The `text-*` namespace is shared and ambiguity increases merge risk.
 
 ## Style Prop Exceptions

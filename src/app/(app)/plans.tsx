@@ -1,4 +1,5 @@
 import { useConvexAuth, useQuery } from "convex/react";
+import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { TouchableOpacity, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
@@ -82,6 +83,7 @@ function LearningPlanCard({
 }
 
 export default function PlansScreen() {
+	const router = useRouter();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningPlans = useQuery(
@@ -100,6 +102,9 @@ export default function PlansScreen() {
 
 					<TouchableOpacity
 						activeOpacity={0.86}
+						accessibilityRole="button"
+						accessibilityLabel="Benachrichtigungen öffnen"
+						onPress={() => router.push("/notifications")}
 						className="h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-card shadow-black/5 shadow-lg"
 					>
 						<Bell size={22} color="#1A1A1A" strokeWidth={2.2} />
