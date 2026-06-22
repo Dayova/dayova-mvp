@@ -44,8 +44,8 @@ Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
 There are no white pill buttons in the current light-mode design system. Both
 appearances are 56px tall with a 32px radius and a 0.3px inside stroke: gradient
-buttons use a white stroke, and black buttons use the light border token
-`#DCE6EE`.
+buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
+with a white stroke, and black buttons use the light border token `#DCE6EE`.
 
 Dark-mode design-system support is planned separately in
 https://github.com/Dayova/dayova-mvp/issues/136. Do not add dark-mode tokens,
