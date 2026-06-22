@@ -1,14 +1,20 @@
 import { useConvexAuth, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import { NotificationButton } from "~/components/notification-button";
-import { Plus, Route2 } from "~/components/ui/icon";
+import {
+	ClipboardEdit,
+	GraduationCap,
+	Plus,
+	Route2,
+} from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
@@ -19,6 +25,20 @@ type LearningPlanOverview = {
 	examTypeLabel: string;
 	status: "draft" | "questionsReady" | "generated" | "accepted";
 	progressPercent: number;
+	completedCount?: number;
+	sessionCount?: number;
+	examDateKey?: string;
+	examDateLabel?: string;
+	currentSession?: {
+		id: string;
+		title: string;
+		goal: string;
+		dateKey: string;
+		dateLabel: string;
+		startTime: string;
+		durationMinutes: number;
+		completed: boolean;
+	} | null;
 };
 
 const getPlanHref = (plan: LearningPlanOverview) => {
@@ -29,79 +49,169 @@ const getPlanHref = (plan: LearningPlanOverview) => {
 	return `/learning-plans/${plan.id}` as const;
 };
 
-function ProgressRing({ progress }: { progress: number }) {
-	const size = 74;
-	const strokeWidth = 4;
-	const radius = (size - strokeWidth) / 2;
-	const circumference = 2 * Math.PI * radius;
-	const dashOffset = circumference * (1 - progress / 100);
+const differenceInCalendarDays = (laterKey: string, earlierKey: string) => {
+	const later = parseDayKey(laterKey);
+	const earlier = parseDayKey(earlierKey);
+	if (!later || !earlier) return 0;
+	return Math.ceil((later.getTime() - earlier.getTime()) / 86_400_000);
+};
 
+const getStatus = (
+	plan: LearningPlanOverview,
+	todayKey: string,
+): { label: string; background: string; foreground: string } => {
+	const sessionCount = plan.sessionCount ?? 0;
+	const completedCount = plan.completedCount ?? 0;
+	if (sessionCount > 0 && completedCount >= sessionCount) {
+		return {
+			label: "Fertig",
+			background: "#EAF9EF",
+			foreground: DAYOVA_DESIGN_SYSTEM.colors.success,
+		};
+	}
+
+	const sessionKey = plan.currentSession?.dateKey;
+	if (sessionKey && sessionKey < todayKey) {
+		return {
+			label: "Fällig",
+			background: "#FFF3E5",
+			foreground: DAYOVA_DESIGN_SYSTEM.colors.warning,
+		};
+	}
+	if (sessionKey === todayKey) {
+		return {
+			label: "Heute",
+			background: "#F1F7FB",
+			foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
+		};
+	}
+	if (sessionKey && differenceInCalendarDays(sessionKey, todayKey) === 1) {
+		return {
+			label: "Morgen",
+			background: "#F1F7FB",
+			foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
+		};
+	}
+	return {
+		label: "Geplant",
+		background: "#F1F7FB",
+		foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
+	};
+};
+
+function Badge({
+	label,
+	background,
+	foreground,
+}: {
+	label: string;
+	background: string;
+	foreground: string;
+}) {
 	return (
-		<Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-			<Circle
-				cx={size / 2}
-				cy={size / 2}
-				r={radius}
-				stroke={`${DAYOVA_DESIGN_SYSTEM.colors.primary}24`}
-				strokeWidth={strokeWidth}
-				fill="transparent"
-			/>
-			<Circle
-				cx={size / 2}
-				cy={size / 2}
-				r={radius}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.primary}
-				strokeWidth={strokeWidth}
-				fill="transparent"
-				strokeDasharray={`${circumference} ${circumference}`}
-				strokeDashoffset={dashOffset}
-				strokeLinecap="round"
-				rotation="-90"
-				originX={size / 2}
-				originY={size / 2}
-			/>
-		</Svg>
+		<View
+			className="h-7 justify-center rounded-full px-3"
+			style={{ backgroundColor: background }}
+		>
+			<Text
+				className="font-poppins font-semibold text-[10px] leading-3"
+				style={{ color: foreground }}
+			>
+				{label}
+			</Text>
+		</View>
 	);
 }
 
-function LearningPlanCard({ plan }: { plan: LearningPlanOverview }) {
-	const router = useRouter();
+function LearningPlanCard({
+	plan,
+	todayKey,
+	onPress,
+}: {
+	plan: LearningPlanOverview;
+	todayKey: string;
+	onPress: () => void;
+}) {
 	const progress = Math.max(0, Math.min(plan.progressPercent, 100));
-	const title = formatGermanUiText(
-		`${plan.subject} ${plan.examTypeLabel}`.trim(),
+	const status = getStatus(plan, todayKey);
+	const remainingDays = Math.max(
+		0,
+		plan.examDateKey ? differenceInCalendarDays(plan.examDateKey, todayKey) : 0,
 	);
+	const currentTitle =
+		plan.currentSession?.goal ||
+		plan.currentSession?.title ||
+		plan.examTypeLabel;
 
 	return (
 		<TouchableOpacity
 			accessibilityHint="Öffnet diesen Lernplan."
-			accessibilityLabel={`${title}, ${progress} Prozent`}
+			accessibilityLabel={`${plan.subject}, ${status.label}, ${progress} Prozent`}
 			accessibilityRole="button"
 			activeOpacity={0.9}
-			onPress={() => router.push(getPlanHref(plan))}
-			className="flex-row items-center gap-4 rounded-[30px] border border-border/50 bg-card px-5 py-4 shadow-black/5 shadow-lg"
+			onPress={onPress}
+			className="overflow-hidden rounded-[40px] bg-card px-6 py-6 shadow-black/10 shadow-lg"
+			style={{ minHeight: 212, borderCurve: "continuous" }}
 		>
-			<View className="h-14 w-14 items-center justify-center rounded-full bg-system-subtle py-3 shadow-md shadow-primary/20">
-				<Route2
-					size={28}
-					color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-					strokeWidth={2.2}
-				/>
-			</View>
+			<View className="gap-2">
+				<View className="flex-row items-start justify-between gap-3">
+					<Text
+						className="flex-1 font-medium font-poppins text-[20px] text-black leading-7"
+						numberOfLines={1}
+					>
+						{formatGermanUiText(plan.subject)}
+					</Text>
+					<View className="flex-row gap-1">
+						<Badge {...status} />
+						<Badge
+							label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
+							background="#F1F7FB"
+							foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
+						/>
+					</View>
+				</View>
 
-			<View className="flex-1">
+				<View className="flex-row items-center gap-1">
+					<GraduationCap size={14} color="#697586" strokeWidth={2} />
+					<Text className="font-poppins text-[#697586] text-[12px] leading-[18px]">
+						{plan.examDateLabel ?? "Termin wird geladen"}
+					</Text>
+				</View>
+
 				<Text
-					className="font-poppins font-semibold text-body-3 text-foreground"
-					numberOfLines={1}
+					className="font-poppins font-semibold text-[#1E232B] text-[16px] leading-[18px]"
+					numberOfLines={2}
 				>
-					{title}
+					{formatGermanUiText(currentTitle)}
 				</Text>
 			</View>
 
-			<View className="items-center justify-center">
-				<ProgressRing progress={progress} />
-				<Text className="absolute font-poppins font-semibold text-body-4 text-foreground">
-					{`${progress}%`}
-				</Text>
+			<View className="mt-4 w-[84%] gap-1">
+				<View className="flex-row items-center justify-between">
+					<Text className="font-poppins text-[#7E7E7E] text-[12px] leading-[18px]">
+						{`${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage`}
+					</Text>
+					<View className="flex-row items-center gap-1">
+						<ClipboardEdit size={14} color="#697586" strokeWidth={2} />
+						<Text className="font-poppins text-[#697586] text-[12px] leading-[18px]">
+							{remainingDays === 1
+								? "noch 1 Tag"
+								: `noch ${remainingDays} Tage`}
+						</Text>
+					</View>
+				</View>
+				<View className="h-2 overflow-hidden rounded-full bg-[#F7F8FB]">
+					<LinearGradient
+						colors={["#00A0E6", "#4FD8FF"]}
+						start={{ x: 0, y: 0.5 }}
+						end={{ x: 1, y: 0.5 }}
+						style={{
+							width: `${Math.max(progress, progress > 0 ? 8 : 0)}%`,
+							height: "100%",
+							borderRadius: 8,
+						}}
+					/>
+				</View>
 			</View>
 		</TouchableOpacity>
 	);
@@ -109,9 +219,10 @@ function LearningPlanCard({ plan }: { plan: LearningPlanOverview }) {
 
 export default function LearningPlansScreen() {
 	const insets = useSafeAreaInsets();
-	const router = useRouter();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const today = useCurrentLocalDay();
+	const todayKey = getDayKey(today);
 	const plans = useQuery(
 		api.learningPlans.listOverview,
 		user && isConvexAuthenticated ? {} : "skip",
@@ -128,7 +239,7 @@ export default function LearningPlansScreen() {
 					paddingHorizontal: 24,
 					paddingTop: Math.max(insets.top + 30, 54),
 					paddingBottom: Math.max(insets.bottom + 120, 150),
-					rowGap: 30,
+					rowGap: 36,
 				}}
 				showsVerticalScrollIndicator={false}
 			>
@@ -140,10 +251,15 @@ export default function LearningPlansScreen() {
 					<NotificationButton />
 				</View>
 
-				<View className="gap-4">
+				<View className="gap-3">
 					{visiblePlans.length > 0 ? (
 						visiblePlans.map((plan) => (
-							<LearningPlanCard key={plan.id} plan={plan} />
+							<LearningPlanCard
+								key={plan.id}
+								plan={plan}
+								todayKey={todayKey}
+								onPress={() => router.push(getPlanHref(plan))}
+							/>
 						))
 					) : (
 						<View className="items-center rounded-[30px] border border-border/50 bg-card px-5 py-7 shadow-black/5 shadow-lg">

@@ -10,13 +10,13 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
+import { getDayKeyQueryVariants } from "./dayKeyVariants";
+import { throwUserFacingError } from "./errors";
 import {
 	deleteManagedFile,
 	getConfiguredStorageProvider,
 	getR2ConfigOrThrow,
 } from "./fileStorage";
-import { getDayKeyQueryVariants } from "./dayKeyVariants";
-import { throwUserFacingError } from "./errors";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { assertNoScheduleConflict } from "./scheduleConflicts";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
@@ -481,6 +481,10 @@ export const listOverview = query({
 			const completedCount = sessions.filter(
 				(session) => session.completed === true,
 			).length;
+			const currentSession =
+				sessions.find((session) => session.completed !== true) ??
+				sessions.at(-1) ??
+				null;
 			const progressPercent =
 				sessions.length > 0
 					? Math.round((completedCount / sessions.length) * 100)
@@ -494,6 +498,20 @@ export const listOverview = query({
 				progressPercent,
 				completedCount,
 				sessionCount: sessions.length,
+				examDateKey: plan.examDateKey,
+				examDateLabel: plan.examDateLabel,
+				currentSession: currentSession
+					? {
+							id: currentSession._id,
+							title: currentSession.title,
+							goal: currentSession.goal,
+							dateKey: currentSession.dateKey,
+							dateLabel: currentSession.dateLabel,
+							startTime: currentSession.startTime,
+							durationMinutes: currentSession.durationMinutes,
+							completed: currentSession.completed === true,
+						}
+					: null,
 				updatedAt: plan.updatedAt,
 			});
 		}

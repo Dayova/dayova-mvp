@@ -1,13 +1,11 @@
 import { useConvexAuth, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
-import { TouchableOpacity } from "react-native";
-import { View } from "react-native";
+import { router } from "expo-router";
+import { TouchableOpacity, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import { Bell } from "~/components/ui/icon";
 import { useAuth } from "~/context/AuthContext";
 
 export function NotificationButton() {
-	const router = useRouter();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const unreadSummary = useQuery(
