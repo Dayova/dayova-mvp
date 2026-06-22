@@ -1,5 +1,6 @@
 import { type FC, useEffect, useState } from "react";
 import { Animated, Easing, View } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
 
 interface MascotProps {
@@ -18,8 +19,15 @@ interface MascotProps {
 export const Mascot: FC<MascotProps> = ({ size = 120, pose = "default" }) => {
 	const [floatAnim] = useState(() => new Animated.Value(0));
 	const [moodAnim] = useState(() => new Animated.Value(0));
+	const reduceMotion = useReducedMotion();
 
 	useEffect(() => {
+		floatAnim.stopAnimation();
+		moodAnim.stopAnimation();
+		floatAnim.setValue(0);
+		moodAnim.setValue(0);
+		if (reduceMotion) return;
+
 		const floatLoop = Animated.loop(
 			Animated.sequence([
 				Animated.timing(floatAnim, {
@@ -60,7 +68,7 @@ export const Mascot: FC<MascotProps> = ({ size = 120, pose = "default" }) => {
 			floatLoop.stop();
 			moodLoop.stop();
 		};
-	}, [floatAnim, moodAnim, pose]);
+	}, [floatAnim, moodAnim, pose, reduceMotion]);
 
 	const translateY = floatAnim.interpolate({
 		inputRange: [0, 1],

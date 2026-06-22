@@ -65,6 +65,10 @@ const SWIPE_DELETE_MIN_DISTANCE = 96;
 const SWIPE_DELETE_MAX_DISTANCE = 132;
 const SWIPE_DELETE_FLING_DISTANCE = 40;
 const SWIPE_DELETE_FLING_VELOCITY = -700;
+const NOTIFICATION_EXIT = FadeOut.duration(90);
+const NOTIFICATION_LAYOUT = LinearTransition.springify()
+	.damping(20)
+	.stiffness(180);
 
 const getNotificationsModule = () => {
 	try {
@@ -181,8 +185,8 @@ function CategoryTabs({
 	const indicatorWidth = useSharedValue(0);
 	const selectionPosition = useSharedValue(selectedIndex);
 	const indicatorStyle = useAnimatedStyle(() => ({
-		width: indicatorWidth.value,
-		transform: [{ translateX: selectionPosition.value * indicatorWidth.value }],
+		width: indicatorWidth.get(),
+		transform: [{ translateX: selectionPosition.get() * indicatorWidth.get() }],
 	}));
 
 	useEffect(() => {
@@ -272,7 +276,7 @@ function CategoryTabLabel({
 }) {
 	const animatedStyle = useAnimatedStyle(() => ({
 		color: interpolateColor(
-			Math.min(Math.abs(selectionPosition.value - index), 1),
+			Math.min(Math.abs(selectionPosition.get() - index), 1),
 			[0, 1],
 			["#FFFFFF", "#1A1A1A"],
 		),
@@ -314,20 +318,19 @@ function NotificationCard({
 		.failOffsetY([-12, 12])
 		.onUpdate((event) => {
 			"worklet";
-			if (isDeleting.value) return;
+			if (isDeleting.get()) return;
 
-			translateX.value = Math.max(
-				Math.min(event.translationX, 0),
-				-cardWidth.value,
+			translateX.set(
+				Math.max(Math.min(event.translationX, 0), -cardWidth.get()),
 			);
 		})
 		.onEnd((event) => {
 			"worklet";
-			if (isDeleting.value) return;
+			if (isDeleting.get()) return;
 
-			const distance = -translateX.value;
+			const distance = -translateX.get();
 			const deleteThreshold = Math.min(
-				Math.max(cardWidth.value * 0.3, SWIPE_DELETE_MIN_DISTANCE),
+				Math.max(cardWidth.get() * 0.3, SWIPE_DELETE_MIN_DISTANCE),
 				SWIPE_DELETE_MAX_DISTANCE,
 			);
 			const shouldDelete =
@@ -337,40 +340,44 @@ function NotificationCard({
 
 			if (!shouldDelete) return;
 
-			isDeleting.value = true;
-			translateX.value = withTiming(
-				-cardWidth.value - 24,
-				{
-					duration: 180,
-					easing: Easing.out(Easing.cubic),
-				},
-				(finished) => {
-					"worklet";
-					if (finished) scheduleOnRN(commitDelete);
-				},
+			isDeleting.set(true);
+			translateX.set(
+				withTiming(
+					-cardWidth.get() - 24,
+					{
+						duration: 180,
+						easing: Easing.out(Easing.cubic),
+					},
+					(finished) => {
+						"worklet";
+						if (finished) scheduleOnRN(commitDelete);
+					},
+				),
 			);
 		})
 		.onFinalize(() => {
 			"worklet";
-			if (isDeleting.value) return;
+			if (isDeleting.get()) return;
 
-			translateX.value = withSpring(0, {
-				damping: 20,
-				mass: 0.7,
-				overshootClamping: true,
-				stiffness: 260,
-			});
+			translateX.set(
+				withSpring(0, {
+					damping: 20,
+					mass: 0.7,
+					overshootClamping: true,
+					stiffness: 260,
+				}),
+			);
 		});
 
 	const cardAnimatedStyle = useAnimatedStyle(() => ({
-		transform: [{ translateX: translateX.value }],
+		transform: [{ translateX: translateX.get() }],
 	}));
 	const deleteBackgroundAnimatedStyle = useAnimatedStyle(() => {
 		const deleteThreshold = Math.min(
-			Math.max(cardWidth.value * 0.3, SWIPE_DELETE_MIN_DISTANCE),
+			Math.max(cardWidth.get() * 0.3, SWIPE_DELETE_MIN_DISTANCE),
 			SWIPE_DELETE_MAX_DISTANCE,
 		);
-		const progress = Math.min(-translateX.value / deleteThreshold, 1);
+		const progress = Math.min(-translateX.get() / deleteThreshold, 1);
 
 		return {
 			backgroundColor: interpolateColor(
@@ -382,10 +389,10 @@ function NotificationCard({
 	});
 	const deleteIconAnimatedStyle = useAnimatedStyle(() => {
 		const deleteThreshold = Math.min(
-			Math.max(cardWidth.value * 0.3, SWIPE_DELETE_MIN_DISTANCE),
+			Math.max(cardWidth.get() * 0.3, SWIPE_DELETE_MIN_DISTANCE),
 			SWIPE_DELETE_MAX_DISTANCE,
 		);
-		const progress = Math.min(-translateX.value / deleteThreshold, 1);
+		const progress = Math.min(-translateX.get() / deleteThreshold, 1);
 
 		return {
 			opacity: interpolate(progress, [0, 0.18, 1], [0, 1, 1], "clamp"),
@@ -410,8 +417,8 @@ function NotificationCard({
 	return (
 		<Animated.View
 			className="my-1 rounded-[24px]"
-			exiting={FadeOut.duration(90)}
-			layout={LinearTransition.springify().damping(20).stiffness(180)}
+			exiting={NOTIFICATION_EXIT}
+			layout={NOTIFICATION_LAYOUT}
 			style={{ boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)" }}
 		>
 			<Animated.View
