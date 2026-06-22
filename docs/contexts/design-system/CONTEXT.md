@@ -40,6 +40,17 @@ supported hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30,
 `body-2` 16/24, `body-3` 14/21, `body-4` 12/18, and `body-5` 10/15, all with
 0px letter spacing.
 
+Light-mode pill buttons have exactly two visual appearances: the light-mode
+gradient button and the black button using the primary text color `#1A1A1A`.
+There are no white pill buttons in the current light-mode design system. Both
+appearances are 56px tall with a 32px radius and a 0.3px inside stroke: gradient
+buttons use a white stroke, and black buttons use the light border token
+`#DCE6EE`.
+
+Dark-mode design-system support is planned separately in
+https://github.com/Dayova/dayova-mvp/issues/136. Do not add dark-mode tokens,
+classes, or fallback button variants until that source of truth is finalized.
+
 ## Notes
 
 - Capture reusable component and styling decisions here.

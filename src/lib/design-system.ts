@@ -9,8 +9,8 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		primaryStrong: "#00A0E6",
 		primaryAccent: "#4FD8FF",
 		primaryForeground: "#FFFFFF",
-		buttonNeutral: "#F3F6FA",
-		buttonNeutralForeground: "#1A1A1A",
+		buttonNeutral: "#1A1A1A",
+		buttonNeutralForeground: "#FFFFFF",
 		secondary: "#AF52DE",
 		text: "#1A1A1A",
 		textMuted: "#697586",
@@ -107,7 +107,8 @@ export const DAYOVA_DESIGN_SYSTEM = {
 	},
 	size: {
 		button: {
-			defaultHeight: 64,
+			borderWidth: 0.3,
+			defaultHeight: 56,
 		},
 	},
 } as const;

@@ -171,9 +171,12 @@ module.exports = {
 				md: "var(--radius-md)",
 				sm: "var(--radius-sm)",
 				card: "32px",
-				button: "32px",
+				button: "var(--button-radius)",
 				input: "28px",
 				tab: "28px",
+			},
+			borderWidth: {
+				hairline: "0.3px",
 			},
 			keyframes: {
 				"accordion-down": {

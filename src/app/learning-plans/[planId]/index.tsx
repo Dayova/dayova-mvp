@@ -1,10 +1,11 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { TouchableOpacity, View, type ViewStyle } from "react-native";
+import { View, type ViewStyle } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
+import { Button } from "~/components/ui/button";
 import { Check, CircleAlert, Clock3, Route2 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
@@ -77,28 +78,22 @@ function SessionOverviewCard({
 				{goal}
 			</Text>
 
-			<TouchableOpacity
+			<Button
 				accessibilityRole="button"
 				accessibilityLabel={
 					session.completed
 						? "Lerneinheit als offen markieren"
 						: "Lerneinheit als erledigt markieren"
 				}
-				activeOpacity={0.84}
 				onPress={onToggleCompleted}
-				className={`mt-1 flex-row items-center justify-center gap-2 rounded-full px-4 py-3 ${session.completed ? "bg-button-neutral" : "bg-primary"}`}
+				variant={session.completed ? "neutral" : "default"}
+				className="mt-1 px-4"
 			>
-				<Check
-					size={16}
-					color={session.completed ? "#1A1A1A" : "#FFFFFF"}
-					strokeWidth={2.2}
-				/>
-				<Text
-					className={`font-poppins font-semibold text-body-4 ${session.completed ? "text-foreground" : "text-white"}`}
-				>
+				<Check size={16} color="#FFFFFF" strokeWidth={2.2} />
+				<Text className="font-poppins font-semibold text-body-4 text-white">
 					{session.completed ? "Als offen markieren" : "Als erledigt markieren"}
 				</Text>
-			</TouchableOpacity>
+			</Button>
 		</Surface>
 	);
 }
