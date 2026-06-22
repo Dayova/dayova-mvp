@@ -447,7 +447,7 @@ function NotificationCard({
 					onLayout={({ nativeEvent }) => {
 						cardWidth.set(nativeEvent.layout.width);
 					}}
-					className="flex-row gap-4 rounded-[24px] bg-card px-5 py-12"
+					className="flex-row gap-3 rounded-[24px] bg-card px-4 py-6"
 					// Reanimated swipe offset is runtime state.
 					style={cardAnimatedStyle}
 				>
