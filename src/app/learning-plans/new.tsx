@@ -19,8 +19,9 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
+import { CloseButton } from "~/components/ui/close-button";
 import { FieldControl, FieldLabel } from "~/components/ui/field";
-import { Attachment, Plus, ScanImage, X } from "~/components/ui/icon";
+import { Attachment, Plus, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -645,21 +646,10 @@ export default function NewLearningPlanScreen() {
 									Wähle aus, wie du deine Unterlagen hinzufügen möchtest.
 								</Text>
 							</View>
-							<TouchableOpacity
+							<CloseButton
 								accessibilityLabel="Hochladen schließen"
-								accessibilityRole="button"
-								hitSlop={8}
-								activeOpacity={0.75}
 								onPress={closeUploadSheet}
-								className="items-center justify-center rounded-full bg-border"
-								style={{
-									width: 40 * modalScale,
-									height: 40 * modalScale,
-									boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-								}}
-							>
-								<X size={24 * modalScale} color="#1A1A1A" strokeWidth={2} />
-							</TouchableOpacity>
+							/>
 						</View>
 						<View
 							className="items-center"

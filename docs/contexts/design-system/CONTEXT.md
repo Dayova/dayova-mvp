@@ -51,6 +51,9 @@ Dark-mode design-system support is planned separately in
 https://github.com/Dayova/dayova-mvp/issues/136. Do not add dark-mode tokens,
 classes, or fallback button variants until that source of truth is finalized.
 
+Icon-only close controls for sheets and modal chrome use the shared `CloseButton`
+component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
+
 ## Notes
 
 - Capture reusable component and styling decisions here.

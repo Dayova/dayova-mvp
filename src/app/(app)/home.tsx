@@ -24,12 +24,12 @@ import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { NotificationButton } from "~/components/notification-button";
+import { CloseButton } from "~/components/ui/close-button";
 import {
 	ClipboardEdit,
 	GraduationCap,
 	NotebookPen,
 	Plus,
-	X,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
@@ -1222,25 +1222,10 @@ export default function HomeScreen() {
 									Wähle zuerst die Art aus.
 								</Text>
 							</View>
-							<TouchableOpacity
+							<CloseButton
 								accessibilityLabel="Auswahl schließen"
-								accessibilityRole="button"
-								hitSlop={8}
-								activeOpacity={0.75}
 								onPress={() => setShowCreateTypePicker(false)}
-								className="items-center justify-center rounded-full bg-path-2"
-								style={{
-									width: 40 * modalScale,
-									height: 40 * modalScale,
-									boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-								}}
-							>
-								<X
-									size={24 * modalScale}
-									color={DAYOVA_DESIGN_SYSTEM.colors.path3}
-									strokeWidth={2}
-								/>
-							</TouchableOpacity>
+							/>
 						</View>
 
 						<View
