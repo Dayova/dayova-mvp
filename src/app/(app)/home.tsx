@@ -1228,14 +1228,18 @@ export default function HomeScreen() {
 								hitSlop={8}
 								activeOpacity={0.75}
 								onPress={() => setShowCreateTypePicker(false)}
-								className="items-center justify-center rounded-full bg-button-neutral"
+								className="items-center justify-center rounded-full bg-path-2"
 								style={{
 									width: 40 * modalScale,
 									height: 40 * modalScale,
 									boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
 								}}
 							>
-								<X size={24 * modalScale} color="#1A1A1A" strokeWidth={2} />
+								<X
+									size={24 * modalScale}
+									color={DAYOVA_DESIGN_SYSTEM.colors.path3}
+									strokeWidth={2}
+								/>
 							</TouchableOpacity>
 						</View>
 
