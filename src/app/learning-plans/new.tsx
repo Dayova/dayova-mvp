@@ -1,10 +1,11 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
-import { File, UploadType } from "expo-file-system";
+import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Modal,
@@ -47,6 +48,7 @@ import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
 
 const TOPIC_TEXTAREA_HEIGHT = 160;
 const TOPIC_TEXTAREA_CARD_HEIGHT = 202;
+const UPLOAD_TIMEOUT_MS = 45_000;
 
 const clamp = (value: number, min: number, max: number) =>
 	Math.min(Math.max(value, min), max);
@@ -60,6 +62,8 @@ type PreparedUploadAsset = {
 	fileSizeBytes: number;
 	fileType: string;
 };
+
+type PendingUploadAction = "camera" | "files";
 
 function UploadSheetOption({
 	icon,
@@ -181,6 +185,9 @@ export default function NewLearningPlanScreen() {
 	>(params.topicDescription ?? null);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
+	const pendingUploadActionRef = useRef<PendingUploadAction | null>(null);
+	const [openingUploadAction, setOpeningUploadAction] =
+		useState<PendingUploadAction | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(
 		params.errorMessage ?? null,
 	);
@@ -197,7 +204,7 @@ export default function NewLearningPlanScreen() {
 	const topicDescription =
 		topicDescriptionInput ?? snapshot?.plan.topicDescription ?? "";
 	const canContinueTopic = topicDescription.trim().length >= 8 && canWrite;
-	const canUploadMaterial = canWrite && !isBusy;
+	const canUploadMaterial = canWrite && !isBusy && !openingUploadAction;
 	const modalScale = clamp(width / 393, 0.88, 1.06);
 	const uploadOptionWidth = Math.min(width - 48 * modalScale, 345 * modalScale);
 	const uploadSheetBottomPadding = Math.max(
@@ -292,29 +299,47 @@ export default function NewLearningPlanScreen() {
 		const uploadData = await retryOnceAfterAuthResume(() =>
 			generateUploadUrl({ learningPlanId: id }),
 		);
-		const uploadResult = await file.upload(uploadData.uploadUrl, {
-			httpMethod: uploadData.storageProvider === "r2" ? "PUT" : "POST",
-			uploadType: UploadType.BINARY_CONTENT,
-			mimeType: fileType,
-			headers: { "Content-Type": fileType },
-		});
-		const uploadResponse = new Response(uploadResult.body, {
-			status: uploadResult.status,
-			headers: uploadResult.headers,
-		});
+		const uploadController = new AbortController();
+		const uploadTimeout = setTimeout(
+			() => uploadController.abort(),
+			UPLOAD_TIMEOUT_MS,
+		);
+		let uploadResponse: Response;
+		try {
+			uploadResponse = await fetch(uploadData.uploadUrl, {
+				method: uploadData.storageProvider === "r2" ? "PUT" : "POST",
+				headers: { "Content-Type": fileType },
+				body: file,
+				signal: uploadController.signal,
+			});
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				(error.name === "AbortError" || uploadController.signal.aborted)
+			) {
+				throw new Error(
+					"Der Upload hat zu lange gedauert. Prüfe deine Verbindung und versuche es erneut.",
+				);
+			}
+			throw error;
+		} finally {
+			clearTimeout(uploadTimeout);
+		}
+
+		const uploadResponseBody = await uploadResponse.text();
 		if (!uploadResponse.ok) {
 			throw new Error(
 				getUploadFailureMessage(
 					uploadData.storageProvider,
 					uploadResponse,
-					uploadResult.body,
+					uploadResponseBody,
 				),
 			);
 		}
 
 		let storageId = uploadData.storageId;
 		if (!storageId) {
-			const parsedUploadResult = JSON.parse(uploadResult.body) as {
+			const parsedUploadResult = JSON.parse(uploadResponseBody) as {
 				storageId?: string;
 			};
 			storageId = parsedUploadResult.storageId ?? null;
@@ -335,66 +360,119 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const uploadMaterial = async () => {
-		if (!canWrite || isBusy) return;
+		if (!canWrite || isBusy) {
+			setOpeningUploadAction(null);
+			return;
+		}
 
-		await runWithErrorHandling(
-			"Die Datei konnte nicht hochgeladen werden.",
-			async () => {
-				const result = await DocumentPicker.getDocumentAsync({
-					type: ACCEPTED_FILE_TYPES,
-					multiple: true,
-					copyToCacheDirectory: true,
-				});
-				if (result.canceled) return;
+		setErrorMessage(null);
+		try {
+			const result = await DocumentPicker.getDocumentAsync({
+				type: ACCEPTED_FILE_TYPES,
+				multiple: true,
+				copyToCacheDirectory: true,
+			});
+			setOpeningUploadAction(null);
+			if (result.canceled) return;
 
-				const preparedAssets = result.assets.map((asset) =>
-					prepareUploadAsset({
-						uri: asset.uri,
-						name: asset.name,
-						mimeType: asset.mimeType,
-						size: asset.size,
-					}),
-				);
-				const id = await ensurePlan({ requireMeaningfulTopic: false });
+			await runWithErrorHandling(
+				"Die Datei konnte nicht hochgeladen werden.",
+				async () => {
+					const preparedAssets = result.assets.map((asset) =>
+						prepareUploadAsset({
+							uri: asset.uri,
+							name: asset.name,
+							mimeType: asset.mimeType,
+							size: asset.size,
+						}),
+					);
+					const id = await ensurePlan({ requireMeaningfulTopic: false });
 
-				await Promise.all(
-					preparedAssets.map((asset) => uploadLearningPlanAsset(asset, id)),
-				);
-			},
-		);
+					for (const asset of preparedAssets) {
+						await uploadLearningPlanAsset(asset, id);
+					}
+				},
+			);
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(
+					error,
+					"Die Dateiauswahl konnte nicht geöffnet werden.",
+				),
+			);
+		} finally {
+			setOpeningUploadAction(null);
+		}
 	};
 
 	const takePhoto = async () => {
-		if (!canWrite || isBusy) return;
+		if (!canWrite || isBusy) {
+			setOpeningUploadAction(null);
+			return;
+		}
 
-		await runWithErrorHandling(
-			"Das Foto konnte nicht hochgeladen werden.",
-			async () => {
-				const permission = await ImagePicker.requestCameraPermissionsAsync();
-				if (!permission.granted) {
-					throw new Error("Kamerazugriff wurde nicht erlaubt.");
-				}
+		setErrorMessage(null);
+		try {
+			const permission = await ImagePicker.requestCameraPermissionsAsync();
+			if (!permission.granted) {
+				throw new Error("Kamerazugriff wurde nicht erlaubt.");
+			}
 
-				const result = await ImagePicker.launchCameraAsync({
-					mediaTypes: ["images"],
-					allowsEditing: false,
-					quality: 0.82,
-				});
-				if (result.canceled) return;
+			const result = await ImagePicker.launchCameraAsync({
+				mediaTypes: ["images"],
+				allowsEditing: false,
+				quality: 0.82,
+			});
+			setOpeningUploadAction(null);
+			if (result.canceled) return;
 
-				const asset = result.assets[0];
-				if (!asset) return;
+			const asset = result.assets[0];
+			if (!asset) return;
 
-				await uploadLearningPlanAsset(
-					prepareUploadAsset({
-						uri: asset.uri,
-						name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
-						mimeType: asset.mimeType ?? "image/jpeg",
-						size: asset.fileSize,
-					}),
-				);
-			},
-		);
+			await runWithErrorHandling(
+				"Das Foto konnte nicht hochgeladen werden.",
+				async () => {
+					await uploadLearningPlanAsset(
+						prepareUploadAsset({
+							uri: asset.uri,
+							name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
+							mimeType: asset.mimeType ?? "image/jpeg",
+							size: asset.fileSize,
+						}),
+					);
+				},
+			);
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(error, "Die Kamera konnte nicht geöffnet werden."),
+			);
+		} finally {
+			setOpeningUploadAction(null);
+		}
+	};
+
+	const closeUploadSheet = () => {
+		pendingUploadActionRef.current = null;
+		setOpeningUploadAction(null);
+		setIsUploadSheetVisible(false);
+	};
+
+	const chooseUploadAction = (action: PendingUploadAction) => {
+		pendingUploadActionRef.current = action;
+		setOpeningUploadAction(action);
+		setIsUploadSheetVisible(false);
+	};
+
+	const runPendingUploadAction = () => {
+		const action = pendingUploadActionRef.current;
+		pendingUploadActionRef.current = null;
+		if (action === "files") {
+			void uploadMaterial();
+		} else if (action === "camera") {
+			void takePhoto();
+		} else {
+			setOpeningUploadAction(null);
+		}
 	};
 
 	const continueToAnalysis = async () => {
@@ -465,14 +543,20 @@ export default function NewLearningPlanScreen() {
 							elevation: 3,
 						}}
 					>
-						{isBusy ? (
+						{isBusy || openingUploadAction ? (
 							<ActivityIndicator color="#FFFFFF" />
 						) : (
 							<Plus size={26} color="#FFFFFF" strokeWidth={2.1} />
 						)}
 					</View>
 					<Text className="mt-3 text-center font-poppins text-13 text-[#8C8C8C]">
-						Lade deine Mitschriften hoch
+						{openingUploadAction === "files"
+							? "Dateiauswahl wird geöffnet …"
+							: openingUploadAction === "camera"
+								? "Kamera wird geöffnet …"
+								: isBusy
+									? "Material wird hochgeladen …"
+									: "Lade deine Mitschriften hoch"}
 					</Text>
 				</ActionSurface>
 
@@ -515,12 +599,13 @@ export default function NewLearningPlanScreen() {
 				visible={isUploadSheetVisible}
 				transparent
 				animationType="fade"
-				onRequestClose={() => setIsUploadSheetVisible(false)}
+				onDismiss={runPendingUploadAction}
+				onRequestClose={closeUploadSheet}
 			>
 				<View className="flex-1 justify-end">
 					<Pressable
 						className="absolute inset-0 bg-black/25"
-						onPress={() => setIsUploadSheetVisible(false)}
+						onPress={closeUploadSheet}
 					/>
 					<View
 						className="bg-[#F4F8FB]"
@@ -565,7 +650,7 @@ export default function NewLearningPlanScreen() {
 								accessibilityRole="button"
 								hitSlop={8}
 								activeOpacity={0.75}
-								onPress={() => setIsUploadSheetVisible(false)}
+								onPress={closeUploadSheet}
 								className="items-center justify-center rounded-full bg-[#D9D9D9]"
 								style={{
 									width: 40 * modalScale,
@@ -583,15 +668,12 @@ export default function NewLearningPlanScreen() {
 							<UploadSheetOption
 								title="Scannen"
 								description="Unterlagen mit der Kamera erfassen."
-								onPress={() => {
-									setIsUploadSheetVisible(false);
-									void takePhoto();
-								}}
+								onPress={() => chooseUploadAction("camera")}
 								disabled={!canUploadMaterial}
 								scale={modalScale}
 								width={uploadOptionWidth}
 								icon={
-									isBusy ? (
+									openingUploadAction === "camera" || isBusy ? (
 										<ActivityIndicator color="#3A7BFF" />
 									) : (
 										<ScanImage
@@ -605,15 +687,12 @@ export default function NewLearningPlanScreen() {
 							<UploadSheetOption
 								title="Dateien"
 								description="PDF, Bilder oder Dokumente auswählen."
-								onPress={() => {
-									setIsUploadSheetVisible(false);
-									void uploadMaterial();
-								}}
+								onPress={() => chooseUploadAction("files")}
 								disabled={!canUploadMaterial}
 								scale={modalScale}
 								width={uploadOptionWidth}
 								icon={
-									isBusy ? (
+									openingUploadAction === "files" || isBusy ? (
 										<ActivityIndicator color="#3A7BFF" />
 									) : (
 										<Attachment
