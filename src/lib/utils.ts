@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
 
-// Keep this in sync with `theme.extend.fontSize` in `tailwind.config.js`.
+// Keep this in sync with `theme.extend.fontSize` in `tailwind.config.ts`.
 // Without these tokens, tailwind-merge treats custom size classes like
 // `text-body-2` as conflicting with color classes like `text-text`.
 const twMerge = extendTailwindMerge({
