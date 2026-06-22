@@ -82,10 +82,7 @@ function AnimatedTabIcon({
 
 	const animatedStyle = useAnimatedStyle(() => ({
 		opacity: 0.76 + focusProgress.value * 0.24,
-		transform: [
-			{ translateY: focusProgress.value * -2 * scale },
-			{ scale: 1 + focusProgress.value * 0.1 },
-		],
+		transform: [{ scale: 1 + focusProgress.value * 0.1 }],
 	}));
 
 	return (
