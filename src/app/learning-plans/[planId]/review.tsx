@@ -13,10 +13,11 @@ import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { ActionModal } from "~/components/ui/action-modal";
 import { Button } from "~/components/ui/button";
-import { Check, CircleAlert, Plus } from "~/components/ui/icon";
+import { Check, Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import {
+	PlanningHintBanner,
 	SectionTitle,
 	SessionCard,
 } from "~/features/learning-plans/learning-plan-ui";
@@ -26,6 +27,7 @@ import type {
 } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { goBackOrReplace } from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
@@ -104,6 +106,10 @@ export default function LearningPlanReviewScreen() {
 		);
 	};
 
+	const openLearningTimes = () => {
+		router.push(ROUTES.learningTimes);
+	};
+
 	const goBack = useCallback(() => {
 		if (planId) {
 			router.replace(planPath(planId, "generating"));
@@ -134,22 +140,11 @@ export default function LearningPlanReviewScreen() {
 					description="Passe deine Lerntage an und trage den Plan danach in den Kalender ein."
 				/>
 				{snapshot?.plan.planningHint ? (
-					<View
-						className="mb-6 flex-row rounded-[24px] bg-white px-6 py-5"
-						style={{ gap: 14 }}
-					>
-						<CircleAlert size={20} color="#F59E0B" strokeWidth={2.2} />
-						<Text
-							className="flex-1 font-poppins text-[#7A5A12]"
-							style={{
-								fontSize: 13,
-								lineHeight: 20,
-								includeFontPadding: false,
-							}}
-						>
-							{snapshot.plan.planningHint}
-						</Text>
-					</View>
+					<PlanningHintBanner
+						className="mb-6"
+						hint={snapshot.plan.planningHint}
+						onPressLearningTimes={openLearningTimes}
+					/>
 				) : null}
 				<View className="flex-1 gap-6">
 					{snapshot?.sessions.map((session) => (

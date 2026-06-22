@@ -27,15 +27,10 @@ import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
-import {
-	BookOpen,
-	CircleAlert,
-	ClipboardList,
-	Mail,
-	Trash2,
-} from "~/components/ui/icon";
+import { BookOpen, ClipboardList, Mail, Trash2 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace } from "~/lib/navigation";
@@ -109,57 +104,6 @@ function NotificationIcon({
 		return <ClipboardList size={22} color="#3A7BFF" strokeWidth={2} />;
 	}
 	return <Mail size={22} color="#3A7BFF" strokeWidth={2} />;
-}
-
-function WarningBanner({
-	ctaLabel,
-	onPressCta,
-}: {
-	ctaLabel: string;
-	onPressCta: () => void;
-}) {
-	return (
-		<View
-			className="flex-row rounded-[24px] bg-[#FFF7E0] px-5 py-5"
-			style={{ gap: 12 }}
-		>
-			<CircleAlert size={22} color="#F59E0B" strokeWidth={2.2} />
-			<View className="flex-1" style={{ gap: 4 }}>
-				<Text
-					className="font-bold font-poppins text-[#7A5A12]"
-					style={{ fontSize: 14, lineHeight: 20, includeFontPadding: false }}
-				>
-					System-Mitteilungen sind aus
-				</Text>
-				<Text
-					className="font-poppins text-[#7A5A12]"
-					style={{ fontSize: 12, lineHeight: 18, includeFontPadding: false }}
-				>
-					Du bekommst Mitteilungen weiterhin hier im Postfach. Aktiviere
-					System-Mitteilungen, wenn Dayova dich außerhalb der App erinnern soll.
-				</Text>
-				<TouchableOpacity
-					accessibilityRole="button"
-					accessibilityLabel={ctaLabel}
-					activeOpacity={0.82}
-					onPress={onPressCta}
-					className="mt-2 self-start rounded-full bg-white"
-					style={{
-						minHeight: 38,
-						paddingHorizontal: 20,
-						paddingVertical: 10,
-					}}
-				>
-					<Text
-						className="font-poppins font-semibold text-[#7A5A12]"
-						style={{ fontSize: 12, lineHeight: 16, includeFontPadding: false }}
-					>
-						{ctaLabel}
-					</Text>
-				</TouchableOpacity>
-			</View>
-		</View>
-	);
 }
 
 function CategoryTabs({
@@ -555,6 +499,8 @@ export default function NotificationsScreen() {
 					<CategoryTabs value={category} onChange={setCategory} />
 					{showWarning ? (
 						<WarningBanner
+							title="System-Mitteilungen sind aus"
+							description="Du bekommst Mitteilungen weiterhin hier im Postfach. Aktiviere System-Mitteilungen, wenn Dayova dich außerhalb der App erinnern soll."
 							ctaLabel={warningCtaLabel}
 							onPressCta={openNotificationFix}
 						/>
