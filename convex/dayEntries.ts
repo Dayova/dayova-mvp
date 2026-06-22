@@ -107,16 +107,7 @@ const isSameCreatePayload = (
 	optionalValuesMatch(entry.dueDateLabel, args.dueDateLabel) &&
 	optionalValuesMatch(entry.plannedDateLabel, args.plannedDateLabel) &&
 	optionalValuesMatch(entry.durationMinutes, args.durationMinutes) &&
-	optionalValuesMatch(entry.examTypeLabel, args.examTypeLabel) &&
-	optionalValuesMatch(entry.completed, args.completed) &&
-	optionalValuesMatch(
-		entry.relatedLearningPlanId,
-		args.relatedLearningPlanId,
-	) &&
-	optionalValuesMatch(
-		entry.relatedLearningPlanSessionId,
-		args.relatedLearningPlanSessionId,
-	);
+	optionalValuesMatch(entry.examTypeLabel, args.examTypeLabel);
 
 const findExistingSameEntry = async (
 	ctx: QueryCtx | MutationCtx,

@@ -458,22 +458,36 @@ export default function NewLearningPlanScreen() {
 		setIsUploadSheetVisible(false);
 	};
 
+	const runUploadAction = (action: PendingUploadAction) => {
+		if (action === "files") {
+			void uploadMaterial();
+		} else {
+			void takePhoto();
+		}
+	};
+
 	const chooseUploadAction = (action: PendingUploadAction) => {
-		pendingUploadActionRef.current = action;
 		setOpeningUploadAction(action);
 		setIsUploadSheetVisible(false);
+
+		if (process.env.EXPO_OS === "ios") {
+			pendingUploadActionRef.current = action;
+			return;
+		}
+
+		pendingUploadActionRef.current = null;
+		runUploadAction(action);
 	};
 
 	const runPendingUploadAction = () => {
 		const action = pendingUploadActionRef.current;
 		pendingUploadActionRef.current = null;
-		if (action === "files") {
-			void uploadMaterial();
-		} else if (action === "camera") {
-			void takePhoto();
-		} else {
+		if (!action) {
 			setOpeningUploadAction(null);
+			return;
 		}
+
+		runUploadAction(action);
 	};
 
 	const continueToAnalysis = async () => {

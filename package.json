@@ -44,7 +44,7 @@
 		"ai": "^6.0.168",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
-		"convex": "^1.39.1",
+		"convex": "^1.41.0",
 		"expo": "~56.0.8",
 		"expo-constants": "^56.0.16",
 		"expo-crypto": "^56.0.4",
