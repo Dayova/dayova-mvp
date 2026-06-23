@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect } from "react";
 import { TouchableOpacity, useWindowDimensions, View } from "react-native";
 import Animated, {
@@ -97,7 +98,7 @@ function AnimatedTabIcon({
 				size={22 * scale}
 				color={
 					active
-						? DAYOVA_DESIGN_SYSTEM.colors.primary
+						? DAYOVA_DESIGN_SYSTEM.colors.primaryForeground
 						: DAYOVA_DESIGN_SYSTEM.colors.text
 				}
 				strokeWidth={active ? 2.15 : 2}
@@ -164,14 +165,21 @@ export function BottomNav({ state, navigation }: BottomNavProps) {
 							height: ITEM_SIZE * scale,
 							width: ITEM_SIZE * scale,
 							borderRadius: ITEM_SIZE * scale * 0.5,
-							backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.surface,
-							borderWidth: 1,
-							borderColor: `${DAYOVA_DESIGN_SYSTEM.colors.primary}1F`,
-							boxShadow: "0 8px 20px rgba(33, 37, 48, 0.10)",
+							overflow: "hidden",
 						},
 						indicatorStyle,
 					]}
-				/>
+				>
+					<LinearGradient
+						colors={[
+							DAYOVA_DESIGN_SYSTEM.colors.primaryStrong,
+							DAYOVA_DESIGN_SYSTEM.colors.primaryAccent,
+						]}
+						start={{ x: 0.5, y: 0 }}
+						end={{ x: 0.5, y: 1 }}
+						style={{ flex: 1 }}
+					/>
+				</Animated.View>
 				{NAV_ITEMS.map((item) => {
 					const Icon = item.icon;
 					const active = activeRouteName === item.routeName;
