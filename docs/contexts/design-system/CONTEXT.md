@@ -34,6 +34,10 @@ secondary text `#697586`, border `#DCE6EE`, light 2 `#F3F6FA`, and light 3
 variables and classes should not be introduced until the dark-mode design is
 finalized.
 
+Badge subtle fills match Figma exactly: wrong/warning `#FFECD6`, info
+`#FFF8CC`, system `#F1F7FB`, success `#EAFFF1`, theorie `#EEECFF`, ueben
+`#F4ECFF`, praxis `#E7FBF6`, and hausaufgabe `#F3E8F0`.
+
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold. The
 supported hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30,
