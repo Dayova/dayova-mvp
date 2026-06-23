@@ -4,6 +4,23 @@ export type PickerTarget = "editDate" | "editStart" | "editEnd";
 
 export type SessionPhase = "theory" | "practice" | "rehearsal";
 
+export type SessionExecutionStatus =
+	| "notStarted"
+	| "started"
+	| "completed"
+	| "partiallyCompleted"
+	| "missed"
+	| "adjusted";
+
+export type MissedReason =
+	| "no_time"
+	| "forgot"
+	| "no_motivation"
+	| "too_hard"
+	| "too_big"
+	| "unclear"
+	| "other";
+
 export type PlanSession = {
 	id: Id<"learningPlanSessions">;
 	phase: SessionPhase;
@@ -17,6 +34,11 @@ export type PlanSession = {
 	expectedOutcome: string;
 	sortOrder: number;
 	completed: boolean;
+	executionStatus: SessionExecutionStatus;
+	startedAt?: number;
+	outcomeAt?: number;
+	missedReason?: MissedReason;
+	adjustedFromSessionId?: Id<"learningPlanSessions">;
 };
 
 type LearningPlanDocument = {

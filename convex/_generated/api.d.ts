@@ -22,6 +22,7 @@ import type * as notifications from "../notifications.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
 import type * as topicDescriptionValidation from "../topicDescriptionValidation.js";
 import type * as users from "../users.js";
+import type * as validationAnalytics from "../validationAnalytics.js";
 
 import type {
   ApiFromModules,
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   scheduleConflicts: typeof scheduleConflicts;
   topicDescriptionValidation: typeof topicDescriptionValidation;
   users: typeof users;
+  validationAnalytics: typeof validationAnalytics;
 }>;
 
 /**

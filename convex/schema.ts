@@ -13,6 +13,33 @@ const planInsightValidator = v.object({
 	gaps: v.array(v.string()),
 });
 
+const sessionExecutionStatusValidator = v.union(
+	v.literal("notStarted"),
+	v.literal("started"),
+	v.literal("completed"),
+	v.literal("partiallyCompleted"),
+	v.literal("missed"),
+	v.literal("adjusted"),
+);
+
+const missedReasonValidator = v.union(
+	v.literal("no_time"),
+	v.literal("forgot"),
+	v.literal("no_motivation"),
+	v.literal("too_hard"),
+	v.literal("too_big"),
+	v.literal("unclear"),
+	v.literal("other"),
+);
+
+const validationAttributionSourceValidator = v.union(
+	v.literal("product_only"),
+	v.literal("founder_check_in"),
+	v.literal("app_reminder"),
+	v.literal("combination"),
+	v.literal("unknown"),
+);
+
 export default defineSchema({
 	users: defineTable({
 		tokenIdentifier: v.string(),
@@ -25,10 +52,35 @@ export default defineSchema({
 		schoolType: v.optional(v.string()),
 		state: v.optional(v.string()),
 		avatarUrl: v.optional(v.string()),
+		validationStudentCode: v.optional(v.string()),
+		validationRole: v.optional(v.union(v.literal("founder"))),
 	})
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
 		.index("by_clerkId", ["clerkId"])
 		.index("by_email", ["email"]),
+	validationUserStates: defineTable({
+		ownerTokenIdentifier: v.string(),
+		userId: v.id("users"),
+		validationStudentCode: v.optional(v.string()),
+		firstActivityDayKey: v.optional(v.string()),
+		lastActivityDayKey: v.optional(v.string()),
+		lastReturnDayKey: v.optional(v.string()),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	}).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+	validationAttributions: defineTable({
+		learningPlanSessionId: v.id("learningPlanSessions"),
+		learningPlanId: v.id("learningPlans"),
+		ownerTokenIdentifier: v.string(),
+		validationStudentCode: v.optional(v.string()),
+		source: validationAttributionSourceValidator,
+		note: v.optional(v.string()),
+		recordedByTokenIdentifier: v.string(),
+		recordedAt: v.number(),
+	})
+		.index("by_learningPlanSessionId", ["learningPlanSessionId"])
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_recordedAt", ["recordedAt"]),
 	onboardingQuestions: defineTable({
 		key: v.string(),
 		prompt: v.string(),
@@ -147,6 +199,11 @@ export default defineSchema({
 		durationMinutes: v.optional(v.number()),
 		examTypeLabel: v.optional(v.string()),
 		completed: v.optional(v.boolean()),
+		executionStatus: v.optional(sessionExecutionStatusValidator),
+		startedAt: v.optional(v.number()),
+		outcomeAt: v.optional(v.number()),
+		missedReason: v.optional(missedReasonValidator),
+		adjustedFromSessionId: v.optional(v.id("learningPlanSessions")),
 		relatedLearningPlanId: v.optional(v.id("learningPlans")),
 		relatedLearningPlanSessionId: v.optional(v.id("learningPlanSessions")),
 	}).index("by_ownerTokenIdentifier_and_dayKey", [
@@ -224,11 +281,17 @@ export default defineSchema({
 		tasks: v.array(v.string()),
 		expectedOutcome: v.string(),
 		completed: v.optional(v.boolean()),
+		executionStatus: v.optional(sessionExecutionStatusValidator),
+		startedAt: v.optional(v.number()),
+		outcomeAt: v.optional(v.number()),
+		missedReason: v.optional(missedReasonValidator),
+		adjustedFromSessionId: v.optional(v.id("learningPlanSessions")),
 		sortOrder: v.number(),
 		dayEntryId: v.optional(v.id("dayEntries")),
 		createdAt: v.number(),
 		updatedAt: v.number(),
 	})
 		.index("by_learningPlanId_and_sortOrder", ["learningPlanId", "sortOrder"])
-		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_dateKey", ["dateKey"]),
 });

@@ -16,6 +16,24 @@ type OptionalEntryFields = {
 	durationMinutes?: number;
 	examTypeLabel?: string;
 	completed?: boolean;
+	executionStatus?:
+		| "notStarted"
+		| "started"
+		| "completed"
+		| "partiallyCompleted"
+		| "missed"
+		| "adjusted";
+	startedAt?: number;
+	outcomeAt?: number;
+	missedReason?:
+		| "no_time"
+		| "forgot"
+		| "no_motivation"
+		| "too_hard"
+		| "too_big"
+		| "unclear"
+		| "other";
+	adjustedFromSessionId?: Id<"learningPlanSessions">;
 	relatedLearningPlanId?: Id<"learningPlans">;
 	relatedLearningPlanSessionId?: Id<"learningPlanSessions">;
 };
@@ -45,6 +63,17 @@ const optionalEntryFields = (
 		? { examTypeLabel: entry.examTypeLabel }
 		: {}),
 	...(entry.completed !== undefined ? { completed: entry.completed } : {}),
+	...(entry.executionStatus !== undefined
+		? { executionStatus: entry.executionStatus }
+		: {}),
+	...(entry.startedAt !== undefined ? { startedAt: entry.startedAt } : {}),
+	...(entry.outcomeAt !== undefined ? { outcomeAt: entry.outcomeAt } : {}),
+	...(entry.missedReason !== undefined
+		? { missedReason: entry.missedReason }
+		: {}),
+	...(entry.adjustedFromSessionId !== undefined
+		? { adjustedFromSessionId: entry.adjustedFromSessionId }
+		: {}),
 	...(entry.relatedLearningPlanId !== undefined
 		? { relatedLearningPlanId: entry.relatedLearningPlanId }
 		: {}),
@@ -75,6 +104,12 @@ const publicLearningSessionEntry = (
 	plannedDateLabel: session.dateLabel,
 	durationMinutes: session.durationMinutes,
 	completed: session.completed ?? false,
+	executionStatus:
+		session.executionStatus ?? (session.completed ? "completed" : "notStarted"),
+	startedAt: session.startedAt,
+	outcomeAt: session.outcomeAt,
+	missedReason: session.missedReason,
+	adjustedFromSessionId: session.adjustedFromSessionId,
 	relatedLearningPlanId: session.learningPlanId,
 	relatedLearningPlanSessionId: session._id,
 });
