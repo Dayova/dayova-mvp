@@ -28,7 +28,7 @@ Tailwind uses the `text-*` prefix for multiple utility groups:
 - Text alignment and other text utilities: `text-center`, `text-left`, etc.
 
 This project defines semantic text roles from the Figma design system in
-`tailwind.config.js`. Numeric aliases exist only for low-level compatibility;
+`tailwind.config.ts`. Numeric aliases exist only for low-level compatibility;
 new UI should prefer the semantic classes.
 
 ```js
@@ -79,7 +79,7 @@ With that configuration:
 
 ## Maintenance Rules
 
-- When adding or removing custom `fontSize` tokens in `tailwind.config.js`, update the `theme.text` list in `src/lib/utils.ts`.
+- When adding or removing custom `fontSize` tokens in `tailwind.config.ts`, update the `theme.text` list in `src/lib/utils.ts`.
 - Use Tailwind's standard spacing scale. Spacing must stay on a 4px rhythm: `gap-1` is 4px, `gap-2` is 8px, `gap-3` is 12px, `gap-4` is 16px, and so on. Do not redefine spacing keys so class numbers mean raw pixels.
 - The app currently supports light mode only. Keep theme variables in `src/global.css` light-only until the dark-mode palette is fully designed.
 - The Figma typography source of truth is Poppins, Regular for body copy, and SemiBold for headings and highlighted text. Do not use `font-bold`, `font-medium`, or arbitrary `text-[Npx]` classes for app text.

@@ -143,6 +143,35 @@ test("retrying the same create returns the existing entry instead of conflicting
 	expect(entries["2026-06-15"]).toHaveLength(1);
 });
 
+test("retrying exam creation remains idempotent after a learning plan links the entry", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const payload = {
+		dayKey: "2026-06-28",
+		title: "Biologie Klassenarbeit",
+		time: "16:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "Sonntag, 28. Juni",
+		durationMinutes: 30,
+		examTypeLabel: "Klassenarbeit",
+	};
+
+	const examDayEntryId = await t.mutation(api.dayEntries.create, payload);
+	await t.mutation(api.learningPlans.createDraft, {
+		examDayEntryId,
+		subject: "Biologie",
+		examTypeLabel: "Klassenarbeit",
+		examDateKey: payload.dayKey,
+		examDateLabel: payload.plannedDateLabel,
+		examTime: payload.time,
+		durationMinutes: payload.durationMinutes,
+		topicDescription: "",
+	});
+
+	await expect(t.mutation(api.dayEntries.create, payload)).resolves.toBe(
+		examDayEntryId,
+	);
+});
+
 test("manual entries can be marked completed and uncompleted", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const entryId = await t.mutation(api.dayEntries.create, {

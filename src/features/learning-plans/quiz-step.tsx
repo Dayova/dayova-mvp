@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Animated, Easing, View } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 import Svg, { Circle, Path } from "react-native-svg";
 import { Button } from "~/components/ui/button";
 import { FieldControl, FieldLabel } from "~/components/ui/field";
@@ -59,19 +60,29 @@ export function QuizStep({
 	const trimmedAnswer = answer.trim();
 	const questionId = question.id;
 	const prompt = formatGermanUiText(question.prompt);
+	const reduceMotion = useReducedMotion();
 	const [transition] = useState(() => new Animated.Value(1));
 
 	useEffect(() => {
 		if (!questionId) return;
 
+		transition.stopAnimation();
+		if (reduceMotion) {
+			transition.setValue(1);
+			return;
+		}
+
 		transition.setValue(0);
-		Animated.timing(transition, {
+		const animation = Animated.timing(transition, {
 			toValue: 1,
 			duration: 280,
 			easing: Easing.out(Easing.cubic),
 			useNativeDriver: true,
-		}).start();
-	}, [questionId, transition]);
+		});
+		animation.start();
+
+		return () => animation.stop();
+	}, [questionId, reduceMotion, transition]);
 
 	const contentTranslateY = transition.interpolate({
 		inputRange: [0, 1],

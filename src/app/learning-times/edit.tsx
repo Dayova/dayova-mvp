@@ -317,7 +317,11 @@ export default function LearningTimesScreen() {
 					disabled={!canRemove}
 					onPress={remove}
 				>
-					<Trash2 size={18} color="#1A1A1A" strokeWidth={2} />
+					<Trash2
+						size={18}
+						color={DAYOVA_DESIGN_SYSTEM.colors.buttonNeutralForeground}
+						strokeWidth={2}
+					/>
 					<Text>Entfernen</Text>
 				</Button>
 				<Button className="flex-1" disabled={!canSave} onPress={save}>

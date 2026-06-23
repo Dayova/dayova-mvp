@@ -1,11 +1,18 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+import type { Config } from "tailwindcss";
+
+type TailwindPreset = NonNullable<Config["presets"]>[number];
+type TailwindPlugin = NonNullable<Config["plugins"]>[number];
+
+const nativewindPreset = require("nativewind/preset") as TailwindPreset;
+const tailwindcssAnimate = require("tailwindcss-animate") as TailwindPlugin;
+
+const config = {
 	content: [
 		"./App.{js,jsx,ts,tsx}",
 		"./app/**/*.{js,jsx,ts,tsx}",
 		"./src/**/*.{js,jsx,ts,tsx}",
 	],
-	presets: [require("nativewind/preset")],
+	presets: [nativewindPreset],
 	theme: {
 		extend: {
 			colors: {
@@ -158,22 +165,25 @@ module.exports = {
 				"body-3": ["14px", { lineHeight: "21px", letterSpacing: "0px" }],
 				"body-4": ["12px", { lineHeight: "18px", letterSpacing: "0px" }],
 				"body-5": ["10px", { lineHeight: "15px", letterSpacing: "0px" }],
-				10: ["10px", { lineHeight: "15px", letterSpacing: "0px" }],
-				12: ["12px", { lineHeight: "18px", letterSpacing: "0px" }],
-				14: ["14px", { lineHeight: "21px", letterSpacing: "0px" }],
-				16: ["16px", { lineHeight: "24px", letterSpacing: "0px" }],
-				20: ["20px", { lineHeight: "30px", letterSpacing: "0px" }],
-				24: ["24px", { lineHeight: "36px", letterSpacing: "0px" }],
-				32: ["32px", { lineHeight: "48px", letterSpacing: "0px" }],
+				"10": ["10px", { lineHeight: "15px", letterSpacing: "0px" }],
+				"12": ["12px", { lineHeight: "18px", letterSpacing: "0px" }],
+				"14": ["14px", { lineHeight: "21px", letterSpacing: "0px" }],
+				"16": ["16px", { lineHeight: "24px", letterSpacing: "0px" }],
+				"20": ["20px", { lineHeight: "30px", letterSpacing: "0px" }],
+				"24": ["24px", { lineHeight: "36px", letterSpacing: "0px" }],
+				"32": ["32px", { lineHeight: "48px", letterSpacing: "0px" }],
 			},
 			borderRadius: {
 				lg: "var(--radius)",
 				md: "var(--radius-md)",
 				sm: "var(--radius-sm)",
 				card: "32px",
-				button: "32px",
+				button: "var(--button-radius)",
 				input: "28px",
 				tab: "28px",
+			},
+			borderWidth: {
+				hairline: "0.3px",
 			},
 			keyframes: {
 				"accordion-down": {
@@ -191,5 +201,7 @@ module.exports = {
 			},
 		},
 	},
-	plugins: [require("tailwindcss-animate")],
-};
+	plugins: [tailwindcssAnimate],
+} satisfies Config;
+
+export default config;

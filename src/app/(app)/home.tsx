@@ -24,12 +24,12 @@ import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { NotificationButton } from "~/components/notification-button";
+import { CloseButton } from "~/components/ui/close-button";
 import {
 	ClipboardEdit,
 	GraduationCap,
 	NotebookPen,
 	Plus,
-	X,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
@@ -165,12 +165,12 @@ function DragStartSlider({
 		.failOffsetY([-14 * scale, 14 * scale])
 		.onBegin(() => {
 			"worklet";
-			dragX.value = 0;
-			isCompleting.value = false;
+			dragX.set(0);
+			isCompleting.set(false);
 		})
 		.onUpdate((event) => {
 			"worklet";
-			dragX.value = Math.min(Math.max(event.translationX, 0), maxDrag);
+			dragX.set(Math.min(Math.max(event.translationX, 0), maxDrag));
 		})
 		.onEnd((event) => {
 			"worklet";
@@ -179,25 +179,27 @@ function DragStartSlider({
 				nextValue >= maxDrag * 0.72 ||
 				(event.velocityX > 650 && nextValue >= maxDrag * 0.35);
 
-			if (!shouldComplete || isCompleting.value) return;
+			if (!shouldComplete || isCompleting.get()) return;
 
-			isCompleting.value = true;
-			dragX.value = withTiming(maxDrag, { duration: 90 }, (finished) => {
-				"worklet";
-				if (!finished) return;
-				scheduleOnRN(onComplete);
-				dragX.value = withTiming(0, { duration: 120 });
-				isCompleting.value = false;
-			});
+			isCompleting.set(true);
+			dragX.set(
+				withTiming(maxDrag, { duration: 90 }, (finished) => {
+					"worklet";
+					if (!finished) return;
+					scheduleOnRN(onComplete);
+					dragX.set(withTiming(0, { duration: 120 }));
+					isCompleting.set(false);
+				}),
+			);
 		})
 		.onFinalize(() => {
 			"worklet";
-			if (isCompleting.value) return;
-			dragX.value = withTiming(0, { duration: 160 });
+			if (isCompleting.get()) return;
+			dragX.set(withTiming(0, { duration: 160 }));
 		});
 
 	const knobAnimatedStyle = useAnimatedStyle(() => ({
-		transform: [{ translateX: dragX.value }],
+		transform: [{ translateX: dragX.get() }],
 	}));
 
 	return (
@@ -1220,21 +1222,10 @@ export default function HomeScreen() {
 									Wähle zuerst die Art aus.
 								</Text>
 							</View>
-							<TouchableOpacity
+							<CloseButton
 								accessibilityLabel="Auswahl schließen"
-								accessibilityRole="button"
-								hitSlop={8}
-								activeOpacity={0.75}
 								onPress={() => setShowCreateTypePicker(false)}
-								className="items-center justify-center rounded-full bg-button-neutral"
-								style={{
-									width: 40 * modalScale,
-									height: 40 * modalScale,
-									boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-								}}
-							>
-								<X size={24 * modalScale} color="#1A1A1A" strokeWidth={2} />
-							</TouchableOpacity>
+							/>
 						</View>
 
 						<View

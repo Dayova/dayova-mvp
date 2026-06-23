@@ -263,7 +263,7 @@ export default function LearningPlansScreen() {
 						))
 					) : (
 						<View className="items-center rounded-[30px] border border-border/50 bg-card px-5 py-7 shadow-black/5 shadow-lg">
-							<View className="h-16 w-16 items-center justify-center rounded-full bg-accent pb-5">
+							<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
 								<Route2
 									size={30}
 									color={DAYOVA_DESIGN_SYSTEM.colors.primary}

@@ -6,6 +6,10 @@
 
 Dayova is currently native-only. Web support is intentionally not wired into local scripts or Expo config yet; track that work in https://github.com/Dayova/dayova-mvp/issues/32.
 
+## Dark mode support
+
+Dayova currently implements the light-mode design system only. Dark mode is intentionally not wired into Tailwind, NativeWind, or shared component tokens yet; track that work in https://github.com/Dayova/dayova-mvp/issues/136.
+
 ## Styling
 
 See [docs/styling.md](docs/styling.md) for NativeWind/Tailwind conventions, including the project-specific `tailwind-merge` configuration required for custom `text-*` size and color classes like `text-16 text-text`.

@@ -183,9 +183,11 @@ export default function LearningPlanReviewScreen() {
 					style={{ minWidth: 0 }}
 				>
 					{isBusy ? (
-						<ActivityIndicator color="#1A1A1A" />
+						<ActivityIndicator
+							color={DAYOVA_DESIGN_SYSTEM.colors.buttonNeutralForeground}
+						/>
 					) : (
-						<Text className="font-poppins font-semibold text-body-3 text-text">
+						<Text className="font-poppins font-semibold text-body-3 text-button-neutral-foreground">
 							Lernplan eintragen
 						</Text>
 					)}
