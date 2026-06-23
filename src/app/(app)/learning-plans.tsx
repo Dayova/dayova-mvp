@@ -52,7 +52,7 @@ const getPlanHref = (plan: LearningPlanOverview) => {
 const differenceInCalendarDays = (laterKey: string, earlierKey: string) => {
 	const later = parseDayKey(laterKey);
 	const earlier = parseDayKey(earlierKey);
-	if (!later || !earlier) return 0;
+	if (!later || !earlier) return null;
 	return Math.ceil((later.getTime() - earlier.getTime()) / 86_400_000);
 };
 
@@ -71,21 +71,24 @@ const getStatus = (
 	}
 
 	const sessionKey = plan.currentSession?.dateKey;
-	if (sessionKey && sessionKey < todayKey) {
+	const daysUntilSession = sessionKey
+		? differenceInCalendarDays(sessionKey, todayKey)
+		: null;
+	if (daysUntilSession !== null && daysUntilSession < 0) {
 		return {
 			label: "Fällig",
 			background: "#FFF3E5",
 			foreground: DAYOVA_DESIGN_SYSTEM.colors.warning,
 		};
 	}
-	if (sessionKey === todayKey) {
+	if (daysUntilSession === 0) {
 		return {
 			label: "Heute",
 			background: "#F1F7FB",
 			foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
 		};
 	}
-	if (sessionKey && differenceInCalendarDays(sessionKey, todayKey) === 1) {
+	if (daysUntilSession === 1) {
 		return {
 			label: "Morgen",
 			background: "#F1F7FB",
@@ -136,7 +139,9 @@ function LearningPlanCard({
 	const status = getStatus(plan, todayKey);
 	const remainingDays = Math.max(
 		0,
-		plan.examDateKey ? differenceInCalendarDays(plan.examDateKey, todayKey) : 0,
+		plan.examDateKey
+			? (differenceInCalendarDays(plan.examDateKey, todayKey) ?? 0)
+			: 0,
 	);
 	const currentTitle =
 		plan.currentSession?.goal ||
