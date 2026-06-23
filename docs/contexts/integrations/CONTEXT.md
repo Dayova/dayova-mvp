@@ -17,7 +17,7 @@ mobile client initializes PostHog only from optional public env values:
 Validation events are emitted after backend success for onboarding completion,
 homework and exam creation, uploaded material, generated study plans, study slot
 start/outcomes, missed reasons, recovery planning, next-day returns, and
-generalprobe completions.
+general probe completions.
 
 ## Validation Student Profile
 

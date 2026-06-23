@@ -1259,12 +1259,9 @@ export const adjustMissedSession = mutation({
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
 				q.eq("learningPlanId", session.learningPlanId),
 			)
-			.take(50);
-		const sortOrder =
-			sessions.reduce(
-				(maxSortOrder, item) => Math.max(maxSortOrder, item.sortOrder),
-				-1,
-			) + 1;
+			.order("desc")
+			.take(1);
+		const sortOrder = (sessions[0]?.sortOrder ?? -1) + 1;
 		const now = Date.now();
 		const newSessionId = await ctx.db.insert("learningPlanSessions", {
 			ownerTokenIdentifier,

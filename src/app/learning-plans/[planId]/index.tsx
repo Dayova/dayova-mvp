@@ -135,6 +135,7 @@ function SessionActionButton({
 function SessionOverviewCard({
 	session,
 	isPending,
+	actionsDisabled,
 	errorMessage,
 	onStart,
 	onRecordOutcome,
@@ -143,6 +144,7 @@ function SessionOverviewCard({
 }: {
 	session: PlanSession;
 	isPending: boolean;
+	actionsDisabled: boolean;
 	errorMessage?: string;
 	onStart: (session: PlanSession) => void;
 	onRecordOutcome: (
@@ -245,13 +247,14 @@ function SessionOverviewCard({
 					<View className="flex-row flex-wrap" style={{ gap: 10 }}>
 						<SessionActionButton
 							label="Starten"
+							disabled={actionsDisabled}
 							loading={isPending}
 							onPress={() => onStart(session)}
 						/>
 						<SessionActionButton
 							label="Verpasst"
 							variant="danger"
-							disabled={isPending}
+							disabled={actionsDisabled}
 							onPress={() => setShowMissReasons((value) => !value)}
 						/>
 					</View>
@@ -261,19 +264,20 @@ function SessionOverviewCard({
 					<View className="flex-row flex-wrap" style={{ gap: 10 }}>
 						<SessionActionButton
 							label="Erledigt"
+							disabled={actionsDisabled}
 							loading={isPending}
 							onPress={() => onRecordOutcome(session, "completed")}
 						/>
 						<SessionActionButton
 							label="Teilweise"
 							variant="secondary"
-							disabled={isPending}
+							disabled={actionsDisabled}
 							onPress={() => onRecordOutcome(session, "partiallyCompleted")}
 						/>
 						<SessionActionButton
 							label="Verpasst"
 							variant="danger"
-							disabled={isPending}
+							disabled={actionsDisabled}
 							onPress={() => setShowMissReasons((value) => !value)}
 						/>
 					</View>
@@ -294,13 +298,13 @@ function SessionOverviewCard({
 									accessibilityRole="button"
 									accessibilityLabel={MISSED_REASON_LABEL[reason]}
 									activeOpacity={0.82}
-									disabled={isPending}
+									disabled={actionsDisabled}
 									onPress={() => {
 										setShowMissReasons(false);
 										onMiss(session, reason);
 									}}
 									className="rounded-full bg-white px-3 py-2"
-									style={{ opacity: isPending ? 0.58 : 1 }}
+									style={{ opacity: actionsDisabled ? 0.58 : 1 }}
 								>
 									<Text
 										className="font-poppins font-semibold text-[#4F535E]"
@@ -322,6 +326,7 @@ function SessionOverviewCard({
 					<SessionActionButton
 						label="Kleiner neu planen"
 						variant="secondary"
+						disabled={actionsDisabled}
 						loading={isPending}
 						onPress={() => onAdjust(session)}
 					/>
@@ -561,6 +566,7 @@ export default function LearningPlanSessionsScreen() {
 							key={session.id}
 							session={session}
 							isPending={pendingSessionId === session.id}
+							actionsDisabled={pendingSessionId !== null}
 							errorMessage={sessionErrors[session.id]}
 							onStart={handleStartSession}
 							onRecordOutcome={handleRecordOutcome}

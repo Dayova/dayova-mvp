@@ -98,6 +98,24 @@ test("validation next-day returns are captured once per local day", async () => 
 	});
 });
 
+test("validation activity rejects malformed local day keys", async () => {
+	const t = convexTest(schema, modules).withIdentity(studentIdentity);
+	await t.mutation(api.users.syncCurrentUser, {
+		name: "Student",
+	});
+
+	await expect(
+		t.mutation(api.validationAnalytics.markActivity, {
+			localDayKey: "2026-6-01",
+		}),
+	).rejects.toThrow("Ungültiger Aktivitätstag.");
+	await expect(
+		t.mutation(api.validationAnalytics.markReturnedNextDay, {
+			localDayKey: "2026-02-31",
+		}),
+	).rejects.toThrow("Ungültiger Aktivitätstag.");
+});
+
 test("validation daily overview is founder-only and records attribution", async () => {
 	const t = convexTest(schema, modules);
 	const studentT = t.withIdentity(studentIdentity);

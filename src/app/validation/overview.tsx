@@ -25,8 +25,13 @@ import {
 	type AttributionSource,
 } from "~/types/validation";
 
-const csvCell = (value: unknown) =>
-	`"${String(value ?? "").replaceAll('"', '""')}"`;
+const csvCell = (value: unknown) => {
+	const stringValue = String(value ?? "");
+	const safeValue = /^[=+\-@]/.test(stringValue)
+		? `'${stringValue}`
+		: stringValue;
+	return `"${safeValue.replaceAll('"', '""')}"`;
+};
 
 function PillButton({
 	label,

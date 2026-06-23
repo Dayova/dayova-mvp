@@ -1,4 +1,8 @@
 import type { Id } from "#convex/_generated/dataModel";
+import type {
+	MissedReason,
+	SessionExecutionStatus,
+} from "~/features/learning-plans/types";
 
 export type DayEntry = {
 	id: Id<"dayEntries"> | Id<"learningPlanSessions">;
@@ -12,23 +16,10 @@ export type DayEntry = {
 	durationMinutes?: number;
 	examTypeLabel?: string;
 	completed?: boolean;
-	executionStatus?:
-		| "notStarted"
-		| "started"
-		| "completed"
-		| "partiallyCompleted"
-		| "missed"
-		| "adjusted";
+	executionStatus?: SessionExecutionStatus;
 	startedAt?: number;
 	outcomeAt?: number;
-	missedReason?:
-		| "no_time"
-		| "forgot"
-		| "no_motivation"
-		| "too_hard"
-		| "too_big"
-		| "unclear"
-		| "other";
+	missedReason?: MissedReason;
 	adjustedFromSessionId?: Id<"learningPlanSessions">;
 	relatedLearningPlanId?: Id<"learningPlans">;
 	relatedLearningPlanSessionId?: Id<"learningPlanSessions">;

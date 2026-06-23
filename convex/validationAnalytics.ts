@@ -12,6 +12,24 @@ const attributionSourceValidator = v.union(
 	v.literal("unknown"),
 );
 
+const localDayKeyPattern = /^\d{4}-\d{2}-\d{2}$/;
+
+const assertValidLocalDayKey = (localDayKey: string) => {
+	if (!localDayKeyPattern.test(localDayKey)) {
+		throwUserFacingError("Ungültiger Aktivitätstag.");
+	}
+
+	const [year, month, day] = localDayKey.split("-").map(Number);
+	const parsedDate = new Date(Date.UTC(year, month - 1, day));
+	if (
+		parsedDate.getUTCFullYear() !== year ||
+		parsedDate.getUTCMonth() !== month - 1 ||
+		parsedDate.getUTCDate() !== day
+	) {
+		throwUserFacingError("Ungültiger Aktivitätstag.");
+	}
+};
+
 const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
 	if (identity === null) {
@@ -85,6 +103,7 @@ export const markActivity = mutation({
 		localDayKey: v.string(),
 	},
 	handler: async (ctx, args) => {
+		assertValidLocalDayKey(args.localDayKey);
 		const user = await getCurrentUser(ctx);
 		await upsertValidationState(ctx, user, args.localDayKey);
 		return {
@@ -98,6 +117,7 @@ export const markReturnedNextDay = mutation({
 		localDayKey: v.string(),
 	},
 	handler: async (ctx, args) => {
+		assertValidLocalDayKey(args.localDayKey);
 		const user = await getCurrentUser(ctx);
 		const state = await ctx.db
 			.query("validationUserStates")

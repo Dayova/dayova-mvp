@@ -62,9 +62,9 @@ export function AnalyticsIdentity() {
 			return;
 		}
 
-		returnCaptureKeyRef.current = returnCaptureKey;
 		void markReturnedNextDay({ localDayKey })
 			.then((result) => {
+				returnCaptureKeyRef.current = returnCaptureKey;
 				if (!result.captured) return;
 				captureValidationEvent(posthog, "user_returned_next_day", user.clerkId, {
 					local_day_key: localDayKey,

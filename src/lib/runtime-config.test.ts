@@ -86,6 +86,7 @@ describe("getMissingPublicRuntimeConfig", () => {
 		expect(env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY).toBe("pk_test_example");
 		expect(env.EXPO_PUBLIC_CONVEX_URL).toBe("https://example.convex.cloud");
 		expect(env.EXPO_PUBLIC_POSTHOG_API_KEY).toBeUndefined();
+		expect(env.EXPO_PUBLIC_POSTHOG_HOST).toBeUndefined();
 	});
 
 	it("does not require optional PostHog analytics envs", () => {
