@@ -110,6 +110,7 @@ function AnimatedTabIcon({
 export function BottomNav({ state, navigation }: BottomNavProps) {
 	const insets = useSafeAreaInsets();
 	const { width } = useWindowDimensions();
+	const selectedGradient = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 	const scale = clamp(width / 393, 0.88, 1.08);
 	const activeRouteName = state.routes[state.index]?.name;
 	const activeItemIndex = Math.max(
@@ -171,12 +172,9 @@ export function BottomNav({ state, navigation }: BottomNavProps) {
 					]}
 				>
 					<LinearGradient
-						colors={[
-							DAYOVA_DESIGN_SYSTEM.colors.primaryStrong,
-							DAYOVA_DESIGN_SYSTEM.colors.primaryAccent,
-						]}
-						start={{ x: 0.5, y: 0 }}
-						end={{ x: 0.5, y: 1 }}
+						colors={selectedGradient.colors}
+						start={selectedGradient.start}
+						end={selectedGradient.end}
 						style={{ flex: 1 }}
 					/>
 				</Animated.View>
