@@ -43,9 +43,15 @@ supported hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30,
 Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
 There are no white pill buttons in the current light-mode design system. Both
-appearances are 56px tall with a 32px radius and a 0.3px inside stroke: gradient
+appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
 buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
 with a white stroke, and black buttons use the light border token `#DCE6EE`.
+
+The current app corner system is: info/small boxes use 24px, 345px-wide
+rectangles and card-like surfaces use 32px, and buttons use 44px. Device frame
+radii are not app tokens because they depend on the phone/mockup. When nesting
+rounded surfaces, the outer radius equals the inner radius plus the padding
+between them.
 
 Dark-mode design-system support is planned separately in
 https://github.com/Dayova/dayova-mvp/issues/136. Do not add dark-mode tokens,

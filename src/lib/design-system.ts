@@ -100,10 +100,10 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		},
 	},
 	radius: {
-		inner: 64,
-		outer: 96,
-		button: 32,
-		input: 28,
+		infoSmallBox: 24,
+		rectangle: 32,
+		button: 44,
+		input: 32,
 	},
 	size: {
 		button: {
