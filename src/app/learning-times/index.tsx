@@ -9,6 +9,7 @@ import { ClipboardEdit, Plus } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
 const LEARNING_DAYS = [
 	{ abbreviation: "Mo", label: "Montag", value: 1 },
@@ -35,37 +36,36 @@ function LearningTimeRow({
 		<Pressable
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
-			className="min-h-[96px] flex-row items-center rounded-[48px] bg-white px-6 active:opacity-85"
+			className="min-h-[96px] flex-row items-center rounded-[48px] bg-card px-6 active:opacity-85"
 			onPress={onPress}
 		>
-			<View className="h-[62px] w-[62px] items-center justify-center rounded-full bg-[#202127]">
-				<Text
-					className="font-poppins font-semibold text-white"
-					style={{ fontSize: 18, lineHeight: 24, includeFontPadding: false }}
-				>
+			<View className="h-16 w-16 items-center justify-center rounded-full bg-foreground">
+				<Text className="font-poppins font-semibold text-body-1 text-white">
 					{abbreviation}
 				</Text>
 			</View>
 
 			<View className="ml-5 flex-1">
 				<Text
-					className="font-poppins font-semibold text-[#202127]"
-					style={{ fontSize: 20, lineHeight: 26, includeFontPadding: false }}
+					className="font-poppins font-semibold text-body-1 text-foreground"
 					numberOfLines={1}
 				>
 					Lernzeit
 				</Text>
 				<Text
-					className="font-poppins text-[#8C8F98]"
-					style={{ fontSize: 16, lineHeight: 22, includeFontPadding: false }}
+					className="font-poppins text-body-2 text-muted-foreground"
 					numberOfLines={1}
 				>
 					{timeRange}
 				</Text>
 			</View>
 
-			<View className="h-[72px] w-[72px] items-center justify-center rounded-full border border-[#E2E3E7] bg-white">
-				<ClipboardEdit size={30} color="#202127" strokeWidth={1.8} />
+			<View className="h-[72px] w-[72px] items-center justify-center rounded-full border border-border bg-card">
+				<ClipboardEdit
+					size={30}
+					color={DAYOVA_DESIGN_SYSTEM.colors.text}
+					strokeWidth={1.8}
+				/>
 			</View>
 		</Pressable>
 	);
@@ -117,49 +117,29 @@ export default function LearningTimesOverviewScreen() {
 			<ScreenScroll topPadding={80} bottomPadding={150} horizontalPadding={24}>
 				<Header title="Lernzeiten" onBack={goBack} className="mb-11" />
 
-				<View style={{ rowGap: 16 }}>
-					<Text
-						className="font-poppins font-semibold text-[#08090D]"
-						style={{ fontSize: 24, lineHeight: 31, includeFontPadding: false }}
-					>
+				<View className="gap-4">
+					<Text className="font-poppins font-semibold text-foreground text-heading-2">
 						Lernzeiten anpassen
 					</Text>
-					<Text
-						className="font-poppins text-[#8E8E93]"
-						style={{ fontSize: 20, lineHeight: 28, includeFontPadding: false }}
-					>
+					<Text className="font-poppins text-body-1 text-muted-foreground">
 						Trage hier deine wiederkehrend verfügbaren Zeiten ein, an denen du
 						lernen kannst.
 					</Text>
 				</View>
 
-				<View className="mt-9" style={{ rowGap: 28 }}>
+				<View className="mt-9 gap-7">
 					{learningTimes === undefined ? (
 						<View className="items-center py-5">
-							<ActivityIndicator color="#3A7BFF" />
+							<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
 						</View>
 					) : null}
 
 					{learningTimes?.length === 0 ? (
-						<View className="rounded-[32px] bg-white px-6 py-7">
-							<Text
-								className="text-center font-poppins font-semibold text-[#202127]"
-								style={{
-									fontSize: 17,
-									lineHeight: 24,
-									includeFontPadding: false,
-								}}
-							>
+						<View className="rounded-[32px] bg-card px-6 py-7">
+							<Text className="text-center font-poppins font-semibold text-body-2 text-foreground">
 								Noch keine Lernzeiten eingetragen
 							</Text>
-							<Text
-								className="mt-2 text-center font-poppins text-[#8C8F98]"
-								style={{
-									fontSize: 14,
-									lineHeight: 20,
-									includeFontPadding: false,
-								}}
-							>
+							<Text className="mt-2 text-center font-poppins text-body-3 text-muted-foreground">
 								Füge über das Plus deine erste wiederkehrende Lernzeit hinzu.
 							</Text>
 						</View>

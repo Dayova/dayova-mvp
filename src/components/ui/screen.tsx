@@ -1,19 +1,12 @@
 import { type ScrollViewProps, View, type ViewProps } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
 
 type ScreenProps = ViewProps;
 
 function Screen({ className, ...props }: ScreenProps) {
-	return (
-		<View
-			className={cn("flex-1", className)}
-			style={{ backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.appBackground }}
-			{...props}
-		/>
-	);
+	return <View className={cn("flex-1 bg-background", className)} {...props} />;
 }
 
 type ScreenScrollProps = ScrollViewProps & {
@@ -34,7 +27,10 @@ function ScreenScroll({
 
 	return (
 		<KeyboardSafeScrollView
-			className={cn("flex-1", className)}
+			className={cn("flex-1 bg-background", className)}
+			// Safe-area padding is device/runtime data. This third-party keyboard
+			// scroll host also exposes content layout through contentContainerStyle,
+			// not a reliable NativeWind contentContainerClassName mapping.
 			contentContainerStyle={[
 				{
 					paddingHorizontal: horizontalPadding,

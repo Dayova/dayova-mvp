@@ -8,6 +8,7 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
@@ -25,8 +26,8 @@ import type {
 	PlanSession,
 } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace } from "~/lib/navigation";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -114,7 +115,7 @@ export default function LearningPlanReviewScreen() {
 	}, [planId, router]);
 
 	return (
-		<View className="flex-1 bg-[#F5F3F6]">
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 			<ScrollView
@@ -134,19 +135,13 @@ export default function LearningPlanReviewScreen() {
 					description="Passe deine Lerntage an und trage den Plan danach in den Kalender ein."
 				/>
 				{snapshot?.plan.planningHint ? (
-					<View
-						className="mb-6 flex-row rounded-[24px] bg-white px-6 py-5"
-						style={{ gap: 14 }}
-					>
-						<CircleAlert size={20} color="#F59E0B" strokeWidth={2.2} />
-						<Text
-							className="flex-1 font-poppins text-[#7A5A12]"
-							style={{
-								fontSize: 13,
-								lineHeight: 20,
-								includeFontPadding: false,
-							}}
-						>
+					<View className="mb-6 flex-row gap-4 rounded-[24px] bg-card px-6 py-5">
+						<CircleAlert
+							size={20}
+							color={DAYOVA_DESIGN_SYSTEM.colors.warning}
+							strokeWidth={2.2}
+						/>
+						<Text className="flex-1 font-poppins text-body-4 text-warning-foreground">
 							{snapshot.plan.planningHint}
 						</Text>
 					</View>
@@ -161,7 +156,7 @@ export default function LearningPlanReviewScreen() {
 					))}
 				</View>
 				{errorMessage ? (
-					<Text className="mb-4 font-poppins text-12 text-destructive">
+					<Text className="mb-4 font-poppins text-body-4 text-destructive">
 						{errorMessage}
 					</Text>
 				) : null}
@@ -188,9 +183,11 @@ export default function LearningPlanReviewScreen() {
 					style={{ minWidth: 0 }}
 				>
 					{isBusy ? (
-						<ActivityIndicator color="#1A1A1A" />
+						<ActivityIndicator
+							color={DAYOVA_DESIGN_SYSTEM.colors.buttonNeutralForeground}
+						/>
 					) : (
-						<Text className="font-bold font-poppins text-15 text-text">
+						<Text className="font-poppins font-semibold text-body-3 text-button-neutral-foreground">
 							Lernplan eintragen
 						</Text>
 					)}
@@ -206,7 +203,7 @@ export default function LearningPlanReviewScreen() {
 					onPress={addRecommendedSession}
 					className="h-14 w-14 items-center justify-center rounded-full bg-primary"
 					style={{
-						shadowColor: "#3A7BFF",
+						shadowColor: "#00BAFF",
 						shadowOpacity: 0.32,
 						shadowRadius: 16,
 						shadowOffset: { width: 0, height: 7 },
@@ -222,7 +219,7 @@ export default function LearningPlanReviewScreen() {
 				visible={Boolean(successDayKey)}
 				title="Lernplan ist eingetragen"
 				description="Dein Lernplan wurde erfolgreich eingetragen."
-				icon={<Check size={48} color="#28C76F" strokeWidth={1.2} />}
+				icon={<Check size={48} color="#34C759" strokeWidth={1.2} />}
 			>
 				<Button
 					className="mt-6 w-full"

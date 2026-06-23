@@ -100,15 +100,13 @@ function DateTimePickerSheet({
 			<View className="flex-1 justify-end">
 				<Pressable className="absolute inset-0 bg-black/25" onPress={onClose} />
 				<View
-					className="bg-white px-4 pt-3"
+					className="w-full rounded-t-card bg-card px-4 pt-3"
+					// Bottom padding depends on the device safe-area inset.
 					style={{
-						width,
-						borderTopLeftRadius: 30,
-						borderTopRightRadius: 30,
 						paddingBottom: Math.max(insets.bottom + 14, 24),
 					}}
 				>
-					<View className="h-1.5 w-14 self-center rounded-full bg-black/12" />
+					<View className="h-1 w-14 self-center rounded-full bg-black/12" />
 					<View className="mb-1 flex-row justify-end pt-4">
 						<TouchableOpacity
 							accessibilityLabel="Auswahl schließen"
@@ -117,7 +115,7 @@ function DateTimePickerSheet({
 							onPress={onClose}
 							className="px-3 py-2"
 						>
-							<Text className="font-bold font-poppins text-16 text-primary">
+							<Text className="font-poppins font-semibold text-body-2 text-primary">
 								{doneLabel}
 							</Text>
 						</TouchableOpacity>
@@ -131,6 +129,7 @@ function DateTimePickerSheet({
 							minimumDate={minimumDate}
 							locale="de-DE"
 							onValueChange={handleValueChange}
+							// Expo's native picker needs explicit measured dimensions.
 							style={{
 								width: width - 32,
 								height: mode === "datetime" ? 260 : 216,

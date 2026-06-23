@@ -9,6 +9,7 @@ import { NotificationButton } from "~/components/notification-button";
 import { Plus, Route2 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
 
@@ -41,7 +42,7 @@ function ProgressRing({ progress }: { progress: number }) {
 				cx={size / 2}
 				cy={size / 2}
 				r={radius}
-				stroke="rgba(58,123,255,0.14)"
+				stroke={`${DAYOVA_DESIGN_SYSTEM.colors.primary}24`}
 				strokeWidth={strokeWidth}
 				fill="transparent"
 			/>
@@ -49,7 +50,7 @@ function ProgressRing({ progress }: { progress: number }) {
 				cx={size / 2}
 				cy={size / 2}
 				r={radius}
-				stroke="#3A7BFF"
+				stroke={DAYOVA_DESIGN_SYSTEM.colors.primary}
 				strokeWidth={strokeWidth}
 				fill="transparent"
 				strokeDasharray={`${circumference} ${circumference}`}
@@ -77,29 +78,20 @@ function LearningPlanCard({ plan }: { plan: LearningPlanOverview }) {
 			accessibilityRole="button"
 			activeOpacity={0.9}
 			onPress={() => router.push(getPlanHref(plan))}
-			className="flex-row items-center rounded-[30px] bg-white px-5 py-4"
-			style={{
-				borderWidth: 1,
-				borderColor: "rgba(17,24,39,0.04)",
-				boxShadow: "0 14px 28px rgba(21, 29, 48, 0.08)",
-				columnGap: 14,
-			}}
+			className="flex-row items-center gap-4 rounded-[30px] border border-border/50 bg-card px-5 py-4 shadow-black/5 shadow-lg"
 		>
-			<View
-				className="h-[58px] w-[58px] items-center justify-center rounded-full py-3"
-				style={{
-					backgroundColor: "#FFEAF8",
-					boxShadow: "0 10px 22px rgba(244, 43, 184, 0.18)",
-				}}
-			>
-				<Route2 size={28} color="#FF42C8" strokeWidth={2.2} />
+			<View className="h-14 w-14 items-center justify-center rounded-full bg-system-subtle py-3 shadow-md shadow-primary/20">
+				<Route2
+					size={28}
+					color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+					strokeWidth={2.2}
+				/>
 			</View>
 
 			<View className="flex-1">
 				<Text
-					className="font-poppins font-semibold text-[#202127]"
+					className="font-poppins font-semibold text-body-3 text-foreground"
 					numberOfLines={1}
-					style={{ fontSize: 15, lineHeight: 20, includeFontPadding: false }}
 				>
 					{title}
 				</Text>
@@ -107,10 +99,7 @@ function LearningPlanCard({ plan }: { plan: LearningPlanOverview }) {
 
 			<View className="items-center justify-center">
 				<ProgressRing progress={progress} />
-				<Text
-					className="absolute font-bold font-poppins text-[#17171C]"
-					style={{ fontSize: 12, lineHeight: 14, includeFontPadding: false }}
-				>
+				<Text className="absolute font-poppins font-semibold text-body-4 text-foreground">
 					{`${progress}%`}
 				</Text>
 			</View>
@@ -130,7 +119,7 @@ export default function LearningPlansScreen() {
 	const visiblePlans = plans ?? [];
 
 	return (
-		<View className="flex-1 bg-[#F5F3F6]">
+		<View className="flex-1 bg-background">
 			<StatusBar style="dark" />
 			<ScrollView
 				className="flex-1"
@@ -144,51 +133,31 @@ export default function LearningPlansScreen() {
 				showsVerticalScrollIndicator={false}
 			>
 				<View className="flex-row items-center justify-between">
-					<Text
-						className="font-bold font-poppins text-[#202127]"
-						style={{ fontSize: 27, lineHeight: 32, includeFontPadding: false }}
-					>
+					<Text className="font-poppins font-semibold text-foreground text-heading-2">
 						Deine Lernpläne
 					</Text>
 
 					<NotificationButton />
 				</View>
 
-				<View style={{ rowGap: 16 }}>
+				<View className="gap-4">
 					{visiblePlans.length > 0 ? (
 						visiblePlans.map((plan) => (
 							<LearningPlanCard key={plan.id} plan={plan} />
 						))
 					) : (
-						<View
-							className="items-center rounded-[30px] bg-white px-5 py-7"
-							style={{
-								borderWidth: 1,
-								borderColor: "rgba(17,24,39,0.05)",
-								boxShadow: "0 14px 28px rgba(21, 29, 48, 0.08)",
-							}}
-						>
-							<View className="h-16 w-16 items-center justify-center rounded-full bg-[#EEF4FF] pb-5">
-								<Route2 size={30} color="#3A7BFF" strokeWidth={2.2} />
+						<View className="items-center rounded-[30px] border border-border/50 bg-card px-5 py-7 shadow-black/5 shadow-lg">
+							<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
+								<Route2
+									size={30}
+									color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+									strokeWidth={2.2}
+								/>
 							</View>
-							<Text
-								className="text-center font-bold font-poppins text-[#202127]"
-								style={{
-									fontSize: 18,
-									lineHeight: 23,
-									includeFontPadding: false,
-								}}
-							>
+							<Text className="text-center font-poppins font-semibold text-body-1 text-foreground">
 								Noch keine Lernpläne
 							</Text>
-							<Text
-								className="mt-2 text-center font-poppins text-[#8D8F98]"
-								style={{
-									fontSize: 13,
-									lineHeight: 19,
-									includeFontPadding: false,
-								}}
-							>
+							<Text className="mt-2 text-center font-poppins text-body-3 text-muted-foreground">
 								Erstelle einen Lernplan aus einer Prüfung, damit er hier als
 								Übersicht erscheint.
 							</Text>
@@ -197,18 +166,10 @@ export default function LearningPlansScreen() {
 								accessibilityLabel="Lernplan erstellen"
 								activeOpacity={0.9}
 								onPress={() => router.push(ROUTES.createExam)}
-								className="mt-5 flex-row items-center rounded-full bg-[#17171C] px-5 py-3"
-								style={{ columnGap: 8 }}
+								className="mt-5 flex-row items-center gap-2 rounded-full bg-foreground px-5 py-3"
 							>
 								<Plus size={18} color="#FFFFFF" strokeWidth={2.4} />
-								<Text
-									className="font-poppins font-semibold text-white"
-									style={{
-										fontSize: 13,
-										lineHeight: 17,
-										includeFontPadding: false,
-									}}
-								>
+								<Text className="font-poppins font-semibold text-body-4 text-white">
 									Neuen Lernplan starten
 								</Text>
 							</TouchableOpacity>

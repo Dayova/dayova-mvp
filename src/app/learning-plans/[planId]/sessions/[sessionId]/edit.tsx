@@ -166,7 +166,7 @@ function LoadedSessionEditScreen({
 	};
 
 	return (
-		<View className="flex-1 bg-[#F5F3F6]">
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 			<ScrollView
@@ -196,7 +196,7 @@ function LoadedSessionEditScreen({
 					onSave={saveEdit}
 				/>
 				{errorMessage ? (
-					<Text className="mt-4 font-poppins text-12 text-destructive">
+					<Text className="mt-4 font-poppins text-body-4 text-destructive">
 						{errorMessage}
 					</Text>
 				) : null}
@@ -212,13 +212,13 @@ function LoadedSessionEditScreen({
 				icon={<X size={48} color="#FF5147" strokeWidth={1.8} />}
 				iconContainerClassName="bg-red-100"
 			>
-				<View className="mt-6 flex-row" style={{ columnGap: 10 }}>
+				<View className="mt-6 flex-row gap-3">
 					<Button
 						variant="neutral"
 						className="flex-1 shadow-none"
 						onPress={() => setIsDeleteVisible(false)}
 					>
-						<Text className="text-text">Abbrechen</Text>
+						<Text className="text-button-neutral-foreground">Abbrechen</Text>
 					</Button>
 					<Button
 						accessibilityLabel={
@@ -286,7 +286,7 @@ export default function LearningPlanSessionEditScreen() {
 	}
 
 	return (
-		<View className="flex-1 bg-[#F5F3F6]">
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 			<ScrollView
@@ -301,7 +301,7 @@ export default function LearningPlanSessionEditScreen() {
 			>
 				<Header title="Bearbeiten" onBack={closeFallback} />
 				<View className="flex-1 items-center justify-center py-20">
-					<ActivityIndicator color="#3A7BFF" />
+					<ActivityIndicator color="#00BAFF" />
 				</View>
 			</ScrollView>
 		</View>
