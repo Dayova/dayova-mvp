@@ -7,11 +7,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import { NotificationButton } from "~/components/notification-button";
 import {
+	ArrowUpRight,
 	ClipboardEdit,
 	GraduationCap,
 	Plus,
 	Route2,
 } from "~/components/ui/icon";
+import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
@@ -149,14 +151,19 @@ function LearningPlanCard({
 		plan.examTypeLabel;
 
 	return (
-		<TouchableOpacity
+		<NotchedActionCard
 			accessibilityHint="Öffnet diesen Lernplan."
 			accessibilityLabel={`${plan.subject}, ${status.label}, ${progress} Prozent`}
-			accessibilityRole="button"
-			activeOpacity={0.9}
-			onPress={onPress}
-			className="overflow-hidden rounded-[40px] bg-card px-6 py-6 shadow-black/10 shadow-lg"
-			style={{ minHeight: 212, borderCurve: "continuous" }}
+			actionAccessibilityLabel={`${plan.subject} öffnen`}
+			actionIcon={
+				<ArrowUpRight
+					size={24}
+					color={DAYOVA_DESIGN_SYSTEM.colors.primaryForeground}
+					strokeWidth={2.2}
+				/>
+			}
+			onActionPress={onPress}
+			className="shadow-black/10 shadow-lg"
 		>
 			<View className="gap-2">
 				<View className="flex-row items-start justify-between gap-3">
@@ -218,7 +225,7 @@ function LearningPlanCard({
 					/>
 				</View>
 			</View>
-		</TouchableOpacity>
+		</NotchedActionCard>
 	);
 }
 
