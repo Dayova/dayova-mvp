@@ -44,6 +44,7 @@ import {
 } from "~/features/learning-plans/utils";
 import { useValidationAnalytics } from "~/lib/analytics";
 import { definedAnalyticsProperties } from "~/lib/analytics-core";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
@@ -51,6 +52,8 @@ import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
 const TOPIC_TEXTAREA_HEIGHT = 160;
 const TOPIC_TEXTAREA_CARD_HEIGHT = 202;
 const UPLOAD_TIMEOUT_MS = 45_000;
+const UPLOAD_COMPLETION_FAILURE_MESSAGE =
+	"Die Datei wurde übertragen, aber Dayova konnte den Upload nicht abschließen. Bitte versuche es erneut.";
 
 const clamp = (value: number, min: number, max: number) =>
 	Math.min(Math.max(value, min), max);
@@ -342,13 +345,51 @@ export default function NewLearningPlanScreen() {
 
 		let storageId = uploadData.storageId;
 		if (!storageId) {
-			const parsedUploadResult = JSON.parse(uploadResponseBody) as {
-				storageId?: string;
-			};
-			storageId = parsedUploadResult.storageId ?? null;
+			let parsedUploadResult: { storageId?: string } | null = null;
+			let uploadResponseParseError: unknown = null;
+			let parseErrorMessage: string | null = null;
+			try {
+				parsedUploadResult = JSON.parse(uploadResponseBody) as {
+					storageId?: string;
+				};
+			} catch (error) {
+				uploadResponseParseError = error;
+				parseErrorMessage =
+					error instanceof Error ? error.message : "Unbekannter JSON-Fehler";
+			}
+			storageId = parsedUploadResult?.storageId ?? null;
+			if (!storageId) {
+				const responseHeaders: Record<string, string> = {};
+				uploadResponse.headers.forEach((value, key) => {
+					responseHeaders[key] = value;
+				});
+
+				logDiagnosticError(
+					"Upload response did not provide a storageId.",
+					uploadResponseParseError ??
+						new Error("Storage provider response did not include storageId."),
+					{
+						source: "learning-plans",
+						metadata: {
+							learningPlanId: id,
+							storageProvider: uploadData.storageProvider,
+							uploadMethod: uploadData.storageProvider === "r2" ? "PUT" : "POST",
+							responseStatus: uploadResponse.status,
+							responseStatusText: uploadResponse.statusText,
+							responseHeaders,
+							responseBody: uploadResponseBody || null,
+							responseBodyLength: uploadResponseBody.length,
+							parseErrorMessage,
+							parsedUploadResult,
+							fileName: asset.name,
+							fileType,
+							fileSizeBytes,
+						},
+					},
+				);
+				throw new Error(UPLOAD_COMPLETION_FAILURE_MESSAGE);
+			}
 		}
-		if (!storageId)
-			throw new Error("Upload konnte nicht abgeschlossen werden.");
 
 		await retryOnceAfterAuthResume(() =>
 			registerUploadedDocument({
