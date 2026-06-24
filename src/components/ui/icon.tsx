@@ -2,6 +2,7 @@ import {
 	AlertCircleIcon,
 	ArrowDown01Icon,
 	ArrowLeft01Icon,
+	ArrowUpRight01Icon,
 	Attachment01Icon,
 	BookOpen01Icon,
 	Calculator01Icon,
@@ -12,10 +13,12 @@ import {
 	CodeIcon,
 	Delete02Icon,
 	Dna01Icon,
+	Dumbbell02Icon,
 	EarthIcon,
 	FootballIcon,
 	Home02Icon,
 	LanguageCircleIcon,
+	LockIcon,
 	Logout03Icon,
 	Mail01Icon,
 	MailValidation01Icon,
@@ -50,6 +53,7 @@ const createIcon = (icon: HugeiconsProps["icon"]) => (props: IconProps) => (
 
 export const Attachment = createIcon(Attachment01Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
+export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
 export const Bell = createIcon(Notification01Icon);
 export const BookOpen = createIcon(BookOpen01Icon);
 export const CalendarDays = createIcon(Calendar03Icon);
@@ -63,6 +67,7 @@ export const ClipboardEdit = createIcon(TaskEdit01Icon);
 export const Clock3 = createIcon(Clock03Icon);
 export const Code = createIcon(CodeIcon);
 export const Dna = createIcon(Dna01Icon);
+export const Dumbbell = createIcon(Dumbbell02Icon);
 export const Earth = createIcon(EarthIcon);
 export const Eye = createIcon(ViewIcon);
 export const EyeOff = createIcon(ViewOffIcon);
@@ -70,6 +75,7 @@ export const Football = createIcon(FootballIcon);
 export const GraduationCap = createIcon(Mortarboard01Icon);
 export const Home = createIcon(Home02Icon);
 export const Language = createIcon(LanguageCircleIcon);
+export const Lock = createIcon(LockIcon);
 export const Logout = createIcon(Logout03Icon);
 export const Maps = createIcon(MapsCircle01Icon);
 export const Mail = createIcon(Mail01Icon);
