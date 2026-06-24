@@ -1,8 +1,18 @@
 import { useConvexAuth, useQuery } from "convex/react";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+	Easing,
+	interpolate,
+	useAnimatedStyle,
+	useSharedValue,
+	withSpring,
+	withTiming,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import { NotificationButton } from "~/components/notification-button";
@@ -11,7 +21,9 @@ import {
 	ClipboardEdit,
 	GraduationCap,
 	Plus,
+	PropertyEdit,
 	Route2,
+	Trash2,
 } from "~/components/ui/icon";
 import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { Text } from "~/components/ui/text";
@@ -20,6 +32,10 @@ import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
+
+const PLAN_ACTION_RAIL_WIDTH = 104;
+const PLAN_SWIPE_OPEN_THRESHOLD = 44;
+const PLAN_ACTION_RAIL_COLOR = DAYOVA_DESIGN_SYSTEM.colors.buttonNeutral;
 
 type LearningPlanOverview = {
 	id: string;
@@ -128,6 +144,54 @@ function Badge({
 	);
 }
 
+function LearningPlanActionRail({
+	onDelete,
+	onEdit,
+	style,
+}: {
+	onDelete: () => void;
+	onEdit: () => void;
+	style?: object;
+}) {
+	return (
+		<Animated.View
+			className="absolute right-0 w-[196px] items-end justify-center overflow-hidden pr-5"
+			style={[
+				{
+					top: 2,
+					bottom: 2,
+					backgroundColor: PLAN_ACTION_RAIL_COLOR,
+					borderTopRightRadius: 40,
+					borderBottomRightRadius: 40,
+				},
+				style,
+			]}
+		>
+			<View className="items-center gap-4">
+				<TouchableOpacity
+					accessibilityLabel="Lernplan bearbeiten"
+					accessibilityRole="button"
+					activeOpacity={0.78}
+					onPress={onEdit}
+					className="h-10 w-10 items-center justify-center rounded-full"
+				>
+					<PropertyEdit size={26} color="#FFFFFF" strokeWidth={2.1} />
+				</TouchableOpacity>
+				<View className="h-0.5 w-8 rounded-full bg-white/80" />
+				<TouchableOpacity
+					accessibilityLabel="Lernplan löschen"
+					accessibilityRole="button"
+					activeOpacity={0.78}
+					onPress={onDelete}
+					className="h-10 w-10 items-center justify-center rounded-full"
+				>
+					<Trash2 size={26} color="#FFFFFF" strokeWidth={2.1} />
+				</TouchableOpacity>
+			</View>
+		</Animated.View>
+	);
+}
+
 function LearningPlanCard({
 	plan,
 	todayKey,
@@ -149,83 +213,154 @@ function LearningPlanCard({
 		plan.currentSession?.goal ||
 		plan.currentSession?.title ||
 		plan.examTypeLabel;
+	const [isActionRailVisible, setIsActionRailVisible] = useState(false);
+	const translateX = useSharedValue(0);
+	const cardAnimatedStyle = useAnimatedStyle(() => ({
+		transform: [{ translateX: translateX.get() }],
+	}));
+	const actionRailAnimatedStyle = useAnimatedStyle(() => ({
+		opacity: interpolate(
+			-translateX.get(),
+			[0, 8, PLAN_ACTION_RAIL_WIDTH],
+			[0, 0, 1],
+			"clamp",
+		),
+	}));
+	const panGesture = Gesture.Pan()
+		.activeOffsetX([-10, 10])
+		.failOffsetY([-12, 12])
+		.onBegin(() => {
+			"worklet";
+			scheduleOnRN(setIsActionRailVisible, true);
+		})
+		.onUpdate((event) => {
+			"worklet";
+			translateX.set(
+				Math.max(Math.min(event.translationX, 0), -PLAN_ACTION_RAIL_WIDTH),
+			);
+		})
+		.onEnd(() => {
+			"worklet";
+			const shouldOpen = -translateX.get() >= PLAN_SWIPE_OPEN_THRESHOLD;
+			translateX.set(
+				shouldOpen
+					? withTiming(-PLAN_ACTION_RAIL_WIDTH, {
+							duration: 180,
+							easing: Easing.out(Easing.cubic),
+						})
+					: withSpring(
+							0,
+							{
+								damping: 20,
+								mass: 0.7,
+								overshootClamping: true,
+								stiffness: 260,
+							},
+							(finished) => {
+								"worklet";
+								if (finished) scheduleOnRN(setIsActionRailVisible, false);
+							},
+						),
+			);
+		});
+	const editPlan = () => {
+		translateX.set(0);
+		setIsActionRailVisible(false);
+		router.push(`/learning-plans/new?learningPlanId=${plan.id}` as const);
+	};
+	const showDeletePlaceholder = () => {
+		translateX.set(0);
+		setIsActionRailVisible(false);
+		Alert.alert(
+			"Lernplan löschen",
+			"Das Löschen ganzer Lernpläne ist noch nicht angebunden.",
+		);
+	};
 
 	return (
-		<NotchedActionCard
-			accessibilityHint="Öffnet diesen Lernplan."
-			accessibilityLabel={`${plan.subject}, ${status.label}, ${progress} Prozent`}
-			actionAccessibilityLabel={`${plan.subject} öffnen`}
-			actionIcon={
-				<ArrowUpRight
-					size={24}
-					color={DAYOVA_DESIGN_SYSTEM.colors.primaryForeground}
-					strokeWidth={2.2}
+		<View className="relative rounded-[40px]">
+			{isActionRailVisible ? (
+				<LearningPlanActionRail
+					onDelete={showDeletePlaceholder}
+					onEdit={editPlan}
+					style={actionRailAnimatedStyle}
 				/>
-			}
-			onActionPress={onPress}
-			className="shadow-black/10 shadow-lg"
-		>
-			<View className="gap-2">
-				<View className="flex-row items-start justify-between gap-3">
-					<Text
-						className="flex-1 font-medium font-poppins text-[20px] text-black leading-7"
-						numberOfLines={1}
+			) : null}
+			<GestureDetector gesture={panGesture}>
+				<Animated.View style={cardAnimatedStyle}>
+					<NotchedActionCard
+						accessibilityHint="Öffnet diesen Lernplan."
+						accessibilityLabel={`${plan.subject}, ${status.label}, ${progress} Prozent`}
+						actionAccessibilityLabel={`${plan.subject} öffnen`}
+						actionIcon={
+							<ArrowUpRight
+								size={24}
+								color={DAYOVA_DESIGN_SYSTEM.colors.primaryForeground}
+								strokeWidth={2.2}
+							/>
+						}
+						onActionPress={onPress}
 					>
-						{formatGermanUiText(plan.subject)}
-					</Text>
-					<View className="flex-row gap-1">
-						<Badge {...status} />
-						<Badge
-							label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
-							background="#F1F7FB"
-							foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
-						/>
-					</View>
-				</View>
+						<View className="gap-2">
+							<View className="flex-row items-start justify-between gap-3">
+								<Text
+									className="flex-1 font-medium font-poppins text-[20px] text-black leading-7"
+									numberOfLines={1}
+								>
+									{formatGermanUiText(plan.subject)}
+								</Text>
+								<View className="flex-row gap-1">
+									<Badge {...status} />
+									<Badge
+										label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
+										background="#F1F7FB"
+										foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
+									/>
+								</View>
+							</View>
 
-				<View className="flex-row items-center gap-1">
-					<GraduationCap size={14} color="#697586" strokeWidth={2} />
-					<Text className="font-poppins text-[#697586] text-[12px] leading-[18px]">
-						{plan.examDateLabel ?? "Termin wird geladen"}
-					</Text>
-				</View>
+							<View className="flex-row items-center gap-1">
+								<GraduationCap size={14} color="#697586" strokeWidth={2} />
+								<Text className="font-poppins text-[#697586] text-[12px] leading-[18px]">
+									{plan.examDateLabel ?? "Termin wird geladen"}
+								</Text>
+							</View>
 
-				<Text
-					className="font-poppins font-semibold text-[#1E232B] text-[16px] leading-[18px]"
-					numberOfLines={2}
-				>
-					{formatGermanUiText(currentTitle)}
-				</Text>
-			</View>
+							<Text
+								className="font-poppins font-semibold text-[#1E232B] text-[16px] leading-[18px]"
+								numberOfLines={2}
+							>
+								{formatGermanUiText(currentTitle)}
+							</Text>
+						</View>
 
-			<View className="mt-4 w-[84%] gap-1">
-				<View className="flex-row items-center justify-between">
-					<Text className="font-poppins text-[#7E7E7E] text-[12px] leading-[18px]">
-						{`${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage`}
-					</Text>
-					<View className="flex-row items-center gap-1">
-						<ClipboardEdit size={14} color="#697586" strokeWidth={2} />
-						<Text className="font-poppins text-[#697586] text-[12px] leading-[18px]">
-							{remainingDays === 1
-								? "noch 1 Tag"
-								: `noch ${remainingDays} Tage`}
-						</Text>
-					</View>
-				</View>
-				<View className="h-2 overflow-hidden rounded-full bg-[#F7F8FB]">
-					<LinearGradient
-						colors={["#00A0E6", "#4FD8FF"]}
-						start={{ x: 0, y: 0.5 }}
-						end={{ x: 1, y: 0.5 }}
-						style={{
-							width: `${Math.max(progress, progress > 0 ? 8 : 0)}%`,
-							height: "100%",
-							borderRadius: 8,
-						}}
-					/>
-				</View>
-			</View>
-		</NotchedActionCard>
+						<View className="mt-4 w-[84%] gap-1">
+							<View className="flex-row items-center justify-between">
+								<Text className="font-poppins text-[#7E7E7E] text-[12px] leading-[18px]">
+									{`${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage`}
+								</Text>
+								<View className="flex-row items-center gap-1">
+									<ClipboardEdit size={14} color="#697586" strokeWidth={2} />
+									<Text className="font-poppins text-[#697586] text-[12px] leading-[18px]">
+										{remainingDays === 1
+											? "noch 1 Tag"
+											: `noch ${remainingDays} Tage`}
+									</Text>
+								</View>
+							</View>
+							<View className="h-2 overflow-hidden rounded-full bg-[#F7F8FB]">
+								<View
+									className="h-full rounded-full bg-primary"
+									style={{
+										width: `${Math.max(progress, progress > 0 ? 8 : 0)}%`,
+									}}
+								/>
+							</View>
+						</View>
+					</NotchedActionCard>
+				</Animated.View>
+			</GestureDetector>
+		</View>
 	);
 }
 
