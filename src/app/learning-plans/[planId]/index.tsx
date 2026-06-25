@@ -19,9 +19,9 @@ import {
 	minutesFromTime,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
@@ -49,10 +49,10 @@ function SessionOverviewCard({
 		<Surface className="gap-4 rounded-[28px] px-5 py-5">
 			<View className="flex-row items-start justify-between gap-4">
 				<View className="flex-1">
-					<Text className="font-poppins font-semibold text-body-2 text-foreground">
+					<Text className="font-poppins font-semibold text-body-2 text-text">
 						{title}
 					</Text>
-					<Text className="mt-2 font-poppins text-body-4 text-muted-foreground">
+					<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
 						{PHASE_LABEL[session.phase]}
 					</Text>
 				</View>
@@ -66,15 +66,15 @@ function SessionOverviewCard({
 			<View className="flex-row items-center gap-2">
 				<Clock3
 					size={16}
-					color={DAYOVA_DESIGN_SYSTEM.colors.textMuted}
+					color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
 					strokeWidth={2.1}
 				/>
-				<Text className="font-poppins text-body-4 text-muted-foreground">
+				<Text className="font-poppins text-body-4 text-secondary-text">
 					{`${session.dateLabel} · ${session.startTime} - ${endTime}`}
 				</Text>
 			</View>
 
-			<Text className="font-poppins text-body-4 text-muted-foreground">
+			<Text className="font-poppins text-body-4 text-secondary-text">
 				{goal}
 			</Text>
 
@@ -144,10 +144,10 @@ export default function LearningPlanSessionsScreen() {
 							strokeWidth={2.2}
 						/>
 					</View>
-					<Text className="font-poppins font-semibold text-foreground text-heading-2">
+					<Text className="font-poppins font-semibold text-heading-2 text-text">
 						{title}
 					</Text>
-					<Text className="mt-2 font-poppins text-body-4 text-muted-foreground">
+					<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
 						{snapshot
 							? `${snapshot.sessions.length} ${
 									snapshot.sessions.length === 1
@@ -165,7 +165,7 @@ export default function LearningPlanSessionsScreen() {
 							color={DAYOVA_DESIGN_SYSTEM.colors.warning}
 							strokeWidth={2.2}
 						/>
-						<Text className="flex-1 font-poppins text-body-4 text-warning-foreground">
+						<Text className="flex-1 font-poppins text-body-4 text-text">
 							{snapshot.plan.planningHint}
 						</Text>
 					</Surface>
@@ -188,7 +188,7 @@ export default function LearningPlanSessionsScreen() {
 
 				{snapshot && snapshot.sessions.length === 0 ? (
 					<View className="items-center rounded-[28px] bg-card px-5 py-7">
-						<Text className="text-center font-poppins font-semibold text-foreground">
+						<Text className="text-center font-poppins font-semibold text-text">
 							Keine Lerneinheiten vorhanden
 						</Text>
 					</View>

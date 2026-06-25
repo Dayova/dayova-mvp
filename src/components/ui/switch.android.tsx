@@ -1,6 +1,6 @@
 import {
-	Host,
 	Switch as ComposeSwitch,
+	Host,
 	type SwitchColors,
 } from "@expo/ui/jetpack-compose";
 import { testID as testIDModifier } from "@expo/ui/jetpack-compose/modifiers";
@@ -13,7 +13,7 @@ const switchColors = {
 	checkedThumbColor: DAYOVA_DESIGN_SYSTEM.colors.surface,
 	checkedTrackColor: DAYOVA_PRIMARY,
 	checkedBorderColor: DAYOVA_PRIMARY,
-	uncheckedThumbColor: DAYOVA_DESIGN_SYSTEM.colors.textMuted,
+	uncheckedThumbColor: DAYOVA_DESIGN_SYSTEM.colors.secondaryText,
 	uncheckedTrackColor: DAYOVA_DESIGN_SYSTEM.colors.mutedSurface,
 	uncheckedBorderColor: DAYOVA_DESIGN_SYSTEM.colors.border,
 	disabledCheckedThumbColor: DAYOVA_DESIGN_SYSTEM.colors.surface,

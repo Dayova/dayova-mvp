@@ -47,7 +47,8 @@ It also defines a custom text color:
 
 ```js
 colors: {
-  text: "hsl(var(--foreground))",
+  text: "hsl(var(--text))",
+  "secondary-text": "hsl(var(--secondary-text))",
 }
 ```
 
@@ -74,6 +75,7 @@ const twMerge = extendTailwindMerge({
 With that configuration:
 
 - `cn("text-16 text-text")` preserves both text size and text color.
+- `cn("text-16 text-secondary-text")` preserves both text size and secondary text color.
 - `cn("text-14 text-16 text-text")` still resolves competing sizes and keeps `text-16`.
 - `cn("text-text text-white")` still resolves competing colors normally.
 
