@@ -1,4 +1,4 @@
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
@@ -15,6 +15,7 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
+import type { Id } from "#convex/_generated/dataModel";
 import { NotificationButton } from "~/components/notification-button";
 import {
 	ArrowUpRight,
@@ -38,7 +39,7 @@ const PLAN_SWIPE_OPEN_THRESHOLD = 44;
 const PLAN_ACTION_RAIL_COLOR = DAYOVA_DESIGN_SYSTEM.colors.buttonNeutral;
 
 type LearningPlanOverview = {
-	id: string;
+	id: Id<"learningPlans">;
 	subject: string;
 	examTypeLabel: string;
 	status: "draft" | "questionsReady" | "generated" | "accepted";
@@ -195,10 +196,12 @@ function LearningPlanActionRail({
 function LearningPlanCard({
 	plan,
 	todayKey,
+	onDelete,
 	onPress,
 }: {
 	plan: LearningPlanOverview;
 	todayKey: string;
+	onDelete: () => void;
 	onPress: () => void;
 }) {
 	const progress = Math.max(0, Math.min(plan.progressPercent, 100));
@@ -215,6 +218,7 @@ function LearningPlanCard({
 		plan.examTypeLabel;
 	const [isActionRailVisible, setIsActionRailVisible] = useState(false);
 	const translateX = useSharedValue(0);
+	const gestureStartX = useSharedValue(0);
 	const cardAnimatedStyle = useAnimatedStyle(() => ({
 		transform: [{ translateX: translateX.get() }],
 	}));
@@ -231,12 +235,16 @@ function LearningPlanCard({
 		.failOffsetY([-12, 12])
 		.onBegin(() => {
 			"worklet";
+			gestureStartX.set(translateX.get());
 			scheduleOnRN(setIsActionRailVisible, true);
 		})
 		.onUpdate((event) => {
 			"worklet";
 			translateX.set(
-				Math.max(Math.min(event.translationX, 0), -PLAN_ACTION_RAIL_WIDTH),
+				Math.max(
+					Math.min(gestureStartX.get() + event.translationX, 0),
+					-PLAN_ACTION_RAIL_WIDTH,
+				),
 			);
 		})
 		.onEnd(() => {
@@ -268,20 +276,17 @@ function LearningPlanCard({
 		setIsActionRailVisible(false);
 		router.push(`/learning-plans/new?learningPlanId=${plan.id}` as const);
 	};
-	const showDeletePlaceholder = () => {
+	const deletePlan = () => {
 		translateX.set(0);
 		setIsActionRailVisible(false);
-		Alert.alert(
-			"Lernplan löschen",
-			"Das Löschen ganzer Lernpläne ist noch nicht angebunden.",
-		);
+		onDelete();
 	};
 
 	return (
 		<View className="relative rounded-[40px]">
 			{isActionRailVisible ? (
 				<LearningPlanActionRail
-					onDelete={showDeletePlaceholder}
+					onDelete={deletePlan}
 					onEdit={editPlan}
 					style={actionRailAnimatedStyle}
 				/>
@@ -368,6 +373,7 @@ export default function LearningPlansScreen() {
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const removePlan = useMutation(api.learningPlans.removePlan);
 	const today = useCurrentLocalDay();
 	const todayKey = getDayKey(today);
 	const plans = useQuery(
@@ -375,6 +381,28 @@ export default function LearningPlansScreen() {
 		user && isConvexAuthenticated ? {} : "skip",
 	);
 	const visiblePlans = plans ?? [];
+
+	const confirmDeletePlan = (plan: LearningPlanOverview) => {
+		Alert.alert(
+			"Lernplan löschen",
+			`Möchtest du den Lernplan ${formatGermanUiText(plan.subject)} wirklich löschen?`,
+			[
+				{ text: "Abbrechen", style: "cancel" },
+				{
+					text: "Löschen",
+					style: "destructive",
+					onPress: () => {
+						void removePlan({ id: plan.id }).catch(() => {
+							Alert.alert(
+								"Lernplan konnte nicht gelöscht werden",
+								"Bitte versuche es gleich noch einmal.",
+							);
+						});
+					},
+				},
+			],
+		);
+	};
 
 	return (
 		<View className="flex-1 bg-background">
@@ -406,6 +434,7 @@ export default function LearningPlansScreen() {
 								plan={plan}
 								todayKey={todayKey}
 								onPress={() => router.push(getPlanHref(plan))}
+								onDelete={() => confirmDeletePlan(plan)}
 							/>
 						))
 					) : (
