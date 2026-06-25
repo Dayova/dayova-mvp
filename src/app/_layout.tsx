@@ -62,10 +62,10 @@ function MissingConfigurationScreen() {
 	return (
 		<GestureHandlerRootView style={gestureRootStyle}>
 			<View className="flex-1 items-center justify-center bg-background px-6">
-				<Text className="text-center font-poppins font-semibold text-body-1 text-foreground">
+				<Text className="text-center font-poppins font-semibold text-body-1 text-text">
 					App kann nicht starten
 				</Text>
-				<Text className="mt-3 text-center font-poppins text-body-2 text-muted-foreground">
+				<Text className="mt-3 text-center font-poppins text-body-2 text-secondary-text">
 					Dayova ist gerade nicht richtig konfiguriert. Bitte aktualisiere die
 					App und versuche es erneut.
 				</Text>

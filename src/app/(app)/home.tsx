@@ -129,7 +129,7 @@ function CreateTypeOption({
 					{title}
 				</Text>
 				<Text
-					className="font-poppins text-muted-foreground"
+					className="font-poppins text-secondary-text"
 					// Runtime-scaled typography keeps this dense home layout fitting device width.
 					style={{
 						fontSize: 12 * scale,
@@ -708,7 +708,7 @@ export default function HomeScreen() {
 							{`Hi ${firstName},`}
 						</Text>
 						<Text
-							className="font-poppins text-muted-foreground"
+							className="font-poppins text-secondary-text"
 							// Runtime-scaled typography keeps this dense home layout fitting device width.
 							style={{
 								fontSize: 16 * screenScale,
@@ -756,7 +756,7 @@ export default function HomeScreen() {
 							}}
 						>
 							<Text
-								className="text-center font-poppins font-semibold text-foreground"
+								className="text-center font-poppins font-semibold text-text"
 								numberOfLines={1}
 								adjustsFontSizeToFit
 								// Runtime-scaled typography keeps this dense home layout fitting device width.
@@ -769,7 +769,7 @@ export default function HomeScreen() {
 								{heroEntry ? getEntryDisplayTitle(heroEntry) : "Heute ist frei"}
 							</Text>
 							<Text
-								className="mt-1 text-center font-poppins text-muted-foreground"
+								className="mt-1 text-center font-poppins text-secondary-text"
 								// Runtime-scaled typography keeps this dense home layout fitting device width.
 								style={{
 									maxWidth: 274 * screenScale,
@@ -830,7 +830,7 @@ export default function HomeScreen() {
 				>
 					<View className="flex-row items-start justify-between">
 						<Text
-							className="font-poppins font-semibold text-foreground"
+							className="font-poppins font-semibold text-text"
 							// Runtime-scaled typography keeps this dense home layout fitting device width.
 							style={{
 								fontSize: 24 * screenScale,
@@ -877,7 +877,7 @@ export default function HomeScreen() {
 								const content = (
 									<Text
 										key={`${day.key}-label`}
-										className={`font-poppins ${selected ? "text-white" : "text-foreground"}`}
+										className={`font-poppins ${selected ? "text-white" : "text-text"}`}
 										// Runtime-scaled typography keeps this dense home layout fitting device width.
 										style={{
 											fontSize: 12 * screenScale,
@@ -984,7 +984,7 @@ export default function HomeScreen() {
 										}}
 									>
 										<Text
-											className="absolute font-poppins font-semibold text-foreground"
+											className="absolute font-poppins font-semibold text-text"
 											// Runtime-scaled typography keeps this dense home layout fitting device width.
 											style={{
 												left: 8 * scheduleScale,
@@ -1074,7 +1074,7 @@ export default function HomeScreen() {
 											}}
 										>
 											<Text
-												className="font-poppins text-foreground"
+												className="font-poppins text-text"
 												numberOfLines={1}
 												// Runtime-scaled typography keeps this dense home layout fitting device width.
 												style={{
@@ -1131,7 +1131,7 @@ export default function HomeScreen() {
 										}}
 									>
 										<Text
-											className="font-poppins text-muted-foreground"
+											className="font-poppins text-secondary-text"
 											// Runtime-scaled typography keeps this dense home layout fitting device width.
 											style={{
 												fontSize: 12 * screenScale,
@@ -1212,7 +1212,7 @@ export default function HomeScreen() {
 									Was möchtest du planen?
 								</Text>
 								<Text
-									className="font-poppins text-muted-foreground"
+									className="font-poppins text-secondary-text"
 									// Runtime-scaled typography keeps this dense home layout fitting device width.
 									style={{
 										fontSize: 12 * modalScale,

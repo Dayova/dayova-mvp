@@ -90,7 +90,7 @@ function LearningPlanCard({ plan }: { plan: LearningPlanOverview }) {
 
 			<View className="flex-1">
 				<Text
-					className="font-poppins font-semibold text-body-3 text-foreground"
+					className="font-poppins font-semibold text-body-3 text-text"
 					numberOfLines={1}
 				>
 					{title}
@@ -99,7 +99,7 @@ function LearningPlanCard({ plan }: { plan: LearningPlanOverview }) {
 
 			<View className="items-center justify-center">
 				<ProgressRing progress={progress} />
-				<Text className="absolute font-poppins font-semibold text-body-4 text-foreground">
+				<Text className="absolute font-poppins font-semibold text-body-4 text-text">
 					{`${progress}%`}
 				</Text>
 			</View>
@@ -133,7 +133,7 @@ export default function LearningPlansScreen() {
 				showsVerticalScrollIndicator={false}
 			>
 				<View className="flex-row items-center justify-between">
-					<Text className="font-poppins font-semibold text-foreground text-heading-2">
+					<Text className="font-poppins font-semibold text-heading-2 text-text">
 						Deine Lernpläne
 					</Text>
 
@@ -154,10 +154,10 @@ export default function LearningPlansScreen() {
 									strokeWidth={2.2}
 								/>
 							</View>
-							<Text className="text-center font-poppins font-semibold text-body-1 text-foreground">
+							<Text className="text-center font-poppins font-semibold text-body-1 text-text">
 								Noch keine Lernpläne
 							</Text>
-							<Text className="mt-2 text-center font-poppins text-body-3 text-muted-foreground">
+							<Text className="mt-2 text-center font-poppins text-body-3 text-secondary-text">
 								Erstelle einen Lernplan aus einer Prüfung, damit er hier als
 								Übersicht erscheint.
 							</Text>
@@ -166,7 +166,7 @@ export default function LearningPlansScreen() {
 								accessibilityLabel="Lernplan erstellen"
 								activeOpacity={0.9}
 								onPress={() => router.push(ROUTES.createExam)}
-								className="mt-5 flex-row items-center gap-2 rounded-full bg-foreground px-5 py-3"
+								className="mt-5 flex-row items-center gap-2 rounded-full bg-text px-5 py-3"
 							>
 								<Plus size={18} color="#FFFFFF" strokeWidth={2.4} />
 								<Text className="font-poppins font-semibold text-body-4 text-white">

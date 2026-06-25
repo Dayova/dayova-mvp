@@ -129,7 +129,7 @@ function UploadSheetOption({
 					{title}
 				</Text>
 				<Text
-					className="font-poppins text-muted-foreground"
+					className="font-poppins text-secondary-text"
 					// Upload option typography scales with the measured sheet width.
 					style={{
 						fontSize: 12 * scale,
@@ -605,7 +605,7 @@ export default function NewLearningPlanScreen() {
 							<Plus size={26} color="#FFFFFF" strokeWidth={2.1} />
 						)}
 					</View>
-					<Text className="mt-3 text-center font-poppins text-body-4 text-muted-foreground">
+					<Text className="mt-3 text-center font-poppins text-body-4 text-secondary-text">
 						{openingUploadAction === "files"
 							? "Dateiauswahl wird geöffnet …"
 							: openingUploadAction === "camera"
@@ -691,7 +691,7 @@ export default function NewLearningPlanScreen() {
 									Hochladen
 								</Text>
 								<Text
-									className="font-poppins text-muted-foreground"
+									className="font-poppins text-secondary-text"
 									// Modal description typography scales with the measured sheet width.
 									style={{
 										fontSize: 12 * modalScale,

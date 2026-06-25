@@ -43,7 +43,7 @@ function ProgressRing({ progressPercent }: { progressPercent: number }) {
 					transform={`rotate(-90 ${size / 2} ${size / 2})`}
 				/>
 			</Svg>
-			<Text className="font-poppins font-semibold text-body-4 text-foreground">
+			<Text className="font-poppins font-semibold text-body-4 text-text">
 				{`${progress}%`}
 			</Text>
 		</View>
@@ -72,7 +72,7 @@ function LearningPlanCard({
 					/>
 				</View>
 
-				<Text className="ml-6 flex-1 font-poppins font-semibold text-body-1 text-foreground">
+				<Text className="ml-6 flex-1 font-poppins font-semibold text-body-1 text-text">
 					{title}
 				</Text>
 
@@ -96,7 +96,7 @@ export default function PlansScreen() {
 			<StatusBar style="dark" />
 			<ScreenScroll topPadding={84} bottomPadding={150} horizontalPadding={24}>
 				<View className="flex-row items-center justify-between">
-					<Text className="font-poppins font-semibold text-foreground text-heading-2">
+					<Text className="font-poppins font-semibold text-heading-2 text-text">
 						Deine Lernpläne
 					</Text>
 
