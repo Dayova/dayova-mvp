@@ -20,10 +20,10 @@ export default function AuthChoiceScreen() {
 				<View className="flex-1 gap-8">
 					<View className="gap-16">
 						<View className="items-center gap-3">
-							<Text className="text-center font-poppins font-semibold text-body-1 text-foreground">
+							<Text className="text-center font-poppins font-semibold text-body-1 text-text">
 								Du bist neu hier?
 							</Text>
-							<Text className="text-center font-poppins text-body-5 text-muted-foreground">
+							<Text className="text-center font-poppins text-body-5 text-secondary-text">
 								Schön, dich kennenzulernen!
 							</Text>
 						</View>
@@ -40,10 +40,10 @@ export default function AuthChoiceScreen() {
 
 					<View className="gap-16">
 						<View className="items-center gap-4">
-							<Text className="max-w-[260px] text-center font-poppins font-semibold text-foreground text-heading-2">
+							<Text className="max-w-[260px] text-center font-poppins font-semibold text-heading-2 text-text">
 								Du hast schon ein{"\n"}Konto?
 							</Text>
-							<Text className="text-center font-poppins text-body-5 text-muted-foreground">
+							<Text className="text-center font-poppins text-body-5 text-secondary-text">
 								Melde dich direkt an und mach dort weiter, wo du aufgehört hast.
 							</Text>
 						</View>

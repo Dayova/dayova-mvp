@@ -138,7 +138,7 @@ function SelectSheet<T extends string | number>({
 									"min-h-16 flex-row items-center rounded-[20px] border px-5",
 									isSelected
 										? "border-primary/35 bg-accent"
-										: "border-foreground/10 bg-card",
+										: "border-text/10 bg-card",
 								)}
 							>
 								{renderOptionIcon ? (
@@ -149,9 +149,7 @@ function SelectSheet<T extends string | number>({
 								<Text
 									className={cn(
 										"flex-1 font-poppins text-body-2",
-										isSelected
-											? "font-semibold text-primary"
-											: "text-foreground",
+										isSelected ? "font-semibold text-primary" : "text-text",
 									)}
 								>
 									{formatOptionLabel ? formatOptionLabel(option) : option}

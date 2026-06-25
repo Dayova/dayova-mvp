@@ -26,13 +26,14 @@ The app currently supports light mode only. The app background token is the
 Figma off-white (`#F6F6F4`), surfaces use white, and Tailwind's standard spacing
 scale is the source of truth for the 4px spacing system.
 
-The Figma light palette is the source of truth: primary/system cyan `#00BAFF`,
-primary strong/path 5 `#00A0E6`, path 7 `#4FD8FF`, primary text `#1A1A1A`,
-secondary text `#697586`, border `#DCE6EE`, light 2 `#F3F6FA`, and light 3
-`#FAFAFC`. The Figma orange `#FF9500` is the `wrong`/warning status color;
-`destructive` remains a separate functional action/error token. Dark-mode
-variables and classes should not be introduced until the dark-mode design is
-finalized.
+The Figma light palette is the source of truth: background `#F6F6F4`, light 1
+`#FFFFFF`, light 2 `#F3F6FA`, light 3 `#FAFAFC`, border `#DCE6EE`, path 1/2
+`#D7DCE3`, path 3 `#8A8D92`, path 4/secondary text `#697586`, path 5/primary
+strong `#00A0E6`, path 6/primary/system cyan `#00BAFF`, path 7 `#4FD8FF`, and
+primary text `#1A1A1A`. The Figma orange `#FF9500` is the `wrong`/warning
+status color; `destructive` remains a separate functional action/error token.
+Dark-mode variables and classes should not be introduced until the dark-mode
+design is finalized.
 
 Badge fills use wrong/warning `#FF9500`, info `#C9A100`, system `#00BAFF`,
 success `#34C759`, theorie `#5856D6`, ueben `#AF52DE`, praxis `#00C7BE`, and
@@ -40,10 +41,10 @@ hausaufgabe `#B88AAE`. Badge subtle fills match Figma exactly: wrong/warning
 `#FFECD6`, info `#FFF8CC`, system `#F1F7FB`, success `#EAFFF1`, theorie
 `#EEECFF`, ueben `#F4ECFF`, praxis `#E7FBF6`, and hausaufgabe `#F3E8F0`.
 
-The `*-foreground` CSS variables are implementation contrast helpers for
-Tailwind classes such as `text-warning-foreground`; they are not a separate
-Figma palette row. Keep them mapped to existing text/white tokens based on the
-surface where the utility is used.
+Do not add `*-foreground` color partners unless Figma introduces them as real
+palette tokens. Use the palette directly: `text-text` for primary text,
+`text-secondary-text` for secondary text, and `text-white` for white text on
+dark or saturated surfaces.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold. The

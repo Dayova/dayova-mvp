@@ -70,17 +70,17 @@ const buttonVariants = cva(
 
 const buttonTextVariants = cva(
 	cn(
-		"font-poppins font-semibold text-body-2 text-foreground",
+		"font-poppins font-semibold text-body-2 text-text",
 		Platform.select({ web: "pointer-events-none transition-colors" }),
 	),
 	{
 		variants: {
 			variant: {
-				default: "text-primary-foreground",
-				neutral: "text-button-neutral-foreground",
-				destructive: "text-button-neutral-foreground",
-				outline: "text-button-neutral-foreground",
-				ghost: "group-active:text-accent-foreground",
+				default: "text-white",
+				neutral: "text-white",
+				destructive: "text-white",
+				outline: "text-white",
+				ghost: "group-active:text-primary-strong",
 				link: cn(
 					"text-primary group-active:underline",
 					Platform.select({

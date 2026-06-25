@@ -1,8 +1,8 @@
-import { api } from "#convex/_generated/api";
 import { useConvexAuth, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Pressable, View } from "react-native";
+import { api } from "#convex/_generated/api";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { ClipboardEdit, Plus } from "~/components/ui/icon";
@@ -39,7 +39,7 @@ function LearningTimeRow({
 			className="min-h-[96px] flex-row items-center rounded-[48px] bg-card px-6 active:opacity-85"
 			onPress={onPress}
 		>
-			<View className="h-16 w-16 items-center justify-center rounded-full bg-foreground">
+			<View className="h-16 w-16 items-center justify-center rounded-full bg-text">
 				<Text className="font-poppins font-semibold text-body-1 text-white">
 					{abbreviation}
 				</Text>
@@ -47,13 +47,13 @@ function LearningTimeRow({
 
 			<View className="ml-5 flex-1">
 				<Text
-					className="font-poppins font-semibold text-body-1 text-foreground"
+					className="font-poppins font-semibold text-body-1 text-text"
 					numberOfLines={1}
 				>
 					Lernzeit
 				</Text>
 				<Text
-					className="font-poppins text-body-2 text-muted-foreground"
+					className="font-poppins text-body-2 text-secondary-text"
 					numberOfLines={1}
 				>
 					{timeRange}
@@ -118,10 +118,10 @@ export default function LearningTimesOverviewScreen() {
 				<Header title="Lernzeiten" onBack={goBack} className="mb-11" />
 
 				<View className="gap-4">
-					<Text className="font-poppins font-semibold text-foreground text-heading-2">
+					<Text className="font-poppins font-semibold text-heading-2 text-text">
 						Lernzeiten anpassen
 					</Text>
-					<Text className="font-poppins text-body-1 text-muted-foreground">
+					<Text className="font-poppins text-body-1 text-secondary-text">
 						Trage hier deine wiederkehrend verfügbaren Zeiten ein, an denen du
 						lernen kannst.
 					</Text>
@@ -136,10 +136,10 @@ export default function LearningTimesOverviewScreen() {
 
 					{learningTimes?.length === 0 ? (
 						<View className="rounded-[32px] bg-card px-6 py-7">
-							<Text className="text-center font-poppins font-semibold text-body-2 text-foreground">
+							<Text className="text-center font-poppins font-semibold text-body-2 text-text">
 								Noch keine Lernzeiten eingetragen
 							</Text>
-							<Text className="mt-2 text-center font-poppins text-body-3 text-muted-foreground">
+							<Text className="mt-2 text-center font-poppins text-body-3 text-secondary-text">
 								Füge über das Plus deine erste wiederkehrende Lernzeit hinzu.
 							</Text>
 						</View>

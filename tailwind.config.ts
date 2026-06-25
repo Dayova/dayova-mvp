@@ -20,11 +20,9 @@ const config = {
 				input: "hsl(var(--input))",
 				ring: "hsl(var(--ring))",
 				background: "hsl(var(--background))",
-				foreground: "hsl(var(--foreground))",
 				surface: "hsl(var(--surface))",
 				primary: {
 					DEFAULT: "hsl(var(--primary))",
-					foreground: "hsl(var(--primary-foreground))",
 					strong: "hsl(var(--primary-strong))",
 					100: "hsl(var(--primary-100))",
 					90: "hsl(var(--primary-90))",
@@ -35,13 +33,9 @@ const config = {
 					40: "hsl(var(--primary-40))",
 					30: "hsl(var(--primary-30))",
 				},
-				"button-neutral": {
-					DEFAULT: "hsl(var(--button-neutral))",
-					foreground: "hsl(var(--button-neutral-foreground))",
-				},
+				"button-neutral": "hsl(var(--button-neutral))",
 				secondary: {
 					DEFAULT: "hsl(var(--secondary))",
-					foreground: "hsl(var(--secondary-foreground))",
 					100: "hsl(var(--secondary-100))",
 					90: "hsl(var(--secondary-90))",
 					80: "hsl(var(--secondary-80))",
@@ -51,72 +45,49 @@ const config = {
 					40: "hsl(var(--secondary-40))",
 					30: "hsl(var(--secondary-30))",
 				},
-				destructive: {
-					DEFAULT: "hsl(var(--destructive))",
-					foreground: "hsl(var(--destructive-foreground))",
-				},
+				destructive: "hsl(var(--destructive))",
 				success: {
 					DEFAULT: "hsl(var(--success))",
-					foreground: "hsl(var(--success-foreground))",
 					subtle: "hsl(var(--success-subtle))",
 				},
 				wrong: {
 					DEFAULT: "hsl(var(--wrong))",
-					foreground: "hsl(var(--wrong-foreground))",
 					subtle: "hsl(var(--wrong-subtle))",
 				},
 				warning: {
 					DEFAULT: "hsl(var(--warning))",
-					foreground: "hsl(var(--warning-foreground))",
 					subtle: "hsl(var(--warning-subtle))",
 				},
 				info: {
 					DEFAULT: "hsl(var(--info))",
-					foreground: "hsl(var(--info-foreground))",
 					subtle: "hsl(var(--info-subtle))",
 				},
 				system: {
 					DEFAULT: "hsl(var(--system))",
-					foreground: "hsl(var(--system-foreground))",
 					subtle: "hsl(var(--system-subtle))",
 				},
 				theorie: {
 					DEFAULT: "hsl(var(--theorie))",
-					foreground: "hsl(var(--theorie-foreground))",
 					subtle: "hsl(var(--theorie-subtle))",
 				},
 				ueben: {
 					DEFAULT: "hsl(var(--ueben))",
-					foreground: "hsl(var(--ueben-foreground))",
 					subtle: "hsl(var(--ueben-subtle))",
 				},
 				praxis: {
 					DEFAULT: "hsl(var(--praxis))",
-					foreground: "hsl(var(--praxis-foreground))",
 					subtle: "hsl(var(--praxis-subtle))",
 				},
 				hausaufgabe: {
 					DEFAULT: "hsl(var(--hausaufgabe))",
-					foreground: "hsl(var(--hausaufgabe-foreground))",
 					subtle: "hsl(var(--hausaufgabe-subtle))",
 				},
-				muted: {
-					DEFAULT: "hsl(var(--muted))",
-					foreground: "hsl(var(--muted-foreground))",
-				},
-				accent: {
-					DEFAULT: "hsl(var(--accent))",
-					foreground: "hsl(var(--accent-foreground))",
-				},
-				popover: {
-					DEFAULT: "hsl(var(--popover))",
-					foreground: "hsl(var(--popover-foreground))",
-				},
-				card: {
-					DEFAULT: "hsl(var(--card))",
-					foreground: "hsl(var(--card-foreground))",
-				},
-				text: "hsl(var(--foreground))",
+				muted: "hsl(var(--muted))",
+				accent: "hsl(var(--accent))",
+				popover: "hsl(var(--popover))",
+				card: "hsl(var(--card))",
+				text: "hsl(var(--text))",
+				"secondary-text": "hsl(var(--secondary-text))",
 				bg: "hsl(var(--background))",
 				light: {
 					1: "hsl(var(--light-1))",

@@ -87,11 +87,11 @@ function SectionIntro({
 }) {
 	return (
 		<View className="gap-2">
-			<Text className="font-poppins font-semibold text-body-3 text-foreground">
+			<Text className="font-poppins font-semibold text-body-3 text-text">
 				{title}
 			</Text>
 			{description ? (
-				<Text className="font-poppins text-body-4 text-muted-foreground">
+				<Text className="font-poppins text-body-4 text-secondary-text">
 					{description}
 				</Text>
 			) : null}
@@ -124,7 +124,7 @@ const SwitchRow = memo(function SwitchRow({
 		<SettingsCard>
 			<View className="flex-row items-center justify-between gap-3">
 				<Text
-					className="flex-1 font-poppins font-semibold text-body-3 text-foreground"
+					className="flex-1 font-poppins font-semibold text-body-3 text-text"
 					numberOfLines={2}
 				>
 					{label}
@@ -386,7 +386,7 @@ export default function NotificationSettingsScreen() {
 								onValueChange={handleDailyBriefingEnabledChange}
 							/>
 							<View className="gap-4">
-								<Text className="font-poppins text-body-4 text-muted-foreground">
+								<Text className="font-poppins text-body-4 text-secondary-text">
 									Wähle aus, wann du deinen Tagesüberblick erhalten möchtest.
 								</Text>
 								<TouchableOpacity
@@ -409,13 +409,13 @@ export default function NotificationSettingsScreen() {
 									}}
 								>
 									<Text
-										className="flex-1 font-poppins font-semibold text-body-3 text-foreground"
+										className="flex-1 font-poppins font-semibold text-body-3 text-text"
 										numberOfLines={1}
 									>
 										Uhrzeit
 									</Text>
 									<View className="flex-row items-center gap-2">
-										<Text className="font-poppins text-body-4 text-muted-foreground">
+										<Text className="font-poppins text-body-4 text-secondary-text">
 											{preferencesForRender.dailyBriefingTime}
 										</Text>
 										<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
@@ -486,13 +486,13 @@ export default function NotificationSettingsScreen() {
 								}}
 							>
 								<Text
-									className="flex-1 font-poppins font-semibold text-body-3 text-foreground"
+									className="flex-1 font-poppins font-semibold text-body-3 text-text"
 									numberOfLines={1}
 								>
 									Vorher erinnern
 								</Text>
 								<View className="flex-row items-center gap-2">
-									<Text className="font-poppins text-body-4 text-muted-foreground">
+									<Text className="font-poppins text-body-4 text-secondary-text">
 										{preferencesForRender.reminderOffsetMinutes} min
 									</Text>
 									<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
