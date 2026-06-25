@@ -27,6 +27,8 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 const LEARNING_DAYS = [
@@ -77,22 +79,19 @@ function TimeControl({
 			accessibilityLabel={`${label}: ${value}`}
 			accessibilityRole="button"
 			onPress={onPress}
-			className="h-[54px] flex-1 flex-row items-center justify-between rounded-[27px] bg-white px-5 shadow-black/10 shadow-sm active:opacity-80"
+			className="h-[54px] flex-1 flex-row items-center justify-between rounded-[27px] bg-card px-5 shadow-black/10 shadow-sm active:opacity-80"
 		>
-			<Text
-				className="font-poppins text-[#7D8089]"
-				style={{ fontSize: 14, lineHeight: 19, includeFontPadding: false }}
-			>
+			<Text className="font-poppins text-body-3 text-muted-foreground">
 				{value}
 			</Text>
-			<Timer size={19} color="#9A9DA5" strokeWidth={1.9} />
+			<Timer size={19} color="#697586" strokeWidth={1.9} />
 		</Pressable>
 	);
 }
 
 export default function LearningTimesScreen() {
 	const router = useRouter();
-	const params = useLocalSearchParams<{ day?: string }>();
+	const params = useLocalSearchParams<{ day?: string; returnTo?: string }>();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningTimes = useQuery(
@@ -114,6 +113,8 @@ export default function LearningTimesScreen() {
 	);
 	const [isSaving, setIsSaving] = useState(false);
 	const [feedback, setFeedback] = useState<string | null>(null);
+	const returnTo = getSafeReturnTo(params.returnTo);
+	const overviewPath = withReturnTo(ROUTES.learningTimes, returnTo);
 
 	const selectedDayValue =
 		LEARNING_DAYS.find((day) => day.label === selectedDay)?.value ?? 1;
@@ -152,7 +153,7 @@ export default function LearningTimesScreen() {
 			return;
 		}
 
-		router.replace("/learning-times");
+		router.replace(overviewPath);
 	};
 
 	const updateTime = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -185,7 +186,7 @@ export default function LearningTimesScreen() {
 				startTime,
 				endTime,
 			});
-			router.replace("/learning-times");
+			router.replace(overviewPath);
 		} catch (error) {
 			Alert.alert(
 				"Lernzeit konnte nicht gespeichert werden",
@@ -206,7 +207,7 @@ export default function LearningTimesScreen() {
 			setStartTime(DEFAULT_START_TIME);
 			setEndTime(DEFAULT_END_TIME);
 			setFeedback("Lernzeit entfernt.");
-			router.replace("/learning-times");
+			router.replace(overviewPath);
 		} catch (error) {
 			Alert.alert(
 				"Lernzeit konnte nicht entfernt werden",
@@ -233,7 +234,7 @@ export default function LearningTimesScreen() {
 				renderOptionIcon={(_option, isSelected) => (
 					<CalendarDays
 						size={19}
-						color={isSelected ? "#3A7BFF" : "#6B7280"}
+						color={isSelected ? "#00BAFF" : "#697586"}
 						strokeWidth={2}
 					/>
 				)}
@@ -248,25 +249,11 @@ export default function LearningTimesScreen() {
 				<Header title="Lernzeiten" onBack={goBack} />
 
 				<View style={{ marginTop: 18, rowGap: 22 }}>
-					<View style={{ rowGap: 7 }}>
-						<Text
-							className="font-poppins font-semibold text-[#202127]"
-							style={{
-								fontSize: 16,
-								lineHeight: 22,
-								includeFontPadding: false,
-							}}
-						>
+					<View className="gap-2">
+						<Text className="font-poppins font-semibold text-body-2 text-foreground">
 							Lernzeit bearbeiten
 						</Text>
-						<Text
-							className="font-poppins text-[#979AA3]"
-							style={{
-								fontSize: 14,
-								lineHeight: 20,
-								includeFontPadding: false,
-							}}
-						>
+						<Text className="font-poppins text-body-3 text-muted-foreground">
 							Passe deine Lernzeiten so an, wie sie für dich passen.
 						</Text>
 					</View>
@@ -283,33 +270,19 @@ export default function LearningTimesScreen() {
 									boxShadow: "0 1px 4px rgba(0, 0, 0, 0.08)",
 								}}
 							>
-								<Text
-									className="flex-1 font-medium font-poppins text-[#202127]"
-									style={{
-										fontSize: 18,
-										lineHeight: 24,
-										includeFontPadding: false,
-									}}
-								>
+								<Text className="flex-1 font-poppins font-semibold text-body-1 text-foreground">
 									Lerntag
 								</Text>
-								<Text
-									className="font-poppins text-[#8C8F98]"
-									style={{
-										fontSize: 18,
-										lineHeight: 24,
-										includeFontPadding: false,
-									}}
-								>
+								<Text className="font-poppins text-body-1 text-muted-foreground">
 									{selectedDay}
 								</Text>
 								<FieldAccessory>
-									<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
+									<ChevronDown size={20} color="#1A1A1A" strokeWidth={2.1} />
 								</FieldAccessory>
 							</FieldTrigger>
 						</Field>
 
-						<View className="flex-row" style={{ gap: 8 }}>
+						<View className="flex-row gap-2">
 							<TimeControl
 								label="Startzeit"
 								value={startTime}
@@ -325,19 +298,12 @@ export default function LearningTimesScreen() {
 
 					{learningTimes === undefined ? (
 						<View className="items-center py-4">
-							<ActivityIndicator color="#3A7BFF" />
+							<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
 						</View>
 					) : null}
 
 					{feedback ? (
-						<Text
-							className="font-poppins text-[#3A7BFF]"
-							style={{
-								fontSize: 13,
-								lineHeight: 19,
-								includeFontPadding: false,
-							}}
-						>
+						<Text className="font-poppins text-body-4 text-primary">
 							{feedback}
 						</Text>
 					) : null}
@@ -346,8 +312,7 @@ export default function LearningTimesScreen() {
 
 			<View
 				pointerEvents="box-none"
-				className="absolute right-0 bottom-5 left-0 flex-row px-6 pb-16"
-				style={{ gap: 10 }}
+				className="absolute right-0 bottom-5 left-0 flex-row gap-3 px-6 pb-16"
 			>
 				<Button
 					variant="neutral"
@@ -355,7 +320,11 @@ export default function LearningTimesScreen() {
 					disabled={!canRemove}
 					onPress={remove}
 				>
-					<Trash2 size={18} color="#202127" strokeWidth={2} />
+					<Trash2
+						size={18}
+						color={DAYOVA_DESIGN_SYSTEM.colors.buttonNeutralForeground}
+						strokeWidth={2}
+					/>
 					<Text>Entfernen</Text>
 				</Button>
 				<Button className="flex-1" disabled={!canSave} onPress={save}>

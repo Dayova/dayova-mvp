@@ -60,7 +60,7 @@ function DetailTile({
 
 	return (
 		<View
-			className="flex-1 rounded-[24px] bg-white px-5 py-5"
+			className="flex-1 rounded-[24px] bg-card px-5 py-5"
 			style={{
 				borderWidth: 1.2,
 				borderColor: "rgba(17,24,39,0.07)",
@@ -73,14 +73,11 @@ function DetailTile({
 		>
 			<View className="mb-3 flex-row items-center">
 				{icon}
-				<Text className="ml-2 font-bold font-poppins text-11 text-text/50 uppercase">
+				<Text className="ml-2 font-poppins font-semibold text-body-5 text-text/50 uppercase">
 					{label}
 				</Text>
 			</View>
-			<Text
-				className="font-bold font-poppins text-text"
-				style={{ fontSize: 15, lineHeight: 20, includeFontPadding: false }}
-			>
+			<Text className="font-poppins font-semibold text-body-3 text-text">
 				{value}
 			</Text>
 		</View>
@@ -93,7 +90,7 @@ function NotesCard({ value }: { value?: string }) {
 
 	return (
 		<View
-			className="mt-5 rounded-[28px] bg-white px-5 py-5"
+			className="mt-5 rounded-[28px] bg-card px-5 py-5"
 			style={{
 				borderWidth: 1.2,
 				borderColor: "rgba(17,24,39,0.07)",
@@ -106,13 +103,13 @@ function NotesCard({ value }: { value?: string }) {
 		>
 			<View className="mb-4 flex-row items-center">
 				<View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-					<NotebookPen size={18} color="#3A7BFF" strokeWidth={2.2} />
+					<NotebookPen size={18} color="#00BAFF" strokeWidth={2.2} />
 				</View>
 				<View className="ml-3">
-					<Text className="font-bold font-poppins text-13 text-text/55 uppercase">
+					<Text className="font-poppins font-semibold text-body-4 text-text/55 uppercase">
 						Notizen
 					</Text>
-					<Text className="mt-0.5 font-poppins text-12 text-text/42">
+					<Text className="mt-1 font-poppins text-body-4 text-text/42">
 						Ziele und Aufgaben
 					</Text>
 				</View>
@@ -121,29 +118,18 @@ function NotesCard({ value }: { value?: string }) {
 			{summary.map((line) => (
 				<Text
 					key={line}
-					className="mb-3 font-poppins text-[#2D2E34]"
-					style={{ fontSize: 15, lineHeight: 22, includeFontPadding: false }}
+					className="mb-3 font-poppins text-body-3 text-foreground"
 				>
 					{line}
 				</Text>
 			))}
 
 			{tasks.length ? (
-				<View className="mt-1" style={{ rowGap: 10 }}>
+				<View className="mt-1 gap-3">
 					{tasks.map((task) => (
-						<View
-							key={task}
-							className="flex-row rounded-[18px] bg-[#F7F8FB] p-3"
-						>
-							<View className="mt-1.5 h-2 w-2 rounded-full bg-primary" />
-							<Text
-								className="ml-3 flex-1 font-poppins text-[#30323A]"
-								style={{
-									fontSize: 14,
-									lineHeight: 21,
-									includeFontPadding: false,
-								}}
-							>
+						<View key={task} className="flex-row rounded-[18px] bg-muted p-3">
+							<View className="mt-2 h-2 w-2 rounded-full bg-primary" />
+							<Text className="ml-3 flex-1 font-poppins text-body-3 text-foreground">
 								{task}
 							</Text>
 						</View>
@@ -254,42 +240,39 @@ export default function EntryDetailScreen() {
 				/>
 
 				<View className="mb-8">
-					<Text
-						className="font-bold font-poppins text-text"
-						style={{ fontSize: 31, lineHeight: 37, includeFontPadding: false }}
-					>
+					<Text className="font-poppins font-semibold text-heading-1 text-text">
 						{title}
 					</Text>
 					{displayKind ? (
-						<Text className="mt-3 font-bold font-poppins text-14 text-primary uppercase">
+						<Text className="mt-3 font-poppins font-semibold text-body-3 text-primary uppercase">
 							{displayKind}
 						</Text>
 					) : null}
 				</View>
 
-				<View style={{ rowGap: 14 }}>
+				<View className="gap-4">
 					<DetailTile
-						icon={<CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />}
+						icon={<CalendarDays size={15} color="#00BAFF" strokeWidth={2.3} />}
 						label={kind === "Hausaufgabe" ? "Geplant" : "Datum"}
 						value={plannedDate}
 					/>
 					<DetailTile
-						icon={<Clock3 size={15} color="#3A7BFF" strokeWidth={2.3} />}
+						icon={<Clock3 size={15} color="#00BAFF" strokeWidth={2.3} />}
 						label="Uhrzeit"
 						value={time}
 					/>
 					<DetailTile
-						icon={<Timer size={15} color="#3A7BFF" strokeWidth={2.3} />}
+						icon={<Timer size={15} color="#00BAFF" strokeWidth={2.3} />}
 						label="Dauer"
 						value={duration}
 					/>
 					<DetailTile
-						icon={<BookOpen size={15} color="#3A7BFF" strokeWidth={2.3} />}
+						icon={<BookOpen size={15} color="#00BAFF" strokeWidth={2.3} />}
 						label="Prüfung"
 						value={displayExamType}
 					/>
 					<DetailTile
-						icon={<CalendarDays size={15} color="#3A7BFF" strokeWidth={2.3} />}
+						icon={<CalendarDays size={15} color="#00BAFF" strokeWidth={2.3} />}
 						label={kind === "Hausaufgabe" ? "Fällig am" : "Termin"}
 						value={dueDate}
 					/>

@@ -22,7 +22,7 @@ export function NotificationButton() {
 			accessibilityRole="button"
 			accessibilityLabel="Benachrichtigungen öffnen"
 			onPress={() => router.push("/notifications")}
-			className="h-14 w-14 items-center justify-center rounded-full bg-white"
+			className="h-14 w-14 items-center justify-center rounded-full bg-card"
 			style={{
 				borderWidth: 1,
 				borderColor: "rgba(17,24,39,0.06)",
@@ -33,7 +33,7 @@ export function NotificationButton() {
 			{hasUnread ? (
 				<View
 					accessibilityLabel="Neue Mitteilungen"
-					className="absolute rounded-full bg-[#FF4D67]"
+					className="absolute rounded-full bg-destructive"
 					style={{
 						top: 14,
 						right: 14,

@@ -19,8 +19,9 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
+import { CloseButton } from "~/components/ui/close-button";
 import { FieldControl, FieldLabel } from "~/components/ui/field";
-import { Attachment, Plus, ScanImage, X } from "~/components/ui/icon";
+import { Attachment, Plus, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -42,6 +43,7 @@ import {
 	parseDateKey,
 	retryOnceAfterAuthResume,
 } from "~/features/learning-plans/utils";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
@@ -49,6 +51,8 @@ import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
 const TOPIC_TEXTAREA_HEIGHT = 160;
 const TOPIC_TEXTAREA_CARD_HEIGHT = 202;
 const UPLOAD_TIMEOUT_MS = 45_000;
+const UPLOAD_COMPLETION_FAILURE_MESSAGE =
+	"Die Datei wurde übertragen, aber Dayova konnte den Upload nicht abschließen. Bitte versuche es erneut.";
 
 const clamp = (value: number, min: number, max: number) =>
 	Math.min(Math.max(value, min), max);
@@ -90,7 +94,7 @@ function UploadSheetOption({
 			activeOpacity={0.86}
 			disabled={disabled}
 			onPress={onPress}
-			className="flex-row items-center bg-white"
+			className="flex-row items-center bg-card"
 			style={{
 				width,
 				height: 96 * scale,
@@ -103,7 +107,7 @@ function UploadSheetOption({
 			}}
 		>
 			<View
-				className="items-center justify-center rounded-full bg-[#EAF3FF]"
+				className="items-center justify-center rounded-full bg-accent"
 				style={{
 					width: 48 * scale,
 					height: 48 * scale,
@@ -115,21 +119,21 @@ function UploadSheetOption({
 			</View>
 			<View style={{ flex: 1, rowGap: 4 * scale }}>
 				<Text
-					className="font-medium font-poppins text-black"
+					className="font-poppins font-semibold text-black"
+					// Upload option typography scales with the measured sheet width.
 					style={{
 						fontSize: 16 * scale,
 						lineHeight: 24 * scale,
-						includeFontPadding: false,
 					}}
 				>
 					{title}
 				</Text>
 				<Text
-					className="font-poppins text-[#7E7E7E]"
+					className="font-poppins text-muted-foreground"
+					// Upload option typography scales with the measured sheet width.
 					style={{
 						fontSize: 12 * scale,
 						lineHeight: 18 * scale,
-						includeFontPadding: false,
 					}}
 				>
 					{description}
@@ -339,13 +343,51 @@ export default function NewLearningPlanScreen() {
 
 		let storageId = uploadData.storageId;
 		if (!storageId) {
-			const parsedUploadResult = JSON.parse(uploadResponseBody) as {
-				storageId?: string;
-			};
-			storageId = parsedUploadResult.storageId ?? null;
+			let parsedUploadResult: { storageId?: string } | null = null;
+			let uploadResponseParseError: unknown = null;
+			let parseErrorMessage: string | null = null;
+			try {
+				parsedUploadResult = JSON.parse(uploadResponseBody) as {
+					storageId?: string;
+				};
+			} catch (error) {
+				uploadResponseParseError = error;
+				parseErrorMessage =
+					error instanceof Error ? error.message : "Unbekannter JSON-Fehler";
+			}
+			storageId = parsedUploadResult?.storageId ?? null;
+			if (!storageId) {
+				const responseHeaders: Record<string, string> = {};
+				uploadResponse.headers.forEach((value, key) => {
+					responseHeaders[key] = value;
+				});
+
+				logDiagnosticError(
+					"Upload response did not provide a storageId.",
+					uploadResponseParseError ??
+						new Error("Storage provider response did not include storageId."),
+					{
+						source: "learning-plans",
+						metadata: {
+							learningPlanId: id,
+							storageProvider: uploadData.storageProvider,
+							uploadMethod: uploadData.storageProvider === "r2" ? "PUT" : "POST",
+							responseStatus: uploadResponse.status,
+							responseStatusText: uploadResponse.statusText,
+							responseHeaders,
+							responseBody: uploadResponseBody || null,
+							responseBodyLength: uploadResponseBody.length,
+							parseErrorMessage,
+							parsedUploadResult,
+							fileName: asset.name,
+							fileType,
+							fileSizeBytes,
+						},
+					},
+				);
+				throw new Error(UPLOAD_COMPLETION_FAILURE_MESSAGE);
+			}
 		}
-		if (!storageId)
-			throw new Error("Upload konnte nicht abgeschlossen werden.");
 
 		await retryOnceAfterAuthResume(() =>
 			registerUploadedDocument({
@@ -541,7 +583,7 @@ export default function NewLearningPlanScreen() {
 					activeOpacity={0.86}
 					disabled={!canUploadMaterial}
 					onPress={() => setIsUploadSheetVisible(true)}
-					className="mb-5 items-center justify-center py-[40px]"
+					className="mb-5 items-center justify-center py-10"
 				>
 					<View
 						className="items-center justify-center"
@@ -549,8 +591,8 @@ export default function NewLearningPlanScreen() {
 							width: 48,
 							height: 48,
 							borderRadius: 24,
-							backgroundColor: "#3A7BFF",
-							shadowColor: "#3A7BFF",
+							backgroundColor: "#00BAFF",
+							shadowColor: "#00BAFF",
 							shadowOpacity: 0.24,
 							shadowRadius: 12,
 							shadowOffset: { width: 0, height: 4 },
@@ -563,7 +605,7 @@ export default function NewLearningPlanScreen() {
 							<Plus size={26} color="#FFFFFF" strokeWidth={2.1} />
 						)}
 					</View>
-					<Text className="mt-3 text-center font-poppins text-13 text-[#8C8C8C]">
+					<Text className="mt-3 text-center font-poppins text-body-4 text-muted-foreground">
 						{openingUploadAction === "files"
 							? "Dateiauswahl wird geöffnet …"
 							: openingUploadAction === "camera"
@@ -584,7 +626,7 @@ export default function NewLearningPlanScreen() {
 				))}
 
 				{errorMessage ? (
-					<Text className="mb-4 font-poppins text-12 text-destructive">
+					<Text className="mb-4 font-poppins text-body-4 text-destructive">
 						{errorMessage}
 					</Text>
 				) : null}
@@ -598,7 +640,7 @@ export default function NewLearningPlanScreen() {
 					disabled={!canContinueTopic || isBusy}
 					onPress={continueToAnalysis}
 					style={{
-						shadowColor: "#3A7BFF",
+						shadowColor: "#00BAFF",
 						shadowOpacity: 0.3,
 						shadowRadius: 14,
 						shadowOffset: { width: 0, height: 7 },
@@ -622,7 +664,7 @@ export default function NewLearningPlanScreen() {
 						onPress={closeUploadSheet}
 					/>
 					<View
-						className="bg-[#F4F8FB]"
+						className="bg-background"
 						style={{
 							width,
 							borderTopLeftRadius: 40 * modalScale,
@@ -639,41 +681,30 @@ export default function NewLearningPlanScreen() {
 						>
 							<View className="flex-1">
 								<Text
-									className="font-medium font-poppins text-black"
+									className="font-poppins font-semibold text-black"
+									// Modal header typography scales with the measured sheet width.
 									style={{
 										fontSize: 16 * modalScale,
 										lineHeight: 24 * modalScale,
-										includeFontPadding: false,
 									}}
 								>
 									Hochladen
 								</Text>
 								<Text
-									className="font-poppins text-[#7E7E7E]"
+									className="font-poppins text-muted-foreground"
+									// Modal description typography scales with the measured sheet width.
 									style={{
 										fontSize: 12 * modalScale,
 										lineHeight: 18 * modalScale,
-										includeFontPadding: false,
 									}}
 								>
 									Wähle aus, wie du deine Unterlagen hinzufügen möchtest.
 								</Text>
 							</View>
-							<TouchableOpacity
+							<CloseButton
 								accessibilityLabel="Hochladen schließen"
-								accessibilityRole="button"
-								hitSlop={8}
-								activeOpacity={0.75}
 								onPress={closeUploadSheet}
-								className="items-center justify-center rounded-full bg-[#D9D9D9]"
-								style={{
-									width: 40 * modalScale,
-									height: 40 * modalScale,
-									boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-								}}
-							>
-								<X size={24 * modalScale} color="#1A1A1A" strokeWidth={2} />
-							</TouchableOpacity>
+							/>
 						</View>
 						<View
 							className="items-center"
@@ -688,11 +719,11 @@ export default function NewLearningPlanScreen() {
 								width={uploadOptionWidth}
 								icon={
 									openingUploadAction === "camera" || isBusy ? (
-										<ActivityIndicator color="#3A7BFF" />
+										<ActivityIndicator color="#00BAFF" />
 									) : (
 										<ScanImage
 											size={24 * modalScale}
-											color="#3A7BFF"
+											color="#00BAFF"
 											strokeWidth={1.8}
 										/>
 									)
@@ -707,11 +738,11 @@ export default function NewLearningPlanScreen() {
 								width={uploadOptionWidth}
 								icon={
 									openingUploadAction === "files" || isBusy ? (
-										<ActivityIndicator color="#3A7BFF" />
+										<ActivityIndicator color="#00BAFF" />
 									) : (
 										<Attachment
 											size={24 * modalScale}
-											color="#3A7BFF"
+											color="#00BAFF"
 											strokeWidth={1.8}
 										/>
 									)

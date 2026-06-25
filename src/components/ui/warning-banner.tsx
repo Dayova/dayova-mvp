@@ -1,6 +1,7 @@
 import { TouchableOpacity, View, type ViewProps } from "react-native";
 import { CircleAlert } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
 
 type WarningBannerProps = ViewProps & {
@@ -26,34 +27,26 @@ function WarningBanner({
 	return (
 		<View
 			className={cn(
-				"flex-row rounded-[24px] bg-[#FFF7E0] px-5 py-5",
+				"flex-row gap-3 rounded-[24px] bg-warning-subtle px-5 py-5",
 				className,
 			)}
-			style={[{ gap: 12 }, style]}
+			style={style}
 			{...props}
 		>
-			<CircleAlert size={22} color="#F59E0B" strokeWidth={2.2} />
-			<View className="flex-1" style={{ gap: 4 }}>
+			<CircleAlert
+				size={22}
+				color={DAYOVA_DESIGN_SYSTEM.colors.warning}
+				strokeWidth={2.2}
+			/>
+			<View className="flex-1 gap-1">
 				{title ? (
-					<Text
-						className="font-bold font-poppins text-[#7A5A12]"
-						style={{
-							fontSize: 14,
-							lineHeight: 20,
-							includeFontPadding: false,
-						}}
-					>
+					<Text className="font-poppins font-semibold text-body-3 text-warning-foreground">
 						{title}
 					</Text>
 				) : null}
 				<Text
 					selectable
-					className="font-poppins text-[#7A5A12]"
-					style={{
-						fontSize: 12,
-						lineHeight: 18,
-						includeFontPadding: false,
-					}}
+					className="font-poppins text-body-4 text-warning-foreground"
 				>
 					{description}
 				</Text>
@@ -63,21 +56,14 @@ function WarningBanner({
 						accessibilityLabel={ctaAccessibilityLabel ?? ctaLabel}
 						activeOpacity={0.82}
 						onPress={onPressCta}
-						className="mt-2 self-start rounded-full bg-white"
+						className="mt-2 self-start rounded-full bg-card"
 						style={{
 							minHeight: 38,
 							paddingHorizontal: 20,
 							paddingVertical: 10,
 						}}
 					>
-						<Text
-							className="font-poppins font-semibold text-[#7A5A12]"
-							style={{
-								fontSize: 12,
-								lineHeight: 16,
-								includeFontPadding: false,
-							}}
-						>
+						<Text className="font-poppins font-semibold text-body-4 text-warning-foreground">
 							{ctaLabel}
 						</Text>
 					</TouchableOpacity>

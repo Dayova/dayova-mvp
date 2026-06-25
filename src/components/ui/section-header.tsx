@@ -18,20 +18,15 @@ function SectionHeader({
 	return (
 		<View className={cn("mb-7", className)} {...props}>
 			<Text
-				className="font-poppins font-semibold text-[#17171C]"
-				style={{
-					fontSize: titleSize === "sm" ? 18 : 20,
-					lineHeight: titleSize === "sm" ? 24 : 26,
-					includeFontPadding: false,
-				}}
+				className={cn(
+					"font-poppins font-semibold text-foreground",
+					titleSize === "sm" ? "text-body-2" : "text-body-1",
+				)}
 			>
 				{title}
 			</Text>
 			{description ? (
-				<Text
-					className="mt-2 font-poppins text-text/55"
-					style={{ fontSize: 14, lineHeight: 20, includeFontPadding: false }}
-				>
+				<Text className="mt-2 font-poppins text-body-3 text-text/55">
 					{description}
 				</Text>
 			) : null}

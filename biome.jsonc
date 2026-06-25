@@ -19,7 +19,7 @@
 			"knip.json",
 			"metro.config.js",
 			"package.json",
-			"tailwind.config.js",
+			"tailwind.config.ts",
 			"tsconfig.json",
 			"!convex/_generated"
 		]

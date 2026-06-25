@@ -7,18 +7,18 @@ import { testID as testIDModifier } from "@expo/ui/jetpack-compose/modifiers";
 import type { SwitchProps } from "~/components/ui/switch.types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
-const DAYOVA_BLUE = DAYOVA_DESIGN_SYSTEM.colors.primary;
+const DAYOVA_PRIMARY = DAYOVA_DESIGN_SYSTEM.colors.primary;
 
 const switchColors = {
-	checkedThumbColor: "#FFFFFF",
-	checkedTrackColor: DAYOVA_BLUE,
-	checkedBorderColor: DAYOVA_BLUE,
-	uncheckedThumbColor: "#8C8F98",
-	uncheckedTrackColor: "#F7F8FA",
-	uncheckedBorderColor: "#CDD3DF",
-	disabledCheckedThumbColor: "#FFFFFF",
-	disabledCheckedTrackColor: "#A9C4FF",
-	disabledCheckedBorderColor: "#A9C4FF",
+	checkedThumbColor: DAYOVA_DESIGN_SYSTEM.colors.surface,
+	checkedTrackColor: DAYOVA_PRIMARY,
+	checkedBorderColor: DAYOVA_PRIMARY,
+	uncheckedThumbColor: DAYOVA_DESIGN_SYSTEM.colors.textMuted,
+	uncheckedTrackColor: DAYOVA_DESIGN_SYSTEM.colors.mutedSurface,
+	uncheckedBorderColor: DAYOVA_DESIGN_SYSTEM.colors.border,
+	disabledCheckedThumbColor: DAYOVA_DESIGN_SYSTEM.colors.surface,
+	disabledCheckedTrackColor: DAYOVA_DESIGN_SYSTEM.colors.primaryAccent,
+	disabledCheckedBorderColor: DAYOVA_DESIGN_SYSTEM.colors.primaryAccent,
 	disabledUncheckedThumbColor: "#B8BEC9",
 	disabledUncheckedTrackColor: "#ECEEF3",
 	disabledUncheckedBorderColor: "#D7DBE3",
@@ -26,7 +26,7 @@ const switchColors = {
 
 function Switch({ value, onValueChange, disabled, testID }: SwitchProps) {
 	return (
-		<Host matchContents seedColor={DAYOVA_BLUE}>
+		<Host matchContents seedColor={DAYOVA_PRIMARY}>
 			<ComposeSwitch
 				value={value}
 				enabled={!disabled}

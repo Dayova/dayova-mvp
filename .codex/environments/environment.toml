@@ -3,6 +3,12 @@ version = 1
 name = "dayova-mvp"
 
 [setup]
-script = '''
-node -e "const fs=require('fs'); const path=require('path'); const {spawnSync}=require('child_process'); const source=process.env.CODEX_SOURCE_TREE_PATH; const worktree=process.env.CODEX_WORKTREE_PATH; if (!source || !worktree) throw new Error('Missing CODEX_SOURCE_TREE_PATH or CODEX_WORKTREE_PATH'); const from=path.join(source,'.env.local'); const to=path.join(worktree,'.env.local'); if (fs.existsSync(from)) fs.copyFileSync(from,to); else console.warn('Missing '+from+'; skipping .env.local copy'); const command=process.platform==='win32'?'corepack.cmd':'corepack'; const result=spawnSync(command,['pnpm','install','--frozen-lockfile'],{cwd:worktree,stdio:'inherit',shell:process.platform==='win32'}); process.exit(result.status ?? 1);"
+script = "node -e \"const fs=require('fs'); const path=require('path'); const {spawnSync}=require('child_process'); const source=process.env.CODEX_SOURCE_TREE_PATH; const worktree=process.env.CODEX_WORKTREE_PATH; if (!source || !worktree) throw new Error('Missing CODEX_SOURCE_TREE_PATH or CODEX_WORKTREE_PATH'); const from=path.join(source,'.env.local'); const to=path.join(worktree,'.env.local'); if (fs.existsSync(from)) fs.copyFileSync(from,to); else console.warn('Missing '+from+'; skipping .env.local copy'); const command=process.platform==='win32'?'corepack.cmd':'corepack'; const result=spawnSync(command,['pnpm','install','--frozen-lockfile'],{cwd:worktree,stdio:'inherit',shell:process.platform==='win32'}); process.exit(result.status ?? 1);\""
+
+[[actions]]
+name = "Run on ios in dev"
+icon = "tool"
+command = '''
+pnpm i
+pnpm ios
 '''

@@ -150,9 +150,8 @@ function HomeworkPillField({
 	const content = (
 		<>
 			<Text
-				className="flex-1 font-poppins text-16 text-text/46"
+				className="flex-1 font-poppins text-body-2 text-text/46"
 				numberOfLines={1}
-				style={{ includeFontPadding: false }}
 			>
 				{value || placeholder}
 			</Text>
@@ -198,10 +197,10 @@ function HomeworkScreenHeader({
 	return (
 		<View className="mb-7 flex-row items-center justify-between">
 			<BackButton onPress={onBack} />
-			<Text className="font-poppins font-semibold text-16 text-text">
+			<Text className="font-poppins font-semibold text-body-2 text-text">
 				{title}
 			</Text>
-			<View style={{ width: 48 }} />
+			<View className="w-12" />
 		</View>
 	);
 }
@@ -487,7 +486,7 @@ export default function NewEntryScreen() {
 						return (
 							<SubjectIcon
 								size={19}
-								color={isSelected ? "#3A7BFF" : "#6B7280"}
+								color={isSelected ? "#00BAFF" : "#697586"}
 								strokeWidth={2}
 							/>
 						);
@@ -496,7 +495,7 @@ export default function NewEntryScreen() {
 					return (
 						<ClipboardList
 							size={19}
-							color={isSelected ? "#3A7BFF" : "#6B7280"}
+							color={isSelected ? "#00BAFF" : "#697586"}
 							strokeWidth={2}
 						/>
 					);
@@ -506,7 +505,7 @@ export default function NewEntryScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-[#F5F3F6]">
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 			<KeyboardSafeScrollView
@@ -524,17 +523,10 @@ export default function NewEntryScreen() {
 						<>
 							<HomeworkScreenHeader title="Abgabe" onBack={handleBack} />
 							<View className="mb-7">
-								<Text
-									className="font-poppins font-semibold text-text"
-									style={{
-										fontSize: 15,
-										lineHeight: 20,
-										includeFontPadding: false,
-									}}
-								>
+								<Text className="font-poppins font-semibold text-body-3 text-text">
 									Hausaufgabe eintragen
 								</Text>
-								<Text className="mt-2 font-poppins text-14 text-text/42">
+								<Text className="mt-2 font-poppins text-body-3 text-text/42">
 									Trage zuerst Fälligkeit, Fach und Notiz ein.
 								</Text>
 							</View>
@@ -543,7 +535,7 @@ export default function NewEntryScreen() {
 								label="Fälligkeitsdatum"
 								value={formatCompactDate(dueDate)}
 								icon={
-									<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
+									<CalendarDays size={20} color="#697586" strokeWidth={2.1} />
 								}
 								onPress={() => setPickerTarget("dueDate")}
 							/>
@@ -559,17 +551,17 @@ export default function NewEntryScreen() {
 									}}
 								>
 									<Text
-										className="flex-1 font-poppins text-16"
+										className="flex-1 font-poppins text-body-2"
 										numberOfLines={1}
 										style={{
-											color: subject ? "#202127" : "rgba(17,24,39,0.32)",
-											includeFontPadding: false,
+											// Placeholder color depends on whether a subject is selected.
+											color: subject ? "#1A1A1A" : "rgba(26,26,26,0.32)",
 										}}
 									>
 										{subject || "Wähle das Fach aus"}
 									</Text>
 									<FieldAccessory>
-										<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
+										<ChevronDown size={20} color="#1A1A1A" strokeWidth={2.1} />
 									</FieldAccessory>
 								</FieldTrigger>
 							</Field>
@@ -595,17 +587,10 @@ export default function NewEntryScreen() {
 						<>
 							<HomeworkScreenHeader title="Erledigen" onBack={handleBack} />
 							<View className="mb-5">
-								<Text
-									className="font-poppins font-semibold text-text"
-									style={{
-										fontSize: 15,
-										lineHeight: 20,
-										includeFontPadding: false,
-									}}
-								>
+								<Text className="font-poppins font-semibold text-body-3 text-text">
 									Hausaufgabe eintragen
 								</Text>
-								<Text className="mt-2 font-poppins text-14 text-text/42">
+								<Text className="mt-2 font-poppins text-body-3 text-text/42">
 									Plane jetzt, wann du die Hausaufgabe erledigst.
 								</Text>
 							</View>
@@ -614,18 +599,18 @@ export default function NewEntryScreen() {
 								label="Erledigungsdatum"
 								value={formatCompactDate(plannedDate)}
 								icon={
-									<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
+									<CalendarDays size={20} color="#697586" strokeWidth={2.1} />
 								}
 								onPress={() => setPickerTarget("plannedDate")}
 							/>
 
-							<View className="mb-5 flex-row" style={{ columnGap: 12 }}>
+							<View className="mb-5 flex-row gap-3">
 								<View className="flex-1">
 									<HomeworkPillField
 										value={formatTime(plannedTime)}
 										placeholder="Von"
 										icon={
-											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
+											<Clock3 size={19} color="#697586" strokeWidth={2.1} />
 										}
 										onPress={() => setPickerTarget("plannedTime")}
 										className="min-h-[64px] px-5"
@@ -636,7 +621,7 @@ export default function NewEntryScreen() {
 										value={formatTime(plannedEndTime)}
 										placeholder="Bis"
 										icon={
-											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
+											<Clock3 size={19} color="#697586" strokeWidth={2.1} />
 										}
 										onPress={() => setPickerTarget("plannedEndTime")}
 										className="min-h-[64px] px-5"
@@ -651,7 +636,7 @@ export default function NewEntryScreen() {
 								accessibilityLabel="Erfolgsdialog schließen"
 								title="Hausaufgabe ist eingetragen"
 								description="Deine Hausaufgabe wurde erfolgreich eingetragen."
-								icon={<Check size={48} color="#28C76F" strokeWidth={1.2} />}
+								icon={<Check size={48} color="#34C759" strokeWidth={1.2} />}
 							>
 								<Button className="mt-6 w-full" onPress={finish}>
 									<Text>Fertig</Text>
@@ -663,16 +648,10 @@ export default function NewEntryScreen() {
 					<>
 						<HomeworkScreenHeader title="Prüfungstermin" onBack={handleBack} />
 						<View className="mb-7">
-							<Text
-								className="font-poppins font-semibold text-16 text-text"
-								style={{
-									lineHeight: 20,
-									includeFontPadding: false,
-								}}
-							>
+							<Text className="font-poppins font-semibold text-body-2 text-text">
 								{title}
 							</Text>
-							<Text className="mt-2 font-poppins text-14 text-text/42">
+							<Text className="mt-2 font-poppins text-body-3 text-text/42">
 								{subtitle}
 							</Text>
 						</View>
@@ -685,16 +664,16 @@ export default function NewEntryScreen() {
 							label="Prüfungsdatum"
 							value={formatCompactDate(plannedDate)}
 							icon={
-								<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
+								<CalendarDays size={20} color="#697586" strokeWidth={2.1} />
 							}
 							onPress={() => setPickerTarget("plannedDate")}
 						/>
-						<View className="mb-5 flex-row" style={{ columnGap: 12 }}>
+						<View className="mb-5 flex-row gap-3">
 							<View className="flex-1">
 								<HomeworkPillField
 									value={formatTime(plannedTime)}
 									placeholder="Von"
-									icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
+									icon={<Clock3 size={19} color="#697586" strokeWidth={2.1} />}
 									onPress={() => setPickerTarget("plannedTime")}
 									className="min-h-[64px] px-5"
 								/>
@@ -703,7 +682,7 @@ export default function NewEntryScreen() {
 								<HomeworkPillField
 									value={formatTime(plannedEndTime)}
 									placeholder="Bis"
-									icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
+									icon={<Clock3 size={19} color="#697586" strokeWidth={2.1} />}
 									onPress={() => setPickerTarget("plannedEndTime")}
 									className="min-h-[64px] px-5"
 								/>
@@ -721,17 +700,17 @@ export default function NewEntryScreen() {
 								}}
 							>
 								<Text
-									className="flex-1 font-poppins text-16"
+									className="flex-1 font-poppins text-body-2"
 									numberOfLines={1}
 									style={{
-										color: subject ? "#202127" : "rgba(17,24,39,0.32)",
-										includeFontPadding: false,
+										// Placeholder color depends on whether a subject is selected.
+										color: subject ? "#1A1A1A" : "rgba(26,26,26,0.32)",
 									}}
 								>
 									{subject || "Wähle das Fach aus"}
 								</Text>
 								<FieldAccessory>
-									<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
+									<ChevronDown size={20} color="#1A1A1A" strokeWidth={2.1} />
 								</FieldAccessory>
 							</FieldTrigger>
 						</Field>
@@ -747,17 +726,17 @@ export default function NewEntryScreen() {
 								}}
 							>
 								<Text
-									className="flex-1 font-poppins text-16"
+									className="flex-1 font-poppins text-body-2"
 									numberOfLines={1}
 									style={{
-										color: examTypeLabel ? "#202127" : "rgba(17,24,39,0.32)",
-										includeFontPadding: false,
+										// Placeholder color depends on whether an exam type is selected.
+										color: examTypeLabel ? "#1A1A1A" : "rgba(26,26,26,0.32)",
 									}}
 								>
 									{examTypeLabel || "Wähle die Prüfungsart aus"}
 								</Text>
 								<FieldAccessory>
-									<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
+									<ChevronDown size={20} color="#1A1A1A" strokeWidth={2.1} />
 								</FieldAccessory>
 							</FieldTrigger>
 						</Field>
@@ -776,7 +755,7 @@ export default function NewEntryScreen() {
 							<Text
 								accessibilityRole="alert"
 								accessibilityLiveRegion="polite"
-								className="mb-3 text-center font-poppins text-12 text-destructive"
+								className="mb-3 text-center font-poppins text-body-4 text-destructive"
 							>
 								{errorMessage}
 							</Text>
@@ -810,12 +789,12 @@ export default function NewEntryScreen() {
 							<Text
 								accessibilityRole="alert"
 								accessibilityLiveRegion="polite"
-								className="mb-3 text-center font-poppins text-12 text-destructive"
+								className="mb-3 text-center font-poppins text-body-4 text-destructive"
 							>
 								{errorMessage}
 							</Text>
 						) : null}
-						<View className="flex-row" style={{ columnGap: 12 }}>
+						<View className="flex-row gap-3">
 							<Button
 								className="flex-1"
 								variant="neutral"

@@ -120,7 +120,7 @@ export default function LearningPlanQuizScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-[#F5F3F6]">
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 			<KeyboardSafeScrollView

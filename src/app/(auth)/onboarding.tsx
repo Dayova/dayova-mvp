@@ -7,6 +7,7 @@ import {
 	Keyboard,
 	Platform,
 	TouchableOpacity,
+	type ViewStyle,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -33,6 +34,8 @@ import { useOnboarding } from "~/context/OnboardingContext";
 import { useBackIntent } from "~/lib/navigation";
 
 type MascotPose = ComponentProps<typeof Mascot>["pose"];
+
+const keyboardScrollContentStyle = { flexGrow: 1 } satisfies ViewStyle;
 
 type IntroStep = {
 	kind: "intro";
@@ -409,12 +412,12 @@ export default function WelcomeScreen() {
 	useBackIntent(activeIndex > 0 && !isCompletingOnboarding, handleBack);
 
 	return (
-		<View className="flex-1 bg-[#FCFCFD]">
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 
 			<View
-				className="flex-1 px-[22px]"
+				className="flex-1 px-6"
 				style={{
 					paddingTop: Math.max(insets.top + 12, 18),
 					paddingBottom: Math.max(insets.bottom + 18, 24),
@@ -563,7 +566,7 @@ export default function WelcomeScreen() {
 							)}
 						</View>
 
-						<View className="px-7 pt-7 pb-6" style={{ rowGap: 18 }}>
+						<View className="gap-5 px-7 pt-7 pb-6">
 							<View className="flex-row justify-between">
 								<View
 									className="flex-row"
@@ -577,33 +580,19 @@ export default function WelcomeScreen() {
 												width: 8,
 												height: 8,
 												backgroundColor:
-													index === activeIndex ? "#3A7BFF" : "#DDE7FF",
+													index === activeIndex ? "#00BAFF" : "#EAF8FF",
 											}}
 										/>
 									))}
 								</View>
 							</View>
 
-							<View style={{ rowGap: 18 }}>
-								<Text
-									className="font-bold font-poppins text-[#111111]"
-									style={{
-										fontSize: 25,
-										lineHeight: 33,
-										includeFontPadding: false,
-									}}
-								>
+							<View className="gap-5">
+								<Text className="font-poppins font-semibold text-foreground text-heading-2">
 									{activeStep.title}
 								</Text>
 
-								<Text
-									className="font-poppins text-[#7D7F87]"
-									style={{
-										fontSize: 16,
-										lineHeight: 24,
-										includeFontPadding: false,
-									}}
-								>
+								<Text className="font-poppins text-body-2 text-muted-foreground">
 									{activeStep.description}
 								</Text>
 							</View>
@@ -615,7 +604,8 @@ export default function WelcomeScreen() {
 					<KeyboardSafeScrollView
 						className="flex-1"
 						bottomOffset={112}
-						contentContainerStyle={{ flexGrow: 1 }}
+						// KeyboardSafeScrollView requires content layout through style.
+						contentContainerStyle={keyboardScrollContentStyle}
 					>
 						<View className="flex-row items-center">
 							<BackButton
@@ -630,7 +620,7 @@ export default function WelcomeScreen() {
 							/>
 							<View className="ml-4 flex-1">
 								<View
-									className="h-[4px] overflow-hidden rounded-full bg-[#E6EDFF]"
+									className="h-1 overflow-hidden rounded-full bg-primary/20"
 									style={{ borderCurve: "continuous" }}
 								>
 									<View
@@ -657,36 +647,15 @@ export default function WelcomeScreen() {
 								/>
 							</View>
 
-							<View className="items-center" style={{ rowGap: 10 }}>
-								<Text
-									className="font-poppins text-[#A0A4AE]"
-									style={{
-										fontSize: 11,
-										lineHeight: 16,
-										includeFontPadding: false,
-									}}
-								>
+							<View className="items-center gap-3">
+								<Text className="font-poppins text-body-5 text-muted-foreground">
 									{activeStep.kind === "info" ? "Gute Nachricht" : "Sag mal"}
 								</Text>
-								<Text
-									className="text-center font-bold font-poppins text-[#111111]"
-									style={{
-										fontSize: 25,
-										lineHeight: 31,
-										includeFontPadding: false,
-									}}
-								>
+								<Text className="text-center font-poppins font-semibold text-foreground text-heading-2">
 									{activeStep.title}
 								</Text>
 								{"description" in activeStep && activeStep.description ? (
-									<Text
-										className="max-w-[290px] text-center font-poppins text-[#7D7F87]"
-										style={{
-											fontSize: 15,
-											lineHeight: 22,
-											includeFontPadding: false,
-										}}
-									>
+									<Text className="max-w-72 text-center font-poppins text-body-3 text-muted-foreground">
 										{activeStep.description}
 									</Text>
 								) : null}
@@ -700,7 +669,7 @@ export default function WelcomeScreen() {
 								}}
 							>
 								{activeStep.kind === "select" ? (
-									<View style={{ rowGap: 12 }}>
+									<View className="gap-3">
 										{activeStep.options.map((option) => {
 											const isSelected = answers[activeStep.field] === option;
 
@@ -714,25 +683,20 @@ export default function WelcomeScreen() {
 													onPress={() => setAnswer(activeStep.field, option)}
 													className="min-h-[60px] justify-center rounded-[22px] px-5"
 													style={{
-														backgroundColor: isSelected ? "#3A7BFF" : "#FFFFFF",
+														backgroundColor: isSelected ? "#00BAFF" : "#FFFFFF",
 														borderWidth: 1.2,
 														borderColor: isSelected
-															? "#3A7BFF"
+															? "#00BAFF"
 															: "rgba(17,24,39,0.08)",
 														boxShadow: isSelected
-															? "0 12px 26px rgba(58, 123, 255, 0.18)"
+															? "0 12px 26px rgba(0, 186, 255, 0.18)"
 															: "0 10px 22px rgba(20, 28, 48, 0.05)",
 													}}
 												>
 													<Text
 														className={`font-poppins font-semibold ${
-															isSelected ? "text-white" : "text-[#111111]"
+															isSelected ? "text-white" : "text-foreground"
 														}`}
-														style={{
-															fontSize: 16,
-															lineHeight: 22,
-															includeFontPadding: false,
-														}}
 													>
 														{option}
 													</Text>
@@ -756,8 +720,8 @@ export default function WelcomeScreen() {
 										autoComplete="street-address"
 										textContentType="addressState"
 										returnKeyType="done"
-										controlClassName="bg-white"
-										inputClassName="text-[18px]"
+										controlClassName="bg-card"
+										inputClassName="text-body-2"
 									/>
 								) : null}
 
@@ -772,18 +736,14 @@ export default function WelcomeScreen() {
 													setShowBirthDatePicker(true);
 												}}
 												invalid={Boolean(errors.birthDate)}
-												className="min-h-[64px] rounded-[28px] bg-white px-5"
+												className="min-h-[64px] rounded-[28px] bg-card px-5"
 											>
 												<View className="flex-1">
 													<Text
-														className={`font-poppins text-16 ${
+														className={`font-poppins text-body-2 ${
 															selectedBirthDate ? "text-text" : "text-text/36"
 														}`}
 														numberOfLines={1}
-														style={{
-															includeFontPadding: false,
-															lineHeight: 24,
-														}}
 													>
 														{selectedBirthDate
 															? `${getAgeFromBirthDate(selectedBirthDate)} Jahre`

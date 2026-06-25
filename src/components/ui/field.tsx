@@ -3,17 +3,9 @@ import {
 	type TouchableOpacityProps,
 	View,
 	type ViewProps,
-	type ViewStyle,
 } from "react-native";
 import { Text } from "~/components/ui/text";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
-
-const fieldSurfaceStyle: ViewStyle = DAYOVA_DESIGN_SYSTEM.elevation.surface;
-
-const fieldInvalidStyle: ViewStyle = {
-	borderColor: "rgba(239,68,68,0.72)",
-};
 
 function Field({ className, ...props }: ViewProps) {
 	return <View className={cn("mb-6", className)} {...props} />;
@@ -26,11 +18,10 @@ function FieldLabel({
 }: React.ComponentProps<typeof Text>) {
 	return (
 		<Text
-			className={cn(
-				"mb-3 font-poppins font-semibold text-16 text-text",
-				className,
-			)}
-			style={[{ lineHeight: 22, includeFontPadding: false }, style]}
+			className={cn("mb-2 font-poppins text-body-4 text-text", className)}
+			// Text style passthrough is kept for rare caller-supplied runtime text
+			// values; static typography belongs in NativeWind classes.
+			style={style}
 			{...props}
 		/>
 	);
@@ -49,11 +40,14 @@ function FieldControl({
 	return (
 		<View
 			className={cn(
-				"min-h-[64px] flex-row items-center rounded-[28px] bg-white px-5",
+				"min-h-16 flex-row items-center rounded-input border border-transparent bg-card px-5 shadow-black/5 shadow-sm",
+				invalid && "border-destructive/70",
 				disabled && "opacity-50",
 				className,
 			)}
-			style={[fieldSurfaceStyle, invalid && fieldInvalidStyle, style]}
+			// Style passthrough is only for runtime-only values that NativeWind
+			// cannot know at build time.
+			style={style}
 			{...props}
 		/>
 	);
@@ -73,11 +67,14 @@ function FieldTrigger({
 		<TouchableOpacity
 			activeOpacity={activeOpacity}
 			className={cn(
-				"min-h-[64px] flex-row items-center rounded-[28px] bg-white px-5",
+				"min-h-16 flex-row items-center rounded-input border border-transparent bg-card px-5 shadow-black/5 shadow-sm",
+				invalid && "border-destructive/70",
 				disabled && "opacity-50",
 				className,
 			)}
-			style={[fieldSurfaceStyle, invalid && fieldInvalidStyle, style]}
+			// Style passthrough is only for runtime-only values that NativeWind
+			// cannot know at build time.
+			style={style}
 			disabled={disabled}
 			{...props}
 		/>
@@ -95,7 +92,7 @@ function FieldMessage({
 	return (
 		<Text
 			className={cn(
-				"mt-2 ml-1 font-poppins text-12 text-destructive",
+				"mt-2 ml-1 font-poppins text-body-4 text-destructive",
 				className,
 			)}
 			{...props}

@@ -1,4 +1,5 @@
 import { useConvexAuth, useQuery } from "convex/react";
+import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { TouchableOpacity, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
@@ -8,6 +9,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 
 function ProgressRing({ progressPercent }: { progressPercent: number }) {
@@ -24,7 +26,7 @@ function ProgressRing({ progressPercent }: { progressPercent: number }) {
 					cx={size / 2}
 					cy={size / 2}
 					r={radius}
-					stroke="#E7EBF4"
+					stroke={DAYOVA_DESIGN_SYSTEM.colors.light2}
 					strokeWidth={strokeWidth}
 					fill="none"
 				/>
@@ -32,7 +34,7 @@ function ProgressRing({ progressPercent }: { progressPercent: number }) {
 					cx={size / 2}
 					cy={size / 2}
 					r={radius}
-					stroke="#3A7BFF"
+					stroke={DAYOVA_DESIGN_SYSTEM.colors.primary}
 					strokeWidth={strokeWidth}
 					fill="none"
 					strokeLinecap="round"
@@ -41,10 +43,7 @@ function ProgressRing({ progressPercent }: { progressPercent: number }) {
 					transform={`rotate(-90 ${size / 2} ${size / 2})`}
 				/>
 			</Svg>
-			<Text
-				className="font-poppins font-semibold text-[#17171C]"
-				style={{ fontSize: 12, lineHeight: 14, includeFontPadding: false }}
-			>
+			<Text className="font-poppins font-semibold text-body-4 text-foreground">
 				{`${progress}%`}
 			</Text>
 		</View>
@@ -65,20 +64,15 @@ function LearningPlanCard({
 	return (
 		<ActionSurface activeOpacity={0.88} className="px-5 py-4">
 			<View className="flex-row items-center">
-				<View
-					className="h-12 w-12 items-center justify-center rounded-full"
-					style={{
-						backgroundColor: "#FFE3F4",
-						boxShadow: "0 8px 18px rgba(255, 105, 180, 0.16)",
-					}}
-				>
-					<Route2 size={22} color="#FF58B8" strokeWidth={2.05} />
+				<View className="h-12 w-12 items-center justify-center rounded-full bg-system-subtle shadow-md shadow-primary/15">
+					<Route2
+						size={22}
+						color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+						strokeWidth={2.05}
+					/>
 				</View>
 
-				<Text
-					className="ml-6 flex-1 font-poppins font-semibold text-[#17171C]"
-					style={{ fontSize: 20, lineHeight: 24, includeFontPadding: false }}
-				>
+				<Text className="ml-6 flex-1 font-poppins font-semibold text-body-1 text-foreground">
 					{title}
 				</Text>
 
@@ -89,6 +83,7 @@ function LearningPlanCard({
 }
 
 export default function PlansScreen() {
+	const router = useRouter();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningPlans = useQuery(
@@ -101,27 +96,22 @@ export default function PlansScreen() {
 			<StatusBar style="dark" />
 			<ScreenScroll topPadding={84} bottomPadding={150} horizontalPadding={24}>
 				<View className="flex-row items-center justify-between">
-					<Text
-						className="font-bold font-poppins text-[#202127]"
-						style={{ fontSize: 24, lineHeight: 28, includeFontPadding: false }}
-					>
+					<Text className="font-poppins font-semibold text-foreground text-heading-2">
 						Deine Lernpläne
 					</Text>
 
 					<TouchableOpacity
 						activeOpacity={0.86}
-						className="h-14 w-14 items-center justify-center rounded-full bg-white"
-						style={{
-							borderWidth: 1,
-							borderColor: "rgba(17,24,39,0.06)",
-							boxShadow: "0 10px 22px rgba(21, 29, 48, 0.08)",
-						}}
+						accessibilityRole="button"
+						accessibilityLabel="Benachrichtigungen öffnen"
+						onPress={() => router.push("/notifications")}
+						className="h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-card shadow-black/5 shadow-lg"
 					>
 						<Bell size={22} color="#1A1A1A" strokeWidth={2.2} />
 					</TouchableOpacity>
 				</View>
 
-				<View className="mt-9" style={{ rowGap: 18 }}>
+				<View className="mt-9 gap-5">
 					{learningPlans?.map((plan) => (
 						<LearningPlanCard
 							key={plan.id}
