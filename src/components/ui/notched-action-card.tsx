@@ -2,8 +2,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
 import {
 	Pressable,
-	View,
 	type PressableProps,
+	View,
 	type ViewProps,
 	type ViewStyle,
 } from "react-native";
@@ -16,13 +16,25 @@ type NotchedActionCardProps = ViewProps & {
 	actionIcon: ReactNode;
 	onActionPress: PressableProps["onPress"];
 	actionSize?: number;
+	cardHeight?: number;
+	cardPath?: string;
 	cardStyle?: ViewStyle;
 };
+
+const DEFAULT_CARD_WIDTH = 368;
+const DEFAULT_CARD_HEIGHT = 211;
+const DEFAULT_CARD_PATH =
+	"M40 1 H329 C351 1 368 18 368 40 V100 C368 129 348 150 318 150 C300 150 292 166 292 184 C292 199 284 207 272 211 H40 C18 211 1 194 1 172 V40 C1 18 18 1 40 1 Z";
+const COMPACT_CARD_HEIGHT = 164;
+const COMPACT_CARD_PATH =
+	"M40 1 H329 C351 1 368 18 368 40 V54 C368 83 348 104 318 104 C300 104 292 120 292 138 C292 153 284 161 272 164 H40 C18 164 1 147 1 125 V40 C1 18 18 1 40 1 Z";
 
 export function NotchedActionCard({
 	actionAccessibilityLabel,
 	actionIcon,
 	actionSize = 56,
+	cardHeight = DEFAULT_CARD_HEIGHT,
+	cardPath = DEFAULT_CARD_PATH,
 	cardStyle,
 	children,
 	className,
@@ -30,11 +42,6 @@ export function NotchedActionCard({
 	style,
 	...props
 }: NotchedActionCardProps) {
-	const cardWidth = 368;
-	const cardHeight = 211;
-	const cardPath =
-		"M40 1 H329 C351 1 368 18 368 40 V100 C368 129 348 150 318 150 C300 150 292 166 292 184 C292 199 284 207 272 211 H40 C18 211 1 194 1 172 V40 C1 18 18 1 40 1 Z";
-
 	return (
 		<View
 			className={cn("relative", className)}
@@ -45,7 +52,7 @@ export function NotchedActionCard({
 				pointerEvents="none"
 				width="100%"
 				height={cardHeight}
-				viewBox={`0 0 ${cardWidth} ${cardHeight}`}
+				viewBox={`0 0 ${DEFAULT_CARD_WIDTH} ${cardHeight}`}
 				preserveAspectRatio="none"
 				style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
 			>
@@ -96,5 +103,15 @@ export function NotchedActionCard({
 				</LinearGradient>
 			</Pressable>
 		</View>
+	);
+}
+
+export function CompactNotchedActionCard(props: NotchedActionCardProps) {
+	return (
+		<NotchedActionCard
+			{...props}
+			cardHeight={COMPACT_CARD_HEIGHT}
+			cardPath={COMPACT_CARD_PATH}
+		/>
 	);
 }
