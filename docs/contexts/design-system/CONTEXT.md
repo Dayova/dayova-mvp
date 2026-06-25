@@ -34,9 +34,16 @@ secondary text `#697586`, border `#DCE6EE`, light 2 `#F3F6FA`, and light 3
 variables and classes should not be introduced until the dark-mode design is
 finalized.
 
-Badge subtle fills match Figma exactly: wrong/warning `#FFECD6`, info
-`#FFF8CC`, system `#F1F7FB`, success `#EAFFF1`, theorie `#EEECFF`, ueben
-`#F4ECFF`, praxis `#E7FBF6`, and hausaufgabe `#F3E8F0`.
+Badge fills use wrong/warning `#FF9500`, info `#C9A100`, system `#00BAFF`,
+success `#34C759`, theorie `#5856D6`, ueben `#AF52DE`, praxis `#00C7BE`, and
+hausaufgabe `#B88AAE`. Badge subtle fills match Figma exactly: wrong/warning
+`#FFECD6`, info `#FFF8CC`, system `#F1F7FB`, success `#EAFFF1`, theorie
+`#EEECFF`, ueben `#F4ECFF`, praxis `#E7FBF6`, and hausaufgabe `#F3E8F0`.
+
+The `*-foreground` CSS variables are implementation contrast helpers for
+Tailwind classes such as `text-warning-foreground`; they are not a separate
+Figma palette row. Keep them mapped to existing text/white tokens based on the
+surface where the utility is used.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold. The

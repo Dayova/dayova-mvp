@@ -38,6 +38,8 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		uebenSubtle: "#F4ECFF",
 		praxis: "#00C7BE",
 		praxisSubtle: "#E7FBF6",
+		hausaufgabe: "#B88AAE",
+		hausaufgabeForeground: "#FFFFFF",
 		hausaufgabeSubtle: "#F3E8F0",
 		path1: "#D7DCE3",
 		path2: "#D7DCE3",

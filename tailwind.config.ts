@@ -96,6 +96,8 @@ const config = {
 					subtle: "hsl(var(--praxis-subtle))",
 				},
 				hausaufgabe: {
+					DEFAULT: "hsl(var(--hausaufgabe))",
+					foreground: "hsl(var(--hausaufgabe-foreground))",
 					subtle: "hsl(var(--hausaufgabe-subtle))",
 				},
 				muted: {
