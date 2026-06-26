@@ -6,7 +6,7 @@ import { cn } from "~/lib/utils";
 
 const textVariants = cva(
 	cn(
-		"font-poppins text-body-2 text-foreground tracking-normal",
+		"font-poppins text-body-2 text-text tracking-normal",
 		Platform.select({
 			web: "select-text",
 		}),
@@ -36,10 +36,10 @@ const textVariants = cva(
 				code: cn(
 					"relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono font-semibold text-body-3",
 				),
-				lead: "text-body-1 text-muted-foreground",
+				lead: "text-body-1 text-secondary-text",
 				large: "font-semibold text-body-2",
 				small: "text-body-4",
-				muted: "text-body-4 text-muted-foreground",
+				muted: "text-body-4 text-secondary-text",
 			},
 		},
 		defaultVariants: {

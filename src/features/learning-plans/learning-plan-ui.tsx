@@ -192,7 +192,7 @@ export function SessionCard({
 			className="flex-row items-center rounded-[28px] px-5 py-5"
 			variant="soft"
 		>
-			<View className="h-14 w-14 items-center justify-center rounded-full bg-foreground">
+			<View className="h-14 w-14 items-center justify-center rounded-full bg-text">
 				<Text className="font-poppins font-semibold text-body-2 text-white">
 					{formatDayOfMonth(sessionDate)}
 				</Text>

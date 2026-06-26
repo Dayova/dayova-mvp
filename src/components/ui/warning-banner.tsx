@@ -40,14 +40,11 @@ function WarningBanner({
 			/>
 			<View className="flex-1 gap-1">
 				{title ? (
-					<Text className="font-poppins font-semibold text-body-3 text-warning-foreground">
+					<Text className="font-poppins font-semibold text-body-3 text-text">
 						{title}
 					</Text>
 				) : null}
-				<Text
-					selectable
-					className="font-poppins text-body-4 text-warning-foreground"
-				>
+				<Text selectable className="font-poppins text-body-4 text-text">
 					{description}
 				</Text>
 				{showCta ? (
@@ -63,7 +60,7 @@ function WarningBanner({
 							paddingVertical: 10,
 						}}
 					>
-						<Text className="font-poppins font-semibold text-body-4 text-warning-foreground">
+						<Text className="font-poppins font-semibold text-body-4 text-text">
 							{ctaLabel}
 						</Text>
 					</TouchableOpacity>

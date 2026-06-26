@@ -409,18 +409,18 @@ function NotificationCard({
 					<View className="flex-1 gap-1">
 						<View className="flex-row items-start justify-between gap-2">
 							<Text
-								className="flex-1 font-poppins font-semibold text-body-3 text-foreground"
+								className="flex-1 font-poppins font-semibold text-body-3 text-text"
 								numberOfLines={1}
 							>
 								{notification.title}
 							</Text>
 							<View className="rounded-full bg-muted px-3 py-1">
-								<Text className="font-poppins text-body-5 text-muted-foreground">
+								<Text className="font-poppins text-body-5 text-secondary-text">
 									{formatRelativeTime(notification.triggeredAt)}
 								</Text>
 							</View>
 						</View>
-						<Text className="font-poppins text-body-4 text-muted-foreground">
+						<Text className="font-poppins text-body-4 text-secondary-text">
 							{notification.body}
 						</Text>
 					</View>
@@ -509,10 +509,10 @@ export default function NotificationsScreen() {
 
 					{inbox !== null && visibleInbox.length === 0 ? (
 						<View className="items-center rounded-[24px] bg-card px-6 py-11">
-							<Text className="text-center font-poppins font-semibold text-body-2 text-foreground">
+							<Text className="text-center font-poppins font-semibold text-body-2 text-text">
 								Keine Mitteilungen
 							</Text>
-							<Text className="mt-2 text-center font-poppins text-body-4 text-muted-foreground">
+							<Text className="mt-2 text-center font-poppins text-body-4 text-secondary-text">
 								Neue Erinnerungen erscheinen hier automatisch.
 							</Text>
 						</View>

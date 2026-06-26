@@ -7,9 +7,9 @@ import {
 	Keyboard,
 	Platform,
 	TouchableOpacity,
-	type ViewStyle,
 	useWindowDimensions,
 	View,
+	type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Mascot } from "~/components/Mascot";
@@ -588,11 +588,11 @@ export default function WelcomeScreen() {
 							</View>
 
 							<View className="gap-5">
-								<Text className="font-poppins font-semibold text-foreground text-heading-2">
+								<Text className="font-poppins font-semibold text-heading-2 text-text">
 									{activeStep.title}
 								</Text>
 
-								<Text className="font-poppins text-body-2 text-muted-foreground">
+								<Text className="font-poppins text-body-2 text-secondary-text">
 									{activeStep.description}
 								</Text>
 							</View>
@@ -648,14 +648,14 @@ export default function WelcomeScreen() {
 							</View>
 
 							<View className="items-center gap-3">
-								<Text className="font-poppins text-body-5 text-muted-foreground">
+								<Text className="font-poppins text-body-5 text-secondary-text">
 									{activeStep.kind === "info" ? "Gute Nachricht" : "Sag mal"}
 								</Text>
-								<Text className="text-center font-poppins font-semibold text-foreground text-heading-2">
+								<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
 									{activeStep.title}
 								</Text>
 								{"description" in activeStep && activeStep.description ? (
-									<Text className="max-w-72 text-center font-poppins text-body-3 text-muted-foreground">
+									<Text className="max-w-72 text-center font-poppins text-body-3 text-secondary-text">
 										{activeStep.description}
 									</Text>
 								) : null}
@@ -695,7 +695,7 @@ export default function WelcomeScreen() {
 												>
 													<Text
 														className={`font-poppins font-semibold ${
-															isSelected ? "text-white" : "text-foreground"
+															isSelected ? "text-white" : "text-text"
 														}`}
 													>
 														{option}
