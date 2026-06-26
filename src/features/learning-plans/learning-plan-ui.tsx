@@ -105,6 +105,12 @@ const getPlanningHintCtaLabel = (hint: string) => {
 	return undefined;
 };
 
+const getPlanningHintTitle = (hint: string) => {
+	if (hint.includes("Keine Lernzeiten hinterlegt")) return "Lernzeiten fehlen";
+	if (hint.includes("Lernzeiten")) return "Lernzeiten prüfen";
+	return "Planung prüfen";
+};
+
 export function PlanningHintBanner({
 	className,
 	hint,
@@ -119,6 +125,7 @@ export function PlanningHintBanner({
 	return (
 		<WarningBanner
 			className={className}
+			title={getPlanningHintTitle(hint)}
 			description={hint}
 			ctaLabel={ctaLabel}
 			onPressCta={ctaLabel ? onPressLearningTimes : undefined}

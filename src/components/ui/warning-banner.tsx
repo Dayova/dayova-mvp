@@ -1,4 +1,5 @@
-import { TouchableOpacity, View, type ViewProps } from "react-native";
+import { View, type ViewProps } from "react-native";
+import { Button } from "~/components/ui/button";
 import { CircleAlert } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -27,18 +28,20 @@ function WarningBanner({
 	return (
 		<View
 			className={cn(
-				"flex-row gap-3 rounded-[24px] bg-warning-subtle px-5 py-5",
+				"flex-row items-start gap-4 rounded-[28px] bg-warning-subtle px-5 py-5",
 				className,
 			)}
 			style={style}
 			{...props}
 		>
-			<CircleAlert
-				size={22}
-				color={DAYOVA_DESIGN_SYSTEM.colors.warning}
-				strokeWidth={2.2}
-			/>
-			<View className="flex-1 gap-1">
+			<View className="h-10 w-10 items-center justify-center rounded-full bg-card/65">
+				<CircleAlert
+					size={21}
+					color={DAYOVA_DESIGN_SYSTEM.colors.warning}
+					strokeWidth={2.2}
+				/>
+			</View>
+			<View className="flex-1 gap-2 pt-0.5">
 				{title ? (
 					<Text className="font-poppins font-semibold text-body-3 text-text">
 						{title}
@@ -48,22 +51,17 @@ function WarningBanner({
 					{description}
 				</Text>
 				{showCta ? (
-					<TouchableOpacity
-						accessibilityRole="button"
+					<Button
 						accessibilityLabel={ctaAccessibilityLabel ?? ctaLabel}
-						activeOpacity={0.82}
+						className="mt-1 h-10 min-h-10 self-start rounded-full bg-card px-5 shadow-black/5 shadow-sm active:bg-card/85"
 						onPress={onPressCta}
-						className="mt-2 self-start rounded-full bg-card"
-						style={{
-							minHeight: 38,
-							paddingHorizontal: 20,
-							paddingVertical: 10,
-						}}
+						size="sm"
+						variant="ghost"
 					>
 						<Text className="font-poppins font-semibold text-body-4 text-text">
 							{ctaLabel}
 						</Text>
-					</TouchableOpacity>
+					</Button>
 				) : null}
 			</View>
 		</View>
