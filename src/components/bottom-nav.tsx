@@ -98,7 +98,7 @@ function AnimatedTabIcon({
 				size={22 * scale}
 				color={
 					active
-						? DAYOVA_DESIGN_SYSTEM.colors.primaryForeground
+						? DAYOVA_DESIGN_SYSTEM.colors.light1
 						: DAYOVA_DESIGN_SYSTEM.colors.text
 				}
 				strokeWidth={active ? 2.15 : 2}
@@ -145,7 +145,7 @@ export function BottomNav({ state, navigation }: BottomNavProps) {
 			style={{ bottom: Math.max(insets.bottom + 4 * scale, 8) }}
 		>
 			<View
-				className="flex-row items-center rounded-full border border-foreground/5 bg-card shadow-black/10 shadow-lg"
+				className="flex-row items-center rounded-full border border-text/5 bg-card shadow-black/10 shadow-lg"
 				// Padding and gap scale with viewport width to keep the compact
 				// Figma nav proportions on narrow and wide devices.
 				style={{

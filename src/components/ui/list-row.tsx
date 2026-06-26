@@ -33,7 +33,7 @@ function ListRow({
 			) : null}
 			<View className="flex-1">
 				<Text
-					className="font-poppins font-semibold text-body-2 text-foreground"
+					className="font-poppins font-semibold text-body-2 text-text"
 					numberOfLines={1}
 				>
 					{label}

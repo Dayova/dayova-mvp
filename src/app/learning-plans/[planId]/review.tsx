@@ -141,7 +141,7 @@ export default function LearningPlanReviewScreen() {
 							color={DAYOVA_DESIGN_SYSTEM.colors.warning}
 							strokeWidth={2.2}
 						/>
-						<Text className="flex-1 font-poppins text-body-4 text-warning-foreground">
+						<Text className="flex-1 font-poppins text-body-4 text-text">
 							{snapshot.plan.planningHint}
 						</Text>
 					</View>
@@ -183,11 +183,9 @@ export default function LearningPlanReviewScreen() {
 					style={{ minWidth: 0 }}
 				>
 					{isBusy ? (
-						<ActivityIndicator
-							color={DAYOVA_DESIGN_SYSTEM.colors.buttonNeutralForeground}
-						/>
+						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 					) : (
-						<Text className="font-poppins font-semibold text-body-3 text-button-neutral-foreground">
+						<Text className="font-poppins font-semibold text-body-3 text-white">
 							Lernplan eintragen
 						</Text>
 					)}

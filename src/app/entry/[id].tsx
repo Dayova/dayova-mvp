@@ -116,10 +116,7 @@ function NotesCard({ value }: { value?: string }) {
 			</View>
 
 			{summary.map((line) => (
-				<Text
-					key={line}
-					className="mb-3 font-poppins text-body-3 text-foreground"
-				>
+				<Text key={line} className="mb-3 font-poppins text-body-3 text-text">
 					{line}
 				</Text>
 			))}
@@ -129,7 +126,7 @@ function NotesCard({ value }: { value?: string }) {
 					{tasks.map((task) => (
 						<View key={task} className="flex-row rounded-[18px] bg-muted p-3">
 							<View className="mt-2 h-2 w-2 rounded-full bg-primary" />
-							<Text className="ml-3 flex-1 font-poppins text-body-3 text-foreground">
+							<Text className="ml-3 flex-1 font-poppins text-body-3 text-text">
 								{task}
 							</Text>
 						</View>

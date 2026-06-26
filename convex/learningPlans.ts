@@ -707,6 +707,96 @@ export const removeDocument = mutation({
 	},
 });
 
+export const removePlan = mutation({
+	args: {
+		id: v.id("learningPlans"),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.id);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			return null;
+		}
+
+		const documents = await ctx.db
+			.query("learningPlanDocuments")
+			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
+			.take(100);
+		for (const document of documents) {
+			await deleteManagedFile(ctx, {
+				storageId: document.storageId,
+				storageProvider: document.storageProvider,
+			});
+			await ctx.db.delete("learningPlanDocuments", document._id);
+		}
+
+		const answers = await ctx.db
+			.query("learningPlanAnswers")
+			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
+			.take(100);
+		for (const answer of answers) {
+			await ctx.db.delete("learningPlanAnswers", answer._id);
+		}
+
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", args.id),
+			)
+			.take(100);
+		for (const session of sessions) {
+			if (session.dayEntryId) {
+				const dayEntry = await ctx.db.get(session.dayEntryId);
+				if (dayEntry?.ownerTokenIdentifier === ownerTokenIdentifier) {
+					await ctx.db.delete(session.dayEntryId);
+				}
+			}
+			await ctx.db.delete("learningPlanSessions", session._id);
+		}
+
+		if (plan.examDayEntryId) {
+			const examEntry = await ctx.db.get(plan.examDayEntryId);
+			if (examEntry?.ownerTokenIdentifier === ownerTokenIdentifier) {
+				await ctx.db.patch(plan.examDayEntryId, {
+					relatedLearningPlanId: undefined,
+				});
+			}
+		}
+
+		const localSchedules = await ctx.db
+			.query("localNotificationSchedules")
+			.withIndex("by_ownerTokenIdentifier_and_expiresAt", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(500);
+		for (const schedule of localSchedules) {
+			if (schedule.relatedLearningPlanId === args.id) {
+				await ctx.db.delete("localNotificationSchedules", schedule._id);
+			}
+		}
+
+		const notificationHistory = await ctx.db
+			.query("notificationHistory")
+			.withIndex("by_ownerTokenIdentifier_and_createdAt", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(500);
+		const now = Date.now();
+		for (const notification of notificationHistory) {
+			if (
+				notification.relatedLearningPlanId === args.id &&
+				notification.deletedAt === undefined
+			) {
+				await ctx.db.patch(notification._id, { deletedAt: now });
+			}
+		}
+
+		await ctx.db.delete("learningPlans", args.id);
+		return args.id;
+	},
+});
+
 export const getAiContext = internalQuery({
 	args: {
 		learningPlanId: v.id("learningPlans"),

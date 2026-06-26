@@ -1,4 +1,3 @@
-import { api } from "#convex/_generated/api";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -10,11 +9,12 @@ import {
 	Pressable,
 	View,
 } from "react-native";
+import { api } from "#convex/_generated/api";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import {
-	DateTimePickerSheet,
 	type DateTimePickerEvent,
+	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
 import {
 	Field,
@@ -80,7 +80,7 @@ function TimeControl({
 			onPress={onPress}
 			className="h-[54px] flex-1 flex-row items-center justify-between rounded-[27px] bg-card px-5 shadow-black/10 shadow-sm active:opacity-80"
 		>
-			<Text className="font-poppins text-body-3 text-muted-foreground">
+			<Text className="font-poppins text-body-3 text-secondary-text">
 				{value}
 			</Text>
 			<Timer size={19} color="#697586" strokeWidth={1.9} />
@@ -247,10 +247,10 @@ export default function LearningTimesScreen() {
 
 				<View style={{ marginTop: 18, rowGap: 22 }}>
 					<View className="gap-2">
-						<Text className="font-poppins font-semibold text-body-2 text-foreground">
+						<Text className="font-poppins font-semibold text-body-2 text-text">
 							Lernzeit bearbeiten
 						</Text>
-						<Text className="font-poppins text-body-3 text-muted-foreground">
+						<Text className="font-poppins text-body-3 text-secondary-text">
 							Passe deine Lernzeiten so an, wie sie für dich passen.
 						</Text>
 					</View>
@@ -267,10 +267,10 @@ export default function LearningTimesScreen() {
 									boxShadow: "0 1px 4px rgba(0, 0, 0, 0.08)",
 								}}
 							>
-								<Text className="flex-1 font-poppins font-semibold text-body-1 text-foreground">
+								<Text className="flex-1 font-poppins font-semibold text-body-1 text-text">
 									Lerntag
 								</Text>
-								<Text className="font-poppins text-body-1 text-muted-foreground">
+								<Text className="font-poppins text-body-1 text-secondary-text">
 									{selectedDay}
 								</Text>
 								<FieldAccessory>
@@ -319,7 +319,7 @@ export default function LearningTimesScreen() {
 				>
 					<Trash2
 						size={18}
-						color={DAYOVA_DESIGN_SYSTEM.colors.buttonNeutralForeground}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2}
 					/>
 					<Text>Entfernen</Text>

@@ -19,7 +19,7 @@ function SectionHeader({
 		<View className={cn("mb-7", className)} {...props}>
 			<Text
 				className={cn(
-					"font-poppins font-semibold text-foreground",
+					"font-poppins font-semibold text-text",
 					titleSize === "sm" ? "text-body-2" : "text-body-1",
 				)}
 			>
