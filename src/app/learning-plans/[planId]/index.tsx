@@ -6,17 +6,12 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
-import {
-	BookOpen,
-	Check,
-	CircleAlert,
-	Clock3,
-	Route2,
-} from "~/components/ui/icon";
+import { BookOpen, Check, Clock3, Route2 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { PlanningHintBanner } from "~/features/learning-plans/learning-plan-ui";
 import type {
 	LearningPlanSnapshot,
 	PlanSession,
@@ -28,6 +23,7 @@ import {
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
@@ -141,6 +137,12 @@ export default function LearningPlanSessionsScreen() {
 	const goBack = () => {
 		goBackOrReplace(router, "/learning-plans");
 	};
+	const openLearningTimes = () => {
+		if (!planId) return;
+		router.push(
+			withReturnTo(ROUTES.learningTimes, `/learning-plans/${planId}`),
+		);
+	};
 
 	return (
 		<Screen>
@@ -179,16 +181,10 @@ export default function LearningPlanSessionsScreen() {
 				</Surface>
 
 				{snapshot?.plan.planningHint ? (
-					<Surface className="flex-row gap-3 rounded-[24px] px-5 py-4">
-						<CircleAlert
-							size={20}
-							color={DAYOVA_DESIGN_SYSTEM.colors.warning}
-							strokeWidth={2.2}
-						/>
-						<Text className="flex-1 font-poppins text-body-4 text-text">
-							{snapshot.plan.planningHint}
-						</Text>
-					</Surface>
+					<PlanningHintBanner
+						hint={snapshot.plan.planningHint}
+						onPressLearningTimes={openLearningTimes}
+					/>
 				) : null}
 
 				<View className="gap-4">

@@ -174,10 +174,12 @@ export default defineSchema({
 		executionStatus: v.optional(v.string()),
 		relatedLearningPlanId: v.optional(v.id("learningPlans")),
 		relatedLearningPlanSessionId: v.optional(v.id("learningPlanSessions")),
-	}).index("by_ownerTokenIdentifier_and_dayKey", [
-		"ownerTokenIdentifier",
-		"dayKey",
-	]),
+	})
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_ownerTokenIdentifier_and_dayKey", [
+			"ownerTokenIdentifier",
+			"dayKey",
+		]),
 	learningPlans: defineTable({
 		ownerTokenIdentifier: v.string(),
 		subject: v.string(),

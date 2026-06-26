@@ -292,6 +292,60 @@ test("review sessions are only synced after the plan is accepted", async () => {
 	expect(afterAccept["2026-06-04"]?.[0]?.kind).toBe("Lernen");
 });
 
+test("removing a learning plan deletes synced sessions and detaches the exam entry", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		sessions: [
+			{
+				phase: "practice",
+				title: "Üben",
+				dateKey: "2026-06-04",
+				dateLabel: "4. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 30,
+				goal: "Kurz wiederholen.",
+				tasks: ["Begriffe prüfen"],
+				expectedOutcome: "Du bist vorbereitet.",
+			},
+		],
+	});
+	await t.mutation(api.learningPlans.acceptPlan, { learningPlanId });
+
+	await expect(
+		t.mutation(api.learningPlans.removePlan, { id: learningPlanId }),
+	).resolves.toBe(learningPlanId);
+
+	await expect(
+		t.query(api.learningPlans.getSnapshot, { id: learningPlanId }),
+	).resolves.toBeNull();
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual(
+		[],
+	);
+
+	const learningEntries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-06-04"],
+	});
+	expect(learningEntries["2026-06-04"]).toHaveLength(0);
+
+	const examEntries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-06-05"],
+	});
+	expect(examEntries["2026-06-05"]).toHaveLength(1);
+	expect(examEntries["2026-06-05"]?.[0]).toMatchObject({
+		title: "Mathe Klausur",
+		kind: "Leistungskontrolle",
+	});
+	expect(examEntries["2026-06-05"]?.[0]).not.toHaveProperty(
+		"relatedLearningPlanId",
+	);
+});
+
 test("generated plans can advance to review without available sessions", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);

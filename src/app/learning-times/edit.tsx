@@ -28,6 +28,7 @@ import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 const LEARNING_DAYS = [
@@ -90,7 +91,7 @@ function TimeControl({
 
 export default function LearningTimesScreen() {
 	const router = useRouter();
-	const params = useLocalSearchParams<{ day?: string }>();
+	const params = useLocalSearchParams<{ day?: string; returnTo?: string }>();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningTimes = useQuery(
@@ -112,6 +113,8 @@ export default function LearningTimesScreen() {
 	);
 	const [isSaving, setIsSaving] = useState(false);
 	const [feedback, setFeedback] = useState<string | null>(null);
+	const returnTo = getSafeReturnTo(params.returnTo);
+	const overviewPath = withReturnTo(ROUTES.learningTimes, returnTo);
 
 	const selectedDayValue =
 		LEARNING_DAYS.find((day) => day.label === selectedDay)?.value ?? 1;
@@ -150,7 +153,7 @@ export default function LearningTimesScreen() {
 			return;
 		}
 
-		router.replace("/learning-times");
+		router.replace(overviewPath);
 	};
 
 	const updateTime = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -183,7 +186,7 @@ export default function LearningTimesScreen() {
 				startTime,
 				endTime,
 			});
-			router.replace("/learning-times");
+			router.replace(overviewPath);
 		} catch (error) {
 			Alert.alert(
 				"Lernzeit konnte nicht gespeichert werden",
@@ -204,7 +207,7 @@ export default function LearningTimesScreen() {
 			setStartTime(DEFAULT_START_TIME);
 			setEndTime(DEFAULT_END_TIME);
 			setFeedback("Lernzeit entfernt.");
-			router.replace("/learning-times");
+			router.replace(overviewPath);
 		} catch (error) {
 			Alert.alert(
 				"Lernzeit konnte nicht entfernt werden",
