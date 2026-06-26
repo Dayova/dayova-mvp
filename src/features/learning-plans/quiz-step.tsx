@@ -113,25 +113,25 @@ export function QuizStep({
 							viewBox={`0 0 ${QUESTION_PROGRESS_SIZE} ${QUESTION_PROGRESS_SIZE}`}
 						>
 							{questionProgressPath ? (
-								<Path d={questionProgressPath} fill="#3A7BFF" />
+								<Path d={questionProgressPath} fill="#00BAFF" />
 							) : (
 								<Circle
 									cx={QUESTION_PROGRESS_CENTER}
 									cy={QUESTION_PROGRESS_CENTER}
 									r={QUESTION_PROGRESS_RADIUS}
-									fill="#3A7BFF"
+									fill="#00BAFF"
 								/>
 							)}
 						</Svg>
-						<Text className="font-bold font-poppins text-24 text-white">
+						<Text className="font-poppins font-semibold text-heading-2 text-white">
 							{questionNumber}
 						</Text>
 					</View>
 				</View>
-				<Text className="font-poppins text-12 text-text/45">
+				<Text className="font-poppins text-body-4 text-text/45">
 					Frage {questionNumber} von {questionCount}
 				</Text>
-				<Text className="mt-2 font-bold font-poppins text-18 text-text">
+				<Text className="mt-2 font-poppins font-semibold text-body-1 text-text">
 					{prompt}
 				</Text>
 				<FieldLabel className="mt-7">Antwort</FieldLabel>
@@ -150,7 +150,7 @@ export function QuizStep({
 					/>
 				</FieldControl>
 				{errorMessage ? (
-					<Text className="mb-4 font-poppins text-12 text-destructive">
+					<Text className="mb-4 font-poppins text-body-4 text-destructive">
 						{errorMessage}
 					</Text>
 				) : null}

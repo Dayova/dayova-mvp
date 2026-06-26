@@ -23,25 +23,24 @@ function ListRow({
 		<ActionSurface
 			accessibilityLabel={props.accessibilityLabel ?? label}
 			accessibilityRole={props.onPress ? "button" : "text"}
-			className={cn("min-h-[64px] flex-row items-center px-5 py-3", className)}
+			className={cn("min-h-16 flex-row items-center px-5 py-3", className)}
 			{...props}
 		>
 			{icon ? (
-				<View className="mr-3 h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F4F6FA]">
+				<View className="mr-3 h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted">
 					{icon}
 				</View>
 			) : null}
 			<View className="flex-1">
 				<Text
-					className="font-poppins font-semibold text-[#17171C]"
-					style={{ fontSize: 16, lineHeight: 22, includeFontPadding: false }}
+					className="font-poppins font-semibold text-body-2 text-text"
 					numberOfLines={1}
 				>
 					{label}
 				</Text>
 				{description ? (
 					<Text
-						className="mt-1 font-poppins text-12 text-text/50"
+						className="mt-1 font-poppins text-body-4 text-text/50"
 						numberOfLines={2}
 					>
 						{description}

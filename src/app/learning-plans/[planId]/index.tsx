@@ -1,15 +1,17 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { TouchableOpacity, View } from "react-native";
+import { View, type ViewStyle } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
-import { Check, CircleAlert, Clock3, Route2 } from "~/components/ui/icon";
+import { Check, Clock3, Route2 } from "~/components/ui/icon";
+import { Button } from "~/components/ui/button";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { PlanningHintBanner } from "~/features/learning-plans/learning-plan-ui";
 import type {
 	LearningPlanSnapshot,
 	PlanSession,
@@ -18,14 +20,18 @@ import {
 	minutesFromTime,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
 	practice: "Üben",
 	rehearsal: "Testmodus",
 };
+
+const sessionsScrollContentStyle = { rowGap: 24 } satisfies ViewStyle;
 
 function SessionOverviewCard({
 	session,
@@ -42,79 +48,54 @@ function SessionOverviewCard({
 	const goal = formatGermanUiText(session.goal);
 
 	return (
-		<Surface className="rounded-[28px] px-5 py-5" style={{ rowGap: 14 }}>
-			<View
-				className="flex-row items-start justify-between"
-				style={{ gap: 14 }}
-			>
+		<Surface className="gap-4 rounded-[28px] px-5 py-5">
+			<View className="flex-row items-start justify-between gap-4">
 				<View className="flex-1">
-					<Text
-						className="font-poppins font-semibold text-[#202127]"
-						style={{ fontSize: 16, lineHeight: 21, includeFontPadding: false }}
-					>
+					<Text className="font-poppins font-semibold text-body-2 text-text">
 						{title}
 					</Text>
-					<Text
-						className="mt-2 font-poppins text-[#8D8F98]"
-						style={{ fontSize: 12, lineHeight: 17, includeFontPadding: false }}
-					>
+					<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
 						{PHASE_LABEL[session.phase]}
 					</Text>
 				</View>
-				<View className="rounded-full bg-[#EEF4FF] px-3 py-2">
-					<Text
-						className="font-poppins font-semibold text-[#3A7BFF]"
-						style={{ fontSize: 12, lineHeight: 15, includeFontPadding: false }}
-					>
+				<View className="rounded-full bg-accent px-3 py-2">
+					<Text className="font-poppins font-semibold text-body-4 text-primary">
 						{`${session.durationMinutes} Min.`}
 					</Text>
 				</View>
 			</View>
 
-			<View className="flex-row items-center" style={{ columnGap: 8 }}>
-				<Clock3 size={16} color="#9A9DA8" strokeWidth={2.1} />
-				<Text
-					className="font-poppins text-[#6F727C]"
-					style={{ fontSize: 13, lineHeight: 18, includeFontPadding: false }}
-				>
+			<View className="flex-row items-center gap-2">
+				<Clock3
+					size={16}
+					color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
+					strokeWidth={2.1}
+				/>
+				<Text className="font-poppins text-body-4 text-secondary-text">
 					{`${session.dateLabel} · ${session.startTime} - ${endTime}`}
 				</Text>
 			</View>
 
-			<Text
-				className="font-poppins text-[#6F727C]"
-				style={{ fontSize: 13, lineHeight: 19, includeFontPadding: false }}
-			>
+			<Text className="font-poppins text-body-4 text-secondary-text">
 				{goal}
 			</Text>
 
-			<TouchableOpacity
+			<Button
 				accessibilityRole="button"
 				accessibilityLabel={
 					session.completed
 						? "Lerneinheit als offen markieren"
 						: "Lerneinheit als erledigt markieren"
 				}
-				activeOpacity={0.84}
 				onPress={onToggleCompleted}
-				className="mt-1 flex-row items-center justify-center rounded-full px-4 py-3"
-				style={{
-					backgroundColor: session.completed ? "#E8EAEE" : "#3A7BFF",
-					gap: 8,
-				}}
+				variant={session.completed ? "neutral" : "default"}
+				className="mt-1 px-4"
 			>
-				<Check
-					size={16}
-					color={session.completed ? "#1A1A1A" : "#FFFFFF"}
-					strokeWidth={2.2}
-				/>
-				<Text
-					className={`font-poppins font-semibold ${session.completed ? "text-[#1A1A1A]" : "text-white"}`}
-					style={{ fontSize: 13, lineHeight: 18, includeFontPadding: false }}
-				>
+				<Check size={16} color="#FFFFFF" strokeWidth={2.2} />
+				<Text className="font-poppins font-semibold text-body-4 text-white">
 					{session.completed ? "Als offen markieren" : "Als erledigt markieren"}
 				</Text>
-			</TouchableOpacity>
+			</Button>
 		</Surface>
 	);
 }
@@ -142,6 +123,12 @@ export default function LearningPlanSessionsScreen() {
 	const goBack = () => {
 		goBackOrReplace(router, "/learning-plans");
 	};
+	const openLearningTimes = () => {
+		if (!planId) return;
+		router.push(
+			withReturnTo(ROUTES.learningTimes, `/learning-plans/${planId}`),
+		);
+	};
 
 	return (
 		<Screen>
@@ -152,24 +139,23 @@ export default function LearningPlanSessionsScreen() {
 				horizontalPadding={24}
 				topPadding={46}
 				bottomPadding={120}
-				contentContainerStyle={{ rowGap: 24 }}
+				// KeyboardSafeScrollView requires content layout through style.
+				contentContainerStyle={sessionsScrollContentStyle}
 			>
 				<ScreenHeader title="Lernplan" onBack={goBack} className="mb-0" />
 
 				<Surface className="rounded-[34px] px-5 py-6">
-					<View className="mb-5 h-14 w-14 items-center justify-center rounded-full bg-[#FFEAF8]">
-						<Route2 size={27} color="#FF42C8" strokeWidth={2.2} />
+					<View className="mb-5 h-14 w-14 items-center justify-center rounded-full bg-secondary/15">
+						<Route2
+							size={27}
+							color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+							strokeWidth={2.2}
+						/>
 					</View>
-					<Text
-						className="font-bold font-poppins text-[#202127]"
-						style={{ fontSize: 25, lineHeight: 30, includeFontPadding: false }}
-					>
+					<Text className="font-poppins font-semibold text-heading-2 text-text">
 						{title}
 					</Text>
-					<Text
-						className="mt-2 font-poppins text-[#8D8F98]"
-						style={{ fontSize: 13, lineHeight: 19, includeFontPadding: false }}
-					>
+					<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
 						{snapshot
 							? `${snapshot.sessions.length} ${
 									snapshot.sessions.length === 1
@@ -181,25 +167,13 @@ export default function LearningPlanSessionsScreen() {
 				</Surface>
 
 				{snapshot?.plan.planningHint ? (
-					<Surface
-						className="flex-row rounded-[24px] px-5 py-4"
-						style={{ gap: 12 }}
-					>
-						<CircleAlert size={20} color="#F59E0B" strokeWidth={2.2} />
-						<Text
-							className="flex-1 font-poppins text-[#7A5A12]"
-							style={{
-								fontSize: 13,
-								lineHeight: 19,
-								includeFontPadding: false,
-							}}
-						>
-							{snapshot.plan.planningHint}
-						</Text>
-					</Surface>
+					<PlanningHintBanner
+						hint={snapshot.plan.planningHint}
+						onPressLearningTimes={openLearningTimes}
+					/>
 				) : null}
 
-				<View style={{ rowGap: 14 }}>
+				<View className="gap-4">
 					{snapshot?.sessions.map((session) => (
 						<SessionOverviewCard
 							key={session.id}
@@ -215,8 +189,8 @@ export default function LearningPlanSessionsScreen() {
 				</View>
 
 				{snapshot && snapshot.sessions.length === 0 ? (
-					<View className="items-center rounded-[28px] bg-white px-5 py-7">
-						<Text className="text-center font-poppins font-semibold text-[#202127]">
+					<View className="items-center rounded-[28px] bg-card px-5 py-7">
+						<Text className="text-center font-poppins font-semibold text-text">
 							Keine Lerneinheiten vorhanden
 						</Text>
 					</View>

@@ -26,7 +26,7 @@ export function ScreenHeader({
 			{title ? (
 				<Text
 					accessibilityRole="header"
-					className="text-center font-bold font-poppins text-16 text-text"
+					className="text-center font-poppins font-semibold text-body-2 text-text"
 				>
 					{title}
 				</Text>

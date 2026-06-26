@@ -27,20 +27,19 @@ Tailwind uses the `text-*` prefix for multiple utility groups:
 - Text color: `text-white`, `text-primary`, or this app's custom `text-text`.
 - Text alignment and other text utilities: `text-center`, `text-left`, etc.
 
-This project defines custom numeric text sizes in `tailwind.config.js`:
+This project defines semantic text roles from the Figma design system in
+`tailwind.config.ts`. Numeric aliases exist only for low-level compatibility;
+new UI should prefer the semantic classes.
 
 ```js
 fontSize: {
-  12: ["12px", { lineHeight: "16.8px" }],
-  14: ["14px", { lineHeight: "19.6px" }],
-  16: ["16px", { lineHeight: "22.4px" }],
-  18: ["18px", { lineHeight: "25.2px" }],
-  20: ["20px", { lineHeight: "24px" }],
-  24: ["24px", { lineHeight: "28.8px" }],
-  28: ["28px", { lineHeight: "33.6px" }],
-  32: ["32px", { lineHeight: "38.4px" }],
-  40: ["40px", { lineHeight: "48px" }],
-  56: ["56px", { lineHeight: "67.2px" }],
+  "heading-1": ["32px", { lineHeight: "48px", letterSpacing: "0px" }],
+  "heading-2": ["24px", { lineHeight: "36px", letterSpacing: "0px" }],
+  "body-1": ["20px", { lineHeight: "30px", letterSpacing: "0px" }],
+  "body-2": ["16px", { lineHeight: "24px", letterSpacing: "0px" }],
+  "body-3": ["14px", { lineHeight: "21px", letterSpacing: "0px" }],
+  "body-4": ["12px", { lineHeight: "18px", letterSpacing: "0px" }],
+  "body-5": ["10px", { lineHeight: "15px", letterSpacing: "0px" }],
 }
 ```
 
@@ -48,7 +47,8 @@ It also defines a custom text color:
 
 ```js
 colors: {
-  text: "hsl(var(--foreground))",
+  text: "hsl(var(--text))",
+  "secondary-text": "hsl(var(--secondary-text))",
 }
 ```
 
@@ -66,7 +66,7 @@ The issue is `tailwind-merge` cannot infer every custom Tailwind token by defaul
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      text: ["12", "14", "16", "18", "20", "24", "28", "32", "40", "56"],
+      text: ["heading-1", "heading-2", "body-1", "body-2", "body-3", "body-4", "body-5", "10", "12", "14", "16", "20", "24", "32"],
     },
   },
 });
@@ -75,16 +75,35 @@ const twMerge = extendTailwindMerge({
 With that configuration:
 
 - `cn("text-16 text-text")` preserves both text size and text color.
+- `cn("text-16 text-secondary-text")` preserves both text size and secondary text color.
 - `cn("text-14 text-16 text-text")` still resolves competing sizes and keeps `text-16`.
 - `cn("text-text text-white")` still resolves competing colors normally.
 
 ## Maintenance Rules
 
-- When adding or removing custom `fontSize` tokens in `tailwind.config.js`, update the `theme.text` list in `src/lib/utils.ts`.
+- When adding or removing custom `fontSize` tokens in `tailwind.config.ts`, update the `theme.text` list in `src/lib/utils.ts`.
+- Use Tailwind's standard spacing scale. Spacing must stay on a 4px rhythm: `gap-1` is 4px, `gap-2` is 8px, `gap-3` is 12px, `gap-4` is 16px, and so on. Do not redefine spacing keys so class numbers mean raw pixels.
+- The app currently supports light mode only. Keep theme variables in `src/global.css` light-only until the dark-mode palette is fully designed.
+- The Figma typography source of truth is Poppins, Regular for body copy, and SemiBold for headings and highlighted text. Do not use `font-bold`, `font-medium`, or arbitrary `text-[Npx]` classes for app text.
+- Use `text-heading-1`, `text-heading-2`, `text-body-1`, `text-body-2`, `text-body-3`, `text-body-4`, and `text-body-5` for text hierarchy.
 - Use `cn()` for component class merging so variants, defaults, and caller-provided classes resolve consistently.
 - Do not replace `cn()` with direct `clsx()` in shared components unless you explicitly want to preserve all conflicting utilities.
-- Prefer pairing size and color explicitly on `Text` components, for example `text-14 text-text/60`, instead of relying on inherited defaults when readability matters.
+- Prefer pairing size and color explicitly on `Text` components, for example `text-body-3 text-text/60`, instead of relying on inherited defaults when readability matters.
 - Avoid adding color names that look like size names, and avoid adding size names that look like color names. The `text-*` namespace is shared and ambiguity increases merge risk.
+
+## Style Prop Exceptions
+
+Prefer NativeWind classes for static layout, color, typography, spacing, borders,
+and shadows. Keep `style` only when the value is runtime data or a native API
+constraint:
+
+- Safe-area, keyboard, measured width/height, and responsive scale calculations.
+- Reanimated animated styles and SVG/native component geometry.
+- Third-party component APIs that only expose `style`/`backgroundStyle` props.
+- Native text-input rendering resets such as Android `includeFontPadding`.
+
+When adding a new style prop, leave a nearby comment explaining which exception
+applies.
 
 ## Debugging Checklist
 
@@ -99,4 +118,3 @@ node -e "const { cn } = require('./src/lib/utils.ts'); console.log(cn('text-16 t
 
 3. If importing TypeScript from Node is inconvenient, reproduce with `tailwind-merge` directly and mirror the config from `src/lib/utils.ts`.
 4. Verify the generated class order after `cn()` before debugging NativeWind rendering.
-

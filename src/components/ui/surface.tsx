@@ -3,23 +3,16 @@ import {
 	type TouchableOpacityProps,
 	View,
 	type ViewProps,
-	type ViewStyle,
 } from "react-native";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
 
 type SurfaceVariant = "default" | "soft" | "flat";
 
-const surfaceElevationByVariant: Record<SurfaceVariant, ViewStyle | undefined> =
-	{
-		default: DAYOVA_DESIGN_SYSTEM.elevation.surface,
-		soft: DAYOVA_DESIGN_SYSTEM.elevation.soft,
-		flat: undefined,
-	};
-
-function getSurfaceStyle(variant: SurfaceVariant, style?: ViewProps["style"]) {
-	return [surfaceElevationByVariant[variant], style];
-}
+const surfaceClassByVariant: Record<SurfaceVariant, string> = {
+	default: "shadow-black/5 shadow-sm",
+	soft: "shadow-black/5 shadow",
+	flat: "shadow-none",
+};
 
 type SurfaceProps = ViewProps & {
 	variant?: SurfaceVariant;
@@ -33,8 +26,14 @@ function Surface({
 }: SurfaceProps) {
 	return (
 		<View
-			className={cn("rounded-[32px] bg-white", className)}
-			style={getSurfaceStyle(variant, style)}
+			className={cn(
+				"rounded-card bg-card",
+				surfaceClassByVariant[variant],
+				className,
+			)}
+			// Caller-provided styles are only for runtime values that cannot be
+			// expressed as static NativeWind classes.
+			style={style}
 			{...props}
 		/>
 	);
@@ -56,12 +55,15 @@ function ActionSurface({
 		<TouchableOpacity
 			activeOpacity={activeOpacity}
 			className={cn(
-				"rounded-[32px] bg-white",
+				"rounded-card bg-card",
+				surfaceClassByVariant[variant],
 				disabled && "opacity-55",
 				className,
 			)}
 			disabled={disabled}
-			style={getSurfaceStyle(variant, style)}
+			// Caller-provided styles are only for runtime values that cannot be
+			// expressed as static NativeWind classes.
+			style={style}
 			{...props}
 		/>
 	);

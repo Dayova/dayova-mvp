@@ -25,7 +25,7 @@ function SettingsRow({
 
 	return (
 		<ListRow
-			icon={<Icon size={22} color="#202127" strokeWidth={2} />}
+			icon={<Icon size={22} color="#1A1A1A" strokeWidth={2} />}
 			label={label}
 			onPress={onPress}
 			disabled={!onPress}
@@ -50,7 +50,7 @@ export default function SettingsScreen() {
 						justifyContent: "space-between",
 					}}
 				>
-					<View style={{ rowGap: 20 }}>
+					<View className="gap-5">
 						<SettingsRow
 							icon={Bell}
 							label="Mitteilungen"
@@ -63,7 +63,7 @@ export default function SettingsScreen() {
 						/>
 					</View>
 
-					<View style={{ rowGap: 20 }}>
+					<View className="gap-5">
 						<SettingsRow
 							icon={Settings}
 							label="Profil"

@@ -246,6 +246,40 @@ export const listByDayKeys = query({
 	},
 });
 
+export const listHomeworkOverview = query({
+	args: {},
+	handler: async (ctx) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const entries = await ctx.db
+			.query("dayEntries")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.order("asc")
+			.take(200);
+
+		return entries
+			.filter((entry) => entry.kind === "Hausaufgabe")
+			.sort((left, right) => {
+				const leftDay = left.dayKey.localeCompare(right.dayKey);
+				if (leftDay !== 0) return leftDay;
+				return (left.time ?? "").localeCompare(right.time ?? "");
+			})
+			.map((entry) => ({
+				id: entry._id,
+				title: entry.title,
+				dayKey: entry.dayKey,
+				time: entry.time ?? null,
+				notes: entry.notes ?? null,
+				dueDateKey: entry.dueDateKey ?? null,
+				dueDateLabel: entry.dueDateLabel ?? null,
+				plannedDateLabel: entry.plannedDateLabel ?? null,
+				durationMinutes: entry.durationMinutes ?? null,
+				completed: entry.completed ?? false,
+			}));
+	},
+});
+
 export const get = query({
 	args: {
 		id: v.id("dayEntries"),

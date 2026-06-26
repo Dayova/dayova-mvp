@@ -237,17 +237,15 @@ export default function ProfileScreen() {
 						}}
 					>
 						<Text
-							className="font-poppins"
+							className="font-poppins text-body-4"
 							style={{
+								// Feedback tone determines the text color at runtime.
 								color:
 									feedback.tone === "error"
 										? "#F04444"
 										: feedback.tone === "success"
 											? "#178C57"
-											: "#3A7BFF",
-								fontSize: 13,
-								lineHeight: 18,
-								includeFontPadding: false,
+											: "#00BAFF",
 							}}
 						>
 							{feedback.message}
@@ -264,7 +262,7 @@ export default function ProfileScreen() {
 					}}
 					onPress={isEmailVerificationPending ? verifyEmail : saveProfile}
 					style={{
-						shadowColor: "#3A7BFF",
+						shadowColor: "#00BAFF",
 						shadowOpacity: canSave || canVerifyCode ? 0.22 : 0,
 						shadowRadius: 12,
 						shadowOffset: { width: 0, height: 5 },

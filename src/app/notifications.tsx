@@ -27,15 +27,10 @@ import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
-import {
-	BookOpen,
-	CircleAlert,
-	ClipboardList,
-	Mail,
-	Trash2,
-} from "~/components/ui/icon";
+import { BookOpen, ClipboardList, Mail, Trash2 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace } from "~/lib/navigation";
@@ -103,62 +98,29 @@ function NotificationIcon({
 	category: InboxNotification["category"];
 }) {
 	if (category === "learningPlan") {
-		return <BookOpen size={22} color="#3A7BFF" strokeWidth={2} />;
+		return (
+			<BookOpen
+				size={22}
+				color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+				strokeWidth={2}
+			/>
+		);
 	}
 	if (category === "task") {
-		return <ClipboardList size={22} color="#3A7BFF" strokeWidth={2} />;
+		return (
+			<ClipboardList
+				size={22}
+				color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+				strokeWidth={2}
+			/>
+		);
 	}
-	return <Mail size={22} color="#3A7BFF" strokeWidth={2} />;
-}
-
-function WarningBanner({
-	ctaLabel,
-	onPressCta,
-}: {
-	ctaLabel: string;
-	onPressCta: () => void;
-}) {
 	return (
-		<View
-			className="flex-row rounded-[24px] bg-[#FFF7E0] px-5 py-5"
-			style={{ gap: 12 }}
-		>
-			<CircleAlert size={22} color="#F59E0B" strokeWidth={2.2} />
-			<View className="flex-1" style={{ gap: 4 }}>
-				<Text
-					className="font-bold font-poppins text-[#7A5A12]"
-					style={{ fontSize: 14, lineHeight: 20, includeFontPadding: false }}
-				>
-					System-Mitteilungen sind aus
-				</Text>
-				<Text
-					className="font-poppins text-[#7A5A12]"
-					style={{ fontSize: 12, lineHeight: 18, includeFontPadding: false }}
-				>
-					Du bekommst Mitteilungen weiterhin hier im Postfach. Aktiviere
-					System-Mitteilungen, wenn Dayova dich außerhalb der App erinnern soll.
-				</Text>
-				<TouchableOpacity
-					accessibilityRole="button"
-					accessibilityLabel={ctaLabel}
-					activeOpacity={0.82}
-					onPress={onPressCta}
-					className="mt-2 self-start rounded-full bg-white"
-					style={{
-						minHeight: 38,
-						paddingHorizontal: 20,
-						paddingVertical: 10,
-					}}
-				>
-					<Text
-						className="font-poppins font-semibold text-[#7A5A12]"
-						style={{ fontSize: 12, lineHeight: 16, includeFontPadding: false }}
-					>
-						{ctaLabel}
-					</Text>
-				</TouchableOpacity>
-			</View>
-		</View>
+		<Mail
+			size={22}
+			color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+			strokeWidth={2}
+		/>
 	);
 }
 
@@ -190,7 +152,7 @@ function CategoryTabs({
 
 	return (
 		<View
-			className="flex-row rounded-full bg-white"
+			className="flex-row rounded-full bg-card"
 			onLayout={({ nativeEvent }) => {
 				const nextIndicatorWidth =
 					(nativeEvent.layout.width - 8) / CATEGORIES.length;
@@ -274,11 +236,9 @@ function CategoryTabLabel({
 
 	return (
 		<Animated.Text
-			className="font-poppins font-semibold"
-			style={[
-				{ fontSize: 13, lineHeight: 18, includeFontPadding: false },
-				animatedStyle,
-			]}
+			className="font-poppins font-semibold text-body-4"
+			// Reanimated owns the interpolated tab text color.
+			style={animatedStyle}
 		>
 			{label}
 		</Animated.Text>
@@ -419,7 +379,7 @@ function NotificationCard({
 				style={deleteBackgroundAnimatedStyle}
 			>
 				<Animated.View
-					className="mr-5 h-[52px] w-[52px] items-center justify-center rounded-full bg-white/20"
+					className="mr-5 h-[52px] w-[52px] items-center justify-center rounded-full bg-card/20"
 					style={deleteIconAnimatedStyle}
 				>
 					<Trash2 size={27} color="#FFFFFF" strokeWidth={2.3} />
@@ -439,49 +399,28 @@ function NotificationCard({
 					onLayout={({ nativeEvent }) => {
 						cardWidth.set(nativeEvent.layout.width);
 					}}
-					className="flex-row rounded-[24px] bg-white px-5 py-12"
-					style={[{ gap: 14 }, cardAnimatedStyle]}
+					className="flex-row gap-3 rounded-[24px] bg-card px-4 py-6"
+					// Reanimated swipe offset is runtime state.
+					style={cardAnimatedStyle}
 				>
-					<View className="h-10 w-10 items-center justify-center rounded-full bg-[#EFF5FF]">
+					<View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
 						<NotificationIcon category={notification.category} />
 					</View>
-					<View className="flex-1" style={{ gap: 4 }}>
-						<View
-							className="flex-row items-start justify-between"
-							style={{ gap: 8 }}
-						>
+					<View className="flex-1 gap-1">
+						<View className="flex-row items-start justify-between gap-2">
 							<Text
-								className="flex-1 font-bold font-poppins text-[#1A1A1A]"
-								style={{
-									fontSize: 15,
-									lineHeight: 20,
-									includeFontPadding: false,
-								}}
+								className="flex-1 font-poppins font-semibold text-body-3 text-text"
 								numberOfLines={1}
 							>
 								{notification.title}
 							</Text>
-							<View className="rounded-full bg-[#F4F4F5] px-3 py-1">
-								<Text
-									className="font-poppins text-[#70727A]"
-									style={{
-										fontSize: 11,
-										lineHeight: 15,
-										includeFontPadding: false,
-									}}
-								>
+							<View className="rounded-full bg-muted px-3 py-1">
+								<Text className="font-poppins text-body-5 text-secondary-text">
 									{formatRelativeTime(notification.triggeredAt)}
 								</Text>
 							</View>
 						</View>
-						<Text
-							className="font-poppins text-[#7A7D86]"
-							style={{
-								fontSize: 12,
-								lineHeight: 18,
-								includeFontPadding: false,
-							}}
-						>
+						<Text className="font-poppins text-body-4 text-secondary-text">
 							{notification.body}
 						</Text>
 					</View>
@@ -551,10 +490,12 @@ export default function NotificationsScreen() {
 			<StatusBar style="dark" />
 			<ScreenScroll topPadding={72} bottomPadding={120} horizontalPadding={24}>
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
-				<View style={{ gap: 18 }}>
+				<View className="gap-5">
 					<CategoryTabs value={category} onChange={setCategory} />
 					{showWarning ? (
 						<WarningBanner
+							title="System-Mitteilungen sind aus"
+							description="Du bekommst Mitteilungen weiterhin hier im Postfach. Aktiviere System-Mitteilungen, wenn Dayova dich außerhalb der App erinnern soll."
 							ctaLabel={warningCtaLabel}
 							onPressCta={openNotificationFix}
 						/>
@@ -562,30 +503,16 @@ export default function NotificationsScreen() {
 
 					{inbox === null ? (
 						<View className="items-center py-10">
-							<ActivityIndicator color="#3A7BFF" />
+							<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
 						</View>
 					) : null}
 
 					{inbox !== null && visibleInbox.length === 0 ? (
-						<View className="items-center rounded-[24px] bg-white px-6 py-11">
-							<Text
-								className="text-center font-bold font-poppins text-[#1A1A1A]"
-								style={{
-									fontSize: 16,
-									lineHeight: 22,
-									includeFontPadding: false,
-								}}
-							>
+						<View className="items-center rounded-[24px] bg-card px-6 py-11">
+							<Text className="text-center font-poppins font-semibold text-body-2 text-text">
 								Keine Mitteilungen
 							</Text>
-							<Text
-								className="mt-2 text-center font-poppins text-[#8C8F98]"
-								style={{
-									fontSize: 13,
-									lineHeight: 19,
-									includeFontPadding: false,
-								}}
-							>
+							<Text className="mt-2 text-center font-poppins text-body-4 text-secondary-text">
 								Neue Erinnerungen erscheinen hier automatisch.
 							</Text>
 						</View>
