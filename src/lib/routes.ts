@@ -4,6 +4,7 @@ export const ROUTES = {
 	learningTimes: "/learning-times",
 	learningPlans: "/learning-plans",
 	createExam: "/entry/new?type=exam",
+	createHomework: "/entry/new?type=homework",
 	createLearningPlan: "/learning-plans/new",
 } as const;
 
