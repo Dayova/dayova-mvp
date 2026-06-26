@@ -3,7 +3,181 @@ version = 1
 name = "dayova-mvp"
 
 [setup]
-script = "node -e \"const fs=require('fs'); const path=require('path'); const {spawnSync}=require('child_process'); const source=process.env.CODEX_SOURCE_TREE_PATH; const worktree=process.env.CODEX_WORKTREE_PATH; if (!source || !worktree) throw new Error('Missing CODEX_SOURCE_TREE_PATH or CODEX_WORKTREE_PATH'); const from=path.join(source,'.env.local'); const to=path.join(worktree,'.env.local'); if (fs.existsSync(from)) fs.copyFileSync(from,to); else console.warn('Missing '+from+'; skipping .env.local copy'); const command=process.platform==='win32'?'corepack.cmd':'corepack'; const result=spawnSync(command,['pnpm','install','--frozen-lockfile'],{cwd:worktree,stdio:'inherit',shell:process.platform==='win32'}); process.exit(result.status ?? 1);\""
+script = '''
+node -e "
+const fs = require('fs');
+const path = require('path');
+const { spawnSync } = require('child_process');
+
+const source = process.env.CODEX_SOURCE_TREE_PATH;
+const worktree = process.env.CODEX_WORKTREE_PATH;
+
+if (!source || !worktree) {
+  throw new Error(
+    'Missing CODEX_SOURCE_TREE_PATH or CODEX_WORKTREE_PATH'
+  );
+}
+
+const isWindows = process.platform === 'win32';
+
+function run(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: worktree,
+    stdio: 'inherit',
+    shell: isWindows,
+    ...options,
+  });
+
+  if (result.error) {
+    console.error(
+      'Failed to execute ' + command + ':',
+      result.error.message
+    );
+  }
+
+  return result;
+}
+
+function commandExists(command) {
+  const result = spawnSync(command, ['--version'], {
+    cwd: worktree,
+    stdio: 'ignore',
+    shell: isWindows,
+  });
+
+  return !result.error && result.status === 0;
+}
+
+function readTextFile(filename) {
+  const filePath = path.join(worktree, filename);
+
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  const value = fs.readFileSync(filePath, 'utf8').trim();
+  return value || null;
+}
+
+function getProjectNodeVersion() {
+  const nodeVersion = readTextFile('.node-version');
+
+  if (nodeVersion) {
+    return {
+      version: nodeVersion,
+      source: '.node-version',
+    };
+  }
+
+  const nvmrcVersion = readTextFile('.nvmrc');
+
+  if (nvmrcVersion) {
+    return {
+      version: nvmrcVersion,
+      source: '.nvmrc',
+    };
+  }
+
+  const packageJsonPath = path.join(
+    worktree,
+    'package.json'
+  );
+
+  if (fs.existsSync(packageJsonPath)) {
+    const packageJson = JSON.parse(
+      fs.readFileSync(packageJsonPath, 'utf8')
+    );
+
+    const engineVersion =
+      packageJson.engines &&
+      packageJson.engines.node;
+
+    if (engineVersion) {
+      return {
+        version: engineVersion,
+        source: 'package.json engines.node',
+      };
+    }
+  }
+
+  return null;
+}
+
+// Copy the local environment file.
+const envSource = path.join(source, '.env.local');
+const envDestination = path.join(
+  worktree,
+  '.env.local'
+);
+
+if (fs.existsSync(envSource)) {
+  fs.copyFileSync(envSource, envDestination);
+  console.log('Copied .env.local into the worktree');
+} else {
+  console.warn(
+    'Missing ' +
+      envSource +
+      '; skipping .env.local copy'
+  );
+}
+
+const corepackCommand = isWindows
+  ? 'corepack.cmd'
+  : 'corepack';
+
+const projectNode = getProjectNodeVersion();
+
+let result;
+
+if (commandExists('fnm') && projectNode) {
+  console.log(
+    'Using Node.js ' +
+      projectNode.version +
+      ' from ' +
+      projectNode.source
+  );
+
+  const installResult = run('fnm', [
+    'install',
+    projectNode.version,
+  ]);
+
+  if (installResult.status !== 0) {
+    process.exit(installResult.status ?? 1);
+  }
+
+  result = run('fnm', [
+    'exec',
+    '--using',
+    projectNode.version,
+    '--',
+    corepackCommand,
+    'pnpm',
+    'install',
+    '--frozen-lockfile',
+  ]);
+} else {
+  if (!commandExists('fnm')) {
+    console.warn(
+      'fnm is not installed; using the currently active Node.js version'
+    );
+  } else {
+    console.warn(
+      'No .node-version, .nvmrc, or package.json engines.node found; ' +
+        'using the currently active Node.js version'
+    );
+  }
+
+  result = run(corepackCommand, [
+    'pnpm',
+    'install',
+    '--frozen-lockfile',
+  ]);
+}
+
+process.exit(result.status ?? 1);
+"
+'''
 
 [[actions]]
 name = "Run on ios in dev"
