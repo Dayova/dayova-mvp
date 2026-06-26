@@ -14,10 +14,11 @@ import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { ActionModal } from "~/components/ui/action-modal";
 import { Button } from "~/components/ui/button";
-import { Check, CircleAlert, Plus } from "~/components/ui/icon";
+import { Check, Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import {
+	PlanningHintBanner,
 	SectionTitle,
 	SessionCard,
 } from "~/features/learning-plans/learning-plan-ui";
@@ -28,6 +29,7 @@ import type {
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace } from "~/lib/navigation";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -105,6 +107,11 @@ export default function LearningPlanReviewScreen() {
 		);
 	};
 
+	const openLearningTimes = () => {
+		if (!planId) return;
+		router.push(withReturnTo(ROUTES.learningTimes, planPath(planId, "review")));
+	};
+
 	const goBack = useCallback(() => {
 		if (planId) {
 			router.replace(planPath(planId, "generating"));
@@ -135,16 +142,11 @@ export default function LearningPlanReviewScreen() {
 					description="Passe deine Lerntage an und trage den Plan danach in den Kalender ein."
 				/>
 				{snapshot?.plan.planningHint ? (
-					<View className="mb-6 flex-row gap-4 rounded-[24px] bg-card px-6 py-5">
-						<CircleAlert
-							size={20}
-							color={DAYOVA_DESIGN_SYSTEM.colors.warning}
-							strokeWidth={2.2}
-						/>
-						<Text className="flex-1 font-poppins text-body-4 text-text">
-							{snapshot.plan.planningHint}
-						</Text>
-					</View>
+					<PlanningHintBanner
+						className="mb-6"
+						hint={snapshot.plan.planningHint}
+						onPressLearningTimes={openLearningTimes}
+					/>
 				) : null}
 				<View className="flex-1 gap-6">
 					{snapshot?.sessions.map((session) => (

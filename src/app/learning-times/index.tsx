@@ -1,5 +1,6 @@
 import { useConvexAuth, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
+import type { Href } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { api } from "#convex/_generated/api";
@@ -10,6 +11,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { getSafeReturnTo, withReturnTo } from "~/lib/routes";
 
 const LEARNING_DAYS = [
 	{ abbreviation: "Mo", label: "Montag", value: 1 },
@@ -73,6 +75,7 @@ function LearningTimeRow({
 
 export default function LearningTimesOverviewScreen() {
 	const router = useRouter();
+	const params = useLocalSearchParams<{ returnTo?: string }>();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningTimes = useQuery(
@@ -97,8 +100,14 @@ export default function LearningTimesOverviewScreen() {
 		LEARNING_DAYS.find(
 			(day) => !learningTimes?.some((entry) => entry.dayOfWeek === day.value),
 		)?.value ?? 1;
+	const returnTo = getSafeReturnTo(params.returnTo);
 
 	const goBack = () => {
+		if (returnTo) {
+			router.replace(returnTo as Href);
+			return;
+		}
+
 		if (router.canGoBack()) {
 			router.push("/settings");
 			return;
@@ -108,7 +117,9 @@ export default function LearningTimesOverviewScreen() {
 	};
 
 	const openEditor = (dayOfWeek: number) => {
-		router.push(`/learning-times/edit?day=${dayOfWeek}`);
+		router.push(
+			withReturnTo(`/learning-times/edit?day=${dayOfWeek}`, returnTo),
+		);
 	};
 
 	return (
