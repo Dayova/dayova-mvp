@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
@@ -48,6 +49,7 @@ const PLANS_TAB_SWITCH_GAP = 12;
 const PLANS_TAB_INDICATOR_HEIGHT = 44;
 
 type PlanTab = "learningPlans" | "homework";
+type CreateType = "homework" | "exam";
 
 type LearningPlanOverview = {
 	id: Id<"learningPlans">;
@@ -749,6 +751,7 @@ export default function LearningPlansScreen() {
 	const removePlan = useMutation(api.learningPlans.removePlan);
 	const removeHomework = useMutation(api.dayEntries.remove);
 	const [activeTab, setActiveTab] = useState<PlanTab>("learningPlans");
+	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
 	const today = useCurrentLocalDay();
 	const todayKey = getDayKey(today);
 	const plans = useQuery(
@@ -804,9 +807,13 @@ export default function LearningPlansScreen() {
 			],
 		);
 	};
-	const createEntry = () => {
+	const openCreateTypePicker = () => {
+		setShowCreateTypePicker(true);
+	};
+	const selectCreateType = (type: CreateType) => {
+		setShowCreateTypePicker(false);
 		router.push(
-			activeTab === "homework" ? ROUTES.createHomework : ROUTES.createExam,
+			type === "homework" ? ROUTES.createHomework : ROUTES.createExam,
 		);
 	};
 
@@ -833,7 +840,7 @@ export default function LearningPlansScreen() {
 								: "Lernplan erstellen"
 						}
 						activeOpacity={0.88}
-						onPress={createEntry}
+						onPress={openCreateTypePicker}
 						className="h-12 w-12 items-center justify-center rounded-full border border-border/60 bg-card"
 					>
 						<Plus
@@ -888,7 +895,7 @@ export default function LearningPlansScreen() {
 									accessibilityRole="button"
 									accessibilityLabel="Lernplan erstellen"
 									activeOpacity={0.9}
-									onPress={() => router.push(ROUTES.createExam)}
+									onPress={openCreateTypePicker}
 									className="mt-5 flex-row items-center gap-2 rounded-full bg-foreground px-5 py-3"
 								>
 									<Plus
@@ -937,7 +944,7 @@ export default function LearningPlansScreen() {
 									accessibilityRole="button"
 									accessibilityLabel="Hausaufgabe erstellen"
 									activeOpacity={0.9}
-									onPress={() => router.push(ROUTES.createHomework)}
+									onPress={openCreateTypePicker}
 									className="mt-5 flex-row items-center gap-2 rounded-full bg-foreground px-5 py-3"
 								>
 									<Plus
@@ -954,6 +961,11 @@ export default function LearningPlansScreen() {
 					</View>
 				)}
 			</ScrollView>
+			<CreateTypePickerModal
+				visible={showCreateTypePicker}
+				onRequestClose={() => setShowCreateTypePicker(false)}
+				onSelect={selectCreateType}
+			/>
 		</View>
 	);
 }
