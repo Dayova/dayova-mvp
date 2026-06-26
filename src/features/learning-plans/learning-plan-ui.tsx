@@ -28,6 +28,7 @@ import {
 } from "~/components/ui/icon";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import type {
 	PlanSession,
 	SessionPhase,
@@ -94,6 +95,41 @@ export function SectionTitle({
 				{description}
 			</Text>
 		</View>
+	);
+}
+
+const getPlanningHintCtaLabel = (hint: string) => {
+	if (hint.includes("Keine Lernzeiten hinterlegt"))
+		return "Lernzeiten eintragen";
+	if (hint.includes("Lernzeiten")) return "Lernzeiten anpassen";
+	return undefined;
+};
+
+const getPlanningHintTitle = (hint: string) => {
+	if (hint.includes("Keine Lernzeiten hinterlegt")) return "Lernzeiten fehlen";
+	if (hint.includes("Lernzeiten")) return "Lernzeiten prüfen";
+	return "Planung prüfen";
+};
+
+export function PlanningHintBanner({
+	className,
+	hint,
+	onPressLearningTimes,
+}: {
+	className?: string;
+	hint: string;
+	onPressLearningTimes: () => void;
+}) {
+	const ctaLabel = getPlanningHintCtaLabel(hint);
+
+	return (
+		<WarningBanner
+			className={className}
+			title={getPlanningHintTitle(hint)}
+			description={hint}
+			ctaLabel={ctaLabel}
+			onPressCta={ctaLabel ? onPressLearningTimes : undefined}
+		/>
 	);
 }
 

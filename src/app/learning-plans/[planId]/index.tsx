@@ -27,6 +27,7 @@ import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { PlanningHintBanner } from "~/features/learning-plans/learning-plan-ui";
 import type {
 	LearningPlanSnapshot,
 	PlanSession,
@@ -34,6 +35,7 @@ import type {
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
@@ -462,6 +464,12 @@ export default function LearningPlanSessionsScreen() {
 
 	const goBack = () => {
 		goBackOrReplace(router, "/learning-plans");
+	};
+	const openLearningTimes = () => {
+		if (!planId) return;
+		router.push(
+			withReturnTo(ROUTES.learningTimes, `/learning-plans/${planId}`),
+		);
 	};
 
 	return (

@@ -54,10 +54,6 @@ const config = {
 					DEFAULT: "hsl(var(--wrong))",
 					subtle: "hsl(var(--wrong-subtle))",
 				},
-				warning: {
-					DEFAULT: "hsl(var(--warning))",
-					subtle: "hsl(var(--warning-subtle))",
-				},
 				info: {
 					DEFAULT: "hsl(var(--info))",
 					subtle: "hsl(var(--info-subtle))",

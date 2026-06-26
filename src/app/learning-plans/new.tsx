@@ -371,7 +371,8 @@ export default function NewLearningPlanScreen() {
 						metadata: {
 							learningPlanId: id,
 							storageProvider: uploadData.storageProvider,
-							uploadMethod: uploadData.storageProvider === "r2" ? "PUT" : "POST",
+							uploadMethod:
+								uploadData.storageProvider === "r2" ? "PUT" : "POST",
 							responseStatus: uploadResponse.status,
 							responseStatusText: uploadResponse.statusText,
 							responseHeaders,
