@@ -49,7 +49,7 @@ const phaseEditCopy: Record<
 > = {
 	theory: { actionLabel: "Lernen", fieldLabel: "Theorie" },
 	practice: { actionLabel: "Üben", fieldLabel: "Üben" },
-	rehearsal: { actionLabel: "Testmodus", fieldLabel: "Testmodus" },
+	rehearsal: { actionLabel: "Praxis", fieldLabel: "Praxis" },
 };
 
 const getSessionEditTitle = (session: PlanSession) =>

@@ -6,7 +6,13 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
-import { Check, CircleAlert, Clock3, Route2 } from "~/components/ui/icon";
+import {
+	BookOpen,
+	Check,
+	CircleAlert,
+	Clock3,
+	Route2,
+} from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -26,16 +32,18 @@ import { goBackOrReplace } from "~/lib/navigation";
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
 	practice: "Üben",
-	rehearsal: "Testmodus",
+	rehearsal: "Praxis",
 };
 
 const sessionsScrollContentStyle = { rowGap: 24 } satisfies ViewStyle;
 
 function SessionOverviewCard({
 	session,
+	onOpen,
 	onToggleCompleted,
 }: {
 	session: PlanSession;
+	onOpen: () => void;
 	onToggleCompleted: () => void;
 }) {
 	const endTime = timeFromMinutes(
@@ -78,22 +86,34 @@ function SessionOverviewCard({
 				{goal}
 			</Text>
 
-			<Button
-				accessibilityRole="button"
-				accessibilityLabel={
-					session.completed
-						? "Lerneinheit als offen markieren"
-						: "Lerneinheit als erledigt markieren"
-				}
-				onPress={onToggleCompleted}
-				variant={session.completed ? "neutral" : "default"}
-				className="mt-1 px-4"
-			>
-				<Check size={16} color="#FFFFFF" strokeWidth={2.2} />
-				<Text className="font-poppins font-semibold text-body-4 text-white">
-					{session.completed ? "Als offen markieren" : "Als erledigt markieren"}
-				</Text>
-			</Button>
+			<View className="mt-1 flex-row gap-3">
+				<Button
+					accessibilityLabel={`${title} öffnen`}
+					onPress={onOpen}
+					className="flex-1 px-4"
+				>
+					<BookOpen size={16} color="#FFFFFF" strokeWidth={2.2} />
+					<Text className="font-poppins font-semibold text-body-4 text-white">
+						Lernen
+					</Text>
+				</Button>
+				<Button
+					accessibilityRole="button"
+					accessibilityLabel={
+						session.completed
+							? "Lerneinheit als offen markieren"
+							: "Lerneinheit als erledigt markieren"
+					}
+					onPress={onToggleCompleted}
+					variant="neutral"
+					className="flex-1 px-4"
+				>
+					<Check size={16} color="#FFFFFF" strokeWidth={2.2} />
+					<Text className="font-poppins font-semibold text-body-4 text-white">
+						{session.completed ? "Offen" : "Erledigt"}
+					</Text>
+				</Button>
+			</View>
 		</Surface>
 	);
 }
@@ -176,6 +196,13 @@ export default function LearningPlanSessionsScreen() {
 						<SessionOverviewCard
 							key={session.id}
 							session={session}
+							onOpen={() =>
+								planId
+									? router.push(
+											`/learning-plans/${planId}/sessions/${session.id}` as const,
+										)
+									: undefined
+							}
 							onToggleCompleted={() =>
 								void setSessionCompleted({
 									sessionId: session.id,
