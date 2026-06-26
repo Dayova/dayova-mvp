@@ -30,14 +30,14 @@ The Figma light palette is the source of truth: background `#F6F6F4`, light 1
 `#FFFFFF`, light 2 `#F3F6FA`, light 3 `#FAFAFC`, border `#DCE6EE`, path 1/2
 `#D7DCE3`, path 3 `#8A8D92`, path 4/secondary text `#697586`, path 5/primary
 strong `#00A0E6`, path 6/primary/system cyan `#00BAFF`, path 7 `#4FD8FF`, and
-primary text `#1A1A1A`. The Figma orange `#FF9500` is the `wrong`/warning
-status color; `destructive` remains a separate functional action/error token.
+primary text `#1A1A1A`. The Figma orange `#FF9500` is the `wrong` status color;
+`destructive` remains a separate functional action/error token.
 Dark-mode variables and classes should not be introduced until the dark-mode
 design is finalized.
 
-Badge fills use wrong/warning `#FF9500`, info `#C9A100`, system `#00BAFF`,
-success `#34C759`, theorie `#5856D6`, ueben `#AF52DE`, praxis `#00C7BE`, and
-hausaufgabe `#B88AAE`. Badge subtle fills match Figma exactly: wrong/warning
+Badge fills use wrong `#FF9500`, info `#C9A100`, system `#00BAFF`, success
+`#34C759`, theorie `#5856D6`, ueben `#AF52DE`, praxis `#00C7BE`, and
+hausaufgabe `#B88AAE`. Badge subtle fills match Figma exactly: wrong
 `#FFECD6`, info `#FFF8CC`, system `#F1F7FB`, success `#EAFFF1`, theorie
 `#EEECFF`, ueben `#F4ECFF`, praxis `#E7FBF6`, and hausaufgabe `#F3E8F0`.
 
