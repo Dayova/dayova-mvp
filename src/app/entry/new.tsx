@@ -49,6 +49,8 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuth } from "~/context/AuthContext";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useValidationAnalytics } from "~/lib/analytics";
+import { definedAnalyticsProperties } from "~/lib/analytics-core";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 import {
 	getDurationBetweenTimes,
@@ -212,6 +214,7 @@ export default function NewEntryScreen() {
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDayEntry = useMutation(api.dayEntries.create);
+	const { capture } = useValidationAnalytics();
 	const params = useLocalSearchParams<{
 		type?: string;
 		dayKey?: string;
@@ -333,6 +336,17 @@ export default function NewEntryScreen() {
 				durationMinutes: resolvedDurationMinutes,
 				...(!isHomework ? { examTypeLabel: trimmedExamType } : {}),
 			});
+			void capture(
+				isHomework ? "homework_created" : "exam_created",
+				definedAnalyticsProperties({
+					day_entry_id: createdEntryId,
+					subject: trimmedSubject,
+					planned_day_key: nextDayKey,
+					duration_minutes: resolvedDurationMinutes,
+					due_day_key: isHomework ? getDayKey(dueDate) : undefined,
+					exam_type_label: isHomework ? undefined : trimmedExamType,
+				}),
+			);
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Der Eintrag konnte nicht gespeichert werden."),

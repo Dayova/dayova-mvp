@@ -12,6 +12,8 @@ import { useAuth } from "~/context/AuthContext";
 import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useValidationAnalytics } from "~/lib/analytics";
+import { definedAnalyticsProperties } from "~/lib/analytics-core";
 import { goBackOrReplace } from "~/lib/navigation";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
@@ -27,6 +29,7 @@ export default function LearningPlanGeneratingScreen() {
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
+	const { capture } = useValidationAnalytics();
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [retryAttempt, setRetryAttempt] = useState(0);
@@ -82,6 +85,16 @@ export default function LearningPlanGeneratingScreen() {
 				learningPlanId: planId,
 				answers: answerList,
 			})
+				.then((result) => {
+					void capture(
+						"study_plan_generated",
+						definedAnalyticsProperties({
+							learning_plan_id: planId,
+							session_count: result.sessionCount,
+							answer_count: answerList.length,
+						}),
+					);
+				})
 				.catch((error: unknown) => {
 					setErrorMessage(
 						getErrorMessage(
@@ -93,7 +106,7 @@ export default function LearningPlanGeneratingScreen() {
 				})
 				.finally(() => setIsBusy(false));
 		});
-	}, [answerList, generatePlan, planId, retryAttempt, router, snapshot]);
+	}, [answerList, capture, generatePlan, planId, retryAttempt, router, snapshot]);
 
 	useEffect(() => {
 		return () => {

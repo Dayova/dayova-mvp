@@ -42,6 +42,8 @@ import {
 	parseDateKey,
 	retryOnceAfterAuthResume,
 } from "~/features/learning-plans/utils";
+import { useValidationAnalytics } from "~/lib/analytics";
+import { definedAnalyticsProperties } from "~/lib/analytics-core";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
@@ -168,6 +170,7 @@ export default function NewLearningPlanScreen() {
 		api.learningPlans.registerUploadedDocument,
 	);
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
+	const { capture } = useValidationAnalytics();
 
 	const subject = params.subject?.trim() || "Fach";
 	const examTypeLabel = params.examTypeLabel?.trim() || "Leistungskontrolle";
@@ -396,6 +399,14 @@ export default function NewLearningPlanScreen() {
 				fileName: asset.name,
 				fileType,
 				fileSizeBytes,
+			}),
+		);
+		void capture(
+			"material_uploaded",
+			definedAnalyticsProperties({
+				learning_plan_id: id,
+				file_type: fileType,
+				file_size_bytes: fileSizeBytes,
 			}),
 		);
 	};

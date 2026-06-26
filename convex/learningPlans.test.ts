@@ -36,6 +36,46 @@ const createPlan = async (t: TestBackend) => {
 	});
 };
 
+const createAcceptedPlanWithSession = async (
+	t: TestBackend,
+	overrides: Partial<{
+		phase: "theory" | "practice" | "rehearsal";
+		title: string;
+		dateKey: string;
+		dateLabel: string;
+		startTime: string;
+		durationMinutes: number;
+	}> = {},
+) => {
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		sessions: [
+			{
+				phase: overrides.phase ?? "practice",
+				title: overrides.title ?? "Üben",
+				dateKey: overrides.dateKey ?? "2026-06-01",
+				dateLabel: overrides.dateLabel ?? "1. Juni 2026",
+				startTime: overrides.startTime ?? "17:00",
+				durationMinutes: overrides.durationMinutes ?? 30,
+				goal: "Kurz wiederholen.",
+				tasks: ["Begriffe prüfen", "Aufgaben lösen"],
+				expectedOutcome: "Du bist vorbereitet.",
+			},
+		],
+	});
+	await t.mutation(api.learningPlans.acceptPlan, { learningPlanId });
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const session = snapshot?.sessions[0];
+	if (!session) throw new Error("Expected an accepted learning plan session.");
+	return { learningPlanId, session };
+};
+
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-05-30T10:00:00.000Z"));
@@ -290,6 +330,142 @@ test("review sessions are only synced after the plan is accepted", async () => {
 	});
 	expect(afterAccept["2026-06-04"]).toHaveLength(1);
 	expect(afterAccept["2026-06-04"]?.[0]?.kind).toBe("Lernen");
+});
+
+test("learning plan sessions move from started to completed and sync calendar state", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const { learningPlanId, session } = await createAcceptedPlanWithSession(t);
+
+	const started = await t.mutation(api.learningPlans.startSession, {
+		sessionId: session.id,
+	});
+	expect(started).toMatchObject({
+		learningPlanId,
+		learningPlanSessionId: session.id,
+		phase: "practice",
+		plannedDayKey: "2026-06-01",
+	});
+
+	let snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(snapshot?.sessions[0]).toMatchObject({
+		executionStatus: "started",
+		completed: false,
+	});
+	let entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-06-01"],
+	});
+	expect(entries["2026-06-01"]?.[0]).toMatchObject({
+		executionStatus: "started",
+		completed: false,
+	});
+
+	const completed = await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId: session.id,
+		outcome: "completed",
+	});
+	expect(completed).toMatchObject({
+		outcome: "completed",
+		learningPlanSessionId: session.id,
+	});
+
+	snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(snapshot?.sessions[0]).toMatchObject({
+		executionStatus: "completed",
+		completed: true,
+	});
+	entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-06-01"],
+	});
+	expect(entries["2026-06-01"]?.[0]).toMatchObject({
+		executionStatus: "completed",
+		completed: true,
+	});
+});
+
+test("recording a learning plan session outcome requires the session to be started", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const { session } = await createAcceptedPlanWithSession(t);
+
+	await expect(
+		t.mutation(api.learningPlans.recordSessionOutcome, {
+			sessionId: session.id,
+			outcome: "completed",
+		}),
+	).rejects.toThrow("Starte den Lernblock zuerst.");
+});
+
+test("partially completed learning plan sessions stay incomplete but keep the outcome", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const { learningPlanId, session } = await createAcceptedPlanWithSession(t, {
+		dateKey: "2026-06-02",
+		dateLabel: "2. Juni 2026",
+	});
+
+	await t.mutation(api.learningPlans.startSession, { sessionId: session.id });
+	await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId: session.id,
+		outcome: "partiallyCompleted",
+	});
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(snapshot?.sessions[0]).toMatchObject({
+		executionStatus: "partiallyCompleted",
+		completed: false,
+	});
+	const entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-06-02"],
+	});
+	expect(entries["2026-06-02"]?.[0]).toMatchObject({
+		executionStatus: "partiallyCompleted",
+		completed: false,
+	});
+});
+
+test("missed learning plan sessions can be adjusted into a linked recovery block", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const { learningPlanId, session } = await createAcceptedPlanWithSession(t, {
+		dateKey: "2026-06-03",
+		dateLabel: "3. Juni 2026",
+	});
+
+	await t.mutation(api.learningPlans.missSession, {
+		sessionId: session.id,
+		reason: "no_time",
+	});
+	const adjusted = await t.mutation(api.learningPlans.adjustMissedSession, {
+		sessionId: session.id,
+		dateKey: "2026-06-03",
+		dateLabel: "3. Juni 2026",
+		startTime: "17:30",
+		durationMinutes: 15,
+	});
+
+	expect(adjusted).toMatchObject({
+		learningPlanSessionId: session.id,
+		newDateKey: "2026-06-03",
+		newDurationMinutes: 15,
+		missedReason: "no_time",
+	});
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(snapshot?.sessions).toHaveLength(2);
+	expect(snapshot?.sessions[0]).toMatchObject({
+		executionStatus: "adjusted",
+		missedReason: "no_time",
+		completed: false,
+	});
+	expect(snapshot?.sessions[1]).toMatchObject({
+		adjustedFromSessionId: session.id,
+		executionStatus: "notStarted",
+		durationMinutes: 15,
+	});
 });
 
 test("generated plans can advance to review without available sessions", async () => {

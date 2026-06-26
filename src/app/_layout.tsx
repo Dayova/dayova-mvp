@@ -13,13 +13,16 @@ import {
 } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
 import { useColorScheme } from "nativewind";
+import { PostHogProvider } from "posthog-react-native";
 import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { NotificationSync } from "~/components/notification-sync";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
+import { postHogApiKey, postHogHost } from "~/lib/analytics-core";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { NAV_THEME } from "~/lib/theme";
 
@@ -91,22 +94,32 @@ export default function RootLayout() {
 	return (
 		<GestureHandlerRootView style={styles.root}>
 			<KeyboardProvider preload={false}>
-				<ClerkProvider
-					publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
-					tokenCache={tokenCache}
+				<PostHogProvider
+					apiKey={postHogApiKey}
+					autocapture={false}
+					options={{
+						host: postHogHost,
+						captureAppLifecycleEvents: false,
+					}}
 				>
-					<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
-						<ThemeProvider value={theme}>
-							<BottomSheetModalProvider>
-								<OnboardingProvider>
-									<AuthProvider>
-										<AppNavigator />
-									</AuthProvider>
-								</OnboardingProvider>
-							</BottomSheetModalProvider>
-						</ThemeProvider>
-					</ConvexProviderWithClerk>
-				</ClerkProvider>
+					<ClerkProvider
+						publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
+						tokenCache={tokenCache}
+					>
+						<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
+							<ThemeProvider value={theme}>
+								<BottomSheetModalProvider>
+									<OnboardingProvider>
+										<AuthProvider>
+											<AnalyticsIdentity />
+											<AppNavigator />
+										</AuthProvider>
+									</OnboardingProvider>
+								</BottomSheetModalProvider>
+							</ThemeProvider>
+						</ConvexProviderWithClerk>
+					</ClerkProvider>
+				</PostHogProvider>
 			</KeyboardProvider>
 		</GestureHandlerRootView>
 	);
