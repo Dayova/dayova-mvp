@@ -98,7 +98,7 @@ function AnimatedTabIcon({
 				size={22 * scale}
 				color={
 					active
-						? DAYOVA_DESIGN_SYSTEM.colors.primaryForeground
+						? DAYOVA_DESIGN_SYSTEM.colors.light1
 						: DAYOVA_DESIGN_SYSTEM.colors.text
 				}
 				strokeWidth={active ? 2.15 : 2}

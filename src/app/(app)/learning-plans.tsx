@@ -41,7 +41,7 @@ import { ROUTES } from "~/lib/routes";
 const PLAN_ACTION_RAIL_WIDTH = 104;
 const PLAN_SWIPE_OPEN_THRESHOLD = 44;
 const PLAN_ACTION_RAIL_COLOR = DAYOVA_DESIGN_SYSTEM.colors.buttonNeutral;
-const STATUS_NEUTRAL_BACKGROUND = DAYOVA_DESIGN_SYSTEM.colors.mutedSurface;
+const STATUS_NEUTRAL_BACKGROUND = DAYOVA_DESIGN_SYSTEM.colors.systemSubtle;
 const PLANS_TAB_SWITCH_HEIGHT = 58;
 const PLANS_TAB_SWITCH_PADDING = 6;
 const PLANS_TAB_SWITCH_GAP = 12;
@@ -320,10 +320,15 @@ function PlansTabSwitch({
 							<Text
 								className={
 									isActive
-										? "font-poppins font-semibold text-[16px] text-primary-foreground leading-[19px]"
+										? "font-poppins font-semibold text-[16px] leading-[19px]"
 										: "font-poppins font-semibold text-[16px] text-foreground leading-[19px]"
 								}
 								numberOfLines={1}
+								style={
+									isActive
+										? { color: DAYOVA_DESIGN_SYSTEM.colors.light1 }
+										: undefined
+								}
 							>
 								{tab.label}
 							</Text>
@@ -368,14 +373,14 @@ function LearningPlanActionRail({
 				>
 					<PropertyEdit
 						size={26}
-						color={DAYOVA_DESIGN_SYSTEM.colors.buttonNeutralForeground}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2.1}
 					/>
 				</TouchableOpacity>
 				<View
 					className="h-0.5 w-8 rounded-full"
 					style={{
-						backgroundColor: `${DAYOVA_DESIGN_SYSTEM.colors.buttonNeutralForeground}CC`,
+						backgroundColor: `${DAYOVA_DESIGN_SYSTEM.colors.light1}CC`,
 					}}
 				/>
 				<TouchableOpacity
@@ -387,7 +392,7 @@ function LearningPlanActionRail({
 				>
 					<Trash2
 						size={26}
-						color={DAYOVA_DESIGN_SYSTEM.colors.buttonNeutralForeground}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2.1}
 					/>
 				</TouchableOpacity>
@@ -503,7 +508,7 @@ function LearningPlanCard({
 						actionIcon={
 							<ArrowUpRight
 								size={24}
-								color={DAYOVA_DESIGN_SYSTEM.colors.primaryForeground}
+								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 								strokeWidth={2.2}
 							/>
 						}
@@ -531,7 +536,7 @@ function LearningPlanCard({
 							<View className="flex-row items-center gap-1">
 								<GraduationCap
 									size={14}
-									color={DAYOVA_DESIGN_SYSTEM.colors.textMuted}
+									color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
 									strokeWidth={2}
 								/>
 								<Text className="font-poppins text-[12px] text-muted-foreground leading-[18px]">
@@ -555,7 +560,7 @@ function LearningPlanCard({
 								<View className="flex-row items-center gap-1">
 									<ClipboardEdit
 										size={14}
-										color={DAYOVA_DESIGN_SYSTEM.colors.textMuted}
+										color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
 										strokeWidth={2}
 									/>
 									<Text className="font-poppins text-[12px] text-muted-foreground leading-[18px]">
@@ -684,7 +689,7 @@ function HomeworkCard({
 						actionIcon={
 							<ArrowUpRight
 								size={24}
-								color={DAYOVA_DESIGN_SYSTEM.colors.primaryForeground}
+								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 								strokeWidth={2.2}
 							/>
 						}
@@ -712,7 +717,7 @@ function HomeworkCard({
 							<View className="flex-row items-center gap-1">
 								<Clock3
 									size={14}
-									color={DAYOVA_DESIGN_SYSTEM.colors.textMuted}
+									color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
 									strokeWidth={2}
 								/>
 								<Text
@@ -888,7 +893,7 @@ export default function LearningPlansScreen() {
 								>
 									<Plus
 										size={18}
-										color={DAYOVA_DESIGN_SYSTEM.colors.buttonNeutralForeground}
+										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 										strokeWidth={2.4}
 									/>
 									<Text className="font-poppins font-semibold text-body-4 text-button-neutral-foreground">
@@ -937,7 +942,7 @@ export default function LearningPlansScreen() {
 								>
 									<Plus
 										size={18}
-										color={DAYOVA_DESIGN_SYSTEM.colors.buttonNeutralForeground}
+										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 										strokeWidth={2.4}
 									/>
 									<Text className="font-poppins font-semibold text-body-4 text-button-neutral-foreground">
