@@ -1,8 +1,14 @@
 import { useConvexAuth, useMutation } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { type ReactNode, useCallback, useRef, useState } from "react";
-import { type LayoutChangeEvent, Platform, View } from "react-native";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
+import { Keyboard, type LayoutChangeEvent, Platform, View } from "react-native";
 import {
 	type KeyboardAwareScrollViewRef,
 	KeyboardStickyView,
@@ -91,6 +97,8 @@ const EXAM_TYPE_OPTIONS = [
 	"Mündliche Prüfung",
 	"Präsentation",
 ];
+
+const KEYBOARD_DISMISS_FALLBACK_MS = 280;
 
 const subjectIconByOption = {
 	Mathematik: Calculator,
@@ -244,6 +252,15 @@ export default function NewEntryScreen() {
 	const [selectTarget, setSelectTarget] = useState<SelectTarget | null>(null);
 	const scrollViewRef = useRef<KeyboardAwareScrollViewRef | null>(null);
 	const noteInputOffsetY = useRef(0);
+	const keyboardHideSubscriptionRef = useRef<ReturnType<
+		typeof Keyboard.addListener
+	> | null>(null);
+	const keyboardDismissFallbackRef = useRef<ReturnType<
+		typeof setTimeout
+	> | null>(null);
+	const keyboardDismissFrameRef = useRef<ReturnType<
+		typeof requestAnimationFrame
+	> | null>(null);
 
 	const trimmedSubject = subject.trim();
 	const trimmedExamType = examTypeLabel.trim();
@@ -265,8 +282,80 @@ export default function NewEntryScreen() {
 			: "Plane jetzt, wann du die Hausaufgabe erledigst."
 		: "Trage Datum, Uhrzeit, Fach und Prüfungsart ein.";
 
-	const closePicker = () => setPickerTarget(null);
-	const closeSelect = () => setSelectTarget(null);
+	const clearPendingModalOpen = useCallback(() => {
+		keyboardHideSubscriptionRef.current?.remove();
+		keyboardHideSubscriptionRef.current = null;
+
+		if (keyboardDismissFallbackRef.current) {
+			clearTimeout(keyboardDismissFallbackRef.current);
+			keyboardDismissFallbackRef.current = null;
+		}
+
+		if (keyboardDismissFrameRef.current) {
+			cancelAnimationFrame(keyboardDismissFrameRef.current);
+			keyboardDismissFrameRef.current = null;
+		}
+	}, []);
+
+	useEffect(() => clearPendingModalOpen, [clearPendingModalOpen]);
+
+	const openAfterKeyboardDismiss = useCallback(
+		(open: () => void) => {
+			clearPendingModalOpen();
+			const isKeyboardVisible = Keyboard.isVisible();
+
+			if (!isKeyboardVisible) {
+				Keyboard.dismiss();
+				open();
+				return;
+			}
+
+			let didOpen = false;
+			const finishOpen = () => {
+				if (didOpen) return;
+				didOpen = true;
+				clearPendingModalOpen();
+				keyboardDismissFrameRef.current = requestAnimationFrame(() => {
+					keyboardDismissFrameRef.current = null;
+					open();
+				});
+			};
+
+			keyboardHideSubscriptionRef.current = Keyboard.addListener(
+				"keyboardDidHide",
+				finishOpen,
+			);
+			keyboardDismissFallbackRef.current = setTimeout(
+				finishOpen,
+				KEYBOARD_DISMISS_FALLBACK_MS,
+			);
+			Keyboard.dismiss();
+		},
+		[clearPendingModalOpen],
+	);
+
+	const openPicker = useCallback(
+		(target: PickerTarget) => {
+			openAfterKeyboardDismiss(() => setPickerTarget(target));
+		},
+		[openAfterKeyboardDismiss],
+	);
+
+	const openSelect = useCallback(
+		(target: SelectTarget) => {
+			openAfterKeyboardDismiss(() => setSelectTarget(target));
+		},
+		[openAfterKeyboardDismiss],
+	);
+
+	const closePicker = () => {
+		clearPendingModalOpen();
+		setPickerTarget(null);
+	};
+	const closeSelect = () => {
+		clearPendingModalOpen();
+		setSelectTarget(null);
+	};
 
 	const handlePickerChange = (
 		event: DateTimePickerEvent,
@@ -545,14 +634,14 @@ export default function NewEntryScreen() {
 								icon={
 									<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
 								}
-								onPress={() => setPickerTarget("dueDate")}
+								onPress={() => openPicker("dueDate")}
 							/>
 
 							<Field>
 								<FieldLabel>Schulfach</FieldLabel>
 								<FieldTrigger
 									activeOpacity={0.86}
-									onPress={() => setSelectTarget("subject")}
+									onPress={() => openSelect("subject")}
 									className="min-h-[64px] rounded-[28px] px-5"
 									style={{
 										boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
@@ -616,7 +705,7 @@ export default function NewEntryScreen() {
 								icon={
 									<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
 								}
-								onPress={() => setPickerTarget("plannedDate")}
+								onPress={() => openPicker("plannedDate")}
 							/>
 
 							<View className="mb-5 flex-row" style={{ columnGap: 12 }}>
@@ -627,7 +716,7 @@ export default function NewEntryScreen() {
 										icon={
 											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
 										}
-										onPress={() => setPickerTarget("plannedTime")}
+										onPress={() => openPicker("plannedTime")}
 										className="min-h-[64px] px-5"
 									/>
 								</View>
@@ -638,7 +727,7 @@ export default function NewEntryScreen() {
 										icon={
 											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
 										}
-										onPress={() => setPickerTarget("plannedEndTime")}
+										onPress={() => openPicker("plannedEndTime")}
 										className="min-h-[64px] px-5"
 									/>
 								</View>
@@ -687,7 +776,7 @@ export default function NewEntryScreen() {
 							icon={
 								<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
 							}
-							onPress={() => setPickerTarget("plannedDate")}
+							onPress={() => openPicker("plannedDate")}
 						/>
 						<View className="mb-5 flex-row" style={{ columnGap: 12 }}>
 							<View className="flex-1">
@@ -695,7 +784,7 @@ export default function NewEntryScreen() {
 									value={formatTime(plannedTime)}
 									placeholder="Von"
 									icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
-									onPress={() => setPickerTarget("plannedTime")}
+									onPress={() => openPicker("plannedTime")}
 									className="min-h-[64px] px-5"
 								/>
 							</View>
@@ -704,7 +793,7 @@ export default function NewEntryScreen() {
 									value={formatTime(plannedEndTime)}
 									placeholder="Bis"
 									icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
-									onPress={() => setPickerTarget("plannedEndTime")}
+									onPress={() => openPicker("plannedEndTime")}
 									className="min-h-[64px] px-5"
 								/>
 							</View>
@@ -714,7 +803,7 @@ export default function NewEntryScreen() {
 							<FieldLabel>Schulfach</FieldLabel>
 							<FieldTrigger
 								activeOpacity={0.86}
-								onPress={() => setSelectTarget("subject")}
+								onPress={() => openSelect("subject")}
 								className="min-h-[64px] rounded-[28px] px-5"
 								style={{
 									boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
@@ -740,7 +829,7 @@ export default function NewEntryScreen() {
 							<FieldLabel>Prüfungsart</FieldLabel>
 							<FieldTrigger
 								activeOpacity={0.86}
-								onPress={() => setSelectTarget("examType")}
+								onPress={() => openSelect("examType")}
 								className="min-h-[64px] rounded-[28px] px-5"
 								style={{
 									boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
