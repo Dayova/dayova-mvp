@@ -164,7 +164,7 @@ function HomeworkPillField({
 	const content = (
 		<>
 			<Text
-				className="flex-1 font-poppins text-body-2 text-text/46"
+				className="flex-1 font-poppins text-body-2 text-secondary-text"
 				numberOfLines={1}
 			>
 				{value || placeholder}
@@ -615,7 +615,7 @@ export default function NewEntryScreen() {
 								<Text className="font-poppins font-semibold text-body-3 text-text">
 									Hausaufgabe eintragen
 								</Text>
-								<Text className="mt-2 font-poppins text-body-3 text-text/42">
+								<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
 									Trage zuerst Fälligkeit, Fach und Notiz ein.
 								</Text>
 							</View>
@@ -643,7 +643,7 @@ export default function NewEntryScreen() {
 									<Text
 										className={cn(
 											"flex-1 font-poppins text-body-2",
-											subject ? "text-text" : "text-text/30",
+											subject ? "text-text" : "text-secondary-text",
 										)}
 										numberOfLines={1}
 									>
@@ -661,7 +661,7 @@ export default function NewEntryScreen() {
 
 							<Field className="mb-8" onLayout={handleNoteInputLayout}>
 								<FieldLabel>Notizen</FieldLabel>
-								<FieldControl className="min-h-[150px] items-start rounded-input px-5 pt-4 pb-4">
+								<FieldControl className="min-h-40 items-start rounded-input px-5 pt-4 pb-4">
 									<Textarea
 										value={note}
 										onChangeText={setNote}
@@ -678,7 +678,7 @@ export default function NewEntryScreen() {
 								<Text className="font-poppins font-semibold text-body-3 text-text">
 									Hausaufgabe eintragen
 								</Text>
-								<Text className="mt-2 font-poppins text-body-3 text-text/42">
+								<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
 									Plane jetzt, wann du die Hausaufgabe erledigst.
 								</Text>
 							</View>
@@ -757,7 +757,7 @@ export default function NewEntryScreen() {
 							<Text className="font-poppins font-semibold text-body-2 text-text">
 								{title}
 							</Text>
-							<Text className="mt-2 font-poppins text-body-3 text-text/42">
+							<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
 								{subtitle}
 							</Text>
 						</View>
@@ -821,7 +821,7 @@ export default function NewEntryScreen() {
 								<Text
 									className={cn(
 										"flex-1 font-poppins text-body-2",
-										subject ? "text-text" : "text-text/30",
+										subject ? "text-text" : "text-secondary-text",
 									)}
 									numberOfLines={1}
 								>
@@ -847,7 +847,7 @@ export default function NewEntryScreen() {
 								<Text
 									className={cn(
 										"flex-1 font-poppins text-body-2",
-										examTypeLabel ? "text-text" : "text-text/30",
+										examTypeLabel ? "text-text" : "text-secondary-text",
 									)}
 									numberOfLines={1}
 								>
@@ -868,8 +868,8 @@ export default function NewEntryScreen() {
 			<KeyboardStickyView enabled={shouldUseKeyboardStickyActions(Platform.OS)}>
 				{isHomework ? (
 					<View
+						className="px-6"
 						style={{
-							paddingHorizontal: 24,
 							paddingBottom: Math.max(insets.bottom + 10, 24),
 						}}
 					>
@@ -902,8 +902,8 @@ export default function NewEntryScreen() {
 					</View>
 				) : (
 					<View
+						className="px-6"
 						style={{
-							paddingHorizontal: 24,
 							paddingBottom: Math.max(insets.bottom + 10, 24),
 						}}
 					>
