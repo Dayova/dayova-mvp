@@ -9,12 +9,14 @@ export function ScreenHeader({
 	right,
 	showBack = true,
 	className = "mb-7",
+	titleClassName,
 }: {
 	title?: string;
 	onBack: () => void;
 	right?: ReactNode;
 	showBack?: boolean;
 	className?: string;
+	titleClassName?: string;
 }) {
 	return (
 		<View className={`relative min-h-12 justify-center ${className}`}>
@@ -26,7 +28,10 @@ export function ScreenHeader({
 			{title ? (
 				<Text
 					accessibilityRole="header"
-					className="text-center font-poppins font-semibold text-body-2 text-text"
+					className={
+						titleClassName ??
+						"text-center font-poppins font-semibold text-body-2 text-text"
+					}
 				>
 					{title}
 				</Text>

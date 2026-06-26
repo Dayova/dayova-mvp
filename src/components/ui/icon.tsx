@@ -35,6 +35,7 @@ import {
 	Route02Icon,
 	ScanImageIcon,
 	Settings01Icon,
+	SquareLock02Icon,
 	Task01Icon,
 	TaskEdit01Icon,
 	Tick02Icon,
@@ -90,6 +91,7 @@ export const PropertyEdit = createIcon(PropertyEditIcon);
 export const Route2 = createIcon(Route02Icon);
 export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(Settings01Icon);
+export const SquareLock = createIcon(SquareLock02Icon);
 export const TimeManagement = createIcon(TimeManagementCircleIcon);
 export const Timer = createIcon(Clock03Icon);
 export const Trash2 = createIcon(Delete02Icon);

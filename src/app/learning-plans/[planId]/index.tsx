@@ -1,13 +1,16 @@
 import { useConvexAuth, useQuery } from "convex/react";
-import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import {
 	ActivityIndicator,
 	Pressable,
+	ScrollView,
 	View,
 	type ViewStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -17,10 +20,11 @@ import {
 	Check,
 	Clock3,
 	Dumbbell,
-	Lock,
 	NotebookPen,
+	SquareLock,
 } from "~/components/ui/icon";
-import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
+import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import type {
@@ -34,7 +38,7 @@ import { goBackOrReplace } from "~/lib/navigation";
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
 	practice: "Üben",
-	rehearsal: "Testmodus",
+	rehearsal: "Praxis",
 };
 
 const PHASE_COLOR: Record<
@@ -56,7 +60,9 @@ const PHASE_COLOR: Record<
 };
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
-const primaryGradient = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
+const SESSION_PREVIEW_CARD_HEIGHT = 174;
+const SESSION_PREVIEW_CARD_PATH =
+	"M40 1 H329 C351 1 368 18 368 40 V66 C368 87 350 102 324 102 C300 102 292 116 292 132 C292 163 284 171 272 174 H40 C18 174 1 157 1 135 V40 C1 18 18 1 40 1 Z";
 
 const getSessionRoute = (
 	planId: Id<"learningPlans">,
@@ -72,23 +78,40 @@ function SessionPreviewCard({
 }) {
 	const phase = PHASE_COLOR[session.phase];
 	const title = formatGermanUiText(session.title);
-	const goal = formatGermanUiText(session.goal);
+	const description = formatGermanUiText(session.goal);
 
 	return (
-		<View className="relative min-h-[184px]">
-			<View
-				className="min-h-[158px] rounded-[40px] border border-border bg-card px-6 pt-6 pb-8"
-				style={{ marginRight: 28 }}
-			>
-				<View className="flex-row items-start justify-between gap-4">
+		<CompactNotchedActionCard
+			accessibilityHint="Öffnet die ausgewählte Lerneinheit."
+			accessibilityLabel={`${title}, ${PHASE_LABEL[session.phase]}, ${session.durationMinutes} Minuten`}
+			actionAccessibilityLabel="Lerneinheit öffnen"
+			actionIcon={
+				<ArrowUpRight
+					size={24}
+					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+					strokeWidth={2.2}
+				/>
+			}
+			actionOffsetBottom={4}
+			onActionPress={onOpen}
+			cardHeight={SESSION_PREVIEW_CARD_HEIGHT}
+			cardPath={SESSION_PREVIEW_CARD_PATH}
+			cardStyle={{
+				paddingTop: 22,
+				paddingRight: 24,
+				paddingBottom: 24,
+			}}
+		>
+			<View className="gap-2">
+				<View className="flex-row items-start justify-between gap-3">
 					<Text
-						className="max-w-[154px] font-poppins font-semibold text-[18px] text-foreground leading-[24px]"
+						className="max-w-[170px] flex-1 font-poppins font-semibold text-[18px] text-foreground leading-[24px]"
 						numberOfLines={2}
 					>
 						{title}
 					</Text>
 
-					<View className="flex-row items-center gap-1.5">
+					<View className="flex-row items-center justify-end gap-1">
 						<View
 							className="flex-row items-center gap-1 rounded-full px-2.5 py-1.5"
 							style={{ backgroundColor: phase.background }}
@@ -110,10 +133,10 @@ function SessionPreviewCard({
 					</View>
 				</View>
 
-				<View className="mt-4 flex-row items-center gap-1.5">
+				<View className="flex-row items-center gap-1.5">
 					<Clock3
 						size={13}
-						color={DAYOVA_DESIGN_SYSTEM.colors.textMuted}
+						color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
 						strokeWidth={2}
 					/>
 					<Text className="font-poppins text-[13px] text-muted-foreground leading-[18px]">
@@ -122,37 +145,13 @@ function SessionPreviewCard({
 				</View>
 
 				<Text
-					className="mt-3 max-w-[252px] font-poppins text-[15px] text-muted-foreground leading-[22px]"
+					className="max-w-[252px] font-poppins text-[15px] text-muted-foreground leading-[21px]"
 					numberOfLines={2}
 				>
-					{goal}
+					{description}
 				</Text>
 			</View>
-
-			<Pressable
-				accessibilityRole="button"
-				accessibilityLabel="Lerneinheit öffnen"
-				className="absolute right-0 bottom-0 h-[72px] w-[72px] overflow-hidden rounded-full"
-				onPress={onOpen}
-			>
-				<LinearGradient
-					colors={primaryGradient.colors}
-					start={primaryGradient.start}
-					end={primaryGradient.end}
-					style={{
-						flex: 1,
-						alignItems: "center",
-						justifyContent: "center",
-					}}
-				>
-					<ArrowUpRight
-						size={30}
-						color={DAYOVA_DESIGN_SYSTEM.colors.primaryForeground}
-						strokeWidth={2.2}
-					/>
-				</LinearGradient>
-			</Pressable>
-		</View>
+		</CompactNotchedActionCard>
 	);
 }
 
@@ -232,12 +231,8 @@ function PathNode({
 }) {
 	const isActive = state === "active";
 	const isLocked = state === "locked";
-	const activeNodeSize = 58;
 	const completedNodeWidth = 72;
 	const completedNodeHeight = 64;
-	const lockedOuterWidth = 68;
-	const lockedOuterHeight = 64;
-	const lockedInnerSize = 58;
 	const position = {
 		left: frame.left,
 		top: frame.top,
@@ -245,132 +240,133 @@ function PathNode({
 		height: frame.height,
 	} satisfies ViewStyle;
 
+	const renderStepCircle = ({
+		borderColor,
+		icon,
+		isDimmed = false,
+		showHighlights = false,
+	}: {
+		borderColor?: string;
+		icon: ReactNode;
+		isDimmed?: boolean;
+		showHighlights?: boolean;
+	}) => {
+		const backColor = isDimmed
+			? DAYOVA_DESIGN_SYSTEM.colors.path1
+			: DAYOVA_DESIGN_SYSTEM.colors.path5;
+		const fillColor = isDimmed
+			? DAYOVA_DESIGN_SYSTEM.colors.path3
+			: DAYOVA_DESIGN_SYSTEM.colors.path6;
+
+		return (
+			<View
+				className="items-center justify-start"
+				style={{ width: completedNodeWidth, height: completedNodeHeight }}
+			>
+				<View
+					className="absolute top-0.5 rounded-full"
+					style={{
+						width: completedNodeWidth - 2,
+						height: completedNodeHeight - 3.5,
+						backgroundColor: backColor,
+					}}
+				/>
+				<View
+					className="overflow-hidden rounded-full"
+					style={{
+						width: completedNodeWidth - 2,
+						height: completedNodeHeight - 6,
+						backgroundColor: fillColor,
+						borderColor,
+						borderWidth: borderColor ? 2 : 0,
+					}}
+				>
+					{showHighlights ? (
+						<>
+							<View
+								className="absolute top-6 left-6 h-4 w-11 -rotate-45"
+								style={{
+									backgroundColor: `${DAYOVA_DESIGN_SYSTEM.colors.path7}B8`,
+									borderBottomEndRadius: 6,
+									borderBottomStartRadius: 6,
+									borderTopLeftRadius: 3,
+									borderTopRightRadius: 3,
+								}}
+							/>
+							<View className="absolute top-3 left-0 h-5 w-11 -rotate-45 overflow-hidden rounded-[2px]">
+								<View
+									className="h-full w-full"
+									style={{
+										backgroundColor: `${DAYOVA_DESIGN_SYSTEM.colors.path7}9E`,
+										borderTopLeftRadius: 999,
+										borderTopRightRadius: 999,
+									}}
+								/>
+							</View>
+						</>
+					) : null}
+					<View className="absolute inset-0 items-center justify-center">
+						{icon}
+					</View>
+				</View>
+			</View>
+		);
+	};
+
 	return (
 		<Pressable
 			accessibilityRole="button"
-			accessibilityState={{ disabled: isLocked, selected: isActive }}
-			disabled={isLocked}
+			accessibilityState={{ selected: isActive }}
 			onPress={onPress}
 			className="absolute items-center justify-center shadow-black/20 shadow-sm"
 			style={position}
 		>
-			{isLocked ? (
-				<View
-					className="items-center justify-center rounded-full"
-					style={{
-						width: lockedOuterWidth,
-						height: lockedOuterHeight,
-						backgroundColor: "#E3EAF2",
-					}}
-				>
-					<View
-						className="items-center justify-center rounded-full"
-						style={{
-							width: lockedInnerSize,
-							height: lockedInnerSize,
-							backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.path3,
-						}}
-					>
-						<Lock
-							size={22}
-							color={DAYOVA_DESIGN_SYSTEM.colors.primaryForeground}
-							strokeWidth={2}
-						/>
-					</View>
-				</View>
-			) : isActive ? (
-				<View
-					className="overflow-hidden rounded-full"
-					style={{ width: activeNodeSize, height: activeNodeSize }}
-				>
-					<LinearGradient
-						colors={primaryGradient.colors}
-						start={primaryGradient.start}
-						end={primaryGradient.end}
-						style={{
-							flex: 1,
-							alignItems: "center",
-							justifyContent: "center",
-						}}
-					>
-						<NotebookPen
-							size={22}
-							color={DAYOVA_DESIGN_SYSTEM.colors.primaryForeground}
-							strokeWidth={2.1}
-						/>
-					</LinearGradient>
-				</View>
-			) : (
-				<View
-					className="items-center justify-start"
-					style={{ width: completedNodeWidth, height: completedNodeHeight }}
-				>
-					<View
-						className="absolute top-2 rounded-full"
-						style={{
-							width: completedNodeWidth,
-							height: completedNodeHeight - 2,
-							backgroundColor: "#009DDE",
-						}}
-					/>
-					<View
-						className="overflow-hidden rounded-full"
-						style={{
-							width: completedNodeWidth,
-							height: completedNodeHeight - 6,
-							backgroundColor: "#10C5FF",
-						}}
-					>
-						<View
-							className="absolute top-6 left-6 h-4 w-11 -rotate-45"
-							style={{
-								backgroundColor: "rgba(111, 224, 249, 0.72)",
-								borderBottomEndRadius: 6,
-								borderBottomStartRadius: 6,
-								borderTopLeftRadius: 3,
-								borderTopRightRadius: 3,
-							}}
-						/>
-						<View className="absolute top-3 -rotate-45 left-0 h-5 rounded-[2px] w-11 overflow-hidden">
-							<View
-								className="h-full w-full"
-								style={{
-									backgroundColor: "rgba(111, 224, 249, 0.62)",
-									borderTopLeftRadius: 999,
-									borderTopRightRadius: 999,
-								}}
+			{isLocked
+				? renderStepCircle({
+						borderColor: DAYOVA_DESIGN_SYSTEM.colors.path1,
+						icon: (
+							<SquareLock
+								size={27}
+								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+								strokeWidth={1.9}
 							/>
-						</View>
-						<View
-							className="absolute items-center justify-center"
-							style={{
-								left: (completedNodeWidth - 35) / 2,
-								top: (completedNodeHeight - 6 - 35) / 2,
-								width: 35,
-								height: 35,
-							}}
-						>
-							<Check
-								size={30}
-								color={DAYOVA_DESIGN_SYSTEM.colors.primaryForeground}
-								strokeWidth={2.5}
-							/>
-						</View>
-					</View>
-				</View>
-			)}
+						),
+						isDimmed: true,
+					})
+				: isActive
+					? renderStepCircle({
+							borderColor: DAYOVA_DESIGN_SYSTEM.colors.path5,
+							icon: (
+								<NotebookPen
+									size={30}
+									color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+									strokeWidth={1.8}
+								/>
+							),
+						})
+					: renderStepCircle({
+							icon: (
+								<Check
+									size={30}
+									color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+									strokeWidth={2.5}
+								/>
+							),
+							showHighlights: true,
+						})}
 		</Pressable>
 	);
 }
 
 function LearningPath({
-	planId,
+	onSelectSession,
+	selectedSessionId,
 	sessions,
 }: {
-	planId: Id<"learningPlans">;
+	onSelectSession: (session: PlanSession) => void;
+	selectedSessionId: Id<"learningPlanSessions"> | null;
 	sessions: PlanSession[];
 }) {
-	const router = useRouter();
 	const firstOpenIndex = sessions.findIndex((session) => !session.completed);
 	const currentIndex =
 		firstOpenIndex === -1 ? Math.max(sessions.length - 1, 0) : firstOpenIndex;
@@ -419,7 +415,7 @@ function LearningPath({
 
 			{sessions.map((session, index) => {
 				const state: PathNodeState =
-					index === currentIndex
+					session.id === selectedSessionId
 						? "active"
 						: index > currentIndex
 							? "locked"
@@ -430,7 +426,7 @@ function LearningPath({
 						key={session.id}
 						frame={getFigmaNodeFrame(index)}
 						state={state}
-						onPress={() => router.push(getSessionRoute(planId, session.id))}
+						onPress={() => onSelectSession(session)}
 					/>
 				);
 			})}
@@ -440,6 +436,7 @@ function LearningPath({
 
 export default function LearningPlanSessionsScreen() {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuth();
@@ -448,10 +445,20 @@ export default function LearningPlanSessionsScreen() {
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;
-	const currentSession =
+	const [selectedSessionId, setSelectedSessionId] =
+		useState<Id<"learningPlanSessions"> | null>(null);
+	const defaultSession =
 		snapshot?.sessions.find((session) => !session.completed) ??
 		snapshot?.sessions.at(-1) ??
 		null;
+	const selectedSession =
+		snapshot?.sessions.find((session) => session.id === selectedSessionId) ??
+		defaultSession;
+
+	useEffect(() => {
+		if (selectedSessionId || !defaultSession) return;
+		setSelectedSessionId(defaultSession.id);
+	}, [defaultSession, selectedSessionId]);
 
 	const goBack = () => {
 		goBackOrReplace(router, "/learning-plans");
@@ -461,37 +468,36 @@ export default function LearningPlanSessionsScreen() {
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
-			<ScreenScroll
-				contentInsetAdjustmentBehavior="automatic"
-				horizontalPadding={16}
-				topPadding={46}
-				bottomPadding={54}
-				contentContainerStyle={screenContentStyle}
+			<View
+				className="px-4"
+				style={{
+					paddingTop: Math.max(insets.top + 8, 24),
+					paddingBottom: 16,
+				}}
 			>
-				<ScreenHeader title="Lernplan" onBack={goBack} className="mb-0" />
+				<ScreenHeader
+					title="Lernplan"
+					onBack={goBack}
+					className="mb-0"
+					titleClassName="text-center font-poppins font-semibold text-[22px] text-text leading-[30px]"
+				/>
+			</View>
 
+			<View className="px-4 pb-5">
 				{snapshot === null ? (
-					<View className="items-center py-16">
+					<View className="items-center py-10">
 						<ActivityIndicator
 							color={DAYOVA_DESIGN_SYSTEM.colors.primary}
 							size="small"
 						/>
 					</View>
-				) : currentSession ? (
-					<>
-						<SessionPreviewCard
-							session={currentSession}
-							onOpen={() =>
-								router.push(
-									getSessionRoute(snapshot.plan.id, currentSession.id),
-								)
-							}
-						/>
-						<LearningPath
-							planId={snapshot.plan.id}
-							sessions={snapshot.sessions}
-						/>
-					</>
+				) : selectedSession ? (
+					<SessionPreviewCard
+						session={selectedSession}
+						onOpen={() =>
+							router.push(getSessionRoute(snapshot.plan.id, selectedSession.id))
+						}
+					/>
 				) : (
 					<View className="items-center rounded-[28px] bg-card px-5 py-7">
 						<Text className="text-center font-poppins font-semibold text-foreground">
@@ -499,7 +505,32 @@ export default function LearningPlanSessionsScreen() {
 						</Text>
 					</View>
 				)}
-			</ScreenScroll>
+			</View>
+
+			<ScrollView
+				className="flex-1 bg-background"
+				contentContainerStyle={[
+					{
+						paddingHorizontal: 16,
+						paddingTop: 18,
+						paddingBottom: Math.max(insets.bottom + 36, 54),
+					},
+					screenContentStyle,
+				]}
+				showsVerticalScrollIndicator={false}
+			>
+				{snapshot === null ? (
+					<View />
+				) : selectedSession ? (
+					<LearningPath
+						selectedSessionId={selectedSession.id}
+						sessions={snapshot.sessions}
+						onSelectSession={(session) => setSelectedSessionId(session.id)}
+					/>
+				) : (
+					<View />
+				)}
+			</ScrollView>
 		</Screen>
 	);
 }
