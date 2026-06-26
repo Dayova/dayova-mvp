@@ -28,7 +28,7 @@ function WarningBanner({
 	return (
 		<View
 			className={cn(
-				"flex-row items-start gap-4 rounded-[28px] bg-warning-subtle px-5 py-5",
+				"flex-row items-start gap-4 rounded-[28px] bg-info-subtle px-5 py-5",
 				className,
 			)}
 			style={style}
@@ -37,7 +37,7 @@ function WarningBanner({
 			<View className="h-10 w-10 items-center justify-center rounded-full bg-card/65">
 				<CircleAlert
 					size={21}
-					color={DAYOVA_DESIGN_SYSTEM.colors.warning}
+					color={DAYOVA_DESIGN_SYSTEM.colors.info}
 					strokeWidth={2.2}
 				/>
 			</View>
