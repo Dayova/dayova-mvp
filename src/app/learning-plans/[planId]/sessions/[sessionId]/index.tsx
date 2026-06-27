@@ -1,9 +1,10 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import {
-	PermissionStatus,
-	SpeechRecognitionError,
-	type SpeechRecognitionConfig,
-	useRecognizer,
+import type {
+	PermissionStatus as NitroPermissionStatus,
+	RecognizerCallbacks,
+	RecognizerMethods,
+	SpeechRecognitionConfig,
+	SpeechRecognitionError as NitroSpeechRecognitionError,
 } from "react-native-nitro-speech";
 import * as Device from "expo-device";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -45,6 +46,34 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { cn } from "~/lib/utils";
 
+type SpeechRecognitionModule = typeof import("react-native-nitro-speech");
+type PermissionStatus = NitroPermissionStatus;
+type SpeechRecognitionError = NitroSpeechRecognitionError;
+
+const PermissionStatus = {
+	GRANTED: 0,
+	DENIED: 1,
+	NOT_REQUESTED: 2,
+} as const satisfies Record<
+	"GRANTED" | "DENIED" | "NOT_REQUESTED",
+	NitroPermissionStatus
+>;
+
+const SpeechRecognitionError = {
+	Unknown: 0,
+	LocaleNotSupported: 1,
+	RecognitionTaskFailed: 2,
+	IosSpeechPermissionNotDetermined: 3,
+	SessionStartFailed: 4,
+} as const satisfies Record<
+	| "Unknown"
+	| "LocaleNotSupported"
+	| "RecognitionTaskFailed"
+	| "IosSpeechPermissionNotDetermined"
+	| "SessionStartFailed",
+	NitroSpeechRecognitionError
+>;
+
 const ratingCopy: Record<
 	SessionAnswerRating,
 	{
@@ -82,6 +111,8 @@ const phaseTitle = (
 const isIosSimulator = Platform.OS === "ios" && !Device.isDevice;
 const iosSimulatorSpeechMessage =
 	"Spracherkennung ist im iOS Simulator nicht zuverlässig verfügbar. Auf einem iPhone kannst du die Antwort einsprechen; hier kannst du das Transkript direkt eintragen.";
+const nativeSpeechUnavailableMessage =
+	"Spracherkennung ist in dieser App-Version nicht verfügbar. Trage deine Antwort als Text ein.";
 
 const getSpeechRecognitionErrorMessage = (error: SpeechRecognitionError) => {
 	if (error === SpeechRecognitionError.LocaleNotSupported) {
@@ -104,6 +135,136 @@ const getSpeechPermissionMessage = (status: PermissionStatus) =>
 	status === PermissionStatus.DENIED
 		? "Mikrofon oder Spracherkennung sind blockiert. Aktiviere sie in den Geräteeinstellungen oder trage die Antwort als Text ein."
 		: "Bitte erlaube Mikrofon und Spracherkennung, damit Dayova deine Sprachantwort transkribieren kann.";
+
+type OptionalSpeechRecognizer = RecognizerMethods & {
+	isAvailable: boolean;
+	loadError: unknown | null;
+};
+
+const unavailableSpeechRecognizerMethods: RecognizerMethods = {
+	prewarm: async () => {
+		throw new Error("Speech recognition is unavailable.");
+	},
+	startListening: () => undefined,
+	stopListening: () => undefined,
+	resetAutoFinishTime: () => undefined,
+	addAutoFinishTime: () => undefined,
+	updateConfig: () => undefined,
+	getIsActive: () => false,
+	getVoiceInputVolume: () => ({ smoothedVolume: 0, rawVolume: 0 }),
+	getPermissions: () => PermissionStatus.DENIED,
+	getSupportedLocalesIOS: () => [],
+};
+
+type SpeechRecognizerLoadState =
+	| {
+			recognizer: SpeechRecognitionModule["SpeechRecognizer"];
+			methods: RecognizerMethods;
+			loadError: null;
+	  }
+	| {
+			recognizer: null;
+			methods: null;
+			loadError: unknown;
+	  };
+
+function loadSpeechRecognizer(): SpeechRecognizerLoadState {
+	try {
+		// Keep Nitro out of module scope so the route can render without it.
+		const speechModule = require(
+			"react-native-nitro-speech",
+		) as SpeechRecognitionModule;
+		const recognizer = speechModule.SpeechRecognizer;
+
+		return {
+			recognizer,
+			methods: {
+				prewarm: (params, options) => recognizer.prewarm(params, options),
+				startListening: (params) => recognizer.startListening(params),
+				stopListening: () => recognizer.stopListening(),
+				resetAutoFinishTime: () => recognizer.resetAutoFinishTime(),
+				addAutoFinishTime: (additionalTimeMs) =>
+					recognizer.addAutoFinishTime(additionalTimeMs),
+				updateConfig: (newConfig, resetAutoFinishTime) =>
+					recognizer.updateConfig(newConfig, resetAutoFinishTime),
+				getIsActive: () => recognizer.getIsActive(),
+				getVoiceInputVolume: () => recognizer.getVoiceInputVolume(),
+				getPermissions: () => recognizer.getPermissions(),
+				getSupportedLocalesIOS: () => recognizer.getSupportedLocalesIOS().sort(),
+			},
+			loadError: null,
+		};
+	} catch (error) {
+		return {
+			recognizer: null,
+			methods: null,
+			loadError: error,
+		};
+	}
+}
+
+let cachedSpeechRecognizerLoadState: SpeechRecognizerLoadState | null = null;
+
+function getSpeechRecognizerLoadState(): SpeechRecognizerLoadState {
+	cachedSpeechRecognizerLoadState ??= loadSpeechRecognizer();
+	return cachedSpeechRecognizerLoadState;
+}
+
+function useOptionalSpeechRecognizer(
+	callbacks: RecognizerCallbacks,
+): OptionalSpeechRecognizer {
+	const callbacksRef = useRef(callbacks);
+	const [loadState] = useState(getSpeechRecognizerLoadState);
+	const { methods, loadError } = loadState;
+
+	useEffect(() => {
+		callbacksRef.current = callbacks;
+	}, [callbacks]);
+
+	useEffect(() => {
+		const recognizer = getSpeechRecognizerLoadState().recognizer;
+		if (!recognizer) return undefined;
+
+		recognizer.onReadyForSpeech = () =>
+			callbacksRef.current.onReadyForSpeech?.();
+		recognizer.onRecordingStopped = () =>
+			callbacksRef.current.onRecordingStopped?.();
+		recognizer.onResult = (resultBatches) =>
+			callbacksRef.current.onResult?.(resultBatches);
+		recognizer.onAutoFinishProgress = (timeLeftMs) =>
+			callbacksRef.current.onAutoFinishProgress?.(timeLeftMs);
+		recognizer.onError = (error) => callbacksRef.current.onError?.(error);
+		recognizer.onPermissionDenied = () =>
+			callbacksRef.current.onPermissionDenied?.();
+		recognizer.onVolumeChange = (event) =>
+			callbacksRef.current.onVolumeChange?.(event);
+
+		return () => {
+			try {
+				recognizer.stopListening();
+			} catch {
+				// Native speech may be half-initialized during teardown.
+			}
+
+			recognizer.onReadyForSpeech = undefined;
+			recognizer.onRecordingStopped = undefined;
+			recognizer.onResult = undefined;
+			recognizer.onAutoFinishProgress = undefined;
+			recognizer.onError = undefined;
+			recognizer.onPermissionDenied = undefined;
+			recognizer.onVolumeChange = undefined;
+		};
+	}, []);
+
+	return useMemo(
+		() => ({
+			...(methods ?? unavailableSpeechRecognizerMethods),
+			isAvailable: Boolean(methods),
+			loadError,
+		}),
+		[loadError, methods],
+	);
+}
 
 const formatRemainingTime = (seconds: number) => {
 	const minutes = Math.floor(seconds / 60);
@@ -475,7 +636,7 @@ function VoiceAnswer({
 	editable,
 	isRecognizing,
 	speechErrorMessage,
-	isSpeechCaptureUnavailable,
+	speechCaptureUnavailableMessage,
 	onToggleRecording,
 }: {
 	value: string;
@@ -483,9 +644,11 @@ function VoiceAnswer({
 	editable: boolean;
 	isRecognizing: boolean;
 	speechErrorMessage: string | null;
-	isSpeechCaptureUnavailable: boolean;
+	speechCaptureUnavailableMessage: string | null;
 	onToggleRecording: () => void;
 }) {
+	const isSpeechCaptureUnavailable = Boolean(speechCaptureUnavailableMessage);
+
 	return (
 		<View>
 			<TouchableOpacity
@@ -532,7 +695,7 @@ function VoiceAnswer({
 				{isRecognizing
 					? "Sprich jetzt. Das Transkript erscheint automatisch."
 					: isSpeechCaptureUnavailable
-						? "Der Simulator nutzt die Texteingabe als sichere Vorschau der Sprachantwort."
+						? speechCaptureUnavailableMessage
 						: "Du kannst das Transkript vor dem Absenden korrigieren."}
 			</Text>
 			<TextAnswer
@@ -657,7 +820,7 @@ export default function LearningSessionContentScreen() {
 	const didEnsureRef = useRef(false);
 	const didAutoFinishRef = useRef(false);
 
-	const recognizerCallbacks = useMemo(
+	const recognizerCallbacks = useMemo<RecognizerCallbacks>(
 		() => ({
 			onReadyForSpeech: () => {
 				setIsRecognizing(true);
@@ -681,7 +844,12 @@ export default function LearningSessionContentScreen() {
 		}),
 		[],
 	);
-	const speechRecognizer = useRecognizer(recognizerCallbacks);
+	const speechRecognizer = useOptionalSpeechRecognizer(recognizerCallbacks);
+	const speechCaptureUnavailableMessage = isIosSimulator
+		? iosSimulatorSpeechMessage
+		: speechRecognizer.isAvailable
+			? null
+			: nativeSpeechUnavailableMessage;
 
 	const content = (useQuery(
 		api.learningSessionContent.getSessionContent,
@@ -895,8 +1063,8 @@ export default function LearningSessionContentScreen() {
 		setErrorMessage(null);
 		setSpeechErrorMessage(null);
 
-		if (isIosSimulator) {
-			setSpeechErrorMessage(iosSimulatorSpeechMessage);
+		if (speechCaptureUnavailableMessage) {
+			setSpeechErrorMessage(speechCaptureUnavailableMessage);
 			return;
 		}
 
@@ -1101,7 +1269,9 @@ export default function LearningSessionContentScreen() {
 									editable={!isBusy}
 									isRecognizing={isRecognizing}
 									speechErrorMessage={speechErrorMessage}
-									isSpeechCaptureUnavailable={isIosSimulator}
+									speechCaptureUnavailableMessage={
+										speechCaptureUnavailableMessage
+									}
 									onToggleRecording={toggleVoiceRecording}
 								/>
 							) : (
