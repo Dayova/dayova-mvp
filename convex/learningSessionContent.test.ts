@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
 
@@ -84,7 +84,12 @@ const createGeneratedPlanWithSession = async (
 };
 
 beforeEach(() => {
+	vi.useFakeTimers({ toFake: ["Date"] });
 	vi.setSystemTime(new Date("2026-05-30T10:00:00.000Z"));
+});
+
+afterEach(() => {
+	vi.useRealTimers();
 });
 
 test("session content is generated once and reused on reopen", async () => {
@@ -166,4 +171,51 @@ test("answers produce feedback and finishing creates a Wissensanalyse", async ()
 		{ sessionId },
 	);
 	expect(updatedContent?.analysis?.id).toBe(analysis.id);
+});
+
+test("finishing analyzes only the latest attempt for each item", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession("rehearsal");
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	const content = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	const multipleChoice = content?.items.find(
+		(item) => item.kind === "multipleChoice",
+	);
+	if (!multipleChoice) {
+		throw new Error(
+			"Expected Praxis content to include a multiple choice task.",
+		);
+	}
+
+	await t.mutation(api.learningSessionContent.submitAnswer, {
+		itemId: multipleChoice.id,
+		selectedChoiceId: "distractor-fast",
+		timeSpentSeconds: 20,
+	});
+	await t.mutation(api.learningSessionContent.submitAnswer, {
+		itemId: multipleChoice.id,
+		selectedChoiceId: "correct",
+		timeSpentSeconds: 15,
+	});
+
+	const analysis = await t.mutation(
+		api.learningSessionContent.finishSessionContent,
+		{ sessionId },
+	);
+	const updatedContent = await t.query(
+		api.learningSessionContent.getSessionContent,
+		{ sessionId },
+	);
+
+	expect(updatedContent?.attempts).toHaveLength(1);
+	expect(updatedContent?.attempts[0]).toMatchObject({
+		itemId: multipleChoice.id,
+		rating: "correct",
+	});
+	expect(analysis.gaps).toEqual([
+		"Halte die Sicherheit bis zur Prüfung durch kurze Wiederholung.",
+	]);
 });

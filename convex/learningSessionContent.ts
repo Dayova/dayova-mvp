@@ -589,14 +589,8 @@ export const finishSessionContent = mutation({
 			session.learningPlanId,
 			ownerTokenIdentifier,
 		);
-		await ensureItemsForSession(ctx, session, plan);
-		const attempts = await ctx.db
-			.query("learningSessionAnswerAttempts")
-			.withIndex("by_sessionId_and_createdAt", (q) =>
-				q.eq("sessionId", args.sessionId),
-			)
-			.order("desc")
-			.take(50);
+		const items = await ensureItemsForSession(ctx, session, plan);
+		const attempts = await getLatestAttempts(ctx, items);
 		const result = buildAnalysis(session, attempts);
 		const now = Date.now();
 		const existing = await ctx.db
