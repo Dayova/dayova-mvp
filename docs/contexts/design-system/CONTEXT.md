@@ -16,9 +16,61 @@ import or use `Switch` from `react-native`, and do not render Expo UI switches
 directly from app screens.
 
 The app `Switch` wraps Expo UI native controls with `Host matchContents`.
-Android uses the Jetpack Compose switch with explicit Dayova-blue colors so
+Android uses the Jetpack Compose switch with explicit Dayova primary colors so
 Material You wallpaper colors cannot override the brand. iOS keeps the native
-SwiftUI toggle shape and applies Dayova blue through the SwiftUI tint modifier.
+SwiftUI toggle shape and applies Dayova primary through the SwiftUI tint modifier.
+
+## Styling Tokens
+
+The app currently supports light mode only. The app background token is the
+Figma off-white (`#F6F6F4`), surfaces use white, and Tailwind's standard spacing
+scale is the source of truth for the 4px spacing system.
+
+The Figma light palette is the source of truth: background `#F6F6F4`, light 1
+`#FFFFFF`, light 2 `#F3F6FA`, light 3 `#FAFAFC`, border `#DCE6EE`, path 1/2
+`#D7DCE3`, path 3 `#8A8D92`, path 4/secondary text `#697586`, path 5/primary
+strong `#00A0E6`, path 6/primary/system cyan `#00BAFF`, path 7 `#4FD8FF`, and
+primary text `#1A1A1A`. The Figma orange `#FF9500` is the `wrong` status color;
+`destructive` remains a separate functional action/error token.
+Dark-mode variables and classes should not be introduced until the dark-mode
+design is finalized.
+
+Badge fills use wrong `#FF9500`, info `#C9A100`, system `#00BAFF`, success
+`#34C759`, theorie `#5856D6`, ueben `#AF52DE`, praxis `#00C7BE`, and
+hausaufgabe `#B88AAE`. Badge subtle fills match Figma exactly: wrong
+`#FFECD6`, info `#FFF8CC`, system `#F1F7FB`, success `#EAFFF1`, theorie
+`#EEECFF`, ueben `#F4ECFF`, praxis `#E7FBF6`, and hausaufgabe `#F3E8F0`.
+
+Do not add `*-foreground` color partners unless Figma introduces them as real
+palette tokens. Use the palette directly: `text-text` for primary text,
+`text-secondary-text` for secondary text, and `text-white` for white text on
+dark or saturated surfaces.
+
+Typography uses Poppins only. Body text is Regular; headings, buttons, selected
+tabs, labels that need emphasis, and other highlighted text use SemiBold. The
+supported hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30,
+`body-2` 16/24, `body-3` 14/21, `body-4` 12/18, and `body-5` 10/15, all with
+0px letter spacing.
+
+Light-mode pill buttons have exactly two visual appearances: the light-mode
+gradient button and the black button using the primary text color `#1A1A1A`.
+There are no white pill buttons in the current light-mode design system. Both
+appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
+buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
+with a white stroke, and black buttons use the light border token `#DCE6EE`.
+
+The current app corner system is: info/small boxes use 24px, 345px-wide
+rectangles and card-like surfaces use 32px, and buttons use 44px. Device frame
+radii are not app tokens because they depend on the phone/mockup. When nesting
+rounded surfaces, the outer radius equals the inner radius plus the padding
+between them.
+
+Dark-mode design-system support is planned separately in
+https://github.com/Dayova/dayova-mvp/issues/136. Do not add dark-mode tokens,
+classes, or fallback button variants until that source of truth is finalized.
+
+Icon-only close controls for sheets and modal chrome use the shared `CloseButton`
+component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 
 ## Notes
 

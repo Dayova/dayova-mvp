@@ -396,7 +396,7 @@ const fallbackTitleByPhase: Record<
 > = {
 	theory: "Theorie-Block",
 	practice: "Übungsblock",
-	rehearsal: "Generalprobe",
+	rehearsal: "Praxis",
 };
 
 const fileExtension = (fileName: string) => {

@@ -4,10 +4,8 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-	Modal,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
-	Pressable,
 	ScrollView,
 	TouchableOpacity,
 	useWindowDimensions,
@@ -23,14 +21,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { NotificationButton } from "~/components/notification-button";
-import {
-	ClipboardEdit,
-	GraduationCap,
-	NotebookPen,
-	Plus,
-	X,
-} from "~/components/ui/icon";
+import { NotebookPen, Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import {
@@ -71,77 +64,6 @@ const chunkArray = <T,>(items: T[], chunkSize: number) => {
 	}
 	return chunks;
 };
-
-type CreateTypeOptionProps = {
-	icon: typeof ClipboardEdit;
-	title: string;
-	description: string;
-	onPress: () => void;
-	scale: number;
-	width: number;
-};
-
-function CreateTypeOption({
-	icon: Icon,
-	title,
-	description,
-	onPress,
-	scale,
-	width,
-}: CreateTypeOptionProps) {
-	return (
-		<TouchableOpacity
-			accessibilityLabel={title}
-			accessibilityRole="button"
-			activeOpacity={0.86}
-			onPress={onPress}
-			className="flex-row items-center bg-white"
-			style={{
-				width,
-				height: 96 * scale,
-				borderRadius: 40 * scale,
-				paddingHorizontal: 16 * scale,
-				paddingVertical: 12 * scale,
-				columnGap: 16 * scale,
-				boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-			}}
-		>
-			<View
-				className="items-center justify-center rounded-full bg-[#EAF3FF]"
-				style={{
-					width: 48 * scale,
-					height: 48 * scale,
-					boxShadow:
-						"0 2px 4px -2px rgba(24, 39, 75, 0.12), 0 4px 4px -2px rgba(24, 39, 75, 0.08)",
-				}}
-			>
-				<Icon size={24 * scale} color="#3A7BFF" strokeWidth={1.5} />
-			</View>
-			<View style={{ flex: 1, rowGap: 4 * scale }}>
-				<Text
-					className="font-medium font-poppins text-black"
-					style={{
-						fontSize: 16 * scale,
-						lineHeight: 24 * scale,
-						includeFontPadding: false,
-					}}
-				>
-					{title}
-				</Text>
-				<Text
-					className="font-poppins text-[#7E7E7E]"
-					style={{
-						fontSize: 12 * scale,
-						lineHeight: 18 * scale,
-						includeFontPadding: false,
-					}}
-				>
-					{description}
-				</Text>
-			</View>
-		</TouchableOpacity>
-	);
-}
 
 type DragStartSliderProps = {
 	scale: number;
@@ -207,7 +129,7 @@ function DragStartSlider({
 			<View
 				accessibilityRole="adjustable"
 				accessibilityLabel="Zum Starten nach rechts ziehen"
-				className="justify-center rounded-full bg-[#EDFDFC]"
+				className="justify-center rounded-full bg-accent"
 				style={{
 					width: trackWidth,
 					height: 56 * scale,
@@ -224,7 +146,8 @@ function DragStartSlider({
 					{[0.2, 0.6, 1].map((opacity, index) => (
 						<Text
 							key={opacity}
-							className="font-poppins font-semibold text-[#3A7BFF]"
+							className="font-poppins font-semibold text-primary"
+							// Runtime-scaled typography keeps this dense home layout fitting device width.
 							style={{
 								marginLeft: index === 0 ? 0 : -4 * scale,
 								fontSize: 24 * scale,
@@ -257,11 +180,11 @@ function DragStartSlider({
 						}}
 					>
 						<Text
-							className="font-bold font-poppins text-white"
+							className="font-poppins font-semibold text-white"
+							// Runtime-scaled typography keeps this dense home layout fitting device width.
 							style={{
 								fontSize: 16 * scale,
-								lineHeight: 17 * scale,
-								includeFontPadding: false,
+								lineHeight: 24 * scale,
 								textShadowColor: "rgba(0,0,0,0.15)",
 								textShadowOffset: { width: 2, height: 4 },
 								textShadowRadius: 8,
@@ -530,10 +453,6 @@ export default function HomeScreen() {
 		dayStripOffsets[dayStripOffsets.length - 1] +
 		getDayStripItemWidth(visibleDays[visibleDays.length - 1]?.isToday ?? false);
 	const navClearance = Math.max(insets.bottom + 108 * screenScale, 132);
-	const modalScale = clamp(width / 393, 0.88, 1);
-	const modalWidth = width;
-	const modalOptionWidth = Math.min(width - 48 * modalScale, 345 * modalScale);
-	const modalBottomPadding = Math.max(insets.bottom + 28 * modalScale, 42);
 	const selectedDayLabel = new Intl.DateTimeFormat("de-DE", {
 		weekday: "long",
 		day: "numeric",
@@ -675,7 +594,7 @@ export default function HomeScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-[#F4F8FB]">
+		<View className="flex-1 bg-background">
 			<StatusBar style="dark" />
 			<ScrollView
 				className="flex-1"
@@ -692,25 +611,26 @@ export default function HomeScreen() {
 			>
 				<View
 					className="flex-row items-start justify-between"
+					// Runtime-scaled typography keeps this dense home layout fitting device width.
 					style={{ paddingHorizontal: headerInset }}
 				>
 					<View>
 						<Text
 							className="font-poppins font-semibold text-text"
+							// Runtime-scaled typography keeps this dense home layout fitting device width.
 							style={{
 								fontSize: 24 * screenScale,
-								lineHeight: 29 * screenScale,
-								includeFontPadding: false,
+								lineHeight: 36 * screenScale,
 							}}
 						>
 							{`Hi ${firstName},`}
 						</Text>
 						<Text
-							className="font-poppins text-[#7E7E7E]"
+							className="font-poppins text-secondary-text"
+							// Runtime-scaled typography keeps this dense home layout fitting device width.
 							style={{
 								fontSize: 16 * screenScale,
-								lineHeight: 20 * screenScale,
-								includeFontPadding: false,
+								lineHeight: 24 * screenScale,
 							}}
 						>
 							schön, dass du da bist!
@@ -721,7 +641,7 @@ export default function HomeScreen() {
 
 				<View className="items-center" style={{ marginTop: 28 * compactScale }}>
 					<View
-						className="items-center bg-white"
+						className="items-center bg-card"
 						style={{
 							width: lessonCardWidth,
 							justifyContent: "center",
@@ -733,16 +653,16 @@ export default function HomeScreen() {
 						}}
 					>
 						<View
-							className="items-center justify-center rounded-full bg-[#EAF3FF]"
+							className="items-center justify-center rounded-full bg-accent"
 							style={{
 								width: 48 * screenScale,
 								height: 48 * screenScale,
-								boxShadow: "0 8px 18px rgba(58, 123, 255, 0.12)",
+								boxShadow: "0 8px 18px rgba(0, 186, 255, 0.12)",
 							}}
 						>
 							<NotebookPen
 								size={24 * screenScale}
-								color="#3A7BFF"
+								color="#00BAFF"
 								strokeWidth={1.7}
 							/>
 						</View>
@@ -754,25 +674,25 @@ export default function HomeScreen() {
 							}}
 						>
 							<Text
-								className="text-center font-poppins font-semibold text-[#0D062D]"
+								className="text-center font-poppins font-semibold text-text"
 								numberOfLines={1}
 								adjustsFontSizeToFit
+								// Runtime-scaled typography keeps this dense home layout fitting device width.
 								style={{
 									width: 274 * screenScale,
 									fontSize: 24 * screenScale,
-									lineHeight: 32 * screenScale,
-									includeFontPadding: false,
+									lineHeight: 36 * screenScale,
 								}}
 							>
 								{heroEntry ? getEntryDisplayTitle(heroEntry) : "Heute ist frei"}
 							</Text>
 							<Text
-								className="mt-1 text-center font-poppins text-[#787486]"
+								className="mt-1 text-center font-poppins text-secondary-text"
+								// Runtime-scaled typography keeps this dense home layout fitting device width.
 								style={{
 									maxWidth: 274 * screenScale,
 									fontSize: 12 * screenScale,
 									lineHeight: 18 * screenScale,
-									includeFontPadding: false,
 								}}
 							>
 								{heroEntry
@@ -795,14 +715,15 @@ export default function HomeScreen() {
 								accessibilityLabel="Eintrag als erledigt markieren"
 								activeOpacity={0.76}
 								onPress={completeHeroEntry}
+								// Runtime-scaled typography keeps this dense home layout fitting device width.
 								style={{ marginTop: 12 * compactScale }}
 							>
 								<Text
-									className="font-poppins font-semibold text-[#3A7BFF]"
+									className="font-poppins font-semibold text-primary"
+									// Runtime-scaled typography keeps this dense home layout fitting device width.
 									style={{
 										fontSize: 12 * screenScale,
-										lineHeight: 16 * screenScale,
-										includeFontPadding: false,
+										lineHeight: 18 * screenScale,
 									}}
 								>
 									Als erledigt markieren
@@ -813,7 +734,7 @@ export default function HomeScreen() {
 				</View>
 
 				<View
-					className="self-center bg-white"
+					className="self-center bg-card"
 					style={{
 						width: planCardWidth,
 						minHeight: 345 * compactScale,
@@ -827,11 +748,11 @@ export default function HomeScreen() {
 				>
 					<View className="flex-row items-start justify-between">
 						<Text
-							className="font-poppins font-semibold text-[#1A1A1A]"
+							className="font-poppins font-semibold text-text"
+							// Runtime-scaled typography keeps this dense home layout fitting device width.
 							style={{
 								fontSize: 24 * screenScale,
 								lineHeight: 36 * screenScale,
-								includeFontPadding: false,
 							}}
 						>
 							Mein Plan
@@ -841,13 +762,13 @@ export default function HomeScreen() {
 							accessibilityRole="button"
 							accessibilityLabel="Neuen Eintrag erstellen"
 							onPress={() => setShowCreateTypePicker(true)}
-							className="items-center justify-center rounded-full bg-[#3B7CFF]"
+							className="items-center justify-center rounded-full bg-primary"
 							style={{
 								width: 48 * screenScale,
 								height: 48 * screenScale,
 								marginTop: -4 * compactScale,
 								marginRight: -4 * screenScale,
-								boxShadow: "0 8px 18px rgba(58, 123, 255, 0.18)",
+								boxShadow: "0 8px 18px rgba(0, 186, 255, 0.18)",
 							}}
 						>
 							<Plus size={24 * screenScale} color="#FFFFFF" strokeWidth={1.7} />
@@ -874,11 +795,11 @@ export default function HomeScreen() {
 								const content = (
 									<Text
 										key={`${day.key}-label`}
-										className={`font-poppins ${selected ? "text-white" : "text-[#1A1A1A]"}`}
+										className={`font-poppins ${selected ? "text-white" : "text-text"}`}
+										// Runtime-scaled typography keeps this dense home layout fitting device width.
 										style={{
-											fontSize: 13 * screenScale,
-											lineHeight: 16 * screenScale,
-											includeFontPadding: true,
+											fontSize: 12 * screenScale,
+											lineHeight: 18 * screenScale,
 										}}
 									>
 										{day.isToday ? `Heute ${day.dayOfMonth}` : day.dayOfMonth}
@@ -889,14 +810,15 @@ export default function HomeScreen() {
 									<View
 										key={day.key}
 										className="items-center"
+										// Runtime-scaled typography keeps this dense home layout fitting device width.
 										style={{ width: itemWidth, rowGap: 10 * compactScale }}
 									>
 										<Text
 											className="font-poppins text-black"
+											// Runtime-scaled typography keeps this dense home layout fitting device width.
 											style={{
 												fontSize: 12 * screenScale,
-												lineHeight: 12 * screenScale,
-												includeFontPadding: false,
+												lineHeight: 18 * screenScale,
 											}}
 										>
 											{day.weekday}
@@ -925,7 +847,7 @@ export default function HomeScreen() {
 												</LinearGradient>
 											) : (
 												<View
-													className="items-center justify-center rounded-full bg-[#F2F2F2]"
+													className="items-center justify-center rounded-full bg-muted"
 													style={{
 														width: itemWidth,
 														height: 34 * screenScale,
@@ -975,18 +897,18 @@ export default function HomeScreen() {
 											borderColor: "rgba(0,0,0,0.08)",
 											backgroundColor:
 												day.key === selectedDayKey
-													? "rgba(58, 123, 255, 0.04)"
+													? "rgba(0, 186, 255, 0.04)"
 													: "transparent",
 										}}
 									>
 										<Text
-											className="absolute font-poppins font-semibold text-[#1A1A1A]"
+											className="absolute font-poppins font-semibold text-text"
+											// Runtime-scaled typography keeps this dense home layout fitting device width.
 											style={{
 												left: 8 * scheduleScale,
 												top: 0,
 												fontSize: 12 * screenScale,
-												lineHeight: 12 * screenScale,
-												includeFontPadding: false,
+												lineHeight: 18 * screenScale,
 											}}
 										>
 											{day.isToday
@@ -1012,14 +934,14 @@ export default function HomeScreen() {
 										>
 											<Text
 												className="absolute font-poppins text-black"
+												// Runtime-scaled typography keeps this dense home layout fitting device width.
 												style={{
 													left: -20 * scheduleScale,
 													bottom: -12 * compactScale,
 													width: 40 * scheduleScale,
 													fontSize: 12 * screenScale,
-													lineHeight: 14 * screenScale,
+													lineHeight: 18 * screenScale,
 													textAlign: "center",
-													includeFontPadding: false,
 												}}
 											>
 												{formatMinutes(hour * 60)}
@@ -1070,12 +992,12 @@ export default function HomeScreen() {
 											}}
 										>
 											<Text
-												className="font-poppins text-[#1A1A1A]"
+												className="font-poppins text-text"
 												numberOfLines={1}
+												// Runtime-scaled typography keeps this dense home layout fitting device width.
 												style={{
-													fontSize: 13 * screenScale,
-													lineHeight: 16 * screenScale,
-													includeFontPadding: false,
+													fontSize: 12 * screenScale,
+													lineHeight: 18 * screenScale,
 												}}
 											>
 												{getEntryDisplayTitle(entry)}
@@ -1093,14 +1015,14 @@ export default function HomeScreen() {
 										}}
 									>
 										<View
-											className="items-center justify-center rounded-full border border-[#3A7BFF] bg-white"
+											className="items-center justify-center rounded-full border border-primary bg-card"
 											style={{
 												width: 14 * screenScale,
 												height: 14 * screenScale,
 											}}
 										>
 											<View
-												className="rounded-full border border-white bg-[#3A7BFF]"
+												className="rounded-full border border-card bg-primary"
 												style={{
 													width: 10 * screenScale,
 													height: 10 * screenScale,
@@ -1108,7 +1030,7 @@ export default function HomeScreen() {
 											/>
 										</View>
 										<View
-											className="bg-[#3A7BFF]"
+											className="bg-primary"
 											style={{
 												width: 4 * screenScale,
 												height: 112 * compactScale,
@@ -1127,11 +1049,11 @@ export default function HomeScreen() {
 										}}
 									>
 										<Text
-											className="font-poppins text-[#787486]"
+											className="font-poppins text-secondary-text"
+											// Runtime-scaled typography keeps this dense home layout fitting device width.
 											style={{
-												fontSize: 13 * screenScale,
+												fontSize: 12 * screenScale,
 												lineHeight: 18 * screenScale,
-												includeFontPadding: false,
 											}}
 										>
 											Keine Einträge in diesen 7 Tagen
@@ -1168,96 +1090,11 @@ export default function HomeScreen() {
 				</View>
 			</ScrollView>
 
-			<Modal
+			<CreateTypePickerModal
 				visible={showCreateTypePicker}
-				transparent
-				animationType="fade"
 				onRequestClose={() => setShowCreateTypePicker(false)}
-			>
-				<View className="flex-1 justify-end">
-					<Pressable
-						className="absolute inset-0 bg-black/25"
-						onPress={() => setShowCreateTypePicker(false)}
-					/>
-					<View
-						className="bg-[#F4F8FB]"
-						style={{
-							width: modalWidth,
-							borderTopLeftRadius: 40 * modalScale,
-							borderTopRightRadius: 40 * modalScale,
-							paddingTop: 24 * modalScale,
-							paddingHorizontal: 24 * modalScale,
-							paddingBottom: modalBottomPadding,
-							boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-						}}
-					>
-						<View
-							className="flex-row items-start justify-between gap-5"
-							style={{ minHeight: 46 * modalScale }}
-						>
-							<View style={{ width: 311 * modalScale }}>
-								<Text
-									className="font-medium font-poppins text-black"
-									style={{
-										fontSize: 16 * modalScale,
-										lineHeight: 24 * modalScale,
-										includeFontPadding: false,
-									}}
-								>
-									Was möchtest du planen?
-								</Text>
-								<Text
-									className="font-poppins text-[#7E7E7E]"
-									style={{
-										fontSize: 12 * modalScale,
-										lineHeight: 18 * modalScale,
-										includeFontPadding: false,
-									}}
-								>
-									Wähle zuerst die Art aus.
-								</Text>
-							</View>
-							<TouchableOpacity
-								accessibilityLabel="Auswahl schließen"
-								accessibilityRole="button"
-								hitSlop={8}
-								activeOpacity={0.75}
-								onPress={() => setShowCreateTypePicker(false)}
-								className="items-center justify-center rounded-full bg-[#D9D9D9]"
-								style={{
-									width: 40 * modalScale,
-									height: 40 * modalScale,
-									boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-								}}
-							>
-								<X size={24 * modalScale} color="#1A1A1A" strokeWidth={2} />
-							</TouchableOpacity>
-						</View>
-
-						<View
-							className="items-center"
-							style={{ marginTop: 12 * modalScale, rowGap: 24 * modalScale }}
-						>
-							<CreateTypeOption
-								icon={ClipboardEdit}
-								title="Neue Hausaufgabe"
-								description="Fälligkeit, Fach und Lernzeit planen."
-								scale={modalScale}
-								width={modalOptionWidth}
-								onPress={() => selectCreateType("homework")}
-							/>
-							<CreateTypeOption
-								icon={GraduationCap}
-								title="Neue Prüfung"
-								description="Datum, Fach und Prüfungsart eintragen."
-								scale={modalScale}
-								width={modalOptionWidth}
-								onPress={() => selectCreateType("exam")}
-							/>
-						</View>
-					</View>
-				</View>
-			</Modal>
+				onSelect={selectCreateType}
+			/>
 		</View>
 	);
 }

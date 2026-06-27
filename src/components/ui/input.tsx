@@ -8,6 +8,13 @@ type InputProps = React.ComponentProps<typeof TextInput> & {
 	ref?: React.Ref<InputRef>;
 };
 
+const androidTextInputStyle = Platform.select({
+	android: {
+		includeFontPadding: false,
+		textAlignVertical: "center" as const,
+	},
+});
+
 function Input({
 	className,
 	placeholderTextColor,
@@ -20,34 +27,18 @@ function Input({
 		<TextInput
 			ref={ref}
 			className={cn(
-				"flex-1 font-poppins text-16 text-text",
+				"m-0 flex-1 px-0 py-0 font-poppins text-body-2 text-text tracking-normal",
 				Platform.select({
 					web: "outline-none",
 				}),
 				props.editable === false && "opacity-50",
 				className,
 			)}
-			style={[
-				{
-					margin: 0,
-					paddingTop: 0,
-					paddingBottom: 0,
-					paddingHorizontal: 0,
-					fontSize: DAYOVA_DESIGN_SYSTEM.typography.field.placeholder.fontSize,
-					lineHeight:
-						DAYOVA_DESIGN_SYSTEM.typography.field.placeholder.lineHeight,
-					letterSpacing: 0,
-					...Platform.select({
-						android: {
-							includeFontPadding: false,
-							textAlignVertical: "center" as const,
-						},
-					}),
-				},
-				style,
-			]}
+			// Android TextInput has native font padding/vertical alignment behavior
+			// that NativeWind cannot fully reset with classes.
+			style={[androidTextInputStyle, style]}
 			placeholderTextColor={
-				placeholderTextColor ?? `${DAYOVA_DESIGN_SYSTEM.colors.text}5C`
+				placeholderTextColor ?? `${DAYOVA_DESIGN_SYSTEM.colors.text}80`
 			}
 			selectionColor={selectionColor ?? DAYOVA_DESIGN_SYSTEM.colors.primary}
 			{...props}

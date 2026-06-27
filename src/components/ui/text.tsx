@@ -6,7 +6,7 @@ import { cn } from "~/lib/utils";
 
 const textVariants = cva(
 	cn(
-		"font-poppins text-16 text-foreground",
+		"font-poppins text-body-2 text-text tracking-normal",
 		Platform.select({
 			web: "select-text",
 		}),
@@ -16,30 +16,30 @@ const textVariants = cva(
 			variant: {
 				default: "",
 				h1: cn(
-					"text-center font-bold text-32 tracking-tight",
+					"text-center font-semibold text-heading-1",
 					Platform.select({ web: "scroll-m-20 text-balance" }),
 				),
 				h2: cn(
-					"border-border border-b pb-2 font-bold text-28 tracking-tight",
+					"border-border border-b pb-2 font-semibold text-heading-2",
 					Platform.select({ web: "scroll-m-20 first:mt-0" }),
 				),
 				h3: cn(
-					"font-bold text-24 tracking-tight",
+					"font-semibold text-body-1",
 					Platform.select({ web: "scroll-m-20" }),
 				),
 				h4: cn(
-					"font-bold text-20 tracking-tight",
+					"font-semibold text-body-2",
 					Platform.select({ web: "scroll-m-20" }),
 				),
 				p: "mt-3 sm:mt-6",
 				blockquote: "mt-4 border-l-2 pl-3 italic sm:mt-6 sm:pl-6",
 				code: cn(
-					"relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono font-semibold text-14",
+					"relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono font-semibold text-body-3",
 				),
-				lead: "text-18 text-muted-foreground",
-				large: "font-semibold text-16",
-				small: "font-medium text-12 leading-none",
-				muted: "text-12 text-muted-foreground",
+				lead: "text-body-1 text-secondary-text",
+				large: "font-semibold text-body-2",
+				small: "text-body-4",
+				muted: "text-body-4 text-secondary-text",
 			},
 		},
 		defaultVariants: {
@@ -70,9 +70,16 @@ const ARIA_LEVEL: Partial<Record<TextVariant, string>> = {
 
 const TextClassContext = React.createContext<string | undefined>(undefined);
 
+const androidTextResetStyle = Platform.select({
+	android: {
+		includeFontPadding: false,
+	},
+});
+
 function Text({
 	className,
 	asChild = false,
+	style,
 	variant = "default",
 	...props
 }: React.ComponentProps<typeof RNText> &
@@ -86,6 +93,10 @@ function Text({
 			className={cn(textVariants({ variant }), textClass, className)}
 			role={variant ? ROLE[variant] : undefined}
 			aria-level={variant ? ARIA_LEVEL[variant] : undefined}
+			// Android adds extra font padding around Text by default; the Figma
+			// typography ramp assumes the rendered line box, so the native reset is
+			// centralized here instead of repeated on every Text call site.
+			style={[androidTextResetStyle, style]}
 			{...props}
 		/>
 	);

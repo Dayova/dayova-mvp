@@ -49,6 +49,10 @@ const config: ExpoConfig = {
 		usesAppleSignIn: true,
 		infoPlist: {
 			ITSAppUsesNonExemptEncryption: false,
+			NSMicrophoneUsageDescription:
+				"Dayova braucht Zugriff auf dein Mikrofon, damit du Sprachantworten einsprechen kannst.",
+			NSSpeechRecognitionUsageDescription:
+				"Dayova nutzt Spracherkennung, um deine eingesprochenen Antworten als Text auszuwerten.",
 		},
 	},
 	android: {

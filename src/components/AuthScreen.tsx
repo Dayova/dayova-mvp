@@ -140,10 +140,9 @@ function ModeButton({
 			className="min-h-[54px] flex-1 items-center justify-center rounded-full px-4"
 		>
 			<Text
-				className={`w-full text-center font-bold font-poppins text-16 ${
+				className={`w-full text-center font-poppins font-semibold text-body-2 ${
 					active ? "text-primary" : "text-text/56"
 				}`}
-				style={{ lineHeight: 22.4, includeFontPadding: false }}
 			>
 				{label}
 			</Text>
@@ -189,7 +188,7 @@ function OtpCodeInput({
 					return (
 						<View
 							key={cellKey}
-							className="h-[64px] flex-1 items-center justify-center rounded-[18px] bg-white"
+							className="h-[64px] flex-1 items-center justify-center rounded-[18px] bg-card"
 							style={{
 								borderWidth: isFocused ? 1.8 : 1.2,
 								borderColor: isFocused ? "#1A1A1A" : "rgba(17,24,39,0.12)",
@@ -200,10 +199,7 @@ function OtpCodeInput({
 								elevation: symbol ? 4 : 2,
 							}}
 						>
-							<Text
-								className="font-poppins font-semibold text-28 text-text"
-								style={{ includeFontPadding: false, lineHeight: 36 }}
-							>
+							<Text className="font-poppins font-semibold text-heading-1 text-text">
 								{symbol || (isFocused ? <Cursor /> : null)}
 							</Text>
 						</View>
@@ -243,8 +239,8 @@ function VerificationFeedbackPill({
 	const palette = {
 		neutral: {
 			background: "#F3F7FF",
-			border: "rgba(58,123,255,0.14)",
-			icon: "#3A7BFF",
+			border: "rgba(0,186,255,0.14)",
+			icon: "#00BAFF",
 			text: "rgba(26,26,26,0.68)",
 		},
 		success: {
@@ -278,11 +274,10 @@ function VerificationFeedbackPill({
 				)}
 			</View>
 			<Text
-				className="ml-2.5 flex-1 font-poppins text-13"
+				className="ml-2.5 flex-1 font-poppins text-body-4"
 				style={{
+					// Feedback tone decides this color at runtime.
 					color: palette.text,
-					includeFontPadding: false,
-					lineHeight: 18.2,
 				}}
 			>
 				{feedback.message}
@@ -601,10 +596,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								style={{ width: 72, height: 72 }}
 								resizeMode="contain"
 							/>
-							<Text
-								className="font-bold font-poppins text-32 text-white"
-								style={{ includeFontPadding: false, lineHeight: 40 }}
-							>
+							<Text className="font-poppins font-semibold text-heading-1 text-white">
 								Dayova
 							</Text>
 						</View>
@@ -626,21 +618,17 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 						>
 							<View className="items-center">
 								<Text
-									className="text-center font-bold font-poppins text-28 text-text"
+									className="text-center font-poppins font-semibold text-heading-1 text-text"
 									style={{
+										// Keyboard state changes the available vertical space.
 										marginTop: otpTitleMarginTop,
-										includeFontPadding: false,
-										lineHeight: 34,
 									}}
 								>
 									E-Mail bestätigen
 								</Text>
-								<Text
-									className="mt-3 text-center font-poppins text-14 text-text/60"
-									style={{ lineHeight: 21, includeFontPadding: false }}
-								>
+								<Text className="mt-3 text-center font-poppins text-body-3 text-text/60">
 									Gib den 6-stelligen Code ein, den wir an{" "}
-									<Text className="font-bold font-poppins text-14 text-text">
+									<Text className="font-poppins font-semibold text-body-3 text-text">
 										{emailAddress}
 									</Text>{" "}
 									gesendet haben.
@@ -661,7 +649,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							) : null}
 
 							<View className="mt-8 flex-row justify-center">
-								<Text className="font-poppins text-14 text-text/52">
+								<Text className="font-poppins text-body-3 text-text/52">
 									Kein Code angekommen?
 								</Text>
 								<TouchableOpacity
@@ -670,7 +658,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 									disabled={isLoading}
 									className="ml-1"
 								>
-									<Text className="font-bold font-poppins text-14 text-primary">
+									<Text className="font-poppins font-semibold text-body-3 text-primary">
 										Erneut senden
 									</Text>
 								</TouchableOpacity>
@@ -718,10 +706,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							style={{ width: 80, height: 80 }}
 							resizeMode="contain"
 						/>
-						<Text
-							className="font-bold font-poppins text-white"
-							style={{ fontSize: 42, lineHeight: 52 }}
-						>
+						<Text className="font-poppins font-semibold text-heading-1 text-white">
 							Dayova
 						</Text>
 					</View>
@@ -735,7 +720,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							<Mascot size={60} />
 						</View>
 						<View
-							className="mb-6 rounded-full bg-[#EEF2F7] p-1.5"
+							className="mb-6 rounded-full bg-muted p-1.5"
 							style={{
 								minHeight: 60,
 								borderWidth: 1,
@@ -756,7 +741,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 								{tabWidth > 0 ? (
 									<Animated.View
 										pointerEvents="none"
-										className="absolute rounded-full bg-white"
+										className="absolute rounded-full bg-card"
 										style={{
 											bottom: 2,
 											left: 2,
@@ -800,31 +785,25 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 						<TouchableOpacity
 							activeOpacity={0.78}
 							onPress={goBackRegisterStep}
-							className="mb-5 flex-row items-center self-start rounded-full bg-[#F3F5F8] px-4 py-3"
+							className="mb-5 flex-row items-center self-start rounded-full bg-muted px-4 py-3"
 							style={{
 								borderWidth: 1,
 								borderColor: "rgba(17,24,39,0.05)",
 							}}
 						>
 							<ArrowLeft size={16} color="#1A1A1A" strokeWidth={2.2} />
-							<Text className="ml-2 font-poppins font-semibold text-14 text-text">
+							<Text className="ml-2 font-poppins font-semibold text-body-3 text-text">
 								Zurück
 							</Text>
 						</TouchableOpacity>
 					) : null}
 
 					{isRegisterIdentityStep ? (
-						<View className="mb-5 rounded-[20px] bg-[#F7F8FA] px-[18px] py-4">
-							<Text
-								className="font-poppins font-semibold text-16 text-text"
-								style={{ includeFontPadding: false, lineHeight: 22 }}
-							>
+						<View className="mb-5 rounded-[20px] bg-muted px-[18px] py-4">
+							<Text className="font-poppins font-semibold text-body-2 text-text">
 								Erzähl uns kurz etwas über dich
 							</Text>
-							<Text
-								className="mt-2 font-poppins text-14 text-text/62"
-								style={{ includeFontPadding: false, lineHeight: 20 }}
-							>
+							<Text className="mt-2 font-poppins text-body-3 text-text/62">
 								Im ersten Schritt brauchen wir deinen Namen, deine E-Mail und
 								dein Alter.
 							</Text>
@@ -889,11 +868,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 							>
 								<View className="flex-1">
 									<Text
-										className={`font-poppins text-16 ${
+										className={`font-poppins text-body-2 ${
 											birthDateValue ? "text-text" : "text-text/36"
 										}`}
 										numberOfLines={1}
-										style={{ includeFontPadding: false, lineHeight: 24 }}
 									>
 										{birthDateValue
 											? `${Math.max(
@@ -946,7 +924,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 											isRegisterMode ? "newPassword" : "password"
 										}
 										placeholderTextColor="rgba(26,26,26,0.36)"
-										selectionColor="#3A7BFF"
+										selectionColor="#00BAFF"
 										style={{
 											color: "#1A1A1A",
 											fontSize: 16,
@@ -993,7 +971,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 					) : null}
 
 					<View
-						className="mt-2 mb-6 rounded-[20px] bg-[#F7F8FA] px-[18px] py-4"
+						className="mt-2 mb-6 rounded-[20px] bg-muted px-[18px] py-4"
 						style={{
 							borderWidth: 1,
 							borderColor: "rgba(17,24,39,0.05)",
@@ -1001,12 +979,9 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 					>
 						<View className="flex-row items-center">
 							<View className="h-6 w-6 items-center justify-center">
-								<CircleAlert size={16} color="#3A7BFF" strokeWidth={2.1} />
+								<CircleAlert size={16} color="#00BAFF" strokeWidth={2.1} />
 							</View>
-							<Text
-								className="ml-2.5 flex-1 font-poppins text-14 text-text/62"
-								style={{ lineHeight: 19.6, includeFontPadding: false }}
-							>
+							<Text className="ml-2.5 flex-1 font-poppins text-body-3 text-text/62">
 								{isRegisterIdentityStep
 									? "Diese Angaben helfen uns, dein Konto passend für dich einzurichten."
 									: isRegisterPasswordStep
@@ -1055,7 +1030,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
 					{isLoginOnlyScreen ? null : (
 						<View className="pt-5 pb-2">
-							<Text className="text-center font-poppins text-12 text-text/46">
+							<Text className="text-center font-poppins text-body-4 text-text/46">
 								{isRegisterMode
 									? "Schon ein Konto? Oben kannst du direkt zur Anmeldung wechseln."
 									: "Noch kein Konto? Wechsle oben zur Registrierung."}

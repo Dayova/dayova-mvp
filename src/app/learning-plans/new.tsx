@@ -6,21 +6,18 @@ import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	Modal,
-	Pressable,
-	TouchableOpacity,
-	useWindowDimensions,
-	View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
+import {
+	BottomModal,
+	BottomModalOption,
+	bottomModalIconColor,
+} from "~/components/ui/bottom-modal";
 import { Button } from "~/components/ui/button";
 import { FieldControl, FieldLabel } from "~/components/ui/field";
-import { Attachment, Plus, ScanImage, X } from "~/components/ui/icon";
+import { Attachment, Plus, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -53,9 +50,6 @@ const UPLOAD_TIMEOUT_MS = 45_000;
 const UPLOAD_COMPLETION_FAILURE_MESSAGE =
 	"Die Datei wurde übertragen, aber Dayova konnte den Upload nicht abschließen. Bitte versuche es erneut.";
 
-const clamp = (value: number, min: number, max: number) =>
-	Math.min(Math.max(value, min), max);
-
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
@@ -68,84 +62,8 @@ type PreparedUploadAsset = {
 
 type PendingUploadAction = "camera" | "files";
 
-function UploadSheetOption({
-	icon,
-	title,
-	description,
-	disabled,
-	onPress,
-	scale,
-	width,
-}: {
-	icon: React.ReactNode;
-	title: string;
-	description: string;
-	disabled: boolean;
-	onPress: () => void;
-	scale: number;
-	width: number;
-}) {
-	return (
-		<TouchableOpacity
-			accessibilityLabel={title}
-			accessibilityRole="button"
-			accessibilityState={{ disabled }}
-			activeOpacity={0.86}
-			disabled={disabled}
-			onPress={onPress}
-			className="flex-row items-center bg-white"
-			style={{
-				width,
-				height: 96 * scale,
-				borderRadius: 40 * scale,
-				paddingHorizontal: 16 * scale,
-				paddingVertical: 12 * scale,
-				columnGap: 16 * scale,
-				opacity: disabled ? 0.55 : 1,
-				boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-			}}
-		>
-			<View
-				className="items-center justify-center rounded-full bg-[#EAF3FF]"
-				style={{
-					width: 48 * scale,
-					height: 48 * scale,
-					boxShadow:
-						"0 2px 4px -2px rgba(24, 39, 75, 0.12), 0 4px 4px -2px rgba(24, 39, 75, 0.08)",
-				}}
-			>
-				{icon}
-			</View>
-			<View style={{ flex: 1, rowGap: 4 * scale }}>
-				<Text
-					className="font-medium font-poppins text-black"
-					style={{
-						fontSize: 16 * scale,
-						lineHeight: 24 * scale,
-						includeFontPadding: false,
-					}}
-				>
-					{title}
-				</Text>
-				<Text
-					className="font-poppins text-[#7E7E7E]"
-					style={{
-						fontSize: 12 * scale,
-						lineHeight: 18 * scale,
-						includeFontPadding: false,
-					}}
-				>
-					{description}
-				</Text>
-			</View>
-		</TouchableOpacity>
-	);
-}
-
 export default function NewLearningPlanScreen() {
 	const router = useRouter();
-	const insets = useSafeAreaInsets();
-	const { width } = useWindowDimensions();
 	const params = useLocalSearchParams<{
 		learningPlanId?: string;
 		examDayEntryId?: string;
@@ -208,12 +126,6 @@ export default function NewLearningPlanScreen() {
 		topicDescriptionInput ?? snapshot?.plan.topicDescription ?? "";
 	const canContinueTopic = topicDescription.trim().length >= 8 && canWrite;
 	const canUploadMaterial = canWrite && !isBusy && !openingUploadAction;
-	const modalScale = clamp(width / 393, 0.88, 1.06);
-	const uploadOptionWidth = Math.min(width - 48 * modalScale, 345 * modalScale);
-	const uploadSheetBottomPadding = Math.max(
-		insets.bottom + 28 * modalScale,
-		42,
-	);
 
 	useEffect(() => {
 		if (!hasExamEntry) {
@@ -370,7 +282,8 @@ export default function NewLearningPlanScreen() {
 						metadata: {
 							learningPlanId: id,
 							storageProvider: uploadData.storageProvider,
-							uploadMethod: uploadData.storageProvider === "r2" ? "PUT" : "POST",
+							uploadMethod:
+								uploadData.storageProvider === "r2" ? "PUT" : "POST",
 							responseStatus: uploadResponse.status,
 							responseStatusText: uploadResponse.statusText,
 							responseHeaders,
@@ -582,7 +495,7 @@ export default function NewLearningPlanScreen() {
 					activeOpacity={0.86}
 					disabled={!canUploadMaterial}
 					onPress={() => setIsUploadSheetVisible(true)}
-					className="mb-5 items-center justify-center py-[40px]"
+					className="mb-5 items-center justify-center py-10"
 				>
 					<View
 						className="items-center justify-center"
@@ -590,8 +503,8 @@ export default function NewLearningPlanScreen() {
 							width: 48,
 							height: 48,
 							borderRadius: 24,
-							backgroundColor: "#3A7BFF",
-							shadowColor: "#3A7BFF",
+							backgroundColor: "#00BAFF",
+							shadowColor: "#00BAFF",
 							shadowOpacity: 0.24,
 							shadowRadius: 12,
 							shadowOffset: { width: 0, height: 4 },
@@ -604,7 +517,7 @@ export default function NewLearningPlanScreen() {
 							<Plus size={26} color="#FFFFFF" strokeWidth={2.1} />
 						)}
 					</View>
-					<Text className="mt-3 text-center font-poppins text-13 text-[#8C8C8C]">
+					<Text className="mt-3 text-center font-poppins text-body-4 text-secondary-text">
 						{openingUploadAction === "files"
 							? "Dateiauswahl wird geöffnet …"
 							: openingUploadAction === "camera"
@@ -625,7 +538,7 @@ export default function NewLearningPlanScreen() {
 				))}
 
 				{errorMessage ? (
-					<Text className="mb-4 font-poppins text-12 text-destructive">
+					<Text className="mb-4 font-poppins text-body-4 text-destructive">
 						{errorMessage}
 					</Text>
 				) : null}
@@ -639,7 +552,7 @@ export default function NewLearningPlanScreen() {
 					disabled={!canContinueTopic || isBusy}
 					onPress={continueToAnalysis}
 					style={{
-						shadowColor: "#3A7BFF",
+						shadowColor: "#00BAFF",
 						shadowOpacity: 0.3,
 						shadowRadius: 14,
 						shadowOffset: { width: 0, height: 7 },
@@ -650,118 +563,50 @@ export default function NewLearningPlanScreen() {
 				</Button>
 			</ScreenScroll>
 
-			<Modal
+			<BottomModal
 				visible={isUploadSheetVisible}
-				transparent
-				animationType="fade"
+				title="Was möchtest du hochladen?"
+				description="Lade hier deine Unterlagen hoch oder scanne sie ganz einfach."
+				onClose={closeUploadSheet}
 				onDismiss={runPendingUploadAction}
-				onRequestClose={closeUploadSheet}
+				closeAccessibilityLabel="Hochladen schließen"
+				contentClassName="flex-row gap-2"
 			>
-				<View className="flex-1 justify-end">
-					<Pressable
-						className="absolute inset-0 bg-black/25"
-						onPress={closeUploadSheet}
-					/>
-					<View
-						className="bg-[#F4F8FB]"
-						style={{
-							width,
-							borderTopLeftRadius: 40 * modalScale,
-							borderTopRightRadius: 40 * modalScale,
-							paddingTop: 24 * modalScale,
-							paddingHorizontal: 24 * modalScale,
-							paddingBottom: uploadSheetBottomPadding,
-							boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-						}}
-					>
-						<View
-							className="flex-row items-start justify-between"
-							style={{ minHeight: 46 * modalScale, columnGap: 16 * modalScale }}
-						>
-							<View className="flex-1">
-								<Text
-									className="font-medium font-poppins text-black"
-									style={{
-										fontSize: 16 * modalScale,
-										lineHeight: 24 * modalScale,
-										includeFontPadding: false,
-									}}
-								>
-									Hochladen
-								</Text>
-								<Text
-									className="font-poppins text-[#7E7E7E]"
-									style={{
-										fontSize: 12 * modalScale,
-										lineHeight: 18 * modalScale,
-										includeFontPadding: false,
-									}}
-								>
-									Wähle aus, wie du deine Unterlagen hinzufügen möchtest.
-								</Text>
-							</View>
-							<TouchableOpacity
-								accessibilityLabel="Hochladen schließen"
-								accessibilityRole="button"
-								hitSlop={8}
-								activeOpacity={0.75}
-								onPress={closeUploadSheet}
-								className="items-center justify-center rounded-full bg-[#D9D9D9]"
-								style={{
-									width: 40 * modalScale,
-									height: 40 * modalScale,
-									boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-								}}
-							>
-								<X size={24 * modalScale} color="#1A1A1A" strokeWidth={2} />
-							</TouchableOpacity>
-						</View>
-						<View
-							className="items-center"
-							style={{ marginTop: 12 * modalScale, rowGap: 24 * modalScale }}
-						>
-							<UploadSheetOption
-								title="Scannen"
-								description="Unterlagen mit der Kamera erfassen."
-								onPress={() => chooseUploadAction("camera")}
-								disabled={!canUploadMaterial}
-								scale={modalScale}
-								width={uploadOptionWidth}
-								icon={
-									openingUploadAction === "camera" || isBusy ? (
-										<ActivityIndicator color="#3A7BFF" />
-									) : (
-										<ScanImage
-											size={24 * modalScale}
-											color="#3A7BFF"
-											strokeWidth={1.8}
-										/>
-									)
-								}
+				<BottomModalOption
+					layout="tile"
+					title="Scannen"
+					onPress={() => chooseUploadAction("camera")}
+					disabled={!canUploadMaterial}
+					icon={
+						openingUploadAction === "camera" || isBusy ? (
+							<ActivityIndicator color={bottomModalIconColor} />
+						) : (
+							<ScanImage
+								size={28}
+								color={bottomModalIconColor}
+								strokeWidth={1.8}
 							/>
-							<UploadSheetOption
-								title="Dateien"
-								description="PDF, Bilder oder Dokumente auswählen."
-								onPress={() => chooseUploadAction("files")}
-								disabled={!canUploadMaterial}
-								scale={modalScale}
-								width={uploadOptionWidth}
-								icon={
-									openingUploadAction === "files" || isBusy ? (
-										<ActivityIndicator color="#3A7BFF" />
-									) : (
-										<Attachment
-											size={24 * modalScale}
-											color="#3A7BFF"
-											strokeWidth={1.8}
-										/>
-									)
-								}
+						)
+					}
+				/>
+				<BottomModalOption
+					layout="tile"
+					title="Dateien"
+					onPress={() => chooseUploadAction("files")}
+					disabled={!canUploadMaterial}
+					icon={
+						openingUploadAction === "files" || isBusy ? (
+							<ActivityIndicator color={bottomModalIconColor} />
+						) : (
+							<Attachment
+								size={28}
+								color={bottomModalIconColor}
+								strokeWidth={1.8}
 							/>
-						</View>
-					</View>
-				</View>
-			</Modal>
+						)
+					}
+				/>
+			</BottomModal>
 		</Screen>
 	);
 }
