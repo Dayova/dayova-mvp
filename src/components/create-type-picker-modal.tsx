@@ -10,10 +10,10 @@ type CreateTypePickerModalProps = {
 	onSelect: (type: CreateType) => void;
 };
 
-const CREATE_TYPE_OPTIONS = ["homework", "exam"] as const;
+const CREATE_TYPE_OPTIONS = ["exam", "homework"] as const;
 const CREATE_TYPE_LABELS = {
-	homework: "Hausaufgabe",
-	exam: "Prüfung",
+	homework: "Neue Hausaufgabe",
+	exam: "Neue Prüfung",
 } satisfies Record<CreateType, string>;
 
 function CreateTypePickerModal({
@@ -24,7 +24,7 @@ function CreateTypePickerModal({
 	return (
 		<SelectSheet
 			visible={visible}
-			title="Was möchtest du erstellen?"
+			title="Was möchtest du planen?"
 			options={CREATE_TYPE_OPTIONS}
 			selectedValue=""
 			onClose={onRequestClose}
