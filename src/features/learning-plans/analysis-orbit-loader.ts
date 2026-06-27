@@ -1,6 +1,6 @@
 export const ANALYSIS_ORBIT_LOADER_SIZE = 360;
 export const ANALYSIS_ORBIT_PETAL_SIZE = 174;
-export const ANALYSIS_ORBIT_PETAL_DISTANCE = 88;
+export const ANALYSIS_ORBIT_PETAL_DISTANCE = 86;
 export const ANALYSIS_ORBIT_CENTER = ANALYSIS_ORBIT_LOADER_SIZE / 2;
 
 export type AnalysisOrbitPetal = {
@@ -16,11 +16,9 @@ export const ANALYSIS_ORBIT_PETALS: AnalysisOrbitPetal[] = Array.from(
 		return {
 			id: `analysis-orbit-${index}`,
 			cx:
-				ANALYSIS_ORBIT_CENTER +
-				Math.sin(angle) * ANALYSIS_ORBIT_PETAL_DISTANCE,
+				ANALYSIS_ORBIT_CENTER + Math.sin(angle) * ANALYSIS_ORBIT_PETAL_DISTANCE,
 			cy:
-				ANALYSIS_ORBIT_CENTER -
-				Math.cos(angle) * ANALYSIS_ORBIT_PETAL_DISTANCE,
+				ANALYSIS_ORBIT_CENTER - Math.cos(angle) * ANALYSIS_ORBIT_PETAL_DISTANCE,
 		};
 	},
 );
