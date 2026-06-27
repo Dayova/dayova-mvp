@@ -61,8 +61,6 @@ const PHASE_COLOR: Record<
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
 const SESSION_PREVIEW_CARD_HEIGHT = 174;
-const SESSION_PREVIEW_CARD_PATH =
-	"M40 1 H329 C351 1 368 18 368 40 V66 C368 87 350 102 324 102 C300 102 292 116 292 132 C292 163 284 171 272 174 H40 C18 174 1 157 1 135 V40 C1 18 18 1 40 1 Z";
 
 const getSessionRoute = (
 	planId: Id<"learningPlans">,
@@ -89,13 +87,12 @@ function SessionPreviewCard({
 				<ArrowUpRight
 					size={24}
 					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-					strokeWidth={2.2}
+					strokeWidth={1.9}
 				/>
 			}
 			actionOffsetBottom={4}
 			onActionPress={onOpen}
 			cardHeight={SESSION_PREVIEW_CARD_HEIGHT}
-			cardPath={SESSION_PREVIEW_CARD_PATH}
 			cardStyle={{
 				paddingTop: 22,
 				paddingRight: 24,

@@ -18,6 +18,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
+import { Button } from "~/components/ui/button";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
@@ -513,7 +514,7 @@ function LearningPlanCard({
 							<ArrowUpRight
 								size={24}
 								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-								strokeWidth={2.2}
+								strokeWidth={1.9}
 							/>
 						}
 						cardStyle={{ paddingRight: 24 }}
@@ -522,7 +523,7 @@ function LearningPlanCard({
 						<View className="gap-2">
 							<View className="flex-row items-start justify-between gap-3">
 								<Text
-									className="flex-1 font-medium font-poppins text-[20px] text-foreground leading-7"
+									className="flex-1 font-poppins font-semibold text-[20px] text-foreground leading-7"
 									numberOfLines={1}
 								>
 									{formatGermanUiText(plan.subject)}
@@ -543,7 +544,7 @@ function LearningPlanCard({
 									color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
 									strokeWidth={2}
 								/>
-								<Text className="font-poppins text-[12px] text-muted-foreground leading-[18px]">
+								<Text className="font-poppins text-[12px] text-secondary-text leading-[18px]">
 									{plan.examDateLabel ?? "Termin wird geladen"}
 								</Text>
 							</View>
@@ -558,7 +559,7 @@ function LearningPlanCard({
 
 						<View className="mt-4 gap-1 pr-16">
 							<View className="flex-row items-center justify-between">
-								<Text className="font-poppins text-[12px] text-muted-foreground leading-[18px]">
+								<Text className="font-poppins text-[12px] text-secondary-text leading-[18px]">
 									{`${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage`}
 								</Text>
 								<View className="flex-row items-center gap-1">
@@ -567,7 +568,7 @@ function LearningPlanCard({
 										color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
 										strokeWidth={2}
 									/>
-									<Text className="font-poppins text-[12px] text-muted-foreground leading-[18px]">
+									<Text className="font-poppins text-[12px] text-secondary-text leading-[18px]">
 										{remainingDays === 1
 											? "noch 1 Tag"
 											: `noch ${remainingDays} Tage`}
@@ -694,7 +695,7 @@ function HomeworkCard({
 							<ArrowUpRight
 								size={24}
 								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-								strokeWidth={2.2}
+								strokeWidth={1.9}
 							/>
 						}
 						cardStyle={{ paddingRight: 24 }}
@@ -703,7 +704,7 @@ function HomeworkCard({
 						<View className="gap-2">
 							<View className="flex-row items-start justify-between gap-3">
 								<Text
-									className="flex-1 font-medium font-poppins text-[20px] text-foreground leading-7"
+									className="flex-1 font-poppins font-semibold text-[20px] text-foreground leading-7"
 									numberOfLines={1}
 								>
 									{subject}
@@ -878,7 +879,7 @@ export default function LearningPlansScreen() {
 								/>
 							))
 						) : (
-							<View className="items-center rounded-[30px] border border-border/50 bg-card px-5 py-7 shadow-black/5 shadow-lg">
+							<View className="items-center gap-3 rounded-[30px] border border-border/50 bg-card px-5 py-7 shadow-black/5 shadow-lg">
 								<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
 									<Route2
 										size={30}
@@ -889,26 +890,25 @@ export default function LearningPlansScreen() {
 								<Text className="text-center font-poppins font-semibold text-body-1 text-foreground">
 									Noch keine Lernpläne
 								</Text>
-								<Text className="mt-2 text-center font-poppins text-body-3 text-muted-foreground">
+								<Text className="text-center font-poppins text-body-3 text-muted-foreground">
 									Erstelle einen Lernplan aus einer Prüfung, damit er hier als
 									Übersicht erscheint.
 								</Text>
-								<TouchableOpacity
-									accessibilityRole="button"
+								<Button
 									accessibilityLabel="Lernplan erstellen"
-									activeOpacity={0.9}
 									onPress={openCreateTypePicker}
-									className="mt-5 flex-row items-center gap-2 rounded-full bg-foreground px-5 py-3"
+									size="sm"
+									className="mt-2"
 								>
 									<Plus
 										size={18}
 										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 										strokeWidth={2.4}
 									/>
-									<Text className="font-poppins font-semibold text-body-4 text-button-neutral-foreground">
+									<Text className="font-poppins font-semibold text-body-4">
 										Neuen Lernplan starten
 									</Text>
-								</TouchableOpacity>
+								</Button>
 							</View>
 						)}
 					</View>
@@ -927,7 +927,7 @@ export default function LearningPlansScreen() {
 								/>
 							))
 						) : (
-							<View className="items-center rounded-[30px] border border-border/50 bg-card px-5 py-7 shadow-black/5 shadow-lg">
+							<View className="items-center gap-3 rounded-[30px] border border-border/50 bg-card px-5 py-7 shadow-black/5 shadow-lg">
 								<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
 									<ClipboardEdit
 										size={30}
@@ -938,26 +938,25 @@ export default function LearningPlansScreen() {
 								<Text className="text-center font-poppins font-semibold text-body-1 text-foreground">
 									Noch keine Hausaufgaben
 								</Text>
-								<Text className="mt-2 text-center font-poppins text-body-3 text-muted-foreground">
+								<Text className="text-center font-poppins text-body-3 text-muted-foreground">
 									Trage deine nächste Hausaufgabe ein, damit sie hier als
 									Übersicht erscheint.
 								</Text>
-								<TouchableOpacity
-									accessibilityRole="button"
+								<Button
 									accessibilityLabel="Hausaufgabe erstellen"
-									activeOpacity={0.9}
-									onPress={openCreateTypePicker}
-									className="mt-5 flex-row items-center gap-2 rounded-full bg-foreground px-5 py-3"
+									onPress={() => router.push(ROUTES.createHomework)}
+									size="sm"
+									className="mt-2"
 								>
 									<Plus
 										size={18}
 										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 										strokeWidth={2.4}
 									/>
-									<Text className="font-poppins font-semibold text-body-4 text-button-neutral-foreground">
+									<Text className="font-poppins font-semibold text-body-4">
 										Neue Hausaufgabe eintragen
 									</Text>
-								</TouchableOpacity>
+								</Button>
 							</View>
 						)}
 					</View>

@@ -1,6 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import {
+	type LayoutChangeEvent,
 	Pressable,
 	type PressableProps,
 	View,
@@ -15,6 +17,7 @@ type NotchedActionCardProps = ViewProps & {
 	actionAccessibilityLabel: string;
 	actionIcon: ReactNode;
 	actionOffsetBottom?: number;
+	actionOffsetRight?: number;
 	onActionPress: PressableProps["onPress"];
 	actionSize?: number;
 	cardHeight?: number;
@@ -24,29 +27,120 @@ type NotchedActionCardProps = ViewProps & {
 
 const DEFAULT_CARD_WIDTH = 368;
 const DEFAULT_CARD_HEIGHT = 211;
-const DEFAULT_CARD_PATH =
-	"M40 1 H329 C351 1 368 18 368 40 V100 C368 129 348 150 318 150 C300 150 292 166 292 184 C292 199 284 207 272 211 H40 C18 211 1 194 1 172 V40 C1 18 18 1 40 1 Z";
-const COMPACT_CARD_HEIGHT = 164;
-const COMPACT_CARD_PATH =
-	"M40 1 H329 C351 1 368 18 368 40 V54 C368 83 348 104 318 104 C300 104 292 120 292 138 C292 153 284 161 272 164 H40 C18 164 1 147 1 125 V40 C1 18 18 1 40 1 Z";
+const COMPACT_CARD_HEIGHT = 144;
+const CARD_CORNER_RADIUS = 44;
+const CARD_STROKE_WIDTH = 1;
+const ACTION_CLEARANCE = 4;
+const DEFAULT_ACTION_SIZE = 48;
+const DEFAULT_ACTION_OFFSET_RIGHT = 0;
+const CUBIC_ARC = 0.5522847498;
+
+const pathNumber = (value: number) => Number(value.toFixed(3)).toString();
+
+const buildNotchedCardPath = ({
+	actionOffsetBottom,
+	actionOffsetRight,
+	actionSize,
+	height,
+	width,
+}: {
+	actionOffsetBottom: number;
+	actionOffsetRight: number;
+	actionSize: number;
+	height: number;
+	width: number;
+}) => {
+	const inset = CARD_STROKE_WIDTH / 2;
+	const left = inset;
+	const top = inset;
+	const right = width - inset;
+	const bottom = height - inset;
+	const cornerRadius = Math.min(
+		CARD_CORNER_RADIUS,
+		(right - left) / 2,
+		(bottom - top) / 2,
+	);
+	const buttonRadius = actionSize / 2;
+	const buttonCenterX = width - actionOffsetRight - buttonRadius;
+	const buttonCenterY = height - actionOffsetBottom - buttonRadius;
+	const notchRadius = buttonRadius + ACTION_CLEARANCE;
+	const notchTopY = buttonCenterY - notchRadius;
+	const notchLeftX = buttonCenterX - notchRadius;
+	const rightJoinRadius = Math.max(
+		0,
+		Math.min(
+			right - buttonCenterX,
+			notchTopY - (top + cornerRadius),
+			CARD_CORNER_RADIUS,
+		),
+	);
+	const bottomJoinRadius = Math.max(
+		0,
+		Math.min(
+			bottom - buttonCenterY,
+			notchLeftX - (left + cornerRadius),
+			CARD_CORNER_RADIUS,
+		),
+	);
+	const rightJoinStartY = notchTopY - rightJoinRadius;
+	const bottomJoinEndX = notchLeftX - bottomJoinRadius;
+
+	const p = pathNumber;
+	return [
+		`M${p(left + cornerRadius)} ${p(top)}`,
+		`H${p(right - cornerRadius)}`,
+		`C${p(right - cornerRadius + cornerRadius * CUBIC_ARC)} ${p(top)} ${p(right)} ${p(top + cornerRadius - cornerRadius * CUBIC_ARC)} ${p(right)} ${p(top + cornerRadius)}`,
+		`V${p(rightJoinStartY)}`,
+		`C${p(right)} ${p(rightJoinStartY + rightJoinRadius * CUBIC_ARC)} ${p(buttonCenterX + rightJoinRadius * CUBIC_ARC)} ${p(notchTopY)} ${p(buttonCenterX)} ${p(notchTopY)}`,
+		`C${p(buttonCenterX - notchRadius * CUBIC_ARC)} ${p(notchTopY)} ${p(notchLeftX)} ${p(buttonCenterY - notchRadius * CUBIC_ARC)} ${p(notchLeftX)} ${p(buttonCenterY)}`,
+		`C${p(notchLeftX)} ${p(buttonCenterY + bottomJoinRadius * CUBIC_ARC)} ${p(bottomJoinEndX + bottomJoinRadius * CUBIC_ARC)} ${p(bottom)} ${p(bottomJoinEndX)} ${p(bottom)}`,
+		`H${p(left + cornerRadius)}`,
+		`C${p(left + cornerRadius - cornerRadius * CUBIC_ARC)} ${p(bottom)} ${p(left)} ${p(bottom - cornerRadius + cornerRadius * CUBIC_ARC)} ${p(left)} ${p(bottom - cornerRadius)}`,
+		`V${p(top + cornerRadius)}`,
+		`C${p(left)} ${p(top + cornerRadius - cornerRadius * CUBIC_ARC)} ${p(left + cornerRadius - cornerRadius * CUBIC_ARC)} ${p(top)} ${p(left + cornerRadius)} ${p(top)}`,
+		"Z",
+	].join(" ");
+};
 
 export function NotchedActionCard({
 	actionAccessibilityLabel,
 	actionIcon,
 	actionOffsetBottom = 0,
-	actionSize = 56,
+	actionOffsetRight = DEFAULT_ACTION_OFFSET_RIGHT,
+	actionSize = DEFAULT_ACTION_SIZE,
 	cardHeight = DEFAULT_CARD_HEIGHT,
-	cardPath = DEFAULT_CARD_PATH,
+	cardPath,
 	cardStyle,
 	children,
 	className,
 	onActionPress,
+	onLayout,
 	style,
 	...props
 }: NotchedActionCardProps) {
+	const [cardWidth, setCardWidth] = useState(DEFAULT_CARD_WIDTH);
+	const handleLayout = (event: LayoutChangeEvent) => {
+		const nextWidth = event.nativeEvent.layout.width;
+		setCardWidth((currentWidth) =>
+			Math.abs(currentWidth - nextWidth) < 0.5 ? currentWidth : nextWidth,
+		);
+		onLayout?.(event);
+	};
+	const resolvedCardWidth = Math.max(cardWidth, actionSize + actionOffsetRight);
+	const resolvedCardPath =
+		cardPath ??
+		buildNotchedCardPath({
+			actionOffsetBottom,
+			actionOffsetRight,
+			actionSize,
+			height: cardHeight,
+			width: resolvedCardWidth,
+		});
+
 	return (
 		<View
 			className={cn("relative", className)}
+			onLayout={handleLayout}
 			style={[{ minHeight: cardHeight }, style]}
 			{...props}
 		>
@@ -54,15 +148,15 @@ export function NotchedActionCard({
 				pointerEvents="none"
 				width="100%"
 				height={cardHeight}
-				viewBox={`0 0 ${DEFAULT_CARD_WIDTH} ${cardHeight}`}
+				viewBox={`0 0 ${resolvedCardWidth} ${cardHeight}`}
 				preserveAspectRatio="none"
 				style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
 			>
 				<Path
-					d={cardPath}
+					d={resolvedCardPath}
 					fill={DAYOVA_DESIGN_SYSTEM.colors.surface}
 					stroke={DAYOVA_DESIGN_SYSTEM.colors.border}
-					strokeWidth={1}
+					strokeWidth={CARD_STROKE_WIDTH}
 				/>
 			</Svg>
 
@@ -86,7 +180,7 @@ export function NotchedActionCard({
 				className="absolute overflow-hidden rounded-full"
 				onPress={onActionPress}
 				style={{
-					right: 9,
+					right: actionOffsetRight,
 					bottom: actionOffsetBottom,
 					width: actionSize,
 					height: actionSize,
@@ -109,12 +203,9 @@ export function NotchedActionCard({
 	);
 }
 
-export function CompactNotchedActionCard(props: NotchedActionCardProps) {
-	return (
-		<NotchedActionCard
-			{...props}
-			cardHeight={COMPACT_CARD_HEIGHT}
-			cardPath={COMPACT_CARD_PATH}
-		/>
-	);
+export function CompactNotchedActionCard({
+	cardHeight = COMPACT_CARD_HEIGHT,
+	...props
+}: NotchedActionCardProps) {
+	return <NotchedActionCard {...props} cardHeight={cardHeight} />;
 }
