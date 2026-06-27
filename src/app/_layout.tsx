@@ -39,7 +39,11 @@ function AppNavigator() {
 
 		const isAuthRoute = isPublicAuthPath(pathname);
 		const targetRoute =
-			!user && !isAuthRoute ? "/" : user && isAuthRoute ? "/home" : null;
+			!user && !isAuthRoute
+				? "/"
+				: user && isAuthRoute && pathname !== "/onboarding"
+					? "/home"
+					: null;
 		if (!targetRoute) return;
 
 		const frame = requestAnimationFrame(() => {
