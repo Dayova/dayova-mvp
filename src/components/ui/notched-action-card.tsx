@@ -14,6 +14,7 @@ import { cn } from "~/lib/utils";
 type NotchedActionCardProps = ViewProps & {
 	actionAccessibilityLabel: string;
 	actionIcon: ReactNode;
+	actionOffsetBottom?: number;
 	onActionPress: PressableProps["onPress"];
 	actionSize?: number;
 	cardHeight?: number;
@@ -32,6 +33,7 @@ const COMPACT_CARD_PATH =
 export function NotchedActionCard({
 	actionAccessibilityLabel,
 	actionIcon,
+	actionOffsetBottom = 0,
 	actionSize = 56,
 	cardHeight = DEFAULT_CARD_HEIGHT,
 	cardPath = DEFAULT_CARD_PATH,
@@ -81,10 +83,11 @@ export function NotchedActionCard({
 			<Pressable
 				accessibilityRole="button"
 				accessibilityLabel={actionAccessibilityLabel}
-				className="absolute bottom-0 overflow-hidden rounded-full"
+				className="absolute overflow-hidden rounded-full"
 				onPress={onActionPress}
 				style={{
-					right: 8,
+					right: 9,
+					bottom: actionOffsetBottom,
 					width: actionSize,
 					height: actionSize,
 				}}
