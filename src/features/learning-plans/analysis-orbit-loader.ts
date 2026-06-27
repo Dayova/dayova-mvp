@@ -1,5 +1,6 @@
 export const ANALYSIS_ORBIT_LOADER_SIZE = 360;
 export const ANALYSIS_ORBIT_PETAL_SIZE = 174;
+// Defines how much expanded the orbit is when fully loaded
 export const ANALYSIS_ORBIT_PETAL_DISTANCE = 86;
 export const ANALYSIS_ORBIT_CENTER = ANALYSIS_ORBIT_LOADER_SIZE / 2;
 
