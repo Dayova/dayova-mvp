@@ -1,6 +1,6 @@
 export const ANALYSIS_ORBIT_LOADER_SIZE = 360;
 export const ANALYSIS_ORBIT_PETAL_SIZE = 174;
-export const ANALYSIS_ORBIT_PETAL_DISTANCE = 64;
+export const ANALYSIS_ORBIT_PETAL_DISTANCE = 88;
 export const ANALYSIS_ORBIT_CENTER = ANALYSIS_ORBIT_LOADER_SIZE / 2;
 
 export type AnalysisOrbitPetal = {

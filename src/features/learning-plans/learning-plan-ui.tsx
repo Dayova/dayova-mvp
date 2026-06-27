@@ -49,6 +49,7 @@ import {
 	parseDateKey,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { formatFileSize } from "~/lib/upload-policy";
 
@@ -74,6 +75,7 @@ const ORBIT_EXPAND_DURATION = 2200;
 const ORBIT_CYCLE_DURATION = 5000;
 const ORBIT_REST_DURATION =
 	ORBIT_CYCLE_DURATION - ORBIT_COLLAPSE_DURATION - ORBIT_EXPAND_DURATION;
+const ORBIT_PETAL_OPACITY = 0.58;
 
 export function SectionTitle({
 	title,
@@ -412,7 +414,8 @@ function AnalysisOrbitPetalCircle({
 					height: ANALYSIS_ORBIT_PETAL_SIZE,
 					width: ANALYSIS_ORBIT_PETAL_SIZE,
 					borderRadius: ANALYSIS_ORBIT_PETAL_SIZE / 2,
-					backgroundColor: "rgba(58, 123, 255, 0.55)",
+					backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.primary,
+					opacity: ORBIT_PETAL_OPACITY,
 				},
 				petalStyle,
 			]}
