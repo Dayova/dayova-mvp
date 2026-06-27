@@ -505,10 +505,7 @@ export function AnalysisOrbitLoader() {
 				width: ANALYSIS_ORBIT_LOADER_SIZE,
 			}}
 		>
-			<Animated.View
-				className="h-full w-full"
-				style={flowerStyle}
-			>
+			<Animated.View className="h-full w-full" style={flowerStyle}>
 				{ANALYSIS_ORBIT_PETALS.map((petal) => (
 					<AnalysisOrbitPetalCircle
 						key={petal.id}

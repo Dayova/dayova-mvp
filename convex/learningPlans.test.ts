@@ -324,7 +324,9 @@ test("removing a learning plan deletes synced sessions and detaches the exam ent
 	await expect(
 		t.query(api.learningPlans.getSnapshot, { id: learningPlanId }),
 	).resolves.toBeNull();
-	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([]);
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual(
+		[],
+	);
 
 	const learningEntries = await t.query(api.dayEntries.listByDayKeys, {
 		dayKeys: ["2026-06-04"],
