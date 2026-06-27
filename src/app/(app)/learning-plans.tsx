@@ -43,6 +43,8 @@ const PLAN_ACTION_RAIL_WIDTH = 104;
 const PLAN_SWIPE_OPEN_THRESHOLD = 44;
 const PLAN_ACTION_RAIL_COLOR = DAYOVA_DESIGN_SYSTEM.colors.buttonNeutral;
 const STATUS_NEUTRAL_BACKGROUND = DAYOVA_DESIGN_SYSTEM.colors.systemSubtle;
+const STATUS_DUE_BACKGROUND = DAYOVA_DESIGN_SYSTEM.colors.wrongSubtle;
+const STATUS_DUE_FOREGROUND = DAYOVA_DESIGN_SYSTEM.colors.wrong;
 const PLANS_TAB_SWITCH_HEIGHT = 58;
 const PLANS_TAB_SWITCH_PADDING = 6;
 const PLANS_TAB_SWITCH_GAP = 12;
@@ -131,8 +133,8 @@ const getHomeworkStatus = (
 	if (remainingDays !== null && remainingDays < 0) {
 		return {
 			label: "Fällig",
-			background: DAYOVA_DESIGN_SYSTEM.colors.warningSubtle,
-			foreground: DAYOVA_DESIGN_SYSTEM.colors.warning,
+			background: STATUS_DUE_BACKGROUND,
+			foreground: STATUS_DUE_FOREGROUND,
 		};
 	}
 	if (remainingDays === 0) {
@@ -177,8 +179,8 @@ const getStatus = (
 	if (daysUntilSession !== null && daysUntilSession < 0) {
 		return {
 			label: "Fällig",
-			background: DAYOVA_DESIGN_SYSTEM.colors.warningSubtle,
-			foreground: DAYOVA_DESIGN_SYSTEM.colors.warning,
+			background: STATUS_DUE_BACKGROUND,
+			foreground: STATUS_DUE_FOREGROUND,
 		};
 	}
 	if (daysUntilSession === 0) {
