@@ -4,10 +4,8 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-	Modal,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
-	Pressable,
 	ScrollView,
 	TouchableOpacity,
 	useWindowDimensions,
@@ -23,14 +21,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { NotificationButton } from "~/components/notification-button";
-import { CloseButton } from "~/components/ui/close-button";
-import {
-	ClipboardEdit,
-	GraduationCap,
-	NotebookPen,
-	Plus,
-} from "~/components/ui/icon";
+import { NotebookPen, Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import {
@@ -71,77 +64,6 @@ const chunkArray = <T,>(items: T[], chunkSize: number) => {
 	}
 	return chunks;
 };
-
-type CreateTypeOptionProps = {
-	icon: typeof ClipboardEdit;
-	title: string;
-	description: string;
-	onPress: () => void;
-	scale: number;
-	width: number;
-};
-
-function CreateTypeOption({
-	icon: Icon,
-	title,
-	description,
-	onPress,
-	scale,
-	width,
-}: CreateTypeOptionProps) {
-	return (
-		<TouchableOpacity
-			accessibilityLabel={title}
-			accessibilityRole="button"
-			activeOpacity={0.86}
-			onPress={onPress}
-			className="flex-row items-center bg-card"
-			style={{
-				width,
-				height: 96 * scale,
-				borderRadius: 40 * scale,
-				paddingHorizontal: 16 * scale,
-				paddingVertical: 12 * scale,
-				columnGap: 16 * scale,
-				boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-			}}
-		>
-			<View
-				className="items-center justify-center rounded-full bg-accent"
-				style={{
-					width: 48 * scale,
-					height: 48 * scale,
-					boxShadow:
-						"0 2px 4px -2px rgba(24, 39, 75, 0.12), 0 4px 4px -2px rgba(24, 39, 75, 0.08)",
-				}}
-			>
-				<Icon size={24 * scale} color="#00BAFF" strokeWidth={1.5} />
-			</View>
-			<View style={{ flex: 1, rowGap: 4 * scale }}>
-				<Text
-					className="font-poppins font-semibold text-black"
-					// Runtime-scaled typography keeps this dense home layout fitting device width.
-					style={{
-						fontSize: 16 * scale,
-						lineHeight: 24 * scale,
-					}}
-				>
-					{title}
-				</Text>
-				<Text
-					className="font-poppins text-secondary-text"
-					// Runtime-scaled typography keeps this dense home layout fitting device width.
-					style={{
-						fontSize: 12 * scale,
-						lineHeight: 18 * scale,
-					}}
-				>
-					{description}
-				</Text>
-			</View>
-		</TouchableOpacity>
-	);
-}
 
 type DragStartSliderProps = {
 	scale: number;
@@ -531,10 +453,6 @@ export default function HomeScreen() {
 		dayStripOffsets[dayStripOffsets.length - 1] +
 		getDayStripItemWidth(visibleDays[visibleDays.length - 1]?.isToday ?? false);
 	const navClearance = Math.max(insets.bottom + 108 * screenScale, 132);
-	const modalScale = clamp(width / 393, 0.88, 1);
-	const modalWidth = width;
-	const modalOptionWidth = Math.min(width - 48 * modalScale, 345 * modalScale);
-	const modalBottomPadding = Math.max(insets.bottom + 28 * modalScale, 42);
 	const selectedDayLabel = new Intl.DateTimeFormat("de-DE", {
 		weekday: "long",
 		day: "numeric",
@@ -1172,86 +1090,11 @@ export default function HomeScreen() {
 				</View>
 			</ScrollView>
 
-			<Modal
+			<CreateTypePickerModal
 				visible={showCreateTypePicker}
-				transparent
-				animationType="fade"
 				onRequestClose={() => setShowCreateTypePicker(false)}
-			>
-				<View className="flex-1 justify-end">
-					<Pressable
-						className="absolute inset-0 bg-black/25"
-						onPress={() => setShowCreateTypePicker(false)}
-					/>
-					<View
-						className="bg-background"
-						style={{
-							width: modalWidth,
-							borderTopLeftRadius: 40 * modalScale,
-							borderTopRightRadius: 40 * modalScale,
-							paddingTop: 24 * modalScale,
-							paddingHorizontal: 24 * modalScale,
-							paddingBottom: modalBottomPadding,
-							boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-						}}
-					>
-						<View
-							className="flex-row items-start justify-between gap-5"
-							// Runtime-scaled typography keeps this dense home layout fitting device width.
-							style={{ minHeight: 46 * modalScale }}
-						>
-							<View style={{ width: 311 * modalScale }}>
-								<Text
-									className="font-poppins font-semibold text-black"
-									// Runtime-scaled typography keeps this dense home layout fitting device width.
-									style={{
-										fontSize: 16 * modalScale,
-										lineHeight: 24 * modalScale,
-									}}
-								>
-									Was möchtest du planen?
-								</Text>
-								<Text
-									className="font-poppins text-secondary-text"
-									// Runtime-scaled typography keeps this dense home layout fitting device width.
-									style={{
-										fontSize: 12 * modalScale,
-										lineHeight: 18 * modalScale,
-									}}
-								>
-									Wähle zuerst die Art aus.
-								</Text>
-							</View>
-							<CloseButton
-								accessibilityLabel="Auswahl schließen"
-								onPress={() => setShowCreateTypePicker(false)}
-							/>
-						</View>
-
-						<View
-							className="items-center"
-							style={{ marginTop: 12 * modalScale, rowGap: 24 * modalScale }}
-						>
-							<CreateTypeOption
-								icon={ClipboardEdit}
-								title="Neue Hausaufgabe"
-								description="Fälligkeit, Fach und Lernzeit planen."
-								scale={modalScale}
-								width={modalOptionWidth}
-								onPress={() => selectCreateType("homework")}
-							/>
-							<CreateTypeOption
-								icon={GraduationCap}
-								title="Neue Prüfung"
-								description="Datum, Fach und Prüfungsart eintragen."
-								scale={modalScale}
-								width={modalOptionWidth}
-								onPress={() => selectCreateType("exam")}
-							/>
-						</View>
-					</View>
-				</View>
-			</Modal>
+				onSelect={selectCreateType}
+			/>
 		</View>
 	);
 }

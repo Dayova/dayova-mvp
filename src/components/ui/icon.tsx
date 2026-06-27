@@ -4,6 +4,7 @@ import {
 	ArrowLeft01Icon,
 	ArrowUpRight01Icon,
 	Attachment01Icon,
+	Backpack03Icon,
 	BookOpen01Icon,
 	Calculator01Icon,
 	Calendar03Icon,
@@ -54,6 +55,7 @@ const createIcon = (icon: HugeiconsProps["icon"]) => (props: IconProps) => (
 export const Attachment = createIcon(Attachment01Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
 export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
+export const Backpack = createIcon(Backpack03Icon);
 export const Bell = createIcon(Notification01Icon);
 export const BookOpen = createIcon(BookOpen01Icon);
 export const CalendarDays = createIcon(Calendar03Icon);
