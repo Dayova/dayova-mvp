@@ -75,6 +75,10 @@ const ORBIT_EXPAND_DURATION = 2200;
 const ORBIT_CYCLE_DURATION = 5000;
 const ORBIT_REST_DURATION =
 	ORBIT_CYCLE_DURATION - ORBIT_COLLAPSE_DURATION - ORBIT_EXPAND_DURATION;
+
+// The design-system primary color is fully saturated, so opacity gives the
+// overlapping petals the translucent flower look without introducing a separate
+// off-palette blue.
 const ORBIT_PETAL_OPACITY = 0.58;
 
 export function SectionTitle({
@@ -395,6 +399,8 @@ function AnalysisOrbitPetalCircle({
 	foldProgress: SharedValue<number>;
 }) {
 	const petalStyle = useAnimatedStyle(() => {
+		// This worklet runs on the Reanimated UI thread. React does not re-render
+		// during the loader loop; each petal only receives a cheap transform update.
 		const position = getAnalysisOrbitPetalPosition(petal, foldProgress.get());
 		return {
 			transform: [
@@ -408,6 +414,9 @@ function AnalysisOrbitPetalCircle({
 		<Animated.View
 			style={[
 				{
+					// Each petal is drawn once as a native rounded view centered in the
+					// loader. Animation only changes transform, which is cheaper than
+					// changing layout, SVG attributes, or React state on every frame.
 					position: "absolute",
 					left: ANALYSIS_ORBIT_CENTER - ANALYSIS_ORBIT_PETAL_SIZE / 2,
 					top: ANALYSIS_ORBIT_CENTER - ANALYSIS_ORBIT_PETAL_SIZE / 2,
@@ -424,6 +433,9 @@ function AnalysisOrbitPetalCircle({
 }
 
 export function AnalysisOrbitLoader() {
+	// Two independent shared values model the product requirement directly:
+	// `foldProgress` controls the petal geometry, while `flowerRotation` controls
+	// only the collapse spin. Keeping them separate avoids rotating the expansion.
 	const foldProgress = useSharedValue(1);
 	const flowerRotation = useSharedValue(0);
 	const reduceMotion = useReducedMotion();
@@ -438,6 +450,9 @@ export function AnalysisOrbitLoader() {
 		flowerRotation.set(
 			withRepeat(
 				withSequence(
+					// Rotate only while collapsing. The following delay keeps the final
+					// rotation value during expansion/rest, then snaps it back to 0 at
+					// the loop boundary where the flower is already expanded.
 					withTiming(40, {
 						duration: ORBIT_COLLAPSE_DURATION,
 						easing: Easing.inOut(Easing.cubic),
@@ -453,10 +468,13 @@ export function AnalysisOrbitLoader() {
 		foldProgress.set(
 			withRepeat(
 				withSequence(
+					// Collapse by moving every petal center to the exact loader center.
 					withTiming(0, {
 						duration: ORBIT_COLLAPSE_DURATION,
 						easing: Easing.inOut(Easing.cubic),
 					}),
+					// Expand back out without changing `flowerRotation`, so the flower
+					// opens in place instead of spinning open.
 					withTiming(1, {
 						duration: ORBIT_EXPAND_DURATION,
 						easing: Easing.out(Easing.cubic),
