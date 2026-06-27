@@ -747,18 +747,18 @@ export const removePlan = mutation({
 			.take(100);
 		for (const session of sessions) {
 			if (session.dayEntryId) {
-				const dayEntry = await ctx.db.get(session.dayEntryId);
+				const dayEntry = await ctx.db.get("dayEntries", session.dayEntryId);
 				if (dayEntry?.ownerTokenIdentifier === ownerTokenIdentifier) {
-					await ctx.db.delete(session.dayEntryId);
+					await ctx.db.delete("dayEntries", session.dayEntryId);
 				}
 			}
 			await ctx.db.delete("learningPlanSessions", session._id);
 		}
 
 		if (plan.examDayEntryId) {
-			const examEntry = await ctx.db.get(plan.examDayEntryId);
+			const examEntry = await ctx.db.get("dayEntries", plan.examDayEntryId);
 			if (examEntry?.ownerTokenIdentifier === ownerTokenIdentifier) {
-				await ctx.db.patch(plan.examDayEntryId, {
+				await ctx.db.patch("dayEntries", plan.examDayEntryId, {
 					relatedLearningPlanId: undefined,
 				});
 			}
@@ -788,7 +788,9 @@ export const removePlan = mutation({
 				notification.relatedLearningPlanId === args.id &&
 				notification.deletedAt === undefined
 			) {
-				await ctx.db.patch(notification._id, { deletedAt: now });
+				await ctx.db.patch("notificationHistory", notification._id, {
+					deletedAt: now,
+				});
 			}
 		}
 
