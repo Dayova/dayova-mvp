@@ -359,8 +359,8 @@ function LearningPlanActionRail({
 			className="absolute right-0 w-[196px] items-end justify-center overflow-hidden pr-5"
 			style={[
 				{
-					top: 2,
-					bottom: 2,
+					top: 0,
+					bottom: 0,
 					backgroundColor: PLAN_ACTION_RAIL_COLOR,
 					borderTopRightRadius: 40,
 					borderBottomRightRadius: 40,
@@ -382,12 +382,7 @@ function LearningPlanActionRail({
 						strokeWidth={2.1}
 					/>
 				</TouchableOpacity>
-				<View
-					className="h-0.5 w-8 rounded-full"
-					style={{
-						backgroundColor: `${DAYOVA_DESIGN_SYSTEM.colors.light1}CC`,
-					}}
-				/>
+				<View className="h-0.5 w-8 rounded-full bg-light-1" />
 				<TouchableOpacity
 					accessibilityLabel="Lernplan löschen"
 					accessibilityRole="button"
