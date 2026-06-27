@@ -13,10 +13,12 @@ import {
 	CodeIcon,
 	Delete02Icon,
 	Dna01Icon,
+	Dumbbell02Icon,
 	EarthIcon,
 	FootballIcon,
 	Home02Icon,
 	LanguageCircleIcon,
+	LockIcon,
 	Logout03Icon,
 	Mail01Icon,
 	MailValidation01Icon,
@@ -33,6 +35,7 @@ import {
 	Route02Icon,
 	ScanImageIcon,
 	Settings01Icon,
+	SquareLock02Icon,
 	Task01Icon,
 	TaskEdit01Icon,
 	Tick02Icon,
@@ -65,6 +68,7 @@ export const ClipboardEdit = createIcon(TaskEdit01Icon);
 export const Clock3 = createIcon(Clock03Icon);
 export const Code = createIcon(CodeIcon);
 export const Dna = createIcon(Dna01Icon);
+export const Dumbbell = createIcon(Dumbbell02Icon);
 export const Earth = createIcon(EarthIcon);
 export const Eye = createIcon(ViewIcon);
 export const EyeOff = createIcon(ViewOffIcon);
@@ -72,6 +76,7 @@ export const Football = createIcon(FootballIcon);
 export const GraduationCap = createIcon(Mortarboard01Icon);
 export const Home = createIcon(Home02Icon);
 export const Language = createIcon(LanguageCircleIcon);
+export const Lock = createIcon(LockIcon);
 export const Logout = createIcon(Logout03Icon);
 export const Maps = createIcon(MapsCircle01Icon);
 export const Mail = createIcon(Mail01Icon);
@@ -86,6 +91,7 @@ export const PropertyEdit = createIcon(PropertyEditIcon);
 export const Route2 = createIcon(Route02Icon);
 export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(Settings01Icon);
+export const SquareLock = createIcon(SquareLock02Icon);
 export const TimeManagement = createIcon(TimeManagementCircleIcon);
 export const Timer = createIcon(Clock03Icon);
 export const Trash2 = createIcon(Delete02Icon);
