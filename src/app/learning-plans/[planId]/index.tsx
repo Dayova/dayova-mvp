@@ -67,7 +67,7 @@ const SESSION_PREVIEW_CARD_PATH =
 const getSessionRoute = (
 	planId: Id<"learningPlans">,
 	sessionId: Id<"learningPlanSessions">,
-) => `/learning-plans/${planId}/sessions/${sessionId}/edit` as const;
+) => `/learning-plans/${planId}/sessions/${sessionId}` as const;
 
 function SessionPreviewCard({
 	session,
