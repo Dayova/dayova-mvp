@@ -1,5 +1,5 @@
-import AuthScreen from "~/components/AuthScreen";
+import { RegisterRedirectScreen } from "~/features/auth/dayova-auth-flow";
 
 export default function RegisterScreen() {
-	return <AuthScreen initialMode="register" />;
+	return <RegisterRedirectScreen />;
 }

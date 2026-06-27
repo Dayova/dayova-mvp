@@ -2,15 +2,18 @@ import {
 	AlertCircleIcon,
 	ArrowDown01Icon,
 	ArrowLeft01Icon,
+	ArrowRight01Icon,
 	ArrowUpRight01Icon,
 	Attachment01Icon,
 	Backpack03Icon,
 	BookOpen01Icon,
+	BulbIcon,
 	Calculator01Icon,
 	Calendar03Icon,
 	Cancel01Icon,
 	Chemistry01Icon,
 	Clock03Icon,
+	CloudUploadIcon,
 	CodeIcon,
 	Delete02Icon,
 	Dna01Icon,
@@ -54,16 +57,19 @@ const createIcon = (icon: HugeiconsProps["icon"]) => (props: IconProps) => (
 
 export const Attachment = createIcon(Attachment01Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
+export const ArrowRight = createIcon(ArrowRight01Icon);
 export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
 export const Backpack = createIcon(Backpack03Icon);
 export const Bell = createIcon(Notification01Icon);
 export const BookOpen = createIcon(BookOpen01Icon);
+export const Bulb = createIcon(BulbIcon);
 export const CalendarDays = createIcon(Calendar03Icon);
 export const Calculator = createIcon(Calculator01Icon);
 export const Check = createIcon(Tick02Icon);
 export const Chemistry = createIcon(Chemistry01Icon);
 export const ChevronDown = createIcon(ArrowDown01Icon);
 export const CircleAlert = createIcon(AlertCircleIcon);
+export const CloudUpload = createIcon(CloudUploadIcon);
 export const ClipboardList = createIcon(Task01Icon);
 export const ClipboardEdit = createIcon(TaskEdit01Icon);
 export const Clock3 = createIcon(Clock03Icon);
