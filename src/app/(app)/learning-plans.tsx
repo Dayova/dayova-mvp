@@ -220,7 +220,7 @@ function Badge({
 			style={{ backgroundColor: background }}
 		>
 			<Text
-				className="font-poppins font-semibold text-[10px] leading-3"
+				className="font-poppins font-semibold text-body-5"
 				style={{ color: foreground }}
 			>
 				{label}
@@ -325,8 +325,8 @@ function PlansTabSwitch({
 							<Text
 								className={
 									isActive
-										? "font-poppins font-semibold text-[16px] leading-[19px]"
-										: "font-poppins font-semibold text-[16px] text-foreground leading-[19px]"
+										? "font-poppins font-semibold text-body-2"
+										: "font-poppins font-semibold text-body-2 text-text"
 								}
 								numberOfLines={1}
 								style={
@@ -502,9 +502,8 @@ function LearningPlanCard({
 			<GestureDetector gesture={panGesture}>
 				<Animated.View style={cardAnimatedStyle}>
 					<NotchedActionCard
-						accessibilityHint="Öffnet diesen Lernplan."
-						accessibilityLabel={`${plan.subject}, ${status.label}, ${progress} Prozent`}
-						actionAccessibilityLabel={`${plan.subject} öffnen`}
+						cardAccessibilityHint="Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
+						cardAccessibilityLabel={`${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`}
 						actionIcon={
 							<ArrowUpRight
 								size={24}
@@ -512,18 +511,18 @@ function LearningPlanCard({
 								strokeWidth={1.9}
 							/>
 						}
-						cardStyle={{ paddingRight: 24 }}
-						onActionPress={onPress}
+						onPress={onPress}
+						pressType="card"
 					>
 						<View className="gap-2">
 							<View className="flex-row items-start justify-between gap-3">
 								<Text
-									className="flex-1 font-poppins font-semibold text-[20px] text-foreground leading-7"
-									numberOfLines={1}
+									className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
+									numberOfLines={2}
 								>
 									{formatGermanUiText(plan.subject)}
 								</Text>
-								<View className="flex-row gap-1">
+								<View className="shrink-0 flex-row gap-2">
 									<Badge {...status} />
 									<Badge
 										label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
@@ -539,22 +538,22 @@ function LearningPlanCard({
 									color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
 									strokeWidth={2}
 								/>
-								<Text className="font-poppins text-[12px] text-secondary-text leading-[18px]">
+								<Text className="font-poppins text-body-4 text-secondary-text">
 									{plan.examDateLabel ?? "Termin wird geladen"}
 								</Text>
 							</View>
 
 							<Text
-								className="font-poppins font-semibold text-[16px] text-foreground leading-[18px]"
+								className="max-w-[282px] font-poppins font-semibold text-body-2 text-text"
 								numberOfLines={2}
 							>
 								{formatGermanUiText(currentTitle)}
 							</Text>
 						</View>
 
-						<View className="mt-4 gap-1 pr-16">
-							<View className="flex-row items-center justify-between">
-								<Text className="font-poppins text-[12px] text-secondary-text leading-[18px]">
+						<View className="mt-4 w-full max-w-[300px] gap-1">
+							<View className="flex-row items-center">
+								<Text className="w-[172px] font-poppins text-body-4 text-secondary-text">
 									{`${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage`}
 								</Text>
 								<View className="flex-row items-center gap-1">
@@ -563,18 +562,36 @@ function LearningPlanCard({
 										color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
 										strokeWidth={2}
 									/>
-									<Text className="font-poppins text-[12px] text-secondary-text leading-[18px]">
+									<Text className="font-poppins text-body-4 text-secondary-text">
 										{remainingDays === 1
 											? "noch 1 Tag"
 											: `noch ${remainingDays} Tage`}
 									</Text>
 								</View>
 							</View>
-							<View className="h-2 overflow-hidden rounded-full bg-light-2">
-								<View
-									className="h-full rounded-full bg-primary"
+							<View
+								accessibilityLabel={`${progress} Prozent abgeschlossen`}
+								accessibilityValue={{
+									max: 100,
+									min: 0,
+									now: progress,
+									text: `${progress} Prozent`,
+								}}
+								accessibilityRole="progressbar"
+								className="h-2 w-[258px] max-w-full overflow-hidden rounded-full bg-light-2"
+							>
+								<LinearGradient
+									colors={
+										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors
+									}
+									start={
+										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start
+									}
+									end={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end}
 									style={{
+										height: "100%",
 										width: `${Math.max(progress, progress > 0 ? 8 : 0)}%`,
+										borderRadius: 999,
 									}}
 								/>
 							</View>
@@ -683,9 +700,8 @@ function HomeworkCard({
 			<GestureDetector gesture={panGesture}>
 				<Animated.View style={cardAnimatedStyle}>
 					<CompactNotchedActionCard
-						accessibilityHint="Öffnet diese Hausaufgabe."
-						accessibilityLabel={`${subject}, ${status.label}`}
-						actionAccessibilityLabel={`${subject} öffnen`}
+						cardAccessibilityHint="Öffnet diese Hausaufgabe und zeigt alle relevanten Informationen dazu an."
+						cardAccessibilityLabel={`${subject}, ${status.label}, ${details}, ${description}`}
 						actionIcon={
 							<ArrowUpRight
 								size={24}
@@ -693,18 +709,18 @@ function HomeworkCard({
 								strokeWidth={1.9}
 							/>
 						}
-						cardStyle={{ paddingRight: 24 }}
-						onActionPress={onPress}
+						onPress={onPress}
+						pressType="card"
 					>
 						<View className="gap-2">
 							<View className="flex-row items-start justify-between gap-3">
 								<Text
-									className="flex-1 font-poppins font-semibold text-[20px] text-foreground leading-7"
-									numberOfLines={1}
+									className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
+									numberOfLines={2}
 								>
 									{subject}
 								</Text>
-								<View className="flex-row gap-1">
+								<View className="shrink-0 flex-row gap-2">
 									<Badge {...status} />
 									<Badge
 										label={`${homework.durationMinutes ?? "–"} min`}
@@ -721,7 +737,7 @@ function HomeworkCard({
 									strokeWidth={2}
 								/>
 								<Text
-									className="flex-1 font-poppins text-[12px] text-muted-foreground leading-[18px]"
+									className="flex-1 font-poppins text-body-4 text-secondary-text"
 									numberOfLines={1}
 								>
 									{details}
@@ -729,7 +745,7 @@ function HomeworkCard({
 							</View>
 
 							<Text
-								className="max-w-[250px] font-poppins text-[12px] text-foreground leading-[18px]"
+								className="max-w-[282px] font-poppins font-semibold text-body-4 text-text"
 								numberOfLines={2}
 							>
 								{description}
@@ -826,7 +842,7 @@ export default function LearningPlansScreen() {
 				}}
 			>
 				<View className="mt-7 flex-row items-center justify-between">
-					<Text className="font-poppins font-semibold text-[32px] text-foreground leading-[40px]">
+					<Text className="font-poppins font-semibold text-heading-1 text-text">
 						Deine Pläne
 					</Text>
 
@@ -839,7 +855,7 @@ export default function LearningPlansScreen() {
 						}
 						activeOpacity={0.88}
 						onPress={openCreateTypePicker}
-						className="h-12 w-12 items-center justify-center rounded-full border border-border/60 bg-card"
+						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
 					>
 						<Plus
 							size={28}
@@ -874,7 +890,7 @@ export default function LearningPlansScreen() {
 								/>
 							))
 						) : (
-							<View className="items-center gap-3 rounded-[30px] border border-border/50 bg-card px-5 py-7 shadow-black/5 shadow-lg">
+							<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
 								<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
 									<Route2
 										size={30}
@@ -882,10 +898,10 @@ export default function LearningPlansScreen() {
 										strokeWidth={2.2}
 									/>
 								</View>
-								<Text className="text-center font-poppins font-semibold text-body-1 text-foreground">
+								<Text className="text-center font-poppins font-semibold text-body-1 text-text">
 									Noch keine Lernpläne
 								</Text>
-								<Text className="text-center font-poppins text-body-3 text-muted-foreground">
+								<Text className="text-center font-poppins text-body-3 text-secondary-text">
 									Erstelle einen Lernplan aus einer Prüfung, damit er hier als
 									Übersicht erscheint.
 								</Text>
@@ -922,7 +938,7 @@ export default function LearningPlansScreen() {
 								/>
 							))
 						) : (
-							<View className="items-center gap-3 rounded-[30px] border border-border/50 bg-card px-5 py-7 shadow-black/5 shadow-lg">
+							<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
 								<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
 									<ClipboardEdit
 										size={30}
@@ -930,10 +946,10 @@ export default function LearningPlansScreen() {
 										strokeWidth={2.2}
 									/>
 								</View>
-								<Text className="text-center font-poppins font-semibold text-body-1 text-foreground">
+								<Text className="text-center font-poppins font-semibold text-body-1 text-text">
 									Noch keine Hausaufgaben
 								</Text>
-								<Text className="text-center font-poppins text-body-3 text-muted-foreground">
+								<Text className="text-center font-poppins text-body-3 text-secondary-text">
 									Trage deine nächste Hausaufgabe ein, damit sie hier als
 									Übersicht erscheint.
 								</Text>

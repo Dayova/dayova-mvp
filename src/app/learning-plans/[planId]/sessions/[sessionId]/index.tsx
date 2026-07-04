@@ -1,11 +1,4 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import type {
-	PermissionStatus as NitroPermissionStatus,
-	RecognizerCallbacks,
-	RecognizerMethods,
-	SpeechRecognitionConfig,
-	SpeechRecognitionError as NitroSpeechRecognitionError,
-} from "react-native-nitro-speech";
 import * as Device from "expo-device";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -17,6 +10,13 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import type {
+	PermissionStatus as NitroPermissionStatus,
+	SpeechRecognitionError as NitroSpeechRecognitionError,
+	RecognizerCallbacks,
+	RecognizerMethods,
+	SpeechRecognitionConfig,
+} from "react-native-nitro-speech";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
@@ -171,9 +171,8 @@ type SpeechRecognizerLoadState =
 function loadSpeechRecognizer(): SpeechRecognizerLoadState {
 	try {
 		// Keep Nitro out of module scope so the route can render without it.
-		const speechModule = require(
-			"react-native-nitro-speech",
-		) as SpeechRecognitionModule;
+		const speechModule =
+			require("react-native-nitro-speech") as SpeechRecognitionModule;
 		const recognizer = speechModule.SpeechRecognizer;
 
 		return {
@@ -190,7 +189,8 @@ function loadSpeechRecognizer(): SpeechRecognizerLoadState {
 				getIsActive: () => recognizer.getIsActive(),
 				getVoiceInputVolume: () => recognizer.getVoiceInputVolume(),
 				getPermissions: () => recognizer.getPermissions(),
-				getSupportedLocalesIOS: () => recognizer.getSupportedLocalesIOS().sort(),
+				getSupportedLocalesIOS: () =>
+					recognizer.getSupportedLocalesIOS().sort(),
 			},
 			loadError: null,
 		};

@@ -1,7 +1,6 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import type { ReactNode } from "react";
 import { useState } from "react";
 import {
 	ActivityIndicator,
@@ -17,11 +16,12 @@ import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
 import {
 	ArrowUpRight,
-	Check,
-	Clock3,
+	BookOpen,
 	Dumbbell,
-	NotebookPen,
+	Note,
+	Rocket,
 	SquareLock,
+	Time04,
 } from "~/components/ui/icon";
 import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Screen } from "~/components/ui/screen";
@@ -59,6 +59,12 @@ const PHASE_COLOR: Record<
 	},
 };
 
+const PHASE_ICON = {
+	theory: BookOpen,
+	practice: Dumbbell,
+	rehearsal: Rocket,
+} satisfies Record<PlanSession["phase"], typeof Dumbbell>;
+
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
 const SESSION_PREVIEW_CARD_HEIGHT = 174;
 
@@ -68,21 +74,30 @@ const getSessionRoute = (
 ) => `/learning-plans/${planId}/sessions/${sessionId}` as const;
 
 function SessionPreviewCard({
+	canOpen,
 	session,
 	onOpen,
 }: {
+	canOpen: boolean;
 	session: PlanSession;
 	onOpen: () => void;
 }) {
 	const phase = PHASE_COLOR[session.phase];
+	const PhaseIcon = PHASE_ICON[session.phase];
 	const title = formatGermanUiText(session.title);
 	const description = formatGermanUiText(session.goal);
 
 	return (
 		<CompactNotchedActionCard
-			accessibilityHint="Öffnet die ausgewählte Lerneinheit."
-			accessibilityLabel={`${title}, ${PHASE_LABEL[session.phase]}, ${session.durationMinutes} Minuten`}
-			actionAccessibilityLabel="Lerneinheit öffnen"
+			actionAccessibilityHint={
+				canOpen
+					? "Öffnet die ausgewählte Lerneinheit."
+					: "Dieser Lernblock ist noch gesperrt und wird erst nach dem vorherigen Lernblock freigeschaltet."
+			}
+			actionAccessibilityLabel={
+				canOpen ? "Lerneinheit öffnen" : "Lerneinheit gesperrt"
+			}
+			actionDisabled={!canOpen}
 			actionIcon={
 				<ArrowUpRight
 					size={24}
@@ -91,31 +106,31 @@ function SessionPreviewCard({
 				/>
 			}
 			actionOffsetBottom={4}
-			onActionPress={onOpen}
+			onPress={onOpen}
+			pressType="action"
 			cardHeight={SESSION_PREVIEW_CARD_HEIGHT}
 			cardStyle={{
 				paddingTop: 22,
-				paddingRight: 24,
 				paddingBottom: 24,
 			}}
 		>
 			<View className="gap-2">
 				<View className="flex-row items-start justify-between gap-3">
 					<Text
-						className="max-w-[170px] flex-1 font-poppins font-semibold text-[18px] text-foreground leading-[24px]"
+						className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-2 text-text"
 						numberOfLines={2}
 					>
 						{title}
 					</Text>
 
-					<View className="flex-row items-center justify-end gap-1">
+					<View className="shrink-0 flex-row items-center justify-end gap-2">
 						<View
 							className="flex-row items-center gap-1 rounded-full px-2.5 py-1.5"
 							style={{ backgroundColor: phase.background }}
 						>
-							<Dumbbell size={12} color={phase.foreground} strokeWidth={2.1} />
+							<PhaseIcon size={12} color={phase.foreground} strokeWidth={2.1} />
 							<Text
-								className="font-poppins font-semibold text-[10px] leading-[12px]"
+								className="font-poppins font-semibold text-body-5"
 								style={{ color: phase.foreground }}
 							>
 								{PHASE_LABEL[session.phase]}
@@ -123,7 +138,7 @@ function SessionPreviewCard({
 						</View>
 
 						<View className="rounded-full bg-system-subtle px-3 py-1.5">
-							<Text className="font-poppins font-semibold text-[10px] text-primary leading-[12px]">
+							<Text className="font-poppins font-semibold text-body-5 text-primary">
 								{`${session.durationMinutes} min`}
 							</Text>
 						</View>
@@ -131,18 +146,18 @@ function SessionPreviewCard({
 				</View>
 
 				<View className="flex-row items-center gap-1.5">
-					<Clock3
+					<Time04
 						size={13}
 						color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
 						strokeWidth={2}
 					/>
-					<Text className="font-poppins text-[13px] text-muted-foreground leading-[18px]">
+					<Text className="font-poppins text-body-4 text-secondary-text">
 						{session.dateLabel}
 					</Text>
 				</View>
 
 				<Text
-					className="max-w-[252px] font-poppins text-[15px] text-muted-foreground leading-[21px]"
+					className="max-w-[292px] font-poppins text-body-4 text-secondary-text"
 					numberOfLines={2}
 				>
 					{description}
@@ -152,7 +167,7 @@ function SessionPreviewCard({
 	);
 }
 
-type PathNodeState = "completed" | "active" | "locked";
+type PathNodeState = "completed" | "current" | "locked";
 
 type PathNodeFrame = {
 	left: number;
@@ -217,19 +232,159 @@ const getFigmaPathHeight = (sessionCount: number) => {
 	return Math.max(FIGMA_PATH_HEIGHT, lastFrame.top + lastFrame.height + 20);
 };
 
+const getCurrentSessionIndex = (sessions: PlanSession[]) => {
+	const firstOpenIndex = sessions.findIndex((session) => !session.completed);
+	return firstOpenIndex === -1 ? null : firstOpenIndex;
+};
+
+const getActiveSegmentLimit = (sessions: PlanSession[]) => {
+	const currentIndex = getCurrentSessionIndex(sessions);
+	return currentIndex ?? Math.max(sessions.length - 1, 0);
+};
+
+const getPathNodeState = (
+	session: PlanSession,
+	index: number,
+	currentIndex: number | null,
+): PathNodeState => {
+	if (session.completed) return "completed";
+	if (currentIndex !== null && index === currentIndex) return "current";
+	return "locked";
+};
+
+const STEP_PUCK_WIDTH = 68;
+const STEP_PUCK_HEIGHT = 64;
+const STEP_LOCKED_FACE_WIDTH = 58;
+const STEP_LOCKED_FACE_HEIGHT = 50;
+const STEP_SELECTION_WIDTH = 92;
+const STEP_SELECTION_HEIGHT = 86;
+const STEP_SELECTION_STROKE_WIDTH = 7;
+
+function SelectedStepRing() {
+	return (
+		<Svg
+			pointerEvents="none"
+			width={STEP_SELECTION_WIDTH}
+			height={STEP_SELECTION_HEIGHT}
+			viewBox={`0 0 ${STEP_SELECTION_WIDTH} ${STEP_SELECTION_HEIGHT}`}
+			style={{ position: "absolute", left: 0, top: 0 }}
+		>
+			<Path
+				d="M46 3.5C69.4721 3.5 88.5 21.1848 88.5 43C88.5 64.8152 69.4721 82.5 46 82.5C22.5279 82.5 3.5 64.8152 3.5 43C3.5 21.1848 22.5279 3.5 46 3.5Z"
+				fill={DAYOVA_DESIGN_SYSTEM.colors.light1}
+				stroke={DAYOVA_DESIGN_SYSTEM.colors.path4}
+				strokeWidth={STEP_SELECTION_STROKE_WIDTH}
+			/>
+		</Svg>
+	);
+}
+
+function CompletedStepPuck() {
+	return (
+		<Svg
+			pointerEvents="none"
+			width={92}
+			height={88}
+			viewBox="0 0 92 88"
+			style={{ position: "absolute", left: -12, top: -9 }}
+		>
+			<Path
+				d="M46 12.5C64.5705 12.5 79.5 25.548 79.5 41.5C79.5 57.452 64.5705 70.5 46 70.5C27.4295 70.5 12.5 57.452 12.5 41.5C12.5 25.548 27.4295 12.5 46 12.5Z"
+				fill={DAYOVA_DESIGN_SYSTEM.colors.path5}
+				stroke={DAYOVA_DESIGN_SYSTEM.colors.path5}
+			/>
+			<Path
+				d="M46 9.5C64.2349 9.5 78.5 21.6237 78.5 36C78.5 50.3763 64.2349 62.5 46 62.5C27.7651 62.5 13.5 50.3763 13.5 36C13.5 21.6237 27.7651 9.5 46 9.5Z"
+				fill={DAYOVA_DESIGN_SYSTEM.colors.path6}
+				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
+				strokeWidth={3}
+			/>
+			<Path
+				d="M30.903 51.7622L64.11 20.7115C64.6597 20.1975 65.4516 20.0363 66.1352 20.3511C67.4469 20.9552 69.6663 22.1316 71.5059 23.8738C72.701 25.0056 73.9512 26.8471 74.7291 28.0839C75.204 28.839 75.0746 29.8117 74.4487 30.4472L45.3875 59.9555C43.8835 61.4827 41.7537 62.2676 39.6626 61.7967C38.2507 61.4787 36.668 61.0154 35.5059 60.3738C34.2835 59.6989 33.0612 59.0586 31.929 58.4839C29.3791 57.1896 28.8143 53.7152 30.903 51.7622Z"
+				fill={DAYOVA_DESIGN_SYSTEM.colors.path7}
+				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
+			/>
+			<Path
+				d="M24.908 48.3639L53.6381 18.3474C54.6965 17.2416 54.1599 15.4799 52.6404 15.2961C46.6945 14.5769 34.1009 14.4277 25.0055 23.8734C15.7121 33.5246 18.4286 43.1756 20.7331 47.8944C21.5365 49.5396 23.642 49.6866 24.908 48.3639Z"
+				fill={DAYOVA_DESIGN_SYSTEM.colors.path7}
+				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
+				strokeLinecap="round"
+			/>
+			<Path
+				d="M39.5 37.2591L42.0858 39.9567C42.7525 40.6522 43.0858 41 43.5 41C43.9143 41 44.2476 40.6522 44.9143 39.9567L53.5 31"
+				fill="none"
+				stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
+				strokeWidth={4}
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
+		</Svg>
+	);
+}
+
+function CurrentStepPuck() {
+	return (
+		<View
+			pointerEvents="none"
+			style={{
+				position: "absolute",
+				left: 0,
+				top: 0,
+				width: STEP_PUCK_WIDTH,
+				height: STEP_PUCK_HEIGHT,
+				alignItems: "center",
+				justifyContent: "center",
+			}}
+		>
+			<Svg
+				width={STEP_PUCK_WIDTH}
+				height={STEP_PUCK_HEIGHT}
+				viewBox={`0 0 ${STEP_PUCK_WIDTH} ${STEP_PUCK_HEIGHT}`}
+			>
+				<Path
+					d="M34 4.5C52.5705 4.5 67.5 17.548 67.5 33.5C67.5 49.452 52.5705 62.5 34 62.5C15.4295 62.5 0.5 49.452 0.5 33.5C0.5 17.548 15.4295 4.5 34 4.5Z"
+					fill={DAYOVA_DESIGN_SYSTEM.colors.path5}
+					stroke={DAYOVA_DESIGN_SYSTEM.colors.path5}
+				/>
+
+				<Path
+					d="M34 1.5C52.2349 1.5 66.5 13.6237 66.5 28C66.5 42.3763 52.2349 54.5 34 54.5C15.7651 54.5 1.5 42.3763 1.5 28C1.5 13.6237 15.7651 1.5 34 1.5Z"
+					fill={DAYOVA_DESIGN_SYSTEM.colors.path6}
+					stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
+					strokeWidth={3}
+				/>
+			</Svg>
+
+			<View
+				style={{
+					position: "absolute",
+					top: 15,
+					left: 22,
+				}}
+			>
+				<Note
+					width={24}
+					height={24}
+					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+					stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
+				/>
+			</View>
+		</View>
+	);
+}
+
 function PathNode({
 	frame,
+	selected,
 	state,
 	onPress,
 }: {
 	frame: PathNodeFrame;
+	selected: boolean;
 	state: PathNodeState;
 	onPress: () => void;
 }) {
-	const isActive = state === "active";
 	const isLocked = state === "locked";
-	const completedNodeWidth = 72;
-	const completedNodeHeight = 64;
 	const position = {
 		left: frame.left,
 		top: frame.top,
@@ -237,120 +392,96 @@ function PathNode({
 		height: frame.height,
 	} satisfies ViewStyle;
 
-	const renderStepCircle = ({
-		borderColor,
-		icon,
-		isDimmed = false,
-		showHighlights = false,
-	}: {
-		borderColor?: string;
-		icon: ReactNode;
-		isDimmed?: boolean;
-		showHighlights?: boolean;
-	}) => {
-		const backColor = isDimmed
-			? DAYOVA_DESIGN_SYSTEM.colors.path1
-			: DAYOVA_DESIGN_SYSTEM.colors.path5;
-		const fillColor = isDimmed
-			? DAYOVA_DESIGN_SYSTEM.colors.path3
-			: DAYOVA_DESIGN_SYSTEM.colors.path6;
+	const selectedRing = selected ? (
+		<View
+			pointerEvents="none"
+			className="absolute"
+			style={{
+				left: (frame.width - STEP_SELECTION_WIDTH) / 2,
+				top: (frame.height - STEP_SELECTION_HEIGHT) / 2,
+				width: STEP_SELECTION_WIDTH,
+				height: STEP_SELECTION_HEIGHT,
+				zIndex: 0,
+			}}
+		>
+			<SelectedStepRing />
+		</View>
+	) : null;
 
-		return (
-			<View
-				className="items-center justify-start"
-				style={{ width: completedNodeWidth, height: completedNodeHeight }}
-			>
-				<View
-					className="absolute top-0.5 rounded-full"
-					style={{
-						width: completedNodeWidth - 2,
-						height: completedNodeHeight - 3.5,
-						backgroundColor: backColor,
-					}}
-				/>
-				<View
-					className="overflow-hidden rounded-full"
-					style={{
-						width: completedNodeWidth - 2,
-						height: completedNodeHeight - 6,
-						backgroundColor: fillColor,
-						borderColor,
-						borderWidth: borderColor ? 2 : 0,
-					}}
-				>
-					{showHighlights ? (
-						<>
-							<View
-								className="absolute top-6 left-6 h-4 w-11 -rotate-45"
-								style={{
-									backgroundColor: `${DAYOVA_DESIGN_SYSTEM.colors.path7}B8`,
-									borderBottomEndRadius: 6,
-									borderBottomStartRadius: 6,
-									borderTopLeftRadius: 3,
-									borderTopRightRadius: 3,
-								}}
-							/>
-							<View className="absolute top-3 left-0 h-5 w-11 -rotate-45 overflow-hidden rounded-[2px]">
-								<View
-									className="h-full w-full"
-									style={{
-										backgroundColor: `${DAYOVA_DESIGN_SYSTEM.colors.path7}9E`,
-										borderTopLeftRadius: 999,
-										borderTopRightRadius: 999,
-									}}
-								/>
-							</View>
-						</>
-					) : null}
-					<View className="absolute inset-0 items-center justify-center">
-						{icon}
-					</View>
-				</View>
-			</View>
-		);
-	};
+	const lockedIcon = (
+		<SquareLock
+			size={25}
+			color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+			strokeWidth={1.9}
+		/>
+	);
 
 	return (
 		<Pressable
+			accessibilityHint={
+				isLocked
+					? "Zeigt die Vorschau dieses gesperrten Lernblocks."
+					: "Zeigt die Vorschau dieses Lernblocks."
+			}
 			accessibilityRole="button"
-			accessibilityState={{ selected: isActive }}
+			accessibilityState={{ selected }}
 			onPress={onPress}
-			className="absolute items-center justify-center shadow-black/20 shadow-sm"
+			className="absolute items-center justify-center"
 			style={position}
 		>
-			{isLocked
-				? renderStepCircle({
-						borderColor: DAYOVA_DESIGN_SYSTEM.colors.path1,
-						icon: (
-							<SquareLock
-								size={27}
-								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-								strokeWidth={1.9}
-							/>
-						),
-						isDimmed: true,
-					})
-				: isActive
-					? renderStepCircle({
-							borderColor: DAYOVA_DESIGN_SYSTEM.colors.path5,
-							icon: (
-								<NotebookPen
-									size={30}
-									color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-									strokeWidth={1.8}
-								/>
-							),
-						})
-					: renderStepCircle({
-							icon: (
-								<Check
-									size={30}
-									color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-									strokeWidth={2.5}
-								/>
-							),
-							showHighlights: true,
-						})}
+			{selectedRing}
+			<View
+				className="absolute items-center"
+				style={{
+					left: (frame.width - STEP_PUCK_WIDTH) / 2,
+					top: (frame.height - STEP_PUCK_HEIGHT) / 2,
+					width: STEP_PUCK_WIDTH,
+					height: STEP_PUCK_HEIGHT,
+					borderRadius: STEP_PUCK_HEIGHT / 2,
+					zIndex: 1,
+					backgroundColor:
+						state === "completed"
+							? DAYOVA_DESIGN_SYSTEM.colors.path5
+							: "transparent",
+					boxShadow:
+						state === "completed"
+							? "0 4px 12px rgba(0, 0, 0, 0.1)"
+							: isLocked
+								? "0 8px 14px rgba(105, 117, 134, 0.22)"
+								: "0 4px 12px rgba(0, 0, 0, 0.1)",
+				}}
+			>
+				{state === "completed" ? (
+					<CompletedStepPuck />
+				) : isLocked ? (
+					<>
+						<View
+							className="absolute rounded-full"
+							style={{
+								top: 0,
+								width: STEP_PUCK_WIDTH,
+								height: STEP_PUCK_HEIGHT,
+								backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.path1,
+								borderRadius: STEP_PUCK_HEIGHT / 2,
+							}}
+						/>
+						<View
+							className="absolute items-center justify-center rounded-full"
+							style={{
+								top: 5,
+								width: STEP_LOCKED_FACE_WIDTH,
+								height: STEP_LOCKED_FACE_HEIGHT,
+								backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.path3,
+								borderRadius: STEP_LOCKED_FACE_HEIGHT / 2,
+							}}
+						>
+							{lockedIcon}
+						</View>
+					</>
+				) : (
+					<CurrentStepPuck />
+				)}
+			</View>
 		</Pressable>
 	);
 }
@@ -364,13 +495,12 @@ function LearningPath({
 	selectedSessionId: Id<"learningPlanSessions"> | null;
 	sessions: PlanSession[];
 }) {
-	const firstOpenIndex = sessions.findIndex((session) => !session.completed);
-	const currentIndex =
-		firstOpenIndex === -1 ? Math.max(sessions.length - 1, 0) : firstOpenIndex;
+	const currentIndex = getCurrentSessionIndex(sessions);
+	const activeSegmentLimit = getActiveSegmentLimit(sessions);
 	const pathHeight = getFigmaPathHeight(sessions.length);
 	const segments = sessions.slice(1).map((_, index) => ({
 		d: getFigmaSegmentPath(index),
-		active: index < currentIndex,
+		active: index < activeSegmentLimit,
 	}));
 
 	return (
@@ -411,17 +541,13 @@ function LearningPath({
 			</Svg>
 
 			{sessions.map((session, index) => {
-				const state: PathNodeState =
-					session.id === selectedSessionId
-						? "active"
-						: index > currentIndex
-							? "locked"
-							: "completed";
+				const state = getPathNodeState(session, index, currentIndex);
 
 				return (
 					<PathNode
 						key={session.id}
 						frame={getFigmaNodeFrame(index)}
+						selected={session.id === selectedSessionId}
 						state={state}
 						onPress={() => onSelectSession(session)}
 					/>
@@ -451,6 +577,21 @@ export default function LearningPlanSessionsScreen() {
 	const selectedSession =
 		snapshot?.sessions.find((session) => session.id === selectedSessionId) ??
 		defaultSession;
+	const selectedSessionIndex =
+		snapshot && selectedSession
+			? snapshot.sessions.findIndex(
+					(session) => session.id === selectedSession.id,
+				)
+			: -1;
+	const selectedSessionState =
+		snapshot && selectedSession && selectedSessionIndex >= 0
+			? getPathNodeState(
+					selectedSession,
+					selectedSessionIndex,
+					getCurrentSessionIndex(snapshot.sessions),
+				)
+			: null;
+	const canOpenSelectedSession = selectedSessionState !== "locked";
 
 	const goBack = () => {
 		goBackOrReplace(router, "/learning-plans");
@@ -485,14 +626,18 @@ export default function LearningPlanSessionsScreen() {
 					</View>
 				) : selectedSession ? (
 					<SessionPreviewCard
+						canOpen={canOpenSelectedSession}
 						session={selectedSession}
-						onOpen={() =>
-							router.push(getSessionRoute(snapshot.plan.id, selectedSession.id))
-						}
+						onOpen={() => {
+							if (!canOpenSelectedSession) return;
+							router.push(
+								getSessionRoute(snapshot.plan.id, selectedSession.id),
+							);
+						}}
 					/>
 				) : (
 					<View className="items-center rounded-[28px] bg-card px-5 py-7">
-						<Text className="text-center font-poppins font-semibold text-foreground">
+						<Text className="text-center font-poppins font-semibold text-text">
 							Keine Lerneinheiten vorhanden
 						</Text>
 					</View>
