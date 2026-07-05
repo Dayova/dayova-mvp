@@ -202,8 +202,8 @@ function ActionFrame({
 					width: actionSize,
 					height: actionSize,
 					borderRadius: actionSize / 2,
-					zIndex: 2,
-					elevation: 2,
+					zIndex: 20,
+					elevation: 20,
 					overflow: "hidden",
 				},
 				props.style,
@@ -211,6 +211,73 @@ function ActionFrame({
 		>
 			{children}
 		</View>
+	);
+}
+
+function ActionPressableFrame({
+	actionAccessibilityHint,
+	actionAccessibilityLabel,
+	actionDisabled,
+	actionIcon,
+	actionOffsetBottom,
+	actionOffsetRight,
+	actionSize,
+	onPress,
+}: {
+	actionAccessibilityHint?: string;
+	actionAccessibilityLabel: string;
+	actionDisabled: boolean;
+	actionIcon: ReactNode;
+	actionOffsetBottom: number;
+	actionOffsetRight: number;
+	actionSize: number;
+	onPress: NonNullable<PressableProps["onPress"]>;
+}) {
+	const [pressed, setPressed] = useState(false);
+	const touchTargetExpansion = Math.max(
+		0,
+		(MINIMUM_TOUCH_TARGET_SIZE - actionSize) / 2,
+	);
+
+	return (
+		<>
+			<ActionFrame
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				pointerEvents="none"
+				actionOffsetBottom={actionOffsetBottom}
+				actionOffsetRight={actionOffsetRight}
+				actionSize={actionSize}
+				style={pressed && !actionDisabled ? { opacity: 0.72 } : null}
+			>
+				<ActionGradient>{actionIcon}</ActionGradient>
+			</ActionFrame>
+
+			<Pressable
+				accessible
+				accessibilityRole="button"
+				accessibilityLabel={actionAccessibilityLabel}
+				accessibilityHint={actionAccessibilityHint}
+				accessibilityState={{ disabled: actionDisabled }}
+				disabled={actionDisabled}
+				hitSlop={touchTargetExpansion}
+				onPress={onPress}
+				onPressIn={() => setPressed(true)}
+				onPressOut={() => setPressed(false)}
+				style={{
+					position: "absolute",
+					right: actionOffsetRight,
+					bottom: actionOffsetBottom,
+					width: actionSize,
+					height: actionSize,
+					borderRadius: actionSize / 2,
+					zIndex: 30,
+					elevation: 30,
+					backgroundColor: "transparent",
+				}}
+			/>
+		</>
 	);
 }
 
@@ -368,11 +435,6 @@ export function NotchedActionCard({
 		...viewProps
 	} = props;
 
-	const touchTargetExpansion = Math.max(
-		0,
-		(MINIMUM_TOUCH_TARGET_SIZE - actionSize) / 2,
-	);
-
 	return (
 		<View
 			{...viewProps}
@@ -382,28 +444,16 @@ export function NotchedActionCard({
 		>
 			{cardContents}
 
-			<ActionFrame
+			<ActionPressableFrame
+				actionAccessibilityHint={actionAccessibilityHint}
+				actionAccessibilityLabel={actionAccessibilityLabel}
+				actionDisabled={actionDisabled}
+				actionIcon={actionIcon}
 				actionOffsetBottom={actionOffsetBottom}
 				actionOffsetRight={actionOffsetRight}
 				actionSize={actionSize}
-			>
-				<Pressable
-					accessible
-					accessibilityRole="button"
-					accessibilityLabel={actionAccessibilityLabel}
-					accessibilityHint={actionAccessibilityHint}
-					accessibilityState={{ disabled: actionDisabled }}
-					className="flex-1"
-					disabled={actionDisabled}
-					hitSlop={touchTargetExpansion}
-					onPress={onPress}
-					style={({ pressed }) => [
-						pressed && !actionDisabled ? { opacity: 0.72 } : null,
-					]}
-				>
-					<ActionGradient>{actionIcon}</ActionGradient>
-				</Pressable>
-			</ActionFrame>
+				onPress={onPress}
+			/>
 		</View>
 	);
 }

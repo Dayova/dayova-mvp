@@ -95,7 +95,9 @@ function SessionPreviewCard({
 					: "Dieser Lernblock ist noch gesperrt und wird erst nach dem vorherigen Lernblock freigeschaltet."
 			}
 			actionAccessibilityLabel={
-				canOpen ? "Lerneinheit öffnen" : "Lerneinheit gesperrt"
+				canOpen
+					? `Lerneinheit ${title} öffnen`
+					: `Lerneinheit ${title} ist gesperrt`
 			}
 			actionDisabled={!canOpen}
 			actionIcon={
@@ -168,6 +170,12 @@ function SessionPreviewCard({
 }
 
 type PathNodeState = "completed" | "current" | "locked";
+
+const PATH_NODE_STATE_LABEL: Record<PathNodeState, string> = {
+	completed: "abgeschlossen",
+	current: "verfügbar",
+	locked: "gesperrt",
+};
 
 type PathNodeFrame = {
 	left: number;
@@ -376,15 +384,19 @@ function CurrentStepPuck() {
 function PathNode({
 	frame,
 	selected,
+	session,
 	state,
 	onPress,
 }: {
 	frame: PathNodeFrame;
 	selected: boolean;
+	session: PlanSession;
 	state: PathNodeState;
 	onPress: () => void;
 }) {
 	const isLocked = state === "locked";
+	const title = formatGermanUiText(session.title);
+	const stateLabel = PATH_NODE_STATE_LABEL[state];
 	const position = {
 		left: frame.left,
 		top: frame.top,
@@ -418,10 +430,11 @@ function PathNode({
 
 	return (
 		<Pressable
+			accessibilityLabel={`${title}, ${PHASE_LABEL[session.phase]}, ${session.dateLabel}, ${stateLabel}`}
 			accessibilityHint={
 				isLocked
-					? "Zeigt die Vorschau dieses gesperrten Lernblocks."
-					: "Zeigt die Vorschau dieses Lernblocks."
+					? "Wählt diesen gesperrten Lernblock aus und zeigt die Vorschau. Gesperrte Lernblöcke können noch nicht geöffnet werden."
+					: "Wählt diesen Lernblock aus und zeigt die Vorschau. Öffnen kannst du ihn danach über die Pfeiltaste in der Vorschau."
 			}
 			accessibilityRole="button"
 			accessibilityState={{ selected }}
@@ -548,6 +561,7 @@ function LearningPath({
 						key={session.id}
 						frame={getFigmaNodeFrame(index)}
 						selected={session.id === selectedSessionId}
+						session={session}
 						state={state}
 						onPress={() => onSelectSession(session)}
 					/>
@@ -591,7 +605,8 @@ export default function LearningPlanSessionsScreen() {
 					getCurrentSessionIndex(snapshot.sessions),
 				)
 			: null;
-	const canOpenSelectedSession = selectedSessionState !== "locked";
+	const canOpenSelectedSession =
+		selectedSessionState !== null && selectedSessionState !== "locked";
 
 	const goBack = () => {
 		goBackOrReplace(router, "/learning-plans");
@@ -620,6 +635,7 @@ export default function LearningPlanSessionsScreen() {
 				{snapshot === null ? (
 					<View className="items-center py-10">
 						<ActivityIndicator
+							accessibilityLabel="Lernplan wird geladen"
 							color={DAYOVA_DESIGN_SYSTEM.colors.primary}
 							size="small"
 						/>
