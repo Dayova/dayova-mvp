@@ -368,6 +368,59 @@ test("generated plans can advance to review without available sessions", async (
 	expect(snapshot?.plan.planningHint).toBe("Keine freie Lernzeit gefunden.");
 });
 
+test("snapshot clears stale missing-learning-times hints after learning times are saved", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		planningHint: "Keine Lernzeiten hinterlegt. 0/135 Min. geplant.",
+		sessions: [],
+	});
+
+	expect(
+		(
+			await t.query(api.learningPlans.getSnapshot, {
+				id: learningPlanId,
+			})
+		)?.plan.planningHint,
+	).toBe("Keine Lernzeiten hinterlegt. 0/135 Min. geplant.");
+
+	await t.mutation(api.learningTimes.upsertMine, {
+		dayOfWeek: 1,
+		startTime: "17:00",
+		endTime: "18:00",
+	});
+
+	expect(
+		(
+			await t.query(api.learningPlans.getSnapshot, {
+				id: learningPlanId,
+			})
+		)?.plan.planningHint,
+	).toBe("0/135 Min. geplant.");
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		planningHint: "Keine Lernzeiten hinterlegt.",
+		sessions: [],
+	});
+
+	expect(
+		(
+			await t.query(api.learningPlans.getSnapshot, {
+				id: learningPlanId,
+			})
+		)?.plan.planningHint,
+	).toBeUndefined();
+});
+
 test("generated knowledge questions reject malformed control characters before storage", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);

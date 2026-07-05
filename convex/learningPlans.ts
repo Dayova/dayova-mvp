@@ -192,6 +192,23 @@ const publicSession = (
 	sortOrder: session.sortOrder,
 });
 
+const MISSING_LEARNING_TIMES_HINT = "Keine Lernzeiten hinterlegt.";
+
+const getCurrentPlanningHint = (
+	planningHint: string | undefined,
+	options: { hasLearningTimes: boolean },
+) => {
+	if (!planningHint) return undefined;
+	if (!options.hasLearningTimes) return planningHint;
+
+	const currentHint = planningHint
+		.replace(MISSING_LEARNING_TIMES_HINT, "")
+		.replace(/\s+/g, " ")
+		.trim();
+
+	return currentHint.length > 0 ? currentHint : undefined;
+};
+
 const buildPlanAccessKey = (learningPlanId: Id<"learningPlans">) =>
 	`learningPlan:${learningPlanId}`;
 
@@ -431,6 +448,12 @@ export const getSnapshot = query({
 			)
 			.order("asc")
 			.take(20);
+		const learningTimes = await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(1);
 
 		return {
 			plan: {
@@ -447,7 +470,9 @@ export const getSnapshot = query({
 				knowledgeQuestions: plan.knowledgeQuestions ?? [],
 				sourceSummary: plan.sourceSummary,
 				insight: plan.insight,
-				planningHint: plan.planningHint,
+				planningHint: getCurrentPlanningHint(plan.planningHint, {
+					hasLearningTimes: learningTimes.length > 0,
+				}),
 			},
 			documents: documents.map(publicDocument),
 			answers: answers.map(publicAnswer),
