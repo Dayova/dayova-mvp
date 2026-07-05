@@ -58,7 +58,6 @@ import {
 	Bulb,
 	Calculator,
 	CalendarDays,
-	Check,
 	Chemistry,
 	ClipboardEdit,
 	ClipboardList,
@@ -200,11 +199,11 @@ const SUBJECT_OPTIONS = [
 	{ label: "Physik", icon: Route2 },
 	{ label: "Sprachen", icon: Language },
 	{ label: "Biologie", icon: Dna },
-	{ label: "Astrologie", icon: Route2 },
+	{ label: "Astronomie", icon: Route2 },
 	{ label: "Chemie", icon: Chemistry },
 	{ label: "Deutsch", icon: BookOpen },
 	{ label: "Politik", icon: ClipboardList },
-	{ label: "Sports", icon: Football },
+	{ label: "Sport", icon: Football },
 	{ label: "Geschichte", icon: ClipboardEdit },
 ] as const;
 
@@ -217,7 +216,7 @@ const CHALLENGE_OPTIONS = [
 	{ label: "Motivation" },
 	{ label: "Vokabeln" },
 	{ label: "Ablenkung" },
-	{ label: "Astrologie" },
+	{ label: "Zeitmanagement" },
 	{ label: "Prüfungsangst" },
 	{ label: "Organisation" },
 ] as const;
@@ -242,22 +241,59 @@ const GOAL_OPTIONS = [
 	"Besser vorbereitet sein",
 ] as const;
 
+// Persisted onboarding answers use these labels, so this list must contain every
+// German federal state instead of only the few values visible in the Figma wheel.
 const FEDERAL_STATES = [
 	"Bremen",
 	"Hamburg",
 	"Baden-Württemberg",
 	"Sachsen",
-	"Sachsen Anhalt",
+	"Sachsen-Anhalt",
 	"Brandenburg",
 	"Bayern",
 	"Berlin",
 	"Hessen",
 	"Niedersachsen",
+	"Nordrhein-Westfalen",
+	"Rheinland-Pfalz",
+	"Saarland",
+	"Schleswig-Holstein",
+	"Thüringen",
+	"Mecklenburg-Vorpommern",
 ] as const;
 
 const GRADE_OPTIONS = ["6", "7", "8", "9", "10", "11", "12"] as const;
 const HOUR_OPTIONS = ["13", "14", "15", "16", "17", "18", "19"] as const;
-const MINUTE_OPTIONS = ["41", "42", "43", "44", "45", "46", "47"] as const;
+const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, minute) =>
+	String(minute).padStart(2, "0"),
+);
+
+const DAY_OF_MONTH_OPTIONS = Array.from({ length: 31 }, (_, index) =>
+	String(index + 1).padStart(2, "0"),
+);
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) =>
+	String(index + 1).padStart(2, "0"),
+);
+const CURRENT_YEAR = new Date().getFullYear();
+// Birth date is stored rather than age, so derive a broad school-age range
+// instead of freezing the small placeholder window from the mockup.
+const BIRTH_YEAR_OPTIONS = Array.from({ length: 15 }, (_, index) =>
+	String(CURRENT_YEAR - 21 + index),
+);
+const DEFAULT_BIRTH_DAY = "09";
+const DEFAULT_BIRTH_MONTH = "09";
+const DEFAULT_BIRTH_YEAR = String(CURRENT_YEAR - 14);
+
+function getDaysInMonth(month: string, year: string) {
+	return new Date(Number(year), Number(month), 0).getDate();
+}
+
+function clampBirthDay(day: string, month: string, year: string) {
+	const numericDay = Number(day);
+	const maxDay = getDaysInMonth(month, year);
+	const clampedDay = Math.min(Math.max(numericDay || 1, 1), maxDay);
+	return String(clampedDay).padStart(2, "0");
+}
 
 const FLOW_STEPS: readonly OnboardingStep[] = [
 	{
@@ -697,10 +733,13 @@ export function OnboardingScreen() {
 
 	const startRegistration = async () => {
 		try {
+			// The password step validates a trimmed value, so submit the same value
+			// to avoid creating credentials different from what the UI accepted.
+			const normalizedPassword = answers.password.trim();
 			const result = await register({
 				name: answers.name.trim(),
 				email: answers.email.trim().toLowerCase(),
-				password: answers.password,
+				password: normalizedPassword,
 				birthDate: answers.birthDate,
 				grade: answers.grade,
 				schoolType: answers.schoolType,
@@ -943,6 +982,7 @@ function QuestionStepView({
 						<RangeSelector
 							value={answers[step.field] || "30 min"}
 							values={step.values}
+							accessibilityLabel={step.title.replace(/\n/g, " ")}
 							onChange={(value) => setAnswer(step.field, value)}
 						/>
 					) : null}
@@ -1049,7 +1089,6 @@ export function LoginScreen() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
-	const [rememberMe, setRememberMe] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [verificationCode, setVerificationCode] = useState("");
 	const [verificationMode, setVerificationMode] = useState(false);
@@ -1074,11 +1113,12 @@ export function LoginScreen() {
 	const submitLogin = async () => {
 		Keyboard.dismiss();
 		setError(null);
+		const normalizedPassword = password.trim();
 		if (!isValidEmail(email.trim().toLowerCase())) {
 			setError("Bitte gib eine gültige E-Mail-Adresse ein.");
 			return;
 		}
-		if (!password.trim()) {
+		if (!normalizedPassword) {
 			setError("Bitte gib dein Passwort ein.");
 			return;
 		}
@@ -1086,7 +1126,7 @@ export function LoginScreen() {
 		try {
 			const result = await login({
 				email: email.trim().toLowerCase(),
-				password,
+				password: normalizedPassword,
 			});
 			if (result.status === "complete") {
 				router.replace("/home");
@@ -1245,36 +1285,10 @@ export function LoginScreen() {
 							style={{
 								width: "100%",
 								marginTop: 12,
-								flexDirection: "row",
 								alignItems: "center",
-								justifyContent: "space-between",
+								justifyContent: "flex-end",
 							}}
 						>
-							<Pressable
-								onPress={() => setRememberMe((current) => !current)}
-								style={{ flexDirection: "row", alignItems: "center", gap: 5 }}
-							>
-								<View
-									style={{
-										width: 11,
-										height: 11,
-										borderRadius: 6,
-										alignItems: "center",
-										justifyContent: "center",
-										backgroundColor: rememberMe
-											? COLORS.primary
-											: COLORS.surface,
-										borderWidth: 1,
-										borderColor: rememberMe ? COLORS.primary : COLORS.border,
-									}}
-								>
-									{rememberMe ? <Check size={7} color="#FFFFFF" /> : null}
-								</View>
-								<Text className="font-poppins text-body-5 text-text">
-									Angemeldet bleiben
-								</Text>
-							</Pressable>
-
 							<Pressable onPress={() => setError("Passwort-Reset folgt bald.")}>
 								<Text className="font-poppins text-body-5 text-primary">
 									Passwort vergessen?
@@ -1715,10 +1729,12 @@ function OtpCodeInput({
 function RangeSelector({
 	value,
 	values,
+	accessibilityLabel,
 	onChange,
 }: {
 	value: string;
 	values: readonly number[];
+	accessibilityLabel: string;
 	onChange: (value: string) => void;
 }) {
 	const parsedValue = Number.parseInt(value, 10);
@@ -1820,7 +1836,7 @@ function RangeSelector({
 			<GestureDetector gesture={sliderGesture}>
 				<View
 					accessibilityRole="adjustable"
-					accessibilityLabel="Lernzeit pro Tag"
+					accessibilityLabel={accessibilityLabel}
 					accessibilityValue={{ text: `${selected} Minuten` }}
 					accessibilityActions={[
 						{ name: "increment", label: "Mehr Zeit" },
@@ -2127,7 +2143,10 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 	if (step.field === "birthDate") {
 		return (
 			<BirthDateWheel
-				value={answers.birthDate || "09.09.2012"}
+				value={
+					answers.birthDate ||
+					`${DEFAULT_BIRTH_DAY}.${DEFAULT_BIRTH_MONTH}.${DEFAULT_BIRTH_YEAR}`
+				}
 				onChange={(value) => setAnswer("birthDate", value)}
 			/>
 		);
@@ -2189,10 +2208,26 @@ function BirthDateWheel({
 	value: string;
 	onChange: (value: string) => void;
 }) {
-	const [day = "09", month = "09", year = "2012"] = value.split(".");
-	const days = ["06", "07", "08", "09", "10", "11", "12"];
-	const months = ["06", "07", "08", "09", "10", "11", "12"];
-	const years = ["2009", "2010", "2011", "2012", "2013", "2014", "2015"];
+	const [
+		rawDay = DEFAULT_BIRTH_DAY,
+		rawMonth = DEFAULT_BIRTH_MONTH,
+		rawYear = DEFAULT_BIRTH_YEAR,
+	] = value.split(".");
+	const month = MONTH_OPTIONS.includes(rawMonth)
+		? rawMonth
+		: DEFAULT_BIRTH_MONTH;
+	const year = BIRTH_YEAR_OPTIONS.includes(rawYear)
+		? rawYear
+		: DEFAULT_BIRTH_YEAR;
+	const days = DAY_OF_MONTH_OPTIONS.slice(0, getDaysInMonth(month, year));
+	const day = days.includes(rawDay)
+		? rawDay
+		: clampBirthDay(rawDay, month, year);
+	const emitDate = (nextDay: string, nextMonth: string, nextYear: string) => {
+		onChange(
+			`${clampBirthDay(nextDay, nextMonth, nextYear)}.${nextMonth}.${nextYear}`,
+		);
+	};
 
 	return (
 		<View style={{ width: "100%", alignItems: "center" }}>
@@ -2200,19 +2235,19 @@ function BirthDateWheel({
 				<WheelColumn
 					options={days}
 					value={day}
-					onChange={(nextDay) => onChange(`${nextDay}.${month}.${year}`)}
+					onChange={(nextDay) => emitDate(nextDay, month, year)}
 					width={70}
 				/>
 				<WheelColumn
-					options={months}
+					options={MONTH_OPTIONS}
 					value={month}
-					onChange={(nextMonth) => onChange(`${day}.${nextMonth}.${year}`)}
+					onChange={(nextMonth) => emitDate(day, nextMonth, year)}
 					width={70}
 				/>
 				<WheelColumn
-					options={years}
+					options={BIRTH_YEAR_OPTIONS}
 					value={year}
-					onChange={(nextYear) => onChange(`${day}.${month}.${nextYear}`)}
+					onChange={(nextYear) => emitDate(day, month, nextYear)}
 					width={88}
 				/>
 			</View>

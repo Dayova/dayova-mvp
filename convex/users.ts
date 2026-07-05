@@ -24,6 +24,8 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	order: number;
 	options?: string[];
 }> = [
+	// This metadata mirrors the mobile onboarding flow. Keep labels exhaustive
+	// and aligned because answers are stored as user-facing strings.
 	{
 		key: "studyTime",
 		prompt: "Wie viel lernst du aktuell pro Tag?",
@@ -43,11 +45,11 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 			"Physik",
 			"Sprachen",
 			"Biologie",
-			"Astrologie",
+			"Astronomie",
 			"Chemie",
 			"Deutsch",
 			"Politik",
-			"Sports",
+			"Sport",
 			"Geschichte",
 		],
 	},
@@ -65,7 +67,7 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 			"Motivation",
 			"Vokabeln",
 			"Ablenkung",
-			"Astrologie",
+			"Zeitmanagement",
 			"Prüfungsangst",
 			"Organisation",
 		],
@@ -95,12 +97,18 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 			"Hamburg",
 			"Baden-Württemberg",
 			"Sachsen",
-			"Sachsen Anhalt",
+			"Sachsen-Anhalt",
 			"Brandenburg",
 			"Bayern",
 			"Berlin",
 			"Hessen",
 			"Niedersachsen",
+			"Nordrhein-Westfalen",
+			"Rheinland-Pfalz",
+			"Saarland",
+			"Schleswig-Holstein",
+			"Thüringen",
+			"Mecklenburg-Vorpommern",
 		],
 	},
 	{
