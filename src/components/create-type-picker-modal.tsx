@@ -1,6 +1,9 @@
-import { ClipboardEdit, GraduationCap } from "~/components/ui/icon";
-import { SelectSheet } from "~/components/ui/select-sheet";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import {
+	BottomModal,
+	BottomModalOption,
+	bottomModalIconColor,
+} from "~/components/ui/bottom-modal";
+import { Backpack, GraduationCap } from "~/components/ui/icon";
 
 type CreateType = "homework" | "exam";
 
@@ -10,11 +13,22 @@ type CreateTypePickerModalProps = {
 	onSelect: (type: CreateType) => void;
 };
 
-const CREATE_TYPE_OPTIONS = ["exam", "homework"] as const;
-const CREATE_TYPE_LABELS = {
-	homework: "Neue Hausaufgabe",
-	exam: "Neue Prüfung",
-} satisfies Record<CreateType, string>;
+const CREATE_TYPE_OPTIONS = [
+	{
+		type: "exam",
+		title: "Neue Prüfung",
+		description: "Datum, Fach und Prüfungsart eintragen.",
+		icon: GraduationCap,
+		iconSize: 28,
+	},
+	{
+		type: "homework",
+		title: "Neue Hausaufgabe",
+		description: "Fälligkeit, Fach und Lernzeit planen.",
+		icon: Backpack,
+		iconSize: 28,
+	},
+] as const;
 
 function CreateTypePickerModal({
 	visible,
@@ -22,26 +36,32 @@ function CreateTypePickerModal({
 	onSelect,
 }: CreateTypePickerModalProps) {
 	return (
-		<SelectSheet
+		<BottomModal
 			visible={visible}
 			title="Was möchtest du planen?"
-			options={CREATE_TYPE_OPTIONS}
-			selectedValue=""
+			description="Wähle aus, ob du Hausaufgaben eintragen oder einen Test erstellen möchtest."
 			onClose={onRequestClose}
-			onSelect={onSelect}
-			formatOptionLabel={(option) => CREATE_TYPE_LABELS[option]}
-			renderOptionIcon={(option) => {
-				const Icon = option === "homework" ? ClipboardEdit : GraduationCap;
-
-				return (
-					<Icon
-						size={19}
-						color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-						strokeWidth={2}
+			closeAccessibilityLabel="Auswahl schließen"
+			contentClassName="gap-4"
+		>
+			{CREATE_TYPE_OPTIONS.map(
+				({ type, title, description, icon: Icon, iconSize }) => (
+					<BottomModalOption
+						key={type}
+						icon={
+							<Icon
+								size={iconSize}
+								color={bottomModalIconColor}
+								strokeWidth={1.8}
+							/>
+						}
+						title={title}
+						description={description}
+						onPress={() => onSelect(type)}
 					/>
-				);
-			}}
-		/>
+				),
+			)}
+		</BottomModal>
 	);
 }
 

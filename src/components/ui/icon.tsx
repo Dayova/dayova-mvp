@@ -5,6 +5,7 @@ import {
 	ArrowRight01Icon,
 	ArrowUpRight01Icon,
 	Attachment01Icon,
+	Backpack03Icon,
 	BookOpen01Icon,
 	BulbIcon,
 	Calculator01Icon,
@@ -29,11 +30,13 @@ import {
 	Mortarboard01Icon,
 	MusicNote01Icon,
 	NotebookIcon,
+	NoteIcon,
 	Notification01Icon,
 	PaintBrush01Icon,
 	PencilIcon,
 	PlusSignIcon,
 	PropertyEditIcon,
+	Rocket01Icon,
 	Route02Icon,
 	ScanImageIcon,
 	Settings01Icon,
@@ -41,6 +44,7 @@ import {
 	Task01Icon,
 	TaskEdit01Icon,
 	Tick02Icon,
+	Time04Icon,
 	TimeManagementCircleIcon,
 	UserCircleIcon,
 	ViewIcon,
@@ -58,6 +62,7 @@ export const Attachment = createIcon(Attachment01Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
 export const ArrowRight = createIcon(ArrowRight01Icon);
 export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
+export const Backpack = createIcon(Backpack03Icon);
 export const Bell = createIcon(Notification01Icon);
 export const BookOpen = createIcon(BookOpen01Icon);
 export const Bulb = createIcon(BulbIcon);
@@ -87,15 +92,18 @@ export const Mail = createIcon(Mail01Icon);
 export const MailCheck = createIcon(MailValidation01Icon);
 export const Mic = createIcon(Mic01Icon);
 export const MusicNote = createIcon(MusicNote01Icon);
+export const Note = createIcon(NoteIcon);
 export const NotebookPen = createIcon(NotebookIcon);
 export const PaintBrush = createIcon(PaintBrush01Icon);
 export const Pencil = createIcon(PencilIcon);
 export const Plus = createIcon(PlusSignIcon);
 export const PropertyEdit = createIcon(PropertyEditIcon);
 export const Route2 = createIcon(Route02Icon);
+export const Rocket = createIcon(Rocket01Icon);
 export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(Settings01Icon);
 export const SquareLock = createIcon(SquareLock02Icon);
+export const Time04 = createIcon(Time04Icon);
 export const TimeManagement = createIcon(TimeManagementCircleIcon);
 export const Timer = createIcon(Clock03Icon);
 export const Trash2 = createIcon(Delete02Icon);

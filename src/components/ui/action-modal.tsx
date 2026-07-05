@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Modal, Pressable, View } from "react-native";
+import { View } from "react-native";
+import { BottomModal } from "~/components/ui/bottom-modal";
 import { Text } from "~/components/ui/text";
 import { cn } from "~/lib/utils";
 
@@ -34,68 +35,52 @@ function ActionModal({
 	titleClassName,
 	descriptionClassName,
 }: ActionModalProps) {
-	const handleRequestClose = dismissible ? onClose : undefined;
+	const closeAccessibilityLabel = accessibilityLabel ?? "Dialog schließen";
+	const canClose = dismissible && Boolean(onClose);
 
 	return (
-		<Modal
+		<BottomModal
 			visible={visible}
-			transparent
-			animationType="fade"
-			onRequestClose={handleRequestClose}
+			dismissible={dismissible}
+			onClose={canClose ? onClose : undefined}
+			closeAccessibilityLabel={closeAccessibilityLabel}
+			overlayClassName={overlayClassName}
+			sheetClassName={cardClassName}
+			contentClassName="gap-5"
+			showCloseButton={canClose}
 		>
-			<View className="flex-1 justify-end p-3">
-				{dismissible && onClose ? (
-					<Pressable
-						accessibilityLabel={accessibilityLabel ?? "Dialog schließen"}
-						accessibilityRole="button"
-						className={cn("absolute inset-0 bg-black/30", overlayClassName)}
-						onPress={onClose}
-					/>
-				) : (
-					<View
-						className={cn("absolute inset-0 bg-black/30", overlayClassName)}
-					/>
-				)}
+			{icon ? (
 				<View
 					className={cn(
-						"mx-8 mb-9 items-center gap-5 rounded-[40px] bg-card px-5 pt-10 pb-10",
-						cardClassName,
+						"h-16 w-16 items-center justify-center rounded-full bg-success-subtle",
+						iconContainerClassName,
 					)}
 				>
-					{icon ? (
-						<View
-							className={cn(
-								"h-24 w-24 items-center justify-center rounded-full bg-success-subtle py-6",
-								iconContainerClassName,
-							)}
-						>
-							{icon}
-						</View>
-					) : null}
-					<View className="items-center">
-						<Text
-							className={cn(
-								"text-center font-poppins font-semibold text-body-1 text-text",
-								titleClassName,
-							)}
-						>
-							{title}
-						</Text>
-						{description ? (
-							<Text
-								className={cn(
-									"mt-2 text-center font-poppins text-body-3 text-text/45",
-									descriptionClassName,
-								)}
-							>
-								{description}
-							</Text>
-						) : null}
-					</View>
-					{children}
+					{icon}
 				</View>
+			) : null}
+			<View className="gap-3">
+				<Text
+					className={cn(
+						"font-poppins font-semibold text-body-1 text-text",
+						titleClassName,
+					)}
+				>
+					{title}
+				</Text>
+				{description ? (
+					<Text
+						className={cn(
+							"font-poppins text-body-2 text-secondary-text",
+							descriptionClassName,
+						)}
+					>
+						{description}
+					</Text>
+				) : null}
 			</View>
-		</Modal>
+			{children ? <View className="w-full">{children}</View> : null}
+		</BottomModal>
 	);
 }
 

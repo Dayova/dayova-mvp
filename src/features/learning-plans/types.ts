@@ -19,7 +19,7 @@ export type PlanSession = {
 	completed: boolean;
 };
 
-export type SessionContentItemKind =
+type SessionContentItemKind =
 	| "learnCard"
 	| "multipleChoice"
 	| "written"
@@ -56,7 +56,7 @@ export type SessionAnswerAttempt = {
 	createdAt: number;
 };
 
-export type SessionAnalysis = {
+type SessionAnalysis = {
 	id: Id<"learningSessionAnalyses">;
 	sessionId: Id<"learningPlanSessions">;
 	strengths: string[];

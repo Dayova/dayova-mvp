@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useState } from "react";
-import type { ReactNode } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import {
+	type AccessibilityRole,
 	type LayoutChangeEvent,
 	Pressable,
 	type PressableProps,
@@ -13,17 +13,62 @@ import Svg, { Path } from "react-native-svg";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
 
-type NotchedActionCardProps = ViewProps & {
-	actionAccessibilityLabel: string;
+type CommonProps = Omit<
+	ViewProps,
+	| "accessible"
+	| "accessibilityLabel"
+	| "accessibilityHint"
+	| "accessibilityRole"
+	| "accessibilityState"
+> & {
 	actionIcon: ReactNode;
 	actionOffsetBottom?: number;
 	actionOffsetRight?: number;
-	onActionPress: PressableProps["onPress"];
 	actionSize?: number;
 	cardHeight?: number;
 	cardPath?: string;
 	cardStyle?: ViewStyle;
+	children?: ReactNode;
 };
+
+type ActionPressProps = {
+	pressType: "action";
+	onPress: NonNullable<PressableProps["onPress"]>;
+
+	actionAccessibilityLabel: string;
+	actionAccessibilityHint?: string;
+	actionDisabled?: boolean;
+
+	/**
+	 * Accessibility information for the non-interactive card content.
+	 * Usually unnecessary when the card contains accessible Text children.
+	 */
+	cardAccessibilityLabel?: never;
+	cardAccessibilityHint?: never;
+	cardAccessibilityRole?: never;
+	cardDisabled?: never;
+};
+
+type CardPressProps = {
+	pressType: "card";
+	onPress: NonNullable<PressableProps["onPress"]>;
+
+	cardAccessibilityLabel: string;
+	cardAccessibilityHint?: string;
+	cardAccessibilityRole?: AccessibilityRole;
+	cardDisabled?: boolean;
+
+	/**
+	 * The circular action visual is decorative in card mode, so it must not
+	 * expose a separate accessibility label.
+	 */
+	actionAccessibilityLabel?: never;
+	actionAccessibilityHint?: never;
+	actionDisabled?: never;
+};
+
+export type NotchedActionCardProps = CommonProps &
+	(ActionPressProps | CardPressProps);
 
 const DEFAULT_CARD_WIDTH = 368;
 const DEFAULT_CARD_HEIGHT = 211;
@@ -33,11 +78,12 @@ const CARD_STROKE_WIDTH = 1;
 const ACTION_CLEARANCE = 4;
 const DEFAULT_ACTION_SIZE = 48;
 const DEFAULT_ACTION_OFFSET_RIGHT = 0;
+const MINIMUM_TOUCH_TARGET_SIZE = 44;
 const CUBIC_ARC = 0.5522847498;
 
 const pathNumber = (value: number) => Number(value.toFixed(3)).toString();
 
-const buildNotchedCardPath = ({
+function buildNotchedCardPath({
 	actionOffsetBottom,
 	actionOffsetRight,
 	actionSize,
@@ -49,23 +95,26 @@ const buildNotchedCardPath = ({
 	actionSize: number;
 	height: number;
 	width: number;
-}) => {
+}) {
 	const inset = CARD_STROKE_WIDTH / 2;
 	const left = inset;
 	const top = inset;
 	const right = width - inset;
 	const bottom = height - inset;
+
 	const cornerRadius = Math.min(
 		CARD_CORNER_RADIUS,
 		(right - left) / 2,
 		(bottom - top) / 2,
 	);
+
 	const buttonRadius = actionSize / 2;
 	const buttonCenterX = width - actionOffsetRight - buttonRadius;
 	const buttonCenterY = height - actionOffsetBottom - buttonRadius;
 	const notchRadius = buttonRadius + ACTION_CLEARANCE;
 	const notchTopY = buttonCenterY - notchRadius;
 	const notchLeftX = buttonCenterX - notchRadius;
+
 	const rightJoinRadius = Math.max(
 		0,
 		Math.min(
@@ -74,6 +123,7 @@ const buildNotchedCardPath = ({
 			CARD_CORNER_RADIUS,
 		),
 	);
+
 	const bottomJoinRadius = Math.max(
 		0,
 		Math.min(
@@ -82,10 +132,11 @@ const buildNotchedCardPath = ({
 			CARD_CORNER_RADIUS,
 		),
 	);
+
 	const rightJoinStartY = notchTopY - rightJoinRadius;
 	const bottomJoinEndX = notchLeftX - bottomJoinRadius;
-
 	const p = pathNumber;
+
 	return [
 		`M${p(left + cornerRadius)} ${p(top)}`,
 		`H${p(right - cornerRadius)}`,
@@ -100,10 +151,87 @@ const buildNotchedCardPath = ({
 		`C${p(left)} ${p(top + cornerRadius - cornerRadius * CUBIC_ARC)} ${p(left + cornerRadius - cornerRadius * CUBIC_ARC)} ${p(top)} ${p(left + cornerRadius)} ${p(top)}`,
 		"Z",
 	].join(" ");
-};
+}
+
+function DecorativeAction({
+	actionIcon,
+	actionOffsetBottom,
+	actionOffsetRight,
+	actionSize,
+}: {
+	actionIcon: ReactNode;
+	actionOffsetBottom: number;
+	actionOffsetRight: number;
+	actionSize: number;
+}) {
+	return (
+		<ActionFrame
+			accessible={false}
+			accessibilityElementsHidden
+			importantForAccessibility="no-hide-descendants"
+			pointerEvents="none"
+			actionOffsetBottom={actionOffsetBottom}
+			actionOffsetRight={actionOffsetRight}
+			actionSize={actionSize}
+		>
+			<ActionGradient>{actionIcon}</ActionGradient>
+		</ActionFrame>
+	);
+}
+
+function ActionFrame({
+	actionOffsetBottom,
+	actionOffsetRight,
+	actionSize,
+	children,
+	...props
+}: ViewProps & {
+	actionOffsetBottom: number;
+	actionOffsetRight: number;
+	actionSize: number;
+}) {
+	return (
+		<View
+			{...props}
+			className={cn("absolute z-20 overflow-hidden", props.className)}
+			style={[
+				{
+					position: "absolute",
+					right: actionOffsetRight,
+					bottom: actionOffsetBottom,
+					width: actionSize,
+					height: actionSize,
+					borderRadius: actionSize / 2,
+					zIndex: 2,
+					elevation: 2,
+					overflow: "hidden",
+				},
+				props.style,
+			]}
+		>
+			{children}
+		</View>
+	);
+}
+
+function ActionGradient({ children }: { children: ReactNode }) {
+	return (
+		<LinearGradient
+			colors={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors}
+			start={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start}
+			end={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end}
+			style={{
+				flex: 1,
+				alignItems: "center",
+				justifyContent: "center",
+			}}
+		>
+			{children}
+		</LinearGradient>
+	);
+}
 
 export function NotchedActionCard({
-	actionAccessibilityLabel,
 	actionIcon,
 	actionOffsetBottom = 0,
 	actionOffsetRight = DEFAULT_ACTION_OFFSET_RIGHT,
@@ -113,38 +241,53 @@ export function NotchedActionCard({
 	cardStyle,
 	children,
 	className,
-	onActionPress,
 	onLayout,
 	style,
 	...props
 }: NotchedActionCardProps) {
 	const [cardWidth, setCardWidth] = useState(DEFAULT_CARD_WIDTH);
-	const handleLayout = (event: LayoutChangeEvent) => {
-		const nextWidth = event.nativeEvent.layout.width;
-		setCardWidth((currentWidth) =>
-			Math.abs(currentWidth - nextWidth) < 0.5 ? currentWidth : nextWidth,
-		);
-		onLayout?.(event);
-	};
+
+	const handleLayout = useCallback(
+		(event: LayoutChangeEvent) => {
+			const nextWidth = event.nativeEvent.layout.width;
+
+			setCardWidth((currentWidth) =>
+				Math.abs(currentWidth - nextWidth) < 0.5 ? currentWidth : nextWidth,
+			);
+
+			onLayout?.(event);
+		},
+		[onLayout],
+	);
+
 	const resolvedCardWidth = Math.max(cardWidth, actionSize + actionOffsetRight);
-	const resolvedCardPath =
-		cardPath ??
-		buildNotchedCardPath({
+
+	const resolvedCardPath = useMemo(
+		() =>
+			cardPath ??
+			buildNotchedCardPath({
+				actionOffsetBottom,
+				actionOffsetRight,
+				actionSize,
+				height: cardHeight,
+				width: resolvedCardWidth,
+			}),
+		[
 			actionOffsetBottom,
 			actionOffsetRight,
 			actionSize,
-			height: cardHeight,
-			width: resolvedCardWidth,
-		});
+			cardHeight,
+			cardPath,
+			resolvedCardWidth,
+		],
+	);
 
-	return (
-		<View
-			className={cn("relative", className)}
-			onLayout={handleLayout}
-			style={[{ minHeight: cardHeight }, style]}
-			{...props}
-		>
+	const cardContents = (
+		<>
 			<Svg
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
 				pointerEvents="none"
 				width="100%"
 				height={cardHeight}
@@ -161,44 +304,106 @@ export function NotchedActionCard({
 			</Svg>
 
 			<View
-				className="px-6 pt-6"
+				className="relative z-10 w-full px-6 pt-6 pb-[22px]"
 				style={[
+					cardStyle,
 					{
 						minHeight: cardHeight,
-						paddingRight: actionSize + 24,
-						paddingBottom: 22,
 					},
-					cardStyle,
 				]}
 			>
 				{children}
 			</View>
+		</>
+	);
 
+	if (props.pressType === "card") {
+		const {
+			cardAccessibilityHint,
+			cardAccessibilityLabel,
+			cardAccessibilityRole = "button",
+			cardDisabled = false,
+			onPress,
+			pressType: _pressType,
+			...viewProps
+		} = props;
+
+		return (
 			<Pressable
-				accessibilityRole="button"
-				accessibilityLabel={actionAccessibilityLabel}
-				className="absolute overflow-hidden rounded-full"
-				onPress={onActionPress}
-				style={{
-					right: actionOffsetRight,
-					bottom: actionOffsetBottom,
-					width: actionSize,
-					height: actionSize,
-				}}
+				{...viewProps}
+				accessible
+				accessibilityRole={cardAccessibilityRole}
+				accessibilityLabel={cardAccessibilityLabel}
+				accessibilityHint={cardAccessibilityHint}
+				accessibilityState={{ disabled: cardDisabled }}
+				className={cn("relative w-full", className)}
+				disabled={cardDisabled}
+				onLayout={handleLayout}
+				onPress={onPress}
+				style={({ pressed }) => [
+					{ minHeight: cardHeight },
+					style,
+					pressed && !cardDisabled ? { opacity: 0.72 } : null,
+					cardDisabled ? { opacity: 0.45 } : null,
+				]}
 			>
-				<LinearGradient
-					colors={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors}
-					start={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start}
-					end={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end}
-					style={{
-						flex: 1,
-						alignItems: "center",
-						justifyContent: "center",
-					}}
-				>
-					{actionIcon}
-				</LinearGradient>
+				{cardContents}
+
+				<DecorativeAction
+					actionIcon={actionIcon}
+					actionOffsetBottom={actionOffsetBottom}
+					actionOffsetRight={actionOffsetRight}
+					actionSize={actionSize}
+				/>
 			</Pressable>
+		);
+	}
+
+	const {
+		actionAccessibilityHint,
+		actionAccessibilityLabel,
+		actionDisabled = false,
+		onPress,
+		pressType: _pressType,
+		...viewProps
+	} = props;
+
+	const touchTargetExpansion = Math.max(
+		0,
+		(MINIMUM_TOUCH_TARGET_SIZE - actionSize) / 2,
+	);
+
+	return (
+		<View
+			{...viewProps}
+			className={cn("relative w-full", className)}
+			onLayout={handleLayout}
+			style={[{ minHeight: cardHeight }, style]}
+		>
+			{cardContents}
+
+			<ActionFrame
+				actionOffsetBottom={actionOffsetBottom}
+				actionOffsetRight={actionOffsetRight}
+				actionSize={actionSize}
+			>
+				<Pressable
+					accessible
+					accessibilityRole="button"
+					accessibilityLabel={actionAccessibilityLabel}
+					accessibilityHint={actionAccessibilityHint}
+					accessibilityState={{ disabled: actionDisabled }}
+					className="flex-1"
+					disabled={actionDisabled}
+					hitSlop={touchTargetExpansion}
+					onPress={onPress}
+					style={({ pressed }) => [
+						pressed && !actionDisabled ? { opacity: 0.72 } : null,
+					]}
+				>
+					<ActionGradient>{actionIcon}</ActionGradient>
+				</Pressable>
+			</ActionFrame>
 		</View>
 	);
 }
