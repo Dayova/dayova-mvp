@@ -1,24 +1,14 @@
-import type { Href } from "expo-router";
 import { useFocusEffect, useNavigation } from "expo-router/react-navigation";
 import { useCallback, useRef } from "react";
 import { BackHandler, Platform } from "react-native";
 
-type Router = typeof import("expo-router").router;
+export { goBackOrReplace, goBackToReturnOrReplace } from "./navigation-actions";
 
 const BACK_REMOVAL_ACTION_TYPES = new Set(["GO_BACK", "POP", "POP_TO_TOP"]);
 
 const isBackRemovalAction = (event: {
 	data?: { action?: { type?: string } };
 }) => BACK_REMOVAL_ACTION_TYPES.has(event.data?.action?.type ?? "");
-
-export const goBackOrReplace = (router: Router, fallback: Href) => {
-	if (router.canGoBack()) {
-		router.back();
-		return;
-	}
-
-	router.replace(fallback);
-};
 
 const useAndroidBackHandler = (enabled: boolean, onBack: () => boolean) => {
 	useFocusEffect(

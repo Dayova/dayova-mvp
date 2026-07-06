@@ -1,5 +1,4 @@
 import { useConvexAuth, useQuery } from "convex/react";
-import type { Href } from "expo-router";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Pressable, View } from "react-native";
@@ -11,7 +10,8 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import { getSafeReturnTo, withReturnTo } from "~/lib/routes";
+import { goBackToReturnOrReplace } from "~/lib/navigation";
+import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 
 const LEARNING_DAYS = [
 	{ abbreviation: "Mo", label: "Montag", value: 1 },
@@ -103,17 +103,7 @@ export default function LearningTimesOverviewScreen() {
 	const returnTo = getSafeReturnTo(params.returnTo);
 
 	const goBack = () => {
-		if (returnTo) {
-			router.replace(returnTo as Href);
-			return;
-		}
-
-		if (router.canGoBack()) {
-			router.push("/settings");
-			return;
-		}
-
-		router.replace("/settings");
+		goBackToReturnOrReplace(router, ROUTES.settings, returnTo);
 	};
 
 	const openEditor = (dayOfWeek: number) => {
