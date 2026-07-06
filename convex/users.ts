@@ -5,6 +5,21 @@ import { mutation, query } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 
 const normalizeEmail = (email?: string) => email?.trim().toLowerCase() ?? "";
+const DURATION_OPTIONS = [
+	"10 min",
+	"20 min",
+	"30 min",
+	"45 min",
+	"60 min",
+	"75 min",
+	"90 min",
+	"105 min",
+	"120 min",
+	"135 min",
+	"150 min",
+	"165 min",
+	"180 min",
+] as const;
 type OnboardingQuestionKey =
 	| "studyTime"
 	| "strength"
@@ -31,7 +46,7 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 		prompt: "Wie viel lernst du aktuell pro Tag?",
 		kind: "select" as const,
 		order: 0,
-		options: ["10 min", "20 min", "30 min", "45 min", "60 min"],
+		options: [...DURATION_OPTIONS],
 	},
 	{
 		key: "strength",
@@ -129,7 +144,7 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 		prompt: "Wie viel Zeit willst du pro Tag für die Schule aufwenden?",
 		kind: "select" as const,
 		order: 7,
-		options: ["10 min", "20 min", "30 min", "45 min", "60 min"],
+		options: [...DURATION_OPTIONS],
 	},
 	{
 		key: "studyDays",

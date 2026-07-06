@@ -1,3 +1,4 @@
+import { Host, Picker } from "@expo/ui";
 import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -18,29 +19,42 @@ import {
 	Pressable,
 	ScrollView,
 	TextInput,
+	type FlatList,
 	type TextInputProps,
 	useWindowDimensions,
 	View,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	Easing,
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
 	LinearTransition,
+	type SharedValue,
+	interpolate,
 	useAnimatedStyle,
+	useAnimatedScrollHandler,
 	useSharedValue,
 	withRepeat,
 	withSequence,
 	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Ellipse, type SvgProps } from "react-native-svg";
-import { scheduleOnRN } from "react-native-worklets";
+import Svg, {
+	Circle,
+	Defs,
+	Ellipse,
+	LinearGradient as SvgLinearGradient,
+	Path,
+	Rect,
+	Stop,
+	type SvgProps,
+} from "react-native-svg";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
 import IntroTasksSvg from "../../../assets/onboarding/intro-tasks.svg";
 import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
+import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
+import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -48,6 +62,7 @@ import {
 	Bulb,
 	Calculator,
 	CalendarDays,
+	ChevronDown,
 	Chemistry,
 	ClipboardEdit,
 	ClipboardList,
@@ -68,6 +83,14 @@ import { useBackIntent } from "~/lib/navigation";
 
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
 const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
+const DURATION_CAROUSEL_ACTIVE_COLOR = COLORS.primary;
+const DURATION_CAROUSEL_INACTIVE_COLOR = COLORS.border;
+const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
+const QUESTION_TITLE_STYLE_COMPACT = {
+	fontSize: 25,
+	lineHeight: 32,
+	fontWeight: "600",
+} as const;
 const CODE_LENGTH = 6;
 const OTP_CELL_KEYS = [
 	"otp-cell-1",
@@ -252,36 +275,50 @@ const FEDERAL_STATES = [
 ] as const;
 
 const GRADE_OPTIONS = ["6", "7", "8", "9", "10", "11", "12"] as const;
-const HOUR_OPTIONS = ["13", "14", "15", "16", "17", "18", "19"] as const;
-const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, minute) =>
-	String(minute).padStart(2, "0"),
-);
-
-const DAY_OF_MONTH_OPTIONS = Array.from({ length: 31 }, (_, index) =>
-	String(index + 1).padStart(2, "0"),
-);
-const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) =>
-	String(index + 1).padStart(2, "0"),
-);
+const DURATION_OPTIONS = [
+	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
+] as const;
 const CURRENT_YEAR = new Date().getFullYear();
-// Birth date is stored rather than age, so derive a broad school-age range
-// instead of freezing the small placeholder window from the mockup.
-const BIRTH_YEAR_OPTIONS = Array.from({ length: 15 }, (_, index) =>
-	String(CURRENT_YEAR - 21 + index),
-);
 const DEFAULT_BIRTH_DAY = "09";
 const DEFAULT_BIRTH_MONTH = "09";
 const DEFAULT_BIRTH_YEAR = String(CURRENT_YEAR - 14);
 
-function getDaysInMonth(month: string, year: string) {
-	return new Date(Number(year), Number(month), 0).getDate();
+const DEFAULT_BIRTH_DATE = `${DEFAULT_BIRTH_DAY}.${DEFAULT_BIRTH_MONTH}.${DEFAULT_BIRTH_YEAR}`;
+const DEFAULT_LEARNING_TIME = "16:44";
+
+function formatPickerDate(date: Date) {
+	const day = String(date.getDate()).padStart(2, "0");
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	return `${day}.${month}.${date.getFullYear()}`;
 }
 
-function clampBirthDay(day: string, month: string, year: string) {
-	const numericDay = Number(day);
-	const maxDay = getDaysInMonth(month, year);
-	const clampedDay = Math.min(Math.max(numericDay || 1, 1), maxDay);
-	return String(clampedDay).padStart(2, "0");
+function parsePickerDate(value: string) {
+	const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value);
+	if (!match) return new Date(Number(DEFAULT_BIRTH_YEAR), 8, 9);
+
+	const [, day, month, year] = match;
+	const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+	return Number.isNaN(parsed.getTime())
+		? new Date(Number(DEFAULT_BIRTH_YEAR), 8, 9)
+		: parsed;
+}
+
+function formatPickerTime(date: Date) {
+	const hour = String(date.getHours()).padStart(2, "0");
+	const minute = String(date.getMinutes()).padStart(2, "0");
+	return `${hour}:${minute}`;
+}
+
+function parsePickerTime(value: string) {
+	const match = /^(\d{2}):(\d{2})$/.exec(value);
+	const [, hour = "16", minute = "44"] = match ?? [];
+	const parsed = new Date();
+	parsed.setHours(Number(hour), Number(minute), 0, 0);
+	if (!Number.isNaN(parsed.getTime())) return parsed;
+
+	const fallback = new Date();
+	fallback.setHours(16, 44, 0, 0);
+	return fallback;
 }
 
 const INTRO_REFERENCE_WIDTH = 393;
@@ -349,7 +386,7 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		id: "studyTime",
 		title: "Wie viel lernst du\naktuell pro Tag?",
 		field: "studyTime",
-		values: [10, 20, 30, 45, 60],
+		values: DURATION_OPTIONS,
 	},
 	{
 		kind: "fact",
@@ -424,7 +461,7 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		id: "dailySchoolTime",
 		title: "Wie viel Zeit willst\ndu pro Tag für die\nSchule aufwenden?",
 		field: "dailySchoolTime",
-		values: [10, 20, 30, 45, 60],
+		values: DURATION_OPTIONS,
 	},
 	{
 		kind: "fact",
@@ -460,7 +497,7 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		id: "email",
 		title: "Wie lautet deine\nE-Mail?",
 		field: "email",
-		placeholder: "max.muster",
+		placeholder: "max.mustermann@gmail.de",
 		keyboardType: "email-address",
 		autoComplete: "email",
 		textContentType: "emailAddress",
@@ -510,8 +547,8 @@ const defaultAnswerForStep = (step: OnboardingStep) => {
 	if (step.kind === "wheel") {
 		if (step.field === "state") return "Sachsen";
 		if (step.field === "grade") return "9";
-		if (step.field === "birthDate") return "09.09.2012";
-		if (step.field === "learningTime") return "16:44";
+		if (step.field === "birthDate") return DEFAULT_BIRTH_DATE;
+		if (step.field === "learningTime") return DEFAULT_LEARNING_TIME;
 	}
 	return "";
 };
@@ -1025,6 +1062,8 @@ function QuestionStepView({
 	const isRangeStep = step.kind === "range";
 	const isShortFactStep = step.kind === "fact" && step.id === "short-study-fact";
 	const isPlanFitStep = step.kind === "infoStack";
+	const questionTitleStyle =
+		step.kind === "range" ? QUESTION_TITLE_STYLE : QUESTION_TITLE_STYLE_COMPACT;
 	const titleTopPadding = isRangeStep
 		? 36
 		: isShortFactStep
@@ -1076,12 +1115,12 @@ function QuestionStepView({
 					}}
 				>
 					<Text
-						className="text-center font-bold font-poppins text-text"
+						className="text-center font-poppins"
 						style={{
-							fontSize:
-								step.kind === "chips" ? 32 : step.kind === "range" ? 24 : 25,
-							lineHeight:
-								step.kind === "chips" ? 38 : step.kind === "range" ? 30 : 32,
+							color: COLORS.text,
+							fontSize: questionTitleStyle.fontSize,
+							lineHeight: questionTitleStyle.lineHeight,
+							fontWeight: questionTitleStyle.fontWeight,
 						}}
 					>
 						{step.title}
@@ -1863,8 +1902,12 @@ function RangeSelector({
 	const fallbackValue = values.includes(30) ? 30 : (values[0] ?? 0);
 	const selected = values.includes(parsedValue) ? parsedValue : fallbackValue;
 	const selectedIndex = Math.max(0, values.indexOf(selected));
-	const trackWidth = useSharedValue(1);
-	const liveSelectedIndex = useSharedValue(selectedIndex);
+	const listRef = useRef<FlatList<number>>(null);
+	const { width } = useWindowDimensions();
+	const carouselWidth = Math.min(width, 360);
+	const itemWidth = 68;
+	const sidePadding = Math.max((carouselWidth - itemWidth) / 2, 0);
+	const scrollX = useSharedValue(selectedIndex * itemWidth);
 	const lastIndex = Math.max(values.length - 1, 0);
 	const selectIndex = useCallback(
 		(nextIndex: number) => {
@@ -1872,42 +1915,41 @@ function RangeSelector({
 			const nextValue = values[clampedIndex];
 			if (nextValue === undefined) return;
 			onChange(`${nextValue} min`);
+			listRef.current?.scrollToOffset({
+				offset: clampedIndex * itemWidth,
+				animated: true,
+			});
 		},
 		[lastIndex, onChange, values],
 	);
 
 	useEffect(() => {
-		liveSelectedIndex.set(selectedIndex);
-	}, [liveSelectedIndex, selectedIndex]);
-
-	const updateFromTrackX = (x: number) => {
-		"worklet";
-		const width = Math.max(trackWidth.get(), 1);
-		const ratio = Math.min(Math.max(x / width, 0), 1);
-		const nextIndex = Math.round(ratio * lastIndex);
-		if (nextIndex === liveSelectedIndex.get()) return;
-		liveSelectedIndex.set(nextIndex);
-		scheduleOnRN(selectIndex, nextIndex);
-	};
-
-	const panGesture = Gesture.Pan()
-		.activeOffsetX([-5, 5])
-		.failOffsetY([-22, 22])
-		.onBegin((event) => {
-			"worklet";
-			updateFromTrackX(event.x);
-		})
-		.onUpdate((event) => {
-			"worklet";
-			updateFromTrackX(event.x);
+		scrollX.set(selectedIndex * itemWidth);
+		listRef.current?.scrollToOffset({
+			offset: selectedIndex * itemWidth,
+			animated: false,
 		});
+	}, [scrollX, selectedIndex]);
 
-	const tapGesture = Gesture.Tap().onEnd((event) => {
-		"worklet";
-		updateFromTrackX(event.x);
+	const scrollHandler = useAnimatedScrollHandler({
+		onScroll: (event) => {
+			scrollX.set(event.contentOffset.x);
+		},
 	});
 
-	const sliderGesture = Gesture.Simultaneous(panGesture, tapGesture);
+	const handleMomentumEnd = useCallback(
+		(offsetX: number) => {
+			const nextIndex = Math.min(
+				Math.max(Math.round(offsetX / itemWidth), 0),
+				lastIndex,
+			);
+			const nextValue = values[nextIndex];
+			if (nextValue === undefined || nextValue === selected) return;
+			onChange(`${nextValue} min`);
+		},
+		[lastIndex, onChange, selected, values],
+	);
+
 	const handleAccessibilityAction = ({
 		nativeEvent,
 	}: {
@@ -1955,46 +1997,119 @@ function RangeSelector({
 				</Text>
 			</View>
 
-			<GestureDetector gesture={sliderGesture}>
-				<View
-					accessibilityRole="adjustable"
-					accessibilityLabel={accessibilityLabel}
-					accessibilityValue={{ text: `${selected} Minuten` }}
-					accessibilityActions={[
-						{ name: "increment", label: "Mehr Zeit" },
-						{ name: "decrement", label: "Weniger Zeit" },
-					]}
-					onAccessibilityAction={handleAccessibilityAction}
-					onLayout={(event) => {
-						trackWidth.set(event.nativeEvent.layout.width);
-					}}
-					style={{
-						marginTop: 56,
-						width: "86%",
-						height: 72,
-						flexDirection: "row",
-						alignItems: "center",
-						justifyContent: "space-between",
-					}}
-				>
-					{values.map((minutes) => {
-						const active = minutes === selected;
-						return (
-							<Animated.View
-								key={minutes}
-								layout={LinearTransition.duration(180)}
-								style={{
-									width: active ? 6 : 3,
-									height: active ? 66 : 28,
-									borderRadius: 999,
-									backgroundColor: active ? COLORS.primary : COLORS.border,
-								}}
-							/>
-						);
+			<View
+				accessibilityRole="adjustable"
+				accessibilityLabel={accessibilityLabel}
+				accessibilityValue={{ text: `${selected} Minuten` }}
+				accessibilityActions={[
+					{ name: "increment", label: "Mehr Zeit" },
+					{ name: "decrement", label: "Weniger Zeit" },
+				]}
+				onAccessibilityAction={handleAccessibilityAction}
+				style={{
+					marginTop: 48,
+					width: carouselWidth,
+					height: 92,
+					justifyContent: "center",
+				}}
+			>
+				<Animated.FlatList
+					ref={listRef}
+					data={values as readonly number[]}
+					keyExtractor={(minutes) => String(minutes)}
+					horizontal
+					bounces={false}
+					decelerationRate="fast"
+					snapToInterval={itemWidth}
+					snapToAlignment="start"
+					showsHorizontalScrollIndicator={false}
+					scrollEventThrottle={16}
+					onScroll={scrollHandler}
+					onMomentumScrollEnd={(event) =>
+						handleMomentumEnd(event.nativeEvent.contentOffset.x)
+					}
+					onScrollEndDrag={(event) =>
+						handleMomentumEnd(event.nativeEvent.contentOffset.x)
+					}
+					getItemLayout={(_, index) => ({
+						length: itemWidth,
+						offset: itemWidth * index,
+						index,
 					})}
-				</View>
-			</GestureDetector>
+					contentContainerStyle={{
+						paddingHorizontal: sidePadding,
+						alignItems: "center",
+					}}
+					style={{ flexGrow: 0 }}
+					renderItem={({ index }) => (
+							<DurationCarouselItem
+								index={index}
+								itemWidth={itemWidth}
+								scrollX={scrollX}
+							/>
+						)}
+				/>
+			</View>
 		</View>
+	);
+}
+
+function DurationCarouselItem({
+	index,
+	itemWidth,
+	scrollX,
+}: {
+	index: number;
+	itemWidth: number;
+	scrollX: SharedValue<number>;
+}) {
+	const animatedStyle = useAnimatedStyle(() => {
+		const distance = Math.abs(scrollX.get() / itemWidth - index);
+		const scale = interpolate(distance, [0, 1, 2], [1, 0.82, 0.72], "clamp");
+		const opacity = interpolate(distance, [0, 1, 2], [1, 0.82, 0.58], "clamp");
+
+		return {
+			opacity,
+			transform: [{ scale }],
+		};
+	});
+
+	const barStyle = useAnimatedStyle(() => {
+		const distance = Math.abs(scrollX.get() / itemWidth - index);
+		const height = interpolate(distance, [0, 1, 2], [72, 36, 28], "clamp");
+		const width = interpolate(distance, [0, 1, 2], [7, 4, 3], "clamp");
+		const isActive = distance < 0.5;
+
+		return {
+			width,
+			height,
+			backgroundColor: isActive
+				? DURATION_CAROUSEL_ACTIVE_COLOR
+				: DURATION_CAROUSEL_INACTIVE_COLOR,
+		};
+	});
+
+	return (
+		<Animated.View
+			style={[
+				{
+					width: itemWidth,
+					height: 78,
+					alignItems: "center",
+					justifyContent: "center",
+				},
+				animatedStyle,
+			]}
+		>
+			<Animated.View
+					style={[
+						{
+							borderRadius: 3,
+						},
+						barStyle,
+					]}
+				/>
+		</Animated.View>
 	);
 }
 
@@ -2010,12 +2125,12 @@ function ChipCloud({
 	return (
 		<View
 			style={{
-				width: "100%",
+				width: "88%",
 				flexDirection: "row",
 				flexWrap: "wrap",
 				justifyContent: "center",
-				columnGap: 12,
-				rowGap: 13,
+				columnGap: 10,
+				rowGap: 12,
 			}}
 		>
 			{options.map((option, index) => {
@@ -2032,21 +2147,21 @@ function ChipCloud({
 							accessibilityState={{ checked: selected }}
 							onPress={() => onToggle(option.label)}
 							style={{
-								minHeight: 38,
-								borderRadius: 44,
-								paddingHorizontal: option.label.length > 8 ? 10 : 15,
-								paddingVertical: 9,
+								minHeight: 36,
+								borderRadius: DAYOVA_DESIGN_SYSTEM.radius.button,
+								paddingHorizontal: option.label.length > 8 ? 12 : 16,
+								paddingVertical: 8,
 								flexDirection: "row",
 								alignItems: "center",
 								justifyContent: "center",
 								gap: 8,
 								overflow: "hidden",
 								backgroundColor: selected ? COLORS.primary : COLORS.surface,
-								borderWidth: selected ? 0 : 0.3,
+								borderWidth: selected ? 0 : DAYOVA_DESIGN_SYSTEM.size.button.borderWidth,
 								borderColor: COLORS.border,
 								boxShadow: selected
-									? "0 8px 18px rgba(0, 186, 255, 0.16)"
-									: "0 10px 20px rgba(20, 28, 48, 0.04)",
+									? "0 8px 18px rgba(0, 186, 255, 0.14)"
+									: "0 8px 18px rgba(20, 28, 48, 0.05)",
 							}}
 						>
 							{selected ? (
@@ -2065,17 +2180,19 @@ function ChipCloud({
 							) : null}
 							{Icon ? (
 								<Icon
-									size={20}
-									color={selected ? "#FFFFFF" : COLORS.primary}
+									size={18}
+									color={selected ? COLORS.surface : COLORS.primary}
 									strokeWidth={2}
 								/>
 							) : null}
 							<Text
 								className="font-poppins"
 								style={{
-									color: selected ? "#FFFFFF" : COLORS.text,
-									fontSize: 14,
-									lineHeight: 21,
+									color: selected ? COLORS.surface : COLORS.text,
+									fontSize: DAYOVA_DESIGN_SYSTEM.typography.body.sm.fontSize,
+									lineHeight: DAYOVA_DESIGN_SYSTEM.typography.body.sm.lineHeight,
+									fontWeight:
+										DAYOVA_DESIGN_SYSTEM.typography.body.sm.fontWeight,
 								}}
 							>
 								{option.label}
@@ -2228,20 +2345,34 @@ function PlanFitStack() {
 			text: "Prüfungsmodus mit Zeitdruck und anschließender Auswertung.",
 		},
 	] as const;
+	const cardTransforms = [
+		{ rotate: "-2.5deg", translateX: -1 },
+		{ rotate: "2deg", translateX: 1 },
+		{ rotate: "-2deg", translateX: -1 },
+	] as const;
 
 	return (
-		<View style={{ width: "100%", minHeight: 300, alignItems: "center" }}>
+		<View
+			style={{
+				width: "100%",
+				minHeight: 390,
+				alignItems: "center",
+				overflow: "visible",
+			}}
+		>
 			<View
+				pointerEvents="none"
 				style={{
-					width: "78%",
-					height: 260,
-					borderRadius: 40,
-					backgroundColor: "rgba(243, 246, 250, 0.65)",
-					borderWidth: 1,
-					borderColor: "rgba(220, 230, 238, 0.58)",
+					position: "absolute",
+					top: -4,
+					width: 502,
+					height: 508,
+					opacity: 1,
 				}}
-			/>
-			<View style={{ position: "absolute", top: 44, width: "100%", gap: 16 }}>
+			>
+				<PhoneBackground width="100%" height="115%" />
+			</View>
+			<View style={{ position: "absolute", top: 58, width: "100%", gap: 18 }}>
 				{items.map((item, index) => {
 					const Icon = item.icon;
 					return (
@@ -2252,16 +2383,22 @@ function PlanFitStack() {
 								.springify()
 								.damping(18)}
 							style={{
-								minHeight: 58,
+								width: "84%",
+								alignSelf: "center",
+								minHeight: 64,
 								borderRadius: 14,
 								backgroundColor: COLORS.surface,
-								paddingHorizontal: 16,
+								paddingHorizontal: 14,
 								flexDirection: "row",
-								alignItems: "center",
-								gap: 14,
-								boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
-							}}
-						>
+									alignItems: "center",
+									gap: 14,
+									boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
+									transform: [
+										{ translateX: cardTransforms[index].translateX },
+										{ rotate: cardTransforms[index].rotate },
+									],
+								}}
+							>
 							<View
 								style={{
 									width: 36,
@@ -2274,7 +2411,10 @@ function PlanFitStack() {
 							>
 								<Icon size={18} color={COLORS.primary} strokeWidth={2} />
 							</View>
-							<Text className="flex-1 font-poppins text-body-4 text-text">
+							<Text
+								className="flex-1 font-poppins"
+								style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}
+							>
 								{item.text}
 							</Text>
 						</Animated.View>
@@ -2287,251 +2427,185 @@ function PlanFitStack() {
 
 function WheelAnswer({ step }: { step: WheelStep }) {
 	const { answers, setAnswer } = useOnboarding();
+	const [pickerTarget, setPickerTarget] = useState<"birthDate" | "learningTime" | null>(
+		null,
+	);
 
 	if (step.field === "birthDate") {
+		const value = answers.birthDate || DEFAULT_BIRTH_DATE;
+		const selectedDate = parsePickerDate(value);
+		const handleChange = (event: DateTimePickerEvent, nextDate?: Date) => {
+			if (Platform.OS === "android") setPickerTarget(null);
+			if (event.type === "dismissed" || !nextDate) return;
+			setAnswer("birthDate", formatPickerDate(nextDate));
+		};
+
 		return (
-			<BirthDateWheel
-				value={
-					answers.birthDate ||
-					`${DEFAULT_BIRTH_DAY}.${DEFAULT_BIRTH_MONTH}.${DEFAULT_BIRTH_YEAR}`
-				}
-				onChange={(value) => setAnswer("birthDate", value)}
-			/>
+			<View style={{ width: "100%", alignItems: "center" }}>
+				<PickerInputTrigger
+					accessibilityLabel="Geburtsdatum auswählen"
+					value={value}
+					placeholder="Geburtsdatum auswählen"
+					onPress={() => setPickerTarget("birthDate")}
+				/>
+				{pickerTarget === "birthDate" ? (
+					<DateTimePickerSheet
+						visible
+						value={selectedDate}
+						mode="date"
+						maximumDate={new Date()}
+						onChange={handleChange}
+						onClose={() => setPickerTarget(null)}
+					/>
+				) : null}
+			</View>
 		);
 	}
 
 	if (step.field === "learningTime") {
-		const [hour = "16", minute = "44"] = (
-			answers.learningTime || "16:44"
-		).split(":");
+		const value = answers.learningTime || DEFAULT_LEARNING_TIME;
+		const selectedTime = parsePickerTime(value);
+		const handleChange = (event: DateTimePickerEvent, nextDate?: Date) => {
+			if (Platform.OS === "android") setPickerTarget(null);
+			if (event.type === "dismissed" || !nextDate) return;
+			setAnswer("learningTime", formatPickerTime(nextDate));
+		};
+
 		return (
 			<View style={{ width: "100%", alignItems: "center" }}>
-				<View
-					style={{
-						flexDirection: "row",
-						width: "70%",
-						justifyContent: "center",
-					}}
-				>
-					<WheelColumn
-						options={HOUR_OPTIONS}
-						value={hour}
-						onChange={(nextHour) =>
-							setAnswer("learningTime", `${nextHour}:${minute}`)
-						}
-						width={64}
+				<PickerInputTrigger
+					accessibilityLabel="Lernzeit auswählen"
+					value={value}
+					placeholder="Uhrzeit auswählen"
+					onPress={() => setPickerTarget("learningTime")}
+				/>
+				{pickerTarget === "learningTime" ? (
+					<DateTimePickerSheet
+						visible
+						value={selectedTime}
+						mode="time"
+						onChange={handleChange}
+						onClose={() => setPickerTarget(null)}
 					/>
-					<WheelColumn
-						options={MINUTE_OPTIONS}
-						value={minute}
-						onChange={(nextMinute) =>
-							setAnswer("learningTime", `${hour}:${nextMinute}`)
-						}
-						width={64}
-					/>
-				</View>
+				) : null}
 			</View>
 		);
 	}
 
-	const options = step.field === "state" ? FEDERAL_STATES : GRADE_OPTIONS;
-	const defaultValue = step.field === "state" ? "Sachsen" : "9";
-	const field = step.field;
-	return (
-		<View style={{ width: "100%", alignItems: "center" }}>
-			<WheelColumn
-				options={options}
-				value={answers[field] || defaultValue}
-				onChange={(value) => setAnswer(field, value)}
-				width={step.field === "state" ? 260 : 120}
+	if (step.field === "grade") {
+		return (
+			<NativeOnboardingPicker
+				value={answers.grade || "9"}
+				options={GRADE_OPTIONS}
+				formatLabel={(grade) => `${grade}. Klasse`}
+				testID="onboarding-grade-picker"
+				onChange={(value) => setAnswer("grade", value)}
 			/>
-		</View>
+		);
+	}
+
+	return (
+		<NativeOnboardingPicker
+			value={answers.state || "Sachsen"}
+			options={FEDERAL_STATES}
+			testID="onboarding-state-picker"
+			onChange={(value) => setAnswer("state", value)}
+		/>
 	);
 }
 
-function BirthDateWheel({
+function PickerInputTrigger({
 	value,
+	placeholder,
+	accessibilityLabel,
+	onPress,
+}: {
+	value: string;
+	placeholder: string;
+	accessibilityLabel: string;
+	onPress: () => void;
+}) {
+	const hasValue = value.trim().length > 0;
+
+	return (
+		<Pressable
+			accessibilityLabel={accessibilityLabel}
+			accessibilityRole="button"
+			onPress={onPress}
+			style={{
+				width: "100%",
+				maxWidth: 312,
+				minHeight: 58,
+				borderRadius: 29,
+				backgroundColor: COLORS.surface,
+				borderWidth: 1,
+				borderColor: "rgba(17,24,39,0.05)",
+				boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
+				paddingHorizontal: 20,
+				flexDirection: "row",
+				alignItems: "center",
+				justifyContent: "space-between",
+				gap: 12,
+			}}
+		>
+			<Text
+				className="flex-1 font-poppins text-body-2"
+				numberOfLines={1}
+				style={{ color: hasValue ? COLORS.text : "rgba(26,26,26,0.42)" }}
+			>
+				{hasValue ? value : placeholder}
+			</Text>
+			<ChevronDown size={20} color={COLORS.secondaryText} strokeWidth={2.1} />
+		</Pressable>
+	);
+}
+
+function NativeOnboardingPicker({
+	value,
+	options,
+	formatLabel = (option) => option,
+	testID,
 	onChange,
 }: {
 	value: string;
+	options: readonly string[];
+	formatLabel?: (option: string) => string;
+	testID: string;
 	onChange: (value: string) => void;
 }) {
-	const [
-		rawDay = DEFAULT_BIRTH_DAY,
-		rawMonth = DEFAULT_BIRTH_MONTH,
-		rawYear = DEFAULT_BIRTH_YEAR,
-	] = value.split(".");
-	const month = MONTH_OPTIONS.includes(rawMonth)
-		? rawMonth
-		: DEFAULT_BIRTH_MONTH;
-	const year = BIRTH_YEAR_OPTIONS.includes(rawYear)
-		? rawYear
-		: DEFAULT_BIRTH_YEAR;
-	const days = DAY_OF_MONTH_OPTIONS.slice(0, getDaysInMonth(month, year));
-	const day = days.includes(rawDay)
-		? rawDay
-		: clampBirthDay(rawDay, month, year);
-	const emitDate = (nextDay: string, nextMonth: string, nextYear: string) => {
-		onChange(
-			`${clampBirthDay(nextDay, nextMonth, nextYear)}.${nextMonth}.${nextYear}`,
-		);
-	};
-
 	return (
-		<View style={{ width: "100%", alignItems: "center" }}>
-			<View style={{ flexDirection: "row", justifyContent: "center" }}>
-				<WheelColumn
-					options={days}
-					value={day}
-					onChange={(nextDay) => emitDate(nextDay, month, year)}
-					width={70}
-				/>
-				<WheelColumn
-					options={MONTH_OPTIONS}
-					value={month}
-					onChange={(nextMonth) => emitDate(day, nextMonth, year)}
-					width={70}
-				/>
-				<WheelColumn
-					options={BIRTH_YEAR_OPTIONS}
-					value={year}
-					onChange={(nextYear) => emitDate(day, month, nextYear)}
-					width={88}
-				/>
-			</View>
-		</View>
-	);
-}
-
-function WheelColumn<TValue extends string>({
-	options,
-	value,
-	onChange,
-	width,
-}: {
-	options: readonly TValue[];
-	value: TValue | string;
-	onChange: (value: TValue) => void;
-	width: number;
-}) {
-	const rowHeight = 22;
-	const selectedIndex = Math.max(0, options.indexOf(value as TValue));
-	const lastIndex = Math.max(options.length - 1, 0);
-	const liveSelectedIndex = useSharedValue(selectedIndex);
-	const dragStartIndex = useSharedValue(selectedIndex);
-	const selectIndex = useCallback(
-		(nextIndex: number) => {
-			const clampedIndex = Math.min(Math.max(nextIndex, 0), lastIndex);
-			const nextValue = options[clampedIndex];
-			if (nextValue === undefined) return;
-			onChange(nextValue);
-		},
-		[lastIndex, onChange, options],
-	);
-
-	useEffect(() => {
-		liveSelectedIndex.set(selectedIndex);
-		dragStartIndex.set(selectedIndex);
-	}, [dragStartIndex, liveSelectedIndex, selectedIndex]);
-
-	const panGesture = Gesture.Pan()
-		.activeOffsetY([-5, 5])
-		.failOffsetX([-24, 24])
-		.onBegin(() => {
-			"worklet";
-			dragStartIndex.set(liveSelectedIndex.get());
-		})
-		.onUpdate((event) => {
-			"worklet";
-			const nextIndex = Math.min(
-				Math.max(
-					Math.round(dragStartIndex.get() - event.translationY / rowHeight),
-					0,
-				),
-				lastIndex,
-			);
-			if (nextIndex === liveSelectedIndex.get()) return;
-			liveSelectedIndex.set(nextIndex);
-			scheduleOnRN(selectIndex, nextIndex);
-		});
-	const visible = [-3, -2, -1, 0, 1, 2, 3]
-		.map((offset) => {
-			const option = options[selectedIndex + offset];
-			return option ? { option, offset } : null;
-		})
-		.filter((item): item is { option: TValue; offset: number } =>
-			Boolean(item),
-		);
-
-	return (
-		<GestureDetector gesture={panGesture}>
-			<View
-				accessibilityRole="adjustable"
-				accessibilityLabel="Auswahl"
-				accessibilityValue={{ text: String(value) }}
-				accessibilityActions={[
-					{ name: "increment", label: "Naechster Wert" },
-					{ name: "decrement", label: "Vorheriger Wert" },
-				]}
-				onAccessibilityAction={({ nativeEvent }) => {
-					if (nativeEvent.actionName === "increment") {
-						selectIndex(selectedIndex + 1);
-					}
-					if (nativeEvent.actionName === "decrement") {
-						selectIndex(selectedIndex - 1);
-					}
-				}}
-				style={{
-					width,
-					height: 144,
-					alignItems: "center",
-					justifyContent: "center",
-				}}
-			>
-				<View
-					pointerEvents="none"
-					style={{
-						position: "absolute",
-						left: -2,
-						right: -2,
-						top: 57,
-						height: 30,
-						borderRadius: 18,
-						backgroundColor: COLORS.primary,
-					}}
-				/>
-				{visible.map(({ option, offset }) => {
-					const active = offset === 0;
-					return (
-						<Pressable
+		<View
+			style={{
+				width: "100%",
+				maxWidth: 312,
+				minHeight: 58,
+				borderRadius: 29,
+				backgroundColor: COLORS.surface,
+				borderWidth: 1,
+				borderColor: "rgba(17,24,39,0.05)",
+				boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
+				paddingHorizontal: 14,
+				justifyContent: "center",
+				overflow: "hidden",
+			}}
+		>
+			<Host style={{ minHeight: 44, justifyContent: "center" }}>
+				<Picker
+					selectedValue={value}
+					onValueChange={onChange}
+					appearance="menu"
+					testID={testID}
+				>
+					{options.map((option) => (
+						<Picker.Item
 							key={option}
-							onPress={() => onChange(option)}
-							style={{
-								position: "absolute",
-								top: 57 + offset * rowHeight,
-								width,
-								height: 30,
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Text
-								className="text-center font-poppins"
-								style={{
-									fontSize: active ? 18 : 13,
-									lineHeight: active ? 26 : 19,
-									fontWeight: active ? "600" : "400",
-									color: active ? "#FFFFFF" : "rgba(26, 26, 26, 0.22)",
-									letterSpacing: active ? 4 : 0,
-								}}
-							>
-								{option}
-							</Text>
-						</Pressable>
-					);
-				})}
-			</View>
-		</GestureDetector>
+							label={formatLabel(option)}
+							value={option}
+						/>
+					))}
+				</Picker>
+			</Host>
+		</View>
 	);
 }
 
@@ -2663,7 +2737,10 @@ function GradientPillButton({
 					bottom: 0,
 				}}
 			/>
-			<Text className="font-bold font-poppins text-body-2 text-white">
+			<Text
+				className="font-bold font-poppins text-body-2"
+				style={{ color: COLORS.surface }}
+			>
 				{label}
 			</Text>
 		</Pressable>
@@ -2684,17 +2761,20 @@ function DarkPillButton({
 			disabled={disabled}
 			onPress={onPress}
 			style={{
-				height: 56,
-				borderRadius: 28,
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: disabled ? "rgba(26,26,26,0.38)" : COLORS.text,
-				boxShadow: disabled ? "none" : "0 8px 18px rgba(20, 28, 48, 0.08)",
-			}}
-		>
-			<Text className="font-bold font-poppins text-body-2 text-white">
-				{label}
-			</Text>
+					height: 56,
+					borderRadius: 28,
+					alignItems: "center",
+					justifyContent: "center",
+					backgroundColor: disabled ? COLORS.buttonNeutral : COLORS.buttonNeutral,
+					boxShadow: disabled ? "none" : "0 8px 18px rgba(20, 28, 48, 0.08)",
+				}}
+			>
+				<Text
+					className="font-bold font-poppins text-body-2"
+					style={{ color: COLORS.surface }}
+				>
+					{label}
+				</Text>
 		</Pressable>
 	);
 }
@@ -2734,6 +2814,56 @@ function AuthBackgroundPattern() {
 				);
 			})}
 		</View>
+	);
+}
+
+function PhoneBackground(props: SvgProps) {
+	return (
+		<Svg width={393} height={583} viewBox="0 0 393 583" fill="none" {...props}>
+			<Rect
+				x="42.7754"
+				y="15.6278"
+				width="307.449"
+				height="665.744"
+				rx="52"
+				fill="white"
+			/>
+			<Path
+				fillRule="evenodd"
+				clipRule="evenodd"
+				d="M33.2685 30.7185C27.1293 42.7532 27.1293 58.5075 27.1293 90.0162V124.241H25.5646C24.7005 124.241 24 124.941 24 125.804V147.683C24 148.546 24.7005 149.246 25.5646 149.246H27.1293V169.562H25.5646C24.7005 169.562 24 170.261 24 171.124V216.445C24 217.308 24.7005 218.008 25.5646 218.008H27.1293V232.854H25.5646C24.7005 232.854 24 233.554 24 234.417V279.738C24 280.601 24.7005 281.3 25.5646 281.3H27.1293V606.984C27.1293 638.492 27.1293 654.247 33.2685 666.281C38.6687 676.867 47.2856 685.474 57.8841 690.868C69.933 697 85.7059 697 117.252 697H275.748C307.294 697 323.067 697 335.116 690.868C345.714 685.474 354.331 676.867 359.732 666.281C365.871 654.247 365.871 638.492 365.871 606.984V280.519H367.435C368.299 280.519 369 279.819 369 278.956V205.506C369 204.642 368.299 203.943 367.435 203.943H365.871V90.0162C365.871 58.5075 365.871 42.7532 359.732 30.7185C354.331 20.1325 345.714 11.5258 335.116 6.13198C323.067 0 307.294 0 275.748 0H117.252C85.7059 0 69.933 0 57.8841 6.13198C47.2856 11.5258 38.6687 20.1325 33.2685 30.7185ZM47.2094 37.8134C42.7755 46.5051 42.7755 57.8833 42.7755 80.6395V616.361C42.7755 639.117 42.7755 650.495 47.2094 659.187C51.1096 666.832 57.3328 673.048 64.9873 676.944C73.6893 681.372 85.0809 681.372 107.864 681.372H285.136C307.919 681.372 319.311 681.372 328.013 676.944C335.667 673.048 341.89 666.832 345.791 659.187C350.224 650.495 350.224 639.117 350.224 616.361V80.6395C350.224 57.8832 350.224 46.5051 345.791 37.8134C341.89 30.168 335.667 23.952 328.013 20.0565C319.311 15.6278 307.919 15.6278 285.136 15.6278H107.864C85.0809 15.6278 73.6893 15.6278 64.9873 20.0565C57.3328 23.952 51.1096 30.168 47.2094 37.8134Z"
+				fill="#F2F2F5"
+			/>
+			<Path
+				d="M149.952 37.5067C149.952 29.7388 156.257 23.4417 164.034 23.4417H225.837C233.614 23.4417 239.918 29.7388 239.918 37.5067C239.918 45.2746 233.614 51.5717 225.837 51.5717H164.034C156.257 51.5717 149.952 45.2746 149.952 37.5067Z"
+				fill="#F2F2F5"
+			/>
+			<Path
+				d="M231.313 36.7253C231.313 39.3146 229.211 41.4137 226.619 41.4137C224.026 41.4137 221.925 39.3146 221.925 36.7253C221.925 34.136 224.026 32.037 226.619 32.037C229.211 32.037 231.313 34.136 231.313 36.7253Z"
+				fill="#DEDEE4"
+			/>
+			<Rect
+				x="-110.697"
+				y="211.377"
+				width="530.783"
+				height="466.956"
+				transform="rotate(-15 -110.697 211.377)"
+				fill="url(#paint0_linear_2375_9304)"
+			/>
+			<Defs>
+				<SvgLinearGradient
+					id="paint0_linear_2375_9304"
+					x1="154.694"
+					y1="211.377"
+					x2="154.694"
+					y2="678.332"
+					gradientUnits="userSpaceOnUse"
+				>
+					<Stop stopColor="white" stopOpacity="0.05" />
+					<Stop offset="1" stopColor="#F6F6F4" />
+				</SvgLinearGradient>
+			</Defs>
+		</Svg>
 	);
 }
 
