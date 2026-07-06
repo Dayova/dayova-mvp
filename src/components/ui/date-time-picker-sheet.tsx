@@ -6,6 +6,7 @@ import {
 	Modal,
 	Platform,
 	Pressable,
+	StyleSheet,
 	TouchableOpacity,
 	useWindowDimensions,
 	View,
@@ -95,14 +96,20 @@ function DateTimePickerSheet({
 			visible={visible}
 			transparent
 			animationType="fade"
+			presentationStyle="overFullScreen"
+			statusBarTranslucent
 			onRequestClose={onClose}
 		>
-			<View className="flex-1 justify-end">
-				<Pressable className="absolute inset-0 bg-black/25" onPress={onClose} />
+			<View style={styles.modalRoot}>
+				<Pressable style={styles.backdrop} onPress={onClose} />
 				<View
 					className="w-full rounded-t-card bg-card px-4 pt-3"
 					// Bottom padding depends on the device safe-area inset.
 					style={{
+						position: "absolute",
+						left: 0,
+						right: 0,
+						bottom: 0,
 						paddingBottom: Math.max(insets.bottom + 14, 24),
 					}}
 				>
@@ -141,6 +148,21 @@ function DateTimePickerSheet({
 		</Modal>
 	);
 }
+
+const styles = StyleSheet.create({
+	modalRoot: {
+		flex: 1,
+		justifyContent: "flex-end",
+	},
+	backdrop: {
+		position: "absolute",
+		top: 0,
+		right: 0,
+		bottom: 0,
+		left: 0,
+		backgroundColor: "rgba(0, 0, 0, 0.25)",
+	},
+});
 
 export { DateTimePickerSheet };
 export type { DateTimePickerSheetEvent as DateTimePickerEvent };
