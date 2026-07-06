@@ -29,28 +29,18 @@ import Animated, {
 	FadeInDown,
 	FadeInUp,
 	LinearTransition,
-	SlideInRight,
-	SlideOutLeft,
 	useAnimatedStyle,
 	useSharedValue,
 	withRepeat,
 	withSequence,
 	withTiming,
 } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, {
-	Circle,
-	Defs,
-	Ellipse,
-	G,
-	Line,
-	Path,
-	Rect,
-	Stop,
-	LinearGradient as SvgLinearGradient,
-	Text as SvgText,
-} from "react-native-svg";
+import Svg, { Circle, Ellipse, type SvgProps } from "react-native-svg";
+import { scheduleOnRN } from "react-native-worklets";
+import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
+import IntroTasksSvg from "../../../assets/onboarding/intro-tasks.svg";
+import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -61,7 +51,6 @@ import {
 	Chemistry,
 	ClipboardEdit,
 	ClipboardList,
-	CloudUpload,
 	Dna,
 	Earth,
 	Eye,
@@ -295,6 +284,47 @@ function clampBirthDay(day: string, month: string, year: string) {
 	return String(clampedDay).padStart(2, "0");
 }
 
+const INTRO_REFERENCE_WIDTH = 393;
+const INTRO_REFERENCE_HEIGHT = 852;
+const IntroTasksArtwork = IntroTasksSvg as unknown as ComponentType<SvgProps>;
+const IntroUploadArtwork = IntroUploadSvg as unknown as ComponentType<SvgProps>;
+const IntroPathArtwork = IntroPathSvg as unknown as ComponentType<SvgProps>;
+const INTRO_LAYOUTS = {
+	tasks: {
+		artwork: { width: 356, height: 242, top: 206 },
+		titleTop: 501,
+		dotsTop: 660,
+		buttonTop: 704,
+	},
+	upload: {
+		artwork: { width: 345, height: 313, top: 153 },
+		titleTop: 510,
+		dotsTop: 660,
+		buttonTop: 704,
+	},
+	path: {
+		artwork: { width: 369, height: 467, top: 131 },
+		titleTop: 574,
+		dotsTop: 720,
+		buttonTop: 760,
+	},
+} as const satisfies Record<
+	IntroStep["illustration"],
+	{
+		artwork: { width: number; height: number; top: number };
+		titleTop: number;
+		dotsTop: number;
+		buttonTop: number;
+	}
+>;
+const INTRO_ARTWORKS = [
+	{ kind: "tasks", Component: IntroTasksArtwork },
+	{ kind: "upload", Component: IntroUploadArtwork },
+	{ kind: "path", Component: IntroPathArtwork },
+] as const satisfies readonly {
+	kind: IntroStep["illustration"];
+	Component: ComponentType<SvgProps>;
+}[];
 const FLOW_STEPS: readonly OnboardingStep[] = [
 	{
 		kind: "intro",
@@ -839,37 +869,34 @@ export function OnboardingScreen() {
 				behavior={Platform.OS === "ios" ? "padding" : undefined}
 				style={{ flex: 1 }}
 			>
-				<ScrollView
-					key={activeStep.id}
-					keyboardShouldPersistTaps="handled"
-					contentInsetAdjustmentBehavior="automatic"
-					showsVerticalScrollIndicator={false}
-					contentContainerStyle={{
-						flexGrow: 1,
-						paddingTop: Math.max(insets.top + 12, 20),
-						paddingBottom: Math.max(insets.bottom + 18, 26),
-						paddingHorizontal: 24,
-					}}
-				>
-					{isIntro ? (
-						<IntroStepView
-							step={activeStep}
-							activeIndex={activeIndex}
-							onNext={continueFromStep}
-						/>
-					) : (
+				{isIntro ? (
+					<IntroStepView
+						step={activeStep}
+						activeIndex={activeIndex}
+						onNext={continueFromStep}
+					/>
+				) : (
+					<View
+						key={activeStep.id}
+						style={{
+							flex: 1,
+							paddingTop: Math.max(insets.top + 12, 20),
+							paddingHorizontal: 24,
+						}}
+					>
 						<QuestionStepView
 							step={activeStep}
 							progress={stepProgress}
 							error={error}
 							passwordVisible={passwordVisible}
 							inputRef={textInputRef}
+							bottomInset={insets.bottom}
 							onBack={handleBack}
 							onContinue={continueFromStep}
 							onTogglePassword={() => setPasswordVisible((current) => !current)}
 						/>
-					)}
-				</ScrollView>
+					</View>
+				)}
 			</KeyboardAvoidingView>
 		</View>
 	);
@@ -884,42 +911,89 @@ function IntroStepView({
 	activeIndex: number;
 	onNext: () => void;
 }) {
-	const { height } = useWindowDimensions();
-	const illustrationHeight = Math.min(330, Math.max(235, height * 0.36));
+	const { width, height } = useWindowDimensions();
+	const scale = Math.min(
+		width / INTRO_REFERENCE_WIDTH,
+		height / INTRO_REFERENCE_HEIGHT,
+	);
+	const layout = INTRO_LAYOUTS[step.illustration];
+	const titleWidth = 360 * scale;
+	const nextButtonSize = 76 * scale;
+	const nextButtonTop = Math.min(
+		layout.buttonTop * scale,
+		height - nextButtonSize - 48 * scale,
+	);
+	const dotsTop = Math.min(layout.dotsTop * scale, nextButtonTop - 44 * scale);
 
 	return (
-		<View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-			<Animated.View
-				entering={SlideInRight.duration(420).springify().damping(19)}
-				exiting={SlideOutLeft.duration(220)}
-				style={{
-					width: "100%",
-					height: illustrationHeight,
-					alignItems: "center",
-					justifyContent: "center",
-					marginTop: 20,
-				}}
-			>
-				<IntroIllustration kind={step.illustration} />
-			</Animated.View>
+		<View style={{ flex: 1 }}>
+			{INTRO_ARTWORKS.map((artwork, index) => {
+				const artworkLayout = INTRO_LAYOUTS[artwork.kind];
+				const artworkWidth = artworkLayout.artwork.width * scale;
+				const artworkHeight = artworkLayout.artwork.height * scale;
+				const SvgArtwork = artwork.Component;
+				const active = artwork.kind === step.illustration;
+
+				return (
+					<View
+						key={artwork.kind}
+						pointerEvents="none"
+						style={{
+							position: "absolute",
+							left: (width - artworkWidth) / 2,
+							top: artworkLayout.artwork.top * scale,
+							width: artworkWidth,
+							height: artworkHeight,
+							alignItems: "center",
+							justifyContent: "center",
+							opacity: active ? 1 : 0,
+							transform: [{ translateX: (index - activeIndex) * 18 * scale }],
+						}}
+					>
+						<SvgArtwork width={artworkWidth} height={artworkHeight} />
+					</View>
+				);
+			})}
 
 			<Animated.Text
 				entering={FadeInUp.delay(80).duration(380).springify().damping(18)}
 				style={{
-					marginTop: 24,
+					position: "absolute",
+					left: (width - titleWidth) / 2,
+					top: layout.titleTop * scale,
+					width: titleWidth,
 					textAlign: "center",
 					fontFamily: "Poppins",
 					fontWeight: "700",
-					fontSize: 28,
-					lineHeight: 36,
+					fontSize: 32 * scale,
+					lineHeight: 36.6 * scale,
 					color: COLORS.text,
 				}}
 			>
 				{step.title}
 			</Animated.Text>
 
-			<IntroDots activeIndex={activeIndex} />
-			<CircularNextButton onPress={onNext} style={{ marginTop: 28 }} />
+			<View
+				style={{
+					position: "absolute",
+					left: 0,
+					right: 0,
+					top: dotsTop,
+					alignItems: "center",
+				}}
+			>
+				<IntroDots activeIndex={activeIndex} />
+			</View>
+			<CircularNextButton
+				onPress={onNext}
+				progress={(activeIndex + 1) / INTRO_ARTWORKS.length}
+				style={{
+					position: "absolute",
+					left: (width - nextButtonSize) / 2,
+					top: nextButtonTop,
+					transform: [{ scale }],
+				}}
+			/>
 		</View>
 	);
 }
@@ -930,6 +1004,7 @@ function QuestionStepView({
 	error,
 	passwordVisible,
 	inputRef,
+	bottomInset,
 	onBack,
 	onContinue,
 	onTogglePassword,
@@ -939,6 +1014,7 @@ function QuestionStepView({
 	error: string | null;
 	passwordVisible: boolean;
 	inputRef: RefObject<TextInput | null>;
+	bottomInset: number;
 	onBack: () => boolean;
 	onContinue: () => void;
 	onTogglePassword: () => void;
@@ -946,46 +1022,86 @@ function QuestionStepView({
 	const { answers, setAnswer } = useOnboarding();
 	const showBottomButton = step.kind !== "text";
 	const buttonDisabled = step.kind === "fact" && step.disabledButton;
+	const isRangeStep = step.kind === "range";
+	const isShortFactStep = step.kind === "fact" && step.id === "short-study-fact";
+	const isPlanFitStep = step.kind === "infoStack";
+	const titleTopPadding = isRangeStep
+		? 36
+		: isShortFactStep
+			? 42
+			: isPlanFitStep
+				? 36
+				: step.kind === "text"
+					? 50
+					: step.kind === "chips"
+						? 24
+						: 36;
+	const contentTopMargin = isRangeStep
+		? 28
+		: isShortFactStep
+			? 14
+			: isPlanFitStep
+				? 22
+				: step.kind === "chips"
+					? 40
+					: step.kind === "goals"
+						? 28
+						: step.kind === "text"
+							? 22
+							: 30;
 
 	return (
 		<View style={{ flex: 1 }}>
 			<AuthProgressHeader progress={progress} onBack={onBack} />
 
-			<Animated.View
-				entering={FadeInDown.duration(360).springify().damping(18)}
-				layout={LinearTransition.duration(220)}
-				style={{
-					flex: 1,
-					alignItems: "center",
-					paddingTop: step.kind === "text" ? 50 : 36,
+			<ScrollView
+				keyboardShouldPersistTaps="handled"
+				contentInsetAdjustmentBehavior="never"
+				showsVerticalScrollIndicator={false}
+				style={{ flex: 1 }}
+				contentContainerStyle={{
+					flexGrow: 1,
+					paddingBottom: showBottomButton
+						? Math.max(bottomInset + 112, 122)
+						: Math.max(bottomInset + 20, 32),
 				}}
 			>
-				<Text
-					className="text-center font-bold font-poppins text-text"
+				<Animated.View
+					entering={FadeInDown.duration(360).springify().damping(18)}
+					layout={LinearTransition.duration(220)}
 					style={{
-						fontSize: step.kind === "range" ? 24 : 25,
-						lineHeight: step.kind === "range" ? 30 : 32,
-					}}
-				>
-					{step.title}
-				</Text>
-
-				<View
-					style={{
-						width: "100%",
-						marginTop:
-							step.kind === "goals" ? 28 : step.kind === "text" ? 22 : 30,
+						flex: 1,
 						alignItems: "center",
+						paddingTop: titleTopPadding,
 					}}
 				>
-					{step.kind === "range" ? (
-						<RangeSelector
-							value={answers[step.field] || "30 min"}
-							values={step.values}
-							accessibilityLabel={step.title.replace(/\n/g, " ")}
-							onChange={(value) => setAnswer(step.field, value)}
-						/>
-					) : null}
+					<Text
+						className="text-center font-bold font-poppins text-text"
+						style={{
+							fontSize:
+								step.kind === "chips" ? 32 : step.kind === "range" ? 24 : 25,
+							lineHeight:
+								step.kind === "chips" ? 38 : step.kind === "range" ? 30 : 32,
+						}}
+					>
+						{step.title}
+					</Text>
+
+					<View
+						style={{
+							width: "100%",
+							marginTop: contentTopMargin,
+							alignItems: "center",
+						}}
+					>
+						{step.kind === "range" ? (
+							<RangeSelector
+								value={answers[step.field] || "30 min"}
+								values={step.values}
+								accessibilityLabel={step.title.replace(/\n/g, " ")}
+								onChange={(value) => setAnswer(step.field, value)}
+							/>
+						) : null}
 
 					{step.kind === "fact" ? <FactPanel step={step} /> : null}
 
@@ -1052,27 +1168,33 @@ function QuestionStepView({
 							}
 						/>
 					) : null}
-				</View>
+					</View>
 
-				{error ? (
-					<Animated.Text
-						entering={FadeIn.duration(180)}
-						style={{
-							marginTop: 12,
-							fontFamily: "Poppins",
-							fontSize: 12,
-							lineHeight: 18,
-							color: COLORS.destructive,
-							textAlign: "center",
-						}}
-					>
-						{error}
-					</Animated.Text>
-				) : null}
-			</Animated.View>
+					{error ? (
+						<Animated.Text
+							entering={FadeIn.duration(180)}
+							style={{
+								marginTop: 12,
+								fontFamily: "Poppins",
+								fontSize: 12,
+								lineHeight: 18,
+								color: COLORS.destructive,
+								textAlign: "center",
+							}}
+						>
+							{error}
+						</Animated.Text>
+					) : null}
+				</Animated.View>
+			</ScrollView>
 
 			{showBottomButton ? (
-				<View style={{ paddingTop: 22 }}>
+				<View
+					style={{
+						paddingTop: 8,
+						paddingBottom: Math.max(bottomInset + 52, 60),
+					}}
+				>
 					<DarkPillButton
 						label="Weiter"
 						onPress={onContinue}
@@ -1483,9 +1605,9 @@ function AuthProgressHeader({
 				accessibilityLabel="Zurück"
 				onPress={() => onBack()}
 				style={{
-					width: 40,
-					height: 40,
-					borderRadius: 20,
+					width: 48,
+					height: 48,
+					borderRadius: 24,
 					alignItems: "center",
 					justifyContent: "center",
 					backgroundColor: COLORS.surface,
@@ -1498,10 +1620,10 @@ function AuthProgressHeader({
 			<View
 				style={{
 					flex: 1,
-					height: 5,
+					height: 8,
 					borderRadius: 999,
 					overflow: "hidden",
-					backgroundColor: "rgba(0, 186, 255, 0.16)",
+					backgroundColor: "#CFEAFF",
 				}}
 			>
 				<Animated.View
@@ -1892,7 +2014,8 @@ function ChipCloud({
 				flexDirection: "row",
 				flexWrap: "wrap",
 				justifyContent: "center",
-				gap: 10,
+				columnGap: 12,
+				rowGap: 13,
 			}}
 		>
 			{options.map((option, index) => {
@@ -1905,30 +2028,55 @@ function ChipCloud({
 						layout={LinearTransition.duration(180)}
 					>
 						<Pressable
+							accessibilityRole="checkbox"
+							accessibilityState={{ checked: selected }}
 							onPress={() => onToggle(option.label)}
 							style={{
-								minHeight: 32,
-								borderRadius: 18,
-								paddingHorizontal: 13,
+								minHeight: 38,
+								borderRadius: 44,
+								paddingHorizontal: option.label.length > 8 ? 10 : 15,
+								paddingVertical: 9,
 								flexDirection: "row",
 								alignItems: "center",
-								gap: 5,
+								justifyContent: "center",
+								gap: 8,
+								overflow: "hidden",
 								backgroundColor: selected ? COLORS.primary : COLORS.surface,
+								borderWidth: selected ? 0 : 0.3,
+								borderColor: COLORS.border,
 								boxShadow: selected
 									? "0 8px 18px rgba(0, 186, 255, 0.16)"
-									: "0 4px 12px rgba(20, 28, 48, 0.04)",
+									: "0 10px 20px rgba(20, 28, 48, 0.04)",
 							}}
 						>
+							{selected ? (
+								<LinearGradient
+									colors={PRIMARY_GRADIENT.colors}
+									start={PRIMARY_GRADIENT.start}
+									end={PRIMARY_GRADIENT.end}
+									style={{
+										position: "absolute",
+										top: 0,
+										right: 0,
+										bottom: 0,
+										left: 0,
+									}}
+								/>
+							) : null}
 							{Icon ? (
 								<Icon
-									size={14}
+									size={20}
 									color={selected ? "#FFFFFF" : COLORS.primary}
 									strokeWidth={2}
 								/>
 							) : null}
 							<Text
-								className="font-poppins text-body-5"
-								style={{ color: selected ? "#FFFFFF" : COLORS.text }}
+								className="font-poppins"
+								style={{
+									color: selected ? "#FFFFFF" : COLORS.text,
+									fontSize: 14,
+									lineHeight: 21,
+								}}
 							>
 								{option.label}
 							</Text>
@@ -2267,10 +2415,7 @@ function WheelColumn<TValue extends string>({
 	width: number;
 }) {
 	const rowHeight = 22;
-	const selectedIndex = Math.max(
-		0,
-		options.indexOf(value as TValue),
-	);
+	const selectedIndex = Math.max(0, options.indexOf(value as TValue));
 	const lastIndex = Math.max(options.length - 1, 0);
 	const liveSelectedIndex = useSharedValue(selectedIndex);
 	const dragStartIndex = useSharedValue(selectedIndex);
@@ -2420,25 +2565,16 @@ function IntroDots({ activeIndex }: { activeIndex: number }) {
 function CircularNextButton({
 	onPress,
 	disabled,
+	progress,
 	style,
 }: {
 	onPress: () => void;
 	disabled?: boolean;
+	progress: number;
 	style?: object;
 }) {
-	const rotation = useSharedValue(0);
-
-	useEffect(() => {
-		rotation.value = withRepeat(
-			withTiming(360, { duration: 2200, easing: Easing.linear }),
-			-1,
-			false,
-		);
-	}, [rotation]);
-
-	const ringStyle = useAnimatedStyle(() => ({
-		transform: [{ rotate: `${rotation.value}deg` }],
-	}));
+	const circumference = 2 * Math.PI * 34;
+	const clampedProgress = Math.min(Math.max(progress, 0.08), 1);
 
 	return (
 		<View
@@ -2452,10 +2588,16 @@ function CircularNextButton({
 				style,
 			]}
 		>
-			<Animated.View
-				style={[{ position: "absolute", width: 76, height: 76 }, ringStyle]}
-			>
+			<View style={{ position: "absolute", width: 76, height: 76 }}>
 				<Svg width={76} height={76}>
+					<Circle
+						cx="38"
+						cy="38"
+						r="34"
+						fill="transparent"
+						stroke="rgba(26,26,26,0.12)"
+						strokeWidth="4"
+					/>
 					<Circle
 						cx="38"
 						cy="38"
@@ -2464,10 +2606,11 @@ function CircularNextButton({
 						stroke={disabled ? "rgba(26,26,26,0.18)" : COLORS.primary}
 						strokeWidth="4"
 						strokeLinecap="round"
-						strokeDasharray="86 150"
+						strokeDasharray={`${circumference * clampedProgress} ${circumference}`}
+						transform="rotate(-90 38 38)"
 					/>
 				</Svg>
-			</Animated.View>
+			</View>
 			<Pressable
 				disabled={disabled}
 				onPress={onPress}
@@ -2590,253 +2733,6 @@ function AuthBackgroundPattern() {
 					</View>
 				);
 			})}
-		</View>
-	);
-}
-
-function IntroIllustration({ kind }: { kind: IntroStep["illustration"] }) {
-	if (kind === "upload") return <UploadIllustration />;
-	if (kind === "path") return <PathIllustration />;
-	return <TaskIllustration />;
-}
-
-function TaskIllustration() {
-	return (
-		<View
-			style={{
-				width: 300,
-				height: 230,
-				alignItems: "center",
-				justifyContent: "center",
-			}}
-		>
-			<Svg width={300} height={230} viewBox="0 0 300 230">
-				<Defs>
-					<SvgLinearGradient id="blueCard" x1="0" y1="0" x2="1" y2="1">
-						<Stop offset="0" stopColor="#00A0E6" />
-						<Stop offset="1" stopColor="#4FD8FF" />
-					</SvgLinearGradient>
-				</Defs>
-				<G transform="translate(22 48) rotate(-11 90 50)">
-					<Rect
-						x="0"
-						y="0"
-						width="158"
-						height="92"
-						rx="13"
-						fill="url(#blueCard)"
-					/>
-					<Rect x="0" y="24" width="158" height="68" rx="10" fill="#FFFFFF" />
-					<SvgText x="20" y="17" fill="#FFFFFF" fontSize="10" fontWeight="700">
-						Deine Aufgaben
-					</SvgText>
-					{[0, 1, 2].map((item) => (
-						<G key={item} transform={`translate(18 ${40 + item * 18})`}>
-							<Circle
-								cx="5"
-								cy="0"
-								r="4"
-								fill="transparent"
-								stroke="#00BAFF"
-								strokeWidth="1.5"
-							/>
-							<Line
-								x1="18"
-								y1="0"
-								x2="128"
-								y2="0"
-								stroke="#DCE6EE"
-								strokeWidth="1.5"
-							/>
-						</G>
-					))}
-				</G>
-				<G transform="translate(166 45) rotate(8 70 52)">
-					<Rect
-						x="0"
-						y="0"
-						width="128"
-						height="92"
-						rx="16"
-						fill="url(#blueCard)"
-					/>
-					<SvgText x="58" y="24" fill="#FFFFFF" fontSize="20" fontWeight="700">
-						4
-					</SvgText>
-					<SvgText x="47" y="38" fill="#FFFFFF" fontSize="7" fontWeight="600">
-						Erfolgreiche Lerntage
-					</SvgText>
-					{[0, 1, 2, 3, 4, 5].map((item) => (
-						<Circle
-							key={item}
-							cx={20 + item * 18}
-							cy="58"
-							r="7"
-							fill={item < 4 ? "#FFFFFF" : "rgba(255,255,255,0.28)"}
-						/>
-					))}
-				</G>
-				<G transform="translate(74 126)">
-					<Rect width="190" height="64" rx="15" fill="#FFFFFF" />
-					<Circle cx="34" cy="32" r="22" fill="#F6F8FB" />
-					<Path
-						d="M28 24 Q37 48 45 24"
-						stroke="#00BAFF"
-						strokeWidth="6"
-						strokeLinecap="round"
-						fill="none"
-					/>
-					<Line x1="68" y1="18" x2="68" y2="47" stroke="#DCE6EE" />
-					<SvgText x="84" y="29" fill="#00BAFF" fontSize="13" fontWeight="700">
-						Mathe lernen
-					</SvgText>
-					<SvgText x="84" y="49" fill="#1A1A1A" fontSize="11">
-						Deine Lernstunde startet in 60
-					</SvgText>
-				</G>
-			</Svg>
-		</View>
-	);
-}
-
-function UploadIllustration() {
-	return (
-		<View
-			style={{
-				width: 284,
-				height: 230,
-				alignItems: "center",
-				justifyContent: "center",
-			}}
-		>
-			<View
-				style={{
-					width: 252,
-					height: 170,
-					borderRadius: 24,
-					backgroundColor: COLORS.surface,
-					alignItems: "center",
-					paddingTop: 18,
-				}}
-			>
-				<Text className="font-bold font-poppins text-body-2 text-text">
-					Hochladen
-				</Text>
-				<Text className="font-poppins text-body-5 text-secondary-text">
-					Lade deine Mitschriften hoch
-				</Text>
-				<View
-					style={{
-						marginTop: 16,
-						width: 226,
-						height: 104,
-						borderRadius: 17,
-						borderWidth: 2,
-						borderStyle: "dashed",
-						borderColor: "#DDE7F1",
-						alignItems: "center",
-						justifyContent: "center",
-					}}
-				>
-					<CloudUpload size={40} color="#D7DCE3" strokeWidth={1.7} />
-					<View style={{ marginTop: 9, width: 78 }}>
-						<GradientPillButton label="Hochladen" onPress={() => undefined} />
-					</View>
-					<Text className="mt-2 font-poppins text-body-5 text-secondary-text">
-						oder Scanne deine Mitschriften
-					</Text>
-				</View>
-			</View>
-		</View>
-	);
-}
-
-function PathIllustration() {
-	return (
-		<View
-			style={{
-				width: 280,
-				height: 248,
-				alignItems: "center",
-				justifyContent: "center",
-			}}
-		>
-			<Svg width={280} height={248} viewBox="0 0 280 248">
-				<Path
-					d="M150 30 H210 Q232 30 232 52 V104 Q232 128 208 128 H122 Q96 128 96 154 V180"
-					stroke="#DCE6EE"
-					strokeWidth="4"
-					fill="none"
-					strokeLinecap="round"
-				/>
-				<Path
-					d="M150 30 H210 Q232 30 232 52 V104"
-					stroke="#00BAFF"
-					strokeWidth="4"
-					fill="none"
-					strokeLinecap="round"
-				/>
-				<Circle cx="140" cy="31" r="24" fill="#00BAFF" />
-				<Circle cx="224" cy="92" r="24" fill="#00BAFF" />
-				<Circle cx="140" cy="129" r="22" fill="#A4A9AF" />
-				<Circle cx="74" cy="180" r="22" fill="#D7DCE3" />
-				<Path
-					d="M130 29 L138 38 L154 20"
-					stroke="#FFFFFF"
-					strokeWidth="5"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					fill="none"
-				/>
-				<Rect
-					x="218"
-					y="84"
-					width="12"
-					height="14"
-					rx="2"
-					fill="none"
-					stroke="#FFFFFF"
-					strokeWidth="2"
-				/>
-				<G transform="translate(133 121)">
-					<Rect
-						x="0"
-						y="6"
-						width="14"
-						height="11"
-						rx="3"
-						fill="none"
-						stroke="#FFFFFF"
-						strokeWidth="2"
-					/>
-					<Path
-						d="M4 6 V4 Q4 0 7 0 Q10 0 10 4 V6"
-						stroke="#FFFFFF"
-						strokeWidth="2"
-						strokeLinecap="round"
-						fill="none"
-					/>
-				</G>
-				<G transform="translate(67 172)">
-					<Rect
-						x="0"
-						y="6"
-						width="14"
-						height="11"
-						rx="3"
-						fill="none"
-						stroke="#FFFFFF"
-						strokeWidth="2"
-					/>
-					<Path
-						d="M4 6 V4 Q4 0 7 0 Q10 0 10 4 V6"
-						stroke="#FFFFFF"
-						strokeWidth="2"
-						strokeLinecap="round"
-						fill="none"
-					/>
-				</G>
-			</Svg>
 		</View>
 	);
 }
