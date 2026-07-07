@@ -714,7 +714,7 @@ export function AuthChoiceScreen() {
 								includeFontPadding: false,
 							}}
 						>
-							Du bist neu hier, dann registriere dich. Anderfalls willkommen
+							Du bist neu hier, dann registriere dich. Andernfalls willkommen
 							zurück
 						</Text>
 					</Animated.View>
