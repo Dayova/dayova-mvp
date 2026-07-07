@@ -12,9 +12,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
-import { ActionModal } from "~/components/ui/action-modal";
 import { Button } from "~/components/ui/button";
-import { Check, Plus } from "~/components/ui/icon";
+import { Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import {
@@ -39,6 +38,21 @@ import { ROUTES, withReturnTo } from "~/lib/routes";
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
+const successPath = (
+	id: Id<"learningPlans">,
+	params: {
+		dayKey: string;
+		examDateKey: string;
+		examDateLabel: string;
+		examTime: string;
+	},
+) => {
+	const query = Object.entries(params)
+		.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+		.join("&");
+	return `/learning-plans/${id}/success?${query}` as const;
+};
+
 export default function LearningPlanReviewScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -57,7 +71,6 @@ export default function LearningPlanReviewScreen() {
 	const [isBusy, setIsBusy] = useState(false);
 	const [isReplanning, setIsReplanning] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const [successDayKey, setSuccessDayKey] = useState<string | null>(null);
 	const attemptedReplanKeyRef = useRef<string | null>(null);
 
 	const snapshot = (useQuery(
@@ -127,16 +140,17 @@ export default function LearningPlanReviewScreen() {
 		snapshot,
 	]);
 
-	const runWithErrorHandling = async (
+	const runWithErrorHandling = async <TResult,>(
 		fallback: string,
-		task: () => Promise<void>,
-	) => {
+		task: () => Promise<TResult>,
+	): Promise<TResult | null> => {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
-			await task();
+			return await task();
 		} catch (error) {
 			setErrorMessage(getErrorMessage(error, fallback));
+			return null;
 		} finally {
 			setIsBusy(false);
 		}
@@ -148,14 +162,21 @@ export default function LearningPlanReviewScreen() {
 	};
 
 	const acceptGeneratedPlan = async () => {
-		if (!planId || isBusy || isReplanning) return;
+		if (!planId || !snapshot || isBusy || isReplanning) return;
 
-		await runWithErrorHandling(
+		const dayKey = await runWithErrorHandling(
 			"Der Lernplan konnte nicht eingetragen werden.",
-			async () => {
-				const dayKey = await acceptPlan({ learningPlanId: planId });
-				setSuccessDayKey(dayKey);
-			},
+			() => acceptPlan({ learningPlanId: planId }),
+		);
+		if (!dayKey) return;
+
+		router.replace(
+			successPath(planId, {
+				dayKey,
+				examDateKey: snapshot.plan.examDateKey,
+				examDateLabel: snapshot.plan.examDateLabel,
+				examTime: snapshot.plan.examTime,
+			}),
 		);
 	};
 
@@ -294,24 +315,6 @@ export default function LearningPlanReviewScreen() {
 					<Plus size={28} color="#FFFFFF" strokeWidth={2.4} />
 				</TouchableOpacity>
 			</View>
-
-			<ActionModal
-				visible={Boolean(successDayKey)}
-				title="Lernplan ist eingetragen"
-				description="Dein Lernplan wurde erfolgreich eingetragen."
-				icon={<Check size={48} color="#34C759" strokeWidth={1.2} />}
-			>
-				<Button
-					className="mt-6 w-full"
-					onPress={() =>
-						router.replace(
-							`/home${successDayKey ? `?dayKey=${encodeURIComponent(successDayKey)}` : ""}`,
-						)
-					}
-				>
-					<Text>Fertig</Text>
-				</Button>
-			</ActionModal>
 		</View>
 	);
 }

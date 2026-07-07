@@ -848,8 +848,8 @@ export default function LearningPlansScreen() {
 
 					<TouchableOpacity
 						accessibilityRole="button"
-            accessibilityLabel="Neuen Eintrag erstellen."
-            accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
+						accessibilityLabel="Neuen Eintrag erstellen."
+						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
 						activeOpacity={0.88}
 						onPress={openCreateTypePicker}
 						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
