@@ -41,6 +41,78 @@ export type PlanSession = {
 	adjustedFromSessionId?: Id<"learningPlanSessions">;
 };
 
+type SessionContentItemKind =
+	| "learnCard"
+	| "multipleChoice"
+	| "written"
+	| "voice";
+
+export type SessionAnswerRating = "notCorrect" | "partiallyCorrect" | "correct";
+
+export type SessionContentItem = {
+	id: Id<"learningSessionContentItems">;
+	sessionId: Id<"learningPlanSessions">;
+	phase: SessionPhase;
+	kind: SessionContentItemKind;
+	title: string;
+	prompt: string;
+	front?: string;
+	back?: string;
+	explanation: string;
+	idealAnswer: string;
+	choices: Array<{ id: string; text: string }>;
+	sortOrder: number;
+};
+
+export type SessionAnswerAttempt = {
+	id: Id<"learningSessionAnswerAttempts">;
+	itemId: Id<"learningSessionContentItems">;
+	sessionId: Id<"learningPlanSessions">;
+	selectedChoiceId?: string;
+	answerText?: string;
+	transcript?: string;
+	rating: SessionAnswerRating;
+	feedback: string;
+	perfectAnswer: string;
+	timeSpentSeconds?: number;
+	createdAt: number;
+};
+
+type SessionAnalysis = {
+	id: Id<"learningSessionAnalyses">;
+	sessionId: Id<"learningPlanSessions">;
+	strengths: string[];
+	gaps: string[];
+	recommendation: string;
+	updatedAt: number;
+};
+
+export type LearningSessionContentSnapshot = {
+	plan: {
+		id: Id<"learningPlans">;
+		subject: string;
+		examTypeLabel: string;
+		topicDescription: string;
+	};
+	session: {
+		id: Id<"learningPlanSessions">;
+		learningPlanId: Id<"learningPlans">;
+		phase: SessionPhase;
+		title: string;
+		dateLabel: string;
+		startTime: string;
+		durationMinutes: number;
+		goal: string;
+		expectedOutcome: string;
+		completed: boolean;
+		executionStatus: SessionExecutionStatus;
+	};
+	praxisDurationSeconds: number | null;
+	items: SessionContentItem[];
+	attempts: SessionAnswerAttempt[];
+	analysis: SessionAnalysis | null;
+};
+
 type LearningPlanDocument = {
 	id: Id<"learningPlanDocuments">;
 	fileName: string;

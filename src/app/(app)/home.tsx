@@ -1,35 +1,35 @@
-import { useConvexAuth, useMutation, useQueries } from "convex/react";
+import { useConvexAuth, useQueries } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-	Modal,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
-	Pressable,
 	ScrollView,
 	TouchableOpacity,
 	useWindowDimensions,
 	View,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-	useAnimatedStyle,
-	useSharedValue,
-	withTiming,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { scheduleOnRN } from "react-native-worklets";
+import Svg, {
+	Defs,
+	LinearGradient as SvgLinearGradient,
+	Path,
+	Rect,
+	Stop,
+} from "react-native-svg";
 import { api } from "#convex/_generated/api";
-import type { Id } from "#convex/_generated/dataModel";
+import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { NotificationButton } from "~/components/notification-button";
+import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import {
-	ClipboardEdit,
-	GraduationCap,
-	NotebookPen,
+	ArrowUpRight,
+	Backpack,
+	CalendarDays,
+	Dumbbell,
 	Plus,
-	X,
+	PropertyEdit,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
@@ -72,207 +72,140 @@ const chunkArray = <T,>(items: T[], chunkSize: number) => {
 	return chunks;
 };
 
-type CreateTypeOptionProps = {
-	icon: typeof ClipboardEdit;
-	title: string;
-	description: string;
-	onPress: () => void;
-	scale: number;
-	width: number;
-};
-
-function CreateTypeOption({
-	icon: Icon,
-	title,
-	description,
-	onPress,
-	scale,
-	width,
-}: CreateTypeOptionProps) {
-	return (
-		<TouchableOpacity
-			accessibilityLabel={title}
-			accessibilityRole="button"
-			activeOpacity={0.86}
-			onPress={onPress}
-			className="flex-row items-center bg-white"
-			style={{
-				width,
-				height: 96 * scale,
-				borderRadius: 40 * scale,
-				paddingHorizontal: 16 * scale,
-				paddingVertical: 12 * scale,
-				columnGap: 16 * scale,
-				boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-			}}
-		>
-			<View
-				className="items-center justify-center rounded-full bg-[#EAF3FF]"
-				style={{
-					width: 48 * scale,
-					height: 48 * scale,
-					boxShadow:
-						"0 2px 4px -2px rgba(24, 39, 75, 0.12), 0 4px 4px -2px rgba(24, 39, 75, 0.08)",
-				}}
-			>
-				<Icon size={24 * scale} color="#3A7BFF" strokeWidth={1.5} />
-			</View>
-			<View style={{ flex: 1, rowGap: 4 * scale }}>
-				<Text
-					className="font-medium font-poppins text-black"
-					style={{
-						fontSize: 16 * scale,
-						lineHeight: 24 * scale,
-						includeFontPadding: false,
-					}}
-				>
-					{title}
-				</Text>
-				<Text
-					className="font-poppins text-[#7E7E7E]"
-					style={{
-						fontSize: 12 * scale,
-						lineHeight: 18 * scale,
-						includeFontPadding: false,
-					}}
-				>
-					{description}
-				</Text>
-			</View>
-		</TouchableOpacity>
-	);
-}
-
-type DragStartSliderProps = {
-	scale: number;
-	compactScale: number;
-	onComplete: () => void;
-};
-
-function DragStartSlider({
+function LearningSessionCard({
+	entry,
 	scale,
 	compactScale,
-	onComplete,
-}: DragStartSliderProps) {
-	const knobWidth = 110 * scale;
-	const trackWidth = 228 * scale;
-	const maxDrag = trackWidth - knobWidth - 8 * scale;
-	const dragX = useSharedValue(0);
-	const isCompleting = useSharedValue(false);
-
-	const panGesture = Gesture.Pan()
-		.activeOffsetX([-8 * scale, 8 * scale])
-		.failOffsetY([-14 * scale, 14 * scale])
-		.onBegin(() => {
-			"worklet";
-			dragX.set(0);
-			isCompleting.set(false);
-		})
-		.onUpdate((event) => {
-			"worklet";
-			dragX.set(Math.min(Math.max(event.translationX, 0), maxDrag));
-		})
-		.onEnd((event) => {
-			"worklet";
-			const nextValue = Math.min(Math.max(event.translationX, 0), maxDrag);
-			const shouldComplete =
-				nextValue >= maxDrag * 0.72 ||
-				(event.velocityX > 650 && nextValue >= maxDrag * 0.35);
-
-			if (!shouldComplete || isCompleting.get()) return;
-
-			isCompleting.set(true);
-			dragX.set(
-				withTiming(maxDrag, { duration: 90 }, (finished) => {
-					"worklet";
-					if (!finished) return;
-					scheduleOnRN(onComplete);
-					dragX.set(withTiming(0, { duration: 120 }));
-					isCompleting.set(false);
-				}),
-			);
-		})
-		.onFinalize(() => {
-			"worklet";
-			if (isCompleting.get()) return;
-			dragX.set(withTiming(0, { duration: 160 }));
-		});
-
-	const knobAnimatedStyle = useAnimatedStyle(() => ({
-		transform: [{ translateX: dragX.get() }],
-	}));
+	date,
+	onPress,
+}: {
+	entry: DayEntry | null;
+	scale: number;
+	compactScale: number;
+	date: Date;
+	onPress: () => void;
+}) {
+	const cardWidth = 369 * scale;
+	const innerWidth = 321 * scale;
+	const startMinutes = entry ? getEntryStartMinutes(entry) : 14 * 60;
+	const endMinutes = entry ? getEntryEndMinutes(entry) : startMinutes + 30;
+	const title = entry ? getEntryDisplayTitle(entry) : "Heute ist frei";
+	const summary = getLearningCardSummary(entry);
+	const month = getMonthLabel(date).slice(0, 3);
+	const day = date.getDate().toString().padStart(2, "0");
 
 	return (
-		<GestureDetector gesture={panGesture}>
-			<View
-				accessibilityRole="adjustable"
-				accessibilityLabel="Zum Starten nach rechts ziehen"
-				className="justify-center rounded-full bg-[#EDFDFC]"
+		<View
+			className="relative"
+			style={{
+				width: cardWidth,
+				height: 254 * compactScale,
+				marginTop: 30 * compactScale,
+			}}
+		>
+			<NotchedActionCard
+				cardHeight={238 * compactScale}
+				actionIcon={
+					<ArrowUpRight
+						size={24 * scale}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={1.9}
+					/>
+				}
+				actionSize={48 * scale}
+				cardAccessibilityHint="Öffnet die nächste Lerneinheit."
+				cardAccessibilityLabel={`${title}, ${formatMinutes(startMinutes)} bis ${formatMinutes(endMinutes)}`}
+				onPress={onPress}
+				pressType="card"
 				style={{
-					width: trackWidth,
-					height: 56 * scale,
-					marginTop: 24 * compactScale,
-					padding: 4 * scale,
-					boxShadow: "0 8px 18px rgba(0, 0, 0, 0.10)",
+					position: "absolute",
+					top: 8 * compactScale,
+					left: 0,
+					width: cardWidth,
+				}}
+				cardStyle={{
+					paddingHorizontal: 24 * scale,
+					paddingTop: 12 * compactScale,
+					paddingBottom: 22 * compactScale,
 				}}
 			>
 				<View
-					className="absolute flex-row items-center"
-					style={{ right: 34 * scale }}
-					pointerEvents="none"
+					className="absolute rounded-full"
+					style={{
+						left: 96 * scale,
+						top: -16 * compactScale,
+						width: 12 * scale,
+						height: 32 * compactScale,
+						backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.path1,
+					}}
+				/>
+				<View
+					className="absolute rounded-full"
+					style={{
+						right: 96 * scale,
+						top: -16 * compactScale,
+						width: 12 * scale,
+						height: 32 * compactScale,
+						backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.path1,
+					}}
+				/>
+				<LinearGradient
+					colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
+					start={PRIMARY_INTERACTIVE_GRADIENT.start}
+					end={PRIMARY_INTERACTIVE_GRADIENT.end}
+					style={{
+						width: innerWidth,
+						height: 86 * compactScale,
+						borderRadius: 30 * scale,
+						paddingHorizontal: 24 * scale,
+						flexDirection: "row",
+						alignItems: "center",
+						justifyContent: "space-between",
+					}}
 				>
-					{[0.2, 0.6, 1].map((opacity, index) => (
+					<View className="items-center">
 						<Text
-							key={opacity}
-							className="font-poppins font-semibold text-[#3A7BFF]"
-							style={{
-								marginLeft: index === 0 ? 0 : -4 * scale,
-								fontSize: 24 * scale,
-								opacity,
-							}}
+							className="font-poppins text-white"
+							style={{ fontSize: 12 * scale, lineHeight: 18 * scale }}
 						>
-							›
+							{month}
 						</Text>
-					))}
-				</View>
-				<Animated.View
-					style={[
-						{
-							width: knobWidth,
-							height: 48 * scale,
-							borderRadius: 100,
-							overflow: "hidden",
-						},
-						knobAnimatedStyle,
-					]}
-				>
-					<LinearGradient
-						colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
-						start={PRIMARY_INTERACTIVE_GRADIENT.start}
-						end={PRIMARY_INTERACTIVE_GRADIENT.end}
+						<Text
+							className="font-poppins font-semibold text-white"
+							style={{ fontSize: 32 * scale, lineHeight: 34 * scale }}
+						>
+							{day}
+						</Text>
+					</View>
+					<Text
+						className="font-poppins font-semibold text-white"
+						style={{ fontSize: 20 * scale, lineHeight: 24 * scale }}
+					>
+						{`${formatMinutes(startMinutes)} - ${formatMinutes(endMinutes)}`}
+					</Text>
+				</LinearGradient>
+				<View style={{ marginTop: 27 * compactScale, width: innerWidth }}>
+					<Text
+						className="font-poppins font-semibold text-text"
+						numberOfLines={1}
+						style={{ fontSize: 16 * scale, lineHeight: 24 * scale }}
+					>
+						{title}
+					</Text>
+					<Text
+						className="mt-2 font-poppins text-secondary-text"
+						numberOfLines={2}
 						style={{
-							flex: 1,
-							alignItems: "center",
-							justifyContent: "center",
+							width: 301 * scale,
+							fontSize: 12 * scale,
+							lineHeight: 18 * scale,
 						}}
 					>
-						<Text
-							className="font-bold font-poppins text-white"
-							style={{
-								fontSize: 16 * scale,
-								lineHeight: 17 * scale,
-								includeFontPadding: false,
-								textShadowColor: "rgba(0,0,0,0.15)",
-								textShadowOffset: { width: 2, height: 4 },
-								textShadowRadius: 8,
-							}}
-						>
-							Starten
-						</Text>
-					</LinearGradient>
-				</Animated.View>
-			</View>
-		</GestureDetector>
+						{summary}
+					</Text>
+				</View>
+			</NotchedActionCard>
+		</View>
 	);
 }
 
@@ -339,6 +272,16 @@ const formatMinutes = (minutes: number) => {
 	return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
 };
 
+const getMonthLabel = (date: Date) =>
+	new Intl.DateTimeFormat("de-DE", { month: "long" }).format(date);
+
+const getLearningCardSummary = (entry: DayEntry | null) => {
+	if (!entry) return "Keine offenen Aufgaben oder Lernblöcke für heute.";
+	if (entry.notes?.trim()) return formatGermanUiText(entry.notes.trim());
+	if (entry.kind?.trim()) return formatGermanUiText(entry.kind.trim());
+	return "Sicheres Auflösen komplexerer Gleichungen mit Klammern und Variablen auf beiden Seiten.";
+};
+
 const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 	if (entry.relatedLearningPlanId) {
 		return `/learning-plans/${encodeURIComponent(entry.relatedLearningPlanId)}`;
@@ -375,7 +318,7 @@ const isEntryActiveNow = (entry: DayEntry, now: Date) => {
 	);
 };
 
-const getTimelineRow = (index: number) => index % 3;
+const getTimelineRow = (index: number) => index % 2;
 
 export default function HomeScreen() {
 	const router = useRouter();
@@ -391,10 +334,6 @@ export default function HomeScreen() {
 	const dayStripScrollRef = useRef<ScrollView | null>(null);
 	const hasCenteredTimelineRef = useRef(false);
 	const pendingTimelineSelectionRef = useRef<string | null>(null);
-	const setSessionCompleted = useMutation(
-		api.learningPlans.setSessionCompleted,
-	);
-	const setDayEntryCompleted = useMutation(api.dayEntries.setCompleted);
 
 	useEffect(() => {
 		const timer = setInterval(() => setNow(new Date()), 60_000);
@@ -495,27 +434,24 @@ export default function HomeScreen() {
 	const compactScale = Math.min(screenScale, heightScale);
 	const horizontalPadding = clamp((width - 369 * screenScale) / 2, 12, 24);
 	const headerInset = clamp(24 * screenScale - horizontalPadding, 0, 12);
-	const lessonCardWidth = Math.min(
-		width - horizontalPadding * 2,
-		345 * screenScale,
-	);
-	const planCardWidth = Math.min(
+	const planCardWidth = Math.min(width - horizontalPadding * 2, 369 * screenScale);
+	const scheduleCardWidth = Math.min(
 		width - horizontalPadding * 2,
 		369 * screenScale,
 	);
 	const planInnerWidth = planCardWidth - 40 * screenScale;
 	const scheduleScale = clamp(planInnerWidth / 297, 0.82, 1.08);
-	const timelineViewportWidth = planInnerWidth;
+	const timelineViewportWidth = scheduleCardWidth - 24 * screenScale;
 	const hourWidth = 72 * scheduleScale;
 	const dayWidth = hourWidth * 24;
 	const timelineContentWidth = dayWidth * visibleDays.length;
-	const timelineHeight = 188 * compactScale;
-	const timelineRowHeight = 35 * compactScale;
-	const timelineBlockHeight = 32 * screenScale;
-	const timelineTopOffset = 32 * compactScale;
+	const timelineHeight = 259 * compactScale;
+	const timelineRowHeight = 82 * compactScale;
+	const timelineBlockHeight = 70 * compactScale;
+	const timelineTopOffset = 62 * compactScale;
 	const dayStripGap = 10 * scheduleScale;
 	const getDayStripItemWidth = useCallback(
-		(isToday: boolean) => (isToday ? 96 : 40) * scheduleScale,
+		(_isToday?: boolean) => 42 * scheduleScale,
 		[scheduleScale],
 	);
 	const dayStripOffsets = useMemo(() => {
@@ -530,10 +466,8 @@ export default function HomeScreen() {
 		dayStripOffsets[dayStripOffsets.length - 1] +
 		getDayStripItemWidth(visibleDays[visibleDays.length - 1]?.isToday ?? false);
 	const navClearance = Math.max(insets.bottom + 108 * screenScale, 132);
-	const modalScale = clamp(width / 393, 0.88, 1);
-	const modalWidth = width;
-	const modalOptionWidth = Math.min(width - 48 * modalScale, 345 * modalScale);
-	const modalBottomPadding = Math.max(insets.bottom + 28 * modalScale, 42);
+	const scheduleInnerWidth = scheduleCardWidth - 24 * screenScale;
+	const scheduleCardHeight = 434 * compactScale;
 	const selectedDayLabel = new Intl.DateTimeFormat("de-DE", {
 		weekday: "long",
 		day: "numeric",
@@ -543,10 +477,11 @@ export default function HomeScreen() {
 		typeof user?.name === "string" && user.name.trim().length > 0
 			? user.name.trim().split(/\s+/)[0]
 			: "Max";
-	const currentMinute = now.getHours() * 60 + now.getMinutes();
 	const todayIndex = visibleDays.findIndex(
 		(day) => day.key === getDayKey(today),
 	);
+	const currentMinute = now.getHours() * 60 + now.getMinutes();
+	const timelineLabelBaseMinute = Math.round(currentMinute / 30) * 30;
 	const currentTimelineX =
 		Math.max(todayIndex, 0) * dayWidth + (currentMinute / 60) * hourWidth;
 
@@ -623,7 +558,12 @@ export default function HomeScreen() {
 	);
 
 	useEffect(() => {
-		if (hasCenteredTimelineRef.current || timelineContentWidth <= 0) return;
+		if (
+			hasCenteredTimelineRef.current ||
+			todayIndex < 0 ||
+			timelineContentWidth <= 0
+		)
+			return;
 		const frame = requestAnimationFrame(() => {
 			scrollTimelineToX(currentTimelineX, false);
 			scrollDayStripToIndex(todayIndex, false);
@@ -658,24 +598,8 @@ export default function HomeScreen() {
 		router.push(getEntryUrl(entry, selectedDayLabel));
 	};
 
-	const completeHeroEntry = () => {
-		if (!heroEntry) return;
-		if (heroEntry.relatedLearningPlanSessionId) {
-			void setSessionCompleted({
-				sessionId: heroEntry.relatedLearningPlanSessionId,
-				completed: true,
-			});
-			return;
-		}
-
-		void setDayEntryCompleted({
-			id: heroEntry.id as Id<"dayEntries">,
-			completed: true,
-		});
-	};
-
 	return (
-		<View className="flex-1 bg-[#F4F8FB]">
+		<View className="flex-1 bg-background">
 			<StatusBar style="dark" />
 			<ScrollView
 				className="flex-1"
@@ -692,25 +616,26 @@ export default function HomeScreen() {
 			>
 				<View
 					className="flex-row items-start justify-between"
+					// Runtime-scaled typography keeps this dense home layout fitting device width.
 					style={{ paddingHorizontal: headerInset }}
 				>
 					<View>
 						<Text
 							className="font-poppins font-semibold text-text"
+							// Runtime-scaled typography keeps this dense home layout fitting device width.
 							style={{
 								fontSize: 24 * screenScale,
-								lineHeight: 29 * screenScale,
-								includeFontPadding: false,
+								lineHeight: 36 * screenScale,
 							}}
 						>
 							{`Hi ${firstName},`}
 						</Text>
 						<Text
-							className="font-poppins text-[#7E7E7E]"
+							className="font-poppins text-secondary-text"
+							// Runtime-scaled typography keeps this dense home layout fitting device width.
 							style={{
 								fontSize: 16 * screenScale,
-								lineHeight: 20 * screenScale,
-								includeFontPadding: false,
+								lineHeight: 24 * screenScale,
 							}}
 						>
 							schön, dass du da bist!
@@ -719,146 +644,202 @@ export default function HomeScreen() {
 					<NotificationButton />
 				</View>
 
-				<View className="items-center" style={{ marginTop: 28 * compactScale }}>
-					<View
-						className="items-center bg-white"
-						style={{
-							width: lessonCardWidth,
-							justifyContent: "center",
-							minHeight: 273 * compactScale,
-							borderRadius: 40 * screenScale,
-							paddingHorizontal: 24 * screenScale,
-							paddingVertical: 32 * compactScale,
-							boxShadow: "0 16px 22px rgba(0, 0, 0, 0.10)",
-						}}
-					>
-						<View
-							className="items-center justify-center rounded-full bg-[#EAF3FF]"
-							style={{
-								width: 48 * screenScale,
-								height: 48 * screenScale,
-								boxShadow: "0 8px 18px rgba(58, 123, 255, 0.12)",
-							}}
-						>
-							<NotebookPen
-								size={24 * screenScale}
-								color="#3A7BFF"
-								strokeWidth={1.7}
-							/>
-						</View>
-
-						<View
-							className="items-center"
-							style={{
-								marginTop: heroEntry ? 24 * compactScale : 18 * compactScale,
-							}}
-						>
-							<Text
-								className="text-center font-poppins font-semibold text-[#0D062D]"
-								numberOfLines={1}
-								adjustsFontSizeToFit
-								style={{
-									width: 274 * screenScale,
-									fontSize: 24 * screenScale,
-									lineHeight: 32 * screenScale,
-									includeFontPadding: false,
-								}}
-							>
-								{heroEntry ? getEntryDisplayTitle(heroEntry) : "Heute ist frei"}
-							</Text>
-							<Text
-								className="mt-1 text-center font-poppins text-[#787486]"
-								style={{
-									maxWidth: 274 * screenScale,
-									fontSize: 12 * screenScale,
-									lineHeight: 18 * screenScale,
-									includeFontPadding: false,
-								}}
-							>
-								{heroEntry
-									? `${heroEntry.time ?? ALL_DAY_TIME_LABEL}${heroEntry.durationMinutes ? ` • ${heroEntry.durationMinutes} Min.` : ""} • ${new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" }).format(today)}`
-									: "Keine offenen Aufgaben oder Lernblöcke für heute."}
-							</Text>
-						</View>
-
-						{heroEntry ? (
-							<DragStartSlider
-								scale={screenScale}
-								compactScale={compactScale}
-								onComplete={() => openEntry(heroEntry)}
-							/>
-						) : null}
-
-						{heroEntry ? (
-							<TouchableOpacity
-								accessibilityRole="button"
-								accessibilityLabel="Eintrag als erledigt markieren"
-								activeOpacity={0.76}
-								onPress={completeHeroEntry}
-								style={{ marginTop: 12 * compactScale }}
-							>
-								<Text
-									className="font-poppins font-semibold text-[#3A7BFF]"
-									style={{
-										fontSize: 12 * screenScale,
-										lineHeight: 16 * screenScale,
-										includeFontPadding: false,
-									}}
-								>
-									Als erledigt markieren
-								</Text>
-							</TouchableOpacity>
-						) : null}
-					</View>
+				<View className="items-center">
+					<LearningSessionCard
+						entry={heroEntry}
+						scale={screenScale}
+						compactScale={compactScale}
+						date={today}
+						onPress={() => (heroEntry ? openEntry(heroEntry) : undefined)}
+					/>
 				</View>
 
 				<View
-					className="self-center bg-white"
+					className="relative self-center"
 					style={{
-						width: planCardWidth,
-						minHeight: 345 * compactScale,
-						marginTop: 31 * compactScale,
-						borderRadius: 42 * screenScale,
-						paddingHorizontal: 20 * screenScale,
-						paddingTop: 24 * compactScale,
-						paddingBottom: 24 * compactScale,
-						boxShadow: "0 16px 28px rgba(0, 0, 0, 0.10)",
+						width: scheduleCardWidth,
+						height: scheduleCardHeight,
+						marginTop: 28 * compactScale,
 					}}
 				>
-					<View className="flex-row items-start justify-between">
+					<Svg
+						accessible={false}
+						accessibilityElementsHidden
+						importantForAccessibility="no-hide-descendants"
+						pointerEvents="none"
+						width="100%"
+						height="100%"
+						viewBox="0 0 369 434"
+						preserveAspectRatio="none"
+						style={{ position: "absolute", inset: 0 }}
+					>
+						<Path
+							d="M70.4004 0.150391H239.266C253.395 0.150391 264.85 11.6047 264.85 25.7344V30.7344C264.85 43.2435 274.991 53.3838 287.5 53.3838H314.75C323.267 53.3838 327.507 53.3845 331.058 53.9717C349.436 57.0115 363.888 71.3317 367.097 89.6816C367.716 93.2265 367.756 97.467 367.834 105.983L368.85 216.618V362.834C368.85 375.157 368.85 384.391 368.251 391.721C367.652 399.049 366.456 404.46 364.07 409.142C359.866 417.392 353.158 424.101 344.907 428.305C340.226 430.69 334.815 431.887 327.487 432.485C320.158 433.084 310.923 433.084 298.6 433.084H70.4004C58.0768 433.084 48.8423 433.084 41.5127 432.485C34.1852 431.887 28.774 430.69 24.0928 428.305C15.8419 424.101 9.13374 417.392 4.92969 409.142C2.5444 404.46 1.34773 399.049 0.749023 391.721C0.150198 384.391 0.150391 375.157 0.150391 362.834V70.4004C0.150391 58.0768 0.150174 48.8423 0.749023 41.5127C1.34774 34.1851 2.54447 28.7741 4.92969 24.0928C9.13374 15.8419 15.8419 9.13374 24.0928 4.92969C28.7741 2.54447 34.1851 1.34774 41.5127 0.749023C48.8423 0.150174 58.0768 0.150391 70.4004 0.150391Z"
+							fill={DAYOVA_DESIGN_SYSTEM.colors.surface}
+							stroke={DAYOVA_DESIGN_SYSTEM.colors.border}
+							strokeWidth={0.3}
+						/>
+					</Svg>
+					<View
+						className="relative z-10"
+						style={{
+							paddingHorizontal: 12 * screenScale,
+							paddingTop: 24 * compactScale,
+							paddingBottom: 12 * compactScale,
+						}}
+					>
+					<View className="flex-row items-center justify-between">
 						<Text
-							className="font-poppins font-semibold text-[#1A1A1A]"
+							className="ml-3 font-poppins font-semibold text-text"
 							style={{
 								fontSize: 24 * screenScale,
 								lineHeight: 36 * screenScale,
-								includeFontPadding: false,
 							}}
 						>
-							Mein Plan
+							{`Plan für ${getMonthLabel(selectedDate)}`}
 						</Text>
-						<TouchableOpacity
-							activeOpacity={0.9}
-							accessibilityRole="button"
-							accessibilityLabel="Neuen Eintrag erstellen"
-							onPress={() => setShowCreateTypePicker(true)}
-							className="items-center justify-center rounded-full bg-[#3B7CFF]"
+						<View
+							className="relative"
 							style={{
-								width: 48 * screenScale,
-								height: 48 * screenScale,
-								marginTop: -4 * compactScale,
-								marginRight: -4 * screenScale,
-								boxShadow: "0 8px 18px rgba(58, 123, 255, 0.18)",
+								position: "absolute",
+								top: -24 * compactScale,
+								right: -12 * screenScale,
+								width: 104 * screenScale,
+								height: 52 * screenScale,
 							}}
 						>
-							<Plus size={24 * screenScale} color="#FFFFFF" strokeWidth={1.7} />
-						</TouchableOpacity>
+							<Svg
+								accessible={false}
+								accessibilityElementsHidden
+								importantForAccessibility="no-hide-descendants"
+								pointerEvents="none"
+								width="100%"
+								height="100%"
+								viewBox="0 0 104 52"
+								preserveAspectRatio="none"
+								style={{ position: "absolute", inset: 0 }}
+							>
+								<Path
+									d="M29 0.150391H78.1299C92.3346 0.150391 103.85 11.6654 103.85 25.8701C103.85 40.1753 92.1775 51.7318 77.873 51.5889L54.002 51.3496H27C14.3803 51.3496 4.15039 41.1197 4.15039 28.5V25C4.15039 11.2757 15.2757 0.150391 29 0.150391Z"
+									fill={DAYOVA_DESIGN_SYSTEM.colors.surface}
+									stroke={DAYOVA_DESIGN_SYSTEM.colors.border}
+									strokeWidth={0.3}
+								/>
+								<Rect x={8} y={6} width={40} height={40} rx={20} fill="#F1F7FB" />
+								<Rect
+									x={56}
+									y={6}
+									width={40}
+									height={40}
+									rx={20}
+									fill="url(#dashboardActionsGradient)"
+								/>
+								<Path
+									d="M76.001 19V33.002"
+									stroke="white"
+									strokeWidth={1.5}
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+								<Path
+									d="M83.002 26.002H69"
+									stroke="white"
+									strokeWidth={1.5}
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+								<Defs>
+									<SvgLinearGradient
+										id="dashboardActionsGradient"
+										x1={76}
+										y1={6}
+										x2={76}
+										y2={46}
+										gradientUnits="userSpaceOnUse"
+									>
+										<Stop stopColor="#00A0E6" />
+										<Stop offset={1} stopColor="#4FD8FF" />
+									</SvgLinearGradient>
+								</Defs>
+							</Svg>
+							<View
+								pointerEvents="none"
+								className="absolute items-center justify-center"
+								style={{
+									left: 8 * screenScale,
+									top: 6 * screenScale,
+									width: 40 * screenScale,
+									height: 40 * screenScale,
+								}}
+							>
+								<CalendarDays
+									size={20 * screenScale}
+									color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+									strokeWidth={1.8}
+								/>
+								<Text
+									className="absolute font-poppins font-semibold text-primary"
+									style={{
+										top: 20.5 * screenScale,
+										fontSize: 6 * screenScale,
+										lineHeight: 9 * screenScale,
+									}}
+								>
+									{today.getDate()}
+								</Text>
+							</View>
+							<View
+								pointerEvents="none"
+								className="absolute items-center justify-center"
+								style={{
+									left: 56 * screenScale,
+									top: 6 * screenScale,
+									width: 40 * screenScale,
+									height: 40 * screenScale,
+								}}
+							>
+								<Plus
+									size={24 * screenScale}
+									color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+									strokeWidth={1.7}
+								/>
+							</View>
+							<TouchableOpacity
+								activeOpacity={0.82}
+								accessibilityRole="button"
+								accessibilityLabel="Zum heutigen Plan springen"
+								onPress={() => selectVisibleDay(getDayKey(today), todayIndex)}
+								style={{
+									position: "absolute",
+									left: 8 * screenScale,
+									top: 6 * screenScale,
+									width: 40 * screenScale,
+									height: 40 * screenScale,
+									borderRadius: 20 * screenScale,
+								}}
+							/>
+							<TouchableOpacity
+								activeOpacity={0.9}
+								accessibilityRole="button"
+								accessibilityLabel="Neuen Eintrag erstellen"
+								onPress={() => setShowCreateTypePicker(true)}
+								style={{
+									position: "absolute",
+									left: 56 * screenScale,
+									top: 6 * screenScale,
+									width: 40 * screenScale,
+									height: 40 * screenScale,
+									borderRadius: 20 * screenScale,
+								}}
+							/>
+						</View>
 					</View>
 
 					<ScrollView
 						ref={dayStripScrollRef}
 						horizontal
 						showsHorizontalScrollIndicator={false}
-						style={{ marginTop: 24 * compactScale }}
+						style={{ marginTop: 23 * compactScale, alignSelf: "center" }}
 						contentContainerStyle={{ width: dayStripContentWidth }}
 					>
 						<View
@@ -870,18 +851,17 @@ export default function HomeScreen() {
 						>
 							{visibleDays.map((day, dayIndex) => {
 								const selected = selectedDayKey === day.key;
-								const itemWidth = getDayStripItemWidth(day.isToday);
+								const itemWidth = 42 * scheduleScale;
 								const content = (
 									<Text
 										key={`${day.key}-label`}
-										className={`font-poppins ${selected ? "text-white" : "text-[#1A1A1A]"}`}
+										className={`font-poppins font-semibold ${selected ? "text-white" : "text-text"}`}
 										style={{
-											fontSize: 13 * screenScale,
-											lineHeight: 16 * screenScale,
-											includeFontPadding: true,
+											fontSize: 16 * screenScale,
+											lineHeight: 24 * screenScale,
 										}}
 									>
-										{day.isToday ? `Heute ${day.dayOfMonth}` : day.dayOfMonth}
+										{day.dayOfMonth}
 									</Text>
 								);
 
@@ -889,14 +869,13 @@ export default function HomeScreen() {
 									<View
 										key={day.key}
 										className="items-center"
-										style={{ width: itemWidth, rowGap: 10 * compactScale }}
+										style={{ width: itemWidth, rowGap: 4 * compactScale }}
 									>
 										<Text
-											className="font-poppins text-black"
+											className="font-poppins font-semibold text-secondary-text"
 											style={{
 												fontSize: 12 * screenScale,
-												lineHeight: 12 * screenScale,
-												includeFontPadding: false,
+												lineHeight: 18 * screenScale,
 											}}
 										>
 											{day.weekday}
@@ -915,8 +894,8 @@ export default function HomeScreen() {
 													end={PRIMARY_INTERACTIVE_GRADIENT.end}
 													style={{
 														width: itemWidth,
-														height: 32 * screenScale,
-														borderRadius: 20,
+														height: 42 * screenScale,
+														borderRadius: 99,
 														alignItems: "center",
 														justifyContent: "center",
 													}}
@@ -925,10 +904,10 @@ export default function HomeScreen() {
 												</LinearGradient>
 											) : (
 												<View
-													className="items-center justify-center rounded-full bg-[#F2F2F2]"
+													className="items-center justify-center rounded-full"
 													style={{
 														width: itemWidth,
-														height: 34 * screenScale,
+														height: 42 * screenScale,
 													}}
 												>
 													{content}
@@ -942,10 +921,12 @@ export default function HomeScreen() {
 					</ScrollView>
 
 					<View
+						className="overflow-hidden bg-light-2"
 						style={{
-							marginTop: 18 * compactScale,
+							marginTop: 14 * compactScale,
 							height: timelineHeight,
-							width: timelineViewportWidth,
+							width: scheduleInnerWidth,
+							borderRadius: 28 * screenScale,
 						}}
 					>
 						<ScrollView
@@ -964,38 +945,6 @@ export default function HomeScreen() {
 									height: timelineHeight,
 								}}
 							>
-								{visibleDays.map((day, dayIndex) => (
-									<View
-										key={`${day.key}-background`}
-										className="absolute top-0 bottom-0"
-										style={{
-											left: dayIndex * dayWidth,
-											width: dayWidth,
-											borderLeftWidth: dayIndex === 0 ? 0 : 1,
-											borderColor: "rgba(0,0,0,0.08)",
-											backgroundColor:
-												day.key === selectedDayKey
-													? "rgba(58, 123, 255, 0.04)"
-													: "transparent",
-										}}
-									>
-										<Text
-											className="absolute font-poppins font-semibold text-[#1A1A1A]"
-											style={{
-												left: 8 * scheduleScale,
-												top: 0,
-												fontSize: 12 * screenScale,
-												lineHeight: 12 * screenScale,
-												includeFontPadding: false,
-											}}
-										>
-											{day.isToday
-												? "Heute"
-												: `${day.weekday} ${day.dayOfMonth}`}
-										</Text>
-									</View>
-								))}
-
 								{visibleDays.flatMap((day, dayIndex) =>
 									TIMELINE_MARKER_HOURS.map((hour) => (
 										<View
@@ -1003,28 +952,13 @@ export default function HomeScreen() {
 											className="absolute"
 											style={{
 												left: dayIndex * dayWidth + hour * hourWidth,
-												top: 18 * compactScale,
-												bottom: 20 * compactScale,
+												top: 38 * compactScale,
+												bottom: 38 * compactScale,
 												width: hour === 24 ? 0 : 1,
 												backgroundColor:
-													hour === 0 ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.05)",
+													hour === 0 ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.08)",
 											}}
-										>
-											<Text
-												className="absolute font-poppins text-black"
-												style={{
-													left: -20 * scheduleScale,
-													bottom: -12 * compactScale,
-													width: 40 * scheduleScale,
-													fontSize: 12 * screenScale,
-													lineHeight: 14 * screenScale,
-													textAlign: "center",
-													includeFontPadding: false,
-												}}
-											>
-												{formatMinutes(hour * 60)}
-											</Text>
-										</View>
+										/>
 									)),
 								)}
 
@@ -1035,12 +969,14 @@ export default function HomeScreen() {
 										dayIndex * dayWidth + (start / 60) * hourWidth;
 									const blockWidth = Math.max(
 										(duration / 60) * hourWidth,
-										72 * scheduleScale,
+										155 * scheduleScale,
 									);
-									const isPast =
-										day.key < getDayKey(today) ||
-										(day.key === getDayKey(today) &&
-											getEntryEndMinutes(entry) < currentMinute);
+									const learning = isLearningEntry(entry);
+									const Icon = learning
+										? row === 0
+											? Dumbbell
+											: PropertyEdit
+										: Backpack;
 
 									return (
 										<TouchableOpacity
@@ -1052,86 +988,81 @@ export default function HomeScreen() {
 												setSelectedDayKey(day.key);
 												openEntry(entry);
 											}}
-											className="absolute justify-center rounded-full"
+											className="absolute rounded-2xl"
 											style={{
-												top: timelineTopOffset + row * timelineRowHeight,
 												left: blockLeft,
+												top: timelineTopOffset + row * timelineRowHeight,
 												width: Math.min(
 													blockWidth,
 													timelineContentWidth - blockLeft,
 												),
 												height: timelineBlockHeight,
-												paddingHorizontal: 12 * scheduleScale,
-												backgroundColor: isPast
-													? "rgba(0,0,0,0.08)"
-													: isLearningEntry(entry)
-														? "#DDF4F3"
-														: "#EAF3FF",
+												padding: 12 * screenScale,
+												backgroundColor: learning ? "#F4ECFF" : "#F3E8F0",
 											}}
 										>
+											<Icon
+												size={16 * screenScale}
+												color={
+													learning
+														? DAYOVA_DESIGN_SYSTEM.colors.ueben
+														: DAYOVA_DESIGN_SYSTEM.colors.hausaufgabe
+												}
+												strokeWidth={1.9}
+											/>
 											<Text
-												className="font-poppins text-[#1A1A1A]"
+												className="mt-1 font-poppins font-semibold text-text"
 												numberOfLines={1}
 												style={{
-													fontSize: 13 * screenScale,
-													lineHeight: 16 * screenScale,
-													includeFontPadding: false,
+													fontSize: 12 * screenScale,
+													lineHeight: 14 * screenScale,
 												}}
 											>
-												{getEntryDisplayTitle(entry)}
+												{getSubjectFromEntry(entry)}
 											</Text>
+											<Text
+												className="font-poppins text-secondary-text"
+												numberOfLines={1}
+												style={{
+													fontSize: 10 * screenScale,
+													lineHeight: 12 * screenScale,
+												}}
+											>
+												{entry.time ?? (learning ? "Lerneinheit" : "Aufgabe")}
+											</Text>
+											<View
+												className="absolute items-center justify-center rounded-full bg-card"
+												style={{
+													right: 12 * screenScale,
+													top: 12 * compactScale,
+													width: 23 * screenScale,
+													height: 23 * screenScale,
+												}}
+											>
+												<ArrowUpRight
+													size={14 * screenScale}
+													color={DAYOVA_DESIGN_SYSTEM.colors.text}
+													strokeWidth={2}
+												/>
+											</View>
 										</TouchableOpacity>
 									);
 								})}
-
-								{todayIndex >= 0 ? (
-									<View
-										className="absolute items-center"
-										style={{
-											top: 9 * compactScale,
-											left: currentTimelineX,
-										}}
-									>
-										<View
-											className="items-center justify-center rounded-full border border-[#3A7BFF] bg-white"
-											style={{
-												width: 14 * screenScale,
-												height: 14 * screenScale,
-											}}
-										>
-											<View
-												className="rounded-full border border-white bg-[#3A7BFF]"
-												style={{
-													width: 10 * screenScale,
-													height: 10 * screenScale,
-												}}
-											/>
-										</View>
-										<View
-											className="bg-[#3A7BFF]"
-											style={{
-												width: 4 * screenScale,
-												height: 112 * compactScale,
-											}}
-										/>
-									</View>
-								) : null}
 
 								{timelineEntries.length === 0 ? (
 									<View
 										className="absolute items-center"
 										style={{
+											top: 105 * compactScale,
 											left: currentTimelineX - timelineViewportWidth / 2,
-											top: 58 * compactScale,
 											width: timelineViewportWidth,
 										}}
 									>
 										<Text
-											className="font-poppins text-[#787486]"
+											className="font-poppins text-secondary-text"
 											style={{
-												fontSize: 13 * screenScale,
+												fontSize: 12 * screenScale,
 												lineHeight: 18 * screenScale,
-												includeFontPadding: false,
 											}}
 										>
 											Keine Einträge in diesen 7 Tagen
@@ -1140,10 +1071,60 @@ export default function HomeScreen() {
 								) : null}
 
 								<View
+									className="absolute items-center"
+									style={{
+										top: 24 * compactScale,
+										left: currentTimelineX,
+									}}
+								>
+									<View
+										className="items-center justify-center rounded-full border border-primary bg-card"
+										style={{
+											width: 14 * screenScale,
+											height: 14 * screenScale,
+										}}
+									>
+										<View
+											className="rounded-full bg-primary"
+											style={{
+												width: 10 * screenScale,
+												height: 10 * screenScale,
+											}}
+										/>
+									</View>
+									<View
+										className="bg-primary"
+										style={{ width: 4 * screenScale, height: 177 * compactScale }}
+									/>
+								</View>
+
+								<View
+									className="absolute flex-row"
+									style={{
+										left: currentTimelineX - 136 * scheduleScale,
+										bottom: 20 * compactScale,
+										columnGap: 24 * scheduleScale,
+									}}
+								>
+									{[-90, -60, -30, 0, 30].map((offset) => (
+										<Text
+											key={offset}
+											className="w-10 text-center font-poppins text-black"
+											style={{
+												fontSize: 12 * screenScale,
+												lineHeight: 18 * screenScale,
+												fontWeight: offset === 0 ? "600" : "400",
+											}}
+										>
+											{formatMinutes(timelineLabelBaseMinute + offset)}
+										</Text>
+									))}
+								</View>
+								<View
 									className="absolute overflow-hidden"
 									style={{
-										top: 74 * compactScale,
-										right: 8 * scheduleScale,
+										top: 143 * compactScale,
+										right: 12 * scheduleScale,
 										width: 57 * scheduleScale,
 										height: 37 * screenScale,
 									}}
@@ -1165,99 +1146,15 @@ export default function HomeScreen() {
 							</View>
 						</ScrollView>
 					</View>
+					</View>
 				</View>
 			</ScrollView>
 
-			<Modal
+			<CreateTypePickerModal
 				visible={showCreateTypePicker}
-				transparent
-				animationType="fade"
 				onRequestClose={() => setShowCreateTypePicker(false)}
-			>
-				<View className="flex-1 justify-end">
-					<Pressable
-						className="absolute inset-0 bg-black/25"
-						onPress={() => setShowCreateTypePicker(false)}
-					/>
-					<View
-						className="bg-[#F4F8FB]"
-						style={{
-							width: modalWidth,
-							borderTopLeftRadius: 40 * modalScale,
-							borderTopRightRadius: 40 * modalScale,
-							paddingTop: 24 * modalScale,
-							paddingHorizontal: 24 * modalScale,
-							paddingBottom: modalBottomPadding,
-							boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-						}}
-					>
-						<View
-							className="flex-row items-start justify-between gap-5"
-							style={{ minHeight: 46 * modalScale }}
-						>
-							<View style={{ width: 311 * modalScale }}>
-								<Text
-									className="font-medium font-poppins text-black"
-									style={{
-										fontSize: 16 * modalScale,
-										lineHeight: 24 * modalScale,
-										includeFontPadding: false,
-									}}
-								>
-									Was möchtest du planen?
-								</Text>
-								<Text
-									className="font-poppins text-[#7E7E7E]"
-									style={{
-										fontSize: 12 * modalScale,
-										lineHeight: 18 * modalScale,
-										includeFontPadding: false,
-									}}
-								>
-									Wähle zuerst die Art aus.
-								</Text>
-							</View>
-							<TouchableOpacity
-								accessibilityLabel="Auswahl schließen"
-								accessibilityRole="button"
-								hitSlop={8}
-								activeOpacity={0.75}
-								onPress={() => setShowCreateTypePicker(false)}
-								className="items-center justify-center rounded-full bg-[#D9D9D9]"
-								style={{
-									width: 40 * modalScale,
-									height: 40 * modalScale,
-									boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-								}}
-							>
-								<X size={24 * modalScale} color="#1A1A1A" strokeWidth={2} />
-							</TouchableOpacity>
-						</View>
-
-						<View
-							className="items-center"
-							style={{ marginTop: 12 * modalScale, rowGap: 24 * modalScale }}
-						>
-							<CreateTypeOption
-								icon={ClipboardEdit}
-								title="Neue Hausaufgabe"
-								description="Fälligkeit, Fach und Lernzeit planen."
-								scale={modalScale}
-								width={modalOptionWidth}
-								onPress={() => selectCreateType("homework")}
-							/>
-							<CreateTypeOption
-								icon={GraduationCap}
-								title="Neue Prüfung"
-								description="Datum, Fach und Prüfungsart eintragen."
-								scale={modalScale}
-								width={modalOptionWidth}
-								onPress={() => selectCreateType("exam")}
-							/>
-						</View>
-					</View>
-				</View>
-			</Modal>
+				onSelect={selectCreateType}
+			/>
 		</View>
 	);
 }

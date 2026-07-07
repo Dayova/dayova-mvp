@@ -5,12 +5,32 @@ import { mutation, query } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 
 const normalizeEmail = (email?: string) => email?.trim().toLowerCase() ?? "";
+const DURATION_OPTIONS = [
+	"10 min",
+	"20 min",
+	"30 min",
+	"45 min",
+	"60 min",
+	"75 min",
+	"90 min",
+	"105 min",
+	"120 min",
+	"135 min",
+	"150 min",
+	"165 min",
+	"180 min",
+] as const;
 type OnboardingQuestionKey =
 	| "studyTime"
 	| "strength"
 	| "challenge"
 	| "goal"
-	| "state";
+	| "state"
+	| "schoolType"
+	| "grade"
+	| "dailySchoolTime"
+	| "studyDays"
+	| "learningTime";
 
 const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	key: OnboardingQuestionKey;
@@ -19,17 +39,14 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	order: number;
 	options?: string[];
 }> = [
+	// This metadata mirrors the mobile onboarding flow. Keep labels exhaustive
+	// and aligned because answers are stored as user-facing strings.
 	{
 		key: "studyTime",
 		prompt: "Wie viel lernst du aktuell pro Tag?",
 		kind: "select" as const,
 		order: 0,
-		options: [
-			"Unter 30 Min.",
-			"30 bis 60 Min.",
-			"1 bis 2 Stunden",
-			"Mehr als 2 Stunden",
-		],
+		options: [...DURATION_OPTIONS],
 	},
 	{
 		key: "strength",
@@ -37,18 +54,38 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 		kind: "select" as const,
 		order: 1,
 		options: [
+			"Mathe",
+			"Geographie",
+			"Kunst",
+			"Physik",
 			"Sprachen",
-			"Mathematik",
-			"Naturwissenschaften",
-			"Kreative Fächer",
+			"Biologie",
+			"Astronomie",
+			"Chemie",
+			"Deutsch",
+			"Politik",
+			"Sport",
+			"Geschichte",
 		],
 	},
 	{
 		key: "challenge",
-		prompt: "Was sind deine größten Baustellen in der Schule",
+		prompt: "Was sind deine größten Baustellen in der Schule?",
 		kind: "select" as const,
 		order: 2,
-		options: ["Konzentration", "Motivation", "Organisation", "Prüfungsstress"],
+		options: [
+			"Mündlich erklären",
+			"Aufschieben",
+			"Rechnen",
+			"Schreiben",
+			"Konzentration",
+			"Motivation",
+			"Vokabeln",
+			"Ablenkung",
+			"Zeitmanagement",
+			"Prüfungsangst",
+			"Organisation",
+		],
 	},
 	{
 		key: "goal",
@@ -57,16 +94,78 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 		order: 3,
 		options: [
 			"Bessere Noten",
-			"Mehr Struktur",
-			"Weniger Stress",
-			"Konstant dranbleiben",
+			"Weniger Aufschieben",
+			"Prüfung sicher bestehen",
+			"Lernlücke schließen",
+			"Mehr Struktur im Lernen",
+			"Dranbleiben",
+			"Besser vorbereitet sein",
 		],
 	},
 	{
 		key: "state",
 		prompt: "Aus welchem Bundesland kommst du?",
-		kind: "input" as const,
+		kind: "select" as const,
 		order: 4,
+		options: [
+			"Bremen",
+			"Hamburg",
+			"Baden-Württemberg",
+			"Sachsen",
+			"Sachsen-Anhalt",
+			"Brandenburg",
+			"Bayern",
+			"Berlin",
+			"Hessen",
+			"Niedersachsen",
+			"Nordrhein-Westfalen",
+			"Rheinland-Pfalz",
+			"Saarland",
+			"Schleswig-Holstein",
+			"Thüringen",
+			"Mecklenburg-Vorpommern",
+		],
+	},
+	{
+		key: "schoolType",
+		prompt: "Welche Schule besuchst du?",
+		kind: "input" as const,
+		order: 5,
+	},
+	{
+		key: "grade",
+		prompt: "Welche Klassenstufe besuchst du?",
+		kind: "select" as const,
+		order: 6,
+		options: ["6", "7", "8", "9", "10", "11", "12"],
+	},
+	{
+		key: "dailySchoolTime",
+		prompt: "Wie viel Zeit willst du pro Tag für die Schule aufwenden?",
+		kind: "select" as const,
+		order: 7,
+		options: [...DURATION_OPTIONS],
+	},
+	{
+		key: "studyDays",
+		prompt: "An welchen Tagen kannst du lernen?",
+		kind: "select" as const,
+		order: 8,
+		options: [
+			"Montag",
+			"Dienstag",
+			"Mittwoch",
+			"Donnerstag",
+			"Freitag",
+			"Samstag",
+			"Sonntag",
+		],
+	},
+	{
+		key: "learningTime",
+		prompt: "Wann ist die beste Uhrzeit für dich zum Lernen?",
+		kind: "input" as const,
+		order: 9,
 	},
 ];
 
@@ -195,6 +294,11 @@ export const saveOnboardingAnswers = mutation({
 			challenge: v.string(),
 			goal: v.string(),
 			state: v.string(),
+			schoolType: v.string(),
+			grade: v.string(),
+			dailySchoolTime: v.string(),
+			studyDays: v.string(),
+			learningTime: v.string(),
 		}),
 	},
 	handler: async (ctx, args) => {

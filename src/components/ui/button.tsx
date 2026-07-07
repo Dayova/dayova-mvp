@@ -1,59 +1,64 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { Platform, Pressable, type ViewStyle } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Platform, Pressable, StyleSheet } from "react-native";
 import { ArrowLeft } from "~/components/ui/icon";
 import { TextClassContext } from "~/components/ui/text";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
+
+const PRIMARY_INTERACTIVE_GRADIENT =
+	DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
+// expo-linear-gradient needs concrete native bounds; NativeWind className
+// interop is intentionally avoided for this functional absolute fill.
+const gradientFillStyle = StyleSheet.absoluteFill;
 
 const buttonVariants = cva(
 	cn(
-		"group h-[64px] shrink-0 flex-row items-center justify-center gap-2 rounded-button px-6 shadow-primary/20 shadow-sm",
+		"group h-14 shrink-0 flex-row items-center justify-center gap-2 overflow-hidden rounded-button px-6 shadow-primary/20 shadow-sm",
 		Platform.select({
-			web: "whitespace-nowrap outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+			web: "whitespace-nowrap outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
 		}),
 	),
 	{
 		variants: {
 			variant: {
 				default: cn(
-					"bg-primary active:bg-primary/90",
-					Platform.select({ web: "hover:bg-primary/90" }),
+					"border-hairline border-white bg-primary active:opacity-90",
+					Platform.select({ web: "hover:opacity-90" }),
 				),
 				neutral: cn(
-					"bg-button-neutral shadow-black/5 active:bg-button-neutral/90",
+					"border-border border-hairline bg-button-neutral shadow-black/5 active:bg-button-neutral/90",
 					Platform.select({ web: "hover:bg-button-neutral/90" }),
 				),
 				destructive: cn(
-					"bg-destructive shadow-black/5 shadow-sm active:bg-destructive/90 dark:bg-destructive/60",
+					"border-border border-hairline bg-button-neutral shadow-black/5 shadow-sm active:bg-button-neutral/90",
 					Platform.select({
-						web: "hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
+						web: "hover:bg-button-neutral/90 focus-visible:ring-destructive/20",
 					}),
 				),
 				outline: cn(
-					"border border-primary/50 bg-background active:bg-accent",
+					"border-border border-hairline bg-button-neutral active:bg-button-neutral/90",
 					Platform.select({
-						web: "hover:bg-accent dark:hover:bg-input/50",
+						web: "hover:bg-button-neutral/90",
 					}),
 				),
 				ghost: cn(
-					"active:bg-accent dark:active:bg-accent/50",
-					Platform.select({ web: "hover:bg-accent dark:hover:bg-accent/50" }),
+					"active:bg-accent",
+					Platform.select({ web: "hover:bg-accent" }),
 				),
 				link: "",
 			},
 			size: {
-				default: cn(
-					"h-[64px] px-6",
-					Platform.select({ web: "has-[>svg]:px-5" }),
-				),
+				default: cn("h-14 px-6", Platform.select({ web: "has-[>svg]:px-5" })),
 				sm: cn(
-					"h-[48px] gap-1.5 rounded-button px-4",
+					"h-12 gap-2 rounded-button px-4",
 					Platform.select({ web: "has-[>svg]:px-3" }),
 				),
 				lg: cn(
-					"h-[64px] rounded-button px-8",
+					"h-14 rounded-button px-8",
 					Platform.select({ web: "has-[>svg]:px-6" }),
 				),
-				icon: "h-[44px] w-[44px]",
+				icon: "h-11 w-11",
 			},
 		},
 		defaultVariants: {
@@ -65,20 +70,17 @@ const buttonVariants = cva(
 
 const buttonTextVariants = cva(
 	cn(
-		"font-poppins font-semibold text-16 text-foreground leading-6",
+		"font-poppins font-semibold text-body-2 text-text",
 		Platform.select({ web: "pointer-events-none transition-colors" }),
 	),
 	{
 		variants: {
 			variant: {
-				default: "text-primary-foreground",
-				neutral: "text-button-neutral-foreground",
+				default: "text-white",
+				neutral: "text-white",
 				destructive: "text-white",
-				outline: cn(
-					"group-active:text-accent-foreground",
-					Platform.select({ web: "group-hover:text-accent-foreground" }),
-				),
-				ghost: "group-active:text-accent-foreground",
+				outline: "text-white",
+				ghost: "group-active:text-primary-strong",
 				link: cn(
 					"text-primary group-active:underline",
 					Platform.select({
@@ -105,17 +107,23 @@ type ButtonProps = React.ComponentProps<typeof Pressable> &
 
 function Button({
 	accessibilityState,
+	children,
 	className,
 	variant,
 	size,
+	style,
 	...props
 }: ButtonProps) {
+	const resolvedVariant = variant ?? "default";
+	const showGradientFill = resolvedVariant === "default";
 	const resolvedAccessibilityState = props.disabled
 		? { ...accessibilityState, disabled: true }
 		: accessibilityState;
 
 	return (
-		<TextClassContext.Provider value={buttonTextVariants({ variant, size })}>
+		<TextClassContext.Provider
+			value={buttonTextVariants({ variant: resolvedVariant, size })}
+		>
 			<Pressable
 				{...props}
 				accessible
@@ -123,11 +131,29 @@ function Button({
 				accessibilityState={resolvedAccessibilityState}
 				className={cn(
 					props.disabled && "opacity-50",
-					buttonVariants({ variant, size }),
+					buttonVariants({ variant: resolvedVariant, size }),
 					className,
 				)}
 				role="button"
-			/>
+				// Style passthrough is reserved for runtime Pressable styles such as
+				// animated or measured values; static styling belongs in className.
+				style={style}
+			>
+				{(state) => (
+					<>
+						{showGradientFill ? (
+							<LinearGradient
+								pointerEvents="none"
+								colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
+								start={PRIMARY_INTERACTIVE_GRADIENT.start}
+								end={PRIMARY_INTERACTIVE_GRADIENT.end}
+								style={gradientFillStyle}
+							/>
+						) : null}
+						{typeof children === "function" ? children(state) : children}
+					</>
+				)}
+			</Pressable>
 		</TextClassContext.Provider>
 	);
 }
@@ -144,34 +170,26 @@ function BackButton({
 	style,
 	...props
 }: BackButtonProps) {
-	const baseStyle: ViewStyle = {
-		width: 48,
-		height: 48,
-		minWidth: 48,
-		minHeight: 48,
-		borderRadius: 24,
-	};
-	const resolvedStyle =
-		typeof style === "function"
-			? (state: Parameters<typeof style>[0]) => [baseStyle, style(state)]
-			: [baseStyle, style];
-
 	return (
 		<Button
 			accessibilityHint="Geht zum vorherigen Schritt oder Bildschirm zurück."
 			accessibilityLabel="Zurück"
 			hitSlop={8}
 			className={cn(
-				"items-center justify-center rounded-full bg-white px-0 shadow-black/10 shadow-sm active:bg-white/80",
-				Platform.select({ web: "hover:bg-white/90" }),
+				"h-12 min-h-12 w-12 min-w-12 items-center justify-center rounded-full bg-card px-0 shadow-black/10 shadow-sm active:bg-card/80",
+				Platform.select({ web: "hover:bg-card/90" }),
 				className,
 			)}
 			variant="ghost"
 			size="icon"
-			style={resolvedStyle}
+			style={style}
 			{...props}
 		>
-			<ArrowLeft size={iconSize} color="#1A1A1A" strokeWidth={strokeWidth} />
+			<ArrowLeft
+				size={iconSize}
+				color={DAYOVA_DESIGN_SYSTEM.colors.text}
+				strokeWidth={strokeWidth}
+			/>
 		</Button>
 	);
 }

@@ -1,54 +1,88 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	ScrollView,
 	TouchableOpacity,
 	View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
-import { ActionModal } from "~/components/ui/action-modal";
 import { Button } from "~/components/ui/button";
-import { Check, CircleAlert, Plus } from "~/components/ui/icon";
+import { Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import {
+	PlanningHintBanner,
 	SectionTitle,
 	SessionCard,
 } from "~/features/learning-plans/learning-plan-ui";
+import {
+	buildPlanGenerationAnswers,
+	LEARNING_TIME_REPLAN_PARAM,
+	shouldReplanAfterLearningTimes,
+} from "~/features/learning-plans/replan-recovery";
 import type {
 	LearningPlanSnapshot,
 	PlanSession,
 } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace } from "~/lib/navigation";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
+const successPath = (
+	id: Id<"learningPlans">,
+	params: {
+		dayKey: string;
+		examDateKey: string;
+		examDateLabel: string;
+		examTime: string;
+	},
+) => {
+	const query = Object.entries(params)
+		.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+		.join("&");
+	return `/learning-plans/${id}/success?${query}` as const;
+};
+
 export default function LearningPlanReviewScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const params = useLocalSearchParams<{ planId?: string }>();
+	const params = useLocalSearchParams<{
+		planId?: string;
+		replan?: string;
+		replanRequest?: string;
+	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const generatePlan = useAction(api.learningPlanAi.generatePlan);
 	const addSession = useMutation(api.learningPlans.addSession);
 	const acceptPlan = useMutation(api.learningPlans.acceptPlan);
 
 	const [isBusy, setIsBusy] = useState(false);
+	const [isReplanning, setIsReplanning] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const [successDayKey, setSuccessDayKey] = useState<string | null>(null);
+	const attemptedReplanKeyRef = useRef<string | null>(null);
 
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;
+	const answerList = useMemo(
+		() => (snapshot ? buildPlanGenerationAnswers(snapshot) : []),
+		[snapshot],
+	);
+	const hasSessions = Boolean(snapshot?.sessions.length);
+	const planActionsDisabled = isBusy || isReplanning || !hasSessions;
 
 	useEffect(() => {
 		if (!planId || !snapshot) return;
@@ -61,16 +95,62 @@ export default function LearningPlanReviewScreen() {
 		}
 	}, [planId, router, snapshot]);
 
-	const runWithErrorHandling = async (
+	useEffect(() => {
+		if (!planId || !snapshot) return;
+		if (!shouldReplanAfterLearningTimes(snapshot, params.replan)) return;
+		const replanAttemptKey = [
+			planId,
+			params.replan,
+			params.replanRequest ?? "",
+		].join(":");
+		if (attemptedReplanKeyRef.current === replanAttemptKey) return;
+
+		attemptedReplanKeyRef.current = replanAttemptKey;
+		setIsReplanning(true);
+		setErrorMessage(null);
+		void generatePlan({
+			learningPlanId: planId,
+			answers: answerList,
+		})
+			.then(() => {
+				if (attemptedReplanKeyRef.current !== replanAttemptKey) return;
+				router.replace(planPath(planId, "review"));
+			})
+			.catch((error: unknown) => {
+				if (attemptedReplanKeyRef.current !== replanAttemptKey) return;
+				setErrorMessage(
+					getErrorMessage(
+						error,
+						"Der Lernplan konnte mit den neuen Lernzeiten nicht aktualisiert werden.",
+					),
+				);
+				router.replace(planPath(planId, "review"));
+			})
+			.finally(() => {
+				if (attemptedReplanKeyRef.current !== replanAttemptKey) return;
+				setIsReplanning(false);
+			});
+	}, [
+		answerList,
+		generatePlan,
+		params.replan,
+		params.replanRequest,
+		planId,
+		router,
+		snapshot,
+	]);
+
+	const runWithErrorHandling = async <TResult,>(
 		fallback: string,
-		task: () => Promise<void>,
-	) => {
+		task: () => Promise<TResult>,
+	): Promise<TResult | null> => {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
-			await task();
+			return await task();
 		} catch (error) {
 			setErrorMessage(getErrorMessage(error, fallback));
+			return null;
 		} finally {
 			setIsBusy(false);
 		}
@@ -82,25 +162,42 @@ export default function LearningPlanReviewScreen() {
 	};
 
 	const acceptGeneratedPlan = async () => {
-		if (!planId || isBusy) return;
+		if (!planId || !snapshot || isBusy || isReplanning) return;
 
-		await runWithErrorHandling(
+		const dayKey = await runWithErrorHandling(
 			"Der Lernplan konnte nicht eingetragen werden.",
-			async () => {
-				const dayKey = await acceptPlan({ learningPlanId: planId });
-				setSuccessDayKey(dayKey);
-			},
+			() => acceptPlan({ learningPlanId: planId }),
+		);
+		if (!dayKey) return;
+
+		router.replace(
+			successPath(planId, {
+				dayKey,
+				examDateKey: snapshot.plan.examDateKey,
+				examDateLabel: snapshot.plan.examDateLabel,
+				examTime: snapshot.plan.examTime,
+			}),
 		);
 	};
 
 	const addRecommendedSession = async () => {
-		if (!planId || isBusy) return;
+		if (!planId || isBusy || isReplanning) return;
 
 		await runWithErrorHandling(
 			"Der zusätzliche Lerntag konnte nicht erstellt werden.",
 			async () => {
 				await addSession({ learningPlanId: planId });
 			},
+		);
+	};
+
+	const openLearningTimes = () => {
+		if (!planId) return;
+		router.push(
+			withReturnTo(
+				ROUTES.learningTimes,
+				`${planPath(planId, "review")}?replan=${LEARNING_TIME_REPLAN_PARAM}&replanRequest=${Date.now()}`,
+			),
 		);
 	};
 
@@ -114,7 +211,7 @@ export default function LearningPlanReviewScreen() {
 	}, [planId, router]);
 
 	return (
-		<View className="flex-1 bg-[#F5F3F6]">
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 			<ScrollView
@@ -134,24 +231,21 @@ export default function LearningPlanReviewScreen() {
 					description="Passe deine Lerntage an und trage den Plan danach in den Kalender ein."
 				/>
 				{snapshot?.plan.planningHint ? (
-					<View
-						className="mb-6 flex-row rounded-[24px] bg-white px-6 py-5"
-						style={{ gap: 14 }}
-					>
-						<CircleAlert size={20} color="#F59E0B" strokeWidth={2.2} />
-						<Text
-							className="flex-1 font-poppins text-[#7A5A12]"
-							style={{
-								fontSize: 13,
-								lineHeight: 20,
-								includeFontPadding: false,
-							}}
-						>
-							{snapshot.plan.planningHint}
-						</Text>
-					</View>
+					<PlanningHintBanner
+						className="mb-6"
+						hint={snapshot.plan.planningHint}
+						onPressLearningTimes={openLearningTimes}
+					/>
 				) : null}
 				<View className="flex-1 gap-6">
+					{isReplanning ? (
+						<View className="items-center rounded-[24px] bg-card px-6 py-6">
+							<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
+							<Text className="mt-3 text-center font-poppins text-body-3 text-text/70">
+								Lernplan wird aktualisiert.
+							</Text>
+						</View>
+					) : null}
 					{snapshot?.sessions.map((session) => (
 						<SessionCard
 							key={session.id}
@@ -161,7 +255,7 @@ export default function LearningPlanReviewScreen() {
 					))}
 				</View>
 				{errorMessage ? (
-					<Text className="mb-4 font-poppins text-12 text-destructive">
+					<Text className="mb-4 font-poppins text-body-4 text-destructive">
 						{errorMessage}
 					</Text>
 				) : null}
@@ -174,23 +268,27 @@ export default function LearningPlanReviewScreen() {
 			>
 				<Button
 					accessibilityLabel={
-						isBusy ? "Lernplan eintragen, wird geladen" : "Lernplan eintragen"
+						isBusy || isReplanning
+							? "Lernplan eintragen, wird geladen"
+							: "Lernplan eintragen"
 					}
-					accessibilityLiveRegion={isBusy ? "polite" : undefined}
+					accessibilityLiveRegion={
+						isBusy || isReplanning ? "polite" : undefined
+					}
 					accessibilityState={{
-						busy: isBusy,
-						disabled: isBusy || !snapshot?.sessions.length,
+						busy: isBusy || isReplanning,
+						disabled: planActionsDisabled,
 					}}
-					disabled={isBusy || !snapshot?.sessions.length}
+					disabled={planActionsDisabled}
 					onPress={acceptGeneratedPlan}
 					variant="neutral"
 					className="h-14 flex-1"
 					style={{ minWidth: 0 }}
 				>
 					{isBusy ? (
-						<ActivityIndicator color="#1A1A1A" />
+						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 					) : (
-						<Text className="font-bold font-poppins text-15 text-text">
+						<Text className="font-poppins font-semibold text-body-3 text-white">
 							Lernplan eintragen
 						</Text>
 					)}
@@ -199,42 +297,24 @@ export default function LearningPlanReviewScreen() {
 					accessibilityLabel="Lerntag hinzufügen"
 					accessibilityRole="button"
 					accessibilityState={{
-						disabled: isBusy || !snapshot?.sessions.length,
+						disabled: planActionsDisabled,
 					}}
 					activeOpacity={0.86}
-					disabled={isBusy || !snapshot?.sessions.length}
+					disabled={planActionsDisabled}
 					onPress={addRecommendedSession}
 					className="h-14 w-14 items-center justify-center rounded-full bg-primary"
 					style={{
-						shadowColor: "#3A7BFF",
+						shadowColor: "#00BAFF",
 						shadowOpacity: 0.32,
 						shadowRadius: 16,
 						shadowOffset: { width: 0, height: 7 },
 						elevation: 5,
-						opacity: isBusy || !snapshot?.sessions.length ? 0.55 : 1,
+						opacity: planActionsDisabled ? 0.55 : 1,
 					}}
 				>
 					<Plus size={28} color="#FFFFFF" strokeWidth={2.4} />
 				</TouchableOpacity>
 			</View>
-
-			<ActionModal
-				visible={Boolean(successDayKey)}
-				title="Lernplan ist eingetragen"
-				description="Dein Lernplan wurde erfolgreich eingetragen."
-				icon={<Check size={48} color="#28C76F" strokeWidth={1.2} />}
-			>
-				<Button
-					className="mt-6 w-full"
-					onPress={() =>
-						router.replace(
-							`/home${successDayKey ? `?dayKey=${encodeURIComponent(successDayKey)}` : ""}`,
-						)
-					}
-				>
-					<Text>Fertig</Text>
-				</Button>
-			</ActionModal>
 		</View>
 	);
 }

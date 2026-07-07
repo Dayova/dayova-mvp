@@ -6,5 +6,7 @@ Confluence is the current cross-functional documentation hub. Keep this file foc
 
 ## Notes
 
+- Registration is password-based: the learner enters an E-Mail address, sets a
+  password, then confirms the account with a 6-digit E-Mail code.
 - Capture auth provider, identity mapping, and authorization decisions here.
 - Put auth ADRs in `docs/contexts/auth/adr/`.

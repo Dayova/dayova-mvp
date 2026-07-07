@@ -94,7 +94,7 @@ export default function LearningPlanAnalysisScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-[#F5F3F6]">
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: false }} />
 			<StatusBar style="dark" />
 			<ScrollView
@@ -109,15 +109,12 @@ export default function LearningPlanAnalysisScreen() {
 				<Header title="Wissensanalyse" onBack={goBack} />
 				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
 					<AnalysisOrbitLoader />
-					<Text
-						className="text-center font-poppins font-semibold text-text"
-						style={{ fontSize: 26, lineHeight: 31 }}
-					>
+					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
 						Beantworte 5 kurze Fragen für deinen persönlichen Lernplan.
 					</Text>
 					{errorMessage ? (
 						<>
-							<Text className="mt-6 text-center font-poppins text-12 text-destructive">
+							<Text className="mt-6 text-center font-poppins text-body-4 text-destructive">
 								{errorMessage}
 							</Text>
 							<Button

@@ -130,7 +130,7 @@ export default function LearningPlanGeneratingScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-[#F5F3F6]">
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: false }} />
 			<StatusBar style="dark" />
 			<ScrollView
@@ -145,15 +145,12 @@ export default function LearningPlanGeneratingScreen() {
 				<Header title="Lernplan" onBack={goBack} />
 				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
 					<AnalysisOrbitLoader />
-					<Text
-						className="text-center font-poppins font-semibold text-text/70"
-						style={{ fontSize: 23, lineHeight: 26 }}
-					>
+					<Text className="text-center font-poppins font-semibold text-heading-2 text-text/70">
 						Aus deinen Antworten erstellen wir deinen persönlichen Lernplan.
 					</Text>
 					{errorMessage ? (
 						<>
-							<Text className="mt-6 text-center font-poppins text-12 text-destructive">
+							<Text className="mt-6 text-center font-poppins text-body-4 text-destructive">
 								{errorMessage}
 							</Text>
 							<Button

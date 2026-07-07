@@ -64,7 +64,9 @@ const formatTime = (date: Date) =>
 function SettingsCard({ children }: { children: React.ReactNode }) {
 	return (
 		<View
-			className="rounded-[24px] bg-white"
+			className="rounded-[24px] bg-card"
+			// Platform-specific card density and native shadow values are not
+			// expressible as a single static NativeWind class here.
 			style={{
 				paddingHorizontal: Platform.OS === "ios" ? 24 : 20,
 				paddingVertical: Platform.OS === "ios" ? 20 : 16,
@@ -84,18 +86,12 @@ function SectionIntro({
 	description?: string;
 }) {
 	return (
-		<View style={{ gap: 6 }}>
-			<Text
-				className="font-bold font-poppins text-[#1A1A1A]"
-				style={{ fontSize: 15, lineHeight: 20, includeFontPadding: false }}
-			>
+		<View className="gap-2">
+			<Text className="font-poppins font-semibold text-body-3 text-text">
 				{title}
 			</Text>
 			{description ? (
-				<Text
-					className="font-poppins text-[#8C8F98]"
-					style={{ fontSize: 12, lineHeight: 17, includeFontPadding: false }}
-				>
+				<Text className="font-poppins text-body-4 text-secondary-text">
 					{description}
 				</Text>
 			) : null}
@@ -126,13 +122,9 @@ const SwitchRow = memo(function SwitchRow({
 }) {
 	return (
 		<SettingsCard>
-			<View
-				className="flex-row items-center justify-between"
-				style={{ gap: 12 }}
-			>
+			<View className="flex-row items-center justify-between gap-3">
 				<Text
-					className="flex-1 font-poppins font-semibold text-[#1A1A1A]"
-					style={{ fontSize: 14, lineHeight: 20, includeFontPadding: false }}
+					className="flex-1 font-poppins font-semibold text-body-3 text-text"
 					numberOfLines={2}
 				>
 					{label}
@@ -366,7 +358,7 @@ export default function NotificationSettingsScreen() {
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
 
 				{preferencesForRender ? (
-					<View style={{ gap: 24 }}>
+					<View className="gap-6">
 						<SwitchRow
 							label="System-Mitteilungen"
 							value={preferencesForRender.systemNotificationsEnabled}
@@ -393,15 +385,8 @@ export default function NotificationSettingsScreen() {
 								}
 								onValueChange={handleDailyBriefingEnabledChange}
 							/>
-							<View style={{ gap: 16 }}>
-								<Text
-									className="font-poppins text-[#8C8F98]"
-									style={{
-										fontSize: 12,
-										lineHeight: 17,
-										includeFontPadding: false,
-									}}
-								>
+							<View className="gap-4">
+								<Text className="font-poppins text-body-4 text-secondary-text">
 									Wähle aus, wann du deinen Tagesüberblick erhalten möchtest.
 								</Text>
 								<TouchableOpacity
@@ -411,9 +396,11 @@ export default function NotificationSettingsScreen() {
 										disabled: areNotificationDetailsDisabled,
 									}}
 									activeOpacity={0.84}
-									className="flex-row items-center justify-between rounded-[24px] bg-white"
+									className="flex-row items-center justify-between rounded-[24px] bg-card"
 									disabled={areNotificationDetailsDisabled}
 									onPress={openBriefingTimePicker}
+									// Platform-specific row density and native shadow values are
+									// runtime/platform decisions, not static design tokens.
 									style={{
 										minHeight: Platform.OS === "ios" ? 64 : 56,
 										paddingHorizontal: Platform.OS === "ios" ? 24 : 20,
@@ -422,25 +409,13 @@ export default function NotificationSettingsScreen() {
 									}}
 								>
 									<Text
-										className="flex-1 font-poppins font-semibold text-[#1A1A1A]"
+										className="flex-1 font-poppins font-semibold text-body-3 text-text"
 										numberOfLines={1}
-										style={{
-											fontSize: 14,
-											lineHeight: 20,
-											includeFontPadding: false,
-										}}
 									>
 										Uhrzeit
 									</Text>
-									<View className="flex-row items-center" style={{ gap: 8 }}>
-										<Text
-											className="font-poppins text-[#8C8F98]"
-											style={{
-												fontSize: 12,
-												lineHeight: 18,
-												includeFontPadding: false,
-											}}
-										>
+									<View className="flex-row items-center gap-2">
+										<Text className="font-poppins text-body-4 text-secondary-text">
 											{preferencesForRender.dailyBriefingTime}
 										</Text>
 										<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
@@ -498,9 +473,11 @@ export default function NotificationSettingsScreen() {
 								accessibilityLabel="Erinnerungszeit ändern"
 								accessibilityState={{ disabled: areReminderOffsetsDisabled }}
 								activeOpacity={0.84}
-								className="flex-row items-center justify-between rounded-[24px] bg-white"
+								className="flex-row items-center justify-between rounded-[24px] bg-card"
 								disabled={areReminderOffsetsDisabled}
 								onPress={openReminderOffsetSheet}
+								// Platform-specific row density and native shadow values are
+								// runtime/platform decisions, not static design tokens.
 								style={{
 									minHeight: Platform.OS === "ios" ? 64 : 56,
 									paddingHorizontal: Platform.OS === "ios" ? 24 : 20,
@@ -509,25 +486,13 @@ export default function NotificationSettingsScreen() {
 								}}
 							>
 								<Text
-									className="flex-1 font-poppins font-semibold text-[#1A1A1A]"
+									className="flex-1 font-poppins font-semibold text-body-3 text-text"
 									numberOfLines={1}
-									style={{
-										fontSize: 14,
-										lineHeight: 20,
-										includeFontPadding: false,
-									}}
 								>
 									Vorher erinnern
 								</Text>
-								<View className="flex-row items-center" style={{ gap: 8 }}>
-									<Text
-										className="font-poppins text-[#8C8F98]"
-										style={{
-											fontSize: 12,
-											lineHeight: 18,
-											includeFontPadding: false,
-										}}
-									>
+								<View className="flex-row items-center gap-2">
+									<Text className="font-poppins text-body-4 text-secondary-text">
 										{preferencesForRender.reminderOffsetMinutes} min
 									</Text>
 									<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
@@ -551,7 +516,7 @@ export default function NotificationSettingsScreen() {
 					</View>
 				) : (
 					<View className="items-center py-10">
-						<ActivityIndicator color="#3A7BFF" />
+						<ActivityIndicator color="#00BAFF" />
 					</View>
 				)}
 			</ScreenScroll>
@@ -575,7 +540,7 @@ export default function NotificationSettingsScreen() {
 				renderOptionIcon={(_, isSelected) => (
 					<Timer
 						size={19}
-						color={isSelected ? "#3A7BFF" : "#6B7280"}
+						color={isSelected ? "#00BAFF" : "#697586"}
 						strokeWidth={2}
 					/>
 				)}

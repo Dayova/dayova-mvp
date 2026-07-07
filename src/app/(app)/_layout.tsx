@@ -7,7 +7,6 @@ export default function AppLayout() {
 			tabBar={(props) => <BottomNav {...props} />}
 			screenOptions={{
 				headerShown: false,
-				sceneStyle: { backgroundColor: "#F6F4F7" },
 			}}
 		>
 			<Tabs.Screen name="home" options={{ title: "Startseite" }} />

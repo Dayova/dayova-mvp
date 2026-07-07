@@ -20,6 +20,7 @@ import {
 	normalizeGeneratedGermanText,
 } from "./generatedGermanText";
 import { repairGeneratedGermanTextFromAsciiShadow } from "./generatedGermanTextRepair";
+import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
@@ -31,6 +32,8 @@ const MAX_GENERATED_TEXT_ATTEMPTS = 3;
 const MODEL_ID = "gemini-3-flash-preview";
 const MIN_LEARNING_SLOT_MINUTES = 10;
 const MAX_GENERATED_SESSIONS = 20;
+const MIN_THEORY_CARD_COUNT = 3;
+const MAX_THEORY_CARD_COUNT = 12;
 const ALTERNATIVE_SLOT_MINUTES = 30;
 const MAX_ALTERNATIVE_SESSIONS = 6;
 const GERMAN_UI_TEXT_RULE =
@@ -39,6 +42,7 @@ const GERMAN_TEXT_SHADOW_RULE =
 	"For every generated German text object, `text` is the visible German text and `asciiShadow` is the exact same wording with only ä->ae, ö->oe, ü->ue, Ä->Ae, Ö->Oe, Ü->Ue, ß->ss transliterated.";
 const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return exactly five short diagnostic questions that reveal what the learning plan needs to cover.`;
 const GENERATED_PLAN_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return a realistic, calendar-ready German learning plan with concrete study sessions.`;
+const BERLIN_TIME_ZONE = "Europe/Berlin";
 
 const vertexProviderOptions = {
 	google: {
@@ -80,6 +84,7 @@ const extensionToMediaType: Record<string, string> = {
 };
 
 const sessionPhaseSchema = z.enum(["theory", "practice", "rehearsal"]);
+type GeneratedSessionPhase = z.infer<typeof sessionPhaseSchema>;
 
 const atMostArray = <TItem extends z.ZodType>(
 	itemSchema: TItem,
@@ -208,6 +213,43 @@ const generatedPlanSchema = z
 		),
 	})
 	.describe(GENERATED_PLAN_OUTPUT_DESCRIPTION);
+
+const _theoryCardsSchema = z
+	.object({
+		cards: boundedArray(
+			z.object({
+				front: germanTextSchema(
+					8,
+					"Front side of an active-recall learning card. It must be a concrete German prompt or question.",
+				),
+				answer: germanTextSchema(
+					20,
+					"Precise German answer for the back side of the learning card.",
+				),
+				example: germanTextSchema(
+					12,
+					"Short German example that shows how the concept appears in a task.",
+				),
+				memoryCue: germanTextSchema(
+					8,
+					"Short German memory cue the learner should remember.",
+				),
+				commonMistake: germanTextSchema(
+					8,
+					"Common German pitfall or misunderstanding to avoid.",
+				),
+				keywords: atMostArray(
+					germanTextSchema(3, "Short German evaluation keyword for this card."),
+					8,
+				),
+			}),
+			MIN_THEORY_CARD_COUNT,
+			MAX_THEORY_CARD_COUNT,
+		),
+	})
+	.describe(
+		`${GERMAN_UI_TEXT_RULE} Return precise active-recall learning cards for a theory session.`,
+	);
 
 type LearningPlanAiContext = {
 	plan: {
@@ -390,13 +432,40 @@ const compactSingleLine = (value: string, maxChars: number) => {
 	return `${compacted}${ellipsis}`;
 };
 
-const fallbackTitleByPhase: Record<
-	z.infer<typeof sessionPhaseSchema>,
-	string
-> = {
+const fallbackTitleByPhase: Record<GeneratedSessionPhase, string> = {
 	theory: "Theorie-Block",
 	practice: "Übungsblock",
-	rehearsal: "Generalprobe",
+	rehearsal: "Praxis",
+};
+
+const fallbackContentByPhase: Record<
+	GeneratedSessionPhase,
+	{ goal: string; tasks: string[]; expectedOutcome: string }
+> = {
+	theory: {
+		goal: "Wiederhole die wichtigsten Grundlagen, damit du die Aufgaben sicher bearbeiten kannst.",
+		tasks: [
+			"Lies deine Notizen zu den zentralen Begriffen.",
+			"Erstelle kurze Beispiele zu den wichtigsten Regeln.",
+		],
+		expectedOutcome: "Du kannst die wichtigsten Grundlagen erklären.",
+	},
+	practice: {
+		goal: "Übe typische Prüfungsaufgaben und kontrolliere deine Lösungswege.",
+		tasks: [
+			"Löse passende Übungsaufgaben unter Prüfungsbedingungen.",
+			"Vergleiche deine Lösung mit den Regeln und korrigiere Fehler.",
+		],
+		expectedOutcome: "Du hast zentrale Aufgabentypen sicher geübt.",
+	},
+	rehearsal: {
+		goal: "Bearbeite eine kurze Generalprobe wie in der Prüfung.",
+		tasks: [
+			"Löse einen kompakten Probetest am Stück.",
+			"Markiere offene Fragen für die letzte Wiederholung.",
+		],
+		expectedOutcome: "Du weißt, welche Punkte vor der Prüfung noch offen sind.",
+	},
 };
 
 const fileExtension = (fileName: string) => {
@@ -540,7 +609,7 @@ const getAvailableDays = (examDateKey: string) => {
 
 const formatDateLabel = (date: Date) =>
 	new Intl.DateTimeFormat("de-DE", {
-		timeZone: "Europe/Berlin",
+		timeZone: BERLIN_TIME_ZONE,
 		day: "numeric",
 		month: "long",
 		year: "numeric",
@@ -572,9 +641,46 @@ const parseTimeToMinutes = (time: string) => {
 	return hours * 60 + minutes;
 };
 
+const berlinDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+	timeZone: BERLIN_TIME_ZONE,
+	year: "numeric",
+	month: "2-digit",
+	day: "2-digit",
+	hour: "2-digit",
+	minute: "2-digit",
+	hourCycle: "h23",
+});
+
+const getBerlinDateTime = (date: Date) => {
+	const partsByType = Object.fromEntries(
+		berlinDateTimeFormatter
+			.formatToParts(date)
+			.map((part) => [part.type, part.value]),
+	) as Record<string, string | undefined>;
+	const hour = Number(partsByType.hour ?? 0);
+	const minute = Number(partsByType.minute ?? 0);
+
+	return {
+		dateKey: `${partsByType.year}-${partsByType.month}-${partsByType.day}`,
+		minutes: hour * 60 + minute,
+	};
+};
+
+type BerlinDateTime = ReturnType<typeof getBerlinDateTime>;
+
+const isFutureLearningSlot = (
+	dateKey: string,
+	startMinutes: number,
+	nowBerlin: BerlinDateTime,
+) => {
+	if (dateKey > nowBerlin.dateKey) return true;
+	if (dateKey < nowBerlin.dateKey) return false;
+	return startMinutes > nowBerlin.minutes;
+};
+
 const getBerlinDayOfWeek = (date: Date) => {
 	const value = new Intl.DateTimeFormat("en-US", {
-		timeZone: "Europe/Berlin",
+		timeZone: BERLIN_TIME_ZONE,
 		weekday: "short",
 	}).format(date);
 
@@ -675,6 +781,7 @@ const buildAlternativeLearningSlots = (
 	windowsByDay: Map<number, LearningTimeWindow[]>,
 	occupiedIntervalsByDay: Map<string, Array<{ start: number; end: number }>>,
 	neededMinutes: number,
+	nowBerlin: BerlinDateTime,
 ) => {
 	const slots: LearningSlot[] = [];
 	let remainingMinutes = neededMinutes;
@@ -717,6 +824,10 @@ const buildAlternativeLearningSlots = (
 					end: candidateStart + durationMinutes,
 				};
 				if (candidate.end > 22 * 60) break;
+				if (!isFutureLearningSlot(dateKey, candidate.start, nowBerlin)) {
+					candidateStart += ALTERNATIVE_SLOT_MINUTES;
+					continue;
+				}
 				if (
 					occupiedIntervals.some((interval) =>
 						overlapsInterval(candidate, interval),
@@ -773,6 +884,7 @@ const buildLearningSlots = (
 	}
 
 	const occupiedIntervalsByDay = getOccupiedIntervalsByDay(occupiedEntries);
+	const nowBerlin = getBerlinDateTime(new Date());
 	const slots: LearningSlot[] = [];
 	for (let offset = availableDays; offset >= 1; offset -= 1) {
 		const date = buildDateFromOffset(examDateKey, offset);
@@ -795,6 +907,9 @@ const buildLearningSlots = (
 				endMinutes,
 				occupiedIntervalsByDay.get(dateKey) ?? [],
 			)) {
+				if (!isFutureLearningSlot(dateKey, interval.start, nowBerlin)) {
+					continue;
+				}
 				slots.push({
 					date,
 					dateKey,
@@ -818,6 +933,7 @@ const buildLearningSlots = (
 				windowsByDay,
 				occupiedIntervalsByDay,
 				remainingMinutes,
+				nowBerlin,
 			),
 		);
 	}
@@ -874,6 +990,27 @@ const distributeSessionOffsets = (
 	});
 };
 
+const buildRequiredPhaseSequence = (
+	sessionCount: number,
+	sessions: z.infer<typeof generatedPlanSchema>["sessions"],
+): GeneratedSessionPhase[] | undefined => {
+	if (sessionCount < 2) return undefined;
+
+	const generatedPhases = new Set(sessions.map((session) => session.phase));
+	const needsPractice = !generatedPhases.has("practice");
+	const needsRehearsal = sessionCount >= 3 && !generatedPhases.has("rehearsal");
+	const allTheory = [...generatedPhases].every((phase) => phase === "theory");
+	if (!needsPractice && !needsRehearsal && !allTheory) return undefined;
+
+	if (sessionCount === 2) return ["theory", "practice"];
+
+	return Array.from({ length: sessionCount }, (_, index) => {
+		if (index === 0) return "theory";
+		if (index === sessionCount - 1) return "rehearsal";
+		return "practice";
+	});
+};
+
 const normalizeSessions = (
 	examDateKey: string,
 	availableDays: number,
@@ -902,36 +1039,54 @@ const normalizeSessions = (
 			preferredDateKey: formatDateKey(
 				buildDateFromOffset(examDateKey, distributedOffsets[index] ?? 0),
 			),
+			remainingMinutes: session.durationMinutes,
 		}))
 		.sort((left, right) =>
 			left.preferredDateKey.localeCompare(right.preferredDateKey),
 		);
 
-	const normalizedSessions = slots
-		.slice(0, MAX_GENERATED_SESSIONS)
+	const selectedSlots = slots.slice(0, MAX_GENERATED_SESSIONS);
+	const requiredPhaseSequence = buildRequiredPhaseSequence(
+		selectedSlots.length,
+		sessions,
+	);
+	const normalizedSessions = selectedSlots
 		.map((slot, index) => {
-			const source =
-				prioritizedSessions.find(
-					(item) => item.preferredDateKey <= slot.dateKey,
-				)?.session ??
-				prioritizedSessions[index % Math.max(prioritizedSessions.length, 1)]
-					?.session ??
-				sessions[index % Math.max(sessions.length, 1)];
-			const phase = source?.phase ?? "practice";
 			const durationMinutes = slot.endMinutes - slot.startMinutes;
+			const sourceState =
+				prioritizedSessions.find(
+					(item) =>
+						item.remainingMinutes > 0 && item.preferredDateKey <= slot.dateKey,
+				) ??
+				prioritizedSessions.find((item) => item.remainingMinutes > 0) ??
+				prioritizedSessions[index % Math.max(prioritizedSessions.length, 1)];
+			if (sourceState) {
+				sourceState.remainingMinutes = Math.max(
+					0,
+					sourceState.remainingMinutes - durationMinutes,
+				);
+			}
+			const source =
+				sourceState?.session ?? sessions[index % Math.max(sessions.length, 1)];
+			const sourcePhase = source?.phase ?? "practice";
+			const phase = requiredPhaseSequence?.[index] ?? sourcePhase;
+			const fallbackContent = fallbackContentByPhase[phase];
+			const useFallbackContent = !source || phase !== sourcePhase;
+			const title = useFallbackContent
+				? fallbackTitleByPhase[phase]
+				: normalizeAiGeneratedGermanText(source.title);
+			const tasks = useFallbackContent
+				? fallbackContent.tasks
+				: source.tasks
+						.map((task) => normalizeAiGeneratedGermanText(task).trim())
+						.filter(Boolean);
 			return {
 				phase,
 				title:
 					compactSingleLine(
 						slot.isAlternative
-							? `Alternative: ${
-									source
-										? normalizeAiGeneratedGermanText(source.title)
-										: fallbackTitleByPhase[phase]
-								}`
-							: source
-								? normalizeAiGeneratedGermanText(source.title)
-								: fallbackTitleByPhase[phase],
+							? `Alternative: ${title || fallbackTitleByPhase[phase]}`
+							: title || fallbackTitleByPhase[phase],
 						MAX_SESSION_TITLE_CHARS,
 					) || fallbackTitleByPhase[phase],
 				dateKey: slot.date.toISOString(),
@@ -939,19 +1094,16 @@ const normalizeSessions = (
 				startTime: formatTimeFromMinutes(slot.startMinutes),
 				durationMinutes,
 				goal:
-					(source ? normalizeAiGeneratedGermanText(source.goal).trim() : "") ||
-					"Nutze diese Lernzeit, um dich gezielt auf die Prüfung vorzubereiten.",
-				tasks: source?.tasks
-					.map((task) => normalizeAiGeneratedGermanText(task).trim())
-					.filter(Boolean) ?? [
-					"Wiederhole die wichtigsten Begriffe.",
-					"Löse eine passende Übungsaufgabe.",
-				],
+					(useFallbackContent
+						? fallbackContent.goal
+						: normalizeAiGeneratedGermanText(source.goal).trim()) ||
+					fallbackContent.goal,
+				tasks: tasks.length > 0 ? tasks : fallbackContent.tasks,
 				expectedOutcome:
-					(source
-						? normalizeAiGeneratedGermanText(source.expectedOutcome).trim()
-						: "") ||
-					"Du hast einen konkreten Fortschritt für die Prüfung gemacht.",
+					(useFallbackContent
+						? fallbackContent.expectedOutcome
+						: normalizeAiGeneratedGermanText(source.expectedOutcome).trim()) ||
+					fallbackContent.expectedOutcome,
 			};
 		})
 		.sort((left, right) => left.dateKey.localeCompare(right.dateKey));
@@ -979,7 +1131,7 @@ const normalizeSessions = (
 	);
 	const availabilityHint =
 		learningTimes.length === 0
-			? "Keine Lernzeiten hinterlegt."
+			? MISSING_LEARNING_TIMES_HINT
 			: hasAlternativeSessions
 				? "Lernzeiten belegt. Alternativen vorgeschlagen."
 				: busyLearningTimeMinutes > 0
@@ -1077,13 +1229,51 @@ const describeLearningTimes = (learningTimes: LearningTimeWindow[]) => {
 
 	return learningTimes
 		.slice()
-		.sort((left, right) => left.dayOfWeek - right.dayOfWeek)
+		.sort(
+			(left, right) =>
+				left.dayOfWeek - right.dayOfWeek ||
+				left.startTime.localeCompare(right.startTime) ||
+				left.endTime.localeCompare(right.endTime),
+		)
 		.map(
 			(time) =>
 				`${dayLabels[time.dayOfWeek] ?? "Lerntag"} ${time.startTime}-${time.endTime}`,
 		)
 		.join("\n");
 };
+
+const _getTheoryCardTargetCount = (durationMinutes: number) =>
+	Math.max(
+		MIN_THEORY_CARD_COUNT,
+		Math.min(MAX_THEORY_CARD_COUNT, Math.ceil(durationMinutes / 6)),
+	);
+
+const _formatStoredKnowledgeAnswers = (
+	questions: Array<{ id: string; prompt: string; targetInsight: string }> = [],
+	answers: Array<{ questionId: string; answer: string }> = [],
+) => {
+	if (questions.length === 0)
+		return "Keine Wissensanalyse-Antworten gespeichert.";
+
+	const answersByQuestion = new Map(
+		answers.map((answer) => [answer.questionId, answer.answer.trim()]),
+	);
+
+	return questions
+		.map((question, index) => {
+			const answer = answersByQuestion.get(question.id) || "Keine Antwort";
+			return `${index + 1}. Frage: ${question.prompt}\nAntwort: ${answer}\nAnalyseziel: ${question.targetInsight}`;
+		})
+		.join("\n\n");
+};
+
+const keywordPattern = /[\p{L}\p{N}]+/gu;
+const _compactKeyword = (value: string) =>
+	normalizeGeneratedGermanText(value)
+		.toLowerCase()
+		.match(keywordPattern)
+		?.slice(0, 3)
+		.join(" ") ?? "";
 
 export const generateKnowledgeQuestions = action({
 	args: {

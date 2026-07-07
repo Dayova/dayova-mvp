@@ -1,4 +1,3 @@
-import { api } from "#convex/_generated/api";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -10,11 +9,13 @@ import {
 	Pressable,
 	View,
 } from "react-native";
+import { api } from "#convex/_generated/api";
+import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import {
-	DateTimePickerSheet,
 	type DateTimePickerEvent,
+	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
 import {
 	Field,
@@ -27,6 +28,9 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { dismissToOrReplace } from "~/lib/navigation";
+import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 const LEARNING_DAYS = [
@@ -41,6 +45,12 @@ const LEARNING_DAYS = [
 
 type LearningDayLabel = (typeof LEARNING_DAYS)[number]["label"];
 type TimeField = "start" | "end";
+type LearningTimeDraft = {
+	baseKey: string;
+	selectedDay?: LearningDayLabel;
+	startTime?: string;
+	endTime?: string;
+};
 
 const DEFAULT_START_TIME = "17:00";
 const DEFAULT_END_TIME = "17:30";
@@ -77,22 +87,23 @@ function TimeControl({
 			accessibilityLabel={`${label}: ${value}`}
 			accessibilityRole="button"
 			onPress={onPress}
-			className="h-[54px] flex-1 flex-row items-center justify-between rounded-[27px] bg-white px-5 shadow-black/10 shadow-sm active:opacity-80"
+			className="h-[54px] flex-1 flex-row items-center justify-between rounded-[27px] bg-card px-5 shadow-black/10 shadow-sm active:opacity-80"
 		>
-			<Text
-				className="font-poppins text-[#7D8089]"
-				style={{ fontSize: 14, lineHeight: 19, includeFontPadding: false }}
-			>
+			<Text className="font-poppins text-body-3 text-secondary-text">
 				{value}
 			</Text>
-			<Timer size={19} color="#9A9DA5" strokeWidth={1.9} />
+			<Timer size={19} color="#697586" strokeWidth={1.9} />
 		</Pressable>
 	);
 }
 
 export default function LearningTimesScreen() {
 	const router = useRouter();
-	const params = useLocalSearchParams<{ day?: string }>();
+	const params = useLocalSearchParams<{
+		day?: string;
+		id?: string;
+		returnTo?: string;
+	}>();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningTimes = useQuery(
@@ -105,37 +116,55 @@ export default function LearningTimesScreen() {
 	const initialDay =
 		LEARNING_DAYS.find((day) => String(day.value) === params.day)?.label ??
 		"Montag";
-	const [selectedDay, setSelectedDay] = useState<LearningDayLabel>(initialDay);
-	const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
-	const [endTime, setEndTime] = useState(DEFAULT_END_TIME);
+	const [draft, setDraft] = useState<LearningTimeDraft>({ baseKey: "" });
 	const [daySheetVisible, setDaySheetVisible] = useState(false);
 	const [activeTimeField, setActiveTimeField] = useState<TimeField | null>(
 		null,
 	);
 	const [isSaving, setIsSaving] = useState(false);
 	const [feedback, setFeedback] = useState<string | null>(null);
+	const returnTo = getSafeReturnTo(params.returnTo);
+	const overviewPath = withReturnTo(ROUTES.learningTimes, returnTo);
+	const learningTimeId = params.id as Id<"userLearningTimes"> | undefined;
+	const isEditingExisting = Boolean(learningTimeId);
 
+	const selectedEntry = useMemo(
+		() => learningTimes?.find((entry) => entry.id === learningTimeId),
+		[learningTimeId, learningTimes],
+	);
+	const selectedEntryKey = selectedEntry
+		? `${selectedEntry.id}:${selectedEntry.dayOfWeek}:${selectedEntry.startTime}:${selectedEntry.endTime}`
+		: null;
+	const formBaseKey =
+		selectedEntryKey ??
+		(learningTimeId ? `missing:${learningTimeId}` : `new:${params.day ?? ""}`);
+	const currentDraft = draft.baseKey === formBaseKey ? draft : null;
+	const selectedEntryDay =
+		selectedEntry &&
+		(LEARNING_DAYS.find((day) => day.value === selectedEntry.dayOfWeek)
+			?.label ??
+			"Montag");
+	const selectedDay =
+		currentDraft?.selectedDay ?? selectedEntryDay ?? initialDay;
 	const selectedDayValue =
 		LEARNING_DAYS.find((day) => day.label === selectedDay)?.value ?? 1;
-	const selectedEntry = useMemo(
-		() => learningTimes?.find((entry) => entry.dayOfWeek === selectedDayValue),
-		[learningTimes, selectedDayValue],
-	);
+	const startTime =
+		currentDraft?.startTime ?? selectedEntry?.startTime ?? DEFAULT_START_TIME;
+	const endTime =
+		currentDraft?.endTime ?? selectedEntry?.endTime ?? DEFAULT_END_TIME;
 
-	const currentEntryKey = selectedEntry
-		? `${selectedEntry.dayOfWeek}:${selectedEntry.startTime}:${selectedEntry.endTime}`
-		: `${selectedDayValue}:empty`;
-	const [appliedEntryKey, setAppliedEntryKey] = useState(currentEntryKey);
-
-	if (appliedEntryKey !== currentEntryKey) {
-		setAppliedEntryKey(currentEntryKey);
-		setStartTime(selectedEntry?.startTime ?? DEFAULT_START_TIME);
-		setEndTime(selectedEntry?.endTime ?? DEFAULT_END_TIME);
+	const updateDraft = (patch: Omit<Partial<LearningTimeDraft>, "baseKey">) => {
+		setDraft((current) => ({
+			...(current.baseKey === formBaseKey ? current : {}),
+			...patch,
+			baseKey: formBaseKey,
+		}));
 		setFeedback(null);
-	}
+	};
 
 	const hasChanges =
-		!selectedEntry ||
+		!isEditingExisting ||
+		selectedDayValue !== selectedEntry?.dayOfWeek ||
 		startTime !== (selectedEntry?.startTime ?? DEFAULT_START_TIME) ||
 		endTime !== (selectedEntry?.endTime ?? DEFAULT_END_TIME);
 	const canRemove = Boolean(selectedEntry) && !isSaving;
@@ -144,7 +173,8 @@ export default function LearningTimesScreen() {
 		parseTimeToMinutes(endTime) > parseTimeToMinutes(startTime) &&
 		!isSaving &&
 		Boolean(user) &&
-		isConvexAuthenticated;
+		isConvexAuthenticated &&
+		(!isEditingExisting || Boolean(selectedEntry));
 
 	const goBack = () => {
 		if (router.canGoBack()) {
@@ -152,7 +182,11 @@ export default function LearningTimesScreen() {
 			return;
 		}
 
-		router.replace("/learning-times");
+		router.replace(overviewPath);
+	};
+
+	const closeToOverview = () => {
+		dismissToOrReplace(router, overviewPath);
 	};
 
 	const updateTime = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -160,11 +194,10 @@ export default function LearningTimesScreen() {
 
 		const nextTime = formatTime(selectedDate);
 		if (activeTimeField === "start") {
-			setStartTime(nextTime);
+			updateDraft({ startTime: nextTime });
 		} else {
-			setEndTime(nextTime);
+			updateDraft({ endTime: nextTime });
 		}
-		setFeedback(null);
 		if (Platform.OS === "android") setActiveTimeField(null);
 	};
 
@@ -181,11 +214,12 @@ export default function LearningTimesScreen() {
 		setFeedback(null);
 		try {
 			await saveLearningTime({
+				id: selectedEntry?.id,
 				dayOfWeek: selectedDayValue,
 				startTime,
 				endTime,
 			});
-			router.replace("/learning-times");
+			closeToOverview();
 		} catch (error) {
 			Alert.alert(
 				"Lernzeit konnte nicht gespeichert werden",
@@ -199,14 +233,14 @@ export default function LearningTimesScreen() {
 	};
 
 	const remove = async () => {
+		if (!selectedEntry) return;
+
 		setIsSaving(true);
 		setFeedback(null);
 		try {
-			await removeLearningTime({ dayOfWeek: selectedDayValue });
-			setStartTime(DEFAULT_START_TIME);
-			setEndTime(DEFAULT_END_TIME);
+			await removeLearningTime({ id: selectedEntry.id });
 			setFeedback("Lernzeit entfernt.");
-			router.replace("/learning-times");
+			closeToOverview();
 		} catch (error) {
 			Alert.alert(
 				"Lernzeit konnte nicht entfernt werden",
@@ -228,12 +262,14 @@ export default function LearningTimesScreen() {
 				title="Lerntag auswählen"
 				options={LEARNING_DAYS.map((day) => day.label)}
 				selectedValue={selectedDay}
-				onSelect={setSelectedDay}
+				onSelect={(nextDay) =>
+					updateDraft({ selectedDay: nextDay as LearningDayLabel })
+				}
 				onClose={() => setDaySheetVisible(false)}
 				renderOptionIcon={(_option, isSelected) => (
 					<CalendarDays
 						size={19}
-						color={isSelected ? "#3A7BFF" : "#6B7280"}
+						color={isSelected ? "#00BAFF" : "#697586"}
 						strokeWidth={2}
 					/>
 				)}
@@ -248,25 +284,11 @@ export default function LearningTimesScreen() {
 				<Header title="Lernzeiten" onBack={goBack} />
 
 				<View style={{ marginTop: 18, rowGap: 22 }}>
-					<View style={{ rowGap: 7 }}>
-						<Text
-							className="font-poppins font-semibold text-[#202127]"
-							style={{
-								fontSize: 16,
-								lineHeight: 22,
-								includeFontPadding: false,
-							}}
-						>
+					<View className="gap-2">
+						<Text className="font-poppins font-semibold text-body-2 text-text">
 							Lernzeit bearbeiten
 						</Text>
-						<Text
-							className="font-poppins text-[#979AA3]"
-							style={{
-								fontSize: 14,
-								lineHeight: 20,
-								includeFontPadding: false,
-							}}
-						>
+						<Text className="font-poppins text-body-3 text-secondary-text">
 							Passe deine Lernzeiten so an, wie sie für dich passen.
 						</Text>
 					</View>
@@ -283,33 +305,19 @@ export default function LearningTimesScreen() {
 									boxShadow: "0 1px 4px rgba(0, 0, 0, 0.08)",
 								}}
 							>
-								<Text
-									className="flex-1 font-medium font-poppins text-[#202127]"
-									style={{
-										fontSize: 18,
-										lineHeight: 24,
-										includeFontPadding: false,
-									}}
-								>
+								<Text className="flex-1 font-poppins font-semibold text-body-1 text-text">
 									Lerntag
 								</Text>
-								<Text
-									className="font-poppins text-[#8C8F98]"
-									style={{
-										fontSize: 18,
-										lineHeight: 24,
-										includeFontPadding: false,
-									}}
-								>
+								<Text className="font-poppins text-body-1 text-secondary-text">
 									{selectedDay}
 								</Text>
 								<FieldAccessory>
-									<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
+									<ChevronDown size={20} color="#1A1A1A" strokeWidth={2.1} />
 								</FieldAccessory>
 							</FieldTrigger>
 						</Field>
 
-						<View className="flex-row" style={{ gap: 8 }}>
+						<View className="flex-row gap-2">
 							<TimeControl
 								label="Startzeit"
 								value={startTime}
@@ -325,19 +333,12 @@ export default function LearningTimesScreen() {
 
 					{learningTimes === undefined ? (
 						<View className="items-center py-4">
-							<ActivityIndicator color="#3A7BFF" />
+							<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
 						</View>
 					) : null}
 
 					{feedback ? (
-						<Text
-							className="font-poppins text-[#3A7BFF]"
-							style={{
-								fontSize: 13,
-								lineHeight: 19,
-								includeFontPadding: false,
-							}}
-						>
+						<Text className="font-poppins text-body-4 text-primary">
 							{feedback}
 						</Text>
 					) : null}
@@ -346,8 +347,7 @@ export default function LearningTimesScreen() {
 
 			<View
 				pointerEvents="box-none"
-				className="absolute right-0 bottom-5 left-0 flex-row px-6 pb-16"
-				style={{ gap: 10 }}
+				className="absolute right-0 bottom-5 left-0 flex-row gap-3 px-6 pb-16"
 			>
 				<Button
 					variant="neutral"
@@ -355,7 +355,11 @@ export default function LearningTimesScreen() {
 					disabled={!canRemove}
 					onPress={remove}
 				>
-					<Trash2 size={18} color="#202127" strokeWidth={2} />
+					<Trash2
+						size={18}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={2}
+					/>
 					<Text>Entfernen</Text>
 				</Button>
 				<Button className="flex-1" disabled={!canSave} onPress={save}>

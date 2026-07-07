@@ -31,6 +31,9 @@ type RegisterInput = {
 	name?: string;
 	phone?: string;
 	birthDate?: string;
+	grade?: string;
+	schoolType?: string;
+	state?: string;
 };
 
 type UpdateProfileInput = {
@@ -74,6 +77,8 @@ interface AuthContextType {
 	user: AuthUser | null;
 	isLoading: boolean;
 	isSessionLoading: boolean;
+	isConvexAuthenticated: boolean;
+	isPostAuthSyncing: boolean;
 	pendingVerification: PendingVerification | null;
 	login: (input: LoginInput) => Promise<AuthFlowResult>;
 	register: (input: RegisterInput) => Promise<AuthFlowResult>;
@@ -318,6 +323,28 @@ const getAuthFactorList = (factors: unknown) => {
 
 const wait = (milliseconds: number) =>
 	new Promise((resolve) => setTimeout(resolve, milliseconds));
+const authSettleRetryDelays = [0, 750, 1250, 2000] as const;
+const runWithAuthSettleRetries = async <TResult,>(
+	task: () => Promise<TResult>,
+): Promise<
+	| { ok: true; value: TResult }
+	| { ok: false; firstError: unknown; lastError: unknown }
+> => {
+	let firstError: unknown;
+	let lastError: unknown;
+
+	for (const delay of authSettleRetryDelays) {
+		try {
+			if (delay > 0) await wait(delay);
+			return { ok: true, value: await task() };
+		} catch (error) {
+			firstError ??= error;
+			lastError = error;
+		}
+	}
+
+	return { ok: false, firstError, lastError };
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	children,
@@ -347,6 +374,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	);
 	const [pendingProfileEmail, setPendingProfileEmail] =
 		useState<PendingProfileEmail | null>(null);
+	const [isProfileSyncing, setIsProfileSyncing] = useState(false);
+	const [isOnboardingAnswersSyncing, setIsOnboardingAnswersSyncing] =
+		useState(false);
+	const [syncedClerkUserId, setSyncedClerkUserId] = useState<string | null>(
+		null,
+	);
 
 	const user = useMemo<AuthUser | null>(() => {
 		if (!clerkUser) return null;
@@ -395,6 +428,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	useEffect(() => {
 		if (!user || !isConvexAuthenticated) return;
 
+		let cancelled = false;
+
 		const profile = {
 			...definedProfileFields({
 				name: pendingProfile?.name ?? user.name,
@@ -410,25 +445,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				: {}),
 		};
 
-		void syncCurrentUser(profile).catch(async (error: unknown) => {
-			// Convex auth can lag behind Clerk briefly during session activation.
-			await wait(750);
+		void (async () => {
+			setIsProfileSyncing(true);
+			setSyncedClerkUserId(null);
 			try {
-				await syncCurrentUser(profile);
-			} catch (retryError) {
+				const result = await runWithAuthSettleRetries(() =>
+					syncCurrentUser(profile),
+				);
+				if (result.ok) {
+					if (!cancelled) setSyncedClerkUserId(user.clerkId);
+					return;
+				}
 				logDiagnosticError(
 					"Failed to sync authenticated user profile.",
-					retryError,
+					result.lastError,
 					{ source: "auth.syncCurrentUser", level: "warn" },
 				);
-				if (retryError !== error) {
-					logDiagnosticError("Initial user profile sync error.", error, {
-						source: "auth.syncCurrentUser.initial",
-						level: "warn",
-					});
+				if (result.lastError !== result.firstError) {
+					logDiagnosticError(
+						"Initial user profile sync error.",
+						result.firstError,
+						{
+							source: "auth.syncCurrentUser.initial",
+							level: "warn",
+						},
+					);
 				}
+			} finally {
+				if (!cancelled) setIsProfileSyncing(false);
 			}
-		});
+		})();
+
+		return () => {
+			cancelled = true;
+		};
 	}, [isConvexAuthenticated, pendingProfile, syncCurrentUser, user]);
 
 	const captureOnboardingCompleted = useCallback(async () => {
@@ -460,48 +510,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	}, [markValidationActivity, posthog, user]);
 
 	useEffect(() => {
-		if (!user || !isConvexAuthenticated || !hasAnswers) return;
+		if (
+			!user ||
+			!isConvexAuthenticated ||
+			syncedClerkUserId !== user.clerkId ||
+			!hasAnswers
+		)
+			return;
 
-		void saveOnboardingAnswers({
-			answers: {
-				studyTime: onboardingAnswers.studyTime,
-				strength: onboardingAnswers.strength,
-				challenge: onboardingAnswers.challenge,
-				goal: onboardingAnswers.goal,
-				state: onboardingAnswers.state,
-			},
-		})
-			.then(() => {
-				void captureOnboardingCompleted();
-				clearAnswers();
-			})
-			.catch(async (error: unknown) => {
-				await wait(750);
-				try {
-					await saveOnboardingAnswers({
-						answers: {
-							studyTime: onboardingAnswers.studyTime,
-							strength: onboardingAnswers.strength,
-							challenge: onboardingAnswers.challenge,
-							goal: onboardingAnswers.goal,
-							state: onboardingAnswers.state,
-						},
-					});
-					void captureOnboardingCompleted();
-					clearAnswers();
-				} catch (retryError) {
-					logDiagnosticError("Failed to save onboarding answers.", retryError, {
+		let cancelled = false;
+		const answers = {
+			studyTime: onboardingAnswers.studyTime,
+			strength: onboardingAnswers.strength,
+			challenge: onboardingAnswers.challenge,
+			goal: onboardingAnswers.goal,
+			state: onboardingAnswers.state,
+			schoolType: onboardingAnswers.schoolType,
+			grade: onboardingAnswers.grade,
+			dailySchoolTime: onboardingAnswers.dailySchoolTime,
+			studyDays: onboardingAnswers.studyDays,
+			learningTime: onboardingAnswers.learningTime,
+		};
+
+		void (async () => {
+			setIsOnboardingAnswersSyncing(true);
+			try {
+				const result = await runWithAuthSettleRetries(() =>
+					saveOnboardingAnswers({ answers }),
+				);
+				if (result.ok) {
+					if (!cancelled) {
+						void captureOnboardingCompleted();
+						clearAnswers();
+					}
+					return;
+				}
+				logDiagnosticError(
+					"Failed to save onboarding answers.",
+					result.lastError,
+					{
 						source: "auth.saveOnboardingAnswers",
 						level: "warn",
-					});
-					if (retryError !== error) {
-						logDiagnosticError("Initial onboarding answer save error.", error, {
+					},
+				);
+				if (result.lastError !== result.firstError) {
+					logDiagnosticError(
+						"Initial onboarding answer save error.",
+						result.firstError,
+						{
 							source: "auth.saveOnboardingAnswers.initial",
 							level: "warn",
-						});
-					}
+						},
+					);
 				}
-			});
+			} finally {
+				if (!cancelled) setIsOnboardingAnswersSyncing(false);
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
 	}, [
 		clearAnswers,
 		captureOnboardingCompleted,
@@ -509,6 +578,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		isConvexAuthenticated,
 		onboardingAnswers,
 		saveOnboardingAnswers,
+		syncedClerkUserId,
 		user,
 	]);
 
@@ -632,6 +702,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				name: input.name?.trim(),
 				phone: input.phone?.trim(),
 				birthDate: input.birthDate,
+				grade: input.grade?.trim(),
+				schoolType: input.schoolType?.trim(),
+				state: input.state?.trim(),
 			};
 			const { firstName, lastName } = splitName(profile.name);
 
@@ -884,6 +957,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		setPendingVerification(null);
 		setPendingLoginStage(null);
 		setPendingProfile(null);
+		setSyncedClerkUserId(null);
 		await clerk.signOut();
 	};
 
@@ -896,6 +970,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				user,
 				isLoading,
 				isSessionLoading,
+				isConvexAuthenticated,
+				isPostAuthSyncing:
+					Boolean(user) && (isProfileSyncing || isOnboardingAnswersSyncing),
 				pendingVerification,
 				login,
 				register,
