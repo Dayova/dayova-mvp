@@ -848,11 +848,8 @@ export default function LearningPlansScreen() {
 
 					<TouchableOpacity
 						accessibilityRole="button"
-						accessibilityLabel={
-							activeTab === "homework"
-								? "Hausaufgabe erstellen"
-								: "Lernplan erstellen"
-						}
+            accessibilityLabel="Neuen Eintrag erstellen."
+            accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
 						activeOpacity={0.88}
 						onPress={openCreateTypePicker}
 						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
@@ -907,7 +904,7 @@ export default function LearningPlansScreen() {
 								</Text>
 								<Button
 									accessibilityLabel="Lernplan erstellen"
-									onPress={openCreateTypePicker}
+									onPress={() => router.push(ROUTES.createExam)}
 									size="sm"
 									className="mt-2"
 								>
