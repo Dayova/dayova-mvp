@@ -12,6 +12,7 @@ import {
 	useState,
 } from "react";
 import {
+	type FlatList,
 	Image,
 	Keyboard,
 	KeyboardAvoidingView,
@@ -19,7 +20,6 @@ import {
 	Pressable,
 	ScrollView,
 	TextInput,
-	type FlatList,
 	type TextInputProps,
 	useWindowDimensions,
 	View,
@@ -29,11 +29,11 @@ import Animated, {
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
+	interpolate,
 	LinearTransition,
 	type SharedValue,
-	interpolate,
-	useAnimatedStyle,
 	useAnimatedScrollHandler,
+	useAnimatedStyle,
 	useSharedValue,
 	withRepeat,
 	withSequence,
@@ -44,26 +44,24 @@ import Svg, {
 	Circle,
 	Defs,
 	Ellipse,
-	LinearGradient as SvgLinearGradient,
 	Path,
 	Rect,
 	Stop,
+	LinearGradient as SvgLinearGradient,
 	type SvgProps,
 } from "react-native-svg";
-import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
-import IntroTasksSvg from "../../../assets/onboarding/intro-tasks.svg";
-import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import {
 	ArrowLeft,
 	ArrowRight,
+	Atom,
 	BookOpen,
 	Bulb,
 	Calculator,
 	CalendarDays,
-	ChevronDown,
 	Chemistry,
+	ChevronDown,
 	ClipboardEdit,
 	ClipboardList,
 	Dna,
@@ -71,15 +69,24 @@ import {
 	Eye,
 	EyeOff,
 	Football,
+	Globe,
+	GreekHelmet,
 	Language,
 	PaintBrush,
+	Palette,
+	Plant,
 	Route2,
+	SquareRootSquare,
+	Telescope,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useBackIntent } from "~/lib/navigation";
+import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
+import IntroTasksSvg from "../../../assets/onboarding/intro-tasks.svg";
+import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
 
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
 const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
@@ -553,87 +560,200 @@ const defaultAnswerForStep = (step: OnboardingStep) => {
 	return "";
 };
 
+const AUTH_CHOICE_FRAME = {
+	width: 393,
+	height: 852,
+	patternYOffset: 32,
+	logoCard: { top: 232, size: 148, radius: 32, iconSize: 136 },
+	title: { top: 392, fontSize: 64, lineHeight: 68 },
+	subtitle: { top: 477, width: 260, fontSize: 16, lineHeight: 23 },
+	buttons: { top: 592, width: 326, height: 54, gap: 12 },
+	terms: { top: 732, width: 250, fontSize: 10, lineHeight: 15 },
+} as const;
+const AUTH_BACKGROUND_TILE = {
+	size: 148,
+	radius: 32,
+	iconSize: 76,
+	leftX: -62,
+	centerX: 122.5,
+	rightX: 307,
+	fillColors: [
+		"rgba(26,26,26,0)",
+		"rgba(26,26,26,0.06)",
+		"rgba(26,26,26,0.06)",
+		"rgba(26,26,26,0)",
+	],
+} as const;
+
 export function AuthChoiceScreen() {
-	const insets = useSafeAreaInsets();
+	const { width, height } = useWindowDimensions();
+	const frameScale = Math.min(
+		width / AUTH_CHOICE_FRAME.width,
+		height / AUTH_CHOICE_FRAME.height,
+	);
+	const frameWidth = AUTH_CHOICE_FRAME.width * frameScale;
+	const frameHeight = AUTH_CHOICE_FRAME.height * frameScale;
+	const scaled = (value: number) => value * frameScale;
+	const buttonLeft = scaled(
+		(AUTH_CHOICE_FRAME.width - AUTH_CHOICE_FRAME.buttons.width) / 2,
+	);
+	const verticalPadding = Math.max(0, (height - frameHeight) / 2);
 
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
 			<Stack.Screen options={{ title: "Dayova" }} />
 			<StatusBar style="dark" />
 			<ScrollView
-				contentInsetAdjustmentBehavior="automatic"
+				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
+				bounces={false}
 				contentContainerStyle={{
-					flexGrow: 1,
-					paddingTop: Math.max(insets.top + 16, 24),
-					paddingBottom: Math.max(insets.bottom + 18, 26),
-					paddingHorizontal: 24,
+					minHeight: height,
+					paddingTop: verticalPadding,
+					paddingBottom: verticalPadding,
+					alignItems: "center",
 				}}
 			>
-				<View style={{ flex: 1, justifyContent: "center" }}>
+				<View
+					style={{
+						width: frameWidth,
+						height: frameHeight,
+					}}
+				>
 					<Animated.View
 						entering={FadeIn.duration(450)}
 						style={{
 							position: "absolute",
-							left: -24,
-							right: -24,
-							top: -24,
-							bottom: -24,
+							top: 0,
+							left: 0,
+							width: frameWidth,
+							height: frameHeight,
 							overflow: "hidden",
 						}}
 					>
-						<AuthBackgroundPattern />
+						<AuthBackgroundPattern
+							scale={frameScale}
+							yOffset={AUTH_CHOICE_FRAME.patternYOffset}
+						/>
 					</Animated.View>
 
 					<Animated.View
 						entering={FadeInDown.duration(520).springify().damping(18)}
-						style={{ alignItems: "center" }}
+						style={{
+							position: "absolute",
+							top: scaled(AUTH_CHOICE_FRAME.logoCard.top),
+							left: 0,
+							width: frameWidth,
+							alignItems: "center",
+						}}
 					>
 						<View
 							style={{
-								width: 136,
-								height: 136,
-								borderRadius: 32,
+								width: scaled(AUTH_CHOICE_FRAME.logoCard.size),
+								height: scaled(AUTH_CHOICE_FRAME.logoCard.size),
+								borderRadius: scaled(AUTH_CHOICE_FRAME.logoCard.radius),
 								backgroundColor: COLORS.surface,
 								alignItems: "center",
 								justifyContent: "center",
-								boxShadow: "0 18px 45px rgba(20, 28, 48, 0.06)",
+								boxShadow: `0 ${scaled(18)}px ${scaled(45)}px rgba(20, 28, 48, 0.06)`,
 							}}
 						>
 							<Image
-								source={require("../../../assets/dayova-logo.png")}
+								source={require("../../../assets/onboarding/dayova-y.png")}
 								resizeMode="contain"
-								style={{ width: 88, height: 88 }}
+								style={{
+									width: scaled(AUTH_CHOICE_FRAME.logoCard.iconSize),
+									height: scaled(AUTH_CHOICE_FRAME.logoCard.iconSize),
+								}}
 							/>
 						</View>
+					</Animated.View>
 
+					<Animated.View
+						entering={FadeInDown.delay(40)
+							.duration(520)
+							.springify()
+							.damping(18)}
+						style={{
+							position: "absolute",
+							top: scaled(AUTH_CHOICE_FRAME.title.top),
+							left: 0,
+							width: frameWidth,
+							alignItems: "center",
+						}}
+					>
 						<Text
-							className="mt-6 text-center font-bold font-poppins text-text"
-							style={{ fontSize: 54, lineHeight: 66 }}
+							className="text-center font-bold font-poppins text-text"
+							style={{
+								fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
+								lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
+								includeFontPadding: false,
+							}}
 						>
 							Dayova
 						</Text>
-						<Text className="mt-2 max-w-[260px] text-center font-poppins text-body-2 text-secondary-text">
-							Du bist neu hier, dann Registriere dich. Andernfalls willkommen
+					</Animated.View>
+
+					<Animated.View
+						entering={FadeInDown.delay(80)
+							.duration(520)
+							.springify()
+							.damping(18)}
+						style={{
+							position: "absolute",
+							top: scaled(AUTH_CHOICE_FRAME.subtitle.top),
+							left: (frameWidth - scaled(AUTH_CHOICE_FRAME.subtitle.width)) / 2,
+							width: scaled(AUTH_CHOICE_FRAME.subtitle.width),
+						}}
+					>
+						<Text
+							className="text-center font-poppins text-secondary-text"
+							style={{
+								fontSize: scaled(AUTH_CHOICE_FRAME.subtitle.fontSize),
+								lineHeight: scaled(AUTH_CHOICE_FRAME.subtitle.lineHeight),
+								includeFontPadding: false,
+							}}
+						>
+							Du bist neu hier, dann registriere dich. Anderfalls willkommen
 							zurück
 						</Text>
 					</Animated.View>
 
 					<Animated.View
 						entering={FadeInUp.delay(120).duration(520).springify().damping(18)}
-						style={{ marginTop: 42, gap: 12 }}
+						style={{
+							position: "absolute",
+							top: scaled(AUTH_CHOICE_FRAME.buttons.top),
+							left: buttonLeft,
+							width: scaled(AUTH_CHOICE_FRAME.buttons.width),
+							gap: scaled(AUTH_CHOICE_FRAME.buttons.gap),
+						}}
 					>
-						<GradientPillButton
+						<AuthChoicePillButton
 							label="Registrierung"
+							scale={frameScale}
+							tone="gradient"
 							onPress={() => router.push("/onboarding")}
 						/>
-						<DarkPillButton
+						<AuthChoicePillButton
 							label="Login"
+							scale={frameScale}
+							tone="dark"
 							onPress={() => router.push("/login")}
 						/>
 					</Animated.View>
 
-					<Text className="mt-4 text-center font-poppins text-black-30 text-body-5">
+					<Text
+						className="absolute text-center font-poppins text-black-30"
+						style={{
+							top: scaled(AUTH_CHOICE_FRAME.terms.top),
+							left: (frameWidth - scaled(AUTH_CHOICE_FRAME.terms.width)) / 2,
+							width: scaled(AUTH_CHOICE_FRAME.terms.width),
+							fontSize: scaled(AUTH_CHOICE_FRAME.terms.fontSize),
+							lineHeight: scaled(AUTH_CHOICE_FRAME.terms.lineHeight),
+							includeFontPadding: false,
+						}}
+					>
 						Mit dem Start akzeptierst du{"\n"}Datenschutzbestimmungen und
 						{"\n"}Nutzungsbedingungen.
 					</Text>
@@ -2707,6 +2827,62 @@ function CircularNextButton({
 	);
 }
 
+function AuthChoicePillButton({
+	label,
+	onPress,
+	scale,
+	tone,
+}: {
+	label: string;
+	onPress: () => void;
+	scale: number;
+	tone: "gradient" | "dark";
+}) {
+	const height = AUTH_CHOICE_FRAME.buttons.height * scale;
+
+	return (
+		<Pressable
+			accessibilityRole="button"
+			onPress={onPress}
+			style={{
+				height,
+				borderRadius: height / 2,
+				overflow: "hidden",
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: tone === "dark" ? COLORS.buttonNeutral : "transparent",
+			}}
+		>
+			{tone === "gradient" ? (
+				<LinearGradient
+					colors={PRIMARY_GRADIENT.colors}
+					start={PRIMARY_GRADIENT.start}
+					end={PRIMARY_GRADIENT.end}
+					style={{
+						position: "absolute",
+						top: 0,
+						right: 0,
+						bottom: 0,
+						left: 0,
+					}}
+				/>
+			) : null}
+			<Text
+				className="font-poppins font-semibold"
+				style={{
+					color: COLORS.surface,
+					fontSize: 16 * scale,
+					lineHeight: 24 * scale,
+					includeFontPadding: false,
+					textAlignVertical: "center",
+				}}
+			>
+				{label}
+			</Text>
+		</Pressable>
+	);
+}
+
 function GradientPillButton({
 	label,
 	onPress,
@@ -2769,7 +2945,7 @@ function DarkPillButton({
 				borderRadius: 28,
 				alignItems: "center",
 				justifyContent: "center",
-				backgroundColor: disabled ? COLORS.buttonNeutral : COLORS.buttonNeutral,
+				backgroundColor: COLORS.buttonNeutral,
 				boxShadow: disabled ? "none" : "0 8px 18px rgba(20, 28, 48, 0.08)",
 			}}
 		>
@@ -2783,15 +2959,56 @@ function DarkPillButton({
 	);
 }
 
-function AuthBackgroundPattern() {
+function AuthBackgroundPattern({
+	scale,
+	yOffset,
+}: {
+	scale: number;
+	yOffset: number;
+}) {
 	const items = [
-		{ key: "paint-top", x: -18, y: 28, icon: PaintBrush },
-		{ key: "earth-top", x: 118, y: 44, icon: Earth },
-		{ key: "route-top", x: 272, y: 26, icon: Route2 },
-		{ key: "dna-mid", x: -18, y: 196, icon: Dna },
-		{ key: "clipboard-mid", x: 278, y: 188, icon: ClipboardEdit },
-		{ key: "route-bottom", x: -18, y: 360, icon: Route2 },
-		{ key: "calculator-bottom", x: 282, y: 350, icon: Calculator },
+		{
+			key: "palette-top",
+			x: AUTH_BACKGROUND_TILE.leftX,
+			y: 28,
+			icon: Palette,
+		},
+		{
+			key: "globe-top",
+			x: AUTH_BACKGROUND_TILE.centerX,
+			y: 44,
+			icon: Globe,
+		},
+		{
+			key: "telescope-top",
+			x: AUTH_BACKGROUND_TILE.rightX,
+			y: 26,
+			icon: Telescope,
+		},
+		{
+			key: "plant-mid",
+			x: AUTH_BACKGROUND_TILE.leftX,
+			y: 196,
+			icon: Plant,
+		},
+		{
+			key: "helmet-mid",
+			x: AUTH_BACKGROUND_TILE.rightX,
+			y: 188,
+			icon: GreekHelmet,
+		},
+		{
+			key: "atom-bottom",
+			x: AUTH_BACKGROUND_TILE.leftX,
+			y: 360,
+			icon: Atom,
+		},
+		{
+			key: "square-root-bottom",
+			x: AUTH_BACKGROUND_TILE.rightX,
+			y: 350,
+			icon: SquareRootSquare,
+		},
 	] as const;
 
 	return (
@@ -2803,17 +3020,31 @@ function AuthBackgroundPattern() {
 						key={item.key}
 						style={{
 							position: "absolute",
-							left: item.x,
-							top: item.y,
-							width: 132,
-							height: 132,
-							borderRadius: 28,
-							backgroundColor: "rgba(26,26,26,0.04)",
+							left: item.x * scale,
+							top: (item.y + yOffset) * scale,
+							width: AUTH_BACKGROUND_TILE.size * scale,
+							height: AUTH_BACKGROUND_TILE.size * scale,
+							borderRadius: AUTH_BACKGROUND_TILE.radius * scale,
+							overflow: "hidden",
 							alignItems: "center",
 							justifyContent: "center",
 						}}
 					>
-						<Icon size={56} color="rgba(26,26,26,0.14)" strokeWidth={1.8} />
+						<LinearGradient
+							colors={AUTH_BACKGROUND_TILE.fillColors}
+							style={{
+								position: "absolute",
+								top: 0,
+								right: 0,
+								bottom: 0,
+								left: 0,
+							}}
+						/>
+						<Icon
+							size={AUTH_BACKGROUND_TILE.iconSize * scale}
+							color="rgba(26,26,26,0.14)"
+							strokeWidth={1.8 * scale}
+						/>
 					</View>
 				);
 			})}
