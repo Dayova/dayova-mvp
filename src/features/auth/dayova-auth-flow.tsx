@@ -1608,7 +1608,7 @@ export function LoginScreen() {
 						</Text>
 						<Pressable onPress={() => router.replace("/onboarding")}>
 							<Text className="text-center font-poppins text-body-5 text-primary">
-								Register now
+								Jetzt Registrieren
 							</Text>
 						</Pressable>
 					</View>
