@@ -4,20 +4,20 @@ import { useMemo } from "react";
 import { SuccessConfirmationScreen } from "~/components/ui/success-confirmation-screen";
 import { buildDateTimeLabel } from "~/lib/date-time-label";
 
-export default function LearningPlanSuccessScreen() {
+export default function EntrySuccessScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{
 		dayKey?: string;
-		examDateKey?: string;
-		examDateLabel?: string;
-		examTime?: string;
+		completionDateKey?: string;
+		completionDateLabel?: string;
+		completionTime?: string;
 	}>();
-	const examDateTimeLabel = useMemo(
+	const completionDateTimeLabel = useMemo(
 		() =>
 			buildDateTimeLabel({
-				dateKey: params.examDateKey,
-				dateLabel: params.examDateLabel,
-				time: params.examTime,
+				dateKey: params.completionDateKey,
+				dateLabel: params.completionDateLabel,
+				time: params.completionTime,
 			}),
 		[params],
 	);
@@ -33,9 +33,9 @@ export default function LearningPlanSuccessScreen() {
 			<Stack.Screen options={{ gestureEnabled: false }} />
 			<StatusBar style="dark" />
 			<SuccessConfirmationScreen
-				title={"Dein Lernplan\nwurde erstellt."}
-				detailLabel="Prüfungsdatum"
-				detailValue={examDateTimeLabel}
+				title={"Deine Hausaufgabe\nist eingetragen"}
+				detailLabel="Erledigungsdatum"
+				detailValue={completionDateTimeLabel}
 				onFinish={finish}
 			/>
 		</>

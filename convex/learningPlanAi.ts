@@ -32,6 +32,8 @@ const MAX_GENERATED_TEXT_ATTEMPTS = 3;
 const MODEL_ID = "gemini-3-flash-preview";
 const MIN_LEARNING_SLOT_MINUTES = 10;
 const MAX_GENERATED_SESSIONS = 20;
+const MIN_THEORY_CARD_COUNT = 3;
+const MAX_THEORY_CARD_COUNT = 12;
 const ALTERNATIVE_SLOT_MINUTES = 30;
 const MAX_ALTERNATIVE_SESSIONS = 6;
 const GERMAN_UI_TEXT_RULE =
@@ -211,6 +213,43 @@ const generatedPlanSchema = z
 		),
 	})
 	.describe(GENERATED_PLAN_OUTPUT_DESCRIPTION);
+
+const _theoryCardsSchema = z
+	.object({
+		cards: boundedArray(
+			z.object({
+				front: germanTextSchema(
+					8,
+					"Front side of an active-recall learning card. It must be a concrete German prompt or question.",
+				),
+				answer: germanTextSchema(
+					20,
+					"Precise German answer for the back side of the learning card.",
+				),
+				example: germanTextSchema(
+					12,
+					"Short German example that shows how the concept appears in a task.",
+				),
+				memoryCue: germanTextSchema(
+					8,
+					"Short German memory cue the learner should remember.",
+				),
+				commonMistake: germanTextSchema(
+					8,
+					"Common German pitfall or misunderstanding to avoid.",
+				),
+				keywords: atMostArray(
+					germanTextSchema(3, "Short German evaluation keyword for this card."),
+					8,
+				),
+			}),
+			MIN_THEORY_CARD_COUNT,
+			MAX_THEORY_CARD_COUNT,
+		),
+	})
+	.describe(
+		`${GERMAN_UI_TEXT_RULE} Return precise active-recall learning cards for a theory session.`,
+	);
 
 type LearningPlanAiContext = {
 	plan: {
@@ -1202,6 +1241,39 @@ const describeLearningTimes = (learningTimes: LearningTimeWindow[]) => {
 		)
 		.join("\n");
 };
+
+const _getTheoryCardTargetCount = (durationMinutes: number) =>
+	Math.max(
+		MIN_THEORY_CARD_COUNT,
+		Math.min(MAX_THEORY_CARD_COUNT, Math.ceil(durationMinutes / 6)),
+	);
+
+const _formatStoredKnowledgeAnswers = (
+	questions: Array<{ id: string; prompt: string; targetInsight: string }> = [],
+	answers: Array<{ questionId: string; answer: string }> = [],
+) => {
+	if (questions.length === 0)
+		return "Keine Wissensanalyse-Antworten gespeichert.";
+
+	const answersByQuestion = new Map(
+		answers.map((answer) => [answer.questionId, answer.answer.trim()]),
+	);
+
+	return questions
+		.map((question, index) => {
+			const answer = answersByQuestion.get(question.id) || "Keine Antwort";
+			return `${index + 1}. Frage: ${question.prompt}\nAntwort: ${answer}\nAnalyseziel: ${question.targetInsight}`;
+		})
+		.join("\n\n");
+};
+
+const keywordPattern = /[\p{L}\p{N}]+/gu;
+const _compactKeyword = (value: string) =>
+	normalizeGeneratedGermanText(value)
+		.toLowerCase()
+		.match(keywordPattern)
+		?.slice(0, 3)
+		.join(" ") ?? "";
 
 export const generateKnowledgeQuestions = action({
 	args: {

@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
+	internalMutation,
+	internalQuery,
 	type MutationCtx,
 	mutation,
 	type QueryCtx,
@@ -9,7 +11,6 @@ import {
 import { throwUserFacingError } from "./errors";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 
-type SessionPhase = Doc<"learningPlanSessions">["phase"];
 type SessionContentItemKind =
 	| "learnCard"
 	| "multipleChoice"
@@ -29,6 +30,29 @@ type GeneratedItem = {
 	correctChoiceId?: string;
 	evaluationKeywords: string[];
 };
+
+const generatedChoiceValidator = v.object({
+	id: v.string(),
+	text: v.string(),
+});
+
+const generatedSessionContentItemValidator = v.object({
+	kind: v.union(
+		v.literal("learnCard"),
+		v.literal("multipleChoice"),
+		v.literal("written"),
+		v.literal("voice"),
+	),
+	title: v.string(),
+	prompt: v.string(),
+	front: v.optional(v.string()),
+	back: v.optional(v.string()),
+	explanation: v.string(),
+	idealAnswer: v.string(),
+	choices: v.optional(v.array(generatedChoiceValidator)),
+	correctChoiceId: v.optional(v.string()),
+	evaluationKeywords: v.array(v.string()),
+});
 
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
@@ -103,9 +127,6 @@ const publicAnalysis = (analysis: Doc<"learningSessionAnalyses">) => ({
 	updatedAt: analysis.updatedAt,
 });
 
-const phaseLabel = (phase: SessionPhase) =>
-	phase === "theory" ? "Theorie" : phase === "practice" ? "Üben" : "Praxis";
-
 const normalizeText = (value: string) =>
 	normalizeGeneratedGermanText(value).replace(/\s+/g, " ").trim();
 
@@ -167,18 +188,24 @@ const distinct = (values: string[]) => {
 	return result;
 };
 
+const targetTheoryCardCount = (durationMinutes: number) =>
+	Math.max(3, Math.min(12, Math.ceil(durationMinutes / 6)));
+
 const buildTheoryItems = (
 	plan: Doc<"learningPlans">,
 	session: Doc<"learningPlanSessions">,
 ) => {
 	const concepts = distinct([
-		session.title,
 		plan.topicDescription,
 		session.goal,
 		...session.tasks,
+		session.expectedOutcome,
 	]).slice(
 		0,
-		Math.max(1, Math.min(5, Math.ceil(session.durationMinutes / 15))),
+		Math.min(
+			targetTheoryCardCount(session.durationMinutes),
+			Math.max(3, session.tasks.length + 2),
+		),
 	);
 
 	return concepts.map<GeneratedItem>((concept, index) => {
@@ -191,21 +218,35 @@ const buildTheoryItems = (
 		const detail =
 			session.tasks[index % Math.max(session.tasks.length, 1)] ??
 			session.expectedOutcome;
+		const front =
+			index === 0
+				? `Was musst du zu ${concept} sicher erklären können?`
+				: index % 3 === 1
+					? `Wie wendest du ${concept} in einer Aufgabe an?`
+					: `Welcher typische Fehler passiert bei ${concept}?`;
+		const example = compact(
+			`Beispiel: Nutze "${detail}" als Prüfungsaufgabe und erkläre jeden Schritt.`,
+			detail,
+		);
+		const pitfall = compact(
+			`Achte darauf, keine Umformung oder Begründung auszulassen.`,
+			"Begründe jeden Schritt.",
+		);
 		return {
 			kind: "learnCard",
 			title: `Lernkarte ${index + 1}`,
-			prompt: concept,
-			front: concept,
+			prompt: front,
+			front,
 			back: compact(
-				`${concept}: ${detail}. Merke dir besonders, wie das Lernziel "${session.goal}" damit zusammenhängt.`,
+				`${concept}: ${detail}. ${example} ${pitfall}`,
 				session.goal,
 			),
 			explanation: compact(
-				`Diese Karte gehört zu ${phaseLabel(session.phase)} und bereitet dich auf ${plan.examTypeLabel} vor.`,
+				`Diese Lernkarte bereitet dich auf ${plan.examTypeLabel} zu ${plan.topicDescription} vor.`,
 				"Diese Karte bereitet dich auf die Prüfung vor.",
 			),
 			idealAnswer: compact(
-				`${concept} sicher erklären und an einem Beispiel anwenden.`,
+				`Erkläre ${concept} kurz, wende es an einem Beispiel an und nenne den häufigsten Fehler.`,
 				concept,
 			),
 			evaluationKeywords: keywords,
@@ -316,16 +357,13 @@ const listItems = async (
 		.order("asc")
 		.take(50);
 
-const ensureItemsForSession = async (
+const insertGeneratedItemsForSession = async (
 	ctx: MutationCtx,
 	session: Doc<"learningPlanSessions">,
-	plan: Doc<"learningPlans">,
+	items: GeneratedItem[],
 ) => {
-	const existingItems = await listItems(ctx, session._id);
-	if (existingItems.length > 0) return existingItems;
-
 	const now = Date.now();
-	for (const [index, item] of buildGeneratedItems(plan, session).entries()) {
+	for (const [index, item] of items.entries()) {
 		await ctx.db.insert("learningSessionContentItems", {
 			ownerTokenIdentifier: session.ownerTokenIdentifier,
 			learningPlanId: session.learningPlanId,
@@ -351,6 +389,21 @@ const ensureItemsForSession = async (
 			updatedAt: now,
 		});
 	}
+};
+
+const ensureItemsForSession = async (
+	ctx: MutationCtx,
+	session: Doc<"learningPlanSessions">,
+	plan: Doc<"learningPlans">,
+) => {
+	const existingItems = await listItems(ctx, session._id);
+	if (existingItems.length > 0) return existingItems;
+
+	await insertGeneratedItemsForSession(
+		ctx,
+		session,
+		buildGeneratedItems(plan, session),
+	);
 
 	return await listItems(ctx, session._id);
 };
@@ -442,6 +495,127 @@ const buildAnalysis = (
 				: "Übe als Nächstes gezielt die markierten Lücken und wiederhole danach eine passende Lernkarte.",
 	};
 };
+
+const isLegacyTheoryItem = (item: Doc<"learningSessionContentItems">) =>
+	item.kind === "learnCard" &&
+	(item.back?.includes("Merke dir besonders, wie das Lernziel") ||
+		item.back?.includes("damit zusammenhängt"));
+
+const deleteSessionContentItems = async (
+	ctx: MutationCtx,
+	sessionId: Id<"learningPlanSessions">,
+) => {
+	const items = await listItems(ctx, sessionId);
+	for (const item of items) {
+		await ctx.db.delete("learningSessionContentItems", item._id);
+	}
+};
+
+export const getSessionGenerationContext = internalQuery({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const session = await getOwnedSession(
+			ctx,
+			args.sessionId,
+			ownerTokenIdentifier,
+		);
+		const plan = await getOwnedPlan(
+			ctx,
+			session.learningPlanId,
+			ownerTokenIdentifier,
+		);
+		const documents = await ctx.db
+			.query("learningPlanDocuments")
+			.withIndex("by_learningPlanId", (q) =>
+				q.eq("learningPlanId", session.learningPlanId),
+			)
+			.take(20);
+		const answers = await ctx.db
+			.query("learningPlanAnswers")
+			.withIndex("by_learningPlanId", (q) =>
+				q.eq("learningPlanId", session.learningPlanId),
+			)
+			.order("asc")
+			.take(20);
+		const learningTimes = await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(50);
+		const existingItems = await listItems(ctx, args.sessionId);
+
+		return {
+			plan,
+			session,
+			documents,
+			answers,
+			learningTimes,
+			existingItemCount: existingItems.length,
+			needsLegacyTheoryReplacement:
+				session.phase === "theory" && existingItems.some(isLegacyTheoryItem),
+			accessKey: `learning-plan:${session.learningPlanId}`,
+		};
+	},
+});
+
+export const storeGeneratedSessionContent = internalMutation({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+		items: v.array(generatedSessionContentItemValidator),
+		replaceExisting: v.optional(v.boolean()),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const session = await getOwnedSession(
+			ctx,
+			args.sessionId,
+			ownerTokenIdentifier,
+		);
+		const existingItems = await listItems(ctx, args.sessionId);
+		if (existingItems.length > 0 && args.replaceExisting !== true) {
+			return { itemCount: existingItems.length };
+		}
+
+		if (existingItems.length > 0) {
+			await deleteSessionContentItems(ctx, args.sessionId);
+		}
+
+		await insertGeneratedItemsForSession(ctx, session, args.items);
+		const storedItems = await listItems(ctx, args.sessionId);
+		return { itemCount: storedItems.length };
+	},
+});
+
+export const ensureFallbackSessionContent = internalMutation({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+		replaceExisting: v.optional(v.boolean()),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const session = await getOwnedSession(
+			ctx,
+			args.sessionId,
+			ownerTokenIdentifier,
+		);
+		const plan = await getOwnedPlan(
+			ctx,
+			session.learningPlanId,
+			ownerTokenIdentifier,
+		);
+
+		if (args.replaceExisting === true) {
+			await deleteSessionContentItems(ctx, args.sessionId);
+		}
+
+		const items = await ensureItemsForSession(ctx, session, plan);
+		return { itemCount: items.length };
+	},
+});
 
 export const ensureSessionContent = mutation({
 	args: {

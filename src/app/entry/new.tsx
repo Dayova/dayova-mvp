@@ -16,7 +16,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { ActionModal } from "~/components/ui/action-modal";
 import { BackButton, Button } from "~/components/ui/button";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
@@ -31,7 +30,6 @@ import {
 	BookOpen,
 	Calculator,
 	CalendarDays,
-	Check,
 	Chemistry,
 	ChevronDown,
 	ClipboardList,
@@ -66,7 +64,7 @@ import { ROUTES } from "~/lib/routes";
 import { cn } from "~/lib/utils";
 
 type EntryType = "homework" | "exam";
-type EntryStep = "basics" | "planning" | "success";
+type EntryStep = "basics" | "planning";
 type PickerTarget =
 	| "dueDate"
 	| "plannedDate"
@@ -104,7 +102,6 @@ const KEYBOARD_DISMISS_FALLBACK_MS = 280;
 const FIELD_ICON_COLOR = DAYOVA_DESIGN_SYSTEM.colors.secondaryText;
 const FIELD_TEXT_COLOR = DAYOVA_DESIGN_SYSTEM.colors.text;
 const SELECTED_OPTION_ICON_COLOR = DAYOVA_DESIGN_SYSTEM.colors.primary;
-const SUCCESS_ICON_COLOR = DAYOVA_DESIGN_SYSTEM.colors.success;
 
 const subjectIconByOption = {
 	Mathematik: Calculator,
@@ -145,6 +142,29 @@ const formatCompactDate = (date: Date) =>
 		month: "long",
 		year: "numeric",
 	}).format(date);
+
+const homeworkSuccessPath = ({
+	dayKey,
+	completionDateKey,
+	completionDateLabel,
+	completionTime,
+}: {
+	dayKey: string;
+	completionDateKey: string;
+	completionDateLabel: string;
+	completionTime: string;
+}) => {
+	const query = [
+		["dayKey", dayKey],
+		["completionDateKey", completionDateKey],
+		["completionDateLabel", completionDateLabel],
+		["completionTime", completionTime],
+	]
+		.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+		.join("&");
+
+	return `/entry/success?${query}` as const;
+};
 
 function HomeworkPillField({
 	label,
@@ -242,7 +262,6 @@ export default function NewEntryScreen() {
 		next.setHours(16, 30, 0, 0);
 		return next;
 	});
-	const [createdDayKey, setCreatedDayKey] = useState(getDayKey(initialDate));
 	const [isCreating, setIsCreating] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
@@ -428,9 +447,15 @@ export default function NewEntryScreen() {
 			setIsCreating(false);
 		}
 
-		setCreatedDayKey(nextDayKey);
 		if (isHomework) {
-			setStep("success");
+			router.replace(
+				homeworkSuccessPath({
+					dayKey: nextDayKey,
+					completionDateKey: nextDayKey,
+					completionDateLabel: formatCompactDate(plannedDate),
+					completionTime: formatTime(plannedTime),
+				}),
+			);
 			return;
 		}
 
@@ -465,10 +490,6 @@ export default function NewEntryScreen() {
 		router.push(`${ROUTES.createLearningPlan}?${query}`);
 	};
 
-	const finish = () => {
-		router.replace(`/home?dayKey=${encodeURIComponent(createdDayKey)}`);
-	};
-
 	const handleBack = useCallback(() => {
 		if (selectTarget) {
 			setSelectTarget(null);
@@ -490,9 +511,7 @@ export default function NewEntryScreen() {
 	}, [pickerTarget, router, selectTarget, step]);
 
 	useBackIntent(
-		Boolean(
-			selectTarget || pickerTarget || (step !== "basics" && step !== "success"),
-		),
+		Boolean(selectTarget || pickerTarget || step !== "basics"),
 		handleBack,
 	);
 
@@ -728,26 +747,6 @@ export default function NewEntryScreen() {
 									/>
 								</View>
 							</View>
-
-							<ActionModal
-								visible={step === "success"}
-								dismissible
-								onClose={finish}
-								accessibilityLabel="Erfolgsdialog schließen"
-								title="Hausaufgabe ist eingetragen"
-								description="Deine Hausaufgabe wurde erfolgreich eingetragen."
-								icon={
-									<Check
-										size={48}
-										color={SUCCESS_ICON_COLOR}
-										strokeWidth={1.2}
-									/>
-								}
-							>
-								<Button className="mt-6 w-full" onPress={finish}>
-									<Text>Fertig</Text>
-								</Button>
-							</ActionModal>
 						</>
 					)
 				) : (
