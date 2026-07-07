@@ -495,10 +495,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					if (!cancelled) clearAnswers();
 					return;
 				}
-				logDiagnosticError("Failed to save onboarding answers.", result.lastError, {
-					source: "auth.saveOnboardingAnswers",
-					level: "warn",
-				});
+				logDiagnosticError(
+					"Failed to save onboarding answers.",
+					result.lastError,
+					{
+						source: "auth.saveOnboardingAnswers",
+						level: "warn",
+					},
+				);
 				if (result.lastError !== result.firstError) {
 					logDiagnosticError(
 						"Initial onboarding answer save error.",

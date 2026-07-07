@@ -20,6 +20,7 @@ import {
 	normalizeGeneratedGermanText,
 } from "./generatedGermanText";
 import { repairGeneratedGermanTextFromAsciiShadow } from "./generatedGermanTextRepair";
+import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
@@ -979,7 +980,7 @@ const normalizeSessions = (
 	);
 	const availabilityHint =
 		learningTimes.length === 0
-			? "Keine Lernzeiten hinterlegt."
+			? MISSING_LEARNING_TIMES_HINT
 			: hasAlternativeSessions
 				? "Lernzeiten belegt. Alternativen vorgeschlagen."
 				: busyLearningTimeMinutes > 0
@@ -1077,7 +1078,12 @@ const describeLearningTimes = (learningTimes: LearningTimeWindow[]) => {
 
 	return learningTimes
 		.slice()
-		.sort((left, right) => left.dayOfWeek - right.dayOfWeek)
+		.sort(
+			(left, right) =>
+				left.dayOfWeek - right.dayOfWeek ||
+				left.startTime.localeCompare(right.startTime) ||
+				left.endTime.localeCompare(right.endTime),
+		)
 		.map(
 			(time) =>
 				`${dayLabels[time.dayOfWeek] ?? "Lerntag"} ${time.startTime}-${time.endTime}`,

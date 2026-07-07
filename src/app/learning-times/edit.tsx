@@ -10,6 +10,7 @@ import {
 	View,
 } from "react-native";
 import { api } from "#convex/_generated/api";
+import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import {
@@ -44,6 +45,12 @@ const LEARNING_DAYS = [
 
 type LearningDayLabel = (typeof LEARNING_DAYS)[number]["label"];
 type TimeField = "start" | "end";
+type LearningTimeDraft = {
+	baseKey: string;
+	selectedDay?: LearningDayLabel;
+	startTime?: string;
+	endTime?: string;
+};
 
 const DEFAULT_START_TIME = "17:00";
 const DEFAULT_END_TIME = "17:30";
@@ -92,7 +99,11 @@ function TimeControl({
 
 export default function LearningTimesScreen() {
 	const router = useRouter();
-	const params = useLocalSearchParams<{ day?: string; returnTo?: string }>();
+	const params = useLocalSearchParams<{
+		day?: string;
+		id?: string;
+		returnTo?: string;
+	}>();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningTimes = useQuery(
@@ -105,9 +116,7 @@ export default function LearningTimesScreen() {
 	const initialDay =
 		LEARNING_DAYS.find((day) => String(day.value) === params.day)?.label ??
 		"Montag";
-	const [selectedDay, setSelectedDay] = useState<LearningDayLabel>(initialDay);
-	const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
-	const [endTime, setEndTime] = useState(DEFAULT_END_TIME);
+	const [draft, setDraft] = useState<LearningTimeDraft>({ baseKey: "" });
 	const [daySheetVisible, setDaySheetVisible] = useState(false);
 	const [activeTimeField, setActiveTimeField] = useState<TimeField | null>(
 		null,
@@ -116,28 +125,46 @@ export default function LearningTimesScreen() {
 	const [feedback, setFeedback] = useState<string | null>(null);
 	const returnTo = getSafeReturnTo(params.returnTo);
 	const overviewPath = withReturnTo(ROUTES.learningTimes, returnTo);
+	const learningTimeId = params.id as Id<"userLearningTimes"> | undefined;
+	const isEditingExisting = Boolean(learningTimeId);
 
+	const selectedEntry = useMemo(
+		() => learningTimes?.find((entry) => entry.id === learningTimeId),
+		[learningTimeId, learningTimes],
+	);
+	const selectedEntryKey = selectedEntry
+		? `${selectedEntry.id}:${selectedEntry.dayOfWeek}:${selectedEntry.startTime}:${selectedEntry.endTime}`
+		: null;
+	const formBaseKey =
+		selectedEntryKey ??
+		(learningTimeId ? `missing:${learningTimeId}` : `new:${params.day ?? ""}`);
+	const currentDraft = draft.baseKey === formBaseKey ? draft : null;
+	const selectedEntryDay =
+		selectedEntry &&
+		(LEARNING_DAYS.find((day) => day.value === selectedEntry.dayOfWeek)
+			?.label ??
+			"Montag");
+	const selectedDay =
+		currentDraft?.selectedDay ?? selectedEntryDay ?? initialDay;
 	const selectedDayValue =
 		LEARNING_DAYS.find((day) => day.label === selectedDay)?.value ?? 1;
-	const selectedEntry = useMemo(
-		() => learningTimes?.find((entry) => entry.dayOfWeek === selectedDayValue),
-		[learningTimes, selectedDayValue],
-	);
+	const startTime =
+		currentDraft?.startTime ?? selectedEntry?.startTime ?? DEFAULT_START_TIME;
+	const endTime =
+		currentDraft?.endTime ?? selectedEntry?.endTime ?? DEFAULT_END_TIME;
 
-	const currentEntryKey = selectedEntry
-		? `${selectedEntry.dayOfWeek}:${selectedEntry.startTime}:${selectedEntry.endTime}`
-		: `${selectedDayValue}:empty`;
-	const [appliedEntryKey, setAppliedEntryKey] = useState(currentEntryKey);
-
-	if (appliedEntryKey !== currentEntryKey) {
-		setAppliedEntryKey(currentEntryKey);
-		setStartTime(selectedEntry?.startTime ?? DEFAULT_START_TIME);
-		setEndTime(selectedEntry?.endTime ?? DEFAULT_END_TIME);
+	const updateDraft = (patch: Omit<Partial<LearningTimeDraft>, "baseKey">) => {
+		setDraft((current) => ({
+			...(current.baseKey === formBaseKey ? current : {}),
+			...patch,
+			baseKey: formBaseKey,
+		}));
 		setFeedback(null);
-	}
+	};
 
 	const hasChanges =
-		!selectedEntry ||
+		!isEditingExisting ||
+		selectedDayValue !== selectedEntry?.dayOfWeek ||
 		startTime !== (selectedEntry?.startTime ?? DEFAULT_START_TIME) ||
 		endTime !== (selectedEntry?.endTime ?? DEFAULT_END_TIME);
 	const canRemove = Boolean(selectedEntry) && !isSaving;
@@ -146,7 +173,8 @@ export default function LearningTimesScreen() {
 		parseTimeToMinutes(endTime) > parseTimeToMinutes(startTime) &&
 		!isSaving &&
 		Boolean(user) &&
-		isConvexAuthenticated;
+		isConvexAuthenticated &&
+		(!isEditingExisting || Boolean(selectedEntry));
 
 	const goBack = () => {
 		if (router.canGoBack()) {
@@ -166,11 +194,10 @@ export default function LearningTimesScreen() {
 
 		const nextTime = formatTime(selectedDate);
 		if (activeTimeField === "start") {
-			setStartTime(nextTime);
+			updateDraft({ startTime: nextTime });
 		} else {
-			setEndTime(nextTime);
+			updateDraft({ endTime: nextTime });
 		}
-		setFeedback(null);
 		if (Platform.OS === "android") setActiveTimeField(null);
 	};
 
@@ -187,6 +214,7 @@ export default function LearningTimesScreen() {
 		setFeedback(null);
 		try {
 			await saveLearningTime({
+				id: selectedEntry?.id,
 				dayOfWeek: selectedDayValue,
 				startTime,
 				endTime,
@@ -205,12 +233,12 @@ export default function LearningTimesScreen() {
 	};
 
 	const remove = async () => {
+		if (!selectedEntry) return;
+
 		setIsSaving(true);
 		setFeedback(null);
 		try {
-			await removeLearningTime({ dayOfWeek: selectedDayValue });
-			setStartTime(DEFAULT_START_TIME);
-			setEndTime(DEFAULT_END_TIME);
+			await removeLearningTime({ id: selectedEntry.id });
 			setFeedback("Lernzeit entfernt.");
 			closeToOverview();
 		} catch (error) {
@@ -234,7 +262,9 @@ export default function LearningTimesScreen() {
 				title="Lerntag auswählen"
 				options={LEARNING_DAYS.map((day) => day.label)}
 				selectedValue={selectedDay}
-				onSelect={setSelectedDay}
+				onSelect={(nextDay) =>
+					updateDraft({ selectedDay: nextDay as LearningDayLabel })
+				}
 				onClose={() => setDaySheetVisible(false)}
 				renderOptionIcon={(_option, isSelected) => (
 					<CalendarDays

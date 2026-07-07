@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import { USER_FACING_ERROR_KIND } from "./errors";
+import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -377,7 +378,7 @@ test("snapshot clears stale missing-learning-times hints after learning times ar
 		knowledgeAnswersJson: "[]",
 		sourceSummary: "Testmaterial",
 		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
-		planningHint: "Keine Lernzeiten hinterlegt. 0/135 Min. geplant.",
+		planningHint: `${MISSING_LEARNING_TIMES_HINT} 0/135 Min. geplant.`,
 		sessions: [],
 	});
 
@@ -387,7 +388,7 @@ test("snapshot clears stale missing-learning-times hints after learning times ar
 				id: learningPlanId,
 			})
 		)?.plan.planningHint,
-	).toBe("Keine Lernzeiten hinterlegt. 0/135 Min. geplant.");
+	).toBe(`${MISSING_LEARNING_TIMES_HINT} 0/135 Min. geplant.`);
 
 	await t.mutation(api.learningTimes.upsertMine, {
 		dayOfWeek: 1,
@@ -408,7 +409,7 @@ test("snapshot clears stale missing-learning-times hints after learning times ar
 		knowledgeAnswersJson: "[]",
 		sourceSummary: "Testmaterial",
 		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
-		planningHint: "Keine Lernzeiten hinterlegt.",
+		planningHint: MISSING_LEARNING_TIMES_HINT,
 		sessions: [],
 	});
 

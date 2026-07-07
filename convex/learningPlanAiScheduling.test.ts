@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { __testOnlyLearningPlanAi } from "./learningPlanAi";
+import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 
 const germanText = (text: string) => ({
 	text,
@@ -14,6 +15,52 @@ const germanText = (text: string) => ({
 });
 
 describe("learning plan AI scheduling", () => {
+	test("can schedule the same generated recommendation after learning times are added", () => {
+		const recommendation = [
+			{
+				phase: "practice" as const,
+				title: germanText("Aufgaben üben"),
+				dayOffsetBeforeExam: 1,
+				startTime: "17:00",
+				durationMinutes: 60,
+				goal: germanText("Übe typische Aufgaben für die Prüfung."),
+				tasks: [
+					germanText("Löse drei passende Aufgaben."),
+					germanText("Kontrolliere deine Lösungswege."),
+				],
+				expectedOutcome: germanText("Du kannst die Aufgaben sicher lösen."),
+			},
+		];
+
+		const withoutLearningTimes = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-05",
+			5,
+			recommendation,
+			[],
+			[],
+		);
+		expect(withoutLearningTimes.sessions).toHaveLength(0);
+		expect(withoutLearningTimes.planningHint).toBe(
+			`${MISSING_LEARNING_TIMES_HINT} 0/60 Min. geplant.`,
+		);
+
+		const withLearningTimes = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-05",
+			5,
+			recommendation,
+			[{ dayOfWeek: 4, startTime: "17:00", endTime: "18:00" }],
+			[],
+		);
+
+		expect(withLearningTimes.sessions).toHaveLength(1);
+		expect(withLearningTimes.sessions[0]).toMatchObject({
+			dateKey: "2026-06-04T00:00:00.000Z",
+			startTime: "17:00",
+			durationMinutes: 60,
+		});
+		expect(withLearningTimes.planningHint).toBeUndefined();
+	});
+
 	test("uses only free stored learning times and hints when needed time is busy", () => {
 		const result = __testOnlyLearningPlanAi.normalizeSessions(
 			"2026-06-05",

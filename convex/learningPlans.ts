@@ -18,8 +18,11 @@ import {
 	getR2ConfigOrThrow,
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import { assertNoScheduleConflict } from "./scheduleConflicts";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
+
+const MAX_LEARNING_TIMES = 50;
 
 const phaseValidator = v.union(
 	v.literal("theory"),
@@ -191,8 +194,6 @@ const publicSession = (
 	completed: session.completed ?? false,
 	sortOrder: session.sortOrder,
 });
-
-const MISSING_LEARNING_TIMES_HINT = "Keine Lernzeiten hinterlegt.";
 
 const getCurrentPlanningHint = (
 	planningHint: string | undefined,
@@ -850,7 +851,7 @@ export const getAiContext = internalQuery({
 			.withIndex("by_ownerTokenIdentifier", (q) =>
 				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
 			)
-			.take(7);
+			.take(MAX_LEARNING_TIMES);
 		const occupiedEntries: Array<{
 			dayKey: string;
 			time?: string;

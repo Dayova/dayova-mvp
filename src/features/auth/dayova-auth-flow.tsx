@@ -1060,7 +1060,8 @@ function QuestionStepView({
 	const showBottomButton = step.kind !== "text";
 	const buttonDisabled = step.kind === "fact" && step.disabledButton;
 	const isRangeStep = step.kind === "range";
-	const isShortFactStep = step.kind === "fact" && step.id === "short-study-fact";
+	const isShortFactStep =
+		step.kind === "fact" && step.id === "short-study-fact";
 	const isPlanFitStep = step.kind === "infoStack";
 	const questionTitleStyle =
 		step.kind === "range" ? QUESTION_TITLE_STYLE : QUESTION_TITLE_STYLE_COMPACT;
@@ -1142,71 +1143,71 @@ function QuestionStepView({
 							/>
 						) : null}
 
-					{step.kind === "fact" ? <FactPanel step={step} /> : null}
+						{step.kind === "fact" ? <FactPanel step={step} /> : null}
 
-					{step.kind === "chips" ? (
-						<ChipCloud
-							options={step.options}
-							value={answers[step.field]}
-							onToggle={(label) =>
-								setAnswer(
-									step.field,
-									toggleListValue(answers[step.field], label),
-								)
-							}
-						/>
-					) : null}
+						{step.kind === "chips" ? (
+							<ChipCloud
+								options={step.options}
+								value={answers[step.field]}
+								onToggle={(label) =>
+									setAnswer(
+										step.field,
+										toggleListValue(answers[step.field], label),
+									)
+								}
+							/>
+						) : null}
 
-					{step.kind === "goals" ? (
-						<GoalList
-							options={step.options}
-							value={answers.goal}
-							onToggle={(label) =>
-								setAnswer("goal", toggleListValue(answers.goal, label))
-							}
-						/>
-					) : null}
+						{step.kind === "goals" ? (
+							<GoalList
+								options={step.options}
+								value={answers.goal}
+								onToggle={(label) =>
+									setAnswer("goal", toggleListValue(answers.goal, label))
+								}
+							/>
+						) : null}
 
-					{step.kind === "infoStack" ? <PlanFitStack /> : null}
+						{step.kind === "infoStack" ? <PlanFitStack /> : null}
 
-					{step.kind === "wheel" ? <WheelAnswer step={step} /> : null}
+						{step.kind === "wheel" ? <WheelAnswer step={step} /> : null}
 
-					{step.kind === "text" ? (
-						<PillTextInput
-							refObject={inputRef}
-							value={answers[step.field]}
-							placeholder={step.placeholder}
-							secure={step.secure && !passwordVisible}
-							keyboardType={step.keyboardType}
-							autoComplete={step.autoComplete}
-							textContentType={step.textContentType}
-							autoCapitalize={
-								step.field === "email" || step.secure ? "none" : "words"
-							}
-							onChangeText={(value) => setAnswer(step.field, value)}
-							onSubmit={onContinue}
-							accessory={
-								step.secure ? (
-									<Pressable
-										hitSlop={8}
-										onPress={onTogglePassword}
-										style={{
-											width: 28,
-											height: 28,
-											alignItems: "center",
-											justifyContent: "center",
-										}}
-									>
-										{passwordVisible ? (
-											<EyeOff size={17} color={COLORS.secondaryText} />
-										) : (
-											<Eye size={17} color={COLORS.secondaryText} />
-										)}
-									</Pressable>
-								) : null
-							}
-						/>
-					) : null}
+						{step.kind === "text" ? (
+							<PillTextInput
+								refObject={inputRef}
+								value={answers[step.field]}
+								placeholder={step.placeholder}
+								secure={step.secure && !passwordVisible}
+								keyboardType={step.keyboardType}
+								autoComplete={step.autoComplete}
+								textContentType={step.textContentType}
+								autoCapitalize={
+									step.field === "email" || step.secure ? "none" : "words"
+								}
+								onChangeText={(value) => setAnswer(step.field, value)}
+								onSubmit={onContinue}
+								accessory={
+									step.secure ? (
+										<Pressable
+											hitSlop={8}
+											onPress={onTogglePassword}
+											style={{
+												width: 28,
+												height: 28,
+												alignItems: "center",
+												justifyContent: "center",
+											}}
+										>
+											{passwordVisible ? (
+												<EyeOff size={17} color={COLORS.secondaryText} />
+											) : (
+												<Eye size={17} color={COLORS.secondaryText} />
+											)}
+										</Pressable>
+									) : null
+								}
+							/>
+						) : null}
 					</View>
 
 					{error ? (
@@ -2042,12 +2043,12 @@ function RangeSelector({
 					}}
 					style={{ flexGrow: 0 }}
 					renderItem={({ index }) => (
-							<DurationCarouselItem
-								index={index}
-								itemWidth={itemWidth}
-								scrollX={scrollX}
-							/>
-						)}
+						<DurationCarouselItem
+							index={index}
+							itemWidth={itemWidth}
+							scrollX={scrollX}
+						/>
+					)}
 				/>
 			</View>
 		</View>
@@ -2102,13 +2103,13 @@ function DurationCarouselItem({
 			]}
 		>
 			<Animated.View
-					style={[
-						{
-							borderRadius: 3,
-						},
-						barStyle,
-					]}
-				/>
+				style={[
+					{
+						borderRadius: 3,
+					},
+					barStyle,
+				]}
+			/>
 		</Animated.View>
 	);
 }
@@ -2157,7 +2158,9 @@ function ChipCloud({
 								gap: 8,
 								overflow: "hidden",
 								backgroundColor: selected ? COLORS.primary : COLORS.surface,
-								borderWidth: selected ? 0 : DAYOVA_DESIGN_SYSTEM.size.button.borderWidth,
+								borderWidth: selected
+									? 0
+									: DAYOVA_DESIGN_SYSTEM.size.button.borderWidth,
 								borderColor: COLORS.border,
 								boxShadow: selected
 									? "0 8px 18px rgba(0, 186, 255, 0.14)"
@@ -2190,7 +2193,8 @@ function ChipCloud({
 								style={{
 									color: selected ? COLORS.surface : COLORS.text,
 									fontSize: DAYOVA_DESIGN_SYSTEM.typography.body.sm.fontSize,
-									lineHeight: DAYOVA_DESIGN_SYSTEM.typography.body.sm.lineHeight,
+									lineHeight:
+										DAYOVA_DESIGN_SYSTEM.typography.body.sm.lineHeight,
 									fontWeight:
 										DAYOVA_DESIGN_SYSTEM.typography.body.sm.fontWeight,
 								}}
@@ -2390,15 +2394,15 @@ function PlanFitStack() {
 								backgroundColor: COLORS.surface,
 								paddingHorizontal: 14,
 								flexDirection: "row",
-									alignItems: "center",
-									gap: 14,
-									boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
-									transform: [
-										{ translateX: cardTransforms[index].translateX },
-										{ rotate: cardTransforms[index].rotate },
-									],
-								}}
-							>
+								alignItems: "center",
+								gap: 14,
+								boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
+								transform: [
+									{ translateX: cardTransforms[index].translateX },
+									{ rotate: cardTransforms[index].rotate },
+								],
+							}}
+						>
 							<View
 								style={{
 									width: 36,
@@ -2427,9 +2431,9 @@ function PlanFitStack() {
 
 function WheelAnswer({ step }: { step: WheelStep }) {
 	const { answers, setAnswer } = useOnboarding();
-	const [pickerTarget, setPickerTarget] = useState<"birthDate" | "learningTime" | null>(
-		null,
-	);
+	const [pickerTarget, setPickerTarget] = useState<
+		"birthDate" | "learningTime" | null
+	>(null);
 
 	if (step.field === "birthDate") {
 		const value = answers.birthDate || DEFAULT_BIRTH_DATE;
@@ -2761,20 +2765,20 @@ function DarkPillButton({
 			disabled={disabled}
 			onPress={onPress}
 			style={{
-					height: 56,
-					borderRadius: 28,
-					alignItems: "center",
-					justifyContent: "center",
-					backgroundColor: disabled ? COLORS.buttonNeutral : COLORS.buttonNeutral,
-					boxShadow: disabled ? "none" : "0 8px 18px rgba(20, 28, 48, 0.08)",
-				}}
+				height: 56,
+				borderRadius: 28,
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: disabled ? COLORS.buttonNeutral : COLORS.buttonNeutral,
+				boxShadow: disabled ? "none" : "0 8px 18px rgba(20, 28, 48, 0.08)",
+			}}
+		>
+			<Text
+				className="font-bold font-poppins text-body-2"
+				style={{ color: COLORS.surface }}
 			>
-				<Text
-					className="font-bold font-poppins text-body-2"
-					style={{ color: COLORS.surface }}
-				>
-					{label}
-				</Text>
+				{label}
+			</Text>
 		</Pressable>
 	);
 }

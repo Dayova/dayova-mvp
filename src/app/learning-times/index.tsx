@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { api } from "#convex/_generated/api";
+import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { ClipboardEdit, Plus } from "~/components/ui/icon";
@@ -26,11 +27,13 @@ const LEARNING_DAYS = [
 function LearningTimeRow({
 	abbreviation,
 	accessibilityLabel,
+	label,
 	onPress,
 	timeRange,
 }: {
 	abbreviation: string;
 	accessibilityLabel: string;
+	label: string;
 	onPress: () => void;
 	timeRange: string;
 }) {
@@ -52,7 +55,7 @@ function LearningTimeRow({
 					className="font-poppins font-semibold text-body-1 text-text"
 					numberOfLines={1}
 				>
-					Lernzeit
+					{label}
 				</Text>
 				<Text
 					className="font-poppins text-body-2 text-secondary-text"
@@ -92,6 +95,7 @@ export default function LearningTimesOverviewScreen() {
 			return {
 				abbreviation: day?.abbreviation ?? "?",
 				dayOfWeek: entry.dayOfWeek,
+				id: entry.id,
 				label: day?.label ?? "Lerntag",
 				timeRange: `${entry.startTime} - ${entry.endTime}`,
 			};
@@ -106,9 +110,16 @@ export default function LearningTimesOverviewScreen() {
 		goBackToReturnOrReplace(router, ROUTES.settings, returnTo);
 	};
 
-	const openEditor = (dayOfWeek: number) => {
+	const openEditor = ({
+		dayOfWeek,
+		id,
+	}: {
+		dayOfWeek: number;
+		id?: Id<"userLearningTimes">;
+	}) => {
+		const idParam = id ? `&id=${encodeURIComponent(id)}` : "";
 		router.push(
-			withReturnTo(`/learning-times/edit?day=${dayOfWeek}`, returnTo),
+			withReturnTo(`/learning-times/edit?day=${dayOfWeek}${idParam}`, returnTo),
 		);
 	};
 
@@ -148,11 +159,14 @@ export default function LearningTimesOverviewScreen() {
 
 					{rows.map((row) => (
 						<LearningTimeRow
-							key={row.dayOfWeek}
+							key={row.id}
 							abbreviation={row.abbreviation}
 							accessibilityLabel={`${row.label}, Lernzeit ${row.timeRange} bearbeiten`}
+							label={row.label}
 							timeRange={row.timeRange}
-							onPress={() => openEditor(row.dayOfWeek)}
+							onPress={() =>
+								openEditor({ dayOfWeek: row.dayOfWeek, id: row.id })
+							}
 						/>
 					))}
 				</View>
@@ -165,7 +179,7 @@ export default function LearningTimesOverviewScreen() {
 				<Button
 					accessibilityLabel="Lernzeit hinzufügen"
 					className="h-[74px] w-[74px] rounded-full px-0"
-					onPress={() => openEditor(firstMissingDay)}
+					onPress={() => openEditor({ dayOfWeek: firstMissingDay })}
 				>
 					<Plus size={32} color="#FFFFFF" strokeWidth={1.8} />
 				</Button>

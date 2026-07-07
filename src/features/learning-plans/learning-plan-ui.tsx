@@ -29,18 +29,18 @@ import {
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { WarningBanner } from "~/components/ui/warning-banner";
+import {
+	ANALYSIS_ORBIT_CENTER,
+	ANALYSIS_ORBIT_LOADER_SIZE,
+	ANALYSIS_ORBIT_PETAL_SIZE,
+	ANALYSIS_ORBIT_PETALS,
+	type AnalysisOrbitPetal,
+	getAnalysisOrbitPetalPosition,
+} from "~/features/learning-plans/analysis-orbit-loader";
 import type {
 	PlanSession,
 	SessionPhase,
 } from "~/features/learning-plans/types";
-import {
-	ANALYSIS_ORBIT_CENTER,
-	ANALYSIS_ORBIT_LOADER_SIZE,
-	type AnalysisOrbitPetal,
-	ANALYSIS_ORBIT_PETAL_SIZE,
-	ANALYSIS_ORBIT_PETALS,
-	getAnalysisOrbitPetalPosition,
-} from "~/features/learning-plans/analysis-orbit-loader";
 import {
 	formatDate,
 	formatDayOfMonth,
@@ -52,6 +52,7 @@ import {
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { formatFileSize } from "~/lib/upload-policy";
+import { MISSING_LEARNING_TIMES_HINT } from "../../../convex/learningPlanPlanningHints";
 
 const phaseEditCopy: Record<
 	SessionPhase,
@@ -101,14 +102,13 @@ export function SectionTitle({
 }
 
 const getPlanningHintCtaLabel = (hint: string) => {
-	if (hint.includes("Keine Lernzeiten hinterlegt"))
-		return "Lernzeiten eintragen";
+	if (hint.includes(MISSING_LEARNING_TIMES_HINT)) return "Lernzeiten eintragen";
 	if (hint.includes("Lernzeiten")) return "Lernzeiten anpassen";
 	return undefined;
 };
 
 const getPlanningHintTitle = (hint: string) => {
-	if (hint.includes("Keine Lernzeiten hinterlegt")) return "Lernzeiten fehlen";
+	if (hint.includes(MISSING_LEARNING_TIMES_HINT)) return "Lernzeiten fehlen";
 	if (hint.includes("Lernzeiten")) return "Lernzeiten prüfen";
 	return "Planung prüfen";
 };
