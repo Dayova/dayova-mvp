@@ -846,6 +846,9 @@ export default function LearningSessionContentScreen() {
 	const didEnsureRef = useRef(false);
 	const didAutoFinishRef = useRef(false);
 	const didStartTrackingRef = useRef(false);
+	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
+		null,
+	);
 
 	const recognizerCallbacks = useMemo<RecognizerCallbacks>(
 		() => ({
@@ -928,6 +931,33 @@ export default function LearningSessionContentScreen() {
 
 	useBackIntent(Boolean(planId), goBack);
 
+	const ensureSessionStarted = useCallback(() => {
+		if (!sessionId) {
+			return Promise.reject(new Error("Lernblock nicht gefunden."));
+		}
+		if (!startSessionPromiseRef.current) {
+			didStartTrackingRef.current = true;
+			startSessionPromiseRef.current = startSession({ sessionId })
+				.then((result) => {
+					void capture(
+						"study_slot_started",
+						definedAnalyticsProperties({
+							...learningSessionAnalyticsProperties(result),
+							started_at: result.startedAt,
+						}),
+					);
+					return result;
+				})
+				.catch((error: unknown) => {
+					didStartTrackingRef.current = false;
+					startSessionPromiseRef.current = null;
+					throw error;
+				});
+		}
+
+		return startSessionPromiseRef.current;
+	}, [capture, sessionId, startSession]);
+
 	useEffect(() => {
 		if (!sessionId || !user || !isConvexAuthenticated || didEnsureRef.current)
 			return;
@@ -953,25 +983,13 @@ export default function LearningSessionContentScreen() {
 		)
 			return;
 
-		didStartTrackingRef.current = true;
-		void startSession({ sessionId })
-			.then((result) => {
-				void capture(
-					"study_slot_started",
-					definedAnalyticsProperties({
-						...learningSessionAnalyticsProperties(result),
-						started_at: result.startedAt,
-					}),
-				);
-			})
-			.catch((error: unknown) => {
-				didStartTrackingRef.current = false;
-				logDiagnosticError("Failed to start learning session tracking.", error, {
-					source: "learningSession.startSession",
-					level: "warn",
-				});
+		void ensureSessionStarted().catch((error: unknown) => {
+			logDiagnosticError("Failed to start learning session tracking.", error, {
+				source: "learningSession.startSession",
+				level: "warn",
 			});
-	}, [capture, content, sessionId, startSession]);
+		});
+	}, [content, ensureSessionStarted, sessionId]);
 
 	useEffect(() => {
 		if (!content?.praxisDurationSeconds || showAnalysis || completionPhase) {
@@ -1064,15 +1082,7 @@ export default function LearningSessionContentScreen() {
 				return;
 			}
 			if (content?.session.executionStatus === "notStarted") {
-				const started = await startSession({ sessionId });
-				didStartTrackingRef.current = true;
-				void capture(
-					"study_slot_started",
-					definedAnalyticsProperties({
-						...learningSessionAnalyticsProperties(started),
-						started_at: started.startedAt,
-					}),
-				);
+				await ensureSessionStarted();
 			}
 
 			const completed = await recordSessionOutcome({
