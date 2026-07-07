@@ -22,6 +22,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import {
 	MaterialCard,
@@ -41,7 +42,7 @@ import {
 } from "~/features/learning-plans/utils";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace } from "~/lib/navigation";
-import { ROUTES } from "~/lib/routes";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
 
 const TOPIC_TEXTAREA_HEIGHT = 160;
@@ -113,19 +114,25 @@ export default function NewLearningPlanScreen() {
 		params.errorMessage ?? null,
 	);
 
+	const hasExamEntry = Boolean(examDayEntryId || learningPlanId);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && learningPlanId
 			? { id: learningPlanId }
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
+	const learningTimes = useQuery(
+		api.learningTimes.listMine,
+		user && isConvexAuthenticated && hasExamEntry ? {} : "skip",
+	);
 
 	const canWrite = Boolean(user && isConvexAuthenticated);
-	const hasExamEntry = Boolean(examDayEntryId || learningPlanId);
 	const topicDescription =
 		topicDescriptionInput ?? snapshot?.plan.topicDescription ?? "";
 	const canContinueTopic = topicDescription.trim().length >= 8 && canWrite;
 	const canUploadMaterial = canWrite && !isBusy && !openingUploadAction;
+	const showLearningTimesWarning =
+		learningTimes !== undefined && learningTimes.length === 0;
 
 	useEffect(() => {
 		if (!hasExamEntry) {
@@ -455,6 +462,32 @@ export default function NewLearningPlanScreen() {
 		);
 	};
 
+	const getLearningPlanReturnPath = () => {
+		const queryParams: Array<[string, string | number | null | undefined]> = [
+			["learningPlanId", learningPlanId],
+			["examDayEntryId", examDayEntryId],
+			["subject", subject],
+			["examTypeLabel", examTypeLabel],
+			["examDateKey", examDateKey],
+			["examDateLabel", examDateLabel],
+			["examTime", examTime],
+			["durationMinutes", durationMinutes],
+			["topicDescription", topicDescription],
+		];
+		const query = queryParams
+			.filter(([, value]) => value !== undefined && value !== null)
+			.map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
+			.join("&");
+
+		return `${ROUTES.createLearningPlan}?${query}`;
+	};
+
+	const openLearningTimes = () => {
+		router.push(
+			withReturnTo(ROUTES.learningTimes, getLearningPlanReturnPath()),
+		);
+	};
+
 	const goBack = () => {
 		goBackOrReplace(router, ROUTES.createExam);
 	};
@@ -471,6 +504,15 @@ export default function NewLearningPlanScreen() {
 					title="Lernplan erstellen"
 					description="Beschreibe den Prüfungsinhalt und lade optional Schulmaterial hoch."
 				/>
+				{showLearningTimesWarning ? (
+					<WarningBanner
+						className="mb-7"
+						title="Lernzeiten fehlen"
+						description="Ohne Lernzeiten weiß Dayova nicht, wann der Lernplan eingetragen werden soll. Lege mindestens eine Lernzeit an, damit wir deinen Plan erstellen können."
+						ctaLabel="Lernzeiten eintragen"
+						onPressCta={openLearningTimes}
+					/>
+				) : null}
 				<FieldLabel>Thema beschreiben</FieldLabel>
 				<FieldControl
 					className="mb-7 min-h-[150px] items-start rounded-[28px] px-5 pt-4 pb-4"

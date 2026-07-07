@@ -9,6 +9,7 @@ import { Button } from "~/components/ui/button";
 import { ClipboardEdit, Plus } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackToReturnOrReplace } from "~/lib/navigation";
@@ -147,14 +148,12 @@ export default function LearningTimesOverviewScreen() {
 					) : null}
 
 					{learningTimes?.length === 0 ? (
-						<View className="rounded-[32px] bg-card px-6 py-7">
-							<Text className="text-center font-poppins font-semibold text-body-2 text-text">
-								Noch keine Lernzeiten eingetragen
-							</Text>
-							<Text className="mt-2 text-center font-poppins text-body-3 text-secondary-text">
-								Füge über das Plus deine erste wiederkehrende Lernzeit hinzu.
-							</Text>
-						</View>
+						<WarningBanner
+							title="Lernzeiten fehlen"
+							description="Dayova braucht Lernzeiten, damit wir Lernpläne in deine freien Zeitfenster eintragen können. Lege mindestens eine Lernzeit an, bevor du einen Plan erstellen lässt."
+							ctaLabel="Lernzeit hinzufügen"
+							onPressCta={() => openEditor({ dayOfWeek: firstMissingDay })}
+						/>
 					) : null}
 
 					{rows.map((row) => (
