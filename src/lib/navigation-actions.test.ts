@@ -1,11 +1,15 @@
 import { describe, expect, test, vi } from "vitest";
-import { goBackToReturnOrReplace } from "./navigation-actions";
+import {
+	dismissToOrReplace,
+	goBackToReturnOrReplace,
+} from "./navigation-actions";
 
-type TestRouter = Parameters<typeof goBackToReturnOrReplace>[0];
+type TestRouter = Parameters<typeof dismissToOrReplace>[0];
 
 const createRouter = (canGoBack: boolean): TestRouter => ({
 	back: vi.fn(),
 	canGoBack: vi.fn(() => canGoBack),
+	dismissTo: vi.fn(),
 	replace: vi.fn(),
 });
 
@@ -35,5 +39,17 @@ describe("goBackToReturnOrReplace", () => {
 
 		expect(router.replace).toHaveBeenCalledWith("/settings");
 		expect(router.back).not.toHaveBeenCalled();
+	});
+});
+
+describe("dismissToOrReplace", () => {
+	test("dismisses to a target route instead of stacking another copy of it", () => {
+		const router = createRouter(true);
+
+		dismissToOrReplace(router, "/learning-times");
+
+		expect(router.dismissTo).toHaveBeenCalledWith("/learning-times");
+		expect(router.back).not.toHaveBeenCalled();
+		expect(router.replace).not.toHaveBeenCalled();
 	});
 });

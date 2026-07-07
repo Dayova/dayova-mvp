@@ -2,7 +2,7 @@ import type { Href } from "expo-router";
 
 type Router = Pick<
 	typeof import("expo-router").router,
-	"back" | "canGoBack" | "replace"
+	"back" | "canGoBack" | "dismissTo" | "replace"
 >;
 
 export const goBackOrReplace = (router: Router, fallback: Href) => {
@@ -25,4 +25,8 @@ export const goBackToReturnOrReplace = (
 	}
 
 	goBackOrReplace(router, fallback);
+};
+
+export const dismissToOrReplace = (router: Router, target: string) => {
+	router.dismissTo(target as Href);
 };

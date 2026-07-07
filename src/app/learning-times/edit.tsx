@@ -28,6 +28,7 @@ import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { dismissToOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
@@ -156,6 +157,10 @@ export default function LearningTimesScreen() {
 		router.replace(overviewPath);
 	};
 
+	const closeToOverview = () => {
+		dismissToOrReplace(router, overviewPath);
+	};
+
 	const updateTime = (event: DateTimePickerEvent, selectedDate?: Date) => {
 		if (event.type !== "set" || !selectedDate || !activeTimeField) return;
 
@@ -186,7 +191,7 @@ export default function LearningTimesScreen() {
 				startTime,
 				endTime,
 			});
-			router.replace(overviewPath);
+			closeToOverview();
 		} catch (error) {
 			Alert.alert(
 				"Lernzeit konnte nicht gespeichert werden",
@@ -207,7 +212,7 @@ export default function LearningTimesScreen() {
 			setStartTime(DEFAULT_START_TIME);
 			setEndTime(DEFAULT_END_TIME);
 			setFeedback("Lernzeit entfernt.");
-			router.replace(overviewPath);
+			closeToOverview();
 		} catch (error) {
 			Alert.alert(
 				"Lernzeit konnte nicht entfernt werden",
