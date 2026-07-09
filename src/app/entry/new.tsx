@@ -236,7 +236,7 @@ export default function NewEntryScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
-	const { capture } = useValidationAnalytics();
+	const { captureValidationEvent } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDayEntry = useMutation(api.dayEntries.create);
 	const params = useLocalSearchParams<{
@@ -440,7 +440,7 @@ export default function NewEntryScreen() {
 				durationMinutes: resolvedDurationMinutes,
 				...(!isHomework ? { examTypeLabel: trimmedExamType } : {}),
 			});
-			capture(isHomework ? "homework_created" : "exam_created", {
+			captureValidationEvent(isHomework ? "homework_created" : "exam_created", {
 				entry_id: createdEntryId,
 				subject: trimmedSubject,
 				planned_day_key: nextDayKey,

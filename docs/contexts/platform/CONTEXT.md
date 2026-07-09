@@ -15,6 +15,8 @@ _Avoid_: User-facing message, learner error text
 - Expo public env vars prefixed with `EXPO_PUBLIC_` are bundled into the mobile app and must only contain public client-side values.
 - `EXPO_PUBLIC_POSTHOG_API_KEY` enables PostHog analytics in the Expo app. Leave it empty to disable analytics locally.
 - `EXPO_PUBLIC_POSTHOG_HOST` defaults to `https://eu.i.posthog.com`; use a Dayova-owned reverse proxy only if event delivery or privacy requirements justify the extra infrastructure.
+- Analytics events must go through `src/lib/analytics.ts`. PostHog autocapture, lifecycle events, anonymous pre-auth tracking, and session replay are intentionally disabled for the validation phase.
+- PostHog identity properties are limited to validation-relevant IDs and coarse student context. Do not send names, email addresses, birth dates, avatar URLs, raw notes, uploaded content, or learner answers as analytics properties.
 - Capture platform conventions, release processes, and environment decisions here.
 - Put platform ADRs in `docs/contexts/platform/adr/`.
 
@@ -38,3 +40,20 @@ When adding a new required public app env, add it to `publicEnvSchema` in
 `src/lib/runtime-config.ts`. The app runtime fallback, tests, and
 `app.config.ts` release validation all derive their required-key list from that
 schema.
+
+## iOS Privacy Purpose Strings
+
+Dayova uses camera/photo upload for learning material and microphone/speech
+recognition for spoken answers. Keep these App Store privacy purpose strings in
+`app.config.ts`. If a local native `ios/Dayova/Info.plist` exists after
+prebuild, keep it in sync too:
+
+- `NSMicrophoneUsageDescription`
+- `NSSpeechRecognitionUsageDescription`
+- `NSCameraUsageDescription`
+- `NSPhotoLibraryUsageDescription`
+
+`src/lib/ios-privacy-config.test.ts` always guards `app.config.ts` and also
+checks the generated native plist when it exists. Run it before an iOS release
+build so App Store Connect does not reject the uploaded bundle for missing
+purpose strings.

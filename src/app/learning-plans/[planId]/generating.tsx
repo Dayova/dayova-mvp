@@ -26,7 +26,7 @@ export default function LearningPlanGeneratingScreen() {
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuth();
-	const { capture } = useValidationAnalytics();
+	const { captureValidationEvent } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
 	const [isBusy, setIsBusy] = useState(false);
@@ -85,7 +85,7 @@ export default function LearningPlanGeneratingScreen() {
 				answers: answerList,
 			})
 				.then((result) => {
-					capture("study_plan_generated", {
+					captureValidationEvent("study_plan_generated", {
 						learning_plan_id: planId,
 						session_count: result.sessionCount,
 					});
@@ -101,7 +101,15 @@ export default function LearningPlanGeneratingScreen() {
 				})
 				.finally(() => setIsBusy(false));
 		});
-	}, [answerList, capture, generatePlan, planId, retryAttempt, router, snapshot]);
+	}, [
+		answerList,
+		captureValidationEvent,
+		generatePlan,
+		planId,
+		retryAttempt,
+		router,
+		snapshot,
+	]);
 
 	useEffect(() => {
 		return () => {

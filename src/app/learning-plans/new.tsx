@@ -79,7 +79,7 @@ export default function NewLearningPlanScreen() {
 		errorMessage?: string;
 	}>();
 	const { user } = useAuth();
-	const { capture } = useValidationAnalytics();
+	const { captureValidationEvent } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const startPlan = useMutation(api.learningPlans.start);
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
@@ -320,7 +320,7 @@ export default function NewLearningPlanScreen() {
 				fileSizeBytes,
 			}),
 		);
-		capture("material_uploaded", {
+		captureValidationEvent("material_uploaded", {
 			learning_plan_id: id,
 			file_type: fileType,
 			file_size_bytes: fileSizeBytes,

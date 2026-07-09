@@ -37,13 +37,9 @@ export function AnalyticsIdentity({ children }: { children: React.ReactNode }) {
 			definedAnalyticsProperties({
 				clerk_id: user.clerkId,
 				convex_user_id: convexUser?._id,
-				email: user.email,
-				name: user.name,
-				birth_date: user.birthDate,
 				grade: user.grade,
 				school_type: user.schoolType,
 				state: user.state,
-				avatar_url: user.avatarUrl,
 				validation_student_code: convexUser?.validationStudentCode,
 			}),
 		);

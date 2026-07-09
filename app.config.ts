@@ -14,7 +14,7 @@ if (isReleaseConfig) {
 	validatePublicEnvForRelease();
 }
 
-const APP_VERSION = "1.0.2";
+const APP_VERSION = "1.0.3";
 const BACKGROUND_COLOR = "#ffffff";
 const DAYOVA_LOGO = isProduction
 	? "./assets/dayova-logo.png"
@@ -49,8 +49,12 @@ const config: ExpoConfig = {
 		usesAppleSignIn: true,
 		infoPlist: {
 			ITSAppUsesNonExemptEncryption: false,
+			NSCameraUsageDescription:
+				"Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
 			NSMicrophoneUsageDescription:
 				"Dayova braucht Zugriff auf dein Mikrofon, damit du Sprachantworten einsprechen kannst.",
+			NSPhotoLibraryUsageDescription:
+				"Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst.",
 			NSSpeechRecognitionUsageDescription:
 				"Dayova nutzt Spracherkennung, um deine eingesprochenen Antworten als Text auszuwerten.",
 		},

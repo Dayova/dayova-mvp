@@ -51,7 +51,7 @@ export function useValidationAnalytics() {
 	const { user } = useAuth();
 	const clerkId = user?.clerkId;
 
-	const capture = useCallback(
+	const captureValidationEvent = useCallback(
 		(eventName: ValidationEventName, properties?: AnalyticsProperties) => {
 			if (!isPostHogConfigured || !clerkId) return;
 			posthog.identify(clerkId);
@@ -63,7 +63,7 @@ export function useValidationAnalytics() {
 		[clerkId, posthog],
 	);
 
-	return { capture };
+	return { captureValidationEvent };
 }
 
 export type {

@@ -430,7 +430,7 @@ export default function HomeScreen() {
 	const insets = useSafeAreaInsets();
 	const { width, height } = useWindowDimensions();
 	const { user } = useAuth();
-	const { capture } = useValidationAnalytics();
+	const { captureValidationEvent } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
 	const [now, setNow] = useState(() => new Date());
@@ -635,14 +635,14 @@ export default function HomeScreen() {
 	useEffect(() => {
 		if (didCaptureDashboardViewRef.current || !isDashboardDataLoaded) return;
 		didCaptureDashboardViewRef.current = true;
-		capture("dashboard_viewed", {
+		captureValidationEvent("dashboard_viewed", {
 			selected_day_key: selectedDayKey,
 			visible_days_count: visibleDays.length,
 			selected_day_entries_count: selectedDayEntries.length,
 			has_hero_entry: Boolean(currentHeroEntry),
 		});
 	}, [
-		capture,
+		captureValidationEvent,
 		currentHeroEntry,
 		isDashboardDataLoaded,
 		selectedDayEntries.length,
@@ -753,7 +753,7 @@ export default function HomeScreen() {
 				dayIndex * dayWidth + (minuteToCenter / 60) * hourWidth,
 			);
 			scrollDayStripToIndex(dayIndex);
-			capture(
+			captureValidationEvent(
 				source === "today_button"
 					? "dashboard_today_selected"
 					: "dashboard_day_selected",
@@ -765,7 +765,7 @@ export default function HomeScreen() {
 			);
 		},
 		[
-			capture,
+			captureValidationEvent,
 			currentMinute,
 			dayWidth,
 			hourWidth,
@@ -791,7 +791,7 @@ export default function HomeScreen() {
 				date: selectedDate,
 				entry: currentHeroEntry,
 			});
-			capture("dashboard_hero_day_changed", {
+			captureValidationEvent("dashboard_hero_day_changed", {
 				direction: direction === 1 ? "next" : "previous",
 				from_day_key: selectedDayKey,
 				to_day_key: nextDay.key,
@@ -812,7 +812,7 @@ export default function HomeScreen() {
 			blueCardSlideDirection,
 			clearPreviousBlueContainer,
 			currentHeroEntry,
-			capture,
+			captureValidationEvent,
 			selectVisibleDay,
 			selectedDate,
 			selectedDayKey,
@@ -824,7 +824,7 @@ export default function HomeScreen() {
 
 	const selectCreateType = (type: "homework" | "exam") => {
 		setShowCreateTypePicker(false);
-		capture("dashboard_create_type_selected", {
+		captureValidationEvent("dashboard_create_type_selected", {
 			entry_type: type,
 			selected_day_key: selectedDayKey,
 		});
@@ -834,7 +834,7 @@ export default function HomeScreen() {
 	};
 
 	const openEntry = (entry: DayEntry, source: "hero_card" | "timeline") => {
-		capture("dashboard_entry_opened", {
+		captureValidationEvent("dashboard_entry_opened", {
 			entry_id: entry.id,
 			entry_kind: getAnalyticsEntryKind(entry),
 			source,
@@ -1080,7 +1080,7 @@ export default function HomeScreen() {
 								accessibilityRole="button"
 								accessibilityLabel="Neuen Eintrag erstellen"
 								onPress={() => {
-									capture("dashboard_create_opened", {
+									captureValidationEvent("dashboard_create_opened", {
 										selected_day_key: selectedDayKey,
 									});
 									setShowCreateTypePicker(true);
