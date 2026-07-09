@@ -119,6 +119,58 @@ test("manual timed entry adjacent to an existing entry is allowed", async () => 
 	expect(createdId).toBeTruthy();
 });
 
+test("homework overview lists only homework entries in schedule order", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	const secondHomeworkId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-05-24",
+		title: "Deutsch Hausaufgabe",
+		time: "16:00",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "24. Mai 2026",
+		durationMinutes: 30,
+		dueDateKey: "2026-05-25",
+		dueDateLabel: "25. Mai 2026",
+	});
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-05-23",
+		title: "Mathe Test",
+		time: "09:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "23. Mai 2026",
+		durationMinutes: 45,
+		examTypeLabel: "Test",
+	});
+	const firstHomeworkId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-05-23",
+		title: "Mathe Hausaufgabe",
+		time: "17:00",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "23. Mai 2026",
+		durationMinutes: 45,
+	});
+
+	await expect(
+		t.query(api.dayEntries.listHomeworkOverview, {}),
+	).resolves.toEqual([
+		expect.objectContaining({
+			id: firstHomeworkId,
+			title: "Mathe Hausaufgabe",
+			time: "17:00",
+			durationMinutes: 45,
+			completed: false,
+		}),
+		expect.objectContaining({
+			id: secondHomeworkId,
+			title: "Deutsch Hausaufgabe",
+			time: "16:00",
+			dueDateLabel: "25. Mai 2026",
+			durationMinutes: 30,
+			completed: false,
+		}),
+	]);
+});
+
 test("retrying the same create returns the existing entry instead of conflicting with itself", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 

@@ -12,14 +12,16 @@ import {
 	useRouter,
 } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
-import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { PostHogProvider } from "posthog-react-native";
+import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { NotificationSync } from "~/components/notification-sync";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
+import { isPostHogConfigured, postHogHost } from "~/lib/analytics";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { NAV_THEME } from "~/lib/theme";
 
@@ -40,7 +42,11 @@ function AppNavigator() {
 
 		const isAuthRoute = isPublicAuthPath(pathname);
 		const targetRoute =
-			!user && !isAuthRoute ? "/" : user && isAuthRoute ? "/home" : null;
+			!user && !isAuthRoute
+				? "/"
+				: user && isAuthRoute && pathname !== "/onboarding"
+					? "/home"
+					: null;
 		if (!targetRoute) return;
 
 		const frame = requestAnimationFrame(() => {
@@ -61,10 +67,12 @@ function AppNavigator() {
 
 function MissingConfigurationScreen() {
 	return (
-		<GestureHandlerRootView style={styles.root}>
-			<View style={styles.configurationScreen}>
-				<Text style={styles.configurationTitle}>App kann nicht starten</Text>
-				<Text style={styles.configurationMessage}>
+		<GestureHandlerRootView style={gestureRootStyle}>
+			<View className="flex-1 items-center justify-center bg-background px-6">
+				<Text className="text-center font-poppins font-semibold text-body-1 text-text">
+					App kann nicht starten
+				</Text>
+				<Text className="mt-3 text-center font-poppins text-body-2 text-secondary-text">
 					Dayova ist gerade nicht richtig konfiguriert. Bitte aktualisiere die
 					App und versuche es erneut.
 				</Text>
@@ -74,9 +82,6 @@ function MissingConfigurationScreen() {
 }
 
 export default function RootLayout() {
-	const { colorScheme } = useColorScheme();
-	const theme = NAV_THEME[colorScheme ?? "light"];
-
 	if (missingPublicRuntimeConfig.length > 0 || !convex) {
 		const missingConfigKeys =
 			missingPublicRuntimeConfig.length > 0
@@ -89,20 +94,32 @@ export default function RootLayout() {
 	}
 
 	return (
-		<GestureHandlerRootView style={styles.root}>
+		<GestureHandlerRootView style={gestureRootStyle}>
 			<KeyboardProvider preload={false}>
 				<ClerkProvider
 					publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
 					tokenCache={tokenCache}
 				>
 					<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
-						<ThemeProvider value={theme}>
+						<ThemeProvider value={NAV_THEME}>
 							<BottomSheetModalProvider>
-								<OnboardingProvider>
-									<AuthProvider>
-										<AppNavigator />
-									</AuthProvider>
-								</OnboardingProvider>
+								<PostHogProvider
+									apiKey={env.EXPO_PUBLIC_POSTHOG_API_KEY?.trim() ?? ""}
+									options={{
+										host: postHogHost,
+										disabled: !isPostHogConfigured,
+										captureAppLifecycleEvents: false,
+									}}
+									autocapture={false}
+								>
+									<OnboardingProvider>
+										<AuthProvider>
+											<AnalyticsIdentity>
+												<AppNavigator />
+											</AnalyticsIdentity>
+										</AuthProvider>
+									</OnboardingProvider>
+								</PostHogProvider>
 							</BottomSheetModalProvider>
 						</ThemeProvider>
 					</ConvexProviderWithClerk>
@@ -112,30 +129,6 @@ export default function RootLayout() {
 	);
 }
 
-const styles = StyleSheet.create({
-	root: {
-		flex: 1,
-	},
-	configurationScreen: {
-		alignItems: "center",
-		backgroundColor: "#ffffff",
-		flex: 1,
-		justifyContent: "center",
-		paddingHorizontal: 24,
-	},
-	configurationTitle: {
-		color: "#19191a",
-		fontFamily: "Poppins",
-		fontSize: 20,
-		fontWeight: "600",
-		textAlign: "center",
-	},
-	configurationMessage: {
-		color: "#4b5563",
-		fontFamily: "Poppins",
-		fontSize: 15,
-		lineHeight: 22,
-		marginTop: 12,
-		textAlign: "center",
-	},
-});
+// GestureHandlerRootView is a third-party root host; keep this native style so
+// the gesture tree fills the screen before NativeWind class processing applies.
+const gestureRootStyle = { flex: 1 } satisfies ViewStyle;

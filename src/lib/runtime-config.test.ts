@@ -35,14 +35,20 @@ describe("getMissingPublicRuntimeConfig", () => {
 	it("reads configured public app envs from the process environment", () => {
 		const originalClerkKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 		const originalConvexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
+		const originalPostHogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
+		const originalPostHogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST;
 
 		process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_process";
 		process.env.EXPO_PUBLIC_CONVEX_URL = "https://process.convex.cloud";
+		process.env.EXPO_PUBLIC_POSTHOG_API_KEY = "phc_process";
+		process.env.EXPO_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com";
 
 		try {
 			expect(readPublicRuntimeConfig()).toEqual({
 				EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_process",
 				EXPO_PUBLIC_CONVEX_URL: "https://process.convex.cloud",
+				EXPO_PUBLIC_POSTHOG_API_KEY: "phc_process",
+				EXPO_PUBLIC_POSTHOG_HOST: "https://eu.i.posthog.com",
 			});
 		} finally {
 			if (originalClerkKey === undefined) {
@@ -54,6 +60,16 @@ describe("getMissingPublicRuntimeConfig", () => {
 				delete process.env.EXPO_PUBLIC_CONVEX_URL;
 			} else {
 				process.env.EXPO_PUBLIC_CONVEX_URL = originalConvexUrl;
+			}
+			if (originalPostHogApiKey === undefined) {
+				delete process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
+			} else {
+				process.env.EXPO_PUBLIC_POSTHOG_API_KEY = originalPostHogApiKey;
+			}
+			if (originalPostHogHost === undefined) {
+				delete process.env.EXPO_PUBLIC_POSTHOG_HOST;
+			} else {
+				process.env.EXPO_PUBLIC_POSTHOG_HOST = originalPostHogHost;
 			}
 		}
 	});

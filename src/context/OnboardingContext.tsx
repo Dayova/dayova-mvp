@@ -7,6 +7,11 @@ type OnboardingAnswers = {
 	challenge: string;
 	goal: string;
 	state: string;
+	schoolType: string;
+	grade: string;
+	dailySchoolTime: string;
+	studyDays: string;
+	learningTime: string;
 	name: string;
 	email: string;
 	birthDate: string;
@@ -19,6 +24,11 @@ const emptyAnswers: OnboardingAnswers = {
 	challenge: "",
 	goal: "",
 	state: "",
+	schoolType: "",
+	grade: "",
+	dailySchoolTime: "",
+	studyDays: "",
+	learningTime: "",
 	name: "",
 	email: "",
 	birthDate: "",

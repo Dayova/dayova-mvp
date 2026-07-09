@@ -3,6 +3,7 @@ import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import Animated, {
 	cancelAnimation,
 	Easing,
+	type SharedValue,
 	useAnimatedStyle,
 	useReducedMotion,
 	useSharedValue,
@@ -11,7 +12,6 @@ import Animated, {
 	withSequence,
 	withTiming,
 } from "react-native-reanimated";
-import Svg, { Circle } from "react-native-svg";
 import { Button } from "~/components/ui/button";
 import {
 	FieldAccessory,
@@ -28,6 +28,15 @@ import {
 } from "~/components/ui/icon";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
+import { WarningBanner } from "~/components/ui/warning-banner";
+import {
+	ANALYSIS_ORBIT_CENTER,
+	ANALYSIS_ORBIT_LOADER_SIZE,
+	ANALYSIS_ORBIT_PETAL_SIZE,
+	ANALYSIS_ORBIT_PETALS,
+	type AnalysisOrbitPetal,
+	getAnalysisOrbitPetalPosition,
+} from "~/features/learning-plans/analysis-orbit-loader";
 import type {
 	PlanSession,
 	SessionPhase,
@@ -40,8 +49,10 @@ import {
 	parseDateKey,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { formatFileSize } from "~/lib/upload-policy";
+import { MISSING_LEARNING_TIMES_HINT } from "../../../convex/learningPlanPlanningHints";
 
 const phaseEditCopy: Record<
 	SessionPhase,
@@ -49,7 +60,7 @@ const phaseEditCopy: Record<
 > = {
 	theory: { actionLabel: "Lernen", fieldLabel: "Theorie" },
 	practice: { actionLabel: "Üben", fieldLabel: "Üben" },
-	rehearsal: { actionLabel: "Testmodus", fieldLabel: "Testmodus" },
+	rehearsal: { actionLabel: "Praxis", fieldLabel: "Praxis" },
 };
 
 const getSessionEditTitle = (session: PlanSession) =>
@@ -60,23 +71,16 @@ const getSessionPhaseLabel = (phase: SessionPhase) =>
 
 const sessionPhaseOptions: SessionPhase[] = ["theory", "practice", "rehearsal"];
 
-const ANALYSIS_ORBIT_LOADER_SIZE = 360;
-const ANALYSIS_ORBIT_PETAL_SIZE = 174;
-const ANALYSIS_ORBIT_PETAL_DISTANCE = 64;
 const ORBIT_COLLAPSE_DURATION = 2400;
 const ORBIT_EXPAND_DURATION = 2200;
 const ORBIT_CYCLE_DURATION = 5000;
 const ORBIT_REST_DURATION =
 	ORBIT_CYCLE_DURATION - ORBIT_COLLAPSE_DURATION - ORBIT_EXPAND_DURATION;
-const ANALYSIS_ORBIT_CENTER = ANALYSIS_ORBIT_LOADER_SIZE / 2;
-const ANALYSIS_ORBIT_PETALS = Array.from({ length: 9 }, (_, index) => {
-	const angle = (index * 40 * Math.PI) / 180;
-	return {
-		id: `analysis-orbit-${index}`,
-		cx: ANALYSIS_ORBIT_CENTER + Math.sin(angle) * ANALYSIS_ORBIT_PETAL_DISTANCE,
-		cy: ANALYSIS_ORBIT_CENTER - Math.cos(angle) * ANALYSIS_ORBIT_PETAL_DISTANCE,
-	};
-});
+
+// The design-system primary color is fully saturated, so opacity gives the
+// overlapping petals the translucent flower look without introducing a separate
+// off-palette blue.
+const ORBIT_PETAL_OPACITY = 0.58;
 
 export function SectionTitle({
 	title,
@@ -87,13 +91,47 @@ export function SectionTitle({
 }) {
 	return (
 		<View className="mb-7">
-			<Text className="font-poppins font-semibold text-18 text-text">
+			<Text className="font-poppins font-semibold text-body-1 text-text">
 				{title}
 			</Text>
-			<Text className="mt-2 font-poppins text-14 text-text/55">
+			<Text className="mt-2 font-poppins text-body-3 text-text/55">
 				{description}
 			</Text>
 		</View>
+	);
+}
+
+const getPlanningHintCtaLabel = (hint: string) => {
+	if (hint.includes(MISSING_LEARNING_TIMES_HINT)) return "Lernzeiten eintragen";
+	if (hint.includes("Lernzeiten")) return "Lernzeiten anpassen";
+	return undefined;
+};
+
+const getPlanningHintTitle = (hint: string) => {
+	if (hint.includes(MISSING_LEARNING_TIMES_HINT)) return "Lernzeiten fehlen";
+	if (hint.includes("Lernzeiten")) return "Lernzeiten prüfen";
+	return "Planung prüfen";
+};
+
+export function PlanningHintBanner({
+	className,
+	hint,
+	onPressLearningTimes,
+}: {
+	className?: string;
+	hint: string;
+	onPressLearningTimes: () => void;
+}) {
+	const ctaLabel = getPlanningHintCtaLabel(hint);
+
+	return (
+		<WarningBanner
+			className={className}
+			title={getPlanningHintTitle(hint)}
+			description={hint}
+			ctaLabel={ctaLabel}
+			onPressCta={ctaLabel ? onPressLearningTimes : undefined}
+		/>
 	);
 }
 
@@ -112,16 +150,16 @@ export function MaterialCard({
 			variant="soft"
 		>
 			<View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
-				<Attachment size={21} color="#3A7BFF" strokeWidth={2.2} />
+				<Attachment size={21} color="#00BAFF" strokeWidth={2.2} />
 			</View>
 			<View className="ml-3 flex-1">
 				<Text
 					numberOfLines={1}
-					className="font-bold font-poppins text-14 text-text"
+					className="font-poppins font-semibold text-body-3 text-text"
 				>
 					{name}
 				</Text>
-				<Text className="mt-1 font-poppins text-12 text-text/50">
+				<Text className="mt-1 font-poppins text-body-4 text-text/50">
 					{formatFileSize(size)}
 				</Text>
 			</View>
@@ -163,19 +201,19 @@ export function SessionCard({
 			className="flex-row items-center rounded-[28px] px-5 py-5"
 			variant="soft"
 		>
-			<View className="h-14 w-14 items-center justify-center rounded-full bg-[#3A3A3A]">
-				<Text className="font-bold font-poppins text-16 text-white">
+			<View className="h-14 w-14 items-center justify-center rounded-full bg-text">
+				<Text className="font-poppins font-semibold text-body-2 text-white">
 					{formatDayOfMonth(sessionDate)}
 				</Text>
-				<Text className="-mt-0.5 font-medium font-poppins text-11 text-white">
+				<Text className="-mt-1 font-poppins font-semibold text-body-5 text-white">
 					{formatShortWeekday(sessionDate)}
 				</Text>
 			</View>
 			<View className="flex-1 px-3">
-				<Text className="font-medium font-poppins text-14 text-text">
+				<Text className="font-poppins font-semibold text-body-3 text-text">
 					{title}
 				</Text>
-				<Text className="mt-0.5 font-poppins text-12 text-text/55">
+				<Text className="mt-1 font-poppins text-body-4 text-text/55">
 					{session.startTime} - {endTime}
 				</Text>
 			</View>
@@ -211,9 +249,8 @@ function SessionEditPill({
 			}}
 		>
 			<Text
-				className="flex-1 font-poppins text-16 text-text"
+				className="flex-1 font-poppins text-body-2 text-text"
 				numberOfLines={1}
-				style={{ includeFontPadding: false, lineHeight: 24 }}
 			>
 				{value}
 			</Text>
@@ -253,10 +290,10 @@ export function SessionEditForm({
 
 	return (
 		<View className="flex-1">
-			<Text className="font-bold font-poppins text-16 text-text">
+			<Text className="font-poppins font-semibold text-body-2 text-text">
 				{getSessionEditTitle({ ...session, phase: editPhase })}
 			</Text>
-			<Text className="mt-2 mb-7 font-poppins text-14 text-text/42">
+			<Text className="mt-2 mb-7 font-poppins text-body-3 text-text/42">
 				Passe deinen Lernplan so an, wie er für dich passt.
 			</Text>
 
@@ -264,15 +301,15 @@ export function SessionEditForm({
 			<SessionEditPill
 				accessibilityLabel="Lerndatum ändern"
 				value={formatDate(editDate)}
-				icon={<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />}
+				icon={<CalendarDays size={20} color="#697586" strokeWidth={2.1} />}
 				onPress={onChangeDate}
 			/>
-			<View className="mt-5 mb-7 flex-row" style={{ columnGap: 12 }}>
+			<View className="mt-5 mb-7 flex-row gap-3">
 				<View className="flex-1">
 					<SessionEditPill
 						accessibilityLabel="Startzeit ändern"
 						value={editStart}
-						icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
+						icon={<Clock3 size={19} color="#697586" strokeWidth={2.1} />}
 						onPress={onChangeStart}
 						className="min-h-[64px] px-5"
 					/>
@@ -281,7 +318,7 @@ export function SessionEditForm({
 					<SessionEditPill
 						accessibilityLabel="Endzeit ändern"
 						value={editEnd}
-						icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
+						icon={<Clock3 size={19} color="#697586" strokeWidth={2.1} />}
 						onPress={onChangeEnd}
 						className="min-h-[64px] px-5"
 					/>
@@ -293,7 +330,7 @@ export function SessionEditForm({
 				<SessionEditPill
 					accessibilityLabel="Lernphase ändern"
 					value={getSessionPhaseLabel(editPhase)}
-					icon={<ChevronDown size={20} color="#202127" strokeWidth={2.1} />}
+					icon={<ChevronDown size={20} color="#1A1A1A" strokeWidth={2.1} />}
 					onPress={() => setIsPhaseMenuOpen((value) => !value)}
 				/>
 				{isPhaseMenuOpen ? (
@@ -309,14 +346,14 @@ export function SessionEditForm({
 									onChangePhase(phase);
 									setIsPhaseMenuOpen(false);
 								}}
-								className="h-12 justify-center rounded-[24px] bg-white px-5"
+								className="h-12 justify-center rounded-[24px] bg-card px-5"
 								style={{
 									borderWidth: phase === editPhase ? 1.5 : 1,
 									borderColor:
-										phase === editPhase ? "#3A7BFF" : "rgba(17,24,39,0.04)",
+										phase === editPhase ? "#00BAFF" : "rgba(17,24,39,0.04)",
 								}}
 							>
-								<Text className="font-poppins text-14 text-text/70">
+								<Text className="font-poppins text-body-3 text-text/70">
 									{getSessionPhaseLabel(phase)}
 								</Text>
 							</TouchableOpacity>
@@ -325,7 +362,7 @@ export function SessionEditForm({
 				) : null}
 			</View>
 
-			<View className="mt-auto flex-row pt-8" style={{ columnGap: 10 }}>
+			<View className="mt-auto flex-row gap-3 pt-8">
 				<Button
 					variant="neutral"
 					className="flex-1 shadow-none"
@@ -354,21 +391,68 @@ export function SessionEditForm({
 	);
 }
 
+function AnalysisOrbitPetalCircle({
+	petal,
+	foldProgress,
+}: {
+	petal: AnalysisOrbitPetal;
+	foldProgress: SharedValue<number>;
+}) {
+	const petalStyle = useAnimatedStyle(() => {
+		// This worklet runs on the Reanimated UI thread. React does not re-render
+		// during the loader loop; each petal only receives a cheap transform update.
+		const position = getAnalysisOrbitPetalPosition(petal, foldProgress.get());
+		return {
+			transform: [
+				{ translateX: position.cx - ANALYSIS_ORBIT_CENTER },
+				{ translateY: position.cy - ANALYSIS_ORBIT_CENTER },
+			],
+		};
+	});
+
+	return (
+		<Animated.View
+			style={[
+				{
+					// Each petal is drawn once as a native rounded view centered in the
+					// loader. Animation only changes transform, which is cheaper than
+					// changing layout, SVG attributes, or React state on every frame.
+					position: "absolute",
+					left: ANALYSIS_ORBIT_CENTER - ANALYSIS_ORBIT_PETAL_SIZE / 2,
+					top: ANALYSIS_ORBIT_CENTER - ANALYSIS_ORBIT_PETAL_SIZE / 2,
+					height: ANALYSIS_ORBIT_PETAL_SIZE,
+					width: ANALYSIS_ORBIT_PETAL_SIZE,
+					borderRadius: ANALYSIS_ORBIT_PETAL_SIZE / 2,
+					backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.primary,
+					opacity: ORBIT_PETAL_OPACITY,
+				},
+				petalStyle,
+			]}
+		/>
+	);
+}
+
 export function AnalysisOrbitLoader() {
-	const flowerScale = useSharedValue(1);
+	// Two independent shared values model the product requirement directly:
+	// `foldProgress` controls the petal geometry, while `flowerRotation` controls
+	// only the collapse spin. Keeping them separate avoids rotating the expansion.
+	const foldProgress = useSharedValue(1);
 	const flowerRotation = useSharedValue(0);
 	const reduceMotion = useReducedMotion();
 
 	useEffect(() => {
 		if (reduceMotion) {
 			flowerRotation.set(0);
-			flowerScale.set(1);
+			foldProgress.set(1);
 			return;
 		}
 
 		flowerRotation.set(
 			withRepeat(
 				withSequence(
+					// Rotate only while collapsing. The following delay keeps the final
+					// rotation value during expansion/rest, then snaps it back to 0 at
+					// the loop boundary where the flower is already expanded.
 					withTiming(40, {
 						duration: ORBIT_COLLAPSE_DURATION,
 						easing: Easing.inOut(Easing.cubic),
@@ -381,13 +465,16 @@ export function AnalysisOrbitLoader() {
 				-1,
 			),
 		);
-		flowerScale.set(
+		foldProgress.set(
 			withRepeat(
 				withSequence(
+					// Collapse by moving every petal center to the exact loader center.
 					withTiming(0, {
 						duration: ORBIT_COLLAPSE_DURATION,
 						easing: Easing.inOut(Easing.cubic),
 					}),
+					// Expand back out without changing `flowerRotation`, so the flower
+					// opens in place instead of spinning open.
 					withTiming(1, {
 						duration: ORBIT_EXPAND_DURATION,
 						easing: Easing.out(Easing.cubic),
@@ -400,17 +487,13 @@ export function AnalysisOrbitLoader() {
 
 		return () => {
 			cancelAnimation(flowerRotation);
-			cancelAnimation(flowerScale);
+			cancelAnimation(foldProgress);
 		};
-	}, [flowerRotation, flowerScale, reduceMotion]);
+	}, [flowerRotation, foldProgress, reduceMotion]);
 
 	const flowerStyle = useAnimatedStyle(() => {
-		const scaleProgress = flowerScale.get();
 		return {
-			transform: [
-				{ rotate: `${flowerRotation.get()}deg` },
-				{ scale: 0.62 + scaleProgress * 0.38 },
-			],
+			transform: [{ rotate: `${flowerRotation.get()}deg` }],
 		};
 	});
 
@@ -422,26 +505,14 @@ export function AnalysisOrbitLoader() {
 				width: ANALYSIS_ORBIT_LOADER_SIZE,
 			}}
 		>
-			<Animated.View
-				className="h-full w-full items-center justify-center"
-				style={flowerStyle}
-			>
-				<Svg
-					width={ANALYSIS_ORBIT_LOADER_SIZE}
-					height={ANALYSIS_ORBIT_LOADER_SIZE}
-					viewBox={`0 0 ${ANALYSIS_ORBIT_LOADER_SIZE} ${ANALYSIS_ORBIT_LOADER_SIZE}`}
-				>
-					{ANALYSIS_ORBIT_PETALS.map((petal) => (
-						<Circle
-							key={petal.id}
-							cx={petal.cx}
-							cy={petal.cy}
-							r={ANALYSIS_ORBIT_PETAL_SIZE / 2}
-							fill="#3A7BFF"
-							fillOpacity={0.55}
-						/>
-					))}
-				</Svg>
+			<Animated.View className="h-full w-full" style={flowerStyle}>
+				{ANALYSIS_ORBIT_PETALS.map((petal) => (
+					<AnalysisOrbitPetalCircle
+						key={petal.id}
+						petal={petal}
+						foldProgress={foldProgress}
+					/>
+				))}
 			</Animated.View>
 		</View>
 	);

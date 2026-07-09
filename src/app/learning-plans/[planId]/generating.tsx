@@ -12,6 +12,7 @@ import { useAuth } from "~/context/AuthContext";
 import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useValidationAnalytics } from "~/lib/analytics";
 import { goBackOrReplace } from "~/lib/navigation";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
@@ -25,6 +26,7 @@ export default function LearningPlanGeneratingScreen() {
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuth();
+	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
 	const [isBusy, setIsBusy] = useState(false);
@@ -82,6 +84,12 @@ export default function LearningPlanGeneratingScreen() {
 				learningPlanId: planId,
 				answers: answerList,
 			})
+				.then((result) => {
+					capture("study_plan_generated", {
+						learning_plan_id: planId,
+						session_count: result.sessionCount,
+					});
+				})
 				.catch((error: unknown) => {
 					setErrorMessage(
 						getErrorMessage(
@@ -93,7 +101,7 @@ export default function LearningPlanGeneratingScreen() {
 				})
 				.finally(() => setIsBusy(false));
 		});
-	}, [answerList, generatePlan, planId, retryAttempt, router, snapshot]);
+	}, [answerList, capture, generatePlan, planId, retryAttempt, router, snapshot]);
 
 	useEffect(() => {
 		return () => {
@@ -117,7 +125,7 @@ export default function LearningPlanGeneratingScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-[#F5F3F6]">
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: false }} />
 			<StatusBar style="dark" />
 			<ScrollView
@@ -132,15 +140,12 @@ export default function LearningPlanGeneratingScreen() {
 				<Header title="Lernplan" onBack={goBack} />
 				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
 					<AnalysisOrbitLoader />
-					<Text
-						className="text-center font-poppins font-semibold text-text/70"
-						style={{ fontSize: 23, lineHeight: 26 }}
-					>
+					<Text className="text-center font-poppins font-semibold text-heading-2 text-text/70">
 						Aus deinen Antworten erstellen wir deinen persönlichen Lernplan.
 					</Text>
 					{errorMessage ? (
 						<>
-							<Text className="mt-6 text-center font-poppins text-12 text-destructive">
+							<Text className="mt-6 text-center font-poppins text-body-4 text-destructive">
 								{errorMessage}
 							</Text>
 							<Button

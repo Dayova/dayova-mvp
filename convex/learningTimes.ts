@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const MAX_LEARNING_TIMES = 50;
 
 const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
@@ -19,6 +20,8 @@ const parseTimeToMinutes = (time: string) => {
 
 	return Number(match[1]) * 60 + Number(match[2]);
 };
+
+const timeSortValue = (time: string) => parseTimeToMinutes(time) ?? 0;
 
 const validateLearningTime = (args: {
 	dayOfWeek: number;
@@ -42,6 +45,43 @@ const validateLearningTime = (args: {
 	if (endMinutes <= startMinutes) {
 		throwUserFacingError("Die Endzeit muss nach der Startzeit liegen.");
 	}
+
+	return { startMinutes, endMinutes };
+};
+
+const assertNoOverlap = async (
+	ctx: MutationCtx,
+	args: {
+		ownerTokenIdentifier: string;
+		dayOfWeek: number;
+		startMinutes: number;
+		endMinutes: number;
+		excludeId?: string;
+	},
+) => {
+	const sameDayRows = await ctx.db
+		.query("userLearningTimes")
+		.withIndex("by_ownerTokenIdentifier_and_dayOfWeek", (q) =>
+			q
+				.eq("ownerTokenIdentifier", args.ownerTokenIdentifier)
+				.eq("dayOfWeek", args.dayOfWeek),
+		)
+		.take(MAX_LEARNING_TIMES);
+
+	const overlapping = sameDayRows.find((row) => {
+		if (row._id === args.excludeId) return false;
+		const start = parseTimeToMinutes(row.startTime);
+		const end = parseTimeToMinutes(row.endTime);
+		if (start === null || end === null) return false;
+
+		return args.startMinutes < end && args.endMinutes > start;
+	});
+
+	if (overlapping) {
+		throwUserFacingError(
+			"Diese Lernzeit überschneidet sich mit einer bestehenden Lernzeit.",
+		);
+	}
 };
 
 export const listMine = query({
@@ -53,7 +93,7 @@ export const listMine = query({
 			.withIndex("by_ownerTokenIdentifier", (q) =>
 				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
 			)
-			.take(7);
+			.take(MAX_LEARNING_TIMES);
 
 		return rows
 			.map((row) => ({
@@ -62,37 +102,64 @@ export const listMine = query({
 				startTime: row.startTime,
 				endTime: row.endTime,
 			}))
-			.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+			.sort(
+				(a, b) =>
+					a.dayOfWeek - b.dayOfWeek ||
+					timeSortValue(a.startTime) - timeSortValue(b.startTime),
+			);
 	},
 });
 
 export const upsertMine = mutation({
 	args: {
+		id: v.optional(v.id("userLearningTimes")),
 		dayOfWeek: v.number(),
 		startTime: v.string(),
 		endTime: v.string(),
 	},
 	handler: async (ctx, args) => {
-		validateLearningTime(args);
+		const { startMinutes, endMinutes } = validateLearningTime(args);
 
 		const identity = await requireIdentity(ctx);
 		const now = Date.now();
-		const existing = await ctx.db
-			.query("userLearningTimes")
-			.withIndex("by_ownerTokenIdentifier_and_dayOfWeek", (q) =>
-				q
-					.eq("ownerTokenIdentifier", identity.tokenIdentifier)
-					.eq("dayOfWeek", args.dayOfWeek),
-			)
-			.unique();
+		const existing = args.id
+			? await ctx.db.get("userLearningTimes", args.id)
+			: null;
+		if (
+			args.id &&
+			(!existing || existing.ownerTokenIdentifier !== identity.tokenIdentifier)
+		) {
+			throwUserFacingError("Lernzeit nicht gefunden.");
+		}
+
+		await assertNoOverlap(ctx, {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			dayOfWeek: args.dayOfWeek,
+			startMinutes,
+			endMinutes,
+			excludeId: args.id,
+		});
 
 		if (existing) {
 			await ctx.db.patch("userLearningTimes", existing._id, {
+				dayOfWeek: args.dayOfWeek,
 				startTime: args.startTime,
 				endTime: args.endTime,
 				updatedAt: now,
 			});
 			return existing._id;
+		}
+
+		const existingRows = await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
+			)
+			.take(MAX_LEARNING_TIMES);
+		if (existingRows.length >= MAX_LEARNING_TIMES) {
+			throwUserFacingError(
+				"Du hast die maximale Anzahl an Lernzeiten erreicht.",
+			);
 		}
 
 		return await ctx.db.insert("userLearningTimes", {
@@ -108,28 +175,18 @@ export const upsertMine = mutation({
 
 export const removeMine = mutation({
 	args: {
-		dayOfWeek: v.number(),
+		id: v.id("userLearningTimes"),
 	},
 	handler: async (ctx, args) => {
-		if (
-			!Number.isInteger(args.dayOfWeek) ||
-			args.dayOfWeek < 1 ||
-			args.dayOfWeek > 7
-		) {
-			throwUserFacingError("Bitte wähle einen gültigen Lerntag aus.");
-		}
-
 		const identity = await requireIdentity(ctx);
-		const existing = await ctx.db
-			.query("userLearningTimes")
-			.withIndex("by_ownerTokenIdentifier_and_dayOfWeek", (q) =>
-				q
-					.eq("ownerTokenIdentifier", identity.tokenIdentifier)
-					.eq("dayOfWeek", args.dayOfWeek),
-			)
-			.unique();
+		const existing = await ctx.db.get("userLearningTimes", args.id);
 
-		if (!existing) return { success: true };
+		if (
+			!existing ||
+			existing.ownerTokenIdentifier !== identity.tokenIdentifier
+		) {
+			return { success: true };
+		}
 
 		await ctx.db.delete("userLearningTimes", existing._id);
 		return { success: true };

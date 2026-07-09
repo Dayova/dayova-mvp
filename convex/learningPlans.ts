@@ -10,16 +10,19 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
+import { getDayKeyQueryVariants } from "./dayKeyVariants";
+import { throwUserFacingError } from "./errors";
 import {
 	deleteManagedFile,
 	getConfiguredStorageProvider,
 	getR2ConfigOrThrow,
 } from "./fileStorage";
-import { getDayKeyQueryVariants } from "./dayKeyVariants";
-import { throwUserFacingError } from "./errors";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import { assertNoScheduleConflict } from "./scheduleConflicts";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
+
+const MAX_LEARNING_TIMES = 50;
 
 const phaseValidator = v.union(
 	v.literal("theory"),
@@ -191,6 +194,21 @@ const publicSession = (
 	completed: session.completed ?? false,
 	sortOrder: session.sortOrder,
 });
+
+const getCurrentPlanningHint = (
+	planningHint: string | undefined,
+	options: { hasLearningTimes: boolean },
+) => {
+	if (!planningHint) return undefined;
+	if (!options.hasLearningTimes) return planningHint;
+
+	const currentHint = planningHint
+		.replace(MISSING_LEARNING_TIMES_HINT, "")
+		.replace(/\s+/g, " ")
+		.trim();
+
+	return currentHint.length > 0 ? currentHint : undefined;
+};
 
 const buildPlanAccessKey = (learningPlanId: Id<"learningPlans">) =>
 	`learningPlan:${learningPlanId}`;
@@ -431,6 +449,12 @@ export const getSnapshot = query({
 			)
 			.order("asc")
 			.take(20);
+		const learningTimes = await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(1);
 
 		return {
 			plan: {
@@ -447,7 +471,9 @@ export const getSnapshot = query({
 				knowledgeQuestions: plan.knowledgeQuestions ?? [],
 				sourceSummary: plan.sourceSummary,
 				insight: plan.insight,
-				planningHint: plan.planningHint,
+				planningHint: getCurrentPlanningHint(plan.planningHint, {
+					hasLearningTimes: learningTimes.length > 0,
+				}),
 			},
 			documents: documents.map(publicDocument),
 			answers: answers.map(publicAnswer),
@@ -481,6 +507,10 @@ export const listOverview = query({
 			const completedCount = sessions.filter(
 				(session) => session.completed === true,
 			).length;
+			const currentSession =
+				sessions.find((session) => session.completed !== true) ??
+				sessions.at(-1) ??
+				null;
 			const progressPercent =
 				sessions.length > 0
 					? Math.round((completedCount / sessions.length) * 100)
@@ -494,6 +524,20 @@ export const listOverview = query({
 				progressPercent,
 				completedCount,
 				sessionCount: sessions.length,
+				examDateKey: plan.examDateKey,
+				examDateLabel: plan.examDateLabel,
+				currentSession: currentSession
+					? {
+							id: currentSession._id,
+							title: currentSession.title,
+							goal: currentSession.goal,
+							dateKey: currentSession.dateKey,
+							dateLabel: currentSession.dateLabel,
+							startTime: currentSession.startTime,
+							durationMinutes: currentSession.durationMinutes,
+							completed: currentSession.completed === true,
+						}
+					: null,
 				updatedAt: plan.updatedAt,
 			});
 		}
@@ -689,6 +733,98 @@ export const removeDocument = mutation({
 	},
 });
 
+export const removePlan = mutation({
+	args: {
+		id: v.id("learningPlans"),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.id);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			return null;
+		}
+
+		const documents = await ctx.db
+			.query("learningPlanDocuments")
+			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
+			.take(100);
+		for (const document of documents) {
+			await deleteManagedFile(ctx, {
+				storageId: document.storageId,
+				storageProvider: document.storageProvider,
+			});
+			await ctx.db.delete("learningPlanDocuments", document._id);
+		}
+
+		const answers = await ctx.db
+			.query("learningPlanAnswers")
+			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
+			.take(100);
+		for (const answer of answers) {
+			await ctx.db.delete("learningPlanAnswers", answer._id);
+		}
+
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", args.id),
+			)
+			.take(100);
+		for (const session of sessions) {
+			if (session.dayEntryId) {
+				const dayEntry = await ctx.db.get("dayEntries", session.dayEntryId);
+				if (dayEntry?.ownerTokenIdentifier === ownerTokenIdentifier) {
+					await ctx.db.delete("dayEntries", session.dayEntryId);
+				}
+			}
+			await ctx.db.delete("learningPlanSessions", session._id);
+		}
+
+		if (plan.examDayEntryId) {
+			const examEntry = await ctx.db.get("dayEntries", plan.examDayEntryId);
+			if (examEntry?.ownerTokenIdentifier === ownerTokenIdentifier) {
+				await ctx.db.patch("dayEntries", plan.examDayEntryId, {
+					relatedLearningPlanId: undefined,
+				});
+			}
+		}
+
+		const localSchedules = await ctx.db
+			.query("localNotificationSchedules")
+			.withIndex("by_ownerTokenIdentifier_and_expiresAt", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(500);
+		for (const schedule of localSchedules) {
+			if (schedule.relatedLearningPlanId === args.id) {
+				await ctx.db.delete("localNotificationSchedules", schedule._id);
+			}
+		}
+
+		const notificationHistory = await ctx.db
+			.query("notificationHistory")
+			.withIndex("by_ownerTokenIdentifier_and_createdAt", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(500);
+		const now = Date.now();
+		for (const notification of notificationHistory) {
+			if (
+				notification.relatedLearningPlanId === args.id &&
+				notification.deletedAt === undefined
+			) {
+				await ctx.db.patch("notificationHistory", notification._id, {
+					deletedAt: now,
+				});
+			}
+		}
+
+		await ctx.db.delete("learningPlans", args.id);
+		return args.id;
+	},
+});
+
 export const getAiContext = internalQuery({
 	args: {
 		learningPlanId: v.id("learningPlans"),
@@ -715,7 +851,7 @@ export const getAiContext = internalQuery({
 			.withIndex("by_ownerTokenIdentifier", (q) =>
 				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
 			)
-			.take(7);
+			.take(MAX_LEARNING_TIMES);
 		const occupiedEntries: Array<{
 			dayKey: string;
 			time?: string;

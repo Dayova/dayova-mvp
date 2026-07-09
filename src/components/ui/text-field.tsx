@@ -41,14 +41,14 @@ function InsetTextField({
 			<FieldControl
 				invalid={invalid}
 				className={cn(
-					"min-h-[64px] items-center rounded-[28px] px-5 py-0",
+					"min-h-16 items-center rounded-input px-5 py-0",
 					controlClassName,
 				)}
 			>
 				<View className="flex-1">
 					<Input
 						accessibilityLabel={accessibilityLabel ?? label}
-						className={cn("flex-none text-16", inputClassName)}
+						className={cn("flex-none text-body-2", inputClassName)}
 						{...inputProps}
 					/>
 				</View>

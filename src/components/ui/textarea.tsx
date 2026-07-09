@@ -8,6 +8,12 @@ type TextareaProps = React.ComponentProps<typeof TextInput> & {
 	ref?: React.Ref<TextareaRef>;
 };
 
+const androidTextareaStyle = Platform.select({
+	android: {
+		includeFontPadding: false,
+	},
+});
+
 function Textarea({
 	className,
 	placeholderTextColor,
@@ -22,33 +28,19 @@ function Textarea({
 			multiline
 			textAlignVertical="top"
 			className={cn(
-				"min-h-[112px] w-full flex-1 self-stretch font-poppins text-14 text-text",
+				"m-0 min-h-28 w-full flex-1 self-stretch px-0 py-1 font-poppins text-body-3 text-text tracking-normal",
 				Platform.select({
 					web: "outline-none",
 				}),
 				props.editable === false && "opacity-50",
 				className,
 			)}
-			style={[
-				{
-					margin: 0,
-					paddingTop: 4,
-					paddingBottom: 4,
-					paddingHorizontal: 0,
-					lineHeight: 22,
-					letterSpacing: 0,
-					verticalAlign: "top",
-					...Platform.select({
-						android: {
-							includeFontPadding: false,
-						},
-					}),
-				},
-				style,
-			]}
+			// Android TextInput keeps extra font padding unless we reset it through
+			// the native style prop; the static typography/padding is class-based.
+			style={[androidTextareaStyle, style]}
 			underlineColorAndroid="transparent"
 			placeholderTextColor={
-				placeholderTextColor ?? `${DAYOVA_DESIGN_SYSTEM.colors.text}5C`
+				placeholderTextColor ?? `${DAYOVA_DESIGN_SYSTEM.colors.text}80`
 			}
 			selectionColor={selectionColor ?? DAYOVA_DESIGN_SYSTEM.colors.primary}
 			{...props}

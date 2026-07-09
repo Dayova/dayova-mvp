@@ -16,7 +16,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { ActionModal } from "~/components/ui/action-modal";
 import { BackButton, Button } from "~/components/ui/button";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
@@ -31,7 +30,6 @@ import {
 	BookOpen,
 	Calculator,
 	CalendarDays,
-	Check,
 	Chemistry,
 	ChevronDown,
 	ClipboardList,
@@ -55,16 +53,19 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuth } from "~/context/AuthContext";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useValidationAnalytics } from "~/lib/analytics";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import {
 	getDurationBetweenTimes,
 	shiftEndTimeForStartChange,
 } from "~/lib/entry-time";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
+import { cn } from "~/lib/utils";
 
 type EntryType = "homework" | "exam";
-type EntryStep = "basics" | "planning" | "success";
+type EntryStep = "basics" | "planning";
 type PickerTarget =
 	| "dueDate"
 	| "plannedDate"
@@ -99,6 +100,9 @@ const EXAM_TYPE_OPTIONS = [
 ];
 
 const KEYBOARD_DISMISS_FALLBACK_MS = 280;
+const FIELD_ICON_COLOR = DAYOVA_DESIGN_SYSTEM.colors.secondaryText;
+const FIELD_TEXT_COLOR = DAYOVA_DESIGN_SYSTEM.colors.text;
+const SELECTED_OPTION_ICON_COLOR = DAYOVA_DESIGN_SYSTEM.colors.primary;
 
 const subjectIconByOption = {
 	Mathematik: Calculator,
@@ -140,6 +144,29 @@ const formatCompactDate = (date: Date) =>
 		year: "numeric",
 	}).format(date);
 
+const homeworkSuccessPath = ({
+	dayKey,
+	completionDateKey,
+	completionDateLabel,
+	completionTime,
+}: {
+	dayKey: string;
+	completionDateKey: string;
+	completionDateLabel: string;
+	completionTime: string;
+}) => {
+	const query = [
+		["dayKey", dayKey],
+		["completionDateKey", completionDateKey],
+		["completionDateLabel", completionDateLabel],
+		["completionTime", completionTime],
+	]
+		.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+		.join("&");
+
+	return `/entry/success?${query}` as const;
+};
+
 function HomeworkPillField({
 	label,
 	value,
@@ -158,9 +185,8 @@ function HomeworkPillField({
 	const content = (
 		<>
 			<Text
-				className="flex-1 font-poppins text-16 text-text/46"
+				className="flex-1 font-poppins text-body-2 text-secondary-text"
 				numberOfLines={1}
-				style={{ includeFontPadding: false }}
 			>
 				{value || placeholder}
 			</Text>
@@ -175,20 +201,12 @@ function HomeworkPillField({
 				<FieldTrigger
 					activeOpacity={0.86}
 					onPress={onPress}
-					className={`min-h-[64px] rounded-[28px] px-5 ${className ?? ""}`}
-					style={{
-						boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-					}}
+					className={cn("min-h-16 rounded-input px-5", className)}
 				>
 					{content}
 				</FieldTrigger>
 			) : (
-				<FieldControl
-					className={`min-h-[64px] rounded-[28px] px-5 ${className ?? ""}`}
-					style={{
-						boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-					}}
-				>
+				<FieldControl className={cn("min-h-16 rounded-input px-5", className)}>
 					{content}
 				</FieldControl>
 			)}
@@ -206,10 +224,10 @@ function HomeworkScreenHeader({
 	return (
 		<View className="mb-7 flex-row items-center justify-between">
 			<BackButton onPress={onBack} />
-			<Text className="font-poppins font-semibold text-16 text-text">
+			<Text className="font-poppins font-semibold text-body-2 text-text">
 				{title}
 			</Text>
-			<View style={{ width: 48 }} />
+			<View className="w-12" />
 		</View>
 	);
 }
@@ -218,6 +236,7 @@ export default function NewEntryScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
+	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDayEntry = useMutation(api.dayEntries.create);
 	const params = useLocalSearchParams<{
@@ -245,7 +264,6 @@ export default function NewEntryScreen() {
 		next.setHours(16, 30, 0, 0);
 		return next;
 	});
-	const [createdDayKey, setCreatedDayKey] = useState(getDayKey(initialDate));
 	const [isCreating, setIsCreating] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
@@ -422,6 +440,15 @@ export default function NewEntryScreen() {
 				durationMinutes: resolvedDurationMinutes,
 				...(!isHomework ? { examTypeLabel: trimmedExamType } : {}),
 			});
+			capture(isHomework ? "homework_created" : "exam_created", {
+				entry_id: createdEntryId,
+				subject: trimmedSubject,
+				planned_day_key: nextDayKey,
+				duration_minutes: resolvedDurationMinutes,
+				...(isHomework
+					? { due_day_key: getDayKey(dueDate) }
+					: { exam_type_label: trimmedExamType }),
+			});
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Der Eintrag konnte nicht gespeichert werden."),
@@ -431,9 +458,15 @@ export default function NewEntryScreen() {
 			setIsCreating(false);
 		}
 
-		setCreatedDayKey(nextDayKey);
 		if (isHomework) {
-			setStep("success");
+			router.replace(
+				homeworkSuccessPath({
+					dayKey: nextDayKey,
+					completionDateKey: nextDayKey,
+					completionDateLabel: formatCompactDate(plannedDate),
+					completionTime: formatTime(plannedTime),
+				}),
+			);
 			return;
 		}
 
@@ -468,10 +501,6 @@ export default function NewEntryScreen() {
 		router.push(`${ROUTES.createLearningPlan}?${query}`);
 	};
 
-	const finish = () => {
-		router.replace(`/home?dayKey=${encodeURIComponent(createdDayKey)}`);
-	};
-
 	const handleBack = useCallback(() => {
 		if (selectTarget) {
 			setSelectTarget(null);
@@ -493,9 +522,7 @@ export default function NewEntryScreen() {
 	}, [pickerTarget, router, selectTarget, step]);
 
 	useBackIntent(
-		Boolean(
-			selectTarget || pickerTarget || (step !== "basics" && step !== "success"),
-		),
+		Boolean(selectTarget || pickerTarget || step !== "basics"),
 		handleBack,
 	);
 
@@ -576,7 +603,9 @@ export default function NewEntryScreen() {
 						return (
 							<SubjectIcon
 								size={19}
-								color={isSelected ? "#3A7BFF" : "#6B7280"}
+								color={
+									isSelected ? SELECTED_OPTION_ICON_COLOR : FIELD_ICON_COLOR
+								}
 								strokeWidth={2}
 							/>
 						);
@@ -585,7 +614,7 @@ export default function NewEntryScreen() {
 					return (
 						<ClipboardList
 							size={19}
-							color={isSelected ? "#3A7BFF" : "#6B7280"}
+							color={isSelected ? SELECTED_OPTION_ICON_COLOR : FIELD_ICON_COLOR}
 							strokeWidth={2}
 						/>
 					);
@@ -595,7 +624,7 @@ export default function NewEntryScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-[#F5F3F6]">
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<StatusBar style="dark" />
 			<KeyboardSafeScrollView
@@ -613,17 +642,10 @@ export default function NewEntryScreen() {
 						<>
 							<HomeworkScreenHeader title="Abgabe" onBack={handleBack} />
 							<View className="mb-7">
-								<Text
-									className="font-poppins font-semibold text-text"
-									style={{
-										fontSize: 15,
-										lineHeight: 20,
-										includeFontPadding: false,
-									}}
-								>
+								<Text className="font-poppins font-semibold text-body-3 text-text">
 									Hausaufgabe eintragen
 								</Text>
-								<Text className="mt-2 font-poppins text-14 text-text/42">
+								<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
 									Trage zuerst Fälligkeit, Fach und Notiz ein.
 								</Text>
 							</View>
@@ -632,7 +654,11 @@ export default function NewEntryScreen() {
 								label="Fälligkeitsdatum"
 								value={formatCompactDate(dueDate)}
 								icon={
-									<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
+									<CalendarDays
+										size={20}
+										color={FIELD_ICON_COLOR}
+										strokeWidth={2.1}
+									/>
 								}
 								onPress={() => openPicker("dueDate")}
 							/>
@@ -642,35 +668,30 @@ export default function NewEntryScreen() {
 								<FieldTrigger
 									activeOpacity={0.86}
 									onPress={() => openSelect("subject")}
-									className="min-h-[64px] rounded-[28px] px-5"
-									style={{
-										boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-									}}
+									className="min-h-16 rounded-input px-5"
 								>
 									<Text
-										className="flex-1 font-poppins text-16"
+										className={cn(
+											"flex-1 font-poppins text-body-2",
+											subject ? "text-text" : "text-secondary-text",
+										)}
 										numberOfLines={1}
-										style={{
-											color: subject ? "#202127" : "rgba(17,24,39,0.32)",
-											includeFontPadding: false,
-										}}
 									>
 										{subject || "Wähle das Fach aus"}
 									</Text>
 									<FieldAccessory>
-										<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
+										<ChevronDown
+											size={20}
+											color={FIELD_TEXT_COLOR}
+											strokeWidth={2.1}
+										/>
 									</FieldAccessory>
 								</FieldTrigger>
 							</Field>
 
 							<Field className="mb-8" onLayout={handleNoteInputLayout}>
 								<FieldLabel>Notizen</FieldLabel>
-								<FieldControl
-									className="min-h-[150px] items-start rounded-[28px] px-5 pt-4 pb-4"
-									style={{
-										boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-									}}
-								>
+								<FieldControl className="min-h-40 items-start rounded-input px-5 pt-4 pb-4">
 									<Textarea
 										value={note}
 										onChangeText={setNote}
@@ -684,17 +705,10 @@ export default function NewEntryScreen() {
 						<>
 							<HomeworkScreenHeader title="Erledigen" onBack={handleBack} />
 							<View className="mb-5">
-								<Text
-									className="font-poppins font-semibold text-text"
-									style={{
-										fontSize: 15,
-										lineHeight: 20,
-										includeFontPadding: false,
-									}}
-								>
+								<Text className="font-poppins font-semibold text-body-3 text-text">
 									Hausaufgabe eintragen
 								</Text>
-								<Text className="mt-2 font-poppins text-14 text-text/42">
+								<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
 									Plane jetzt, wann du die Hausaufgabe erledigst.
 								</Text>
 							</View>
@@ -703,21 +717,29 @@ export default function NewEntryScreen() {
 								label="Erledigungsdatum"
 								value={formatCompactDate(plannedDate)}
 								icon={
-									<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
+									<CalendarDays
+										size={20}
+										color={FIELD_ICON_COLOR}
+										strokeWidth={2.1}
+									/>
 								}
 								onPress={() => openPicker("plannedDate")}
 							/>
 
-							<View className="mb-5 flex-row" style={{ columnGap: 12 }}>
+							<View className="mb-5 flex-row gap-3">
 								<View className="flex-1">
 									<HomeworkPillField
 										value={formatTime(plannedTime)}
 										placeholder="Von"
 										icon={
-											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
+											<Clock3
+												size={19}
+												color={FIELD_ICON_COLOR}
+												strokeWidth={2.1}
+											/>
 										}
 										onPress={() => openPicker("plannedTime")}
-										className="min-h-[64px] px-5"
+										className="min-h-16 px-5"
 									/>
 								</View>
 								<View className="flex-1">
@@ -725,43 +747,27 @@ export default function NewEntryScreen() {
 										value={formatTime(plannedEndTime)}
 										placeholder="Bis"
 										icon={
-											<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />
+											<Clock3
+												size={19}
+												color={FIELD_ICON_COLOR}
+												strokeWidth={2.1}
+											/>
 										}
 										onPress={() => openPicker("plannedEndTime")}
-										className="min-h-[64px] px-5"
+										className="min-h-16 px-5"
 									/>
 								</View>
 							</View>
-
-							<ActionModal
-								visible={step === "success"}
-								dismissible
-								onClose={finish}
-								accessibilityLabel="Erfolgsdialog schließen"
-								title="Hausaufgabe ist eingetragen"
-								description="Deine Hausaufgabe wurde erfolgreich eingetragen."
-								icon={<Check size={48} color="#28C76F" strokeWidth={1.2} />}
-							>
-								<Button className="mt-6 w-full" onPress={finish}>
-									<Text>Fertig</Text>
-								</Button>
-							</ActionModal>
 						</>
 					)
 				) : (
 					<>
 						<HomeworkScreenHeader title="Prüfungstermin" onBack={handleBack} />
 						<View className="mb-7">
-							<Text
-								className="font-poppins font-semibold text-16 text-text"
-								style={{
-									lineHeight: 20,
-									includeFontPadding: false,
-								}}
-							>
+							<Text className="font-poppins font-semibold text-body-2 text-text">
 								{title}
 							</Text>
-							<Text className="mt-2 font-poppins text-14 text-text/42">
+							<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
 								{subtitle}
 							</Text>
 						</View>
@@ -774,27 +780,43 @@ export default function NewEntryScreen() {
 							label="Prüfungsdatum"
 							value={formatCompactDate(plannedDate)}
 							icon={
-								<CalendarDays size={20} color="#9EA1A8" strokeWidth={2.1} />
+								<CalendarDays
+									size={20}
+									color={FIELD_ICON_COLOR}
+									strokeWidth={2.1}
+								/>
 							}
 							onPress={() => openPicker("plannedDate")}
 						/>
-						<View className="mb-5 flex-row" style={{ columnGap: 12 }}>
+						<View className="mb-5 flex-row gap-3">
 							<View className="flex-1">
 								<HomeworkPillField
 									value={formatTime(plannedTime)}
 									placeholder="Von"
-									icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
+									icon={
+										<Clock3
+											size={19}
+											color={FIELD_ICON_COLOR}
+											strokeWidth={2.1}
+										/>
+									}
 									onPress={() => openPicker("plannedTime")}
-									className="min-h-[64px] px-5"
+									className="min-h-16 px-5"
 								/>
 							</View>
 							<View className="flex-1">
 								<HomeworkPillField
 									value={formatTime(plannedEndTime)}
 									placeholder="Bis"
-									icon={<Clock3 size={19} color="#9EA1A8" strokeWidth={2.1} />}
+									icon={
+										<Clock3
+											size={19}
+											color={FIELD_ICON_COLOR}
+											strokeWidth={2.1}
+										/>
+									}
 									onPress={() => openPicker("plannedEndTime")}
-									className="min-h-[64px] px-5"
+									className="min-h-16 px-5"
 								/>
 							</View>
 						</View>
@@ -804,23 +826,23 @@ export default function NewEntryScreen() {
 							<FieldTrigger
 								activeOpacity={0.86}
 								onPress={() => openSelect("subject")}
-								className="min-h-[64px] rounded-[28px] px-5"
-								style={{
-									boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-								}}
+								className="min-h-16 rounded-input px-5"
 							>
 								<Text
-									className="flex-1 font-poppins text-16"
+									className={cn(
+										"flex-1 font-poppins text-body-2",
+										subject ? "text-text" : "text-secondary-text",
+									)}
 									numberOfLines={1}
-									style={{
-										color: subject ? "#202127" : "rgba(17,24,39,0.32)",
-										includeFontPadding: false,
-									}}
 								>
 									{subject || "Wähle das Fach aus"}
 								</Text>
 								<FieldAccessory>
-									<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
+									<ChevronDown
+										size={20}
+										color={FIELD_TEXT_COLOR}
+										strokeWidth={2.1}
+									/>
 								</FieldAccessory>
 							</FieldTrigger>
 						</Field>
@@ -830,23 +852,23 @@ export default function NewEntryScreen() {
 							<FieldTrigger
 								activeOpacity={0.86}
 								onPress={() => openSelect("examType")}
-								className="min-h-[64px] rounded-[28px] px-5"
-								style={{
-									boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-								}}
+								className="min-h-16 rounded-input px-5"
 							>
 								<Text
-									className="flex-1 font-poppins text-16"
+									className={cn(
+										"flex-1 font-poppins text-body-2",
+										examTypeLabel ? "text-text" : "text-secondary-text",
+									)}
 									numberOfLines={1}
-									style={{
-										color: examTypeLabel ? "#202127" : "rgba(17,24,39,0.32)",
-										includeFontPadding: false,
-									}}
 								>
 									{examTypeLabel || "Wähle die Prüfungsart aus"}
 								</Text>
 								<FieldAccessory>
-									<ChevronDown size={20} color="#202127" strokeWidth={2.1} />
+									<ChevronDown
+										size={20}
+										color={FIELD_TEXT_COLOR}
+										strokeWidth={2.1}
+									/>
 								</FieldAccessory>
 							</FieldTrigger>
 						</Field>
@@ -856,8 +878,8 @@ export default function NewEntryScreen() {
 			<KeyboardStickyView enabled={shouldUseKeyboardStickyActions(Platform.OS)}>
 				{isHomework ? (
 					<View
+						className="px-6"
 						style={{
-							paddingHorizontal: 24,
 							paddingBottom: Math.max(insets.bottom + 10, 24),
 						}}
 					>
@@ -865,7 +887,7 @@ export default function NewEntryScreen() {
 							<Text
 								accessibilityRole="alert"
 								accessibilityLiveRegion="polite"
-								className="mb-3 text-center font-poppins text-12 text-destructive"
+								className="mb-3 text-center font-poppins text-body-4 text-destructive"
 							>
 								{errorMessage}
 							</Text>
@@ -890,8 +912,8 @@ export default function NewEntryScreen() {
 					</View>
 				) : (
 					<View
+						className="px-6"
 						style={{
-							paddingHorizontal: 24,
 							paddingBottom: Math.max(insets.bottom + 10, 24),
 						}}
 					>
@@ -899,12 +921,12 @@ export default function NewEntryScreen() {
 							<Text
 								accessibilityRole="alert"
 								accessibilityLiveRegion="polite"
-								className="mb-3 text-center font-poppins text-12 text-destructive"
+								className="mb-3 text-center font-poppins text-body-4 text-destructive"
 							>
 								{errorMessage}
 							</Text>
 						) : null}
-						<View className="flex-row" style={{ columnGap: 12 }}>
+						<View className="flex-row gap-3">
 							<Button
 								className="flex-1"
 								variant="neutral"

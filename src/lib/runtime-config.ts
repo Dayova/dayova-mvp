@@ -5,6 +5,8 @@ import { z } from "zod";
 const publicEnvSchema = {
 	EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
 	EXPO_PUBLIC_CONVEX_URL: z.string().url(),
+	EXPO_PUBLIC_POSTHOG_API_KEY: z.string().optional(),
+	EXPO_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
 } as const;
 
 type PublicRuntimeConfigKey = keyof typeof publicEnvSchema;
@@ -19,12 +21,18 @@ type StrictPublicRuntimeConfigValues = Record<
 >;
 
 const publicEnvKeys = Object.keys(publicEnvSchema) as PublicRuntimeConfigKey[];
+const requiredPublicEnvKeys = [
+	"EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY",
+	"EXPO_PUBLIC_CONVEX_URL",
+] satisfies PublicRuntimeConfigKey[];
 
 // Expo only inlines direct process.env.EXPO_PUBLIC_* member accesses.
 export const readPublicRuntimeConfig = (): StrictPublicRuntimeConfigValues => ({
 	EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY:
 		process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
 	EXPO_PUBLIC_CONVEX_URL: process.env.EXPO_PUBLIC_CONVEX_URL,
+	EXPO_PUBLIC_POSTHOG_API_KEY: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
+	EXPO_PUBLIC_POSTHOG_HOST: process.env.EXPO_PUBLIC_POSTHOG_HOST,
 });
 
 const toStrictPublicRuntimeConfig = (
@@ -38,7 +46,7 @@ const rawPublicRuntimeConfig = readPublicRuntimeConfig();
 
 export const getMissingPublicRuntimeConfig = (
 	config: PublicRuntimeConfigValues,
-) => publicEnvKeys.filter((key) => !config[key]?.trim());
+) => requiredPublicEnvKeys.filter((key) => !config[key]?.trim());
 
 export const missingPublicRuntimeConfig = getMissingPublicRuntimeConfig(
 	rawPublicRuntimeConfig,

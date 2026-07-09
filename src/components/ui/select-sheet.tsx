@@ -15,6 +15,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { cn } from "~/lib/utils";
 
 type SelectSheetProps<T extends string | number> = {
 	visible: boolean;
@@ -76,27 +78,26 @@ function SelectSheet<T extends string | number>({
 	return (
 		<BottomSheetModal
 			ref={sheetRef}
-			backgroundStyle={{ backgroundColor: "#FFFFFF" }}
+			// @gorhom/bottom-sheet exposes its container chrome through style-only
+			// props, so these tokenized values cannot be NativeWind classes.
+			backgroundStyle={{ backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.surface }}
 			backdropComponent={renderBackdrop}
 			enableDynamicSizing={false}
 			enablePanDownToClose
-			handleIndicatorStyle={{ backgroundColor: "#D7D8DE", width: 44 }}
+			handleIndicatorStyle={{
+				backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.border,
+				width: 44,
+			}}
 			onDismiss={onClose}
 			snapPoints={snapPoints}
 		>
 			<View
-				className="flex-1 bg-white px-5 pt-1"
+				className="flex-1 bg-card px-5 pt-1"
+				// Safe-area padding is runtime device data.
 				style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}
 			>
 				<View className="mb-3 w-full flex-row items-center justify-between">
-					<Text
-						className="font-poppins font-semibold text-text"
-						style={{
-							fontSize: 17,
-							lineHeight: 22,
-							includeFontPadding: false,
-						}}
-					>
+					<Text className="font-poppins font-semibold text-body-2 text-text">
 						{title}
 					</Text>
 					<TouchableOpacity
@@ -104,19 +105,21 @@ function SelectSheet<T extends string | number>({
 						accessibilityRole="button"
 						hitSlop={8}
 						onPress={dismiss}
-						className="h-10 min-w-16 items-center justify-center rounded-full px-3"
-						style={{ backgroundColor: "rgba(58,123,255,0.08)" }}
+						className="h-10 min-w-16 items-center justify-center rounded-full bg-primary/10 px-3"
 					>
-						<Text className="font-bold font-poppins text-16 text-primary">
+						<Text className="font-poppins font-semibold text-body-2 text-primary">
 							Fertig
 						</Text>
 					</TouchableOpacity>
 				</View>
 				<BottomSheetScrollView
 					bounces={false}
-					contentContainerStyle={{ paddingBottom: 6, gap: 10 }}
+					// BottomSheetScrollView does not expose a NativeWind content
+					// container class prop; this spacing is static but API-bound.
+					contentContainerStyle={{ paddingBottom: 8, gap: 12 }}
 					nestedScrollEnabled
 					showsVerticalScrollIndicator={false}
+					// Third-party scroll host needs flex applied through style.
 					style={{ flex: 1 }}
 				>
 					{options.map((option) => {
@@ -131,29 +134,23 @@ function SelectSheet<T extends string | number>({
 								}}
 								accessibilityRole="button"
 								accessibilityState={{ selected: isSelected }}
-								className="min-h-[62px] flex-row items-center rounded-[20px] px-5"
-								style={{
-									borderWidth: 1,
-									borderColor: isSelected
-										? "rgba(58,123,255,0.34)"
-										: "rgba(17,24,39,0.07)",
-									backgroundColor: isSelected ? "#F3F7FF" : "#FFFFFF",
-								}}
+								className={cn(
+									"min-h-16 flex-row items-center rounded-[20px] border px-5",
+									isSelected
+										? "border-primary/35 bg-accent"
+										: "border-text/10 bg-card",
+								)}
 							>
 								{renderOptionIcon ? (
-									<View className="mr-5 h-9 w-9 items-center justify-center rounded-full bg-[#F4F6FA]">
+									<View className="mr-5 h-9 w-9 items-center justify-center rounded-full bg-muted">
 										{renderOptionIcon(option, isSelected)}
 									</View>
 								) : null}
 								<Text
-									className="flex-1 font-poppins"
-									style={{
-										fontSize: 16,
-										lineHeight: 21,
-										color: isSelected ? "#3A7BFF" : "#202127",
-										includeFontPadding: false,
-										fontWeight: isSelected ? "600" : "400",
-									}}
+									className={cn(
+										"flex-1 font-poppins text-body-2",
+										isSelected ? "font-semibold text-primary" : "text-text",
+									)}
 								>
 									{formatOptionLabel ? formatOptionLabel(option) : option}
 								</Text>

@@ -13,6 +13,30 @@ const planInsightValidator = v.object({
 	gaps: v.array(v.string()),
 });
 
+const sessionPhaseValidator = v.union(
+	v.literal("theory"),
+	v.literal("practice"),
+	v.literal("rehearsal"),
+);
+
+const sessionContentItemKindValidator = v.union(
+	v.literal("learnCard"),
+	v.literal("multipleChoice"),
+	v.literal("written"),
+	v.literal("voice"),
+);
+
+const answerRatingValidator = v.union(
+	v.literal("notCorrect"),
+	v.literal("partiallyCorrect"),
+	v.literal("correct"),
+);
+
+const sessionContentChoiceValidator = v.object({
+	id: v.string(),
+	text: v.string(),
+});
+
 export default defineSchema({
 	users: defineTable({
 		tokenIdentifier: v.string(),
@@ -25,6 +49,7 @@ export default defineSchema({
 		schoolType: v.optional(v.string()),
 		state: v.optional(v.string()),
 		avatarUrl: v.optional(v.string()),
+		validationStudentCode: v.optional(v.string()),
 	})
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
 		.index("by_clerkId", ["clerkId"])
@@ -147,12 +172,15 @@ export default defineSchema({
 		durationMinutes: v.optional(v.number()),
 		examTypeLabel: v.optional(v.string()),
 		completed: v.optional(v.boolean()),
+		executionStatus: v.optional(v.string()),
 		relatedLearningPlanId: v.optional(v.id("learningPlans")),
 		relatedLearningPlanSessionId: v.optional(v.id("learningPlanSessions")),
-	}).index("by_ownerTokenIdentifier_and_dayKey", [
-		"ownerTokenIdentifier",
-		"dayKey",
-	]),
+	})
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_ownerTokenIdentifier_and_dayKey", [
+			"ownerTokenIdentifier",
+			"dayKey",
+		]),
 	learningPlans: defineTable({
 		ownerTokenIdentifier: v.string(),
 		subject: v.string(),
@@ -210,11 +238,7 @@ export default defineSchema({
 	learningPlanSessions: defineTable({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
-		phase: v.union(
-			v.literal("theory"),
-			v.literal("practice"),
-			v.literal("rehearsal"),
-		),
+		phase: sessionPhaseValidator,
 		title: v.string(),
 		dateKey: v.string(),
 		dateLabel: v.string(),
@@ -230,5 +254,55 @@ export default defineSchema({
 		updatedAt: v.number(),
 	})
 		.index("by_learningPlanId_and_sortOrder", ["learningPlanId", "sortOrder"])
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+	learningSessionContentItems: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		sessionId: v.id("learningPlanSessions"),
+		phase: sessionPhaseValidator,
+		kind: sessionContentItemKindValidator,
+		title: v.string(),
+		prompt: v.string(),
+		front: v.optional(v.string()),
+		back: v.optional(v.string()),
+		explanation: v.string(),
+		idealAnswer: v.string(),
+		choices: v.optional(v.array(sessionContentChoiceValidator)),
+		correctChoiceId: v.optional(v.string()),
+		evaluationKeywords: v.array(v.string()),
+		sortOrder: v.number(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_sessionId_and_sortOrder", ["sessionId", "sortOrder"])
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+	learningSessionAnswerAttempts: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		sessionId: v.id("learningPlanSessions"),
+		itemId: v.id("learningSessionContentItems"),
+		selectedChoiceId: v.optional(v.string()),
+		answerText: v.optional(v.string()),
+		transcript: v.optional(v.string()),
+		rating: answerRatingValidator,
+		feedback: v.string(),
+		perfectAnswer: v.string(),
+		timeSpentSeconds: v.optional(v.number()),
+		createdAt: v.number(),
+	})
+		.index("by_sessionId_and_createdAt", ["sessionId", "createdAt"])
+		.index("by_itemId_and_createdAt", ["itemId", "createdAt"])
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+	learningSessionAnalyses: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		sessionId: v.id("learningPlanSessions"),
+		strengths: v.array(v.string()),
+		gaps: v.array(v.string()),
+		recommendation: v.string(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_sessionId", ["sessionId"])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 });
