@@ -53,6 +53,7 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuth } from "~/context/AuthContext";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useValidationAnalytics } from "~/lib/analytics";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import {
@@ -235,6 +236,7 @@ export default function NewEntryScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
+	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDayEntry = useMutation(api.dayEntries.create);
 	const params = useLocalSearchParams<{
@@ -437,6 +439,15 @@ export default function NewEntryScreen() {
 				plannedDateLabel: formatDate(plannedDate),
 				durationMinutes: resolvedDurationMinutes,
 				...(!isHomework ? { examTypeLabel: trimmedExamType } : {}),
+			});
+			capture(isHomework ? "homework_created" : "exam_created", {
+				entry_id: createdEntryId,
+				subject: trimmedSubject,
+				planned_day_key: nextDayKey,
+				duration_minutes: resolvedDurationMinutes,
+				...(isHomework
+					? { due_day_key: getDayKey(dueDate) }
+					: { exam_type_label: trimmedExamType }),
 			});
 		} catch (error) {
 			setErrorMessage(

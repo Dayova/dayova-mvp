@@ -41,6 +41,7 @@ import {
 	retryOnceAfterAuthResume,
 } from "~/features/learning-plans/utils";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import { useValidationAnalytics } from "~/lib/analytics";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
@@ -78,6 +79,7 @@ export default function NewLearningPlanScreen() {
 		errorMessage?: string;
 	}>();
 	const { user } = useAuth();
+	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const startPlan = useMutation(api.learningPlans.start);
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
@@ -318,6 +320,11 @@ export default function NewLearningPlanScreen() {
 				fileSizeBytes,
 			}),
 		);
+		capture("material_uploaded", {
+			learning_plan_id: id,
+			file_type: fileType,
+			file_size_bytes: fileSizeBytes,
+		});
 	};
 
 	const uploadMaterial = async () => {

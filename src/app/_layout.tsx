@@ -16,9 +16,12 @@ import { useEffect } from "react";
 import { Text, View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { PostHogProvider } from "posthog-react-native";
+import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { NotificationSync } from "~/components/notification-sync";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
+import { isPostHogConfigured, postHogHost } from "~/lib/analytics";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { NAV_THEME } from "~/lib/theme";
 
@@ -100,11 +103,23 @@ export default function RootLayout() {
 					<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
 						<ThemeProvider value={NAV_THEME}>
 							<BottomSheetModalProvider>
-								<OnboardingProvider>
-									<AuthProvider>
-										<AppNavigator />
-									</AuthProvider>
-								</OnboardingProvider>
+								<PostHogProvider
+									apiKey={env.EXPO_PUBLIC_POSTHOG_API_KEY?.trim() ?? ""}
+									options={{
+										host: postHogHost,
+										disabled: !isPostHogConfigured,
+										captureAppLifecycleEvents: false,
+									}}
+									autocapture={false}
+								>
+									<OnboardingProvider>
+										<AuthProvider>
+											<AnalyticsIdentity>
+												<AppNavigator />
+											</AnalyticsIdentity>
+										</AuthProvider>
+									</OnboardingProvider>
+								</PostHogProvider>
 							</BottomSheetModalProvider>
 						</ThemeProvider>
 					</ConvexProviderWithClerk>

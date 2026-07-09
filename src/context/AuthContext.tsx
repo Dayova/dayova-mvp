@@ -48,6 +48,7 @@ type AuthUser = {
 	schoolType?: string;
 	state?: string;
 	avatarUrl?: string;
+	validationStudentCode?: string;
 };
 
 type AuthFlowResult =
@@ -393,6 +394,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			schoolType: getMetadataString(unsafeMetadata, "schoolType"),
 			state: getMetadataString(unsafeMetadata, "state"),
 			avatarUrl: clerkUser.imageUrl,
+			validationStudentCode: getMetadataString(
+				unsafeMetadata,
+				"validationStudentCode",
+			),
 		};
 	}, [clerkUser]);
 
@@ -424,6 +429,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				state: pendingProfile?.state ?? user.state,
 			}),
 			...(user.avatarUrl !== undefined ? { avatarUrl: user.avatarUrl } : {}),
+			...(user.validationStudentCode !== undefined
+				? { validationStudentCode: user.validationStudentCode }
+				: {}),
 		};
 
 		void (async () => {
