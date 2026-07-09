@@ -3,6 +3,13 @@ import { useCallback } from "react";
 import { useAuth } from "~/context/AuthContext";
 
 type ValidationEventName =
+	| "dashboard_viewed"
+	| "dashboard_day_selected"
+	| "dashboard_today_selected"
+	| "dashboard_create_opened"
+	| "dashboard_create_type_selected"
+	| "dashboard_entry_opened"
+	| "dashboard_hero_day_changed"
 	| "onboarding_completed"
 	| "homework_created"
 	| "exam_created"
