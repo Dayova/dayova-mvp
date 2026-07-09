@@ -14,7 +14,7 @@ if (isReleaseConfig) {
 	validatePublicEnvForRelease();
 }
 
-const APP_VERSION = "1.0.2";
+const APP_VERSION = "1.0.3";
 const BACKGROUND_COLOR = "#ffffff";
 const DAYOVA_LOGO = isProduction
 	? "./assets/dayova-logo.png"
@@ -23,6 +23,16 @@ const DAYOVA_ANDROID_FOREGROUND = isProduction
 	? "./assets/dayova-logo-android-foreground.png"
 	: "./assets/dayova-logo-dev-android-foreground.png";
 const PROJECT_ID = "d3d06b26-c8da-4192-a50d-e1bb0ca4902c";
+const IOS_PRIVACY_PURPOSE_STRINGS = {
+	NSCameraUsageDescription:
+		"Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
+	NSMicrophoneUsageDescription:
+		"Dayova braucht Zugriff auf dein Mikrofon, damit du Sprachantworten einsprechen kannst.",
+	NSPhotoLibraryUsageDescription:
+		"Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst.",
+	NSSpeechRecognitionUsageDescription:
+		"Dayova nutzt Spracherkennung, um deine eingesprochenen Antworten als Text auszuwerten.",
+} as const;
 
 const config: ExpoConfig = {
 	name: "Dayova",
@@ -49,10 +59,7 @@ const config: ExpoConfig = {
 		usesAppleSignIn: true,
 		infoPlist: {
 			ITSAppUsesNonExemptEncryption: false,
-			NSMicrophoneUsageDescription:
-				"Dayova braucht Zugriff auf dein Mikrofon, damit du Sprachantworten einsprechen kannst.",
-			NSSpeechRecognitionUsageDescription:
-				"Dayova nutzt Spracherkennung, um deine eingesprochenen Antworten als Text auszuwerten.",
+			...IOS_PRIVACY_PURPOSE_STRINGS,
 		},
 	},
 	android: {
@@ -81,7 +88,8 @@ const config: ExpoConfig = {
 			{
 				cameraPermission:
 					"Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
-				microphonePermission: false,
+				microphonePermission:
+					IOS_PRIVACY_PURPOSE_STRINGS.NSMicrophoneUsageDescription,
 				photosPermission:
 					"Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst.",
 			},
