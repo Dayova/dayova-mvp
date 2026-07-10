@@ -21,7 +21,11 @@ import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { NotificationSync } from "~/components/notification-sync";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
-import { postHogApiKey, postHogHost } from "~/lib/analytics-core";
+import {
+	isPostHogConfigured,
+	postHogApiKey,
+	postHogHost,
+} from "~/lib/analytics-core";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { NAV_THEME } from "~/lib/theme";
 
@@ -101,6 +105,7 @@ export default function RootLayout() {
 					autocapture={false}
 					options={{
 						host: postHogHost,
+						disabled: !isPostHogConfigured,
 						captureAppLifecycleEvents: false,
 					}}
 				>

@@ -2,6 +2,13 @@ import type { PostHog } from "posthog-react-native";
 import { env } from "~/lib/runtime-config";
 
 type ValidationEventName =
+	| "dashboard_viewed"
+	| "dashboard_day_selected"
+	| "dashboard_today_selected"
+	| "dashboard_create_opened"
+	| "dashboard_create_type_selected"
+	| "dashboard_entry_opened"
+	| "dashboard_hero_day_changed"
 	| "onboarding_completed"
 	| "homework_created"
 	| "exam_created"
@@ -18,10 +25,7 @@ type ValidationEventName =
 
 type AnalyticsProperty = string | number | boolean | null;
 type AnalyticsProperties = Record<string, AnalyticsProperty>;
-type AnalyticsPropertiesInput = Record<
-	string,
-	AnalyticsProperty | undefined
->;
+type AnalyticsPropertiesInput = Record<string, AnalyticsProperty | undefined>;
 
 export const isPostHogConfigured = Boolean(
 	env.EXPO_PUBLIC_POSTHOG_API_KEY?.trim(),
@@ -32,7 +36,9 @@ export const postHogApiKey = env.EXPO_PUBLIC_POSTHOG_API_KEY?.trim() ?? "";
 export const postHogHost =
 	env.EXPO_PUBLIC_POSTHOG_HOST?.trim() || "https://eu.i.posthog.com";
 
-export function definedAnalyticsProperties(properties: AnalyticsPropertiesInput) {
+export function definedAnalyticsProperties(
+	properties: AnalyticsPropertiesInput,
+) {
 	return Object.fromEntries(
 		Object.entries(properties).filter(
 			(entry): entry is [string, AnalyticsProperty] => entry[1] !== undefined,

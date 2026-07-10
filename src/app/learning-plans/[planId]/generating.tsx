@@ -106,7 +106,15 @@ export default function LearningPlanGeneratingScreen() {
 				})
 				.finally(() => setIsBusy(false));
 		});
-	}, [answerList, capture, generatePlan, planId, retryAttempt, router, snapshot]);
+	}, [
+		answerList,
+		capture,
+		generatePlan,
+		planId,
+		retryAttempt,
+		router,
+		snapshot,
+	]);
 
 	useEffect(() => {
 		return () => {

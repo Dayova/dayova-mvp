@@ -119,6 +119,67 @@ test("session content is generated once and reused on reopen", async () => {
 	);
 });
 
+test("theory fallback creates active recall cards instead of generic summaries", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession("theory");
+
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	const content = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+
+	expect(content?.items).toHaveLength(5);
+	expect(content?.items.every((item) => item.kind === "learnCard")).toBe(true);
+	expect(content?.items[0]).toMatchObject({
+		front: expect.stringContaining("?"),
+		back: expect.stringContaining("Beispiel:"),
+	});
+	expect(content?.items.map((item) => item.back).join(" ")).not.toContain(
+		"Merke dir besonders, wie das Lernziel",
+	);
+});
+
+test("practice fallback creates concrete guided practice tasks", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession("practice");
+
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	const content = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	const prompts = content?.items.map((item) => item.prompt).join(" ") ?? "";
+
+	expect(content?.items).toHaveLength(4);
+	expect(content?.items.map((item) => item.kind)).toEqual([
+		"multipleChoice",
+		"written",
+		"voice",
+		"multipleChoice",
+	]);
+	expect(prompts).toContain("Übung");
+	expect(prompts).not.toContain("Welche Strategie passt");
+	expect(content?.items[0]?.choices[0]?.text).toContain("Probe");
+});
+
+test("praxis fallback creates generalprobe tasks without generic strategy prompts", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession("rehearsal");
+
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	const content = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	const prompts = content?.items.map((item) => item.prompt).join(" ") ?? "";
+
+	expect(content?.praxisDurationSeconds).toBe(30 * 60);
+	expect(content?.items).toHaveLength(4);
+	expect(prompts).toContain("Generalprobe");
+	expect(prompts).not.toContain("Welche Strategie passt");
+});
+
 test("answers produce feedback and finishing creates a Wissensanalyse", async () => {
 	const { t, sessionId } = await createGeneratedPlanWithSession("rehearsal");
 	await t.mutation(api.learningSessionContent.ensureSessionContent, {

@@ -231,8 +231,9 @@ const publicSession = (
 const getSessionExecutionStatus = (session: Doc<"learningPlanSessions">) =>
 	session.executionStatus ?? (session.completed ? "completed" : "notStarted");
 
-const isCompletedStatus = (status: ReturnType<typeof getSessionExecutionStatus>) =>
-	status === "completed";
+const isCompletedStatus = (
+	status: ReturnType<typeof getSessionExecutionStatus>,
+) => status === "completed";
 
 const getCurrentPlanningHint = (
 	planningHint: string | undefined,
@@ -425,7 +426,8 @@ const getOwnedSessionAndPlan = async (
 	ctx: MutationCtx,
 	sessionId: Id<"learningPlanSessions">,
 ) => {
-	const ownerTokenIdentifier = await requireOwnerTokenIdentifierForMutation(ctx);
+	const ownerTokenIdentifier =
+		await requireOwnerTokenIdentifierForMutation(ctx);
 	const session = await ctx.db.get("learningPlanSessions", sessionId);
 	if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
 		throwUserFacingError("Lernblock nicht gefunden.");
@@ -1225,6 +1227,14 @@ export const addSession = mutation({
 			durationMinutes,
 		});
 
+		const highestSortOrderSession = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", args.learningPlanId),
+			)
+			.order("desc")
+			.take(1);
+
 		const sessionId = await ctx.db.insert("learningPlanSessions", {
 			ownerTokenIdentifier,
 			learningPlanId: args.learningPlanId,
@@ -1237,11 +1247,7 @@ export const addSession = mutation({
 			goal: "Zusätzlichen Lernblock ergänzen und individuell bearbeiten.",
 			tasks: ["Aufgaben festlegen", "Ergebnis kontrollieren"],
 			expectedOutcome: "Ein zusätzlicher Lernblock ist im Plan ergänzt.",
-			sortOrder:
-				sessions.reduce(
-					(maxSortOrder, session) => Math.max(maxSortOrder, session.sortOrder),
-					-1,
-				) + 1,
+			sortOrder: (highestSortOrderSession[0]?.sortOrder ?? -1) + 1,
 			createdAt: now,
 			updatedAt: now,
 		});
@@ -1296,11 +1302,16 @@ export const startSession = mutation({
 		}
 
 		const now = Date.now();
-		const updatedSession = await patchSessionAndSyncedEntry(ctx, plan, session, {
-			executionStatus: "started",
-			startedAt: now,
-			completed: false,
-		});
+		const updatedSession = await patchSessionAndSyncedEntry(
+			ctx,
+			plan,
+			session,
+			{
+				executionStatus: "started",
+				startedAt: now,
+				completed: false,
+			},
+		);
 
 		return {
 			...learningSessionEventPayload(plan, updatedSession ?? session),
@@ -1322,11 +1333,16 @@ export const recordSessionOutcome = mutation({
 		}
 
 		const now = Date.now();
-		const updatedSession = await patchSessionAndSyncedEntry(ctx, plan, session, {
-			executionStatus: args.outcome,
-			outcomeAt: now,
-			completed: args.outcome === "completed",
-		});
+		const updatedSession = await patchSessionAndSyncedEntry(
+			ctx,
+			plan,
+			session,
+			{
+				executionStatus: args.outcome,
+				outcomeAt: now,
+				completed: args.outcome === "completed",
+			},
+		);
 
 		return {
 			...learningSessionEventPayload(plan, updatedSession ?? session),
@@ -1349,12 +1365,17 @@ export const missSession = mutation({
 		}
 
 		const now = Date.now();
-		const updatedSession = await patchSessionAndSyncedEntry(ctx, plan, session, {
-			executionStatus: "missed",
-			missedReason: args.reason,
-			outcomeAt: now,
-			completed: false,
-		});
+		const updatedSession = await patchSessionAndSyncedEntry(
+			ctx,
+			plan,
+			session,
+			{
+				executionStatus: "missed",
+				missedReason: args.reason,
+				outcomeAt: now,
+				completed: false,
+			},
+		);
 
 		return {
 			...learningSessionEventPayload(plan, updatedSession ?? session),

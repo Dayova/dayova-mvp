@@ -34,6 +34,8 @@ const MIN_LEARNING_SLOT_MINUTES = 10;
 const MAX_GENERATED_SESSIONS = 20;
 const MIN_THEORY_CARD_COUNT = 3;
 const MAX_THEORY_CARD_COUNT = 12;
+const MIN_SESSION_TASK_COUNT = 4;
+const MAX_SESSION_TASK_COUNT = 10;
 const ALTERNATIVE_SLOT_MINUTES = 30;
 const MAX_ALTERNATIVE_SESSIONS = 6;
 const GERMAN_UI_TEXT_RULE =
@@ -214,7 +216,7 @@ const generatedPlanSchema = z
 	})
 	.describe(GENERATED_PLAN_OUTPUT_DESCRIPTION);
 
-const _theoryCardsSchema = z
+const theoryCardsSchema = z
 	.object({
 		cards: boundedArray(
 			z.object({
@@ -251,6 +253,62 @@ const _theoryCardsSchema = z
 		`${GERMAN_UI_TEXT_RULE} Return precise active-recall learning cards for a theory session.`,
 	);
 
+const generatedTaskChoiceSchema = z.object({
+	text: germanTextSchema(
+		4,
+		"German answer option for a multiple-choice practice or praxis task.",
+	),
+	isCorrect: z.boolean(),
+});
+
+const generatedTaskBaseSchema = {
+	title: germanTextSchema(3, "Short German UI label for this task."),
+	prompt: germanTextSchema(
+		12,
+		"Concrete German task prompt the learner can answer directly.",
+	),
+	explanation: germanTextSchema(
+		20,
+		"German feedback explanation that teaches the key idea and common mistake.",
+	),
+	idealAnswer: germanTextSchema(
+		20,
+		"German ideal answer with enough detail to compare against the learner answer.",
+	),
+	keywords: atMostArray(
+		germanTextSchema(3, "Short German evaluation keyword for this task."),
+		8,
+	),
+};
+
+const generatedTaskItemSchema = z.union([
+	z.object({
+		kind: z.literal("multipleChoice"),
+		...generatedTaskBaseSchema,
+		choices: boundedArray(generatedTaskChoiceSchema, 3, 4),
+	}),
+	z.object({
+		kind: z.literal("written"),
+		...generatedTaskBaseSchema,
+	}),
+	z.object({
+		kind: z.literal("voice"),
+		...generatedTaskBaseSchema,
+	}),
+]);
+
+const sessionTasksSchema = z
+	.object({
+		items: boundedArray(
+			generatedTaskItemSchema,
+			MIN_SESSION_TASK_COUNT,
+			MAX_SESSION_TASK_COUNT,
+		),
+	})
+	.describe(
+		`${GERMAN_UI_TEXT_RULE} Return concrete guided-practice or praxis tasks for a learning session.`,
+	);
+
 type LearningPlanAiContext = {
 	plan: {
 		_id: Id<"learningPlans">;
@@ -285,6 +343,40 @@ type LearningPlanAiContext = {
 		time?: string;
 		durationMinutes?: number;
 	}>;
+	accessKey: string;
+};
+
+type LearningSessionContentAiContext = {
+	plan: LearningPlanAiContext["plan"] & {
+		sourceSummary?: string;
+		insight?: {
+			summary: string;
+			strengths: string[];
+			gaps: string[];
+		};
+	};
+	session: {
+		_id: Id<"learningPlanSessions">;
+		learningPlanId: Id<"learningPlans">;
+		phase: GeneratedSessionPhase;
+		title: string;
+		durationMinutes: number;
+		goal: string;
+		tasks: string[];
+		expectedOutcome: string;
+	};
+	planSessions: Array<{
+		phase: GeneratedSessionPhase;
+		title: string;
+		goal: string;
+		sortOrder: number;
+	}>;
+	documents: LearningPlanAiContext["documents"];
+	answers: Array<{ questionId: string; answer: string }>;
+	learningTimes: LearningPlanAiContext["learningTimes"];
+	priorTheoryCards: Array<{ front: string; back: string }>;
+	existingItemCount: number;
+	needsLegacyContentReplacement: boolean;
 	accessKey: string;
 };
 
@@ -1198,7 +1290,9 @@ export const __testOnlyLearningPlanAi = {
 	normalizeSessions,
 };
 
-const buildBaseContext = (context: LearningPlanAiContext) => {
+const buildBaseContext = (
+	context: Pick<LearningPlanAiContext, "plan" | "documents">,
+) => {
 	const { plan, documents } = context;
 	return [
 		`Fach: ${plan.subject}`,
@@ -1242,13 +1336,19 @@ const describeLearningTimes = (learningTimes: LearningTimeWindow[]) => {
 		.join("\n");
 };
 
-const _getTheoryCardTargetCount = (durationMinutes: number) =>
+const getTheoryCardTargetCount = (durationMinutes: number) =>
 	Math.max(
 		MIN_THEORY_CARD_COUNT,
 		Math.min(MAX_THEORY_CARD_COUNT, Math.ceil(durationMinutes / 6)),
 	);
 
-const _formatStoredKnowledgeAnswers = (
+const getSessionTaskTargetCount = (durationMinutes: number) =>
+	Math.max(
+		MIN_SESSION_TASK_COUNT,
+		Math.min(MAX_SESSION_TASK_COUNT, Math.ceil(durationMinutes / 8)),
+	);
+
+const formatStoredKnowledgeAnswers = (
 	questions: Array<{ id: string; prompt: string; targetInsight: string }> = [],
 	answers: Array<{ questionId: string; answer: string }> = [],
 ) => {
@@ -1267,13 +1367,320 @@ const _formatStoredKnowledgeAnswers = (
 		.join("\n\n");
 };
 
+const formatPlanSequence = (
+	sessions: LearningSessionContentAiContext["planSessions"],
+) =>
+	sessions.length === 0
+		? "Keine weiteren Sessions gespeichert."
+		: sessions
+				.map(
+					(session) =>
+						`${session.sortOrder + 1}. ${session.title} (${session.phase}): ${session.goal}`,
+				)
+				.join("\n");
+
+const formatPriorTheoryCards = (
+	cards: LearningSessionContentAiContext["priorTheoryCards"],
+) =>
+	cards.length === 0
+		? "Noch keine vorherigen Theorie-Lernkarten gespeichert."
+		: cards
+				.map(
+					(card, index) =>
+						`${index + 1}. Vorderseite: ${card.front}\nRückseite: ${card.back}`,
+				)
+				.join("\n\n");
+
 const keywordPattern = /[\p{L}\p{N}]+/gu;
-const _compactKeyword = (value: string) =>
+const compactKeyword = (value: string) =>
 	normalizeGeneratedGermanText(value)
 		.toLowerCase()
 		.match(keywordPattern)
 		?.slice(0, 3)
 		.join(" ") ?? "";
+
+const normalizeTaskKeywords = (
+	keywords: GeneratedGermanText[],
+	prompt: string,
+	idealAnswer: string,
+) => {
+	const normalizedKeywords = keywords
+		.map((keyword) => compactKeyword(normalizeAiGeneratedGermanText(keyword)))
+		.filter(Boolean);
+
+	return normalizedKeywords.length > 0
+		? normalizedKeywords
+		: [compactKeyword(prompt), compactKeyword(idealAnswer)].filter(Boolean);
+};
+
+const normalizeGeneratedTaskItems = (
+	output: z.infer<typeof sessionTasksSchema>,
+) =>
+	output.items.map((item, index) => {
+		const title = normalizeAiGeneratedGermanText(item.title);
+		const prompt = normalizeAiGeneratedGermanText(item.prompt);
+		const explanation = normalizeAiGeneratedGermanText(item.explanation);
+		const idealAnswer = normalizeAiGeneratedGermanText(item.idealAnswer);
+		const evaluationKeywords = normalizeTaskKeywords(
+			item.keywords,
+			prompt,
+			idealAnswer,
+		);
+
+		if (item.kind === "multipleChoice") {
+			const choices = item.choices.map((choice, choiceIndex) => ({
+				id: `choice-${choiceIndex + 1}`,
+				text: normalizeAiGeneratedGermanText(choice.text),
+				isCorrect: choice.isCorrect,
+			}));
+			const correctChoice = choices.find((choice) => choice.isCorrect);
+
+			return {
+				kind: "multipleChoice" as const,
+				title: title || `Aufgabe ${index + 1}`,
+				prompt,
+				explanation,
+				idealAnswer,
+				choices: choices.map(({ id, text }) => ({ id, text })),
+				correctChoiceId: correctChoice?.id ?? choices[0]?.id ?? "choice-1",
+				evaluationKeywords,
+			};
+		}
+
+		return {
+			kind: item.kind,
+			title: title || `Aufgabe ${index + 1}`,
+			prompt,
+			explanation,
+			idealAnswer,
+			evaluationKeywords,
+		};
+	});
+
+export const ensureSessionContent = action({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+	},
+	handler: async (ctx, args): Promise<{ itemCount: number }> => {
+		const context: LearningSessionContentAiContext = await ctx.runQuery(
+			internal.learningSessionContent.getSessionGenerationContext,
+			{ sessionId: args.sessionId },
+		);
+
+		if (
+			context.existingItemCount > 0 &&
+			!context.needsLegacyContentReplacement
+		) {
+			return { itemCount: context.existingItemCount };
+		}
+
+		const replaceExisting = context.needsLegacyContentReplacement;
+
+		try {
+			const { fileParts, sourceContext } = await buildModelInputFromDocuments(
+				ctx,
+				context.documents,
+				context.accessKey,
+			);
+			const model = createVertexModel();
+			const personalLearningTimes = describeLearningTimes(
+				context.learningTimes,
+			);
+			const knowledgeAnswers = formatStoredKnowledgeAnswers(
+				context.plan.knowledgeQuestions,
+				context.answers,
+			);
+			const planSequence = formatPlanSequence(context.planSessions);
+			const priorTheoryCards = formatPriorTheoryCards(context.priorTheoryCards);
+			const userContent: Array<
+				| { type: "text"; text: string }
+				| { type: "file"; data: Buffer; mediaType: string; filename: string }
+			> = [
+				{
+					type: "text",
+					text: `${buildBaseContext(context)}
+Zusammenfassung des Materials: ${context.plan.sourceSummary ?? "Keine Zusammenfassung gespeichert."}
+Lernstands-Einschätzung: ${context.plan.insight?.summary ?? "Keine Einschätzung gespeichert."}
+Offene Lücken: ${(context.plan.insight?.gaps ?? []).join("; ") || "Keine Lücken gespeichert."}
+
+Wissensanalyse:
+${knowledgeAnswers}
+
+Lernplan-Reihenfolge:
+${planSequence}
+
+Vorherige Theorie-Lernkarten:
+${priorTheoryCards}
+
+Aktuelle Session:
+Titel: ${context.session.title}
+Phase: ${context.session.phase}
+Lernzeit: ${context.session.durationMinutes} Minuten
+Ziel: ${context.session.goal}
+Aufgaben im Lernslot:
+${context.session.tasks.map((task) => `- ${task}`).join("\n")}
+Erwartetes Ergebnis: ${context.session.expectedOutcome}
+
+Persönliche Lernzeiten:
+${personalLearningTimes}`,
+				},
+			];
+
+			if (context.session.phase === "theory") {
+				const targetCardCount = getTheoryCardTargetCount(
+					context.session.durationMinutes,
+				);
+				userContent.push({
+					type: "text",
+					text: `Erstelle genau ${targetCardCount} Lernkarten für diese Theorie-Session.
+Qualitätsregeln:
+- Jede Vorderseite ist eine konkrete Abruf-Frage oder ein präziser Prompt, kein Kapitelname.
+- Die Rückseiten bauen aufeinander auf: Grundlagen zuerst, dann Anwendung, typische Fehler, prüfungsnahe Sicherheit.
+- Zusammen müssen die Karten die Lernzeit füllen und alles vermitteln, was für diesen Lernslot nötig ist.
+- Nutze Prüfungsthema, Material, Wissensanalyse-Antworten, Session-Ziel und Aufgaben sichtbar.
+- Keine bewerteten Quizfragen, keine Multiple Choice, keine Aufforderung zum Hochladen oder Nachschlagen.
+- Formuliere so, dass ein Schüler die Karten direkt durcharbeiten kann.
+- Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß.
+- Für jedes text/asciiShadow-Objekt gilt: text ist die sichtbare Fassung; asciiShadow ist exakt dieselbe Formulierung, nur mit ä->ae, ö->oe, ü->ue, Ä->Ae, Ö->Oe, Ü->Ue und ß->ss.`,
+				});
+				if (sourceContext) {
+					userContent.push({
+						type: "text",
+						text: `Auszüge aus dem Lernmaterial:\n${sourceContext}`,
+					});
+				}
+				userContent.push(...fileParts);
+
+				const generatedCards = await withGeneratedTextRetry(async (attempt) => {
+					const result = await withLlmTimeout((abortSignal) =>
+						generateText({
+							model: model(MODEL_ID),
+							temperature: 0.2,
+							maxOutputTokens: 5_200,
+							abortSignal,
+							providerOptions: vertexProviderOptions,
+							output: Output.object({ schema: theoryCardsSchema }),
+							system: `Du bist ein strenger, präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Du erstellst aktive Lernkarten für eine Theorie-Session. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+							messages: [{ role: "user", content: userContent }],
+						}),
+					);
+
+					const output = result.output as z.infer<typeof theoryCardsSchema>;
+					return output.cards.map((card, index) => {
+						const front = normalizeAiGeneratedGermanText(card.front);
+						const answer = normalizeAiGeneratedGermanText(card.answer);
+						const example = normalizeAiGeneratedGermanText(card.example);
+						const memoryCue = normalizeAiGeneratedGermanText(card.memoryCue);
+						const commonMistake = normalizeAiGeneratedGermanText(
+							card.commonMistake,
+						);
+						const keywords = card.keywords
+							.map((keyword) =>
+								compactKeyword(normalizeAiGeneratedGermanText(keyword)),
+							)
+							.filter(Boolean);
+
+						return {
+							kind: "learnCard" as const,
+							title: `Lernkarte ${index + 1}`,
+							prompt: front,
+							front,
+							back: `${answer} Beispiel: ${example} Typischer Fehler: ${commonMistake}`,
+							explanation: `Diese Lernkarte gehört zur Theorie-Session "${context.session.title}" und bereitet auf ${context.plan.examTypeLabel} vor.`,
+							idealAnswer: memoryCue,
+							evaluationKeywords:
+								keywords.length > 0
+									? keywords
+									: [compactKeyword(front), compactKeyword(answer)].filter(
+											Boolean,
+										),
+						};
+					});
+				}, "Die Lernkarten konnten nicht zuverlässig erstellt werden.");
+
+				return await ctx.runMutation(
+					internal.learningSessionContent.storeGeneratedSessionContent,
+					{
+						sessionId: args.sessionId,
+						items: generatedCards,
+						replaceExisting,
+					},
+				);
+			}
+
+			const targetTaskCount = getSessionTaskTargetCount(
+				context.session.durationMinutes,
+			);
+			const isPraxis = context.session.phase === "rehearsal";
+			userContent.push({
+				type: "text",
+				text: `Erstelle genau ${targetTaskCount} ${isPraxis ? "Praxis-Aufgaben für eine Generalprobe" : "Übungsaufgaben für eine geführte Üben-Session"}.
+Qualitätsregeln:
+- Jede Aufgabe muss fachlich konkret sein und direkt aus Thema, Material, Lernstand, vorherigen Theorie-Karten und Session-Ziel folgen.
+- Die Aufgaben bauen von sicherer Anwendung zu prüfungsnaher Transferleistung auf.
+- Mische Multiple Choice, schriftliche und mündliche Aufgaben sinnvoll; mindestens eine schriftliche Aufgabe ist Pflicht.
+- Multiple-Choice-Fragen brauchen fachliche Distraktoren, die typische Schülerfehler abbilden, nicht nur generische Strategien.
+- explanation erklärt den Kernfehler oder den richtigen Lösungsweg so, dass direktes Feedback im Üben trägt.
+- idealAnswer ist eine echte Musterlösung oder ein Erwartungshorizont, nicht nur eine Wiederholung des Prompts.
+- evaluation keywords enthalten die Begriffe, Rechenschritte oder Kriterien, die in einer richtigen Antwort vorkommen müssen.
+${isPraxis ? "- Praxis simuliert eine Prüfung: keine Hinweise im Prompt, keine Lernkarten-Verweise im Aufgabentext, Aufgaben wirken wie Testaufgaben." : "- Üben darf gezielt an die Theorie-Karten anschließen und typische Fehler transparent machen."}
+- Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß.
+- Für jedes text/asciiShadow-Objekt gilt: text ist die sichtbare Fassung; asciiShadow ist exakt dieselbe Formulierung, nur mit ä->ae, ö->oe, ü->ue, Ä->Ae, Ö->Oe, Ü->Ue und ß->ss.`,
+			});
+			if (sourceContext) {
+				userContent.push({
+					type: "text",
+					text: `Auszüge aus dem Lernmaterial:\n${sourceContext}`,
+				});
+			}
+			userContent.push(...fileParts);
+
+			const generatedTasks = await withGeneratedTextRetry(
+				async (attempt) => {
+					const result = await withLlmTimeout((abortSignal) =>
+						generateText({
+							model: model(MODEL_ID),
+							temperature: isPraxis ? 0.18 : 0.22,
+							maxOutputTokens: 6_400,
+							abortSignal,
+							providerOptions: vertexProviderOptions,
+							output: Output.object({ schema: sessionTasksSchema }),
+							system: `Du bist ein strenger, praxisnaher Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Du erstellst ${isPraxis ? "prüfungsnahe Generalprobe-Aufgaben ohne Zwischenfeedback" : "geführte Übungsaufgaben mit gutem Feedback"}. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+							messages: [{ role: "user", content: userContent }],
+						}),
+					);
+
+					return normalizeGeneratedTaskItems(
+						result.output as z.infer<typeof sessionTasksSchema>,
+					);
+				},
+				`${isPraxis ? "Die Praxis-Aufgaben" : "Die Übungsaufgaben"} konnten nicht zuverlässig erstellt werden.`,
+			);
+
+			return await ctx.runMutation(
+				internal.learningSessionContent.storeGeneratedSessionContent,
+				{
+					sessionId: args.sessionId,
+					items: generatedTasks,
+					replaceExisting,
+				},
+			);
+		} catch (error) {
+			logDiagnosticError(
+				"learningSessionContentAi.generateSessionContent",
+				error,
+				{
+					sessionId: args.sessionId,
+					learningPlanId: context.session.learningPlanId,
+				},
+			);
+			return await ctx.runMutation(
+				internal.learningSessionContent.ensureFallbackSessionContent,
+				{ sessionId: args.sessionId, replaceExisting },
+			);
+		}
+	},
+});
 
 export const generateKnowledgeQuestions = action({
 	args: {

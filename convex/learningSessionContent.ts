@@ -194,24 +194,25 @@ const distinct = (values: string[]) => {
 const targetTheoryCardCount = (durationMinutes: number) =>
 	Math.max(3, Math.min(12, Math.ceil(durationMinutes / 6)));
 
+const targetTaskCount = (durationMinutes: number) =>
+	Math.max(4, Math.min(10, Math.ceil(durationMinutes / 8)));
+
 const buildTheoryItems = (
 	plan: Doc<"learningPlans">,
 	session: Doc<"learningPlanSessions">,
 ) => {
-	const concepts = distinct([
+	const baseConcepts = distinct([
 		plan.topicDescription,
 		session.goal,
 		...session.tasks,
 		session.expectedOutcome,
-	]).slice(
-		0,
-		Math.min(
-			targetTheoryCardCount(session.durationMinutes),
-			Math.max(3, session.tasks.length + 2),
-		),
-	);
+	]);
+	const cardCount = targetTheoryCardCount(session.durationMinutes);
 
-	return concepts.map<GeneratedItem>((concept, index) => {
+	return Array.from({ length: cardCount }, (_, index): GeneratedItem => {
+		const concept =
+			baseConcepts[index % Math.max(baseConcepts.length, 1)] ??
+			plan.topicDescription;
 		const keywords = extractKeywords([
 			concept,
 			session.goal,
@@ -271,16 +272,14 @@ const buildTaskItems = (
 		session.tasks.length > 0
 			? session.tasks
 			: [session.goal, session.expectedOutcome];
-	const targetCount = Math.max(
-		3,
-		Math.min(6, Math.ceil(session.durationMinutes / 12)),
-	);
+	const targetCount = targetTaskCount(session.durationMinutes);
 	const kinds: SessionContentItemKind[] = [
 		"multipleChoice",
 		"written",
 		"voice",
 	];
 	const isPraxis = session.phase === "rehearsal";
+	const phasePrefix = isPraxis ? "Generalprobe" : "Übung";
 
 	return Array.from({ length: targetCount }, (_, index): GeneratedItem => {
 		const kind = kinds[index % kinds.length] ?? "written";
@@ -292,7 +291,7 @@ const buildTaskItems = (
 					? "Sprachaufgabe"
 					: "Schreibaufgabe";
 		const idealAnswer = compact(
-			`${task} Erkläre deine Schritte und prüfe dein Ergebnis mit Bezug auf ${plan.topicDescription}.`,
+			`${task} Löse die Aufgabe Schritt für Schritt, begründe jede Umformung und prüfe dein Ergebnis mit Bezug auf ${plan.topicDescription}.`,
 			session.expectedOutcome,
 		);
 
@@ -301,23 +300,23 @@ const buildTaskItems = (
 				kind,
 				title,
 				prompt: isPraxis
-					? `Welche Strategie passt unter Zeitdruck am besten zu: ${task}?`
-					: `Welche Strategie passt am besten zu: ${task}?`,
+					? `${phasePrefix} ${index + 1}: Welche Aussage ist für "${task}" fachlich richtig?`
+					: `${phasePrefix} ${index + 1}: Welche Lösungsidee passt zu "${task}"?`,
 				explanation:
-					"Prüfungsnah ist die Antwort, wenn du systematisch vorgehst und dein Ergebnis kontrollierst.",
+					"Die richtige Antwort verbindet den passenden Rechenschritt mit einer Kontrolle des Ergebnisses.",
 				idealAnswer,
 				choices: [
 					{
 						id: "correct",
-						text: "Schrittweise lösen, jeden Schritt begründen und das Ergebnis prüfen.",
+						text: `Erst den passenden Schritt zu "${task}" ausführen, dann begründen und mit einer Probe prüfen.`,
 					},
 					{
 						id: "distractor-fast",
-						text: "Direkt raten und erst am Ende überlegen, ob es passt.",
+						text: "Direkt ein Ergebnis raten und die Zwischenschritte auslassen.",
 					},
 					{
 						id: "distractor-skip",
-						text: "Die schwierige Stelle überspringen und keine Probe machen.",
+						text: "Die Kontrolle weglassen, solange das Ergebnis ungefähr passend aussieht.",
 					},
 				],
 				correctChoiceId: "correct",
@@ -330,10 +329,10 @@ const buildTaskItems = (
 			title,
 			prompt:
 				kind === "voice"
-					? `Sprich deine Lösung laut ein: ${task}`
-					: `Schreibe deine Lösung auf: ${task}`,
+					? `${phasePrefix} ${index + 1}: Erkläre laut deinen Lösungsweg zu "${task}".`
+					: `${phasePrefix} ${index + 1}: Löse "${task}" schriftlich und notiere die Probe.`,
 			explanation:
-				"Eine starke Antwort nennt den Lösungsweg, vermeidet typische Lücken und kontrolliert das Ergebnis.",
+				"Eine starke Antwort nennt den vollständigen Lösungsweg, vermeidet typische Fehler und kontrolliert das Ergebnis.",
 			idealAnswer,
 			evaluationKeywords: keywords,
 		};
@@ -465,8 +464,10 @@ const feedbackForRating = (
 
 const buildAnalysis = (
 	session: Doc<"learningPlanSessions">,
+	items: Doc<"learningSessionContentItems">[],
 	attempts: Doc<"learningSessionAnswerAttempts">[],
 ) => {
+	const itemById = new Map(items.map((item) => [item._id, item]));
 	const correctCount = attempts.filter(
 		(attempt) => attempt.rating === "correct",
 	).length;
@@ -476,26 +477,52 @@ const buildAnalysis = (
 	const attemptedCount = attempts.length;
 	const hasStrongResult =
 		attemptedCount > 0 && correctCount + partialCount >= attemptedCount;
+	const missedPrompts = attempts
+		.filter((attempt) => attempt.rating !== "correct")
+		.map((attempt) => itemById.get(attempt.itemId)?.prompt)
+		.filter((prompt): prompt is string => Boolean(prompt))
+		.slice(0, 3);
+	const firstCorrectPrompt = attempts
+		.map((attempt) =>
+			attempt.rating === "correct"
+				? itemById.get(attempt.itemId)?.prompt
+				: undefined,
+		)
+		.find((prompt): prompt is string => Boolean(prompt));
 
 	return {
 		strengths:
 			attemptedCount === 0
 				? ["Du hast den Lernblock geöffnet und kannst jetzt gezielt starten."]
-				: hasStrongResult
-					? ["Du arbeitest strukturiert und zeigst sichere Ansätze."]
-					: ["Du hast erste Ansätze gezeigt und weißt, wo du ansetzen kannst."],
+				: correctCount === attemptedCount
+					? ["Du hast alle bearbeiteten Aufgaben sicher gelöst."]
+					: hasStrongResult
+						? [
+								firstCorrectPrompt
+									? `Du zeigst sichere Ansätze bei: ${firstCorrectPrompt}`
+									: "Du zeigst sichere Ansätze und kommst bei mehreren Aufgaben voran.",
+							]
+						: [
+								"Du hast erste Ansätze gezeigt und weißt, wo du ansetzen kannst.",
+							],
 		gaps:
 			attemptedCount === 0
 				? ["Bearbeite die Aufgaben, damit deine Wissensanalyse genauer wird."]
 				: correctCount === attemptedCount
 					? ["Halte die Sicherheit bis zur Prüfung durch kurze Wiederholung."]
-					: [
-							"Wiederhole die Aufgaben, bei denen Lösungsweg oder Kontrolle noch fehlen.",
-						],
+					: missedPrompts.length > 0
+						? missedPrompts.map((prompt) => `Wiederhole: ${prompt}`)
+						: [
+								"Wiederhole die Aufgaben, bei denen Lösungsweg oder Kontrolle noch fehlen.",
+							],
 		recommendation:
 			session.phase === "rehearsal"
-				? "Wiederhole heute die unsicheren Prüfungsschritte und plane morgen eine kurze Kontrolle."
-				: "Übe als Nächstes gezielt die markierten Lücken und wiederhole danach eine passende Lernkarte.",
+				? missedPrompts[0]
+					? `Wiederhole zuerst diese Prüfungsaufgabe: ${missedPrompts[0]}`
+					: "Wiederhole heute die unsicheren Prüfungsschritte und plane morgen eine kurze Kontrolle."
+				: missedPrompts[0]
+					? `Übe als Nächstes gezielt: ${missedPrompts[0]}`
+					: "Übe als Nächstes gezielt die markierten Lücken und wiederhole danach eine passende Lernkarte.",
 	};
 };
 
@@ -503,6 +530,14 @@ const isLegacyTheoryItem = (item: Doc<"learningSessionContentItems">) =>
 	item.kind === "learnCard" &&
 	(item.back?.includes("Merke dir besonders, wie das Lernziel") ||
 		item.back?.includes("damit zusammenhängt"));
+
+const isLegacyTaskItem = (item: Doc<"learningSessionContentItems">) =>
+	item.kind !== "learnCard" &&
+	(item.prompt.includes("Welche Strategie passt") ||
+		item.prompt.includes("Schreibe deine Lösung auf:") ||
+		item.prompt.includes("Sprich deine Lösung laut ein:") ||
+		item.explanation.includes("Eine starke Antwort nennt den Lösungsweg") ||
+		item.explanation.includes("Prüfungsnah ist die Antwort"));
 
 const deleteSessionContentItems = async (
 	ctx: MutationCtx,
@@ -550,17 +585,52 @@ export const getSessionGenerationContext = internalQuery({
 			)
 			.take(50);
 		const existingItems = await listItems(ctx, args.sessionId);
+		const planSessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", session.learningPlanId),
+			)
+			.order("asc")
+			.take(20);
+		const priorTheoryCards: Array<{ front: string; back: string }> = [];
+		for (const planSession of planSessions) {
+			if (
+				planSession.sortOrder >= session.sortOrder ||
+				planSession.phase !== "theory"
+			) {
+				continue;
+			}
+
+			const items = await listItems(ctx, planSession._id);
+			for (const item of items) {
+				if (item.kind !== "learnCard") continue;
+				priorTheoryCards.push({
+					front: item.front ?? item.prompt,
+					back: item.back ?? item.idealAnswer,
+				});
+				if (priorTheoryCards.length >= 24) break;
+			}
+			if (priorTheoryCards.length >= 24) break;
+		}
 
 		return {
 			plan,
 			session,
+			planSessions: planSessions.map((planSession) => ({
+				phase: planSession.phase,
+				title: planSession.title,
+				goal: planSession.goal,
+				sortOrder: planSession.sortOrder,
+			})),
 			documents,
 			answers,
 			learningTimes,
+			priorTheoryCards,
 			existingItemCount: existingItems.length,
-			needsLegacyTheoryReplacement:
-				session.phase === "theory" && existingItems.some(isLegacyTheoryItem),
-			accessKey: `learning-plan:${session.learningPlanId}`,
+			needsLegacyContentReplacement:
+				existingItems.some(isLegacyTheoryItem) ||
+				existingItems.some(isLegacyTaskItem),
+			accessKey: `learningPlan:${session.learningPlanId}`,
 		};
 	},
 });
@@ -769,7 +839,7 @@ export const finishSessionContent = mutation({
 		);
 		const items = await ensureItemsForSession(ctx, session, plan);
 		const attempts = await getLatestAttempts(ctx, items);
-		const result = buildAnalysis(session, attempts);
+		const result = buildAnalysis(session, items, attempts);
 		const now = Date.now();
 		const existing = await ctx.db
 			.query("learningSessionAnalyses")

@@ -39,32 +39,32 @@ The user-facing name for the rehearsal or `Generalprobe` phase. It simulates a t
 _Avoid_: Treating Praxis as a fourth phase separate from rehearsal
 
 **Validation Phase**:
-The founder-led learning cohort used to prove whether Dayova helps learners create plans, start real study blocks, recover from missed blocks, and return the next day.
-_Avoid_: Treating validation as a separate product mode for learners
+A focused learning period where Dayova is tested with a small number of students who have real school deadlines, to learn whether the product causes earlier and more committed action.
+_Avoid_: Treating generic app usage, polite feedback, or TestFlight downloads as validation.
 
 **First Real Block**:
-The first scheduled learning-plan session a learner starts after a plan is generated and accepted. It is the main activation moment after onboarding.
-_Avoid_: First app open, first generated plan
+The first genuine learning or work block a student starts for a real exam, assignment, presentation, or graded task before the last possible moment.
+_Avoid_: Counting planning-only activity or artificial test tasks as this signal.
 
 **Product Signal**:
-Evidence that the learner completed an action because the product itself helped them, not because a founder manually intervened.
-_Avoid_: Any completion signal, founder accountability
+Observed behavior that suggests Dayova itself helped the student act, such as starting a slot without a personal check-in, returning voluntarily, or entering a second real use case.
+_Avoid_: Mixing this with action triggered by a founder or coach message.
 
 **Accountability Signal**:
-Evidence that founder check-ins, reminders, or other external accountability helped the learner complete or recover a study block.
-_Avoid_: Product Signal
+Observed behavior that happens reliably after a personal check-in or reminder, showing that accountability may be part of the product value.
+_Avoid_: Treating check-in-driven action as pure product-loop success.
 
 **Core Loop**:
-Create exam or homework, generate a learning plan, start a planned study slot, record the outcome, and return the next day.
-_Avoid_: Onboarding-only activation
+The product behavior loop of entering a real task, seeing the next step, starting, documenting the result, replanning after failure, and returning.
+_Avoid_: Describing the loop as app engagement or calendar usage.
 
 **Recovery Loop**:
-When a learner misses a study slot, collect the missed reason and create a smaller linked recovery block instead of treating the plan as simply failed.
-_Avoid_: Marking a miss as final failure
+The part of the Core Loop where a missed or failed slot is explained, made smaller or replanned, and attempted again.
+_Avoid_: Treating missed slots only as churn or lack of motivation.
 
 **Generalprobe**:
-The domain name for a completed `Praxis` rehearsal session in the validation readout.
-_Avoid_: Treating Generalprobe as a separate phase from Praxis
+The validation readout term for completing a `Praxis` rehearsal session.
+_Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Praxis
 
 ## Notes
 

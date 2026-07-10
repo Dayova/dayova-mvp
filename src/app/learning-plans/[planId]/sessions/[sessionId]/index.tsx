@@ -1,4 +1,4 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import * as Device from "expo-device";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -35,6 +35,12 @@ import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuth } from "~/context/AuthContext";
+import {
+	createTheoryCardQueue,
+	repeatCurrentTheoryCard as queueRepeatCurrentTheoryCard,
+	type TheoryCardQueueState,
+	understandCurrentTheoryCard,
+} from "~/features/learning-plans/theory-card-queue";
 import type {
 	LearningSessionContentSnapshot,
 	SessionAnswerAttempt,
@@ -813,18 +819,26 @@ export default function LearningSessionContentScreen() {
 	const sessionId = params.sessionId as Id<"learningPlanSessions"> | undefined;
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-	const ensureSessionContent = useMutation(
-		api.learningSessionContent.ensureSessionContent,
+	const ensureSessionContent = useAction(
+		api.learningPlanAi.ensureSessionContent,
 	);
 	const submitAnswer = useMutation(api.learningSessionContent.submitAnswer);
 	const finishSessionContent = useMutation(
 		api.learningSessionContent.finishSessionContent,
 	);
 	const startSession = useMutation(api.learningPlans.startSession);
-	const recordSessionOutcome = useMutation(api.learningPlans.recordSessionOutcome);
+	const recordSessionOutcome = useMutation(
+		api.learningPlans.recordSessionOutcome,
+	);
 	const { capture } = useValidationAnalytics();
 
 	const [currentIndex, setCurrentIndex] = useState(0);
+	const [theoryQueue, setTheoryQueue] = useState<TheoryCardQueueState<
+		SessionContentItem["id"]
+	> | null>(null);
+	const [theoryQueueSignature, setTheoryQueueSignature] = useState<
+		string | null
+	>(null);
 	const [isCardBackVisible, setIsCardBackVisible] = useState(false);
 	const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
 	const [answerText, setAnswerText] = useState("");
@@ -886,7 +900,32 @@ export default function LearningSessionContentScreen() {
 		user && isConvexAuthenticated && sessionId ? { sessionId } : "skip",
 	) ?? null) as LearningSessionContentSnapshot | null;
 
-	const currentItem = content?.items[currentIndex] ?? null;
+	const theoryItems =
+		content?.session.phase === "theory"
+			? content.items.filter((item) => item.kind === "learnCard")
+			: [];
+	const loadedTheoryQueueSignature =
+		content?.session.phase === "theory"
+			? theoryItems.map((item) => item.id).join("|")
+			: null;
+	const activeTheoryQueue =
+		loadedTheoryQueueSignature &&
+		theoryQueueSignature === loadedTheoryQueueSignature &&
+		theoryQueue
+			? theoryQueue
+			: loadedTheoryQueueSignature
+				? createTheoryCardQueue(theoryItems.map((item) => item.id))
+				: null;
+
+	const currentTheoryItemId =
+		content?.session.phase === "theory" && activeTheoryQueue
+			? activeTheoryQueue.queue[activeTheoryQueue.currentIndex]
+			: null;
+	const currentItem =
+		content?.session.phase === "theory"
+			? (content.items.find((item) => item.id === currentTheoryItemId) ?? null)
+			: (content?.items[currentIndex] ?? null);
+	const isPraxisSession = content?.session.phase === "rehearsal";
 	const persistedAttempt = useMemo(() => {
 		if (!currentItem || !content) return null;
 		const attempt =
@@ -898,9 +937,14 @@ export default function LearningSessionContentScreen() {
 		return attempt;
 	}, [content, currentItem, retryStartedAt]);
 	const visibleAttempt =
-		localAttempt && currentItem && localAttempt.itemId === currentItem.id
+		!isPraxisSession &&
+		localAttempt &&
+		currentItem &&
+		localAttempt.itemId === currentItem.id
 			? localAttempt
-			: persistedAttempt;
+			: isPraxisSession
+				? null
+				: persistedAttempt;
 	const currentRunAttempts = useMemo(() => {
 		const attempts =
 			content?.attempts.filter(
@@ -1043,6 +1087,10 @@ export default function LearningSessionContentScreen() {
 		resetItemState();
 		setRetryStartedAt(now);
 		setCurrentIndex(0);
+		if (content?.session.phase === "theory") {
+			setTheoryQueue(createTheoryCardQueue(theoryItems.map((item) => item.id)));
+			setTheoryQueueSignature(loadedTheoryQueueSignature);
+		}
 		setCompletionPhase(null);
 		setShowAnalysis(false);
 		setErrorMessage(null);
@@ -1112,13 +1160,22 @@ export default function LearningSessionContentScreen() {
 	};
 
 	const continueTheory = async () => {
-		if (!content || isBusy) return;
-		if (currentIndex < content.items.length - 1) {
+		if (!content || isBusy || !activeTheoryQueue) return;
+		const result = understandCurrentTheoryCard(activeTheoryQueue);
+		if (!result.isComplete) {
 			resetItemState();
-			setCurrentIndex((value) => value + 1);
+			setTheoryQueue(result.state);
+			setTheoryQueueSignature(loadedTheoryQueueSignature);
 			return;
 		}
 		setCompletionPhase("theory");
+	};
+
+	const repeatCurrentTheoryCard = () => {
+		if (!activeTheoryQueue) return;
+		resetItemState();
+		setTheoryQueue(queueRepeatCurrentTheoryCard(activeTheoryQueue));
+		setTheoryQueueSignature(loadedTheoryQueueSignature);
 	};
 
 	const buildSpeechRecognitionConfig =
@@ -1223,6 +1280,15 @@ export default function LearningSessionContentScreen() {
 				answerText: currentItem.kind === "written" ? writtenAnswer : undefined,
 				transcript: currentItem.kind === "voice" ? writtenAnswer : undefined,
 			});
+			if (content?.session.phase === "rehearsal") {
+				resetItemState();
+				if (currentIndex < content.items.length - 1) {
+					setCurrentIndex((value) => value + 1);
+					return;
+				}
+				setCompletionPhase("rehearsal");
+				return;
+			}
 			setLocalAttempt(attempt as SessionAnswerAttempt);
 		} catch (error) {
 			setErrorMessage(
@@ -1335,7 +1401,7 @@ export default function LearningSessionContentScreen() {
 						<ActionRow
 							secondaryLabel="Wiederholen"
 							primaryLabel="Verstanden"
-							onSecondary={repeatCurrentContent}
+							onSecondary={repeatCurrentTheoryCard}
 							onPrimary={continueTheory}
 							isBusy={isBusy}
 						/>
@@ -1385,7 +1451,13 @@ export default function LearningSessionContentScreen() {
 						) : null}
 						<ActionRow
 							secondaryLabel="Weiß ich nicht"
-							primaryLabel="Beantworten"
+							primaryLabel={
+								content.session.phase === "rehearsal"
+									? currentIndex < content.items.length - 1
+										? "Weiter"
+										: "Abgeben"
+									: "Beantworten"
+							}
 							onSecondary={() => void submitCurrentAnswer(true)}
 							onPrimary={() => void submitCurrentAnswer()}
 							primaryDisabled={isRecognizing || !isAnswerReady}

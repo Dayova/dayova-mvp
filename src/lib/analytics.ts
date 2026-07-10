@@ -19,7 +19,10 @@ export function useValidationAnalytics() {
 	const clerkId = user?.clerkId;
 
 	const capture = useCallback(
-		async (eventName: ValidationEventName, properties?: AnalyticsProperties) => {
+		async (
+			eventName: ValidationEventName,
+			properties?: AnalyticsProperties,
+		) => {
 			if (!isPostHogConfigured || !clerkId) return;
 
 			let validationStudentCode: string | null = null;

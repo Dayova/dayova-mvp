@@ -80,6 +80,7 @@ export default function NewLearningPlanScreen() {
 		errorMessage?: string;
 	}>();
 	const { user } = useAuth();
+	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const startPlan = useMutation(api.learningPlans.start);
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
@@ -89,7 +90,6 @@ export default function NewLearningPlanScreen() {
 		api.learningPlans.registerUploadedDocument,
 	);
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
-	const { capture } = useValidationAnalytics();
 
 	const subject = params.subject?.trim() || "Fach";
 	const examTypeLabel = params.examTypeLabel?.trim() || "Leistungskontrolle";

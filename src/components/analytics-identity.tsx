@@ -13,7 +13,7 @@ import { logDiagnosticError } from "~/lib/diagnostics";
 
 export function AnalyticsIdentity() {
 	const posthog = usePostHog();
-	const { user } = useAuth();
+	const { user, isSessionLoading } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const convexUser = useQuery(
 		api.users.getMe,
@@ -26,7 +26,7 @@ export function AnalyticsIdentity() {
 	const returnCaptureKeyRef = useRef<string | null>(null);
 
 	useEffect(() => {
-		if (!isPostHogConfigured) return;
+		if (!isPostHogConfigured || isSessionLoading) return;
 
 		if (!user) {
 			if (identifiedClerkIdRef.current) {
@@ -58,7 +58,10 @@ export function AnalyticsIdentity() {
 
 		const localDayKey = getDayKey(new Date());
 		const returnCaptureKey = `${user.clerkId}:${localDayKey}`;
-		if (!isConvexAuthenticated || returnCaptureKeyRef.current === returnCaptureKey) {
+		if (
+			!isConvexAuthenticated ||
+			returnCaptureKeyRef.current === returnCaptureKey
+		) {
 			return;
 		}
 
@@ -66,21 +69,37 @@ export function AnalyticsIdentity() {
 			.then((result) => {
 				returnCaptureKeyRef.current = returnCaptureKey;
 				if (!result.captured) return;
-				captureValidationEvent(posthog, "user_returned_next_day", user.clerkId, {
-					local_day_key: localDayKey,
-					previous_activity_day_key: result.previousActivityDayKey,
-					...(result.validationStudentCode
-						? { validation_student_code: result.validationStudentCode }
-						: {}),
-				});
+				captureValidationEvent(
+					posthog,
+					"user_returned_next_day",
+					user.clerkId,
+					{
+						local_day_key: localDayKey,
+						previous_activity_day_key: result.previousActivityDayKey,
+						...(result.validationStudentCode
+							? { validation_student_code: result.validationStudentCode }
+							: {}),
+					},
+				);
 			})
 			.catch((error: unknown) => {
-				logDiagnosticError("Failed to mark next-day validation return.", error, {
-					source: "analytics.markReturnedNextDay",
-					level: "warn",
-				});
+				logDiagnosticError(
+					"Failed to mark next-day validation return.",
+					error,
+					{
+						source: "analytics.markReturnedNextDay",
+						level: "warn",
+					},
+				);
 			});
-	}, [convexUser, isConvexAuthenticated, markReturnedNextDay, posthog, user]);
+	}, [
+		convexUser,
+		isConvexAuthenticated,
+		isSessionLoading,
+		markReturnedNextDay,
+		posthog,
+		user,
+	]);
 
 	return null;
 }
