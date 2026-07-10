@@ -62,6 +62,10 @@ _Avoid_: Describing the loop as app engagement or calendar usage.
 The part of the Core Loop where a missed or failed slot is explained, made smaller or replanned, and attempted again.
 _Avoid_: Treating missed slots only as churn or lack of motivation.
 
+**Generalprobe**:
+The validation readout term for completing a `Praxis` rehearsal session.
+_Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Praxis
+
 ## Notes
 
 - Capture repo-relevant summaries or links to Confluence decisions here.
@@ -74,3 +78,5 @@ Engineer: "So I can use `pre-plan diagnostic step` internally, but the UI copy s
 Domain: "Right. `Wissensanalyse` is the post-session analysis after `Üben` or `Praxis`."
 Engineer: "And `Praxis` maps to the existing rehearsal phase?"
 Domain: "Yes. It is the Figma/user-facing name for the Generalprobe-style phase."
+Engineer: "For validation, should we count a completed `Praxis` session as `Generalprobe`?"
+Domain: "Yes. Generalprobe is the validation readout term for completed `Praxis`, not a fourth learner-facing phase."

@@ -94,6 +94,7 @@ const config: ExpoConfig = {
 					"Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst.",
 			},
 		],
+		"expo-localization",
 		"./plugins/withNinjaLongPaths",
 		"./plugins/withAndroidPackagingOptions",
 		[

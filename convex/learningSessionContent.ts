@@ -89,6 +89,9 @@ const getOwnedPlan = async (
 	return plan;
 };
 
+const getSessionExecutionStatus = (session: Doc<"learningPlanSessions">) =>
+	session.executionStatus ?? (session.completed ? "completed" : "notStarted");
+
 const publicItem = (item: Doc<"learningSessionContentItems">) => ({
 	id: item._id,
 	sessionId: item.sessionId,
@@ -750,6 +753,7 @@ export const getSessionContent = query({
 				goal: session.goal,
 				expectedOutcome: session.expectedOutcome,
 				completed: session.completed ?? false,
+				executionStatus: getSessionExecutionStatus(session),
 			},
 			praxisDurationSeconds:
 				session.phase === "rehearsal"
