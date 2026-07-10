@@ -44,9 +44,6 @@ export function AnalyticsIdentity() {
 			definedAnalyticsProperties({
 				clerk_id: user.clerkId,
 				convex_user_id: convexUser?._id,
-				email: user.email,
-				name: user.name,
-				birth_date: user.birthDate,
 				grade: user.grade,
 				school_type: user.schoolType,
 				state: user.state,

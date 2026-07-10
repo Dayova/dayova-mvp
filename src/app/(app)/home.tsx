@@ -560,7 +560,10 @@ export default function HomeScreen() {
 	const headerInset = clamp(24 * screenScale - horizontalPadding, 0, 12);
 	const contentTop = Math.max(insets.top + 16 * heightScale, 48 * compactScale);
 	const sideHandleTop = contentTop + 170 * compactScale;
-	const planCardWidth = Math.min(width - horizontalPadding * 2, 369 * screenScale);
+	const planCardWidth = Math.min(
+		width - horizontalPadding * 2,
+		369 * screenScale,
+	);
 	const scheduleCardWidth = Math.min(
 		width - horizontalPadding * 2,
 		369 * screenScale,
@@ -617,16 +620,20 @@ export default function HomeScreen() {
 		[entriesByDay, selectedDayKey],
 	);
 	const currentHeroEntry =
-		selectedDayEntries.find((entry) => isLearningEntry(entry) && !entry.completed) ??
+		selectedDayEntries.find(
+			(entry) => isLearningEntry(entry) && !entry.completed,
+		) ??
 		selectedDayEntries.find((entry) => !entry.completed) ??
 		selectedDayEntries[0] ??
 		null;
-	const selectedTimelineEntries = selectedDayEntries.map((entry, entryIndex) => ({
-		day: visibleDays[selectedDayIndex],
-		dayIndex: Math.max(selectedDayIndex, 0),
-		entry,
-		row: getTimelineRow(entryIndex),
-	}));
+	const selectedTimelineEntries = selectedDayEntries.map(
+		(entry, entryIndex) => ({
+			day: visibleDays[selectedDayIndex],
+			dayIndex: Math.max(selectedDayIndex, 0),
+			entry,
+			row: getTimelineRow(entryIndex),
+		}),
+	);
 	const currentMinute = now.getHours() * 60 + now.getMinutes();
 	const timelineLabelBaseMinute = Math.round(currentMinute / 30) * 30;
 	const currentTimelineX =
@@ -744,7 +751,11 @@ export default function HomeScreen() {
 	]);
 
 	const selectVisibleDay = useCallback(
-		(dayKey: string, dayIndex: number, source: "day_strip" | "today_button" | "hero_handle" = "day_strip") => {
+		(
+			dayKey: string,
+			dayIndex: number,
+			source: "day_strip" | "today_button" | "hero_handle" = "day_strip",
+		) => {
 			pendingTimelineSelectionRef.current = dayKey;
 			setSelectedDayKey(dayKey);
 			const minuteToCenter =
@@ -897,7 +908,9 @@ export default function HomeScreen() {
 						compactScale={compactScale}
 						date={selectedDate}
 						previousBlueContainer={previousBlueContainer}
-						currentBlueContainerAnimatedStyle={currentBlueContainerAnimatedStyle}
+						currentBlueContainerAnimatedStyle={
+							currentBlueContainerAnimatedStyle
+						}
 						previousBlueContainerAnimatedStyle={
 							previousBlueContainerAnimatedStyle
 						}
@@ -943,477 +956,496 @@ export default function HomeScreen() {
 							paddingBottom: 12 * compactScale,
 						}}
 					>
-					<View className="flex-row items-center justify-between">
-						<Text
-							className="ml-3 font-poppins font-semibold text-text"
-							style={{
-								fontSize: 24 * screenScale,
-								lineHeight: 36 * screenScale,
-							}}
-						>
-							{`Plan für ${getMonthLabel(selectedDate)}`}
-						</Text>
-						<View
-							className="relative"
-							style={{
-								position: "absolute",
-								top: -24 * compactScale,
-								right: -12 * screenScale,
-								width: 104 * screenScale,
-								height: 52 * screenScale,
-							}}
-						>
-							<Svg
-								accessible={false}
-								accessibilityElementsHidden
-								importantForAccessibility="no-hide-descendants"
-								pointerEvents="none"
-								width="100%"
-								height="100%"
-								viewBox="0 0 104 52"
-								preserveAspectRatio="none"
-								style={{ position: "absolute", inset: 0 }}
-							>
-								<Path
-									d="M29 0.150391H78.1299C92.3346 0.150391 103.85 11.6654 103.85 25.8701C103.85 40.1753 92.1775 51.7318 77.873 51.5889L54.002 51.3496H27C14.3803 51.3496 4.15039 41.1197 4.15039 28.5V25C4.15039 11.2757 15.2757 0.150391 29 0.150391Z"
-									fill={DAYOVA_DESIGN_SYSTEM.colors.surface}
-									stroke={DAYOVA_DESIGN_SYSTEM.colors.border}
-									strokeWidth={0.3}
-								/>
-								<Rect x={8} y={6} width={40} height={40} rx={20} fill="#F1F7FB" />
-								<Rect
-									x={56}
-									y={6}
-									width={40}
-									height={40}
-									rx={20}
-									fill="url(#dashboardActionsGradient)"
-								/>
-								<Path
-									d="M76.001 19V33.002"
-									stroke="white"
-									strokeWidth={1.5}
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
-								<Path
-									d="M83.002 26.002H69"
-									stroke="white"
-									strokeWidth={1.5}
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
-								<Defs>
-									<SvgLinearGradient
-										id="dashboardActionsGradient"
-										x1={76}
-										y1={6}
-										x2={76}
-										y2={46}
-										gradientUnits="userSpaceOnUse"
-									>
-										<Stop stopColor="#00A0E6" />
-										<Stop offset={1} stopColor="#4FD8FF" />
-									</SvgLinearGradient>
-								</Defs>
-							</Svg>
-							<View
-								pointerEvents="none"
-								className="absolute items-center justify-center"
+						<View className="flex-row items-center justify-between">
+							<Text
+								className="ml-3 font-poppins font-semibold text-text"
 								style={{
-									left: 8 * screenScale,
-									top: 6 * screenScale,
-									width: 40 * screenScale,
-									height: 40 * screenScale,
+									fontSize: 24 * screenScale,
+									lineHeight: 36 * screenScale,
 								}}
 							>
-								<CalendarDays
-									size={20 * screenScale}
-									color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-									strokeWidth={1.8}
-								/>
-								<Text
-									className="absolute font-poppins font-semibold text-primary"
-									style={{
-										top: 20.5 * screenScale,
-										fontSize: 6 * screenScale,
-										lineHeight: 9 * screenScale,
-									}}
-								>
-									{today.getDate()}
-								</Text>
-							</View>
-							<View
-								pointerEvents="none"
-								className="absolute items-center justify-center"
-								style={{
-									left: 56 * screenScale,
-									top: 6 * screenScale,
-									width: 40 * screenScale,
-									height: 40 * screenScale,
-								}}
-							>
-								<Plus
-									size={24 * screenScale}
-									color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-									strokeWidth={1.7}
-								/>
-							</View>
-							<TouchableOpacity
-								activeOpacity={0.82}
-								accessibilityRole="button"
-								accessibilityLabel="Zum heutigen Plan springen"
-								onPress={() =>
-									selectVisibleDay(getDayKey(today), todayIndex, "today_button")
-								}
-								style={{
-									position: "absolute",
-									left: 8 * screenScale,
-									top: 6 * screenScale,
-									width: 40 * screenScale,
-									height: 40 * screenScale,
-									borderRadius: 20 * screenScale,
-								}}
-							/>
-							<TouchableOpacity
-								activeOpacity={0.9}
-								accessibilityRole="button"
-								accessibilityLabel="Neuen Eintrag erstellen"
-								onPress={() => {
-									capture("dashboard_create_opened", {
-										selected_day_key: selectedDayKey,
-									});
-									setShowCreateTypePicker(true);
-								}}
-								style={{
-									position: "absolute",
-									left: 56 * screenScale,
-									top: 6 * screenScale,
-									width: 40 * screenScale,
-									height: 40 * screenScale,
-									borderRadius: 20 * screenScale,
-								}}
-							/>
-						</View>
-					</View>
-
-					<ScrollView
-						ref={dayStripScrollRef}
-						horizontal
-						showsHorizontalScrollIndicator={false}
-						style={{ marginTop: 23 * compactScale, alignSelf: "center" }}
-						contentContainerStyle={{ width: dayStripContentWidth }}
-					>
-						<View
-							className="flex-row"
-							style={{
-								columnGap: dayStripGap,
-								width: dayStripContentWidth,
-							}}
-						>
-							{visibleDays.map((day, dayIndex) => {
-								const selected = selectedDayKey === day.key;
-								const itemWidth = 42 * scheduleScale;
-								const content = (
-									<Text
-										key={`${day.key}-label`}
-										className={`font-poppins font-semibold ${selected ? "text-white" : "text-text"}`}
-										style={{
-											fontSize: 16 * screenScale,
-											lineHeight: 24 * screenScale,
-										}}
-									>
-										{day.dayOfMonth}
-									</Text>
-								);
-
-								return (
-									<View
-										key={day.key}
-										className="items-center"
-										style={{ width: itemWidth, rowGap: 4 * compactScale }}
-									>
-										<Text
-											className="font-poppins font-semibold text-secondary-text"
-											style={{
-												fontSize: 12 * screenScale,
-												lineHeight: 18 * screenScale,
-											}}
-										>
-											{day.weekday}
-										</Text>
-										<TouchableOpacity
-											activeOpacity={0.82}
-											accessibilityRole="button"
-											accessibilityState={{ selected }}
-											accessibilityLabel={`${day.weekday}, ${day.dayOfMonth}`}
-											onPress={() =>
-												selectVisibleDay(day.key, dayIndex, "day_strip")
-											}
-										>
-											{selected ? (
-												<LinearGradient
-													colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
-													start={PRIMARY_INTERACTIVE_GRADIENT.start}
-													end={PRIMARY_INTERACTIVE_GRADIENT.end}
-													style={{
-														width: itemWidth,
-														height: 42 * screenScale,
-														borderRadius: 99,
-														alignItems: "center",
-														justifyContent: "center",
-													}}
-												>
-													{content}
-												</LinearGradient>
-											) : (
-												<View
-													className="items-center justify-center rounded-full"
-													style={{
-														width: itemWidth,
-														height: 42 * screenScale,
-													}}
-												>
-													{content}
-												</View>
-											)}
-										</TouchableOpacity>
-									</View>
-								);
-							})}
-						</View>
-					</ScrollView>
-
-					<View
-						className="overflow-hidden bg-light-2"
-						style={{
-							marginTop: 14 * compactScale,
-							height: timelineHeight,
-							width: scheduleInnerWidth,
-							borderRadius: 28 * screenScale,
-						}}
-					>
-						<ScrollView
-							ref={timelineScrollRef}
-							horizontal
-							showsHorizontalScrollIndicator={false}
-							decelerationRate="fast"
-							onScroll={updateSelectedDayFromTimelineScroll}
-							scrollEventThrottle={16}
-							nestedScrollEnabled
-						>
+								{`Plan für ${getMonthLabel(selectedDate)}`}
+							</Text>
 							<View
 								className="relative"
 								style={{
-									width: timelineContentWidth,
-									height: timelineHeight,
+									position: "absolute",
+									top: -24 * compactScale,
+									right: -12 * screenScale,
+									width: 104 * screenScale,
+									height: 52 * screenScale,
 								}}
 							>
-								{visibleDays.flatMap((day, dayIndex) =>
-									TIMELINE_MARKER_HOURS.map((hour) => (
-										<View
-											key={`${day.key}-${hour}`}
-											className="absolute"
-											style={{
-												left: dayIndex * dayWidth + hour * hourWidth,
-												top: 38 * compactScale,
-												bottom: 38 * compactScale,
-												width: hour === 24 ? 0 : 1,
-												backgroundColor:
-													hour === 0 ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.08)",
-											}}
-										/>
-									)),
-								)}
+								<Svg
+									accessible={false}
+									accessibilityElementsHidden
+									importantForAccessibility="no-hide-descendants"
+									pointerEvents="none"
+									width="100%"
+									height="100%"
+									viewBox="0 0 104 52"
+									preserveAspectRatio="none"
+									style={{ position: "absolute", inset: 0 }}
+								>
+									<Path
+										d="M29 0.150391H78.1299C92.3346 0.150391 103.85 11.6654 103.85 25.8701C103.85 40.1753 92.1775 51.7318 77.873 51.5889L54.002 51.3496H27C14.3803 51.3496 4.15039 41.1197 4.15039 28.5V25C4.15039 11.2757 15.2757 0.150391 29 0.150391Z"
+										fill={DAYOVA_DESIGN_SYSTEM.colors.surface}
+										stroke={DAYOVA_DESIGN_SYSTEM.colors.border}
+										strokeWidth={0.3}
+									/>
+									<Rect
+										x={8}
+										y={6}
+										width={40}
+										height={40}
+										rx={20}
+										fill="#F1F7FB"
+									/>
+									<Rect
+										x={56}
+										y={6}
+										width={40}
+										height={40}
+										rx={20}
+										fill="url(#dashboardActionsGradient)"
+									/>
+									<Path
+										d="M76.001 19V33.002"
+										stroke="white"
+										strokeWidth={1.5}
+										strokeLinecap="round"
+										strokeLinejoin="round"
+									/>
+									<Path
+										d="M83.002 26.002H69"
+										stroke="white"
+										strokeWidth={1.5}
+										strokeLinecap="round"
+										strokeLinejoin="round"
+									/>
+									<Defs>
+										<SvgLinearGradient
+											id="dashboardActionsGradient"
+											x1={76}
+											y1={6}
+											x2={76}
+											y2={46}
+											gradientUnits="userSpaceOnUse"
+										>
+											<Stop stopColor="#00A0E6" />
+											<Stop offset={1} stopColor="#4FD8FF" />
+										</SvgLinearGradient>
+									</Defs>
+								</Svg>
+								<View
+									pointerEvents="none"
+									className="absolute items-center justify-center"
+									style={{
+										left: 8 * screenScale,
+										top: 6 * screenScale,
+										width: 40 * screenScale,
+										height: 40 * screenScale,
+									}}
+								>
+									<CalendarDays
+										size={20 * screenScale}
+										color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+										strokeWidth={1.8}
+									/>
+									<Text
+										className="absolute font-poppins font-semibold text-primary"
+										style={{
+											top: 20.5 * screenScale,
+											fontSize: 6 * screenScale,
+											lineHeight: 9 * screenScale,
+										}}
+									>
+										{today.getDate()}
+									</Text>
+								</View>
+								<View
+									pointerEvents="none"
+									className="absolute items-center justify-center"
+									style={{
+										left: 56 * screenScale,
+										top: 6 * screenScale,
+										width: 40 * screenScale,
+										height: 40 * screenScale,
+									}}
+								>
+									<Plus
+										size={24 * screenScale}
+										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+										strokeWidth={1.7}
+									/>
+								</View>
+								<TouchableOpacity
+									activeOpacity={0.82}
+									accessibilityRole="button"
+									accessibilityLabel="Zum heutigen Plan springen"
+									onPress={() =>
+										selectVisibleDay(
+											getDayKey(today),
+											todayIndex,
+											"today_button",
+										)
+									}
+									style={{
+										position: "absolute",
+										left: 8 * screenScale,
+										top: 6 * screenScale,
+										width: 40 * screenScale,
+										height: 40 * screenScale,
+										borderRadius: 20 * screenScale,
+									}}
+								/>
+								<TouchableOpacity
+									activeOpacity={0.9}
+									accessibilityRole="button"
+									accessibilityLabel="Neuen Eintrag erstellen"
+									onPress={() => {
+										capture("dashboard_create_opened", {
+											selected_day_key: selectedDayKey,
+										});
+										setShowCreateTypePicker(true);
+									}}
+									style={{
+										position: "absolute",
+										left: 56 * screenScale,
+										top: 6 * screenScale,
+										width: 40 * screenScale,
+										height: 40 * screenScale,
+										borderRadius: 20 * screenScale,
+									}}
+								/>
+							</View>
+						</View>
 
-								{selectedTimelineEntries.map(({ day, dayIndex, entry, row }) => {
-									if (!day) return null;
-									const start = getEntryStartMinutes(entry);
-									const duration = getEntryDurationMinutes(entry);
-									const blockLeft =
-										dayIndex * dayWidth + (start / 60) * hourWidth;
-									const blockWidth = Math.max(
-										(duration / 60) * hourWidth,
-										155 * scheduleScale,
-									);
-									const learning = isLearningEntry(entry);
-									const Icon = learning
-										? row === 0
-											? Dumbbell
-											: PropertyEdit
-										: Backpack;
-
-									return (
-										<TouchableOpacity
-											key={`${day.key}-${entry.id}`}
-											activeOpacity={0.86}
-											accessibilityRole="button"
-											accessibilityLabel={`${getEntryDisplayTitle(entry)}, ${entry.time ?? ALL_DAY_TIME_LABEL}`}
-											onPress={() => {
-												setSelectedDayKey(day.key);
-												openEntry(entry, "timeline");
-											}}
-											className="absolute rounded-2xl"
+						<ScrollView
+							ref={dayStripScrollRef}
+							horizontal
+							showsHorizontalScrollIndicator={false}
+							style={{ marginTop: 23 * compactScale, alignSelf: "center" }}
+							contentContainerStyle={{ width: dayStripContentWidth }}
+						>
+							<View
+								className="flex-row"
+								style={{
+									columnGap: dayStripGap,
+									width: dayStripContentWidth,
+								}}
+							>
+								{visibleDays.map((day, dayIndex) => {
+									const selected = selectedDayKey === day.key;
+									const itemWidth = 42 * scheduleScale;
+									const content = (
+										<Text
+											key={`${day.key}-label`}
+											className={`font-poppins font-semibold ${selected ? "text-white" : "text-text"}`}
 											style={{
-												left: blockLeft,
-												top: timelineTopOffset + row * timelineRowHeight,
-												width: Math.min(
-													blockWidth,
-													timelineContentWidth - blockLeft,
-												),
-												height: timelineBlockHeight,
-												padding: 12 * screenScale,
-												backgroundColor: learning ? "#F4ECFF" : "#F3E8F0",
+												fontSize: 16 * screenScale,
+												lineHeight: 24 * screenScale,
 											}}
 										>
-											<Icon
-												size={16 * screenScale}
-												color={
-													learning
-														? DAYOVA_DESIGN_SYSTEM.colors.ueben
-														: DAYOVA_DESIGN_SYSTEM.colors.hausaufgabe
-												}
-												strokeWidth={1.9}
-											/>
+											{day.dayOfMonth}
+										</Text>
+									);
+
+									return (
+										<View
+											key={day.key}
+											className="items-center"
+											style={{ width: itemWidth, rowGap: 4 * compactScale }}
+										>
 											<Text
-												className="mt-1 font-poppins font-semibold text-text"
-												numberOfLines={1}
+												className="font-poppins font-semibold text-secondary-text"
 												style={{
 													fontSize: 12 * screenScale,
-													lineHeight: 14 * screenScale,
+													lineHeight: 18 * screenScale,
 												}}
 											>
-												{getSubjectFromEntry(entry)}
+												{day.weekday}
 											</Text>
-											<Text
-												className="font-poppins text-secondary-text"
-												numberOfLines={1}
-												style={{
-													fontSize: 10 * screenScale,
-													lineHeight: 12 * screenScale,
-												}}
+											<TouchableOpacity
+												activeOpacity={0.82}
+												accessibilityRole="button"
+												accessibilityState={{ selected }}
+												accessibilityLabel={`${day.weekday}, ${day.dayOfMonth}`}
+												onPress={() =>
+													selectVisibleDay(day.key, dayIndex, "day_strip")
+												}
 											>
-												{entry.time ?? (learning ? "Lerneinheit" : "Aufgabe")}
-											</Text>
-											<View
-												className="absolute items-center justify-center rounded-full bg-card"
-												style={{
-													right: 12 * screenScale,
-													top: 12 * compactScale,
-													width: 23 * screenScale,
-													height: 23 * screenScale,
-												}}
-											>
-												<ArrowUpRight
-													size={14 * screenScale}
-													color={DAYOVA_DESIGN_SYSTEM.colors.text}
-													strokeWidth={2}
-												/>
-											</View>
-										</TouchableOpacity>
+												{selected ? (
+													<LinearGradient
+														colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
+														start={PRIMARY_INTERACTIVE_GRADIENT.start}
+														end={PRIMARY_INTERACTIVE_GRADIENT.end}
+														style={{
+															width: itemWidth,
+															height: 42 * screenScale,
+															borderRadius: 99,
+															alignItems: "center",
+															justifyContent: "center",
+														}}
+													>
+														{content}
+													</LinearGradient>
+												) : (
+													<View
+														className="items-center justify-center rounded-full"
+														style={{
+															width: itemWidth,
+															height: 42 * screenScale,
+														}}
+													>
+														{content}
+													</View>
+												)}
+											</TouchableOpacity>
+										</View>
 									);
 								})}
+							</View>
+						</ScrollView>
 
-								{selectedTimelineEntries.length === 0 ? (
+						<View
+							className="overflow-hidden bg-light-2"
+							style={{
+								marginTop: 14 * compactScale,
+								height: timelineHeight,
+								width: scheduleInnerWidth,
+								borderRadius: 28 * screenScale,
+							}}
+						>
+							<ScrollView
+								ref={timelineScrollRef}
+								horizontal
+								showsHorizontalScrollIndicator={false}
+								decelerationRate="fast"
+								onScroll={updateSelectedDayFromTimelineScroll}
+								scrollEventThrottle={16}
+								nestedScrollEnabled
+							>
+								<View
+									className="relative"
+									style={{
+										width: timelineContentWidth,
+										height: timelineHeight,
+									}}
+								>
+									{visibleDays.flatMap((day, dayIndex) =>
+										TIMELINE_MARKER_HOURS.map((hour) => (
+											<View
+												key={`${day.key}-${hour}`}
+												className="absolute"
+												style={{
+													left: dayIndex * dayWidth + hour * hourWidth,
+													top: 38 * compactScale,
+													bottom: 38 * compactScale,
+													width: hour === 24 ? 0 : 1,
+													backgroundColor:
+														hour === 0
+															? "rgba(0,0,0,0.12)"
+															: "rgba(0,0,0,0.08)",
+												}}
+											/>
+										)),
+									)}
+
+									{selectedTimelineEntries.map(
+										({ day, dayIndex, entry, row }) => {
+											if (!day) return null;
+											const start = getEntryStartMinutes(entry);
+											const duration = getEntryDurationMinutes(entry);
+											const blockLeft =
+												dayIndex * dayWidth + (start / 60) * hourWidth;
+											const blockWidth = Math.max(
+												(duration / 60) * hourWidth,
+												155 * scheduleScale,
+											);
+											const learning = isLearningEntry(entry);
+											const Icon = learning
+												? row === 0
+													? Dumbbell
+													: PropertyEdit
+												: Backpack;
+
+											return (
+												<TouchableOpacity
+													key={`${day.key}-${entry.id}`}
+													activeOpacity={0.86}
+													accessibilityRole="button"
+													accessibilityLabel={`${getEntryDisplayTitle(entry)}, ${entry.time ?? ALL_DAY_TIME_LABEL}`}
+													onPress={() => {
+														setSelectedDayKey(day.key);
+														openEntry(entry, "timeline");
+													}}
+													className="absolute rounded-2xl"
+													style={{
+														left: blockLeft,
+														top: timelineTopOffset + row * timelineRowHeight,
+														width: Math.min(
+															blockWidth,
+															timelineContentWidth - blockLeft,
+														),
+														height: timelineBlockHeight,
+														padding: 12 * screenScale,
+														backgroundColor: learning ? "#F4ECFF" : "#F3E8F0",
+													}}
+												>
+													<Icon
+														size={16 * screenScale}
+														color={
+															learning
+																? DAYOVA_DESIGN_SYSTEM.colors.ueben
+																: DAYOVA_DESIGN_SYSTEM.colors.hausaufgabe
+														}
+														strokeWidth={1.9}
+													/>
+													<Text
+														className="mt-1 font-poppins font-semibold text-text"
+														numberOfLines={1}
+														style={{
+															fontSize: 12 * screenScale,
+															lineHeight: 14 * screenScale,
+														}}
+													>
+														{getSubjectFromEntry(entry)}
+													</Text>
+													<Text
+														className="font-poppins text-secondary-text"
+														numberOfLines={1}
+														style={{
+															fontSize: 10 * screenScale,
+															lineHeight: 12 * screenScale,
+														}}
+													>
+														{entry.time ??
+															(learning ? "Lerneinheit" : "Aufgabe")}
+													</Text>
+													<View
+														className="absolute items-center justify-center rounded-full bg-card"
+														style={{
+															right: 12 * screenScale,
+															top: 12 * compactScale,
+															width: 23 * screenScale,
+															height: 23 * screenScale,
+														}}
+													>
+														<ArrowUpRight
+															size={14 * screenScale}
+															color={DAYOVA_DESIGN_SYSTEM.colors.text}
+															strokeWidth={2}
+														/>
+													</View>
+												</TouchableOpacity>
+											);
+										},
+									)}
+
+									{selectedTimelineEntries.length === 0 ? (
+										<View
+											className="absolute items-center"
+											style={{
+												top: 105 * compactScale,
+												left:
+													Math.max(selectedDayIndex, 0) * dayWidth +
+													dayWidth / 2 -
+													timelineViewportWidth / 2,
+												width: timelineViewportWidth,
+											}}
+										>
+											<Text
+												className="font-poppins text-secondary-text"
+												style={{
+													fontSize: 12 * screenScale,
+													lineHeight: 18 * screenScale,
+												}}
+											>
+												Keine Einträge an diesem Tag
+											</Text>
+										</View>
+									) : null}
+
 									<View
 										className="absolute items-center"
 										style={{
-											top: 105 * compactScale,
-											left:
-												Math.max(selectedDayIndex, 0) * dayWidth +
-												dayWidth / 2 -
-												timelineViewportWidth / 2,
-											width: timelineViewportWidth,
+											top: 24 * compactScale,
+											left: currentTimelineX,
 										}}
 									>
-										<Text
-											className="font-poppins text-secondary-text"
+										<View
+											className="items-center justify-center rounded-full border border-primary bg-card"
 											style={{
-												fontSize: 12 * screenScale,
-												lineHeight: 18 * screenScale,
+												width: 14 * screenScale,
+												height: 14 * screenScale,
 											}}
 										>
-											Keine Einträge an diesem Tag
-										</Text>
+											<View
+												className="rounded-full bg-primary"
+												style={{
+													width: 10 * screenScale,
+													height: 10 * screenScale,
+												}}
+											/>
+										</View>
+										<View
+											className="bg-primary"
+											style={{
+												width: 4 * screenScale,
+												height: 177 * compactScale,
+											}}
+										/>
 									</View>
-								) : null}
 
-								<View
-									className="absolute items-center"
-									style={{
-										top: 24 * compactScale,
-										left: currentTimelineX,
-									}}
-								>
 									<View
-										className="items-center justify-center rounded-full border border-primary bg-card"
+										className="absolute flex-row"
 										style={{
-											width: 14 * screenScale,
-											height: 14 * screenScale,
+											left: currentTimelineX - 136 * scheduleScale,
+											bottom: 20 * compactScale,
+											columnGap: 24 * scheduleScale,
 										}}
 									>
-										<View
-											className="rounded-full bg-primary"
-											style={{
-												width: 10 * screenScale,
-												height: 10 * screenScale,
-											}}
-										/>
+										{[-90, -60, -30, 0, 30].map((offset) => (
+											<Text
+												key={offset}
+												className="w-10 text-center font-poppins text-black"
+												style={{
+													fontSize: 12 * screenScale,
+													lineHeight: 18 * screenScale,
+													fontWeight: offset === 0 ? "600" : "400",
+												}}
+											>
+												{formatMinutes(timelineLabelBaseMinute + offset)}
+											</Text>
+										))}
 									</View>
 									<View
-										className="bg-primary"
-										style={{ width: 4 * screenScale, height: 177 * compactScale }}
-									/>
+										className="absolute overflow-hidden"
+										style={{
+											top: 143 * compactScale,
+											right: 12 * scheduleScale,
+											width: 57 * scheduleScale,
+											height: 37 * screenScale,
+										}}
+									>
+										{HATCH_LINES.map((line, index) => (
+											<View
+												key={line}
+												className="absolute bg-black/10"
+												style={{
+													width: 2 * screenScale,
+													height: 49 * screenScale,
+													left: index * 8 * scheduleScale,
+													top: -9 * screenScale,
+													transform: [{ rotate: "24deg" }],
+												}}
+											/>
+										))}
+									</View>
 								</View>
-
-								<View
-									className="absolute flex-row"
-									style={{
-										left: currentTimelineX - 136 * scheduleScale,
-										bottom: 20 * compactScale,
-										columnGap: 24 * scheduleScale,
-									}}
-								>
-									{[-90, -60, -30, 0, 30].map((offset) => (
-										<Text
-											key={offset}
-											className="w-10 text-center font-poppins text-black"
-											style={{
-												fontSize: 12 * screenScale,
-												lineHeight: 18 * screenScale,
-												fontWeight: offset === 0 ? "600" : "400",
-											}}
-										>
-											{formatMinutes(timelineLabelBaseMinute + offset)}
-										</Text>
-									))}
-								</View>
-								<View
-									className="absolute overflow-hidden"
-									style={{
-										top: 143 * compactScale,
-										right: 12 * scheduleScale,
-										width: 57 * scheduleScale,
-										height: 37 * screenScale,
-									}}
-								>
-									{HATCH_LINES.map((line, index) => (
-										<View
-											key={line}
-											className="absolute bg-black/10"
-											style={{
-												width: 2 * screenScale,
-												height: 49 * screenScale,
-												left: index * 8 * scheduleScale,
-												top: -9 * screenScale,
-												transform: [{ rotate: "24deg" }],
-											}}
-										/>
-									))}
-								</View>
-							</View>
-						</ScrollView>
-					</View>
+							</ScrollView>
+						</View>
 					</View>
 				</View>
 			</ScrollView>
