@@ -40,15 +40,15 @@ describe("getMissingPublicRuntimeConfig", () => {
 
 		process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_process";
 		process.env.EXPO_PUBLIC_CONVEX_URL = "https://process.convex.cloud";
-		process.env.EXPO_PUBLIC_POSTHOG_API_KEY = "phc_process";
-		process.env.EXPO_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com";
+		delete process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
+		delete process.env.EXPO_PUBLIC_POSTHOG_HOST;
 
 		try {
 			expect(readPublicRuntimeConfig()).toEqual({
 				EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_process",
 				EXPO_PUBLIC_CONVEX_URL: "https://process.convex.cloud",
-				EXPO_PUBLIC_POSTHOG_API_KEY: "phc_process",
-				EXPO_PUBLIC_POSTHOG_HOST: "https://eu.i.posthog.com",
+				EXPO_PUBLIC_POSTHOG_API_KEY: undefined,
+				EXPO_PUBLIC_POSTHOG_HOST: undefined,
 			});
 		} finally {
 			if (originalClerkKey === undefined) {
@@ -85,6 +85,19 @@ describe("getMissingPublicRuntimeConfig", () => {
 
 		expect(env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY).toBe("pk_test_example");
 		expect(env.EXPO_PUBLIC_CONVEX_URL).toBe("https://example.convex.cloud");
+		expect(env.EXPO_PUBLIC_POSTHOG_API_KEY).toBeUndefined();
+		expect(env.EXPO_PUBLIC_POSTHOG_HOST).toBeUndefined();
+	});
+
+	it("does not require optional PostHog analytics envs", () => {
+		expect(
+			getMissingPublicRuntimeConfig({
+				EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+				EXPO_PUBLIC_CONVEX_URL: "https://example.convex.cloud",
+				EXPO_PUBLIC_POSTHOG_API_KEY: "",
+				EXPO_PUBLIC_POSTHOG_HOST: "",
+			}),
+		).toEqual([]);
 	});
 
 	it("allows app runtime creation with missing config for the fallback screen", () => {

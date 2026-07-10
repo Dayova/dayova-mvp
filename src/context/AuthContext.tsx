@@ -1,5 +1,6 @@
 import { isClerkAPIResponseError, useClerk, useUser } from "@clerk/expo";
 import { useConvexAuth, useMutation } from "convex/react";
+import { usePostHog } from "posthog-react-native";
 import type React from "react";
 import {
 	createContext,
@@ -11,6 +12,12 @@ import {
 } from "react";
 import { api } from "#convex/_generated/api";
 import { useOnboarding } from "~/context/OnboardingContext";
+import {
+	captureValidationEvent,
+	definedAnalyticsProperties,
+	isPostHogConfigured,
+} from "~/lib/analytics-core";
+import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
 
 type LoginInput = {
@@ -343,10 +350,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	children,
 }) => {
 	const clerk = useClerk();
+	const posthog = usePostHog();
 	const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const syncCurrentUser = useMutation(api.users.syncCurrentUser);
 	const saveOnboardingAnswers = useMutation(api.users.saveOnboardingAnswers);
+	const markValidationActivity = useMutation(
+		api.validationAnalytics.markActivity,
+	);
 	const updateConvexProfile = useMutation(api.users.updateProfile);
 	const {
 		answers: onboardingAnswers,
@@ -470,6 +481,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		};
 	}, [isConvexAuthenticated, pendingProfile, syncCurrentUser, user]);
 
+	const captureOnboardingCompleted = useCallback(async () => {
+		if (!isPostHogConfigured || !user) return;
+
+		const localDayKey = getDayKey(new Date());
+		let validationStudentCode = user.validationStudentCode ?? null;
+		try {
+			const activity = await markValidationActivity({ localDayKey });
+			validationStudentCode =
+				activity.validationStudentCode ?? validationStudentCode;
+		} catch (error) {
+			logDiagnosticError("Failed to mark onboarding validation activity.", error, {
+				source: "auth.onboarding.analytics.markActivity",
+				level: "warn",
+			});
+		}
+
+		captureValidationEvent(
+			posthog,
+			"onboarding_completed",
+			user.clerkId,
+			definedAnalyticsProperties({
+				local_day_key: localDayKey,
+				answer_count: 5,
+				validation_student_code: validationStudentCode,
+			}),
+		);
+	}, [markValidationActivity, posthog, user]);
+
 	useEffect(() => {
 		if (
 			!user ||
@@ -500,7 +539,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					saveOnboardingAnswers({ answers }),
 				);
 				if (result.ok) {
-					if (!cancelled) clearAnswers();
+					if (!cancelled) {
+						void captureOnboardingCompleted();
+						clearAnswers();
+					}
 					return;
 				}
 				logDiagnosticError(
@@ -531,6 +573,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		};
 	}, [
 		clearAnswers,
+		captureOnboardingCompleted,
 		hasAnswers,
 		isConvexAuthenticated,
 		onboardingAnswers,

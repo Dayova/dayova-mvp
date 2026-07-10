@@ -48,7 +48,10 @@ import type {
 	SessionContentItem,
 } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useValidationAnalytics } from "~/lib/analytics";
+import { definedAnalyticsProperties } from "~/lib/analytics-core";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { cn } from "~/lib/utils";
 
@@ -113,6 +116,29 @@ const phaseTitle = (
 	phase: LearningSessionContentSnapshot["session"]["phase"],
 ) =>
 	phase === "theory" ? "Lernkarten" : phase === "practice" ? "Üben" : "Praxis";
+
+const learningSessionAnalyticsProperties = (result: {
+	learningPlanId: Id<"learningPlans">;
+	learningPlanSessionId: Id<"learningPlanSessions">;
+	phase: LearningSessionContentSnapshot["session"]["phase"];
+	plannedDayKey: string;
+	startTime: string;
+	durationMinutes: number;
+	subject: string;
+	examTypeLabel?: string;
+	examDateKey?: string;
+}) =>
+	definedAnalyticsProperties({
+		learning_plan_id: result.learningPlanId,
+		learning_plan_session_id: result.learningPlanSessionId,
+		phase: result.phase,
+		planned_day_key: result.plannedDayKey,
+		start_time: result.startTime,
+		duration_minutes: result.durationMinutes,
+		subject: result.subject,
+		exam_type_label: result.examTypeLabel,
+		exam_date_key: result.examDateKey,
+	});
 
 const isIosSimulator = Platform.OS === "ios" && !Device.isDevice;
 const iosSimulatorSpeechMessage =
@@ -800,9 +826,11 @@ export default function LearningSessionContentScreen() {
 	const finishSessionContent = useMutation(
 		api.learningSessionContent.finishSessionContent,
 	);
-	const setSessionCompleted = useMutation(
-		api.learningPlans.setSessionCompleted,
+	const startSession = useMutation(api.learningPlans.startSession);
+	const recordSessionOutcome = useMutation(
+		api.learningPlans.recordSessionOutcome,
 	);
+	const { capture } = useValidationAnalytics();
 
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [theoryQueue, setTheoryQueue] = useState<TheoryCardQueueState<
@@ -831,6 +859,10 @@ export default function LearningSessionContentScreen() {
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
 	const didEnsureRef = useRef(false);
 	const didAutoFinishRef = useRef(false);
+	const didStartTrackingRef = useRef(false);
+	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
+		null,
+	);
 
 	const recognizerCallbacks = useMemo<RecognizerCallbacks>(
 		() => ({
@@ -943,6 +975,33 @@ export default function LearningSessionContentScreen() {
 
 	useBackIntent(Boolean(planId), goBack);
 
+	const ensureSessionStarted = useCallback(() => {
+		if (!sessionId) {
+			return Promise.reject(new Error("Lernblock nicht gefunden."));
+		}
+		if (!startSessionPromiseRef.current) {
+			didStartTrackingRef.current = true;
+			startSessionPromiseRef.current = startSession({ sessionId })
+				.then((result) => {
+					void capture(
+						"study_slot_started",
+						definedAnalyticsProperties({
+							...learningSessionAnalyticsProperties(result),
+							started_at: result.startedAt,
+						}),
+					);
+					return result;
+				})
+				.catch((error: unknown) => {
+					didStartTrackingRef.current = false;
+					startSessionPromiseRef.current = null;
+					throw error;
+				});
+		}
+
+		return startSessionPromiseRef.current;
+	}, [capture, sessionId, startSession]);
+
 	useEffect(() => {
 		if (!sessionId || !user || !isConvexAuthenticated || didEnsureRef.current)
 			return;
@@ -958,6 +1017,23 @@ export default function LearningSessionContentScreen() {
 			);
 		});
 	}, [ensureSessionContent, isConvexAuthenticated, sessionId, user]);
+
+	useEffect(() => {
+		if (
+			!sessionId ||
+			!content ||
+			content.session.executionStatus !== "notStarted" ||
+			didStartTrackingRef.current
+		)
+			return;
+
+		void ensureSessionStarted().catch((error: unknown) => {
+			logDiagnosticError("Failed to start learning session tracking.", error, {
+				source: "learningSession.startSession",
+				level: "warn",
+			});
+		});
+	}, [content, ensureSessionStarted, sessionId]);
 
 	useEffect(() => {
 		if (!content?.praxisDurationSeconds || showAnalysis || completionPhase) {
@@ -1049,7 +1125,27 @@ export default function LearningSessionContentScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
-			await setSessionCompleted({ sessionId, completed: true });
+			if (content?.session.executionStatus === "completed") {
+				goBack();
+				return;
+			}
+			if (content?.session.executionStatus === "notStarted") {
+				await ensureSessionStarted();
+			}
+
+			const completed = await recordSessionOutcome({
+				sessionId,
+				outcome: "completed",
+			});
+			const properties = definedAnalyticsProperties({
+				...learningSessionAnalyticsProperties(completed),
+				outcome: "completed",
+				outcome_at: completed.outcomeAt,
+			});
+			void capture("study_slot_completed", properties);
+			if (completed.phase === "rehearsal") {
+				void capture("generalprobe_completed", properties);
+			}
 			goBack();
 		} catch (error) {
 			setErrorMessage(

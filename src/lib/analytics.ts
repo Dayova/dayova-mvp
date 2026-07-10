@@ -1,73 +1,53 @@
+import { useMutation } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import { useCallback } from "react";
+import { api } from "#convex/_generated/api";
 import { useAuth } from "~/context/AuthContext";
-
-type ValidationEventName =
-	| "dashboard_viewed"
-	| "dashboard_day_selected"
-	| "dashboard_today_selected"
-	| "dashboard_create_opened"
-	| "dashboard_create_type_selected"
-	| "dashboard_entry_opened"
-	| "dashboard_hero_day_changed"
-	| "onboarding_completed"
-	| "homework_created"
-	| "exam_created"
-	| "study_plan_generated"
-	| "study_slot_started"
-	| "study_slot_completed"
-	| "study_slot_partially_completed"
-	| "study_slot_missed"
-	| "missed_reason_selected"
-	| "plan_adjusted"
-	| "user_returned_next_day"
-	| "material_uploaded"
-	| "generalprobe_completed";
-
-type AnalyticsProperty = string | number | boolean | null;
-type AnalyticsProperties = Record<string, AnalyticsProperty>;
-type AnalyticsPropertiesInput = Record<
-	string,
-	AnalyticsProperty | undefined
->;
-
-export const isPostHogConfigured = Boolean(
-	process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
-);
-
-export const postHogHost =
-	process.env.EXPO_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com";
-
-export function definedAnalyticsProperties(properties: AnalyticsPropertiesInput) {
-	return Object.fromEntries(
-		Object.entries(properties).filter(
-			(entry): entry is [string, AnalyticsProperty] => entry[1] !== undefined,
-		),
-	);
-}
+import {
+	captureValidationEvent,
+	type ValidationEventName,
+} from "~/lib/analytics-core";
+import { getDayKey } from "~/lib/day-key";
+import { logDiagnosticError } from "~/lib/diagnostics";
+import { isPostHogConfigured } from "~/lib/analytics-core";
+import type { AnalyticsProperties } from "~/lib/analytics-core";
 
 export function useValidationAnalytics() {
 	const posthog = usePostHog();
 	const { user } = useAuth();
+	const markActivity = useMutation(api.validationAnalytics.markActivity);
 	const clerkId = user?.clerkId;
 
-	const captureValidationEvent = useCallback(
-		(eventName: ValidationEventName, properties?: AnalyticsProperties) => {
+	const capture = useCallback(
+		async (
+			eventName: ValidationEventName,
+			properties?: AnalyticsProperties,
+		) => {
 			if (!isPostHogConfigured || !clerkId) return;
-			posthog.identify(clerkId);
-			posthog.capture(eventName, {
+
+			let validationStudentCode: string | null = null;
+			try {
+				const activity = await markActivity({
+					localDayKey: getDayKey(new Date()),
+				});
+				validationStudentCode = activity.validationStudentCode;
+			} catch (error) {
+				logDiagnosticError("Failed to mark validation activity.", error, {
+					source: "analytics.markActivity",
+					level: "warn",
+					metadata: { eventName },
+				});
+			}
+
+			captureValidationEvent(posthog, eventName, clerkId, {
 				...properties,
-				clerk_id: clerkId,
+				...(validationStudentCode
+					? { validation_student_code: validationStudentCode }
+					: {}),
 			});
 		},
-		[clerkId, posthog],
+		[clerkId, markActivity, posthog],
 	);
 
-	return { captureValidationEvent };
+	return { capture };
 }
-
-export type {
-	AnalyticsProperties,
-	AnalyticsPropertiesInput,
-	ValidationEventName,
-};

@@ -41,6 +41,15 @@ When adding a new required public app env, add it to `publicEnvSchema` in
 `app.config.ts` release validation all derive their required-key list from that
 schema.
 
+PostHog validation analytics envs are optional public app envs:
+
+- `EXPO_PUBLIC_POSTHOG_API_KEY`
+- `EXPO_PUBLIC_POSTHOG_HOST`
+
+Do not add optional public envs to the required release-key list unless the app
+cannot function without them. The analytics client must stay disabled gracefully
+when the PostHog key is absent.
+
 ## iOS Privacy Purpose Strings
 
 Dayova uses camera/photo upload for learning material and microphone/speech

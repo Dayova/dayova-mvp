@@ -1,15 +1,17 @@
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { usePostHog } from "posthog-react-native";
-import type React from "react";
 import { useEffect, useRef } from "react";
 import { api } from "#convex/_generated/api";
 import { useAuth } from "~/context/AuthContext";
 import {
+	captureValidationEvent,
 	definedAnalyticsProperties,
 	isPostHogConfigured,
-} from "~/lib/analytics";
+} from "~/lib/analytics-core";
+import { getDayKey } from "~/lib/day-key";
+import { logDiagnosticError } from "~/lib/diagnostics";
 
-export function AnalyticsIdentity({ children }: { children: React.ReactNode }) {
+export function AnalyticsIdentity() {
 	const posthog = usePostHog();
 	const { user, isSessionLoading } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -17,7 +19,11 @@ export function AnalyticsIdentity({ children }: { children: React.ReactNode }) {
 		api.users.getMe,
 		user && isConvexAuthenticated ? {} : "skip",
 	);
+	const markReturnedNextDay = useMutation(
+		api.validationAnalytics.markReturnedNextDay,
+	);
 	const identifiedClerkIdRef = useRef<string | null>(null);
+	const returnCaptureKeyRef = useRef<string | null>(null);
 
 	useEffect(() => {
 		if (!isPostHogConfigured || isSessionLoading) return;
@@ -26,12 +32,13 @@ export function AnalyticsIdentity({ children }: { children: React.ReactNode }) {
 			if (identifiedClerkIdRef.current) {
 				posthog.reset();
 				identifiedClerkIdRef.current = null;
+				returnCaptureKeyRef.current = null;
 			}
 			return;
 		}
 
-		if (!isConvexAuthenticated || convexUser === undefined) return;
-
+		const validationStudentCode =
+			convexUser?.validationStudentCode ?? user.validationStudentCode;
 		posthog.identify(
 			user.clerkId,
 			definedAnalyticsProperties({
@@ -40,11 +47,56 @@ export function AnalyticsIdentity({ children }: { children: React.ReactNode }) {
 				grade: user.grade,
 				school_type: user.schoolType,
 				state: user.state,
-				validation_student_code: convexUser?.validationStudentCode,
+				avatar_url: user.avatarUrl,
+				validation_student_code: validationStudentCode,
 			}),
 		);
 		identifiedClerkIdRef.current = user.clerkId;
-	}, [convexUser, isConvexAuthenticated, isSessionLoading, posthog, user]);
 
-	return children;
+		const localDayKey = getDayKey(new Date());
+		const returnCaptureKey = `${user.clerkId}:${localDayKey}`;
+		if (
+			!isConvexAuthenticated ||
+			returnCaptureKeyRef.current === returnCaptureKey
+		) {
+			return;
+		}
+
+		void markReturnedNextDay({ localDayKey })
+			.then((result) => {
+				returnCaptureKeyRef.current = returnCaptureKey;
+				if (!result.captured) return;
+				captureValidationEvent(
+					posthog,
+					"user_returned_next_day",
+					user.clerkId,
+					{
+						local_day_key: localDayKey,
+						previous_activity_day_key: result.previousActivityDayKey,
+						...(result.validationStudentCode
+							? { validation_student_code: result.validationStudentCode }
+							: {}),
+					},
+				);
+			})
+			.catch((error: unknown) => {
+				logDiagnosticError(
+					"Failed to mark next-day validation return.",
+					error,
+					{
+						source: "analytics.markReturnedNextDay",
+						level: "warn",
+					},
+				);
+			});
+	}, [
+		convexUser,
+		isConvexAuthenticated,
+		isSessionLoading,
+		markReturnedNextDay,
+		posthog,
+		user,
+	]);
+
+	return null;
 }

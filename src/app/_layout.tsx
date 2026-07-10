@@ -12,16 +12,20 @@ import {
 	useRouter,
 } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
+import { PostHogProvider } from "posthog-react-native";
 import { useEffect } from "react";
 import { Text, View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-import { PostHogProvider } from "posthog-react-native";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { NotificationSync } from "~/components/notification-sync";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
-import { isPostHogConfigured, postHogHost } from "~/lib/analytics";
+import {
+	isPostHogConfigured,
+	postHogApiKey,
+	postHogHost,
+} from "~/lib/analytics-core";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { NAV_THEME } from "~/lib/theme";
 
@@ -96,34 +100,33 @@ export default function RootLayout() {
 	return (
 		<GestureHandlerRootView style={gestureRootStyle}>
 			<KeyboardProvider preload={false}>
-				<ClerkProvider
-					publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
-					tokenCache={tokenCache}
+				<PostHogProvider
+					apiKey={postHogApiKey}
+					autocapture={false}
+					options={{
+						host: postHogHost,
+						disabled: !isPostHogConfigured,
+						captureAppLifecycleEvents: false,
+					}}
 				>
-					<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
-						<ThemeProvider value={NAV_THEME}>
-							<BottomSheetModalProvider>
-								<PostHogProvider
-									apiKey={env.EXPO_PUBLIC_POSTHOG_API_KEY?.trim() ?? ""}
-									options={{
-										host: postHogHost,
-										disabled: !isPostHogConfigured,
-										captureAppLifecycleEvents: false,
-									}}
-									autocapture={false}
-								>
+					<ClerkProvider
+						publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
+						tokenCache={tokenCache}
+					>
+						<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
+							<ThemeProvider value={NAV_THEME}>
+								<BottomSheetModalProvider>
 									<OnboardingProvider>
 										<AuthProvider>
-											<AnalyticsIdentity>
-												<AppNavigator />
-											</AnalyticsIdentity>
+											<AnalyticsIdentity />
+											<AppNavigator />
 										</AuthProvider>
 									</OnboardingProvider>
-								</PostHogProvider>
-							</BottomSheetModalProvider>
-						</ThemeProvider>
-					</ConvexProviderWithClerk>
-				</ClerkProvider>
+								</BottomSheetModalProvider>
+							</ThemeProvider>
+						</ConvexProviderWithClerk>
+					</ClerkProvider>
+				</PostHogProvider>
 			</KeyboardProvider>
 		</GestureHandlerRootView>
 	);

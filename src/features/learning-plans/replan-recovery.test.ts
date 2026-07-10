@@ -73,6 +73,7 @@ describe("learning time replan recovery", () => {
 							expectedOutcome: "Vorbereitet",
 							sortOrder: 0,
 							completed: false,
+							executionStatus: "notStarted",
 						},
 					],
 				}),
