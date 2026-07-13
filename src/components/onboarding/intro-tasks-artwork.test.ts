@@ -45,4 +45,14 @@ describe("intro tasks artwork", () => {
 	test("removes the superseded broken SVG export", () => {
 		expect(existsSync(legacyArtworkPath)).toBe(false);
 	});
+
+	test("uses the supplied Figma fire icon", () => {
+		const source = artworkSource();
+
+		expect(source).toContain(
+			'import StreakFireSvg from "../../../assets/onboarding/streak-fire.svg";',
+		);
+		expect(source).toContain("<StreakFireSvg />");
+		expect(source).not.toContain("Flame");
+	});
 });

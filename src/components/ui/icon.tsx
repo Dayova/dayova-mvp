@@ -21,7 +21,6 @@ import {
 	Dna01Icon,
 	Dumbbell02Icon,
 	EarthIcon,
-	Fire02Icon,
 	FootballIcon,
 	GlobeIcon,
 	GreekHelmetIcon,
@@ -93,7 +92,6 @@ export const Dumbbell = createIcon(Dumbbell02Icon);
 export const Earth = createIcon(EarthIcon);
 export const Eye = createIcon(ViewIcon);
 export const EyeOff = createIcon(ViewOffIcon);
-export const Flame = createIcon(Fire02Icon);
 export const Football = createIcon(FootballIcon);
 export const GraduationCap = createIcon(Mortarboard01Icon);
 export const GreekHelmet = createIcon(GreekHelmetIcon);
