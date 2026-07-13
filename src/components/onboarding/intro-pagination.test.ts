@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+	getIntroButtonProgress,
 	getIntroDotWidth,
 	getIntroInterpolatedValue,
 	getIntroPageIndex,
@@ -41,5 +42,14 @@ describe("intro pagination", () => {
 		expect(getIntroInterpolatedValue(50, 100, positions)).toBe(15);
 		expect(getIntroInterpolatedValue(150, 100, positions)).toBe(30);
 		expect(getIntroInterpolatedValue(250, 100, positions)).toBe(40);
+	});
+
+	test("fills the next-button ring continuously across pages", () => {
+		expect(getIntroButtonProgress(-50, 100, 3)).toBeCloseTo(1 / 3);
+		expect(getIntroButtonProgress(0, 100, 3)).toBeCloseTo(1 / 3);
+		expect(getIntroButtonProgress(50, 100, 3)).toBeCloseTo(1 / 2);
+		expect(getIntroButtonProgress(100, 100, 3)).toBeCloseTo(2 / 3);
+		expect(getIntroButtonProgress(200, 100, 3)).toBe(1);
+		expect(getIntroButtonProgress(250, 100, 3)).toBe(1);
 	});
 });

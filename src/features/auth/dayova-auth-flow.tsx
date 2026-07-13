@@ -32,8 +32,10 @@ import Animated, {
 	interpolate,
 	LinearTransition,
 	type SharedValue,
+	useAnimatedProps,
 	useAnimatedScrollHandler,
 	useAnimatedStyle,
+	useDerivedValue,
 	useSharedValue,
 	withRepeat,
 	withSequence,
@@ -42,6 +44,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, {
 	Circle,
+	type CircleProps,
 	Defs,
 	Ellipse,
 	Path,
@@ -51,6 +54,7 @@ import Svg, {
 	type SvgProps,
 } from "react-native-svg";
 import {
+	getIntroButtonProgress,
 	getIntroDotWidth,
 	getIntroInterpolatedValue,
 	getIntroPageIndex,
@@ -96,6 +100,9 @@ import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
 import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
 
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
+const AnimatedCircle = Animated.createAnimatedComponent(
+	Circle,
+) as ComponentType<CircleProps & { animatedProps?: Partial<CircleProps> }>;
 const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const DURATION_CAROUSEL_ACTIVE_COLOR = COLORS.primary;
 const DURATION_CAROUSEL_INACTIVE_COLOR = COLORS.border;
@@ -1111,6 +1118,9 @@ function IntroStepView({
 	const nextButtonPositionStyle = useAnimatedStyle(() => ({
 		top: getIntroInterpolatedValue(scrollX.get(), width, nextButtonTops),
 	}));
+	const nextButtonProgress = useDerivedValue(() =>
+		getIntroButtonProgress(scrollX.get(), width, INTRO_STEPS.length),
+	);
 
 	useEffect(() => {
 		const widthChanged = previousWidthRef.current !== width;
@@ -1188,7 +1198,7 @@ function IntroStepView({
 			>
 				<CircularNextButton
 					onPress={handleNext}
-					progress={(activeIndex + 1) / INTRO_STEPS.length}
+					progress={nextButtonProgress}
 				/>
 			</Animated.View>
 		</View>
@@ -2897,11 +2907,16 @@ function CircularNextButton({
 }: {
 	onPress: () => void;
 	disabled?: boolean;
-	progress: number;
+	progress: SharedValue<number>;
 	style?: object;
 }) {
 	const circumference = 2 * Math.PI * 34;
-	const clampedProgress = Math.min(Math.max(progress, 0.08), 1);
+	const animatedProgressProps = useAnimatedProps<CircleProps>(() => {
+		const clampedProgress = Math.min(Math.max(progress.get(), 0.08), 1);
+		return {
+			strokeDashoffset: circumference * (1 - clampedProgress),
+		};
+	});
 
 	return (
 		<View
@@ -2925,7 +2940,7 @@ function CircularNextButton({
 						stroke="rgba(26,26,26,0.12)"
 						strokeWidth="4"
 					/>
-					<Circle
+					<AnimatedCircle
 						cx="38"
 						cy="38"
 						r="34"
@@ -2933,8 +2948,9 @@ function CircularNextButton({
 						stroke={disabled ? "rgba(26,26,26,0.18)" : COLORS.primary}
 						strokeWidth="4"
 						strokeLinecap="round"
-						strokeDasharray={`${circumference * clampedProgress} ${circumference}`}
+						strokeDasharray={`${circumference} ${circumference}`}
 						transform="rotate(-90 38 38)"
+						animatedProps={animatedProgressProps}
 					/>
 				</Svg>
 			</View>

@@ -11,6 +11,24 @@ export function getIntroPageIndex(
 	return Math.min(Math.max(Math.round(offsetX / pageWidth), 0), pageCount - 1);
 }
 
+export function getIntroButtonProgress(
+	scrollOffset: number,
+	pageWidth: number,
+	pageCount: number,
+) {
+	"worklet";
+
+	if (pageCount <= 0) return 0;
+	if (pageWidth <= 0) return 1 / pageCount;
+
+	const pageProgress = Math.min(
+		Math.max(scrollOffset / pageWidth, 0),
+		pageCount - 1,
+	);
+
+	return (pageProgress + 1) / pageCount;
+}
+
 export function getIntroDotWidth(
 	scrollOffset: number,
 	pageWidth: number,
