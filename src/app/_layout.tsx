@@ -1,6 +1,5 @@
 import "~/global.css";
 import { ClerkProvider, useAuth as useClerkAuth } from "@clerk/expo";
-import { tokenCache } from "@clerk/expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { ConvexReactClient } from "convex/react";
@@ -26,6 +25,7 @@ import {
 	postHogApiKey,
 	postHogHost,
 } from "~/lib/analytics-core";
+import { clerkTokenCache } from "~/lib/auth-token-cache";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { NAV_THEME } from "~/lib/theme";
 
@@ -111,7 +111,7 @@ export default function RootLayout() {
 				>
 					<ClerkProvider
 						publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
-						tokenCache={tokenCache}
+						tokenCache={clerkTokenCache}
 					>
 						<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
 							<ThemeProvider value={NAV_THEME}>

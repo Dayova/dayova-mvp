@@ -17,6 +17,7 @@ import {
 	definedAnalyticsProperties,
 	isPostHogConfigured,
 } from "~/lib/analytics-core";
+import { setRememberSessionPersistence } from "~/lib/auth-token-cache";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
 
@@ -963,6 +964,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		setPendingProfile(null);
 		setSyncedClerkUserId(null);
 		await clerk.signOut();
+		await setRememberSessionPersistence(true);
 	};
 
 	const isSessionLoading = !clerk.loaded || !isUserLoaded;

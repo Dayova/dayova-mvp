@@ -100,6 +100,10 @@ import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import {
+	getRememberSessionPersistence,
+	setRememberSessionPersistence,
+} from "~/lib/auth-token-cache";
 import { useBackIntent } from "~/lib/navigation";
 import { cn } from "~/lib/utils";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
@@ -1596,6 +1600,10 @@ export function LoginScreen() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
+	const [rememberSession, setRememberSession] = useState(
+		getRememberSessionPersistence,
+	);
+	const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [verificationCode, setVerificationCode] = useState("");
 	const [verificationMode, setVerificationMode] = useState(false);
@@ -1629,8 +1637,11 @@ export function LoginScreen() {
 			setError("Bitte gib dein Passwort ein.");
 			return;
 		}
+		if (isSubmittingLogin) return;
 
+		setIsSubmittingLogin(true);
 		try {
+			await setRememberSessionPersistence(rememberSession);
 			const result = await login({
 				email: email.trim().toLowerCase(),
 				password: normalizedPassword,
@@ -1648,7 +1659,13 @@ export function LoginScreen() {
 					? loginError.message
 					: "Anmeldung fehlgeschlagen.",
 			);
+		} finally {
+			setIsSubmittingLogin(false);
 		}
+	};
+
+	const toggleRememberSession = () => {
+		setRememberSession((current) => !current);
 	};
 
 	const submitLoginCode = async (code: string) => {
@@ -1785,14 +1802,31 @@ export function LoginScreen() {
 						</View>
 
 						<View className="mt-5 w-full flex-row items-center justify-between">
-							<View className="flex-row items-center gap-2">
-								<View className="h-4 w-4 items-center justify-center rounded-full bg-primary">
-									<Check size={12} color={COLORS.surface} strokeWidth={3} />
+							<Pressable
+								accessibilityRole="checkbox"
+								accessibilityState={{
+									checked: rememberSession,
+									disabled: isSubmittingLogin,
+								}}
+								disabled={isSubmittingLogin}
+								hitSlop={8}
+								onPress={toggleRememberSession}
+								className="flex-row items-center gap-2"
+							>
+								<View
+									className={cn(
+										"h-4 w-4 items-center justify-center rounded-full border border-primary",
+										rememberSession ? "bg-primary" : "bg-surface",
+									)}
+								>
+									{rememberSession ? (
+										<Check size={12} color={COLORS.surface} strokeWidth={3} />
+									) : null}
 								</View>
 								<Text className="font-poppins text-body-4 text-text">
 									Angemeldet bleiben
 								</Text>
-							</View>
+							</Pressable>
 							<Pressable onPress={() => setError("Passwort-Reset folgt bald.")}>
 								<Text className="font-poppins text-body-4 text-primary">
 									Passwort vergessen?
@@ -1818,9 +1852,9 @@ export function LoginScreen() {
 
 						<View className="mt-6 w-full">
 							<GradientPillButton
-								label={isLoading ? "LOGIN..." : "LOGIN"}
+								label={isLoading || isSubmittingLogin ? "LOGIN..." : "LOGIN"}
 								onPress={submitLogin}
-								disabled={isLoading}
+								disabled={isLoading || isSubmittingLogin}
 							/>
 						</View>
 
@@ -2112,9 +2146,7 @@ function FormPill({
 				}}
 				{...props}
 			/>
-			{rightAccessory ? (
-				<View className="ml-2">{rightAccessory}</View>
-			) : null}
+			{rightAccessory ? <View className="ml-2">{rightAccessory}</View> : null}
 		</View>
 	);
 }

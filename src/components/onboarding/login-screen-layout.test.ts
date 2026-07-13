@@ -20,9 +20,13 @@ const formPillSource = authFlowSource.slice(
 describe("login screen layout", () => {
 	test("keeps the Figma remember-me row and registration prompt in the form flow", () => {
 		expect(loginScreenSource).toContain("Angemeldet bleiben");
+		expect(loginScreenSource).toContain('accessibilityRole="checkbox"');
+		expect(loginScreenSource).toContain("checked: rememberSession");
+		expect(loginScreenSource).toContain("disabled={isSubmittingLogin}");
+		expect(loginScreenSource).toContain("onPress={toggleRememberSession}");
 		expect(loginScreenSource).toContain("Du hast keinen Account?");
 		expect(loginScreenSource).toContain("Jetzt Registrieren");
-		expect(loginScreenSource).not.toContain('<View style={{ flex: 1 }} />');
+		expect(loginScreenSource).not.toContain("<View style={{ flex: 1 }} />");
 		expect(loginScreenSource).toContain('className="mt-12 items-center"');
 		expect(formPillSource).toContain("h-14");
 	});
