@@ -5,12 +5,12 @@ import Svg, { Circle } from "react-native-svg";
 import { Check, ClipboardEdit, Flame } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { cn } from "~/lib/utils";
 
 const ARTWORK_WIDTH = 356;
 const ARTWORK_HEIGHT = 242;
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
 const GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
-const TYPOGRAPHY = DAYOVA_DESIGN_SYSTEM.typography;
 const logoSource = require("../../../assets/onboarding/dayova-y.png");
 
 const taskPreviewRows = [
@@ -31,30 +31,37 @@ const streakDays = [
 
 function TaskCard() {
 	return (
-		<View style={styles.taskCard}>
-			<LinearGradient
-				colors={GRADIENT.colors}
-				start={GRADIENT.start}
-				end={GRADIENT.end}
-				style={styles.taskHeader}
-			>
+		<View
+			className="absolute overflow-hidden rounded-[16px] border-border border-hairline bg-surface"
+			style={artworkGeometry.taskCard}
+		>
+			<View className="h-[25px] flex-row items-center gap-[5px] px-[13px]">
+				<LinearGradient
+					colors={GRADIENT.colors}
+					start={GRADIENT.start}
+					end={GRADIENT.end}
+					style={gradientBackgroundStyle}
+				/>
 				<ClipboardEdit size={10} color={COLORS.light1} strokeWidth={2} />
-				<Text style={styles.taskHeaderText}>Deine Aufgaben</Text>
-			</LinearGradient>
+				<Text className="font-poppins font-semibold text-[8px] text-white leading-3">
+					Deine Aufgaben
+				</Text>
+			</View>
 
-			<View style={styles.taskRows}>
+			<View className="pr-[7px] pl-[17px]">
 				{taskPreviewRows.map((row, index) => (
 					<View
 						key={row.id}
-						style={[
-							styles.taskRow,
-							index < taskPreviewRows.length - 1
-								? styles.taskRowDivider
-								: undefined,
-						]}
+						className={cn(
+							"h-[25.7px] flex-row items-center gap-1.5",
+							index < taskPreviewRows.length - 1 && "border-border border-b",
+						)}
 					>
-						<View style={styles.taskCircle} />
-						<Text numberOfLines={1} style={styles.taskLabel}>
+						<View className="h-2 w-2 rounded-full border border-primary" />
+						<Text
+							numberOfLines={1}
+							className="flex-1 font-normal font-poppins text-[6.5px] text-primary leading-[9px]"
+						>
 							{row.label}
 						</Text>
 					</View>
@@ -72,15 +79,19 @@ function StreakDay({
 	state: (typeof streakDays)[number]["state"];
 }) {
 	return (
-		<View style={styles.streakDay}>
-			<Text style={styles.streakDayLabel}>{label}</Text>
+		<View className="w-[17px] items-center gap-0.5">
+			<Text className="font-normal font-poppins text-[6px] text-white leading-2">
+				{label}
+			</Text>
 			{state === "question" ? (
-				<View style={[styles.streakCircle, styles.streakCircleQuestion]}>
-					<Text style={styles.questionMark}>?</Text>
+				<View className="h-[17px] w-[17px] items-center justify-center rounded-full bg-primary-strong">
+					<Text className="font-poppins font-semibold text-[9px] text-white leading-[11px]">
+						?
+					</Text>
 				</View>
 			) : null}
 			{state === "complete" ? (
-				<View style={[styles.streakCircle, styles.streakCircleComplete]}>
+				<View className="h-[17px] w-[17px] items-center justify-center rounded-full bg-white">
 					<Check size={10} color={COLORS.primary} strokeWidth={3} />
 				</View>
 			) : null}
@@ -108,7 +119,7 @@ function StreakDay({
 				</Svg>
 			) : null}
 			{state === "future" ? (
-				<View style={[styles.streakCircle, styles.streakCircleFuture]} />
+				<View className="h-[17px] w-[17px] rounded-full border-4 border-primary-strong" />
 			) : null}
 		</View>
 	);
@@ -116,45 +127,58 @@ function StreakDay({
 
 function StreakCard() {
 	return (
-		<View style={styles.streakCardShadow}>
-			<LinearGradient
-				colors={GRADIENT.colors}
-				start={GRADIENT.start}
-				end={GRADIENT.end}
-				style={styles.streakCard}
-			>
-				<View style={styles.streakHeading}>
-					<View style={styles.streakCount}>
+		<View
+			className="absolute rounded-[16px] shadow-black/5 shadow-sm"
+			style={artworkGeometry.streakCard}
+		>
+			<View className="h-full w-full overflow-hidden rounded-[16px] px-2 pt-2.5">
+				<LinearGradient
+					colors={GRADIENT.colors}
+					start={GRADIENT.start}
+					end={GRADIENT.end}
+					style={gradientBackgroundStyle}
+				/>
+				<View className="items-center">
+					<View className="flex-row items-center gap-[3px]">
 						<Flame size={13} color={COLORS.light1} strokeWidth={2.4} />
-						<Text style={styles.streakNumber}>4</Text>
+						<Text className="font-poppins font-semibold text-[14px] text-white leading-[17px]">
+							4
+						</Text>
 					</View>
-					<Text style={styles.streakSubtitle}>Erfolgreiche Lerntage</Text>
+					<Text className="font-normal font-poppins text-[6px] text-white leading-2">
+						Erfolgreiche Lerntage
+					</Text>
 				</View>
 
-				<View style={styles.streakDays}>
+				<View className="mt-1.5 flex-row justify-between">
 					{streakDays.map((day) => (
 						<StreakDay key={day.id} label={day.label} state={day.state} />
 					))}
 				</View>
 
-				<Text style={styles.streakFooter}>
+				<Text className="mt-1.5 text-center font-normal font-poppins text-[6px] text-white leading-2">
 					Weiter so! Du hast schon 4{"\n"}Lerntage abgeschlossen
 				</Text>
-			</LinearGradient>
+			</View>
 		</View>
 	);
 }
 
 function ReminderCard() {
 	return (
-		<View style={styles.reminderCard}>
-			<View style={styles.logoCircle}>
-				<Image source={logoSource} resizeMode="contain" style={styles.logo} />
+		<View
+			className="absolute flex-row items-center rounded-[16px] border-border border-hairline bg-surface px-[13.38px] shadow-black/5 shadow-sm"
+			style={artworkGeometry.reminderCard}
+		>
+			<View className="h-[35.4px] w-[35.4px] items-center justify-center rounded-full border-[0.86px] border-border bg-surface">
+				<Image source={logoSource} resizeMode="contain" className="h-6 w-6" />
 			</View>
-			<View style={styles.reminderDivider} />
-			<View style={styles.reminderCopy}>
-				<Text style={styles.reminderTitle}>Mathe lernen</Text>
-				<Text style={styles.reminderBody}>
+			<View className="mr-4 ml-[11.5px] h-[47px] w-px bg-border" />
+			<View className="flex-1 gap-0.5">
+				<Text className="font-normal font-poppins text-body-4 text-primary">
+					Mathe lernen
+				</Text>
+				<Text className="font-normal font-poppins text-body-5 text-text">
 					Deine Lernstunde startet in 60{"\n"}Minuten
 				</Text>
 			</View>
@@ -177,16 +201,18 @@ export function IntroTasksArtwork({ width, height }: SvgProps) {
 		resolvedHeight / ARTWORK_HEIGHT,
 	);
 
+	// Runtime viewport dimensions and responsive scaling are style-prop exceptions.
 	return (
 		<View
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
-			style={[
-				styles.viewport,
-				{ width: resolvedWidth, height: resolvedHeight },
-			]}
+			className="items-center justify-center"
+			style={{ width: resolvedWidth, height: resolvedHeight }}
 		>
-			<View style={[styles.canvas, { transform: [{ scale }] }]}>
+			<View
+				className="relative h-[242px] w-[356px]"
+				style={{ transform: [{ scale }] }}
+			>
 				<TaskCard />
 				<StreakCard />
 				<ReminderCard />
@@ -195,202 +221,32 @@ export function IntroTasksArtwork({ width, height }: SvgProps) {
 	);
 }
 
-const styles = StyleSheet.create({
-	viewport: {
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	canvas: {
-		width: ARTWORK_WIDTH,
-		height: ARTWORK_HEIGHT,
-	},
+// NativeWind owns static styling above. These RN styles are intentionally
+// limited to the fixed 356x242 Figma artboard coordinates and transforms.
+// expo-linear-gradient also requires its background geometry through `style`.
+// See docs/contexts/design-system/adr/onboarding-artwork-rendering.md.
+const gradientBackgroundStyle = StyleSheet.absoluteFill;
+const artworkGeometry = StyleSheet.create({
 	taskCard: {
-		position: "absolute",
 		left: 6.18,
 		top: 37.54,
 		width: 179.7,
 		height: 102.7,
-		borderRadius: 15.85,
-		borderColor: COLORS.border,
-		borderWidth: 0.3,
-		backgroundColor: COLORS.surface,
-		overflow: "hidden",
 		transform: [{ rotate: "-12deg" }],
 		transformOrigin: [0, 0, 0],
 	},
-	taskHeader: {
-		height: 25,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 5,
-		paddingHorizontal: 13,
-	},
-	taskHeaderText: {
-		fontSize: 8,
-		lineHeight: 12,
-		fontWeight: "600",
-		color: COLORS.light1,
-	},
-	taskRows: {
-		paddingLeft: 17,
-		paddingRight: 7,
-	},
-	taskRow: {
-		height: 25.7,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 6,
-	},
-	taskRowDivider: {
-		borderBottomColor: COLORS.border,
-		borderBottomWidth: 1,
-	},
-	taskCircle: {
-		width: 8,
-		height: 8,
-		borderRadius: 4,
-		borderColor: COLORS.primary,
-		borderWidth: 1,
-	},
-	taskLabel: {
-		flex: 1,
-		fontSize: 6.5,
-		lineHeight: 9,
-		fontWeight: "400",
-		color: COLORS.primary,
-	},
-	streakCardShadow: {
-		position: "absolute",
+	streakCard: {
 		left: 196.43,
 		top: 13.86,
 		width: 142.44,
 		height: 110.79,
-		borderRadius: 16,
-		...DAYOVA_DESIGN_SYSTEM.elevation.soft,
 		transform: [{ rotate: "7.823deg" }],
 		transformOrigin: [0, 0, 0],
 	},
-	streakCard: {
-		width: "100%",
-		height: "100%",
-		borderRadius: 16,
-		paddingTop: 10,
-		paddingHorizontal: 8,
-		overflow: "hidden",
-	},
-	streakHeading: {
-		alignItems: "center",
-	},
-	streakCount: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 3,
-	},
-	streakNumber: {
-		fontSize: 14,
-		lineHeight: 17,
-		fontWeight: "600",
-		color: COLORS.light1,
-	},
-	streakSubtitle: {
-		fontSize: 6,
-		lineHeight: 8,
-		fontWeight: "400",
-		color: COLORS.light1,
-	},
-	streakDays: {
-		marginTop: 6,
-		flexDirection: "row",
-		justifyContent: "space-between",
-	},
-	streakDay: {
-		width: 17,
-		alignItems: "center",
-		gap: 2,
-	},
-	streakDayLabel: {
-		fontSize: 6,
-		lineHeight: 8,
-		fontWeight: "400",
-		color: COLORS.light1,
-	},
-	streakCircle: {
-		width: 17,
-		height: 17,
-		borderRadius: 8.5,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	streakCircleQuestion: {
-		backgroundColor: COLORS.primaryStrong,
-	},
-	streakCircleComplete: {
-		backgroundColor: COLORS.light1,
-	},
-	streakCircleFuture: {
-		borderColor: COLORS.primaryStrong,
-		borderWidth: 4,
-	},
-	questionMark: {
-		fontSize: 9,
-		lineHeight: 11,
-		fontWeight: "600",
-		color: COLORS.light1,
-	},
-	streakFooter: {
-		marginTop: 6,
-		fontSize: 6,
-		lineHeight: 8,
-		fontWeight: "400",
-		textAlign: "center",
-		color: COLORS.light1,
-	},
 	reminderCard: {
-		position: "absolute",
 		left: 38,
 		top: 127,
 		width: 268.54,
 		height: 74.18,
-		borderRadius: 16,
-		borderColor: COLORS.border,
-		borderWidth: 0.3,
-		backgroundColor: COLORS.surface,
-		flexDirection: "row",
-		alignItems: "center",
-		paddingHorizontal: 13.38,
-		...DAYOVA_DESIGN_SYSTEM.elevation.surface,
-	},
-	logoCircle: {
-		width: 35.4,
-		height: 35.4,
-		borderRadius: 17.7,
-		borderColor: COLORS.border,
-		borderWidth: 0.86,
-		alignItems: "center",
-		justifyContent: "center",
-		backgroundColor: COLORS.surface,
-	},
-	logo: {
-		width: 24,
-		height: 24,
-	},
-	reminderDivider: {
-		width: 1,
-		height: 47,
-		marginLeft: 11.5,
-		marginRight: 16,
-		backgroundColor: COLORS.border,
-	},
-	reminderCopy: {
-		flex: 1,
-		gap: 2,
-	},
-	reminderTitle: {
-		...TYPOGRAPHY.body.sm,
-		color: COLORS.primary,
-	},
-	reminderBody: {
-		...TYPOGRAPHY.body.xs,
-		color: COLORS.text,
 	},
 });

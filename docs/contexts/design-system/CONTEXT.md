@@ -76,3 +76,6 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 
 - Capture reusable component and styling decisions here.
 - Put design-system ADRs in `docs/contexts/design-system/adr/`.
+- Use NativeWind for static app UI. Follow the rendering-choice matrix in
+  `docs/styling.md` when deciding between NativeWind, RN geometry styles, SVGs,
+  and native artwork modules.

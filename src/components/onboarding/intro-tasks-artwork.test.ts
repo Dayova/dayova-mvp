@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
@@ -9,6 +9,10 @@ const artworkSource = () =>
 const authFlowSource = readFileSync(
 	resolve(testDirectory, "../../features/auth/dayova-auth-flow.tsx"),
 	"utf8",
+);
+const legacyArtworkPath = resolve(
+	testDirectory,
+	"../../../assets/onboarding/intro-tasks.svg",
 );
 
 describe("intro tasks artwork", () => {
@@ -36,5 +40,9 @@ describe("intro tasks artwork", () => {
 			'require("../../../assets/onboarding/dayova-y.png")',
 		);
 		expect(source).not.toMatch(/\.jpe?g|data:image\/jpeg/i);
+	});
+
+	test("removes the superseded broken SVG export", () => {
+		expect(existsSync(legacyArtworkPath)).toBe(false);
 	});
 });
