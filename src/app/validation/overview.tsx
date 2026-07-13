@@ -218,11 +218,7 @@ export default function ValidationOverviewScreen() {
 				bottomPadding={120}
 				contentContainerStyle={{ rowGap: 18 }}
 			>
-				<ScreenHeader
-					title="Validation"
-					onBack={goBack}
-					className="mb-0"
-				/>
+				<ScreenHeader title="Validation" onBack={goBack} className="mb-0" />
 
 				<Surface className="rounded-[28px] px-5 py-5">
 					<Text
@@ -297,7 +293,10 @@ export default function ValidationOverviewScreen() {
 						className="rounded-[24px] px-5 py-5"
 						style={{ rowGap: 12 }}
 					>
-						<View className="flex-row items-start justify-between" style={{ gap: 12 }}>
+						<View
+							className="flex-row items-start justify-between"
+							style={{ gap: 12 }}
+						>
 							<View className="flex-1">
 								<Text
 									className="font-poppins font-semibold text-[#202127]"
@@ -336,7 +335,11 @@ export default function ValidationOverviewScreen() {
 
 						<Text
 							className="font-poppins text-[#6F727C]"
-							style={{ fontSize: 13, lineHeight: 18, includeFontPadding: false }}
+							style={{
+								fontSize: 13,
+								lineHeight: 18,
+								includeFontPadding: false,
+							}}
 						>
 							{`${row.startTime} · ${row.durationMinutes} Min. · ${row.title}`}
 						</Text>

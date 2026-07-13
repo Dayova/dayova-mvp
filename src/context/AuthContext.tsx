@@ -491,10 +491,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			validationStudentCode =
 				activity.validationStudentCode ?? validationStudentCode;
 		} catch (error) {
-			logDiagnosticError("Failed to mark onboarding validation activity.", error, {
-				source: "auth.onboarding.analytics.markActivity",
-				level: "warn",
-			});
+			logDiagnosticError(
+				"Failed to mark onboarding validation activity.",
+				error,
+				{
+					source: "auth.onboarding.analytics.markActivity",
+					level: "warn",
+				},
+			);
 		}
 
 		captureValidationEvent(
