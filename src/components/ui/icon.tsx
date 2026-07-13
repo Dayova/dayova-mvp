@@ -4,8 +4,8 @@ import {
 	ArrowLeft01Icon,
 	ArrowRight01Icon,
 	ArrowUpRight01Icon,
-	Attachment01Icon,
 	Atom02Icon,
+	Attachment01Icon,
 	Backpack03Icon,
 	BookOpen01Icon,
 	Brain02Icon,
@@ -21,9 +21,10 @@ import {
 	Dna01Icon,
 	Dumbbell02Icon,
 	EarthIcon,
+	Fire02Icon,
 	FootballIcon,
-	GreekHelmetIcon,
 	GlobeIcon,
+	GreekHelmetIcon,
 	Home02Icon,
 	LanguageCircleIcon,
 	Logout03Icon,
@@ -35,8 +36,8 @@ import {
 	MusicNote01Icon,
 	NotebookIcon,
 	NoteIcon,
-	PaintBoardIcon,
 	Notification01Icon,
+	PaintBoardIcon,
 	PaintBrush01Icon,
 	PencilIcon,
 	Plant04Icon,
@@ -92,6 +93,7 @@ export const Dumbbell = createIcon(Dumbbell02Icon);
 export const Earth = createIcon(EarthIcon);
 export const Eye = createIcon(ViewIcon);
 export const EyeOff = createIcon(ViewOffIcon);
+export const Flame = createIcon(Fire02Icon);
 export const Football = createIcon(FootballIcon);
 export const GraduationCap = createIcon(Mortarboard01Icon);
 export const GreekHelmet = createIcon(GreekHelmetIcon);
