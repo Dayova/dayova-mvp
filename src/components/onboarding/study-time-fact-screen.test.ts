@@ -28,8 +28,11 @@ describe("study-time fact screen", () => {
 		expect(shortFactStepSource).toContain(
 			'<Bulb size={32} color={COLORS.wrong} strokeWidth={1.5} />',
 		);
-		expect(shortFactStepSource).toContain(
-			'className="mt-2 font-poppins text-body-3 text-wrong"',
+		expect(shortFactStepSource).toMatch(
+			/<Text className="mt-2 [^"]*text-body-4 text-wrong">/,
+		);
+		expect(shortFactStepSource).not.toMatch(
+			/<Text className="mt-2 [^"]*font-(?:bold|semibold)[^"]*">/,
 		);
 		expect(hangingPanelSource).toContain("<Sparkles");
 		expect(hangingPanelSource).toContain('className="mt-56 w-full"');
@@ -37,6 +40,8 @@ describe("study-time fact screen", () => {
 			'className="w-full -rotate-2 rounded-card bg-surface px-6 py-5"',
 		);
 		expect(hangingPanelSource).not.toMatch(/shadow(?:-|\b)/);
-		expect(shortFactStepSource).toContain("AuthProgressHeader");
+		expect(shortFactStepSource).not.toContain("AuthProgressHeader");
+		expect(shortFactStepSource).not.toContain("progress:");
+		expect(shortFactStepSource).not.toContain("onBack:");
 	});
 });

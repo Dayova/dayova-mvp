@@ -1342,9 +1342,7 @@ function QuestionStepView({
 			<ShortStudyTimeFactStep
 				title={step.title}
 				studyTime={answers.studyTime}
-				progress={progress}
 				bottomInset={bottomInset}
-				onBack={onBack}
 				onContinue={onContinue}
 			/>
 		);
@@ -1539,24 +1537,16 @@ function QuestionStepView({
 function ShortStudyTimeFactStep({
 	title,
 	studyTime,
-	progress,
 	bottomInset,
-	onBack,
 	onContinue,
 }: {
 	title: string;
 	studyTime: string;
-	progress: number;
 	bottomInset: number;
-	onBack: () => boolean;
 	onContinue: () => void;
 }) {
 	return (
 		<View className="flex-1">
-			<View className="absolute top-0 z-20 w-full">
-				<AuthProgressHeader progress={progress} onBack={onBack} />
-			</View>
-
 			<ScrollView
 				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
@@ -1575,7 +1565,7 @@ function ShortStudyTimeFactStep({
 						<View className="h-[60px] w-[60px] items-center justify-center rounded-full bg-wrong-subtle">
 							<Bulb size={32} color={COLORS.wrong} strokeWidth={1.5} />
 						</View>
-						<Text className="mt-2 font-poppins text-body-3 text-wrong">
+						<Text className="mt-2 font-medium font-poppins text-body-4 text-wrong">
 							Schon gewusst?
 						</Text>
 					</View>
