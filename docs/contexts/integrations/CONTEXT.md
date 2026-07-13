@@ -4,7 +4,7 @@ This context covers third-party services and external system boundaries, includi
 
 Confluence is the current cross-functional documentation hub and may later move to Notion.
 
-GitHub Issues is the current issue tracker. A planned migration to Linear is tracked in https://github.com/Dayova/dayova-mvp/issues/20.
+Linear workspace `dayova`, team `Dayova` (`DAY`), is the source of truth for issues and PRDs. GitHub Issues for `Dayova/dayova-mvp` is a bidirectionally synced compatibility surface, and linked pull requests drive Linear workflow status automation. Agent-facing operation rules live in `docs/agents/issue-tracker.md`.
 
 ## Language
 
