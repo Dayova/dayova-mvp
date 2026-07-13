@@ -16,12 +16,16 @@ Convex agent skills for common tasks can be installed by running
 
 ### Issue tracker
 
-Issues currently live in GitHub Issues for `Dayova/dayova-mvp`; a migration to Linear is planned and tracked in GitHub issue #20. See `docs/agents/issue-tracker.md`.
+Linear is the source of truth for issues and PRDs: use workspace `dayova`, team `Dayova` (`DAY`). `Dayova/dayova-mvp` GitHub Issues remains a bidirectionally synced compatibility surface. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-Use the default five-label triage vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+Map the `bug` and `enhancement` category roles plus the five triage disposition roles through `docs/agents/triage-labels.md`; do not substitute similarly named Linear labels.
 
 ### Domain docs
 
 Use a multi-context documentation layout with `CONTEXT-MAP.md` at the repo root; Confluence is the current cross-functional documentation hub for the wider team, while repo-local context docs guide agents and technical work. See `docs/agents/domain.md`.
+
+### Skill maintenance
+
+Matt Pocock skill updates require the repo's Codex and Linear compatibility overlay to be revalidated. See `docs/agents/matt-pocock-skills.md`.
