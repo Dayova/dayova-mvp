@@ -27,7 +27,11 @@ describe("study-time fact screen", () => {
 		expect(shortFactStepSource).toContain("Schon gewusst?");
 		expect(shortFactStepSource).toContain("<Bulb");
 		expect(hangingPanelSource).toContain("<Sparkles");
-		expect(hangingPanelSource).toContain("-rotate-[2deg]");
+		expect(hangingPanelSource).toContain('className="mt-56 w-full"');
+		expect(hangingPanelSource).toContain(
+			'className="w-full -rotate-2 rounded-card bg-surface px-6 py-5"',
+		);
+		expect(hangingPanelSource).not.toMatch(/shadow(?:-|\b)/);
 		expect(shortFactStepSource).toContain("AuthProgressHeader");
 	});
 });

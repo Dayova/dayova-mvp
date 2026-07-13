@@ -2709,18 +2709,20 @@ function HangingStudyTimeFactPanel({ body }: { body: string }) {
 
 			<Animated.View
 				entering={FadeInUp.delay(80).duration(420).springify().damping(18)}
-				className="mt-56 w-full -rotate-[2deg] rounded-card bg-surface px-6 py-5 shadow-lg"
+				className="mt-56 w-full"
 			>
-				<View className="flex-row items-center gap-1 self-start rounded-full bg-primary/10 px-2 py-1">
-					<Sparkles size={16} color={COLORS.primary} strokeWidth={2} />
-					<Text className="font-poppins font-semibold text-body-5 text-primary">
-						Lernfakt
+				<View className="w-full -rotate-2 rounded-card bg-surface px-6 py-5">
+					<View className="flex-row items-center gap-1 self-start rounded-full bg-primary/10 px-2 py-1">
+						<Sparkles size={16} color={COLORS.primary} strokeWidth={2} />
+						<Text className="font-poppins font-semibold text-body-5 text-primary">
+							Lernfakt
+						</Text>
+					</View>
+
+					<Text className="mt-5 font-poppins text-body-3 text-secondary-text">
+						{body}
 					</Text>
 				</View>
-
-				<Text className="mt-5 font-poppins text-body-3 text-secondary-text">
-					{body}
-				</Text>
 			</Animated.View>
 		</View>
 	);
