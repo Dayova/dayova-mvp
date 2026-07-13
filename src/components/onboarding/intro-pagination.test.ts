@@ -1,11 +1,13 @@
 import { describe, expect, test } from "vitest";
 import {
+	getCenteredIntroDotsTop,
 	getIntroButtonProgress,
 	getIntroDotWidth,
 	getIntroInterpolatedValue,
 	getIntroPageIndex,
 	INTRO_DOT_COLLAPSED_WIDTH,
 	INTRO_DOT_EXPANDED_WIDTH,
+	INTRO_DOT_HEIGHT,
 } from "./intro-pagination";
 
 describe("intro pagination", () => {
@@ -51,5 +53,22 @@ describe("intro pagination", () => {
 		expect(getIntroButtonProgress(100, 100, 3)).toBeCloseTo(2 / 3);
 		expect(getIntroButtonProgress(200, 100, 3)).toBe(1);
 		expect(getIntroButtonProgress(250, 100, 3)).toBe(1);
+	});
+
+	test("centers the dots between the title and button edges", () => {
+		const titleBottom = 610.8;
+		const buttonTop = 704;
+		const dotsTop = getCenteredIntroDotsTop(
+			titleBottom,
+			buttonTop,
+			INTRO_DOT_HEIGHT,
+		);
+
+		expect(dotsTop + INTRO_DOT_HEIGHT / 2).toBeCloseTo(
+			(titleBottom + buttonTop) / 2,
+		);
+		expect(dotsTop - titleBottom).toBeCloseTo(
+			buttonTop - (dotsTop + INTRO_DOT_HEIGHT),
+		);
 	});
 });

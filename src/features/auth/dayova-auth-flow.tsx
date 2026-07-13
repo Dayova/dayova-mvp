@@ -54,12 +54,14 @@ import Svg, {
 	type SvgProps,
 } from "react-native-svg";
 import {
+	getCenteredIntroDotsTop,
 	getIntroButtonProgress,
 	getIntroDotWidth,
 	getIntroInterpolatedValue,
 	getIntroPageIndex,
 	INTRO_DOT_COLLAPSED_WIDTH,
 	INTRO_DOT_EXPANDED_WIDTH,
+	INTRO_DOT_HEIGHT,
 } from "~/components/onboarding/intro-pagination";
 import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
@@ -344,25 +346,23 @@ function parsePickerTime(value: string) {
 
 const INTRO_REFERENCE_WIDTH = 393;
 const INTRO_REFERENCE_HEIGHT = 852;
+const INTRO_TITLE_LINE_HEIGHT = 36.6;
 const IntroUploadArtwork = IntroUploadSvg as unknown as ComponentType<SvgProps>;
 const IntroPathArtwork = IntroPathSvg as unknown as ComponentType<SvgProps>;
 const INTRO_LAYOUTS = {
 	tasks: {
 		artwork: { width: 356, height: 242, top: 206 },
 		titleTop: 501,
-		dotsTop: 660,
 		buttonTop: 704,
 	},
 	upload: {
 		artwork: { width: 345, height: 313, top: 153 },
 		titleTop: 510,
-		dotsTop: 660,
 		buttonTop: 704,
 	},
 	path: {
 		artwork: { width: 369, height: 467, top: 131 },
 		titleTop: 574,
-		dotsTop: 720,
 		buttonTop: 760,
 	},
 } as const satisfies Record<
@@ -370,7 +370,6 @@ const INTRO_LAYOUTS = {
 	{
 		artwork: { width: number; height: number; top: number };
 		titleTop: number;
-		dotsTop: number;
 		buttonTop: number;
 	}
 >;
@@ -1087,6 +1086,9 @@ function IntroStepView({
 	const { width, height } = useWindowDimensions();
 	const listRef = useRef<FlatList<IntroStep>>(null);
 	const previousWidthRef = useRef(width);
+	const [titleMeasurements, setTitleMeasurements] = useState<
+		Partial<Record<IntroStep["id"], { height: number; scale: number }>>
+	>({});
 	const scrollX = useSharedValue(activeIndex * width);
 	const scale = Math.min(
 		width / INTRO_REFERENCE_WIDTH,
@@ -1102,9 +1104,18 @@ function IntroStepView({
 	});
 	const dotsTops = INTRO_STEPS.map((step, index) => {
 		const layout = INTRO_LAYOUTS[step.illustration];
-		return Math.min(
-			layout.dotsTop * scale,
-			(nextButtonTops[index] ?? 0) - 44 * scale,
+		const measurement = titleMeasurements[step.id];
+		const fallbackTitleHeight =
+			step.title.split("\n").length * INTRO_TITLE_LINE_HEIGHT * scale;
+		const titleHeight =
+			measurement?.scale === scale ? measurement.height : fallbackTitleHeight;
+		const titleBottom = layout.titleTop * scale + titleHeight;
+		const buttonVisualTop =
+			(nextButtonTops[index] ?? 0) + (76 - nextButtonSize) / 2;
+		return getCenteredIntroDotsTop(
+			titleBottom,
+			buttonVisualTop,
+			INTRO_DOT_HEIGHT,
 		);
 	});
 	const scrollHandler = useAnimatedScrollHandler({
@@ -1120,6 +1131,25 @@ function IntroStepView({
 	}));
 	const nextButtonProgress = useDerivedValue(() =>
 		getIntroButtonProgress(scrollX.get(), width, INTRO_STEPS.length),
+	);
+	const handleTitleLayout = useCallback(
+		(stepId: IntroStep["id"], titleHeight: number) => {
+			setTitleMeasurements((current) => {
+				const previous = current[stepId];
+				if (
+					previous?.scale === scale &&
+					Math.abs(previous.height - titleHeight) < 0.5
+				) {
+					return current;
+				}
+
+				return {
+					...current,
+					[stepId]: { height: titleHeight, scale },
+				};
+			});
+		},
+		[scale],
 	);
 
 	useEffect(() => {
@@ -1173,7 +1203,14 @@ function IntroStepView({
 					if (nextIndex !== activeIndex) onActiveIndexChange(nextIndex);
 				}}
 				renderItem={({ item }) => (
-					<IntroSlide step={item} width={width} scale={scale} />
+					<IntroSlide
+						step={item}
+						width={width}
+						scale={scale}
+						onTitleLayout={(titleHeight) =>
+							handleTitleLayout(item.id, titleHeight)
+						}
+					/>
 				)}
 			/>
 
@@ -1209,10 +1246,12 @@ function IntroSlide({
 	step,
 	width,
 	scale,
+	onTitleLayout,
 }: {
 	step: IntroStep;
 	width: number;
 	scale: number;
+	onTitleLayout: (height: number) => void;
 }) {
 	const layout = INTRO_LAYOUTS[step.illustration];
 	const artwork = INTRO_ARTWORKS.find(
@@ -1246,6 +1285,7 @@ function IntroSlide({
 			</View>
 
 			<Text
+				onLayout={(event) => onTitleLayout(event.nativeEvent.layout.height)}
 				// Exact Figma typography and position scale with the current viewport.
 				style={{
 					position: "absolute",
@@ -1256,7 +1296,7 @@ function IntroSlide({
 					fontFamily: "Poppins",
 					fontWeight: "700",
 					fontSize: 32 * scale,
-					lineHeight: 36.6 * scale,
+					lineHeight: INTRO_TITLE_LINE_HEIGHT * scale,
 					color: COLORS.text,
 				}}
 			>
@@ -2852,7 +2892,7 @@ function IntroDots({
 	scrollX: SharedValue<number>;
 }) {
 	return (
-		<View className="mt-7 flex-row items-center gap-2">
+		<View className="flex-row items-center gap-2">
 			{INTRO_STEPS.map((step, index) => (
 				<IntroDot
 					key={step.id}
@@ -2893,8 +2933,9 @@ function IntroDot({
 
 	return (
 		<Animated.View
-			className="h-[6px] rounded-full bg-text"
-			style={animatedStyle}
+			className="rounded-full bg-text"
+			// Shared geometry keeps the rendered height aligned with midpoint positioning.
+			style={[{ height: INTRO_DOT_HEIGHT }, animatedStyle]}
 		/>
 	);
 }
