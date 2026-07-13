@@ -1573,9 +1573,9 @@ function ShortStudyTimeFactStep({
 				>
 					<View className="items-center">
 						<View className="h-[60px] w-[60px] items-center justify-center rounded-full bg-wrong-subtle">
-							<Bulb size={32} color={COLORS.wrong} strokeWidth={1.8} />
+							<Bulb size={32} color={COLORS.wrong} strokeWidth={1.5} />
 						</View>
-						<Text className="mt-2 font-poppins font-semibold text-body-3 text-wrong">
+						<Text className="mt-2 font-poppins text-body-3 text-wrong">
 							Schon gewusst?
 						</Text>
 					</View>

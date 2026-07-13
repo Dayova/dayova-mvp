@@ -25,7 +25,12 @@ describe("study-time fact screen", () => {
 
 	test("keeps the defining Figma callout and hanging-card treatment", () => {
 		expect(shortFactStepSource).toContain("Schon gewusst?");
-		expect(shortFactStepSource).toContain("<Bulb");
+		expect(shortFactStepSource).toContain(
+			'<Bulb size={32} color={COLORS.wrong} strokeWidth={1.5} />',
+		);
+		expect(shortFactStepSource).toContain(
+			'className="mt-2 font-poppins text-body-3 text-wrong"',
+		);
 		expect(hangingPanelSource).toContain("<Sparkles");
 		expect(hangingPanelSource).toContain('className="mt-56 w-full"');
 		expect(hangingPanelSource).toContain(
