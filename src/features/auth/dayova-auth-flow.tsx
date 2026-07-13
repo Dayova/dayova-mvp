@@ -50,6 +50,13 @@ import Svg, {
 	LinearGradient as SvgLinearGradient,
 	type SvgProps,
 } from "react-native-svg";
+import {
+	getIntroDotWidth,
+	getIntroInterpolatedValue,
+	getIntroPageIndex,
+	INTRO_DOT_COLLAPSED_WIDTH,
+	INTRO_DOT_EXPANDED_WIDTH,
+} from "~/components/onboarding/intro-pagination";
 import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
@@ -368,7 +375,7 @@ const INTRO_ARTWORKS = [
 	kind: IntroStep["illustration"];
 	Component: ComponentType<SvgProps>;
 }[];
-const FLOW_STEPS: readonly OnboardingStep[] = [
+const INTRO_STEPS = [
 	{
 		kind: "intro",
 		id: "intro-tasks",
@@ -387,6 +394,9 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		illustration: "path",
 		title: "Dein Lernplan\nstartet jetzt.",
 	},
+] as const satisfies readonly IntroStep[];
+const FLOW_STEPS: readonly OnboardingStep[] = [
+	...INTRO_STEPS,
 	{
 		kind: "range",
 		id: "studyTime",
@@ -1027,8 +1037,8 @@ export function OnboardingScreen() {
 			>
 				{isIntro ? (
 					<IntroStepView
-						step={activeStep}
 						activeIndex={activeIndex}
+						onActiveIndexChange={setActiveIndex}
 						onNext={continueFromStep}
 					/>
 				) : (
@@ -1059,60 +1069,174 @@ export function OnboardingScreen() {
 }
 
 function IntroStepView({
-	step,
 	activeIndex,
+	onActiveIndexChange,
 	onNext,
 }: {
-	step: IntroStep;
 	activeIndex: number;
+	onActiveIndexChange: (index: number) => void;
 	onNext: () => void;
 }) {
 	const { width, height } = useWindowDimensions();
+	const listRef = useRef<FlatList<IntroStep>>(null);
+	const previousWidthRef = useRef(width);
+	const scrollX = useSharedValue(activeIndex * width);
 	const scale = Math.min(
 		width / INTRO_REFERENCE_WIDTH,
 		height / INTRO_REFERENCE_HEIGHT,
 	);
-	const layout = INTRO_LAYOUTS[step.illustration];
-	const titleWidth = 360 * scale;
 	const nextButtonSize = 76 * scale;
-	const nextButtonTop = Math.min(
-		layout.buttonTop * scale,
-		height - nextButtonSize - 48 * scale,
-	);
-	const dotsTop = Math.min(layout.dotsTop * scale, nextButtonTop - 44 * scale);
+	const nextButtonTops = INTRO_STEPS.map((step) => {
+		const layout = INTRO_LAYOUTS[step.illustration];
+		return Math.min(
+			layout.buttonTop * scale,
+			height - nextButtonSize - 48 * scale,
+		);
+	});
+	const dotsTops = INTRO_STEPS.map((step, index) => {
+		const layout = INTRO_LAYOUTS[step.illustration];
+		return Math.min(
+			layout.dotsTop * scale,
+			(nextButtonTops[index] ?? 0) - 44 * scale,
+		);
+	});
+	const scrollHandler = useAnimatedScrollHandler({
+		onScroll: (event) => {
+			scrollX.set(event.contentOffset.x);
+		},
+	});
+	const dotsPositionStyle = useAnimatedStyle(() => ({
+		top: getIntroInterpolatedValue(scrollX.get(), width, dotsTops),
+	}));
+	const nextButtonPositionStyle = useAnimatedStyle(() => ({
+		top: getIntroInterpolatedValue(scrollX.get(), width, nextButtonTops),
+	}));
+
+	useEffect(() => {
+		const widthChanged = previousWidthRef.current !== width;
+		previousWidthRef.current = width;
+
+		if (widthChanged) {
+			scrollX.set(activeIndex * width);
+		}
+		listRef.current?.scrollToOffset({
+			offset: activeIndex * width,
+			animated: !widthChanged,
+		});
+	}, [activeIndex, scrollX, width]);
+
+	const handleNext = () => {
+		if (activeIndex < INTRO_STEPS.length - 1) {
+			onActiveIndexChange(activeIndex + 1);
+			return;
+		}
+
+		onNext();
+	};
 
 	return (
-		<View style={{ flex: 1 }}>
-			{INTRO_ARTWORKS.map((artwork, index) => {
-				const artworkLayout = INTRO_LAYOUTS[artwork.kind];
-				const artworkWidth = artworkLayout.artwork.width * scale;
-				const artworkHeight = artworkLayout.artwork.height * scale;
-				const SvgArtwork = artwork.Component;
-				const active = artwork.kind === step.illustration;
+		<View className="flex-1">
+			<Animated.FlatList
+				ref={listRef}
+				data={INTRO_STEPS}
+				horizontal
+				pagingEnabled
+				bounces={false}
+				decelerationRate="fast"
+				disableIntervalMomentum
+				showsHorizontalScrollIndicator={false}
+				scrollEventThrottle={16}
+				initialScrollIndex={activeIndex}
+				getItemLayout={(_, index) => ({
+					length: width,
+					offset: width * index,
+					index,
+				})}
+				keyExtractor={(item) => item.id}
+				onScroll={scrollHandler}
+				onMomentumScrollEnd={(event) => {
+					const nextIndex = getIntroPageIndex(
+						event.nativeEvent.contentOffset.x,
+						width,
+						INTRO_STEPS.length,
+					);
+					if (nextIndex !== activeIndex) onActiveIndexChange(nextIndex);
+				}}
+				renderItem={({ item }) => (
+					<IntroSlide step={item} width={width} scale={scale} />
+				)}
+			/>
 
-				return (
-					<View
-						key={artwork.kind}
-						pointerEvents="none"
-						style={{
-							position: "absolute",
-							left: (width - artworkWidth) / 2,
-							top: artworkLayout.artwork.top * scale,
-							width: artworkWidth,
-							height: artworkHeight,
-							alignItems: "center",
-							justifyContent: "center",
-							opacity: active ? 1 : 0,
-							transform: [{ translateX: (index - activeIndex) * 18 * scale }],
-						}}
-					>
-						<SvgArtwork width={artworkWidth} height={artworkHeight} />
-					</View>
-				);
-			})}
+			<Animated.View
+				pointerEvents="none"
+				className="absolute inset-x-0 items-center"
+				// Runtime viewport scaling keeps the controls aligned with the Figma artboard.
+				style={dotsPositionStyle}
+			>
+				<IntroDots pageWidth={width} scrollX={scrollX} />
+			</Animated.View>
+			<Animated.View
+				className="absolute"
+				// Runtime viewport scaling and swipe progress align this control to each page.
+				style={[
+					{
+						left: (width - nextButtonSize) / 2,
+						transform: [{ scale }],
+					},
+					nextButtonPositionStyle,
+				]}
+			>
+				<CircularNextButton
+					onPress={handleNext}
+					progress={(activeIndex + 1) / INTRO_STEPS.length}
+				/>
+			</Animated.View>
+		</View>
+	);
+}
 
-			<Animated.Text
-				entering={FadeInUp.delay(80).duration(380).springify().damping(18)}
+function IntroSlide({
+	step,
+	width,
+	scale,
+}: {
+	step: IntroStep;
+	width: number;
+	scale: number;
+}) {
+	const layout = INTRO_LAYOUTS[step.illustration];
+	const artwork = INTRO_ARTWORKS.find(
+		(candidate) => candidate.kind === step.illustration,
+	);
+	if (!artwork) return <View style={{ width }} />;
+
+	const artworkWidth = layout.artwork.width * scale;
+	const artworkHeight = layout.artwork.height * scale;
+	const titleWidth = 360 * scale;
+	const SvgArtwork = artwork.Component;
+
+	return (
+		<View
+			className="h-full"
+			// Runtime viewport width makes each FlatList item exactly one page.
+			style={{ width }}
+		>
+			<View
+				pointerEvents="none"
+				className="absolute items-center justify-center"
+				// Runtime scale maps the fixed Figma artboard geometry onto this device.
+				style={{
+					left: (width - artworkWidth) / 2,
+					top: layout.artwork.top * scale,
+					width: artworkWidth,
+					height: artworkHeight,
+				}}
+			>
+				<SvgArtwork width={artworkWidth} height={artworkHeight} />
+			</View>
+
+			<Text
+				// Exact Figma typography and position scale with the current viewport.
 				style={{
 					position: "absolute",
 					left: (width - titleWidth) / 2,
@@ -1127,29 +1251,7 @@ function IntroStepView({
 				}}
 			>
 				{step.title}
-			</Animated.Text>
-
-			<View
-				style={{
-					position: "absolute",
-					left: 0,
-					right: 0,
-					top: dotsTop,
-					alignItems: "center",
-				}}
-			>
-				<IntroDots activeIndex={activeIndex} />
-			</View>
-			<CircularNextButton
-				onPress={onNext}
-				progress={(activeIndex + 1) / INTRO_ARTWORKS.length}
-				style={{
-					position: "absolute",
-					left: (width - nextButtonSize) / 2,
-					top: nextButtonTop,
-					transform: [{ scale }],
-				}}
-			/>
+			</Text>
 		</View>
 	);
 }
@@ -2732,30 +2834,58 @@ function NativeOnboardingPicker({
 	);
 }
 
-function IntroDots({ activeIndex }: { activeIndex: number }) {
+function IntroDots({
+	pageWidth,
+	scrollX,
+}: {
+	pageWidth: number;
+	scrollX: SharedValue<number>;
+}) {
 	return (
-		<View
-			style={{
-				marginTop: 28,
-				flexDirection: "row",
-				alignItems: "center",
-				gap: 7,
-			}}
-		>
-			{[0, 1, 2].map((index) => (
-				<Animated.View
-					key={index}
-					layout={LinearTransition.duration(180)}
-					style={{
-						width: index === activeIndex ? 30 : 8,
-						height: 6,
-						borderRadius: 999,
-						backgroundColor:
-							index === activeIndex ? COLORS.text : "rgba(26, 26, 26, 0.35)",
-					}}
+		<View className="mt-7 flex-row items-center gap-2">
+			{INTRO_STEPS.map((step, index) => (
+				<IntroDot
+					key={step.id}
+					index={index}
+					pageWidth={pageWidth}
+					scrollX={scrollX}
 				/>
 			))}
 		</View>
+	);
+}
+
+function IntroDot({
+	index,
+	pageWidth,
+	scrollX,
+}: {
+	index: number;
+	pageWidth: number;
+	scrollX: SharedValue<number>;
+}) {
+	const animatedStyle = useAnimatedStyle(() => {
+		const width = getIntroDotWidth(
+			scrollX.get(),
+			pageWidth,
+			index,
+			INTRO_STEPS.length,
+		);
+		const emphasis =
+			(width - INTRO_DOT_COLLAPSED_WIDTH) /
+			(INTRO_DOT_EXPANDED_WIDTH - INTRO_DOT_COLLAPSED_WIDTH);
+
+		return {
+			width,
+			opacity: 0.35 + emphasis * 0.65,
+		};
+	});
+
+	return (
+		<Animated.View
+			className="h-[6px] rounded-full bg-text"
+			style={animatedStyle}
+		/>
 	);
 }
 
