@@ -100,10 +100,7 @@ import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import {
-	getRememberSessionPersistence,
-	setRememberSessionPersistence,
-} from "~/lib/auth-token-cache";
+import { setRememberSessionPersistence } from "~/lib/auth-token-cache";
 import { useBackIntent } from "~/lib/navigation";
 import { cn } from "~/lib/utils";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
@@ -1600,9 +1597,7 @@ export function LoginScreen() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
-	const [rememberSession, setRememberSession] = useState(
-		getRememberSessionPersistence,
-	);
+	const [rememberSession, setRememberSession] = useState(true);
 	const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [verificationCode, setVerificationCode] = useState("");

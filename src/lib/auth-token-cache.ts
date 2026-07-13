@@ -67,7 +67,6 @@ export const createPreferenceAwareTokenCache = (
 	return {
 		tokenCache,
 		setRememberSession,
-		getRememberSession: () => rememberSession,
 	};
 };
 
@@ -75,4 +74,3 @@ const authTokenCache = createPreferenceAwareTokenCache(secureTokenCache);
 
 export const clerkTokenCache = authTokenCache.tokenCache;
 export const setRememberSessionPersistence = authTokenCache.setRememberSession;
-export const getRememberSessionPersistence = authTokenCache.getRememberSession;
