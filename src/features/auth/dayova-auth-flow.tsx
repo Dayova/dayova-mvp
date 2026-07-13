@@ -1549,13 +1549,12 @@ function ShortStudyTimeFactStep({
 		<View className="flex-1">
 			<ScrollView
 				contentInsetAdjustmentBehavior="never"
+				alwaysBounceVertical={false}
 				showsVerticalScrollIndicator={false}
 				className="flex-1"
-				contentContainerStyle={{
-					flexGrow: 1,
-					// The bottom inset is runtime device geometry.
-					paddingBottom: Math.max(bottomInset + 112, 122),
-				}}
+				// ScrollView exposes content growth through this native container prop;
+				// className styles the scroll host instead of its content container.
+				contentContainerStyle={{ flexGrow: 1 }}
 			>
 				<Animated.View
 					entering={FadeInDown.duration(360).springify().damping(18)}
@@ -2709,7 +2708,7 @@ function HangingStudyTimeFactPanel({ body }: { body: string }) {
 						</Text>
 					</View>
 
-					<Text className="mt-5 font-poppins text-body-3 text-secondary-text">
+					<Text className="mt-5 font-medium font-poppins text-body-3 text-secondary-text">
 						{body}
 					</Text>
 				</View>

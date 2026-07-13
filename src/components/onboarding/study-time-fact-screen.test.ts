@@ -26,7 +26,7 @@ describe("study-time fact screen", () => {
 	test("keeps the defining Figma callout and hanging-card treatment", () => {
 		expect(shortFactStepSource).toContain("Schon gewusst?");
 		expect(shortFactStepSource).toContain(
-			'<Bulb size={32} color={COLORS.wrong} strokeWidth={1.5} />',
+			"<Bulb size={32} color={COLORS.wrong} strokeWidth={1.5} />",
 		);
 		expect(shortFactStepSource).toMatch(
 			/<Text className="mt-2 [^"]*text-body-4 text-wrong">/,
@@ -43,5 +43,9 @@ describe("study-time fact screen", () => {
 		expect(shortFactStepSource).not.toContain("AuthProgressHeader");
 		expect(shortFactStepSource).not.toContain("progress:");
 		expect(shortFactStepSource).not.toContain("onBack:");
+		expect(shortFactStepSource).not.toContain(
+			"paddingBottom: Math.max(bottomInset + 112, 122)",
+		);
+		expect(shortFactStepSource).toContain("alwaysBounceVertical={false}");
 	});
 });
