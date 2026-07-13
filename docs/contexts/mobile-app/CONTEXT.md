@@ -14,6 +14,8 @@ _Avoid_: Called by client, Server Error, raw stack trace
 
 - `docs/bottom-sheets.md`
 - `docs/styling.md`
+- `docs/contexts/mobile-app/adr/0001-select-list-components-by-workload.md`
+  for choosing between ScrollView, FlatList, FlashList, and LegendList.
 - `patches/README.md` for patched package behavior that affects Expo/Metro
   builds, including the NativeWind release-build patch.
 
