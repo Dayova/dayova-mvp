@@ -46,6 +46,7 @@ import {
 	Route02Icon,
 	ScanImageIcon,
 	Settings01Icon,
+	SparklesIcon,
 	SquareLock02Icon,
 	SquareRootSquareIcon,
 	Task01Icon,
@@ -118,6 +119,7 @@ export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(Settings01Icon);
 export const SquareLock = createIcon(SquareLock02Icon);
 export const SquareRootSquare = createIcon(SquareRootSquareIcon);
+export const Sparkles = createIcon(SparklesIcon);
 export const Telescope = createIcon(Telescope01Icon);
 export const Time04 = createIcon(Time04Icon);
 export const TimeManagement = createIcon(TimeManagementCircleIcon);

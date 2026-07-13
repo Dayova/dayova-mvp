@@ -64,6 +64,7 @@ import {
 	INTRO_DOT_HEIGHT,
 } from "~/components/onboarding/intro-pagination";
 import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
+import { getStudyTimeFactBody } from "~/components/onboarding/study-time-fact";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import {
@@ -90,6 +91,7 @@ import {
 	Palette,
 	Plant,
 	Route2,
+	Sparkles,
 	SquareRootSquare,
 	Telescope,
 } from "~/components/ui/icon";
@@ -98,6 +100,7 @@ import { useAuth } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useBackIntent } from "~/lib/navigation";
+import { cn } from "~/lib/utils";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
 import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
 
@@ -161,15 +164,19 @@ type RangeStep = {
 	values: readonly number[];
 };
 
-type FactStep = {
+type FactStepBase = {
 	kind: "fact";
-	id: string;
 	title: string;
-	body: string;
 	autoAdvance?: boolean;
 	cardIcon?: "bulb" | "calendar" | "route";
 	disabledButton?: boolean;
 };
+
+type FactStep = FactStepBase &
+	(
+		| { id: "short-study-fact" }
+		| { id: "routine-fit" | "later-adjust"; body: string }
+	);
 
 type ChipsStep = {
 	kind: "chips";
@@ -414,7 +421,6 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		kind: "fact",
 		id: "short-study-fact",
 		title: "Du brauchst nicht\nstundenlang zu\nlernen.",
-		body: "Deine 30 Minuten reichen aus, um eine starke Lernroutine aufzubauen. Studien zeigen: Kleine Lerneinheiten bleiben länger hängen als langes Pauken auf einmal.",
 		cardIcon: "route",
 	},
 	{
@@ -1328,38 +1334,49 @@ function QuestionStepView({
 	onTogglePassword: () => void;
 }) {
 	const { answers, setAnswer } = useOnboarding();
+	const isShortFactStep =
+		step.kind === "fact" && step.id === "short-study-fact";
+
+	if (isShortFactStep) {
+		return (
+			<ShortStudyTimeFactStep
+				title={step.title}
+				studyTime={answers.studyTime}
+				progress={progress}
+				bottomInset={bottomInset}
+				onBack={onBack}
+				onContinue={onContinue}
+			/>
+		);
+	}
+
 	const showBottomButton = step.kind !== "text";
 	const buttonDisabled = step.kind === "fact" && step.disabledButton;
 	const isRangeStep = step.kind === "range";
-	const isShortFactStep =
-		step.kind === "fact" && step.id === "short-study-fact";
+	const factBody = step.kind === "fact" ? step.body : "";
 	const isPlanFitStep = step.kind === "infoStack";
 	const questionTitleStyle =
 		step.kind === "range" ? QUESTION_TITLE_STYLE : QUESTION_TITLE_STYLE_COMPACT;
 	const titleTopPadding = isRangeStep
 		? 36
-		: isShortFactStep
-			? 42
-			: isPlanFitStep
-				? 36
-				: step.kind === "text"
-					? 50
-					: step.kind === "chips"
-						? 24
-						: 36;
+		: isPlanFitStep
+			? 36
+			: step.kind === "text"
+				? 50
+				: step.kind === "chips"
+					? 24
+					: 36;
 	const contentTopMargin = isRangeStep
 		? 28
-		: isShortFactStep
-			? 14
-			: isPlanFitStep
-				? 22
-				: step.kind === "chips"
-					? 40
-					: step.kind === "goals"
-						? 28
-						: step.kind === "text"
-							? 22
-							: 30;
+		: isPlanFitStep
+			? 22
+			: step.kind === "chips"
+				? 40
+				: step.kind === "goals"
+					? 28
+					: step.kind === "text"
+						? 22
+						: 30;
 
 	return (
 		<View style={{ flex: 1 }}>
@@ -1414,7 +1431,9 @@ function QuestionStepView({
 							/>
 						) : null}
 
-						{step.kind === "fact" ? <FactPanel step={step} /> : null}
+						{step.kind === "fact" ? (
+							<FactPanel step={step} body={factBody} />
+						) : null}
 
 						{step.kind === "chips" ? (
 							<ChipCloud
@@ -1513,6 +1532,71 @@ function QuestionStepView({
 					/>
 				</View>
 			) : null}
+		</View>
+	);
+}
+
+function ShortStudyTimeFactStep({
+	title,
+	studyTime,
+	progress,
+	bottomInset,
+	onBack,
+	onContinue,
+}: {
+	title: string;
+	studyTime: string;
+	progress: number;
+	bottomInset: number;
+	onBack: () => boolean;
+	onContinue: () => void;
+}) {
+	return (
+		<View className="flex-1">
+			<View className="absolute top-0 z-20 w-full">
+				<AuthProgressHeader progress={progress} onBack={onBack} />
+			</View>
+
+			<ScrollView
+				contentInsetAdjustmentBehavior="never"
+				showsVerticalScrollIndicator={false}
+				className="flex-1"
+				contentContainerStyle={{
+					flexGrow: 1,
+					// The bottom inset is runtime device geometry.
+					paddingBottom: Math.max(bottomInset + 112, 122),
+				}}
+			>
+				<Animated.View
+					entering={FadeInDown.duration(360).springify().damping(18)}
+					className="flex-1 items-center pt-14"
+				>
+					<View className="items-center">
+						<View className="h-[60px] w-[60px] items-center justify-center rounded-full bg-wrong-subtle">
+							<Bulb size={32} color={COLORS.wrong} strokeWidth={1.8} />
+						</View>
+						<Text className="mt-2 font-poppins font-semibold text-body-3 text-wrong">
+							Schon gewusst?
+						</Text>
+					</View>
+
+					<Text className="z-10 mt-10 text-center font-poppins font-semibold text-heading-1 text-text">
+						{title}
+					</Text>
+
+					<View className="-mt-24 w-full items-center">
+						<HangingStudyTimeFactPanel body={getStudyTimeFactBody(studyTime)} />
+					</View>
+				</Animated.View>
+			</ScrollView>
+
+			<View
+				className="pt-2"
+				// The bottom inset is runtime device geometry.
+				style={{ paddingBottom: Math.max(bottomInset + 52, 60) }}
+			>
+				<DarkPillButton label="Weiter" onPress={onContinue} />
+			</View>
 		</View>
 	);
 }
@@ -2537,7 +2621,7 @@ function GoalList({
 	);
 }
 
-function FactPanel({ step }: { step: FactStep }) {
+function FactPanel({ step, body }: { step: FactStep; body: string }) {
 	const Icon =
 		step.cardIcon === "calendar"
 			? CalendarDays
@@ -2598,7 +2682,44 @@ function FactPanel({ step }: { step: FactStep }) {
 					</Text>
 				</View>
 				<Text className="mt-4 font-poppins text-body-5 text-secondary-text">
-					{step.body}
+					{body}
+				</Text>
+			</Animated.View>
+		</View>
+	);
+}
+
+const HANGING_FACT_RAILS = [
+	{ id: "left", position: "left-1/4" },
+	{ id: "right", position: "right-1/4" },
+] as const;
+
+function HangingStudyTimeFactPanel({ body }: { body: string }) {
+	return (
+		<View className="min-h-[420px] w-full items-center">
+			{HANGING_FACT_RAILS.map((rail) => (
+				<View
+					key={rail.id}
+					className={cn(
+						"absolute top-0 h-[232px] w-2 rounded-full bg-path-2/60",
+						rail.position,
+					)}
+				/>
+			))}
+
+			<Animated.View
+				entering={FadeInUp.delay(80).duration(420).springify().damping(18)}
+				className="mt-56 w-full -rotate-[2deg] rounded-card bg-surface px-6 py-5 shadow-lg"
+			>
+				<View className="flex-row items-center gap-1 self-start rounded-full bg-primary/10 px-2 py-1">
+					<Sparkles size={16} color={COLORS.primary} strokeWidth={2} />
+					<Text className="font-poppins font-semibold text-body-5 text-primary">
+						Lernfakt
+					</Text>
+				</View>
+
+				<Text className="mt-5 font-poppins text-body-3 text-secondary-text">
+					{body}
 				</Text>
 			</Animated.View>
 		</View>
