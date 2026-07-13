@@ -76,6 +76,7 @@ import {
 	Calculator,
 	CalendarDays,
 	Chemistry,
+	Check,
 	ChevronDown,
 	ClipboardEdit,
 	ClipboardList,
@@ -621,7 +622,7 @@ export function AuthChoiceScreen() {
 	const verticalPadding = Math.max(0, (height - frameHeight) / 2);
 
 	return (
-		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ title: "Dayova" }} />
 			<StatusBar style="dark" />
 			<ScrollView
@@ -1045,7 +1046,7 @@ export function OnboardingScreen() {
 			<StatusBar style="dark" />
 			<KeyboardAvoidingView
 				behavior={Platform.OS === "ios" ? "padding" : undefined}
-				style={{ flex: 1 }}
+				className="flex-1"
 			>
 				{isIntro ? (
 					<IntroStepView
@@ -1726,34 +1727,30 @@ export function LoginScreen() {
 					showsVerticalScrollIndicator={false}
 					contentContainerStyle={{
 						flexGrow: 1,
-						paddingTop: Math.max(insets.top + 52, 64),
+						paddingTop: Math.max(insets.top + 64, 76),
 						paddingBottom: Math.max(insets.bottom + 18, 28),
-						paddingHorizontal: 34,
 					}}
 				>
-					<View style={{ flex: 1, alignItems: "center" }}>
+					<View className="flex-1 items-center px-8">
 						<Animated.View
 							entering={FadeInDown.duration(440).springify().damping(18)}
 						>
 							<Image
 								source={require("../../../assets/dayova-logo.png")}
 								resizeMode="contain"
-								style={{ width: 88, height: 88 }}
+								className="h-36 w-36"
 							/>
 						</Animated.View>
 
-						<Text
-							className="mt-8 text-center font-bold font-poppins text-text"
-							style={{ fontSize: 32, lineHeight: 40 }}
-						>
+						<Text className="mt-10 text-center font-poppins font-semibold text-heading-1 text-text">
 							Willkommen
 						</Text>
-						<Text className="mt-1 max-w-[260px] text-center font-poppins text-body-5 text-text">
+						<Text className="mt-1 max-w-[300px] text-center font-poppins text-body-3 text-text">
 							Freut uns dich wiederzusehen, melde dich{"\n"}an und starte
 							direkt.
 						</Text>
 
-						<View style={{ width: "100%", marginTop: 28, gap: 12 }}>
+						<View className="mt-7 w-full gap-4">
 							<FormPill
 								value={email}
 								placeholder="max.mustermann@gmail.com"
@@ -1787,16 +1784,17 @@ export function LoginScreen() {
 							/>
 						</View>
 
-						<View
-							style={{
-								width: "100%",
-								marginTop: 12,
-								alignItems: "center",
-								justifyContent: "flex-end",
-							}}
-						>
+						<View className="mt-5 w-full flex-row items-center justify-between">
+							<View className="flex-row items-center gap-2">
+								<View className="h-4 w-4 items-center justify-center rounded-full bg-primary">
+									<Check size={12} color={COLORS.surface} strokeWidth={3} />
+								</View>
+								<Text className="font-poppins text-body-4 text-text">
+									Angemeldet bleiben
+								</Text>
+							</View>
 							<Pressable onPress={() => setError("Passwort-Reset folgt bald.")}>
-								<Text className="font-poppins text-body-5 text-primary">
+								<Text className="font-poppins text-body-4 text-primary">
 									Passwort vergessen?
 								</Text>
 							</Pressable>
@@ -1818,7 +1816,7 @@ export function LoginScreen() {
 							</Animated.Text>
 						) : null}
 
-						<View style={{ width: "100%", marginTop: 22 }}>
+						<View className="mt-6 w-full">
 							<GradientPillButton
 								label={isLoading ? "LOGIN..." : "LOGIN"}
 								onPress={submitLogin}
@@ -1826,15 +1824,16 @@ export function LoginScreen() {
 							/>
 						</View>
 
-						<View style={{ flex: 1 }} />
-						<Text className="text-center font-poppins text-body-5 text-text">
-							Du hast keinen Account?
-						</Text>
-						<Pressable onPress={() => router.replace("/onboarding")}>
-							<Text className="text-center font-poppins text-body-5 text-primary">
-								Jetzt Registrieren
+						<View className="mt-12 items-center">
+							<Text className="text-center font-poppins text-body-3 text-text">
+								Du hast keinen Account?
 							</Text>
-						</Pressable>
+							<Pressable onPress={() => router.replace("/onboarding")}>
+								<Text className="text-center font-poppins text-body-3 text-primary">
+									Jetzt Registrieren
+								</Text>
+							</Pressable>
+						</View>
 					</View>
 				</ScrollView>
 			</KeyboardAvoidingView>
@@ -2100,34 +2099,21 @@ function FormPill({
 	...props
 }: TextInputProps & { rightAccessory?: ReactNode }) {
 	return (
-		<View
-			style={{
-				height: 40,
-				borderRadius: 22,
-				backgroundColor: COLORS.surface,
-				borderWidth: 1,
-				borderColor: COLORS.primary,
-				flexDirection: "row",
-				alignItems: "center",
-				paddingHorizontal: 16,
-			}}
-		>
+		<View className="h-14 flex-row items-center rounded-full border border-primary bg-surface px-4">
 			<TextInput
 				placeholderTextColor="rgba(26, 26, 26, 0.45)"
 				selectionColor={COLORS.primary}
 				autoCorrect={false}
+				className="flex-1 font-poppins text-body-2 text-text"
+				// Android font padding and the native input's default padding must be reset.
 				style={{
-					flex: 1,
-					fontFamily: "Poppins",
-					fontSize: 12,
-					color: COLORS.text,
 					padding: 0,
 					includeFontPadding: false,
 				}}
 				{...props}
 			/>
 			{rightAccessory ? (
-				<View style={{ marginLeft: 8 }}>{rightAccessory}</View>
+				<View className="ml-2">{rightAccessory}</View>
 			) : null}
 		</View>
 	);
@@ -3215,10 +3201,7 @@ function GradientPillButton({
 					bottom: 0,
 				}}
 			/>
-			<Text
-				className="font-bold font-poppins text-body-2"
-				style={{ color: COLORS.surface }}
-			>
+			<Text className="font-poppins font-semibold text-body-2 text-white">
 				{label}
 			</Text>
 		</Pressable>
