@@ -526,7 +526,7 @@ function LearningPlanCard({
 							onPress={onPress}
 							pressType="card"
 						>
-							<View className="gap-2.5">
+							<View className="gap-3">
 								<View className="flex-row items-start justify-between gap-3">
 									<Text
 										className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
@@ -556,7 +556,7 @@ function LearningPlanCard({
 								>
 									{overviewState.actionLabel}
 								</Text>
-								<View className="flex-row items-center gap-1.5">
+								<View className="flex-row items-center gap-2">
 									<ClipboardEdit
 										size={14}
 										color={colors.secondaryText}

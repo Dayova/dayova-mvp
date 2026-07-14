@@ -178,6 +178,53 @@ test("list overview keeps unfinished creation progress scoped to its owner", asy
 	expect(overviews[0]?.id).not.toBe(otherLearningPlanId);
 });
 
+test("list overview keeps an unfinished creation visible alongside fifty accepted plans", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const creationPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId: creationPlanId,
+		questions: [
+			{
+				id: "q1",
+				prompt: "Frage 1",
+				targetInsight: "Erkenntnis 1",
+			},
+		],
+		sourceSummary: "Testmaterial",
+	});
+	await t.run(async (ctx) => {
+		for (let index = 0; index < 50; index += 1) {
+			await ctx.db.insert("learningPlans", {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				subject: `Fach ${index + 1}`,
+				examTypeLabel: "Klausur",
+				examDateKey: "2026-06-05",
+				examDateLabel: "5. Juni 2026",
+				examTime: "09:00",
+				durationMinutes: 90,
+				topicDescription: "Testthema",
+				status: "accepted",
+				createdAt: index,
+				updatedAt: index,
+			});
+		}
+	});
+
+	const overviews = await t.query(api.learningPlans.listOverview, {});
+
+	expect(overviews).toHaveLength(51);
+	expect(overviews).toContainEqual(
+		expect.objectContaining({
+			id: creationPlanId,
+			status: "questionsReady",
+		}),
+	);
+	expect(
+		overviews.filter((overview) => overview.status === "accepted"),
+	).toHaveLength(50);
+});
+
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-05-30T10:00:00.000Z"));

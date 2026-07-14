@@ -214,7 +214,7 @@ export default function LearningPlanQuizScreen() {
 						strokeWidth={1.8}
 					/>
 				}
-				iconContainerClassName="bg-primary-subtle"
+				iconContainerClassName="bg-system-subtle"
 			>
 				<View className="mt-6 gap-3">
 					<Button onPress={() => setIsPauseConfirmationVisible(false)}>

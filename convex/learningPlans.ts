@@ -619,9 +619,9 @@ export const listOverview = query({
 			)
 			.order("desc")
 			.take(50);
-		const plans = [...acceptedPlans, ...creationPlans]
-			.sort((left, right) => right.updatedAt - left.updatedAt)
-			.slice(0, 50);
+		const plans = [...acceptedPlans, ...creationPlans].sort(
+			(left, right) => right.updatedAt - left.updatedAt,
+		);
 
 		const overviews = [];
 		for (const plan of plans) {
