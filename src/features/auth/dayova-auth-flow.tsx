@@ -51,6 +51,7 @@ import Svg, {
 } from "react-native-svg";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
+import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -1789,25 +1790,7 @@ function AuthProgressHeader({
 			>
 				<ArrowLeft size={18} color={COLORS.text} strokeWidth={2.2} />
 			</Pressable>
-			<View
-				style={{
-					flex: 1,
-					height: 8,
-					borderRadius: 999,
-					overflow: "hidden",
-					backgroundColor: "#CFEAFF",
-				}}
-			>
-				<Animated.View
-					layout={LinearTransition.duration(280)}
-					style={{
-						height: "100%",
-						width: `${Math.max(7, Math.min(progress, 1) * 100)}%`,
-						borderRadius: 999,
-						backgroundColor: COLORS.primary,
-					}}
-				/>
-			</View>
+			<FlowProgressBar progress={progress} style={{ flex: 1 }} />
 		</View>
 	);
 }

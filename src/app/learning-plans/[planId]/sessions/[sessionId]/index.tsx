@@ -18,9 +18,9 @@ import type {
 } from "react-native-nitro-speech";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { QuestionProgressBar } from "~/components/question-progress-bar";
 import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
-import { FieldControl } from "~/components/ui/field";
 import {
 	BookOpen,
 	Check,
@@ -640,25 +640,27 @@ function TextAnswer({
 	onChange,
 	placeholder,
 	editable,
+	fillAvailableSpace = false,
 }: {
 	value: string;
 	onChange: (value: string) => void;
 	placeholder: string;
 	editable: boolean;
+	fillAvailableSpace?: boolean;
 }) {
 	return (
-		<FieldControl
-			className="mt-6 items-start rounded-[28px] bg-light-2 px-5 pt-4 pb-4"
-			disabled={!editable}
-		>
-			<Textarea
-				editable={editable}
-				value={value}
-				onChangeText={onChange}
-				placeholder={placeholder}
-				style={{ height: 160 }}
-			/>
-		</FieldControl>
+		<Textarea
+			autoFocus={fillAvailableSpace && editable}
+			accessibilityLabel="Antwort"
+			className={cn(
+				"mt-4 px-0 py-2",
+				fillAvailableSpace ? "min-h-[180px] flex-1" : "min-h-40",
+			)}
+			editable={editable}
+			value={value}
+			onChangeText={onChange}
+			placeholder={placeholder}
+		/>
 	);
 }
 
@@ -1330,6 +1332,7 @@ export default function LearningSessionContentScreen() {
 			<ThemedStatusBar />
 			<ScrollView
 				className="flex-1"
+				automaticallyAdjustKeyboardInsets
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,
@@ -1408,12 +1411,15 @@ export default function LearningSessionContentScreen() {
 					</View>
 				) : currentItem ? (
 					<View className="flex-1 justify-between">
-						<Surface className="mt-24 rounded-[32px] px-6 py-8" variant="flat">
-							<TagPill label="Frage" icon="question" />
-							<Text className="mt-8 font-poppins font-semibold text-body-1 text-text">
+						<View className="mt-10 flex-1">
+							<QuestionProgressBar
+								currentIndex={currentIndex}
+								total={content.items.length}
+								className="mb-11 w-full"
+							/>
+							<Text className="font-poppins font-semibold text-body-1 text-text">
 								{currentItem.prompt}
 							</Text>
-							<View className="my-7 h-px bg-border" />
 
 							{currentItem.kind === "multipleChoice" ? (
 								<ChoiceList
@@ -1440,9 +1446,10 @@ export default function LearningSessionContentScreen() {
 									onChange={setAnswerText}
 									placeholder="Schreibe hier deine Antwort."
 									editable={!isBusy}
+									fillAvailableSpace
 								/>
 							)}
-						</Surface>
+						</View>
 
 						{errorMessage ? (
 							<Text className="mt-4 font-poppins text-body-4 text-destructive">

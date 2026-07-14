@@ -1,38 +1,12 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Animated, Easing, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
-import Svg, { Circle, Path } from "react-native-svg";
+import { QuestionProgressBar } from "~/components/question-progress-bar";
 import { Button } from "~/components/ui/button";
-import { FieldControl, FieldLabel } from "~/components/ui/field";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import type { QuizQuestion } from "~/features/learning-plans/types";
 import { formatGermanUiText } from "~/lib/german-ui-text";
-
-const ANSWER_TEXTAREA_HEIGHT = 176;
-const ANSWER_TEXTAREA_CARD_HEIGHT = 206;
-const QUESTION_PROGRESS_SIZE = 72;
-const QUESTION_PROGRESS_RADIUS = QUESTION_PROGRESS_SIZE / 2;
-const QUESTION_PROGRESS_CENTER = QUESTION_PROGRESS_SIZE / 2;
-
-const getQuestionProgressPath = (progress: number) => {
-	const normalizedProgress = Math.max(0, Math.min(progress, 1));
-	if (normalizedProgress >= 1) return null;
-
-	const angle = normalizedProgress * 2 * Math.PI - Math.PI / 2;
-	const endX =
-		QUESTION_PROGRESS_CENTER + QUESTION_PROGRESS_RADIUS * Math.cos(angle);
-	const endY =
-		QUESTION_PROGRESS_CENTER + QUESTION_PROGRESS_RADIUS * Math.sin(angle);
-	const largeArcFlag = normalizedProgress > 0.5 ? 1 : 0;
-
-	return [
-		`M ${QUESTION_PROGRESS_CENTER} ${QUESTION_PROGRESS_CENTER}`,
-		`L ${QUESTION_PROGRESS_CENTER} 0`,
-		`A ${QUESTION_PROGRESS_RADIUS} ${QUESTION_PROGRESS_RADIUS} 0 ${largeArcFlag} 1 ${endX} ${endY}`,
-		"Z",
-	].join(" ");
-};
 
 export function QuizStep({
 	question,
@@ -53,10 +27,6 @@ export function QuizStep({
 	onAnswerChange: (value: string) => void;
 	onContinue: () => void;
 }) {
-	const questionNumber = questionIndex + 1;
-	const questionProgress =
-		questionCount > 0 ? questionNumber / questionCount : 0;
-	const questionProgressPath = getQuestionProgressPath(questionProgress);
 	const trimmedAnswer = answer.trim();
 	const questionId = question.id;
 	const prompt = formatGermanUiText(question.prompt);
@@ -98,59 +68,24 @@ export function QuizStep({
 					transform: [{ translateY: contentTranslateY }],
 				}}
 			>
-				<View className="mb-7 items-center">
-					<View
-						className="items-center justify-center overflow-hidden rounded-full bg-primary/55"
-						style={{
-							width: QUESTION_PROGRESS_SIZE,
-							height: QUESTION_PROGRESS_SIZE,
-						}}
-					>
-						<Svg
-							width={QUESTION_PROGRESS_SIZE}
-							height={QUESTION_PROGRESS_SIZE}
-							style={{ position: "absolute" }}
-							viewBox={`0 0 ${QUESTION_PROGRESS_SIZE} ${QUESTION_PROGRESS_SIZE}`}
-						>
-							{questionProgressPath ? (
-								<Path d={questionProgressPath} fill="#00BAFF" />
-							) : (
-								<Circle
-									cx={QUESTION_PROGRESS_CENTER}
-									cy={QUESTION_PROGRESS_CENTER}
-									r={QUESTION_PROGRESS_RADIUS}
-									fill="#00BAFF"
-								/>
-							)}
-						</Svg>
-						<Text className="font-poppins font-semibold text-heading-2 text-white">
-							{questionNumber}
-						</Text>
-					</View>
-				</View>
-				<Text className="font-poppins text-body-4 text-text/45">
-					Frage {questionNumber} von {questionCount}
-				</Text>
-				<Text className="mt-2 font-poppins font-semibold text-body-1 text-text">
+				<QuestionProgressBar
+					currentIndex={questionIndex}
+					total={questionCount}
+					className="mb-11 w-full"
+				/>
+				<Text className="font-poppins font-semibold text-body-1 text-text">
 					{prompt}
 				</Text>
-				<FieldLabel className="mt-7">Antwort</FieldLabel>
-				<FieldControl
-					className="mb-8 items-start rounded-[28px] px-5 pt-4 pb-4"
-					style={{
-						height: ANSWER_TEXTAREA_CARD_HEIGHT,
-						boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-					}}
-				>
-					<Textarea
-						value={answer}
-						onChangeText={onAnswerChange}
-						placeholder="Schreibe hier deine Antwort."
-						style={{ height: ANSWER_TEXTAREA_HEIGHT }}
-					/>
-				</FieldControl>
+				<Textarea
+					autoFocus
+					accessibilityLabel="Antwort"
+					className="mt-4 min-h-[180px] flex-1 py-2"
+					value={answer}
+					onChangeText={onAnswerChange}
+					placeholder="Schreibe hier deine Antwort."
+				/>
 				{errorMessage ? (
-					<Text className="mb-4 font-poppins text-body-4 text-destructive">
+					<Text className="mt-4 font-poppins text-body-4 text-destructive">
 						{errorMessage}
 					</Text>
 				) : null}
