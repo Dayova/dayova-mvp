@@ -205,11 +205,11 @@ export function SessionCard({
 			className="flex-row items-center rounded-[28px] px-5 py-5"
 			variant="soft"
 		>
-			<View className="h-14 w-14 items-center justify-center rounded-full bg-text">
-				<Text className="font-poppins font-semibold text-body-2 text-white">
+			<View className="h-14 w-14 items-center justify-center rounded-full bg-button-neutral">
+				<Text className="font-poppins font-semibold text-background text-body-2">
 					{formatDayOfMonth(sessionDate)}
 				</Text>
-				<Text className="-mt-1 font-poppins font-semibold text-body-5 text-white">
+				<Text className="-mt-1 font-poppins font-semibold text-background text-body-5">
 					{formatShortWeekday(sessionDate)}
 				</Text>
 			</View>
@@ -373,7 +373,7 @@ export function SessionEditForm({
 					className="flex-1 shadow-none"
 					onPress={onRemove}
 				>
-					<Text className="text-text">Entfernen</Text>
+					<Text>Entfernen</Text>
 				</Button>
 				<Button
 					accessibilityLabel={

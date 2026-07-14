@@ -218,7 +218,7 @@ function LoadedSessionEditScreen({
 						className="flex-1 shadow-none"
 						onPress={() => setIsDeleteVisible(false)}
 					>
-						<Text className="text-white">Abbrechen</Text>
+						<Text>Abbrechen</Text>
 					</Button>
 					<Button
 						accessibilityLabel={

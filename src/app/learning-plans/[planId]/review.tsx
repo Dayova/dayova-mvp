@@ -34,6 +34,7 @@ import { getErrorMessage } from "~/features/learning-plans/utils";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
+import { useDayovaTheme } from "~/lib/theme";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -56,6 +57,7 @@ const successPath = (
 export default function LearningPlanReviewScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { colors } = useDayovaTheme();
 	const params = useLocalSearchParams<{
 		planId?: string;
 		replan?: string;
@@ -286,9 +288,9 @@ export default function LearningPlanReviewScreen() {
 					style={{ minWidth: 0 }}
 				>
 					{isBusy ? (
-						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+						<ActivityIndicator color={colors.background} />
 					) : (
-						<Text className="font-poppins font-semibold text-body-3 text-white">
+						<Text className="font-poppins font-semibold text-body-3">
 							Lernplan eintragen
 						</Text>
 					)}
