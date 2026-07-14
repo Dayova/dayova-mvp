@@ -48,8 +48,8 @@ function LearningTimeRow({
 			className="min-h-[96px] flex-row items-center rounded-[48px] bg-card px-6 active:opacity-85"
 			onPress={onPress}
 		>
-			<View className="h-16 w-16 items-center justify-center rounded-full bg-text">
-				<Text className="font-poppins font-semibold text-body-1 text-white">
+			<View className="h-16 w-16 items-center justify-center rounded-full bg-button-neutral">
+				<Text className="font-poppins font-semibold text-background text-body-1">
 					{abbreviation}
 				</Text>
 			</View>
