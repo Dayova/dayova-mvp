@@ -8,14 +8,12 @@ import {
 	Attachment01Icon,
 	Backpack03Icon,
 	BookOpen01Icon,
-	Brain02Icon,
 	BulbIcon,
 	Calculator01Icon,
 	Calendar03Icon,
 	Cancel01Icon,
 	Chemistry01Icon,
 	Clock03Icon,
-	CloudUploadIcon,
 	CodeIcon,
 	Delete02Icon,
 	Dna01Icon,
@@ -28,7 +26,6 @@ import {
 	LanguageCircleIcon,
 	Logout03Icon,
 	Mail01Icon,
-	MailValidation01Icon,
 	MapsCircle01Icon,
 	Mic01Icon,
 	Mortarboard01Icon,
@@ -75,7 +72,6 @@ export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
 export const Backpack = createIcon(Backpack03Icon);
 export const Bell = createIcon(Notification01Icon);
 export const BookOpen = createIcon(BookOpen01Icon);
-export const Brain = createIcon(Brain02Icon);
 export const Bulb = createIcon(BulbIcon);
 export const CalendarDays = createIcon(Calendar03Icon);
 export const Calculator = createIcon(Calculator01Icon);
@@ -83,7 +79,6 @@ export const Check = createIcon(Tick02Icon);
 export const Chemistry = createIcon(Chemistry01Icon);
 export const ChevronDown = createIcon(ArrowDown01Icon);
 export const CircleAlert = createIcon(AlertCircleIcon);
-export const CloudUpload = createIcon(CloudUploadIcon);
 export const ClipboardList = createIcon(Task01Icon);
 export const ClipboardEdit = createIcon(TaskEdit01Icon);
 export const Clock3 = createIcon(Clock03Icon);
@@ -102,7 +97,6 @@ export const Language = createIcon(LanguageCircleIcon);
 export const Logout = createIcon(Logout03Icon);
 export const Maps = createIcon(MapsCircle01Icon);
 export const Mail = createIcon(Mail01Icon);
-export const MailCheck = createIcon(MailValidation01Icon);
 export const Mic = createIcon(Mic01Icon);
 export const MusicNote = createIcon(MusicNote01Icon);
 export const Note = createIcon(NoteIcon);
