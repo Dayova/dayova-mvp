@@ -1,7 +1,6 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -34,6 +33,7 @@ import {
 	NotchedActionCard,
 } from "~/components/ui/notched-action-card";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -833,7 +833,7 @@ export default function LearningPlansScreen() {
 
 	return (
 		<View className="flex-1 bg-background">
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<View
 				className="gap-6 px-6"
 				style={{

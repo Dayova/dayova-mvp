@@ -1,5 +1,4 @@
 import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { ScreenHeader as Header } from "~/components/screen-header";
@@ -9,6 +8,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SectionHeader } from "~/components/ui/section-header";
 import { Text } from "~/components/ui/text";
 import { InsetTextField } from "~/components/ui/text-field";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 
 const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value.trim());
@@ -144,7 +144,7 @@ export default function ProfileScreen() {
 
 	return (
 		<Screen>
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScreenScroll bottomPadding={82}>
 				<Header title="Profil" onBack={goBack} />
 

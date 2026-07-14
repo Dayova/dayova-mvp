@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CloseButton } from "~/components/ui/close-button";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 const MAX_SHEET_WIDTH = 560;
@@ -56,10 +57,14 @@ function BottomModal({
 	maxWidth = MAX_SHEET_WIDTH,
 }: BottomModalProps) {
 	const insets = useSafeAreaInsets();
+	const { isDark } = useDayovaTheme();
 	const { width } = useWindowDimensions();
 	const hasHeader = Boolean(title || description);
 	const canDismiss = dismissible && Boolean(onClose);
 	const sheetWidth = Math.min(width, maxWidth);
+	const overlayStyle = {
+		backgroundColor: isDark ? "rgba(0, 0, 0, 0.62)" : "rgba(26, 26, 26, 0.25)",
+	};
 
 	return (
 		<Modal
@@ -75,18 +80,14 @@ function BottomModal({
 					<Pressable
 						accessibilityLabel={closeAccessibilityLabel}
 						accessibilityRole="button"
-						className={cn(
-							"absolute inset-0 bg-button-neutral/25",
-							overlayClassName,
-						)}
+						className={cn("absolute inset-0", overlayClassName)}
 						onPress={onClose}
+						style={overlayStyle}
 					/>
 				) : (
 					<View
-						className={cn(
-							"absolute inset-0 bg-button-neutral/25",
-							overlayClassName,
-						)}
+						className={cn("absolute inset-0", overlayClassName)}
+						style={overlayStyle}
 					/>
 				)}
 				<View

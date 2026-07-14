@@ -4,7 +4,6 @@ import {
 	useQuery_experimental as useQueryWithStatus,
 } from "convex/react";
 import { Stack, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Share, TouchableOpacity, View } from "react-native";
 import { api } from "#convex/_generated/api";
@@ -13,6 +12,7 @@ import { ScreenHeader } from "~/components/screen-header";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { SESSION_EXECUTION_STATUS_LABEL } from "~/features/learning-plans/constants";
 import { addDays, getDayKey } from "~/lib/day-key";
@@ -210,7 +210,7 @@ export default function ValidationOverviewScreen() {
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScreenScroll
 				contentInsetAdjustmentBehavior="automatic"
 				horizontalPadding={24}

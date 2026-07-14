@@ -4,6 +4,7 @@ import { Platform, Pressable, StyleSheet } from "react-native";
 import { ArrowLeft } from "~/components/ui/icon";
 import { TextClassContext } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 const PRIMARY_INTERACTIVE_GRADIENT =
@@ -77,9 +78,9 @@ const buttonTextVariants = cva(
 		variants: {
 			variant: {
 				default: "text-white",
-				neutral: "text-white",
-				destructive: "text-white",
-				outline: "text-white",
+				neutral: "text-background",
+				destructive: "text-background",
+				outline: "text-background",
 				ghost: "group-active:text-primary-strong",
 				link: cn(
 					"text-primary group-active:underline",
@@ -170,6 +171,8 @@ function BackButton({
 	style,
 	...props
 }: BackButtonProps) {
+	const { colors } = useDayovaTheme();
+
 	return (
 		<Button
 			accessibilityHint="Geht zum vorherigen Schritt oder Bildschirm zurück."
@@ -187,7 +190,7 @@ function BackButton({
 		>
 			<ArrowLeft
 				size={iconSize}
-				color={DAYOVA_DESIGN_SYSTEM.colors.text}
+				color={colors.text}
 				strokeWidth={strokeWidth}
 			/>
 		</Button>

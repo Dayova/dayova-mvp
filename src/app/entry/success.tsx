@@ -1,7 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useMemo } from "react";
 import { SuccessConfirmationScreen } from "~/components/ui/success-confirmation-screen";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { buildDateTimeLabel } from "~/lib/date-time-label";
 
 export default function EntrySuccessScreen() {
@@ -31,7 +31,7 @@ export default function EntrySuccessScreen() {
 	return (
 		<>
 			<Stack.Screen options={{ gestureEnabled: false }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<SuccessConfirmationScreen
 				title={"Deine Hausaufgabe\nist eingetragen"}
 				detailLabel="Erledigungsdatum"

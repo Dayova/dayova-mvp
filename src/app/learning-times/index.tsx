@@ -1,6 +1,5 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -10,6 +9,7 @@ import { ClipboardEdit, Plus } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { WarningBanner } from "~/components/ui/warning-banner";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackToReturnOrReplace } from "~/lib/navigation";
@@ -126,7 +126,7 @@ export default function LearningTimesOverviewScreen() {
 
 	return (
 		<Screen>
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScreenScroll topPadding={80} bottomPadding={150} horizontalPadding={24}>
 				<Header title="Lernzeiten" onBack={goBack} className="mb-11" />
 

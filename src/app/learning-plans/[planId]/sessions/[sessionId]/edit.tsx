@@ -1,6 +1,5 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Platform, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
@@ -12,6 +11,7 @@ import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { X } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { SessionEditForm } from "~/features/learning-plans/learning-plan-ui";
 import type {
@@ -168,7 +168,7 @@ function LoadedSessionEditScreen({
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
@@ -288,7 +288,7 @@ export default function LearningPlanSessionEditScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{

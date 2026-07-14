@@ -131,4 +131,78 @@
 		--button-radius: 44px;
 		--input-radius: 32px;
 	}
+
+	.dark {
+		color-scheme: dark;
+
+		--background: 250 10% 8%;
+		--text: 36 15% 92%;
+		--secondary-text: 220 12% 68%;
+		--card: 248 10% 13%;
+		--popover: 248 10% 13%;
+		--surface: 248 10% 13%;
+		--primary: 196.2 100% 50%;
+		--primary-strong: 198.3 100% 58%;
+		--button-neutral: 0 0% 100%;
+		--secondary: 279.9 68% 66%;
+		--muted: 247 10% 18%;
+		--accent: 196.2 100% 18%;
+		--destructive: 3.2 100% 66%;
+		--success: 135.1 58.6% 56%;
+		--success-subtle: 142 45% 15%;
+		--wrong: 35.1 100% 58%;
+		--wrong-subtle: 33 70% 16%;
+		--info: 48.1 100% 58%;
+		--info-subtle: 50 65% 15%;
+		--system: 196.2 100% 50%;
+		--system-subtle: 204 62% 16%;
+		--theorie: 240.9 61% 68%;
+		--theorie-subtle: 246 35% 18%;
+		--ueben: 279.9 68% 66%;
+		--ueben-subtle: 280 34% 18%;
+		--praxis: 177.3 100% 45%;
+		--praxis-subtle: 176 45% 15%;
+		--hausaufgabe: 313 24.5% 70%;
+		--hausaufgabe-subtle: 313 22% 18%;
+		--border: 224 12% 24%;
+		--input: 224 12% 24%;
+		--ring: 196.2 100% 50%;
+		--chart-1: 196.2 100% 50%;
+		--chart-2: 279.9 68% 66%;
+		--chart-3: 135.1 58.6% 56%;
+		--chart-4: 35.1 100% 58%;
+		--chart-5: var(--text);
+
+		--light-1: 0 0% 100%;
+		--light-2: 247 10% 18%;
+		--light-3: 247 10% 21%;
+		--path-1: 224 12% 24%;
+		--path-2: 224 12% 24%;
+		--path-3: 220 12% 62%;
+		--path-4: 220 12% 68%;
+		--path-5: 198.3 100% 58%;
+		--path-6: 196.2 100% 50%;
+		--path-7: 193.3 100% 65.5%;
+
+		--black-100: 36 15% 92%;
+		--black-90: 36 12% 84%;
+		--black-80: 36 10% 76%;
+		--black-70: 220 12% 68%;
+		--black-60: 220 11% 59%;
+		--black-50: 220 10% 50%;
+		--black-40: 224 10% 41%;
+		--black-30: 224 11% 32%;
+		--black-20: 224 12% 24%;
+		--black-10: 248 10% 18%;
+		--white-100: 0 0% 100%;
+		--white-90: 36 15% 92%;
+		--white-80: 36 12% 84%;
+		--white-70: 36 10% 76%;
+		--white-60: 220 12% 68%;
+		--white-50: 220 11% 59%;
+		--white-40: 220 10% 50%;
+		--white-30: 224 10% 41%;
+		--white-20: 224 11% 32%;
+		--white-10: 224 12% 24%;
+	}
 }

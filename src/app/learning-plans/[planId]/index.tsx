@@ -1,6 +1,5 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
 	ActivityIndicator,
@@ -26,6 +25,7 @@ import {
 import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import type {
 	LearningPlanSnapshot,
@@ -615,7 +615,7 @@ export default function LearningPlanSessionsScreen() {
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<View
 				className="px-4"
 				style={{

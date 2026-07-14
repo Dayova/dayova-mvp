@@ -1,7 +1,6 @@
 import { Host, Picker } from "@expo/ui";
 import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, router, Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import {
 	type ComponentType,
 	type ReactNode,
@@ -80,6 +79,7 @@ import {
 	Telescope,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -602,7 +602,7 @@ export function AuthChoiceScreen() {
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
 			<Stack.Screen options={{ title: "Dayova" }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScrollView
 				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
@@ -1021,7 +1021,7 @@ export function OnboardingScreen() {
 			<Stack.Screen
 				options={{ title: "Registrierung", gestureEnabled: false }}
 			/>
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<KeyboardAvoidingView
 				behavior={Platform.OS === "ios" ? "padding" : undefined}
 				style={{ flex: 1 }}
@@ -1491,7 +1491,7 @@ export function LoginScreen() {
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
 			<Stack.Screen options={{ title: "Login" }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<KeyboardAvoidingView
 				behavior={Platform.OS === "ios" ? "padding" : undefined}
 				style={{ flex: 1 }}
@@ -1648,7 +1648,7 @@ function VerificationScreen({
 			<Stack.Screen
 				options={{ title: "E-Mail bestätigen", gestureEnabled: false }}
 			/>
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<KeyboardAvoidingView
 				behavior={Platform.OS === "ios" ? "padding" : undefined}
 				style={{ flex: 1 }}
@@ -1728,7 +1728,7 @@ function CreationLoaderScreen({
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
 			<Stack.Screen options={{ title: "Lernprofil", gestureEnabled: false }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<View
 				style={{
 					flex: 1,

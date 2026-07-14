@@ -1,6 +1,5 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
 import { Alert, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,6 +16,7 @@ import {
 	Trash2,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
@@ -221,7 +221,7 @@ export default function EntryDetailScreen() {
 
 	return (
 		<View className="flex-1 bg-background">
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{

@@ -4,9 +4,11 @@ import { TouchableOpacity, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import { Bell } from "~/components/ui/icon";
 import { useAuth } from "~/context/AuthContext";
+import { useDayovaTheme } from "~/lib/theme";
 
 export function NotificationButton() {
 	const { user } = useAuth();
+	const { colors } = useDayovaTheme();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const unreadSummary = useQuery(
 		api.notifications.getUnreadSummary,
@@ -23,11 +25,11 @@ export function NotificationButton() {
 			className="h-14 w-14 items-center justify-center rounded-full bg-card"
 			style={{
 				borderWidth: 1,
-				borderColor: "rgba(17,24,39,0.06)",
+				borderColor: colors.border,
 				boxShadow: "0 10px 22px rgba(21, 29, 48, 0.08)",
 			}}
 		>
-			<Bell size={22} color="#1A1A1A" strokeWidth={2.2} />
+			<Bell size={22} color={colors.text} strokeWidth={2.2} />
 			{hasUnread ? (
 				<View
 					accessibilityLabel="Neue Mitteilungen"
@@ -38,7 +40,7 @@ export function NotificationButton() {
 						width: 10,
 						height: 10,
 						borderWidth: 2,
-						borderColor: "#FFFFFF",
+						borderColor: colors.surface,
 					}}
 				/>
 			) : null}

@@ -22,9 +22,12 @@ SwiftUI toggle shape and applies Dayova primary through the SwiftUI tint modifie
 
 ## Styling Tokens
 
-The app currently supports light mode only. The app background token is the
-Figma off-white (`#F6F6F4`), surfaces use white, and Tailwind's standard spacing
-scale is the source of truth for the 4px spacing system.
+The app supports light, dark, and system theme preferences. The light app
+background token is the Figma off-white (`#F6F6F4`), surfaces use white, and
+Tailwind's standard spacing scale is the source of truth for the 4px spacing
+system. Dark mode keeps Dayova's cyan/purple/status hues and changes neutral
+background, surface, border, muted, path, and text tokens to a warm dark
+hierarchy.
 
 The Figma light palette is the source of truth: background `#F6F6F4`, light 1
 `#FFFFFF`, light 2 `#F3F6FA`, light 3 `#FAFAFC`, border `#DCE6EE`, path 1/2
@@ -65,9 +68,10 @@ radii are not app tokens because they depend on the phone/mockup. When nesting
 rounded surfaces, the outer radius equals the inner radius plus the padding
 between them.
 
-Dark-mode design-system support is planned separately in
-https://github.com/Dayova/dayova-mvp/issues/136. Do not add dark-mode tokens,
-classes, or fallback button variants until that source of truth is finalized.
+Dark-mode tokens live in `src/global.css` and native runtime color mirrors live
+in `src/lib/theme.ts`. Theme preference handling lives in
+`src/lib/theme-preference.ts`; settings should expose the existing light,
+system, and dark options rather than introducing another toggle model.
 
 Icon-only close controls for sheets and modal chrome use the shared `CloseButton`
 component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).

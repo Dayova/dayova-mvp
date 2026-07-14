@@ -1,6 +1,5 @@
 import { useConvexAuth, useMutation } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import {
 	type ReactNode,
 	useCallback,
@@ -51,6 +50,7 @@ import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-vie
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useValidationAnalytics } from "~/lib/analytics";
@@ -629,7 +629,7 @@ export default function NewEntryScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<KeyboardSafeScrollView
 				ref={scrollViewRef}
 				className="flex-1"

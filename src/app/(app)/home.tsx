@@ -1,7 +1,6 @@
 import { useConvexAuth, useQueries } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	type NativeScrollEvent,
@@ -41,6 +40,7 @@ import {
 	PropertyEdit,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { useValidationAnalytics } from "~/lib/analytics";
 import {
@@ -857,7 +857,7 @@ export default function HomeScreen() {
 
 	return (
 		<View className="flex-1 bg-background">
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScrollView
 				className="flex-1"
 				contentInsetAdjustmentBehavior="automatic"
