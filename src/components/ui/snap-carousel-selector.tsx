@@ -10,13 +10,14 @@ import Animated, {
 import Svg, { Circle } from "react-native-svg";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 const CAROUSEL_ITEM_WIDTH = 68;
 const CAROUSEL_MAX_WIDTH = 360;
 const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * 40;
 const MINIMUM_PROGRESS = 0.16;
 
-type SnapCarouselSelectorProps<Item> = {
+type SnapCarouselSelectorBaseProps<Item> = {
 	accessibilityLabel: string;
 	accessibilityValue: string;
 	decrementLabel: string;
@@ -24,25 +25,48 @@ type SnapCarouselSelectorProps<Item> = {
 	incrementLabel: string;
 	items: readonly Item[];
 	onSelect: (item: Item) => void;
-	primaryLabel: string;
-	progress: number;
-	secondaryLabel: string;
 	selectedIndex: number;
 };
 
-function SnapCarouselSelector<Item>({
-	accessibilityLabel,
-	accessibilityValue,
-	decrementLabel,
-	getItemKey,
-	incrementLabel,
-	items,
-	onSelect,
-	primaryLabel,
-	progress,
-	secondaryLabel,
-	selectedIndex,
-}: SnapCarouselSelectorProps<Item>) {
+type SnapCarouselValueBubbleProps = {
+	primaryLabel: string;
+	progress: number;
+	secondaryLabel: string;
+	showValueBubble?: true;
+};
+
+type SnapCarouselTickLabelProps<Item> = {
+	progress?: never;
+	primaryLabel?: never;
+	renderItemLabel: (item: Item, index: number, isSelected: boolean) => string;
+	secondaryLabel?: never;
+	showValueBubble: false;
+};
+
+type SnapCarouselSelectorProps<Item> = SnapCarouselSelectorBaseProps<Item> &
+	(SnapCarouselValueBubbleProps | SnapCarouselTickLabelProps<Item>);
+
+function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
+	const {
+		accessibilityLabel,
+		accessibilityValue,
+		decrementLabel,
+		getItemKey,
+		incrementLabel,
+		items,
+		onSelect,
+		selectedIndex,
+	} = props;
+	const valueBubbleConfig =
+		props.showValueBubble === false
+			? null
+			: {
+					primaryLabel: props.primaryLabel,
+					progress: props.progress,
+					secondaryLabel: props.secondaryLabel,
+				};
+	const renderItemLabel =
+		props.showValueBubble === false ? props.renderItemLabel : undefined;
 	const { colors } = useDayovaTheme();
 	const listRef = useRef<FlatList<Item>>(null);
 	const { width } = useWindowDimensions();
@@ -50,7 +74,11 @@ function SnapCarouselSelector<Item>({
 	const sidePadding = Math.max((carouselWidth - CAROUSEL_ITEM_WIDTH) / 2, 0);
 	const lastIndex = Math.max(items.length - 1, 0);
 	const safeSelectedIndex = Math.min(Math.max(selectedIndex, 0), lastIndex);
-	const safeProgress = Math.min(Math.max(progress, 0), 1);
+	const safeProgress =
+		valueBubbleConfig === null
+			? 0
+			: Math.min(Math.max(valueBubbleConfig.progress, 0), 1);
+	const showValueBubble = valueBubbleConfig !== null;
 	const scrollX = useSharedValue(safeSelectedIndex * CAROUSEL_ITEM_WIDTH);
 
 	const selectIndex = useCallback(
@@ -110,32 +138,34 @@ function SnapCarouselSelector<Item>({
 
 	return (
 		<View className="w-full items-center">
-			<View className="h-22 w-22 items-center justify-center rounded-full border-4 border-primary/20">
-				<Svg
-					width={88}
-					height={88}
-					// SVG geometry is not expressible through NativeWind classes.
-					style={{ position: "absolute" }}
-				>
-					<Circle
-						cx="44"
-						cy="44"
-						r="40"
-						fill="transparent"
-						stroke={colors.primary}
-						strokeWidth="4"
-						strokeLinecap="round"
-						strokeDasharray={`${Math.max(MINIMUM_PROGRESS, safeProgress) * CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`}
-						transform="rotate(-90 44 44)"
-					/>
-				</Svg>
-				<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-					{primaryLabel}
-				</Text>
-				<Text className="-mt-1 text-center font-poppins font-semibold text-body-5 text-text">
-					{secondaryLabel}
-				</Text>
-			</View>
+			{showValueBubble ? (
+				<View className="h-22 w-22 items-center justify-center rounded-full border-4 border-primary/20">
+					<Svg
+						width={88}
+						height={88}
+						// SVG geometry is not expressible through NativeWind classes.
+						style={{ position: "absolute" }}
+					>
+						<Circle
+							cx="44"
+							cy="44"
+							r="40"
+							fill="transparent"
+							stroke={colors.primary}
+							strokeWidth="4"
+							strokeLinecap="round"
+							strokeDasharray={`${Math.max(MINIMUM_PROGRESS, safeProgress) * CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`}
+							transform="rotate(-90 44 44)"
+						/>
+					</Svg>
+					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
+						{valueBubbleConfig.primaryLabel}
+					</Text>
+					<Text className="-mt-1 text-center font-poppins font-semibold text-body-5 text-text">
+						{valueBubbleConfig.secondaryLabel}
+					</Text>
+				</View>
+			) : null}
 
 			<View
 				accessible
@@ -147,7 +177,10 @@ function SnapCarouselSelector<Item>({
 					{ name: "decrement", label: decrementLabel },
 				]}
 				onAccessibilityAction={handleAccessibilityAction}
-				className="mt-12 h-[92px] justify-center"
+				className={cn(
+					"justify-center",
+					showValueBubble ? "mt-12 h-[92px]" : "h-[132px]",
+				)}
 				// The carousel width follows the current window width.
 				style={{ width: carouselWidth }}
 			>
@@ -180,13 +213,18 @@ function SnapCarouselSelector<Item>({
 						alignItems: "center",
 					}}
 					className="grow-0"
-					renderItem={({ index }) => (
+					renderItem={({ item, index }) => (
 						<SnapCarouselTick
 							index={index}
 							itemWidth={CAROUSEL_ITEM_WIDTH}
 							scrollX={scrollX}
 							activeColor={colors.primary}
 							inactiveColor={colors.border}
+							inactiveLabelColor={colors.secondaryText}
+							label={
+								renderItemLabel?.(item, index, index === safeSelectedIndex)
+							}
+							selected={index === safeSelectedIndex}
 						/>
 					)}
 				/>
@@ -200,13 +238,19 @@ function SnapCarouselTick({
 	inactiveColor,
 	index,
 	itemWidth,
+	inactiveLabelColor,
+	label,
 	scrollX,
+	selected,
 }: {
 	activeColor: string;
 	inactiveColor: string;
 	index: number;
+	inactiveLabelColor: string;
 	itemWidth: number;
+	label?: string;
 	scrollX: SharedValue<number>;
+	selected: boolean;
 }) {
 	const animatedStyle = useAnimatedStyle(() => {
 		const distance = Math.abs(scrollX.get() / itemWidth - index);
@@ -231,15 +275,30 @@ function SnapCarouselTick({
 
 	return (
 		<Animated.View
-			className="h-[78px] items-center justify-center"
+			className={cn(
+				"items-center justify-center",
+				label ? "h-[118px]" : "h-[78px]",
+			)}
 			// Width and transform depend on the carousel geometry and animated position.
 			style={[{ width: itemWidth }, animatedStyle]}
 		>
-			<Animated.View
-				className="rounded-[3px]"
-				// Reanimated computes the tick dimensions and active color while scrolling.
-				style={barStyle}
-			/>
+			<View className="h-[78px] items-center justify-center">
+				<Animated.View
+					className="rounded-[3px]"
+					// Reanimated computes the tick dimensions and active color while scrolling.
+					style={barStyle}
+				/>
+			</View>
+			{label ? (
+				<Text
+					className="mt-1 min-h-9 text-center font-poppins font-semibold text-body-5"
+					numberOfLines={2}
+					// The active label color follows the runtime theme.
+					style={{ color: selected ? activeColor : inactiveLabelColor }}
+				>
+					{label}
+				</Text>
+			) : null}
 		</Animated.View>
 	);
 }

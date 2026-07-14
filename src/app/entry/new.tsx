@@ -146,14 +146,6 @@ const formatCompactDate = (date: Date) =>
 		year: "numeric",
 	}).format(date);
 
-const formatDuration = (durationMinutes: number) => {
-	if (durationMinutes < 60) return `${durationMinutes} Min.`;
-
-	const hours = Math.floor(durationMinutes / 60);
-	const minutes = durationMinutes % 60;
-	return minutes > 0 ? `${hours} Std. ${minutes} Min.` : `${hours} Std.`;
-};
-
 const homeworkSuccessPath = ({
 	dayKey,
 	completionDateKey,
@@ -779,68 +771,16 @@ export default function NewEntryScreen() {
 						<Animated.View key={step} entering={FadeIn.duration(220)}>
 							{step === "basics" ? (
 								<>
-									<View className="mb-7 gap-2">
+									<View className="mb-8">
 										<Text className="font-poppins font-semibold text-heading-2 text-text">
 											Wann findet die Prüfung statt?
 										</Text>
-										<Text className="font-poppins text-body-3 text-secondary-text">
-											Wähle den Prüfungstag und die genaue Uhrzeit.
-										</Text>
 									</View>
 
-									<View className="gap-3">
-										<Text className="font-poppins text-body-4 text-text">
-											Prüfungstag
-										</Text>
-										<ExamDateSelector
-											selectedDate={plannedDate}
-											onSelect={setPlannedDate}
-										/>
-									</View>
-
-									<Text className="font-poppins text-body-4 text-text">
-										Uhrzeit
-									</Text>
-									<View className="flex-row gap-3">
-										<View className="flex-1">
-											<HomeworkPillField
-												value={formatTime(plannedTime)}
-												placeholder="Von"
-												icon={
-													<Clock3
-														size={19}
-														color={fieldIconColor}
-														strokeWidth={2.1}
-													/>
-												}
-												onPress={() => openPicker("plannedTime")}
-												className="min-h-16 px-5"
-											/>
-										</View>
-										<View className="flex-1">
-											<HomeworkPillField
-												value={formatTime(plannedEndTime)}
-												placeholder="Bis"
-												icon={
-													<Clock3
-														size={19}
-														color={fieldIconColor}
-														strokeWidth={2.1}
-													/>
-												}
-												onPress={() => openPicker("plannedEndTime")}
-												className="min-h-16 px-5"
-											/>
-										</View>
-									</View>
-									<View className="rounded-[24px] bg-primary/10 px-5 py-4">
-										<Text className="font-poppins font-semibold text-body-3 text-primary">
-											Dauer: {formatDuration(scheduledDurationMinutes)}
-										</Text>
-										<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-											Möglich sind 3 Minuten bis 6 Stunden.
-										</Text>
-									</View>
+									<ExamDateSelector
+										selectedDate={plannedDate}
+										onSelect={setPlannedDate}
+									/>
 								</>
 							) : step === "examType" ? (
 								<>

@@ -32,6 +32,11 @@ const EXAM_TYPE_OPTIONS = [
 
 const CUSTOM_EXAM_TYPE_LABEL = "Andere Prüfungsart";
 
+const formatExamDateTickLabel = (date: Date, isSelected: boolean) =>
+	isSelected
+		? `${formatExamDateDay(date)}\n${formatExamDateMonth(date)}`
+		: formatExamDateDay(date);
+
 function ExamFlowHeader({
 	currentStep,
 	onBack,
@@ -219,7 +224,6 @@ function ExamDateSelector({
 }) {
 	const [dateOptions] = useState(() => buildExamDateOptions({ selectedDate }));
 	const selectedIndex = findExamDateIndex(dateOptions, selectedDate);
-	const lastIndex = Math.max(dateOptions.length - 1, 1);
 
 	return (
 		<SnapCarouselSelector
@@ -230,10 +234,11 @@ function ExamDateSelector({
 			incrementLabel="Nächster Tag"
 			items={dateOptions}
 			onSelect={onSelect}
-			primaryLabel={formatExamDateDay(selectedDate)}
-			progress={selectedIndex / lastIndex}
-			secondaryLabel={formatExamDateMonth(selectedDate)}
+			renderItemLabel={(date, _index, isSelected) =>
+				formatExamDateTickLabel(date, isSelected)
+			}
 			selectedIndex={selectedIndex}
+			showValueBubble={false}
 		/>
 	);
 }
