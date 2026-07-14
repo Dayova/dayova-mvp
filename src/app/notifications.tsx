@@ -474,7 +474,7 @@ export default function NotificationsScreen() {
 		(!preferences.systemNotificationsEnabled || !hasSystemPermission);
 	const warningCtaLabel = preferences?.systemNotificationsEnabled
 		? "System-Einstellungen öffnen"
-		: "In Dayova aktivieren";
+		: "System-Mitteilungen aktivieren";
 	const openNotificationFix = () => {
 		if (!preferences?.systemNotificationsEnabled) {
 			router.push("/notification-settings");
@@ -491,11 +491,20 @@ export default function NotificationsScreen() {
 			<ScreenScroll topPadding={72} bottomPadding={120} horizontalPadding={24}>
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
 				<View className="gap-5">
+					<View className="gap-2">
+						<Text className="font-poppins font-semibold text-body-2 text-text">
+							In-App-Postfach
+						</Text>
+						<Text className="font-poppins text-body-4 text-secondary-text">
+							Deine In-App-Mitteilungen sind immer aktiv. Welche Kategorien hier
+							erscheinen, legst du in den Mitteilungseinstellungen fest.
+						</Text>
+					</View>
 					<CategoryTabs value={category} onChange={setCategory} />
 					{showWarning ? (
 						<WarningBanner
-							title="System-Mitteilungen sind aus"
-							description="Du bekommst Mitteilungen weiterhin hier im Postfach. Aktiviere System-Mitteilungen, wenn Dayova dich außerhalb der App erinnern soll."
+							title="Nur In-App-Mitteilungen aktiv"
+							description="Deine Mitteilungen erscheinen weiterhin hier im Dayova-Postfach. Aktiviere System-Mitteilungen, um sie zusätzlich außerhalb der App zu erhalten."
 							ctaLabel={warningCtaLabel}
 							onPressCta={openNotificationFix}
 						/>

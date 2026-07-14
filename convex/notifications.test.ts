@@ -52,6 +52,39 @@ test("notification preferences persist per user", async () => {
 	});
 });
 
+test("system delivery can be disabled without disabling the in-app inbox", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	await t.mutation(api.notifications.updatePreferences, {
+		systemNotificationsEnabled: false,
+	});
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-06-16",
+		title: "Mathe Hausaufgabe",
+		time: "16:00",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "16. Juni 2026",
+		durationMinutes: 45,
+	});
+
+	await expect(
+		t.mutation(api.notifications.syncDueNotifications, {
+			now: "2026-06-16T15:45:00.000Z",
+			localDayKey: "2026-06-16",
+			localMinutes: 15 * 60 + 45,
+		}),
+	).resolves.toEqual({ created: 1 });
+	await expect(
+		t.query(api.notifications.listInbox, { category: "all" }),
+	).resolves.toMatchObject([
+		{
+			category: "task",
+			type: "beforeEvent",
+			title: "Hausaufgabe",
+		},
+	]);
+});
+
 test("due entry reminders create one unread in-app notification", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 

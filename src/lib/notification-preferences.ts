@@ -2,6 +2,18 @@ import type { NotificationPlanningPreferences } from "./notification-planner";
 
 export type NotificationPreferenceKey = keyof NotificationPlanningPreferences;
 
+export type NotificationPreferenceControlState = {
+	systemNotificationsDisabled: boolean;
+	dailyBriefingDisabled: boolean;
+	dailyBriefingTimeDisabled: boolean;
+	beforeExamDisabled: boolean;
+	beforeLearningTimeDisabled: boolean;
+	beforeHomeworkWorkDisabled: boolean;
+	beforeHomeworkDueDisabled: boolean;
+	reminderOffsetDisabled: boolean;
+	forgottenEventDisabled: boolean;
+};
+
 const notificationPreferenceKeys: NotificationPreferenceKey[] = [
 	"systemNotificationsEnabled",
 	"dailyBriefingEnabled",
@@ -13,6 +25,29 @@ const notificationPreferenceKeys: NotificationPreferenceKey[] = [
 	"reminderOffsetMinutes",
 	"forgottenEventEnabled",
 ];
+
+export const getNotificationPreferenceControlState = ({
+	preferences,
+	pendingKeys,
+}: {
+	preferences: NotificationPlanningPreferences | undefined;
+	pendingKeys: NotificationPreferenceKey[];
+}): NotificationPreferenceControlState => {
+	const isDisabled = (key: NotificationPreferenceKey) =>
+		preferences === undefined || pendingKeys.includes(key);
+
+	return {
+		systemNotificationsDisabled: isDisabled("systemNotificationsEnabled"),
+		dailyBriefingDisabled: isDisabled("dailyBriefingEnabled"),
+		dailyBriefingTimeDisabled: isDisabled("dailyBriefingTime"),
+		beforeExamDisabled: isDisabled("beforeExamEnabled"),
+		beforeLearningTimeDisabled: isDisabled("beforeLearningTimeEnabled"),
+		beforeHomeworkWorkDisabled: isDisabled("beforeHomeworkWorkEnabled"),
+		beforeHomeworkDueDisabled: isDisabled("beforeHomeworkDueEnabled"),
+		reminderOffsetDisabled: isDisabled("reminderOffsetMinutes"),
+		forgottenEventDisabled: isDisabled("forgottenEventEnabled"),
+	};
+};
 
 export const getNotificationPreferencePatchKeys = (
 	patch: Partial<NotificationPlanningPreferences>,

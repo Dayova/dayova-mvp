@@ -18,7 +18,7 @@ export function NotificationButton() {
 		<TouchableOpacity
 			activeOpacity={0.86}
 			accessibilityRole="button"
-			accessibilityLabel="Benachrichtigungen öffnen"
+			accessibilityLabel="In-App-Mitteilungen öffnen"
 			onPress={() => router.push("/notifications")}
 			className="h-14 w-14 items-center justify-center rounded-full bg-card"
 			style={{

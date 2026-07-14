@@ -26,6 +26,7 @@ import type { NotificationPlanningPreferences } from "~/lib/notification-planner
 import {
 	applyNotificationPreferencePatch,
 	clearConfirmedNotificationPreferencePatch,
+	getNotificationPreferenceControlState,
 	getNotificationPreferencePatchKeys,
 	type NotificationPreferenceKey,
 	removeNotificationPreferencePatchKeys,
@@ -111,11 +112,13 @@ const removePendingPreferenceKeys = (
 
 const SwitchRow = memo(function SwitchRow({
 	label,
+	description,
 	value,
 	disabled,
 	onValueChange,
 }: {
 	label: string;
+	description?: string;
 	value: boolean;
 	disabled?: boolean;
 	onValueChange: (value: boolean) => void;
@@ -123,12 +126,19 @@ const SwitchRow = memo(function SwitchRow({
 	return (
 		<SettingsCard>
 			<View className="flex-row items-center justify-between gap-3">
-				<Text
-					className="flex-1 font-poppins font-semibold text-body-3 text-text"
-					numberOfLines={2}
-				>
-					{label}
-				</Text>
+				<View className="flex-1 gap-1">
+					<Text
+						className="font-poppins font-semibold text-body-3 text-text"
+						numberOfLines={2}
+					>
+						{label}
+					</Text>
+					{description ? (
+						<Text className="font-poppins text-body-4 text-secondary-text">
+							{description}
+						</Text>
+					) : null}
+				</View>
 				<Switch
 					value={value}
 					disabled={disabled}
@@ -291,11 +301,6 @@ export default function NotificationSettingsScreen() {
 		[updateSystemNotifications],
 	);
 
-	const isPreferencePending = useCallback(
-		(key: NotificationPreferenceKey) => pendingPreferenceKeys.includes(key),
-		[pendingPreferenceKeys],
-	);
-
 	const updateBriefingTime = useCallback(
 		(selectedDate: Date) => {
 			void update({ dailyBriefingTime: formatTime(selectedDate) });
@@ -344,12 +349,10 @@ export default function NotificationSettingsScreen() {
 	);
 
 	const preferencesForRender = visiblePreferences;
-
-	const areNotificationDetailsDisabled =
-		preferencesForRender?.systemNotificationsEnabled === false;
-	const isReminderOffsetPending = isPreferencePending("reminderOffsetMinutes");
-	const areReminderOffsetsDisabled =
-		areNotificationDetailsDisabled || isReminderOffsetPending;
+	const controlState = getNotificationPreferenceControlState({
+		preferences: preferencesForRender,
+		pendingKeys: pendingPreferenceKeys,
+	});
 
 	return (
 		<Screen>
@@ -361,17 +364,18 @@ export default function NotificationSettingsScreen() {
 					<View className="gap-6">
 						<SwitchRow
 							label="System-Mitteilungen"
+							description="Erhalte deine ausgewählten Mitteilungen zusätzlich außerhalb von Dayova. Das In-App-Postfach bleibt immer aktiv."
 							value={preferencesForRender.systemNotificationsEnabled}
-							disabled={isPreferencePending("systemNotificationsEnabled")}
+							disabled={controlState.systemNotificationsDisabled}
 							onValueChange={updateSystemNotificationsFromSwitch}
 						/>
 
-						<View
-							style={{
-								gap: 24,
-								opacity: areNotificationDetailsDisabled ? 0.46 : 1,
-							}}
-						>
+						<SectionIntro
+							title="In-App-Mitteilungen"
+							description="Dein Dayova-Postfach ist immer aktiv. Wähle aus, welche Mitteilungen dort erscheinen. Mit aktivierten System-Mitteilungen erhältst du sie zusätzlich außerhalb der App."
+						/>
+
+						<View className="gap-6">
 							<SectionIntro
 								title="Tagesüberblick"
 								description="Dein Tagesüberblick zeigt dir alle Lernzeiten, Prüfungen, Abgabetermine und Hausaufgaben-Bearbeitungszeiten, die für den Tag anstehen."
@@ -379,10 +383,7 @@ export default function NotificationSettingsScreen() {
 							<SwitchRow
 								label="Tagesüberblick"
 								value={preferencesForRender.dailyBriefingEnabled}
-								disabled={
-									areNotificationDetailsDisabled ||
-									isPreferencePending("dailyBriefingEnabled")
-								}
+								disabled={controlState.dailyBriefingDisabled}
 								onValueChange={handleDailyBriefingEnabledChange}
 							/>
 							<View className="gap-4">
@@ -393,11 +394,11 @@ export default function NotificationSettingsScreen() {
 									accessibilityRole="button"
 									accessibilityLabel="Uhrzeit für Tagesüberblick ändern"
 									accessibilityState={{
-										disabled: areNotificationDetailsDisabled,
+										disabled: controlState.dailyBriefingTimeDisabled,
 									}}
 									activeOpacity={0.84}
 									className="flex-row items-center justify-between rounded-[24px] bg-card"
-									disabled={areNotificationDetailsDisabled}
+									disabled={controlState.dailyBriefingTimeDisabled}
 									onPress={openBriefingTimePicker}
 									// Platform-specific row density and native shadow values are
 									// runtime/platform decisions, not static design tokens.
@@ -430,37 +431,25 @@ export default function NotificationSettingsScreen() {
 							<SwitchRow
 								label="Vor Prüfung"
 								value={preferencesForRender.beforeExamEnabled}
-								disabled={
-									areNotificationDetailsDisabled ||
-									isPreferencePending("beforeExamEnabled")
-								}
+								disabled={controlState.beforeExamDisabled}
 								onValueChange={handleBeforeExamEnabledChange}
 							/>
 							<SwitchRow
 								label="Vor Lernzeit"
 								value={preferencesForRender.beforeLearningTimeEnabled}
-								disabled={
-									areNotificationDetailsDisabled ||
-									isPreferencePending("beforeLearningTimeEnabled")
-								}
+								disabled={controlState.beforeLearningTimeDisabled}
 								onValueChange={handleBeforeLearningTimeEnabledChange}
 							/>
 							<SwitchRow
 								label="Vor Bearbeitung Hausaufgabe"
 								value={preferencesForRender.beforeHomeworkWorkEnabled}
-								disabled={
-									areNotificationDetailsDisabled ||
-									isPreferencePending("beforeHomeworkWorkEnabled")
-								}
+								disabled={controlState.beforeHomeworkWorkDisabled}
 								onValueChange={handleBeforeHomeworkWorkEnabledChange}
 							/>
 							<SwitchRow
 								label="Vor Abgabe Hausaufgabe"
 								value={preferencesForRender.beforeHomeworkDueEnabled}
-								disabled={
-									areNotificationDetailsDisabled ||
-									isPreferencePending("beforeHomeworkDueEnabled")
-								}
+								disabled={controlState.beforeHomeworkDueDisabled}
 								onValueChange={handleBeforeHomeworkDueEnabledChange}
 							/>
 
@@ -471,10 +460,12 @@ export default function NotificationSettingsScreen() {
 							<TouchableOpacity
 								accessibilityRole="button"
 								accessibilityLabel="Erinnerungszeit ändern"
-								accessibilityState={{ disabled: areReminderOffsetsDisabled }}
+								accessibilityState={{
+									disabled: controlState.reminderOffsetDisabled,
+								}}
 								activeOpacity={0.84}
 								className="flex-row items-center justify-between rounded-[24px] bg-card"
-								disabled={areReminderOffsetsDisabled}
+								disabled={controlState.reminderOffsetDisabled}
 								onPress={openReminderOffsetSheet}
 								// Platform-specific row density and native shadow values are
 								// runtime/platform decisions, not static design tokens.
@@ -506,10 +497,7 @@ export default function NotificationSettingsScreen() {
 							<SwitchRow
 								label="Event vergessen"
 								value={preferencesForRender.forgottenEventEnabled}
-								disabled={
-									areNotificationDetailsDisabled ||
-									isPreferencePending("forgottenEventEnabled")
-								}
+								disabled={controlState.forgottenEventDisabled}
 								onValueChange={handleForgottenEventEnabledChange}
 							/>
 						</View>

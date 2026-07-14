@@ -3,6 +3,7 @@ import type { NotificationPlanningPreferences } from "./notification-planner";
 import {
 	applyNotificationPreferencePatch,
 	clearConfirmedNotificationPreferencePatch,
+	getNotificationPreferenceControlState,
 	getNotificationPreferencePatchKeys,
 	removeNotificationPreferencePatchKeys,
 } from "./notification-preferences";
@@ -20,6 +21,28 @@ const preferences: NotificationPlanningPreferences = {
 };
 
 describe("notification preference pending state", () => {
+	test("system delivery does not disable always-on in-app preferences", () => {
+		expect(
+			getNotificationPreferenceControlState({
+				preferences: {
+					...preferences,
+					systemNotificationsEnabled: false,
+				},
+				pendingKeys: [],
+			}),
+		).toEqual({
+			systemNotificationsDisabled: false,
+			dailyBriefingDisabled: false,
+			dailyBriefingTimeDisabled: false,
+			beforeExamDisabled: false,
+			beforeLearningTimeDisabled: false,
+			beforeHomeworkWorkDisabled: false,
+			beforeHomeworkDueDisabled: false,
+			reminderOffsetDisabled: false,
+			forgottenEventDisabled: false,
+		});
+	});
+
 	test("a pending switch patch only affects its own preference key", () => {
 		const patch = { beforeExamEnabled: false };
 
