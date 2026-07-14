@@ -132,7 +132,7 @@
 		--input-radius: 32px;
 	}
 
-	.dark {
+	.dark:root {
 		color-scheme: dark;
 
 		--background: 250 10% 8%;

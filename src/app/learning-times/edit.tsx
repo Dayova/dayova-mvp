@@ -31,6 +31,7 @@ import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { dismissToOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
+import { useDayovaTheme } from "~/lib/theme";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 const LEARNING_DAYS = [
@@ -105,6 +106,7 @@ export default function LearningTimesScreen() {
 		returnTo?: string;
 	}>();
 	const { user } = useAuth();
+	const { colors } = useDayovaTheme();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningTimes = useQuery(
 		api.learningTimes.listMine,
@@ -312,7 +314,11 @@ export default function LearningTimesScreen() {
 									{selectedDay}
 								</Text>
 								<FieldAccessory>
-									<ChevronDown size={20} color="#1A1A1A" strokeWidth={2.1} />
+									<ChevronDown
+										size={20}
+										color={colors.text}
+										strokeWidth={2.1}
+									/>
 								</FieldAccessory>
 							</FieldTrigger>
 						</Field>

@@ -51,6 +51,7 @@ import {
 } from "~/features/learning-plans/utils";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
+import { useDayovaTheme } from "~/lib/theme";
 import { formatFileSize } from "~/lib/upload-policy";
 import { MISSING_LEARNING_TIMES_HINT } from "../../../convex/learningPlanPlanningHints";
 
@@ -144,6 +145,8 @@ export function MaterialCard({
 	size: number;
 	onRemove: () => void;
 }) {
+	const { colors } = useDayovaTheme();
+
 	return (
 		<Surface
 			className="mb-3 flex-row items-center rounded-[24px] px-4 py-4"
@@ -172,7 +175,7 @@ export function MaterialCard({
 				onPress={onRemove}
 				className="h-9 w-9 items-center justify-center rounded-full bg-black/5"
 			>
-				<X size={16} color="#1A1A1A" strokeWidth={2.3} />
+				<X size={16} color={colors.text} strokeWidth={2.3} />
 			</TouchableOpacity>
 		</Surface>
 	);
@@ -185,6 +188,7 @@ export function SessionCard({
 	session: PlanSession;
 	onEdit: () => void;
 }) {
+	const { colors } = useDayovaTheme();
 	const endTime = timeFromMinutes(
 		minutesFromTime(session.startTime) + session.durationMinutes,
 	);
@@ -218,7 +222,7 @@ export function SessionCard({
 				</Text>
 			</View>
 			<View className="h-11 w-11 items-center justify-center rounded-full border border-black/10">
-				<PropertyEdit size={19} color="#1A1A1A" strokeWidth={1.5} />
+				<PropertyEdit size={19} color={colors.text} strokeWidth={1.5} />
 			</View>
 		</ActionSurface>
 	);
@@ -287,6 +291,7 @@ export function SessionEditForm({
 	onSave: () => void;
 }) {
 	const [isPhaseMenuOpen, setIsPhaseMenuOpen] = useState(false);
+	const { colors } = useDayovaTheme();
 
 	return (
 		<View className="flex-1">
@@ -330,7 +335,7 @@ export function SessionEditForm({
 				<SessionEditPill
 					accessibilityLabel="Lernphase ändern"
 					value={getSessionPhaseLabel(editPhase)}
-					icon={<ChevronDown size={20} color="#1A1A1A" strokeWidth={2.1} />}
+					icon={<ChevronDown size={20} color={colors.text} strokeWidth={2.1} />}
 					onPress={() => setIsPhaseMenuOpen((value) => !value)}
 				/>
 				{isPhaseMenuOpen ? (

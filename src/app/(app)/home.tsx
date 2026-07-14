@@ -51,6 +51,7 @@ import {
 } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
+import { useDayovaTheme } from "~/lib/theme";
 import type { DayEntry } from "~/types/dayEntries";
 
 const ALL_DAY_TIME_LABEL = "Ganztägig";
@@ -89,6 +90,8 @@ function SideScrollIndicator({
 	scale: number;
 	style?: StyleProp<ViewStyle>;
 }) {
+	const { colors } = useDayovaTheme();
+
 	return (
 		<Svg
 			accessible={false}
@@ -103,26 +106,26 @@ function SideScrollIndicator({
 		>
 			<Path
 				d="M0 16H6C7.10457 16 8 16.8954 8 18C8 19.1046 7.10457 20 6 20H0V16Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.text}
+				fill={colors.text}
 			/>
 			<Path
 				d="M0 8H4C5.10457 8 6 8.89543 6 10C6 11.1046 5.10457 12 4 12H0V8Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.text}
+				fill={colors.text}
 				fillOpacity={0.35}
 			/>
 			<Path
 				d="M0 2H2C3.10457 2 4 2.89543 4 4C4 5.10457 3.10457 6 2 6H0V2Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.text}
+				fill={colors.text}
 				fillOpacity={0.15}
 			/>
 			<Path
 				d="M0 23H4C5.10457 23 6 23.8954 6 25C6 26.1046 5.10457 27 4 27H0V23Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.text}
+				fill={colors.text}
 				fillOpacity={0.35}
 			/>
 			<Path
 				d="M0 30H2C3.10457 30 4 30.8954 4 32C4 33.1046 3.10457 34 2 34H0V30Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.text}
+				fill={colors.text}
 				fillOpacity={0.15}
 			/>
 		</Svg>
@@ -428,6 +431,7 @@ const getAnalyticsEntryKind = (entry: DayEntry) =>
 export default function HomeScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { colors } = useDayovaTheme();
 	const { width, height } = useWindowDimensions();
 	const { user } = useAuth();
 	const { capture } = useValidationAnalytics();
@@ -943,8 +947,8 @@ export default function HomeScreen() {
 					>
 						<Path
 							d="M70.4004 0.150391H239.266C253.395 0.150391 264.85 11.6047 264.85 25.7344V30.7344C264.85 43.2435 274.991 53.3838 287.5 53.3838H314.75C323.267 53.3838 327.507 53.3845 331.058 53.9717C349.436 57.0115 363.888 71.3317 367.097 89.6816C367.716 93.2265 367.756 97.467 367.834 105.983L368.85 216.618V362.834C368.85 375.157 368.85 384.391 368.251 391.721C367.652 399.049 366.456 404.46 364.07 409.142C359.866 417.392 353.158 424.101 344.907 428.305C340.226 430.69 334.815 431.887 327.487 432.485C320.158 433.084 310.923 433.084 298.6 433.084H70.4004C58.0768 433.084 48.8423 433.084 41.5127 432.485C34.1852 431.887 28.774 430.69 24.0928 428.305C15.8419 424.101 9.13374 417.392 4.92969 409.142C2.5444 404.46 1.34773 399.049 0.749023 391.721C0.150198 384.391 0.150391 375.157 0.150391 362.834V70.4004C0.150391 58.0768 0.150174 48.8423 0.749023 41.5127C1.34774 34.1851 2.54447 28.7741 4.92969 24.0928C9.13374 15.8419 15.8419 9.13374 24.0928 4.92969C28.7741 2.54447 34.1851 1.34774 41.5127 0.749023C48.8423 0.150174 58.0768 0.150391 70.4004 0.150391Z"
-							fill={DAYOVA_DESIGN_SYSTEM.colors.surface}
-							stroke={DAYOVA_DESIGN_SYSTEM.colors.border}
+							fill={colors.surface}
+							stroke={colors.border}
 							strokeWidth={0.3}
 						/>
 					</Svg>
@@ -989,8 +993,8 @@ export default function HomeScreen() {
 								>
 									<Path
 										d="M29 0.150391H78.1299C92.3346 0.150391 103.85 11.6654 103.85 25.8701C103.85 40.1753 92.1775 51.7318 77.873 51.5889L54.002 51.3496H27C14.3803 51.3496 4.15039 41.1197 4.15039 28.5V25C4.15039 11.2757 15.2757 0.150391 29 0.150391Z"
-										fill={DAYOVA_DESIGN_SYSTEM.colors.surface}
-										stroke={DAYOVA_DESIGN_SYSTEM.colors.border}
+										fill={colors.surface}
+										stroke={colors.border}
 										strokeWidth={0.3}
 									/>
 									<Rect
@@ -999,7 +1003,7 @@ export default function HomeScreen() {
 										width={40}
 										height={40}
 										rx={20}
-										fill="#F1F7FB"
+										fill={colors.systemSubtle}
 									/>
 									<Rect
 										x={56}
@@ -1334,7 +1338,7 @@ export default function HomeScreen() {
 													>
 														<ArrowUpRight
 															size={14 * screenScale}
-															color={DAYOVA_DESIGN_SYSTEM.colors.text}
+															color={colors.text}
 															strokeWidth={2}
 														/>
 													</View>
@@ -1409,7 +1413,7 @@ export default function HomeScreen() {
 										{[-90, -60, -30, 0, 30].map((offset) => (
 											<Text
 												key={offset}
-												className="w-10 text-center font-poppins text-black"
+												className="w-10 text-center font-poppins text-text"
 												style={{
 													fontSize: 12 * screenScale,
 													lineHeight: 18 * screenScale,

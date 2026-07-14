@@ -14,6 +14,7 @@ import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackToReturnOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
+import { useDayovaTheme } from "~/lib/theme";
 
 const LEARNING_DAYS = [
 	{ abbreviation: "Mo", label: "Montag", value: 1 },
@@ -38,6 +39,8 @@ function LearningTimeRow({
 	onPress: () => void;
 	timeRange: string;
 }) {
+	const { colors } = useDayovaTheme();
+
 	return (
 		<Pressable
 			accessibilityLabel={accessibilityLabel}
@@ -67,11 +70,7 @@ function LearningTimeRow({
 			</View>
 
 			<View className="h-[72px] w-[72px] items-center justify-center rounded-full border border-border bg-card">
-				<ClipboardEdit
-					size={30}
-					color={DAYOVA_DESIGN_SYSTEM.colors.text}
-					strokeWidth={1.8}
-				/>
+				<ClipboardEdit size={30} color={colors.text} strokeWidth={1.8} />
 			</View>
 		</Pressable>
 	);
