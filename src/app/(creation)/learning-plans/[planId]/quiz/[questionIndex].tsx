@@ -1,18 +1,28 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
+import { Platform, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { useAuthSession } from "~/context/AuthContext";
 import { getDiagnosticQuestionCreationStep } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
+import { getLearningPlanCreationBackIntent } from "~/features/learning-plans/creation-navigation";
 import { QuizStep } from "~/features/learning-plans/quiz-step";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 
 const quizPath = (id: Id<"learningPlans">, questionIndex: number) =>
 	`/learning-plans/${id}/quiz/${questionIndex}` as const;
@@ -41,8 +51,11 @@ export default function LearningPlanQuizScreen() {
 	);
 	const [answer, setAnswer] = useState("");
 	const [isBusy, setIsBusy] = useState(false);
+	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
+		useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const loadedQuestionIdRef = useRef<string | null>(null);
+	const isExitingRef = useRef(false);
 
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
@@ -80,22 +93,50 @@ export default function LearningPlanQuizScreen() {
 		setErrorMessage(null);
 	}, [currentQuestion, storedAnswer?.answer]);
 
-	const goBack = () => {
-		if (!planId) return true;
-		if (questionIndex > 0) {
-			router.replace(quizPath(planId, questionIndex - 1));
+	const goBack = useCallback(() => {
+		if (!planId || isBusy) return true;
+
+		const backIntent = getLearningPlanCreationBackIntent({
+			questionIndex,
+			isPauseConfirmationVisible,
+		});
+		if (backIntent.kind === "previousQuestion") {
+			router.replace(quizPath(planId, backIntent.questionIndex));
 			return true;
 		}
-		goBackOrReplace(router, learningPlanTopicPath(planId));
+		if (backIntent.kind === "confirmPause") {
+			setIsPauseConfirmationVisible(true);
+		}
 		return true;
-	};
+	}, [isBusy, isPauseConfirmationVisible, planId, questionIndex, router]);
 
-	useBackIntent(Boolean(planId && questionIndex > 0), goBack);
+	useBackIntent(Boolean(planId), goBack);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: getDiagnosticQuestionCreationStep(questionIndex),
 		onBack: goBack,
 	});
+
+	const backSwipeGesture = Gesture.Pan()
+		.enabled(
+			Platform.OS === "ios" &&
+				Boolean(planId) &&
+				!isBusy &&
+				!isPauseConfirmationVisible,
+		)
+		.hitSlop({ left: 0, width: 28 })
+		.activeOffsetX(20)
+		.failOffsetY([-20, 20])
+		.onEnd((event) => {
+			if (event.translationX >= 56) scheduleOnRN(goBack);
+		});
+
+	const continueLater = () => {
+		if (isExitingRef.current) return;
+		isExitingRef.current = true;
+		setIsPauseConfirmationVisible(false);
+		dismissToOrReplace(router, ROUTES.learningPlans);
+	};
 
 	const continueQuestion = async () => {
 		if (!planId || !currentQuestion || isBusy) return;
@@ -126,8 +167,9 @@ export default function LearningPlanQuizScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-background">
-			<Stack.Screen options={{ gestureEnabled: true }} />
+		<GestureDetector gesture={backSwipeGesture}>
+			<View className="flex-1 bg-background">
+			<Stack.Screen options={{ gestureEnabled: false }} />
 			<KeyboardSafeScrollView
 				className="flex-1"
 				bottomOffset={32}
@@ -149,6 +191,19 @@ export default function LearningPlanQuizScreen() {
 					/>
 				) : null}
 			</KeyboardSafeScrollView>
-		</View>
+
+			<ConfirmationSheet
+				visible={isPauseConfirmationVisible}
+				title="Lernplan-Erstellung pausieren?"
+				description="Deine bisherigen Antworten bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
+				cancelLabel="Weiter beantworten"
+				confirmLabel="Später fortsetzen"
+				confirmTone="primary"
+				closeAccessibilityLabel="Pause-Dialog schließen"
+				onClose={() => setIsPauseConfirmationVisible(false)}
+				onConfirm={continueLater}
+			/>
+			</View>
+		</GestureDetector>
 	);
 }
