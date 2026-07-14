@@ -35,6 +35,7 @@ import {
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import { getLearningPlanOverviewState } from "~/features/learning-plans/creation-overview";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -61,6 +62,9 @@ type LearningPlanOverview = {
 	examTypeLabel: string;
 	status: "draft" | "questionsReady" | "generated" | "accepted";
 	progressPercent: number;
+	questionCount?: number;
+	answeredQuestionCount?: number;
+	firstUnansweredQuestionIndex?: number | null;
 	completedCount?: number;
 	sessionCount?: number;
 	examDateKey?: string;
@@ -92,8 +96,11 @@ type HomeworkOverview = {
 
 const getPlanHref = (plan: LearningPlanOverview) => {
 	if (plan.status === "draft") return ROUTES.createLearningPlan;
-	if (plan.status === "questionsReady") {
-		return `/learning-plans/${plan.id}/quiz/0` as const;
+	const overviewState = getLearningPlanOverviewState(plan);
+	if (overviewState.kind === "creation") {
+		return overviewState.resumeTarget.kind === "generation"
+			? (`/learning-plans/${plan.id}/generating` as const)
+			: (`/learning-plans/${plan.id}/quiz/${overviewState.resumeTarget.questionIndex}` as const);
 	}
 	return `/learning-plans/${plan.id}` as const;
 };
@@ -414,6 +421,7 @@ function LearningPlanCard({
 	onPress: () => void;
 }) {
 	const { colors } = useDayovaTheme();
+	const overviewState = getLearningPlanOverviewState(plan);
 	const progress = Math.max(0, Math.min(plan.progressPercent, 100));
 	const status = getStatus(plan, todayKey);
 	const remainingDays = Math.max(
@@ -503,102 +511,161 @@ function LearningPlanCard({
 			) : null}
 			<GestureDetector gesture={panGesture}>
 				<Animated.View style={cardAnimatedStyle}>
-					<NotchedActionCard
-						cardAccessibilityHint="Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
-						cardAccessibilityLabel={`${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`}
-						actionIcon={
-							<ArrowUpRight
-								size={24}
-								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-								strokeWidth={1.9}
-							/>
-						}
-						onPress={onPress}
-						pressType="card"
-					>
-						<View className="gap-2">
-							<View className="flex-row items-start justify-between gap-3">
-								<Text
-									className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
-									numberOfLines={2}
-								>
-									{formatGermanUiText(plan.subject)}
-								</Text>
-								<View className="shrink-0 flex-row gap-2">
-									<Badge {...status} />
+					{overviewState.kind === "creation" ? (
+						<CompactNotchedActionCard
+							cardHeight={184}
+							cardAccessibilityHint="Setzt die Lernplan-Erstellung bei der ersten noch offenen Frage fort."
+							cardAccessibilityLabel={`${formatGermanUiText(plan.subject)}, ${overviewState.badgeLabel}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${overviewState.progressLabel}`}
+							actionIcon={
+								<ArrowUpRight
+									size={24}
+									color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+									strokeWidth={1.9}
+								/>
+							}
+							onPress={onPress}
+							pressType="card"
+						>
+							<View className="gap-2.5">
+								<View className="flex-row items-start justify-between gap-3">
+									<Text
+										className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
+										numberOfLines={2}
+									>
+										{formatGermanUiText(plan.subject)}
+									</Text>
 									<Badge
-										label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
+										label={overviewState.badgeLabel}
 										background={STATUS_NEUTRAL_BACKGROUND}
 										foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
 									/>
 								</View>
-							</View>
-
-							<View className="flex-row items-center gap-1">
-								<GraduationCap
-									size={14}
-									color={colors.secondaryText}
-									strokeWidth={2}
-								/>
-								<Text className="font-poppins text-body-4 text-secondary-text">
-									{plan.examDateLabel ?? "Termin wird geladen"}
-								</Text>
-							</View>
-
-							<Text
-								className="max-w-[282px] font-poppins font-semibold text-body-2 text-text"
-								numberOfLines={2}
-							>
-								{formatGermanUiText(currentTitle)}
-							</Text>
-						</View>
-
-						<View className="mt-4 w-full max-w-[300px] gap-1">
-							<View className="flex-row items-center">
-								<Text className="w-[172px] font-poppins text-body-4 text-secondary-text">
-									{`${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage`}
-								</Text>
 								<View className="flex-row items-center gap-1">
+									<GraduationCap
+										size={14}
+										color={colors.secondaryText}
+										strokeWidth={2}
+									/>
+									<Text className="font-poppins text-body-4 text-secondary-text">
+										{plan.examDateLabel ?? "Termin wird geladen"}
+									</Text>
+								</View>
+								<Text
+									className="max-w-[282px] font-poppins font-semibold text-body-2 text-text"
+									numberOfLines={2}
+								>
+									{overviewState.actionLabel}
+								</Text>
+								<View className="flex-row items-center gap-1.5">
 									<ClipboardEdit
 										size={14}
 										color={colors.secondaryText}
 										strokeWidth={2}
 									/>
 									<Text className="font-poppins text-body-4 text-secondary-text">
-										{remainingDays === 1
-											? "noch 1 Tag"
-											: `noch ${remainingDays} Tage`}
+										{overviewState.progressLabel}
 									</Text>
 								</View>
 							</View>
-							<View
-								accessibilityLabel={`${progress} Prozent abgeschlossen`}
-								accessibilityValue={{
-									max: 100,
-									min: 0,
-									now: progress,
-									text: `${progress} Prozent`,
-								}}
-								accessibilityRole="progressbar"
-								className="h-2 w-[258px] max-w-full overflow-hidden rounded-full bg-light-2"
-							>
-								<LinearGradient
-									colors={
-										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors
-									}
-									start={
-										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start
-									}
-									end={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end}
-									style={{
-										height: "100%",
-										width: `${Math.max(progress, progress > 0 ? 8 : 0)}%`,
-										borderRadius: 999,
-									}}
+						</CompactNotchedActionCard>
+					) : (
+						<NotchedActionCard
+							cardAccessibilityHint="Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
+							cardAccessibilityLabel={`${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`}
+							actionIcon={
+								<ArrowUpRight
+									size={24}
+									color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+									strokeWidth={1.9}
 								/>
+							}
+							onPress={onPress}
+							pressType="card"
+						>
+							<View className="gap-2">
+								<View className="flex-row items-start justify-between gap-3">
+									<Text
+										className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
+										numberOfLines={2}
+									>
+										{formatGermanUiText(plan.subject)}
+									</Text>
+									<View className="shrink-0 flex-row gap-2">
+										<Badge {...status} />
+										<Badge
+											label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
+											background={STATUS_NEUTRAL_BACKGROUND}
+											foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
+										/>
+									</View>
+								</View>
+
+								<View className="flex-row items-center gap-1">
+									<GraduationCap
+										size={14}
+										color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
+										strokeWidth={2}
+									/>
+									<Text className="font-poppins text-body-4 text-secondary-text">
+										{plan.examDateLabel ?? "Termin wird geladen"}
+									</Text>
+								</View>
+
+								<Text
+									className="max-w-[282px] font-poppins font-semibold text-body-2 text-text"
+									numberOfLines={2}
+								>
+									{formatGermanUiText(currentTitle)}
+								</Text>
 							</View>
-						</View>
-					</NotchedActionCard>
+
+							<View className="mt-4 w-full max-w-[300px] gap-1">
+								<View className="flex-row items-center">
+									<Text className="w-[172px] font-poppins text-body-4 text-secondary-text">
+										{`${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage`}
+									</Text>
+									<View className="flex-row items-center gap-1">
+										<ClipboardEdit
+											size={14}
+											color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
+											strokeWidth={2}
+										/>
+										<Text className="font-poppins text-body-4 text-secondary-text">
+											{remainingDays === 1
+												? "noch 1 Tag"
+												: `noch ${remainingDays} Tage`}
+										</Text>
+									</View>
+								</View>
+								<View
+									accessibilityLabel={`${progress} Prozent abgeschlossen`}
+									accessibilityValue={{
+										max: 100,
+										min: 0,
+										now: progress,
+										text: `${progress} Prozent`,
+									}}
+									accessibilityRole="progressbar"
+									className="h-2 w-[258px] max-w-full overflow-hidden rounded-full bg-light-2"
+								>
+									<LinearGradient
+										colors={
+											DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors
+										}
+										start={
+											DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start
+										}
+										end={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end}
+										style={{
+											height: "100%",
+											width: `${Math.max(progress, progress > 0 ? 8 : 0)}%`,
+											borderRadius: 999,
+										}}
+									/>
+								</View>
+							</View>
+						</NotchedActionCard>
+					)}
 				</Animated.View>
 			</GestureDetector>
 		</View>
@@ -782,6 +849,12 @@ export default function LearningPlansScreen() {
 	);
 	const visiblePlans = plans ?? [];
 	const visibleHomework = homework ?? [];
+	const creationPlans = visiblePlans.filter(
+		(plan) => getLearningPlanOverviewState(plan).kind === "creation",
+	);
+	const createdPlans = visiblePlans.filter(
+		(plan) => getLearningPlanOverviewState(plan).kind === "created",
+	);
 
 	const confirmDeletePlan = (plan: LearningPlanOverview) => {
 		Alert.alert(
@@ -875,17 +948,44 @@ export default function LearningPlansScreen() {
 				showsVerticalScrollIndicator={false}
 			>
 				{activeTab === "learningPlans" ? (
-					<View className="gap-3">
+					<View className="gap-7">
 						{visiblePlans.length > 0 ? (
-							visiblePlans.map((plan) => (
-								<LearningPlanCard
-									key={plan.id}
-									plan={plan}
-									todayKey={todayKey}
-									onPress={() => router.push(getPlanHref(plan))}
-									onDelete={() => confirmDeletePlan(plan)}
-								/>
-							))
+							<>
+								{creationPlans.length > 0 ? (
+									<View className="gap-3">
+										<Text className="font-poppins font-semibold text-body-2 text-text">
+											In Erstellung
+										</Text>
+										{creationPlans.map((plan) => (
+											<LearningPlanCard
+												key={plan.id}
+												plan={plan}
+												todayKey={todayKey}
+												onPress={() => router.push(getPlanHref(plan))}
+												onDelete={() => confirmDeletePlan(plan)}
+											/>
+										))}
+									</View>
+								) : null}
+								{createdPlans.length > 0 ? (
+									<View className="gap-3">
+										{creationPlans.length > 0 ? (
+											<Text className="font-poppins font-semibold text-body-2 text-text">
+												Lernpläne
+											</Text>
+										) : null}
+										{createdPlans.map((plan) => (
+											<LearningPlanCard
+												key={plan.id}
+												plan={plan}
+												todayKey={todayKey}
+												onPress={() => router.push(getPlanHref(plan))}
+												onDelete={() => confirmDeletePlan(plan)}
+											/>
+										))}
+									</View>
+								) : null}
+							</>
 						) : (
 							<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
 								<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">

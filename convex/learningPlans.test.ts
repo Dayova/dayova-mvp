@@ -77,6 +77,107 @@ const createAcceptedPlanWithSession = async (
 	return { learningPlanId, session };
 };
 
+test("list overview exposes unfinished creation progress and its first unanswered question", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	const questions = Array.from({ length: 5 }, (_, index) => ({
+		id: `q${index + 1}`,
+		prompt: `Frage ${index + 1}`,
+		targetInsight: `Erkenntnis ${index + 1}`,
+	}));
+
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		questions,
+		sourceSummary: "Testmaterial",
+	});
+	await t.mutation(api.learningPlans.saveKnowledgeAnswer, {
+		learningPlanId,
+		questionId: "q1",
+		answer: "Antwort 1",
+	});
+	await t.mutation(api.learningPlans.saveKnowledgeAnswer, {
+		learningPlanId,
+		questionId: "q3",
+		answer: "Antwort 3",
+	});
+
+	const overviews = await t.query(api.learningPlans.listOverview, {});
+
+	expect(overviews).toHaveLength(1);
+	expect(overviews[0]).toMatchObject({
+		id: learningPlanId,
+		status: "questionsReady",
+		questionCount: 5,
+		answeredQuestionCount: 2,
+		firstUnansweredQuestionIndex: 1,
+	});
+});
+
+test("list overview reports when every creation question has been answered", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	const questions = Array.from({ length: 5 }, (_, index) => ({
+		id: `q${index + 1}`,
+		prompt: `Frage ${index + 1}`,
+		targetInsight: `Erkenntnis ${index + 1}`,
+	}));
+
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		questions,
+		sourceSummary: "Testmaterial",
+	});
+	for (const question of questions) {
+		await t.mutation(api.learningPlans.saveKnowledgeAnswer, {
+			learningPlanId,
+			questionId: question.id,
+			answer: `Antwort ${question.id}`,
+		});
+	}
+
+	const overviews = await t.query(api.learningPlans.listOverview, {});
+
+	expect(overviews[0]).toMatchObject({
+		id: learningPlanId,
+		questionCount: 5,
+		answeredQuestionCount: 5,
+		firstUnansweredQuestionIndex: null,
+	});
+});
+
+test("list overview keeps unfinished creation progress scoped to its owner", async () => {
+	const t = convexTest(schema, modules);
+	const mine = t.withIdentity(user);
+	const other = t.withIdentity({ tokenIdentifier: "test:other-user" });
+	const myLearningPlanId = await createPlan(mine);
+	const otherLearningPlanId = await createPlan(other);
+	const questions = [
+		{
+			id: "q1",
+			prompt: "Frage 1",
+			targetInsight: "Erkenntnis 1",
+		},
+	];
+
+	await mine.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId: myLearningPlanId,
+		questions,
+		sourceSummary: "Meine Unterlagen",
+	});
+	await other.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId: otherLearningPlanId,
+		questions,
+		sourceSummary: "Andere Unterlagen",
+	});
+
+	const overviews = await mine.query(api.learningPlans.listOverview, {});
+
+	expect(overviews).toHaveLength(1);
+	expect(overviews[0]?.id).toBe(myLearningPlanId);
+	expect(overviews[0]?.id).not.toBe(otherLearningPlanId);
+});
+
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-05-30T10:00:00.000Z"));

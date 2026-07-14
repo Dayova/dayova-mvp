@@ -6,16 +6,20 @@ Confluence is the current cross-functional documentation hub. Keep this file foc
 
 ## Language
 
+**Lernplan-Erstellung**:
+The user-facing setup flow that collects the learner's exam details, optional learning material, and answers to five short questions before a learning plan exists.
+_Avoid_: Quiz, completed learning-plan steps, Wissensanalyse
+
 **Persönlicher Lernplan**:
-The user-facing learning-plan creation flow and accepted study path. It frames the five short pre-plan questions and optional learning material as the setup for a personalized, ordered plan whose sessions build toward exam readiness.
-_Avoid_: Wissensanalyse, Quiz
+The generated and accepted study path whose ordered sessions build toward exam readiness. It exists only after the `Lernplan-Erstellung` is complete.
+_Avoid_: The setup questions or their completion progress, Wissensanalyse, Quiz
 
 **Nächster Lernschritt**:
 The next unfinished session in a `Persönlicher Lernplan`. It is the recommended continuation point, while later sessions can remain visible for flexibility.
 _Avoid_: Hard lock, hidden future sessions
 
 **Pre-plan diagnostic step**:
-The internal name for the five-question diagnostic part of `Persönlicher Lernplan`, used when distinguishing it from post-session `Wissensanalyse`.
+The internal name for the five-question diagnostic part of `Lernplan-Erstellung`, used when distinguishing it from post-session `Wissensanalyse`.
 _Avoid_: User-facing copy
 
 **Wissensanalyse**:

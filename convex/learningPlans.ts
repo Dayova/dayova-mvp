@@ -601,7 +601,7 @@ export const listOverview = query({
 	args: {},
 	handler: async (ctx) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
-		const plans = await ctx.db
+		const acceptedPlans = await ctx.db
 			.query("learningPlans")
 			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
 				q
@@ -610,6 +610,18 @@ export const listOverview = query({
 			)
 			.order("desc")
 			.take(50);
+		const creationPlans = await ctx.db
+			.query("learningPlans")
+			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("status", "questionsReady"),
+			)
+			.order("desc")
+			.take(50);
+		const plans = [...acceptedPlans, ...creationPlans]
+			.sort((left, right) => right.updatedAt - left.updatedAt)
+			.slice(0, 50);
 
 		const overviews = [];
 		for (const plan of plans) {
@@ -630,6 +642,40 @@ export const listOverview = query({
 				sessions.length > 0
 					? Math.round((completedCount / sessions.length) * 100)
 					: 0;
+			const creationProgress: {
+				questionCount?: number;
+				answeredQuestionCount?: number;
+				firstUnansweredQuestionIndex?: number | null;
+			} = {};
+			if (plan.status === "questionsReady") {
+				const questions = plan.knowledgeQuestions ?? [];
+				const questionIds = new Set(questions.map((question) => question.id));
+				const answers = await ctx.db
+					.query("learningPlanAnswers")
+					.withIndex("by_learningPlanId", (q) =>
+						q.eq("learningPlanId", plan._id),
+					)
+					.take(20);
+				const answeredQuestionIds = new Set(
+					answers
+						.filter(
+							(answer) =>
+								questionIds.has(answer.questionId) &&
+								answer.answer.trim().length > 0,
+						)
+						.map((answer) => answer.questionId),
+				);
+				const firstUnansweredQuestionIndex = questions.findIndex(
+					(question) => !answeredQuestionIds.has(question.id),
+				);
+
+				creationProgress.questionCount = questions.length;
+				creationProgress.answeredQuestionCount = answeredQuestionIds.size;
+				creationProgress.firstUnansweredQuestionIndex =
+					firstUnansweredQuestionIndex >= 0
+						? firstUnansweredQuestionIndex
+						: null;
+			}
 
 			overviews.push({
 				id: plan._id,
@@ -653,6 +699,7 @@ export const listOverview = query({
 							completed: currentSession.completed === true,
 						}
 					: null,
+				...creationProgress,
 				updatedAt: plan.updatedAt,
 			});
 		}
