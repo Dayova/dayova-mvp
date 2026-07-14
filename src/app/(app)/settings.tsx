@@ -1,14 +1,35 @@
 import { useRouter } from "expo-router";
 import { Pressable, useWindowDimensions, View } from "react-native";
-import { Bell, Logout, Palette, Settings, Timer } from "~/components/ui/icon";
+import {
+	Bell,
+	Computer,
+	Logout,
+	Moon,
+	Palette,
+	Settings,
+	Sun,
+	Timer,
+} from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
-import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { useDayovaTheme } from "~/lib/theme";
 import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
 import { cn } from "~/lib/utils";
+
+const themeIconByPreference = {
+	light: Sun,
+	system: Computer,
+	dark: Moon,
+} satisfies Record<
+	ThemePreference,
+	(props: {
+		size?: number;
+		color?: string;
+		strokeWidth?: number;
+	}) => React.JSX.Element
+>;
 
 function SettingsRow({
 	icon,
@@ -46,9 +67,12 @@ function ThemePreferenceToggle({
 	preference: ThemePreference;
 	setPreference: (preference: ThemePreference) => Promise<void>;
 }) {
+	const { colors } = useDayovaTheme();
+
 	return (
-		<View className="flex-row rounded-full bg-muted p-1">
+		<View className="flex-row rounded-full border border-border/70 bg-muted p-1">
 			{THEME_OPTIONS.map((option) => {
+				const Icon = themeIconByPreference[option.value];
 				const isActive = preference === option.value;
 
 				return (
@@ -58,7 +82,7 @@ function ThemePreferenceToggle({
 						accessibilityRole="radio"
 						accessibilityState={{ checked: isActive }}
 						className={cn(
-							"h-9 min-w-[72px] items-center justify-center rounded-full px-3",
+							"h-11 w-11 items-center justify-center rounded-full",
 							isActive ? "bg-primary" : "bg-transparent",
 						)}
 						onPress={() => {
@@ -67,14 +91,11 @@ function ThemePreferenceToggle({
 							});
 						}}
 					>
-						<Text
-							className={cn(
-								"font-poppins font-semibold text-body-5",
-								isActive ? "text-white" : "text-secondary-text",
-							)}
-						>
-							{option.label}
-						</Text>
+						<Icon
+							size={20}
+							color={isActive ? "#FFFFFF" : colors.secondaryText}
+							strokeWidth={2}
+						/>
 					</Pressable>
 				);
 			})}
