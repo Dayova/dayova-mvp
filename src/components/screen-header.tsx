@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { View } from "react-native";
+import { type StyleProp, View, type ViewStyle } from "react-native";
 import { BackButton } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 
@@ -9,6 +9,7 @@ export function ScreenHeader({
 	right,
 	showBack = true,
 	className = "mb-7",
+	runtimeStyle,
 	titleClassName,
 }: {
 	title?: string;
@@ -16,10 +17,15 @@ export function ScreenHeader({
 	right?: ReactNode;
 	showBack?: boolean;
 	className?: string;
+	// Reserved for caller-computed viewport geometry; static styling belongs in className.
+	runtimeStyle?: StyleProp<ViewStyle>;
 	titleClassName?: string;
 }) {
 	return (
-		<View className={`relative min-h-12 justify-center ${className}`}>
+		<View
+			className={`relative min-h-12 justify-center ${className}`}
+			style={runtimeStyle}
+		>
 			{showBack ? (
 				<View className="absolute left-0 z-10">
 					<BackButton onPress={onBack} />

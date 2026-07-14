@@ -5,9 +5,12 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
+	Dimensions,
+	Keyboard,
 	Platform,
 	ScrollView,
 	TouchableOpacity,
+	useWindowDimensions,
 	View,
 } from "react-native";
 import type {
@@ -35,6 +38,13 @@ import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuth } from "~/context/AuthContext";
+import {
+	getCenteredQuestionRegionHeight,
+	getQuestionContentWidth,
+	getStableViewportHeight,
+	sessionContentTopPadding,
+	sessionQuestionHorizontalPadding,
+} from "~/features/learning-plans/session-content-layout";
 import {
 	createTheoryCardQueue,
 	repeatCurrentTheoryCard as queueRepeatCurrentTheoryCard,
@@ -335,6 +345,7 @@ function TagPill({
 }
 
 function ActionRow({
+	className,
 	secondaryLabel,
 	primaryLabel,
 	onSecondary,
@@ -342,6 +353,7 @@ function ActionRow({
 	primaryDisabled,
 	isBusy,
 }: {
+	className?: string;
 	secondaryLabel: string;
 	primaryLabel: string;
 	onSecondary: () => void;
@@ -350,7 +362,7 @@ function ActionRow({
 	isBusy?: boolean;
 }) {
 	return (
-		<View className="mt-8 flex-row gap-3">
+		<View className={cn("mt-8 flex-row gap-3", className)}>
 			<Button
 				className="flex-1 px-4"
 				disabled={isBusy}
@@ -811,6 +823,11 @@ function AnalysisView({
 
 export default function LearningSessionContentScreen() {
 	const router = useRouter();
+	const { width: viewportWidth } = useWindowDimensions();
+	const [stableViewportHeight, setStableViewportHeight] = useState(
+		() => Dimensions.get("window").height,
+	);
+	const isKeyboardVisibleRef = useRef(Keyboard.isVisible());
 	const params = useLocalSearchParams<{
 		planId?: string;
 		sessionId?: string;
@@ -863,6 +880,40 @@ export default function LearningSessionContentScreen() {
 	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
 		null,
 	);
+
+	useEffect(() => {
+		const keyboardShowSubscription = Keyboard.addListener(
+			Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+			() => {
+				isKeyboardVisibleRef.current = true;
+			},
+		);
+		const keyboardHideSubscription = Keyboard.addListener(
+			"keyboardDidHide",
+			() => {
+				isKeyboardVisibleRef.current = false;
+				setStableViewportHeight(Dimensions.get("window").height);
+			},
+		);
+		const subscription = Dimensions.addEventListener("change", ({ window }) => {
+			// Android resize mode reports a smaller window while typing. Freeze the
+			// question geometry only for that keyboard-driven resize; real window
+			// changes must still be accepted for multi-window and foldable layouts.
+			setStableViewportHeight((currentHeight) =>
+				getStableViewportHeight(
+					currentHeight,
+					window.height,
+					isKeyboardVisibleRef.current || Keyboard.isVisible(),
+				),
+			);
+		});
+
+		return () => {
+			keyboardShowSubscription.remove();
+			keyboardHideSubscription.remove();
+			subscription.remove();
+		};
+	}, []);
 
 	const recognizerCallbacks = useMemo<RecognizerCallbacks>(
 		() => ({
@@ -1323,6 +1374,21 @@ export default function LearningSessionContentScreen() {
 			: content
 				? phaseTitle(content.session.phase)
 				: "Lernblock";
+	const isQuestionVisible = Boolean(
+		content &&
+			!showAnalysis &&
+			!completionPhase &&
+			!visibleAttempt &&
+			currentItem &&
+			currentItem.kind !== "learnCard",
+	);
+	const centeredQuestionRegionHeight =
+		getCenteredQuestionRegionHeight(stableViewportHeight);
+	// Runtime viewport geometry is a documented style-prop exception.
+	const questionColumnStyle = useMemo(
+		() => ({ width: getQuestionContentWidth(viewportWidth) }),
+		[viewportWidth],
+	);
 
 	return (
 		<View className="flex-1 bg-background">
@@ -1332,14 +1398,18 @@ export default function LearningSessionContentScreen() {
 				className="flex-1"
 				contentContainerStyle={{
 					flexGrow: 1,
-					paddingHorizontal: 32,
-					paddingTop: 80,
+					paddingHorizontal: isQuestionVisible
+						? sessionQuestionHorizontalPadding
+						: 32,
+					paddingTop: sessionContentTopPadding,
 					paddingBottom: 60,
 				}}
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
 			>
 				<ScreenHeader
+					className={isQuestionVisible ? "self-center" : undefined}
+					runtimeStyle={isQuestionVisible ? questionColumnStyle : undefined}
 					title={title}
 					onBack={goBack}
 					right={
@@ -1407,49 +1477,55 @@ export default function LearningSessionContentScreen() {
 						/>
 					</View>
 				) : currentItem ? (
-					<View className="flex-1 justify-between">
-						<Surface className="rounded-[32px] px-6 py-8" variant="flat">
-							<TagPill label="Frage" icon="question" />
-							<Text className="mt-8 font-poppins font-semibold text-body-1 text-text">
-								{currentItem.prompt}
-							</Text>
-							<View className="my-7 h-px bg-border" />
+					<View className="self-center" style={questionColumnStyle}>
+						<View
+							className="shrink-0 justify-center"
+							style={{ minHeight: centeredQuestionRegionHeight }}
+						>
+							<Surface className="rounded-[32px] px-6 py-8" variant="flat">
+								<TagPill label="Frage" icon="question" />
+								<Text className="mt-8 font-poppins font-semibold text-body-1 text-text">
+									{currentItem.prompt}
+								</Text>
+								<View className="my-7 h-px bg-border" />
 
-							{currentItem.kind === "multipleChoice" ? (
-								<ChoiceList
-									item={currentItem}
-									selectedChoiceId={selectedChoiceId}
-									onSelect={setSelectedChoiceId}
-									disabled={isBusy}
-								/>
-							) : currentItem.kind === "voice" ? (
-								<VoiceAnswer
-									value={answerText}
-									onChange={setAnswerText}
-									editable={!isBusy}
-									isRecognizing={isRecognizing}
-									speechErrorMessage={speechErrorMessage}
-									speechCaptureUnavailableMessage={
-										speechCaptureUnavailableMessage
-									}
-									onToggleRecording={toggleVoiceRecording}
-								/>
-							) : (
-								<TextAnswer
-									value={answerText}
-									onChange={setAnswerText}
-									placeholder="Schreibe hier deine Antwort."
-									editable={!isBusy}
-								/>
-							)}
-						</Surface>
+								{currentItem.kind === "multipleChoice" ? (
+									<ChoiceList
+										item={currentItem}
+										selectedChoiceId={selectedChoiceId}
+										onSelect={setSelectedChoiceId}
+										disabled={isBusy}
+									/>
+								) : currentItem.kind === "voice" ? (
+									<VoiceAnswer
+										value={answerText}
+										onChange={setAnswerText}
+										editable={!isBusy}
+										isRecognizing={isRecognizing}
+										speechErrorMessage={speechErrorMessage}
+										speechCaptureUnavailableMessage={
+											speechCaptureUnavailableMessage
+										}
+										onToggleRecording={toggleVoiceRecording}
+									/>
+								) : (
+									<TextAnswer
+										value={answerText}
+										onChange={setAnswerText}
+										placeholder="Schreibe hier deine Antwort."
+										editable={!isBusy}
+									/>
+								)}
+							</Surface>
 
-						{errorMessage ? (
-							<Text className="mt-4 font-poppins text-body-4 text-destructive">
-								{errorMessage}
-							</Text>
-						) : null}
+							{errorMessage ? (
+								<Text className="mt-4 font-poppins text-body-4 text-destructive">
+									{errorMessage}
+								</Text>
+							) : null}
+						</View>
 						<ActionRow
+							className="mt-0"
 							secondaryLabel="Weiß ich nicht"
 							primaryLabel={
 								content.session.phase === "rehearsal"
