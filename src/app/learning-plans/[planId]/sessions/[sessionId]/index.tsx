@@ -1408,7 +1408,7 @@ export default function LearningSessionContentScreen() {
 					</View>
 				) : currentItem ? (
 					<View className="flex-1 justify-between">
-						<Surface className="mt-24 rounded-[32px] px-6 py-8" variant="flat">
+						<Surface className="rounded-[32px] px-6 py-8" variant="flat">
 							<TagPill label="Frage" icon="question" />
 							<Text className="mt-8 font-poppins font-semibold text-body-1 text-text">
 								{currentItem.prompt}
