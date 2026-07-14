@@ -35,9 +35,6 @@ The Figma light palette is the source of truth: background `#F6F6F4`, light 1
 strong `#00A0E6`, path 6/primary/system cyan `#00BAFF`, path 7 `#4FD8FF`, and
 primary text `#1A1A1A`. The Figma orange `#FF9500` is the `wrong` status color;
 `destructive` remains a separate functional action/error token.
-Dark-mode variables and classes should not be introduced until the dark-mode
-design is finalized.
-
 Badge fills use wrong `#FF9500`, info `#C9A100`, system `#00BAFF`, success
 `#34C759`, theorie `#5856D6`, ueben `#AF52DE`, praxis `#00C7BE`, and
 hausaufgabe `#B88AAE`. Badge subtle fills match Figma exactly: wrong

@@ -43,7 +43,7 @@ const config: ExpoConfig = {
 	orientation: "portrait",
 	platforms: ["ios", "android"],
 	icon: DAYOVA_LOGO,
-	userInterfaceStyle: "light",
+	userInterfaceStyle: "automatic",
 	experiments: {
 		reactCompiler: true,
 	},

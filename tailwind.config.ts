@@ -34,6 +34,7 @@ const config = {
 					40: "hsl(var(--primary-40))",
 					30: "hsl(var(--primary-30))",
 				},
+				"progress-track": "hsl(var(--progress-track))",
 				"button-neutral": "hsl(var(--button-neutral))",
 				secondary: {
 					DEFAULT: "hsl(var(--secondary))",
