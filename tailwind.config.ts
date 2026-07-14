@@ -140,8 +140,8 @@ const config = {
 				"body-4": ["12px", { lineHeight: "18px", letterSpacing: "0px" }],
 				"body-5": ["10px", { lineHeight: "15px", letterSpacing: "0px" }],
 				"display-counter": [
-					"56px",
-					{ lineHeight: "64px", letterSpacing: "0px" },
+					"60px",
+					{ lineHeight: "68px", letterSpacing: "0px" },
 				],
 				"10": ["10px", { lineHeight: "15px", letterSpacing: "0px" }],
 				"12": ["12px", { lineHeight: "18px", letterSpacing: "0px" }],

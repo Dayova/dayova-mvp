@@ -221,7 +221,7 @@ function ExamDateSelector({
 	const selectedIndex = findExamDateIndex(dateOptions, selectedDate);
 
 	return (
-		<View className="w-full items-center">
+		<View className="mt-6 w-full items-center">
 			<View className="mb-3 flex-row items-baseline justify-center gap-2">
 				<Text
 					className="font-poppins font-semibold text-display-counter text-text"
@@ -230,7 +230,7 @@ function ExamDateSelector({
 				>
 					{formatExamDateDay(selectedDate)}
 				</Text>
-				<Text className="font-poppins font-semibold text-body-1 text-primary">
+				<Text className="font-poppins font-semibold text-heading-2 text-primary">
 					{formatExamDateMonth(selectedDate)}
 				</Text>
 			</View>

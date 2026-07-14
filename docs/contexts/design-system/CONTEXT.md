@@ -48,7 +48,7 @@ dark or saturated surfaces.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold.
-Large numeric counters use `display-counter` 56/64. The supported content
+Large numeric counters use `display-counter` 60/68. The supported content
 hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30, `body-2`
 16/24, `body-3` 14/21, `body-4` 12/18, and `body-5` 10/15, all with 0px letter
 spacing.

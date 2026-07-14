@@ -73,7 +73,7 @@ export const DAYOVA_DESIGN_SYSTEM = {
 	typography: {
 		fontFamily: "Poppins",
 		display: {
-			counter: { fontSize: 56, lineHeight: 64, fontWeight: "600" },
+			counter: { fontSize: 60, lineHeight: 68, fontWeight: "600" },
 		},
 		headline: {
 			h1: { fontSize: 32, lineHeight: 48, fontWeight: "600" },
