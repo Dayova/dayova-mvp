@@ -47,10 +47,11 @@ palette tokens. Use the palette directly: `text-text` for primary text,
 dark or saturated surfaces.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
-tabs, labels that need emphasis, and other highlighted text use SemiBold. The
-supported hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30,
-`body-2` 16/24, `body-3` 14/21, `body-4` 12/18, and `body-5` 10/15, all with
-0px letter spacing.
+tabs, labels that need emphasis, and other highlighted text use SemiBold.
+Large numeric counters use `display-counter` 56/64. The supported content
+hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30, `body-2`
+16/24, `body-3` 14/21, `body-4` 12/18, and `body-5` 10/15, all with 0px letter
+spacing.
 
 Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.

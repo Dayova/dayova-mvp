@@ -38,7 +38,7 @@ type SnapCarouselValueBubbleProps = {
 type SnapCarouselTickLabelProps<Item> = {
 	progress?: never;
 	primaryLabel?: never;
-	renderItemLabel: (item: Item, index: number, isSelected: boolean) => string;
+	renderItemLabel?: (item: Item, index: number, isSelected: boolean) => string;
 	secondaryLabel?: never;
 	showValueBubble: false;
 };
@@ -67,6 +67,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 				};
 	const renderItemLabel =
 		props.showValueBubble === false ? props.renderItemLabel : undefined;
+	const hasTickLabels = renderItemLabel !== undefined;
 	const { colors } = useDayovaTheme();
 	const listRef = useRef<FlatList<Item>>(null);
 	const { width } = useWindowDimensions();
@@ -179,7 +180,11 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 				onAccessibilityAction={handleAccessibilityAction}
 				className={cn(
 					"justify-center",
-					showValueBubble ? "mt-12 h-[92px]" : "h-[132px]",
+					showValueBubble
+						? "mt-12 h-[92px]"
+						: hasTickLabels
+							? "h-[132px]"
+							: "h-[92px]",
 				)}
 				// The carousel width follows the current window width.
 				style={{ width: carouselWidth }}
@@ -221,9 +226,11 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 							activeColor={colors.primary}
 							inactiveColor={colors.border}
 							inactiveLabelColor={colors.secondaryText}
-							label={
-								renderItemLabel?.(item, index, index === safeSelectedIndex)
-							}
+							label={renderItemLabel?.(
+								item,
+								index,
+								index === safeSelectedIndex,
+							)}
 							selected={index === safeSelectedIndex}
 						/>
 					)}

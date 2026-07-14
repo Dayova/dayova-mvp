@@ -32,11 +32,6 @@ const EXAM_TYPE_OPTIONS = [
 
 const CUSTOM_EXAM_TYPE_LABEL = "Andere Prüfungsart";
 
-const formatExamDateTickLabel = (date: Date, isSelected: boolean) =>
-	isSelected
-		? `${formatExamDateDay(date)}\n${formatExamDateMonth(date)}`
-		: formatExamDateDay(date);
-
 function ExamFlowHeader({
 	currentStep,
 	onBack,
@@ -226,20 +221,31 @@ function ExamDateSelector({
 	const selectedIndex = findExamDateIndex(dateOptions, selectedDate);
 
 	return (
-		<SnapCarouselSelector
-			accessibilityLabel="Prüfungstag auswählen"
-			accessibilityValue={formatAccessibleExamDate(selectedDate)}
-			decrementLabel="Vorheriger Tag"
-			getItemKey={getDayKey}
-			incrementLabel="Nächster Tag"
-			items={dateOptions}
-			onSelect={onSelect}
-			renderItemLabel={(date, _index, isSelected) =>
-				formatExamDateTickLabel(date, isSelected)
-			}
-			selectedIndex={selectedIndex}
-			showValueBubble={false}
-		/>
+		<View className="w-full items-center">
+			<View className="mb-3 flex-row items-baseline justify-center gap-2">
+				<Text
+					className="font-poppins font-semibold text-display-counter text-text"
+					// The day number is a counter, so tabular figures avoid width jumps.
+					style={{ fontVariant: ["tabular-nums"] }}
+				>
+					{formatExamDateDay(selectedDate)}
+				</Text>
+				<Text className="font-poppins font-semibold text-body-1 text-primary">
+					{formatExamDateMonth(selectedDate)}
+				</Text>
+			</View>
+			<SnapCarouselSelector
+				accessibilityLabel="Prüfungstag auswählen"
+				accessibilityValue={formatAccessibleExamDate(selectedDate)}
+				decrementLabel="Vorheriger Tag"
+				getItemKey={getDayKey}
+				incrementLabel="Nächster Tag"
+				items={dateOptions}
+				onSelect={onSelect}
+				selectedIndex={selectedIndex}
+				showValueBubble={false}
+			/>
+		</View>
 	);
 }
 

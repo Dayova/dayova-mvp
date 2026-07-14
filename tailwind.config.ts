@@ -139,6 +139,10 @@ const config = {
 				"body-3": ["14px", { lineHeight: "21px", letterSpacing: "0px" }],
 				"body-4": ["12px", { lineHeight: "18px", letterSpacing: "0px" }],
 				"body-5": ["10px", { lineHeight: "15px", letterSpacing: "0px" }],
+				"display-counter": [
+					"56px",
+					{ lineHeight: "64px", letterSpacing: "0px" },
+				],
 				"10": ["10px", { lineHeight: "15px", letterSpacing: "0px" }],
 				"12": ["12px", { lineHeight: "18px", letterSpacing: "0px" }],
 				"14": ["14px", { lineHeight: "21px", letterSpacing: "0px" }],
