@@ -10,23 +10,21 @@ export type OnboardingAnswers = {
 	password: string;
 };
 
-export type OnboardingAnswerField = keyof OnboardingAnswers;
-
-export type IntroStep = {
+type IntroStep = {
 	description: string;
 	illustration: "plan" | "focus" | "success";
 	kind: "intro";
 	title: string;
 };
 
-export type SelectStep = {
+type SelectStep = {
 	field: "studyTime" | "strength" | "challenge" | "goal";
 	kind: "select";
 	options: readonly string[];
 	title: string;
 };
 
-export type InputStep = {
+type InputStep = {
 	field: "state";
 	kind: "input";
 	label: string;
@@ -34,7 +32,7 @@ export type InputStep = {
 	title: string;
 };
 
-export type ProfileStep = {
+type ProfileStep = {
 	field: "birthDate" | "email" | "name";
 	kind: "profile";
 	label: string;
@@ -42,7 +40,7 @@ export type ProfileStep = {
 	title: string;
 };
 
-export type PasswordStep = {
+type PasswordStep = {
 	kind: "password";
 	title: string;
 };
@@ -164,12 +162,6 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
 	},
 ] as const;
 
-export const FIRST_ONBOARDING_STEP = ONBOARDING_STEPS[0] as OnboardingStep;
-
-export const INTRO_STEP_COUNT = ONBOARDING_STEPS.filter(
-	(step) => step.kind === "intro",
-).length;
-
 export const formatBirthDate = (date: Date) => {
 	const day = `${date.getDate()}`.padStart(2, "0");
 	const month = `${date.getMonth() + 1}`.padStart(2, "0");
@@ -196,16 +188,16 @@ export const getAgeFromBirthDate = (date: Date, today = new Date()) => {
 	return Math.max(age, 0);
 };
 
-export const isValidBirthDate = (date: Date | null, today = new Date()) =>
+const isValidBirthDate = (date: Date | null, today = new Date()) =>
 	Boolean(date && date <= today && getAgeFromBirthDate(date, today) >= 6);
 
-export const isValidEmail = (value: string) =>
+const isValidEmail = (value: string) =>
 	/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim().toLowerCase());
 
-export const isValidName = (value: string) =>
+const isValidName = (value: string) =>
 	value.trim().length >= 2 && /^[A-Za-zÀ-ÿ' -]+$/.test(value.trim());
 
-export const isValidPassword = (value: string) => value.trim().length >= 8;
+const isValidPassword = (value: string) => value.trim().length >= 8;
 
 export const isStepComplete = (
 	step: OnboardingStep,
@@ -254,9 +246,6 @@ export const validateStep = (
 	}
 	return {};
 };
-
-export const hasStepErrors = (errors: StepErrors) =>
-	Object.values(errors).some(Boolean);
 
 export const getRegistrationPayload = (answers: OnboardingAnswers) => ({
 	name: answers.name.trim(),
