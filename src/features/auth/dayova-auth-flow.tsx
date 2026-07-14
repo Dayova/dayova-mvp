@@ -878,7 +878,11 @@ export function OnboardingScreen() {
 			return true;
 		}
 		if (activeIndex === 0) {
-			router.replace("/");
+			if (router.canGoBack()) {
+				router.back();
+			} else {
+				router.replace("/");
+			}
 			return true;
 		}
 		Keyboard.dismiss();
@@ -887,7 +891,8 @@ export function OnboardingScreen() {
 		return true;
 	}, [activeIndex, isLoading, stage]);
 
-	useBackIntent(true, handleBack);
+	const shouldHandleInternalBack = activeIndex > 0 || stage !== "flow";
+	useBackIntent(shouldHandleInternalBack, handleBack);
 
 	const stepProgress =
 		stage === "verification" || stage === "creating"
@@ -1041,9 +1046,6 @@ export function OnboardingScreen() {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
-			<Stack.Screen
-				options={{ title: "Registrierung", gestureEnabled: false }}
-			/>
 			<StatusBar style="dark" />
 			<KeyboardAvoidingView
 				behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -1876,7 +1878,7 @@ export function LoginScreen() {
 							<Text className="text-center font-poppins text-body-3 text-text">
 								Du hast keinen Account?
 							</Text>
-							<Pressable onPress={() => router.replace("/onboarding")}>
+							<Pressable onPress={() => router.push("/onboarding")}>
 								<Text className="text-center font-poppins text-body-3 text-primary">
 									Jetzt Registrieren
 								</Text>

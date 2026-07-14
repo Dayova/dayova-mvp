@@ -40,6 +40,12 @@ describe("login screen layout", () => {
 		expect(loginScreenSource).toContain("onPress={toggleRememberSession}");
 		expect(loginScreenSource).toContain("Du hast keinen Account?");
 		expect(loginScreenSource).toContain("Jetzt Registrieren");
+		expect(loginScreenSource).toContain(
+			'onPress={() => router.push("/onboarding")}',
+		);
+		expect(loginScreenSource).not.toContain(
+			'onPress={() => router.replace("/onboarding")}',
+		);
 		expect(loginScreenSource).not.toContain("<View style={{ flex: 1 }} />");
 		expect(loginScreenSource).toContain('isCompactHeight ? "mt-10" : "mt-12"');
 		expect(formPillSource).toContain("h-14");

@@ -20,6 +20,15 @@ export default function AuthLayout() {
 				headerShown: false,
 				keyboardHandlingEnabled: false,
 			}}
-		/>
+		>
+			<Stack.Screen
+				name="onboarding"
+				options={{
+					title: "Registrierung",
+					gestureEnabled: true,
+					fullScreenGestureEnabled: false,
+				}}
+			/>
+		</Stack>
 	);
 }
