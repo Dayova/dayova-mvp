@@ -18,6 +18,17 @@ const formPillSource = authFlowSource.slice(
 );
 
 describe("login screen layout", () => {
+	test("uses one safe-area strategy and only scrolls when content overflows", () => {
+		expect(loginScreenSource).toContain(
+			'contentInsetAdjustmentBehavior="never"',
+		);
+		expect(loginScreenSource).toContain("alwaysBounceVertical={false}");
+		expect(loginScreenSource).toContain("isCompactHeight");
+		expect(loginScreenSource).not.toContain(
+			'contentInsetAdjustmentBehavior="automatic"',
+		);
+	});
+
 	test("keeps the Figma remember-me row and registration prompt in the form flow", () => {
 		expect(loginScreenSource).toContain("Angemeldet bleiben");
 		expect(loginScreenSource).toContain(
@@ -30,7 +41,7 @@ describe("login screen layout", () => {
 		expect(loginScreenSource).toContain("Du hast keinen Account?");
 		expect(loginScreenSource).toContain("Jetzt Registrieren");
 		expect(loginScreenSource).not.toContain("<View style={{ flex: 1 }} />");
-		expect(loginScreenSource).toContain('className="mt-12 items-center"');
+		expect(loginScreenSource).toContain('isCompactHeight ? "mt-10" : "mt-12"');
 		expect(formPillSource).toContain("h-14");
 	});
 });

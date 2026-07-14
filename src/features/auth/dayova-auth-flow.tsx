@@ -1594,6 +1594,8 @@ function ShortStudyTimeFactStep({
 
 export function LoginScreen() {
 	const insets = useSafeAreaInsets();
+	const { height } = useWindowDimensions();
+	const isCompactHeight = height < 850;
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
@@ -1734,13 +1736,20 @@ export function LoginScreen() {
 				style={{ flex: 1 }}
 			>
 				<ScrollView
-					contentInsetAdjustmentBehavior="automatic"
+					contentInsetAdjustmentBehavior="never"
+					alwaysBounceVertical={false}
 					keyboardShouldPersistTaps="handled"
 					showsVerticalScrollIndicator={false}
 					contentContainerStyle={{
 						flexGrow: 1,
-						paddingTop: Math.max(insets.top + 64, 76),
-						paddingBottom: Math.max(insets.bottom + 18, 28),
+						paddingTop: Math.max(
+							insets.top + (isCompactHeight ? 52 : 64),
+							isCompactHeight ? 68 : 76,
+						),
+						paddingBottom: Math.max(
+							insets.bottom + (isCompactHeight ? 12 : 18),
+							isCompactHeight ? 24 : 28,
+						),
 					}}
 				>
 					<View className="flex-1 items-center px-8">
@@ -1754,7 +1763,12 @@ export function LoginScreen() {
 							/>
 						</Animated.View>
 
-						<Text className="mt-10 text-center font-poppins font-semibold text-heading-1 text-text">
+						<Text
+							className={cn(
+								"text-center font-poppins font-semibold text-heading-1 text-text",
+								isCompactHeight ? "mt-8" : "mt-10",
+							)}
+						>
 							Willkommen
 						</Text>
 						<Text className="mt-1 max-w-[300px] text-center font-poppins text-body-3 text-text">
@@ -1853,7 +1867,12 @@ export function LoginScreen() {
 							/>
 						</View>
 
-						<View className="mt-12 items-center">
+						<View
+							className={cn(
+								"items-center",
+								isCompactHeight ? "mt-10" : "mt-12",
+							)}
+						>
 							<Text className="text-center font-poppins text-body-3 text-text">
 								Du hast keinen Account?
 							</Text>
