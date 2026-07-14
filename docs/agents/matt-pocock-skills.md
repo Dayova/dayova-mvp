@@ -25,6 +25,7 @@ Preserve upstream workflow improvements, then reapply and validate the local com
 4. Confirm publishing skills apply one mapped category role and one mapped triage disposition role.
 5. Validate every `mattpocock/skills` entry in `skills-lock.json` with the `skill-creator` validator.
 6. Verify the required labels through the Linear connector and, while GitHub sync remains enabled, verify their GitHub mirrors.
+7. Confirm that triage still invokes `$inspect-video-evidence` for embedded videos and screen recordings before verification, with full-timeline coverage and timestamped observations.
 
 Do not regenerate accurate `docs/agents/*.md` files from an upstream template merely because the package changed. Rerun the setup workflow only when the tracker, label mapping, or domain-doc layout changes.
 

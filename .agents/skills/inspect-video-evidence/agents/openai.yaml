@@ -1,0 +1,4 @@
+interface:
+  display_name: "Inspect Video Evidence"
+  short_description: "Inspect videos with timestamped timeline evidence"
+  default_prompt: "Use $inspect-video-evidence to inspect this recording with full-timeline coverage and timestamped observations."

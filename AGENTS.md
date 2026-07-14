@@ -1,3 +1,13 @@
+Think Before Coding
+Don't assume. Don't hide confusion. Surface tradeoffs.
+
+Before implementing:
+
+State your assumptions explicitly. If uncertain, ask.
+If multiple interpretations exist, present them - don't pick silently.
+If a simpler approach exists, say so. Push back when warranted.
+If something is unclear, stop. Name what's confusing. Ask.
+
 <!-- convex-ai-start -->
 
 This project uses [Convex](https://convex.dev) as its backend.
@@ -29,3 +39,11 @@ Use a multi-context documentation layout with `CONTEXT-MAP.md` at the repo root;
 ### Skill maintenance
 
 Matt Pocock skill updates require the repo's Codex and Linear compatibility overlay to be revalidated. See `docs/agents/matt-pocock-skills.md`.
+
+### Video evidence
+
+When a Linear issue, bug report, or task contains a video or screen recording,
+use `$inspect-video-evidence` before making claims about temporal behavior.
+Require complete-timeline coverage, timestamped observations, and a coverage
+statement. Treat thumbnails, poster frames, Quick Look previews, and isolated
+screenshots as still-image evidence only.
