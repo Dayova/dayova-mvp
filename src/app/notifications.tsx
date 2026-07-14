@@ -1,6 +1,5 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
-import type * as ExpoNotifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
@@ -26,15 +25,24 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { NotificationDeliveryInfoSheet } from "~/components/notification-delivery-info-sheet";
 import { ScreenHeader as Header } from "~/components/screen-header";
-import { BookOpen, ClipboardList, Mail, Trash2 } from "~/components/ui/icon";
+import {
+	BellOff,
+	BookOpen,
+	ClipboardList,
+	Mail,
+	Trash2,
+} from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
-import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace } from "~/lib/navigation";
+import { useNotificationPermissionStatus } from "~/lib/notification-permissions";
 import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
+import { getPushNotificationDeliveryState } from "~/lib/notification-preferences";
 
 type InboxCategory = "all" | "learningPlan" | "task";
 
@@ -64,21 +72,6 @@ const NOTIFICATION_EXIT = FadeOut.duration(90);
 const NOTIFICATION_LAYOUT = LinearTransition.springify()
 	.damping(20)
 	.stiffness(180);
-
-const getNotificationsModule = () => {
-	try {
-		return require("expo-notifications") as typeof ExpoNotifications;
-	} catch {
-		return null;
-	}
-};
-
-const hasNotificationPermission = (
-	notifications: typeof ExpoNotifications,
-	permissions: ExpoNotifications.NotificationPermissionsStatus,
-) =>
-	permissions.granted ||
-	permissions.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL;
 
 const formatRelativeTime = (timestamp: number) => {
 	const diffMinutes = Math.max(
@@ -435,7 +428,8 @@ export default function NotificationsScreen() {
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const [category, setCategory] = useState<InboxCategory>("all");
-	const [hasSystemPermission, setHasSystemPermission] = useState(false);
+	const { notificationPermissionStatus } = useNotificationPermissionStatus();
+	const [showDeliveryInfo, setShowDeliveryInfo] = useState(false);
 	const preferences = useQuery(
 		api.notifications.getPreferences,
 		user && isConvexAuthenticated ? {} : "skip",
@@ -448,40 +442,43 @@ export default function NotificationsScreen() {
 	const deleteNotification = useMutation(api.notifications.deleteNotification);
 
 	useEffect(() => {
-		const notifications = getNotificationsModule();
-		if (!notifications) return;
-
-		let isMounted = true;
-		void notifications.getPermissionsAsync().then((permissions) => {
-			if (!isMounted) return;
-			setHasSystemPermission(
-				hasNotificationPermission(notifications, permissions),
-			);
-		});
-
-		return () => {
-			isMounted = false;
-		};
-	}, []);
-
-	useEffect(() => {
 		if (!user || !isConvexAuthenticated) return;
 		void markAllRead({ now: new Date().toISOString() });
 	}, [isConvexAuthenticated, markAllRead, user]);
 
-	const showWarning =
-		preferences !== undefined &&
-		(!preferences.systemNotificationsEnabled || !hasSystemPermission);
-	const warningCtaLabel = preferences?.systemNotificationsEnabled
-		? "System-Einstellungen öffnen"
-		: "System-Mitteilungen aktivieren";
-	const openNotificationFix = () => {
+	const pushDeliveryState = getPushNotificationDeliveryState({
+		preferenceEnabled: preferences?.systemNotificationsEnabled ?? true,
+		permissionStatus: notificationPermissionStatus,
+	});
+	const openPushSettings = () => {
+		setShowDeliveryInfo(false);
 		if (!preferences?.systemNotificationsEnabled) {
 			router.push("/notification-settings");
 			return;
 		}
-		void Linking.openSettings();
+		void Linking.openSettings().catch((error: unknown) => {
+			logDiagnosticError(
+				"Failed to open notification system settings.",
+				error,
+				{
+					source: "notifications.openSystemSettings",
+					level: "warn",
+				},
+			);
+			setShowDeliveryInfo(true);
+		});
 	};
+	const pushAction = preferences?.systemNotificationsEnabled
+		? {
+				label: "Systemeinstellungen öffnen",
+				onPress: openPushSettings,
+			}
+		: {
+				label: "Zu den Einstellungen",
+				onPress: openPushSettings,
+			};
+	const openDeliveryInfo = () => setShowDeliveryInfo(true);
+	const closeDeliveryInfo = () => setShowDeliveryInfo(false);
 	const goBack = () => goBackOrReplace(router, "/home");
 	const visibleInbox = useMemo(() => inbox ?? [], [inbox]);
 
@@ -491,23 +488,24 @@ export default function NotificationsScreen() {
 			<ScreenScroll topPadding={72} bottomPadding={120} horizontalPadding={24}>
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
 				<View className="gap-5">
-					<View className="gap-2">
-						<Text className="font-poppins font-semibold text-body-2 text-text">
-							In-App-Postfach
-						</Text>
-						<Text className="font-poppins text-body-4 text-secondary-text">
-							Deine In-App-Mitteilungen sind immer aktiv. Welche Kategorien hier
-							erscheinen, legst du in den Mitteilungseinstellungen fest.
-						</Text>
-					</View>
 					<CategoryTabs value={category} onChange={setCategory} />
-					{showWarning ? (
-						<WarningBanner
-							title="Nur In-App-Mitteilungen aktiv"
-							description="Deine Mitteilungen erscheinen weiterhin hier im Dayova-Postfach. Aktiviere System-Mitteilungen, um sie zusätzlich außerhalb der App zu erhalten."
-							ctaLabel={warningCtaLabel}
-							onPressCta={openNotificationFix}
-						/>
+					{pushDeliveryState.showDisabledStatus ? (
+						<TouchableOpacity
+							accessibilityLabel="Push-Mitteilungen sind aus. Details öffnen"
+							accessibilityRole="button"
+							activeOpacity={0.72}
+							className="flex-row items-center gap-2 self-start rounded-full bg-muted px-4 py-2.5"
+							onPress={openDeliveryInfo}
+						>
+							<BellOff
+								size={17}
+								color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
+								strokeWidth={2.2}
+							/>
+							<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
+								Push aus
+							</Text>
+						</TouchableOpacity>
 					) : null}
 
 					{inbox === null ? (
@@ -517,12 +515,12 @@ export default function NotificationsScreen() {
 					) : null}
 
 					{inbox !== null && visibleInbox.length === 0 ? (
-						<View className="items-center rounded-[24px] bg-card px-6 py-11">
+						<View className="items-center rounded-[24px] bg-card px-6 py-7">
 							<Text className="text-center font-poppins font-semibold text-body-2 text-text">
-								Keine Mitteilungen
+								Noch keine Mitteilungen
 							</Text>
 							<Text className="mt-2 text-center font-poppins text-body-4 text-secondary-text">
-								Neue Erinnerungen erscheinen hier automatisch.
+								Hier erscheinen deine Erinnerungen.
 							</Text>
 						</View>
 					) : null}
@@ -541,6 +539,12 @@ export default function NotificationsScreen() {
 					))}
 				</View>
 			</ScreenScroll>
+			<NotificationDeliveryInfoSheet
+				visible={showDeliveryInfo}
+				pushStatus={pushDeliveryState.status}
+				onClose={closeDeliveryInfo}
+				pushAction={pushAction}
+			/>
 		</Screen>
 	);
 }

@@ -1,3 +1,4 @@
+import type { NotificationPermissionStatus } from "./notification-permissions";
 import type { NotificationPlanningPreferences } from "./notification-planner";
 
 export type NotificationPreferenceKey = keyof NotificationPlanningPreferences;
@@ -14,6 +15,17 @@ export type NotificationPreferenceControlState = {
 	forgottenEventDisabled: boolean;
 };
 
+export type PushNotificationDeliveryStatus =
+	| "active"
+	| "disabled"
+	| "checking"
+	| "unavailable";
+
+export type PushNotificationDeliveryState = {
+	status: PushNotificationDeliveryStatus;
+	showDisabledStatus: boolean;
+};
+
 const notificationPreferenceKeys: NotificationPreferenceKey[] = [
 	"systemNotificationsEnabled",
 	"dailyBriefingEnabled",
@@ -25,6 +37,33 @@ const notificationPreferenceKeys: NotificationPreferenceKey[] = [
 	"reminderOffsetMinutes",
 	"forgottenEventEnabled",
 ];
+
+const pushDeliveryStatusByPermission: Record<
+	NotificationPermissionStatus,
+	PushNotificationDeliveryState["status"]
+> = {
+	checking: "checking",
+	granted: "active",
+	denied: "disabled",
+	unavailable: "unavailable",
+};
+
+export const getPushNotificationDeliveryState = ({
+	preferenceEnabled,
+	permissionStatus,
+}: {
+	preferenceEnabled: boolean;
+	permissionStatus: NotificationPermissionStatus;
+}): PushNotificationDeliveryState => {
+	const status = preferenceEnabled
+		? pushDeliveryStatusByPermission[permissionStatus]
+		: "disabled";
+
+	return {
+		status,
+		showDisabledStatus: status === "disabled",
+	};
+};
 
 export const getNotificationPreferenceControlState = ({
 	preferences,

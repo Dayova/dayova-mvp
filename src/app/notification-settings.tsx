@@ -1,5 +1,4 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import type * as ExpoNotifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -12,42 +11,43 @@ import {
 	View,
 } from "react-native";
 import { api } from "#convex/_generated/api";
+import { NotificationDeliveryInfoSheet } from "~/components/notification-delivery-info-sheet";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
-import { ChevronDown, Timer } from "~/components/ui/icon";
+import {
+	Bell,
+	Check,
+	ChevronDown,
+	Info,
+	Mail,
+	Timer,
+} from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Switch } from "~/components/ui/switch";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
 import { goBackOrReplace } from "~/lib/navigation";
+import {
+	getNotificationPermissionStatus,
+	getNotificationsModule,
+	hasNotificationPermission,
+	useNotificationPermissionStatus,
+} from "~/lib/notification-permissions";
 import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
 import {
 	applyNotificationPreferencePatch,
 	clearConfirmedNotificationPreferencePatch,
 	getNotificationPreferenceControlState,
 	getNotificationPreferencePatchKeys,
+	getPushNotificationDeliveryState,
 	type NotificationPreferenceKey,
 	removeNotificationPreferencePatchKeys,
 } from "~/lib/notification-preferences";
 
 const OFFSET_OPTIONS = [5, 10, 15, 30, 60];
-
-const getNotificationsModule = () => {
-	try {
-		return require("expo-notifications") as typeof ExpoNotifications;
-	} catch {
-		return null;
-	}
-};
-
-const hasNotificationPermission = (
-	notifications: typeof ExpoNotifications,
-	permissions: ExpoNotifications.NotificationPermissionsStatus,
-) =>
-	permissions.granted ||
-	permissions.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL;
 
 const timeToDate = (time: string) => {
 	const match = /^(\d{1,2}):(\d{2})$/.exec(time);
@@ -79,27 +79,6 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
 	);
 }
 
-function SectionIntro({
-	title,
-	description,
-}: {
-	title: string;
-	description?: string;
-}) {
-	return (
-		<View className="gap-2">
-			<Text className="font-poppins font-semibold text-body-3 text-text">
-				{title}
-			</Text>
-			{description ? (
-				<Text className="font-poppins text-body-4 text-secondary-text">
-					{description}
-				</Text>
-			) : null}
-		</View>
-	);
-}
-
 const addPendingPreferenceKeys = (
 	currentKeys: NotificationPreferenceKey[],
 	nextKeys: NotificationPreferenceKey[],
@@ -112,42 +91,46 @@ const removePendingPreferenceKeys = (
 
 const SwitchRow = memo(function SwitchRow({
 	label,
-	description,
 	value,
 	disabled,
 	onValueChange,
 }: {
 	label: string;
-	description?: string;
 	value: boolean;
 	disabled?: boolean;
 	onValueChange: (value: boolean) => void;
 }) {
 	return (
-		<SettingsCard>
-			<View className="flex-row items-center justify-between gap-3">
-				<View className="flex-1 gap-1">
-					<Text
-						className="font-poppins font-semibold text-body-3 text-text"
-						numberOfLines={2}
-					>
-						{label}
-					</Text>
-					{description ? (
-						<Text className="font-poppins text-body-4 text-secondary-text">
-							{description}
-						</Text>
-					) : null}
-				</View>
-				<Switch
-					value={value}
-					disabled={disabled}
-					onValueChange={onValueChange}
-				/>
-			</View>
-		</SettingsCard>
+		<View className="min-h-16 flex-row items-center justify-between gap-3 py-3">
+			<Text
+				className="flex-1 font-poppins font-semibold text-body-3 text-text"
+				numberOfLines={2}
+			>
+				{label}
+			</Text>
+			<Switch value={value} disabled={disabled} onValueChange={onValueChange} />
+		</View>
 	);
 });
+
+function SettingsDivider() {
+	return <View className="h-px bg-border" />;
+}
+
+function AlwaysOnBadge() {
+	return (
+		<View className="flex-row items-center gap-1 rounded-full bg-success-subtle px-3 py-1.5">
+			<Check
+				size={13}
+				color={DAYOVA_DESIGN_SYSTEM.colors.success}
+				strokeWidth={2.6}
+			/>
+			<Text className="font-poppins font-semibold text-body-5 text-success">
+				Immer an
+			</Text>
+		</View>
+	);
+}
 
 export default function NotificationSettingsScreen() {
 	const router = useRouter();
@@ -164,6 +147,9 @@ export default function NotificationSettingsScreen() {
 	const [optimisticPreferencePatch, setOptimisticPreferencePatch] = useState<
 		Partial<NotificationPlanningPreferences>
 	>({});
+	const { notificationPermissionStatus, setNotificationPermissionStatus } =
+		useNotificationPermissionStatus();
+	const [showDeliveryInfo, setShowDeliveryInfo] = useState(false);
 	const [showBriefingTimePicker, setShowBriefingTimePicker] = useState(false);
 	const [showReminderOffsetSheet, setShowReminderOffsetSheet] = useState(false);
 	const visiblePreferences = useMemo(
@@ -229,8 +215,9 @@ export default function NotificationSettingsScreen() {
 			if (!notifications) {
 				Alert.alert(
 					"Mitteilungen noch nicht bereit",
-					"Bitte baue den iOS/Android Dev Client einmal neu, damit System-Mitteilungen verfügbar sind.",
+					"Bitte baue den iOS/Android Dev Client einmal neu, damit Push-Mitteilungen verfügbar sind.",
 				);
+				setNotificationPermissionStatus("unavailable");
 				await update({ systemNotificationsEnabled: false });
 				return;
 			}
@@ -254,9 +241,10 @@ export default function NotificationSettingsScreen() {
 				: await notifications.requestPermissionsAsync();
 
 			if (!hasNotificationPermission(notifications, permissions)) {
+				setNotificationPermissionStatus("denied");
 				Alert.alert(
-					"System-Mitteilungen sind deaktiviert",
-					"Du bekommst Mitteilungen weiterhin im Dayova-Postfach. Aktiviere System-Mitteilungen in den Einstellungen, wenn Dayova dich außerhalb der App erinnern soll.",
+					"Push-Mitteilungen sind deaktiviert",
+					"Aktiviere Mitteilungen in den Systemeinstellungen, um sie auch außerhalb von Dayova zu erhalten.",
 					[
 						{ text: "Abbrechen", style: "cancel" },
 						{ text: "Einstellungen", onPress: () => Linking.openSettings() },
@@ -266,9 +254,12 @@ export default function NotificationSettingsScreen() {
 				return;
 			}
 
+			setNotificationPermissionStatus(
+				getNotificationPermissionStatus(notifications, permissions),
+			);
 			await update({ systemNotificationsEnabled: true });
 		},
-		[update],
+		[setNotificationPermissionStatus, update],
 	);
 
 	const handleDailyBriefingEnabledChange = useCallback(
@@ -331,6 +322,19 @@ export default function NotificationSettingsScreen() {
 		setShowReminderOffsetSheet(false);
 	}, []);
 
+	const openDeliveryInfo = useCallback(() => {
+		setShowDeliveryInfo(true);
+	}, []);
+
+	const closeDeliveryInfo = useCallback(() => {
+		setShowDeliveryInfo(false);
+	}, []);
+
+	const enablePushFromInfo = useCallback(() => {
+		closeDeliveryInfo();
+		void updateSystemNotifications(true);
+	}, [closeDeliveryInfo, updateSystemNotifications]);
+
 	const handleBriefingTimeChange = useCallback(
 		(event: { type: "set" | "dismissed" }, selectedDate?: Date) => {
 			if (Platform.OS === "android" || event.type === "dismissed") {
@@ -353,6 +357,15 @@ export default function NotificationSettingsScreen() {
 		preferences: preferencesForRender,
 		pendingKeys: pendingPreferenceKeys,
 	});
+	const pushDeliveryState = getPushNotificationDeliveryState({
+		preferenceEnabled:
+			preferencesForRender?.systemNotificationsEnabled ?? false,
+		permissionStatus: notificationPermissionStatus,
+	});
+	const pushSwitchValue =
+		pushDeliveryState.status === "active" ||
+		(pushDeliveryState.status === "checking" &&
+			(preferencesForRender?.systemNotificationsEnabled ?? false));
 
 	return (
 		<Screen>
@@ -361,154 +374,203 @@ export default function NotificationSettingsScreen() {
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
 
 				{preferencesForRender ? (
-					<View className="gap-6">
-						<SwitchRow
-							label="System-Mitteilungen"
-							description="Erhalte deine ausgewählten Mitteilungen zusätzlich außerhalb von Dayova. Das In-App-Postfach bleibt immer aktiv."
-							value={preferencesForRender.systemNotificationsEnabled}
-							disabled={controlState.systemNotificationsDisabled}
-							onValueChange={updateSystemNotificationsFromSwitch}
-						/>
-
-						<SectionIntro
-							title="In-App-Mitteilungen"
-							description="Dein Dayova-Postfach ist immer aktiv. Wähle aus, welche Mitteilungen dort erscheinen. Mit aktivierten System-Mitteilungen erhältst du sie zusätzlich außerhalb der App."
-						/>
-
-						<View className="gap-6">
-							<SectionIntro
-								title="Tagesüberblick"
-								description="Dein Tagesüberblick zeigt dir alle Lernzeiten, Prüfungen, Abgabetermine und Hausaufgaben-Bearbeitungszeiten, die für den Tag anstehen."
-							/>
-							<SwitchRow
-								label="Tagesüberblick"
-								value={preferencesForRender.dailyBriefingEnabled}
-								disabled={controlState.dailyBriefingDisabled}
-								onValueChange={handleDailyBriefingEnabledChange}
-							/>
-							<View className="gap-4">
-								<Text className="font-poppins text-body-4 text-secondary-text">
-									Wähle aus, wann du deinen Tagesüberblick erhalten möchtest.
+					<View className="gap-8">
+						<View className="gap-3">
+							<View className="flex-row items-center justify-between">
+								<Text className="font-poppins font-semibold text-body-1 text-text">
+									Zustellung
 								</Text>
 								<TouchableOpacity
+									accessibilityLabel="Zustellung erklären"
 									accessibilityRole="button"
-									accessibilityLabel="Uhrzeit für Tagesüberblick ändern"
-									accessibilityState={{
-										disabled: controlState.dailyBriefingTimeDisabled,
-									}}
-									activeOpacity={0.84}
-									className="flex-row items-center justify-between rounded-[24px] bg-card"
-									disabled={controlState.dailyBriefingTimeDisabled}
-									onPress={openBriefingTimePicker}
-									// Platform-specific row density and native shadow values are
-									// runtime/platform decisions, not static design tokens.
-									style={{
-										minHeight: Platform.OS === "ios" ? 64 : 56,
-										paddingHorizontal: Platform.OS === "ios" ? 24 : 20,
-										...(Platform.OS === "ios" ? { paddingVertical: 16 } : {}),
-										boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)",
-									}}
+									activeOpacity={0.72}
+									className="h-10 w-10 items-center justify-center rounded-full bg-system-subtle"
+									hitSlop={8}
+									onPress={openDeliveryInfo}
 								>
-									<Text
-										className="flex-1 font-poppins font-semibold text-body-3 text-text"
-										numberOfLines={1}
-									>
-										Uhrzeit
-									</Text>
-									<View className="flex-row items-center gap-2">
-										<Text className="font-poppins text-body-4 text-secondary-text">
-											{preferencesForRender.dailyBriefingTime}
-										</Text>
-										<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
-									</View>
+									<Info
+										size={20}
+										color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+										strokeWidth={2.2}
+									/>
 								</TouchableOpacity>
 							</View>
+							<SettingsCard>
+								<View className="min-h-16 flex-row items-center gap-3 py-2">
+									<View className="h-10 w-10 items-center justify-center rounded-full bg-system-subtle">
+										<Mail
+											size={20}
+											color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+											strokeWidth={2.2}
+										/>
+									</View>
+									<Text className="flex-1 font-poppins font-semibold text-body-3 text-text">
+										Dayova-Postfach
+									</Text>
+									<AlwaysOnBadge />
+								</View>
+								<SettingsDivider />
+								<View className="min-h-16 flex-row items-center gap-3 py-2">
+									<View className="h-10 w-10 items-center justify-center rounded-full bg-system-subtle">
+										<Bell
+											size={20}
+											color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+											strokeWidth={2.2}
+										/>
+									</View>
+									<View className="flex-1">
+										<Text className="font-poppins font-semibold text-body-3 text-text">
+											Push-Mitteilungen
+										</Text>
+										<Text className="font-poppins text-body-5 text-secondary-text">
+											Auch außerhalb der App
+										</Text>
+									</View>
+									<Switch
+										value={pushSwitchValue}
+										disabled={controlState.systemNotificationsDisabled}
+										onValueChange={updateSystemNotificationsFromSwitch}
+									/>
+								</View>
+							</SettingsCard>
+						</View>
 
-							<SectionIntro
-								title="Mitteilungen anpassen"
-								description="Hier kannst du entscheiden, woran dich die App erinnern soll."
-							/>
-							<SwitchRow
-								label="Vor Prüfung"
-								value={preferencesForRender.beforeExamEnabled}
-								disabled={controlState.beforeExamDisabled}
-								onValueChange={handleBeforeExamEnabledChange}
-							/>
-							<SwitchRow
-								label="Vor Lernzeit"
-								value={preferencesForRender.beforeLearningTimeEnabled}
-								disabled={controlState.beforeLearningTimeDisabled}
-								onValueChange={handleBeforeLearningTimeEnabledChange}
-							/>
-							<SwitchRow
-								label="Vor Bearbeitung Hausaufgabe"
-								value={preferencesForRender.beforeHomeworkWorkEnabled}
-								disabled={controlState.beforeHomeworkWorkDisabled}
-								onValueChange={handleBeforeHomeworkWorkEnabledChange}
-							/>
-							<SwitchRow
-								label="Vor Abgabe Hausaufgabe"
-								value={preferencesForRender.beforeHomeworkDueEnabled}
-								disabled={controlState.beforeHomeworkDueDisabled}
-								onValueChange={handleBeforeHomeworkDueEnabledChange}
-							/>
-
-							<SectionIntro
-								description="Hier kannst du einstellen, wie viele Minuten vorher dich die App an einzelne Ereignisse erinnern soll."
-								title="Erinnerungszeit"
-							/>
-							<TouchableOpacity
-								accessibilityRole="button"
-								accessibilityLabel="Erinnerungszeit ändern"
-								accessibilityState={{
-									disabled: controlState.reminderOffsetDisabled,
-								}}
-								activeOpacity={0.84}
-								className="flex-row items-center justify-between rounded-[24px] bg-card"
-								disabled={controlState.reminderOffsetDisabled}
-								onPress={openReminderOffsetSheet}
-								// Platform-specific row density and native shadow values are
-								// runtime/platform decisions, not static design tokens.
-								style={{
-									minHeight: Platform.OS === "ios" ? 64 : 56,
-									paddingHorizontal: Platform.OS === "ios" ? 24 : 20,
-									...(Platform.OS === "ios" ? { paddingVertical: 16 } : {}),
-									boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)",
-								}}
-							>
-								<Text
-									className="flex-1 font-poppins font-semibold text-body-3 text-text"
-									numberOfLines={1}
-								>
-									Vorher erinnern
+						<View className="gap-4">
+							<View className="flex-row items-center justify-between gap-3">
+								<Text className="font-poppins font-semibold text-body-1 text-text">
+									Mitteilungsarten
 								</Text>
-								<View className="flex-row items-center gap-2">
+								<View className="rounded-full bg-system-subtle px-3 py-1.5">
+									<Text className="font-poppins font-semibold text-body-5 text-primary">
+										{pushDeliveryState.status === "active"
+											? "Postfach + Push"
+											: "Nur Postfach"}
+									</Text>
+								</View>
+							</View>
+
+							<SettingsCard>
+								<SwitchRow
+									label="Tagesüberblick"
+									value={preferencesForRender.dailyBriefingEnabled}
+									disabled={controlState.dailyBriefingDisabled}
+									onValueChange={handleDailyBriefingEnabledChange}
+								/>
+								{preferencesForRender.dailyBriefingEnabled ? (
+									<>
+										<SettingsDivider />
+										<TouchableOpacity
+											accessibilityRole="button"
+											accessibilityLabel="Uhrzeit für Tagesüberblick ändern"
+											accessibilityState={{
+												disabled: controlState.dailyBriefingTimeDisabled,
+											}}
+											activeOpacity={0.72}
+											className="min-h-14 flex-row items-center gap-3 py-3"
+											disabled={controlState.dailyBriefingTimeDisabled}
+											onPress={openBriefingTimePicker}
+										>
+											<Timer
+												size={18}
+												color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
+												strokeWidth={2}
+											/>
+											<Text className="flex-1 font-poppins text-body-4 text-secondary-text">
+												Täglich
+											</Text>
+											<Text className="font-poppins font-semibold text-body-4 text-text">
+												{preferencesForRender.dailyBriefingTime}
+											</Text>
+											<ChevronDown
+												size={16}
+												color={DAYOVA_DESIGN_SYSTEM.colors.path3}
+												strokeWidth={2}
+											/>
+										</TouchableOpacity>
+									</>
+								) : null}
+							</SettingsCard>
+
+							<SettingsCard>
+								<SwitchRow
+									label="Vor Prüfung"
+									value={preferencesForRender.beforeExamEnabled}
+									disabled={controlState.beforeExamDisabled}
+									onValueChange={handleBeforeExamEnabledChange}
+								/>
+								<SettingsDivider />
+								<SwitchRow
+									label="Vor Lernzeit"
+									value={preferencesForRender.beforeLearningTimeEnabled}
+									disabled={controlState.beforeLearningTimeDisabled}
+									onValueChange={handleBeforeLearningTimeEnabledChange}
+								/>
+								<SettingsDivider />
+								<SwitchRow
+									label="Vor Bearbeitung Hausaufgabe"
+									value={preferencesForRender.beforeHomeworkWorkEnabled}
+									disabled={controlState.beforeHomeworkWorkDisabled}
+									onValueChange={handleBeforeHomeworkWorkEnabledChange}
+								/>
+								<SettingsDivider />
+								<SwitchRow
+									label="Vor Abgabe Hausaufgabe"
+									value={preferencesForRender.beforeHomeworkDueEnabled}
+									disabled={controlState.beforeHomeworkDueDisabled}
+									onValueChange={handleBeforeHomeworkDueEnabledChange}
+								/>
+							</SettingsCard>
+
+							<SettingsCard>
+								<TouchableOpacity
+									accessibilityRole="button"
+									accessibilityLabel="Erinnerungszeit ändern"
+									accessibilityState={{
+										disabled: controlState.reminderOffsetDisabled,
+									}}
+									activeOpacity={0.72}
+									className="min-h-16 flex-row items-center gap-3 py-3"
+									disabled={controlState.reminderOffsetDisabled}
+									onPress={openReminderOffsetSheet}
+								>
+									<Text className="flex-1 font-poppins font-semibold text-body-3 text-text">
+										Vorher erinnern
+									</Text>
 									<Text className="font-poppins text-body-4 text-secondary-text">
 										{preferencesForRender.reminderOffsetMinutes} min
 									</Text>
-									<ChevronDown size={16} color="#8C8F98" strokeWidth={2} />
-								</View>
-							</TouchableOpacity>
-
-							<SectionIntro
-								title="Event vergessen"
-								description="Falls du mal eine Aufgabe vergessen hast, erinnert Dayova dich nach dem Ende nochmal freundlich daran."
-							/>
-							<SwitchRow
-								label="Event vergessen"
-								value={preferencesForRender.forgottenEventEnabled}
-								disabled={controlState.forgottenEventDisabled}
-								onValueChange={handleForgottenEventEnabledChange}
-							/>
+									<ChevronDown
+										size={16}
+										color={DAYOVA_DESIGN_SYSTEM.colors.path3}
+										strokeWidth={2}
+									/>
+								</TouchableOpacity>
+								<SettingsDivider />
+								<SwitchRow
+									label="Nach verpasstem Ereignis"
+									value={preferencesForRender.forgottenEventEnabled}
+									disabled={controlState.forgottenEventDisabled}
+									onValueChange={handleForgottenEventEnabledChange}
+								/>
+							</SettingsCard>
 						</View>
 					</View>
 				) : (
 					<View className="items-center py-10">
-						<ActivityIndicator color="#00BAFF" />
+						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
 					</View>
 				)}
 			</ScreenScroll>
 
+			<NotificationDeliveryInfoSheet
+				visible={showDeliveryInfo}
+				pushStatus={pushDeliveryState.status}
+				onClose={closeDeliveryInfo}
+				pushAction={{
+					label: "Push-Mitteilungen aktivieren",
+					onPress: enablePushFromInfo,
+				}}
+			/>
 			<DateTimePickerSheet
 				visible={showBriefingTimePicker}
 				value={briefingTimeDate}
@@ -528,7 +590,11 @@ export default function NotificationSettingsScreen() {
 				renderOptionIcon={(_, isSelected) => (
 					<Timer
 						size={19}
-						color={isSelected ? "#00BAFF" : "#697586"}
+						color={
+							isSelected
+								? DAYOVA_DESIGN_SYSTEM.colors.primary
+								: DAYOVA_DESIGN_SYSTEM.colors.secondaryText
+						}
 						strokeWidth={2}
 					/>
 				)}

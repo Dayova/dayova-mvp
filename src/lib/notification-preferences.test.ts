@@ -5,6 +5,7 @@ import {
 	clearConfirmedNotificationPreferencePatch,
 	getNotificationPreferenceControlState,
 	getNotificationPreferencePatchKeys,
+	getPushNotificationDeliveryState,
 	removeNotificationPreferencePatchKeys,
 } from "./notification-preferences";
 
@@ -21,6 +22,45 @@ const preferences: NotificationPlanningPreferences = {
 };
 
 describe("notification preference pending state", () => {
+	test.each([
+		{
+			preferenceEnabled: true,
+			permissionStatus: "checking" as const,
+			expected: { status: "checking", showDisabledStatus: false },
+		},
+		{
+			preferenceEnabled: false,
+			permissionStatus: "checking" as const,
+			expected: { status: "disabled", showDisabledStatus: true },
+		},
+		{
+			preferenceEnabled: true,
+			permissionStatus: "denied" as const,
+			expected: { status: "disabled", showDisabledStatus: true },
+		},
+		{
+			preferenceEnabled: true,
+			permissionStatus: "granted" as const,
+			expected: { status: "active", showDisabledStatus: false },
+		},
+		{
+			preferenceEnabled: true,
+			permissionStatus: "unavailable" as const,
+			expected: { status: "unavailable", showDisabledStatus: false },
+		},
+	])("derives the compact Push status without a false loading warning", ({
+		preferenceEnabled,
+		permissionStatus,
+		expected,
+	}) => {
+		expect(
+			getPushNotificationDeliveryState({
+				preferenceEnabled,
+				permissionStatus,
+			}),
+		).toEqual(expected);
+	});
+
 	test("system delivery does not disable always-on in-app preferences", () => {
 		expect(
 			getNotificationPreferenceControlState({

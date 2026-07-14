@@ -23,6 +23,7 @@ import {
 	GlobeIcon,
 	GreekHelmetIcon,
 	Home02Icon,
+	InformationCircleIcon,
 	LanguageCircleIcon,
 	Logout03Icon,
 	Mail01Icon,
@@ -33,6 +34,7 @@ import {
 	NotebookIcon,
 	NoteIcon,
 	Notification01Icon,
+	NotificationOff03Icon,
 	PaintBoardIcon,
 	PaintBrush01Icon,
 	PencilIcon,
@@ -71,6 +73,7 @@ export const ArrowRight = createIcon(ArrowRight01Icon);
 export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
 export const Backpack = createIcon(Backpack03Icon);
 export const Bell = createIcon(Notification01Icon);
+export const BellOff = createIcon(NotificationOff03Icon);
 export const BookOpen = createIcon(BookOpen01Icon);
 export const Bulb = createIcon(BulbIcon);
 export const CalendarDays = createIcon(Calendar03Icon);
@@ -93,6 +96,7 @@ export const GraduationCap = createIcon(Mortarboard01Icon);
 export const GreekHelmet = createIcon(GreekHelmetIcon);
 export const Globe = createIcon(GlobeIcon);
 export const Home = createIcon(Home02Icon);
+export const Info = createIcon(InformationCircleIcon);
 export const Language = createIcon(LanguageCircleIcon);
 export const Logout = createIcon(Logout03Icon);
 export const Maps = createIcon(MapsCircle01Icon);
