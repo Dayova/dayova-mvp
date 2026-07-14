@@ -431,7 +431,7 @@ const getAnalyticsEntryKind = (entry: DayEntry) =>
 export default function HomeScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const { colors } = useDayovaTheme();
+	const { colors, isDark } = useDayovaTheme();
 	const { width, height } = useWindowDimensions();
 	const { user } = useAuth();
 	const { capture } = useValidationAnalytics();
@@ -582,6 +582,19 @@ export default function HomeScreen() {
 	const timelineRowHeight = 82 * compactScale;
 	const timelineBlockHeight = 70 * compactScale;
 	const timelineTopOffset = 62 * compactScale;
+	const timelineMarkerColor = isDark
+		? "rgba(255,255,255,0.10)"
+		: "rgba(0,0,0,0.08)";
+	const timelineDayMarkerColor = isDark
+		? "rgba(255,255,255,0.16)"
+		: "rgba(0,0,0,0.12)";
+	const timelineHatchColor = isDark
+		? "rgba(255,255,255,0.12)"
+		: "rgba(0,0,0,0.10)";
+	const timelineLearningCardColor = isDark ? colors.uebenSubtle : "#F4ECFF";
+	const timelineHomeworkCardColor = isDark
+		? colors.hausaufgabeSubtle
+		: "#F3E8F0";
 	const dayStripGap = 10 * scheduleScale;
 	const getDayStripItemWidth = useCallback(
 		(_isToday?: boolean) => 42 * scheduleScale,
@@ -1249,8 +1262,8 @@ export default function HomeScreen() {
 													width: hour === 24 ? 0 : 1,
 													backgroundColor:
 														hour === 0
-															? "rgba(0,0,0,0.12)"
-															: "rgba(0,0,0,0.08)",
+															? timelineDayMarkerColor
+															: timelineMarkerColor,
 												}}
 											/>
 										)),
@@ -1294,7 +1307,9 @@ export default function HomeScreen() {
 														),
 														height: timelineBlockHeight,
 														padding: 12 * screenScale,
-														backgroundColor: learning ? "#F4ECFF" : "#F3E8F0",
+														backgroundColor: learning
+															? timelineLearningCardColor
+															: timelineHomeworkCardColor,
 													}}
 												>
 													<Icon
@@ -1436,12 +1451,13 @@ export default function HomeScreen() {
 										{HATCH_LINES.map((line, index) => (
 											<View
 												key={line}
-												className="absolute bg-black/10"
+												className="absolute"
 												style={{
 													width: 2 * screenScale,
 													height: 49 * screenScale,
 													left: index * 8 * scheduleScale,
 													top: -9 * screenScale,
+													backgroundColor: timelineHatchColor,
 													transform: [{ rotate: "24deg" }],
 												}}
 											/>
