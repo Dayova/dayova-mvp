@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
 	getLearningPathNodePresentation,
 	LEARNING_PATH_BREATHING,
+	LEARNING_PATH_SEGMENTED_HALO_TONES,
 } from "./learning-path-node-presentation";
 
 describe("getLearningPathNodePresentation", () => {
@@ -64,6 +65,15 @@ describe("getLearningPathNodePresentation", () => {
 				motion: "breathe",
 				tone: "blue",
 			},
+		]);
+	});
+
+	test("the current-session halo alternates gray and blue across four separate arcs", () => {
+		expect(LEARNING_PATH_SEGMENTED_HALO_TONES).toEqual([
+			"gray",
+			"blue",
+			"gray",
+			"blue",
 		]);
 	});
 

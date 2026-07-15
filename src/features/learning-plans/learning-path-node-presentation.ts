@@ -19,6 +19,13 @@ export const LEARNING_PATH_BREATHING = {
 	minScale: 0.96,
 } as const;
 
+export const LEARNING_PATH_SEGMENTED_HALO_TONES = [
+	"gray",
+	"blue",
+	"gray",
+	"blue",
+] as const satisfies readonly LearningPathNodeTone[];
+
 export const LEARNING_PATH_PHASE_ICON: Record<
 	SessionPhase,
 	LearningPathNodeIcon

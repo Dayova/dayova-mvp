@@ -40,6 +40,7 @@ import {
 	getLearningPathNodePresentation,
 	LEARNING_PATH_BREATHING,
 	LEARNING_PATH_PHASE_ICON,
+	LEARNING_PATH_SEGMENTED_HALO_TONES,
 	type LearningPathNodeHalo,
 	type LearningPathNodeIcon,
 	type LearningPathNodeState,
@@ -289,6 +290,12 @@ const STEP_SELECTION_HEIGHT = 86;
 const STEP_SELECTION_STROKE_WIDTH = 7;
 const STEP_HALO_PATH =
 	"M46 3.5C69.4721 3.5 88.5 21.1848 88.5 43C88.5 64.8152 69.4721 82.5 46 82.5C22.5279 82.5 3.5 64.8152 3.5 43C3.5 21.1848 22.5279 3.5 46 3.5Z";
+const STEP_SEGMENTED_HALO_PATHS = [
+	"M40 4C21.8 6.5 7.5 19.5 3.9 36.5",
+	"M52 4.1C69.5 6.2 83.5 18.8 87.6 35.2",
+	"M88.1 51.2C83.9 68.4 69.3 80.3 52 82",
+	"M39.7 81.4C22.1 78.8 8.1 66.2 4 49.8",
+] as const;
 
 function StepHalo({
 	variant,
@@ -303,47 +310,36 @@ function StepHalo({
 			viewBox={`0 0 ${STEP_SELECTION_WIDTH} ${STEP_SELECTION_HEIGHT}`}
 			style={{ position: "absolute", left: 0, top: 0 }}
 		>
-			<Path
-				d={STEP_HALO_PATH}
-				fill="none"
-				stroke={
-					variant === "solid"
-						? DAYOVA_DESIGN_SYSTEM.colors.path4
-						: DAYOVA_DESIGN_SYSTEM.colors.path1
-				}
-				strokeWidth={STEP_SELECTION_STROKE_WIDTH}
-			/>
 			{variant === "solid" ? (
-				<Path
-					d={STEP_HALO_PATH}
-					fill="none"
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
-					strokeWidth={3.5}
-				/>
-			) : (
 				<>
 					<Path
-						d="M51 3.9C68.8 5.7 83.2 17.3 87.4 32.9"
+						d={STEP_HALO_PATH}
 						fill="none"
-						stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-						strokeLinecap="round"
+						stroke={DAYOVA_DESIGN_SYSTEM.colors.path4}
 						strokeWidth={STEP_SELECTION_STROKE_WIDTH}
 					/>
 					<Path
-						d="M88.1 52.4C83.8 68.7 69.1 80.5 51.5 82"
+						d={STEP_HALO_PATH}
 						fill="none"
-						stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-						strokeLinecap="round"
-						strokeWidth={STEP_SELECTION_STROKE_WIDTH}
-					/>
-					<Path
-						d="M34.3 80.9C18.6 76.3 7.2 64.3 4.1 49.1"
-						fill="none"
-						stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-						strokeLinecap="round"
-						strokeWidth={STEP_SELECTION_STROKE_WIDTH}
+						stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={3.5}
 					/>
 				</>
+			) : (
+				STEP_SEGMENTED_HALO_PATHS.map((path, index) => (
+					<Path
+						key={path}
+						d={path}
+						fill="none"
+						stroke={
+							LEARNING_PATH_SEGMENTED_HALO_TONES[index] === "blue"
+								? DAYOVA_DESIGN_SYSTEM.colors.path6
+								: DAYOVA_DESIGN_SYSTEM.colors.path1
+						}
+						strokeLinecap="round"
+						strokeWidth={STEP_SELECTION_STROKE_WIDTH}
+					/>
+				))
 			)}
 		</Svg>
 	);
@@ -469,7 +465,7 @@ function StepPuck({
 					width: puckWidth,
 					height: faceHeight,
 					borderRadius: faceHeight / 2,
-					backgroundColor: faceColor,
+					backgroundColor: baseColor,
 					alignItems: "center",
 					justifyContent: "center",
 					overflow: "hidden",
@@ -478,18 +474,31 @@ function StepPuck({
 				<View
 					style={{
 						position: "absolute",
-						top: -9,
-						right: isLocked ? -7 : -4,
-						width: isLocked ? 17 : 21,
-						height: isLocked ? 42 : 48,
-						borderRadius: 12,
-						backgroundColor: isLocked
-							? DAYOVA_DESIGN_SYSTEM.colors.light1
-							: DAYOVA_DESIGN_SYSTEM.colors.path7,
-						opacity: isLocked ? 0.2 : 0.68,
-						transform: [{ rotate: "31deg" }],
+						left: 4,
+						top: 3,
+						width: puckWidth - 8,
+						height: faceHeight - 7,
+						borderRadius: (faceHeight - 7) / 2,
+						backgroundColor: faceColor,
+						overflow: "hidden",
 					}}
-				/>
+				>
+					<View
+						style={{
+							position: "absolute",
+							top: -9,
+							right: isLocked ? -5 : -2,
+							width: isLocked ? 17 : 21,
+							height: isLocked ? 42 : 48,
+							borderRadius: 12,
+							backgroundColor: isLocked
+								? DAYOVA_DESIGN_SYSTEM.colors.light1
+								: DAYOVA_DESIGN_SYSTEM.colors.path7,
+							opacity: isLocked ? 0.2 : 0.68,
+							transform: [{ rotate: "31deg" }],
+						}}
+					/>
+				</View>
 				<Icon
 					size={isLocked ? 23 : 28}
 					color={iconColor}
