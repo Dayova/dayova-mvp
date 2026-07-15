@@ -1,4 +1,9 @@
-import { isClerkAPIResponseError, useClerk, useUser } from "@clerk/expo";
+import {
+	isClerkAPIResponseError,
+	useClerk,
+	useSignIn,
+	useUser,
+} from "@clerk/expo";
 import { useConvexAuth, useMutation } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import type React from "react";
@@ -20,6 +25,15 @@ import {
 import { setRememberSessionPersistence } from "~/lib/auth-token-cache";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import {
+	cancelPasswordReset as cancelPasswordResetAttempt,
+	completePasswordReset as submitPasswordReset,
+	resendPasswordResetCode as resendPasswordResetAttempt,
+	startPasswordReset as beginPasswordReset,
+	verifyPasswordResetCode as verifyPasswordResetAttempt,
+	verifyPasswordResetSecondFactor as verifyPasswordResetSecondFactorAttempt,
+	type PasswordResetCodeStage,
+} from "~/lib/password-reset";
 
 type LoginInput = {
 	email: string;
@@ -87,6 +101,14 @@ interface AuthContextType {
 	verifyProfileEmailCode: (code: string) => Promise<void>;
 	verifyEmailCode: (code: string) => Promise<AuthFlowResult>;
 	resendVerification: () => Promise<void>;
+	startPasswordReset: (email: string) => Promise<void>;
+	verifyPasswordResetCode: (code: string) => Promise<void>;
+	completePasswordReset: (
+		password: string,
+	) => Promise<{ status: "complete" | "needs_second_factor" }>;
+	verifyPasswordResetSecondFactor: (code: string) => Promise<void>;
+	resendPasswordResetCode: (stage: PasswordResetCodeStage) => Promise<void>;
+	cancelPasswordReset: () => Promise<void>;
 	logout: () => Promise<void>;
 }
 
@@ -351,6 +373,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	children,
 }) => {
 	const clerk = useClerk();
+	const { signIn: passwordResetSignIn } = useSignIn();
 	const posthog = usePostHog();
 	const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -958,6 +981,94 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			});
 		});
 
+	const getPasswordResetSignIn = () => {
+		if (!passwordResetSignIn) {
+			throw new Error("Authentifizierung ist noch nicht bereit.");
+		}
+		return passwordResetSignIn;
+	};
+
+	const startPasswordReset = async (email: string) =>
+		withSubmitting(async () => {
+			try {
+				setPendingVerification(null);
+				setPendingLoginStage(null);
+				await beginPasswordReset(getPasswordResetSignIn(), email);
+			} catch (error) {
+				logDiagnosticError("Failed to start password recovery.", error, {
+					source: "auth.passwordReset.start",
+					level: "warn",
+				});
+				throw new Error(
+					"Der Zurücksetzungscode konnte nicht gesendet werden. Bitte versuche es später erneut.",
+				);
+			}
+		});
+
+	const verifyPasswordResetCode = async (code: string) =>
+		withSubmitting(async () => {
+			try {
+				await verifyPasswordResetAttempt(getPasswordResetSignIn(), code);
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"Der Code konnte nicht bestätigt werden.",
+					),
+				);
+			}
+		});
+
+	const completePasswordReset = async (password: string) =>
+		withSubmitting(async () => {
+			try {
+				return await submitPasswordReset(getPasswordResetSignIn(), password);
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"Das Passwort konnte nicht zurückgesetzt werden.",
+					),
+				);
+			}
+		});
+
+	const verifyPasswordResetSecondFactor = async (code: string) =>
+		withSubmitting(async () => {
+			try {
+				await verifyPasswordResetSecondFactorAttempt(
+					getPasswordResetSignIn(),
+					code,
+				);
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"Die Sicherheitsprüfung konnte nicht abgeschlossen werden.",
+					),
+				);
+			}
+		});
+
+	const resendPasswordResetCode = async (stage: PasswordResetCodeStage) =>
+		withSubmitting(async () => {
+			try {
+				await resendPasswordResetAttempt(getPasswordResetSignIn(), stage);
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"Code konnte nicht erneut gesendet werden.",
+					),
+				);
+			}
+		});
+
+	const cancelPasswordReset = async () => {
+		if (!passwordResetSignIn) return;
+		await cancelPasswordResetAttempt(passwordResetSignIn);
+	};
+
 	const logout = async () => {
 		setPendingVerification(null);
 		setPendingLoginStage(null);
@@ -986,6 +1097,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				verifyProfileEmailCode,
 				verifyEmailCode,
 				resendVerification,
+				startPasswordReset,
+				verifyPasswordResetCode,
+				completePasswordReset,
+				verifyPasswordResetSecondFactor,
+				resendPasswordResetCode,
+				cancelPasswordReset,
 				logout,
 			}}
 		>

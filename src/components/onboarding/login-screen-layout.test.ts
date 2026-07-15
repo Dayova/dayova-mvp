@@ -12,6 +12,10 @@ const loginScreenSource = authFlowSource.slice(
 	authFlowSource.indexOf("export function LoginScreen"),
 	authFlowSource.indexOf("function VerificationScreen"),
 );
+const passwordResetScreenSource = authFlowSource.slice(
+	authFlowSource.indexOf("function PasswordResetScreen"),
+	authFlowSource.indexOf("function VerificationScreen"),
+);
 const formPillSource = authFlowSource.slice(
 	authFlowSource.indexOf("function FormPill"),
 	authFlowSource.indexOf("function SmallArrowButton"),
@@ -52,5 +56,24 @@ describe("login screen layout", () => {
 		expect(loginScreenSource).not.toContain("<View style={{ flex: 1 }} />");
 		expect(loginScreenSource).toContain('isCompactHeight ? "mt-10" : "mt-12"');
 		expect(formPillSource).toContain("h-14");
+	});
+
+	test("opens a complete email-code password recovery flow", () => {
+		expect(loginScreenSource).toContain("setPasswordResetMode(true)");
+		expect(loginScreenSource).toContain(
+			"disabled={isLoading || isSubmittingLogin}",
+		);
+		expect(loginScreenSource).toContain("<PasswordResetScreen");
+		expect(loginScreenSource).not.toContain("Passwort-Reset folgt bald.");
+		expect(authFlowSource).toContain("type PasswordResetStage =");
+		expect(passwordResetScreenSource).toContain("<KeyboardSafeScrollView");
+		expect(passwordResetScreenSource).not.toContain("<KeyboardAvoidingView");
+		expect(passwordResetScreenSource).not.toContain("<ScrollView");
+		expect(passwordResetScreenSource).toContain('autoComplete="new-password"');
+		expect(passwordResetScreenSource).toContain("PASSWORT SPEICHERN");
+		expect(passwordResetScreenSource).toContain(
+			"verifyPasswordResetSecondFactor",
+		);
+		expect(passwordResetScreenSource).toContain("resendPasswordResetCode");
 	});
 });

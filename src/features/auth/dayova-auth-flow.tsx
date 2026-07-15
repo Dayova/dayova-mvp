@@ -153,6 +153,12 @@ type IconComponent = ComponentType<{
 	strokeWidth?: number;
 }>;
 
+type PasswordResetStage =
+	| "email"
+	| "reset_code"
+	| "new_password"
+	| "second_factor";
+
 type IntroStep = {
 	kind: "intro";
 	id: "intro-tasks" | "intro-upload" | "intro-path";
@@ -1615,6 +1621,7 @@ export function LoginScreen() {
 	const [error, setError] = useState<string | null>(null);
 	const [verificationCode, setVerificationCode] = useState("");
 	const [verificationMode, setVerificationMode] = useState(false);
+	const [passwordResetMode, setPasswordResetMode] = useState(false);
 	const verificationInputRef = useRef<TextInput | null>(null);
 	const submittedRef = useRef(false);
 	const {
@@ -1738,6 +1745,15 @@ export function LoginScreen() {
 		);
 	}
 
+	if (passwordResetMode) {
+		return (
+			<PasswordResetScreen
+				initialEmail={email}
+				onCancel={() => setPasswordResetMode(false)}
+			/>
+		);
+	}
+
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
 			<Stack.Screen options={{ title: "Login" }} />
@@ -1843,7 +1859,17 @@ export function LoginScreen() {
 									Angemeldet bleiben
 								</Text>
 							</Pressable>
-							<Pressable onPress={() => setError("Passwort-Reset folgt bald.")}>
+							<Pressable
+								disabled={isLoading || isSubmittingLogin}
+								accessibilityState={{
+									disabled: isLoading || isSubmittingLogin,
+								}}
+								onPress={() => {
+									if (isLoading || isSubmittingLogin) return;
+									setError(null);
+									setPasswordResetMode(true);
+								}}
+							>
 								<Text className="font-poppins text-body-4 text-primary">
 									Passwort vergessen?
 								</Text>
@@ -1892,6 +1918,399 @@ export function LoginScreen() {
 					</View>
 				</KeyboardSafeScrollView>
 			</View>
+		</View>
+	);
+}
+
+function PasswordResetScreen({
+	initialEmail,
+	onCancel,
+}: {
+	initialEmail: string;
+	onCancel: () => void;
+}) {
+	const { colors: COLORS } = useDayovaTheme();
+	const insets = useSafeAreaInsets();
+	const { height } = useWindowDimensions();
+	const isCompactHeight = height < 850;
+	const [stage, setStage] = useState<PasswordResetStage>("email");
+	const [email, setEmail] = useState(initialEmail.trim().toLowerCase());
+	const [code, setCode] = useState("");
+	const [password, setPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
+	const [passwordVisible, setPasswordVisible] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [notice, setNotice] = useState<string | null>(null);
+	const codeInputRef = useRef<TextInput | null>(null);
+	const codeSubmittedRef = useRef(false);
+	const requestInFlightRef = useRef(false);
+	const {
+		isLoading,
+		startPasswordReset,
+		verifyPasswordResetCode,
+		completePasswordReset,
+		verifyPasswordResetSecondFactor,
+		resendPasswordResetCode,
+		cancelPasswordReset,
+	} = useAuth();
+
+	useEffect(() => {
+		if (stage !== "reset_code" && stage !== "second_factor") return;
+		const frame = requestAnimationFrame(() => codeInputRef.current?.focus());
+		return () => cancelAnimationFrame(frame);
+	}, [stage]);
+
+	const handleBack = useCallback(() => {
+		if (requestInFlightRef.current || isLoading) return true;
+		Keyboard.dismiss();
+		setError(null);
+		setNotice(null);
+		void cancelPasswordReset().catch(() => undefined);
+
+		if (stage === "reset_code") {
+			setStage("email");
+			setCode("");
+			codeSubmittedRef.current = false;
+			return true;
+		}
+
+		onCancel();
+		return true;
+	}, [cancelPasswordReset, isLoading, onCancel, stage]);
+
+	useBackIntent(true, handleBack);
+
+	const sendResetCode = async () => {
+		if (requestInFlightRef.current) return;
+		const normalizedEmail = email.trim().toLowerCase();
+		setError(null);
+		setNotice(null);
+		if (!isValidEmail(normalizedEmail)) {
+			setError("Bitte gib eine gültige E-Mail-Adresse ein.");
+			return;
+		}
+
+		Keyboard.dismiss();
+		requestInFlightRef.current = true;
+		try {
+			await startPasswordReset(normalizedEmail);
+			setEmail(normalizedEmail);
+			setCode("");
+			codeSubmittedRef.current = false;
+			setStage("reset_code");
+		} catch (resetError) {
+			setError(
+				resetError instanceof Error
+					? resetError.message
+					: "Der Zurücksetzungscode konnte nicht gesendet werden.",
+			);
+		} finally {
+			requestInFlightRef.current = false;
+		}
+	};
+
+	const submitCode = async (submittedCode = code) => {
+		if (codeSubmittedRef.current || requestInFlightRef.current || isLoading)
+			return;
+		if (submittedCode.length !== CODE_LENGTH) {
+			setError("Bitte gib den sechsstelligen Code ein.");
+			return;
+		}
+
+		codeSubmittedRef.current = true;
+		requestInFlightRef.current = true;
+		setError(null);
+		setNotice(null);
+		Keyboard.dismiss();
+		try {
+			if (stage === "second_factor") {
+				await verifyPasswordResetSecondFactor(submittedCode);
+				router.replace("/home");
+				return;
+			}
+
+			await verifyPasswordResetCode(submittedCode);
+			setCode("");
+			codeSubmittedRef.current = false;
+			setStage("new_password");
+		} catch (verificationError) {
+			codeSubmittedRef.current = false;
+			setCode("");
+			setError(
+				verificationError instanceof Error
+					? verificationError.message
+					: "Der Code konnte nicht bestätigt werden.",
+			);
+			requestAnimationFrame(() => codeInputRef.current?.focus());
+		} finally {
+			requestInFlightRef.current = false;
+		}
+	};
+
+	const submitNewPassword = async () => {
+		if (requestInFlightRef.current) return;
+		const normalizedPassword = password.trim();
+		setError(null);
+		setNotice(null);
+		if (!isValidPassword(normalizedPassword)) {
+			setError("Bitte gib ein Passwort mit mindestens 8 Zeichen ein.");
+			return;
+		}
+		if (normalizedPassword !== confirmPassword.trim()) {
+			setError("Die Passwörter stimmen nicht überein.");
+			return;
+		}
+
+		Keyboard.dismiss();
+		requestInFlightRef.current = true;
+		try {
+			const result = await completePasswordReset(normalizedPassword);
+			if (result.status === "complete") {
+				router.replace("/home");
+				return;
+			}
+
+			setCode("");
+			codeSubmittedRef.current = false;
+			setNotice(
+				"Zum Schutz deines Kontos haben wir dir einen weiteren Code gesendet.",
+			);
+			setStage("second_factor");
+		} catch (resetError) {
+			setError(
+				resetError instanceof Error
+					? resetError.message
+					: "Das Passwort konnte nicht zurückgesetzt werden.",
+			);
+		} finally {
+			requestInFlightRef.current = false;
+		}
+	};
+
+	const resendCode = async () => {
+		if (
+			requestInFlightRef.current ||
+			codeSubmittedRef.current ||
+			(stage !== "reset_code" && stage !== "second_factor")
+		)
+			return;
+		setError(null);
+		setNotice(null);
+		requestInFlightRef.current = true;
+		try {
+			await resendPasswordResetCode(stage);
+			setNotice("Wir haben dir einen neuen Code per E-Mail gesendet.");
+		} catch (resendError) {
+			setError(
+				resendError instanceof Error
+					? resendError.message
+					: "Code konnte nicht erneut gesendet werden.",
+			);
+		} finally {
+			requestInFlightRef.current = false;
+		}
+	};
+
+	const title =
+		stage === "email"
+			? "Passwort vergessen?"
+			: stage === "new_password"
+				? "Neues Passwort"
+				: stage === "second_factor"
+					? "Sicherheitsprüfung"
+					: "Prüfe deine E-Mail";
+	const subtitle =
+		stage === "email"
+			? "Gib die E-Mail-Adresse deines Kontos ein. Wir senden dir einen sechsstelligen Code."
+			: stage === "reset_code"
+				? `Wir haben einen sechsstelligen Code an ${email} gesendet.`
+				: stage === "new_password"
+					? "Wähle ein neues Passwort mit mindestens 8 Zeichen."
+					: "Gib den zusätzlichen Sicherheitscode aus deiner E-Mail ein.";
+	const buttonLabel =
+		stage === "email"
+			? "CODE SENDEN"
+			: stage === "new_password"
+				? "PASSWORT SPEICHERN"
+				: stage === "second_factor"
+					? "SICHERHEITSCODE PRÜFEN"
+					: "CODE PRÜFEN";
+
+	const runPrimaryAction = () => {
+		if (stage === "email") {
+			void sendResetCode();
+			return;
+		}
+		if (stage === "new_password") {
+			void submitNewPassword();
+			return;
+		}
+		void submitCode();
+	};
+
+	return (
+		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
+			<Stack.Screen options={{ title: "Passwort zurücksetzen" }} />
+			<ThemedStatusBar />
+			<KeyboardSafeScrollView
+				className="flex-1"
+				contentInsetAdjustmentBehavior="never"
+				alwaysBounceVertical={false}
+				contentContainerStyle={{
+					flexGrow: 1,
+					// Safe-area padding is runtime device geometry.
+					paddingTop: Math.max(insets.top + 20, 40),
+					paddingBottom: Math.max(insets.bottom + 24, 40),
+				}}
+			>
+				<View className="flex-1 items-center px-8">
+					<View className="w-full flex-row items-center">
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel="Zurück"
+							disabled={isLoading}
+							hitSlop={8}
+							onPress={handleBack}
+							className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface"
+						>
+							<ArrowLeft size={20} color={COLORS.text} strokeWidth={2.2} />
+						</Pressable>
+					</View>
+
+					<Image
+						source={require("../../../assets/dayova-logo.png")}
+						resizeMode="contain"
+						className={cn(
+							isCompactHeight ? "mt-1 h-24 w-24" : "mt-3 h-28 w-28",
+						)}
+					/>
+					<Text className="mt-5 text-center font-poppins font-semibold text-heading-2 text-text">
+						{title}
+					</Text>
+					<Text className="mt-2 max-w-[330px] text-center font-poppins text-body-3 text-secondary-text">
+						{subtitle}
+					</Text>
+
+					<Animated.View
+						key={stage}
+						entering={FadeInDown.duration(260)}
+						className="mt-8 w-full gap-4"
+					>
+						{stage === "email" ? (
+							<FormPill
+								value={email}
+								placeholder="max.mustermann@gmail.com"
+								keyboardType="email-address"
+								autoCapitalize="none"
+								autoComplete="email"
+								textContentType="emailAddress"
+								returnKeyType="send"
+								onChangeText={setEmail}
+								onSubmitEditing={() => void sendResetCode()}
+							/>
+						) : null}
+
+						{stage === "reset_code" || stage === "second_factor" ? (
+							<OtpCodeInput
+								value={code}
+								inputRef={codeInputRef}
+								disabled={isLoading}
+								onChangeText={(value) => {
+									const sanitized = value
+										.replace(/\D/g, "")
+										.slice(0, CODE_LENGTH);
+									setCode(sanitized);
+									if (sanitized.length === CODE_LENGTH) {
+										void submitCode(sanitized);
+									}
+								}}
+							/>
+						) : null}
+
+						{stage === "new_password" ? (
+							<>
+								<FormPill
+									value={password}
+									placeholder="Neues Passwort"
+									secureTextEntry={!passwordVisible}
+									autoCapitalize="none"
+									autoComplete="new-password"
+									textContentType="newPassword"
+									onChangeText={setPassword}
+									onSubmitEditing={() => Keyboard.dismiss()}
+									rightAccessory={
+										<Pressable
+											accessibilityRole="button"
+											accessibilityLabel={
+												passwordVisible
+													? "Passwort ausblenden"
+													: "Passwort anzeigen"
+											}
+											onPress={() => setPasswordVisible((current) => !current)}
+										>
+											{passwordVisible ? (
+												<EyeOff size={18} color={COLORS.text} />
+											) : (
+												<Eye size={18} color={COLORS.text} />
+											)}
+										</Pressable>
+									}
+								/>
+								<FormPill
+									value={confirmPassword}
+									placeholder="Passwort wiederholen"
+									secureTextEntry={!passwordVisible}
+									autoCapitalize="none"
+									autoComplete="new-password"
+									textContentType="newPassword"
+									returnKeyType="done"
+									onChangeText={setConfirmPassword}
+									onSubmitEditing={() => void submitNewPassword()}
+								/>
+							</>
+						) : null}
+					</Animated.View>
+
+					{error ? (
+						<Animated.Text
+							selectable
+							entering={FadeIn.duration(180)}
+							className="mt-4 text-center font-poppins text-body-4 text-wrong"
+						>
+							{error}
+						</Animated.Text>
+					) : null}
+					{notice ? (
+						<Animated.Text
+							selectable
+							entering={FadeIn.duration(180)}
+							className="mt-4 text-center font-poppins text-body-4 text-primary"
+						>
+							{notice}
+						</Animated.Text>
+					) : null}
+
+					<View className="mt-6 w-full">
+						<GradientPillButton
+							label={isLoading ? `${buttonLabel}...` : buttonLabel}
+							disabled={isLoading}
+							onPress={runPrimaryAction}
+						/>
+					</View>
+
+					{stage === "reset_code" || stage === "second_factor" ? (
+						<Pressable
+							disabled={isLoading}
+							onPress={() => void resendCode()}
+							className="mt-5 p-2"
+						>
+							<Text className="font-poppins text-body-3 text-primary">
+								Code erneut senden
+							</Text>
+						</Pressable>
+					) : null}
+				</View>
+			</KeyboardSafeScrollView>
 		</View>
 	);
 }

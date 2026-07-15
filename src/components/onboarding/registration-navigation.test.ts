@@ -18,7 +18,7 @@ const onboardingRouteSource =
 	)?.[0] ?? "";
 const onboardingSource = authFlowSource.slice(
 	authFlowSource.indexOf("export function OnboardingScreen"),
-	authFlowSource.indexOf("function CreationLoaderScreen"),
+	authFlowSource.indexOf("export function LoginScreen"),
 );
 const authChoiceSource = authFlowSource.slice(
 	authFlowSource.indexOf("export function AuthChoiceScreen"),
