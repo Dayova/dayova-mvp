@@ -118,17 +118,6 @@ function NotificationDeliveryInfoSheet({
 				}
 			/>
 
-			<View className="flex-row items-center gap-3 rounded-[24px] bg-system-subtle px-4 py-3">
-				<Check
-					size={18}
-					color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-					strokeWidth={2.4}
-				/>
-				<Text className="flex-1 font-poppins text-body-4 text-secondary-text">
-					Mitteilungsarten gelten für Postfach und Push.
-				</Text>
-			</View>
-
 			{pushStatus === "disabled" && pushAction ? (
 				<Button
 					accessibilityLabel={pushAction.label}
