@@ -6,13 +6,25 @@ import { describe, expect, test } from "vitest";
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const artworkSource = () =>
 	readFileSync(resolve(testDirectory, "intro-tasks-artwork.tsx"), "utf8");
+const iconSource = readFileSync(
+	resolve(testDirectory, "../ui/icon.tsx"),
+	"utf8",
+);
 const authFlowSource = readFileSync(
 	resolve(testDirectory, "../../features/auth/dayova-auth-flow.tsx"),
+	"utf8",
+);
+const designSystemContextSource = readFileSync(
+	resolve(testDirectory, "../../../docs/contexts/design-system/CONTEXT.md"),
 	"utf8",
 );
 const legacyArtworkPath = resolve(
 	testDirectory,
 	"../../../assets/onboarding/intro-tasks.svg",
+);
+const customStreakFirePath = resolve(
+	testDirectory,
+	"../../../assets/onboarding/streak-fire.svg",
 );
 
 describe("intro tasks artwork", () => {
@@ -46,13 +58,30 @@ describe("intro tasks artwork", () => {
 		expect(existsSync(legacyArtworkPath)).toBe(false);
 	});
 
-	test("uses the supplied Figma fire icon", () => {
+	test("uses the approved Hugeicons fire icon", () => {
 		const source = artworkSource();
 
 		expect(source).toContain(
-			'import StreakFireSvg from "../../../assets/onboarding/streak-fire.svg";',
+			'import { Check, ClipboardEdit, Fire } from "~/components/ui/icon";',
 		);
-		expect(source).toContain("<StreakFireSvg />");
-		expect(source).not.toContain("Flame");
+		expect(source).toMatch(
+			/<Fire\s+size=\{14\}\s+color=\{COLORS\.light1\}\s+strokeWidth=\{1\.5\}\s*\/>/,
+		);
+		expect(iconSource).toContain("Fire02Icon,");
+		expect(iconSource).toContain("export const Fire = createIcon(Fire02Icon);");
+		expect(source).not.toContain("StreakFireSvg");
+		expect(existsSync(customStreakFirePath)).toBe(false);
+		expect(source).toMatch(
+			/accessibilityElementsHidden(?:=\{true\})?(?=\s|\/>|>)/,
+		);
+		expect(source).toContain('importantForAccessibility="no-hide-descendants"');
+	});
+
+	test("documents Hugeicons provenance and the exception review process", () => {
+		expect(designSystemContextSource).toContain(
+			"Hugeicons is the standard icon source",
+		);
+		expect(designSystemContextSource).toContain("explicit Linear issue");
+		expect(designSystemContextSource).toContain("icon provenance");
 	});
 });

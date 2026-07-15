@@ -20,6 +20,24 @@ Android uses the Jetpack Compose switch with explicit Dayova primary colors so
 Material You wallpaper colors cannot override the brand. iOS keeps the native
 SwiftUI toggle shape and applies Dayova primary through the SwiftUI tint modifier.
 
+## Icons
+
+Hugeicons is the standard icon source for app interface icons. Add the selected
+glyph from `@hugeicons/core-free-icons` to the semantic wrapper in
+`src/components/ui/icon.tsx`, then import that wrapper from app code instead of
+importing icon packages or custom assets directly.
+
+Code review must verify icon provenance by checking that the semantic wrapper
+maps to the intended Hugeicons export. At each usage, also review the icon's
+size, stroke weight, color, alignment, and whether it is decorative or needs an
+accessible label.
+
+Custom SVGs, platform symbols, or icons from another source are exceptions.
+Each exception requires an explicit Linear issue and a repo-local rationale
+explaining why Hugeicons cannot meet the requirement. Link that rationale from
+the implementation or an ADR; reviewers should reject untracked custom icon
+assets.
+
 ## Styling Tokens
 
 The app supports light, dark, and system theme preferences. The light app

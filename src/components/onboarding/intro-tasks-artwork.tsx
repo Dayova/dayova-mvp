@@ -2,11 +2,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Image, StyleSheet, View } from "react-native";
 import type { SvgProps } from "react-native-svg";
 import Svg, { Circle } from "react-native-svg";
-import { Check, ClipboardEdit } from "~/components/ui/icon";
+import { Check, ClipboardEdit, Fire } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
-import StreakFireSvg from "../../../assets/onboarding/streak-fire.svg";
 
 const ARTWORK_WIDTH = 356;
 const ARTWORK_HEIGHT = 242;
@@ -141,7 +140,7 @@ function StreakCard() {
 				/>
 				<View className="items-center">
 					<View className="flex-row items-center gap-[3px]">
-						<StreakFireSvg />
+						<Fire size={14} color={COLORS.light1} strokeWidth={1.5} />
 						<Text className="font-poppins font-semibold text-[14px] text-white leading-[17px]">
 							4
 						</Text>
