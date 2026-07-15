@@ -603,7 +603,7 @@ function LearningPlanCard({
 								<View className="flex-row items-center gap-1">
 									<GraduationCap
 										size={14}
-										color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
+										color={colors.secondaryText}
 										strokeWidth={2}
 									/>
 									<Text className="font-poppins text-body-4 text-secondary-text">
@@ -627,7 +627,7 @@ function LearningPlanCard({
 									<View className="flex-row items-center gap-1">
 										<ClipboardEdit
 											size={14}
-											color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
+											color={colors.secondaryText}
 											strokeWidth={2}
 										/>
 										<Text className="font-poppins text-body-4 text-secondary-text">
