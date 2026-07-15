@@ -1,6 +1,5 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
@@ -26,6 +25,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Switch } from "~/components/ui/switch";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
@@ -369,7 +369,7 @@ export default function NotificationSettingsScreen() {
 
 	return (
 		<Screen>
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScreenScroll topPadding={72} bottomPadding={120} horizontalPadding={24}>
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
 

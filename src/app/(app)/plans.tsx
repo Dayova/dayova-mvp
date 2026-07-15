@@ -1,18 +1,20 @@
 import { useConvexAuth, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { api } from "#convex/_generated/api";
-import { Bell, Route2 } from "~/components/ui/icon";
+import { NotificationButton } from "~/components/notification-button";
+import { Route2 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
+import { useDayovaTheme } from "~/lib/theme";
 
 function ProgressRing({ progressPercent }: { progressPercent: number }) {
+	const { colors } = useDayovaTheme();
 	const size = 52;
 	const strokeWidth = 4;
 	const radius = (size - strokeWidth) / 2;
@@ -26,7 +28,7 @@ function ProgressRing({ progressPercent }: { progressPercent: number }) {
 					cx={size / 2}
 					cy={size / 2}
 					r={radius}
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.light2}
+					stroke={colors.light2}
 					strokeWidth={strokeWidth}
 					fill="none"
 				/>
@@ -83,7 +85,6 @@ function LearningPlanCard({
 }
 
 export default function PlansScreen() {
-	const router = useRouter();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningPlans = useQuery(
@@ -93,22 +94,14 @@ export default function PlansScreen() {
 
 	return (
 		<Screen>
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScreenScroll topPadding={84} bottomPadding={150} horizontalPadding={24}>
 				<View className="flex-row items-center justify-between">
 					<Text className="font-poppins font-semibold text-heading-2 text-text">
 						Deine Lernpläne
 					</Text>
 
-					<TouchableOpacity
-						activeOpacity={0.86}
-						accessibilityRole="button"
-						accessibilityLabel="Benachrichtigungen öffnen"
-						onPress={() => router.push("/notifications")}
-						className="h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-card shadow-black/5 shadow-lg"
-					>
-						<Bell size={22} color="#1A1A1A" strokeWidth={2.2} />
-					</TouchableOpacity>
+					<NotificationButton />
 				</View>
 
 				<View className="mt-9 gap-5">

@@ -1,7 +1,6 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
@@ -36,6 +35,7 @@ import {
 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
@@ -484,7 +484,7 @@ export default function NotificationsScreen() {
 
 	return (
 		<Screen>
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScreenScroll topPadding={72} bottomPadding={120} horizontalPadding={24}>
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
 				<View className="gap-5">

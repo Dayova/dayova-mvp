@@ -1,7 +1,6 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import * as Device from "expo-device";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -34,6 +33,7 @@ import {
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import {
 	createTheoryCardQueue,
@@ -1327,7 +1327,7 @@ export default function LearningSessionContentScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{

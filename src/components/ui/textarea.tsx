@@ -1,6 +1,6 @@
 import type * as React from "react";
 import { Platform, TextInput } from "react-native";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 type TextareaRef = React.ElementRef<typeof TextInput>;
@@ -22,6 +22,8 @@ function Textarea({
 	ref,
 	...props
 }: TextareaProps) {
+	const { colors } = useDayovaTheme();
+
 	return (
 		<TextInput
 			ref={ref}
@@ -39,10 +41,8 @@ function Textarea({
 			// the native style prop; the static typography/padding is class-based.
 			style={[androidTextareaStyle, style]}
 			underlineColorAndroid="transparent"
-			placeholderTextColor={
-				placeholderTextColor ?? `${DAYOVA_DESIGN_SYSTEM.colors.text}80`
-			}
-			selectionColor={selectionColor ?? DAYOVA_DESIGN_SYSTEM.colors.primary}
+			placeholderTextColor={placeholderTextColor ?? `${colors.text}80`}
+			selectionColor={selectionColor ?? colors.primary}
 			{...props}
 		/>
 	);

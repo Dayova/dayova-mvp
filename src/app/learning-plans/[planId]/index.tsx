@@ -1,6 +1,5 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
 	ActivityIndicator,
@@ -26,6 +25,7 @@ import {
 import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import type {
 	LearningPlanSnapshot,
@@ -34,6 +34,7 @@ import type {
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
+import { useDayovaTheme } from "~/lib/theme";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
@@ -82,6 +83,7 @@ function SessionPreviewCard({
 	session: PlanSession;
 	onOpen: () => void;
 }) {
+	const { colors } = useDayovaTheme();
 	const phase = PHASE_COLOR[session.phase];
 	const PhaseIcon = PHASE_ICON[session.phase];
 	const title = formatGermanUiText(session.title);
@@ -148,11 +150,7 @@ function SessionPreviewCard({
 				</View>
 
 				<View className="flex-row items-center gap-1.5">
-					<Time04
-						size={13}
-						color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
-						strokeWidth={2}
-					/>
+					<Time04 size={13} color={colors.secondaryText} strokeWidth={2} />
 					<Text className="font-poppins text-body-4 text-secondary-text">
 						{session.dateLabel}
 					</Text>
@@ -615,7 +613,7 @@ export default function LearningPlanSessionsScreen() {
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<View
 				className="px-4"
 				style={{

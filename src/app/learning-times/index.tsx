@@ -1,6 +1,5 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -10,10 +9,12 @@ import { ClipboardEdit, Plus } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { WarningBanner } from "~/components/ui/warning-banner";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackToReturnOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
+import { useDayovaTheme } from "~/lib/theme";
 
 const LEARNING_DAYS = [
 	{ abbreviation: "Mo", label: "Montag", value: 1 },
@@ -38,6 +39,8 @@ function LearningTimeRow({
 	onPress: () => void;
 	timeRange: string;
 }) {
+	const { colors } = useDayovaTheme();
+
 	return (
 		<Pressable
 			accessibilityLabel={accessibilityLabel}
@@ -45,8 +48,8 @@ function LearningTimeRow({
 			className="min-h-[96px] flex-row items-center rounded-[48px] bg-card px-6 active:opacity-85"
 			onPress={onPress}
 		>
-			<View className="h-16 w-16 items-center justify-center rounded-full bg-text">
-				<Text className="font-poppins font-semibold text-body-1 text-white">
+			<View className="h-16 w-16 items-center justify-center rounded-full bg-button-neutral">
+				<Text className="font-poppins font-semibold text-background text-body-1">
 					{abbreviation}
 				</Text>
 			</View>
@@ -67,11 +70,7 @@ function LearningTimeRow({
 			</View>
 
 			<View className="h-[72px] w-[72px] items-center justify-center rounded-full border border-border bg-card">
-				<ClipboardEdit
-					size={30}
-					color={DAYOVA_DESIGN_SYSTEM.colors.text}
-					strokeWidth={1.8}
-				/>
+				<ClipboardEdit size={30} color={colors.text} strokeWidth={1.8} />
 			</View>
 		</Pressable>
 	);
@@ -126,7 +125,7 @@ export default function LearningTimesOverviewScreen() {
 
 	return (
 		<Screen>
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScreenScroll topPadding={80} bottomPadding={150} horizontalPadding={24}>
 				<Header title="Lernzeiten" onBack={goBack} className="mb-11" />
 

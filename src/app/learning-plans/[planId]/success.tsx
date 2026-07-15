@@ -1,7 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useMemo } from "react";
 import { SuccessConfirmationScreen } from "~/components/ui/success-confirmation-screen";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { buildDateTimeLabel } from "~/lib/date-time-label";
 
 export default function LearningPlanSuccessScreen() {
@@ -31,7 +31,7 @@ export default function LearningPlanSuccessScreen() {
 	return (
 		<>
 			<Stack.Screen options={{ gestureEnabled: false }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<SuccessConfirmationScreen
 				title={"Dein Lernplan\nwurde erstellt."}
 				detailLabel="Prüfungsdatum"

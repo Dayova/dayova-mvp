@@ -83,7 +83,10 @@ With that configuration:
 
 - When adding or removing custom `fontSize` tokens in `tailwind.config.ts`, update the `theme.text` list in `src/lib/utils.ts`.
 - Use Tailwind's standard spacing scale. Spacing must stay on a 4px rhythm: `gap-1` is 4px, `gap-2` is 8px, `gap-3` is 12px, `gap-4` is 16px, and so on. Do not redefine spacing keys so class numbers mean raw pixels.
-- The app currently supports light mode only. Keep theme variables in `src/global.css` light-only until the dark-mode palette is fully designed.
+- The app supports light, dark, and system theme preferences. Keep palette
+  changes centralized in `src/global.css`, `src/lib/theme.ts`, and
+  `src/lib/theme-preference.ts` so NativeWind classes, React Navigation, and
+  native-only color props stay aligned.
 - The Figma typography source of truth is Poppins, Regular for body copy, and SemiBold for headings and highlighted text. Do not use `font-bold`, `font-medium`, or arbitrary `text-[Npx]` classes for app text.
 - Use `text-heading-1`, `text-heading-2`, `text-body-1`, `text-body-2`, `text-body-3`, `text-body-4`, and `text-body-5` for text hierarchy.
 - Use `cn()` for component class merging so variants, defaults, and caller-provided classes resolve consistently.

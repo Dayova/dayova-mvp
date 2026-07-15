@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 type CommonProps = Omit<
@@ -313,6 +314,7 @@ export function NotchedActionCard({
 	...props
 }: NotchedActionCardProps) {
 	const [cardWidth, setCardWidth] = useState(DEFAULT_CARD_WIDTH);
+	const { colors } = useDayovaTheme();
 
 	const handleLayout = useCallback(
 		(event: LayoutChangeEvent) => {
@@ -364,8 +366,8 @@ export function NotchedActionCard({
 			>
 				<Path
 					d={resolvedCardPath}
-					fill={DAYOVA_DESIGN_SYSTEM.colors.surface}
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.border}
+					fill={colors.surface}
+					stroke={colors.border}
 					strokeWidth={CARD_STROKE_WIDTH}
 				/>
 			</Svg>

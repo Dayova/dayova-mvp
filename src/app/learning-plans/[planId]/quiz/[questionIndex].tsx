@@ -1,12 +1,12 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { QuizStep } from "~/features/learning-plans/quiz-step";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
@@ -122,7 +122,7 @@ export default function LearningPlanQuizScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<KeyboardSafeScrollView
 				className="flex-1"
 				bottomOffset={32}

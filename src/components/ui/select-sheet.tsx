@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 type SelectSheetProps<T extends string | number> = {
@@ -41,6 +41,7 @@ function SelectSheet<T extends string | number>({
 }: SelectSheetProps<T>) {
 	const sheetRef = useRef<BottomSheetModal>(null);
 	const insets = useSafeAreaInsets();
+	const { colors } = useDayovaTheme();
 	const { height: windowHeight } = useWindowDimensions();
 
 	const sheetMaxHeight = Math.min(windowHeight * 0.68, 560);
@@ -80,12 +81,12 @@ function SelectSheet<T extends string | number>({
 			ref={sheetRef}
 			// @gorhom/bottom-sheet exposes its container chrome through style-only
 			// props, so these tokenized values cannot be NativeWind classes.
-			backgroundStyle={{ backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.surface }}
+			backgroundStyle={{ backgroundColor: colors.surface }}
 			backdropComponent={renderBackdrop}
 			enableDynamicSizing={false}
 			enablePanDownToClose
 			handleIndicatorStyle={{
-				backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.border,
+				backgroundColor: colors.border,
 				width: 44,
 			}}
 			onDismiss={onClose}

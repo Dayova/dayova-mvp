@@ -4,7 +4,6 @@ import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
@@ -23,6 +22,7 @@ import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { WarningBanner } from "~/components/ui/warning-banner";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import {
 	MaterialCard,
@@ -508,7 +508,7 @@ export default function NewLearningPlanScreen() {
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScreenScroll>
 				<Header title="Prüfungsthema" onBack={goBack} />
 				<SectionTitle

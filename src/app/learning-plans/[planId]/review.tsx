@@ -1,6 +1,5 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -15,6 +14,7 @@ import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import {
 	PlanningHintBanner,
@@ -34,6 +34,7 @@ import { getErrorMessage } from "~/features/learning-plans/utils";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
+import { useDayovaTheme } from "~/lib/theme";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -56,6 +57,7 @@ const successPath = (
 export default function LearningPlanReviewScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { colors } = useDayovaTheme();
 	const params = useLocalSearchParams<{
 		planId?: string;
 		replan?: string;
@@ -213,7 +215,7 @@ export default function LearningPlanReviewScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
@@ -286,9 +288,9 @@ export default function LearningPlanReviewScreen() {
 					style={{ minWidth: 0 }}
 				>
 					{isBusy ? (
-						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+						<ActivityIndicator color={colors.background} />
 					) : (
-						<Text className="font-poppins font-semibold text-body-3 text-white">
+						<Text className="font-poppins font-semibold text-body-3">
 							Lernplan eintragen
 						</Text>
 					)}

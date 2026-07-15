@@ -15,6 +15,7 @@ import {
 	Chemistry01Icon,
 	Clock03Icon,
 	CodeIcon,
+	ComputerIcon,
 	Delete02Icon,
 	Dna01Icon,
 	Dumbbell02Icon,
@@ -29,6 +30,7 @@ import {
 	Mail01Icon,
 	MapsCircle01Icon,
 	Mic01Icon,
+	Moon02Icon,
 	Mortarboard01Icon,
 	MusicNote01Icon,
 	NotebookIcon,
@@ -48,6 +50,7 @@ import {
 	SparklesIcon,
 	SquareLock02Icon,
 	SquareRootSquareIcon,
+	Sun01Icon,
 	Task01Icon,
 	TaskEdit01Icon,
 	Telescope01Icon,
@@ -86,6 +89,7 @@ export const ClipboardList = createIcon(Task01Icon);
 export const ClipboardEdit = createIcon(TaskEdit01Icon);
 export const Clock3 = createIcon(Clock03Icon);
 export const Code = createIcon(CodeIcon);
+export const Computer = createIcon(ComputerIcon);
 export const Dna = createIcon(Dna01Icon);
 export const Dumbbell = createIcon(Dumbbell02Icon);
 export const Earth = createIcon(EarthIcon);
@@ -102,6 +106,7 @@ export const Logout = createIcon(Logout03Icon);
 export const Maps = createIcon(MapsCircle01Icon);
 export const Mail = createIcon(Mail01Icon);
 export const Mic = createIcon(Mic01Icon);
+export const Moon = createIcon(Moon02Icon);
 export const MusicNote = createIcon(MusicNote01Icon);
 export const Note = createIcon(NoteIcon);
 export const NotebookPen = createIcon(NotebookIcon);
@@ -118,6 +123,7 @@ export const Settings = createIcon(Settings01Icon);
 export const SquareLock = createIcon(SquareLock02Icon);
 export const SquareRootSquare = createIcon(SquareRootSquareIcon);
 export const Sparkles = createIcon(SparklesIcon);
+export const Sun = createIcon(Sun01Icon);
 export const Telescope = createIcon(Telescope01Icon);
 export const Time04 = createIcon(Time04Icon);
 export const TimeManagement = createIcon(TimeManagementCircleIcon);

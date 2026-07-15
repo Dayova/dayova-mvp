@@ -1,6 +1,5 @@
 import { useConvexAuth, useMutation } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import {
 	type ReactNode,
 	useCallback,
@@ -51,6 +50,7 @@ import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-vie
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useValidationAnalytics } from "~/lib/analytics";
@@ -63,6 +63,7 @@ import {
 } from "~/lib/entry-time";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
+import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 type EntryType = "homework" | "exam";
@@ -101,8 +102,6 @@ const EXAM_TYPE_OPTIONS = [
 ];
 
 const KEYBOARD_DISMISS_FALLBACK_MS = 280;
-const FIELD_ICON_COLOR = DAYOVA_DESIGN_SYSTEM.colors.secondaryText;
-const FIELD_TEXT_COLOR = DAYOVA_DESIGN_SYSTEM.colors.text;
 const SELECTED_OPTION_ICON_COLOR = DAYOVA_DESIGN_SYSTEM.colors.primary;
 
 const subjectIconByOption = {
@@ -236,6 +235,9 @@ function HomeworkScreenHeader({
 export default function NewEntryScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { colors } = useDayovaTheme();
+	const fieldIconColor = colors.secondaryText;
+	const fieldTextColor = colors.text;
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDayEntry = useMutation(api.dayEntries.create);
@@ -606,9 +608,7 @@ export default function NewEntryScreen() {
 						return (
 							<SubjectIcon
 								size={19}
-								color={
-									isSelected ? SELECTED_OPTION_ICON_COLOR : FIELD_ICON_COLOR
-								}
+								color={isSelected ? SELECTED_OPTION_ICON_COLOR : fieldIconColor}
 								strokeWidth={2}
 							/>
 						);
@@ -617,7 +617,7 @@ export default function NewEntryScreen() {
 					return (
 						<ClipboardList
 							size={19}
-							color={isSelected ? SELECTED_OPTION_ICON_COLOR : FIELD_ICON_COLOR}
+							color={isSelected ? SELECTED_OPTION_ICON_COLOR : fieldIconColor}
 							strokeWidth={2}
 						/>
 					);
@@ -629,7 +629,7 @@ export default function NewEntryScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<KeyboardSafeScrollView
 				ref={scrollViewRef}
 				className="flex-1"
@@ -659,7 +659,7 @@ export default function NewEntryScreen() {
 								icon={
 									<CalendarDays
 										size={20}
-										color={FIELD_ICON_COLOR}
+										color={fieldIconColor}
 										strokeWidth={2.1}
 									/>
 								}
@@ -685,7 +685,7 @@ export default function NewEntryScreen() {
 									<FieldAccessory>
 										<ChevronDown
 											size={20}
-											color={FIELD_TEXT_COLOR}
+											color={fieldTextColor}
 											strokeWidth={2.1}
 										/>
 									</FieldAccessory>
@@ -722,7 +722,7 @@ export default function NewEntryScreen() {
 								icon={
 									<CalendarDays
 										size={20}
-										color={FIELD_ICON_COLOR}
+										color={fieldIconColor}
 										strokeWidth={2.1}
 									/>
 								}
@@ -737,7 +737,7 @@ export default function NewEntryScreen() {
 										icon={
 											<Clock3
 												size={19}
-												color={FIELD_ICON_COLOR}
+												color={fieldIconColor}
 												strokeWidth={2.1}
 											/>
 										}
@@ -752,7 +752,7 @@ export default function NewEntryScreen() {
 										icon={
 											<Clock3
 												size={19}
-												color={FIELD_ICON_COLOR}
+												color={fieldIconColor}
 												strokeWidth={2.1}
 											/>
 										}
@@ -785,7 +785,7 @@ export default function NewEntryScreen() {
 							icon={
 								<CalendarDays
 									size={20}
-									color={FIELD_ICON_COLOR}
+									color={fieldIconColor}
 									strokeWidth={2.1}
 								/>
 							}
@@ -799,7 +799,7 @@ export default function NewEntryScreen() {
 									icon={
 										<Clock3
 											size={19}
-											color={FIELD_ICON_COLOR}
+											color={fieldIconColor}
 											strokeWidth={2.1}
 										/>
 									}
@@ -814,7 +814,7 @@ export default function NewEntryScreen() {
 									icon={
 										<Clock3
 											size={19}
-											color={FIELD_ICON_COLOR}
+											color={fieldIconColor}
 											strokeWidth={2.1}
 										/>
 									}
@@ -843,7 +843,7 @@ export default function NewEntryScreen() {
 								<FieldAccessory>
 									<ChevronDown
 										size={20}
-										color={FIELD_TEXT_COLOR}
+										color={fieldTextColor}
 										strokeWidth={2.1}
 									/>
 								</FieldAccessory>
@@ -869,7 +869,7 @@ export default function NewEntryScreen() {
 								<FieldAccessory>
 									<ChevronDown
 										size={20}
-										color={FIELD_TEXT_COLOR}
+										color={fieldTextColor}
 										strokeWidth={2.1}
 									/>
 								</FieldAccessory>

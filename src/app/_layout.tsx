@@ -4,6 +4,7 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import * as SystemUI from "expo-system-ui";
 import {
 	Stack,
 	usePathname,
@@ -27,7 +28,7 @@ import {
 } from "~/lib/analytics-core";
 import { clerkTokenCache } from "~/lib/auth-token-cache";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
-import { NAV_THEME } from "~/lib/theme";
+import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
 
 const convexUrl = env.EXPO_PUBLIC_CONVEX_URL?.trim();
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
@@ -98,6 +99,20 @@ export default function RootLayout() {
 	}
 
 	return (
+		<DayovaThemeProvider>
+			<RootProviders convexClient={convex} />
+		</DayovaThemeProvider>
+	);
+}
+
+function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
+	const { colors, resolvedTheme } = useDayovaTheme();
+
+	useEffect(() => {
+		void SystemUI.setBackgroundColorAsync(colors.background);
+	}, [colors.background]);
+
+	return (
 		<GestureHandlerRootView style={gestureRootStyle}>
 			<KeyboardProvider preload={false}>
 				<PostHogProvider
@@ -113,8 +128,11 @@ export default function RootLayout() {
 						publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
 						tokenCache={clerkTokenCache}
 					>
-						<ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
-							<ThemeProvider value={NAV_THEME}>
+						<ConvexProviderWithClerk
+							client={convexClient}
+							useAuth={useClerkAuth}
+						>
+							<ThemeProvider value={NAV_THEMES[resolvedTheme]}>
 								<BottomSheetModalProvider>
 									<OnboardingProvider>
 										<AuthProvider>

@@ -1,7 +1,6 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -34,11 +33,13 @@ import {
 	NotchedActionCard,
 } from "~/components/ui/notched-action-card";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
+import { useDayovaTheme } from "~/lib/theme";
 
 const PLAN_ACTION_RAIL_WIDTH = 104;
 const PLAN_SWIPE_OPEN_THRESHOLD = 44;
@@ -412,6 +413,7 @@ function LearningPlanCard({
 	onDelete: () => void;
 	onPress: () => void;
 }) {
+	const { colors } = useDayovaTheme();
 	const progress = Math.max(0, Math.min(plan.progressPercent, 100));
 	const status = getStatus(plan, todayKey);
 	const remainingDays = Math.max(
@@ -535,7 +537,7 @@ function LearningPlanCard({
 							<View className="flex-row items-center gap-1">
 								<GraduationCap
 									size={14}
-									color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
+									color={colors.secondaryText}
 									strokeWidth={2}
 								/>
 								<Text className="font-poppins text-body-4 text-secondary-text">
@@ -559,7 +561,7 @@ function LearningPlanCard({
 								<View className="flex-row items-center gap-1">
 									<ClipboardEdit
 										size={14}
-										color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
+										color={colors.secondaryText}
 										strokeWidth={2}
 									/>
 									<Text className="font-poppins text-body-4 text-secondary-text">
@@ -614,6 +616,7 @@ function HomeworkCard({
 	onDelete: () => void;
 	onPress: () => void;
 }) {
+	const { colors } = useDayovaTheme();
 	const status = getHomeworkStatus(homework, todayKey);
 	const subject = getHomeworkSubject(homework) || "Hausaufgabe";
 	const dateLabel =
@@ -733,7 +736,7 @@ function HomeworkCard({
 							<View className="flex-row items-center gap-1">
 								<Clock3
 									size={14}
-									color={DAYOVA_DESIGN_SYSTEM.colors.secondaryText}
+									color={colors.secondaryText}
 									strokeWidth={2}
 								/>
 								<Text
@@ -760,6 +763,7 @@ function HomeworkCard({
 
 export default function LearningPlansScreen() {
 	const insets = useSafeAreaInsets();
+	const { colors } = useDayovaTheme();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const removePlan = useMutation(api.learningPlans.removePlan);
@@ -833,7 +837,7 @@ export default function LearningPlansScreen() {
 
 	return (
 		<View className="flex-1 bg-background">
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<View
 				className="gap-6 px-6"
 				style={{
@@ -854,11 +858,7 @@ export default function LearningPlansScreen() {
 						onPress={openCreateTypePicker}
 						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
 					>
-						<Plus
-							size={28}
-							color={DAYOVA_DESIGN_SYSTEM.colors.text}
-							strokeWidth={1.8}
-						/>
+						<Plus size={28} color={colors.text} strokeWidth={1.8} />
 					</TouchableOpacity>
 				</View>
 

@@ -7,6 +7,7 @@ const nativewindPreset = require("nativewind/preset") as TailwindPreset;
 const tailwindcssAnimate = require("tailwindcss-animate") as TailwindPlugin;
 
 const config = {
+	darkMode: "class",
 	content: [
 		"./App.{js,jsx,ts,tsx}",
 		"./app/**/*.{js,jsx,ts,tsx}",

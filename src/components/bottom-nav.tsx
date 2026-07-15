@@ -9,6 +9,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Home, Route2, Settings } from "~/components/ui/icon";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { useDayovaTheme } from "~/lib/theme";
 
 type BottomNavKey = "home" | "learningPath" | "settings";
 type AppTabRouteName = "home" | "learning-plans" | "settings";
@@ -64,10 +65,12 @@ const BAR_PADDING_VERTICAL = 4;
 
 function AnimatedTabIcon({
 	active,
+	color,
 	Icon,
 	scale,
 }: {
 	active: boolean;
+	color: string;
 	Icon: BottomNavIcon;
 	scale: number;
 }) {
@@ -94,15 +97,7 @@ function AnimatedTabIcon({
 	return (
 		// Reanimated transform/opacity values must be supplied through style.
 		<Animated.View style={animatedStyle}>
-			<Icon
-				size={22 * scale}
-				color={
-					active
-						? DAYOVA_DESIGN_SYSTEM.colors.light1
-						: DAYOVA_DESIGN_SYSTEM.colors.text
-				}
-				strokeWidth={active ? 2.15 : 2}
-			/>
+			<Icon size={22 * scale} color={color} strokeWidth={active ? 2.15 : 2} />
 		</Animated.View>
 	);
 }
@@ -110,6 +105,7 @@ function AnimatedTabIcon({
 export function BottomNav({ state, navigation }: BottomNavProps) {
 	const insets = useSafeAreaInsets();
 	const { width } = useWindowDimensions();
+	const { colors } = useDayovaTheme();
 	const selectedGradient = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 	const scale = clamp(width / 393, 0.88, 1.08);
 	const activeRouteName = state.routes[state.index]?.name;
@@ -212,7 +208,12 @@ export function BottomNav({ state, navigation }: BottomNavProps) {
 								width: ITEM_SIZE * scale,
 							}}
 						>
-							<AnimatedTabIcon active={active} Icon={Icon} scale={scale} />
+							<AnimatedTabIcon
+								active={active}
+								color={active ? "#FFFFFF" : colors.text}
+								Icon={Icon}
+								scale={scale}
+							/>
 						</TouchableOpacity>
 					);
 				})}

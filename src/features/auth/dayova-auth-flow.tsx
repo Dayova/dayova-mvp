@@ -1,7 +1,6 @@
 import { Host, Picker } from "@expo/ui";
 import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, router, Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import {
 	type ComponentType,
 	type ReactNode,
@@ -75,8 +74,8 @@ import {
 	Bulb,
 	Calculator,
 	CalendarDays,
-	Chemistry,
 	Check,
+	Chemistry,
 	ChevronDown,
 	ClipboardEdit,
 	ClipboardList,
@@ -97,11 +96,13 @@ import {
 	Telescope,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
+import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { setRememberSessionPersistence } from "~/lib/auth-token-cache";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useBackIntent } from "~/lib/navigation";
+import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
 import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
@@ -609,6 +610,7 @@ const AUTH_BACKGROUND_TILE = {
 } as const;
 
 export function AuthChoiceScreen() {
+	const { colors: COLORS } = useDayovaTheme();
 	const { width, height } = useWindowDimensions();
 	const frameScale = Math.min(
 		width / AUTH_CHOICE_FRAME.width,
@@ -625,7 +627,7 @@ export function AuthChoiceScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ title: "Dayova" }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<ScrollView
 				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
@@ -793,6 +795,7 @@ export function RegisterRedirectScreen() {
 type RegistrationStage = "flow" | "verification" | "creating";
 
 export function OnboardingScreen() {
+	const { colors: COLORS } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [stage, setStage] = useState<RegistrationStage>("flow");
@@ -1046,7 +1049,10 @@ export function OnboardingScreen() {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
-			<StatusBar style="dark" />
+			<Stack.Screen
+				options={{ title: "Registrierung", gestureEnabled: false }}
+			/>
+			<ThemedStatusBar />
 			<KeyboardAvoidingView
 				behavior={Platform.OS === "ios" ? "padding" : undefined}
 				className="flex-1"
@@ -1337,6 +1343,7 @@ function QuestionStepView({
 	onContinue: () => void;
 	onTogglePassword: () => void;
 }) {
+	const { colors: COLORS } = useDayovaTheme();
 	const { answers, setAnswer } = useOnboarding();
 	const isShortFactStep =
 		step.kind === "fact" && step.id === "short-study-fact";
@@ -1595,6 +1602,7 @@ function ShortStudyTimeFactStep({
 }
 
 export function LoginScreen() {
+	const { colors: COLORS } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
 	const isCompactHeight = height < 850;
@@ -1732,7 +1740,7 @@ export function LoginScreen() {
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
 			<Stack.Screen options={{ title: "Login" }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<KeyboardAvoidingView
 				behavior={Platform.OS === "ios" ? "padding" : undefined}
 				style={{ flex: 1 }}
@@ -1916,12 +1924,14 @@ function VerificationScreen({
 	onChangeCode: (value: string) => void;
 	onResend: () => Promise<void>;
 }) {
+	const { colors: COLORS } = useDayovaTheme();
+
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
 			<Stack.Screen
 				options={{ title: "E-Mail bestätigen", gestureEnabled: false }}
 			/>
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<KeyboardAvoidingView
 				behavior={Platform.OS === "ios" ? "padding" : undefined}
 				style={{ flex: 1 }}
@@ -1998,10 +2008,12 @@ function CreationLoaderScreen({
 	topInset: number;
 	bottomInset: number;
 }) {
+	const { colors: COLORS } = useDayovaTheme();
+
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
 			<Stack.Screen options={{ title: "Lernprofil", gestureEnabled: false }} />
-			<StatusBar style="dark" />
+			<ThemedStatusBar />
 			<View
 				style={{
 					flex: 1,
@@ -2031,6 +2043,8 @@ function AuthProgressHeader({
 	progress: number;
 	onBack: () => boolean;
 }) {
+	const { colors: COLORS } = useDayovaTheme();
+
 	return (
 		<View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
 			<Pressable
@@ -2098,6 +2112,8 @@ function PillTextInput({
 	onChangeText: (value: string) => void;
 	onSubmit: () => void;
 }) {
+	const { colors: COLORS } = useDayovaTheme();
+
 	return (
 		<View
 			style={{
@@ -2117,7 +2133,7 @@ function PillTextInput({
 				ref={refObject}
 				value={value}
 				placeholder={placeholder}
-				placeholderTextColor="rgba(26, 26, 26, 0.42)"
+				placeholderTextColor={COLORS.secondaryText}
 				keyboardType={keyboardType}
 				autoComplete={autoComplete}
 				textContentType={textContentType}
@@ -2148,10 +2164,12 @@ function FormPill({
 	rightAccessory,
 	...props
 }: TextInputProps & { rightAccessory?: ReactNode }) {
+	const { colors: COLORS } = useDayovaTheme();
+
 	return (
 		<View className="h-14 flex-row items-center rounded-full border border-primary bg-surface px-4">
 			<TextInput
-				placeholderTextColor="rgba(26, 26, 26, 0.45)"
+				placeholderTextColor={COLORS.secondaryText}
 				selectionColor={COLORS.primary}
 				autoCorrect={false}
 				className="flex-1 font-poppins text-body-2 text-text"
@@ -2210,6 +2228,8 @@ function OtpCodeInput({
 	inputRef: RefObject<TextInput | null>;
 	disabled: boolean;
 }) {
+	const { colors: COLORS } = useDayovaTheme();
+
 	return (
 		<Pressable onPress={() => inputRef.current?.focus()}>
 			<View style={{ flexDirection: "row", gap: 8 }}>
