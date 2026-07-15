@@ -522,7 +522,11 @@ function LearningPlanCard({
 					{overviewState.kind === "creation" ? (
 						<CompactNotchedActionCard
 							cardHeight={184}
-							cardAccessibilityHint="Setzt die Lernplan-Erstellung bei der ersten noch offenen Frage fort."
+							cardAccessibilityHint={
+								overviewState.resumeTarget.kind === "question"
+									? "Setzt die Lernplan-Erstellung bei der ersten noch offenen Frage fort."
+									: "Setzt die Lernplan-Erstellung mit der Generierung des Lernplans fort."
+							}
 							cardAccessibilityLabel={`${formatGermanUiText(plan.subject)}, ${overviewState.badgeLabel}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${overviewState.progressLabel}`}
 							actionIcon={
 								<ArrowUpRight
@@ -544,7 +548,7 @@ function LearningPlanCard({
 									</Text>
 									<Badge
 										label={overviewState.badgeLabel}
-										background={STATUS_NEUTRAL_BACKGROUND}
+										background={colors.systemSubtle}
 										foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
 									/>
 								</View>
