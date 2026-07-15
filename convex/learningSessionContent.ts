@@ -10,6 +10,7 @@ import {
 } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import { type TheoryContent, theoryContentValidator } from "./theoryContent";
 
 type SessionContentItemKind =
 	| "learnCard"
@@ -26,6 +27,7 @@ type GeneratedItem = {
 	back?: string;
 	explanation: string;
 	idealAnswer: string;
+	theoryContent?: TheoryContent;
 	choices?: Array<{ id: string; text: string }>;
 	correctChoiceId?: string;
 	evaluationKeywords: string[];
@@ -49,6 +51,7 @@ const generatedSessionContentItemValidator = v.object({
 	back: v.optional(v.string()),
 	explanation: v.string(),
 	idealAnswer: v.string(),
+	theoryContent: v.optional(theoryContentValidator),
 	choices: v.optional(v.array(generatedChoiceValidator)),
 	correctChoiceId: v.optional(v.string()),
 	evaluationKeywords: v.array(v.string()),
@@ -103,6 +106,7 @@ const publicItem = (item: Doc<"learningSessionContentItems">) => ({
 	back: item.back,
 	explanation: item.explanation,
 	idealAnswer: item.idealAnswer,
+	theoryContent: item.theoryContent,
 	choices: item.choices ?? [],
 	sortOrder: item.sortOrder,
 });
@@ -229,30 +233,41 @@ const buildTheoryItems = (
 					? `Wie wendest du ${concept} in einer Aufgabe an?`
 					: `Welcher typische Fehler passiert bei ${concept}?`;
 		const example = compact(
-			`Beispiel: Nutze "${detail}" als Prüfungsaufgabe und erkläre jeden Schritt.`,
+			`Nutze "${detail}" als Prüfungsaufgabe und erkläre jeden Schritt.`,
 			detail,
 		);
-		const pitfall = compact(
-			`Achte darauf, keine Umformung oder Begründung auszulassen.`,
+		const commonMistake = compact(
+			"Eine Umformung oder Begründung auslassen.",
 			"Begründe jeden Schritt.",
+		);
+		const explanation = compact(`${concept}: ${detail}`, session.goal);
+		const memoryCue = compact(
+			`Erkläre ${concept} kurz, wende es an einem Beispiel an und nenne den häufigsten Fehler.`,
+			concept,
 		);
 		return {
 			kind: "learnCard",
-			title: `Lernkarte ${index + 1}`,
+			title: concept,
 			prompt: front,
 			front,
 			back: compact(
-				`${concept}: ${detail}. ${example} ${pitfall}`,
+				`${explanation} Beispiel: ${example} Typischer Fehler: ${commonMistake}`,
 				session.goal,
 			),
-			explanation: compact(
-				`Diese Lernkarte bereitet dich auf ${plan.examTypeLabel} zu ${plan.topicDescription} vor.`,
-				"Diese Karte bereitet dich auf die Prüfung vor.",
-			),
-			idealAnswer: compact(
-				`Erkläre ${concept} kurz, wende es an einem Beispiel an und nenne den häufigsten Fehler.`,
-				concept,
-			),
+			explanation,
+			idealAnswer: memoryCue,
+			theoryContent: {
+				conceptTitle: concept,
+				question: front,
+				explanation,
+				keyPoints: [
+					compact(detail, session.goal),
+					compact(session.expectedOutcome, plan.topicDescription),
+				],
+				example,
+				memoryCue,
+				commonMistake,
+			},
 			evaluationKeywords: keywords,
 		};
 	});
@@ -378,6 +393,19 @@ const insertGeneratedItemsForSession = async (
 			back: item.back ? normalizeText(item.back) : undefined,
 			explanation: normalizeText(item.explanation),
 			idealAnswer: normalizeText(item.idealAnswer),
+			theoryContent: item.theoryContent
+				? {
+						conceptTitle: normalizeText(item.theoryContent.conceptTitle),
+						question: normalizeText(item.theoryContent.question),
+						explanation: normalizeText(item.theoryContent.explanation),
+						keyPoints: item.theoryContent.keyPoints
+							.slice(0, 4)
+							.map(normalizeText),
+						example: normalizeText(item.theoryContent.example),
+						memoryCue: normalizeText(item.theoryContent.memoryCue),
+						commonMistake: normalizeText(item.theoryContent.commonMistake),
+					}
+				: undefined,
 			choices: item.choices?.map((choice) => ({
 				id: choice.id,
 				text: normalizeText(choice.text),

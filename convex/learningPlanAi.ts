@@ -216,17 +216,29 @@ const generatedPlanSchema = z
 	})
 	.describe(GENERATED_PLAN_OUTPUT_DESCRIPTION);
 
-const theoryCardsSchema = z
+const theoryTopicsSchema = z
 	.object({
-		cards: boundedArray(
+		topics: boundedArray(
 			z.object({
+				conceptTitle: germanTextSchema(
+					3,
+					"Short German concept heading for this theory topic page.",
+				),
 				front: germanTextSchema(
 					8,
-					"Front side of an active-recall learning card. It must be a concrete German prompt or question.",
+					"Concrete German guiding question for this theory topic.",
 				),
 				answer: germanTextSchema(
 					20,
-					"Precise German answer for the back side of the learning card.",
+					"Clear German explanation that teaches the theory concept.",
+				),
+				keyPoints: boundedArray(
+					germanTextSchema(
+						8,
+						"Concrete German key point the learner should understand.",
+					),
+					2,
+					4,
 				),
 				example: germanTextSchema(
 					12,
@@ -250,7 +262,7 @@ const theoryCardsSchema = z
 		),
 	})
 	.describe(
-		`${GERMAN_UI_TEXT_RULE} Return precise active-recall learning cards for a theory session.`,
+		`${GERMAN_UI_TEXT_RULE} Return precise, structured topic pages for a theory session.`,
 	);
 
 const generatedTaskChoiceSchema = z.object({
@@ -1336,7 +1348,7 @@ const describeLearningTimes = (learningTimes: LearningTimeWindow[]) => {
 		.join("\n");
 };
 
-const getTheoryCardTargetCount = (durationMinutes: number) =>
+const getTheoryTopicTargetCount = (durationMinutes: number) =>
 	Math.max(
 		MIN_THEORY_CARD_COUNT,
 		Math.min(MAX_THEORY_CARD_COUNT, Math.ceil(durationMinutes / 6)),
@@ -1527,19 +1539,19 @@ ${personalLearningTimes}`,
 			];
 
 			if (context.session.phase === "theory") {
-				const targetCardCount = getTheoryCardTargetCount(
+				const targetTopicCount = getTheoryTopicTargetCount(
 					context.session.durationMinutes,
 				);
 				userContent.push({
 					type: "text",
-					text: `Erstelle genau ${targetCardCount} Lernkarten für diese Theorie-Session.
+					text: `Erstelle genau ${targetTopicCount} aufeinander aufbauende Themenseiten für diese Theorie-Session.
 Qualitätsregeln:
-- Jede Vorderseite ist eine konkrete Abruf-Frage oder ein präziser Prompt, kein Kapitelname.
-- Die Rückseiten bauen aufeinander auf: Grundlagen zuerst, dann Anwendung, typische Fehler, prüfungsnahe Sicherheit.
-- Zusammen müssen die Karten die Lernzeit füllen und alles vermitteln, was für diesen Lernslot nötig ist.
+- Jede Themenseite hat einen kurzen Begriffstitel, eine konkrete Leitfrage, eine verständliche Erklärung, zwei bis vier Kernpunkte, ein Beispiel, einen Merksatz und einen typischen Fehler.
+- Die Themen bauen aufeinander auf: Grundlagen zuerst, dann Anwendung, typische Fehler, prüfungsnahe Sicherheit.
+- Zusammen müssen die Themenseiten die Lernzeit füllen und alles vermitteln, was für diesen Lernslot nötig ist.
 - Nutze Prüfungsthema, Material, Wissensanalyse-Antworten, Session-Ziel und Aufgaben sichtbar.
 - Keine bewerteten Quizfragen, keine Multiple Choice, keine Aufforderung zum Hochladen oder Nachschlagen.
-- Formuliere so, dass ein Schüler die Karten direkt durcharbeiten kann.
+- Formuliere so, dass ein Schüler die Themenseiten direkt durcharbeiten kann.
 - Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß.
 - Für jedes text/asciiShadow-Objekt gilt: text ist die sichtbare Fassung; asciiShadow ist exakt dieselbe Formulierung, nur mit ä->ae, ö->oe, ü->ue, Ä->Ae, Ö->Oe, Ü->Ue und ß->ss.`,
 				});
@@ -1551,58 +1563,76 @@ Qualitätsregeln:
 				}
 				userContent.push(...fileParts);
 
-				const generatedCards = await withGeneratedTextRetry(async (attempt) => {
-					const result = await withLlmTimeout((abortSignal) =>
-						generateText({
-							model: model(MODEL_ID),
-							temperature: 0.2,
-							maxOutputTokens: 5_200,
-							abortSignal,
-							providerOptions: vertexProviderOptions,
-							output: Output.object({ schema: theoryCardsSchema }),
-							system: `Du bist ein strenger, präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Du erstellst aktive Lernkarten für eine Theorie-Session. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
-							messages: [{ role: "user", content: userContent }],
-						}),
-					);
-
-					const output = result.output as z.infer<typeof theoryCardsSchema>;
-					return output.cards.map((card, index) => {
-						const front = normalizeAiGeneratedGermanText(card.front);
-						const answer = normalizeAiGeneratedGermanText(card.answer);
-						const example = normalizeAiGeneratedGermanText(card.example);
-						const memoryCue = normalizeAiGeneratedGermanText(card.memoryCue);
-						const commonMistake = normalizeAiGeneratedGermanText(
-							card.commonMistake,
+				const generatedTopics = await withGeneratedTextRetry(
+					async (attempt) => {
+						const result = await withLlmTimeout((abortSignal) =>
+							generateText({
+								model: model(MODEL_ID),
+								temperature: 0.2,
+								maxOutputTokens: 5_200,
+								abortSignal,
+								providerOptions: vertexProviderOptions,
+								output: Output.object({ schema: theoryTopicsSchema }),
+								system: `Du bist ein strenger, präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Du erstellst strukturierte Themenseiten für eine Theorie-Session. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+								messages: [{ role: "user", content: userContent }],
+							}),
 						);
-						const keywords = card.keywords
-							.map((keyword) =>
-								compactKeyword(normalizeAiGeneratedGermanText(keyword)),
-							)
-							.filter(Boolean);
 
-						return {
-							kind: "learnCard" as const,
-							title: `Lernkarte ${index + 1}`,
-							prompt: front,
-							front,
-							back: `${answer} Beispiel: ${example} Typischer Fehler: ${commonMistake}`,
-							explanation: `Diese Lernkarte gehört zur Theorie-Session "${context.session.title}" und bereitet auf ${context.plan.examTypeLabel} vor.`,
-							idealAnswer: memoryCue,
-							evaluationKeywords:
-								keywords.length > 0
-									? keywords
-									: [compactKeyword(front), compactKeyword(answer)].filter(
-											Boolean,
-										),
-						};
-					});
-				}, "Die Lernkarten konnten nicht zuverlässig erstellt werden.");
+						const output = result.output as z.infer<typeof theoryTopicsSchema>;
+						return output.topics.map((topic) => {
+							const conceptTitle = normalizeAiGeneratedGermanText(
+								topic.conceptTitle,
+							);
+							const front = normalizeAiGeneratedGermanText(topic.front);
+							const answer = normalizeAiGeneratedGermanText(topic.answer);
+							const keyPoints = topic.keyPoints.map((keyPoint) =>
+								normalizeAiGeneratedGermanText(keyPoint),
+							);
+							const example = normalizeAiGeneratedGermanText(topic.example);
+							const memoryCue = normalizeAiGeneratedGermanText(topic.memoryCue);
+							const commonMistake = normalizeAiGeneratedGermanText(
+								topic.commonMistake,
+							);
+							const keywords = topic.keywords
+								.map((keyword) =>
+									compactKeyword(normalizeAiGeneratedGermanText(keyword)),
+								)
+								.filter(Boolean);
+
+							return {
+								kind: "learnCard" as const,
+								title: conceptTitle,
+								prompt: front,
+								front,
+								back: `${answer} Beispiel: ${example} Typischer Fehler: ${commonMistake}`,
+								explanation: answer,
+								idealAnswer: memoryCue,
+								theoryContent: {
+									conceptTitle,
+									question: front,
+									explanation: answer,
+									keyPoints,
+									example,
+									memoryCue,
+									commonMistake,
+								},
+								evaluationKeywords:
+									keywords.length > 0
+										? keywords
+										: [compactKeyword(front), compactKeyword(answer)].filter(
+												Boolean,
+											),
+							};
+						});
+					},
+					"Die Themenseiten konnten nicht zuverlässig erstellt werden. Versuche es erneut.",
+				);
 
 				return await ctx.runMutation(
 					internal.learningSessionContent.storeGeneratedSessionContent,
 					{
 						sessionId: args.sessionId,
-						items: generatedCards,
+						items: generatedTopics,
 						replaceExisting,
 					},
 				);

@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { theoryContentValidator } from "./theoryContent";
 
 const planQuestionValidator = v.object({
 	id: v.string(),
@@ -328,6 +329,7 @@ export default defineSchema({
 		back: v.optional(v.string()),
 		explanation: v.string(),
 		idealAnswer: v.string(),
+		theoryContent: v.optional(theoryContentValidator),
 		choices: v.optional(v.array(sessionContentChoiceValidator)),
 		correctChoiceId: v.optional(v.string()),
 		evaluationKeywords: v.array(v.string()),

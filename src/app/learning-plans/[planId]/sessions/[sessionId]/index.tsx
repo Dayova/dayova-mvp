@@ -1,5 +1,6 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import * as Device from "expo-device";
+import * as Speech from "expo-speech";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -20,7 +21,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { QuestionProgressBar } from "~/components/question-progress-bar";
 import { ScreenHeader } from "~/components/screen-header";
-import { Button } from "~/components/ui/button";
+import { BackButton, Button } from "~/components/ui/button";
 import {
 	BookOpen,
 	Check,
@@ -35,12 +36,8 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
-import {
-	createTheoryCardQueue,
-	repeatCurrentTheoryCard as queueRepeatCurrentTheoryCard,
-	type TheoryCardQueueState,
-	understandCurrentTheoryCard,
-} from "~/features/learning-plans/theory-card-queue";
+import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
+import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import type {
 	LearningSessionContentSnapshot,
 	SessionAnswerAttempt,
@@ -53,6 +50,7 @@ import { definedAnalyticsProperties } from "~/lib/analytics-core";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 type SpeechRecognitionModule = typeof import("react-native-nitro-speech");
@@ -514,74 +512,6 @@ function CompletionView({
 	);
 }
 
-function LearnCard({
-	item,
-	isBackVisible,
-	onFlip,
-}: {
-	item: SessionContentItem;
-	isBackVisible: boolean;
-	onFlip: () => void;
-}) {
-	return (
-		<TouchableOpacity
-			accessibilityRole="button"
-			accessibilityLabel="Lernkarte umdrehen"
-			activeOpacity={0.9}
-			onPress={onFlip}
-			className="mt-24"
-		>
-			<View className="absolute -top-11 right-7 left-7 h-[92px] rounded-[32px] border border-border bg-light-2" />
-			<View className="absolute -top-7 right-4 left-4 h-[92px] rounded-[32px] border border-border bg-light-2" />
-			<Surface
-				className={cn(
-					"min-h-[300px] rounded-[32px] px-6 py-8",
-					isBackVisible ? "justify-start" : "items-center justify-center",
-				)}
-				variant="flat"
-			>
-				{isBackVisible ? (
-					<>
-						<TagPill label="Antwort" icon="answer" />
-						<Text className="mt-8 font-poppins font-semibold text-body-1 text-text">
-							{item.front}
-						</Text>
-						<View className="my-7 h-px bg-border" />
-						<Text className="font-poppins text-body-2 text-secondary-text">
-							{item.back}
-						</Text>
-						<View className="mt-8 rounded-[28px] bg-system-subtle px-4 py-4">
-							<Text className="font-poppins text-body-4 text-secondary-text">
-								<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
-									Merke dir:
-								</Text>{" "}
-								{item.idealAnswer}
-							</Text>
-						</View>
-					</>
-				) : (
-					<>
-						<View className="mb-8 h-20 w-20 items-center justify-center rounded-full bg-system-subtle">
-							<CircleAlert
-								size={32}
-								color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-								strokeWidth={2.1}
-							/>
-						</View>
-						<Text className="text-center font-poppins font-semibold text-body-1 text-text">
-							{item.front}
-						</Text>
-						<View className="my-8 h-px self-stretch bg-border" />
-						<Text className="font-poppins font-semibold text-body-3 text-primary">
-							Tippen zum Aufdecken
-						</Text>
-					</>
-				)}
-			</Surface>
-		</TouchableOpacity>
-	);
-}
-
 function ChoiceList({
 	item,
 	selectedChoiceId,
@@ -833,15 +763,9 @@ export default function LearningSessionContentScreen() {
 		api.learningPlans.recordSessionOutcome,
 	);
 	const { capture } = useValidationAnalytics();
+	const { colors } = useDayovaTheme();
 
 	const [currentIndex, setCurrentIndex] = useState(0);
-	const [theoryQueue, setTheoryQueue] = useState<TheoryCardQueueState<
-		SessionContentItem["id"]
-	> | null>(null);
-	const [theoryQueueSignature, setTheoryQueueSignature] = useState<
-		string | null
-	>(null);
-	const [isCardBackVisible, setIsCardBackVisible] = useState(false);
 	const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
 	const [answerText, setAnswerText] = useState("");
 	const [localAttempt, setLocalAttempt] = useState<SessionAnswerAttempt | null>(
@@ -906,26 +830,9 @@ export default function LearningSessionContentScreen() {
 		content?.session.phase === "theory"
 			? content.items.filter((item) => item.kind === "learnCard")
 			: [];
-	const loadedTheoryQueueSignature =
-		content?.session.phase === "theory"
-			? theoryItems.map((item) => item.id).join("|")
-			: null;
-	const activeTheoryQueue =
-		loadedTheoryQueueSignature &&
-		theoryQueueSignature === loadedTheoryQueueSignature &&
-		theoryQueue
-			? theoryQueue
-			: loadedTheoryQueueSignature
-				? createTheoryCardQueue(theoryItems.map((item) => item.id))
-				: null;
-
-	const currentTheoryItemId =
-		content?.session.phase === "theory" && activeTheoryQueue
-			? activeTheoryQueue.queue[activeTheoryQueue.currentIndex]
-			: null;
 	const currentItem =
 		content?.session.phase === "theory"
-			? (content.items.find((item) => item.id === currentTheoryItemId) ?? null)
+			? (theoryItems[currentIndex] ?? null)
 			: (content?.items[currentIndex] ?? null);
 	const isPraxisSession = content?.session.phase === "rehearsal";
 	const persistedAttempt = useMemo(() => {
@@ -967,6 +874,7 @@ export default function LearningSessionContentScreen() {
 	).length;
 
 	const goBack = useCallback(() => {
+		void Speech.stop().catch(() => undefined);
 		if (planId) {
 			router.replace(`/learning-plans/${planId}` as const);
 			return true;
@@ -1077,7 +985,6 @@ export default function LearningSessionContentScreen() {
 
 	const resetItemState = () => {
 		if (isRecognizing) speechRecognizer.stopListening();
-		setIsCardBackVisible(false);
 		setSelectedChoiceId(null);
 		setAnswerText("");
 		setLocalAttempt(null);
@@ -1089,10 +996,6 @@ export default function LearningSessionContentScreen() {
 		resetItemState();
 		setRetryStartedAt(now);
 		setCurrentIndex(0);
-		if (content?.session.phase === "theory") {
-			setTheoryQueue(createTheoryCardQueue(theoryItems.map((item) => item.id)));
-			setTheoryQueueSignature(loadedTheoryQueueSignature);
-		}
 		setCompletionPhase(null);
 		setShowAnalysis(false);
 		setErrorMessage(null);
@@ -1161,23 +1064,23 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const continueTheory = async () => {
-		if (!content || isBusy || !activeTheoryQueue) return;
-		const result = understandCurrentTheoryCard(activeTheoryQueue);
-		if (!result.isComplete) {
-			resetItemState();
-			setTheoryQueue(result.state);
-			setTheoryQueueSignature(loadedTheoryQueueSignature);
-			return;
-		}
-		setCompletionPhase("theory");
+	const continueTheory = () => {
+		if (!content || isBusy) return;
+		runTheoryTopicPrimaryAction({
+			currentIndex,
+			total: theoryItems.length,
+			onAdvance: (nextIndex) => {
+				setErrorMessage(null);
+				setCurrentIndex(nextIndex);
+			},
+			onComplete: () => void completeAndLeave(),
+		});
 	};
 
-	const repeatCurrentTheoryCard = () => {
-		if (!activeTheoryQueue) return;
-		resetItemState();
-		setTheoryQueue(queueRepeatCurrentTheoryCard(activeTheoryQueue));
-		setTheoryQueueSignature(loadedTheoryQueueSignature);
+	const showPreviousTheoryTopic = () => {
+		if (isBusy || currentIndex === 0) return;
+		setErrorMessage(null);
+		setCurrentIndex((value) => Math.max(0, value - 1));
 	};
 
 	const buildSpeechRecognitionConfig =
@@ -1326,6 +1229,63 @@ export default function LearningSessionContentScreen() {
 				? phaseTitle(content.session.phase)
 				: "Lernblock";
 
+	if (
+		content?.session.phase === "theory" &&
+		currentItem?.kind === "learnCard" &&
+		!showAnalysis &&
+		!completionPhase
+	) {
+		return (
+			<View className="flex-1 bg-background">
+				<Stack.Screen
+					options={{
+						gestureEnabled: true,
+						headerShown: true,
+						title: "Theorie",
+						headerTitleAlign: "center",
+						headerShadowVisible: false,
+						// React Navigation's native header exposes its theme only through style objects.
+						headerStyle: { backgroundColor: colors.background },
+						headerTintColor: colors.text,
+						headerTitleStyle: {
+							fontFamily: "Poppins",
+							fontSize: 16,
+							fontWeight: "600",
+						},
+						headerLeft: () => (
+							<BackButton
+								accessibilityHint="Kehrt zum Lernplan zurück."
+								onPress={goBack}
+								className="h-11 min-h-11 w-11 min-w-11"
+							/>
+						),
+					}}
+				/>
+				<ThemedStatusBar />
+				<TheoryTopicPage
+					key={currentItem.id}
+					item={currentItem}
+					currentIndex={currentIndex}
+					total={theoryItems.length}
+					isCompleting={isBusy}
+					onPrevious={showPreviousTheoryTopic}
+					onNext={continueTheory}
+				/>
+				{errorMessage ? (
+					<View className="absolute right-6 bottom-28 left-6 rounded-[24px] bg-wrong-subtle px-4 py-3">
+						<Text
+							selectable
+							accessibilityLiveRegion="polite"
+							className="font-poppins text-body-4 text-wrong"
+						>
+							{errorMessage}
+						</Text>
+					</View>
+				) : null}
+			</View>
+		);
+	}
+
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
@@ -1396,21 +1356,6 @@ export default function LearningSessionContentScreen() {
 						onDone={continueTask}
 						isBusy={isBusy}
 					/>
-				) : currentItem?.kind === "learnCard" ? (
-					<View className="flex-1 justify-between">
-						<LearnCard
-							item={currentItem}
-							isBackVisible={isCardBackVisible}
-							onFlip={() => setIsCardBackVisible((value) => !value)}
-						/>
-						<ActionRow
-							secondaryLabel="Wiederholen"
-							primaryLabel="Verstanden"
-							onSecondary={repeatCurrentTheoryCard}
-							onPrimary={continueTheory}
-							isBusy={isBusy}
-						/>
-					</View>
 				) : currentItem ? (
 					<View className="flex-1 justify-between">
 						<View className="mt-10 flex-1">

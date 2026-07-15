@@ -22,6 +22,7 @@ import type * as learningSessionContent from "../learningSessionContent.js";
 import type * as learningTimes from "../learningTimes.js";
 import type * as notifications from "../notifications.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
+import type * as theoryContent from "../theoryContent.js";
 import type * as topicDescriptionValidation from "../topicDescriptionValidation.js";
 import type * as users from "../users.js";
 import type * as validationAnalytics from "../validationAnalytics.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   learningTimes: typeof learningTimes;
   notifications: typeof notifications;
   scheduleConflicts: typeof scheduleConflicts;
+  theoryContent: typeof theoryContent;
   topicDescriptionValidation: typeof topicDescriptionValidation;
   users: typeof users;
   validationAnalytics: typeof validationAnalytics;

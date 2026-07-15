@@ -49,6 +49,16 @@ type SessionContentItemKind =
 
 export type SessionAnswerRating = "notCorrect" | "partiallyCorrect" | "correct";
 
+export type TheoryContent = {
+	conceptTitle: string;
+	question: string;
+	explanation: string;
+	keyPoints: string[];
+	example: string;
+	memoryCue: string;
+	commonMistake: string;
+};
+
 export type SessionContentItem = {
 	id: Id<"learningSessionContentItems">;
 	sessionId: Id<"learningPlanSessions">;
@@ -60,6 +70,7 @@ export type SessionContentItem = {
 	back?: string;
 	explanation: string;
 	idealAnswer: string;
+	theoryContent?: TheoryContent;
 	choices: Array<{ id: string; text: string }>;
 	sortOrder: number;
 };

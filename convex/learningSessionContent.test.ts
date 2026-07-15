@@ -134,10 +134,59 @@ test("theory fallback creates active recall cards instead of generic summaries",
 	expect(content?.items[0]).toMatchObject({
 		front: expect.stringContaining("?"),
 		back: expect.stringContaining("Beispiel:"),
+		theoryContent: {
+			conceptTitle: expect.any(String),
+			question: expect.stringContaining("?"),
+			explanation: expect.any(String),
+			keyPoints: expect.any(Array),
+			example: expect.any(String),
+			memoryCue: expect.any(String),
+			commonMistake: expect.any(String),
+		},
 	});
+	expect(
+		content?.items[0]?.theoryContent?.keyPoints.length,
+	).toBeGreaterThanOrEqual(2);
+	expect(
+		content?.items[0]?.theoryContent?.keyPoints.length,
+	).toBeLessThanOrEqual(4);
 	expect(content?.items.map((item) => item.back).join(" ")).not.toContain(
 		"Merke dir besonders, wie das Lernziel",
 	);
+});
+
+test("existing theory cards remain readable without structured topic content", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession("theory");
+
+	await t.mutation(
+		internal.learningSessionContent.storeGeneratedSessionContent,
+		{
+			sessionId,
+			items: [
+				{
+					kind: "learnCard",
+					title: "Lernkarte 1",
+					prompt: "Was ist eine Äquivalenzumformung?",
+					front: "Was ist eine Äquivalenzumformung?",
+					back: "Eine Umformung, die die Lösungsmenge erhält.",
+					explanation: "Die Lösungsmenge bleibt unverändert.",
+					idealAnswer: "Beide Seiten gleich behandeln.",
+					evaluationKeywords: ["äquivalenzumformung"],
+				},
+			],
+		},
+	);
+
+	const content = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+
+	expect(content?.items[0]).toMatchObject({
+		title: "Lernkarte 1",
+		front: "Was ist eine Äquivalenzumformung?",
+		back: "Eine Umformung, die die Lösungsmenge erhält.",
+	});
+	expect(content?.items[0]?.theoryContent).toBeUndefined();
 });
 
 test("practice fallback creates concrete guided practice tasks", async () => {
