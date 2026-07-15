@@ -6,7 +6,6 @@ import {
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
 	ScrollView,
-	type StyleProp,
 	TouchableOpacity,
 	useWindowDimensions,
 	View,
@@ -29,6 +28,7 @@ import Svg, {
 } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
+import { DashboardDateHeader } from "~/components/dashboard/dashboard-date-header";
 import { NotificationButton } from "~/components/notification-button";
 import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import {
@@ -69,6 +69,7 @@ const TIMELINE_MARKER_HOURS = Array.from({ length: 25 }, (_, hour) => hour);
 const TIMELINE_PAST_DAYS = 3;
 const TIMELINE_FUTURE_DAYS = 14;
 const DAY_ENTRY_QUERY_BATCH_SIZE = 31;
+const HEADER_VISIBLE_DAYS = 7;
 const PRIMARY_INTERACTIVE_GRADIENT =
 	DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 
@@ -82,55 +83,6 @@ const chunkArray = <T,>(items: T[], chunkSize: number) => {
 	}
 	return chunks;
 };
-
-function SideScrollIndicator({
-	scale,
-	style,
-}: {
-	scale: number;
-	style?: StyleProp<ViewStyle>;
-}) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<Svg
-			accessible={false}
-			accessibilityElementsHidden
-			importantForAccessibility="no-hide-descendants"
-			pointerEvents="none"
-			width={8 * scale}
-			height={36 * scale}
-			viewBox="0 0 8 36"
-			fill="none"
-			style={style}
-		>
-			<Path
-				d="M0 16H6C7.10457 16 8 16.8954 8 18C8 19.1046 7.10457 20 6 20H0V16Z"
-				fill={colors.text}
-			/>
-			<Path
-				d="M0 8H4C5.10457 8 6 8.89543 6 10C6 11.1046 5.10457 12 4 12H0V8Z"
-				fill={colors.text}
-				fillOpacity={0.35}
-			/>
-			<Path
-				d="M0 2H2C3.10457 2 4 2.89543 4 4C4 5.10457 3.10457 6 2 6H0V2Z"
-				fill={colors.text}
-				fillOpacity={0.15}
-			/>
-			<Path
-				d="M0 23H4C5.10457 23 6 23.8954 6 25C6 26.1046 5.10457 27 4 27H0V23Z"
-				fill={colors.text}
-				fillOpacity={0.35}
-			/>
-			<Path
-				d="M0 30H2C3.10457 30 4 30.8954 4 32C4 33.1046 3.10457 34 2 34H0V30Z"
-				fill={colors.text}
-				fillOpacity={0.15}
-			/>
-		</Svg>
-	);
-}
 
 function LearningSessionCard({
 	entry,
@@ -445,7 +397,6 @@ export default function HomeScreen() {
 		entry: DayEntry | null;
 	} | null>(null);
 	const timelineScrollRef = useRef<ScrollView | null>(null);
-	const dayStripScrollRef = useRef<ScrollView | null>(null);
 	const hasCenteredTimelineRef = useRef(false);
 	const pendingTimelineSelectionRef = useRef<string | null>(null);
 	const didCaptureDashboardViewRef = useRef(false);
@@ -561,9 +512,6 @@ export default function HomeScreen() {
 		};
 	});
 	const horizontalPadding = clamp((width - 369 * screenScale) / 2, 12, 24);
-	const headerInset = clamp(24 * screenScale - horizontalPadding, 0, 12);
-	const contentTop = Math.max(insets.top + 16 * heightScale, 48 * compactScale);
-	const sideHandleTop = contentTop + 170 * compactScale;
 	const planCardWidth = Math.min(
 		width - horizontalPadding * 2,
 		369 * screenScale,
@@ -595,25 +543,9 @@ export default function HomeScreen() {
 	const timelineHomeworkCardColor = isDark
 		? colors.hausaufgabeSubtle
 		: "#F3E8F0";
-	const dayStripGap = 10 * scheduleScale;
-	const getDayStripItemWidth = useCallback(
-		(_isToday?: boolean) => 42 * scheduleScale,
-		[scheduleScale],
-	);
-	const dayStripOffsets = useMemo(() => {
-		let offset = 0;
-		return visibleDays.map((day) => {
-			const dayOffset = offset;
-			offset += getDayStripItemWidth(day.isToday) + dayStripGap;
-			return dayOffset;
-		});
-	}, [dayStripGap, getDayStripItemWidth, visibleDays]);
-	const dayStripContentWidth =
-		dayStripOffsets[dayStripOffsets.length - 1] +
-		getDayStripItemWidth(visibleDays[visibleDays.length - 1]?.isToday ?? false);
 	const navClearance = Math.max(insets.bottom + 108 * screenScale, 132);
 	const scheduleInnerWidth = scheduleCardWidth - 24 * screenScale;
-	const scheduleCardHeight = 434 * compactScale;
+	const scheduleCardHeight = 400 * compactScale;
 	const selectedDayLabel = new Intl.DateTimeFormat("de-DE", {
 		weekday: "long",
 		day: "numeric",
@@ -622,12 +554,23 @@ export default function HomeScreen() {
 	const firstName =
 		typeof user?.name === "string" && user.name.trim().length > 0
 			? user.name.trim().split(/\s+/)[0]
-			: "Max";
+			: undefined;
 	const todayIndex = visibleDays.findIndex(
 		(day) => day.key === getDayKey(today),
 	);
 	const selectedDayIndex = visibleDays.findIndex(
 		(day) => day.key === selectedDayKey,
+	);
+	const headerCenterIndex =
+		selectedDayIndex >= 0 ? selectedDayIndex : Math.max(todayIndex, 0);
+	const headerStartIndex = clamp(
+		headerCenterIndex - Math.floor(HEADER_VISIBLE_DAYS / 2),
+		0,
+		Math.max(visibleDays.length - HEADER_VISIBLE_DAYS, 0),
+	);
+	const headerDays = visibleDays.slice(
+		headerStartIndex,
+		headerStartIndex + HEADER_VISIBLE_DAYS,
 	);
 	const selectedDayEntries = useMemo(
 		() =>
@@ -688,34 +631,6 @@ export default function HomeScreen() {
 		[timelineContentWidth, timelineViewportWidth],
 	);
 
-	const scrollDayStripToIndex = useCallback(
-		(dayIndex: number, animated = true) => {
-			const itemOffset = dayStripOffsets[dayIndex] ?? 0;
-			const itemWidth = getDayStripItemWidth(
-				visibleDays[dayIndex]?.isToday ?? false,
-			);
-			const maxScrollX = Math.max(
-				dayStripContentWidth - timelineViewportWidth,
-				0,
-			);
-			dayStripScrollRef.current?.scrollTo({
-				x: clamp(
-					itemOffset + itemWidth / 2 - timelineViewportWidth / 2,
-					0,
-					maxScrollX,
-				),
-				animated,
-			});
-		},
-		[
-			dayStripContentWidth,
-			dayStripOffsets,
-			getDayStripItemWidth,
-			timelineViewportWidth,
-			visibleDays,
-		],
-	);
-
 	const updateSelectedDayFromTimelineScroll = useCallback(
 		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
 			if (dayWidth <= 0 || visibleDays.length === 0) return;
@@ -741,9 +656,8 @@ export default function HomeScreen() {
 			setSelectedDayKey((currentDayKey) =>
 				currentDayKey === centeredDayKey ? currentDayKey : centeredDayKey,
 			);
-			scrollDayStripToIndex(centeredDayIndex);
 		},
-		[dayWidth, scrollDayStripToIndex, timelineViewportWidth, visibleDays],
+		[dayWidth, timelineViewportWidth, visibleDays],
 	);
 
 	useEffect(() => {
@@ -755,23 +669,16 @@ export default function HomeScreen() {
 			return;
 		const frame = requestAnimationFrame(() => {
 			scrollTimelineToX(currentTimelineX, false);
-			scrollDayStripToIndex(todayIndex, false);
 			hasCenteredTimelineRef.current = true;
 		});
 		return () => cancelAnimationFrame(frame);
-	}, [
-		currentTimelineX,
-		scrollDayStripToIndex,
-		scrollTimelineToX,
-		timelineContentWidth,
-		todayIndex,
-	]);
+	}, [currentTimelineX, scrollTimelineToX, timelineContentWidth, todayIndex]);
 
 	const selectVisibleDay = useCallback(
 		(
 			dayKey: string,
 			dayIndex: number,
-			source: "day_strip" | "today_button" | "hero_handle" = "day_strip",
+			source: "date_header" | "today_button" | "date_swipe" = "date_header",
 		) => {
 			pendingTimelineSelectionRef.current = dayKey;
 			setSelectedDayKey(dayKey);
@@ -780,7 +687,6 @@ export default function HomeScreen() {
 			scrollTimelineToX(
 				dayIndex * dayWidth + (minuteToCenter / 60) * hourWidth,
 			);
-			scrollDayStripToIndex(dayIndex);
 			capture(
 				source === "today_button"
 					? "dashboard_today_selected"
@@ -792,22 +698,14 @@ export default function HomeScreen() {
 				},
 			);
 		},
-		[
-			capture,
-			currentMinute,
-			dayWidth,
-			hourWidth,
-			scrollDayStripToIndex,
-			scrollTimelineToX,
-			today,
-		],
+		[capture, currentMinute, dayWidth, hourWidth, scrollTimelineToX, today],
 	);
 
 	const clearPreviousBlueContainer = useCallback(() => {
 		setPreviousBlueContainer(null);
 	}, []);
 
-	const navigateHeroDay = useCallback(
+	const navigateSelectedDay = useCallback(
 		(direction: 1 | -1) => {
 			const baseIndex =
 				selectedDayIndex >= 0 ? selectedDayIndex : Math.max(todayIndex, 0);
@@ -827,7 +725,7 @@ export default function HomeScreen() {
 			});
 			blueCardSlideDirection.set(direction);
 			blueCardSlide.set(0);
-			selectVisibleDay(nextDay.key, nextIndex, "hero_handle");
+			selectVisibleDay(nextDay.key, nextIndex, "date_swipe");
 			blueCardSlide.set(
 				withTiming(1, { duration: 420 }, () => {
 					"worklet";
@@ -888,35 +786,19 @@ export default function HomeScreen() {
 					paddingHorizontal: horizontalPadding,
 				}}
 			>
-				<View
-					className="flex-row items-start justify-between"
-					// Runtime-scaled typography keeps this dense home layout fitting device width.
-					style={{ paddingHorizontal: headerInset }}
-				>
-					<View>
-						<Text
-							className="font-poppins font-semibold text-text"
-							// Runtime-scaled typography keeps this dense home layout fitting device width.
-							style={{
-								fontSize: 24 * screenScale,
-								lineHeight: 36 * screenScale,
-							}}
-						>
-							{`Hi ${firstName},`}
-						</Text>
-						<Text
-							className="font-poppins text-secondary-text"
-							// Runtime-scaled typography keeps this dense home layout fitting device width.
-							style={{
-								fontSize: 16 * screenScale,
-								lineHeight: 24 * screenScale,
-							}}
-						>
-							schön, dass du da bist!
-						</Text>
-					</View>
-					<NotificationButton />
-				</View>
+				<DashboardDateHeader
+					days={headerDays}
+					firstName={firstName}
+					notificationButton={<NotificationButton />}
+					onSelectDay={(dayKey) => {
+						const dayIndex = visibleDays.findIndex((day) => day.key === dayKey);
+						if (dayIndex >= 0)
+							selectVisibleDay(dayKey, dayIndex, "date_header");
+					}}
+					onSwipeDay={navigateSelectedDay}
+					scale={screenScale}
+					selectedDayKey={selectedDayKey}
+				/>
 
 				<View className="items-center">
 					<LearningSessionCard
@@ -1138,92 +1020,17 @@ export default function HomeScreen() {
 							</View>
 						</View>
 
-						<ScrollView
-							ref={dayStripScrollRef}
-							horizontal
-							showsHorizontalScrollIndicator={false}
-							style={{ marginTop: 23 * compactScale, alignSelf: "center" }}
-							contentContainerStyle={{ width: dayStripContentWidth }}
+						<Text
+							className="ml-3 font-poppins text-secondary-text"
+							selectable
+							style={{
+								marginTop: 23 * compactScale,
+								fontSize: 14 * screenScale,
+								lineHeight: 21 * screenScale,
+							}}
 						>
-							<View
-								className="flex-row"
-								style={{
-									columnGap: dayStripGap,
-									width: dayStripContentWidth,
-								}}
-							>
-								{visibleDays.map((day, dayIndex) => {
-									const selected = selectedDayKey === day.key;
-									const itemWidth = 42 * scheduleScale;
-									const content = (
-										<Text
-											key={`${day.key}-label`}
-											className={`font-poppins font-semibold ${selected ? "text-white" : "text-text"}`}
-											style={{
-												fontSize: 16 * screenScale,
-												lineHeight: 24 * screenScale,
-											}}
-										>
-											{day.dayOfMonth}
-										</Text>
-									);
-
-									return (
-										<View
-											key={day.key}
-											className="items-center"
-											style={{ width: itemWidth, rowGap: 4 * compactScale }}
-										>
-											<Text
-												className="font-poppins font-semibold text-secondary-text"
-												style={{
-													fontSize: 12 * screenScale,
-													lineHeight: 18 * screenScale,
-												}}
-											>
-												{day.weekday}
-											</Text>
-											<TouchableOpacity
-												activeOpacity={0.82}
-												accessibilityRole="button"
-												accessibilityState={{ selected }}
-												accessibilityLabel={`${day.weekday}, ${day.dayOfMonth}`}
-												onPress={() =>
-													selectVisibleDay(day.key, dayIndex, "day_strip")
-												}
-											>
-												{selected ? (
-													<LinearGradient
-														colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
-														start={PRIMARY_INTERACTIVE_GRADIENT.start}
-														end={PRIMARY_INTERACTIVE_GRADIENT.end}
-														style={{
-															width: itemWidth,
-															height: 42 * screenScale,
-															borderRadius: 99,
-															alignItems: "center",
-															justifyContent: "center",
-														}}
-													>
-														{content}
-													</LinearGradient>
-												) : (
-													<View
-														className="items-center justify-center rounded-full"
-														style={{
-															width: itemWidth,
-															height: 42 * screenScale,
-														}}
-													>
-														{content}
-													</View>
-												)}
-											</TouchableOpacity>
-										</View>
-									);
-								})}
-							</View>
-						</ScrollView>
+							{selectedDayLabel}
+						</Text>
 
 						<View
 							className="overflow-hidden bg-light-2"
@@ -1469,53 +1276,6 @@ export default function HomeScreen() {
 					</View>
 				</View>
 			</ScrollView>
-
-			<View
-				className="absolute"
-				style={{
-					left: 0,
-					top: sideHandleTop,
-					width: 32 * screenScale,
-					height: 84 * screenScale,
-					zIndex: 50,
-				}}
-			>
-				<SideScrollIndicator
-					scale={screenScale}
-					style={{
-						position: "absolute",
-						left: 0,
-						top: 24 * screenScale,
-					}}
-				/>
-				<TouchableOpacity
-					accessibilityRole="button"
-					accessibilityLabel="Nächsten Tag anzeigen"
-					activeOpacity={0.5}
-					onPress={() => navigateHeroDay(1)}
-					style={{
-						position: "absolute",
-						left: 0,
-						top: 0,
-						width: 32 * screenScale,
-						height: 42 * screenScale,
-					}}
-				/>
-				<TouchableOpacity
-					accessibilityRole="button"
-					accessibilityLabel="Vorherigen Tag anzeigen"
-					activeOpacity={0.5}
-					onPress={() => navigateHeroDay(-1)}
-					style={{
-						position: "absolute",
-						left: 0,
-						bottom: 0,
-						width: 32 * screenScale,
-						height: 42 * screenScale,
-					}}
-				/>
-			</View>
-
 			<CreateTypePickerModal
 				visible={showCreateTypePicker}
 				onRequestClose={() => setShowCreateTypePicker(false)}
