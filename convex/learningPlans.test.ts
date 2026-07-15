@@ -146,6 +146,46 @@ test("list overview reports when every creation question has been answered", asy
 	});
 });
 
+test("list overview finds current answers after stale question generations", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	const questions = Array.from({ length: 5 }, (_, index) => ({
+		id: `q${index + 1}`,
+		prompt: `Frage ${index + 1}`,
+		targetInsight: `Erkenntnis ${index + 1}`,
+	}));
+
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		questions,
+		sourceSummary: "Testmaterial",
+	});
+	await t.run(async (ctx) => {
+		for (let index = 0; index < 21; index += 1) {
+			await ctx.db.insert("learningPlanAnswers", {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				learningPlanId,
+				questionId: `stale-${index}`,
+				answer: `Alte Antwort ${index}`,
+				createdAt: index,
+				updatedAt: index,
+			});
+		}
+	});
+	await t.mutation(api.learningPlans.saveKnowledgeAnswer, {
+		learningPlanId,
+		questionId: "q1",
+		answer: "Aktuelle Antwort",
+	});
+
+	const overviews = await t.query(api.learningPlans.listOverview, {});
+
+	expect(overviews[0]).toMatchObject({
+		answeredQuestionCount: 1,
+		firstUnansweredQuestionIndex: 1,
+	});
+});
+
 test("list overview keeps unfinished creation progress scoped to its owner", async () => {
 	const t = convexTest(schema, modules);
 	const mine = t.withIdentity(user);

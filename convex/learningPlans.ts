@@ -649,19 +649,21 @@ export const listOverview = query({
 			} = {};
 			if (plan.status === "questionsReady") {
 				const questions = plan.knowledgeQuestions ?? [];
-				const questionIds = new Set(questions.map((question) => question.id));
-				const answers = await ctx.db
-					.query("learningPlanAnswers")
-					.withIndex("by_learningPlanId", (q) =>
-						q.eq("learningPlanId", plan._id),
-					)
-					.take(20);
+				const answers = await Promise.all(
+					questions.map((question) =>
+						ctx.db
+							.query("learningPlanAnswers")
+							.withIndex("by_learningPlanId_and_questionId", (q) =>
+								q.eq("learningPlanId", plan._id).eq("questionId", question.id),
+							)
+							.unique(),
+					),
+				);
 				const answeredQuestionIds = new Set(
 					answers
 						.filter(
-							(answer) =>
-								questionIds.has(answer.questionId) &&
-								answer.answer.trim().length > 0,
+							(answer): answer is NonNullable<typeof answer> =>
+								answer !== null && answer.answer.trim().length > 0,
 						)
 						.map((answer) => answer.questionId),
 				);
