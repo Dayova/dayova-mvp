@@ -316,7 +316,7 @@ type LearningPlanAiContext = {
 		examTypeLabel: string;
 		examDateKey: string;
 		examDateLabel: string;
-		examTime: string;
+		examTime?: string;
 		durationMinutes: number;
 		topicDescription: string;
 		notes?: string;
@@ -1297,7 +1297,7 @@ const buildBaseContext = (
 	return [
 		`Fach: ${plan.subject}`,
 		`Prüfungsart: ${plan.examTypeLabel}`,
-		`Prüfungstermin: ${plan.examDateLabel}, ${plan.examTime}`,
+		`Prüfungstermin: ${plan.examDateLabel}${plan.examTime ? `, ${plan.examTime}` : ""}`,
 		`Bearbeitungszeit der Prüfung: ${plan.durationMinutes} Minuten`,
 		`Prüfungsthema: ${plan.topicDescription}`,
 		plan.notes ? `Notizen: ${plan.notes}` : "",

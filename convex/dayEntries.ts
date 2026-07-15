@@ -4,7 +4,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
-import { assertNoScheduleConflict } from "./scheduleConflicts";
+import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 
 type OptionalEntryFields = {
 	time?: string;
@@ -85,7 +85,10 @@ const optionalEntryFields = (
 const publicEntry = (entry: Doc<"dayEntries">): PublicDayEntry => ({
 	id: entry._id,
 	title: entry.title,
-	...optionalEntryFields(entry),
+	...optionalEntryFields({
+		...entry,
+		...(isExamEntry(entry) ? { time: undefined } : {}),
+	}),
 });
 
 const publicLearningSessionEntry = (
@@ -135,7 +138,10 @@ const isSameCreatePayload = (
 	args: OptionalEntryFields & { title: string },
 ) =>
 	entry.title === args.title &&
-	optionalValuesMatch(entry.time, args.time) &&
+	optionalValuesMatch(
+		isExamEntry(entry) ? undefined : entry.time,
+		isExamEntry(args) ? undefined : args.time,
+	) &&
 	optionalValuesMatch(entry.kind, args.kind) &&
 	optionalValuesMatch(entry.notes, args.notes) &&
 	optionalValuesMatch(entry.dueDateKey, args.dueDateKey) &&
@@ -341,10 +347,15 @@ export const create = mutation({
 		if (!title) {
 			throwUserFacingError("Titel darf nicht leer sein.");
 		}
+		const normalizedArgs = {
+			...args,
+			title,
+			...(isExamEntry(args) ? { time: undefined } : {}),
+		};
 		const existingSameEntry = await findExistingSameEntry(ctx, {
 			ownerTokenIdentifier,
 			dayKey: args.dayKey,
-			args: { ...args, title },
+			args: normalizedArgs,
 		});
 		if (existingSameEntry) {
 			return existingSameEntry._id;
@@ -353,15 +364,15 @@ export const create = mutation({
 		await assertNoScheduleConflict(ctx, {
 			ownerTokenIdentifier,
 			dayKey: args.dayKey,
-			time: args.time,
-			durationMinutes: args.durationMinutes,
+			time: normalizedArgs.time,
+			durationMinutes: normalizedArgs.durationMinutes,
 		});
 
 		return await ctx.db.insert("dayEntries", {
 			ownerTokenIdentifier,
 			dayKey: args.dayKey,
 			title,
-			...optionalEntryFields(args),
+			...optionalEntryFields(normalizedArgs),
 		});
 	},
 });

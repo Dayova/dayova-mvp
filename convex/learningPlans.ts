@@ -19,7 +19,7 @@ import {
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
-import { assertNoScheduleConflict } from "./scheduleConflicts";
+import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_LEARNING_TIMES = 50;
@@ -134,7 +134,7 @@ type CreateLearningPlanArgs = {
 	examTypeLabel: string;
 	examDateKey: string;
 	examDateLabel: string;
-	examTime: string;
+	examTime?: string;
 	durationMinutes: number;
 	topicDescription: string;
 	notes?: string;
@@ -176,7 +176,6 @@ const createLearningPlan = async (
 		examTypeLabel,
 		examDateKey: args.examDateKey,
 		examDateLabel: args.examDateLabel,
-		examTime: args.examTime,
 		durationMinutes: args.durationMinutes,
 		topicDescription,
 		notes,
@@ -476,7 +475,7 @@ export const start = mutation({
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
-		examTime: v.string(),
+		examTime: v.optional(v.string()),
 		durationMinutes: v.number(),
 		topicDescription: v.string(),
 		notes: v.optional(v.string()),
@@ -495,7 +494,7 @@ export const createDraft = mutation({
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
-		examTime: v.string(),
+		examTime: v.optional(v.string()),
 		durationMinutes: v.number(),
 		topicDescription: v.string(),
 		notes: v.optional(v.string()),
@@ -578,7 +577,7 @@ export const getSnapshot = query({
 				examTypeLabel: plan.examTypeLabel,
 				examDateKey: plan.examDateKey,
 				examDateLabel: plan.examDateLabel,
-				examTime: plan.examTime,
+				...(plan.examTime ? { examTime: plan.examTime } : {}),
 				durationMinutes: plan.durationMinutes,
 				topicDescription: plan.topicDescription,
 				notes: plan.notes,
@@ -989,7 +988,7 @@ export const getAiContext = internalQuery({
 					seenEntryIds.add(entry._id);
 					occupiedEntries.push({
 						dayKey,
-						time: entry.time,
+						time: isExamEntry(entry) ? undefined : entry.time,
 						durationMinutes: entry.durationMinutes,
 					});
 				}
@@ -1528,17 +1527,10 @@ export const acceptPlan = mutation({
 		const now = Date.now();
 		let examDayEntryId = plan.examDayEntryId;
 		if (!examDayEntryId) {
-			await assertNoScheduleConflict(ctx, {
-				ownerTokenIdentifier,
-				dayKey: plan.examDateKey,
-				time: plan.examTime,
-				durationMinutes: plan.durationMinutes,
-			});
 			examDayEntryId = await ctx.db.insert("dayEntries", {
 				ownerTokenIdentifier,
 				dayKey: plan.examDateKey,
 				title: `${plan.subject} ${plan.examTypeLabel}`,
-				time: plan.examTime,
 				kind: "Leistungskontrolle",
 				plannedDateLabel: plan.examDateLabel,
 				durationMinutes: plan.durationMinutes,

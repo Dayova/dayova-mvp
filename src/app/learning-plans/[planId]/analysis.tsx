@@ -28,7 +28,6 @@ const buildEditPlanPath = (
 		["examTypeLabel", snapshot.plan.examTypeLabel],
 		["examDateKey", snapshot.plan.examDateKey],
 		["examDateLabel", snapshot.plan.examDateLabel],
-		["examTime", snapshot.plan.examTime],
 		["durationMinutes", `${snapshot.plan.durationMinutes}`],
 		["topicDescription", snapshot.plan.topicDescription],
 		["errorMessage", errorMessage],

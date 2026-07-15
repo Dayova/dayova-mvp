@@ -20,6 +20,7 @@ import {
 	ExamDateSelector,
 	ExamFlowHeader,
 	ExamTypePicker,
+	SingleSelectOption,
 } from "~/components/entry/exam-flow";
 import { BackButton, Button } from "~/components/ui/button";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
@@ -315,7 +316,12 @@ export default function NewEntryScreen() {
 	const canCreateExam = trimmedSubject.length > 0 && trimmedExamType.length > 0;
 	const canWriteEntries = Boolean(user && isConvexAuthenticated);
 	const examStepNumber = step === "basics" ? 1 : step === "examType" ? 2 : 3;
-
+	const examStepTitle =
+		step === "basics"
+			? "Wann findet die Prüfung statt?"
+			: step === "examType"
+				? "Welche Art von Prüfung ist es?"
+				: "Welches Fach ist es?";
 	const clearPendingModalOpen = useCallback(() => {
 		keyboardHideSubscriptionRef.current?.remove();
 		keyboardHideSubscriptionRef.current = null;
@@ -450,11 +456,11 @@ export default function NewEntryScreen() {
 			createdEntryId = await createDayEntry({
 				dayKey: nextDayKey,
 				title: entryTitle,
-				time: formatTime(plannedTime),
 				kind: isHomework ? "Hausaufgabe" : "Leistungskontrolle",
 				...(trimmedNote ? { notes: trimmedNote } : {}),
 				...(isHomework
 					? {
+							time: formatTime(plannedTime),
 							dueDateKey: getDayKey(dueDate),
 							dueDateLabel: formatDate(dueDate),
 						}
@@ -518,13 +524,17 @@ export default function NewEntryScreen() {
 			["examTypeLabel", trimmedExamType],
 			["examDateKey", getDayKey(plannedDate)],
 			["examDateLabel", formatDate(plannedDate)],
-			["examTime", formatTime(plannedTime)],
 			["durationMinutes", `${scheduledDurationMinutes}`],
 		]
 			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
 			.join("&");
 		router.push(`${ROUTES.createLearningPlan}?${query}`);
 	};
+
+	const goToStep = useCallback((nextStep: EntryStep) => {
+		scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+		setStep(nextStep);
+	}, []);
 
 	const handleBack = useCallback(() => {
 		if (selectTarget) {
@@ -538,18 +548,18 @@ export default function NewEntryScreen() {
 		}
 
 		if (step === "planning" || step === "examType") {
-			setStep("basics");
+			goToStep("basics");
 			return true;
 		}
 
 		if (step === "examDetails") {
-			setStep("examType");
+			goToStep("examType");
 			return true;
 		}
 
 		goBackOrReplace(router, "/home");
 		return true;
-	}, [pickerTarget, router, selectTarget, step]);
+	}, [goToStep, pickerTarget, router, selectTarget, step]);
 
 	useBackIntent(
 		Boolean(selectTarget || pickerTarget || step !== "basics"),
@@ -632,13 +642,24 @@ export default function NewEntryScreen() {
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<ThemedStatusBar />
+			{!isHomework ? (
+				<View
+					className="bg-background px-8 pb-8"
+					style={{ paddingTop: Math.max(insets.top + 20, 52) }}
+				>
+					<ExamFlowHeader currentStep={examStepNumber} onBack={handleBack} />
+					<Text className="mt-8 font-poppins font-semibold text-heading-2 text-text">
+						{examStepTitle}
+					</Text>
+				</View>
+			) : null}
 			<KeyboardSafeScrollView
 				ref={scrollViewRef}
 				className="flex-1"
 				bottomOffset={128}
 				contentContainerStyle={{
 					paddingHorizontal: 32,
-					paddingTop: isHomework ? Math.max(insets.top + 28, 58) : 80,
+					paddingTop: isHomework ? Math.max(insets.top + 28, 58) : 0,
 					paddingBottom: 168,
 				}}
 			>
@@ -766,86 +787,38 @@ export default function NewEntryScreen() {
 						</>
 					)
 				) : (
+					// biome-ignore lint/complexity/noUselessFragments: Keeps the exam flow grouped as the sibling branch of the homework flow.
 					<>
-						<ExamFlowHeader currentStep={examStepNumber} onBack={handleBack} />
 						<Animated.View key={step} entering={FadeIn.duration(220)}>
 							{step === "basics" ? (
-								<>
-									<View className="mb-8">
-										<Text className="font-poppins font-semibold text-heading-2 text-text">
-											Wann findet die Prüfung statt?
-										</Text>
-									</View>
-
-									<ExamDateSelector
-										selectedDate={plannedDate}
-										onSelect={setPlannedDate}
-									/>
-								</>
+								<ExamDateSelector
+									selectedDate={plannedDate}
+									onSelect={setPlannedDate}
+								/>
 							) : step === "examType" ? (
-								<>
-									<View className="mb-7 gap-2">
-										<Text className="font-poppins font-semibold text-heading-2 text-text">
-											Welche Art von Prüfung ist es?
-										</Text>
-										<Text className="font-poppins text-body-3 text-secondary-text">
-											Wähle eine Prüfungsart oder trage eine eigene ein.
-										</Text>
-									</View>
-									<ExamTypePicker
-										selectedValue={examTypeLabel}
-										onSelect={setExamTypeLabel}
-									/>
-								</>
+								<ExamTypePicker
+									selectedValue={examTypeLabel}
+									onSelect={setExamTypeLabel}
+								/>
 							) : (
-								<>
-									<View className="mb-7 gap-2">
-										<Text className="font-poppins font-semibold text-heading-2 text-text">
-											Noch die letzten Details
-										</Text>
-										<Text className="font-poppins text-body-3 text-secondary-text">
-											Wähle das Fach. Eine Notiz ist optional.
-										</Text>
-									</View>
+								<View className="gap-3" accessibilityRole="radiogroup">
+									{SUBJECT_OPTIONS.map((option) => {
+										const SubjectIcon =
+											subjectIconByOption[
+												option as keyof typeof subjectIconByOption
+											] ?? BookOpen;
 
-									<Field>
-										<FieldLabel>Schulfach</FieldLabel>
-										<FieldTrigger
-											activeOpacity={0.86}
-											onPress={() => openSelect("subject")}
-											className="min-h-16 rounded-input px-5"
-										>
-											<Text
-												className={cn(
-													"flex-1 font-poppins text-body-2",
-													subject ? "text-text" : "text-secondary-text",
-												)}
-												numberOfLines={1}
-											>
-												{subject || "Wähle das Fach aus"}
-											</Text>
-											<FieldAccessory>
-												<ChevronDown
-													size={20}
-													color={fieldTextColor}
-													strokeWidth={2.1}
-												/>
-											</FieldAccessory>
-										</FieldTrigger>
-									</Field>
-
-									<Field className="mb-8" onLayout={handleNoteInputLayout}>
-										<FieldLabel>Notiz (optional)</FieldLabel>
-										<FieldControl className="min-h-40 items-start rounded-input px-5 pt-4 pb-4">
-											<Textarea
-												value={note}
-												onChangeText={setNote}
-												onFocus={handleNoteInputFocus}
-												placeholder="Zum Beispiel Raum oder Hilfsmittel"
+										return (
+											<SingleSelectOption
+												key={option}
+												Icon={SubjectIcon}
+												label={option}
+												selected={subject === option}
+												onPress={() => setSubject(option)}
 											/>
-										</FieldControl>
-									</Field>
-								</>
+										);
+									})}
+								</View>
 							)}
 						</Animated.View>
 					</>
@@ -872,7 +845,7 @@ export default function NewEntryScreen() {
 							}
 							onPress={() => {
 								if (step === "basics") {
-									setStep("planning");
+									goToStep("planning");
 									return;
 								}
 								void createEntry();
@@ -920,7 +893,7 @@ export default function NewEntryScreen() {
 							className="w-full"
 							disabled={step === "examType" && !trimmedExamType}
 							onPress={() => {
-								setStep(step === "basics" ? "examType" : "examDetails");
+								goToStep(step === "basics" ? "examType" : "examDetails");
 							}}
 						>
 							<Text>Weiter</Text>

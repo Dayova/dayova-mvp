@@ -19,9 +19,9 @@ import { Platform } from "react-native";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import {
 	isThemePreference,
+	type ResolvedTheme,
 	resolveThemePreference,
 	THEME_STORAGE_KEY,
-	type ResolvedTheme,
 	type ThemePreference,
 } from "~/lib/theme-preference";
 

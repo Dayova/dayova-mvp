@@ -225,6 +225,7 @@ test("creating a draft learning plan allows incomplete exam topic descriptions",
 		status: "draft",
 		topicDescription: "Mathe",
 	});
+	expect(snapshot?.plan.examTime).toBeUndefined();
 });
 
 test("generated draft sessions are not synced as calendar entries before acceptance", async () => {
@@ -266,18 +267,17 @@ test("generated draft sessions are not synced as calendar entries before accepta
 	expect(createdId).toBeTruthy();
 });
 
-test("AI context includes occupied entries during the plan scheduling window", async () => {
+test("AI context includes timed homework during the plan scheduling window", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-01",
-		title: "Informatik Grundlagen IT-Systeme",
+		title: "Informatik Hausaufgabe",
 		time: "17:00",
-		kind: "Leistungskontrolle",
+		kind: "Hausaufgabe",
 		plannedDateLabel: "1. Juni 2026",
 		durationMinutes: 30,
-		examTypeLabel: "Test",
 	});
 
 	const context = await t.query(internal.learningPlans.getAiContext, {

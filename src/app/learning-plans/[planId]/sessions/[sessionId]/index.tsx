@@ -1332,7 +1332,9 @@ export default function LearningSessionContentScreen() {
 			<ThemedStatusBar />
 			<ScrollView
 				className="flex-1"
-				automaticallyAdjustKeyboardInsets
+				automaticallyAdjustKeyboardInsets={
+					currentItem?.kind === "written" || currentItem?.kind === "voice"
+				}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,

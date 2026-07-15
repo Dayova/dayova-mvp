@@ -242,7 +242,7 @@ export default defineSchema({
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
-		examTime: v.string(),
+		examTime: v.optional(v.string()),
 		durationMinutes: v.number(),
 		topicDescription: v.string(),
 		notes: v.optional(v.string()),

@@ -45,10 +45,11 @@ const successPath = (
 		dayKey: string;
 		examDateKey: string;
 		examDateLabel: string;
-		examTime: string;
+		examTime?: string;
 	},
 ) => {
 	const query = Object.entries(params)
+		.filter(([, value]) => value !== undefined)
 		.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
 		.join("&");
 	return `/learning-plans/${id}/success?${query}` as const;
@@ -177,7 +178,7 @@ export default function LearningPlanReviewScreen() {
 				dayKey,
 				examDateKey: snapshot.plan.examDateKey,
 				examDateLabel: snapshot.plan.examDateLabel,
-				examTime: snapshot.plan.examTime,
+				...(snapshot.plan.examTime ? { examTime: snapshot.plan.examTime } : {}),
 			}),
 		);
 	};

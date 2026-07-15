@@ -21,8 +21,8 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
-import { WarningBanner } from "~/components/ui/warning-banner";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import {
 	MaterialCard,
@@ -74,7 +74,6 @@ export default function NewLearningPlanScreen() {
 		examTypeLabel?: string;
 		examDateKey?: string;
 		examDateLabel?: string;
-		examTime?: string;
 		durationMinutes?: string;
 		topicDescription?: string;
 		errorMessage?: string;
@@ -96,7 +95,6 @@ export default function NewLearningPlanScreen() {
 	const examDateKey = params.examDateKey || getDateKey(new Date());
 	const examDateLabel =
 		params.examDateLabel || formatDate(parseDateKey(examDateKey));
-	const examTime = params.examTime || "17:00";
 	const durationMinutes = Number(params.durationMinutes ?? 45) || 45;
 	const examDayEntryId = params.examDayEntryId as Id<"dayEntries"> | undefined;
 	const initialLearningPlanId = params.learningPlanId as
@@ -173,7 +171,6 @@ export default function NewLearningPlanScreen() {
 				examTypeLabel,
 				examDateKey,
 				examDateLabel,
-				examTime,
 				durationMinutes,
 				topicDescription,
 				notes: "",
@@ -481,7 +478,6 @@ export default function NewLearningPlanScreen() {
 			["examTypeLabel", examTypeLabel],
 			["examDateKey", examDateKey],
 			["examDateLabel", examDateLabel],
-			["examTime", examTime],
 			["durationMinutes", durationMinutes],
 			["topicDescription", topicDescription],
 		];

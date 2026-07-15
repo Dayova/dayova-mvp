@@ -146,7 +146,7 @@ export type LearningPlanSnapshot = {
 		examTypeLabel: string;
 		examDateKey: string;
 		examDateLabel: string;
-		examTime: string;
+		examTime?: string;
 		durationMinutes: number;
 		topicDescription: string;
 		notes?: string;

@@ -6,6 +6,14 @@ import Animated, {
 } from "react-native-reanimated";
 import { BackButton } from "~/components/ui/button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
+import {
+	Computer,
+	GraduationCap,
+	Mic,
+	NotebookPen,
+	Pencil,
+	Plus,
+} from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
 import { SnapCarouselSelector } from "~/components/ui/snap-carousel-selector";
 import { Text } from "~/components/ui/text";
@@ -21,13 +29,11 @@ import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 const EXAM_TYPE_OPTIONS = [
-	{ label: "Test", emoji: "✏️" },
-	{ label: "Klassenarbeit", emoji: "📝" },
-	{ label: "Klausur", emoji: "🎓" },
-	{ label: "Kurzkontrolle", emoji: "📋" },
-	{ label: "Leistungskontrolle", emoji: "✅" },
-	{ label: "Mündliche Prüfung", emoji: "🎤" },
-	{ label: "Präsentation", emoji: "🖥️" },
+	{ label: "Test", Icon: Pencil },
+	{ label: "Klassenarbeit", Icon: NotebookPen },
+	{ label: "Klausur", Icon: GraduationCap },
+	{ label: "Mündliche Prüfung", Icon: Mic },
+	{ label: "Präsentation", Icon: Computer },
 ] as const;
 
 const CUSTOM_EXAM_TYPE_LABEL = "Andere Prüfungsart";
@@ -43,7 +49,7 @@ function ExamFlowHeader({
 	const safeStep = Math.min(Math.max(currentStep, 1), totalSteps);
 
 	return (
-		<View className="mb-8 flex-row items-center gap-4">
+		<View className="flex-row items-center gap-4">
 			<BackButton onPress={onBack} />
 			<View className="flex-1 gap-2">
 				<View className="flex-row items-center justify-between">
@@ -76,7 +82,6 @@ function ExamTypePicker({
 	selectedValue: string;
 	onSelect: (value: string) => void;
 }) {
-	const { colors } = useDayovaTheme();
 	const customInputRef = useRef<TextInput>(null);
 	const [isCustomSelected, setIsCustomSelected] = useState(
 		() =>
@@ -110,63 +115,22 @@ function ExamTypePicker({
 				const isSelected = !isCustomSelected && selectedValue === option.label;
 
 				return (
-					<Animated.View
+					<SingleSelectOption
 						key={option.label}
-						entering={FadeInDown.duration(220)}
-						layout={LinearTransition.duration(180)}
-					>
-						<Pressable
-							accessibilityRole="radio"
-							accessibilityState={{ selected: isSelected }}
-							onPress={() => selectPreset(option.label)}
-							className={cn(
-								"min-h-16 flex-row items-center gap-4 rounded-[24px] border px-5 py-3 active:opacity-80",
-								isSelected
-									? "border-primary/40 bg-accent"
-									: "border-transparent bg-card shadow-black/5 shadow-sm",
-							)}
-						>
-							<Text className="w-9 text-center text-heading-2">
-								{option.emoji}
-							</Text>
-							<Text
-								className={cn(
-									"flex-1 font-poppins text-body-2",
-									isSelected ? "font-semibold text-primary" : "text-text",
-								)}
-							>
-								{option.label}
-							</Text>
-							<RadioIndicator selected={isSelected} color={colors.primary} />
-						</Pressable>
-					</Animated.View>
+						Icon={option.Icon}
+						label={option.label}
+						selected={isSelected}
+						onPress={() => selectPreset(option.label)}
+					/>
 				);
 			})}
 
-			<Animated.View layout={LinearTransition.duration(180)}>
-				<Pressable
-					accessibilityRole="radio"
-					accessibilityState={{ selected: isCustomSelected }}
-					onPress={selectCustom}
-					className={cn(
-						"min-h-16 flex-row items-center gap-4 rounded-[24px] border px-5 py-3 active:opacity-80",
-						isCustomSelected
-							? "border-primary/40 bg-accent"
-							: "border-transparent bg-card shadow-black/5 shadow-sm",
-					)}
-				>
-					<Text className="w-9 text-center text-heading-2">➕</Text>
-					<Text
-						className={cn(
-							"flex-1 font-poppins text-body-2",
-							isCustomSelected ? "font-semibold text-primary" : "text-text",
-						)}
-					>
-						{CUSTOM_EXAM_TYPE_LABEL}
-					</Text>
-					<RadioIndicator selected={isCustomSelected} color={colors.primary} />
-				</Pressable>
-			</Animated.View>
+			<SingleSelectOption
+				Icon={Plus}
+				label={CUSTOM_EXAM_TYPE_LABEL}
+				selected={isCustomSelected}
+				onPress={selectCustom}
+			/>
 
 			{isCustomSelected ? (
 				<Animated.View
@@ -189,6 +153,62 @@ function ExamTypePicker({
 				</Animated.View>
 			) : null}
 		</View>
+	);
+}
+
+function SingleSelectOption({
+	Icon,
+	label,
+	selected,
+	onPress,
+}: {
+	Icon: typeof Pencil;
+	label: string;
+	selected: boolean;
+	onPress: () => void;
+}) {
+	const { colors } = useDayovaTheme();
+
+	return (
+		<Animated.View
+			entering={FadeInDown.duration(220)}
+			layout={LinearTransition.duration(180)}
+		>
+			<Pressable
+				accessibilityRole="radio"
+				accessibilityState={{ selected }}
+				onPress={onPress}
+				className={cn(
+					"min-h-16 flex-row items-center gap-4 rounded-[24px] border px-5 py-3 active:opacity-80",
+					selected
+						? "border-primary/40 bg-accent"
+						: "border-transparent bg-card shadow-black/5 shadow-sm",
+				)}
+			>
+				<View
+					accessible={false}
+					className={cn(
+						"h-9 w-9 items-center justify-center rounded-full",
+						selected ? "bg-primary/15" : "bg-accent",
+					)}
+				>
+					<Icon
+						size={20}
+						color={selected ? colors.primary : colors.secondaryText}
+						strokeWidth={2}
+					/>
+				</View>
+				<Text
+					className={cn(
+						"flex-1 font-poppins text-body-2",
+						selected ? "font-semibold text-primary" : "text-text",
+					)}
+				>
+					{label}
+				</Text>
+				<RadioIndicator selected={selected} color={colors.primary} />
+			</Pressable>
+		</Animated.View>
 	);
 }
 
@@ -249,4 +269,4 @@ function ExamDateSelector({
 	);
 }
 
-export { ExamDateSelector, ExamFlowHeader, ExamTypePicker };
+export { ExamDateSelector, ExamFlowHeader, ExamTypePicker, SingleSelectOption };
