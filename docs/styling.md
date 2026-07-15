@@ -87,7 +87,11 @@ With that configuration:
   changes centralized in `src/global.css`, `src/lib/theme.ts`, and
   `src/lib/theme-preference.ts` so NativeWind classes, React Navigation, and
   native-only color props stay aligned.
-- The Figma typography source of truth is Poppins, Regular for body copy, and SemiBold for headings and highlighted text. Do not use `font-bold`, `font-medium`, or arbitrary `text-[Npx]` classes for app text.
+- The current typography baseline is Poppins: Regular for body copy and
+  SemiBold for headings and highlighted text. Figma records that baseline but
+  is not an approval gate for app changes; deliberate changes must update the
+  semantic tokens and repository guidance together. Do not use `font-bold`,
+  `font-medium`, or arbitrary `text-[Npx]` classes for app text.
 - Use `text-heading-1`, `text-heading-2`, `text-body-1`, `text-body-2`, `text-body-3`, `text-body-4`, and `text-body-5` for text hierarchy.
 - Use `cn()` for component class merging so variants, defaults, and caller-provided classes resolve consistently.
 - Do not replace `cn()` with direct `clsx()` in shared components unless you explicitly want to preserve all conflicting utilities.
