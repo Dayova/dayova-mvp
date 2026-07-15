@@ -4,6 +4,18 @@ This context covers shared UI components, styling conventions, tokens, themes, v
 
 Confluence is the current cross-functional documentation hub. Keep this file focused on implementation-facing terminology, conventions, and assumptions that agents need while working in this repo.
 
+## Current Design Delivery Model
+
+Effective 14 July 2026, existing Figma work is a visual reference and baseline,
+not a required approval, sequencing, or release gate. Jakob Roessner and Fabius
+Schurig may make product-design, UI, and UX decisions and implement them
+directly. Record deliberate changes in Linear and update the app's semantic
+tokens and repository guidance; any later Figma reconciliation is non-blocking
+unless the team explicitly supersedes this temporary model.
+
+- [Notion decision record](https://app.notion.com/p/39d2e87228bf8081b08aff1b2990b860)
+- [DAY-171: Hugeicons implementation policy](https://linear.app/dayova/issue/DAY-171/define-the-long-term-figma-to-app-icon-synchronization-policy)
+
 ## Existing Docs
 
 - `docs/styling.md`
@@ -29,25 +41,27 @@ system. Dark mode keeps Dayova's cyan/purple/status hues and changes neutral
 background, surface, border, muted, path, and text tokens to a warm dark
 hierarchy.
 
-The Figma light palette is the source of truth: background `#F6F6F4`, light 1
+The current light-palette baseline, also recorded in Figma, is: background `#F6F6F4`, light 1
 `#FFFFFF`, light 2 `#F3F6FA`, light 3 `#FAFAFC`, border `#DCE6EE`, path 1/2
 `#D7DCE3`, path 3 `#8A8D92`, path 4/secondary text `#697586`, path 5/primary
 strong `#00A0E6`, path 6/primary/system cyan `#00BAFF`, path 7 `#4FD8FF`, and
-primary text `#1A1A1A`. The Figma orange `#FF9500` is the `wrong` status color;
-`destructive` remains a separate functional action/error token.
-Dark-mode variables and classes should not be introduced until the dark-mode
-design is finalized.
+primary text `#1A1A1A`. The current orange `#FF9500` is the `wrong` status color;
+`destructive` remains a separate functional action/error token. Dark-mode
+variables, runtime colors, and the light/system/dark preference are already
+implemented; the remaining cross-screen and real-device completion audit is
+tracked in
+[DAY-101](https://linear.app/dayova/issue/DAY-101/audit-and-complete-dark-mode-design-system-support).
 
 Badge fills use wrong `#FF9500`, info `#C9A100`, system `#00BAFF`, success
 `#34C759`, theorie `#5856D6`, ueben `#AF52DE`, praxis `#00C7BE`, and
-hausaufgabe `#B88AAE`. Badge subtle fills match Figma exactly: wrong
+hausaufgabe `#B88AAE`. Current badge subtle fills are: wrong
 `#FFECD6`, info `#FFF8CC`, system `#F1F7FB`, success `#EAFFF1`, theorie
 `#EEECFF`, ueben `#F4ECFF`, praxis `#E7FBF6`, and hausaufgabe `#F3E8F0`.
 
-Do not add `*-foreground` color partners unless Figma introduces them as real
-palette tokens. Use the palette directly: `text-text` for primary text,
-`text-secondary-text` for secondary text, and `text-white` for white text on
-dark or saturated surfaces.
+Do not add `*-foreground` color partners without an explicit design-system
+decision that introduces them as real semantic palette tokens. Use the palette
+directly: `text-text` for primary text, `text-secondary-text` for secondary
+text, and `text-white` for white text on dark or saturated surfaces.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold. The
