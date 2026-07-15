@@ -123,6 +123,7 @@ export default function LearningPlanQuizScreen() {
 				!isBusy &&
 				!isPauseConfirmationVisible,
 		)
+		.hitSlop({ left: 0, width: 28 })
 		.activeOffsetX(20)
 		.failOffsetY([-20, 20])
 		.onEnd((event) => {
@@ -163,72 +164,65 @@ export default function LearningPlanQuizScreen() {
 	};
 
 	return (
-		<View className="flex-1 bg-background">
-			<Stack.Screen options={{ gestureEnabled: false }} />
-			<ThemedStatusBar />
-			{Platform.OS === "ios" ? (
-				<GestureDetector gesture={backSwipeGesture}>
-					<View
-						className="absolute inset-y-0 left-0 z-20 w-7"
-						accessibilityElementsHidden
-						importantForAccessibility="no-hide-descendants"
-					/>
-				</GestureDetector>
-			) : null}
-			<KeyboardSafeScrollView
-				className="flex-1"
-				bottomOffset={32}
-				contentContainerStyle={{
-					flexGrow: 1,
-					paddingHorizontal: 32,
-					paddingTop: 80,
-					paddingBottom: 60,
-				}}
-			>
-				<Header title="Lernplan erstellen" onBack={goBack} />
-				{currentQuestion ? (
-					<QuizStep
-						question={currentQuestion}
-						questionIndex={questionIndex}
-						questionCount={questions.length}
-						answer={answer}
-						errorMessage={errorMessage}
-						isBusy={isBusy}
-						onAnswerChange={setAnswer}
-						onContinue={continueQuestion}
-					/>
-				) : null}
-			</KeyboardSafeScrollView>
+		<GestureDetector gesture={backSwipeGesture}>
+			<View className="flex-1 bg-background">
+				<Stack.Screen options={{ gestureEnabled: false }} />
+				<ThemedStatusBar />
+				<KeyboardSafeScrollView
+					className="flex-1"
+					bottomOffset={32}
+					contentContainerStyle={{
+						flexGrow: 1,
+						paddingHorizontal: 32,
+						paddingTop: 80,
+						paddingBottom: 60,
+					}}
+				>
+					<Header title="Lernplan erstellen" onBack={goBack} />
+					{currentQuestion ? (
+						<QuizStep
+							question={currentQuestion}
+							questionIndex={questionIndex}
+							questionCount={questions.length}
+							answer={answer}
+							errorMessage={errorMessage}
+							isBusy={isBusy}
+							onAnswerChange={setAnswer}
+							onContinue={continueQuestion}
+						/>
+					) : null}
+				</KeyboardSafeScrollView>
 
-			<ActionModal
-				visible={isPauseConfirmationVisible}
-				dismissible
-				onClose={() => setIsPauseConfirmationVisible(false)}
-				accessibilityLabel="Pause-Dialog schließen"
-				title="Lernplan-Erstellung pausieren?"
-				description="Deine bisherigen Antworten bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
-				icon={
-					<ClipboardEdit
-						size={40}
-						color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-						strokeWidth={1.8}
-					/>
-				}
-				iconContainerClassName="bg-system-subtle"
-			>
-				<View className="mt-6 gap-3">
-					<Button onPress={() => setIsPauseConfirmationVisible(false)}>
-						<Text>Weiter beantworten</Text>
-					</Button>
-					<Button
-						variant="neutral"
-						className="shadow-none"
-						onPress={continueLater}
-					>
-						<Text>Später fortsetzen</Text>
-					</Button>
-				</View>
-			</ActionModal>
-		</View>
+				<ActionModal
+					visible={isPauseConfirmationVisible}
+					dismissible
+					onClose={() => setIsPauseConfirmationVisible(false)}
+					accessibilityLabel="Pause-Dialog schließen"
+					title="Lernplan-Erstellung pausieren?"
+					description="Deine bisherigen Antworten bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
+					icon={
+						<ClipboardEdit
+							size={40}
+							color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+							strokeWidth={1.8}
+						/>
+					}
+					iconContainerClassName="bg-system-subtle"
+				>
+					<View className="mt-6 gap-3">
+						<Button onPress={() => setIsPauseConfirmationVisible(false)}>
+							<Text>Weiter beantworten</Text>
+						</Button>
+						<Button
+							variant="neutral"
+							className="shadow-none"
+							onPress={continueLater}
+						>
+							<Text>Später fortsetzen</Text>
+						</Button>
+					</View>
+				</ActionModal>
+			</View>
+		</GestureDetector>
 	);
 }

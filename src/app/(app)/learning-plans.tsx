@@ -359,7 +359,7 @@ function LearningPlanActionRail({
 	style,
 }: {
 	onDelete: () => void;
-	onEdit: () => void;
+	onEdit?: () => void;
 	style?: object;
 }) {
 	return (
@@ -377,20 +377,24 @@ function LearningPlanActionRail({
 			]}
 		>
 			<View className="items-center gap-4">
-				<TouchableOpacity
-					accessibilityLabel="Lernplan bearbeiten"
-					accessibilityRole="button"
-					activeOpacity={0.78}
-					onPress={onEdit}
-					className="h-10 w-10 items-center justify-center rounded-full"
-				>
-					<PropertyEdit
-						size={26}
-						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-						strokeWidth={2.1}
-					/>
-				</TouchableOpacity>
-				<View className="h-0.5 w-8 rounded-full bg-light-1" />
+				{onEdit ? (
+					<>
+						<TouchableOpacity
+							accessibilityLabel="Lernplan bearbeiten"
+							accessibilityRole="button"
+							activeOpacity={0.78}
+							onPress={onEdit}
+							className="h-10 w-10 items-center justify-center rounded-full"
+						>
+							<PropertyEdit
+								size={26}
+								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+								strokeWidth={2.1}
+							/>
+						</TouchableOpacity>
+						<View className="h-0.5 w-8 rounded-full bg-light-1" />
+					</>
+				) : null}
 				<TouchableOpacity
 					accessibilityLabel="Lernplan löschen"
 					accessibilityRole="button"
@@ -505,7 +509,7 @@ function LearningPlanCard({
 			{isActionRailVisible ? (
 				<LearningPlanActionRail
 					onDelete={deletePlan}
-					onEdit={editPlan}
+					onEdit={overviewState.kind === "created" ? editPlan : undefined}
 					style={actionRailAnimatedStyle}
 				/>
 			) : null}
