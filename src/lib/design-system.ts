@@ -44,6 +44,7 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		path5: "#00A0E6",
 		path6: "#00BAFF",
 		path7: "#4FD8FF",
+		pathLockedBase: "#ADB3BC",
 	},
 	gradients: {
 		primaryInteractive: {

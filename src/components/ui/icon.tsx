@@ -4,8 +4,8 @@ import {
 	ArrowLeft01Icon,
 	ArrowRight01Icon,
 	ArrowUpRight01Icon,
-	Attachment01Icon,
 	Atom02Icon,
+	Attachment01Icon,
 	Backpack03Icon,
 	BookOpen01Icon,
 	BulbIcon,
@@ -21,26 +21,27 @@ import {
 	Dumbbell02Icon,
 	EarthIcon,
 	FootballIcon,
-	GreekHelmetIcon,
 	GlobeIcon,
+	GreekHelmetIcon,
 	Home02Icon,
 	LanguageCircleIcon,
 	Logout03Icon,
 	Mail01Icon,
 	MapsCircle01Icon,
 	Mic01Icon,
-	Mortarboard01Icon,
 	Moon02Icon,
+	Mortarboard01Icon,
 	MusicNote01Icon,
 	NotebookIcon,
 	NoteIcon,
-	PaintBoardIcon,
 	Notification01Icon,
+	PaintBoardIcon,
 	PaintBrush01Icon,
 	PencilIcon,
 	Plant04Icon,
 	PlusSignIcon,
 	PropertyEditIcon,
+	RepeatIcon,
 	Rocket01Icon,
 	Route02Icon,
 	ScanImageIcon,
@@ -111,6 +112,7 @@ export const Pencil = createIcon(PencilIcon);
 export const Plant = createIcon(Plant04Icon);
 export const Plus = createIcon(PlusSignIcon);
 export const PropertyEdit = createIcon(PropertyEditIcon);
+export const Repeat = createIcon(RepeatIcon);
 export const Route2 = createIcon(Route02Icon);
 export const Rocket = createIcon(Rocket01Icon);
 export const ScanImage = createIcon(ScanImageIcon);

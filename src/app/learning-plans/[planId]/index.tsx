@@ -1,6 +1,6 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
 	ActivityIndicator,
 	Pressable,
@@ -8,6 +8,16 @@ import {
 	View,
 	type ViewStyle,
 } from "react-native";
+import Animated, {
+	cancelAnimation,
+	Easing,
+	useAnimatedStyle,
+	useReducedMotion,
+	useSharedValue,
+	withRepeat,
+	withSequence,
+	withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 import { api } from "#convex/_generated/api";
@@ -15,11 +25,9 @@ import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
 import {
 	ArrowUpRight,
-	BookOpen,
 	Dumbbell,
 	Note,
-	Rocket,
-	SquareLock,
+	Repeat,
 	Time04,
 } from "~/components/ui/icon";
 import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
@@ -61,9 +69,9 @@ const PHASE_COLOR: Record<
 };
 
 const PHASE_ICON = {
-	theory: BookOpen,
+	theory: Note,
 	practice: Dumbbell,
-	rehearsal: Rocket,
+	rehearsal: Repeat,
 } satisfies Record<PlanSession["phase"], typeof Dumbbell>;
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
@@ -260,13 +268,15 @@ const getPathNodeState = (
 
 const STEP_PUCK_WIDTH = 68;
 const STEP_PUCK_HEIGHT = 64;
-const STEP_LOCKED_FACE_WIDTH = 58;
-const STEP_LOCKED_FACE_HEIGHT = 50;
+const STEP_PUCK_FACE_HEIGHT = 56;
 const STEP_SELECTION_WIDTH = 92;
 const STEP_SELECTION_HEIGHT = 86;
-const STEP_SELECTION_STROKE_WIDTH = 7;
+const STEP_SELECTION_STROKE_WIDTH = 6;
+const STEP_BREATH_MIN_SCALE = 0.96;
+const STEP_BREATH_MAX_SCALE = 1.055;
+const STEP_BREATH_HALF_CYCLE_MS = 1050;
 
-function SelectedStepRing() {
+function StepHalo({ current }: { current: boolean }) {
 	return (
 		<Svg
 			pointerEvents="none"
@@ -277,103 +287,146 @@ function SelectedStepRing() {
 		>
 			<Path
 				d="M46 3.5C69.4721 3.5 88.5 21.1848 88.5 43C88.5 64.8152 69.4721 82.5 46 82.5C22.5279 82.5 3.5 64.8152 3.5 43C3.5 21.1848 22.5279 3.5 46 3.5Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.light1}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path4}
+				fill="none"
+				stroke={DAYOVA_DESIGN_SYSTEM.colors.path1}
 				strokeWidth={STEP_SELECTION_STROKE_WIDTH}
 			/>
+			{current ? (
+				<Path
+					d="M46 3.5C69.4721 3.5 88.5 21.1848 88.5 43C88.5 64.8152 69.4721 82.5 46 82.5C22.5279 82.5 3.5 64.8152 3.5 43C3.5 21.1848 22.5279 3.5 46 3.5Z"
+					fill="none"
+					stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
+					strokeDasharray="68 22"
+					strokeLinecap="round"
+					strokeWidth={STEP_SELECTION_STROKE_WIDTH}
+					transform="rotate(-24 46 43)"
+				/>
+			) : null}
 		</Svg>
 	);
 }
 
-function CompletedStepPuck() {
+function BreathingStep({
+	children,
+	enabled,
+	left,
+	top,
+}: {
+	children: ReactNode;
+	enabled: boolean;
+	left: number;
+	top: number;
+}) {
+	const scale = useSharedValue(1);
+	const reduceMotion = useReducedMotion();
+
+	useEffect(() => {
+		cancelAnimation(scale);
+
+		if (!enabled || reduceMotion) {
+			scale.set(1);
+			return;
+		}
+
+		scale.set(
+			withRepeat(
+				withSequence(
+					withTiming(STEP_BREATH_MAX_SCALE, {
+						duration: STEP_BREATH_HALF_CYCLE_MS,
+						easing: Easing.inOut(Easing.sin),
+					}),
+					withTiming(STEP_BREATH_MIN_SCALE, {
+						duration: STEP_BREATH_HALF_CYCLE_MS,
+						easing: Easing.inOut(Easing.sin),
+					}),
+				),
+				-1,
+			),
+		);
+
+		return () => cancelAnimation(scale);
+	}, [enabled, reduceMotion, scale]);
+
+	const animatedStyle = useAnimatedStyle(() => ({
+		transform: [{ scale: scale.get() }],
+	}));
+
 	return (
-		<Svg
+		<Animated.View
 			pointerEvents="none"
-			width={92}
-			height={88}
-			viewBox="0 0 92 88"
-			style={{ position: "absolute", left: -12, top: -9 }}
+			style={[
+				{
+					position: "absolute",
+					left,
+					top,
+					width: STEP_SELECTION_WIDTH,
+					height: STEP_SELECTION_HEIGHT,
+					alignItems: "center",
+					justifyContent: "center",
+				},
+				animatedStyle,
+			]}
 		>
-			<Path
-				d="M46 12.5C64.5705 12.5 79.5 25.548 79.5 41.5C79.5 57.452 64.5705 70.5 46 70.5C27.4295 70.5 12.5 57.452 12.5 41.5C12.5 25.548 27.4295 12.5 46 12.5Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path5}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path5}
-			/>
-			<Path
-				d="M46 9.5C64.2349 9.5 78.5 21.6237 78.5 36C78.5 50.3763 64.2349 62.5 46 62.5C27.7651 62.5 13.5 50.3763 13.5 36C13.5 21.6237 27.7651 9.5 46 9.5Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path6}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-				strokeWidth={3}
-			/>
-			<Path
-				d="M30.903 51.7622L64.11 20.7115C64.6597 20.1975 65.4516 20.0363 66.1352 20.3511C67.4469 20.9552 69.6663 22.1316 71.5059 23.8738C72.701 25.0056 73.9512 26.8471 74.7291 28.0839C75.204 28.839 75.0746 29.8117 74.4487 30.4472L45.3875 59.9555C43.8835 61.4827 41.7537 62.2676 39.6626 61.7967C38.2507 61.4787 36.668 61.0154 35.5059 60.3738C34.2835 59.6989 33.0612 59.0586 31.929 58.4839C29.3791 57.1896 28.8143 53.7152 30.903 51.7622Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path7}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-			/>
-			<Path
-				d="M24.908 48.3639L53.6381 18.3474C54.6965 17.2416 54.1599 15.4799 52.6404 15.2961C46.6945 14.5769 34.1009 14.4277 25.0055 23.8734C15.7121 33.5246 18.4286 43.1756 20.7331 47.8944C21.5365 49.5396 23.642 49.6866 24.908 48.3639Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path7}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-				strokeLinecap="round"
-			/>
-			<Path
-				d="M39.5 37.2591L42.0858 39.9567C42.7525 40.6522 43.0858 41 43.5 41C43.9143 41 44.2476 40.6522 44.9143 39.9567L53.5 31"
-				fill="none"
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
-				strokeWidth={4}
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			/>
-		</Svg>
+			{children}
+		</Animated.View>
 	);
 }
 
-function CurrentStepPuck() {
+function StepPuck({
+	phase,
+	state,
+}: {
+	phase: PlanSession["phase"];
+	state: PathNodeState;
+}) {
+	const isLocked = state === "locked";
+	const PhaseIcon = PHASE_ICON[phase];
+	const baseColor = isLocked
+		? DAYOVA_DESIGN_SYSTEM.colors.pathLockedBase
+		: DAYOVA_DESIGN_SYSTEM.colors.path5;
+	const faceColor = isLocked
+		? DAYOVA_DESIGN_SYSTEM.colors.path1
+		: DAYOVA_DESIGN_SYSTEM.colors.path6;
+	const iconColor = isLocked
+		? DAYOVA_DESIGN_SYSTEM.colors.path3
+		: DAYOVA_DESIGN_SYSTEM.colors.light1;
+
 	return (
 		<View
 			pointerEvents="none"
 			style={{
-				position: "absolute",
-				left: 0,
-				top: 0,
 				width: STEP_PUCK_WIDTH,
 				height: STEP_PUCK_HEIGHT,
 				alignItems: "center",
-				justifyContent: "center",
+				borderRadius: STEP_PUCK_HEIGHT / 2,
+				boxShadow: isLocked
+					? "0 7px 14px rgba(105, 117, 134, 0.2)"
+					: "0 6px 12px rgba(0, 160, 230, 0.22)",
 			}}
 		>
-			<Svg
-				width={STEP_PUCK_WIDTH}
-				height={STEP_PUCK_HEIGHT}
-				viewBox={`0 0 ${STEP_PUCK_WIDTH} ${STEP_PUCK_HEIGHT}`}
-			>
-				<Path
-					d="M34 4.5C52.5705 4.5 67.5 17.548 67.5 33.5C67.5 49.452 52.5705 62.5 34 62.5C15.4295 62.5 0.5 49.452 0.5 33.5C0.5 17.548 15.4295 4.5 34 4.5Z"
-					fill={DAYOVA_DESIGN_SYSTEM.colors.path5}
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.path5}
-				/>
-
-				<Path
-					d="M34 1.5C52.2349 1.5 66.5 13.6237 66.5 28C66.5 42.3763 52.2349 54.5 34 54.5C15.7651 54.5 1.5 42.3763 1.5 28C1.5 13.6237 15.7651 1.5 34 1.5Z"
-					fill={DAYOVA_DESIGN_SYSTEM.colors.path6}
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-					strokeWidth={3}
-				/>
-			</Svg>
-
 			<View
 				style={{
 					position: "absolute",
-					top: 15,
-					left: 22,
+					top: 5,
+					width: STEP_PUCK_WIDTH,
+					height: STEP_PUCK_FACE_HEIGHT,
+					borderRadius: STEP_PUCK_FACE_HEIGHT / 2,
+					backgroundColor: baseColor,
+				}}
+			/>
+			<View
+				style={{
+					position: "absolute",
+					top: 0,
+					width: STEP_PUCK_WIDTH,
+					height: STEP_PUCK_FACE_HEIGHT,
+					borderRadius: STEP_PUCK_FACE_HEIGHT / 2,
+					backgroundColor: faceColor,
+					alignItems: "center",
+					justifyContent: "center",
 				}}
 			>
-				<Note
-					width={24}
-					height={24}
-					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
-				/>
+				<PhaseIcon size={26} color={iconColor} strokeWidth={2.2} />
 			</View>
 		</View>
 	);
@@ -393,6 +446,7 @@ function PathNode({
 	onPress: () => void;
 }) {
 	const isLocked = state === "locked";
+	const isCurrent = state === "current";
 	const title = formatGermanUiText(session.title);
 	const stateLabel = PATH_NODE_STATE_LABEL[state];
 	const position = {
@@ -401,30 +455,6 @@ function PathNode({
 		width: frame.width,
 		height: frame.height,
 	} satisfies ViewStyle;
-
-	const selectedRing = selected ? (
-		<View
-			pointerEvents="none"
-			className="absolute"
-			style={{
-				left: (frame.width - STEP_SELECTION_WIDTH) / 2,
-				top: (frame.height - STEP_SELECTION_HEIGHT) / 2,
-				width: STEP_SELECTION_WIDTH,
-				height: STEP_SELECTION_HEIGHT,
-				zIndex: 0,
-			}}
-		>
-			<SelectedStepRing />
-		</View>
-	) : null;
-
-	const lockedIcon = (
-		<SquareLock
-			size={25}
-			color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-			strokeWidth={1.9}
-		/>
-	);
 
 	return (
 		<Pressable
@@ -440,59 +470,23 @@ function PathNode({
 			className="absolute items-center justify-center"
 			style={position}
 		>
-			{selectedRing}
-			<View
-				className="absolute items-center"
-				style={{
-					left: (frame.width - STEP_PUCK_WIDTH) / 2,
-					top: (frame.height - STEP_PUCK_HEIGHT) / 2,
-					width: STEP_PUCK_WIDTH,
-					height: STEP_PUCK_HEIGHT,
-					borderRadius: STEP_PUCK_HEIGHT / 2,
-					zIndex: 1,
-					backgroundColor:
-						state === "completed"
-							? DAYOVA_DESIGN_SYSTEM.colors.path5
-							: "transparent",
-					boxShadow:
-						state === "completed"
-							? "0 4px 12px rgba(0, 0, 0, 0.1)"
-							: isLocked
-								? "0 8px 14px rgba(105, 117, 134, 0.22)"
-								: "0 4px 12px rgba(0, 0, 0, 0.1)",
-				}}
+			<BreathingStep
+				enabled={isCurrent}
+				left={(frame.width - STEP_SELECTION_WIDTH) / 2}
+				top={(frame.height - STEP_SELECTION_HEIGHT) / 2}
 			>
-				{state === "completed" ? (
-					<CompletedStepPuck />
-				) : isLocked ? (
-					<>
-						<View
-							className="absolute rounded-full"
-							style={{
-								top: 0,
-								width: STEP_PUCK_WIDTH,
-								height: STEP_PUCK_HEIGHT,
-								backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.path1,
-								borderRadius: STEP_PUCK_HEIGHT / 2,
-							}}
-						/>
-						<View
-							className="absolute items-center justify-center rounded-full"
-							style={{
-								top: 5,
-								width: STEP_LOCKED_FACE_WIDTH,
-								height: STEP_LOCKED_FACE_HEIGHT,
-								backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.path3,
-								borderRadius: STEP_LOCKED_FACE_HEIGHT / 2,
-							}}
-						>
-							{lockedIcon}
-						</View>
-					</>
-				) : (
-					<CurrentStepPuck />
-				)}
-			</View>
+				{selected || isCurrent ? <StepHalo current={isCurrent} /> : null}
+				<View
+					style={{
+						position: "absolute",
+						left: (STEP_SELECTION_WIDTH - STEP_PUCK_WIDTH) / 2,
+						top: (STEP_SELECTION_HEIGHT - STEP_PUCK_HEIGHT) / 2,
+						zIndex: 1,
+					}}
+				>
+					<StepPuck phase={session.phase} state={state} />
+				</View>
+			</BreathingStep>
 		</Pressable>
 	);
 }
