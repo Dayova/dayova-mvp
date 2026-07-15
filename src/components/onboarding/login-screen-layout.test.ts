@@ -70,6 +70,12 @@ describe("login screen layout", () => {
 		expect(passwordResetScreenSource).not.toContain("<KeyboardAvoidingView");
 		expect(passwordResetScreenSource).not.toContain("<ScrollView");
 		expect(passwordResetScreenSource).toContain('autoComplete="new-password"');
+		expect(passwordResetScreenSource.match(/rightAccessory=\{/g)).toHaveLength(
+			2,
+		);
+		expect(passwordResetScreenSource).toContain(
+			"secureTextEntry={!confirmPasswordVisible}",
+		);
 		expect(passwordResetScreenSource).toContain("PASSWORT SPEICHERN");
 		expect(passwordResetScreenSource).toContain(
 			"verifyPasswordResetSecondFactor",

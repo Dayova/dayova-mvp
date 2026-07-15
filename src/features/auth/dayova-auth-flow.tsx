@@ -1939,6 +1939,7 @@ function PasswordResetScreen({
 	const [password, setPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
+	const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
 	const codeInputRef = useRef<TextInput | null>(null);
@@ -2259,13 +2260,32 @@ function PasswordResetScreen({
 								<FormPill
 									value={confirmPassword}
 									placeholder="Passwort wiederholen"
-									secureTextEntry={!passwordVisible}
+									secureTextEntry={!confirmPasswordVisible}
 									autoCapitalize="none"
 									autoComplete="new-password"
 									textContentType="newPassword"
 									returnKeyType="done"
 									onChangeText={setConfirmPassword}
 									onSubmitEditing={() => void submitNewPassword()}
+									rightAccessory={
+										<Pressable
+											accessibilityRole="button"
+											accessibilityLabel={
+												confirmPasswordVisible
+													? "Passwortbestätigung ausblenden"
+													: "Passwortbestätigung anzeigen"
+											}
+											onPress={() =>
+												setConfirmPasswordVisible((current) => !current)
+											}
+										>
+											{confirmPasswordVisible ? (
+												<EyeOff size={18} color={COLORS.text} />
+											) : (
+												<Eye size={18} color={COLORS.text} />
+											)}
+										</Pressable>
+									}
 								/>
 							</>
 						) : null}
