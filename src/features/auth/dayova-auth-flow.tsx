@@ -95,6 +95,7 @@ import {
 	SquareRootSquare,
 	Telescope,
 } from "~/components/ui/icon";
+import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
@@ -1741,15 +1742,11 @@ export function LoginScreen() {
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
 			<Stack.Screen options={{ title: "Login" }} />
 			<ThemedStatusBar />
-			<KeyboardAvoidingView
-				behavior={Platform.OS === "ios" ? "padding" : undefined}
-				style={{ flex: 1 }}
-			>
-				<ScrollView
+			<View className="flex-1">
+				<KeyboardSafeScrollView
+					className="flex-1"
 					contentInsetAdjustmentBehavior="never"
 					alwaysBounceVertical={false}
-					keyboardShouldPersistTaps="handled"
-					showsVerticalScrollIndicator={false}
 					contentContainerStyle={{
 						flexGrow: 1,
 						paddingTop: Math.max(
@@ -1893,8 +1890,8 @@ export function LoginScreen() {
 							</Pressable>
 						</View>
 					</View>
-				</ScrollView>
-			</KeyboardAvoidingView>
+				</KeyboardSafeScrollView>
+			</View>
 		</View>
 	);
 }

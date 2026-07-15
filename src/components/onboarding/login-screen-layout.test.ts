@@ -18,7 +18,10 @@ const formPillSource = authFlowSource.slice(
 );
 
 describe("login screen layout", () => {
-	test("uses one safe-area strategy and only scrolls when content overflows", () => {
+	test("keeps the focused login field above the keyboard on every platform", () => {
+		expect(loginScreenSource).toContain("<KeyboardSafeScrollView");
+		expect(loginScreenSource).not.toContain("<KeyboardAvoidingView");
+		expect(loginScreenSource).not.toContain("<ScrollView");
 		expect(loginScreenSource).toContain(
 			'contentInsetAdjustmentBehavior="never"',
 		);
