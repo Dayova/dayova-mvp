@@ -1,6 +1,23 @@
-import type { ComponentType } from "react";
+import { useEffect } from "react";
+import type { Icon } from "phosphor-react-native";
+import { ArrowsClockwiseIcon } from "phosphor-react-native/src/icons/ArrowsClockwise";
+import { CheckIcon } from "phosphor-react-native/src/icons/Check";
+import { FileTextIcon } from "phosphor-react-native/src/icons/FileText";
+import { WrenchIcon } from "phosphor-react-native/src/icons/Wrench";
 import { Pressable, View } from "react-native";
-import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
+import Animated, {
+	cancelAnimation,
+	Easing,
+	FadeIn,
+	FadeOut,
+	useAnimatedStyle,
+	useReducedMotion,
+	useSharedValue,
+	withRepeat,
+	withSequence,
+	withTiming,
+	ZoomIn,
+} from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
 import type { Id } from "#convex/_generated/dataModel";
 import {
@@ -13,12 +30,9 @@ import {
 	type LearningPathNodeState,
 } from "~/components/learning-plans/learning-path-layout";
 import {
-	BookOpen,
-	Check,
-	Dumbbell,
-	Rocket,
-	SquareLock,
-} from "~/components/ui/icon";
+	getLearningPathNodeIconKind,
+	type LearningPathNodeIconKind,
+} from "~/components/learning-plans/learning-path-presentation";
 import type { PlanSession } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -33,25 +47,52 @@ const NODE_STATE_LABEL: Record<LearningPathNodeState, string> = {
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
 	practice: "Üben",
-	rehearsal: "Praxis",
+	rehearsal: "Wiederholen",
 };
 
-const PHASE_ICON = {
-	theory: BookOpen,
-	practice: Dumbbell,
-	rehearsal: Rocket,
-} satisfies Record<
-	PlanSession["phase"],
-	ComponentType<React.ComponentProps<typeof Dumbbell>>
->;
+const NODE_ICON = {
+	completed: CheckIcon,
+	theory: FileTextIcon,
+	practice: WrenchIcon,
+	repeat: ArrowsClockwiseIcon,
+} satisfies Record<LearningPathNodeIconKind, Icon>;
 
-const NODE_BUTTON_SIZE = 72;
-const NODE_FACE_HEIGHT = 64;
-const NODE_DEPTH = 8;
+const NODE_BUTTON_SIZE = 68;
+const NODE_FACE_HEIGHT = 61;
+const NODE_DEPTH = 7;
 const NODE_ORBIT_WIDTH = 96;
 const NODE_ORBIT_HEIGHT = 88;
+const NODE_ORBIT_RADIUS = 40;
+const COMPLETED_RIM_SIZE = 78;
 
-function SelectionOrbit({ color }: { color: string }) {
+const LOCKED_FACE_COLOR = "#E4E6E9";
+const LOCKED_BASE_COLOR = "#BFC3C8";
+const LOCKED_ICON_COLOR = "#A7ABB0";
+const ORBIT_IDLE_COLOR = "#DFE2E6";
+
+function ActiveOrbit({ color }: { color: string }) {
+	const reduceMotion = useReducedMotion();
+	const rotation = useSharedValue(0);
+
+	useEffect(() => {
+		if (reduceMotion) return;
+
+		rotation.value = withRepeat(
+			withTiming(360, {
+				duration: 5200,
+				easing: Easing.linear,
+			}),
+			-1,
+			false,
+		);
+
+		return () => cancelAnimation(rotation);
+	}, [reduceMotion, rotation]);
+
+	const animatedStyle = useAnimatedStyle(() => ({
+		transform: [{ rotate: `${rotation.value}deg` }],
+	}));
+
 	return (
 		<Animated.View
 			entering={ZoomIn.duration(180)}
@@ -65,25 +106,129 @@ function SelectionOrbit({ color }: { color: string }) {
 				height: NODE_ORBIT_HEIGHT,
 			}}
 		>
-			<Svg
-				accessible={false}
-				width={NODE_ORBIT_WIDTH}
-				height={NODE_ORBIT_HEIGHT}
-				viewBox={`0 0 ${NODE_ORBIT_WIDTH} ${NODE_ORBIT_HEIGHT}`}
-			>
-				<Circle
-					cx={NODE_ORBIT_WIDTH / 2}
-					cy={NODE_ORBIT_HEIGHT / 2}
-					r={41}
-					fill="none"
-					stroke={color}
-					strokeDasharray={[62, 69]}
-					strokeLinecap="round"
-					strokeWidth={5}
-					transform={`rotate(-20 ${NODE_ORBIT_WIDTH / 2} ${NODE_ORBIT_HEIGHT / 2})`}
-				/>
-			</Svg>
+			<Animated.View style={animatedStyle}>
+				<Svg
+					accessible={false}
+					width={NODE_ORBIT_WIDTH}
+					height={NODE_ORBIT_HEIGHT}
+					viewBox={`0 0 ${NODE_ORBIT_WIDTH} ${NODE_ORBIT_HEIGHT}`}
+				>
+					<Circle
+						cx={NODE_ORBIT_WIDTH / 2}
+						cy={NODE_ORBIT_HEIGHT / 2}
+						r={NODE_ORBIT_RADIUS}
+						fill="none"
+						stroke={ORBIT_IDLE_COLOR}
+						strokeDasharray={[54, 30]}
+						strokeLinecap="round"
+						strokeWidth={5}
+						transform={`rotate(-72 ${NODE_ORBIT_WIDTH / 2} ${NODE_ORBIT_HEIGHT / 2})`}
+					/>
+					<Circle
+						cx={NODE_ORBIT_WIDTH / 2}
+						cy={NODE_ORBIT_HEIGHT / 2}
+						r={NODE_ORBIT_RADIUS}
+						fill="none"
+						stroke={color}
+						strokeDasharray={[58, 13, 58, 122]}
+						strokeLinecap="round"
+						strokeWidth={5}
+						transform={`rotate(-72 ${NODE_ORBIT_WIDTH / 2} ${NODE_ORBIT_HEIGHT / 2})`}
+					/>
+				</Svg>
+			</Animated.View>
 		</Animated.View>
+	);
+}
+
+function LearningPathPuck({
+	iconKind,
+	state,
+}: {
+	iconKind: LearningPathNodeIconKind;
+	state: LearningPathNodeState;
+}) {
+	const { colors } = useDayovaTheme();
+	const locked = state === "locked";
+	const completed = state === "completed";
+	const NodeIcon = NODE_ICON[iconKind];
+	const faceColor = locked ? LOCKED_FACE_COLOR : colors.primary;
+	const baseColor = locked ? LOCKED_BASE_COLOR : colors.primaryStrong;
+	const iconColor = locked
+		? LOCKED_ICON_COLOR
+		: DAYOVA_DESIGN_SYSTEM.colors.light1;
+
+	return (
+		<View
+			pointerEvents="none"
+			style={{
+				position: "absolute",
+				left: (NODE_ORBIT_WIDTH - NODE_BUTTON_SIZE) / 2,
+				top: (NODE_ORBIT_HEIGHT - NODE_BUTTON_SIZE) / 2,
+				width: NODE_BUTTON_SIZE,
+				height: NODE_BUTTON_SIZE,
+			}}
+		>
+			{completed ? (
+				<View
+					style={{
+						position: "absolute",
+						left: (NODE_BUTTON_SIZE - COMPLETED_RIM_SIZE) / 2,
+						top: (NODE_BUTTON_SIZE - COMPLETED_RIM_SIZE) / 2 - 1,
+						width: COMPLETED_RIM_SIZE,
+						height: COMPLETED_RIM_SIZE,
+						borderRadius: COMPLETED_RIM_SIZE / 2,
+						backgroundColor: "#758091",
+					}}
+				/>
+			) : null}
+
+			<View
+				style={{
+					position: "absolute",
+					left: 0,
+					top: NODE_DEPTH,
+					width: NODE_BUTTON_SIZE,
+					height: NODE_FACE_HEIGHT,
+					borderRadius: NODE_BUTTON_SIZE / 2,
+					backgroundColor: baseColor,
+				}}
+			/>
+			<View
+				style={{
+					position: "absolute",
+					left: 0,
+					top: 0,
+					width: NODE_BUTTON_SIZE,
+					height: NODE_FACE_HEIGHT,
+					borderRadius: NODE_BUTTON_SIZE / 2,
+					borderWidth: completed ? 4 : 0,
+					borderColor: DAYOVA_DESIGN_SYSTEM.colors.light2,
+					backgroundColor: faceColor,
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+			>
+				<View
+					style={{
+						position: "absolute",
+						left: 15,
+						top: completed ? 7 : 6,
+						width: 38,
+						height: 7,
+						borderRadius: 99,
+						backgroundColor: locked
+							? "rgba(255, 255, 255, 0.28)"
+							: "rgba(255, 255, 255, 0.18)",
+					}}
+				/>
+				<NodeIcon
+					size={completed ? 30 : 29}
+					color={iconColor}
+					weight={iconKind === "repeat" ? "bold" : completed ? "bold" : "fill"}
+				/>
+			</View>
+		</View>
 	);
 }
 
@@ -100,28 +245,47 @@ function LearningPathNode({
 	session: PlanSession;
 	state: LearningPathNodeState;
 }) {
-	const { colors, isDark } = useDayovaTheme();
-	const locked = state === "locked";
-	const completed = state === "completed";
-	const PhaseIcon = PHASE_ICON[session.phase];
-	const faceColor = locked
-		? isDark
-			? colors.path3
-			: colors.path1
-		: colors.primary;
-	const baseColor = locked
-		? isDark
-			? colors.path1
-			: colors.path3
-		: colors.primaryStrong;
-	const orbitColor = locked ? colors.secondaryText : colors.primary;
+	const { colors } = useDayovaTheme();
+	const reduceMotion = useReducedMotion();
+	const breathingScale = useSharedValue(1);
+	const current = state === "current";
+	const iconKind = getLearningPathNodeIconKind(session.phase, state);
 	const title = formatGermanUiText(session.title);
+
+	useEffect(() => {
+		if (!current || reduceMotion) {
+			cancelAnimation(breathingScale);
+			breathingScale.value = 1;
+			return;
+		}
+
+		breathingScale.value = withRepeat(
+			withSequence(
+				withTiming(1.055, {
+					duration: 900,
+					easing: Easing.inOut(Easing.quad),
+				}),
+				withTiming(0.965, {
+					duration: 900,
+					easing: Easing.inOut(Easing.quad),
+				}),
+			),
+			-1,
+			false,
+		);
+
+		return () => cancelAnimation(breathingScale);
+	}, [breathingScale, current, reduceMotion]);
+
+	const breathingStyle = useAnimatedStyle(() => ({
+		transform: [{ scale: breathingScale.value }],
+	}));
 
 	return (
 		<Pressable
 			accessible
 			accessibilityHint={
-				locked
+				state === "locked"
 					? "Wählt diesen gesperrten Lernblock aus und zeigt die Vorschau. Gesperrte Lernblöcke können noch nicht geöffnet werden."
 					: "Wählt diesen Lernblock aus und zeigt die Vorschau. Öffnen kannst du ihn danach über die Pfeiltaste in der Vorschau."
 			}
@@ -142,74 +306,19 @@ function LearningPathNode({
 				transform: [{ scale: pressed ? 0.96 : 1 }],
 			})}
 		>
-			{selected ? <SelectionOrbit color={orbitColor} /> : null}
-
-			<View
-				pointerEvents="none"
-				style={{
-					position: "absolute",
-					left: (frame.width - NODE_BUTTON_SIZE) / 2,
-					top: (frame.height - NODE_BUTTON_SIZE) / 2,
-					width: NODE_BUTTON_SIZE,
-					height: NODE_BUTTON_SIZE,
-				}}
+			<Animated.View
+				style={[
+					{
+						position: "relative",
+						width: NODE_ORBIT_WIDTH,
+						height: NODE_ORBIT_HEIGHT,
+					},
+					breathingStyle,
+				]}
 			>
-				<View
-					style={{
-						position: "absolute",
-						left: 0,
-						top: NODE_DEPTH,
-						width: NODE_BUTTON_SIZE,
-						height: NODE_FACE_HEIGHT,
-						borderRadius: NODE_BUTTON_SIZE / 2,
-						backgroundColor: baseColor,
-					}}
-				/>
-				<View
-					style={{
-						position: "absolute",
-						left: 0,
-						top: 0,
-						width: NODE_BUTTON_SIZE,
-						height: NODE_FACE_HEIGHT,
-						borderRadius: NODE_BUTTON_SIZE / 2,
-						backgroundColor: faceColor,
-						alignItems: "center",
-						justifyContent: "center",
-					}}
-				>
-					<View
-						style={{
-							position: "absolute",
-							left: 16,
-							top: 7,
-							width: 40,
-							height: 7,
-							borderRadius: 99,
-							backgroundColor: "rgba(255, 255, 255, 0.18)",
-						}}
-					/>
-					{locked ? (
-						<SquareLock
-							size={27}
-							color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-							strokeWidth={2}
-						/>
-					) : completed ? (
-						<Check
-							size={29}
-							color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-							strokeWidth={2.5}
-						/>
-					) : (
-						<PhaseIcon
-							size={28}
-							color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-							strokeWidth={2.2}
-						/>
-					)}
-				</View>
-			</View>
+				{current ? <ActiveOrbit color={colors.primary} /> : null}
+				<LearningPathPuck iconKind={iconKind} state={state} />
+			</Animated.View>
 		</Pressable>
 	);
 }
