@@ -45,11 +45,13 @@ function InsetTextField({
 					controlClassName,
 				)}
 			>
-				<View className="flex-1">
+				<View className="min-w-0 flex-1 justify-center self-stretch">
 					<Input
-						accessibilityLabel={accessibilityLabel ?? label}
-						className={cn("flex-none text-body-2", inputClassName)}
 						{...inputProps}
+						accessibilityLabel={accessibilityLabel ?? label}
+						className={cn("text-body-2", inputClassName)}
+						multiline={false}
+						numberOfLines={1}
 					/>
 				</View>
 				{accessory ? (

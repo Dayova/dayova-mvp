@@ -28,6 +28,7 @@ describe("password change flow", () => {
 			passwordChangeSource.match(/autoComplete="new-password"/g),
 		).toHaveLength(2);
 		expect(passwordChangeSource.match(/accessory=\{/g)).toHaveLength(3);
+		expect(passwordChangeSource).toContain('placeholder="Erneut eingeben"');
 		expect(passwordChangeSource).toContain("newPassword !== confirmPassword");
 		expect(passwordChangeSource).toContain("await changePassword({");
 	});

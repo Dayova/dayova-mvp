@@ -238,7 +238,7 @@ export default function ChangePasswordScreen() {
 					}}
 					invalid={Boolean(errors.confirmPassword)}
 					message={errors.confirmPassword}
-					placeholder="Neues Passwort wiederholen"
+					placeholder="Erneut eingeben"
 					secureTextEntry={!confirmPasswordVisible}
 					autoCapitalize="none"
 					autoCorrect={false}
