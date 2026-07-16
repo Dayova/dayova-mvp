@@ -1,13 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import {
-	ActivityIndicator,
-	Alert,
-	Platform,
-	Pressable,
-	View,
-} from "react-native";
+import { ActivityIndicator, Platform, Pressable, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
@@ -27,6 +21,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { dismissToOrReplace } from "~/lib/navigation";
@@ -172,7 +167,6 @@ export default function LearningTimesScreen() {
 	const canRemove = Boolean(selectedEntry) && !isSaving;
 	const canSave =
 		hasChanges &&
-		parseTimeToMinutes(endTime) > parseTimeToMinutes(startTime) &&
 		!isSaving &&
 		Boolean(user) &&
 		isConvexAuthenticated &&
@@ -205,10 +199,7 @@ export default function LearningTimesScreen() {
 
 	const save = async () => {
 		if (parseTimeToMinutes(endTime) <= parseTimeToMinutes(startTime)) {
-			Alert.alert(
-				"Uhrzeit prüfen",
-				"Die Endzeit muss nach der Startzeit liegen.",
-			);
+			setFeedback("Die Endzeit muss nach der Startzeit liegen.");
 			return;
 		}
 
@@ -223,8 +214,7 @@ export default function LearningTimesScreen() {
 			});
 			closeToOverview();
 		} catch (error) {
-			Alert.alert(
-				"Lernzeit konnte nicht gespeichert werden",
+			setFeedback(
 				getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
 					source: "learning-times.save",
 				}),
@@ -244,8 +234,7 @@ export default function LearningTimesScreen() {
 			setFeedback("Lernzeit entfernt.");
 			closeToOverview();
 		} catch (error) {
-			Alert.alert(
-				"Lernzeit konnte nicht entfernt werden",
+			setFeedback(
 				getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
 					source: "learning-times.remove",
 				}),
@@ -344,9 +333,7 @@ export default function LearningTimesScreen() {
 					) : null}
 
 					{feedback ? (
-						<Text className="font-poppins text-body-4 text-primary">
-							{feedback}
-						</Text>
+						<WarningBanner title="Bitte prüfen" description={feedback} />
 					) : null}
 				</View>
 			</ScreenScroll>

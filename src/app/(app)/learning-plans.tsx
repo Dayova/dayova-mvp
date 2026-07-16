@@ -2,7 +2,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	Easing,
@@ -18,6 +18,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { Button } from "~/components/ui/button";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
@@ -89,6 +90,10 @@ type HomeworkOverview = {
 	durationMinutes: number | null;
 	completed: boolean;
 };
+
+type DeleteTarget =
+	| { kind: "plan"; item: LearningPlanOverview }
+	| { kind: "homework"; item: HomeworkOverview };
 
 const getPlanHref = (plan: LearningPlanOverview) => {
 	if (plan.status === "draft") return ROUTES.createLearningPlan;
@@ -770,6 +775,9 @@ export default function LearningPlansScreen() {
 	const removeHomework = useMutation(api.dayEntries.remove);
 	const [activeTab, setActiveTab] = useState<PlanTab>("learningPlans");
 	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
+	const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+	const [isDeleting, setIsDeleting] = useState(false);
+	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const today = useCurrentLocalDay();
 	const todayKey = getDayKey(today);
 	const plans = useQuery(
@@ -784,46 +792,34 @@ export default function LearningPlansScreen() {
 	const visibleHomework = homework ?? [];
 
 	const confirmDeletePlan = (plan: LearningPlanOverview) => {
-		Alert.alert(
-			"Lernplan löschen",
-			`Möchtest du den Lernplan ${formatGermanUiText(plan.subject)} wirklich löschen?`,
-			[
-				{ text: "Abbrechen", style: "cancel" },
-				{
-					text: "Löschen",
-					style: "destructive",
-					onPress: () => {
-						void removePlan({ id: plan.id }).catch(() => {
-							Alert.alert(
-								"Lernplan konnte nicht gelöscht werden",
-								"Bitte versuche es gleich noch einmal.",
-							);
-						});
-					},
-				},
-			],
-		);
+		setDeleteError(null);
+		setDeleteTarget({ kind: "plan", item: plan });
 	};
 	const confirmDeleteHomework = (homeworkEntry: HomeworkOverview) => {
-		Alert.alert(
-			"Hausaufgabe löschen",
-			`Möchtest du ${formatGermanUiText(homeworkEntry.title)} wirklich löschen?`,
-			[
-				{ text: "Abbrechen", style: "cancel" },
-				{
-					text: "Löschen",
-					style: "destructive",
-					onPress: () => {
-						void removeHomework({ id: homeworkEntry.id }).catch(() => {
-							Alert.alert(
-								"Hausaufgabe konnte nicht gelöscht werden",
-								"Bitte versuche es gleich noch einmal.",
-							);
-						});
-					},
-				},
-			],
-		);
+		setDeleteError(null);
+		setDeleteTarget({ kind: "homework", item: homeworkEntry });
+	};
+	const closeDeleteSheet = () => {
+		setDeleteTarget(null);
+		setDeleteError(null);
+	};
+	const deleteSelectedItem = async () => {
+		if (!deleteTarget || isDeleting) return;
+
+		setIsDeleting(true);
+		setDeleteError(null);
+		try {
+			if (deleteTarget.kind === "plan") {
+				await removePlan({ id: deleteTarget.item.id });
+			} else {
+				await removeHomework({ id: deleteTarget.item.id });
+			}
+			setDeleteTarget(null);
+		} catch {
+			setDeleteError("Bitte versuche es gleich noch einmal.");
+		} finally {
+			setIsDeleting(false);
+		}
 	};
 	const openCreateTypePicker = () => {
 		setShowCreateTypePicker(true);
@@ -974,6 +970,24 @@ export default function LearningPlansScreen() {
 				visible={showCreateTypePicker}
 				onRequestClose={() => setShowCreateTypePicker(false)}
 				onSelect={selectCreateType}
+			/>
+			<ConfirmationSheet
+				visible={Boolean(deleteTarget)}
+				title={
+					deleteTarget?.kind === "homework"
+						? "Hausaufgabe löschen"
+						: "Lernplan löschen"
+				}
+				description={
+					deleteTarget?.kind === "homework"
+						? `Möchtest du ${formatGermanUiText(deleteTarget.item.title)} wirklich löschen?`
+						: `Möchtest du den Lernplan ${formatGermanUiText(deleteTarget?.item.subject ?? "")} wirklich löschen?`
+				}
+				confirmLabel="Löschen"
+				isBusy={isDeleting}
+				errorMessage={deleteError}
+				onClose={closeDeleteSheet}
+				onConfirm={() => void deleteSelectedItem()}
 			/>
 		</View>
 	);

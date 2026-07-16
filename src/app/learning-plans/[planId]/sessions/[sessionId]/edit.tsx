@@ -5,11 +5,9 @@ import { ActivityIndicator, Platform, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
-import { ActionModal } from "~/components/ui/action-modal";
-import { Button } from "~/components/ui/button";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
-import { X } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
@@ -202,42 +200,16 @@ function LoadedSessionEditScreen({
 				) : null}
 			</ScrollView>
 
-			<ActionModal
+			<ConfirmationSheet
 				visible={isDeleteVisible}
-				dismissible
 				onClose={() => setIsDeleteVisible(false)}
-				accessibilityLabel="Entfernen-Dialog schließen"
+				closeAccessibilityLabel="Entfernen-Dialog schließen"
 				title="Bist du dir sicher?"
 				description="Tippe auf Entfernen, wenn du diesen Lerntag wirklich löschen möchtest."
-				icon={<X size={48} color="#FF5147" strokeWidth={1.8} />}
-				iconContainerClassName="bg-red-100"
-			>
-				<View className="mt-6 flex-row gap-3">
-					<Button
-						variant="neutral"
-						className="flex-1 shadow-none"
-						onPress={() => setIsDeleteVisible(false)}
-					>
-						<Text>Abbrechen</Text>
-					</Button>
-					<Button
-						accessibilityLabel={
-							isBusy ? "Entfernen, wird geladen" : "Entfernen"
-						}
-						accessibilityLiveRegion={isBusy ? "polite" : undefined}
-						accessibilityState={{ busy: isBusy, disabled: isBusy }}
-						className="flex-1"
-						onPress={confirmDelete}
-						disabled={isBusy}
-					>
-						{isBusy ? (
-							<ActivityIndicator color="#FFFFFF" />
-						) : (
-							<Text>Entfernen</Text>
-						)}
-					</Button>
-				</View>
-			</ActionModal>
+				confirmLabel="Entfernen"
+				isBusy={isBusy}
+				onConfirm={confirmDelete}
+			/>
 
 			{renderPicker()}
 		</View>

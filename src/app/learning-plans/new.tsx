@@ -10,10 +10,9 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import {
-	BottomModal,
-	BottomModalOption,
-	bottomModalIconColor,
-} from "~/components/ui/bottom-modal";
+	ActionSheet,
+	actionSheetIconColor,
+} from "~/components/ui/action-sheet";
 import { Button } from "~/components/ui/button";
 import { FieldControl, FieldLabel } from "~/components/ui/field";
 import { Attachment, Plus, ScanImage } from "~/components/ui/icon";
@@ -616,50 +615,48 @@ export default function NewLearningPlanScreen() {
 				</Button>
 			</ScreenScroll>
 
-			<BottomModal
+			<ActionSheet
 				visible={isUploadSheetVisible}
 				title="Was möchtest du hochladen?"
 				description="Lade hier deine Unterlagen hoch oder scanne sie ganz einfach."
 				onClose={closeUploadSheet}
 				onDismiss={runPendingUploadAction}
 				closeAccessibilityLabel="Hochladen schließen"
-				contentClassName="flex-row gap-2"
-			>
-				<BottomModalOption
-					layout="tile"
-					title="Scannen"
-					onPress={() => chooseUploadAction("camera")}
-					disabled={!canUploadMaterial}
-					icon={
-						openingUploadAction === "camera" || isBusy ? (
-							<ActivityIndicator color={bottomModalIconColor} />
-						) : (
-							<ScanImage
-								size={28}
-								color={bottomModalIconColor}
-								strokeWidth={1.8}
-							/>
-						)
-					}
-				/>
-				<BottomModalOption
-					layout="tile"
-					title="Dateien"
-					onPress={() => chooseUploadAction("files")}
-					disabled={!canUploadMaterial}
-					icon={
-						openingUploadAction === "files" || isBusy ? (
-							<ActivityIndicator color={bottomModalIconColor} />
-						) : (
-							<Attachment
-								size={28}
-								color={bottomModalIconColor}
-								strokeWidth={1.8}
-							/>
-						)
-					}
-				/>
-			</BottomModal>
+				layout="tile"
+				onSelect={chooseUploadAction}
+				options={[
+					{
+						value: "camera",
+						title: "Scannen",
+						disabled: !canUploadMaterial,
+						icon:
+							openingUploadAction === "camera" || isBusy ? (
+								<ActivityIndicator color={actionSheetIconColor} />
+							) : (
+								<ScanImage
+									size={28}
+									color={actionSheetIconColor}
+									strokeWidth={1.8}
+								/>
+							),
+					},
+					{
+						value: "files",
+						title: "Dateien",
+						disabled: !canUploadMaterial,
+						icon:
+							openingUploadAction === "files" || isBusy ? (
+								<ActivityIndicator color={actionSheetIconColor} />
+							) : (
+								<Attachment
+									size={28}
+									color={actionSheetIconColor}
+									strokeWidth={1.8}
+								/>
+							),
+					},
+				]}
+			/>
 		</Screen>
 	);
 }

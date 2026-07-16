@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
-	Alert,
 	Linking,
 	Platform,
 	TouchableOpacity,
@@ -26,6 +25,7 @@ import { SelectSheet } from "~/components/ui/select-sheet";
 import { Switch } from "~/components/ui/switch";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
@@ -48,6 +48,7 @@ import {
 } from "~/lib/notification-preferences";
 
 const OFFSET_OPTIONS = [5, 10, 15, 30, 60];
+type SystemNotificationNotice = "unavailable" | "denied";
 
 const timeToDate = (time: string) => {
 	const match = /^(\d{1,2}):(\d{2})$/.exec(time);
@@ -152,6 +153,8 @@ export default function NotificationSettingsScreen() {
 	const [showDeliveryInfo, setShowDeliveryInfo] = useState(false);
 	const [showBriefingTimePicker, setShowBriefingTimePicker] = useState(false);
 	const [showReminderOffsetSheet, setShowReminderOffsetSheet] = useState(false);
+	const [systemNotificationNotice, setSystemNotificationNotice] =
+		useState<SystemNotificationNotice | null>(null);
 	const visiblePreferences = useMemo(
 		() =>
 			preferences
@@ -206,6 +209,7 @@ export default function NotificationSettingsScreen() {
 
 	const updateSystemNotifications = useCallback(
 		async (nextValue: boolean) => {
+			setSystemNotificationNotice(null);
 			if (!nextValue) {
 				await update({ systemNotificationsEnabled: false });
 				return;
@@ -213,10 +217,7 @@ export default function NotificationSettingsScreen() {
 
 			const notifications = getNotificationsModule();
 			if (!notifications) {
-				Alert.alert(
-					"Mitteilungen noch nicht bereit",
-					"Bitte baue den iOS/Android Dev Client einmal neu, damit Push-Mitteilungen verfügbar sind.",
-				);
+				setSystemNotificationNotice("unavailable");
 				setNotificationPermissionStatus("unavailable");
 				await update({ systemNotificationsEnabled: false });
 				return;
@@ -242,14 +243,7 @@ export default function NotificationSettingsScreen() {
 
 			if (!hasNotificationPermission(notifications, permissions)) {
 				setNotificationPermissionStatus("denied");
-				Alert.alert(
-					"Push-Mitteilungen sind deaktiviert",
-					"Aktiviere Mitteilungen in den Systemeinstellungen, um sie auch außerhalb von Dayova zu erhalten.",
-					[
-						{ text: "Abbrechen", style: "cancel" },
-						{ text: "Einstellungen", onPress: () => Linking.openSettings() },
-					],
-				);
+				setSystemNotificationNotice("denied");
 				await update({ systemNotificationsEnabled: false });
 				return;
 			}
@@ -372,6 +366,31 @@ export default function NotificationSettingsScreen() {
 			<ThemedStatusBar />
 			<ScreenScroll topPadding={72} bottomPadding={120} horizontalPadding={24}>
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
+				{systemNotificationNotice ? (
+					<WarningBanner
+						className="mb-6"
+						title={
+							systemNotificationNotice === "denied"
+								? "Push-Mitteilungen sind deaktiviert"
+								: "Mitteilungen noch nicht bereit"
+						}
+						description={
+							systemNotificationNotice === "denied"
+								? "Aktiviere Mitteilungen in den Systemeinstellungen, um sie auch außerhalb von Dayova zu erhalten."
+								: "Bitte baue den iOS/Android Dev Client einmal neu, damit Push-Mitteilungen verfügbar sind."
+						}
+						ctaLabel={
+							systemNotificationNotice === "denied"
+								? "Einstellungen"
+								: undefined
+						}
+						onPressCta={
+							systemNotificationNotice === "denied"
+								? () => void Linking.openSettings()
+								: undefined
+						}
+					/>
+				) : null}
 
 				{preferencesForRender ? (
 					<View className="gap-8">

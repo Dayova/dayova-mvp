@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
-import { BottomModal } from "~/components/ui/bottom-modal";
 import { Button } from "~/components/ui/button";
-import { Bell, Check, Mail } from "~/components/ui/icon";
+import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import { Bell, Mail } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import type { PushNotificationDeliveryStatus } from "~/lib/notification-preferences";
@@ -81,7 +81,7 @@ function NotificationDeliveryInfoSheet({
 	}[pushStatus];
 
 	return (
-		<BottomModal
+		<DayovaSheetFrame
 			visible={visible}
 			title="Wo erscheinen deine Mitteilungen?"
 			onClose={onClose}
@@ -127,7 +127,7 @@ function NotificationDeliveryInfoSheet({
 					<Text>{pushAction.label}</Text>
 				</Button>
 			) : null}
-		</BottomModal>
+		</DayovaSheetFrame>
 	);
 }
 
