@@ -4,11 +4,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
+const appDirectory = resolve(testDirectory, "../../app");
 const settingsSource = readFileSync(
-	resolve(testDirectory, "(app)/settings.tsx"),
+	resolve(appDirectory, "(app)/settings.tsx"),
 	"utf8",
 );
-const passwordChangePath = resolve(testDirectory, "change-password.tsx");
+const passwordChangePath = resolve(appDirectory, "change-password.tsx");
 const passwordChangeSource = existsSync(passwordChangePath)
 	? readFileSync(passwordChangePath, "utf8")
 	: "";
