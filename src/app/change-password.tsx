@@ -44,9 +44,9 @@ function PasswordVisibilityButton({
 			className="h-10 w-10 items-center justify-center"
 		>
 			{visible ? (
-				<EyeOff size={19} color={colors.secondaryText} strokeWidth={2} />
-			) : (
 				<Eye size={19} color={colors.secondaryText} strokeWidth={2} />
+			) : (
+				<EyeOff size={19} color={colors.secondaryText} strokeWidth={2} />
 			)}
 		</Pressable>
 	);

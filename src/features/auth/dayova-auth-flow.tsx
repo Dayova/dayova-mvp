@@ -1505,9 +1505,9 @@ function QuestionStepView({
 											}}
 										>
 											{passwordVisible ? (
-												<EyeOff size={17} color={COLORS.secondaryText} />
-											) : (
 												<Eye size={17} color={COLORS.secondaryText} />
+											) : (
+												<EyeOff size={17} color={COLORS.secondaryText} />
 											)}
 										</Pressable>
 									) : null
@@ -1824,9 +1824,9 @@ export function LoginScreen() {
 										onPress={() => setPasswordVisible((current) => !current)}
 									>
 										{passwordVisible ? (
-											<EyeOff size={18} color={COLORS.text} />
-										) : (
 											<Eye size={18} color={COLORS.text} />
+										) : (
+											<EyeOff size={18} color={COLORS.text} />
 										)}
 									</Pressable>
 								}
@@ -2250,9 +2250,9 @@ function PasswordResetScreen({
 											onPress={() => setPasswordVisible((current) => !current)}
 										>
 											{passwordVisible ? (
-												<EyeOff size={18} color={COLORS.text} />
-											) : (
 												<Eye size={18} color={COLORS.text} />
+											) : (
+												<EyeOff size={18} color={COLORS.text} />
 											)}
 										</Pressable>
 									}
@@ -2280,9 +2280,9 @@ function PasswordResetScreen({
 											}
 										>
 											{confirmPasswordVisible ? (
-												<EyeOff size={18} color={COLORS.text} />
-											) : (
 												<Eye size={18} color={COLORS.text} />
+											) : (
+												<EyeOff size={18} color={COLORS.text} />
 											)}
 										</Pressable>
 									}

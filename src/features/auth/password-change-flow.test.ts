@@ -13,6 +13,10 @@ const passwordChangePath = resolve(appDirectory, "change-password.tsx");
 const passwordChangeSource = existsSync(passwordChangePath)
 	? readFileSync(passwordChangePath, "utf8")
 	: "";
+const authFlowSource = readFileSync(
+	resolve(testDirectory, "dayova-auth-flow.tsx"),
+	"utf8",
+);
 
 describe("password change flow", () => {
 	test("is reachable from settings", () => {
@@ -31,6 +35,22 @@ describe("password change flow", () => {
 		expect(passwordChangeSource).toContain('placeholder="Erneut eingeben"');
 		expect(passwordChangeSource).toContain("newPassword !== confirmPassword");
 		expect(passwordChangeSource).toContain("await changePassword({");
+	});
+
+	test("uses visibility icons that represent the current password state", () => {
+		expect(passwordChangeSource).toMatch(/\{visible \? \(\s*<Eye\b/);
+		expect(passwordChangeSource).not.toMatch(/\{visible \? \(\s*<EyeOff\b/);
+		expect(
+			authFlowSource.match(
+				/\{(?:passwordVisible|confirmPasswordVisible) \? \(\s*<Eye\b/g,
+			),
+		).toHaveLength(4);
+		expect(authFlowSource).not.toMatch(
+			/\{(?:passwordVisible|confirmPasswordVisible) \? \(\s*<EyeOff\b/,
+		);
+		expect(
+			passwordChangeSource.match(/secureTextEntry=\{!\w+Visible\}/g),
+		).toHaveLength(3);
 	});
 
 	test("explains session revocation and confirms success", () => {
