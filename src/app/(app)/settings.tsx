@@ -7,6 +7,7 @@ import {
 	Moon,
 	Palette,
 	Settings,
+	SquareLock,
 	Sun,
 	Timer,
 } from "~/components/ui/icon";
@@ -148,6 +149,11 @@ export default function SettingsScreen() {
 							icon={Settings}
 							label="Profil"
 							onPress={() => router.push("/profile")}
+						/>
+						<SettingsRow
+							icon={SquareLock}
+							label="Passwort ändern"
+							onPress={() => router.push("/change-password")}
 						/>
 						<SettingsRow
 							icon={Logout}

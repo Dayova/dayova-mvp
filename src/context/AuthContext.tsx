@@ -26,6 +26,10 @@ import { setRememberSessionPersistence } from "~/lib/auth-token-cache";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import {
+	changePassword as updateAccountPassword,
+	type PasswordChangeInput,
+} from "~/lib/password-change";
+import {
 	cancelPasswordReset as cancelPasswordResetAttempt,
 	completePasswordReset as submitPasswordReset,
 	resendPasswordResetCode as resendPasswordResetAttempt,
@@ -99,6 +103,7 @@ interface AuthContextType {
 	register: (input: RegisterInput) => Promise<AuthFlowResult>;
 	updateProfile: (input: UpdateProfileInput) => Promise<ProfileUpdateResult>;
 	verifyProfileEmailCode: (code: string) => Promise<void>;
+	changePassword: (input: PasswordChangeInput) => Promise<void>;
 	verifyEmailCode: (code: string) => Promise<AuthFlowResult>;
 	resendVerification: () => Promise<void>;
 	startPasswordReset: (email: string) => Promise<void>;
@@ -275,6 +280,20 @@ const getClerkErrorMessage = (error: unknown, fallback: string) => {
 	return error instanceof Error
 		? getGermanAuthErrorMessage(error.message, fallback)
 		: fallback;
+};
+
+const getPasswordChangeErrorMessage = (error: unknown) => {
+	if (
+		isClerkAPIResponseError(error) &&
+		error.errors.some(({ code }) => code === "form_password_incorrect")
+	) {
+		return "Das aktuelle Passwort ist falsch.";
+	}
+
+	return getClerkErrorMessage(
+		error,
+		"Das Passwort konnte nicht geändert werden. Bitte versuche es erneut.",
+	);
 };
 
 const definedProfileFields = (profile: RegisterProfile) => ({
@@ -1069,6 +1088,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		await cancelPasswordResetAttempt(passwordResetSignIn);
 	};
 
+	const changePassword = async (input: PasswordChangeInput) =>
+		withSubmitting(async () => {
+			if (!clerkUser) {
+				throw new Error(
+					"Du musst angemeldet sein, um dein Passwort zu ändern.",
+				);
+			}
+
+			try {
+				await updateAccountPassword(clerkUser, input);
+			} catch (error) {
+				throw new Error(getPasswordChangeErrorMessage(error));
+			}
+		});
+
 	const logout = async () => {
 		setPendingVerification(null);
 		setPendingLoginStage(null);
@@ -1095,6 +1129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				register,
 				updateProfile,
 				verifyProfileEmailCode,
+				changePassword,
 				verifyEmailCode,
 				resendVerification,
 				startPasswordReset,
