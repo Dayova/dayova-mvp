@@ -17,6 +17,8 @@ const authFlowSource = readFileSync(
 	resolve(testDirectory, "dayova-auth-flow.tsx"),
 	"utf8",
 );
+const passwordVisibilityDecisionUrl =
+	"https://app.notion.com/p/39f2e87228bf81c28511c0728134c774";
 
 describe("password change flow", () => {
 	test("is reachable from settings", () => {
@@ -38,6 +40,8 @@ describe("password change flow", () => {
 	});
 
 	test("uses visibility icons that represent the current password state", () => {
+		expect(passwordChangeSource).toContain(passwordVisibilityDecisionUrl);
+		expect(authFlowSource).toContain(passwordVisibilityDecisionUrl);
 		expect(passwordChangeSource).toMatch(/\{visible \? \(\s*<Eye\b/);
 		expect(passwordChangeSource).not.toMatch(/\{visible \? \(\s*<EyeOff\b/);
 		expect(

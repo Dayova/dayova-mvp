@@ -108,6 +108,8 @@ import { cn } from "~/lib/utils";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
 import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
 
+// Password icons represent the current visibility state across this auth flow.
+// Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
 const AnimatedCircle = Animated.createAnimatedComponent(
 	Circle,

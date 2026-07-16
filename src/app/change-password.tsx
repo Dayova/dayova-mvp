@@ -24,6 +24,8 @@ type PasswordField = "currentPassword" | "newPassword" | "confirmPassword";
 
 type PasswordErrors = Partial<Record<PasswordField, string>>;
 
+// Password icons represent the current visibility state, not the next action.
+// Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
 function PasswordVisibilityButton({
 	fieldLabel,
 	visible,
