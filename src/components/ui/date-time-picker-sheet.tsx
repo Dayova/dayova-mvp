@@ -1,7 +1,4 @@
-import DateTimePicker, {
-	type DateTimePickerChangeEvent,
-} from "@expo/ui/community/datetime-picker";
-import type { ReactNode } from "react";
+import DateTimePicker from "@expo/ui/community/datetime-picker";
 import {
 	Modal,
 	Platform,
@@ -13,30 +10,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "~/components/ui/text";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import type {
+	DateTimePickerChangeEvent,
+	DateTimePickerDisplay,
+	DateTimePickerSheetProps,
+} from "./date-time-picker-sheet.types";
 
-type DateTimePickerDisplay =
-	| "default"
-	| "spinner"
-	| "compact"
-	| "inline"
-	| "calendar"
-	| "clock";
-
-type DateTimePickerSheetEvent =
-	| (DateTimePickerChangeEvent & { type: "set" })
-	| { type: "dismissed" };
-
-type DateTimePickerSheetProps = {
-	visible: boolean;
-	value: Date;
-	mode: "date" | "time" | "datetime";
-	display?: DateTimePickerDisplay;
-	maximumDate?: Date;
-	minimumDate?: Date;
-	doneLabel?: ReactNode;
-	onChange: (event: DateTimePickerSheetEvent, selectedDate?: Date) => void;
-	onClose: () => void;
-};
+const DAYOVA_PRIMARY = DAYOVA_DESIGN_SYSTEM.colors.primary;
 
 const normalizeAndroidDisplay = (display?: DateTimePickerDisplay) => {
 	if (display === "calendar" || display === "clock" || display === "spinner") {
@@ -80,6 +61,7 @@ function DateTimePickerSheet({
 	if (Platform.OS === "android") {
 		return (
 			<DateTimePicker
+				accentColor={DAYOVA_PRIMARY}
 				value={value}
 				mode={mode}
 				display={normalizeAndroidDisplay(display)}
@@ -129,6 +111,7 @@ function DateTimePickerSheet({
 					</View>
 					<View className="items-center overflow-hidden">
 						<DateTimePicker
+							accentColor={DAYOVA_PRIMARY}
 							value={value}
 							mode={mode}
 							display={normalizeIosDisplay(display)}
@@ -165,4 +148,4 @@ const styles = StyleSheet.create({
 });
 
 export { DateTimePickerSheet };
-export type { DateTimePickerSheetEvent as DateTimePickerEvent };
+export type { DateTimePickerSheetEvent as DateTimePickerEvent } from "./date-time-picker-sheet.types";

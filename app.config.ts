@@ -16,6 +16,9 @@ if (isReleaseConfig) {
 
 const APP_VERSION = "1.0.3";
 const BACKGROUND_COLOR = "#ffffff";
+// Keep this native-build token aligned with DAYOVA_DESIGN_SYSTEM.colors.primary.
+// android-material-controls.test.ts prevents the two values from drifting.
+const DAYOVA_PRIMARY = "#00BAFF";
 const DAYOVA_LOGO = isProduction
 	? "./assets/dayova-logo.png"
 	: "./assets/dayova-logo-dev.png";
@@ -39,6 +42,7 @@ const config: ExpoConfig = {
 	slug: "dayova",
 	scheme: "dayova",
 	version: APP_VERSION,
+	primaryColor: DAYOVA_PRIMARY,
 	owner: "dayova",
 	orientation: "portrait",
 	platforms: ["ios", "android"],
@@ -80,7 +84,7 @@ const config: ExpoConfig = {
 			"expo-notifications",
 			{
 				icon: "./assets/dayova-notification-icon.png",
-				color: "#3A7BFF",
+				color: DAYOVA_PRIMARY,
 			},
 		],
 		[
@@ -97,6 +101,7 @@ const config: ExpoConfig = {
 		"expo-localization",
 		"./plugins/withNinjaLongPaths",
 		"./plugins/withAndroidPackagingOptions",
+		"./plugins/withDayovaAndroidTheme",
 		[
 			"expo-font",
 			{

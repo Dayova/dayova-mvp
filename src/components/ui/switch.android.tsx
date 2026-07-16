@@ -12,7 +12,7 @@ import { useDayovaTheme } from "~/lib/theme";
 const DAYOVA_PRIMARY = DAYOVA_DESIGN_SYSTEM.colors.primary;
 
 function Switch({ value, onValueChange, disabled, testID }: SwitchProps) {
-	const { colors } = useDayovaTheme();
+	const { colors, resolvedTheme } = useDayovaTheme();
 	const switchColors = useMemo(
 		() =>
 			({
@@ -33,7 +33,7 @@ function Switch({ value, onValueChange, disabled, testID }: SwitchProps) {
 	);
 
 	return (
-		<Host matchContents seedColor={DAYOVA_PRIMARY}>
+		<Host colorScheme={resolvedTheme} matchContents seedColor={DAYOVA_PRIMARY}>
 			<ComposeSwitch
 				value={value}
 				enabled={!disabled}
