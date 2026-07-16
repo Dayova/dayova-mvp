@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -42,9 +43,14 @@ function SelectSheet<T extends string | number>({
 	const sheetRef = useRef<BottomSheetModal>(null);
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
-	const { height: windowHeight } = useWindowDimensions();
+	const { height: windowHeight, width } = useWindowDimensions();
+	const contentSizeLayout = useContentSizeLayout();
+	const { shouldStackInlineContent } = contentSizeLayout;
+	const sheetWidth = Math.min(width, contentSizeLayout.containerMaxWidth);
 
-	const sheetMaxHeight = Math.min(windowHeight * 0.68, 560);
+	const sheetMaxHeight = shouldStackInlineContent
+		? windowHeight * 0.86
+		: Math.min(windowHeight * 0.68, 560);
 	const snapPoints = useMemo(() => [sheetMaxHeight], [sheetMaxHeight]);
 
 	useEffect(() => {
@@ -91,13 +97,22 @@ function SelectSheet<T extends string | number>({
 			}}
 			onDismiss={onClose}
 			snapPoints={snapPoints}
+			// Gorhom exposes the modal's measured tablet width through style only.
+			style={{ alignSelf: "center", width: sheetWidth }}
 		>
 			<View
 				className="flex-1 bg-card px-5 pt-1"
 				// Safe-area padding is runtime device data.
 				style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}
 			>
-				<View className="mb-3 w-full flex-row items-center justify-between">
+				<View
+					className={cn(
+						"mb-3 w-full justify-between gap-2",
+						shouldStackInlineContent
+							? "items-stretch"
+							: "flex-row items-center",
+					)}
+				>
 					<Text className="font-poppins font-semibold text-body-2 text-text">
 						{title}
 					</Text>
@@ -106,7 +121,10 @@ function SelectSheet<T extends string | number>({
 						accessibilityRole="button"
 						hitSlop={8}
 						onPress={dismiss}
-						className="h-10 min-w-16 items-center justify-center rounded-full bg-primary/10 px-3"
+						className={cn(
+							"min-h-10 min-w-16 items-center justify-center rounded-full bg-primary/10 px-3 py-1",
+							shouldStackInlineContent && "self-end",
+						)}
 					>
 						<Text className="font-poppins font-semibold text-body-2 text-primary">
 							Fertig
@@ -136,27 +154,41 @@ function SelectSheet<T extends string | number>({
 								accessibilityRole="button"
 								accessibilityState={{ selected: isSelected }}
 								className={cn(
-									"min-h-16 flex-row items-center rounded-[20px] border px-5",
+									"min-h-16 rounded-[20px] border px-5",
+									shouldStackInlineContent
+										? "items-stretch gap-3 py-4"
+										: "flex-row items-center",
 									isSelected
 										? "border-primary/35 bg-accent"
 										: "border-text/10 bg-card",
 								)}
 							>
 								{renderOptionIcon ? (
-									<View className="mr-5 h-9 w-9 items-center justify-center rounded-full bg-muted">
+									<View
+										className={cn(
+											"h-9 w-9 items-center justify-center rounded-full bg-muted",
+											shouldStackInlineContent ? "" : "mr-5",
+										)}
+									>
 										{renderOptionIcon(option, isSelected)}
 									</View>
 								) : null}
 								<Text
 									className={cn(
-										"flex-1 font-poppins text-body-2",
+										"font-poppins text-body-2",
+										shouldStackInlineContent ? "w-full" : "flex-1",
 										isSelected ? "font-semibold text-primary" : "text-text",
 									)}
 								>
 									{formatOptionLabel ? formatOptionLabel(option) : option}
 								</Text>
 								{isSelected ? (
-									<View className="ml-4 h-7 w-7 items-center justify-center rounded-full bg-primary">
+									<View
+										className={cn(
+											"h-7 w-7 items-center justify-center rounded-full bg-primary",
+											shouldStackInlineContent ? "self-end" : "ml-4",
+										)}
+									>
 										<Check size={16} color="#FFFFFF" strokeWidth={2.4} />
 									</View>
 								) : null}

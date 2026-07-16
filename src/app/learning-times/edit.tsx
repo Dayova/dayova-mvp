@@ -23,6 +23,10 @@ import {
 	FieldTrigger,
 } from "~/components/ui/field";
 import { CalendarDays, ChevronDown, Timer, Trash2 } from "~/components/ui/icon";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
@@ -33,6 +37,7 @@ import { dismissToOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
+import { cn } from "~/lib/utils";
 
 const LEARNING_DAYS = [
 	{ label: "Montag", value: 1 },
@@ -88,7 +93,7 @@ function TimeControl({
 			accessibilityLabel={`${label}: ${value}`}
 			accessibilityRole="button"
 			onPress={onPress}
-			className="h-[54px] flex-1 flex-row items-center justify-between rounded-[27px] bg-card px-5 shadow-black/10 shadow-sm active:opacity-80"
+			className="min-h-[54px] flex-1 flex-row items-center justify-between gap-2 rounded-[27px] bg-card px-5 py-2 shadow-black/10 shadow-sm active:opacity-80"
 		>
 			<Text className="font-poppins text-body-3 text-secondary-text">
 				{value}
@@ -100,6 +105,9 @@ function TimeControl({
 
 export default function LearningTimesScreen() {
 	const router = useRouter();
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const params = useLocalSearchParams<{
 		day?: string;
 		id?: string;
@@ -278,12 +286,40 @@ export default function LearningTimesScreen() {
 			/>
 		);
 	};
+	const actionButtons = (
+		<>
+			<Button
+				variant="neutral"
+				className={shouldStackInlineContent ? "w-full" : "flex-1"}
+				disabled={!canRemove}
+				onPress={remove}
+			>
+				<Trash2
+					size={18}
+					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+					strokeWidth={2}
+				/>
+				<Text>Entfernen</Text>
+			</Button>
+			<Button
+				className={shouldStackInlineContent ? "w-full" : "flex-1"}
+				disabled={!canSave}
+				onPress={save}
+			>
+				<Text>{isSaving ? "Speichert..." : "Speichern"}</Text>
+			</Button>
+		</>
+	);
 
 	return (
 		<Screen>
 			<ThemedStatusBar />
-			<ScreenScroll topPadding={80} bottomPadding={120} horizontalPadding={24}>
-				<Header title="Lernzeiten" onBack={goBack} />
+			<ScreenScroll
+				topPadding={80}
+				bottomPadding={shouldStackInlineContent ? 220 : 120}
+				horizontalPadding={24}
+			>
+				<Header title={"Lern\u00ADzeiten"} onBack={goBack} />
 
 				<View style={{ marginTop: 18, rowGap: 22 }}>
 					<View className="gap-2">
@@ -301,29 +337,56 @@ export default function LearningTimesScreen() {
 							<FieldTrigger
 								accessibilityLabel={`Lerntag ${selectedDay}`}
 								accessibilityRole="button"
-								className="min-h-[64px] rounded-[28px] px-5"
+								className={cn(
+									"min-h-[64px] rounded-[28px] px-5",
+									shouldStackInlineContent &&
+										"flex-col items-stretch gap-3 py-4",
+								)}
 								onPress={() => setDaySheetVisible(true)}
 								style={{
 									boxShadow: "0 1px 4px rgba(0, 0, 0, 0.08)",
 								}}
 							>
-								<Text className="flex-1 font-poppins font-semibold text-body-1 text-text">
+								<Text
+									className={cn(
+										"font-poppins font-semibold text-body-1 text-text",
+										!shouldStackInlineContent && "flex-1",
+									)}
+								>
 									Lerntag
 								</Text>
-								<Text className="font-poppins text-body-1 text-secondary-text">
-									{selectedDay}
-								</Text>
-								<FieldAccessory>
-									<ChevronDown
-										size={20}
-										color={colors.text}
-										strokeWidth={2.1}
-									/>
-								</FieldAccessory>
+								<View
+									className={cn(
+										"min-w-0 gap-2",
+										shouldStackInlineContent
+											? "items-end self-stretch"
+											: "flex-row items-center",
+									)}
+								>
+									<Text
+										className={cn(
+											"min-w-0 font-poppins text-body-1 text-secondary-text",
+											shouldStackInlineContent ? "w-full" : "flex-shrink",
+										)}
+									>
+										{selectedDay}
+									</Text>
+									<FieldAccessory
+										className={shouldStackInlineContent ? "ml-0" : undefined}
+									>
+										<ChevronDown
+											size={20}
+											color={colors.text}
+											strokeWidth={2.1}
+										/>
+									</FieldAccessory>
+								</View>
 							</FieldTrigger>
 						</Field>
 
-						<View className="flex-row gap-2">
+						<View
+							className={cn("gap-2", !shouldStackInlineContent && "flex-row")}
+						>
 							<TimeControl
 								label="Startzeit"
 								value={startTime}
@@ -348,30 +411,23 @@ export default function LearningTimesScreen() {
 							{feedback}
 						</Text>
 					) : null}
+
+					{shouldStackInlineContent ? (
+						<View className="mt-8 gap-3 pb-6">{actionButtons}</View>
+					) : null}
 				</View>
 			</ScreenScroll>
 
-			<View
-				pointerEvents="box-none"
-				className="absolute right-0 bottom-5 left-0 flex-row gap-3 px-6 pb-16"
-			>
-				<Button
-					variant="neutral"
-					className="flex-1"
-					disabled={!canRemove}
-					onPress={remove}
+			{shouldStackInlineContent ? null : (
+				<View
+					pointerEvents="box-none"
+					className="absolute right-0 bottom-5 left-0"
 				>
-					<Trash2
-						size={18}
-						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-						strokeWidth={2}
-					/>
-					<Text>Entfernen</Text>
-				</Button>
-				<Button className="flex-1" disabled={!canSave} onPress={save}>
-					<Text>{isSaving ? "Speichert..." : "Speichern"}</Text>
-				</Button>
-			</View>
+					<PortraitContent className="flex-row gap-3 px-6 pb-16">
+						{actionButtons}
+					</PortraitContent>
+				</View>
+			)}
 
 			{renderDaySelectSheet()}
 

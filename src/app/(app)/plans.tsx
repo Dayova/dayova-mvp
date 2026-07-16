@@ -4,6 +4,7 @@ import Svg, { Circle } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import { NotificationButton } from "~/components/notification-button";
 import { Route2 } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -12,6 +13,7 @@ import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 function ProgressRing({ progressPercent }: { progressPercent: number }) {
 	const { colors } = useDayovaTheme();
@@ -62,10 +64,19 @@ function LearningPlanCard({
 	progressPercent: number;
 }) {
 	const title = formatGermanUiText(`${subject} ${examTypeLabel}`.trim());
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 
 	return (
 		<ActionSurface activeOpacity={0.88} className="px-5 py-4">
-			<View className="flex-row items-center">
+			<View
+				className={
+					shouldStackInlineContent
+						? "items-stretch gap-3"
+						: "flex-row items-center"
+				}
+			>
 				<View className="h-12 w-12 items-center justify-center rounded-full bg-system-subtle shadow-md shadow-primary/15">
 					<Route2
 						size={22}
@@ -74,17 +85,27 @@ function LearningPlanCard({
 					/>
 				</View>
 
-				<Text className="ml-6 flex-1 font-poppins font-semibold text-body-1 text-text">
+				<Text
+					className={cn(
+						"flex-1 font-poppins font-semibold text-body-1 text-text",
+						!shouldStackInlineContent && "ml-6",
+					)}
+				>
 					{title}
 				</Text>
 
-				<ProgressRing progressPercent={progressPercent} />
+				<View className={shouldStackInlineContent ? "self-end" : ""}>
+					<ProgressRing progressPercent={progressPercent} />
+				</View>
 			</View>
 		</ActionSurface>
 	);
 }
 
 export default function PlansScreen() {
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningPlans = useQuery(
@@ -96,12 +117,21 @@ export default function PlansScreen() {
 		<Screen>
 			<ThemedStatusBar />
 			<ScreenScroll topPadding={84} bottomPadding={150} horizontalPadding={24}>
-				<View className="flex-row items-center justify-between">
+				<View
+					className={cn(
+						"justify-between gap-3",
+						shouldStackInlineContent
+							? "items-stretch"
+							: "flex-row items-center",
+					)}
+				>
 					<Text className="font-poppins font-semibold text-heading-2 text-text">
 						Deine Lernpläne
 					</Text>
 
-					<NotificationButton />
+					<View className={shouldStackInlineContent ? "self-end" : ""}>
+						<NotificationButton />
+					</View>
 				</View>
 
 				<View className="mt-9 gap-5">

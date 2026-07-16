@@ -6,6 +6,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { QuizStep } from "~/features/learning-plans/quiz-step";
@@ -27,6 +28,7 @@ const parseQuestionIndex = (value?: string) => {
 
 export default function LearningPlanQuizScreen() {
 	const router = useRouter();
+	const { horizontalPadding } = useContentSizeLayout();
 	const params = useLocalSearchParams<{
 		planId?: string;
 		questionIndex?: string;
@@ -127,10 +129,13 @@ export default function LearningPlanQuizScreen() {
 				className="flex-1"
 				bottomOffset={32}
 				contentContainerStyle={{
+					alignSelf: "center",
 					flexGrow: 1,
-					paddingHorizontal: 32,
+					maxWidth: 480,
+					paddingHorizontal: horizontalPadding,
 					paddingTop: 80,
 					paddingBottom: 60,
+					width: "100%",
 				}}
 			>
 				<Header title="Quiz" onBack={goBack} showBack={questionIndex > 0} />

@@ -1,7 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -32,6 +32,10 @@ import {
 	CompactNotchedActionCard,
 	NotchedActionCard,
 } from "~/components/ui/notched-action-card";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
@@ -40,6 +44,7 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 const PLAN_ACTION_RAIL_WIDTH = 104;
 const PLAN_SWIPE_OPEN_THRESHOLD = 44;
@@ -54,6 +59,79 @@ const PLANS_TAB_INDICATOR_HEIGHT = 44;
 
 type PlanTab = "learningPlans" | "homework";
 type CreateType = "homework" | "exam";
+
+function LearningPlansPageFrame({
+	children,
+	containerMaxWidth,
+	isEnlarged,
+	paddingBottom,
+}: {
+	children: ReactNode;
+	containerMaxWidth: number;
+	isEnlarged: boolean;
+	paddingBottom: number;
+}) {
+	if (!isEnlarged) return <>{children}</>;
+
+	return (
+		<ScrollView
+			className="flex-1"
+			// Runtime readable-width and safe-area values define the enlarged viewport.
+			contentContainerStyle={{
+				alignSelf: "center",
+				maxWidth: containerMaxWidth,
+				paddingBottom,
+				width: "100%",
+			}}
+			showsVerticalScrollIndicator={false}
+		>
+			{children}
+		</ScrollView>
+	);
+}
+
+function LearningPlansListViewport({
+	children,
+	containerMaxWidth,
+	horizontalPadding,
+	isEnlarged,
+	paddingBottom,
+}: {
+	children: ReactNode;
+	containerMaxWidth: number;
+	horizontalPadding: number;
+	isEnlarged: boolean;
+	paddingBottom: number;
+}) {
+	const contentStyle = {
+		paddingHorizontal: horizontalPadding,
+		paddingTop: 0,
+	};
+
+	if (isEnlarged) {
+		return (
+			// Responsive horizontal padding is calculated from the current viewport.
+			<View style={contentStyle}>{children}</View>
+		);
+	}
+
+	return (
+		<ScrollView
+			className="flex-1"
+			// Runtime readable-width and safe-area values define the list viewport.
+			contentContainerStyle={{
+				...contentStyle,
+				alignSelf: "center",
+				maxWidth: containerMaxWidth,
+				paddingBottom,
+				width: "100%",
+			}}
+			showsVerticalScrollIndicator={false}
+		>
+			{children}
+		</ScrollView>
+	);
+}
 
 type LearningPlanOverview = {
 	id: Id<"learningPlans">;
@@ -217,7 +295,7 @@ function Badge({
 }) {
 	return (
 		<View
-			className="h-7 justify-center rounded-full px-3"
+			className="min-h-7 justify-center rounded-full px-3 py-1"
 			style={{ backgroundColor: background }}
 		>
 			<Text
@@ -237,9 +315,12 @@ function PlansTabSwitch({
 	activeTab: PlanTab;
 	onChange: (tab: PlanTab) => void;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const tabs: Array<{ key: PlanTab; label: string }> = [
 		{ key: "learningPlans", label: "Lernpläne" },
-		{ key: "homework", label: "Hausaufgaben" },
+		{ key: "homework", label: "Haus\u00ADaufgaben" },
 	];
 	const [switchWidth, setSwitchWidth] = useState(0);
 	const activeTabIndex = activeTab === "learningPlans" ? 0 : 1;
@@ -267,6 +348,59 @@ function PlansTabSwitch({
 			},
 		],
 	}));
+
+	if (shouldStackInlineContent) {
+		return (
+			<View
+				accessibilityRole="tablist"
+				className="gap-2 rounded-[32px] border border-border bg-card p-2"
+			>
+				{tabs.map((tab) => {
+					const isActive = tab.key === activeTab;
+					return (
+						<TouchableOpacity
+							key={tab.key}
+							accessibilityRole="tab"
+							accessibilityState={{ selected: isActive }}
+							activeOpacity={0.9}
+							onPress={() => onChange(tab.key)}
+							className="min-h-11 w-full overflow-hidden rounded-[44px]"
+						>
+							{isActive ? (
+								<LinearGradient
+									colors={
+										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors
+									}
+									start={
+										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start
+									}
+									end={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end}
+									// Expo LinearGradient exposes its absolute fill through style.
+									style={{
+										position: "absolute",
+										top: 0,
+										right: 0,
+										bottom: 0,
+										left: 0,
+									}}
+								/>
+							) : null}
+							<View className="min-h-11 w-full items-center justify-center px-4 py-2">
+								<Text
+									className={cn(
+										"text-center font-poppins font-semibold text-body-2",
+										isActive ? "text-light-1" : "text-text",
+									)}
+								>
+									{tab.label}
+								</Text>
+							</View>
+						</TouchableOpacity>
+					);
+				})}
+			</View>
+		);
+	}
 
 	return (
 		<View
@@ -414,6 +548,9 @@ function LearningPlanCard({
 	onPress: () => void;
 }) {
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const progress = Math.max(0, Math.min(plan.progressPercent, 100));
 	const status = getStatus(plan, todayKey);
 	const remainingDays = Math.max(
@@ -513,18 +650,26 @@ function LearningPlanCard({
 								strokeWidth={1.9}
 							/>
 						}
+						cardStyle={
+							shouldStackInlineContent ? { paddingBottom: 72 } : undefined
+						}
 						onPress={onPress}
 						pressType="card"
 					>
 						<View className="gap-2">
-							<View className="flex-row items-start justify-between gap-3">
+							<View
+								className={cn(
+									"items-start gap-3",
+									!shouldStackInlineContent && "flex-row",
+								)}
+							>
 								<Text
-									className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
-									numberOfLines={2}
+									className="min-w-0 flex-1 font-poppins font-semibold text-body-1 text-text"
+									numberOfLines={shouldStackInlineContent ? undefined : 2}
 								>
 									{formatGermanUiText(plan.subject)}
 								</Text>
-								<View className="shrink-0 flex-row gap-2">
+								<View className="shrink-0 flex-row flex-wrap gap-2">
 									<Badge {...status} />
 									<Badge
 										label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
@@ -534,28 +679,45 @@ function LearningPlanCard({
 								</View>
 							</View>
 
-							<View className="flex-row items-center gap-1">
+							<View className="flex-row items-start gap-1">
 								<GraduationCap
 									size={14}
 									color={colors.secondaryText}
 									strokeWidth={2}
 								/>
-								<Text className="font-poppins text-body-4 text-secondary-text">
+								<Text className="min-w-0 flex-1 font-poppins text-body-4 text-secondary-text">
 									{plan.examDateLabel ?? "Termin wird geladen"}
 								</Text>
 							</View>
 
 							<Text
 								className="max-w-[282px] font-poppins font-semibold text-body-2 text-text"
-								numberOfLines={2}
+								numberOfLines={shouldStackInlineContent ? undefined : 2}
 							>
 								{formatGermanUiText(currentTitle)}
 							</Text>
 						</View>
 
-						<View className="mt-4 w-full max-w-[300px] gap-1">
-							<View className="flex-row items-center">
-								<Text className="w-[172px] font-poppins text-body-4 text-secondary-text">
+						<View
+							className={cn(
+								"mt-4 w-full gap-1",
+								!shouldStackInlineContent && "max-w-[300px]",
+							)}
+						>
+							<View
+								className={cn(
+									"gap-1",
+									shouldStackInlineContent
+										? "items-start"
+										: "flex-row items-center",
+								)}
+							>
+								<Text
+									className={cn(
+										"font-poppins text-body-4 text-secondary-text",
+										!shouldStackInlineContent && "w-[172px]",
+									)}
+								>
 									{`${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage`}
 								</Text>
 								<View className="flex-row items-center gap-1">
@@ -580,7 +742,10 @@ function LearningPlanCard({
 									text: `${progress} Prozent`,
 								}}
 								accessibilityRole="progressbar"
-								className="h-2 w-[258px] max-w-full overflow-hidden rounded-full bg-light-2"
+								className={cn(
+									"h-2 max-w-full overflow-hidden rounded-full bg-light-2",
+									shouldStackInlineContent ? "w-full" : "w-[258px]",
+								)}
 							>
 								<LinearGradient
 									colors={
@@ -617,6 +782,9 @@ function HomeworkCard({
 	onPress: () => void;
 }) {
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const status = getHomeworkStatus(homework, todayKey);
 	const subject = getHomeworkSubject(homework) || "Hausaufgabe";
 	const dateLabel =
@@ -712,18 +880,26 @@ function HomeworkCard({
 								strokeWidth={1.9}
 							/>
 						}
+						cardStyle={
+							shouldStackInlineContent ? { paddingBottom: 72 } : undefined
+						}
 						onPress={onPress}
 						pressType="card"
 					>
 						<View className="gap-2">
-							<View className="flex-row items-start justify-between gap-3">
+							<View
+								className={cn(
+									"items-start gap-3",
+									!shouldStackInlineContent && "flex-row",
+								)}
+							>
 								<Text
-									className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
-									numberOfLines={2}
+									className="min-w-0 flex-1 font-poppins font-semibold text-body-1 text-text"
+									numberOfLines={shouldStackInlineContent ? undefined : 2}
 								>
 									{subject}
 								</Text>
-								<View className="shrink-0 flex-row gap-2">
+								<View className="shrink-0 flex-row flex-wrap gap-2">
 									<Badge {...status} />
 									<Badge
 										label={`${homework.durationMinutes ?? "–"} min`}
@@ -733,7 +909,7 @@ function HomeworkCard({
 								</View>
 							</View>
 
-							<View className="flex-row items-center gap-1">
+							<View className="flex-row items-start gap-1">
 								<Clock3
 									size={14}
 									color={colors.secondaryText}
@@ -741,7 +917,7 @@ function HomeworkCard({
 								/>
 								<Text
 									className="flex-1 font-poppins text-body-4 text-secondary-text"
-									numberOfLines={1}
+									numberOfLines={shouldStackInlineContent ? undefined : 1}
 								>
 									{details}
 								</Text>
@@ -749,7 +925,7 @@ function HomeworkCard({
 
 							<Text
 								className="max-w-[282px] font-poppins font-semibold text-body-4 text-text"
-								numberOfLines={2}
+								numberOfLines={shouldStackInlineContent ? undefined : 2}
 							>
 								{description}
 							</Text>
@@ -764,6 +940,9 @@ function HomeworkCard({
 export default function LearningPlansScreen() {
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const removePlan = useMutation(api.learningPlans.removePlan);
@@ -838,138 +1017,159 @@ export default function LearningPlansScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<ThemedStatusBar />
-			<View
-				className="gap-6 px-6"
-				style={{
-					paddingTop: Math.max(insets.top - 4, 32),
-					paddingBottom: 18,
-				}}
+			<LearningPlansPageFrame
+				containerMaxWidth={contentSizeLayout.containerMaxWidth}
+				isEnlarged={contentSizeLayout.shouldStackInlineContent}
+				paddingBottom={Math.max(insets.bottom + 120, 150)}
 			>
-				<View className="mt-7 flex-row items-center justify-between">
-					<Text className="font-poppins font-semibold text-heading-1 text-text">
-						Deine Pläne
-					</Text>
-
-					<TouchableOpacity
-						accessibilityRole="button"
-						accessibilityLabel="Neuen Eintrag erstellen."
-						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
-						activeOpacity={0.88}
-						onPress={openCreateTypePicker}
-						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+				<PortraitContent
+					className="gap-6 px-6"
+					// Safe-area padding is runtime device data.
+					style={{
+						paddingTop: Math.max(insets.top - 4, 32),
+						paddingBottom: 18,
+					}}
+				>
+					<View
+						className={cn(
+							"mt-7 justify-between",
+							contentSizeLayout.shouldStackInlineContent
+								? "items-stretch gap-3"
+								: "flex-row items-center",
+						)}
 					>
-						<Plus size={28} color={colors.text} strokeWidth={1.8} />
-					</TouchableOpacity>
-				</View>
+						<Text
+							className={cn(
+								"min-w-0 font-poppins font-semibold text-heading-1 text-text",
+								contentSizeLayout.shouldStackInlineContent
+									? "w-full"
+									: "flex-1 pr-3",
+							)}
+						>
+							Deine Pläne
+						</Text>
 
-				<PlansTabSwitch activeTab={activeTab} onChange={setActiveTab} />
-			</View>
+						<TouchableOpacity
+							accessibilityRole="button"
+							accessibilityLabel="Neuen Eintrag erstellen."
+							accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
+							activeOpacity={0.88}
+							onPress={openCreateTypePicker}
+							className={cn(
+								"h-12 w-12 items-center justify-center rounded-full border border-border bg-card",
+								contentSizeLayout.shouldStackInlineContent && "self-end",
+							)}
+						>
+							<Plus size={28} color={colors.text} strokeWidth={1.8} />
+						</TouchableOpacity>
+					</View>
 
-			<ScrollView
-				className="flex-1"
-				contentContainerStyle={{
-					paddingHorizontal: 24,
-					paddingTop: 0,
-					paddingBottom: Math.max(insets.bottom + 120, 150),
-				}}
-				showsVerticalScrollIndicator={false}
-			>
-				{activeTab === "learningPlans" ? (
-					<View className="gap-3">
-						{visiblePlans.length > 0 ? (
-							visiblePlans.map((plan) => (
-								<LearningPlanCard
-									key={plan.id}
-									plan={plan}
-									todayKey={todayKey}
-									onPress={() => router.push(getPlanHref(plan))}
-									onDelete={() => confirmDeletePlan(plan)}
-								/>
-							))
-						) : (
-							<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
-								<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
-									<Route2
-										size={30}
-										color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-										strokeWidth={2.2}
+					<PlansTabSwitch activeTab={activeTab} onChange={setActiveTab} />
+				</PortraitContent>
+
+				<LearningPlansListViewport
+					containerMaxWidth={contentSizeLayout.containerMaxWidth}
+					horizontalPadding={contentSizeLayout.horizontalPadding}
+					isEnlarged={contentSizeLayout.shouldStackInlineContent}
+					paddingBottom={Math.max(insets.bottom + 120, 150)}
+				>
+					{activeTab === "learningPlans" ? (
+						<View className="gap-3">
+							{visiblePlans.length > 0 ? (
+								visiblePlans.map((plan) => (
+									<LearningPlanCard
+										key={plan.id}
+										plan={plan}
+										todayKey={todayKey}
+										onPress={() => router.push(getPlanHref(plan))}
+										onDelete={() => confirmDeletePlan(plan)}
 									/>
-								</View>
-								<Text className="text-center font-poppins font-semibold text-body-1 text-text">
-									Noch keine Lernpläne
-								</Text>
-								<Text className="text-center font-poppins text-body-3 text-secondary-text">
-									Erstelle einen Lernplan aus einer Prüfung, damit er hier als
-									Übersicht erscheint.
-								</Text>
-								<Button
-									accessibilityLabel="Lernplan erstellen"
-									onPress={() => router.push(ROUTES.createExam)}
-									size="sm"
-									className="mt-2"
-								>
-									<Plus
-										size={18}
-										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-										strokeWidth={2.4}
-									/>
-									<Text className="font-poppins font-semibold text-body-4">
-										Neuen Lernplan starten
+								))
+							) : (
+								<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
+									<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
+										<Route2
+											size={30}
+											color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+											strokeWidth={2.2}
+										/>
+									</View>
+									<Text className="text-center font-poppins font-semibold text-body-1 text-text">
+										{"Noch keine Lern\u00ADpläne"}
 									</Text>
-								</Button>
-							</View>
-						)}
-					</View>
-				) : (
-					<View className="gap-3">
-						{visibleHomework.length > 0 ? (
-							visibleHomework.map((homeworkEntry) => (
-								<HomeworkCard
-									key={homeworkEntry.id}
-									homework={homeworkEntry}
-									todayKey={todayKey}
-									onDelete={() => confirmDeleteHomework(homeworkEntry)}
-									onPress={() =>
-										router.push(`/entry/${homeworkEntry.id}` as const)
-									}
-								/>
-							))
-						) : (
-							<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
-								<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
-									<ClipboardEdit
-										size={30}
-										color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-										strokeWidth={2.2}
-									/>
-								</View>
-								<Text className="text-center font-poppins font-semibold text-body-1 text-text">
-									Noch keine Hausaufgaben
-								</Text>
-								<Text className="text-center font-poppins text-body-3 text-secondary-text">
-									Trage deine nächste Hausaufgabe ein, damit sie hier als
-									Übersicht erscheint.
-								</Text>
-								<Button
-									accessibilityLabel="Hausaufgabe erstellen"
-									onPress={() => router.push(ROUTES.createHomework)}
-									size="sm"
-									className="mt-2"
-								>
-									<Plus
-										size={18}
-										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-										strokeWidth={2.4}
-									/>
-									<Text className="font-poppins font-semibold text-body-4">
-										Neue Hausaufgabe eintragen
+									<Text className="text-center font-poppins text-body-3 text-secondary-text">
+										Erstelle einen Lernplan aus einer Prüfung, damit er hier als
+										Übersicht erscheint.
 									</Text>
-								</Button>
-							</View>
-						)}
-					</View>
-				)}
-			</ScrollView>
+									<Button
+										accessibilityLabel="Lernplan erstellen"
+										onPress={() => router.push(ROUTES.createExam)}
+										size="sm"
+										className="mt-2"
+									>
+										<Plus
+											size={18}
+											color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+											strokeWidth={2.4}
+										/>
+										<Text className="font-poppins font-semibold text-body-4">
+											Neuen Lernplan starten
+										</Text>
+									</Button>
+								</View>
+							)}
+						</View>
+					) : (
+						<View className="gap-3">
+							{visibleHomework.length > 0 ? (
+								visibleHomework.map((homeworkEntry) => (
+									<HomeworkCard
+										key={homeworkEntry.id}
+										homework={homeworkEntry}
+										todayKey={todayKey}
+										onDelete={() => confirmDeleteHomework(homeworkEntry)}
+										onPress={() =>
+											router.push(`/entry/${homeworkEntry.id}` as const)
+										}
+									/>
+								))
+							) : (
+								<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
+									<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
+										<ClipboardEdit
+											size={30}
+											color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+											strokeWidth={2.2}
+										/>
+									</View>
+									<Text className="text-center font-poppins font-semibold text-body-1 text-text">
+										{"Noch keine Haus\u00ADaufgaben"}
+									</Text>
+									<Text className="text-center font-poppins text-body-3 text-secondary-text">
+										Trage deine nächste Hausaufgabe ein, damit sie hier als
+										Übersicht erscheint.
+									</Text>
+									<Button
+										accessibilityLabel="Hausaufgabe erstellen"
+										onPress={() => router.push(ROUTES.createHomework)}
+										size="sm"
+										className="mt-2"
+									>
+										<Plus
+											size={18}
+											color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+											strokeWidth={2.4}
+										/>
+										<Text className="font-poppins font-semibold text-body-4">
+											Neue Hausaufgabe eintragen
+										</Text>
+									</Button>
+								</View>
+							)}
+						</View>
+					)}
+				</LearningPlansListViewport>
+			</LearningPlansPageFrame>
 			<CreateTypePickerModal
 				visible={showCreateTypePicker}
 				onRequestClose={() => setShowCreateTypePicker(false)}

@@ -12,6 +12,7 @@ import {
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 
 type DateTimePickerDisplay =
@@ -67,6 +68,8 @@ function DateTimePickerSheet({
 }: DateTimePickerSheetProps) {
 	const insets = useSafeAreaInsets();
 	const { width } = useWindowDimensions();
+	const contentSizeLayout = useContentSizeLayout();
+	const sheetWidth = Math.min(width, contentSizeLayout.containerMaxWidth);
 	const handleValueChange = (event: DateTimePickerChangeEvent, date: Date) => {
 		onChange({ ...event, type: "set" }, date);
 	};
@@ -103,14 +106,14 @@ function DateTimePickerSheet({
 			<View style={styles.modalRoot}>
 				<Pressable style={styles.backdrop} onPress={onClose} />
 				<View
-					className="w-full rounded-t-card bg-card px-4 pt-3"
-					// Bottom padding depends on the device safe-area inset.
+					className="rounded-t-card bg-card px-4 pt-3"
+					// Position, width, and bottom padding depend on viewport/safe-area data.
 					style={{
 						position: "absolute",
-						left: 0,
-						right: 0,
+						left: (width - sheetWidth) / 2,
 						bottom: 0,
 						paddingBottom: Math.max(insets.bottom + 14, 24),
+						width: sheetWidth,
 					}}
 				>
 					<View className="h-1 w-14 self-center rounded-full bg-black/12" />
@@ -138,7 +141,7 @@ function DateTimePickerSheet({
 							onValueChange={handleValueChange}
 							// Expo's native picker needs explicit measured dimensions.
 							style={{
-								width: width - 32,
+								width: sheetWidth - 32,
 								height: mode === "datetime" ? 260 : 216,
 							}}
 						/>

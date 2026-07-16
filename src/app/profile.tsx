@@ -254,7 +254,7 @@ export default function ProfileScreen() {
 				) : null}
 
 				<Button
-					className="mt-8 h-[56px]"
+					className="mt-8"
 					disabled={isEmailVerificationPending ? !canVerifyCode : !canSave}
 					accessibilityState={{
 						busy: isSaving,

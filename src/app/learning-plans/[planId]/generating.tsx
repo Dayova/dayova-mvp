@@ -6,6 +6,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
@@ -24,6 +25,7 @@ const quizPath = (id: Id<"learningPlans">, questionIndex: number) =>
 
 export default function LearningPlanGeneratingScreen() {
 	const router = useRouter();
+	const { horizontalPadding } = useContentSizeLayout();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuth();
@@ -144,9 +146,12 @@ export default function LearningPlanGeneratingScreen() {
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
-					paddingHorizontal: 32,
+					alignSelf: "center",
+					maxWidth: 480,
+					paddingHorizontal: horizontalPadding,
 					paddingTop: 80,
 					paddingBottom: 60,
+					width: "100%",
 				}}
 				showsVerticalScrollIndicator={false}
 			>

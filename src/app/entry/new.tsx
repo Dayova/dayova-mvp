@@ -47,6 +47,10 @@ import {
 } from "~/components/ui/icon";
 import { shouldUseKeyboardStickyActions } from "~/components/ui/keyboard-safe-scroll";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
@@ -182,11 +186,12 @@ function HomeworkPillField({
 	onPress?: () => void;
 	className?: string;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
 	const content = (
 		<>
 			<Text
 				className="flex-1 font-poppins text-body-2 text-secondary-text"
-				numberOfLines={1}
+				numberOfLines={shouldStackInlineContent ? undefined : 1}
 			>
 				{value || placeholder}
 			</Text>
@@ -224,7 +229,7 @@ function HomeworkScreenHeader({
 	return (
 		<View className="mb-7 flex-row items-center justify-between">
 			<BackButton onPress={onBack} />
-			<Text className="font-poppins font-semibold text-body-2 text-text">
+			<Text className="min-w-0 flex-1 px-2 text-center font-poppins font-semibold text-body-2 text-text">
 				{title}
 			</Text>
 			<View className="w-12" />
@@ -235,6 +240,8 @@ function HomeworkScreenHeader({
 export default function NewEntryScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { horizontalPadding, shouldStackInlineContent } =
+		useContentSizeLayout();
 	const { colors } = useDayovaTheme();
 	const fieldIconColor = colors.secondaryText;
 	const fieldTextColor = colors.text;
@@ -635,9 +642,12 @@ export default function NewEntryScreen() {
 				className="flex-1"
 				bottomOffset={128}
 				contentContainerStyle={{
-					paddingHorizontal: 32,
+					alignSelf: "center",
+					maxWidth: 480,
+					paddingHorizontal: horizontalPadding,
 					paddingTop: isHomework ? Math.max(insets.top + 28, 58) : 80,
 					paddingBottom: isHomework ? 168 : 80,
+					width: "100%",
 				}}
 			>
 				{isHomework ? (
@@ -678,7 +688,7 @@ export default function NewEntryScreen() {
 											"flex-1 font-poppins text-body-2",
 											subject ? "text-text" : "text-secondary-text",
 										)}
-										numberOfLines={1}
+										numberOfLines={shouldStackInlineContent ? undefined : 1}
 									>
 										{subject || "Wähle das Fach aus"}
 									</Text>
@@ -729,7 +739,12 @@ export default function NewEntryScreen() {
 								onPress={() => openPicker("plannedDate")}
 							/>
 
-							<View className="mb-5 flex-row gap-3">
+							<View
+								className={cn(
+									"mb-5 gap-3",
+									!shouldStackInlineContent && "flex-row",
+								)}
+							>
 								<View className="flex-1">
 									<HomeworkPillField
 										value={formatTime(plannedTime)}
@@ -791,7 +806,12 @@ export default function NewEntryScreen() {
 							}
 							onPress={() => openPicker("plannedDate")}
 						/>
-						<View className="mb-5 flex-row gap-3">
+						<View
+							className={cn(
+								"mb-5 gap-3",
+								!shouldStackInlineContent && "flex-row",
+							)}
+						>
 							<View className="flex-1">
 								<HomeworkPillField
 									value={formatTime(plannedTime)}
@@ -836,7 +856,7 @@ export default function NewEntryScreen() {
 										"flex-1 font-poppins text-body-2",
 										subject ? "text-text" : "text-secondary-text",
 									)}
-									numberOfLines={1}
+									numberOfLines={shouldStackInlineContent ? undefined : 1}
 								>
 									{subject || "Wähle das Fach aus"}
 								</Text>
@@ -862,7 +882,7 @@ export default function NewEntryScreen() {
 										"flex-1 font-poppins text-body-2",
 										examTypeLabel ? "text-text" : "text-secondary-text",
 									)}
-									numberOfLines={1}
+									numberOfLines={shouldStackInlineContent ? undefined : 1}
 								>
 									{examTypeLabel || "Wähle die Prüfungsart aus"}
 								</Text>
@@ -880,7 +900,7 @@ export default function NewEntryScreen() {
 			</KeyboardSafeScrollView>
 			<KeyboardStickyView enabled={shouldUseKeyboardStickyActions(Platform.OS)}>
 				{isHomework ? (
-					<View
+					<PortraitContent
 						className="px-6"
 						style={{
 							paddingBottom: Math.max(insets.bottom + 10, 24),
@@ -912,9 +932,9 @@ export default function NewEntryScreen() {
 						>
 							<Text>Weiter</Text>
 						</Button>
-					</View>
+					</PortraitContent>
 				) : (
-					<View
+					<PortraitContent
 						className="px-6"
 						style={{
 							paddingBottom: Math.max(insets.bottom + 10, 24),
@@ -929,9 +949,11 @@ export default function NewEntryScreen() {
 								{errorMessage}
 							</Text>
 						) : null}
-						<View className="flex-row gap-3">
+						<View
+							className={cn("gap-3", !shouldStackInlineContent && "flex-row")}
+						>
 							<Button
-								className="flex-1"
+								className={shouldStackInlineContent ? "w-full" : "flex-1"}
 								variant="neutral"
 								disabled={!canCreateExam || isCreating || !canWriteEntries}
 								onPress={() => {
@@ -941,7 +963,7 @@ export default function NewEntryScreen() {
 								<Text>Eintragen</Text>
 							</Button>
 							<Button
-								className="flex-1"
+								className={shouldStackInlineContent ? "w-full" : "flex-1"}
 								disabled={!canCreateExam || isCreating || !canWriteEntries}
 								onPress={() => {
 									void createLearningPlan();
@@ -950,7 +972,7 @@ export default function NewEntryScreen() {
 								<Text>Lernplan</Text>
 							</Button>
 						</View>
-					</View>
+					</PortraitContent>
 				)}
 			</KeyboardStickyView>
 			{renderPicker()}

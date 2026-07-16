@@ -9,6 +9,7 @@ import { ActivityIndicator, Share, TouchableOpacity, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -95,6 +96,9 @@ function AttributionButton({
 
 export default function ValidationOverviewScreen() {
 	const router = useRouter();
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const [dayOffset, setDayOffset] = useState(0);
@@ -227,7 +231,7 @@ export default function ValidationOverviewScreen() {
 					>
 						{dayKey}
 					</Text>
-					<View className="mt-4 flex-row" style={{ gap: 10 }}>
+					<View className="mt-4 flex-row flex-wrap gap-2">
 						<PillButton
 							label="Gestern"
 							onPress={() => setDayOffset((value) => value - 1)}
@@ -294,7 +298,11 @@ export default function ValidationOverviewScreen() {
 						style={{ rowGap: 12 }}
 					>
 						<View
-							className="flex-row items-start justify-between"
+							className={
+								shouldStackInlineContent
+									? "items-start"
+									: "flex-row items-start justify-between"
+							}
 							style={{ gap: 12 }}
 						>
 							<View className="flex-1">
@@ -319,7 +327,7 @@ export default function ValidationOverviewScreen() {
 									{`${row.subject} · ${row.examTypeLabel}`}
 								</Text>
 							</View>
-							<View className="rounded-full bg-[#F2F3F6] px-3 py-2">
+							<View className="min-h-8 rounded-full bg-[#F2F3F6] px-3 py-2">
 								<Text
 									className="font-poppins font-semibold text-[#6F727C]"
 									style={{

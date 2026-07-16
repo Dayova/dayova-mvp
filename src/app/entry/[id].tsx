@@ -15,6 +15,7 @@ import {
 	Timer,
 	Trash2,
 } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
@@ -140,6 +141,7 @@ function NotesCard({ value }: { value?: string }) {
 export default function EntryDetailScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { horizontalPadding } = useContentSizeLayout();
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const deleteDayEntry = useMutation(api.dayEntries.remove);
@@ -225,9 +227,12 @@ export default function EntryDetailScreen() {
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
-					paddingHorizontal: 32,
+					alignSelf: "center",
+					maxWidth: 480,
+					paddingHorizontal: horizontalPadding,
 					paddingTop: 76,
 					paddingBottom: Math.max(insets.bottom + 36, 56),
+					width: "100%",
 				}}
 				showsVerticalScrollIndicator={false}
 			>

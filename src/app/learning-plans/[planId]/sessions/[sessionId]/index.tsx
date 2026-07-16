@@ -30,6 +30,7 @@ import {
 	Pencil,
 	Timer,
 } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
@@ -349,10 +350,12 @@ function ActionRow({
 	primaryDisabled?: boolean;
 	isBusy?: boolean;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+
 	return (
-		<View className="mt-8 flex-row gap-3">
+		<View className={cn("mt-8 gap-3", !shouldStackInlineContent && "flex-row")}>
 			<Button
-				className="flex-1 px-4"
+				className={shouldStackInlineContent ? "w-full px-4" : "flex-1 px-4"}
 				disabled={isBusy}
 				variant="neutral"
 				onPress={onSecondary}
@@ -360,7 +363,7 @@ function ActionRow({
 				<Text>{secondaryLabel}</Text>
 			</Button>
 			<Button
-				className="flex-1 px-4"
+				className={shouldStackInlineContent ? "w-full px-4" : "flex-1 px-4"}
 				disabled={primaryDisabled || isBusy}
 				onPress={onPrimary}
 			>
@@ -656,7 +659,7 @@ function TextAnswer({
 				value={value}
 				onChangeText={onChange}
 				placeholder={placeholder}
-				style={{ height: 160 }}
+				className="min-h-[160px]"
 			/>
 		</FieldControl>
 	);
@@ -811,6 +814,7 @@ function AnalysisView({
 
 export default function LearningSessionContentScreen() {
 	const router = useRouter();
+	const { horizontalPadding } = useContentSizeLayout();
 	const params = useLocalSearchParams<{
 		planId?: string;
 		sessionId?: string;
@@ -1331,10 +1335,13 @@ export default function LearningSessionContentScreen() {
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
+					alignSelf: "center",
 					flexGrow: 1,
-					paddingHorizontal: 32,
+					maxWidth: 480,
+					paddingHorizontal: horizontalPadding,
 					paddingTop: 80,
 					paddingBottom: 60,
+					width: "100%",
 				}}
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}

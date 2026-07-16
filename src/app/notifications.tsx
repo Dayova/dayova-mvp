@@ -27,14 +27,16 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { BookOpen, ClipboardList, Mail, Trash2 } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
-import { WarningBanner } from "~/components/ui/warning-banner";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace } from "~/lib/navigation";
 import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
+import { cn } from "~/lib/utils";
 
 type InboxCategory = "all" | "learningPlan" | "task";
 
@@ -131,6 +133,9 @@ function CategoryTabs({
 	value: InboxCategory;
 	onChange: (category: InboxCategory) => void;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const selectedIndex = CATEGORIES.findIndex(
 		(category) => category.key === value,
 	);
@@ -149,6 +154,46 @@ function CategoryTabs({
 			}),
 		);
 	}, [selectedIndex, selectionPosition]);
+
+	if (shouldStackInlineContent) {
+		return (
+			<View className="gap-2 rounded-[24px] bg-card p-1.5">
+				{CATEGORIES.map((category) => {
+					const selected = value === category.key;
+
+					return (
+						<TouchableOpacity
+							key={category.key}
+							accessibilityRole="tab"
+							accessibilityState={{ selected }}
+							activeOpacity={0.84}
+							className="min-h-12 overflow-hidden rounded-full"
+							onPress={() => onChange(category.key)}
+						>
+							{selected ? (
+								<LinearGradient
+									colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
+									start={PRIMARY_INTERACTIVE_GRADIENT.start}
+									end={PRIMARY_INTERACTIVE_GRADIENT.end}
+									className="min-h-12 items-center justify-center px-4 py-2"
+								>
+									<Text className="font-poppins font-semibold text-body-4 text-white">
+										{category.label}
+									</Text>
+								</LinearGradient>
+							) : (
+								<View className="min-h-12 items-center justify-center px-4 py-2">
+									<Text className="font-poppins font-semibold text-body-4 text-text">
+										{category.label}
+									</Text>
+								</View>
+							)}
+						</TouchableOpacity>
+					);
+				})}
+			</View>
+		);
+	}
 
 	return (
 		<View
@@ -252,6 +297,9 @@ function NotificationCard({
 	notification: InboxNotification;
 	onDelete: () => Promise<unknown>;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const [isLocallyDeleted, setIsLocallyDeleted] = useState(false);
 	const translateX = useSharedValue(0);
 	const cardWidth = useSharedValue(1);
@@ -407,14 +455,24 @@ function NotificationCard({
 						<NotificationIcon category={notification.category} />
 					</View>
 					<View className="flex-1 gap-1">
-						<View className="flex-row items-start justify-between gap-2">
+						<View
+							className={cn(
+								"items-start justify-between gap-2",
+								!shouldStackInlineContent && "flex-row",
+							)}
+						>
 							<Text
 								className="flex-1 font-poppins font-semibold text-body-3 text-text"
-								numberOfLines={1}
+								numberOfLines={shouldStackInlineContent ? undefined : 1}
 							>
 								{notification.title}
 							</Text>
-							<View className="rounded-full bg-muted px-3 py-1">
+							<View
+								className={cn(
+									"rounded-full bg-muted px-3 py-1",
+									shouldStackInlineContent && "self-end",
+								)}
+							>
 								<Text className="font-poppins text-body-5 text-secondary-text">
 									{formatRelativeTime(notification.triggeredAt)}
 								</Text>
