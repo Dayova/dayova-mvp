@@ -82,4 +82,9 @@ describe("login screen layout", () => {
 		);
 		expect(passwordResetScreenSource).toContain("resendPasswordResetCode");
 	});
+
+	test("vertically centers password-reset text inside its pill fields on Android", () => {
+		expect(formPillSource).toContain('height: "100%"');
+		expect(formPillSource).toContain('textAlignVertical: "center"');
+	});
 });

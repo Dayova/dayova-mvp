@@ -2611,8 +2611,10 @@ function FormPill({
 				className="flex-1 font-poppins text-body-2 text-text"
 				// Android font padding and the native input's default padding must be reset.
 				style={{
+					height: "100%",
 					padding: 0,
 					includeFontPadding: false,
+					textAlignVertical: "center",
 				}}
 				{...props}
 			/>
