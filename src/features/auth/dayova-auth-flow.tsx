@@ -1,4 +1,3 @@
-import { Host, Picker } from "@expo/ui";
 import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, router, Stack } from "expo-router";
 import {
@@ -96,6 +95,7 @@ import {
 	Telescope,
 } from "~/components/ui/icon";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
+import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
@@ -3375,21 +3375,25 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 
 	if (step.field === "grade") {
 		return (
-			<NativeOnboardingPicker
+			<OnboardingSelect
+				accessibilityLabel="Klassenstufe auswählen"
 				value={answers.grade || "9"}
 				options={GRADE_OPTIONS}
 				formatLabel={(grade) => `${grade}. Klasse`}
 				testID="onboarding-grade-picker"
+				title="Klassenstufe auswählen"
 				onChange={(value) => setAnswer("grade", value)}
 			/>
 		);
 	}
 
 	return (
-		<NativeOnboardingPicker
+		<OnboardingSelect
+			accessibilityLabel="Bundesland auswählen"
 			value={answers.state || "Sachsen"}
 			options={FEDERAL_STATES}
 			testID="onboarding-state-picker"
+			title="Bundesland auswählen"
 			onChange={(value) => setAnswer("state", value)}
 		/>
 	);
@@ -3399,11 +3403,17 @@ function PickerInputTrigger({
 	value,
 	placeholder,
 	accessibilityLabel,
+	centered = false,
+	expanded,
+	testID,
 	onPress,
 }: {
 	value: string;
 	placeholder: string;
 	accessibilityLabel: string;
+	centered?: boolean;
+	expanded?: boolean;
+	testID?: string;
 	onPress: () => void;
 }) {
 	const hasValue = value.trim().length > 0;
@@ -3412,7 +3422,9 @@ function PickerInputTrigger({
 		<Pressable
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
+			accessibilityState={expanded === undefined ? undefined : { expanded }}
 			onPress={onPress}
+			testID={testID}
 			style={{
 				width: "100%",
 				maxWidth: 312,
@@ -3432,60 +3444,68 @@ function PickerInputTrigger({
 			<Text
 				className="flex-1 font-poppins text-body-2"
 				numberOfLines={1}
-				style={{ color: hasValue ? COLORS.text : "rgba(26,26,26,0.42)" }}
+				style={[
+					{ color: hasValue ? COLORS.text : "rgba(26,26,26,0.42)" },
+					centered
+						? {
+								paddingHorizontal: 28,
+								textAlign: "center",
+							}
+						: null,
+				]}
 			>
 				{hasValue ? value : placeholder}
 			</Text>
-			<ChevronDown size={20} color={COLORS.secondaryText} strokeWidth={2.1} />
+			<View
+				pointerEvents="none"
+				style={centered ? { position: "absolute", right: 20 } : undefined}
+			>
+				<ChevronDown size={20} color={COLORS.secondaryText} strokeWidth={2.1} />
+			</View>
 		</Pressable>
 	);
 }
 
-function NativeOnboardingPicker({
+function OnboardingSelect<T extends string>({
 	value,
 	options,
-	formatLabel = (option) => option,
+	formatLabel,
+	accessibilityLabel,
 	testID,
+	title,
 	onChange,
 }: {
-	value: string;
-	options: readonly string[];
-	formatLabel?: (option: string) => string;
+	value: T;
+	options: readonly T[];
+	formatLabel?: (option: T) => string;
+	accessibilityLabel: string;
 	testID: string;
-	onChange: (value: string) => void;
+	title: string;
+	onChange: (value: T) => void;
 }) {
+	const [visible, setVisible] = useState(false);
+	const selectedLabel = formatLabel ? formatLabel(value) : value;
+
 	return (
-		<View
-			style={{
-				width: "100%",
-				maxWidth: 312,
-				minHeight: 58,
-				borderRadius: 29,
-				backgroundColor: COLORS.surface,
-				borderWidth: 1,
-				borderColor: "rgba(17,24,39,0.05)",
-				boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
-				paddingHorizontal: 14,
-				justifyContent: "center",
-				overflow: "hidden",
-			}}
-		>
-			<Host style={{ minHeight: 44, justifyContent: "center" }}>
-				<Picker
-					selectedValue={value}
-					onValueChange={onChange}
-					appearance="menu"
-					testID={testID}
-				>
-					{options.map((option) => (
-						<Picker.Item
-							key={option}
-							label={formatLabel(option)}
-							value={option}
-						/>
-					))}
-				</Picker>
-			</Host>
+		<View style={{ width: "100%", alignItems: "center" }}>
+			<PickerInputTrigger
+				accessibilityLabel={accessibilityLabel}
+				centered
+				expanded={visible}
+				onPress={() => setVisible(true)}
+				placeholder={accessibilityLabel}
+				testID={testID}
+				value={selectedLabel}
+			/>
+			<SelectSheet
+				formatOptionLabel={formatLabel}
+				onClose={() => setVisible(false)}
+				onSelect={onChange}
+				options={options}
+				selectedValue={value}
+				title={title}
+				visible={visible}
+			/>
 		</View>
 	);
 }
