@@ -1680,7 +1680,11 @@ export default function HomeScreen() {
 					onPrevious={() => navigateHeroDay(-1)}
 					scale={screenScale}
 					// Runtime safe-area and scale values preserve the default handle position.
-					style={{ position: "absolute", left: 0, top: sideHandleTop }}
+					style={{
+						position: "absolute",
+						left: Math.max((width - layoutViewportWidth) / 2, 0),
+						top: sideHandleTop,
+					}}
 				/>
 			)}
 

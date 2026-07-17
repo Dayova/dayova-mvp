@@ -901,8 +901,8 @@ export default function NewEntryScreen() {
 			<KeyboardStickyView enabled={shouldUseKeyboardStickyActions(Platform.OS)}>
 				{isHomework ? (
 					<PortraitContent
-						className="px-6"
 						style={{
+							paddingHorizontal: horizontalPadding,
 							paddingBottom: Math.max(insets.bottom + 10, 24),
 						}}
 					>
@@ -935,8 +935,8 @@ export default function NewEntryScreen() {
 					</PortraitContent>
 				) : (
 					<PortraitContent
-						className="px-6"
 						style={{
+							paddingHorizontal: horizontalPadding,
 							paddingBottom: Math.max(insets.bottom + 10, 24),
 						}}
 					>

@@ -1965,18 +1965,23 @@ function CreationLoaderScreen({
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
 			<Stack.Screen options={{ title: "Lernprofil", gestureEnabled: false }} />
 			<ThemedStatusBar />
-			<View
-				// Safe-area and readable-width values are runtime layout data.
+			<ScrollView
+				bounces={false}
+				showsVerticalScrollIndicator={false}
 				style={{
 					flex: 1,
 					alignSelf: "center",
 					maxWidth: contentSizeLayout.containerMaxWidth,
+					width: "100%",
+				}}
+				// Safe-area and readable-width values are runtime layout data.
+				contentContainerStyle={{
+					flexGrow: 1,
 					paddingTop: Math.max(topInset + 24, 36),
 					paddingBottom: Math.max(bottomInset + 22, 32),
 					paddingHorizontal: contentSizeLayout.horizontalPadding,
 					alignItems: "center",
 					justifyContent: "center",
-					width: "100%",
 				}}
 			>
 				<AnimatedFlower />
@@ -1986,7 +1991,7 @@ function CreationLoaderScreen({
 				>
 					Dein persönliches Lernprofil{"\n"}wird nun für dich erstellt.
 				</Text>
-			</View>
+			</ScrollView>
 		</View>
 	);
 }
@@ -2288,11 +2293,15 @@ function RangeSelector({
 	const selectedIndex = Math.max(0, values.indexOf(selected));
 	const listRef = useRef<FlatList<number>>(null);
 	const { fontScale, width } = useWindowDimensions();
-	const { shouldStackInlineContent } = useContentSizeLayout();
+	const { shouldStackInlineContent, usableWidth } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const valueBadgeSize = shouldStackInlineContent
 		? Math.max(88, 48 * fontScale)
 		: 88;
-	const carouselWidth = Math.min(width, 360);
+	const carouselWidth = shouldStackInlineContent
+		? Math.min(usableWidth, 360)
+		: Math.min(width, 360);
 	const itemWidth = 68;
 	const sidePadding = Math.max((carouselWidth - itemWidth) / 2, 0);
 	const scrollX = useSharedValue(selectedIndex * itemWidth);

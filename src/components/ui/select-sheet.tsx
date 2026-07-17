@@ -47,6 +47,7 @@ function SelectSheet<T extends string | number>({
 	const contentSizeLayout = useContentSizeLayout();
 	const { shouldStackInlineContent } = contentSizeLayout;
 	const sheetWidth = Math.min(width, contentSizeLayout.containerMaxWidth);
+	const sheetHorizontalInset = Math.max((width - sheetWidth) / 2, 0);
 
 	const sheetMaxHeight = shouldStackInlineContent
 		? windowHeight * 0.86
@@ -97,8 +98,9 @@ function SelectSheet<T extends string | number>({
 			}}
 			onDismiss={onClose}
 			snapPoints={snapPoints}
-			// Gorhom exposes the modal's measured tablet width through style only.
-			style={{ alignSelf: "center", width: sheetWidth }}
+			// Gorhom's body is absolutely pinned to both horizontal edges after this
+			// style, so symmetric margins provide the actual tablet centering inset.
+			style={{ marginHorizontal: sheetHorizontalInset, width: sheetWidth }}
 		>
 			<View
 				className="flex-1 bg-card px-5 pt-1"
