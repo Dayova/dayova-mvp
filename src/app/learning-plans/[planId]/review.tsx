@@ -279,13 +279,18 @@ export default function LearningPlanReviewScreen() {
 			>
 				<PortraitContent
 					className={cn(
-						"gap-3 px-10",
+						"gap-3",
 						shouldStackInlineContent
 							? "items-stretch"
-							: "flex-row items-center",
+							: "flex-row items-center px-10",
 					)}
 					// Safe-area padding is runtime device data.
-					style={{ paddingBottom: Math.max(insets.bottom + 24, 36) }}
+					style={{
+						paddingHorizontal: shouldStackInlineContent
+							? horizontalPadding
+							: undefined,
+						paddingBottom: Math.max(insets.bottom + 24, 36),
+					}}
 				>
 					<Button
 						accessibilityLabel={
@@ -305,7 +310,7 @@ export default function LearningPlanReviewScreen() {
 						variant="neutral"
 						className={cn(
 							"min-w-0",
-							shouldStackInlineContent ? "w-full" : "h-14 flex-1",
+							shouldStackInlineContent ? "min-h-14 w-full" : "h-14 flex-1",
 						)}
 					>
 						{isBusy ? (

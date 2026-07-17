@@ -21,7 +21,7 @@ describe("auth content-size layout", () => {
 		).toBe(88);
 	});
 
-	it("gives maximum-size OTP digits enough space and makes the row scrollable", () => {
+	it("gives maximum-size OTP digits enough space and exceeds the compact row width", () => {
 		const layout = getOtpCellLayout({
 			fontScale: 3,
 			shouldStackInlineContent: true,
