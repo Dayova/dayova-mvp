@@ -21,6 +21,8 @@ export function ScreenHeader({
 	titleClassName?: string;
 }) {
 	const { shouldStackInlineContent } = useContentSizeLayout();
+	const defaultTitleClassName =
+		"text-center font-poppins font-semibold text-body-2 text-text";
 
 	return (
 		<View className={cn("relative min-h-12 justify-center", className)}>
@@ -32,10 +34,11 @@ export function ScreenHeader({
 			{title ? (
 				<Text
 					accessibilityRole="header"
-					className={cn(
-						"px-14 text-center font-poppins font-semibold text-body-2 text-text",
-						titleClassName,
-					)}
+					className={
+						shouldStackInlineContent
+							? cn("px-14", defaultTitleClassName, titleClassName)
+							: (titleClassName ?? defaultTitleClassName)
+					}
 				>
 					{title}
 				</Text>

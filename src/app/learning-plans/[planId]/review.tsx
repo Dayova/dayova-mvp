@@ -305,7 +305,7 @@ export default function LearningPlanReviewScreen() {
 						variant="neutral"
 						className={cn(
 							"min-w-0",
-							shouldStackInlineContent ? "w-full" : "min-h-14 flex-1",
+							shouldStackInlineContent ? "w-full" : "h-14 flex-1",
 						)}
 					>
 						{isBusy ? (

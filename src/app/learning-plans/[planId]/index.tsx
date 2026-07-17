@@ -144,7 +144,7 @@ function SessionPreviewCard({
 					<View
 						className={cn(
 							"shrink-0 flex-row flex-wrap items-center justify-end gap-2",
-							shouldStackInlineContent && "self-end",
+							shouldStackInlineContent && "w-full self-end",
 						)}
 					>
 						<View
@@ -615,7 +615,7 @@ function LearningPath({
 export default function LearningPlanSessionsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const { usableWidth } = useContentSizeLayout({
+	const { shouldStackInlineContent, usableWidth } = useContentSizeLayout({
 		requestedHorizontalPadding: 16,
 	});
 	const params = useLocalSearchParams<{ planId?: string }>();
@@ -722,7 +722,9 @@ export default function LearningPlanSessionsScreen() {
 					<View />
 				) : selectedSession ? (
 					<LearningPath
-						availableWidth={usableWidth}
+						availableWidth={
+							shouldStackInlineContent ? usableWidth : FIGMA_PATH_WIDTH
+						}
 						selectedSessionId={selectedSession.id}
 						sessions={snapshot.sessions}
 						onSelectSession={(session) => setSelectedSessionId(session.id)}

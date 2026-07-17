@@ -53,6 +53,11 @@ import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import {
+	getOtpCellLayout,
+	getRangeValueBadgeSize,
+	getResponsiveAuthChoiceLayout,
+} from "~/features/auth/auth-content-size-layout";
+import {
 	ArrowLeft,
 	ArrowRight,
 	Atom,
@@ -589,7 +594,7 @@ const AUTH_BACKGROUND_TILE = {
 
 export function AuthChoiceScreen() {
 	const { colors: COLORS } = useDayovaTheme();
-	const { width, height } = useWindowDimensions();
+	const { width, height, fontScale } = useWindowDimensions();
 	const insets = useSafeAreaInsets();
 	const contentSizeLayout = useContentSizeLayout({
 		requestedHorizontalPadding: 24,
@@ -605,6 +610,7 @@ export function AuthChoiceScreen() {
 		(AUTH_CHOICE_FRAME.width - AUTH_CHOICE_FRAME.buttons.width) / 2,
 	);
 	const verticalPadding = Math.max(0, (height - frameHeight) / 2);
+	const responsiveLayout = getResponsiveAuthChoiceLayout(fontScale);
 
 	if (contentSizeLayout.shouldStackInlineContent) {
 		return (
@@ -625,7 +631,9 @@ export function AuthChoiceScreen() {
 					contentContainerStyle={{
 						alignItems: "center",
 						alignSelf: "center",
-						justifyContent: "center",
+						justifyContent: responsiveLayout.verticallyCenterContent
+							? "center"
+							: "flex-start",
 						maxWidth: contentSizeLayout.containerMaxWidth,
 						minHeight: height,
 						paddingBottom: Math.max(insets.bottom + 32, 48),
@@ -647,8 +655,11 @@ export function AuthChoiceScreen() {
 
 					<Text
 						className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
+						allowFontScaling={false}
 						// Runtime viewport width gives the brand word the widest safe line.
 						style={{
+							fontSize: responsiveLayout.brandFontSize,
+							lineHeight: responsiveLayout.brandLineHeight,
 							width: Math.min(
 								Math.max(width - 16, 0),
 								contentSizeLayout.containerMaxWidth,
@@ -657,7 +668,14 @@ export function AuthChoiceScreen() {
 					>
 						Dayova
 					</Text>
-					<Text className="mt-4 text-center font-poppins text-body-2 text-secondary-text">
+					<Text
+						allowFontScaling={false}
+						className="mt-4 text-center font-poppins text-body-2 text-secondary-text"
+						style={{
+							fontSize: responsiveLayout.bodyFontSize,
+							lineHeight: responsiveLayout.bodyLineHeight,
+						}}
+					>
 						Du bist neu hier, dann registriere dich. Andernfalls willkommen
 						zurück
 					</Text>
@@ -679,9 +697,16 @@ export function AuthChoiceScreen() {
 						/>
 					</View>
 
-					<Text className="mt-7 text-center font-poppins text-body-4 text-secondary-text">
-						Mit dem Start akzeptierst du{"\n"}Datenschutzbestimmungen und
-						{"\n"}Nutzungsbedingungen.
+					<Text
+						allowFontScaling={false}
+						className="mt-7 w-full text-center font-poppins text-body-4 text-secondary-text"
+						style={{
+							fontSize: responsiveLayout.termsFontSize,
+							lineHeight: responsiveLayout.termsLineHeight,
+						}}
+					>
+						Mit dem Start akzeptierst du Daten­schutz­bestimmungen und
+						Nutzungs­bedingungen.
 					</Text>
 				</ScrollView>
 			</View>
@@ -2212,51 +2237,67 @@ function OtpCodeInput({
 	const { colors: COLORS } = useDayovaTheme();
 	const { fontScale } = useWindowDimensions();
 	const { shouldStackInlineContent } = useContentSizeLayout();
-	const cellHeight = shouldStackInlineContent
-		? Math.max(42, 28 * fontScale + 14)
-		: 42;
+	const cellLayout = getOtpCellLayout({
+		fontScale,
+		shouldStackInlineContent,
+	});
+	const cells = OTP_CELL_KEYS.map((cellKey, index) => {
+		const symbol = value[index] ?? "";
+		const focused =
+			!disabled &&
+			(value.length === index ||
+				(value.length === CODE_LENGTH && index === CODE_LENGTH - 1));
+
+		return (
+			<View
+				key={cellKey}
+				style={{
+					flex: shouldStackInlineContent ? undefined : 1,
+					width: cellLayout.width,
+					height: cellLayout.height,
+					borderRadius: 8,
+					backgroundColor: COLORS.surface,
+					alignItems: "center",
+					justifyContent: "center",
+					borderWidth: focused ? 1.4 : 1,
+					borderColor: focused ? COLORS.primary : COLORS.border,
+				}}
+			>
+				<Text
+					className={
+						shouldStackInlineContent
+							? "text-center font-poppins font-semibold text-text"
+							: "text-center font-bold font-poppins text-text"
+					}
+					style={{
+						fontSize: 22,
+						lineHeight: 28,
+						fontVariant: ["tabular-nums"],
+					}}
+				>
+					{symbol}
+				</Text>
+			</View>
+		);
+	});
 
 	return (
 		<Pressable onPress={() => inputRef.current?.focus()}>
-			<View style={{ flexDirection: "row", gap: 8 }}>
-				{OTP_CELL_KEYS.map((cellKey, index) => {
-					const symbol = value[index] ?? "";
-					const focused =
-						!disabled &&
-						(value.length === index ||
-							(value.length === CODE_LENGTH && index === CODE_LENGTH - 1));
-					return (
-						<View
-							key={cellKey}
-							style={{
-								flex: 1,
-								height: cellHeight,
-								borderRadius: 8,
-								backgroundColor: COLORS.surface,
-								alignItems: "center",
-								justifyContent: "center",
-								borderWidth: focused ? 1.4 : 1,
-								borderColor: focused ? COLORS.primary : COLORS.border,
-							}}
-						>
-							<Text
-								className={
-									shouldStackInlineContent
-										? "text-center font-poppins font-semibold text-text"
-										: "text-center font-bold font-poppins text-text"
-								}
-								style={{
-									fontSize: 22,
-									lineHeight: 28,
-									fontVariant: ["tabular-nums"],
-								}}
-							>
-								{symbol}
-							</Text>
-						</View>
-					);
-				})}
-			</View>
+			{shouldStackInlineContent ? (
+				<ScrollView
+					horizontal
+					showsHorizontalScrollIndicator={false}
+					contentContainerStyle={{
+						gap: 8,
+						minWidth: "100%",
+						justifyContent: "center",
+					}}
+				>
+					{cells}
+				</ScrollView>
+			) : (
+				<View style={{ flexDirection: "row", gap: 8 }}>{cells}</View>
+			)}
 			<TextInput
 				ref={inputRef}
 				value={value}
@@ -2296,9 +2337,10 @@ function RangeSelector({
 	const { shouldStackInlineContent, usableWidth } = useContentSizeLayout({
 		requestedHorizontalPadding: 24,
 	});
-	const valueBadgeSize = shouldStackInlineContent
-		? Math.max(88, 48 * fontScale)
-		: 88;
+	const valueBadgeSize = getRangeValueBadgeSize({
+		fontScale,
+		shouldStackInlineContent,
+	});
 	const carouselWidth = shouldStackInlineContent
 		? Math.min(usableWidth, 360)
 		: Math.min(width, 360);
@@ -3168,14 +3210,19 @@ function AuthChoicePillButton({
 	tone: "gradient" | "dark";
 }) {
 	const height = AUTH_CHOICE_FRAME.buttons.height * scale;
+	const { fontScale } = useWindowDimensions();
+	const responsiveLayout = getResponsiveAuthChoiceLayout(fontScale);
+	const visibleLabel =
+		responsive && label === "Registrierung" ? "Registrie­rung" : label;
 
 	return (
 		<Pressable
 			accessibilityRole="button"
+			accessibilityLabel={label}
 			onPress={onPress}
 			style={{
 				height: responsive ? undefined : height,
-				minHeight: responsive ? 56 : undefined,
+				minHeight: responsive ? responsiveLayout.buttonMinHeight : undefined,
 				borderRadius: responsive
 					? DAYOVA_DESIGN_SYSTEM.radius.button
 					: height / 2,
@@ -3206,6 +3253,7 @@ function AuthChoicePillButton({
 				/>
 			) : null}
 			<Text
+				allowFontScaling={responsive ? false : undefined}
 				className={
 					responsive
 						? "text-center font-poppins font-semibold text-body-2"
@@ -3213,13 +3261,14 @@ function AuthChoicePillButton({
 				}
 				style={{
 					color: COLORS.surface,
-					fontSize: responsive ? undefined : 16 * scale,
-					lineHeight: responsive ? undefined : 24 * scale,
+					fontSize: responsive ? responsiveLayout.bodyFontSize : 16 * scale,
+					lineHeight: responsive ? responsiveLayout.bodyLineHeight : 24 * scale,
 					includeFontPadding: false,
+					width: responsive ? "100%" : undefined,
 					textAlignVertical: "center",
 				}}
 			>
-				{label}
+				{visibleLabel}
 			</Text>
 		</Pressable>
 	);

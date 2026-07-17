@@ -231,7 +231,14 @@ export default function ValidationOverviewScreen() {
 					>
 						{dayKey}
 					</Text>
-					<View className="mt-4 flex-row flex-wrap gap-2">
+					<View
+						className={
+							shouldStackInlineContent
+								? "mt-4 flex-row flex-wrap gap-2"
+								: "mt-4 flex-row"
+						}
+						style={shouldStackInlineContent ? undefined : { gap: 10 }}
+					>
 						<PillButton
 							label="Gestern"
 							onPress={() => setDayOffset((value) => value - 1)}
@@ -327,7 +334,13 @@ export default function ValidationOverviewScreen() {
 									{`${row.subject} · ${row.examTypeLabel}`}
 								</Text>
 							</View>
-							<View className="min-h-8 rounded-full bg-[#F2F3F6] px-3 py-2">
+							<View
+								className={
+									shouldStackInlineContent
+										? "min-h-8 max-w-full rounded-full bg-[#F2F3F6] px-3 py-2"
+										: "rounded-full bg-[#F2F3F6] px-3 py-2"
+								}
+							>
 								<Text
 									className="font-poppins font-semibold text-[#6F727C]"
 									style={{

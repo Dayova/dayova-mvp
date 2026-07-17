@@ -53,11 +53,17 @@ function ListRow({
 					</View>
 				) : null}
 				<View className="min-w-0 flex-1">
-					<Text className="font-poppins font-semibold text-body-2 text-text">
+					<Text
+						className="font-poppins font-semibold text-body-2 text-text"
+						numberOfLines={shouldStackInlineContent ? undefined : 1}
+					>
 						{label}
 					</Text>
 					{description ? (
-						<Text className="mt-1 font-poppins text-body-4 text-text/50">
+						<Text
+							className="mt-1 font-poppins text-body-4 text-text/50"
+							numberOfLines={shouldStackInlineContent ? undefined : 2}
+						>
 							{description}
 						</Text>
 					) : null}

@@ -678,10 +678,34 @@ export default function HomeScreen() {
 	const hourWidth = 72 * scheduleScale;
 	const dayWidth = hourWidth * 24;
 	const timelineContentWidth = dayWidth * visibleDays.length;
-	const timelineHeight = 259 * compactScale;
-	const timelineRowHeight = 82 * compactScale;
-	const timelineBlockHeight = 70 * compactScale;
 	const timelineTopOffset = 62 * compactScale;
+	const timelineBlockHeight = contentSizeLayout.shouldStackInlineContent
+		? Math.max(70 * compactScale, (44 + 26 * fontScale) * screenScale)
+		: 70 * compactScale;
+	const timelineRowHeight = contentSizeLayout.shouldStackInlineContent
+		? timelineBlockHeight + 12 * compactScale
+		: 82 * compactScale;
+	const timelineBottomClearance = contentSizeLayout.shouldStackInlineContent
+		? 20 * compactScale + 18 * screenScale * fontScale
+		: 0;
+	const timelineHeight = contentSizeLayout.shouldStackInlineContent
+		? Math.max(
+				259 * compactScale,
+				timelineTopOffset +
+					timelineRowHeight +
+					timelineBlockHeight +
+					timelineBottomClearance,
+			)
+		: 259 * compactScale;
+	const currentTimelineLineHeight = contentSizeLayout.shouldStackInlineContent
+		? Math.max(
+				0,
+				timelineHeight -
+					timelineBottomClearance -
+					24 * compactScale -
+					14 * screenScale,
+			)
+		: 177 * compactScale;
 	const timelineMarkerColor = isDark
 		? "rgba(255,255,255,0.10)"
 		: "rgba(0,0,0,0.08)";
@@ -721,15 +745,17 @@ export default function HomeScreen() {
 		(contentSizeLayout.shouldStackInlineContent ? 72 * compactScale : 0);
 	const scheduleCardHeight = Math.max(
 		minimumScheduleCardHeight,
-		measuredScheduleContentHeight + 12 * compactScale,
+		measuredScheduleContentHeight,
 	);
 	const timelineTimeLabelWidth = contentSizeLayout.shouldStackInlineContent
 		? Math.min(hourWidth, Math.max(40 * screenScale, 40 * fontScale))
-		: 40 * screenScale;
-	const timelineTimeLabelGap = Math.max(
-		0,
-		24 * scheduleScale - (timelineTimeLabelWidth - 40 * screenScale),
-	);
+		: 40;
+	const timelineTimeLabelGap = contentSizeLayout.shouldStackInlineContent
+		? Math.max(
+				0,
+				24 * scheduleScale - (timelineTimeLabelWidth - 40 * screenScale),
+			)
+		: 24 * scheduleScale;
 	const selectedDayLabel = new Intl.DateTimeFormat("de-DE", {
 		weekday: "long",
 		day: "numeric",
@@ -1362,6 +1388,9 @@ export default function HomeScreen() {
 								{visibleDays.map((day, dayIndex) => {
 									const selected = selectedDayKey === day.key;
 									const itemWidth = getDayStripItemWidth(day.isToday);
+									const itemHeight = contentSizeLayout.shouldStackInlineContent
+										? itemWidth
+										: 42 * screenScale;
 									const content = (
 										<Text
 											key={`${day.key}-label`}
@@ -1406,7 +1435,7 @@ export default function HomeScreen() {
 														end={PRIMARY_INTERACTIVE_GRADIENT.end}
 														style={{
 															width: itemWidth,
-															height: itemWidth,
+															height: itemHeight,
 															borderRadius: 99,
 															alignItems: "center",
 															justifyContent: "center",
@@ -1419,7 +1448,7 @@ export default function HomeScreen() {
 														className="items-center justify-center rounded-full"
 														style={{
 															width: itemWidth,
-															height: itemWidth,
+															height: itemHeight,
 														}}
 													>
 														{content}
@@ -1595,7 +1624,7 @@ export default function HomeScreen() {
 											className="bg-primary"
 											style={{
 												width: 4 * screenScale,
-												height: 177 * compactScale,
+												height: currentTimelineLineHeight,
 											}}
 										/>
 									</View>
@@ -1655,7 +1684,11 @@ export default function HomeScreen() {
 									pointerEvents="none"
 									className="absolute right-0 left-0 items-center"
 									// Runtime scale vertically centers the empty state in the timeline.
-									style={{ top: 105 * compactScale }}
+									style={
+										contentSizeLayout.shouldStackInlineContent
+											? { top: 0, bottom: 0, justifyContent: "center" }
+											: { top: 105 * compactScale }
+									}
 								>
 									<Text
 										className="w-full px-3 text-center font-poppins text-secondary-text"

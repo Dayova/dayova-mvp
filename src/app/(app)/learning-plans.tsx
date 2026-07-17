@@ -660,16 +660,24 @@ function LearningPlanCard({
 							<View
 								className={cn(
 									"items-start gap-3",
-									!shouldStackInlineContent && "flex-row",
+									!shouldStackInlineContent && "flex-row justify-between",
 								)}
 							>
 								<Text
-									className="min-w-0 flex-1 font-poppins font-semibold text-body-1 text-text"
+									className={cn(
+										"min-w-0 flex-1 font-poppins font-semibold text-body-1 text-text",
+										!shouldStackInlineContent && "pr-2",
+									)}
 									numberOfLines={shouldStackInlineContent ? undefined : 2}
 								>
 									{formatGermanUiText(plan.subject)}
 								</Text>
-								<View className="shrink-0 flex-row flex-wrap gap-2">
+								<View
+									className={cn(
+										"shrink-0 flex-row gap-2",
+										shouldStackInlineContent && "w-full flex-wrap",
+									)}
+								>
 									<Badge {...status} />
 									<Badge
 										label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
@@ -679,7 +687,12 @@ function LearningPlanCard({
 								</View>
 							</View>
 
-							<View className="flex-row items-start gap-1">
+							<View
+								className={cn(
+									"flex-row gap-1",
+									shouldStackInlineContent ? "items-start" : "items-center",
+								)}
+							>
 								<GraduationCap
 									size={14}
 									color={colors.secondaryText}
@@ -890,16 +903,24 @@ function HomeworkCard({
 							<View
 								className={cn(
 									"items-start gap-3",
-									!shouldStackInlineContent && "flex-row",
+									!shouldStackInlineContent && "flex-row justify-between",
 								)}
 							>
 								<Text
-									className="min-w-0 flex-1 font-poppins font-semibold text-body-1 text-text"
+									className={cn(
+										"min-w-0 flex-1 font-poppins font-semibold text-body-1 text-text",
+										!shouldStackInlineContent && "pr-2",
+									)}
 									numberOfLines={shouldStackInlineContent ? undefined : 2}
 								>
 									{subject}
 								</Text>
-								<View className="shrink-0 flex-row flex-wrap gap-2">
+								<View
+									className={cn(
+										"shrink-0 flex-row gap-2",
+										shouldStackInlineContent && "w-full flex-wrap",
+									)}
+								>
 									<Badge {...status} />
 									<Badge
 										label={`${homework.durationMinutes ?? "–"} min`}
@@ -909,7 +930,12 @@ function HomeworkCard({
 								</View>
 							</View>
 
-							<View className="flex-row items-start gap-1">
+							<View
+								className={cn(
+									"flex-row gap-1",
+									shouldStackInlineContent ? "items-start" : "items-center",
+								)}
+							>
 								<Clock3
 									size={14}
 									color={colors.secondaryText}

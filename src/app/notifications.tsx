@@ -447,14 +447,22 @@ function NotificationCard({
 					onLayout={({ nativeEvent }) => {
 						cardWidth.set(nativeEvent.layout.width);
 					}}
-					className="flex-row gap-3 rounded-[24px] bg-card px-4 py-6"
+					className={cn(
+						"gap-3 rounded-[24px] bg-card px-4 py-6",
+						shouldStackInlineContent ? "items-start" : "flex-row",
+					)}
 					// Reanimated swipe offset is runtime state.
 					style={cardAnimatedStyle}
 				>
-					<View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
+					<View className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent">
 						<NotificationIcon category={notification.category} />
 					</View>
-					<View className="flex-1 gap-1">
+					<View
+						className={cn(
+							"gap-1",
+							shouldStackInlineContent ? "w-full" : "flex-1",
+						)}
+					>
 						<View
 							className={cn(
 								"items-start justify-between gap-2",
@@ -470,7 +478,7 @@ function NotificationCard({
 							<View
 								className={cn(
 									"rounded-full bg-muted px-3 py-1",
-									shouldStackInlineContent && "self-end",
+									shouldStackInlineContent && "max-w-full self-end",
 								)}
 							>
 								<Text className="font-poppins text-body-5 text-secondary-text">

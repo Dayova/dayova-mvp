@@ -226,10 +226,17 @@ function HomeworkScreenHeader({
 	title: string;
 	onBack: () => void;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+
 	return (
 		<View className="mb-7 flex-row items-center justify-between">
 			<BackButton onPress={onBack} />
-			<Text className="min-w-0 flex-1 px-2 text-center font-poppins font-semibold text-body-2 text-text">
+			<Text
+				className={cn(
+					"font-poppins font-semibold text-body-2 text-text",
+					shouldStackInlineContent && "min-w-0 flex-1 px-2 text-center",
+				)}
+			>
 				{title}
 			</Text>
 			<View className="w-12" />
@@ -242,6 +249,9 @@ export default function NewEntryScreen() {
 	const insets = useSafeAreaInsets();
 	const { horizontalPadding, shouldStackInlineContent } =
 		useContentSizeLayout();
+	const { horizontalPadding: footerHorizontalPadding } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const { colors } = useDayovaTheme();
 	const fieldIconColor = colors.secondaryText;
 	const fieldTextColor = colors.text;
@@ -902,7 +912,7 @@ export default function NewEntryScreen() {
 				{isHomework ? (
 					<PortraitContent
 						style={{
-							paddingHorizontal: horizontalPadding,
+							paddingHorizontal: footerHorizontalPadding,
 							paddingBottom: Math.max(insets.bottom + 10, 24),
 						}}
 					>
@@ -936,7 +946,7 @@ export default function NewEntryScreen() {
 				) : (
 					<PortraitContent
 						style={{
-							paddingHorizontal: horizontalPadding,
+							paddingHorizontal: footerHorizontalPadding,
 							paddingBottom: Math.max(insets.bottom + 10, 24),
 						}}
 					>
