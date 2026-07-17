@@ -20,6 +20,7 @@ unless the team explicitly supersedes this temporary model.
 
 - `docs/styling.md`
 - `docs/bottom-sheets.md`
+- `docs/accessibility.md`
 
 ## Native controls
 

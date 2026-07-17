@@ -14,6 +14,7 @@ import {
 	actionSheetIconColor,
 } from "~/components/ui/action-sheet";
 import { Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { FieldControl, FieldLabel } from "~/components/ui/field";
 import { Attachment, Plus, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
@@ -587,9 +588,7 @@ export default function NewLearningPlanScreen() {
 				))}
 
 				{errorMessage ? (
-					<Text className="mb-4 font-poppins text-body-4 text-destructive">
-						{errorMessage}
-					</Text>
+					<ErrorMessage className="mb-4">{errorMessage}</ErrorMessage>
 				) : null}
 				<Button
 					accessibilityLabel={isBusy ? "Weiter, wird geladen" : "Weiter"}

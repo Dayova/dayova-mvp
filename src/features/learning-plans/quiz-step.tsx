@@ -3,6 +3,7 @@ import { ActivityIndicator, Animated, Easing, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 import Svg, { Circle, Path } from "react-native-svg";
 import { Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { FieldControl, FieldLabel } from "~/components/ui/field";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
@@ -150,9 +151,7 @@ export function QuizStep({
 					/>
 				</FieldControl>
 				{errorMessage ? (
-					<Text className="mb-4 font-poppins text-body-4 text-destructive">
-						{errorMessage}
-					</Text>
+					<ErrorMessage className="mb-4">{errorMessage}</ErrorMessage>
 				) : null}
 				<View className="mt-auto pt-8">
 					<Button

@@ -3,7 +3,14 @@ import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { LoginScreen } from "./dayova-auth-flow";
 
-const mockLogin = jest.fn();
+const mockLogin = jest.fn<
+	(input: {
+		email: string;
+		password: string;
+	}) => Promise<
+		{ status: "complete" } | { status: "needs_verification"; message: string }
+	>
+>(async () => ({ status: "complete" }));
 const mockCancelPasswordReset = jest.fn<() => Promise<void>>(
 	async () => undefined,
 );
@@ -166,6 +173,7 @@ describe("LoginScreen", () => {
 		mockCancelPasswordReset.mockReset();
 		mockCancelPasswordReset.mockResolvedValue(undefined);
 		mockLogin.mockReset();
+		mockLogin.mockResolvedValue({ status: "complete" });
 		mockResendPasswordResetCode.mockReset();
 		mockResendPasswordResetCode.mockResolvedValue(undefined);
 		mockRouter.replace.mockReset();
@@ -196,6 +204,27 @@ describe("LoginScreen", () => {
 		const screen = await render(<LoginScreen />);
 
 		expect(screen.getByRole("button", { name: "LOGIN" })).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Passwort anzeigen" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Jetzt registrieren" }),
+		).toBeOnTheScreen();
+	});
+
+	test("announces sign-in errors and associates fields with meaningful labels", async () => {
+		mockLogin.mockRejectedValueOnce(new Error("Anmeldung fehlgeschlagen"));
+		const screen = await render(<LoginScreen />);
+
+		await fireEvent.changeText(
+			screen.getByLabelText("E-Mail-Adresse"),
+			"learner@example.de",
+		);
+		await fireEvent.changeText(screen.getByLabelText("Passwort"), "falsch123");
+		await fireEvent.press(screen.getByRole("button", { name: "LOGIN" }));
+
+		const error = await screen.findByRole("alert");
+		expect(error.props.accessibilityLiveRegion).toBe("polite");
 	});
 
 	test("keeps reset and resend confirmation neutral", async () => {
@@ -211,11 +240,15 @@ describe("LoginScreen", () => {
 		await screen.findByText(
 			"Falls ein Konto für unknown@example.de existiert, haben wir einen sechsstelligen Code gesendet.",
 		);
-		await fireEvent.press(screen.getByText("Code erneut senden"));
+		expect(screen.getByLabelText("Bestätigungscode")).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Code erneut senden" }),
+		);
 
-		await screen.findByText(
+		const resendNotice = await screen.findByText(
 			"Falls ein Konto existiert, haben wir einen neuen Code per E-Mail gesendet.",
 		);
+		expect(resendNotice.props.accessibilityLiveRegion).toBe("polite");
 		expect(mockResendPasswordResetCode).toHaveBeenCalledWith("reset_code");
 	});
 

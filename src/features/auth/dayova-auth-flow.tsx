@@ -79,8 +79,6 @@ import {
 	ClipboardList,
 	Dna,
 	Earth,
-	Eye,
-	EyeOff,
 	Football,
 	Globe,
 	GreekHelmet,
@@ -94,6 +92,7 @@ import {
 	Telescope,
 } from "~/components/ui/icon";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
+import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -1416,6 +1415,7 @@ function QuestionStepView({
 					}}
 				>
 					<Text
+						accessibilityRole="header"
 						className="text-center font-poppins"
 						style={{
 							color: COLORS.text,
@@ -1478,6 +1478,7 @@ function QuestionStepView({
 							<PillTextInput
 								refObject={inputRef}
 								value={answers[step.field]}
+								accessibilityLabel={step.title.replace(/\n/g, " ")}
 								placeholder={step.placeholder}
 								secure={step.secure && !passwordVisible}
 								keyboardType={step.keyboardType}
@@ -1490,22 +1491,11 @@ function QuestionStepView({
 								onSubmit={onContinue}
 								accessory={
 									step.secure ? (
-										<Pressable
-											hitSlop={8}
-											onPress={onTogglePassword}
-											style={{
-												width: 28,
-												height: 28,
-												alignItems: "center",
-												justifyContent: "center",
-											}}
-										>
-											{passwordVisible ? (
-												<Eye size={17} color={COLORS.secondaryText} />
-											) : (
-												<EyeOff size={17} color={COLORS.secondaryText} />
-											)}
-										</Pressable>
+										<PasswordVisibilityButton
+											fieldLabel="Passwort"
+											visible={passwordVisible}
+											onToggle={onTogglePassword}
+										/>
 									) : null
 								}
 							/>
@@ -1514,6 +1504,9 @@ function QuestionStepView({
 
 					{error ? (
 						<Animated.Text
+							accessibilityLiveRegion="polite"
+							accessibilityRole="alert"
+							selectable
 							entering={FadeIn.duration(180)}
 							style={{
 								marginTop: 12,
@@ -1778,6 +1771,7 @@ export function LoginScreen() {
 						</Animated.View>
 
 						<Text
+							accessibilityRole="header"
 							className={cn(
 								"text-center font-poppins font-semibold text-heading-1 text-text",
 								isCompactHeight ? "mt-8" : "mt-10",
@@ -1792,6 +1786,7 @@ export function LoginScreen() {
 
 						<View className="mt-7 w-full gap-4">
 							<FormPill
+								accessibilityLabel="E-Mail-Adresse"
 								value={email}
 								placeholder="max.mustermann@gmail.com"
 								keyboardType="email-address"
@@ -1802,6 +1797,7 @@ export function LoginScreen() {
 								onSubmitEditing={() => Keyboard.dismiss()}
 							/>
 							<FormPill
+								accessibilityLabel="Passwort"
 								value={password}
 								placeholder="••••••••"
 								secureTextEntry={!passwordVisible}
@@ -1811,15 +1807,11 @@ export function LoginScreen() {
 								onChangeText={setPassword}
 								onSubmitEditing={submitLogin}
 								rightAccessory={
-									<Pressable
-										onPress={() => setPasswordVisible((current) => !current)}
-									>
-										{passwordVisible ? (
-											<Eye size={18} color={COLORS.text} />
-										) : (
-											<EyeOff size={18} color={COLORS.text} />
-										)}
-									</Pressable>
+									<PasswordVisibilityButton
+										fieldLabel="Passwort"
+										visible={passwordVisible}
+										onToggle={() => setPasswordVisible((current) => !current)}
+									/>
 								}
 							/>
 						</View>
@@ -1832,6 +1824,7 @@ export function LoginScreen() {
 								accessibilityState={{
 									disabled: isLoading || isSubmittingLogin,
 								}}
+								hitSlop={8}
 								onPress={() => {
 									if (isLoading || isSubmittingLogin) return;
 									setError(null);
@@ -1846,6 +1839,9 @@ export function LoginScreen() {
 
 						{error ? (
 							<Animated.Text
+								accessibilityLiveRegion="polite"
+								accessibilityRole="alert"
+								selectable
 								entering={FadeIn.duration(180)}
 								style={{
 									marginTop: 12,
@@ -1877,7 +1873,12 @@ export function LoginScreen() {
 							<Text className="text-center font-poppins text-body-3 text-text">
 								Du hast keinen Account?
 							</Text>
-							<Pressable onPress={() => router.push("/onboarding")}>
+							<Pressable
+								accessibilityLabel="Jetzt registrieren"
+								accessibilityRole="button"
+								hitSlop={8}
+								onPress={() => router.push("/onboarding")}
+							>
 								<Text className="text-center font-poppins text-body-3 text-primary">
 									Jetzt Registrieren
 								</Text>
@@ -2163,7 +2164,10 @@ function PasswordResetScreen({
 							isCompactHeight ? "mt-1 h-24 w-24" : "mt-3 h-28 w-28",
 						)}
 					/>
-					<Text className="mt-5 text-center font-poppins font-semibold text-heading-2 text-text">
+					<Text
+						accessibilityRole="header"
+						className="mt-5 text-center font-poppins font-semibold text-heading-2 text-text"
+					>
 						{title}
 					</Text>
 					<Text className="mt-2 max-w-[330px] text-center font-poppins text-body-3 text-secondary-text">
@@ -2177,6 +2181,7 @@ function PasswordResetScreen({
 					>
 						{stage === "email" ? (
 							<FormPill
+								accessibilityLabel="E-Mail-Adresse"
 								value={email}
 								placeholder="max.mustermann@gmail.com"
 								keyboardType="email-address"
@@ -2209,6 +2214,7 @@ function PasswordResetScreen({
 						{stage === "new_password" ? (
 							<>
 								<FormPill
+									accessibilityLabel="Neues Passwort"
 									value={password}
 									placeholder="Neues Passwort"
 									secureTextEntry={!passwordVisible}
@@ -2218,24 +2224,15 @@ function PasswordResetScreen({
 									onChangeText={setPassword}
 									onSubmitEditing={() => Keyboard.dismiss()}
 									rightAccessory={
-										<Pressable
-											accessibilityRole="button"
-											accessibilityLabel={
-												passwordVisible
-													? "Passwort ausblenden"
-													: "Passwort anzeigen"
-											}
-											onPress={() => setPasswordVisible((current) => !current)}
-										>
-											{passwordVisible ? (
-												<Eye size={18} color={COLORS.text} />
-											) : (
-												<EyeOff size={18} color={COLORS.text} />
-											)}
-										</Pressable>
+										<PasswordVisibilityButton
+											fieldLabel="Passwort"
+											visible={passwordVisible}
+											onToggle={() => setPasswordVisible((current) => !current)}
+										/>
 									}
 								/>
 								<FormPill
+									accessibilityLabel="Neues Passwort wiederholen"
 									value={confirmPassword}
 									placeholder="Passwort wiederholen"
 									secureTextEntry={!confirmPasswordVisible}
@@ -2246,23 +2243,13 @@ function PasswordResetScreen({
 									onChangeText={setConfirmPassword}
 									onSubmitEditing={() => void submitNewPassword()}
 									rightAccessory={
-										<Pressable
-											accessibilityRole="button"
-											accessibilityLabel={
-												confirmPasswordVisible
-													? "Passwortbestätigung ausblenden"
-													: "Passwortbestätigung anzeigen"
-											}
-											onPress={() =>
+										<PasswordVisibilityButton
+											fieldLabel="Passwortbestätigung"
+											visible={confirmPasswordVisible}
+											onToggle={() =>
 												setConfirmPasswordVisible((current) => !current)
 											}
-										>
-											{confirmPasswordVisible ? (
-												<Eye size={18} color={COLORS.text} />
-											) : (
-												<EyeOff size={18} color={COLORS.text} />
-											)}
-										</Pressable>
+										/>
 									}
 								/>
 							</>
@@ -2272,6 +2259,8 @@ function PasswordResetScreen({
 					{error ? (
 						<Animated.Text
 							selectable
+							accessibilityLiveRegion="polite"
+							accessibilityRole="alert"
 							entering={FadeIn.duration(180)}
 							className="mt-4 text-center font-poppins text-body-4 text-wrong"
 						>
@@ -2281,6 +2270,7 @@ function PasswordResetScreen({
 					{notice ? (
 						<Animated.Text
 							selectable
+							accessibilityLiveRegion="polite"
 							entering={FadeIn.duration(180)}
 							className="mt-4 text-center font-poppins text-body-4 text-primary"
 						>
@@ -2298,7 +2288,11 @@ function PasswordResetScreen({
 
 					{stage === "reset_code" || stage === "second_factor" ? (
 						<Pressable
+							accessibilityLabel="Code erneut senden"
+							accessibilityRole="button"
+							accessibilityState={{ disabled: isLoading }}
 							disabled={isLoading}
+							hitSlop={8}
 							onPress={() => void resendCode()}
 							className="mt-5 p-2"
 						>
@@ -2364,6 +2358,7 @@ function VerificationScreen({
 					<AuthProgressHeader progress={progress} onBack={onBack} />
 					<View style={{ flex: 1, alignItems: "center", paddingTop: 38 }}>
 						<Text
+							accessibilityRole="header"
 							className="text-center font-bold font-poppins text-text"
 							style={{ fontSize: 25, lineHeight: 32 }}
 						>
@@ -2387,7 +2382,14 @@ function VerificationScreen({
 						<Text className="mt-5 text-center font-poppins text-body-5 text-text">
 							Kein Code angekommen?
 						</Text>
-						<Pressable disabled={disabled} onPress={() => void onResend()}>
+						<Pressable
+							accessibilityLabel="Code erneut senden"
+							accessibilityRole="button"
+							accessibilityState={{ disabled }}
+							disabled={disabled}
+							hitSlop={8}
+							onPress={() => void onResend()}
+						>
 							<Text className="text-center font-poppins font-semibold text-body-5 text-primary">
 								Erneut senden
 							</Text>
@@ -2395,6 +2397,9 @@ function VerificationScreen({
 
 						{error ? (
 							<Animated.Text
+								accessibilityLiveRegion="polite"
+								accessibilityRole="alert"
+								selectable
 								entering={FadeIn.duration(180)}
 								style={{
 									marginTop: 12,
@@ -2479,6 +2484,14 @@ function AuthProgressHeader({
 				<ArrowLeft size={18} color={COLORS.text} strokeWidth={2.2} />
 			</Pressable>
 			<View
+				accessible
+				accessibilityLabel={`Fortschritt ${Math.round(Math.min(Math.max(progress, 0), 1) * 100)} Prozent`}
+				accessibilityRole="progressbar"
+				accessibilityValue={{
+					min: 0,
+					max: 100,
+					now: Math.round(Math.min(Math.max(progress, 0), 1) * 100),
+				}}
 				style={{
 					flex: 1,
 					height: 8,
@@ -2504,6 +2517,7 @@ function AuthProgressHeader({
 function PillTextInput({
 	refObject,
 	value,
+	accessibilityLabel,
 	placeholder,
 	secure,
 	keyboardType,
@@ -2516,6 +2530,7 @@ function PillTextInput({
 }: {
 	refObject: RefObject<TextInput | null>;
 	value: string;
+	accessibilityLabel: string;
 	placeholder: string;
 	secure?: boolean;
 	keyboardType?: TextInputProps["keyboardType"];
@@ -2545,6 +2560,7 @@ function PillTextInput({
 		>
 			<TextInput
 				ref={refObject}
+				accessibilityLabel={accessibilityLabel}
 				value={value}
 				placeholder={placeholder}
 				placeholderTextColor={COLORS.secondaryText}
@@ -2606,6 +2622,7 @@ function SmallArrowButton({ onPress }: { onPress: () => void }) {
 		<Pressable
 			accessibilityRole="button"
 			accessibilityLabel="Weiter"
+			hitSlop={8}
 			onPress={onPress}
 			style={{
 				width: 32,
@@ -2647,7 +2664,7 @@ function OtpCodeInput({
 	const { colors: COLORS } = useDayovaTheme();
 
 	return (
-		<Pressable onPress={() => inputRef.current?.focus()}>
+		<View>
 			<View style={{ flexDirection: "row", gap: 8 }}>
 				{OTP_CELL_KEYS.map((cellKey, index) => {
 					const symbol = value[index] ?? "";
@@ -2658,6 +2675,8 @@ function OtpCodeInput({
 					return (
 						<View
 							key={cellKey}
+							accessibilityElementsHidden
+							importantForAccessibility="no-hide-descendants"
 							style={{
 								flex: 1,
 								height: 42,
@@ -2685,6 +2704,9 @@ function OtpCodeInput({
 			</View>
 			<TextInput
 				ref={inputRef}
+				accessibilityLabel="Bestätigungscode"
+				accessibilityHint="Gib den sechsstelligen Code ein."
+				accessibilityState={{ disabled }}
 				value={value}
 				onChangeText={onChangeText}
 				editable={!disabled}
@@ -2696,9 +2718,16 @@ function OtpCodeInput({
 				caretHidden
 				maxLength={CODE_LENGTH}
 				selectionColor="transparent"
-				style={{ position: "absolute", opacity: 0.01, width: 1, height: 1 }}
+				style={{
+					position: "absolute",
+					top: 0,
+					right: 0,
+					bottom: 0,
+					left: 0,
+					opacity: 0.01,
+				}}
 			/>
-		</Pressable>
+		</View>
 	);
 }
 
@@ -2958,11 +2987,12 @@ function ChipCloud({
 						layout={LinearTransition.duration(180)}
 					>
 						<Pressable
+							accessibilityLabel={option.label}
 							accessibilityRole="checkbox"
 							accessibilityState={{ checked: selected }}
 							onPress={() => onToggle(option.label)}
 							style={{
-								minHeight: 36,
+								minHeight: 44,
 								borderRadius: DAYOVA_DESIGN_SYSTEM.radius.button,
 								paddingHorizontal: option.label.length > 8 ? 12 : 16,
 								paddingVertical: 8,
@@ -3043,9 +3073,12 @@ function GoalList({
 						layout={LinearTransition.duration(180)}
 					>
 						<Pressable
+							accessibilityLabel={option}
+							accessibilityRole="checkbox"
+							accessibilityState={{ checked: selected }}
 							onPress={() => onToggle(option)}
 							style={{
-								minHeight: 42,
+								minHeight: 44,
 								borderRadius: 22,
 								backgroundColor: selected ? COLORS.primary : COLORS.surface,
 								flexDirection: "row",
@@ -3598,6 +3631,9 @@ function CircularNextButton({
 				</Svg>
 			</View>
 			<Pressable
+				accessibilityLabel="Weiter"
+				accessibilityRole="button"
+				accessibilityState={{ disabled }}
 				disabled={disabled}
 				onPress={onPress}
 				style={{
@@ -3630,6 +3666,7 @@ function AuthChoicePillButton({
 
 	return (
 		<Pressable
+			accessibilityLabel={label}
 			accessibilityRole="button"
 			onPress={onPress}
 			style={{
@@ -3726,6 +3763,9 @@ function DarkPillButton({
 }) {
 	return (
 		<Pressable
+			accessibilityLabel={label}
+			accessibilityRole="button"
+			accessibilityState={{ disabled }}
 			disabled={disabled}
 			onPress={onPress}
 			style={{

@@ -32,12 +32,18 @@ function DateTimePickerSheet({
 	onClose,
 }: DateTimePickerSheetProps) {
 	const { width } = useWindowDimensions();
+	const accessibilityLabel = {
+		date: "Datum auswählen",
+		time: "Uhrzeit auswählen",
+		datetime: "Datum und Uhrzeit auswählen",
+	}[mode];
 	const handleValueChange = (event: DateTimePickerChangeEvent, date: Date) => {
 		onChange({ ...event, type: "set" }, date);
 	};
 
 	return (
 		<DayovaSheetFrame
+			accessibilityLabel={accessibilityLabel}
 			visible={visible}
 			onClose={onClose}
 			showCloseButton={false}

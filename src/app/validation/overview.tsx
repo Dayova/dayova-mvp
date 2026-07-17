@@ -9,6 +9,7 @@ import { ActivityIndicator, Share, TouchableOpacity, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -259,9 +260,9 @@ export default function ValidationOverviewScreen() {
 
 				{accessErrorMessage ? (
 					<Surface className="rounded-[24px] px-5 py-5">
-						<Text className="font-poppins text-14 text-destructive">
+						<ErrorMessage className="text-14">
 							{accessErrorMessage}
-						</Text>
+						</ErrorMessage>
 					</Surface>
 				) : null}
 
@@ -281,9 +282,9 @@ export default function ValidationOverviewScreen() {
 
 				{overviewErrorMessage ? (
 					<Surface className="rounded-[24px] px-5 py-5">
-						<Text className="font-poppins text-14 text-destructive">
+						<ErrorMessage className="text-14">
 							{overviewErrorMessage}
-						</Text>
+						</ErrorMessage>
 					</Surface>
 				) : null}
 

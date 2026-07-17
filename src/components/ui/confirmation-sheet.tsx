@@ -50,6 +50,8 @@ function ConfirmationSheet({
 		>
 			{errorMessage ? (
 				<WarningBanner
+					accessibilityLiveRegion="polite"
+					accessibilityRole="alert"
 					className="mb-5"
 					title="Das hat nicht geklappt"
 					description={errorMessage}

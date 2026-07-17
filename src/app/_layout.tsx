@@ -20,6 +20,10 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { NotificationSync } from "~/components/notification-sync";
+import {
+	SheetAccessibilityProvider,
+	useSheetAccessibility,
+} from "~/components/ui/sheet-accessibility";
 import { AuthProvider, useAuthSession } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
 import {
@@ -38,6 +42,7 @@ function AppNavigator() {
 	const pathname = usePathname();
 	const rootNavigationState = useRootNavigationState();
 	const { user, isSessionLoading, pendingSessionTask } = useAuthSession();
+	const sheetAccessibility = useSheetAccessibility();
 
 	useEffect(() => {
 		if (isSessionLoading || !rootNavigationState?.key) return;
@@ -67,8 +72,16 @@ function AppNavigator() {
 	return (
 		<>
 			<NotificationSync />
-			<Stack screenOptions={{ headerShown: false }} />
-			<PortalHost />
+			<View
+				className="flex-1"
+				accessibilityElementsHidden={sheetAccessibility?.hasOpenSheet ?? false}
+				importantForAccessibility={
+					sheetAccessibility?.hasOpenSheet ? "no-hide-descendants" : "auto"
+				}
+			>
+				<Stack screenOptions={{ headerShown: false }} />
+				<PortalHost />
+			</View>
 		</>
 	);
 }
@@ -137,12 +150,14 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 						>
 							<ThemeProvider value={NAV_THEMES[resolvedTheme]}>
 								<BottomSheetModalProvider>
-									<OnboardingProvider>
-										<AuthProvider>
-											<AnalyticsIdentity />
-											<AppNavigator />
-										</AuthProvider>
-									</OnboardingProvider>
+									<SheetAccessibilityProvider>
+										<OnboardingProvider>
+											<AuthProvider>
+												<AnalyticsIdentity />
+												<AppNavigator />
+											</AuthProvider>
+										</OnboardingProvider>
+									</SheetAccessibilityProvider>
 								</BottomSheetModalProvider>
 							</ThemeProvider>
 						</ConvexProviderWithClerk>

@@ -33,6 +33,7 @@ function InsetTextField({
 	inputClassName,
 	accessoryClassName,
 	accessibilityLabel,
+	accessibilityHint,
 	...inputProps
 }: BaseTextFieldProps) {
 	return (
@@ -49,6 +50,13 @@ function InsetTextField({
 					<Input
 						{...inputProps}
 						accessibilityLabel={accessibilityLabel ?? label}
+						accessibilityHint={
+							invalid && message
+								? [accessibilityHint, `Fehler: ${message}`]
+										.filter(Boolean)
+										.join(". ")
+								: accessibilityHint
+						}
 						className={cn("text-body-2", inputClassName)}
 						multiline={false}
 						numberOfLines={1}

@@ -4,6 +4,7 @@ import {
 	View,
 	type ViewProps,
 } from "react-native";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Text } from "~/components/ui/text";
 import { cn } from "~/lib/utils";
 
@@ -89,15 +90,7 @@ function FieldMessage({
 	className,
 	...props
 }: React.ComponentProps<typeof Text>) {
-	return (
-		<Text
-			className={cn(
-				"mt-2 ml-1 font-poppins text-body-4 text-destructive",
-				className,
-			)}
-			{...props}
-		/>
-	);
+	return <ErrorMessage className={cn("mt-2 ml-1", className)} {...props} />;
 }
 
 export {

@@ -222,6 +222,7 @@ export default function ChangePasswordScreen() {
 
 				{errorMessage ? (
 					<View
+						accessibilityRole="alert"
 						accessibilityLiveRegion="polite"
 						className="mt-2 rounded-[22px] border border-destructive/20 bg-destructive/10 px-5 py-4"
 					>

@@ -39,16 +39,20 @@ function SelectSheet<T extends string | number>({
 		>
 			{options.map((option) => {
 				const isSelected = selectedValue === option;
+				const optionLabel = formatOptionLabel
+					? formatOptionLabel(option)
+					: String(option);
 
 				return (
 					<Pressable
 						key={option}
+						accessibilityLabel={optionLabel}
+						accessibilityRole="radio"
+						accessibilityState={{ checked: isSelected }}
 						onPress={() => {
 							onSelect(option);
 							onClose();
 						}}
-						accessibilityRole="button"
-						accessibilityState={{ selected: isSelected }}
 						className={cn(
 							"min-h-16 flex-row items-center rounded-[20px] border px-5",
 							isSelected
@@ -67,7 +71,7 @@ function SelectSheet<T extends string | number>({
 								isSelected ? "font-semibold text-primary" : "text-text",
 							)}
 						>
-							{formatOptionLabel ? formatOptionLabel(option) : option}
+							{optionLabel}
 						</Text>
 						{isSelected ? (
 							<View className="ml-4 h-7 w-7 items-center justify-center rounded-full bg-primary">

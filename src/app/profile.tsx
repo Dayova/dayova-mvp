@@ -221,6 +221,8 @@ export default function ProfileScreen() {
 
 				{feedback ? (
 					<View
+						accessibilityLiveRegion="polite"
+						accessibilityRole={feedback.tone === "error" ? "alert" : undefined}
 						className="mt-5 rounded-[22px] px-5 py-4"
 						style={{
 							backgroundColor:

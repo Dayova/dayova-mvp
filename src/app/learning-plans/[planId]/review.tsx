@@ -12,6 +12,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -257,9 +258,7 @@ export default function LearningPlanReviewScreen() {
 					))}
 				</View>
 				{errorMessage ? (
-					<Text className="mb-4 font-poppins text-body-4 text-destructive">
-						{errorMessage}
-					</Text>
+					<ErrorMessage className="mb-4">{errorMessage}</ErrorMessage>
 				) : null}
 			</ScrollView>
 

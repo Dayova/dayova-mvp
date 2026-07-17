@@ -20,6 +20,8 @@ subject and exam-type selector.
   `RuleTester` regression coverage.
 - Lifecycle and close-control behavior use React Native Testing Library rather
   than source-text assertions.
+- Screen-reader modal behavior, focus, escape, and background isolation follow
+  the shared contract in `docs/accessibility.md`.
 
 ## Why not Expo UI for these sheets?
 

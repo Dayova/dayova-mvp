@@ -20,6 +20,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { FieldControl } from "~/components/ui/field";
 import {
 	BookOpen,
@@ -737,9 +738,7 @@ function VoiceAnswer({
 				editable={editable}
 			/>
 			{speechErrorMessage ? (
-				<Text className="mt-3 px-1 font-poppins text-body-4 text-destructive">
-					{speechErrorMessage}
-				</Text>
+				<ErrorMessage className="mt-3 px-1">{speechErrorMessage}</ErrorMessage>
 			) : null}
 		</View>
 	);
@@ -1445,9 +1444,7 @@ export default function LearningSessionContentScreen() {
 						</Surface>
 
 						{errorMessage ? (
-							<Text className="mt-4 font-poppins text-body-4 text-destructive">
-								{errorMessage}
-							</Text>
+							<ErrorMessage className="mt-4">{errorMessage}</ErrorMessage>
 						) : null}
 						<ActionRow
 							secondaryLabel="Weiß ich nicht"
@@ -1467,9 +1464,7 @@ export default function LearningSessionContentScreen() {
 				) : null}
 
 				{errorMessage && !currentItem ? (
-					<Text className="mt-4 font-poppins text-body-4 text-destructive">
-						{errorMessage}
-					</Text>
+					<ErrorMessage className="mt-4">{errorMessage}</ErrorMessage>
 				) : null}
 			</ScrollView>
 		</View>

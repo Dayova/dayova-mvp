@@ -6,9 +6,9 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
+import { ErrorMessage } from "~/components/ui/error-message";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
-import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
 import { SessionEditForm } from "~/features/learning-plans/learning-plan-ui";
@@ -200,9 +200,7 @@ function LoadedSessionEditScreen({
 					onSave={saveEdit}
 				/>
 				{errorMessage ? (
-					<Text className="mt-4 font-poppins text-body-4 text-destructive">
-						{errorMessage}
-					</Text>
+					<ErrorMessage className="mt-4">{errorMessage}</ErrorMessage>
 				) : null}
 			</ScrollView>
 

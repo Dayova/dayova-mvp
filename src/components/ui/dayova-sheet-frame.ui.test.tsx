@@ -1,11 +1,17 @@
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
+import { AccessibilityInfo, View } from "react-native";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
+import {
+	SheetAccessibilityProvider,
+	useSheetAccessibility,
+} from "./sheet-accessibility";
 
 const mockSheetHarness = {
 	present: jest.fn(),
 	dismiss: jest.fn(),
+	onChange: null as null | ((index: number) => void),
 	onDismiss: null as null | (() => void),
 };
 
@@ -42,14 +48,20 @@ jest.mock("@gorhom/bottom-sheet", () => {
 		(
 			{
 				children,
+				onChange,
 				onDismiss,
 				...props
-			}: { children?: ReactNode; onDismiss?: () => void },
+			}: {
+				children?: ReactNode;
+				onChange?: (index: number) => void;
+				onDismiss?: () => void;
+			},
 			ref: import("react").ForwardedRef<{
 				dismiss: typeof mockSheetHarness.dismiss;
 				present: typeof mockSheetHarness.present;
 			}>,
 		) => {
+			mockSheetHarness.onChange = onChange ?? null;
 			mockSheetHarness.onDismiss = onDismiss ?? null;
 			React.useImperativeHandle(ref, () => ({
 				dismiss: mockSheetHarness.dismiss,
@@ -72,11 +84,19 @@ jest.mock("@gorhom/bottom-sheet", () => {
 
 describe("DayovaSheetFrame", () => {
 	let animationFrames: FrameRequestCallback[];
+	let focusSpy: jest.SpiedFunction<
+		typeof AccessibilityInfo.setAccessibilityFocus
+	>;
 
 	beforeEach(() => {
+		jest.restoreAllMocks();
 		mockSheetHarness.present.mockReset();
 		mockSheetHarness.dismiss.mockReset();
+		mockSheetHarness.onChange = null;
 		mockSheetHarness.onDismiss = null;
+		focusSpy = jest
+			.spyOn(AccessibilityInfo, "setAccessibilityFocus")
+			.mockImplementation(() => undefined);
 		animationFrames = [];
 		global.requestAnimationFrame = (callback: FrameRequestCallback) => {
 			animationFrames.push(callback);
@@ -143,5 +163,69 @@ describe("DayovaSheetFrame", () => {
 		fireEvent.press(view.getByLabelText("Dialog schließen"));
 
 		expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
+	});
+
+	test("exposes modal semantics, moves focus to its heading, and handles escape", async () => {
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				title="Auswahl"
+				closeAccessibilityLabel="Auswahl schließen"
+			/>,
+		);
+		await act(flushAnimationFrames);
+
+		const heading = view.getByRole("header", { name: "Auswahl" });
+		const modalContent = heading.parent?.parent?.parent;
+		expect(heading).toBeOnTheScreen();
+		expect(modalContent?.props.accessibilityViewIsModal).toBe(true);
+		expect(modalContent?.props.accessibilityActions).toEqual([
+			{ name: "escape", label: "Auswahl schließen" },
+		]);
+
+		await act(() => mockSheetHarness.onChange?.(0));
+		await act(flushAnimationFrames);
+		expect(focusSpy).toHaveBeenCalledTimes(1);
+
+		if (!modalContent) throw new Error("Expected modal content container");
+		fireEvent(modalContent, "accessibilityEscape");
+		expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
+	});
+
+	test("hides background content from screen readers while a sheet is open", async () => {
+		function BackgroundProbe() {
+			const sheetAccessibility = useSheetAccessibility();
+			return (
+				<View
+					testID="background"
+					accessibilityElementsHidden={
+						sheetAccessibility?.hasOpenSheet ?? false
+					}
+				/>
+			);
+		}
+
+		const view = await render(
+			<SheetAccessibilityProvider>
+				<BackgroundProbe />
+				<DayovaSheetFrame visible onClose={jest.fn()} title="Auswahl" />
+			</SheetAccessibilityProvider>,
+		);
+		await act(flushAnimationFrames);
+		expect(
+			view.getByTestId("background").props.accessibilityElementsHidden,
+		).toBe(false);
+
+		await act(() => mockSheetHarness.onChange?.(0));
+		expect(
+			view.getByTestId("background", { includeHiddenElements: true }).props
+				.accessibilityElementsHidden,
+		).toBe(true);
+
+		await act(() => mockSheetHarness.onDismiss?.());
+		expect(
+			view.getByTestId("background").props.accessibilityElementsHidden,
+		).toBe(false);
 	});
 });
