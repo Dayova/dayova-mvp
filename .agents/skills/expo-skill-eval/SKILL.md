@@ -5,6 +5,10 @@ license: MIT
 allowed-tools: "Read(~/.cache/expo-skill-eval/**), Read(/tmp/expo-skill-eval-*/**), Read(/private/tmp/expo-skill-eval-*/**), Write(/tmp/expo-skill-eval-*/**), Write(/private/tmp/expo-skill-eval-*/**), Edit(/tmp/expo-skill-eval-*/**), Edit(/private/tmp/expo-skill-eval-*/**), Bash(python3 /tmp/expo-skill-eval-*), Bash(python3 /private/tmp/expo-skill-eval-*), Bash(python3 *expo-skill-eval/scripts/*), Bash(tee /tmp/expo-skill-eval-*), Bash(tee /private/tmp/expo-skill-eval-*), Bash(bash *expo-skill-eval/scripts/*)"
 ---
 
+# Codex compatibility
+
+This repo runs Expo skill evals from Codex. Treat upstream Claude Code permission notes (`allowed-tools`, `Read`/`Write`/`Edit`, `Bash(...)`, `/reload-skills`, `CLAUDECODE`, `AskUserQuestion`, `claude -p`) as historical implementation notes, not current Codex instructions. Use the current Codex tools and the active sandbox/approval policy. For file edits, prefer `apply_patch`; for shell work, use the current shell tool and keep commands scoped to the eval workspace. Translate user-choice prompts to Codex's available user-input mechanism, or ask plainly when no such tool is available.
+
 # Expo Skill Eval
 
 Evaluates skills in `plugins/expo/skills/` for trigger accuracy, generated code quality, and/or runtime rendering in Expo Go.
