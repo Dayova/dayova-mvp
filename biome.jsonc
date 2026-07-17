@@ -11,6 +11,7 @@
 			"src/**",
 			"convex/**",
 			"plugins/**",
+			"scripts/**",
 			"app.config.ts",
 			"babel.config.js",
 			"biome.jsonc",

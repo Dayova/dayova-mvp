@@ -23,6 +23,7 @@
 		"format:check": "run-s format:biome:check format:tailwind:check",
 		"format:biome:check": "biome format .",
 		"format:tailwind:check": "biome lint . --only=nursery/useSortedClasses",
+		"skills:update:expo": "node scripts/update-expo-skills.mjs",
 		"test": "vitest run",
 		"check": "run-s lint typecheck",
 		"check:compiler": "pnpm dlx react-compiler-healthcheck@latest",
@@ -105,7 +106,8 @@
 		"typescript": "~6.0.3",
 		"typescript-eslint": "^8.59.1",
 		"vite": "^8.0.14",
-		"vitest": "^4.1.7"
+		"vitest": "^4.1.7",
+		"yaml": "^2.9.0"
 	},
 	"private": true,
 	"engines": {
