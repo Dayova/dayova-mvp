@@ -5,6 +5,12 @@ Linear is the source of truth for issues and PRDs in this repo.
 - Workspace: `dayova`
 - Team: `Dayova`
 - Team key: `DAY`
+- Backlog status: `Backlog`
+- Unstarted status: `Todo`
+- Started status: `In Progress`
+- Review status: `In Review`
+- Completed status: `Done`
+- Canceled status: `Canceled`
 - Issue identifiers: `DAY-<number>`
 - Synced GitHub repo: `Dayova/dayova-mvp`
 - External PRs as a triage request surface: `no`
@@ -32,12 +38,12 @@ Do not claim a Linear operation succeeded unless the connector returned the crea
 - **Comment**: post to the Linear issue. Triage comments must retain the AI disclaimer required by the `triage` skill.
 - **Apply a triage outcome**: keep exactly one mapped category role and one mapped triage disposition role.
 - **Labels**: a Linear issue update replaces the complete label set. Read the issue first and preserve unrelated labels while replacing conflicting mapped roles.
-- **Dependencies**: use Linear `parentId` and native `blockedBy`/`blocks` relationships. Also keep the human-readable `Parent` and `Blocked by` sections required by `to-tickets` (and the legacy `to-issues`).
-- **Ready work**: new `to-spec` and approved `to-tickets` output goes to `Todo` with one mapped category role and the mapped `ready-for-agent` role unless the user chooses another state. The legacy names are `to-prd` and `to-issues`.
+- **Dependencies**: use Linear `parentId` and native `blockedBy`/`blocks` relationships. Also keep the human-readable `Parent` and `Blocked by` sections required by `to-tickets`.
+- **Ready work**: new `to-spec` and approved `to-tickets` output goes to `Todo` with one mapped category role and the mapped `ready-for-agent` role unless the user chooses another state.
 - **Start/review/finish**: use `In Progress`, `In Review`, and `Done`. Existing PR automations already advance linked issues through these statuses.
 - **Reject**: apply the mapped `wontfix` role, explain the decision, then use `Canceled`.
 
-Publish dependency slices in dependency order so later issues can reference real Linear identifiers. Add native blocking edges after the issues exist. Do not close or modify a parent issue when `to-tickets` or `to-issues` says not to.
+Publish dependency slices in dependency order so later issues can reference real Linear identifiers. Add native blocking edges after the issues exist. Do not close or modify a parent issue when `to-tickets` says not to.
 
 ## Wayfinding operations
 

@@ -5,6 +5,12 @@ Issues, specs, and tickets for this repo live in Linear.
 - Workspace: `<workspace>`
 - Team: `<team name>`
 - Team key: `<KEY>`
+- Backlog status: `<exact name>`
+- Unstarted status: `<exact name>`
+- Started status: `<exact name>`
+- Review status: `<exact name>`
+- Completed status: `<exact name>`
+- Canceled status: `<exact name>`
 - External PRs as a request surface: `no`
 - GitHub Issues compatibility sync: `<none or owner/repo and sync direction>`
 
