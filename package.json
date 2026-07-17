@@ -37,7 +37,7 @@
 	"dependencies": {
 		"@ai-sdk/google-vertex": "^4.0.112",
 		"@clerk/expo": "^3.5.2",
-		"@expo/metro-runtime": "~56.0.15",
+		"@expo/metro-runtime": "~56.0.17",
 		"@expo/ui": "~56.0.18",
 		"@gilhrpenner/convex-files-control": "^0.5.3",
 		"@gorhom/bottom-sheet": "^5.2.14",
@@ -50,7 +50,7 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"convex": "^1.41.0",
-		"expo": "~56.0.12",
+		"expo": "~56.0.16",
 		"expo-application": "~56.0.3",
 		"expo-constants": "^56.0.18",
 		"expo-crypto": "^56.0.4",

@@ -13,6 +13,6 @@ onlyBuiltDependencies:
   - esbuild
 
 patchedDependencies:
-  '@expo/metro-config@56.0.14': patches/@expo__metro-config@56.0.14.patch
+  '@expo/metro-config@56.0.17': patches/@expo__metro-config@56.0.17.patch
   nativewind@4.2.3: patches/nativewind@4.2.3.patch
   oxc-parser@0.130.0: patches/oxc-parser@0.130.0.patch
