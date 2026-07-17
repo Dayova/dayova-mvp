@@ -285,12 +285,12 @@ export default function LearningPlanReviewScreen() {
 							: "flex-row items-center px-10",
 					)}
 					// Safe-area padding is runtime device data.
-					style={{
-						paddingHorizontal: shouldStackInlineContent
-							? horizontalPadding
+					style={[
+						shouldStackInlineContent
+							? { paddingHorizontal: horizontalPadding }
 							: undefined,
-						paddingBottom: Math.max(insets.bottom + 24, 36),
-					}}
+						{ paddingBottom: Math.max(insets.bottom + 24, 36) },
+					]}
 				>
 					<Button
 						accessibilityLabel={
