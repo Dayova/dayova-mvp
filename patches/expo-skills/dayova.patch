@@ -1,0 +1,180 @@
+diff --git a/.agents/skills/expo-native-ui/SKILL.md b/.agents/skills/expo-native-ui/SKILL.md
+index 861938e..5776a5f 100644
+--- a/.agents/skills/expo-native-ui/SKILL.md
++++ b/.agents/skills/expo-native-ui/SKILL.md
+@@ -14,8 +14,8 @@ Consult these resources as needed:
+ 
+ ```
+ references/
+-  animations.md          Reanimated: entering, exiting, layout, scroll-driven, gestures
+-  controls.md            Native iOS: Switch, Slider, SegmentedControl, DateTimePicker, Picker
++  animations.md          Select native transitions, Reanimated, or another primitive by behavior
++  controls.md            Route controls through Expo UI and repository-specific wrappers
+   gradients.md           CSS gradients via experimental_backgroundImage (New Arch only)
+   icons.md               SF Symbols via expo-image (sf: source), names, animations, weights
+   media.md               Camera, audio, video, and file saving
+@@ -62,6 +62,13 @@ Expo Go supports a huge range of features out of the box:
+ - Never use special characters in file names
+ - Configure tsconfig.json with path aliases, and prefer aliases over relative imports for refactors.
+ 
++## Repository Guidance Takes Precedence
++
++- Read `AGENTS.md`, `CONTEXT-MAP.md`, and the relevant repository context before choosing UI primitives.
++- Treat repository component and design-system policies as stronger than generic examples in this skill.
++- In Dayova app screens, import `Switch` from `~/components/ui/switch` and `DateTimePickerSheet` from `~/components/ui/date-time-picker-sheet`. Do not bypass these wrappers with direct control imports.
++- For native Expo UI controls and community-library replacements, use the `$expo-ui` skill. Prefer an existing repository wrapper when one is documented.
++
+ ## Library Preferences
+ 
+ - Never use modules removed from React Native such as Picker, WebView, SafeAreaView, or AsyncStorage
+@@ -88,7 +95,7 @@ Expo Go supports a huge range of features out of the box:
+ ## Behavior
+ 
+ - Use expo-haptics conditionally on iOS to make more delightful experiences
+-- Use views with built-in haptics like `<Switch />` from React Native and `@react-native-community/datetimepicker`
++- Prefer native controls with built-in accessibility and interaction feedback. Resolve the concrete component through repository guidance and `$expo-ui`; do not add duplicate haptics to controls that already provide them.
+ - When a route belongs to a Stack, its first child should almost always be a ScrollView with `contentInsetAdjustmentBehavior="automatic"` set
+ - When adding a `ScrollView` to the page it should almost always be the first component inside the route component
+ - Use the `<Text selectable />` prop on text containing data that could be copied
+@@ -97,7 +104,7 @@ Expo Go supports a huge range of features out of the box:
+ 
+ # Styling
+ 
+-Follow Apple Human Interface Guidelines.
++Follow the repository design context and the current platform conventions. Use Apple Human Interface Guidelines on iOS and Material guidance on Android without overriding documented product decisions.
+ 
+ ## General Styling Rules
+ 
+@@ -105,64 +112,21 @@ Follow Apple Human Interface Guidelines.
+ - Prefer padding over margin where possible
+ - Always account for safe area, either with stack headers, tabs, or ScrollView/FlatList `contentInsetAdjustmentBehavior="automatic"`
+ - Ensure both top and bottom safe area insets are accounted for
+-- Inline styles not StyleSheet.create unless reusing styles is faster
+-- Add entering and exiting animations for state changes
++- Follow the repository styling system. In Dayova, use NativeWind semantic tokens for static styling and inline styles only for measured, animated, or native values that cannot be expressed as classes.
++- Add motion only when it clarifies hierarchy, continuity, or feedback. Choose the primitive with `references/animations.md` and honor the user's reduced-motion setting.
+ - Use `{ borderCurve: 'continuous' }` for rounded corners unless creating a capsule shape
+ - ALWAYS use a navigation stack title instead of a custom text element on the page
+ - When padding a ScrollView, use `contentContainerStyle` padding and gap instead of padding on the ScrollView itself (reduces clipping)
+-- CSS and Tailwind are not supported - use inline styles
+ 
+ ## Colors
+ 
+-Use the `Color` API from `expo-router` for native semantic colors. It is a type-safe wrapper over `PlatformColor` that exposes iOS UIKit colors through `Color.ios.*` and Android Material 3 colors through `Color.android.material.*` (static) or `Color.android.dynamic.*` (adapts to the user's wallpaper on Android 12+). These resolve on-device and automatically adapt to light/dark mode and accessibility settings, so you no longer maintain separate light/dark hex tables or a `colors.web.ts` file.
+-
+-`Color` is platform-specific, so wrap each value in `Platform.select` with a `default` hex fallback for web. Centralize the palette in `theme/colors.ts` and import `colors` everywhere:
+-
+-```tsx
+-// theme/colors.ts
+-import { Platform } from "react-native";
+-import { Color } from "expo-router";
+-
+-export const colors = {
+-  label: Platform.select({
+-    ios: Color.ios.label,
+-    android: Color.android.dynamic.onSurface,
+-    default: "#000000",
+-  })!,
+-  secondaryLabel: Platform.select({
+-    ios: Color.ios.secondaryLabel,
+-    android: Color.android.dynamic.onSurfaceVariant,
+-    default: "#3c3c43",
+-  })!,
+-  separator: Platform.select({
+-    ios: Color.ios.separator,
+-    android: Color.android.dynamic.outlineVariant,
+-    default: "#c6c6c8",
+-  })!,
+-  systemBackground: Platform.select({
+-    ios: Color.ios.systemBackground,
+-    android: Color.android.dynamic.surface,
+-    default: "#ffffff",
+-  })!,
+-  systemBlue: Platform.select({
+-    ios: Color.ios.systemBlue,
+-    android: Color.android.dynamic.primary,
+-    default: "#007aff",
+-  })!,
+-};
+-```
+-
+-```tsx
+-import { colors } from "@/theme/colors";
+-
+-<View style={{ backgroundColor: colors.systemBackground }}>
+-  <Text style={{ color: colors.label }}>Title</Text>
+-</View>;
+-```
++In Dayova, use the semantic palette defined in `src/global.css` and its native runtime mirrors in `src/lib/theme.ts`. Read `docs/contexts/design-system/CONTEXT.md` for the current token contract.
+ 
+-- iOS re-resolves these colors automatically when the system theme changes. On Android, call `useColorScheme()` inside any component that renders them so it re-renders when the theme flips (required when React Compiler memoizes the component).
+-- Don't pass `Color` / `PlatformColor` values into Reanimated styles — use static colors there (see `references/animations.md`).
+-- `Platform.select({...})!` returns `string | OpaqueColorValue`. Most React Native style props accept `ColorValue` (`string | OpaqueColorValue`) so this works fine. But some third-party props only accept `string` (e.g. `tintColor` on `expo-image`). Cast when needed: `colors.label as string`.
++- Do not create a parallel `theme/colors.ts` palette.
++- Do not use Android wallpaper-derived dynamic colors for branded Dayova surfaces or controls.
++- Use NativeWind semantic classes for static colors and the existing native theme mirror when a native API requires runtime color values.
++- Keep colors passed through Reanimated styles static; do not pass `Color` or `PlatformColor` objects into worklet-driven styles.
++- Add or change semantic tokens only through an explicit design-system decision.
+ 
+ ## Text Styling
+ 
+diff --git a/.agents/skills/expo-native-ui/references/animations.md b/.agents/skills/expo-native-ui/references/animations.md
+index 30cfa6d..d8dfb7d 100644
+--- a/.agents/skills/expo-native-ui/references/animations.md
++++ b/.agents/skills/expo-native-ui/references/animations.md
+@@ -1,6 +1,26 @@
+ # Animations
+ 
+-Use Reanimated v4. Avoid React Native's built-in Animated API.
++Choose the animation primitive by behavior instead of defaulting to one library.
++
++| Scenario | Prefer |
++| --- | --- |
++| Navigation, modal, sheet, or screen transition already supported by the platform | Expo Router and native stack or presentation APIs |
++| Gesture-driven, scroll-linked, interruptible, or layout-coupled motion | Reanimated v4 |
++| Long-running, trigger-based `transform` or `opacity` motion under UI-thread pressure | A platform-driven primitive; evaluate `react-native-ease` only after checking project dependencies, confirming its limitations, and getting approval to add it |
++| Existing simple `opacity` or `transform` animation that already uses React Native `Animated` with the native driver | Keep it when it meets the interaction and performance requirements; do not rewrite it solely for consistency |
++
++Follow this selection workflow:
++
++1. Read repository guidance and inspect the installed dependencies before proposing a library.
++2. Prefer built-in platform and navigation transitions when they express the interaction.
++3. Match the primitive to the behavior. Reanimated remains the default for gestures, scroll coupling, shared values, interruptible motion, and layout animation.
++4. Profile performance-sensitive motion in a release build on representative iOS and Android hardware. Debug-build animation timing is not decision-quality evidence.
++5. Preserve the project's reduced-motion behavior. Provide a static or reduced alternative instead of merely shortening every animation.
++6. Do not add or replace an animation dependency without explaining the tradeoff and confirming the change with the user.
++
++`react-native-ease` is intentionally narrow: it can reduce per-frame application-thread work for declarative, trigger-based visual animations, but it is not a replacement for gesture-driven, scroll-linked, layout-changing, readable, or interruptible animation state. See Expo's [animation benchmark](https://expo.dev/blog/the-real-cost-of-react-native-animations-benchmarking-every-approach) for the measured tradeoffs.
++
++The remaining examples use Reanimated because they cover the interaction classes where Reanimated is appropriate. They are patterns, not a mandate to migrate unrelated animation code.
+ 
+ ## Entering and Exiting Animations
+ 
+@@ -210,11 +230,12 @@ Animate list items with delays:
+ 
+ ## Best Practices
+ 
+-- Add entering and exiting animations for state changes
++- Use motion only when it communicates state, continuity, or feedback
+ - Use layout animations when items are added/removed from lists
+ - Use `useAnimatedStyle` for scroll-driven animations
+ - Prefer `interpolate` with "clamp" for bounded values
+ - You can't pass `Color` (from expo-router) or `PlatformColor` values to reanimated views or styles; use static colors instead
+-- Keep animations under 300ms for responsive feel
++- Validate timing against the interaction instead of enforcing a universal duration
+ - Use spring animations for natural movement
+ - Avoid animating layout properties (width, height) when possible — prefer transforms
++- Test the reduced-motion path and the release build before calling animation work complete
+diff --git a/.agents/skills/expo-native-ui/references/storage.md b/.agents/skills/expo-native-ui/references/storage.md
+index c084f12..2a2f23d 100644
+--- a/.agents/skills/expo-native-ui/references/storage.md
++++ b/.agents/skills/expo-native-ui/references/storage.md
+@@ -77,6 +77,8 @@ export function useStorage<T>(
+ Usage:
+ 
+ ```tsx
++import { Switch } from "~/components/ui/switch";
++
+ function Settings() {
+   const [theme, setTheme] = useStorage("theme", "light");
+ 

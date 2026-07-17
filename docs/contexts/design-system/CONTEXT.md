@@ -38,6 +38,11 @@ Android uses the Jetpack Compose switch with explicit Dayova primary colors so
 Material You wallpaper colors cannot override the brand. iOS keeps the native
 SwiftUI toggle shape and applies Dayova primary through the SwiftUI tint modifier.
 
+App screens that collect a date or time must use `DateTimePickerSheet` from
+`src/components/ui/date-time-picker-sheet`. Do not import the underlying Expo UI
+picker directly from a screen. The wrapper owns platform display normalization,
+German locale, safe-area handling, and native presentation.
+
 ## Styling Tokens
 
 The app supports light, dark, and system theme preferences. The light app
