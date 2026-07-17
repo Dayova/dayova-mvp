@@ -40,7 +40,12 @@ function getRangeValueBadgeSize({
 	if (!shouldStackInlineContent) return 88;
 
 	const scaledTextHeight = (36 + 15) * fontScale - 4;
-	return Math.max(88, scaledTextHeight + 16);
+	const ringStrokeWidth = 4;
+	const innerVerticalPadding = 12;
+	return Math.max(
+		88,
+		scaledTextHeight + 2 * (ringStrokeWidth + innerVerticalPadding),
+	);
 }
 
 function getResponsiveAuthChoiceLayout(

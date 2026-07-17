@@ -31,16 +31,20 @@ describe("auth content-size layout", () => {
 		expect((layout.width ?? 0) * 6 + 8 * 5).toBeGreaterThan(280);
 	});
 
-	it("fits both maximum-size range badge lines with border clearance", () => {
+	it("keeps both maximum-size range badge lines inside the ring stroke", () => {
 		const fontScale = 3;
 		const scaledTextHeight = (36 + 15) * fontScale - 4;
+		const ringStrokeWidth = 4;
+		const innerVerticalPadding = 12;
 		const badgeSize = getRangeValueBadgeSize({
 			fontScale,
 			shouldStackInlineContent: true,
 		});
 
-		expect(badgeSize).toBe(165);
-		expect(badgeSize - scaledTextHeight).toBeGreaterThanOrEqual(16);
+		expect(badgeSize).toBe(181);
+		expect(badgeSize - scaledTextHeight).toBeGreaterThanOrEqual(
+			2 * (ringStrokeWidth + innerVerticalPadding),
+		);
 	});
 
 	it("keeps maximum-size auth copy readable while capping decorative branding", () => {
