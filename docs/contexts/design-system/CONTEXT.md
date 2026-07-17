@@ -28,10 +28,12 @@ All app switches must use `Switch` from `src/components/ui/switch`. Do not
 import or use `Switch` from `react-native`, and do not render Expo UI switches
 directly from app screens.
 
-The app `Switch` wraps Expo UI native controls with `Host matchContents`.
-Android uses the Jetpack Compose switch with explicit Dayova primary colors so
-Material You wallpaper colors cannot override the brand. iOS keeps the native
-SwiftUI toggle shape and applies Dayova primary through the SwiftUI tint modifier.
+The app `Switch` owns the platform-native control and its accessible switch
+semantics. Android uses React Native's platform switch with explicit Dayova
+colors and app-owned sizing; do not move it into an Expo UI Jetpack Compose
+`Host`, because Compose content is disposed before an outgoing native-stack
+screen finishes its pop transition. iOS keeps the native SwiftUI toggle shape
+and applies Dayova primary through the SwiftUI tint modifier.
 
 App screens that collect a date or time must use `DateTimePickerSheet` from
 `src/components/ui/date-time-picker-sheet`. Do not import the underlying Expo UI

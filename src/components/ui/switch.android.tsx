@@ -1,16 +1,10 @@
-import {
-	Switch as ComposeSwitch,
-	Host,
-	type SwitchColors,
-} from "@expo/ui/jetpack-compose";
-import { testID as testIDModifier } from "@expo/ui/jetpack-compose/modifiers";
-import { useMemo } from "react";
-import { View } from "react-native";
+import { Switch as NativeSwitch, View } from "react-native";
 import type { SwitchProps } from "~/components/ui/switch.types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 
 const DAYOVA_PRIMARY = DAYOVA_DESIGN_SYSTEM.colors.primary;
+const ANDROID_SWITCH_SCALE = 1.35;
 
 function Switch({
 	value,
@@ -19,25 +13,7 @@ function Switch({
 	testID,
 	accessibilityLabel,
 }: SwitchProps) {
-	const { colors, resolvedTheme } = useDayovaTheme();
-	const switchColors = useMemo(
-		() =>
-			({
-				checkedThumbColor: colors.surface,
-				checkedTrackColor: DAYOVA_PRIMARY,
-				checkedBorderColor: DAYOVA_PRIMARY,
-				uncheckedThumbColor: colors.secondaryText,
-				uncheckedTrackColor: colors.mutedSurface,
-				uncheckedBorderColor: colors.border,
-				disabledCheckedThumbColor: colors.surface,
-				disabledCheckedTrackColor: colors.primaryAccent,
-				disabledCheckedBorderColor: colors.primaryAccent,
-				disabledUncheckedThumbColor: colors.path3,
-				disabledUncheckedTrackColor: colors.mutedSurface,
-				disabledUncheckedBorderColor: colors.border,
-			}) satisfies SwitchColors,
-		[colors],
-	);
+	const { colors } = useDayovaTheme();
 
 	return (
 		<View
@@ -49,20 +25,32 @@ function Switch({
 			onAccessibilityAction={({ nativeEvent: { actionName } }) => {
 				if (actionName === "activate" && !disabled) onValueChange(!value);
 			}}
+			style={{
+				alignItems: "center",
+				height: 48,
+				justifyContent: "center",
+				width: 56,
+			}}
 		>
-			<Host
-				colorScheme={resolvedTheme}
-				matchContents
-				seedColor={DAYOVA_PRIMARY}
-			>
-				<ComposeSwitch
-					value={value}
-					enabled={!disabled}
-					onCheckedChange={disabled ? undefined : onValueChange}
-					colors={switchColors}
-					modifiers={testID ? [testIDModifier(testID)] : undefined}
-				/>
-			</Host>
+			<NativeSwitch
+				accessible={false}
+				disabled={disabled}
+				importantForAccessibility="no"
+				onValueChange={onValueChange}
+				style={{
+					transform: [
+						{ scaleX: ANDROID_SWITCH_SCALE },
+						{ scaleY: ANDROID_SWITCH_SCALE },
+					],
+				}}
+				testID={testID}
+				thumbColor={value ? colors.surface : colors.secondaryText}
+				trackColor={{
+					false: colors.mutedSurface,
+					true: disabled ? colors.primaryAccent : DAYOVA_PRIMARY,
+				}}
+				value={value}
+			/>
 		</View>
 	);
 }
