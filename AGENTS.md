@@ -40,6 +40,10 @@ Use a multi-context documentation layout with `CONTEXT-MAP.md` at the repo root;
 
 Matt Pocock skill updates require the repo's Codex and Linear compatibility overlay to be revalidated. See `docs/agents/matt-pocock-skills.md`.
 
+Expo skill updates must use the repository's composition command so Dayova's
+patch queue is checked and reapplied without loading a second runtime skill. See
+`docs/agents/expo-skills.md`.
+
 ### Video evidence
 
 When a Linear issue, bug report, or task contains a video or screen recording,

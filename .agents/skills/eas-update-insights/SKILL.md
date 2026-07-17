@@ -1,14 +1,15 @@
 ---
 name: eas-update-insights
-description: "Check the health of published EAS Updates: crash rates, install/launch counts, unique users, payload size, and the split between embedded and OTA users per channel. Use when the user asks how an update is performing, whether a rollout is healthy, how many users are on the embedded build vs OTA, or wants to gate CI on update health."
-version: 1.0.0
+description: "EAS service (paid). Check the health of published EAS Update: crash rates, install/launch counts, unique users, payload size, and the split between embedded and OTA users per channel. Use when the user asks how an update is performing, whether a rollout is healthy, how many users are on the embedded build vs OTA, or wants to gate CI on update health."
 license: MIT
 allowed-tools: "Bash(eas *)"
 ---
 
 # EAS Update Insights
 
-Query the health of published EAS Updates directly from the CLI: launches, failed launches, crash rates, unique users, payload size, the embedded-vs-OTA user split per channel, and the most popular updates per runtime version. The data is the same data that powers the update and channel detail pages on expo.dev; these commands expose it in the terminal in human and JSON form.
+> **EAS service - costs apply.** Insights cover updates published through EAS Update, a paid Expo Application Services product with free-tier limits. Update delivery and the data behind these commands count against your plan's EAS Update usage. Review https://expo.dev/pricing.
+
+Query the health of published EAS Update directly from the CLI: launches, failed launches, crash rates, unique users, payload size, the embedded-vs-OTA user split per channel, and the most popular updates per runtime version. The data is the same data that powers the update and channel detail pages on expo.dev; these commands expose it in the terminal in human and JSON form.
 
 ## When to use this skill
 
@@ -226,4 +227,3 @@ Human-readable group details plus 30 days of launches/failures per platform — 
 - **Fresh publishes** may show zeros for a short period while the metrics pipeline catches up.
 - **Installs are downloads, not launches**: the `installs` / "Launches" field counts users who downloaded the manifest and launch asset. A confirmed run only registers on the user's *next* update check (typically up to 24h later, depending on the app's update policy). So metrics lag the real-world state slightly.
 - **Crashes are self-reported**: `failedInstalls` / "Crashes" counts updates that errored during install/launch and were reported on the next update check. Crashes that don't trigger an update request (e.g. process kill before recovery) won't appear.
-

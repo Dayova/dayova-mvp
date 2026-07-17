@@ -1,0 +1,9 @@
+{
+  "overrides": [
+    {
+      "target": ".agents/skills/expo-native-ui/references/controls.md",
+      "source": "files/expo-native-ui/references/controls.md",
+      "upstreamSha256": "e63a7e92cac8a5d0ceb9ed5f05e19ea9cd4d865a8bea6ff8f8a82c74c77fa180"
+    }
+  ]
+}

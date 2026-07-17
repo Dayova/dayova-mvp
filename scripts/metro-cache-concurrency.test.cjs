@@ -8,9 +8,12 @@ const REQUEST_COUNT = MAX_CONCURRENT_FILE_READS * 4;
 
 function loadExpoFileStore() {
 	const expoPackage = require.resolve("expo/package.json");
-	const metroConfigPackage = require.resolve("@expo/metro-config/package.json", {
-		paths: [expoPackage],
-	});
+	const metroConfigPackage = require.resolve(
+		"@expo/metro-config/package.json",
+		{
+			paths: [expoPackage],
+		},
+	);
 	const metroConfigRoot = path.dirname(metroConfigPackage);
 	return require(path.join(metroConfigRoot, "build", "binary-file-store.js"))
 		.FileStore;
@@ -37,7 +40,9 @@ test("Expo's Metro file store bounds concurrent cache reads", async () => {
 	};
 
 	try {
-		const store = new FileStore({ root: path.join(process.cwd(), ".metro-test") });
+		const store = new FileStore({
+			root: path.join(process.cwd(), ".metro-test"),
+		});
 		const keys = Array.from({ length: REQUEST_COUNT }, (_, index) => {
 			const key = Buffer.alloc(32);
 			key.writeUInt32BE(index);

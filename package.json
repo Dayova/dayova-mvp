@@ -23,6 +23,7 @@
 		"format:check": "run-s format:biome:check format:tailwind:check",
 		"format:biome:check": "biome format .",
 		"format:tailwind:check": "biome lint . --only=nursery/useSortedClasses",
+		"skills:update:expo": "node scripts/update-expo-skills.mjs",
 		"test": "run-s test:unit test:ui",
 		"test:unit": "run-s test:unit:vitest test:unit:metro-cache",
 		"test:unit:vitest": "vitest run",
@@ -116,7 +117,8 @@
 		"typescript": "~6.0.3",
 		"typescript-eslint": "^8.59.1",
 		"vite": "^8.0.14",
-		"vitest": "^4.1.7"
+		"vitest": "^4.1.7",
+		"yaml": "^2.9.0"
 	},
 	"private": true,
 	"engines": {

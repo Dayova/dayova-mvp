@@ -15,6 +15,7 @@ export default defineConfig({
 			"convex/**/*.test.ts",
 			"src/**/*.test.ts",
 			"eslint/**/*.test.ts",
+			"tests/**/*.test.ts",
 		],
 	},
 });
