@@ -1,7 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
-import { ActivityIndicator, Platform, ScrollView, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
@@ -10,7 +10,7 @@ import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { SessionEditForm } from "~/features/learning-plans/learning-plan-ui";
 import type {
 	LearningPlanSnapshot,
@@ -29,6 +29,7 @@ import {
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 
 const reviewPath = (id: Id<"learningPlans">) =>
 	`/learning-plans/${id}/review` as const;
@@ -56,6 +57,7 @@ function LoadedSessionEditScreen({
 		),
 	);
 	const [editPhase, setEditPhase] = useState<SessionPhase>(session.phase);
+	const actionGateRef = useRef(createAsyncActionGate());
 
 	const closeScreen = useCallback(() => {
 		if (pickerTarget) {
@@ -79,15 +81,17 @@ function LoadedSessionEditScreen({
 		fallback: string,
 		task: () => Promise<void>,
 	) => {
-		setIsBusy(true);
-		setErrorMessage(null);
-		try {
-			await task();
-		} catch (error) {
-			setErrorMessage(getErrorMessage(error, fallback));
-		} finally {
-			setIsBusy(false);
-		}
+		await actionGateRef.current.run(async () => {
+			setIsBusy(true);
+			setErrorMessage(null);
+			try {
+				await task();
+			} catch (error) {
+				setErrorMessage(getErrorMessage(error, fallback));
+			} finally {
+				setIsBusy(false);
+			}
+		});
 	};
 
 	const saveEdit = async () => {
@@ -132,7 +136,6 @@ function LoadedSessionEditScreen({
 		event: DateTimePickerEvent,
 		selectedDate?: Date,
 	) => {
-		if (Platform.OS === "android") setPickerTarget(null);
 		if (event.type === "dismissed" || !selectedDate || !pickerTarget) return;
 
 		if (pickerTarget === "editDate")
@@ -190,7 +193,10 @@ function LoadedSessionEditScreen({
 					onChangeStart={() => setPickerTarget("editStart")}
 					onChangeEnd={() => setPickerTarget("editEnd")}
 					onChangePhase={setEditPhase}
-					onRemove={() => setIsDeleteVisible(true)}
+					onRemove={() => {
+						setErrorMessage(null);
+						setIsDeleteVisible(true);
+					}}
 					onSave={saveEdit}
 				/>
 				{errorMessage ? (
@@ -202,12 +208,16 @@ function LoadedSessionEditScreen({
 
 			<ConfirmationSheet
 				visible={isDeleteVisible}
-				onClose={() => setIsDeleteVisible(false)}
+				onClose={() => {
+					setErrorMessage(null);
+					setIsDeleteVisible(false);
+				}}
 				closeAccessibilityLabel="Entfernen-Dialog schließen"
 				title="Bist du dir sicher?"
 				description="Tippe auf Entfernen, wenn du diesen Lerntag wirklich löschen möchtest."
 				confirmLabel="Entfernen"
 				isBusy={isBusy}
+				errorMessage={isDeleteVisible ? errorMessage : null}
 				onConfirm={confirmDelete}
 			/>
 
@@ -224,7 +234,7 @@ export default function LearningPlanSessionEditScreen() {
 	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const sessionId = params.sessionId as Id<"learningPlanSessions"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 
 	const snapshot = (useQuery(

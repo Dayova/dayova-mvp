@@ -43,7 +43,10 @@ function buildDateTimePickerChangeEvent(
 	};
 }
 
-export { buildDateTimePickerChangeEvent };
+const shouldCloseDateTimePickerAfterChange = (platform: string) =>
+	platform === "android";
+
+export { buildDateTimePickerChangeEvent, shouldCloseDateTimePickerAfterChange };
 export type {
 	DateTimePickerChangeEvent,
 	DateTimePickerDisplay,

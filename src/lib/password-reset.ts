@@ -30,12 +30,35 @@ async function runClerkOperation(operation: Promise<ClerkOperationResult>) {
 	if (error) throw error;
 }
 
+const isUnknownIdentifierError = (error: unknown) => {
+	if (typeof error !== "object" || error === null || !("errors" in error)) {
+		return false;
+	}
+
+	const { errors } = error as { errors?: unknown };
+	return (
+		Array.isArray(errors) &&
+		errors.some(
+			(item) =>
+				typeof item === "object" &&
+				item !== null &&
+				"code" in item &&
+				item.code === "form_identifier_not_found",
+		)
+	);
+};
+
 async function startPasswordReset(signIn: PasswordResetSignIn, email: string) {
 	await runClerkOperation(signIn.reset());
-	await runClerkOperation(
-		signIn.create({ identifier: email.trim().toLowerCase() }),
-	);
+	const creation = await signIn.create({
+		identifier: email.trim().toLowerCase(),
+	});
+	if (isUnknownIdentifierError(creation.error)) {
+		return { status: "delivery_not_confirmed" as const };
+	}
+	if (creation.error) throw creation.error;
 	await runClerkOperation(signIn.resetPasswordEmailCode.sendCode());
+	return { status: "code_sent" as const };
 }
 
 async function verifyPasswordResetCode(
@@ -93,7 +116,9 @@ async function verifyPasswordResetSecondFactor(
 async function resendPasswordResetCode(
 	signIn: PasswordResetSignIn,
 	stage: PasswordResetCodeStage,
+	hasRemoteResetAttempt: boolean,
 ) {
+	if (stage === "reset_code" && !hasRemoteResetAttempt) return;
 	await runClerkOperation(
 		stage === "reset_code"
 			? signIn.resetPasswordEmailCode.sendCode()

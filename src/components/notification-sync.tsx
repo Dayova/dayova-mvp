@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AppState, Platform } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { addDays, getDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { getDeliveredNotificationInput } from "~/lib/delivered-notification";
 import { logDiagnosticError } from "~/lib/diagnostics";
@@ -44,7 +44,7 @@ const ensureNotificationChannel = async (
 
 export function NotificationSync() {
 	const router = useRouter();
-	const { user, isSessionLoading } = useAuth();
+	const { user, isSessionLoading } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
 	const recordDeliveredNotification = useMutation(

@@ -7,7 +7,7 @@ import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { QuizStep } from "~/features/learning-plans/quiz-step";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
@@ -33,7 +33,7 @@ export default function LearningPlanQuizScreen() {
 	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const questionIndex = parseQuestionIndex(params.questionIndex);
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const saveKnowledgeAnswer = useMutation(
 		api.learningPlans.saveKnowledgeAnswer,

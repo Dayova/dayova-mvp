@@ -15,7 +15,7 @@ import { Button } from "~/components/ui/button";
 import { Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import {
 	PlanningHintBanner,
 	SectionTitle,
@@ -64,7 +64,7 @@ export default function LearningPlanReviewScreen() {
 		replanRequest?: string;
 	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
 	const addSession = useMutation(api.learningPlans.addSession);

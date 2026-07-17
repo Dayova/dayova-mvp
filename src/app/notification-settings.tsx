@@ -1,6 +1,6 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Linking,
@@ -26,7 +26,8 @@ import { Switch } from "~/components/ui/switch";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { WarningBanner } from "~/components/ui/warning-banner";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
 import { goBackOrReplace } from "~/lib/navigation";
@@ -109,7 +110,12 @@ const SwitchRow = memo(function SwitchRow({
 			>
 				{label}
 			</Text>
-			<Switch value={value} disabled={disabled} onValueChange={onValueChange} />
+			<Switch
+				accessibilityLabel={label}
+				value={value}
+				disabled={disabled}
+				onValueChange={onValueChange}
+			/>
 		</View>
 	);
 });
@@ -135,7 +141,7 @@ function AlwaysOnBadge() {
 
 export default function NotificationSettingsScreen() {
 	const router = useRouter();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const updatePreferences = useMutation(api.notifications.updatePreferences);
 	const preferences = useQuery(
@@ -155,6 +161,8 @@ export default function NotificationSettingsScreen() {
 	const [showReminderOffsetSheet, setShowReminderOffsetSheet] = useState(false);
 	const [systemNotificationNotice, setSystemNotificationNotice] =
 		useState<SystemNotificationNotice | null>(null);
+	const [preferenceError, setPreferenceError] = useState<string | null>(null);
+	const actionGateRef = useRef(createAsyncActionGate());
 	const visiblePreferences = useMemo(
 		() =>
 			preferences
@@ -256,48 +264,81 @@ export default function NotificationSettingsScreen() {
 		[setNotificationPermissionStatus, update],
 	);
 
+	const runPreferenceAction = useCallback(
+		async (action: () => Promise<void>) => {
+			await actionGateRef.current.run(async () => {
+				setPreferenceError(null);
+				try {
+					await action();
+				} catch {
+					setPreferenceError(
+						"Die Einstellung konnte nicht gespeichert werden. Bitte prüfe deine Verbindung und versuche es erneut.",
+					);
+				}
+			});
+		},
+		[],
+	);
+
 	const handleDailyBriefingEnabledChange = useCallback(
-		(value: boolean) => void update({ dailyBriefingEnabled: value }),
-		[update],
+		(value: boolean) =>
+			void runPreferenceAction(() => update({ dailyBriefingEnabled: value })),
+		[runPreferenceAction, update],
 	);
 	const handleBeforeExamEnabledChange = useCallback(
-		(value: boolean) => void update({ beforeExamEnabled: value }),
-		[update],
+		(value: boolean) =>
+			void runPreferenceAction(() => update({ beforeExamEnabled: value })),
+		[runPreferenceAction, update],
 	);
 	const handleBeforeLearningTimeEnabledChange = useCallback(
-		(value: boolean) => void update({ beforeLearningTimeEnabled: value }),
-		[update],
+		(value: boolean) =>
+			void runPreferenceAction(() =>
+				update({ beforeLearningTimeEnabled: value }),
+			),
+		[runPreferenceAction, update],
 	);
 	const handleBeforeHomeworkWorkEnabledChange = useCallback(
-		(value: boolean) => void update({ beforeHomeworkWorkEnabled: value }),
-		[update],
+		(value: boolean) =>
+			void runPreferenceAction(() =>
+				update({ beforeHomeworkWorkEnabled: value }),
+			),
+		[runPreferenceAction, update],
 	);
 	const handleBeforeHomeworkDueEnabledChange = useCallback(
-		(value: boolean) => void update({ beforeHomeworkDueEnabled: value }),
-		[update],
+		(value: boolean) =>
+			void runPreferenceAction(() =>
+				update({ beforeHomeworkDueEnabled: value }),
+			),
+		[runPreferenceAction, update],
 	);
 	const handleForgottenEventEnabledChange = useCallback(
-		(value: boolean) => void update({ forgottenEventEnabled: value }),
-		[update],
+		(value: boolean) =>
+			void runPreferenceAction(() => update({ forgottenEventEnabled: value })),
+		[runPreferenceAction, update],
 	);
 
 	const updateSystemNotificationsFromSwitch = useCallback(
-		(value: boolean) => void updateSystemNotifications(value),
-		[updateSystemNotifications],
+		(value: boolean) =>
+			void runPreferenceAction(() => updateSystemNotifications(value)),
+		[runPreferenceAction, updateSystemNotifications],
 	);
 
 	const updateBriefingTime = useCallback(
 		(selectedDate: Date) => {
-			void update({ dailyBriefingTime: formatTime(selectedDate) });
+			void runPreferenceAction(() =>
+				update({ dailyBriefingTime: formatTime(selectedDate) }),
+			);
 		},
-		[update],
+		[runPreferenceAction, update],
 	);
 
 	const updateReminderOffset = useCallback(
 		(minutes: number) => {
-			void update({ reminderOffsetMinutes: minutes });
+			void runPreferenceAction(() =>
+				update({ reminderOffsetMinutes: minutes }),
+			);
 		},
-		[update],
+		[runPreferenceAction, update],
 	);
 
 	const openBriefingTimePicker = useCallback(() => {
@@ -326,12 +367,12 @@ export default function NotificationSettingsScreen() {
 
 	const enablePushFromInfo = useCallback(() => {
 		closeDeliveryInfo();
-		void updateSystemNotifications(true);
-	}, [closeDeliveryInfo, updateSystemNotifications]);
+		void runPreferenceAction(() => updateSystemNotifications(true));
+	}, [closeDeliveryInfo, runPreferenceAction, updateSystemNotifications]);
 
 	const handleBriefingTimeChange = useCallback(
 		(event: { type: "set" | "dismissed" }, selectedDate?: Date) => {
-			if (Platform.OS === "android" || event.type === "dismissed") {
+			if (event.type === "dismissed") {
 				closeBriefingTimePicker();
 			}
 			if (event.type === "dismissed") return;
@@ -360,35 +401,46 @@ export default function NotificationSettingsScreen() {
 		pushDeliveryState.status === "active" ||
 		(pushDeliveryState.status === "checking" &&
 			(preferencesForRender?.systemNotificationsEnabled ?? false));
+	const visibleSystemNotificationNotice =
+		systemNotificationNotice === notificationPermissionStatus
+			? systemNotificationNotice
+			: null;
 
 	return (
 		<Screen>
 			<ThemedStatusBar />
 			<ScreenScroll topPadding={72} bottomPadding={120} horizontalPadding={24}>
 				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
-				{systemNotificationNotice ? (
+				{visibleSystemNotificationNotice ? (
 					<WarningBanner
 						className="mb-6"
 						title={
-							systemNotificationNotice === "denied"
+							visibleSystemNotificationNotice === "denied"
 								? "Push-Mitteilungen sind deaktiviert"
 								: "Mitteilungen noch nicht bereit"
 						}
 						description={
-							systemNotificationNotice === "denied"
+							visibleSystemNotificationNotice === "denied"
 								? "Aktiviere Mitteilungen in den Systemeinstellungen, um sie auch außerhalb von Dayova zu erhalten."
 								: "Bitte baue den iOS/Android Dev Client einmal neu, damit Push-Mitteilungen verfügbar sind."
 						}
 						ctaLabel={
-							systemNotificationNotice === "denied"
+							visibleSystemNotificationNotice === "denied"
 								? "Einstellungen"
 								: undefined
 						}
 						onPressCta={
-							systemNotificationNotice === "denied"
+							visibleSystemNotificationNotice === "denied"
 								? () => void Linking.openSettings()
 								: undefined
 						}
+					/>
+				) : null}
+				{preferenceError ? (
+					<WarningBanner
+						className="mb-6"
+						title="Einstellung nicht gespeichert"
+						description={preferenceError}
 					/>
 				) : null}
 
@@ -446,6 +498,7 @@ export default function NotificationSettingsScreen() {
 										</Text>
 									</View>
 									<Switch
+										accessibilityLabel="Push-Mitteilungen"
 										value={pushSwitchValue}
 										disabled={controlState.systemNotificationsDisabled}
 										onValueChange={updateSystemNotificationsFromSwitch}

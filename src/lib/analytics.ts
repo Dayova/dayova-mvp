@@ -2,7 +2,7 @@ import { useMutation } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import { useCallback } from "react";
 import { api } from "#convex/_generated/api";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import {
 	captureValidationEvent,
 	type ValidationEventName,
@@ -14,7 +14,7 @@ import type { AnalyticsProperties } from "~/lib/analytics-core";
 
 export function useValidationAnalytics() {
 	const posthog = usePostHog();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const markActivity = useMutation(api.validationAnalytics.markActivity);
 	const clerkId = user?.clerkId;
 

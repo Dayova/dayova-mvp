@@ -36,7 +36,7 @@ import {
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace } from "~/lib/navigation";
@@ -425,7 +425,7 @@ function NotificationCard({
 
 export default function NotificationsScreen() {
 	const router = useRouter();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const [category, setCategory] = useState<InboxCategory>("all");
 	const { notificationPermissionStatus } = useNotificationPermissionStatus();

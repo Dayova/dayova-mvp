@@ -13,6 +13,7 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import { api } from "#convex/_generated/api";
@@ -22,9 +23,12 @@ import {
 	definedAnalyticsProperties,
 	isPostHogConfigured,
 } from "~/lib/analytics-core";
-import { setRememberSessionPersistence } from "~/lib/auth-token-cache";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import {
+	completeForcedPasswordReset as submitForcedPasswordReset,
+	type ForcedPasswordResetUser,
+} from "~/lib/forced-password-reset";
 import {
 	changePassword as updateAccountPassword,
 	type PasswordChangeInput,
@@ -38,6 +42,10 @@ import {
 	verifyPasswordResetSecondFactor as verifyPasswordResetSecondFactorAttempt,
 	type PasswordResetCodeStage,
 } from "~/lib/password-reset";
+import {
+	reverifyPasswordFactor,
+	type PasswordReverificationSession,
+} from "~/lib/password-reverification";
 
 type LoginInput = {
 	email: string;
@@ -92,18 +100,19 @@ type PendingVerification = {
 
 type PendingLoginStage = "first_factor" | "second_factor";
 
-interface AuthContextType {
+interface AuthSessionContextType {
 	user: AuthUser | null;
-	isLoading: boolean;
 	isSessionLoading: boolean;
 	isConvexAuthenticated: boolean;
 	isPostAuthSyncing: boolean;
+	pendingSessionTask: string | null;
+}
+
+interface AuthFlowContextType {
+	isLoading: boolean;
 	pendingVerification: PendingVerification | null;
 	login: (input: LoginInput) => Promise<AuthFlowResult>;
 	register: (input: RegisterInput) => Promise<AuthFlowResult>;
-	updateProfile: (input: UpdateProfileInput) => Promise<ProfileUpdateResult>;
-	verifyProfileEmailCode: (code: string) => Promise<void>;
-	changePassword: (input: PasswordChangeInput) => Promise<void>;
 	verifyEmailCode: (code: string) => Promise<AuthFlowResult>;
 	resendVerification: () => Promise<void>;
 	startPasswordReset: (email: string) => Promise<void>;
@@ -114,6 +123,14 @@ interface AuthContextType {
 	verifyPasswordResetSecondFactor: (code: string) => Promise<void>;
 	resendPasswordResetCode: (stage: PasswordResetCodeStage) => Promise<void>;
 	cancelPasswordReset: () => Promise<void>;
+}
+
+interface AccountActionsContextType {
+	isLoading: boolean;
+	updateProfile: (input: UpdateProfileInput) => Promise<ProfileUpdateResult>;
+	verifyProfileEmailCode: (code: string) => Promise<void>;
+	changePassword: (input: PasswordChangeInput) => Promise<void>;
+	completeForcedPasswordReset: (password: string) => Promise<void>;
 	logout: () => Promise<void>;
 }
 
@@ -135,7 +152,15 @@ type PendingProfileEmail = {
 	profile: UpdateProfileInput;
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthSessionContext = createContext<AuthSessionContextType | undefined>(
+	undefined,
+);
+const AuthFlowContext = createContext<AuthFlowContextType | undefined>(
+	undefined,
+);
+const AccountActionsContext = createContext<
+	AccountActionsContextType | undefined
+>(undefined);
 
 const getMetadataString = (metadata: Record<string, unknown>, key: string) =>
 	typeof metadata[key] === "string" ? metadata[key] : undefined;
@@ -408,6 +433,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		hasAnswers,
 	} = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const passwordResetHasRemoteAttemptRef = useRef(false);
 	const [pendingVerification, setPendingVerification] =
 		useState<PendingVerification | null>(null);
 	const [pendingLoginStage, setPendingLoginStage] =
@@ -1012,8 +1038,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			try {
 				setPendingVerification(null);
 				setPendingLoginStage(null);
-				await beginPasswordReset(getPasswordResetSignIn(), email);
+				const result = await beginPasswordReset(
+					getPasswordResetSignIn(),
+					email,
+				);
+				passwordResetHasRemoteAttemptRef.current =
+					result.status === "code_sent";
 			} catch (error) {
+				passwordResetHasRemoteAttemptRef.current = false;
 				logDiagnosticError("Failed to start password recovery.", error, {
 					source: "auth.passwordReset.start",
 					level: "warn",
@@ -1072,7 +1104,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const resendPasswordResetCode = async (stage: PasswordResetCodeStage) =>
 		withSubmitting(async () => {
 			try {
-				await resendPasswordResetAttempt(getPasswordResetSignIn(), stage);
+				await resendPasswordResetAttempt(
+					getPasswordResetSignIn(),
+					stage,
+					passwordResetHasRemoteAttemptRef.current,
+				);
 			} catch (error) {
 				throw new Error(
 					getClerkErrorMessage(
@@ -1084,22 +1120,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		});
 
 	const cancelPasswordReset = async () => {
-		if (!passwordResetSignIn) return;
-		await cancelPasswordResetAttempt(passwordResetSignIn);
+		try {
+			if (!passwordResetSignIn) return;
+			await cancelPasswordResetAttempt(passwordResetSignIn);
+		} finally {
+			passwordResetHasRemoteAttemptRef.current = false;
+		}
 	};
 
 	const changePassword = async (input: PasswordChangeInput) =>
 		withSubmitting(async () => {
-			if (!clerkUser) {
+			if (!clerkUser || !clerk.session) {
 				throw new Error(
 					"Du musst angemeldet sein, um dein Passwort zu ändern.",
 				);
 			}
 
 			try {
+				await reverifyPasswordFactor(
+					clerk.session as PasswordReverificationSession,
+					input.currentPassword,
+				);
 				await updateAccountPassword(clerkUser, input);
 			} catch (error) {
 				throw new Error(getPasswordChangeErrorMessage(error));
+			}
+		});
+
+	const completeForcedPasswordReset = async (password: string) =>
+		withSubmitting(async () => {
+			const taskUser = clerk.session?.user ?? clerkUser;
+			if (!taskUser) {
+				throw new Error(
+					"Die Passwort-Aufgabe ist nicht mehr verfügbar. Bitte melde dich erneut an.",
+				);
+			}
+
+			try {
+				await submitForcedPasswordReset(
+					taskUser as ForcedPasswordResetUser,
+					password,
+				);
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"Das neue Passwort konnte nicht gespeichert werden.",
+					),
+				);
 			}
 		});
 
@@ -1107,47 +1175,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		setPendingVerification(null);
 		setPendingLoginStage(null);
 		setPendingProfile(null);
+		setPendingProfileEmail(null);
 		setSyncedClerkUserId(null);
+		passwordResetHasRemoteAttemptRef.current = false;
 		await clerk.signOut();
-		await setRememberSessionPersistence(true);
 	};
 
 	const isSessionLoading = !clerk.loaded || !isUserLoaded;
 	const isLoading = isSessionLoading || isSubmitting;
+	const pendingSessionTask = clerk.session?.currentTask?.key ?? null;
 
 	return (
-		<AuthContext.Provider
+		<AuthSessionContext.Provider
 			value={{
 				user,
-				isLoading,
 				isSessionLoading,
 				isConvexAuthenticated,
 				isPostAuthSyncing:
 					Boolean(user) && (isProfileSyncing || isOnboardingAnswersSyncing),
-				pendingVerification,
-				login,
-				register,
-				updateProfile,
-				verifyProfileEmailCode,
-				changePassword,
-				verifyEmailCode,
-				resendVerification,
-				startPasswordReset,
-				verifyPasswordResetCode,
-				completePasswordReset,
-				verifyPasswordResetSecondFactor,
-				resendPasswordResetCode,
-				cancelPasswordReset,
-				logout,
+				pendingSessionTask,
 			}}
 		>
-			{children}
-		</AuthContext.Provider>
+			<AuthFlowContext.Provider
+				value={{
+					isLoading,
+					pendingVerification,
+					login,
+					register,
+					verifyEmailCode,
+					resendVerification,
+					startPasswordReset,
+					verifyPasswordResetCode,
+					completePasswordReset,
+					verifyPasswordResetSecondFactor,
+					resendPasswordResetCode,
+					cancelPasswordReset,
+				}}
+			>
+				<AccountActionsContext.Provider
+					value={{
+						isLoading,
+						updateProfile,
+						verifyProfileEmailCode,
+						changePassword,
+						completeForcedPasswordReset,
+						logout,
+					}}
+				>
+					{children}
+				</AccountActionsContext.Provider>
+			</AuthFlowContext.Provider>
+		</AuthSessionContext.Provider>
 	);
 };
 
-export const useAuth = () => {
-	const context = useContext(AuthContext);
-	if (!context) throw new Error("useAuth must be used within an AuthProvider");
+export const useAuthSession = () => {
+	const context = useContext(AuthSessionContext);
+	if (!context) {
+		throw new Error("useAuthSession must be used within an AuthProvider");
+	}
+	return context;
+};
+
+export const useAuthFlow = () => {
+	const context = useContext(AuthFlowContext);
+	if (!context) {
+		throw new Error("useAuthFlow must be used within an AuthProvider");
+	}
+	return context;
+};
+
+export const useAccountActions = () => {
+	const context = useContext(AccountActionsContext);
+	if (!context) {
+		throw new Error("useAccountActions must be used within an AuthProvider");
+	}
 	return context;
 };

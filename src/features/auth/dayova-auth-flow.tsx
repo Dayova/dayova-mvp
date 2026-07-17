@@ -73,7 +73,6 @@ import {
 	Bulb,
 	Calculator,
 	CalendarDays,
-	Check,
 	Chemistry,
 	ChevronDown,
 	ClipboardEdit,
@@ -98,9 +97,10 @@ import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-vie
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthFlow, useAuthSession } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
-import { setRememberSessionPersistence } from "~/lib/auth-token-cache";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
+import { PASSWORD_RESET_SUCCESS_PATH } from "~/lib/auth-routing";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useBackIntent } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
@@ -811,15 +811,9 @@ export function OnboardingScreen() {
 	const [error, setError] = useState<string | null>(null);
 	const [verificationCode, setVerificationCode] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
-	const {
-		register,
-		verifyEmailCode,
-		resendVerification,
-		isLoading,
-		user,
-		isConvexAuthenticated,
-		isPostAuthSyncing,
-	} = useAuth();
+	const { register, verifyEmailCode, resendVerification, isLoading } =
+		useAuthFlow();
+	const { user, isConvexAuthenticated, isPostAuthSyncing } = useAuthSession();
 	const { answers, setAnswer, hasAnswers } = useOnboarding();
 	const activeStep = FLOW_STEPS[activeIndex];
 	const textInputRef = useRef<TextInput | null>(null);
@@ -1618,7 +1612,6 @@ export function LoginScreen() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
-	const [rememberSession, setRememberSession] = useState(true);
 	const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [verificationCode, setVerificationCode] = useState("");
@@ -1626,13 +1619,14 @@ export function LoginScreen() {
 	const [passwordResetMode, setPasswordResetMode] = useState(false);
 	const verificationInputRef = useRef<TextInput | null>(null);
 	const submittedRef = useRef(false);
+	const loginActionGateRef = useRef(createAsyncActionGate());
 	const {
 		login,
 		verifyEmailCode,
 		resendVerification,
 		isLoading,
 		pendingVerification,
-	} = useAuth();
+	} = useAuthFlow();
 
 	useEffect(() => {
 		if (!verificationMode) return;
@@ -1654,35 +1648,30 @@ export function LoginScreen() {
 			setError("Bitte gib dein Passwort ein.");
 			return;
 		}
-		if (isSubmittingLogin) return;
-
-		setIsSubmittingLogin(true);
-		try {
-			await setRememberSessionPersistence(rememberSession);
-			const result = await login({
-				email: email.trim().toLowerCase(),
-				password: normalizedPassword,
-			});
-			if (result.status === "complete") {
-				router.replace("/home");
-				return;
+		await loginActionGateRef.current.run(async () => {
+			setIsSubmittingLogin(true);
+			try {
+				const result = await login({
+					email: email.trim().toLowerCase(),
+					password: normalizedPassword,
+				});
+				if (result.status === "complete") {
+					router.replace("/home");
+					return;
+				}
+				setVerificationMode(true);
+				setVerificationCode("");
+				submittedRef.current = false;
+			} catch (loginError) {
+				setError(
+					loginError instanceof Error
+						? loginError.message
+						: "Anmeldung fehlgeschlagen.",
+				);
+			} finally {
+				setIsSubmittingLogin(false);
 			}
-			setVerificationMode(true);
-			setVerificationCode("");
-			submittedRef.current = false;
-		} catch (loginError) {
-			setError(
-				loginError instanceof Error
-					? loginError.message
-					: "Anmeldung fehlgeschlagen.",
-			);
-		} finally {
-			setIsSubmittingLogin(false);
-		}
-	};
-
-	const toggleRememberSession = () => {
-		setRememberSession((current) => !current);
+		});
 	};
 
 	const submitLoginCode = async (code: string) => {
@@ -1835,33 +1824,10 @@ export function LoginScreen() {
 							/>
 						</View>
 
-						<View className="mt-5 w-full flex-row items-center justify-between">
+						<View className="mt-5 w-full flex-row justify-end">
 							<Pressable
-								accessibilityRole="checkbox"
-								accessibilityState={{
-									checked: rememberSession,
-									disabled: isSubmittingLogin,
-								}}
-								disabled={isSubmittingLogin}
-								hitSlop={8}
-								onPress={toggleRememberSession}
-								className="flex-row items-center gap-2"
-							>
-								<View
-									className={cn(
-										"h-4 w-4 items-center justify-center rounded-full border border-primary",
-										rememberSession ? "bg-primary" : "bg-surface",
-									)}
-								>
-									{rememberSession ? (
-										<Check size={12} color={COLORS.surface} strokeWidth={3} />
-									) : null}
-								</View>
-								<Text className="font-poppins text-body-4 text-text">
-									Angemeldet bleiben
-								</Text>
-							</Pressable>
-							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel="Passwort vergessen"
 								disabled={isLoading || isSubmittingLogin}
 								accessibilityState={{
 									disabled: isLoading || isSubmittingLogin,
@@ -1955,7 +1921,7 @@ function PasswordResetScreen({
 		verifyPasswordResetSecondFactor,
 		resendPasswordResetCode,
 		cancelPasswordReset,
-	} = useAuth();
+	} = useAuthFlow();
 
 	useEffect(() => {
 		if (stage !== "reset_code" && stage !== "second_factor") return;
@@ -1968,16 +1934,24 @@ function PasswordResetScreen({
 		Keyboard.dismiss();
 		setError(null);
 		setNotice(null);
-		void cancelPasswordReset().catch(() => undefined);
+		requestInFlightRef.current = true;
+		void cancelPasswordReset()
+			.then(() => {
+				if (stage === "reset_code") {
+					setStage("email");
+					setCode("");
+					codeSubmittedRef.current = false;
+					return;
+				}
 
-		if (stage === "reset_code") {
-			setStage("email");
-			setCode("");
-			codeSubmittedRef.current = false;
-			return true;
-		}
-
-		onCancel();
+				onCancel();
+			})
+			.catch(() => {
+				setError("Die Passwortzurücksetzung konnte nicht abgebrochen werden.");
+			})
+			.finally(() => {
+				requestInFlightRef.current = false;
+			});
 		return true;
 	}, [cancelPasswordReset, isLoading, onCancel, stage]);
 
@@ -2028,7 +2002,7 @@ function PasswordResetScreen({
 		try {
 			if (stage === "second_factor") {
 				await verifyPasswordResetSecondFactor(submittedCode);
-				router.replace("/home");
+				router.replace(PASSWORD_RESET_SUCCESS_PATH);
 				return;
 			}
 
@@ -2069,7 +2043,7 @@ function PasswordResetScreen({
 		try {
 			const result = await completePasswordReset(normalizedPassword);
 			if (result.status === "complete") {
-				router.replace("/home");
+				router.replace(PASSWORD_RESET_SUCCESS_PATH);
 				return;
 			}
 
@@ -2102,7 +2076,9 @@ function PasswordResetScreen({
 		requestInFlightRef.current = true;
 		try {
 			await resendPasswordResetCode(stage);
-			setNotice("Wir haben dir einen neuen Code per E-Mail gesendet.");
+			setNotice(
+				"Falls ein Konto existiert, haben wir einen neuen Code per E-Mail gesendet.",
+			);
 		} catch (resendError) {
 			setError(
 				resendError instanceof Error
@@ -2124,9 +2100,9 @@ function PasswordResetScreen({
 					: "Prüfe deine E-Mail";
 	const subtitle =
 		stage === "email"
-			? "Gib die E-Mail-Adresse deines Kontos ein. Wir senden dir einen sechsstelligen Code."
+			? "Gib deine E-Mail-Adresse ein. Falls ein Konto existiert, senden wir dir einen sechsstelligen Code."
 			: stage === "reset_code"
-				? `Wir haben einen sechsstelligen Code an ${email} gesendet.`
+				? `Falls ein Konto für ${email} existiert, haben wir einen sechsstelligen Code gesendet.`
 				: stage === "new_password"
 					? "Wähle ein neues Passwort mit mindestens 8 Zeichen."
 					: "Gib den zusätzlichen Sicherheitscode aus deiner E-Mail ein.";
@@ -3706,6 +3682,9 @@ function GradientPillButton({
 }) {
 	return (
 		<Pressable
+			accessibilityLabel={label}
+			accessibilityRole="button"
+			accessibilityState={{ disabled }}
 			disabled={disabled}
 			onPress={onPress}
 			style={{

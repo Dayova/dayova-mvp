@@ -3,11 +3,11 @@ import { router } from "expo-router";
 import { TouchableOpacity, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import { Bell } from "~/components/ui/icon";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { useDayovaTheme } from "~/lib/theme";
 
 export function NotificationButton() {
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { colors } = useDayovaTheme();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const unreadSummary = useQuery(

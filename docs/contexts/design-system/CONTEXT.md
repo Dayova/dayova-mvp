@@ -7,7 +7,7 @@ Confluence is the current cross-functional documentation hub. Keep this file foc
 ## Current Design Delivery Model
 
 Effective 14 July 2026, existing Figma work is a visual reference and baseline,
-not a required approval, sequencing, or release gate. Jakob Roessner and Fabius
+not a required approval, sequencing, or release gate. Jakob Rössner and Fabius
 Schurig may make product-design, UI, and UX decisions and implement them
 directly. Record deliberate changes in Linear and update the app's semantic
 tokens and repository guidance; any later Figma reconciliation is non-blocking

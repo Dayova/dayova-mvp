@@ -13,7 +13,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { SESSION_EXECUTION_STATUS_LABEL } from "~/features/learning-plans/constants";
 import { addDays, getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
@@ -95,7 +95,7 @@ function AttributionButton({
 
 export default function ValidationOverviewScreen() {
 	const router = useRouter();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const [dayOffset, setDayOffset] = useState(0);
 	const [pendingSessionId, setPendingSessionId] =

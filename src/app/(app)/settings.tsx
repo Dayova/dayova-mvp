@@ -14,7 +14,7 @@ import {
 import { ListRow } from "~/components/ui/list-row";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAccountActions } from "~/context/AuthContext";
 import { useDayovaTheme } from "~/lib/theme";
 import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
 import { cn } from "~/lib/utils";
@@ -106,7 +106,7 @@ function ThemePreferenceToggle({
 
 export default function SettingsScreen() {
 	const router = useRouter();
-	const { logout } = useAuth();
+	const { logout } = useAccountActions();
 	const { preference, setPreference } = useDayovaTheme();
 	const { height } = useWindowDimensions();
 	const contentMinHeight = Math.max(height - 268, 360);

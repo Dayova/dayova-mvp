@@ -18,7 +18,7 @@ import {
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
 
@@ -141,7 +141,7 @@ function NotesCard({ value }: { value?: string }) {
 export default function EntryDetailScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const deleteDayEntry = useMutation(api.dayEntries.remove);
 	const setDayEntryCompleted = useMutation(api.dayEntries.setCompleted);

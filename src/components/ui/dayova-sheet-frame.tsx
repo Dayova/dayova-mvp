@@ -17,7 +17,8 @@ import { cn } from "~/lib/utils";
 
 const MAX_SHEET_WIDTH = 560;
 
-type DayovaSheetSize = "content" | "medium" | "large";
+type DayovaSheetSize = "content" | "medium";
+type DayovaSheetPhase = "closed" | "opening" | "closing";
 
 type DayovaSheetFrameProps = {
 	visible: boolean;
@@ -33,9 +34,6 @@ type DayovaSheetFrameProps = {
 	scrollable?: boolean;
 	closeAccessibilityLabel?: string;
 	contentClassName?: string;
-	headerClassName?: string;
-	footerClassName?: string;
-	maxWidth?: number;
 };
 
 function DayovaSheetFrame({
@@ -52,46 +50,44 @@ function DayovaSheetFrame({
 	scrollable = false,
 	closeAccessibilityLabel = "Dialog schließen",
 	contentClassName,
-	headerClassName,
-	footerClassName,
-	maxWidth = MAX_SHEET_WIDTH,
 }: DayovaSheetFrameProps) {
 	const sheetRef = useRef<BottomSheetModal>(null);
-	const visibleRef = useRef(visible);
-	const wasPresentedRef = useRef(false);
+	const desiredVisibleRef = useRef(visible);
+	const phaseRef = useRef<DayovaSheetPhase>("closed");
 	const insets = useSafeAreaInsets();
 	const { colors, isDark } = useDayovaTheme();
 	const { height: windowHeight, width: windowWidth } = useWindowDimensions();
-	const sheetWidth = Math.min(windowWidth, maxWidth);
+	const sheetWidth = Math.min(windowWidth, MAX_SHEET_WIDTH);
 	const maximumHeight = Math.max(
 		240,
 		Math.min(windowHeight - insets.top - 20, 720),
 	);
-	const fixedHeight =
-		size === "large"
-			? Math.min(maximumHeight, windowHeight * 0.86)
-			: Math.min(maximumHeight, windowHeight * 0.68, 560);
+	const fixedHeight = Math.min(maximumHeight, windowHeight * 0.68, 560);
 	const snapPoints = useMemo(
 		() => (size === "content" ? undefined : [fixedHeight]),
 		[fixedHeight, size],
 	);
 
-	useEffect(() => {
-		visibleRef.current = visible;
-	}, [visible]);
+	const presentIfDesired = useCallback(() => {
+		if (!desiredVisibleRef.current || phaseRef.current !== "closed") return;
+		phaseRef.current = "opening";
+		sheetRef.current?.present();
+	}, []);
 
 	useEffect(() => {
+		desiredVisibleRef.current = visible;
 		if (visible) {
-			const frame = requestAnimationFrame(() => {
-				wasPresentedRef.current = true;
-				sheetRef.current?.present();
-			});
+			if (phaseRef.current === "closing") return;
+			const frame = requestAnimationFrame(presentIfDesired);
 
 			return () => cancelAnimationFrame(frame);
 		}
 
-		if (wasPresentedRef.current) sheetRef.current?.dismiss();
-	}, [visible]);
+		if (phaseRef.current === "opening") {
+			phaseRef.current = "closing";
+			sheetRef.current?.dismiss();
+		}
+	}, [presentIfDesired, visible]);
 
 	const dismiss = useCallback(() => {
 		if (!dismissible) return;
@@ -99,10 +95,18 @@ function DayovaSheetFrame({
 	}, [dismissible]);
 
 	const handleDismiss = useCallback(() => {
-		wasPresentedRef.current = false;
-		if (visibleRef.current) onClose();
+		const wasControlledDismissal = phaseRef.current === "closing";
+		phaseRef.current = "closed";
 		onDismiss?.();
-	}, [onClose, onDismiss]);
+
+		if (!desiredVisibleRef.current) return;
+		if (!wasControlledDismissal) {
+			onClose();
+			return;
+		}
+
+		requestAnimationFrame(presentIfDesired);
+	}, [onClose, onDismiss, presentIfDesired]);
 
 	const renderBackdrop = useCallback(
 		(props: BottomSheetBackdropProps) => (
@@ -128,7 +132,7 @@ function DayovaSheetFrame({
 			style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}
 		>
 			{hasHeader ? (
-				<View className={cn("mb-6 gap-3", headerClassName)}>
+				<View className="mb-6 gap-3">
 					<View className="min-h-10 flex-row items-start gap-4">
 						{title ? (
 							<Text className="flex-1 pt-1 font-poppins font-semibold text-body-1 text-text">
@@ -162,9 +166,7 @@ function DayovaSheetFrame({
 				</View>
 			) : null}
 			{footer ? (
-				<View className={cn(children ? "mt-6" : "", footerClassName)}>
-					{footer}
-				</View>
+				<View className={children ? "mt-6" : undefined}>{footer}</View>
 			) : null}
 		</View>
 	);

@@ -3,4 +3,5 @@ export type SwitchProps = {
 	onValueChange: (value: boolean) => void;
 	disabled?: boolean;
 	testID?: string;
+	accessibilityLabel?: string;
 };

@@ -1,6 +1,6 @@
 import type * as ExpoNotifications from "expo-notifications";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 export type NotificationPermissionStatus =
 	| "checking"
@@ -30,34 +30,49 @@ export const getNotificationPermissionStatus = (
 	hasNotificationPermission(notifications, permissions) ? "granted" : "denied";
 
 export function useNotificationPermissionStatus() {
-	const [notificationPermissionStatus, setNotificationPermissionStatus] =
+	const [notificationPermissionStatus, setPermissionStatusState] =
 		useState<NotificationPermissionStatus>("checking");
+	const requestVersionRef = useRef(0);
+	const setNotificationPermissionStatus = useCallback(
+		(status: NotificationPermissionStatus) => {
+			requestVersionRef.current += 1;
+			setPermissionStatusState(status);
+		},
+		[],
+	);
 
 	useFocusEffect(
 		useCallback(() => {
 			const notifications = getNotificationsModule();
 			if (!notifications) {
-				setNotificationPermissionStatus("unavailable");
+				setPermissionStatusState("unavailable");
 				return;
 			}
 
 			let isMounted = true;
-			setNotificationPermissionStatus("checking");
+			const requestVersion = requestVersionRef.current + 1;
+			requestVersionRef.current = requestVersion;
+			setPermissionStatusState("checking");
 			void notifications
 				.getPermissionsAsync()
 				.then((permissions) => {
-					if (!isMounted) return;
-					setNotificationPermissionStatus(
+					if (!isMounted || requestVersionRef.current !== requestVersion)
+						return;
+					setPermissionStatusState(
 						getNotificationPermissionStatus(notifications, permissions),
 					);
 				})
 				.catch(() => {
-					if (!isMounted) return;
-					setNotificationPermissionStatus("unavailable");
+					if (!isMounted || requestVersionRef.current !== requestVersion)
+						return;
+					setPermissionStatusState("unavailable");
 				});
 
 			return () => {
 				isMounted = false;
+				if (requestVersionRef.current === requestVersion) {
+					requestVersionRef.current += 1;
+				}
 			};
 		}, []),
 	);

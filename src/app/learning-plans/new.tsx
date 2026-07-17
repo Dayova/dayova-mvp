@@ -22,7 +22,7 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { WarningBanner } from "~/components/ui/warning-banner";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import {
 	MaterialCard,
 	SectionTitle,
@@ -78,7 +78,7 @@ export default function NewLearningPlanScreen() {
 		topicDescription?: string;
 		errorMessage?: string;
 	}>();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const startPlan = useMutation(api.learningPlans.start);
@@ -452,10 +452,7 @@ export default function NewLearningPlanScreen() {
 	const runPendingUploadAction = () => {
 		const action = pendingUploadActionRef.current;
 		pendingUploadActionRef.current = null;
-		if (!action) {
-			setOpeningUploadAction(null);
-			return;
-		}
+		if (!action) return;
 
 		runUploadAction(action);
 	};

@@ -69,7 +69,9 @@ describe("password reset flow", () => {
 	test("starts a fresh reset attempt and sends a code to the normalized email", async () => {
 		const mock = createSignInMock();
 
-		await startPasswordReset(mock.signIn, "  LERNER@EXAMPLE.DE ");
+		await expect(
+			startPasswordReset(mock.signIn, "  LERNER@EXAMPLE.DE "),
+		).resolves.toEqual({ status: "code_sent" });
 
 		expect(mock.reset).toHaveBeenCalledOnce();
 		expect(mock.create).toHaveBeenCalledWith({
@@ -82,6 +84,20 @@ describe("password reset flow", () => {
 		expect(mock.create.mock.invocationCallOrder[0]).toBeLessThan(
 			mock.sendResetCode.mock.invocationCallOrder[0] ?? 0,
 		);
+	});
+
+	test("does not reveal whether an unknown account exists", async () => {
+		const mock = createSignInMock();
+		mock.create.mockResolvedValueOnce({
+			error: {
+				errors: [{ code: "form_identifier_not_found" }],
+			},
+		});
+
+		await expect(
+			startPasswordReset(mock.signIn, "unknown@example.de"),
+		).resolves.toEqual({ status: "delivery_not_confirmed" });
+		expect(mock.sendResetCode).not.toHaveBeenCalled();
 	});
 
 	test("stops when Clerk rejects creation of the reset attempt", async () => {
@@ -142,10 +158,19 @@ describe("password reset flow", () => {
 	test("resends the code for the active recovery stage", async () => {
 		const mock = createSignInMock();
 
-		await resendPasswordResetCode(mock.signIn, "reset_code");
-		await resendPasswordResetCode(mock.signIn, "second_factor");
+		await resendPasswordResetCode(mock.signIn, "reset_code", true);
+		await resendPasswordResetCode(mock.signIn, "second_factor", true);
 
 		expect(mock.sendResetCode).toHaveBeenCalledOnce();
 		expect(mock.sendSecondFactorCode).toHaveBeenCalledOnce();
+	});
+
+	test("treats resend for an unknown account as a successful no-op", async () => {
+		const mock = createSignInMock();
+
+		await expect(
+			resendPasswordResetCode(mock.signIn, "reset_code", false),
+		).resolves.toBeUndefined();
+		expect(mock.sendResetCode).not.toHaveBeenCalled();
 	});
 });

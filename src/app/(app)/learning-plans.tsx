@@ -1,7 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -35,9 +35,10 @@ import {
 } from "~/components/ui/notched-action-card";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
@@ -769,7 +770,7 @@ function HomeworkCard({
 export default function LearningPlansScreen() {
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const removePlan = useMutation(api.learningPlans.removePlan);
 	const removeHomework = useMutation(api.dayEntries.remove);
@@ -778,6 +779,7 @@ export default function LearningPlansScreen() {
 	const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const deleteActionGateRef = useRef(createAsyncActionGate());
 	const today = useCurrentLocalDay();
 	const todayKey = getDayKey(today);
 	const plans = useQuery(
@@ -804,22 +806,25 @@ export default function LearningPlansScreen() {
 		setDeleteError(null);
 	};
 	const deleteSelectedItem = async () => {
-		if (!deleteTarget || isDeleting) return;
+		if (!deleteTarget) return;
+		const target = deleteTarget;
 
-		setIsDeleting(true);
-		setDeleteError(null);
-		try {
-			if (deleteTarget.kind === "plan") {
-				await removePlan({ id: deleteTarget.item.id });
-			} else {
-				await removeHomework({ id: deleteTarget.item.id });
+		await deleteActionGateRef.current.run(async () => {
+			setIsDeleting(true);
+			setDeleteError(null);
+			try {
+				if (target.kind === "plan") {
+					await removePlan({ id: target.item.id });
+				} else {
+					await removeHomework({ id: target.item.id });
+				}
+				setDeleteTarget(null);
+			} catch {
+				setDeleteError("Bitte versuche es gleich noch einmal.");
+			} finally {
+				setIsDeleting(false);
 			}
-			setDeleteTarget(null);
-		} catch {
-			setDeleteError("Bitte versuche es gleich noch einmal.");
-		} finally {
-			setIsDeleting(false);
-		}
+		});
 	};
 	const openCreateTypePicker = () => {
 		setShowCreateTypePicker(true);

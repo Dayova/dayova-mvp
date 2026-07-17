@@ -3,13 +3,12 @@ import { useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Keyboard,
-	Pressable,
 	type TextInput,
 	View,
 } from "react-native";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
-import { Eye, EyeOff } from "~/components/ui/icon";
+import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SectionHeader } from "~/components/ui/section-header";
 import { SuccessConfirmationScreen } from "~/components/ui/success-confirmation-screen";
@@ -17,46 +16,17 @@ import { Text } from "~/components/ui/text";
 import { InsetTextField } from "~/components/ui/text-field";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { WarningBanner } from "~/components/ui/warning-banner";
-import { useAuth } from "~/context/AuthContext";
-import { useDayovaTheme } from "~/lib/theme";
-
-type PasswordField = "currentPassword" | "newPassword" | "confirmPassword";
-
-type PasswordErrors = Partial<Record<PasswordField, string>>;
-
-// Password icons represent the current visibility state, not the next action.
-// Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
-function PasswordVisibilityButton({
-	fieldLabel,
-	visible,
-	onToggle,
-}: {
-	fieldLabel: string;
-	visible: boolean;
-	onToggle: () => void;
-}) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<Pressable
-			accessibilityRole="button"
-			accessibilityLabel={`${fieldLabel} ${visible ? "ausblenden" : "anzeigen"}`}
-			hitSlop={10}
-			onPress={onToggle}
-			className="h-10 w-10 items-center justify-center"
-		>
-			{visible ? (
-				<Eye size={19} color={colors.secondaryText} strokeWidth={2} />
-			) : (
-				<EyeOff size={19} color={colors.secondaryText} strokeWidth={2} />
-			)}
-		</Pressable>
-	);
-}
+import { useAccountActions } from "~/context/AuthContext";
+import {
+	clearPasswordChangeErrors,
+	type PasswordErrors,
+	type PasswordField,
+	validatePasswordChange,
+} from "~/lib/password-change-validation";
 
 export default function ChangePasswordScreen() {
 	const router = useRouter();
-	const { changePassword, isLoading } = useAuth();
+	const { changePassword, isLoading } = useAccountActions();
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
@@ -89,27 +59,17 @@ export default function ChangePasswordScreen() {
 
 	const clearFieldError = (field: PasswordField) => {
 		setErrorMessage(null);
-		setErrors((current) => ({ ...current, [field]: undefined }));
+		setErrors((current) => clearPasswordChangeErrors(current, field));
 	};
 
 	const submitPasswordChange = async () => {
 		if (requestInFlightRef.current || isBusy) return;
 
-		const nextErrors: PasswordErrors = {};
-		if (currentPassword.length === 0) {
-			nextErrors.currentPassword = "Bitte gib dein aktuelles Passwort ein.";
-		}
-		if (newPassword.length < 8 || newPassword.trim().length === 0) {
-			nextErrors.newPassword =
-				"Das neue Passwort muss mindestens 8 Zeichen haben.";
-		} else if (newPassword === currentPassword) {
-			nextErrors.newPassword =
-				"Das neue Passwort muss sich vom aktuellen Passwort unterscheiden.";
-		}
-		if (newPassword !== confirmPassword) {
-			nextErrors.confirmPassword =
-				"Die neuen Passwörter stimmen nicht überein.";
-		}
+		const nextErrors = validatePasswordChange({
+			currentPassword,
+			newPassword,
+			confirmPassword,
+		});
 
 		setErrors(nextErrors);
 		setErrorMessage(null);

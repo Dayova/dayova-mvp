@@ -1,5 +1,6 @@
 import "~/global.css";
 import { ClerkProvider, useAuth as useClerkAuth } from "@clerk/expo";
+import { tokenCache } from "@clerk/expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { ConvexReactClient } from "convex/react";
@@ -19,39 +20,34 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { NotificationSync } from "~/components/notification-sync";
-import { AuthProvider, useAuth } from "~/context/AuthContext";
+import { AuthProvider, useAuthSession } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
 import {
 	isPostHogConfigured,
 	postHogApiKey,
 	postHogHost,
 } from "~/lib/analytics-core";
-import { clerkTokenCache } from "~/lib/auth-token-cache";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
+import { getAuthNavigationTarget } from "~/lib/auth-routing";
 import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
 
 const convexUrl = env.EXPO_PUBLIC_CONVEX_URL?.trim();
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
-const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
-
-const isPublicAuthPath = (pathname: string) => PUBLIC_AUTH_PATHS.has(pathname);
-
 function AppNavigator() {
 	const router = useRouter();
 	const pathname = usePathname();
 	const rootNavigationState = useRootNavigationState();
-	const { user, isSessionLoading } = useAuth();
+	const { user, isSessionLoading, pendingSessionTask } = useAuthSession();
 
 	useEffect(() => {
 		if (isSessionLoading || !rootNavigationState?.key) return;
 
-		const isAuthRoute = isPublicAuthPath(pathname);
-		const targetRoute =
-			!user && !isAuthRoute
-				? "/"
-				: user && isAuthRoute && pathname !== "/onboarding"
-					? "/home"
-					: null;
+		const targetRoute = getAuthNavigationTarget({
+			hasUser: Boolean(user),
+			isSessionLoading,
+			pathname,
+			pendingSessionTask,
+		});
 		if (!targetRoute) return;
 
 		const frame = requestAnimationFrame(() => {
@@ -59,7 +55,14 @@ function AppNavigator() {
 		});
 
 		return () => cancelAnimationFrame(frame);
-	}, [isSessionLoading, pathname, rootNavigationState?.key, router, user]);
+	}, [
+		isSessionLoading,
+		pathname,
+		pendingSessionTask,
+		rootNavigationState?.key,
+		router,
+		user,
+	]);
 
 	return (
 		<>
@@ -126,7 +129,7 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 				>
 					<ClerkProvider
 						publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
-						tokenCache={clerkTokenCache}
+						tokenCache={tokenCache}
 					>
 						<ConvexProviderWithClerk
 							client={convexClient}

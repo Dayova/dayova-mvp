@@ -34,7 +34,7 @@ import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import {
 	createTheoryCardQueue,
 	repeatCurrentTheoryCard as queueRepeatCurrentTheoryCard,
@@ -817,7 +817,7 @@ export default function LearningSessionContentScreen() {
 	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const sessionId = params.sessionId as Id<"learningPlanSessions"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const ensureSessionContent = useAction(
 		api.learningPlanAi.ensureSessionContent,

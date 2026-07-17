@@ -12,6 +12,7 @@ import {
 } from "./android-material-date";
 import {
 	buildDateTimePickerChangeEvent,
+	shouldCloseDateTimePickerAfterChange,
 	type DateTimePickerDisplay,
 	type DateTimePickerSheetProps,
 } from "./date-time-picker-sheet.types";
@@ -30,12 +31,14 @@ function VisibleDateTimePickerSheet({
 	minimumDate,
 	doneLabel = "Fertig",
 	onChange,
+	onClose,
 }: DateTimePickerSheetProps) {
 	const { resolvedTheme } = useDayovaTheme();
 	const [datetimeDate, setDatetimeDate] = useState<Date | null>(null);
 
 	const handleValueChange = (date: Date) => {
 		onChange(buildDateTimePickerChangeEvent(date), date);
+		if (shouldCloseDateTimePickerAfterChange("android")) onClose();
 	};
 	const handleDateSelected = (date: Date) => {
 		const localDate = fromMaterialDatePickerDate(date, value);
@@ -63,6 +66,7 @@ function VisibleDateTimePickerSheet({
 	};
 	const handleDismiss = () => {
 		onChange({ type: "dismissed" });
+		onClose();
 	};
 	const confirmButtonLabel =
 		typeof doneLabel === "string" ? doneLabel : "Fertig";

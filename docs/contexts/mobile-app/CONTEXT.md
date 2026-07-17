@@ -4,6 +4,14 @@ This context covers the Expo app, Expo Router, navigation, native UI, styling, c
 
 Confluence is the current cross-functional documentation hub. Keep this file focused on implementation-facing terminology, conventions, and assumptions that agents need while working in this repo.
 
+## UI module seams
+
+The accepted implementation-quality seams are recorded in
+[ADR 0002](adr/0002-deep-ui-seams-and-behavior-tests.md). New asynchronous UI
+actions should use a synchronous transaction gate when a second invocation
+would duplicate a mutation, expose busy state to accessibility, and render a
+recoverable error in the surface where the action occurred.
+
 ## Language
 
 **User-facing error message**:
