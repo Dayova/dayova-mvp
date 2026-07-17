@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
+  '@expo/metro-config@56.0.14':
+    hash: ab8bfbfb788654d04e00a2e31d5a9a5b3e07bb19eefdb62bdc3d48a45d6e08b6
+    path: patches/@expo__metro-config@56.0.14.patch
   nativewind@4.2.3:
     hash: c2045c72c9abacb9347d92d0e80f014cb462e8ea3af0d1b237b7ea467ce26449
     path: patches/nativewind@4.2.3.patch
@@ -8322,7 +8325,7 @@ snapshots:
       '@expo/json-file': 10.2.0
       '@expo/log-box': 56.0.13(expo@56.0.12)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
       '@expo/metro': 56.0.0
-      '@expo/metro-config': 56.0.14(expo@56.0.12)(typescript@6.0.3)
+      '@expo/metro-config': 56.0.14(patch_hash=ab8bfbfb788654d04e00a2e31d5a9a5b3e07bb19eefdb62bdc3d48a45d6e08b6)(expo@56.0.12)(typescript@6.0.3)
       '@expo/metro-file-map': 56.0.3
       '@expo/osascript': 2.6.0
       '@expo/package-manager': 1.12.1
@@ -8535,7 +8538,7 @@ snapshots:
       react-native: 0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@types/react@19.2.14)(react@19.2.3)
       stacktrace-parser: 0.1.11
 
-  '@expo/metro-config@56.0.14(expo@56.0.12)(typescript@6.0.3)':
+  '@expo/metro-config@56.0.14(patch_hash=ab8bfbfb788654d04e00a2e31d5a9a5b3e07bb19eefdb62bdc3d48a45d6e08b6)(expo@56.0.12)(typescript@6.0.3)':
     dependencies:
       '@babel/code-frame': 7.29.0
       '@babel/core': 7.29.0
@@ -11824,7 +11827,7 @@ snapshots:
       '@expo/local-build-cache-provider': 56.0.8(typescript@6.0.3)
       '@expo/log-box': 56.0.13(expo@56.0.12)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
       '@expo/metro': 56.0.0
-      '@expo/metro-config': 56.0.14(expo@56.0.12)(typescript@6.0.3)
+      '@expo/metro-config': 56.0.14(patch_hash=ab8bfbfb788654d04e00a2e31d5a9a5b3e07bb19eefdb62bdc3d48a45d6e08b6)(expo@56.0.12)(typescript@6.0.3)
       '@ungap/structured-clone': 1.3.0
       babel-preset-expo: 56.0.15(@babel/core@7.29.0)(@babel/runtime@7.29.2)(expo@56.0.12)(react-refresh@0.14.2)
       expo-asset: 56.0.17(expo@56.0.12)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)

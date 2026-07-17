@@ -7,6 +7,78 @@ When a patched package is installed, pnpm applies the matching `.patch` file to
 the package contents in `node_modules`. Keep each patch documented here so future
 dependency updates can decide whether the patch is still needed.
 
+## `@expo/metro-config@56.0.14.patch`
+
+### Why This Patch Exists
+
+Expo SDK 56's binary Metro cache starts one asynchronous `readFile` for every
+transform requested by Metro. A cold Dayova Android development bundle contains
+roughly 8,000 modules. On Windows with Node 22.22.3, the next bundle request can
+therefore exceed Node's file-descriptor table and fail with:
+
+```text
+EMFILE: too many open files, open
+'C:\Users\...\AppData\Local\Temp\metro-cache\...\.mp'
+```
+
+The failure was reproduced independently of Expo Router and the app by calling
+the real `BinaryFileStore.get()` for all 9,565 cache entries. The unpatched store
+failed with `EMFILE`; the patched store completed the same test.
+
+This binary store was introduced upstream in
+[`expo/expo#45656`](https://github.com/expo/expo/pull/45656) and received
+concurrent read/write handling in
+[`expo/expo#46171`](https://github.com/expo/expo/pull/46171), but that handling
+does not bound simultaneous reads. `@expo/metro-config@56.0.17`, the latest SDK
+56 patch checked during diagnosis, ships the same `binary-file-store` source as
+56.0.14, so upgrading within SDK 56 does not remove the failure.
+
+### What The Patch Changes
+
+The patch adds a process-wide FIFO slot queue around binary cache reads and
+allows at most 256 simultaneous `fs.promises.readFile` calls. A completed read
+transfers its slot directly to the next waiter, so new requests cannot jump the
+queue. Other Metro file operations retain ample descriptor headroom while cache
+reads remain highly concurrent.
+
+Only the published `build/binary-file-store.js` file is patched because the npm
+package does not ship the TypeScript source.
+
+### How To Verify
+
+Run the deterministic regression test:
+
+```sh
+pnpm test:unit:metro-cache
+```
+
+It replaces `readFile` with a controlled asynchronous cache miss, sends 1,024
+requests through the installed Expo `FileStore`, and asserts that no more than
+256 reads are active concurrently.
+
+For the full Windows integration path, clear Metro's cache, load Dayova on the
+connected Android development client, and then reload it:
+
+```powershell
+pnpm exec expo start --dev-client --clear
+```
+
+Both the initial bundle and reload must complete without `EMFILE`.
+
+### How To Update Or Remove
+
+When upgrading Expo or `@expo/metro-config`:
+
+1. Inspect upstream `packages/@expo/metro-config/src/binary-file-store.ts` for a
+   read-concurrency limit, retry queue, or equivalent `EMFILE` handling.
+2. Remove the `patchedDependencies` entry temporarily, then run
+   `pnpm install --force` so `node_modules` contains the unpatched package rather
+   than pnpm's previously patched installation.
+3. Run `pnpm test:unit:metro-cache`; it must still pass against that unpatched
+   package, then run the cold-cache Android integration path above on Windows.
+4. If both checks pass, delete `patches/@expo__metro-config@56.0.14.patch`.
+5. Run `pnpm install`, `pnpm check`, and `pnpm test`.
+
 ## `nativewind@4.2.3.patch`
 
 ### Why This Patch Exists
