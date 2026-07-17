@@ -21,6 +21,11 @@ import {
 } from "./generatedGermanText";
 import { repairGeneratedGermanTextFromAsciiShadow } from "./generatedGermanTextRepair";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
+import {
+	MAX_MULTIPLE_CHOICE_OPTION_CHARS,
+	MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
+	MULTIPLE_CHOICE_OPTION_COUNT,
+} from "./learningSessionContentConstraints";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
@@ -116,13 +121,17 @@ const exactArray = <TItem extends z.ZodType>(
 		z.array(itemSchema).length(itemCount),
 	);
 
-const germanTextSchema = (minLength: number, description: string) =>
+const germanTextSchema = (
+	minLength: number,
+	description: string,
+	maxVisibleLength?: number,
+) =>
 	z
 		.object({
-			text: z
-				.string()
-				.min(minLength)
-				.describe(`${description} ${GERMAN_UI_TEXT_RULE}`),
+			text: (maxVisibleLength
+				? z.string().min(minLength).max(maxVisibleLength)
+				: z.string().min(minLength)
+			).describe(`${description} ${GERMAN_UI_TEXT_RULE}`),
 			asciiShadow: z
 				.string()
 				.min(minLength)
@@ -268,17 +277,14 @@ const theoryTopicsSchema = z
 const generatedTaskChoiceSchema = z.object({
 	text: germanTextSchema(
 		4,
-		"German answer option for a multiple-choice practice or praxis task.",
+		"Concise German answer option containing one concept and at most one distinguishing characteristic.",
+		MAX_MULTIPLE_CHOICE_OPTION_CHARS,
 	),
 	isCorrect: z.boolean(),
 });
 
 const generatedTaskBaseSchema = {
 	title: germanTextSchema(3, "Short German UI label for this task."),
-	prompt: germanTextSchema(
-		12,
-		"Concrete German task prompt the learner can answer directly.",
-	),
 	explanation: germanTextSchema(
 		20,
 		"German feedback explanation that teaches the key idea and common mistake.",
@@ -297,15 +303,30 @@ const generatedTaskItemSchema = z.union([
 	z.object({
 		kind: z.literal("multipleChoice"),
 		...generatedTaskBaseSchema,
-		choices: boundedArray(generatedTaskChoiceSchema, 3, 4),
+		prompt: germanTextSchema(
+			12,
+			"One direct German multiple-choice question without irrelevant scenario details.",
+			MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
+		),
+		choices: z
+			.array(generatedTaskChoiceSchema)
+			.length(MULTIPLE_CHOICE_OPTION_COUNT),
 	}),
 	z.object({
 		kind: z.literal("written"),
 		...generatedTaskBaseSchema,
+		prompt: germanTextSchema(
+			12,
+			"Concrete German written task prompt the learner can answer directly.",
+		),
 	}),
 	z.object({
 		kind: z.literal("voice"),
 		...generatedTaskBaseSchema,
+		prompt: germanTextSchema(
+			12,
+			"Concrete German spoken task prompt the learner can answer directly.",
+		),
 	}),
 ]);
 
@@ -1649,7 +1670,10 @@ Qualitätsregeln:
 - Jede Aufgabe muss fachlich konkret sein und direkt aus Thema, Material, Lernstand, vorherigen Theorie-Karten und Session-Ziel folgen.
 - Die Aufgaben bauen von sicherer Anwendung zu prüfungsnaher Transferleistung auf.
 - Mische Multiple Choice, schriftliche und mündliche Aufgaben sinnvoll; mindestens eine schriftliche Aufgabe ist Pflicht.
-- Multiple-Choice-Fragen brauchen fachliche Distraktoren, die typische Schülerfehler abbilden, nicht nur generische Strategien.
+- Jede Multiple-Choice-Frage hat genau drei Antwortoptionen: eine richtige Antwort und zwei fachlich plausible Distraktoren, die typische Schülerfehler abbilden.
+- Multiple-Choice-Prompts bestehen aus höchstens einem relevanten Kontextsatz und einer direkten Frage. Entferne Rahmengeschichten, die die Entscheidung nicht verändern.
+- Jede Antwortoption enthält nur einen Begriff oder Lösungsschritt und höchstens ein kurzes Unterscheidungsmerkmal. Keine wiederholten Vollsätze mit "weil" oder "da"; die ausführliche Begründung gehört in explanation und idealAnswer.
+- Multiple Choice prüft eine klare Entscheidung. Ausführliche Begründungen werden durch die schriftlichen und mündlichen Aufgaben geprüft.
 - explanation erklärt den Kernfehler oder den richtigen Lösungsweg so, dass direktes Feedback im Üben trägt.
 - idealAnswer ist eine echte Musterlösung oder ein Erwartungshorizont, nicht nur eine Wiederholung des Prompts.
 - evaluation keywords enthalten die Begriffe, Rechenschritte oder Kriterien, die in einer richtigen Antwort vorkommen müssen.

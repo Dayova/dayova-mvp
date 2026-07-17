@@ -10,6 +10,10 @@ import {
 } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import {
+	MAX_MULTIPLE_CHOICE_OPTION_CHARS,
+	MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
+} from "./learningSessionContentConstraints";
 import { type TheoryContent, theoryContentValidator } from "./theoryContent";
 
 type SessionContentItemKind =
@@ -139,6 +143,17 @@ const normalizeText = (value: string) =>
 
 const compact = (value: string, fallback: string) =>
 	normalizeText(value || fallback) || fallback;
+
+const compactToLength = (value: string, maxChars: number) => {
+	const normalized = normalizeText(value);
+	if (normalized.length <= maxChars) return normalized;
+
+	const clipped = normalized.slice(0, maxChars - 1).trimEnd();
+	const lastSpace = clipped.lastIndexOf(" ");
+	const boundary =
+		lastSpace >= Math.floor(maxChars * 0.6) ? lastSpace : clipped.length;
+	return `${clipped.slice(0, boundary).trimEnd()}…`;
+};
 
 const wordPattern = /[\p{L}\p{N}]+/gu;
 const stopWords = new Set([
@@ -311,27 +326,31 @@ const buildTaskItems = (
 		);
 
 		if (kind === "multipleChoice") {
+			const prompt = isPraxis
+				? `${phasePrefix} ${index + 1}: Welche Aussage ist für "${task}" fachlich richtig?`
+				: `${phasePrefix} ${index + 1}: Welche Lösungsidee passt zu "${task}"?`;
 			return {
 				kind,
 				title,
-				prompt: isPraxis
-					? `${phasePrefix} ${index + 1}: Welche Aussage ist für "${task}" fachlich richtig?`
-					: `${phasePrefix} ${index + 1}: Welche Lösungsidee passt zu "${task}"?`,
+				prompt: compactToLength(prompt, MAX_MULTIPLE_CHOICE_PROMPT_CHARS),
 				explanation:
 					"Die richtige Antwort verbindet den passenden Rechenschritt mit einer Kontrolle des Ergebnisses.",
 				idealAnswer,
 				choices: [
 					{
 						id: "correct",
-						text: `Erst den passenden Schritt zu "${task}" ausführen, dann begründen und mit einer Probe prüfen.`,
+						text: compactToLength(
+							"Passenden Schritt ausführen, begründen und mit einer Probe prüfen.",
+							MAX_MULTIPLE_CHOICE_OPTION_CHARS,
+						),
 					},
 					{
 						id: "distractor-fast",
-						text: "Direkt ein Ergebnis raten und die Zwischenschritte auslassen.",
+						text: "Ergebnis direkt raten und Zwischenschritte auslassen.",
 					},
 					{
 						id: "distractor-skip",
-						text: "Die Kontrolle weglassen, solange das Ergebnis ungefähr passend aussieht.",
+						text: "Kontrolle weglassen, wenn das Ergebnis ungefähr passt.",
 					},
 				],
 				correctChoiceId: "correct",

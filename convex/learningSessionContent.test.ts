@@ -3,6 +3,11 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
+import {
+	MAX_MULTIPLE_CHOICE_OPTION_CHARS,
+	MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
+	MULTIPLE_CHOICE_OPTION_COUNT,
+} from "./learningSessionContentConstraints";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -210,6 +215,32 @@ test("practice fallback creates concrete guided practice tasks", async () => {
 	expect(prompts).toContain("Übung");
 	expect(prompts).not.toContain("Welche Strategie passt");
 	expect(content?.items[0]?.choices[0]?.text).toContain("Probe");
+});
+
+test("multiple-choice tasks stay compact without losing plausible choices", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession("rehearsal");
+
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	const content = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	const multipleChoiceItems =
+		content?.items.filter((item) => item.kind === "multipleChoice") ?? [];
+
+	expect(multipleChoiceItems.length).toBeGreaterThan(0);
+	for (const item of multipleChoiceItems) {
+		expect(item.prompt.length).toBeLessThanOrEqual(
+			MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
+		);
+		expect(item.choices).toHaveLength(MULTIPLE_CHOICE_OPTION_COUNT);
+		expect(
+			item.choices.every(
+				(choice) => choice.text.length <= MAX_MULTIPLE_CHOICE_OPTION_CHARS,
+			),
+		).toBe(true);
+	}
 });
 
 test("praxis fallback creates generalprobe tasks without generic strategy prompts", async () => {

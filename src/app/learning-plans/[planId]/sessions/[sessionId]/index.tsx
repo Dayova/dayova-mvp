@@ -1,12 +1,14 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import * as Device from "expo-device";
-import * as Speech from "expo-speech";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import * as Speech from "expo-speech";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
+	KeyboardAvoidingView,
 	Platform,
 	ScrollView,
+	type TextInput,
 	TouchableOpacity,
 	View,
 } from "react-native";
@@ -17,6 +19,8 @@ import type {
 	RecognizerMethods,
 	SpeechRecognitionConfig,
 } from "react-native-nitro-speech";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { QuestionProgressBar } from "~/components/question-progress-bar";
@@ -36,8 +40,8 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
-import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
+import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
 	LearningSessionContentSnapshot,
 	SessionAnswerAttempt,
@@ -140,9 +144,9 @@ const learningSessionAnalyticsProperties = (result: {
 
 const isIosSimulator = Platform.OS === "ios" && !Device.isDevice;
 const iosSimulatorSpeechMessage =
-	"Spracherkennung ist im iOS Simulator nicht zuverlässig verfügbar. Auf einem iPhone kannst du die Antwort einsprechen; hier kannst du das Transkript direkt eintragen.";
+	"Spracherkennung ist im iOS Simulator nicht zuverlässig verfügbar. Auf einem iPhone kannst du deine Antwort einsprechen. Hier kannst du sie stattdessen eintippen.";
 const nativeSpeechUnavailableMessage =
-	"Spracherkennung ist in dieser App-Version nicht verfügbar. Trage deine Antwort als Text ein.";
+	"Spracherkennung ist in dieser App-Version nicht verfügbar. Du kannst deine Antwort stattdessen eintippen.";
 
 const getSpeechRecognitionErrorMessage = (error: SpeechRecognitionError) => {
 	if (error === SpeechRecognitionError.LocaleNotSupported) {
@@ -339,6 +343,7 @@ function ActionRow({
 	onPrimary,
 	primaryDisabled,
 	isBusy,
+	className,
 }: {
 	secondaryLabel: string;
 	primaryLabel: string;
@@ -346,9 +351,10 @@ function ActionRow({
 	onPrimary: () => void;
 	primaryDisabled?: boolean;
 	isBusy?: boolean;
+	className?: string;
 }) {
 	return (
-		<View className="mt-8 flex-row gap-3">
+		<View className={cn("mt-8 flex-row gap-3", className)}>
 			<Button
 				className="flex-1 px-4"
 				disabled={isBusy}
@@ -372,15 +378,7 @@ function ActionRow({
 	);
 }
 
-function FeedbackView({
-	attempt,
-	onDone,
-	isBusy,
-}: {
-	attempt: SessionAnswerAttempt;
-	onDone: () => void;
-	isBusy: boolean;
-}) {
+function FeedbackView({ attempt }: { attempt: SessionAnswerAttempt }) {
 	const copy = ratingCopy[attempt.rating];
 	const StatusIcon = attempt.rating === "correct" ? Check : CircleAlert;
 	return (
@@ -419,14 +417,6 @@ function FeedbackView({
 					</Text>
 				</Surface>
 			</View>
-
-			<Button className="mt-10" disabled={isBusy} onPress={onDone}>
-				{isBusy ? (
-					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
-				) : (
-					<Text>Verstanden</Text>
-				)}
-			</Button>
 		</View>
 	);
 }
@@ -524,9 +514,10 @@ function ChoiceList({
 	disabled: boolean;
 }) {
 	return (
-		<View className="mt-6 gap-3">
-			{item.choices.map((choice) => {
+		<View className="mt-5 gap-2">
+			{item.choices.map((choice, index) => {
 				const selected = selectedChoiceId === choice.id;
+				const choiceLabel = String.fromCharCode(65 + index);
 				return (
 					<TouchableOpacity
 						key={choice.id}
@@ -536,28 +527,47 @@ function ChoiceList({
 						disabled={disabled}
 						onPress={() => onSelect(choice.id)}
 						className={cn(
-							"min-h-14 flex-row items-center rounded-[28px] bg-light-2 px-5 py-4",
-							selected && "bg-system-subtle",
+							"min-h-14 flex-row items-center gap-3 rounded-[24px] border-border border-hairline bg-card px-4 py-3 shadow-black/5 shadow-sm",
+							selected && "border-primary bg-system-subtle",
 						)}
 					>
 						<View
 							className={cn(
-								"mr-3 h-6 w-6 items-center justify-center rounded-full border-2 border-text",
-								selected && "border-primary",
+								"h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-light-2",
+								selected && "bg-primary",
 							)}
 						>
-							{selected ? (
-								<View className="h-2 w-2 rounded-full bg-primary" />
-							) : null}
+							<Text
+								className={cn(
+									"font-poppins font-semibold text-body-4 text-secondary-text",
+									selected && "text-white",
+								)}
+							>
+								{choiceLabel}
+							</Text>
 						</View>
 						<Text
 							className={cn(
-								"flex-1 font-poppins text-body-2 text-text",
+								"flex-1 font-poppins text-body-3 text-text",
 								selected && "text-primary",
 							)}
 						>
 							{choice.text}
 						</Text>
+						<View
+							className={cn(
+								"h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-secondary-text/50",
+								selected && "border-primary bg-primary",
+							)}
+						>
+							{selected ? (
+								<Check
+									size={14}
+									color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+									strokeWidth={2.8}
+								/>
+							) : null}
+						</View>
 					</TouchableOpacity>
 				);
 			})}
@@ -571,16 +581,21 @@ function TextAnswer({
 	placeholder,
 	editable,
 	fillAvailableSpace = false,
+	autoFocus,
+	inputRef,
 }: {
 	value: string;
 	onChange: (value: string) => void;
 	placeholder: string;
 	editable: boolean;
 	fillAvailableSpace?: boolean;
+	autoFocus?: boolean;
+	inputRef?: React.Ref<TextInput>;
 }) {
 	return (
 		<Textarea
-			autoFocus={fillAvailableSpace && editable}
+			ref={inputRef}
+			autoFocus={(autoFocus ?? fillAvailableSpace) && editable}
 			accessibilityLabel="Antwort"
 			className={cn(
 				"mt-4 px-0 py-2",
@@ -612,6 +627,38 @@ function VoiceAnswer({
 	onToggleRecording: () => void;
 }) {
 	const isSpeechCaptureUnavailable = Boolean(speechCaptureUnavailableMessage);
+	const [isEditingTranscript, setIsEditingTranscript] = useState(
+		isSpeechCaptureUnavailable,
+	);
+	const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(false);
+	const transcriptInputRef = useRef<TextInput>(null);
+	const hasTranscript = Boolean(value.trim());
+	const hasLongTranscript = value.trim().length > 180;
+	const liveTranscript = value.trim()
+		? value.trim().length > 220
+			? `…${value
+					.trim()
+					.slice(-220)
+					.replace(/^\S+\s*/, "")}`
+			: value.trim()
+		: "Ich höre zu …";
+
+	const startEditingTranscript = () => {
+		setIsEditingTranscript(true);
+		requestAnimationFrame(() => transcriptInputRef.current?.focus());
+	};
+
+	const handleVoiceCardPress = () => {
+		if (isSpeechCaptureUnavailable) {
+			startEditingTranscript();
+			return;
+		}
+		if (!isRecognizing) {
+			setIsEditingTranscript(false);
+			setIsTranscriptExpanded(false);
+		}
+		onToggleRecording();
+	};
 
 	return (
 		<View>
@@ -620,7 +667,7 @@ function VoiceAnswer({
 				accessibilityState={{ disabled: !editable, busy: isRecognizing }}
 				activeOpacity={0.86}
 				disabled={!editable}
-				onPress={onToggleRecording}
+				onPress={handleVoiceCardPress}
 				className={cn(
 					"mt-6 min-h-[232px] items-center justify-center rounded-[32px] bg-card px-5",
 					!editable && "opacity-60",
@@ -651,25 +698,121 @@ function VoiceAnswer({
 					{isRecognizing
 						? "Aufnahme stoppen"
 						: isSpeechCaptureUnavailable
-							? "Transkript eintragen"
+							? "Antwort eintippen"
 							: "Antwort einsprechen"}
 				</Text>
 			</TouchableOpacity>
-			<Text className="mt-3 px-1 font-poppins text-body-4 text-secondary-text">
+			<Text
+				selectable
+				className="mt-3 px-1 font-poppins text-body-4 text-secondary-text"
+			>
 				{isRecognizing
-					? "Sprich jetzt. Das Transkript erscheint automatisch."
+					? "Sprich einfach weiter. Du siehst hier nur die letzten erkannten Wörter."
 					: isSpeechCaptureUnavailable
 						? speechCaptureUnavailableMessage
-						: "Du kannst das Transkript vor dem Absenden korrigieren."}
+						: "Nach der Aufnahme kannst du deine Antwort kurz prüfen oder bearbeiten."}
 			</Text>
-			<TextAnswer
-				value={value}
-				onChange={onChange}
-				placeholder="Transkript der Sprachantwort"
-				editable={editable}
-			/>
+
+			{isRecognizing ? (
+				<Animated.View
+					key="live-transcript"
+					entering={FadeIn.duration(160)}
+					exiting={FadeOut.duration(120)}
+				>
+					<Surface className="mt-5 rounded-[24px] px-4 py-4" variant="flat">
+						<Text className="font-poppins font-semibold text-body-4 text-primary">
+							Live-Transkript
+						</Text>
+						<Text
+							selectable
+							className="mt-2 font-poppins text-body-3 text-text"
+							numberOfLines={3}
+						>
+							{liveTranscript}
+						</Text>
+					</Surface>
+				</Animated.View>
+			) : isEditingTranscript ? (
+				<Animated.View
+					key="transcript-editor"
+					entering={FadeIn.duration(160)}
+					exiting={FadeOut.duration(120)}
+					className="mt-5"
+				>
+					<View className="flex-row items-center justify-between gap-4">
+						<Text className="font-poppins font-semibold text-body-4 text-text">
+							Deine Antwort
+						</Text>
+						{hasTranscript && !isSpeechCaptureUnavailable ? (
+							<TouchableOpacity
+								accessibilityRole="button"
+								onPress={() => setIsEditingTranscript(false)}
+								className="min-h-11 justify-center px-2"
+							>
+								<Text className="font-poppins font-semibold text-body-4 text-primary">
+									Fertig
+								</Text>
+							</TouchableOpacity>
+						) : null}
+					</View>
+					<TextAnswer
+						inputRef={transcriptInputRef}
+						value={value}
+						onChange={onChange}
+						placeholder="Schreibe hier deine Antwort."
+						editable={editable}
+						autoFocus={isSpeechCaptureUnavailable}
+					/>
+				</Animated.View>
+			) : hasTranscript ? (
+				<Animated.View
+					key="transcript-preview"
+					entering={FadeIn.duration(160)}
+					exiting={FadeOut.duration(120)}
+				>
+					<Surface className="mt-5 rounded-[24px] px-4 py-4" variant="flat">
+						<View className="flex-row items-center justify-between gap-4">
+							<Text className="font-poppins font-semibold text-body-4 text-text">
+								Deine Antwort
+							</Text>
+							<TouchableOpacity
+								accessibilityRole="button"
+								disabled={!editable}
+								onPress={startEditingTranscript}
+								className="min-h-11 justify-center px-2"
+							>
+								<Text className="font-poppins font-semibold text-body-4 text-primary">
+									Bearbeiten
+								</Text>
+							</TouchableOpacity>
+						</View>
+						<Text
+							selectable
+							className="mt-1 font-poppins text-body-3 text-text"
+							numberOfLines={isTranscriptExpanded ? undefined : 4}
+						>
+							{value.trim()}
+						</Text>
+						{hasLongTranscript ? (
+							<TouchableOpacity
+								accessibilityRole="button"
+								onPress={() => setIsTranscriptExpanded((expanded) => !expanded)}
+								className="min-h-11 justify-center self-start pt-1"
+							>
+								<Text className="font-poppins font-semibold text-body-4 text-primary">
+									{isTranscriptExpanded ? "Weniger anzeigen" : "Alles anzeigen"}
+								</Text>
+							</TouchableOpacity>
+						) : null}
+					</Surface>
+				</Animated.View>
+			) : null}
 			{speechErrorMessage ? (
-				<Text className="mt-3 px-1 font-poppins text-body-4 text-destructive">
+				<Text
+					selectable
+					accessibilityLiveRegion="polite"
+					className="mt-3 px-1 font-poppins text-body-4 text-destructive"
+				>
 					{speechErrorMessage}
 				</Text>
 			) : null}
@@ -743,6 +886,7 @@ function AnalysisView({
 
 export default function LearningSessionContentScreen() {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{
 		planId?: string;
 		sessionId?: string;
@@ -1228,6 +1372,16 @@ export default function LearningSessionContentScreen() {
 			: content
 				? phaseTitle(content.session.phase)
 				: "Lernblock";
+	const showQuestionActions = Boolean(
+		content &&
+			currentItem &&
+			!showAnalysis &&
+			!completionPhase &&
+			!visibleAttempt,
+	);
+	const showFeedbackAction = Boolean(
+		visibleAttempt && !showAnalysis && !completionPhase,
+	);
 
 	if (
 		content?.session.phase === "theory" &&
@@ -1290,41 +1444,77 @@ export default function LearningSessionContentScreen() {
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<ThemedStatusBar />
-			<ScrollView
-				className="flex-1"
-				automaticallyAdjustKeyboardInsets={
-					currentItem?.kind === "written" || currentItem?.kind === "voice"
-				}
-				contentContainerStyle={{
-					flexGrow: 1,
-					paddingHorizontal: 32,
-					paddingTop: 80,
-					paddingBottom: 60,
-				}}
-				keyboardShouldPersistTaps="handled"
-				showsVerticalScrollIndicator={false}
+			<View
+				className="px-8"
+				style={{ paddingTop: Math.max(insets.top + 8, 24) }}
 			>
 				<ScreenHeader
 					title={title}
 					onBack={goBack}
+					className="mb-0"
+					titleClassName="px-24 text-center font-poppins font-semibold text-body-1 text-text"
 					right={
 						displayedRemainingSeconds !== null &&
 						!showAnalysis &&
 						!completionPhase ? (
-							<View className="flex-row items-center gap-1 rounded-full bg-praxis-subtle px-3 py-2">
+							<View
+								accessible
+								accessibilityLabel={`Verbleibende Zeit: ${formatRemainingTime(displayedRemainingSeconds)}`}
+								className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4 shadow-black/5 shadow-sm"
+							>
 								<Timer
-									size={14}
+									size={18}
 									color={DAYOVA_DESIGN_SYSTEM.colors.praxis}
-									strokeWidth={2}
+									strokeWidth={2.2}
 								/>
-								<Text className="font-poppins font-semibold text-body-5 text-praxis">
+								<Text
+									className="font-poppins font-semibold text-body-3 text-praxis"
+									numberOfLines={1}
+									style={{ fontVariant: ["tabular-nums"] }}
+								>
 									{formatRemainingTime(displayedRemainingSeconds)}
 								</Text>
 							</View>
 						) : null
 					}
 				/>
-
+				{content &&
+				currentItem &&
+				!showAnalysis &&
+				!completionPhase &&
+				!visibleAttempt ? (
+					<QuestionProgressBar
+						currentIndex={currentIndex}
+						total={content.items.length}
+						className="mt-5 w-full"
+					/>
+				) : null}
+			</View>
+			<ScrollView
+				className="flex-1"
+				bounces={
+					currentItem?.kind !== "multipleChoice" || Boolean(visibleAttempt)
+				}
+				scrollEnabled={
+					currentItem?.kind !== "multipleChoice" ||
+					Boolean(visibleAttempt) ||
+					showAnalysis ||
+					Boolean(completionPhase)
+				}
+				automaticallyAdjustKeyboardInsets={
+					currentItem?.kind === "written" || currentItem?.kind === "voice"
+				}
+				contentContainerStyle={{
+					flexGrow: 1,
+					paddingHorizontal: 32,
+					paddingBottom:
+						showQuestionActions || showFeedbackAction
+							? 24
+							: Math.max(insets.bottom + 28, 60),
+				}}
+				keyboardShouldPersistTaps="handled"
+				showsVerticalScrollIndicator={false}
+			>
 				{!content || content.items.length === 0 ? (
 					<View className="flex-1 items-center justify-center py-24">
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
@@ -1351,20 +1541,11 @@ export default function LearningSessionContentScreen() {
 						isBusy={isBusy}
 					/>
 				) : visibleAttempt ? (
-					<FeedbackView
-						attempt={visibleAttempt}
-						onDone={continueTask}
-						isBusy={isBusy}
-					/>
+					<FeedbackView attempt={visibleAttempt} />
 				) : currentItem ? (
 					<View className="flex-1 justify-between">
-						<View className="mt-10 flex-1">
-							<QuestionProgressBar
-								currentIndex={currentIndex}
-								total={content.items.length}
-								className="mb-11 w-full"
-							/>
-							<Text className="font-poppins font-semibold text-body-1 text-text">
+						<View className="flex-1 pt-8">
+							<Text className="font-poppins font-semibold text-[17px] text-text leading-[26px]">
 								{currentItem.prompt}
 							</Text>
 
@@ -1377,6 +1558,7 @@ export default function LearningSessionContentScreen() {
 								/>
 							) : currentItem.kind === "voice" ? (
 								<VoiceAnswer
+									key={currentItem.id}
 									value={answerText}
 									onChange={setAnswerText}
 									editable={!isBusy}
@@ -1403,7 +1585,25 @@ export default function LearningSessionContentScreen() {
 								{errorMessage}
 							</Text>
 						) : null}
+					</View>
+				) : null}
+
+				{errorMessage && !currentItem ? (
+					<Text className="mt-4 font-poppins text-body-4 text-destructive">
+						{errorMessage}
+					</Text>
+				) : null}
+			</ScrollView>
+			{showQuestionActions && content ? (
+				<KeyboardAvoidingView
+					behavior={Platform.OS === "ios" ? "padding" : undefined}
+				>
+					<View
+						className="border-border border-t-hairline bg-background px-8 pt-4"
+						style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+					>
 						<ActionRow
+							className="mt-0"
 							secondaryLabel="Weiß ich nicht"
 							primaryLabel={
 								content.session.phase === "rehearsal"
@@ -1418,14 +1618,21 @@ export default function LearningSessionContentScreen() {
 							isBusy={isBusy}
 						/>
 					</View>
-				) : null}
-
-				{errorMessage && !currentItem ? (
-					<Text className="mt-4 font-poppins text-body-4 text-destructive">
-						{errorMessage}
-					</Text>
-				) : null}
-			</ScrollView>
+				</KeyboardAvoidingView>
+			) : showFeedbackAction ? (
+				<View
+					className="border-border border-t-hairline bg-background px-8 pt-4"
+					style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+				>
+					<Button disabled={isBusy} onPress={continueTask}>
+						{isBusy ? (
+							<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+						) : (
+							<Text>Verstanden</Text>
+						)}
+					</Button>
+				</View>
+			) : null}
 		</View>
 	);
 }
