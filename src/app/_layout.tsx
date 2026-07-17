@@ -140,6 +140,8 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 						captureAppLifecycleEvents: false,
 					}}
 				>
+					{/* Native sessions persist by default; there is no per-login opt-out.
+					    Decision: https://app.notion.com/p/3a02e87228bf81bf9f65f6214759a770 */}
 					<ClerkProvider
 						publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
 						tokenCache={tokenCache}
