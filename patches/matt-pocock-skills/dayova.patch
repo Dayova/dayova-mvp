@@ -1,0 +1,419 @@
+diff --git a/.agents/skills/ask-matt/SKILL.md b/.agents/skills/ask-matt/SKILL.md
+index b7e3378..4ebce34 100644
+--- a/.agents/skills/ask-matt/SKILL.md
++++ b/.agents/skills/ask-matt/SKILL.md
+@@ -22,7 +22,7 @@ The route most work travels. You have an idea and want it built.
+    - **Yes** → **`/to-spec`** (turn the thread into a spec), then **`/to-tickets`** to split it into tracer-bullet tickets, each declaring its **blocking edges**. On a local tracker that's one file per ticket under `.scratch/<feature>/issues/`, worked blockers-first by hand; on a real tracker the edges become native blocking links, so any ticket whose blockers are done can be grabbed — kick off **`/implement`** per ticket, **clearing context between each one**.
+    - **No** → **`/implement`** right here, in the same context window.
+ 
+-   Either way, **`/implement`** builds each issue by driving **`/tdd`** internally — one red-green slice at a time — then closes out by running **`/code-review`**, a two-axis review (Standards + Spec) of the diff, before committing. Reach for **`/tdd`** on its own when you just want to build a concrete behaviour test-first without a full spec, and **`/code-review`** on its own whenever you want to review a branch or PR against a fixed point.
++   Either way, **`/implement`** builds each issue by driving **`/tdd`** internally — one red-green slice at a time — then closes out by running **`/code-review`**, a two-axis review (Standards + Spec) of the diff. Commit only when the user or issue workflow asks for a commit. Reach for **`/tdd`** on its own when you just want to build a concrete behaviour test-first without a full spec, and **`/code-review`** on its own whenever you want to review a branch or PR against a fixed point.
+ 
+ ### Context hygiene
+ 
+@@ -68,7 +68,7 @@ Off the main flow entirely.
+ 
+ - **`/grill-me`** — the same relentless interview as `/grill-with-docs`, but for when you have **no codebase**. Stateless: it saves nothing locally, builds no `CONTEXT.md`. Reach for it to sharpen any plan or design that doesn't live in a repo.
+ - **`/prototype`** — a small, throwaway program that answers one design question: does this state model feel right, or what should this UI look like. Throwaway from day one — keep the answer, delete the code. It's the detour in step 2 of the main flow, but reach for it any time a design question is hard to settle on paper.
+-- **`/research`** — delegate reading legwork to a **background agent**: it investigates a question against **primary sources**, then leaves a cited Markdown file in the repo. Keep working while it reads. The file it produces is something to take *into* the main flow at `/grill-with-docs` — research feeds the thinking, it doesn't replace it.
++- **`/research`** — investigate a question against **primary sources**. It answers inline by default; ask it for a durable cited Markdown note when another workflow needs a context pointer. Research feeds the thinking, it doesn't replace it.
+ - **`/teach`** — learn a concept over multiple sessions, using the current directory as a stateful workspace.
+ - **`/writing-great-skills`** — reference for writing and editing skills well.
+ 
+diff --git a/.agents/skills/code-review/SKILL.md b/.agents/skills/code-review/SKILL.md
+index 2a0b524..d7ca1cd 100644
+--- a/.agents/skills/code-review/SKILL.md
++++ b/.agents/skills/code-review/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: code-review
+-description: Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/PRD asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".
++description: Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/PRD asked for?). Runs the axes independently, in parallel subagents when available, and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".
+ ---
+ 
+ Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
+@@ -8,7 +8,7 @@ Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
+ - **Standards** — does the code conform to this repo's documented coding standards?
+ - **Spec** — does the code faithfully implement the originating issue / PRD / spec?
+ 
+-Both axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
++Both axes run independently so they don't pollute each other's context, then this skill aggregates their findings. Use parallel Codex subagents when available; otherwise run the axes sequentially and keep their notes separate.
+ 
+ The issue tracker should have been provided to you — run `/setup-matt-pocock-skills` if `docs/agents/issue-tracker.md` is missing.
+ 
+@@ -55,9 +55,9 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
+ - **Middle Man** — a class or function that mostly just delegates onward. → cut it, call the real target direct.
+ - **Refused Bequest** — a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
+ 
+-### 4. Spawn both sub-agents in parallel
++### 4. Run both axes independently
+ 
+-Send a single message with two `Agent` tool calls. Use the `general-purpose` subagent for both.
++When Codex subagents are available, run the Standards and Spec prompts in parallel subagents. When subagents are unavailable, run the two prompts sequentially in the current turn and keep their findings separate.
+ 
+ **Standards sub-agent prompt** — include:
+ 
+diff --git a/.agents/skills/codebase-design/DESIGN-IT-TWICE.md b/.agents/skills/codebase-design/DESIGN-IT-TWICE.md
+index 49a7c42..f663ee4 100644
+--- a/.agents/skills/codebase-design/DESIGN-IT-TWICE.md
++++ b/.agents/skills/codebase-design/DESIGN-IT-TWICE.md
+@@ -16,11 +16,11 @@ Before spawning sub-agents, write a user-facing explanation of the problem space
+ 
+ Show this to the user, then immediately proceed to Step 2. The user reads and thinks while the sub-agents work in parallel.
+ 
+-### 2. Spawn sub-agents
++### 2. Explore alternatives independently
+ 
+-Spawn 3+ sub-agents in parallel using the Agent tool. Each must produce a **radically different** interface for the deepened module.
++Produce 3+ independent alternatives. Use parallel Codex subagents when available and useful; otherwise run the alternatives sequentially in the current turn, keeping each design isolated. Each alternative must produce a **radically different** interface for the deepened module.
+ 
+-Prompt each sub-agent with a separate technical brief (file paths, coupling details, dependency category from [DEEPENING.md](DEEPENING.md), what sits behind the seam). The brief is independent of the user-facing problem-space explanation in Step 1. Give each agent a different design constraint:
++Prompt each pass with a separate technical brief (file paths, coupling details, dependency category from [DEEPENING.md](DEEPENING.md), what sits behind the seam). The brief is independent of the user-facing problem-space explanation in Step 1. Give each pass a different design constraint:
+ 
+ - Agent 1: "Minimize the interface — aim for 1–3 entry points max. Maximise leverage per entry point."
+ - Agent 2: "Maximise flexibility — support many use cases and extension."
+diff --git a/.agents/skills/implement/SKILL.md b/.agents/skills/implement/SKILL.md
+index 3650c44..41ca947 100644
+--- a/.agents/skills/implement/SKILL.md
++++ b/.agents/skills/implement/SKILL.md
+@@ -5,10 +5,10 @@ description: "Implement a piece of work based on a spec or set of tickets."
+ 
+ Implement the work described by the user in the spec or tickets.
+ 
+-Use /tdd where possible, at pre-agreed seams.
++Use /tdd where possible, at pre-agreed seams. If the seams are not explicit, state the seams you will use before coding; ask only when the choice materially changes the design.
+ 
+ Run typechecking regularly, single test files regularly, and the full test suite once at the end.
+ 
+ Once done, use /code-review to review the work.
+ 
+-Commit your work to the current branch.
++Commit only when the user requested a commit or the issue workflow explicitly requires one. Otherwise leave the completed changes in the worktree and report the files changed plus the validation run.
+diff --git a/.agents/skills/improve-codebase-architecture/SKILL.md b/.agents/skills/improve-codebase-architecture/SKILL.md
+index 3c116bb..6fd2e04 100644
+--- a/.agents/skills/improve-codebase-architecture/SKILL.md
++++ b/.agents/skills/improve-codebase-architecture/SKILL.md
+@@ -23,7 +23,7 @@ This command is _informed_ by the project's domain model and built on a shared d
+ 
+ Read the project's domain glossary (`CONTEXT.md`) and any ADRs in the area you're touching first.
+ 
+-Then use the Agent tool with `subagent_type=Explore` to walk the codebase. Don't follow rigid heuristics — explore organically and note where you experience friction:
++Then explore the codebase. If Codex subagents are available and the scope is broad, use a read-only exploration subagent; otherwise explore in the current turn. Don't follow rigid heuristics — explore organically and note where you experience friction:
+ 
+ - Where does understanding one concept require bouncing between many small modules?
+ - Where are modules **shallow** — interface nearly as complex as the implementation?
+diff --git a/.agents/skills/research/SKILL.md b/.agents/skills/research/SKILL.md
+index 0ba594a..5025f1c 100644
+--- a/.agents/skills/research/SKILL.md
++++ b/.agents/skills/research/SKILL.md
+@@ -1,12 +1,16 @@
+ ---
+ name: research
+-description: Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo. Use when the user wants a topic researched, docs or API facts gathered, or reading legwork delegated to a background agent.
++description: Investigate a question against high-trust primary sources. Use when the user wants a topic researched, docs or API facts gathered, or a durable cited research note for another workflow.
+ ---
+ 
+-Spin up a **background agent** to do the research, so you keep working while it reads.
++Investigate against **primary sources** — official docs, source code, specs, first-party APIs — not a secondary write-up of them. Follow every claim back to the source that owns it.
+ 
+-Its job:
++Default output is an inline answer with citations. Create a Markdown file only when the user asks for a durable artifact, a tracker ticket needs a context pointer, or another skill explicitly requires one.
+ 
+-1. Investigate the question against **primary sources** — official docs, source code, specs, first-party APIs — not a secondary write-up of them. Follow every claim back to the source that owns it.
+-2. Write the findings to a single Markdown file, citing each claim's source.
+-3. Save it where the repo already keeps such notes; match the existing convention, and if there is none, put it somewhere sensible and say where.
++When a durable note is needed:
++
++1. Write the findings to a single Markdown file, citing each claim's source.
++2. Save it where the repo already keeps such notes; match the existing convention, and if there is none, put it somewhere sensible and say where.
++3. Link the file from the issue, map, or handoff that needs it.
++
++Use a background subagent only when the research is broad enough to benefit from parallel work and the current Codex environment permits subagents. Otherwise research in the current turn. Do not create a branch unless the parent workflow explicitly asks for one and the user has authorized branch side effects.
+diff --git a/.agents/skills/setup-matt-pocock-skills/SKILL.md b/.agents/skills/setup-matt-pocock-skills/SKILL.md
+index 57cba6e..d69b09d 100644
+--- a/.agents/skills/setup-matt-pocock-skills/SKILL.md
++++ b/.agents/skills/setup-matt-pocock-skills/SKILL.md
+@@ -1,14 +1,14 @@
+ ---
+ name: setup-matt-pocock-skills
+-description: Configure this repo for the engineering skills — set up its issue tracker, triage label vocabulary, and domain doc layout. Run once before first use of the other engineering skills.
++description: Configure this repo for the engineering skills — set up its issue tracker (GitHub, GitLab, Linear, or local markdown), triage role vocabulary, wayfinding operations, and domain doc layout. Run before first use of to-spec, to-tickets, triage, wayfinder, or other engineering skills that need repository context.
+ ---
+ 
+ # Setup Matt Pocock's Skills
+ 
+ Scaffold the per-repo configuration that the engineering skills assume:
+ 
+-- **Issue tracker** — where issues live (GitHub by default; local markdown is also supported out of the box)
+-- **Triage labels** — the strings used for the five canonical triage roles
++- **Issue tracker** — where issues live (GitHub, GitLab, Linear, or local markdown)
++- **Triage labels** — the strings used for the two category and five disposition roles
+ - **Domain docs** — where `CONTEXT.md` and ADRs live, and the consumer rules for reading them
+ 
+ This is a prompt-driven skill, not a deterministic script. Explore, present what you found, confirm with the user, then write.
+@@ -24,6 +24,7 @@ Look at the current repo to understand its starting state. Read whatever exists;
+ - `CONTEXT.md` and `CONTEXT-MAP.md` at the repo root
+ - `docs/adr/` and any `src/*/docs/adr/` directories
+ - `docs/agents/` — does this skill's prior output already exist?
++- Existing tracker configuration and installed semantic connectors — an existing Linear configuration takes precedence over inferring GitHub from `git remote`
+ - `.scratch/` — sign that a local-markdown issue tracker convention is already in use
+ - Is the `triage` skill installed? (a `triage` skill folder alongside this one, or `triage` in your available skills.) This decides whether Section B runs at all.
+ - Monorepo signals — a `pnpm-workspace.yaml`, a `workspaces` field in `package.json`, or a populated `packages/*` with its own `src/`. Present only in a genuinely large multi-package repo; their absence means single-context, which is almost every repo.
+@@ -38,14 +39,15 @@ Lead each section with the recommended answer so the user can accept it in a wor
+ 
+ > Explainer: The "issue tracker" is where issues live for this repo. Skills like `to-tickets`, `triage`, `to-spec`, and `qa` read from and write to it — they need to know whether to call `gh issue create`, write a markdown file under `.scratch/`, or follow some other workflow you describe. Pick the place you actually track work for this repo.
+ 
+-Default posture: these skills were designed for GitHub. If a `git remote` points at GitHub, propose that. If a `git remote` points at GitLab (`gitlab.com` or a self-hosted host), propose GitLab. Otherwise (or if the user prefers), offer:
++Preserve an existing configured source of truth. Otherwise, if a `git remote` points at GitHub, propose GitHub; if it points at GitLab (`gitlab.com` or a self-hosted host), propose GitLab. Offer:
+ 
+ - **GitHub** — issues live in the repo's GitHub Issues (uses the `gh` CLI)
+ - **GitLab** — issues live in the repo's GitLab Issues (uses the [`glab`](https://gitlab.com/gitlab-org/cli) CLI)
++- **Linear** — issues live in a named Linear workspace and team (uses a semantic Linear connector such as the Linear plugin or hosted MCP). Record the workspace, team name/key, workflow statuses, whether GitHub Issues is synced as a compatibility surface, and whether external PRs participate in triage.
+ - **Local markdown** — issues live as files under `.scratch/<feature>/` in this repo (good for solo projects or repos without a remote)
+-- **Other** (Jira, Linear, etc.) — ask the user to describe the workflow in one paragraph; the skill will record it as freeform prose
++- **Other** (Jira, etc.) — ask the user to describe the workflow in one paragraph; the skill will record it as freeform prose
+ 
+-Record the choice in `docs/agents/issue-tracker.md`. The GitHub and GitLab templates carry a "PRs as a request surface" flag, defaulted **off** — leave it off and don't raise it; a user who wants external PRs in the triage queue can flip the flag in the file later.
++Record the choice in `docs/agents/issue-tracker.md`. The GitHub, GitLab, and Linear templates carry a "PRs as a request surface" flag, defaulted **off** — leave it off unless the user has already configured PR triage.
+ 
+ **Section B — Triage label vocabulary.** Skip this section entirely if the `triage` skill isn't installed (exploration told you) — an uninstalled skill needs no labels.
+ 
+@@ -53,7 +55,7 @@ If it is installed, ask exactly one question:
+ 
+ > Do you want to keep the default triage labels? (recommended: **yes**)
+ 
+-The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. On **yes**, write them as-is. Only if the user says no — usually because their tracker already uses other names (e.g. `bug:triage` for `needs-triage`) — collect the overrides so `triage` applies existing labels instead of creating duplicates.
++The defaults are the two category roles (`bug`, `enhancement`) and five disposition roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), each label string equal to its name. On **yes**, write them as-is. Only if the user says no — usually because their tracker already uses other names (e.g. `Bug` for `bug`) — collect the overrides so `triage` applies existing labels instead of creating duplicates. For Linear, verify the mapped labels exist in the configured team/workspace; do not substitute workflow statuses or similarly named labels.
+ 
+ **Section C — Domain docs.** Default to **single-context** — one `CONTEXT.md` + `docs/adr/` at the repo root. This fits almost every repo; write it without asking.
+ 
+@@ -104,11 +106,12 @@ Then write the docs files using the seed templates in this skill folder as a sta
+ 
+ - [issue-tracker-github.md](./issue-tracker-github.md) — GitHub issue tracker
+ - [issue-tracker-gitlab.md](./issue-tracker-gitlab.md) — GitLab issue tracker
++- [issue-tracker-linear.md](./issue-tracker-linear.md) — Linear issue tracker
+ - [issue-tracker-local.md](./issue-tracker-local.md) — local-markdown issue tracker
+ - [triage-labels.md](./triage-labels.md) — label mapping (only if `triage` is installed)
+ - [domain.md](./domain.md) — domain doc consumer rules + layout
+ 
+-For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description.
++For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description. For a real tracker, include a **Wayfinding operations** section covering map labels, child issues, native blocking relationships, frontier queries, claim-by-assignee, resolution comments, and closure.
+ 
+ ### 5. Done
+ 
+diff --git a/local/.agents/skills/setup-matt-pocock-skills/issue-tracker-linear.md b/.agents/skills/setup-matt-pocock-skills/issue-tracker-linear.md
+new file mode 100644
+index 0000000..5e327b7
+--- /dev/null
++++ b/.agents/skills/setup-matt-pocock-skills/issue-tracker-linear.md
+@@ -0,0 +1,39 @@
++# Issue tracker: Linear
++
++Issues, specs, and tickets for this repo live in Linear.
++
++- Workspace: `<workspace>`
++- Team: `<team name>`
++- Team key: `<KEY>`
++- External PRs as a request surface: `no`
++- GitHub Issues compatibility sync: `<none or owner/repo and sync direction>`
++
++Use a semantic Linear connector such as the Linear plugin or hosted MCP. If both expose overlapping tools, choose one surface for a workflow; never repeat a mutation through both.
++
++## Operations
++
++- Create issues in the configured team and return their Linear identifier and URL.
++- Read the full description, comments, labels, status, assignee, parent, and blocking relationships.
++- Preserve existing labels when applying mapped category or disposition roles; some connector update operations replace the complete label set.
++- Use Linear parent/sub-issue and blocking relationships, not prose alone. Keep human-readable `Parent` and `Blocked by` sections when a publishing skill requires them.
++- Post triage comments with the disclaimer required by the `triage` skill.
++- Use the team's backlog/unstarted/started/completed/canceled statuses consistently and record their exact names here.
++
++Do not infer GitHub as canonical merely because `git remote` points there. A configured GitHub sync is a compatibility surface, not a second source of truth. After a fallback write, verify the synced Linear issue before reporting success; never create the same item independently in both systems.
++
++## When a skill says "publish to the issue tracker"
++
++Create a Linear issue in the configured team. Apply the mapped category and disposition labels required by the skill.
++
++## When a skill says "fetch the relevant ticket"
++
++Resolve the Linear identifier or URL and fetch the issue plus comments and relationships.
++
++## Wayfinding operations
++
++- **Map:** a Linear issue labelled `wayfinder:map`.
++- **Child ticket:** a sub-issue of the map labelled `wayfinder:research`, `wayfinder:prototype`, `wayfinder:grilling`, or `wayfinder:task`.
++- **Blocking:** Linear's native blocking relationship. Create tickets first, then wire their blocking edges once identifiers exist.
++- **Frontier:** open, unassigned child issues whose blockers are all closed.
++- **Claim:** assign the ticket to the driving dev before doing any work.
++- **Resolve:** post the answer as a comment, close the ticket, and append a linked one-line gist to the map's Decisions-so-far.
+diff --git a/.agents/skills/setup-matt-pocock-skills/triage-labels.md b/.agents/skills/setup-matt-pocock-skills/triage-labels.md
+index b716855..08c3286 100644
+--- a/.agents/skills/setup-matt-pocock-skills/triage-labels.md
++++ b/.agents/skills/setup-matt-pocock-skills/triage-labels.md
+@@ -1,15 +1,24 @@
+ # Triage Labels
+ 
+-The skills speak in terms of five canonical triage roles. This file maps those roles to the actual label strings used in this repo's issue tracker.
++The skills speak in terms of two category roles and five disposition roles. This file maps those roles to the actual label strings used in this repo's issue tracker.
+ 
+-| Label in mattpocock/skills | Label in our tracker | Meaning                                  |
+-| -------------------------- | -------------------- | ---------------------------------------- |
+-| `needs-triage`             | `needs-triage`       | Maintainer needs to evaluate this issue  |
+-| `needs-info`               | `needs-info`         | Waiting on reporter for more information |
+-| `ready-for-agent`          | `ready-for-agent`    | Fully specified, ready for an AFK agent  |
+-| `ready-for-human`          | `ready-for-human`    | Requires human implementation            |
+-| `wontfix`                  | `wontfix`            | Will not be actioned                     |
++## Category roles
+ 
+-When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
++| Role in mattpocock/skills | Label in our tracker | Meaning                    |
++| ------------------------- | -------------------- | -------------------------- |
++| `bug`                     | `bug`                | Something is broken        |
++| `enhancement`             | `enhancement`        | New feature or improvement |
++
++## Disposition roles
++
++| Role in mattpocock/skills | Label in our tracker | Meaning                                  |
++| ------------------------- | -------------------- | ---------------------------------------- |
++| `needs-triage`            | `needs-triage`       | Maintainer needs to evaluate this issue  |
++| `needs-info`              | `needs-info`         | Waiting on reporter for more information |
++| `ready-for-agent`         | `ready-for-agent`    | Fully specified, ready for an AFK agent  |
++| `ready-for-human`         | `ready-for-human`    | Requires human implementation            |
++| `wontfix`                 | `wontfix`            | Will not be actioned                     |
++
++When a skill mentions a role, use the corresponding label string from these tables. A triaged issue carries exactly one role from each table.
+ 
+ Edit the right-hand column to match whatever vocabulary you actually use.
+diff --git a/.agents/skills/to-spec/SKILL.md b/.agents/skills/to-spec/SKILL.md
+index 1e7f242..edc681b 100644
+--- a/.agents/skills/to-spec/SKILL.md
++++ b/.agents/skills/to-spec/SKILL.md
+@@ -5,7 +5,7 @@ description: Turn the current conversation into a spec and publish it to the pro
+ 
+ This skill takes the current conversation context and codebase understanding and produces a spec (you may know this document as a PRD). Do NOT interview the user — just synthesize what you already know.
+ 
+-The issue tracker and triage label vocabulary should have been provided to you — run `/setup-matt-pocock-skills` if not.
++The issue tracker and triage label vocabulary should have been provided to you — run `/setup-matt-pocock-skills` if not. Follow that configured source of truth even when the git remote points at a different compatibility surface.
+ 
+ ## Process
+ 
+@@ -15,7 +15,7 @@ The issue tracker and triage label vocabulary should have been provided to you 
+ 
+ Check with the user that these seams match their expectations.
+ 
+-3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
++3. Write the spec using the template below, then publish it to the project issue tracker. Apply the mapped `bug` or `enhancement` category role plus the mapped `ready-for-agent` disposition role — no need for additional triage.
+ 
+ <spec-template>
+ 
+diff --git a/.agents/skills/to-tickets/SKILL.md b/.agents/skills/to-tickets/SKILL.md
+index 6b7a4b2..96ffe58 100644
+--- a/.agents/skills/to-tickets/SKILL.md
++++ b/.agents/skills/to-tickets/SKILL.md
+@@ -7,7 +7,7 @@ description: Break a plan, spec, or the current conversation into a set of trace
+ 
+ Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
+ 
+-The issue tracker and triage label vocabulary should have been provided to you — run `/setup-matt-pocock-skills` if not.
++The issue tracker and triage label vocabulary should have been provided to you — run `/setup-matt-pocock-skills` if not. Follow that configured source of truth even when the git remote points at a different compatibility surface.
+ 
+ ## Process
+ 
+@@ -59,7 +59,7 @@ Iterate until the user approves the breakdown.
+ Publish the approved tickets. **How** depends on the tracker `/setup-matt-pocock-skills` configured — the tickets are the same either way, only the shape of the blocking edges changes:
+ 
+ - **Local files** → write one file per ticket under `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below — one ticket per file, never a single combined file.
+-- **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` triage label unless instructed otherwise — the tickets are agent-grabbable by construction.
++- **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the mapped `bug` or `enhancement` category role plus the mapped `ready-for-agent` disposition role unless instructed otherwise — the tickets are agent-grabbable by construction.
+ 
+ Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
+ 
+diff --git a/.agents/skills/triage/AGENT-BRIEF.md b/.agents/skills/triage/AGENT-BRIEF.md
+index 6535c9b..8886a88 100644
+--- a/.agents/skills/triage/AGENT-BRIEF.md
++++ b/.agents/skills/triage/AGENT-BRIEF.md
+@@ -1,6 +1,6 @@
+ # Writing Agent Briefs
+ 
+-An agent brief is a structured comment posted on a GitHub issue or PR when it moves to `ready-for-agent`. It is the authoritative specification that an AFK agent will work from. The original body and discussion are context — the agent brief is the contract.
++An agent brief is a structured comment posted on an issue (or an in-scope external PR) when it moves to `ready-for-agent`. It is the authoritative specification that an AFK agent will work from. The original body and discussion are context — the agent brief is the contract.
+ 
+ The brief states **what the agent should do**, which stretches to both surfaces: for an issue, that's building the change from nothing; for a PR, it's what's left to do *to the existing diff* — finish it, close gaps, address review points. Same principles either way; the PR example below shows the difference.
+ 
+@@ -29,7 +29,7 @@ Describe **what** the system should do, not **how** to implement it. The agent w
+ 
+ The agent needs to know when it's done. Every agent brief must have concrete, testable acceptance criteria. Each criterion should be independently verifiable.
+ 
+-- **Good:** "Running `gh issue list --label needs-triage` returns issues that have been through initial classification"
++- **Good:** "Querying the configured tracker for `needs-triage` returns issues that have been through initial classification"
+ - **Bad:** "Triage should work correctly"
+ 
+ ### Explicit scope boundaries
+diff --git a/.agents/skills/triage/OUT-OF-SCOPE.md b/.agents/skills/triage/OUT-OF-SCOPE.md
+index fc0e39f..9c0dc2f 100644
+--- a/.agents/skills/triage/OUT-OF-SCOPE.md
++++ b/.agents/skills/triage/OUT-OF-SCOPE.md
+@@ -48,9 +48,9 @@ interface ThemeConfig {
+ 
+ ## Prior requests
+ 
+-- #42 — "Add dark mode support"
+-- #87 — "Night theme for accessibility"
+-- #134 — "Dark theme option"
++- [Add dark mode support](https://tracker.example/issues/42)
++- [Night theme for accessibility](https://tracker.example/issues/87)
++- [Dark theme option](https://tracker.example/issues/134)
+ ```
+ 
+ ### Naming the file
+diff --git a/.agents/skills/triage/SKILL.md b/.agents/skills/triage/SKILL.md
+index bd410be..2733dd6 100644
+--- a/.agents/skills/triage/SKILL.md
++++ b/.agents/skills/triage/SKILL.md
+@@ -68,6 +68,8 @@ Show counts and a one-line summary per item. Let the maintainer pick.
+ 
+ 1. **Gather context.** Read the full issue or PR (body, comments, labels, author, dates; for a PR, the diff too). Parse any prior triage notes so you don't re-ask resolved questions. Explore the codebase using the project's domain glossary, respecting ADRs in the area. Run two checks against the codebase: (a) **redundancy** — search for an existing implementation of the requested behavior by domain concept (not just the request's wording), and report where you looked. If found, it's an already-implemented `wontfix` (step 5). (b) **prior rejection** — read `.out-of-scope/*.md` and surface any that resembles this request.
+ 
++   **Video evidence.** If the issue body, comments, or attachments contain a `<linear-embed node-type="video">`, screen recording, or video file/URL, invoke `$inspect-video-evidence` before recommending or verifying the issue. Require complete-timeline coverage, timestamped observations, and the video skill's coverage statement. Treat thumbnails, poster frames, Quick Look previews, and isolated screenshots as still-image evidence.
++
+ 2. **Recommend.** Tell the maintainer your category and state recommendation with reasoning, plus a brief codebase summary relevant to the request — including whether it's already implemented. Wait for direction.
+ 
+ 3. **Verify the claim.** Before any grilling, check that the claim holds up. For a bug, reproduce it from the reporter's steps. For a PR, confirm the diff does what it claims — check it out, run the relevant tests or commands. Report what happened: confirmed (with code path), failed, or insufficient detail (a strong `needs-info` signal). A confirmed verification makes a much stronger agent brief.
+diff --git a/.agents/skills/wayfinder/SKILL.md b/.agents/skills/wayfinder/SKILL.md
+index 8a6f644..4b1672c 100644
+--- a/.agents/skills/wayfinder/SKILL.md
++++ b/.agents/skills/wayfinder/SKILL.md
+@@ -73,7 +73,7 @@ The answer isn't part of the body — it's recorded on resolution (see [Work thr
+ 
+ Every ticket is either **HITL** — human in the loop, worked *with* a human who speaks for themselves — or **AFK**, driven by the agent alone. A HITL ticket only resolves through that live exchange; the agent never stands in for the human's side of it (a grilling agent that answers its own questions has broken this).
+ 
+-- **Research** (AFK): Reading documentation, third-party APIs, or local resources like knowledge bases to surface a fact a decision waits on. Resolved by a `/research` **subagent**. Use when knowledge outside the current working directory is required.
++- **Research** (AFK): Reading documentation, third-party APIs, or local resources like knowledge bases to surface a fact a decision waits on. Resolve with the `/research` skill. Use a subagent only when the current Codex environment permits it and parallel research is actually useful. Use when knowledge outside the current working directory is required.
+ - **Prototype** (HITL): Raise the fidelity of the discussion by making a cheap, rough, concrete artifact to react to — an outline, a rough take, a stub, or UI/logic code via the /prototype skill. Links the prototype as an asset. Use when "how should it look" or "how should it behave" is the key question.
+ - **Grilling** (HITL): Conversation via the /grilling and /domain-modeling skills, one question at a time. The default case.
+ - **Task** (HITL or AFK): Manual work that must happen before a *decision* can be made — nothing to decide, prototype, or research, but the discussion is blocked until it's done. Signing up for a service so its API can be judged, provisioning access, moving data so its shape can be seen. This is the one type that *does* rather than decides — and it earns its place by unblocking a decision, not by delivering the destination. The agent drives it alone where it can (AFK); otherwise it hands the human a precise checklist (HITL). Resolved when the work is done; the answer records what was done and any resulting facts (credentials location, new URLs, row counts) later tickets depend on.
+@@ -111,7 +111,7 @@ User invokes with a loose idea.
+ 2. **Map the frontier.** Grill again, **breadth-first** this time: fan out across the whole space rather than deep on any one thread, surfacing the open decisions and the first steps takeable now. **If this surfaces no fog** — the way to the destination is already clear, the whole journey small enough for one session — you don't need a map. Stop and ask the user how they'd like to proceed.
+ 3. **Create the map** (label `wayfinder:map`): Destination and Notes filled in, Decisions-so-far empty, the fog sketched into **Not yet specified**.
+ 4. **Create the tickets you can specify now** as child issues of the map — then wire blocking edges in a **second pass** (issues need ids before they can reference each other). Wiring sorts them into the frontier and the blocked; everything you can't yet specify stays in the fog — the **Not yet specified** section.
+-5. **Fire the research subagents.** For each `research` ticket you just created, spin up a `/research` subagent to resolve it in parallel, capturing its findings on a throwaway `research/<name>` branch with a context pointer from the ticket.
++5. **Start eligible research.** For each `research` ticket you just created, either resolve it with `/research` in the current turn or spin up a `/research` subagent when subagents are available and parallelism helps. Capture durable findings as a cited Markdown note only when the ticket needs a context pointer. Do not create a branch unless the user or tracker workflow explicitly asks for branch-based research.
+ 6. Stop — charting is one session's work; it hand-resolves nothing.
+ 
+ ### Work through the map
+diff --git a/.agents/skills/writing-great-skills/SKILL.md b/.agents/skills/writing-great-skills/SKILL.md
+index b414b58..90c627f 100644
+--- a/.agents/skills/writing-great-skills/SKILL.md
++++ b/.agents/skills/writing-great-skills/SKILL.md
+@@ -11,8 +11,8 @@ A skill exists to wrangle determinism out of a stochastic system. **Predictabili
+ 
+ Two choices, trading different costs:
+ 
+-- A **model-invoked** skill keeps a **description**, so the agent can fire it autonomously _and_ other skills can reach it (you can still type its name too). It contributes to **context load** — the description sits in the window every turn. Mechanics: omit `disable-model-invocation`, and write a model-facing description with rich trigger phrasing ("Use when the user wants…, mentions…").
+-- A **user-invoked** skill strips the description from the agent's reach: only you, typing its name, can invoke it — and no other skill can. Zero context load, but it spends **cognitive load**: _you_ are the index that must remember it exists. Mechanics: set `disable-model-invocation: true`; the `description` becomes human-facing — a one-line summary, trigger lists stripped.
++- A **model-invoked** skill keeps a **description**, so the agent can fire it autonomously _and_ other skills can reach it (you can still type its name too). It contributes to **context load** — the description sits in the window every turn. Codex mechanics: keep only `name` and `description` in `SKILL.md` frontmatter, omit `allow_implicit_invocation: false` from `agents/openai.yaml`, and write a model-facing description with rich trigger phrasing ("Use when the user wants…, mentions…").
++- A **user-invoked** skill strips the description from the agent's reach: only you, typing its name, can invoke it — and no other skill can. Zero context load, but it spends **cognitive load**: _you_ are the index that must remember it exists. Codex mechanics: keep only `name` and `description` in `SKILL.md` frontmatter, then set `allow_implicit_invocation: false` in `agents/openai.yaml`; the `description` becomes human-facing — a one-line summary, trigger lists stripped.
+ 
+ Pick model-invocation only when the agent must reach the skill on its own, or another skill must. If it only ever fires by hand, make it user-invoked and pay no context load.
+ 
+
