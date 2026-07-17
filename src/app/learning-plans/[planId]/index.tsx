@@ -52,7 +52,7 @@ import type {
 } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
-import { goBackOrReplace } from "~/lib/navigation";
+import { dismissToOrReplace } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
@@ -686,7 +686,7 @@ export default function LearningPlanSessionsScreen() {
 		selectedSessionState !== null && selectedSessionState !== "locked";
 
 	const goBack = () => {
-		goBackOrReplace(router, "/learning-plans");
+		dismissToOrReplace(router, "/learning-plans");
 	};
 
 	return (
