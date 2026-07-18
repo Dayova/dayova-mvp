@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	getOtpCellLayout,
 	getRangeValueBadgeSize,
+	getRangeValueContentLayout,
 	getResponsiveAuthChoiceLayout,
 } from "./auth-content-size-layout";
 
@@ -45,6 +46,20 @@ describe("auth content-size layout", () => {
 		expect(badgeSize - scaledTextHeight).toBeGreaterThanOrEqual(
 			2 * (ringStrokeWidth + innerVerticalPadding),
 		);
+	});
+
+	it("optically centers the default range value and keeps its unit close", () => {
+		expect(getRangeValueContentLayout(1)).toEqual({
+			unitMarginTop: -8,
+			verticalOffset: -2,
+		});
+	});
+
+	it("scales range-value spacing and optical centering with enlarged text", () => {
+		expect(getRangeValueContentLayout(3)).toEqual({
+			unitMarginTop: -28,
+			verticalOffset: -6,
+		});
 	});
 
 	it("keeps maximum-size auth copy readable while capping decorative branding", () => {

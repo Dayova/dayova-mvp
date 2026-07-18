@@ -19,6 +19,11 @@ type ResponsiveAuthChoiceLayout = {
 	verticallyCenterContent: boolean;
 };
 
+type RangeValueContentLayout = {
+	unitMarginTop: number;
+	verticalOffset: number;
+};
+
 function getOtpCellLayout({
 	fontScale,
 	shouldStackInlineContent,
@@ -48,6 +53,15 @@ function getRangeValueBadgeSize({
 	);
 }
 
+function getRangeValueContentLayout(
+	fontScale: number,
+): RangeValueContentLayout {
+	return {
+		unitMarginTop: 2 - 10 * fontScale,
+		verticalOffset: -2 * fontScale,
+	};
+}
+
 function getResponsiveAuthChoiceLayout(
 	fontScale: number,
 ): ResponsiveAuthChoiceLayout {
@@ -69,5 +83,6 @@ function getResponsiveAuthChoiceLayout(
 export {
 	getOtpCellLayout,
 	getRangeValueBadgeSize,
+	getRangeValueContentLayout,
 	getResponsiveAuthChoiceLayout,
 };

@@ -107,59 +107,63 @@ function BottomModal({
 						bounces={false}
 						// Safe-area padding is runtime device data.
 						contentContainerStyle={{
-							paddingHorizontal: 24,
-							paddingTop: 20,
 							paddingBottom: Math.max(insets.bottom + 40, 56),
 						}}
 						showsVerticalScrollIndicator={false}
 					>
-						{showCloseButton && onClose ? (
-							<View className="items-end">
-								<CloseButton
-									accessibilityLabel={closeAccessibilityLabel}
-									onPress={onClose}
-								/>
-							</View>
-						) : null}
-						{hasHeader ? (
-							<View
-								className={cn(
-									showCloseButton && onClose ? "mt-6 gap-3" : "gap-3",
-									headerClassName,
-								)}
-							>
-								{title ? (
-									<Text
-										className={cn(
-											"font-poppins font-semibold text-body-1 text-text",
-											titleClassName,
-										)}
-									>
-										{title}
-									</Text>
-								) : null}
-								{description ? (
-									<Text
-										className={cn(
-											"font-poppins text-body-2 text-secondary-text",
-											descriptionClassName,
-										)}
-									>
-										{description}
-									</Text>
-								) : null}
-							</View>
-						) : null}
-						{children ? (
-							<View
-								className={cn(
-									hasHeader ? "mt-8" : showCloseButton && onClose ? "mt-6" : "",
-									contentClassName,
-								)}
-							>
-								{children}
-							</View>
-						) : null}
+						<View className="px-6 pt-5">
+							{showCloseButton && onClose ? (
+								<View className="items-end">
+									<CloseButton
+										accessibilityLabel={closeAccessibilityLabel}
+										onPress={onClose}
+									/>
+								</View>
+							) : null}
+							{hasHeader ? (
+								<View
+									className={cn(
+										showCloseButton && onClose ? "mt-6 gap-3" : "gap-3",
+										headerClassName,
+									)}
+								>
+									{title ? (
+										<Text
+											className={cn(
+												"font-poppins font-semibold text-body-1 text-text",
+												titleClassName,
+											)}
+										>
+											{title}
+										</Text>
+									) : null}
+									{description ? (
+										<Text
+											className={cn(
+												"font-poppins text-body-2 text-secondary-text",
+												descriptionClassName,
+											)}
+										>
+											{description}
+										</Text>
+									) : null}
+								</View>
+							) : null}
+							{children ? (
+								<View
+									className={cn(
+										hasHeader
+											? "mt-8"
+											: showCloseButton && onClose
+												? "mt-6"
+												: "",
+										contentClassName,
+									)}
+								>
+									{children}
+								</View>
+							) : null}
+						</View>
 					</ScrollView>
 				</View>
 			</View>

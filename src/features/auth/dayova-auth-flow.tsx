@@ -51,12 +51,6 @@ import Svg, {
 } from "react-native-svg";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
-import { useContentSizeLayout } from "~/components/ui/portrait-content";
-import {
-	getOtpCellLayout,
-	getRangeValueBadgeSize,
-	getResponsiveAuthChoiceLayout,
-} from "~/features/auth/auth-content-size-layout";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -84,10 +78,17 @@ import {
 	SquareRootSquare,
 	Telescope,
 } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
+import {
+	getOtpCellLayout,
+	getRangeValueBadgeSize,
+	getRangeValueContentLayout,
+	getResponsiveAuthChoiceLayout,
+} from "~/features/auth/auth-content-size-layout";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useBackIntent } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
@@ -2113,7 +2114,7 @@ function PillTextInput({
 				alignItems: "center",
 				paddingLeft: 16,
 				paddingRight: 4,
-				paddingVertical: shouldStackInlineContent ? 6 : 0,
+				paddingVertical: shouldStackInlineContent ? 8 : 0,
 			}}
 		>
 			<TextInput
@@ -2284,19 +2285,13 @@ function OtpCodeInput({
 	return (
 		<Pressable onPress={() => inputRef.current?.focus()}>
 			{shouldStackInlineContent ? (
-				<ScrollView
-					horizontal
-					showsHorizontalScrollIndicator={false}
-					contentContainerStyle={{
-						gap: 8,
-						minWidth: "100%",
-						justifyContent: "center",
-					}}
-				>
-					{cells}
+				<ScrollView horizontal showsHorizontalScrollIndicator={false}>
+					<View className="min-w-full flex-row justify-center gap-2">
+						{cells}
+					</View>
 				</ScrollView>
 			) : (
-				<View style={{ flexDirection: "row", gap: 8 }}>{cells}</View>
+				<View className="flex-row gap-2">{cells}</View>
 			)}
 			<TextInput
 				ref={inputRef}
@@ -2341,6 +2336,7 @@ function RangeSelector({
 		fontScale,
 		shouldStackInlineContent,
 	});
+	const valueContentLayout = getRangeValueContentLayout(fontScale);
 	const carouselWidth = shouldStackInlineContent
 		? Math.min(usableWidth, 360)
 		: Math.min(width, 360);
@@ -2434,12 +2430,23 @@ function RangeSelector({
 						transform="rotate(-90 44 44)"
 					/>
 				</Svg>
-				<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-					{selected}
-				</Text>
-				<Text className="-mt-1 text-center font-poppins font-semibold text-body-5 text-text">
-					min
-				</Text>
+				<View
+					// Optical correction follows the runtime-scaled Poppins line boxes.
+					style={{
+						alignItems: "center",
+						transform: [{ translateY: valueContentLayout.verticalOffset }],
+					}}
+				>
+					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
+						{selected}
+					</Text>
+					<Text
+						className="text-center font-poppins font-semibold text-body-5 text-text"
+						style={{ marginTop: valueContentLayout.unitMarginTop }}
+					>
+						min
+					</Text>
+				</View>
 			</View>
 
 			<View
@@ -2626,6 +2633,7 @@ function ChipCloud({
 										right: 0,
 										bottom: 0,
 										left: 0,
+										borderRadius: DAYOVA_DESIGN_SYSTEM.radius.button,
 									}}
 								/>
 							) : null}
@@ -3034,7 +3042,7 @@ function PickerInputTrigger({
 				borderColor: "rgba(17,24,39,0.05)",
 				boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
 				paddingHorizontal: 20,
-				paddingVertical: shouldStackInlineContent ? 10 : 0,
+				paddingVertical: shouldStackInlineContent ? 12 : 0,
 				flexDirection: "row",
 				alignItems: "center",
 				justifyContent: "space-between",
@@ -3287,6 +3295,7 @@ function GradientPillButton({
 
 	return (
 		<Pressable
+			className="px-6"
 			disabled={disabled}
 			onPress={onPress}
 			style={{
@@ -3297,7 +3306,6 @@ function GradientPillButton({
 				alignItems: "center",
 				justifyContent: "center",
 				opacity: disabled ? 0.55 : 1,
-				paddingHorizontal: 24,
 				paddingVertical: shouldStackInlineContent ? 12 : 0,
 			}}
 		>
@@ -3340,6 +3348,7 @@ function DarkPillButton({
 
 	return (
 		<Pressable
+			className="px-6"
 			disabled={disabled}
 			onPress={onPress}
 			style={{
@@ -3350,7 +3359,6 @@ function DarkPillButton({
 				justifyContent: "center",
 				backgroundColor: COLORS.buttonNeutral,
 				boxShadow: disabled ? "none" : "0 8px 18px rgba(20, 28, 48, 0.08)",
-				paddingHorizontal: 24,
 				paddingVertical: shouldStackInlineContent ? 12 : 0,
 			}}
 		>

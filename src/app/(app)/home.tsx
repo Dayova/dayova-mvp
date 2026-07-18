@@ -1372,7 +1372,7 @@ export default function HomeScreen() {
 							// Runtime scale and reflow mode set the day strip's vertical rhythm.
 							style={{
 								marginTop: contentSizeLayout.shouldStackInlineContent
-									? 14 * compactScale
+									? 16 * compactScale
 									: 23 * compactScale,
 								alignSelf: "center",
 							}}
