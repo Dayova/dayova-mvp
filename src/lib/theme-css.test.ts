@@ -17,7 +17,7 @@ describe("theme CSS", () => {
 
 	test("keeps the native runtime dark variables synchronized with CSS", () => {
 		const css = readFileSync(GLOBAL_CSS_PATH, "utf8");
-		const darkRoot = css.match(/\.dark:root\s*\{([\s\S]*?)\n\t\}/)?.[1];
+		const darkRoot = css.match(/\.dark:root\s*\{([^}]+)\}/)?.[1];
 		expect(darkRoot).toBeDefined();
 
 		const cssVariables = Object.fromEntries(
@@ -41,6 +41,9 @@ describe("theme CSS", () => {
 		expect(themeProvider).toContain(
 			'import { useSystemColorScheme } from "~/lib/system-color-scheme"',
 		);
-		expect(themeProvider).toContain("setColorScheme(preference)");
+		expect(themeProvider).not.toContain("useNativeWindColorScheme");
+		expect(themeProvider).toContain(
+			"Appearance.setColorScheme(nativePreference)",
+		);
 	});
 });

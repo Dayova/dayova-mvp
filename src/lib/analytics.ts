@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import { useCallback } from "react";
 import { api } from "#convex/_generated/api";
@@ -14,7 +14,8 @@ import type { AnalyticsProperties } from "~/lib/analytics-core";
 
 export function useValidationAnalytics() {
 	const posthog = usePostHog();
-	const { user, isConvexAuthenticated } = useAuth();
+	const { user } = useAuth();
+	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const convexUser = useQuery(
 		api.users.getMe,
 		user && isConvexAuthenticated ? {} : "skip",

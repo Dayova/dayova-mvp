@@ -1,4 +1,5 @@
 import ExpoModulesCore
+import React
 import UIKit
 
 public class DayovaSystemAppearanceModule: Module {
@@ -8,6 +9,13 @@ public class DayovaSystemAppearanceModule: Module {
     Name("DayovaSystemAppearance")
 
     Events("onChange")
+
+    OnCreate {
+      DispatchQueue.main.async {
+        RCTUseKeyWindowForSystemStyle(true)
+        Self.notifyReactNativeAppearance()
+      }
+    }
 
     Function("getColorScheme") { () -> String in
       return Self.readColorSchemeOnMainQueue()
@@ -52,6 +60,12 @@ public class DayovaSystemAppearanceModule: Module {
     return style == .dark ? "dark" : "light"
   }
 
+  fileprivate static func notifyReactNativeAppearance() {
+    NotificationCenter.default.post(
+      name: Notification.Name("RCTUserInterfaceStyleDidChangeNotification"),
+      object: nil)
+  }
+
   private static func readColorSchemeOnMainQueue() -> String {
     if Thread.isMainThread {
       return currentColorScheme()
@@ -84,6 +98,7 @@ public class DayovaSystemAppearanceModule: Module {
   private func emitCurrentColorScheme() {
     let emit: () -> Void = { [weak self] in
       guard let self else { return }
+      Self.notifyReactNativeAppearance()
       self.sendEvent("onChange", [
         "colorScheme": Self.currentColorScheme()
       ])

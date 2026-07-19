@@ -4,7 +4,6 @@ import {
 	type Theme,
 } from "expo-router/react-navigation";
 import * as SecureStore from "expo-secure-store";
-import { useColorScheme as useNativeWindColorScheme } from "nativewind";
 import {
 	createContext,
 	createElement,
@@ -15,7 +14,7 @@ import {
 	useMemo,
 	useState,
 } from "react";
-import { Platform } from "react-native";
+import { Appearance, Platform } from "react-native";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useSystemColorScheme } from "~/lib/system-color-scheme";
 import {
@@ -122,7 +121,6 @@ async function writeStoredThemePreference(preference: ThemePreference) {
 }
 
 function DayovaThemeProvider({ children }: { children: ReactNode }) {
-	const { setColorScheme } = useNativeWindColorScheme();
 	const systemTheme = useSystemColorScheme();
 	const [preference, setPreferenceState] = useState<ThemePreference>("system");
 	const [isLoaded, setIsLoaded] = useState(false);
@@ -152,8 +150,10 @@ function DayovaThemeProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	useEffect(() => {
-		setColorScheme(preference);
-	}, [preference, setColorScheme]);
+		const nativePreference =
+			preference === "system" ? "unspecified" : preference;
+		Appearance.setColorScheme(nativePreference);
+	}, [preference]);
 
 	const setPreference = useCallback(async (nextPreference: ThemePreference) => {
 		setPreferenceState(nextPreference);

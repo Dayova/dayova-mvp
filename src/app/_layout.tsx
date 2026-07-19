@@ -110,7 +110,7 @@ export default function RootLayout() {
 function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 	const { colors, resolvedTheme } = useDayovaTheme();
 	const themeVariables = useMemo(
-		() => (resolvedTheme === "dark" ? vars(DARK_THEME_VARIABLES) : undefined),
+		() => vars(resolvedTheme === "dark" ? DARK_THEME_VARIABLES : {}),
 		[resolvedTheme],
 	);
 
@@ -120,7 +120,7 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 
 	return (
 		<GestureHandlerRootView style={gestureRootStyle}>
-			<View className="flex-1" style={themeVariables}>
+			<View style={[gestureRootStyle, themeVariables]}>
 				<KeyboardProvider preload={false}>
 					<PostHogProvider
 						apiKey={postHogApiKey}
