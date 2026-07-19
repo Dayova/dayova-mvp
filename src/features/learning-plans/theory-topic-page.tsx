@@ -338,7 +338,7 @@ export function TheoryTopicPage({
 									/>
 								}
 							>
-								Achte darauf
+								Typischer Fehler
 							</TopicSectionTitle>
 							<Text selectable className="font-poppins text-body-2 text-text">
 								{topic.commonMistake}

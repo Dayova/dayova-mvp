@@ -40,6 +40,7 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import { PracticeCompletionCard } from "~/features/learning-plans/practice-completion-card";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
@@ -440,27 +441,28 @@ function CompletionView({
 }) {
 	const isTheory = phase === "theory";
 	const isPraxis = phase === "rehearsal";
-	const title = isTheory
-		? "Theorie abgeschlossen"
-		: isPraxis
-			? "Praxis abgeschlossen"
-			: "Übung abgeschlossen";
+	if (isPraxis) {
+		return (
+			<PracticeCompletionCard
+				durationMinutes={durationMinutes}
+				correctCount={correctCount}
+				attemptCount={attemptCount}
+				onRepeat={onRepeat}
+				onAnalysis={onPrimary}
+				isBusy={isBusy}
+			/>
+		);
+	}
+
+	const title = isTheory ? "Theorie abgeschlossen" : "Übung abgeschlossen";
 	const description = isTheory
 		? "Du hast die Theorieeinheit erfolgreich beendet. Du kannst die Themen jetzt noch einmal wiederholen oder direkt zum nächsten Schritt wechseln."
 		: "Du hast alle Aufgaben bearbeitet. Wiederhole die Themen oder gehe zum nächsten Schritt.";
-	const Icon = isTheory ? BookOpen : isPraxis ? Check : Pencil;
-	const iconClassName = isTheory
-		? "bg-theorie-subtle"
-		: isPraxis
-			? "bg-praxis-subtle"
-			: "bg-ueben-subtle";
+	const Icon = isTheory ? BookOpen : Pencil;
+	const iconClassName = isTheory ? "bg-theorie-subtle" : "bg-ueben-subtle";
 	const iconColor = isTheory
 		? DAYOVA_DESIGN_SYSTEM.colors.theorie
-		: isPraxis
-			? DAYOVA_DESIGN_SYSTEM.colors.praxis
-			: DAYOVA_DESIGN_SYSTEM.colors.ueben;
-	const resultPercent =
-		attemptCount > 0 ? Math.round((correctCount / attemptCount) * 100) : 0;
+		: DAYOVA_DESIGN_SYSTEM.colors.ueben;
 
 	return (
 		<View className="flex-1 justify-center">
@@ -480,19 +482,10 @@ function CompletionView({
 					<Text className="mt-4 text-center font-poppins text-body-2 text-secondary-text">
 						{description}
 					</Text>
-					{isPraxis ? (
-						<>
-							<View className="my-7 h-px self-stretch bg-border" />
-							<Text className="text-center font-poppins font-semibold text-body-2 text-primary">
-								Dauer: {Math.min(Math.max(durationMinutes, 10), 30)} Min. •
-								Ergebnis: {resultPercent} % richtig
-							</Text>
-						</>
-					) : null}
 				</View>
 				<ActionRow
 					secondaryLabel="Wiederholen"
-					primaryLabel={isPraxis ? "Analyse" : "Abschließen"}
+					primaryLabel="Abschließen"
 					onSecondary={onRepeat}
 					onPrimary={onPrimary}
 					isBusy={isBusy}
@@ -925,11 +918,13 @@ export default function LearningSessionContentScreen() {
 	const [completionPhase, setCompletionPhase] = useState<
 		LearningSessionContentSnapshot["session"]["phase"] | null
 	>(null);
+	const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
 	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
 	const didEnsureRef = useRef(false);
 	const didAutoFinishRef = useRef(false);
 	const didStartTrackingRef = useRef(false);
+	const contentScrollRef = useRef<ScrollView>(null);
 	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
 		null,
 	);
@@ -981,6 +976,7 @@ export default function LearningSessionContentScreen() {
 	const isPraxisSession = content?.session.phase === "rehearsal";
 	const persistedAttempt = useMemo(() => {
 		if (!currentItem || !content) return null;
+		if (currentItem.id === repeatingItemId) return null;
 		const attempt =
 			content.attempts.find((attempt) => attempt.itemId === currentItem.id) ??
 			null;
@@ -988,7 +984,7 @@ export default function LearningSessionContentScreen() {
 		if (retryStartedAt !== null && attempt.createdAt < retryStartedAt)
 			return null;
 		return attempt;
-	}, [content, currentItem, retryStartedAt]);
+	}, [content, currentItem, repeatingItemId, retryStartedAt]);
 	const visibleAttempt =
 		!isPraxisSession &&
 		localAttempt &&
@@ -1132,7 +1128,16 @@ export default function LearningSessionContentScreen() {
 		setSelectedChoiceId(null);
 		setAnswerText("");
 		setLocalAttempt(null);
+		setRepeatingItemId(null);
 		setSpeechErrorMessage(null);
+	};
+
+	const repeatCurrentQuestion = () => {
+		if (!currentItem || isBusy) return;
+		resetItemState();
+		setRepeatingItemId(currentItem.id);
+		setErrorMessage(null);
+		contentScrollRef.current?.scrollTo({ y: 0, animated: true });
 	};
 
 	const repeatCurrentContent = () => {
@@ -1491,6 +1496,7 @@ export default function LearningSessionContentScreen() {
 				) : null}
 			</View>
 			<ScrollView
+				ref={contentScrollRef}
 				className="flex-1"
 				bounces={
 					currentItem?.kind !== "multipleChoice" || Boolean(visibleAttempt)
@@ -1624,13 +1630,14 @@ export default function LearningSessionContentScreen() {
 					className="border-border border-t-hairline bg-background px-8 pt-4"
 					style={{ paddingBottom: Math.max(insets.bottom, 16) }}
 				>
-					<Button disabled={isBusy} onPress={continueTask}>
-						{isBusy ? (
-							<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
-						) : (
-							<Text>Verstanden</Text>
-						)}
-					</Button>
+					<ActionRow
+						className="mt-0"
+						secondaryLabel="Wiederholen"
+						primaryLabel="Verstanden"
+						onSecondary={repeatCurrentQuestion}
+						onPrimary={continueTask}
+						isBusy={isBusy}
+					/>
 				</View>
 			) : null}
 		</View>
