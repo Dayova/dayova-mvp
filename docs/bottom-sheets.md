@@ -27,7 +27,7 @@ inner list scrolling. That is the behavior the picker sheets need.
 
 Sources:
 
-- Expo UI BottomSheet docs: https://docs.expo.dev/versions/v56.0.0/sdk/ui/drop-in-replacements/bottomsheet/
+- Expo UI BottomSheet docs: https://docs.expo.dev/versions/v57.0.0/sdk/ui/drop-in-replacements/bottomsheet/
 - Gorhom Bottom Sheet docs: https://gorhom.dev/react-native-bottom-sheet/
 
 ## What would need to change before switching back to Expo UI?

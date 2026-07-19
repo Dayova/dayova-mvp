@@ -1,4 +1,4 @@
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import { useCallback } from "react";
 import { api } from "#convex/_generated/api";
@@ -14,7 +14,11 @@ import type { AnalyticsProperties } from "~/lib/analytics-core";
 
 export function useValidationAnalytics() {
 	const posthog = usePostHog();
-	const { user } = useAuth();
+	const { user, isConvexAuthenticated } = useAuth();
+	const convexUser = useQuery(
+		api.users.getMe,
+		user && isConvexAuthenticated ? {} : "skip",
+	);
 	const markActivity = useMutation(api.validationAnalytics.markActivity);
 	const clerkId = user?.clerkId;
 
@@ -25,18 +29,20 @@ export function useValidationAnalytics() {
 		) => {
 			if (!isPostHogConfigured || !clerkId) return;
 
-			let validationStudentCode: string | null = null;
-			try {
-				const activity = await markActivity({
-					localDayKey: getDayKey(new Date()),
-				});
-				validationStudentCode = activity.validationStudentCode;
-			} catch (error) {
-				logDiagnosticError("Failed to mark validation activity.", error, {
-					source: "analytics.markActivity",
-					level: "warn",
-					metadata: { eventName },
-				});
+			let validationStudentCode = convexUser?.validationStudentCode ?? null;
+			if (convexUser) {
+				try {
+					const activity = await markActivity({
+						localDayKey: getDayKey(new Date()),
+					});
+					validationStudentCode = activity.validationStudentCode;
+				} catch (error) {
+					logDiagnosticError("Failed to mark validation activity.", error, {
+						source: "analytics.markActivity",
+						level: "warn",
+						metadata: { eventName },
+					});
+				}
 			}
 
 			captureValidationEvent(posthog, eventName, clerkId, {
@@ -46,7 +52,7 @@ export function useValidationAnalytics() {
 					: {}),
 			});
 		},
-		[clerkId, markActivity, posthog],
+		[clerkId, convexUser, markActivity, posthog],
 	);
 
 	return { capture };
