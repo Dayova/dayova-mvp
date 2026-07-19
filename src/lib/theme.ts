@@ -25,7 +25,7 @@ import {
 	type ThemePreference,
 } from "~/lib/theme-preference";
 
-export type DayovaThemeColors = {
+type DayovaThemeColors = {
 	[Key in keyof typeof DAYOVA_DESIGN_SYSTEM.colors]: string;
 };
 
@@ -58,7 +58,7 @@ const DARK_COLORS = {
 	path4: "#A7AAB4",
 } satisfies DayovaThemeColors;
 
-export const DAYOVA_THEME_COLORS = {
+const DAYOVA_THEME_COLORS = {
 	light: LIGHT_COLORS,
 	dark: DARK_COLORS,
 } as const;
@@ -89,8 +89,6 @@ export const NAV_THEMES: Record<ResolvedTheme, Theme> = {
 		},
 	},
 };
-
-export const NAV_THEME: Theme = NAV_THEMES.light;
 
 type ThemeContextValue = {
 	colors: (typeof DAYOVA_THEME_COLORS)[ResolvedTheme];

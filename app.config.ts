@@ -75,6 +75,7 @@ const config: ExpoConfig = {
 	},
 	plugins: [
 		"expo-router",
+		"expo-status-bar",
 		"@clerk/expo",
 		[
 			"expo-notifications",
