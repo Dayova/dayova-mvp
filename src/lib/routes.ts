@@ -6,7 +6,6 @@ export const ROUTES = {
 	createExam: "/entry/new?type=exam",
 	createHomework: "/entry/new?type=homework",
 	createLearningPlan: "/learning-plans/new",
-	createLearningPlanTopic: "/learning-plans/topic",
 } as const;
 
 export const withReturnTo = (path: string, returnTo?: string) =>

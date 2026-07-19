@@ -13,7 +13,7 @@ import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes
 import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { goBackOrReplace } from "~/lib/navigation";
+import { dismissToOrReplace, goBackOrReplace } from "~/lib/navigation";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -63,7 +63,8 @@ export default function LearningPlanAnalysisScreen() {
 					);
 					setErrorMessage(message);
 					didStartRef.current = false;
-					router.replace(
+					dismissToOrReplace(
+						router,
 						learningPlanTopicPath(planId, {
 							topicDescription: snapshot.plan.topicDescription,
 							errorMessage: message,

@@ -4,9 +4,6 @@ import { ROUTES } from "~/lib/routes";
 export const learningPlanStepPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
-export const learningPlanUploadPath = (id: Id<"learningPlans">) =>
-	`${ROUTES.createLearningPlan}?learningPlanId=${encodeURIComponent(id)}` as const;
-
 export const learningPlanTopicPath = (
 	id: Id<"learningPlans">,
 	params: {
@@ -16,6 +13,7 @@ export const learningPlanTopicPath = (
 ) => {
 	const query = [
 		["learningPlanId", id],
+		["step", "topic"],
 		["topicDescription", params.topicDescription],
 		["errorMessage", params.errorMessage],
 	]
@@ -23,5 +21,5 @@ export const learningPlanTopicPath = (
 		.map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
 		.join("&");
 
-	return `${ROUTES.createLearningPlanTopic}?${query}` as const;
+	return `${ROUTES.createLearningPlan}?${query}` as const;
 };

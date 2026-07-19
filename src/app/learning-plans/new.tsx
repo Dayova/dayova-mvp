@@ -4,32 +4,31 @@ import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { type ComponentType, useEffect, useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	TouchableOpacity,
-	useWindowDimensions,
-	View,
-} from "react-native";
-import type { SvgProps } from "react-native-svg";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, useWindowDimensions, View } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
 import {
 	BottomModal,
 	BottomModalOption,
 	bottomModalIconColor,
 } from "~/components/ui/bottom-modal";
-import { Button } from "~/components/ui/button";
 import { Attachment, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
-import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { LearningPlanCreationProgressHeader } from "~/features/learning-plans/creation-progress-header";
-import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
-import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
+import {
+	learningPlanStepPath,
+	learningPlanTopicPath,
+} from "~/features/learning-plans/creation-routes";
+import {
+	MaterialUploadStep,
+	TopicDescriptionStep,
+} from "~/features/learning-plans/learning-plan-setup-steps";
 import type {
 	LearningPlanSnapshot,
 	UploadAsset,
@@ -45,14 +44,13 @@ import {
 import { useValidationAnalytics } from "~/lib/analytics";
 import { definedAnalyticsProperties } from "~/lib/analytics-core";
 import { logDiagnosticError } from "~/lib/diagnostics";
-import { goBackOrReplace } from "~/lib/navigation";
-import { ROUTES } from "~/lib/routes";
+import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
 
 const UPLOAD_TIMEOUT_MS = 45_000;
 const UPLOAD_COMPLETION_FAILURE_MESSAGE =
 	"Die Datei wurde übertragen, aber Dayova konnte den Upload nicht abschließen. Bitte versuche es erneut.";
-const IntroUploadArtwork = IntroUploadSvg as unknown as ComponentType<SvgProps>;
 
 type PreparedUploadAsset = {
 	asset: UploadAsset;
@@ -62,11 +60,14 @@ type PreparedUploadAsset = {
 };
 
 type PendingUploadAction = "camera" | "files";
+type LearningPlanSetupStep = "materialUpload" | "topicDescription";
 
 export default function NewLearningPlanScreen() {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
 	const { width: windowWidth } = useWindowDimensions();
 	const params = useLocalSearchParams<{
+		step?: string;
 		learningPlanId?: string;
 		examDayEntryId?: string;
 		subject?: string;
@@ -81,6 +82,7 @@ export default function NewLearningPlanScreen() {
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
+	const updateBasics = useMutation(api.learningPlans.updateBasics);
 	const generateUploadUrl = useMutation(api.learningPlans.generateUploadUrl);
 	const registerUploadedDocument = useAction(
 		api.learningPlans.registerUploadedDocument,
@@ -100,6 +102,14 @@ export default function NewLearningPlanScreen() {
 
 	const [learningPlanId, setLearningPlanId] =
 		useState<Id<"learningPlans"> | null>(initialLearningPlanId ?? null);
+	const [setupStep, setSetupStep] = useState<LearningPlanSetupStep>(() =>
+		params.step === "topic" || params.errorMessage
+			? "topicDescription"
+			: "materialUpload",
+	);
+	const [topicDescriptionInput, setTopicDescriptionInput] = useState<
+		string | null
+	>(params.topicDescription ?? null);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const pendingUploadActionRef = useRef<PendingUploadAction | null>(null);
@@ -116,9 +126,25 @@ export default function NewLearningPlanScreen() {
 			? { id: learningPlanId }
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
+	const learningTimes = useQuery(
+		api.learningTimes.listMine,
+		user && isConvexAuthenticated && learningPlanId ? {} : "skip",
+	);
 	const canWrite = Boolean(user && isConvexAuthenticated);
-	const canUploadMaterial = canWrite && !isBusy && !openingUploadAction;
-	const canContinue = canWrite && !isBusy && !openingUploadAction;
+	const topicDescription =
+		topicDescriptionInput ?? snapshot?.plan.topicDescription ?? "";
+	const canContinueUpload = canWrite && !isBusy && !openingUploadAction;
+	const canContinueTopic =
+		Boolean(learningPlanId) &&
+		topicDescription.trim().length >= 8 &&
+		canWrite &&
+		!isBusy;
+	const showLearningTimesWarning =
+		learningTimes !== undefined && learningTimes.length === 0;
+	const currentProgressStep =
+		setupStep === "materialUpload"
+			? LEARNING_PLAN_CREATION_STEPS.materialUpload
+			: LEARNING_PLAN_CREATION_STEPS.topicDescription;
 	const uploadArtworkWidth = Math.min(Math.max(windowWidth - 64, 240), 345);
 	const uploadArtworkHeight = (uploadArtworkWidth * 313) / 345;
 
@@ -127,6 +153,15 @@ export default function NewLearningPlanScreen() {
 			router.replace(ROUTES.createExam);
 		}
 	}, [hasExamEntry, router]);
+
+	useEffect(() => {
+		if (params.step === "topic" || params.errorMessage) {
+			setSetupStep("topicDescription");
+		}
+		if (params.errorMessage) {
+			setErrorMessage(params.errorMessage);
+		}
+	}, [params.errorMessage, params.step]);
 
 	const ensurePlan = async () => {
 		if (learningPlanId) {
@@ -430,19 +465,67 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const continueToTopic = async () => {
-		if (!canContinue) return;
+		if (!canContinueUpload) return;
 
 		await runWithErrorHandling(
 			"Der Lernplan konnte nicht vorbereitet werden.",
 			async () => {
 				const id = await ensurePlan();
-				router.push(learningPlanTopicPath(id));
+				router.setParams({ learningPlanId: id, step: "topic" });
+				setSetupStep("topicDescription");
 			},
 		);
 	};
 
 	const goBack = () => {
+		if (setupStep === "topicDescription") {
+			setErrorMessage(null);
+			router.setParams({ errorMessage: undefined, step: undefined });
+			setSetupStep("materialUpload");
+			return true;
+		}
+
 		goBackOrReplace(router, ROUTES.createExam);
+		return true;
+	};
+
+	useBackIntent(setupStep === "topicDescription", goBack);
+
+	const continueToAnalysis = async () => {
+		if (!learningPlanId || !canContinueTopic) return;
+
+		setIsBusy(true);
+		setErrorMessage(null);
+		router.setParams({ errorMessage: undefined });
+		try {
+			await retryOnceAfterAuthResume(() =>
+				updateBasics({
+					id: learningPlanId,
+					topicDescription,
+					notes: "",
+				}),
+			);
+			router.push(learningPlanStepPath(learningPlanId, "analysis"));
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(
+					error,
+					"Das Prüfungsthema konnte nicht gespeichert werden.",
+				),
+			);
+		} finally {
+			setIsBusy(false);
+		}
+	};
+
+	const openLearningTimes = () => {
+		if (!learningPlanId) return;
+		router.replace(
+			withReturnTo(
+				ROUTES.learningTimes,
+				learningPlanTopicPath(learningPlanId, { topicDescription }),
+			),
+		);
 	};
 
 	if (!hasExamEntry) return null;
@@ -451,91 +534,58 @@ export default function NewLearningPlanScreen() {
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<ThemedStatusBar />
-			<ScreenScroll contentContainerStyle={{ flexGrow: 1 }}>
+			<View
+				className="bg-background px-8 pb-8"
+				// The fixed creation header owns the top safe area, matching the
+				// persistent header used by the exam-detail steps.
+				style={{ paddingTop: Math.max(insets.top + 20, 52) }}
+			>
 				<LearningPlanCreationProgressHeader
-					currentStep={LEARNING_PLAN_CREATION_STEPS.materialUpload}
+					currentStep={currentProgressStep}
 					onBack={goBack}
 				/>
-				<View className="flex-1 items-center pt-8">
-					<TouchableOpacity
-						accessibilityHint="Öffnet die Auswahl zum Scannen oder Hochladen von Dateien."
-						accessibilityLabel="Schulmaterial hinzufügen"
-						accessibilityRole="button"
-						accessibilityState={{ disabled: !canUploadMaterial }}
-						activeOpacity={0.86}
-						disabled={!canUploadMaterial}
-						onPress={() => setIsUploadSheetVisible(true)}
-						className="relative overflow-hidden rounded-[32px]"
-						style={{
-							// The SVG follows the Figma artwork's fixed aspect ratio while
-							// adapting to the runtime viewport width. Continuous corner
-							// rendering is a native-only property without a NativeWind utility.
-							width: uploadArtworkWidth,
-							height: uploadArtworkHeight,
-							borderCurve: "continuous",
-						}}
-					>
-						<IntroUploadArtwork
-							width={uploadArtworkWidth}
-							height={uploadArtworkHeight}
+			</View>
+			<ScreenScroll
+				key={setupStep}
+				includeTopSafeArea={false}
+				topPadding={0}
+				contentContainerStyle={{ flexGrow: 1 }}
+			>
+				<Animated.View
+					key={setupStep}
+					entering={FadeIn.duration(180)}
+					className="flex-1"
+				>
+					{setupStep === "materialUpload" ? (
+						<MaterialUploadStep
+							artworkHeight={uploadArtworkHeight}
+							artworkWidth={uploadArtworkWidth}
+							canContinue={canContinueUpload}
+							documents={snapshot?.documents ?? []}
+							errorMessage={errorMessage}
+							isBusy={isBusy}
+							onContinue={() => void continueToTopic()}
+							onOpenUpload={() => setIsUploadSheetVisible(true)}
+							onRemoveDocument={(id) => void removeDocument({ id })}
+							openingUploadAction={openingUploadAction}
 						/>
-						{isBusy || openingUploadAction ? (
-							<View className="absolute inset-0 items-center justify-center rounded-[32px] bg-white/80">
-								<ActivityIndicator color="#00A0E6" />
-								<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-									{openingUploadAction === "files"
-										? "Dateiauswahl wird geöffnet …"
-										: openingUploadAction === "camera"
-											? "Kamera wird geöffnet …"
-											: "Material wird hochgeladen …"}
-								</Text>
-							</View>
-						) : null}
-					</TouchableOpacity>
-
-					<View className="mt-6 w-full">
-						{snapshot?.documents.map((document) => (
-							<MaterialCard
-								key={document.id}
-								name={document.fileName}
-								size={document.fileSizeBytes}
-								onRemove={() => removeDocument({ id: document.id })}
-							/>
-						))}
-					</View>
-
-					{errorMessage ? (
-						<Text
-							selectable
-							accessibilityRole="alert"
-							className="mb-4 w-full font-poppins text-body-4 text-destructive"
-						>
-							{errorMessage}
-						</Text>
-					) : null}
-					<View className="mt-auto w-full pt-8">
-						<Button
-							accessibilityLabel={isBusy ? "Weiter, wird geladen" : "Weiter"}
-							accessibilityLiveRegion={isBusy ? "polite" : undefined}
-							accessibilityState={{
-								busy: isBusy,
-								disabled: !canContinue,
-							}}
-							disabled={!canContinue}
-							onPress={() => void continueToTopic()}
-						>
-							{isBusy ? (
-								<ActivityIndicator color="#FFFFFF" />
-							) : (
-								<Text>Weiter</Text>
-							)}
-						</Button>
-					</View>
-				</View>
+					) : (
+						<TopicDescriptionStep
+							canContinue={canContinueTopic}
+							errorMessage={errorMessage}
+							isBusy={isBusy}
+							onChangeTopicDescription={setTopicDescriptionInput}
+							onContinue={() => void continueToAnalysis()}
+							onOpenLearningTimes={openLearningTimes}
+							showLearningTimesWarning={showLearningTimesWarning}
+							topicDescription={topicDescription}
+						/>
+					)}
+				</Animated.View>
 			</ScreenScroll>
 
 			<BottomModal
-				visible={isUploadSheetVisible}
+				visible={setupStep === "materialUpload" && isUploadSheetVisible}
 				title="Was möchtest du hochladen?"
 				description="Lade hier deine Unterlagen hoch oder scanne sie ganz einfach."
 				onClose={closeUploadSheet}
@@ -547,7 +597,7 @@ export default function NewLearningPlanScreen() {
 					layout="tile"
 					title="Scannen"
 					onPress={() => chooseUploadAction("camera")}
-					disabled={!canUploadMaterial}
+					disabled={!canContinueUpload}
 					icon={
 						openingUploadAction === "camera" || isBusy ? (
 							<ActivityIndicator color={bottomModalIconColor} />
@@ -564,7 +614,7 @@ export default function NewLearningPlanScreen() {
 					layout="tile"
 					title="Dateien"
 					onPress={() => chooseUploadAction("files")}
-					disabled={!canUploadMaterial}
+					disabled={!canContinueUpload}
 					icon={
 						openingUploadAction === "files" || isBusy ? (
 							<ActivityIndicator color={bottomModalIconColor} />
