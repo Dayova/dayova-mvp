@@ -77,6 +77,53 @@ const createAcceptedPlanWithSession = async (
 	return { learningPlanId, session };
 };
 
+test("persists the split experiment assignment on an eligible theory session", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		sessionCompositionVariant: "split",
+		sessions: [
+			{
+				phase: "theory",
+				title: "Theorie",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 30,
+				goal: "Grundlagen verstehen.",
+				tasks: ["Begriffe erklären", "Beispiele prüfen"],
+				expectedOutcome: "Du verstehst die Grundlagen.",
+			},
+		],
+	});
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(snapshot?.plan.sessionCompositionVariant).toBe("split");
+	expect(snapshot?.sessions[0]?.compositionVariant).toBe("split");
+});
+
+test("stores the total study workload confirmed before generation", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(api.learningPlans.setTargetStudyMinutes, {
+		learningPlanId,
+		targetStudyMinutes: 50,
+	});
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(snapshot?.plan.targetStudyMinutes).toBe(50);
+});
+
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-05-30T10:00:00.000Z"));
@@ -365,10 +412,12 @@ test("learning plan sessions move from started to completed and sync calendar st
 	const completed = await t.mutation(api.learningPlans.recordSessionOutcome, {
 		sessionId: session.id,
 		outcome: "completed",
+		activeStudySeconds: 1_440,
 	});
 	expect(completed).toMatchObject({
 		outcome: "completed",
 		learningPlanSessionId: session.id,
+		activeStudySeconds: 1_440,
 	});
 
 	snapshot = await t.query(api.learningPlans.getSnapshot, {

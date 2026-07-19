@@ -1,5 +1,6 @@
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useFeatureFlag, usePostHog } from "posthog-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
@@ -11,9 +12,16 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
+import {
+	LEARNING_SESSION_COMPOSITION_FLAG,
+	resolveLearningSessionCompositionVariant,
+} from "~/features/learning-plans/session-experiment";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useValidationAnalytics } from "~/lib/analytics";
-import { definedAnalyticsProperties } from "~/lib/analytics-core";
+import {
+	definedAnalyticsProperties,
+	isPostHogConfigured,
+} from "~/lib/analytics-core";
 import { goBackOrReplace } from "~/lib/navigation";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
@@ -29,10 +37,15 @@ export default function LearningPlanGeneratingScreen() {
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
+	const posthog = usePostHog();
 	const { capture } = useValidationAnalytics();
+	const compositionFlagValue = useFeatureFlag(
+		LEARNING_SESSION_COMPOSITION_FLAG,
+	);
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [retryAttempt, setRetryAttempt] = useState(0);
+	const [flagRetryAttempt, setFlagRetryAttempt] = useState(0);
 	const didStartRef = useRef(false);
 	const missingAnswerRedirectTimeoutRef = useRef<ReturnType<
 		typeof setTimeout
@@ -53,10 +66,28 @@ export default function LearningPlanGeneratingScreen() {
 					?.answer.trim() ?? "",
 		}));
 	}, [snapshot]);
+	const sessionCompositionVariant =
+		snapshot?.plan.sessionCompositionVariant ??
+		resolveLearningSessionCompositionVariant(compositionFlagValue);
+	const isExperimentAssignmentReady =
+		Boolean(snapshot?.plan.sessionCompositionVariant) ||
+		!isPostHogConfigured ||
+		compositionFlagValue !== undefined;
+
+	useEffect(() => {
+		void flagRetryAttempt;
+		if (isExperimentAssignmentReady) return undefined;
+		const timeout = setTimeout(() => {
+			setErrorMessage(
+				"Deine Testgruppe konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
+			);
+		}, 8_000);
+		return () => clearTimeout(timeout);
+	}, [flagRetryAttempt, isExperimentAssignmentReady]);
 
 	useEffect(() => {
 		void retryAttempt;
-		if (!planId || !snapshot) return;
+		if (!planId || !snapshot || !isExperimentAssignmentReady) return;
 
 		if (missingAnswerRedirectTimeoutRef.current) {
 			clearTimeout(missingAnswerRedirectTimeoutRef.current);
@@ -84,14 +115,27 @@ export default function LearningPlanGeneratingScreen() {
 			void generatePlan({
 				learningPlanId: planId,
 				answers: answerList,
+				sessionCompositionVariant,
 			})
 				.then((result) => {
+					if (result.compositionEligibleSessionCount > 0) {
+						void capture(
+							"learning_session_composition_exposed",
+							definedAnalyticsProperties({
+								learning_plan_id: planId,
+								feature_flag_key: LEARNING_SESSION_COMPOSITION_FLAG,
+								session_composition_variant: sessionCompositionVariant,
+								eligible_session_count: result.compositionEligibleSessionCount,
+							}),
+						);
+					}
 					void capture(
 						"study_plan_generated",
 						definedAnalyticsProperties({
 							learning_plan_id: planId,
 							session_count: result.sessionCount,
 							answer_count: answerList.length,
+							session_composition_variant: sessionCompositionVariant,
 						}),
 					);
 				})
@@ -110,9 +154,11 @@ export default function LearningPlanGeneratingScreen() {
 		answerList,
 		capture,
 		generatePlan,
+		isExperimentAssignmentReady,
 		planId,
 		retryAttempt,
 		router,
+		sessionCompositionVariant,
 		snapshot,
 	]);
 
@@ -126,11 +172,7 @@ export default function LearningPlanGeneratingScreen() {
 
 	const goBack = () => {
 		if (planId) {
-			const lastQuestionIndex = Math.max(
-				(snapshot?.plan.knowledgeQuestions.length ?? 1) - 1,
-				0,
-			);
-			router.replace(quizPath(planId, lastQuestionIndex));
+			router.replace(planPath(planId, "workload"));
 			return;
 		}
 
@@ -165,6 +207,12 @@ export default function LearningPlanGeneratingScreen() {
 								className="mt-6"
 								disabled={isBusy}
 								onPress={() => {
+									if (!isExperimentAssignmentReady) {
+										posthog.reloadFeatureFlags();
+										setErrorMessage(null);
+										setFlagRetryAttempt((value) => value + 1);
+										return;
+									}
 									didStartRef.current = false;
 									setErrorMessage(null);
 									setRetryAttempt((value) => value + 1);

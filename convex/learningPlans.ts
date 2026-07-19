@@ -19,6 +19,7 @@ import {
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
+import { getLearningSessionComposition } from "./learningSessionComposition";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
@@ -28,6 +29,11 @@ const phaseValidator = v.union(
 	v.literal("theory"),
 	v.literal("practice"),
 	v.literal("rehearsal"),
+);
+
+const sessionCompositionVariantValidator = v.union(
+	v.literal("control"),
+	v.literal("split"),
 );
 
 const missedReasonValidator = v.union(
@@ -85,6 +91,7 @@ type PublicSession = {
 	dateLabel: string;
 	startTime: string;
 	durationMinutes: number;
+	compositionVariant?: "control" | "split";
 	goal: string;
 	tasks: string[];
 	expectedOutcome: string;
@@ -215,6 +222,7 @@ const publicSession = (
 	dateLabel: session.dateLabel,
 	startTime: session.startTime,
 	durationMinutes: session.durationMinutes,
+	compositionVariant: session.compositionVariant,
 	goal: session.goal,
 	tasks: session.tasks,
 	expectedOutcome: session.expectedOutcome,
@@ -416,6 +424,8 @@ const learningSessionEventPayload = (
 	plannedDayKey: session.dateKey,
 	startTime: session.startTime,
 	durationMinutes: session.durationMinutes,
+	compositionVariant: session.compositionVariant ?? "control",
+	activeStudySeconds: session.activeStudySeconds,
 	subject: plan.subject,
 	examTypeLabel: plan.examTypeLabel,
 	examDateKey: plan.examDateKey,
@@ -451,6 +461,7 @@ const patchSessionAndSyncedEntry = async (
 			| "executionStatus"
 			| "startedAt"
 			| "outcomeAt"
+			| "activeStudySeconds"
 			| "missedReason"
 			| "adjustedFromSessionId"
 		>
@@ -535,6 +546,39 @@ export const updateBasics = mutation({
 	},
 });
 
+export const setTargetStudyMinutes = mutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		targetStudyMinutes: v.number(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (plan.status === "accepted") {
+			throwUserFacingError("Dieser Lernplan wurde bereits eingetragen.");
+		}
+		if (
+			!Number.isInteger(args.targetStudyMinutes) ||
+			args.targetStudyMinutes < 10 ||
+			args.targetStudyMinutes > 600
+		) {
+			throwUserFacingError(
+				"Wähle eine gesamte Lernzeit zwischen 10 und 600 Minuten.",
+			);
+		}
+
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			targetStudyMinutes: args.targetStudyMinutes,
+			updatedAt: Date.now(),
+		});
+		return args.targetStudyMinutes;
+	},
+});
+
 export const getSnapshot = query({
 	args: {
 		id: v.id("learningPlans"),
@@ -579,6 +623,7 @@ export const getSnapshot = query({
 				examDateLabel: plan.examDateLabel,
 				...(plan.examTime ? { examTime: plan.examTime } : {}),
 				durationMinutes: plan.durationMinutes,
+				targetStudyMinutes: plan.targetStudyMinutes,
 				topicDescription: plan.topicDescription,
 				notes: plan.notes,
 				status: plan.status,
@@ -588,6 +633,7 @@ export const getSnapshot = query({
 				planningHint: getCurrentPlanningHint(plan.planningHint, {
 					hasLearningTimes: learningTimes.length > 0,
 				}),
+				sessionCompositionVariant: plan.sessionCompositionVariant,
 			},
 			documents: documents.map(publicDocument),
 			answers: answers.map(publicAnswer),
@@ -1064,6 +1110,7 @@ export const replaceGeneratedSessions = internalMutation({
 		sourceSummary: v.string(),
 		insight: planInsightValidator,
 		planningHint: v.optional(v.string()),
+		sessionCompositionVariant: v.optional(sessionCompositionVariantValidator),
 		sessions: v.array(generatedSessionValidator),
 	},
 	handler: async (ctx, args) => {
@@ -1090,6 +1137,14 @@ export const replaceGeneratedSessions = internalMutation({
 			goal: normalizeGeneratedGermanText(session.goal),
 			tasks: session.tasks.map((task) => normalizeGeneratedGermanText(task)),
 			expectedOutcome: normalizeGeneratedGermanText(session.expectedOutcome),
+			compositionVariant:
+				getLearningSessionComposition({
+					phase: session.phase,
+					durationMinutes: session.durationMinutes,
+					variant: args.sessionCompositionVariant ?? "control",
+				}).length > 1
+					? ("split" as const)
+					: ("control" as const),
 		}));
 
 		const existingSessions = await ctx.db
@@ -1125,6 +1180,7 @@ export const replaceGeneratedSessions = internalMutation({
 			planningHint: args.planningHint,
 			sourceSummary: normalizedSourceSummary,
 			insight: normalizedInsight,
+			sessionCompositionVariant: args.sessionCompositionVariant ?? "control",
 			status: "generated",
 			updatedAt: now,
 		});
@@ -1323,9 +1379,17 @@ export const recordSessionOutcome = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 		outcome: v.union(v.literal("completed"), v.literal("partiallyCompleted")),
+		activeStudySeconds: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const { session, plan } = await getOwnedSessionAndPlan(ctx, args.sessionId);
+		if (
+			args.activeStudySeconds !== undefined &&
+			(!Number.isInteger(args.activeStudySeconds) ||
+				args.activeStudySeconds < 0)
+		) {
+			throwUserFacingError("Die aktive Lernzeit ist ungültig.");
+		}
 		const status = getSessionExecutionStatus(session);
 		if (status !== "started") {
 			throwUserFacingError("Starte den Lernblock zuerst.");
@@ -1339,6 +1403,7 @@ export const recordSessionOutcome = mutation({
 			{
 				executionStatus: args.outcome,
 				outcomeAt: now,
+				activeStudySeconds: args.activeStudySeconds,
 				completed: args.outcome === "completed",
 			},
 		);

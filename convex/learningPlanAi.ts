@@ -26,6 +26,10 @@ import {
 	MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
 	MULTIPLE_CHOICE_OPTION_COUNT,
 } from "./learningSessionContentConstraints";
+import {
+	getLearningSessionComposition,
+	isLearningSessionCompositionEligible,
+} from "./learningSessionComposition";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
@@ -36,13 +40,12 @@ const LLM_GENERATION_TIMEOUT_MS = 60_000;
 const MAX_GENERATED_TEXT_ATTEMPTS = 3;
 const MODEL_ID = "gemini-3-flash-preview";
 const MIN_LEARNING_SLOT_MINUTES = 10;
+const MAX_LEARNING_SESSION_MINUTES = 30;
 const MAX_GENERATED_SESSIONS = 20;
 const MIN_THEORY_CARD_COUNT = 3;
 const MAX_THEORY_CARD_COUNT = 12;
-const MIN_SESSION_TASK_COUNT = 4;
+const MIN_SESSION_TASK_COUNT = 1;
 const MAX_SESSION_TASK_COUNT = 10;
-const ALTERNATIVE_SLOT_MINUTES = 30;
-const MAX_ALTERNATIVE_SESSIONS = 6;
 const GERMAN_UI_TEXT_RULE =
 	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
 const GERMAN_TEXT_SHADOW_RULE =
@@ -351,6 +354,8 @@ type LearningPlanAiContext = {
 		examDateLabel: string;
 		examTime?: string;
 		durationMinutes: number;
+		targetStudyMinutes?: number;
+		sessionCompositionVariant?: "control" | "split";
 		topicDescription: string;
 		notes?: string;
 		knowledgeQuestions?: Array<{
@@ -394,6 +399,7 @@ type LearningSessionContentAiContext = {
 		phase: GeneratedSessionPhase;
 		title: string;
 		durationMinutes: number;
+		compositionVariant?: "control" | "split";
 		goal: string;
 		tasks: string[];
 		expectedOutcome: string;
@@ -844,7 +850,6 @@ type LearningSlot = {
 	dateKey: string;
 	startMinutes: number;
 	endMinutes: number;
-	isAlternative?: boolean;
 };
 
 const getOccupiedIntervalsByDay = (occupiedEntries: OccupiedEntry[]) => {
@@ -900,90 +905,6 @@ const overlapsInterval = (
 	second: { start: number; end: number },
 ) => first.start < second.end && first.end > second.start;
 
-const buildAlternativeLearningSlots = (
-	examDateKey: string,
-	availableDays: number,
-	windowsByDay: Map<number, LearningTimeWindow[]>,
-	occupiedIntervalsByDay: Map<string, Array<{ start: number; end: number }>>,
-	neededMinutes: number,
-	nowBerlin: BerlinDateTime,
-) => {
-	const slots: LearningSlot[] = [];
-	let remainingMinutes = neededMinutes;
-	if (remainingMinutes < MIN_LEARNING_SLOT_MINUTES) return slots;
-
-	for (let offset = availableDays; offset >= 1; offset -= 1) {
-		const date = buildDateFromOffset(examDateKey, offset);
-		const dateKey = formatDateKey(date);
-		const windows = windowsByDay.get(getBerlinDayOfWeek(date)) ?? [];
-		const occupiedIntervals = occupiedIntervalsByDay.get(dateKey) ?? [];
-
-		for (const window of windows) {
-			const startMinutes = parseTimeToMinutes(window.startTime);
-			const endMinutes = parseTimeToMinutes(window.endTime);
-			if (
-				startMinutes === null ||
-				endMinutes === null ||
-				endMinutes <= startMinutes
-			) {
-				continue;
-			}
-
-			const blockingIntervals = occupiedIntervals.filter((interval) =>
-				overlapsInterval(interval, { start: startMinutes, end: endMinutes }),
-			);
-			let candidateStart = Math.max(
-				endMinutes,
-				...blockingIntervals.map((interval) => interval.end),
-			);
-			while (
-				remainingMinutes >= MIN_LEARNING_SLOT_MINUTES &&
-				slots.length < MAX_ALTERNATIVE_SESSIONS
-			) {
-				const durationMinutes = Math.min(
-					ALTERNATIVE_SLOT_MINUTES,
-					remainingMinutes,
-				);
-				const candidate = {
-					start: candidateStart,
-					end: candidateStart + durationMinutes,
-				};
-				if (candidate.end > 22 * 60) break;
-				if (!isFutureLearningSlot(dateKey, candidate.start, nowBerlin)) {
-					candidateStart += ALTERNATIVE_SLOT_MINUTES;
-					continue;
-				}
-				if (
-					occupiedIntervals.some((interval) =>
-						overlapsInterval(candidate, interval),
-					)
-				) {
-					candidateStart += ALTERNATIVE_SLOT_MINUTES;
-					continue;
-				}
-
-				slots.push({
-					date,
-					dateKey,
-					startMinutes: candidate.start,
-					endMinutes: candidate.end,
-					isAlternative: true,
-				});
-				remainingMinutes -= durationMinutes;
-				candidateStart = candidate.end;
-			}
-			if (
-				remainingMinutes < MIN_LEARNING_SLOT_MINUTES ||
-				slots.length >= MAX_ALTERNATIVE_SESSIONS
-			) {
-				return slots;
-			}
-		}
-	}
-
-	return slots;
-};
-
 const buildLearningSlots = (
 	examDateKey: string,
 	availableDays: number,
@@ -1011,12 +932,15 @@ const buildLearningSlots = (
 	const occupiedIntervalsByDay = getOccupiedIntervalsByDay(occupiedEntries);
 	const nowBerlin = getBerlinDateTime(new Date());
 	const slots: LearningSlot[] = [];
+	let remainingRequestedMinutes = requestedMinutes;
 	for (let offset = availableDays; offset >= 1; offset -= 1) {
+		if (remainingRequestedMinutes < MIN_LEARNING_SLOT_MINUTES) break;
 		const date = buildDateFromOffset(examDateKey, offset);
 		const dateKey = formatDateKey(date);
 		const windows = windowsByDay.get(getBerlinDayOfWeek(date)) ?? [];
 
 		for (const window of windows) {
+			if (remainingRequestedMinutes < MIN_LEARNING_SLOT_MINUTES) break;
 			const startMinutes = parseTimeToMinutes(window.startTime);
 			const endMinutes = parseTimeToMinutes(window.endTime);
 			if (
@@ -1035,32 +959,22 @@ const buildLearningSlots = (
 				if (!isFutureLearningSlot(dateKey, interval.start, nowBerlin)) {
 					continue;
 				}
+				const durationMinutes = Math.min(
+					MAX_LEARNING_SESSION_MINUTES,
+					remainingRequestedMinutes,
+					interval.end - interval.start,
+				);
+				if (durationMinutes < MIN_LEARNING_SLOT_MINUTES) continue;
 				slots.push({
 					date,
 					dateKey,
 					startMinutes: interval.start,
-					endMinutes: interval.end,
+					endMinutes: interval.start + durationMinutes,
 				});
+				remainingRequestedMinutes -= durationMinutes;
+				break;
 			}
 		}
-	}
-
-	const plannedLearningTimeMinutes = slots.reduce(
-		(total, slot) => total + (slot.endMinutes - slot.startMinutes),
-		0,
-	);
-	const remainingMinutes = requestedMinutes - plannedLearningTimeMinutes;
-	if (remainingMinutes >= MIN_LEARNING_SLOT_MINUTES) {
-		slots.push(
-			...buildAlternativeLearningSlots(
-				examDateKey,
-				availableDays,
-				windowsByDay,
-				occupiedIntervalsByDay,
-				remainingMinutes,
-				nowBerlin,
-			),
-		);
 	}
 
 	return slots
@@ -1117,15 +1031,8 @@ const distributeSessionOffsets = (
 
 const buildRequiredPhaseSequence = (
 	sessionCount: number,
-	sessions: z.infer<typeof generatedPlanSchema>["sessions"],
 ): GeneratedSessionPhase[] | undefined => {
 	if (sessionCount < 2) return undefined;
-
-	const generatedPhases = new Set(sessions.map((session) => session.phase));
-	const needsPractice = !generatedPhases.has("practice");
-	const needsRehearsal = sessionCount >= 3 && !generatedPhases.has("rehearsal");
-	const allTheory = [...generatedPhases].every((phase) => phase === "theory");
-	if (!needsPractice && !needsRehearsal && !allTheory) return undefined;
 
 	if (sessionCount === 2) return ["theory", "practice"];
 
@@ -1142,11 +1049,18 @@ const normalizeSessions = (
 	sessions: z.infer<typeof generatedPlanSchema>["sessions"],
 	learningTimes: LearningTimeWindow[],
 	occupiedEntries: OccupiedEntry[],
+	confirmedTotalStudyMinutes?: number,
 ) => {
-	const requestedMinutes = sessions.reduce(
+	const generatedMinutes = sessions.reduce(
 		(total, session) => total + session.durationMinutes,
 		0,
 	);
+	const requestedMinutes =
+		confirmedTotalStudyMinutes !== undefined &&
+		Number.isInteger(confirmedTotalStudyMinutes) &&
+		confirmedTotalStudyMinutes >= MIN_LEARNING_SLOT_MINUTES
+			? confirmedTotalStudyMinutes
+			: generatedMinutes;
 	const slots = buildLearningSlots(
 		examDateKey,
 		availableDays,
@@ -1154,9 +1068,6 @@ const normalizeSessions = (
 		occupiedEntries,
 		requestedMinutes,
 	);
-	const availableLearningTimeMinutes = slots
-		.filter((slot) => !slot.isAlternative)
-		.reduce((total, slot) => total + (slot.endMinutes - slot.startMinutes), 0);
 	const distributedOffsets = distributeSessionOffsets(availableDays, sessions);
 	const prioritizedSessions = sessions
 		.map((session, index) => ({
@@ -1173,7 +1084,6 @@ const normalizeSessions = (
 	const selectedSlots = slots.slice(0, MAX_GENERATED_SESSIONS);
 	const requiredPhaseSequence = buildRequiredPhaseSequence(
 		selectedSlots.length,
-		sessions,
 	);
 	const normalizedSessions = selectedSlots
 		.map((slot, index) => {
@@ -1209,9 +1119,7 @@ const normalizeSessions = (
 				phase,
 				title:
 					compactSingleLine(
-						slot.isAlternative
-							? `Alternative: ${title || fallbackTitleByPhase[phase]}`
-							: title || fallbackTitleByPhase[phase],
+						title || fallbackTitleByPhase[phase],
 						MAX_SESSION_TITLE_CHARS,
 					) || fallbackTitleByPhase[phase],
 				dateKey: slot.date.toISOString(),
@@ -1237,31 +1145,34 @@ const normalizeSessions = (
 		(total, session) => total + session.durationMinutes,
 		0,
 	);
-	const totalLearningTimeMinutes = learningTimes.reduce(
-		(total, learningTime) => {
+	const hasBusyLearningTimes = occupiedEntries.some((entry) => {
+		if (!entry.time || !entry.durationMinutes || entry.durationMinutes <= 0) {
+			return false;
+		}
+		const date = new Date(entry.dayKey);
+		const entryStart = parseTimeToMinutes(entry.time);
+		if (Number.isNaN(date.getTime()) || entryStart === null) return false;
+		const entryInterval = {
+			start: entryStart,
+			end: entryStart + entry.durationMinutes,
+		};
+		return learningTimes.some((learningTime) => {
+			if (learningTime.dayOfWeek !== getBerlinDayOfWeek(date)) return false;
 			const start = parseTimeToMinutes(learningTime.startTime);
 			const end = parseTimeToMinutes(learningTime.endTime);
-			return start === null || end === null || end <= start
-				? total
-				: total + end - start;
-		},
-		0,
-	);
-	const busyLearningTimeMinutes = Math.max(
-		0,
-		totalLearningTimeMinutes - availableLearningTimeMinutes,
-	);
-	const hasAlternativeSessions = normalizedSessions.some((session) =>
-		session.title.startsWith("Alternative:"),
-	);
+			return (
+				start !== null &&
+				end !== null &&
+				overlapsInterval(entryInterval, { start, end })
+			);
+		});
+	});
 	const availabilityHint =
 		learningTimes.length === 0
 			? MISSING_LEARNING_TIMES_HINT
-			: hasAlternativeSessions
-				? "Lernzeiten belegt. Alternativen vorgeschlagen."
-				: busyLearningTimeMinutes > 0
-					? "Belegte Zeiten ausgelassen."
-					: undefined;
+			: hasBusyLearningTimes
+				? "Belegte Zeiten ausgelassen."
+				: undefined;
 	const capacityHint =
 		plannedMinutes < requestedMinutes
 			? `${plannedMinutes}/${requestedMinutes} Min. geplant.`
@@ -1378,7 +1289,7 @@ const getTheoryTopicTargetCount = (durationMinutes: number) =>
 const getSessionTaskTargetCount = (durationMinutes: number) =>
 	Math.max(
 		MIN_SESSION_TASK_COUNT,
-		Math.min(MAX_SESSION_TASK_COUNT, Math.ceil(durationMinutes / 8)),
+		Math.min(MAX_SESSION_TASK_COUNT, Math.ceil(durationMinutes / 5)),
 	);
 
 const formatStoredKnowledgeAnswers = (
@@ -1510,6 +1421,11 @@ export const ensureSessionContent = action({
 		const replaceExisting = context.needsLegacyContentReplacement;
 
 		try {
+			const composition = getLearningSessionComposition({
+				phase: context.session.phase,
+				durationMinutes: context.session.durationMinutes,
+				variant: context.session.compositionVariant ?? "control",
+			});
 			const { fileParts, sourceContext } = await buildModelInputFromDocuments(
 				ctx,
 				context.documents,
@@ -1560,12 +1476,15 @@ ${personalLearningTimes}`,
 			];
 
 			if (context.session.phase === "theory") {
+				const theoryDurationMinutes =
+					composition.find((segment) => segment.phase === "theory")
+						?.durationMinutes ?? context.session.durationMinutes;
 				const targetTopicCount = getTheoryTopicTargetCount(
-					context.session.durationMinutes,
+					theoryDurationMinutes,
 				);
 				userContent.push({
 					type: "text",
-					text: `Erstelle genau ${targetTopicCount} aufeinander aufbauende Themenseiten für diese Theorie-Session.
+					text: `Erstelle genau ${targetTopicCount} aufeinander aufbauende Themenseiten für ${theoryDurationMinutes} Minuten Theorie in dieser Session.${composition.length > 1 ? " Danach folgen automatisch 10 Minuten praktische Aufgaben; generiere hier ausschließlich die Theorie dafür." : ""}
 Qualitätsregeln:
 - Jede Themenseite hat einen kurzen Begriffstitel, eine konkrete Leitfrage, eine verständliche Erklärung, zwei bis vier Kernpunkte, ein Beispiel, einen Merksatz und einen typischen Fehler.
 - Die Themen bauen aufeinander auf: Grundlagen zuerst, dann Anwendung, typische Fehler, prüfungsnahe Sicherheit.
@@ -1822,6 +1741,9 @@ Für jedes text/asciiShadow-Objekt gilt: text ist die sichtbare Fassung; asciiSh
 export const generatePlan = action({
 	args: {
 		learningPlanId: v.id("learningPlans"),
+		sessionCompositionVariant: v.optional(
+			v.union(v.literal("control"), v.literal("split")),
+		),
 		answers: v.array(
 			v.object({
 				questionId: v.string(),
@@ -1855,6 +1777,11 @@ export const generatePlan = action({
 			context.accessKey,
 		);
 		const availableDays = getAvailableDays(context.plan.examDateKey);
+		const confirmedTotalStudyMinutes = context.plan.targetStudyMinutes;
+		const sessionCompositionVariant =
+			context.plan.sessionCompositionVariant ??
+			args.sessionCompositionVariant ??
+			"control";
 		const personalLearningTimes = describeLearningTimes(context.learningTimes);
 		const model = createVertexModel();
 		const userContent: Array<
@@ -1865,6 +1792,7 @@ export const generatePlan = action({
 				type: "text",
 				text: `${buildBaseContext(context)}
 Verfügbare Tage bis zur Prüfung: ${availableDays}
+Bestätigte gesamte Lernzeit: ${confirmedTotalStudyMinutes ?? "Noch nicht bestätigt"} Minuten
 Persönliche Lernzeiten aus den Einstellungen:
 ${personalLearningTimes}
 
@@ -1909,6 +1837,7 @@ MVP-Vorgabe:
 				output.sessions,
 				context.learningTimes,
 				context.occupiedEntries,
+				confirmedTotalStudyMinutes,
 			);
 
 			return {
@@ -1966,9 +1895,15 @@ MVP-Vorgabe:
 			sourceSummary: generatedPlan.sourceSummary,
 			insight: generatedPlan.insight,
 			planningHint: generatedPlan.planningHint,
+			sessionCompositionVariant,
 			sessions: generatedPlan.sessions,
 		});
 
-		return { sessionCount: generatedPlan.sessions.length };
+		return {
+			sessionCount: generatedPlan.sessions.length,
+			compositionEligibleSessionCount: generatedPlan.sessions.filter(
+				isLearningSessionCompositionEligible,
+			).length,
+		};
 	},
 });

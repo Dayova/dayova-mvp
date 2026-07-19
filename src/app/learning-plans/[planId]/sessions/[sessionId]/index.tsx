@@ -5,6 +5,7 @@ import * as Speech from "expo-speech";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
+	AppState,
 	KeyboardAvoidingView,
 	Platform,
 	ScrollView,
@@ -41,6 +42,16 @@ import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { PracticeCompletionCard } from "~/features/learning-plans/practice-completion-card";
+import {
+	CONTINUE_LEARNING_MINUTES,
+	getLearningSessionCompletionPhase,
+	getLearningSessionItems,
+	getLearningSessionRepeatStartIndex,
+	isQualifiedSessionCompletion,
+	shouldKeepSplitTheoryActive,
+	shouldRepeatSessionContent,
+	shouldTransitionToSplitPractice,
+} from "~/features/learning-plans/session-progress";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
@@ -127,6 +138,8 @@ const learningSessionAnalyticsProperties = (result: {
 	plannedDayKey: string;
 	startTime: string;
 	durationMinutes: number;
+	compositionVariant: "control" | "split";
+	activeStudySeconds?: number;
 	subject: string;
 	examTypeLabel?: string;
 	examDateKey?: string;
@@ -138,6 +151,8 @@ const learningSessionAnalyticsProperties = (result: {
 		planned_day_key: result.plannedDayKey,
 		start_time: result.startTime,
 		duration_minutes: result.durationMinutes,
+		session_composition_variant: result.compositionVariant,
+		active_study_seconds: result.activeStudySeconds,
 		subject: result.subject,
 		exam_type_label: result.examTypeLabel,
 		exam_date_key: result.examDateKey,
@@ -427,7 +442,7 @@ function CompletionView({
 	durationMinutes,
 	correctCount,
 	attemptCount,
-	onRepeat,
+	onContinueLearning,
 	onPrimary,
 	isBusy,
 }: {
@@ -435,7 +450,7 @@ function CompletionView({
 	durationMinutes: number;
 	correctCount: number;
 	attemptCount: number;
-	onRepeat: () => void;
+	onContinueLearning: () => void;
 	onPrimary: () => void;
 	isBusy: boolean;
 }) {
@@ -447,7 +462,7 @@ function CompletionView({
 				durationMinutes={durationMinutes}
 				correctCount={correctCount}
 				attemptCount={attemptCount}
-				onRepeat={onRepeat}
+				onRepeat={onContinueLearning}
 				onAnalysis={onPrimary}
 				isBusy={isBusy}
 			/>
@@ -484,9 +499,9 @@ function CompletionView({
 					</Text>
 				</View>
 				<ActionRow
-					secondaryLabel="Wiederholen"
-					primaryLabel="Abschließen"
-					onSecondary={onRepeat}
+					secondaryLabel="10 Min. weiterlernen"
+					primaryLabel={isTheory ? "Abschließen" : "Analyse ansehen"}
+					onSecondary={onContinueLearning}
 					onPrimary={onPrimary}
 					isBusy={isBusy}
 				/>
@@ -815,12 +830,12 @@ function VoiceAnswer({
 
 function AnalysisView({
 	content,
-	onRepeat,
+	onContinueLearning,
 	onDone,
 	isBusy,
 }: {
 	content: LearningSessionContentSnapshot;
-	onRepeat: () => void;
+	onContinueLearning: () => void;
 	onDone: () => void;
 	isBusy: boolean;
 }) {
@@ -867,9 +882,9 @@ function AnalysisView({
 				</View>
 			)}
 			<ActionRow
-				secondaryLabel="Wiederholen"
+				secondaryLabel="10 Min. weiterlernen"
 				primaryLabel="Abschließen"
-				onSecondary={onRepeat}
+				onSecondary={onContinueLearning}
 				onPrimary={onDone}
 				isBusy={isBusy}
 			/>
@@ -921,9 +936,16 @@ export default function LearningSessionContentScreen() {
 	const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
 	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+	const remainingSecondsRef = useRef<number | null>(null);
+	const [isContinuation, setIsContinuation] = useState(false);
 	const didEnsureRef = useRef(false);
 	const didAutoFinishRef = useRef(false);
 	const didStartTrackingRef = useRef(false);
+	const didRecordOutcomeRef = useRef(false);
+	const activeStudySecondsRef = useRef(0);
+	const activeStudyStartedAtRef = useRef<number | null>(null);
+	const isStudyInteractionActiveRef = useRef(false);
+	const appStateRef = useRef(AppState.currentState);
 	const contentScrollRef = useRef<ScrollView>(null);
 	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
 		null,
@@ -965,14 +987,21 @@ export default function LearningSessionContentScreen() {
 		user && isConvexAuthenticated && sessionId ? { sessionId } : "skip",
 	) ?? null) as LearningSessionContentSnapshot | null;
 
-	const theoryItems =
-		content?.session.phase === "theory"
-			? content.items.filter((item) => item.kind === "learnCard")
-			: [];
-	const currentItem =
-		content?.session.phase === "theory"
-			? (theoryItems[currentIndex] ?? null)
-			: (content?.items[currentIndex] ?? null);
+	const sessionItems = content
+		? getLearningSessionItems(
+				content.items,
+				content.session.phase,
+				content.session.compositionVariant,
+			)
+		: [];
+	const theoryItems = sessionItems.filter((item) => item.kind === "learnCard");
+	const firstPracticeItemIndex = sessionItems.findIndex(
+		(item) => item.phase === "practice",
+	);
+	const currentItem = sessionItems[currentIndex] ?? null;
+	const shouldTrackActiveStudy = Boolean(
+		currentItem && !showAnalysis && !completionPhase,
+	);
 	const isPraxisSession = content?.session.phase === "rehearsal";
 	const persistedAttempt = useMemo(() => {
 		if (!currentItem || !content) return null;
@@ -1052,6 +1081,56 @@ export default function LearningSessionContentScreen() {
 		return startSessionPromiseRef.current;
 	}, [capture, sessionId, startSession]);
 
+	const getActiveStudySeconds = useCallback(() => {
+		const now = Date.now();
+		const activeStartedAt = activeStudyStartedAtRef.current;
+		if (activeStartedAt !== null) {
+			activeStudySecondsRef.current +=
+				Math.max(0, now - activeStartedAt) / 1000;
+			activeStudyStartedAtRef.current =
+				isStudyInteractionActiveRef.current && appStateRef.current === "active"
+					? now
+					: null;
+		}
+		return Math.floor(activeStudySecondsRef.current);
+	}, []);
+
+	useEffect(() => {
+		const subscription = AppState.addEventListener("change", (nextState) => {
+			const now = Date.now();
+			appStateRef.current = nextState;
+			if (nextState === "active" && isStudyInteractionActiveRef.current) {
+				activeStudyStartedAtRef.current = now;
+				return;
+			}
+
+			const activeStartedAt = activeStudyStartedAtRef.current;
+			if (activeStartedAt !== null) {
+				activeStudySecondsRef.current +=
+					Math.max(0, now - activeStartedAt) / 1000;
+				activeStudyStartedAtRef.current = null;
+			}
+		});
+
+		return () => subscription.remove();
+	}, []);
+
+	useEffect(() => {
+		isStudyInteractionActiveRef.current = shouldTrackActiveStudy;
+		const now = Date.now();
+		if (shouldTrackActiveStudy && appStateRef.current === "active") {
+			activeStudyStartedAtRef.current ??= now;
+			return;
+		}
+
+		const activeStartedAt = activeStudyStartedAtRef.current;
+		if (activeStartedAt !== null) {
+			activeStudySecondsRef.current +=
+				Math.max(0, now - activeStartedAt) / 1000;
+			activeStudyStartedAtRef.current = null;
+		}
+	}, [shouldTrackActiveStudy]);
+
 	useEffect(() => {
 		if (!sessionId || !user || !isConvexAuthenticated || didEnsureRef.current)
 			return;
@@ -1086,21 +1165,60 @@ export default function LearningSessionContentScreen() {
 	}, [content, ensureSessionStarted, sessionId]);
 
 	useEffect(() => {
-		if (!content?.praxisDurationSeconds || showAnalysis || completionPhase) {
+		const timerDurationSeconds = isContinuation
+			? CONTINUE_LEARNING_MINUTES * 60
+			: content?.session.durationMinutes
+				? content.session.durationMinutes * 60
+				: null;
+		if (!timerDurationSeconds || showAnalysis || completionPhase) {
 			return undefined;
 		}
 
 		const timer = setInterval(() => {
-			setRemainingSeconds((value) =>
-				Math.max(0, (value ?? content.praxisDurationSeconds ?? 0) - 1),
-			);
+			const currentSeconds =
+				remainingSecondsRef.current ?? timerDurationSeconds;
+			const nextSeconds = Math.max(0, currentSeconds - 1);
+			remainingSecondsRef.current = nextSeconds;
+			setRemainingSeconds(nextSeconds);
+
+			if (
+				firstPracticeItemIndex >= 0 &&
+				shouldTransitionToSplitPractice(
+					content?.session.compositionVariant ?? "control",
+					isContinuation,
+					currentSeconds,
+					nextSeconds,
+				)
+			) {
+				queueMicrotask(() => {
+					setSelectedChoiceId(null);
+					setAnswerText("");
+					setLocalAttempt(null);
+					setRepeatingItemId(null);
+					setSpeechErrorMessage(null);
+					setRetryStartedAt(Date.now());
+					setCurrentIndex(firstPracticeItemIndex);
+				});
+			}
 		}, 1000);
 
 		return () => clearInterval(timer);
-	}, [completionPhase, content?.praxisDurationSeconds, showAnalysis]);
+	}, [
+		completionPhase,
+		content?.session.durationMinutes,
+		content?.session.compositionVariant,
+		firstPracticeItemIndex,
+		isContinuation,
+		showAnalysis,
+	]);
 
 	const displayedRemainingSeconds =
-		remainingSeconds ?? content?.praxisDurationSeconds ?? null;
+		remainingSeconds ??
+		(isContinuation
+			? CONTINUE_LEARNING_MINUTES * 60
+			: content
+				? content.session.durationMinutes * 60
+				: null);
 
 	useEffect(() => {
 		if (
@@ -1111,17 +1229,37 @@ export default function LearningSessionContentScreen() {
 			return;
 
 		didAutoFinishRef.current = true;
-		setCompletionPhase(null);
-		setShowAnalysis(true);
-		void finishSessionContent({ sessionId }).catch((error: unknown) => {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die Wissensanalyse konnte nicht erstellt werden.",
-				),
-			);
+		queueMicrotask(() => {
+			if (!isContinuation && content?.session.phase !== "rehearsal") {
+				setCompletionPhase(
+					getLearningSessionCompletionPhase(
+						content?.session.phase ?? "practice",
+						content?.session.compositionVariant ?? "control",
+					),
+				);
+				return;
+			}
+
+			setIsContinuation(false);
+			setCompletionPhase(null);
+			setShowAnalysis(true);
+			void finishSessionContent({ sessionId }).catch((error: unknown) => {
+				setErrorMessage(
+					getErrorMessage(
+						error,
+						"Die Wissensanalyse konnte nicht erstellt werden.",
+					),
+				);
+			});
 		});
-	}, [displayedRemainingSeconds, finishSessionContent, sessionId]);
+	}, [
+		content?.session.compositionVariant,
+		content?.session.phase,
+		displayedRemainingSeconds,
+		finishSessionContent,
+		isContinuation,
+		sessionId,
+	]);
 
 	const resetItemState = () => {
 		if (isRecognizing) speechRecognizer.stopListening();
@@ -1138,18 +1276,6 @@ export default function LearningSessionContentScreen() {
 		setRepeatingItemId(currentItem.id);
 		setErrorMessage(null);
 		contentScrollRef.current?.scrollTo({ y: 0, animated: true });
-	};
-
-	const repeatCurrentContent = () => {
-		const now = Date.now();
-		resetItemState();
-		setRetryStartedAt(now);
-		setCurrentIndex(0);
-		setCompletionPhase(null);
-		setShowAnalysis(false);
-		setErrorMessage(null);
-		didAutoFinishRef.current = false;
-		setRemainingSeconds(content?.praxisDurationSeconds ?? null);
 	};
 
 	const finishAndShowAnalysis = async () => {
@@ -1173,33 +1299,50 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
+	const recordCompletedOutcome = async () => {
+		if (!sessionId || didRecordOutcomeRef.current) return null;
+		if (content?.session.executionStatus === "completed") {
+			didRecordOutcomeRef.current = true;
+			return null;
+		}
+		if (content?.session.executionStatus === "notStarted") {
+			await ensureSessionStarted();
+		}
+
+		const activeStudySeconds = getActiveStudySeconds();
+		const qualifiedCompletion = isQualifiedSessionCompletion(
+			content?.session.durationMinutes ?? 0,
+			activeStudySeconds,
+		);
+		const completed = await recordSessionOutcome({
+			sessionId,
+			outcome: "completed",
+			activeStudySeconds,
+		});
+		didRecordOutcomeRef.current = true;
+		const properties = definedAnalyticsProperties({
+			...learningSessionAnalyticsProperties(completed),
+			outcome: "completed",
+			outcome_at: completed.outcomeAt,
+			qualified_completion: qualifiedCompletion,
+		});
+		void capture("study_slot_completed", properties);
+		if (qualifiedCompletion) {
+			void capture("qualified_study_slot_completed", properties);
+		}
+		if (completed.phase === "rehearsal") {
+			void capture("generalprobe_completed", properties);
+		}
+		return completed;
+	};
+
 	const completeAndLeave = async () => {
 		if (!sessionId || isBusy) return;
 
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
-			if (content?.session.executionStatus === "completed") {
-				goBack();
-				return;
-			}
-			if (content?.session.executionStatus === "notStarted") {
-				await ensureSessionStarted();
-			}
-
-			const completed = await recordSessionOutcome({
-				sessionId,
-				outcome: "completed",
-			});
-			const properties = definedAnalyticsProperties({
-				...learningSessionAnalyticsProperties(completed),
-				outcome: "completed",
-				outcome_at: completed.outcomeAt,
-			});
-			void capture("study_slot_completed", properties);
-			if (completed.phase === "rehearsal") {
-				void capture("generalprobe_completed", properties);
-			}
+			await recordCompletedOutcome();
 			goBack();
 		} catch (error) {
 			setErrorMessage(
@@ -1213,16 +1356,72 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
+	const startContinueLearning = async () => {
+		if (!content || isBusy) return;
+
+		setIsBusy(true);
+		setErrorMessage(null);
+		try {
+			await recordCompletedOutcome();
+			resetItemState();
+			setRetryStartedAt(Date.now());
+			setCurrentIndex(0);
+			setCompletionPhase(null);
+			setShowAnalysis(false);
+			setIsContinuation(true);
+			didAutoFinishRef.current = false;
+			remainingSecondsRef.current = CONTINUE_LEARNING_MINUTES * 60;
+			setRemainingSeconds(CONTINUE_LEARNING_MINUTES * 60);
+			void capture(
+				"continue_learning_started",
+				definedAnalyticsProperties({
+					learning_plan_id: content.session.learningPlanId,
+					learning_plan_session_id: content.session.id,
+					session_composition_variant: content.session.compositionVariant,
+					continue_minutes: CONTINUE_LEARNING_MINUTES,
+				}),
+			);
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(
+					error,
+					"Das Weiterlernen konnte nicht gestartet werden.",
+				),
+			);
+		} finally {
+			setIsBusy(false);
+		}
+	};
+
 	const continueTheory = () => {
 		if (!content || isBusy) return;
+		const keepSplitTheoryActive = shouldKeepSplitTheoryActive(
+			content.session.compositionVariant,
+			isContinuation,
+			displayedRemainingSeconds ?? content.session.durationMinutes * 60,
+		);
 		runTheoryTopicPrimaryAction({
 			currentIndex,
-			total: theoryItems.length,
+			total: keepSplitTheoryActive ? theoryItems.length : sessionItems.length,
 			onAdvance: (nextIndex) => {
 				setErrorMessage(null);
 				setCurrentIndex(nextIndex);
 			},
-			onComplete: () => void completeAndLeave(),
+			onComplete: () => {
+				if (shouldRepeatSessionContent(displayedRemainingSeconds)) {
+					resetItemState();
+					setRetryStartedAt(Date.now());
+					setCurrentIndex(0);
+					setErrorMessage(null);
+					return;
+				}
+				setCompletionPhase(
+					getLearningSessionCompletionPhase(
+						content.session.phase,
+						content.session.compositionVariant,
+					),
+				);
+			},
 		});
 	};
 
@@ -1340,6 +1539,11 @@ export default function LearningSessionContentScreen() {
 					setCurrentIndex((value) => value + 1);
 					return;
 				}
+				if (shouldRepeatSessionContent(displayedRemainingSeconds)) {
+					setRetryStartedAt(Date.now());
+					setCurrentIndex(0);
+					return;
+				}
 				setCompletionPhase("rehearsal");
 				return;
 			}
@@ -1355,12 +1559,29 @@ export default function LearningSessionContentScreen() {
 
 	const continueTask = async () => {
 		if (!content || isBusy) return;
-		if (currentIndex < content.items.length - 1) {
+		if (currentIndex < sessionItems.length - 1) {
 			resetItemState();
 			setCurrentIndex((value) => value + 1);
 			return;
 		}
-		setCompletionPhase(content.session.phase);
+		if (shouldRepeatSessionContent(displayedRemainingSeconds)) {
+			resetItemState();
+			setRetryStartedAt(Date.now());
+			setCurrentIndex(
+				getLearningSessionRepeatStartIndex(
+					sessionItems,
+					content.session.compositionVariant,
+					isContinuation,
+				),
+			);
+			return;
+		}
+		setCompletionPhase(
+			getLearningSessionCompletionPhase(
+				content.session.phase,
+				content.session.compositionVariant,
+			),
+		);
 	};
 
 	const isAnswerReady =
@@ -1375,7 +1596,7 @@ export default function LearningSessionContentScreen() {
 				? "Theorie"
 				: phaseTitle(completionPhase)
 			: content
-				? phaseTitle(content.session.phase)
+				? phaseTitle(currentItem?.phase ?? content.session.phase)
 				: "Lernblock";
 	const showQuestionActions = Boolean(
 		content &&
@@ -1418,6 +1639,17 @@ export default function LearningSessionContentScreen() {
 								className="h-11 min-h-11 w-11 min-w-11"
 							/>
 						),
+						headerRight: () =>
+							displayedRemainingSeconds !== null ? (
+								<Text
+									accessible
+									accessibilityLabel={`Verbleibende Zeit: ${formatRemainingTime(displayedRemainingSeconds)}`}
+									className="font-poppins font-semibold text-body-3 text-primary"
+									style={{ fontVariant: ["tabular-nums"] }}
+								>
+									{formatRemainingTime(displayedRemainingSeconds)}
+								</Text>
+							) : null,
 					}}
 				/>
 				<ThemedStatusBar />
@@ -1490,7 +1722,7 @@ export default function LearningSessionContentScreen() {
 				!visibleAttempt ? (
 					<QuestionProgressBar
 						currentIndex={currentIndex}
-						total={content.items.length}
+						total={sessionItems.length}
 						className="mt-5 w-full"
 					/>
 				) : null}
@@ -1528,7 +1760,7 @@ export default function LearningSessionContentScreen() {
 				) : showAnalysis ? (
 					<AnalysisView
 						content={content}
-						onRepeat={repeatCurrentContent}
+						onContinueLearning={() => void startContinueLearning()}
 						onDone={completeAndLeave}
 						isBusy={isBusy}
 					/>
@@ -1538,7 +1770,7 @@ export default function LearningSessionContentScreen() {
 						durationMinutes={content.session.durationMinutes}
 						correctCount={currentRunCorrectCount}
 						attemptCount={currentRunAttempts.length}
-						onRepeat={repeatCurrentContent}
+						onContinueLearning={() => void startContinueLearning()}
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave

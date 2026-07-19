@@ -109,7 +109,7 @@ export default function LearningPlanQuizScreen() {
 				return;
 			}
 
-			router.replace(planPath(planId, "generating"));
+			router.replace(planPath(planId, "workload"));
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Die Antwort konnte nicht gespeichert werden."),

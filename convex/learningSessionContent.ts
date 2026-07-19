@@ -10,6 +10,7 @@ import {
 } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import { getLearningSessionComposition } from "./learningSessionComposition";
 import {
 	MAX_MULTIPLE_CHOICE_OPTION_CHARS,
 	MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
@@ -24,6 +25,7 @@ type SessionContentItemKind =
 type AnswerRating = "notCorrect" | "partiallyCorrect" | "correct";
 
 type GeneratedItem = {
+	phase?: "theory" | "practice" | "rehearsal";
 	kind: SessionContentItemKind;
 	title: string;
 	prompt: string;
@@ -43,6 +45,9 @@ const generatedChoiceValidator = v.object({
 });
 
 const generatedSessionContentItemValidator = v.object({
+	phase: v.optional(
+		v.union(v.literal("theory"), v.literal("practice"), v.literal("rehearsal")),
+	),
 	kind: v.union(
 		v.literal("learnCard"),
 		v.literal("multipleChoice"),
@@ -214,7 +219,7 @@ const targetTheoryCardCount = (durationMinutes: number) =>
 	Math.max(3, Math.min(12, Math.ceil(durationMinutes / 6)));
 
 const targetTaskCount = (durationMinutes: number) =>
-	Math.max(4, Math.min(10, Math.ceil(durationMinutes / 8)));
+	Math.max(1, Math.min(10, Math.ceil(durationMinutes / 5)));
 
 const buildTheoryItems = (
 	plan: Doc<"learningPlans">,
@@ -376,10 +381,26 @@ const buildTaskItems = (
 const buildGeneratedItems = (
 	plan: Doc<"learningPlans">,
 	session: Doc<"learningPlanSessions">,
-) =>
-	session.phase === "theory"
-		? buildTheoryItems(plan, session)
-		: buildTaskItems(plan, session);
+) => {
+	const segments = getLearningSessionComposition({
+		phase: session.phase,
+		durationMinutes: session.durationMinutes,
+		variant: session.compositionVariant ?? "control",
+	});
+
+	return segments.flatMap((segment) => {
+		const segmentSession: Doc<"learningPlanSessions"> = {
+			...session,
+			phase: segment.phase,
+			durationMinutes: segment.durationMinutes,
+		};
+		const items =
+			segment.phase === "theory"
+				? buildTheoryItems(plan, segmentSession)
+				: buildTaskItems(plan, segmentSession);
+		return items.map((item) => ({ ...item, phase: segment.phase }));
+	});
+};
 
 const listItems = async (
 	ctx: QueryCtx | MutationCtx,
@@ -404,7 +425,7 @@ const insertGeneratedItemsForSession = async (
 			ownerTokenIdentifier: session.ownerTokenIdentifier,
 			learningPlanId: session.learningPlanId,
 			sessionId: session._id,
-			phase: session.phase,
+			phase: item.phase ?? session.phase,
 			kind: item.kind,
 			title: normalizeText(item.title),
 			prompt: normalizeText(item.prompt),
@@ -695,6 +716,11 @@ export const storeGeneratedSessionContent = internalMutation({
 			args.sessionId,
 			ownerTokenIdentifier,
 		);
+		const plan = await getOwnedPlan(
+			ctx,
+			session.learningPlanId,
+			ownerTokenIdentifier,
+		);
 		const existingItems = await listItems(ctx, args.sessionId);
 		if (existingItems.length > 0 && args.replaceExisting !== true) {
 			return { itemCount: existingItems.length };
@@ -704,7 +730,30 @@ export const storeGeneratedSessionContent = internalMutation({
 			await deleteSessionContentItems(ctx, args.sessionId);
 		}
 
-		await insertGeneratedItemsForSession(ctx, session, args.items);
+		const composition = getLearningSessionComposition({
+			phase: session.phase,
+			durationMinutes: session.durationMinutes,
+			variant: session.compositionVariant ?? "control",
+		});
+		const practiceSegment = composition.find(
+			(segment) => segment.phase === "practice",
+		);
+		const hasGeneratedPractice = args.items.some(
+			(item) => item.phase === "practice",
+		);
+		const items =
+			practiceSegment && !hasGeneratedPractice
+				? [
+						...args.items,
+						...buildTaskItems(plan, {
+							...session,
+							phase: "practice",
+							durationMinutes: practiceSegment.durationMinutes,
+						}).map((item) => ({ ...item, phase: "practice" as const })),
+					]
+				: args.items;
+
+		await insertGeneratedItemsForSession(ctx, session, items);
 		const storedItems = await listItems(ctx, args.sessionId);
 		return { itemCount: storedItems.length };
 	},
@@ -801,6 +850,7 @@ export const getSessionContent = query({
 				expectedOutcome: session.expectedOutcome,
 				completed: session.completed ?? false,
 				executionStatus: getSessionExecutionStatus(session),
+				compositionVariant: session.compositionVariant ?? "control",
 			},
 			praxisDurationSeconds:
 				session.phase === "rehearsal"

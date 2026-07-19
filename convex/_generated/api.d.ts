@@ -18,6 +18,7 @@ import type * as generatedGermanTextRepair from "../generatedGermanTextRepair.js
 import type * as learningPlanAi from "../learningPlanAi.js";
 import type * as learningPlanPlanningHints from "../learningPlanPlanningHints.js";
 import type * as learningPlans from "../learningPlans.js";
+import type * as learningSessionComposition from "../learningSessionComposition.js";
 import type * as learningSessionContent from "../learningSessionContent.js";
 import type * as learningSessionContentConstraints from "../learningSessionContentConstraints.js";
 import type * as learningTimes from "../learningTimes.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   learningPlanAi: typeof learningPlanAi;
   learningPlanPlanningHints: typeof learningPlanPlanningHints;
   learningPlans: typeof learningPlans;
+  learningSessionComposition: typeof learningSessionComposition;
   learningSessionContent: typeof learningSessionContent;
   learningSessionContentConstraints: typeof learningSessionContentConstraints;
   learningTimes: typeof learningTimes;

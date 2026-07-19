@@ -47,6 +47,11 @@ const sessionPhaseValidator = v.union(
 	v.literal("rehearsal"),
 );
 
+const sessionCompositionVariantValidator = v.union(
+	v.literal("control"),
+	v.literal("split"),
+);
+
 const sessionContentItemKindValidator = v.union(
 	v.literal("learnCard"),
 	v.literal("multipleChoice"),
@@ -245,6 +250,7 @@ export default defineSchema({
 		examDateLabel: v.string(),
 		examTime: v.optional(v.string()),
 		durationMinutes: v.number(),
+		targetStudyMinutes: v.optional(v.number()),
 		topicDescription: v.string(),
 		notes: v.optional(v.string()),
 		status: v.union(
@@ -258,6 +264,7 @@ export default defineSchema({
 		sourceSummary: v.optional(v.string()),
 		insight: v.optional(planInsightValidator),
 		planningHint: v.optional(v.string()),
+		sessionCompositionVariant: v.optional(sessionCompositionVariantValidator),
 		examDayEntryId: v.optional(v.id("dayEntries")),
 		acceptedAt: v.optional(v.number()),
 		createdAt: v.number(),
@@ -300,6 +307,7 @@ export default defineSchema({
 		dateLabel: v.string(),
 		startTime: v.string(),
 		durationMinutes: v.number(),
+		compositionVariant: v.optional(sessionCompositionVariantValidator),
 		goal: v.string(),
 		tasks: v.array(v.string()),
 		expectedOutcome: v.string(),
@@ -307,6 +315,7 @@ export default defineSchema({
 		executionStatus: v.optional(sessionExecutionStatusValidator),
 		startedAt: v.optional(v.number()),
 		outcomeAt: v.optional(v.number()),
+		activeStudySeconds: v.optional(v.number()),
 		missedReason: v.optional(missedReasonValidator),
 		adjustedFromSessionId: v.optional(v.id("learningPlanSessions")),
 		sortOrder: v.number(),

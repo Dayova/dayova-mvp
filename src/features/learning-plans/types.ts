@@ -29,6 +29,7 @@ export type PlanSession = {
 	dateLabel: string;
 	startTime: string;
 	durationMinutes: number;
+	compositionVariant?: "control" | "split";
 	goal: string;
 	tasks: string[];
 	expectedOutcome: string;
@@ -113,6 +114,7 @@ export type LearningSessionContentSnapshot = {
 		dateLabel: string;
 		startTime: string;
 		durationMinutes: number;
+		compositionVariant: "control" | "split";
 		goal: string;
 		expectedOutcome: string;
 		completed: boolean;
@@ -159,6 +161,7 @@ export type LearningPlanSnapshot = {
 		examDateLabel: string;
 		examTime?: string;
 		durationMinutes: number;
+		targetStudyMinutes?: number;
 		topicDescription: string;
 		notes?: string;
 		status: "draft" | "questionsReady" | "generated" | "accepted";
@@ -170,6 +173,7 @@ export type LearningPlanSnapshot = {
 			gaps: string[];
 		};
 		planningHint?: string;
+		sessionCompositionVariant?: "control" | "split";
 	};
 	documents: LearningPlanDocument[];
 	answers: LearningPlanAnswer[];

@@ -18,6 +18,7 @@ const user = {
 
 const createGeneratedPlanWithSession = async (
 	phase: "theory" | "practice" | "rehearsal",
+	sessionCompositionVariant: "control" | "split" = "control",
 ) => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
@@ -55,6 +56,7 @@ const createGeneratedPlanWithSession = async (
 			strengths: ["Grundbegriffe sind vorhanden."],
 			gaps: ["Vorzeichenfehler beim Auflösen von Gleichungen."],
 		},
+		sessionCompositionVariant,
 		sessions: [
 			{
 				phase,
@@ -160,6 +162,36 @@ test("theory fallback creates active recall cards instead of generic summaries",
 	);
 });
 
+test("split fallback stores theory then practice inside the same session", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession(
+		"theory",
+		"split",
+	);
+
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	const content = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+
+	expect(content?.session.compositionVariant).toBe("split");
+	expect(content?.items.map((item) => item.phase)).toEqual([
+		"theory",
+		"theory",
+		"theory",
+		"theory",
+		"practice",
+		"practice",
+	]);
+	expect(
+		content?.items.slice(0, 4).every((item) => item.kind === "learnCard"),
+	).toBe(true);
+	expect(
+		content?.items.slice(4).every((item) => item.kind !== "learnCard"),
+	).toBe(true);
+});
+
 test("existing theory cards remain readable without structured topic content", async () => {
 	const { t, sessionId } = await createGeneratedPlanWithSession("theory");
 
@@ -194,6 +226,39 @@ test("existing theory cards remain readable without structured topic content", a
 	expect(content?.items[0]?.theoryContent).toBeUndefined();
 });
 
+test("AI theory content gains a practical segment for split sessions", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession(
+		"theory",
+		"split",
+	);
+
+	await t.mutation(
+		internal.learningSessionContent.storeGeneratedSessionContent,
+		{
+			sessionId,
+			items: [
+				{
+					kind: "learnCard",
+					title: "Steigung verstehen",
+					prompt: "Was beschreibt die Steigung?",
+					explanation: "Sie beschreibt die Änderung von y pro x-Schritt.",
+					idealAnswer: "Änderung von y geteilt durch Änderung von x.",
+					evaluationKeywords: ["steigung", "änderung"],
+				},
+			],
+		},
+	);
+
+	const content = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+
+	expect(content?.items[0]?.phase).toBe("theory");
+	expect(
+		content?.items.filter((item) => item.phase === "practice"),
+	).toHaveLength(2);
+});
+
 test("practice fallback creates concrete guided practice tasks", async () => {
 	const { t, sessionId } = await createGeneratedPlanWithSession("practice");
 
@@ -205,12 +270,14 @@ test("practice fallback creates concrete guided practice tasks", async () => {
 	});
 	const prompts = content?.items.map((item) => item.prompt).join(" ") ?? "";
 
-	expect(content?.items).toHaveLength(4);
+	expect(content?.items).toHaveLength(6);
 	expect(content?.items.map((item) => item.kind)).toEqual([
 		"multipleChoice",
 		"written",
 		"voice",
 		"multipleChoice",
+		"written",
+		"voice",
 	]);
 	expect(prompts).toContain("Übung");
 	expect(prompts).not.toContain("Welche Strategie passt");
@@ -255,7 +322,7 @@ test("praxis fallback creates generalprobe tasks without generic strategy prompt
 	const prompts = content?.items.map((item) => item.prompt).join(" ") ?? "";
 
 	expect(content?.praxisDurationSeconds).toBe(30 * 60);
-	expect(content?.items).toHaveLength(4);
+	expect(content?.items).toHaveLength(6);
 	expect(prompts).toContain("Generalprobe");
 	expect(prompts).not.toContain("Welche Strategie passt");
 });

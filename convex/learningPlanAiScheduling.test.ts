@@ -65,9 +65,137 @@ describe("learning plan AI scheduling", () => {
 		expect(withLearningTimes.sessions[0]).toMatchObject({
 			dateKey: "2026-06-04T00:00:00.000Z",
 			startTime: "17:00",
-			durationMinutes: 60,
+			durationMinutes: 30,
 		});
-		expect(withLearningTimes.planningHint).toBeUndefined();
+		expect(withLearningTimes.planningHint).toBe("30/60 Min. geplant.");
+	});
+
+	test("uses only the requested workload from a longer learning time", () => {
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-05",
+			5,
+			[
+				{
+					phase: "theory",
+					title: germanText("Grundlagen"),
+					dayOffsetBeforeExam: 3,
+					startTime: "16:00",
+					durationMinutes: 30,
+					goal: germanText("Wiederhole die wichtigsten Grundlagen."),
+					tasks: [
+						germanText("Erkläre die zentralen Begriffe."),
+						germanText("Prüfe dein Verständnis an einem Beispiel."),
+					],
+					expectedOutcome: germanText(
+						"Du kannst die wichtigsten Grundlagen erklären.",
+					),
+				},
+			],
+			[{ dayOfWeek: 2, startTime: "16:00", endTime: "17:30" }],
+			[],
+		);
+
+		expect(result.sessions).toHaveLength(1);
+		expect(result.sessions[0]).toMatchObject({
+			startTime: "16:00",
+			durationMinutes: 30,
+		});
+		expect(result.planningHint).toBeUndefined();
+	});
+
+	test("splits total plan workload across saved learning times", () => {
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-05",
+			5,
+			[
+				{
+					phase: "theory",
+					title: germanText("Grundlagen"),
+					dayOffsetBeforeExam: 3,
+					startTime: "16:00",
+					durationMinutes: 20,
+					goal: germanText("Wiederhole die wichtigsten Grundlagen."),
+					tasks: [
+						germanText("Erkläre die zentralen Begriffe."),
+						germanText("Prüfe dein Verständnis an einem Beispiel."),
+					],
+					expectedOutcome: germanText("Du kannst die Grundlagen erklären."),
+				},
+				{
+					phase: "practice",
+					title: germanText("Aufgaben üben"),
+					dayOffsetBeforeExam: 2,
+					startTime: "17:00",
+					durationMinutes: 30,
+					goal: germanText("Wende die Grundlagen sicher an."),
+					tasks: [
+						germanText("Löse eine passende Aufgabe."),
+						germanText("Kontrolliere deinen Lösungsweg."),
+					],
+					expectedOutcome: germanText("Du kannst die Aufgabe sicher lösen."),
+				},
+			],
+			[
+				{ dayOfWeek: 1, startTime: "16:00", endTime: "17:00" },
+				{ dayOfWeek: 2, startTime: "16:00", endTime: "17:00" },
+			],
+			[],
+		);
+
+		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
+			30, 20,
+		]);
+		expect(result.sessions.map((session) => session.startTime)).toEqual([
+			"16:00",
+			"16:00",
+		]);
+		expect(result.planningHint).toBeUndefined();
+	});
+
+	test("uses the confirmed total plan workload instead of AI duration guesses", () => {
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-05",
+			5,
+			[
+				{
+					phase: "theory",
+					title: germanText("Grundlagen"),
+					dayOffsetBeforeExam: 3,
+					startTime: "16:00",
+					durationMinutes: 45,
+					goal: germanText("Wiederhole die wichtigsten Grundlagen."),
+					tasks: [
+						germanText("Erkläre die zentralen Begriffe."),
+						germanText("Prüfe dein Verständnis an einem Beispiel."),
+					],
+					expectedOutcome: germanText("Du kannst die Grundlagen erklären."),
+				},
+				{
+					phase: "practice",
+					title: germanText("Aufgaben üben"),
+					dayOffsetBeforeExam: 2,
+					startTime: "16:00",
+					durationMinutes: 45,
+					goal: germanText("Wende die Grundlagen sicher an."),
+					tasks: [
+						germanText("Löse eine passende Aufgabe."),
+						germanText("Kontrolliere deinen Lösungsweg."),
+					],
+					expectedOutcome: germanText("Du kannst die Aufgabe sicher lösen."),
+				},
+			],
+			[
+				{ dayOfWeek: 1, startTime: "16:00", endTime: "17:00" },
+				{ dayOfWeek: 2, startTime: "16:00", endTime: "17:00" },
+			],
+			[],
+			50,
+		);
+
+		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
+			30, 20,
+		]);
+		expect(result.planningHint).toBeUndefined();
 	});
 
 	test("uses only free stored learning times and hints when needed time is busy", () => {
@@ -131,31 +259,27 @@ describe("learning plan AI scheduling", () => {
 			],
 		);
 
-		expect(result.sessions).toHaveLength(6);
+		expect(result.sessions).toHaveLength(2);
 		expect(result.sessions).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					dateKey: "2026-06-02T00:00:00.000Z",
 					startTime: "16:00",
-					durationMinutes: 90,
+					durationMinutes: 30,
 				}),
 				expect.objectContaining({
 					dateKey: "2026-06-04T00:00:00.000Z",
 					startTime: "10:00",
-					durationMinutes: 60,
+					durationMinutes: 30,
 				}),
 			]),
 		);
-		expect(
-			result.sessions.filter((session) =>
-				session.title.startsWith("Alternative:"),
-			),
-		).toHaveLength(4);
-		expect(result.planningHint).toContain("Lernzeiten belegt");
-		expect(result.planningHint).not.toContain("Min. geplant");
+		expect(result.planningHint).toBe(
+			"Belegte Zeiten ausgelassen. 60/270 Min. geplant.",
+		);
 	});
 
-	test("fills missing recommended time with alternative slots", () => {
+	test("reports capacity instead of inventing alternative slots", () => {
 		const result = __testOnlyLearningPlanAi.normalizeSessions(
 			"2026-06-05",
 			5,
@@ -178,21 +302,15 @@ describe("learning plan AI scheduling", () => {
 			[],
 		);
 
-		expect(result.sessions).toHaveLength(4);
+		expect(result.sessions).toHaveLength(1);
 		expect(result.sessions[0]).toMatchObject({
 			startTime: "16:00",
-			durationMinutes: 90,
+			durationMinutes: 30,
 		});
-		expect(
-			result.sessions.filter((session) =>
-				session.title.startsWith("Alternative:"),
-			),
-		).toHaveLength(3);
-		expect(result.planningHint).toContain("Alternativen vorgeschlagen");
-		expect(result.planningHint).not.toContain("90/180");
+		expect(result.planningHint).toBe("30/180 Min. geplant.");
 	});
 
-	test("creates alternative suggestions when every stored learning slot is busy", () => {
+	test("does not schedule outside Lernzeiten when every stored slot is busy", () => {
 		const result = __testOnlyLearningPlanAi.normalizeSessions(
 			"2026-06-05",
 			5,
@@ -221,15 +339,10 @@ describe("learning plan AI scheduling", () => {
 			],
 		);
 
-		expect(result.sessions).toHaveLength(3);
-		expect(result.sessions[0]).toMatchObject({
-			dateKey: "2026-06-03T00:00:00.000Z",
-			startTime: "19:30",
-			durationMinutes: 30,
-		});
-		expect(result.sessions[0]?.title).toContain("Alternative:");
-		expect(result.planningHint).toContain("Lernzeiten belegt");
-		expect(result.planningHint).not.toContain("Min. geplant");
+		expect(result.sessions).toHaveLength(0);
+		expect(result.planningHint).toBe(
+			"Belegte Zeiten ausgelassen. 0/90 Min. geplant.",
+		);
 	});
 
 	test("keeps the generated phase progression when learning times create extra slots", () => {
@@ -292,7 +405,7 @@ describe("learning plan AI scheduling", () => {
 			"practice",
 			"rehearsal",
 		]);
-		expect(result.planningHint).toBeUndefined();
+		expect(result.planningHint).toBe("120/240 Min. geplant.");
 	});
 
 	test("does not expand one long theory recommendation into only theory sessions", () => {
@@ -370,7 +483,7 @@ describe("learning plan AI scheduling", () => {
 		});
 	});
 
-	test("keeps alternative recommendations in the future", () => {
+	test("does not move a past Lernzeit to an invented time", () => {
 		vi.setSystemTime(new Date("2026-06-04T13:30:00.000Z"));
 
 		const result = __testOnlyLearningPlanAi.normalizeSessions(
@@ -395,11 +508,7 @@ describe("learning plan AI scheduling", () => {
 			[],
 		);
 
-		expect(result.sessions).toHaveLength(1);
-		expect(result.sessions[0]).toMatchObject({
-			dateKey: "2026-06-04T00:00:00.000Z",
-			startTime: "16:00",
-		});
-		expect(result.sessions[0]?.title).toContain("Alternative:");
+		expect(result.sessions).toHaveLength(0);
+		expect(result.planningHint).toBe("0/30 Min. geplant.");
 	});
 });

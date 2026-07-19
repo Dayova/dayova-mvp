@@ -6,11 +6,12 @@ import {
 	Alert,
 	Platform,
 	Pressable,
+	ScrollView,
 	View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import {
 	type DateTimePickerEvent,
@@ -22,29 +23,28 @@ import {
 	FieldLabel,
 	FieldTrigger,
 } from "~/components/ui/field";
-import { CalendarDays, ChevronDown, Timer, Trash2 } from "~/components/ui/icon";
-import { Screen, ScreenScroll } from "~/components/ui/screen";
+import {
+	CalendarDays,
+	ChevronDown,
+	Timer,
+	Trash2,
+	X,
+} from "~/components/ui/icon";
+import { Screen } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import {
+	LEARNING_DAYS,
+	type LearningDayLabel,
+} from "~/features/learning-times/learning-time-days";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { dismissToOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
-const LEARNING_DAYS = [
-	{ label: "Montag", value: 1 },
-	{ label: "Dienstag", value: 2 },
-	{ label: "Mittwoch", value: 3 },
-	{ label: "Donnerstag", value: 4 },
-	{ label: "Freitag", value: 5 },
-	{ label: "Samstag", value: 6 },
-	{ label: "Sonntag", value: 7 },
-] as const;
-
-type LearningDayLabel = (typeof LEARNING_DAYS)[number]["label"];
 type TimeField = "start" | "end";
 type LearningTimeDraft = {
 	baseKey: string;
@@ -83,18 +83,30 @@ function TimeControl({
 	value: string;
 	onPress: () => void;
 }) {
+	const { colors } = useDayovaTheme();
+
 	return (
-		<Pressable
-			accessibilityLabel={`${label}: ${value}`}
-			accessibilityRole="button"
-			onPress={onPress}
-			className="h-[54px] flex-1 flex-row items-center justify-between rounded-[27px] bg-card px-5 shadow-black/10 shadow-sm active:opacity-80"
-		>
-			<Text className="font-poppins text-body-3 text-secondary-text">
-				{value}
+		<View className="flex-1 gap-2">
+			<Text className="font-poppins text-body-4 text-secondary-text">
+				{label}
 			</Text>
-			<Timer size={19} color="#697586" strokeWidth={1.9} />
-		</Pressable>
+			<Pressable
+				accessibilityLabel={`${label}: ${value}`}
+				accessibilityRole="button"
+				className="min-h-16 flex-row items-center justify-between rounded-[28px] bg-card px-5 shadow-black/10 shadow-sm active:opacity-80"
+				onPress={onPress}
+				style={{ borderCurve: "continuous" }}
+			>
+				<Text
+					selectable
+					className="font-poppins font-semibold text-body-2 text-text"
+					style={{ fontVariant: ["tabular-nums"] }}
+				>
+					{value}
+				</Text>
+				<Timer size={19} color={colors.secondaryText} strokeWidth={1.9} />
+			</Pressable>
+		</View>
 	);
 }
 
@@ -105,6 +117,7 @@ export default function LearningTimesScreen() {
 		id?: string;
 		returnTo?: string;
 	}>();
+	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
 	const { colors } = useDayovaTheme();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -124,7 +137,6 @@ export default function LearningTimesScreen() {
 		null,
 	);
 	const [isSaving, setIsSaving] = useState(false);
-	const [feedback, setFeedback] = useState<string | null>(null);
 	const returnTo = getSafeReturnTo(params.returnTo);
 	const overviewPath = withReturnTo(ROUTES.learningTimes, returnTo);
 	const learningTimeId = params.id as Id<"userLearningTimes"> | undefined;
@@ -161,9 +173,10 @@ export default function LearningTimesScreen() {
 			...patch,
 			baseKey: formBaseKey,
 		}));
-		setFeedback(null);
 	};
 
+	const hasValidTimeRange =
+		parseTimeToMinutes(endTime) > parseTimeToMinutes(startTime);
 	const hasChanges =
 		!isEditingExisting ||
 		selectedDayValue !== selectedEntry?.dayOfWeek ||
@@ -172,7 +185,7 @@ export default function LearningTimesScreen() {
 	const canRemove = Boolean(selectedEntry) && !isSaving;
 	const canSave =
 		hasChanges &&
-		parseTimeToMinutes(endTime) > parseTimeToMinutes(startTime) &&
+		hasValidTimeRange &&
 		!isSaving &&
 		Boolean(user) &&
 		isConvexAuthenticated &&
@@ -204,7 +217,7 @@ export default function LearningTimesScreen() {
 	};
 
 	const save = async () => {
-		if (parseTimeToMinutes(endTime) <= parseTimeToMinutes(startTime)) {
+		if (!hasValidTimeRange) {
 			Alert.alert(
 				"Uhrzeit prüfen",
 				"Die Endzeit muss nach der Startzeit liegen.",
@@ -213,7 +226,6 @@ export default function LearningTimesScreen() {
 		}
 
 		setIsSaving(true);
-		setFeedback(null);
 		try {
 			await saveLearningTime({
 				id: selectedEntry?.id,
@@ -238,10 +250,8 @@ export default function LearningTimesScreen() {
 		if (!selectedEntry) return;
 
 		setIsSaving(true);
-		setFeedback(null);
 		try {
 			await removeLearningTime({ id: selectedEntry.id });
-			setFeedback("Lernzeit entfernt.");
 			closeToOverview();
 		} catch (error) {
 			Alert.alert(
@@ -255,13 +265,32 @@ export default function LearningTimesScreen() {
 		}
 	};
 
+	const requestRemove = () => {
+		if (!canRemove) return;
+
+		Alert.alert(
+			"Lernzeit entfernen?",
+			`${selectedDay}, ${startTime}–${endTime} wird dauerhaft entfernt.`,
+			[
+				{ text: "Abbrechen", style: "cancel" },
+				{
+					text: "Entfernen",
+					style: "destructive",
+					onPress: () => {
+						void remove();
+					},
+				},
+			],
+		);
+	};
+
 	const renderDaySelectSheet = () => {
 		if (!daySheetVisible) return null;
 
 		return (
 			<SelectSheet
 				visible
-				title="Lerntag auswählen"
+				title="Wochentag auswählen"
 				options={LEARNING_DAYS.map((day) => day.label)}
 				selectedValue={selectedDay}
 				onSelect={(nextDay) =>
@@ -271,7 +300,7 @@ export default function LearningTimesScreen() {
 				renderOptionIcon={(_option, isSelected) => (
 					<CalendarDays
 						size={19}
-						color={isSelected ? "#00BAFF" : "#697586"}
+						color={isSelected ? colors.primary : colors.secondaryText}
 						strokeWidth={2}
 					/>
 				)}
@@ -282,93 +311,116 @@ export default function LearningTimesScreen() {
 	return (
 		<Screen>
 			<ThemedStatusBar />
-			<ScreenScroll topPadding={80} bottomPadding={120} horizontalPadding={24}>
-				<Header title="Lernzeiten" onBack={goBack} />
-
-				<View style={{ marginTop: 18, rowGap: 22 }}>
-					<View className="gap-2">
-						<Text className="font-poppins font-semibold text-body-2 text-text">
-							Lernzeit bearbeiten
-						</Text>
-						<Text className="font-poppins text-body-3 text-secondary-text">
-							Passe deine Lernzeiten so an, wie sie für dich passen.
-						</Text>
-					</View>
-
-					<View>
-						<Field className="mb-5">
-							<FieldLabel>Lernzeit</FieldLabel>
-							<FieldTrigger
-								accessibilityLabel={`Lerntag ${selectedDay}`}
-								accessibilityRole="button"
-								className="min-h-[64px] rounded-[28px] px-5"
-								onPress={() => setDaySheetVisible(true)}
-								style={{
-									boxShadow: "0 1px 4px rgba(0, 0, 0, 0.08)",
-								}}
-							>
-								<Text className="flex-1 font-poppins font-semibold text-body-1 text-text">
-									Lerntag
-								</Text>
-								<Text className="font-poppins text-body-1 text-secondary-text">
-									{selectedDay}
-								</Text>
-								<FieldAccessory>
-									<ChevronDown
-										size={20}
-										color={colors.text}
-										strokeWidth={2.1}
-									/>
-								</FieldAccessory>
-							</FieldTrigger>
-						</Field>
-
-						<View className="flex-row gap-2">
-							<TimeControl
-								label="Startzeit"
-								value={startTime}
-								onPress={() => setActiveTimeField("start")}
-							/>
-							<TimeControl
-								label="Endzeit"
-								value={endTime}
-								onPress={() => setActiveTimeField("end")}
-							/>
-						</View>
-					</View>
-
-					{learningTimes === undefined ? (
-						<View className="items-center py-4">
-							<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
-						</View>
-					) : null}
-
-					{feedback ? (
-						<Text className="font-poppins text-body-4 text-primary">
-							{feedback}
-						</Text>
-					) : null}
+			<ScrollView
+				className="flex-1 bg-background"
+				contentContainerStyle={{
+					gap: 24,
+					paddingHorizontal: 24,
+					paddingTop: 24,
+					paddingBottom: 152,
+				}}
+				contentInsetAdjustmentBehavior="automatic"
+				showsVerticalScrollIndicator={false}
+			>
+				<View className="min-h-11 flex-row items-center justify-between">
+					<Text
+						accessibilityRole="header"
+						className="font-poppins font-semibold text-body-1 text-text"
+					>
+						{isEditingExisting ? "Lernzeit bearbeiten" : "Neue Lernzeit"}
+					</Text>
+					<Pressable
+						accessibilityLabel="Lernzeit schließen"
+						accessibilityRole="button"
+						hitSlop={8}
+						className="h-10 w-10 items-center justify-center rounded-full bg-muted active:opacity-75"
+						onPress={goBack}
+					>
+						<X size={18} color={colors.text} strokeWidth={2.2} />
+					</Pressable>
 				</View>
-			</ScreenScroll>
+
+				<Text
+					selectable
+					className="font-poppins text-body-3 text-secondary-text"
+				>
+					Wähle den Wochentag und das Zeitfenster, in dem du regelmäßig lernen
+					kannst.
+				</Text>
+
+				<Field className="mb-0">
+					<FieldLabel>Wochentag</FieldLabel>
+					<FieldTrigger
+						accessibilityLabel={`Wochentag ${selectedDay}`}
+						accessibilityRole="button"
+						className="min-h-16 rounded-[28px] px-5"
+						onPress={() => setDaySheetVisible(true)}
+						style={{ borderCurve: "continuous" }}
+					>
+						<CalendarDays
+							size={20}
+							color={colors.secondaryText}
+							strokeWidth={2}
+						/>
+						<Text className="ml-3 flex-1 font-poppins font-semibold text-body-2 text-text">
+							{selectedDay}
+						</Text>
+						<FieldAccessory>
+							<ChevronDown size={20} color={colors.text} strokeWidth={2.1} />
+						</FieldAccessory>
+					</FieldTrigger>
+				</Field>
+
+				<View className="flex-row gap-3">
+					<TimeControl
+						label="Beginn"
+						value={startTime}
+						onPress={() => setActiveTimeField("start")}
+					/>
+					<TimeControl
+						label="Ende"
+						value={endTime}
+						onPress={() => setActiveTimeField("end")}
+					/>
+				</View>
+
+				{hasValidTimeRange ? null : (
+					<Text
+						selectable
+						className="font-poppins text-body-4 text-destructive"
+					>
+						Die Endzeit muss nach der Startzeit liegen.
+					</Text>
+				)}
+
+				{learningTimes === undefined ? (
+					<View className="items-center py-4">
+						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
+					</View>
+				) : null}
+
+				{isEditingExisting ? (
+					<Pressable
+						accessibilityLabel="Lernzeit entfernen"
+						accessibilityRole="button"
+						className="min-h-12 flex-row items-center justify-center gap-2 rounded-[24px] active:bg-destructive/10 disabled:opacity-50"
+						disabled={!canRemove}
+						onPress={requestRemove}
+					>
+						<Trash2 size={18} color={colors.destructive} strokeWidth={2} />
+						<Text className="font-poppins font-semibold text-body-3 text-destructive">
+							Lernzeit entfernen
+						</Text>
+					</Pressable>
+				) : null}
+			</ScrollView>
 
 			<View
 				pointerEvents="box-none"
-				className="absolute right-0 bottom-5 left-0 flex-row gap-3 px-6 pb-16"
+				className="absolute right-0 bottom-0 left-0 border-border border-t bg-background px-6 pt-4"
+				style={{ paddingBottom: Math.max(insets.bottom, 20) }}
 			>
-				<Button
-					variant="neutral"
-					className="flex-1"
-					disabled={!canRemove}
-					onPress={remove}
-				>
-					<Trash2
-						size={18}
-						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-						strokeWidth={2}
-					/>
-					<Text>Entfernen</Text>
-				</Button>
-				<Button className="flex-1" disabled={!canSave} onPress={save}>
+				<Button disabled={!canSave} onPress={save}>
 					<Text>{isSaving ? "Speichert..." : "Speichern"}</Text>
 				</Button>
 			</View>
