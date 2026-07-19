@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Animated, Easing, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
-import { QuestionProgressBar } from "~/components/question-progress-bar";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
@@ -10,8 +9,6 @@ import { formatGermanUiText } from "~/lib/german-ui-text";
 
 export function QuizStep({
 	question,
-	questionIndex,
-	questionCount,
 	answer,
 	errorMessage,
 	isBusy,
@@ -19,8 +16,6 @@ export function QuizStep({
 	onContinue,
 }: {
 	question: QuizQuestion;
-	questionIndex: number;
-	questionCount: number;
 	answer: string;
 	errorMessage: string | null;
 	isBusy: boolean;
@@ -68,12 +63,7 @@ export function QuizStep({
 					transform: [{ translateY: contentTranslateY }],
 				}}
 			>
-				<QuestionProgressBar
-					currentIndex={questionIndex}
-					total={questionCount}
-					className="mb-11 w-full"
-				/>
-				<Text className="font-poppins font-semibold text-body-1 text-text">
+				<Text className="pt-11 font-poppins font-semibold text-body-1 text-text">
 					{prompt}
 				</Text>
 				<Textarea

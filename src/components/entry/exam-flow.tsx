@@ -4,8 +4,6 @@ import Animated, {
 	FadeInDown,
 	LinearTransition,
 } from "react-native-reanimated";
-import { BackButton } from "~/components/ui/button";
-import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	Computer,
 	GraduationCap,
@@ -37,43 +35,6 @@ const EXAM_TYPE_OPTIONS = [
 ] as const;
 
 const CUSTOM_EXAM_TYPE_LABEL = "Andere Prüfungsart";
-
-function ExamFlowHeader({
-	currentStep,
-	onBack,
-}: {
-	currentStep: number;
-	onBack: () => void;
-}) {
-	const totalSteps = 3;
-	const safeStep = Math.min(Math.max(currentStep, 1), totalSteps);
-
-	return (
-		<View className="flex-row items-center gap-4">
-			<BackButton onPress={onBack} />
-			<View className="flex-1 gap-2">
-				<View className="flex-row items-center justify-between">
-					<Text className="font-poppins font-semibold text-body-3 text-text">
-						Prüfung eintragen
-					</Text>
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						{safeStep} von {totalSteps}
-					</Text>
-				</View>
-				<FlowProgressBar
-					progress={safeStep / totalSteps}
-					accessibilityRole="progressbar"
-					accessibilityValue={{
-						min: 1,
-						max: totalSteps,
-						now: safeStep,
-						text: `Schritt ${safeStep} von ${totalSteps}`,
-					}}
-				/>
-			</View>
-		</View>
-	);
-}
 
 function ExamTypePicker({
 	selectedValue,
@@ -269,4 +230,4 @@ function ExamDateSelector({
 	);
 }
 
-export { ExamDateSelector, ExamFlowHeader, ExamTypePicker, SingleSelectOption };
+export { ExamDateSelector, ExamTypePicker, SingleSelectOption };

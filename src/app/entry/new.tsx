@@ -18,7 +18,6 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
 	ExamDateSelector,
-	ExamFlowHeader,
 	ExamTypePicker,
 	SingleSelectOption,
 } from "~/components/entry/exam-flow";
@@ -58,6 +57,7 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import { LearningPlanCreationProgressHeader } from "~/features/learning-plans/creation-progress-header";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useValidationAnalytics } from "~/lib/analytics";
 import { definedAnalyticsProperties } from "~/lib/analytics-core";
@@ -647,7 +647,11 @@ export default function NewEntryScreen() {
 					className="bg-background px-8 pb-8"
 					style={{ paddingTop: Math.max(insets.top + 20, 52) }}
 				>
-					<ExamFlowHeader currentStep={examStepNumber} onBack={handleBack} />
+					<LearningPlanCreationProgressHeader
+						currentStep={examStepNumber}
+						onBack={handleBack}
+						title="Prüfung eintragen"
+					/>
 					<Text className="mt-8 font-poppins font-semibold text-heading-2 text-text">
 						{examStepTitle}
 					</Text>

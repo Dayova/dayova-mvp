@@ -9,6 +9,7 @@ import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
 import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
@@ -16,26 +17,6 @@ import { goBackOrReplace } from "~/lib/navigation";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
-
-const buildEditPlanPath = (
-	id: Id<"learningPlans">,
-	snapshot: LearningPlanSnapshot,
-	errorMessage: string,
-) => {
-	const query = [
-		["learningPlanId", id],
-		["subject", snapshot.plan.subject],
-		["examTypeLabel", snapshot.plan.examTypeLabel],
-		["examDateKey", snapshot.plan.examDateKey],
-		["examDateLabel", snapshot.plan.examDateLabel],
-		["durationMinutes", `${snapshot.plan.durationMinutes}`],
-		["topicDescription", snapshot.plan.topicDescription],
-		["errorMessage", errorMessage],
-	]
-		.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-		.join("&");
-	return `/learning-plans/new?${query}` as const;
-};
 
 export default function LearningPlanAnalysisScreen() {
 	const router = useRouter();
@@ -82,14 +63,22 @@ export default function LearningPlanAnalysisScreen() {
 					);
 					setErrorMessage(message);
 					didStartRef.current = false;
-					router.replace(buildEditPlanPath(planId, snapshot, message));
+					router.replace(
+						learningPlanTopicPath(planId, {
+							topicDescription: snapshot.plan.topicDescription,
+							errorMessage: message,
+						}),
+					);
 				})
 				.finally(() => setIsBusy(false));
 		});
 	}, [generateKnowledgeQuestions, planId, retryAttempt, router, snapshot]);
 
 	const goBack = () => {
-		goBackOrReplace(router, "/learning-plans/new");
+		goBackOrReplace(
+			router,
+			planId ? learningPlanTopicPath(planId) : "/learning-plans/new",
+		);
 	};
 
 	return (

@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { Screen } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
+import { LearningPlanCreationProgressHeader } from "~/features/learning-plans/creation-progress-header";
 import {
 	calculateAvailableStudyMinutes,
 	suggestTotalStudyMinutes,
@@ -132,7 +133,10 @@ export default function LearningPlanWorkloadScreen() {
 		<Screen className="px-8 pt-20 pb-12">
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<ThemedStatusBar />
-			<Header title="Persönlicher Lernplan" onBack={goBack} />
+			<LearningPlanCreationProgressHeader
+				currentStep={LEARNING_PLAN_CREATION_STEPS.workload}
+				onBack={goBack}
+			/>
 			<View className="flex-1 justify-center">
 				<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
 					Wie viel Lernzeit planen wir ein?
