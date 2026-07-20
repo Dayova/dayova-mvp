@@ -9,6 +9,8 @@ const baselinePath = resolve(
 	"release/production-ota-baseline.json",
 );
 const platforms = ["ios", "android"];
+const isNonEmptyString = (value) =>
+	typeof value === "string" && value.length > 0;
 
 const expectedProductionManifest = {
 	iosBundleIdentifier: "de.dayova.app",
@@ -130,6 +132,10 @@ export const evaluateProductionOta = ({
 			);
 		}
 
+		if (!isNonEmptyString(platformBaseline.sourceSha)) {
+			errors.push(`${platform} baseline sourceSha must be a non-empty string`);
+		}
+
 		if (currentRuntimeVersion !== baseline.runtimeVersion) {
 			errors.push(
 				`${platform} runtime ${currentRuntimeVersion ?? "missing"} does not match baseline runtime ${baseline.runtimeVersion}`,
@@ -146,8 +152,11 @@ export const evaluateProductionOta = ({
 	const baselineSummary = platforms
 		.map((platform) => {
 			const entry = baseline.platforms?.[platform];
+			const abbreviatedSourceSha = isNonEmptyString(entry?.sourceSha)
+				? entry.sourceSha.slice(0, 7)
+				: "invalid";
 			return entry
-				? `${platform} build ${entry.buildVersion} @ ${entry.sourceSha.slice(0, 7)} (${entry.distribution?.status ?? "unknown"})`
+				? `${platform} build ${entry.buildVersion} @ ${abbreviatedSourceSha} (${entry.distribution?.status ?? "unknown"})`
 				: `${platform} missing`;
 		})
 		.join(", ");
