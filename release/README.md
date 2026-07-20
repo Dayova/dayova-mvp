@@ -13,7 +13,7 @@ finished EAS build by itself is not distribution evidence.
 After recording a replacement baseline, run:
 
 ```sh
-APP_VARIANT=production node scripts/ota-safety.mjs
+pnpm exec cross-env APP_VARIANT=production node scripts/ota-safety.mjs
 ```
 
 An all-platform update remains blocked when either platform is unverified or when
