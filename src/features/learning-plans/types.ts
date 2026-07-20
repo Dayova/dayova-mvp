@@ -73,6 +73,11 @@ export type SessionContentItem = {
 	idealAnswer: string;
 	theoryContent?: TheoryContent;
 	choices: Array<{ id: string; text: string }>;
+	learningBlockIndex: number;
+	topicId: string;
+	questionAngle: string;
+	coverageKey: string;
+	estimatedSeconds: number;
 	sortOrder: number;
 };
 
@@ -167,6 +172,13 @@ export type LearningPlanSnapshot = {
 		status: "draft" | "questionsReady" | "generated" | "accepted";
 		knowledgeQuestions: QuizQuestion[];
 		sourceSummary?: string;
+		topicMap: Array<{
+			id: string;
+			title: string;
+			learningGoal: string;
+			keywords: string[];
+			priority: "high" | "medium" | "low";
+		}>;
 		insight?: {
 			summary: string;
 			strengths: string[];

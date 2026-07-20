@@ -20,6 +20,7 @@ const snapshot = (
 		durationMinutes: 90,
 		topicDescription: "Lineare Funktionen",
 		status: "generated",
+		topicMap: [],
 		knowledgeQuestions: [
 			{ id: "q1", prompt: "Frage 1", targetInsight: "Wissensstand" },
 			{ id: "q2", prompt: "Frage 2", targetInsight: "Lücke" },

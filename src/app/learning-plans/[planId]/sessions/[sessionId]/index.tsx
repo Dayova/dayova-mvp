@@ -46,11 +46,7 @@ import {
 	CONTINUE_LEARNING_MINUTES,
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
-	getLearningSessionRepeatStartIndex,
 	isQualifiedSessionCompletion,
-	shouldKeepSplitTheoryActive,
-	shouldRepeatSessionContent,
-	shouldTransitionToSplitPractice,
 } from "~/features/learning-plans/session-progress";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
@@ -910,6 +906,9 @@ export default function LearningSessionContentScreen() {
 	const finishSessionContent = useMutation(
 		api.learningSessionContent.finishSessionContent,
 	);
+	const extendSessionContent = useMutation(
+		api.learningSessionContent.extendSessionContent,
+	);
 	const startSession = useMutation(api.learningPlans.startSession);
 	const recordSessionOutcome = useMutation(
 		api.learningPlans.recordSessionOutcome,
@@ -995,9 +994,6 @@ export default function LearningSessionContentScreen() {
 			)
 		: [];
 	const theoryItems = sessionItems.filter((item) => item.kind === "learnCard");
-	const firstPracticeItemIndex = sessionItems.findIndex(
-		(item) => item.phase === "practice",
-	);
 	const currentItem = sessionItems[currentIndex] ?? null;
 	const shouldTrackActiveStudy = Boolean(
 		currentItem && !showAnalysis && !completionPhase,
@@ -1180,34 +1176,12 @@ export default function LearningSessionContentScreen() {
 			const nextSeconds = Math.max(0, currentSeconds - 1);
 			remainingSecondsRef.current = nextSeconds;
 			setRemainingSeconds(nextSeconds);
-
-			if (
-				firstPracticeItemIndex >= 0 &&
-				shouldTransitionToSplitPractice(
-					content?.session.compositionVariant ?? "control",
-					isContinuation,
-					currentSeconds,
-					nextSeconds,
-				)
-			) {
-				queueMicrotask(() => {
-					setSelectedChoiceId(null);
-					setAnswerText("");
-					setLocalAttempt(null);
-					setRepeatingItemId(null);
-					setSpeechErrorMessage(null);
-					setRetryStartedAt(Date.now());
-					setCurrentIndex(firstPracticeItemIndex);
-				});
-			}
 		}, 1000);
 
 		return () => clearInterval(timer);
 	}, [
 		completionPhase,
 		content?.session.durationMinutes,
-		content?.session.compositionVariant,
-		firstPracticeItemIndex,
 		isContinuation,
 		showAnalysis,
 	]);
@@ -1363,9 +1337,13 @@ export default function LearningSessionContentScreen() {
 		setErrorMessage(null);
 		try {
 			await recordCompletedOutcome();
+			const extension = await extendSessionContent({
+				sessionId: content.session.id,
+				durationMinutes: CONTINUE_LEARNING_MINUTES,
+			});
 			resetItemState();
 			setRetryStartedAt(Date.now());
-			setCurrentIndex(0);
+			setCurrentIndex(extension.firstNewItemIndex);
 			setCompletionPhase(null);
 			setShowAnalysis(false);
 			setIsContinuation(true);
@@ -1395,26 +1373,14 @@ export default function LearningSessionContentScreen() {
 
 	const continueTheory = () => {
 		if (!content || isBusy) return;
-		const keepSplitTheoryActive = shouldKeepSplitTheoryActive(
-			content.session.compositionVariant,
-			isContinuation,
-			displayedRemainingSeconds ?? content.session.durationMinutes * 60,
-		);
 		runTheoryTopicPrimaryAction({
 			currentIndex,
-			total: keepSplitTheoryActive ? theoryItems.length : sessionItems.length,
+			total: sessionItems.length,
 			onAdvance: (nextIndex) => {
 				setErrorMessage(null);
 				setCurrentIndex(nextIndex);
 			},
 			onComplete: () => {
-				if (shouldRepeatSessionContent(displayedRemainingSeconds)) {
-					resetItemState();
-					setRetryStartedAt(Date.now());
-					setCurrentIndex(0);
-					setErrorMessage(null);
-					return;
-				}
 				setCompletionPhase(
 					getLearningSessionCompletionPhase(
 						content.session.phase,
@@ -1539,11 +1505,6 @@ export default function LearningSessionContentScreen() {
 					setCurrentIndex((value) => value + 1);
 					return;
 				}
-				if (shouldRepeatSessionContent(displayedRemainingSeconds)) {
-					setRetryStartedAt(Date.now());
-					setCurrentIndex(0);
-					return;
-				}
 				setCompletionPhase("rehearsal");
 				return;
 			}
@@ -1562,18 +1523,6 @@ export default function LearningSessionContentScreen() {
 		if (currentIndex < sessionItems.length - 1) {
 			resetItemState();
 			setCurrentIndex((value) => value + 1);
-			return;
-		}
-		if (shouldRepeatSessionContent(displayedRemainingSeconds)) {
-			resetItemState();
-			setRetryStartedAt(Date.now());
-			setCurrentIndex(
-				getLearningSessionRepeatStartIndex(
-					sessionItems,
-					content.session.compositionVariant,
-					isContinuation,
-				),
-			);
 			return;
 		}
 		setCompletionPhase(

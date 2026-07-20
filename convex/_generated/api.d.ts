@@ -15,6 +15,7 @@ import type * as errors from "../errors.js";
 import type * as fileStorage from "../fileStorage.js";
 import type * as generatedGermanText from "../generatedGermanText.js";
 import type * as generatedGermanTextRepair from "../generatedGermanTextRepair.js";
+import type * as learningContentPlan from "../learningContentPlan.js";
 import type * as learningPlanAi from "../learningPlanAi.js";
 import type * as learningPlanPlanningHints from "../learningPlanPlanningHints.js";
 import type * as learningPlans from "../learningPlans.js";
@@ -22,6 +23,7 @@ import type * as learningSessionComposition from "../learningSessionComposition.
 import type * as learningSessionContent from "../learningSessionContent.js";
 import type * as learningSessionContentConstraints from "../learningSessionContentConstraints.js";
 import type * as learningTimes from "../learningTimes.js";
+import type * as learningTopicMap from "../learningTopicMap.js";
 import type * as notifications from "../notifications.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
 import type * as theoryContent from "../theoryContent.js";
@@ -43,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   fileStorage: typeof fileStorage;
   generatedGermanText: typeof generatedGermanText;
   generatedGermanTextRepair: typeof generatedGermanTextRepair;
+  learningContentPlan: typeof learningContentPlan;
   learningPlanAi: typeof learningPlanAi;
   learningPlanPlanningHints: typeof learningPlanPlanningHints;
   learningPlans: typeof learningPlans;
@@ -50,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   learningSessionContent: typeof learningSessionContent;
   learningSessionContentConstraints: typeof learningSessionContentConstraints;
   learningTimes: typeof learningTimes;
+  learningTopicMap: typeof learningTopicMap;
   notifications: typeof notifications;
   scheduleConflicts: typeof scheduleConflicts;
   theoryContent: typeof theoryContent;

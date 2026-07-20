@@ -20,6 +20,11 @@ const baseItem: SessionContentItem = {
 	explanation: "Führe auf beiden Seiten dieselbe Operation aus.",
 	idealAnswer: "Was du links tust, tust du auch rechts.",
 	choices: [],
+	learningBlockIndex: 0,
+	topicId: "lineare-gleichungen",
+	questionAngle: "recall",
+	coverageKey: "lineare-gleichungen:recall:0",
+	estimatedSeconds: 40,
 	sortOrder: 0,
 };
 

@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { learningTopicValidator } from "./learningTopicMap";
 import { theoryContentValidator } from "./theoryContent";
 
 const planQuestionValidator = v.object({
@@ -262,6 +263,7 @@ export default defineSchema({
 		knowledgeQuestions: v.optional(v.array(planQuestionValidator)),
 		knowledgeAnswersJson: v.optional(v.string()),
 		sourceSummary: v.optional(v.string()),
+		topicMap: v.optional(v.array(learningTopicValidator)),
 		insight: v.optional(planInsightValidator),
 		planningHint: v.optional(v.string()),
 		sessionCompositionVariant: v.optional(sessionCompositionVariantValidator),
@@ -342,6 +344,11 @@ export default defineSchema({
 		choices: v.optional(v.array(sessionContentChoiceValidator)),
 		correctChoiceId: v.optional(v.string()),
 		evaluationKeywords: v.array(v.string()),
+		learningBlockIndex: v.optional(v.number()),
+		topicId: v.optional(v.string()),
+		questionAngle: v.optional(v.string()),
+		coverageKey: v.optional(v.string()),
+		estimatedSeconds: v.optional(v.number()),
 		sortOrder: v.number(),
 		createdAt: v.number(),
 		updatedAt: v.number(),

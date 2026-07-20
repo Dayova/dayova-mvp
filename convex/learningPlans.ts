@@ -20,6 +20,10 @@ import {
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import { getLearningSessionComposition } from "./learningSessionComposition";
+import {
+	learningTopicValidator,
+	normalizeLearningTopics,
+} from "./learningTopicMap";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
@@ -629,6 +633,7 @@ export const getSnapshot = query({
 				status: plan.status,
 				knowledgeQuestions: plan.knowledgeQuestions ?? [],
 				sourceSummary: plan.sourceSummary,
+				topicMap: plan.topicMap ?? [],
 				insight: plan.insight,
 				planningHint: getCurrentPlanningHint(plan.planningHint, {
 					hasLearningTimes: learningTimes.length > 0,
@@ -1085,6 +1090,7 @@ export const storeKnowledgeQuestions = internalMutation({
 		learningPlanId: v.id("learningPlans"),
 		questions: v.array(planQuestionValidator),
 		sourceSummary: v.string(),
+		topics: v.optional(v.array(learningTopicValidator)),
 	},
 	handler: async (ctx, args) => {
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
@@ -1097,6 +1103,7 @@ export const storeKnowledgeQuestions = internalMutation({
 				targetInsight: normalizeGeneratedGermanText(question.targetInsight),
 			})),
 			sourceSummary: normalizeGeneratedGermanText(args.sourceSummary),
+			topicMap: normalizeLearningTopics(args.topics ?? []),
 			status: "questionsReady",
 			updatedAt: Date.now(),
 		});

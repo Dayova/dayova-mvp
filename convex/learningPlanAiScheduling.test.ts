@@ -198,6 +198,42 @@ describe("learning plan AI scheduling", () => {
 		expect(result.planningHint).toBeUndefined();
 	});
 
+	test("reserves theory, practice, and rehearsal sessions in a 60 minute plan", () => {
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-05",
+			5,
+			[
+				{
+					phase: "practice",
+					title: germanText("Subnetting üben"),
+					dayOffsetBeforeExam: 3,
+					startTime: "17:00",
+					durationMinutes: 60,
+					goal: germanText("Berechne Subnetze sicher."),
+					tasks: [germanText("Löse konkrete Subnetting-Aufgaben.")],
+					expectedOutcome: germanText("Du kannst Subnetze berechnen."),
+				},
+			],
+			[
+				{ dayOfWeek: 2, startTime: "17:00", endTime: "18:00" },
+				{ dayOfWeek: 3, startTime: "17:00", endTime: "18:00" },
+				{ dayOfWeek: 4, startTime: "17:00", endTime: "18:00" },
+			],
+			[],
+			60,
+		);
+
+		expect(result.sessions.map((session) => session.phase)).toEqual([
+			"theory",
+			"practice",
+			"rehearsal",
+		]);
+		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
+			30, 20, 10,
+		]);
+		expect(result.planningHint).toBeUndefined();
+	});
+
 	test("uses only free stored learning times and hints when needed time is busy", () => {
 		const result = __testOnlyLearningPlanAi.normalizeSessions(
 			"2026-06-05",

@@ -10,11 +10,20 @@ import {
 } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import {
+	createLearningContentPlan,
+	type LearningQuestionBlueprint,
+	type LearningTopic,
+} from "./learningContentPlan";
 import { getLearningSessionComposition } from "./learningSessionComposition";
 import {
 	MAX_MULTIPLE_CHOICE_OPTION_CHARS,
 	MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
 } from "./learningSessionContentConstraints";
+import {
+	focusLearningTopics,
+	normalizeLearningTopics,
+} from "./learningTopicMap";
 import { type TheoryContent, theoryContentValidator } from "./theoryContent";
 
 type SessionContentItemKind =
@@ -37,6 +46,11 @@ type GeneratedItem = {
 	choices?: Array<{ id: string; text: string }>;
 	correctChoiceId?: string;
 	evaluationKeywords: string[];
+	learningBlockIndex?: number;
+	topicId?: string;
+	questionAngle?: string;
+	coverageKey?: string;
+	estimatedSeconds?: number;
 };
 
 const generatedChoiceValidator = v.object({
@@ -64,6 +78,11 @@ const generatedSessionContentItemValidator = v.object({
 	choices: v.optional(v.array(generatedChoiceValidator)),
 	correctChoiceId: v.optional(v.string()),
 	evaluationKeywords: v.array(v.string()),
+	learningBlockIndex: v.optional(v.number()),
+	topicId: v.optional(v.string()),
+	questionAngle: v.optional(v.string()),
+	coverageKey: v.optional(v.string()),
+	estimatedSeconds: v.optional(v.number()),
 });
 
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
@@ -117,6 +136,11 @@ const publicItem = (item: Doc<"learningSessionContentItems">) => ({
 	idealAnswer: item.idealAnswer,
 	theoryContent: item.theoryContent,
 	choices: item.choices ?? [],
+	learningBlockIndex: item.learningBlockIndex ?? 0,
+	topicId: item.topicId ?? item.title,
+	questionAngle: item.questionAngle ?? "legacy",
+	coverageKey: item.coverageKey ?? `${item._id}`,
+	estimatedSeconds: item.estimatedSeconds ?? 40,
 	sortOrder: item.sortOrder,
 });
 
@@ -215,30 +239,77 @@ const distinct = (values: string[]) => {
 	return result;
 };
 
-const targetTheoryCardCount = (durationMinutes: number) =>
-	Math.max(3, Math.min(12, Math.ceil(durationMinutes / 6)));
+const getSessionTopics = (
+	plan: Doc<"learningPlans">,
+	session: Doc<"learningPlanSessions">,
+): LearningTopic[] => {
+	const focusTopics = (topics: LearningTopic[]) =>
+		focusLearningTopics({
+			topics,
+			strengths: plan.insight?.strengths ?? [],
+			gaps: plan.insight?.gaps ?? [],
+		});
+	if (plan.topicMap && plan.topicMap.length > 0) {
+		return focusTopics(plan.topicMap);
+	}
 
-const targetTaskCount = (durationMinutes: number) =>
-	Math.max(1, Math.min(10, Math.ceil(durationMinutes / 5)));
+	return focusTopics(
+		normalizeLearningTopics(
+			distinct([
+				plan.topicDescription,
+				session.goal,
+				...session.tasks,
+				session.expectedOutcome,
+				...(plan.insight?.gaps ?? []),
+			])
+				.slice(0, 12)
+				.map((title, index) => ({
+					title,
+					learningGoal:
+						session.tasks[index % Math.max(session.tasks.length, 1)] ??
+						session.goal,
+					keywords: extractKeywords([title, session.goal]),
+					priority: index < 3 ? ("high" as const) : ("medium" as const),
+				})),
+		),
+	);
+};
+
+const theoryQuestionFor = (
+	blueprint: LearningQuestionBlueprint,
+	variant: number,
+) => {
+	const topic = blueprint.topic.title;
+	const learningGoal = blueprint.topic.learningGoal.replace(/[.!?]+$/, "");
+	const variation =
+		variant === 0 ? "" : ` Nenne eine neue Variante ${variant + 1}.`;
+	switch (blueprint.angle) {
+		case "recall":
+			return `Wie erklärst du ${topic}, damit du dieses Lernziel erreichst: ${learningGoal}?${variation}`;
+		case "recognize":
+			return `Welche Merkmale prüfst du bei ${topic}, um Folgendes sicher zu können: ${learningGoal}?${variation}`;
+		case "apply":
+			return `Wie setzt du ${topic} an einem konkreten Beispiel um: ${learningGoal}?${variation}`;
+		case "findError":
+			return `Welcher typische Fehler verhindert bei ${topic} dieses Lernziel: ${learningGoal}?${variation}`;
+		case "compare":
+			return `Vergleiche zwei Lösungswege zu ${topic}: Welcher erfüllt dieses Lernziel besser – ${learningGoal}?${variation}`;
+		case "examTransfer":
+			return `Wie zeigst du in einer Prüfungsaufgabe zu ${topic}, dass du Folgendes kannst: ${learningGoal}?${variation}`;
+	}
+};
 
 const buildTheoryItems = (
 	plan: Doc<"learningPlans">,
 	session: Doc<"learningPlanSessions">,
+	questions: LearningQuestionBlueprint[],
 ) => {
-	const baseConcepts = distinct([
-		plan.topicDescription,
-		session.goal,
-		...session.tasks,
-		session.expectedOutcome,
-	]);
-	const cardCount = targetTheoryCardCount(session.durationMinutes);
-
-	return Array.from({ length: cardCount }, (_, index): GeneratedItem => {
-		const concept =
-			baseConcepts[index % Math.max(baseConcepts.length, 1)] ??
-			plan.topicDescription;
+	return questions.map((blueprint, index): GeneratedItem => {
+		const concept = blueprint.topic.title;
 		const keywords = extractKeywords([
 			concept,
+			blueprint.topic.learningGoal,
+			...blueprint.topic.keywords,
 			session.goal,
 			session.expectedOutcome,
 			plan.topicDescription,
@@ -246,21 +317,17 @@ const buildTheoryItems = (
 		const detail =
 			session.tasks[index % Math.max(session.tasks.length, 1)] ??
 			session.expectedOutcome;
-		const front =
-			index === 0
-				? `Was musst du zu ${concept} sicher erklären können?`
-				: index % 3 === 1
-					? `Wie wendest du ${concept} in einer Aufgabe an?`
-					: `Welcher typische Fehler passiert bei ${concept}?`;
-		const example = compact(
-			`Nutze "${detail}" als Prüfungsaufgabe und erkläre jeden Schritt.`,
-			detail,
-		);
+		const variant = Number(blueprint.coverageKey.split(":").at(-1) ?? 0);
+		const front = theoryQuestionFor(blueprint, variant);
+		const example = compact(`Nutze "${detail}" als kurzes Beispiel.`, detail);
 		const commonMistake = compact(
 			"Eine Umformung oder Begründung auslassen.",
 			"Begründe jeden Schritt.",
 		);
-		const explanation = compact(`${concept}: ${detail}`, session.goal);
+		const explanation = compact(
+			`${concept}: ${blueprint.topic.learningGoal}`,
+			session.goal,
+		);
 		const memoryCue = compact(
 			`Erkläre ${concept} kurz, wende es an einem Beispiel an und nenne den häufigsten Fehler.`,
 			concept,
@@ -289,6 +356,10 @@ const buildTheoryItems = (
 				commonMistake,
 			},
 			evaluationKeywords: keywords,
+			topicId: blueprint.topic.id,
+			questionAngle: blueprint.angle,
+			coverageKey: blueprint.coverageKey,
+			estimatedSeconds: blueprint.estimatedSeconds,
 		};
 	});
 };
@@ -296,6 +367,7 @@ const buildTheoryItems = (
 const buildTaskItems = (
 	plan: Doc<"learningPlans">,
 	session: Doc<"learningPlanSessions">,
+	questions: LearningQuestionBlueprint[],
 ) => {
 	const keywords = extractKeywords([
 		plan.topicDescription,
@@ -307,18 +379,32 @@ const buildTaskItems = (
 		session.tasks.length > 0
 			? session.tasks
 			: [session.goal, session.expectedOutcome];
-	const targetCount = targetTaskCount(session.durationMinutes);
-	const kinds: SessionContentItemKind[] = [
-		"multipleChoice",
-		"written",
-		"voice",
-	];
 	const isPraxis = session.phase === "rehearsal";
 	const phasePrefix = isPraxis ? "Generalprobe" : "Übung";
 
-	return Array.from({ length: targetCount }, (_, index): GeneratedItem => {
-		const kind = kinds[index % kinds.length] ?? "written";
+	return questions.map((blueprint, index): GeneratedItem => {
+		const kind = blueprint.kind as SessionContentItemKind;
 		const task = focusTasks[index % focusTasks.length] ?? session.goal;
+		const topicTask = `${blueprint.topic.title}: ${task}`;
+		const variant = Number(blueprint.coverageKey.split(":").at(-1) ?? 0) + 1;
+		const learningGoal = blueprint.topic.learningGoal.replace(/[.!?]+$/, "");
+		const freshTask = (() => {
+			switch (blueprint.angle) {
+				case "recall":
+					return `Erkläre die entscheidende Regel zu ${blueprint.topic.title}: ${learningGoal}`;
+				case "recognize":
+					return `Erkenne die relevanten Merkmale von ${blueprint.topic.title}, um dieses Ziel zu erreichen: ${learningGoal}`;
+				case "apply":
+					return `Wende ${blueprint.topic.title} in einer neuen Aufgabe an: ${learningGoal}`;
+				case "findError":
+					return `Finde und korrigiere einen typischen Fehler bei ${blueprint.topic.title}: ${learningGoal}`;
+				case "compare":
+					return `Vergleiche zwei Lösungswege zu ${blueprint.topic.title} mit Blick auf dieses Ziel: ${learningGoal}`;
+				case "examTransfer":
+					return `Übertrage ${blueprint.topic.title} auf eine neue Prüfungsaufgabe: ${learningGoal}`;
+			}
+		})();
+		const freshTaskVariant = `Variante ${variant}: ${freshTask}`;
 		const title =
 			kind === "multipleChoice"
 				? "Auswahlfrage"
@@ -326,14 +412,12 @@ const buildTaskItems = (
 					? "Sprachaufgabe"
 					: "Schreibaufgabe";
 		const idealAnswer = compact(
-			`${task} Löse die Aufgabe Schritt für Schritt, begründe jede Umformung und prüfe dein Ergebnis mit Bezug auf ${plan.topicDescription}.`,
+			`${topicTask} Löse die Aufgabe knapp, begründe den entscheidenden Schritt und prüfe dein Ergebnis mit Bezug auf ${plan.topicDescription}.`,
 			session.expectedOutcome,
 		);
 
 		if (kind === "multipleChoice") {
-			const prompt = isPraxis
-				? `${phasePrefix} ${index + 1}: Welche Aussage ist für "${task}" fachlich richtig?`
-				: `${phasePrefix} ${index + 1}: Welche Lösungsidee passt zu "${task}"?`;
+			const prompt = `${phasePrefix}: Welche Lösungsidee passt zu "${freshTaskVariant}"?`;
 			return {
 				kind,
 				title,
@@ -360,6 +444,10 @@ const buildTaskItems = (
 				],
 				correctChoiceId: "correct",
 				evaluationKeywords: keywords,
+				topicId: blueprint.topic.id,
+				questionAngle: blueprint.angle,
+				coverageKey: blueprint.coverageKey,
+				estimatedSeconds: blueprint.estimatedSeconds,
 			};
 		}
 
@@ -368,12 +456,16 @@ const buildTaskItems = (
 			title,
 			prompt:
 				kind === "voice"
-					? `${phasePrefix} ${index + 1}: Erkläre laut deinen Lösungsweg zu "${task}".`
-					: `${phasePrefix} ${index + 1}: Löse "${task}" schriftlich und notiere die Probe.`,
+					? `${phasePrefix}: Erkläre laut deinen Lösungsweg zu "${freshTaskVariant}".`
+					: `${phasePrefix}: Löse "${freshTaskVariant}" schriftlich und notiere die Probe.`,
 			explanation:
 				"Eine starke Antwort nennt den vollständigen Lösungsweg, vermeidet typische Fehler und kontrolliert das Ergebnis.",
 			idealAnswer,
 			evaluationKeywords: keywords,
+			topicId: blueprint.topic.id,
+			questionAngle: blueprint.angle,
+			coverageKey: blueprint.coverageKey,
+			estimatedSeconds: blueprint.estimatedSeconds,
 		};
 	});
 };
@@ -387,18 +479,26 @@ const buildGeneratedItems = (
 		durationMinutes: session.durationMinutes,
 		variant: session.compositionVariant ?? "control",
 	});
+	const contentPlan = createLearningContentPlan({
+		segments,
+		topics: getSessionTopics(plan, session),
+	});
 
-	return segments.flatMap((segment) => {
+	return contentPlan.blocks.flatMap((block) => {
 		const segmentSession: Doc<"learningPlanSessions"> = {
 			...session,
-			phase: segment.phase,
-			durationMinutes: segment.durationMinutes,
+			phase: block.phase,
+			durationMinutes: block.durationMinutes,
 		};
 		const items =
-			segment.phase === "theory"
-				? buildTheoryItems(plan, segmentSession)
-				: buildTaskItems(plan, segmentSession);
-		return items.map((item) => ({ ...item, phase: segment.phase }));
+			block.phase === "theory"
+				? buildTheoryItems(plan, segmentSession, block.questions)
+				: buildTaskItems(plan, segmentSession, block.questions);
+		return items.map((item) => ({
+			...item,
+			phase: block.phase,
+			learningBlockIndex: block.index,
+		}));
 	});
 };
 
@@ -412,12 +512,13 @@ const listItems = async (
 			q.eq("sessionId", sessionId),
 		)
 		.order("asc")
-		.take(50);
+		.take(100);
 
 const insertGeneratedItemsForSession = async (
 	ctx: MutationCtx,
 	session: Doc<"learningPlanSessions">,
 	items: GeneratedItem[],
+	sortOrderOffset = 0,
 ) => {
 	const now = Date.now();
 	for (const [index, item] of items.entries()) {
@@ -454,7 +555,12 @@ const insertGeneratedItemsForSession = async (
 			evaluationKeywords: item.evaluationKeywords.map((keyword) =>
 				normalizeText(keyword.toLowerCase()),
 			),
-			sortOrder: index,
+			learningBlockIndex: item.learningBlockIndex,
+			topicId: item.topicId,
+			questionAngle: item.questionAngle,
+			coverageKey: item.coverageKey,
+			estimatedSeconds: item.estimatedSeconds,
+			sortOrder: sortOrderOffset + index,
 			createdAt: now,
 			updatedAt: now,
 		});
@@ -661,24 +767,33 @@ export const getSessionGenerationContext = internalQuery({
 			.order("asc")
 			.take(20);
 		const priorTheoryCards: Array<{ front: string; back: string }> = [];
+		const priorSessionItems: Array<{ prompt: string; coverageKey?: string }> =
+			[];
+		const priorCoverageKeys: string[] = [];
 		for (const planSession of planSessions) {
-			if (
-				planSession.sortOrder >= session.sortOrder ||
-				planSession.phase !== "theory"
-			) {
-				continue;
-			}
+			if (planSession._id === session._id) continue;
+			const wasCompleted =
+				planSession.executionStatus === "completed" || planSession.completed;
+			if (planSession.sortOrder >= session.sortOrder && !wasCompleted) continue;
 
 			const items = await listItems(ctx, planSession._id);
 			for (const item of items) {
-				if (item.kind !== "learnCard") continue;
-				priorTheoryCards.push({
-					front: item.front ?? item.prompt,
-					back: item.back ?? item.idealAnswer,
-				});
-				if (priorTheoryCards.length >= 24) break;
+				if (item.coverageKey && priorCoverageKeys.length < 2_000) {
+					priorCoverageKeys.push(item.coverageKey);
+				}
+				if (priorSessionItems.length < 100) {
+					priorSessionItems.push({
+						prompt: item.prompt,
+						coverageKey: item.coverageKey,
+					});
+				}
+				if (item.kind === "learnCard" && priorTheoryCards.length < 24) {
+					priorTheoryCards.push({
+						front: item.front ?? item.prompt,
+						back: item.back ?? item.idealAnswer,
+					});
+				}
 			}
-			if (priorTheoryCards.length >= 24) break;
 		}
 
 		return {
@@ -694,6 +809,8 @@ export const getSessionGenerationContext = internalQuery({
 			answers,
 			learningTimes,
 			priorTheoryCards,
+			priorSessionItems,
+			priorCoverageKeys,
 			existingItemCount: existingItems.length,
 			needsLegacyContentReplacement:
 				existingItems.some(isLegacyTheoryItem) ||
@@ -741,15 +858,31 @@ export const storeGeneratedSessionContent = internalMutation({
 		const hasGeneratedPractice = args.items.some(
 			(item) => item.phase === "practice",
 		);
+		const practiceBlocks = practiceSegment
+			? createLearningContentPlan({
+					segments: composition,
+					topics: getSessionTopics(plan, session),
+				}).blocks.filter((block) => block.phase === "practice")
+			: [];
 		const items =
-			practiceSegment && !hasGeneratedPractice
+			practiceBlocks.length > 0 && !hasGeneratedPractice
 				? [
 						...args.items,
-						...buildTaskItems(plan, {
-							...session,
-							phase: "practice",
-							durationMinutes: practiceSegment.durationMinutes,
-						}).map((item) => ({ ...item, phase: "practice" as const })),
+						...practiceBlocks.flatMap((block) =>
+							buildTaskItems(
+								plan,
+								{
+									...session,
+									phase: "practice",
+									durationMinutes: block.durationMinutes,
+								},
+								block.questions,
+							).map((item) => ({
+								...item,
+								phase: "practice" as const,
+								learningBlockIndex: block.index,
+							})),
+						),
 					]
 				: args.items;
 
@@ -783,6 +916,91 @@ export const ensureFallbackSessionContent = internalMutation({
 
 		const items = await ensureItemsForSession(ctx, session, plan);
 		return { itemCount: items.length };
+	},
+});
+
+export const extendSessionContent = mutation({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+		durationMinutes: v.number(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const session = await getOwnedSession(
+			ctx,
+			args.sessionId,
+			ownerTokenIdentifier,
+		);
+		const plan = await getOwnedPlan(
+			ctx,
+			session.learningPlanId,
+			ownerTokenIdentifier,
+		);
+		if (
+			!Number.isInteger(args.durationMinutes) ||
+			args.durationMinutes < 5 ||
+			args.durationMinutes > 10
+		) {
+			throwUserFacingError(
+				"Weiterlernen muss zwischen 5 und 10 Minuten dauern.",
+			);
+		}
+
+		const existingItems = await listItems(ctx, args.sessionId);
+		const lastItem = existingItems.at(-1);
+		const continuationPhase = lastItem?.phase ?? session.phase;
+		const nextBlockIndex =
+			Math.max(
+				-1,
+				...existingItems.map((item) => item.learningBlockIndex ?? 0),
+			) + 1;
+		const contentPlan = createLearningContentPlan({
+			segments: [
+				{
+					phase: continuationPhase,
+					durationMinutes: args.durationMinutes,
+				},
+			],
+			topics: getSessionTopics(plan, session),
+			excludedCoverageKeys: existingItems
+				.map((item) => item.coverageKey)
+				.filter((key): key is string => Boolean(key)),
+			blockIndexOffset: nextBlockIndex,
+		});
+		const newItems = contentPlan.blocks.flatMap((block) => {
+			const blockSession: Doc<"learningPlanSessions"> = {
+				...session,
+				phase: block.phase,
+				durationMinutes: block.durationMinutes,
+			};
+			const items =
+				block.phase === "theory"
+					? buildTheoryItems(plan, blockSession, block.questions)
+					: buildTaskItems(plan, blockSession, block.questions);
+			return items.map((item) => ({
+				...item,
+				phase: block.phase,
+				learningBlockIndex: block.index,
+			}));
+		});
+
+		if (existingItems.length + newItems.length > 100) {
+			throwUserFacingError(
+				"Für diese Lernsession wurden bereits genug Zusatzfragen erstellt.",
+			);
+		}
+
+		await insertGeneratedItemsForSession(
+			ctx,
+			session,
+			newItems,
+			existingItems.length,
+		);
+		return {
+			firstNewItemIndex: existingItems.length,
+			addedItemCount: newItems.length,
+			durationMinutes: args.durationMinutes,
+		};
 	},
 });
 

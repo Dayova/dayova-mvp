@@ -14,6 +14,22 @@ _Avoid_: Wissensanalyse, Quiz
 The next unfinished session in a `Persönlicher Lernplan`. It is the recommended continuation point, while later sessions can remain visible for flexibility.
 _Avoid_: Hard lock, hidden future sessions
 
+**Lernzeit**:
+A recurring availability window chosen by the learner in Einstellungen that tells Dayova when learning may be scheduled. It is not itself a scheduled session or learning content.
+_Avoid_: Lernsession, Lernblock, automatically invented availability
+
+**Lernsession**:
+A scheduled learning appointment inside one `Lernzeit`, with a concrete start, planned duration, and learning goal. A session may contain multiple `Lernblöcke` without turning them into separate calendar appointments.
+_Avoid_: Lernzeit, treating each content phase as a separate appointment
+
+**Lernblock**:
+A contiguous theory, `Üben`, or `Praxis` segment within one `Lernsession`. Its duration is part of the session's content budget, not a requirement to repeat completed material until a timer expires.
+_Avoid_: Separate calendar slot, repeated filler
+
+**Weiterlernen**:
+An optional learner-initiated extension offered after the planned work of a `Lernsession` is complete. It adds new work and never repeats finished material merely to consume time.
+_Avoid_: Automatic overtime, timer padding
+
 **Pre-plan diagnostic step**:
 The internal name for the five-question diagnostic part of `Persönlicher Lernplan`, used when distinguishing it from post-session `Wissensanalyse`.
 _Avoid_: User-facing copy

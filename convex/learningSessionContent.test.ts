@@ -40,6 +40,36 @@ const createGeneratedPlanWithSession = async (
 		durationMinutes: 90,
 		topicDescription: "Lineare Gleichungen und Äquivalenzumformungen",
 	});
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		sourceSummary:
+			"Lineare Gleichungen mit besonderem Fokus auf Klammern und Vorzeichen.",
+		questions: [
+			{
+				id: "q1",
+				prompt: "Wo passieren dir Vorzeichenfehler?",
+				targetInsight: "Sicherheit bei Klammern",
+			},
+		],
+		topics: [
+			{
+				id: "vorzeichen-und-klammern",
+				title: "Vorzeichen und Klammern",
+				learningGoal:
+					"Klammern korrekt auflösen und jedes Vorzeichen nachvollziehbar prüfen.",
+				keywords: ["Klammern", "Vorzeichen", "Minusklammer"],
+				priority: "high",
+			},
+			{
+				id: "aequivalenzumformungen",
+				title: "Äquivalenzumformungen",
+				learningGoal:
+					"Auf beiden Seiten dieselbe Operation ausführen und die Lösungsmenge erhalten.",
+				keywords: ["Operation", "Lösungsmenge", "Gleichung"],
+				priority: "high",
+			},
+		],
+	});
 
 	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
 		learningPlanId,
@@ -136,7 +166,7 @@ test("theory fallback creates active recall cards instead of generic summaries",
 		sessionId,
 	});
 
-	expect(content?.items).toHaveLength(5);
+	expect(content?.items).toHaveLength(45);
 	expect(content?.items.every((item) => item.kind === "learnCard")).toBe(true);
 	expect(content?.items[0]).toMatchObject({
 		front: expect.stringContaining("?"),
@@ -160,6 +190,12 @@ test("theory fallback creates active recall cards instead of generic summaries",
 	expect(content?.items.map((item) => item.back).join(" ")).not.toContain(
 		"Merke dir besonders, wie das Lernziel",
 	);
+	expect(content?.items.map((item) => item.prompt).join(" ")).toContain(
+		"Klammern korrekt auflösen",
+	);
+	expect(content?.items.map((item) => item.prompt).join(" ")).not.toContain(
+		"im Grundfall",
+	);
 });
 
 test("split fallback stores theory then practice inside the same session", async () => {
@@ -176,20 +212,84 @@ test("split fallback stores theory then practice inside the same session", async
 	});
 
 	expect(content?.session.compositionVariant).toBe("split");
-	expect(content?.items.map((item) => item.phase)).toEqual([
-		"theory",
-		"theory",
-		"theory",
-		"theory",
-		"practice",
-		"practice",
+	expect(content?.items).toHaveLength(48);
+	expect(
+		content?.items.slice(0, 30).every((item) => item.phase === "theory"),
+	).toBe(true);
+	expect(
+		content?.items.slice(30).every((item) => item.phase === "practice"),
+	).toBe(true);
+	expect(
+		content?.items.slice(0, 30).every((item) => item.kind === "learnCard"),
+	).toBe(true);
+	expect(
+		content?.items.slice(30).every((item) => item.kind !== "learnCard"),
+	).toBe(true);
+	expect(
+		content?.items.reduce((total, item) => total + item.estimatedSeconds, 0),
+	).toBe(30 * 60);
+	expect(new Set(content?.items.map((item) => item.coverageKey)).size).toBe(48);
+	expect(content?.items.map((item) => item.learningBlockIndex)).toEqual([
+		...Array.from({ length: 15 }, () => 0),
+		...Array.from({ length: 15 }, () => 1),
+		...Array.from({ length: 18 }, () => 2),
 	]);
+});
+
+test("continue learning appends a fresh timed block", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession(
+		"theory",
+		"split",
+	);
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	const before = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	const existingCoverageKeys =
+		before?.items.map((item) => item.coverageKey) ?? [];
+
+	const extension = await t.mutation(
+		api.learningSessionContent.extendSessionContent,
+		{ sessionId, durationMinutes: 10 },
+	);
+	const after = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	const newItems = after?.items.slice(extension.firstNewItemIndex) ?? [];
+
+	expect(extension).toMatchObject({
+		firstNewItemIndex: 48,
+		addedItemCount: 18,
+		durationMinutes: 10,
+	});
+	expect(after?.items.slice(0, 48).map((item) => item.id)).toEqual(
+		before?.items.map((item) => item.id),
+	);
+	expect(newItems.every((item) => item.learningBlockIndex === 3)).toBe(true);
 	expect(
-		content?.items.slice(0, 4).every((item) => item.kind === "learnCard"),
-	).toBe(true);
-	expect(
-		content?.items.slice(4).every((item) => item.kind !== "learnCard"),
-	).toBe(true);
+		newItems.some((item) => existingCoverageKeys.includes(item.coverageKey)),
+	).toBe(false);
+
+	const secondExtension = await t.mutation(
+		api.learningSessionContent.extendSessionContent,
+		{ sessionId, durationMinutes: 10 },
+	);
+	const twiceExtended = await t.query(
+		api.learningSessionContent.getSessionContent,
+		{ sessionId },
+	);
+	const allPrompts = twiceExtended?.items.map((item) => item.prompt) ?? [];
+	const duplicatePrompts = allPrompts.filter(
+		(prompt, index) => allPrompts.indexOf(prompt) !== index,
+	);
+
+	expect(secondExtension).toMatchObject({
+		firstNewItemIndex: 66,
+		addedItemCount: 18,
+	});
+	expect(duplicatePrompts).toEqual([]);
 });
 
 test("existing theory cards remain readable without structured topic content", async () => {
@@ -256,7 +356,7 @@ test("AI theory content gains a practical segment for split sessions", async () 
 	expect(content?.items[0]?.phase).toBe("theory");
 	expect(
 		content?.items.filter((item) => item.phase === "practice"),
-	).toHaveLength(2);
+	).toHaveLength(18);
 });
 
 test("practice fallback creates concrete guided practice tasks", async () => {
@@ -270,8 +370,8 @@ test("practice fallback creates concrete guided practice tasks", async () => {
 	});
 	const prompts = content?.items.map((item) => item.prompt).join(" ") ?? "";
 
-	expect(content?.items).toHaveLength(6);
-	expect(content?.items.map((item) => item.kind)).toEqual([
+	expect(content?.items).toHaveLength(54);
+	expect(content?.items.slice(0, 6).map((item) => item.kind)).toEqual([
 		"multipleChoice",
 		"written",
 		"voice",
@@ -322,7 +422,7 @@ test("praxis fallback creates generalprobe tasks without generic strategy prompt
 	const prompts = content?.items.map((item) => item.prompt).join(" ") ?? "";
 
 	expect(content?.praxisDurationSeconds).toBe(30 * 60);
-	expect(content?.items).toHaveLength(6);
+	expect(content?.items).toHaveLength(54);
 	expect(prompts).toContain("Generalprobe");
 	expect(prompts).not.toContain("Welche Strategie passt");
 });

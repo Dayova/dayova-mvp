@@ -676,6 +676,60 @@ test("generated knowledge questions reject malformed control characters before s
 	expect(snapshot?.plan.knowledgeQuestions).toEqual([]);
 });
 
+test("stores a reusable topic map with generated knowledge questions", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		sourceSummary: "Lineare Funktionen mit Steigung und Achsenabschnitt.",
+		topics: [
+			{
+				id: "steigung",
+				title: "Steigung",
+				learningGoal: "Die Steigung berechnen und in Graphen erkennen.",
+				keywords: ["Steigung", "Differenz"],
+				priority: "high",
+			},
+			{
+				id: "achsenabschnitt",
+				title: "Achsenabschnitt",
+				learningGoal: "Den y-Achsenabschnitt bestimmen.",
+				keywords: ["Achsenabschnitt"],
+				priority: "medium",
+			},
+		],
+		questions: [
+			{
+				id: "q1",
+				prompt: "Wie berechnest du die Steigung einer linearen Funktion?",
+				targetInsight: "Prüft das Verständnis der Steigungsberechnung.",
+			},
+		],
+	});
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+
+	expect(snapshot?.plan.topicMap).toEqual([
+		{
+			id: "steigung",
+			title: "Steigung",
+			learningGoal: "Die Steigung berechnen und in Graphen erkennen.",
+			keywords: ["Steigung", "Differenz"],
+			priority: "high",
+		},
+		{
+			id: "achsenabschnitt",
+			title: "Achsenabschnitt",
+			learningGoal: "Den y-Achsenabschnitt bestimmen.",
+			keywords: ["Achsenabschnitt"],
+			priority: "medium",
+		},
+	]);
+});
+
 test("generated plan sessions reject malformed control characters without replacing the existing plan", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
