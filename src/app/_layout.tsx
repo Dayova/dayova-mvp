@@ -5,7 +5,6 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import * as SystemUI from "expo-system-ui";
 import {
 	Stack,
 	usePathname,
@@ -13,8 +12,10 @@ import {
 	useRouter,
 } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
+import * as SystemUI from "expo-system-ui";
+import { vars } from "nativewind";
 import { PostHogProvider } from "posthog-react-native";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Text, View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -29,6 +30,7 @@ import {
 } from "~/lib/analytics-core";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
+import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
 
 const convexUrl = env.EXPO_PUBLIC_CONVEX_URL?.trim();
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
@@ -107,6 +109,10 @@ export default function RootLayout() {
 
 function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 	const { colors, resolvedTheme } = useDayovaTheme();
+	const themeVariables = useMemo(
+		() => vars(resolvedTheme === "dark" ? DARK_THEME_VARIABLES : {}),
+		[resolvedTheme],
+	);
 
 	useEffect(() => {
 		void SystemUI.setBackgroundColorAsync(colors.background);
@@ -114,38 +120,42 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 
 	return (
 		<GestureHandlerRootView style={gestureRootStyle}>
-			<KeyboardProvider preload={false}>
-				<PostHogProvider
-					apiKey={postHogApiKey}
-					autocapture={false}
-					options={{
-						host: postHogHost,
-						disabled: !isPostHogConfigured,
-						captureAppLifecycleEvents: false,
-					}}
-				>
-					<ClerkProvider
-						publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
-						tokenCache={tokenCache}
+			<View style={[gestureRootStyle, themeVariables]}>
+				<KeyboardProvider preload={false}>
+					<PostHogProvider
+						apiKey={postHogApiKey}
+						autocapture={false}
+						options={{
+							host: postHogHost,
+							disabled: !isPostHogConfigured,
+							captureAppLifecycleEvents: false,
+						}}
 					>
-						<ConvexProviderWithClerk
-							client={convexClient}
-							useAuth={useClerkAuth}
+						<ClerkProvider
+							publishableKey={
+								env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""
+							}
+							tokenCache={tokenCache}
 						>
-							<ThemeProvider value={NAV_THEMES[resolvedTheme]}>
-								<BottomSheetModalProvider>
-									<OnboardingProvider>
-										<AuthProvider>
-											<AnalyticsIdentity />
-											<AppNavigator />
-										</AuthProvider>
-									</OnboardingProvider>
-								</BottomSheetModalProvider>
-							</ThemeProvider>
-						</ConvexProviderWithClerk>
-					</ClerkProvider>
-				</PostHogProvider>
-			</KeyboardProvider>
+							<ConvexProviderWithClerk
+								client={convexClient}
+								useAuth={useClerkAuth}
+							>
+								<ThemeProvider value={NAV_THEMES[resolvedTheme]}>
+									<BottomSheetModalProvider>
+										<OnboardingProvider>
+											<AuthProvider>
+												<AnalyticsIdentity />
+												<AppNavigator />
+											</AuthProvider>
+										</OnboardingProvider>
+									</BottomSheetModalProvider>
+								</ThemeProvider>
+							</ConvexProviderWithClerk>
+						</ClerkProvider>
+					</PostHogProvider>
+				</KeyboardProvider>
+			</View>
 		</GestureHandlerRootView>
 	);
 }
