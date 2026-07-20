@@ -99,7 +99,7 @@
 		"@biomejs/biome": "^2.4.14",
 		"@convex-dev/eslint-plugin": "^2.0.0",
 		"@edge-runtime/vm": "^5.0.0",
-		"@types/node": "^25.6.0",
+		"@types/node": "^24.13.3",
 		"@types/react": "~19.2.14",
 		"babel-preset-expo": "~57.0.3",
 		"convex-test": "^0.0.53",
@@ -118,7 +118,7 @@
 	},
 	"private": true,
 	"engines": {
-		"node": ">=22 <24"
+		"node": ">=24.3 <25"
 	},
 	"packageManager": "pnpm@10.25.0"
 }
