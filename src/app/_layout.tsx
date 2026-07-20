@@ -4,7 +4,6 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import * as SystemUI from "expo-system-ui";
 import {
 	Stack,
 	usePathname,
@@ -12,8 +11,10 @@ import {
 	useRouter,
 } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
+import * as SystemUI from "expo-system-ui";
+import { vars } from "nativewind";
 import { PostHogProvider } from "posthog-react-native";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Text, View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -33,6 +34,7 @@ import {
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { getAuthNavigationTarget } from "~/lib/auth-routing";
 import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
+import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
 
 const convexUrl = env.EXPO_PUBLIC_CONVEX_URL?.trim();
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
@@ -121,6 +123,10 @@ export default function RootLayout() {
 
 function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 	const { colors, resolvedTheme } = useDayovaTheme();
+	const themeVariables = useMemo(
+		() => vars(resolvedTheme === "dark" ? DARK_THEME_VARIABLES : {}),
+		[resolvedTheme],
+	);
 
 	useEffect(() => {
 		void SystemUI.setBackgroundColorAsync(colors.background);
@@ -128,42 +134,46 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 
 	return (
 		<GestureHandlerRootView style={gestureRootStyle}>
-			<KeyboardProvider preload={false}>
-				<PostHogProvider
-					apiKey={postHogApiKey}
-					autocapture={false}
-					options={{
-						host: postHogHost,
-						disabled: !isPostHogConfigured,
-						captureAppLifecycleEvents: false,
-					}}
-				>
-					{/* Native sessions persist by default; there is no per-login opt-out.
-					    Decision: https://app.notion.com/p/3a02e87228bf81bf9f65f6214759a770 */}
-					<ClerkProvider
-						publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
-						tokenCache={tokenCache}
+			<View style={[gestureRootStyle, themeVariables]}>
+				<KeyboardProvider preload={false}>
+					<PostHogProvider
+						apiKey={postHogApiKey}
+						autocapture={false}
+						options={{
+							host: postHogHost,
+							disabled: !isPostHogConfigured,
+							captureAppLifecycleEvents: false,
+						}}
 					>
-						<ConvexProviderWithClerk
-							client={convexClient}
-							useAuth={useClerkAuth}
+						{/* Native sessions persist by default; there is no per-login opt-out.
+						    Decision: https://app.notion.com/p/3a02e87228bf81bf9f65f6214759a770 */}
+						<ClerkProvider
+							publishableKey={
+								env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""
+							}
+							tokenCache={tokenCache}
 						>
-							<ThemeProvider value={NAV_THEMES[resolvedTheme]}>
-								<BottomSheetModalProvider>
-									<SheetAccessibilityProvider>
-										<OnboardingProvider>
-											<AuthProvider>
-												<AnalyticsIdentity />
-												<AppNavigator />
-											</AuthProvider>
-										</OnboardingProvider>
-									</SheetAccessibilityProvider>
-								</BottomSheetModalProvider>
-							</ThemeProvider>
-						</ConvexProviderWithClerk>
-					</ClerkProvider>
-				</PostHogProvider>
-			</KeyboardProvider>
+							<ConvexProviderWithClerk
+								client={convexClient}
+								useAuth={useClerkAuth}
+							>
+								<ThemeProvider value={NAV_THEMES[resolvedTheme]}>
+									<BottomSheetModalProvider>
+										<SheetAccessibilityProvider>
+											<OnboardingProvider>
+												<AuthProvider>
+													<AnalyticsIdentity />
+													<AppNavigator />
+												</AuthProvider>
+											</OnboardingProvider>
+										</SheetAccessibilityProvider>
+									</BottomSheetModalProvider>
+								</ThemeProvider>
+							</ConvexProviderWithClerk>
+						</ClerkProvider>
+					</PostHogProvider>
+				</KeyboardProvider>
+			</View>
 		</GestureHandlerRootView>
 	);
 }

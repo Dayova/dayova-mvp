@@ -60,7 +60,7 @@ const config: ExpoConfig = {
 	orientation: "portrait",
 	platforms: ["ios", "android"],
 	icon: DAYOVA_LOGO,
-	userInterfaceStyle: "light",
+	userInterfaceStyle: "automatic",
 	experiments: {
 		reactCompiler: true,
 	},
@@ -92,6 +92,7 @@ const config: ExpoConfig = {
 	},
 	plugins: [
 		"expo-router",
+		"expo-status-bar",
 		"@clerk/expo",
 		[
 			"expo-notifications",

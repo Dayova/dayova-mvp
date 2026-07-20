@@ -15,6 +15,18 @@ const mockSheetHarness = {
 	onDismiss: null as null | (() => void),
 };
 
+jest.mock("react-native", () => {
+	const actual =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	const findNodeHandle = jest.fn(() => 42);
+	return new Proxy(actual, {
+		get(target, property, receiver) {
+			if (property === "findNodeHandle") return findNodeHandle;
+			return Reflect.get(target, property, receiver);
+		},
+	});
+});
+
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }),
 }));

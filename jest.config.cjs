@@ -2,6 +2,8 @@ module.exports = {
 	preset: "jest-expo",
 	moduleNameMapper: {
 		"^#convex/(.*)$": "<rootDir>/convex/$1",
+		"^\\.\\./\\.\\./modules/dayova-system-appearance$":
+			"<rootDir>/tests/mocks/dayova-system-appearance.cjs",
 		"^@hugeicons/core-free-icons/(.*)$":
 			"<rootDir>/node_modules/@hugeicons/core-free-icons/dist/esm/$1.js",
 		"^~/(.*)$": "<rootDir>/src/$1",

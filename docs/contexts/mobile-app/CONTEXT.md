@@ -24,6 +24,11 @@ _Avoid_: Called by client, Server Error, raw stack trace
 - `docs/styling.md`
 - `docs/contexts/mobile-app/adr/0001-select-list-components-by-workload.md`
   for choosing between ScrollView, FlatList, FlashList, and LegendList.
+- `../../../modules/dayova-system-appearance/README.md` for the iOS appearance bridge,
+  native contract, operational guidance, validation matrix, and removal
+  criteria.
+- `adr/0001-use-local-ios-system-appearance-bridge.md`
+  for the bridge decision, history, alternatives, and consequences.
 - `patches/README.md` for patched package behavior that affects Expo/Metro
   builds, including the NativeWind release-build patch.
 

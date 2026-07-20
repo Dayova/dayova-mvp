@@ -1,10 +1,10 @@
 allowBuilds:
-  esbuild: true
-  "@clerk/shared": false
+  '@clerk/shared': false
   browser-tabs-lock: false
   bufferutil: false
   core-js: false
   dtrace-provider: false
+  esbuild: true
   msgpackr-extract: false
   tesseract.js: false
   utf-8-validate: false
@@ -13,6 +13,8 @@ onlyBuiltDependencies:
   - esbuild
 
 patchedDependencies:
-  '@expo/metro-config@56.0.17': patches/@expo__metro-config@56.0.17.patch
+  '@expo/metro-config@57.0.6': patches/@expo__metro-config@57.0.6.patch
+  '@react-native/gradle-plugin@0.86.0': patches/@react-native__gradle-plugin@0.86.0.patch
   nativewind@4.2.3: patches/nativewind@4.2.3.patch
   oxc-parser@0.130.0: patches/oxc-parser@0.130.0.patch
+  react-native-keyboard-controller@1.21.9: patches/react-native-keyboard-controller@1.21.9.patch

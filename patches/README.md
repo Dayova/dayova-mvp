@@ -7,13 +7,13 @@ When a patched package is installed, pnpm applies the matching `.patch` file to
 the package contents in `node_modules`. Keep each patch documented here so future
 dependency updates can decide whether the patch is still needed.
 
-## `@expo/metro-config@56.0.17.patch`
+## `@expo/metro-config@57.0.6.patch`
 
 ### Why This Patch Exists
 
-Expo SDK 56's binary Metro cache starts one asynchronous `readFile` for every
+Expo SDK 57's binary Metro cache starts one asynchronous `readFile` for every
 transform requested by Metro. A cold Dayova Android development bundle contains
-roughly 8,000 modules. On Windows with Node 22.22.3, the next bundle request can
+roughly 8,000 modules. On Windows with Node 24.18.0, the next bundle request can
 therefore exceed Node's file-descriptor table and fail with:
 
 ```text
@@ -29,9 +29,10 @@ This binary store was introduced upstream in
 [`expo/expo#45656`](https://github.com/expo/expo/pull/45656) and received
 concurrent read/write handling in
 [`expo/expo#46171`](https://github.com/expo/expo/pull/46171), but that handling
-does not bound simultaneous reads. `@expo/metro-config@56.0.17`, the latest SDK
-56 patch checked during diagnosis, ships the same `binary-file-store` source as
-56.0.14, so upgrading within SDK 56 does not remove the failure.
+does not bound simultaneous reads. After the Expo SDK 57 integration,
+`@expo/metro-config@57.0.6` was tested without the patch: the deterministic
+regression test observed all 1,024 requested reads active concurrently. The
+upgrade therefore does not remove the failure.
 
 ### What The Patch Changes
 
@@ -76,9 +77,166 @@ When upgrading Expo or `@expo/metro-config`:
    than pnpm's previously patched installation.
 3. Run `pnpm test:unit:metro-cache`; it must still pass against that unpatched
    package, then run the cold-cache Android integration path above on Windows.
-4. If both checks pass, delete `patches/@expo__metro-config@56.0.17.patch`.
+4. If both checks pass, delete `patches/@expo__metro-config@57.0.6.patch`.
 5. Run `pnpm install`, `pnpm check`, and `pnpm test`.
+## `@react-native__gradle-plugin@0.86.0.patch`
 
+### Why This Patch Exists
+
+Expo SDK 57 upgrades React Native from 0.85 to 0.86. The React Native 0.86
+Gradle plugin applies `org.gradle.toolchains.foojay-resolver-convention` from
+its Kotlin `settings.gradle.kts` so Gradle can provision a matching JDK.
+
+On Windows, Gradle 9.3.1 can miscompile that settings script before plugin
+resolution and report `Unresolved reference 'plugins'` and `Unresolved
+reference 'id'`. The failure reproduces when the React Native Gradle plugin is
+built by itself, before Dayova's Android project or native modules are
+configured. The same Windows failure shape is recorded in
+[gradle/gradle#36323](https://github.com/gradle/gradle/issues/36323).
+
+Dayova already requires JDK 17 for Android development and EAS Android build
+images provide the required JDK, so automatic Foojay toolchain provisioning is
+not needed for this project.
+
+### What The Patch Changes
+
+The patch removes only the Foojay settings plugin block from
+`@react-native/gradle-plugin/settings.gradle.kts`. It does not change React
+Native's application Gradle plugin, settings plugin, autolinking, codegen, or
+native compilation behavior.
+
+Developers must keep a compatible JDK configured through `JAVA_HOME`; for SDK
+57 Android development in this repo, use JDK 17.
+
+### How To Verify
+
+After installing dependencies, run a clean Android build on Windows:
+
+```powershell
+pnpm install
+cd android
+.\gradlew.bat clean :app:assembleDebug
+```
+
+Expected result: Gradle configures `com.facebook.react.settings`, Expo
+autolinking, and the app's native modules without failing in React Native's
+`settings.gradle.kts`.
+
+If the patched file is present but Gradle instead fails while resolving
+`com.facebook.react.settings` with a `NoSuchMethodError` for
+`Settings_gradle.<init>`, first verify the failure with `gradlew.bat help`. This
+is a separate stale Kotlin-DSL cache failure, not evidence that the patch was
+not applied. It occurred during the SDK 57 integration when Gradle reused a
+compiled settings-script class with the old one-argument `Settings` constructor
+for a script that now required the three-argument `KotlinScriptHost`,
+`PluginDependenciesSpec`, and `Settings` constructor.
+
+Stop Gradle and move `%USERPROFILE%\.gradle\caches` aside before retrying. Keep
+the moved directory until `gradlew.bat help` and the clean native build both
+pass, then archive or remove it when disk space is needed. Moving only the
+`kotlin-dsl`, `build-cache`, or `jars` subdirectory did not repair the observed
+cache state; rebuilding the complete Gradle cache did.
+
+Then run the normal project checks:
+
+```sh
+pnpm check
+pnpm test
+npx expo-doctor
+```
+
+### How To Update Or Remove
+
+Recheck the patch whenever Expo changes the React Native 0.86 patch version or
+upgrades React Native. Remove it when the upstream Gradle/React Native
+combination configures successfully on Windows without the patch.
+
+Removal checklist:
+
+1. Delete `patches/@react-native__gradle-plugin@0.86.0.patch`.
+2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
+3. Run `pnpm install`.
+4. Run the clean Android build and normal checks above on Windows.
+
+If the workaround is still required for a new React Native Gradle plugin
+version, regenerate it with:
+
+```sh
+pnpm patch @react-native/gradle-plugin@<version>
+# Remove only the Foojay `plugins` block from settings.gradle.kts.
+pnpm patch-commit "<temporary patch directory printed by pnpm>"
+```
+
+## `react-native-keyboard-controller@1.21.9.patch`
+
+### Why This Patch Exists
+
+Expo SDK 57's recommended `react-native-keyboard-controller` version supports
+React Native 0.86, but opening a React Native `Modal` on Android logs an
+unhandled Fabric soft exception:
+
+```text
+Fabric View [-1] does not have SurfaceId associated with it
+```
+
+`ModalAttachedWatcher` installs a keyboard callback on the Android dialog's
+decor view. `FocusedInputObserver` then asks React Native for the surface ID of
+that native decor view, which is not part of a Fabric surface. The warning was
+reproduced on a Pixel 9 running Android 16 whenever Dayova opened its create
+type bottom modal. The modal remained visible, but the observer initialized
+with an invalid surface ID.
+
+### What The Patch Changes
+
+`KeyboardAnimationCallback` now accepts an explicit surface ID and passes it to
+`FocusedInputObserver`. The normal non-modal path keeps the package's existing
+surface lookup. For a modal, `ModalAttachedWatcher` supplies the surface ID from
+the Fabric `topShow` event that caused the callback to be installed, rather than
+trying to infer a surface from the dialog's native window hierarchy.
+
+The patch changes only Android surface-ID plumbing. It does not alter keyboard
+animation, focused-input tracking, modal layout, or iOS behavior.
+
+### How To Verify
+
+Build and install the Android debug app, clear Logcat, and open a Dayova bottom
+modal such as the create-type picker:
+
+```powershell
+cd android
+.\gradlew.bat :app:assembleDebug
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+adb logcat -c
+# Open the modal on the device.
+adb logcat -d | Select-String 'UIManagerHelper|Fabric View'
+```
+
+Expected result: the modal opens normally and Logcat contains no
+`UIManagerHelper` surface-ID soft exception. Also focus an input and confirm
+that keyboard avoidance still works.
+
+### How To Update Or Remove
+
+Recheck this patch whenever `react-native-keyboard-controller` is upgraded.
+Remove it when the package resolves modal keyboard events against a
+React-managed surface, or otherwise avoids querying a surface ID from the
+dialog decor view.
+
+Removal checklist:
+
+1. Delete `patches/react-native-keyboard-controller@1.21.9.patch`.
+2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
+3. Run `pnpm install`.
+4. Rebuild Android and repeat the modal Logcat verification above.
+
+If the workaround is still required for a new package version, regenerate it
+with:
+
+```sh
+pnpm patch react-native-keyboard-controller@<version>
+# Pass the modal show event's surface ID into the callback and observer.
+pnpm patch-commit "<temporary patch directory printed by pnpm>"
+```
 ## `nativewind@4.2.3.patch`
 
 ### Why This Patch Exists

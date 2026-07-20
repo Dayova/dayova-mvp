@@ -1414,7 +1414,6 @@ function QuestionStepView({
 			>
 				<Animated.View
 					entering={FadeInDown.duration(360).springify().damping(18)}
-					layout={LinearTransition.duration(220)}
 					style={{
 						flex: 1,
 						alignItems: "center",
@@ -2954,13 +2953,12 @@ function ChipCloud({
 				rowGap: 12,
 			}}
 		>
-			{options.map((option, index) => {
+			{options.map((option) => {
 				const selected = hasListValue(value, option.label);
 				const Icon = option.icon;
 				return (
 					<Animated.View
 						key={option.label}
-						entering={FadeInDown.delay(index * 22).duration(220)}
 						layout={LinearTransition.duration(180)}
 					>
 						<Pressable
@@ -3047,7 +3045,6 @@ function GoalList({
 					<Animated.View
 						key={option}
 						entering={FadeInDown.delay(index * 25).duration(240)}
-						layout={LinearTransition.duration(180)}
 					>
 						<Pressable
 							accessibilityLabel={option}

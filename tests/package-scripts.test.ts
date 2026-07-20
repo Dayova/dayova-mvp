@@ -26,6 +26,12 @@ describe("package scripts", () => {
 		},
 	);
 
+	it("sets APP_VARIANT portably for unused-code analysis", () => {
+		expect(packageJson.scripts["check:unused"]).toBe(
+			"cross-env APP_VARIANT=development knip",
+		);
+	});
+
 	it("does not use POSIX-only inline environment assignments", () => {
 		expect(findPosixOnlyScripts(packageJson.scripts)).toEqual([]);
 	});
