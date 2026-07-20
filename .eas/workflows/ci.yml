@@ -21,7 +21,7 @@ concurrency:
 defaults:
   tools:
     node: "24.18.0"
-    pnpm: "10.25.0"
+    pnpm: "11.15.1"
 
 jobs:
   checks:

@@ -50,6 +50,24 @@ Do not add optional public envs to the required release-key list unless the app
 cannot function without them. The analytics client must stay disabled gracefully
 when the PostHog key is absent.
 
+## Package Manager Toolchain
+
+Dayova uses pnpm 11.15.1 on Node 24.18.0. Keep the pnpm version pinned exactly
+and identical in `package.json`, the shared `eas.json` build profile, and
+`.eas/workflows/ci.yml`. These are separate install surfaces, so the repeated
+pin is intentional; `tests/pnpm-toolchain.test.ts` guards them against drift.
+
+The 2026 rollback from pnpm 11 to pnpm 10 was an EAS runtime compatibility
+measure, not an application compatibility requirement: the then-current EAS
+image ran Node 20.19.4, while pnpm 11 required a newer Node runtime. The project
+now pins Node 24 for local and EAS builds, so that constraint no longer applies.
+
+Keep non-auth pnpm settings in `pnpm-workspace.yaml`, where pnpm 11 reads them.
+In particular, keep `autoInstallPeers: false`, preserve `patchedDependencies`,
+and use `allowBuilds` as the only dependency build-script policy. When changing
+the pnpm version, update all three pins together and verify a frozen install,
+the full checks, production exports, and native EAS builds.
+
 ## iOS Privacy Purpose Strings
 
 Dayova uses camera/photo upload for learning material and microphone/speech
