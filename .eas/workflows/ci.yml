@@ -20,7 +20,7 @@ concurrency:
 
 defaults:
   tools:
-    node: "22"
+    node: "24.18.0"
     pnpm: "10.25.0"
 
 jobs:
