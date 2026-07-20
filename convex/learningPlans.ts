@@ -754,11 +754,11 @@ export const listOverview = query({
 				sessions.length > 0
 					? Math.round((completedCount / sessions.length) * 100)
 					: 0;
-			const creationProgress: {
-				questionCount?: number;
-				answeredQuestionCount?: number;
-				firstUnansweredQuestionIndex?: number | null;
-			} = {};
+			let creationProgress: {
+				questionCount: number;
+				answeredQuestionCount: number;
+				firstUnansweredQuestionIndex: number | null;
+			} | null = null;
 			if (plan.status === "questionsReady") {
 				const questions = plan.knowledgeQuestions ?? [];
 				const answers = await Promise.all(
@@ -783,12 +783,14 @@ export const listOverview = query({
 					(question) => !answeredQuestionIds.has(question.id),
 				);
 
-				creationProgress.questionCount = questions.length;
-				creationProgress.answeredQuestionCount = answeredQuestionIds.size;
-				creationProgress.firstUnansweredQuestionIndex =
-					firstUnansweredQuestionIndex >= 0
-						? firstUnansweredQuestionIndex
-						: null;
+				creationProgress = {
+					questionCount: questions.length,
+					answeredQuestionCount: answeredQuestionIds.size,
+					firstUnansweredQuestionIndex:
+						firstUnansweredQuestionIndex >= 0
+							? firstUnansweredQuestionIndex
+							: null,
+				};
 			}
 
 			overviews.push({
@@ -819,7 +821,7 @@ export const listOverview = query({
 							completed: currentSession.completed === true,
 						}
 					: null,
-				...creationProgress,
+				creationProgress,
 				updatedAt: plan.updatedAt,
 			});
 		}

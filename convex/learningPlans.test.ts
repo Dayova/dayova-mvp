@@ -15,6 +15,13 @@ const user = {
 };
 const originalTimeZone = process.env.TZ;
 
+const createKnowledgeQuestions = () =>
+	Array.from({ length: 5 }, (_, index) => ({
+		id: `q${index + 1}`,
+		prompt: `Frage ${index + 1}`,
+		targetInsight: `Erkenntnis ${index + 1}`,
+	}));
+
 const createPlan = async (t: TestBackend) => {
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-05",
@@ -457,11 +464,7 @@ test("invalidates only educational session edits while calendar moves preserve c
 test("list overview exposes unfinished creation progress and its first unanswered question", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
-	const questions = Array.from({ length: 5 }, (_, index) => ({
-		id: `q${index + 1}`,
-		prompt: `Frage ${index + 1}`,
-		targetInsight: `Erkenntnis ${index + 1}`,
-	}));
+	const questions = createKnowledgeQuestions();
 
 	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
 		learningPlanId,
@@ -485,20 +488,18 @@ test("list overview exposes unfinished creation progress and its first unanswere
 	expect(overviews[0]).toMatchObject({
 		id: learningPlanId,
 		status: "questionsReady",
-		questionCount: 5,
-		answeredQuestionCount: 2,
-		firstUnansweredQuestionIndex: 1,
+		creationProgress: {
+			questionCount: 5,
+			answeredQuestionCount: 2,
+			firstUnansweredQuestionIndex: 1,
+		},
 	});
 });
 
 test("list overview reports when every creation question has been answered", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
-	const questions = Array.from({ length: 5 }, (_, index) => ({
-		id: `q${index + 1}`,
-		prompt: `Frage ${index + 1}`,
-		targetInsight: `Erkenntnis ${index + 1}`,
-	}));
+	const questions = createKnowledgeQuestions();
 
 	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
 		learningPlanId,
@@ -517,20 +518,18 @@ test("list overview reports when every creation question has been answered", asy
 
 	expect(overviews[0]).toMatchObject({
 		id: learningPlanId,
-		questionCount: 5,
-		answeredQuestionCount: 5,
-		firstUnansweredQuestionIndex: null,
+		creationProgress: {
+			questionCount: 5,
+			answeredQuestionCount: 5,
+			firstUnansweredQuestionIndex: null,
+		},
 	});
 });
 
 test("list overview finds current answers after stale question generations", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
-	const questions = Array.from({ length: 5 }, (_, index) => ({
-		id: `q${index + 1}`,
-		prompt: `Frage ${index + 1}`,
-		targetInsight: `Erkenntnis ${index + 1}`,
-	}));
+	const questions = createKnowledgeQuestions();
 
 	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
 		learningPlanId,
@@ -558,8 +557,10 @@ test("list overview finds current answers after stale question generations", asy
 	const overviews = await t.query(api.learningPlans.listOverview, {});
 
 	expect(overviews[0]).toMatchObject({
-		answeredQuestionCount: 1,
-		firstUnansweredQuestionIndex: 1,
+		creationProgress: {
+			answeredQuestionCount: 1,
+			firstUnansweredQuestionIndex: 1,
+		},
 	});
 });
 
