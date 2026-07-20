@@ -55,9 +55,8 @@ import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-vie
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
-import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
-import { LearningPlanCreationProgressHeader } from "~/features/learning-plans/creation-progress-header";
+import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useValidationAnalytics } from "~/lib/analytics";
 import { definedAnalyticsProperties } from "~/lib/analytics-core";
@@ -565,6 +564,12 @@ export default function NewEntryScreen() {
 		Boolean(selectTarget || pickerTarget || step !== "basics"),
 		handleBack,
 	);
+	useLearningPlanCreationProgress({
+		active: !isHomework,
+		currentStep: examStepNumber,
+		onBack: handleBack,
+		title: "Prüfung eintragen",
+	});
 
 	const scrollToFocusedField = useCallback((offsetY: number) => {
 		requestAnimationFrame(() => {
@@ -641,18 +646,9 @@ export default function NewEntryScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<ThemedStatusBar />
 			{!isHomework ? (
-				<View
-					className="bg-background px-8 pb-8"
-					style={{ paddingTop: Math.max(insets.top + 20, 52) }}
-				>
-					<LearningPlanCreationProgressHeader
-						currentStep={examStepNumber}
-						onBack={handleBack}
-						title="Prüfung eintragen"
-					/>
-					<Text className="mt-8 font-poppins font-semibold text-heading-2 text-text">
+				<View className="px-8 pb-8">
+					<Text className="font-poppins font-semibold text-heading-2 text-text">
 						{examStepTitle}
 					</Text>
 				</View>

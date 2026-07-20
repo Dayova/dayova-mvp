@@ -8,10 +8,9 @@ import { Button } from "~/components/ui/button";
 import { Screen } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
-import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
-import { LearningPlanCreationProgressHeader } from "~/features/learning-plans/creation-progress-header";
+import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import {
 	calculateAvailableStudyMinutes,
 	suggestTotalStudyMinutes,
@@ -128,15 +127,15 @@ export default function LearningPlanWorkloadScreen() {
 			`/learning-plans/${planId}/quiz/${lastQuestionIndex}` as const,
 		);
 	};
+	useLearningPlanCreationProgress({
+		active: true,
+		currentStep: LEARNING_PLAN_CREATION_STEPS.workload,
+		onBack: goBack,
+	});
 
 	return (
-		<Screen className="px-8 pt-20 pb-12">
+		<Screen className="px-8 pb-12">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<ThemedStatusBar />
-			<LearningPlanCreationProgressHeader
-				currentStep={LEARNING_PLAN_CREATION_STEPS.workload}
-				onBack={goBack}
-			/>
 			<View className="flex-1 justify-center">
 				<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
 					Wie viel Lernzeit planen wir ein?

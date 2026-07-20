@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
-import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
+import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
 import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
@@ -81,21 +81,24 @@ export default function LearningPlanAnalysisScreen() {
 			planId ? learningPlanTopicPath(planId) : "/learning-plans/new",
 		);
 	};
+	useLearningPlanCreationProgress({
+		active: true,
+		currentStep: LEARNING_PLAN_CREATION_STEPS.topicDescription,
+		onBack: goBack,
+	});
 
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: false }} />
-			<ThemedStatusBar />
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
 					paddingHorizontal: 32,
-					paddingTop: 80,
+					paddingTop: 0,
 					paddingBottom: 60,
 				}}
 				showsVerticalScrollIndicator={false}
 			>
-				<Header title="Wissensanalyse" onBack={goBack} />
 				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
 					<AnalysisOrbitLoader />
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">

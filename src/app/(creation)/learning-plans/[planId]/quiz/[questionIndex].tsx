@@ -5,10 +5,9 @@ import { View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
-import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { getDiagnosticQuestionCreationStep } from "~/features/learning-plans/creation-progress";
-import { LearningPlanCreationProgressHeader } from "~/features/learning-plans/creation-progress-header";
+import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
 import { QuizStep } from "~/features/learning-plans/quiz-step";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
@@ -92,6 +91,11 @@ export default function LearningPlanQuizScreen() {
 	};
 
 	useBackIntent(Boolean(planId && questionIndex > 0), goBack);
+	useLearningPlanCreationProgress({
+		active: true,
+		currentStep: getDiagnosticQuestionCreationStep(questionIndex),
+		onBack: goBack,
+	});
 
 	const continueQuestion = async () => {
 		if (!planId || !currentQuestion || isBusy) return;
@@ -124,21 +128,16 @@ export default function LearningPlanQuizScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<ThemedStatusBar />
 			<KeyboardSafeScrollView
 				className="flex-1"
 				bottomOffset={32}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,
-					paddingTop: 80,
+					paddingTop: 0,
 					paddingBottom: 60,
 				}}
 			>
-				<LearningPlanCreationProgressHeader
-					currentStep={getDiagnosticQuestionCreationStep(questionIndex)}
-					onBack={goBack}
-				/>
 				{currentQuestion ? (
 					<QuizStep
 						question={currentQuestion}

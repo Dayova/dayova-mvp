@@ -5,9 +5,8 @@ import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, useWindowDimensions } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
@@ -17,10 +16,9 @@ import {
 } from "~/components/ui/bottom-modal";
 import { Attachment, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
-import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
-import { LearningPlanCreationProgressHeader } from "~/features/learning-plans/creation-progress-header";
+import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import {
 	learningPlanStepPath,
 	learningPlanTopicPath,
@@ -64,7 +62,6 @@ type LearningPlanSetupStep = "materialUpload" | "topicDescription";
 
 export default function NewLearningPlanScreen() {
 	const router = useRouter();
-	const insets = useSafeAreaInsets();
 	const { width: windowWidth } = useWindowDimensions();
 	const params = useLocalSearchParams<{
 		step?: string;
@@ -490,6 +487,11 @@ export default function NewLearningPlanScreen() {
 	};
 
 	useBackIntent(setupStep === "topicDescription", goBack);
+	useLearningPlanCreationProgress({
+		active: true,
+		currentStep: currentProgressStep,
+		onBack: goBack,
+	});
 
 	const continueToAnalysis = async () => {
 		if (!learningPlanId || !canContinueTopic) return;
@@ -533,18 +535,6 @@ export default function NewLearningPlanScreen() {
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<ThemedStatusBar />
-			<View
-				className="bg-background px-8 pb-8"
-				// The fixed creation header owns the top safe area, matching the
-				// persistent header used by the exam-detail steps.
-				style={{ paddingTop: Math.max(insets.top + 20, 52) }}
-			>
-				<LearningPlanCreationProgressHeader
-					currentStep={currentProgressStep}
-					onBack={goBack}
-				/>
-			</View>
 			<ScreenScroll
 				key={setupStep}
 				includeTopSafeArea={false}
