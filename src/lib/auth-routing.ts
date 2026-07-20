@@ -1,7 +1,15 @@
 export const SESSION_TASK_RESET_PASSWORD_PATH = "/session-tasks/reset-password";
 export const PASSWORD_RESET_SUCCESS_PATH = "/password-reset-success";
 
-const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
+const PUBLIC_AUTH_PATHS = new Set([
+	"/",
+	"/login",
+	"/register",
+	"/onboarding",
+	PASSWORD_RESET_SUCCESS_PATH,
+]);
+
+const SIGNED_IN_REDIRECT_PATHS = new Set(["/", "/login", "/register"]);
 
 type AuthNavigationState = {
 	hasUser: boolean;
@@ -30,7 +38,7 @@ export const getAuthNavigationTarget = ({
 
 	const isPublicAuthPath = PUBLIC_AUTH_PATHS.has(pathname);
 	if (!hasUser && !isPublicAuthPath) return "/";
-	if (hasUser && isPublicAuthPath && pathname !== "/onboarding") return "/home";
+	if (hasUser && SIGNED_IN_REDIRECT_PATHS.has(pathname)) return "/home";
 
 	return null;
 };

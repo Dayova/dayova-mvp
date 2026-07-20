@@ -6,8 +6,12 @@ import { Switch } from "./switch.android";
 jest.mock("@expo/ui/jetpack-compose", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	return {
-		Host: ({ children }: { children: ReactNode }) =>
-			React.createElement("Host", null, children),
+		Host: ({ children, ...props }: { children: ReactNode }) =>
+			React.createElement(
+				"Host",
+				{ ...props, testID: "compose-host" },
+				children,
+			),
 		Switch: (props: Record<string, unknown>) =>
 			React.createElement("ComposeSwitch", props),
 	};
@@ -51,6 +55,10 @@ describe("Android Switch accessibility", () => {
 		);
 
 		expect(onValueChange).toHaveBeenCalledWith(true);
+		expect(screen.getByTestId("compose-host").props).toMatchObject({
+			colorScheme: "light",
+			seedColor: "#00BAFF",
+		});
 	});
 
 	test("does not toggle a disabled switch", async () => {

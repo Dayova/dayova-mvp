@@ -1,3 +1,5 @@
+import { meetsPasswordRequirements } from "./password-validation";
+
 export type PasswordField =
 	| "currentPassword"
 	| "newPassword"
@@ -16,7 +18,7 @@ export const validatePasswordChange = ({
 	if (currentPassword.length === 0) {
 		errors.currentPassword = "Bitte gib dein aktuelles Passwort ein.";
 	}
-	if (newPassword.length < 8 || newPassword.trim().length === 0) {
+	if (!meetsPasswordRequirements(newPassword)) {
 		errors.newPassword = "Das neue Passwort muss mindestens 8 Zeichen haben.";
 	} else if (newPassword === currentPassword) {
 		errors.newPassword =

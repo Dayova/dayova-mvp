@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { useRef, useState } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import {
 	Bell,
@@ -12,9 +13,11 @@ import {
 	Timer,
 } from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAccountActions } from "~/context/AuthContext";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { useDayovaTheme } from "~/lib/theme";
 import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
 import { cn } from "~/lib/utils";
@@ -37,6 +40,8 @@ function SettingsRow({
 	label,
 	trailing,
 	onPress,
+	disabled = false,
+	busy = false,
 }: {
 	icon: (props: {
 		size?: number;
@@ -46,6 +51,8 @@ function SettingsRow({
 	label: string;
 	trailing?: React.JSX.Element;
 	onPress?: () => void;
+	disabled?: boolean;
+	busy?: boolean;
 }) {
 	const Icon = icon;
 	const { colors } = useDayovaTheme();
@@ -55,7 +62,11 @@ function SettingsRow({
 			icon={<Icon size={22} color={colors.text} strokeWidth={2} />}
 			label={label}
 			onPress={onPress}
-			disabled={!onPress}
+			disabled={disabled || !onPress}
+			accessibilityState={{
+				busy,
+				disabled: disabled || !onPress,
+			}}
 			trailing={trailing}
 		/>
 	);
@@ -109,7 +120,27 @@ export default function SettingsScreen() {
 	const { logout } = useAccountActions();
 	const { preference, setPreference } = useDayovaTheme();
 	const { height } = useWindowDimensions();
+	const [logoutError, setLogoutError] = useState<string | null>(null);
+	const [isLoggingOut, setIsLoggingOut] = useState(false);
+	const logoutGateRef = useRef(createAsyncActionGate());
 	const contentMinHeight = Math.max(height - 268, 360);
+	const handleLogout = () => {
+		void logoutGateRef.current.run(async () => {
+			setLogoutError(null);
+			setIsLoggingOut(true);
+			try {
+				await logout();
+			} catch (error) {
+				setLogoutError(
+					error instanceof Error
+						? error.message
+						: "Die Abmeldung ist fehlgeschlagen. Bitte versuche es erneut.",
+				);
+			} finally {
+				setIsLoggingOut(false);
+			}
+		});
+	};
 
 	return (
 		<Screen>
@@ -158,11 +189,11 @@ export default function SettingsScreen() {
 						<SettingsRow
 							icon={Logout}
 							label="Abmelden"
-							onPress={async () => {
-								await logout();
-								router.replace("/");
-							}}
+							onPress={handleLogout}
+							disabled={isLoggingOut}
+							busy={isLoggingOut}
 						/>
+						{logoutError ? <ErrorMessage>{logoutError}</ErrorMessage> : null}
 					</View>
 				</View>
 			</ScreenScroll>

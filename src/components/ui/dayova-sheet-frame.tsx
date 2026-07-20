@@ -221,6 +221,7 @@ function DayovaSheetFrame({
 				"bg-card px-6 pt-1",
 				size !== "content" && !scrollable && "flex-1",
 			)}
+			// Safe-area padding is runtime device data and cannot be a static utility.
 			style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}
 		>
 			{!title ? (
@@ -229,8 +230,8 @@ function DayovaSheetFrame({
 					accessible
 					accessibilityLabel={accessibleTitle}
 					accessibilityRole="header"
+					className="absolute h-px w-px opacity-[0.01]"
 					collapsable={false}
-					style={{ position: "absolute", height: 1, width: 1, opacity: 0.01 }}
 				/>
 			) : null}
 			{hasHeader ? (
@@ -283,6 +284,8 @@ function DayovaSheetFrame({
 	);
 
 	return (
+		// Gorhom exposes native sheet geometry and chrome through style-only props;
+		// runtime width and theme colors cannot be represented by static utilities.
 		<BottomSheetModal
 			ref={sheetRef}
 			android_keyboardInputMode="adjustResize"
@@ -315,12 +318,16 @@ function DayovaSheetFrame({
 					keyboardShouldPersistTaps="handled"
 					nestedScrollEnabled
 					showsVerticalScrollIndicator={false}
+					// Gorhom scrollables require their fill geometry through `style`.
 					style={{ flex: 1 }}
 				>
 					{content}
 				</BottomSheetScrollView>
 			) : (
-				<BottomSheetView style={size !== "content" ? { flex: 1 } : undefined}>
+				<BottomSheetView
+					// Gorhom views do not expose NativeWind class props.
+					style={size !== "content" ? { flex: 1 } : undefined}
+				>
 					{content}
 				</BottomSheetView>
 			)}

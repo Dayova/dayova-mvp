@@ -102,9 +102,12 @@ location should trigger verification or review, not automatic punishment.
 - Dayova implements Clerk's forced reset-password session task through the
   native `/session-tasks/reset-password` route with automated coverage. The
   production password-compromise response remains disabled until this route
-  also passes the real-device verification listed below.
+  also passes real-device verification of both pending-session routing and a
+  successfully completed reset. This release gate is separate from the normal
+  password-recovery flow and its real-device QA.
 - Real-device QA must cover two-device coexistence, current-device logout,
-  expiry, remote revocation, password reset, and account deletion.
+  expiry, remote revocation, normal password recovery, forced-reset routing and
+  completion, and account deletion.
 - Shared/temporary-device mode is explicitly deferred until evidence shows it
   is needed.
 

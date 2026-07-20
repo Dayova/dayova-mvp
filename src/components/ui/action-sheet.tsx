@@ -5,10 +5,6 @@ import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
 
-const OPTION_SHADOW = "0 4px 12px rgba(0, 0, 0, 0.06)";
-const ICON_SHADOW =
-	"0 2px 4px -2px rgba(24, 39, 75, 0.12), 0 4px 4px -2px rgba(24, 39, 75, 0.08)";
-
 type ActionSheetOption<T extends string> = {
 	value: T;
 	title: string;
@@ -66,22 +62,18 @@ function ActionSheet<T extends string>({
 					disabled={option.disabled}
 					onPress={() => onSelect(option.value)}
 					className={cn(
-						"border border-border/45 bg-card",
+						"border border-border/45 bg-card shadow-black/5 shadow-sm",
 						isTile
 							? "min-h-36 flex-1 items-center justify-center gap-5 rounded-card px-4 py-5"
 							: "min-h-20 w-full flex-row items-center gap-4 rounded-card px-4 py-3",
+						option.disabled && "opacity-50",
 					)}
-					style={{
-						boxShadow: OPTION_SHADOW,
-						opacity: option.disabled ? 0.55 : 1,
-					}}
 				>
 					<View
 						className={cn(
-							"items-center justify-center rounded-full bg-system-subtle",
+							"items-center justify-center rounded-full bg-system-subtle shadow-black/10 shadow-sm",
 							isTile ? "h-16 w-16" : "h-14 w-14",
 						)}
-						style={{ boxShadow: ICON_SHADOW }}
 					>
 						{option.icon}
 					</View>
@@ -91,7 +83,7 @@ function ActionSheet<T extends string>({
 								"font-poppins text-text",
 								isTile
 									? "text-center font-semibold text-body-1"
-									: "font-medium text-body-2",
+									: "text-body-2",
 							)}
 							numberOfLines={2}
 						>

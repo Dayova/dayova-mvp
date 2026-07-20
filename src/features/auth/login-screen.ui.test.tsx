@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { LoginScreen } from "./dayova-auth-flow";
+import { AuthChoiceScreen, LoginScreen } from "./dayova-auth-flow";
 
 const mockLogin = jest.fn<
 	(input: {
@@ -20,6 +20,12 @@ const mockResendPasswordResetCode = jest.fn<
 const mockStartPasswordReset = jest.fn<(email: string) => Promise<void>>(
 	async () => undefined,
 );
+const mockVerifyPasswordResetCode = jest.fn<(code: string) => Promise<void>>(
+	async () => undefined,
+);
+const mockCompletePasswordReset = jest.fn<
+	(password: string) => Promise<{ status: "complete" | "needs_second_factor" }>
+>(async () => ({ status: "complete" }));
 const mockRouter = {
 	back: jest.fn(),
 	push: jest.fn(),
@@ -72,7 +78,11 @@ jest.mock("expo-router", () => {
 	return {
 		Redirect: () => null,
 		Stack,
-		router: mockRouter,
+		router: {
+			back: (...args: never[]) => mockRouter.back(...args),
+			push: (...args: [string]) => mockRouter.push(...args),
+			replace: (...args: [string]) => mockRouter.replace(...args),
+		},
 		useRouter: () => mockRouter,
 	};
 });
@@ -127,7 +137,7 @@ jest.mock("~/components/ui/icon", () => {
 jest.mock("~/context/AuthContext", () => ({
 	useAuthFlow: () => ({
 		cancelPasswordReset: mockCancelPasswordReset,
-		completePasswordReset: jest.fn(),
+		completePasswordReset: mockCompletePasswordReset,
 		isLoading: false,
 		login: mockLogin,
 		pendingVerification: null,
@@ -135,7 +145,7 @@ jest.mock("~/context/AuthContext", () => ({
 		resendVerification: jest.fn(),
 		startPasswordReset: mockStartPasswordReset,
 		verifyEmailCode: jest.fn(),
-		verifyPasswordResetCode: jest.fn(),
+		verifyPasswordResetCode: mockVerifyPasswordResetCode,
 		verifyPasswordResetSecondFactor: jest.fn(),
 	}),
 	useAuthSession: () => ({
@@ -177,8 +187,13 @@ describe("LoginScreen", () => {
 		mockResendPasswordResetCode.mockReset();
 		mockResendPasswordResetCode.mockResolvedValue(undefined);
 		mockRouter.replace.mockReset();
+		mockRouter.push.mockReset();
 		mockStartPasswordReset.mockReset();
 		mockStartPasswordReset.mockResolvedValue(undefined);
+		mockVerifyPasswordResetCode.mockReset();
+		mockVerifyPasswordResetCode.mockResolvedValue(undefined);
+		mockCompletePasswordReset.mockReset();
+		mockCompletePasswordReset.mockResolvedValue({ status: "complete" });
 	});
 
 	test("uses persistent native sign-in without a remember-me choice", async () => {
@@ -186,6 +201,16 @@ describe("LoginScreen", () => {
 
 		expect(screen.queryByText("Angemeldet bleiben")).toBeNull();
 		expect(screen.getByText("Passwort vergessen?")).toBeOnTheScreen();
+	});
+
+	test("pushes registration so the native back gesture keeps its entry route", async () => {
+		const screen = await render(<AuthChoiceScreen />);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Registrierung" }),
+		);
+
+		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding");
 	});
 
 	test("keeps password recovery reachable from sign-in", async () => {
@@ -225,6 +250,42 @@ describe("LoginScreen", () => {
 
 		const error = await screen.findByRole("alert");
 		expect(error.props.accessibilityLiveRegion).toBe("polite");
+	});
+
+	test("submits the exact sign-in password without trimming valid characters", async () => {
+		const screen = await render(<LoginScreen />);
+		const exactPassword = " sicher123 ";
+
+		await fireEvent.changeText(
+			screen.getByLabelText("E-Mail-Adresse"),
+			"learner@example.de",
+		);
+		await fireEvent.changeText(
+			screen.getByLabelText("Passwort"),
+			exactPassword,
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "LOGIN" }));
+
+		await waitFor(() => {
+			expect(mockLogin).toHaveBeenCalledWith({
+				email: "learner@example.de",
+				password: exactPassword,
+			});
+		});
+	});
+
+	test("leaves completed-session navigation to the root auth guard", async () => {
+		const screen = await render(<LoginScreen />);
+
+		await fireEvent.changeText(
+			screen.getByLabelText("E-Mail-Adresse"),
+			"learner@example.de",
+		);
+		await fireEvent.changeText(screen.getByLabelText("Passwort"), "sicher123");
+		await fireEvent.press(screen.getByRole("button", { name: "LOGIN" }));
+
+		await waitFor(() => expect(mockLogin).toHaveBeenCalledTimes(1));
+		expect(mockRouter.replace).not.toHaveBeenCalled();
 	});
 
 	test("keeps reset and resend confirmation neutral", async () => {
@@ -276,6 +337,39 @@ describe("LoginScreen", () => {
 		await act(async () => resolveCancellation());
 		await waitFor(() => {
 			expect(screen.getByText("Passwort vergessen?")).toBeOnTheScreen();
+		});
+	});
+
+	test("submits the exact new password without trimming valid characters", async () => {
+		const screen = await render(<LoginScreen />);
+
+		await fireEvent.press(screen.getByText("Passwort vergessen?"));
+		await fireEvent.changeText(
+			screen.getByLabelText("E-Mail-Adresse"),
+			"learner@example.de",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "CODE SENDEN" }));
+		await fireEvent.changeText(
+			screen.getByLabelText("Bestätigungscode"),
+			"123456",
+		);
+		await screen.findByRole("header", { name: "Neues Passwort" });
+
+		const exactPassword = " sicher123 ";
+		await fireEvent.changeText(
+			screen.getByLabelText("Neues Passwort"),
+			exactPassword,
+		);
+		await fireEvent.changeText(
+			screen.getByLabelText("Neues Passwort wiederholen"),
+			exactPassword,
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "PASSWORT SPEICHERN" }),
+		);
+
+		await waitFor(() => {
+			expect(mockCompletePasswordReset).toHaveBeenCalledWith(exactPassword);
 		});
 	});
 });

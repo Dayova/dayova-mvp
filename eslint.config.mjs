@@ -38,9 +38,48 @@ export default tseslint.config(
 		},
 		rules: {
 			...reactCompilerRules,
+			"dayova-ui/no-direct-native-controls": "error",
 			"dayova-ui/no-direct-overlay-primitives": "error",
+			"dayova-ui/require-compose-host-theme": "error",
 		},
   },
+	{
+		files: ["src/**/*.{test,spec}.{ts,tsx}"],
+		ignores: [
+			"src/components/onboarding/intro-tasks-artwork-assets.test.ts",
+			"src/components/onboarding/intro-upload-artwork.test.ts",
+			"src/lib/theme-css.test.ts",
+		],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{
+					paths: [
+						{
+							name: "fs",
+							message:
+								"Render runtime behavior or enforce architecture with ESLint instead of scanning component source text.",
+						},
+						{
+							name: "fs/promises",
+							message:
+								"Render runtime behavior or enforce architecture with ESLint instead of scanning component source text.",
+						},
+						{
+							name: "node:fs",
+							message:
+								"Render runtime behavior or enforce architecture with ESLint instead of scanning component source text.",
+						},
+						{
+							name: "node:fs/promises",
+							message:
+								"Render runtime behavior or enforce architecture with ESLint instead of scanning component source text.",
+						},
+					],
+				},
+			],
+		},
+	},
   {
     files: ["convex/**/*.ts"],
     languageOptions: {

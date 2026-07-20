@@ -20,7 +20,11 @@ export function NotificationButton() {
 		<TouchableOpacity
 			activeOpacity={0.86}
 			accessibilityRole="button"
-			accessibilityLabel="In-App-Mitteilungen öffnen"
+			accessibilityLabel={
+				hasUnread
+					? "In-App-Mitteilungen öffnen, neue Mitteilungen vorhanden"
+					: "In-App-Mitteilungen öffnen"
+			}
 			onPress={() => router.push("/notifications")}
 			className="h-14 w-14 items-center justify-center rounded-full bg-card"
 			style={{
@@ -32,7 +36,9 @@ export function NotificationButton() {
 			<Bell size={22} color={colors.text} strokeWidth={2.2} />
 			{hasUnread ? (
 				<View
-					accessibilityLabel="Neue Mitteilungen"
+					accessible={false}
+					accessibilityElementsHidden
+					importantForAccessibility="no-hide-descendants"
 					className="absolute rounded-full bg-destructive"
 					style={{
 						top: 14,

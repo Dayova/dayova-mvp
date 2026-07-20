@@ -62,7 +62,11 @@ import {
 	INTRO_DOT_HEIGHT,
 } from "~/components/onboarding/intro-pagination";
 import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
-import { getStudyTimeFactBody } from "~/components/onboarding/study-time-fact";
+import {
+	OnboardingSelect,
+	PickerInputTrigger,
+} from "~/components/onboarding/onboarding-select";
+import { StudyTimeFactContent } from "~/components/onboarding/study-time-fact-content";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import {
@@ -74,7 +78,6 @@ import {
 	Calculator,
 	CalendarDays,
 	Chemistry,
-	ChevronDown,
 	ClipboardEdit,
 	ClipboardList,
 	Dna,
@@ -87,13 +90,11 @@ import {
 	Palette,
 	Plant,
 	Route2,
-	Sparkles,
 	SquareRootSquare,
 	Telescope,
 } from "~/components/ui/icon";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
-import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthFlow, useAuthSession } from "~/context/AuthContext";
@@ -102,6 +103,11 @@ import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { PASSWORD_RESET_SUCCESS_PATH } from "~/lib/auth-routing";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useBackIntent } from "~/lib/navigation";
+import { meetsPasswordRequirements } from "~/lib/password-validation";
+import {
+	shouldHandleRegistrationBack,
+	type RegistrationStage,
+} from "~/lib/registration-navigation";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
@@ -558,8 +564,6 @@ const QUESTION_STEP_COUNT = FLOW_STEPS.length + 2;
 const isValidEmail = (value: string) =>
 	/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-const isValidPassword = (value: string) => value.trim().length >= 8;
-
 const isValidName = (value: string) =>
 	value.trim().length >= 2 && /^[A-Za-zÀ-ÿ' -]+$/.test(value.trim());
 
@@ -716,7 +720,7 @@ export function AuthChoiceScreen() {
 						}}
 					>
 						<Text
-							className="text-center font-bold font-poppins text-text"
+							className="text-center font-poppins font-semibold text-text"
 							style={{
 								fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
 								lineHeight: scaled(AUTH_CHOICE_FRAME.title.lineHeight),
@@ -800,10 +804,7 @@ export function RegisterRedirectScreen() {
 	return <Redirect href="/onboarding" />;
 }
 
-type RegistrationStage = "flow" | "verification" | "creating";
-
 export function OnboardingScreen() {
-	const { colors: COLORS } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [stage, setStage] = useState<RegistrationStage>("flow");
@@ -896,7 +897,10 @@ export function OnboardingScreen() {
 		return true;
 	}, [activeIndex, isLoading, stage]);
 
-	const shouldHandleInternalBack = activeIndex > 0 || stage !== "flow";
+	const shouldHandleInternalBack = shouldHandleRegistrationBack(
+		activeIndex,
+		stage,
+	);
 	useBackIntent(shouldHandleInternalBack, handleBack);
 
 	const stepProgress =
@@ -910,21 +914,24 @@ export function OnboardingScreen() {
 
 		if (activeStep.kind === "text") {
 			Keyboard.dismiss();
-			const value = answers[activeStep.field].trim();
+			const value = answers[activeStep.field];
 			if (activeStep.field === "name" && !isValidName(value)) {
 				setError("Bitte gib deinen Namen ein.");
 				return;
 			}
-			if (activeStep.field === "schoolType" && value.length < 2) {
+			if (activeStep.field === "schoolType" && value.trim().length < 2) {
 				setError("Bitte gib deine Schulform ein.");
 				return;
 			}
-			if (activeStep.field === "email" && !isValidEmail(value.toLowerCase())) {
+			if (
+				activeStep.field === "email" &&
+				!isValidEmail(value.trim().toLowerCase())
+			) {
 				setError("Bitte gib eine gültige E-Mail-Adresse ein.");
 				return;
 			}
 			if (activeStep.field === "password") {
-				if (!isValidPassword(value)) {
+				if (!meetsPasswordRequirements(value)) {
 					setError("Bitte gib ein Passwort mit mindestens 8 Zeichen ein.");
 					return;
 				}
@@ -953,13 +960,10 @@ export function OnboardingScreen() {
 
 	const startRegistration = async () => {
 		try {
-			// The password step validates a trimmed value, so submit the same value
-			// to avoid creating credentials different from what the UI accepted.
-			const normalizedPassword = answers.password.trim();
 			const result = await register({
 				name: answers.name.trim(),
 				email: answers.email.trim().toLowerCase(),
-				password: normalizedPassword,
+				password: answers.password,
 				birthDate: answers.birthDate,
 				grade: answers.grade,
 				schoolType: answers.schoolType,
@@ -1050,7 +1054,7 @@ export function OnboardingScreen() {
 	const isIntro = activeStep.kind === "intro";
 
 	return (
-		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
+		<View className="flex-1 bg-background">
 			<Stack.Screen
 				options={{ title: "Registrierung", gestureEnabled: false }}
 			/>
@@ -1275,7 +1279,10 @@ function IntroSlide({
 	const artwork = INTRO_ARTWORKS.find(
 		(candidate) => candidate.kind === step.illustration,
 	);
-	if (!artwork) return <View style={{ width }} />;
+	if (!artwork) {
+		// FlatList page width is runtime viewport data.
+		return <View style={{ width }} />;
+	}
 
 	const artworkWidth = layout.artwork.width * scale;
 	const artworkHeight = layout.artwork.height * scale;
@@ -1390,14 +1397,14 @@ function QuestionStepView({
 						: 30;
 
 	return (
-		<View style={{ flex: 1 }}>
+		<View className="flex-1">
 			<AuthProgressHeader progress={progress} onBack={onBack} />
 
 			<ScrollView
+				className="flex-1"
 				keyboardShouldPersistTaps="handled"
 				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
-				style={{ flex: 1 }}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingBottom: showBottomButton
@@ -1567,22 +1574,7 @@ function ShortStudyTimeFactStep({
 					entering={FadeInDown.duration(360).springify().damping(18)}
 					className="flex-1 items-center pt-14"
 				>
-					<View className="items-center">
-						<View className="h-[60px] w-[60px] items-center justify-center rounded-full bg-wrong-subtle">
-							<Bulb size={32} color={COLORS.wrong} strokeWidth={1.5} />
-						</View>
-						<Text className="mt-2 font-medium font-poppins text-body-4 text-wrong">
-							Schon gewusst?
-						</Text>
-					</View>
-
-					<Text className="z-10 mt-10 text-center font-poppins font-semibold text-heading-1 text-text">
-						{title}
-					</Text>
-
-					<View className="-mt-24 w-full items-center">
-						<HangingStudyTimeFactPanel body={getStudyTimeFactBody(studyTime)} />
-					</View>
+					<StudyTimeFactContent title={title} studyTime={studyTime} />
 				</Animated.View>
 			</ScrollView>
 
@@ -1632,12 +1624,11 @@ export function LoginScreen() {
 	const submitLogin = async () => {
 		Keyboard.dismiss();
 		setError(null);
-		const normalizedPassword = password.trim();
 		if (!isValidEmail(email.trim().toLowerCase())) {
 			setError("Bitte gib eine gültige E-Mail-Adresse ein.");
 			return;
 		}
-		if (!normalizedPassword) {
+		if (!password.trim()) {
 			setError("Bitte gib dein Passwort ein.");
 			return;
 		}
@@ -1646,10 +1637,10 @@ export function LoginScreen() {
 			try {
 				const result = await login({
 					email: email.trim().toLowerCase(),
-					password: normalizedPassword,
+					password,
 				});
 				if (result.status === "complete") {
-					router.replace("/home");
+					// Session-boundary navigation is owned by the root auth guard.
 					return;
 				}
 				setVerificationMode(true);
@@ -1674,9 +1665,7 @@ export function LoginScreen() {
 		setError(null);
 		try {
 			const result = await verifyEmailCode(code);
-			if (result.status === "complete") {
-				router.replace("/home");
-			}
+			if (result.status === "complete") return;
 		} catch (verificationError) {
 			submittedRef.current = false;
 			setVerificationCode("");
@@ -1739,7 +1728,7 @@ export function LoginScreen() {
 	}
 
 	return (
-		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ title: "Login" }} />
 			<ThemedStatusBar />
 			<View className="flex-1">
@@ -2027,14 +2016,13 @@ function PasswordResetScreen({
 
 	const submitNewPassword = async () => {
 		if (requestInFlightRef.current) return;
-		const normalizedPassword = password.trim();
 		setError(null);
 		setNotice(null);
-		if (!isValidPassword(normalizedPassword)) {
+		if (!meetsPasswordRequirements(password)) {
 			setError("Bitte gib ein Passwort mit mindestens 8 Zeichen ein.");
 			return;
 		}
-		if (normalizedPassword !== confirmPassword.trim()) {
+		if (password !== confirmPassword) {
 			setError("Die Passwörter stimmen nicht überein.");
 			return;
 		}
@@ -2042,7 +2030,7 @@ function PasswordResetScreen({
 		Keyboard.dismiss();
 		requestInFlightRef.current = true;
 		try {
-			const result = await completePasswordReset(normalizedPassword);
+			const result = await completePasswordReset(password);
 			if (result.status === "complete") {
 				router.replace(PASSWORD_RESET_SUCCESS_PATH);
 				return;
@@ -2129,7 +2117,7 @@ function PasswordResetScreen({
 	};
 
 	return (
-		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ title: "Passwort zurücksetzen" }} />
 			<ThemedStatusBar />
 			<KeyboardSafeScrollView
@@ -2332,17 +2320,15 @@ function VerificationScreen({
 	onChangeCode: (value: string) => void;
 	onResend: () => Promise<void>;
 }) {
-	const { colors: COLORS } = useDayovaTheme();
-
 	return (
-		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
+		<View className="flex-1 bg-background">
 			<Stack.Screen
 				options={{ title: "E-Mail bestätigen", gestureEnabled: false }}
 			/>
 			<ThemedStatusBar />
 			<KeyboardAvoidingView
 				behavior={Platform.OS === "ios" ? "padding" : undefined}
-				style={{ flex: 1 }}
+				className="flex-1"
 			>
 				<ScrollView
 					keyboardShouldPersistTaps="handled"
@@ -2359,7 +2345,7 @@ function VerificationScreen({
 					<View style={{ flex: 1, alignItems: "center", paddingTop: 38 }}>
 						<Text
 							accessibilityRole="header"
-							className="text-center font-bold font-poppins text-text"
+							className="text-center font-poppins font-semibold text-text"
 							style={{ fontSize: 25, lineHeight: 32 }}
 						>
 							E-Mail bestätigen
@@ -2427,10 +2413,8 @@ function CreationLoaderScreen({
 	topInset: number;
 	bottomInset: number;
 }) {
-	const { colors: COLORS } = useDayovaTheme();
-
 	return (
-		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
+		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ title: "Lernprofil", gestureEnabled: false }} />
 			<ThemedStatusBar />
 			<View
@@ -2445,7 +2429,7 @@ function CreationLoaderScreen({
 			>
 				<AnimatedFlower />
 				<Text
-					className="mt-10 text-center font-bold font-poppins text-text"
+					className="mt-10 text-center font-poppins font-semibold text-text"
 					style={{ fontSize: 20, lineHeight: 29 }}
 				>
 					Dein persönliches Lernprofil{"\n"}wird nun für dich erstellt.
@@ -2689,7 +2673,7 @@ function OtpCodeInput({
 							}}
 						>
 							<Text
-								className="text-center font-bold font-poppins text-text"
+								className="text-center font-poppins font-semibold text-text"
 								style={{
 									fontSize: 22,
 									lineHeight: 28,
@@ -2716,16 +2700,9 @@ function OtpCodeInput({
 				autoCorrect={false}
 				autoCapitalize="none"
 				caretHidden
+				className="absolute inset-0 opacity-[0.01]"
 				maxLength={CODE_LENGTH}
 				selectionColor="transparent"
-				style={{
-					position: "absolute",
-					top: 0,
-					right: 0,
-					bottom: 0,
-					left: 0,
-					opacity: 0.01,
-				}}
 			/>
 		</View>
 	);
@@ -3181,45 +3158,6 @@ function FactPanel({ step, body }: { step: FactStep; body: string }) {
 	);
 }
 
-const HANGING_FACT_RAILS = [
-	{ id: "left", position: "left-1/4" },
-	{ id: "right", position: "right-1/4" },
-] as const;
-
-function HangingStudyTimeFactPanel({ body }: { body: string }) {
-	return (
-		<View className="min-h-[420px] w-full items-center">
-			{HANGING_FACT_RAILS.map((rail) => (
-				<View
-					key={rail.id}
-					className={cn(
-						"absolute top-0 h-[232px] w-2 rounded-full bg-path-2/60",
-						rail.position,
-					)}
-				/>
-			))}
-
-			<Animated.View
-				entering={FadeInUp.delay(80).duration(420).springify().damping(18)}
-				className="mt-56 w-full"
-			>
-				<View className="w-full -rotate-2 rounded-card bg-surface px-6 py-5">
-					<View className="flex-row items-center gap-1 self-start rounded-full bg-primary/10 px-2 py-1">
-						<Sparkles size={16} color={COLORS.primary} strokeWidth={2} />
-						<Text className="font-poppins font-semibold text-body-5 text-primary">
-							Lernfakt
-						</Text>
-					</View>
-
-					<Text className="mt-5 font-medium font-poppins text-body-3 text-secondary-text">
-						{body}
-					</Text>
-				</View>
-			</Animated.View>
-		</View>
-	);
-}
-
 function PlanFitStack() {
 	const items = [
 		{
@@ -3331,7 +3269,7 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 		};
 
 		return (
-			<View style={{ width: "100%", alignItems: "center" }}>
+			<View className="w-full items-center">
 				<PickerInputTrigger
 					accessibilityLabel="Geburtsdatum auswählen"
 					value={value}
@@ -3362,7 +3300,7 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 		};
 
 		return (
-			<View style={{ width: "100%", alignItems: "center" }}>
+			<View className="w-full items-center">
 				<PickerInputTrigger
 					accessibilityLabel="Lernzeit auswählen"
 					value={value}
@@ -3405,117 +3343,6 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 			title="Bundesland auswählen"
 			onChange={(value) => setAnswer("state", value)}
 		/>
-	);
-}
-
-function PickerInputTrigger({
-	value,
-	placeholder,
-	accessibilityLabel,
-	centered = false,
-	expanded,
-	testID,
-	onPress,
-}: {
-	value: string;
-	placeholder: string;
-	accessibilityLabel: string;
-	centered?: boolean;
-	expanded?: boolean;
-	testID?: string;
-	onPress: () => void;
-}) {
-	const hasValue = value.trim().length > 0;
-
-	return (
-		<Pressable
-			accessibilityLabel={accessibilityLabel}
-			accessibilityRole="button"
-			accessibilityState={expanded === undefined ? undefined : { expanded }}
-			onPress={onPress}
-			testID={testID}
-			style={{
-				width: "100%",
-				maxWidth: 312,
-				minHeight: 58,
-				borderRadius: 29,
-				backgroundColor: COLORS.surface,
-				borderWidth: 1,
-				borderColor: "rgba(17,24,39,0.05)",
-				boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
-				paddingHorizontal: 20,
-				flexDirection: "row",
-				alignItems: "center",
-				justifyContent: "space-between",
-				gap: 12,
-			}}
-		>
-			<Text
-				className="flex-1 font-poppins text-body-2"
-				numberOfLines={1}
-				style={[
-					{ color: hasValue ? COLORS.text : "rgba(26,26,26,0.42)" },
-					centered
-						? {
-								paddingHorizontal: 28,
-								textAlign: "center",
-							}
-						: null,
-				]}
-			>
-				{hasValue ? value : placeholder}
-			</Text>
-			<View
-				pointerEvents="none"
-				style={centered ? { position: "absolute", right: 20 } : undefined}
-			>
-				<ChevronDown size={20} color={COLORS.secondaryText} strokeWidth={2.1} />
-			</View>
-		</Pressable>
-	);
-}
-
-function OnboardingSelect<T extends string>({
-	value,
-	options,
-	formatLabel,
-	accessibilityLabel,
-	testID,
-	title,
-	onChange,
-}: {
-	value: T;
-	options: readonly T[];
-	formatLabel?: (option: T) => string;
-	accessibilityLabel: string;
-	testID: string;
-	title: string;
-	onChange: (value: T) => void;
-}) {
-	const [visible, setVisible] = useState(false);
-	const selectedLabel = formatLabel ? formatLabel(value) : value;
-
-	return (
-		<View style={{ width: "100%", alignItems: "center" }}>
-			<PickerInputTrigger
-				accessibilityLabel={accessibilityLabel}
-				centered
-				expanded={visible}
-				onPress={() => setVisible(true)}
-				placeholder={accessibilityLabel}
-				testID={testID}
-				value={selectedLabel}
-			/>
-			<SelectSheet
-				formatOptionLabel={formatLabel}
-				onClose={() => setVisible(false)}
-				onSelect={onChange}
-				options={options}
-				selectedValue={value}
-				title={title}
-				visible={visible}
-			/>
-		</View>
 	);
 }
 
@@ -3778,7 +3605,7 @@ function DarkPillButton({
 			}}
 		>
 			<Text
-				className="font-bold font-poppins text-body-2"
+				className="font-poppins font-semibold text-body-2"
 				style={{ color: COLORS.surface }}
 			>
 				{label}
@@ -3840,7 +3667,7 @@ function AuthBackgroundPattern({
 	] as const;
 
 	return (
-		<View style={{ flex: 1 }}>
+		<View className="flex-1">
 			{items.map((item) => {
 				const Icon = item.icon;
 				return (
@@ -3935,23 +3762,33 @@ function AnimatedFlower() {
 	const pulse = useSharedValue(1);
 
 	useEffect(() => {
-		rotation.value = withRepeat(
-			withTiming(360, { duration: 3600, easing: Easing.linear }),
-			-1,
-			false,
-		);
-		pulse.value = withRepeat(
-			withSequence(
-				withTiming(1.07, { duration: 900, easing: Easing.inOut(Easing.quad) }),
-				withTiming(0.95, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+		rotation.set(
+			withRepeat(
+				withTiming(360, { duration: 3600, easing: Easing.linear }),
+				-1,
+				false,
 			),
-			-1,
-			true,
+		);
+		pulse.set(
+			withRepeat(
+				withSequence(
+					withTiming(1.07, {
+						duration: 900,
+						easing: Easing.inOut(Easing.quad),
+					}),
+					withTiming(0.95, {
+						duration: 900,
+						easing: Easing.inOut(Easing.quad),
+					}),
+				),
+				-1,
+				true,
+			),
 		);
 	}, [pulse, rotation]);
 
 	const style = useAnimatedStyle(() => ({
-		transform: [{ rotate: `${rotation.value}deg` }, { scale: pulse.value }],
+		transform: [{ rotate: `${rotation.get()}deg` }, { scale: pulse.get() }],
 	}));
 
 	return (

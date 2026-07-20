@@ -2,7 +2,6 @@ import "~/global.css";
 import { ClerkProvider, useAuth as useClerkAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { PortalHost } from "@rn-primitives/portal";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import * as SystemUI from "expo-system-ui";
@@ -80,7 +79,6 @@ function AppNavigator() {
 				}
 			>
 				<Stack screenOptions={{ headerShown: false }} />
-				<PortalHost />
 			</View>
 		</>
 	);

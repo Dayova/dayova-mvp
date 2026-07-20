@@ -8,13 +8,12 @@ const REQUEST_COUNT = MAX_CONCURRENT_FILE_READS * 4;
 
 function loadExpoFileStore() {
 	const expoPackage = require.resolve("expo/package.json");
-	const metroConfigPackage = require.resolve(
-		"@expo/metro-config/package.json",
-		{
-			paths: [expoPackage],
-		},
+	const metroConfigRoot = path.join(
+		path.dirname(expoPackage),
+		"..",
+		"@expo",
+		"metro-config",
 	);
-	const metroConfigRoot = path.dirname(metroConfigPackage);
 	return require(path.join(metroConfigRoot, "build", "binary-file-store.js"))
 		.FileStore;
 }

@@ -625,7 +625,7 @@ export default function LearningPlanSessionsScreen() {
 					title="Lernplan"
 					onBack={goBack}
 					className="mb-0"
-					titleClassName="text-center font-poppins font-semibold text-[22px] text-text leading-[30px]"
+					titleClassName="text-center font-poppins font-semibold text-heading-2 text-text"
 				/>
 			</View>
 

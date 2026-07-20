@@ -223,7 +223,7 @@ export default function ValidationOverviewScreen() {
 
 				<Surface className="rounded-[28px] px-5 py-5">
 					<Text
-						className="font-bold font-poppins text-[#202127]"
+						className="font-poppins font-semibold text-text"
 						style={{ fontSize: 24, lineHeight: 30, includeFontPadding: false }}
 					>
 						{dayKey}

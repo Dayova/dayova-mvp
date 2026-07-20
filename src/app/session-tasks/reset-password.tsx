@@ -1,13 +1,9 @@
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	Keyboard,
-	type TextInput,
-	View,
-} from "react-native";
+import { ActivityIndicator, Keyboard, type TextInput } from "react-native";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SectionHeader } from "~/components/ui/section-header";
@@ -137,24 +133,18 @@ export default function ForcedPasswordResetScreen() {
 				/>
 
 				{error ? (
-					<View
-						accessibilityRole="alert"
-						accessibilityLiveRegion="polite"
-						className="mt-2 rounded-[22px] border border-destructive/20 bg-destructive/10 px-5 py-4"
-					>
-						<Text
-							selectable
-							className="font-poppins text-body-4 text-destructive"
-						>
-							{error}
-						</Text>
-					</View>
+					<ErrorMessage className="mt-2 rounded-[22px] border border-destructive/20 bg-destructive/10 px-5 py-4">
+						{error}
+					</ErrorMessage>
 				) : null}
 
 				<Button
 					className="mt-7 h-[56px]"
 					disabled={isBusy || !password || !confirmation}
-					accessibilityState={{ busy: isBusy }}
+					accessibilityState={{
+						busy: isBusy,
+						disabled: isBusy || !password || !confirmation,
+					}}
 					onPress={() => void submit()}
 				>
 					{isBusy ? (

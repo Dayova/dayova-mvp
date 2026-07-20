@@ -46,6 +46,7 @@ import {
 	reverifyPasswordFactor,
 	type PasswordReverificationSession,
 } from "~/lib/password-reverification";
+import { signOutAndResetState } from "~/lib/logout-state";
 
 type LoginInput = {
 	email: string;
@@ -1172,13 +1173,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		});
 
 	const logout = async () => {
-		setPendingVerification(null);
-		setPendingLoginStage(null);
-		setPendingProfile(null);
-		setPendingProfileEmail(null);
-		setSyncedClerkUserId(null);
-		passwordResetHasRemoteAttemptRef.current = false;
-		await clerk.signOut();
+		await signOutAndResetState(
+			() => clerk.signOut(),
+			() => {
+				setPendingVerification(null);
+				setPendingLoginStage(null);
+				setPendingProfile(null);
+				setPendingProfileEmail(null);
+				setSyncedClerkUserId(null);
+				passwordResetHasRemoteAttemptRef.current = false;
+				clearAnswers();
+			},
+		);
 	};
 
 	const isSessionLoading = !clerk.loaded || !isUserLoaded;

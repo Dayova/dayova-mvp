@@ -208,6 +208,7 @@ export function IntroTasksArtwork({ width, height }: SvgProps) {
 			importantForAccessibility="no-hide-descendants"
 			className="items-center justify-center"
 			style={{ width: resolvedWidth, height: resolvedHeight }}
+			testID="intro-tasks-artwork"
 		>
 			<View
 				className="relative h-[242px] w-[356px]"
