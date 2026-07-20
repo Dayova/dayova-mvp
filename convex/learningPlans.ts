@@ -649,23 +649,23 @@ export const listOverview = query({
 			} | null = null;
 			if (plan.status === "questionsReady") {
 				const questions = plan.knowledgeQuestions ?? [];
-				const answers = await ctx.db
-					.query("learningPlanAnswers")
-					.withIndex("by_learningPlanId", (q) =>
-						q.eq("learningPlanId", plan._id),
-					)
-					.collect();
-				const answerByQuestionId = new Map(
-					answers.map((answer) => [answer.questionId, answer]),
+				const answers = await Promise.all(
+					questions.map((question) =>
+						ctx.db
+							.query("learningPlanAnswers")
+							.withIndex("by_learningPlanId_and_questionId", (q) =>
+								q.eq("learningPlanId", plan._id).eq("questionId", question.id),
+							)
+							.unique(),
+					),
 				);
 				const answeredQuestionIds = new Set(
-					questions
+					answers
 						.filter(
-							(question) =>
-								(answerByQuestionId.get(question.id)?.answer.trim().length ??
-									0) > 0,
+							(answer): answer is NonNullable<typeof answer> =>
+								answer !== null && answer.answer.trim().length > 0,
 						)
-						.map((question) => question.id),
+						.map((answer) => answer.questionId),
 				);
 				const firstUnansweredQuestionIndex = questions.findIndex(
 					(question) => !answeredQuestionIds.has(question.id),
