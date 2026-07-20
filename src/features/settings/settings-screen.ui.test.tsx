@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import SettingsScreen from "./settings";
+import SettingsScreen from "../../app/(app)/settings";
 
 const mockReplace = jest.fn();
 const mockLogout = jest.fn<() => Promise<void>>(async () => undefined);

@@ -1,67 +1,65 @@
-import {
-	AlertCircleIcon,
-	ArrowDown01Icon,
-	ArrowLeft01Icon,
-	ArrowRight01Icon,
-	ArrowUpRight01Icon,
-	Atom02Icon,
-	Attachment01Icon,
-	Backpack03Icon,
-	BookOpen01Icon,
-	BulbIcon,
-	Calculator01Icon,
-	Calendar03Icon,
-	Cancel01Icon,
-	Chemistry01Icon,
-	Clock03Icon,
-	CodeIcon,
-	ComputerIcon,
-	Delete02Icon,
-	Dna01Icon,
-	Dumbbell02Icon,
-	EarthIcon,
-	Fire02Icon,
-	FootballIcon,
-	GlobeIcon,
-	GreekHelmetIcon,
-	Home02Icon,
-	InformationCircleIcon,
-	LanguageCircleIcon,
-	Logout03Icon,
-	Mail01Icon,
-	MapsCircle01Icon,
-	Mic01Icon,
-	Moon02Icon,
-	Mortarboard01Icon,
-	MusicNote01Icon,
-	NotebookIcon,
-	NoteIcon,
-	Notification01Icon,
-	NotificationOff03Icon,
-	PaintBoardIcon,
-	PaintBrush01Icon,
-	PencilIcon,
-	Plant04Icon,
-	PlusSignIcon,
-	PropertyEditIcon,
-	Rocket01Icon,
-	Route02Icon,
-	ScanImageIcon,
-	Settings01Icon,
-	SparklesIcon,
-	SquareLock02Icon,
-	SquareRootSquareIcon,
-	Sun01Icon,
-	Task01Icon,
-	TaskEdit01Icon,
-	Telescope01Icon,
-	Tick02Icon,
-	Time04Icon,
-	TimeManagementCircleIcon,
-	UserCircleIcon,
-	ViewIcon,
-	ViewOffIcon,
-} from "@hugeicons/core-free-icons";
+import AlertCircleIcon from "@hugeicons/core-free-icons/AlertCircleIcon";
+import ArrowDown01Icon from "@hugeicons/core-free-icons/ArrowDown01Icon";
+import ArrowLeft01Icon from "@hugeicons/core-free-icons/ArrowLeft01Icon";
+import ArrowRight01Icon from "@hugeicons/core-free-icons/ArrowRight01Icon";
+import ArrowUpRight01Icon from "@hugeicons/core-free-icons/ArrowUpRight01Icon";
+import Atom02Icon from "@hugeicons/core-free-icons/Atom02Icon";
+import Attachment01Icon from "@hugeicons/core-free-icons/Attachment01Icon";
+import Backpack03Icon from "@hugeicons/core-free-icons/Backpack03Icon";
+import BookOpen01Icon from "@hugeicons/core-free-icons/BookOpen01Icon";
+import BulbIcon from "@hugeicons/core-free-icons/BulbIcon";
+import Calculator01Icon from "@hugeicons/core-free-icons/Calculator01Icon";
+import Calendar03Icon from "@hugeicons/core-free-icons/Calendar03Icon";
+import Cancel01Icon from "@hugeicons/core-free-icons/Cancel01Icon";
+import Chemistry01Icon from "@hugeicons/core-free-icons/Chemistry01Icon";
+import Clock03Icon from "@hugeicons/core-free-icons/Clock03Icon";
+import CodeIcon from "@hugeicons/core-free-icons/CodeIcon";
+import ComputerIcon from "@hugeicons/core-free-icons/ComputerIcon";
+import Delete02Icon from "@hugeicons/core-free-icons/Delete02Icon";
+import Dna01Icon from "@hugeicons/core-free-icons/Dna01Icon";
+import Dumbbell02Icon from "@hugeicons/core-free-icons/Dumbbell02Icon";
+import EarthIcon from "@hugeicons/core-free-icons/EarthIcon";
+import Fire02Icon from "@hugeicons/core-free-icons/Fire02Icon";
+import FootballIcon from "@hugeicons/core-free-icons/FootballIcon";
+import GlobeIcon from "@hugeicons/core-free-icons/GlobeIcon";
+import GreekHelmetIcon from "@hugeicons/core-free-icons/GreekHelmetIcon";
+import Home02Icon from "@hugeicons/core-free-icons/Home02Icon";
+import InformationCircleIcon from "@hugeicons/core-free-icons/InformationCircleIcon";
+import LanguageCircleIcon from "@hugeicons/core-free-icons/LanguageCircleIcon";
+import Logout03Icon from "@hugeicons/core-free-icons/Logout03Icon";
+import Mail01Icon from "@hugeicons/core-free-icons/Mail01Icon";
+import MapsCircle01Icon from "@hugeicons/core-free-icons/MapsCircle01Icon";
+import Mic01Icon from "@hugeicons/core-free-icons/Mic01Icon";
+import Moon02Icon from "@hugeicons/core-free-icons/Moon02Icon";
+import Mortarboard01Icon from "@hugeicons/core-free-icons/Mortarboard01Icon";
+import MusicNote01Icon from "@hugeicons/core-free-icons/MusicNote01Icon";
+import NotebookIcon from "@hugeicons/core-free-icons/NotebookIcon";
+import NoteIcon from "@hugeicons/core-free-icons/NoteIcon";
+import Notification01Icon from "@hugeicons/core-free-icons/Notification01Icon";
+import NotificationOff03Icon from "@hugeicons/core-free-icons/NotificationOff03Icon";
+import PaintBoardIcon from "@hugeicons/core-free-icons/PaintBoardIcon";
+import PaintBrush01Icon from "@hugeicons/core-free-icons/PaintBrush01Icon";
+import PencilIcon from "@hugeicons/core-free-icons/PencilIcon";
+import Plant04Icon from "@hugeicons/core-free-icons/Plant04Icon";
+import PlusSignIcon from "@hugeicons/core-free-icons/PlusSignIcon";
+import PropertyEditIcon from "@hugeicons/core-free-icons/PropertyEditIcon";
+import Rocket01Icon from "@hugeicons/core-free-icons/Rocket01Icon";
+import Route02Icon from "@hugeicons/core-free-icons/Route02Icon";
+import ScanImageIcon from "@hugeicons/core-free-icons/ScanImageIcon";
+import Settings01Icon from "@hugeicons/core-free-icons/Settings01Icon";
+import SparklesIcon from "@hugeicons/core-free-icons/SparklesIcon";
+import SquareLock02Icon from "@hugeicons/core-free-icons/SquareLock02Icon";
+import SquareRootSquareIcon from "@hugeicons/core-free-icons/SquareRootSquareIcon";
+import Sun01Icon from "@hugeicons/core-free-icons/Sun01Icon";
+import Task01Icon from "@hugeicons/core-free-icons/Task01Icon";
+import TaskEdit01Icon from "@hugeicons/core-free-icons/TaskEdit01Icon";
+import Telescope01Icon from "@hugeicons/core-free-icons/Telescope01Icon";
+import Tick02Icon from "@hugeicons/core-free-icons/Tick02Icon";
+import Time04Icon from "@hugeicons/core-free-icons/Time04Icon";
+import TimeManagementCircleIcon from "@hugeicons/core-free-icons/TimeManagementCircleIcon";
+import UserCircleIcon from "@hugeicons/core-free-icons/UserCircleIcon";
+import ViewIcon from "@hugeicons/core-free-icons/ViewIcon";
+import ViewOffIcon from "@hugeicons/core-free-icons/ViewOffIcon";
 import { HugeiconsIcon, type HugeiconsProps } from "@hugeicons/react-native";
 
 type IconProps = Omit<HugeiconsProps, "icon">;

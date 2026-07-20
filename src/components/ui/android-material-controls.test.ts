@@ -1,6 +1,5 @@
 import { createRequire } from "node:module";
 import { describe, expect, test } from "vitest";
-import appConfig from "../../../app.config";
 import {
 	fromMaterialDatePickerDate,
 	toMaterialDatePickerIso,
@@ -43,7 +42,20 @@ describe("Android Material controls", () => {
 		]).toEqual([2012, 8, 9, 16, 44, 12, 34]);
 	});
 
-	test("keep native Android fallback colors aligned with the design system", () => {
+	test("keep native Android fallback colors aligned with the design system", async () => {
+		const previousAppVariant = process.env.APP_VARIANT;
+		process.env.APP_VARIANT = "development";
+
+		const appConfig = await import("../../../app.config")
+			.then((module) => module.default)
+			.finally(() => {
+				if (previousAppVariant === undefined) {
+					delete process.env.APP_VARIANT;
+				} else {
+					process.env.APP_VARIANT = previousAppVariant;
+				}
+			});
+
 		const pluginNames = (appConfig.plugins ?? []).map((plugin) =>
 			Array.isArray(plugin) ? plugin[0] : plugin,
 		);
