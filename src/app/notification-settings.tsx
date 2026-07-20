@@ -14,6 +14,7 @@ import { api } from "#convex/_generated/api";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { ChevronDown, Timer } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Switch } from "~/components/ui/switch";
@@ -30,6 +31,7 @@ import {
 	type NotificationPreferenceKey,
 	removeNotificationPreferencePatchKeys,
 } from "~/lib/notification-preferences";
+import { cn } from "~/lib/utils";
 
 const OFFSET_OPTIONS = [5, 10, 15, 30, 60];
 
@@ -120,20 +122,31 @@ const SwitchRow = memo(function SwitchRow({
 	disabled?: boolean;
 	onValueChange: (value: boolean) => void;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
+
 	return (
 		<SettingsCard>
-			<View className="flex-row items-center justify-between gap-3">
+			<View
+				className={cn(
+					"justify-between gap-3",
+					shouldStackInlineContent ? "items-stretch" : "flex-row items-center",
+				)}
+			>
 				<Text
 					className="flex-1 font-poppins font-semibold text-body-3 text-text"
-					numberOfLines={2}
+					numberOfLines={shouldStackInlineContent ? undefined : 2}
 				>
 					{label}
 				</Text>
-				<Switch
-					value={value}
-					disabled={disabled}
-					onValueChange={onValueChange}
-				/>
+				<View className={shouldStackInlineContent ? "self-end" : ""}>
+					<Switch
+						value={value}
+						disabled={disabled}
+						onValueChange={onValueChange}
+					/>
+				</View>
 			</View>
 		</SettingsCard>
 	);
@@ -141,6 +154,9 @@ const SwitchRow = memo(function SwitchRow({
 
 export default function NotificationSettingsScreen() {
 	const router = useRouter();
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const updatePreferences = useMutation(api.notifications.updatePreferences);
@@ -355,12 +371,12 @@ export default function NotificationSettingsScreen() {
 		<Screen>
 			<ThemedStatusBar />
 			<ScreenScroll topPadding={72} bottomPadding={120} horizontalPadding={24}>
-				<Header title="Mitteilungen" onBack={goBack} className="mb-7" />
+				<Header title={"Mitteil\u00ADungen"} onBack={goBack} className="mb-7" />
 
 				{preferencesForRender ? (
 					<View className="gap-6">
 						<SwitchRow
-							label="System-Mitteilungen"
+							label={"System-Mitteil\u00ADungen"}
 							value={preferencesForRender.systemNotificationsEnabled}
 							disabled={isPreferencePending("systemNotificationsEnabled")}
 							onValueChange={updateSystemNotificationsFromSwitch}
@@ -373,11 +389,11 @@ export default function NotificationSettingsScreen() {
 							}}
 						>
 							<SectionIntro
-								title="Tagesüberblick"
+								title={"Tages\u00ADüberblick"}
 								description="Dein Tagesüberblick zeigt dir alle Lernzeiten, Prüfungen, Abgabetermine und Hausaufgaben-Bearbeitungszeiten, die für den Tag anstehen."
 							/>
 							<SwitchRow
-								label="Tagesüberblick"
+								label={"Tages\u00ADüberblick"}
 								value={preferencesForRender.dailyBriefingEnabled}
 								disabled={
 									areNotificationDetailsDisabled ||
@@ -396,7 +412,12 @@ export default function NotificationSettingsScreen() {
 										disabled: areNotificationDetailsDisabled,
 									}}
 									activeOpacity={0.84}
-									className="flex-row items-center justify-between rounded-[24px] bg-card"
+									className={cn(
+										"justify-between gap-3 rounded-[24px] bg-card",
+										shouldStackInlineContent
+											? "items-stretch"
+											: "flex-row items-center",
+									)}
 									disabled={areNotificationDetailsDisabled}
 									onPress={openBriefingTimePicker}
 									// Platform-specific row density and native shadow values are
@@ -404,17 +425,24 @@ export default function NotificationSettingsScreen() {
 									style={{
 										minHeight: Platform.OS === "ios" ? 64 : 56,
 										paddingHorizontal: Platform.OS === "ios" ? 24 : 20,
-										...(Platform.OS === "ios" ? { paddingVertical: 16 } : {}),
+										...(Platform.OS === "ios" || shouldStackInlineContent
+											? { paddingVertical: 16 }
+											: {}),
 										boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)",
 									}}
 								>
 									<Text
 										className="flex-1 font-poppins font-semibold text-body-3 text-text"
-										numberOfLines={1}
+										numberOfLines={shouldStackInlineContent ? undefined : 1}
 									>
 										Uhrzeit
 									</Text>
-									<View className="flex-row items-center gap-2">
+									<View
+										className={cn(
+											"flex-row items-center gap-2",
+											shouldStackInlineContent && "self-end",
+										)}
+									>
 										<Text className="font-poppins text-body-4 text-secondary-text">
 											{preferencesForRender.dailyBriefingTime}
 										</Text>
@@ -424,7 +452,7 @@ export default function NotificationSettingsScreen() {
 							</View>
 
 							<SectionIntro
-								title="Mitteilungen anpassen"
+								title={"Mitteil\u00ADungen anpassen"}
 								description="Hier kannst du entscheiden, woran dich die App erinnern soll."
 							/>
 							<SwitchRow
@@ -466,14 +494,19 @@ export default function NotificationSettingsScreen() {
 
 							<SectionIntro
 								description="Hier kannst du einstellen, wie viele Minuten vorher dich die App an einzelne Ereignisse erinnern soll."
-								title="Erinnerungszeit"
+								title={"Erinnerungs\u00ADzeit"}
 							/>
 							<TouchableOpacity
 								accessibilityRole="button"
 								accessibilityLabel="Erinnerungszeit ändern"
 								accessibilityState={{ disabled: areReminderOffsetsDisabled }}
 								activeOpacity={0.84}
-								className="flex-row items-center justify-between rounded-[24px] bg-card"
+								className={cn(
+									"justify-between gap-3 rounded-[24px] bg-card",
+									shouldStackInlineContent
+										? "items-stretch"
+										: "flex-row items-center",
+								)}
 								disabled={areReminderOffsetsDisabled}
 								onPress={openReminderOffsetSheet}
 								// Platform-specific row density and native shadow values are
@@ -481,17 +514,24 @@ export default function NotificationSettingsScreen() {
 								style={{
 									minHeight: Platform.OS === "ios" ? 64 : 56,
 									paddingHorizontal: Platform.OS === "ios" ? 24 : 20,
-									...(Platform.OS === "ios" ? { paddingVertical: 16 } : {}),
+									...(Platform.OS === "ios" || shouldStackInlineContent
+										? { paddingVertical: 16 }
+										: {}),
 									boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)",
 								}}
 							>
 								<Text
 									className="flex-1 font-poppins font-semibold text-body-3 text-text"
-									numberOfLines={1}
+									numberOfLines={shouldStackInlineContent ? undefined : 1}
 								>
 									Vorher erinnern
 								</Text>
-								<View className="flex-row items-center gap-2">
+								<View
+									className={cn(
+										"flex-row items-center gap-2",
+										shouldStackInlineContent && "self-end",
+									)}
+								>
 									<Text className="font-poppins text-body-4 text-secondary-text">
 										{preferencesForRender.reminderOffsetMinutes} min
 									</Text>
@@ -531,7 +571,7 @@ export default function NotificationSettingsScreen() {
 			/>
 			<SelectSheet
 				visible={showReminderOffsetSheet}
-				title="Erinnerungszeit auswählen"
+				title={"Erinnerungs\u00ADzeit auswählen"}
 				options={OFFSET_OPTIONS}
 				selectedValue={preferencesForRender?.reminderOffsetMinutes ?? ""}
 				onClose={closeReminderOffsetSheet}

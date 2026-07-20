@@ -78,10 +78,17 @@ import {
 	SquareRootSquare,
 	Telescope,
 } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
+import {
+	getOtpCellLayout,
+	getRangeValueBadgeSize,
+	getRangeValueContentLayout,
+	getResponsiveAuthChoiceLayout,
+} from "~/features/auth/auth-content-size-layout";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useBackIntent } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
@@ -588,7 +595,11 @@ const AUTH_BACKGROUND_TILE = {
 
 export function AuthChoiceScreen() {
 	const { colors: COLORS } = useDayovaTheme();
-	const { width, height } = useWindowDimensions();
+	const { width, height, fontScale } = useWindowDimensions();
+	const insets = useSafeAreaInsets();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const frameScale = Math.min(
 		width / AUTH_CHOICE_FRAME.width,
 		height / AUTH_CHOICE_FRAME.height,
@@ -600,6 +611,108 @@ export function AuthChoiceScreen() {
 		(AUTH_CHOICE_FRAME.width - AUTH_CHOICE_FRAME.buttons.width) / 2,
 	);
 	const verticalPadding = Math.max(0, (height - frameHeight) / 2);
+	const responsiveLayout = getResponsiveAuthChoiceLayout(fontScale);
+
+	if (contentSizeLayout.shouldStackInlineContent) {
+		return (
+			<View className="flex-1 bg-background">
+				<Stack.Screen options={{ title: "Dayova" }} />
+				<ThemedStatusBar />
+				<View pointerEvents="none" className="absolute inset-0 overflow-hidden">
+					<AuthBackgroundPattern
+						scale={Math.max(width / AUTH_CHOICE_FRAME.width, 0.78)}
+						yOffset={AUTH_CHOICE_FRAME.patternYOffset}
+					/>
+				</View>
+				<ScrollView
+					bounces={false}
+					contentInsetAdjustmentBehavior="never"
+					showsVerticalScrollIndicator={false}
+					// Safe-area and readable-width values are runtime layout data.
+					contentContainerStyle={{
+						alignItems: "center",
+						alignSelf: "center",
+						justifyContent: responsiveLayout.verticallyCenterContent
+							? "center"
+							: "flex-start",
+						maxWidth: contentSizeLayout.containerMaxWidth,
+						minHeight: height,
+						paddingBottom: Math.max(insets.bottom + 32, 48),
+						paddingHorizontal: contentSizeLayout.horizontalPadding,
+						paddingTop: Math.max(insets.top + 32, 48),
+						width: "100%",
+					}}
+				>
+					<Animated.View
+						entering={FadeInDown.duration(520).springify().damping(18)}
+						className="h-28 w-28 items-center justify-center rounded-[28px] bg-card shadow-lg"
+					>
+						<Image
+							source={require("../../../assets/onboarding/dayova-y.png")}
+							resizeMode="contain"
+							className="h-[104px] w-[104px]"
+						/>
+					</Animated.View>
+
+					<Text
+						className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
+						allowFontScaling={false}
+						// Runtime viewport width gives the brand word the widest safe line.
+						style={{
+							fontSize: responsiveLayout.brandFontSize,
+							lineHeight: responsiveLayout.brandLineHeight,
+							width: Math.min(
+								Math.max(width - 16, 0),
+								contentSizeLayout.containerMaxWidth,
+							),
+						}}
+					>
+						Dayova
+					</Text>
+					<Text
+						allowFontScaling={false}
+						className="mt-4 text-center font-poppins text-body-2 text-secondary-text"
+						style={{
+							fontSize: responsiveLayout.bodyFontSize,
+							lineHeight: responsiveLayout.bodyLineHeight,
+						}}
+					>
+						Du bist neu hier, dann registriere dich. Andernfalls willkommen
+						zurück
+					</Text>
+
+					<View className="mt-8 w-full gap-3">
+						<AuthChoicePillButton
+							label="Registrierung"
+							responsive
+							scale={1}
+							tone="gradient"
+							onPress={() => router.push("/onboarding")}
+						/>
+						<AuthChoicePillButton
+							label="Login"
+							responsive
+							scale={1}
+							tone="dark"
+							onPress={() => router.push("/login")}
+						/>
+					</View>
+
+					<Text
+						allowFontScaling={false}
+						className="mt-7 w-full text-center font-poppins text-body-4 text-secondary-text"
+						style={{
+							fontSize: responsiveLayout.termsFontSize,
+							lineHeight: responsiveLayout.termsLineHeight,
+						}}
+					>
+						Mit dem Start akzeptierst du Daten­schutz­bestimmungen und
+						Nutzungs­bedingungen.
+					</Text>
+				</ScrollView>
+			</View>
+		);
+	}
 
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
@@ -774,6 +887,9 @@ type RegistrationStage = "flow" | "verification" | "creating";
 export function OnboardingScreen() {
 	const { colors: COLORS } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [stage, setStage] = useState<RegistrationStage>("flow");
 	const [error, setError] = useState<string | null>(null);
@@ -1038,10 +1154,14 @@ export function OnboardingScreen() {
 				) : (
 					<View
 						key={activeStep.id}
+						// Safe-area and responsive readable-width values are runtime layout data.
 						style={{
 							flex: 1,
+							alignSelf: "center",
+							maxWidth: contentSizeLayout.containerMaxWidth,
 							paddingTop: Math.max(insets.top + 12, 20),
-							paddingHorizontal: 24,
+							paddingHorizontal: contentSizeLayout.horizontalPadding,
+							width: "100%",
 						}}
 					>
 						<QuestionStepView
@@ -1052,6 +1172,7 @@ export function OnboardingScreen() {
 							inputRef={textInputRef}
 							bottomInset={insets.bottom}
 							onBack={handleBack}
+							onAnswerChange={() => setError(null)}
 							onContinue={continueFromStep}
 							onTogglePassword={() => setPasswordVisible((current) => !current)}
 						/>
@@ -1073,8 +1194,20 @@ function IntroStepView({
 }) {
 	const { colors: COLORS } = useDayovaTheme();
 	const { width, height } = useWindowDimensions();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
+	const enlargedHorizontalPadding = Math.min(
+		contentSizeLayout.horizontalPadding,
+		16,
+	);
+	const enlargedReadableWidth = Math.min(
+		Math.max(width - enlargedHorizontalPadding * 2, 0),
+		width >= 600 ? 720 : contentSizeLayout.containerMaxWidth,
+	);
+	const layoutWidth = Math.min(width, contentSizeLayout.containerMaxWidth);
 	const scale = Math.min(
-		width / INTRO_REFERENCE_WIDTH,
+		layoutWidth / INTRO_REFERENCE_WIDTH,
 		height / INTRO_REFERENCE_HEIGHT,
 	);
 	const layout = INTRO_LAYOUTS[step.illustration];
@@ -1086,8 +1219,68 @@ function IntroStepView({
 	);
 	const dotsTop = Math.min(layout.dotsTop * scale, nextButtonTop - 44 * scale);
 
+	if (contentSizeLayout.shouldStackInlineContent) {
+		const activeArtwork = INTRO_ARTWORKS.find(
+			(artwork) => artwork.kind === step.illustration,
+		);
+		if (!activeArtwork) return null;
+
+		const Artwork = activeArtwork.Component;
+		const artworkWidth = Math.min(
+			enlargedReadableWidth,
+			activeArtwork.kind === "path" ? 300 : 280,
+		);
+		const artworkLayout = INTRO_LAYOUTS[activeArtwork.kind].artwork;
+		const artworkHeight =
+			artworkWidth * (artworkLayout.height / artworkLayout.width);
+
+		return (
+			<ScrollView
+				bounces={false}
+				showsVerticalScrollIndicator={false}
+				// Runtime readable-width and viewport height keep enlarged content usable.
+				contentContainerStyle={{
+					alignItems: "center",
+					alignSelf: "center",
+					justifyContent: "center",
+					maxWidth: enlargedReadableWidth + enlargedHorizontalPadding * 2,
+					minHeight: height,
+					paddingBottom: 48,
+					paddingHorizontal: enlargedHorizontalPadding,
+					paddingTop: 48,
+					width: "100%",
+				}}
+			>
+				<Artwork width={artworkWidth} height={artworkHeight} />
+				<Animated.Text
+					entering={FadeInUp.delay(80).duration(380).springify().damping(18)}
+					className="mt-10 text-center font-poppins font-semibold text-heading-2 text-text"
+					lineBreakStrategyIOS="standard"
+					textBreakStrategy="balanced"
+				>
+					{step.title
+						.replace(/\n/g, " ")
+						.replace("Aufschieben", "Auf\u00ADschieben")
+						.replace("Unterlagen", "Unter\u00ADlagen")
+						.replace("hochladen", "hoch\u00ADladen")
+						.replace("Lernplan", "Lern\u00ADplan")}
+				</Animated.Text>
+				<IntroDots activeIndex={activeIndex} />
+				<View className="mt-9">
+					<CircularNextButton
+						onPress={onNext}
+						progress={(activeIndex + 1) / INTRO_ARTWORKS.length}
+					/>
+				</View>
+			</ScrollView>
+		);
+	}
+
 	return (
-		<View style={{ flex: 1 }}>
+		<View
+			// The tablet compatibility mode keeps the phone composition centered.
+			style={{ flex: 1, alignSelf: "center", width: layoutWidth }}
+		>
 			{INTRO_ARTWORKS.map((artwork, index) => {
 				const artworkLayout = INTRO_LAYOUTS[artwork.kind];
 				const artworkWidth = artworkLayout.artwork.width * scale;
@@ -1099,9 +1292,10 @@ function IntroStepView({
 					<View
 						key={artwork.kind}
 						pointerEvents="none"
+						// Authored artwork geometry is scaled from the runtime tablet frame.
 						style={{
 							position: "absolute",
-							left: (width - artworkWidth) / 2,
+							left: (layoutWidth - artworkWidth) / 2,
 							top: artworkLayout.artwork.top * scale,
 							width: artworkWidth,
 							height: artworkHeight,
@@ -1120,7 +1314,7 @@ function IntroStepView({
 				entering={FadeInUp.delay(80).duration(380).springify().damping(18)}
 				style={{
 					position: "absolute",
-					left: (width - titleWidth) / 2,
+					left: (layoutWidth - titleWidth) / 2,
 					top: layout.titleTop * scale,
 					width: titleWidth,
 					textAlign: "center",
@@ -1150,7 +1344,7 @@ function IntroStepView({
 				progress={(activeIndex + 1) / INTRO_ARTWORKS.length}
 				style={{
 					position: "absolute",
-					left: (width - nextButtonSize) / 2,
+					left: (layoutWidth - nextButtonSize) / 2,
 					top: nextButtonTop,
 					transform: [{ scale }],
 				}}
@@ -1167,6 +1361,7 @@ function QuestionStepView({
 	inputRef,
 	bottomInset,
 	onBack,
+	onAnswerChange,
 	onContinue,
 	onTogglePassword,
 }: {
@@ -1177,12 +1372,17 @@ function QuestionStepView({
 	inputRef: RefObject<TextInput | null>;
 	bottomInset: number;
 	onBack: () => boolean;
+	onAnswerChange: () => void;
 	onContinue: () => void;
 	onTogglePassword: () => void;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const { answers, setAnswer } = useOnboarding();
 	const showBottomButton = step.kind !== "text";
+	const showFixedBottomButton = showBottomButton && !shouldStackInlineContent;
 	const buttonDisabled = step.kind === "fact" && step.disabledButton;
 	const isRangeStep = step.kind === "range";
 	const isShortFactStep =
@@ -1190,6 +1390,14 @@ function QuestionStepView({
 	const isPlanFitStep = step.kind === "infoStack";
 	const questionTitleStyle =
 		step.kind === "range" ? QUESTION_TITLE_STYLE : QUESTION_TITLE_STYLE_COMPACT;
+	const questionTitle = shouldStackInlineContent
+		? step.title
+				.replace(/\n/g, " ")
+				.replace("stundenlang", "stunden\u00ADlang")
+				.replace("Baustellen", "Bau\u00ADstellen")
+				.replace("erreichen", "er\u00ADreichen")
+				.replace("Lernplan", "Lern\u00ADplan")
+		: step.title;
 	const titleTopPadding = isRangeStep
 		? 36
 		: isShortFactStep
@@ -1226,7 +1434,7 @@ function QuestionStepView({
 				style={{ flex: 1 }}
 				contentContainerStyle={{
 					flexGrow: 1,
-					paddingBottom: showBottomButton
+					paddingBottom: showFixedBottomButton
 						? Math.max(bottomInset + 112, 122)
 						: Math.max(bottomInset + 20, 32),
 				}}
@@ -1234,14 +1442,17 @@ function QuestionStepView({
 				<Animated.View
 					entering={FadeInDown.duration(360).springify().damping(18)}
 					layout={LinearTransition.duration(220)}
+					// Enlarged content contributes its full height to the parent ScrollView.
 					style={{
-						flex: 1,
+						flex: shouldStackInlineContent ? undefined : 1,
 						alignItems: "center",
 						paddingTop: titleTopPadding,
 					}}
 				>
 					<Text
 						className="text-center font-poppins"
+						lineBreakStrategyIOS="standard"
+						textBreakStrategy="balanced"
 						style={{
 							color: COLORS.text,
 							fontSize: questionTitleStyle.fontSize,
@@ -1249,7 +1460,7 @@ function QuestionStepView({
 							fontWeight: questionTitleStyle.fontWeight,
 						}}
 					>
-						{step.title}
+						{questionTitle}
 					</Text>
 
 					<View
@@ -1264,7 +1475,10 @@ function QuestionStepView({
 								value={answers[step.field] || "30 min"}
 								values={step.values}
 								accessibilityLabel={step.title.replace(/\n/g, " ")}
-								onChange={(value) => setAnswer(step.field, value)}
+								onChange={(value) => {
+									onAnswerChange();
+									setAnswer(step.field, value);
+								}}
 							/>
 						) : null}
 
@@ -1274,12 +1488,13 @@ function QuestionStepView({
 							<ChipCloud
 								options={step.options}
 								value={answers[step.field]}
-								onToggle={(label) =>
+								onToggle={(label) => {
+									onAnswerChange();
 									setAnswer(
 										step.field,
 										toggleListValue(answers[step.field], label),
-									)
-								}
+									);
+								}}
 							/>
 						) : null}
 
@@ -1287,15 +1502,18 @@ function QuestionStepView({
 							<GoalList
 								options={step.options}
 								value={answers.goal}
-								onToggle={(label) =>
-									setAnswer("goal", toggleListValue(answers.goal, label))
-								}
+								onToggle={(label) => {
+									onAnswerChange();
+									setAnswer("goal", toggleListValue(answers.goal, label));
+								}}
 							/>
 						) : null}
 
 						{step.kind === "infoStack" ? <PlanFitStack /> : null}
 
-						{step.kind === "wheel" ? <WheelAnswer step={step} /> : null}
+						{step.kind === "wheel" ? (
+							<WheelAnswer step={step} onAnswerChange={onAnswerChange} />
+						) : null}
 
 						{step.kind === "text" ? (
 							<PillTextInput
@@ -1309,7 +1527,10 @@ function QuestionStepView({
 								autoCapitalize={
 									step.field === "email" || step.secure ? "none" : "words"
 								}
-								onChangeText={(value) => setAnswer(step.field, value)}
+								onChangeText={(value) => {
+									onAnswerChange();
+									setAnswer(step.field, value);
+								}}
 								onSubmit={onContinue}
 								accessory={
 									step.secure ? (
@@ -1350,10 +1571,26 @@ function QuestionStepView({
 							{error}
 						</Animated.Text>
 					) : null}
+					{showBottomButton && shouldStackInlineContent ? (
+						<View
+							// The enlarged action remains in the scroll flow and above the safe area.
+							style={{
+								marginTop: 24,
+								paddingBottom: Math.max(bottomInset + 20, 32),
+								width: "100%",
+							}}
+						>
+							<DarkPillButton
+								label="Weiter"
+								onPress={onContinue}
+								disabled={buttonDisabled}
+							/>
+						</View>
+					) : null}
 				</Animated.View>
 			</ScrollView>
 
-			{showBottomButton ? (
+			{showFixedBottomButton ? (
 				<View
 					style={{
 						paddingTop: 8,
@@ -1374,6 +1611,9 @@ function QuestionStepView({
 export function LoginScreen() {
 	const { colors: COLORS } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 34,
+	});
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
@@ -1507,10 +1747,13 @@ export function LoginScreen() {
 					keyboardShouldPersistTaps="handled"
 					showsVerticalScrollIndicator={false}
 					contentContainerStyle={{
+						alignSelf: "center",
 						flexGrow: 1,
+						maxWidth: contentSizeLayout.containerMaxWidth,
 						paddingTop: Math.max(insets.top + 52, 64),
 						paddingBottom: Math.max(insets.bottom + 18, 28),
-						paddingHorizontal: 34,
+						paddingHorizontal: contentSizeLayout.horizontalPadding,
+						width: "100%",
 					}}
 				>
 					<View style={{ flex: 1, alignItems: "center" }}>
@@ -1650,6 +1893,9 @@ function VerificationScreen({
 	onResend: () => Promise<void>;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
@@ -1666,10 +1912,13 @@ function VerificationScreen({
 					showsVerticalScrollIndicator={false}
 					contentInsetAdjustmentBehavior="automatic"
 					contentContainerStyle={{
+						alignSelf: "center",
 						flexGrow: 1,
+						maxWidth: contentSizeLayout.containerMaxWidth,
 						paddingTop: Math.max(topInset + 12, 20),
 						paddingBottom: Math.max(bottomInset + 12, 20),
-						paddingHorizontal: 24,
+						paddingHorizontal: contentSizeLayout.horizontalPadding,
+						width: "100%",
 					}}
 				>
 					<AuthProgressHeader progress={progress} onBack={onBack} />
@@ -1734,17 +1983,29 @@ function CreationLoaderScreen({
 	bottomInset: number;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 26,
+	});
 
 	return (
 		<View style={{ flex: 1, backgroundColor: COLORS.background }}>
 			<Stack.Screen options={{ title: "Lernprofil", gestureEnabled: false }} />
 			<ThemedStatusBar />
-			<View
+			<ScrollView
+				bounces={false}
+				showsVerticalScrollIndicator={false}
 				style={{
 					flex: 1,
+					alignSelf: "center",
+					maxWidth: contentSizeLayout.containerMaxWidth,
+					width: "100%",
+				}}
+				// Safe-area and readable-width values are runtime layout data.
+				contentContainerStyle={{
+					flexGrow: 1,
 					paddingTop: Math.max(topInset + 24, 36),
 					paddingBottom: Math.max(bottomInset + 22, 32),
-					paddingHorizontal: 26,
+					paddingHorizontal: contentSizeLayout.horizontalPadding,
 					alignItems: "center",
 					justifyContent: "center",
 				}}
@@ -1756,7 +2017,7 @@ function CreationLoaderScreen({
 				>
 					Dein persönliches Lernprofil{"\n"}wird nun für dich erstellt.
 				</Text>
-			</View>
+			</ScrollView>
 		</View>
 	);
 }
@@ -1838,6 +2099,7 @@ function PillTextInput({
 	onSubmit: () => void;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 
 	return (
 		<View
@@ -1852,6 +2114,7 @@ function PillTextInput({
 				alignItems: "center",
 				paddingLeft: 16,
 				paddingRight: 4,
+				paddingVertical: shouldStackInlineContent ? 8 : 0,
 			}}
 		>
 			<TextInput
@@ -1871,7 +2134,8 @@ function PillTextInput({
 				selectionColor={COLORS.primary}
 				style={{
 					flex: 1,
-					height: 38,
+					height: shouldStackInlineContent ? undefined : 38,
+					minHeight: 38,
 					fontFamily: "Poppins",
 					fontSize: 13,
 					color: COLORS.text,
@@ -1890,11 +2154,13 @@ function FormPill({
 	...props
 }: TextInputProps & { rightAccessory?: ReactNode }) {
 	const { colors: COLORS } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 
 	return (
 		<View
 			style={{
-				height: 40,
+				height: shouldStackInlineContent ? undefined : 40,
+				minHeight: 40,
 				borderRadius: 22,
 				backgroundColor: COLORS.surface,
 				borderWidth: 1,
@@ -1902,6 +2168,7 @@ function FormPill({
 				flexDirection: "row",
 				alignItems: "center",
 				paddingHorizontal: 16,
+				paddingVertical: shouldStackInlineContent ? 8 : 0,
 			}}
 		>
 			<TextInput
@@ -1969,44 +2236,63 @@ function OtpCodeInput({
 	disabled: boolean;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
+	const { fontScale } = useWindowDimensions();
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const cellLayout = getOtpCellLayout({
+		fontScale,
+		shouldStackInlineContent,
+	});
+	const cells = OTP_CELL_KEYS.map((cellKey, index) => {
+		const symbol = value[index] ?? "";
+		const focused =
+			!disabled &&
+			(value.length === index ||
+				(value.length === CODE_LENGTH && index === CODE_LENGTH - 1));
+
+		return (
+			<View
+				key={cellKey}
+				style={{
+					flex: shouldStackInlineContent ? undefined : 1,
+					width: cellLayout.width,
+					height: cellLayout.height,
+					borderRadius: 8,
+					backgroundColor: COLORS.surface,
+					alignItems: "center",
+					justifyContent: "center",
+					borderWidth: focused ? 1.4 : 1,
+					borderColor: focused ? COLORS.primary : COLORS.border,
+				}}
+			>
+				<Text
+					className={
+						shouldStackInlineContent
+							? "text-center font-poppins font-semibold text-text"
+							: "text-center font-bold font-poppins text-text"
+					}
+					style={{
+						fontSize: 22,
+						lineHeight: 28,
+						fontVariant: ["tabular-nums"],
+					}}
+				>
+					{symbol}
+				</Text>
+			</View>
+		);
+	});
 
 	return (
 		<Pressable onPress={() => inputRef.current?.focus()}>
-			<View style={{ flexDirection: "row", gap: 8 }}>
-				{OTP_CELL_KEYS.map((cellKey, index) => {
-					const symbol = value[index] ?? "";
-					const focused =
-						!disabled &&
-						(value.length === index ||
-							(value.length === CODE_LENGTH && index === CODE_LENGTH - 1));
-					return (
-						<View
-							key={cellKey}
-							style={{
-								flex: 1,
-								height: 42,
-								borderRadius: 8,
-								backgroundColor: COLORS.surface,
-								alignItems: "center",
-								justifyContent: "center",
-								borderWidth: focused ? 1.4 : 1,
-								borderColor: focused ? COLORS.primary : COLORS.border,
-							}}
-						>
-							<Text
-								className="text-center font-bold font-poppins text-text"
-								style={{
-									fontSize: 22,
-									lineHeight: 28,
-									fontVariant: ["tabular-nums"],
-								}}
-							>
-								{symbol}
-							</Text>
-						</View>
-					);
-				})}
-			</View>
+			{shouldStackInlineContent ? (
+				<ScrollView horizontal showsHorizontalScrollIndicator={false}>
+					<View className="min-w-full flex-row justify-center gap-2">
+						{cells}
+					</View>
+				</ScrollView>
+			) : (
+				<View className="flex-row gap-2">{cells}</View>
+			)}
 			<TextInput
 				ref={inputRef}
 				value={value}
@@ -2042,8 +2328,18 @@ function RangeSelector({
 	const selected = values.includes(parsedValue) ? parsedValue : fallbackValue;
 	const selectedIndex = Math.max(0, values.indexOf(selected));
 	const listRef = useRef<FlatList<number>>(null);
-	const { width } = useWindowDimensions();
-	const carouselWidth = Math.min(width, 360);
+	const { fontScale, width } = useWindowDimensions();
+	const { shouldStackInlineContent, usableWidth } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
+	const valueBadgeSize = getRangeValueBadgeSize({
+		fontScale,
+		shouldStackInlineContent,
+	});
+	const valueContentLayout = getRangeValueContentLayout(fontScale);
+	const carouselWidth = shouldStackInlineContent
+		? Math.min(usableWidth, 360)
+		: Math.min(width, 360);
 	const itemWidth = 68;
 	const sidePadding = Math.max((carouselWidth - itemWidth) / 2, 0);
 	const scrollX = useSharedValue(selectedIndex * itemWidth);
@@ -2106,16 +2402,22 @@ function RangeSelector({
 		<View style={{ alignItems: "center", width: "100%" }}>
 			<View
 				style={{
-					width: 88,
-					height: 88,
-					borderRadius: 44,
+					width: valueBadgeSize,
+					height: valueBadgeSize,
+					borderRadius: valueBadgeSize / 2,
 					alignItems: "center",
 					justifyContent: "center",
 					borderWidth: 4,
 					borderColor: "rgba(0, 186, 255, 0.18)",
 				}}
 			>
-				<Svg width={88} height={88} style={{ position: "absolute" }}>
+				<Svg
+					width={valueBadgeSize}
+					height={valueBadgeSize}
+					viewBox="0 0 88 88"
+					// SVG geometry follows the runtime font-scale-derived badge size.
+					style={{ position: "absolute" }}
+				>
 					<Circle
 						cx="44"
 						cy="44"
@@ -2128,12 +2430,23 @@ function RangeSelector({
 						transform="rotate(-90 44 44)"
 					/>
 				</Svg>
-				<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-					{selected}
-				</Text>
-				<Text className="-mt-1 text-center font-poppins font-semibold text-body-5 text-text">
-					min
-				</Text>
+				<View
+					// Optical correction follows the runtime-scaled Poppins line boxes.
+					style={{
+						alignItems: "center",
+						transform: [{ translateY: valueContentLayout.verticalOffset }],
+					}}
+				>
+					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
+						{selected}
+					</Text>
+					<Text
+						className="text-center font-poppins font-semibold text-body-5 text-text"
+						style={{ marginTop: valueContentLayout.unitMarginTop }}
+					>
+						min
+					</Text>
+				</View>
 			</View>
 
 			<View
@@ -2261,10 +2574,12 @@ function ChipCloud({
 	value: string;
 	onToggle: (label: string) => void;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+
 	return (
 		<View
 			style={{
-				width: "88%",
+				width: shouldStackInlineContent ? "100%" : "88%",
 				flexDirection: "row",
 				flexWrap: "wrap",
 				justifyContent: "center",
@@ -2278,6 +2593,7 @@ function ChipCloud({
 				return (
 					<Animated.View
 						key={option.label}
+						className={shouldStackInlineContent ? "w-full" : undefined}
 						entering={FadeInDown.delay(index * 22).duration(220)}
 						layout={LinearTransition.duration(180)}
 					>
@@ -2294,7 +2610,8 @@ function ChipCloud({
 								alignItems: "center",
 								justifyContent: "center",
 								gap: 8,
-								overflow: "hidden",
+								overflow: shouldStackInlineContent ? "visible" : "hidden",
+								width: shouldStackInlineContent ? "100%" : undefined,
 								backgroundColor: selected ? COLORS.primary : COLORS.surface,
 								borderWidth: selected
 									? 0
@@ -2316,19 +2633,24 @@ function ChipCloud({
 										right: 0,
 										bottom: 0,
 										left: 0,
+										borderRadius: DAYOVA_DESIGN_SYSTEM.radius.button,
 									}}
 								/>
 							) : null}
 							{Icon ? (
-								<Icon
-									size={18}
-									color={selected ? COLORS.surface : COLORS.primary}
-									strokeWidth={2}
-								/>
+								<View className="shrink-0">
+									<Icon
+										size={18}
+										color={selected ? COLORS.surface : COLORS.primary}
+										strokeWidth={2}
+									/>
+								</View>
 							) : null}
 							<Text
 								className="font-poppins"
 								style={{
+									flexShrink: shouldStackInlineContent ? 1 : undefined,
+									textAlign: shouldStackInlineContent ? "center" : undefined,
 									color: selected ? COLORS.surface : COLORS.text,
 									fontSize: DAYOVA_DESIGN_SYSTEM.typography.body.sm.fontSize,
 									lineHeight:
@@ -2356,6 +2678,8 @@ function GoalList({
 	value: string;
 	onToggle: (label: string) => void;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+
 	return (
 		<View style={{ width: "100%", gap: 10 }}>
 			{options.map((option, index) => {
@@ -2375,11 +2699,13 @@ function GoalList({
 								flexDirection: "row",
 								alignItems: "center",
 								paddingHorizontal: 16,
+								paddingVertical: shouldStackInlineContent ? 12 : 0,
 								gap: 10,
 							}}
 						>
 							<View
 								style={{
+									flexShrink: 0,
 									width: 16,
 									height: 16,
 									borderRadius: 8,
@@ -2391,7 +2717,11 @@ function GoalList({
 								}}
 							/>
 							<Text
-								className="font-poppins text-body-3"
+								className={
+									shouldStackInlineContent
+										? "flex-1 font-poppins text-body-3"
+										: "font-poppins text-body-3"
+								}
 								style={{ color: selected ? "#FFFFFF" : COLORS.text }}
 							>
 								{option}
@@ -2473,6 +2803,7 @@ function FactPanel({ step }: { step: FactStep }) {
 }
 
 function PlanFitStack() {
+	const { shouldStackInlineContent } = useContentSizeLayout();
 	const items = [
 		{
 			icon: BookOpen,
@@ -2497,7 +2828,7 @@ function PlanFitStack() {
 		<View
 			style={{
 				width: "100%",
-				minHeight: 390,
+				minHeight: shouldStackInlineContent ? undefined : 390,
 				alignItems: "center",
 				overflow: "visible",
 			}}
@@ -2514,7 +2845,16 @@ function PlanFitStack() {
 			>
 				<PhoneBackground width="100%" height="115%" />
 			</View>
-			<View style={{ position: "absolute", top: 58, width: "100%", gap: 18 }}>
+			<View
+				style={{
+					position: shouldStackInlineContent ? "relative" : "absolute",
+					top: shouldStackInlineContent ? undefined : 58,
+					width: "100%",
+					gap: 18,
+					paddingTop: shouldStackInlineContent ? 60 : 0,
+					paddingBottom: shouldStackInlineContent ? 24 : 0,
+				}}
+			>
 				{items.map((item, index) => {
 					const Icon = item.icon;
 					return (
@@ -2531,6 +2871,7 @@ function PlanFitStack() {
 								borderRadius: 14,
 								backgroundColor: COLORS.surface,
 								paddingHorizontal: 14,
+								paddingVertical: shouldStackInlineContent ? 12 : 0,
 								flexDirection: "row",
 								alignItems: "center",
 								gap: 14,
@@ -2543,6 +2884,7 @@ function PlanFitStack() {
 						>
 							<View
 								style={{
+									flexShrink: 0,
 									width: 36,
 									height: 36,
 									borderRadius: 18,
@@ -2567,7 +2909,13 @@ function PlanFitStack() {
 	);
 }
 
-function WheelAnswer({ step }: { step: WheelStep }) {
+function WheelAnswer({
+	step,
+	onAnswerChange,
+}: {
+	step: WheelStep;
+	onAnswerChange: () => void;
+}) {
 	const { answers, setAnswer } = useOnboarding();
 	const [pickerTarget, setPickerTarget] = useState<
 		"birthDate" | "learningTime" | null
@@ -2579,6 +2927,7 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 		const handleChange = (event: DateTimePickerEvent, nextDate?: Date) => {
 			if (Platform.OS === "android") setPickerTarget(null);
 			if (event.type === "dismissed" || !nextDate) return;
+			onAnswerChange();
 			setAnswer("birthDate", formatPickerDate(nextDate));
 		};
 
@@ -2610,6 +2959,7 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 		const handleChange = (event: DateTimePickerEvent, nextDate?: Date) => {
 			if (Platform.OS === "android") setPickerTarget(null);
 			if (event.type === "dismissed" || !nextDate) return;
+			onAnswerChange();
 			setAnswer("learningTime", formatPickerTime(nextDate));
 		};
 
@@ -2641,7 +2991,10 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 				options={GRADE_OPTIONS}
 				formatLabel={(grade) => `${grade}. Klasse`}
 				testID="onboarding-grade-picker"
-				onChange={(value) => setAnswer("grade", value)}
+				onChange={(value) => {
+					onAnswerChange();
+					setAnswer("grade", value);
+				}}
 			/>
 		);
 	}
@@ -2651,7 +3004,10 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 			value={answers.state || "Sachsen"}
 			options={FEDERAL_STATES}
 			testID="onboarding-state-picker"
-			onChange={(value) => setAnswer("state", value)}
+			onChange={(value) => {
+				onAnswerChange();
+				setAnswer("state", value);
+			}}
 		/>
 	);
 }
@@ -2668,10 +3024,12 @@ function PickerInputTrigger({
 	onPress: () => void;
 }) {
 	const hasValue = value.trim().length > 0;
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const displayedValue = hasValue ? value : placeholder;
 
 	return (
 		<Pressable
-			accessibilityLabel={accessibilityLabel}
+			accessibilityLabel={`${accessibilityLabel}: ${displayedValue}`}
 			accessibilityRole="button"
 			onPress={onPress}
 			style={{
@@ -2684,6 +3042,7 @@ function PickerInputTrigger({
 				borderColor: "rgba(17,24,39,0.05)",
 				boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
 				paddingHorizontal: 20,
+				paddingVertical: shouldStackInlineContent ? 12 : 0,
 				flexDirection: "row",
 				alignItems: "center",
 				justifyContent: "space-between",
@@ -2692,10 +3051,10 @@ function PickerInputTrigger({
 		>
 			<Text
 				className="flex-1 font-poppins text-body-2"
-				numberOfLines={1}
+				numberOfLines={shouldStackInlineContent ? undefined : 1}
 				style={{ color: hasValue ? COLORS.text : "rgba(26,26,26,0.42)" }}
 			>
-				{hasValue ? value : placeholder}
+				{displayedValue}
 			</Text>
 			<ChevronDown size={20} color={COLORS.secondaryText} strokeWidth={2.1} />
 		</Pressable>
@@ -2848,27 +3207,43 @@ function CircularNextButton({
 function AuthChoicePillButton({
 	label,
 	onPress,
+	responsive = false,
 	scale,
 	tone,
 }: {
 	label: string;
 	onPress: () => void;
+	responsive?: boolean;
 	scale: number;
 	tone: "gradient" | "dark";
 }) {
 	const height = AUTH_CHOICE_FRAME.buttons.height * scale;
+	const { fontScale } = useWindowDimensions();
+	const responsiveLayout = getResponsiveAuthChoiceLayout(fontScale);
+	const visibleLabel =
+		responsive && label === "Registrierung" ? "Registrie­rung" : label;
 
 	return (
 		<Pressable
 			accessibilityRole="button"
+			accessibilityLabel={label}
 			onPress={onPress}
 			style={{
-				height,
-				borderRadius: height / 2,
+				height: responsive ? undefined : height,
+				minHeight: responsive ? responsiveLayout.buttonMinHeight : undefined,
+				borderRadius: responsive
+					? DAYOVA_DESIGN_SYSTEM.radius.button
+					: height / 2,
+				borderColor: tone === "gradient" ? COLORS.surface : COLORS.border,
+				borderWidth: responsive
+					? DAYOVA_DESIGN_SYSTEM.size.button.borderWidth
+					: 0,
 				overflow: "hidden",
 				alignItems: "center",
 				justifyContent: "center",
 				backgroundColor: tone === "dark" ? COLORS.buttonNeutral : "transparent",
+				paddingHorizontal: responsive ? 24 : 0,
+				paddingVertical: responsive ? 12 : 0,
 			}}
 		>
 			{tone === "gradient" ? (
@@ -2886,16 +3261,22 @@ function AuthChoicePillButton({
 				/>
 			) : null}
 			<Text
-				className="font-poppins font-semibold"
+				allowFontScaling={responsive ? false : undefined}
+				className={
+					responsive
+						? "text-center font-poppins font-semibold text-body-2"
+						: "font-poppins font-semibold"
+				}
 				style={{
 					color: COLORS.surface,
-					fontSize: 16 * scale,
-					lineHeight: 24 * scale,
+					fontSize: responsive ? responsiveLayout.bodyFontSize : 16 * scale,
+					lineHeight: responsive ? responsiveLayout.bodyLineHeight : 24 * scale,
 					includeFontPadding: false,
+					width: responsive ? "100%" : undefined,
 					textAlignVertical: "center",
 				}}
 			>
-				{label}
+				{visibleLabel}
 			</Text>
 		</Pressable>
 	);
@@ -2910,17 +3291,22 @@ function GradientPillButton({
 	onPress: () => void;
 	disabled?: boolean;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+
 	return (
 		<Pressable
+			className="px-6"
 			disabled={disabled}
 			onPress={onPress}
 			style={{
-				height: 56,
-				borderRadius: 28,
+				height: shouldStackInlineContent ? undefined : 56,
+				minHeight: 56,
+				borderRadius: DAYOVA_DESIGN_SYSTEM.radius.button,
 				overflow: "hidden",
 				alignItems: "center",
 				justifyContent: "center",
 				opacity: disabled ? 0.55 : 1,
+				paddingVertical: shouldStackInlineContent ? 12 : 0,
 			}}
 		>
 			<LinearGradient
@@ -2936,7 +3322,11 @@ function GradientPillButton({
 				}}
 			/>
 			<Text
-				className="font-bold font-poppins text-body-2"
+				className={
+					shouldStackInlineContent
+						? "font-poppins font-semibold text-body-2"
+						: "font-bold font-poppins text-body-2"
+				}
 				style={{ color: COLORS.surface }}
 			>
 				{label}
@@ -2954,21 +3344,30 @@ function DarkPillButton({
 	onPress: () => void;
 	disabled?: boolean;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+
 	return (
 		<Pressable
+			className="px-6"
 			disabled={disabled}
 			onPress={onPress}
 			style={{
-				height: 56,
-				borderRadius: 28,
+				height: shouldStackInlineContent ? undefined : 56,
+				minHeight: 56,
+				borderRadius: DAYOVA_DESIGN_SYSTEM.radius.button,
 				alignItems: "center",
 				justifyContent: "center",
 				backgroundColor: COLORS.buttonNeutral,
 				boxShadow: disabled ? "none" : "0 8px 18px rgba(20, 28, 48, 0.08)",
+				paddingVertical: shouldStackInlineContent ? 12 : 0,
 			}}
 		>
 			<Text
-				className="font-bold font-poppins text-body-2"
+				className={
+					shouldStackInlineContent
+						? "font-poppins font-semibold text-body-2"
+						: "font-bold font-poppins text-body-2"
+				}
 				style={{ color: COLORS.surface }}
 			>
 				{label}

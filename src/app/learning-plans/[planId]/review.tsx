@@ -13,6 +13,10 @@ import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { Plus } from "~/components/ui/icon";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
@@ -35,6 +39,7 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -57,6 +62,8 @@ const successPath = (
 export default function LearningPlanReviewScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { horizontalPadding, shouldStackInlineContent } =
+		useContentSizeLayout();
 	const { colors } = useDayovaTheme();
 	const params = useLocalSearchParams<{
 		planId?: string;
@@ -219,10 +226,13 @@ export default function LearningPlanReviewScreen() {
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
+					alignSelf: "center",
 					flexGrow: 1,
-					paddingHorizontal: 32,
+					maxWidth: 480,
+					paddingHorizontal: horizontalPadding,
 					paddingTop: 80,
-					paddingBottom: 150,
+					paddingBottom: shouldStackInlineContent ? 240 : 150,
+					width: "100%",
 				}}
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
@@ -265,57 +275,78 @@ export default function LearningPlanReviewScreen() {
 
 			<View
 				pointerEvents="box-none"
-				className="absolute right-0 bottom-0 left-0 flex-row items-center px-10"
-				style={{ gap: 12, paddingBottom: Math.max(insets.bottom + 24, 36) }}
+				className="absolute right-0 bottom-0 left-0"
 			>
-				<Button
-					accessibilityLabel={
-						isBusy || isReplanning
-							? "Lernplan eintragen, wird geladen"
-							: "Lernplan eintragen"
-					}
-					accessibilityLiveRegion={
-						isBusy || isReplanning ? "polite" : undefined
-					}
-					accessibilityState={{
-						busy: isBusy || isReplanning,
-						disabled: planActionsDisabled,
-					}}
-					disabled={planActionsDisabled}
-					onPress={acceptGeneratedPlan}
-					variant="neutral"
-					className="h-14 flex-1"
-					style={{ minWidth: 0 }}
-				>
-					{isBusy ? (
-						<ActivityIndicator color={colors.background} />
-					) : (
-						<Text className="font-poppins font-semibold text-body-3">
-							Lernplan eintragen
-						</Text>
+				<PortraitContent
+					className={cn(
+						"gap-3",
+						shouldStackInlineContent
+							? "items-stretch"
+							: "flex-row items-center px-10",
 					)}
-				</Button>
-				<TouchableOpacity
-					accessibilityLabel="Lerntag hinzufügen"
-					accessibilityRole="button"
-					accessibilityState={{
-						disabled: planActionsDisabled,
-					}}
-					activeOpacity={0.86}
-					disabled={planActionsDisabled}
-					onPress={addRecommendedSession}
-					className="h-14 w-14 items-center justify-center rounded-full bg-primary"
-					style={{
-						shadowColor: "#00BAFF",
-						shadowOpacity: 0.32,
-						shadowRadius: 16,
-						shadowOffset: { width: 0, height: 7 },
-						elevation: 5,
-						opacity: planActionsDisabled ? 0.55 : 1,
-					}}
+					// Safe-area padding is runtime device data.
+					style={[
+						shouldStackInlineContent
+							? { paddingHorizontal: horizontalPadding }
+							: undefined,
+						{ paddingBottom: Math.max(insets.bottom + 24, 36) },
+					]}
 				>
-					<Plus size={28} color="#FFFFFF" strokeWidth={2.4} />
-				</TouchableOpacity>
+					<Button
+						accessibilityLabel={
+							isBusy || isReplanning
+								? "Lernplan eintragen, wird geladen"
+								: "Lernplan eintragen"
+						}
+						accessibilityLiveRegion={
+							isBusy || isReplanning ? "polite" : undefined
+						}
+						accessibilityState={{
+							busy: isBusy || isReplanning,
+							disabled: planActionsDisabled,
+						}}
+						disabled={planActionsDisabled}
+						onPress={acceptGeneratedPlan}
+						variant="neutral"
+						className={cn(
+							"min-w-0",
+							shouldStackInlineContent ? "min-h-14 w-full" : "h-14 flex-1",
+						)}
+					>
+						{isBusy ? (
+							<ActivityIndicator color={colors.background} />
+						) : (
+							<Text className="font-poppins font-semibold text-body-3">
+								Lernplan eintragen
+							</Text>
+						)}
+					</Button>
+					<TouchableOpacity
+						accessibilityLabel="Lerntag hinzufügen"
+						accessibilityRole="button"
+						accessibilityState={{
+							disabled: planActionsDisabled,
+						}}
+						activeOpacity={0.86}
+						disabled={planActionsDisabled}
+						onPress={addRecommendedSession}
+						className={cn(
+							"h-14 w-14 items-center justify-center rounded-full bg-primary",
+							shouldStackInlineContent && "self-end",
+						)}
+						// Native shadow and disabled opacity require a platform style value.
+						style={{
+							shadowColor: "#00BAFF",
+							shadowOpacity: 0.32,
+							shadowRadius: 16,
+							shadowOffset: { width: 0, height: 7 },
+							elevation: 5,
+							opacity: planActionsDisabled ? 0.55 : 1,
+						}}
+					>
+						<Plus size={28} color="#FFFFFF" strokeWidth={2.4} />
+					</TouchableOpacity>
+				</PortraitContent>
 			</View>
 		</View>
 	);

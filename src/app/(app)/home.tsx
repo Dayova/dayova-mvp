@@ -19,18 +19,17 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { scheduleOnRN } from "react-native-worklets";
 import Svg, {
 	Defs,
-	LinearGradient as SvgLinearGradient,
 	Path,
 	Rect,
 	Stop,
+	LinearGradient as SvgLinearGradient,
 } from "react-native-svg";
+import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { NotificationButton } from "~/components/notification-button";
-import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import {
 	ArrowUpRight,
 	Backpack,
@@ -39,6 +38,8 @@ import {
 	Plus,
 	PropertyEdit,
 } from "~/components/ui/icon";
+import { NotchedActionCard } from "~/components/ui/notched-action-card";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
@@ -132,7 +133,75 @@ function SideScrollIndicator({
 	);
 }
 
+function DayNavigationHandle({
+	onNext,
+	onPrevious,
+	scale,
+	style,
+}: {
+	onNext: () => void;
+	onPrevious: () => void;
+	scale: number;
+	style?: StyleProp<ViewStyle>;
+}) {
+	const touchTargetSize = Math.max(44, 42 * scale);
+	const handleWidth = Math.max(44, 32 * scale);
+
+	return (
+		<View
+			// Runtime scale and placement keep the control attached to its hero card.
+			style={[
+				{
+					width: handleWidth,
+					height: touchTargetSize * 2,
+					zIndex: 50,
+				},
+				style,
+			]}
+		>
+			<SideScrollIndicator
+				scale={scale}
+				// Runtime scale keeps the SVG centered inside its scaled touch target.
+				style={{
+					position: "absolute",
+					left: 0,
+					top: 24 * scale,
+				}}
+			/>
+			<TouchableOpacity
+				accessibilityRole="button"
+				accessibilityLabel="Nächsten Tag anzeigen"
+				activeOpacity={0.5}
+				onPress={onNext}
+				// Runtime scale defines the invisible hit region around the custom SVG.
+				style={{
+					position: "absolute",
+					left: 0,
+					top: 0,
+					width: handleWidth,
+					height: touchTargetSize,
+				}}
+			/>
+			<TouchableOpacity
+				accessibilityRole="button"
+				accessibilityLabel="Vorherigen Tag anzeigen"
+				activeOpacity={0.5}
+				onPress={onPrevious}
+				// Runtime scale defines the invisible hit region around the custom SVG.
+				style={{
+					position: "absolute",
+					left: 0,
+					bottom: 0,
+					width: handleWidth,
+					height: touchTargetSize,
+				}}
+			/>
+		</View>
+	);
+}
+
 function LearningSessionCard({
+	cardWidth,
 	entry,
 	scale,
 	compactScale,
@@ -142,6 +211,7 @@ function LearningSessionCard({
 	currentBlueContainerAnimatedStyle,
 	previousBlueContainerAnimatedStyle,
 }: {
+	cardWidth: number;
 	entry: DayEntry | null;
 	scale: number;
 	compactScale: number;
@@ -154,8 +224,10 @@ function LearningSessionCard({
 	currentBlueContainerAnimatedStyle?: AnimatedStyle<ViewStyle>;
 	previousBlueContainerAnimatedStyle?: AnimatedStyle<ViewStyle>;
 }) {
-	const cardWidth = 369 * scale;
-	const innerWidth = 321 * scale;
+	const innerWidth = Math.max(cardWidth - 48 * scale, 0);
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const startMinutes = entry ? getEntryStartMinutes(entry) : 14 * 60;
 	const endMinutes = entry ? getEntryEndMinutes(entry) : startMinutes + 30;
 	const title = entry ? getEntryDisplayTitle(entry) : "Heute ist frei";
@@ -178,15 +250,25 @@ function LearningSessionCard({
 				colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
 				start={PRIMARY_INTERACTIVE_GRADIENT.start}
 				end={PRIMARY_INTERACTIVE_GRADIENT.end}
+				// Runtime scale and content-size mode control the card's native layout.
 				style={{
 					flex: 1,
 					paddingHorizontal: 24 * scale,
-					flexDirection: "row",
-					alignItems: "center",
-					justifyContent: "space-between",
+					paddingVertical: shouldStackInlineContent ? 16 * scale : 0,
+					flexDirection: shouldStackInlineContent ? "column" : "row",
+					alignItems: shouldStackInlineContent ? "flex-start" : "center",
+					justifyContent: shouldStackInlineContent ? "center" : "space-between",
+					rowGap: shouldStackInlineContent ? 8 * scale : 0,
 				}}
 			>
-				<View className="items-center">
+				<View
+					className="items-center"
+					// Runtime content-size mode reflows the date without changing defaults.
+					style={{
+						flexDirection: shouldStackInlineContent ? "row" : "column",
+						columnGap: shouldStackInlineContent ? 8 * scale : 0,
+					}}
+				>
 					<Text
 						className="font-poppins text-white"
 						style={{ fontSize: 12 * scale, lineHeight: 18 * scale }}
@@ -215,7 +297,8 @@ function LearningSessionCard({
 			className="relative"
 			style={{
 				width: cardWidth,
-				height: 254 * compactScale,
+				height: shouldStackInlineContent ? undefined : 254 * compactScale,
+				minHeight: 254 * compactScale,
 				marginTop: 30 * compactScale,
 			}}
 		>
@@ -234,15 +317,18 @@ function LearningSessionCard({
 				onPress={onPress}
 				pressType="card"
 				style={{
-					position: "absolute",
-					top: 8 * compactScale,
+					position: shouldStackInlineContent ? "relative" : "absolute",
+					top: shouldStackInlineContent ? undefined : 8 * compactScale,
 					left: 0,
 					width: cardWidth,
+					marginTop: shouldStackInlineContent ? 8 * compactScale : 0,
 				}}
 				cardStyle={{
 					paddingHorizontal: 24 * scale,
 					paddingTop: 12 * compactScale,
-					paddingBottom: 22 * compactScale,
+					paddingBottom: shouldStackInlineContent
+						? 72 * compactScale
+						: 22 * compactScale,
 				}}
 			>
 				<View
@@ -269,7 +355,8 @@ function LearningSessionCard({
 					style={[
 						{
 							width: innerWidth,
-							height: 86 * compactScale,
+							height: shouldStackInlineContent ? undefined : 86 * compactScale,
+							minHeight: 86 * compactScale,
 							borderRadius: 30 * scale,
 							overflow: "hidden",
 						},
@@ -278,7 +365,7 @@ function LearningSessionCard({
 				>
 					{renderBlueContainerContent(date, entry)}
 				</Animated.View>
-				{previousBlueContainer ? (
+				{previousBlueContainer && !shouldStackInlineContent ? (
 					<Animated.View
 						pointerEvents="none"
 						style={[
@@ -303,16 +390,16 @@ function LearningSessionCard({
 				<View style={{ marginTop: 27 * compactScale, width: innerWidth }}>
 					<Text
 						className="font-poppins font-semibold text-text"
-						numberOfLines={1}
+						numberOfLines={shouldStackInlineContent ? undefined : 1}
 						style={{ fontSize: 16 * scale, lineHeight: 24 * scale }}
 					>
 						{title}
 					</Text>
 					<Text
 						className="mt-2 font-poppins text-secondary-text"
-						numberOfLines={2}
+						numberOfLines={shouldStackInlineContent ? undefined : 2}
 						style={{
-							width: 301 * scale,
+							width: shouldStackInlineContent ? "100%" : 301 * scale,
 							fontSize: 12 * scale,
 							lineHeight: 18 * scale,
 						}}
@@ -432,7 +519,10 @@ export default function HomeScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { colors, isDark } = useDayovaTheme();
-	const { width, height } = useWindowDimensions();
+	const { width, height, fontScale } = useWindowDimensions();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const { user } = useAuth();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -444,6 +534,8 @@ export default function HomeScreen() {
 		date: Date;
 		entry: DayEntry | null;
 	} | null>(null);
+	const [measuredScheduleContentHeight, setMeasuredScheduleContentHeight] =
+		useState(0);
 	const timelineScrollRef = useRef<ScrollView | null>(null);
 	const dayStripScrollRef = useRef<ScrollView | null>(null);
 	const hasCenteredTimelineRef = useRef(false);
@@ -513,7 +605,11 @@ export default function HomeScreen() {
 		(result) => result !== undefined,
 	);
 	const selectedDate = parseDayKey(selectedDayKey) ?? today;
-	const screenScale = clamp(width / 393, 0.86, 1.08);
+	const layoutViewportWidth = Math.min(
+		width,
+		contentSizeLayout.containerMaxWidth,
+	);
+	const screenScale = clamp(layoutViewportWidth / 393, 0.86, 1.08);
 	const heightScale = clamp(height / 852, 0.82, 1.08);
 	const compactScale = Math.min(screenScale, heightScale);
 	const blueContainerHeight = 86 * compactScale;
@@ -560,16 +656,20 @@ export default function HomeScreen() {
 			],
 		};
 	});
-	const horizontalPadding = clamp((width - 369 * screenScale) / 2, 12, 24);
+	const horizontalPadding = clamp(
+		(layoutViewportWidth - 369 * screenScale) / 2,
+		12,
+		contentSizeLayout.horizontalPadding,
+	);
 	const headerInset = clamp(24 * screenScale - horizontalPadding, 0, 12);
 	const contentTop = Math.max(insets.top + 16 * heightScale, 48 * compactScale);
 	const sideHandleTop = contentTop + 170 * compactScale;
 	const planCardWidth = Math.min(
-		width - horizontalPadding * 2,
+		layoutViewportWidth - horizontalPadding * 2,
 		369 * screenScale,
 	);
 	const scheduleCardWidth = Math.min(
-		width - horizontalPadding * 2,
+		layoutViewportWidth - horizontalPadding * 2,
 		369 * screenScale,
 	);
 	const planInnerWidth = planCardWidth - 40 * screenScale;
@@ -578,10 +678,34 @@ export default function HomeScreen() {
 	const hourWidth = 72 * scheduleScale;
 	const dayWidth = hourWidth * 24;
 	const timelineContentWidth = dayWidth * visibleDays.length;
-	const timelineHeight = 259 * compactScale;
-	const timelineRowHeight = 82 * compactScale;
-	const timelineBlockHeight = 70 * compactScale;
 	const timelineTopOffset = 62 * compactScale;
+	const timelineBlockHeight = contentSizeLayout.shouldStackInlineContent
+		? Math.max(70 * compactScale, (44 + 26 * fontScale) * screenScale)
+		: 70 * compactScale;
+	const timelineRowHeight = contentSizeLayout.shouldStackInlineContent
+		? timelineBlockHeight + 12 * compactScale
+		: 82 * compactScale;
+	const timelineBottomClearance = contentSizeLayout.shouldStackInlineContent
+		? 20 * compactScale + 18 * screenScale * fontScale
+		: 0;
+	const timelineHeight = contentSizeLayout.shouldStackInlineContent
+		? Math.max(
+				259 * compactScale,
+				timelineTopOffset +
+					timelineRowHeight +
+					timelineBlockHeight +
+					timelineBottomClearance,
+			)
+		: 259 * compactScale;
+	const currentTimelineLineHeight = contentSizeLayout.shouldStackInlineContent
+		? Math.max(
+				0,
+				timelineHeight -
+					timelineBottomClearance -
+					24 * compactScale -
+					14 * screenScale,
+			)
+		: 177 * compactScale;
 	const timelineMarkerColor = isDark
 		? "rgba(255,255,255,0.10)"
 		: "rgba(0,0,0,0.08)";
@@ -597,8 +721,11 @@ export default function HomeScreen() {
 		: "#F3E8F0";
 	const dayStripGap = 10 * scheduleScale;
 	const getDayStripItemWidth = useCallback(
-		(_isToday?: boolean) => 42 * scheduleScale,
-		[scheduleScale],
+		(_isToday?: boolean) =>
+			contentSizeLayout.shouldStackInlineContent
+				? Math.max(42 * scheduleScale, 42 * fontScale)
+				: 42 * scheduleScale,
+		[contentSizeLayout.shouldStackInlineContent, fontScale, scheduleScale],
 	);
 	const dayStripOffsets = useMemo(() => {
 		let offset = 0;
@@ -613,7 +740,22 @@ export default function HomeScreen() {
 		getDayStripItemWidth(visibleDays[visibleDays.length - 1]?.isToday ?? false);
 	const navClearance = Math.max(insets.bottom + 108 * screenScale, 132);
 	const scheduleInnerWidth = scheduleCardWidth - 24 * screenScale;
-	const scheduleCardHeight = 434 * compactScale;
+	const minimumScheduleCardHeight =
+		434 * compactScale +
+		(contentSizeLayout.shouldStackInlineContent ? 72 * compactScale : 0);
+	const scheduleCardHeight = Math.max(
+		minimumScheduleCardHeight,
+		measuredScheduleContentHeight,
+	);
+	const timelineTimeLabelWidth = contentSizeLayout.shouldStackInlineContent
+		? Math.min(hourWidth, Math.max(40 * screenScale, 40 * fontScale))
+		: 40;
+	const timelineTimeLabelGap = contentSizeLayout.shouldStackInlineContent
+		? Math.max(
+				0,
+				24 * scheduleScale - (timelineTimeLabelWidth - 40 * screenScale),
+			)
+		: 24 * scheduleScale;
 	const selectedDayLabel = new Intl.DateTimeFormat("de-DE", {
 		weekday: "long",
 		day: "numeric",
@@ -879,21 +1021,41 @@ export default function HomeScreen() {
 				className="flex-1"
 				contentInsetAdjustmentBehavior="automatic"
 				showsVerticalScrollIndicator={false}
+				// Safe-area and responsive readable-width values are runtime layout data.
 				contentContainerStyle={{
+					alignSelf: "center",
+					maxWidth: contentSizeLayout.containerMaxWidth,
 					paddingTop: Math.max(
 						insets.top + 16 * heightScale,
 						48 * compactScale,
 					),
 					paddingBottom: navClearance,
 					paddingHorizontal: horizontalPadding,
+					width: "100%",
 				}}
 			>
 				<View
-					className="flex-row items-start justify-between"
+					className="items-start justify-between"
 					// Runtime-scaled typography keeps this dense home layout fitting device width.
-					style={{ paddingHorizontal: headerInset }}
+					style={{
+						paddingHorizontal: headerInset,
+						flexDirection: contentSizeLayout.shouldStackInlineContent
+							? "column"
+							: "row",
+						rowGap: contentSizeLayout.shouldStackInlineContent ? 12 : 0,
+					}}
 				>
-					<View>
+					<View
+						className="min-w-0"
+						// Runtime content-size mode stacks the greeting and notification action.
+						style={{
+							flex: contentSizeLayout.shouldStackInlineContent ? undefined : 1,
+							paddingRight: contentSizeLayout.shouldStackInlineContent ? 0 : 12,
+							width: contentSizeLayout.shouldStackInlineContent
+								? "100%"
+								: undefined,
+						}}
+					>
 						<Text
 							className="font-poppins font-semibold text-text"
 							// Runtime-scaled typography keeps this dense home layout fitting device width.
@@ -915,32 +1077,69 @@ export default function HomeScreen() {
 							schön, dass du da bist!
 						</Text>
 					</View>
-					<NotificationButton />
+					<View
+						// Runtime content-size mode moves the notification action below the copy.
+						style={{
+							alignSelf: contentSizeLayout.shouldStackInlineContent
+								? "flex-end"
+								: undefined,
+						}}
+					>
+						<NotificationButton />
+					</View>
 				</View>
 
-				<View className="items-center">
-					<LearningSessionCard
-						entry={currentHeroEntry}
-						scale={screenScale}
-						compactScale={compactScale}
-						date={selectedDate}
-						previousBlueContainer={previousBlueContainer}
-						currentBlueContainerAnimatedStyle={
-							currentBlueContainerAnimatedStyle
-						}
-						previousBlueContainerAnimatedStyle={
-							previousBlueContainerAnimatedStyle
-						}
-						onPress={() =>
-							currentHeroEntry
-								? openEntry(currentHeroEntry, "hero_card")
-								: undefined
-						}
-					/>
+				<View
+					className="relative items-center"
+					// The enlarged wrapper spans the bounded composition so edge controls stay hittable.
+					style={
+						contentSizeLayout.shouldStackInlineContent
+							? {
+									marginLeft: -horizontalPadding,
+									width: layoutViewportWidth,
+								}
+							: undefined
+					}
+				>
+					<View
+						className="relative"
+						// Measured viewport width preserves the original hero-card proportions.
+						style={{ width: planCardWidth }}
+					>
+						<LearningSessionCard
+							cardWidth={planCardWidth}
+							entry={currentHeroEntry}
+							scale={screenScale}
+							compactScale={compactScale}
+							date={selectedDate}
+							previousBlueContainer={previousBlueContainer}
+							currentBlueContainerAnimatedStyle={
+								currentBlueContainerAnimatedStyle
+							}
+							previousBlueContainerAnimatedStyle={
+								previousBlueContainerAnimatedStyle
+							}
+							onPress={() =>
+								currentHeroEntry
+									? openEntry(currentHeroEntry, "hero_card")
+									: undefined
+							}
+						/>
+					</View>
+					{contentSizeLayout.shouldStackInlineContent ? (
+						<DayNavigationHandle
+							onNext={() => navigateHeroDay(1)}
+							onPrevious={() => navigateHeroDay(-1)}
+							scale={screenScale}
+							// Runtime scale preserves the edge-aligned enlarged handle position.
+							style={{ position: "absolute", left: 0, top: 104 * compactScale }}
+						/>
+					) : null}
 				</View>
 
 				<View
 					className="relative self-center"
+					// Measured content height lets the decorative SVG grow with text.
 					style={{
 						width: scheduleCardWidth,
 						height: scheduleCardHeight,
@@ -956,6 +1155,7 @@ export default function HomeScreen() {
 						height="100%"
 						viewBox="0 0 369 434"
 						preserveAspectRatio="none"
+						// SVG geometry must fill the measured decorative frame.
 						style={{ position: "absolute", inset: 0 }}
 					>
 						<Path
@@ -967,15 +1167,31 @@ export default function HomeScreen() {
 					</Svg>
 					<View
 						className="relative z-10"
+						onLayout={({ nativeEvent }) => {
+							setMeasuredScheduleContentHeight(nativeEvent.layout.height);
+						}}
+						// Runtime scale and measured content make the decorative frame grow with text.
 						style={{
 							paddingHorizontal: 12 * screenScale,
 							paddingTop: 24 * compactScale,
 							paddingBottom: 12 * compactScale,
 						}}
 					>
-						<View className="flex-row items-center justify-between">
+						<View
+							className="items-start justify-between"
+							// Runtime content-size mode reflows the schedule heading and actions.
+							style={{
+								flexDirection: contentSizeLayout.shouldStackInlineContent
+									? "column"
+									: "row",
+								rowGap: contentSizeLayout.shouldStackInlineContent
+									? 8 * compactScale
+									: 0,
+							}}
+						>
 							<Text
 								className="ml-3 font-poppins font-semibold text-text"
+								// Runtime scale keeps this dense decorative card proportional.
 								style={{
 									fontSize: 24 * screenScale,
 									lineHeight: 36 * screenScale,
@@ -985,10 +1201,20 @@ export default function HomeScreen() {
 							</Text>
 							<View
 								className="relative"
+								// Runtime scale and reflow mode place the custom SVG action rail.
 								style={{
-									position: "absolute",
-									top: -24 * compactScale,
-									right: -12 * screenScale,
+									position: contentSizeLayout.shouldStackInlineContent
+										? "relative"
+										: "absolute",
+									top: contentSizeLayout.shouldStackInlineContent
+										? undefined
+										: -24 * compactScale,
+									right: contentSizeLayout.shouldStackInlineContent
+										? undefined
+										: -12 * screenScale,
+									alignSelf: contentSizeLayout.shouldStackInlineContent
+										? "flex-end"
+										: undefined,
 									width: 104 * screenScale,
 									height: 52 * screenScale,
 								}}
@@ -1002,6 +1228,7 @@ export default function HomeScreen() {
 									height="100%"
 									viewBox="0 0 104 52"
 									preserveAspectRatio="none"
+									// SVG geometry fills the runtime-scaled action rail.
 									style={{ position: "absolute", inset: 0 }}
 								>
 									<Path
@@ -1142,7 +1369,13 @@ export default function HomeScreen() {
 							ref={dayStripScrollRef}
 							horizontal
 							showsHorizontalScrollIndicator={false}
-							style={{ marginTop: 23 * compactScale, alignSelf: "center" }}
+							// Runtime scale and reflow mode set the day strip's vertical rhythm.
+							style={{
+								marginTop: contentSizeLayout.shouldStackInlineContent
+									? 16 * compactScale
+									: 23 * compactScale,
+								alignSelf: "center",
+							}}
 							contentContainerStyle={{ width: dayStripContentWidth }}
 						>
 							<View
@@ -1154,7 +1387,10 @@ export default function HomeScreen() {
 							>
 								{visibleDays.map((day, dayIndex) => {
 									const selected = selectedDayKey === day.key;
-									const itemWidth = 42 * scheduleScale;
+									const itemWidth = getDayStripItemWidth(day.isToday);
+									const itemHeight = contentSizeLayout.shouldStackInlineContent
+										? itemWidth
+										: 42 * screenScale;
 									const content = (
 										<Text
 											key={`${day.key}-label`}
@@ -1199,7 +1435,7 @@ export default function HomeScreen() {
 														end={PRIMARY_INTERACTIVE_GRADIENT.end}
 														style={{
 															width: itemWidth,
-															height: 42 * screenScale,
+															height: itemHeight,
 															borderRadius: 99,
 															alignItems: "center",
 															justifyContent: "center",
@@ -1212,7 +1448,7 @@ export default function HomeScreen() {
 														className="items-center justify-center rounded-full"
 														style={{
 															width: itemWidth,
-															height: 42 * screenScale,
+															height: itemHeight,
 														}}
 													>
 														{content}
@@ -1362,30 +1598,6 @@ export default function HomeScreen() {
 										},
 									)}
 
-									{selectedTimelineEntries.length === 0 ? (
-										<View
-											className="absolute items-center"
-											style={{
-												top: 105 * compactScale,
-												left:
-													Math.max(selectedDayIndex, 0) * dayWidth +
-													dayWidth / 2 -
-													timelineViewportWidth / 2,
-												width: timelineViewportWidth,
-											}}
-										>
-											<Text
-												className="font-poppins text-secondary-text"
-												style={{
-													fontSize: 12 * screenScale,
-													lineHeight: 18 * screenScale,
-												}}
-											>
-												Keine Einträge an diesem Tag
-											</Text>
-										</View>
-									) : null}
-
 									<View
 										className="absolute items-center"
 										style={{
@@ -1412,7 +1624,7 @@ export default function HomeScreen() {
 											className="bg-primary"
 											style={{
 												width: 4 * screenScale,
-												height: 177 * compactScale,
+												height: currentTimelineLineHeight,
 											}}
 										/>
 									</View>
@@ -1422,14 +1634,16 @@ export default function HomeScreen() {
 										style={{
 											left: currentTimelineX - 136 * scheduleScale,
 											bottom: 20 * compactScale,
-											columnGap: 24 * scheduleScale,
+											columnGap: timelineTimeLabelGap,
 										}}
 									>
 										{[-90, -60, -30, 0, 30].map((offset) => (
 											<Text
 												key={offset}
-												className="w-10 text-center font-poppins text-text"
+												className="text-center font-poppins text-text"
+												numberOfLines={1}
 												style={{
+													width: timelineTimeLabelWidth,
 													fontSize: 12 * screenScale,
 													lineHeight: 18 * screenScale,
 													fontWeight: offset === 0 ? "600" : "400",
@@ -1465,56 +1679,47 @@ export default function HomeScreen() {
 									</View>
 								</View>
 							</ScrollView>
+							{selectedTimelineEntries.length === 0 ? (
+								<View
+									pointerEvents="none"
+									className="absolute right-0 left-0 items-center"
+									// Runtime scale vertically centers the empty state in the timeline.
+									style={
+										contentSizeLayout.shouldStackInlineContent
+											? { top: 0, bottom: 0, justifyContent: "center" }
+											: { top: 105 * compactScale }
+									}
+								>
+									<Text
+										className="w-full px-3 text-center font-poppins text-secondary-text"
+										// Runtime scale keeps timeline annotation text proportional.
+										style={{
+											fontSize: 12 * screenScale,
+											lineHeight: 18 * screenScale,
+										}}
+									>
+										Keine Einträge an diesem Tag
+									</Text>
+								</View>
+							) : null}
 						</View>
 					</View>
 				</View>
 			</ScrollView>
 
-			<View
-				className="absolute"
-				style={{
-					left: 0,
-					top: sideHandleTop,
-					width: 32 * screenScale,
-					height: 84 * screenScale,
-					zIndex: 50,
-				}}
-			>
-				<SideScrollIndicator
+			{contentSizeLayout.shouldStackInlineContent ? null : (
+				<DayNavigationHandle
+					onNext={() => navigateHeroDay(1)}
+					onPrevious={() => navigateHeroDay(-1)}
 					scale={screenScale}
+					// Runtime safe-area and scale values preserve the default handle position.
 					style={{
 						position: "absolute",
-						left: 0,
-						top: 24 * screenScale,
+						left: Math.max((width - layoutViewportWidth) / 2, 0),
+						top: sideHandleTop,
 					}}
 				/>
-				<TouchableOpacity
-					accessibilityRole="button"
-					accessibilityLabel="Nächsten Tag anzeigen"
-					activeOpacity={0.5}
-					onPress={() => navigateHeroDay(1)}
-					style={{
-						position: "absolute",
-						left: 0,
-						top: 0,
-						width: 32 * screenScale,
-						height: 42 * screenScale,
-					}}
-				/>
-				<TouchableOpacity
-					accessibilityRole="button"
-					accessibilityLabel="Vorherigen Tag anzeigen"
-					activeOpacity={0.5}
-					onPress={() => navigateHeroDay(-1)}
-					style={{
-						position: "absolute",
-						left: 0,
-						bottom: 0,
-						width: 32 * screenScale,
-						height: 42 * screenScale,
-					}}
-				/>
-			</View>
+			)}
 
 			<CreateTypePickerModal
 				visible={showCreateTypePicker}

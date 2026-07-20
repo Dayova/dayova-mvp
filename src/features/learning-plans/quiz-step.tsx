@@ -9,7 +9,6 @@ import { Textarea } from "~/components/ui/textarea";
 import type { QuizQuestion } from "~/features/learning-plans/types";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 
-const ANSWER_TEXTAREA_HEIGHT = 176;
 const ANSWER_TEXTAREA_CARD_HEIGHT = 206;
 const QUESTION_PROGRESS_SIZE = 72;
 const QUESTION_PROGRESS_RADIUS = QUESTION_PROGRESS_SIZE / 2;
@@ -138,7 +137,7 @@ export function QuizStep({
 				<FieldControl
 					className="mb-8 items-start rounded-[28px] px-5 pt-4 pb-4"
 					style={{
-						height: ANSWER_TEXTAREA_CARD_HEIGHT,
+						minHeight: ANSWER_TEXTAREA_CARD_HEIGHT,
 						boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 					}}
 				>
@@ -146,7 +145,7 @@ export function QuizStep({
 						value={answer}
 						onChangeText={onAnswerChange}
 						placeholder="Schreibe hier deine Antwort."
-						style={{ height: ANSWER_TEXTAREA_HEIGHT }}
+						className="min-h-[176px]"
 					/>
 				</FieldControl>
 				{errorMessage ? (

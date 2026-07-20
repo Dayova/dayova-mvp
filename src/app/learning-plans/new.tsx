@@ -21,8 +21,8 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
-import { WarningBanner } from "~/components/ui/warning-banner";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import {
 	MaterialCard,
@@ -47,7 +47,6 @@ import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
 
-const TOPIC_TEXTAREA_HEIGHT = 160;
 const TOPIC_TEXTAREA_CARD_HEIGHT = 202;
 const UPLOAD_TIMEOUT_MS = 45_000;
 const UPLOAD_COMPLETION_FAILURE_MESSAGE =
@@ -528,7 +527,7 @@ export default function NewLearningPlanScreen() {
 				<FieldControl
 					className="mb-7 min-h-[150px] items-start rounded-[28px] px-5 pt-4 pb-4"
 					style={{
-						height: TOPIC_TEXTAREA_CARD_HEIGHT,
+						minHeight: TOPIC_TEXTAREA_CARD_HEIGHT,
 						boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 					}}
 				>
@@ -536,7 +535,7 @@ export default function NewLearningPlanScreen() {
 						value={topicDescription}
 						onChangeText={setTopicDescriptionInput}
 						placeholder="Kurze Beschreibung hinzufügen"
-						style={{ height: TOPIC_TEXTAREA_HEIGHT }}
+						className="min-h-[160px]"
 					/>
 				</FieldControl>
 

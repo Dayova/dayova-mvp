@@ -23,6 +23,10 @@ import {
 	Time04,
 } from "~/components/ui/icon";
 import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -33,8 +37,10 @@ import type {
 } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
+import { getLearningPathFrame } from "~/lib/learning-path-layout";
 import { goBackOrReplace } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
@@ -84,6 +90,9 @@ function SessionPreviewCard({
 	onOpen: () => void;
 }) {
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 16,
+	});
 	const phase = PHASE_COLOR[session.phase];
 	const PhaseIcon = PHASE_ICON[session.phase];
 	const title = formatGermanUiText(session.title);
@@ -115,19 +124,29 @@ function SessionPreviewCard({
 			cardHeight={SESSION_PREVIEW_CARD_HEIGHT}
 			cardStyle={{
 				paddingTop: 22,
-				paddingBottom: 24,
+				paddingBottom: shouldStackInlineContent ? 72 : 24,
 			}}
 		>
 			<View className="gap-2">
-				<View className="flex-row items-start justify-between gap-3">
+				<View
+					className={cn(
+						"items-start justify-between gap-3",
+						!shouldStackInlineContent && "flex-row",
+					)}
+				>
 					<Text
 						className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-2 text-text"
-						numberOfLines={2}
+						numberOfLines={shouldStackInlineContent ? undefined : 2}
 					>
 						{title}
 					</Text>
 
-					<View className="shrink-0 flex-row items-center justify-end gap-2">
+					<View
+						className={cn(
+							"shrink-0 flex-row flex-wrap items-center justify-end gap-2",
+							shouldStackInlineContent && "w-full self-end",
+						)}
+					>
 						<View
 							className="flex-row items-center gap-1 rounded-full px-2.5 py-1.5"
 							style={{ backgroundColor: phase.background }}
@@ -157,8 +176,12 @@ function SessionPreviewCard({
 				</View>
 
 				<Text
-					className="max-w-[292px] font-poppins text-body-4 text-secondary-text"
-					numberOfLines={2}
+					className={
+						shouldStackInlineContent
+							? "font-poppins text-body-4 text-secondary-text"
+							: "max-w-[292px] font-poppins text-body-4 text-secondary-text"
+					}
+					numberOfLines={shouldStackInlineContent ? undefined : 2}
 				>
 					{description}
 				</Text>
@@ -498,10 +521,12 @@ function PathNode({
 }
 
 function LearningPath({
+	availableWidth,
 	onSelectSession,
 	selectedSessionId,
 	sessions,
 }: {
+	availableWidth: number;
 	onSelectSession: (session: PlanSession) => void;
 	selectedSessionId: Id<"learningPlanSessions"> | null;
 	sessions: PlanSession[];
@@ -509,6 +534,11 @@ function LearningPath({
 	const currentIndex = getCurrentSessionIndex(sessions);
 	const activeSegmentLimit = getActiveSegmentLimit(sessions);
 	const pathHeight = getFigmaPathHeight(sessions.length);
+	const frame = getLearningPathFrame({
+		availableWidth,
+		pathHeight,
+		pathWidth: FIGMA_PATH_WIDTH,
+	});
 	const segments = sessions.slice(1).map((_, index) => ({
 		d: getFigmaSegmentPath(index),
 		active: index < activeSegmentLimit,
@@ -516,55 +546,68 @@ function LearningPath({
 
 	return (
 		<View
-			className="relative self-center"
-			style={{ width: FIGMA_PATH_WIDTH, height: pathHeight }}
+			className="self-center"
+			// Runtime viewport width determines the scaled learning-path frame.
+			style={{ width: frame.width, height: frame.height }}
 		>
-			<Svg
-				width={FIGMA_PATH_WIDTH}
-				height={pathHeight}
-				viewBox={`0 0 ${FIGMA_PATH_WIDTH} ${pathHeight}`}
-				style={{ position: "absolute", left: 0, top: 0 }}
+			<View
+				className="relative"
+				// Runtime scale preserves the authored SVG geometry on narrow viewports.
+				style={{
+					width: FIGMA_PATH_WIDTH,
+					height: pathHeight,
+					transform: [{ scale: frame.scale }],
+					transformOrigin: "top left",
+				}}
 			>
-				{segments.map((segment) => (
-					<Path
-						key={`track-${segment.d}`}
-						d={segment.d}
-						fill="none"
-						stroke={DAYOVA_DESIGN_SYSTEM.colors.path1}
-						strokeWidth={4}
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					/>
-				))}
-				{segments
-					.filter((segment) => segment.active)
-					.map((segment) => (
+				<Svg
+					width={FIGMA_PATH_WIDTH}
+					height={pathHeight}
+					viewBox={`0 0 ${FIGMA_PATH_WIDTH} ${pathHeight}`}
+					// SVG geometry is positioned inside the runtime-scaled frame.
+					style={{ position: "absolute", left: 0, top: 0 }}
+				>
+					{segments.map((segment) => (
 						<Path
-							key={`active-${segment.d}`}
+							key={`track-${segment.d}`}
 							d={segment.d}
 							fill="none"
-							stroke={DAYOVA_DESIGN_SYSTEM.colors.primary}
+							stroke={DAYOVA_DESIGN_SYSTEM.colors.path1}
 							strokeWidth={4}
 							strokeLinecap="round"
 							strokeLinejoin="round"
 						/>
 					))}
-			</Svg>
+					{segments
+						.filter((segment) => segment.active)
+						.map((segment) => (
+							<Path
+								key={`active-${segment.d}`}
+								d={segment.d}
+								fill="none"
+								stroke={DAYOVA_DESIGN_SYSTEM.colors.primary}
+								strokeWidth={4}
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						))}
+				</Svg>
 
-			{sessions.map((session, index) => {
-				const state = getPathNodeState(session, index, currentIndex);
+				{sessions.map((session, index) => {
+					const state = getPathNodeState(session, index, currentIndex);
 
-				return (
-					<PathNode
-						key={session.id}
-						frame={getFigmaNodeFrame(index)}
-						selected={session.id === selectedSessionId}
-						session={session}
-						state={state}
-						onPress={() => onSelectSession(session)}
-					/>
-				);
-			})}
+					return (
+						<PathNode
+							key={session.id}
+							frame={getFigmaNodeFrame(index)}
+							selected={session.id === selectedSessionId}
+							session={session}
+							state={state}
+							onPress={() => onSelectSession(session)}
+						/>
+					);
+				})}
+			</View>
 		</View>
 	);
 }
@@ -572,6 +615,9 @@ function LearningPath({
 export default function LearningPlanSessionsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { shouldStackInlineContent, usableWidth } = useContentSizeLayout({
+		requestedHorizontalPadding: 16,
+	});
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuth();
@@ -614,8 +660,9 @@ export default function LearningPlanSessionsScreen() {
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<ThemedStatusBar />
-			<View
+			<PortraitContent
 				className="px-4"
+				// Safe-area padding is runtime device data.
 				style={{
 					paddingTop: Math.max(insets.top + 8, 24),
 					paddingBottom: 16,
@@ -627,9 +674,9 @@ export default function LearningPlanSessionsScreen() {
 					className="mb-0"
 					titleClassName="text-center font-poppins font-semibold text-[22px] text-text leading-[30px]"
 				/>
-			</View>
+			</PortraitContent>
 
-			<View className="px-4 pb-5">
+			<PortraitContent className="px-4 pb-5">
 				{snapshot === null ? (
 					<View className="items-center py-10">
 						<ActivityIndicator
@@ -656,12 +703,13 @@ export default function LearningPlanSessionsScreen() {
 						</Text>
 					</View>
 				)}
-			</View>
+			</PortraitContent>
 
 			<ScrollView
 				className="flex-1 bg-background"
 				contentContainerStyle={[
 					{
+						alignItems: "center",
 						paddingHorizontal: 16,
 						paddingTop: 18,
 						paddingBottom: Math.max(insets.bottom + 36, 54),
@@ -674,6 +722,9 @@ export default function LearningPlanSessionsScreen() {
 					<View />
 				) : selectedSession ? (
 					<LearningPath
+						availableWidth={
+							shouldStackInlineContent ? usableWidth : FIGMA_PATH_WIDTH
+						}
 						selectedSessionId={selectedSession.id}
 						sessions={snapshot.sessions}
 						onSelectSession={(session) => setSelectedSessionId(session.id)}

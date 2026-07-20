@@ -26,6 +26,7 @@ import {
 	PropertyEdit,
 	X,
 } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { WarningBanner } from "~/components/ui/warning-banner";
@@ -53,6 +54,7 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
 import { formatFileSize } from "~/lib/upload-policy";
+import { cn } from "~/lib/utils";
 import { MISSING_LEARNING_TIMES_HINT } from "../../../convex/learningPlanPlanningHints";
 
 const phaseEditCopy: Record<
@@ -146,6 +148,7 @@ export function MaterialCard({
 	onRemove: () => void;
 }) {
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 
 	return (
 		<Surface
@@ -157,7 +160,7 @@ export function MaterialCard({
 			</View>
 			<View className="ml-3 flex-1">
 				<Text
-					numberOfLines={1}
+					numberOfLines={shouldStackInlineContent ? undefined : 1}
 					className="font-poppins font-semibold text-body-3 text-text"
 				>
 					{name}
@@ -189,6 +192,7 @@ export function SessionCard({
 	onEdit: () => void;
 }) {
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 	const endTime = timeFromMinutes(
 		minutesFromTime(session.startTime) + session.durationMinutes,
 	);
@@ -202,7 +206,12 @@ export function SessionCard({
 			accessibilityRole="button"
 			activeOpacity={0.88}
 			onPress={onEdit}
-			className="flex-row items-center rounded-[28px] px-5 py-5"
+			className={cn(
+				"rounded-[28px] px-5 py-5",
+				shouldStackInlineContent
+					? "items-stretch gap-3"
+					: "flex-row items-center",
+			)}
 			variant="soft"
 		>
 			<View className="h-14 w-14 items-center justify-center rounded-full bg-button-neutral">
@@ -213,7 +222,7 @@ export function SessionCard({
 					{formatShortWeekday(sessionDate)}
 				</Text>
 			</View>
-			<View className="flex-1 px-3">
+			<View className={shouldStackInlineContent ? "flex-1" : "flex-1 px-3"}>
 				<Text className="font-poppins font-semibold text-body-3 text-text">
 					{title}
 				</Text>
@@ -221,7 +230,12 @@ export function SessionCard({
 					{session.startTime} - {endTime}
 				</Text>
 			</View>
-			<View className="h-11 w-11 items-center justify-center rounded-full border border-black/10">
+			<View
+				className={cn(
+					"h-11 w-11 items-center justify-center rounded-full border border-black/10",
+					shouldStackInlineContent && "self-end",
+				)}
+			>
 				<PropertyEdit size={19} color={colors.text} strokeWidth={1.5} />
 			</View>
 		</ActionSurface>
@@ -241,20 +255,22 @@ function SessionEditPill({
 	accessibilityLabel: string;
 	className?: string;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+
 	return (
 		<FieldTrigger
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
 			activeOpacity={0.86}
 			onPress={onPress}
-			className={`min-h-[64px] rounded-[28px] px-5 ${className ?? ""}`}
+			className={cn("min-h-[64px] rounded-[28px] px-5", className)}
 			style={{
 				boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
 			}}
 		>
 			<Text
 				className="flex-1 font-poppins text-body-2 text-text"
-				numberOfLines={1}
+				numberOfLines={shouldStackInlineContent ? undefined : 1}
 			>
 				{value}
 			</Text>
@@ -292,6 +308,7 @@ export function SessionEditForm({
 }) {
 	const [isPhaseMenuOpen, setIsPhaseMenuOpen] = useState(false);
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 
 	return (
 		<View className="flex-1">
@@ -309,7 +326,12 @@ export function SessionEditForm({
 				icon={<CalendarDays size={20} color="#697586" strokeWidth={2.1} />}
 				onPress={onChangeDate}
 			/>
-			<View className="mt-5 mb-7 flex-row gap-3">
+			<View
+				className={cn(
+					"mt-5 mb-7 gap-3",
+					!shouldStackInlineContent && "flex-row",
+				)}
+			>
 				<View className="flex-1">
 					<SessionEditPill
 						accessibilityLabel="Startzeit ändern"
@@ -351,7 +373,7 @@ export function SessionEditForm({
 									onChangePhase(phase);
 									setIsPhaseMenuOpen(false);
 								}}
-								className="h-12 justify-center rounded-[24px] bg-card px-5"
+								className="min-h-12 justify-center rounded-[24px] bg-card px-5 py-2"
 								style={{
 									borderWidth: phase === editPhase ? 1.5 : 1,
 									borderColor:
@@ -367,10 +389,19 @@ export function SessionEditForm({
 				) : null}
 			</View>
 
-			<View className="mt-auto flex-row gap-3 pt-8">
+			<View
+				className={cn(
+					"mt-auto gap-3 pt-8",
+					!shouldStackInlineContent && "flex-row",
+				)}
+			>
 				<Button
 					variant="neutral"
-					className="flex-1 shadow-none"
+					className={
+						shouldStackInlineContent
+							? "w-full shadow-none"
+							: "flex-1 shadow-none"
+					}
 					onPress={onRemove}
 				>
 					<Text>Entfernen</Text>
@@ -381,7 +412,7 @@ export function SessionEditForm({
 					}
 					accessibilityLiveRegion={isSaving ? "polite" : undefined}
 					accessibilityState={{ busy: isSaving, disabled: isSaving }}
-					className="flex-1"
+					className={shouldStackInlineContent ? "w-full" : "flex-1"}
 					onPress={onSave}
 					disabled={isSaving}
 				>

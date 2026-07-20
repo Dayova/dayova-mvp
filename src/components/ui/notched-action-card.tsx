@@ -10,6 +10,7 @@ import {
 	type ViewStyle,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { resolveNotchedCardFrameHeight } from "~/components/ui/notched-action-card-layout";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -314,14 +315,18 @@ export function NotchedActionCard({
 	...props
 }: NotchedActionCardProps) {
 	const [cardWidth, setCardWidth] = useState(DEFAULT_CARD_WIDTH);
+	const [measuredContentHeight, setMeasuredContentHeight] = useState(0);
 	const { colors } = useDayovaTheme();
 
 	const handleLayout = useCallback(
 		(event: LayoutChangeEvent) => {
-			const nextWidth = event.nativeEvent.layout.width;
+			const { height: nextHeight, width: nextWidth } = event.nativeEvent.layout;
 
 			setCardWidth((currentWidth) =>
 				Math.abs(currentWidth - nextWidth) < 0.5 ? currentWidth : nextWidth,
+			);
+			setMeasuredContentHeight((currentHeight) =>
+				Math.abs(currentHeight - nextHeight) < 0.5 ? currentHeight : nextHeight,
 			);
 
 			onLayout?.(event);
@@ -330,6 +335,10 @@ export function NotchedActionCard({
 	);
 
 	const resolvedCardWidth = Math.max(cardWidth, actionSize + actionOffsetRight);
+	const resolvedCardHeight = resolveNotchedCardFrameHeight({
+		measuredContentHeight,
+		minimumHeight: cardHeight,
+	});
 
 	const resolvedCardPath = useMemo(
 		() =>
@@ -338,15 +347,15 @@ export function NotchedActionCard({
 				actionOffsetBottom,
 				actionOffsetRight,
 				actionSize,
-				height: cardHeight,
+				height: resolvedCardHeight,
 				width: resolvedCardWidth,
 			}),
 		[
 			actionOffsetBottom,
 			actionOffsetRight,
 			actionSize,
-			cardHeight,
 			cardPath,
+			resolvedCardHeight,
 			resolvedCardWidth,
 		],
 	);
@@ -359,8 +368,8 @@ export function NotchedActionCard({
 				importantForAccessibility="no-hide-descendants"
 				pointerEvents="none"
 				width="100%"
-				height={cardHeight}
-				viewBox={`0 0 ${resolvedCardWidth} ${cardHeight}`}
+				height={resolvedCardHeight}
+				viewBox={`0 0 ${resolvedCardWidth} ${resolvedCardHeight}`}
 				preserveAspectRatio="none"
 				style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
 			>

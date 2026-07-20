@@ -6,15 +6,17 @@ import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { ClipboardEdit, Plus } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
-import { WarningBanner } from "~/components/ui/warning-banner";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackToReturnOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 const LEARNING_DAYS = [
 	{ abbreviation: "Mo", label: "Montag", value: 1 },
@@ -40,36 +42,68 @@ function LearningTimeRow({
 	timeRange: string;
 }) {
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 
 	return (
 		<Pressable
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
-			className="min-h-[96px] flex-row items-center rounded-[48px] bg-card px-6 active:opacity-85"
+			className={cn(
+				"min-h-[96px] rounded-[48px] bg-card px-6 active:opacity-85",
+				shouldStackInlineContent
+					? "items-stretch gap-3 py-4"
+					: "flex-row items-center",
+			)}
 			onPress={onPress}
 		>
-			<View className="h-16 w-16 items-center justify-center rounded-full bg-button-neutral">
-				<Text className="font-poppins font-semibold text-background text-body-1">
-					{abbreviation}
-				</Text>
+			<View
+				className={cn(
+					"min-w-0 flex-1",
+					shouldStackInlineContent ? "items-start" : "flex-row items-center",
+				)}
+			>
+				<View
+					className={cn(
+						"shrink-0 items-center justify-center rounded-full bg-button-neutral",
+						shouldStackInlineContent
+							? "min-h-16 min-w-16 px-4 py-3"
+							: "h-16 w-16",
+					)}
+				>
+					<Text className="font-poppins font-semibold text-background text-body-1">
+						{abbreviation}
+					</Text>
+				</View>
+
+				<View
+					className={cn(
+						"min-w-0 flex-1",
+						shouldStackInlineContent ? "mt-3" : "ml-5",
+					)}
+				>
+					<Text
+						className="font-poppins font-semibold text-body-1 text-text"
+						numberOfLines={shouldStackInlineContent ? undefined : 1}
+					>
+						{label}
+					</Text>
+					<Text
+						className="font-poppins text-body-2 text-secondary-text"
+						numberOfLines={shouldStackInlineContent ? undefined : 1}
+					>
+						{timeRange}
+					</Text>
+				</View>
 			</View>
 
-			<View className="ml-5 flex-1">
-				<Text
-					className="font-poppins font-semibold text-body-1 text-text"
-					numberOfLines={1}
-				>
-					{label}
-				</Text>
-				<Text
-					className="font-poppins text-body-2 text-secondary-text"
-					numberOfLines={1}
-				>
-					{timeRange}
-				</Text>
-			</View>
-
-			<View className="h-[72px] w-[72px] items-center justify-center rounded-full border border-border bg-card">
+			<View
+				className={cn(
+					"h-[72px] w-[72px] items-center justify-center rounded-full border border-border bg-card",
+					shouldStackInlineContent && "self-end",
+				)}
+			>
 				<ClipboardEdit size={30} color={colors.text} strokeWidth={1.8} />
 			</View>
 		</Pressable>
@@ -127,11 +161,11 @@ export default function LearningTimesOverviewScreen() {
 		<Screen>
 			<ThemedStatusBar />
 			<ScreenScroll topPadding={80} bottomPadding={150} horizontalPadding={24}>
-				<Header title="Lernzeiten" onBack={goBack} className="mb-11" />
+				<Header title={"Lern\u00ADzeiten"} onBack={goBack} className="mb-11" />
 
 				<View className="gap-4">
 					<Text className="font-poppins font-semibold text-heading-2 text-text">
-						Lernzeiten anpassen
+						{"Lern\u00ADzeiten an\u00ADpassen"}
 					</Text>
 					<Text className="font-poppins text-body-1 text-secondary-text">
 						Trage hier deine wiederkehrend verfügbaren Zeiten ein, an denen du
@@ -148,7 +182,7 @@ export default function LearningTimesOverviewScreen() {
 
 					{learningTimes?.length === 0 ? (
 						<WarningBanner
-							title="Lernzeiten fehlen"
+							title={"Lern\u00ADzeiten fehlen"}
 							description="Dayova braucht Lernzeiten, damit wir Lernpläne in deine freien Zeitfenster eintragen können. Lege mindestens eine Lernzeit an, bevor du einen Plan erstellen lässt."
 							ctaLabel="Lernzeit hinzufügen"
 							onPressCta={() => openEditor({ dayOfWeek: firstMissingDay })}

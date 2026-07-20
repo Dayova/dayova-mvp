@@ -10,6 +10,7 @@ import { Button } from "~/components/ui/button";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { X } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
@@ -31,6 +32,7 @@ import {
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { cn } from "~/lib/utils";
 
 const reviewPath = (id: Id<"learningPlans">) =>
 	`/learning-plans/${id}/review` as const;
@@ -43,6 +45,8 @@ function LoadedSessionEditScreen({
 	session: PlanSession;
 }) {
 	const router = useRouter();
+	const { horizontalPadding, shouldStackInlineContent } =
+		useContentSizeLayout();
 	const updateSession = useMutation(api.learningPlans.updateSession);
 	const removeSession = useMutation(api.learningPlans.removeSession);
 
@@ -172,10 +176,13 @@ function LoadedSessionEditScreen({
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
+					alignSelf: "center",
 					flexGrow: 1,
-					paddingHorizontal: 32,
+					maxWidth: 480,
+					paddingHorizontal: horizontalPadding,
 					paddingTop: 80,
 					paddingBottom: 60,
+					width: "100%",
 				}}
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
@@ -212,10 +219,16 @@ function LoadedSessionEditScreen({
 				icon={<X size={48} color="#FF5147" strokeWidth={1.8} />}
 				iconContainerClassName="bg-red-100"
 			>
-				<View className="mt-6 flex-row gap-3">
+				<View
+					className={cn("mt-6 gap-3", !shouldStackInlineContent && "flex-row")}
+				>
 					<Button
 						variant="neutral"
-						className="flex-1 shadow-none"
+						className={
+							shouldStackInlineContent
+								? "w-full shadow-none"
+								: "flex-1 shadow-none"
+						}
 						onPress={() => setIsDeleteVisible(false)}
 					>
 						<Text>Abbrechen</Text>
@@ -226,7 +239,7 @@ function LoadedSessionEditScreen({
 						}
 						accessibilityLiveRegion={isBusy ? "polite" : undefined}
 						accessibilityState={{ busy: isBusy, disabled: isBusy }}
-						className="flex-1"
+						className={shouldStackInlineContent ? "w-full" : "flex-1"}
 						onPress={confirmDelete}
 						disabled={isBusy}
 					>
@@ -246,6 +259,7 @@ function LoadedSessionEditScreen({
 
 export default function LearningPlanSessionEditScreen() {
 	const router = useRouter();
+	const { horizontalPadding } = useContentSizeLayout();
 	const params = useLocalSearchParams<{
 		planId?: string;
 		sessionId?: string;
@@ -292,10 +306,13 @@ export default function LearningPlanSessionEditScreen() {
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
+					alignSelf: "center",
 					flexGrow: 1,
-					paddingHorizontal: 32,
+					maxWidth: 480,
+					paddingHorizontal: horizontalPadding,
 					paddingTop: 80,
 					paddingBottom: 60,
+					width: "100%",
 				}}
 				showsVerticalScrollIndicator={false}
 			>

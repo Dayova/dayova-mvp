@@ -123,7 +123,7 @@ export default function SettingsScreen() {
 					<View className="gap-5">
 						<SettingsRow
 							icon={Bell}
-							label="Mitteilungen"
+							label={"Mitteil\u00ADungen"}
 							onPress={() => router.push("/notification-settings")}
 						/>
 						<SettingsRow

@@ -15,7 +15,7 @@ const gradientFillStyle = StyleSheet.absoluteFill;
 
 const buttonVariants = cva(
 	cn(
-		"group h-14 shrink-0 flex-row items-center justify-center gap-2 overflow-hidden rounded-button px-6 shadow-primary/20 shadow-sm",
+		"group shrink-0 flex-row items-center justify-center gap-2 overflow-hidden rounded-button px-6 shadow-primary/20 shadow-sm",
 		Platform.select({
 			web: "whitespace-nowrap outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
 		}),
@@ -50,16 +50,19 @@ const buttonVariants = cva(
 				link: "",
 			},
 			size: {
-				default: cn("h-14 px-6", Platform.select({ web: "has-[>svg]:px-5" })),
+				default: cn(
+					"min-h-14 px-6 py-3",
+					Platform.select({ web: "has-[>svg]:px-5" }),
+				),
 				sm: cn(
-					"h-12 gap-2 rounded-button px-4",
+					"min-h-12 gap-2 rounded-button px-4 py-2",
 					Platform.select({ web: "has-[>svg]:px-3" }),
 				),
 				lg: cn(
-					"h-14 rounded-button px-8",
+					"min-h-14 rounded-button px-8 py-3",
 					Platform.select({ web: "has-[>svg]:px-6" }),
 				),
-				icon: "h-11 w-11",
+				icon: "h-11 min-h-11 w-11 py-0",
 			},
 		},
 		defaultVariants: {

@@ -2,12 +2,14 @@ import type { ComponentProps, ReactNode } from "react";
 import {
 	Modal,
 	Pressable,
+	ScrollView,
 	TouchableOpacity,
 	useWindowDimensions,
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CloseButton } from "~/components/ui/close-button";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
@@ -58,7 +60,7 @@ function BottomModal({
 }: BottomModalProps) {
 	const insets = useSafeAreaInsets();
 	const { isDark } = useDayovaTheme();
-	const { width } = useWindowDimensions();
+	const { height: windowHeight, width } = useWindowDimensions();
 	const hasHeader = Boolean(title || description);
 	const canDismiss = dismissible && Boolean(onClose);
 	const sheetWidth = Math.min(width, maxWidth);
@@ -92,62 +94,77 @@ function BottomModal({
 				)}
 				<View
 					className={cn(
-						"self-center rounded-t-[40px] bg-card px-6 pt-5",
+						"self-center overflow-hidden rounded-t-[40px] bg-card",
 						sheetClassName,
 					)}
 					style={{
 						width: sheetWidth,
-						paddingBottom: Math.max(insets.bottom + 40, 56),
+						maxHeight: Math.max(240, windowHeight - insets.top - 16),
 						boxShadow: SHEET_SHADOW,
 					}}
 				>
-					{showCloseButton && onClose ? (
-						<View className="items-end">
-							<CloseButton
-								accessibilityLabel={closeAccessibilityLabel}
-								onPress={onClose}
-							/>
-						</View>
-					) : null}
-					{hasHeader ? (
-						<View
-							className={cn(
-								showCloseButton && onClose ? "mt-6 gap-3" : "gap-3",
-								headerClassName,
-							)}
-						>
-							{title ? (
-								<Text
+					<ScrollView
+						bounces={false}
+						// Safe-area padding is runtime device data.
+						contentContainerStyle={{
+							paddingBottom: Math.max(insets.bottom + 40, 56),
+						}}
+						showsVerticalScrollIndicator={false}
+					>
+						<View className="px-6 pt-5">
+							{showCloseButton && onClose ? (
+								<View className="items-end">
+									<CloseButton
+										accessibilityLabel={closeAccessibilityLabel}
+										onPress={onClose}
+									/>
+								</View>
+							) : null}
+							{hasHeader ? (
+								<View
 									className={cn(
-										"font-poppins font-semibold text-body-1 text-text",
-										titleClassName,
+										showCloseButton && onClose ? "mt-6 gap-3" : "gap-3",
+										headerClassName,
 									)}
 								>
-									{title}
-								</Text>
+									{title ? (
+										<Text
+											className={cn(
+												"font-poppins font-semibold text-body-1 text-text",
+												titleClassName,
+											)}
+										>
+											{title}
+										</Text>
+									) : null}
+									{description ? (
+										<Text
+											className={cn(
+												"font-poppins text-body-2 text-secondary-text",
+												descriptionClassName,
+											)}
+										>
+											{description}
+										</Text>
+									) : null}
+								</View>
 							) : null}
-							{description ? (
-								<Text
+							{children ? (
+								<View
 									className={cn(
-										"font-poppins text-body-2 text-secondary-text",
-										descriptionClassName,
+										hasHeader
+											? "mt-8"
+											: showCloseButton && onClose
+												? "mt-6"
+												: "",
+										contentClassName,
 									)}
 								>
-									{description}
-								</Text>
+									{children}
+								</View>
 							) : null}
 						</View>
-					) : null}
-					{children ? (
-						<View
-							className={cn(
-								hasHeader ? "mt-8" : showCloseButton && onClose ? "mt-6" : "",
-								contentClassName,
-							)}
-						>
-							{children}
-						</View>
-					) : null}
+					</ScrollView>
 				</View>
 			</View>
 		</Modal>
@@ -184,6 +201,7 @@ function BottomModalOption({
 	...props
 }: BottomModalOptionProps) {
 	const isTile = layout === "tile";
+	const { shouldStackInlineContent } = useContentSizeLayout();
 
 	return (
 		<TouchableOpacity
@@ -224,7 +242,7 @@ function BottomModalOption({
 							: "font-medium text-body-2",
 						titleClassName,
 					)}
-					numberOfLines={2}
+					numberOfLines={shouldStackInlineContent ? undefined : 2}
 				>
 					{title}
 				</Text>
@@ -235,7 +253,7 @@ function BottomModalOption({
 							isTile ? "text-center" : "",
 							descriptionClassName,
 						)}
-						numberOfLines={2}
+						numberOfLines={shouldStackInlineContent ? undefined : 2}
 					>
 						{description}
 					</Text>
