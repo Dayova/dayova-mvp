@@ -37,7 +37,17 @@ import {
 	MULTIPLE_CHOICE_OPTION_COUNT,
 } from "./learningSessionContentConstraints";
 import {
+	compactLearningSessionTitle,
+	formatLearningTimeFromMinutes,
+	parseLearningTimeToMinutes,
+} from "./learningSessionScheduleFormatting";
+import {
+	rebalanceLearningPhases,
+	splitLargeTheorySessions,
+} from "./learningSessionSegmentation";
+import {
 	focusLearningTopics,
+	getSessionLearningTopics,
 	MAX_LEARNING_TOPIC_COUNT,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
@@ -50,7 +60,7 @@ const MAX_SESSION_TITLE_CHARS = 28;
 const LLM_GENERATION_TIMEOUT_MS = 60_000;
 const MAX_GENERATED_TEXT_ATTEMPTS = 3;
 const MODEL_ID = "gemini-3-flash-preview";
-const MIN_LEARNING_SLOT_MINUTES = 10;
+const MIN_LEARNING_SLOT_MINUTES = 5;
 const MAX_LEARNING_SESSION_MINUTES = 30;
 const MAX_GENERATED_SESSIONS = 20;
 const MIN_TOPIC_MAP_COUNT = 3;
@@ -545,21 +555,6 @@ const compactText = (value: string, maxChars: number) => {
 	return `${normalized.slice(0, maxChars)}\n\n[Inhalt wurde gekürzt.]`;
 };
 
-const compactSingleLine = (value: string, maxChars: number) => {
-	const normalized = value.replace(/\s+/g, " ").trim();
-	if (normalized.length <= maxChars) return normalized;
-
-	const ellipsis = "...";
-	const contentMaxChars = maxChars - ellipsis.length;
-	const clipped = normalized.slice(0, contentMaxChars).trimEnd();
-	const lastSpace = clipped.lastIndexOf(" ");
-	const compacted =
-		lastSpace >= Math.floor(contentMaxChars * 0.55)
-			? clipped.slice(0, lastSpace).trimEnd()
-			: clipped;
-	return `${compacted}${ellipsis}`;
-};
-
 const fallbackTitleByPhase: Record<GeneratedSessionPhase, string> = {
 	theory: "Theorie-Block",
 	practice: "Übungsblock",
@@ -745,30 +740,6 @@ const formatDateLabel = (date: Date) =>
 
 const formatDateKey = (date: Date) => date.toISOString().slice(0, 10);
 
-const formatTimeFromMinutes = (minutes: number) => {
-	const hours = Math.floor(minutes / 60);
-	const rest = minutes % 60;
-	return `${hours.toString().padStart(2, "0")}:${rest
-		.toString()
-		.padStart(2, "0")}`;
-};
-
-const parseTimeToMinutes = (time: string) => {
-	const [hours, minutes] = time.split(":").map(Number);
-	if (
-		!Number.isInteger(hours) ||
-		!Number.isInteger(minutes) ||
-		hours < 0 ||
-		hours > 23 ||
-		minutes < 0 ||
-		minutes > 59
-	) {
-		return null;
-	}
-
-	return hours * 60 + minutes;
-};
-
 const berlinDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
 	timeZone: BERLIN_TIME_ZONE,
 	year: "numeric",
@@ -860,7 +831,7 @@ const getOccupiedIntervalsByDay = (occupiedEntries: OccupiedEntry[]) => {
 			continue;
 		}
 
-		const start = parseTimeToMinutes(entry.time);
+		const start = parseLearningTimeToMinutes(entry.time);
 		if (start === null) continue;
 
 		const intervals = intervalsByDay.get(entry.dayKey) ?? [];
@@ -902,6 +873,29 @@ const overlapsInterval = (
 	second: { start: number; end: number },
 ) => first.start < second.end && first.end > second.start;
 
+const getMinutesReservedForLaterSlots = ({
+	requestedMinutes,
+	selectedSlotCount,
+	slotIndex,
+}: {
+	requestedMinutes: number;
+	selectedSlotCount: number;
+	slotIndex: number;
+}) => {
+	const remainingSlotCount = selectedSlotCount - slotIndex - 1;
+	if (selectedSlotCount !== 3) {
+		return remainingSlotCount * MIN_LEARNING_SLOT_MINUTES;
+	}
+
+	if (requestedMinutes >= 40) {
+		return [20, 10, 0][slotIndex] ?? 0;
+	}
+	if (requestedMinutes >= 25) {
+		return [10, 5, 0][slotIndex] ?? 0;
+	}
+	return remainingSlotCount * MIN_LEARNING_SLOT_MINUTES;
+};
+
 const buildLearningSlots = (
 	examDateKey: string,
 	availableDays: number,
@@ -911,8 +905,8 @@ const buildLearningSlots = (
 ) => {
 	const windowsByDay = new Map<number, LearningTimeWindow[]>();
 	for (const learningTime of learningTimes) {
-		const startMinutes = parseTimeToMinutes(learningTime.startTime);
-		const endMinutes = parseTimeToMinutes(learningTime.endTime);
+		const startMinutes = parseLearningTimeToMinutes(learningTime.startTime);
+		const endMinutes = parseLearningTimeToMinutes(learningTime.endTime);
 		if (
 			startMinutes === null ||
 			endMinutes === null ||
@@ -935,8 +929,8 @@ const buildLearningSlots = (
 		const windows = windowsByDay.get(getBerlinDayOfWeek(date)) ?? [];
 
 		for (const window of windows) {
-			const startMinutes = parseTimeToMinutes(window.startTime);
-			const endMinutes = parseTimeToMinutes(window.endTime);
+			const startMinutes = parseLearningTimeToMinutes(window.startTime);
+			const endMinutes = parseLearningTimeToMinutes(window.endTime);
 			if (
 				startMinutes === null ||
 				endMinutes === null ||
@@ -994,9 +988,11 @@ const buildLearningSlots = (
 	let remainingRequestedMinutes = requestedMinutes;
 	return selectedCandidates
 		.map((candidate, index): LearningSlot | null => {
-			const remainingSlotCount = selectedCandidates.length - index - 1;
-			const minutesReservedForLater =
-				remainingSlotCount * MIN_LEARNING_SLOT_MINUTES;
+			const minutesReservedForLater = getMinutesReservedForLaterSlots({
+				requestedMinutes,
+				selectedSlotCount: selectedCandidates.length,
+				slotIndex: index,
+			});
 			const durationMinutes = Math.min(
 				candidate.endMinutes - candidate.startMinutes,
 				MAX_LEARNING_SESSION_MINUTES,
@@ -1086,6 +1082,7 @@ const normalizeSessions = (
 	learningTimes: LearningTimeWindow[],
 	occupiedEntries: OccupiedEntry[],
 	confirmedTotalStudyMinutes?: number,
+	topics: LearningTopic[] = [],
 ) => {
 	const generatedMinutes = sessions.reduce(
 		(total, session) => total + session.durationMinutes,
@@ -1121,7 +1118,7 @@ const normalizeSessions = (
 	const requiredPhaseSequence = buildRequiredPhaseSequence(
 		selectedSlots.length,
 	);
-	const normalizedSessions = selectedSlots
+	const scheduledSessions = selectedSlots
 		.map((slot, index) => {
 			const durationMinutes = slot.endMinutes - slot.startMinutes;
 			const sourceState =
@@ -1154,13 +1151,13 @@ const normalizeSessions = (
 			return {
 				phase,
 				title:
-					compactSingleLine(
+					compactLearningSessionTitle(
 						title || fallbackTitleByPhase[phase],
 						MAX_SESSION_TITLE_CHARS,
 					) || fallbackTitleByPhase[phase],
 				dateKey: slot.date.toISOString(),
 				dateLabel: formatDateLabel(slot.date),
-				startTime: formatTimeFromMinutes(slot.startMinutes),
+				startTime: formatLearningTimeFromMinutes(slot.startMinutes),
 				durationMinutes,
 				goal:
 					(useFallbackContent
@@ -1177,6 +1174,33 @@ const normalizeSessions = (
 		})
 		.sort((left, right) => left.dateKey.localeCompare(right.dateKey));
 
+	const phaseBalancedSessions = rebalanceLearningPhases({
+		sessions: scheduledSessions,
+		phaseFallbacks: {
+			theory: {
+				title: fallbackTitleByPhase.theory,
+				...fallbackContentByPhase.theory,
+			},
+			practice: {
+				title: fallbackTitleByPhase.practice,
+				...fallbackContentByPhase.practice,
+			},
+			rehearsal: {
+				title: fallbackTitleByPhase.rehearsal,
+				...fallbackContentByPhase.rehearsal,
+			},
+		},
+	});
+	const normalizedSessions = splitLargeTheorySessions({
+		sessions: phaseBalancedSessions,
+		topics,
+		maxSessions: MAX_GENERATED_SESSIONS,
+		maxTitleChars: MAX_SESSION_TITLE_CHARS,
+	}).sort(
+		(left, right) =>
+			left.dateKey.localeCompare(right.dateKey) ||
+			left.startTime.localeCompare(right.startTime),
+	);
 	const plannedMinutes = normalizedSessions.reduce(
 		(total, session) => total + session.durationMinutes,
 		0,
@@ -1186,7 +1210,7 @@ const normalizeSessions = (
 			return false;
 		}
 		const date = new Date(entry.dayKey);
-		const entryStart = parseTimeToMinutes(entry.time);
+		const entryStart = parseLearningTimeToMinutes(entry.time);
 		if (Number.isNaN(date.getTime()) || entryStart === null) return false;
 		const entryInterval = {
 			start: entryStart,
@@ -1194,8 +1218,8 @@ const normalizeSessions = (
 		};
 		return learningTimes.some((learningTime) => {
 			if (learningTime.dayOfWeek !== getBerlinDayOfWeek(date)) return false;
-			const start = parseTimeToMinutes(learningTime.startTime);
-			const end = parseTimeToMinutes(learningTime.endTime);
+			const start = parseLearningTimeToMinutes(learningTime.startTime);
+			const end = parseLearningTimeToMinutes(learningTime.endTime);
 			return (
 				start !== null &&
 				end !== null &&
@@ -1319,14 +1343,15 @@ const describeLearningTimes = (learningTimes: LearningTimeWindow[]) => {
 const getLearningContentTopics = (
 	context: LearningSessionContentAiContext,
 ): LearningTopic[] => {
-	const focusTopics = (topics: LearningTopic[]) =>
-		focusLearningTopics({
-			topics,
+	if (context.plan.topicMap && context.plan.topicMap.length > 0) {
+		return getSessionLearningTopics({
+			topics: context.plan.topicMap,
 			strengths: context.plan.insight?.strengths ?? [],
 			gaps: context.plan.insight?.gaps ?? [],
+			sessionPhase: context.session.phase,
+			sessionTitle: context.session.title,
+			sessionGoal: context.session.goal,
 		});
-	if (context.plan.topicMap && context.plan.topicMap.length > 0) {
-		return focusTopics(context.plan.topicMap);
 	}
 
 	const candidates = [
@@ -1337,8 +1362,8 @@ const getLearningContentTopics = (
 		...(context.plan.insight?.gaps ?? []),
 	];
 	const seen = new Set<string>();
-	return focusTopics(
-		normalizeLearningTopics(
+	return getSessionLearningTopics({
+		topics: normalizeLearningTopics(
 			candidates
 				.map((value) => value.trim())
 				.filter((value) => {
@@ -1358,7 +1383,12 @@ const getLearningContentTopics = (
 					priority: index < 3 ? ("high" as const) : ("medium" as const),
 				})),
 		),
-	);
+		strengths: context.plan.insight?.strengths ?? [],
+		gaps: context.plan.insight?.gaps ?? [],
+		sessionPhase: context.session.phase,
+		sessionTitle: context.session.title,
+		sessionGoal: context.session.goal,
+	});
 };
 
 const formatQuestionBlueprints = (block: LearningContentBlock) =>
@@ -1976,6 +2006,15 @@ MVP-Vorgabe:
 			output: z.infer<typeof generatedPlanSchema>,
 			extraPlanningHint?: string,
 		) => {
+			const normalizedInsight = {
+				summary: normalizeAiGeneratedGermanText(output.insight.summary),
+				strengths: output.insight.strengths.map((strength) =>
+					normalizeAiGeneratedGermanText(strength),
+				),
+				gaps: output.insight.gaps.map((gap) =>
+					normalizeAiGeneratedGermanText(gap),
+				),
+			};
 			const normalized = normalizeSessions(
 				context.plan.examDateKey,
 				availableDays,
@@ -1983,19 +2022,16 @@ MVP-Vorgabe:
 				context.learningTimes,
 				context.occupiedEntries,
 				confirmedTotalStudyMinutes,
+				focusLearningTopics({
+					topics: context.plan.topicMap ?? [],
+					strengths: normalizedInsight.strengths,
+					gaps: normalizedInsight.gaps,
+				}),
 			);
 
 			return {
 				sourceSummary: normalizeAiGeneratedGermanText(output.sourceSummary),
-				insight: {
-					summary: normalizeAiGeneratedGermanText(output.insight.summary),
-					strengths: output.insight.strengths.map((strength) =>
-						normalizeAiGeneratedGermanText(strength),
-					),
-					gaps: output.insight.gaps.map((gap) =>
-						normalizeAiGeneratedGermanText(gap),
-					),
-				},
+				insight: normalizedInsight,
 				sessions: normalized.sessions,
 				planningHint: [extraPlanningHint, normalized.planningHint]
 					.filter(Boolean)

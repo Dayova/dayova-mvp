@@ -61,11 +61,23 @@ describe("learning plan AI scheduling", () => {
 			[],
 		);
 
-		expect(withLearningTimes.sessions).toHaveLength(1);
+		expect(withLearningTimes.sessions.map((session) => session.phase)).toEqual([
+			"theory",
+			"theory",
+			"theory",
+			"practice",
+			"rehearsal",
+		]);
+		expect(
+			withLearningTimes.sessions.reduce(
+				(total, session) => total + session.durationMinutes,
+				0,
+			),
+		).toBe(30);
 		expect(withLearningTimes.sessions[0]).toMatchObject({
 			dateKey: "2026-06-04T00:00:00.000Z",
 			startTime: "17:00",
-			durationMinutes: 30,
+			durationMinutes: 7,
 		});
 		expect(withLearningTimes.planningHint).toBe("30/60 Min. geplant.");
 	});
@@ -93,13 +105,75 @@ describe("learning plan AI scheduling", () => {
 			],
 			[{ dayOfWeek: 2, startTime: "16:00", endTime: "17:30" }],
 			[],
+			undefined,
+			[
+				{
+					id: "cidr-masken",
+					title: "CIDR und Masken",
+					learningGoal: "CIDR-Präfixe sicher in Subnetzmasken umwandeln.",
+					keywords: ["CIDR", "Subnetzmaske"],
+					priority: "high",
+				},
+				{
+					id: "host-bereiche",
+					title: "Host-Bereiche",
+					learningGoal: "Gültige Host-Bereiche fehlerfrei bestimmen.",
+					keywords: ["Host", "Netzadresse"],
+					priority: "high",
+				},
+				{
+					id: "broadcast",
+					title: "Broadcast-Adressen",
+					learningGoal: "Broadcast-Adressen nachvollziehbar berechnen.",
+					keywords: ["Broadcast"],
+					priority: "medium",
+				},
+			],
 		);
 
-		expect(result.sessions).toHaveLength(1);
-		expect(result.sessions[0]).toMatchObject({
-			startTime: "16:00",
-			durationMinutes: 30,
-		});
+		expect(result.sessions).toHaveLength(5);
+		expect(
+			result.sessions.map((session) => ({
+				phase: session.phase,
+				startTime: session.startTime,
+				durationMinutes: session.durationMinutes,
+				title: session.title,
+			})),
+		).toEqual([
+			{
+				phase: "theory",
+				startTime: "16:00",
+				durationMinutes: 7,
+				title: "CIDR und Masken",
+			},
+			{
+				phase: "theory",
+				startTime: "16:07",
+				durationMinutes: 7,
+				title: "Host-Bereiche",
+			},
+			{
+				phase: "theory",
+				startTime: "16:14",
+				durationMinutes: 6,
+				title: "Broadcast-Adressen",
+			},
+			{
+				phase: "practice",
+				startTime: "16:20",
+				durationMinutes: 5,
+				title: "Übungsblock",
+			},
+			{
+				phase: "rehearsal",
+				startTime: "16:25",
+				durationMinutes: 5,
+				title: "Praxis",
+			},
+		]);
+		expect(new Set(result.sessions.map((session) => session.goal)).size).toBe(
+			5,
+		);
 		expect(result.planningHint).toBeUndefined();
 	});
 
@@ -143,11 +217,14 @@ describe("learning plan AI scheduling", () => {
 		);
 
 		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
-			30, 20,
+			10, 10, 10, 10, 10,
 		]);
 		expect(result.sessions.map((session) => session.startTime)).toEqual([
 			"16:00",
+			"16:10",
+			"16:20",
 			"16:00",
+			"16:10",
 		]);
 		expect(result.planningHint).toBeUndefined();
 	});
@@ -193,7 +270,7 @@ describe("learning plan AI scheduling", () => {
 		);
 
 		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
-			30, 20,
+			10, 10, 10, 10, 10,
 		]);
 		expect(result.planningHint).toBeUndefined();
 	});
@@ -225,11 +302,54 @@ describe("learning plan AI scheduling", () => {
 
 		expect(result.sessions.map((session) => session.phase)).toEqual([
 			"theory",
+			"theory",
+			"theory",
 			"practice",
 			"rehearsal",
 		]);
 		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
-			30, 20, 10,
+			10, 10, 10, 20, 10,
+		]);
+		expect(new Set(result.sessions.map((session) => session.goal)).size).toBe(
+			5,
+		);
+		expect(result.planningHint).toBeUndefined();
+	});
+
+	test("uses a 30 minute plan for three theory wins plus practice and a test", () => {
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-05",
+			5,
+			[
+				{
+					phase: "practice",
+					title: germanText("Subnetting üben"),
+					dayOffsetBeforeExam: 3,
+					startTime: "17:00",
+					durationMinutes: 30,
+					goal: germanText("Berechne Subnetze sicher."),
+					tasks: [germanText("Löse konkrete Subnetting-Aufgaben.")],
+					expectedOutcome: germanText("Du kannst Subnetze berechnen."),
+				},
+			],
+			[
+				{ dayOfWeek: 2, startTime: "17:00", endTime: "17:30" },
+				{ dayOfWeek: 3, startTime: "17:00", endTime: "17:30" },
+				{ dayOfWeek: 4, startTime: "17:00", endTime: "17:30" },
+			],
+			[],
+			30,
+		);
+
+		expect(result.sessions.map((session) => session.phase)).toEqual([
+			"theory",
+			"theory",
+			"theory",
+			"practice",
+			"rehearsal",
+		]);
+		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
+			7, 7, 6, 5, 5,
 		]);
 		expect(result.planningHint).toBeUndefined();
 	});
@@ -295,24 +415,72 @@ describe("learning plan AI scheduling", () => {
 			],
 		);
 
-		expect(result.sessions).toHaveLength(2);
+		expect(result.sessions).toHaveLength(5);
 		expect(result.sessions).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					dateKey: "2026-06-02T00:00:00.000Z",
 					startTime: "16:00",
-					durationMinutes: 30,
+					durationMinutes: 10,
 				}),
 				expect.objectContaining({
 					dateKey: "2026-06-04T00:00:00.000Z",
 					startTime: "10:00",
-					durationMinutes: 30,
+					durationMinutes: 20,
 				}),
 			]),
 		);
 		expect(result.planningHint).toBe(
 			"Belegte Zeiten ausgelassen. 60/270 Min. geplant.",
 		);
+	});
+
+	test("combines partially free Lernzeiten into visible theory progress", () => {
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-06",
+			5,
+			[
+				{
+					phase: "practice",
+					title: germanText("Subnetting üben"),
+					dayOffsetBeforeExam: 3,
+					startTime: "17:00",
+					durationMinutes: 60,
+					goal: germanText("Berechne Subnetze sicher."),
+					tasks: [germanText("Löse konkrete Subnetting-Aufgaben.")],
+					expectedOutcome: germanText("Du kannst Subnetze berechnen."),
+				},
+			],
+			[
+				{ dayOfWeek: 3, startTime: "17:00", endTime: "17:30" },
+				{ dayOfWeek: 4, startTime: "17:00", endTime: "17:30" },
+				{ dayOfWeek: 5, startTime: "17:00", endTime: "17:30" },
+			],
+			[
+				{ dayKey: "2026-06-03", time: "17:00", durationMinutes: 20 },
+				{ dayKey: "2026-06-04", time: "17:00", durationMinutes: 10 },
+			],
+			60,
+		);
+
+		expect(result.sessions.map((session) => session.phase)).toEqual([
+			"theory",
+			"theory",
+			"theory",
+			"practice",
+			"rehearsal",
+		]);
+		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
+			10, 10, 10, 20, 10,
+		]);
+		expect(result.sessions.map((session) => session.startTime)).toEqual([
+			"17:20",
+			"17:10",
+			"17:20",
+			"17:00",
+			"17:20",
+		]);
+		expect(result.planningHint).toBe("Belegte Zeiten ausgelassen.");
 	});
 
 	test("reports capacity instead of inventing alternative slots", () => {
@@ -338,10 +506,10 @@ describe("learning plan AI scheduling", () => {
 			[],
 		);
 
-		expect(result.sessions).toHaveLength(1);
+		expect(result.sessions).toHaveLength(5);
 		expect(result.sessions[0]).toMatchObject({
 			startTime: "16:00",
-			durationMinutes: 30,
+			durationMinutes: 7,
 		});
 		expect(result.planningHint).toBe("30/180 Min. geplant.");
 	});
@@ -437,6 +605,9 @@ describe("learning plan AI scheduling", () => {
 
 		expect(result.sessions.map((session) => session.phase)).toEqual([
 			"theory",
+			"theory",
+			"theory",
+			"practice",
 			"practice",
 			"practice",
 			"rehearsal",
@@ -474,12 +645,15 @@ describe("learning plan AI scheduling", () => {
 
 		expect(result.sessions.map((session) => session.phase)).toEqual([
 			"theory",
+			"theory",
+			"theory",
+			"practice",
 			"practice",
 			"practice",
 			"rehearsal",
 		]);
-		expect(result.sessions[1]?.title).toBe("Übungsblock");
-		expect(result.sessions[3]?.title).toBe("Praxis");
+		expect(result.sessions[3]?.title).toBe("Übungsblock");
+		expect(result.sessions[6]?.title).toBe("Praxis");
 		expect(result.planningHint).toBeUndefined();
 	});
 
@@ -512,10 +686,11 @@ describe("learning plan AI scheduling", () => {
 			[],
 		);
 
-		expect(result.sessions).toHaveLength(1);
+		expect(result.sessions).toHaveLength(5);
 		expect(result.sessions[0]).toMatchObject({
 			dateKey: "2026-06-05T00:00:00.000Z",
 			startTime: "09:00",
+			durationMinutes: 7,
 		});
 	});
 

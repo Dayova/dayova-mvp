@@ -1,5 +1,8 @@
 import { expect, test } from "vitest";
-import { focusLearningTopics } from "./learningTopicMap";
+import {
+	focusLearningTopics,
+	selectSessionLearningTopics,
+} from "./learningTopicMap";
 
 test("focuses content on gaps instead of replaying diagnosed strengths", () => {
 	const focused = focusLearningTopics({
@@ -77,4 +80,60 @@ test("turns all-strength diagnostics into advanced transfer topics", () => {
 		title: "Prüfungstransfer: CIDR-Präfixe und Subnetzmasken sicher umrechnen",
 		priority: "high",
 	});
+});
+
+test("selects the topic named by a topic-specific theory session", () => {
+	const topics = [
+		{
+			id: "cidr-masken",
+			title: "CIDR und Masken",
+			learningGoal: "CIDR-Präfixe sicher in Subnetzmasken umwandeln.",
+			keywords: ["CIDR", "Subnetzmaske"],
+			priority: "high" as const,
+		},
+		{
+			id: "host-bereiche",
+			title: "Host-Bereiche",
+			learningGoal: "Gültige Host-Bereiche fehlerfrei bestimmen.",
+			keywords: ["Host", "Netzadresse"],
+			priority: "high" as const,
+		},
+	];
+
+	expect(
+		selectSessionLearningTopics({
+			topics,
+			sessionTitle: "Host-Bereiche",
+			sessionGoal:
+				"Vertiefe Host-Bereiche: Gültige Host-Bereiche fehlerfrei bestimmen.",
+		}),
+	).toEqual([topics[1]]);
+});
+
+test("selects one exact topic when related topics share keywords", () => {
+	const topics = [
+		{
+			id: "cidr-masken",
+			title: "CIDR und Subnetzmasken",
+			learningGoal: "CIDR-Präfixe in Subnetzmasken umwandeln.",
+			keywords: ["Subnetzmasken"],
+			priority: "high" as const,
+		},
+		{
+			id: "variable-masken",
+			title: "Variable Subnetzmasken",
+			learningGoal: "Variable Subnetzmasken passend auswählen.",
+			keywords: ["Subnetzmasken"],
+			priority: "high" as const,
+		},
+	];
+
+	expect(
+		selectSessionLearningTopics({
+			topics,
+			sessionTitle: "Variable Subnetzmasken",
+			sessionGoal:
+				"Vertiefe Variable Subnetzmasken und wähle die passende Maske aus.",
+		}),
+	).toEqual([topics[1]]);
 });

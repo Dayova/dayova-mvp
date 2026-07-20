@@ -21,7 +21,7 @@ import {
 	MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
 } from "./learningSessionContentConstraints";
 import {
-	focusLearningTopics,
+	getSessionLearningTopics,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
 import { type TheoryContent, theoryContentValidator } from "./theoryContent";
@@ -243,18 +243,19 @@ const getSessionTopics = (
 	plan: Doc<"learningPlans">,
 	session: Doc<"learningPlanSessions">,
 ): LearningTopic[] => {
-	const focusTopics = (topics: LearningTopic[]) =>
-		focusLearningTopics({
-			topics,
+	if (plan.topicMap && plan.topicMap.length > 0) {
+		return getSessionLearningTopics({
+			topics: plan.topicMap,
 			strengths: plan.insight?.strengths ?? [],
 			gaps: plan.insight?.gaps ?? [],
+			sessionPhase: session.phase,
+			sessionTitle: session.title,
+			sessionGoal: session.goal,
 		});
-	if (plan.topicMap && plan.topicMap.length > 0) {
-		return focusTopics(plan.topicMap);
 	}
 
-	return focusTopics(
-		normalizeLearningTopics(
+	return getSessionLearningTopics({
+		topics: normalizeLearningTopics(
 			distinct([
 				plan.topicDescription,
 				session.goal,
@@ -272,7 +273,12 @@ const getSessionTopics = (
 					priority: index < 3 ? ("high" as const) : ("medium" as const),
 				})),
 		),
-	);
+		strengths: plan.insight?.strengths ?? [],
+		gaps: plan.insight?.gaps ?? [],
+		sessionPhase: session.phase,
+		sessionTitle: session.title,
+		sessionGoal: session.goal,
+	});
 };
 
 const theoryQuestionFor = (

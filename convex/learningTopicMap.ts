@@ -172,3 +172,56 @@ export const focusLearningTopics = ({
 		})),
 	]);
 };
+
+export const selectSessionLearningTopics = ({
+	topics,
+	sessionTitle,
+	sessionGoal,
+}: {
+	topics: LearningTopic[];
+	sessionTitle: string;
+	sessionGoal: string;
+}): LearningTopic[] => {
+	const normalizedTopics = normalizeLearningTopics(topics);
+	const sessionTokens = focusTokens([sessionTitle, sessionGoal]);
+	if (sessionTokens.length === 0) return normalizedTopics;
+	const normalizedSessionTitle = sessionTitle.trim().toLocaleLowerCase("de");
+	const normalizedSessionGoal = sessionGoal.trim().toLocaleLowerCase("de");
+	const exactTopic = normalizedTopics.find((topic) => {
+		const topicTitle = topic.title.trim().toLocaleLowerCase("de");
+		return (
+			normalizedSessionTitle === topicTitle ||
+			normalizedSessionTitle.startsWith(`${topicTitle}:`) ||
+			normalizedSessionTitle.endsWith(`: ${topicTitle}`) ||
+			normalizedSessionGoal.includes(`${topicTitle}:`)
+		);
+	});
+	if (exactTopic) return [exactTopic];
+
+	return normalizedTopics;
+};
+
+export const getSessionLearningTopics = ({
+	topics,
+	strengths,
+	gaps,
+	sessionPhase,
+	sessionTitle,
+	sessionGoal,
+}: {
+	topics: LearningTopic[];
+	strengths: string[];
+	gaps: string[];
+	sessionPhase: "theory" | "practice" | "rehearsal";
+	sessionTitle: string;
+	sessionGoal: string;
+}) => {
+	const focusedTopics = focusLearningTopics({ topics, strengths, gaps });
+	return sessionPhase === "theory"
+		? selectSessionLearningTopics({
+				topics: focusedTopics,
+				sessionTitle,
+				sessionGoal,
+			})
+		: focusedTopics;
+};
