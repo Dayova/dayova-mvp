@@ -45,7 +45,8 @@ jobs:
     outputs:
       ota_safe: ${{ steps.ota_guard.outputs.ota_safe }}
       ota_reason: ${{ steps.ota_guard.outputs.ota_reason }}
-      ota_changed_files: ${{ steps.ota_guard.outputs.ota_changed_files }}
+      ota_baseline: ${{ steps.ota_guard.outputs.ota_baseline }}
+      ota_current_fingerprints: ${{ steps.ota_guard.outputs.ota_current_fingerprints }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
@@ -54,37 +55,29 @@ jobs:
       - name: Run tests
         run: pnpm test
       - name: Verify Expo export
+        env:
+          APP_VARIANT: production
         run: pnpm exec expo export --platform all --output-dir dist
       - id: ota_guard
-        name: Check OTA safety
+        name: Check OTA safety against distributed binaries
+        env:
+          APP_VARIANT: production
         run: |
-          before_sha="${{ github.event.before }}"
-          current_sha="${{ github.sha }}"
-
-          if [ -n "$before_sha" ] && [ "$before_sha" != "0000000000000000000000000000000000000000" ]; then
-            git fetch --depth=1 origin "$before_sha" || true
-          fi
-
-          if [ -n "$before_sha" ] && git cat-file -e "$before_sha^{commit}" 2>/dev/null; then
-            changed_files="$(git diff --name-only "$before_sha" "$current_sha")"
+          if ota_report="$(node scripts/ota-safety.mjs --json)"; then
+            ota_safe=true
           else
-            echo "Previous commit is unavailable in checkout. Treating update as not OTA-safe."
-            changed_files="app.config.ts"
-            ota_reason="Previous commit was unavailable in the EAS checkout, so OTA was skipped safely."
+            ota_safe=false
           fi
 
-          printf '%s\n' "$changed_files"
-          changed_files_csv="$(printf '%s\n' "$changed_files" | awk 'NF { if (out != "") out = out ", "; out = out $0 } END { print out }')"
-          set-output ota_changed_files "$changed_files_csv"
+          printf '%s\n' "$ota_report"
+          ota_reason="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).reason')"
+          ota_baseline="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).baseline')"
+          ota_current_fingerprints="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).currentFingerprints')"
 
-          if printf '%s\n' "$changed_files" | grep -E '^(app\.config\..*|app\.json|eas\.json|package\.json|pnpm-lock\.yaml|android/|ios/|plugins/|assets/.*(icon|splash|logo)|src/lib/runtime-config\.ts)' >/dev/null; then
-            echo "Native or runtime-sensitive files changed. Skipping automatic OTA update."
-            set-output ota_safe false
-            set-output ota_reason "${ota_reason:-Native or runtime-sensitive files changed, so a new binary build is required.}"
-          else
-            set-output ota_safe true
-            set-output ota_reason "Only OTA-safe files changed."
-          fi
+          set-output ota_safe "$ota_safe"
+          set-output ota_reason "$ota_reason"
+          set-output ota_baseline "$ota_baseline"
+          set-output ota_current_fingerprints "$ota_current_fingerprints"
 
   deploy_convex:
     name: Deploy Convex
@@ -111,7 +104,13 @@ jobs:
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
+      - name: Verify production manifest and distributed-binary compatibility
+        env:
+          APP_VARIANT: production
+        run: node scripts/ota-safety.mjs
       - name: Send production OTA rollout
+        env:
+          APP_VARIANT: production
         run: |
           pnpm dlx eas-cli@18.11.0 update \
             --branch production \
@@ -134,6 +133,8 @@ jobs:
 
         **Reason:** ${{ needs.main_checks.outputs.ota_reason }}
 
-        **Changed files:** ${{ needs.main_checks.outputs.ota_changed_files }}
+        **Distributed baseline:** ${{ needs.main_checks.outputs.ota_baseline }}
 
-        This protects users from receiving JavaScript that may require a new App Store or Play Store binary.
+        **Current fingerprints:** ${{ needs.main_checks.outputs.ota_current_fingerprints }}
+
+        This block persists across later commits until the production manifest and native fingerprints match verified distributed binaries.
