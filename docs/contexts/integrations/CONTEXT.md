@@ -2,22 +2,22 @@
 
 This context covers third-party services and external system boundaries, including documentation, issue tracking, analytics, AI services, payments, email, and future migrations.
 
-Confluence is the current cross-functional documentation hub and may later move to Notion.
+Notion is Dayova's main internal documentation and knowledge workspace. Linear owns actionable work and workflow state; GitHub owns code and pull requests. Link these systems rather than duplicating their records.
 
 Linear workspace `dayova`, team `Dayova` (`DAY`), is the source of truth for issues and PRDs. GitHub Issues for `Dayova/dayova-mvp` is a bidirectionally synced compatibility surface, and linked pull requests drive Linear workflow status automation. Agent-facing operation rules live in `docs/agents/issue-tracker.md`.
 
 ## Language
 
 **PostHog Student Profile**:
-An identifiable analytics profile for a validation-phase student, used to connect in-app behavior with the team's Confluence-based student table.
+An identifiable analytics profile for a validation-phase student, used to connect in-app behavior with the team's Notion validation-student database.
 _Avoid_: Treating PostHog as the source of record for full research notes or qualitative interview data.
 
 **Validation Student Table**:
-The Confluence-based table used by non-technical team members to manage test students, their real deadlines, check-ins, and qualitative observations.
+The Notion database used by non-technical team members to manage test students, their real deadlines, check-ins, and qualitative observations.
 _Avoid_: Splitting founder-facing validation notes across multiple unlinked tools.
 
 **Validation Student Code**:
-A short Dayova-owned code such as `S1` or `S2` that links a student in the Confluence validation table to their app user and PostHog profile.
+A short Dayova-owned code such as `S1` or `S2` that links a student in the Notion validation-student database to their app user and PostHog profile.
 _Avoid_: Using email address or full name as the stable join key between tools.
 
 ## PostHog Validation Analytics

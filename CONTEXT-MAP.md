@@ -1,8 +1,8 @@
 # Context Map
 
-This repo uses a multi-context documentation layout for agent-facing technical and domain guidance.
+This repo uses a multi-context documentation layout for agent-facing, code-adjacent technical and domain guidance.
 
-Confluence is the current cross-functional documentation hub for Dayova. The local context docs listed here should capture the implementation-facing terminology, architecture, and decisions that agents need while working in this repo.
+Notion is Dayova's main internal documentation and knowledge workspace. The local context docs listed here should contain only the implementation-facing terminology, architecture, constraints, and decision pointers that agents need to change this repository safely. Link to relevant Notion records instead of duplicating shared internal documentation.
 
 ## Contexts
 

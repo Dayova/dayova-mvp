@@ -2,7 +2,7 @@
 
 This context covers the Expo app, Expo Router, navigation, native UI, styling, client state, and mobile-specific behavior.
 
-Confluence is the current cross-functional documentation hub. Keep this file focused on implementation-facing terminology, conventions, and assumptions that agents need while working in this repo.
+Notion is Dayova's main internal documentation and knowledge workspace. Keep this file focused on implementation-facing terminology, conventions, and assumptions that must evolve with the code, and link to relevant Notion records instead of duplicating shared documentation.
 
 ## Language
 
