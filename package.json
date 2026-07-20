@@ -31,8 +31,10 @@
 		"skills:update:expo": "node scripts/update-expo-skills.mjs",
 		"skills:update:matt": "node scripts/update-matt-pocock-skills.mjs",
 		"test": "vitest run",
-		"check": "run-s lint typecheck",
+		"check": "run-s theme:check lint typecheck",
 		"check:compiler": "pnpm dlx react-compiler-healthcheck@latest",
+		"theme:check": "node scripts/generate-theme-variables.mjs --check",
+		"theme:generate": "node scripts/generate-theme-variables.mjs",
 		"typecheck": "tsc --noEmit",
 		"check:unused": "cross-env APP_VARIANT=development knip"
 	},

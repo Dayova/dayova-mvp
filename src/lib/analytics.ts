@@ -24,33 +24,28 @@ export function useValidationAnalytics() {
 	const clerkId = user?.clerkId;
 
 	const capture = useCallback(
-		async (
-			eventName: ValidationEventName,
-			properties?: AnalyticsProperties,
-		) => {
+		(eventName: ValidationEventName, properties?: AnalyticsProperties) => {
 			if (!isPostHogConfigured || !clerkId) return;
 
-			let validationStudentCode = convexUser?.validationStudentCode ?? null;
-			if (convexUser) {
-				try {
-					const activity = await markActivity({
-						localDayKey: getDayKey(new Date()),
-					});
-					validationStudentCode = activity.validationStudentCode;
-				} catch (error) {
-					logDiagnosticError("Failed to mark validation activity.", error, {
-						source: "analytics.markActivity",
-						level: "warn",
-						metadata: { eventName },
-					});
-				}
-			}
-
+			// Capture synchronously so one-shot interactions remain fail-open while
+			// Convex activity marking runs independently as best effort.
+			const validationStudentCode = convexUser?.validationStudentCode ?? null;
 			captureValidationEvent(posthog, eventName, clerkId, {
 				...properties,
 				...(validationStudentCode
 					? { validation_student_code: validationStudentCode }
 					: {}),
+			});
+
+			if (!convexUser) return;
+			void markActivity({
+				localDayKey: getDayKey(new Date()),
+			}).catch((error: unknown) => {
+				logDiagnosticError("Failed to mark validation activity.", error, {
+					source: "analytics.markActivity",
+					level: "warn",
+					metadata: { eventName },
+				});
 			});
 		},
 		[clerkId, convexUser, markActivity, posthog],

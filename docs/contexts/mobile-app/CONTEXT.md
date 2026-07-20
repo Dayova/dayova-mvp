@@ -26,6 +26,9 @@ _Avoid_: Called by client, Server Error, raw stack trace
 
 - Capture app architecture, routing, UI, and native behavior decisions here.
 - Put mobile-app ADRs in `docs/contexts/mobile-app/adr/`.
+- Keep `expo-constants` as a direct dependency while Expo Router requires it as
+  a native peer. The generic Expo-upgrade cleanup rule for implicit packages
+  does not apply when `expo-doctor` reports the package as required.
 - NativeWind is part of the build pipeline, not only runtime styling. Release
   build issues around Metro, Tailwind generation, or `expo-updates` should check
   `metro.config.js` and the NativeWind patch documentation before changing EAS

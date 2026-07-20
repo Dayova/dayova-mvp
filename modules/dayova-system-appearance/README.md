@@ -78,7 +78,8 @@ The module is responsible for:
 
 - synchronously returning the resolved appearance of the active iOS window;
 - emitting `onChange` when that window changes between light and dark;
-- refreshing the value when the app becomes active;
+- retrying observation when a window becomes key and refreshing the value when
+  the app becomes active;
 - making React Native resolve system appearance from the key window; and
 - installing and removing its UIKit observer with the JavaScript listener
   lifecycle.
@@ -219,12 +220,15 @@ than used everywhere.
 ### Listener and app lifecycle
 
 - `OnStartObserving("onChange")` installs the view and immediately emits the
-  current value.
+  current value. It also listens for the first or replacement window becoming
+  key, so a subscription that races window creation is repaired without
+  waiting for another app activation.
 - `OnStopObserving("onChange")` removes the view after the final listener is
   removed.
-- `OnAppBecomesActive` emits the current value and refreshes React Native's
-  appearance state. This covers a system change made while Dayova was in the
-  background.
+- `OnAppBecomesActive` reinstalls the observer when the initial subscription
+  raced window creation or the active window changed, then emits the current
+  value and refreshes React Native's appearance state. This covers system
+  changes made while Dayova was in the background.
 - `OnDestroy` removes the observer view and releases the reference.
 
 Appearance events can repeat around initialization or foreground activation.
@@ -271,9 +275,10 @@ module does not cause that app-wide minimum.
 - **React Native implementation coupling:** The key-window function and native
   notification behavior can change without a JavaScript API deprecation.
 - **Single-window assumption:** The active-window lookup is not scene-specific.
-- **Observer installation timing:** Installation requires a window to exist
-  when the first listener attaches. The current hook mounts inside the running
-  app UI; a future earlier consumer must verify this assumption.
+- **Observer installation timing:** Installation still requires an active
+  window, but key-window and foreground activation events retry when the
+  initial listener attached too early and rehome the observer when the active
+  window changed.
 - **Normalized result:** The API intentionally collapses unknown or unspecified
   UIKit values to `"light"`.
 - **Duplicate state events:** Initialization, trait change, and foreground
@@ -297,10 +302,11 @@ pnpm test src/lib/ios-appearance-module.test.ts
 ```
 
 These tests only assert that the podspec contains the iOS 16.4 target and that
-the Swift source retains the expected modern and legacy observer markers and
-control-flow order. They do not compile Swift, execute UIKit, prove callback
-reachability, or validate event delivery. Native Debug/Release builds and the
-runtime smoke-test matrix remain the behavioral evidence.
+the Swift source retains the expected modern/legacy observer markers,
+key-window/foreground recovery calls, and control-flow order. They do not
+compile Swift, execute UIKit, prove callback reachability, or validate event
+delivery. Native Debug/Release builds and the runtime smoke-test matrix remain
+the behavioral evidence.
 
 Confirm Expo can discover the module:
 

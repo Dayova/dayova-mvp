@@ -4,6 +4,8 @@ import UIKit
 
 public class DayovaSystemAppearanceModule: Module {
   private var observerView: AppearanceObserverView?
+  private var keyWindowObserver: NSObjectProtocol?
+  private var isObserving = false
 
   public func definition() -> ModuleDefinition {
     Name("DayovaSystemAppearance")
@@ -23,25 +25,31 @@ public class DayovaSystemAppearanceModule: Module {
 
     OnStartObserving("onChange") { [weak self] in
       DispatchQueue.main.async {
-        self?.installObserver()
+        guard let self else { return }
+        self.isObserving = true
+        self.startObservingKeyWindowChanges()
+        self.refreshObservation()
       }
     }
 
     OnStopObserving("onChange") { [weak self] in
       DispatchQueue.main.async {
-        self?.removeObserver()
+        guard let self else { return }
+        self.stopObservation()
       }
     }
 
     OnAppBecomesActive { [weak self] in
-      self?.emitCurrentColorScheme()
+      DispatchQueue.main.async {
+        guard let self, self.isObserving else { return }
+        self.refreshObservation()
+      }
     }
 
     OnDestroy { [weak self] in
-      guard let observerView = self?.observerView else { return }
-      self?.observerView = nil
+      guard let self else { return }
       DispatchQueue.main.async {
-        observerView.removeFromSuperview()
+        self.stopObservation()
       }
     }
   }
@@ -76,10 +84,13 @@ public class DayovaSystemAppearanceModule: Module {
     }
   }
 
-  private func installObserver() {
-    removeObserver()
-
+  private func installObserverIfNeeded() {
     guard let window = Self.activeWindow() else { return }
+    if let observerView, observerView.superview === window {
+      return
+    }
+
+    removeObserver()
     let view = AppearanceObserverView()
     view.isUserInteractionEnabled = false
     view.onColorSchemeChange = { [weak self] colorScheme in
@@ -87,7 +98,35 @@ public class DayovaSystemAppearanceModule: Module {
     }
     window.addSubview(view)
     observerView = view
+  }
+
+  private func refreshObservation() {
+    installObserverIfNeeded()
     emitCurrentColorScheme()
+  }
+
+  private func startObservingKeyWindowChanges() {
+    stopObservingKeyWindowChanges()
+    keyWindowObserver = NotificationCenter.default.addObserver(
+      forName: UIWindow.didBecomeKeyNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      guard let self, self.isObserving else { return }
+      self.refreshObservation()
+    }
+  }
+
+  private func stopObservingKeyWindowChanges() {
+    guard let keyWindowObserver else { return }
+    NotificationCenter.default.removeObserver(keyWindowObserver)
+    self.keyWindowObserver = nil
+  }
+
+  private func stopObservation() {
+    isObserving = false
+    stopObservingKeyWindowChanges()
+    removeObserver()
   }
 
   private func removeObserver() {

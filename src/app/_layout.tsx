@@ -120,7 +120,8 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 
 	return (
 		<GestureHandlerRootView style={gestureRootStyle}>
-			<View style={[gestureRootStyle, themeVariables]}>
+			{/* NativeWind vars() must use style to provide runtime CSS variables. */}
+			<View className="flex-1" style={themeVariables}>
 				<KeyboardProvider preload={false}>
 					<PostHogProvider
 						apiKey={postHogApiKey}

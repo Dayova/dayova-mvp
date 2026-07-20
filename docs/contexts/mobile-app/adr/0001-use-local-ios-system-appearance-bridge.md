@@ -44,7 +44,8 @@ The module:
   changes;
 - exposes a synchronous `getColorScheme(): "light" | "dark"` method and an
   `onChange` event;
-- refreshes the value when the app becomes active;
+- retries observation when a window becomes key and refreshes the value when
+  the app becomes active;
 - enables React Native's key-window appearance mode and refreshes
   `RCTAppearance` during module creation and foreground activation;
 - is discovered through Expo Autolinking rather than hand-edited into the
@@ -116,7 +117,9 @@ Costs and risks:
   notification behavior, which are not part of the documented JavaScript API
   contract and may change during upgrades.
 - Active-window lookup assumes Dayova's current single-window app model.
-- Observer installation requires a window when the first listener attaches.
+- Observer installation requires an active window; key-window and foreground
+  activation events retry an initial race and rehome the observer when the
+  window changed.
 - Initialization, trait changes, and foreground refreshes can emit duplicate
   state values, so consumers must remain idempotent.
 - The module's iOS 16.4 compatibility is compile-tested but cannot be launched
