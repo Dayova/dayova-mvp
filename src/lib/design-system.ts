@@ -45,6 +45,12 @@ export const DAYOVA_DESIGN_SYSTEM = {
 		path6: "#00BAFF",
 		path7: "#4FD8FF",
 		pathLockedBase: "#ADB3BC",
+		uploadArtworkBorder: "#DFE4EB",
+		uploadArtworkIconBackground: "#F6F8FF",
+		uploadArtworkIconBorder: "#D9E2F3",
+		uploadArtworkIconFill: "#DFE7F7",
+		uploadArtworkIconMuted: "#D7DFF1",
+		uploadArtworkShadow: "#8896C8",
 	},
 	gradients: {
 		primaryInteractive: {

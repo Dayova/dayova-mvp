@@ -1,16 +1,12 @@
-import type { ComponentType } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
-import type { SvgProps } from "react-native-svg";
 import type { Id } from "#convex/_generated/dataModel";
+import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { WarningBanner } from "~/components/ui/warning-banner";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
-import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
-
-const IntroUploadArtwork = IntroUploadSvg as unknown as ComponentType<SvgProps>;
 
 type PendingUploadAction = "camera" | "files";
 
@@ -80,7 +76,7 @@ export function MaterialUploadStep({
 			>
 				<IntroUploadArtwork width={artworkWidth} height={artworkHeight} />
 				{isBusy || openingUploadAction ? (
-					<View className="absolute inset-0 items-center justify-center rounded-[32px] bg-white/80">
+					<View className="absolute inset-0 items-center justify-center rounded-[32px] bg-surface/80">
 						<ActivityIndicator color="#00A0E6" />
 						<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
 							{openingUploadAction === "files"

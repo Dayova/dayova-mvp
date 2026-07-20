@@ -45,6 +45,7 @@ import Svg, {
 	LinearGradient as SvgLinearGradient,
 	type SvgProps,
 } from "react-native-svg";
+import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
@@ -85,7 +86,6 @@ import { useBackIntent } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
 import IntroTasksSvg from "../../../assets/onboarding/intro-tasks.svg";
-import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
 
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
 const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
@@ -328,7 +328,6 @@ function parsePickerTime(value: string) {
 const INTRO_REFERENCE_WIDTH = 393;
 const INTRO_REFERENCE_HEIGHT = 852;
 const IntroTasksArtwork = IntroTasksSvg as unknown as ComponentType<SvgProps>;
-const IntroUploadArtwork = IntroUploadSvg as unknown as ComponentType<SvgProps>;
 const IntroPathArtwork = IntroPathSvg as unknown as ComponentType<SvgProps>;
 const INTRO_LAYOUTS = {
 	tasks: {

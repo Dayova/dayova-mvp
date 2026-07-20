@@ -56,6 +56,12 @@ const DARK_COLORS = {
 	path2: "#3A3942",
 	path3: "#8D8F98",
 	path4: "#A7AAB4",
+	uploadArtworkBorder: "#3A3942",
+	uploadArtworkIconBackground: "#2B2A31",
+	uploadArtworkIconBorder: "#3A3942",
+	uploadArtworkIconFill: "#34323A",
+	uploadArtworkIconMuted: "#8D8F98",
+	uploadArtworkShadow: "#000000",
 } satisfies DayovaThemeColors;
 
 export const DAYOVA_THEME_COLORS = {
