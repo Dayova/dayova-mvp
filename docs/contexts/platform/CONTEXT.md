@@ -66,3 +66,15 @@ prebuild, keep it in sync too:
 checks the generated native plist when it exists. Run it before an iOS release
 build so App Store Connect does not reject the uploaded bundle for missing
 purpose strings.
+
+## iOS Deployment Target
+
+Dayova currently requires iOS 17.0 because the native Clerk Expo SDK requires
+it. The `@clerk/expo` config plugin writes that target to the generated Xcode
+project and `Podfile.properties.json` during prebuild. This requirement predates
+the Expo SDK 57 upgrade even though Expo SDK 57 itself supports iOS 16.4 and
+newer.
+
+Keep Dayova-owned native modules compatible with Expo's 16.4 baseline unless a
+higher target is intentional and documented. Re-evaluate the app-wide iOS 17.0
+minimum when Clerk lowers its native SDK requirement or Clerk is replaced.

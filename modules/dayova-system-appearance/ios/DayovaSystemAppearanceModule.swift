@@ -120,18 +120,36 @@ private final class AppearanceObserverView: UIView {
   override init(frame: CGRect) {
     super.init(frame: frame)
 
-    registerForTraitChanges([UITraitUserInterfaceStyle.self]) {
-      (view: AppearanceObserverView, previousTraitCollection: UITraitCollection) in
-      guard view.traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) else {
-        return
+    if #available(iOS 17.0, *) {
+      registerForTraitChanges([UITraitUserInterfaceStyle.self]) {
+        (view: AppearanceObserverView, previousTraitCollection: UITraitCollection) in
+        view.emitColorSchemeIfChanged(from: previousTraitCollection)
       }
-
-      view.onColorSchemeChange?(
-        view.traitCollection.userInterfaceStyle == .dark ? "dark" : "light")
     }
+  }
+
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+
+    if #available(iOS 17.0, *) {
+      return
+    }
+
+    emitColorSchemeIfChanged(from: previousTraitCollection)
   }
 
   required init?(coder: NSCoder) {
     fatalError("init(coder:) has not been implemented")
+  }
+
+  private func emitColorSchemeIfChanged(from previousTraitCollection: UITraitCollection?) {
+    guard let previousTraitCollection,
+      traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection)
+    else {
+      return
+    }
+
+    onColorSchemeChange?(
+      traitCollection.userInterfaceStyle == .dark ? "dark" : "light")
   }
 }

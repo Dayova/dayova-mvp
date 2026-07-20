@@ -5,7 +5,8 @@ Pod::Spec.new do |s|
   s.description    = 'Bridges the key UIWindow trait collection to JavaScript.'
   s.author         = ''
   s.homepage       = 'https://docs.expo.dev/modules/'
-  s.platforms      = { :ios => '17.0' }
+  # Match Expo SDK 57's baseline; the app may have a higher target because of other pods.
+  s.platforms      = { :ios => '16.4' }
   s.source         = { git: '' }
   s.static_framework = true
 
