@@ -1,20 +1,19 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import type { ResolvedTheme } from "~/lib/theme-preference";
 import DayovaSystemAppearance from "../../modules/dayova-system-appearance";
 
-export function useSystemColorScheme(): ResolvedTheme {
-	const [colorScheme, setColorScheme] = useState<ResolvedTheme>(() =>
-		DayovaSystemAppearance.getColorScheme(),
+// Decision: docs/contexts/mobile-app/adr/0001-use-local-ios-system-appearance-bridge.md
+const getSnapshot = () => DayovaSystemAppearance.getColorScheme();
+
+const subscribe = (onStoreChange: () => void) => {
+	const subscription = DayovaSystemAppearance.addListener(
+		"onChange",
+		onStoreChange,
 	);
 
-	useEffect(() => {
-		const subscription = DayovaSystemAppearance.addListener(
-			"onChange",
-			(event) => setColorScheme(event.colorScheme),
-		);
+	return () => subscription.remove();
+};
 
-		return () => subscription.remove();
-	}, []);
-
-	return colorScheme;
+export function useSystemColorScheme(): ResolvedTheme {
+	return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

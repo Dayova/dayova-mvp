@@ -44,6 +44,8 @@ The module:
   changes;
 - exposes a synchronous `getColorScheme(): "light" | "dark"` method and an
   `onChange` event;
+- exposes that native state to React through `useSyncExternalStore`, including
+  React's post-subscription snapshot check;
 - refreshes the value when the app becomes active;
 - enables React Native's key-window appearance mode and refreshes
   `RCTAppearance` during module creation and foreground activation;
@@ -73,6 +75,10 @@ the app-wide minimum.
    `Appearance.setColorScheme` API.
 3. `73834a8` restored the module's independent iOS 16.4 compatibility by gating
    the iOS 17 trait-registration API and retaining the older-iOS callback.
+4. The DAY-109 follow-up changed the JavaScript adapter to
+   `useSyncExternalStore`, made foreground activation retry installation on the
+   current active window, and added behavioral plus native-contract regression
+   tests for both races.
 
 Native validation ran on an iOS 26.5 simulator. Debug and optimized Release
 compiled the module for `arm64-apple-ios16.4-simulator`, but no iOS 16.4 runtime
@@ -116,7 +122,9 @@ Costs and risks:
   notification behavior, which are not part of the documented JavaScript API
   contract and may change during upgrades.
 - Active-window lookup assumes Dayova's current single-window app model.
-- Observer installation requires a window when the first listener attaches.
+- The first observer installation still depends on an active window. If no
+  window exists yet, foreground activation retries installation; a future
+  multi-window product would still need scene-specific ownership.
 - Initialization, trait changes, and foreground refreshes can emit duplicate
   state values, so consumers must remain idempotent.
 - The module's iOS 16.4 compatibility is compile-tested but cannot be launched

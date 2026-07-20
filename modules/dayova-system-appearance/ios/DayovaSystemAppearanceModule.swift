@@ -4,6 +4,7 @@ import UIKit
 
 public class DayovaSystemAppearanceModule: Module {
   private var observerView: AppearanceObserverView?
+  private var isObserving = false
 
   public func definition() -> ModuleDefinition {
     Name("DayovaSystemAppearance")
@@ -23,21 +24,28 @@ public class DayovaSystemAppearanceModule: Module {
 
     OnStartObserving("onChange") { [weak self] in
       DispatchQueue.main.async {
-        self?.installObserver()
+        guard let self else { return }
+        self.isObserving = true
+        self.installObserver()
       }
     }
 
     OnStopObserving("onChange") { [weak self] in
       DispatchQueue.main.async {
-        self?.removeObserver()
+        guard let self else { return }
+        self.isObserving = false
+        self.removeObserver()
       }
     }
 
     OnAppBecomesActive { [weak self] in
-      self?.emitCurrentColorScheme()
+      DispatchQueue.main.async {
+        self?.refreshAppearanceObservation()
+      }
     }
 
     OnDestroy { [weak self] in
+      self?.isObserving = false
       guard let observerView = self?.observerView else { return }
       self?.observerView = nil
       DispatchQueue.main.async {
@@ -93,6 +101,22 @@ public class DayovaSystemAppearanceModule: Module {
   private func removeObserver() {
     observerView?.removeFromSuperview()
     observerView = nil
+  }
+
+  private func refreshAppearanceObservation() {
+    guard isObserving else { return }
+
+    guard let activeWindow = Self.activeWindow() else {
+      removeObserver()
+      return
+    }
+
+    if observerView?.window !== activeWindow {
+      installObserver()
+      return
+    }
+
+    emitCurrentColorScheme()
   }
 
   private func emitCurrentColorScheme() {

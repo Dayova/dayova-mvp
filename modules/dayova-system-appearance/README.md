@@ -181,6 +181,11 @@ Application code should normally use `useSystemColorScheme` from
 than importing this module directly. The platform-specific file keeps this
 iOS-only native dependency out of Android and web bundles.
 
+The iOS hook adapts the module with React's `useSyncExternalStore`. Native
+events invalidate the snapshot; `getColorScheme()` remains the state source.
+React therefore rechecks the snapshot after subscribing and cannot miss a
+change that lands between render and listener installation.
+
 The module provides no setter. Theme overrides belong to React Native's public
 `Appearance.setColorScheme` API and the Dayova theme provider.
 
@@ -222,9 +227,11 @@ than used everywhere.
   current value.
 - `OnStopObserving("onChange")` removes the view after the final listener is
   removed.
-- `OnAppBecomesActive` emits the current value and refreshes React Native's
-  appearance state. This covers a system change made while Dayova was in the
-  background.
+- `OnAppBecomesActive` verifies that the observer is attached to the current
+  active window, reinstalls it when the first subscription happened before a
+  window existed or the active window changed, and then refreshes React
+  Native's appearance state. This covers both startup ordering and a system
+  change made while Dayova was in the background.
 - `OnDestroy` removes the observer view and releases the reference.
 
 Appearance events can repeat around initialization or foreground activation.
@@ -374,9 +381,10 @@ Check, in order:
 
 ### Live changes work, but background/resume is stale
 
-Verify `OnAppBecomesActive` still runs and emits after the active window has
-adopted its new trait. Inspect whether an Expo or React Native upgrade changed
-the lifecycle callback ordering before adding delays or polling.
+Verify `OnAppBecomesActive` still runs after the active window has adopted its
+new trait and that `refreshAppearanceObservation()` either keeps the observer
+on that window or reinstalls it. Inspect whether an Expo or React Native upgrade
+changed the lifecycle callback ordering before adding delays or polling.
 
 ### A React Native upgrade removes a native symbol
 

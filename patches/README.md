@@ -87,12 +87,14 @@ Expo SDK 57 upgrades React Native from 0.85 to 0.86. The React Native 0.86
 Gradle plugin applies `org.gradle.toolchains.foojay-resolver-convention` from
 its Kotlin `settings.gradle.kts` so Gradle can provision a matching JDK.
 
-On Windows, Gradle 9.3.1 can miscompile that settings script before plugin
-resolution and report `Unresolved reference 'plugins'` and `Unresolved
-reference 'id'`. The failure reproduces when the React Native Gradle plugin is
-built by itself, before Dayova's Android project or native modules are
-configured. The same Windows failure shape is recorded in
-[gradle/gradle#36323](https://github.com/gradle/gradle/issues/36323).
+On Dayova's Windows environment, Gradle 9.3.1 miscompiled that settings script
+before plugin resolution and reported `Unresolved reference 'plugins'` and
+`Unresolved reference 'id'`. The failure reproduced when the React Native
+Gradle plugin was built by itself, before Dayova's Android project or native
+modules were configured. The upstream report
+[gradle/gradle#36323](https://github.com/gradle/gradle/issues/36323) records the
+same Windows failure shape on Gradle 9.2.1 and 9.3.0; Dayova independently
+reproduced it on 9.3.1.
 
 Dayova already requires JDK 17 for Android development and EAS Android build
 images provide the required JDK, so automatic Foojay toolchain provisioning is

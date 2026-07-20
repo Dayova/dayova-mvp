@@ -3,14 +3,14 @@ import { usePostHog } from "posthog-react-native";
 import { useCallback } from "react";
 import { api } from "#convex/_generated/api";
 import { useAuthSession } from "~/context/AuthContext";
+import type { AnalyticsProperties } from "~/lib/analytics-core";
 import {
 	captureValidationEvent,
+	isPostHogConfigured,
 	type ValidationEventName,
 } from "~/lib/analytics-core";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
-import { isPostHogConfigured } from "~/lib/analytics-core";
-import type { AnalyticsProperties } from "~/lib/analytics-core";
 
 export function useValidationAnalytics() {
 	const posthog = usePostHog();
@@ -30,7 +30,7 @@ export function useValidationAnalytics() {
 			if (!isPostHogConfigured || !clerkId) return;
 
 			let validationStudentCode = convexUser?.validationStudentCode ?? null;
-			if (convexUser) {
+			if (isConvexAuthenticated) {
 				try {
 					const activity = await markActivity({
 						localDayKey: getDayKey(new Date()),
@@ -52,7 +52,7 @@ export function useValidationAnalytics() {
 					: {}),
 			});
 		},
-		[clerkId, convexUser, markActivity, posthog],
+		[clerkId, convexUser, isConvexAuthenticated, markActivity, posthog],
 	);
 
 	return { capture };

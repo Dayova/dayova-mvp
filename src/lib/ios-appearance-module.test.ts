@@ -25,6 +25,24 @@ function sectionBetween(
 	return source.slice(startIndex, endIndex);
 }
 
+function balancedBlock(source: string, marker: string) {
+	const markerIndex = source.indexOf(marker);
+	const openingBrace = source.indexOf("{", markerIndex + marker.length);
+
+	expect(markerIndex).toBeGreaterThanOrEqual(0);
+	expect(openingBrace).toBeGreaterThan(markerIndex);
+
+	let depth = 0;
+	for (let index = openingBrace; index < source.length; index += 1) {
+		if (source[index] === "{") depth += 1;
+		if (source[index] === "}") depth -= 1;
+
+		if (depth === 0) return source.slice(openingBrace + 1, index);
+	}
+
+	throw new Error(`Unbalanced Swift block after: ${marker}`);
+}
+
 describe("iOS system appearance module", () => {
 	test("pins the module to Expo SDK 57's iOS 16.4 support floor", () => {
 		const podspec = readFileSync(IOS_PODSPEC_PATH, "utf8");
@@ -39,15 +57,15 @@ describe("iOS system appearance module", () => {
 			"override init(frame: CGRect)",
 			"override func traitCollectionDidChange",
 		);
-		const availabilityCheck = initializer.indexOf("if #available(iOS 17.0, *)");
-		const traitRegistration = initializer.indexOf("registerForTraitChanges");
-		const sharedHandlerCall = initializer.indexOf(
-			"view.emitColorSchemeIfChanged(from: previousTraitCollection)",
+		const availabilityBlock = balancedBlock(
+			initializer,
+			"if #available(iOS 17.0, *)",
 		);
 
-		expect(availabilityCheck).toBeGreaterThanOrEqual(0);
-		expect(traitRegistration).toBeGreaterThan(availabilityCheck);
-		expect(sharedHandlerCall).toBeGreaterThan(traitRegistration);
+		expect(availabilityBlock).toContain("registerForTraitChanges");
+		expect(availabilityBlock).toContain(
+			"view.emitColorSchemeIfChanged(from: previousTraitCollection)",
+		);
 	});
 
 	test("keeps the pre-iOS 17 callback guard and shared-handler call in order", () => {
@@ -71,5 +89,19 @@ describe("iOS system appearance module", () => {
 		expect(availabilityCheck).toBeGreaterThanOrEqual(0);
 		expect(modernIosReturn).toBeGreaterThan(availabilityCheck);
 		expect(sharedHandlerCall).toBeGreaterThan(modernIosReturn);
+	});
+
+	test("retries a missing appearance observer when the app becomes active", () => {
+		const module = readFileSync(IOS_MODULE_PATH, "utf8");
+		const appActiveHandler = balancedBlock(module, "OnAppBecomesActive");
+
+		expect(appActiveHandler).toContain("refreshAppearanceObservation()");
+
+		const refreshHandler = balancedBlock(
+			module,
+			"private func refreshAppearanceObservation()",
+		);
+		expect(refreshHandler).toContain("guard isObserving else { return }");
+		expect(refreshHandler).toContain("installObserver()");
 	});
 });

@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
-import { DARK_THEME_VARIABLES } from "./theme-variables";
+import {
+	DARK_NAV_THEME_COLORS,
+	DARK_THEME_COLORS,
+	DARK_THEME_VARIABLES,
+} from "./theme-variables";
 
 const GLOBAL_CSS_PATH = resolve(process.cwd(), "src/global.css");
 const APP_CONFIG_PATH = resolve(process.cwd(), "app.config.ts");
@@ -27,6 +31,24 @@ describe("theme CSS", () => {
 		);
 
 		expect(DARK_THEME_VARIABLES).toEqual(cssVariables);
+	});
+
+	test("derives native and navigation colors from the same dark variables", () => {
+		expect(DARK_THEME_COLORS).toMatchObject({
+			background: "#131216",
+			border: "#363A45",
+			primary: "#00BAFF",
+			surface: "#1F1E24",
+			text: "#EEEBE8",
+		});
+		expect(DARK_NAV_THEME_COLORS).toEqual({
+			background: "hsl(250 10% 8%)",
+			border: "hsl(224 12% 24%)",
+			card: "hsl(248 10% 13%)",
+			notification: "hsl(35.1 100% 58%)",
+			primary: "hsl(196.2 100% 50%)",
+			text: "hsl(36 15% 92%)",
+		});
 	});
 
 	test("allows native light and dark appearance changes", () => {
