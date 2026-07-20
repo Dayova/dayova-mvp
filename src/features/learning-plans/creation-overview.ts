@@ -26,11 +26,18 @@ export const getLearningPlanOverviewState = (
 ): LearningPlanOverviewState => {
 	if (overview.status !== "questionsReady") return { kind: "created" };
 
-	const questionCount = overview.creationProgress?.questionCount ?? 0;
-	const answeredQuestionCount =
-		overview.creationProgress?.answeredQuestionCount ?? 0;
-	const firstUnansweredQuestionIndex =
-		overview.creationProgress?.firstUnansweredQuestionIndex;
+	if (!overview.creationProgress) {
+		return {
+			kind: "creation",
+			badgeLabel: "Noch nicht erstellt",
+			actionLabel: "Lernplan-Erstellung fortsetzen",
+			progressLabel: "Fortschritt wird geladen",
+			resumeTarget: { kind: "question", questionIndex: 0 },
+		};
+	}
+
+	const { questionCount, answeredQuestionCount, firstUnansweredQuestionIndex } =
+		overview.creationProgress;
 
 	return {
 		kind: "creation",
