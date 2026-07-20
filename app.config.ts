@@ -5,7 +5,20 @@ const {
 }: typeof import("./src/lib/runtime-config") =
 	require("./src/lib/runtime-config.ts");
 
-const APP_VARIANT = process.env.APP_VARIANT ?? "development";
+const APP_VARIANT = process.env.APP_VARIANT;
+
+if (!APP_VARIANT) {
+	throw new Error(
+		"APP_VARIANT is required when resolving the Expo app config. Set it to development, preview, or production.",
+	);
+}
+
+if (!["development", "preview", "production"].includes(APP_VARIANT)) {
+	throw new Error(
+		`Unsupported APP_VARIANT "${APP_VARIANT}". Expected development, preview, or production.`,
+	);
+}
+
 const isProduction = APP_VARIANT === "production";
 const isReleaseConfig =
 	process.env.EAS_BUILD === "true" || process.env.NODE_ENV === "production";
