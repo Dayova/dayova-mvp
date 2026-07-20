@@ -6,9 +6,11 @@ describe("learning plan creation overview", () => {
 		expect(
 			getLearningPlanOverviewState({
 				status: "questionsReady",
-				questionCount: 5,
-				answeredQuestionCount: 2,
-				firstUnansweredQuestionIndex: 2,
+				creationProgress: {
+					questionCount: 5,
+					answeredQuestionCount: 2,
+					firstUnansweredQuestionIndex: 2,
+				},
 			}),
 		).toEqual({
 			kind: "creation",
@@ -23,9 +25,11 @@ describe("learning plan creation overview", () => {
 		expect(
 			getLearningPlanOverviewState({
 				status: "questionsReady",
-				questionCount: 5,
-				answeredQuestionCount: 5,
-				firstUnansweredQuestionIndex: null,
+				creationProgress: {
+					questionCount: 5,
+					answeredQuestionCount: 5,
+					firstUnansweredQuestionIndex: null,
+				},
 			}),
 		).toMatchObject({
 			kind: "creation",
