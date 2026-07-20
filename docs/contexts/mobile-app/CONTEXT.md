@@ -14,6 +14,9 @@ _Avoid_: Called by client, Server Error, raw stack trace
 
 - `docs/bottom-sheets.md`
 - `docs/styling.md`
+- `modules/dayova-system-appearance/README.md` for the iOS appearance bridge,
+  its rationale, native contract, alternatives, validation matrix, and removal
+  criteria.
 - `patches/README.md` for patched package behavior that affects Expo/Metro
   builds, including the NativeWind release-build patch.
 

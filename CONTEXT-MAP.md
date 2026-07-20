@@ -19,6 +19,7 @@ Confluence is the current cross-functional documentation hub for Dayova. The loc
 - Bottom sheets: `docs/bottom-sheets.md`
 - Styling: `docs/styling.md`
 - Package patches: `patches/README.md`
+- iOS system appearance module: `modules/dayova-system-appearance/README.md`
 
 ## ADRs
 

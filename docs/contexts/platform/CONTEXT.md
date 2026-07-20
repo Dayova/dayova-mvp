@@ -78,3 +78,7 @@ newer.
 Keep Dayova-owned native modules compatible with Expo's 16.4 baseline unless a
 higher target is intentional and documented. Re-evaluate the app-wide iOS 17.0
 minimum when Clerk lowers its native SDK requirement or Clerk is replaced.
+
+See `modules/dayova-system-appearance/README.md` for the appearance module's
+runtime design, React Native coupling, compatibility policy, test matrix, and
+removal criteria.
