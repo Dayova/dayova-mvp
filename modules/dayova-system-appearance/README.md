@@ -14,10 +14,10 @@ again.
 | --- | --- |
 | Status | Active compatibility workaround |
 | Scope | Dayova iOS application only |
-| Introduced | PR #300, commit `86364a1` |
 | Current native baseline | Expo SDK 57, React Native 0.86, module target iOS 16.4 |
 | Review trigger | Every Expo SDK, React Native, or minimum-iOS upgrade |
 | Exit condition | React Native's public appearance API passes the complete Dayova iOS validation matrix without this module |
+| Decision record | [`docs/contexts/mobile-app/adr/0001-use-local-ios-system-appearance-bridge.md`](../../docs/contexts/mobile-app/adr/0001-use-local-ios-system-appearance-bridge.md) |
 
 ## Executive summary
 
@@ -49,48 +49,9 @@ The problem was observed on a specific upgraded native stack. The existence of
 this workaround should not be interpreted as a claim that every React Native
 0.86 application, iOS version, or simulator has the same problem.
 
-## Origin and decision record
-
-The module evolved through three commits on the Expo SDK 57 upgrade branch:
-
-1. `86364a1` introduced the local module after native iOS validation found that
-   React Native's appearance value was stale while the active UIKit window had
-   already adopted the correct style. The app config changed from a fixed Light
-   style to `automatic`, and the iOS application hook began reading the native
-   window through this module.
-2. `687970c` enabled React Native's key-window appearance mode and refreshed
-   `RCTAppearance` during creation and foreground activation. It also replaced
-   the NativeWind preference setter with React Native's public
-   `Appearance.setColorScheme` API so app-level overrides and UIKit use the same
-   native mechanism.
-3. `73834a8` made the module independently compatible with Expo SDK 57's iOS
-   16.4 baseline by gating the iOS 17 trait-registration API and adding the
-   older-iOS callback fallback.
-
-Native validation was performed on the installed iOS 26.5 simulator. The final
-module compiled with an `arm64-apple-ios16.4-simulator` target in Debug and an
-optimized Release build, but no iOS 16.4 runtime was installed. See
-"Known limitations and risks" for the distinction between compile and runtime
-coverage.
-
-## What was diagnosed
-
-React Native 0.86's pinned iOS source keeps a cached color scheme in
-`RCTAppearance`. It updates that cache when it receives
-`RCTUserInterfaceStyleDidChangeNotification`. Its native color-scheme resolver
-can use either the trait collection supplied with a notification or the key
-window's trait collection when key-window mode is enabled.
-
-The workaround deliberately selects the second behavior and refreshes the
-notification at lifecycle points where the stale value was observed. The
-Dayova-specific event does not rely on that cache at all; it reads and observes
-the active window directly.
-
-This source-level explanation shows why the workaround changes Dayova's
-behavior. It is not proof of a universal upstream defect, and the validation
-did not reduce the issue to a minimal standalone React Native reproduction.
-That is why the module is documented as a local compatibility layer rather
-than a permanent correction to React Native.
+The architecture rationale, source-level diagnosis, decision history,
+alternatives, and consequences live in the
+[mobile-app ADR](../../docs/contexts/mobile-app/adr/0001-use-local-ios-system-appearance-bridge.md).
 
 ## Why a native module is necessary
 
@@ -110,16 +71,6 @@ The value that behaved correctly during the iOS investigation was the active
 window's UIKit trait. Reading and observing `UIWindow.traitCollection` requires
 native iOS code, so some form of native bridge was required if Dayova was to
 retain its System preference and react immediately to live changes.
-
-The local Expo Modules API was chosen because it provides:
-
-- a typed native-module contract;
-- listener-aware setup and cleanup hooks;
-- an app-foreground lifecycle hook;
-- automatic discovery from the repository's `modules/` directory;
-- CocoaPods integration without hand-editing the generated Xcode project; and
-- a small implementation that remains owned by Dayova rather than a fork of a
-  general-purpose theming library.
 
 ## Scope and non-goals
 
@@ -315,27 +266,6 @@ The generated Dayova application currently targets iOS 17 because
 `@clerk/expo` independently requires and writes iOS 17 during prebuild. The
 module does not cause that app-wide minimum.
 
-## Alternatives and trade-offs
-
-The repository history establishes that the standard React Native and
-NativeWind paths were used before this module. The other options below document
-the design space evaluated for maintenance purposes; they should not be read as
-a claim that every option was prototyped during the original validation.
-
-| Option | Status | Assessment |
-| --- | --- | --- |
-| React Native `useColorScheme` / `Appearance.addChangeListener` only | Used and preferred when reliable | This is the normal solution and remains the non-iOS path. It was insufficient on the validated React Native 0.86 iOS stack because its value was stale. The module should be removed when this path passes Dayova's matrix again. |
-| NativeWind `useColorScheme` | Used before the workaround | NativeWind delegates to native appearance APIs. It cannot provide an independent source when React Native's appearance value is stale. Its initialization-sensitive setter was also replaced with the public `Appearance.setColorScheme` call. |
-| Expo `userInterfaceStyle: "automatic"` | Implemented and required | This configures the native app to support both styles. It is a prerequisite, not a replacement for correct runtime observation. Without it, iOS can remain fixed to the configured style. |
-| `expo-system-ui` | Already used for root background behavior | It can manage system/root UI presentation, but it is not an independent live key-window appearance event source for the Dayova theme provider. |
-| Refresh only on app foreground | Not selected | This would repair some background/resume cases but would miss a live system change while Dayova remains foregrounded. |
-| Poll the appearance value | Not selected | Polling adds latency and continual work. Polling React Native would still poll the stale value; polling UIKit would still require native code. |
-| Remove the System preference or force a fixed theme | Not selected | This avoids system observation by removing existing product behavior. It is a larger user-facing regression than the small bridge. |
-| Patch React Native or edit generated iOS files | Not selected | A package patch or generated-project edit would have a wider blast radius and a heavier upgrade burden. A local module keeps the workaround isolated and compatible with native regeneration, although its React Native synchronization calls still require upgrade review. |
-| AppDelegate/config-plugin integration | Not selected | An app lifecycle subscriber can refresh on activation, but live trait observation still needs a UIKit trait environment and a JavaScript bridge. It adds app-global wiring without removing the core native requirement. |
-| `DynamicColorIOS` or platform semantic colors | Not sufficient for this app | Dynamic native colors can adapt without JavaScript, but Dayova also has custom tokens, navigation themes, NativeWind variables, and application logic that require a resolved theme value. |
-| Upstream React Native fix | Preferred long-term outcome | Once the public React Native API is verified to return and publish the active key-window appearance across Dayova's supported iOS matrix, this module should be deleted rather than expanded. No upstream issue or patch is recorded by this repository yet. |
-
 ## Known limitations and risks
 
 - **React Native implementation coupling:** The key-window function and native
@@ -360,14 +290,17 @@ a claim that every option was prototyped during the original validation.
 
 ### Automated checks
 
-Run the focused structural regression tests:
+Run the focused source-shape regression tests:
 
 ```sh
 pnpm test src/lib/ios-appearance-module.test.ts
 ```
 
-They guard the Expo iOS 16.4 module floor and the iOS 17 availability/fallback
-split. They do not replace a native runtime test.
+These tests only assert that the podspec contains the iOS 16.4 target and that
+the Swift source retains the expected modern and legacy observer markers and
+control-flow order. They do not compile Swift, execute UIKit, prove callback
+reachability, or validate event delivery. Native Debug/Release builds and the
+runtime smoke-test matrix remain the behavioral evidence.
 
 Confirm Expo can discover the module:
 
@@ -475,6 +408,9 @@ After that proof, remove:
 - `src/lib/system-color-scheme.ios.ts`;
 - `src/lib/ios-appearance-module.test.ts`; and
 - references to the workaround in the platform and mobile-app documentation.
+
+Mark the mobile-app ADR as Superseded with the replacement evidence; retain the
+ADR as historical decision context.
 
 Keep `userInterfaceStyle: "automatic"`, the Dayova preference model, and the
 public `Appearance.setColorScheme` integration; they are normal theme-system

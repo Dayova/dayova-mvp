@@ -25,5 +25,7 @@ Confluence is the current cross-functional documentation hub for Dayova. The loc
 
 - System-wide decisions: `docs/adr/`
 - Context-specific decisions may live in `docs/contexts/<context>/adr/`.
+- iOS system appearance bridge:
+  `docs/contexts/mobile-app/adr/0001-use-local-ios-system-appearance-bridge.md`
 
 If a listed context file does not exist yet, proceed with code exploration and mention any domain assumptions that materially affect the work.
