@@ -130,4 +130,28 @@ describe("production OTA safety", () => {
 		expect(result.safe).toBe(false);
 		expect(result.reason).toContain("distribution is not verified");
 	});
+
+	it.each([undefined, 123])(
+		"rejects an invalid baseline sourceSha (%s) with a clear platform error",
+		(sourceSha) => {
+			const result = evaluate({
+				baseline: {
+					...baseline,
+					platforms: {
+						...baseline.platforms,
+						ios: {
+							...baseline.platforms.ios,
+							sourceSha,
+						},
+					},
+				},
+			});
+
+			expect(result.safe).toBe(false);
+			expect(result.reason).toContain(
+				"ios baseline sourceSha must be a non-empty string",
+			);
+			expect(result.baseline).toContain("ios build 49 @ invalid");
+		},
+	);
 });
