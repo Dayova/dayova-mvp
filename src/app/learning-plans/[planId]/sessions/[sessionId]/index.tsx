@@ -1,4 +1,4 @@
-import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import * as Device from "expo-device";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as Speech from "expo-speech";
@@ -46,6 +46,7 @@ import {
 	CONTINUE_LEARNING_MINUTES,
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
+	getLearningSessionTimerDurationSeconds,
 	isQualifiedSessionCompletion,
 } from "~/features/learning-plans/session-progress";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
@@ -899,8 +900,8 @@ export default function LearningSessionContentScreen() {
 	const sessionId = params.sessionId as Id<"learningPlanSessions"> | undefined;
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-	const ensureSessionContent = useAction(
-		api.learningPlanAi.ensureSessionContent,
+	const ensureSessionContent = useMutation(
+		api.learningSessionContent.ensureSessionContent,
 	);
 	const submitAnswer = useMutation(api.learningSessionContent.submitAnswer);
 	const finishSessionContent = useMutation(
@@ -1160,13 +1161,16 @@ export default function LearningSessionContentScreen() {
 		});
 	}, [content, ensureSessionStarted, sessionId]);
 
+	const timerDurationSeconds = getLearningSessionTimerDurationSeconds({
+		phase: content?.session.phase,
+		durationMinutes: content?.session.durationMinutes,
+		hasCurrentItem: Boolean(currentItem),
+		isContinuation,
+	});
+
 	useEffect(() => {
-		const timerDurationSeconds = isContinuation
-			? CONTINUE_LEARNING_MINUTES * 60
-			: content?.session.durationMinutes
-				? content.session.durationMinutes * 60
-				: null;
 		if (!timerDurationSeconds || showAnalysis || completionPhase) {
+			remainingSecondsRef.current = null;
 			return undefined;
 		}
 
@@ -1179,20 +1183,12 @@ export default function LearningSessionContentScreen() {
 		}, 1000);
 
 		return () => clearInterval(timer);
-	}, [
-		completionPhase,
-		content?.session.durationMinutes,
-		isContinuation,
-		showAnalysis,
-	]);
+	}, [completionPhase, showAnalysis, timerDurationSeconds]);
 
 	const displayedRemainingSeconds =
-		remainingSeconds ??
-		(isContinuation
-			? CONTINUE_LEARNING_MINUTES * 60
-			: content
-				? content.session.durationMinutes * 60
-				: null);
+		timerDurationSeconds !== null && !showAnalysis && !completionPhase
+			? (remainingSeconds ?? timerDurationSeconds)
+			: null;
 
 	useEffect(() => {
 		if (
@@ -1348,8 +1344,6 @@ export default function LearningSessionContentScreen() {
 			setShowAnalysis(false);
 			setIsContinuation(true);
 			didAutoFinishRef.current = false;
-			remainingSecondsRef.current = CONTINUE_LEARNING_MINUTES * 60;
-			setRemainingSeconds(CONTINUE_LEARNING_MINUTES * 60);
 			void capture(
 				"continue_learning_started",
 				definedAnalyticsProperties({

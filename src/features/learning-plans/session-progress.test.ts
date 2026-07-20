@@ -3,6 +3,7 @@ import {
 	CONTINUE_LEARNING_MINUTES,
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
+	getLearningSessionTimerDurationSeconds,
 	isQualifiedSessionCompletion,
 } from "./session-progress";
 
@@ -32,5 +33,48 @@ describe("learning session progress", () => {
 
 	it("offers a repeatable ten-minute continuation", () => {
 		expect(CONTINUE_LEARNING_MINUTES).toBe(10);
+	});
+
+	it("only times a loaded exam-test session", () => {
+		expect(
+			getLearningSessionTimerDurationSeconds({
+				phase: "theory",
+				durationMinutes: 10,
+				hasCurrentItem: true,
+				isContinuation: false,
+			}),
+		).toBeNull();
+		expect(
+			getLearningSessionTimerDurationSeconds({
+				phase: "practice",
+				durationMinutes: 20,
+				hasCurrentItem: true,
+				isContinuation: false,
+			}),
+		).toBeNull();
+		expect(
+			getLearningSessionTimerDurationSeconds({
+				phase: "rehearsal",
+				durationMinutes: 10,
+				hasCurrentItem: false,
+				isContinuation: false,
+			}),
+		).toBeNull();
+		expect(
+			getLearningSessionTimerDurationSeconds({
+				phase: "rehearsal",
+				durationMinutes: 10,
+				hasCurrentItem: true,
+				isContinuation: true,
+			}),
+		).toBeNull();
+		expect(
+			getLearningSessionTimerDurationSeconds({
+				phase: "rehearsal",
+				durationMinutes: 10,
+				hasCurrentItem: true,
+				isContinuation: false,
+			}),
+		).toBe(10 * 60);
 	});
 });
