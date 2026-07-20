@@ -1,7 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -62,9 +62,11 @@ type LearningPlanOverview = {
 	examTypeLabel: string;
 	status: "draft" | "questionsReady" | "generated" | "accepted";
 	progressPercent: number;
-	questionCount?: number;
-	answeredQuestionCount?: number;
-	firstUnansweredQuestionIndex?: number | null;
+	creationProgress?: {
+		questionCount: number;
+		answeredQuestionCount: number;
+		firstUnansweredQuestionIndex: number | null;
+	} | null;
 	completedCount?: number;
 	sessionCount?: number;
 	examDateKey?: string;
@@ -413,6 +415,36 @@ function LearningPlanActionRail({
 	);
 }
 
+function LearningPlanCardMetadata({
+	plan,
+	secondaryTextColor,
+	trailing,
+}: {
+	plan: Pick<LearningPlanOverview, "subject" | "examDateLabel">;
+	secondaryTextColor: string;
+	trailing: ReactNode;
+}) {
+	return (
+		<>
+			<View className="flex-row items-start justify-between gap-3">
+				<Text
+					className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
+					numberOfLines={2}
+				>
+					{formatGermanUiText(plan.subject)}
+				</Text>
+				{trailing}
+			</View>
+			<View className="flex-row items-center gap-1">
+				<GraduationCap size={14} color={secondaryTextColor} strokeWidth={2} />
+				<Text className="font-poppins text-body-4 text-secondary-text">
+					{plan.examDateLabel ?? "Termin wird geladen"}
+				</Text>
+			</View>
+		</>
+	);
+}
+
 function LearningPlanCard({
 	plan,
 	todayKey,
@@ -535,29 +567,17 @@ function LearningPlanCard({
 							pressType="card"
 						>
 							<View className="gap-3">
-								<View className="flex-row items-start justify-between gap-3">
-									<Text
-										className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
-										numberOfLines={2}
-									>
-										{formatGermanUiText(plan.subject)}
-									</Text>
-									<Badge
-										label={overviewState.badgeLabel}
-										background={colors.systemSubtle}
-										foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
-									/>
-								</View>
-								<View className="flex-row items-center gap-1">
-									<GraduationCap
-										size={14}
-										color={colors.secondaryText}
-										strokeWidth={2}
-									/>
-									<Text className="font-poppins text-body-4 text-secondary-text">
-										{plan.examDateLabel ?? "Termin wird geladen"}
-									</Text>
-								</View>
+								<LearningPlanCardMetadata
+									plan={plan}
+									secondaryTextColor={colors.secondaryText}
+									trailing={
+										<Badge
+											label={overviewState.badgeLabel}
+											background={colors.systemSubtle}
+											foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
+										/>
+									}
+								/>
 								<Text
 									className="max-w-[282px] font-poppins font-semibold text-body-2 text-text"
 									numberOfLines={2}
@@ -591,33 +611,20 @@ function LearningPlanCard({
 							pressType="card"
 						>
 							<View className="gap-2">
-								<View className="flex-row items-start justify-between gap-3">
-									<Text
-										className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
-										numberOfLines={2}
-									>
-										{formatGermanUiText(plan.subject)}
-									</Text>
-									<View className="shrink-0 flex-row gap-2">
-										<Badge {...status} />
-										<Badge
-											label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
-											background={STATUS_NEUTRAL_BACKGROUND}
-											foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
-										/>
-									</View>
-								</View>
-
-								<View className="flex-row items-center gap-1">
-									<GraduationCap
-										size={14}
-										color={colors.secondaryText}
-										strokeWidth={2}
-									/>
-									<Text className="font-poppins text-body-4 text-secondary-text">
-										{plan.examDateLabel ?? "Termin wird geladen"}
-									</Text>
-								</View>
+								<LearningPlanCardMetadata
+									plan={plan}
+									secondaryTextColor={colors.secondaryText}
+									trailing={
+										<View className="shrink-0 flex-row gap-2">
+											<Badge {...status} />
+											<Badge
+												label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
+												background={STATUS_NEUTRAL_BACKGROUND}
+												foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
+											/>
+										</View>
+									}
+								/>
 
 								<Text
 									className="max-w-[282px] font-poppins font-semibold text-body-2 text-text"

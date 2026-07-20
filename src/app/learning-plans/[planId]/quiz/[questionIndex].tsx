@@ -25,7 +25,7 @@ import { QuizStep } from "~/features/learning-plans/quiz-step";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import { useBackIntent } from "~/lib/navigation";
+import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 
 const quizPath = (id: Id<"learningPlans">, questionIndex: number) =>
@@ -59,6 +59,7 @@ export default function LearningPlanQuizScreen() {
 		useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const loadedQuestionIdRef = useRef<string | null>(null);
+	const isExitingRef = useRef(false);
 
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
@@ -131,8 +132,10 @@ export default function LearningPlanQuizScreen() {
 		});
 
 	const continueLater = () => {
+		if (isExitingRef.current) return;
+		isExitingRef.current = true;
 		setIsPauseConfirmationVisible(false);
-		router.replace(ROUTES.learningPlans);
+		dismissToOrReplace(router, ROUTES.learningPlans);
 	};
 
 	const continueQuestion = async () => {

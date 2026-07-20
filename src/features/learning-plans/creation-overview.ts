@@ -2,9 +2,11 @@ type LearningPlanStatus = "draft" | "questionsReady" | "generated" | "accepted";
 
 type LearningPlanOverviewInput = {
 	status: LearningPlanStatus;
-	questionCount?: number;
-	answeredQuestionCount?: number;
-	firstUnansweredQuestionIndex?: number | null;
+	creationProgress?: {
+		questionCount: number;
+		answeredQuestionCount: number;
+		firstUnansweredQuestionIndex: number | null;
+	} | null;
 };
 
 type LearningPlanOverviewState =
@@ -24,9 +26,11 @@ export const getLearningPlanOverviewState = (
 ): LearningPlanOverviewState => {
 	if (overview.status !== "questionsReady") return { kind: "created" };
 
-	const questionCount = overview.questionCount ?? 0;
-	const answeredQuestionCount = overview.answeredQuestionCount ?? 0;
-	const firstUnansweredQuestionIndex = overview.firstUnansweredQuestionIndex;
+	const questionCount = overview.creationProgress?.questionCount ?? 0;
+	const answeredQuestionCount =
+		overview.creationProgress?.answeredQuestionCount ?? 0;
+	const firstUnansweredQuestionIndex =
+		overview.creationProgress?.firstUnansweredQuestionIndex;
 
 	return {
 		kind: "creation",
