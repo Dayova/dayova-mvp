@@ -2,6 +2,22 @@ import { describe, expect, test } from "vitest";
 import { getLearningPlanOverviewState } from "./creation-overview";
 
 describe("learning plan creation overview", () => {
+	test.each([
+		undefined,
+		null,
+	])("does not invent progress when creation data is %s", (creationProgress) => {
+		expect(
+			getLearningPlanOverviewState({
+				status: "questionsReady",
+				creationProgress,
+			}),
+		).toMatchObject({
+			kind: "creation",
+			progressLabel: "Fortschritt wird geladen",
+			resumeTarget: { kind: "question", questionIndex: 0 },
+		});
+	});
+
 	test("presents exact creation progress and resumes at the first unanswered question", () => {
 		expect(
 			getLearningPlanOverviewState({
