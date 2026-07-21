@@ -3,23 +3,17 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
+import {
+	deriveOnboardingLearningTimes,
+	getOnboardingLearningTimeErrorMessage,
+	ONBOARDING_DURATION_MINUTES,
+	type OnboardingLearningTimeInput,
+} from "./learningTimeAvailability";
 
 const normalizeEmail = (email?: string) => email?.trim().toLowerCase() ?? "";
-const DURATION_OPTIONS = [
-	"10 min",
-	"20 min",
-	"30 min",
-	"45 min",
-	"60 min",
-	"75 min",
-	"90 min",
-	"105 min",
-	"120 min",
-	"135 min",
-	"150 min",
-	"165 min",
-	"180 min",
-] as const;
+const DURATION_OPTIONS = ONBOARDING_DURATION_MINUTES.map(
+	(minutes) => `${minutes} min`,
+);
 type OnboardingQuestionKey =
 	| "studyTime"
 	| "strength"
@@ -31,6 +25,11 @@ type OnboardingQuestionKey =
 	| "dailySchoolTime"
 	| "studyDays"
 	| "learningTime";
+const ONBOARDING_LEARNING_TIME_KEYS = [
+	"studyDays",
+	"learningTime",
+	"dailySchoolTime",
+] as const;
 
 const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	key: OnboardingQuestionKey;
@@ -177,6 +176,98 @@ const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	return identity;
 };
 
+const insertLearningTimesWhenAbsent = async (
+	ctx: MutationCtx,
+	args: {
+		ownerTokenIdentifier: string;
+		input: OnboardingLearningTimeInput;
+		invalidInput: "reject" | "skip";
+	},
+) => {
+	const existing = await ctx.db
+		.query("userLearningTimes")
+		.withIndex("by_ownerTokenIdentifier", (q) =>
+			q.eq("ownerTokenIdentifier", args.ownerTokenIdentifier),
+		)
+		.take(1);
+	if (existing.length > 0) {
+		return { status: "preserved" as const, createdCount: 0 };
+	}
+
+	const derived = deriveOnboardingLearningTimes(args.input);
+	if (!derived.ok) {
+		if (args.invalidInput === "reject") {
+			throwUserFacingError(
+				getOnboardingLearningTimeErrorMessage(derived.reason),
+			);
+		}
+		return { status: "needsSetup" as const, createdCount: 0 };
+	}
+
+	const now = Date.now();
+	for (const window of derived.windows) {
+		await ctx.db.insert("userLearningTimes", {
+			ownerTokenIdentifier: args.ownerTokenIdentifier,
+			...window,
+			createdAt: now,
+			updatedAt: now,
+		});
+	}
+
+	return {
+		status: "created" as const,
+		createdCount: derived.windows.length,
+	};
+};
+
+const backfillLegacyLearningTimes = async (
+	ctx: MutationCtx,
+	args: { userId: Id<"users">; ownerTokenIdentifier: string },
+) => {
+	const existing = await ctx.db
+		.query("userLearningTimes")
+		.withIndex("by_ownerTokenIdentifier", (q) =>
+			q.eq("ownerTokenIdentifier", args.ownerTokenIdentifier),
+		)
+		.take(1);
+	if (existing.length > 0) return;
+
+	const legacy: Partial<OnboardingLearningTimeInput> = {};
+	for (const key of ONBOARDING_LEARNING_TIME_KEYS) {
+		const question = await ctx.db
+			.query("onboardingQuestions")
+			.withIndex("by_key", (q) => q.eq("key", key))
+			.unique();
+		if (!question) continue;
+
+		const answer = await ctx.db
+			.query("userOnboardingAnswers")
+			.withIndex("by_userId_and_questionId", (q) =>
+				q.eq("userId", args.userId).eq("questionId", question._id),
+			)
+			.unique();
+		if (answer) legacy[key] = answer.answer;
+	}
+
+	if (
+		legacy.studyDays === undefined ||
+		legacy.learningTime === undefined ||
+		legacy.dailySchoolTime === undefined
+	) {
+		return;
+	}
+
+	await insertLearningTimesWhenAbsent(ctx, {
+		ownerTokenIdentifier: args.ownerTokenIdentifier,
+		input: {
+			studyDays: legacy.studyDays,
+			learningTime: legacy.learningTime,
+			dailySchoolTime: legacy.dailySchoolTime,
+		},
+		invalidInput: "skip",
+	});
+};
+
 const profileFields = (args: {
 	email?: string;
 	name?: string;
@@ -236,12 +327,19 @@ export const syncCurrentUser = mutation({
 			...profileFields(args),
 		};
 
+		let userId: Id<"users">;
 		if (existingUser) {
 			await ctx.db.patch("users", existingUser._id, user);
-			return existingUser._id;
+			userId = existingUser._id;
+		} else {
+			userId = await ctx.db.insert("users", user);
 		}
 
-		return await ctx.db.insert("users", user);
+		await backfillLegacyLearningTimes(ctx, {
+			userId,
+			ownerTokenIdentifier: identity.tokenIdentifier,
+		});
+		return userId;
 	},
 });
 
@@ -314,6 +412,16 @@ export const saveOnboardingAnswers = mutation({
 			throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
 		}
 
+		const learningTimes = await insertLearningTimesWhenAbsent(ctx, {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			input: {
+				studyDays: args.answers.studyDays,
+				learningTime: args.answers.learningTime,
+				dailySchoolTime: args.answers.dailySchoolTime,
+			},
+			invalidInput: "reject",
+		});
+
 		const questionIdsByKey: Partial<
 			Record<OnboardingQuestionKey, Id<"onboardingQuestions">>
 		> = {};
@@ -374,6 +482,9 @@ export const saveOnboardingAnswers = mutation({
 			});
 		}
 
-		return { success: true };
+		return {
+			success: true,
+			learningTimesCreated: learningTimes.createdCount,
+		};
 	},
 });
