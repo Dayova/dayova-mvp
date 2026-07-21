@@ -1826,22 +1826,23 @@ export function LoginScreen() {
 							/>
 						</View>
 
-						<View className="mt-5 w-full flex-row justify-end">
+						<View className="w-full flex-row justify-end">
 							<Pressable
 								accessibilityRole="button"
 								accessibilityLabel="Passwort vergessen"
+								accessibilityHint="Öffnet den Ablauf zum Zurücksetzen deines Passworts"
 								disabled={isLoading || isSubmittingLogin}
 								accessibilityState={{
 									disabled: isLoading || isSubmittingLogin,
 								}}
-								hitSlop={8}
+								className="min-h-11 max-w-full justify-center"
 								onPress={() => {
 									if (isLoading || isSubmittingLogin) return;
 									setError(null);
 									setPasswordResetMode(true);
 								}}
 							>
-								<Text className="font-poppins text-body-4 text-primary">
+								<Text className="text-right font-poppins text-body-4 text-primary">
 									Passwort vergessen?
 								</Text>
 							</Pressable>
@@ -1866,7 +1867,7 @@ export function LoginScreen() {
 							</Animated.Text>
 						) : null}
 
-						<View className="mt-6 w-full">
+						<View className="mt-2 w-full">
 							<GradientPillButton
 								label={isLoading || isSubmittingLogin ? "LOGIN..." : "LOGIN"}
 								onPress={submitLogin}

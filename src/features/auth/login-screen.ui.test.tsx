@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import type { ReactNode } from "react";
 import { StyleSheet } from "react-native";
 import {
 	AuthChoiceScreen,
@@ -234,8 +234,16 @@ describe("LoginScreen", () => {
 
 	test("keeps password recovery reachable from sign-in", async () => {
 		const screen = await render(<LoginScreen />);
+		const passwordRecoveryButton = screen.getByRole("button", {
+			name: "Passwort vergessen",
+		});
 
-		await fireEvent.press(screen.getByText("Passwort vergessen?"));
+		expect(passwordRecoveryButton.props.className).toContain("min-h-11");
+		expect(passwordRecoveryButton.props.accessibilityHint).toBe(
+			"Öffnet den Ablauf zum Zurücksetzen deines Passworts",
+		);
+
+		await fireEvent.press(passwordRecoveryButton);
 
 		expect(
 			screen.getByText(
