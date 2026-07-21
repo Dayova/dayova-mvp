@@ -105,8 +105,8 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useBackIntent } from "~/lib/navigation";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
 import {
-	shouldHandleRegistrationBack,
 	type RegistrationStage,
+	shouldHandleRegistrationBack,
 } from "~/lib/registration-navigation";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -1394,6 +1394,7 @@ function QuestionStepView({
 	const showBottomButton = step.kind !== "text";
 	const buttonDisabled = step.kind === "fact" && step.disabledButton;
 	const isRangeStep = step.kind === "range";
+	const isWheelStep = step.kind === "wheel";
 	const factBody = step.kind === "fact" ? step.body : "";
 	const isPlanFitStep = step.kind === "infoStack";
 	const questionTitleStyle =
@@ -1459,8 +1460,10 @@ function QuestionStepView({
 					<View
 						style={{
 							width: "100%",
-							marginTop: contentTopMargin,
+							marginTop: isWheelStep ? 0 : contentTopMargin,
+							flex: isWheelStep ? 1 : undefined,
 							alignItems: "center",
+							justifyContent: isWheelStep ? "center" : undefined,
 						}}
 					>
 						{step.kind === "range" ? (

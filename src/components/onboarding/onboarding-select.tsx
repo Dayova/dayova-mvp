@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { FieldAccessory, FieldTrigger } from "~/components/ui/field";
 import { ChevronDown } from "~/components/ui/icon";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
@@ -29,11 +30,13 @@ function PickerInputTrigger({
 	const hasValue = value.trim().length > 0;
 
 	return (
-		<Pressable
+		<FieldTrigger
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
 			accessibilityState={expanded === undefined ? undefined : { expanded }}
-			className="min-h-[58px] w-full max-w-[312px] flex-row items-center justify-between gap-3 rounded-[29px] border border-text/5 bg-card px-5 shadow-black/5 shadow-lg"
+			accessibilityValue={hasValue ? { text: value } : undefined}
+			activeOpacity={0.86}
+			className="w-full max-w-[345px]"
 			onPress={onPress}
 			testID={testID}
 		>
@@ -47,13 +50,24 @@ function PickerInputTrigger({
 			>
 				{hasValue ? value : placeholder}
 			</Text>
-			<View
-				className={centered ? "absolute right-5" : undefined}
-				pointerEvents="none"
-			>
-				<ChevronDown size={20} color={colors.secondaryText} strokeWidth={2.1} />
-			</View>
-		</Pressable>
+			{centered ? (
+				<View className="absolute right-5" pointerEvents="none">
+					<ChevronDown
+						size={20}
+						color={colors.secondaryText}
+						strokeWidth={2.1}
+					/>
+				</View>
+			) : (
+				<FieldAccessory pointerEvents="none">
+					<ChevronDown
+						size={20}
+						color={colors.secondaryText}
+						strokeWidth={2.1}
+					/>
+				</FieldAccessory>
+			)}
+		</FieldTrigger>
 	);
 }
 
