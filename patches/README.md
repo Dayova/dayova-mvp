@@ -61,6 +61,7 @@ For the full Windows integration path, clear Metro's cache, load Dayova on the
 connected Android development client, and then reload it:
 
 ```powershell
+$env:APP_VARIANT = 'development'
 pnpm exec expo start --dev-client --clear
 ```
 

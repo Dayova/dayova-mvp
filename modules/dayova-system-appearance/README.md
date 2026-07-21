@@ -208,6 +208,20 @@ This ordering keeps the shield in place until the resumed theme has actually
 reached React, including resumes where the resolved Light/Dark value did not
 change.
 
+The bridge contract is:
+
+```ts
+type SnapshotShieldResumeEvent = {
+  generation: number;
+};
+
+releaseSnapshotShield(generation: number): void;
+```
+
+The `generation` in `onResume` identifies the shield created for that lifecycle
+cycle. Although `releaseSnapshotShield` is exported by the native bridge, it is
+an adapter-internal method rather than a feature-level public API.
+
 Application features must not call `releaseSnapshotShield(generation)`
 directly. The platform adapter owns the handshake so a feature cannot reveal
 the stale iOS snapshot by releasing the cover too early.

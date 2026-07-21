@@ -9,7 +9,7 @@ const packageJson = JSON.parse(
 
 const developmentExpoScripts = ["expo:start", "expo:android", "expo:ios"];
 const posixOnlyEnvironmentAssignment =
-	/(?:^|(?:&&|\|\||;)\s*)[A-Za-z_][A-Za-z0-9_]*=[^\s;]+(?:\s|$)/;
+	/(?:^|(?:&&|\|\||;)\s*)[A-Za-z_][A-Za-z0-9_]*=[^\s;&|]+(?=\s|&&|\|\||;|$)/;
 
 const findPosixOnlyScripts = (scripts: Record<string, string>) =>
 	Object.entries(scripts)
@@ -46,9 +46,19 @@ describe("package scripts", () => {
 		expect(
 			findPosixOnlyScripts({
 				and: "pnpm check && APP_VARIANT=production expo export",
+				andWithoutSpaces: "APP_VARIANT=production&&expo export",
 				or: "pnpm check || APP_VARIANT=development expo start",
+				orWithoutSpaces: "APP_VARIANT=development||expo start",
 				semicolon: "pnpm check; APP_VARIANT=preview expo config",
+				semicolonWithoutSpaces: "APP_VARIANT=preview;expo config",
 			}),
-		).toEqual(["and", "or", "semicolon"]);
+		).toEqual([
+			"and",
+			"andWithoutSpaces",
+			"or",
+			"orWithoutSpaces",
+			"semicolon",
+			"semicolonWithoutSpaces",
+		]);
 	});
 });

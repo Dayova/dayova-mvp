@@ -66,21 +66,20 @@ public class DayovaSystemAppearanceModule: Module {
     }
 
     OnDestroy { [weak self] in
-      self?.isObserving = false
-      let observerView = self?.observerView
-      let snapshotShieldView = self?.snapshotShieldView
-      let willResignActiveObserver = self?.willResignActiveObserver
-      self?.observerView = nil
-      self?.snapshotShieldView = nil
-      self?.willResignActiveObserver = nil
-
-      if let willResignActiveObserver {
-        NotificationCenter.default.removeObserver(willResignActiveObserver)
-      }
+      guard let self else { return }
 
       DispatchQueue.main.async {
-        observerView?.removeFromSuperview()
-        snapshotShieldView?.removeFromSuperview()
+        self.isObserving = false
+        self.observerView?.removeFromSuperview()
+        self.snapshotShieldView?.removeFromSuperview()
+
+        if let willResignActiveObserver = self.willResignActiveObserver {
+          NotificationCenter.default.removeObserver(willResignActiveObserver)
+        }
+
+        self.observerView = nil
+        self.snapshotShieldView = nil
+        self.willResignActiveObserver = nil
       }
     }
   }

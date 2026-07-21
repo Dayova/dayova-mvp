@@ -117,6 +117,17 @@ describe("iOS system appearance module", () => {
 		expect(refreshHandler).toContain("installObserver()");
 	});
 
+	test("destroys UIKit observers and views entirely on the main queue", () => {
+		const module = readFileSync(IOS_MODULE_PATH, "utf8");
+		const destroyHandler = balancedBlock(module, "OnDestroy");
+		const cleanup = balancedBlock(destroyHandler, "DispatchQueue.main.async");
+
+		expect(cleanup).toContain("self.isObserving = false");
+		expect(cleanup).toContain("self.observerView?.removeFromSuperview()");
+		expect(cleanup).toContain("self.snapshotShieldView?.removeFromSuperview()");
+		expect(cleanup).toContain("NotificationCenter.default.removeObserver");
+	});
+
 	test("covers stale app snapshots until the resumed theme has committed", () => {
 		const module = readFileSync(IOS_MODULE_PATH, "utf8");
 		const typedModule = readFileSync(IOS_TYPESCRIPT_MODULE_PATH, "utf8");

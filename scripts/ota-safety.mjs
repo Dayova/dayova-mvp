@@ -14,7 +14,7 @@ const baselinePath = resolve(
 );
 const platforms = ["ios", "android"];
 const isNonEmptyString = (value) =>
-	typeof value === "string" && value.length > 0;
+	typeof value === "string" && value.trim().length > 0;
 
 const expectedProductionManifest = {
 	iosBundleIdentifier: "de.dayova.app",
