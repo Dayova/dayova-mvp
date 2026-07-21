@@ -17,7 +17,7 @@ optional validation analytics integration.
 - pnpm 10.25.0
 - The native toolchain for the target platform: Xcode on macOS or the Android
   SDK and Android Studio
-- Access to the Dayova Clerk and Convex development environments
+- Access to Clerk and Convex development environments (if you are part of the team, we should give you access to our internal Convex and Clerk teams for various reasons, but you can theoretically build and develop the app without being in them)
 
 This project contains native code and requires an Expo development build; it
 does not run in Expo Go.
