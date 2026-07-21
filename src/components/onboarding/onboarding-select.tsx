@@ -11,7 +11,6 @@ type PickerInputTriggerProps = {
 	value: string;
 	placeholder: string;
 	accessibilityLabel: string;
-	centered?: boolean;
 	expanded?: boolean;
 	testID?: string;
 	onPress: () => void;
@@ -21,7 +20,6 @@ function PickerInputTrigger({
 	value,
 	placeholder,
 	accessibilityLabel,
-	centered = false,
 	expanded,
 	testID,
 	onPress,
@@ -44,29 +42,14 @@ function PickerInputTrigger({
 				className={cn(
 					"flex-1 font-poppins text-body-2",
 					hasValue ? "text-text" : "text-text/40",
-					centered && "px-7 text-center",
 				)}
 				numberOfLines={1}
 			>
 				{hasValue ? value : placeholder}
 			</Text>
-			{centered ? (
-				<View className="absolute right-5" pointerEvents="none">
-					<ChevronDown
-						size={20}
-						color={colors.secondaryText}
-						strokeWidth={2.1}
-					/>
-				</View>
-			) : (
-				<FieldAccessory pointerEvents="none">
-					<ChevronDown
-						size={20}
-						color={colors.secondaryText}
-						strokeWidth={2.1}
-					/>
-				</FieldAccessory>
-			)}
+			<FieldAccessory pointerEvents="none">
+				<ChevronDown size={20} color={colors.secondaryText} strokeWidth={2.1} />
+			</FieldAccessory>
 		</FieldTrigger>
 	);
 }
@@ -97,7 +80,6 @@ function OnboardingSelect<T extends string>({
 		<View className="w-full items-center">
 			<PickerInputTrigger
 				accessibilityLabel={accessibilityLabel}
-				centered
 				expanded={visible}
 				onPress={() => setVisible(true)}
 				placeholder={accessibilityLabel}

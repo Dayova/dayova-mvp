@@ -77,7 +77,7 @@ describe("OnboardingSelect", () => {
 		});
 		expect(trigger.props.accessibilityState).toEqual({ expanded: false });
 		expect(trigger.props.accessibilityValue).toEqual({ text: "9. Klasse" });
-		expect(screen.getByText("9. Klasse").props.className).toContain(
+		expect(screen.getByText("9. Klasse").props.className).not.toContain(
 			"text-center",
 		);
 
