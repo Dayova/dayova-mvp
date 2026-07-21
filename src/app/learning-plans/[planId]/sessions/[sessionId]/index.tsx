@@ -35,6 +35,7 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
 import {
 	createTheoryCardQueue,
 	repeatCurrentTheoryCard as queueRepeatCurrentTheoryCard,
@@ -115,24 +116,6 @@ const phaseTitle = (
 	phase: LearningSessionContentSnapshot["session"]["phase"],
 ) =>
 	phase === "theory" ? "Lernkarten" : phase === "practice" ? "Üben" : "Praxis";
-
-const learningSessionAnalyticsProperties = (result: {
-	learningPlanId: Id<"learningPlans">;
-	learningPlanSessionId: Id<"learningPlanSessions">;
-	phase: LearningSessionContentSnapshot["session"]["phase"];
-	plannedDayKey: string;
-	startTime: string;
-	durationMinutes: number;
-	examDateKey?: string;
-}) => ({
-	learning_plan_id: result.learningPlanId,
-	learning_plan_session_id: result.learningPlanSessionId,
-	phase: result.phase,
-	planned_day_key: result.plannedDayKey,
-	planned_start_time: result.startTime,
-	duration_minutes: result.durationMinutes,
-	...(result.examDateKey ? { deadline_day_key: result.examDateKey } : {}),
-});
 
 const isIosSimulator = Platform.OS === "ios" && !Device.isDevice;
 const iosSimulatorSpeechMessage =
