@@ -21,7 +21,13 @@ describe("createAsyncActionGate", () => {
 		expect(gate.isRunning).toBe(true);
 		expect(transaction).toHaveBeenCalledOnce();
 		await expect(secondRun).resolves.toEqual({ status: "skipped" });
-		finish?.();
+		expect(finish).toBeDefined();
+		if (!finish) {
+			throw new Error(
+				"Expected the active transaction to expose its resolver.",
+			);
+		}
+		finish();
 		await expect(firstRun).resolves.toEqual({
 			status: "completed",
 			value: undefined,

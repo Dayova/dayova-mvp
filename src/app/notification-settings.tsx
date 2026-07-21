@@ -29,6 +29,7 @@ import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuthSession } from "~/context/AuthContext";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
 import { goBackOrReplace } from "~/lib/navigation";
 import {
@@ -225,6 +226,14 @@ export default function NotificationSettingsScreen() {
 
 			const notifications = getNotificationsModule();
 			if (!notifications) {
+				logDiagnosticError(
+					"Push notifications are unavailable in the installed native build.",
+					new Error("expo-notifications native module unavailable"),
+					{
+						source: "notificationSettings.enablePush",
+						level: "warn",
+					},
+				);
 				setSystemNotificationNotice("unavailable");
 				setNotificationPermissionStatus("unavailable");
 				await update({ systemNotificationsEnabled: false });
@@ -422,7 +431,7 @@ export default function NotificationSettingsScreen() {
 						description={
 							visibleSystemNotificationNotice === "denied"
 								? "Aktiviere Mitteilungen in den Systemeinstellungen, um sie auch außerhalb von Dayova zu erhalten."
-								: "Bitte baue den iOS/Android Dev Client einmal neu, damit Push-Mitteilungen verfügbar sind."
+								: "Push-Mitteilungen sind auf diesem Gerät gerade nicht verfügbar. Du kannst Dayova weiterhin ohne sie verwenden."
 						}
 						ctaLabel={
 							visibleSystemNotificationNotice === "denied"

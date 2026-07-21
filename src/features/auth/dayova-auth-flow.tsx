@@ -63,6 +63,11 @@ import {
 } from "~/components/onboarding/intro-pagination";
 import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import {
+	getNextOnboardingStepIndex,
+	getOnboardingRegistrationPayload,
+	getOnboardingStepDecision,
+} from "~/components/onboarding/onboarding-flow";
+import {
 	OnboardingSelect,
 	PickerInputTrigger,
 } from "~/components/onboarding/onboarding-select";
@@ -559,9 +564,6 @@ const QUESTION_STEP_COUNT = FLOW_STEPS.length + 2;
 const isValidEmail = (value: string) =>
 	/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-const isValidName = (value: string) =>
-	value.trim().length >= 2 && /^[A-Za-zÀ-ÿ' -]+$/.test(value.trim());
-
 const toggleListValue = (current: string, label: string) => {
 	const values = current
 		.split(",")
@@ -836,7 +838,9 @@ export function OnboardingScreen() {
 		}
 
 		const timeout = setTimeout(() => {
-			setActiveIndex((current) => Math.min(current + 1, FLOW_STEPS.length - 1));
+			setActiveIndex((current) =>
+				getNextOnboardingStepIndex(current, FLOW_STEPS.length),
+			);
 		}, 1850);
 
 		return () => clearTimeout(timeout);
@@ -921,66 +925,34 @@ export function OnboardingScreen() {
 			return;
 		}
 		setError(null);
+		const decision = getOnboardingStepDecision(activeStep, answers);
 
 		if (activeStep.kind === "text") {
 			Keyboard.dismiss();
-			const value = answers[activeStep.field];
-			if (activeStep.field === "name" && !isValidName(value)) {
-				setError("Bitte gib deinen Namen ein.");
-				return;
-			}
-			if (activeStep.field === "schoolType" && value.trim().length < 2) {
-				setError("Bitte gib deine Schulform ein.");
-				return;
-			}
-			if (
-				activeStep.field === "email" &&
-				!isValidEmail(value.trim().toLowerCase())
-			) {
-				setError("Bitte gib eine gültige E-Mail-Adresse ein.");
-				return;
-			}
-			if (activeStep.field === "password") {
-				if (!meetsPasswordRequirements(value)) {
-					setError("Bitte gib ein Passwort mit mindestens 8 Zeichen ein.");
-					return;
-				}
-				await startRegistration();
-				return;
-			}
 		}
 
-		if (
-			activeStep.kind === "chips" ||
-			activeStep.kind === "goals" ||
-			activeStep.kind === "range" ||
-			activeStep.kind === "wheel"
-		) {
-			const value = answers[activeStep.field].trim();
-			if (!value) {
-				setError("Bitte wähle eine Antwort aus.");
-				return;
-			}
+		if (decision.error) {
+			setError(decision.error);
+			return;
 		}
 
-		if (activeIndex < FLOW_STEPS.length - 1) {
-			setActiveIndex((current) => current + 1);
+		if (decision.action === "register") {
+			await startRegistration();
+			return;
 		}
+
+		setActiveIndex((current) =>
+			getNextOnboardingStepIndex(current, FLOW_STEPS.length),
+		);
 	};
 
 	const startRegistration = async () => {
 		await registrationActionGateRef.current.run(async () => {
 			setIsRegistering(true);
 			try {
-				const result = await register({
-					name: answers.name.trim(),
-					email: answers.email.trim().toLowerCase(),
-					password: answers.password,
-					birthDate: answers.birthDate,
-					grade: answers.grade,
-					schoolType: answers.schoolType,
-					state: answers.state,
-				});
+				const result = await register(
+					getOnboardingRegistrationPayload(answers),
+				);
 
 				if (result.status === "complete") {
 					setStage("creating");
@@ -1611,7 +1583,6 @@ function ShortStudyTimeFactStep({
 }
 
 export function LoginScreen() {
-	const { colors: COLORS } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
 	const isCompactHeight = height < 850;
@@ -1854,14 +1825,7 @@ export function LoginScreen() {
 								accessibilityRole="alert"
 								selectable
 								entering={FadeIn.duration(180)}
-								style={{
-									marginTop: 12,
-									fontFamily: "Poppins",
-									fontSize: 12,
-									lineHeight: 18,
-									textAlign: "center",
-									color: COLORS.destructive,
-								}}
+								className="mt-3 text-center font-poppins text-body-4 text-destructive"
 							>
 								{error}
 							</Animated.Text>
@@ -3247,44 +3211,22 @@ export function PlanFitStack() {
 								.duration(360)
 								.springify()
 								.damping(18)}
-							style={{
-								width: "84%",
-								alignSelf: "center",
-							}}
+							className="w-[84%] self-center"
 						>
 							<View
+								className="min-h-16 w-full flex-row items-center gap-4 rounded-[14px] bg-surface px-4 shadow-black/5 shadow-lg"
+								// Each card has a distinct design transform, so this remains runtime style data.
 								style={{
-									width: "100%",
-									minHeight: 64,
-									borderRadius: 14,
-									backgroundColor: COLORS.surface,
-									paddingHorizontal: 14,
-									flexDirection: "row",
-									alignItems: "center",
-									gap: 14,
-									boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
 									transform: [
 										{ translateX: cardTransforms[index].translateX },
 										{ rotate: cardTransforms[index].rotate },
 									],
 								}}
 							>
-								<View
-									style={{
-										width: 36,
-										height: 36,
-										borderRadius: 18,
-										backgroundColor: "rgba(0, 186, 255, 0.08)",
-										alignItems: "center",
-										justifyContent: "center",
-									}}
-								>
+								<View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
 									<Icon size={18} color={COLORS.primary} strokeWidth={2} />
 								</View>
-								<Text
-									className="flex-1 font-poppins"
-									style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}
-								>
+								<Text className="flex-1 font-poppins text-body-3 text-text">
 									{item.text}
 								</Text>
 							</View>

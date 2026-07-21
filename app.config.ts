@@ -117,6 +117,7 @@ const config: ExpoConfig = {
 		],
 		"expo-localization",
 		"./plugins/withNinjaLongPaths",
+		"./plugins/withAndroidGradleJvmMemory",
 		"./plugins/withAndroidPackagingOptions",
 		"./plugins/withDayovaAndroidTheme",
 		[

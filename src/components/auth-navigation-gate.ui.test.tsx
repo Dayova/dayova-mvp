@@ -24,10 +24,6 @@ jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => mockSession,
 }));
 
-jest.mock("~/lib/theme", () => ({
-	useDayovaTheme: () => ({ colors: { background: "#FFFFFF" } }),
-}));
-
 describe("AuthNavigationGate", () => {
 	let animationFrames: FrameRequestCallback[];
 
@@ -61,7 +57,7 @@ describe("AuthNavigationGate", () => {
 		const routeContent = screen.getByTestId("auth-route-content", {
 			includeHiddenElements: true,
 		});
-		expect(routeContent).toHaveStyle({ opacity: 0 });
+		expect(routeContent.props.className).toContain("opacity-0");
 		expect(routeContent.props.accessibilityElementsHidden).toBe(true);
 		expect(routeContent.props.importantForAccessibility).toBe(
 			"no-hide-descendants",
@@ -77,9 +73,9 @@ describe("AuthNavigationGate", () => {
 				<Text>Home</Text>
 			</AuthNavigationGate>,
 		);
-		expect(screen.getByTestId("auth-route-content")).not.toHaveStyle({
-			opacity: 0,
-		});
+		expect(
+			screen.getByTestId("auth-route-content").props.className,
+		).not.toContain("opacity-0");
 		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
 	});
 
@@ -96,8 +92,8 @@ describe("AuthNavigationGate", () => {
 		expect(
 			screen.getByTestId("auth-route-content", {
 				includeHiddenElements: true,
-			}),
-		).toHaveStyle({ opacity: 0 });
+			}).props.className,
+		).toContain("opacity-0");
 		expect(screen.getByTestId("auth-bootstrap-mask")).toBeOnTheScreen();
 		expect(mockReplace).not.toHaveBeenCalled();
 	});
@@ -112,7 +108,7 @@ describe("AuthNavigationGate", () => {
 		);
 
 		const routeContent = screen.getByTestId("auth-route-content");
-		expect(routeContent).not.toHaveStyle({ opacity: 0 });
+		expect(routeContent.props.className).not.toContain("opacity-0");
 		expect(routeContent.props.accessibilityElementsHidden).toBe(false);
 		expect(routeContent.props.importantForAccessibility).toBe("auto");
 		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();

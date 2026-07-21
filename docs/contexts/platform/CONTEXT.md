@@ -121,6 +121,14 @@ directories no longer exist, causing React Native's Gradle plugin to regenerate
 its own cache. Do not replace this with unconditional deletion of Gradle output
 or `node_modules`.
 
+The Expo/React Native plugin graph and embedded Metro bundle can exceed Gradle's
+former 512 MiB metaspace ceiling during native release builds. Keep the
+project-level `org.gradle.jvmargs` in `android/gradle.properties` at 4 GiB heap
+and 1 GiB metaspace unless a measured build proves a different ceiling is safe.
+An apparent stop around `createBundle*JsAndAssets` must be diagnosed from the
+Gradle and Node processes before deleting caches; the one-shot release bundle is
+expected to complete while development builds retain watch mode.
+
 ## iOS Privacy Purpose Strings
 
 Dayova uses camera/photo upload for learning material and microphone/speech
