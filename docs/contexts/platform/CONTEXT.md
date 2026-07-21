@@ -63,6 +63,9 @@ image ran Node 20.19.4, while pnpm 11 required a newer Node runtime. The project
 now pins Node 24 for local and EAS builds, so that constraint no longer applies.
 
 Keep non-auth pnpm settings in `pnpm-workspace.yaml`, where pnpm 11 reads them.
+An `.npmrc` may contain registry and authentication entries, but must not
+contain pnpm behavior settings such as `auto-install-peers` or
+`only-built-dependencies`.
 In particular, keep `autoInstallPeers: false`, preserve `patchedDependencies`,
 and use `allowBuilds` as the only dependency build-script policy. When changing
 the pnpm version, update all three pins together and verify a frozen install,
