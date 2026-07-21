@@ -119,6 +119,8 @@ pnpm check:unused   # unused files, dependencies, and exports
 - [Issue-tracker guide](docs/agents/issue-tracker.md): Linear is the source of
   truth for issues and PRDs; GitHub Issues is the synchronized compatibility
   surface
+- [Triage-label guide](docs/agents/triage-labels.md): follow its required label
+  mappings instead of substituting similarly named Linear labels
 
 ## Windows Android builds
 
