@@ -1,17 +1,5 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
-import Animated, {
-	cancelAnimation,
-	Easing,
-	type SharedValue,
-	useAnimatedStyle,
-	useReducedMotion,
-	useSharedValue,
-	withDelay,
-	withRepeat,
-	withSequence,
-	withTiming,
-} from "react-native-reanimated";
 import { Button } from "~/components/ui/button";
 import {
 	FieldAccessory,
@@ -29,14 +17,6 @@ import {
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { WarningBanner } from "~/components/ui/warning-banner";
-import {
-	ANALYSIS_ORBIT_CENTER,
-	ANALYSIS_ORBIT_LOADER_SIZE,
-	ANALYSIS_ORBIT_PETAL_SIZE,
-	ANALYSIS_ORBIT_PETALS,
-	type AnalysisOrbitPetal,
-	getAnalysisOrbitPetalPosition,
-} from "~/features/learning-plans/analysis-orbit-loader";
 import type {
 	PlanSession,
 	SessionPhase,
@@ -49,7 +29,6 @@ import {
 	parseDateKey,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
 import { formatFileSize } from "~/lib/upload-policy";
@@ -71,17 +50,6 @@ const getSessionPhaseLabel = (phase: SessionPhase) =>
 	phaseEditCopy[phase].fieldLabel;
 
 const sessionPhaseOptions: SessionPhase[] = ["theory", "practice", "rehearsal"];
-
-const ORBIT_COLLAPSE_DURATION = 2400;
-const ORBIT_EXPAND_DURATION = 2200;
-const ORBIT_CYCLE_DURATION = 5000;
-const ORBIT_REST_DURATION =
-	ORBIT_CYCLE_DURATION - ORBIT_COLLAPSE_DURATION - ORBIT_EXPAND_DURATION;
-
-// The design-system primary color is fully saturated, so opacity gives the
-// overlapping petals the translucent flower look without introducing a separate
-// off-palette blue.
-const ORBIT_PETAL_OPACITY = 0.58;
 
 export function SectionTitle({
 	title,
@@ -392,133 +360,6 @@ export function SessionEditForm({
 					)}
 				</Button>
 			</View>
-		</View>
-	);
-}
-
-function AnalysisOrbitPetalCircle({
-	petal,
-	foldProgress,
-}: {
-	petal: AnalysisOrbitPetal;
-	foldProgress: SharedValue<number>;
-}) {
-	const petalStyle = useAnimatedStyle(() => {
-		// This worklet runs on the Reanimated UI thread. React does not re-render
-		// during the loader loop; each petal only receives a cheap transform update.
-		const position = getAnalysisOrbitPetalPosition(petal, foldProgress.get());
-		return {
-			transform: [
-				{ translateX: position.cx - ANALYSIS_ORBIT_CENTER },
-				{ translateY: position.cy - ANALYSIS_ORBIT_CENTER },
-			],
-		};
-	});
-
-	return (
-		<Animated.View
-			style={[
-				{
-					// Each petal is drawn once as a native rounded view centered in the
-					// loader. Animation only changes transform, which is cheaper than
-					// changing layout, SVG attributes, or React state on every frame.
-					position: "absolute",
-					left: ANALYSIS_ORBIT_CENTER - ANALYSIS_ORBIT_PETAL_SIZE / 2,
-					top: ANALYSIS_ORBIT_CENTER - ANALYSIS_ORBIT_PETAL_SIZE / 2,
-					height: ANALYSIS_ORBIT_PETAL_SIZE,
-					width: ANALYSIS_ORBIT_PETAL_SIZE,
-					borderRadius: ANALYSIS_ORBIT_PETAL_SIZE / 2,
-					backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.primary,
-					opacity: ORBIT_PETAL_OPACITY,
-				},
-				petalStyle,
-			]}
-		/>
-	);
-}
-
-export function AnalysisOrbitLoader() {
-	// Two independent shared values model the product requirement directly:
-	// `foldProgress` controls the petal geometry, while `flowerRotation` controls
-	// only the collapse spin. Keeping them separate avoids rotating the expansion.
-	const foldProgress = useSharedValue(1);
-	const flowerRotation = useSharedValue(0);
-	const reduceMotion = useReducedMotion();
-
-	useEffect(() => {
-		if (reduceMotion) {
-			flowerRotation.set(0);
-			foldProgress.set(1);
-			return;
-		}
-
-		flowerRotation.set(
-			withRepeat(
-				withSequence(
-					// Rotate only while collapsing. The following delay keeps the final
-					// rotation value during expansion/rest, then snaps it back to 0 at
-					// the loop boundary where the flower is already expanded.
-					withTiming(40, {
-						duration: ORBIT_COLLAPSE_DURATION,
-						easing: Easing.inOut(Easing.cubic),
-					}),
-					withDelay(
-						ORBIT_EXPAND_DURATION + ORBIT_REST_DURATION,
-						withTiming(0, { duration: 0 }),
-					),
-				),
-				-1,
-			),
-		);
-		foldProgress.set(
-			withRepeat(
-				withSequence(
-					// Collapse by moving every petal center to the exact loader center.
-					withTiming(0, {
-						duration: ORBIT_COLLAPSE_DURATION,
-						easing: Easing.inOut(Easing.cubic),
-					}),
-					// Expand back out without changing `flowerRotation`, so the flower
-					// opens in place instead of spinning open.
-					withTiming(1, {
-						duration: ORBIT_EXPAND_DURATION,
-						easing: Easing.out(Easing.cubic),
-					}),
-					withDelay(ORBIT_REST_DURATION, withTiming(1, { duration: 0 })),
-				),
-				-1,
-			),
-		);
-
-		return () => {
-			cancelAnimation(flowerRotation);
-			cancelAnimation(foldProgress);
-		};
-	}, [flowerRotation, foldProgress, reduceMotion]);
-
-	const flowerStyle = useAnimatedStyle(() => {
-		return {
-			transform: [{ rotate: `${flowerRotation.get()}deg` }],
-		};
-	});
-
-	return (
-		<View
-			className="mb-12 items-center justify-center"
-			style={{
-				height: ANALYSIS_ORBIT_LOADER_SIZE,
-				width: ANALYSIS_ORBIT_LOADER_SIZE,
-			}}
-		>
-			<Animated.View className="h-full w-full" style={flowerStyle}>
-				{ANALYSIS_ORBIT_PETALS.map((petal) => (
-					<AnalysisOrbitPetalCircle
-						key={petal.id}
-						petal={petal}
-						foldProgress={foldProgress}
-					/>
-				))}
-			</Animated.View>
 		</View>
 	);
 }
