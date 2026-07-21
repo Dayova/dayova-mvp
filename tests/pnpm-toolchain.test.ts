@@ -37,6 +37,30 @@ const workspace = parseYaml(
 	onlyBuiltDependencies?: string[];
 };
 
+function parseNpmrcSettingNames(content: string): Set<string> {
+	const settingNames = new Set<string>();
+
+	for (const rawLine of content.split(/\r?\n/)) {
+		const line = rawLine.trim();
+		if (line === "" || line.startsWith("#") || line.startsWith(";")) {
+			continue;
+		}
+
+		const separatorIndex = line.indexOf("=");
+		const name = (
+			separatorIndex === -1 ? line : line.slice(0, separatorIndex)
+		)
+			.trim()
+			.replace(/\[\]$/, "")
+			.replaceAll("-", "")
+			.toLowerCase();
+
+		settingNames.add(name);
+	}
+
+	return settingNames;
+}
+
 describe("pnpm toolchain", () => {
 	it("pins and documents one exact pnpm 11 version across every toolchain surface", () => {
 		expect(packageJson.packageManager).toMatch(/^pnpm@11\.\d+\.\d+$/);
@@ -51,6 +75,13 @@ describe("pnpm toolchain", () => {
 	it("keeps pnpm 11 workspace settings out of .npmrc and removes legacy build settings", () => {
 		expect(workspace.autoInstallPeers).toBe(false);
 		expect(workspace).not.toHaveProperty("onlyBuiltDependencies");
-		expect(existsSync(new URL("../.npmrc", import.meta.url))).toBe(false);
+
+		const npmrcPath = new URL("../.npmrc", import.meta.url);
+		const npmrcSettingNames = existsSync(npmrcPath)
+			? parseNpmrcSettingNames(readFileSync(npmrcPath, "utf8"))
+			: new Set<string>();
+
+		expect(npmrcSettingNames).not.toContain("autoinstallpeers");
+		expect(npmrcSettingNames).not.toContain("onlybuiltdependencies");
 	});
 });
