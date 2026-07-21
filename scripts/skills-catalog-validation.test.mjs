@@ -1,11 +1,11 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
-import { validateMattLockEntry } from "./skill-metadata.mjs";
+import { validateMattLockEntry, validateSkill } from "./skill-metadata.mjs";
 import { duplicateExpoPluginSkills } from "./skills-policy.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -103,5 +103,22 @@ test("validates Matt lock metadata shared by both catalog paths", () => {
 				sourceType: "github",
 			}),
 		/invalid upstream hash/,
+	);
+});
+
+test("rejects a frontmatter closing delimiter with trailing content", () => {
+	const skillsRoot = join(fixtureRoot, "skills");
+	const skillName = "malformed-frontmatter";
+	const skillRoot = join(skillsRoot, skillName);
+	mkdirSync(skillRoot, { recursive: true });
+	writeFileSync(
+		join(skillRoot, "SKILL.md"),
+		"---\nname: malformed-frontmatter\ndescription: Invalid delimiter fixture\n---anything\n# Body\n",
+		"utf8",
+	);
+
+	assert.throws(
+		() => validateSkill(skillsRoot, skillName),
+		/missing YAML frontmatter/,
 	);
 });

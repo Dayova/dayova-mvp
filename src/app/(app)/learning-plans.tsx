@@ -802,6 +802,7 @@ export default function LearningPlansScreen() {
 		setDeleteTarget({ kind: "homework", item: homeworkEntry });
 	};
 	const closeDeleteSheet = () => {
+		if (deleteActionGateRef.current.isRunning) return;
 		setDeleteTarget(null);
 		setDeleteError(null);
 	};

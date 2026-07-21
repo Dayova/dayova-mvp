@@ -1,6 +1,6 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
@@ -19,6 +19,7 @@ import {
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
 
@@ -191,6 +192,7 @@ export default function EntryDetailScreen() {
 	const [isDeleteVisible, setIsDeleteVisible] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const deleteActionGateRef = useRef(createAsyncActionGate());
 
 	const handleDelete = () => {
 		if (!canDelete || !id || !user || !isConvexAuthenticated) return;
@@ -199,25 +201,33 @@ export default function EntryDetailScreen() {
 	};
 
 	const confirmDelete = async () => {
-		if (!canDelete || !id || !user || !isConvexAuthenticated || isDeleting) {
+		if (!canDelete || !id || !user || !isConvexAuthenticated) {
 			return;
 		}
 
-		setIsDeleting(true);
+		await deleteActionGateRef.current.run(async () => {
+			setIsDeleting(true);
+			setDeleteError(null);
+			try {
+				const deletedDayKey = await deleteDayEntry({
+					id: id as Id<"dayEntries">,
+				});
+				setIsDeleteVisible(false);
+				router.replace(
+					`/home${deletedDayKey ? `?dayKey=${encodeURIComponent(deletedDayKey)}` : ""}`,
+				);
+			} catch {
+				setDeleteError("Bitte versuche es gleich noch einmal.");
+			} finally {
+				setIsDeleting(false);
+			}
+		});
+	};
+
+	const closeDeleteSheet = () => {
+		if (deleteActionGateRef.current.isRunning) return;
+		setIsDeleteVisible(false);
 		setDeleteError(null);
-		try {
-			const deletedDayKey = await deleteDayEntry({
-				id: id as Id<"dayEntries">,
-			});
-			setIsDeleteVisible(false);
-			router.replace(
-				`/home${deletedDayKey ? `?dayKey=${encodeURIComponent(deletedDayKey)}` : ""}`,
-			);
-		} catch {
-			setDeleteError("Bitte versuche es gleich noch einmal.");
-		} finally {
-			setIsDeleting(false);
-		}
 	};
 
 	const toggleCompleted = () => {
@@ -315,10 +325,7 @@ export default function EntryDetailScreen() {
 				confirmLabel="Löschen"
 				isBusy={isDeleting}
 				errorMessage={deleteError}
-				onClose={() => {
-					setIsDeleteVisible(false);
-					setDeleteError(null);
-				}}
+				onClose={closeDeleteSheet}
 				onConfirm={() => void confirmDelete()}
 			/>
 		</View>

@@ -110,8 +110,9 @@ radii are not app tokens because they depend on the phone/mockup. When nesting
 rounded surfaces, the outer radius equals the inner radius plus the padding
 between them.
 
-Dark-mode tokens live in `src/global.css` and native runtime color mirrors live
-in `src/lib/theme.ts`. Theme preference handling lives in
+Dark-mode tokens live in `src/global.css`; native/runtime color mirrors derived
+from those tokens live in `src/lib/theme-variables.ts`; and theme orchestration
+lives in `src/lib/theme.ts`. Theme preference handling lives in
 `src/lib/theme-preference.ts`; settings should expose the existing light,
 system, and dark options rather than introducing another toggle model.
 

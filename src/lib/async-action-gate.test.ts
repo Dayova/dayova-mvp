@@ -18,6 +18,7 @@ describe("createAsyncActionGate", () => {
 		const firstRun = gate.run(transaction);
 		const secondRun = gate.run(transaction);
 
+		expect(gate.isRunning).toBe(true);
 		expect(transaction).toHaveBeenCalledOnce();
 		await expect(secondRun).resolves.toEqual({ status: "skipped" });
 		finish?.();
@@ -25,6 +26,7 @@ describe("createAsyncActionGate", () => {
 			status: "completed",
 			value: undefined,
 		});
+		expect(gate.isRunning).toBe(false);
 
 		await gate.run(transaction);
 		expect(transaction).toHaveBeenCalledTimes(2);

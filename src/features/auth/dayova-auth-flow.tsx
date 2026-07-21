@@ -811,6 +811,7 @@ export function OnboardingScreen() {
 	const [error, setError] = useState<string | null>(null);
 	const [verificationCode, setVerificationCode] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
+	const [isRegistering, setIsRegistering] = useState(false);
 	const { register, verifyEmailCode, resendVerification, isLoading } =
 		useAuthFlow();
 	const { user, isConvexAuthenticated, isPostAuthSyncing } = useAuthSession();
@@ -819,6 +820,8 @@ export function OnboardingScreen() {
 	const textInputRef = useRef<TextInput | null>(null);
 	const verificationInputRef = useRef<TextInput | null>(null);
 	const verificationSubmittedRef = useRef(false);
+	const registrationActionGateRef = useRef(createAsyncActionGate());
+	const isRegistrationBusy = isLoading || isRegistering;
 
 	useEffect(() => {
 		const defaultValue = defaultAnswerForStep(activeStep);
@@ -875,7 +878,13 @@ export function OnboardingScreen() {
 	}, [hasAnswers, isConvexAuthenticated, isPostAuthSyncing, stage, user]);
 
 	const handleBack = useCallback(() => {
-		if (stage === "creating" || isLoading) return true;
+		if (
+			stage === "creating" ||
+			isRegistrationBusy ||
+			registrationActionGateRef.current.isRunning
+		) {
+			return true;
+		}
 		if (stage === "verification") {
 			setStage("flow");
 			setVerificationCode("");
@@ -895,7 +904,7 @@ export function OnboardingScreen() {
 		setError(null);
 		setActiveIndex((current) => current - 1);
 		return true;
-	}, [activeIndex, isLoading, stage]);
+	}, [activeIndex, isRegistrationBusy, stage]);
 
 	const shouldHandleInternalBack = shouldHandleRegistrationBack(
 		activeIndex,
@@ -909,7 +918,13 @@ export function OnboardingScreen() {
 			: (activeIndex + 1) / QUESTION_STEP_COUNT;
 
 	const continueFromStep = async () => {
-		if (stage !== "flow") return;
+		if (
+			stage !== "flow" ||
+			isRegistrationBusy ||
+			registrationActionGateRef.current.isRunning
+		) {
+			return;
+		}
 		setError(null);
 
 		if (activeStep.kind === "text") {
@@ -959,32 +974,37 @@ export function OnboardingScreen() {
 	};
 
 	const startRegistration = async () => {
-		try {
-			const result = await register({
-				name: answers.name.trim(),
-				email: answers.email.trim().toLowerCase(),
-				password: answers.password,
-				birthDate: answers.birthDate,
-				grade: answers.grade,
-				schoolType: answers.schoolType,
-				state: answers.state,
-			});
+		await registrationActionGateRef.current.run(async () => {
+			setIsRegistering(true);
+			try {
+				const result = await register({
+					name: answers.name.trim(),
+					email: answers.email.trim().toLowerCase(),
+					password: answers.password,
+					birthDate: answers.birthDate,
+					grade: answers.grade,
+					schoolType: answers.schoolType,
+					state: answers.state,
+				});
 
-			if (result.status === "complete") {
-				setStage("creating");
-				return;
+				if (result.status === "complete") {
+					setStage("creating");
+					return;
+				}
+
+				setStage("verification");
+				setVerificationCode("");
+				verificationSubmittedRef.current = false;
+			} catch (registrationError) {
+				setError(
+					registrationError instanceof Error
+						? registrationError.message
+						: "Registrierung fehlgeschlagen. Bitte versuche es erneut.",
+				);
+			} finally {
+				setIsRegistering(false);
 			}
-
-			setStage("verification");
-			setVerificationCode("");
-			verificationSubmittedRef.current = false;
-		} catch (registrationError) {
-			setError(
-				registrationError instanceof Error
-					? registrationError.message
-					: "Registrierung fehlgeschlagen. Bitte versuche es erneut.",
-			);
-		}
+		});
 	};
 
 	const submitVerificationCode = async (code: string) => {
@@ -1082,6 +1102,7 @@ export function OnboardingScreen() {
 							step={activeStep}
 							progress={stepProgress}
 							error={error}
+							busy={isRegistrationBusy}
 							passwordVisible={passwordVisible}
 							inputRef={textInputRef}
 							bottomInset={insets.bottom}
@@ -1335,6 +1356,7 @@ function QuestionStepView({
 	step,
 	progress,
 	error,
+	busy,
 	passwordVisible,
 	inputRef,
 	bottomInset,
@@ -1345,6 +1367,7 @@ function QuestionStepView({
 	step: Exclude<OnboardingStep, IntroStep>;
 	progress: number;
 	error: string | null;
+	busy: boolean;
 	passwordVisible: boolean;
 	inputRef: RefObject<TextInput | null>;
 	bottomInset: number;
@@ -1398,7 +1421,7 @@ function QuestionStepView({
 
 	return (
 		<View className="flex-1">
-			<AuthProgressHeader progress={progress} onBack={onBack} />
+			<AuthProgressHeader progress={progress} onBack={onBack} disabled={busy} />
 
 			<ScrollView
 				className="flex-1"
@@ -1487,6 +1510,7 @@ function QuestionStepView({
 								accessibilityLabel={step.title.replace(/\n/g, " ")}
 								placeholder={step.placeholder}
 								secure={step.secure && !passwordVisible}
+								disabled={busy}
 								keyboardType={step.keyboardType}
 								autoComplete={step.autoComplete}
 								textContentType={step.textContentType}
@@ -1500,6 +1524,7 @@ function QuestionStepView({
 										<PasswordVisibilityButton
 											fieldLabel="Passwort"
 											visible={passwordVisible}
+											disabled={busy}
 											onToggle={onTogglePassword}
 										/>
 									) : null
@@ -1537,9 +1562,10 @@ function QuestionStepView({
 					}}
 				>
 					<DarkPillButton
-						label="Weiter"
+						label={busy ? "Wird verarbeitet" : "Weiter"}
 						onPress={onContinue}
-						disabled={buttonDisabled}
+						disabled={buttonDisabled || busy}
+						busy={busy}
 					/>
 				</View>
 			) : null}
@@ -2441,9 +2467,11 @@ function CreationLoaderScreen({
 function AuthProgressHeader({
 	progress,
 	onBack,
+	disabled = false,
 }: {
 	progress: number;
 	onBack: () => boolean;
+	disabled?: boolean;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
 
@@ -2452,6 +2480,8 @@ function AuthProgressHeader({
 			<Pressable
 				accessibilityRole="button"
 				accessibilityLabel="Zurück"
+				accessibilityState={{ disabled }}
+				disabled={disabled}
 				onPress={() => onBack()}
 				style={{
 					width: 48,
@@ -2508,6 +2538,7 @@ function PillTextInput({
 	textContentType,
 	autoCapitalize,
 	accessory,
+	disabled = false,
 	onChangeText,
 	onSubmit,
 }: {
@@ -2521,6 +2552,7 @@ function PillTextInput({
 	textContentType?: TextInputProps["textContentType"];
 	autoCapitalize?: TextInputProps["autoCapitalize"];
 	accessory?: ReactNode;
+	disabled?: boolean;
 	onChangeText: (value: string) => void;
 	onSubmit: () => void;
 }) {
@@ -2544,6 +2576,8 @@ function PillTextInput({
 			<TextInput
 				ref={refObject}
 				accessibilityLabel={accessibilityLabel}
+				accessibilityState={{ busy: disabled, disabled }}
+				editable={!disabled}
 				value={value}
 				placeholder={placeholder}
 				placeholderTextColor={COLORS.secondaryText}
@@ -2568,7 +2602,7 @@ function PillTextInput({
 				}}
 			/>
 			{accessory}
-			<SmallArrowButton onPress={onSubmit} />
+			<SmallArrowButton disabled={disabled} onPress={onSubmit} />
 		</View>
 	);
 }
@@ -2600,11 +2634,19 @@ function FormPill({
 	);
 }
 
-function SmallArrowButton({ onPress }: { onPress: () => void }) {
+function SmallArrowButton({
+	disabled = false,
+	onPress,
+}: {
+	disabled?: boolean;
+	onPress: () => void;
+}) {
 	return (
 		<Pressable
 			accessibilityRole="button"
-			accessibilityLabel="Weiter"
+			accessibilityLabel={disabled ? "Weiter, wird verarbeitet" : "Weiter"}
+			accessibilityState={{ busy: disabled, disabled }}
+			disabled={disabled}
 			hitSlop={8}
 			onPress={onPress}
 			style={{
@@ -3580,16 +3622,18 @@ function DarkPillButton({
 	label,
 	onPress,
 	disabled,
+	busy = false,
 }: {
 	label: string;
 	onPress: () => void;
 	disabled?: boolean;
+	busy?: boolean;
 }) {
 	return (
 		<Pressable
 			accessibilityLabel={label}
 			accessibilityRole="button"
-			accessibilityState={{ disabled }}
+			accessibilityState={{ busy, disabled }}
 			disabled={disabled}
 			onPress={onPress}
 			style={{

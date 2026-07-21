@@ -95,7 +95,11 @@ describe("iOS system appearance module", () => {
 		const module = readFileSync(IOS_MODULE_PATH, "utf8");
 		const appActiveHandler = balancedBlock(module, "OnAppBecomesActive");
 
+		expect(appActiveHandler).toContain("Self.notifyReactNativeAppearance()");
 		expect(appActiveHandler).toContain("refreshAppearanceObservation()");
+		expect(appActiveHandler.indexOf("Self.notifyReactNativeAppearance()")).toBeLessThan(
+			appActiveHandler.indexOf("refreshAppearanceObservation()"),
+		);
 
 		const refreshHandler = balancedBlock(
 			module,

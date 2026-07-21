@@ -102,6 +102,10 @@ function validateMattCatalog() {
 
 		try {
 			validateSkill(join(repoRoot, ".agents", "skills"), skillName);
+		} catch (error) {
+			fail(error instanceof Error ? error.message : String(error));
+		}
+		try {
 			validateOpenAiMetadataForSkill(
 				join(repoRoot, ".agents", "skills"),
 				skillName,

@@ -19,7 +19,9 @@ function parseYamlDictionary(text, label) {
 }
 
 function parseSkillFrontmatter(content, skillName) {
-	const frontmatterText = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1];
+	const frontmatterText = content.match(
+		/^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/,
+	)?.[1];
 	if (!frontmatterText) {
 		throw new Error(`${skillName}: missing YAML frontmatter`);
 	}

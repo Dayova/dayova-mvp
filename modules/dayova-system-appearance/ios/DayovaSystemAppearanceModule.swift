@@ -40,6 +40,7 @@ public class DayovaSystemAppearanceModule: Module {
 
     OnAppBecomesActive { [weak self] in
       DispatchQueue.main.async {
+        Self.notifyReactNativeAppearance()
         self?.refreshAppearanceObservation()
       }
     }

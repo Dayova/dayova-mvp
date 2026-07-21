@@ -59,6 +59,14 @@ describe("getAuthNavigationTarget", () => {
 		expect(
 			getAuthNavigationTarget({
 				hasUser: false,
+				isSessionLoading: true,
+				pathname: PASSWORD_RESET_SUCCESS_PATH,
+				pendingSessionTask: null,
+			}),
+		).toBeNull();
+		expect(
+			getAuthNavigationTarget({
+				hasUser: false,
 				isSessionLoading: false,
 				pathname: PASSWORD_RESET_SUCCESS_PATH,
 				pendingSessionTask: null,

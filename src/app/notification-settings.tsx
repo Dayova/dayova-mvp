@@ -438,6 +438,7 @@ export default function NotificationSettingsScreen() {
 				) : null}
 				{preferenceError ? (
 					<WarningBanner
+						accessibilityRole="alert"
 						className="mb-6"
 						title="Einstellung nicht gespeichert"
 						description={preferenceError}

@@ -1,6 +1,6 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -17,12 +17,13 @@ import {
 	FieldTrigger,
 } from "~/components/ui/field";
 import { CalendarDays, ChevronDown, Timer, Trash2 } from "~/components/ui/icon";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuthSession } from "~/context/AuthContext";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { dismissToOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
@@ -119,7 +120,8 @@ export default function LearningTimesScreen() {
 		null,
 	);
 	const [isSaving, setIsSaving] = useState(false);
-	const [feedback, setFeedback] = useState<string | null>(null);
+	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const mutationGateRef = useRef(createAsyncActionGate());
 	const returnTo = getSafeReturnTo(params.returnTo);
 	const overviewPath = withReturnTo(ROUTES.learningTimes, returnTo);
 	const learningTimeId = params.id as Id<"userLearningTimes"> | undefined;
@@ -156,7 +158,7 @@ export default function LearningTimesScreen() {
 			...patch,
 			baseKey: formBaseKey,
 		}));
-		setFeedback(null);
+		setErrorMessage(null);
 	};
 
 	const hasChanges =
@@ -199,49 +201,52 @@ export default function LearningTimesScreen() {
 
 	const save = async () => {
 		if (parseTimeToMinutes(endTime) <= parseTimeToMinutes(startTime)) {
-			setFeedback("Die Endzeit muss nach der Startzeit liegen.");
+			setErrorMessage("Die Endzeit muss nach der Startzeit liegen.");
 			return;
 		}
 
-		setIsSaving(true);
-		setFeedback(null);
-		try {
-			await saveLearningTime({
-				id: selectedEntry?.id,
-				dayOfWeek: selectedDayValue,
-				startTime,
-				endTime,
-			});
-			closeToOverview();
-		} catch (error) {
-			setFeedback(
-				getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
-					source: "learning-times.save",
-				}),
-			);
-		} finally {
-			setIsSaving(false);
-		}
+		await mutationGateRef.current.run(async () => {
+			setIsSaving(true);
+			setErrorMessage(null);
+			try {
+				await saveLearningTime({
+					id: selectedEntry?.id,
+					dayOfWeek: selectedDayValue,
+					startTime,
+					endTime,
+				});
+				closeToOverview();
+			} catch (error) {
+				setErrorMessage(
+					getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
+						source: "learning-times.save",
+					}),
+				);
+			} finally {
+				setIsSaving(false);
+			}
+		});
 	};
 
 	const remove = async () => {
 		if (!selectedEntry) return;
 
-		setIsSaving(true);
-		setFeedback(null);
-		try {
-			await removeLearningTime({ id: selectedEntry.id });
-			setFeedback("Lernzeit entfernt.");
-			closeToOverview();
-		} catch (error) {
-			setFeedback(
-				getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
-					source: "learning-times.remove",
-				}),
-			);
-		} finally {
-			setIsSaving(false);
-		}
+		await mutationGateRef.current.run(async () => {
+			setIsSaving(true);
+			setErrorMessage(null);
+			try {
+				await removeLearningTime({ id: selectedEntry.id });
+				closeToOverview();
+			} catch (error) {
+				setErrorMessage(
+					getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
+						source: "learning-times.remove",
+					}),
+				);
+			} finally {
+				setIsSaving(false);
+			}
+		});
 	};
 
 	const renderDaySelectSheet = () => {
@@ -332,8 +337,10 @@ export default function LearningTimesScreen() {
 						</View>
 					) : null}
 
-					{feedback ? (
-						<WarningBanner title="Bitte prüfen" description={feedback} />
+					{errorMessage ? (
+						<ErrorMessage className="rounded-[22px] border border-destructive/20 bg-destructive/10 px-5 py-4">
+							{errorMessage}
+						</ErrorMessage>
 					) : null}
 				</View>
 			</ScreenScroll>

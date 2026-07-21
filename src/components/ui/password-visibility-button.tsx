@@ -7,10 +7,12 @@ import { useDayovaTheme } from "~/lib/theme";
 export function PasswordVisibilityButton({
 	fieldLabel,
 	visible,
+	disabled = false,
 	onToggle,
 }: {
 	fieldLabel: string;
 	visible: boolean;
+	disabled?: boolean;
 	onToggle: () => void;
 }) {
 	const { colors } = useDayovaTheme();
@@ -19,6 +21,8 @@ export function PasswordVisibilityButton({
 		<Pressable
 			accessibilityRole="button"
 			accessibilityLabel={`${fieldLabel} ${visible ? "ausblenden" : "anzeigen"}`}
+			accessibilityState={{ disabled }}
+			disabled={disabled}
 			hitSlop={10}
 			onPress={onToggle}
 			className="h-10 w-10 items-center justify-center"
