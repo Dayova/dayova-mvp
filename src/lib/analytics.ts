@@ -1,28 +1,11 @@
 import type { PostHogOptions } from "posthog-react-native";
+import { z } from "zod";
 import { logDiagnosticError } from "./diagnostics";
 import { EXAM_TYPE_OPTIONS } from "./entry-options";
+import { isSupportedFederalState } from "./federal-states";
 import { isSupportedGrade } from "./grades";
 import { env } from "./runtime-config";
 import { ACCEPTED_FILE_TYPES } from "./upload-policy";
-
-const GERMAN_FEDERAL_STATES = new Set([
-	"Baden-Württemberg",
-	"Bayern",
-	"Berlin",
-	"Brandenburg",
-	"Bremen",
-	"Hamburg",
-	"Hessen",
-	"Mecklenburg-Vorpommern",
-	"Niedersachsen",
-	"Nordrhein-Westfalen",
-	"Rheinland-Pfalz",
-	"Saarland",
-	"Sachsen",
-	"Sachsen-Anhalt",
-	"Schleswig-Holstein",
-	"Thüringen",
-]);
 
 type AnalyticsProperty = string | number | boolean;
 
@@ -125,36 +108,6 @@ const optionalTrimmedString = (value: unknown) => {
 	return normalized ? normalized : undefined;
 };
 
-type PropertyRule<Value, Optional extends boolean = false> = {
-	isValid: (value: unknown) => value is Value;
-	optional: Optional;
-};
-
-type AnyPropertyRule = PropertyRule<unknown, boolean>;
-type EventPropertyRules = Record<string, AnyPropertyRule>;
-
-const required = <Value>(
-	isValid: (value: unknown) => value is Value,
-): PropertyRule<Value, false> => ({ isValid, optional: false });
-
-const optional = <Value>(
-	isValid: (value: unknown) => value is Value,
-): PropertyRule<Value, true> => ({ isValid, optional: true });
-
-const oneOf = <const Values extends readonly (string | number | boolean)[]>(
-	values: Values,
-) => {
-	const allowed = new Set<string | number | boolean>(values);
-	return (value: unknown): value is Values[number] =>
-		(typeof value === "string" ||
-			typeof value === "number" ||
-			typeof value === "boolean") &&
-		allowed.has(value);
-};
-
-const isNonEmptyString = (value: unknown): value is string =>
-	typeof value === "string" && value.length > 0 && value.trim() === value;
-
 const isDayKey = (value: unknown): value is string => {
 	if (typeof value !== "string") return false;
 	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -170,143 +123,122 @@ const isDayKey = (value: unknown): value is string => {
 	);
 };
 
-const isPositiveInteger = (value: unknown): value is number =>
-	typeof value === "number" && Number.isInteger(value) && value > 0;
+const nonEmptyStringSchema = z
+	.string()
+	.min(1)
+	.refine((value) => value.trim() === value);
+const dayKeySchema = z.string().refine(isDayKey);
+const positiveIntegerSchema = z.number().int().positive();
+const timeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
 
-const isTime = (value: unknown): value is string =>
-	typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+const slotPropertySchemas = {
+	learning_plan_id: nonEmptyStringSchema,
+	learning_plan_session_id: nonEmptyStringSchema,
+	phase: z.enum(VALIDATION_SESSION_PHASES),
+	planned_day_key: dayKeySchema,
+	planned_start_time: timeSchema,
+	duration_minutes: positiveIntegerSchema,
+	deadline_day_key: dayKeySchema.optional(),
+} as const;
 
-const slotPropertyRules = {
-	learning_plan_id: required(isNonEmptyString),
-	learning_plan_session_id: required(isNonEmptyString),
-	phase: required(oneOf(VALIDATION_SESSION_PHASES)),
-	planned_day_key: required(isDayKey),
-	planned_start_time: required(isTime),
-	duration_minutes: required(isPositiveInteger),
-	deadline_day_key: optional(isDayKey),
-} as const satisfies EventPropertyRules;
-
-const sharedContextRules = {
+const sharedContextSchemas = {
 	validationStudentCode: {
 		outputName: "validation_student_code",
-		isValid: isNonEmptyString,
+		schema: nonEmptyStringSchema,
 	},
-	easUpdateId: { outputName: "eas_update_id", isValid: isNonEmptyString },
-	easChannel: { outputName: "eas_channel", isValid: isNonEmptyString },
+	easUpdateId: { outputName: "eas_update_id", schema: nonEmptyStringSchema },
+	easChannel: { outputName: "eas_channel", schema: nonEmptyStringSchema },
 	easRuntimeVersion: {
 		outputName: "eas_runtime_version",
-		isValid: isNonEmptyString,
+		schema: nonEmptyStringSchema,
 	},
 	easIsEmbeddedLaunch: {
 		outputName: "eas_is_embedded_launch",
-		isValid: (value: unknown): value is boolean => typeof value === "boolean",
+		schema: z.boolean(),
 	},
-} as const;
-
-const sharedOutputRules = {
-	analytics_schema_version: required(
-		oneOf([ANALYTICS_SCHEMA_VERSION] as const),
-	),
-	validation_student_code: optional(isNonEmptyString),
-	eas_update_id: optional(isNonEmptyString),
-	eas_channel: optional(isNonEmptyString),
-	eas_runtime_version: optional(isNonEmptyString),
-	eas_is_embedded_launch: optional(
-		(value: unknown): value is boolean => typeof value === "boolean",
-	),
-} as const satisfies EventPropertyRules;
-
-const identityOutputRules = {
-	convex_user_id: optional(isNonEmptyString),
-	validation_student_code: optional(isNonEmptyString),
-	grade: optional(isSupportedGrade),
-	state: optional((value: unknown): value is string =>
-		typeof value === "string" ? GERMAN_FEDERAL_STATES.has(value) : false,
-	),
-} as const satisfies EventPropertyRules;
-
-const eventPropertyRules = {
-	onboarding_completed: {
-		local_day_key: required(isDayKey),
-		onboarding_version: required(oneOf([1] as const)),
-	},
-	homework_created: {
-		day_entry_id: required(isNonEmptyString),
-		planned_day_key: required(isDayKey),
-		due_day_key: required(isDayKey),
-		duration_minutes: required(isPositiveInteger),
-	},
-	exam_created: {
-		day_entry_id: required(isNonEmptyString),
-		planned_day_key: required(isDayKey),
-		duration_minutes: required(isPositiveInteger),
-		exam_type: required(oneOf(EXAM_TYPE_OPTIONS)),
-	},
-	material_uploaded: {
-		learning_plan_id: required(isNonEmptyString),
-		file_type: required(oneOf(VALIDATION_FILE_TYPES)),
-		file_size_bucket: required(oneOf(VALIDATION_FILE_SIZE_BUCKETS)),
-	},
-	study_plan_generated: {
-		learning_plan_id: required(isNonEmptyString),
-		session_count: required(isPositiveInteger),
-	},
-	study_slot_started: {
-		...slotPropertyRules,
-		started_at: required(isPositiveInteger),
-	},
-	study_slot_completed: {
-		...slotPropertyRules,
-		outcome_at: required(isPositiveInteger),
-	},
-	study_slot_partially_completed: {
-		...slotPropertyRules,
-		outcome_at: required(isPositiveInteger),
-	},
-	study_slot_missed: {
-		...slotPropertyRules,
-		outcome_at: required(isPositiveInteger),
-		missed_reason: required(oneOf(VALIDATION_MISSED_REASONS)),
-	},
-	plan_adjusted: {
-		original_session_id: required(isNonEmptyString),
-		new_session_id: required(isNonEmptyString),
-		adjustment_type: required(oneOf(VALIDATION_ADJUSTMENT_TYPES)),
-		old_planned_day_key: required(isDayKey),
-		new_planned_day_key: required(isDayKey),
-		old_duration_minutes: required(isPositiveInteger),
-		new_duration_minutes: required(isPositiveInteger),
-		missed_reason: optional(oneOf(VALIDATION_MISSED_REASONS)),
-	},
-	user_returned_next_day: {
-		local_day_key: required(isDayKey),
-		previous_activity_day_key: required(isDayKey),
-	},
-} as const satisfies Record<string, EventPropertyRules>;
-
-type RuleValue<Rule> =
-	Rule extends PropertyRule<infer Value, boolean> ? Value : never;
-
-type RequiredPropertyKeys<Rules extends EventPropertyRules> = {
-	[Key in keyof Rules]: Rules[Key] extends PropertyRule<unknown, false>
-		? Key
-		: never;
-}[keyof Rules];
-
-type OptionalPropertyKeys<Rules extends EventPropertyRules> = Exclude<
-	keyof Rules,
-	RequiredPropertyKeys<Rules>
+} as const satisfies Record<
+	keyof SharedAnalyticsContextInput,
+	{ outputName: string; schema: z.ZodType<AnalyticsProperty> }
 >;
 
-type PropertiesFromRules<Rules extends EventPropertyRules> = {
-	[Key in RequiredPropertyKeys<Rules>]: RuleValue<Rules[Key]>;
-} & {
-	[Key in OptionalPropertyKeys<Rules>]?: RuleValue<Rules[Key]>;
-};
+const sharedOutputSchema = z.strictObject({
+	analytics_schema_version: z.literal(ANALYTICS_SCHEMA_VERSION),
+	validation_student_code: nonEmptyStringSchema.optional(),
+	eas_update_id: nonEmptyStringSchema.optional(),
+	eas_channel: nonEmptyStringSchema.optional(),
+	eas_runtime_version: nonEmptyStringSchema.optional(),
+	eas_is_embedded_launch: z.boolean().optional(),
+});
+
+const identityOutputSchema = z.strictObject({
+	convex_user_id: nonEmptyStringSchema.optional(),
+	validation_student_code: nonEmptyStringSchema.optional(),
+	grade: z.string().refine(isSupportedGrade).optional(),
+	state: z.string().refine(isSupportedFederalState).optional(),
+});
+
+const eventPropertySchemas = {
+	onboarding_completed: z.strictObject({
+		local_day_key: dayKeySchema,
+		onboarding_version: z.literal(1),
+	}),
+	homework_created: z.strictObject({
+		day_entry_id: nonEmptyStringSchema,
+		planned_day_key: dayKeySchema,
+		due_day_key: dayKeySchema,
+		duration_minutes: positiveIntegerSchema,
+	}),
+	exam_created: z.strictObject({
+		day_entry_id: nonEmptyStringSchema,
+		planned_day_key: dayKeySchema,
+		duration_minutes: positiveIntegerSchema,
+		exam_type: z.enum(EXAM_TYPE_OPTIONS),
+	}),
+	material_uploaded: z.strictObject({
+		learning_plan_id: nonEmptyStringSchema,
+		file_type: z.enum(VALIDATION_FILE_TYPES),
+		file_size_bucket: z.enum(VALIDATION_FILE_SIZE_BUCKETS),
+	}),
+	study_plan_generated: z.strictObject({
+		learning_plan_id: nonEmptyStringSchema,
+		session_count: positiveIntegerSchema,
+	}),
+	study_slot_started: z.strictObject({
+		...slotPropertySchemas,
+		started_at: positiveIntegerSchema,
+	}),
+	study_slot_completed: z.strictObject({
+		...slotPropertySchemas,
+		outcome_at: positiveIntegerSchema,
+	}),
+	study_slot_partially_completed: z.strictObject({
+		...slotPropertySchemas,
+		outcome_at: positiveIntegerSchema,
+	}),
+	study_slot_missed: z.strictObject({
+		...slotPropertySchemas,
+		outcome_at: positiveIntegerSchema,
+		missed_reason: z.enum(VALIDATION_MISSED_REASONS),
+	}),
+	plan_adjusted: z.strictObject({
+		original_session_id: nonEmptyStringSchema,
+		new_session_id: nonEmptyStringSchema,
+		adjustment_type: z.enum(VALIDATION_ADJUSTMENT_TYPES),
+		old_planned_day_key: dayKeySchema,
+		new_planned_day_key: dayKeySchema,
+		old_duration_minutes: positiveIntegerSchema,
+		new_duration_minutes: positiveIntegerSchema,
+		missed_reason: z.enum(VALIDATION_MISSED_REASONS).optional(),
+	}),
+	user_returned_next_day: z.strictObject({
+		local_day_key: dayKeySchema,
+		previous_activity_day_key: dayKeySchema,
+	}),
+} as const satisfies Record<string, z.ZodObject>;
 
 type ValidationEventProperties = {
-	[EventName in keyof typeof eventPropertyRules]: PropertiesFromRules<
-		(typeof eventPropertyRules)[EventName]
+	[EventName in keyof typeof eventPropertySchemas]: z.infer<
+		(typeof eventPropertySchemas)[EventName]
 	>;
 };
 
@@ -359,7 +291,7 @@ const isProhibitedAnalyticsKey = (propertyName: string) =>
 	);
 
 const projectProperties = (
-	rules: EventPropertyRules,
+	schema: z.ZodObject,
 	input: Record<string, unknown>,
 	options: {
 		rejectUnknown?: boolean;
@@ -367,26 +299,29 @@ const projectProperties = (
 	} = {},
 ): Record<string, AnalyticsProperty> | null => {
 	const onRejected = options.onRejected ?? (() => undefined);
+	const shape = schema.shape as Record<string, z.ZodType>;
 	if (options.rejectUnknown) {
 		for (const propertyName of Object.keys(input)) {
-			if (!Object.hasOwn(rules, propertyName)) onRejected(propertyName);
+			if (!Object.hasOwn(shape, propertyName)) onRejected(propertyName);
 		}
 	}
 
 	const projected: Record<string, AnalyticsProperty> = {};
-	for (const [propertyName, rule] of Object.entries(rules)) {
+	for (const [propertyName, propertySchema] of Object.entries(shape)) {
 		const value = input[propertyName];
+		const acceptsUndefined = propertySchema.safeParse(undefined).success;
 		if (value === undefined) {
-			if (rule.optional) continue;
+			if (acceptsUndefined) continue;
 			onRejected(propertyName);
 			return null;
 		}
-		if (!rule.isValid(value)) {
+		const result = propertySchema.safeParse(value);
+		if (!result.success) {
 			onRejected(propertyName);
-			if (rule.optional) continue;
+			if (acceptsUndefined) continue;
 			return null;
 		}
-		projected[propertyName] = value as AnalyticsProperty;
+		projected[propertyName] = result.data as AnalyticsProperty;
 	}
 	return projected;
 };
@@ -408,7 +343,7 @@ const guardedPersonProperties = (properties: Record<string, unknown>) =>
 				POSTHOG_SYSTEM_PERSON_PROPERTY_KEYS.has(key),
 			),
 		),
-		...(projectProperties(identityOutputRules, properties) ?? {}),
+		...(projectProperties(identityOutputSchema, properties) ?? {}),
 	}) as PostHogEventProperties;
 
 const withoutPersonUpdates = (event: PostHogBeforeSendEvent) => {
@@ -444,14 +379,12 @@ export const validationAnalyticsBeforeSend: PostHogBeforeSendFunction = (
 		};
 	}
 
-	const eventRules = Object.hasOwn(eventPropertyRules, event.event)
-		? (eventPropertyRules[
-				event.event as ValidationEventName
-			] as EventPropertyRules)
+	const eventSchema = Object.hasOwn(eventPropertySchemas, event.event)
+		? (eventPropertySchemas[event.event as ValidationEventName] as z.ZodObject)
 		: undefined;
-	if (eventRules) {
-		const shared = projectProperties(sharedOutputRules, properties);
-		const specific = projectProperties(eventRules, properties);
+	if (eventSchema) {
+		const shared = projectProperties(sharedOutputSchema, properties);
+		const specific = projectProperties(eventSchema, properties);
 		if (!shared || !specific) return null;
 		return {
 			...withoutPersonUpdates(event),
@@ -560,7 +493,7 @@ export function createValidationAnalytics(
 			}
 			if (
 				input.state !== undefined &&
-				(!state || !GERMAN_FEDERAL_STATES.has(state))
+				(!state || !isSupportedFederalState(state))
 			) {
 				rejectProperty("$identify", "state");
 			}
@@ -571,7 +504,7 @@ export function createValidationAnalytics(
 					? { validation_student_code: validationStudentCode }
 					: {}),
 				...(grade && isSupportedGrade(grade) ? { grade } : {}),
-				...(state && GERMAN_FEDERAL_STATES.has(state) ? { state } : {}),
+				...(state && isSupportedFederalState(state) ? { state } : {}),
 			});
 		},
 		capture<EventName extends ValidationEventName>(
@@ -579,10 +512,10 @@ export function createValidationAnalytics(
 			properties: ValidationEventProperties[EventName],
 		) {
 			if (!configured || !currentDistinctId) return;
-			const rules = Object.hasOwn(eventPropertyRules, eventName)
-				? (eventPropertyRules[eventName] as EventPropertyRules)
+			const schema = Object.hasOwn(eventPropertySchemas, eventName)
+				? (eventPropertySchemas[eventName] as z.ZodObject)
 				: undefined;
-			if (!rules) {
+			if (!schema) {
 				if (mode === "development") {
 					throw new Error(`Unknown analytics event: ${eventName}`);
 				}
@@ -591,7 +524,7 @@ export function createValidationAnalytics(
 			}
 
 			const projectedProperties = projectProperties(
-				rules,
+				schema,
 				properties as Record<string, unknown>,
 				{
 					rejectUnknown: true,
@@ -608,18 +541,19 @@ export function createValidationAnalytics(
 				analytics_schema_version: ANALYTICS_SCHEMA_VERSION,
 			};
 			for (const propertyName of Object.keys(sharedContext)) {
-				if (!Object.hasOwn(sharedContextRules, propertyName)) {
+				if (!Object.hasOwn(sharedContextSchemas, propertyName)) {
 					rejectProperty(eventName, propertyName);
 				}
 			}
-			for (const [inputName, rule] of Object.entries(sharedContextRules)) {
+			for (const [inputName, rule] of Object.entries(sharedContextSchemas)) {
 				const value = sharedContext[inputName];
 				if (value === undefined || value === null) continue;
-				if (!rule.isValid(value)) {
+				const result = rule.schema.safeParse(value);
+				if (!result.success) {
 					rejectProperty(eventName, rule.outputName);
 					continue;
 				}
-				projectedSharedContext[rule.outputName] = value as AnalyticsProperty;
+				projectedSharedContext[rule.outputName] = result.data;
 			}
 			adapter.identify(currentDistinctId);
 			adapter.capture(eventName, {
@@ -634,6 +568,6 @@ export type {
 	AnalyticsIdentityInput,
 	AnalyticsMode,
 	SharedAnalyticsContextInput,
-	ValidationEventProperties,
 	ValidationEventName,
+	ValidationEventProperties,
 };

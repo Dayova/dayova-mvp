@@ -83,6 +83,7 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { FEDERAL_STATE_OPTIONS } from "~/lib/federal-states";
 import { GRADE_OPTIONS } from "~/lib/grades";
 import { useBackIntent } from "~/lib/navigation";
 import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
@@ -261,27 +262,6 @@ const GOAL_OPTIONS = [
 	"Mehr Struktur im Lernen",
 	"Dranbleiben",
 	"Besser vorbereitet sein",
-] as const;
-
-// Persisted onboarding answers use these labels, so this list must contain every
-// German federal state instead of only the few values visible in the Figma wheel.
-const FEDERAL_STATES = [
-	"Bremen",
-	"Hamburg",
-	"Baden-Württemberg",
-	"Sachsen",
-	"Sachsen-Anhalt",
-	"Brandenburg",
-	"Bayern",
-	"Berlin",
-	"Hessen",
-	"Niedersachsen",
-	"Nordrhein-Westfalen",
-	"Rheinland-Pfalz",
-	"Saarland",
-	"Schleswig-Holstein",
-	"Thüringen",
-	"Mecklenburg-Vorpommern",
 ] as const;
 
 const DURATION_OPTIONS = [
@@ -2657,7 +2637,7 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 	return (
 		<NativeOnboardingPicker
 			value={answers.state || "Sachsen"}
-			options={FEDERAL_STATES}
+			options={FEDERAL_STATE_OPTIONS}
 			testID="onboarding-state-picker"
 			onChange={(value) => setAnswer("state", value)}
 		/>

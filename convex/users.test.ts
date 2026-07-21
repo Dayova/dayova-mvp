@@ -2,6 +2,7 @@
 
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
+import { FEDERAL_STATE_OPTIONS } from "../src/lib/federal-states";
 import { api } from "./_generated/api";
 import schema from "./schema";
 
@@ -105,6 +106,67 @@ test("grade 13 survives the authenticated Convex profile round trip", async () =
 			.unique();
 	});
 	expect(savedGrade).toMatchObject({ answer: "13" });
+});
+
+test("bounded federal states stay selectable and survive profile and onboarding writes", async () => {
+	const t = convexTest(schema, modules).withIdentity(studentIdentity);
+
+	const userId = await t.mutation(api.users.syncCurrentUser, {
+		state: "Mecklenburg-Vorpommern",
+	});
+	await expect(t.query(api.users.getMe, {})).resolves.toMatchObject({
+		state: "Mecklenburg-Vorpommern",
+	});
+
+	await expect(
+		t.mutation(api.users.saveOnboardingAnswers, {
+			answers: {
+				...onboardingAnswers("13"),
+				state: "Baden-Württemberg",
+			},
+		}),
+	).resolves.toEqual({ success: true });
+
+	const stateQuestion = await t.run(async (ctx) =>
+		ctx.db
+			.query("onboardingQuestions")
+			.withIndex("by_key", (q) => q.eq("key", "state"))
+			.unique(),
+	);
+	expect(stateQuestion).toMatchObject({
+		prompt: "Aus welchem Bundesland kommst du?",
+		kind: "select",
+		options: FEDERAL_STATE_OPTIONS,
+	});
+	if (!stateQuestion) throw new Error("Missing state question.");
+	await expect(
+		t.run(async (ctx) =>
+			ctx.db
+				.query("userOnboardingAnswers")
+				.withIndex("by_userId_and_questionId", (q) =>
+					q.eq("userId", userId).eq("questionId", stateQuestion._id),
+				)
+				.unique(),
+		),
+	).resolves.toMatchObject({ answer: "Baden-Württemberg" });
+});
+
+test("profile and onboarding writes reject values outside the federal-state vocabulary", async () => {
+	const t = convexTest(schema, modules).withIdentity(studentIdentity);
+
+	await expect(
+		t.mutation(api.users.syncCurrentUser, { state: "private state" }),
+	).rejects.toThrow("Bundesland");
+
+	await t.mutation(api.users.syncCurrentUser, { state: "Bayern" });
+	await expect(
+		t.mutation(api.users.updateProfile, { state: "Atlantis" }),
+	).rejects.toThrow("Bundesland");
+	await expect(
+		t.mutation(api.users.saveOnboardingAnswers, {
+			answers: { ...onboardingAnswers("9"), state: "Saxony" },
+		}),
+	).rejects.toThrow("Bundesland");
 });
 
 test("profile and onboarding writes reject grades outside the product vocabulary", async () => {
