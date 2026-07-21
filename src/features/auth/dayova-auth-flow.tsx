@@ -122,12 +122,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(
 const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const DURATION_CAROUSEL_ACTIVE_COLOR = COLORS.primary;
 const DURATION_CAROUSEL_INACTIVE_COLOR = COLORS.border;
-const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
-const QUESTION_TITLE_STYLE_COMPACT = {
-	fontSize: 25,
-	lineHeight: 32,
-	fontWeight: "600",
-} as const;
+const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h1;
 const CODE_LENGTH = 6;
 const OTP_CELL_KEYS = [
 	"otp-cell-1",
@@ -1397,8 +1392,6 @@ function QuestionStepView({
 	const isWheelStep = step.kind === "wheel";
 	const factBody = step.kind === "fact" ? step.body : "";
 	const isPlanFitStep = step.kind === "infoStack";
-	const questionTitleStyle =
-		step.kind === "range" ? QUESTION_TITLE_STYLE : QUESTION_TITLE_STYLE_COMPACT;
 	const titleTopPadding = isRangeStep
 		? 36
 		: isPlanFitStep
@@ -1449,9 +1442,9 @@ function QuestionStepView({
 						className="text-center font-poppins"
 						style={{
 							color: COLORS.text,
-							fontSize: questionTitleStyle.fontSize,
-							lineHeight: questionTitleStyle.lineHeight,
-							fontWeight: questionTitleStyle.fontWeight,
+							fontSize: QUESTION_TITLE_STYLE.fontSize,
+							lineHeight: QUESTION_TITLE_STYLE.lineHeight,
+							fontWeight: QUESTION_TITLE_STYLE.fontWeight,
 						}}
 					>
 						{step.title}
