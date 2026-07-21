@@ -42,7 +42,6 @@ import {
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
-import { useValidationAnalytics } from "~/lib/analytics";
 import {
 	addDays,
 	getDayKey,
@@ -425,8 +424,6 @@ const getEntryUrl = (entry: DayEntry, selectedDayLabel: string) => {
 };
 
 const getTimelineRow = (index: number) => index % 2;
-const getAnalyticsEntryKind = (entry: DayEntry) =>
-	isLearningEntry(entry) ? "learning" : (entry.kind ?? "entry");
 
 export default function HomeScreen() {
 	const router = useRouter();
@@ -434,7 +431,6 @@ export default function HomeScreen() {
 	const { colors, isDark } = useDayovaTheme();
 	const { width, height } = useWindowDimensions();
 	const { user } = useAuth();
-	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
 	const [now, setNow] = useState(() => new Date());
@@ -448,7 +444,6 @@ export default function HomeScreen() {
 	const dayStripScrollRef = useRef<ScrollView | null>(null);
 	const hasCenteredTimelineRef = useRef(false);
 	const pendingTimelineSelectionRef = useRef<string | null>(null);
-	const didCaptureDashboardViewRef = useRef(false);
 	const blueCardSlide = useSharedValue(1);
 	const blueCardSlideDirection = useSharedValue(1);
 
@@ -509,9 +504,6 @@ export default function HomeScreen() {
 		}
 		return grouped;
 	}, [entriesByDayResults]);
-	const isDashboardDataLoaded = Object.values(entriesByDayResults).every(
-		(result) => result !== undefined,
-	);
 	const selectedDate = parseDayKey(selectedDayKey) ?? today;
 	const screenScale = clamp(width / 393, 0.86, 1.08);
 	const heightScale = clamp(height / 852, 0.82, 1.08);
@@ -656,24 +648,6 @@ export default function HomeScreen() {
 	const currentTimelineX =
 		Math.max(todayIndex, 0) * dayWidth + (currentMinute / 60) * hourWidth;
 
-	useEffect(() => {
-		if (didCaptureDashboardViewRef.current || !isDashboardDataLoaded) return;
-		didCaptureDashboardViewRef.current = true;
-		capture("dashboard_viewed", {
-			selected_day_key: selectedDayKey,
-			visible_days_count: visibleDays.length,
-			selected_day_entries_count: selectedDayEntries.length,
-			has_hero_entry: Boolean(currentHeroEntry),
-		});
-	}, [
-		capture,
-		currentHeroEntry,
-		isDashboardDataLoaded,
-		selectedDayEntries.length,
-		selectedDayKey,
-		visibleDays.length,
-	]);
-
 	const scrollTimelineToX = useCallback(
 		(x: number, animated = true) => {
 			const maxScrollX = Math.max(
@@ -768,11 +742,7 @@ export default function HomeScreen() {
 	]);
 
 	const selectVisibleDay = useCallback(
-		(
-			dayKey: string,
-			dayIndex: number,
-			source: "day_strip" | "today_button" | "hero_handle" = "day_strip",
-		) => {
+		(dayKey: string, dayIndex: number) => {
 			pendingTimelineSelectionRef.current = dayKey;
 			setSelectedDayKey(dayKey);
 			const minuteToCenter =
@@ -781,19 +751,8 @@ export default function HomeScreen() {
 				dayIndex * dayWidth + (minuteToCenter / 60) * hourWidth,
 			);
 			scrollDayStripToIndex(dayIndex);
-			capture(
-				source === "today_button"
-					? "dashboard_today_selected"
-					: "dashboard_day_selected",
-				{
-					selected_day_key: dayKey,
-					selected_day_offset: dayIndex - TIMELINE_PAST_DAYS,
-					source,
-				},
-			);
 		},
 		[
-			capture,
 			currentMinute,
 			dayWidth,
 			hourWidth,
@@ -819,15 +778,9 @@ export default function HomeScreen() {
 				date: selectedDate,
 				entry: currentHeroEntry,
 			});
-			capture("dashboard_hero_day_changed", {
-				direction: direction === 1 ? "next" : "previous",
-				from_day_key: selectedDayKey,
-				to_day_key: nextDay.key,
-				to_day_offset: nextIndex - TIMELINE_PAST_DAYS,
-			});
 			blueCardSlideDirection.set(direction);
 			blueCardSlide.set(0);
-			selectVisibleDay(nextDay.key, nextIndex, "hero_handle");
+			selectVisibleDay(nextDay.key, nextIndex);
 			blueCardSlide.set(
 				withTiming(1, { duration: 420 }, () => {
 					"worklet";
@@ -840,10 +793,8 @@ export default function HomeScreen() {
 			blueCardSlideDirection,
 			clearPreviousBlueContainer,
 			currentHeroEntry,
-			capture,
 			selectVisibleDay,
 			selectedDate,
-			selectedDayKey,
 			selectedDayIndex,
 			todayIndex,
 			visibleDays,
@@ -852,23 +803,12 @@ export default function HomeScreen() {
 
 	const selectCreateType = (type: "homework" | "exam") => {
 		setShowCreateTypePicker(false);
-		capture("dashboard_create_type_selected", {
-			entry_type: type,
-			selected_day_key: selectedDayKey,
-		});
 		router.push(
 			`/entry/new?type=${type}&dayKey=${encodeURIComponent(selectedDayKey)}&dayLabel=${encodeURIComponent(selectedDayLabel)}`,
 		);
 	};
 
-	const openEntry = (entry: DayEntry, source: "hero_card" | "timeline") => {
-		capture("dashboard_entry_opened", {
-			entry_id: entry.id,
-			entry_kind: getAnalyticsEntryKind(entry),
-			source,
-			selected_day_key: selectedDayKey,
-			completed: Boolean(entry.completed),
-		});
+	const openEntry = (entry: DayEntry) => {
 		router.push(getEntryUrl(entry, selectedDayLabel));
 	};
 
@@ -932,9 +872,7 @@ export default function HomeScreen() {
 							previousBlueContainerAnimatedStyle
 						}
 						onPress={() =>
-							currentHeroEntry
-								? openEntry(currentHeroEntry, "hero_card")
-								: undefined
+							currentHeroEntry ? openEntry(currentHeroEntry) : undefined
 						}
 					/>
 				</View>
@@ -1100,13 +1038,7 @@ export default function HomeScreen() {
 									activeOpacity={0.82}
 									accessibilityRole="button"
 									accessibilityLabel="Zum heutigen Plan springen"
-									onPress={() =>
-										selectVisibleDay(
-											getDayKey(today),
-											todayIndex,
-											"today_button",
-										)
-									}
+									onPress={() => selectVisibleDay(getDayKey(today), todayIndex)}
 									style={{
 										position: "absolute",
 										left: 8 * screenScale,
@@ -1120,12 +1052,7 @@ export default function HomeScreen() {
 									activeOpacity={0.9}
 									accessibilityRole="button"
 									accessibilityLabel="Neuen Eintrag erstellen"
-									onPress={() => {
-										capture("dashboard_create_opened", {
-											selected_day_key: selectedDayKey,
-										});
-										setShowCreateTypePicker(true);
-									}}
+									onPress={() => setShowCreateTypePicker(true)}
 									style={{
 										position: "absolute",
 										left: 56 * screenScale,
@@ -1188,9 +1115,7 @@ export default function HomeScreen() {
 												accessibilityRole="button"
 												accessibilityState={{ selected }}
 												accessibilityLabel={`${day.weekday}, ${day.dayOfMonth}`}
-												onPress={() =>
-													selectVisibleDay(day.key, dayIndex, "day_strip")
-												}
+												onPress={() => selectVisibleDay(day.key, dayIndex)}
 											>
 												{selected ? (
 													<LinearGradient
@@ -1295,7 +1220,7 @@ export default function HomeScreen() {
 													accessibilityLabel={`${getEntryDisplayTitle(entry)}, ${entry.time ?? ALL_DAY_TIME_LABEL}`}
 													onPress={() => {
 														setSelectedDayKey(day.key);
-														openEntry(entry, "timeline");
+														openEntry(entry);
 													}}
 													className="absolute rounded-2xl"
 													style={{

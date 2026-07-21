@@ -13,10 +13,9 @@ import {
 import { api } from "#convex/_generated/api";
 import { useOnboarding } from "~/context/OnboardingContext";
 import {
-	captureValidationEvent,
-	definedAnalyticsProperties,
+	createValidationAnalytics,
 	isPostHogConfigured,
-} from "~/lib/analytics-core";
+} from "~/lib/analytics";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
 
@@ -499,18 +498,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					level: "warn",
 				},
 			);
+			return;
 		}
 
-		captureValidationEvent(
-			posthog,
-			"onboarding_completed",
-			user.clerkId,
-			definedAnalyticsProperties({
-				local_day_key: localDayKey,
-				answer_count: 5,
-				validation_student_code: validationStudentCode,
-			}),
-		);
+		createValidationAnalytics(posthog, {
+			distinctId: user.clerkId,
+			sharedContext: { validationStudentCode },
+		}).capture("onboarding_completed", {
+			local_day_key: localDayKey,
+			onboarding_version: 1,
+		});
 	}, [markValidationActivity, posthog, user]);
 
 	useEffect(() => {

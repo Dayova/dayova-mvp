@@ -16,7 +16,8 @@ _Avoid_: User-facing message, learner error text
 - `EXPO_PUBLIC_POSTHOG_API_KEY` enables PostHog analytics in the Expo app. Leave it empty to disable analytics locally.
 - `EXPO_PUBLIC_POSTHOG_HOST` defaults to `https://eu.i.posthog.com`; use a Dayova-owned reverse proxy only if event delivery or privacy requirements justify the extra infrastructure.
 - Analytics events must go through `src/lib/analytics.ts`. PostHog autocapture, lifecycle events, anonymous pre-auth tracking, and session replay are intentionally disabled for the validation phase.
-- PostHog identity properties are limited to validation-relevant IDs and coarse student context. Do not send names, email addresses, birth dates, avatar URLs, raw notes, uploaded content, or learner answers as analytics properties.
+- Clerk user ID is the PostHog `distinctId`, never a `clerk_id` property. Custom identity is exactly optional `convex_user_id`, optional `validation_student_code`, bounded `grade`, and bounded German federal `state`; `school_type` is excluded pending DAY-253.
+- Names, email addresses, birth dates, avatar URLs, school names, raw notes, filenames, uploaded content, learner answers, transcripts, and diagnostic error detail are never analytics properties.
 - Capture platform conventions, release processes, and environment decisions here.
 - Put platform ADRs in `docs/contexts/platform/adr/`.
 
@@ -49,6 +50,37 @@ PostHog validation analytics envs are optional public app envs:
 Do not add optional public envs to the required release-key list unless the app
 cannot function without them. The analytics client must stay disabled gracefully
 when the PostHog key is absent.
+
+## Validation Analytics Runtime Contract
+
+Every allowed custom event receives `analytics_schema_version` and may receive
+only centrally generated `validation_student_code`, `eas_update_id`,
+`eas_channel`, `eas_runtime_version`, and `eas_is_embedded_launch` shared
+context. The exact event-property pairs are:
+
+- `onboarding_completed`: `local_day_key`, `onboarding_version`
+- `homework_created`: `day_entry_id`, `planned_day_key`, `due_day_key`, `duration_minutes`
+- `exam_created`: `day_entry_id`, `planned_day_key`, `duration_minutes`, bounded `exam_type`
+- `material_uploaded`: `learning_plan_id`, bounded `file_type`, bounded `file_size_bucket`
+- `study_plan_generated`: `learning_plan_id`, `session_count`
+- `study_slot_started`: slot context plus `started_at`
+- `study_slot_completed`: slot context plus `outcome_at`
+- `study_slot_partially_completed`: slot context plus `outcome_at`
+- `study_slot_missed`: slot context plus `outcome_at` and bounded `missed_reason`
+- `plan_adjusted`: original/new session IDs, bounded `adjustment_type`, old/new planned day keys and durations, and optional bounded `missed_reason`
+- `user_returned_next_day`: `local_day_key`, `previous_activity_day_key`
+
+Slot context is exactly `learning_plan_id`, `learning_plan_session_id`, bounded
+`phase`, `planned_day_key`, `planned_start_time`, `duration_minutes`, and
+optional `deadline_day_key`. Exact bounded vocabularies are documented in
+`docs/contexts/integrations/CONTEXT.md` and implemented in
+`src/lib/analytics.ts`.
+
+Runtime projection is value-aware even when TypeScript is bypassed. Development
+and tests throw on unknown keys or invalid values. Production omits invalid
+optional values, drops events with invalid required values, and records only the
+event/property name in diagnostics. `before_send` repeats the custom-key guard
+as defense in depth without filtering PostHog SDK/system properties.
 
 ## iOS Privacy Purpose Strings
 

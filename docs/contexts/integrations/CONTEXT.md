@@ -28,10 +28,63 @@ mobile client initializes PostHog only from optional public env values:
 - `EXPO_PUBLIC_POSTHOG_API_KEY`
 - `EXPO_PUBLIC_POSTHOG_HOST`
 
-Validation events are emitted after backend success for onboarding completion,
-homework and exam creation, uploaded material, generated study plans, study slot
-start/outcomes, missed reasons, recovery planning, next-day returns, and
-general probe completions.
+The Validation Phase contract exists to answer only four questions: whether a
+learner activated, started and finished a real learning block, recovered from a
+missed block, and returned on a later day. Events are emitted only after the
+corresponding backend action succeeds.
+
+The Clerk user ID is the PostHog `distinctId` and is not duplicated as a
+`clerk_id` property. The exact custom person-property set is:
+
+- `convex_user_id`, when defined
+- `validation_student_code`, when defined
+- `grade`, only one of `6`, `7`, `8`, `9`, `10`, `11`, or `12`
+- `state`, only one of the 16 German federal-state names used by onboarding
+
+`school_type` is intentionally excluded until DAY-253 supplies a bounded
+product field and a reviewed follow-up changes this contract.
+
+Every custom event receives `analytics_schema_version` centrally. It may also
+receive `validation_student_code`, `eas_update_id`, `eas_channel`,
+`eas_runtime_version`, and `eas_is_embedded_launch` when defined. DAY-220 owns
+populating the EAS values.
+
+The exact event-specific property contract is:
+
+| Event | Properties |
+| --- | --- |
+| `onboarding_completed` | `local_day_key`, `onboarding_version` |
+| `homework_created` | `day_entry_id`, `planned_day_key`, `due_day_key`, `duration_minutes` |
+| `exam_created` | `day_entry_id`, `planned_day_key`, `duration_minutes`, `exam_type` |
+| `material_uploaded` | `learning_plan_id`, `file_type`, `file_size_bucket` |
+| `study_plan_generated` | `learning_plan_id`, `session_count` |
+| `study_slot_started` | slot context plus `started_at` |
+| `study_slot_completed` | slot context plus `outcome_at` |
+| `study_slot_partially_completed` | slot context plus `outcome_at` |
+| `study_slot_missed` | slot context plus `outcome_at` and `missed_reason` |
+| `plan_adjusted` | `original_session_id`, `new_session_id`, `adjustment_type`, `old_planned_day_key`, `new_planned_day_key`, `old_duration_minutes`, `new_duration_minutes`, and optional `missed_reason` |
+| `user_returned_next_day` | `local_day_key`, `previous_activity_day_key` |
+
+Slot context is exactly `learning_plan_id`, `learning_plan_session_id`, `phase`,
+`planned_day_key`, `planned_start_time`, `duration_minutes`, and optional
+`deadline_day_key`. Bounded values are:
+
+- `phase`: `theory`, `practice`, `rehearsal`
+- `missed_reason`: `no_time`, `forgot`, `no_motivation`, `too_hard`, `too_big`, `unclear`, `other`
+- `adjustment_type`: `rescheduled`, `shortened`, `rescheduled_and_shortened`
+- `exam_type`: the seven existing picker values (`Test`, `Kurzkontrolle`, `Leistungskontrolle`, `Klassenarbeit`, `Klausur`, `Mündliche Prüfung`, `Präsentation`)
+- `file_type`: `application/pdf`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/vnd.ms-powerpoint`, `application/vnd.openxmlformats-officedocument.presentationml.presentation`, `text/plain`, `text/markdown`, `text/csv`, `application/json`, `image/jpeg`, `image/png`, `image/webp`, or the bounded unknown fallback `application/octet-stream`
+- `file_size_bucket`: `lt_1_mb`, `1_to_10_mb`, `10_to_50_mb`, `gte_50_mb`, using 1 MiB boundaries
+- `state`: `Baden-Württemberg`, `Bayern`, `Berlin`, `Brandenburg`, `Bremen`, `Hamburg`, `Hessen`, `Mecklenburg-Vorpommern`, `Niedersachsen`, `Nordrhein-Westfalen`, `Rheinland-Pfalz`, `Saarland`, `Sachsen`, `Sachsen-Anhalt`, `Schleswig-Holstein`, `Thüringen`
+
+`analytics_schema_version` and `onboarding_version` are both `1` for this
+contract version.
+
+Generalprobe completion is derived from `study_slot_completed` with
+`phase === "rehearsal"`. Missed reason is carried by `study_slot_missed`; there
+are no `generalprobe_completed` or `missed_reason_selected` events. Dashboard
+usability is learned qualitatively during this phase, so there are no
+`dashboard_*` events.
 
 ## Validation Student Profile
 
@@ -48,5 +101,7 @@ internal users.
 
 - PostHog identifies validation-phase students with Clerk's stable user ID. The Validation Student Code should live in Dayova data, not Clerk auth metadata, and should be sent to PostHog as a profile property when present.
 - PostHog tracking is identified-only during the Validation Phase. Anonymous pre-auth app activity, autocapture, lifecycle events, and session replay are intentionally out of scope unless login or onboarding becomes a measured blocker.
+- Names, email addresses, birth dates, avatar URLs, school names, raw notes, filenames, uploaded content, learner answers, transcripts, and diagnostic error detail are never custom person or event properties.
+- `src/lib/analytics.ts` is the executable contract. It projects exact keys and validates values at runtime; development and tests throw, while production omits invalid optional values and drops events with invalid required values. The PostHog `before_send` hook repeats the projection as defense in depth while preserving SDK/system properties.
 - Capture integration ownership, external IDs, sync boundaries, and migration decisions here.
 - Put integrations ADRs in `docs/contexts/integrations/adr/`.

@@ -53,10 +53,10 @@ import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/analytics";
-import { definedAnalyticsProperties } from "~/lib/analytics-core";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { EXAM_TYPE_OPTIONS } from "~/lib/entry-options";
 import {
 	getDurationBetweenTimes,
 	shiftEndTimeForStartChange,
@@ -89,16 +89,6 @@ const SUBJECT_OPTIONS = [
 	"Kunst",
 	"Musik",
 	"Sport",
-];
-
-const EXAM_TYPE_OPTIONS = [
-	"Test",
-	"Kurzkontrolle",
-	"Leistungskontrolle",
-	"Klassenarbeit",
-	"Klausur",
-	"Mündliche Prüfung",
-	"Präsentation",
 ];
 
 const KEYBOARD_DISMISS_FALLBACK_MS = 280;
@@ -285,6 +275,9 @@ export default function NewEntryScreen() {
 
 	const trimmedSubject = subject.trim();
 	const trimmedExamType = examTypeLabel.trim();
+	const selectedExamType = EXAM_TYPE_OPTIONS.find(
+		(examType) => examType === trimmedExamType,
+	);
 	const canContinueFromBasics = isHomework
 		? trimmedSubject.length > 0
 		: trimmedSubject.length > 0 && trimmedExamType.length > 0;
@@ -293,7 +286,7 @@ export default function NewEntryScreen() {
 		plannedEndTime,
 	);
 	const canCreateHomework = trimmedSubject.length > 0;
-	const canCreateExam = trimmedSubject.length > 0 && trimmedExamType.length > 0;
+	const canCreateExam = trimmedSubject.length > 0 && Boolean(selectedExamType);
 	const canWriteEntries = Boolean(user && isConvexAuthenticated);
 
 	const title = isHomework ? "Hausaufgabe eintragen" : "Prüfung eintragen";
@@ -414,6 +407,7 @@ export default function NewEntryScreen() {
 	} = {}) => {
 		if (isHomework && !canCreateHomework) return;
 		if (!isHomework && !canCreateExam) return;
+		if (!isHomework && !selectedExamType) return;
 		const resolvedDurationMinutes = scheduledDurationMinutes;
 		if (!canWriteEntries || isCreating) return;
 
@@ -443,17 +437,21 @@ export default function NewEntryScreen() {
 				durationMinutes: resolvedDurationMinutes,
 				...(!isHomework ? { examTypeLabel: trimmedExamType } : {}),
 			});
-			void capture(
-				isHomework ? "homework_created" : "exam_created",
-				definedAnalyticsProperties({
+			if (isHomework) {
+				void capture("homework_created", {
 					day_entry_id: createdEntryId,
-					subject: trimmedSubject,
+					planned_day_key: nextDayKey,
+					due_day_key: getDayKey(dueDate),
+					duration_minutes: resolvedDurationMinutes,
+				});
+			} else if (selectedExamType) {
+				void capture("exam_created", {
+					day_entry_id: createdEntryId,
 					planned_day_key: nextDayKey,
 					duration_minutes: resolvedDurationMinutes,
-					due_day_key: isHomework ? getDayKey(dueDate) : undefined,
-					exam_type_label: isHomework ? undefined : trimmedExamType,
-				}),
-			);
+					exam_type: selectedExamType,
+				});
+			}
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Der Eintrag konnte nicht gespeichert werden."),
