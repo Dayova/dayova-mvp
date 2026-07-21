@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { GRADE_OPTIONS, isSupportedGrade } from "../src/lib/grades";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
@@ -137,7 +138,7 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 		prompt: "Welche Klassenstufe besuchst du?",
 		kind: "select" as const,
 		order: 6,
-		options: ["6", "7", "8", "9", "10", "11", "12"],
+		options: [...GRADE_OPTIONS],
 	},
 	{
 		key: "dailySchoolTime",
@@ -177,6 +178,15 @@ const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	return identity;
 };
 
+const normalizeOptionalGrade = (grade?: string) => {
+	const normalizedGrade = grade?.trim();
+	if (!normalizedGrade) return undefined;
+	if (!isSupportedGrade(normalizedGrade)) {
+		throwUserFacingError("Bitte wähle eine gültige Klassenstufe aus.");
+	}
+	return normalizedGrade;
+};
+
 const profileFields = (args: {
 	email?: string;
 	name?: string;
@@ -187,19 +197,22 @@ const profileFields = (args: {
 	state?: string;
 	avatarUrl?: string;
 	validationStudentCode?: string;
-}) => ({
-	...(args.email !== undefined ? { email: normalizeEmail(args.email) } : {}),
-	...(args.name !== undefined ? { name: args.name } : {}),
-	...(args.phone !== undefined ? { phone: args.phone } : {}),
-	...(args.birthDate !== undefined ? { birthDate: args.birthDate } : {}),
-	...(args.grade !== undefined ? { grade: args.grade } : {}),
-	...(args.schoolType !== undefined ? { schoolType: args.schoolType } : {}),
-	...(args.state !== undefined ? { state: args.state } : {}),
-	...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
-	...(args.validationStudentCode !== undefined
-		? { validationStudentCode: args.validationStudentCode }
-		: {}),
-});
+}) => {
+	const grade = normalizeOptionalGrade(args.grade);
+	return {
+		...(args.email !== undefined ? { email: normalizeEmail(args.email) } : {}),
+		...(args.name !== undefined ? { name: args.name } : {}),
+		...(args.phone !== undefined ? { phone: args.phone } : {}),
+		...(args.birthDate !== undefined ? { birthDate: args.birthDate } : {}),
+		...(grade !== undefined ? { grade } : {}),
+		...(args.schoolType !== undefined ? { schoolType: args.schoolType } : {}),
+		...(args.state !== undefined ? { state: args.state } : {}),
+		...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
+		...(args.validationStudentCode !== undefined
+			? { validationStudentCode: args.validationStudentCode }
+			: {}),
+	};
+};
 
 export const syncCurrentUser = mutation({
 	args: {
@@ -313,6 +326,10 @@ export const saveOnboardingAnswers = mutation({
 		if (!user) {
 			throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
 		}
+		const normalizedGrade = normalizeOptionalGrade(args.answers.grade);
+		if (!normalizedGrade) {
+			throwUserFacingError("Bitte wähle eine gültige Klassenstufe aus.");
+		}
 
 		const questionIdsByKey: Partial<
 			Record<OnboardingQuestionKey, Id<"onboardingQuestions">>
@@ -347,7 +364,8 @@ export const saveOnboardingAnswers = mutation({
 		for (const [key, answer] of Object.entries(args.answers) as Array<
 			[keyof typeof args.answers, string]
 		>) {
-			const normalizedAnswer = answer.trim();
+			const normalizedAnswer =
+				key === "grade" ? normalizedGrade : answer.trim();
 			if (!normalizedAnswer) continue;
 
 			const questionId = questionIdsByKey[key];

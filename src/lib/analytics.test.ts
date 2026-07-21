@@ -42,17 +42,40 @@ describe("validation analytics contract", () => {
 			distinctId: "clerk_user_123",
 			convexUserId: "convex_user_456",
 			validationStudentCode: "S1",
-			grade: "9",
+			grade: "13",
 			state: "Sachsen",
 		});
 
 		expect(adapter.identify).toHaveBeenCalledWith("clerk_user_123", {
 			convex_user_id: "convex_user_456",
 			validation_student_code: "S1",
-			grade: "9",
+			grade: "13",
 			state: "Sachsen",
 		});
 		expect(adapter.capture).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		"6",
+		"7",
+		"8",
+		"9",
+		"10",
+		"11",
+		"12",
+		"13",
+	])("records supported grade %s", (grade) => {
+		const adapter = createAdapter();
+		const analytics = createValidationAnalytics(adapter, {
+			configured: true,
+			mode: "development",
+		});
+
+		analytics.identify({ distinctId: "clerk_user_123", grade });
+
+		expect(adapter.identify).toHaveBeenCalledWith("clerk_user_123", {
+			grade,
+		});
 	});
 
 	it.each([
@@ -89,7 +112,7 @@ describe("validation analytics contract", () => {
 		});
 
 		expect(() =>
-			analytics.identify({ distinctId: "clerk_user_123", grade: "13" }),
+			analytics.identify({ distinctId: "clerk_user_123", grade: "14" }),
 		).toThrow("grade");
 		expect(() =>
 			analytics.identify({ distinctId: "clerk_user_123", state: "private" }),
@@ -120,7 +143,7 @@ describe("validation analytics contract", () => {
 		});
 		const input = {
 			distinctId: "clerk_user_123",
-			grade: "13",
+			grade: "14",
 			state: "private state",
 			avatar_url: "https://private.example/avatar.png",
 		} as unknown as AnalyticsIdentityInput;
@@ -748,7 +771,7 @@ describe("validation analytics contract", () => {
 				$set: {
 					convex_user_id: "convex_user_456",
 					validation_student_code: "S1",
-					grade: "9",
+					grade: "13",
 					state: "Sachsen",
 					$app_version: "1.0.3",
 					$email: "private@example.com",
@@ -761,7 +784,7 @@ describe("validation analytics contract", () => {
 			$set: {
 				convex_user_id: "convex_user_456",
 				validation_student_code: "S1",
-				grade: "9",
+				grade: "13",
 				state: "Sachsen",
 				$app_version: "1.0.3",
 				$email: "private@example.com",
@@ -781,7 +804,7 @@ describe("validation analytics contract", () => {
 			$set: {
 				convex_user_id: "convex_user_456",
 				validation_student_code: "S1",
-				grade: "9",
+				grade: "13",
 				state: "Sachsen",
 				$app_version: "1.0.3",
 			},

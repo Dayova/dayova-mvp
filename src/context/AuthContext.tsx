@@ -18,6 +18,7 @@ import {
 } from "~/lib/analytics";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import { isSupportedGrade } from "~/lib/grades";
 
 type LoginInput = {
 	email: string;
@@ -699,11 +700,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				throw new Error("Authentifizierung ist noch nicht bereit.");
 			}
 
+			const grade = input.grade?.trim();
+			if (grade && !isSupportedGrade(grade)) {
+				throw new Error("Bitte wähle eine gültige Klassenstufe aus.");
+			}
 			const profile = {
 				name: input.name?.trim(),
 				phone: input.phone?.trim(),
 				birthDate: input.birthDate,
-				grade: input.grade?.trim(),
+				grade,
 				schoolType: input.schoolType?.trim(),
 				state: input.state?.trim(),
 			};
@@ -772,6 +777,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				schoolType: input.schoolType.trim(),
 				state: input.state.trim(),
 			};
+			if (
+				normalizedProfile.grade &&
+				!isSupportedGrade(normalizedProfile.grade)
+			) {
+				throw new Error("Bitte wähle eine gültige Klassenstufe aus.");
+			}
 			const { firstName, lastName } = splitName(normalizedProfile.name);
 			const unsafeMetadata = {
 				...(clerkUser.unsafeMetadata ?? {}),

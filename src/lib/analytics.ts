@@ -1,10 +1,10 @@
 import type { PostHogOptions } from "posthog-react-native";
 import { logDiagnosticError } from "./diagnostics";
 import { EXAM_TYPE_OPTIONS } from "./entry-options";
+import { isSupportedGrade } from "./grades";
 import { env } from "./runtime-config";
 import { ACCEPTED_FILE_TYPES } from "./upload-policy";
 
-const SUPPORTED_GRADES = new Set(["6", "7", "8", "9", "10", "11", "12"]);
 const GERMAN_FEDERAL_STATES = new Set([
 	"Baden-Württemberg",
 	"Bayern",
@@ -219,9 +219,7 @@ const sharedOutputRules = {
 const identityOutputRules = {
 	convex_user_id: optional(isNonEmptyString),
 	validation_student_code: optional(isNonEmptyString),
-	grade: optional((value: unknown): value is string =>
-		typeof value === "string" ? SUPPORTED_GRADES.has(value) : false,
-	),
+	grade: optional(isSupportedGrade),
 	state: optional((value: unknown): value is string =>
 		typeof value === "string" ? GERMAN_FEDERAL_STATES.has(value) : false,
 	),
@@ -557,10 +555,7 @@ export function createValidationAnalytics(
 			if (input.validationStudentCode !== undefined && !validationStudentCode) {
 				rejectProperty("$identify", "validation_student_code");
 			}
-			if (
-				input.grade !== undefined &&
-				(!grade || !SUPPORTED_GRADES.has(grade))
-			) {
+			if (input.grade !== undefined && (!grade || !isSupportedGrade(grade))) {
 				rejectProperty("$identify", "grade");
 			}
 			if (
@@ -575,7 +570,7 @@ export function createValidationAnalytics(
 				...(validationStudentCode
 					? { validation_student_code: validationStudentCode }
 					: {}),
-				...(grade && SUPPORTED_GRADES.has(grade) ? { grade } : {}),
+				...(grade && isSupportedGrade(grade) ? { grade } : {}),
 				...(state && GERMAN_FEDERAL_STATES.has(state) ? { state } : {}),
 			});
 		},

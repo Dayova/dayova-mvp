@@ -38,7 +38,7 @@ The Clerk user ID is the PostHog `distinctId` and is not duplicated as a
 
 - `convex_user_id`, when defined
 - `validation_student_code`, when defined
-- `grade`, only one of `6`, `7`, `8`, `9`, `10`, `11`, or `12`
+- `grade`, only one of `6`, `7`, `8`, `9`, `10`, `11`, `12`, or `13`
 - `state`, only one of the 16 German federal-state names used by onboarding
 
 `school_type` is intentionally excluded until DAY-253 supplies a bounded

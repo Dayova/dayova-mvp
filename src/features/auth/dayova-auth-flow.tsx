@@ -83,6 +83,7 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { GRADE_OPTIONS } from "~/lib/grades";
 import { useBackIntent } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
@@ -282,7 +283,6 @@ const FEDERAL_STATES = [
 	"Mecklenburg-Vorpommern",
 ] as const;
 
-const GRADE_OPTIONS = ["6", "7", "8", "9", "10", "11", "12"] as const;
 const DURATION_OPTIONS = [
 	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
 ] as const;
