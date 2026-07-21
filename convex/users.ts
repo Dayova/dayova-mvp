@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 import { GERMAN_FEDERAL_STATES } from "../src/lib/federal-states";
 import { GRADE_OPTIONS, isSupportedGrade } from "../src/lib/grades";
+import {
+	isSupportedSchoolType,
+	normalizeLegacySchoolType,
+	SCHOOL_TYPE_VALUES,
+} from "../src/lib/school-types";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
@@ -116,9 +121,10 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	},
 	{
 		key: "schoolType",
-		prompt: "Welche Schule besuchst du?",
-		kind: "input" as const,
+		prompt: "Welche Schulart besuchst du?",
+		kind: "select" as const,
 		order: 5,
+		options: [...SCHOOL_TYPE_VALUES],
 	},
 	{
 		key: "grade",
@@ -292,6 +298,15 @@ const normalizeOptionalGrade = (grade?: string) => {
 	return normalizedGrade;
 };
 
+const normalizeOptionalSchoolType = (schoolType?: string) => {
+	const normalizedSchoolType = schoolType?.trim();
+	if (!normalizedSchoolType) return undefined;
+	if (!isSupportedSchoolType(normalizedSchoolType)) {
+		throwUserFacingError("Bitte wähle eine gültige Schulart aus.");
+	}
+	return normalizedSchoolType;
+};
+
 const profileFields = (args: {
 	email?: string;
 	name?: string;
@@ -304,19 +319,50 @@ const profileFields = (args: {
 	validationStudentCode?: string;
 }) => {
 	const grade = normalizeOptionalGrade(args.grade);
+	const schoolType = normalizeOptionalSchoolType(args.schoolType);
 	return {
 		...(args.email !== undefined ? { email: normalizeEmail(args.email) } : {}),
 		...(args.name !== undefined ? { name: args.name } : {}),
 		...(args.phone !== undefined ? { phone: args.phone } : {}),
 		...(args.birthDate !== undefined ? { birthDate: args.birthDate } : {}),
 		...(grade !== undefined ? { grade } : {}),
-		...(args.schoolType !== undefined ? { schoolType: args.schoolType } : {}),
+		...(schoolType !== undefined ? { schoolType } : {}),
 		...(args.state !== undefined ? { state: args.state } : {}),
 		...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
 		...(args.validationStudentCode !== undefined
 			? { validationStudentCode: args.validationStudentCode }
 			: {}),
 	};
+};
+
+const sanitizeLegacyOnboardingSchoolType = async (
+	ctx: MutationCtx,
+	userId: Id<"users">,
+) => {
+	const question = await ctx.db
+		.query("onboardingQuestions")
+		.withIndex("by_key", (q) => q.eq("key", "schoolType"))
+		.unique();
+	if (!question) return;
+
+	const answer = await ctx.db
+		.query("userOnboardingAnswers")
+		.withIndex("by_userId_and_questionId", (q) =>
+			q.eq("userId", userId).eq("questionId", question._id),
+		)
+		.unique();
+	if (!answer) return;
+
+	const schoolType = normalizeLegacySchoolType(answer.answer);
+	if (!schoolType) {
+		await ctx.db.delete("userOnboardingAnswers", answer._id);
+		return;
+	}
+	if (schoolType !== answer.answer) {
+		await ctx.db.patch("userOnboardingAnswers", answer._id, {
+			answer: schoolType,
+		});
+	}
 };
 
 export const syncCurrentUser = mutation({
@@ -356,7 +402,15 @@ export const syncCurrentUser = mutation({
 
 		let userId: Id<"users">;
 		if (existingUser) {
-			await ctx.db.patch("users", existingUser._id, user);
+			const schoolType =
+				args.schoolType === undefined
+					? normalizeLegacySchoolType(existingUser.schoolType)
+					: normalizeOptionalSchoolType(args.schoolType);
+			await ctx.db.patch("users", existingUser._id, {
+				...user,
+				schoolType,
+			});
+			await sanitizeLegacyOnboardingSchoolType(ctx, existingUser._id);
 			userId = existingUser._id;
 		} else {
 			userId = await ctx.db.insert("users", user);
@@ -443,6 +497,12 @@ export const saveOnboardingAnswers = mutation({
 		if (!normalizedGrade) {
 			throwUserFacingError("Bitte wähle eine gültige Klassenstufe aus.");
 		}
+		const normalizedSchoolType = normalizeOptionalSchoolType(
+			args.answers.schoolType,
+		);
+		if (!normalizedSchoolType) {
+			throwUserFacingError("Bitte wähle eine gültige Schulart aus.");
+		}
 
 		const learningTimes = await insertLearningTimesWhenAbsent(ctx, {
 			ownerTokenIdentifier: identity.tokenIdentifier,
@@ -493,7 +553,11 @@ export const saveOnboardingAnswers = mutation({
 			[keyof typeof args.answers, string]
 		>) {
 			const normalizedAnswer =
-				key === "grade" ? normalizedGrade : answer.trim();
+				key === "grade"
+					? normalizedGrade
+					: key === "schoolType"
+						? normalizedSchoolType
+						: answer.trim();
 			if (!normalizedAnswer) continue;
 
 			const questionId = questionIdsByKey[key];
