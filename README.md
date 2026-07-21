@@ -54,7 +54,18 @@ and complete variable reference are documented in [`.env.example`](.env.example)
 Dayova currently supports native iOS and Android builds in portrait
 orientation. The Expo config intentionally excludes web; future web support is
 tracked in [DAY-45](https://linear.app/dayova/issue/DAY-45/track-future-web-support).
-The iOS app currently requires iOS 17 because of the native Clerk SDK.
+The current native build targets iOS 17 because
+[`@clerk/expo` 3.7.8's iOS pod](https://github.com/clerk/javascript/blob/%40clerk%2Fexpo%403.7.8/packages/expo/ios/ClerkExpo.podspec)
+links
+[Clerk iOS 1.3.2](https://github.com/clerk/clerk-ios/blob/1.3.2/Package.swift),
+and its
+[config plugin](https://github.com/clerk/javascript/blob/%40clerk%2Fexpo%403.7.8/packages/expo/app.plugin.js)
+enforces that dependency's iOS 17 minimum. Expo SDK 57 itself supports
+[iOS 16.4 and later](https://docs.expo.dev/versions/v57.0.0/). Dayova currently
+uses Clerk's JavaScript authentication path and
+[stubs the native iOS module](src/lib/patchClerkNativeEventEmitter.ts), so the
+native dependency and resulting support floor should be re-evaluated through a
+focused native experiment before changing the deployment target.
 
 ## Appearance and dark mode
 
