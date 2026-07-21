@@ -164,9 +164,13 @@ test("keeps a plan in generation until every session content payload is ready", 
 	const sessionId = generating?.sessions[0]?.id;
 	if (!sessionId) throw new Error("Expected generated session.");
 	await expect(
-		t.query(internal.learningPlans.getIncompleteContentGenerationSessionIds, {
-			learningPlanId,
-		}),
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{
+				learningPlanId,
+				generationId: "content-generation",
+			},
+		),
 	).resolves.toEqual([sessionId]);
 	await t.mutation(internal.learningPlans.setSessionContentGenerationStatus, {
 		sessionId,
@@ -174,6 +178,7 @@ test("keeps a plan in generation until every session content payload is ready", 
 	});
 	await t.mutation(internal.learningPlans.finalizeContentGeneration, {
 		learningPlanId,
+		generationId: "content-generation",
 	});
 
 	const ready = await t.query(api.learningPlans.getSnapshot, {
@@ -213,6 +218,116 @@ test("claims plan generation atomically and persists an empty failed claim for e
 			generationId: "generation-2",
 		}),
 	).resolves.toBeTypeOf("number");
+});
+
+test("allows generation recovery only after the eleven-minute stale boundary", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.beginContentGeneration, {
+		learningPlanId,
+		generationId: "long-generation",
+	});
+
+	vi.advanceTimersByTime(11 * 60_000 - 1);
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "duplicate-generation",
+		}),
+	).rejects.toThrow("Dieser Lernplan wird bereits erstellt.");
+
+	vi.advanceTimersByTime(1);
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "recovery-generation",
+		}),
+	).resolves.toBeTypeOf("number");
+});
+
+test("atomically claims stale session retries and rejects a second claimant", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.beginContentGeneration, {
+		learningPlanId,
+		generationId: "active-generation",
+	});
+	const generated = await t.mutation(
+		internal.learningPlans.replaceGeneratedSessions,
+		{
+			learningPlanId,
+			generationId: "active-generation",
+			knowledgeAnswersJson: "[]",
+			sourceSummary: "Testmaterial",
+			insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+			deferReadyUntilContent: true,
+			sessions: [
+				{
+					phase: "practice",
+					title: "Üben",
+					dateKey: "2026-06-01",
+					dateLabel: "1. Juni 2026",
+					startTime: "17:00",
+					durationMinutes: 15,
+					goal: "Kurz wiederholen.",
+					tasks: ["Aufgaben lösen"],
+					expectedOutcome: "Du bist vorbereitet.",
+				},
+			],
+		},
+	);
+	if (!generated) throw new Error("Expected deferred session generation.");
+
+	await expect(
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{
+				learningPlanId,
+				generationId: "early-retry",
+			},
+		),
+	).rejects.toThrow("Dieser Lernplan wird bereits erstellt.");
+
+	vi.advanceTimersByTime(11 * 60_000);
+	await expect(
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{
+				learningPlanId,
+				generationId: "claimed-retry",
+			},
+		),
+	).resolves.toEqual(generated.sessionIds);
+	await expect(
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{
+				learningPlanId,
+				generationId: "duplicate-retry",
+			},
+		),
+	).rejects.toThrow("Dieser Lernplan wird bereits erstellt.");
+	await expect(
+		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
+			learningPlanId,
+			generationId: "outdated-retry",
+		}),
+	).resolves.toBe(false);
+	await expect(
+		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
+			learningPlanId,
+			generationId: "claimed-retry",
+		}),
+	).resolves.toBe(true);
+	await expect(
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{
+				learningPlanId,
+				generationId: "retry-after-failure",
+			},
+		),
+	).resolves.toEqual(generated.sessionIds);
 });
 
 test("invalidates only educational session edits while calendar moves preserve content", async () => {

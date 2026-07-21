@@ -34,6 +34,9 @@ import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_LEARNING_TIMES = 50;
+// Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
+// before a later request may recover work left behind by a terminated action.
+const STALE_CONTENT_GENERATION_MS = 11 * 60_000;
 
 const phaseValidator = v.union(
 	v.literal("theory"),
@@ -1205,7 +1208,7 @@ export const beginContentGeneration = internalMutation({
 		if (
 			plan.contentGenerationId &&
 			plan.contentGenerationStartedAt &&
-			now - plan.contentGenerationStartedAt < 65_000 &&
+			now - plan.contentGenerationStartedAt < STALE_CONTENT_GENERATION_MS &&
 			plan.contentGenerationStage === "content"
 		) {
 			throwUserFacingError("Dieser Lernplan wird bereits erstellt.");
@@ -1440,13 +1443,24 @@ export const finalizeContentGeneration = internalMutation({
 	},
 });
 
-export const getIncompleteContentGenerationSessionIds = internalQuery({
-	args: { learningPlanId: v.id("learningPlans") },
+export const claimIncompleteContentGenerationSessions = internalMutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		generationId: v.string(),
+	},
 	handler: async (ctx, args) => {
-		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (
+			plan.contentGenerationStage === "content" &&
+			plan.contentGenerationStartedAt &&
+			Date.now() - plan.contentGenerationStartedAt < STALE_CONTENT_GENERATION_MS
+		) {
+			throwUserFacingError("Dieser Lernplan wird bereits erstellt.");
 		}
 		const sessions = await ctx.db
 			.query("learningPlanSessions")
@@ -1454,9 +1468,43 @@ export const getIncompleteContentGenerationSessionIds = internalQuery({
 				q.eq("learningPlanId", args.learningPlanId),
 			)
 			.take(50);
-		return sessions
+		const sessionIds = sessions
 			.filter((session) => session.contentGenerationStatus !== "ready")
 			.map((session) => session._id);
+		const now = Date.now();
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			status: "questionsReady",
+			contentGenerationStage: "content",
+			contentGenerationId: args.generationId,
+			contentGenerationStartedAt: now,
+			updatedAt: now,
+		});
+		return sessionIds;
+	},
+});
+
+export const markContentGenerationClaimFailed = internalMutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		generationId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (plan.contentGenerationId !== args.generationId) return false;
+
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			status: plan.status === "accepted" ? "accepted" : "questionsReady",
+			contentGenerationStage: "failed",
+			contentGenerationId: undefined,
+			contentGenerationStartedAt: undefined,
+			updatedAt: Date.now(),
+		});
+		return true;
 	},
 });
 

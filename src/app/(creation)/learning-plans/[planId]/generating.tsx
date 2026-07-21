@@ -32,6 +32,10 @@ const planPath = (id: Id<"learningPlans">, step: string) =>
 const quizPath = (id: Id<"learningPlans">, questionIndex: number) =>
 	`/learning-plans/${id}/quiz/${questionIndex}` as const;
 
+// Convex may terminate a Node action after 10 minutes. The extra minute avoids
+// presenting recovery while the original action can still be active.
+const STALE_CONTENT_GENERATION_MS = 11 * 60_000;
+
 export default function LearningPlanGeneratingScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ planId?: string }>();
@@ -104,7 +108,8 @@ export default function LearningPlanGeneratingScreen() {
 			);
 			return () => clearTimeout(timeout);
 		}
-		const recoverAt = (generation.startedAt ?? Date.now()) + 65_000;
+		const recoverAt =
+			(generation.startedAt ?? Date.now()) + STALE_CONTENT_GENERATION_MS;
 		const remainingMs = recoverAt - Date.now();
 		if (remainingMs <= 0) {
 			const timeout = setTimeout(() => setCanRecoverStalledGeneration(true), 0);
@@ -287,10 +292,6 @@ export default function LearningPlanGeneratingScreen() {
 						className="mt-5 w-full max-w-[360px]"
 						progress={progressPresentation.progress}
 					/>
-					<Text className="mt-3 text-center font-poppins text-body-4 text-secondary-text">
-						Du kannst jede Session danach in 2–3 Sekunden öffnen – alle Fragen
-						und Aufgaben werden jetzt vorbereitet.
-					</Text>
 					{errorMessage ||
 					progressPresentation.canRetryFailedSessions ||
 					canRecoverStalledGeneration ? (
