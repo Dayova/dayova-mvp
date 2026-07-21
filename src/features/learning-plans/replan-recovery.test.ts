@@ -18,6 +18,7 @@ const snapshot = (
 		examDateLabel: "5. Juni 2026",
 		examTime: "09:00",
 		durationMinutes: 90,
+		preparationDepth: "thorough",
 		topicDescription: "Lineare Funktionen",
 		status: "generated",
 		topicMap: [],

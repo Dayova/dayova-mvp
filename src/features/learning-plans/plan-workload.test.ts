@@ -38,7 +38,7 @@ describe("total study workload suggestion", () => {
 		).toBe(50);
 	});
 
-	test("counts one recommended block per saved Lernzeit before the exam", () => {
+	test("counts the usable minutes for several short sessions in a saved Lernzeit", () => {
 		expect(
 			calculateAvailableStudyMinutes({
 				fromDateKey: "2026-06-01",
@@ -49,6 +49,6 @@ describe("total study workload suggestion", () => {
 					{ dayOfWeek: 4, startTime: "16:00", endTime: "17:30" },
 				],
 			}),
-		).toBe(80);
+		).toBe(170);
 	});
 });

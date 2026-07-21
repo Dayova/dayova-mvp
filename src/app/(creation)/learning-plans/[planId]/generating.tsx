@@ -6,10 +6,12 @@ import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
+import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
+import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
 import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import {
 	LEARNING_SESSION_COMPOSITION_FLAG,
@@ -37,6 +39,9 @@ export default function LearningPlanGeneratingScreen() {
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
+	const retryFailedSessionContent = useAction(
+		api.learningPlanAi.retryFailedSessionContent,
+	);
 	const posthog = usePostHog();
 	const { capture } = useValidationAnalytics();
 	const compositionFlagValue = useFeatureFlag(
@@ -46,6 +51,8 @@ export default function LearningPlanGeneratingScreen() {
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const [flagRetryAttempt, setFlagRetryAttempt] = useState(0);
+	const [canRecoverStalledGeneration, setCanRecoverStalledGeneration] =
+		useState(false);
 	const didStartRef = useRef(false);
 	const missingAnswerRedirectTimeoutRef = useRef<ReturnType<
 		typeof setTimeout
@@ -73,6 +80,9 @@ export default function LearningPlanGeneratingScreen() {
 		Boolean(snapshot?.plan.sessionCompositionVariant) ||
 		!isPostHogConfigured ||
 		compositionFlagValue !== undefined;
+	const progressPresentation = getGenerationProgressPresentation(
+		snapshot?.plan.contentGeneration,
+	);
 
 	useEffect(() => {
 		void flagRetryAttempt;
@@ -84,6 +94,28 @@ export default function LearningPlanGeneratingScreen() {
 		}, 8_000);
 		return () => clearTimeout(timeout);
 	}, [flagRetryAttempt, isExperimentAssignmentReady]);
+
+	useEffect(() => {
+		const generation = snapshot?.plan.contentGeneration;
+		if (!generation || generation.stage !== "content") {
+			const timeout = setTimeout(
+				() => setCanRecoverStalledGeneration(false),
+				0,
+			);
+			return () => clearTimeout(timeout);
+		}
+		const recoverAt = (generation.startedAt ?? Date.now()) + 65_000;
+		const remainingMs = recoverAt - Date.now();
+		if (remainingMs <= 0) {
+			const timeout = setTimeout(() => setCanRecoverStalledGeneration(true), 0);
+			return () => clearTimeout(timeout);
+		}
+		const timeout = setTimeout(
+			() => setCanRecoverStalledGeneration(true),
+			remainingMs,
+		);
+		return () => clearTimeout(timeout);
+	}, [snapshot?.plan.contentGeneration]);
 
 	useEffect(() => {
 		void retryAttempt;
@@ -98,6 +130,7 @@ export default function LearningPlanGeneratingScreen() {
 			router.replace(planPath(planId, "review"));
 			return;
 		}
+		if (snapshot.plan.contentGeneration) return;
 
 		const missingAnswerIndex = answerList.findIndex((item) => !item.answer);
 		if (missingAnswerIndex >= 0) {
@@ -146,7 +179,6 @@ export default function LearningPlanGeneratingScreen() {
 							"Der Lernplan konnte nicht erstellt werden.",
 						),
 					);
-					didStartRef.current = false;
 				})
 				.finally(() => setIsBusy(false));
 		});
@@ -169,6 +201,53 @@ export default function LearningPlanGeneratingScreen() {
 			}
 		};
 	}, []);
+
+	const retryGeneration = async () => {
+		if (!planId || isBusy) return;
+		if (!isExperimentAssignmentReady) {
+			posthog.reloadFeatureFlags();
+			setErrorMessage(null);
+			setFlagRetryAttempt((value) => value + 1);
+			return;
+		}
+
+		setIsBusy(true);
+		setErrorMessage(null);
+		try {
+			if (
+				snapshot?.plan.contentGeneration &&
+				snapshot.plan.contentGeneration.stage !== "ready" &&
+				snapshot.sessions.length > 0
+			) {
+				await retryFailedSessionContent({ learningPlanId: planId });
+				return;
+			}
+			if (
+				snapshot?.plan.contentGeneration &&
+				snapshot.plan.contentGeneration.stage !== "ready" &&
+				snapshot.sessions.length === 0
+			) {
+				await generatePlan({
+					learningPlanId: planId,
+					answers: answerList,
+					sessionCompositionVariant,
+				});
+				return;
+			}
+
+			didStartRef.current = false;
+			setRetryAttempt((value) => value + 1);
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(
+					error,
+					"Die fehlenden Lernsessionen konnten nicht erstellt werden.",
+				),
+			);
+		} finally {
+			setIsBusy(false);
+		}
+	};
 
 	const goBack = () => {
 		if (planId) {
@@ -199,27 +278,32 @@ export default function LearningPlanGeneratingScreen() {
 				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
 					<AnalysisOrbitLoader />
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text/70">
-						Aus deinen Antworten erstellen wir deinen persönlichen Lernplan.
+						Wir erstellen jetzt deinen vollständigen Lernplan.
 					</Text>
-					{errorMessage ? (
+					<Text className="mt-4 text-center font-poppins text-body-3 text-secondary-text">
+						{progressPresentation.label}
+					</Text>
+					<FlowProgressBar
+						className="mt-5 w-full max-w-[360px]"
+						progress={progressPresentation.progress}
+					/>
+					<Text className="mt-3 text-center font-poppins text-body-4 text-secondary-text">
+						Du kannst jede Session danach in 2–3 Sekunden öffnen – alle Fragen
+						und Aufgaben werden jetzt vorbereitet.
+					</Text>
+					{errorMessage ||
+					progressPresentation.canRetryFailedSessions ||
+					canRecoverStalledGeneration ? (
 						<>
-							<Text className="mt-6 text-center font-poppins text-body-4 text-destructive">
-								{errorMessage}
-							</Text>
+							{errorMessage ? (
+								<Text className="mt-6 text-center font-poppins text-body-4 text-destructive">
+									{errorMessage}
+								</Text>
+							) : null}
 							<Button
 								className="mt-6"
 								disabled={isBusy}
-								onPress={() => {
-									if (!isExperimentAssignmentReady) {
-										posthog.reloadFeatureFlags();
-										setErrorMessage(null);
-										setFlagRetryAttempt((value) => value + 1);
-										return;
-									}
-									didStartRef.current = false;
-									setErrorMessage(null);
-									setRetryAttempt((value) => value + 1);
-								}}
+								onPress={() => void retryGeneration()}
 							>
 								{isBusy ? (
 									<ActivityIndicator color="#FFFFFF" />

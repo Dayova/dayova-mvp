@@ -102,7 +102,7 @@ export default function LearningPlanAnalysisScreen() {
 				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
 					<AnalysisOrbitLoader />
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-						Beantworte 5 kurze Fragen für deinen persönlichen Lernplan.
+						Beantworte 5 kurze Fragen – bei breitem Stoff höchstens 8.
 					</Text>
 					{errorMessage ? (
 						<>

@@ -42,13 +42,13 @@ describe("learning content plan", () => {
 				questionCount: block.questions.length,
 			})),
 		).toEqual([
-			{ phase: "theory", durationMinutes: 10, questionCount: 5 },
-			{ phase: "theory", durationMinutes: 10, questionCount: 5 },
-			{ phase: "practice", durationMinutes: 10, questionCount: 8 },
+			{ phase: "theory", durationMinutes: 10, questionCount: 3 },
+			{ phase: "theory", durationMinutes: 10, questionCount: 3 },
+			{ phase: "practice", durationMinutes: 10, questionCount: 2 },
 		]);
 
 		for (const block of plan.blocks) {
-			expect(block.questions.length).toBeGreaterThanOrEqual(5);
+			expect(block.questions.length).toBeGreaterThanOrEqual(2);
 			expect(
 				block.questions.reduce(
 					(total, question) => total + question.estimatedSeconds,
@@ -91,5 +91,17 @@ describe("learning content plan", () => {
 				usedCoverageKeys.includes(question.coverageKey),
 			),
 		).toBe(false);
+	});
+
+	test("can generate one cost-efficient AI payload for a complete short session", () => {
+		const plan = createLearningContentPlan({
+			segments: [{ phase: "practice", durationMinutes: 20 }],
+			topics,
+			maxBlockMinutes: 20,
+		});
+
+		expect(plan.blocks).toHaveLength(1);
+		expect(plan.blocks[0]?.durationMinutes).toBe(20);
+		expect(plan.blocks[0]?.questions.length).toBeGreaterThanOrEqual(3);
 	});
 });

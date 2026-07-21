@@ -2,17 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { __testOnlyLearningPlanAi } from "./learningPlanAi";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 
-const germanText = (text: string) => ({
-	text,
-	asciiShadow: text
-		.replace(/ä/g, "ae")
-		.replace(/ö/g, "oe")
-		.replace(/ü/g, "ue")
-		.replace(/Ä/g, "Ae")
-		.replace(/Ö/g, "Oe")
-		.replace(/Ü/g, "Ue")
-		.replace(/ß/g, "ss"),
-});
+const germanText = (text: string) => text;
 
 describe("learning plan AI scheduling", () => {
 	beforeEach(() => {
@@ -22,6 +12,102 @@ describe("learning plan AI scheduling", () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	test("expands a weak Klassenarbeit plan into short adaptive sessions and two Praxis checks", () => {
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-30",
+			29,
+			[
+				{
+					phase: "practice",
+					title: germanText("Prüfungsstoff bearbeiten"),
+					dayOffsetBeforeExam: 14,
+					startTime: "17:00",
+					durationMinutes: 240,
+					goal: germanText("Bearbeite den gesamten Prüfungsstoff."),
+					tasks: [
+						germanText("Erarbeite die unsicheren Grundlagen."),
+						germanText("Löse prüfungsnahe Aufgaben."),
+					],
+					expectedOutcome: germanText(
+						"Du bist auf die Klassenarbeit vorbereitet.",
+					),
+				},
+			],
+			[1, 2, 3, 4, 5].map((dayOfWeek) => ({
+				dayOfWeek,
+				startTime: "17:00",
+				endTime: "18:00",
+			})),
+			[],
+			240,
+			[],
+			{
+				maxSessionMinutes: 20,
+				topicReadiness: { secure: 0, developing: 0, unknown: 6 },
+				praxisSessionCount: 2,
+			},
+		);
+
+		expect(result.sessions.length).toBeGreaterThan(5);
+		expect(
+			Math.max(...result.sessions.map((session) => session.durationMinutes)),
+		).toBeLessThanOrEqual(20);
+		expect(
+			result.sessions.filter((session) => session.phase === "theory").length,
+		).toBeGreaterThanOrEqual(6);
+		expect(
+			result.sessions.filter((session) => session.phase === "rehearsal"),
+		).toHaveLength(2);
+		expect(
+			result.sessions.reduce(
+				(total, session) => total + session.durationMinutes,
+				0,
+			),
+		).toBe(240);
+	});
+
+	test("splits one long learning window into several independent short sessions", () => {
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-30",
+			29,
+			[
+				{
+					phase: "practice",
+					title: germanText("Aufgaben üben"),
+					dayOffsetBeforeExam: 1,
+					startTime: "17:00",
+					durationMinutes: 60,
+					goal: germanText("Übe typische Aufgaben."),
+					tasks: [germanText("Löse passende Aufgaben.")],
+					expectedOutcome: germanText("Du kannst die Aufgaben lösen."),
+				},
+			],
+			[{ dayOfWeek: 1, startTime: "17:00", endTime: "18:00" }],
+			[],
+			60,
+			[],
+			{
+				maxSessionMinutes: 20,
+				topicReadiness: { secure: 1, developing: 1, unknown: 0 },
+				praxisSessionCount: 1,
+			},
+		);
+
+		expect(result.sessions.length).toBeGreaterThan(3);
+		expect(
+			result.sessions.some((session) => session.startTime === "17:20"),
+		).toBe(true);
+		expect(
+			result.sessions.some((session) => session.startTime === "17:40"),
+		).toBe(true);
+		expect(
+			result.sessions.reduce(
+				(total, session) => total + session.durationMinutes,
+				0,
+			),
+		).toBe(60);
 	});
 
 	test("can schedule the same generated recommendation after learning times are added", () => {

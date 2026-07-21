@@ -1,4 +1,4 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Platform, ScrollView, View } from "react-native";
@@ -44,6 +44,9 @@ function LoadedSessionEditScreen({
 }) {
 	const router = useRouter();
 	const updateSession = useMutation(api.learningPlans.updateSession);
+	const regenerateSessionContent = useAction(
+		api.learningPlanAi.ensureSessionContent,
+	);
 	const removeSession = useMutation(api.learningPlans.removeSession);
 
 	const [isBusy, setIsBusy] = useState(false);
@@ -105,7 +108,7 @@ function LoadedSessionEditScreen({
 						? endMinutes - startMinutes
 						: session.durationMinutes;
 
-				await updateSession({
+				const result = await updateSession({
 					id: session.id,
 					phase: editPhase,
 					dateKey: getDateKey(editDate),
@@ -113,6 +116,9 @@ function LoadedSessionEditScreen({
 					startTime: editStart,
 					durationMinutes: duration,
 				});
+				if (result.contentInvalidated) {
+					await regenerateSessionContent({ sessionId: session.id });
+				}
 				router.replace(reviewPath(planId));
 			},
 		);

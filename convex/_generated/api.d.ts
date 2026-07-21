@@ -10,6 +10,7 @@
 
 import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
+import type * as diagnosticReadiness from "../diagnosticReadiness.js";
 import type * as env from "../env.js";
 import type * as errors from "../errors.js";
 import type * as fileStorage from "../fileStorage.js";
@@ -17,8 +18,11 @@ import type * as generatedGermanText from "../generatedGermanText.js";
 import type * as generatedGermanTextRepair from "../generatedGermanTextRepair.js";
 import type * as learningContentPlan from "../learningContentPlan.js";
 import type * as learningPlanAi from "../learningPlanAi.js";
+import type * as learningPlanAiCost from "../learningPlanAiCost.js";
+import type * as learningPlanAiUsage from "../learningPlanAiUsage.js";
 import type * as learningPlanPlanningHints from "../learningPlanPlanningHints.js";
 import type * as learningPlans from "../learningPlans.js";
+import type * as learningPreparationPolicy from "../learningPreparationPolicy.js";
 import type * as learningSessionComposition from "../learningSessionComposition.js";
 import type * as learningSessionContent from "../learningSessionContent.js";
 import type * as learningSessionContentConstraints from "../learningSessionContentConstraints.js";
@@ -42,6 +46,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   dayEntries: typeof dayEntries;
   dayKeyVariants: typeof dayKeyVariants;
+  diagnosticReadiness: typeof diagnosticReadiness;
   env: typeof env;
   errors: typeof errors;
   fileStorage: typeof fileStorage;
@@ -49,8 +54,11 @@ declare const fullApi: ApiFromModules<{
   generatedGermanTextRepair: typeof generatedGermanTextRepair;
   learningContentPlan: typeof learningContentPlan;
   learningPlanAi: typeof learningPlanAi;
+  learningPlanAiCost: typeof learningPlanAiCost;
+  learningPlanAiUsage: typeof learningPlanAiUsage;
   learningPlanPlanningHints: typeof learningPlanPlanningHints;
   learningPlans: typeof learningPlans;
+  learningPreparationPolicy: typeof learningPreparationPolicy;
   learningSessionComposition: typeof learningSessionComposition;
   learningSessionContent: typeof learningSessionContent;
   learningSessionContentConstraints: typeof learningSessionContentConstraints;

@@ -4,6 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import {
+	getDefaultPreparationDepth,
+	recommendLearningPreparation,
+	type PreparationDepth,
+} from "#convex/learningPreparationPolicy";
 import { Button } from "~/components/ui/button";
 import { Screen } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
@@ -11,16 +16,23 @@ import { Text } from "~/components/ui/text";
 import { useAuth } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import {
-	calculateAvailableStudyMinutes,
-	suggestTotalStudyMinutes,
-} from "~/features/learning-plans/plan-workload";
+import { calculateAvailableStudyMinutes } from "~/features/learning-plans/plan-workload";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 
 const MIN_TOTAL_MINUTES = 10;
-const MAX_TOTAL_MINUTES = 180;
+const MAX_TOTAL_MINUTES = 600;
 const STEP_MINUTES = 10;
+
+const DEPTH_OPTIONS: Array<{
+	value: PreparationDepth;
+	label: string;
+}> = [
+	{ value: "compact", label: "Kompakt" },
+	{ value: "thorough", label: "Gründlich" },
+	{ value: "intensive", label: "Intensiv" },
+];
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -43,6 +55,9 @@ export default function LearningPlanWorkloadScreen() {
 		api.learningPlans.setTargetStudyMinutes,
 	);
 	const [selectedMinutes, setSelectedMinutes] = useState<number | null>(null);
+	const [selectedDepth, setSelectedDepth] = useState<PreparationDepth | null>(
+		null,
+	);
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -65,19 +80,47 @@ export default function LearningPlanWorkloadScreen() {
 				: null,
 		[learningTimes, snapshot],
 	);
-	const suggestedMinutes = useMemo(
-		() =>
-			snapshot
-				? suggestTotalStudyMinutes({
-						examDurationMinutes: snapshot.plan.durationMinutes,
-						answers: snapshot.answers.map((answer) => answer.answer),
-						availableMinutes,
-					})
-				: null,
-		[availableMinutes, snapshot],
-	);
+	const preparationDepth =
+		selectedDepth ??
+		snapshot?.plan.preparationDepth ??
+		(snapshot
+			? getDefaultPreparationDepth(snapshot.plan.examTypeLabel)
+			: "thorough");
+	const recommendation = useMemo(() => {
+		if (!snapshot) return null;
+		const assessedTopicCount = Math.max(
+			snapshot.plan.topicMap.length,
+			snapshot.answers.length,
+		);
+		const readiness = snapshot.plan.topicReadiness ?? [];
+		const secure = readiness.filter(
+			(topic) => topic.status === "secure",
+		).length;
+		const developing = readiness.filter(
+			(topic) => topic.status === "developing",
+		).length;
+		const unknown = readiness.filter(
+			(topic) => topic.status === "unknown",
+		).length;
+
+		return recommendLearningPreparation({
+			examTypeLabel: snapshot.plan.examTypeLabel,
+			examDurationMinutes: snapshot.plan.durationMinutes,
+			preparationDepth,
+			topicReadiness: {
+				secure,
+				developing,
+				unknown: Math.max(unknown, assessedTopicCount - readiness.length),
+			},
+			availableMinutes,
+		});
+	}, [availableMinutes, preparationDepth, snapshot]);
 	const minutes =
-		selectedMinutes ?? snapshot?.plan.targetStudyMinutes ?? suggestedMinutes;
+		selectedMinutes ??
+		(selectedDepth ? null : snapshot?.plan.targetStudyMinutes) ??
+		recommendation?.plannedMinutes ??
+		null;
+	const hasNoAvailability = availableMinutes !== null && availableMinutes < 10;
 
 	useEffect(() => {
 		if (!planId || !snapshot) return;
@@ -103,6 +146,7 @@ export default function LearningPlanWorkloadScreen() {
 			await setTargetStudyMinutes({
 				learningPlanId: planId,
 				targetStudyMinutes: minutes,
+				preparationDepth,
 			});
 			router.replace(planPath(planId, "generating"));
 		} catch (error) {
@@ -141,8 +185,8 @@ export default function LearningPlanWorkloadScreen() {
 					Wie viel Lernzeit planen wir ein?
 				</Text>
 				<Text className="mt-3 text-center font-poppins text-body-3 text-secondary-text">
-					Dayova teilt diese Zeit in kurze Lernblöcke innerhalb deiner
-					Lernzeiten auf.
+					Wähle die Vorbereitungstiefe. Dayova plant daraus mehrere kurze,
+					fokussierte Lernsessionen statt eines langen Blocks.
 				</Text>
 				{availableMinutes !== null && availableMinutes > 0 ? (
 					<Text className="mt-2 text-center font-poppins text-body-4 text-secondary-text">
@@ -150,7 +194,48 @@ export default function LearningPlanWorkloadScreen() {
 						Lernzeiten. Belegte Kalenderzeiten werden beim Erstellen
 						berücksichtigt.
 					</Text>
+				) : availableMinutes !== null ? (
+					<>
+						<Text className="mt-3 text-center font-poppins text-body-4 text-destructive">
+							Vor der Prüfung ist noch keine passende Lernzeit hinterlegt.
+						</Text>
+						{planId ? (
+							<Button
+								className="mt-4"
+								variant="outline"
+								onPress={() =>
+									router.push(
+										withReturnTo(
+											ROUTES.learningTimes,
+											planPath(planId, "workload"),
+										),
+									)
+								}
+							>
+								<Text>Lernzeiten festlegen</Text>
+							</Button>
+						) : null}
+					</>
 				) : null}
+
+				<View className="mt-6 flex-row gap-2">
+					{DEPTH_OPTIONS.map((option) => (
+						<Button
+							key={option.value}
+							className="flex-1 px-2"
+							size="sm"
+							variant={
+								preparationDepth === option.value ? "default" : "outline"
+							}
+							onPress={() => {
+								setSelectedDepth(option.value);
+								setSelectedMinutes(null);
+							}}
+						>
+							<Text>{option.label}</Text>
+						</Button>
+					))}
+				</View>
 
 				<Surface
 					className="mt-8 items-center rounded-[32px] px-6 py-8"
@@ -159,6 +244,12 @@ export default function LearningPlanWorkloadScreen() {
 					<Text className="font-poppins text-body-4 text-secondary-text">
 						Geplante Lernzeit insgesamt
 					</Text>
+					{recommendation ? (
+						<Text className="mt-2 text-center font-poppins text-body-4 text-secondary-text">
+							Empfohlen {recommendation.recommendedMinutes} Min. · Minimum{" "}
+							{recommendation.minimumMinutes} Min.
+						</Text>
+					) : null}
 					<Text
 						className="mt-2 font-poppins font-semibold text-[52px] text-text leading-[60px]"
 						style={{ fontVariant: ["tabular-nums"] }}
@@ -184,6 +275,14 @@ export default function LearningPlanWorkloadScreen() {
 						</Button>
 					</View>
 				</Surface>
+				{recommendation && recommendation.preparationGapMinutes > 0 ? (
+					<Text className="mt-4 text-center font-poppins text-body-4 text-secondary-text">
+						Bis zur Prüfung fehlen in deinen Lernzeiten noch{" "}
+						{recommendation.preparationGapMinutes} Min. zur empfohlenen
+						Vorbereitung. Wir erstellen den stärksten möglichen Plan für deine
+						verfügbare Zeit.
+					</Text>
+				) : null}
 				{errorMessage ? (
 					<Text className="mt-4 text-center font-poppins text-body-4 text-destructive">
 						{errorMessage}
@@ -191,7 +290,9 @@ export default function LearningPlanWorkloadScreen() {
 				) : null}
 			</View>
 			<Button
-				disabled={minutes === null || isBusy}
+				disabled={
+					minutes === null || minutes < 10 || hasNoAvailability || isBusy
+				}
 				onPress={() => void continueToGeneration()}
 			>
 				{isBusy ? (

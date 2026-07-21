@@ -33,6 +33,9 @@ export type PlanSession = {
 	goal: string;
 	tasks: string[];
 	expectedOutcome: string;
+	contentGenerationStatus?: "queued" | "generating" | "ready" | "failed";
+	contentGenerationError?: string;
+	contentGeneratedAt?: number;
 	sortOrder: number;
 	completed: boolean;
 	executionStatus: SessionExecutionStatus;
@@ -149,6 +152,9 @@ export type QuizQuestion = {
 	id: string;
 	prompt: string;
 	targetInsight: string;
+	topicId?: string;
+	kind?: "performance" | "confidence";
+	evaluationKeywords?: string[];
 };
 
 type LearningPlanAnswer = {
@@ -167,6 +173,7 @@ export type LearningPlanSnapshot = {
 		examTime?: string;
 		durationMinutes: number;
 		targetStudyMinutes?: number;
+		preparationDepth: "compact" | "thorough" | "intensive";
 		topicDescription: string;
 		notes?: string;
 		status: "draft" | "questionsReady" | "generated" | "accepted";
@@ -179,6 +186,10 @@ export type LearningPlanSnapshot = {
 			keywords: string[];
 			priority: "high" | "medium" | "low";
 		}>;
+		topicReadiness?: Array<{
+			topicId: string;
+			status: "secure" | "developing" | "unknown";
+		}>;
 		insight?: {
 			summary: string;
 			strengths: string[];
@@ -186,6 +197,13 @@ export type LearningPlanSnapshot = {
 		};
 		planningHint?: string;
 		sessionCompositionVariant?: "control" | "split";
+		contentGeneration?: {
+			stage: "content" | "validating" | "ready" | "failed";
+			startedAt?: number;
+			totalSessionCount: number;
+			readySessionCount: number;
+			failedSessionCount: number;
+		};
 	};
 	documents: LearningPlanDocument[];
 	answers: LearningPlanAnswer[];

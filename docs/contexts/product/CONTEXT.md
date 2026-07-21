@@ -7,7 +7,7 @@ Confluence is the current cross-functional documentation hub. Keep this file foc
 ## Language
 
 **Persönlicher Lernplan**:
-The user-facing learning-plan creation flow and accepted study path. It frames the five short pre-plan questions and optional learning material as the setup for a personalized, ordered plan whose sessions build toward exam readiness.
+The user-facing learning-plan creation flow and accepted study path. It frames five short pre-plan questions, extended up to eight when scope or readiness remains unclear, and optional learning material as the setup for a personalized, ordered plan whose sessions build toward exam readiness.
 _Avoid_: Wissensanalyse, Quiz
 
 **Nächster Lernschritt**:
@@ -31,8 +31,20 @@ An optional learner-initiated extension offered after the planned work of a `Ler
 _Avoid_: Automatic overtime, timer padding
 
 **Pre-plan diagnostic step**:
-The internal name for the five-question diagnostic part of `Persönlicher Lernplan`, used when distinguishing it from post-session `Wissensanalyse`.
+The internal name for the adaptive five- to eight-question diagnostic part of `Persönlicher Lernplan`, used when distinguishing it from post-session `Wissensanalyse`.
 _Avoid_: User-facing copy
+
+**Topic readiness**:
+An evidence-based estimate of whether the learner's knowledge of one required assessment topic is secure, developing, or unknown. It combines demonstrated performance with self-reported confidence and shapes the topic's theory, practice, and later verification.
+_Avoid_: Treating confidence alone as mastery, one overall score for the entire assessment
+
+**Preparation gap**:
+The difference between the preparation Dayova recommends for the assessment and the learning time available before it. A plan with a preparation gap prioritizes the strongest feasible coverage without presenting that reduced plan as complete readiness.
+_Avoid_: Inventing availability, silently treating reduced coverage as fully recommended preparation
+
+**Preparation depth**:
+The learner-adjustable intensity of a `Persönlicher Lernplan`: compact, thorough, or intensive. Assessment type supplies the recommended default, while the selected depth influences recommended study time, session coverage, and repetition without replacing `Topic readiness` or available learning time.
+_Avoid_: Fixed session count based only on the assessment label, hidden AI-selected intensity
 
 **Wissensanalyse**:
 The post-session analysis shown after `Üben` or `Praxis`. It summarizes the learner's strengths, knowledge or execution gaps, and near-term recommendations for the ongoing plan.
@@ -51,8 +63,8 @@ The guided practice phase of a learning session. It mixes multiple-choice, writt
 _Avoid_: Only drilling the learner's mistakes, single-mode quiz
 
 **Praxis**:
-The user-facing name for the rehearsal or `Generalprobe` phase. It simulates a timed test with mixed task types and leads into a `Wissensanalyse`.
-_Avoid_: Treating Praxis as a fourth phase separate from rehearsal
+The user-facing name for the rehearsal or `Generalprobe` phase. It creates an authentic but compressed 20- to 30-minute test situation with mixed task types and leads into a `Wissensanalyse`; important assessments prefer multiple short Praxis sessions over one full-duration simulation.
+_Avoid_: Treating Praxis as a fourth phase separate from rehearsal, requiring one Praxis to match the full assessment duration
 
 **Validation Phase**:
 A focused learning period where Dayova is tested with a small number of students who have real school deadlines, to learn whether the product causes earlier and more committed action.

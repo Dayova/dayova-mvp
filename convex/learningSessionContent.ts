@@ -723,19 +723,38 @@ const isLegacyTaskItem = (item: Doc<"learningSessionContentItems">) =>
 		item.explanation.includes("Eine starke Antwort nennt den Lösungsweg") ||
 		item.explanation.includes("Prüfungsnah ist die Antwort"));
 
-const deleteSessionContentItems = async (
+export const deleteSessionLearningDataForSession = async (
 	ctx: MutationCtx,
 	sessionId: Id<"learningPlanSessions">,
 ) => {
 	const items = await listItems(ctx, sessionId);
+	const attempts = await ctx.db
+		.query("learningSessionAnswerAttempts")
+		.withIndex("by_sessionId_and_createdAt", (q) =>
+			q.eq("sessionId", sessionId),
+		)
+		.take(1_000);
+	for (const attempt of attempts) {
+		await ctx.db.delete("learningSessionAnswerAttempts", attempt._id);
+	}
+	const analysis = await ctx.db
+		.query("learningSessionAnalyses")
+		.withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+		.unique();
+	if (analysis) {
+		await ctx.db.delete("learningSessionAnalyses", analysis._id);
+	}
 	for (const item of items) {
 		await ctx.db.delete("learningSessionContentItems", item._id);
 	}
 };
 
+const deleteSessionContentItems = deleteSessionLearningDataForSession;
+
 export const getSessionGenerationContext = internalQuery({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
+		includePriorContent: v.optional(v.boolean()),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -775,12 +794,13 @@ export const getSessionGenerationContext = internalQuery({
 				q.eq("learningPlanId", session.learningPlanId),
 			)
 			.order("asc")
-			.take(20);
+			.take(50);
 		const priorTheoryCards: Array<{ front: string; back: string }> = [];
 		const priorSessionItems: Array<{ prompt: string; coverageKey?: string }> =
 			[];
 		const priorCoverageKeys: string[] = [];
 		for (const planSession of planSessions) {
+			if (args.includePriorContent === false) break;
 			if (planSession._id === session._id) continue;
 			const wasCompleted =
 				planSession.executionStatus === "completed" || planSession.completed;

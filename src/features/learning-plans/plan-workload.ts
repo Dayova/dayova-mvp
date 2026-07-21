@@ -35,7 +35,7 @@ export const calculateAvailableStudyMinutes = ({
 			const start = parseTimeToMinutes(learningTime.startTime);
 			const end = parseTimeToMinutes(learningTime.endTime);
 			if (start === null || end === null || end - start < 10) continue;
-			availableMinutes += Math.min(30, end - start);
+			availableMinutes += Math.min(120, end - start);
 		}
 		cursor.setUTCDate(cursor.getUTCDate() + 1);
 	}

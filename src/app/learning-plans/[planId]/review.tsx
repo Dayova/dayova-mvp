@@ -68,7 +68,7 @@ export default function LearningPlanReviewScreen() {
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
-	const addSession = useMutation(api.learningPlans.addSession);
+	const addSession = useAction(api.learningPlanAi.addSessionWithContent);
 	const acceptPlan = useMutation(api.learningPlans.acceptPlan);
 
 	const [isBusy, setIsBusy] = useState(false);
@@ -160,7 +160,14 @@ export default function LearningPlanReviewScreen() {
 	};
 
 	const openEdit = (session: PlanSession) => {
-		if (!planId) return;
+		if (
+			!planId ||
+			isBusy ||
+			isReplanning ||
+			session.contentGenerationStatus === "queued" ||
+			session.contentGenerationStatus === "generating"
+		)
+			return;
 		router.push(`/learning-plans/${planId}/sessions/${session.id}/edit`);
 	};
 
@@ -249,13 +256,19 @@ export default function LearningPlanReviewScreen() {
 							</Text>
 						</View>
 					) : null}
-					{snapshot?.sessions.map((session) => (
-						<SessionCard
-							key={session.id}
-							session={session}
-							onEdit={() => openEdit(session)}
-						/>
-					))}
+					{snapshot?.sessions
+						.filter(
+							(session) =>
+								session.contentGenerationStatus === undefined ||
+								session.contentGenerationStatus === "ready",
+						)
+						.map((session) => (
+							<SessionCard
+								key={session.id}
+								session={session}
+								onEdit={() => openEdit(session)}
+							/>
+						))}
 				</View>
 				{errorMessage ? (
 					<Text className="mb-4 font-poppins text-body-4 text-destructive">

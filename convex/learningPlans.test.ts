@@ -124,6 +124,186 @@ test("stores the total study workload confirmed before generation", async () => 
 	expect(snapshot?.plan.targetStudyMinutes).toBe(50);
 });
 
+test("keeps a plan in generation until every session content payload is ready", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		deferReadyUntilContent: true,
+		sessions: [
+			{
+				phase: "practice",
+				title: "Üben",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 15,
+				goal: "Gleichungen lösen.",
+				tasks: ["Löse zwei Gleichungen."],
+				expectedOutcome: "Du löst Gleichungen sicher.",
+			},
+		],
+	});
+
+	const generating = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(generating?.plan.status).toBe("questionsReady");
+	expect(generating?.plan.contentGeneration).toEqual({
+		stage: "content",
+		totalSessionCount: 1,
+		readySessionCount: 0,
+		failedSessionCount: 0,
+	});
+	expect(generating?.sessions[0]?.contentGenerationStatus).toBe("queued");
+
+	const sessionId = generating?.sessions[0]?.id;
+	if (!sessionId) throw new Error("Expected generated session.");
+	await expect(
+		t.query(internal.learningPlans.getIncompleteContentGenerationSessionIds, {
+			learningPlanId,
+		}),
+	).resolves.toEqual([sessionId]);
+	await t.mutation(internal.learningPlans.setSessionContentGenerationStatus, {
+		sessionId,
+		status: "ready",
+	});
+	await t.mutation(internal.learningPlans.finalizeContentGeneration, {
+		learningPlanId,
+	});
+
+	const ready = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(ready?.plan.status).toBe("generated");
+	expect(ready?.plan.contentGeneration?.stage).toBe("ready");
+});
+
+test("claims plan generation atomically and persists an empty failed claim for explicit retry", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.beginContentGeneration, {
+		learningPlanId,
+		generationId: "generation-1",
+	});
+
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "generation-2",
+		}),
+	).rejects.toThrow("Dieser Lernplan wird bereits erstellt.");
+	await expect(
+		t.mutation(internal.learningPlans.clearEmptyContentGeneration, {
+			learningPlanId,
+			generationId: "generation-1",
+		}),
+	).resolves.toBe(true);
+	const failed = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(failed?.plan.contentGeneration?.stage).toBe("failed");
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "generation-2",
+		}),
+	).resolves.toBeTypeOf("number");
+});
+
+test("invalidates only educational session edits while calendar moves preserve content", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		sessions: [
+			{
+				phase: "practice",
+				title: "Üben",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 15,
+				goal: "Gleichungen lösen.",
+				tasks: ["Löse zwei Gleichungen."],
+				expectedOutcome: "Du löst Gleichungen sicher.",
+			},
+		],
+	});
+	const initial = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const session = initial?.sessions[0];
+	if (!session) throw new Error("Expected generated session.");
+	await t.mutation(
+		internal.learningSessionContent.ensureFallbackSessionContent,
+		{
+			sessionId: session.id,
+		},
+	);
+	const contentBefore = await t.query(
+		api.learningSessionContent.getSessionContent,
+		{ sessionId: session.id },
+	);
+	const firstItem = contentBefore.items[0];
+	if (!firstItem?.choices[0]) throw new Error("Expected fallback MC item.");
+	await t.mutation(api.learningSessionContent.submitAnswer, {
+		itemId: firstItem.id,
+		selectedChoiceId: firstItem.choices[0].id,
+	});
+	await t.mutation(api.learningSessionContent.finishSessionContent, {
+		sessionId: session.id,
+	});
+
+	await expect(
+		t.mutation(api.learningPlans.updateSession, {
+			id: session.id,
+			phase: session.phase,
+			dateKey: "2026-06-02",
+			dateLabel: "2. Juni 2026",
+			startTime: "18:00",
+			durationMinutes: session.durationMinutes,
+		}),
+	).resolves.toEqual({ contentInvalidated: false });
+	const contentAfterMove = await t.query(
+		api.learningSessionContent.getSessionContent,
+		{ sessionId: session.id },
+	);
+	expect(contentAfterMove.items).toHaveLength(contentBefore.items.length);
+	expect(contentAfterMove.analysis).not.toBeNull();
+
+	await expect(
+		t.mutation(api.learningPlans.updateSession, {
+			id: session.id,
+			phase: "theory",
+			dateKey: "2026-06-02",
+			dateLabel: "2. Juni 2026",
+			startTime: "18:00",
+			durationMinutes: 20,
+		}),
+	).resolves.toEqual({ contentInvalidated: true });
+	const afterEducationalEdit = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const contentAfterEducationalEdit = await t.query(
+		api.learningSessionContent.getSessionContent,
+		{ sessionId: session.id },
+	);
+	expect(contentAfterEducationalEdit.items).toHaveLength(0);
+	expect(contentAfterEducationalEdit.attempts).toHaveLength(0);
+	expect(contentAfterEducationalEdit.analysis).toBeNull();
+	expect(afterEducationalEdit?.sessions[0]?.contentGenerationStatus).toBe(
+		"queued",
+	);
+});
+
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-05-30T10:00:00.000Z"));
@@ -140,7 +320,7 @@ test("adding a learning plan session into an occupied time range is rejected wit
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-05-31",
 		title: "Deutsch Hausaufgabe",
-		time: "17:15",
+		time: "17:10",
 		kind: "Hausaufgabe",
 		plannedDateLabel: "31. Mai 2026",
 		durationMinutes: 30,
@@ -149,7 +329,7 @@ test("adding a learning plan session into an occupied time range is rejected wit
 	await expect(
 		t.mutation(api.learningPlans.addSession, { learningPlanId }),
 	).rejects.toThrow(
-		'Dieser Zeitraum überschneidet sich mit "Deutsch Hausaufgabe" am 31. Mai 2026 von 17:15 bis 17:45.',
+		'Dieser Zeitraum überschneidet sich mit "Deutsch Hausaufgabe" am 31. Mai 2026 von 17:10 bis 17:40.',
 	);
 });
 
@@ -205,7 +385,7 @@ test("updating a learning plan session at its own synced time is allowed", async
 			startTime: session.startTime,
 			durationMinutes: session.durationMinutes,
 		}),
-	).resolves.toBeNull();
+	).resolves.toEqual({ contentInvalidated: true });
 });
 
 test("starting a learning plan rejects vague exam topic descriptions", async () => {

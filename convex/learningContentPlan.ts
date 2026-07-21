@@ -64,30 +64,35 @@ const taskKinds: LearningQuestionKind[] = [
 ];
 
 const estimatedSecondsForKind: Record<LearningQuestionKind, number> = {
-	learnCard: 120,
-	multipleChoice: 60,
-	written: 90,
-	voice: 90,
+	learnCard: 240,
+	multipleChoice: 240,
+	written: 360,
+	voice: 300,
 };
 
-const splitIntoBlockDurations = (durationMinutes: number) => {
+const splitIntoBlockDurations = (
+	durationMinutes: number,
+	maxBlockMinutes = MAX_BLOCK_MINUTES,
+) => {
 	if (
 		!Number.isInteger(durationMinutes) ||
-		durationMinutes < MIN_BLOCK_MINUTES
+		durationMinutes < MIN_BLOCK_MINUTES ||
+		!Number.isInteger(maxBlockMinutes) ||
+		maxBlockMinutes < MIN_BLOCK_MINUTES
 	) {
 		throw new Error("A learning segment must last at least five minutes.");
 	}
 
 	const durations: number[] = [];
 	let remainingMinutes = durationMinutes;
-	while (remainingMinutes > MAX_BLOCK_MINUTES) {
-		const afterMaximumBlock = remainingMinutes - MAX_BLOCK_MINUTES;
+	while (remainingMinutes > maxBlockMinutes) {
+		const afterMaximumBlock = remainingMinutes - maxBlockMinutes;
 		if (afterMaximumBlock > 0 && afterMaximumBlock < MIN_BLOCK_MINUTES) {
 			durations.push(remainingMinutes - MIN_BLOCK_MINUTES);
 			remainingMinutes = MIN_BLOCK_MINUTES;
 			break;
 		}
-		durations.push(MAX_BLOCK_MINUTES);
+		durations.push(maxBlockMinutes);
 		remainingMinutes = afterMaximumBlock;
 	}
 
@@ -134,7 +139,7 @@ const createQuestions = ({
 		const cycle = Math.floor(
 			globalIndex / Math.max(topics.length * questionAngles.length, 1),
 		);
-		const kind = questionKindFor(phase, questions.length);
+		const kind = questionKindFor(phase, globalIndex);
 		const estimatedSeconds = Math.min(
 			estimatedSecondsForKind[kind],
 			targetSeconds - plannedSeconds,
@@ -161,6 +166,8 @@ export const createLearningContentPlan = ({
 	topics,
 	excludedCoverageKeys = [],
 	blockIndexOffset = 0,
+	questionIndexOffset = 0,
+	maxBlockMinutes = MAX_BLOCK_MINUTES,
 }: {
 	segments: Array<{
 		phase: LearningContentPhase;
@@ -169,6 +176,8 @@ export const createLearningContentPlan = ({
 	topics: LearningTopic[];
 	excludedCoverageKeys?: string[];
 	blockIndexOffset?: number;
+	questionIndexOffset?: number;
+	maxBlockMinutes?: number;
 }) => {
 	const orderedTopics = topics
 		.filter((topic) => topic.id.trim() && topic.title.trim())
@@ -183,11 +192,12 @@ export const createLearningContentPlan = ({
 	}
 
 	const blocks: LearningContentBlock[] = [];
-	let questionOffset = 0;
+	let questionOffset = questionIndexOffset;
 	const excludedKeys = new Set(excludedCoverageKeys);
 	for (const segment of segments) {
 		for (const durationMinutes of splitIntoBlockDurations(
 			segment.durationMinutes,
+			maxBlockMinutes,
 		)) {
 			const result = createQuestions({
 				phase: segment.phase,
