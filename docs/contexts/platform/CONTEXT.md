@@ -82,6 +82,58 @@ optional values, drops events with invalid required values, and records only the
 event/property name in diagnostics. `before_send` repeats the custom-key guard
 as defense in depth without filtering PostHog SDK/system properties.
 
+## Package Manager Toolchain
+
+Dayova uses pnpm 11.15.1 on Node 24.18.0. The pnpm version is repeated because
+each install surface selects its toolchain independently: `package.json`
+controls local Corepack, the shared `eas.json` profile controls native EAS
+Build workers, and `.eas/workflows/ci.yml` controls EAS Workflow jobs. Keep
+those pins exact and identical so no surface falls back to a different image
+default. Keep `pmOnFail: error` in `pnpm-workspace.yaml` so a mismatched pnpm
+binary fails immediately instead of downloading and running another version.
+The removed pnpm 10 setting `packageManagerStrictVersion` must not be restored;
+pnpm 11 replaced it with `pmOnFail`. `tests/pnpm-toolchain.test.ts` guards this
+policy against drift.
+
+The 2026 rollback from pnpm 11 to pnpm 10 was an EAS runtime compatibility
+measure, not an application compatibility requirement: the then-current EAS
+image ran Node 20.19.4, while pnpm 11 required a newer Node runtime. The project
+now pins Node 24 for local and EAS builds, so that constraint no longer applies.
+
+### Why this policy exists
+
+pnpm 11 changed where it reads configuration: `.npmrc` is now limited to
+registry and authentication entries, while behavioral settings belong in
+`pnpm-workspace.yaml`. Leaving `auto-install-peers=false` in `.npmrc` would
+silently restore pnpm's default of installing missing peer dependencies.
+Keeping `autoInstallPeers: false` in the workspace file instead preserves
+Dayova's policy that peer dependencies must be declared deliberately.
+
+pnpm 11 also replaced the legacy dependency-build settings, including
+`onlyBuiltDependencies`, with one `allowBuilds` map. Dayova keeps that map as
+the sole lifecycle-script policy so an unreviewed dependency cannot execute
+install scripts. With pnpm 11's strict dependency-build handling, `true` means
+that a reviewed script may run, while `false` records a reviewed denial; an
+unlisted script fails installation and forces a new decision.
+
+Keep the map limited to scripts encountered by a clean install of the current
+lockfile. `esbuild` is allowed because its postinstall selects, validates, and
+prepares the platform binary. `browser-tabs-lock`, `core-js`, and
+`tesseract.js` remain explicitly denied because their postinstall scripts only
+emit promotional or funding messages. Remove entries that are no longer
+resolved or no longer expose lifecycle scripts so future dependency changes
+must be reviewed instead of inheriting stale policy.
+
+Preserve `patchedDependencies` alongside `allowBuilds` because those
+repository-owned fixes are applied during installation and must survive a
+package-manager change. An `.npmrc` may still exist for registry and
+authentication entries, but must not contain pnpm behavioral settings.
+
+A package-manager change can affect lockfile parsing, peer resolution, patch
+application, dependency lifecycle scripts, CI, and native builds. Therefore,
+update all three pins together and verify a frozen install, the full checks,
+production exports, and native EAS builds.
+
 ## iOS Privacy Purpose Strings
 
 Dayova uses camera/photo upload for learning material and microphone/speech

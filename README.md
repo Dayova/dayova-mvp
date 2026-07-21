@@ -13,7 +13,7 @@ optional validation analytics integration.
 ### Prerequisites
 
 - Node.js 24 (the repository currently pins 24.18.0)
-- pnpm 10.25.0
+- pnpm 11.15.1
 - The native toolchain for the target platform: Xcode on macOS or the Android
   SDK and Android Studio
 - Access to Clerk and Convex development environments (if you are part of the team, we should give you access to our internal Convex and Clerk teams for various reasons, but you can theoretically build and develop the app without being in them)
