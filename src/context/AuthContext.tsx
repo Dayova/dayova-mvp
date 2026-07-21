@@ -16,6 +16,7 @@ import {
 	createValidationAnalytics,
 	isPostHogConfigured,
 } from "~/lib/analytics";
+import { runWithAuthSettleRetries } from "~/lib/auth-settle-retry";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { isSupportedGrade } from "~/lib/grades";
@@ -321,31 +322,6 @@ const getAuthFactorList = (factors: unknown) => {
 		: "keine unterstützte Methode";
 };
 
-const wait = (milliseconds: number) =>
-	new Promise((resolve) => setTimeout(resolve, milliseconds));
-const authSettleRetryDelays = [0, 750, 1250, 2000] as const;
-const runWithAuthSettleRetries = async <TResult,>(
-	task: () => Promise<TResult>,
-): Promise<
-	| { ok: true; value: TResult }
-	| { ok: false; firstError: unknown; lastError: unknown }
-> => {
-	let firstError: unknown;
-	let lastError: unknown;
-
-	for (const delay of authSettleRetryDelays) {
-		try {
-			if (delay > 0) await wait(delay);
-			return { ok: true, value: await task() };
-		} catch (error) {
-			firstError ??= error;
-			lastError = error;
-		}
-	}
-
-	return { ok: false, firstError, lastError };
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	children,
 }) => {
@@ -486,21 +462,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 		const localDayKey = getDayKey(new Date());
 		let validationStudentCode = user.validationStudentCode ?? null;
-		try {
-			const activity = await markValidationActivity({ localDayKey });
-			validationStudentCode =
-				activity.validationStudentCode ?? validationStudentCode;
-		} catch (error) {
+		const activityResult = await runWithAuthSettleRetries(() =>
+			markValidationActivity({ localDayKey }),
+		);
+		if (!activityResult.ok) {
 			logDiagnosticError(
 				"Failed to mark onboarding validation activity.",
-				error,
+				activityResult.lastError,
 				{
 					source: "auth.onboarding.analytics.markActivity",
 					level: "warn",
 				},
 			);
+			if (activityResult.lastError !== activityResult.firstError) {
+				logDiagnosticError(
+					"Initial onboarding validation activity error.",
+					activityResult.firstError,
+					{
+						source: "auth.onboarding.analytics.markActivity.initial",
+						level: "warn",
+					},
+				);
+			}
 			return;
 		}
+		validationStudentCode =
+			activityResult.value.validationStudentCode ?? validationStudentCode;
 
 		createValidationAnalytics(posthog, {
 			distinctId: user.clerkId,
