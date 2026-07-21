@@ -36,6 +36,8 @@ const workspace = parseYaml(
 	autoInstallPeers?: boolean;
 	allowBuilds?: Record<string, boolean>;
 	onlyBuiltDependencies?: string[];
+	packageManagerStrictVersion?: boolean;
+	pmOnFail?: string;
 };
 
 function parseNpmrcSettingNames(content: string): Set<string> {
@@ -75,6 +77,7 @@ describe("pnpm toolchain", () => {
 
 	it("keeps pnpm 11 workspace settings out of .npmrc and removes legacy build settings", () => {
 		expect(workspace.autoInstallPeers).toBe(false);
+		expect(workspace.pmOnFail).toBe("error");
 		expect(workspace.allowBuilds).toEqual({
 			"browser-tabs-lock": false,
 			"core-js": false,
@@ -82,6 +85,7 @@ describe("pnpm toolchain", () => {
 			"tesseract.js": false,
 		});
 		expect(workspace).not.toHaveProperty("onlyBuiltDependencies");
+		expect(workspace).not.toHaveProperty("packageManagerStrictVersion");
 
 		const npmrcPath = new URL("../.npmrc", import.meta.url);
 		const npmrcSettingNames = existsSync(npmrcPath)
@@ -90,5 +94,7 @@ describe("pnpm toolchain", () => {
 
 		expect(npmrcSettingNames).not.toContain("autoinstallpeers");
 		expect(npmrcSettingNames).not.toContain("onlybuiltdependencies");
+		expect(npmrcSettingNames).not.toContain("packagemanagerstrictversion");
+		expect(npmrcSettingNames).not.toContain("pmonfail");
 	});
 });

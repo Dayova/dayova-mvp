@@ -57,7 +57,11 @@ each install surface selects its toolchain independently: `package.json`
 controls local Corepack, the shared `eas.json` profile controls native EAS
 Build workers, and `.eas/workflows/ci.yml` controls EAS Workflow jobs. Keep
 those pins exact and identical so no surface falls back to a different image
-default; `tests/pnpm-toolchain.test.ts` guards them against drift.
+default. Keep `pmOnFail: error` in `pnpm-workspace.yaml` so a mismatched pnpm
+binary fails immediately instead of downloading and running another version.
+The removed pnpm 10 setting `packageManagerStrictVersion` must not be restored;
+pnpm 11 replaced it with `pmOnFail`. `tests/pnpm-toolchain.test.ts` guards this
+policy against drift.
 
 The 2026 rollback from pnpm 11 to pnpm 10 was an EAS runtime compatibility
 measure, not an application compatibility requirement: the then-current EAS
