@@ -110,6 +110,17 @@ application, dependency lifecycle scripts, CI, and native builds. Therefore,
 update all three pins together and verify a frozen install, the full checks,
 production exports, and native EAS builds.
 
+React Native caches absolute native-module paths in
+`android/build/generated/autolinking/autolinking.json`. A pnpm upgrade or a
+`virtualStoreDirMaxLength` change can rename the hashed virtual-store directories
+without changing the package graph that Gradle's cache sentinel tracks. The
+`expo:android` script therefore runs
+`scripts/prepare-android-autolinking-cache.cjs` first. The preflight preserves a
+valid cache and removes only `package.json.sha` when cached native source
+directories no longer exist, causing React Native's Gradle plugin to regenerate
+its own cache. Do not replace this with unconditional deletion of Gradle output
+or `node_modules`.
+
 ## iOS Privacy Purpose Strings
 
 Dayova uses camera/photo upload for learning material and microphone/speech

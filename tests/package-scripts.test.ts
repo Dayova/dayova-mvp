@@ -32,6 +32,12 @@ describe("package scripts", () => {
 		);
 	});
 
+	it("checks the generated Android autolinking cache before native builds", () => {
+		expect(packageJson.scripts["preexpo:android"]).toBe(
+			"node scripts/prepare-android-autolinking-cache.cjs",
+		);
+	});
+
 	it("does not use POSIX-only inline environment assignments", () => {
 		expect(findPosixOnlyScripts(packageJson.scripts)).toEqual([]);
 	});
