@@ -1,5 +1,8 @@
 import { v } from "convex/values";
-import { GERMAN_FEDERAL_STATES } from "../src/lib/federal-states";
+import {
+	GERMAN_FEDERAL_STATES,
+	isGermanFederalState,
+} from "../src/lib/federal-states";
 import { GRADE_OPTIONS, isSupportedGrade } from "../src/lib/grades";
 import {
 	isSupportedSchoolType,
@@ -298,6 +301,15 @@ const normalizeOptionalGrade = (grade?: string) => {
 	return normalizedGrade;
 };
 
+const normalizeOptionalFederalState = (state?: string) => {
+	const normalizedState = state?.trim();
+	if (!normalizedState) return undefined;
+	if (!isGermanFederalState(normalizedState)) {
+		throwUserFacingError("Bitte wähle ein gültiges Bundesland aus.");
+	}
+	return normalizedState;
+};
+
 const normalizeOptionalSchoolType = (schoolType?: string) => {
 	const normalizedSchoolType = schoolType?.trim();
 	if (!normalizedSchoolType) return undefined;
@@ -320,6 +332,7 @@ const profileFields = (args: {
 }) => {
 	const grade = normalizeOptionalGrade(args.grade);
 	const schoolType = normalizeOptionalSchoolType(args.schoolType);
+	const state = normalizeOptionalFederalState(args.state);
 	return {
 		...(args.email !== undefined ? { email: normalizeEmail(args.email) } : {}),
 		...(args.name !== undefined ? { name: args.name } : {}),
@@ -327,7 +340,7 @@ const profileFields = (args: {
 		...(args.birthDate !== undefined ? { birthDate: args.birthDate } : {}),
 		...(grade !== undefined ? { grade } : {}),
 		...(schoolType !== undefined ? { schoolType } : {}),
-		...(args.state !== undefined ? { state: args.state } : {}),
+		...(state !== undefined ? { state } : {}),
 		...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
 		...(args.validationStudentCode !== undefined
 			? { validationStudentCode: args.validationStudentCode }
@@ -503,6 +516,10 @@ export const saveOnboardingAnswers = mutation({
 		if (!normalizedSchoolType) {
 			throwUserFacingError("Bitte wähle eine gültige Schulart aus.");
 		}
+		const normalizedState = normalizeOptionalFederalState(args.answers.state);
+		if (!normalizedState) {
+			throwUserFacingError("Bitte wähle ein gültiges Bundesland aus.");
+		}
 
 		const learningTimes = await insertLearningTimesWhenAbsent(ctx, {
 			ownerTokenIdentifier: identity.tokenIdentifier,
@@ -555,9 +572,11 @@ export const saveOnboardingAnswers = mutation({
 			const normalizedAnswer =
 				key === "grade"
 					? normalizedGrade
-					: key === "schoolType"
-						? normalizedSchoolType
-						: answer.trim();
+					: key === "state"
+						? normalizedState
+						: key === "schoolType"
+							? normalizedSchoolType
+							: answer.trim();
 			if (!normalizedAnswer) continue;
 
 			const questionId = questionIdsByKey[key];
