@@ -1,9 +1,8 @@
 # Dayova MVP
 
-Dayova is a German-language learning app that helps learners turn upcoming
-exams and assignments into a `Persönlicher Lernplan`, work through guided
-`Theorie`, `Üben`, and `Praxis` sessions, and continue with their next learning
-step.
+Dayova is a German-language learning app that turns upcoming exams into a
+`Persönlicher Lernplan`, guides learners through `Theorie`, `Üben`, and
+`Praxis` sessions, and separately helps them schedule and manage homework.
 
 The app is built with Expo and React Native. Convex provides the backend, Clerk
 provides authentication, NativeWind provides styling, and PostHog provides the
