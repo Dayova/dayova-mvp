@@ -166,7 +166,7 @@ test("theory fallback creates active recall cards instead of generic summaries",
 		sessionId,
 	});
 
-	expect(content?.items).toHaveLength(45);
+	expect(content?.items).toHaveLength(15);
 	expect(content?.items.every((item) => item.kind === "learnCard")).toBe(true);
 	expect(content?.items[0]).toMatchObject({
 		front: expect.stringContaining("?"),
@@ -190,12 +190,15 @@ test("theory fallback creates active recall cards instead of generic summaries",
 	expect(content?.items.map((item) => item.back).join(" ")).not.toContain(
 		"Merke dir besonders, wie das Lernziel",
 	);
-	expect(content?.items.map((item) => item.prompt).join(" ")).toContain(
-		"Klammern korrekt auflösen",
-	);
+	expect(
+		content?.items.map((item) => item.theoryContent?.explanation).join(" "),
+	).toContain("Klammern korrekt auflösen");
 	expect(content?.items.map((item) => item.prompt).join(" ")).not.toContain(
 		"im Grundfall",
 	);
+	for (const item of content?.items ?? []) {
+		expect(item.theoryContent?.example).not.toBe(item.theoryContent?.memoryCue);
+	}
 });
 
 test("split fallback stores theory then practice inside the same session", async () => {
@@ -212,27 +215,27 @@ test("split fallback stores theory then practice inside the same session", async
 	});
 
 	expect(content?.session.compositionVariant).toBe("split");
-	expect(content?.items).toHaveLength(48);
+	expect(content?.items).toHaveLength(18);
 	expect(
-		content?.items.slice(0, 30).every((item) => item.phase === "theory"),
+		content?.items.slice(0, 10).every((item) => item.phase === "theory"),
 	).toBe(true);
 	expect(
-		content?.items.slice(30).every((item) => item.phase === "practice"),
+		content?.items.slice(10).every((item) => item.phase === "practice"),
 	).toBe(true);
 	expect(
-		content?.items.slice(0, 30).every((item) => item.kind === "learnCard"),
+		content?.items.slice(0, 10).every((item) => item.kind === "learnCard"),
 	).toBe(true);
 	expect(
-		content?.items.slice(30).every((item) => item.kind !== "learnCard"),
+		content?.items.slice(10).every((item) => item.kind !== "learnCard"),
 	).toBe(true);
 	expect(
 		content?.items.reduce((total, item) => total + item.estimatedSeconds, 0),
 	).toBe(30 * 60);
-	expect(new Set(content?.items.map((item) => item.coverageKey)).size).toBe(48);
+	expect(new Set(content?.items.map((item) => item.coverageKey)).size).toBe(18);
 	expect(content?.items.map((item) => item.learningBlockIndex)).toEqual([
-		...Array.from({ length: 15 }, () => 0),
-		...Array.from({ length: 15 }, () => 1),
-		...Array.from({ length: 18 }, () => 2),
+		...Array.from({ length: 5 }, () => 0),
+		...Array.from({ length: 5 }, () => 1),
+		...Array.from({ length: 8 }, () => 2),
 	]);
 });
 
@@ -260,11 +263,11 @@ test("continue learning appends a fresh timed block", async () => {
 	const newItems = after?.items.slice(extension.firstNewItemIndex) ?? [];
 
 	expect(extension).toMatchObject({
-		firstNewItemIndex: 48,
-		addedItemCount: 18,
+		firstNewItemIndex: 18,
+		addedItemCount: 8,
 		durationMinutes: 10,
 	});
-	expect(after?.items.slice(0, 48).map((item) => item.id)).toEqual(
+	expect(after?.items.slice(0, 18).map((item) => item.id)).toEqual(
 		before?.items.map((item) => item.id),
 	);
 	expect(newItems.every((item) => item.learningBlockIndex === 3)).toBe(true);
@@ -286,8 +289,8 @@ test("continue learning appends a fresh timed block", async () => {
 	);
 
 	expect(secondExtension).toMatchObject({
-		firstNewItemIndex: 66,
-		addedItemCount: 18,
+		firstNewItemIndex: 26,
+		addedItemCount: 8,
 	});
 	expect(duplicatePrompts).toEqual([]);
 });
@@ -356,7 +359,7 @@ test("AI theory content gains a practical segment for split sessions", async () 
 	expect(content?.items[0]?.phase).toBe("theory");
 	expect(
 		content?.items.filter((item) => item.phase === "practice"),
-	).toHaveLength(18);
+	).toHaveLength(8);
 });
 
 test("practice fallback creates concrete guided practice tasks", async () => {
@@ -370,7 +373,7 @@ test("practice fallback creates concrete guided practice tasks", async () => {
 	});
 	const prompts = content?.items.map((item) => item.prompt).join(" ") ?? "";
 
-	expect(content?.items).toHaveLength(54);
+	expect(content?.items).toHaveLength(24);
 	expect(content?.items.slice(0, 6).map((item) => item.kind)).toEqual([
 		"multipleChoice",
 		"written",
@@ -381,7 +384,81 @@ test("practice fallback creates concrete guided practice tasks", async () => {
 	]);
 	expect(prompts).toContain("Übung");
 	expect(prompts).not.toContain("Welche Strategie passt");
+	expect(prompts).not.toContain("Variante ");
+	expect(prompts).not.toContain('Lösungsweg zu "');
 	expect(content?.items[0]?.choices[0]?.text).toContain("Probe");
+});
+
+test("marks shallow generated theory content for regeneration", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession("theory");
+
+	await t.mutation(
+		internal.learningSessionContent.storeGeneratedSessionContent,
+		{
+			sessionId,
+			items: [
+				{
+					kind: "learnCard",
+					title: "Oktett-Grenzen",
+					prompt: "Wie viele Bits umfasst ein einzelnes Oktett?",
+					front: "Wie viele Bits umfasst ein einzelnes Oktett?",
+					back: "Jedes Oktett hat 8 Bits.",
+					explanation:
+						"Jedes Oktett hat 8 Bits. Eine IPv4-Adresse besteht aus vier Oktetten.",
+					idealAnswer: "8 Bits",
+					theoryContent: {
+						conceptTitle: "Oktett-Grenzen",
+						question: "Wie viele Bits umfasst ein einzelnes Oktett?",
+						explanation:
+							"Jedes Oktett hat 8 Bits. Eine IPv4-Adresse besteht aus vier Oktetten.",
+						keyPoints: ["8 Bits", "Achte besonders auf: 8."],
+						example: "8 Bits",
+						memoryCue: "8 Bits",
+						commonMistake:
+							"Vergleiche deine Antwort mit der Erklärung und prüfe den entscheidenden Schritt.",
+					},
+					evaluationKeywords: ["8"],
+				},
+			],
+		},
+	);
+
+	const generationContext = await t.query(
+		internal.learningSessionContent.getSessionGenerationContext,
+		{ sessionId },
+	);
+
+	expect(generationContext.needsLegacyContentReplacement).toBe(true);
+});
+
+test("marks nested variant exercises for regeneration", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession("practice");
+
+	await t.mutation(
+		internal.learningSessionContent.storeGeneratedSessionContent,
+		{
+			sessionId,
+			items: [
+				{
+					kind: "voice",
+					title: "Sprachaufgabe",
+					prompt:
+						'Übung: Erkläre laut deinen Lösungsweg zu "Variante 1: Erkläre die entscheidende Regel zur Berechnung verfügbarer Hosts".',
+					explanation:
+						"Eine starke Antwort erklärt den entscheidenden Rechenschritt.",
+					idealAnswer: "Verwende die Formel 2^n - 2.",
+					evaluationKeywords: ["2^n", "Hosts"],
+				},
+			],
+		},
+	);
+
+	const generationContext = await t.query(
+		internal.learningSessionContent.getSessionGenerationContext,
+		{ sessionId },
+	);
+
+	expect(generationContext.needsLegacyContentReplacement).toBe(true);
 });
 
 test("multiple-choice tasks stay compact without losing plausible choices", async () => {
@@ -422,7 +499,7 @@ test("praxis fallback creates generalprobe tasks without generic strategy prompt
 	const prompts = content?.items.map((item) => item.prompt).join(" ") ?? "";
 
 	expect(content?.praxisDurationSeconds).toBe(30 * 60);
-	expect(content?.items).toHaveLength(54);
+	expect(content?.items).toHaveLength(24);
 	expect(prompts).toContain("Generalprobe");
 	expect(prompts).not.toContain("Welche Strategie passt");
 });

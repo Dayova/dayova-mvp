@@ -5,7 +5,6 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import * as SystemUI from "expo-system-ui";
 import {
 	Stack,
 	usePathname,
@@ -13,6 +12,7 @@ import {
 	useRouter,
 } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
+import * as SystemUI from "expo-system-ui";
 import { PostHogProvider } from "posthog-react-native";
 import { useEffect } from "react";
 import { Text, View, type ViewStyle } from "react-native";
@@ -69,12 +69,10 @@ function AppNavigator() {
 				<Stack.Screen
 					name="learning-times/edit"
 					options={{
+						animation: "slide_from_right",
 						contentStyle: { backgroundColor: colors.background },
-						presentation: "formSheet",
-						sheetAllowedDetents: [0.72, 1],
-						sheetCornerRadius: 32,
-						sheetGrabberVisible: true,
-						sheetInitialDetentIndex: 0,
+						gestureEnabled: true,
+						presentation: "card",
 					}}
 				/>
 			</Stack>

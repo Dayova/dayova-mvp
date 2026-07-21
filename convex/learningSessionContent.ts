@@ -281,27 +281,21 @@ const getSessionTopics = (
 	});
 };
 
-const theoryQuestionFor = (
-	blueprint: LearningQuestionBlueprint,
-	variant: number,
-) => {
+const theoryQuestionFor = (blueprint: LearningQuestionBlueprint) => {
 	const topic = blueprint.topic.title;
-	const learningGoal = blueprint.topic.learningGoal.replace(/[.!?]+$/, "");
-	const variation =
-		variant === 0 ? "" : ` Nenne eine neue Variante ${variant + 1}.`;
 	switch (blueprint.angle) {
 		case "recall":
-			return `Wie erklärst du ${topic}, damit du dieses Lernziel erreichst: ${learningGoal}?${variation}`;
+			return `Was bedeutet ${topic}, und wofür wird das Verfahren gebraucht?`;
 		case "recognize":
-			return `Welche Merkmale prüfst du bei ${topic}, um Folgendes sicher zu können: ${learningGoal}?${variation}`;
+			return `Woran erkennst du eine Aufgabe zu ${topic}?`;
 		case "apply":
-			return `Wie setzt du ${topic} an einem konkreten Beispiel um: ${learningGoal}?${variation}`;
+			return `Wie wendest du ${topic} Schritt für Schritt an?`;
 		case "findError":
-			return `Welcher typische Fehler verhindert bei ${topic} dieses Lernziel: ${learningGoal}?${variation}`;
+			return `Welcher Fehler passiert häufig bei ${topic}, und wie vermeidest du ihn?`;
 		case "compare":
-			return `Vergleiche zwei Lösungswege zu ${topic}: Welcher erfüllt dieses Lernziel besser – ${learningGoal}?${variation}`;
+			return `Worin unterscheiden sich zwei Lösungswege bei ${topic}?`;
 		case "examTransfer":
-			return `Wie zeigst du in einer Prüfungsaufgabe zu ${topic}, dass du Folgendes kannst: ${learningGoal}?${variation}`;
+			return `Wie gehst du in einer Prüfungsaufgabe zu ${topic} vor?`;
 	}
 };
 
@@ -323,19 +317,21 @@ const buildTheoryItems = (
 		const detail =
 			session.tasks[index % Math.max(session.tasks.length, 1)] ??
 			session.expectedOutcome;
-		const variant = Number(blueprint.coverageKey.split(":").at(-1) ?? 0);
-		const front = theoryQuestionFor(blueprint, variant);
-		const example = compact(`Nutze "${detail}" als kurzes Beispiel.`, detail);
+		const front = theoryQuestionFor(blueprint);
+		const example = compact(
+			`Nimm die Teilaufgabe „${detail}“. Zeige daran den ersten fachlich entscheidenden Schritt und begründe ihn.`,
+			detail,
+		);
 		const commonMistake = compact(
 			"Eine Umformung oder Begründung auslassen.",
 			"Begründe jeden Schritt.",
 		);
 		const explanation = compact(
-			`${concept}: ${blueprint.topic.learningGoal}`,
+			`${blueprint.topic.learningGoal} Das ist für diese Session wichtig, weil du damit ${session.goal.replace(/[.!?]+$/, "").toLowerCase()}.`,
 			session.goal,
 		);
 		const memoryCue = compact(
-			`Erkläre ${concept} kurz, wende es an einem Beispiel an und nenne den häufigsten Fehler.`,
+			`Merke: Bei ${concept} zählt ein nachvollziehbarer Lösungsweg, nicht nur das Endergebnis.`,
 			concept,
 		);
 		return {
@@ -392,25 +388,22 @@ const buildTaskItems = (
 		const kind = blueprint.kind as SessionContentItemKind;
 		const task = focusTasks[index % focusTasks.length] ?? session.goal;
 		const topicTask = `${blueprint.topic.title}: ${task}`;
-		const variant = Number(blueprint.coverageKey.split(":").at(-1) ?? 0) + 1;
-		const learningGoal = blueprint.topic.learningGoal.replace(/[.!?]+$/, "");
 		const freshTask = (() => {
 			switch (blueprint.angle) {
 				case "recall":
-					return `Erkläre die entscheidende Regel zu ${blueprint.topic.title}: ${learningGoal}`;
+					return `Erkläre ${blueprint.topic.title} in eigenen Worten. Gehe dabei auf diese Teilaufgabe ein: ${task}`;
 				case "recognize":
-					return `Erkenne die relevanten Merkmale von ${blueprint.topic.title}, um dieses Ziel zu erreichen: ${learningGoal}`;
+					return `Woran erkennst du, dass ${blueprint.topic.title} gebraucht wird? Nutze als Ausgangspunkt: ${task}`;
 				case "apply":
-					return `Wende ${blueprint.topic.title} in einer neuen Aufgabe an: ${learningGoal}`;
+					return `${task} Zeige Schritt für Schritt, wie du dabei ${blueprint.topic.title} anwendest.`;
 				case "findError":
-					return `Finde und korrigiere einen typischen Fehler bei ${blueprint.topic.title}: ${learningGoal}`;
+					return `Nenne einen typischen Fehler bei ${blueprint.topic.title} und korrigiere ihn. Beziehe dich auf: ${task}`;
 				case "compare":
-					return `Vergleiche zwei Lösungswege zu ${blueprint.topic.title} mit Blick auf dieses Ziel: ${learningGoal}`;
+					return `Vergleiche zwei Vorgehensweisen bei ${blueprint.topic.title}. Welche ist sicherer und warum? Ausgangspunkt: ${task}`;
 				case "examTransfer":
-					return `Übertrage ${blueprint.topic.title} auf eine neue Prüfungsaufgabe: ${learningGoal}`;
+					return `Bearbeite eine prüfungsnahe Aufgabe zu ${blueprint.topic.title}. Achte besonders auf: ${task}`;
 			}
 		})();
-		const freshTaskVariant = `Variante ${variant}: ${freshTask}`;
 		const title =
 			kind === "multipleChoice"
 				? "Auswahlfrage"
@@ -423,7 +416,7 @@ const buildTaskItems = (
 		);
 
 		if (kind === "multipleChoice") {
-			const prompt = `${phasePrefix}: Welche Lösungsidee passt zu "${freshTaskVariant}"?`;
+			const prompt = `${phasePrefix}: Welcher nächste Schritt passt? ${freshTask}`;
 			return {
 				kind,
 				title,
@@ -462,8 +455,8 @@ const buildTaskItems = (
 			title,
 			prompt:
 				kind === "voice"
-					? `${phasePrefix}: Erkläre laut deinen Lösungsweg zu "${freshTaskVariant}".`
-					: `${phasePrefix}: Löse "${freshTaskVariant}" schriftlich und notiere die Probe.`,
+					? `${phasePrefix}: ${freshTask} Antworte laut und begründe den entscheidenden Schritt.`
+					: `${phasePrefix}: ${freshTask} Antworte schriftlich und notiere eine passende Kontrolle.`,
 			explanation:
 				"Eine starke Antwort nennt den vollständigen Lösungsweg, vermeidet typische Fehler und kontrolliert das Ergebnis.",
 			idealAnswer,
@@ -709,13 +702,24 @@ const buildAnalysis = (
 const isLegacyTheoryItem = (item: Doc<"learningSessionContentItems">) =>
 	item.kind === "learnCard" &&
 	(item.back?.includes("Merke dir besonders, wie das Lernziel") ||
-		item.back?.includes("damit zusammenhängt"));
+		item.back?.includes("damit zusammenhängt") ||
+		(item.theoryContent !== undefined &&
+			(item.theoryContent.example.trim().toLocaleLowerCase("de") ===
+				item.theoryContent.memoryCue.trim().toLocaleLowerCase("de") ||
+				item.theoryContent.keyPoints.some((point) =>
+					/^Achte besonders auf:/i.test(point.trim()),
+				) ||
+				item.theoryContent.commonMistake.includes(
+					"Vergleiche deine Antwort mit der Erklärung",
+				))));
 
 const isLegacyTaskItem = (item: Doc<"learningSessionContentItems">) =>
 	item.kind !== "learnCard" &&
 	(item.prompt.includes("Welche Strategie passt") ||
 		item.prompt.includes("Schreibe deine Lösung auf:") ||
 		item.prompt.includes("Sprich deine Lösung laut ein:") ||
+		item.prompt.includes("Variante ") ||
+		item.prompt.includes('Lösungsweg zu "') ||
 		item.explanation.includes("Eine starke Antwort nennt den Lösungsweg") ||
 		item.explanation.includes("Prüfungsnah ist die Antwort"));
 

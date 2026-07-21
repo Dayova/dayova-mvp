@@ -64,10 +64,10 @@ const taskKinds: LearningQuestionKind[] = [
 ];
 
 const estimatedSecondsForKind: Record<LearningQuestionKind, number> = {
-	learnCard: 40,
-	multipleChoice: 20,
-	written: 40,
-	voice: 40,
+	learnCard: 120,
+	multipleChoice: 60,
+	written: 90,
+	voice: 90,
 };
 
 const splitIntoBlockDurations = (durationMinutes: number) => {

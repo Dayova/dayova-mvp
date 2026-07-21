@@ -17,21 +17,9 @@ import {
 	type DateTimePickerEvent,
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
-import {
-	Field,
-	FieldAccessory,
-	FieldLabel,
-	FieldTrigger,
-} from "~/components/ui/field";
-import {
-	CalendarDays,
-	ChevronDown,
-	Timer,
-	Trash2,
-	X,
-} from "~/components/ui/icon";
+import { Field, FieldLabel } from "~/components/ui/field";
+import { Timer, Trash2, X } from "~/components/ui/icon";
 import { Screen } from "~/components/ui/screen";
-import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
@@ -132,7 +120,6 @@ export default function LearningTimesScreen() {
 		LEARNING_DAYS.find((day) => String(day.value) === params.day)?.label ??
 		"Montag";
 	const [draft, setDraft] = useState<LearningTimeDraft>({ baseKey: "" });
-	const [daySheetVisible, setDaySheetVisible] = useState(false);
 	const [activeTimeField, setActiveTimeField] = useState<TimeField | null>(
 		null,
 	);
@@ -284,62 +271,42 @@ export default function LearningTimesScreen() {
 		);
 	};
 
-	const renderDaySelectSheet = () => {
-		if (!daySheetVisible) return null;
-
-		return (
-			<SelectSheet
-				visible
-				title="Wochentag auswählen"
-				options={LEARNING_DAYS.map((day) => day.label)}
-				selectedValue={selectedDay}
-				onSelect={(nextDay) =>
-					updateDraft({ selectedDay: nextDay as LearningDayLabel })
-				}
-				onClose={() => setDaySheetVisible(false)}
-				renderOptionIcon={(_option, isSelected) => (
-					<CalendarDays
-						size={19}
-						color={isSelected ? colors.primary : colors.secondaryText}
-						strokeWidth={2}
-					/>
-				)}
-			/>
-		);
-	};
-
 	return (
 		<Screen>
 			<ThemedStatusBar />
+			<View
+				className="min-h-16 flex-row items-center justify-between px-6 pb-2"
+				style={{ paddingTop: insets.top + 12 }}
+			>
+				<Text
+					accessibilityRole="header"
+					className="font-poppins font-semibold text-body-1 text-text"
+				>
+					{isEditingExisting ? "Lernzeit bearbeiten" : "Neue Lernzeit"}
+				</Text>
+				<Pressable
+					accessibilityLabel="Lernzeit schließen"
+					accessibilityRole="button"
+					hitSlop={8}
+					className="h-10 w-10 items-center justify-center rounded-full bg-muted active:opacity-75"
+					onPress={goBack}
+				>
+					<X size={18} color={colors.text} strokeWidth={2.2} />
+				</Pressable>
+			</View>
+
 			<ScrollView
+				automaticallyAdjustContentInsets={false}
 				className="flex-1 bg-background"
 				contentContainerStyle={{
 					gap: 24,
 					paddingHorizontal: 24,
-					paddingTop: 24,
-					paddingBottom: 152,
+					paddingTop: 12,
+					paddingBottom: 28,
 				}}
-				contentInsetAdjustmentBehavior="automatic"
+				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
 			>
-				<View className="min-h-11 flex-row items-center justify-between">
-					<Text
-						accessibilityRole="header"
-						className="font-poppins font-semibold text-body-1 text-text"
-					>
-						{isEditingExisting ? "Lernzeit bearbeiten" : "Neue Lernzeit"}
-					</Text>
-					<Pressable
-						accessibilityLabel="Lernzeit schließen"
-						accessibilityRole="button"
-						hitSlop={8}
-						className="h-10 w-10 items-center justify-center rounded-full bg-muted active:opacity-75"
-						onPress={goBack}
-					>
-						<X size={18} color={colors.text} strokeWidth={2.2} />
-					</Pressable>
-				</View>
-
 				<Text
 					selectable
 					className="font-poppins text-body-3 text-secondary-text"
@@ -349,26 +316,44 @@ export default function LearningTimesScreen() {
 				</Text>
 
 				<Field className="mb-0">
-					<FieldLabel>Wochentag</FieldLabel>
-					<FieldTrigger
-						accessibilityLabel={`Wochentag ${selectedDay}`}
-						accessibilityRole="button"
-						className="min-h-16 rounded-[28px] px-5"
-						onPress={() => setDaySheetVisible(true)}
-						style={{ borderCurve: "continuous" }}
-					>
-						<CalendarDays
-							size={20}
-							color={colors.secondaryText}
-							strokeWidth={2}
-						/>
-						<Text className="ml-3 flex-1 font-poppins font-semibold text-body-2 text-text">
+					<View className="mb-2 flex-row items-center justify-between">
+						<FieldLabel className="mb-0">Wochentag</FieldLabel>
+						<Text
+							selectable
+							className="font-poppins font-semibold text-body-4 text-secondary-text"
+						>
 							{selectedDay}
 						</Text>
-						<FieldAccessory>
-							<ChevronDown size={20} color={colors.text} strokeWidth={2.1} />
-						</FieldAccessory>
-					</FieldTrigger>
+					</View>
+					<View className="flex-row gap-1.5">
+						{LEARNING_DAYS.map((day) => {
+							const isSelected = day.value === selectedDayValue;
+
+							return (
+								<Pressable
+									key={day.value}
+									accessibilityLabel={day.label}
+									accessibilityRole="radio"
+									accessibilityState={{ checked: isSelected }}
+									className="h-12 flex-1 items-center justify-center rounded-full active:opacity-80"
+									onPress={() => updateDraft({ selectedDay: day.label })}
+									style={{
+										backgroundColor: isSelected
+											? colors.primary
+											: colors.surface,
+										borderCurve: "continuous",
+									}}
+								>
+									<Text
+										className="font-poppins font-semibold text-body-4"
+										style={{ color: isSelected ? colors.light1 : colors.text }}
+									>
+										{day.abbreviation}
+									</Text>
+								</Pressable>
+							);
+						})}
+					</View>
 				</Field>
 
 				<View className="flex-row gap-3">
@@ -416,16 +401,13 @@ export default function LearningTimesScreen() {
 			</ScrollView>
 
 			<View
-				pointerEvents="box-none"
-				className="absolute right-0 bottom-0 left-0 border-border border-t bg-background px-6 pt-4"
+				className="border-border border-t bg-background px-6 pt-4"
 				style={{ paddingBottom: Math.max(insets.bottom, 20) }}
 			>
 				<Button disabled={!canSave} onPress={save}>
 					<Text>{isSaving ? "Speichert..." : "Speichern"}</Text>
 				</Button>
 			</View>
-
-			{renderDaySelectSheet()}
 
 			<DateTimePickerSheet
 				visible={Boolean(activeTimeField)}

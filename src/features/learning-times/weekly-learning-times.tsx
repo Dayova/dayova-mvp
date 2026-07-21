@@ -59,17 +59,15 @@ function WeeklyLearningTimes({
 								) : null}
 							</View>
 
-							{isEmpty ? (
-								<Pressable
-									accessibilityLabel={`Lernzeit für ${day.label} hinzufügen`}
-									accessibilityRole="button"
-									hitSlop={6}
-									className="h-11 w-11 items-center justify-center rounded-full bg-primary/10 active:bg-primary/20"
-									onPress={() => onAdd(day.value)}
-								>
-									<Plus size={20} color={colors.primary} strokeWidth={2.2} />
-								</Pressable>
-							) : null}
+							<Pressable
+								accessibilityLabel={`Weitere Lernzeit für ${day.label} hinzufügen`}
+								accessibilityRole="button"
+								hitSlop={6}
+								className="h-11 w-11 items-center justify-center rounded-full bg-primary/10 active:bg-primary/20"
+								onPress={() => onAdd(day.value)}
+							>
+								<Plus size={20} color={colors.primary} strokeWidth={2.2} />
+							</Pressable>
 						</View>
 
 						{isEmpty ? null : (
@@ -115,5 +113,5 @@ function WeeklyLearningTimes({
 	);
 }
 
-export { WeeklyLearningTimes };
 export type { WeeklyLearningTime };
+export { WeeklyLearningTimes };

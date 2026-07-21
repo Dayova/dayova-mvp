@@ -42,13 +42,13 @@ describe("learning content plan", () => {
 				questionCount: block.questions.length,
 			})),
 		).toEqual([
-			{ phase: "theory", durationMinutes: 10, questionCount: 15 },
-			{ phase: "theory", durationMinutes: 10, questionCount: 15 },
-			{ phase: "practice", durationMinutes: 10, questionCount: 18 },
+			{ phase: "theory", durationMinutes: 10, questionCount: 5 },
+			{ phase: "theory", durationMinutes: 10, questionCount: 5 },
+			{ phase: "practice", durationMinutes: 10, questionCount: 8 },
 		]);
 
 		for (const block of plan.blocks) {
-			expect(block.questions.length).toBeGreaterThanOrEqual(15);
+			expect(block.questions.length).toBeGreaterThanOrEqual(5);
 			expect(
 				block.questions.reduce(
 					(total, question) => total + question.estimatedSeconds,

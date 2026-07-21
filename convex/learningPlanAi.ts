@@ -196,7 +196,8 @@ const questionsSchema = z
 			z.object({
 				prompt: germanTextSchema(
 					12,
-					"Short German diagnostic question for the student. No multiple choice and no references to files or uploads.",
+					"One short, direct German diagnostic question the student can answer without deciphering nested instructions. Ask one thing only. No multiple choice and no references to files or uploads.",
+					180,
 				),
 				targetInsight: germanTextSchema(
 					8,
@@ -325,6 +326,48 @@ const generatedTaskItemSchema = z.union([
 	}),
 ]);
 
+const generatedTheoryItemSchema = z.object({
+	conceptTitle: germanTextSchema(
+		3,
+		"Short, precise German title for exactly one concept.",
+	),
+	question: germanTextSchema(
+		12,
+		"One natural German guiding question that the learner can answer directly. Never quote or restate an instruction inside another instruction.",
+	),
+	explanation: germanTextSchema(
+		160,
+		"Clear German teaching explanation in three to five connected sentences. Explain why the rule works, not only what the result is.",
+	),
+	keyPoints: boundedArray(
+		germanTextSchema(
+			20,
+			"One specific German key point that adds information and is not merely a keyword or a copy of another section.",
+		),
+		2,
+		4,
+	),
+	example: germanTextSchema(
+		80,
+		"A concrete worked German example with an input or situation, the decisive step, and the result. Never copy the short answer or memory cue.",
+	),
+	memoryCue: germanTextSchema(
+		20,
+		"One memorable German rule of thumb that helps recall the concept. It must not duplicate the example or a key point.",
+	),
+	commonMistake: germanTextSchema(
+		40,
+		"One concept-specific German mistake, including how the learner can notice or prevent it.",
+	),
+	keywords: atMostArray(
+		germanTextSchema(
+			1,
+			"Short German evaluation keyword; numeric answers such as 6 are valid.",
+		),
+		8,
+	),
+});
+
 const createSessionTasksSchema = (itemCount: number) =>
 	z
 		.object({
@@ -332,6 +375,15 @@ const createSessionTasksSchema = (itemCount: number) =>
 		})
 		.describe(
 			`${GERMAN_UI_TEXT_RULE} Return concrete guided-practice or praxis tasks for a learning session.`,
+		);
+
+const createTheoryTopicsSchema = (itemCount: number) =>
+	z
+		.object({
+			items: exactArray(generatedTheoryItemSchema, itemCount),
+		})
+		.describe(
+			`${GERMAN_UI_TEXT_RULE} Return self-contained, instructional theory pages for a learning session.`,
 		);
 
 type LearningPlanAiContext = {
@@ -1564,34 +1616,69 @@ const normalizeGeneratedTaskItems = (
 	});
 
 const normalizeGeneratedTheoryItems = (
-	output: { items: Array<z.infer<typeof generatedTaskItemSchema>> },
+	output: { items: Array<z.infer<typeof generatedTheoryItemSchema>> },
 	questions: LearningQuestionBlueprint[],
 	block: LearningContentBlock,
 ): GeneratedSessionContentInput[] =>
-	normalizeGeneratedTaskItems(output, questions, block).map((item) => {
-		const keywordHint = item.evaluationKeywords.slice(0, 3).join(", ");
+	output.items.map((generatedItem, index) => {
+		const blueprint = questions[index];
+		if (!blueprint) {
+			throw new Error("Generated theory page has no matching blueprint.");
+		}
+		const conceptTitle = normalizeAiGeneratedGermanText(
+			generatedItem.conceptTitle,
+		);
+		const question = normalizeAiGeneratedGermanText(generatedItem.question);
+		const explanation = normalizeAiGeneratedGermanText(
+			generatedItem.explanation,
+		);
+		const keyPoints = generatedItem.keyPoints.map((point) =>
+			normalizeAiGeneratedGermanText(point),
+		);
+		const example = normalizeAiGeneratedGermanText(generatedItem.example);
+		const memoryCue = normalizeAiGeneratedGermanText(generatedItem.memoryCue);
+		const commonMistake = normalizeAiGeneratedGermanText(
+			generatedItem.commonMistake,
+		);
+		const idealAnswer = keyPoints.join(" ");
+		const evaluationKeywords = normalizeTaskKeywords(
+			generatedItem.keywords,
+			question,
+			idealAnswer,
+		);
+		const distinctSections = new Set(
+			[...keyPoints, example, memoryCue].map((section) =>
+				section.trim().toLocaleLowerCase("de"),
+			),
+		);
+		if (distinctSections.size !== keyPoints.length + 2) {
+			throw new Error("Generated theory sections repeat the same content.");
+		}
+
 		return {
-			...item,
+			phase: block.phase,
 			kind: "learnCard" as const,
-			front: item.prompt,
-			back: `${item.explanation} Musterantwort: ${item.idealAnswer}`,
-			choices: undefined,
-			correctChoiceId: undefined,
+			title: conceptTitle,
+			prompt: question,
+			front: question,
+			back: `${explanation} Beispiel: ${example} Merksatz: ${memoryCue}`,
+			explanation,
+			idealAnswer,
 			theoryContent: {
-				conceptTitle: item.title,
-				question: item.prompt,
-				explanation: item.explanation,
-				keyPoints: [
-					item.idealAnswer,
-					keywordHint
-						? `Achte besonders auf: ${keywordHint}.`
-						: item.explanation,
-				],
-				example: item.idealAnswer,
-				memoryCue: item.idealAnswer,
-				commonMistake:
-					"Vergleiche deine Antwort mit der Erklärung und prüfe den entscheidenden Schritt.",
+				conceptTitle,
+				question,
+				explanation,
+				keyPoints,
+				example,
+				memoryCue,
+				commonMistake,
 			},
+			evaluationKeywords,
+			learningBlockIndex: block.index,
+			topicId: blueprint.topic.id,
+			questionAngle: blueprint.angle,
+			coverageKey: blueprint.coverageKey,
+			estimatedSeconds: blueprint.estimatedSeconds,
 		};
 	});
 
@@ -1603,6 +1690,14 @@ const assertFreshGeneratedPrompts = (
 		existingPrompts.map((prompt) => prompt.trim().toLocaleLowerCase("de")),
 	);
 	for (const item of items) {
+		if (
+			/\bVariante\s+\d+\b/i.test(item.prompt) ||
+			/Lösungsweg\s+zu\s*[„“"]/i.test(item.prompt)
+		) {
+			throw new Error(
+				`Generated learning question contains a nested planning instruction: ${item.prompt}`,
+			);
+		}
 		const promptKey = item.prompt.trim().toLocaleLowerCase("de");
 		if (seen.has(promptKey)) {
 			throw new DuplicateGeneratedPromptError(
@@ -1708,7 +1803,7 @@ ${personalLearningTimes}`,
 					...userContent,
 					{
 						type: "text" as const,
-						text: `Dieser Lernblock dauert ${block.durationMinutes} Minuten und enthält genau ${block.questions.length} neue Fragen. Halte dich in Reihenfolge und Themenbezug exakt an diese Fragenplanung:\n${blueprintText}`,
+						text: `Dieser Lernblock dauert ${block.durationMinutes} Minuten und enthält genau ${block.questions.length} ${block.phase === "theory" ? "ausführliche Lernseiten" : "neue Fragen"}. Halte dich in Reihenfolge und Themenbezug exakt an diese Planung:\n${blueprintText}`,
 					},
 					...(previouslyUsedPrompts.length > 0 || generatedItems.length > 0
 						? [
@@ -1730,7 +1825,7 @@ ${personalLearningTimes}`,
 				];
 
 				if (block.phase === "theory") {
-					const blockSchema = createSessionTasksSchema(block.questions.length);
+					const blockSchema = createTheoryTopicsSchema(block.questions.length);
 					const generatedTopics = await withGeneratedTextRetry(
 						async (attempt): Promise<GeneratedSessionContentInput[]> => {
 							const result = await withLlmTimeout((abortSignal) =>
@@ -1741,7 +1836,7 @@ ${personalLearningTimes}`,
 									abortSignal,
 									providerOptions: vertexProviderOptions,
 									output: Output.object({ schema: blockSchema }),
-									system: `Du bist ein präziser Lerncoach. Erstelle kompakte, konkrete Active-Recall-Fragen mit Erklärung und Musterantwort. Die Fragen werden anschließend als Theorie-Lernkarten dargestellt und müssen jeweils in höchstens 40 Sekunden gelesen und verstanden werden können. Nutze die im JSON-Schema erlaubten Antwortmodi nur als Ausgabeformat. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+									system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse. Erstelle eigenständige Theorie-Lernseiten, die jeweils ungefähr zwei Minuten Lernzeit sinnvoll füllen. Jede Seite behandelt genau einen Gedanken: eine kurze direkt beantwortbare Leitfrage, eine verständliche Erklärung in drei bis fünf zusammenhängenden Sätzen, zwei bis vier gehaltvolle Kernpunkte, ein wirklich durchgerechnetes oder konkret angewandtes Beispiel, einen eigenen Merksatz und einen fachspezifischen typischen Fehler. Beispiel, Kernpunkte und Merksatz müssen unterschiedliche Inhalte haben. Verwende keine Meta-Anweisungen, internen Labels wie „Variante 1“ oder in Anführungszeichen verschachtelte Aufgaben. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 									messages: [{ role: "user", content: blockContent }],
 								}),
 							);
@@ -1774,7 +1869,7 @@ ${personalLearningTimes}`,
 								abortSignal,
 								providerOptions: vertexProviderOptions,
 								output: Output.object({ schema: blockSchema }),
-								system: `Du bist ein praxisnaher Lerncoach. Erstelle kurze, konkrete Fragen, die jeweils in höchstens 40 Sekunden beantwortet werden können. Halte die vorgegebene Reihenfolge und die Antwortmodi ein. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+								system: `Du bist ein praxisnaher Lerncoach. Erstelle natürliche, konkrete Aufgaben, die der Schüler ohne Entschlüsseln einer Meta-Anweisung direkt bearbeiten kann. Gib bei Rechen- oder Anwendungsaufgaben alle nötigen Werte und Bedingungen an. Frage pro Aufgabe genau eine Leistung ab. Zitiere keine andere Aufgabenformulierung, verwende keine internen Labels wie „Variante 1“ und schreibe nie Konstruktionen wie „Erkläre deinen Lösungsweg zu …“. Halte die vorgegebene Reihenfolge, Antwortmodi und individuellen Zeitbudgets ein. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 								messages: [{ role: "user", content: blockContent }],
 							}),
 						);
@@ -1850,6 +1945,8 @@ export const generateKnowledgeQuestions = action({
 Erstelle zuerst eine Themenkarte mit ${MIN_TOPIC_MAP_COUNT} bis ${MAX_LEARNING_TOPIC_COUNT} klar getrennten Teilthemen. Nutze kurze stabile ASCII-IDs wie "steigung-berechnen". Priorisiere prüfungsrelevante Themen und erkannte Grundlagen.
 Erstelle danach genau 5 kurze Wissensanalyse-Fragen. Ziel ist nicht Notengebung, sondern herauszufinden, welche Lernblöcke der Lernplan braucht.
 Die Fragen müssen sich konkret auf Prüfungsthema und Inhalte aus dem Material beziehen, aber wie normale Prüfungs- oder Verständnisfragen formuliert sein.
+Jede Frage fragt genau eine Sache ab, ist ohne verschachtelte Arbeitsanweisung direkt verständlich und lässt sich in wenigen Sätzen beantworten.
+Keine Frage darf eine andere Aufgabenformulierung zitieren oder Formulierungen wie „Erkläre deinen Lösungsweg zu …“ enthalten.
 Verweise in den Fragen nie direkt auf Quellen oder Uploads: keine Formulierungen wie "laut Material", "im Dokument", "auf dem Bild", "in der Datei", "Material 3 sagt" und keine Dateinamen.
 Keine Multiple-Choice-Fragen.
 Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.

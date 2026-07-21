@@ -1,4 +1,4 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import * as Device from "expo-device";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as Speech from "expo-speech";
@@ -900,8 +900,8 @@ export default function LearningSessionContentScreen() {
 	const sessionId = params.sessionId as Id<"learningPlanSessions"> | undefined;
 	const { user } = useAuth();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-	const ensureSessionContent = useMutation(
-		api.learningSessionContent.ensureSessionContent,
+	const ensureSessionContent = useAction(
+		api.learningPlanAi.ensureSessionContent,
 	);
 	const submitAnswer = useMutation(api.learningSessionContent.submitAnswer);
 	const finishSessionContent = useMutation(

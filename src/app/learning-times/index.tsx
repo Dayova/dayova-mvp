@@ -1,12 +1,13 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { Plus } from "~/components/ui/icon";
-import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
@@ -23,6 +24,7 @@ import { useDayovaTheme } from "~/lib/theme";
 export default function LearningTimesOverviewScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ returnTo?: string }>();
+	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
 	const { colors } = useDayovaTheme();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -57,8 +59,12 @@ export default function LearningTimesOverviewScreen() {
 	return (
 		<Screen>
 			<ThemedStatusBar />
-			<ScreenScroll topPadding={80} bottomPadding={80} horizontalPadding={24}>
+			<View
+				className="bg-background px-6 pb-3"
+				style={{ paddingTop: insets.top + 12 }}
+			>
 				<Header
+					className="mb-0"
 					title="Lernzeiten"
 					onBack={goBack}
 					right={
@@ -73,7 +79,19 @@ export default function LearningTimesOverviewScreen() {
 						</Button>
 					}
 				/>
+			</View>
 
+			<ScrollView
+				automaticallyAdjustContentInsets={false}
+				className="flex-1 bg-background"
+				contentContainerStyle={{
+					paddingHorizontal: 24,
+					paddingTop: 18,
+					paddingBottom: Math.max(insets.bottom + 36, 80),
+				}}
+				contentInsetAdjustmentBehavior="never"
+				showsVerticalScrollIndicator={false}
+			>
 				<Text
 					selectable
 					className="font-poppins text-body-3 text-secondary-text"
@@ -99,7 +117,7 @@ export default function LearningTimesOverviewScreen() {
 						/>
 					)}
 				</View>
-			</ScreenScroll>
+			</ScrollView>
 		</Screen>
 	);
 }
