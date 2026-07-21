@@ -4,12 +4,7 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import {
-	Stack,
-	usePathname,
-	useRootNavigationState,
-	useRouter,
-} from "expo-router";
+import { Stack } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
 import * as SystemUI from "expo-system-ui";
 import { vars } from "nativewind";
@@ -19,12 +14,13 @@ import { Text, View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
+import { AuthNavigationGate } from "~/components/auth-navigation-gate";
 import { NotificationSync } from "~/components/notification-sync";
 import {
 	SheetAccessibilityProvider,
 	useSheetAccessibility,
 } from "~/components/ui/sheet-accessibility";
-import { AuthProvider, useAuthSession } from "~/context/AuthContext";
+import { AuthProvider } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
 import {
 	isPostHogConfigured,
@@ -32,43 +28,13 @@ import {
 	postHogHost,
 } from "~/lib/analytics-core";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
-import { getAuthNavigationTarget } from "~/lib/auth-routing";
 import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
 import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
 
 const convexUrl = env.EXPO_PUBLIC_CONVEX_URL?.trim();
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 function AppNavigator() {
-	const router = useRouter();
-	const pathname = usePathname();
-	const rootNavigationState = useRootNavigationState();
-	const { user, isSessionLoading, pendingSessionTask } = useAuthSession();
 	const sheetAccessibility = useSheetAccessibility();
-
-	useEffect(() => {
-		if (isSessionLoading || !rootNavigationState?.key) return;
-
-		const targetRoute = getAuthNavigationTarget({
-			hasUser: Boolean(user),
-			isSessionLoading,
-			pathname,
-			pendingSessionTask,
-		});
-		if (!targetRoute) return;
-
-		const frame = requestAnimationFrame(() => {
-			router.replace(targetRoute);
-		});
-
-		return () => cancelAnimationFrame(frame);
-	}, [
-		isSessionLoading,
-		pathname,
-		pendingSessionTask,
-		rootNavigationState?.key,
-		router,
-		user,
-	]);
 
 	return (
 		<>
@@ -80,7 +46,9 @@ function AppNavigator() {
 					sheetAccessibility?.hasOpenSheet ? "no-hide-descendants" : "auto"
 				}
 			>
-				<Stack screenOptions={{ headerShown: false }} />
+				<AuthNavigationGate>
+					<Stack screenOptions={{ headerShown: false }} />
+				</AuthNavigationGate>
 			</View>
 		</>
 	);
