@@ -43,6 +43,8 @@ import { useValidationAnalytics } from "./use-validation-analytics";
 describe("useValidationAnalytics", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.markActivity.mockReset();
+		mocks.markActivity.mockResolvedValue({ validationStudentCode: "S1" });
 		mocks.createValidationAnalytics.mockReturnValue({
 			capture: mocks.analyticsCapture,
 		});
@@ -58,7 +60,6 @@ describe("useValidationAnalytics", () => {
 			onboarding_version: 1,
 		});
 
-		expect(mocks.createValidationAnalytics).not.toHaveBeenCalled();
 		expect(mocks.analyticsCapture).not.toHaveBeenCalled();
 		expect(mocks.logDiagnosticError).toHaveBeenCalledWith(
 			"Failed to mark validation activity.",

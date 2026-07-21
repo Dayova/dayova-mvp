@@ -45,6 +45,8 @@ export function useValidationAnalytics() {
 					level: "warn",
 					metadata: { eventName },
 				});
+				// Validation analytics are backend-confirmed; without recorded activity,
+				// this event must not be emitted or attributed from device state alone.
 				return;
 			}
 
