@@ -8,6 +8,10 @@ Confluence is the current cross-functional documentation hub. Keep this file foc
 
 - Registration is password-based: the learner enters an E-Mail address, sets a
   password, then confirms the account with a 6-digit E-Mail code.
+- Clerk `unsafeMetadata.schoolType` stores only the stable bounded `Schulart`
+  key. Exact generic legacy labels are normalized on authentication; ambiguous
+  values such as school names are removed without including the raw value in
+  diagnostics.
 - Native session lifetime, per-device logout, compromise response, app-lock,
   and step-up decisions are recorded in
   [ADR 0001](adr/0001-native-session-policy.md).

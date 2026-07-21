@@ -85,7 +85,7 @@ export default function ProfileScreen() {
 				name: normalizedName,
 				birthDate: user?.birthDate ?? "",
 				grade: user?.grade ?? "",
-				schoolType: user?.schoolType ?? "",
+				schoolType: user?.schoolType,
 				state: user?.state ?? "",
 			});
 
