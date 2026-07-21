@@ -76,7 +76,19 @@ Dayova's policy that peer dependencies must be declared deliberately.
 pnpm 11 also replaced the legacy dependency-build settings, including
 `onlyBuiltDependencies`, with one `allowBuilds` map. Dayova keeps that map as
 the sole lifecycle-script policy so an unreviewed dependency cannot execute
-install scripts. Preserve `patchedDependencies` alongside it because those
+install scripts. With pnpm 11's strict dependency-build handling, `true` means
+that a reviewed script may run, while `false` records a reviewed denial; an
+unlisted script fails installation and forces a new decision.
+
+Keep the map limited to scripts encountered by a clean install of the current
+lockfile. `esbuild` is allowed because its postinstall selects, validates, and
+prepares the platform binary. `browser-tabs-lock`, `core-js`, and
+`tesseract.js` remain explicitly denied because their postinstall scripts only
+emit promotional or funding messages. Remove entries that are no longer
+resolved or no longer expose lifecycle scripts so future dependency changes
+must be reviewed instead of inheriting stale policy.
+
+Preserve `patchedDependencies` alongside `allowBuilds` because those
 repository-owned fixes are applied during installation and must survive a
 package-manager change. An `.npmrc` may still exist for registry and
 authentication entries, but must not contain pnpm behavioral settings.

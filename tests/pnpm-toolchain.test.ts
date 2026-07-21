@@ -34,6 +34,7 @@ const workspace = parseYaml(
 	readFileSync(new URL("../pnpm-workspace.yaml", import.meta.url), "utf8"),
 ) as {
 	autoInstallPeers?: boolean;
+	allowBuilds?: Record<string, boolean>;
 	onlyBuiltDependencies?: string[];
 };
 
@@ -74,6 +75,12 @@ describe("pnpm toolchain", () => {
 
 	it("keeps pnpm 11 workspace settings out of .npmrc and removes legacy build settings", () => {
 		expect(workspace.autoInstallPeers).toBe(false);
+		expect(workspace.allowBuilds).toEqual({
+			"browser-tabs-lock": false,
+			"core-js": false,
+			esbuild: true,
+			"tesseract.js": false,
+		});
 		expect(workspace).not.toHaveProperty("onlyBuiltDependencies");
 
 		const npmrcPath = new URL("../.npmrc", import.meta.url);
