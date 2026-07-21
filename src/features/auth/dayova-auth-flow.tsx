@@ -3193,7 +3193,7 @@ function FactPanel({ step, body }: { step: FactStep; body: string }) {
 	);
 }
 
-function PlanFitStack() {
+export function PlanFitStack() {
 	const items = [
 		{
 			icon: BookOpen,
@@ -3241,6 +3241,7 @@ function PlanFitStack() {
 					return (
 						<Animated.View
 							key={item.text}
+							testID="plan-fit-card-animation"
 							entering={FadeInDown.delay(index * 80)
 								.duration(360)
 								.springify()
@@ -3248,38 +3249,44 @@ function PlanFitStack() {
 							style={{
 								width: "84%",
 								alignSelf: "center",
-								minHeight: 64,
-								borderRadius: 14,
-								backgroundColor: COLORS.surface,
-								paddingHorizontal: 14,
-								flexDirection: "row",
-								alignItems: "center",
-								gap: 14,
-								boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
-								transform: [
-									{ translateX: cardTransforms[index].translateX },
-									{ rotate: cardTransforms[index].rotate },
-								],
 							}}
 						>
 							<View
 								style={{
-									width: 36,
-									height: 36,
-									borderRadius: 18,
-									backgroundColor: "rgba(0, 186, 255, 0.08)",
+									width: "100%",
+									minHeight: 64,
+									borderRadius: 14,
+									backgroundColor: COLORS.surface,
+									paddingHorizontal: 14,
+									flexDirection: "row",
 									alignItems: "center",
-									justifyContent: "center",
+									gap: 14,
+									boxShadow: "0 12px 22px rgba(20, 28, 48, 0.05)",
+									transform: [
+										{ translateX: cardTransforms[index].translateX },
+										{ rotate: cardTransforms[index].rotate },
+									],
 								}}
 							>
-								<Icon size={18} color={COLORS.primary} strokeWidth={2} />
+								<View
+									style={{
+										width: 36,
+										height: 36,
+										borderRadius: 18,
+										backgroundColor: "rgba(0, 186, 255, 0.08)",
+										alignItems: "center",
+										justifyContent: "center",
+									}}
+								>
+									<Icon size={18} color={COLORS.primary} strokeWidth={2} />
+								</View>
+								<Text
+									className="flex-1 font-poppins"
+									style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}
+								>
+									{item.text}
+								</Text>
 							</View>
-							<Text
-								className="flex-1 font-poppins"
-								style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}
-							>
-								{item.text}
-							</Text>
 						</Animated.View>
 					);
 				})}

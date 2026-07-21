@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { AuthChoiceScreen, LoginScreen } from "./dayova-auth-flow";
+import { StyleSheet } from "react-native";
+import {
+	AuthChoiceScreen,
+	LoginScreen,
+	PlanFitStack,
+} from "./dayova-auth-flow";
 
 const mockLogin = jest.fn<
 	(input: {
@@ -201,6 +206,20 @@ describe("LoginScreen", () => {
 
 		expect(screen.queryByText("Angemeldet bleiben")).toBeNull();
 		expect(screen.getByText("Passwort vergessen?")).toBeOnTheScreen();
+	});
+
+	test("keeps layout animations and static transforms on separate native views", async () => {
+		const screen = await render(<PlanFitStack />);
+		const conflictingViews = screen
+			.getAllByTestId("plan-fit-card-animation")
+			.filter((view) => {
+				const style = StyleSheet.flatten(view.props.style);
+				return (
+					view.props.entering !== undefined && style?.transform !== undefined
+				);
+			});
+
+		expect(conflictingViews).toHaveLength(0);
 	});
 
 	test("pushes registration so the native back gesture keeps its entry route", async () => {
