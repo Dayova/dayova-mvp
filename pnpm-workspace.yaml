@@ -1,16 +1,11 @@
-allowBuilds:
-  '@clerk/shared': false
-  browser-tabs-lock: false
-  bufferutil: false
-  core-js: false
-  dtrace-provider: false
-  esbuild: true
-  msgpackr-extract: false
-  tesseract.js: false
-  utf-8-validate: false
+autoInstallPeers: false
+pmOnFail: error
 
-onlyBuiltDependencies:
-  - esbuild
+allowBuilds:
+  browser-tabs-lock: false
+  core-js: false
+  esbuild: true
+  tesseract.js: false
 
 patchedDependencies:
   '@react-native/gradle-plugin@0.86.0': patches/@react-native__gradle-plugin@0.86.0.patch
