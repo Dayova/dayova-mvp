@@ -57,6 +57,15 @@ describe("theme CSS", () => {
 		expect(appConfig).toMatch(/userInterfaceStyle:\s*"automatic"/);
 	});
 
+	test("uses the Dayova dark background for the native dark splash screen", () => {
+		const appConfig = readFileSync(APP_CONFIG_PATH, "utf8");
+
+		expect(appConfig).toContain('const DARK_BACKGROUND_COLOR = "#131216";');
+		expect(appConfig).toMatch(
+			/"expo-splash-screen"[\s\S]*dark:\s*\{[\s\S]*image:\s*DAYOVA_LOGO,[\s\S]*backgroundColor:\s*DARK_BACKGROUND_COLOR/,
+		);
+	});
+
 	test("resolves the system preference from the native appearance", () => {
 		const themeProvider = readFileSync(THEME_PROVIDER_PATH, "utf8");
 

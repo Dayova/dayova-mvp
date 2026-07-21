@@ -29,6 +29,9 @@ if (isReleaseConfig) {
 
 const APP_VERSION = "1.0.3";
 const BACKGROUND_COLOR = "#ffffff";
+// Keep this native launch color aligned with DARK_THEME_VARIABLES["--background"].
+// theme-css.test.ts prevents the values from drifting.
+const DARK_BACKGROUND_COLOR = "#131216";
 // Keep this native-build token aligned with DAYOVA_DESIGN_SYSTEM.colors.primary.
 // android-material-controls.test.ts prevents the two values from drifting.
 const DAYOVA_PRIMARY = "#00BAFF";
@@ -159,6 +162,10 @@ const config: ExpoConfig = {
 				image: DAYOVA_LOGO,
 				resizeMode: "contain",
 				backgroundColor: BACKGROUND_COLOR,
+				dark: {
+					image: DAYOVA_LOGO,
+					backgroundColor: DARK_BACKGROUND_COLOR,
+				},
 			},
 		],
 	],

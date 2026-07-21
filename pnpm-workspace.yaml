@@ -1,5 +1,7 @@
 autoInstallPeers: false
 pmOnFail: error
+# Leave enough path budget for CMake/Ninja in deep Windows worktrees.
+virtualStoreDirMaxLength: 40
 
 allowBuilds:
   browser-tabs-lock: false

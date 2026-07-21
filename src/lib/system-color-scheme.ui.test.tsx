@@ -6,6 +6,8 @@ import { useSystemColorScheme } from "./system-color-scheme.ios";
 
 type AppearanceMock = {
 	__emit: (colorScheme: "light" | "dark") => void;
+	__emitResume: (generation: number) => void;
+	__getReleaseSnapshotShieldGenerations: () => number[];
 	__getSubscriberCount: () => number;
 	__reset: () => void;
 	__setBeforeNextSubscription: (colorScheme: "light" | "dark") => void;
@@ -39,5 +41,25 @@ describe("useSystemColorScheme on iOS", () => {
 
 		await act(() => screen.unmount());
 		expect(appearanceMock.__getSubscriberCount()).toBe(0);
+	});
+
+	test("releases the current snapshot shield after a resumed commit", async () => {
+		await render(<ColorSchemeProbe />);
+
+		expect(appearanceMock.__getReleaseSnapshotShieldGenerations()).toEqual([]);
+
+		await act(() => appearanceMock.__emitResume(7));
+		expect(appearanceMock.__getReleaseSnapshotShieldGenerations()).toEqual([7]);
+	});
+
+	test("coalesces rapid resume acknowledgements to the latest generation", async () => {
+		await render(<ColorSchemeProbe />);
+
+		await act(() => {
+			appearanceMock.__emitResume(8);
+			appearanceMock.__emitResume(9);
+		});
+
+		expect(appearanceMock.__getReleaseSnapshotShieldGenerations()).toEqual([9]);
 	});
 });

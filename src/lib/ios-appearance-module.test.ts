@@ -10,6 +10,14 @@ const IOS_PODSPEC_PATH = resolve(
 	process.cwd(),
 	"modules/dayova-system-appearance/ios/DayovaSystemAppearance.podspec",
 );
+const IOS_TYPESCRIPT_MODULE_PATH = resolve(
+	process.cwd(),
+	"modules/dayova-system-appearance/src/DayovaSystemAppearanceModule.ts",
+);
+const IOS_SYSTEM_COLOR_SCHEME_PATH = resolve(
+	process.cwd(),
+	"src/lib/system-color-scheme.ios.ts",
+);
 
 function sectionBetween(
 	source: string,
@@ -97,9 +105,9 @@ describe("iOS system appearance module", () => {
 
 		expect(appActiveHandler).toContain("Self.notifyReactNativeAppearance()");
 		expect(appActiveHandler).toContain("refreshAppearanceObservation()");
-		expect(appActiveHandler.indexOf("Self.notifyReactNativeAppearance()")).toBeLessThan(
-			appActiveHandler.indexOf("refreshAppearanceObservation()"),
-		);
+		expect(
+			appActiveHandler.indexOf("Self.notifyReactNativeAppearance()"),
+		).toBeLessThan(appActiveHandler.indexOf("refreshAppearanceObservation()"));
 
 		const refreshHandler = balancedBlock(
 			module,
@@ -107,5 +115,43 @@ describe("iOS system appearance module", () => {
 		);
 		expect(refreshHandler).toContain("guard isObserving else { return }");
 		expect(refreshHandler).toContain("installObserver()");
+	});
+
+	test("covers stale app snapshots until the resumed theme has committed", () => {
+		const module = readFileSync(IOS_MODULE_PATH, "utf8");
+		const typedModule = readFileSync(IOS_TYPESCRIPT_MODULE_PATH, "utf8");
+		const systemColorScheme = readFileSync(
+			IOS_SYSTEM_COLOR_SCHEME_PATH,
+			"utf8",
+		);
+
+		const createHandler = balancedBlock(module, "OnCreate");
+		expect(createHandler).toContain("startSnapshotShieldObservation()");
+		expect(module).toContain("UIApplication.willResignActiveNotification");
+		expect(module).toContain("showSnapshotShield()");
+		expect(module).toContain("snapshotShieldGeneration += 1");
+		expect(module).toContain("shield.isUserInteractionEnabled = false");
+		expect(module).toContain("shield.isAccessibilityElement = false");
+		expect(module).toContain("shield.accessibilityElementsHidden = true");
+		expect(module).toContain("shield.accessibilityViewIsModal = true");
+		expect(module).toContain('Function("releaseSnapshotShield")');
+		expect(module).toContain("generation == snapshotShieldGeneration");
+
+		const appActiveHandler = balancedBlock(module, "OnAppBecomesActive");
+		expect(appActiveHandler).toContain("refreshAppearanceObservation()");
+		expect(appActiveHandler).toContain('sendEvent("onResume",');
+		expect(
+			appActiveHandler.indexOf("refreshAppearanceObservation()"),
+		).toBeLessThan(appActiveHandler.indexOf('sendEvent("onResume",'));
+
+		expect(typedModule).toContain(
+			"releaseSnapshotShield(generation: number): void;",
+		);
+		expect(systemColorScheme).toMatch(
+			/DayovaSystemAppearance\.addListener\(\s*"onResume"/,
+		);
+		expect(systemColorScheme).toContain(
+			"DayovaSystemAppearance.releaseSnapshotShield(snapshotShieldGeneration)",
+		);
 	});
 });

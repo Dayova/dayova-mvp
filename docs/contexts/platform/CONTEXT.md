@@ -77,6 +77,14 @@ silently restore pnpm's default of installing missing peer dependencies.
 Keeping `autoInstallPeers: false` in the workspace file instead preserves
 Dayova's policy that peer dependencies must be declared deliberately.
 
+Keep `virtualStoreDirMaxLength: 40` in `pnpm-workspace.yaml`. Native Android
+dependencies add CMake build directories below pnpm's virtual store, and the
+default Windows package-directory length can push those paths beyond CMake
+3.22's 250-character object-path budget in deep worktrees. Forty retains
+readable package prefixes where possible while leaving enough space for CMake
+and Ninja's generated suffixes. This is a pnpm behavior setting and therefore
+does not belong in `.npmrc`.
+
 pnpm 11 also replaced the legacy dependency-build settings, including
 `onlyBuiltDependencies`, with one `allowBuilds` map. Dayova keeps that map as
 the sole lifecycle-script policy so an unreviewed dependency cannot execute

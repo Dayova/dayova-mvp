@@ -1,27 +1,44 @@
 let colorScheme = "light";
 let beforeNextSubscription;
-const listeners = new Set();
+let releaseSnapshotShieldGenerations = [];
+const listeners = {
+	onChange: new Set(),
+	onResume: new Set(),
+};
 
 const appearanceModule = {
-	addListener: (_eventName, listener) => {
-		beforeNextSubscription?.();
-		beforeNextSubscription = undefined;
-		listeners.add(listener);
+	addListener: (eventName, listener) => {
+		if (eventName === "onChange") {
+			beforeNextSubscription?.();
+			beforeNextSubscription = undefined;
+		}
+		listeners[eventName].add(listener);
 
-		return { remove: () => listeners.delete(listener) };
+		return { remove: () => listeners[eventName].delete(listener) };
 	},
 	getColorScheme: () => colorScheme,
+	releaseSnapshotShield: (generation) => {
+		releaseSnapshotShieldGenerations.push(generation);
+	},
 	__emit: (nextColorScheme) => {
 		colorScheme = nextColorScheme;
-		for (const listener of listeners) {
+		for (const listener of listeners.onChange) {
 			listener({ colorScheme });
 		}
 	},
-	__getSubscriberCount: () => listeners.size,
+	__emitResume: (generation) => {
+		for (const listener of listeners.onResume) listener({ generation });
+	},
+	__getReleaseSnapshotShieldGenerations: () => [
+		...releaseSnapshotShieldGenerations,
+	],
+	__getSubscriberCount: () => listeners.onChange.size,
 	__reset: () => {
 		colorScheme = "light";
 		beforeNextSubscription = undefined;
-		listeners.clear();
+		releaseSnapshotShieldGenerations = [];
+		listeners.onChange.clear();
+		listeners.onResume.clear();
 	},
 	__setBeforeNextSubscription: (nextColorScheme) => {
 		beforeNextSubscription = () => {
