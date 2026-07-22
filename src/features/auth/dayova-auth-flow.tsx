@@ -24,7 +24,6 @@ import {
 	View,
 } from "react-native";
 import Animated, {
-	Easing,
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
@@ -34,21 +33,18 @@ import Animated, {
 	useAnimatedScrollHandler,
 	useAnimatedStyle,
 	useSharedValue,
-	withRepeat,
-	withSequence,
-	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, {
 	Circle,
 	Defs,
-	Ellipse,
 	Path,
 	Rect,
 	Stop,
 	LinearGradient as SvgLinearGradient,
 	type SvgProps,
 } from "react-native-svg";
+import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import {
@@ -107,18 +103,6 @@ const OTP_CELL_KEYS = [
 	"otp-cell-4",
 	"otp-cell-5",
 	"otp-cell-6",
-] as const;
-const FLOWER_PETAL_KEYS = [
-	"flower-petal-0",
-	"flower-petal-1",
-	"flower-petal-2",
-	"flower-petal-3",
-	"flower-petal-4",
-	"flower-petal-5",
-	"flower-petal-6",
-	"flower-petal-7",
-	"flower-petal-8",
-	"flower-petal-9",
 ] as const;
 const otpAutoComplete = Platform.select<TextInputProps["autoComplete"]>({
 	android: "sms-otp",
@@ -1748,7 +1732,7 @@ function CreationLoaderScreen({
 					justifyContent: "center",
 				}}
 			>
-				<AnimatedFlower />
+				<AnimatedFlowerLoader size={190} />
 				<Text
 					className="mt-10 text-center font-bold font-poppins text-text"
 					style={{ fontSize: 20, lineHeight: 29 }}
@@ -3114,54 +3098,5 @@ function PhoneBackground(props: SvgProps) {
 				</SvgLinearGradient>
 			</Defs>
 		</Svg>
-	);
-}
-
-function AnimatedFlower() {
-	const rotation = useSharedValue(0);
-	const pulse = useSharedValue(1);
-
-	useEffect(() => {
-		rotation.value = withRepeat(
-			withTiming(360, { duration: 3600, easing: Easing.linear }),
-			-1,
-			false,
-		);
-		pulse.value = withRepeat(
-			withSequence(
-				withTiming(1.07, { duration: 900, easing: Easing.inOut(Easing.quad) }),
-				withTiming(0.95, { duration: 900, easing: Easing.inOut(Easing.quad) }),
-			),
-			-1,
-			true,
-		);
-	}, [pulse, rotation]);
-
-	const style = useAnimatedStyle(() => ({
-		transform: [{ rotate: `${rotation.value}deg` }, { scale: pulse.value }],
-	}));
-
-	return (
-		<Animated.View style={[{ width: 190, height: 190 }, style]}>
-			<Svg width={190} height={190} viewBox="0 0 190 190">
-				{FLOWER_PETAL_KEYS.map((petalKey, index) => {
-					const angle = (index * 36 * Math.PI) / 180;
-					const cx = 95 + Math.cos(angle) * 34;
-					const cy = 95 + Math.sin(angle) * 34;
-					return (
-						<Ellipse
-							key={petalKey}
-							cx={cx}
-							cy={cy}
-							rx="44"
-							ry="30"
-							fill="#00BAFF"
-							opacity="0.38"
-							transform={`rotate(${index * 36} ${cx} ${cy})`}
-						/>
-					);
-				})}
-			</Svg>
-		</Animated.View>
 	);
 }

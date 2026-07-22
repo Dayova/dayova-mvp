@@ -5,11 +5,11 @@ import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
+import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
-import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useValidationAnalytics } from "~/lib/analytics";
@@ -152,7 +152,9 @@ export default function LearningPlanGeneratingScreen() {
 			>
 				<Header title="Lernplan" onBack={goBack} />
 				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
-					<AnalysisOrbitLoader />
+					<View className="mb-12">
+						<AnimatedFlowerLoader />
+					</View>
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text/70">
 						Aus deinen Antworten erstellen wir deinen persönlichen Lernplan.
 					</Text>
