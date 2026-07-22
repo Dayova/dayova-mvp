@@ -10,7 +10,7 @@ Repo-local context docs and ADRs are code-adjacent technical guides. They captur
 
 ## Agent access
 
-Use the semantic Notion connector when a task depends on internal product, business, research, meeting, or decision context. Search Notion before claiming that internal guidance does not exist, and preserve the canonical Notion page URL when referencing it from Linear, GitHub, or repo-local docs. If Notion access is unavailable, state that limitation and continue from available repo context without inventing or silently reconstructing internal documentation.
+Use the semantic Notion connector when a task depends on internal product, business, research, meeting, or decision context. Search Notion before claiming that internal guidance does not exist, and preserve the canonical Notion page URL when referencing it from Linear, GitHub, or repo-local docs. If Notion access is unavailable, state that limitation. Continue only when the task can be completed safely from the available Linear and repository evidence. If missing Notion context could materially change the implementation or decision, stop and surface the blocker rather than guessing or reconstructing the missing documentation.
 
 Do not use browser automation as the default Notion API. Do not copy private internal material into the repository when a link and concise implementation-facing summary are sufficient.
 
@@ -18,11 +18,12 @@ Use this ownership rule consistently:
 
 - If it needs to be done, tracked, assigned, or moved through a workflow, it belongs in Linear.
 - If it needs to be known, understood, discussed, or remembered internally, it belongs in Notion.
-- If it changes code or defines a code-facing technical contract, it belongs in GitHub and the relevant repo-local context doc or ADR.
+- Code and implementation evidence belong in GitHub.
+- Durable code-facing contracts, architectural constraints, or significant technical decisions belong in the relevant repo-local context documentation or ADR.
 
-Do not create mirrored task databases or parallel execution workflows in Notion. Notion pages may link to or embed Linear issues, projects, and views; actionable follow-ups discovered in Notion must be created in Linear.
+Do not create mirrored task databases or parallel execution workflows in Notion. Notion pages may link to or embed Linear issues, projects, and views. Confirmed actionable follow-up work discovered in Notion must be reconciled into Linear as the canonical work system. Search existing Linear work first, then link, update, or create work as appropriate; do not create duplicate issues.
 
-When documentation disagrees, treat Notion as canonical for current internal product and business context. Treat the code, tests, and repo-local ADRs as canonical for implemented technical behavior. Surface the drift and reconcile both sources rather than silently choosing or copying stale content.
+When sources disagree, use their ownership boundaries rather than one global precedence rule. Linear is canonical for active work scope, ownership, status, dependencies, and approved acceptance criteria. Notion is canonical for current internal product, business, research, and organizational knowledge. Code and tests are canonical for actual implemented behavior, while repo-local ADRs govern accepted code-facing technical decisions. Surface meaningful drift and reconcile the owning systems rather than silently choosing or copying stale content.
 
 ## Layout
 
