@@ -11,6 +11,8 @@ import {
 import Animated, {
 	cancelAnimation,
 	Easing,
+	FadeIn,
+	FadeOut,
 	useAnimatedStyle,
 	useReducedMotion,
 	useSharedValue,
@@ -88,6 +90,7 @@ const LEARNING_PATH_ICON_COMPONENT = {
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
 const SESSION_PREVIEW_CARD_HEIGHT = 174;
+const SESSION_PREVIEW_TRANSITION_DURATION_MS = 160;
 
 const getSessionRoute = (
 	planId: Id<"learningPlans">,
@@ -104,25 +107,64 @@ function SessionPreviewCard({
 	onOpen: () => void;
 }) {
 	const { colors } = useDayovaTheme();
+	const reduceMotion = useReducedMotion();
 	const phase = PHASE_COLOR[session.phase];
 	const PhaseIcon =
 		LEARNING_PATH_ICON_COMPONENT[LEARNING_PATH_PHASE_ICON[session.phase]];
 	const title = formatGermanUiText(session.title);
 	const description = formatGermanUiText(session.goal);
+	const content = (
+		<View className="gap-2">
+			<View className="flex-row items-start justify-between gap-3">
+				<Text
+					className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-2 text-text"
+					numberOfLines={2}
+				>
+					{title}
+				</Text>
 
-	return (
+				<View className="shrink-0 flex-row items-center justify-end gap-2">
+					<View
+						className="flex-row items-center gap-1 rounded-full px-2.5 py-1.5"
+						style={{ backgroundColor: phase.background }}
+					>
+						<PhaseIcon size={12} color={phase.foreground} strokeWidth={2.1} />
+						<Text
+							className="font-poppins font-semibold text-body-5"
+							style={{ color: phase.foreground }}
+						>
+							{PHASE_LABEL[session.phase]}
+						</Text>
+					</View>
+
+					<View className="rounded-full bg-system-subtle px-3 py-1.5">
+						<Text className="font-poppins font-semibold text-body-5 text-primary">
+							{`${session.durationMinutes} min`}
+						</Text>
+					</View>
+				</View>
+			</View>
+
+			<View className="flex-row items-center gap-1.5">
+				<Time04 size={13} color={colors.secondaryText} strokeWidth={2} />
+				<Text className="font-poppins text-body-4 text-secondary-text">
+					{session.dateLabel}
+				</Text>
+			</View>
+
+			<Text
+				className="max-w-[292px] font-poppins text-body-4 text-secondary-text"
+				numberOfLines={2}
+			>
+				{description}
+			</Text>
+		</View>
+	);
+
+	const card = canOpen ? (
 		<CompactNotchedActionCard
-			actionAccessibilityHint={
-				canOpen
-					? "Öffnet die ausgewählte Lerneinheit."
-					: "Dieser Lernblock ist noch gesperrt und wird erst nach dem vorherigen Lernblock freigeschaltet."
-			}
-			actionAccessibilityLabel={
-				canOpen
-					? `Lerneinheit ${title} öffnen`
-					: `Lerneinheit ${title} ist gesperrt`
-			}
-			actionDisabled={!canOpen}
+			actionAccessibilityHint="Öffnet die ausgewählte Lerneinheit."
+			actionAccessibilityLabel={`Lerneinheit ${title} öffnen`}
 			actionIcon={
 				<ArrowUpRight
 					size={24}
@@ -139,52 +181,43 @@ function SessionPreviewCard({
 				paddingBottom: 24,
 			}}
 		>
-			<View className="gap-2">
-				<View className="flex-row items-start justify-between gap-3">
-					<Text
-						className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-2 text-text"
-						numberOfLines={2}
-					>
-						{title}
-					</Text>
-
-					<View className="shrink-0 flex-row items-center justify-end gap-2">
-						<View
-							className="flex-row items-center gap-1 rounded-full px-2.5 py-1.5"
-							style={{ backgroundColor: phase.background }}
-						>
-							<PhaseIcon size={12} color={phase.foreground} strokeWidth={2.1} />
-							<Text
-								className="font-poppins font-semibold text-body-5"
-								style={{ color: phase.foreground }}
-							>
-								{PHASE_LABEL[session.phase]}
-							</Text>
-						</View>
-
-						<View className="rounded-full bg-system-subtle px-3 py-1.5">
-							<Text className="font-poppins font-semibold text-body-5 text-primary">
-								{`${session.durationMinutes} min`}
-							</Text>
-						</View>
-					</View>
-				</View>
-
-				<View className="flex-row items-center gap-1.5">
-					<Time04 size={13} color={colors.secondaryText} strokeWidth={2} />
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						{session.dateLabel}
-					</Text>
-				</View>
-
-				<Text
-					className="max-w-[292px] font-poppins text-body-4 text-secondary-text"
-					numberOfLines={2}
-				>
-					{description}
-				</Text>
-			</View>
+			{content}
 		</CompactNotchedActionCard>
+	) : (
+		<View
+			style={{
+				width: "100%",
+				minHeight: SESSION_PREVIEW_CARD_HEIGHT,
+				paddingHorizontal: 24,
+				paddingTop: 22,
+				paddingBottom: 24,
+				borderWidth: 1,
+				borderColor: colors.border,
+				borderRadius: 44,
+				borderCurve: "continuous",
+				backgroundColor: colors.surface,
+			}}
+		>
+			{content}
+		</View>
+	);
+
+	return (
+		<Animated.View
+			entering={
+				reduceMotion
+					? undefined
+					: FadeIn.duration(SESSION_PREVIEW_TRANSITION_DURATION_MS)
+			}
+			exiting={
+				reduceMotion
+					? undefined
+					: FadeOut.duration(SESSION_PREVIEW_TRANSITION_DURATION_MS)
+			}
+			style={{ width: "100%" }}
+		>
+			{card}
+		</Animated.View>
 	);
 }
 
@@ -719,6 +752,7 @@ export default function LearningPlanSessionsScreen() {
 					</View>
 				) : selectedSession ? (
 					<SessionPreviewCard
+						key={selectedSession.id}
 						canOpen={canOpenSelectedSession}
 						session={selectedSession}
 						onOpen={() => {
