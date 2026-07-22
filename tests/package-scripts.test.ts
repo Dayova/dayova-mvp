@@ -33,6 +33,16 @@ const maskQuotedArguments = (command: string) => {
 				return " ";
 			}
 
+			if (escaped) {
+				escaped = false;
+				return " ";
+			}
+
+			if (character === "\\") {
+				escaped = true;
+				return " ";
+			}
+
 			if (character === "'" || character === '"') {
 				quote = character;
 				return " ";
@@ -105,10 +115,15 @@ describe("package scripts", () => {
 			findPosixOnlyScripts({
 				singleQuoted: "echo '|| APP_VARIANT=production'",
 				doubleQuoted: 'echo "&& APP_VARIANT=production"',
-				escapedDoubleQuote: 'echo "\\"; APP_VARIANT=production"',
+				quotedEscapedDoubleQuote: String.raw`echo "\"; APP_VARIANT=production"`,
+				escapedSemicolon: String.raw`echo \; APP_VARIANT=production`,
+				escapedAnd: String.raw`echo \&\& APP_VARIANT=production`,
+				escapedOr: String.raw`echo \|\| APP_VARIANT=production`,
+				escapedQuote: String.raw`echo \" APP_VARIANT=production`,
+				escapedQuoteBeforeAssignment: String.raw`echo \" && APP_VARIANT=production expo export`,
 				realAssignmentAfterQuote:
 					"echo '|| APP_VARIANT=preview' && APP_VARIANT=production expo export",
 			}),
-		).toEqual(["realAssignmentAfterQuote"]);
+		).toEqual(["escapedQuoteBeforeAssignment", "realAssignmentAfterQuote"]);
 	});
 });
