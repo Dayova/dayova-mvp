@@ -9,11 +9,45 @@ const packageJson = JSON.parse(
 
 const developmentExpoScripts = ["expo:start", "expo:android", "expo:ios"];
 const posixOnlyEnvironmentAssignment =
-	/(?:^|(?:&&|\|\||;)\s*)[A-Za-z_][A-Za-z0-9_]*=[^\s;&|]+(?=\s|&&|\|\||;|$)/;
+	/(?:^|(?:&&|\|\||;)\s*)[A-Za-z_][A-Za-z0-9_]*=[^\s;&|]*(?=\s|&&|\|\||;|$)/;
+
+// Package scripts use simple shell command lines. Mask quoted arguments before
+// checking command boundaries so examples or messages containing shell-like
+// text are not mistaken for executable environment assignments.
+const maskQuotedArguments = (command: string) => {
+	let quote: "'" | '"' | null = null;
+	let escaped = false;
+
+	return [...command]
+		.map((character) => {
+			if (quote) {
+				if (quote === '"' && character === "\\" && !escaped) {
+					escaped = true;
+					return " ";
+				}
+
+				if (character === quote && !escaped) {
+					quote = null;
+				}
+				escaped = false;
+				return " ";
+			}
+
+			if (character === "'" || character === '"') {
+				quote = character;
+				return " ";
+			}
+
+			return character;
+		})
+		.join("");
+};
 
 const findPosixOnlyScripts = (scripts: Record<string, string>) =>
 	Object.entries(scripts)
-		.filter(([, command]) => posixOnlyEnvironmentAssignment.test(command))
+		.filter(([, command]) =>
+			posixOnlyEnvironmentAssignment.test(maskQuotedArguments(command)),
+		)
 		.map(([name]) => name);
 
 describe("package scripts", () => {
@@ -45,7 +79,9 @@ describe("package scripts", () => {
 	it("detects POSIX-only assignments after shell operators", () => {
 		expect(
 			findPosixOnlyScripts({
+				empty: "APP_VARIANT= expo export",
 				and: "pnpm check && APP_VARIANT=production expo export",
+				andEmpty: "pnpm check && APP_VARIANT= expo export",
 				andWithoutSpaces: "APP_VARIANT=production&&expo export",
 				or: "pnpm check || APP_VARIANT=development expo start",
 				orWithoutSpaces: "APP_VARIANT=development||expo start",
@@ -53,12 +89,26 @@ describe("package scripts", () => {
 				semicolonWithoutSpaces: "APP_VARIANT=preview;expo config",
 			}),
 		).toEqual([
+			"empty",
 			"and",
+			"andEmpty",
 			"andWithoutSpaces",
 			"or",
 			"orWithoutSpaces",
 			"semicolon",
 			"semicolonWithoutSpaces",
 		]);
+	});
+
+	it("ignores assignment-like text inside quoted arguments", () => {
+		expect(
+			findPosixOnlyScripts({
+				singleQuoted: "echo '|| APP_VARIANT=production'",
+				doubleQuoted: 'echo "&& APP_VARIANT=production"',
+				escapedDoubleQuote: 'echo "\\"; APP_VARIANT=production"',
+				realAssignmentAfterQuote:
+					"echo '|| APP_VARIANT=preview' && APP_VARIANT=production expo export",
+			}),
+		).toEqual(["realAssignmentAfterQuote"]);
 	});
 });
