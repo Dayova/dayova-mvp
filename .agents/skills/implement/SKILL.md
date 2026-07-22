@@ -11,4 +11,4 @@ Run typechecking regularly, single test files regularly, and the full test suite
 
 Once done, use /code-review to review the work.
 
-Commit only when the user requested a commit or the issue workflow explicitly requires one. Otherwise leave the completed changes in the worktree and report the files changed plus the validation run.
+Follow the repository's delivery policy. For Dayova implementation work, validate the result, commit only the in-scope changes, and push the non-default feature or PR branch unless the user explicitly asks to keep the work local. Never push the default branch or stage unrelated changes. If safe delivery is blocked, report the blocker instead of silently leaving completed work unpublished.

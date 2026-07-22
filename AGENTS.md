@@ -24,6 +24,12 @@ Convex agent skills for common tasks can be installed by running
 
 ## Agent skills
 
+### Delivery workflow
+
+For requests to implement, fix, build, update, refactor, or address review feedback, completion includes validation, an intentional commit containing only the in-scope changes, and a push to the non-default feature or pull-request branch. The user does not need to repeat “commit and push.” Update an existing pull request when one exists; otherwise create a scoped `codex/` branch from the current default branch and open a draft pull request when the work is ready for review.
+
+Never push directly to the default branch, stage unrelated user changes, or mix a distinct follow-up into the current branch. Put unrelated follow-up work on a separate branch, commit, and pull request. Read-only review, diagnosis, explanation, research, and status requests remain non-mutating. Stop and surface the blocker when scope is ambiguous, unrelated changes cannot be separated safely, validation has a material failure, authentication is unavailable, or the remote changed unexpectedly.
+
 ### Issue tracker
 
 Linear is the source of truth for issues and PRDs: use workspace `dayova`, team `Dayova` (`DAY`). `Dayova/dayova-mvp` GitHub Issues remains a bidirectionally synced compatibility surface. See `docs/agents/issue-tracker.md`.
