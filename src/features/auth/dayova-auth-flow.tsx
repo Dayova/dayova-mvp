@@ -49,6 +49,11 @@ import Svg, {
 	LinearGradient as SvgLinearGradient,
 	type SvgProps,
 } from "react-native-svg";
+import {
+	deriveOnboardingLearningTimes,
+	getOnboardingLearningTimeErrorMessage,
+	ONBOARDING_DURATION_MINUTES,
+} from "#convex/learningTimeAvailability";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import {
@@ -283,9 +288,6 @@ const FEDERAL_STATES = [
 ] as const;
 
 const GRADE_OPTIONS = ["6", "7", "8", "9", "10", "11", "12"] as const;
-const DURATION_OPTIONS = [
-	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
-] as const;
 const CURRENT_YEAR = new Date().getFullYear();
 const DEFAULT_BIRTH_DAY = "09";
 const DEFAULT_BIRTH_MONTH = "09";
@@ -394,7 +396,7 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		id: "studyTime",
 		title: "Wie viel lernst du\naktuell pro Tag?",
 		field: "studyTime",
-		values: DURATION_OPTIONS,
+		values: ONBOARDING_DURATION_MINUTES,
 	},
 	{
 		kind: "fact",
@@ -469,7 +471,7 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		id: "dailySchoolTime",
 		title: "Wie viel Zeit willst\ndu pro Tag für die\nSchule aufwenden?",
 		field: "dailySchoolTime",
-		values: DURATION_OPTIONS,
+		values: ONBOARDING_DURATION_MINUTES,
 	},
 	{
 		kind: "fact",
@@ -793,6 +795,13 @@ export function OnboardingScreen() {
 	const textInputRef = useRef<TextInput | null>(null);
 	const verificationInputRef = useRef<TextInput | null>(null);
 	const verificationSubmittedRef = useRef(false);
+	const isCreationComplete = Boolean(
+		stage === "creating" &&
+			user &&
+			isConvexAuthenticated &&
+			!hasAnswers &&
+			!isPostAuthSyncing,
+	);
 
 	useEffect(() => {
 		const defaultValue = defaultAnswerForStep(activeStep);
@@ -837,16 +846,14 @@ export function OnboardingScreen() {
 	}, [hasAnswers, isPostAuthSyncing, stage, user]);
 
 	useEffect(() => {
-		if (stage !== "creating") return;
-		if (!user || !isConvexAuthenticated || hasAnswers || isPostAuthSyncing)
-			return;
+		if (!isCreationComplete) return;
 
 		const timeout = setTimeout(() => {
 			router.replace("/home");
-		}, 900);
+		}, 1800);
 
 		return () => clearTimeout(timeout);
-	}, [hasAnswers, isConvexAuthenticated, isPostAuthSyncing, stage, user]);
+	}, [isCreationComplete]);
 
 	const handleBack = useCallback(() => {
 		if (stage === "creating" || isLoading) return true;
@@ -913,6 +920,18 @@ export function OnboardingScreen() {
 			if (!value) {
 				setError("Bitte wähle eine Antwort aus.");
 				return;
+			}
+
+			if (activeStep.field === "learningTime") {
+				const result = deriveOnboardingLearningTimes({
+					studyDays: answers.studyDays,
+					learningTime: answers.learningTime,
+					dailySchoolTime: answers.dailySchoolTime,
+				});
+				if (!result.ok) {
+					setError(getOnboardingLearningTimeErrorMessage(result.reason));
+					return;
+				}
 			}
 		}
 
@@ -984,7 +1003,11 @@ export function OnboardingScreen() {
 
 	if (stage === "creating") {
 		return (
-			<CreationLoaderScreen topInset={insets.top} bottomInset={insets.bottom} />
+			<CreationLoaderScreen
+				topInset={insets.top}
+				bottomInset={insets.bottom}
+				isComplete={isCreationComplete}
+			/>
 		);
 	}
 
@@ -1728,9 +1751,11 @@ function VerificationScreen({
 function CreationLoaderScreen({
 	topInset,
 	bottomInset,
+	isComplete,
 }: {
 	topInset: number;
 	bottomInset: number;
+	isComplete: boolean;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
 
@@ -1749,12 +1774,16 @@ function CreationLoaderScreen({
 				}}
 			>
 				<AnimatedFlower />
-				<Text
+				<Animated.Text
+					key={isComplete ? "complete" : "creating"}
+					entering={FadeIn.duration(220)}
 					className="mt-10 text-center font-bold font-poppins text-text"
 					style={{ fontSize: 20, lineHeight: 29 }}
 				>
-					Dein persönliches Lernprofil{"\n"}wird nun für dich erstellt.
-				</Text>
+					{isComplete
+						? "Deine Lernzeiten sind gespeichert.\nDu kannst sie jederzeit unter\nEinstellungen → Lernzeiten anpassen."
+						: "Dein persönliches Lernprofil\nwird nun für dich erstellt."}
+				</Animated.Text>
 			</View>
 		</View>
 	);
