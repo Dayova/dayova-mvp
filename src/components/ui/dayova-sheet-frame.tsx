@@ -1,6 +1,7 @@
 import {
 	BottomSheetBackdrop,
 	type BottomSheetBackdropProps,
+	type BottomSheetBackgroundProps,
 	BottomSheetModal,
 	BottomSheetScrollView,
 	BottomSheetView,
@@ -203,6 +204,17 @@ function DayovaSheetFrame({
 		),
 		[dismissible, isDark],
 	);
+	const renderBackground = useCallback(
+		({ pointerEvents, style }: BottomSheetBackgroundProps) => (
+			<View
+				accessible={false}
+				importantForAccessibility="no-hide-descendants"
+				pointerEvents={pointerEvents}
+				style={style}
+			/>
+		),
+		[],
+	);
 
 	const canShowCloseButton = showCloseButton && dismissible;
 	const hasHeader = Boolean(title || description || canShowCloseButton);
@@ -288,7 +300,9 @@ function DayovaSheetFrame({
 		// runtime width and theme colors cannot be represented by static utilities.
 		<BottomSheetModal
 			ref={sheetRef}
+			accessible={false}
 			android_keyboardInputMode="adjustResize"
+			backgroundComponent={renderBackground}
 			backgroundStyle={{ backgroundColor: colors.surface }}
 			backdropComponent={renderBackdrop}
 			enableDynamicSizing={size === "content"}

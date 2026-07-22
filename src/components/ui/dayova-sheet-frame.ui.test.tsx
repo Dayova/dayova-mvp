@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import { AccessibilityInfo, View } from "react-native";
@@ -79,7 +79,11 @@ jest.mock("@gorhom/bottom-sheet", () => {
 				dismiss: mockSheetHarness.dismiss,
 				present: mockSheetHarness.present,
 			}));
-			return React.createElement("BottomSheetModal", props, children);
+			return React.createElement(
+				"BottomSheetModal",
+				{ testID: "bottom-sheet-modal", ...props },
+				children,
+			);
 		},
 	);
 
@@ -190,7 +194,20 @@ describe("DayovaSheetFrame", () => {
 
 		const heading = view.getByRole("header", { name: "Auswahl" });
 		const modalContent = heading.parent?.parent?.parent;
+		const modal = view.getByTestId("bottom-sheet-modal");
 		expect(heading).toBeOnTheScreen();
+		expect(modal.props.accessible).toBe(false);
+		const BackgroundComponent = modal.props.backgroundComponent as (
+			props: Record<string, unknown>,
+		) => ReactElement<{
+			accessible?: boolean;
+			importantForAccessibility?: string;
+		}>;
+		const background = BackgroundComponent({ style: {} });
+		expect(background.props.accessible).toBe(false);
+		expect(background.props.importantForAccessibility).toBe(
+			"no-hide-descendants",
+		);
 		expect(modalContent?.props.accessibilityViewIsModal).toBe(true);
 		expect(modalContent?.props.accessibilityActions).toEqual([
 			{ name: "escape", label: "Auswahl schließen" },
