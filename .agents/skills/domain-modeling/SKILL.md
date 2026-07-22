@@ -59,7 +59,7 @@ When the user states how something works, check whether the code agrees. If you 
 
 ### Update context documentation inline
 
-When a term is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
+When a term, stable code-facing constraint, or implementation contract is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
 
 Follow the repository's documented scope for context files. In Dayova, `CONTEXT.md` may combine the domain glossary with concise, stable code-facing architecture, constraints, implementation contracts, and decision pointers that must evolve with the code. Keep shared product, business, research, and organizational knowledge in the canonical knowledge system and link to it instead of duplicating it. Do not treat `CONTEXT.md` as a task spec, scratch pad, status log, or implementation journal.
 

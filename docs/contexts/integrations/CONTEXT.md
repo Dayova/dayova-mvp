@@ -13,7 +13,7 @@ An identifiable analytics profile for a validation-phase student, used to connec
 _Avoid_: Treating PostHog as the source of record for full research notes or qualitative interview data.
 
 **Validation Student Table**:
-The Notion database used by non-technical team members to manage test students, their real deadlines, check-ins, and qualitative observations.
+The canonical [🎓 Students database](https://app.notion.com/p/cf81d5caf5944c349b76cfa532c94d5c) used by non-technical team members to manage test students, their real deadlines, check-ins, and qualitative observations.
 _Avoid_: Splitting founder-facing validation notes across multiple unlinked tools.
 
 **Validation Student Code**:
