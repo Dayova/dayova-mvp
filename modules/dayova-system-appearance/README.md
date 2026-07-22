@@ -350,12 +350,13 @@ Run the focused source-shape regression tests:
 pnpm test src/lib/ios-appearance-module.test.ts
 ```
 
-These tests only assert that the podspec contains the iOS 16.4 target and that
-the Swift/TypeScript sources retain the expected modern and legacy observer,
-snapshot-shield, and commit-handshake markers and control-flow order. They do
-not compile Swift, execute UIKit, prove callback reachability, or validate event
-delivery. Native Debug/Release builds and the runtime smoke-test matrix remain
-the behavioral evidence.
+These tests only assert that the podspec contains the iOS 16.4 target, that the
+Swift/TypeScript sources retain the expected modern and legacy observer,
+snapshot-shield, and commit-handshake markers and control-flow order, and that
+the Expo Updates deferred-splash patch remains registered. They do not compile
+Swift, execute UIKit, prove callback reachability, or validate event delivery.
+Native Debug/Release builds and the runtime smoke-test matrix remain the
+behavioral evidence.
 
 Confirm Expo can discover the module:
 
@@ -494,6 +495,7 @@ behavior, not part of this workaround.
 | [`index.ts`](./index.ts) | Exposes the local module's TypeScript entry point. |
 | [`src/lib/system-color-scheme.ios.ts`](../../src/lib/system-color-scheme.ios.ts) | Application adapter that turns the native getter/event into a React hook. |
 | [`src/lib/ios-appearance-module.test.ts`](../../src/lib/ios-appearance-module.test.ts) | Guards deployment-target and API-availability invariants. |
+| [`patches/expo-updates@57.0.9.patch`](../../patches/expo-updates@57.0.9.patch) | Keeps Expo Updates' Release-only deferred splash and root on the active window appearance. |
 
 ## Primary references
 

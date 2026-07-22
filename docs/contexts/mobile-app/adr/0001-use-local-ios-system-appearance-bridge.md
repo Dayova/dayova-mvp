@@ -74,6 +74,13 @@ backgrounds. The Dark value must remain aligned with Dayova's dark root
 background token so cold launch never substitutes a white native screen while
 the JavaScript bundle starts.
 
+Expo Updates 57.0.9 also needs a narrow dependency patch for its Release-only
+deferred root. That path instantiates the splash storyboard before it joins the
+active window hierarchy, so UIKit otherwise resolves the dynamic background
+with the default Light trait. The patch applies the active window style to the
+deferred splash and React root and resolves the root background with that same
+trait collection.
+
 The module pod targets iOS 16.4 to preserve Expo SDK 57's module baseline. The
 generated Dayova application still targets iOS 17 because `@clerk/expo`
 independently requires and writes that target. This module does not establish
@@ -102,6 +109,10 @@ the app-wide minimum.
    resulting state, and JavaScript then releases the shield using the native
    generation carried by the acknowledgement. Stale generations cannot remove
    a newer shield during rapid lifecycle transitions.
+6. Frame-by-frame verification of the later SDK 57 Release build found one
+   remaining Light frame in Expo Updates' deferred root path. A pinned
+   `expo-updates@57.0.9` patch now resolves that storyboard and root background
+   with the active window's trait collection before either can be displayed.
 
 Native validation ran on an iOS 26.5 simulator. Debug and optimized Release
 compiled the module for `arm64-apple-ios16.4-simulator`, but no iOS 16.4 runtime
@@ -156,6 +167,9 @@ Costs and risks:
   transitions. This is intentional: keeping it until React acknowledges a
   committed resume is safer than revealing stale theme content or removing it
   on an assumed native timing boundary.
+- The Expo Updates patch is version-pinned maintenance work. It must be
+  revalidated on every Expo Updates upgrade and removed once upstream resolves
+  deferred splash colors with the active window trait.
 - The module's iOS 16.4 compatibility is compile-tested but cannot be launched
   at that floor while Clerk requires the app to target iOS 17.
 

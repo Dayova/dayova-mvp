@@ -7,6 +7,7 @@ settings:
 patchedDependencies:
   '@expo/metro-config@57.0.7': 51e02e4bf8333445b055552c2d41ad8c9b2e1b13f401da41fff5b2741ae83aa8
   '@react-native/gradle-plugin@0.86.0': c4be299b024e0521f7718edfd55a4375b38c856911b0ac83ea7ec59939555ed0
+  expo-updates@57.0.9: 61b4633a293e0ce46ce778ba1aa3b52e253c1faf7934971939d246c5b8176229
   nativewind@4.2.3: c2045c72c9abacb9347d92d0e80f014cb462e8ea3af0d1b237b7ea467ce26449
   oxc-parser@0.130.0: 94ef07f41312654af2c6505f501f15ebb2e6f7f959449d6ed08c7dfdec525a58
   react-native-keyboard-controller@1.21.9: 1cd17f55cdd7d16ec356e3827388305c05115f1ecd38a234cd1d0e1e05d66f73
@@ -119,7 +120,7 @@ importers:
         version: 57.0.1(expo@57.0.8)(react-native@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(supports-color@8.1.1)
       expo-updates:
         specifier: ~57.0.9
-        version: 57.0.9(expo-dev-client@57.0.8(expo@57.0.8)(react-native@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1)))(expo@57.0.8)(react-native@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1)
+        version: 57.0.9(patch_hash=61b4633a293e0ce46ce778ba1aa3b52e253c1faf7934971939d246c5b8176229)(expo-dev-client@57.0.8(expo@57.0.8)(react-native@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1)))(expo@57.0.8)(react-native@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1)
       nativewind:
         specifier: ^4.2.3
         version: 4.2.3(patch_hash=c2045c72c9abacb9347d92d0e80f014cb462e8ea3af0d1b237b7ea467ce26449)(6713f9e3770b0725124077953c2d6de4)
@@ -11871,7 +11872,7 @@ snapshots:
     dependencies:
       expo: 57.0.8(@babel/core@7.29.0(supports-color@8.1.1))(@expo/metro-runtime@57.0.7)(expo-router@57.0.8)(react-dom@19.2.3(react@19.2.3))(react-native-worklets@0.10.0(@babel/core@7.29.0(supports-color@8.1.1))(react-native@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(react-native@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1)(typescript@6.0.3)
 
-  expo-updates@57.0.9(expo-dev-client@57.0.8(expo@57.0.8)(react-native@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1)))(expo@57.0.8)(react-native@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1):
+  expo-updates@57.0.9(patch_hash=61b4633a293e0ce46ce778ba1aa3b52e253c1faf7934971939d246c5b8176229)(expo-dev-client@57.0.8(expo@57.0.8)(react-native@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1)))(expo@57.0.8)(react-native@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/jest-preset@0.86.0(@babel/core@7.29.0(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1):
     dependencies:
       '@expo/code-signing-certificates': 0.0.6
       '@expo/plist': 0.8.1

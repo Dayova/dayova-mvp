@@ -18,6 +18,11 @@ const IOS_SYSTEM_COLOR_SCHEME_PATH = resolve(
 	process.cwd(),
 	"src/lib/system-color-scheme.ios.ts",
 );
+const EXPO_UPDATES_PATCH_PATH = resolve(
+	process.cwd(),
+	"patches/expo-updates@57.0.9.patch",
+);
+const PNPM_WORKSPACE_PATH = resolve(process.cwd(), "pnpm-workspace.yaml");
 
 function sectionBetween(
 	source: string,
@@ -163,6 +168,25 @@ describe("iOS system appearance module", () => {
 		);
 		expect(systemColorScheme).toContain(
 			"DayovaSystemAppearance.releaseSnapshotShield(snapshotShieldGeneration)",
+		);
+	});
+
+	test("keeps Expo Updates' deferred splash in the active iOS appearance", () => {
+		const patch = readFileSync(EXPO_UPDATES_PATCH_PATH, "utf8");
+		const pnpmWorkspace = readFileSync(PNPM_WORKSPACE_PATH, "utf8");
+
+		expect(pnpmWorkspace).toContain(
+			"expo-updates@57.0.9: patches/expo-updates@57.0.9.patch",
+		);
+		expect(patch).toContain("let traitCollection = getWindow().traitCollection");
+		expect(patch).toContain(
+			"view.overrideUserInterfaceStyle = traitCollection.userInterfaceStyle",
+		);
+		expect(patch).toContain(
+			"rootView.overrideUserInterfaceStyle = traitCollection.userInterfaceStyle",
+		);
+		expect(patch).toContain(
+			".resolvedColor(with: traitCollection)",
 		);
 	});
 });

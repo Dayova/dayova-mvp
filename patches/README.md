@@ -7,6 +7,52 @@ When a patched package is installed, pnpm applies the matching `.patch` file to
 the package contents in `node_modules`. Keep each patch documented here so future
 dependency updates can decide whether the patch is still needed.
 
+## `expo-updates@57.0.9.patch`
+
+### Why This Patch Exists
+
+Expo Updates creates a deferred splash-screen view while a Release build loads
+its embedded JavaScript bundle. That storyboard view is still detached from the
+application window when Expo reads its dynamic background color. UIKit therefore
+resolves the color with the default Light trait even when the active window is
+already Dark. Frame-by-frame cold-launch verification on iOS 26.5 reproduced a
+full-screen Light frame in the optimized Release build; the Debug development
+client does not use this deferred Expo Updates path and remained Dark.
+
+### What The Patch Changes
+
+The patch reads the active application window's trait collection before adding
+the deferred splash. It applies that interface style to both the storyboard view
+and deferred React root, then resolves the root background color against the
+same trait collection. No Expo Updates loading, selection, or update behavior is
+changed.
+
+### How To Verify
+
+Run the focused source-shape test, build an optimized iOS Release app with an
+embedded bundle, stop Metro, set the simulator to Dark, and record a force-stop
+cold launch:
+
+```sh
+pnpm exec vitest run src/lib/ios-appearance-module.test.ts
+APP_VARIANT=development pnpm exec expo prebuild --platform ios
+```
+
+Review every recorded frame from before launch until the first settled React
+screen. The native splash, deferred splash/root, and first React frame must all
+remain Dark; screenshots of only the settled state are insufficient.
+
+### How To Update Or Remove
+
+Recheck this patch whenever `expo-updates` changes. Remove it when the deferred
+root path resolves its splash color using the active window trait upstream.
+
+1. Delete `patches/expo-updates@57.0.9.patch`.
+2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
+3. Run `pnpm install --frozen-lockfile` and the focused test.
+4. Repeat the frame-by-frame embedded-bundle Release cold-launch check in both
+   Light and Dark.
+
 ## `@expo/metro-config@57.0.7.patch`
 
 ### Why This Patch Exists
