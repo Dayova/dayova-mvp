@@ -1,13 +1,12 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { usePostHog } from "posthog-react-native";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { api } from "#convex/_generated/api";
 import { useAuth } from "~/context/AuthContext";
 import {
-	captureValidationEvent,
-	definedAnalyticsProperties,
+	createValidationAnalytics,
 	isPostHogConfigured,
-} from "~/lib/analytics-core";
+} from "~/lib/analytics";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
 
@@ -22,6 +21,10 @@ export function AnalyticsIdentity() {
 	const markReturnedNextDay = useMutation(
 		api.validationAnalytics.markReturnedNextDay,
 	);
+	const analytics = useMemo(
+		() => createValidationAnalytics(posthog),
+		[posthog],
+	);
 	const identifiedClerkIdRef = useRef<string | null>(null);
 	const returnCaptureKeyRef = useRef<string | null>(null);
 
@@ -30,7 +33,7 @@ export function AnalyticsIdentity() {
 
 		if (!user) {
 			if (identifiedClerkIdRef.current) {
-				posthog.reset();
+				analytics.identify(null);
 				identifiedClerkIdRef.current = null;
 				returnCaptureKeyRef.current = null;
 			}
@@ -39,18 +42,13 @@ export function AnalyticsIdentity() {
 
 		const validationStudentCode =
 			convexUser?.validationStudentCode ?? user.validationStudentCode;
-		posthog.identify(
-			user.clerkId,
-			definedAnalyticsProperties({
-				clerk_id: user.clerkId,
-				convex_user_id: convexUser?._id,
-				grade: user.grade,
-				school_type: user.schoolType,
-				state: user.state,
-				avatar_url: user.avatarUrl,
-				validation_student_code: validationStudentCode,
-			}),
-		);
+		analytics.identify({
+			distinctId: user.clerkId,
+			convexUserId: convexUser?._id,
+			grade: user.grade,
+			state: user.state,
+			validationStudentCode,
+		});
 		identifiedClerkIdRef.current = user.clerkId;
 
 		const localDayKey = getDayKey(new Date());
@@ -66,19 +64,16 @@ export function AnalyticsIdentity() {
 		void markReturnedNextDay({ localDayKey })
 			.then((result) => {
 				returnCaptureKeyRef.current = returnCaptureKey;
-				if (!result.captured) return;
-				captureValidationEvent(
-					posthog,
-					"user_returned_next_day",
-					user.clerkId,
-					{
-						local_day_key: localDayKey,
-						previous_activity_day_key: result.previousActivityDayKey,
-						...(result.validationStudentCode
-							? { validation_student_code: result.validationStudentCode }
-							: {}),
+				if (!result.captured || !result.previousActivityDayKey) return;
+				createValidationAnalytics(posthog, {
+					distinctId: user.clerkId,
+					sharedContext: {
+						validationStudentCode: result.validationStudentCode,
 					},
-				);
+				}).capture("user_returned_next_day", {
+					local_day_key: localDayKey,
+					previous_activity_day_key: result.previousActivityDayKey,
+				});
 			})
 			.catch((error: unknown) => {
 				logDiagnosticError(
@@ -91,6 +86,7 @@ export function AnalyticsIdentity() {
 				);
 			});
 	}, [
+		analytics,
 		convexUser,
 		isConvexAuthenticated,
 		isSessionLoading,

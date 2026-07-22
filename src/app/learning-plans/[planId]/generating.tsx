@@ -12,8 +12,7 @@ import { useAuth } from "~/context/AuthContext";
 import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/analytics";
-import { definedAnalyticsProperties } from "~/lib/analytics-core";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { goBackOrReplace } from "~/lib/navigation";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
@@ -86,14 +85,10 @@ export default function LearningPlanGeneratingScreen() {
 				answers: answerList,
 			})
 				.then((result) => {
-					void capture(
-						"study_plan_generated",
-						definedAnalyticsProperties({
-							learning_plan_id: planId,
-							session_count: result.sessionCount,
-							answer_count: answerList.length,
-						}),
-					);
+					void capture("study_plan_generated", {
+						learning_plan_id: planId,
+						session_count: result.sessionCount,
+					});
 				})
 				.catch((error: unknown) => {
 					setErrorMessage(

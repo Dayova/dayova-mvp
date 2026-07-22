@@ -35,6 +35,7 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
 import {
 	createTheoryCardQueue,
 	repeatCurrentTheoryCard as queueRepeatCurrentTheoryCard,
@@ -48,8 +49,7 @@ import type {
 	SessionContentItem,
 } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/analytics";
-import { definedAnalyticsProperties } from "~/lib/analytics-core";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
@@ -116,29 +116,6 @@ const phaseTitle = (
 	phase: LearningSessionContentSnapshot["session"]["phase"],
 ) =>
 	phase === "theory" ? "Lernkarten" : phase === "practice" ? "Üben" : "Praxis";
-
-const learningSessionAnalyticsProperties = (result: {
-	learningPlanId: Id<"learningPlans">;
-	learningPlanSessionId: Id<"learningPlanSessions">;
-	phase: LearningSessionContentSnapshot["session"]["phase"];
-	plannedDayKey: string;
-	startTime: string;
-	durationMinutes: number;
-	subject: string;
-	examTypeLabel?: string;
-	examDateKey?: string;
-}) =>
-	definedAnalyticsProperties({
-		learning_plan_id: result.learningPlanId,
-		learning_plan_session_id: result.learningPlanSessionId,
-		phase: result.phase,
-		planned_day_key: result.plannedDayKey,
-		start_time: result.startTime,
-		duration_minutes: result.durationMinutes,
-		subject: result.subject,
-		exam_type_label: result.examTypeLabel,
-		exam_date_key: result.examDateKey,
-	});
 
 const isIosSimulator = Platform.OS === "ios" && !Device.isDevice;
 const iosSimulatorSpeechMessage =
@@ -983,13 +960,10 @@ export default function LearningSessionContentScreen() {
 			didStartTrackingRef.current = true;
 			startSessionPromiseRef.current = startSession({ sessionId })
 				.then((result) => {
-					void capture(
-						"study_slot_started",
-						definedAnalyticsProperties({
-							...learningSessionAnalyticsProperties(result),
-							started_at: result.startedAt,
-						}),
-					);
+					void capture("study_slot_started", {
+						...learningSessionAnalyticsProperties(result),
+						started_at: result.startedAt,
+					});
 					return result;
 				})
 				.catch((error: unknown) => {
@@ -1137,15 +1111,11 @@ export default function LearningSessionContentScreen() {
 				sessionId,
 				outcome: "completed",
 			});
-			const properties = definedAnalyticsProperties({
+			const properties = {
 				...learningSessionAnalyticsProperties(completed),
-				outcome: "completed",
 				outcome_at: completed.outcomeAt,
-			});
+			};
 			void capture("study_slot_completed", properties);
-			if (completed.phase === "rehearsal") {
-				void capture("generalprobe_completed", properties);
-			}
 			goBack();
 		} catch (error) {
 			setErrorMessage(

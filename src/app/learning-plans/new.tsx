@@ -40,8 +40,8 @@ import {
 	parseDateKey,
 	retryOnceAfterAuthResume,
 } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/analytics";
-import { definedAnalyticsProperties } from "~/lib/analytics-core";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
+import { getValidationFileSizeBucket } from "~/lib/analytics";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
@@ -321,14 +321,14 @@ export default function NewLearningPlanScreen() {
 				fileSizeBytes,
 			}),
 		);
-		void capture(
-			"material_uploaded",
-			definedAnalyticsProperties({
-				learning_plan_id: id,
-				file_type: fileType,
-				file_size_bytes: fileSizeBytes,
-			}),
-		);
+		const analyticsFileType =
+			ACCEPTED_FILE_TYPES.find((allowedType) => allowedType === fileType) ??
+			"application/octet-stream";
+		void capture("material_uploaded", {
+			learning_plan_id: id,
+			file_type: analyticsFileType,
+			file_size_bucket: getValidationFileSizeBucket(fileSizeBytes),
+		});
 	};
 
 	const uploadMaterial = async () => {
@@ -340,7 +340,7 @@ export default function NewLearningPlanScreen() {
 		setErrorMessage(null);
 		try {
 			const result = await DocumentPicker.getDocumentAsync({
-				type: ACCEPTED_FILE_TYPES,
+				type: [...ACCEPTED_FILE_TYPES],
 				multiple: true,
 				copyToCacheDirectory: true,
 			});
