@@ -62,10 +62,10 @@ function SettingsRow({
 			icon={<Icon size={22} color={colors.text} strokeWidth={2} />}
 			label={label}
 			onPress={onPress}
-			disabled={disabled || !onPress}
+			disabled={disabled}
 			accessibilityState={{
 				busy,
-				disabled: disabled || !onPress,
+				disabled,
 			}}
 			trailing={trailing}
 		/>

@@ -19,11 +19,19 @@ function ListRow({
 	trailing,
 	...props
 }: ListRowProps) {
+	const isInteractive = typeof props.onPress === "function";
+
 	return (
 		<ActionSurface
-			accessibilityLabel={props.accessibilityLabel ?? label}
-			accessibilityRole={props.onPress ? "button" : "text"}
+			accessible={props.accessible ?? isInteractive}
+			accessibilityLabel={
+				isInteractive ? (props.accessibilityLabel ?? label) : undefined
+			}
+			accessibilityRole={
+				props.accessibilityRole ?? (isInteractive ? "button" : undefined)
+			}
 			className={cn("min-h-16 flex-row items-center px-5 py-3", className)}
+			disabled={props.disabled ?? false}
 			{...props}
 		>
 			{icon ? (

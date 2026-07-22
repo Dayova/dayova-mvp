@@ -5,6 +5,7 @@ import SettingsScreen from "../../app/(app)/settings";
 
 const mockReplace = jest.fn();
 const mockLogout = jest.fn<() => Promise<void>>(async () => undefined);
+const mockSetPreference = jest.fn(async () => undefined);
 
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: jest.fn(), replace: mockReplace }),
@@ -18,7 +19,7 @@ jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: { secondaryText: "#667085", text: "#101828" },
 		preference: "system",
-		setPreference: jest.fn(async () => undefined),
+		setPreference: mockSetPreference,
 	}),
 }));
 
@@ -51,41 +52,33 @@ jest.mock("~/components/ui/themed-status-bar", () => ({
 	ThemedStatusBar: () => null,
 }));
 
-jest.mock("~/components/ui/list-row", () => {
-	const React = jest.requireActual<typeof import("react")>("react");
-	const Native =
-		jest.requireActual<typeof import("react-native")>("react-native");
-	return {
-		ListRow: ({
-			accessibilityState,
-			disabled,
-			label,
-			onPress,
-		}: {
-			accessibilityState?: { busy?: boolean; disabled?: boolean };
-			disabled?: boolean;
-			label: string;
-			onPress?: () => void;
-		}) =>
-			React.createElement(
-				Native.Pressable,
-				{
-					accessibilityLabel: label,
-					accessibilityRole: onPress ? "button" : "text",
-					accessibilityState,
-					disabled,
-					onPress,
-				},
-				React.createElement(Native.Text, null, label),
-			),
-	};
-});
-
 describe("SettingsScreen logout", () => {
 	beforeEach(() => {
 		mockLogout.mockReset();
 		mockLogout.mockResolvedValue(undefined);
 		mockReplace.mockReset();
+		mockSetPreference.mockReset();
+		mockSetPreference.mockResolvedValue(undefined);
+	});
+
+	test("exposes each theme preference as an individually selectable radio", async () => {
+		const screen = await render(<SettingsScreen />);
+		const light = screen.getByRole("radio", {
+			name: "Helles Design verwenden",
+		});
+		const system = screen.getByRole("radio", {
+			name: "Systemdesign verwenden",
+		});
+		const dark = screen.getByRole("radio", {
+			name: "Dunkles Design verwenden",
+		});
+
+		expect(light.props.accessibilityState).toEqual({ checked: false });
+		expect(system.props.accessibilityState).toEqual({ checked: true });
+		expect(dark.props.accessibilityState).toEqual({ checked: false });
+
+		await fireEvent.press(light);
+		expect(mockSetPreference).toHaveBeenCalledWith("light");
 	});
 
 	test("owns one logout transaction and leaves session routing to the root guard", async () => {
