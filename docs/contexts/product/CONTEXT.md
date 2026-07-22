@@ -2,7 +2,7 @@
 
 This context covers Dayova's product language, learning model, user journeys, content taxonomy, quizzes, study sessions, progress, and other domain concepts.
 
-Confluence is the current cross-functional documentation hub. Keep this file focused on implementation-facing terminology and assumptions that agents need while working in this repo.
+Notion is Dayova's main internal documentation and knowledge workspace. Keep this file focused on implementation-facing terminology and assumptions that must evolve with the code, and link to relevant Notion records instead of duplicating shared documentation.
 
 ## Language
 
@@ -68,7 +68,7 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 
 ## Notes
 
-- Capture repo-relevant summaries or links to Confluence decisions here.
+- Capture concise implementation-relevant summaries and links to canonical Notion decisions here.
 - Put product/domain ADRs in `docs/contexts/product/adr/`.
 
 ## Example Dialogue
