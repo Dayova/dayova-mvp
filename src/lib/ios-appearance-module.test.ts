@@ -72,4 +72,38 @@ describe("iOS system appearance module", () => {
 		expect(modernIosReturn).toBeGreaterThan(availabilityCheck);
 		expect(sharedHandlerCall).toBeGreaterThan(modernIosReturn);
 	});
+
+	test("reinstalls live appearance observation when the app becomes active", () => {
+		const module = readFileSync(IOS_MODULE_PATH, "utf8");
+		const activationHook = sectionBetween(
+			module,
+			"OnAppBecomesActive",
+			"OnDestroy",
+		);
+		const refreshHelper = sectionBetween(
+			module,
+			"private func refreshObservation()",
+			"private func startObservingKeyWindowChanges()",
+		);
+
+		expect(activationHook).toContain("refreshObservation()");
+		expect(activationHook).toContain(
+			"guard let self, self.isObserving else { return }",
+		);
+		expect(refreshHelper).toContain("installObserverIfNeeded()");
+		expect(refreshHelper).toContain("emitCurrentColorScheme()");
+	});
+
+	test("installs observation when a window becomes key after subscription", () => {
+		const module = readFileSync(IOS_MODULE_PATH, "utf8");
+		const startHook = sectionBetween(
+			module,
+			'OnStartObserving("onChange")',
+			'OnStopObserving("onChange")',
+		);
+
+		expect(startHook).toContain("startObservingKeyWindowChanges()");
+		expect(module).toContain("UIWindow.didBecomeKeyNotification");
+		expect(module).toContain("stopObservingKeyWindowChanges()");
+	});
 });

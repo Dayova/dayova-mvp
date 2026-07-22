@@ -25,6 +25,16 @@ describe("package scripts", () => {
 		);
 	});
 
+	it("generates native theme variables from the canonical CSS palette", () => {
+		expect(packageJson.scripts["theme:generate"]).toBe(
+			"node scripts/generate-theme-variables.mjs",
+		);
+		expect(packageJson.scripts["theme:check"]).toBe(
+			"node scripts/generate-theme-variables.mjs --check",
+		);
+		expect(packageJson.scripts.check).toContain("theme:check");
+	});
+
 	it("does not use POSIX-only inline environment assignments", () => {
 		const posixOnlyScripts = Object.entries(packageJson.scripts)
 			.filter(([, command]) => /^[A-Za-z_][A-Za-z0-9_]*=[^ ]+ /.test(command))

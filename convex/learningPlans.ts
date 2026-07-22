@@ -601,7 +601,7 @@ export const listOverview = query({
 	args: {},
 	handler: async (ctx) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
-		const plans = await ctx.db
+		const acceptedPlans = await ctx.db
 			.query("learningPlans")
 			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
 				q
@@ -610,6 +610,18 @@ export const listOverview = query({
 			)
 			.order("desc")
 			.take(50);
+		const creationPlans = await ctx.db
+			.query("learningPlans")
+			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("status", "questionsReady"),
+			)
+			.order("desc")
+			.take(50);
+		const plans = [...acceptedPlans, ...creationPlans].sort(
+			(left, right) => right.updatedAt - left.updatedAt,
+		);
 
 		const overviews = [];
 		for (const plan of plans) {
@@ -630,6 +642,44 @@ export const listOverview = query({
 				sessions.length > 0
 					? Math.round((completedCount / sessions.length) * 100)
 					: 0;
+			let creationProgress: {
+				questionCount: number;
+				answeredQuestionCount: number;
+				firstUnansweredQuestionIndex: number | null;
+			} | null = null;
+			if (plan.status === "questionsReady") {
+				const questions = plan.knowledgeQuestions ?? [];
+				const answers = await Promise.all(
+					questions.map((question) =>
+						ctx.db
+							.query("learningPlanAnswers")
+							.withIndex("by_learningPlanId_and_questionId", (q) =>
+								q.eq("learningPlanId", plan._id).eq("questionId", question.id),
+							)
+							.unique(),
+					),
+				);
+				const answeredQuestionIds = new Set(
+					answers
+						.filter(
+							(answer): answer is NonNullable<typeof answer> =>
+								answer !== null && answer.answer.trim().length > 0,
+						)
+						.map((answer) => answer.questionId),
+				);
+				const firstUnansweredQuestionIndex = questions.findIndex(
+					(question) => !answeredQuestionIds.has(question.id),
+				);
+
+				creationProgress = {
+					questionCount: questions.length,
+					answeredQuestionCount: answeredQuestionIds.size,
+					firstUnansweredQuestionIndex:
+						firstUnansweredQuestionIndex >= 0
+							? firstUnansweredQuestionIndex
+							: null,
+				};
+			}
 
 			overviews.push({
 				id: plan._id,
@@ -653,6 +703,7 @@ export const listOverview = query({
 							completed: currentSession.completed === true,
 						}
 					: null,
+				creationProgress,
 				updatedAt: plan.updatedAt,
 			});
 		}
