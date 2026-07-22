@@ -18,5 +18,9 @@ _Avoid_: User-facing message, learner error text
 
 ## Notes
 
+- Convex keeps `users.schoolType` schema-compatible with legacy strings while
+  every current write boundary accepts only the seven stable `Schulart` keys.
+  Authenticated profile sync lazily maps exact generic legacy values and
+  removes ambiguous user/profile-answer values without logging them.
 - Capture backend data model, function boundaries, and migration decisions here.
 - Put backend ADRs in `docs/contexts/backend-convex/adr/`.

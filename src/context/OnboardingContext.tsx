@@ -1,5 +1,6 @@
 import type React from "react";
 import { createContext, useContext, useMemo, useState } from "react";
+import type { SupportedSchoolType } from "~/lib/school-types";
 
 type OnboardingAnswers = {
 	studyTime: string;
@@ -7,7 +8,7 @@ type OnboardingAnswers = {
 	challenge: string;
 	goal: string;
 	state: string;
-	schoolType: string;
+	schoolType: SupportedSchoolType | "";
 	grade: string;
 	dailySchoolTime: string;
 	studyDays: string;
@@ -37,7 +38,10 @@ const emptyAnswers: OnboardingAnswers = {
 
 type OnboardingContextValue = {
 	answers: OnboardingAnswers;
-	setAnswer: (field: keyof OnboardingAnswers, value: string) => void;
+	setAnswer: <Field extends keyof OnboardingAnswers>(
+		field: Field,
+		value: OnboardingAnswers[Field],
+	) => void;
 	clearAnswers: () => void;
 	hasAnswers: boolean;
 };

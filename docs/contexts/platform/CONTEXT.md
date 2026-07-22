@@ -16,7 +16,7 @@ _Avoid_: User-facing message, learner error text
 - `EXPO_PUBLIC_POSTHOG_API_KEY` enables PostHog analytics in the Expo app. Leave it empty to disable analytics locally.
 - `EXPO_PUBLIC_POSTHOG_HOST` defaults to `https://eu.i.posthog.com`; use a Dayova-owned reverse proxy only if event delivery or privacy requirements justify the extra infrastructure.
 - Analytics events must go through `src/lib/analytics.ts`. PostHog autocapture, lifecycle events, anonymous pre-auth tracking, and session replay are intentionally disabled for the validation phase.
-- Clerk user ID is the PostHog `distinctId`, never a `clerk_id` property. Custom identity is exactly optional `convex_user_id`, optional `validation_student_code`, bounded `grade` (`6` through `13`), and bounded German federal `state`; `school_type` is excluded pending DAY-253.
+- Clerk user ID is the PostHog `distinctId`, never a `clerk_id` property. Custom identity is exactly optional `convex_user_id`, optional `validation_student_code`, bounded `grade` (`6` through `13`), and bounded German federal `state`; the bounded product `Schulart` remains excluded as `school_type` until a separate reviewed analytics-contract change.
 - Names, email addresses, birth dates, avatar URLs, school names, raw notes, filenames, uploaded content, learner answers, transcripts, and diagnostic error detail are never custom PostHog person or event properties.
 - Capture platform conventions, release processes, and environment decisions here.
 - Put platform ADRs in `docs/contexts/platform/adr/`.

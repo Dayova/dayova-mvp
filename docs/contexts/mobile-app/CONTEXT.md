@@ -24,6 +24,9 @@ _Avoid_: Called by client, Server Error, raw stack trace
 
 ## Notes
 
+- Onboarding asks “Welche Schulart besuchst du?” through the native bounded
+  picker. “Keine Angabe” is the privacy-safe default; there is no school-name
+  input or free-text “other” follow-up.
 - Capture app architecture, routing, UI, and native behavior decisions here.
 - Put mobile-app ADRs in `docs/contexts/mobile-app/adr/`.
 - NativeWind is part of the build pipeline, not only runtime styling. Release

@@ -83,8 +83,10 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { FEDERAL_STATE_OPTIONS } from "~/lib/federal-states";
 import { GRADE_OPTIONS } from "~/lib/grades";
 import { useBackIntent } from "~/lib/navigation";
+import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
 import { useDayovaTheme } from "~/lib/theme";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
 import IntroTasksSvg from "../../../assets/onboarding/intro-tasks.svg";
@@ -181,9 +183,9 @@ type InfoStackStep = {
 
 type TextStep = {
 	kind: "text";
-	id: "name" | "schoolType" | "email" | "password";
+	id: "name" | "email" | "password";
 	title: string;
-	field: "name" | "schoolType" | "email" | "password";
+	field: "name" | "email" | "password";
 	placeholder: string;
 	secure?: boolean;
 	keyboardType?: TextInputProps["keyboardType"];
@@ -193,9 +195,9 @@ type TextStep = {
 
 type WheelStep = {
 	kind: "wheel";
-	id: "state" | "grade" | "birthDate" | "learningTime";
+	id: "state" | "schoolType" | "grade" | "birthDate" | "learningTime";
 	title: string;
-	field: "state" | "grade" | "birthDate" | "learningTime";
+	field: "state" | "schoolType" | "grade" | "birthDate" | "learningTime";
 };
 
 type OnboardingStep =
@@ -260,27 +262,6 @@ const GOAL_OPTIONS = [
 	"Mehr Struktur im Lernen",
 	"Dranbleiben",
 	"Besser vorbereitet sein",
-] as const;
-
-// Persisted onboarding answers use these labels, so this list must contain every
-// German federal state instead of only the few values visible in the Figma wheel.
-const FEDERAL_STATES = [
-	"Bremen",
-	"Hamburg",
-	"Baden-Württemberg",
-	"Sachsen",
-	"Sachsen-Anhalt",
-	"Brandenburg",
-	"Bayern",
-	"Berlin",
-	"Hessen",
-	"Niedersachsen",
-	"Nordrhein-Westfalen",
-	"Rheinland-Pfalz",
-	"Saarland",
-	"Schleswig-Holstein",
-	"Thüringen",
-	"Mecklenburg-Vorpommern",
 ] as const;
 
 const DURATION_OPTIONS = [
@@ -445,12 +426,10 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		field: "state",
 	},
 	{
-		kind: "text",
+		kind: "wheel",
 		id: "schoolType",
-		title: "Welche Schule\nbesuchst du?",
+		title: "Welche Schulart besuchst du?",
 		field: "schoolType",
-		placeholder: "Gymnasium",
-		autoComplete: "off",
 	},
 	{
 		kind: "wheel",
@@ -554,6 +533,7 @@ const defaultAnswerForStep = (step: OnboardingStep) => {
 	if (step.kind === "range") return "30 min";
 	if (step.kind === "wheel") {
 		if (step.field === "state") return "Sachsen";
+		if (step.field === "schoolType") return "prefer_not_to_say";
 		if (step.field === "grade") return "9";
 		if (step.field === "birthDate") return DEFAULT_BIRTH_DATE;
 		if (step.field === "learningTime") return DEFAULT_LEARNING_TIME;
@@ -885,10 +865,6 @@ export function OnboardingScreen() {
 				setError("Bitte gib deinen Namen ein.");
 				return;
 			}
-			if (activeStep.field === "schoolType" && value.length < 2) {
-				setError("Bitte gib deine Schulform ein.");
-				return;
-			}
 			if (activeStep.field === "email" && !isValidEmail(value.toLowerCase())) {
 				setError("Bitte gib eine gültige E-Mail-Adresse ein.");
 				return;
@@ -932,7 +908,7 @@ export function OnboardingScreen() {
 				password: normalizedPassword,
 				birthDate: answers.birthDate,
 				grade: answers.grade,
-				schoolType: answers.schoolType,
+				schoolType: answers.schoolType || undefined,
 				state: answers.state,
 			});
 
@@ -2643,10 +2619,25 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 		);
 	}
 
+	if (step.field === "schoolType") {
+		return (
+			<NativeOnboardingPicker
+				value={answers.schoolType || "prefer_not_to_say"}
+				options={SCHOOL_TYPE_VALUES}
+				formatLabel={(schoolType) =>
+					SCHOOL_TYPE_OPTIONS.find((option) => option.value === schoolType)
+						?.label ?? schoolType
+				}
+				testID="onboarding-school-type-picker"
+				onChange={(value) => setAnswer("schoolType", value)}
+			/>
+		);
+	}
+
 	return (
 		<NativeOnboardingPicker
 			value={answers.state || "Sachsen"}
-			options={FEDERAL_STATES}
+			options={FEDERAL_STATE_OPTIONS}
 			testID="onboarding-state-picker"
 			onChange={(value) => setAnswer("state", value)}
 		/>
@@ -2699,18 +2690,18 @@ function PickerInputTrigger({
 	);
 }
 
-function NativeOnboardingPicker({
+function NativeOnboardingPicker<Option extends string>({
 	value,
 	options,
 	formatLabel = (option) => option,
 	testID,
 	onChange,
 }: {
-	value: string;
-	options: readonly string[];
-	formatLabel?: (option: string) => string;
+	value: Option;
+	options: readonly Option[];
+	formatLabel?: (option: Option) => string;
 	testID: string;
-	onChange: (value: string) => void;
+	onChange: (value: Option) => void;
 }) {
 	return (
 		<View

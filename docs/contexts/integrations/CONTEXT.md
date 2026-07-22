@@ -41,8 +41,10 @@ The Clerk user ID is the PostHog `distinctId` and is not duplicated as a
 - `grade`, only one of `6`, `7`, `8`, `9`, `10`, `11`, `12`, or `13`
 - `state`, only one of the 16 German federal-state names used by onboarding
 
-`school_type` is intentionally excluded until DAY-253 supplies a bounded
-product field and a reviewed follow-up changes this contract.
+The product `Schulart` field is bounded by DAY-253, but `school_type` remains
+intentionally excluded from PostHog. Adding it requires a separate, reviewed
+change to this analytics contract; the product field alone does not authorize
+collection.
 
 Every custom event receives `analytics_schema_version` centrally. It may also
 receive `validation_student_code`, `eas_update_id`, `eas_channel`,

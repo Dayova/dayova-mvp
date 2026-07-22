@@ -1,5 +1,14 @@
 import { v } from "convex/values";
+import {
+	FEDERAL_STATE_OPTIONS,
+	isSupportedFederalState,
+} from "../src/lib/federal-states";
 import { GRADE_OPTIONS, isSupportedGrade } from "../src/lib/grades";
+import {
+	isSupportedSchoolType,
+	normalizeLegacySchoolType,
+	SCHOOL_TYPE_VALUES,
+} from "../src/lib/school-types";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
@@ -108,30 +117,14 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 		prompt: "Aus welchem Bundesland kommst du?",
 		kind: "select" as const,
 		order: 4,
-		options: [
-			"Bremen",
-			"Hamburg",
-			"Baden-Württemberg",
-			"Sachsen",
-			"Sachsen-Anhalt",
-			"Brandenburg",
-			"Bayern",
-			"Berlin",
-			"Hessen",
-			"Niedersachsen",
-			"Nordrhein-Westfalen",
-			"Rheinland-Pfalz",
-			"Saarland",
-			"Schleswig-Holstein",
-			"Thüringen",
-			"Mecklenburg-Vorpommern",
-		],
+		options: [...FEDERAL_STATE_OPTIONS],
 	},
 	{
 		key: "schoolType",
-		prompt: "Welche Schule besuchst du?",
-		kind: "input" as const,
+		prompt: "Welche Schulart besuchst du?",
+		kind: "select" as const,
 		order: 5,
+		options: [...SCHOOL_TYPE_VALUES],
 	},
 	{
 		key: "grade",
@@ -187,6 +180,24 @@ const normalizeOptionalGrade = (grade?: string) => {
 	return normalizedGrade;
 };
 
+const normalizeOptionalFederalState = (state?: string) => {
+	const normalizedState = state?.trim();
+	if (!normalizedState) return undefined;
+	if (!isSupportedFederalState(normalizedState)) {
+		throwUserFacingError("Bitte wähle ein gültiges Bundesland aus.");
+	}
+	return normalizedState;
+};
+
+const normalizeOptionalSchoolType = (schoolType?: string) => {
+	const normalizedSchoolType = schoolType?.trim();
+	if (!normalizedSchoolType) return undefined;
+	if (!isSupportedSchoolType(normalizedSchoolType)) {
+		throwUserFacingError("Bitte wähle eine gültige Schulart aus.");
+	}
+	return normalizedSchoolType;
+};
+
 const profileFields = (args: {
 	email?: string;
 	name?: string;
@@ -199,19 +210,51 @@ const profileFields = (args: {
 	validationStudentCode?: string;
 }) => {
 	const grade = normalizeOptionalGrade(args.grade);
+	const schoolType = normalizeOptionalSchoolType(args.schoolType);
+	const state = normalizeOptionalFederalState(args.state);
 	return {
 		...(args.email !== undefined ? { email: normalizeEmail(args.email) } : {}),
 		...(args.name !== undefined ? { name: args.name } : {}),
 		...(args.phone !== undefined ? { phone: args.phone } : {}),
 		...(args.birthDate !== undefined ? { birthDate: args.birthDate } : {}),
 		...(grade !== undefined ? { grade } : {}),
-		...(args.schoolType !== undefined ? { schoolType: args.schoolType } : {}),
-		...(args.state !== undefined ? { state: args.state } : {}),
+		...(schoolType !== undefined ? { schoolType } : {}),
+		...(state !== undefined ? { state } : {}),
 		...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
 		...(args.validationStudentCode !== undefined
 			? { validationStudentCode: args.validationStudentCode }
 			: {}),
 	};
+};
+
+const sanitizeLegacyOnboardingSchoolType = async (
+	ctx: MutationCtx,
+	userId: Id<"users">,
+) => {
+	const question = await ctx.db
+		.query("onboardingQuestions")
+		.withIndex("by_key", (q) => q.eq("key", "schoolType"))
+		.unique();
+	if (!question) return;
+
+	const answer = await ctx.db
+		.query("userOnboardingAnswers")
+		.withIndex("by_userId_and_questionId", (q) =>
+			q.eq("userId", userId).eq("questionId", question._id),
+		)
+		.unique();
+	if (!answer) return;
+
+	const schoolType = normalizeLegacySchoolType(answer.answer);
+	if (!schoolType) {
+		await ctx.db.delete("userOnboardingAnswers", answer._id);
+		return;
+	}
+	if (schoolType !== answer.answer) {
+		await ctx.db.patch("userOnboardingAnswers", answer._id, {
+			answer: schoolType,
+		});
+	}
 };
 
 export const syncCurrentUser = mutation({
@@ -250,7 +293,15 @@ export const syncCurrentUser = mutation({
 		};
 
 		if (existingUser) {
-			await ctx.db.patch("users", existingUser._id, user);
+			const schoolType =
+				args.schoolType === undefined
+					? normalizeLegacySchoolType(existingUser.schoolType)
+					: normalizeOptionalSchoolType(args.schoolType);
+			await ctx.db.patch("users", existingUser._id, {
+				...user,
+				schoolType,
+			});
+			await sanitizeLegacyOnboardingSchoolType(ctx, existingUser._id);
 			return existingUser._id;
 		}
 
@@ -330,6 +381,16 @@ export const saveOnboardingAnswers = mutation({
 		if (!normalizedGrade) {
 			throwUserFacingError("Bitte wähle eine gültige Klassenstufe aus.");
 		}
+		const normalizedSchoolType = normalizeOptionalSchoolType(
+			args.answers.schoolType,
+		);
+		if (!normalizedSchoolType) {
+			throwUserFacingError("Bitte wähle eine gültige Schulart aus.");
+		}
+		const normalizedState = normalizeOptionalFederalState(args.answers.state);
+		if (!normalizedState) {
+			throwUserFacingError("Bitte wähle ein gültiges Bundesland aus.");
+		}
 
 		const questionIdsByKey: Partial<
 			Record<OnboardingQuestionKey, Id<"onboardingQuestions">>
@@ -365,7 +426,13 @@ export const saveOnboardingAnswers = mutation({
 			[keyof typeof args.answers, string]
 		>) {
 			const normalizedAnswer =
-				key === "grade" ? normalizedGrade : answer.trim();
+				key === "grade"
+					? normalizedGrade
+					: key === "state"
+						? normalizedState
+						: key === "schoolType"
+							? normalizedSchoolType
+							: answer.trim();
 			if (!normalizedAnswer) continue;
 
 			const questionId = questionIdsByKey[key];

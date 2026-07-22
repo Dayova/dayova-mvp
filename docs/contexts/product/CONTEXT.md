@@ -42,6 +42,10 @@ _Avoid_: Treating Praxis as a fourth phase separate from rehearsal
 A focused learning period where Dayova is tested with a small number of students who have real school deadlines, to learn whether the product causes earlier and more committed action.
 _Avoid_: Treating generic app usage, polite feedback, or TestFlight downloads as validation.
 
+**Schulart**:
+The optional, coarse category a learner selects during onboarding. Store one stable key (`gymnasium`, `secondary_general`, `comprehensive`, `hauptschule`, `vocational`, `other`, or `prefer_not_to_say`) and show its German label; `prefer_not_to_say` is the ordinary “Keine Angabe” choice.
+_Avoid_: School name, free-text school field, inferring a category from an identifiable name
+
 **First Real Block**:
 The first genuine learning or work block a student starts for a real exam, assignment, presentation, or graded task before the last possible moment.
 _Avoid_: Counting planning-only activity or artificial test tasks as this signal.
