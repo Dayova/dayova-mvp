@@ -34,7 +34,7 @@ Map the `bug` and `enhancement` category roles plus the five triage disposition 
 
 ### Domain docs
 
-Use a multi-context documentation layout with `CONTEXT-MAP.md` at the repo root; Confluence is the current cross-functional documentation hub for the wider team, while repo-local context docs guide agents and technical work. See `docs/agents/domain.md`.
+Use a multi-context documentation layout with `CONTEXT-MAP.md` at the repo root. Notion is Dayova's main internal documentation and knowledge workspace; consult it when product, business, research, or decision context materially affects the task. Repo-local context docs and ADRs contain only the code-facing guidance that must evolve with this repository. Link to relevant Notion pages instead of duplicating shared internal documentation. See `docs/agents/domain.md`.
 
 ### Skill maintenance
 

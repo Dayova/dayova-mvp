@@ -416,4 +416,67 @@ index b414b58..90c627f 100644
  
  Pick model-invocation only when the agent must reach the skill on its own, or another skill must. If it only ever fires by hand, make it user-invoked and pay no context load.
  
-
+diff --git a/.agents/skills/domain-modeling/CONTEXT-FORMAT.md b/.agents/skills/domain-modeling/CONTEXT-FORMAT.md
+index eaf2a18..ea6c61a 100644
+--- a/.agents/skills/domain-modeling/CONTEXT-FORMAT.md
++++ b/.agents/skills/domain-modeling/CONTEXT-FORMAT.md
+@@ -20,14 +20,22 @@ _Avoid_: Bill, payment request
+ **Customer**:
+ A person or organization that places orders.
+ _Avoid_: Client, buyer, account
++
++## Contracts and Constraints
++
++- Capture concise, stable code-facing architecture, constraints, implementation contracts, and conventions that must evolve with the code.
++- Link significant technical decisions to the relevant ADR and shared internal decisions to their canonical knowledge-system record.
+ ```
+ 
+ ## Rules
+ 
+ - **Be opinionated.** When multiple words exist for the same concept, pick the best one and list the others under `_Avoid_`.
+ - **Keep definitions tight.** One or two sentences max. Define what it IS, not what it does.
+-- **Only include terms specific to this project's context.** General programming concepts (timeouts, error types, utility patterns) don't belong even if the project uses them extensively. Before adding a term, ask: is this a concept unique to this context, or a general programming concept? Only the former belongs.
++- **Only include language specific to this project's context.** General programming concepts (timeouts, error types, utility patterns) do not belong in the glossary even if the project uses them extensively. Before adding a term, ask: is this a concept unique to this context, or a general programming concept? Only the former belongs under `Language`.
+ - **Group terms under subheadings** when natural clusters emerge. If all terms belong to a single cohesive area, a flat list is fine.
++- **Keep other sections code-facing and durable.** Include architecture, constraints, contracts, conventions, and decision pointers only when an agent needs them to change the repository safely and they must evolve with the code.
++- **Do not create another source of truth.** Exclude task status, scratch notes, transient plans, and copied internal documentation. Link the canonical work or knowledge record and summarize only the implementation-critical detail.
++- **Use ADRs for significant trade-offs.** Keep the durable operational consequence in context documentation when useful, and link the ADR that explains the decision and rationale.
+ 
+ ## Single vs multi-context repos
+ 
+diff --git a/.agents/skills/domain-modeling/SKILL.md b/.agents/skills/domain-modeling/SKILL.md
+index d0f7e1a..e535afd 100644
+--- a/.agents/skills/domain-modeling/SKILL.md
++++ b/.agents/skills/domain-modeling/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: domain-modeling
+-description: Build and sharpen a project's domain model. Use when the user wants to pin down domain terminology or a ubiquitous language, record an architectural decision, or when another skill needs to maintain the domain model.
++description: Build and sharpen a project's domain model. Use when the user wants to pin down domain terminology or a ubiquitous language, capture stable code-facing constraints or contracts, record an architectural decision, or when another skill needs to maintain the domain model.
+ ---
+ 
+ # Domain Modeling
+@@ -37,7 +37,7 @@ If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts. The ma
+ │       └── docs/adr/
+ ```
+ 
+-Create files lazily — only when you have something to write. If no `CONTEXT.md` exists, create one when the first term is resolved. If no `docs/adr/` exists, create it when the first ADR is needed.
++Create files lazily — only when you have something to write. If no `CONTEXT.md` exists, create one when the first term or stable code-facing constraint is resolved. If no `docs/adr/` exists, create it when the first ADR is needed. Follow repo-local domain-documentation guidance when it defines a narrower or broader role for context files.
+ 
+ ## During the session
+ 
+@@ -57,11 +57,11 @@ When domain relationships are being discussed, stress-test them with specific sc
+ 
+ When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
+ 
+-### Update CONTEXT.md inline
++### Update context documentation inline
+ 
+-When a term is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
++When a term, stable code-facing constraint, or implementation contract is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
+ 
+-`CONTEXT.md` should be totally devoid of implementation details. Do not treat `CONTEXT.md` as a spec, a scratch pad, or a repository for implementation decisions. It is a glossary and nothing else.
++Follow the repository's documented scope for context files. In Dayova, `CONTEXT.md` may combine the domain glossary with concise, stable code-facing architecture, constraints, implementation contracts, and decision pointers that must evolve with the code. Keep shared product, business, research, and organizational knowledge in the canonical knowledge system and link to it instead of duplicating it. Do not treat `CONTEXT.md` as a task spec, scratch pad, status log, or implementation journal.
+ 
+ ### Offer ADRs sparingly
+ 
