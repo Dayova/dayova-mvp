@@ -11,4 +11,4 @@ Run typechecking regularly, single test files regularly, and the full test suite
 
 Once done, use /code-review to review the work.
 
-Follow the repository's delivery policy. For Dayova implementation work, validate the result, commit only the in-scope changes, and push the non-default feature or PR branch unless the user explicitly asks to keep the work local. Never push the default branch or stage unrelated changes. If safe delivery is blocked, report the blocker instead of silently leaving completed work unpublished.
+Follow the repository's delivery policy. For explicitly mutating Dayova repository work, validate and review the result, then commit only the coherent in-scope changes. Publish only to a branch that already represents the current work item or pull request, or a new branch intentionally created for this work from the correct integration base. Preserve an existing pull request and stack. Never treat “non-default” alone as authorization to push, push the default branch, or stage unrelated changes. If safe delivery is blocked, report the blocker instead of silently leaving completed work unpublished.

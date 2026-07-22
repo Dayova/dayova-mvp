@@ -26,9 +26,19 @@ Convex agent skills for common tasks can be installed by running
 
 ### Delivery workflow
 
-For requests to implement, fix, build, update, refactor, or address review feedback, completion includes validation, an intentional commit containing only the in-scope changes, and a push to the non-default feature or pull-request branch. The user does not need to repeat “commit and push.” Update an existing pull request when one exists; otherwise create a scoped `codex/` branch from the current default branch and open a draft pull request when the work is ready for review.
+For explicitly mutating repository work (for example implementation, fixes, refactors, or review-feedback changes), completion normally includes:
 
-Never push directly to the default branch, stage unrelated user changes, or mix a distinct follow-up into the current branch. Put unrelated follow-up work on a separate branch, commit, and pull request. Read-only review, diagnosis, explanation, research, and status requests remain non-mutating. Stop and surface the blocker when scope is ambiguous, unrelated changes cannot be separated safely, validation has a material failure, authentication is unavailable, or the remote changed unexpectedly.
+1. validate the result;
+2. review the change;
+3. commit only the coherent in-scope changes;
+4. publish them to a branch owned by the current work; and
+5. update the existing pull request, or open a draft pull request when appropriate.
+
+The user does not need to repeat “commit and push.” Preserve the existing branch, pull request, and stack when the task belongs to one. Push only a branch that already represents the current work item or pull request, or a new branch intentionally created for this work.
+
+For new work, determine the correct integration base from the task, current branch, stack, and repository workflow; create a scoped `codex/` branch from that base. Do not assume the default branch is always the correct base.
+
+Never push directly to the default branch, treat another developer's, release, shared integration, or stack-parent branch as safe merely because it is non-default, stage unrelated user changes, or mix a distinct follow-up into the current branch. Put unrelated follow-up work on a separate branch, commit, and pull request. Read-only review, diagnosis, explanation, research, and status requests remain non-mutating. Stop and surface the blocker when scope or branch ownership is ambiguous, unrelated changes cannot be separated safely, validation has a material failure, authentication is unavailable, or the remote changed unexpectedly.
 
 ### Issue tracker
 
