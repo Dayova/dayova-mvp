@@ -6,7 +6,7 @@ index 30053bd8660db762ab1726ce5259ac4b6d29565f..7abd6e05963c644b51e236fc1456533d
  const file_store_1 = require("./file-store");
  const { pid } = process;
  const debug = require('debug')('expo:metro:cache');
-+// Metro can request thousands of cached transforms concurrently. On Windows,
++// Metro's binary cache can request thousands of transforms concurrently. On Windows,
 +// allowing every request to call readFile at once exhausts Node's file
 +// descriptor table (EMFILE) after a large cold bundle. Keep enough parallelism
 +// for fast local cache reads while reserving descriptors for Metro and its

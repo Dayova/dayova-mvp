@@ -7,7 +7,7 @@ When a patched package is installed, pnpm applies the matching `.patch` file to
 the package contents in `node_modules`. Keep each patch documented here so future
 dependency updates can decide whether the patch is still needed.
 
-## `@expo/metro-config@57.0.6.patch`
+## `@expo/metro-config@57.0.7.patch`
 
 ### Why This Patch Exists
 
@@ -30,7 +30,7 @@ This binary store was introduced upstream in
 concurrent read/write handling in
 [`expo/expo#46171`](https://github.com/expo/expo/pull/46171), but that handling
 does not bound simultaneous reads. After the Expo SDK 57 integration,
-`@expo/metro-config@57.0.6` was tested without the patch: the deterministic
+`@expo/metro-config@57.0.7` was tested without the patch: the deterministic
 regression test observed all 1,024 requested reads active concurrently. The
 upgrade therefore does not remove the failure.
 
@@ -78,7 +78,7 @@ When upgrading Expo or `@expo/metro-config`:
    than pnpm's previously patched installation.
 3. Run `pnpm test:unit:metro-cache`; it must still pass against that unpatched
    package, then run the cold-cache Android integration path above on Windows.
-4. If both checks pass, delete `patches/@expo__metro-config@57.0.6.patch`.
+4. If both checks pass, delete `patches/@expo__metro-config@57.0.7.patch`.
 5. Run `pnpm install`, `pnpm check`, and `pnpm test`.
 ## `@react-native__gradle-plugin@0.86.0.patch`
 
