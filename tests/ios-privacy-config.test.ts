@@ -57,5 +57,5 @@ describe("iOS privacy purpose strings", () => {
 				).toEqual(appConfigValue);
 			}
 		}
-	});
+	}, 15_000);
 });

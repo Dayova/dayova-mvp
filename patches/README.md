@@ -7,7 +7,7 @@ When a patched package is installed, pnpm applies the matching `.patch` file to
 the package contents in `node_modules`. Keep each patch documented here so future
 dependency updates can decide whether the patch is still needed.
 
-## `expo-updates@57.0.9.patch`
+## `expo-updates@57.0.10.patch`
 
 ### Why This Patch Exists
 
@@ -26,6 +26,9 @@ the deferred splash. It applies that interface style to both the storyboard view
 and deferred React root, then resolves the root background color against the
 same trait collection. No Expo Updates loading, selection, or update behavior is
 changed.
+
+The patch was retargeted to 57.0.10 after confirming that release's deferred
+splash implementation is byte-identical to 57.0.9 at the patched Swift file.
 
 ### How To Verify
 
@@ -47,7 +50,7 @@ remain Dark; screenshots of only the settled state are insufficient.
 Recheck this patch whenever `expo-updates` changes. Remove it when the deferred
 root path resolves its splash color using the active window trait upstream.
 
-1. Delete `patches/expo-updates@57.0.9.patch`.
+1. Delete `patches/expo-updates@57.0.10.patch`.
 2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
 3. Run `pnpm install --frozen-lockfile` and the focused test.
 4. Repeat the frame-by-frame embedded-bundle Release cold-launch check in both
