@@ -22,6 +22,26 @@ describe("normalizeGeneratedGermanText", () => {
 		);
 	});
 
+	test("repairs common technical learning prompt transliterations", () => {
+		expect(
+			normalizeGeneratedGermanText(
+				"Welche Maske gehoert zum Praefix, wie viele Hosts werden benoetigt und warum ist die IP ungueltig? Begruende muendlich.",
+			),
+		).toBe(
+			"Welche Maske gehört zum Präfix, wie viele Hosts werden benötigt und warum ist die IP ungültig? Begründe mündlich.",
+		);
+	});
+
+	test("repairs technical topic-map transliterations used in session descriptions", () => {
+		expect(
+			normalizeGeneratedGermanText(
+				"Klaere die Binaerdarstellung und berechne verfuegbare Hosts in kleineren Netzgroessen.",
+			),
+		).toBe(
+			"Kläre die Binärdarstellung und berechne verfügbare Hosts in kleineren Netzgrößen.",
+		);
+	});
+
 	test("rejects provider control markers instead of guessing missing umlauts", () => {
 		expect(() =>
 			normalizeGeneratedGermanText(

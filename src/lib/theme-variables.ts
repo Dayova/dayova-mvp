@@ -15,6 +15,7 @@ export const DARK_THEME_VARIABLES = {
 	"--surface": "248 10% 13%",
 	"--primary": "196.2 100% 50%",
 	"--primary-strong": "198.3 100% 58%",
+	"--progress-track": "195.3 56.1% 13.5%",
 	"--button-neutral": "0 0% 100%",
 	"--secondary": "279.9 68% 66%",
 	"--muted": "247 10% 18%",

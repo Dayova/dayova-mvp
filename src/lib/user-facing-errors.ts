@@ -86,6 +86,7 @@ export const getUserFacingErrorMessage = (
 		logDiagnosticError("Handled user-visible error", error, {
 			source: options.source,
 			metadata: options.metadata,
+			level: getExplicitUserFacingMessage(error) ? "warn" : "error",
 		});
 	}
 

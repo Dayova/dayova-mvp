@@ -150,7 +150,9 @@ export const buildLocalNotificationPlan = ({
 
 		for (const entry of entries) {
 			if (entry.completed === true) continue;
-			const startMinutes = parseTimeToMinutes(entry.time);
+			const startMinutes = isExamEntry(entry)
+				? null
+				: parseTimeToMinutes(entry.time);
 			if (startMinutes === null) continue;
 
 			if (shouldPlanBeforeEvent(entry, preferences)) {

@@ -12,9 +12,15 @@ import {
 	type KeyboardAwareScrollViewRef,
 	KeyboardStickyView,
 } from "react-native-keyboard-controller";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import {
+	ExamDateSelector,
+	ExamTypePicker,
+	SingleSelectOption,
+} from "~/components/entry/exam-flow";
 import { BackButton, Button } from "~/components/ui/button";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
@@ -31,7 +37,6 @@ import {
 	CalendarDays,
 	Chemistry,
 	ChevronDown,
-	ClipboardList,
 	Clock3,
 	Code,
 	Dna,
@@ -50,15 +55,18 @@ import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-vie
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
-import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useValidationAnalytics } from "~/lib/analytics";
 import { definedAnalyticsProperties } from "~/lib/analytics-core";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import {
+	constrainEndTimeForStart,
 	getDurationBetweenTimes,
+	MAX_EXAM_DURATION_MINUTES,
+	MIN_EXAM_DURATION_MINUTES,
 	shiftEndTimeForStartChange,
 } from "~/lib/entry-time";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
@@ -67,13 +75,13 @@ import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 type EntryType = "homework" | "exam";
-type EntryStep = "basics" | "planning";
+type EntryStep = "basics" | "planning" | "examType" | "examDetails";
 type PickerTarget =
 	| "dueDate"
 	| "plannedDate"
 	| "plannedTime"
 	| "plannedEndTime";
-type SelectTarget = "subject" | "examType";
+type SelectTarget = "subject";
 
 const SUBJECT_OPTIONS = [
 	"Mathematik",
@@ -91,18 +99,12 @@ const SUBJECT_OPTIONS = [
 	"Sport",
 ];
 
-const EXAM_TYPE_OPTIONS = [
-	"Test",
-	"Kurzkontrolle",
-	"Leistungskontrolle",
-	"Klassenarbeit",
-	"Klausur",
-	"Mündliche Prüfung",
-	"Präsentation",
-];
-
 const KEYBOARD_DISMISS_FALLBACK_MS = 280;
 const SELECTED_OPTION_ICON_COLOR = DAYOVA_DESIGN_SYSTEM.colors.primary;
+const EXAM_DURATION_OPTIONS = {
+	minimumMinutes: MIN_EXAM_DURATION_MINUTES,
+	maximumMinutes: MAX_EXAM_DURATION_MINUTES,
+} as const;
 
 const subjectIconByOption = {
 	Mathematik: Calculator,
@@ -232,6 +234,24 @@ function HomeworkScreenHeader({
 	);
 }
 
+function StickyActionFooter({
+	bottomInset,
+	children,
+}: {
+	bottomInset: number;
+	children: ReactNode;
+}) {
+	return (
+		<View
+			className="px-6"
+			// The bottom padding must include the device's runtime safe-area inset.
+			style={{ paddingBottom: Math.max(bottomInset + 10, 24) }}
+		>
+			{children}
+		</View>
+	);
+}
+
 export default function NewEntryScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -285,24 +305,22 @@ export default function NewEntryScreen() {
 
 	const trimmedSubject = subject.trim();
 	const trimmedExamType = examTypeLabel.trim();
-	const canContinueFromBasics = isHomework
-		? trimmedSubject.length > 0
-		: trimmedSubject.length > 0 && trimmedExamType.length > 0;
+	const canContinueFromBasics = trimmedSubject.length > 0;
 	const scheduledDurationMinutes = getDurationBetweenTimes(
 		plannedTime,
 		plannedEndTime,
+		isHomework ? undefined : EXAM_DURATION_OPTIONS,
 	);
 	const canCreateHomework = trimmedSubject.length > 0;
 	const canCreateExam = trimmedSubject.length > 0 && trimmedExamType.length > 0;
 	const canWriteEntries = Boolean(user && isConvexAuthenticated);
-
-	const title = isHomework ? "Hausaufgabe eintragen" : "Prüfung eintragen";
-	const subtitle = isHomework
-		? step === "basics"
-			? "Trage zuerst Fälligkeit, Fach und Notiz ein."
-			: "Plane jetzt, wann du die Hausaufgabe erledigst."
-		: "Trage Datum, Uhrzeit, Fach und Prüfungsart ein.";
-
+	const examStepNumber = step === "basics" ? 1 : step === "examType" ? 2 : 3;
+	const examStepTitle =
+		step === "basics"
+			? "Wann findet die Prüfung statt?"
+			: step === "examType"
+				? "Welche Art von Prüfung ist es?"
+				: "Welches Fach ist es?";
 	const clearPendingModalOpen = useCallback(() => {
 		keyboardHideSubscriptionRef.current?.remove();
 		keyboardHideSubscriptionRef.current = null;
@@ -397,13 +415,20 @@ export default function NewEntryScreen() {
 					previousStart: plannedTime,
 					previousEnd: plannedEndTime,
 					nextStart: next,
+					...(isHomework ? {} : EXAM_DURATION_OPTIONS),
 				}),
 			);
 		}
 		if (pickerTarget === "plannedEndTime") {
 			const next = new Date(plannedEndTime);
 			next.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
-			setPlannedEndTime(next);
+			setPlannedEndTime(
+				constrainEndTimeForStart({
+					start: plannedTime,
+					end: next,
+					...(isHomework ? {} : EXAM_DURATION_OPTIONS),
+				}),
+			);
 		}
 	};
 
@@ -430,11 +455,11 @@ export default function NewEntryScreen() {
 			createdEntryId = await createDayEntry({
 				dayKey: nextDayKey,
 				title: entryTitle,
-				time: formatTime(plannedTime),
 				kind: isHomework ? "Hausaufgabe" : "Leistungskontrolle",
 				...(trimmedNote ? { notes: trimmedNote } : {}),
 				...(isHomework
 					? {
+							time: formatTime(plannedTime),
 							dueDateKey: getDayKey(dueDate),
 							dueDateLabel: formatDate(dueDate),
 						}
@@ -498,13 +523,17 @@ export default function NewEntryScreen() {
 			["examTypeLabel", trimmedExamType],
 			["examDateKey", getDayKey(plannedDate)],
 			["examDateLabel", formatDate(plannedDate)],
-			["examTime", formatTime(plannedTime)],
 			["durationMinutes", `${scheduledDurationMinutes}`],
 		]
 			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
 			.join("&");
 		router.push(`${ROUTES.createLearningPlan}?${query}`);
 	};
+
+	const goToStep = useCallback((nextStep: EntryStep) => {
+		scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+		setStep(nextStep);
+	}, []);
 
 	const handleBack = useCallback(() => {
 		if (selectTarget) {
@@ -517,19 +546,30 @@ export default function NewEntryScreen() {
 			return true;
 		}
 
-		if (step === "planning") {
-			setStep("basics");
+		if (step === "planning" || step === "examType") {
+			goToStep("basics");
+			return true;
+		}
+
+		if (step === "examDetails") {
+			goToStep("examType");
 			return true;
 		}
 
 		goBackOrReplace(router, "/home");
 		return true;
-	}, [pickerTarget, router, selectTarget, step]);
+	}, [goToStep, pickerTarget, router, selectTarget, step]);
 
 	useBackIntent(
 		Boolean(selectTarget || pickerTarget || step !== "basics"),
 		handleBack,
 	);
+	useLearningPlanCreationProgress({
+		active: !isHomework,
+		currentStep: examStepNumber,
+		onBack: handleBack,
+		title: "Prüfung eintragen",
+	});
 
 	const scrollToFocusedField = useCallback((offsetY: number) => {
 		requestAnimationFrame(() => {
@@ -578,44 +618,21 @@ export default function NewEntryScreen() {
 	const renderSelectSheet = () => {
 		if (!selectTarget) return null;
 
-		const isSubjectSelect = selectTarget === "subject";
-		const title = isSubjectSelect
-			? "Schulfach auswählen"
-			: "Prüfungsart auswählen";
-		const options = isSubjectSelect ? SUBJECT_OPTIONS : EXAM_TYPE_OPTIONS;
-		const selectedValue = isSubjectSelect ? subject : examTypeLabel;
-
 		return (
 			<SelectSheet
 				visible
-				title={title}
-				options={options}
-				selectedValue={selectedValue}
+				title="Schulfach auswählen"
+				options={SUBJECT_OPTIONS}
+				selectedValue={subject}
 				onClose={closeSelect}
-				onSelect={(option) => {
-					if (isSubjectSelect) {
-						setSubject(option);
-					} else {
-						setExamTypeLabel(option);
-					}
-				}}
+				onSelect={setSubject}
 				renderOptionIcon={(option, isSelected) => {
-					if (isSubjectSelect) {
-						const SubjectIcon =
-							subjectIconByOption[option as keyof typeof subjectIconByOption] ??
-							BookOpen;
-
-						return (
-							<SubjectIcon
-								size={19}
-								color={isSelected ? SELECTED_OPTION_ICON_COLOR : fieldIconColor}
-								strokeWidth={2}
-							/>
-						);
-					}
+					const SubjectIcon =
+						subjectIconByOption[option as keyof typeof subjectIconByOption] ??
+						BookOpen;
 
 					return (
-						<ClipboardList
+						<SubjectIcon
 							size={19}
 							color={isSelected ? SELECTED_OPTION_ICON_COLOR : fieldIconColor}
 							strokeWidth={2}
@@ -629,15 +646,21 @@ export default function NewEntryScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<ThemedStatusBar />
+			{!isHomework ? (
+				<View className="px-8 pb-8">
+					<Text className="font-poppins font-semibold text-heading-2 text-text">
+						{examStepTitle}
+					</Text>
+				</View>
+			) : null}
 			<KeyboardSafeScrollView
 				ref={scrollViewRef}
 				className="flex-1"
 				bottomOffset={128}
 				contentContainerStyle={{
 					paddingHorizontal: 32,
-					paddingTop: isHomework ? Math.max(insets.top + 28, 58) : 80,
-					paddingBottom: isHomework ? 168 : 80,
+					paddingTop: isHomework ? Math.max(insets.top + 28, 58) : 0,
+					paddingBottom: 168,
 				}}
 			>
 				{isHomework ? (
@@ -764,128 +787,46 @@ export default function NewEntryScreen() {
 						</>
 					)
 				) : (
+					// biome-ignore lint/complexity/noUselessFragments: Keeps the exam flow grouped as the sibling branch of the homework flow.
 					<>
-						<HomeworkScreenHeader title="Prüfungstermin" onBack={handleBack} />
-						<View className="mb-7">
-							<Text className="font-poppins font-semibold text-body-2 text-text">
-								{title}
-							</Text>
-							<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
-								{subtitle}
-							</Text>
-						</View>
+						<Animated.View key={step} entering={FadeIn.duration(220)}>
+							{step === "basics" ? (
+								<ExamDateSelector
+									selectedDate={plannedDate}
+									onSelect={setPlannedDate}
+								/>
+							) : step === "examType" ? (
+								<ExamTypePicker
+									selectedValue={examTypeLabel}
+									onSelect={setExamTypeLabel}
+								/>
+							) : (
+								<View className="gap-3" accessibilityRole="radiogroup">
+									{SUBJECT_OPTIONS.map((option) => {
+										const SubjectIcon =
+											subjectIconByOption[
+												option as keyof typeof subjectIconByOption
+											] ?? BookOpen;
+
+										return (
+											<SingleSelectOption
+												key={option}
+												Icon={SubjectIcon}
+												label={option}
+												selected={subject === option}
+												onPress={() => setSubject(option)}
+											/>
+										);
+									})}
+								</View>
+							)}
+						</Animated.View>
 					</>
 				)}
-
-				{!isHomework && step === "basics" ? (
-					<>
-						<HomeworkPillField
-							label="Prüfungsdatum"
-							value={formatCompactDate(plannedDate)}
-							icon={
-								<CalendarDays
-									size={20}
-									color={fieldIconColor}
-									strokeWidth={2.1}
-								/>
-							}
-							onPress={() => openPicker("plannedDate")}
-						/>
-						<View className="mb-5 flex-row gap-3">
-							<View className="flex-1">
-								<HomeworkPillField
-									value={formatTime(plannedTime)}
-									placeholder="Von"
-									icon={
-										<Clock3
-											size={19}
-											color={fieldIconColor}
-											strokeWidth={2.1}
-										/>
-									}
-									onPress={() => openPicker("plannedTime")}
-									className="min-h-16 px-5"
-								/>
-							</View>
-							<View className="flex-1">
-								<HomeworkPillField
-									value={formatTime(plannedEndTime)}
-									placeholder="Bis"
-									icon={
-										<Clock3
-											size={19}
-											color={fieldIconColor}
-											strokeWidth={2.1}
-										/>
-									}
-									onPress={() => openPicker("plannedEndTime")}
-									className="min-h-16 px-5"
-								/>
-							</View>
-						</View>
-
-						<Field>
-							<FieldLabel>Schulfach</FieldLabel>
-							<FieldTrigger
-								activeOpacity={0.86}
-								onPress={() => openSelect("subject")}
-								className="min-h-16 rounded-input px-5"
-							>
-								<Text
-									className={cn(
-										"flex-1 font-poppins text-body-2",
-										subject ? "text-text" : "text-secondary-text",
-									)}
-									numberOfLines={1}
-								>
-									{subject || "Wähle das Fach aus"}
-								</Text>
-								<FieldAccessory>
-									<ChevronDown
-										size={20}
-										color={fieldTextColor}
-										strokeWidth={2.1}
-									/>
-								</FieldAccessory>
-							</FieldTrigger>
-						</Field>
-
-						<Field className="mb-8">
-							<FieldLabel>Prüfungsart</FieldLabel>
-							<FieldTrigger
-								activeOpacity={0.86}
-								onPress={() => openSelect("examType")}
-								className="min-h-16 rounded-input px-5"
-							>
-								<Text
-									className={cn(
-										"flex-1 font-poppins text-body-2",
-										examTypeLabel ? "text-text" : "text-secondary-text",
-									)}
-									numberOfLines={1}
-								>
-									{examTypeLabel || "Wähle die Prüfungsart aus"}
-								</Text>
-								<FieldAccessory>
-									<ChevronDown
-										size={20}
-										color={fieldTextColor}
-										strokeWidth={2.1}
-									/>
-								</FieldAccessory>
-							</FieldTrigger>
-						</Field>
-					</>
-				) : null}
 			</KeyboardSafeScrollView>
 			<KeyboardStickyView enabled={shouldUseKeyboardStickyActions(Platform.OS)}>
 				{isHomework ? (
-					<View
-						className="px-6"
-						style={{
-							paddingBottom: Math.max(insets.bottom + 10, 24),
-						}}
-					>
+					<StickyActionFooter bottomInset={insets.bottom}>
 						{errorMessage ? (
 							<Text
 								accessibilityRole="alert"
@@ -904,7 +845,7 @@ export default function NewEntryScreen() {
 							}
 							onPress={() => {
 								if (step === "basics") {
-									setStep("planning");
+									goToStep("planning");
 									return;
 								}
 								void createEntry();
@@ -912,14 +853,9 @@ export default function NewEntryScreen() {
 						>
 							<Text>Weiter</Text>
 						</Button>
-					</View>
-				) : (
-					<View
-						className="px-6"
-						style={{
-							paddingBottom: Math.max(insets.bottom + 10, 24),
-						}}
-					>
+					</StickyActionFooter>
+				) : step === "examDetails" ? (
+					<StickyActionFooter bottomInset={insets.bottom}>
 						{errorMessage ? (
 							<Text
 								accessibilityRole="alert"
@@ -950,7 +886,19 @@ export default function NewEntryScreen() {
 								<Text>Lernplan</Text>
 							</Button>
 						</View>
-					</View>
+					</StickyActionFooter>
+				) : (
+					<StickyActionFooter bottomInset={insets.bottom}>
+						<Button
+							className="w-full"
+							disabled={step === "examType" && !trimmedExamType}
+							onPress={() => {
+								goToStep(step === "basics" ? "examType" : "examDetails");
+							}}
+						>
+							<Text>Weiter</Text>
+						</Button>
+					</StickyActionFooter>
 				)}
 			</KeyboardStickyView>
 			{renderPicker()}

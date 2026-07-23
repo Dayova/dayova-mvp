@@ -43,6 +43,7 @@ function AppNavigator() {
 	const pathname = usePathname();
 	const rootNavigationState = useRootNavigationState();
 	const { user, isSessionLoading } = useAuth();
+	const { colors } = useDayovaTheme();
 
 	useEffect(() => {
 		if (isSessionLoading || !rootNavigationState?.key) return;
@@ -66,7 +67,17 @@ function AppNavigator() {
 	return (
 		<>
 			<NotificationSync />
-			<Stack screenOptions={{ headerShown: false }} />
+			<Stack screenOptions={{ headerShown: false }}>
+				<Stack.Screen
+					name="learning-times/edit"
+					options={{
+						animation: "slide_from_right",
+						contentStyle: { backgroundColor: colors.background },
+						gestureEnabled: true,
+						presentation: "card",
+					}}
+				/>
+			</Stack>
 			<PortalHost />
 		</>
 	);

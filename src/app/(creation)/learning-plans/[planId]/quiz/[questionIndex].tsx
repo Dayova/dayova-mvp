@@ -4,14 +4,15 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { ScreenHeader as Header } from "~/components/screen-header";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
-import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import { getDiagnosticQuestionCreationStep } from "~/features/learning-plans/creation-progress";
+import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
+import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
 import { QuizStep } from "~/features/learning-plans/quiz-step";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useBackIntent } from "~/lib/navigation";
+import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 
 const quizPath = (id: Id<"learningPlans">, questionIndex: number) =>
 	`/learning-plans/${id}/quiz/${questionIndex}` as const;
@@ -85,11 +86,16 @@ export default function LearningPlanQuizScreen() {
 			router.replace(quizPath(planId, questionIndex - 1));
 			return true;
 		}
-		router.replace(planPath(planId, "analysis"));
+		goBackOrReplace(router, learningPlanTopicPath(planId));
 		return true;
 	};
 
-	useBackIntent(Boolean(planId), goBack);
+	useBackIntent(Boolean(planId && questionIndex > 0), goBack);
+	useLearningPlanCreationProgress({
+		active: true,
+		currentStep: getDiagnosticQuestionCreationStep(questionIndex),
+		onBack: goBack,
+	});
 
 	const continueQuestion = async () => {
 		if (!planId || !currentQuestion || isBusy) return;
@@ -109,7 +115,7 @@ export default function LearningPlanQuizScreen() {
 				return;
 			}
 
-			router.replace(planPath(planId, "generating"));
+			router.replace(planPath(planId, "workload"));
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Die Antwort konnte nicht gespeichert werden."),
@@ -122,23 +128,19 @@ export default function LearningPlanQuizScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: true }} />
-			<ThemedStatusBar />
 			<KeyboardSafeScrollView
 				className="flex-1"
 				bottomOffset={32}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,
-					paddingTop: 80,
+					paddingTop: 0,
 					paddingBottom: 60,
 				}}
 			>
-				<Header title="Quiz" onBack={goBack} showBack={questionIndex > 0} />
 				{currentQuestion ? (
 					<QuizStep
 						question={currentQuestion}
-						questionIndex={questionIndex}
-						questionCount={questions.length}
 						answer={answer}
 						errorMessage={errorMessage}
 						isBusy={isBusy}

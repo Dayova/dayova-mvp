@@ -1,6 +1,6 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
 	ActivityIndicator,
 	Pressable,
@@ -8,6 +8,18 @@ import {
 	View,
 	type ViewStyle,
 } from "react-native";
+import Animated, {
+	cancelAnimation,
+	Easing,
+	FadeIn,
+	FadeOut,
+	useAnimatedStyle,
+	useReducedMotion,
+	useSharedValue,
+	withRepeat,
+	withSequence,
+	withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 import { api } from "#convex/_generated/api";
@@ -15,11 +27,10 @@ import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
 import {
 	ArrowUpRight,
-	BookOpen,
+	Check,
 	Dumbbell,
 	Note,
-	Rocket,
-	SquareLock,
+	Repeat,
 	Time04,
 } from "~/components/ui/icon";
 import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
@@ -27,13 +38,23 @@ import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuth } from "~/context/AuthContext";
+import {
+	getLearningPathNodePresentation,
+	LEARNING_PATH_BREATHING,
+	LEARNING_PATH_PHASE_ICON,
+	LEARNING_PATH_SEGMENTED_HALO_TONES,
+	type LearningPathNodeHalo,
+	type LearningPathNodeIcon,
+	type LearningPathNodeState,
+	type LearningPathNodeTone,
+} from "~/features/learning-plans/learning-path-node-presentation";
 import type {
 	LearningPlanSnapshot,
 	PlanSession,
 } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
-import { goBackOrReplace } from "~/lib/navigation";
+import { dismissToOrReplace } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
@@ -60,14 +81,16 @@ const PHASE_COLOR: Record<
 	},
 };
 
-const PHASE_ICON = {
-	theory: BookOpen,
-	practice: Dumbbell,
-	rehearsal: Rocket,
-} satisfies Record<PlanSession["phase"], typeof Dumbbell>;
+const LEARNING_PATH_ICON_COMPONENT = {
+	check: Check,
+	dumbbell: Dumbbell,
+	note: Note,
+	repeat: Repeat,
+} satisfies Record<LearningPathNodeIcon, typeof Dumbbell>;
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
 const SESSION_PREVIEW_CARD_HEIGHT = 174;
+const SESSION_PREVIEW_TRANSITION_DURATION_MS = 160;
 
 const getSessionRoute = (
 	planId: Id<"learningPlans">,
@@ -84,24 +107,64 @@ function SessionPreviewCard({
 	onOpen: () => void;
 }) {
 	const { colors } = useDayovaTheme();
+	const reduceMotion = useReducedMotion();
 	const phase = PHASE_COLOR[session.phase];
-	const PhaseIcon = PHASE_ICON[session.phase];
+	const PhaseIcon =
+		LEARNING_PATH_ICON_COMPONENT[LEARNING_PATH_PHASE_ICON[session.phase]];
 	const title = formatGermanUiText(session.title);
 	const description = formatGermanUiText(session.goal);
+	const content = (
+		<View className="gap-2">
+			<View className="flex-row items-start justify-between gap-3">
+				<Text
+					className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-2 text-text"
+					numberOfLines={2}
+				>
+					{title}
+				</Text>
 
-	return (
+				<View className="shrink-0 flex-row items-center justify-end gap-2">
+					<View
+						className="flex-row items-center gap-1 rounded-full px-2.5 py-1.5"
+						style={{ backgroundColor: phase.background }}
+					>
+						<PhaseIcon size={12} color={phase.foreground} strokeWidth={2.1} />
+						<Text
+							className="font-poppins font-semibold text-body-5"
+							style={{ color: phase.foreground }}
+						>
+							{PHASE_LABEL[session.phase]}
+						</Text>
+					</View>
+
+					<View className="rounded-full bg-system-subtle px-3 py-1.5">
+						<Text className="font-poppins font-semibold text-body-5 text-primary">
+							{`${session.durationMinutes} min`}
+						</Text>
+					</View>
+				</View>
+			</View>
+
+			<View className="flex-row items-center gap-1.5">
+				<Time04 size={13} color={colors.secondaryText} strokeWidth={2} />
+				<Text className="font-poppins text-body-4 text-secondary-text">
+					{session.dateLabel}
+				</Text>
+			</View>
+
+			<Text
+				className="max-w-[292px] font-poppins text-body-4 text-secondary-text"
+				numberOfLines={2}
+			>
+				{description}
+			</Text>
+		</View>
+	);
+
+	const card = canOpen ? (
 		<CompactNotchedActionCard
-			actionAccessibilityHint={
-				canOpen
-					? "Öffnet die ausgewählte Lerneinheit."
-					: "Dieser Lernblock ist noch gesperrt und wird erst nach dem vorherigen Lernblock freigeschaltet."
-			}
-			actionAccessibilityLabel={
-				canOpen
-					? `Lerneinheit ${title} öffnen`
-					: `Lerneinheit ${title} ist gesperrt`
-			}
-			actionDisabled={!canOpen}
+			actionAccessibilityHint="Öffnet die ausgewählte Lerneinheit."
+			actionAccessibilityLabel={`Lerneinheit ${title} öffnen`}
 			actionIcon={
 				<ArrowUpRight
 					size={24}
@@ -118,58 +181,47 @@ function SessionPreviewCard({
 				paddingBottom: 24,
 			}}
 		>
-			<View className="gap-2">
-				<View className="flex-row items-start justify-between gap-3">
-					<Text
-						className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-2 text-text"
-						numberOfLines={2}
-					>
-						{title}
-					</Text>
-
-					<View className="shrink-0 flex-row items-center justify-end gap-2">
-						<View
-							className="flex-row items-center gap-1 rounded-full px-2.5 py-1.5"
-							style={{ backgroundColor: phase.background }}
-						>
-							<PhaseIcon size={12} color={phase.foreground} strokeWidth={2.1} />
-							<Text
-								className="font-poppins font-semibold text-body-5"
-								style={{ color: phase.foreground }}
-							>
-								{PHASE_LABEL[session.phase]}
-							</Text>
-						</View>
-
-						<View className="rounded-full bg-system-subtle px-3 py-1.5">
-							<Text className="font-poppins font-semibold text-body-5 text-primary">
-								{`${session.durationMinutes} min`}
-							</Text>
-						</View>
-					</View>
-				</View>
-
-				<View className="flex-row items-center gap-1.5">
-					<Time04 size={13} color={colors.secondaryText} strokeWidth={2} />
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						{session.dateLabel}
-					</Text>
-				</View>
-
-				<Text
-					className="max-w-[292px] font-poppins text-body-4 text-secondary-text"
-					numberOfLines={2}
-				>
-					{description}
-				</Text>
-			</View>
+			{content}
 		</CompactNotchedActionCard>
+	) : (
+		<View
+			style={{
+				width: "100%",
+				minHeight: SESSION_PREVIEW_CARD_HEIGHT,
+				paddingHorizontal: 24,
+				paddingTop: 22,
+				paddingBottom: 24,
+				borderWidth: 1,
+				borderColor: colors.border,
+				borderRadius: 44,
+				borderCurve: "continuous",
+				backgroundColor: colors.surface,
+			}}
+		>
+			{content}
+		</View>
+	);
+
+	return (
+		<Animated.View
+			entering={
+				reduceMotion
+					? undefined
+					: FadeIn.duration(SESSION_PREVIEW_TRANSITION_DURATION_MS)
+			}
+			exiting={
+				reduceMotion
+					? undefined
+					: FadeOut.duration(SESSION_PREVIEW_TRANSITION_DURATION_MS)
+			}
+			style={{ width: "100%" }}
+		>
+			{card}
+		</Animated.View>
 	);
 }
 
-type PathNodeState = "completed" | "current" | "locked";
-
-const PATH_NODE_STATE_LABEL: Record<PathNodeState, string> = {
+const PATH_NODE_STATE_LABEL: Record<LearningPathNodeState, string> = {
 	completed: "abgeschlossen",
 	current: "verfügbar",
 	locked: "gesperrt",
@@ -252,21 +304,37 @@ const getPathNodeState = (
 	session: PlanSession,
 	index: number,
 	currentIndex: number | null,
-): PathNodeState => {
+): LearningPathNodeState => {
 	if (session.completed) return "completed";
 	if (currentIndex !== null && index === currentIndex) return "current";
 	return "locked";
 };
 
-const STEP_PUCK_WIDTH = 68;
-const STEP_PUCK_HEIGHT = 64;
-const STEP_LOCKED_FACE_WIDTH = 58;
-const STEP_LOCKED_FACE_HEIGHT = 50;
+const STEP_PUCK_DIMENSIONS = {
+	blue: { faceHeight: 52, height: 59, width: 60 },
+	gray: { faceHeight: 46, height: 52, width: 52 },
+} satisfies Record<
+	LearningPathNodeTone,
+	{ faceHeight: number; height: number; width: number }
+>;
+const STEP_PUCK_LIP_OFFSET = 6;
 const STEP_SELECTION_WIDTH = 92;
 const STEP_SELECTION_HEIGHT = 86;
 const STEP_SELECTION_STROKE_WIDTH = 7;
+const STEP_HALO_PATH =
+	"M46 3.5C69.4721 3.5 88.5 21.1848 88.5 43C88.5 64.8152 69.4721 82.5 46 82.5C22.5279 82.5 3.5 64.8152 3.5 43C3.5 21.1848 22.5279 3.5 46 3.5Z";
+const STEP_SEGMENTED_HALO_PATHS = [
+	"M40 4C21.8 6.5 7.5 19.5 3.9 36.5",
+	"M52 4.1C69.5 6.2 83.5 18.8 87.6 35.2",
+	"M88.1 51.2C83.9 68.4 69.3 80.3 52 82",
+	"M39.7 81.4C22.1 78.8 8.1 66.2 4 49.8",
+] as const;
 
-function SelectedStepRing() {
+function StepHalo({
+	variant,
+}: {
+	variant: Exclude<LearningPathNodeHalo, "none">;
+}) {
 	return (
 		<Svg
 			pointerEvents="none"
@@ -275,104 +343,200 @@ function SelectedStepRing() {
 			viewBox={`0 0 ${STEP_SELECTION_WIDTH} ${STEP_SELECTION_HEIGHT}`}
 			style={{ position: "absolute", left: 0, top: 0 }}
 		>
-			<Path
-				d="M46 3.5C69.4721 3.5 88.5 21.1848 88.5 43C88.5 64.8152 69.4721 82.5 46 82.5C22.5279 82.5 3.5 64.8152 3.5 43C3.5 21.1848 22.5279 3.5 46 3.5Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.light1}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path4}
-				strokeWidth={STEP_SELECTION_STROKE_WIDTH}
-			/>
+			{variant === "solid" ? (
+				<>
+					<Path
+						d={STEP_HALO_PATH}
+						fill="none"
+						stroke={DAYOVA_DESIGN_SYSTEM.colors.path4}
+						strokeWidth={STEP_SELECTION_STROKE_WIDTH}
+					/>
+					<Path
+						d={STEP_HALO_PATH}
+						fill="none"
+						stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={3.5}
+					/>
+				</>
+			) : (
+				STEP_SEGMENTED_HALO_PATHS.map((path, index) => (
+					<Path
+						key={path}
+						d={path}
+						fill="none"
+						stroke={
+							LEARNING_PATH_SEGMENTED_HALO_TONES[index] === "blue"
+								? DAYOVA_DESIGN_SYSTEM.colors.path6
+								: DAYOVA_DESIGN_SYSTEM.colors.path1
+						}
+						strokeLinecap="round"
+						strokeWidth={STEP_SELECTION_STROKE_WIDTH}
+					/>
+				))
+			)}
 		</Svg>
 	);
 }
 
-function CompletedStepPuck() {
+function BreathingStep({
+	children,
+	enabled,
+	left,
+	top,
+}: {
+	children: ReactNode;
+	enabled: boolean;
+	left: number;
+	top: number;
+}) {
+	const scale = useSharedValue(1);
+	const reduceMotion = useReducedMotion();
+
+	useEffect(() => {
+		cancelAnimation(scale);
+
+		if (!enabled || reduceMotion) {
+			scale.set(1);
+			return;
+		}
+
+		scale.set(
+			withRepeat(
+				withSequence(
+					withTiming(LEARNING_PATH_BREATHING.maxScale, {
+						duration: LEARNING_PATH_BREATHING.halfCycleMs,
+						easing: Easing.inOut(Easing.sin),
+					}),
+					withTiming(LEARNING_PATH_BREATHING.minScale, {
+						duration: LEARNING_PATH_BREATHING.halfCycleMs,
+						easing: Easing.inOut(Easing.sin),
+					}),
+				),
+				-1,
+			),
+		);
+
+		return () => cancelAnimation(scale);
+	}, [enabled, reduceMotion, scale]);
+
+	const animatedStyle = useAnimatedStyle(() => ({
+		transform: [{ scale: scale.get() }],
+	}));
+
 	return (
-		<Svg
+		<Animated.View
 			pointerEvents="none"
-			width={92}
-			height={88}
-			viewBox="0 0 92 88"
-			style={{ position: "absolute", left: -12, top: -9 }}
+			style={[
+				{
+					position: "absolute",
+					left,
+					top,
+					width: STEP_SELECTION_WIDTH,
+					height: STEP_SELECTION_HEIGHT,
+					alignItems: "center",
+					justifyContent: "center",
+				},
+				animatedStyle,
+			]}
 		>
-			<Path
-				d="M46 12.5C64.5705 12.5 79.5 25.548 79.5 41.5C79.5 57.452 64.5705 70.5 46 70.5C27.4295 70.5 12.5 57.452 12.5 41.5C12.5 25.548 27.4295 12.5 46 12.5Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path5}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path5}
-			/>
-			<Path
-				d="M46 9.5C64.2349 9.5 78.5 21.6237 78.5 36C78.5 50.3763 64.2349 62.5 46 62.5C27.7651 62.5 13.5 50.3763 13.5 36C13.5 21.6237 27.7651 9.5 46 9.5Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path6}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-				strokeWidth={3}
-			/>
-			<Path
-				d="M30.903 51.7622L64.11 20.7115C64.6597 20.1975 65.4516 20.0363 66.1352 20.3511C67.4469 20.9552 69.6663 22.1316 71.5059 23.8738C72.701 25.0056 73.9512 26.8471 74.7291 28.0839C75.204 28.839 75.0746 29.8117 74.4487 30.4472L45.3875 59.9555C43.8835 61.4827 41.7537 62.2676 39.6626 61.7967C38.2507 61.4787 36.668 61.0154 35.5059 60.3738C34.2835 59.6989 33.0612 59.0586 31.929 58.4839C29.3791 57.1896 28.8143 53.7152 30.903 51.7622Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path7}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-			/>
-			<Path
-				d="M24.908 48.3639L53.6381 18.3474C54.6965 17.2416 54.1599 15.4799 52.6404 15.2961C46.6945 14.5769 34.1009 14.4277 25.0055 23.8734C15.7121 33.5246 18.4286 43.1756 20.7331 47.8944C21.5365 49.5396 23.642 49.6866 24.908 48.3639Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path7}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-				strokeLinecap="round"
-			/>
-			<Path
-				d="M39.5 37.2591L42.0858 39.9567C42.7525 40.6522 43.0858 41 43.5 41C43.9143 41 44.2476 40.6522 44.9143 39.9567L53.5 31"
-				fill="none"
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
-				strokeWidth={4}
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			/>
-		</Svg>
+			{children}
+		</Animated.View>
 	);
 }
 
-function CurrentStepPuck() {
+function StepPuck({
+	icon,
+	tone,
+}: {
+	icon: LearningPathNodeIcon;
+	tone: LearningPathNodeTone;
+}) {
+	const isLocked = tone === "gray";
+	const Icon = LEARNING_PATH_ICON_COMPONENT[icon];
+	const {
+		faceHeight,
+		height: puckHeight,
+		width: puckWidth,
+	} = STEP_PUCK_DIMENSIONS[tone];
+	const baseColor = isLocked
+		? DAYOVA_DESIGN_SYSTEM.colors.pathLockedBase
+		: DAYOVA_DESIGN_SYSTEM.colors.path5;
+	const faceColor = isLocked
+		? DAYOVA_DESIGN_SYSTEM.colors.path1
+		: DAYOVA_DESIGN_SYSTEM.colors.path6;
+	const iconColor = isLocked
+		? DAYOVA_DESIGN_SYSTEM.colors.path3
+		: DAYOVA_DESIGN_SYSTEM.colors.light1;
+
 	return (
 		<View
 			pointerEvents="none"
 			style={{
-				position: "absolute",
-				left: 0,
-				top: 0,
-				width: STEP_PUCK_WIDTH,
-				height: STEP_PUCK_HEIGHT,
+				width: puckWidth,
+				height: puckHeight,
 				alignItems: "center",
-				justifyContent: "center",
+				borderRadius: puckHeight / 2,
+				boxShadow: isLocked
+					? "0 5px 8px rgba(105, 117, 134, 0.16)"
+					: "0 5px 9px rgba(0, 160, 230, 0.2)",
 			}}
 		>
-			<Svg
-				width={STEP_PUCK_WIDTH}
-				height={STEP_PUCK_HEIGHT}
-				viewBox={`0 0 ${STEP_PUCK_WIDTH} ${STEP_PUCK_HEIGHT}`}
-			>
-				<Path
-					d="M34 4.5C52.5705 4.5 67.5 17.548 67.5 33.5C67.5 49.452 52.5705 62.5 34 62.5C15.4295 62.5 0.5 49.452 0.5 33.5C0.5 17.548 15.4295 4.5 34 4.5Z"
-					fill={DAYOVA_DESIGN_SYSTEM.colors.path5}
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.path5}
-				/>
-
-				<Path
-					d="M34 1.5C52.2349 1.5 66.5 13.6237 66.5 28C66.5 42.3763 52.2349 54.5 34 54.5C15.7651 54.5 1.5 42.3763 1.5 28C1.5 13.6237 15.7651 1.5 34 1.5Z"
-					fill={DAYOVA_DESIGN_SYSTEM.colors.path6}
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-					strokeWidth={3}
-				/>
-			</Svg>
-
 			<View
 				style={{
 					position: "absolute",
-					top: 15,
-					left: 22,
+					top: STEP_PUCK_LIP_OFFSET,
+					width: puckWidth,
+					height: faceHeight,
+					borderRadius: faceHeight / 2,
+					backgroundColor: baseColor,
+				}}
+			/>
+			<View
+				style={{
+					position: "absolute",
+					top: 0,
+					width: puckWidth,
+					height: faceHeight,
+					borderRadius: faceHeight / 2,
+					backgroundColor: baseColor,
+					alignItems: "center",
+					justifyContent: "center",
+					overflow: "hidden",
 				}}
 			>
-				<Note
-					width={24}
-					height={24}
-					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
+				<View
+					style={{
+						position: "absolute",
+						left: 4,
+						top: 3,
+						width: puckWidth - 8,
+						height: faceHeight - 7,
+						borderRadius: (faceHeight - 7) / 2,
+						backgroundColor: faceColor,
+						overflow: "hidden",
+					}}
+				>
+					<View
+						style={{
+							position: "absolute",
+							top: -9,
+							right: isLocked ? -5 : -2,
+							width: isLocked ? 17 : 21,
+							height: isLocked ? 42 : 48,
+							borderRadius: 12,
+							backgroundColor: isLocked
+								? DAYOVA_DESIGN_SYSTEM.colors.light1
+								: DAYOVA_DESIGN_SYSTEM.colors.path7,
+							opacity: isLocked ? 0.2 : 0.68,
+							transform: [{ rotate: "31deg" }],
+						}}
+					/>
+				</View>
+				<Icon
+					size={isLocked ? 23 : 28}
+					color={iconColor}
+					strokeWidth={icon === "check" ? 3.6 : 2.75}
+					style={{ zIndex: 1 }}
 				/>
 			</View>
 		</View>
@@ -389,10 +553,16 @@ function PathNode({
 	frame: PathNodeFrame;
 	selected: boolean;
 	session: PlanSession;
-	state: PathNodeState;
+	state: LearningPathNodeState;
 	onPress: () => void;
 }) {
 	const isLocked = state === "locked";
+	const presentation = getLearningPathNodePresentation({
+		phase: session.phase,
+		selected,
+		state,
+	});
+	const puckDimensions = STEP_PUCK_DIMENSIONS[presentation.tone];
 	const title = formatGermanUiText(session.title);
 	const stateLabel = PATH_NODE_STATE_LABEL[state];
 	const position = {
@@ -401,30 +571,6 @@ function PathNode({
 		width: frame.width,
 		height: frame.height,
 	} satisfies ViewStyle;
-
-	const selectedRing = selected ? (
-		<View
-			pointerEvents="none"
-			className="absolute"
-			style={{
-				left: (frame.width - STEP_SELECTION_WIDTH) / 2,
-				top: (frame.height - STEP_SELECTION_HEIGHT) / 2,
-				width: STEP_SELECTION_WIDTH,
-				height: STEP_SELECTION_HEIGHT,
-				zIndex: 0,
-			}}
-		>
-			<SelectedStepRing />
-		</View>
-	) : null;
-
-	const lockedIcon = (
-		<SquareLock
-			size={25}
-			color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-			strokeWidth={1.9}
-		/>
-	);
 
 	return (
 		<Pressable
@@ -440,59 +586,25 @@ function PathNode({
 			className="absolute items-center justify-center"
 			style={position}
 		>
-			{selectedRing}
-			<View
-				className="absolute items-center"
-				style={{
-					left: (frame.width - STEP_PUCK_WIDTH) / 2,
-					top: (frame.height - STEP_PUCK_HEIGHT) / 2,
-					width: STEP_PUCK_WIDTH,
-					height: STEP_PUCK_HEIGHT,
-					borderRadius: STEP_PUCK_HEIGHT / 2,
-					zIndex: 1,
-					backgroundColor:
-						state === "completed"
-							? DAYOVA_DESIGN_SYSTEM.colors.path5
-							: "transparent",
-					boxShadow:
-						state === "completed"
-							? "0 4px 12px rgba(0, 0, 0, 0.1)"
-							: isLocked
-								? "0 8px 14px rgba(105, 117, 134, 0.22)"
-								: "0 4px 12px rgba(0, 0, 0, 0.1)",
-				}}
+			<BreathingStep
+				enabled={presentation.motion === "breathe"}
+				left={(frame.width - STEP_SELECTION_WIDTH) / 2}
+				top={(frame.height - STEP_SELECTION_HEIGHT) / 2}
 			>
-				{state === "completed" ? (
-					<CompletedStepPuck />
-				) : isLocked ? (
-					<>
-						<View
-							className="absolute rounded-full"
-							style={{
-								top: 0,
-								width: STEP_PUCK_WIDTH,
-								height: STEP_PUCK_HEIGHT,
-								backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.path1,
-								borderRadius: STEP_PUCK_HEIGHT / 2,
-							}}
-						/>
-						<View
-							className="absolute items-center justify-center rounded-full"
-							style={{
-								top: 5,
-								width: STEP_LOCKED_FACE_WIDTH,
-								height: STEP_LOCKED_FACE_HEIGHT,
-								backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.path3,
-								borderRadius: STEP_LOCKED_FACE_HEIGHT / 2,
-							}}
-						>
-							{lockedIcon}
-						</View>
-					</>
-				) : (
-					<CurrentStepPuck />
-				)}
-			</View>
+				{presentation.halo !== "none" ? (
+					<StepHalo variant={presentation.halo} />
+				) : null}
+				<View
+					style={{
+						position: "absolute",
+						left: (STEP_SELECTION_WIDTH - puckDimensions.width) / 2,
+						top: (STEP_SELECTION_HEIGHT - puckDimensions.height) / 2,
+						zIndex: 1,
+					}}
+				>
+					<StepPuck icon={presentation.icon} tone={presentation.tone} />
+				</View>
+			</BreathingStep>
 		</Pressable>
 	);
 }
@@ -607,7 +719,7 @@ export default function LearningPlanSessionsScreen() {
 		selectedSessionState !== null && selectedSessionState !== "locked";
 
 	const goBack = () => {
-		goBackOrReplace(router, "/learning-plans");
+		dismissToOrReplace(router, "/learning-plans");
 	};
 
 	return (
@@ -640,6 +752,7 @@ export default function LearningPlanSessionsScreen() {
 					</View>
 				) : selectedSession ? (
 					<SessionPreviewCard
+						key={selectedSession.id}
 						canOpen={canOpenSelectedSession}
 						session={selectedSession}
 						onOpen={() => {

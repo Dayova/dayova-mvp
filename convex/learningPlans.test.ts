@@ -77,6 +77,382 @@ const createAcceptedPlanWithSession = async (
 	return { learningPlanId, session };
 };
 
+test("persists the split experiment assignment on an eligible theory session", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		sessionCompositionVariant: "split",
+		sessions: [
+			{
+				phase: "theory",
+				title: "Theorie",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 30,
+				goal: "Grundlagen verstehen.",
+				tasks: ["Begriffe erklären", "Beispiele prüfen"],
+				expectedOutcome: "Du verstehst die Grundlagen.",
+			},
+		],
+	});
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(snapshot?.plan.sessionCompositionVariant).toBe("split");
+	expect(snapshot?.sessions[0]?.compositionVariant).toBe("split");
+});
+
+test("stores the total study workload confirmed before generation", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(api.learningPlans.setTargetStudyMinutes, {
+		learningPlanId,
+		targetStudyMinutes: 50,
+	});
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(snapshot?.plan.targetStudyMinutes).toBe(50);
+});
+
+test("aligns legacy session descriptions with the displayed duration", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		sessions: [
+			{
+				phase: "rehearsal",
+				title: "30-Minuten-Test",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 20,
+				goal: "Simulation der 30-minütigen Klausur unter Zeitdruck.",
+				tasks: ["Bearbeite die Generalprobe."],
+				expectedOutcome: "Du kennst deine offenen Punkte.",
+			},
+		],
+	});
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(snapshot?.sessions[0]).toMatchObject({
+		durationMinutes: 20,
+		title: "20-Minuten-Test",
+		goal: "Simulation der 20-minütigen Klausur unter Zeitdruck.",
+	});
+});
+
+test("keeps a plan in generation until every session content payload is ready", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		deferReadyUntilContent: true,
+		sessions: [
+			{
+				phase: "practice",
+				title: "Üben",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 15,
+				goal: "Gleichungen lösen.",
+				tasks: ["Löse zwei Gleichungen."],
+				expectedOutcome: "Du löst Gleichungen sicher.",
+			},
+		],
+	});
+
+	const generating = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(generating?.plan.status).toBe("questionsReady");
+	expect(generating?.plan.contentGeneration).toEqual({
+		stage: "content",
+		totalSessionCount: 1,
+		readySessionCount: 0,
+		failedSessionCount: 0,
+	});
+	expect(generating?.sessions[0]?.contentGenerationStatus).toBe("queued");
+
+	const sessionId = generating?.sessions[0]?.id;
+	if (!sessionId) throw new Error("Expected generated session.");
+	await expect(
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{
+				learningPlanId,
+				generationId: "content-generation",
+			},
+		),
+	).resolves.toEqual([sessionId]);
+	await t.mutation(internal.learningPlans.setSessionContentGenerationStatus, {
+		sessionId,
+		status: "ready",
+	});
+	await t.mutation(internal.learningPlans.finalizeContentGeneration, {
+		learningPlanId,
+		generationId: "content-generation",
+	});
+
+	const ready = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(ready?.plan.status).toBe("generated");
+	expect(ready?.plan.contentGeneration?.stage).toBe("ready");
+});
+
+test("claims plan generation atomically and persists an empty failed claim for explicit retry", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.beginContentGeneration, {
+		learningPlanId,
+		generationId: "generation-1",
+	});
+
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "generation-2",
+		}),
+	).rejects.toThrow("Dieser Lernplan wird bereits erstellt.");
+	await expect(
+		t.mutation(internal.learningPlans.clearEmptyContentGeneration, {
+			learningPlanId,
+			generationId: "generation-1",
+		}),
+	).resolves.toBe(true);
+	const failed = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(failed?.plan.contentGeneration?.stage).toBe("failed");
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "generation-2",
+		}),
+	).resolves.toBeTypeOf("number");
+});
+
+test("allows generation recovery only after the eleven-minute stale boundary", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.beginContentGeneration, {
+		learningPlanId,
+		generationId: "long-generation",
+	});
+
+	vi.advanceTimersByTime(11 * 60_000 - 1);
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "duplicate-generation",
+		}),
+	).rejects.toThrow("Dieser Lernplan wird bereits erstellt.");
+
+	vi.advanceTimersByTime(1);
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "recovery-generation",
+		}),
+	).resolves.toBeTypeOf("number");
+});
+
+test("atomically claims stale session retries and rejects a second claimant", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.beginContentGeneration, {
+		learningPlanId,
+		generationId: "active-generation",
+	});
+	const generated = await t.mutation(
+		internal.learningPlans.replaceGeneratedSessions,
+		{
+			learningPlanId,
+			generationId: "active-generation",
+			knowledgeAnswersJson: "[]",
+			sourceSummary: "Testmaterial",
+			insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+			deferReadyUntilContent: true,
+			sessions: [
+				{
+					phase: "practice",
+					title: "Üben",
+					dateKey: "2026-06-01",
+					dateLabel: "1. Juni 2026",
+					startTime: "17:00",
+					durationMinutes: 15,
+					goal: "Kurz wiederholen.",
+					tasks: ["Aufgaben lösen"],
+					expectedOutcome: "Du bist vorbereitet.",
+				},
+			],
+		},
+	);
+	if (!generated) throw new Error("Expected deferred session generation.");
+
+	await expect(
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{
+				learningPlanId,
+				generationId: "early-retry",
+			},
+		),
+	).rejects.toThrow("Dieser Lernplan wird bereits erstellt.");
+
+	vi.advanceTimersByTime(11 * 60_000);
+	await expect(
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{
+				learningPlanId,
+				generationId: "claimed-retry",
+			},
+		),
+	).resolves.toEqual(generated.sessionIds);
+	await expect(
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{
+				learningPlanId,
+				generationId: "duplicate-retry",
+			},
+		),
+	).rejects.toThrow("Dieser Lernplan wird bereits erstellt.");
+	await expect(
+		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
+			learningPlanId,
+			generationId: "outdated-retry",
+		}),
+	).resolves.toBe(false);
+	await expect(
+		t.mutation(internal.learningPlans.markContentGenerationClaimFailed, {
+			learningPlanId,
+			generationId: "claimed-retry",
+		}),
+	).resolves.toBe(true);
+	await expect(
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{
+				learningPlanId,
+				generationId: "retry-after-failure",
+			},
+		),
+	).resolves.toEqual(generated.sessionIds);
+});
+
+test("invalidates only educational session edits while calendar moves preserve content", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		sessions: [
+			{
+				phase: "practice",
+				title: "Üben",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 15,
+				goal: "Gleichungen lösen.",
+				tasks: ["Löse zwei Gleichungen."],
+				expectedOutcome: "Du löst Gleichungen sicher.",
+			},
+		],
+	});
+	const initial = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const session = initial?.sessions[0];
+	if (!session) throw new Error("Expected generated session.");
+	await t.mutation(
+		internal.learningSessionContent.ensureFallbackSessionContent,
+		{
+			sessionId: session.id,
+		},
+	);
+	const contentBefore = await t.query(
+		api.learningSessionContent.getSessionContent,
+		{ sessionId: session.id },
+	);
+	const firstItem = contentBefore.items[0];
+	if (!firstItem?.choices[0]) throw new Error("Expected fallback MC item.");
+	await t.mutation(api.learningSessionContent.submitAnswer, {
+		itemId: firstItem.id,
+		selectedChoiceId: firstItem.choices[0].id,
+	});
+	await t.mutation(api.learningSessionContent.finishSessionContent, {
+		sessionId: session.id,
+	});
+
+	await expect(
+		t.mutation(api.learningPlans.updateSession, {
+			id: session.id,
+			phase: session.phase,
+			dateKey: "2026-06-02",
+			dateLabel: "2. Juni 2026",
+			startTime: "18:00",
+			durationMinutes: session.durationMinutes,
+		}),
+	).resolves.toEqual({ contentInvalidated: false });
+	const contentAfterMove = await t.query(
+		api.learningSessionContent.getSessionContent,
+		{ sessionId: session.id },
+	);
+	expect(contentAfterMove.items).toHaveLength(contentBefore.items.length);
+	expect(contentAfterMove.analysis).not.toBeNull();
+
+	await expect(
+		t.mutation(api.learningPlans.updateSession, {
+			id: session.id,
+			phase: "theory",
+			dateKey: "2026-06-02",
+			dateLabel: "2. Juni 2026",
+			startTime: "18:00",
+			durationMinutes: 20,
+		}),
+	).resolves.toEqual({ contentInvalidated: true });
+	const afterEducationalEdit = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const contentAfterEducationalEdit = await t.query(
+		api.learningSessionContent.getSessionContent,
+		{ sessionId: session.id },
+	);
+	expect(contentAfterEducationalEdit.items).toHaveLength(0);
+	expect(contentAfterEducationalEdit.attempts).toHaveLength(0);
+	expect(contentAfterEducationalEdit.analysis).toBeNull();
+	expect(afterEducationalEdit?.sessions[0]?.contentGenerationStatus).toBe(
+		"queued",
+	);
+});
+
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-05-30T10:00:00.000Z"));
@@ -93,7 +469,7 @@ test("adding a learning plan session into an occupied time range is rejected wit
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-05-31",
 		title: "Deutsch Hausaufgabe",
-		time: "17:15",
+		time: "17:10",
 		kind: "Hausaufgabe",
 		plannedDateLabel: "31. Mai 2026",
 		durationMinutes: 30,
@@ -102,7 +478,7 @@ test("adding a learning plan session into an occupied time range is rejected wit
 	await expect(
 		t.mutation(api.learningPlans.addSession, { learningPlanId }),
 	).rejects.toThrow(
-		'Dieser Zeitraum überschneidet sich mit "Deutsch Hausaufgabe" am 31. Mai 2026 von 17:15 bis 17:45.',
+		'Dieser Zeitraum überschneidet sich mit "Deutsch Hausaufgabe" am 31. Mai 2026 von 17:10 bis 17:40.',
 	);
 });
 
@@ -158,7 +534,7 @@ test("updating a learning plan session at its own synced time is allowed", async
 			startTime: session.startTime,
 			durationMinutes: session.durationMinutes,
 		}),
-	).resolves.toBeNull();
+	).resolves.toEqual({ contentInvalidated: true });
 });
 
 test("starting a learning plan rejects vague exam topic descriptions", async () => {
@@ -225,6 +601,7 @@ test("creating a draft learning plan allows incomplete exam topic descriptions",
 		status: "draft",
 		topicDescription: "Mathe",
 	});
+	expect(snapshot?.plan.examTime).toBeUndefined();
 });
 
 test("generated draft sessions are not synced as calendar entries before acceptance", async () => {
@@ -266,18 +643,17 @@ test("generated draft sessions are not synced as calendar entries before accepta
 	expect(createdId).toBeTruthy();
 });
 
-test("AI context includes occupied entries during the plan scheduling window", async () => {
+test("AI context includes timed homework during the plan scheduling window", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
 
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-01",
-		title: "Informatik Grundlagen IT-Systeme",
+		title: "Informatik Hausaufgabe",
 		time: "17:00",
-		kind: "Leistungskontrolle",
+		kind: "Hausaufgabe",
 		plannedDateLabel: "1. Juni 2026",
 		durationMinutes: 30,
-		examTypeLabel: "Test",
 	});
 
 	const context = await t.query(internal.learningPlans.getAiContext, {
@@ -365,10 +741,12 @@ test("learning plan sessions move from started to completed and sync calendar st
 	const completed = await t.mutation(api.learningPlans.recordSessionOutcome, {
 		sessionId: session.id,
 		outcome: "completed",
+		activeStudySeconds: 1_440,
 	});
 	expect(completed).toMatchObject({
 		outcome: "completed",
 		learningPlanSessionId: session.id,
+		activeStudySeconds: 1_440,
 	});
 
 	snapshot = await t.query(api.learningPlans.getSnapshot, {
@@ -625,6 +1003,60 @@ test("generated knowledge questions reject malformed control characters before s
 
 	expect(snapshot?.plan.status).toBe("draft");
 	expect(snapshot?.plan.knowledgeQuestions).toEqual([]);
+});
+
+test("stores a reusable topic map with generated knowledge questions", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		sourceSummary: "Lineare Funktionen mit Steigung und Achsenabschnitt.",
+		topics: [
+			{
+				id: "steigung",
+				title: "Steigung",
+				learningGoal: "Die Steigung berechnen und in Graphen erkennen.",
+				keywords: ["Steigung", "Differenz"],
+				priority: "high",
+			},
+			{
+				id: "achsenabschnitt",
+				title: "Achsenabschnitt",
+				learningGoal: "Den y-Achsenabschnitt bestimmen.",
+				keywords: ["Achsenabschnitt"],
+				priority: "medium",
+			},
+		],
+		questions: [
+			{
+				id: "q1",
+				prompt: "Wie berechnest du die Steigung einer linearen Funktion?",
+				targetInsight: "Prüft das Verständnis der Steigungsberechnung.",
+			},
+		],
+	});
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+
+	expect(snapshot?.plan.topicMap).toEqual([
+		{
+			id: "steigung",
+			title: "Steigung",
+			learningGoal: "Die Steigung berechnen und in Graphen erkennen.",
+			keywords: ["Steigung", "Differenz"],
+			priority: "high",
+		},
+		{
+			id: "achsenabschnitt",
+			title: "Achsenabschnitt",
+			learningGoal: "Den y-Achsenabschnitt bestimmen.",
+			keywords: ["Achsenabschnitt"],
+			priority: "medium",
+		},
+	]);
 });
 
 test("generated plan sessions reject malformed control characters without replacing the existing plan", async () => {

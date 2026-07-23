@@ -11,6 +11,7 @@ import {
 	query,
 } from "./_generated/server";
 import { getDayKeyQueryVariants } from "./dayKeyVariants";
+import { deriveTopicReadiness } from "./diagnosticReadiness";
 import { throwUserFacingError } from "./errors";
 import {
 	deleteManagedFile,
@@ -19,15 +20,47 @@ import {
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
-import { assertNoScheduleConflict } from "./scheduleConflicts";
+import {
+	getDefaultPreparationDepth,
+	type PreparationDepth,
+} from "./learningPreparationPolicy";
+import { getLearningSessionComposition } from "./learningSessionComposition";
+import { deleteSessionLearningDataForSession } from "./learningSessionContent";
+import { alignSessionDurationReferences } from "./learningSessionDurationText";
+import {
+	learningTopicValidator,
+	normalizeLearningTopics,
+} from "./learningTopicMap";
+import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_LEARNING_TIMES = 50;
+// Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
+// before a later request may recover work left behind by a terminated action.
+const STALE_CONTENT_GENERATION_MS = 11 * 60_000;
 
 const phaseValidator = v.union(
 	v.literal("theory"),
 	v.literal("practice"),
 	v.literal("rehearsal"),
+);
+
+const sessionCompositionVariantValidator = v.union(
+	v.literal("control"),
+	v.literal("split"),
+);
+
+const contentGenerationStatusValidator = v.union(
+	v.literal("queued"),
+	v.literal("generating"),
+	v.literal("ready"),
+	v.literal("failed"),
+);
+
+const preparationDepthValidator = v.union(
+	v.literal("compact"),
+	v.literal("thorough"),
+	v.literal("intensive"),
 );
 
 const missedReasonValidator = v.union(
@@ -44,6 +77,9 @@ const planQuestionValidator = v.object({
 	id: v.string(),
 	prompt: v.string(),
 	targetInsight: v.string(),
+	topicId: v.optional(v.string()),
+	kind: v.optional(v.union(v.literal("performance"), v.literal("confidence"))),
+	evaluationKeywords: v.optional(v.array(v.string())),
 });
 
 const planInsightValidator = v.object({
@@ -85,9 +121,13 @@ type PublicSession = {
 	dateLabel: string;
 	startTime: string;
 	durationMinutes: number;
+	compositionVariant?: "control" | "split";
 	goal: string;
 	tasks: string[];
 	expectedOutcome: string;
+	contentGenerationStatus?: "queued" | "generating" | "ready" | "failed";
+	contentGenerationError?: string;
+	contentGeneratedAt?: number;
 	completed: boolean;
 	executionStatus:
 		| "notStarted"
@@ -134,7 +174,7 @@ type CreateLearningPlanArgs = {
 	examTypeLabel: string;
 	examDateKey: string;
 	examDateLabel: string;
-	examTime: string;
+	examTime?: string;
 	durationMinutes: number;
 	topicDescription: string;
 	notes?: string;
@@ -176,11 +216,11 @@ const createLearningPlan = async (
 		examTypeLabel,
 		examDateKey: args.examDateKey,
 		examDateLabel: args.examDateLabel,
-		examTime: args.examTime,
 		durationMinutes: args.durationMinutes,
 		topicDescription,
 		notes,
 		status: "draft",
+		preparationDepth: getDefaultPreparationDepth(examTypeLabel),
 		examDayEntryId: args.examDayEntryId,
 		createdAt: now,
 		updatedAt: now,
@@ -211,14 +251,24 @@ const publicSession = (
 ): PublicSession => ({
 	id: session._id,
 	phase: session.phase,
-	title: session.title,
+	title: alignSessionDurationReferences({
+		value: session.title,
+		durationMinutes: session.durationMinutes,
+	}),
 	dateKey: session.dateKey,
 	dateLabel: session.dateLabel,
 	startTime: session.startTime,
 	durationMinutes: session.durationMinutes,
-	goal: session.goal,
+	compositionVariant: session.compositionVariant,
+	goal: alignSessionDurationReferences({
+		value: session.goal,
+		durationMinutes: session.durationMinutes,
+	}),
 	tasks: session.tasks,
 	expectedOutcome: session.expectedOutcome,
+	contentGenerationStatus: session.contentGenerationStatus,
+	contentGenerationError: session.contentGenerationError,
+	contentGeneratedAt: session.contentGeneratedAt,
 	completed: session.completed ?? false,
 	executionStatus: getSessionExecutionStatus(session),
 	startedAt: session.startedAt,
@@ -417,6 +467,8 @@ const learningSessionEventPayload = (
 	plannedDayKey: session.dateKey,
 	startTime: session.startTime,
 	durationMinutes: session.durationMinutes,
+	compositionVariant: session.compositionVariant ?? "control",
+	activeStudySeconds: session.activeStudySeconds,
 	subject: plan.subject,
 	examTypeLabel: plan.examTypeLabel,
 	examDateKey: plan.examDateKey,
@@ -452,6 +504,7 @@ const patchSessionAndSyncedEntry = async (
 			| "executionStatus"
 			| "startedAt"
 			| "outcomeAt"
+			| "activeStudySeconds"
 			| "missedReason"
 			| "adjustedFromSessionId"
 		>
@@ -476,7 +529,7 @@ export const start = mutation({
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
-		examTime: v.string(),
+		examTime: v.optional(v.string()),
 		durationMinutes: v.number(),
 		topicDescription: v.string(),
 		notes: v.optional(v.string()),
@@ -495,7 +548,7 @@ export const createDraft = mutation({
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
-		examTime: v.string(),
+		examTime: v.optional(v.string()),
 		durationMinutes: v.number(),
 		topicDescription: v.string(),
 		notes: v.optional(v.string()),
@@ -536,6 +589,43 @@ export const updateBasics = mutation({
 	},
 });
 
+export const setTargetStudyMinutes = mutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		targetStudyMinutes: v.number(),
+		preparationDepth: v.optional(preparationDepthValidator),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (plan.status === "accepted") {
+			throwUserFacingError("Dieser Lernplan wurde bereits eingetragen.");
+		}
+		if (
+			!Number.isInteger(args.targetStudyMinutes) ||
+			args.targetStudyMinutes < 10 ||
+			args.targetStudyMinutes > 600
+		) {
+			throwUserFacingError(
+				"Wähle eine gesamte Lernzeit zwischen 10 und 600 Minuten.",
+			);
+		}
+
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			targetStudyMinutes: args.targetStudyMinutes,
+			...(args.preparationDepth
+				? { preparationDepth: args.preparationDepth }
+				: {}),
+			updatedAt: Date.now(),
+		});
+		return args.targetStudyMinutes;
+	},
+});
+
 export const getSnapshot = query({
 	args: {
 		id: v.id("learningPlans"),
@@ -563,13 +653,19 @@ export const getSnapshot = query({
 				q.eq("learningPlanId", args.id),
 			)
 			.order("asc")
-			.take(20);
+			.take(50);
 		const learningTimes = await ctx.db
 			.query("userLearningTimes")
 			.withIndex("by_ownerTokenIdentifier", (q) =>
 				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
 			)
 			.take(1);
+		const readySessionCount = sessions.filter(
+			(session) => session.contentGenerationStatus === "ready",
+		).length;
+		const failedSessionCount = sessions.filter(
+			(session) => session.contentGenerationStatus === "failed",
+		).length;
 
 		return {
 			plan: {
@@ -578,17 +674,33 @@ export const getSnapshot = query({
 				examTypeLabel: plan.examTypeLabel,
 				examDateKey: plan.examDateKey,
 				examDateLabel: plan.examDateLabel,
-				examTime: plan.examTime,
+				...(plan.examTime ? { examTime: plan.examTime } : {}),
 				durationMinutes: plan.durationMinutes,
+				targetStudyMinutes: plan.targetStudyMinutes,
+				preparationDepth:
+					(plan.preparationDepth as PreparationDepth | undefined) ??
+					getDefaultPreparationDepth(plan.examTypeLabel),
 				topicDescription: plan.topicDescription,
 				notes: plan.notes,
 				status: plan.status,
 				knowledgeQuestions: plan.knowledgeQuestions ?? [],
 				sourceSummary: plan.sourceSummary,
+				topicMap: plan.topicMap ?? [],
+				topicReadiness: plan.topicReadiness ?? [],
 				insight: plan.insight,
 				planningHint: getCurrentPlanningHint(plan.planningHint, {
 					hasLearningTimes: learningTimes.length > 0,
 				}),
+				sessionCompositionVariant: plan.sessionCompositionVariant,
+				contentGeneration: plan.contentGenerationStage
+					? {
+							stage: plan.contentGenerationStage,
+							startedAt: plan.contentGenerationStartedAt,
+							totalSessionCount: sessions.length,
+							readySessionCount,
+							failedSessionCount,
+						}
+					: undefined,
 			},
 			documents: documents.map(publicDocument),
 			answers: answers.map(publicAnswer),
@@ -618,7 +730,7 @@ export const listOverview = query({
 				.withIndex("by_learningPlanId_and_sortOrder", (q) =>
 					q.eq("learningPlanId", plan._id),
 				)
-				.take(20);
+				.take(50);
 			const completedCount = sessions.filter(
 				(session) => session.completed === true,
 			).length;
@@ -644,8 +756,14 @@ export const listOverview = query({
 				currentSession: currentSession
 					? {
 							id: currentSession._id,
-							title: currentSession.title,
-							goal: currentSession.goal,
+							title: alignSessionDurationReferences({
+								value: currentSession.title,
+								durationMinutes: currentSession.durationMinutes,
+							}),
+							goal: alignSessionDurationReferences({
+								value: currentSession.goal,
+								durationMinutes: currentSession.durationMinutes,
+							}),
 							dateKey: currentSession.dateKey,
 							dateLabel: currentSession.dateLabel,
 							startTime: currentSession.startTime,
@@ -699,22 +817,41 @@ export const saveKnowledgeAnswer = mutation({
 			)
 			.unique();
 		const now = Date.now();
+		let answerId: Id<"learningPlanAnswers">;
 		if (existingAnswer) {
 			await ctx.db.patch("learningPlanAnswers", existingAnswer._id, {
 				answer,
 				updatedAt: now,
 			});
-			return existingAnswer._id;
+			answerId = existingAnswer._id;
+		} else {
+			answerId = await ctx.db.insert("learningPlanAnswers", {
+				ownerTokenIdentifier,
+				learningPlanId: args.learningPlanId,
+				questionId: args.questionId,
+				answer,
+				createdAt: now,
+				updatedAt: now,
+			});
 		}
-
-		return await ctx.db.insert("learningPlanAnswers", {
-			ownerTokenIdentifier,
-			learningPlanId: args.learningPlanId,
-			questionId: args.questionId,
-			answer,
-			createdAt: now,
+		const storedAnswers = await ctx.db
+			.query("learningPlanAnswers")
+			.withIndex("by_learningPlanId", (q) =>
+				q.eq("learningPlanId", args.learningPlanId),
+			)
+			.take(20);
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			topicReadiness: deriveTopicReadiness({
+				topicIds: (plan.topicMap ?? []).map((topic) => topic.id),
+				questions: plan.knowledgeQuestions ?? [],
+				answers: storedAnswers.map((storedAnswer) => ({
+					questionId: storedAnswer.questionId,
+					answer: storedAnswer.answer,
+				})),
+			}),
 			updatedAt: now,
 		});
+		return answerId;
 	},
 });
 
@@ -879,6 +1016,13 @@ export const removePlan = mutation({
 		for (const answer of answers) {
 			await ctx.db.delete("learningPlanAnswers", answer._id);
 		}
+		const aiUsage = await ctx.db
+			.query("learningPlanAiUsage")
+			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
+			.take(1_000);
+		for (const usage of aiUsage) {
+			await ctx.db.delete("learningPlanAiUsage", usage._id);
+		}
 
 		const sessions = await ctx.db
 			.query("learningPlanSessions")
@@ -887,6 +1031,7 @@ export const removePlan = mutation({
 			)
 			.take(100);
 		for (const session of sessions) {
+			await deleteSessionLearningDataForSession(ctx, session._id);
 			if (session.dayEntryId) {
 				const dayEntry = await ctx.db.get("dayEntries", session.dayEntryId);
 				if (dayEntry?.ownerTokenIdentifier === ownerTokenIdentifier) {
@@ -989,7 +1134,7 @@ export const getAiContext = internalQuery({
 					seenEntryIds.add(entry._id);
 					occupiedEntries.push({
 						dayKey,
-						time: entry.time,
+						time: isExamEntry(entry) ? undefined : entry.time,
 						durationMinutes: entry.durationMinutes,
 					});
 				}
@@ -1040,6 +1185,7 @@ export const storeKnowledgeQuestions = internalMutation({
 		learningPlanId: v.id("learningPlans"),
 		questions: v.array(planQuestionValidator),
 		sourceSummary: v.string(),
+		topics: v.optional(v.array(learningTopicValidator)),
 	},
 	handler: async (ctx, args) => {
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
@@ -1052,9 +1198,77 @@ export const storeKnowledgeQuestions = internalMutation({
 				targetInsight: normalizeGeneratedGermanText(question.targetInsight),
 			})),
 			sourceSummary: normalizeGeneratedGermanText(args.sourceSummary),
+			topicMap: normalizeLearningTopics(args.topics ?? []),
 			status: "questionsReady",
 			updatedAt: Date.now(),
 		});
+	},
+});
+
+export const beginContentGeneration = internalMutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		generationId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		const now = Date.now();
+		if (
+			plan.contentGenerationId &&
+			plan.contentGenerationStartedAt &&
+			now - plan.contentGenerationStartedAt < STALE_CONTENT_GENERATION_MS &&
+			plan.contentGenerationStage === "content"
+		) {
+			throwUserFacingError("Dieser Lernplan wird bereits erstellt.");
+		}
+
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			status: "questionsReady",
+			contentGenerationStage: "content",
+			contentGenerationId: args.generationId,
+			contentGenerationStartedAt: now,
+			updatedAt: now,
+		});
+		return now;
+	},
+});
+
+export const clearEmptyContentGeneration = internalMutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		generationId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (
+			!plan ||
+			plan.ownerTokenIdentifier !== ownerTokenIdentifier ||
+			plan.contentGenerationId !== args.generationId
+		) {
+			return false;
+		}
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", args.learningPlanId),
+			)
+			.take(1);
+		if (sessions.length > 0) return false;
+
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			contentGenerationStage: "failed",
+			contentGenerationId: undefined,
+			contentGenerationStartedAt: Date.now(),
+			updatedAt: Date.now(),
+		});
+		return true;
 	},
 });
 
@@ -1065,11 +1279,19 @@ export const replaceGeneratedSessions = internalMutation({
 		sourceSummary: v.string(),
 		insight: planInsightValidator,
 		planningHint: v.optional(v.string()),
+		sessionCompositionVariant: v.optional(sessionCompositionVariantValidator),
+		deferReadyUntilContent: v.optional(v.boolean()),
+		generationId: v.optional(v.string()),
 		sessions: v.array(generatedSessionValidator),
 	},
 	handler: async (ctx, args) => {
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan) throwUserFacingError("Lernplan nicht gefunden.");
+		if (args.generationId && plan.contentGenerationId !== args.generationId) {
+			throwUserFacingError(
+				"Diese Lernplan-Erstellung wurde durch einen neueren Versuch ersetzt.",
+			);
+		}
 
 		const normalizedSourceSummary = normalizeGeneratedGermanText(
 			args.sourceSummary,
@@ -1091,6 +1313,14 @@ export const replaceGeneratedSessions = internalMutation({
 			goal: normalizeGeneratedGermanText(session.goal),
 			tasks: session.tasks.map((task) => normalizeGeneratedGermanText(task)),
 			expectedOutcome: normalizeGeneratedGermanText(session.expectedOutcome),
+			compositionVariant:
+				getLearningSessionComposition({
+					phase: session.phase,
+					durationMinutes: session.durationMinutes,
+					variant: args.sessionCompositionVariant ?? "control",
+				}).length > 1
+					? ("split" as const)
+					: ("control" as const),
 		}));
 
 		const existingSessions = await ctx.db
@@ -1098,8 +1328,9 @@ export const replaceGeneratedSessions = internalMutation({
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
 				q.eq("learningPlanId", args.learningPlanId),
 			)
-			.take(20);
+			.take(50);
 		for (const session of existingSessions) {
+			await deleteSessionLearningDataForSession(ctx, session._id);
 			if (session.dayEntryId) {
 				const dayEntry = await ctx.db.get("dayEntries", session.dayEntryId);
 				if (dayEntry) {
@@ -1110,15 +1341,20 @@ export const replaceGeneratedSessions = internalMutation({
 		}
 
 		const now = Date.now();
+		const sessionIds: Id<"learningPlanSessions">[] = [];
 		for (const [index, session] of normalizedSessions.entries()) {
-			await ctx.db.insert("learningPlanSessions", {
+			const sessionId = await ctx.db.insert("learningPlanSessions", {
 				ownerTokenIdentifier: plan.ownerTokenIdentifier,
 				learningPlanId: args.learningPlanId,
 				...session,
+				...(args.deferReadyUntilContent
+					? { contentGenerationStatus: "queued" as const }
+					: {}),
 				sortOrder: index,
 				createdAt: now,
 				updatedAt: now,
 			});
+			sessionIds.push(sessionId);
 		}
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
@@ -1126,9 +1362,162 @@ export const replaceGeneratedSessions = internalMutation({
 			planningHint: args.planningHint,
 			sourceSummary: normalizedSourceSummary,
 			insight: normalizedInsight,
-			status: "generated",
+			sessionCompositionVariant: args.sessionCompositionVariant ?? "control",
+			status: args.deferReadyUntilContent ? "questionsReady" : "generated",
+			contentGenerationStage: args.deferReadyUntilContent
+				? "content"
+				: undefined,
 			updatedAt: now,
 		});
+
+		return args.deferReadyUntilContent ? { sessionIds } : null;
+	},
+});
+
+export const setSessionContentGenerationStatus = internalMutation({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+		status: contentGenerationStatusValidator,
+		errorMessage: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const session = await ctx.db.get("learningPlanSessions", args.sessionId);
+		if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernsession nicht gefunden.");
+		}
+
+		await ctx.db.patch("learningPlanSessions", args.sessionId, {
+			contentGenerationStatus: args.status,
+			contentGenerationError:
+				args.status === "failed"
+					? (args.errorMessage ?? "Die Fragen konnten nicht erstellt werden.")
+					: undefined,
+			contentGeneratedAt: args.status === "ready" ? Date.now() : undefined,
+			updatedAt: Date.now(),
+		});
+	},
+});
+
+export const finalizeContentGeneration = internalMutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		generationId: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (args.generationId && plan.contentGenerationId !== args.generationId) {
+			throwUserFacingError(
+				"Diese Lernplan-Erstellung wurde durch einen neueren Versuch ersetzt.",
+			);
+		}
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", args.learningPlanId),
+			)
+			.take(50);
+		const failedSessionCount = sessions.filter(
+			(session) => session.contentGenerationStatus === "failed",
+		).length;
+		const readySessionCount = sessions.filter(
+			(session) => session.contentGenerationStatus === "ready",
+		).length;
+		const isReady =
+			sessions.length > 0 && readySessionCount === sessions.length;
+
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			status:
+				plan.status === "accepted"
+					? "accepted"
+					: isReady
+						? "generated"
+						: "questionsReady",
+			contentGenerationStage: isReady
+				? "ready"
+				: failedSessionCount > 0
+					? "failed"
+					: "content",
+			...(isReady
+				? {
+						contentGenerationId: undefined,
+						contentGenerationStartedAt: undefined,
+					}
+				: {}),
+			updatedAt: Date.now(),
+		});
+		return { readySessionCount, failedSessionCount, isReady };
+	},
+});
+
+export const claimIncompleteContentGenerationSessions = internalMutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		generationId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (
+			plan.contentGenerationStage === "content" &&
+			plan.contentGenerationStartedAt &&
+			Date.now() - plan.contentGenerationStartedAt < STALE_CONTENT_GENERATION_MS
+		) {
+			throwUserFacingError("Dieser Lernplan wird bereits erstellt.");
+		}
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", args.learningPlanId),
+			)
+			.take(50);
+		const sessionIds = sessions
+			.filter((session) => session.contentGenerationStatus !== "ready")
+			.map((session) => session._id);
+		const now = Date.now();
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			status: "questionsReady",
+			contentGenerationStage: "content",
+			contentGenerationId: args.generationId,
+			contentGenerationStartedAt: now,
+			updatedAt: now,
+		});
+		return sessionIds;
+	},
+});
+
+export const markContentGenerationClaimFailed = internalMutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		generationId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (plan.contentGenerationId !== args.generationId) return false;
+
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			status: plan.status === "accepted" ? "accepted" : "questionsReady",
+			contentGenerationStage: "failed",
+			contentGenerationId: undefined,
+			contentGenerationStartedAt: undefined,
+			updatedAt: Date.now(),
+		});
+		return true;
 	},
 });
 
@@ -1155,6 +1544,9 @@ export const updateSession = mutation({
 		if (args.durationMinutes <= 0) {
 			throwUserFacingError("Die Dauer muss größer als 0 sein.");
 		}
+		const contentInvalidated =
+			session.phase !== args.phase ||
+			session.durationMinutes !== args.durationMinutes;
 		await assertNoScheduleConflict(ctx, {
 			ownerTokenIdentifier,
 			dayKey: args.dateKey,
@@ -1164,20 +1556,38 @@ export const updateSession = mutation({
 			excludeLearningPlanSessionId: session._id,
 		});
 
+		if (contentInvalidated) {
+			await deleteSessionLearningDataForSession(ctx, args.id);
+		}
 		await ctx.db.patch("learningPlanSessions", args.id, {
 			phase: args.phase,
 			dateKey: args.dateKey,
 			dateLabel: args.dateLabel,
 			startTime: args.startTime,
 			durationMinutes: args.durationMinutes,
+			...(contentInvalidated
+				? {
+						contentGenerationStatus: "queued" as const,
+						contentGenerationError: undefined,
+						contentGeneratedAt: undefined,
+					}
+				: {}),
 			updatedAt: Date.now(),
 		});
+		if (contentInvalidated) {
+			await ctx.db.patch("learningPlans", plan._id, {
+				...(plan.status === "accepted" ? {} : { status: "questionsReady" }),
+				contentGenerationStage: "content",
+				updatedAt: Date.now(),
+			});
+		}
 		const updatedSession = await ctx.db.get("learningPlanSessions", args.id);
 		if (updatedSession && plan.status === "accepted") {
 			await syncSessionDayEntry(ctx, plan, updatedSession);
 		} else if (updatedSession) {
 			await clearSessionDayEntry(ctx, updatedSession);
 		}
+		return { contentInvalidated };
 	},
 });
 
@@ -1198,7 +1608,7 @@ export const addSession = mutation({
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
 				q.eq("learningPlanId", args.learningPlanId),
 			)
-			.take(20);
+			.take(50);
 		const lastSession = sessions.at(-1);
 		const parsedExamDate = startOfDay(new Date(plan.examDateKey));
 		const examDate = Number.isNaN(parsedExamDate.getTime())
@@ -1219,7 +1629,7 @@ export const addSession = mutation({
 		const now = Date.now();
 		const dateKey = getDateKey(nextDate);
 		const startTime = lastSession?.startTime ?? "17:00";
-		const durationMinutes = lastSession?.durationMinutes ?? 45;
+		const durationMinutes = Math.min(lastSession?.durationMinutes ?? 15, 20);
 		await assertNoScheduleConflict(ctx, {
 			ownerTokenIdentifier,
 			dayKey: dateKey,
@@ -1247,6 +1657,7 @@ export const addSession = mutation({
 			goal: "Zusätzlichen Lernblock ergänzen und individuell bearbeiten.",
 			tasks: ["Aufgaben festlegen", "Ergebnis kontrollieren"],
 			expectedOutcome: "Ein zusätzlicher Lernblock ist im Plan ergänzt.",
+			contentGenerationStatus: "queued",
 			sortOrder: (highestSortOrderSession[0]?.sortOrder ?? -1) + 1,
 			createdAt: now,
 			updatedAt: now,
@@ -1255,6 +1666,11 @@ export const addSession = mutation({
 		if (createdSession && plan.status === "accepted") {
 			await syncSessionDayEntry(ctx, plan, createdSession);
 		}
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			contentGenerationStage: "content",
+			contentGenerationStartedAt: now,
+			updatedAt: now,
+		});
 		return sessionId;
 	},
 });
@@ -1280,7 +1696,7 @@ export const syncSessionsToCalendar = mutation({
 				q.eq("learningPlanId", args.learningPlanId),
 			)
 			.order("asc")
-			.take(20);
+			.take(50);
 
 		for (const session of sessions) {
 			await syncSessionDayEntry(ctx, plan, session);
@@ -1324,9 +1740,17 @@ export const recordSessionOutcome = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 		outcome: v.union(v.literal("completed"), v.literal("partiallyCompleted")),
+		activeStudySeconds: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const { session, plan } = await getOwnedSessionAndPlan(ctx, args.sessionId);
+		if (
+			args.activeStudySeconds !== undefined &&
+			(!Number.isInteger(args.activeStudySeconds) ||
+				args.activeStudySeconds < 0)
+		) {
+			throwUserFacingError("Die aktive Lernzeit ist ungültig.");
+		}
 		const status = getSessionExecutionStatus(session);
 		if (status !== "started") {
 			throwUserFacingError("Starte den Lernblock zuerst.");
@@ -1340,6 +1764,7 @@ export const recordSessionOutcome = mutation({
 			{
 				executionStatus: args.outcome,
 				outcomeAt: now,
+				activeStudySeconds: args.activeStudySeconds,
 				completed: args.outcome === "completed",
 			},
 		);
@@ -1497,6 +1922,7 @@ export const removeSession = mutation({
 		if (session.dayEntryId) {
 			await ctx.db.delete("dayEntries", session.dayEntryId);
 		}
+		await deleteSessionLearningDataForSession(ctx, args.id);
 		await ctx.db.delete("learningPlanSessions", args.id);
 		return session.learningPlanId;
 	},
@@ -1520,25 +1946,26 @@ export const acceptPlan = mutation({
 				q.eq("learningPlanId", args.learningPlanId),
 			)
 			.order("asc")
-			.take(20);
+			.take(50);
 		if (sessions.length === 0) {
 			throwUserFacingError("Es gibt noch keine Lerntage zum Eintragen.");
+		}
+		if (
+			plan.contentGenerationStage &&
+			sessions.some((session) => session.contentGenerationStatus !== "ready")
+		) {
+			throwUserFacingError(
+				"Warte, bis alle Fragen und Aufgaben vollständig vorbereitet sind.",
+			);
 		}
 
 		const now = Date.now();
 		let examDayEntryId = plan.examDayEntryId;
 		if (!examDayEntryId) {
-			await assertNoScheduleConflict(ctx, {
-				ownerTokenIdentifier,
-				dayKey: plan.examDateKey,
-				time: plan.examTime,
-				durationMinutes: plan.durationMinutes,
-			});
 			examDayEntryId = await ctx.db.insert("dayEntries", {
 				ownerTokenIdentifier,
 				dayKey: plan.examDateKey,
 				title: `${plan.subject} ${plan.examTypeLabel}`,
-				time: plan.examTime,
 				kind: "Leistungskontrolle",
 				plannedDateLabel: plan.examDateLabel,
 				durationMinutes: plan.durationMinutes,

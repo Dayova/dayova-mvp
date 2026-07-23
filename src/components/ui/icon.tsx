@@ -4,8 +4,8 @@ import {
 	ArrowLeft01Icon,
 	ArrowRight01Icon,
 	ArrowUpRight01Icon,
-	Attachment01Icon,
 	Atom02Icon,
+	Attachment01Icon,
 	Backpack03Icon,
 	BookOpen01Icon,
 	BulbIcon,
@@ -21,30 +21,32 @@ import {
 	Dumbbell02Icon,
 	EarthIcon,
 	FootballIcon,
-	GreekHelmetIcon,
 	GlobeIcon,
+	GreekHelmetIcon,
 	Home02Icon,
 	LanguageCircleIcon,
 	Logout03Icon,
 	Mail01Icon,
 	MapsCircle01Icon,
 	Mic01Icon,
-	Mortarboard01Icon,
 	Moon02Icon,
+	Mortarboard01Icon,
 	MusicNote01Icon,
 	NotebookIcon,
 	NoteIcon,
-	PaintBoardIcon,
 	Notification01Icon,
+	PaintBoardIcon,
 	PaintBrush01Icon,
 	PencilIcon,
 	Plant04Icon,
 	PlusSignIcon,
 	PropertyEditIcon,
+	RepeatIcon,
 	Rocket01Icon,
 	Route02Icon,
 	ScanImageIcon,
 	Settings01Icon,
+	StopIcon,
 	SquareLock02Icon,
 	SquareRootSquareIcon,
 	Sun01Icon,
@@ -57,6 +59,7 @@ import {
 	UserCircleIcon,
 	ViewIcon,
 	ViewOffIcon,
+	VolumeHighIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type HugeiconsProps } from "@hugeicons/react-native";
 
@@ -111,10 +114,12 @@ export const Pencil = createIcon(PencilIcon);
 export const Plant = createIcon(Plant04Icon);
 export const Plus = createIcon(PlusSignIcon);
 export const PropertyEdit = createIcon(PropertyEditIcon);
+export const Repeat = createIcon(RepeatIcon);
 export const Route2 = createIcon(Route02Icon);
 export const Rocket = createIcon(Rocket01Icon);
 export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(Settings01Icon);
+export const Stop = createIcon(StopIcon);
 export const SquareLock = createIcon(SquareLock02Icon);
 export const SquareRootSquare = createIcon(SquareRootSquareIcon);
 export const Sun = createIcon(Sun01Icon);
@@ -124,4 +129,5 @@ export const TimeManagement = createIcon(TimeManagementCircleIcon);
 export const Timer = createIcon(Clock03Icon);
 export const Trash2 = createIcon(Delete02Icon);
 export const UserRound = createIcon(UserCircleIcon);
+export const VolumeHigh = createIcon(VolumeHighIcon);
 export const X = createIcon(Cancel01Icon);
