@@ -476,7 +476,7 @@ test("daily briefing summarizes today's entries at the configured time", async (
 			category: "message",
 			type: "dailyBriefing",
 			title: "Tagesüberblick",
-			body: "Heute stehen 2 Einträge an: Englisch Test um 10:00, Mathe Hausaufgabe um 16:00.",
+			body: "Heute stehen 2 Einträge an: Mathe Hausaufgabe um 16:00, Englisch Test.",
 		},
 	]);
 });

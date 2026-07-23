@@ -97,7 +97,9 @@ type DeleteTarget =
 	| { kind: "homework"; item: HomeworkOverview };
 
 const getPlanHref = (plan: LearningPlanOverview) => {
-	if (plan.status === "draft") return ROUTES.createLearningPlan;
+	if (plan.status === "draft") {
+		return `${ROUTES.createLearningPlan}?learningPlanId=${encodeURIComponent(plan.id)}` as const;
+	}
 	if (plan.status === "questionsReady") {
 		return `/learning-plans/${plan.id}/quiz/0` as const;
 	}

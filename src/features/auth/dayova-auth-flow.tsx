@@ -27,7 +27,6 @@ import Animated, {
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
-	interpolate,
 	LinearTransition,
 	type SharedValue,
 	useAnimatedProps,
@@ -72,8 +71,10 @@ import {
 	PickerInputTrigger,
 } from "~/components/onboarding/onboarding-select";
 import { StudyTimeFactContent } from "~/components/onboarding/study-time-fact-content";
+import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
+import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -100,6 +101,7 @@ import {
 } from "~/components/ui/icon";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
+import { SnapCarouselSelector } from "~/components/ui/snap-carousel-selector";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthFlow, useAuthSession } from "~/context/AuthContext";
@@ -116,7 +118,6 @@ import {
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
-import IntroUploadSvg from "../../../assets/onboarding/intro-upload.svg";
 
 // Password icons represent the current visibility state across this auth flow.
 // Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
@@ -125,9 +126,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(
 	Circle,
 ) as ComponentType<CircleProps & { animatedProps?: Partial<CircleProps> }>;
 const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
-const DURATION_CAROUSEL_ACTIVE_COLOR = COLORS.primary;
-const DURATION_CAROUSEL_INACTIVE_COLOR = COLORS.border;
-const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h1;
+const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
 const CODE_LENGTH = 6;
 const OTP_CELL_KEYS = [
 	"otp-cell-1",
@@ -371,7 +370,6 @@ function parsePickerTime(value: string) {
 const INTRO_REFERENCE_WIDTH = 393;
 const INTRO_REFERENCE_HEIGHT = 852;
 const INTRO_TITLE_LINE_HEIGHT = 36.6;
-const IntroUploadArtwork = IntroUploadSvg as unknown as ComponentType<SvgProps>;
 const IntroPathArtwork = IntroPathSvg as unknown as ComponentType<SvgProps>;
 const INTRO_LAYOUTS = {
 	tasks: {
@@ -2457,7 +2455,9 @@ function AuthProgressHeader({
 			>
 				<ArrowLeft size={18} color={COLORS.text} strokeWidth={2.2} />
 			</Pressable>
-			<View
+			<FlowProgressBar
+				progress={progress}
+				className="flex-1"
 				accessible
 				accessibilityLabel={`Fortschritt ${Math.round(Math.min(Math.max(progress, 0), 1) * 100)} Prozent`}
 				accessibilityRole="progressbar"
@@ -2466,24 +2466,7 @@ function AuthProgressHeader({
 					max: 100,
 					now: Math.round(Math.min(Math.max(progress, 0), 1) * 100),
 				}}
-				style={{
-					flex: 1,
-					height: 8,
-					borderRadius: 999,
-					overflow: "hidden",
-					backgroundColor: "#CFEAFF",
-				}}
-			>
-				<Animated.View
-					layout={LinearTransition.duration(280)}
-					style={{
-						height: "100%",
-						width: `${Math.max(7, Math.min(progress, 1) * 100)}%`,
-						borderRadius: 999,
-						backgroundColor: COLORS.primary,
-					}}
-				/>
-			</View>
+			/>
 		</View>
 	);
 }
@@ -2725,214 +2708,22 @@ function RangeSelector({
 	const fallbackValue = values.includes(30) ? 30 : (values[0] ?? 0);
 	const selected = values.includes(parsedValue) ? parsedValue : fallbackValue;
 	const selectedIndex = Math.max(0, values.indexOf(selected));
-	const listRef = useRef<FlatList<number>>(null);
-	const { width } = useWindowDimensions();
-	const carouselWidth = Math.min(width, 360);
-	const itemWidth = 68;
-	const sidePadding = Math.max((carouselWidth - itemWidth) / 2, 0);
-	const scrollX = useSharedValue(selectedIndex * itemWidth);
-	const lastIndex = Math.max(values.length - 1, 0);
-	const selectIndex = useCallback(
-		(nextIndex: number) => {
-			const clampedIndex = Math.min(Math.max(nextIndex, 0), lastIndex);
-			const nextValue = values[clampedIndex];
-			if (nextValue === undefined) return;
-			onChange(`${nextValue} min`);
-			listRef.current?.scrollToOffset({
-				offset: clampedIndex * itemWidth,
-				animated: true,
-			});
-		},
-		[lastIndex, onChange, values],
-	);
-
-	useEffect(() => {
-		scrollX.set(selectedIndex * itemWidth);
-		listRef.current?.scrollToOffset({
-			offset: selectedIndex * itemWidth,
-			animated: false,
-		});
-	}, [scrollX, selectedIndex]);
-
-	const scrollHandler = useAnimatedScrollHandler({
-		onScroll: (event) => {
-			scrollX.set(event.contentOffset.x);
-		},
-	});
-
-	const handleMomentumEnd = useCallback(
-		(offsetX: number) => {
-			const nextIndex = Math.min(
-				Math.max(Math.round(offsetX / itemWidth), 0),
-				lastIndex,
-			);
-			const nextValue = values[nextIndex];
-			if (nextValue === undefined || nextValue === selected) return;
-			onChange(`${nextValue} min`);
-		},
-		[lastIndex, onChange, selected, values],
-	);
-
-	const handleAccessibilityAction = ({
-		nativeEvent,
-	}: {
-		nativeEvent: { actionName: string };
-	}) => {
-		if (nativeEvent.actionName === "increment") {
-			selectIndex(selectedIndex + 1);
-		}
-		if (nativeEvent.actionName === "decrement") {
-			selectIndex(selectedIndex - 1);
-		}
-	};
+	const lastIndex = Math.max(values.length - 1, 1);
 
 	return (
-		<View style={{ alignItems: "center", width: "100%" }}>
-			<View
-				style={{
-					width: 88,
-					height: 88,
-					borderRadius: 44,
-					alignItems: "center",
-					justifyContent: "center",
-					borderWidth: 4,
-					borderColor: "rgba(0, 186, 255, 0.18)",
-				}}
-			>
-				<Svg width={88} height={88} style={{ position: "absolute" }}>
-					<Circle
-						cx="44"
-						cy="44"
-						r="40"
-						fill="transparent"
-						stroke={COLORS.primary}
-						strokeWidth="4"
-						strokeLinecap="round"
-						strokeDasharray={`${Math.max(40, selected * 3.5)} 260`}
-						transform="rotate(-90 44 44)"
-					/>
-				</Svg>
-				<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-					{selected}
-				</Text>
-				<Text className="-mt-1 text-center font-poppins font-semibold text-body-5 text-text">
-					min
-				</Text>
-			</View>
-
-			<View
-				accessibilityRole="adjustable"
-				accessibilityLabel={accessibilityLabel}
-				accessibilityValue={{ text: `${selected} Minuten` }}
-				accessibilityActions={[
-					{ name: "increment", label: "Mehr Zeit" },
-					{ name: "decrement", label: "Weniger Zeit" },
-				]}
-				onAccessibilityAction={handleAccessibilityAction}
-				style={{
-					marginTop: 48,
-					width: carouselWidth,
-					height: 92,
-					justifyContent: "center",
-				}}
-			>
-				<Animated.FlatList
-					ref={listRef}
-					data={values as readonly number[]}
-					keyExtractor={(minutes) => String(minutes)}
-					horizontal
-					bounces={false}
-					decelerationRate="fast"
-					snapToInterval={itemWidth}
-					snapToAlignment="start"
-					showsHorizontalScrollIndicator={false}
-					scrollEventThrottle={16}
-					onScroll={scrollHandler}
-					onMomentumScrollEnd={(event) =>
-						handleMomentumEnd(event.nativeEvent.contentOffset.x)
-					}
-					onScrollEndDrag={(event) =>
-						handleMomentumEnd(event.nativeEvent.contentOffset.x)
-					}
-					getItemLayout={(_, index) => ({
-						length: itemWidth,
-						offset: itemWidth * index,
-						index,
-					})}
-					contentContainerStyle={{
-						paddingHorizontal: sidePadding,
-						alignItems: "center",
-					}}
-					style={{ flexGrow: 0 }}
-					renderItem={({ index }) => (
-						<DurationCarouselItem
-							index={index}
-							itemWidth={itemWidth}
-							scrollX={scrollX}
-						/>
-					)}
-				/>
-			</View>
-		</View>
-	);
-}
-
-function DurationCarouselItem({
-	index,
-	itemWidth,
-	scrollX,
-}: {
-	index: number;
-	itemWidth: number;
-	scrollX: SharedValue<number>;
-}) {
-	const animatedStyle = useAnimatedStyle(() => {
-		const distance = Math.abs(scrollX.get() / itemWidth - index);
-		const scale = interpolate(distance, [0, 1, 2], [1, 0.82, 0.72], "clamp");
-		const opacity = interpolate(distance, [0, 1, 2], [1, 0.82, 0.58], "clamp");
-
-		return {
-			opacity,
-			transform: [{ scale }],
-		};
-	});
-
-	const barStyle = useAnimatedStyle(() => {
-		const distance = Math.abs(scrollX.get() / itemWidth - index);
-		const height = interpolate(distance, [0, 1, 2], [72, 36, 28], "clamp");
-		const width = interpolate(distance, [0, 1, 2], [7, 4, 3], "clamp");
-		const isActive = distance < 0.5;
-
-		return {
-			width,
-			height,
-			backgroundColor: isActive
-				? DURATION_CAROUSEL_ACTIVE_COLOR
-				: DURATION_CAROUSEL_INACTIVE_COLOR,
-		};
-	});
-
-	return (
-		<Animated.View
-			style={[
-				{
-					width: itemWidth,
-					height: 78,
-					alignItems: "center",
-					justifyContent: "center",
-				},
-				animatedStyle,
-			]}
-		>
-			<Animated.View
-				style={[
-					{
-						borderRadius: 3,
-					},
-					barStyle,
-				]}
-			/>
-		</Animated.View>
+		<SnapCarouselSelector
+			accessibilityLabel={accessibilityLabel}
+			accessibilityValue={`${selected} Minuten`}
+			decrementLabel="Weniger Zeit"
+			getItemKey={(minutes) => String(minutes)}
+			incrementLabel="Mehr Zeit"
+			items={values}
+			onSelect={(minutes) => onChange(`${minutes} min`)}
+			primaryLabel={`${selected}`}
+			progress={selectedIndex / lastIndex}
+			secondaryLabel="min"
+			selectedIndex={selectedIndex}
+		/>
 	);
 }
 

@@ -2,6 +2,7 @@ import "~/global.css";
 import { ClerkProvider, useAuth as useClerkAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { PortalHost } from "@rn-primitives/portal";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Stack } from "expo-router";
@@ -35,6 +36,7 @@ const convexUrl = env.EXPO_PUBLIC_CONVEX_URL?.trim();
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 function AppNavigator() {
 	const sheetAccessibility = useSheetAccessibility();
+	const { colors } = useDayovaTheme();
 
 	return (
 		<>
@@ -47,9 +49,20 @@ function AppNavigator() {
 				}
 			>
 				<AuthNavigationGate>
-					<Stack screenOptions={{ headerShown: false }} />
+					<Stack screenOptions={{ headerShown: false }}>
+						<Stack.Screen
+							name="learning-times/edit"
+							options={{
+								animation: "slide_from_right",
+								contentStyle: { backgroundColor: colors.background },
+								gestureEnabled: true,
+								presentation: "card",
+							}}
+						/>
+					</Stack>
 				</AuthNavigationGate>
 			</View>
+			<PortalHost />
 		</>
 	);
 }

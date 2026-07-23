@@ -16,6 +16,7 @@ describe("theme CSS", () => {
 		const css = readFileSync(GLOBAL_CSS_PATH, "utf8");
 
 		expect(css).toContain(".dark:root");
+		expect(css.match(/--progress-track:/g)).toHaveLength(2);
 		expect(css).not.toContain("\n\t.dark {\n");
 	});
 

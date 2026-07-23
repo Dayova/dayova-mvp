@@ -10,6 +10,21 @@ import {
 } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import {
+	createLearningContentPlan,
+	type LearningQuestionBlueprint,
+	type LearningTopic,
+} from "./learningContentPlan";
+import { getLearningSessionComposition } from "./learningSessionComposition";
+import {
+	MAX_MULTIPLE_CHOICE_OPTION_CHARS,
+	MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
+} from "./learningSessionContentConstraints";
+import {
+	getSessionLearningTopics,
+	normalizeLearningTopics,
+} from "./learningTopicMap";
+import { type TheoryContent, theoryContentValidator } from "./theoryContent";
 
 type SessionContentItemKind =
 	| "learnCard"
@@ -19,6 +34,7 @@ type SessionContentItemKind =
 type AnswerRating = "notCorrect" | "partiallyCorrect" | "correct";
 
 type GeneratedItem = {
+	phase?: "theory" | "practice" | "rehearsal";
 	kind: SessionContentItemKind;
 	title: string;
 	prompt: string;
@@ -26,9 +42,15 @@ type GeneratedItem = {
 	back?: string;
 	explanation: string;
 	idealAnswer: string;
+	theoryContent?: TheoryContent;
 	choices?: Array<{ id: string; text: string }>;
 	correctChoiceId?: string;
 	evaluationKeywords: string[];
+	learningBlockIndex?: number;
+	topicId?: string;
+	questionAngle?: string;
+	coverageKey?: string;
+	estimatedSeconds?: number;
 };
 
 const generatedChoiceValidator = v.object({
@@ -37,6 +59,9 @@ const generatedChoiceValidator = v.object({
 });
 
 const generatedSessionContentItemValidator = v.object({
+	phase: v.optional(
+		v.union(v.literal("theory"), v.literal("practice"), v.literal("rehearsal")),
+	),
 	kind: v.union(
 		v.literal("learnCard"),
 		v.literal("multipleChoice"),
@@ -49,9 +74,15 @@ const generatedSessionContentItemValidator = v.object({
 	back: v.optional(v.string()),
 	explanation: v.string(),
 	idealAnswer: v.string(),
+	theoryContent: v.optional(theoryContentValidator),
 	choices: v.optional(v.array(generatedChoiceValidator)),
 	correctChoiceId: v.optional(v.string()),
 	evaluationKeywords: v.array(v.string()),
+	learningBlockIndex: v.optional(v.number()),
+	topicId: v.optional(v.string()),
+	questionAngle: v.optional(v.string()),
+	coverageKey: v.optional(v.string()),
+	estimatedSeconds: v.optional(v.number()),
 });
 
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
@@ -103,7 +134,13 @@ const publicItem = (item: Doc<"learningSessionContentItems">) => ({
 	back: item.back,
 	explanation: item.explanation,
 	idealAnswer: item.idealAnswer,
+	theoryContent: item.theoryContent,
 	choices: item.choices ?? [],
+	learningBlockIndex: item.learningBlockIndex ?? 0,
+	topicId: item.topicId ?? item.title,
+	questionAngle: item.questionAngle ?? "legacy",
+	coverageKey: item.coverageKey ?? `${item._id}`,
+	estimatedSeconds: item.estimatedSeconds ?? 40,
 	sortOrder: item.sortOrder,
 });
 
@@ -135,6 +172,17 @@ const normalizeText = (value: string) =>
 
 const compact = (value: string, fallback: string) =>
 	normalizeText(value || fallback) || fallback;
+
+const compactToLength = (value: string, maxChars: number) => {
+	const normalized = normalizeText(value);
+	if (normalized.length <= maxChars) return normalized;
+
+	const clipped = normalized.slice(0, maxChars - 1).trimEnd();
+	const lastSpace = clipped.lastIndexOf(" ");
+	const boundary =
+		lastSpace >= Math.floor(maxChars * 0.6) ? lastSpace : clipped.length;
+	return `${clipped.slice(0, boundary).trimEnd()}…`;
+};
 
 const wordPattern = /[\p{L}\p{N}]+/gu;
 const stopWords = new Set([
@@ -191,30 +239,77 @@ const distinct = (values: string[]) => {
 	return result;
 };
 
-const targetTheoryCardCount = (durationMinutes: number) =>
-	Math.max(3, Math.min(12, Math.ceil(durationMinutes / 6)));
+const getSessionTopics = (
+	plan: Doc<"learningPlans">,
+	session: Doc<"learningPlanSessions">,
+): LearningTopic[] => {
+	if (plan.topicMap && plan.topicMap.length > 0) {
+		return getSessionLearningTopics({
+			topics: plan.topicMap,
+			strengths: plan.insight?.strengths ?? [],
+			gaps: plan.insight?.gaps ?? [],
+			sessionPhase: session.phase,
+			sessionTitle: session.title,
+			sessionGoal: session.goal,
+		});
+	}
 
-const targetTaskCount = (durationMinutes: number) =>
-	Math.max(4, Math.min(10, Math.ceil(durationMinutes / 8)));
+	return getSessionLearningTopics({
+		topics: normalizeLearningTopics(
+			distinct([
+				plan.topicDescription,
+				session.goal,
+				...session.tasks,
+				session.expectedOutcome,
+				...(plan.insight?.gaps ?? []),
+			])
+				.slice(0, 12)
+				.map((title, index) => ({
+					title,
+					learningGoal:
+						session.tasks[index % Math.max(session.tasks.length, 1)] ??
+						session.goal,
+					keywords: extractKeywords([title, session.goal]),
+					priority: index < 3 ? ("high" as const) : ("medium" as const),
+				})),
+		),
+		strengths: plan.insight?.strengths ?? [],
+		gaps: plan.insight?.gaps ?? [],
+		sessionPhase: session.phase,
+		sessionTitle: session.title,
+		sessionGoal: session.goal,
+	});
+};
+
+const theoryQuestionFor = (blueprint: LearningQuestionBlueprint) => {
+	const topic = blueprint.topic.title;
+	switch (blueprint.angle) {
+		case "recall":
+			return `Was bedeutet ${topic}, und wofür wird das Verfahren gebraucht?`;
+		case "recognize":
+			return `Woran erkennst du eine Aufgabe zu ${topic}?`;
+		case "apply":
+			return `Wie wendest du ${topic} Schritt für Schritt an?`;
+		case "findError":
+			return `Welcher Fehler passiert häufig bei ${topic}, und wie vermeidest du ihn?`;
+		case "compare":
+			return `Worin unterscheiden sich zwei Lösungswege bei ${topic}?`;
+		case "examTransfer":
+			return `Wie gehst du in einer Prüfungsaufgabe zu ${topic} vor?`;
+	}
+};
 
 const buildTheoryItems = (
 	plan: Doc<"learningPlans">,
 	session: Doc<"learningPlanSessions">,
+	questions: LearningQuestionBlueprint[],
 ) => {
-	const baseConcepts = distinct([
-		plan.topicDescription,
-		session.goal,
-		...session.tasks,
-		session.expectedOutcome,
-	]);
-	const cardCount = targetTheoryCardCount(session.durationMinutes);
-
-	return Array.from({ length: cardCount }, (_, index): GeneratedItem => {
-		const concept =
-			baseConcepts[index % Math.max(baseConcepts.length, 1)] ??
-			plan.topicDescription;
+	return questions.map((blueprint, index): GeneratedItem => {
+		const concept = blueprint.topic.title;
 		const keywords = extractKeywords([
 			concept,
+			blueprint.topic.learningGoal,
+			...blueprint.topic.keywords,
 			session.goal,
 			session.expectedOutcome,
 			plan.topicDescription,
@@ -222,38 +317,51 @@ const buildTheoryItems = (
 		const detail =
 			session.tasks[index % Math.max(session.tasks.length, 1)] ??
 			session.expectedOutcome;
-		const front =
-			index === 0
-				? `Was musst du zu ${concept} sicher erklären können?`
-				: index % 3 === 1
-					? `Wie wendest du ${concept} in einer Aufgabe an?`
-					: `Welcher typische Fehler passiert bei ${concept}?`;
+		const front = theoryQuestionFor(blueprint);
 		const example = compact(
-			`Beispiel: Nutze "${detail}" als Prüfungsaufgabe und erkläre jeden Schritt.`,
+			`Nimm die Teilaufgabe „${detail}“. Zeige daran den ersten fachlich entscheidenden Schritt und begründe ihn.`,
 			detail,
 		);
-		const pitfall = compact(
-			`Achte darauf, keine Umformung oder Begründung auszulassen.`,
+		const commonMistake = compact(
+			"Eine Umformung oder Begründung auslassen.",
 			"Begründe jeden Schritt.",
+		);
+		const explanation = compact(
+			`${blueprint.topic.learningGoal} Das ist für diese Session wichtig, weil du damit ${session.goal.replace(/[.!?]+$/, "").toLowerCase()}.`,
+			session.goal,
+		);
+		const memoryCue = compact(
+			`Merke: Bei ${concept} zählt ein nachvollziehbarer Lösungsweg, nicht nur das Endergebnis.`,
+			concept,
 		);
 		return {
 			kind: "learnCard",
-			title: `Lernkarte ${index + 1}`,
+			title: concept,
 			prompt: front,
 			front,
 			back: compact(
-				`${concept}: ${detail}. ${example} ${pitfall}`,
+				`${explanation} Beispiel: ${example} Typischer Fehler: ${commonMistake}`,
 				session.goal,
 			),
-			explanation: compact(
-				`Diese Lernkarte bereitet dich auf ${plan.examTypeLabel} zu ${plan.topicDescription} vor.`,
-				"Diese Karte bereitet dich auf die Prüfung vor.",
-			),
-			idealAnswer: compact(
-				`Erkläre ${concept} kurz, wende es an einem Beispiel an und nenne den häufigsten Fehler.`,
-				concept,
-			),
+			explanation,
+			idealAnswer: memoryCue,
+			theoryContent: {
+				conceptTitle: concept,
+				question: front,
+				explanation,
+				keyPoints: [
+					compact(detail, session.goal),
+					compact(session.expectedOutcome, plan.topicDescription),
+				],
+				example,
+				memoryCue,
+				commonMistake,
+			},
 			evaluationKeywords: keywords,
+			topicId: blueprint.topic.id,
+			questionAngle: blueprint.angle,
+			coverageKey: blueprint.coverageKey,
+			estimatedSeconds: blueprint.estimatedSeconds,
 		};
 	});
 };
@@ -261,6 +369,7 @@ const buildTheoryItems = (
 const buildTaskItems = (
 	plan: Doc<"learningPlans">,
 	session: Doc<"learningPlanSessions">,
+	questions: LearningQuestionBlueprint[],
 ) => {
 	const keywords = extractKeywords([
 		plan.topicDescription,
@@ -272,18 +381,29 @@ const buildTaskItems = (
 		session.tasks.length > 0
 			? session.tasks
 			: [session.goal, session.expectedOutcome];
-	const targetCount = targetTaskCount(session.durationMinutes);
-	const kinds: SessionContentItemKind[] = [
-		"multipleChoice",
-		"written",
-		"voice",
-	];
 	const isPraxis = session.phase === "rehearsal";
 	const phasePrefix = isPraxis ? "Generalprobe" : "Übung";
 
-	return Array.from({ length: targetCount }, (_, index): GeneratedItem => {
-		const kind = kinds[index % kinds.length] ?? "written";
+	return questions.map((blueprint, index): GeneratedItem => {
+		const kind = blueprint.kind as SessionContentItemKind;
 		const task = focusTasks[index % focusTasks.length] ?? session.goal;
+		const topicTask = `${blueprint.topic.title}: ${task}`;
+		const freshTask = (() => {
+			switch (blueprint.angle) {
+				case "recall":
+					return `Erkläre ${blueprint.topic.title} in eigenen Worten. Gehe dabei auf diese Teilaufgabe ein: ${task}`;
+				case "recognize":
+					return `Woran erkennst du, dass ${blueprint.topic.title} gebraucht wird? Nutze als Ausgangspunkt: ${task}`;
+				case "apply":
+					return `${task} Zeige Schritt für Schritt, wie du dabei ${blueprint.topic.title} anwendest.`;
+				case "findError":
+					return `Nenne einen typischen Fehler bei ${blueprint.topic.title} und korrigiere ihn. Beziehe dich auf: ${task}`;
+				case "compare":
+					return `Vergleiche zwei Vorgehensweisen bei ${blueprint.topic.title}. Welche ist sicherer und warum? Ausgangspunkt: ${task}`;
+				case "examTransfer":
+					return `Bearbeite eine prüfungsnahe Aufgabe zu ${blueprint.topic.title}. Achte besonders auf: ${task}`;
+			}
+		})();
 		const title =
 			kind === "multipleChoice"
 				? "Auswahlfrage"
@@ -291,36 +411,42 @@ const buildTaskItems = (
 					? "Sprachaufgabe"
 					: "Schreibaufgabe";
 		const idealAnswer = compact(
-			`${task} Löse die Aufgabe Schritt für Schritt, begründe jede Umformung und prüfe dein Ergebnis mit Bezug auf ${plan.topicDescription}.`,
+			`${topicTask} Löse die Aufgabe knapp, begründe den entscheidenden Schritt und prüfe dein Ergebnis mit Bezug auf ${plan.topicDescription}.`,
 			session.expectedOutcome,
 		);
 
 		if (kind === "multipleChoice") {
+			const prompt = `${phasePrefix}: Welcher nächste Schritt passt? ${freshTask}`;
 			return {
 				kind,
 				title,
-				prompt: isPraxis
-					? `${phasePrefix} ${index + 1}: Welche Aussage ist für "${task}" fachlich richtig?`
-					: `${phasePrefix} ${index + 1}: Welche Lösungsidee passt zu "${task}"?`,
+				prompt: compactToLength(prompt, MAX_MULTIPLE_CHOICE_PROMPT_CHARS),
 				explanation:
 					"Die richtige Antwort verbindet den passenden Rechenschritt mit einer Kontrolle des Ergebnisses.",
 				idealAnswer,
 				choices: [
 					{
 						id: "correct",
-						text: `Erst den passenden Schritt zu "${task}" ausführen, dann begründen und mit einer Probe prüfen.`,
+						text: compactToLength(
+							"Passenden Schritt ausführen, begründen und mit einer Probe prüfen.",
+							MAX_MULTIPLE_CHOICE_OPTION_CHARS,
+						),
 					},
 					{
 						id: "distractor-fast",
-						text: "Direkt ein Ergebnis raten und die Zwischenschritte auslassen.",
+						text: "Ergebnis direkt raten und Zwischenschritte auslassen.",
 					},
 					{
 						id: "distractor-skip",
-						text: "Die Kontrolle weglassen, solange das Ergebnis ungefähr passend aussieht.",
+						text: "Kontrolle weglassen, wenn das Ergebnis ungefähr passt.",
 					},
 				],
 				correctChoiceId: "correct",
 				evaluationKeywords: keywords,
+				topicId: blueprint.topic.id,
+				questionAngle: blueprint.angle,
+				coverageKey: blueprint.coverageKey,
+				estimatedSeconds: blueprint.estimatedSeconds,
 			};
 		}
 
@@ -329,12 +455,16 @@ const buildTaskItems = (
 			title,
 			prompt:
 				kind === "voice"
-					? `${phasePrefix} ${index + 1}: Erkläre laut deinen Lösungsweg zu "${task}".`
-					: `${phasePrefix} ${index + 1}: Löse "${task}" schriftlich und notiere die Probe.`,
+					? `${phasePrefix}: ${freshTask} Antworte laut und begründe den entscheidenden Schritt.`
+					: `${phasePrefix}: ${freshTask} Antworte schriftlich und notiere eine passende Kontrolle.`,
 			explanation:
 				"Eine starke Antwort nennt den vollständigen Lösungsweg, vermeidet typische Fehler und kontrolliert das Ergebnis.",
 			idealAnswer,
 			evaluationKeywords: keywords,
+			topicId: blueprint.topic.id,
+			questionAngle: blueprint.angle,
+			coverageKey: blueprint.coverageKey,
+			estimatedSeconds: blueprint.estimatedSeconds,
 		};
 	});
 };
@@ -342,10 +472,34 @@ const buildTaskItems = (
 const buildGeneratedItems = (
 	plan: Doc<"learningPlans">,
 	session: Doc<"learningPlanSessions">,
-) =>
-	session.phase === "theory"
-		? buildTheoryItems(plan, session)
-		: buildTaskItems(plan, session);
+) => {
+	const segments = getLearningSessionComposition({
+		phase: session.phase,
+		durationMinutes: session.durationMinutes,
+		variant: session.compositionVariant ?? "control",
+	});
+	const contentPlan = createLearningContentPlan({
+		segments,
+		topics: getSessionTopics(plan, session),
+	});
+
+	return contentPlan.blocks.flatMap((block) => {
+		const segmentSession: Doc<"learningPlanSessions"> = {
+			...session,
+			phase: block.phase,
+			durationMinutes: block.durationMinutes,
+		};
+		const items =
+			block.phase === "theory"
+				? buildTheoryItems(plan, segmentSession, block.questions)
+				: buildTaskItems(plan, segmentSession, block.questions);
+		return items.map((item) => ({
+			...item,
+			phase: block.phase,
+			learningBlockIndex: block.index,
+		}));
+	});
+};
 
 const listItems = async (
 	ctx: QueryCtx | MutationCtx,
@@ -357,12 +511,13 @@ const listItems = async (
 			q.eq("sessionId", sessionId),
 		)
 		.order("asc")
-		.take(50);
+		.take(100);
 
 const insertGeneratedItemsForSession = async (
 	ctx: MutationCtx,
 	session: Doc<"learningPlanSessions">,
 	items: GeneratedItem[],
+	sortOrderOffset = 0,
 ) => {
 	const now = Date.now();
 	for (const [index, item] of items.entries()) {
@@ -370,7 +525,7 @@ const insertGeneratedItemsForSession = async (
 			ownerTokenIdentifier: session.ownerTokenIdentifier,
 			learningPlanId: session.learningPlanId,
 			sessionId: session._id,
-			phase: session.phase,
+			phase: item.phase ?? session.phase,
 			kind: item.kind,
 			title: normalizeText(item.title),
 			prompt: normalizeText(item.prompt),
@@ -378,6 +533,19 @@ const insertGeneratedItemsForSession = async (
 			back: item.back ? normalizeText(item.back) : undefined,
 			explanation: normalizeText(item.explanation),
 			idealAnswer: normalizeText(item.idealAnswer),
+			theoryContent: item.theoryContent
+				? {
+						conceptTitle: normalizeText(item.theoryContent.conceptTitle),
+						question: normalizeText(item.theoryContent.question),
+						explanation: normalizeText(item.theoryContent.explanation),
+						keyPoints: item.theoryContent.keyPoints
+							.slice(0, 4)
+							.map(normalizeText),
+						example: normalizeText(item.theoryContent.example),
+						memoryCue: normalizeText(item.theoryContent.memoryCue),
+						commonMistake: normalizeText(item.theoryContent.commonMistake),
+					}
+				: undefined,
 			choices: item.choices?.map((choice) => ({
 				id: choice.id,
 				text: normalizeText(choice.text),
@@ -386,7 +554,12 @@ const insertGeneratedItemsForSession = async (
 			evaluationKeywords: item.evaluationKeywords.map((keyword) =>
 				normalizeText(keyword.toLowerCase()),
 			),
-			sortOrder: index,
+			learningBlockIndex: item.learningBlockIndex,
+			topicId: item.topicId,
+			questionAngle: item.questionAngle,
+			coverageKey: item.coverageKey,
+			estimatedSeconds: item.estimatedSeconds,
+			sortOrder: sortOrderOffset + index,
 			createdAt: now,
 			updatedAt: now,
 		});
@@ -529,29 +702,59 @@ const buildAnalysis = (
 const isLegacyTheoryItem = (item: Doc<"learningSessionContentItems">) =>
 	item.kind === "learnCard" &&
 	(item.back?.includes("Merke dir besonders, wie das Lernziel") ||
-		item.back?.includes("damit zusammenhängt"));
+		item.back?.includes("damit zusammenhängt") ||
+		(item.theoryContent !== undefined &&
+			(item.theoryContent.example.trim().toLocaleLowerCase("de") ===
+				item.theoryContent.memoryCue.trim().toLocaleLowerCase("de") ||
+				item.theoryContent.keyPoints.some((point) =>
+					/^Achte besonders auf:/i.test(point.trim()),
+				) ||
+				item.theoryContent.commonMistake.includes(
+					"Vergleiche deine Antwort mit der Erklärung",
+				))));
 
 const isLegacyTaskItem = (item: Doc<"learningSessionContentItems">) =>
 	item.kind !== "learnCard" &&
 	(item.prompt.includes("Welche Strategie passt") ||
 		item.prompt.includes("Schreibe deine Lösung auf:") ||
 		item.prompt.includes("Sprich deine Lösung laut ein:") ||
+		item.prompt.includes("Variante ") ||
+		item.prompt.includes('Lösungsweg zu "') ||
 		item.explanation.includes("Eine starke Antwort nennt den Lösungsweg") ||
 		item.explanation.includes("Prüfungsnah ist die Antwort"));
 
-const deleteSessionContentItems = async (
+export const deleteSessionLearningDataForSession = async (
 	ctx: MutationCtx,
 	sessionId: Id<"learningPlanSessions">,
 ) => {
 	const items = await listItems(ctx, sessionId);
+	const attempts = await ctx.db
+		.query("learningSessionAnswerAttempts")
+		.withIndex("by_sessionId_and_createdAt", (q) =>
+			q.eq("sessionId", sessionId),
+		)
+		.take(1_000);
+	for (const attempt of attempts) {
+		await ctx.db.delete("learningSessionAnswerAttempts", attempt._id);
+	}
+	const analysis = await ctx.db
+		.query("learningSessionAnalyses")
+		.withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+		.unique();
+	if (analysis) {
+		await ctx.db.delete("learningSessionAnalyses", analysis._id);
+	}
 	for (const item of items) {
 		await ctx.db.delete("learningSessionContentItems", item._id);
 	}
 };
 
+const deleteSessionContentItems = deleteSessionLearningDataForSession;
+
 export const getSessionGenerationContext = internalQuery({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
+		includePriorContent: v.optional(v.boolean()),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -591,26 +794,36 @@ export const getSessionGenerationContext = internalQuery({
 				q.eq("learningPlanId", session.learningPlanId),
 			)
 			.order("asc")
-			.take(20);
+			.take(50);
 		const priorTheoryCards: Array<{ front: string; back: string }> = [];
+		const priorSessionItems: Array<{ prompt: string; coverageKey?: string }> =
+			[];
+		const priorCoverageKeys: string[] = [];
 		for (const planSession of planSessions) {
-			if (
-				planSession.sortOrder >= session.sortOrder ||
-				planSession.phase !== "theory"
-			) {
-				continue;
-			}
+			if (args.includePriorContent === false) break;
+			if (planSession._id === session._id) continue;
+			const wasCompleted =
+				planSession.executionStatus === "completed" || planSession.completed;
+			if (planSession.sortOrder >= session.sortOrder && !wasCompleted) continue;
 
 			const items = await listItems(ctx, planSession._id);
 			for (const item of items) {
-				if (item.kind !== "learnCard") continue;
-				priorTheoryCards.push({
-					front: item.front ?? item.prompt,
-					back: item.back ?? item.idealAnswer,
-				});
-				if (priorTheoryCards.length >= 24) break;
+				if (item.coverageKey && priorCoverageKeys.length < 2_000) {
+					priorCoverageKeys.push(item.coverageKey);
+				}
+				if (priorSessionItems.length < 100) {
+					priorSessionItems.push({
+						prompt: item.prompt,
+						coverageKey: item.coverageKey,
+					});
+				}
+				if (item.kind === "learnCard" && priorTheoryCards.length < 24) {
+					priorTheoryCards.push({
+						front: item.front ?? item.prompt,
+						back: item.back ?? item.idealAnswer,
+					});
+				}
 			}
-			if (priorTheoryCards.length >= 24) break;
 		}
 
 		return {
@@ -626,6 +839,8 @@ export const getSessionGenerationContext = internalQuery({
 			answers,
 			learningTimes,
 			priorTheoryCards,
+			priorSessionItems,
+			priorCoverageKeys,
 			existingItemCount: existingItems.length,
 			needsLegacyContentReplacement:
 				existingItems.some(isLegacyTheoryItem) ||
@@ -648,6 +863,11 @@ export const storeGeneratedSessionContent = internalMutation({
 			args.sessionId,
 			ownerTokenIdentifier,
 		);
+		const plan = await getOwnedPlan(
+			ctx,
+			session.learningPlanId,
+			ownerTokenIdentifier,
+		);
 		const existingItems = await listItems(ctx, args.sessionId);
 		if (existingItems.length > 0 && args.replaceExisting !== true) {
 			return { itemCount: existingItems.length };
@@ -657,7 +877,46 @@ export const storeGeneratedSessionContent = internalMutation({
 			await deleteSessionContentItems(ctx, args.sessionId);
 		}
 
-		await insertGeneratedItemsForSession(ctx, session, args.items);
+		const composition = getLearningSessionComposition({
+			phase: session.phase,
+			durationMinutes: session.durationMinutes,
+			variant: session.compositionVariant ?? "control",
+		});
+		const practiceSegment = composition.find(
+			(segment) => segment.phase === "practice",
+		);
+		const hasGeneratedPractice = args.items.some(
+			(item) => item.phase === "practice",
+		);
+		const practiceBlocks = practiceSegment
+			? createLearningContentPlan({
+					segments: composition,
+					topics: getSessionTopics(plan, session),
+				}).blocks.filter((block) => block.phase === "practice")
+			: [];
+		const items =
+			practiceBlocks.length > 0 && !hasGeneratedPractice
+				? [
+						...args.items,
+						...practiceBlocks.flatMap((block) =>
+							buildTaskItems(
+								plan,
+								{
+									...session,
+									phase: "practice",
+									durationMinutes: block.durationMinutes,
+								},
+								block.questions,
+							).map((item) => ({
+								...item,
+								phase: "practice" as const,
+								learningBlockIndex: block.index,
+							})),
+						),
+					]
+				: args.items;
+
+		await insertGeneratedItemsForSession(ctx, session, items);
 		const storedItems = await listItems(ctx, args.sessionId);
 		return { itemCount: storedItems.length };
 	},
@@ -687,6 +946,91 @@ export const ensureFallbackSessionContent = internalMutation({
 
 		const items = await ensureItemsForSession(ctx, session, plan);
 		return { itemCount: items.length };
+	},
+});
+
+export const extendSessionContent = mutation({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+		durationMinutes: v.number(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const session = await getOwnedSession(
+			ctx,
+			args.sessionId,
+			ownerTokenIdentifier,
+		);
+		const plan = await getOwnedPlan(
+			ctx,
+			session.learningPlanId,
+			ownerTokenIdentifier,
+		);
+		if (
+			!Number.isInteger(args.durationMinutes) ||
+			args.durationMinutes < 5 ||
+			args.durationMinutes > 10
+		) {
+			throwUserFacingError(
+				"Weiterlernen muss zwischen 5 und 10 Minuten dauern.",
+			);
+		}
+
+		const existingItems = await listItems(ctx, args.sessionId);
+		const lastItem = existingItems.at(-1);
+		const continuationPhase = lastItem?.phase ?? session.phase;
+		const nextBlockIndex =
+			Math.max(
+				-1,
+				...existingItems.map((item) => item.learningBlockIndex ?? 0),
+			) + 1;
+		const contentPlan = createLearningContentPlan({
+			segments: [
+				{
+					phase: continuationPhase,
+					durationMinutes: args.durationMinutes,
+				},
+			],
+			topics: getSessionTopics(plan, session),
+			excludedCoverageKeys: existingItems
+				.map((item) => item.coverageKey)
+				.filter((key): key is string => Boolean(key)),
+			blockIndexOffset: nextBlockIndex,
+		});
+		const newItems = contentPlan.blocks.flatMap((block) => {
+			const blockSession: Doc<"learningPlanSessions"> = {
+				...session,
+				phase: block.phase,
+				durationMinutes: block.durationMinutes,
+			};
+			const items =
+				block.phase === "theory"
+					? buildTheoryItems(plan, blockSession, block.questions)
+					: buildTaskItems(plan, blockSession, block.questions);
+			return items.map((item) => ({
+				...item,
+				phase: block.phase,
+				learningBlockIndex: block.index,
+			}));
+		});
+
+		if (existingItems.length + newItems.length > 100) {
+			throwUserFacingError(
+				"Für diese Lernsession wurden bereits genug Zusatzfragen erstellt.",
+			);
+		}
+
+		await insertGeneratedItemsForSession(
+			ctx,
+			session,
+			newItems,
+			existingItems.length,
+		);
+		return {
+			firstNewItemIndex: existingItems.length,
+			addedItemCount: newItems.length,
+			durationMinutes: args.durationMinutes,
+		};
 	},
 });
 
@@ -754,6 +1098,7 @@ export const getSessionContent = query({
 				expectedOutcome: session.expectedOutcome,
 				completed: session.completed ?? false,
 				executionStatus: getSessionExecutionStatus(session),
+				compositionVariant: session.compositionVariant ?? "control",
 			},
 			praxisDurationSeconds:
 				session.phase === "rehearsal"

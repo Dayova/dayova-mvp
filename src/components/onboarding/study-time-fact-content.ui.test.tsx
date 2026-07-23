@@ -19,6 +19,16 @@ jest.mock("react-native-reanimated", () => {
 	};
 });
 
+jest.mock("~/components/ui/icon", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const icon = (name: string) => (props: Record<string, unknown>) =>
+		React.createElement("Icon", { ...props, testID: `${name}-icon` });
+	return {
+		Bulb: icon("bulb"),
+		Sparkles: icon("sparkles"),
+	};
+});
+
 describe("StudyTimeFactContent", () => {
 	test("renders the selected study-time fact with a screen-reader heading", async () => {
 		const screen = await render(

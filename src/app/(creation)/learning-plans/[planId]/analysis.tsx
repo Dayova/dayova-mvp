@@ -4,40 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Text } from "~/components/ui/text";
-import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
+import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
+import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
+import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
 import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { goBackOrReplace } from "~/lib/navigation";
+import { dismissToOrReplace, goBackOrReplace } from "~/lib/navigation";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
-
-const buildEditPlanPath = (
-	id: Id<"learningPlans">,
-	snapshot: LearningPlanSnapshot,
-	errorMessage: string,
-) => {
-	const query = [
-		["learningPlanId", id],
-		["subject", snapshot.plan.subject],
-		["examTypeLabel", snapshot.plan.examTypeLabel],
-		["examDateKey", snapshot.plan.examDateKey],
-		["examDateLabel", snapshot.plan.examDateLabel],
-		["examTime", snapshot.plan.examTime],
-		["durationMinutes", `${snapshot.plan.durationMinutes}`],
-		["topicDescription", snapshot.plan.topicDescription],
-		["errorMessage", errorMessage],
-	]
-		.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-		.join("&");
-	return `/learning-plans/new?${query}` as const;
-};
 
 export default function LearningPlanAnalysisScreen() {
 	const router = useRouter();
@@ -84,34 +64,46 @@ export default function LearningPlanAnalysisScreen() {
 					);
 					setErrorMessage(message);
 					didStartRef.current = false;
-					router.replace(buildEditPlanPath(planId, snapshot, message));
+					dismissToOrReplace(
+						router,
+						learningPlanTopicPath(planId, {
+							topicDescription: snapshot.plan.topicDescription,
+							errorMessage: message,
+						}),
+					);
 				})
 				.finally(() => setIsBusy(false));
 		});
 	}, [generateKnowledgeQuestions, planId, retryAttempt, router, snapshot]);
 
 	const goBack = () => {
-		goBackOrReplace(router, "/learning-plans/new");
+		goBackOrReplace(
+			router,
+			planId ? learningPlanTopicPath(planId) : "/learning-plans/new",
+		);
 	};
+	useLearningPlanCreationProgress({
+		active: true,
+		currentStep: LEARNING_PLAN_CREATION_STEPS.topicDescription,
+		onBack: goBack,
+	});
 
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ gestureEnabled: false }} />
-			<ThemedStatusBar />
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
 					paddingHorizontal: 32,
-					paddingTop: 80,
+					paddingTop: 0,
 					paddingBottom: 60,
 				}}
 				showsVerticalScrollIndicator={false}
 			>
-				<Header title="Wissensanalyse" onBack={goBack} />
 				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
 					<AnalysisOrbitLoader />
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-						Beantworte 5 kurze Fragen für deinen persönlichen Lernplan.
+						Beantworte 5 kurze Fragen – bei breitem Stoff höchstens 8.
 					</Text>
 					{errorMessage ? (
 						<>
