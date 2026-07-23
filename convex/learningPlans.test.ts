@@ -124,6 +124,40 @@ test("stores the total study workload confirmed before generation", async () => 
 	expect(snapshot?.plan.targetStudyMinutes).toBe(50);
 });
 
+test("aligns legacy session descriptions with the displayed duration", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		sessions: [
+			{
+				phase: "rehearsal",
+				title: "30-Minuten-Test",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 20,
+				goal: "Simulation der 30-minütigen Klausur unter Zeitdruck.",
+				tasks: ["Bearbeite die Generalprobe."],
+				expectedOutcome: "Du kennst deine offenen Punkte.",
+			},
+		],
+	});
+
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(snapshot?.sessions[0]).toMatchObject({
+		durationMinutes: 20,
+		title: "20-Minuten-Test",
+		goal: "Simulation der 20-minütigen Klausur unter Zeitdruck.",
+	});
+});
+
 test("keeps a plan in generation until every session content payload is ready", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);

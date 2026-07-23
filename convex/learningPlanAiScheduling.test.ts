@@ -110,6 +110,47 @@ describe("learning plan AI scheduling", () => {
 		).toBe(60);
 	});
 
+	test("aligns visible duration references when a Praxis session is shortened", () => {
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-05",
+			5,
+			[
+				{
+					phase: "rehearsal",
+					title: germanText("30-Minuten-Test"),
+					dayOffsetBeforeExam: 2,
+					startTime: "17:00",
+					durationMinutes: 30,
+					goal: germanText(
+						"Simulation der 30-minütigen Klausur unter Zeitdruck.",
+					),
+					tasks: [germanText("Bearbeite die 30-Minuten-Generalprobe.")],
+					expectedOutcome: germanText(
+						"Du hast die 30-minütige Klausur abgeschlossen.",
+					),
+				},
+			],
+			[{ dayOfWeek: 3, startTime: "17:00", endTime: "17:20" }],
+			[],
+			20,
+			[],
+			{
+				maxSessionMinutes: 20,
+				topicReadiness: { secure: 1, developing: 1, unknown: 0 },
+				praxisSessionCount: 1,
+			},
+		);
+
+		expect(result.sessions).toHaveLength(1);
+		expect(result.sessions[0]).toMatchObject({
+			durationMinutes: 20,
+			title: "20-Minuten-Test",
+			goal: "Simulation der 20-minütigen Klausur unter Zeitdruck.",
+			tasks: ["Bearbeite die 20-Minuten-Generalprobe."],
+			expectedOutcome: "Du hast die 20-minütige Klausur abgeschlossen.",
+		});
+	});
+
 	test("can schedule the same generated recommendation after learning times are added", () => {
 		const recommendation = [
 			{
@@ -632,6 +673,20 @@ describe("learning plan AI scheduling", () => {
 		expect(result.sessions).toHaveLength(0);
 		expect(result.planningHint).toBe(
 			"Belegte Zeiten ausgelassen. 0/90 Min. geplant.",
+		);
+		expect(
+			__testOnlyLearningPlanAi.getEmptyScheduleErrorMessage(
+				[{ dayOfWeek: 3, startTime: "15:00", endTime: "17:00" }],
+				[
+					{
+						dayKey: "2026-06-03",
+						time: "15:00",
+						durationMinutes: 270,
+					},
+				],
+			),
+		).toBe(
+			"Bis zur Prüfung sind deine Lernzeiten bereits belegt. Verschiebe bestehende Lerntermine oder füge eine zusätzliche Lernzeit hinzu und versuche es erneut.",
 		);
 	});
 

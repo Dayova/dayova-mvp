@@ -468,8 +468,9 @@ function CompletionView({
 
 	const title = isTheory ? "Theorie abgeschlossen" : "Übung abgeschlossen";
 	const description = isTheory
-		? "Du hast die Theorieeinheit erfolgreich beendet. Du kannst die Themen jetzt noch einmal wiederholen oder direkt zum nächsten Schritt wechseln."
-		: "Du hast alle Aufgaben bearbeitet. Wiederhole die Themen oder gehe zum nächsten Schritt.";
+		? "Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt."
+		: "Du hast alle Aufgaben geschafft. Übe noch einmal weiter oder sieh dir deine Analyse an.";
+	const completionLabel = isTheory ? "Theorie geschafft" : "Übung geschafft";
 	const Icon = isTheory ? BookOpen : Pencil;
 	const iconClassName = isTheory ? "bg-theorie-subtle" : "bg-ueben-subtle";
 	const iconColor = isTheory
@@ -477,33 +478,65 @@ function CompletionView({
 		: DAYOVA_DESIGN_SYSTEM.colors.ueben;
 
 	return (
-		<View className="flex-1 justify-center">
-			<Surface className="rounded-[32px] px-6 py-12" variant="flat">
-				<View className="items-center">
+		<Animated.View
+			entering={FadeIn.duration(280)}
+			className="flex-1 justify-between py-8"
+		>
+			<View className="flex-1 items-center justify-center px-2 pb-10">
+				<View className="relative">
 					<View
 						className={cn(
-							"mb-16 h-32 w-32 items-center justify-center rounded-[32px]",
+							"h-28 w-28 items-center justify-center rounded-[32px]",
 							iconClassName,
 						)}
 					>
-						<Icon size={64} color={iconColor} strokeWidth={2.1} />
+						<Icon size={52} color={iconColor} strokeWidth={2.1} />
 					</View>
-					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-						{title}
-					</Text>
-					<Text className="mt-4 text-center font-poppins text-body-2 text-secondary-text">
-						{description}
+					<View className="absolute -right-2 -bottom-2 h-10 w-10 items-center justify-center rounded-full border-4 border-background bg-success">
+						<Check
+							size={20}
+							color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+							strokeWidth={3}
+						/>
+					</View>
+				</View>
+
+				<View className="mt-8 rounded-full bg-success-subtle px-4 py-2">
+					<Text className="font-poppins font-semibold text-body-4 text-success">
+						{completionLabel}
 					</Text>
 				</View>
-				<ActionRow
-					secondaryLabel="10 Min. weiterlernen"
-					primaryLabel={isTheory ? "Abschließen" : "Analyse ansehen"}
-					onSecondary={onContinueLearning}
-					onPrimary={onPrimary}
-					isBusy={isBusy}
-				/>
-			</Surface>
-		</View>
+				<Text
+					accessibilityRole="header"
+					className="mt-4 text-center font-poppins font-semibold text-heading-2 text-text"
+				>
+					{title}
+				</Text>
+				<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
+					{description}
+				</Text>
+			</View>
+
+			<View className="gap-3">
+				<Button className="w-full" disabled={isBusy} onPress={onPrimary}>
+					{isBusy ? (
+						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+					) : (
+						<Text>{isTheory ? "Theorie abschließen" : "Analyse ansehen"}</Text>
+					)}
+				</Button>
+				<Button
+					className="w-full"
+					disabled={isBusy}
+					variant="neutral"
+					onPress={onContinueLearning}
+				>
+					<Text>
+						{isTheory ? "Noch 10 Min. weiterlernen" : "Noch 10 Min. üben"}
+					</Text>
+				</Button>
+			</View>
+		</Animated.View>
 	);
 }
 
@@ -1622,54 +1655,79 @@ export default function LearningSessionContentScreen() {
 
 	return (
 		<View className="flex-1 bg-background">
-			<Stack.Screen options={{ gestureEnabled: true }} />
+			<Stack.Screen
+				options={
+					completionPhase
+						? {
+								gestureEnabled: true,
+								headerShown: true,
+								title,
+								headerTitleAlign: "center",
+								headerShadowVisible: false,
+								headerStyle: { backgroundColor: colors.background },
+								headerTintColor: colors.text,
+								headerTitleStyle: {
+									fontFamily: "Poppins",
+									fontSize: 16,
+									fontWeight: "600",
+								},
+								headerLeft: () => (
+									<BackButton
+										accessibilityHint="Kehrt zum Lernplan zurück."
+										onPress={goBack}
+										className="h-11 min-h-11 w-11 min-w-11"
+									/>
+								),
+							}
+						: {
+								gestureEnabled: true,
+								headerShown: false,
+							}
+				}
+			/>
 			<ThemedStatusBar />
-			<View
-				className="px-8"
-				style={{ paddingTop: Math.max(insets.top + 8, 24) }}
-			>
-				<ScreenHeader
-					title={title}
-					onBack={goBack}
-					className="mb-0"
-					titleClassName="px-24 text-center font-poppins font-semibold text-body-1 text-text"
-					right={
-						displayedRemainingSeconds !== null &&
-						!showAnalysis &&
-						!completionPhase ? (
-							<View
-								accessible
-								accessibilityLabel={`Verbleibende Zeit: ${formatRemainingTime(displayedRemainingSeconds)}`}
-								className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4 shadow-black/5 shadow-sm"
-							>
-								<Timer
-									size={18}
-									color={DAYOVA_DESIGN_SYSTEM.colors.praxis}
-									strokeWidth={2.2}
-								/>
-								<Text
-									className="font-poppins font-semibold text-body-3 text-praxis"
-									numberOfLines={1}
-									style={{ fontVariant: ["tabular-nums"] }}
+			{!completionPhase ? (
+				<View
+					className="px-8"
+					style={{ paddingTop: Math.max(insets.top + 8, 24) }}
+				>
+					<ScreenHeader
+						title={title}
+						onBack={goBack}
+						className="mb-0"
+						titleClassName="px-24 text-center font-poppins font-semibold text-body-1 text-text"
+						right={
+							displayedRemainingSeconds !== null && !showAnalysis ? (
+								<View
+									accessible
+									accessibilityLabel={`Verbleibende Zeit: ${formatRemainingTime(displayedRemainingSeconds)}`}
+									className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4 shadow-black/5 shadow-sm"
 								>
-									{formatRemainingTime(displayedRemainingSeconds)}
-								</Text>
-							</View>
-						) : null
-					}
-				/>
-				{content &&
-				currentItem &&
-				!showAnalysis &&
-				!completionPhase &&
-				!visibleAttempt ? (
-					<QuestionProgressBar
-						currentIndex={currentIndex}
-						total={sessionItems.length}
-						className="mt-5 w-full"
+									<Timer
+										size={18}
+										color={DAYOVA_DESIGN_SYSTEM.colors.praxis}
+										strokeWidth={2.2}
+									/>
+									<Text
+										className="font-poppins font-semibold text-body-3 text-praxis"
+										numberOfLines={1}
+										style={{ fontVariant: ["tabular-nums"] }}
+									>
+										{formatRemainingTime(displayedRemainingSeconds)}
+									</Text>
+								</View>
+							) : null
+						}
 					/>
-				) : null}
-			</View>
+					{content && currentItem && !showAnalysis && !visibleAttempt ? (
+						<QuestionProgressBar
+							currentIndex={currentIndex}
+							total={sessionItems.length}
+							className="mt-5 w-full"
+						/>
+					) : null}
+				</View>
+			) : null}
 			<ScrollView
 				ref={contentScrollRef}
 				className="flex-1"

@@ -47,6 +47,7 @@ import {
 	MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
 	MULTIPLE_CHOICE_OPTION_COUNT,
 } from "./learningSessionContentConstraints";
+import { alignSessionDurationReferences } from "./learningSessionDurationText";
 import {
 	compactLearningSessionTitle,
 	formatLearningTimeFromMinutes,
@@ -1170,6 +1171,46 @@ const buildLearningSlots = (
 		);
 };
 
+const hasOccupiedLearningTimeConflict = (
+	learningTimes: LearningTimeWindow[],
+	occupiedEntries: OccupiedEntry[],
+) =>
+	occupiedEntries.some((entry) => {
+		if (!entry.time || !entry.durationMinutes || entry.durationMinutes <= 0) {
+			return false;
+		}
+		const date = new Date(entry.dayKey);
+		const entryStart = parseLearningTimeToMinutes(entry.time);
+		if (Number.isNaN(date.getTime()) || entryStart === null) return false;
+		const entryInterval = {
+			start: entryStart,
+			end: entryStart + entry.durationMinutes,
+		};
+		return learningTimes.some((learningTime) => {
+			if (learningTime.dayOfWeek !== getBerlinDayOfWeek(date)) return false;
+			const start = parseLearningTimeToMinutes(learningTime.startTime);
+			const end = parseLearningTimeToMinutes(learningTime.endTime);
+			return (
+				start !== null &&
+				end !== null &&
+				overlapsInterval(entryInterval, { start, end })
+			);
+		});
+	});
+
+const getEmptyScheduleErrorMessage = (
+	learningTimes: LearningTimeWindow[],
+	occupiedEntries: OccupiedEntry[],
+) => {
+	if (learningTimes.length === 0) {
+		return "Lege zuerst mindestens eine Lernzeit in den Einstellungen fest und versuche es erneut.";
+	}
+	if (hasOccupiedLearningTimeConflict(learningTimes, occupiedEntries)) {
+		return "Bis zur Prüfung sind deine Lernzeiten bereits belegt. Verschiebe bestehende Lerntermine oder füge eine zusätzliche Lernzeit hinzu und versuche es erneut.";
+	}
+	return "Bis zur Prüfung ist keine freie Lernzeit von mindestens 10 Minuten verfügbar. Füge eine zusätzliche Lernzeit hinzu oder verschiebe den Prüfungstermin und versuche es erneut.";
+};
+
 const distributeSessionOffsets = (
 	availableDays: number,
 	sessions: z.infer<typeof generatedPlanSchema>["sessions"],
@@ -1361,13 +1402,23 @@ const normalizeSessions = (
 			const phase = requiredPhaseSequence?.[index] ?? sourcePhase;
 			const fallbackContent = fallbackContentByPhase[phase];
 			const useFallbackContent = !source || phase !== sourcePhase;
+			const alignAnyDuration = (value: string) =>
+				alignSessionDurationReferences({ value, durationMinutes });
+			const alignSourceDuration = (value: string) =>
+				alignSessionDurationReferences({
+					value,
+					durationMinutes,
+					sourceDurationMinutes: source?.durationMinutes ?? durationMinutes,
+				});
 			const title = useFallbackContent
 				? fallbackTitleByPhase[phase]
-				: normalizeAiGeneratedGermanText(source.title);
+				: alignAnyDuration(normalizeAiGeneratedGermanText(source.title));
 			const tasks = useFallbackContent
 				? fallbackContent.tasks
 				: source.tasks
-						.map((task) => normalizeAiGeneratedGermanText(task).trim())
+						.map((task) =>
+							alignSourceDuration(normalizeAiGeneratedGermanText(task).trim()),
+						)
 						.filter(Boolean);
 			return {
 				phase,
@@ -1383,14 +1434,16 @@ const normalizeSessions = (
 				goal:
 					(useFallbackContent
 						? fallbackContent.goal
-						: normalizeAiGeneratedGermanText(source.goal).trim()) ||
-					fallbackContent.goal,
+						: alignAnyDuration(
+								normalizeAiGeneratedGermanText(source.goal).trim(),
+							)) || fallbackContent.goal,
 				tasks: tasks.length > 0 ? tasks : fallbackContent.tasks,
 				expectedOutcome:
 					(useFallbackContent
 						? fallbackContent.expectedOutcome
-						: normalizeAiGeneratedGermanText(source.expectedOutcome).trim()) ||
-					fallbackContent.expectedOutcome,
+						: alignAnyDuration(
+								normalizeAiGeneratedGermanText(source.expectedOutcome).trim(),
+							)) || fallbackContent.expectedOutcome,
 			};
 		})
 		.sort((left, right) => left.dateKey.localeCompare(right.dateKey));
@@ -1429,28 +1482,10 @@ const normalizeSessions = (
 		(total, session) => total + session.durationMinutes,
 		0,
 	);
-	const hasBusyLearningTimes = occupiedEntries.some((entry) => {
-		if (!entry.time || !entry.durationMinutes || entry.durationMinutes <= 0) {
-			return false;
-		}
-		const date = new Date(entry.dayKey);
-		const entryStart = parseLearningTimeToMinutes(entry.time);
-		if (Number.isNaN(date.getTime()) || entryStart === null) return false;
-		const entryInterval = {
-			start: entryStart,
-			end: entryStart + entry.durationMinutes,
-		};
-		return learningTimes.some((learningTime) => {
-			if (learningTime.dayOfWeek !== getBerlinDayOfWeek(date)) return false;
-			const start = parseLearningTimeToMinutes(learningTime.startTime);
-			const end = parseLearningTimeToMinutes(learningTime.endTime);
-			return (
-				start !== null &&
-				end !== null &&
-				overlapsInterval(entryInterval, { start, end })
-			);
-		});
-	});
+	const hasBusyLearningTimes = hasOccupiedLearningTimeConflict(
+		learningTimes,
+		occupiedEntries,
+	);
 	const availabilityHint =
 		learningTimes.length === 0
 			? MISSING_LEARNING_TIMES_HINT
@@ -1471,6 +1506,7 @@ const normalizeSessions = (
 
 export const __testOnlyLearningPlanAi = {
 	normalizeSessions,
+	getEmptyScheduleErrorMessage,
 };
 
 const buildBaseContext = (
@@ -2739,13 +2775,33 @@ export const generatePlan = action({
 				})
 				.join("\n\n");
 
+			const availableDays = getAvailableDays(context.plan.examDateKey);
+			const confirmedTotalStudyMinutes = context.plan.targetStudyMinutes;
+			if (
+				confirmedTotalStudyMinutes !== undefined &&
+				Number.isInteger(confirmedTotalStudyMinutes) &&
+				confirmedTotalStudyMinutes >= MIN_LEARNING_SLOT_MINUTES &&
+				buildLearningSlots(
+					context.plan.examDateKey,
+					availableDays,
+					context.learningTimes,
+					context.occupiedEntries,
+					confirmedTotalStudyMinutes,
+					20,
+				).length === 0
+			) {
+				throwUserFacingError(
+					getEmptyScheduleErrorMessage(
+						context.learningTimes,
+						context.occupiedEntries,
+					),
+				);
+			}
 			const { fileParts, sourceContext } = await buildModelInputFromDocuments(
 				ctx,
 				context.documents,
 				context.accessKey,
 			);
-			const availableDays = getAvailableDays(context.plan.examDateKey);
-			const confirmedTotalStudyMinutes = context.plan.targetStudyMinutes;
 			const sessionCompositionVariant =
 				context.plan.sessionCompositionVariant ??
 				args.sessionCompositionVariant ??
@@ -2778,6 +2834,7 @@ MVP-Vorgabe:
 - Jeder Lernblock braucht konkrete Aufgaben, die der Schüler in diesem Slot abarbeitet.
 - Formuliere alle sichtbaren Texte (sourceSummary, insight, Titel, goal, tasks, expectedOutcome) in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.
 - Session-Titel müssen kurze UI-Labels mit maximal ${MAX_SESSION_TITLE_CHARS} Zeichen sein.
+- Nenne in Session-Titeln, goal, tasks und expectedOutcome keine Dauer in Minuten. Die tatsächliche Session-Dauer wird anschließend aus den persönlichen Lernzeiten festgelegt und separat angezeigt.
 - insight.strengths darf maximal 4 Punkte enthalten, insight.gaps maximal 5 Punkte.
 - Gib höchstens 5 fachlich unterschiedliche Session-Archetypen zurück. Die Kalenderlogik erweitert sie anschließend auf alle benötigten kurzen Lernsessionen.
 - Bevorzuge mehrere kurze Session-Archetypen: Theorie 10–15 Min., angeleitetes Üben 10–20 Min. und Praxis 20–30 Min. Vermeide lange Sammelblöcke.
@@ -2895,6 +2952,14 @@ MVP-Vorgabe:
 
 				return normalizeGeneratedPlan(result.output);
 			}, planFallbackMessage);
+			if (generatedPlan.sessions.length === 0) {
+				throwUserFacingError(
+					getEmptyScheduleErrorMessage(
+						context.learningTimes,
+						context.occupiedEntries,
+					),
+				);
+			}
 
 			const replacement: {
 				sessionIds: Id<"learningPlanSessions">[];

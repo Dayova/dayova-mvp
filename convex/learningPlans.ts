@@ -26,6 +26,7 @@ import {
 } from "./learningPreparationPolicy";
 import { getLearningSessionComposition } from "./learningSessionComposition";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
+import { alignSessionDurationReferences } from "./learningSessionDurationText";
 import {
 	learningTopicValidator,
 	normalizeLearningTopics,
@@ -250,13 +251,19 @@ const publicSession = (
 ): PublicSession => ({
 	id: session._id,
 	phase: session.phase,
-	title: session.title,
+	title: alignSessionDurationReferences({
+		value: session.title,
+		durationMinutes: session.durationMinutes,
+	}),
 	dateKey: session.dateKey,
 	dateLabel: session.dateLabel,
 	startTime: session.startTime,
 	durationMinutes: session.durationMinutes,
 	compositionVariant: session.compositionVariant,
-	goal: session.goal,
+	goal: alignSessionDurationReferences({
+		value: session.goal,
+		durationMinutes: session.durationMinutes,
+	}),
 	tasks: session.tasks,
 	expectedOutcome: session.expectedOutcome,
 	contentGenerationStatus: session.contentGenerationStatus,
@@ -749,8 +756,14 @@ export const listOverview = query({
 				currentSession: currentSession
 					? {
 							id: currentSession._id,
-							title: currentSession.title,
-							goal: currentSession.goal,
+							title: alignSessionDurationReferences({
+								value: currentSession.title,
+								durationMinutes: currentSession.durationMinutes,
+							}),
+							goal: alignSessionDurationReferences({
+								value: currentSession.goal,
+								durationMinutes: currentSession.durationMinutes,
+							}),
 							dateKey: currentSession.dateKey,
 							dateLabel: currentSession.dateLabel,
 							startTime: currentSession.startTime,
