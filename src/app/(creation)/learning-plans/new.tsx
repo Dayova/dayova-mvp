@@ -153,6 +153,7 @@ export default function NewLearningPlanScreen() {
 
 	useEffect(() => {
 		if (params.step === "topic" || params.errorMessage) {
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- Route params can change while this screen remains mounted.
 			setSetupStep("topicDescription");
 		}
 		if (params.errorMessage) {

@@ -57,6 +57,7 @@ export function AnalyticsIdentity() {
 		const returnCaptureKey = `${user.clerkId}:${localDayKey}`;
 		if (
 			!isConvexAuthenticated ||
+			!convexUser ||
 			returnCaptureKeyRef.current === returnCaptureKey
 		) {
 			return;

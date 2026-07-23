@@ -2,6 +2,9 @@
 # Windows, WSL, macOS, and Linux. This avoids per-install core.autocrlf drift.
 * text eol=lf
 
+# Unified diffs encode blank context lines as a single space.
+*.patch whitespace=-blank-at-eol,-blank-at-eof
+
 # Binary assets should never be line-ending normalized.
 *.avif binary
 *.gif binary

@@ -62,7 +62,7 @@ import { useValidationAnalytics } from "~/lib/analytics";
 import { definedAnalyticsProperties } from "~/lib/analytics-core";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
-import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
@@ -1075,10 +1075,10 @@ export default function LearningSessionContentScreen() {
 	const goBack = useCallback(() => {
 		void Speech.stop().catch(() => undefined);
 		if (planId) {
-			router.replace(`/learning-plans/${planId}` as const);
+			dismissToOrReplace(router, `/learning-plans/${planId}` as const);
 			return true;
 		}
-		goBackOrReplace(router, "/learning-plans");
+		dismissToOrReplace(router, "/learning-plans");
 		return true;
 	}, [planId, router]);
 

@@ -2,7 +2,7 @@
 
 This context covers the Expo app, Expo Router, navigation, native UI, styling, client state, and mobile-specific behavior.
 
-Confluence is the current cross-functional documentation hub. Keep this file focused on implementation-facing terminology, conventions, and assumptions that agents need while working in this repo.
+Notion is Dayova's main internal documentation and knowledge workspace. Keep this file focused on implementation-facing terminology, conventions, and assumptions that must evolve with the code, and link to relevant Notion records instead of duplicating shared documentation.
 
 ## Language
 
@@ -14,6 +14,11 @@ _Avoid_: Called by client, Server Error, raw stack trace
 
 - `docs/bottom-sheets.md`
 - `docs/styling.md`
+- `../../../modules/dayova-system-appearance/README.md` for the iOS appearance bridge,
+  native contract, operational guidance, validation matrix, and removal
+  criteria.
+- `adr/0001-use-local-ios-system-appearance-bridge.md`
+  for the bridge decision, history, alternatives, and consequences.
 - `patches/README.md` for patched package behavior that affects Expo/Metro
   builds, including the NativeWind release-build patch.
 

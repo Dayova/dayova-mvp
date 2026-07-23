@@ -1,17 +1,14 @@
-allowBuilds:
-  esbuild: true
-  "@clerk/shared": false
-  browser-tabs-lock: false
-  bufferutil: false
-  core-js: false
-  dtrace-provider: false
-  msgpackr-extract: false
-  tesseract.js: false
-  utf-8-validate: false
+autoInstallPeers: false
+pmOnFail: error
 
-onlyBuiltDependencies:
-  - esbuild
+allowBuilds:
+  browser-tabs-lock: false
+  core-js: false
+  esbuild: true
+  tesseract.js: false
 
 patchedDependencies:
+  '@react-native/gradle-plugin@0.86.0': patches/@react-native__gradle-plugin@0.86.0.patch
   nativewind@4.2.3: patches/nativewind@4.2.3.patch
   oxc-parser@0.130.0: patches/oxc-parser@0.130.0.patch
+  react-native-keyboard-controller@1.21.9: patches/react-native-keyboard-controller@1.21.9.patch

@@ -7,6 +7,150 @@ When a patched package is installed, pnpm applies the matching `.patch` file to
 the package contents in `node_modules`. Keep each patch documented here so future
 dependency updates can decide whether the patch is still needed.
 
+## `@react-native__gradle-plugin@0.86.0.patch`
+
+### Why This Patch Exists
+
+Expo SDK 57 upgrades React Native from 0.85 to 0.86. The React Native 0.86
+Gradle plugin applies `org.gradle.toolchains.foojay-resolver-convention` from
+its Kotlin `settings.gradle.kts` so Gradle can provision a matching JDK.
+
+On Windows, Gradle 9.3.1 can miscompile that settings script before plugin
+resolution and report `Unresolved reference 'plugins'` and `Unresolved
+reference 'id'`. The failure reproduces when the React Native Gradle plugin is
+built by itself, before Dayova's Android project or native modules are
+configured. The same Windows failure shape is recorded in
+[gradle/gradle#36323](https://github.com/gradle/gradle/issues/36323).
+
+Dayova already requires JDK 17 for Android development and EAS Android build
+images provide the required JDK, so automatic Foojay toolchain provisioning is
+not needed for this project.
+
+### What The Patch Changes
+
+The patch removes only the Foojay settings plugin block from
+`@react-native/gradle-plugin/settings.gradle.kts`. It does not change React
+Native's application Gradle plugin, settings plugin, autolinking, codegen, or
+native compilation behavior.
+
+Developers must keep a compatible JDK configured through `JAVA_HOME`; for SDK
+57 Android development in this repo, use JDK 17.
+
+### How To Verify
+
+After installing dependencies, run a clean Android build on Windows:
+
+```powershell
+pnpm install
+cd android
+.\gradlew.bat clean :app:assembleDebug
+```
+
+Expected result: Gradle configures `com.facebook.react.settings`, Expo
+autolinking, and the app's native modules without failing in React Native's
+`settings.gradle.kts`.
+
+Then run the normal project checks:
+
+```sh
+pnpm check
+pnpm test
+npx expo-doctor
+```
+
+### How To Update Or Remove
+
+Recheck the patch whenever Expo changes the React Native 0.86 patch version or
+upgrades React Native. Remove it when the upstream Gradle/React Native
+combination configures successfully on Windows without the patch.
+
+Removal checklist:
+
+1. Delete `patches/@react-native__gradle-plugin@0.86.0.patch`.
+2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
+3. Run `pnpm install`.
+4. Run the clean Android build and normal checks above on Windows.
+
+If the workaround is still required for a new React Native Gradle plugin
+version, regenerate it with:
+
+```sh
+pnpm patch @react-native/gradle-plugin@<version>
+# Remove only the Foojay `plugins` block from settings.gradle.kts.
+pnpm patch-commit "<temporary patch directory printed by pnpm>"
+```
+
+## `react-native-keyboard-controller@1.21.9.patch`
+
+### Why This Patch Exists
+
+Expo SDK 57's recommended `react-native-keyboard-controller` version supports
+React Native 0.86, but opening a React Native `Modal` on Android logs an
+unhandled Fabric soft exception:
+
+```text
+Fabric View [-1] does not have SurfaceId associated with it
+```
+
+`ModalAttachedWatcher` installs a keyboard callback on the Android dialog's
+decor view. `FocusedInputObserver` then asks React Native for the surface ID of
+that native decor view, which is not part of a Fabric surface. The warning was
+reproduced on a Pixel 9 running Android 16 whenever Dayova opened its create
+type bottom modal. The modal remained visible, but the observer initialized
+with an invalid surface ID.
+
+### What The Patch Changes
+
+`KeyboardAnimationCallback` now accepts an explicit surface ID and passes it to
+`FocusedInputObserver`. The normal non-modal path keeps the package's existing
+surface lookup. For a modal, `ModalAttachedWatcher` supplies the surface ID from
+the Fabric `topShow` event that caused the callback to be installed, rather than
+trying to infer a surface from the dialog's native window hierarchy.
+
+The patch changes only Android surface-ID plumbing. It does not alter keyboard
+animation, focused-input tracking, modal layout, or iOS behavior.
+
+### How To Verify
+
+Build and install the Android debug app, clear Logcat, and open a Dayova bottom
+modal such as the create-type picker:
+
+```powershell
+cd android
+.\gradlew.bat :app:assembleDebug
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+adb logcat -c
+# Open the modal on the device.
+adb logcat -d | Select-String 'UIManagerHelper|Fabric View'
+```
+
+Expected result: the modal opens normally and Logcat contains no
+`UIManagerHelper` surface-ID soft exception. Also focus an input and confirm
+that keyboard avoidance still works.
+
+### How To Update Or Remove
+
+Recheck this patch whenever `react-native-keyboard-controller` is upgraded.
+Remove it when the package resolves modal keyboard events against a
+React-managed surface, or otherwise avoids querying a surface ID from the
+dialog decor view.
+
+Removal checklist:
+
+1. Delete `patches/react-native-keyboard-controller@1.21.9.patch`.
+2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
+3. Run `pnpm install`.
+4. Rebuild Android and repeat the modal Logcat verification above.
+
+If the workaround is still required for a new package version, regenerate it
+with:
+
+```sh
+pnpm patch react-native-keyboard-controller@<version>
+# Pass the modal show event's surface ID into the callback and observer.
+pnpm patch-commit "<temporary patch directory printed by pnpm>"
+```
+
 ## `nativewind@4.2.3.patch`
 
 ### Why This Patch Exists

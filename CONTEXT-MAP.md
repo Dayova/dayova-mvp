@@ -1,8 +1,8 @@
 # Context Map
 
-This repo uses a multi-context documentation layout for agent-facing technical and domain guidance.
+This repo uses a multi-context documentation layout for agent-facing, code-adjacent technical and domain guidance.
 
-Confluence is the current cross-functional documentation hub for Dayova. The local context docs listed here should capture the implementation-facing terminology, architecture, and decisions that agents need while working in this repo.
+Notion is Dayova's main internal documentation and knowledge workspace. The local context docs listed here should contain only the implementation-facing terminology, architecture, constraints, and decision pointers that agents need to change this repository safely. Link to relevant Notion records instead of duplicating shared internal documentation.
 
 ## Contexts
 
@@ -19,10 +19,13 @@ Confluence is the current cross-functional documentation hub for Dayova. The loc
 - Bottom sheets: `docs/bottom-sheets.md`
 - Styling: `docs/styling.md`
 - Package patches: `patches/README.md`
+- iOS system appearance module: `modules/dayova-system-appearance/README.md`
 
 ## ADRs
 
 - System-wide decisions: `docs/adr/`
 - Context-specific decisions may live in `docs/contexts/<context>/adr/`.
+- iOS system appearance bridge:
+  `docs/contexts/mobile-app/adr/0001-use-local-ios-system-appearance-bridge.md`
 
 If a listed context file does not exist yet, proceed with code exploration and mention any domain assumptions that materially affect the work.
