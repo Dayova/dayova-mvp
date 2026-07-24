@@ -260,7 +260,7 @@ export default function ValidationOverviewScreen() {
 
 				{accessErrorMessage ? (
 					<Surface className="rounded-[24px] px-5 py-5">
-						<ErrorMessage className="text-14">
+						<ErrorMessage className="text-body-3">
 							{accessErrorMessage}
 						</ErrorMessage>
 					</Surface>
@@ -268,7 +268,7 @@ export default function ValidationOverviewScreen() {
 
 				{hasNoAccess ? (
 					<Surface className="rounded-[24px] px-5 py-5">
-						<Text className="font-poppins text-14 text-[#6F727C]">
+						<Text className="text-body-3 text-secondary-text">
 							Kein Zugriff auf die Validierungsübersicht.
 						</Text>
 					</Surface>
@@ -282,7 +282,7 @@ export default function ValidationOverviewScreen() {
 
 				{overviewErrorMessage ? (
 					<Surface className="rounded-[24px] px-5 py-5">
-						<ErrorMessage className="text-14">
+						<ErrorMessage className="text-body-3">
 							{overviewErrorMessage}
 						</ErrorMessage>
 					</Surface>
@@ -361,7 +361,7 @@ export default function ValidationOverviewScreen() {
 
 				{overview && overview.rows.length === 0 ? (
 					<Surface className="rounded-[24px] px-5 py-5">
-						<Text className="text-center font-poppins text-14 text-[#6F727C]">
+						<Text className="text-center text-body-3 text-secondary-text">
 							Keine Lernblöcke für diesen Tag.
 						</Text>
 					</Surface>

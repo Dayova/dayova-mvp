@@ -74,7 +74,7 @@ backgrounds. The Dark value must remain aligned with Dayova's dark root
 background token so cold launch never substitutes a white native screen while
 the JavaScript bundle starts.
 
-Expo Updates 57.0.9 also needs a narrow dependency patch for its Release-only
+Expo Updates 57.0.10 also needs a narrow dependency patch for its Release-only
 deferred root. That path instantiates the splash storyboard before it joins the
 active window hierarchy, so UIKit otherwise resolves the dynamic background
 with the default Light trait. The patch applies the active window style to the
@@ -111,7 +111,7 @@ the app-wide minimum.
    a newer shield during rapid lifecycle transitions.
 6. Frame-by-frame verification of the later SDK 57 Release build found one
    remaining Light frame in Expo Updates' deferred root path. A pinned
-   `expo-updates@57.0.9` patch now resolves that storyboard and root background
+   `expo-updates@57.0.10` patch now resolves that storyboard and root background
    with the active window's trait collection before either can be displayed.
 
 Native validation ran on an iOS 26.5 simulator. Debug and optimized Release

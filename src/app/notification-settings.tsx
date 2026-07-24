@@ -48,6 +48,7 @@ import {
 	type NotificationPreferenceKey,
 	removeNotificationPreferencePatchKeys,
 } from "~/lib/notification-preferences";
+import { cn } from "~/lib/utils";
 
 const OFFSET_OPTIONS = [5, 10, 15, 30, 60];
 type SystemNotificationNotice = "unavailable" | "denied";
@@ -68,14 +69,10 @@ const formatTime = (date: Date) =>
 function SettingsCard({ children }: { children: React.ReactNode }) {
 	return (
 		<View
-			className="rounded-[24px] bg-card"
-			// Platform-specific card density and native shadow values are not
-			// expressible as a single static NativeWind class here.
-			style={{
-				paddingHorizontal: Platform.OS === "ios" ? 24 : 20,
-				paddingVertical: Platform.OS === "ios" ? 20 : 16,
-				boxShadow: "0 8px 18px rgba(20, 28, 48, 0.08)",
-			}}
+			className={cn(
+				"rounded-[24px] bg-card shadow-black/10 shadow-lg",
+				Platform.OS === "ios" ? "px-6 py-5" : "px-5 py-4",
+			)}
 		>
 			{children}
 		</View>

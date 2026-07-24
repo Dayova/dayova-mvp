@@ -347,7 +347,7 @@ module does not cause that app-wide minimum.
 Run the focused source-shape regression tests:
 
 ```sh
-pnpm test src/lib/ios-appearance-module.test.ts
+pnpm exec vitest run src/lib/ios-appearance-module.test.ts
 ```
 
 These tests only assert that the podspec contains the iOS 16.4 target, that the
@@ -495,7 +495,7 @@ behavior, not part of this workaround.
 | [`index.ts`](./index.ts) | Exposes the local module's TypeScript entry point. |
 | [`src/lib/system-color-scheme.ios.ts`](../../src/lib/system-color-scheme.ios.ts) | Application adapter that turns the native getter/event into a React hook. |
 | [`src/lib/ios-appearance-module.test.ts`](../../src/lib/ios-appearance-module.test.ts) | Guards deployment-target and API-availability invariants. |
-| [`patches/expo-updates@57.0.9.patch`](../../patches/expo-updates@57.0.9.patch) | Keeps Expo Updates' Release-only deferred splash and root on the active window appearance. |
+| [`patches/expo-updates@57.0.10.patch`](../../patches/expo-updates@57.0.10.patch) | Keeps Expo Updates' Release-only deferred splash and root on the active window appearance. |
 
 ## Primary references
 
