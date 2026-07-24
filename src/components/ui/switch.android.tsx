@@ -5,14 +5,23 @@ import {
 } from "@expo/ui/jetpack-compose";
 import { testID as testIDModifier } from "@expo/ui/jetpack-compose/modifiers";
 import { useMemo } from "react";
+import { View } from "react-native";
 import type { SwitchProps } from "~/components/ui/switch.types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 
 const DAYOVA_PRIMARY = DAYOVA_DESIGN_SYSTEM.colors.primary;
 
-function Switch({ value, onValueChange, disabled, testID }: SwitchProps) {
-	const { colors } = useDayovaTheme();
+// expo-modules-core >= 56.0.18 keeps this composition alive until the
+// react-native-screens pop transition finishes: https://github.com/expo/expo/pull/47099
+function Switch({
+	value,
+	onValueChange,
+	disabled,
+	testID,
+	accessibilityLabel,
+}: SwitchProps) {
+	const { colors, resolvedTheme } = useDayovaTheme();
 	const switchColors = useMemo(
 		() =>
 			({
@@ -33,15 +42,30 @@ function Switch({ value, onValueChange, disabled, testID }: SwitchProps) {
 	);
 
 	return (
-		<Host matchContents seedColor={DAYOVA_PRIMARY}>
-			<ComposeSwitch
-				value={value}
-				enabled={!disabled}
-				onCheckedChange={disabled ? undefined : onValueChange}
-				colors={switchColors}
-				modifiers={testID ? [testIDModifier(testID)] : undefined}
-			/>
-		</Host>
+		<View
+			accessible
+			accessibilityActions={disabled ? undefined : [{ name: "activate" }]}
+			accessibilityLabel={accessibilityLabel}
+			accessibilityRole="switch"
+			accessibilityState={{ checked: value, disabled }}
+			onAccessibilityAction={({ nativeEvent: { actionName } }) => {
+				if (actionName === "activate" && !disabled) onValueChange(!value);
+			}}
+		>
+			<Host
+				colorScheme={resolvedTheme}
+				matchContents
+				seedColor={DAYOVA_PRIMARY}
+			>
+				<ComposeSwitch
+					value={value}
+					enabled={!disabled}
+					onCheckedChange={disabled ? undefined : onValueChange}
+					colors={switchColors}
+					modifiers={testID ? [testIDModifier(testID)] : undefined}
+				/>
+			</Host>
+		</View>
 	);
 }
 

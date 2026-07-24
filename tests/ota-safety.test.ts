@@ -131,7 +131,7 @@ describe("production OTA safety", () => {
 		expect(result.reason).toContain("distribution is not verified");
 	});
 
-	it.each([undefined, 123])(
+	it.each([undefined, 123, "   "])(
 		"rejects an invalid baseline sourceSha (%s) with a clear platform error",
 		(sourceSha) => {
 			const result = evaluate({
@@ -154,4 +154,58 @@ describe("production OTA safety", () => {
 			expect(result.baseline).toContain("ios build 49 @ invalid");
 		},
 	);
+
+	it("rejects whitespace-only distributed and generated fingerprints", () => {
+		const result = evaluate({
+			baseline: {
+				...baseline,
+				platforms: {
+					...baseline.platforms,
+					ios: {
+						...baseline.platforms.ios,
+						fingerprint: " \t ",
+					},
+				},
+			},
+			fingerprints: {
+				ios: "\n",
+				android: "android-distributed",
+			},
+		});
+
+		expect(result.safe).toBe(false);
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				"ios baseline fingerprint must be a non-empty string",
+				"ios current fingerprint must be a non-empty string",
+			]),
+		);
+	});
+
+	it("rejects missing distributed and generated fingerprints explicitly", () => {
+		const result = evaluate({
+			baseline: {
+				...baseline,
+				platforms: {
+					...baseline.platforms,
+					ios: {
+						...baseline.platforms.ios,
+						fingerprint: undefined,
+					},
+				},
+			},
+			fingerprints: {
+				ios: undefined,
+				android: "android-distributed",
+			},
+		});
+
+		expect(result.safe).toBe(false);
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				"ios baseline fingerprint must be a non-empty string",
+				"ios current fingerprint must be a non-empty string",
+			]),
+		);
+	});
 });

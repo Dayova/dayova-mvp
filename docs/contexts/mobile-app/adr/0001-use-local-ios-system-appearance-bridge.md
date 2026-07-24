@@ -21,6 +21,13 @@ and live system appearance changes while the active `UIWindow` had already
 adopted the correct UIKit trait. Depending only on the cached React Native value
 made different app layers disagree about the current theme.
 
+Final Debug and optimized Release validation at commit `7856a6e` exposed two
+additional presentation gaps. A cold launch while iOS was already Dark used the
+Light launch-screen background, and iOS briefly presented its previously saved
+app-switcher snapshot after a background appearance change. The former is an
+Expo splash configuration problem. The latter happens before React can paint
+the resumed theme, so a JavaScript-only foreground update cannot prevent it.
+
 React Native 0.86's pinned iOS source keeps a cached color scheme in
 `RCTAppearance`. It refreshes that cache when it receives
 `RCTUserInterfaceStyleDidChangeNotification`. Its native resolver can use either
@@ -44,9 +51,14 @@ The module:
   changes;
 - exposes a synchronous `getColorScheme(): "light" | "dark"` method and an
   `onChange` event;
+- exposes that native state to React through `useSyncExternalStore`, including
+  React's post-subscription snapshot check;
 - refreshes the value when the app becomes active;
 - enables React Native's key-window appearance mode and refreshes
   `RCTAppearance` during module creation and foreground activation;
+- covers the application with a non-interactive, accessibility-hidden Dayova
+  snapshot shield before iOS captures its background snapshot, then removes the
+  shield only after the resumed React appearance has committed;
 - is discovered through Expo Autolinking rather than hand-edited into the
   generated Xcode project; and
 - remains private to Dayova instead of becoming a published general-purpose
@@ -56,6 +68,18 @@ The application layer continues to own preference persistence, theme
 resolution, NativeWind variables, navigation colors, root background, and
 status-bar styling. Android and web continue to use React Native's standard
 `useColorScheme` path.
+
+Separately, the Expo splash-screen configuration defines Light and Dark native
+backgrounds. The Dark value must remain aligned with Dayova's dark root
+background token so cold launch never substitutes a white native screen while
+the JavaScript bundle starts.
+
+Expo Updates 57.0.10 also needs a narrow dependency patch for its Release-only
+deferred root. That path instantiates the splash storyboard before it joins the
+active window hierarchy, so UIKit otherwise resolves the dynamic background
+with the default Light trait. The patch applies the active window style to the
+deferred splash and React root and resolves the root background with that same
+trait collection.
 
 The module pod targets iOS 16.4 to preserve Expo SDK 57's module baseline. The
 generated Dayova application still targets iOS 17 because `@clerk/expo`
@@ -73,6 +97,22 @@ the app-wide minimum.
    `Appearance.setColorScheme` API.
 3. `73834a8` restored the module's independent iOS 16.4 compatibility by gating
    the iOS 17 trait-registration API and retaining the older-iOS callback.
+4. The DAY-109 follow-up changed the JavaScript adapter to
+   `useSyncExternalStore`, made foreground activation retry installation on the
+   current active window, and added behavioral plus native-contract regression
+   tests for both races.
+5. Final native verification at `7856a6e` proved that both Debug and optimized
+   Release still showed a Light native splash during Dark cold launch and an
+   old-theme iOS snapshot during resume. The follow-up added an Expo Dark splash
+   configuration plus a lifecycle snapshot shield. `onResume` now acts as a
+   commit handshake: native code refreshes appearance first, React commits the
+   resulting state, and JavaScript then releases the shield using the native
+   generation carried by the acknowledgement. Stale generations cannot remove
+   a newer shield during rapid lifecycle transitions.
+6. Frame-by-frame verification of the later SDK 57 Release build found one
+   remaining Light frame in Expo Updates' deferred root path. A pinned
+   `expo-updates@57.0.10` patch now resolves that storyboard and root background
+   with the active window's trait collection before either can be displayed.
 
 Native validation ran on an iOS 26.5 simulator. Debug and optimized Release
 compiled the module for `arm64-apple-ios16.4-simulator`, but no iOS 16.4 runtime
@@ -96,7 +136,7 @@ option was prototyped during the original investigation.
 | Poll the appearance value | Rejected | Polling adds work and latency. Polling React Native preserves the stale source; polling UIKit still requires native code. |
 | Remove System or force a fixed theme | Rejected | It avoids observation by removing an existing product capability and is a larger user-facing regression than the bridge. |
 | Patch React Native or edit generated iOS files | Rejected | Either has a wider blast radius and a heavier upgrade burden. A local module isolates the workaround and survives continuous native generation, although its React Native coupling still needs upgrade review. |
-| AppDelegate/config-plugin integration | Rejected | An app lifecycle subscriber can refresh on activation, but live observation still requires a UIKit trait environment and a JavaScript bridge. It adds app-global wiring without eliminating the native requirement. |
+| AppDelegate/config-plugin integration for appearance observation | Rejected | An app lifecycle subscriber can refresh on activation, but live observation still requires a UIKit trait environment and a JavaScript bridge. The snapshot shield uses `UIApplication.willResignActiveNotification` inside the existing module instead of adding generated AppDelegate wiring. |
 | `DynamicColorIOS` or semantic platform colors | Insufficient | Dynamic native colors can adapt independently, but Dayova's custom tokens, navigation themes, NativeWind variables, and application logic still need a resolved theme value. |
 | Upstream React Native fix | Preferred long-term outcome | Remove the module once the public React Native path reliably returns and publishes Dayova's active key-window appearance across the supported iOS matrix. No upstream issue or patch is recorded by this repository yet. |
 
@@ -109,6 +149,8 @@ Positive consequences:
   consumers synchronized.
 - The workaround is isolated in one local module and one platform adapter.
 - Native regeneration requires no manual Xcode edits.
+- Dark cold launch uses the same background family as Dayova's Dark UI, and a
+  stable branded snapshot replaces stale theme content during resume.
 
 Costs and risks:
 
@@ -116,9 +158,18 @@ Costs and risks:
   notification behavior, which are not part of the documented JavaScript API
   contract and may change during upgrades.
 - Active-window lookup assumes Dayova's current single-window app model.
-- Observer installation requires a window when the first listener attaches.
+- The first observer installation still depends on an active window. If no
+  window exists yet, foreground activation retries installation; a future
+  multi-window product would still need scene-specific ownership.
 - Initialization, trait changes, and foreground refreshes can emit duplicate
   state values, so consumers must remain idempotent.
+- iOS may briefly show the branded shield during background and foreground
+  transitions. This is intentional: keeping it until React acknowledges a
+  committed resume is safer than revealing stale theme content or removing it
+  on an assumed native timing boundary.
+- The Expo Updates patch is version-pinned maintenance work. It must be
+  revalidated on every Expo Updates upgrade and removed once upstream resolves
+  deferred splash colors with the active window trait.
 - The module's iOS 16.4 compatibility is compile-tested but cannot be launched
   at that floor while Clerk requires the app to target iOS 17.
 
@@ -137,16 +188,21 @@ without the module:
 2. live system Light/Dark changes with Dayova foregrounded;
 3. Dayova's explicit Light, System, and Dark overrides;
 4. background/foreground appearance restoration;
-5. synchronized NativeWind, navigation, root, native-control, sheet, and status
+5. Dark cold launch without a Light native splash and resume without an
+   old-theme app snapshot;
+6. synchronized NativeWind, navigation, root, native-control, sheet, and status
    bar appearance; and
-6. Debug and embedded-bundle Release execution across the supported iOS matrix.
+7. Debug and embedded-bundle Release execution across the supported iOS matrix.
 
 ## Primary References
 
 - [Expo color themes](https://docs.expo.dev/develop/user-interface/color-themes/)
+- [Expo splash screens and app icons](https://docs.expo.dev/develop/user-interface/splash-screen-and-app-icon/)
+- [Expo SplashScreen API and config plugin](https://docs.expo.dev/versions/latest/sdk/splash-screen/)
 - [React Native Appearance](https://reactnative.dev/docs/appearance)
 - [React Native useColorScheme](https://reactnative.dev/docs/usecolorscheme)
 - [Expo local modules](https://docs.expo.dev/more/create-expo-module/)
 - [Expo Autolinking](https://docs.expo.dev/modules/autolinking/)
 - [Apple: registerForTraitChanges](https://developer.apple.com/documentation/uikit/uitraitchangeobservable-67e94/registerfortraitchanges%28_%3Ahandler%3A%29)
 - [Apple: adapting when traits change](https://developer.apple.com/documentation/uikit/adapting-your-app-when-traits-change)
+- [Apple: `willResignActiveNotification`](https://developer.apple.com/documentation/uikit/uiapplication/willresignactivenotification)

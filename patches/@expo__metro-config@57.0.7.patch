@@ -1,0 +1,55 @@
+diff --git a/build/binary-file-store.js b/build/binary-file-store.js
+index 30053bd8660db762ab1726ce5259ac4b6d29565f..7abd6e05963c644b51e236fc1456533d76ee357a 100644
+--- a/build/binary-file-store.js
++++ b/build/binary-file-store.js
+@@ -11,6 +11,41 @@ const serializer_1 = require("./binary-file-store/serializer");
+ const file_store_1 = require("./file-store");
+ const { pid } = process;
+ const debug = require('debug')('expo:metro:cache');
++// Metro's binary cache can request thousands of transforms concurrently. On Windows,
++// allowing every request to call readFile at once exhausts Node's file
++// descriptor table (EMFILE) after a large cold bundle. Keep enough parallelism
++// for fast local cache reads while reserving descriptors for Metro and its
++// transformer workers.
++const MAX_CONCURRENT_FILE_READS = 256;
++const fileReadWaiters = [];
++let activeFileReads = 0;
++function acquireFileReadSlot() {
++    if (activeFileReads < MAX_CONCURRENT_FILE_READS) {
++        activeFileReads++;
++        return Promise.resolve();
++    }
++    return new Promise((resolve) => fileReadWaiters.push(resolve));
++}
++function releaseFileReadSlot() {
++    const next = fileReadWaiters.shift();
++    if (next) {
++        // Transfer this slot directly to the next waiter. activeFileReads remains
++        // unchanged so a newly arriving read cannot jump the queue.
++        next();
++    }
++    else {
++        activeFileReads--;
++    }
++}
++async function readFileWithLimit(filePath) {
++    await acquireFileReadSlot();
++    try {
++        return await node_fs_1.default.promises.readFile(filePath);
++    }
++    finally {
++        releaseFileReadSlot();
++    }
++}
+ /** Pre-create shard directories all at once as a preflight task */
+ function ensureShardDirs(root) {
+     const tasks = [];
+@@ -49,7 +84,7 @@ class BinaryFileStore extends FileStore_1.default {
+         const filePath = this.#getFileDir(key) + node_path_1.default.sep + this.#getFileName(key);
+         let data;
+         try {
+-            data = await node_fs_1.default.promises.readFile(filePath);
++            data = await readFileWithLimit(filePath);
+         }
+         catch (err) {
+             if (err.code === 'ENOENT') {

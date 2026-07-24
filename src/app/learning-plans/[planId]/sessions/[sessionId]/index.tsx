@@ -27,6 +27,7 @@ import type { Id } from "#convex/_generated/dataModel";
 import { QuestionProgressBar } from "~/components/question-progress-bar";
 import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	BookOpen,
 	Check,
@@ -40,7 +41,7 @@ import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { PracticeCompletionCard } from "~/features/learning-plans/practice-completion-card";
 import {
 	CONTINUE_LEARNING_MINUTES,
@@ -846,13 +847,7 @@ function VoiceAnswer({
 				</Animated.View>
 			) : null}
 			{speechErrorMessage ? (
-				<Text
-					selectable
-					accessibilityLiveRegion="polite"
-					className="mt-3 px-1 font-poppins text-body-4 text-destructive"
-				>
-					{speechErrorMessage}
-				</Text>
+				<ErrorMessage className="mt-3 px-1">{speechErrorMessage}</ErrorMessage>
 			) : null}
 		</View>
 	);
@@ -931,7 +926,7 @@ export default function LearningSessionContentScreen() {
 	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const sessionId = params.sessionId as Id<"learningPlanSessions"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const ensureSessionContent = useAction(
 		api.learningPlanAi.ensureSessionContent,
@@ -1820,9 +1815,7 @@ export default function LearningSessionContentScreen() {
 						</View>
 
 						{errorMessage ? (
-							<Text className="mt-4 font-poppins text-body-4 text-destructive">
-								{errorMessage}
-							</Text>
+							<ErrorMessage className="mt-4">{errorMessage}</ErrorMessage>
 						) : null}
 					</View>
 				) : null}

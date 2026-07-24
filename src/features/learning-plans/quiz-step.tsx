@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Animated, Easing, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 import { Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import type { QuizQuestion } from "~/features/learning-plans/types";
@@ -75,9 +76,7 @@ export function QuizStep({
 					placeholder="Schreibe hier deine Antwort."
 				/>
 				{errorMessage ? (
-					<Text className="mt-4 font-poppins text-body-4 text-destructive">
-						{errorMessage}
-					</Text>
+					<ErrorMessage className="mb-4">{errorMessage}</ErrorMessage>
 				) : null}
 				<View className="mt-auto pt-8">
 					<Button

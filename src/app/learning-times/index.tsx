@@ -10,7 +10,7 @@ import { Plus } from "~/components/ui/icon";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_DAYS } from "~/features/learning-times/learning-time-days";
 import {
 	type WeeklyLearningTime,
@@ -25,7 +25,7 @@ export default function LearningTimesOverviewScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ returnTo?: string }>();
 	const insets = useSafeAreaInsets();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { colors } = useDayovaTheme();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningTimes = useQuery(

@@ -13,6 +13,7 @@ type TestBackend = ReturnType<ReturnType<typeof convexTest>["withIdentity"]>;
 const user = {
 	tokenIdentifier: "test:user",
 };
+const originalTimeZone = process.env.TZ;
 
 const createPlan = async (t: TestBackend) => {
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
@@ -454,12 +455,18 @@ test("invalidates only educational session edits while calendar moves preserve c
 });
 
 beforeEach(() => {
+	process.env.TZ = "Europe/Helsinki";
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-05-30T10:00:00.000Z"));
 });
 
 afterEach(() => {
 	vi.useRealTimers();
+	if (originalTimeZone === undefined) {
+		delete process.env.TZ;
+	} else {
+		process.env.TZ = originalTimeZone;
+	}
 });
 
 test("adding a learning plan session into an occupied time range is rejected with conflict details", async () => {

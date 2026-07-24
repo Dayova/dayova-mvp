@@ -12,10 +12,11 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import {
 	PlanningHintBanner,
 	SectionTitle,
@@ -65,7 +66,7 @@ export default function LearningPlanReviewScreen() {
 		replanRequest?: string;
 	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
 	const addSession = useAction(api.learningPlanAi.addSessionWithContent);
@@ -271,9 +272,7 @@ export default function LearningPlanReviewScreen() {
 						))}
 				</View>
 				{errorMessage ? (
-					<Text className="mb-4 font-poppins text-body-4 text-destructive">
-						{errorMessage}
-					</Text>
+					<ErrorMessage className="mb-4">{errorMessage}</ErrorMessage>
 				) : null}
 			</ScrollView>
 

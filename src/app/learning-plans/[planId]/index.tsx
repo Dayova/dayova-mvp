@@ -37,7 +37,7 @@ import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import {
 	getLearningPathNodePresentation,
 	LEARNING_PATH_BREATHING,
@@ -686,7 +686,7 @@ export default function LearningPlanSessionsScreen() {
 	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
@@ -737,7 +737,7 @@ export default function LearningPlanSessionsScreen() {
 					title="Lernplan"
 					onBack={goBack}
 					className="mb-0"
-					titleClassName="text-center font-poppins font-semibold text-[22px] text-text leading-[30px]"
+					titleClassName="text-center font-poppins font-semibold text-heading-2 text-text"
 				/>
 			</View>
 

@@ -5,6 +5,11 @@
 	// Required by the EAS/Xcode iOS build path even though app source does not
 	// import it directly. Removing it can fail Babel startup with:
 	// [BABEL] /Users/expo/workingdir/build/index.ts: Cannot find module '@babel/plugin-transform-react-jsx'
-	"ignoreDependencies": ["@babel/plugin-transform-react-jsx"],
+	"ignoreDependencies": [
+		"@babel/plugin-transform-react-jsx",
+		// Invoked through an explicit node_modules/.bin path so the updater can
+		// keep its isolated fetch workspace as the CLI working directory.
+		"skills",
+	],
 	"tags": ["-lintignore"]
 }

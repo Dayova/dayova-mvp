@@ -91,18 +91,23 @@ location should trigger verification or review, not automatic punishment.
 
 ## Consequences And Open Implementation Work
 
-- [DAY-178](https://linear.app/dayova/issue/DAY-178/implement-and-verify-the-approved-persistent-native-sign-in-flow)
-  must remove the sign-in persistence checkbox, rebalance the layout directly
-  in the app, and remove the preference-aware memory-only token-cache path.
+- [DAY-178](https://linear.app/dayova/issue/DAY-178/remove-angemeldet-bleiben-and-verify-persistent-native-sign-in)
+  removes the sign-in persistence checkbox, rebalances the layout directly in
+  the app, and removes the preference-aware memory-only token-cache path.
   Existing Figma is a visual reference, not an approval or sequencing gate.
 - [DAY-184](https://linear.app/dayova/issue/DAY-184/subscribe-to-clerk-pro-and-activate-production-auth-settings)
   owns the Clerk Pro purchase, the production 30-day maximum-lifetime change,
   Dashboard evidence, and final production-auth release QA. This dated release
   gate does not block earlier app implementation.
-- Dayova must implement and test Clerk's forced reset-password session task
-  before the password-compromise response can be enabled.
+- Dayova implements Clerk's forced reset-password session task through the
+  native `/session-tasks/reset-password` route with automated coverage. The
+  production password-compromise response remains disabled until this route
+  also passes real-device verification of both pending-session routing and a
+  successfully completed reset. This release gate is separate from the normal
+  password-recovery flow and its real-device QA.
 - Real-device QA must cover two-device coexistence, current-device logout,
-  expiry, remote revocation, password reset, and account deletion.
+  expiry, remote revocation, normal password recovery, forced-reset routing and
+  completion, and account deletion.
 - Shared/temporary-device mode is explicitly deferred until evidence shows it
   is needed.
 

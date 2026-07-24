@@ -1,16 +1,20 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const require = createRequire(import.meta.url);
+const expoCliPath = require.resolve("expo/bin/cli");
+const fingerprintCliPath = require.resolve("expo/bin/fingerprint");
 const baselinePath = resolve(
 	projectRoot,
 	"release/production-ota-baseline.json",
 );
 const platforms = ["ios", "android"];
 const isNonEmptyString = (value) =>
-	typeof value === "string" && value.length > 0;
+	typeof value === "string" && value.trim().length > 0;
 
 const expectedProductionManifest = {
 	iosBundleIdentifier: "de.dayova.app",
@@ -142,9 +146,27 @@ export const evaluateProductionOta = ({
 			);
 		}
 
-		if (fingerprints[platform] !== platformBaseline.fingerprint) {
+		const distributedFingerprint = platformBaseline.fingerprint;
+		const currentFingerprint = fingerprints[platform];
+		const hasDistributedFingerprint = isNonEmptyString(distributedFingerprint);
+		const hasCurrentFingerprint = isNonEmptyString(currentFingerprint);
+
+		if (!hasDistributedFingerprint) {
 			errors.push(
-				`${platform} fingerprint ${fingerprints[platform] ?? "missing"} does not match distributed build ${platformBaseline.buildVersion} fingerprint ${platformBaseline.fingerprint}`,
+				`${platform} baseline fingerprint must be a non-empty string`,
+			);
+		}
+		if (!hasCurrentFingerprint) {
+			errors.push(`${platform} current fingerprint must be a non-empty string`);
+		}
+
+		if (
+			hasDistributedFingerprint &&
+			hasCurrentFingerprint &&
+			currentFingerprint !== distributedFingerprint
+		) {
+			errors.push(
+				`${platform} fingerprint ${currentFingerprint} does not match distributed build ${platformBaseline.buildVersion} fingerprint ${distributedFingerprint}`,
 			);
 		}
 	}
@@ -203,9 +225,8 @@ const createReport = () => {
 
 	try {
 		const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
-		const config = runJsonCommand("pnpm", [
-			"exec",
-			"expo",
+		const config = runJsonCommand(process.execPath, [
+			expoCliPath,
 			"config",
 			"--type",
 			"public",
@@ -214,9 +235,8 @@ const createReport = () => {
 		const fingerprints = Object.fromEntries(
 			platforms.map((platform) => [
 				platform,
-				runJsonCommand("pnpm", [
-					"exec",
-					"fingerprint",
+				runJsonCommand(process.execPath, [
+					fingerprintCliPath,
 					"fingerprint:generate",
 					"--platform",
 					platform,

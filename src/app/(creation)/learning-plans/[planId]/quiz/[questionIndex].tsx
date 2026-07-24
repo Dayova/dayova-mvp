@@ -5,7 +5,7 @@ import { View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { getDiagnosticQuestionCreationStep } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
@@ -34,7 +34,7 @@ export default function LearningPlanQuizScreen() {
 	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const questionIndex = parseQuestionIndex(params.questionIndex);
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const saveKnowledgeAnswer = useMutation(
 		api.learningPlans.saveKnowledgeAnswer,

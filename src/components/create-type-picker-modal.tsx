@@ -1,8 +1,7 @@
 import {
-	BottomModal,
-	BottomModalOption,
-	bottomModalIconColor,
-} from "~/components/ui/bottom-modal";
+	ActionSheet,
+	actionSheetIconColor,
+} from "~/components/ui/action-sheet";
 import { Backpack, GraduationCap } from "~/components/ui/icon";
 
 type CreateType = "homework" | "exam";
@@ -36,32 +35,28 @@ function CreateTypePickerModal({
 	onSelect,
 }: CreateTypePickerModalProps) {
 	return (
-		<BottomModal
+		<ActionSheet
 			visible={visible}
 			title="Was möchtest du planen?"
 			description="Wähle aus, ob du Hausaufgaben eintragen oder einen Test erstellen möchtest."
 			onClose={onRequestClose}
 			closeAccessibilityLabel="Auswahl schließen"
-			contentClassName="gap-4"
-		>
-			{CREATE_TYPE_OPTIONS.map(
-				({ type, title, description, icon: Icon, iconSize }) => (
-					<BottomModalOption
-						key={type}
-						icon={
-							<Icon
-								size={iconSize}
-								color={bottomModalIconColor}
-								strokeWidth={1.8}
-							/>
-						}
-						title={title}
-						description={description}
-						onPress={() => onSelect(type)}
-					/>
-				),
+			onSelect={onSelect}
+			options={CREATE_TYPE_OPTIONS.map(
+				({ type, title, description, icon: Icon, iconSize }) => ({
+					value: type,
+					title,
+					description,
+					icon: (
+						<Icon
+							size={iconSize}
+							color={actionSheetIconColor}
+							strokeWidth={1.8}
+						/>
+					),
+				}),
 			)}
-		</BottomModal>
+		/>
 	);
 }
 

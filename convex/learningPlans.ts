@@ -303,9 +303,9 @@ const getCurrentPlanningHint = (
 const buildPlanAccessKey = (learningPlanId: Id<"learningPlans">) =>
 	`learningPlan:${learningPlanId}`;
 
-const startOfDay = (date: Date) => {
+const startOfUtcDay = (date: Date) => {
 	const next = new Date(date);
-	next.setHours(0, 0, 0, 0);
+	next.setUTCHours(0, 0, 0, 0);
 	return next;
 };
 
@@ -317,7 +317,7 @@ const formatDateLabel = (date: Date) =>
 		year: "numeric",
 	}).format(date);
 
-const getDateKey = (date: Date) => startOfDay(date).toISOString();
+const getDateKey = (date: Date) => startOfUtcDay(date).toISOString();
 
 const getAvailableDays = (examDateKey: string) => {
 	const examTime = new Date(examDateKey).getTime();
@@ -1610,20 +1610,20 @@ export const addSession = mutation({
 			)
 			.take(50);
 		const lastSession = sessions.at(-1);
-		const parsedExamDate = startOfDay(new Date(plan.examDateKey));
+		const parsedExamDate = startOfUtcDay(new Date(plan.examDateKey));
 		const examDate = Number.isNaN(parsedExamDate.getTime())
-			? startOfDay(new Date(Date.now() + 86_400_000))
+			? startOfUtcDay(new Date(Date.now() + 86_400_000))
 			: parsedExamDate;
 		const baseDate = lastSession
-			? startOfDay(new Date(lastSession.dateKey))
-			: startOfDay(new Date());
+			? startOfUtcDay(new Date(lastSession.dateKey))
+			: startOfUtcDay(new Date());
 		const nextDate = new Date(baseDate);
-		nextDate.setDate(nextDate.getDate() + 1);
+		nextDate.setUTCDate(nextDate.getUTCDate() + 1);
 		if (nextDate.getTime() >= examDate.getTime()) {
-			nextDate.setDate(examDate.getDate() - 1);
+			nextDate.setUTCDate(examDate.getUTCDate() - 1);
 		}
 		if (Number.isNaN(nextDate.getTime())) {
-			nextDate.setTime(startOfDay(new Date()).getTime());
+			nextDate.setTime(startOfUtcDay(new Date()).getTime());
 		}
 
 		const now = Date.now();

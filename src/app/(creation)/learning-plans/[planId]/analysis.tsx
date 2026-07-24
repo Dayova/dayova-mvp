@@ -5,8 +5,9 @@ import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Text } from "~/components/ui/text";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
@@ -22,7 +23,7 @@ export default function LearningPlanAnalysisScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generateKnowledgeQuestions = useAction(
 		api.learningPlanAi.generateKnowledgeQuestions,
@@ -106,9 +107,9 @@ export default function LearningPlanAnalysisScreen() {
 					</Text>
 					{errorMessage ? (
 						<>
-							<Text className="mt-6 text-center font-poppins text-body-4 text-destructive">
+							<ErrorMessage className="mt-6 text-center">
 								{errorMessage}
-							</Text>
+							</ErrorMessage>
 							<Button
 								className="mt-6"
 								disabled={isBusy}

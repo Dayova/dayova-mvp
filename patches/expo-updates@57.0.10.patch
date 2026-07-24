@@ -1,0 +1,23 @@
+diff --git a/ios/EXUpdates/ReactDelegateHandler/ExpoUpdatesReactDelegateHandler.swift b/ios/EXUpdates/ReactDelegateHandler/ExpoUpdatesReactDelegateHandler.swift
+index b9dd046d1..ac8963ac5 100644
+--- a/ios/EXUpdates/ReactDelegateHandler/ExpoUpdatesReactDelegateHandler.swift
++++ b/ios/EXUpdates/ReactDelegateHandler/ExpoUpdatesReactDelegateHandler.swift
+@@ -61,10 +61,17 @@ public final class ExpoUpdatesReactDelegateHandler: ExpoReactDelegateHandler, Ap
+     // This view can potentially be displayed for a while.
+     // We should use the splashscreens view here, otherwise a black view appears in the middle of the launch sequence.
+     if let view = createSplashScreenview(), let rootView = self.deferredRootView {
++      // Storyboard views are instantiated before they enter the window hierarchy,
++      // so their named colors otherwise resolve with UIKit's default light trait.
++      let traitCollection = getWindow().traitCollection
++      view.overrideUserInterfaceStyle = traitCollection.userInterfaceStyle
++      rootView.overrideUserInterfaceStyle = traitCollection.userInterfaceStyle
+       view.translatesAutoresizingMaskIntoConstraints = false
+       // The deferredRootView needs to be dark mode aware so we set the color to be the same as the splashscreen background.
+       let backgroundColor = view.backgroundColor ?? UIColor(named: "SplashScreenBackground")
+-      rootView.backgroundColor = backgroundColor ?? .white
++      rootView.backgroundColor = backgroundColor.map {
++        $0.resolvedColor(with: traitCollection)
++      } ?? .white
+       rootView.addSubview(view)
+ 
+       NSLayoutConstraint.activate([

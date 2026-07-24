@@ -20,10 +20,12 @@ import {
 	Dna01Icon,
 	Dumbbell02Icon,
 	EarthIcon,
+	Fire02Icon,
 	FootballIcon,
 	GlobeIcon,
 	GreekHelmetIcon,
 	Home02Icon,
+	InformationCircleIcon,
 	LanguageCircleIcon,
 	Logout03Icon,
 	Mail01Icon,
@@ -35,6 +37,7 @@ import {
 	NotebookIcon,
 	NoteIcon,
 	Notification01Icon,
+	NotificationOff03Icon,
 	PaintBoardIcon,
 	PaintBrush01Icon,
 	PencilIcon,
@@ -42,10 +45,10 @@ import {
 	PlusSignIcon,
 	PropertyEditIcon,
 	RepeatIcon,
-	Rocket01Icon,
 	Route02Icon,
 	ScanImageIcon,
 	Settings01Icon,
+	SparklesIcon,
 	StopIcon,
 	SquareLock02Icon,
 	SquareRootSquareIcon,
@@ -76,6 +79,7 @@ export const ArrowRight = createIcon(ArrowRight01Icon);
 export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
 export const Backpack = createIcon(Backpack03Icon);
 export const Bell = createIcon(Notification01Icon);
+export const BellOff = createIcon(NotificationOff03Icon);
 export const BookOpen = createIcon(BookOpen01Icon);
 export const Bulb = createIcon(BulbIcon);
 export const CalendarDays = createIcon(Calendar03Icon);
@@ -94,11 +98,13 @@ export const Dumbbell = createIcon(Dumbbell02Icon);
 export const Earth = createIcon(EarthIcon);
 export const Eye = createIcon(ViewIcon);
 export const EyeOff = createIcon(ViewOffIcon);
+export const Fire = createIcon(Fire02Icon);
 export const Football = createIcon(FootballIcon);
 export const GraduationCap = createIcon(Mortarboard01Icon);
 export const GreekHelmet = createIcon(GreekHelmetIcon);
 export const Globe = createIcon(GlobeIcon);
 export const Home = createIcon(Home02Icon);
+export const Info = createIcon(InformationCircleIcon);
 export const Language = createIcon(LanguageCircleIcon);
 export const Logout = createIcon(Logout03Icon);
 export const Maps = createIcon(MapsCircle01Icon);
@@ -116,12 +122,12 @@ export const Plus = createIcon(PlusSignIcon);
 export const PropertyEdit = createIcon(PropertyEditIcon);
 export const Repeat = createIcon(RepeatIcon);
 export const Route2 = createIcon(Route02Icon);
-export const Rocket = createIcon(Rocket01Icon);
 export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(Settings01Icon);
 export const Stop = createIcon(StopIcon);
 export const SquareLock = createIcon(SquareLock02Icon);
 export const SquareRootSquare = createIcon(SquareRootSquareIcon);
+export const Sparkles = createIcon(SparklesIcon);
 export const Sun = createIcon(Sun01Icon);
 export const Telescope = createIcon(Telescope01Icon);
 export const Time04 = createIcon(Time04Icon);

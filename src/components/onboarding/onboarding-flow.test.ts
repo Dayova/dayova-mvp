@@ -1,145 +1,87 @@
 import { describe, expect, test } from "vitest";
+import type { OnboardingAnswers } from "~/context/OnboardingContext";
 import {
-	EMPTY_ONBOARDING_ANSWERS,
-	formatBirthDate,
-	getAgeFromBirthDate,
-	getPersistableOnboardingAnswers,
-	getRegistrationPayload,
-	isStepComplete,
-	ONBOARDING_STEPS,
-	parseBirthDate,
-	validateStep,
+	getNextOnboardingStepIndex,
+	getOnboardingRegistrationPayload,
+	getOnboardingStepDecision,
 } from "./onboarding-flow";
 
-describe("onboarding flow", () => {
-	test("keeps the required answer fields in the registration flow", () => {
-		const fields = ONBOARDING_STEPS.flatMap((step) =>
-			"field" in step ? [step.field] : [],
-		);
+const answers = (
+	patch: Partial<OnboardingAnswers> = {},
+): OnboardingAnswers => ({
+	studyTime: "30 min",
+	strength: "Mathe",
+	challenge: "Organisation",
+	goal: "Mehr Struktur im Lernen",
+	state: "Sachsen",
+	schoolType: "Gymnasium",
+	grade: "9",
+	dailySchoolTime: "60 min",
+	studyDays: "Montag, Mittwoch",
+	learningTime: "16:44",
+	name: "Jakob Rössner",
+	email: "jakob@example.de",
+	birthDate: "09.09.2012",
+	password: "supersecret",
+	...patch,
+});
 
-		expect(fields).toEqual([
-			"studyTime",
-			"strength",
-			"challenge",
-			"goal",
-			"state",
-			"name",
-			"email",
-			"birthDate",
-		]);
-		expect(ONBOARDING_STEPS.at(-1)?.kind).toBe("password");
+describe("onboarding flow decisions", () => {
+	test("validates learner input before advancing", () => {
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "text", field: "name" },
+				answers({ name: "!" }),
+			).error,
+		).toBe("Bitte gib deinen Namen ein.");
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "text", field: "email" },
+				answers({ email: "keine-adresse" }),
+			).error,
+		).toBe("Bitte gib eine gültige E-Mail-Adresse ein.");
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "wheel", field: "state" },
+				answers({ state: "" }),
+			).error,
+		).toBe("Bitte wähle eine Antwort aus.");
 	});
 
-	test("disables answer steps until their public answer field is filled", () => {
-		const selectStep = ONBOARDING_STEPS.find(
-			(step) => step.kind === "select" && step.field === "studyTime",
-		);
-		if (!selectStep) throw new Error("Missing study time step.");
-
-		expect(isStepComplete(selectStep, EMPTY_ONBOARDING_ANSWERS)).toBe(false);
+	test("registers only from a valid password step", () => {
 		expect(
-			isStepComplete(selectStep, {
-				...EMPTY_ONBOARDING_ANSWERS,
-				studyTime: "30 bis 60 Min.",
-			}),
-		).toBe(true);
-	});
-
-	test("validates profile fields before account creation", () => {
-		const nameStep = ONBOARDING_STEPS.find(
-			(step) => step.kind === "profile" && step.field === "name",
-		);
-		const emailStep = ONBOARDING_STEPS.find(
-			(step) => step.kind === "profile" && step.field === "email",
-		);
-		const passwordStep = ONBOARDING_STEPS.find(
-			(step) => step.kind === "password",
-		);
-		if (!nameStep || !emailStep || !passwordStep) {
-			throw new Error("Missing profile/password steps.");
-		}
-
-		expect(validateStep(nameStep, EMPTY_ONBOARDING_ANSWERS)).toHaveProperty(
-			"name",
-		);
-		expect(
-			validateStep(emailStep, {
-				...EMPTY_ONBOARDING_ANSWERS,
-				email: "not-an-email",
-			}),
-		).toHaveProperty("email");
-		expect(
-			validateStep(passwordStep, {
-				...EMPTY_ONBOARDING_ANSWERS,
-				password: "short",
-			}),
-		).toHaveProperty("password");
-	});
-
-	test("formats birthdate and requires a learner age of at least six", () => {
-		const today = new Date(2026, 6, 5);
-		const oldEnough = new Date(2018, 6, 5);
-		const tooYoung = new Date(2022, 6, 5);
-		const birthDateStep = ONBOARDING_STEPS.find(
-			(step) => step.kind === "profile" && step.field === "birthDate",
-		);
-		if (!birthDateStep) throw new Error("Missing birthdate step.");
-
-		expect(formatBirthDate(oldEnough)).toBe("05.07.2018");
-		expect(parseBirthDate("05.07.2018")?.getFullYear()).toBe(2018);
-		expect(getAgeFromBirthDate(oldEnough, today)).toBe(8);
-		expect(
-			validateStep(
-				birthDateStep,
-				{ ...EMPTY_ONBOARDING_ANSWERS, birthDate: formatBirthDate(tooYoung) },
-				today,
+			getOnboardingStepDecision(
+				{ kind: "text", field: "password" },
+				answers({ password: "short" }),
 			),
-		).toHaveProperty("birthDate");
-		expect(
-			validateStep(
-				birthDateStep,
-				{ ...EMPTY_ONBOARDING_ANSWERS, birthDate: formatBirthDate(oldEnough) },
-				today,
-			),
-		).toEqual({});
-	});
-
-	test("normalizes the final Clerk registration payload", () => {
-		expect(
-			getRegistrationPayload({
-				...EMPTY_ONBOARDING_ANSWERS,
-				name: "  Fabius Schurig  ",
-				email: "  FABIUS@EXAMPLE.DE ",
-				birthDate: "05.07.2018",
-				password: "supersecret",
-			}),
 		).toEqual({
-			name: "Fabius Schurig",
-			email: "fabius@example.de",
-			birthDate: "05.07.2018",
-			password: "supersecret",
+			action: "register",
+			error: "Bitte gib ein Passwort mit mindestens 8 Zeichen ein.",
 		});
+		expect(
+			getOnboardingStepDecision({ kind: "text", field: "password" }, answers()),
+		).toEqual({ action: "register", error: null });
 	});
 
-	test("keeps Convex onboarding persistence scoped to answer fields", () => {
+	test("clamps progression at the final step", () => {
+		expect(getNextOnboardingStepIndex(3, 10)).toBe(4);
+		expect(getNextOnboardingStepIndex(9, 10)).toBe(9);
+		expect(getNextOnboardingStepIndex(0, 0)).toBe(0);
+	});
+
+	test("normalizes the Clerk registration payload", () => {
 		expect(
-			getPersistableOnboardingAnswers({
-				studyTime: "30 bis 60 Min.",
-				strength: "Mathematik",
-				challenge: "Organisation",
-				goal: "Mehr Struktur",
-				state: "Bayern",
-				name: "Fabius",
-				email: "fabius@example.de",
-				birthDate: "05.07.2018",
-				password: "supersecret",
-			}),
+			getOnboardingRegistrationPayload(
+				answers({ name: "  Jakob Rössner  ", email: "  JAKOB@EXAMPLE.DE " }),
+			),
 		).toEqual({
-			studyTime: "30 bis 60 Min.",
-			strength: "Mathematik",
-			challenge: "Organisation",
-			goal: "Mehr Struktur",
-			state: "Bayern",
+			name: "Jakob Rössner",
+			email: "jakob@example.de",
+			password: "supersecret",
+			birthDate: "09.09.2012",
+			grade: "9",
+			schoolType: "Gymnasium",
+			state: "Sachsen",
 		});
 	});
 });

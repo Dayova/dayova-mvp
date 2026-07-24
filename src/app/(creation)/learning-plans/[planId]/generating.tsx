@@ -8,7 +8,7 @@ import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
@@ -40,7 +40,7 @@ export default function LearningPlanGeneratingScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
 	const retryFailedSessionContent = useAction(

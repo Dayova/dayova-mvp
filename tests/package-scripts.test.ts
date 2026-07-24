@@ -8,6 +8,57 @@ const packageJson = JSON.parse(
 };
 
 const developmentExpoScripts = ["expo:start", "expo:android", "expo:ios"];
+const posixOnlyEnvironmentAssignment =
+	/(?:^|(?:&&|\|\||;)\s*)[A-Za-z_][A-Za-z0-9_]*=[^\s;&|]*(?=\s|&&|\|\||;|$)/;
+
+// Package scripts use simple shell command lines. Mask quoted arguments before
+// checking command boundaries so examples or messages containing shell-like
+// text are not mistaken for executable environment assignments.
+const maskQuotedArguments = (command: string) => {
+	let quote: "'" | '"' | null = null;
+	let escaped = false;
+
+	return [...command]
+		.map((character) => {
+			if (quote) {
+				if (quote === '"' && character === "\\" && !escaped) {
+					escaped = true;
+					return " ";
+				}
+
+				if (character === quote && !escaped) {
+					quote = null;
+				}
+				escaped = false;
+				return " ";
+			}
+
+			if (escaped) {
+				escaped = false;
+				return " ";
+			}
+
+			if (character === "\\") {
+				escaped = true;
+				return " ";
+			}
+
+			if (character === "'" || character === '"') {
+				quote = character;
+				return " ";
+			}
+
+			return character;
+		})
+		.join("");
+};
+
+const findPosixOnlyScripts = (scripts: Record<string, string>) =>
+	Object.entries(scripts)
+		.filter(([, command]) =>
+			posixOnlyEnvironmentAssignment.test(maskQuotedArguments(command)),
+		)
+		.map(([name]) => name);
 
 describe("package scripts", () => {
 	it.each(developmentExpoScripts)(
@@ -25,11 +76,54 @@ describe("package scripts", () => {
 		);
 	});
 
-	it("does not use POSIX-only inline environment assignments", () => {
-		const posixOnlyScripts = Object.entries(packageJson.scripts)
-			.filter(([, command]) => /^[A-Za-z_][A-Za-z0-9_]*=[^ ]+ /.test(command))
-			.map(([name]) => name);
+	it("checks the generated Android autolinking cache before native builds", () => {
+		expect(packageJson.scripts["preexpo:android"]).toBe(
+			"node scripts/prepare-android-autolinking-cache.cjs",
+		);
+	});
 
-		expect(posixOnlyScripts).toEqual([]);
+	it("does not use POSIX-only inline environment assignments", () => {
+		expect(findPosixOnlyScripts(packageJson.scripts)).toEqual([]);
+	});
+
+	it("detects POSIX-only assignments after shell operators", () => {
+		expect(
+			findPosixOnlyScripts({
+				empty: "APP_VARIANT= expo export",
+				and: "pnpm check && APP_VARIANT=production expo export",
+				andEmpty: "pnpm check && APP_VARIANT= expo export",
+				andWithoutSpaces: "APP_VARIANT=production&&expo export",
+				or: "pnpm check || APP_VARIANT=development expo start",
+				orWithoutSpaces: "APP_VARIANT=development||expo start",
+				semicolon: "pnpm check; APP_VARIANT=preview expo config",
+				semicolonWithoutSpaces: "APP_VARIANT=preview;expo config",
+			}),
+		).toEqual([
+			"empty",
+			"and",
+			"andEmpty",
+			"andWithoutSpaces",
+			"or",
+			"orWithoutSpaces",
+			"semicolon",
+			"semicolonWithoutSpaces",
+		]);
+	});
+
+	it("ignores assignment-like text inside quoted arguments", () => {
+		expect(
+			findPosixOnlyScripts({
+				singleQuoted: "echo '|| APP_VARIANT=production'",
+				doubleQuoted: 'echo "&& APP_VARIANT=production"',
+				quotedEscapedDoubleQuote: String.raw`echo "\"; APP_VARIANT=production"`,
+				escapedSemicolon: String.raw`echo \; APP_VARIANT=production`,
+				escapedAnd: String.raw`echo \&\& APP_VARIANT=production`,
+				escapedOr: String.raw`echo \|\| APP_VARIANT=production`,
+				escapedQuote: String.raw`echo \" APP_VARIANT=production`,
+				escapedQuoteBeforeAssignment: String.raw`echo \" && APP_VARIANT=production expo export`,
+				realAssignmentAfterQuote:
+					"echo '|| APP_VARIANT=preview' && APP_VARIANT=production expo export",
+			}),
+		).toEqual(["escapedQuoteBeforeAssignment", "realAssignmentAfterQuote"]);
 	});
 });

@@ -18,6 +18,10 @@ import { Appearance, Platform } from "react-native";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useSystemColorScheme } from "~/lib/system-color-scheme";
 import {
+	DARK_NAV_THEME_COLORS,
+	DARK_THEME_COLORS,
+} from "~/lib/theme-variables";
+import {
 	isThemePreference,
 	type ResolvedTheme,
 	resolveThemePreference,
@@ -31,38 +35,7 @@ type DayovaThemeColors = {
 
 const LIGHT_COLORS: DayovaThemeColors = DAYOVA_DESIGN_SYSTEM.colors;
 
-const DARK_COLORS = {
-	...LIGHT_COLORS,
-	buttonNeutral: "#FFFFFF",
-	text: "#EFECE7",
-	secondaryText: "#A7AAB4",
-	background: "#131217",
-	appBackground: "#131217",
-	surface: "#222127",
-	light1: "#FFFFFF",
-	light2: "#2B2A31",
-	light3: "#34323A",
-	mutedSurface: "#2B2A31",
-	border: "#3A3942",
-	successSubtle: "#163321",
-	wrongSubtle: "#3A2512",
-	infoSubtle: "#332B12",
-	systemSubtle: "#0F2C36",
-	theorieSubtle: "#25223B",
-	uebenSubtle: "#30213A",
-	praxisSubtle: "#123532",
-	hausaufgabeSubtle: "#332433",
-	path1: "#3A3942",
-	path2: "#3A3942",
-	path3: "#8D8F98",
-	path4: "#A7AAB4",
-	uploadArtworkBorder: "#3A3942",
-	uploadArtworkIconBackground: "#2B2A31",
-	uploadArtworkIconBorder: "#3A3942",
-	uploadArtworkIconFill: "#34323A",
-	uploadArtworkIconMuted: "#8D8F98",
-	uploadArtworkShadow: "#000000",
-} satisfies DayovaThemeColors;
+const DARK_COLORS: DayovaThemeColors = DARK_THEME_COLORS;
 
 const DAYOVA_THEME_COLORS = {
 	light: LIGHT_COLORS,
@@ -86,12 +59,7 @@ export const NAV_THEMES: Record<ResolvedTheme, Theme> = {
 		...DarkTheme,
 		colors: {
 			...DarkTheme.colors,
-			background: "hsl(250 10% 8%)",
-			border: "hsl(224 12% 24%)",
-			card: "hsl(248 10% 13%)",
-			notification: "hsl(35.1 100% 58%)",
-			primary: "hsl(196.2 100% 50%)",
-			text: "hsl(36 15% 92%)",
+			...DARK_NAV_THEME_COLORS,
 		},
 	},
 };

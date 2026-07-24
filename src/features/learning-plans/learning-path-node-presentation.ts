@@ -3,7 +3,7 @@ import type { SessionPhase } from "~/features/learning-plans/types";
 export type LearningPathNodeState = "completed" | "current" | "locked";
 export type LearningPathNodeIcon = "check" | "dumbbell" | "note" | "repeat";
 export type LearningPathNodeHalo = "none" | "segmented" | "solid";
-export type LearningPathNodeMotion = "breathe" | "still";
+type LearningPathNodeMotion = "breathe" | "still";
 export type LearningPathNodeTone = "blue" | "gray";
 
 export type LearningPathNodePresentation = {

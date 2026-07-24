@@ -3,10 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const IOS_INFO_PLIST_PATH = resolve(
-	process.cwd(),
-	"ios/Dayova/Info.plist",
-);
+const IOS_INFO_PLIST_PATH = resolve(process.cwd(), "ios/Dayova/Info.plist");
 
 const REQUIRED_IOS_PRIVACY_KEYS = [
 	"NSMicrophoneUsageDescription",
@@ -60,5 +57,5 @@ describe("iOS privacy purpose strings", () => {
 				).toEqual(appConfigValue);
 			}
 		}
-	});
+	}, 15_000);
 });

@@ -13,7 +13,7 @@ import { Button } from "~/components/ui/button";
 import { Screen } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { calculateAvailableStudyMinutes } from "~/features/learning-plans/plan-workload";
@@ -49,7 +49,7 @@ export default function LearningPlanWorkloadScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const setTargetStudyMinutes = useMutation(
 		api.learningPlans.setTargetStudyMinutes,
