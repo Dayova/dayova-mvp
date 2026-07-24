@@ -178,15 +178,15 @@ describe("iOS system appearance module", () => {
 		expect(pnpmWorkspace).toContain(
 			"expo-updates@57.0.10: patches/expo-updates@57.0.10.patch",
 		);
-		expect(patch).toContain("let traitCollection = getWindow().traitCollection");
+		expect(patch).toContain(
+			"let traitCollection = getWindow().traitCollection",
+		);
 		expect(patch).toContain(
 			"view.overrideUserInterfaceStyle = traitCollection.userInterfaceStyle",
 		);
 		expect(patch).toContain(
 			"rootView.overrideUserInterfaceStyle = traitCollection.userInterfaceStyle",
 		);
-		expect(patch).toContain(
-			".resolvedColor(with: traitCollection)",
-		);
+		expect(patch).toContain(".resolvedColor(with: traitCollection)");
 	});
 });

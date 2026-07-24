@@ -352,7 +352,7 @@ export default function LearningTimesScreen() {
 					</View>
 				</Field>
 
-					<View className="flex-row gap-3">
+				<View className="flex-row gap-3">
 					<TimeControl
 						label="Beginn"
 						value={startTime}
@@ -361,9 +361,9 @@ export default function LearningTimesScreen() {
 					<TimeControl
 						label="Ende"
 						value={endTime}
-							onPress={() => setActiveTimeField("end")}
-						/>
-					</View>
+						onPress={() => setActiveTimeField("end")}
+					/>
+				</View>
 
 				{hasValidTimeRange ? null : (
 					<Text
@@ -371,14 +371,14 @@ export default function LearningTimesScreen() {
 						className="font-poppins text-body-4 text-destructive"
 					>
 						Die Endzeit muss nach der Startzeit liegen.
-						</Text>
-					)}
+					</Text>
+				)}
 
-					{errorMessage ? (
-						<ErrorMessage className="rounded-[22px] border border-destructive/20 bg-destructive/10 px-5 py-4">
-							{errorMessage}
-						</ErrorMessage>
-					) : null}
+				{errorMessage ? (
+					<ErrorMessage className="rounded-[22px] border border-destructive/20 bg-destructive/10 px-5 py-4">
+						{errorMessage}
+					</ErrorMessage>
+				) : null}
 
 				{learningTimes === undefined ? (
 					<View className="items-center py-4">

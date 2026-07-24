@@ -843,7 +843,7 @@ function VoiceAnswer({
 								</Text>
 							</TouchableOpacity>
 						) : null}
-			</Surface>
+					</Surface>
 				</Animated.View>
 			) : null}
 			{speechErrorMessage ? (

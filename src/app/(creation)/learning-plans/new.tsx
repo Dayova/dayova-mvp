@@ -538,12 +538,12 @@ export default function NewLearningPlanScreen() {
 				topPadding={0}
 				contentContainerStyle={{ flexGrow: 1 }}
 			>
-					<Animated.View
-						key={setupStep}
-						entering={FadeIn.duration(180)}
-						className="flex-1"
-					>
-						{setupStep === "materialUpload" ? (
+				<Animated.View
+					key={setupStep}
+					entering={FadeIn.duration(180)}
+					className="flex-1"
+				>
+					{setupStep === "materialUpload" ? (
 						<MaterialUploadStep
 							artworkHeight={uploadArtworkHeight}
 							artworkWidth={uploadArtworkWidth}
@@ -571,48 +571,48 @@ export default function NewLearningPlanScreen() {
 				</Animated.View>
 			</ScreenScroll>
 
-				<ActionSheet
-					visible={setupStep === "materialUpload" && isUploadSheetVisible}
-					title="Was möchtest du hochladen?"
-					description="Lade hier deine Unterlagen hoch oder scanne sie ganz einfach."
-					onClose={closeUploadSheet}
-					onDismiss={runPendingUploadAction}
-					closeAccessibilityLabel="Hochladen schließen"
-					layout="tile"
-					onSelect={chooseUploadAction}
-					options={[
-						{
-							value: "camera",
-							title: "Scannen",
-							disabled: !canContinueUpload,
-							icon:
-								openingUploadAction === "camera" || isBusy ? (
-									<ActivityIndicator color={actionSheetIconColor} />
-								) : (
-									<ScanImage
-										size={28}
-										color={actionSheetIconColor}
-										strokeWidth={1.8}
-									/>
-								),
-						},
-						{
-							value: "files",
-							title: "Dateien",
-							disabled: !canContinueUpload,
-							icon:
-								openingUploadAction === "files" || isBusy ? (
-									<ActivityIndicator color={actionSheetIconColor} />
-								) : (
-									<Attachment
-										size={28}
-										color={actionSheetIconColor}
-										strokeWidth={1.8}
-									/>
-								),
-						},
-					]}
-				/>
+			<ActionSheet
+				visible={setupStep === "materialUpload" && isUploadSheetVisible}
+				title="Was möchtest du hochladen?"
+				description="Lade hier deine Unterlagen hoch oder scanne sie ganz einfach."
+				onClose={closeUploadSheet}
+				onDismiss={runPendingUploadAction}
+				closeAccessibilityLabel="Hochladen schließen"
+				layout="tile"
+				onSelect={chooseUploadAction}
+				options={[
+					{
+						value: "camera",
+						title: "Scannen",
+						disabled: !canContinueUpload,
+						icon:
+							openingUploadAction === "camera" || isBusy ? (
+								<ActivityIndicator color={actionSheetIconColor} />
+							) : (
+								<ScanImage
+									size={28}
+									color={actionSheetIconColor}
+									strokeWidth={1.8}
+								/>
+							),
+					},
+					{
+						value: "files",
+						title: "Dateien",
+						disabled: !canContinueUpload,
+						icon:
+							openingUploadAction === "files" || isBusy ? (
+								<ActivityIndicator color={actionSheetIconColor} />
+							) : (
+								<Attachment
+									size={28}
+									color={actionSheetIconColor}
+									strokeWidth={1.8}
+								/>
+							),
+					},
+				]}
+			/>
 		</Screen>
 	);
 }

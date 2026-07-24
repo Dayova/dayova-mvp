@@ -276,10 +276,7 @@ export default function NotificationSettingsScreen() {
 	);
 
 	const runPreferenceAction = useCallback(
-		async (
-			key: NotificationPreferenceKey,
-			action: () => Promise<void>,
-		) => {
+		async (key: NotificationPreferenceKey, action: () => Promise<void>) => {
 			await actionGateRef.current.run(key, async () => {
 				setPreferenceError(null);
 				try {
