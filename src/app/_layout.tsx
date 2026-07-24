@@ -49,7 +49,14 @@ function AppNavigator() {
 				}
 			>
 				<AuthNavigationGate>
-					<Stack screenOptions={{ headerShown: false }}>
+					<Stack
+						screenOptions={{
+							headerShown: false,
+							contentStyle: { backgroundColor: colors.background },
+						}}
+					>
+						<Stack.Screen name="(auth)" options={{ animation: "none" }} />
+						<Stack.Screen name="(app)" options={{ animation: "none" }} />
 						<Stack.Screen
 							name="learning-times/edit"
 							options={{
