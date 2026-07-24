@@ -18,6 +18,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAccountActions } from "~/context/AuthContext";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import { useDayovaTheme } from "~/lib/theme";
 import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
 import { cn } from "~/lib/utils";
@@ -131,10 +132,12 @@ export default function SettingsScreen() {
 			try {
 				await logout();
 			} catch (error) {
+				logDiagnosticError("Failed to sign out.", error, {
+					source: "settings.logout",
+					level: "error",
+				});
 				setLogoutError(
-					error instanceof Error
-						? error.message
-						: "Die Abmeldung ist fehlgeschlagen. Bitte versuche es erneut.",
+					"Die Abmeldung ist fehlgeschlagen. Bitte versuche es erneut.",
 				);
 			} finally {
 				setIsLoggingOut(false);

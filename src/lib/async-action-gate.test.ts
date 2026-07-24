@@ -1,5 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
-import { createAsyncActionGate } from "./async-action-gate";
+import {
+	createAsyncActionGate,
+	createKeyedAsyncActionGate,
+} from "./async-action-gate";
 
 describe("createAsyncActionGate", () => {
 	test("runs at most one transaction until the active action settles", async () => {
@@ -36,5 +39,45 @@ describe("createAsyncActionGate", () => {
 
 		await gate.run(transaction);
 		expect(transaction).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe("createKeyedAsyncActionGate", () => {
+	test("runs different preference keys concurrently without duplicating one key", async () => {
+		let finishExamUpdate: (() => void) | undefined;
+		const examUpdate = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					finishExamUpdate = resolve;
+				}),
+		);
+		const learningTimeUpdate = vi.fn(async () => undefined);
+		const gate = createKeyedAsyncActionGate<
+			"beforeExamEnabled" | "beforeLearningTimeEnabled"
+		>();
+
+		const firstExamRun = gate.run("beforeExamEnabled", examUpdate);
+		const duplicateExamRun = gate.run("beforeExamEnabled", examUpdate);
+		const learningTimeRun = gate.run(
+			"beforeLearningTimeEnabled",
+			learningTimeUpdate,
+		);
+
+		expect(examUpdate).toHaveBeenCalledOnce();
+		expect(learningTimeUpdate).toHaveBeenCalledOnce();
+		await expect(duplicateExamRun).resolves.toEqual({ status: "skipped" });
+		await expect(learningTimeRun).resolves.toEqual({
+			status: "completed",
+			value: undefined,
+		});
+		expect(finishExamUpdate).toBeDefined();
+		if (!finishExamUpdate) {
+			throw new Error("Expected the exam update to expose its resolver.");
+		}
+		finishExamUpdate();
+		await expect(firstExamRun).resolves.toEqual({
+			status: "completed",
+			value: undefined,
+		});
 	});
 });

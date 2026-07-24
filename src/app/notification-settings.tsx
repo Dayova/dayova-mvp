@@ -27,7 +27,7 @@ import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuthSession } from "~/context/AuthContext";
-import { createAsyncActionGate } from "~/lib/async-action-gate";
+import { createKeyedAsyncActionGate } from "~/lib/async-action-gate";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
@@ -163,7 +163,9 @@ export default function NotificationSettingsScreen() {
 	const [systemNotificationNotice, setSystemNotificationNotice] =
 		useState<SystemNotificationNotice | null>(null);
 	const [preferenceError, setPreferenceError] = useState<string | null>(null);
-	const actionGateRef = useRef(createAsyncActionGate());
+	const actionGateRef = useRef(
+		createKeyedAsyncActionGate<NotificationPreferenceKey>(),
+	);
 	const visiblePreferences = useMemo(
 		() =>
 			preferences
@@ -274,8 +276,11 @@ export default function NotificationSettingsScreen() {
 	);
 
 	const runPreferenceAction = useCallback(
-		async (action: () => Promise<void>) => {
-			await actionGateRef.current.run(async () => {
+		async (
+			key: NotificationPreferenceKey,
+			action: () => Promise<void>,
+		) => {
+			await actionGateRef.current.run(key, async () => {
 				setPreferenceError(null);
 				try {
 					await action();
@@ -291,50 +296,58 @@ export default function NotificationSettingsScreen() {
 
 	const handleDailyBriefingEnabledChange = useCallback(
 		(value: boolean) =>
-			void runPreferenceAction(() => update({ dailyBriefingEnabled: value })),
+			void runPreferenceAction("dailyBriefingEnabled", () =>
+				update({ dailyBriefingEnabled: value }),
+			),
 		[runPreferenceAction, update],
 	);
 	const handleBeforeExamEnabledChange = useCallback(
 		(value: boolean) =>
-			void runPreferenceAction(() => update({ beforeExamEnabled: value })),
+			void runPreferenceAction("beforeExamEnabled", () =>
+				update({ beforeExamEnabled: value }),
+			),
 		[runPreferenceAction, update],
 	);
 	const handleBeforeLearningTimeEnabledChange = useCallback(
 		(value: boolean) =>
-			void runPreferenceAction(() =>
+			void runPreferenceAction("beforeLearningTimeEnabled", () =>
 				update({ beforeLearningTimeEnabled: value }),
 			),
 		[runPreferenceAction, update],
 	);
 	const handleBeforeHomeworkWorkEnabledChange = useCallback(
 		(value: boolean) =>
-			void runPreferenceAction(() =>
+			void runPreferenceAction("beforeHomeworkWorkEnabled", () =>
 				update({ beforeHomeworkWorkEnabled: value }),
 			),
 		[runPreferenceAction, update],
 	);
 	const handleBeforeHomeworkDueEnabledChange = useCallback(
 		(value: boolean) =>
-			void runPreferenceAction(() =>
+			void runPreferenceAction("beforeHomeworkDueEnabled", () =>
 				update({ beforeHomeworkDueEnabled: value }),
 			),
 		[runPreferenceAction, update],
 	);
 	const handleForgottenEventEnabledChange = useCallback(
 		(value: boolean) =>
-			void runPreferenceAction(() => update({ forgottenEventEnabled: value })),
+			void runPreferenceAction("forgottenEventEnabled", () =>
+				update({ forgottenEventEnabled: value }),
+			),
 		[runPreferenceAction, update],
 	);
 
 	const updateSystemNotificationsFromSwitch = useCallback(
 		(value: boolean) =>
-			void runPreferenceAction(() => updateSystemNotifications(value)),
+			void runPreferenceAction("systemNotificationsEnabled", () =>
+				updateSystemNotifications(value),
+			),
 		[runPreferenceAction, updateSystemNotifications],
 	);
 
 	const updateBriefingTime = useCallback(
 		(selectedDate: Date) => {
-			void runPreferenceAction(() =>
+			void runPreferenceAction("dailyBriefingTime", () =>
 				update({ dailyBriefingTime: formatTime(selectedDate) }),
 			);
 		},
@@ -343,7 +356,7 @@ export default function NotificationSettingsScreen() {
 
 	const updateReminderOffset = useCallback(
 		(minutes: number) => {
-			void runPreferenceAction(() =>
+			void runPreferenceAction("reminderOffsetMinutes", () =>
 				update({ reminderOffsetMinutes: minutes }),
 			);
 		},
@@ -376,7 +389,9 @@ export default function NotificationSettingsScreen() {
 
 	const enablePushFromInfo = useCallback(() => {
 		closeDeliveryInfo();
-		void runPreferenceAction(() => updateSystemNotifications(true));
+		void runPreferenceAction("systemNotificationsEnabled", () =>
+			updateSystemNotifications(true),
+		);
 	}, [closeDeliveryInfo, runPreferenceAction, updateSystemNotifications]);
 
 	const handleBriefingTimeChange = useCallback(

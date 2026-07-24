@@ -106,13 +106,18 @@ describe("SettingsScreen logout", () => {
 	});
 
 	test("announces a failed logout and keeps the current route", async () => {
-		mockLogout.mockRejectedValueOnce(new Error("Abmeldung fehlgeschlagen"));
+		mockLogout.mockRejectedValueOnce(
+			new Error("ClerkJS: session token refresh failed with status 503"),
+		);
 		const screen = await render(<SettingsScreen />);
 
 		await fireEvent.press(screen.getByRole("button", { name: "Abmelden" }));
 
 		const error = await screen.findByRole("alert");
-		expect(error).toHaveTextContent("Abmeldung fehlgeschlagen");
+		expect(error).toHaveTextContent(
+			"Die Abmeldung ist fehlgeschlagen. Bitte versuche es erneut.",
+		);
+		expect(error).not.toHaveTextContent("ClerkJS");
 		expect(error.props.accessibilityLiveRegion).toBe("polite");
 		await waitFor(() => expect(mockReplace).not.toHaveBeenCalled());
 	});
