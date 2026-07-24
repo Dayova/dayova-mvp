@@ -7,7 +7,7 @@ index b7e3378..4ebce34 100644
     - **No** → **`/implement`** right here, in the same context window.
  
 -   Either way, **`/implement`** builds each issue by driving **`/tdd`** internally — one red-green slice at a time — then closes out by running **`/code-review`**, a two-axis review (Standards + Spec) of the diff, before committing. Reach for **`/tdd`** on its own when you just want to build a concrete behaviour test-first without a full spec, and **`/code-review`** on its own whenever you want to review a branch or PR against a fixed point.
-+   Either way, **`/implement`** builds each issue by driving **`/tdd`** internally — one red-green slice at a time — then closes out by running **`/code-review`**, a two-axis review (Standards + Spec) of the diff. Commit only when the user or issue workflow asks for a commit. Reach for **`/tdd`** on its own when you just want to build a concrete behaviour test-first without a full spec, and **`/code-review`** on its own whenever you want to review a branch or PR against a fixed point.
++   Either way, **`/implement`** builds each issue by driving **`/tdd`** internally — one red-green slice at a time — then closes out by running **`/code-review`**, a two-axis review (Standards + Spec) of the diff, before committing and publishing through the repository's branch-ownership and delivery policy. Reach for **`/tdd`** on its own when you just want to build a concrete behaviour test-first without a full spec, and **`/code-review`** on its own whenever you want to review a branch or PR against a fixed point.
  
  ### Context hygiene
  
@@ -88,7 +88,7 @@ index 3650c44..41ca947 100644
  Once done, use /code-review to review the work.
  
 -Commit your work to the current branch.
-+Commit only when the user requested a commit or the issue workflow explicitly requires one. Otherwise leave the completed changes in the worktree and report the files changed plus the validation run.
++Follow the repository's delivery policy. For explicitly mutating Dayova repository work, validate and review the result, then commit only the coherent in-scope changes. Publish only to a branch that already represents the current work item or pull request, or a new branch intentionally created for this work from the correct integration base. Preserve an existing pull request and stack. Never treat “non-default” alone as authorization to push, push the default branch, or stage unrelated changes. If safe delivery is blocked, report the blocker instead of silently leaving completed work unpublished.
 diff --git a/.agents/skills/improve-codebase-architecture/SKILL.md b/.agents/skills/improve-codebase-architecture/SKILL.md
 index 3c116bb..6fd2e04 100644
 --- a/.agents/skills/improve-codebase-architecture/SKILL.md
