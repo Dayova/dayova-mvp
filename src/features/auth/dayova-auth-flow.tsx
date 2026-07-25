@@ -785,9 +785,19 @@ export function RegisterRedirectScreen() {
 	return <Redirect href="/onboarding" />;
 }
 
-export function OnboardingScreen() {
+export function OnboardingScreen({
+	initialStepId,
+}: {
+	initialStepId?: OnboardingStep["id"];
+} = {}) {
 	const insets = useSafeAreaInsets();
-	const [activeIndex, setActiveIndex] = useState(0);
+	const [activeIndex, setActiveIndex] = useState(() => {
+		if (!initialStepId) return 0;
+		const initialIndex = FLOW_STEPS.findIndex(
+			(step) => step.id === initialStepId,
+		);
+		return Math.max(initialIndex, 0);
+	});
 	const [stage, setStage] = useState<RegistrationStage>("flow");
 	const [error, setError] = useState<string | null>(null);
 	const [verificationCode, setVerificationCode] = useState("");

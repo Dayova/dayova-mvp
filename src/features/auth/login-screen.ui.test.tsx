@@ -13,6 +13,7 @@ import {
 	AuthChoiceScreen,
 	CreationLoaderScreen,
 	LoginScreen,
+	OnboardingScreen,
 	PlanFitStack,
 } from "./dayova-auth-flow";
 
@@ -43,6 +44,27 @@ const mockRouter = {
 	back: jest.fn(),
 	push: jest.fn(),
 	replace: jest.fn(),
+};
+const mockSetOnboardingAnswer = jest.fn();
+const mockOnboarding = {
+	answers: {
+		studyTime: "30 min",
+		strength: "Mathe",
+		challenge: "Organisation",
+		goal: "Mehr Struktur im Lernen",
+		state: "Sachsen",
+		schoolType: "Gymnasium",
+		grade: "9",
+		dailySchoolTime: "60 min",
+		studyDays: "Montag",
+		learningTime: "16:30",
+		name: "Test User",
+		email: "test@example.com",
+		birthDate: "09.09.2012",
+		password: "sicher123",
+	},
+	hasAnswers: false,
+	setAnswer: mockSetOnboardingAnswer,
 };
 
 jest.mock("react-native-reanimated", () => {
@@ -177,10 +199,7 @@ jest.mock("~/context/AuthContext", () => ({
 }));
 
 jest.mock("~/context/OnboardingContext", () => ({
-	useOnboarding: () => ({
-		answers: {},
-		setAnswer: jest.fn(),
-	}),
+	useOnboarding: () => mockOnboarding,
 }));
 
 jest.mock("~/lib/navigation", () => ({
@@ -462,5 +481,41 @@ describe("CreationLoaderScreen", () => {
 			jest.advanceTimersByTime(1);
 		});
 		expect(mockRouter.replace).toHaveBeenCalledWith("/home");
+	});
+});
+
+describe("OnboardingScreen", () => {
+	beforeEach(() => {
+		mockRouter.replace.mockReset();
+		mockSetOnboardingAnswer.mockReset();
+		mockOnboarding.answers.studyDays = "Montag";
+		mockOnboarding.answers.learningTime = "23:30";
+		mockOnboarding.answers.dailySchoolTime = "60 min";
+	});
+
+	test("shows an actionable error instead of advancing past a cross-midnight time", async () => {
+		const screen = await render(
+			<OnboardingScreen initialStepId="learningTime" />,
+		);
+
+		expect(
+			screen.getByText("Wann ist die beste\nUhrzeit für dich zum\nlernen?"),
+		).toBeOnTheScreen();
+
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(
+			await screen.findByRole("alert", {
+				name: "Wähle bitte eine frühere Lernzeit oder eine kürzere tägliche Lernzeit, damit deine Lernzeit vor Mitternacht endet.",
+			}),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText("Wann ist die beste\nUhrzeit für dich zum\nlernen?"),
+		).toBeOnTheScreen();
+		expect(
+			screen.queryByText(
+				"Keine Sorge, du\nkannst deine\nLernzeiten später\nanpassen.",
+			),
+		).toBeNull();
 	});
 });
