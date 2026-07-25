@@ -209,6 +209,72 @@ test("returning users are lazily backfilled from complete legacy answers", async
 	]);
 });
 
+test("legacy recovery treats duplicate historical rows as ambiguous", async () => {
+	const duplicateQuestionT = convexTest(schema, modules).withIdentity(
+		userIdentity,
+	);
+	const duplicateQuestionUserId = await duplicateQuestionT.mutation(
+		api.users.syncCurrentUser,
+		{ name: "User" },
+	);
+	await seedLegacyLearningTimeAnswers(
+		duplicateQuestionT,
+		duplicateQuestionUserId,
+		{
+			studyDays: "Freitag",
+			learningTime: "18:00",
+			dailySchoolTime: "60 min",
+		},
+	);
+	await duplicateQuestionT.run(async (ctx) => {
+		await ctx.db.insert("onboardingQuestions", {
+			key: "studyDays",
+			prompt: "Ambiguous study days",
+			kind: "input",
+			order: 99,
+		});
+	});
+
+	await expect(
+		duplicateQuestionT.mutation(api.users.syncCurrentUser, { name: "User" }),
+	).resolves.toBe(duplicateQuestionUserId);
+	await expect(
+		duplicateQuestionT.query(api.learningTimes.listMine, {}),
+	).resolves.toEqual([]);
+
+	const duplicateAnswerT = convexTest(schema, modules).withIdentity(
+		userIdentity,
+	);
+	const duplicateAnswerUserId = await duplicateAnswerT.mutation(
+		api.users.syncCurrentUser,
+		{ name: "User" },
+	);
+	await seedLegacyLearningTimeAnswers(duplicateAnswerT, duplicateAnswerUserId, {
+		studyDays: "Freitag",
+		learningTime: "18:00",
+		dailySchoolTime: "60 min",
+	});
+	await duplicateAnswerT.run(async (ctx) => {
+		const question = await ctx.db
+			.query("onboardingQuestions")
+			.withIndex("by_key", (q) => q.eq("key", "learningTime"))
+			.unique();
+		if (!question) throw new Error("Expected a learning-time question.");
+		await ctx.db.insert("userOnboardingAnswers", {
+			userId: duplicateAnswerUserId,
+			questionId: question._id,
+			answer: "19:00",
+		});
+	});
+
+	await expect(
+		duplicateAnswerT.mutation(api.users.syncCurrentUser, { name: "User" }),
+	).resolves.toBe(duplicateAnswerUserId);
+	await expect(
+		duplicateAnswerT.query(api.learningTimes.listMine, {}),
+	).resolves.toEqual([]);
+});
+
 test("legacy recovery leaves manual settings authoritative and skips unsafe answers", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });

@@ -176,6 +176,19 @@ const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	return identity;
 };
 
+const hasLearningTimes = async (
+	ctx: MutationCtx,
+	ownerTokenIdentifier: string,
+) => {
+	const existing = await ctx.db
+		.query("userLearningTimes")
+		.withIndex("by_ownerTokenIdentifier", (q) =>
+			q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+		)
+		.take(1);
+	return existing.length > 0;
+};
+
 const insertLearningTimesWhenAbsent = async (
 	ctx: MutationCtx,
 	args: {
@@ -184,13 +197,7 @@ const insertLearningTimesWhenAbsent = async (
 		invalidInput: "reject" | "skip";
 	},
 ) => {
-	const existing = await ctx.db
-		.query("userLearningTimes")
-		.withIndex("by_ownerTokenIdentifier", (q) =>
-			q.eq("ownerTokenIdentifier", args.ownerTokenIdentifier),
-		)
-		.take(1);
-	if (existing.length > 0) {
+	if (await hasLearningTimes(ctx, args.ownerTokenIdentifier)) {
 		return { status: "preserved" as const, createdCount: 0 };
 	}
 
@@ -224,29 +231,25 @@ const backfillLegacyLearningTimes = async (
 	ctx: MutationCtx,
 	args: { userId: Id<"users">; ownerTokenIdentifier: string },
 ) => {
-	const existing = await ctx.db
-		.query("userLearningTimes")
-		.withIndex("by_ownerTokenIdentifier", (q) =>
-			q.eq("ownerTokenIdentifier", args.ownerTokenIdentifier),
-		)
-		.take(1);
-	if (existing.length > 0) return;
+	if (await hasLearningTimes(ctx, args.ownerTokenIdentifier)) return;
 
 	const legacy: Partial<OnboardingLearningTimeInput> = {};
 	for (const key of ONBOARDING_LEARNING_TIME_KEYS) {
-		const question = await ctx.db
+		const questions = await ctx.db
 			.query("onboardingQuestions")
 			.withIndex("by_key", (q) => q.eq("key", key))
-			.unique();
-		if (!question) continue;
+			.take(2);
+		if (questions.length !== 1) return;
+		const question = questions[0];
 
-		const answer = await ctx.db
+		const answers = await ctx.db
 			.query("userOnboardingAnswers")
 			.withIndex("by_userId_and_questionId", (q) =>
 				q.eq("userId", args.userId).eq("questionId", question._id),
 			)
-			.unique();
-		if (answer) legacy[key] = answer.answer;
+			.take(2);
+		if (answers.length !== 1) return;
+		legacy[key] = answers[0].answer;
 	}
 
 	if (

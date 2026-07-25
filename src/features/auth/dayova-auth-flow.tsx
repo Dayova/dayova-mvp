@@ -855,16 +855,6 @@ export function OnboardingScreen() {
 		return () => cancelAnimationFrame(frame);
 	}, [hasAnswers, isPostAuthSyncing, stage, user]);
 
-	useEffect(() => {
-		if (!isCreationComplete) return;
-
-		const timeout = setTimeout(() => {
-			router.replace("/home");
-		}, 1800);
-
-		return () => clearTimeout(timeout);
-	}, [isCreationComplete]);
-
 	const handleBack = useCallback(() => {
 		if (
 			stage === "creating" ||
@@ -2397,7 +2387,7 @@ function VerificationScreen({
 	);
 }
 
-function CreationLoaderScreen({
+export function CreationLoaderScreen({
 	topInset,
 	bottomInset,
 	isComplete,
@@ -2406,6 +2396,16 @@ function CreationLoaderScreen({
 	bottomInset: number;
 	isComplete: boolean;
 }) {
+	useEffect(() => {
+		if (!isComplete) return;
+
+		const timeout = setTimeout(() => {
+			router.replace("/home");
+		}, 1800);
+
+		return () => clearTimeout(timeout);
+	}, [isComplete]);
+
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ title: "Lernprofil", gestureEnabled: false }} />

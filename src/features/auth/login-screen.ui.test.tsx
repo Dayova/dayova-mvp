@@ -1,9 +1,17 @@
-import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	jest,
+	test,
+} from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { StyleSheet } from "react-native";
 import {
 	AuthChoiceScreen,
+	CreationLoaderScreen,
 	LoginScreen,
 	PlanFitStack,
 } from "./dayova-auth-flow";
@@ -107,6 +115,14 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("~/components/ui/date-time-picker-sheet", () => ({
 	DateTimePickerSheet: () => null,
 }));
+
+jest.mock("~/components/ui/animated-flower-loader", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		AnimatedFlowerLoader: () =>
+			React.createElement("AnimatedFlowerLoader", null),
+	};
+});
 
 jest.mock("~/components/ui/keyboard-safe-scroll-view", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
@@ -398,5 +414,53 @@ describe("LoginScreen", () => {
 		await waitFor(() => {
 			expect(mockCompletePasswordReset).toHaveBeenCalledWith(exactPassword);
 		});
+	});
+});
+
+describe("CreationLoaderScreen", () => {
+	beforeEach(() => {
+		jest.useFakeTimers();
+		mockRouter.replace.mockReset();
+	});
+
+	afterEach(() => {
+		jest.runOnlyPendingTimers();
+		jest.useRealTimers();
+	});
+
+	test("confirms saved learning times before continuing home", async () => {
+		const screen = await render(
+			<CreationLoaderScreen
+				topInset={24}
+				bottomInset={24}
+				isComplete={false}
+			/>,
+		);
+
+		expect(
+			screen.getByText(
+				"Dein persönliches Lernprofil\nwird nun für dich erstellt.",
+			),
+		).toBeOnTheScreen();
+
+		await screen.rerender(
+			<CreationLoaderScreen topInset={24} bottomInset={24} isComplete={true} />,
+		);
+
+		expect(
+			screen.getByText(
+				"Deine Lernzeiten sind gespeichert.\nDu kannst sie jederzeit unter\nEinstellungen → Lernzeiten anpassen.",
+			),
+		).toBeOnTheScreen();
+
+		await act(async () => {
+			jest.advanceTimersByTime(1799);
+		});
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+
+		await act(async () => {
+			jest.advanceTimersByTime(1);
+		});
+		expect(mockRouter.replace).toHaveBeenCalledWith("/home");
 	});
 });
