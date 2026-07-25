@@ -46,6 +46,11 @@ import Svg, {
 	type SvgProps,
 } from "react-native-svg";
 import {
+	deriveOnboardingLearningTimes,
+	getOnboardingLearningTimeErrorMessage,
+	ONBOARDING_DURATION_MINUTES,
+} from "#convex/learningTimeAvailability";
+import {
 	getCenteredIntroDotsTop,
 	getIntroButtonProgress,
 	getIntroDotWidth,
@@ -305,9 +310,6 @@ const FEDERAL_STATES = [
 ] as const;
 
 const GRADE_OPTIONS = ["6", "7", "8", "9", "10", "11", "12"] as const;
-const DURATION_OPTIONS = [
-	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
-] as const;
 const CURRENT_YEAR = new Date().getFullYear();
 const DEFAULT_BIRTH_DAY = "09";
 const DEFAULT_BIRTH_MONTH = "09";
@@ -414,7 +416,7 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		id: "studyTime",
 		title: "Wie viel lernst du\naktuell pro Tag?",
 		field: "studyTime",
-		values: DURATION_OPTIONS,
+		values: ONBOARDING_DURATION_MINUTES,
 	},
 	{
 		kind: "fact",
@@ -488,7 +490,7 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		id: "dailySchoolTime",
 		title: "Wie viel Zeit willst\ndu pro Tag für die\nSchule aufwenden?",
 		field: "dailySchoolTime",
-		values: DURATION_OPTIONS,
+		values: ONBOARDING_DURATION_MINUTES,
 	},
 	{
 		kind: "fact",
@@ -783,9 +785,19 @@ export function RegisterRedirectScreen() {
 	return <Redirect href="/onboarding" />;
 }
 
-export function OnboardingScreen() {
+export function OnboardingScreen({
+	initialStepId,
+}: {
+	initialStepId?: OnboardingStep["id"];
+} = {}) {
 	const insets = useSafeAreaInsets();
-	const [activeIndex, setActiveIndex] = useState(0);
+	const [activeIndex, setActiveIndex] = useState(() => {
+		if (!initialStepId) return 0;
+		const initialIndex = FLOW_STEPS.findIndex(
+			(step) => step.id === initialStepId,
+		);
+		return Math.max(initialIndex, 0);
+	});
 	const [stage, setStage] = useState<RegistrationStage>("flow");
 	const [error, setError] = useState<string | null>(null);
 	const [verificationCode, setVerificationCode] = useState("");
@@ -799,6 +811,13 @@ export function OnboardingScreen() {
 	const textInputRef = useRef<TextInput | null>(null);
 	const verificationInputRef = useRef<TextInput | null>(null);
 	const verificationSubmittedRef = useRef(false);
+	const isCreationComplete = Boolean(
+		stage === "creating" &&
+			user &&
+			isConvexAuthenticated &&
+			!hasAnswers &&
+			!isPostAuthSyncing,
+	);
 	const registrationActionGateRef = useRef(createAsyncActionGate());
 	const isRegistrationBusy = isLoading || isRegistering;
 
@@ -845,18 +864,6 @@ export function OnboardingScreen() {
 
 		return () => cancelAnimationFrame(frame);
 	}, [hasAnswers, isPostAuthSyncing, stage, user]);
-
-	useEffect(() => {
-		if (stage !== "creating") return;
-		if (!user || !isConvexAuthenticated || hasAnswers || isPostAuthSyncing)
-			return;
-
-		const timeout = setTimeout(() => {
-			router.replace("/home");
-		}, 900);
-
-		return () => clearTimeout(timeout);
-	}, [hasAnswers, isConvexAuthenticated, isPostAuthSyncing, stage, user]);
 
 	const handleBack = useCallback(() => {
 		if (
@@ -916,6 +923,18 @@ export function OnboardingScreen() {
 		if (decision.error) {
 			setError(decision.error);
 			return;
+		}
+
+		if (activeStep.kind === "wheel" && activeStep.field === "learningTime") {
+			const result = deriveOnboardingLearningTimes({
+				studyDays: answers.studyDays,
+				learningTime: answers.learningTime,
+				dailySchoolTime: answers.dailySchoolTime,
+			});
+			if (!result.ok) {
+				setError(getOnboardingLearningTimeErrorMessage(result.reason));
+				return;
+			}
 		}
 
 		if (decision.action === "register") {
@@ -987,7 +1006,11 @@ export function OnboardingScreen() {
 
 	if (stage === "creating") {
 		return (
-			<CreationLoaderScreen topInset={insets.top} bottomInset={insets.bottom} />
+			<CreationLoaderScreen
+				topInset={insets.top}
+				bottomInset={insets.bottom}
+				isComplete={isCreationComplete}
+			/>
 		);
 	}
 
@@ -2374,13 +2397,25 @@ function VerificationScreen({
 	);
 }
 
-function CreationLoaderScreen({
+export function CreationLoaderScreen({
 	topInset,
 	bottomInset,
+	isComplete,
 }: {
 	topInset: number;
 	bottomInset: number;
+	isComplete: boolean;
 }) {
+	useEffect(() => {
+		if (!isComplete) return;
+
+		const timeout = setTimeout(() => {
+			router.replace("/home");
+		}, 1800);
+
+		return () => clearTimeout(timeout);
+	}, [isComplete]);
+
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ title: "Lernprofil", gestureEnabled: false }} />
@@ -2396,12 +2431,16 @@ function CreationLoaderScreen({
 				}}
 			>
 				<AnimatedFlowerLoader size={220} />
-				<Text
+				<Animated.Text
+					key={isComplete ? "complete" : "creating"}
+					entering={FadeIn.duration(220)}
 					className="mt-10 text-center font-poppins font-semibold text-text"
 					style={{ fontSize: 20, lineHeight: 29 }}
 				>
-					Dein persönliches Lernprofil{"\n"}wird nun für dich erstellt.
-				</Text>
+					{isComplete
+						? "Deine Lernzeiten sind gespeichert.\nDu kannst sie jederzeit unter\nEinstellungen → Lernzeiten anpassen."
+						: "Dein persönliches Lernprofil\nwird nun für dich erstellt."}
+				</Animated.Text>
 			</View>
 		</View>
 	);

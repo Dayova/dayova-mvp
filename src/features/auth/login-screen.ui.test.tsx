@@ -1,10 +1,19 @@
-import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	jest,
+	test,
+} from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { StyleSheet } from "react-native";
 import {
 	AuthChoiceScreen,
+	CreationLoaderScreen,
 	LoginScreen,
+	OnboardingScreen,
 	PlanFitStack,
 } from "./dayova-auth-flow";
 
@@ -35,6 +44,27 @@ const mockRouter = {
 	back: jest.fn(),
 	push: jest.fn(),
 	replace: jest.fn(),
+};
+const mockSetOnboardingAnswer = jest.fn();
+const mockOnboarding = {
+	answers: {
+		studyTime: "30 min",
+		strength: "Mathe",
+		challenge: "Organisation",
+		goal: "Mehr Struktur im Lernen",
+		state: "Sachsen",
+		schoolType: "Gymnasium",
+		grade: "9",
+		dailySchoolTime: "60 min",
+		studyDays: "Montag",
+		learningTime: "16:30",
+		name: "Test User",
+		email: "test@example.com",
+		birthDate: "09.09.2012",
+		password: "sicher123",
+	},
+	hasAnswers: false,
+	setAnswer: mockSetOnboardingAnswer,
 };
 
 jest.mock("react-native-reanimated", () => {
@@ -108,6 +138,14 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => ({
 	DateTimePickerSheet: () => null,
 }));
 
+jest.mock("~/components/ui/animated-flower-loader", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		AnimatedFlowerLoader: () =>
+			React.createElement("AnimatedFlowerLoader", null),
+	};
+});
+
 jest.mock("~/components/ui/keyboard-safe-scroll-view", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const ReactNative =
@@ -161,10 +199,7 @@ jest.mock("~/context/AuthContext", () => ({
 }));
 
 jest.mock("~/context/OnboardingContext", () => ({
-	useOnboarding: () => ({
-		answers: {},
-		setAnswer: jest.fn(),
-	}),
+	useOnboarding: () => mockOnboarding,
 }));
 
 jest.mock("~/lib/navigation", () => ({
@@ -398,5 +433,89 @@ describe("LoginScreen", () => {
 		await waitFor(() => {
 			expect(mockCompletePasswordReset).toHaveBeenCalledWith(exactPassword);
 		});
+	});
+});
+
+describe("CreationLoaderScreen", () => {
+	beforeEach(() => {
+		jest.useFakeTimers();
+		mockRouter.replace.mockReset();
+	});
+
+	afterEach(() => {
+		jest.runOnlyPendingTimers();
+		jest.useRealTimers();
+	});
+
+	test("confirms saved learning times before continuing home", async () => {
+		const screen = await render(
+			<CreationLoaderScreen
+				topInset={24}
+				bottomInset={24}
+				isComplete={false}
+			/>,
+		);
+
+		expect(
+			screen.getByText(
+				"Dein persönliches Lernprofil\nwird nun für dich erstellt.",
+			),
+		).toBeOnTheScreen();
+
+		await screen.rerender(
+			<CreationLoaderScreen topInset={24} bottomInset={24} isComplete={true} />,
+		);
+
+		expect(
+			screen.getByText(
+				"Deine Lernzeiten sind gespeichert.\nDu kannst sie jederzeit unter\nEinstellungen → Lernzeiten anpassen.",
+			),
+		).toBeOnTheScreen();
+
+		await act(async () => {
+			jest.advanceTimersByTime(1799);
+		});
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+
+		await act(async () => {
+			jest.advanceTimersByTime(1);
+		});
+		expect(mockRouter.replace).toHaveBeenCalledWith("/home");
+	});
+});
+
+describe("OnboardingScreen", () => {
+	beforeEach(() => {
+		mockRouter.replace.mockReset();
+		mockSetOnboardingAnswer.mockReset();
+		mockOnboarding.answers.studyDays = "Montag";
+		mockOnboarding.answers.learningTime = "23:30";
+		mockOnboarding.answers.dailySchoolTime = "60 min";
+	});
+
+	test("shows an actionable error instead of advancing past a cross-midnight time", async () => {
+		const screen = await render(
+			<OnboardingScreen initialStepId="learningTime" />,
+		);
+
+		expect(
+			screen.getByText("Wann ist die beste\nUhrzeit für dich zum\nlernen?"),
+		).toBeOnTheScreen();
+
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(
+			await screen.findByRole("alert", {
+				name: "Wähle bitte eine frühere Lernzeit oder eine kürzere tägliche Lernzeit, damit deine Lernzeit vor Mitternacht endet.",
+			}),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText("Wann ist die beste\nUhrzeit für dich zum\nlernen?"),
+		).toBeOnTheScreen();
+		expect(
+			screen.queryByText(
+				"Keine Sorge, du\nkannst deine\nLernzeiten später\nanpassen.",
+			),
+		).toBeNull();
 	});
 });
