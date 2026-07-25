@@ -9,6 +9,10 @@ import {
 	ONBOARDING_DURATION_MINUTES,
 	type OnboardingLearningTimeInput,
 } from "./learningTimeAvailability";
+import {
+	LEARNING_TIMES_BACKFILL_VERSION,
+	markLearningTimesBackfillHandled,
+} from "./learningTimesBackfill";
 
 const normalizeEmail = (email?: string) => email?.trim().toLowerCase() ?? "";
 const DURATION_OPTIONS = ONBOARDING_DURATION_MINUTES.map(
@@ -229,9 +233,23 @@ const insertLearningTimesWhenAbsent = async (
 
 const backfillLegacyLearningTimes = async (
 	ctx: MutationCtx,
-	args: { userId: Id<"users">; ownerTokenIdentifier: string },
+	args: {
+		userId: Id<"users">;
+		ownerTokenIdentifier: string;
+		currentVersion?: number;
+	},
 ) => {
-	if (await hasLearningTimes(ctx, args.ownerTokenIdentifier)) return;
+	if ((args.currentVersion ?? 0) >= LEARNING_TIMES_BACKFILL_VERSION) {
+		return;
+	}
+
+	const markHandled = () =>
+		markLearningTimesBackfillHandled(ctx, args.userId, args.currentVersion);
+
+	if (await hasLearningTimes(ctx, args.ownerTokenIdentifier)) {
+		await markHandled();
+		return;
+	}
 
 	const legacy: Partial<OnboardingLearningTimeInput> = {};
 	for (const key of ONBOARDING_LEARNING_TIME_KEYS) {
@@ -239,7 +257,11 @@ const backfillLegacyLearningTimes = async (
 			.query("onboardingQuestions")
 			.withIndex("by_key", (q) => q.eq("key", key))
 			.take(2);
-		if (questions.length !== 1) return;
+		if (questions.length === 0) return;
+		if (questions.length > 1) {
+			await markHandled();
+			return;
+		}
 		const question = questions[0];
 
 		const answers = await ctx.db
@@ -248,7 +270,11 @@ const backfillLegacyLearningTimes = async (
 				q.eq("userId", args.userId).eq("questionId", question._id),
 			)
 			.take(2);
-		if (answers.length !== 1) return;
+		if (answers.length === 0) return;
+		if (answers.length > 1) {
+			await markHandled();
+			return;
+		}
 		legacy[key] = answers[0].answer;
 	}
 
@@ -269,6 +295,7 @@ const backfillLegacyLearningTimes = async (
 		},
 		invalidInput: "skip",
 	});
+	await markHandled();
 };
 
 const profileFields = (args: {
@@ -341,6 +368,7 @@ export const syncCurrentUser = mutation({
 		await backfillLegacyLearningTimes(ctx, {
 			userId,
 			ownerTokenIdentifier: identity.tokenIdentifier,
+			currentVersion: existingUser?.learningTimesBackfillVersion,
 		});
 		return userId;
 	},
@@ -424,6 +452,11 @@ export const saveOnboardingAnswers = mutation({
 			},
 			invalidInput: "reject",
 		});
+		await markLearningTimesBackfillHandled(
+			ctx,
+			user._id,
+			user.learningTimesBackfillVersion,
+		);
 
 		const questionIdsByKey: Partial<
 			Record<OnboardingQuestionKey, Id<"onboardingQuestions">>

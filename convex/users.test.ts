@@ -241,6 +241,21 @@ test("legacy recovery treats duplicate historical rows as ambiguous", async () =
 	await expect(
 		duplicateQuestionT.query(api.learningTimes.listMine, {}),
 	).resolves.toEqual([]);
+	await duplicateQuestionT.run(async (ctx) => {
+		const duplicateQuestion = await ctx.db
+			.query("onboardingQuestions")
+			.withIndex("by_key", (q) => q.eq("key", "studyDays"))
+			.order("desc")
+			.first();
+		if (!duplicateQuestion) throw new Error("Expected a duplicate question.");
+		await ctx.db.delete("onboardingQuestions", duplicateQuestion._id);
+	});
+	await duplicateQuestionT.mutation(api.users.syncCurrentUser, {
+		name: "User",
+	});
+	await expect(
+		duplicateQuestionT.query(api.learningTimes.listMine, {}),
+	).resolves.toEqual([]);
 
 	const duplicateAnswerT = convexTest(schema, modules).withIdentity(
 		userIdentity,
@@ -273,6 +288,93 @@ test("legacy recovery treats duplicate historical rows as ambiguous", async () =
 	await expect(
 		duplicateAnswerT.query(api.learningTimes.listMine, {}),
 	).resolves.toEqual([]);
+});
+
+test("legacy recovery never resurrects learning times removed in settings", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await seedLegacyLearningTimeAnswers(t, userId, {
+		studyDays: "Freitag",
+		learningTime: "18:00",
+		dailySchoolTime: "60 min",
+	});
+
+	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const learningTimes = await t.query(api.learningTimes.listMine, {});
+	expect(learningTimes).toHaveLength(1);
+	await t.mutation(api.learningTimes.removeMine, {
+		id: learningTimes[0].id,
+	});
+
+	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await expect(t.query(api.learningTimes.listMine, {})).resolves.toEqual([]);
+});
+
+test("completed onboarding never resurrects learning times removed in settings", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: onboardingAnswers(),
+	});
+
+	const learningTimes = await t.query(api.learningTimes.listMine, {});
+	expect(learningTimes).toHaveLength(2);
+	for (const learningTime of learningTimes) {
+		await t.mutation(api.learningTimes.removeMine, {
+			id: learningTime.id,
+		});
+	}
+
+	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await expect(t.query(api.learningTimes.listMine, {})).resolves.toEqual([]);
+});
+
+test("future legacy backfill versions are not downgraded or rerun", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await t.run(async (ctx) => {
+		await ctx.db.patch("users", userId, {
+			learningTimesBackfillVersion: 2,
+		});
+	});
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: onboardingAnswers(),
+	});
+
+	const learningTimes = await t.query(api.learningTimes.listMine, {});
+	for (const learningTime of learningTimes) {
+		await t.mutation(api.learningTimes.removeMine, {
+			id: learningTime.id,
+		});
+	}
+	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await expect(t.query(api.learningTimes.listMine, {})).resolves.toEqual([]);
+	await t.run(async (ctx) => {
+		const user = await ctx.db.get("users", userId);
+		expect(user?.learningTimesBackfillVersion).toBe(2);
+	});
+});
+
+test("settings changes close an incomplete legacy recovery window", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await seedLegacyLearningTimeAnswers(t, userId, {
+		studyDays: "Freitag",
+		learningTime: "18:00",
+	});
+
+	const learningTimeId = await t.mutation(api.learningTimes.upsertMine, {
+		dayOfWeek: 2,
+		startTime: "17:00",
+		endTime: "18:00",
+	});
+	await t.mutation(api.learningTimes.removeMine, { id: learningTimeId });
+	await seedLegacyLearningTimeAnswers(t, userId, {
+		dailySchoolTime: "60 min",
+	});
+
+	await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await expect(t.query(api.learningTimes.listMine, {})).resolves.toEqual([]);
 });
 
 test("legacy recovery leaves manual settings authoritative and skips unsafe answers", async () => {

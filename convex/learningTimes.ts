@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
+import { markLearningTimesBackfillHandledForOwner } from "./learningTimesBackfill";
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const MAX_LEARNING_TIMES = 50;
@@ -147,6 +148,10 @@ export const upsertMine = mutation({
 				endTime: args.endTime,
 				updatedAt: now,
 			});
+			await markLearningTimesBackfillHandledForOwner(
+				ctx,
+				identity.tokenIdentifier,
+			);
 			return existing._id;
 		}
 
@@ -162,7 +167,7 @@ export const upsertMine = mutation({
 			);
 		}
 
-		return await ctx.db.insert("userLearningTimes", {
+		const learningTimeId = await ctx.db.insert("userLearningTimes", {
 			ownerTokenIdentifier: identity.tokenIdentifier,
 			dayOfWeek: args.dayOfWeek,
 			startTime: args.startTime,
@@ -170,6 +175,11 @@ export const upsertMine = mutation({
 			createdAt: now,
 			updatedAt: now,
 		});
+		await markLearningTimesBackfillHandledForOwner(
+			ctx,
+			identity.tokenIdentifier,
+		);
+		return learningTimeId;
 	},
 });
 
@@ -189,6 +199,10 @@ export const removeMine = mutation({
 		}
 
 		await ctx.db.delete("userLearningTimes", existing._id);
+		await markLearningTimesBackfillHandledForOwner(
+			ctx,
+			identity.tokenIdentifier,
+		);
 		return { success: true };
 	},
 });
