@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
@@ -12,7 +13,6 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
-import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import {
 	LEARNING_SESSION_COMPOSITION_FLAG,
 	resolveLearningSessionCompositionVariant,
@@ -281,7 +281,9 @@ export default function LearningPlanGeneratingScreen() {
 				showsVerticalScrollIndicator={false}
 			>
 				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
-					<AnalysisOrbitLoader />
+					<View className="mb-12">
+						<AnimatedFlowerLoader />
+					</View>
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text/70">
 						Wir erstellen jetzt deinen vollständigen Lernplan.
 					</Text>

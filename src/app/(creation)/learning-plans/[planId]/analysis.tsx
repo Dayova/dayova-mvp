@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Text } from "~/components/ui/text";
@@ -11,7 +12,6 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
-import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { dismissToOrReplace, goBackOrReplace } from "~/lib/navigation";
@@ -101,7 +101,9 @@ export default function LearningPlanAnalysisScreen() {
 				showsVerticalScrollIndicator={false}
 			>
 				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
-					<AnalysisOrbitLoader />
+					<View className="mb-12">
+						<AnimatedFlowerLoader />
+					</View>
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
 						Beantworte 5 kurze Fragen – bei breitem Stoff höchstens 8.
 					</Text>
