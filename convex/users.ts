@@ -201,10 +201,6 @@ const insertLearningTimesWhenAbsent = async (
 		invalidInput: "reject" | "skip";
 	},
 ) => {
-	if (await hasLearningTimes(ctx, args.ownerTokenIdentifier)) {
-		return { status: "preserved" as const, createdCount: 0 };
-	}
-
 	const derived = deriveOnboardingLearningTimes(args.input);
 	if (!derived.ok) {
 		if (args.invalidInput === "reject") {
@@ -213,6 +209,10 @@ const insertLearningTimesWhenAbsent = async (
 			);
 		}
 		return { status: "needsSetup" as const, createdCount: 0 };
+	}
+
+	if (await hasLearningTimes(ctx, args.ownerTokenIdentifier)) {
+		return { status: "preserved" as const, createdCount: 0 };
 	}
 
 	const now = Date.now();

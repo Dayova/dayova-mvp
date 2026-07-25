@@ -176,6 +176,36 @@ test("invalid derived ranges roll back onboarding persistence", async () => {
 	expect(savedAnswers).toEqual([]);
 });
 
+test("invalid onboarding is rejected when settings already contain learning times", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	await t.mutation(api.learningTimes.upsertMine, {
+		dayOfWeek: 2,
+		startTime: "17:00",
+		endTime: "18:00",
+	});
+
+	await expect(
+		t.mutation(api.users.saveOnboardingAnswers, {
+			answers: onboardingAnswers({
+				learningTime: "23:30",
+				dailySchoolTime: "60 min",
+			}),
+		}),
+	).rejects.toThrow("vor Mitternacht");
+
+	await expect(t.query(api.learningTimes.listMine, {})).resolves.toMatchObject([
+		{ dayOfWeek: 2, startTime: "17:00", endTime: "18:00" },
+	]);
+	const savedAnswers = await t.run(async (ctx) =>
+		ctx.db
+			.query("userOnboardingAnswers")
+			.withIndex("by_userId", (q) => q.eq("userId", userId))
+			.take(20),
+	);
+	expect(savedAnswers).toEqual([]);
+});
+
 test("returning users are lazily backfilled from complete legacy answers", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
