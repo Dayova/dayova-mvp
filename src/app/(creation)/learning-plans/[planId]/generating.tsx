@@ -19,12 +19,9 @@ import {
 } from "~/features/learning-plans/session-experiment";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/analytics";
-import {
-	definedAnalyticsProperties,
-	isPostHogConfigured,
-} from "~/lib/analytics-core";
+import { isPostHogConfigured } from "~/lib/analytics";
 import { goBackOrReplace } from "~/lib/navigation";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -156,26 +153,10 @@ export default function LearningPlanGeneratingScreen() {
 				sessionCompositionVariant,
 			})
 				.then((result) => {
-					if (result.compositionEligibleSessionCount > 0) {
-						void capture(
-							"learning_session_composition_exposed",
-							definedAnalyticsProperties({
-								learning_plan_id: planId,
-								feature_flag_key: LEARNING_SESSION_COMPOSITION_FLAG,
-								session_composition_variant: sessionCompositionVariant,
-								eligible_session_count: result.compositionEligibleSessionCount,
-							}),
-						);
-					}
-					void capture(
-						"study_plan_generated",
-						definedAnalyticsProperties({
-							learning_plan_id: planId,
-							session_count: result.sessionCount,
-							answer_count: answerList.length,
-							session_composition_variant: sessionCompositionVariant,
-						}),
-					);
+					void capture("study_plan_generated", {
+						learning_plan_id: planId,
+						session_count: result.sessionCount,
+					});
 				})
 				.catch((error: unknown) => {
 					setErrorMessage(

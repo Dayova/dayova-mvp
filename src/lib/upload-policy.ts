@@ -14,7 +14,7 @@ export const ACCEPTED_FILE_TYPES = [
 	"image/jpeg",
 	"image/png",
 	"image/webp",
-];
+] as const;
 
 const ACCEPTED_UPLOAD_EXTENSIONS = [
 	"pdf",

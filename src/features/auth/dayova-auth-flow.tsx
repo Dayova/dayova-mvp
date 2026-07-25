@@ -110,6 +110,8 @@ import { useOnboarding } from "~/context/OnboardingContext";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { PASSWORD_RESET_SUCCESS_PATH } from "~/lib/auth-routing";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { GERMAN_FEDERAL_STATES } from "~/lib/federal-states";
+import { GRADE_OPTIONS } from "~/lib/grades";
 import { useBackIntent } from "~/lib/navigation";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
 import {
@@ -288,28 +290,6 @@ const GOAL_OPTIONS = [
 	"Besser vorbereitet sein",
 ] as const;
 
-// Persisted onboarding answers use these labels, so this list must contain every
-// German federal state instead of only the few values visible in the Figma wheel.
-const FEDERAL_STATES = [
-	"Bremen",
-	"Hamburg",
-	"Baden-Württemberg",
-	"Sachsen",
-	"Sachsen-Anhalt",
-	"Brandenburg",
-	"Bayern",
-	"Berlin",
-	"Hessen",
-	"Niedersachsen",
-	"Nordrhein-Westfalen",
-	"Rheinland-Pfalz",
-	"Saarland",
-	"Schleswig-Holstein",
-	"Thüringen",
-	"Mecklenburg-Vorpommern",
-] as const;
-
-const GRADE_OPTIONS = ["6", "7", "8", "9", "10", "11", "12"] as const;
 const CURRENT_YEAR = new Date().getFullYear();
 const DEFAULT_BIRTH_DAY = "09";
 const DEFAULT_BIRTH_MONTH = "09";
@@ -3137,7 +3117,7 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 		<OnboardingSelect
 			accessibilityLabel="Bundesland auswählen"
 			value={answers.state || "Sachsen"}
-			options={FEDERAL_STATES}
+			options={GERMAN_FEDERAL_STATES}
 			testID="onboarding-state-picker"
 			title="Bundesland auswählen"
 			onChange={(value) => setAnswer("state", value)}

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { OnboardingAnswers } from "~/context/OnboardingContext";
+import { prepareClerkRegistration } from "~/lib/clerk-registration";
 import {
 	getNextOnboardingStepIndex,
 	getOnboardingRegistrationPayload,
@@ -69,19 +70,30 @@ describe("onboarding flow decisions", () => {
 		expect(getNextOnboardingStepIndex(0, 0)).toBe(0);
 	});
 
-	test("normalizes the Clerk registration payload", () => {
-		expect(
-			getOnboardingRegistrationPayload(
-				answers({ name: "  Jakob Rössner  ", email: "  JAKOB@EXAMPLE.DE " }),
-			),
-		).toEqual({
+	test("preserves grade 13 from onboarding through the Clerk registration boundary", () => {
+		const registrationPayload = getOnboardingRegistrationPayload(
+			answers({
+				name: "  Jakob Rössner  ",
+				email: "  JAKOB@EXAMPLE.DE ",
+				grade: "13",
+			}),
+		);
+
+		expect(registrationPayload).toEqual({
 			name: "Jakob Rössner",
 			email: "jakob@example.de",
 			password: "supersecret",
 			birthDate: "09.09.2012",
-			grade: "9",
+			grade: "13",
 			schoolType: "Gymnasium",
 			state: "Sachsen",
+		});
+
+		expect(prepareClerkRegistration(registrationPayload)).toMatchObject({
+			profile: { grade: "13" },
+			signUp: {
+				unsafeMetadata: { grade: "13" },
+			},
 		});
 	});
 });

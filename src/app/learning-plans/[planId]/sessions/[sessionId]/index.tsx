@@ -43,12 +43,12 @@ import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
 import { PracticeCompletionCard } from "~/features/learning-plans/practice-completion-card";
+import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
 import {
 	CONTINUE_LEARNING_MINUTES,
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
-	isQualifiedSessionCompletion,
 } from "~/features/learning-plans/session-progress";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
@@ -59,8 +59,7 @@ import type {
 	SessionContentItem,
 } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/analytics";
-import { definedAnalyticsProperties } from "~/lib/analytics-core";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
@@ -128,33 +127,6 @@ const phaseTitle = (
 	phase: LearningSessionContentSnapshot["session"]["phase"],
 ) =>
 	phase === "theory" ? "Lernkarten" : phase === "practice" ? "Üben" : "Praxis";
-
-const learningSessionAnalyticsProperties = (result: {
-	learningPlanId: Id<"learningPlans">;
-	learningPlanSessionId: Id<"learningPlanSessions">;
-	phase: LearningSessionContentSnapshot["session"]["phase"];
-	plannedDayKey: string;
-	startTime: string;
-	durationMinutes: number;
-	compositionVariant: "control" | "split";
-	activeStudySeconds?: number;
-	subject: string;
-	examTypeLabel?: string;
-	examDateKey?: string;
-}) =>
-	definedAnalyticsProperties({
-		learning_plan_id: result.learningPlanId,
-		learning_plan_session_id: result.learningPlanSessionId,
-		phase: result.phase,
-		planned_day_key: result.plannedDayKey,
-		start_time: result.startTime,
-		duration_minutes: result.durationMinutes,
-		session_composition_variant: result.compositionVariant,
-		active_study_seconds: result.activeStudySeconds,
-		subject: result.subject,
-		exam_type_label: result.examTypeLabel,
-		exam_date_key: result.examDateKey,
-	});
 
 const isIosSimulator = Platform.OS === "ios" && !Device.isDevice;
 const iosSimulatorSpeechMessage =
@@ -1087,13 +1059,10 @@ export default function LearningSessionContentScreen() {
 			didStartTrackingRef.current = true;
 			startSessionPromiseRef.current = startSession({ sessionId })
 				.then((result) => {
-					void capture(
-						"study_slot_started",
-						definedAnalyticsProperties({
-							...learningSessionAnalyticsProperties(result),
-							started_at: result.startedAt,
-						}),
-					);
+					void capture("study_slot_started", {
+						...learningSessionAnalyticsProperties(result),
+						started_at: result.startedAt,
+					});
 					return result;
 				})
 				.catch((error: unknown) => {
@@ -1308,29 +1277,16 @@ export default function LearningSessionContentScreen() {
 		}
 
 		const activeStudySeconds = getActiveStudySeconds();
-		const qualifiedCompletion = isQualifiedSessionCompletion(
-			content?.session.durationMinutes ?? 0,
-			activeStudySeconds,
-		);
 		const completed = await recordSessionOutcome({
 			sessionId,
 			outcome: "completed",
 			activeStudySeconds,
 		});
 		didRecordOutcomeRef.current = true;
-		const properties = definedAnalyticsProperties({
+		void capture("study_slot_completed", {
 			...learningSessionAnalyticsProperties(completed),
-			outcome: "completed",
 			outcome_at: completed.outcomeAt,
-			qualified_completion: qualifiedCompletion,
 		});
-		void capture("study_slot_completed", properties);
-		if (qualifiedCompletion) {
-			void capture("qualified_study_slot_completed", properties);
-		}
-		if (completed.phase === "rehearsal") {
-			void capture("generalprobe_completed", properties);
-		}
 		return completed;
 	};
 
@@ -1372,15 +1328,6 @@ export default function LearningSessionContentScreen() {
 			setShowAnalysis(false);
 			setIsContinuation(true);
 			didAutoFinishRef.current = false;
-			void capture(
-				"continue_learning_started",
-				definedAnalyticsProperties({
-					learning_plan_id: content.session.learningPlanId,
-					learning_plan_session_id: content.session.id,
-					session_composition_variant: content.session.compositionVariant,
-					continue_minutes: CONTINUE_LEARNING_MINUTES,
-				}),
-			);
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(
