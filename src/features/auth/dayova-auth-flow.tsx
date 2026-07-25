@@ -2395,7 +2395,7 @@ function CreationLoaderScreen({
 					justifyContent: "center",
 				}}
 			>
-				<AnimatedFlowerLoader size={190} />
+				<AnimatedFlowerLoader size={220} />
 				<Text
 					className="mt-10 text-center font-poppins font-semibold text-text"
 					style={{ fontSize: 20, lineHeight: 29 }}
