@@ -9,14 +9,16 @@ import { SectionHeader } from "~/components/ui/section-header";
 import { Text } from "~/components/ui/text";
 import { InsetTextField } from "~/components/ui/text-field";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAccountActions, useAuthSession } from "~/context/AuthContext";
 
 const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value.trim());
 const isValidName = (value: string) => value.trim().length >= 2;
 
 export default function ProfileScreen() {
 	const router = useRouter();
-	const { user, isLoading, updateProfile, verifyProfileEmailCode } = useAuth();
+	const { user } = useAuthSession();
+	const { isLoading, updateProfile, verifyProfileEmailCode } =
+		useAccountActions();
 	const userDraftKey = `${user?.clerkId ?? ""}:${user?.name ?? ""}:${user?.email ?? ""}`;
 	const [draftUserKey, setDraftUserKey] = useState(userDraftKey);
 	const [name, setName] = useState(user?.name ?? "");
@@ -219,6 +221,8 @@ export default function ProfileScreen() {
 
 				{feedback ? (
 					<View
+						accessibilityLiveRegion="polite"
+						accessibilityRole={feedback.tone === "error" ? "alert" : undefined}
 						className="mt-5 rounded-[22px] px-5 py-4"
 						style={{
 							backgroundColor:

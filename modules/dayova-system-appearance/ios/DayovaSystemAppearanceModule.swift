@@ -3,17 +3,29 @@ import React
 import UIKit
 
 public class DayovaSystemAppearanceModule: Module {
+  // Decision: docs/contexts/mobile-app/adr/0001-use-local-ios-system-appearance-bridge.md
+  private static let snapshotShieldColor = UIColor(
+    red: 0.0,
+    green: 186.0 / 255.0,
+    blue: 1.0,
+    alpha: 1.0)
+
   private var observerView: AppearanceObserverView?
+  private var isObserving = false
+  private var willResignActiveObserver: NSObjectProtocol?
+  private var snapshotShieldView: UIView?
+  private var snapshotShieldGeneration = 0
 
   public func definition() -> ModuleDefinition {
     Name("DayovaSystemAppearance")
 
-    Events("onChange")
+    Events("onChange", "onResume")
 
-    OnCreate {
+    OnCreate { [weak self] in
       DispatchQueue.main.async {
         RCTUseKeyWindowForSystemStyle(true)
         Self.notifyReactNativeAppearance()
+        self?.startSnapshotShieldObservation()
       }
     }
 
@@ -21,27 +33,53 @@ public class DayovaSystemAppearanceModule: Module {
       return Self.readColorSchemeOnMainQueue()
     }
 
+    Function("releaseSnapshotShield") { [weak self] (generation: Int) in
+      DispatchQueue.main.async {
+        self?.releaseSnapshotShield(generation: generation)
+      }
+    }
+
     OnStartObserving("onChange") { [weak self] in
       DispatchQueue.main.async {
-        self?.installObserver()
+        guard let self else { return }
+        self.isObserving = true
+        self.installObserver()
       }
     }
 
     OnStopObserving("onChange") { [weak self] in
       DispatchQueue.main.async {
-        self?.removeObserver()
+        guard let self else { return }
+        self.isObserving = false
+        self.removeObserver()
       }
     }
 
     OnAppBecomesActive { [weak self] in
-      self?.emitCurrentColorScheme()
+      DispatchQueue.main.async {
+        guard let self else { return }
+        Self.notifyReactNativeAppearance()
+        self.refreshAppearanceObservation()
+        let generation = self.snapshotShieldGeneration
+        self.sendEvent("onResume", ["generation": generation])
+      }
     }
 
     OnDestroy { [weak self] in
-      guard let observerView = self?.observerView else { return }
-      self?.observerView = nil
+      guard let self else { return }
+
       DispatchQueue.main.async {
-        observerView.removeFromSuperview()
+        self.isObserving = false
+        self.observerView?.removeFromSuperview()
+        self.snapshotShieldView?.removeFromSuperview()
+
+        if let willResignActiveObserver = self.willResignActiveObserver {
+          NotificationCenter.default.removeObserver(willResignActiveObserver)
+        }
+
+        self.observerView = nil
+        self.snapshotShieldView = nil
+        self.willResignActiveObserver = nil
       }
     }
   }
@@ -93,6 +131,69 @@ public class DayovaSystemAppearanceModule: Module {
   private func removeObserver() {
     observerView?.removeFromSuperview()
     observerView = nil
+  }
+
+  private func startSnapshotShieldObservation() {
+    if let willResignActiveObserver {
+      NotificationCenter.default.removeObserver(willResignActiveObserver)
+    }
+
+    willResignActiveObserver = NotificationCenter.default.addObserver(
+      forName: UIApplication.willResignActiveNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      self?.showSnapshotShield()
+    }
+  }
+
+  private func showSnapshotShield() {
+    guard let window = Self.activeWindow() else { return }
+    snapshotShieldGeneration += 1
+
+    if let snapshotShieldView {
+      snapshotShieldView.frame = window.bounds
+      window.bringSubviewToFront(snapshotShieldView)
+      return
+    }
+
+    let shield = UIView(frame: window.bounds)
+    shield.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    shield.backgroundColor = Self.snapshotShieldColor
+    shield.isUserInteractionEnabled = false
+    shield.isAccessibilityElement = false
+    shield.accessibilityElementsHidden = true
+    shield.accessibilityViewIsModal = true
+
+    window.addSubview(shield)
+    snapshotShieldView = shield
+  }
+
+  private func releaseSnapshotShield(generation: Int) {
+    guard snapshotShieldView != nil,
+      generation == snapshotShieldGeneration
+    else {
+      return
+    }
+
+    snapshotShieldView?.removeFromSuperview()
+    snapshotShieldView = nil
+  }
+
+  private func refreshAppearanceObservation() {
+    guard isObserving else { return }
+
+    guard let activeWindow = Self.activeWindow() else {
+      removeObserver()
+      return
+    }
+
+    if observerView?.window !== activeWindow {
+      installObserver()
+      return
+    }
+
+    emitCurrentColorScheme()
   }
 
   private func emitCurrentColorScheme() {

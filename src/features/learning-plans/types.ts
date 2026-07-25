@@ -53,7 +53,7 @@ type SessionContentItemKind =
 
 export type SessionAnswerRating = "notCorrect" | "partiallyCorrect" | "correct";
 
-export type TheoryContent = {
+type TheoryContent = {
 	conceptTitle: string;
 	question: string;
 	explanation: string;

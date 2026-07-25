@@ -7,6 +7,7 @@ import type {
 
 declare class DayovaSystemAppearanceModule extends NativeModule<DayovaSystemAppearanceModuleEvents> {
 	getColorScheme(): SystemColorScheme;
+	releaseSnapshotShield(generation: number): void;
 }
 
 export default requireNativeModule<DayovaSystemAppearanceModule>(

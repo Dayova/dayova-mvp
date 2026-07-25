@@ -55,7 +55,7 @@ import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-vie
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useValidationAnalytics } from "~/lib/analytics";
@@ -258,7 +258,7 @@ export default function NewEntryScreen() {
 	const { colors } = useDayovaTheme();
 	const fieldIconColor = colors.secondaryText;
 	const fieldTextColor = colors.text;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDayEntry = useMutation(api.dayEntries.create);
 	const { capture } = useValidationAnalytics();

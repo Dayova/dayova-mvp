@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { useRef, useState } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import {
 	Bell,
@@ -7,13 +8,17 @@ import {
 	Moon,
 	Palette,
 	Settings,
+	SquareLock,
 	Sun,
 	Timer,
 } from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAccountActions } from "~/context/AuthContext";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import { useDayovaTheme } from "~/lib/theme";
 import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
 import { cn } from "~/lib/utils";
@@ -36,6 +41,8 @@ function SettingsRow({
 	label,
 	trailing,
 	onPress,
+	disabled = false,
+	busy = false,
 }: {
 	icon: (props: {
 		size?: number;
@@ -45,6 +52,8 @@ function SettingsRow({
 	label: string;
 	trailing?: React.JSX.Element;
 	onPress?: () => void;
+	disabled?: boolean;
+	busy?: boolean;
 }) {
 	const Icon = icon;
 	const { colors } = useDayovaTheme();
@@ -54,7 +63,11 @@ function SettingsRow({
 			icon={<Icon size={22} color={colors.text} strokeWidth={2} />}
 			label={label}
 			onPress={onPress}
-			disabled={!onPress}
+			disabled={disabled}
+			accessibilityState={{
+				busy,
+				disabled,
+			}}
 			trailing={trailing}
 		/>
 	);
@@ -105,10 +118,32 @@ function ThemePreferenceToggle({
 
 export default function SettingsScreen() {
 	const router = useRouter();
-	const { logout } = useAuth();
+	const { logout } = useAccountActions();
 	const { preference, setPreference } = useDayovaTheme();
 	const { height } = useWindowDimensions();
+	const [logoutError, setLogoutError] = useState<string | null>(null);
+	const [isLoggingOut, setIsLoggingOut] = useState(false);
+	const logoutGateRef = useRef(createAsyncActionGate());
 	const contentMinHeight = Math.max(height - 268, 360);
+	const handleLogout = () => {
+		void logoutGateRef.current.run(async () => {
+			setLogoutError(null);
+			setIsLoggingOut(true);
+			try {
+				await logout();
+			} catch (error) {
+				logDiagnosticError("Failed to sign out.", error, {
+					source: "settings.logout",
+					level: "error",
+				});
+				setLogoutError(
+					"Die Abmeldung ist fehlgeschlagen. Bitte versuche es erneut.",
+				);
+			} finally {
+				setIsLoggingOut(false);
+			}
+		});
+	};
 
 	return (
 		<Screen>
@@ -150,13 +185,18 @@ export default function SettingsScreen() {
 							onPress={() => router.push("/profile")}
 						/>
 						<SettingsRow
+							icon={SquareLock}
+							label="Passwort ändern"
+							onPress={() => router.push("/change-password")}
+						/>
+						<SettingsRow
 							icon={Logout}
 							label="Abmelden"
-							onPress={async () => {
-								await logout();
-								router.replace("/");
-							}}
+							onPress={handleLogout}
+							disabled={isLoggingOut}
+							busy={isLoggingOut}
 						/>
+						{logoutError ? <ErrorMessage>{logoutError}</ErrorMessage> : null}
 					</View>
 				</View>
 			</ScreenScroll>

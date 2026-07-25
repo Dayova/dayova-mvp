@@ -125,7 +125,7 @@ index 0ba594a..5025f1c 100644
 +When a durable note is needed:
 +
 +1. Write the findings to a single Markdown file, citing each claim's source.
-+2. Save it where the repo already keeps such notes; match the existing convention, and if there is none, put it somewhere sensible and say where.
++2. Save it where the repo already keeps such notes; match the existing convention, and if there is none, ask the user where to save it.
 +3. Link the file from the issue, map, or handoff that needs it.
 +
 +Use a background subagent only when the research is broad enough to benefit from parallel work and the current Codex environment permits subagents. Otherwise research in the current turn. Do not create a branch unless the parent workflow explicitly asks for one and the user has authorized branch side effects.
@@ -206,7 +206,7 @@ new file mode 100644
 index 0000000..5e327b7
 --- /dev/null
 +++ b/.agents/skills/setup-matt-pocock-skills/issue-tracker-linear.md
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,45 @@
 +# Issue tracker: Linear
 +
 +Issues, specs, and tickets for this repo live in Linear.
@@ -214,6 +214,12 @@ index 0000000..5e327b7
 +- Workspace: `<workspace>`
 +- Team: `<team name>`
 +- Team key: `<KEY>`
++- Backlog status: `<exact name>`
++- Unstarted status: `<exact name>`
++- Started status: `<exact name>`
++- Review status: `<exact name>`
++- Completed status: `<exact name>`
++- Canceled status: `<exact name>`
 +- External PRs as a request surface: `no`
 +- GitHub Issues compatibility sync: `<none or owner/repo and sync direction>`
 +
@@ -226,7 +232,7 @@ index 0000000..5e327b7
 +- Preserve existing labels when applying mapped category or disposition roles; some connector update operations replace the complete label set.
 +- Use Linear parent/sub-issue and blocking relationships, not prose alone. Keep human-readable `Parent` and `Blocked by` sections when a publishing skill requires them.
 +- Post triage comments with the disclaimer required by the `triage` skill.
-+- Use the team's backlog/unstarted/started/completed/canceled statuses consistently and record their exact names here.
++- Use the team's backlog/unstarted/started/review/completed/canceled statuses consistently and record their exact names here.
 +
 +Do not infer GitHub as canonical merely because `git remote` points there. A configured GitHub sync is a compatibility surface, not a second source of truth. After a fallback write, verify the synced Linear issue before reporting success; never create the same item independently in both systems.
 +
@@ -397,7 +403,7 @@ index 8a6f644..4b1672c 100644
  3. **Create the map** (label `wayfinder:map`): Destination and Notes filled in, Decisions-so-far empty, the fog sketched into **Not yet specified**.
  4. **Create the tickets you can specify now** as child issues of the map — then wire blocking edges in a **second pass** (issues need ids before they can reference each other). Wiring sorts them into the frontier and the blocked; everything you can't yet specify stays in the fog — the **Not yet specified** section.
 -5. **Fire the research subagents.** For each `research` ticket you just created, spin up a `/research` subagent to resolve it in parallel, capturing its findings on a throwaway `research/<name>` branch with a context pointer from the ticket.
-+5. **Start eligible research.** For each `research` ticket you just created, either resolve it with `/research` in the current turn or spin up a `/research` subagent when subagents are available and parallelism helps. Capture durable findings as a cited Markdown note only when the ticket needs a context pointer. Do not create a branch unless the user or tracker workflow explicitly asks for branch-based research.
++5. **Start eligible research.** For each `research` ticket you just created, run `/research` in the current turn or spin up a `/research` subagent when subagents are available and parallelism helps. Keep the ticket open while charting. Capture durable findings as a cited Markdown note only when the ticket needs a context pointer; then use the work-through flow to post the resolution comment, close the ticket, and update Decisions-so-far. Only create a branch when the parent workflow or tracker requires branch-based research and the user explicitly authorizes that side effect.
  6. Stop — charting is one session's work; it hand-resolves nothing.
  
  ### Work through the map

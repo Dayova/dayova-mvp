@@ -4,6 +4,14 @@ This context covers the Expo app, Expo Router, navigation, native UI, styling, c
 
 Notion is Dayova's main internal documentation and knowledge workspace. Keep this file focused on implementation-facing terminology, conventions, and assumptions that must evolve with the code, and link to relevant Notion records instead of duplicating shared documentation.
 
+## UI module seams
+
+The accepted implementation-quality seams are recorded in
+[ADR 0002](adr/0002-deep-ui-seams-and-behavior-tests.md). New asynchronous UI
+actions should use a synchronous transaction gate when a second invocation
+would duplicate a mutation, expose busy state to accessibility, and render a
+recoverable error in the surface where the action occurred.
+
 ## Language
 
 **User-facing error message**:
@@ -14,6 +22,8 @@ _Avoid_: Called by client, Server Error, raw stack trace
 
 - `docs/bottom-sheets.md`
 - `docs/styling.md`
+- `docs/contexts/mobile-app/adr/0001-select-list-components-by-workload.md`
+  for choosing between ScrollView, FlatList, FlashList, and LegendList.
 - `../../../modules/dayova-system-appearance/README.md` for the iOS appearance bridge,
   native contract, operational guidance, validation matrix, and removal
   criteria.

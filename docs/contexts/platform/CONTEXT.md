@@ -77,6 +77,14 @@ silently restore pnpm's default of installing missing peer dependencies.
 Keeping `autoInstallPeers: false` in the workspace file instead preserves
 Dayova's policy that peer dependencies must be declared deliberately.
 
+Keep `virtualStoreDirMaxLength: 40` in `pnpm-workspace.yaml`. Native Android
+dependencies add CMake build directories below pnpm's virtual store, and the
+default Windows package-directory length can push those paths beyond CMake
+3.22's 250-character object-path budget in deep worktrees. Forty retains
+readable package prefixes where possible while leaving enough space for CMake
+and Ninja's generated suffixes. This is a pnpm behavior setting and therefore
+does not belong in `.npmrc`.
+
 pnpm 11 also replaced the legacy dependency-build settings, including
 `onlyBuiltDependencies`, with one `allowBuilds` map. Dayova keeps that map as
 the sole lifecycle-script policy so an unreviewed dependency cannot execute
@@ -101,6 +109,27 @@ A package-manager change can affect lockfile parsing, peer resolution, patch
 application, dependency lifecycle scripts, CI, and native builds. Therefore,
 update all three pins together and verify a frozen install, the full checks,
 production exports, and native EAS builds.
+
+React Native caches absolute native-module paths in
+`android/build/generated/autolinking/autolinking.json`. A pnpm upgrade or a
+`virtualStoreDirMaxLength` change can rename the hashed virtual-store directories
+without changing the package graph that Gradle's cache sentinel tracks. The
+`expo:android` script therefore runs
+`scripts/prepare-android-autolinking-cache.cjs` first. The preflight preserves a
+valid cache and removes only `package.json.sha` when cached native source
+directories no longer exist, causing React Native's Gradle plugin to regenerate
+its own cache. Do not replace this with unconditional deletion of Gradle output
+or `node_modules`.
+
+The Expo/React Native plugin graph and embedded Metro bundle can exceed Gradle's
+former 512 MiB metaspace ceiling during native release builds.
+`plugins/withAndroidGradleJvmMemory.js` therefore keeps the generated
+`org.gradle.jvmargs` in `android/gradle.properties` at 4 GiB heap and 1 GiB
+metaspace. Change that plugin—not the gitignored generated file—only when a
+measured build proves a different ceiling is safe. An apparent stop around
+`createBundle*JsAndAssets` must be diagnosed from the Gradle and Node processes
+before deleting caches; the one-shot release bundle is expected to complete
+while development builds retain watch mode.
 
 ## iOS Privacy Purpose Strings
 

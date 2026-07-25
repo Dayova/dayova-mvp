@@ -1,7 +1,7 @@
 import type React from "react";
 import { createContext, useContext, useMemo, useState } from "react";
 
-type OnboardingAnswers = {
+export type OnboardingAnswers = {
 	studyTime: string;
 	strength: string;
 	challenge: string;

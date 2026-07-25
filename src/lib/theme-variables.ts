@@ -76,3 +76,121 @@ export const DARK_THEME_VARIABLES = {
 	"--white-20": "224 11% 32%",
 	"--white-10": "224 12% 24%",
 } as const;
+
+type DarkThemeVariable = keyof typeof DARK_THEME_VARIABLES;
+
+const numericHslToHex = (value: string) => {
+	const match = value.match(
+		/^(\d+(?:\.\d+)?) (\d+(?:\.\d+)?)% (\d+(?:\.\d+)?)%$/,
+	);
+	if (!match) {
+		throw new Error(`Expected a numeric HSL theme value, received: ${value}`);
+	}
+
+	const hue = Number(match[1]);
+	const saturation = Number(match[2]) / 100;
+	const lightness = Number(match[3]) / 100;
+	const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+	const intermediate = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
+	const offset = lightness - chroma / 2;
+
+	let red = 0;
+	let green = 0;
+	let blue = 0;
+
+	if (hue < 60) {
+		red = chroma;
+		green = intermediate;
+	} else if (hue < 120) {
+		red = intermediate;
+		green = chroma;
+	} else if (hue < 180) {
+		green = chroma;
+		blue = intermediate;
+	} else if (hue < 240) {
+		green = intermediate;
+		blue = chroma;
+	} else if (hue < 300) {
+		red = intermediate;
+		blue = chroma;
+	} else {
+		red = chroma;
+		blue = intermediate;
+	}
+
+	return `#${[red, green, blue]
+		.map((component) =>
+			Math.round((component + offset) * 255)
+				.toString(16)
+				.padStart(2, "0"),
+		)
+		.join("")}`.toUpperCase();
+};
+
+const darkThemeHex = (variable: DarkThemeVariable) =>
+	numericHslToHex(DARK_THEME_VARIABLES[variable]);
+
+const darkThemeHsl = (variable: DarkThemeVariable) =>
+	`hsl(${DARK_THEME_VARIABLES[variable]})`;
+
+/**
+ * Plain React Native colors derived from the same HSL tokens that NativeWind
+ * and web consume. The semantic-name mapping is the only duplicated layer.
+ */
+export const DARK_THEME_COLORS = {
+	primary: darkThemeHex("--primary"),
+	primaryStrong: darkThemeHex("--primary-strong"),
+	primaryAccent: darkThemeHex("--path-7"),
+	buttonNeutral: darkThemeHex("--button-neutral"),
+	secondary: darkThemeHex("--secondary"),
+	text: darkThemeHex("--text"),
+	secondaryText: darkThemeHex("--secondary-text"),
+	background: darkThemeHex("--background"),
+	appBackground: darkThemeHex("--background"),
+	surface: darkThemeHex("--surface"),
+	light1: darkThemeHex("--light-1"),
+	light2: darkThemeHex("--light-2"),
+	light3: darkThemeHex("--light-3"),
+	mutedSurface: darkThemeHex("--muted"),
+	border: darkThemeHex("--border"),
+	success: darkThemeHex("--success"),
+	successSubtle: darkThemeHex("--success-subtle"),
+	wrong: darkThemeHex("--wrong"),
+	wrongSubtle: darkThemeHex("--wrong-subtle"),
+	destructive: darkThemeHex("--destructive"),
+	info: darkThemeHex("--info"),
+	infoSubtle: darkThemeHex("--info-subtle"),
+	system: darkThemeHex("--system"),
+	systemSubtle: darkThemeHex("--system-subtle"),
+	theorie: darkThemeHex("--theorie"),
+	theorieSubtle: darkThemeHex("--theorie-subtle"),
+	ueben: darkThemeHex("--ueben"),
+	uebenSubtle: darkThemeHex("--ueben-subtle"),
+	praxis: darkThemeHex("--praxis"),
+	praxisSubtle: darkThemeHex("--praxis-subtle"),
+	hausaufgabe: darkThemeHex("--hausaufgabe"),
+	hausaufgabeSubtle: darkThemeHex("--hausaufgabe-subtle"),
+	path1: darkThemeHex("--path-1"),
+	path2: darkThemeHex("--path-2"),
+	path3: darkThemeHex("--path-3"),
+	path4: darkThemeHex("--path-4"),
+	path5: darkThemeHex("--path-5"),
+	path6: darkThemeHex("--path-6"),
+	path7: darkThemeHex("--path-7"),
+	pathLockedBase: "#ADB3BC",
+	uploadArtworkBorder: darkThemeHex("--border"),
+	uploadArtworkIconBackground: darkThemeHex("--light-2"),
+	uploadArtworkIconBorder: darkThemeHex("--border"),
+	uploadArtworkIconFill: darkThemeHex("--light-3"),
+	uploadArtworkIconMuted: darkThemeHex("--path-3"),
+	uploadArtworkShadow: "#000000",
+} as const;
+
+export const DARK_NAV_THEME_COLORS = {
+	background: darkThemeHsl("--background"),
+	border: darkThemeHsl("--border"),
+	card: darkThemeHsl("--card"),
+	notification: darkThemeHsl("--wrong"),
+	primary: darkThemeHsl("--primary"),
+	text: darkThemeHsl("--text"),
+} as const;

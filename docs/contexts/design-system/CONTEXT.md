@@ -7,7 +7,7 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 ## Current Design Delivery Model
 
 Effective 14 July 2026, existing Figma work is a visual reference and baseline,
-not a required approval, sequencing, or release gate. Jakob Roessner and Fabius
+not a required approval, sequencing, or release gate. Jakob Rössner and Fabius
 Schurig may make product-design, UI, and UX decisions and implement them
 directly. Record deliberate changes in Linear and update the app's semantic
 tokens and repository guidance; any later Figma reconciliation is non-blocking
@@ -20,6 +20,7 @@ unless the team explicitly supersedes this temporary model.
 
 - `docs/styling.md`
 - `docs/bottom-sheets.md`
+- `docs/accessibility.md`
 
 ## Native controls
 
@@ -27,15 +28,37 @@ All app switches must use `Switch` from `src/components/ui/switch`. Do not
 import or use `Switch` from `react-native`, and do not render Expo UI switches
 directly from app screens.
 
-The app `Switch` wraps Expo UI native controls with `Host matchContents`.
-Android uses the Jetpack Compose switch with explicit Dayova primary colors so
-Material You wallpaper colors cannot override the brand. iOS keeps the native
-SwiftUI toggle shape and applies Dayova primary through the SwiftUI tint modifier.
+The app `Switch` owns the platform-native control and its accessible switch
+semantics. Android uses the Expo UI Jetpack Compose Material 3 switch with
+explicit Dayova colors so Material You wallpaper colors cannot override the
+brand. Keep `expo-modules-core` at 56.0.18 or newer: the upstream lifecycle fix
+in [Expo #47099](https://github.com/expo/expo/pull/47099) keeps Compose content
+visible until an outgoing `react-native-screens` pop transition finishes. iOS
+keeps the native SwiftUI toggle shape and applies Dayova primary through the
+SwiftUI tint modifier.
 
 App screens that collect a date or time must use `DateTimePickerSheet` from
 `src/components/ui/date-time-picker-sheet`. Do not import the underlying Expo UI
 picker directly from a screen. The wrapper owns platform display normalization,
 German locale, safe-area handling, and native presentation.
+
+## Icons
+
+Hugeicons is the standard icon source for app interface icons. Add the selected
+glyph from `@hugeicons/core-free-icons` to the semantic wrapper in
+`src/components/ui/icon.tsx`, then import that wrapper from app code instead of
+importing icon packages or custom assets directly.
+
+Code review must verify icon provenance by checking that the semantic wrapper
+maps to the intended Hugeicons export. At each usage, also review the icon's
+size, stroke weight, color, alignment, and whether it is decorative or needs an
+accessible label.
+
+Custom SVGs, platform symbols, or icons from another source are exceptions.
+Each exception requires an explicit Linear issue and a repo-local rationale
+explaining why Hugeicons cannot meet the requirement. Link that rationale from
+the implementation or an ADR; reviewers should reject untracked custom icon
+assets.
 
 ## Styling Tokens
 
@@ -88,8 +111,9 @@ radii are not app tokens because they depend on the phone/mockup. When nesting
 rounded surfaces, the outer radius equals the inner radius plus the padding
 between them.
 
-Dark-mode tokens live in `src/global.css` and native runtime color mirrors live
-in `src/lib/theme.ts`. Theme preference handling lives in
+Dark-mode tokens live in `src/global.css`; native/runtime color mirrors derived
+from those tokens live in `src/lib/theme-variables.ts`; and theme orchestration
+lives in `src/lib/theme.ts`. Theme preference handling lives in
 `src/lib/theme-preference.ts`; settings should expose the existing light,
 system, and dark options rather than introducing another toggle model.
 
@@ -100,3 +124,6 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 
 - Capture reusable component and styling decisions here.
 - Put design-system ADRs in `docs/contexts/design-system/adr/`.
+- Use NativeWind for static app UI. Follow the rendering-choice matrix in
+  `docs/styling.md` when deciding between NativeWind, RN geometry styles, SVGs,
+  and native artwork modules.

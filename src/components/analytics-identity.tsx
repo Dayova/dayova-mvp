@@ -2,7 +2,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import { useEffect, useRef } from "react";
 import { api } from "#convex/_generated/api";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import {
 	captureValidationEvent,
 	definedAnalyticsProperties,
@@ -13,7 +13,7 @@ import { logDiagnosticError } from "~/lib/diagnostics";
 
 export function AnalyticsIdentity() {
 	const posthog = usePostHog();
-	const { user, isSessionLoading } = useAuth();
+	const { user, isSessionLoading } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const convexUser = useQuery(
 		api.users.getMe,

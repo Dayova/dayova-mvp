@@ -1,9 +1,8 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
-	Alert,
 	Platform,
 	Pressable,
 	ScrollView,
@@ -13,20 +12,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	type DateTimePickerEvent,
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Field, FieldLabel } from "~/components/ui/field";
 import { Timer, Trash2, X } from "~/components/ui/icon";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import {
 	LEARNING_DAYS,
 	type LearningDayLabel,
 } from "~/features/learning-times/learning-time-days";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { dismissToOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
@@ -106,7 +108,7 @@ export default function LearningTimesScreen() {
 		returnTo?: string;
 	}>();
 	const insets = useSafeAreaInsets();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { colors } = useDayovaTheme();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningTimes = useQuery(
@@ -124,6 +126,10 @@ export default function LearningTimesScreen() {
 		null,
 	);
 	const [isSaving, setIsSaving] = useState(false);
+	const [isRemoveConfirmationVisible, setIsRemoveConfirmationVisible] =
+		useState(false);
+	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const mutationGateRef = useRef(createAsyncActionGate());
 	const returnTo = getSafeReturnTo(params.returnTo);
 	const overviewPath = withReturnTo(ROUTES.learningTimes, returnTo);
 	const learningTimeId = params.id as Id<"userLearningTimes"> | undefined;
@@ -160,6 +166,7 @@ export default function LearningTimesScreen() {
 			...patch,
 			baseKey: formBaseKey,
 		}));
+		setErrorMessage(null);
 	};
 
 	const hasValidTimeRange =
@@ -205,70 +212,59 @@ export default function LearningTimesScreen() {
 
 	const save = async () => {
 		if (!hasValidTimeRange) {
-			Alert.alert(
-				"Uhrzeit prüfen",
-				"Die Endzeit muss nach der Startzeit liegen.",
-			);
+			setErrorMessage("Die Endzeit muss nach der Startzeit liegen.");
 			return;
 		}
 
-		setIsSaving(true);
-		try {
-			await saveLearningTime({
-				id: selectedEntry?.id,
-				dayOfWeek: selectedDayValue,
-				startTime,
-				endTime,
-			});
-			closeToOverview();
-		} catch (error) {
-			Alert.alert(
-				"Lernzeit konnte nicht gespeichert werden",
-				getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
-					source: "learning-times.save",
-				}),
-			);
-		} finally {
-			setIsSaving(false);
-		}
+		await mutationGateRef.current.run(async () => {
+			setIsSaving(true);
+			setErrorMessage(null);
+			try {
+				await saveLearningTime({
+					id: selectedEntry?.id,
+					dayOfWeek: selectedDayValue,
+					startTime,
+					endTime,
+				});
+				closeToOverview();
+			} catch (error) {
+				setErrorMessage(
+					getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
+						source: "learning-times.save",
+					}),
+				);
+			} finally {
+				setIsSaving(false);
+			}
+		});
 	};
 
 	const remove = async () => {
 		if (!selectedEntry) return;
 
-		setIsSaving(true);
-		try {
-			await removeLearningTime({ id: selectedEntry.id });
-			closeToOverview();
-		} catch (error) {
-			Alert.alert(
-				"Lernzeit konnte nicht entfernt werden",
-				getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
-					source: "learning-times.remove",
-				}),
-			);
-		} finally {
-			setIsSaving(false);
-		}
+		await mutationGateRef.current.run(async () => {
+			setIsSaving(true);
+			setErrorMessage(null);
+			try {
+				await removeLearningTime({ id: selectedEntry.id });
+				setIsRemoveConfirmationVisible(false);
+				closeToOverview();
+			} catch (error) {
+				setErrorMessage(
+					getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
+						source: "learning-times.remove",
+					}),
+				);
+			} finally {
+				setIsSaving(false);
+			}
+		});
 	};
 
 	const requestRemove = () => {
 		if (!canRemove) return;
-
-		Alert.alert(
-			"Lernzeit entfernen?",
-			`${selectedDay}, ${startTime}–${endTime} wird dauerhaft entfernt.`,
-			[
-				{ text: "Abbrechen", style: "cancel" },
-				{
-					text: "Entfernen",
-					style: "destructive",
-					onPress: () => {
-						void remove();
-					},
-				},
-			],
-		);
+		setErrorMessage(null);
+		setIsRemoveConfirmationVisible(true);
 	};
 
 	return (
@@ -378,6 +374,12 @@ export default function LearningTimesScreen() {
 					</Text>
 				)}
 
+				{errorMessage ? (
+					<ErrorMessage className="rounded-[22px] border border-destructive/20 bg-destructive/10 px-5 py-4">
+						{errorMessage}
+					</ErrorMessage>
+				) : null}
+
 				{learningTimes === undefined ? (
 					<View className="items-center py-4">
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
@@ -416,6 +418,22 @@ export default function LearningTimesScreen() {
 				display="spinner"
 				onChange={updateTime}
 				onClose={() => setActiveTimeField(null)}
+			/>
+			<ConfirmationSheet
+				visible={isRemoveConfirmationVisible}
+				title="Lernzeit entfernen?"
+				description={`${selectedDay}, ${startTime}–${endTime} wird dauerhaft entfernt.`}
+				confirmLabel="Entfernen"
+				closeAccessibilityLabel="Entfernen-Dialog schließen"
+				isBusy={isSaving}
+				errorMessage={isRemoveConfirmationVisible ? errorMessage : null}
+				onClose={() => {
+					setErrorMessage(null);
+					setIsRemoveConfirmationVisible(false);
+				}}
+				onConfirm={() => {
+					void remove();
+				}}
 			/>
 		</Screen>
 	);

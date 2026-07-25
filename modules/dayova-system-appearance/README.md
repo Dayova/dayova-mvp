@@ -1,8 +1,9 @@
 # Dayova System Appearance
 
 `dayova-system-appearance` is a local, iOS-only Expo module that reports the
-resolved appearance of Dayova's active `UIWindow` to JavaScript and emits an
-event when that appearance changes.
+resolved appearance of Dayova's active `UIWindow` to JavaScript, emits an event
+when that appearance changes, and prevents iOS from presenting stale theme
+content from its saved background snapshot.
 
 It is a narrow compatibility layer for the appearance synchronization problem
 observed while validating the Expo SDK 57 / React Native 0.86 upgrade. It is
@@ -43,7 +44,9 @@ This module closes that gap by reading the key window's
 attached to the window, and exposing the result through a small Expo Modules
 API. It also nudges React Native's native `RCTAppearance` implementation to
 resolve appearance from the key window during initialization and foreground
-resumption.
+resumption. Before iOS backgrounds Dayova, the module covers the app with a
+stable branded snapshot shield. It removes that shield only after the resumed
+React tree has committed the refreshed appearance.
 
 The problem was observed on a specific upgraded native stack. The existence of
 this workaround should not be interpreted as a claim that every React Native
@@ -79,7 +82,8 @@ The module is responsible for:
 - synchronously returning the resolved appearance of the active iOS window;
 - emitting `onChange` when that window changes between light and dark;
 - refreshing the value when the app becomes active;
-- making React Native resolve system appearance from the key window; and
+- making React Native resolve system appearance from the key window;
+- owning the native snapshot shield and its resume handshake; and
 - installing and removing its UIKit observer with the JavaScript listener
   lifecycle.
 
@@ -120,6 +124,9 @@ flowchart LR
   Module --> Hook["useSystemColorScheme (iOS)"]
   Hook --> Provider["DayovaThemeProvider"]
   Provider --> Consumers["NativeWind, navigation, status bar, root UI"]
+  Lifecycle["willResignActive"] --> Shield["Branded snapshot shield"]
+  Module -->|"onResume"| Hook
+  Hook -->|"after React commit"| Shield
 ```
 
 When the preference is `"system"`, the theme provider passes `"unspecified"`
@@ -142,7 +149,7 @@ normal appearance notifications during live trait changes.
 
 ## JavaScript API
 
-The native contract intentionally has one method and one event.
+The native contract intentionally has two methods and two events.
 
 ### `getColorScheme()`
 
@@ -181,8 +188,43 @@ Application code should normally use `useSystemColorScheme` from
 than importing this module directly. The platform-specific file keeps this
 iOS-only native dependency out of Android and web bundles.
 
+The iOS hook adapts the module with React's `useSyncExternalStore`. Native
+events invalidate the snapshot; `getColorScheme()` remains the state source.
+React therefore rechecks the snapshot after subscribing and cannot miss a
+change that lands between render and listener installation.
+
 The module provides no setter. Theme overrides belong to React Native's public
 `Appearance.setColorScheme` API and the Dayova theme provider.
+
+### Snapshot-shield handshake
+
+`onResume` is a lifecycle acknowledgement event, not appearance state. After
+receiving it, the iOS hook forces a React commit, reads the current native
+snapshot through `useSyncExternalStore`, and calls
+`releaseSnapshotShield(generation)` from an effect. Native code accepts the
+release only if that generation still owns the active shield, so a delayed
+acknowledgement cannot remove a newer shield during rapid lifecycle changes.
+This ordering keeps the shield in place until the resumed theme has actually
+reached React, including resumes where the resolved Light/Dark value did not
+change.
+
+The bridge contract is:
+
+```ts
+type SnapshotShieldResumeEvent = {
+  generation: number;
+};
+
+releaseSnapshotShield(generation: number): void;
+```
+
+The `generation` in `onResume` identifies the shield created for that lifecycle
+cycle. Although `releaseSnapshotShield` is exported by the native bridge, it is
+an adapter-internal method rather than a feature-level public API.
+
+Application features must not call `releaseSnapshotShield(generation)`
+directly. The platform adapter owns the handshake so a feature cannot reveal
+the stale iOS snapshot by releasing the cover too early.
 
 ## Native implementation
 
@@ -222,10 +264,18 @@ than used everywhere.
   current value.
 - `OnStopObserving("onChange")` removes the view after the final listener is
   removed.
-- `OnAppBecomesActive` emits the current value and refreshes React Native's
-  appearance state. This covers a system change made while Dayova was in the
-  background.
-- `OnDestroy` removes the observer view and releases the reference.
+- `OnAppBecomesActive` verifies that the observer is attached to the current
+  active window, reinstalls it when the first subscription happened before a
+  window existed or the active window changed, and then refreshes React
+  Native's appearance state. It emits `onResume` only after that refresh so the
+  React adapter can commit and release the snapshot shield. This covers both
+  startup ordering and a system change made while Dayova was in the background.
+- `UIApplication.willResignActiveNotification` installs a full-window branded
+  shield before iOS captures Dayova's background snapshot. The shield does not
+  accept touches, is hidden from accessibility, and remains stable across Light
+  and Dark so the saved snapshot cannot contain the previous theme.
+- `OnDestroy` removes the observer and shield views, unregisters the lifecycle
+  notification, and releases their references.
 
 Appearance events can repeat around initialization or foreground activation.
 Consumers must treat them as state updates, not one-time commands.
@@ -279,6 +329,10 @@ module does not cause that app-wide minimum.
 - **Duplicate state events:** Initialization, trait change, and foreground
   refreshes can report the same value. Current React state consumers are
   idempotent.
+- **Intentional transition cover:** iOS can briefly show the solid Dayova
+  snapshot shield during app-switcher transitions. It is intentionally kept
+  until React acknowledges a resumed commit; a native timeout or immediate
+  activation removal would reintroduce the stale-theme race.
 - **Runtime coverage:** The module compiles with an iOS 16.4 deployment target,
   but the app's Clerk dependency currently prevents an end-to-end iOS 16.4
   launch. Compatibility at that OS floor is therefore compile-validated, not
@@ -293,14 +347,16 @@ module does not cause that app-wide minimum.
 Run the focused source-shape regression tests:
 
 ```sh
-pnpm test src/lib/ios-appearance-module.test.ts
+pnpm exec vitest run src/lib/ios-appearance-module.test.ts
 ```
 
-These tests only assert that the podspec contains the iOS 16.4 target and that
-the Swift source retains the expected modern and legacy observer markers and
-control-flow order. They do not compile Swift, execute UIKit, prove callback
-reachability, or validate event delivery. Native Debug/Release builds and the
-runtime smoke-test matrix remain the behavioral evidence.
+These tests only assert that the podspec contains the iOS 16.4 target, that the
+Swift/TypeScript sources retain the expected modern and legacy observer,
+snapshot-shield, and commit-handshake markers and control-flow order, and that
+the Expo Updates deferred-splash patch remains registered. They do not compile
+Swift, execute UIKit, prove callback reachability, or validate event delivery.
+Native Debug/Release builds and the runtime smoke-test matrix remain the
+behavioral evidence.
 
 Confirm Expo can discover the module:
 
@@ -341,10 +397,17 @@ production-style Release build:
 3. With System selected and Dayova foregrounded, change iOS Light to Dark and
    back without restarting the app.
 4. Background Dayova, change the system appearance, and foreground it again.
-5. Check the root background, status bar, React Navigation chrome, NativeWind
+5. In Dark, force-stop and cold-launch Dayova. Confirm the native splash is dark
+   in both Debug and Release instead of flashing white.
+6. Inspect background/resume frame-by-frame. Confirm iOS never shows the old
+   themed app snapshot and the branded shield disappears after the current
+   theme renders.
+7. Check the root background, status bar, React Navigation chrome, NativeWind
    surfaces, native controls, sheets, and modals for agreement.
-6. Confirm that Release cold-launches from its embedded bundle without Metro.
-7. Inspect logs for a missing native module, JavaScript exception, Fabric
+8. With VoiceOver enabled on a supported runtime or physical iPhone, confirm
+   the shield itself is not announced and does not expose stale controls.
+9. Confirm that Release cold-launches from its embedded bundle without Metro.
+10. Inspect logs for a missing native module, JavaScript exception, Fabric
    warning, appearance-loop symptom, or React Native native-symbol failure.
 
 If an unlocked physical iPhone is already connected and signing is already
@@ -374,9 +437,12 @@ Check, in order:
 
 ### Live changes work, but background/resume is stale
 
-Verify `OnAppBecomesActive` still runs and emits after the active window has
-adopted its new trait. Inspect whether an Expo or React Native upgrade changed
-the lifecycle callback ordering before adding delays or polling.
+Verify `OnAppBecomesActive` still runs after the active window has adopted its
+new trait and that `refreshAppearanceObservation()` either keeps the observer
+on that window or reinstalls it. Confirm `onResume` reaches the platform adapter
+and its post-commit effect invokes `releaseSnapshotShield(generation)`. Inspect
+whether an Expo or React Native upgrade changed lifecycle ordering before
+adding delays, polling, or early native removal.
 
 ### A React Native upgrade removes a native symbol
 
@@ -396,7 +462,8 @@ matrix. A removal experiment is successful when all of the following are true:
    `useColorScheme` implementation.
 2. Remove the module's key-window flag and native notification behavior.
 3. Pass cold launch, live Light/Dark changes, explicit app overrides, and
-   background/foreground restoration in Debug and Release.
+   background/foreground restoration without stale snapshots in Debug and
+   Release.
 4. Confirm NativeWind, React Navigation, the root background, native controls,
    and status bar stay synchronized.
 5. Test every supported iOS major version available to the team, including the
@@ -422,16 +489,19 @@ behavior, not part of this workaround.
 | --- | --- |
 | [`expo-module.config.json`](./expo-module.config.json) | Declares iOS support and registers the Swift module for Expo Autolinking. |
 | [`ios/DayovaSystemAppearance.podspec`](./ios/DayovaSystemAppearance.podspec) | Defines the local CocoaPod, dependencies, sources, and iOS 16.4 module target. |
-| [`ios/DayovaSystemAppearanceModule.swift`](./ios/DayovaSystemAppearanceModule.swift) | Reads the key window, observes UIKit traits, emits events, and refreshes React Native appearance state. |
+| [`ios/DayovaSystemAppearanceModule.swift`](./ios/DayovaSystemAppearanceModule.swift) | Reads the key window, observes UIKit traits, owns the snapshot shield, emits events, and refreshes React Native appearance state. |
 | [`src/DayovaSystemAppearance.types.ts`](./src/DayovaSystemAppearance.types.ts) | Defines the public event and color-scheme types. |
 | [`src/DayovaSystemAppearanceModule.ts`](./src/DayovaSystemAppearanceModule.ts) | Loads and types the native Expo module. |
 | [`index.ts`](./index.ts) | Exposes the local module's TypeScript entry point. |
 | [`src/lib/system-color-scheme.ios.ts`](../../src/lib/system-color-scheme.ios.ts) | Application adapter that turns the native getter/event into a React hook. |
 | [`src/lib/ios-appearance-module.test.ts`](../../src/lib/ios-appearance-module.test.ts) | Guards deployment-target and API-availability invariants. |
+| [`patches/expo-updates@57.0.10.patch`](../../patches/expo-updates@57.0.10.patch) | Keeps Expo Updates' Release-only deferred splash and root on the active window appearance. |
 
 ## Primary references
 
 - [Expo color themes](https://docs.expo.dev/develop/user-interface/color-themes/)
+- [Expo splash screens and app icons](https://docs.expo.dev/develop/user-interface/splash-screen-and-app-icon/)
+- [Expo SplashScreen API and config plugin](https://docs.expo.dev/versions/latest/sdk/splash-screen/)
 - [React Native Appearance](https://reactnative.dev/docs/appearance)
 - [React Native useColorScheme](https://reactnative.dev/docs/usecolorscheme)
 - [Expo local modules](https://docs.expo.dev/more/create-expo-module/)
@@ -439,3 +509,4 @@ behavior, not part of this workaround.
 - [Expo module configuration](https://docs.expo.dev/modules/module-config/)
 - [Apple: registerForTraitChanges](https://developer.apple.com/documentation/uikit/uitraitchangeobservable-67e94/registerfortraitchanges%28_%3Ahandler%3A%29)
 - [Apple: adapting when traits change](https://developer.apple.com/documentation/uikit/adapting-your-app-when-traits-change)
+- [Apple: `willResignActiveNotification`](https://developer.apple.com/documentation/uikit/uiapplication/willresignactivenotification)

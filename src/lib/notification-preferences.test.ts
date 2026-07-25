@@ -3,7 +3,9 @@ import type { NotificationPlanningPreferences } from "./notification-planner";
 import {
 	applyNotificationPreferencePatch,
 	clearConfirmedNotificationPreferencePatch,
+	getNotificationPreferenceControlState,
 	getNotificationPreferencePatchKeys,
+	getPushNotificationDeliveryState,
 	removeNotificationPreferencePatchKeys,
 } from "./notification-preferences";
 
@@ -20,6 +22,67 @@ const preferences: NotificationPlanningPreferences = {
 };
 
 describe("notification preference pending state", () => {
+	test.each([
+		{
+			preferenceEnabled: true,
+			permissionStatus: "checking" as const,
+			expected: { status: "checking", showDisabledStatus: false },
+		},
+		{
+			preferenceEnabled: false,
+			permissionStatus: "checking" as const,
+			expected: { status: "disabled", showDisabledStatus: true },
+		},
+		{
+			preferenceEnabled: true,
+			permissionStatus: "denied" as const,
+			expected: { status: "disabled", showDisabledStatus: true },
+		},
+		{
+			preferenceEnabled: true,
+			permissionStatus: "granted" as const,
+			expected: { status: "active", showDisabledStatus: false },
+		},
+		{
+			preferenceEnabled: true,
+			permissionStatus: "unavailable" as const,
+			expected: { status: "unavailable", showDisabledStatus: false },
+		},
+	])("derives the compact Push status without a false loading warning", ({
+		preferenceEnabled,
+		permissionStatus,
+		expected,
+	}) => {
+		expect(
+			getPushNotificationDeliveryState({
+				preferenceEnabled,
+				permissionStatus,
+			}),
+		).toEqual(expected);
+	});
+
+	test("system delivery does not disable always-on in-app preferences", () => {
+		expect(
+			getNotificationPreferenceControlState({
+				preferences: {
+					...preferences,
+					systemNotificationsEnabled: false,
+				},
+				pendingKeys: [],
+			}),
+		).toEqual({
+			systemNotificationsDisabled: false,
+			dailyBriefingDisabled: false,
+			dailyBriefingTimeDisabled: false,
+			beforeExamDisabled: false,
+			beforeLearningTimeDisabled: false,
+			beforeHomeworkWorkDisabled: false,
+			beforeHomeworkDueDisabled: false,
+			reminderOffsetDisabled: false,
+			forgottenEventDisabled: false,
+		});
+	});
+
 	test("a pending switch patch only affects its own preference key", () => {
 		const patch = { beforeExamEnabled: false };
 

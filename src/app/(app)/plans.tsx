@@ -8,7 +8,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
@@ -85,7 +85,7 @@ function LearningPlanCard({
 }
 
 export default function PlansScreen() {
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningPlans = useQuery(
 		api.learningPlans.listOverview,

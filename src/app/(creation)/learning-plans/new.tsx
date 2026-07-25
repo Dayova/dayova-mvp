@@ -10,13 +10,12 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
-	BottomModal,
-	BottomModalOption,
-	bottomModalIconColor,
-} from "~/components/ui/bottom-modal";
+	ActionSheet,
+	actionSheetIconColor,
+} from "~/components/ui/action-sheet";
 import { Attachment, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import {
@@ -75,7 +74,7 @@ export default function NewLearningPlanScreen() {
 		topicDescription?: string;
 		errorMessage?: string;
 	}>();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
@@ -454,10 +453,7 @@ export default function NewLearningPlanScreen() {
 	const runPendingUploadAction = () => {
 		const action = pendingUploadActionRef.current;
 		pendingUploadActionRef.current = null;
-		if (!action) {
-			setOpeningUploadAction(null);
-			return;
-		}
+		if (!action) return;
 
 		runUploadAction(action);
 	};
@@ -575,50 +571,48 @@ export default function NewLearningPlanScreen() {
 				</Animated.View>
 			</ScreenScroll>
 
-			<BottomModal
+			<ActionSheet
 				visible={setupStep === "materialUpload" && isUploadSheetVisible}
 				title="Was möchtest du hochladen?"
 				description="Lade hier deine Unterlagen hoch oder scanne sie ganz einfach."
 				onClose={closeUploadSheet}
 				onDismiss={runPendingUploadAction}
 				closeAccessibilityLabel="Hochladen schließen"
-				contentClassName="flex-row gap-2"
-			>
-				<BottomModalOption
-					layout="tile"
-					title="Scannen"
-					onPress={() => chooseUploadAction("camera")}
-					disabled={!canContinueUpload}
-					icon={
-						openingUploadAction === "camera" || isBusy ? (
-							<ActivityIndicator color={bottomModalIconColor} />
-						) : (
-							<ScanImage
-								size={28}
-								color={bottomModalIconColor}
-								strokeWidth={1.8}
-							/>
-						)
-					}
-				/>
-				<BottomModalOption
-					layout="tile"
-					title="Dateien"
-					onPress={() => chooseUploadAction("files")}
-					disabled={!canContinueUpload}
-					icon={
-						openingUploadAction === "files" || isBusy ? (
-							<ActivityIndicator color={bottomModalIconColor} />
-						) : (
-							<Attachment
-								size={28}
-								color={bottomModalIconColor}
-								strokeWidth={1.8}
-							/>
-						)
-					}
-				/>
-			</BottomModal>
+				layout="tile"
+				onSelect={chooseUploadAction}
+				options={[
+					{
+						value: "camera",
+						title: "Scannen",
+						disabled: !canContinueUpload,
+						icon:
+							openingUploadAction === "camera" || isBusy ? (
+								<ActivityIndicator color={actionSheetIconColor} />
+							) : (
+								<ScanImage
+									size={28}
+									color={actionSheetIconColor}
+									strokeWidth={1.8}
+								/>
+							),
+					},
+					{
+						value: "files",
+						title: "Dateien",
+						disabled: !canContinueUpload,
+						icon:
+							openingUploadAction === "files" || isBusy ? (
+								<ActivityIndicator color={actionSheetIconColor} />
+							) : (
+								<Attachment
+									size={28}
+									color={actionSheetIconColor}
+									strokeWidth={1.8}
+								/>
+							),
+					},
+				]}
+			/>
 		</Screen>
 	);
 }
