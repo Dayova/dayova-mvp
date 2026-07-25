@@ -13,6 +13,7 @@ type ScreenScrollProps = ScrollViewProps & {
 	horizontalPadding?: number;
 	topPadding?: number;
 	bottomPadding?: number;
+	includeTopSafeArea?: boolean;
 };
 
 function ScreenScroll({
@@ -21,6 +22,7 @@ function ScreenScroll({
 	horizontalPadding = 32,
 	topPadding = 80,
 	bottomPadding = 60,
+	includeTopSafeArea = true,
 	...props
 }: ScreenScrollProps) {
 	const insets = useSafeAreaInsets();
@@ -34,7 +36,9 @@ function ScreenScroll({
 			contentContainerStyle={[
 				{
 					paddingHorizontal: horizontalPadding,
-					paddingTop: Math.max(insets.top + 28, topPadding),
+					paddingTop: includeTopSafeArea
+						? Math.max(insets.top + 28, topPadding)
+						: topPadding,
 					paddingBottom: Math.max(insets.bottom + 36, bottomPadding),
 				},
 				contentContainerStyle,

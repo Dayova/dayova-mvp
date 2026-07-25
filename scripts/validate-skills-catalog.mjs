@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse as parseToml } from "smol-toml";
 import {
 	duplicateExpoPluginSkills,
 	expectedMattSkills,
@@ -11,9 +12,20 @@ import {
 	removedOrRenamedMattSkills,
 	userInvokedMattSkills,
 } from "./skills-policy.mjs";
+import {
+	validateMattLockEntry,
+	validateOpenAiMetadataForSkill,
+	validateSkill,
+} from "./skill-metadata.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const args = new Set(process.argv.slice(2));
+const supportedArgs = new Set(["--check-codex-config"]);
+const unknownArgs = [...args].filter((arg) => !supportedArgs.has(arg));
+if (unknownArgs.length > 0) {
+	console.error(`Unknown argument(s): ${unknownArgs.join(", ")}`);
+	process.exit(2);
+}
 
 const errors = [];
 const warnings = [];
@@ -47,21 +59,6 @@ function compareSets(label, actual, expected) {
 	}
 }
 
-function parseFrontmatter(text, path) {
-	const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-	if (!match) {
-		fail(`${path} is missing YAML frontmatter.`);
-		return new Map();
-	}
-
-	const entries = new Map();
-	for (const line of match[1].split(/\r?\n/)) {
-		const keyMatch = line.match(/^([A-Za-z0-9_-]+):/);
-		if (keyMatch) entries.set(keyMatch[1], line);
-	}
-	return entries;
-}
-
 function validateMattCatalog() {
 	const lock = readJson(join(repoRoot, "skills-lock.json"));
 	const lockEntries = Object.entries(lock.skills ?? {});
@@ -86,6 +83,11 @@ function validateMattCatalog() {
 	}
 
 	for (const skillName of expectedMattSkills) {
+		try {
+			validateMattLockEntry(skillName, lock.skills?.[skillName]);
+		} catch (error) {
+			fail(error instanceof Error ? error.message : String(error));
+		}
 		const skillPath = join(
 			repoRoot,
 			".agents",
@@ -98,66 +100,36 @@ function validateMattCatalog() {
 			continue;
 		}
 
-		const frontmatter = parseFrontmatter(readText(skillPath), skillPath);
-		const keys = [...frontmatter.keys()];
-		const unsupported = keys.filter(
-			(key) => key !== "name" && key !== "description",
-		);
-		if (unsupported.length > 0) {
-			fail(
-				`Matt skill ${skillName} has unsupported Codex frontmatter keys: ${unsupported.join(", ")}`,
-			);
+		try {
+			validateSkill(join(repoRoot, ".agents", "skills"), skillName);
+		} catch (error) {
+			fail(error instanceof Error ? error.message : String(error));
 		}
-
-		const openaiYamlPath = join(
-			repoRoot,
-			".agents",
-			"skills",
-			skillName,
-			"agents",
-			"openai.yaml",
-		);
-		if (!existsSync(openaiYamlPath)) {
-			fail(
-				`Missing OpenAI metadata: .agents/skills/${skillName}/agents/openai.yaml`,
+		try {
+			validateOpenAiMetadataForSkill(
+				join(repoRoot, ".agents", "skills"),
+				skillName,
+				userInvokedMattSkills.has(skillName),
 			);
-			continue;
-		}
-
-		const openaiYaml = readText(openaiYamlPath);
-		const disablesImplicitInvocation =
-			/allow_implicit_invocation:\s*false/.test(openaiYaml);
-		if (userInvokedMattSkills.has(skillName) && !disablesImplicitInvocation) {
-			fail(
-				`${skillName} should be user-invoked but does not disable implicit invocation.`,
-			);
-		}
-		if (!userInvokedMattSkills.has(skillName) && disablesImplicitInvocation) {
-			fail(
-				`${skillName} should be model-invoked but disables implicit invocation.`,
-			);
+		} catch (error) {
+			fail(error instanceof Error ? error.message : String(error));
 		}
 	}
 }
 
-function parseSkillConfigBlocks(configText) {
-	const blocks = [];
-	const blockPattern =
-		/\[\[skills\.config\]\]([\s\S]*?)(?=\r?\n\[\[|\r?\n\[|$)/g;
-	for (const match of configText.matchAll(blockPattern)) {
-		const block = match[1];
-		const name = block.match(/name\s*=\s*"([^"]+)"/)?.[1];
-		const enabled = block.match(/enabled\s*=\s*(true|false)/)?.[1];
-		if (name) blocks.push({ name, enabled });
-	}
-	return blocks;
-}
-
-function expoPluginEnabled(configText) {
-	const match = configText.match(
-		/\[plugins\."expo@openai-curated"\]([\s\S]*?)(?=\r?\n\[|$)/,
+function parseSkillConfig(config) {
+	const entries = config?.skills?.config;
+	if (!Array.isArray(entries)) return [];
+	return entries.filter(
+		(entry) =>
+			entry !== null &&
+			typeof entry === "object" &&
+			typeof entry.name === "string",
 	);
-	return match ? /enabled\s*=\s*true/.test(match[1]) : false;
+}
+
+function expoPluginEnabled(config) {
+	return config?.plugins?.["expo@openai-curated"]?.enabled === true;
 }
 
 function validateCodexConfig() {
@@ -170,8 +142,16 @@ function validateCodexConfig() {
 		return;
 	}
 
-	const configText = readText(configPath);
-	if (!expoPluginEnabled(configText)) {
+	let config;
+	try {
+		config = parseToml(readText(configPath));
+	} catch (error) {
+		fail(
+			`Codex config is invalid TOML (${configPath}): ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return;
+	}
+	if (!expoPluginEnabled(config)) {
 		warn(
 			"Expo plugin is not enabled in Codex config; duplicate plugin skill check skipped. This is acceptable when the contributor does not use the plugin locally.",
 		);
@@ -179,15 +159,12 @@ function validateCodexConfig() {
 	}
 
 	const skillConfig = new Map(
-		parseSkillConfigBlocks(configText).map((block) => [
-			block.name,
-			block.enabled,
-		]),
+		parseSkillConfig(config).map((block) => [block.name, block.enabled]),
 	);
 
 	for (const skillName of duplicateExpoPluginSkills) {
 		const enabled = skillConfig.get(skillName);
-		if (enabled !== "false") {
+		if (enabled !== false) {
 			fail(
 				`Duplicate Expo plugin skill must be disabled in Codex config (${configPath}): ${skillName}. Add or update [[skills.config]] with name = "${skillName}" and enabled = false.`,
 			);

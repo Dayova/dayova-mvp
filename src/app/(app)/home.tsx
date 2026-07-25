@@ -41,7 +41,7 @@ import {
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { useValidationAnalytics } from "~/lib/analytics";
 import {
 	addDays,
@@ -433,7 +433,7 @@ export default function HomeScreen() {
 	const insets = useSafeAreaInsets();
 	const { colors, isDark } = useDayovaTheme();
 	const { width, height } = useWindowDimensions();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();

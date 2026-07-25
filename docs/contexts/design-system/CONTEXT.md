@@ -2,12 +2,12 @@
 
 This context covers shared UI components, styling conventions, tokens, themes, visual language, and design implementation patterns.
 
-Confluence is the current cross-functional documentation hub. Keep this file focused on implementation-facing terminology, conventions, and assumptions that agents need while working in this repo.
+Notion is Dayova's main internal documentation and knowledge workspace. Keep this file focused on implementation-facing terminology, conventions, and assumptions that must evolve with the code, and link to relevant Notion records instead of duplicating shared documentation.
 
 ## Current Design Delivery Model
 
 Effective 14 July 2026, existing Figma work is a visual reference and baseline,
-not a required approval, sequencing, or release gate. Jakob Roessner and Fabius
+not a required approval, sequencing, or release gate. Jakob Rössner and Fabius
 Schurig may make product-design, UI, and UX decisions and implement them
 directly. Record deliberate changes in Linear and update the app's semantic
 tokens and repository guidance; any later Figma reconciliation is non-blocking
@@ -20,6 +20,7 @@ unless the team explicitly supersedes this temporary model.
 
 - `docs/styling.md`
 - `docs/bottom-sheets.md`
+- `docs/accessibility.md`
 
 ## Native controls
 
@@ -27,15 +28,37 @@ All app switches must use `Switch` from `src/components/ui/switch`. Do not
 import or use `Switch` from `react-native`, and do not render Expo UI switches
 directly from app screens.
 
-The app `Switch` wraps Expo UI native controls with `Host matchContents`.
-Android uses the Jetpack Compose switch with explicit Dayova primary colors so
-Material You wallpaper colors cannot override the brand. iOS keeps the native
-SwiftUI toggle shape and applies Dayova primary through the SwiftUI tint modifier.
+The app `Switch` owns the platform-native control and its accessible switch
+semantics. Android uses the Expo UI Jetpack Compose Material 3 switch with
+explicit Dayova colors so Material You wallpaper colors cannot override the
+brand. Keep `expo-modules-core` at 56.0.18 or newer: the upstream lifecycle fix
+in [Expo #47099](https://github.com/expo/expo/pull/47099) keeps Compose content
+visible until an outgoing `react-native-screens` pop transition finishes. iOS
+keeps the native SwiftUI toggle shape and applies Dayova primary through the
+SwiftUI tint modifier.
 
 App screens that collect a date or time must use `DateTimePickerSheet` from
 `src/components/ui/date-time-picker-sheet`. Do not import the underlying Expo UI
 picker directly from a screen. The wrapper owns platform display normalization,
 German locale, safe-area handling, and native presentation.
+
+## Icons
+
+Hugeicons is the standard icon source for app interface icons. Add the selected
+glyph from `@hugeicons/core-free-icons` to the semantic wrapper in
+`src/components/ui/icon.tsx`, then import that wrapper from app code instead of
+importing icon packages or custom assets directly.
+
+Code review must verify icon provenance by checking that the semantic wrapper
+maps to the intended Hugeicons export. At each usage, also review the icon's
+size, stroke weight, color, alignment, and whether it is decorative or needs an
+accessible label.
+
+Custom SVGs, platform symbols, or icons from another source are exceptions.
+Each exception requires an explicit Linear issue and a repo-local rationale
+explaining why Hugeicons cannot meet the requirement. Link that rationale from
+the implementation or an ADR; reviewers should reject untracked custom icon
+assets.
 
 ## Styling Tokens
 
@@ -69,10 +92,11 @@ directly: `text-text` for primary text, `text-secondary-text` for secondary
 text, and `text-white` for white text on dark or saturated surfaces.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
-tabs, labels that need emphasis, and other highlighted text use SemiBold. The
-supported hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30,
-`body-2` 16/24, `body-3` 14/21, `body-4` 12/18, and `body-5` 10/15, all with
-0px letter spacing.
+tabs, labels that need emphasis, and other highlighted text use SemiBold.
+Large numeric counters use `display-counter` 60/68. The supported content
+hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30, `body-2`
+16/24, `body-3` 14/21, `body-4` 12/18, and `body-5` 10/15, all with 0px letter
+spacing.
 
 Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
@@ -87,8 +111,9 @@ radii are not app tokens because they depend on the phone/mockup. When nesting
 rounded surfaces, the outer radius equals the inner radius plus the padding
 between them.
 
-Dark-mode tokens live in `src/global.css` and native runtime color mirrors live
-in `src/lib/theme.ts`. Theme preference handling lives in
+Dark-mode tokens live in `src/global.css`; native/runtime color mirrors derived
+from those tokens live in `src/lib/theme-variables.ts`; and theme orchestration
+lives in `src/lib/theme.ts`. Theme preference handling lives in
 `src/lib/theme-preference.ts`; settings should expose the existing light,
 system, and dark options rather than introducing another toggle model.
 
@@ -99,3 +124,6 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 
 - Capture reusable component and styling decisions here.
 - Put design-system ADRs in `docs/contexts/design-system/adr/`.
+- Use NativeWind for static app UI. Follow the rendering-choice matrix in
+  `docs/styling.md` when deciding between NativeWind, RN geometry styles, SVGs,
+  and native artwork modules.

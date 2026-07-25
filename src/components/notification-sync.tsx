@@ -5,36 +5,25 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AppState, Platform } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { logDiagnosticError } from "~/lib/diagnostics";
+import { useAuthSession } from "~/context/AuthContext";
+import { addDays, getDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { getDeliveredNotificationInput } from "~/lib/delivered-notification";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import {
 	DAYOVA_NOTIFICATION_CHANNEL_ID,
 	syncPlannedLocalNotifications,
 } from "~/lib/local-notification-scheduler";
 import {
+	getNotificationsModule,
+	hasNotificationPermission,
+} from "~/lib/notification-permissions";
+import {
 	buildLocalNotificationPlan,
 	type NotificationPlanningPreferences,
 } from "~/lib/notification-planner";
-import { addDays, getDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import type { DayEntry } from "~/types/dayEntries";
-import { useAuth } from "~/context/AuthContext";
 
 const SCHEDULE_DAYS = 14;
-
-const getNotificationsModule = () => {
-	try {
-		return require("expo-notifications") as typeof ExpoNotifications;
-	} catch {
-		return null;
-	}
-};
-
-const hasNotificationPermission = (
-	notifications: typeof ExpoNotifications,
-	permissions: ExpoNotifications.NotificationPermissionsStatus,
-) =>
-	permissions.granted ||
-	permissions.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL;
 
 const getLocalMinutes = (date: Date) =>
 	date.getHours() * 60 + date.getMinutes();
@@ -55,7 +44,7 @@ const ensureNotificationChannel = async (
 
 export function NotificationSync() {
 	const router = useRouter();
-	const { user, isSessionLoading } = useAuth();
+	const { user, isSessionLoading } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
 	const recordDeliveredNotification = useMutation(

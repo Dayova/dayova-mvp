@@ -3,6 +3,14 @@ import type { MutationCtx } from "./_generated/server";
 import { getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 
+type ExamEntryLike = {
+	kind?: string;
+	examTypeLabel?: string;
+};
+
+export const isExamEntry = (entry: ExamEntryLike) =>
+	entry.kind === "Leistungskontrolle" || Boolean(entry.examTypeLabel?.trim());
+
 const timePattern = /^(\d{1,2}):(\d{2})$/;
 
 const minutesFromTime = (time: string) => {
@@ -100,6 +108,8 @@ export const assertNoScheduleConflict = async (
 		if (seenEntryIds.has(entry._id)) continue;
 		seenEntryIds.add(entry._id);
 		if (excludeDayEntryId && entry._id === excludeDayEntryId) continue;
+		// Exams are date-only entries. Ignore legacy records that still carry time.
+		if (isExamEntry(entry)) continue;
 		if (
 			excludeLearningPlanSessionId &&
 			entry.relatedLearningPlanSessionId === excludeLearningPlanSessionId

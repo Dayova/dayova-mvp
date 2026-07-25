@@ -3,6 +3,26 @@
 This app uses `@gorhom/bottom-sheet` for interactive picker sheets such as the
 subject and exam-type selector.
 
+## App-owned sheet contract
+
+- App code uses `ConfirmationSheet`, `ActionSheet`, `SelectSheet`, or
+  `DayovaSheetFrame`; only the frame, plus `BottomSheetModalProvider` in the
+  root layout, imports Gorhom primitives.
+- The frame API intentionally supports only dynamic `content` height and the
+  scrollable `medium` size. Unused width, header/footer class, and `large`
+  escape hatches were removed so callers cannot create one-off sheet systems.
+- `visible` is controlled state. A close followed immediately by a reopen is a
+  valid transition; a stale native `onDismiss` must not close the new request.
+- Android date/time selection closes in the shared adapter. Callers do not add
+  platform-specific close branches.
+- `dayova-ui/no-direct-overlay-primitives` rejects direct Gorhom primitives and
+  React Native `Modal`, `Alert`, or `ActionSheetIOS`. The rule has ESLint
+  `RuleTester` regression coverage.
+- Lifecycle and close-control behavior use React Native Testing Library rather
+  than source-text assertions.
+- Screen-reader modal behavior, focus, escape, and background isolation follow
+  the shared contract in `docs/accessibility.md`.
+
 ## Why not Expo UI for these sheets?
 
 `@expo/ui/community/bottom-sheet` is API-compatible with

@@ -69,7 +69,49 @@ test("manual timed entry conflicts are marked as user-facing backend errors", as
 	});
 });
 
-test("manual timed entry conflicts with Berlin-midnight ISO day keys", async () => {
+test("multiple exams on one day ignore supplied times and are stored untimed", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-07-16",
+		title: "Englisch Hausaufgabe",
+		time: "16:00",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "Donnerstag, 16. Juli",
+		durationMinutes: 30,
+	});
+
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-07-16",
+		title: "Englisch Klassenarbeit",
+		time: "16:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "Donnerstag, 16. Juli",
+		durationMinutes: 30,
+		examTypeLabel: "Klassenarbeit",
+	});
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-07-16",
+		title: "Geschichte Test",
+		time: "16:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "Donnerstag, 16. Juli",
+		durationMinutes: 30,
+		examTypeLabel: "Test",
+	});
+
+	const entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-07-16"],
+	});
+	const exams = entries["2026-07-16"]?.filter(
+		(entry) => entry.kind === "Leistungskontrolle",
+	);
+
+	expect(exams).toHaveLength(2);
+	expect(exams?.every((entry) => entry.time === undefined)).toBe(true);
+});
+
+test("untimed exams with Berlin-midnight ISO day keys do not block homework", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 
 	await t.mutation(api.dayEntries.create, {
@@ -90,9 +132,15 @@ test("manual timed entry conflicts with Berlin-midnight ISO day keys", async () 
 			plannedDateLabel: "31. Mai 2026",
 			durationMinutes: 30,
 		}),
-	).rejects.toThrow(
-		'Dieser Zeitraum überschneidet sich mit "Englisch Kurzkontrolle" am 31. Mai 2026 von 16:00 bis 16:30.',
+	).resolves.toBeTruthy();
+
+	const entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-05-31"],
+	});
+	const exam = entries["2026-05-31"]?.find(
+		(entry) => entry.kind === "Leistungskontrolle",
 	);
+	expect(exam?.time).toBeUndefined();
 });
 
 test("manual timed entry adjacent to an existing entry is allowed", async () => {

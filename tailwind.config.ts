@@ -34,6 +34,7 @@ const config = {
 					40: "hsl(var(--primary-40))",
 					30: "hsl(var(--primary-30))",
 				},
+				"progress-track": "hsl(var(--progress-track))",
 				"button-neutral": "hsl(var(--button-neutral))",
 				secondary: {
 					DEFAULT: "hsl(var(--secondary))",
@@ -138,6 +139,10 @@ const config = {
 				"body-3": ["14px", { lineHeight: "21px", letterSpacing: "0px" }],
 				"body-4": ["12px", { lineHeight: "18px", letterSpacing: "0px" }],
 				"body-5": ["10px", { lineHeight: "15px", letterSpacing: "0px" }],
+				"display-counter": [
+					"60px",
+					{ lineHeight: "68px", letterSpacing: "0px" },
+				],
 				"10": ["10px", { lineHeight: "15px", letterSpacing: "0px" }],
 				"12": ["12px", { lineHeight: "18px", letterSpacing: "0px" }],
 				"14": ["14px", { lineHeight: "21px", letterSpacing: "0px" }],

@@ -715,7 +715,10 @@ export const syncDueNotifications = mutation({
 		for (const entry of entriesForToday) {
 			if (entry.completed === true) continue;
 
-			const startMinutes = parseTimeToMinutes(entry.time);
+			const startMinutes =
+				entry.kind === "Leistungskontrolle"
+					? null
+					: parseTimeToMinutes(entry.time);
 			if (startMinutes === null) continue;
 
 			const beforeEventTriggerMinutes =

@@ -30,13 +30,14 @@ export function ScreenHeader({
 					accessibilityRole="header"
 					className={
 						titleClassName ??
-						"text-center font-poppins font-semibold text-body-2 text-text"
+						"px-20 text-center font-poppins font-semibold text-body-2 text-text"
 					}
+					numberOfLines={1}
 				>
 					{title}
 				</Text>
 			) : null}
-			<View className="absolute right-0 z-10 h-12 w-12 items-center justify-center">
+			<View className="absolute right-0 z-10 min-h-12 min-w-12 items-center justify-center">
 				{right}
 			</View>
 		</View>

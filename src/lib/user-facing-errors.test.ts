@@ -1,9 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
+import { setDiagnosticSink } from "./diagnostics";
 import {
 	getUserFacingErrorMessage,
 	USER_FACING_ERROR_KIND,
 } from "./user-facing-errors";
-import { setDiagnosticSink } from "./diagnostics";
 
 describe("getUserFacingErrorMessage", () => {
 	test("uses explicit user-facing Convex error data", () => {
@@ -55,6 +55,10 @@ describe("getUserFacingErrorMessage", () => {
 		const error = new Error(
 			"[CONVEX M(learningPlans:start)] Server Error\n  Called by client",
 		);
+		(error as Error & { data: unknown }).data = {
+			kind: USER_FACING_ERROR_KIND,
+			message: "Bitte versuche es erneut.",
+		};
 
 		try {
 			expect(
@@ -69,7 +73,7 @@ describe("getUserFacingErrorMessage", () => {
 
 		expect(sink).toHaveBeenCalledWith(
 			expect.objectContaining({
-				level: "error",
+				level: "warn",
 				message: "Handled user-visible error",
 				source: "learning-plan-start",
 				metadata: { learningPlanId: "abc" },
