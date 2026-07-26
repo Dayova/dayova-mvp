@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Id } from "#convex/_generated/dataModel";
+import { setDiagnosticSink } from "~/lib/diagnostics";
 import { generatePlanWithAnalytics } from "./plan-generation-analytics";
 
 const learningPlanId = "plan-1" as Id<"learningPlans">;
@@ -50,5 +51,32 @@ describe("generatePlanWithAnalytics", () => {
 		).rejects.toBe(generationError);
 
 		expect(capture).not.toHaveBeenCalled();
+	});
+
+	it("handles a rejected capture without failing successful generation", async () => {
+		const captureError = new Error("capture failed");
+		const diagnosticSink = vi.fn();
+		const restoreDiagnosticSink = setDiagnosticSink(diagnosticSink);
+
+		try {
+			const result = await generatePlanWithAnalytics({
+				generatePlan: vi.fn().mockResolvedValue({ sessionCount: 4 }),
+				capture: vi.fn().mockRejectedValue(captureError),
+				args: generationArgs,
+			});
+			await Promise.resolve();
+
+			expect(result).toEqual({ sessionCount: 4 });
+			expect(diagnosticSink).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: "warn",
+					message: "Failed to capture generated-plan analytics.",
+					source: "analytics.studyPlanGenerated",
+					error: captureError,
+				}),
+			);
+		} finally {
+			restoreDiagnosticSink();
+		}
 	});
 });
