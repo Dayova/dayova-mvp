@@ -27,7 +27,8 @@ import {
 	isPostHogConfigured,
 	postHogApiKey,
 	postHogHost,
-} from "~/lib/analytics-core";
+	validationAnalyticsBeforeSend,
+} from "~/lib/analytics";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
 import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
@@ -131,6 +132,7 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 							host: postHogHost,
 							disabled: !isPostHogConfigured,
 							captureAppLifecycleEvents: false,
+							before_send: validationAnalyticsBeforeSend,
 						}}
 					>
 						{/* Native sessions persist by default; there is no per-login opt-out.

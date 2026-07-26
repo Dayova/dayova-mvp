@@ -19,10 +19,17 @@ import {
 import { api } from "#convex/_generated/api";
 import { useOnboarding } from "~/context/OnboardingContext";
 import {
-	captureValidationEvent,
-	definedAnalyticsProperties,
+	createValidationAnalytics,
 	isPostHogConfigured,
-} from "~/lib/analytics-core";
+} from "~/lib/analytics";
+import { runWithAuthSettleRetries } from "~/lib/auth-settle-retry";
+import {
+	getDefinedProfileFields as definedProfileFields,
+	prepareClerkRegistration,
+	splitClerkName as splitName,
+	type ClerkRegistrationInput as RegisterInput,
+	type ClerkProfile as RegisterProfile,
+} from "~/lib/clerk-registration";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import {
@@ -47,21 +54,11 @@ import {
 	type PasswordReverificationSession,
 } from "~/lib/password-reverification";
 import { signOutAndResetState } from "~/lib/logout-state";
+import { isSupportedGrade } from "~/lib/grades";
 
 type LoginInput = {
 	email: string;
 	password: string;
-};
-
-type RegisterInput = {
-	email: string;
-	password: string;
-	name?: string;
-	phone?: string;
-	birthDate?: string;
-	grade?: string;
-	schoolType?: string;
-	state?: string;
 };
 
 type UpdateProfileInput = {
@@ -135,15 +132,6 @@ interface AccountActionsContextType {
 	logout: () => Promise<void>;
 }
 
-type RegisterProfile = {
-	name?: string;
-	phone?: string;
-	birthDate?: string;
-	grade?: string;
-	schoolType?: string;
-	state?: string;
-};
-
 type PendingProfileEmail = {
 	email: string;
 	emailAddress: {
@@ -165,15 +153,6 @@ const AccountActionsContext = createContext<
 
 const getMetadataString = (metadata: Record<string, unknown>, key: string) =>
 	typeof metadata[key] === "string" ? metadata[key] : undefined;
-
-const splitName = (name?: string) => {
-	const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
-	const [firstName, ...rest] = parts;
-	return {
-		firstName,
-		lastName: rest.length > 0 ? rest.join(" ") : undefined,
-	};
-};
 
 const getGermanClerkErrorByCode = (code?: string) => {
 	switch (code) {
@@ -322,17 +301,6 @@ const getPasswordChangeErrorMessage = (error: unknown) => {
 	);
 };
 
-const definedProfileFields = (profile: RegisterProfile) => ({
-	...(profile.name !== undefined ? { name: profile.name } : {}),
-	...(profile.phone !== undefined ? { phone: profile.phone } : {}),
-	...(profile.birthDate !== undefined ? { birthDate: profile.birthDate } : {}),
-	...(profile.grade !== undefined ? { grade: profile.grade } : {}),
-	...(profile.schoolType !== undefined
-		? { schoolType: profile.schoolType }
-		: {}),
-	...(profile.state !== undefined ? { state: profile.state } : {}),
-});
-
 const findEmailAddressId = (factors: unknown) => {
 	if (!Array.isArray(factors)) return null;
 	const factor = factors.find(
@@ -387,31 +355,6 @@ const getAuthFactorList = (factors: unknown) => {
 	return descriptions.length > 0
 		? descriptions.join(", ")
 		: "keine unterstützte Methode";
-};
-
-const wait = (milliseconds: number) =>
-	new Promise((resolve) => setTimeout(resolve, milliseconds));
-const authSettleRetryDelays = [0, 750, 1250, 2000] as const;
-const runWithAuthSettleRetries = async <TResult,>(
-	task: () => Promise<TResult>,
-): Promise<
-	| { ok: true; value: TResult }
-	| { ok: false; firstError: unknown; lastError: unknown }
-> => {
-	let firstError: unknown;
-	let lastError: unknown;
-
-	for (const delay of authSettleRetryDelays) {
-		try {
-			if (delay > 0) await wait(delay);
-			return { ok: true, value: await task() };
-		} catch (error) {
-			firstError ??= error;
-			lastError = error;
-		}
-	}
-
-	return { ok: false, firstError, lastError };
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -556,31 +499,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 		const localDayKey = getDayKey(new Date());
 		let validationStudentCode = user.validationStudentCode ?? null;
-		try {
-			const activity = await markValidationActivity({ localDayKey });
-			validationStudentCode =
-				activity.validationStudentCode ?? validationStudentCode;
-		} catch (error) {
+		const activityResult = await runWithAuthSettleRetries(() =>
+			markValidationActivity({ localDayKey }),
+		);
+		if (!activityResult.ok) {
 			logDiagnosticError(
 				"Failed to mark onboarding validation activity.",
-				error,
+				activityResult.lastError,
 				{
 					source: "auth.onboarding.analytics.markActivity",
 					level: "warn",
 				},
 			);
+			if (activityResult.lastError !== activityResult.firstError) {
+				logDiagnosticError(
+					"Initial onboarding validation activity error.",
+					activityResult.firstError,
+					{
+						source: "auth.onboarding.analytics.markActivity.initial",
+						level: "warn",
+					},
+				);
+			}
+			return;
 		}
+		validationStudentCode =
+			activityResult.value.validationStudentCode ?? validationStudentCode;
 
-		captureValidationEvent(
-			posthog,
-			"onboarding_completed",
-			user.clerkId,
-			definedAnalyticsProperties({
-				local_day_key: localDayKey,
-				answer_count: 5,
-				validation_student_code: validationStudentCode,
-			}),
-		);
+		createValidationAnalytics(posthog, {
+			distinctId: user.clerkId,
+			sharedContext: { validationStudentCode },
+		}).capture("onboarding_completed", {
+			local_day_key: localDayKey,
+			onboarding_version: 1,
+		});
 	}, [markValidationActivity, posthog, user]);
 
 	useEffect(() => {
@@ -772,24 +724,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				throw new Error("Authentifizierung ist noch nicht bereit.");
 			}
 
-			const profile = {
-				name: input.name?.trim(),
-				phone: input.phone?.trim(),
-				birthDate: input.birthDate,
-				grade: input.grade?.trim(),
-				schoolType: input.schoolType?.trim(),
-				state: input.state?.trim(),
-			};
-			const { firstName, lastName } = splitName(profile.name);
+			const { profile, signUp: signUpParameters } =
+				prepareClerkRegistration(input);
 
 			try {
-				const signUp = await clerk.client.signUp.create({
-					emailAddress: input.email.trim().toLowerCase(),
-					password: input.password,
-					firstName,
-					lastName,
-					unsafeMetadata: definedProfileFields(profile),
-				});
+				const signUp = await clerk.client.signUp.create(signUpParameters);
 
 				setPendingProfile(profile);
 
@@ -845,6 +784,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				schoolType: input.schoolType.trim(),
 				state: input.state.trim(),
 			};
+			if (
+				normalizedProfile.grade &&
+				!isSupportedGrade(normalizedProfile.grade)
+			) {
+				throw new Error("Bitte wähle eine gültige Klassenstufe aus.");
+			}
 			const { firstName, lastName } = splitName(normalizedProfile.name);
 			const unsafeMetadata = {
 				...(clerkUser.unsafeMetadata ?? {}),
