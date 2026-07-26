@@ -53,7 +53,7 @@ const mockOnboarding = {
 		challenge: "Organisation",
 		goal: "Mehr Struktur im Lernen",
 		state: "Sachsen",
-		schoolType: "Gymnasium",
+		schoolType: "prefer_not_to_say",
 		grade: "9",
 		dailySchoolTime: "60 min",
 		studyDays: "Montag",
@@ -517,5 +517,19 @@ describe("OnboardingScreen", () => {
 				"Keine Sorge, du\nkannst deine\nLernzeiten später\nanpassen.",
 			),
 		).toBeNull();
+	});
+
+	test("renders school type through the shared bottom-sheet select trigger", async () => {
+		const screen = await render(
+			<OnboardingScreen initialStepId="schoolType" />,
+		);
+
+		expect(screen.getByText("Welche Schulart besuchst du?")).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Schulart auswählen" }),
+		).toHaveAccessibilityValue({ text: "Keine Angabe" });
+		expect(
+			screen.getByTestId("onboarding-school-type-picker"),
+		).toBeOnTheScreen();
 	});
 });

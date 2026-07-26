@@ -6,7 +6,7 @@ type AnswerStepKind = "chips" | "goals" | "range" | "wheel";
 export type OnboardingDecisionStep =
 	| {
 			kind: "text";
-			field: "email" | "name" | "password" | "schoolType";
+			field: "email" | "name" | "password";
 	  }
 	| { kind: AnswerStepKind; field: keyof OnboardingAnswers }
 	| { kind: "fact" | "infoStack" | "intro" };
@@ -30,9 +30,6 @@ export function getOnboardingStepDecision(
 		const value = answers[step.field];
 		if (step.field === "name" && !isValidName(value)) {
 			return { action: "advance", error: "Bitte gib deinen Namen ein." };
-		}
-		if (step.field === "schoolType" && value.trim().length < 2) {
-			return { action: "advance", error: "Bitte gib deine Schulform ein." };
 		}
 		if (step.field === "email" && !isValidEmail(value)) {
 			return {
@@ -79,6 +76,6 @@ export const getOnboardingRegistrationPayload = (
 	password: answers.password,
 	birthDate: answers.birthDate,
 	grade: answers.grade,
-	schoolType: answers.schoolType,
+	schoolType: answers.schoolType || undefined,
 	state: answers.state,
 });

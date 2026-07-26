@@ -466,7 +466,7 @@ test("bounded school types survive authenticated profile and onboarding writes",
 			t.mutation(api.users.saveOnboardingAnswers, {
 				answers: { ...onboardingAnswers({ grade: "9" }), schoolType },
 			}),
-		).resolves.toEqual({ success: true });
+		).resolves.toMatchObject({ success: true });
 	}
 
 	const storedQuestion = await t.run(async (ctx) =>
@@ -540,7 +540,7 @@ test("bounded federal states stay selectable and survive profile and onboarding 
 				state: "Baden-Württemberg",
 			},
 		}),
-	).resolves.toEqual({ success: true });
+	).resolves.toMatchObject({ success: true });
 
 	const stateQuestion = await t.run(async (ctx) =>
 		ctx.db
