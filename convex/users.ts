@@ -418,7 +418,7 @@ export const syncCurrentUser = mutation({
 			const schoolType =
 				args.schoolType === undefined
 					? normalizeLegacySchoolType(existingUser.schoolType)
-					: normalizeOptionalSchoolType(args.schoolType);
+					: user.schoolType;
 			await ctx.db.patch("users", existingUser._id, {
 				...user,
 				schoolType,

@@ -1,8 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-	GERMAN_FEDERAL_STATES,
-	isGermanFederalState,
-} from "./federal-states";
+import { GERMAN_FEDERAL_STATES, isGermanFederalState } from "./federal-states";
 
 describe("federal state contract", () => {
 	test("publishes every German federal state exactly once", () => {
