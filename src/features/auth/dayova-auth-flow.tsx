@@ -118,6 +118,7 @@ import {
 	type RegistrationStage,
 	shouldHandleRegistrationBack,
 } from "~/lib/registration-navigation";
+import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
@@ -209,9 +210,9 @@ type InfoStackStep = {
 
 type TextStep = {
 	kind: "text";
-	id: "name" | "schoolType" | "email" | "password";
+	id: "name" | "email" | "password";
 	title: string;
-	field: "name" | "schoolType" | "email" | "password";
+	field: "name" | "email" | "password";
 	placeholder: string;
 	secure?: boolean;
 	keyboardType?: TextInputProps["keyboardType"];
@@ -221,9 +222,9 @@ type TextStep = {
 
 type WheelStep = {
 	kind: "wheel";
-	id: "state" | "grade" | "birthDate" | "learningTime";
+	id: "state" | "schoolType" | "grade" | "birthDate" | "learningTime";
 	title: string;
-	field: "state" | "grade" | "birthDate" | "learningTime";
+	field: "state" | "schoolType" | "grade" | "birthDate" | "learningTime";
 };
 
 type OnboardingStep =
@@ -446,12 +447,10 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		field: "state",
 	},
 	{
-		kind: "text",
+		kind: "wheel",
 		id: "schoolType",
-		title: "Welche Schule\nbesuchst du?",
+		title: "Welche Schulart besuchst du?",
 		field: "schoolType",
-		placeholder: "Gymnasium",
-		autoComplete: "off",
 	},
 	{
 		kind: "wheel",
@@ -550,6 +549,7 @@ const defaultAnswerForStep = (step: OnboardingStep) => {
 	if (step.kind === "range") return "30 min";
 	if (step.kind === "wheel") {
 		if (step.field === "state") return "Sachsen";
+		if (step.field === "schoolType") return "prefer_not_to_say";
 		if (step.field === "grade") return "9";
 		if (step.field === "birthDate") return DEFAULT_BIRTH_DATE;
 		if (step.field === "learningTime") return DEFAULT_LEARNING_TIME;
@@ -3109,6 +3109,23 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 				testID="onboarding-grade-picker"
 				title="Klassenstufe auswählen"
 				onChange={(value) => setAnswer("grade", value)}
+			/>
+		);
+	}
+
+	if (step.field === "schoolType") {
+		return (
+			<OnboardingSelect
+				accessibilityLabel="Schulart auswählen"
+				value={answers.schoolType || "prefer_not_to_say"}
+				options={SCHOOL_TYPE_VALUES}
+				formatLabel={(schoolType) =>
+					SCHOOL_TYPE_OPTIONS.find((option) => option.value === schoolType)
+						?.label ?? schoolType
+				}
+				testID="onboarding-school-type-picker"
+				title="Schulart auswählen"
+				onChange={(value) => setAnswer("schoolType", value)}
 			/>
 		);
 	}

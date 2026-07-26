@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 import type { OnboardingAnswers } from "~/context/OnboardingContext";
-import { prepareClerkRegistration } from "~/lib/clerk-registration";
+import {
+	type ClerkRegistrationInput,
+	prepareClerkRegistration,
+} from "~/lib/clerk-registration";
 import {
 	getNextOnboardingStepIndex,
 	getOnboardingRegistrationPayload,
@@ -15,7 +18,7 @@ const answers = (
 	challenge: "Organisation",
 	goal: "Mehr Struktur im Lernen",
 	state: "Sachsen",
-	schoolType: "Gymnasium",
+	schoolType: "gymnasium",
 	grade: "9",
 	dailySchoolTime: "60 min",
 	studyDays: "Montag, Mittwoch",
@@ -85,7 +88,7 @@ describe("onboarding flow decisions", () => {
 			password: "supersecret",
 			birthDate: "09.09.2012",
 			grade: "13",
-			schoolType: "Gymnasium",
+			schoolType: "gymnasium",
 			state: "Sachsen",
 		});
 
@@ -95,6 +98,32 @@ describe("onboarding flow decisions", () => {
 				unsafeMetadata: { grade: "13" },
 			},
 		});
+	});
+
+	test("keeps the bounded school type through the Clerk registration boundary", () => {
+		const registrationPayload = getOnboardingRegistrationPayload(
+			answers({ schoolType: "prefer_not_to_say" }),
+		);
+
+		expect(prepareClerkRegistration(registrationPayload)).toMatchObject({
+			profile: { schoolType: "prefer_not_to_say" },
+			signUp: {
+				unsafeMetadata: { schoolType: "prefer_not_to_say" },
+			},
+		});
+	});
+
+	test("rejects unsupported school types at the Clerk registration boundary", () => {
+		const invalidPayload = {
+			...getOnboardingRegistrationPayload(answers()),
+			schoolType: "Goethe-Gymnasium Dresden",
+		};
+
+		expect(() =>
+			prepareClerkRegistration(
+				invalidPayload as unknown as ClerkRegistrationInput,
+			),
+		).toThrow("Bitte wähle eine gültige Schulart aus.");
 	});
 
 	test("rejects unsupported states at the Clerk registration boundary", () => {

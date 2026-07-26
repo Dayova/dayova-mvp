@@ -55,6 +55,11 @@ import {
 } from "~/lib/password-reverification";
 import { signOutAndResetState } from "~/lib/logout-state";
 import { isSupportedGrade } from "~/lib/grades";
+import {
+	isSupportedSchoolType,
+	normalizeLegacySchoolType,
+	type SupportedSchoolType,
+} from "~/lib/school-types";
 
 type LoginInput = {
 	email: string;
@@ -66,7 +71,7 @@ type UpdateProfileInput = {
 	name: string;
 	birthDate: string;
 	grade: string;
-	schoolType: string;
+	schoolType?: SupportedSchoolType;
 	state: string;
 };
 
@@ -77,7 +82,7 @@ type AuthUser = {
 	phone?: string;
 	birthDate?: string;
 	grade?: string;
-	schoolType?: string;
+	schoolType?: SupportedSchoolType;
 	state?: string;
 	avatarUrl?: string;
 	validationStudentCode?: string;
@@ -153,6 +158,17 @@ const AccountActionsContext = createContext<
 
 const getMetadataString = (metadata: Record<string, unknown>, key: string) =>
 	typeof metadata[key] === "string" ? metadata[key] : undefined;
+
+const normalizeOptionalSchoolTypeInput = (
+	value: unknown,
+): SupportedSchoolType | undefined => {
+	if (typeof value !== "string" || value.trim().length === 0) return undefined;
+	const normalizedValue = value.trim();
+	if (!isSupportedSchoolType(normalizedValue)) {
+		throw new Error("Bitte wähle eine gültige Schulart aus.");
+	}
+	return normalizedValue;
+};
 
 const getGermanClerkErrorByCode = (code?: string) => {
 	switch (code) {
@@ -405,6 +421,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			clerkName.trim().length > 0
 				? clerkName
 				: getMetadataString(unsafeMetadata, "name");
+		const schoolType = normalizeLegacySchoolType(
+			getMetadataString(unsafeMetadata, "schoolType"),
+		);
 
 		return {
 			clerkId: clerkUser.id,
@@ -415,7 +434,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				clerkUser.primaryPhoneNumber?.phoneNumber,
 			birthDate: getMetadataString(unsafeMetadata, "birthDate"),
 			grade: getMetadataString(unsafeMetadata, "grade"),
-			schoolType: getMetadataString(unsafeMetadata, "schoolType"),
+			schoolType,
 			state: getMetadataString(unsafeMetadata, "state"),
 			avatarUrl: clerkUser.imageUrl,
 			validationStudentCode: getMetadataString(
@@ -423,6 +442,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				"validationStudentCode",
 			),
 		};
+	}, [clerkUser]);
+
+	useEffect(() => {
+		if (!clerkUser) return;
+		const rawSchoolType = getMetadataString(
+			clerkUser.unsafeMetadata ?? {},
+			"schoolType",
+		);
+		if (!rawSchoolType) return;
+		const schoolType = normalizeLegacySchoolType(rawSchoolType);
+		if (schoolType === rawSchoolType) return;
+
+		void clerkUser
+			.updateMetadata({
+				unsafeMetadata: { schoolType: schoolType ?? null },
+			})
+			.catch(() => {
+				logDiagnosticError(
+					"Failed to sanitize legacy school type metadata.",
+					new Error("Clerk metadata cleanup failed."),
+					{ source: "auth.sanitizeSchoolType", level: "warn" },
+				);
+			});
 	}, [clerkUser]);
 
 	const activateSession = useCallback(
@@ -781,7 +823,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				name: input.name.trim(),
 				birthDate: input.birthDate.trim(),
 				grade: input.grade.trim(),
-				schoolType: input.schoolType.trim(),
+				schoolType: normalizeOptionalSchoolTypeInput(input.schoolType),
 				state: input.state.trim(),
 			};
 			if (
@@ -791,13 +833,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				throw new Error("Bitte wähle eine gültige Klassenstufe aus.");
 			}
 			const { firstName, lastName } = splitName(normalizedProfile.name);
-			const unsafeMetadata = {
+			const unsafeMetadata: Record<string, unknown> = {
 				...(clerkUser.unsafeMetadata ?? {}),
 				birthDate: normalizedProfile.birthDate,
 				grade: normalizedProfile.grade,
-				schoolType: normalizedProfile.schoolType,
 				state: normalizedProfile.state,
 			};
+			delete unsafeMetadata.schoolType;
+			if (normalizedProfile.schoolType) {
+				unsafeMetadata.schoolType = normalizedProfile.schoolType;
+			}
 
 			try {
 				await clerkUser.update({
