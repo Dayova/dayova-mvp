@@ -1,3 +1,4 @@
+import { isGermanFederalState } from "./federal-states";
 import { isSupportedGrade } from "./grades";
 
 export type ClerkRegistrationInput = {
@@ -45,6 +46,10 @@ export const prepareClerkRegistration = (input: ClerkRegistrationInput) => {
 	if (grade && !isSupportedGrade(grade)) {
 		throw new Error("Bitte wähle eine gültige Klassenstufe aus.");
 	}
+	const state = input.state?.trim();
+	if (state && !isGermanFederalState(state)) {
+		throw new Error("Bitte wähle ein gültiges Bundesland aus.");
+	}
 
 	const profile = {
 		name: input.name?.trim(),
@@ -52,7 +57,7 @@ export const prepareClerkRegistration = (input: ClerkRegistrationInput) => {
 		birthDate: input.birthDate,
 		grade,
 		schoolType: input.schoolType?.trim(),
-		state: input.state?.trim(),
+		state,
 	};
 	const { firstName, lastName } = splitClerkName(profile.name);
 

@@ -13,6 +13,7 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
+import { generatePlanWithAnalytics } from "~/features/learning-plans/plan-generation-analytics";
 import {
 	LEARNING_SESSION_COMPOSITION_FLAG,
 	resolveLearningSessionCompositionVariant,
@@ -147,17 +148,15 @@ export default function LearningPlanGeneratingScreen() {
 		queueMicrotask(() => {
 			setIsBusy(true);
 			setErrorMessage(null);
-			void generatePlan({
-				learningPlanId: planId,
-				answers: answerList,
-				sessionCompositionVariant,
+			void generatePlanWithAnalytics({
+				generatePlan,
+				capture,
+				args: {
+					learningPlanId: planId,
+					answers: answerList,
+					sessionCompositionVariant,
+				},
 			})
-				.then((result) => {
-					void capture("study_plan_generated", {
-						learning_plan_id: planId,
-						session_count: result.sessionCount,
-					});
-				})
 				.catch((error: unknown) => {
 					setErrorMessage(
 						getErrorMessage(
@@ -213,10 +212,14 @@ export default function LearningPlanGeneratingScreen() {
 				snapshot.plan.contentGeneration.stage !== "ready" &&
 				snapshot.sessions.length === 0
 			) {
-				await generatePlan({
-					learningPlanId: planId,
-					answers: answerList,
-					sessionCompositionVariant,
+				await generatePlanWithAnalytics({
+					generatePlan,
+					capture,
+					args: {
+						learningPlanId: planId,
+						answers: answerList,
+						sessionCompositionVariant,
+					},
 				});
 				return;
 			}

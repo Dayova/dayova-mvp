@@ -96,4 +96,14 @@ describe("onboarding flow decisions", () => {
 			},
 		});
 	});
+
+	test("rejects unsupported states at the Clerk registration boundary", () => {
+		const registrationPayload = getOnboardingRegistrationPayload(
+			answers({ state: "  Atlantis  " }),
+		);
+
+		expect(() => prepareClerkRegistration(registrationPayload)).toThrow(
+			"Bitte wähle ein gültiges Bundesland aus.",
+		);
+	});
 });
