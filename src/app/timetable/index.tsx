@@ -27,7 +27,7 @@ import { Input } from "~/components/ui/input";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { getUploadFailureMessage } from "~/features/learning-plans/utils";
 import {
 	getTimetableLessonError,
@@ -292,7 +292,7 @@ function LessonEditorCard({
 
 export default function TimetableScreen() {
 	const router = useRouter();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { colors } = useDayovaTheme();
 	const { isAuthenticated } = useConvexAuth();
 	const timetableState = useQuery(

@@ -1,3 +1,8 @@
+import {
+	PASSWORD_RESET_SUCCESS_PATH,
+	SESSION_TASK_RESET_PASSWORD_PATH,
+} from "~/lib/auth-routing";
+
 export const OFFLINE_ACCESS_WINDOW_MS = 72 * 60 * 60 * 1000;
 
 export type AccessState =
@@ -31,6 +36,11 @@ type AccessSnapshot =
 
 const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
 const ACCESS_SETUP_PATHS = new Set(["/trial", "/paywall"]);
+const ACCESS_BYPASS_PATHS = new Set([
+	"/onboarding",
+	PASSWORD_RESET_SUCCESS_PATH,
+	SESSION_TASK_RESET_PASSWORD_PATH,
+]);
 
 export const resolveAccessRoute = ({
 	accessState,
@@ -47,7 +57,7 @@ export const resolveAccessRoute = ({
 
 	const isAuthRoute = PUBLIC_AUTH_PATHS.has(pathname);
 	if (!user) return isAuthRoute ? null : "/";
-	if (pathname === "/onboarding") return null;
+	if (ACCESS_BYPASS_PATHS.has(pathname)) return null;
 	if (!accessState) return null;
 
 	if (accessState === "needsActivation") {

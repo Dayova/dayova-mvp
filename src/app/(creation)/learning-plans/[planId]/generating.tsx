@@ -5,26 +5,24 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
-import { AnalysisOrbitLoader } from "~/features/learning-plans/learning-plan-ui";
+import { generatePlanWithAnalytics } from "~/features/learning-plans/plan-generation-analytics";
 import {
 	LEARNING_SESSION_COMPOSITION_FLAG,
 	resolveLearningSessionCompositionVariant,
 } from "~/features/learning-plans/session-experiment";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/analytics";
-import {
-	definedAnalyticsProperties,
-	isPostHogConfigured,
-} from "~/lib/analytics-core";
+import { isPostHogConfigured } from "~/lib/analytics";
 import { goBackOrReplace } from "~/lib/navigation";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -40,7 +38,7 @@ export default function LearningPlanGeneratingScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
 	const retryFailedSessionContent = useAction(
@@ -150,33 +148,15 @@ export default function LearningPlanGeneratingScreen() {
 		queueMicrotask(() => {
 			setIsBusy(true);
 			setErrorMessage(null);
-			void generatePlan({
-				learningPlanId: planId,
-				answers: answerList,
-				sessionCompositionVariant,
+			void generatePlanWithAnalytics({
+				generatePlan,
+				capture,
+				args: {
+					learningPlanId: planId,
+					answers: answerList,
+					sessionCompositionVariant,
+				},
 			})
-				.then((result) => {
-					if (result.compositionEligibleSessionCount > 0) {
-						void capture(
-							"learning_session_composition_exposed",
-							definedAnalyticsProperties({
-								learning_plan_id: planId,
-								feature_flag_key: LEARNING_SESSION_COMPOSITION_FLAG,
-								session_composition_variant: sessionCompositionVariant,
-								eligible_session_count: result.compositionEligibleSessionCount,
-							}),
-						);
-					}
-					void capture(
-						"study_plan_generated",
-						definedAnalyticsProperties({
-							learning_plan_id: planId,
-							session_count: result.sessionCount,
-							answer_count: answerList.length,
-							session_composition_variant: sessionCompositionVariant,
-						}),
-					);
-				})
 				.catch((error: unknown) => {
 					setErrorMessage(
 						getErrorMessage(
@@ -232,10 +212,14 @@ export default function LearningPlanGeneratingScreen() {
 				snapshot.plan.contentGeneration.stage !== "ready" &&
 				snapshot.sessions.length === 0
 			) {
-				await generatePlan({
-					learningPlanId: planId,
-					answers: answerList,
-					sessionCompositionVariant,
+				await generatePlanWithAnalytics({
+					generatePlan,
+					capture,
+					args: {
+						learningPlanId: planId,
+						answers: answerList,
+						sessionCompositionVariant,
+					},
 				});
 				return;
 			}
@@ -281,7 +265,9 @@ export default function LearningPlanGeneratingScreen() {
 				showsVerticalScrollIndicator={false}
 			>
 				<View className="min-h-[620px] flex-1 items-center justify-center pb-20">
-					<AnalysisOrbitLoader />
+					<View className="mb-12">
+						<AnimatedFlowerLoader />
+					</View>
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text/70">
 						Wir erstellen jetzt deinen vollständigen Lernplan.
 					</Text>

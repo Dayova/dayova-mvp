@@ -38,6 +38,7 @@ const workspace = parseYaml(
 	onlyBuiltDependencies?: string[];
 	packageManagerStrictVersion?: boolean;
 	pmOnFail?: string;
+	virtualStoreDirMaxLength?: number;
 };
 
 function parseNpmrcSettingNames(content: string): Set<string> {
@@ -78,6 +79,7 @@ describe("pnpm toolchain", () => {
 	it("keeps pnpm 11 workspace settings out of .npmrc and removes legacy build settings", () => {
 		expect(workspace.autoInstallPeers).toBe(false);
 		expect(workspace.pmOnFail).toBe("error");
+		expect(workspace.virtualStoreDirMaxLength).toBe(40);
 		expect(workspace.allowBuilds).toEqual({
 			"browser-tabs-lock": false,
 			"core-js": false,

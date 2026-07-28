@@ -16,7 +16,8 @@ _Avoid_: User-facing message, learner error text
 - `EXPO_PUBLIC_POSTHOG_API_KEY` enables PostHog analytics in the Expo app. Leave it empty to disable analytics locally.
 - `EXPO_PUBLIC_POSTHOG_HOST` defaults to `https://eu.i.posthog.com`; use a Dayova-owned reverse proxy only if event delivery or privacy requirements justify the extra infrastructure.
 - Analytics events must go through `src/lib/analytics.ts`. PostHog autocapture, lifecycle events, anonymous pre-auth tracking, and session replay are intentionally disabled for the validation phase.
-- PostHog identity properties are limited to validation-relevant IDs and coarse student context. Do not send names, email addresses, birth dates, avatar URLs, raw notes, uploaded content, or learner answers as analytics properties.
+- Clerk user ID is the PostHog `distinctId`, never a `clerk_id` property. Custom identity is exactly optional `convex_user_id`, optional `validation_student_code`, bounded `grade` (`6` through `13`), and bounded German federal `state`; the bounded product `Schulart` remains excluded as `school_type` until a separate reviewed analytics-contract change.
+- Names, email addresses, birth dates, avatar URLs, school names, raw notes, filenames, uploaded content, learner answers, transcripts, and diagnostic error detail are never custom PostHog person or event properties.
 - Capture platform conventions, release processes, and environment decisions here.
 - Put platform ADRs in `docs/contexts/platform/adr/`.
 
@@ -50,6 +51,37 @@ Do not add optional public envs to the required release-key list unless the app
 cannot function without them. The analytics client must stay disabled gracefully
 when the PostHog key is absent.
 
+## Validation Analytics Runtime Contract
+
+Every allowed custom event receives `analytics_schema_version` and may receive
+only centrally generated `validation_student_code`, `eas_update_id`,
+`eas_channel`, `eas_runtime_version`, and `eas_is_embedded_launch` shared
+context. The exact event-property pairs are:
+
+- `onboarding_completed`: `local_day_key`, `onboarding_version`
+- `homework_created`: `day_entry_id`, `planned_day_key`, `due_day_key`, `duration_minutes`
+- `exam_created`: `day_entry_id`, `planned_day_key`, `duration_minutes`, bounded `exam_type`
+- `material_uploaded`: `learning_plan_id`, bounded `file_type`, bounded `file_size_bucket`
+- `study_plan_generated`: `learning_plan_id`, `session_count`
+- `study_slot_started`: slot context plus `started_at`
+- `study_slot_completed`: slot context plus `outcome_at`
+- `study_slot_partially_completed`: slot context plus `outcome_at`
+- `study_slot_missed`: slot context plus `outcome_at` and bounded `missed_reason`
+- `plan_adjusted`: original/new session IDs, bounded `adjustment_type`, old/new planned day keys and durations, and optional bounded `missed_reason`
+- `user_returned_next_day`: `local_day_key`, `previous_activity_day_key`
+
+Slot context is exactly `learning_plan_id`, `learning_plan_session_id`, bounded
+`phase`, `planned_day_key`, `planned_start_time`, `duration_minutes`, and
+optional `deadline_day_key`. Exact bounded vocabularies are documented in
+`docs/contexts/integrations/CONTEXT.md` and implemented in
+`src/lib/analytics.ts`.
+
+Runtime projection is value-aware even when TypeScript is bypassed. Development
+and tests throw on unknown keys or invalid values. Production omits invalid
+optional values, drops events with invalid required values, and records only the
+event/property name in diagnostics. `before_send` repeats the custom-key guard
+as defense in depth without filtering PostHog SDK/system properties.
+
 ## Package Manager Toolchain
 
 Dayova uses pnpm 11.15.1 on Node 24.18.0. The pnpm version is repeated because
@@ -77,6 +109,14 @@ silently restore pnpm's default of installing missing peer dependencies.
 Keeping `autoInstallPeers: false` in the workspace file instead preserves
 Dayova's policy that peer dependencies must be declared deliberately.
 
+Keep `virtualStoreDirMaxLength: 40` in `pnpm-workspace.yaml`. Native Android
+dependencies add CMake build directories below pnpm's virtual store, and the
+default Windows package-directory length can push those paths beyond CMake
+3.22's 250-character object-path budget in deep worktrees. Forty retains
+readable package prefixes where possible while leaving enough space for CMake
+and Ninja's generated suffixes. This is a pnpm behavior setting and therefore
+does not belong in `.npmrc`.
+
 pnpm 11 also replaced the legacy dependency-build settings, including
 `onlyBuiltDependencies`, with one `allowBuilds` map. Dayova keeps that map as
 the sole lifecycle-script policy so an unreviewed dependency cannot execute
@@ -101,6 +141,27 @@ A package-manager change can affect lockfile parsing, peer resolution, patch
 application, dependency lifecycle scripts, CI, and native builds. Therefore,
 update all three pins together and verify a frozen install, the full checks,
 production exports, and native EAS builds.
+
+React Native caches absolute native-module paths in
+`android/build/generated/autolinking/autolinking.json`. A pnpm upgrade or a
+`virtualStoreDirMaxLength` change can rename the hashed virtual-store directories
+without changing the package graph that Gradle's cache sentinel tracks. The
+`expo:android` script therefore runs
+`scripts/prepare-android-autolinking-cache.cjs` first. The preflight preserves a
+valid cache and removes only `package.json.sha` when cached native source
+directories no longer exist, causing React Native's Gradle plugin to regenerate
+its own cache. Do not replace this with unconditional deletion of Gradle output
+or `node_modules`.
+
+The Expo/React Native plugin graph and embedded Metro bundle can exceed Gradle's
+former 512 MiB metaspace ceiling during native release builds.
+`plugins/withAndroidGradleJvmMemory.js` therefore keeps the generated
+`org.gradle.jvmargs` in `android/gradle.properties` at 4 GiB heap and 1 GiB
+metaspace. Change that plugin—not the gitignored generated file—only when a
+measured build proves a different ceiling is safe. An apparent stop around
+`createBundle*JsAndAssets` must be diagnosed from the Gradle and Node processes
+before deleting caches; the one-shot release bundle is expected to complete
+while development builds retain watch mode.
 
 ## iOS Privacy Purpose Strings
 

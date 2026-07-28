@@ -1,25 +1,33 @@
 import { v } from "convex/values";
+import {
+	GERMAN_FEDERAL_STATES,
+	isGermanFederalState,
+} from "../src/lib/federal-states";
+import { GRADE_OPTIONS, isSupportedGrade } from "../src/lib/grades";
+import {
+	isSupportedSchoolType,
+	normalizeLegacySchoolType,
+	SCHOOL_TYPE_VALUES,
+} from "../src/lib/school-types";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
+import {
+	deriveOnboardingLearningTimes,
+	getOnboardingLearningTimeErrorMessage,
+	ONBOARDING_DURATION_MINUTES,
+	type OnboardingLearningTimeInput,
+} from "./learningTimeAvailability";
+import {
+	LEARNING_TIMES_BACKFILL_VERSION,
+	markLearningTimesBackfillHandled,
+} from "./learningTimesBackfill";
 
 const normalizeEmail = (email?: string) => email?.trim().toLowerCase() ?? "";
-const DURATION_OPTIONS = [
-	"10 min",
-	"20 min",
-	"30 min",
-	"45 min",
-	"60 min",
-	"75 min",
-	"90 min",
-	"105 min",
-	"120 min",
-	"135 min",
-	"150 min",
-	"165 min",
-	"180 min",
-] as const;
+const DURATION_OPTIONS = ONBOARDING_DURATION_MINUTES.map(
+	(minutes) => `${minutes} min`,
+);
 type OnboardingQuestionKey =
 	| "studyTime"
 	| "strength"
@@ -31,6 +39,11 @@ type OnboardingQuestionKey =
 	| "dailySchoolTime"
 	| "studyDays"
 	| "learningTime";
+const ONBOARDING_LEARNING_TIME_KEYS = [
+	"studyDays",
+	"learningTime",
+	"dailySchoolTime",
+] as const;
 
 const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	key: OnboardingQuestionKey;
@@ -107,37 +120,21 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 		prompt: "Aus welchem Bundesland kommst du?",
 		kind: "select" as const,
 		order: 4,
-		options: [
-			"Bremen",
-			"Hamburg",
-			"Baden-Württemberg",
-			"Sachsen",
-			"Sachsen-Anhalt",
-			"Brandenburg",
-			"Bayern",
-			"Berlin",
-			"Hessen",
-			"Niedersachsen",
-			"Nordrhein-Westfalen",
-			"Rheinland-Pfalz",
-			"Saarland",
-			"Schleswig-Holstein",
-			"Thüringen",
-			"Mecklenburg-Vorpommern",
-		],
+		options: [...GERMAN_FEDERAL_STATES],
 	},
 	{
 		key: "schoolType",
-		prompt: "Welche Schule besuchst du?",
-		kind: "input" as const,
+		prompt: "Welche Schulart besuchst du?",
+		kind: "select" as const,
 		order: 5,
+		options: [...SCHOOL_TYPE_VALUES],
 	},
 	{
 		key: "grade",
 		prompt: "Welche Klassenstufe besuchst du?",
 		kind: "select" as const,
 		order: 6,
-		options: ["6", "7", "8", "9", "10", "11", "12"],
+		options: [...GRADE_OPTIONS],
 	},
 	{
 		key: "dailySchoolTime",
@@ -177,6 +174,151 @@ const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	return identity;
 };
 
+const hasLearningTimes = async (
+	ctx: MutationCtx,
+	ownerTokenIdentifier: string,
+) => {
+	const existing = await ctx.db
+		.query("userLearningTimes")
+		.withIndex("by_ownerTokenIdentifier", (q) =>
+			q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+		)
+		.take(1);
+	return existing.length > 0;
+};
+
+const insertLearningTimesWhenAbsent = async (
+	ctx: MutationCtx,
+	args: {
+		ownerTokenIdentifier: string;
+		input: OnboardingLearningTimeInput;
+		invalidInput: "reject" | "skip";
+	},
+) => {
+	const derived = deriveOnboardingLearningTimes(args.input);
+	if (!derived.ok) {
+		if (args.invalidInput === "reject") {
+			throwUserFacingError(
+				getOnboardingLearningTimeErrorMessage(derived.reason),
+			);
+		}
+		return { status: "needsSetup" as const, createdCount: 0 };
+	}
+
+	if (await hasLearningTimes(ctx, args.ownerTokenIdentifier)) {
+		return { status: "preserved" as const, createdCount: 0 };
+	}
+
+	const now = Date.now();
+	for (const window of derived.windows) {
+		await ctx.db.insert("userLearningTimes", {
+			ownerTokenIdentifier: args.ownerTokenIdentifier,
+			...window,
+			createdAt: now,
+			updatedAt: now,
+		});
+	}
+
+	return {
+		status: "created" as const,
+		createdCount: derived.windows.length,
+	};
+};
+
+const backfillLegacyLearningTimes = async (
+	ctx: MutationCtx,
+	args: {
+		userId: Id<"users">;
+		ownerTokenIdentifier: string;
+		currentVersion?: number;
+	},
+) => {
+	if ((args.currentVersion ?? 0) >= LEARNING_TIMES_BACKFILL_VERSION) {
+		return;
+	}
+
+	const markHandled = () =>
+		markLearningTimesBackfillHandled(ctx, args.userId, args.currentVersion);
+
+	if (await hasLearningTimes(ctx, args.ownerTokenIdentifier)) {
+		await markHandled();
+		return;
+	}
+
+	const legacy: Partial<OnboardingLearningTimeInput> = {};
+	for (const key of ONBOARDING_LEARNING_TIME_KEYS) {
+		const questions = await ctx.db
+			.query("onboardingQuestions")
+			.withIndex("by_key", (q) => q.eq("key", key))
+			.take(2);
+		if (questions.length === 0) return;
+		if (questions.length > 1) {
+			await markHandled();
+			return;
+		}
+		const question = questions[0];
+
+		const answers = await ctx.db
+			.query("userOnboardingAnswers")
+			.withIndex("by_userId_and_questionId", (q) =>
+				q.eq("userId", args.userId).eq("questionId", question._id),
+			)
+			.take(2);
+		if (answers.length === 0) return;
+		if (answers.length > 1) {
+			await markHandled();
+			return;
+		}
+		legacy[key] = answers[0].answer;
+	}
+
+	if (
+		legacy.studyDays === undefined ||
+		legacy.learningTime === undefined ||
+		legacy.dailySchoolTime === undefined
+	) {
+		return;
+	}
+
+	await insertLearningTimesWhenAbsent(ctx, {
+		ownerTokenIdentifier: args.ownerTokenIdentifier,
+		input: {
+			studyDays: legacy.studyDays,
+			learningTime: legacy.learningTime,
+			dailySchoolTime: legacy.dailySchoolTime,
+		},
+		invalidInput: "skip",
+	});
+	await markHandled();
+};
+
+const normalizeOptionalGrade = (grade?: string) => {
+	const normalizedGrade = grade?.trim();
+	if (!normalizedGrade) return undefined;
+	if (!isSupportedGrade(normalizedGrade)) {
+		throwUserFacingError("Bitte wähle eine gültige Klassenstufe aus.");
+	}
+	return normalizedGrade;
+};
+
+const normalizeOptionalFederalState = (state?: string) => {
+	const normalizedState = state?.trim();
+	if (!normalizedState) return undefined;
+	if (!isGermanFederalState(normalizedState)) {
+		throwUserFacingError("Bitte wähle ein gültiges Bundesland aus.");
+	}
+	return normalizedState;
+};
+
+const normalizeOptionalSchoolType = (schoolType?: string) => {
+	const normalizedSchoolType = schoolType?.trim();
+	if (!normalizedSchoolType) return undefined;
+	if (!isSupportedSchoolType(normalizedSchoolType)) {
+		throwUserFacingError("Bitte wähle eine gültige Schulart aus.");
+	}
+	return normalizedSchoolType;
+};
+
 const profileFields = (args: {
 	email?: string;
 	name?: string;
@@ -187,19 +329,54 @@ const profileFields = (args: {
 	state?: string;
 	avatarUrl?: string;
 	validationStudentCode?: string;
-}) => ({
-	...(args.email !== undefined ? { email: normalizeEmail(args.email) } : {}),
-	...(args.name !== undefined ? { name: args.name } : {}),
-	...(args.phone !== undefined ? { phone: args.phone } : {}),
-	...(args.birthDate !== undefined ? { birthDate: args.birthDate } : {}),
-	...(args.grade !== undefined ? { grade: args.grade } : {}),
-	...(args.schoolType !== undefined ? { schoolType: args.schoolType } : {}),
-	...(args.state !== undefined ? { state: args.state } : {}),
-	...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
-	...(args.validationStudentCode !== undefined
-		? { validationStudentCode: args.validationStudentCode }
-		: {}),
-});
+}) => {
+	const grade = normalizeOptionalGrade(args.grade);
+	const schoolType = normalizeOptionalSchoolType(args.schoolType);
+	const state = normalizeOptionalFederalState(args.state);
+	return {
+		...(args.email !== undefined ? { email: normalizeEmail(args.email) } : {}),
+		...(args.name !== undefined ? { name: args.name } : {}),
+		...(args.phone !== undefined ? { phone: args.phone } : {}),
+		...(args.birthDate !== undefined ? { birthDate: args.birthDate } : {}),
+		...(grade !== undefined ? { grade } : {}),
+		...(schoolType !== undefined ? { schoolType } : {}),
+		...(state !== undefined ? { state } : {}),
+		...(args.avatarUrl !== undefined ? { avatarUrl: args.avatarUrl } : {}),
+		...(args.validationStudentCode !== undefined
+			? { validationStudentCode: args.validationStudentCode }
+			: {}),
+	};
+};
+
+const sanitizeLegacyOnboardingSchoolType = async (
+	ctx: MutationCtx,
+	userId: Id<"users">,
+) => {
+	const question = await ctx.db
+		.query("onboardingQuestions")
+		.withIndex("by_key", (q) => q.eq("key", "schoolType"))
+		.unique();
+	if (!question) return;
+
+	const answer = await ctx.db
+		.query("userOnboardingAnswers")
+		.withIndex("by_userId_and_questionId", (q) =>
+			q.eq("userId", userId).eq("questionId", question._id),
+		)
+		.unique();
+	if (!answer) return;
+
+	const schoolType = normalizeLegacySchoolType(answer.answer);
+	if (!schoolType) {
+		await ctx.db.delete("userOnboardingAnswers", answer._id);
+		return;
+	}
+	if (schoolType !== answer.answer) {
+		await ctx.db.patch("userOnboardingAnswers", answer._id, {
+			answer: schoolType,
+		});
+	}
+};
 
 export const syncCurrentUser = mutation({
 	args: {
@@ -236,12 +413,28 @@ export const syncCurrentUser = mutation({
 			...profileFields(args),
 		};
 
+		let userId: Id<"users">;
 		if (existingUser) {
-			await ctx.db.patch("users", existingUser._id, user);
-			return existingUser._id;
+			const schoolType =
+				args.schoolType === undefined
+					? normalizeLegacySchoolType(existingUser.schoolType)
+					: user.schoolType;
+			await ctx.db.patch("users", existingUser._id, {
+				...user,
+				schoolType,
+			});
+			await sanitizeLegacyOnboardingSchoolType(ctx, existingUser._id);
+			userId = existingUser._id;
+		} else {
+			userId = await ctx.db.insert("users", user);
 		}
 
-		return await ctx.db.insert("users", user);
+		await backfillLegacyLearningTimes(ctx, {
+			userId,
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			currentVersion: existingUser?.learningTimesBackfillVersion,
+		});
+		return userId;
 	},
 });
 
@@ -313,6 +506,35 @@ export const saveOnboardingAnswers = mutation({
 		if (!user) {
 			throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
 		}
+		const normalizedGrade = normalizeOptionalGrade(args.answers.grade);
+		if (!normalizedGrade) {
+			throwUserFacingError("Bitte wähle eine gültige Klassenstufe aus.");
+		}
+		const normalizedSchoolType = normalizeOptionalSchoolType(
+			args.answers.schoolType,
+		);
+		if (!normalizedSchoolType) {
+			throwUserFacingError("Bitte wähle eine gültige Schulart aus.");
+		}
+		const normalizedState = normalizeOptionalFederalState(args.answers.state);
+		if (!normalizedState) {
+			throwUserFacingError("Bitte wähle ein gültiges Bundesland aus.");
+		}
+
+		const learningTimes = await insertLearningTimesWhenAbsent(ctx, {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			input: {
+				studyDays: args.answers.studyDays,
+				learningTime: args.answers.learningTime,
+				dailySchoolTime: args.answers.dailySchoolTime,
+			},
+			invalidInput: "reject",
+		});
+		await markLearningTimesBackfillHandled(
+			ctx,
+			user._id,
+			user.learningTimesBackfillVersion,
+		);
 
 		const questionIdsByKey: Partial<
 			Record<OnboardingQuestionKey, Id<"onboardingQuestions">>
@@ -347,7 +569,14 @@ export const saveOnboardingAnswers = mutation({
 		for (const [key, answer] of Object.entries(args.answers) as Array<
 			[keyof typeof args.answers, string]
 		>) {
-			const normalizedAnswer = answer.trim();
+			const normalizedAnswer =
+				key === "grade"
+					? normalizedGrade
+					: key === "state"
+						? normalizedState
+						: key === "schoolType"
+							? normalizedSchoolType
+							: answer.trim();
 			if (!normalizedAnswer) continue;
 
 			const questionId = questionIdsByKey[key];
@@ -374,6 +603,9 @@ export const saveOnboardingAnswers = mutation({
 			});
 		}
 
-		return { success: true };
+		return {
+			success: true,
+			learningTimesCreated: learningTimes.createdCount,
+		};
 	},
 });

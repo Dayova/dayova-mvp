@@ -55,13 +55,13 @@ import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-vie
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/analytics";
-import { definedAnalyticsProperties } from "~/lib/analytics-core";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { EXAM_TYPE_OPTIONS } from "~/lib/entry-options";
 import {
 	constrainEndTimeForStart,
 	getDurationBetweenTimes,
@@ -258,7 +258,7 @@ export default function NewEntryScreen() {
 	const { colors } = useDayovaTheme();
 	const fieldIconColor = colors.secondaryText;
 	const fieldTextColor = colors.text;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDayEntry = useMutation(api.dayEntries.create);
 	const { capture } = useValidationAnalytics();
@@ -305,6 +305,9 @@ export default function NewEntryScreen() {
 
 	const trimmedSubject = subject.trim();
 	const trimmedExamType = examTypeLabel.trim();
+	const selectedExamType = EXAM_TYPE_OPTIONS.find(
+		(examType) => examType === trimmedExamType,
+	);
 	const canContinueFromBasics = trimmedSubject.length > 0;
 	const scheduledDurationMinutes = getDurationBetweenTimes(
 		plannedTime,
@@ -312,7 +315,7 @@ export default function NewEntryScreen() {
 		isHomework ? undefined : EXAM_DURATION_OPTIONS,
 	);
 	const canCreateHomework = trimmedSubject.length > 0;
-	const canCreateExam = trimmedSubject.length > 0 && trimmedExamType.length > 0;
+	const canCreateExam = trimmedSubject.length > 0 && Boolean(selectedExamType);
 	const canWriteEntries = Boolean(user && isConvexAuthenticated);
 	const examStepNumber = step === "basics" ? 1 : step === "examType" ? 2 : 3;
 	const examStepTitle =
@@ -439,6 +442,7 @@ export default function NewEntryScreen() {
 	} = {}) => {
 		if (isHomework && !canCreateHomework) return;
 		if (!isHomework && !canCreateExam) return;
+		if (!isHomework && !selectedExamType) return;
 		const resolvedDurationMinutes = scheduledDurationMinutes;
 		if (!canWriteEntries || isCreating) return;
 
@@ -468,17 +472,21 @@ export default function NewEntryScreen() {
 				durationMinutes: resolvedDurationMinutes,
 				...(!isHomework ? { examTypeLabel: trimmedExamType } : {}),
 			});
-			void capture(
-				isHomework ? "homework_created" : "exam_created",
-				definedAnalyticsProperties({
+			if (isHomework) {
+				void capture("homework_created", {
 					day_entry_id: createdEntryId,
-					subject: trimmedSubject,
+					planned_day_key: nextDayKey,
+					due_day_key: getDayKey(dueDate),
+					duration_minutes: resolvedDurationMinutes,
+				});
+			} else if (selectedExamType) {
+				void capture("exam_created", {
+					day_entry_id: createdEntryId,
 					planned_day_key: nextDayKey,
 					duration_minutes: resolvedDurationMinutes,
-					due_day_key: isHomework ? getDayKey(dueDate) : undefined,
-					exam_type_label: isHomework ? undefined : trimmedExamType,
-				}),
-			);
+					exam_type: selectedExamType,
+				});
+			}
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Der Eintrag konnte nicht gespeichert werden."),

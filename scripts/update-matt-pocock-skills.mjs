@@ -14,22 +14,30 @@ import {
 } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parse as parseYaml } from "yaml";
 import {
 	expectedMattSkills,
 	MATT_SOURCE,
 	userInvokedMattSkills,
 } from "./skills-policy.mjs";
+import {
+	validateMattLockEntry,
+	validateOpenAiMetadataForSkill,
+	validateSkill,
+} from "./skill-metadata.mjs";
 
 const ALLOWED_FRONTMATTER_KEYS = new Set(["description", "name"]);
-const MAX_SKILL_NAME_LENGTH = 64;
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const projectSkillsRoot = join(projectRoot, ".agents", "skills");
 const projectLockPath = join(projectRoot, "skills-lock.json");
 const mattPatchRoot = join(projectRoot, "patches", "matt-pocock-skills");
 const patchPath = join(mattPatchRoot, "dayova.patch");
-const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const skillsCommand = join(
+	projectRoot,
+	"node_modules",
+	".bin",
+	process.platform === "win32" ? "skills.cmd" : "skills",
+);
 
 const args = new Set(process.argv.slice(2));
 const supportedArgs = new Set(["--check", "--help", "--validate-current"]);
@@ -167,139 +175,20 @@ function normalizeCatalog(skillsRoot, skillNames) {
 	}
 }
 
-function validateSkill(skillsRoot, skillName) {
-	const skillPath = join(skillsRoot, skillName, "SKILL.md");
-	if (!existsSync(skillPath)) throw new Error(`${skillName}: missing SKILL.md`);
-
-	const content = readFileSync(skillPath, "utf8");
-	const frontmatterText = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1];
-	if (!frontmatterText) {
-		throw new Error(`${skillName}: missing YAML frontmatter`);
-	}
-
-	let frontmatter;
-	try {
-		frontmatter = parseYaml(frontmatterText);
-	} catch (error) {
-		throw new Error(`${skillName}: invalid YAML frontmatter: ${error.message}`);
-	}
-	if (
-		frontmatter === null ||
-		typeof frontmatter !== "object" ||
-		Array.isArray(frontmatter)
-	) {
-		throw new Error(`${skillName}: frontmatter must be a YAML dictionary`);
-	}
-
-	const unexpectedKeys = Object.keys(frontmatter).filter(
-		(key) => !ALLOWED_FRONTMATTER_KEYS.has(key),
-	);
-	if (unexpectedKeys.length > 0) {
-		throw new Error(
-			`${skillName}: unexpected frontmatter key(s): ${unexpectedKeys.join(", ")}`,
-		);
-	}
-	if (!("name" in frontmatter)) {
-		throw new Error(`${skillName}: frontmatter is missing name`);
-	}
-	if (!("description" in frontmatter)) {
-		throw new Error(`${skillName}: frontmatter is missing description`);
-	}
-
-	if (typeof frontmatter.name !== "string") {
-		throw new Error(`${skillName}: frontmatter name must be a string`);
-	}
-	const name = frontmatter.name.trim();
-	if (name && !/^[a-z0-9-]+$/.test(name)) {
-		throw new Error(`${skillName}: name must use lowercase hyphen-case`);
-	}
-	if (name.startsWith("-") || name.endsWith("-") || name.includes("--")) {
-		throw new Error(`${skillName}: name has invalid hyphen placement`);
-	}
-	if (name.length > MAX_SKILL_NAME_LENGTH) {
-		throw new Error(
-			`${skillName}: name exceeds ${MAX_SKILL_NAME_LENGTH} characters`,
-		);
-	}
-	if (name !== skillName) {
-		throw new Error(`${skillName}: frontmatter name does not match its folder`);
-	}
-
-	if (typeof frontmatter.description !== "string") {
-		throw new Error(`${skillName}: frontmatter description must be a string`);
-	}
-	const description = frontmatter.description.trim();
-	if (description.includes("<") || description.includes(">")) {
-		throw new Error(`${skillName}: description cannot contain angle brackets`);
-	}
-	if (description.length > 1024) {
-		throw new Error(`${skillName}: description exceeds 1024 characters`);
-	}
-
-	for (const match of content.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
-		const rawTarget = match[1]?.replace(/^<|>$/g, "").split("#", 1)[0];
-		if (rawTarget === "link") continue;
-		if (!rawTarget || /^[a-z][a-z0-9+.-]*:/i.test(rawTarget)) continue;
-		const target = resolve(dirname(skillPath), rawTarget);
-		if (!existsSync(target)) {
-			throw new Error(`${skillName}: local link does not exist: ${rawTarget}`);
-		}
-	}
-}
-
-function readYaml(path, label) {
-	try {
-		return parseYaml(readFileSync(path, "utf8"));
-	} catch (error) {
-		throw new Error(`${label}: invalid YAML: ${error.message}`);
-	}
-}
-
-function validateOpenAiMetadata(skillsRoot, skillNames) {
-	for (const skillName of skillNames) {
-		const openaiYamlPath = join(skillsRoot, skillName, "agents", "openai.yaml");
-		if (!existsSync(openaiYamlPath)) {
-			throw new Error(`${skillName}: missing agents/openai.yaml`);
-		}
-		const openaiYaml = readYaml(
-			openaiYamlPath,
-			`${skillName}: agents/openai.yaml`,
-		);
-		const allowsImplicitInvocation =
-			openaiYaml?.policy?.allow_implicit_invocation !== false;
-		if (userInvokedMattSkills.has(skillName) && allowsImplicitInvocation) {
-			throw new Error(
-				`${skillName}: user-invoked skill must set policy.allow_implicit_invocation: false`,
-			);
-		}
-		if (!userInvokedMattSkills.has(skillName) && !allowsImplicitInvocation) {
-			throw new Error(
-				`${skillName}: model-invoked skill must not disable implicit invocation`,
-			);
-		}
-	}
-}
-
 function validateCatalog(skillsRoot, mattEntries) {
 	assertExpectedMattSet(mattEntries, "Curated Matt Pocock skill set");
 	if (mattEntries.length === 0) {
 		throw new Error("Matt Pocock catalog is empty");
 	}
 	for (const [skillName, entry] of mattEntries) {
-		if (entry.sourceType !== "github") {
-			throw new Error(
-				`${skillName}: unexpected source type ${entry.sourceType}`,
-			);
-		}
-		if (!/^[a-f0-9]{64}$/.test(entry.computedHash)) {
-			throw new Error(`${skillName}: invalid upstream hash`);
-		}
+		validateMattLockEntry(skillName, entry);
 		validateSkill(skillsRoot, skillName);
+		validateOpenAiMetadataForSkill(
+			skillsRoot,
+			skillName,
+			userInvokedMattSkills.has(skillName),
+		);
 	}
-	validateOpenAiMetadata(
-		skillsRoot,
-		mattEntries.map(([name]) => name),
-	);
 }
 
 function copyLocalOpenAiMetadata(composedSkillsRoot, skillNames) {
@@ -424,8 +313,8 @@ function fetchAndCompose() {
 		run("git", ["init", "--quiet"], { cwd: fetchRoot });
 		console.log("Fetching the latest Matt Pocock skill catalog...");
 		run(
-			npxCommand,
-			["skills@latest", "add", MATT_SOURCE, "--agent", "codex", "-y", "--copy"],
+			skillsCommand,
+			["add", MATT_SOURCE, "--agent", "codex", "-y", "--copy"],
 			{
 				cwd: fetchRoot,
 				capture: true,
@@ -505,17 +394,18 @@ function installComposedCatalog({
 	const backupRoot = mkdtempSync(join(projectRoot, ".matt-skills-backup-"));
 	const backupSkillsRoot = join(backupRoot, "skills");
 	mkdirSync(backupSkillsRoot, { recursive: true });
+	const backedUpNames = allNames.filter((skillName) =>
+		existsSync(join(projectSkillsRoot, skillName)),
+	);
 	let mutationStarted = false;
 
 	try {
-		for (const skillName of currentNames) {
+		for (const skillName of backedUpNames) {
 			const source = join(projectSkillsRoot, skillName);
-			if (existsSync(source)) {
-				cpSync(source, join(backupSkillsRoot, skillName), {
-					recursive: true,
-					preserveTimestamps: true,
-				});
-			}
+			cpSync(source, join(backupSkillsRoot, skillName), {
+				recursive: true,
+				preserveTimestamps: true,
+			});
 		}
 
 		mutationStarted = true;
@@ -542,13 +432,11 @@ function installComposedCatalog({
 				assertManagedPath(target);
 				rmSync(target, { force: true, recursive: true });
 			}
-			for (const skillName of currentNames) {
+			for (const skillName of backedUpNames) {
 				const backup = join(backupSkillsRoot, skillName);
-				if (existsSync(backup)) {
-					cpSync(backup, join(projectSkillsRoot, skillName), {
-						recursive: true,
-					});
-				}
+				cpSync(backup, join(projectSkillsRoot, skillName), {
+					recursive: true,
+				});
 			}
 			writeFileSync(projectLockPath, currentLockText, "utf8");
 		}

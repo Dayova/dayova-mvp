@@ -5,6 +5,12 @@ Linear is the source of truth for issues and PRDs in this repo.
 - Workspace: `dayova`
 - Team: `Dayova`
 - Team key: `DAY`
+- Backlog status: `Backlog`
+- Unstarted status: `Todo`
+- Started status: `In Progress`
+- Review status: `In Review`
+- Completed status: `Done`
+- Canceled status: `Canceled`
 - Issue identifiers: `DAY-<number>`
 - Synced GitHub repo: `Dayova/dayova-mvp`
 - External PRs as a triage request surface: `no`

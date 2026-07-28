@@ -11,7 +11,7 @@ import {
 } from "react";
 import { Platform } from "react-native";
 import { api } from "#convex/_generated/api";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { type AccessState, getOfflineAccess } from "~/lib/access-policy";
 import { logDiagnosticError } from "~/lib/diagnostics";
 
@@ -89,7 +89,7 @@ const getExpiredOfflineSnapshot = (
 });
 
 export function AccessProvider({ children }: { children: ReactNode }) {
-	const { user, isSessionLoading } = useAuth();
+	const { user, isSessionLoading } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const [now, setNow] = useState(Date.now);
 	const [loadedCache, setLoadedCache] = useState<{
@@ -167,7 +167,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	}, [serverAccess, user]);
 
 	const cachedAccess =
-		user && loadedCache?.appUserId === user.clerkId ? loadedCache.value : null;
+		user && loadedCache && loadedCache.appUserId === user.clerkId
+			? loadedCache.value
+			: null;
 	const isCacheLoaded =
 		!user || (loadedCache !== null && loadedCache.appUserId === user.clerkId);
 	const didQueryTimeout = Boolean(user) && timedOutAppUserId === user?.clerkId;

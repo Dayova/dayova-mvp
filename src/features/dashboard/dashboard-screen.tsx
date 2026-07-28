@@ -1,7 +1,7 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,8 +23,7 @@ import {
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
-import { useValidationAnalytics } from "~/lib/analytics";
+import { useAuthSession } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -912,8 +911,7 @@ export function DashboardScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const insets = useSafeAreaInsets();
-	const { user } = useAuth();
-	const { capture } = useValidationAnalytics();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
 	const todayKey = getDayKey(today);
@@ -926,7 +924,6 @@ export function DashboardScreen() {
 	);
 	const [selectedDayKey, setSelectedDayKey] = useState(initialDayKey);
 	const [now, setNow] = useState(() => new Date());
-	const didCaptureDashboardViewRef = useRef(false);
 	const selectedDate = parseDayKey(selectedDayKey) ?? today;
 
 	useEffect(() => {
@@ -985,40 +982,16 @@ export function DashboardScreen() {
 		typeof user?.name === "string" && user.name.trim().length > 0
 			? user.name.trim().split(/\s+/)[0]
 			: null;
-	useEffect(() => {
-		if (didCaptureDashboardViewRef.current || entriesByDay === undefined)
-			return;
-		didCaptureDashboardViewRef.current = true;
-		capture("dashboard_viewed", {
-			selected_day_key: selectedDayKey,
-			visible_days_count: calendarDays.length,
-			selected_day_entries_count: entriesByDay[selectedDayKey]?.length ?? 0,
-			has_hero_entry: Boolean(nextActionableId),
-		});
-	}, [
-		calendarDays.length,
-		capture,
-		entriesByDay,
-		nextActionableId,
-		selectedDayKey,
-	]);
 
-	const commitSelectedDay = (dayKey: string, source: "day_strip" | "swipe") => {
+	const commitSelectedDay = (dayKey: string) => {
 		const date = parseDayKey(dayKey);
 		if (!date || dayKey === selectedDayKey) return;
 		setSelectedDayKey(dayKey);
-		capture("dashboard_day_selected", {
-			selected_day_key: dayKey,
-			selected_day_offset: Math.round(
-				(date.getTime() - today.getTime()) / 86_400_000,
-			),
-			source,
-		});
 	};
 
 	const selectDay = (day: CalendarDay) => {
 		if (!dayPagerKeys.includes(day.key)) return;
-		commitSelectedDay(day.key, "day_strip");
+		commitSelectedDay(day.key);
 	};
 
 	const adjustSelectedDay = (direction: -1 | 1) => {
@@ -1028,7 +1001,7 @@ export function DashboardScreen() {
 		);
 		const nextDayKey = dayPagerKeys[nextIndex];
 		if (!nextDayKey) return;
-		commitSelectedDay(nextDayKey, "swipe");
+		commitSelectedDay(nextDayKey);
 		triggerDaySelectionHaptic();
 	};
 
@@ -1044,7 +1017,7 @@ export function DashboardScreen() {
 		});
 
 	const openItem = useCallback(
-		(item: DashboardAgendaItem, source: "timeline" | "next_step") => {
+		(item: DashboardAgendaItem) => {
 			if (item.kind === "schoolLesson") return;
 			const itemDate = parseDayKey(item.dayKey) ?? selectedDate;
 			const itemDayLabel = new Intl.DateTimeFormat("de-DE", {
@@ -1052,25 +1025,18 @@ export function DashboardScreen() {
 				day: "numeric",
 				month: "long",
 			}).format(itemDate);
-			capture("dashboard_entry_opened", {
-				entry_id: item.entry.id,
-				entry_kind: item.kind,
-				source,
-				selected_day_key: item.dayKey,
-				completed: Boolean(item.entry.completed),
-			});
 			router.push(getEntryUrl(item.entry, itemDayLabel));
 		},
-		[capture, router, selectedDate],
+		[router, selectedDate],
 	);
 
 	const openTimelineItem = useCallback(
-		(item: DashboardAgendaItem) => openItem(item, "timeline"),
+		(item: DashboardAgendaItem) => openItem(item),
 		[openItem],
 	);
 
 	const openNextLearningStep = useCallback(
-		(item: DashboardAgendaItem) => openItem(item, "next_step"),
+		(item: DashboardAgendaItem) => openItem(item),
 		[openItem],
 	);
 

@@ -111,6 +111,7 @@ export default defineSchema({
 		avatarUrl: v.optional(v.string()),
 		validationStudentCode: v.optional(v.string()),
 		validationRole: v.optional(v.union(v.literal("founder"))),
+		learningTimesBackfillVersion: v.optional(v.number()),
 	})
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
 		.index("by_clerkId", ["clerkId"])

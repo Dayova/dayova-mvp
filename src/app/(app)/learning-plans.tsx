@@ -1,8 +1,8 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	Easing,
@@ -18,6 +18,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { Button } from "~/components/ui/button";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
@@ -34,9 +35,10 @@ import {
 } from "~/components/ui/notched-action-card";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
@@ -89,6 +91,10 @@ type HomeworkOverview = {
 	durationMinutes: number | null;
 	completed: boolean;
 };
+
+type DeleteTarget =
+	| { kind: "plan"; item: LearningPlanOverview }
+	| { kind: "homework"; item: HomeworkOverview };
 
 const getPlanHref = (plan: LearningPlanOverview) => {
 	if (plan.status === "draft") {
@@ -766,12 +772,16 @@ function HomeworkCard({
 export default function LearningPlansScreen() {
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const removePlan = useMutation(api.learningPlans.removePlan);
 	const removeHomework = useMutation(api.dayEntries.remove);
 	const [activeTab, setActiveTab] = useState<PlanTab>("learningPlans");
 	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
+	const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+	const [isDeleting, setIsDeleting] = useState(false);
+	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const deleteActionGateRef = useRef(createAsyncActionGate());
 	const today = useCurrentLocalDay();
 	const todayKey = getDayKey(today);
 	const plans = useQuery(
@@ -786,46 +796,38 @@ export default function LearningPlansScreen() {
 	const visibleHomework = homework ?? [];
 
 	const confirmDeletePlan = (plan: LearningPlanOverview) => {
-		Alert.alert(
-			"Lernplan löschen",
-			`Möchtest du den Lernplan ${formatGermanUiText(plan.subject)} wirklich löschen?`,
-			[
-				{ text: "Abbrechen", style: "cancel" },
-				{
-					text: "Löschen",
-					style: "destructive",
-					onPress: () => {
-						void removePlan({ id: plan.id }).catch(() => {
-							Alert.alert(
-								"Lernplan konnte nicht gelöscht werden",
-								"Bitte versuche es gleich noch einmal.",
-							);
-						});
-					},
-				},
-			],
-		);
+		setDeleteError(null);
+		setDeleteTarget({ kind: "plan", item: plan });
 	};
 	const confirmDeleteHomework = (homeworkEntry: HomeworkOverview) => {
-		Alert.alert(
-			"Hausaufgabe löschen",
-			`Möchtest du ${formatGermanUiText(homeworkEntry.title)} wirklich löschen?`,
-			[
-				{ text: "Abbrechen", style: "cancel" },
-				{
-					text: "Löschen",
-					style: "destructive",
-					onPress: () => {
-						void removeHomework({ id: homeworkEntry.id }).catch(() => {
-							Alert.alert(
-								"Hausaufgabe konnte nicht gelöscht werden",
-								"Bitte versuche es gleich noch einmal.",
-							);
-						});
-					},
-				},
-			],
-		);
+		setDeleteError(null);
+		setDeleteTarget({ kind: "homework", item: homeworkEntry });
+	};
+	const closeDeleteSheet = () => {
+		if (deleteActionGateRef.current.isRunning) return;
+		setDeleteTarget(null);
+		setDeleteError(null);
+	};
+	const deleteSelectedItem = async () => {
+		if (!deleteTarget) return;
+		const target = deleteTarget;
+
+		await deleteActionGateRef.current.run(async () => {
+			setIsDeleting(true);
+			setDeleteError(null);
+			try {
+				if (target.kind === "plan") {
+					await removePlan({ id: target.item.id });
+				} else {
+					await removeHomework({ id: target.item.id });
+				}
+				setDeleteTarget(null);
+			} catch {
+				setDeleteError("Bitte versuche es gleich noch einmal.");
+			} finally {
+				setIsDeleting(false);
+			}
+		});
 	};
 	const openCreateTypePicker = () => {
 		setShowCreateTypePicker(true);
@@ -976,6 +978,24 @@ export default function LearningPlansScreen() {
 				visible={showCreateTypePicker}
 				onRequestClose={() => setShowCreateTypePicker(false)}
 				onSelect={selectCreateType}
+			/>
+			<ConfirmationSheet
+				visible={Boolean(deleteTarget)}
+				title={
+					deleteTarget?.kind === "homework"
+						? "Hausaufgabe löschen"
+						: "Lernplan löschen"
+				}
+				description={
+					deleteTarget?.kind === "homework"
+						? `Möchtest du ${formatGermanUiText(deleteTarget.item.title)} wirklich löschen?`
+						: `Möchtest du den Lernplan ${formatGermanUiText(deleteTarget?.item.subject ?? "")} wirklich löschen?`
+				}
+				confirmLabel="Löschen"
+				isBusy={isDeleting}
+				errorMessage={deleteError}
+				onClose={closeDeleteSheet}
+				onConfirm={() => void deleteSelectedItem()}
 			/>
 		</View>
 	);

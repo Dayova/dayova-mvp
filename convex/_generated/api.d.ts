@@ -31,7 +31,9 @@ import type * as learningSessionContentConstraints from "../learningSessionConte
 import type * as learningSessionDurationText from "../learningSessionDurationText.js";
 import type * as learningSessionScheduleFormatting from "../learningSessionScheduleFormatting.js";
 import type * as learningSessionSegmentation from "../learningSessionSegmentation.js";
+import type * as learningTimeAvailability from "../learningTimeAvailability.js";
 import type * as learningTimes from "../learningTimes.js";
+import type * as learningTimesBackfill from "../learningTimesBackfill.js";
 import type * as learningTopicMap from "../learningTopicMap.js";
 import type * as notifications from "../notifications.js";
 import type * as revenueCat from "../revenueCat.js";
@@ -74,7 +76,9 @@ declare const fullApi: ApiFromModules<{
   learningSessionDurationText: typeof learningSessionDurationText;
   learningSessionScheduleFormatting: typeof learningSessionScheduleFormatting;
   learningSessionSegmentation: typeof learningSessionSegmentation;
+  learningTimeAvailability: typeof learningTimeAvailability;
   learningTimes: typeof learningTimes;
+  learningTimesBackfill: typeof learningTimesBackfill;
   learningTopicMap: typeof learningTopicMap;
   notifications: typeof notifications;
   revenueCat: typeof revenueCat;

@@ -2,7 +2,6 @@ import { useUser } from "@clerk/expo";
 import { useMemo, useState } from "react";
 import {
 	ActivityIndicator,
-	Alert,
 	Linking,
 	Platform,
 	Pressable,
@@ -10,6 +9,7 @@ import {
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { Button } from "~/components/ui/button";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	ArrowRight,
 	Check,
@@ -21,7 +21,7 @@ import {
 import { ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
-import { useAuth } from "~/context/AuthContext";
+import { useAccountActions, useAuthSession } from "~/context/AuthContext";
 import {
 	createNativeRevenueCatClient,
 	type DayovaStorePlan,
@@ -45,7 +45,8 @@ const getStoreApiKey = () =>
 export function PaywallScreen() {
 	const { user: clerkUser } = useUser();
 	const { access, refreshPaidAccess } = useAccess();
-	const { user, logout } = useAuth();
+	const { user } = useAuthSession();
+	const { logout } = useAccountActions();
 	const { colors } = useDayovaTheme();
 	const [payer, setPayer] = useState<Payer | null>(null);
 	const [selectedProduct, setSelectedProduct] =
@@ -54,6 +55,9 @@ export function PaywallScreen() {
 	const [isLoadingPlans, setIsLoadingPlans] = useState(false);
 	const [isPurchasing, setIsPurchasing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const storeApiKey = getStoreApiKey();
 	const storeClient = useMemo(
 		() =>
@@ -136,186 +140,200 @@ export function PaywallScreen() {
 		await finishStoreAction(() => storeClient.restore());
 	};
 
-	const confirmAccountDeletion = () => {
-		Alert.alert(
-			"Konto wirklich löschen?",
-			"Dein Dayova-Konto und deine Daten werden dauerhaft gelöscht. Ein Store-Abo musst du zusätzlich im Store kündigen.",
-			[
-				{ text: "Abbrechen", style: "cancel" },
-				{
-					text: "Konto löschen",
-					style: "destructive",
-					onPress: () => {
-						void clerkUser
-							?.delete()
-							.then(() => logout())
-							.catch(() => {
-								setError(
-									"Das Konto konnte nicht gelöscht werden. Bitte kontaktiere den Support.",
-								);
-							});
-					},
-				},
-			],
-		);
+	const openAccountDeletion = () => {
+		setDeleteError(null);
+		setShowDeleteConfirmation(true);
+	};
+
+	const deleteAccount = async () => {
+		if (!clerkUser || isDeletingAccount) return;
+		setDeleteError(null);
+		setIsDeletingAccount(true);
+		try {
+			await clerkUser.delete();
+			await logout();
+			setShowDeleteConfirmation(false);
+		} catch {
+			setDeleteError(
+				"Das Konto konnte nicht gelöscht werden. Bitte kontaktiere den Support.",
+			);
+		} finally {
+			setIsDeletingAccount(false);
+		}
 	};
 
 	return (
-		<ScreenScroll horizontalPadding={24} topPadding={48} bottomPadding={36}>
-			<View className="items-center">
-				<View className="mb-5 h-14 w-14 items-center justify-center rounded-2xl bg-system-subtle">
-					<SquareLock size={28} color={colors.primaryStrong} strokeWidth={2} />
-				</View>
-				<Text variant="h1">Deine Testphase ist beendet</Text>
-				<Text className="mt-3 max-w-md text-center text-body-2 text-secondary-text">
-					Wähle zuerst, wer bezahlt. Ohne aktives Abo bleiben die Lernfunktionen
-					gesperrt.
-				</Text>
-			</View>
-
-			<View className="mt-8 gap-3">
-				<PayerButton
-					icon={<UserRound size={23} color={colors.text} strokeWidth={2} />}
-					label="Meine Eltern zahlen"
-					selected={payer === "parent"}
-					onPress={() => {
-						setPayer("parent");
-						setError(null);
-					}}
-				/>
-				<PayerButton
-					icon={<Check size={23} color={colors.text} strokeWidth={2} />}
-					label="Ich zahle selbst"
-					selected={payer === "self"}
-					onPress={() => void selectSelfPayment()}
-				/>
-			</View>
-
-			{payer === "parent" ? (
-				<View className="mt-6 items-center rounded-rectangle border border-border bg-card px-5 py-6">
-					{env.EXPO_PUBLIC_PARENT_CHECKOUT_URL ? (
-						<>
-							<View className="rounded-2xl bg-white p-4">
-								<QRCode
-									value={env.EXPO_PUBLIC_PARENT_CHECKOUT_URL}
-									size={184}
-									color="#1A1A1A"
-									backgroundColor="#FFFFFF"
-								/>
-							</View>
-							<Text className="mt-5 text-center font-semibold text-body-2">
-								QR-Code an deine Eltern weitergeben
-							</Text>
-							<Text className="mt-2 text-center text-body-3 text-secondary-text">
-								Der Link öffnet die sichere Dayova-Zahlungsseite.
-							</Text>
-							<Button
-								className="mt-5 w-full"
-								variant="outline"
-								onPress={() =>
-									void openUrl(env.EXPO_PUBLIC_PARENT_CHECKOUT_URL)
-								}
-							>
-								<Text>Zahlungsseite öffnen</Text>
-							</Button>
-						</>
-					) : (
-						<>
-							<Text className="text-center font-semibold text-body-2">
-								Elternzahlung kommt mit der Dayova-Webzahlung
-							</Text>
-							<Text className="mt-2 text-center text-body-3 text-secondary-text">
-								Diese Option wird erst freigeschaltet, sobald die sichere
-								Website-Zahlung und Kontozuordnung bereit sind.
-							</Text>
-						</>
-					)}
-				</View>
-			) : null}
-
-			{payer === "self" ? (
-				<View className="mt-6">
-					<Text className="mb-3 font-semibold text-body-2">Tarif wählen</Text>
-					<View className="gap-3">
-						<PlanCard
-							badge="11 % günstiger"
-							description="13,33 € pro Monat · jährlich abgerechnet"
-							label="Jährlich"
-							price={planByProduct.get("dayova_annual")?.price ?? "159,99 €"}
-							selected={selectedProduct === "dayova_annual"}
-							onPress={() => setSelectedProduct("dayova_annual")}
-						/>
-						<PlanCard
-							description="Monatlich abgerechnet"
-							label="Monatlich"
-							price={planByProduct.get("dayova_monthly")?.price ?? "14,99 €"}
-							selected={selectedProduct === "dayova_monthly"}
-							onPress={() => setSelectedProduct("dayova_monthly")}
+		<>
+			<ScreenScroll horizontalPadding={24} topPadding={48} bottomPadding={36}>
+				<View className="items-center">
+					<View className="mb-5 h-14 w-14 items-center justify-center rounded-2xl bg-system-subtle">
+						<SquareLock
+							size={28}
+							color={colors.primaryStrong}
+							strokeWidth={2}
 						/>
 					</View>
-					<Button
-						className="mt-5"
-						disabled={
-							isLoadingPlans ||
-							isPurchasing ||
-							!storeClient ||
-							!planByProduct.has(selectedProduct)
-						}
-						onPress={() => void purchase()}
-					>
-						{isLoadingPlans || isPurchasing ? (
-							<ActivityIndicator color="#FFFFFF" />
-						) : (
-							<Text>Im Store abonnieren</Text>
-						)}
-					</Button>
-					<Text className="mt-3 text-center text-body-4 text-secondary-text">
-						Die Zahlung läuft über den App Store oder Google Play. Das Abo
-						verlängert sich dort bis zur Kündigung.
+					<Text variant="h1">Deine Testphase ist beendet</Text>
+					<Text className="mt-3 max-w-md text-center text-body-2 text-secondary-text">
+						Wähle zuerst, wer bezahlt. Ohne aktives Abo bleiben die
+						Lernfunktionen gesperrt.
 					</Text>
 				</View>
-			) : null}
 
-			{error ? (
-				<Text className="mt-4 text-center text-body-3 text-destructive">
-					{error}
-				</Text>
-			) : null}
-
-			<View className="mt-8 border-border border-t pt-5">
-				<EssentialAction
-					label="Käufe wiederherstellen"
-					onPress={() => void restore()}
-				/>
-				{access?.managementUrl ? (
-					<EssentialAction
-						label="Abo verwalten"
-						onPress={() => void openUrl(access.managementUrl)}
+				<View className="mt-8 gap-3">
+					<PayerButton
+						icon={<UserRound size={23} color={colors.text} strokeWidth={2} />}
+						label="Meine Eltern zahlen"
+						selected={payer === "parent"}
+						onPress={() => {
+							setPayer("parent");
+							setError(null);
+						}}
 					/>
-				) : null}
-				<EssentialAction
-					icon={<Logout size={19} color={colors.secondaryText} />}
-					label="Abmelden oder Konto wechseln"
-					onPress={() => void logout()}
-				/>
-				<EssentialAction
-					icon={<Trash2 size={19} color={colors.destructive} />}
-					label="Konto löschen"
-					destructive
-					onPress={confirmAccountDeletion}
-				/>
-			</View>
+					<PayerButton
+						icon={<Check size={23} color={colors.text} strokeWidth={2} />}
+						label="Ich zahle selbst"
+						selected={payer === "self"}
+						onPress={() => void selectSelfPayment()}
+					/>
+				</View>
 
-			<View className="mt-4 flex-row flex-wrap justify-center gap-x-4 gap-y-2">
-				<LegalLink label="Support" url={env.EXPO_PUBLIC_SUPPORT_URL} />
-				<LegalLink label="Datenschutz" url={env.EXPO_PUBLIC_PRIVACY_URL} />
-				<LegalLink
-					label="Abo-Bedingungen"
-					url={env.EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL}
-				/>
-				<LegalLink label="Kündigung" url={env.EXPO_PUBLIC_CANCELLATION_URL} />
-			</View>
-		</ScreenScroll>
+				{payer === "parent" ? (
+					<View className="mt-6 items-center rounded-rectangle border border-border bg-card px-5 py-6">
+						{env.EXPO_PUBLIC_PARENT_CHECKOUT_URL ? (
+							<>
+								<View className="rounded-2xl bg-white p-4">
+									<QRCode
+										value={env.EXPO_PUBLIC_PARENT_CHECKOUT_URL}
+										size={184}
+										color="#1A1A1A"
+										backgroundColor="#FFFFFF"
+									/>
+								</View>
+								<Text className="mt-5 text-center font-semibold text-body-2">
+									QR-Code an deine Eltern weitergeben
+								</Text>
+								<Text className="mt-2 text-center text-body-3 text-secondary-text">
+									Der Link öffnet die sichere Dayova-Zahlungsseite.
+								</Text>
+								<Button
+									className="mt-5 w-full"
+									variant="outline"
+									onPress={() =>
+										void openUrl(env.EXPO_PUBLIC_PARENT_CHECKOUT_URL)
+									}
+								>
+									<Text>Zahlungsseite öffnen</Text>
+								</Button>
+							</>
+						) : (
+							<>
+								<Text className="text-center font-semibold text-body-2">
+									Elternzahlung kommt mit der Dayova-Webzahlung
+								</Text>
+								<Text className="mt-2 text-center text-body-3 text-secondary-text">
+									Diese Option wird erst freigeschaltet, sobald die sichere
+									Website-Zahlung und Kontozuordnung bereit sind.
+								</Text>
+							</>
+						)}
+					</View>
+				) : null}
+
+				{payer === "self" ? (
+					<View className="mt-6">
+						<Text className="mb-3 font-semibold text-body-2">Tarif wählen</Text>
+						<View className="gap-3">
+							<PlanCard
+								badge="11 % günstiger"
+								description="13,33 € pro Monat · jährlich abgerechnet"
+								label="Jährlich"
+								price={planByProduct.get("dayova_annual")?.price ?? "159,99 €"}
+								selected={selectedProduct === "dayova_annual"}
+								onPress={() => setSelectedProduct("dayova_annual")}
+							/>
+							<PlanCard
+								description="Monatlich abgerechnet"
+								label="Monatlich"
+								price={planByProduct.get("dayova_monthly")?.price ?? "14,99 €"}
+								selected={selectedProduct === "dayova_monthly"}
+								onPress={() => setSelectedProduct("dayova_monthly")}
+							/>
+						</View>
+						<Button
+							className="mt-5"
+							disabled={
+								isLoadingPlans ||
+								isPurchasing ||
+								!storeClient ||
+								!planByProduct.has(selectedProduct)
+							}
+							onPress={() => void purchase()}
+						>
+							{isLoadingPlans || isPurchasing ? (
+								<ActivityIndicator color="#FFFFFF" />
+							) : (
+								<Text>Im Store abonnieren</Text>
+							)}
+						</Button>
+						<Text className="mt-3 text-center text-body-4 text-secondary-text">
+							Die Zahlung läuft über den App Store oder Google Play. Das Abo
+							verlängert sich dort bis zur Kündigung.
+						</Text>
+					</View>
+				) : null}
+
+				{error ? (
+					<Text className="mt-4 text-center text-body-3 text-destructive">
+						{error}
+					</Text>
+				) : null}
+
+				<View className="mt-8 border-border border-t pt-5">
+					<EssentialAction
+						label="Käufe wiederherstellen"
+						onPress={() => void restore()}
+					/>
+					{access?.managementUrl ? (
+						<EssentialAction
+							label="Abo verwalten"
+							onPress={() => void openUrl(access.managementUrl)}
+						/>
+					) : null}
+					<EssentialAction
+						icon={<Logout size={19} color={colors.secondaryText} />}
+						label="Abmelden oder Konto wechseln"
+						onPress={() => void logout()}
+					/>
+					<EssentialAction
+						icon={<Trash2 size={19} color={colors.destructive} />}
+						label="Konto löschen"
+						destructive
+						onPress={openAccountDeletion}
+					/>
+				</View>
+
+				<View className="mt-4 flex-row flex-wrap justify-center gap-x-4 gap-y-2">
+					<LegalLink label="Support" url={env.EXPO_PUBLIC_SUPPORT_URL} />
+					<LegalLink label="Datenschutz" url={env.EXPO_PUBLIC_PRIVACY_URL} />
+					<LegalLink
+						label="Abo-Bedingungen"
+						url={env.EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL}
+					/>
+					<LegalLink label="Kündigung" url={env.EXPO_PUBLIC_CANCELLATION_URL} />
+				</View>
+			</ScreenScroll>
+			<ConfirmationSheet
+				visible={showDeleteConfirmation}
+				title="Konto wirklich löschen?"
+				description="Dein Dayova-Konto und deine Daten werden dauerhaft gelöscht. Ein Store-Abo musst du zusätzlich im Store kündigen."
+				confirmLabel="Konto löschen"
+				isBusy={isDeletingAccount}
+				errorMessage={deleteError}
+				onClose={() => setShowDeleteConfirmation(false)}
+				onConfirm={() => void deleteAccount()}
+			/>
+		</>
 	);
 }
 

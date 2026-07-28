@@ -4,6 +4,10 @@ import {
 	OFFLINE_ACCESS_WINDOW_MS,
 	resolveAccessRoute,
 } from "./access-policy";
+import {
+	PASSWORD_RESET_SUCCESS_PATH,
+	SESSION_TASK_RESET_PASSWORD_PATH,
+} from "./auth-routing";
 
 describe("resolveAccessRoute", () => {
 	it("sends an authenticated account without access to trial activation", () => {
@@ -23,6 +27,20 @@ describe("resolveAccessRoute", () => {
 				accessState: "needsActivation",
 				isSessionLoading: false,
 				pathname: "/onboarding",
+				user: { id: "user_1" },
+			}),
+		).toBeNull();
+	});
+
+	it.each([
+		PASSWORD_RESET_SUCCESS_PATH,
+		SESSION_TASK_RESET_PASSWORD_PATH,
+	])("does not interrupt the auth recovery route %s", (pathname) => {
+		expect(
+			resolveAccessRoute({
+				accessState: "needsActivation",
+				isSessionLoading: false,
+				pathname,
 				user: { id: "user_1" },
 			}),
 		).toBeNull();

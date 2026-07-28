@@ -2,7 +2,7 @@ import type * as ExpoNotifications from "expo-notifications";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { useAccess } from "~/context/AccessContext";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
 import {
@@ -27,7 +27,7 @@ const hasNotificationPermission = (
 
 export function TrialReminderSync() {
 	const { access } = useAccess();
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 
 	useEffect(() => {
 		const notifications = getNotificationsModule();

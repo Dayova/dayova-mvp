@@ -3,10 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const IOS_INFO_PLIST_PATH = resolve(
-	process.cwd(),
-	"ios/Dayova/Info.plist",
-);
+const IOS_INFO_PLIST_PATH = resolve(process.cwd(), "ios/Dayova/Info.plist");
 
 const REQUIRED_IOS_PRIVACY_KEYS = [
 	"NSMicrophoneUsageDescription",
@@ -41,29 +38,24 @@ const readFinalExpoInfoPlist = () => {
 };
 
 describe("iOS privacy purpose strings", () => {
-	it(
-		"keeps required privacy keys in the final Expo iOS config and any generated native plist",
-		() => {
-			const finalInfoPlist = readFinalExpoInfoPlist();
-			const nativeInfoPlistExists = existsSync(IOS_INFO_PLIST_PATH);
+	it("keeps required privacy keys in the final Expo iOS config and any generated native plist", () => {
+		const finalInfoPlist = readFinalExpoInfoPlist();
+		const nativeInfoPlistExists = existsSync(IOS_INFO_PLIST_PATH);
 
-			for (const key of REQUIRED_IOS_PRIVACY_KEYS) {
-				const appConfigValue = finalInfoPlist[key];
+		for (const key of REQUIRED_IOS_PRIVACY_KEYS) {
+			const appConfigValue = finalInfoPlist[key];
 
+			expect(appConfigValue, `${key} missing from final Expo iOS config`).toEqual(
+				expect.any(String),
+			);
+
+			if (nativeInfoPlistExists) {
+				const nativeValue = readNativeInfoPlistValue(key);
 				expect(
-					appConfigValue,
-					`${key} missing from final Expo iOS config`,
-				).toEqual(expect.any(String));
-
-				if (nativeInfoPlistExists) {
-					const nativeValue = readNativeInfoPlistValue(key);
-					expect(
-						nativeValue,
-						`${key} missing from ios/Dayova/Info.plist`,
-					).toEqual(appConfigValue);
-				}
+					nativeValue,
+					`${key} missing from ios/Dayova/Info.plist`,
+				).toEqual(appConfigValue);
 			}
-		},
-		15_000,
-	);
+		}
+	}, 15_000);
 });
