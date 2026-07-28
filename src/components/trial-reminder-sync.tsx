@@ -1,0 +1,78 @@
+import type * as ExpoNotifications from "expo-notifications";
+import { useEffect } from "react";
+import { Platform } from "react-native";
+import { useAccess } from "~/context/AccessContext";
+import { useAuth } from "~/context/AuthContext";
+import { logDiagnosticError } from "~/lib/diagnostics";
+import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
+import {
+	buildTrialReminder,
+	syncTrialReminderNotification,
+} from "~/lib/trial-reminder";
+
+const getNotificationsModule = () => {
+	try {
+		return require("expo-notifications") as typeof ExpoNotifications;
+	} catch {
+		return null;
+	}
+};
+
+const hasNotificationPermission = (
+	notifications: typeof ExpoNotifications,
+	permissions: ExpoNotifications.NotificationPermissionsStatus,
+) =>
+	permissions.granted ||
+	permissions.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL;
+
+export function TrialReminderSync() {
+	const { access } = useAccess();
+	const { user } = useAuth();
+
+	useEffect(() => {
+		const notifications = getNotificationsModule();
+		if (!notifications) return;
+
+		const syncReminder = async () => {
+			if (!user || !access) {
+				await syncTrialReminderNotification(notifications, null);
+				return;
+			}
+
+			const permissions = await notifications.getPermissionsAsync();
+			if (!hasNotificationPermission(notifications, permissions)) {
+				await syncTrialReminderNotification(notifications, null);
+				return;
+			}
+
+			if (Platform.OS === "android") {
+				await notifications.setNotificationChannelAsync(
+					DAYOVA_NOTIFICATION_CHANNEL_ID,
+					{
+						name: "Dayova Erinnerungen",
+						importance: notifications.AndroidImportance.DEFAULT,
+					},
+				);
+			}
+
+			const reminder = buildTrialReminder({
+				access,
+				now: Date.now(),
+			});
+			await syncTrialReminderNotification(
+				notifications,
+				reminder,
+				user.clerkId,
+			);
+		};
+
+		void syncReminder().catch((error: unknown) => {
+			logDiagnosticError("Unable to sync the trial reminder.", error, {
+				source: "access.trialReminder",
+				level: "warn",
+			});
+		});
+	}, [access, user]);
+
+	return null;
+}
