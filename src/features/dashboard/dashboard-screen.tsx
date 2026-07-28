@@ -1,22 +1,13 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-	type FlatList,
-	type NativeScrollEvent,
-	type NativeSyntheticEvent,
-	ScrollView,
-	StyleSheet,
-	TouchableOpacity,
-	useWindowDimensions,
-	View,
-} from "react-native";
-import Animated, { useReducedMotion } from "react-native-reanimated";
+import { ScrollView, TouchableOpacity, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle } from "react-native-svg";
+import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
-import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { NotificationButton } from "~/components/notification-button";
 import {
 	ArrowRight,
@@ -27,7 +18,8 @@ import {
 	Check,
 	Clock3,
 	Dumbbell,
-	Plus,
+	ScanImage,
+	TimeManagement,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -42,18 +34,17 @@ import { cn } from "~/lib/utils";
 import type { DayEntry } from "~/types/dayEntries";
 import {
 	type DashboardAgendaItem,
+	type DashboardWeekProgress,
 	findNextActionableAgendaItem,
 	getAgendaEntryTitle,
 	getDashboardCalendarDayKeys,
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
+	getDashboardWeekProgress,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
-
-const PRIMARY_INTERACTIVE_GRADIENT =
-	DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 
 const triggerDaySelectionHaptic = () => {
 	void triggerSelectionHaptic({
@@ -160,21 +151,38 @@ const getEntrySummary = (entry: DayEntry) => {
 	return "Für deinen Tag eingeplant";
 };
 
-const getNextStepWhenLabel = (item: DashboardAgendaItem, todayKey: string) => {
+const getNextStepDateLabel = (item: DashboardAgendaItem, todayKey: string) => {
 	const date = parseDayKey(item.dayKey);
-	if (!date) return getTimeLabel(item);
-	const dayLabel =
-		item.dayKey === todayKey
-			? "Heute"
-			: formatGermanUiText(
-					new Intl.DateTimeFormat("de-DE", {
-						weekday: "short",
-						day: "numeric",
-						month: "short",
-					}).format(date),
-				);
-	return `${dayLabel} · ${getTimeLabel(item)}`;
+	if (!date) return "Termin folgt";
+	if (item.dayKey === todayKey) return "Heute";
+
+	return formatGermanUiText(
+		new Intl.DateTimeFormat("de-DE", {
+			weekday: "short",
+			day: "numeric",
+			month: "short",
+		}).format(date),
+	);
 };
+
+const getNextStepTimeLabel = (item: DashboardAgendaItem) => {
+	const durationMinutes = item.entry.durationMinutes ?? 45;
+	if (item.startMinutes === null) return `${durationMinutes} Min.`;
+	return `${formatMinutes(item.startMinutes)} Uhr · ${durationMinutes} Min.`;
+};
+
+const getNextStepFooter = (item: DashboardAgendaItem, todayKey: string) => {
+	if (item.entry.executionStatus === "started") return "Fortsetzen";
+	if (item.dayKey === todayKey) return "Jetzt starten";
+	return "Lernschritt öffnen";
+};
+
+const WEEK_PROGRESS_RING_SIZE = 112;
+const WEEK_PROGRESS_RING_STROKE_WIDTH = 9;
+const WEEK_PROGRESS_RING_RADIUS =
+	(WEEK_PROGRESS_RING_SIZE - WEEK_PROGRESS_RING_STROKE_WIDTH) / 2;
+const WEEK_PROGRESS_RING_CIRCUMFERENCE =
+	2 * Math.PI * WEEK_PROGRESS_RING_RADIUS;
 
 function WeekCalendar({
 	days,
@@ -186,7 +194,7 @@ function WeekCalendar({
 	onSelectDay: (day: CalendarDay) => void;
 }) {
 	return (
-		<View className="flex-row gap-1">
+		<View className="flex-row border-border border-b pb-5">
 			{days.map((day) => {
 				const selected = day.key === selectedDayKey;
 				return (
@@ -202,36 +210,33 @@ function WeekCalendar({
 						accessibilityState={{ selected }}
 						onPress={() => onSelectDay(day)}
 						hitSlop={2}
-						className={cn(
-							"h-16 flex-1 items-center justify-center rounded-3xl border-hairline",
-							selected
-								? "border-button-neutral bg-button-neutral"
-								: "border-transparent bg-transparent",
-						)}
-						style={{ borderCurve: "continuous" }}
+						className="min-h-20 flex-1 items-center justify-start"
 					>
-						<Text
-							className={cn(
-								"font-poppins text-body-5",
-								selected ? "text-background/70" : "text-secondary-text",
-							)}
-						>
+						<Text className="font-poppins text-body-4 text-secondary-text">
 							{day.weekday}
 						</Text>
-						<Text
+						<View
 							className={cn(
-								"font-poppins font-semibold text-body-3",
-								selected ? "text-background" : "text-text",
+								"mt-2 h-12 w-12 items-center justify-center rounded-full border",
+								selected
+									? "border-primary-strong/30 bg-system-subtle"
+									: "border-transparent bg-transparent",
 							)}
-							style={{ fontVariant: ["tabular-nums"] }}
+							style={{ borderCurve: "continuous" }}
 						>
-							{day.dayOfMonth}
-						</Text>
-						{day.isToday && !selected ? (
-							<View className="mt-1 h-1 w-1 rounded-full bg-primary" />
-						) : (
-							<View className="mt-1 h-1 w-1" />
-						)}
+							<Text
+								className={cn(
+									"font-poppins font-semibold text-body-1",
+									selected ? "text-primary-strong" : "text-text",
+								)}
+								style={{ fontVariant: ["tabular-nums"] }}
+							>
+								{day.dayOfMonth}
+							</Text>
+							{day.isToday && !selected ? (
+								<View className="absolute bottom-1 h-1 w-1 rounded-full bg-primary" />
+							) : null}
+						</View>
 					</TouchableOpacity>
 				);
 			})}
@@ -295,7 +300,7 @@ function SchoolLessonCard({
 			accessible
 			accessibilityLabel={`Schulstunde: ${formatGermanUiText(getAgendaEntryTitle(item.entry))}, ${getTimeLabel(item)}`}
 			className={cn(
-				"min-h-20 flex-row items-center rounded-3xl border-border border-hairline bg-light-2 px-4 py-3",
+				"min-h-20 flex-row items-center rounded-3xl border border-border bg-light-2 px-4 py-3",
 				isPast && "opacity-55",
 			)}
 			style={{ borderCurve: "continuous" }}
@@ -321,15 +326,12 @@ function SchoolLessonCard({
 function LearningSessionCard({
 	item,
 	isPast,
-	isPrimary,
 	onPress,
 }: {
 	item: DashboardAgendaItem;
 	isPast: boolean;
-	isPrimary: boolean;
 	onPress: () => void;
 }) {
-	const { colors } = useDayovaTheme();
 	const isStarted = item.entry.executionStatus === "started";
 
 	return (
@@ -339,53 +341,35 @@ function LearningSessionCard({
 			accessibilityLabel={`${isStarted ? "Weiterlernen" : "Lernsession starten"}: ${formatGermanUiText(getAgendaEntryTitle(item.entry))}`}
 			onPress={onPress}
 			className={cn(
-				"min-h-28 overflow-hidden rounded-card border-hairline bg-card",
-				isPrimary ? "border-primary/30" : "border-border",
+				"min-h-24 overflow-hidden rounded-card border border-border bg-card",
 				isPast && "opacity-55",
 			)}
 			style={{
 				borderCurve: "continuous",
-				boxShadow: "0 6px 16px rgba(21, 29, 48, 0.05)",
 			}}
 		>
-			{isPrimary ? (
-				<LinearGradient
-					pointerEvents="none"
-					colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
-					start={PRIMARY_INTERACTIVE_GRADIENT.start}
-					end={PRIMARY_INTERACTIVE_GRADIENT.end}
-					style={styles.primaryCardAccent}
-				/>
-			) : (
-				<View className="absolute top-0 bottom-0 left-0 w-1 bg-ueben" />
-			)}
-			<View className="min-h-28 justify-center px-5 py-4">
+			<View className="min-h-24 justify-center px-5 py-4">
 				<View className="flex-row items-center">
-					<View
-						className={cn(
-							"h-10 w-10 items-center justify-center rounded-full",
-							isPrimary ? "bg-system-subtle" : "bg-ueben-subtle",
-						)}
-					>
+					<View className="h-10 w-10 items-center justify-center rounded-full bg-ueben-subtle">
 						<Dumbbell
 							size={19}
-							color={
-								isPrimary
-									? DAYOVA_DESIGN_SYSTEM.colors.primaryStrong
-									: DAYOVA_DESIGN_SYSTEM.colors.ueben
-							}
+							color={DAYOVA_DESIGN_SYSTEM.colors.ueben}
 							strokeWidth={2}
 						/>
 					</View>
 					<View className="ml-3 flex-1">
-						<Text
-							className={cn(
-								"font-poppins font-semibold text-body-5",
-								isPrimary ? "text-primary-strong" : "text-ueben",
-							)}
-						>
-							Dein Lernschritt
-						</Text>
+						<View className="mb-1 flex-row items-center justify-between gap-2">
+							<Text className="font-poppins font-semibold text-body-5 text-ueben">
+								Dein Lernschritt
+							</Text>
+							{!isPast ? (
+								<View className="h-7 justify-center rounded-full bg-light-2 px-3">
+									<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+										{`${item.entry.durationMinutes ?? 45} min`}
+									</Text>
+								</View>
+							) : null}
+						</View>
 						<Text
 							className="font-poppins font-semibold text-body-2 text-text"
 							numberOfLines={2}
@@ -393,36 +377,13 @@ function LearningSessionCard({
 							{formatGermanUiText(getAgendaEntryTitle(item.entry))}
 						</Text>
 					</View>
-					{!isPast ? (
-						<ArrowRight
-							size={18}
-							color={isPrimary ? colors.primaryStrong : colors.secondaryText}
-							strokeWidth={2}
-						/>
-					) : null}
 				</View>
-				{!isPast ? (
-					<View className="mt-3 flex-row items-center">
-						<View className="flex-row items-center">
-							<Clock3
-								size={16}
-								color={colors.secondaryText}
-								strokeWidth={1.9}
-							/>
-							<Text className="ml-2 font-poppins text-body-4 text-secondary-text">
-								{item.entry.durationMinutes
-									? `${item.entry.durationMinutes} Min.`
-									: "45 Min."}
-							</Text>
-						</View>
-					</View>
-				) : null}
 			</View>
 		</TouchableOpacity>
 	);
 }
 
-function NextLearningStepPanel({
+function NextLearningStepCard({
 	item,
 	isLoading,
 	todayKey,
@@ -436,109 +397,237 @@ function NextLearningStepPanel({
 	onOpenLearningPlans: () => void;
 }) {
 	const { colors } = useDayovaTheme();
-
-	if (isLoading) {
-		return (
-			<View
-				accessibilityRole="progressbar"
-				className="min-h-24 justify-center rounded-card border-border border-hairline bg-card px-5 py-4"
-				style={{ borderCurve: "continuous" }}
-			>
-				<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
-					Nächster Lernschritt
-				</Text>
-				<Text className="mt-1 font-poppins text-body-3 text-secondary-text">
-					Dein Lernplan wird geprüft …
-				</Text>
-			</View>
-		);
-	}
-
-	if (!item) {
-		return (
-			<TouchableOpacity
-				activeOpacity={0.86}
-				accessibilityRole="button"
-				accessibilityLabel="Lernpläne öffnen"
-				onPress={onOpenLearningPlans}
-				className="min-h-24 flex-row items-center rounded-card border-border border-hairline bg-card px-5 py-4"
-				style={{ borderCurve: "continuous" }}
-			>
-				<View className="h-11 w-11 items-center justify-center rounded-full bg-system-subtle">
-					<Dumbbell
-						size={20}
-						color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
-						strokeWidth={2}
-					/>
-				</View>
-				<View className="ml-3 flex-1">
-					<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
-						Nächster Lernschritt
-					</Text>
-					<Text className="font-poppins font-semibold text-body-3 text-text">
-						Noch kein Lernschritt geplant
-					</Text>
-					<Text className="font-poppins text-body-5 text-secondary-text">
-						Öffne deine Lernpläne und plane den nächsten Schritt.
-					</Text>
-				</View>
-				<ArrowUpRight size={19} color={colors.primaryStrong} strokeWidth={2} />
-			</TouchableOpacity>
-		);
-	}
+	const title = isLoading
+		? "Wird geladen …"
+		: item
+			? formatGermanUiText(getAgendaEntryTitle(item.entry))
+			: "Noch nichts geplant";
+	const dateLabel = item ? getNextStepDateLabel(item, todayKey) : null;
+	const timeLabel = item ? getNextStepTimeLabel(item) : null;
+	const footer = isLoading
+		? "Lernplan öffnen"
+		: item
+			? getNextStepFooter(item, todayKey)
+			: "Lernplan öffnen";
+	const handlePress = () => {
+		if (item) {
+			onOpenItem(item);
+			return;
+		}
+		onOpenLearningPlans();
+	};
 
 	return (
 		<TouchableOpacity
-			activeOpacity={0.86}
+			activeOpacity={0.82}
 			accessibilityRole="button"
-			accessibilityLabel={`${item.entry.executionStatus === "started" ? "Weiterlernen" : "Nächsten Lernschritt starten"}: ${formatGermanUiText(getAgendaEntryTitle(item.entry))}`}
-			onPress={() => onOpenItem(item)}
-			className="min-h-28 overflow-hidden rounded-card border-hairline border-primary/30 bg-card px-5 py-4"
-			style={{
-				borderCurve: "continuous",
-				boxShadow: "0 12px 28px rgba(0, 160, 230, 0.12)",
-			}}
+			accessibilityLabel={
+				item
+					? `${item.entry.executionStatus === "started" ? "Weiterlernen" : "Nächsten Lernschritt öffnen"}: ${title}. ${dateLabel}, ${timeLabel}`
+					: "Lernpläne öffnen"
+			}
+			accessibilityHint="Öffnet deinen persönlichen Lernplan."
+			onPress={handlePress}
+			className="min-h-72 flex-1 overflow-hidden rounded-card border border-border bg-system-subtle px-4 pt-5 pb-4"
+			style={{ borderCurve: "continuous" }}
 		>
-			<LinearGradient
-				pointerEvents="none"
-				colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
-				start={PRIMARY_INTERACTIVE_GRADIENT.start}
-				end={PRIMARY_INTERACTIVE_GRADIENT.end}
-				style={styles.primaryCardAccent}
-			/>
-			<View className="flex-row items-start">
-				<View className="h-11 w-11 items-center justify-center rounded-full bg-system-subtle">
-					<Dumbbell
-						size={20}
-						color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
+			<View className="flex-row items-start gap-1">
+				<Dumbbell size={14} color={colors.primaryStrong} strokeWidth={2} />
+				<Text
+					className="flex-1 font-poppins font-semibold text-body-5 text-primary-strong"
+					numberOfLines={2}
+				>
+					Nächster Lernschritt
+				</Text>
+			</View>
+			<Text
+				className="mt-4 font-poppins font-semibold text-body-1 text-text"
+				numberOfLines={3}
+			>
+				{title}
+			</Text>
+			<View className="mt-3 flex-1 gap-2">
+				{dateLabel ? (
+					<View className="flex-row items-center gap-2">
+						<CalendarDays
+							size={16}
+							color={colors.secondaryText}
+							strokeWidth={1.9}
+						/>
+						<Text
+							className="flex-1 font-poppins text-body-5 text-secondary-text"
+							numberOfLines={1}
+						>
+							{dateLabel}
+						</Text>
+					</View>
+				) : null}
+				{timeLabel ? (
+					<View className="flex-row items-center gap-2">
+						<Clock3 size={16} color={colors.secondaryText} strokeWidth={1.9} />
+						<Text
+							className="flex-1 font-poppins text-body-5 text-secondary-text"
+							numberOfLines={1}
+							style={{ fontVariant: ["tabular-nums"] }}
+						>
+							{timeLabel}
+						</Text>
+					</View>
+				) : null}
+			</View>
+			<View className="mt-4 flex-row items-end justify-between gap-2">
+				<Text
+					className="flex-1 pr-1 font-poppins font-semibold text-body-4 text-text"
+					numberOfLines={2}
+				>
+					{footer}
+				</Text>
+				<View
+					accessible={false}
+					className="h-12 w-12 items-center justify-center rounded-full bg-primary"
+				>
+					<ArrowRight
+						size={22}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2}
 					/>
 				</View>
-				<View className="ml-3 flex-1">
-					<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
-						Nächster Lernschritt
-					</Text>
-					<Text
-						className="font-poppins font-semibold text-body-2 text-text"
-						numberOfLines={2}
+			</View>
+		</TouchableOpacity>
+	);
+}
+
+function WeeklyProgressCard({
+	isLoading,
+	progress,
+	onOpenLearningPlans,
+}: {
+	isLoading: boolean;
+	progress: DashboardWeekProgress;
+	onOpenLearningPlans: () => void;
+}) {
+	const { colors } = useDayovaTheme();
+	const hasPlannedSessions = progress.totalLearningSessions > 0;
+	const ringValue = isLoading
+		? "–"
+		: hasPlannedSessions
+			? `${progress.completedLearningSessions} / ${progress.totalLearningSessions}`
+			: "0";
+	const ringLabel = isLoading
+		? "wird geladen"
+		: hasPlannedSessions
+			? "geschafft"
+			: "geplant";
+	const progressOffset =
+		WEEK_PROGRESS_RING_CIRCUMFERENCE *
+		(1 - (isLoading ? 0 : progress.completionPercent) / 100);
+	const footer = isLoading
+		? "Diese Woche"
+		: hasPlannedSessions
+			? `${progress.completedMinutesToday} Min. heute`
+			: "Lernplan öffnen";
+
+	return (
+		<TouchableOpacity
+			activeOpacity={0.82}
+			accessibilityRole="button"
+			accessibilityLabel={
+				isLoading
+					? "Wochenfortschritt wird geladen"
+					: hasPlannedSessions
+						? `Wochenfortschritt: ${progress.completedLearningSessions} von ${progress.totalLearningSessions} Lernschritten geschafft. ${progress.completedMinutesToday} Minuten heute`
+						: "Wochenfortschritt: Noch keine Lernschritte geplant"
+			}
+			accessibilityHint="Öffnet deine persönlichen Lernpläne."
+			onPress={onOpenLearningPlans}
+			className="min-h-72 flex-1 overflow-hidden rounded-card border border-border bg-ueben-subtle px-4 pt-5 pb-4"
+			style={{ borderCurve: "continuous" }}
+		>
+			<View className="flex-row items-start gap-1">
+				<TimeManagement size={14} color={colors.ueben} strokeWidth={2} />
+				<Text
+					className="flex-1 font-poppins font-semibold text-body-5 text-ueben"
+					numberOfLines={2}
+				>
+					Wochenfortschritt
+				</Text>
+			</View>
+			<View className="flex-1 items-center justify-center py-2">
+				<View
+					accessible={false}
+					className="items-center justify-center"
+					// SVG ring geometry uses fixed native dimensions.
+					style={{
+						width: WEEK_PROGRESS_RING_SIZE,
+						height: WEEK_PROGRESS_RING_SIZE,
+					}}
+				>
+					<Svg
+						pointerEvents="none"
+						width={WEEK_PROGRESS_RING_SIZE}
+						height={WEEK_PROGRESS_RING_SIZE}
+						viewBox={`0 0 ${WEEK_PROGRESS_RING_SIZE} ${WEEK_PROGRESS_RING_SIZE}`}
+						// SVG positioning is not expressible through NativeWind classes.
+						style={{ position: "absolute" }}
 					>
-						{formatGermanUiText(getAgendaEntryTitle(item.entry))}
+						<Circle
+							cx={WEEK_PROGRESS_RING_SIZE / 2}
+							cy={WEEK_PROGRESS_RING_SIZE / 2}
+							r={WEEK_PROGRESS_RING_RADIUS}
+							fill="none"
+							stroke={colors.ueben}
+							strokeOpacity={0.24}
+							strokeWidth={WEEK_PROGRESS_RING_STROKE_WIDTH}
+						/>
+						<Circle
+							cx={WEEK_PROGRESS_RING_SIZE / 2}
+							cy={WEEK_PROGRESS_RING_SIZE / 2}
+							r={WEEK_PROGRESS_RING_RADIUS}
+							fill="none"
+							stroke={colors.ueben}
+							strokeDasharray={`${WEEK_PROGRESS_RING_CIRCUMFERENCE} ${WEEK_PROGRESS_RING_CIRCUMFERENCE}`}
+							strokeDashoffset={progressOffset}
+							strokeLinecap="round"
+							strokeWidth={WEEK_PROGRESS_RING_STROKE_WIDTH}
+							transform={`rotate(-90 ${WEEK_PROGRESS_RING_SIZE / 2} ${WEEK_PROGRESS_RING_SIZE / 2})`}
+						/>
+					</Svg>
+					<Text
+						className="font-poppins font-semibold text-body-1 text-text"
+						numberOfLines={1}
+						style={{ fontVariant: ["tabular-nums"] }}
+					>
+						{ringValue}
 					</Text>
 					<Text
-						className="mt-1 font-poppins text-body-5 text-secondary-text"
+						className="font-poppins text-body-5 text-secondary-text"
 						numberOfLines={1}
 					>
-						{getNextStepWhenLabel(item, todayKey)}
-						{item.entry.durationMinutes
-							? ` · ${item.entry.durationMinutes} Min.`
-							: ""}
+						{ringLabel}
 					</Text>
 				</View>
-				<View className="ml-3 h-9 w-9 items-center justify-center rounded-full bg-system-subtle">
-					<ArrowRight
-						size={18}
-						color={colors.primaryStrong}
-						strokeWidth={2.2}
+			</View>
+			<View className="mt-4 flex-row items-end justify-between gap-2">
+				<View className="flex-1 flex-row items-center gap-2 pr-1">
+					{hasPlannedSessions && !isLoading ? (
+						<Clock3 size={16} color={colors.secondaryText} strokeWidth={1.9} />
+					) : null}
+					<Text
+						className="flex-1 font-poppins font-semibold text-body-4 text-text"
+						numberOfLines={2}
+						style={{ fontVariant: ["tabular-nums"] }}
+					>
+						{footer}
+					</Text>
+				</View>
+				<View
+					accessible={false}
+					className="h-12 w-12 items-center justify-center rounded-full bg-secondary"
+				>
+					<ArrowUpRight
+						size={22}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={2}
 					/>
 				</View>
 			</View>
@@ -569,12 +658,11 @@ function SupportingEntryCard({
 			accessibilityLabel={`${isExam ? "Prüfung" : "Aufgabe"}: ${formatGermanUiText(getAgendaEntryTitle(item.entry))}`}
 			onPress={onPress}
 			className={cn(
-				"min-h-24 flex-row items-center rounded-3xl border-border border-hairline bg-card px-4 py-4",
+				"min-h-24 flex-row items-center rounded-3xl border border-border bg-card px-4 py-4",
 				isPast && "opacity-55",
 			)}
 			style={{
 				borderCurve: "continuous",
-				boxShadow: "0 6px 16px rgba(21, 29, 48, 0.05)",
 			}}
 		>
 			<View
@@ -652,12 +740,7 @@ function AgendaItemRow({
 				{item.kind === "schoolLesson" ? (
 					<SchoolLessonCard item={item} isPast={isPast} />
 				) : item.kind === "learningSession" ? (
-					<LearningSessionCard
-						item={item}
-						isPast={isPast}
-						isPrimary={isPrimary}
-						onPress={onPress}
-					/>
+					<LearningSessionCard item={item} isPast={isPast} onPress={onPress} />
 				) : (
 					<SupportingEntryCard item={item} isPast={isPast} onPress={onPress} />
 				)}
@@ -666,11 +749,10 @@ function AgendaItemRow({
 	);
 }
 
-function EmptyAgendaDay({ onCreateEntry }: { onCreateEntry: () => void }) {
-	const { colors } = useDayovaTheme();
+function EmptyAgendaDay() {
 	return (
 		<View
-			className="items-center rounded-card bg-light-2 px-6 py-10"
+			className="items-center rounded-card border border-border bg-card px-6 py-10"
 			style={{ borderCurve: "continuous" }}
 		>
 			<View className="h-14 w-14 items-center justify-center rounded-full bg-system-subtle">
@@ -684,21 +766,48 @@ function EmptyAgendaDay({ onCreateEntry }: { onCreateEntry: () => void }) {
 				Noch nichts geplant
 			</Text>
 			<Text className="mt-1 max-w-64 text-center font-poppins text-body-4 text-secondary-text">
-				Füge eine Aufgabe oder Prüfung für diesen Tag hinzu.
+				Für diesen Tag sind noch keine Termine geplant.
 			</Text>
-			<TouchableOpacity
-				activeOpacity={0.84}
-				accessibilityRole="button"
-				accessibilityLabel="Eintrag für diesen Tag hinzufügen"
-				onPress={onCreateEntry}
-				className="mt-6 h-12 flex-row items-center justify-center rounded-full bg-system-subtle px-5"
-			>
-				<Plus size={18} color={colors.primaryStrong} strokeWidth={2} />
-				<Text className="ml-2 font-poppins font-semibold text-body-4 text-primary-strong">
-					Eintrag hinzufügen
-				</Text>
-			</TouchableOpacity>
 		</View>
+	);
+}
+
+function TimetableSetupCard({
+	hasDraft,
+	onPress,
+}: {
+	hasDraft: boolean;
+	onPress: () => void;
+}) {
+	const { colors } = useDayovaTheme();
+
+	return (
+		<TouchableOpacity
+			activeOpacity={0.84}
+			accessibilityRole="button"
+			accessibilityLabel={
+				hasDraft ? "Stundenplan-Import fortsetzen" : "Stundenplan hinzufügen"
+			}
+			accessibilityHint="Öffnet den Stundenplan zum Hochladen und Prüfen."
+			onPress={onPress}
+			className="mx-6 mb-5 flex-row items-center rounded-card border border-border bg-card px-5 py-4"
+			style={{ borderCurve: "continuous" }}
+		>
+			<View className="h-12 w-12 items-center justify-center rounded-full bg-system-subtle">
+				<ScanImage size={22} color={colors.primaryStrong} strokeWidth={2} />
+			</View>
+			<View className="ml-4 flex-1">
+				<Text className="font-poppins font-semibold text-body-3 text-text">
+					{hasDraft ? "Stundenplan fertigstellen" : "Stundenplan hinzufügen"}
+				</Text>
+				<Text className="mt-1 font-poppins text-body-5 text-secondary-text">
+					{hasDraft
+						? "Prüfe die erkannten Schulstunden."
+						: "Schulstunden in deinen Tag übernehmen."}
+				</Text>
+			</View>
+			<ArrowRight size={19} color={colors.secondaryText} strokeWidth={2} />
+		</TouchableOpacity>
 	);
 }
 
@@ -708,21 +817,19 @@ function AgendaTimeline({
 	currentMinutes,
 	nextActionableId,
 	onOpenItem,
-	onCreateEntry,
 }: {
 	days: AgendaDay[];
 	todayKey: string;
 	currentMinutes: number;
 	nextActionableId: DayEntry["id"] | undefined;
 	onOpenItem: (item: DashboardAgendaItem) => void;
-	onCreateEntry: () => void;
 }) {
 	return (
 		<View>
 			{days.map((day) => (
 				<View key={day.key}>
 					{day.items.length === 0 ? (
-						<EmptyAgendaDay onCreateEntry={onCreateEntry} />
+						<EmptyAgendaDay />
 					) : (
 						day.items.map((item, itemIndex) => {
 							const isPast = isDashboardAgendaItemPast({
@@ -756,10 +863,7 @@ function AgendaDayPage({
 	isLoading,
 	currentMinutes,
 	nextActionableId,
-	pageWidth,
-	bottomPadding,
 	onOpenItem,
-	onCreateEntry,
 }: {
 	dayKey: string;
 	todayKey: string;
@@ -767,10 +871,7 @@ function AgendaDayPage({
 	isLoading: boolean;
 	currentMinutes: number;
 	nextActionableId: DayEntry["id"] | undefined;
-	pageWidth: number;
-	bottomPadding: number;
 	onOpenItem: (item: DashboardAgendaItem) => void;
-	onCreateEntry: () => void;
 }) {
 	const calendarDay = toCalendarDay({ dayKey, todayKey });
 	const agendaDay = calendarDay
@@ -783,41 +884,26 @@ function AgendaDayPage({
 		: null;
 
 	return (
-		<View
-			className="flex-1"
-			// Each horizontal page follows the measured device width.
-			style={{ width: pageWidth }}
-		>
-			<ScrollView
-				className="flex-1"
-				contentInsetAdjustmentBehavior="never"
-				directionalLockEnabled
-				nestedScrollEnabled
-				showsVerticalScrollIndicator={false}
-				contentContainerClassName="px-6 pt-1"
-				contentContainerStyle={{ paddingBottom: bottomPadding }}
-			>
-				{isLoading || !agendaDay ? (
-					<View
-						accessibilityRole="progressbar"
-						className="items-center rounded-card border-border border-hairline bg-card px-6 py-10"
-						style={{ borderCurve: "continuous" }}
-					>
-						<Text className="font-poppins text-body-3 text-secondary-text">
-							Dein Tag wird geladen …
-						</Text>
-					</View>
-				) : (
-					<AgendaTimeline
-						days={[agendaDay]}
-						todayKey={todayKey}
-						currentMinutes={currentMinutes}
-						nextActionableId={nextActionableId}
-						onOpenItem={onOpenItem}
-						onCreateEntry={onCreateEntry}
-					/>
-				)}
-			</ScrollView>
+		<View className="px-6 pt-6">
+			{isLoading || !agendaDay ? (
+				<View
+					accessibilityRole="progressbar"
+					className="items-center rounded-card border-border border-hairline bg-card px-6 py-10"
+					style={{ borderCurve: "continuous" }}
+				>
+					<Text className="font-poppins text-body-3 text-secondary-text">
+						Dein Tag wird geladen …
+					</Text>
+				</View>
+			) : (
+				<AgendaTimeline
+					days={[agendaDay]}
+					todayKey={todayKey}
+					currentMinutes={currentMinutes}
+					nextActionableId={nextActionableId}
+					onOpenItem={onOpenItem}
+				/>
+			)}
 		</View>
 	);
 }
@@ -826,9 +912,6 @@ export function DashboardScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const insets = useSafeAreaInsets();
-	const { width } = useWindowDimensions();
-	const reduceMotion = useReducedMotion();
-	const { colors } = useDayovaTheme();
 	const { user } = useAuth();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -843,10 +926,7 @@ export function DashboardScreen() {
 	);
 	const [selectedDayKey, setSelectedDayKey] = useState(initialDayKey);
 	const [now, setNow] = useState(() => new Date());
-	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
 	const didCaptureDashboardViewRef = useRef(false);
-	const dayPagerRef = useRef<FlatList<string>>(null);
-	const pageWidth = Math.max(width, 1);
 	const selectedDate = parseDayKey(selectedDayKey) ?? today;
 
 	useEffect(() => {
@@ -865,10 +945,13 @@ export function DashboardScreen() {
 		selectedDayKey,
 		todayKey,
 	});
-	const queriedDayKeySet = new Set(queriedDayKeys);
 	const entriesByDay = useQuery(
 		api.dayEntries.listByDayKeys,
 		user && isConvexAuthenticated ? { dayKeys: queriedDayKeys } : "skip",
+	);
+	const timetableState = useQuery(
+		api.timetables.getMine,
+		user && isConvexAuthenticated ? {} : "skip",
 	);
 	const allRelevantAgendaItems = entriesByDay
 		? queriedDayKeys.flatMap((dayKey) =>
@@ -883,15 +966,21 @@ export function DashboardScreen() {
 		todayKey,
 		currentMinutes,
 	});
+	const weekProgress = getDashboardWeekProgress({
+		items: allRelevantAgendaItems,
+		todayKey,
+	});
 	const nextActionableId = nextLearningStep?.entry.id;
-	const selectedDayLabel = new Intl.DateTimeFormat("de-DE", {
-		weekday: "long",
-		day: "numeric",
-		month: "long",
-	}).format(selectedDate);
 	const selectedWeekday = formatGermanUiText(
 		new Intl.DateTimeFormat("de-DE", { weekday: "long" }).format(selectedDate),
 	);
+	const selectedDayEntryCount = entriesByDay?.[selectedDayKey]?.length ?? 0;
+	const selectedDayAgendaLabel =
+		entriesByDay === undefined
+			? "Dein Tag wird geladen …"
+			: `${selectedDayKey === todayKey ? "Heute geplant" : "Geplant"} · ${selectedDayEntryCount} ${
+					selectedDayEntryCount === 1 ? "Termin" : "Termine"
+				}`;
 	const firstName =
 		typeof user?.name === "string" && user.name.trim().length > 0
 			? user.name.trim().split(/\s+/)[0]
@@ -928,27 +1017,8 @@ export function DashboardScreen() {
 	};
 
 	const selectDay = (day: CalendarDay) => {
-		const nextIndex = dayPagerKeys.indexOf(day.key);
-		if (nextIndex < 0) return;
+		if (!dayPagerKeys.includes(day.key)) return;
 		commitSelectedDay(day.key, "day_strip");
-		dayPagerRef.current?.scrollToOffset({
-			offset: nextIndex * pageWidth,
-			animated: !reduceMotion,
-		});
-	};
-
-	const handleDayPagerSettled = (
-		event: NativeSyntheticEvent<NativeScrollEvent>,
-	) => {
-		const nextIndex = Math.min(
-			Math.max(Math.round(event.nativeEvent.contentOffset.x / pageWidth), 0),
-			dayPagerKeys.length - 1,
-		);
-		const nextDayKey = dayPagerKeys[nextIndex];
-		if (!nextDayKey || nextDayKey === selectedDayKey) return;
-
-		commitSelectedDay(nextDayKey, "swipe");
-		triggerDaySelectionHaptic();
 	};
 
 	const adjustSelectedDay = (direction: -1 | 1) => {
@@ -959,12 +1029,19 @@ export function DashboardScreen() {
 		const nextDayKey = dayPagerKeys[nextIndex];
 		if (!nextDayKey) return;
 		commitSelectedDay(nextDayKey, "swipe");
-		dayPagerRef.current?.scrollToOffset({
-			offset: nextIndex * pageWidth,
-			animated: !reduceMotion,
-		});
 		triggerDaySelectionHaptic();
 	};
+
+	const daySwipeGesture = Gesture.Pan()
+		.activeOffsetX([-24, 24])
+		.failOffsetY([-12, 12])
+		.onEnd((event) => {
+			"worklet";
+			const passedDistance = Math.abs(event.translationX) >= 56;
+			const passedVelocity = Math.abs(event.velocityX) >= 650;
+			if (!passedDistance && !passedVelocity) return;
+			scheduleOnRN(adjustSelectedDay, event.translationX < 0 ? 1 : -1);
+		});
 
 	const openItem = useCallback(
 		(item: DashboardAgendaItem, source: "timeline" | "next_step") => {
@@ -1001,153 +1078,112 @@ export function DashboardScreen() {
 		() => router.push("/learning-plans"),
 		[router],
 	);
-
-	const selectCreateType = (type: "homework" | "exam") => {
-		setShowCreateTypePicker(false);
-		capture("dashboard_create_type_selected", {
-			entry_type: type,
-			selected_day_key: selectedDayKey,
-		});
-		router.push(
-			`/entry/new?type=${type}&dayKey=${encodeURIComponent(selectedDayKey)}&dayLabel=${encodeURIComponent(selectedDayLabel)}`,
-		);
-	};
-
-	const openCreateEntryPicker = () => {
-		capture("dashboard_create_opened", {
-			selected_day_key: selectedDayKey,
-		});
-		setShowCreateTypePicker(true);
-	};
+	const openTimetable = useCallback(() => router.push("/timetable"), [router]);
 
 	return (
 		<View className="flex-1 bg-background">
 			<ThemedStatusBar />
-			<View className="flex-1">
-				<View
-					className="px-6"
-					// Safe-area padding is runtime device geometry.
-					style={{ paddingTop: insets.top + 16 }}
-				>
-					<View className="flex-row items-center justify-between">
-						<View className="flex-1 pr-4">
-							<Text className="font-poppins text-body-4 text-secondary-text">
-								{getMonthHeading(selectedDate)}
-							</Text>
-							<Text
-								accessibilityRole="header"
-								className="font-poppins font-semibold text-heading-2 text-text"
-								numberOfLines={1}
-							>
-								{firstName ? `Hallo ${firstName}` : "Dein Tag"}
-							</Text>
-						</View>
-						<NotificationButton />
+			<View
+				className="bg-background px-6"
+				// Safe-area padding is runtime device geometry.
+				style={{ paddingTop: insets.top + 16 }}
+			>
+				<View className="flex-row items-center justify-between">
+					<View className="flex-1 pr-4">
+						<Text className="font-poppins text-body-4 text-secondary-text">
+							{getMonthHeading(selectedDate)}
+						</Text>
+						<Text
+							accessibilityRole="header"
+							className="font-poppins font-semibold text-heading-2 text-text"
+							numberOfLines={1}
+						>
+							{firstName ? `Hallo ${firstName}` : "Dein Tag"}
+						</Text>
 					</View>
-
-					<View className="mt-6">
-						<WeekCalendar
-							days={calendarDays}
-							selectedDayKey={selectedDayKey}
-							onSelectDay={selectDay}
-						/>
-					</View>
+					<NotificationButton />
 				</View>
 
-				<View className="px-6 pt-5">
-					<NextLearningStepPanel
+				<View className="mt-10">
+					<WeekCalendar
+						days={calendarDays}
+						selectedDayKey={selectedDayKey}
+						onSelectDay={selectDay}
+					/>
+				</View>
+			</View>
+
+			<ScrollView
+				className="flex-1"
+				contentInsetAdjustmentBehavior="never"
+				directionalLockEnabled
+				nestedScrollEnabled
+				showsVerticalScrollIndicator={false}
+				stickyHeaderIndices={[2]}
+				// Native tabs own the screen edge; this keeps the final item comfortably clear.
+				contentContainerStyle={{
+					paddingBottom: Math.max(insets.bottom + 72, 104),
+				}}
+			>
+				<View className="flex-row gap-3 px-6 pt-10 pb-5">
+					<NextLearningStepCard
 						item={nextLearningStep}
 						isLoading={entriesByDay === undefined}
 						todayKey={todayKey}
 						onOpenItem={openNextLearningStep}
 						onOpenLearningPlans={openLearningPlans}
 					/>
+					<WeeklyProgressCard
+						isLoading={entriesByDay === undefined}
+						progress={weekProgress}
+						onOpenLearningPlans={openLearningPlans}
+					/>
 				</View>
 
-				<View className="flex-row items-center justify-between px-6 pt-5 pb-3">
-					<Text className="font-poppins font-semibold text-heading-2 text-text">
+				<View>
+					{timetableState !== undefined && !timetableState.active ? (
+						<TimetableSetupCard
+							hasDraft={Boolean(timetableState.draft)}
+							onPress={openTimetable}
+						/>
+					) : null}
+				</View>
+
+				<View className="z-10 bg-background px-6 pt-5 pb-6">
+					<Text
+						accessibilityRole="header"
+						className="font-poppins font-semibold text-heading-2 text-text"
+					>
 						{selectedWeekday}
 					</Text>
-					<TouchableOpacity
-						activeOpacity={0.86}
-						accessibilityRole="button"
-						accessibilityLabel="Neuen Eintrag erstellen"
-						onPress={openCreateEntryPicker}
-						className="h-11 w-11 items-center justify-center rounded-full border-border border-hairline bg-card"
-						hitSlop={4}
-						style={{ borderCurve: "continuous" }}
-					>
-						<Plus size={21} color={colors.primaryStrong} strokeWidth={2} />
-					</TouchableOpacity>
+					<Text className="font-poppins text-body-4 text-secondary-text">
+						{selectedDayAgendaLabel}
+					</Text>
 				</View>
 
-				<Animated.FlatList
-					key={pageWidth}
-					ref={dayPagerRef}
-					data={dayPagerKeys}
-					keyExtractor={(dayKey) => dayKey}
-					horizontal
-					pagingEnabled
-					bounces={false}
-					decelerationRate="fast"
-					directionalLockEnabled
-					disableIntervalMomentum
-					initialScrollIndex={selectedPagerIndex}
-					initialNumToRender={3}
-					maxToRenderPerBatch={3}
-					windowSize={3}
-					nestedScrollEnabled
-					showsHorizontalScrollIndicator={false}
-					contentInsetAdjustmentBehavior="never"
-					onMomentumScrollEnd={handleDayPagerSettled}
-					getItemLayout={(_, index) => ({
-						length: pageWidth,
-						offset: pageWidth * index,
-						index,
-					})}
-					accessibilityActions={[
-						{ name: "increment", label: "Nächsten Tag anzeigen" },
-						{ name: "decrement", label: "Vorherigen Tag anzeigen" },
-					]}
-					onAccessibilityAction={({ nativeEvent }) => {
-						if (nativeEvent.actionName === "increment") adjustSelectedDay(1);
-						if (nativeEvent.actionName === "decrement") adjustSelectedDay(-1);
-					}}
-					className="flex-1"
-					renderItem={({ item: dayKey }) => (
+				<GestureDetector gesture={daySwipeGesture}>
+					<View
+						accessibilityActions={[
+							{ name: "increment", label: "Nächsten Tag anzeigen" },
+							{ name: "decrement", label: "Vorherigen Tag anzeigen" },
+						]}
+						onAccessibilityAction={({ nativeEvent }) => {
+							if (nativeEvent.actionName === "increment") adjustSelectedDay(1);
+							if (nativeEvent.actionName === "decrement") adjustSelectedDay(-1);
+						}}
+					>
 						<AgendaDayPage
-							dayKey={dayKey}
+							dayKey={selectedDayKey}
 							todayKey={todayKey}
-							entries={entriesByDay?.[dayKey]}
-							isLoading={
-								entriesByDay === undefined || !queriedDayKeySet.has(dayKey)
-							}
+							entries={entriesByDay?.[selectedDayKey]}
+							isLoading={entriesByDay === undefined}
 							currentMinutes={currentMinutes}
 							nextActionableId={nextActionableId}
-							pageWidth={pageWidth}
-							bottomPadding={Math.max(insets.bottom + 132, 156)}
 							onOpenItem={openTimelineItem}
-							onCreateEntry={openCreateEntryPicker}
 						/>
-					)}
-				/>
-			</View>
-
-			<CreateTypePickerModal
-				visible={showCreateTypePicker}
-				onRequestClose={() => setShowCreateTypePicker(false)}
-				onSelect={selectCreateType}
-			/>
+					</View>
+				</GestureDetector>
+			</ScrollView>
 		</View>
 	);
 }
-
-const styles = StyleSheet.create({
-	primaryCardAccent: {
-		position: "absolute",
-		top: 0,
-		bottom: 0,
-		left: 0,
-		width: 4,
-	},
-});

@@ -872,7 +872,7 @@ export default function LearningPlansScreen() {
 				contentContainerStyle={{
 					paddingHorizontal: 24,
 					paddingTop: 0,
-					paddingBottom: Math.max(insets.bottom + 120, 150),
+					paddingBottom: Math.max(insets.bottom + 72, 104),
 				}}
 				showsVerticalScrollIndicator={false}
 			>

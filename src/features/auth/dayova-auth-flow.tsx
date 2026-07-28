@@ -825,7 +825,7 @@ export function OnboardingScreen() {
 		if (stage !== "flow" || !user || hasAnswers || isPostAuthSyncing) return;
 
 		const frame = requestAnimationFrame(() => {
-			router.replace("/home");
+			router.replace("/trial");
 		});
 
 		return () => cancelAnimationFrame(frame);
@@ -837,7 +837,7 @@ export function OnboardingScreen() {
 			return;
 
 		const timeout = setTimeout(() => {
-			router.replace("/home");
+			router.replace("/trial");
 		}, 900);
 
 		return () => clearTimeout(timeout);

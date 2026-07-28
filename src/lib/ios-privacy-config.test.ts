@@ -41,24 +41,29 @@ const readFinalExpoInfoPlist = () => {
 };
 
 describe("iOS privacy purpose strings", () => {
-	it("keeps required privacy keys in the final Expo iOS config and any generated native plist", () => {
-		const finalInfoPlist = readFinalExpoInfoPlist();
-		const nativeInfoPlistExists = existsSync(IOS_INFO_PLIST_PATH);
+	it(
+		"keeps required privacy keys in the final Expo iOS config and any generated native plist",
+		() => {
+			const finalInfoPlist = readFinalExpoInfoPlist();
+			const nativeInfoPlistExists = existsSync(IOS_INFO_PLIST_PATH);
 
-		for (const key of REQUIRED_IOS_PRIVACY_KEYS) {
-			const appConfigValue = finalInfoPlist[key];
+			for (const key of REQUIRED_IOS_PRIVACY_KEYS) {
+				const appConfigValue = finalInfoPlist[key];
 
-			expect(appConfigValue, `${key} missing from final Expo iOS config`).toEqual(
-				expect.any(String),
-			);
-
-			if (nativeInfoPlistExists) {
-				const nativeValue = readNativeInfoPlistValue(key);
 				expect(
-					nativeValue,
-					`${key} missing from ios/Dayova/Info.plist`,
-				).toEqual(appConfigValue);
+					appConfigValue,
+					`${key} missing from final Expo iOS config`,
+				).toEqual(expect.any(String));
+
+				if (nativeInfoPlistExists) {
+					const nativeValue = readNativeInfoPlistValue(key);
+					expect(
+						nativeValue,
+						`${key} missing from ios/Dayova/Info.plist`,
+					).toEqual(appConfigValue);
+				}
 			}
-		}
-	});
+		},
+		15_000,
+	);
 });

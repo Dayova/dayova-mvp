@@ -21,8 +21,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { NotificationSync } from "~/components/notification-sync";
+import { TrialReminderSync } from "~/components/trial-reminder-sync";
+import { AccessProvider, useAccess } from "~/context/AccessContext";
 import { AuthProvider, useAuth } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
+import { resolveAccessRoute } from "~/lib/access-policy";
 import {
 	isPostHogConfigured,
 	postHogApiKey,
@@ -34,27 +37,24 @@ import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
 
 const convexUrl = env.EXPO_PUBLIC_CONVEX_URL?.trim();
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
-const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
-
-const isPublicAuthPath = (pathname: string) => PUBLIC_AUTH_PATHS.has(pathname);
-
 function AppNavigator() {
 	const router = useRouter();
 	const pathname = usePathname();
 	const rootNavigationState = useRootNavigationState();
 	const { user, isSessionLoading } = useAuth();
+	const { access, isAccessLoading } = useAccess();
 	const { colors } = useDayovaTheme();
 
 	useEffect(() => {
-		if (isSessionLoading || !rootNavigationState?.key) return;
+		if (isSessionLoading || isAccessLoading || !rootNavigationState?.key)
+			return;
 
-		const isAuthRoute = isPublicAuthPath(pathname);
-		const targetRoute =
-			!user && !isAuthRoute
-				? "/"
-				: user && isAuthRoute && pathname !== "/onboarding"
-					? "/home"
-					: null;
+		const targetRoute = resolveAccessRoute({
+			accessState: access?.state,
+			isSessionLoading,
+			pathname,
+			user: user ? { id: user.clerkId } : null,
+		});
 		if (!targetRoute) return;
 
 		const frame = requestAnimationFrame(() => {
@@ -62,14 +62,32 @@ function AppNavigator() {
 		});
 
 		return () => cancelAnimationFrame(frame);
-	}, [isSessionLoading, pathname, rootNavigationState?.key, router, user]);
+	}, [
+		access?.state,
+		isAccessLoading,
+		isSessionLoading,
+		pathname,
+		rootNavigationState?.key,
+		router,
+		user,
+	]);
 
 	return (
 		<>
 			<NotificationSync />
+			<TrialReminderSync />
 			<Stack screenOptions={{ headerShown: false }}>
 				<Stack.Screen
 					name="learning-times/edit"
+					options={{
+						animation: "slide_from_right",
+						contentStyle: { backgroundColor: colors.background },
+						gestureEnabled: true,
+						presentation: "card",
+					}}
+				/>
+				<Stack.Screen
+					name="timetable/index"
 					options={{
 						animation: "slide_from_right",
 						contentStyle: { backgroundColor: colors.background },
@@ -156,8 +174,10 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 									<BottomSheetModalProvider>
 										<OnboardingProvider>
 											<AuthProvider>
-												<AnalyticsIdentity />
-												<AppNavigator />
+												<AccessProvider>
+													<AnalyticsIdentity />
+													<AppNavigator />
+												</AccessProvider>
 											</AuthProvider>
 										</OnboardingProvider>
 									</BottomSheetModalProvider>

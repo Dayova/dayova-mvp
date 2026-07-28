@@ -5,7 +5,7 @@ import type {
 } from "~/features/learning-plans/types";
 
 export type DayEntry = {
-	id: Id<"dayEntries"> | Id<"learningPlanSessions">;
+	id: Id<"dayEntries"> | Id<"learningPlanSessions"> | Id<"timetableLessons">;
 	title?: unknown;
 	time?: string;
 	kind?: string;

@@ -32,6 +32,11 @@ import {
 	normalizeLearningTopics,
 } from "./learningTopicMap";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
+import {
+	getActiveTimetableLessons,
+	getTimetableDayOfWeek,
+	getTimetableLessonDuration,
+} from "./timetableOccurrences";
 import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_LEARNING_TIMES = 50;
@@ -1117,6 +1122,10 @@ export const getAiContext = internalQuery({
 			time?: string;
 			durationMinutes?: number;
 		}> = [];
+		const timetableLessons = await getActiveTimetableLessons(
+			ctx,
+			identity.tokenIdentifier,
+		);
 		const seenEntryIds = new Set<string>();
 		for (const dayKey of getLearningPlanCalendarDayKeys(plan.examDateKey)) {
 			for (const queryDayKey of getDayKeyQueryVariants(dayKey)) {
@@ -1138,6 +1147,16 @@ export const getAiContext = internalQuery({
 						durationMinutes: entry.durationMinutes,
 					});
 				}
+			}
+			const dayOfWeek = getTimetableDayOfWeek(dayKey);
+			for (const lesson of timetableLessons.filter(
+				(item) => item.dayOfWeek === dayOfWeek,
+			)) {
+				occupiedEntries.push({
+					dayKey,
+					time: lesson.startTime,
+					durationMinutes: getTimetableLessonDuration(lesson) ?? undefined,
+				});
 			}
 		}
 

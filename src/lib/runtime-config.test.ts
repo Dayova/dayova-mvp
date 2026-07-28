@@ -49,6 +49,14 @@ describe("getMissingPublicRuntimeConfig", () => {
 				EXPO_PUBLIC_CONVEX_URL: "https://process.convex.cloud",
 				EXPO_PUBLIC_POSTHOG_API_KEY: undefined,
 				EXPO_PUBLIC_POSTHOG_HOST: undefined,
+				EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: undefined,
+				EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: undefined,
+				EXPO_PUBLIC_PRIVACY_URL: undefined,
+				EXPO_PUBLIC_TERMS_URL: undefined,
+				EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL: undefined,
+				EXPO_PUBLIC_CANCELLATION_URL: undefined,
+				EXPO_PUBLIC_SUPPORT_URL: undefined,
+				EXPO_PUBLIC_PARENT_CHECKOUT_URL: undefined,
 			});
 		} finally {
 			if (originalClerkKey === undefined) {
@@ -122,6 +130,17 @@ describe("getMissingPublicRuntimeConfig", () => {
 	it("fails release validation when required config is missing", () => {
 		expect(() => validatePublicEnvForRelease({})).toThrowError(
 			/Missing values: EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY, EXPO_PUBLIC_CONVEX_URL/,
+		);
+	});
+
+	it("requires store keys and app-specific legal URLs for releases", () => {
+		expect(() =>
+			validatePublicEnvForRelease({
+				EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+				EXPO_PUBLIC_CONVEX_URL: "https://example.convex.cloud",
+			}),
+		).toThrowError(
+			/Missing values: EXPO_PUBLIC_REVENUECAT_IOS_API_KEY, EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY, EXPO_PUBLIC_PRIVACY_URL, EXPO_PUBLIC_TERMS_URL, EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL, EXPO_PUBLIC_CANCELLATION_URL, EXPO_PUBLIC_SUPPORT_URL/,
 		);
 	});
 });

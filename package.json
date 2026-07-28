@@ -85,6 +85,8 @@
 		"react-native-keyboard-controller": "1.21.9",
 		"react-native-nitro-modules": "^0.35.10",
 		"react-native-nitro-speech": "0.4.8",
+		"react-native-purchases": "^10.4.4",
+		"react-native-qrcode-svg": "^6.3.21",
 		"react-native-reanimated": "^4.5.0",
 		"react-native-safe-area-context": "^5.7.0",
 		"react-native-screens": "^4.25.2",

@@ -18,6 +18,18 @@ _Avoid_: Hard lock, hidden future sessions
 A recurring availability window chosen by the learner in Einstellungen that tells Dayova when learning may be scheduled. It is not itself a scheduled session or learning content.
 _Avoid_: Lernsession, Lernblock, automatically invented availability
 
+**Stundenplan**:
+The learner-verified recurring weekly school schedule. It is the source of truth for school occupancy and is not expanded into months of one-off day entries.
+_Avoid_: Tagesplan, Lernzeit, imported calendar
+
+**Unterrichtsstunde**:
+A recurring subject and time interval within a `Stundenplan`.
+_Avoid_: Lernsession, Aufgabe, materialized daily appointment
+
+**Unterrichtstermin**:
+A dated, read-only occurrence derived from an active `Unterrichtsstunde` for display and scheduling conflict checks.
+_Avoid_: Persisted `dayEntry`, completable task
+
 **Lernsession**:
 A scheduled learning appointment inside one `Lernzeit`, with a concrete start, planned duration, and learning goal. A session may contain multiple `Lernblöcke` without turning them into separate calendar appointments.
 _Avoid_: Lernzeit, treating each content phase as a separate appointment
@@ -98,6 +110,12 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 
 - Capture concise implementation-relevant summaries and links to canonical Notion decisions here.
 - Put product/domain ADRs in `docs/contexts/product/adr/`.
+
+## Contracts and Constraints
+
+- Uploaded timetable data remains a draft until the learner reviews and activates at least one valid `Unterrichtsstunde`.
+- Only the active `Stundenplan` produces `Unterrichtstermine`; drafts never affect the daily agenda or learning-plan scheduling.
+- `Unterrichtstermine` block overlapping learning appointments but remain informational and cannot be completed.
 
 ## Example Dialogue
 

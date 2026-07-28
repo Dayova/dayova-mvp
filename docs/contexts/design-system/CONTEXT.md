@@ -82,6 +82,13 @@ appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
 buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
 with a white stroke, and black buttons use the light border token `#DCE6EE`.
 
+The trial-activation screen is a deliberate full-bleed branded exception: it
+uses the shared `primaryInteractive` gradient as the view's only gradient and a
+white primary button for legible contrast on that saturated surface. Reusing the
+shared gradient keeps this screen synchronized with future Dayova button-color
+changes. This treatment is limited to focused access-setup moments and is not a
+third general-purpose light-mode button appearance.
+
 The current app corner system is: info/small boxes use 24px, 345px-wide
 rectangles and card-like surfaces use 32px, and buttons use 44px. Device frame
 radii are not app tokens because they depend on the phone/mockup. When nesting

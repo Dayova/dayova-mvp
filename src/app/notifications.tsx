@@ -29,8 +29,8 @@ import { ScreenHeader as Header } from "~/components/screen-header";
 import { BookOpen, ClipboardList, Mail, Trash2 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
-import { WarningBanner } from "~/components/ui/warning-banner";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { WarningBanner } from "~/components/ui/warning-banner";
 import { useAuth } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackOrReplace } from "~/lib/navigation";
@@ -41,7 +41,7 @@ type InboxCategory = "all" | "learningPlan" | "task";
 type InboxNotification = {
 	id: Id<"notificationHistory">;
 	category: "learningPlan" | "task" | "message";
-	type: "dailyBriefing" | "beforeEvent" | "forgottenEvent";
+	type: "dailyBriefing" | "beforeEvent" | "forgottenEvent" | "trialEnding";
 	title: string;
 	body: string;
 	triggeredAt: number;

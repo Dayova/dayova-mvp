@@ -2,6 +2,10 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
+import {
+	getActiveTimetableLessonsForDayKey,
+	getTimetableLessonDuration,
+} from "./timetableOccurrences";
 
 type ExamEntryLike = {
 	kind?: string;
@@ -120,6 +124,23 @@ export const assertNoScheduleConflict = async (
 		const existingInterval = getInterval(entry);
 		if (existingInterval && overlaps(newInterval, existingInterval)) {
 			throwUserFacingError(getConflictMessage(entry, existingInterval));
+		}
+	}
+
+	const timetableLessons = await getActiveTimetableLessonsForDayKey(
+		ctx,
+		ownerTokenIdentifier,
+		dayKey,
+	);
+	for (const lesson of timetableLessons) {
+		const lessonInterval = getInterval({
+			time: lesson.startTime,
+			durationMinutes: getTimetableLessonDuration(lesson) ?? undefined,
+		});
+		if (lessonInterval && overlaps(newInterval, lessonInterval)) {
+			throwUserFacingError(
+				`Dieser Zeitraum überschneidet sich mit "${lesson.subject}" am ${dayKey} von ${timeFromMinutes(lessonInterval.start)} bis ${timeFromMinutes(lessonInterval.end)}.`,
+			);
 		}
 	}
 };

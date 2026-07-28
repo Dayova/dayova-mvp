@@ -15,6 +15,14 @@ export type DashboardAgendaItem = {
 	endMinutes: number | null;
 };
 
+export type DashboardWeekProgress = {
+	completedLearningSessions: number;
+	completedMinutesToday: number;
+	completionPercent: number;
+	remainingLearningSessions: number;
+	totalLearningSessions: number;
+};
+
 export const getAdjacentDashboardDayKey = ({
 	selectedDayKey,
 	direction,
@@ -79,6 +87,10 @@ export const getDashboardRelevantDayKeys = ({
 		addKey(selectedDayKey);
 	}
 	if (today) {
+		for (const dayKey of getDashboardWeekDayKeys(todayKey)) {
+			addKey(dayKey);
+		}
+
 		const safeLookahead = Math.max(Math.floor(lookaheadDays), 0);
 		for (let offset = 0; offset <= safeLookahead; offset += 1) {
 			addKey(getDayKey(addDays(today, offset)));
@@ -88,6 +100,40 @@ export const getDashboardRelevantDayKeys = ({
 	}
 
 	return [...keys].sort();
+};
+
+export const getDashboardWeekProgress = ({
+	items,
+	todayKey,
+}: {
+	items: DashboardAgendaItem[];
+	todayKey: string;
+}): DashboardWeekProgress => {
+	const weekDayKeys = new Set(getDashboardWeekDayKeys(todayKey));
+	const learningSessions = items.filter(
+		(item) => item.kind === "learningSession" && weekDayKeys.has(item.dayKey),
+	);
+	const completedLearningSessions = learningSessions.filter(
+		(item) =>
+			item.entry.completed === true ||
+			item.entry.executionStatus === "completed",
+	);
+	const completedMinutesToday = completedLearningSessions
+		.filter((item) => item.dayKey === todayKey)
+		.reduce((total, item) => total + (item.entry.durationMinutes ?? 0), 0);
+	const totalLearningSessions = learningSessions.length;
+	const completedCount = completedLearningSessions.length;
+
+	return {
+		completedLearningSessions: completedCount,
+		completedMinutesToday,
+		completionPercent:
+			totalLearningSessions === 0
+				? 0
+				: Math.round((completedCount / totalLearningSessions) * 100),
+		remainingLearningSessions: totalLearningSessions - completedCount,
+		totalLearningSessions,
+	};
 };
 
 const SCHOOL_LESSON_PATTERN =

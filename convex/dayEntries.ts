@@ -5,6 +5,11 @@ import { mutation, query } from "./_generated/server";
 import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
+import {
+	getActiveTimetableLessons,
+	getTimetableDayOfWeek,
+	getTimetableLessonDuration,
+} from "./timetableOccurrences";
 
 type OptionalEntryFields = {
 	time?: string;
@@ -39,7 +44,7 @@ type OptionalEntryFields = {
 };
 
 type PublicDayEntry = OptionalEntryFields & {
-	id: Id<"dayEntries"> | Id<"learningPlanSessions">;
+	id: Id<"dayEntries"> | Id<"learningPlanSessions"> | Id<"timetableLessons">;
 	title: string;
 };
 
@@ -215,6 +220,10 @@ export const listByDayKeys = query({
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
 		const grouped: Record<string, PublicDayEntry[]> = {};
 		const queryKeyToRequestedDayKey = new Map<string, string>();
+		const activeTimetableLessons = await getActiveTimetableLessons(
+			ctx,
+			ownerTokenIdentifier,
+		);
 		for (const dayKey of args.dayKeys) {
 			grouped[dayKey] = [];
 			for (const queryDayKey of getDayKeyQueryVariants(dayKey)) {
@@ -238,6 +247,24 @@ export const listByDayKeys = query({
 				seenEntryIds.add(entry.id);
 				return true;
 			});
+
+			const dayOfWeek = getTimetableDayOfWeek(dayKey);
+			const timetableLessons =
+				dayOfWeek === null
+					? []
+					: activeTimetableLessons.filter(
+							(lesson) => lesson.dayOfWeek === dayOfWeek,
+						);
+			grouped[dayKey].push(
+				...timetableLessons.map((lesson) => ({
+					id: lesson._id,
+					title: lesson.subject,
+					time: lesson.startTime,
+					kind: "Unterricht",
+					...(lesson.room ? { notes: `Raum ${lesson.room}` } : {}),
+					durationMinutes: getTimetableLessonDuration(lesson) ?? undefined,
+				})),
+			);
 		}
 
 		const learningSessions = await ctx.db

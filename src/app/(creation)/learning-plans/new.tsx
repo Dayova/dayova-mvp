@@ -5,8 +5,7 @@ import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, useWindowDimensions } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
+import { ActivityIndicator, useWindowDimensions, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
@@ -542,11 +541,7 @@ export default function NewLearningPlanScreen() {
 				topPadding={0}
 				contentContainerStyle={{ flexGrow: 1 }}
 			>
-				<Animated.View
-					key={setupStep}
-					entering={FadeIn.duration(180)}
-					className="flex-1"
-				>
+				<View key={setupStep} className="flex-1">
 					{setupStep === "materialUpload" ? (
 						<MaterialUploadStep
 							artworkHeight={uploadArtworkHeight}
@@ -572,7 +567,7 @@ export default function NewLearningPlanScreen() {
 							topicDescription={topicDescription}
 						/>
 					)}
-				</Animated.View>
+				</View>
 			</ScreenScroll>
 
 			<BottomModal
