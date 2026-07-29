@@ -11,6 +11,7 @@ export default function AppLayout() {
 		>
 			<Tabs.Screen name="home" options={{ title: "Startseite" }} />
 			<Tabs.Screen name="learning-plans" options={{ title: "Lernpläne" }} />
+			<Tabs.Screen name="analyse" options={{ title: "Analyse" }} />
 			<Tabs.Screen name="settings" options={{ title: "Einstellungen" }} />
 		</Tabs>
 	);
