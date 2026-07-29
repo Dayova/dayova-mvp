@@ -1,15 +1,12 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { PaywallScreen } from "./paywall-screen";
 
-const mockGetPlans = jest.fn(async () => []);
-let mockStoreInitializationError: Error | null = null;
+const mockPush = jest.fn();
 
 beforeEach(() => {
 	jest.clearAllMocks();
-	mockGetPlans.mockResolvedValue([]);
-	mockStoreInitializationError = null;
 });
 
 jest.mock("@clerk/expo", () => ({
@@ -18,6 +15,10 @@ jest.mock("@clerk/expo", () => ({
 			delete: jest.fn(),
 		},
 	}),
+}));
+
+jest.mock("expo-router", () => ({
+	useRouter: () => ({ push: mockPush }),
 }));
 
 jest.mock("expo-linear-gradient", () => {
@@ -39,15 +40,6 @@ jest.mock("expo-status-bar", () => {
 	};
 });
 
-jest.mock("react-native-qrcode-svg", () => {
-	const React = jest.requireActual<typeof import("react")>("react");
-	return {
-		__esModule: true,
-		default: (props: Record<string, unknown>) =>
-			React.createElement("QRCode", props),
-	};
-});
-
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ bottom: 34, left: 0, right: 0, top: 59 }),
 }));
@@ -56,46 +48,18 @@ jest.mock("~/components/ui/confirmation-sheet", () => ({
 	ConfirmationSheet: () => null,
 }));
 
-jest.mock("~/context/AccessContext", () => ({
-	useAccess: () => ({
-		access: null,
-		refreshPaidAccess: jest.fn(),
-	}),
-}));
-
 jest.mock("~/context/AuthContext", () => ({
 	useAccountActions: () => ({
 		logout: jest.fn(),
 	}),
-	useAuthSession: () => ({
-		user: { clerkId: "user_123" },
-	}),
-}));
-
-jest.mock("~/lib/revenuecat-client", () => ({
-	createNativeRevenueCatClient: () => {
-		if (mockStoreInitializationError) throw mockStoreInitializationError;
-		return {
-			getPlans: mockGetPlans,
-			purchase: jest.fn(),
-			restore: jest.fn(),
-		};
-	},
-}));
-
-jest.mock("~/lib/diagnostics", () => ({
-	logDiagnosticError: jest.fn(),
 }));
 
 jest.mock("~/lib/runtime-config", () => ({
-	env: {
-		EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: "android_test_key",
-		EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: "ios_test_key",
-	},
+	env: {},
 }));
 
 describe("PaywallScreen", () => {
-	test("presents the expired trial as a focused payer decision", async () => {
+	test("keeps the expired-trial page focused on choosing a payer", async () => {
 		const screen = await render(<PaywallScreen />);
 
 		expect(screen.getByText("TESTPHASE BEENDET")).toBeOnTheScreen();
@@ -114,66 +78,28 @@ describe("PaywallScreen", () => {
 		);
 	});
 
-	test("expands the store plans below the selected self-payment path", async () => {
-		let resolvePlans: (plans: never[]) => void = () => undefined;
-		mockGetPlans.mockImplementation(
-			() =>
-				new Promise((resolve) => {
-					resolvePlans = resolve;
-				}),
-		);
+	test("opens the separate subscription page for the chosen payer", async () => {
 		const screen = await render(<PaywallScreen />);
-		const selfPayment = screen.getByLabelText(
-			"Ich zahle selbst. Direkt im App Store oder bei Google Play",
-		);
 
-		await fireEvent.press(selfPayment);
-		await fireEvent.press(selfPayment);
-		expect(mockGetPlans).toHaveBeenCalledTimes(1);
-
-		await act(async () => {
-			resolvePlans([]);
-		});
-		await waitFor(() => {
-			expect(screen.getByText("Tarif wählen")).toBeOnTheScreen();
-		});
-		expect(selfPayment.props.accessibilityState).toEqual({ selected: true });
-		expect(selfPayment.props.style).toEqual(
-			expect.objectContaining({
-				backgroundColor: "#F1F7FB",
-				borderColor: "#00A0E6",
-			}),
+		await fireEvent.press(
+			screen.getByLabelText(
+				"Meine Eltern zahlen. Zahlungslink oder QR-Code teilen",
+			),
 		);
-		expect(screen.getByTestId("paywall-payment-surface").props.style).toEqual(
-			expect.objectContaining({
-				backgroundColor: "#FFFFFF",
-				borderColor: "#4FD8FF",
-			}),
-		);
-		expect(
-			screen.getByRole("radio", { name: /Jährlich/ }).props.accessibilityState,
-		).toEqual({
-			checked: false,
+		expect(mockPush).toHaveBeenLastCalledWith({
+			pathname: "/subscription",
+			params: { payer: "parent" },
 		});
-		expect(
-			screen.getByRole("radio", { name: /Monatlich/ }).props.accessibilityState,
-		).toEqual({ checked: true });
-	});
-
-	test("keeps the paywall usable when the native store client cannot start", async () => {
-		mockStoreInitializationError = new Error("native module unavailable");
-		const screen = await render(<PaywallScreen />);
 
 		await fireEvent.press(
 			screen.getByLabelText(
 				"Ich zahle selbst. Direkt im App Store oder bei Google Play",
 			),
 		);
-
-		expect(
-			await screen.findAllByText(
-				"Store-Käufe konnten auf diesem Gerät nicht gestartet werden. Bitte öffne die App erneut oder kontaktiere den Support.",
-			),
-		).not.toHaveLength(0);
+		expect(mockPush).toHaveBeenLastCalledWith({
+			pathname: "/subscription",
+			params: { payer: "self" },
+		});
+		expect(screen.queryByText("Tarif wählen")).not.toBeOnTheScreen();
 	});
 });

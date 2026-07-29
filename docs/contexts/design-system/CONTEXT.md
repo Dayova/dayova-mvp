@@ -105,12 +105,15 @@ appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
 buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
 with a white stroke, and black buttons use the light border token `#DCE6EE`.
 
-The trial-activation and expired-trial payment screens are deliberate full-bleed
-branded exceptions. They use the shared `primaryInteractive` gradient as the
-view's only gradient, white text on the saturated outer surface, and
+The trial-activation and expired-trial payment flow are deliberate full-bleed
+branded exceptions. The expired-trial flow separates payer selection from
+subscription completion into two routes. Both use the shared
+`primaryInteractive` gradient as the view's only gradient, white text on the
+saturated outer surface, and
 theme-independent light surfaces for content that needs primary and secondary
-text. On the expired-trial screen, selected choices and secondary actions use
-`systemSubtle`, expanded payment details use `surface` with a primary-accent
+text. Payer choices stay on the first route; they never expand subscription
+details in place. On the subscription route, selected plans and secondary
+actions use `systemSubtle`, payment details use `surface` with a primary-accent
 border, and checkout actions use `primaryStrong` instead of a black neutral
 surface. Reusing shared semantic values keeps both ends of the trial flow
 synchronized with future Dayova color changes. This treatment is limited to

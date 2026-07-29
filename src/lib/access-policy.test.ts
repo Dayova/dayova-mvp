@@ -69,23 +69,30 @@ describe("resolveAccessRoute", () => {
 		).toBe("/paywall");
 	});
 
-	it("never preselects a payer route from the paywall", () => {
+	it.each([
+		"/paywall",
+		"/subscription",
+	])("keeps expired accounts inside the payment flow on %s", (pathname) => {
 		expect(
 			resolveAccessRoute({
 				accessState: "expired",
 				isSessionLoading: false,
-				pathname: "/paywall",
+				pathname,
 				user: { id: "user_1" },
 			}),
 		).toBeNull();
 	});
 
-	it("moves active accounts away from trial and paywall screens", () => {
+	it.each([
+		"/trial",
+		"/paywall",
+		"/subscription",
+	])("moves active accounts away from access setup on %s", (pathname) => {
 		expect(
 			resolveAccessRoute({
 				accessState: "paid",
 				isSessionLoading: false,
-				pathname: "/paywall",
+				pathname,
 				user: { id: "user_1" },
 			}),
 		).toBe("/home");

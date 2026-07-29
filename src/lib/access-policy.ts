@@ -51,7 +51,8 @@ export type AccessSnapshot =
 	  } & AccessMetadata);
 
 const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
-const ACCESS_SETUP_PATHS = new Set(["/trial", "/paywall"]);
+const ACCESS_SETUP_PATHS = new Set(["/trial", "/paywall", "/subscription"]);
+const EXPIRED_ACCESS_PATHS = new Set(["/paywall", "/subscription"]);
 const ACCESS_BYPASS_PATHS = new Set([
 	"/onboarding",
 	PASSWORD_RESET_SUCCESS_PATH,
@@ -80,7 +81,7 @@ export const resolveAccessRoute = ({
 		return pathname === "/trial" ? null : "/trial";
 	}
 	if (accessState === "expired") {
-		return pathname === "/paywall" ? null : "/paywall";
+		return EXPIRED_ACCESS_PATHS.has(pathname) ? null : "/paywall";
 	}
 	if (isAuthRoute || ACCESS_SETUP_PATHS.has(pathname)) {
 		return "/home";

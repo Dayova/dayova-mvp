@@ -62,6 +62,14 @@ function AppNavigator() {
 						<Stack.Screen name="(auth)" options={{ animation: "none" }} />
 						<Stack.Screen name="(app)" options={{ animation: "none" }} />
 						<Stack.Screen
+							name="subscription"
+							options={{
+								animation: "slide_from_right",
+								gestureEnabled: true,
+								presentation: "card",
+							}}
+						/>
+						<Stack.Screen
 							name="learning-times/edit"
 							options={{
 								animation: "slide_from_right",
