@@ -50,6 +50,7 @@ import {
 	getOnboardingLearningTimeErrorMessage,
 	ONBOARDING_DURATION_MINUTES,
 } from "#convex/learningTimeAvailability";
+import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
 import {
 	getCenteredIntroDotsTop,
 	getIntroButtonProgress,
@@ -71,7 +72,6 @@ import {
 	PickerInputTrigger,
 } from "~/components/onboarding/onboarding-select";
 import { StudyTimeFactContent } from "~/components/onboarding/study-time-fact-content";
-import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
@@ -839,7 +839,7 @@ export function OnboardingScreen({
 		if (stage !== "flow" || !user || hasAnswers || isPostAuthSyncing) return;
 
 		const frame = requestAnimationFrame(() => {
-			router.replace("/home");
+			router.replace("/trial");
 		});
 
 		return () => cancelAnimationFrame(frame);
@@ -2390,7 +2390,7 @@ export function CreationLoaderScreen({
 		if (!isComplete) return;
 
 		const timeout = setTimeout(() => {
-			router.replace("/home");
+			router.replace("/trial");
 		}, 1800);
 
 		return () => clearTimeout(timeout);

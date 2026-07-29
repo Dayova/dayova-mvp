@@ -447,7 +447,7 @@ describe("CreationLoaderScreen", () => {
 		jest.useRealTimers();
 	});
 
-	test("confirms saved learning times before continuing home", async () => {
+	test("confirms saved learning times before continuing to trial activation", async () => {
 		const screen = await render(
 			<CreationLoaderScreen
 				topInset={24}
@@ -480,7 +480,7 @@ describe("CreationLoaderScreen", () => {
 		await act(async () => {
 			jest.advanceTimersByTime(1);
 		});
-		expect(mockRouter.replace).toHaveBeenCalledWith("/home");
+		expect(mockRouter.replace).toHaveBeenCalledWith("/trial");
 	});
 });
 

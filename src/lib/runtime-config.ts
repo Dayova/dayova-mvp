@@ -7,6 +7,14 @@ const publicEnvSchema = {
 	EXPO_PUBLIC_CONVEX_URL: z.string().url(),
 	EXPO_PUBLIC_POSTHOG_API_KEY: z.string().optional(),
 	EXPO_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+	EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: z.string().min(1).optional(),
+	EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: z.string().min(1).optional(),
+	EXPO_PUBLIC_PRIVACY_URL: z.string().url().optional(),
+	EXPO_PUBLIC_TERMS_URL: z.string().url().optional(),
+	EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL: z.string().url().optional(),
+	EXPO_PUBLIC_CANCELLATION_URL: z.string().url().optional(),
+	EXPO_PUBLIC_SUPPORT_URL: z.string().url().optional(),
+	EXPO_PUBLIC_PARENT_CHECKOUT_URL: z.string().url().optional(),
 } as const;
 
 type PublicRuntimeConfigKey = keyof typeof publicEnvSchema;
@@ -25,6 +33,16 @@ const requiredPublicEnvKeys = [
 	"EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY",
 	"EXPO_PUBLIC_CONVEX_URL",
 ] satisfies PublicRuntimeConfigKey[];
+const requiredReleasePublicEnvKeys = [
+	...requiredPublicEnvKeys,
+	"EXPO_PUBLIC_REVENUECAT_IOS_API_KEY",
+	"EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY",
+	"EXPO_PUBLIC_PRIVACY_URL",
+	"EXPO_PUBLIC_TERMS_URL",
+	"EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL",
+	"EXPO_PUBLIC_CANCELLATION_URL",
+	"EXPO_PUBLIC_SUPPORT_URL",
+] satisfies PublicRuntimeConfigKey[];
 
 // Expo only inlines direct process.env.EXPO_PUBLIC_* member accesses.
 export const readPublicRuntimeConfig = (): StrictPublicRuntimeConfigValues => ({
@@ -33,6 +51,17 @@ export const readPublicRuntimeConfig = (): StrictPublicRuntimeConfigValues => ({
 	EXPO_PUBLIC_CONVEX_URL: process.env.EXPO_PUBLIC_CONVEX_URL,
 	EXPO_PUBLIC_POSTHOG_API_KEY: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
 	EXPO_PUBLIC_POSTHOG_HOST: process.env.EXPO_PUBLIC_POSTHOG_HOST,
+	EXPO_PUBLIC_REVENUECAT_IOS_API_KEY:
+		process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY,
+	EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY:
+		process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY,
+	EXPO_PUBLIC_PRIVACY_URL: process.env.EXPO_PUBLIC_PRIVACY_URL,
+	EXPO_PUBLIC_TERMS_URL: process.env.EXPO_PUBLIC_TERMS_URL,
+	EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL:
+		process.env.EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL,
+	EXPO_PUBLIC_CANCELLATION_URL: process.env.EXPO_PUBLIC_CANCELLATION_URL,
+	EXPO_PUBLIC_SUPPORT_URL: process.env.EXPO_PUBLIC_SUPPORT_URL,
+	EXPO_PUBLIC_PARENT_CHECKOUT_URL: process.env.EXPO_PUBLIC_PARENT_CHECKOUT_URL,
 });
 
 const toStrictPublicRuntimeConfig = (
@@ -47,6 +76,10 @@ const rawPublicRuntimeConfig = readPublicRuntimeConfig();
 export const getMissingPublicRuntimeConfig = (
 	config: PublicRuntimeConfigValues,
 ) => requiredPublicEnvKeys.filter((key) => !config[key]?.trim());
+
+export const getMissingReleasePublicRuntimeConfig = (
+	config: PublicRuntimeConfigValues,
+) => requiredReleasePublicEnvKeys.filter((key) => !config[key]?.trim());
 
 export const missingPublicRuntimeConfig = getMissingPublicRuntimeConfig(
 	rawPublicRuntimeConfig,
@@ -70,7 +103,10 @@ const createPublicEnvValidationError = (
 	issues: readonly StandardSchemaV1.Issue[],
 	context: CreatePublicEnvOptions["context"],
 ) => {
-	const missing = getMissingPublicRuntimeConfig(runtimeEnv);
+	const missing =
+		context === "release"
+			? getMissingReleasePublicRuntimeConfig(runtimeEnv)
+			: getMissingPublicRuntimeConfig(runtimeEnv);
 	const invalidIssues = issues.filter((issue) => {
 		const path = formatIssuePath(issue);
 		return !missing.some((key) => key === path);
@@ -115,6 +151,9 @@ export const createPublicEnv = (
 export const validatePublicEnvForRelease = (
 	runtimeEnv: PublicRuntimeConfigValues = readPublicRuntimeConfig(),
 ) => {
+	if (getMissingReleasePublicRuntimeConfig(runtimeEnv).length > 0) {
+		throw createPublicEnvValidationError(runtimeEnv, [], "release");
+	}
 	createPublicEnv(runtimeEnv, { context: "release" });
 };
 

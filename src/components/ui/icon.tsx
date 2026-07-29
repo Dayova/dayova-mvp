@@ -17,6 +17,7 @@ import {
 	Clock03Icon,
 	CodeIcon,
 	ComputerIcon,
+	CreditCardIcon,
 	Delete02Icon,
 	Dna01Icon,
 	Dumbbell02Icon,
@@ -50,9 +51,9 @@ import {
 	ScanImageIcon,
 	Settings01Icon,
 	SparklesIcon,
-	StopIcon,
 	SquareLock02Icon,
 	SquareRootSquareIcon,
+	StopIcon,
 	Sun01Icon,
 	Task01Icon,
 	TaskEdit01Icon,
@@ -95,6 +96,7 @@ export const ClipboardEdit = createIcon(TaskEdit01Icon);
 export const Clock3 = createIcon(Clock03Icon);
 export const Code = createIcon(CodeIcon);
 export const Computer = createIcon(ComputerIcon);
+export const CreditCard = createIcon(CreditCardIcon);
 export const Dna = createIcon(Dna01Icon);
 export const Dumbbell = createIcon(Dumbbell02Icon);
 export const Earth = createIcon(EarthIcon);
