@@ -33,16 +33,33 @@ import {
 	type DayovaStorePlan,
 } from "~/lib/revenuecat-client";
 import { env } from "~/lib/runtime-config";
-import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 type Payer = "parent" | "self";
 type ProductIdentifier = DayovaStorePlan["productIdentifier"];
 
 const PAYWALL_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
-const WHITE = DAYOVA_DESIGN_SYSTEM.colors.light1;
+const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
+const WHITE = BRAND_COLORS.light1;
 // LinearGradient exposes its full-bleed geometry through the native style API.
 const gradientFillStyle = StyleSheet.absoluteFill;
+// This focused branded route intentionally keeps its content surfaces light in
+// every app theme. Fixed shared tokens also avoid stale CSS variables on newly
+// mounted Fabric descendants.
+const contentSurfaceStyle = {
+	backgroundColor: BRAND_COLORS.surface,
+	borderColor: BRAND_COLORS.primaryAccent,
+};
+const utilitySurfaceStyle = {
+	backgroundColor: BRAND_COLORS.systemSubtle,
+	borderColor: BRAND_COLORS.primaryAccent,
+};
+const primaryActionStyle = {
+	backgroundColor: BRAND_COLORS.primaryStrong,
+	borderColor: BRAND_COLORS.primaryAccent,
+};
+const primaryTextStyle = { color: BRAND_COLORS.text };
+const secondaryTextStyle = { color: BRAND_COLORS.secondaryText };
 
 const getStoreApiKey = () =>
 	Platform.select({
@@ -55,16 +72,7 @@ export function PaywallScreen() {
 	const { access, refreshPaidAccess } = useAccess();
 	const { user } = useAuthSession();
 	const { logout } = useAccountActions();
-	const { colors } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
-	// Runtime theme colors avoid mixed light/dark CSS variables on already-mounted
-	// Fabric views; static geometry and spacing remain in NativeWind.
-	const adaptiveSurfaceStyle = {
-		backgroundColor: colors.surface,
-		borderColor: colors.border,
-	};
-	const primaryTextStyle = { color: colors.text };
-	const secondaryTextStyle = { color: colors.secondaryText };
 	const [payer, setPayer] = useState<Payer | null>(null);
 	const [selectedProduct, setSelectedProduct] =
 		useState<ProductIdentifier>("dayova_monthly");
@@ -274,7 +282,7 @@ export function PaywallScreen() {
 								<View className="z-10 h-12 w-12 items-center justify-center rounded-full bg-white">
 									<UserRound
 										size={24}
-										color={colors.primaryStrong}
+										color={BRAND_COLORS.primaryStrong}
 										strokeWidth={2.3}
 									/>
 								</View>
@@ -330,7 +338,8 @@ export function PaywallScreen() {
 						{payer === "parent" ? (
 							<View
 								className="mt-5 items-center rounded-card border px-5 py-6 shadow-black/10 shadow-sm"
-								style={adaptiveSurfaceStyle}
+								style={contentSurfaceStyle}
+								testID="paywall-payment-surface"
 							>
 								{env.EXPO_PUBLIC_PARENT_CHECKOUT_URL ? (
 									<>
@@ -338,8 +347,8 @@ export function PaywallScreen() {
 											<QRCode
 												value={env.EXPO_PUBLIC_PARENT_CHECKOUT_URL}
 												size={184}
-												color="#1A1A1A"
-												backgroundColor="#FFFFFF"
+												color={BRAND_COLORS.text}
+												backgroundColor={BRAND_COLORS.surface}
 											/>
 										</View>
 										<Text
@@ -358,17 +367,12 @@ export function PaywallScreen() {
 											accessibilityHint="Öffnet den Zahlungslink, den du mit deinen Eltern teilen kannst."
 											className="mt-5 w-full"
 											variant="neutral"
-											style={{
-												backgroundColor: colors.buttonNeutral,
-												borderColor: colors.border,
-											}}
+											style={primaryActionStyle}
 											onPress={() =>
 												void openLink(env.EXPO_PUBLIC_PARENT_CHECKOUT_URL)
 											}
 										>
-											<Text style={{ color: colors.background }}>
-												Zahlungsseite öffnen
-											</Text>
+											<Text style={{ color: WHITE }}>Zahlungsseite öffnen</Text>
 										</Button>
 									</>
 								) : (
@@ -394,7 +398,8 @@ export function PaywallScreen() {
 						{payer === "self" ? (
 							<View
 								className="mt-5 rounded-card border px-5 py-6 shadow-black/10 shadow-sm"
-								style={adaptiveSurfaceStyle}
+								style={contentSurfaceStyle}
+								testID="paywall-payment-surface"
 							>
 								<Text
 									className="mb-3 font-semibold text-body-2"
@@ -447,18 +452,13 @@ export function PaywallScreen() {
 										!planByProduct.has(selectedProduct)
 									}
 									variant="neutral"
-									style={{
-										backgroundColor: colors.buttonNeutral,
-										borderColor: colors.border,
-									}}
+									style={primaryActionStyle}
 									onPress={() => void purchase()}
 								>
 									{isLoadingPlans || isPurchasing ? (
-										<ActivityIndicator color={colors.background} />
+										<ActivityIndicator color={WHITE} />
 									) : (
-										<Text style={{ color: colors.background }}>
-											Im Store abonnieren
-										</Text>
+										<Text style={{ color: WHITE }}>Im Store abonnieren</Text>
 									)}
 								</Button>
 								<Text
@@ -474,13 +474,13 @@ export function PaywallScreen() {
 						{error ? (
 							<View
 								className="mt-4 rounded-3xl px-4 py-3"
-								style={{ backgroundColor: colors.surface }}
+								style={{ backgroundColor: BRAND_COLORS.surface }}
 							>
 								<Text
 									accessibilityLiveRegion="polite"
 									className="text-center text-body-3"
 									selectable
-									style={{ color: colors.destructive }}
+									style={{ color: BRAND_COLORS.destructive }}
 								>
 									{error}
 								</Text>
@@ -488,8 +488,9 @@ export function PaywallScreen() {
 						) : null}
 
 						<View
-							className="mt-8 rounded-card px-5 py-2 shadow-black/10 shadow-sm"
-							style={{ backgroundColor: colors.surface }}
+							className="mt-8 rounded-card border px-5 py-2 shadow-black/10 shadow-sm"
+							style={utilitySurfaceStyle}
+							testID="paywall-utility-surface"
 						>
 							<EssentialAction
 								label="Käufe wiederherstellen"
@@ -502,12 +503,12 @@ export function PaywallScreen() {
 								/>
 							) : null}
 							<EssentialAction
-								icon={<Logout size={19} color={colors.secondaryText} />}
+								icon={<Logout size={19} color={BRAND_COLORS.secondaryText} />}
 								label="Abmelden oder Konto wechseln"
 								onPress={() => void logout()}
 							/>
 							<EssentialAction
-								icon={<Trash2 size={19} color={colors.destructive} />}
+								icon={<Trash2 size={19} color={BRAND_COLORS.destructive} />}
 								label="Konto löschen"
 								destructive
 								onPress={openAccountDeletion}
@@ -571,7 +572,6 @@ function PayerButton({
 	selected: boolean;
 }) {
 	const Icon = icon;
-	const { colors } = useDayovaTheme();
 
 	return (
 		<Pressable
@@ -583,13 +583,11 @@ function PayerButton({
 				!selected && "border-white/30 bg-white/15",
 			)}
 			onPress={onPress}
-			// Selected surfaces use runtime theme colors because mounted Fabric
-			// descendants can otherwise retain stale NativeWind variables.
 			style={
 				selected
 					? {
-							backgroundColor: colors.surface,
-							borderColor: colors.primary,
+							backgroundColor: BRAND_COLORS.systemSubtle,
+							borderColor: BRAND_COLORS.primaryStrong,
 						}
 					: undefined
 			}
@@ -599,35 +597,31 @@ function PayerButton({
 					"h-10 w-10 items-center justify-center rounded-full",
 					!selected && "bg-white/15",
 				)}
-				style={selected ? { backgroundColor: colors.systemSubtle } : undefined}
+				style={selected ? { backgroundColor: BRAND_COLORS.surface } : undefined}
 			>
 				<Icon
 					size={21}
-					color={
-						selected ? colors.primaryStrong : DAYOVA_DESIGN_SYSTEM.colors.light1
-					}
+					color={selected ? BRAND_COLORS.primaryStrong : BRAND_COLORS.light1}
 					strokeWidth={2.2}
 				/>
 			</View>
 			<View className="ml-3 flex-1">
 				<Text
 					className={cn("font-semibold text-body-3", !selected && "text-white")}
-					style={selected ? { color: colors.text } : undefined}
+					style={selected ? primaryTextStyle : undefined}
 				>
 					{label}
 				</Text>
 				<Text
 					className={cn("text-body-4", !selected && "text-white/75")}
-					style={selected ? { color: colors.secondaryText } : undefined}
+					style={selected ? secondaryTextStyle : undefined}
 				>
 					{description}
 				</Text>
 			</View>
 			<ArrowRight
 				size={19}
-				color={
-					selected ? colors.primaryStrong : DAYOVA_DESIGN_SYSTEM.colors.light1
-				}
+				color={selected ? BRAND_COLORS.primaryStrong : BRAND_COLORS.light1}
 				strokeWidth={2}
 			/>
 		</Pressable>
@@ -647,8 +641,6 @@ function PlanCard({
 	price: string;
 	selected: boolean;
 }) {
-	const { colors } = useDayovaTheme();
-
 	return (
 		<Pressable
 			accessibilityLabel={`${label}, ${price}. ${description}`}
@@ -656,11 +648,13 @@ function PlanCard({
 			accessibilityState={{ checked: selected }}
 			className="rounded-3xl border px-5 py-4"
 			onPress={onPress}
-			// Plan colors are runtime theme data for the same Fabric variable
-			// invalidation case as the containing payment surface.
 			style={{
-				backgroundColor: selected ? colors.systemSubtle : colors.surface,
-				borderColor: selected ? colors.primaryStrong : colors.border,
+				backgroundColor: selected
+					? BRAND_COLORS.systemSubtle
+					: BRAND_COLORS.surface,
+				borderColor: selected
+					? BRAND_COLORS.primaryStrong
+					: BRAND_COLORS.border,
 			}}
 		>
 			<View className="flex-row items-start">
@@ -668,21 +662,18 @@ function PlanCard({
 					<View className="flex-row flex-wrap items-center gap-2">
 						<Text
 							className="font-semibold text-body-2"
-							style={{ color: colors.text }}
+							style={primaryTextStyle}
 						>
 							{label}
 						</Text>
 					</View>
-					<Text
-						className="mt-1 text-body-4"
-						style={{ color: colors.secondaryText }}
-					>
+					<Text className="mt-1 text-body-4" style={secondaryTextStyle}>
 						{description}
 					</Text>
 				</View>
 				<Text
 					className="ml-3 font-semibold text-body-2"
-					style={{ color: colors.text }}
+					style={primaryTextStyle}
 				>
 					{price}
 				</Text>
@@ -702,8 +693,6 @@ function EssentialAction({
 	label: string;
 	onPress: () => void;
 }) {
-	const { colors } = useDayovaTheme();
-
 	return (
 		<Pressable
 			accessibilityRole="button"
@@ -715,12 +704,14 @@ function EssentialAction({
 			<Text
 				className="flex-1 text-body-3"
 				style={{
-					color: destructive ? colors.destructive : colors.secondaryText,
+					color: destructive
+						? BRAND_COLORS.destructive
+						: BRAND_COLORS.secondaryText,
 				}}
 			>
 				{label}
 			</Text>
-			<ArrowRight size={18} color={colors.secondaryText} />
+			<ArrowRight size={18} color={BRAND_COLORS.secondaryText} />
 		</Pressable>
 	);
 }

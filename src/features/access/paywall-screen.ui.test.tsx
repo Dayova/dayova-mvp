@@ -94,25 +94,6 @@ jest.mock("~/lib/runtime-config", () => ({
 	},
 }));
 
-jest.mock("~/lib/theme", () => ({
-	useDayovaTheme: () => ({
-		colors: {
-			background: "#F6F6F4",
-			border: "#DCE6EE",
-			buttonNeutral: "#1A1A1A",
-			destructive: "#FF3B30",
-			primary: "#00BAFF",
-			primaryStrong: "#00A0E6",
-			secondaryText: "#697586",
-			success: "#34C759",
-			successSubtle: "#EAFFF1",
-			surface: "#FFFFFF",
-			systemSubtle: "#F1F7FB",
-			text: "#1A1A1A",
-		},
-	}),
-}));
-
 describe("PaywallScreen", () => {
 	test("presents the expired trial as a focused payer decision", async () => {
 		const screen = await render(<PaywallScreen />);
@@ -125,6 +106,12 @@ describe("PaywallScreen", () => {
 		).toBeOnTheScreen();
 		expect(screen.getByText("Zugang freischalten")).toBeOnTheScreen();
 		expect(screen.queryByText("Tarif wählen")).not.toBeOnTheScreen();
+		expect(screen.getByTestId("paywall-utility-surface").props.style).toEqual(
+			expect.objectContaining({
+				backgroundColor: "#F1F7FB",
+				borderColor: "#4FD8FF",
+			}),
+		);
 	});
 
 	test("expands the store plans below the selected self-payment path", async () => {
@@ -151,6 +138,18 @@ describe("PaywallScreen", () => {
 			expect(screen.getByText("Tarif wählen")).toBeOnTheScreen();
 		});
 		expect(selfPayment.props.accessibilityState).toEqual({ selected: true });
+		expect(selfPayment.props.style).toEqual(
+			expect.objectContaining({
+				backgroundColor: "#F1F7FB",
+				borderColor: "#00A0E6",
+			}),
+		);
+		expect(screen.getByTestId("paywall-payment-surface").props.style).toEqual(
+			expect.objectContaining({
+				backgroundColor: "#FFFFFF",
+				borderColor: "#4FD8FF",
+			}),
+		);
 		expect(
 			screen.getByRole("radio", { name: /Jährlich/ }).props.accessibilityState,
 		).toEqual({

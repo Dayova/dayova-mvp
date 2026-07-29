@@ -108,16 +108,19 @@ with a white stroke, and black buttons use the light border token `#DCE6EE`.
 The trial-activation and expired-trial payment screens are deliberate full-bleed
 branded exceptions. They use the shared `primaryInteractive` gradient as the
 view's only gradient, white text on the saturated outer surface, and
-theme-adaptive semantic card surfaces for content that needs primary and
-secondary text. Reusing the shared gradient keeps both ends of the trial flow
-synchronized with future Dayova button-color changes. This treatment is limited
-to focused access-setup moments and is not a third general-purpose light-mode
+theme-independent light surfaces for content that needs primary and secondary
+text. On the expired-trial screen, selected choices and secondary actions use
+`systemSubtle`, expanded payment details use `surface` with a primary-accent
+border, and checkout actions use `primaryStrong` instead of a black neutral
+surface. Reusing shared semantic values keeps both ends of the trial flow
+synchronized with future Dayova color changes. This treatment is limited to
+focused access-setup moments and is not a third general-purpose light-mode
 button appearance. The trial-activation screen may use its white primary button
 for legible contrast on that saturated surface; this does not introduce a
-reusable third button appearance. The expired-trial screen applies the existing
-runtime theme mirror to adaptive card surfaces and their text because the
-tracked Fabric variable-invalidation issue can otherwise leave newly mounted
-descendants with mixed light and dark tokens.
+reusable third button appearance. The expired-trial screen passes the fixed
+shared light tokens through the native style API because the tracked Fabric
+variable-invalidation issue can otherwise leave newly mounted descendants with
+mixed light and dark tokens.
 
 The current app corner system is: info/small boxes use 24px, 345px-wide
 rectangles and card-like surfaces use 32px, and buttons use 44px. Device frame
