@@ -7,6 +7,8 @@ export type TimetableLessonDraft = {
 	room: string;
 };
 
+export const MAX_TIMETABLE_LESSONS = 150;
+
 export const TIMETABLE_WEEKDAYS = [
 	{ value: 1, shortLabel: "Mo", label: "Montag" },
 	{ value: 2, shortLabel: "Di", label: "Dienstag" },

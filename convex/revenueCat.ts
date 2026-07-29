@@ -2,30 +2,35 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, env, internalAction } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
+import { z } from "zod";
 
 const ENTITLEMENT_ID = "dayova_full_access";
+const REVENUECAT_REQUEST_TIMEOUT_MS = 10_000;
 
-type RevenueCatEntitlement = {
-	expires_date: string | null;
-	grace_period_expires_date: string | null;
-	product_identifier: string;
-};
-
-type RevenueCatSubscription = {
-	billing_issues_detected_at: string | null;
-	expires_date: string | null;
-	grace_period_expires_date: string | null;
-	store: string;
-	unsubscribe_detected_at: string | null;
-};
-
-type RevenueCatSubscriberResponse = {
-	subscriber: {
-		entitlements: Record<string, RevenueCatEntitlement>;
-		management_url: string | null;
-		subscriptions: Record<string, RevenueCatSubscription>;
-	};
-};
+const optionalRevenueCatDate = z.string().nullable().optional();
+const revenueCatSubscriberResponseSchema = z.object({
+	subscriber: z.object({
+		entitlements: z.record(
+			z.string(),
+			z.object({
+				expires_date: optionalRevenueCatDate,
+				grace_period_expires_date: optionalRevenueCatDate,
+				product_identifier: z.string().optional(),
+			}),
+		),
+		management_url: z.string().nullable().optional(),
+		subscriptions: z.record(
+			z.string(),
+			z.object({
+				billing_issues_detected_at: optionalRevenueCatDate,
+				expires_date: optionalRevenueCatDate,
+				grace_period_expires_date: optionalRevenueCatDate,
+				store: z.string().optional(),
+				unsubscribe_detected_at: optionalRevenueCatDate,
+			}),
+		),
+	}),
+});
 
 const parseOptionalDate = (value: string | null | undefined) => {
 	if (!value) return undefined;
@@ -37,22 +42,45 @@ const fetchSubscriberSnapshot = async (
 	appUserId: string,
 	secretApiKey: string,
 ) => {
-	const response = await fetch(
-		`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`,
-		{
-			headers: {
-				Authorization: `Bearer ${secretApiKey}`,
-				Accept: "application/json",
+	let response: Response;
+	try {
+		response = await fetch(
+			`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`,
+			{
+				headers: {
+					Authorization: `Bearer ${secretApiKey}`,
+					Accept: "application/json",
+				},
+				signal: AbortSignal.timeout(REVENUECAT_REQUEST_TIMEOUT_MS),
 			},
-		},
-	);
+		);
+	} catch {
+		throwUserFacingError(
+			"Dein Kaufstatus konnte nicht geprüft werden. Bitte versuche es erneut.",
+		);
+	}
 	if (!response.ok) {
 		throwUserFacingError(
 			"Dein Kaufstatus konnte nicht geprüft werden. Bitte versuche es erneut.",
 		);
 	}
 
-	const payload = (await response.json()) as RevenueCatSubscriberResponse;
+	let rawPayload: unknown;
+	try {
+		rawPayload = await response.json();
+	} catch {
+		throwUserFacingError(
+			"Dein Kaufstatus konnte nicht geprüft werden. Bitte versuche es erneut.",
+		);
+	}
+	const parsedPayload =
+		revenueCatSubscriberResponseSchema.safeParse(rawPayload);
+	if (!parsedPayload.success) {
+		throwUserFacingError(
+			"Dein Kaufstatus konnte nicht geprüft werden. Bitte versuche es erneut.",
+		);
+	}
+	const payload = parsedPayload.data;
 	const entitlement = payload.subscriber.entitlements[ENTITLEMENT_ID];
 	const productId = entitlement?.product_identifier;
 	const subscription = productId
@@ -63,8 +91,15 @@ const fetchSubscriberSnapshot = async (
 		parseOptionalDate(subscription?.grace_period_expires_date) ??
 		parseOptionalDate(entitlement?.grace_period_expires_date);
 	const verifiedAt = Date.now();
+	const activeDates = [expiresAt, graceExpiresAt].filter(
+		(value): value is number => value !== undefined,
+	);
 	const activeThrough =
-		graceExpiresAt ?? expiresAt ?? (entitlement ? Number.POSITIVE_INFINITY : 0);
+		activeDates.length > 0
+			? Math.max(...activeDates)
+			: entitlement
+				? Number.POSITIVE_INFINITY
+				: 0;
 	const active = Boolean(entitlement && verifiedAt < activeThrough);
 
 	return {

@@ -12,27 +12,43 @@ export type AccessState =
 	| "billingGrace"
 	| "expired";
 
-type AccessSnapshot =
-	| {
+type AccessMetadata = {
+	trialStartedAt?: number;
+	trialExpiresAt?: number;
+	reminderAt?: number;
+	trialTermsVersion?: string;
+	subscriptionExpiresAt?: number;
+	subscriptionGraceExpiresAt?: number;
+	managementUrl?: string;
+	productId?: string;
+	store?: string;
+	willRenew?: boolean;
+};
+
+export type AccessSnapshot =
+	| ({
 			canUseApp: false;
 			state: "needsActivation";
-	  }
-	| {
+	  } & AccessMetadata)
+	| ({
 			canUseApp: true;
 			state: "trial";
 			trialExpiresAt: number;
-	  }
-	| {
+	  } & AccessMetadata)
+	| ({
 			canUseApp: false;
 			state: "expired";
-			trialExpiresAt: number;
-	  }
-	| {
+			trialExpiresAt?: number;
+	  } & AccessMetadata)
+	| ({
 			canUseApp: true;
-			state: "paid" | "billingGrace";
-			subscriptionExpiresAt?: number;
-			subscriptionGraceExpiresAt?: number;
-	  };
+			state: "paid";
+	  } & AccessMetadata)
+	| ({
+			canUseApp: true;
+			state: "billingGrace";
+			subscriptionGraceExpiresAt: number;
+	  } & AccessMetadata);
 
 const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
 const ACCESS_SETUP_PATHS = new Set(["/trial", "/paywall"]);
@@ -89,9 +105,22 @@ export const getOfflineAccess = ({
 		return now < access.trialExpiresAt;
 	}
 
+	const paidDates = [
+		access.subscriptionExpiresAt,
+		access.subscriptionGraceExpiresAt,
+	].filter((value): value is number => value !== undefined);
 	const paidThrough =
-		access.subscriptionGraceExpiresAt ??
-		access.subscriptionExpiresAt ??
-		Number.POSITIVE_INFINITY;
+		paidDates.length > 0 ? Math.max(...paidDates) : Number.POSITIVE_INFINITY;
 	return now < paidThrough;
+};
+
+export const getNextAccessRefreshAt = (access: AccessSnapshot | undefined) => {
+	if (!access?.canUseApp) return null;
+	if (access.state === "trial") return access.trialExpiresAt;
+
+	const paidDates = [
+		access.subscriptionExpiresAt,
+		access.subscriptionGraceExpiresAt,
+	].filter((value): value is number => value !== undefined);
+	return paidDates.length > 0 ? Math.max(...paidDates) : null;
 };

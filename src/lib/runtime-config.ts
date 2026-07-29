@@ -151,11 +151,8 @@ export const createPublicEnv = (
 export const validatePublicEnvForRelease = (
 	runtimeEnv: PublicRuntimeConfigValues = readPublicRuntimeConfig(),
 ) => {
-	const missing = getMissingReleasePublicRuntimeConfig(runtimeEnv);
-	if (missing.length > 0) {
-		throw new Error(
-			`Missing or invalid required public app env for release. Missing values: ${missing.join(", ")}. Set these in EAS/CI before building or publishing updates.`,
-		);
+	if (getMissingReleasePublicRuntimeConfig(runtimeEnv).length > 0) {
+		throw createPublicEnvValidationError(runtimeEnv, [], "release");
 	}
 	createPublicEnv(runtimeEnv, { context: "release" });
 };

@@ -1,5 +1,7 @@
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { getBerlinDayKey } from "./dayKeyVariants";
+import { MAX_TIMETABLE_LESSONS } from "./timetablePolicy";
 
 type TimetableReadCtx = Pick<QueryCtx | MutationCtx, "db">;
 
@@ -45,7 +47,10 @@ export const getActiveTimetableLessonsForDayKey = async (
 	ownerTokenIdentifier: string,
 	dayKey: string,
 ): Promise<Doc<"timetableLessons">[]> => {
-	const dayOfWeek = getTimetableDayOfWeek(dayKey);
+	const canonicalDayKey = getBerlinDayKey(dayKey);
+	const dayOfWeek = canonicalDayKey
+		? getTimetableDayOfWeek(canonicalDayKey)
+		: null;
 	if (dayOfWeek === null) return [];
 
 	const lessons = await getActiveTimetableLessons(ctx, ownerTokenIdentifier);
@@ -64,7 +69,7 @@ export const getActiveTimetableLessons = async (
 		.withIndex("by_timetableId_and_dayOfWeek_and_startTime", (q) =>
 			q.eq("timetableId", timetable._id),
 		)
-		.take(150);
+		.take(MAX_TIMETABLE_LESSONS);
 };
 
 const TIME_PATTERN = /^(\d{2}):(\d{2})$/;

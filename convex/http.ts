@@ -1,8 +1,19 @@
 import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import { env, httpAction } from "./_generated/server";
+import { logDiagnosticError } from "./errors";
 
 const http = httpRouter();
+
+const timingSafeEqual = (left: string, right: string) => {
+	if (left.length !== right.length) return false;
+
+	let mismatch = 0;
+	for (let index = 0; index < left.length; index += 1) {
+		mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
+	}
+	return mismatch === 0;
+};
 
 http.route({
 	path: "/revenuecat-webhook",
@@ -12,7 +23,9 @@ http.route({
 		if (!expectedAuthorization) {
 			return new Response("Webhook is not configured", { status: 503 });
 		}
-		if (request.headers.get("authorization") !== expectedAuthorization) {
+		const providedAuthorization =
+			request.headers.get("authorization")?.trim() ?? "";
+		if (!timingSafeEqual(providedAuthorization, expectedAuthorization)) {
 			return new Response("Unauthorized", { status: 401 });
 		}
 
@@ -48,10 +61,15 @@ http.route({
 			});
 		}
 
-		await ctx.runAction(internal.revenueCat.syncSubscriberByAppUserId, {
-			appUserId,
-			ownerTokenIdentifier,
-		});
+		try {
+			await ctx.runAction(internal.revenueCat.syncSubscriberByAppUserId, {
+				appUserId,
+				ownerTokenIdentifier,
+			});
+		} catch (error) {
+			logDiagnosticError("revenueCat.webhook", error, { appUserId });
+			return new Response("Subscriber sync unavailable", { status: 503 });
+		}
 
 		return new Response("OK", { status: 200 });
 	}),

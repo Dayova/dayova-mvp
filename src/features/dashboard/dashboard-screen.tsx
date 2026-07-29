@@ -1,8 +1,14 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+	ScrollView,
+	type TextStyle,
+	TouchableOpacity,
+	type ViewStyle,
+	View,
+} from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
@@ -51,6 +57,14 @@ const triggerDaySelectionHaptic = () => {
 		selectionAsync: () => Haptics.selectionAsync(),
 	});
 };
+
+// These are native rendering controls with no NativeWind equivalent.
+const continuousBorderStyle = {
+	borderCurve: "continuous",
+} satisfies ViewStyle;
+const tabularNumberStyle = {
+	fontVariant: ["tabular-nums"],
+} satisfies TextStyle;
 
 type CalendarDay = {
 	key: string;
@@ -221,14 +235,14 @@ function WeekCalendar({
 									? "border-primary-strong/30 bg-system-subtle"
 									: "border-transparent bg-transparent",
 							)}
-							style={{ borderCurve: "continuous" }}
+							style={continuousBorderStyle}
 						>
 							<Text
 								className={cn(
 									"font-poppins font-semibold text-body-1",
 									selected ? "text-primary-strong" : "text-text",
 								)}
-								style={{ fontVariant: ["tabular-nums"] }}
+								style={tabularNumberStyle}
 							>
 								{day.dayOfMonth}
 							</Text>
@@ -302,7 +316,7 @@ function SchoolLessonCard({
 				"min-h-20 flex-row items-center rounded-3xl border border-border bg-light-2 px-4 py-3",
 				isPast && "opacity-55",
 			)}
-			style={{ borderCurve: "continuous" }}
+			style={continuousBorderStyle}
 		>
 			<View className="h-10 w-10 items-center justify-center rounded-full bg-card">
 				<BookOpen size={19} color={colors.secondaryText} strokeWidth={1.9} />
@@ -343,9 +357,7 @@ function LearningSessionCard({
 				"min-h-24 overflow-hidden rounded-card border border-border bg-card",
 				isPast && "opacity-55",
 			)}
-			style={{
-				borderCurve: "continuous",
-			}}
+			style={continuousBorderStyle}
 		>
 			<View className="min-h-24 justify-center px-5 py-4">
 				<View className="flex-row items-center">
@@ -428,7 +440,7 @@ function NextLearningStepCard({
 			accessibilityHint="Öffnet deinen persönlichen Lernplan."
 			onPress={handlePress}
 			className="min-h-72 flex-1 overflow-hidden rounded-card border border-border bg-system-subtle px-4 pt-5 pb-4"
-			style={{ borderCurve: "continuous" }}
+			style={continuousBorderStyle}
 		>
 			<View className="flex-row items-start gap-1">
 				<Dumbbell size={14} color={colors.primaryStrong} strokeWidth={2} />
@@ -467,7 +479,7 @@ function NextLearningStepCard({
 						<Text
 							className="flex-1 font-poppins text-body-5 text-secondary-text"
 							numberOfLines={1}
-							style={{ fontVariant: ["tabular-nums"] }}
+							style={tabularNumberStyle}
 						>
 							{timeLabel}
 						</Text>
@@ -540,7 +552,7 @@ function WeeklyProgressCard({
 			accessibilityHint="Öffnet deine persönlichen Lernpläne."
 			onPress={onOpenLearningPlans}
 			className="min-h-72 flex-1 overflow-hidden rounded-card border border-border bg-ueben-subtle px-4 pt-5 pb-4"
-			style={{ borderCurve: "continuous" }}
+			style={continuousBorderStyle}
 		>
 			<View className="flex-row items-start gap-1">
 				<TimeManagement size={14} color={colors.ueben} strokeWidth={2} />
@@ -594,7 +606,7 @@ function WeeklyProgressCard({
 					<Text
 						className="font-poppins font-semibold text-body-1 text-text"
 						numberOfLines={1}
-						style={{ fontVariant: ["tabular-nums"] }}
+						style={tabularNumberStyle}
 					>
 						{ringValue}
 					</Text>
@@ -614,7 +626,7 @@ function WeeklyProgressCard({
 					<Text
 						className="flex-1 font-poppins font-semibold text-body-4 text-text"
 						numberOfLines={2}
-						style={{ fontVariant: ["tabular-nums"] }}
+						style={tabularNumberStyle}
 					>
 						{footer}
 					</Text>
@@ -660,9 +672,7 @@ function SupportingEntryCard({
 				"min-h-24 flex-row items-center rounded-3xl border border-border bg-card px-4 py-4",
 				isPast && "opacity-55",
 			)}
-			style={{
-				borderCurve: "continuous",
-			}}
+			style={continuousBorderStyle}
 		>
 			<View
 				className={cn(
@@ -722,7 +732,7 @@ function AgendaItemRow({
 						"text-right font-poppins text-body-5",
 						isPast ? "text-secondary-text/55" : "text-secondary-text",
 					)}
-					style={{ fontVariant: ["tabular-nums"] }}
+					style={tabularNumberStyle}
 				>
 					{item.startMinutes === null
 						? "ganztägig"
@@ -752,7 +762,7 @@ function EmptyAgendaDay() {
 	return (
 		<View
 			className="items-center rounded-card border border-border bg-card px-6 py-10"
-			style={{ borderCurve: "continuous" }}
+			style={continuousBorderStyle}
 		>
 			<View className="h-14 w-14 items-center justify-center rounded-full bg-system-subtle">
 				<CalendarDays
@@ -790,7 +800,7 @@ function TimetableSetupCard({
 			accessibilityHint="Öffnet den Stundenplan zum Hochladen und Prüfen."
 			onPress={onPress}
 			className="mx-6 mb-5 flex-row items-center rounded-card border border-border bg-card px-5 py-4"
-			style={{ borderCurve: "continuous" }}
+			style={continuousBorderStyle}
 		>
 			<View className="h-12 w-12 items-center justify-center rounded-full bg-system-subtle">
 				<ScanImage size={22} color={colors.primaryStrong} strokeWidth={2} />
@@ -888,7 +898,7 @@ function AgendaDayPage({
 				<View
 					accessibilityRole="progressbar"
 					className="items-center rounded-card border-border border-hairline bg-card px-6 py-10"
-					style={{ borderCurve: "continuous" }}
+					style={continuousBorderStyle}
 				>
 					<Text className="font-poppins text-body-3 text-secondary-text">
 						Dein Tag wird geladen …
@@ -983,38 +993,48 @@ export function DashboardScreen() {
 			? user.name.trim().split(/\s+/)[0]
 			: null;
 
-	const commitSelectedDay = (dayKey: string) => {
-		const date = parseDayKey(dayKey);
-		if (!date || dayKey === selectedDayKey) return;
-		setSelectedDayKey(dayKey);
-	};
+	const commitSelectedDay = useCallback(
+		(dayKey: string) => {
+			const date = parseDayKey(dayKey);
+			if (!date || dayKey === selectedDayKey) return;
+			setSelectedDayKey(dayKey);
+		},
+		[selectedDayKey],
+	);
 
 	const selectDay = (day: CalendarDay) => {
 		if (!dayPagerKeys.includes(day.key)) return;
 		commitSelectedDay(day.key);
 	};
 
-	const adjustSelectedDay = (direction: -1 | 1) => {
-		const nextIndex = Math.min(
-			Math.max(selectedPagerIndex + direction, 0),
-			dayPagerKeys.length - 1,
-		);
-		const nextDayKey = dayPagerKeys[nextIndex];
-		if (!nextDayKey) return;
-		commitSelectedDay(nextDayKey);
-		triggerDaySelectionHaptic();
-	};
+	const adjustSelectedDay = useCallback(
+		(direction: -1 | 1) => {
+			const nextIndex = Math.min(
+				Math.max(selectedPagerIndex + direction, 0),
+				dayPagerKeys.length - 1,
+			);
+			const nextDayKey = dayPagerKeys[nextIndex];
+			if (!nextDayKey) return;
+			commitSelectedDay(nextDayKey);
+			triggerDaySelectionHaptic();
+		},
+		[commitSelectedDay, dayPagerKeys, selectedPagerIndex],
+	);
 
-	const daySwipeGesture = Gesture.Pan()
-		.activeOffsetX([-24, 24])
-		.failOffsetY([-12, 12])
-		.onEnd((event) => {
-			"worklet";
-			const passedDistance = Math.abs(event.translationX) >= 56;
-			const passedVelocity = Math.abs(event.velocityX) >= 650;
-			if (!passedDistance && !passedVelocity) return;
-			scheduleOnRN(adjustSelectedDay, event.translationX < 0 ? 1 : -1);
-		});
+	const daySwipeGesture = useMemo(
+		() =>
+			Gesture.Pan()
+				.activeOffsetX([-24, 24])
+				.failOffsetY([-12, 12])
+				.onEnd((event) => {
+					"worklet";
+					const passedDistance = Math.abs(event.translationX) >= 56;
+					const passedVelocity = Math.abs(event.velocityX) >= 650;
+					if (!passedDistance && !passedVelocity) return;
+					scheduleOnRN(adjustSelectedDay, event.translationX < 0 ? 1 : -1);
+				}),
+		[adjustSelectedDay],
+	);
 
 	const openItem = useCallback(
 		(item: DashboardAgendaItem) => {
@@ -1028,16 +1048,6 @@ export function DashboardScreen() {
 			router.push(getEntryUrl(item.entry, itemDayLabel));
 		},
 		[router, selectedDate],
-	);
-
-	const openTimelineItem = useCallback(
-		(item: DashboardAgendaItem) => openItem(item),
-		[openItem],
-	);
-
-	const openNextLearningStep = useCallback(
-		(item: DashboardAgendaItem) => openItem(item),
-		[openItem],
 	);
 
 	const openLearningPlans = useCallback(
@@ -1096,7 +1106,7 @@ export function DashboardScreen() {
 						item={nextLearningStep}
 						isLoading={entriesByDay === undefined}
 						todayKey={todayKey}
-						onOpenItem={openNextLearningStep}
+						onOpenItem={openItem}
 						onOpenLearningPlans={openLearningPlans}
 					/>
 					<WeeklyProgressCard
@@ -1129,10 +1139,13 @@ export function DashboardScreen() {
 
 				<GestureDetector gesture={daySwipeGesture}>
 					<View
+						accessible
 						accessibilityActions={[
 							{ name: "increment", label: "Nächsten Tag anzeigen" },
 							{ name: "decrement", label: "Vorherigen Tag anzeigen" },
 						]}
+						accessibilityLabel={`Tagesagenda für ${selectedWeekday}`}
+						accessibilityRole="adjustable"
 						onAccessibilityAction={({ nativeEvent }) => {
 							if (nativeEvent.actionName === "increment") adjustSelectedDay(1);
 							if (nativeEvent.actionName === "decrement") adjustSelectedDay(-1);
@@ -1145,7 +1158,7 @@ export function DashboardScreen() {
 							isLoading={entriesByDay === undefined}
 							currentMinutes={currentMinutes}
 							nextActionableId={nextActionableId}
-							onOpenItem={openTimelineItem}
+							onOpenItem={openItem}
 						/>
 					</View>
 				</GestureDetector>

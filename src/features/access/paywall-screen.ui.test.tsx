@@ -1,9 +1,16 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { PaywallScreen } from "./paywall-screen";
 
 const mockGetPlans = jest.fn(async () => []);
+let mockStoreInitializationError: Error | null = null;
+
+beforeEach(() => {
+	jest.clearAllMocks();
+	mockGetPlans.mockResolvedValue([]);
+	mockStoreInitializationError = null;
+});
 
 jest.mock("@clerk/expo", () => ({
 	useUser: () => ({
@@ -66,11 +73,18 @@ jest.mock("~/context/AuthContext", () => ({
 }));
 
 jest.mock("~/lib/revenuecat-client", () => ({
-	createNativeRevenueCatClient: () => ({
-		getPlans: mockGetPlans,
-		purchase: jest.fn(),
-		restore: jest.fn(),
-	}),
+	createNativeRevenueCatClient: () => {
+		if (mockStoreInitializationError) throw mockStoreInitializationError;
+		return {
+			getPlans: mockGetPlans,
+			purchase: jest.fn(),
+			restore: jest.fn(),
+		};
+	},
+}));
+
+jest.mock("~/lib/diagnostics", () => ({
+	logDiagnosticError: jest.fn(),
 }));
 
 jest.mock("~/lib/runtime-config", () => ({
@@ -114,18 +128,27 @@ describe("PaywallScreen", () => {
 	});
 
 	test("expands the store plans below the selected self-payment path", async () => {
+		let resolvePlans: (plans: never[]) => void = () => undefined;
+		mockGetPlans.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolvePlans = resolve;
+				}),
+		);
 		const screen = await render(<PaywallScreen />);
 		const selfPayment = screen.getByLabelText(
 			"Ich zahle selbst. Direkt im App Store oder bei Google Play",
 		);
 
-		await act(async () => {
-			fireEvent.press(selfPayment);
-		});
+		await fireEvent.press(selfPayment);
+		await fireEvent.press(selfPayment);
+		expect(mockGetPlans).toHaveBeenCalledTimes(1);
 
+		await act(async () => {
+			resolvePlans([]);
+		});
 		await waitFor(() => {
 			expect(screen.getByText("Tarif wählen")).toBeOnTheScreen();
-			expect(mockGetPlans).toHaveBeenCalled();
 		});
 		expect(selfPayment.props.accessibilityState).toEqual({ selected: true });
 		expect(
@@ -136,5 +159,22 @@ describe("PaywallScreen", () => {
 		expect(
 			screen.getByRole("radio", { name: /Monatlich/ }).props.accessibilityState,
 		).toEqual({ checked: true });
+	});
+
+	test("keeps the paywall usable when the native store client cannot start", async () => {
+		mockStoreInitializationError = new Error("native module unavailable");
+		const screen = await render(<PaywallScreen />);
+
+		await fireEvent.press(
+			screen.getByLabelText(
+				"Ich zahle selbst. Direkt im App Store oder bei Google Play",
+			),
+		);
+
+		expect(
+			await screen.findAllByText(
+				"Store-Käufe konnten auf diesem Gerät nicht gestartet werden. Bitte öffne die App erneut oder kontaktiere den Support.",
+			),
+		).not.toHaveLength(0);
 	});
 });

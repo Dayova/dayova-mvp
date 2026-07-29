@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import {
 	internalMutation,
@@ -12,6 +13,19 @@ import { throwUserFacingError } from "./errors";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TRIAL_DURATION_MS = 14 * DAY_MS;
 const TRIAL_REMINDER_DELAY_MS = 12 * DAY_MS;
+
+const getPaidThrough = (entitlement: {
+	subscriptionExpiresAt?: number;
+	subscriptionGraceExpiresAt?: number;
+}) => {
+	const accessDates = [
+		entitlement.subscriptionExpiresAt,
+		entitlement.subscriptionGraceExpiresAt,
+	].filter((value): value is number => value !== undefined);
+	return accessDates.length > 0
+		? Math.max(...accessDates)
+		: Number.POSITIVE_INFINITY;
+};
 
 const toTrialAccess = (entitlement: {
 	trialStartedAt: number;
@@ -39,14 +53,44 @@ const toPaidAccess = (entitlement: {
 	canUseApp: true,
 	managementUrl: entitlement.subscriptionManagementUrl,
 	productId: entitlement.subscriptionProductId,
-	state: entitlement.subscriptionBillingIssueDetectedAt
-		? ("billingGrace" as const)
-		: ("paid" as const),
+	state:
+		entitlement.subscriptionBillingIssueDetectedAt &&
+		entitlement.subscriptionGraceExpiresAt !== undefined
+			? ("billingGrace" as const)
+			: ("paid" as const),
 	store: entitlement.subscriptionStore,
 	subscriptionExpiresAt: entitlement.subscriptionExpiresAt,
 	subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
 	willRenew: entitlement.subscriptionWillRenew ?? false,
 });
+
+const getCurrentAccess = (
+	entitlement: Doc<"accessEntitlements">,
+	now: number,
+) => {
+	if (
+		entitlement.revenueCatEntitlementActive &&
+		now < getPaidThrough(entitlement)
+	) {
+		return toPaidAccess(entitlement);
+	}
+
+	if (now >= entitlement.trialExpiresAt) {
+		return {
+			...toTrialAccess(entitlement),
+			canUseApp: false,
+			managementUrl: entitlement.subscriptionManagementUrl,
+			productId: entitlement.subscriptionProductId,
+			state: "expired" as const,
+			store: entitlement.subscriptionStore,
+			subscriptionExpiresAt: entitlement.subscriptionExpiresAt,
+			subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
+			willRenew: entitlement.subscriptionWillRenew ?? false,
+		};
+	}
+
+	return toTrialAccess(entitlement);
+};
 
 const getCurrentUser = async (ctx: MutationCtx | QueryCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
@@ -87,29 +131,7 @@ export const getMyAccess = query({
 			};
 		}
 
-		const paidThrough =
-			entitlement.subscriptionGraceExpiresAt ??
-			entitlement.subscriptionExpiresAt ??
-			Number.POSITIVE_INFINITY;
-		if (entitlement.revenueCatEntitlementActive && args.now < paidThrough) {
-			return toPaidAccess(entitlement);
-		}
-
-		if (args.now >= entitlement.trialExpiresAt) {
-			return {
-				...toTrialAccess(entitlement),
-				canUseApp: false,
-				managementUrl: entitlement.subscriptionManagementUrl,
-				productId: entitlement.subscriptionProductId,
-				state: "expired" as const,
-				store: entitlement.subscriptionStore,
-				subscriptionExpiresAt: entitlement.subscriptionExpiresAt,
-				subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
-				willRenew: entitlement.subscriptionWillRenew ?? false,
-			};
-		}
-
-		return toTrialAccess(entitlement);
+		return getCurrentAccess(entitlement, args.now);
 	},
 });
 
@@ -188,11 +210,10 @@ export const deliverTrialReminder = internalMutation({
 		}
 
 		const now = Date.now();
-		const paidThrough =
-			entitlement.subscriptionGraceExpiresAt ??
-			entitlement.subscriptionExpiresAt ??
-			Number.POSITIVE_INFINITY;
-		if (entitlement.revenueCatEntitlementActive && now < paidThrough) {
+		if (
+			entitlement.revenueCatEntitlementActive &&
+			now < getPaidThrough(entitlement)
+		) {
 			return { created: false };
 		}
 
@@ -235,7 +256,7 @@ export const activateMyTrial = mutation({
 			)
 			.unique();
 		if (existing) {
-			return toTrialAccess(existing);
+			return getCurrentAccess(existing, Date.now());
 		}
 
 		const now = Date.now();

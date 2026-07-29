@@ -45,6 +45,7 @@ type OptionalEntryFields = {
 
 type PublicDayEntry = OptionalEntryFields & {
 	id: Id<"dayEntries"> | Id<"learningPlanSessions"> | Id<"timetableLessons">;
+	source?: "timetable";
 	title: string;
 };
 
@@ -258,6 +259,7 @@ export const listByDayKeys = query({
 			grouped[dayKey].push(
 				...timetableLessons.map((lesson) => ({
 					id: lesson._id,
+					source: "timetable" as const,
 					title: lesson.subject,
 					time: lesson.startTime,
 					kind: "Unterricht",

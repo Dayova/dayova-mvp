@@ -41,6 +41,12 @@ describe("timetable lesson editor", () => {
 				}),
 			]),
 		).toBe("Mathematik und Deutsch überschneiden sich.");
+		expect(
+			getTimetableLessonError([
+				lesson({ key: "monday", dayOfWeek: 1 }),
+				lesson({ key: "tuesday", dayOfWeek: 2, subject: "Deutsch" }),
+			]),
+		).toBeNull();
 	});
 
 	test("sorts lessons by weekday and start time", () => {

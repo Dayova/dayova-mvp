@@ -1,10 +1,9 @@
 import { useUser } from "@clerk/expo";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
-	Linking,
 	Platform,
 	Pressable,
 	ScrollView,
@@ -27,6 +26,8 @@ import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
 import { useAccountActions, useAuthSession } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { logDiagnosticError } from "~/lib/diagnostics";
+import { openExternalUrl } from "~/lib/open-external-url";
 import {
 	createNativeRevenueCatClient,
 	type DayovaStorePlan,
@@ -40,11 +41,8 @@ type ProductIdentifier = DayovaStorePlan["productIdentifier"];
 
 const PAYWALL_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const WHITE = DAYOVA_DESIGN_SYSTEM.colors.light1;
+// LinearGradient exposes its full-bleed geometry through the native style API.
 const gradientFillStyle = StyleSheet.absoluteFill;
-
-const openUrl = async (url?: string) => {
-	if (url) await Linking.openURL(url);
-};
 
 const getStoreApiKey = () =>
 	Platform.select({
@@ -77,32 +75,58 @@ export function PaywallScreen() {
 	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const planLoadInFlightRef = useRef(false);
+	const storeActionInFlightRef = useRef(false);
+	const deletionInFlightRef = useRef(false);
 	const storeApiKey = getStoreApiKey();
-	const storeClient = useMemo(
-		() =>
-			user && storeApiKey
-				? createNativeRevenueCatClient({
-						apiKey: storeApiKey,
-						appUserId: user.clerkId,
-					})
-				: null,
-		[storeApiKey, user],
-	);
+	const storeConnection = useMemo(() => {
+		if (!user || !storeApiKey) {
+			return { client: null, initializationError: null };
+		}
+		try {
+			return {
+				client: createNativeRevenueCatClient({
+					apiKey: storeApiKey,
+					appUserId: user.clerkId,
+				}),
+				initializationError: null,
+			};
+		} catch (initializationError) {
+			return { client: null, initializationError };
+		}
+	}, [storeApiKey, user]);
+	const storeClient = storeConnection.client;
+	const storeUnavailableMessage = storeConnection.initializationError
+		? "Store-Käufe konnten auf diesem Gerät nicht gestartet werden. Bitte öffne die App erneut oder kontaktiere den Support."
+		: "Store-Käufe sind auf diesem Gerät noch nicht verfügbar.";
 
 	const selectSelfPayment = async () => {
 		setPayer("self");
 		setError(null);
-		if (!storeClient || plans.length > 0 || isLoadingPlans) return;
+		if (!storeClient) {
+			if (storeConnection.initializationError) {
+				logDiagnosticError(
+					"Unable to initialize RevenueCat.",
+					storeConnection.initializationError,
+					{ source: "paywall.store.initialize", level: "error" },
+				);
+			}
+			setError(storeUnavailableMessage);
+			return;
+		}
+		if (plans.length > 0 || planLoadInFlightRef.current) return;
+		planLoadInFlightRef.current = true;
 		setIsLoadingPlans(true);
 		try {
 			setPlans(await storeClient.getPlans());
 		} catch (loadError) {
-			setError(
-				loadError instanceof Error
-					? loadError.message
-					: "Die Tarife konnten nicht aus dem Store geladen werden.",
-			);
+			logDiagnosticError("Unable to load RevenueCat plans.", loadError, {
+				source: "paywall.store.plans",
+				level: "error",
+			});
+			setError("Die Tarife konnten nicht aus dem Store geladen werden.");
 		} finally {
+			planLoadInFlightRef.current = false;
 			setIsLoadingPlans(false);
 		}
 	};
@@ -119,7 +143,8 @@ export function PaywallScreen() {
 			| { status: "notEntitled" }
 		>,
 	) => {
-		if (isPurchasing) return;
+		if (storeActionInFlightRef.current) return;
+		storeActionInFlightRef.current = true;
 		setError(null);
 		setIsPurchasing(true);
 		try {
@@ -136,12 +161,17 @@ export function PaywallScreen() {
 				);
 			}
 		} catch (purchaseError) {
-			setError(
-				purchaseError instanceof Error
-					? purchaseError.message
-					: "Der Kauf konnte nicht abgeschlossen werden.",
+			logDiagnosticError(
+				"Unable to complete RevenueCat action.",
+				purchaseError,
+				{
+					source: "paywall.store.action",
+					level: "error",
+				},
 			);
+			setError("Der Kauf konnte nicht abgeschlossen werden.");
 		} finally {
+			storeActionInFlightRef.current = false;
 			setIsPurchasing(false);
 		}
 	};
@@ -165,7 +195,8 @@ export function PaywallScreen() {
 	};
 
 	const deleteAccount = async () => {
-		if (!clerkUser || isDeletingAccount) return;
+		if (!clerkUser || deletionInFlightRef.current) return;
+		deletionInFlightRef.current = true;
 		setDeleteError(null);
 		setIsDeletingAccount(true);
 		try {
@@ -177,9 +208,25 @@ export function PaywallScreen() {
 				"Das Konto konnte nicht gelöscht werden. Bitte kontaktiere den Support.",
 			);
 		} finally {
+			deletionInFlightRef.current = false;
 			setIsDeletingAccount(false);
 		}
 	};
+
+	const openLink = async (url?: string) => {
+		const opened = await openExternalUrl(url);
+		if (!opened) {
+			setError(
+				"Der Link konnte nicht geöffnet werden. Bitte versuche es erneut.",
+			);
+		}
+	};
+
+	const annualPlan = planByProduct.get("dayova_annual");
+	const monthlyPlan = planByProduct.get("dayova_monthly");
+	const unavailablePlanDescription = isLoadingPlans
+		? "Preis wird geladen …"
+		: "Derzeit nicht im Store verfügbar";
 
 	return (
 		<>
@@ -316,7 +363,7 @@ export function PaywallScreen() {
 												borderColor: colors.border,
 											}}
 											onPress={() =>
-												void openUrl(env.EXPO_PUBLIC_PARENT_CHECKOUT_URL)
+												void openLink(env.EXPO_PUBLIC_PARENT_CHECKOUT_URL)
 											}
 										>
 											<Text style={{ color: colors.background }}>
@@ -357,25 +404,39 @@ export function PaywallScreen() {
 								</Text>
 								<View className="gap-3">
 									<PlanCard
-										badge="11 % günstiger"
-										description="13,33 € pro Monat · jährlich abgerechnet"
-										label="Jährlich"
-										price={
-											planByProduct.get("dayova_annual")?.price ?? "159,99 €"
+										description={
+											annualPlan?.monthlyEquivalentPrice
+												? `${annualPlan.monthlyEquivalentPrice} pro Monat · jährlich abgerechnet`
+												: annualPlan
+													? "Jährlich abgerechnet"
+													: unavailablePlanDescription
 										}
+										label="Jährlich"
+										price={annualPlan?.price ?? "—"}
 										selected={selectedProduct === "dayova_annual"}
 										onPress={() => setSelectedProduct("dayova_annual")}
 									/>
 									<PlanCard
-										description="Monatlich abgerechnet"
-										label="Monatlich"
-										price={
-											planByProduct.get("dayova_monthly")?.price ?? "14,99 €"
+										description={
+											monthlyPlan
+												? "Monatlich abgerechnet"
+												: unavailablePlanDescription
 										}
+										label="Monatlich"
+										price={monthlyPlan?.price ?? "—"}
 										selected={selectedProduct === "dayova_monthly"}
 										onPress={() => setSelectedProduct("dayova_monthly")}
 									/>
 								</View>
+								{!storeClient ? (
+									<Text
+										accessibilityLiveRegion="polite"
+										className="mt-3 text-center text-body-4"
+										style={secondaryTextStyle}
+									>
+										{storeUnavailableMessage}
+									</Text>
+								) : null}
 								<Button
 									accessibilityHint="Öffnet den Kauf im App Store oder bei Google Play."
 									className="mt-5"
@@ -437,7 +498,7 @@ export function PaywallScreen() {
 							{access?.managementUrl ? (
 								<EssentialAction
 									label="Abo verwalten"
-									onPress={() => void openUrl(access.managementUrl)}
+									onPress={() => void openLink(access.managementUrl)}
 								/>
 							) : null}
 							<EssentialAction
@@ -454,18 +515,25 @@ export function PaywallScreen() {
 						</View>
 
 						<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-5">
-							<LegalLink label="Support" url={env.EXPO_PUBLIC_SUPPORT_URL} />
+							<LegalLink
+								label="Support"
+								url={env.EXPO_PUBLIC_SUPPORT_URL}
+								onOpen={openLink}
+							/>
 							<LegalLink
 								label="Datenschutz"
 								url={env.EXPO_PUBLIC_PRIVACY_URL}
+								onOpen={openLink}
 							/>
 							<LegalLink
 								label="Abo-Bedingungen"
 								url={env.EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL}
+								onOpen={openLink}
 							/>
 							<LegalLink
 								label="Kündigung"
 								url={env.EXPO_PUBLIC_CANCELLATION_URL}
+								onOpen={openLink}
 							/>
 						</View>
 					</View>
@@ -567,14 +635,12 @@ function PayerButton({
 }
 
 function PlanCard({
-	badge,
 	description,
 	label,
 	onPress,
 	price,
 	selected,
 }: {
-	badge?: string;
 	description: string;
 	label: string;
 	onPress: () => void;
@@ -606,19 +672,6 @@ function PlanCard({
 						>
 							{label}
 						</Text>
-						{badge ? (
-							<View
-								className="rounded-full px-2.5 py-1"
-								style={{ backgroundColor: colors.successSubtle }}
-							>
-								<Text
-									className="font-semibold text-body-4"
-									style={{ color: colors.success }}
-								>
-									{badge}
-								</Text>
-							</View>
-						) : null}
 					</View>
 					<Text
 						className="mt-1 text-body-4"
@@ -672,13 +725,21 @@ function EssentialAction({
 	);
 }
 
-function LegalLink({ label, url }: { label: string; url?: string }) {
+function LegalLink({
+	label,
+	onOpen,
+	url,
+}: {
+	label: string;
+	onOpen: (url?: string) => Promise<void>;
+	url?: string;
+}) {
 	return (
 		<Pressable
 			accessibilityRole="link"
 			disabled={!url}
 			hitSlop={8}
-			onPress={() => void openUrl(url)}
+			onPress={() => void onOpen(url)}
 		>
 			<Text className="text-body-4 text-white underline">{label}</Text>
 		</Pressable>

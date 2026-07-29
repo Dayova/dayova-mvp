@@ -139,7 +139,7 @@ export const assertNoScheduleConflict = async (
 		});
 		if (lessonInterval && overlaps(newInterval, lessonInterval)) {
 			throwUserFacingError(
-				`Dieser Zeitraum überschneidet sich mit "${lesson.subject}" am ${dayKey} von ${timeFromMinutes(lessonInterval.start)} bis ${timeFromMinutes(lessonInterval.end)}.`,
+				`Dieser Zeitraum überschneidet sich mit "${lesson.subject}" von ${timeFromMinutes(lessonInterval.start)} bis ${timeFromMinutes(lessonInterval.end)}.`,
 			);
 		}
 	}

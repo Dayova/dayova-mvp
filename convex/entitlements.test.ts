@@ -91,6 +91,8 @@ test("trial access expires exactly 14 days after activation", async () => {
 });
 
 test("verified RevenueCat subscription unlocks paid account access", async () => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	vi.stubEnv("REVENUECAT_SECRET_API_KEY", "sk_test_revenuecat");
 	vi.stubGlobal(
 		"fetch",
@@ -192,6 +194,8 @@ test("RevenueCat subscription grace keeps full access during a billing issue", a
 });
 
 test("authorized RevenueCat webhook refreshes access while the app is closed", async () => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	vi.stubEnv("REVENUECAT_SECRET_API_KEY", "sk_test_revenuecat");
 	vi.stubEnv("REVENUECAT_WEBHOOK_AUTHORIZATION", "Bearer webhook-secret");
 	vi.stubGlobal(
@@ -275,6 +279,59 @@ test("RevenueCat webhook rejects requests without the configured authorization",
 	});
 
 	expect(response.status).toBe(401);
+});
+
+test("activating an expired entitlement preserves its real access state", async () => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.entitlements.activateMyTrial, {
+		termsVersion: "2026-07-28",
+	});
+
+	vi.setSystemTime(new Date("2026-08-12T10:00:00.000Z"));
+	await expect(
+		t.mutation(api.entitlements.activateMyTrial, {
+			termsVersion: "2026-08-12",
+		}),
+	).resolves.toMatchObject({
+		canUseApp: false,
+		state: "expired",
+	});
+});
+
+test("RevenueCat webhook returns 503 when subscriber synchronization fails", async () => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
+	vi.stubEnv("REVENUECAT_SECRET_API_KEY", "sk_test_revenuecat");
+	vi.stubEnv("REVENUECAT_WEBHOOK_AUTHORIZATION", "Bearer webhook-secret");
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => Promise.reject(new Error("offline"))),
+	);
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.entitlements.activateMyTrial, {
+		termsVersion: "2026-07-28",
+	});
+
+	const response = await t.fetch("/revenuecat-webhook", {
+		method: "POST",
+		headers: {
+			Authorization: "Bearer webhook-secret",
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			event: {
+				app_user_id: user.subject,
+				id: "evt_sync_failure",
+				type: "RENEWAL",
+			},
+		}),
+	});
+
+	expect(response.status).toBe(503);
 });
 
 test("Day 12 creates an in-app trial reminder exactly once", async () => {

@@ -1,10 +1,13 @@
+import { useConvexAuth, useQuery } from "convex/react";
 import type * as ExpoNotifications from "expo-notifications";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
+import { api } from "#convex/_generated/api";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
+import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
 import {
 	buildTrialReminder,
 	syncTrialReminderNotification,
@@ -28,6 +31,14 @@ const hasNotificationPermission = (
 export function TrialReminderSync() {
 	const { access } = useAccess();
 	const { user } = useAuthSession();
+	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const preferences = useQuery(
+		api.notifications.getPreferences,
+		user && isConvexAuthenticated ? {} : "skip",
+	) as NotificationPlanningPreferences | undefined;
+	const preferencesLoaded = preferences !== undefined;
+	const systemNotificationsEnabled = preferences?.systemNotificationsEnabled;
+	const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
 	useEffect(() => {
 		const notifications = getNotificationsModule();
@@ -35,6 +46,11 @@ export function TrialReminderSync() {
 
 		const syncReminder = async () => {
 			if (!user || !access) {
+				await syncTrialReminderNotification(notifications, null);
+				return;
+			}
+			if (!preferencesLoaded) return;
+			if (!systemNotificationsEnabled) {
 				await syncTrialReminderNotification(notifications, null);
 				return;
 			}
@@ -66,13 +82,16 @@ export function TrialReminderSync() {
 			);
 		};
 
-		void syncReminder().catch((error: unknown) => {
-			logDiagnosticError("Unable to sync the trial reminder.", error, {
-				source: "access.trialReminder",
-				level: "warn",
+		const nextSync = syncQueueRef.current
+			.then(syncReminder, syncReminder)
+			.catch((error: unknown) => {
+				logDiagnosticError("Unable to sync the trial reminder.", error, {
+					source: "access.trialReminder",
+					level: "warn",
+				});
 			});
-		});
-	}, [access, user]);
+		syncQueueRef.current = nextSync;
+	}, [access, preferencesLoaded, systemNotificationsEnabled, user]);
 
 	return null;
 }

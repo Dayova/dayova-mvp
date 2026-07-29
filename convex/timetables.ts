@@ -16,6 +16,12 @@ import {
 	getR2ConfigOrThrow,
 } from "./fileStorage";
 import { timetableTimeToMinutes } from "./timetableOccurrences";
+import {
+	isSupportedTimetableFileType,
+	isValidTimetableFileSize,
+	MAX_TIMETABLE_LESSONS,
+	normalizeTimetableFileType,
+} from "./timetablePolicy";
 
 const timetableStatusValidator = v.union(
 	v.literal("draft"),
@@ -41,8 +47,6 @@ export type TimetableLessonInput = {
 	endTime: string;
 	room?: string;
 };
-
-const MAX_TIMETABLE_LESSONS = 150;
 
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	const identity = await ctx.auth.getUserIdentity();
@@ -354,6 +358,16 @@ export const registerUploadedDocument = action({
 		fileSizeBytes: v.number(),
 	},
 	handler: async (ctx, args): Promise<Id<"timetableDocuments">> => {
+		const fileType = normalizeTimetableFileType(args.fileType);
+		if (!isSupportedTimetableFileType(fileType)) {
+			throwUserFacingError(
+				"Dieser Dateityp wird nicht unterstützt. Bitte nutze PDF, JPEG, PNG oder WebP.",
+			);
+		}
+		if (!isValidTimetableFileSize(args.fileSizeBytes)) {
+			throwUserFacingError("Die Datei ist leer oder zu groß (maximal 7 MiB).");
+		}
+
 		const context: {
 			ownerTokenIdentifier: string;
 			accessKey: string;
@@ -371,6 +385,11 @@ export const registerUploadedDocument = action({
 		if (finalizedUpload.storageId !== args.storageId) {
 			throwUserFacingError("Upload konnte nicht verifiziert werden.");
 		}
+		const verifiedFileSizeBytes =
+			finalizedUpload.metadata?.size ?? args.fileSizeBytes;
+		if (!isValidTimetableFileSize(verifiedFileSizeBytes)) {
+			throwUserFacingError("Die Datei ist leer oder zu groß (maximal 7 MiB).");
+		}
 
 		return await ctx.runMutation(internal.timetables.storeUploadedDocument, {
 			ownerTokenIdentifier: context.ownerTokenIdentifier,
@@ -378,8 +397,8 @@ export const registerUploadedDocument = action({
 			storageId: args.storageId,
 			storageProvider: finalizedUpload.storageProvider,
 			fileName: args.fileName,
-			fileType: args.fileType || "application/octet-stream",
-			fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
+			fileType,
+			fileSizeBytes: verifiedFileSizeBytes,
 		});
 	},
 });

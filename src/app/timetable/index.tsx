@@ -5,8 +5,15 @@ import { File } from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import {
+	ActivityIndicator,
+	Platform,
+	Pressable,
+	type TextStyle,
+	type ViewStyle,
+	View,
+} from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
@@ -30,7 +37,9 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
 import { getUploadFailureMessage } from "~/features/learning-plans/utils";
 import {
+	createEmptyTimetableLesson,
 	getTimetableLessonError,
+	MAX_TIMETABLE_LESSONS,
 	sortTimetableLessons,
 	TIMETABLE_WEEKDAYS,
 	type TimetableLessonDraft,
@@ -48,6 +57,14 @@ const TIMETABLE_FILE_TYPES = [
 const UPLOAD_TIMEOUT_MS = 45_000;
 const UPLOAD_COMPLETION_FAILURE_MESSAGE =
 	"Die Datei wurde übertragen, aber Dayova konnte den Upload nicht abschließen. Bitte versuche es erneut.";
+
+// These are native rendering controls with no NativeWind equivalent.
+const continuousBorderStyle = {
+	borderCurve: "continuous",
+} satisfies ViewStyle;
+const tabularNumberStyle = {
+	fontVariant: ["tabular-nums"],
+} satisfies TextStyle;
 
 type TimePickerTarget = {
 	lessonKey: string;
@@ -85,7 +102,7 @@ function TimetableIntro() {
 	return (
 		<View
 			className="overflow-hidden rounded-card border border-border bg-card p-6"
-			style={{ borderCurve: "continuous" }}
+			style={continuousBorderStyle}
 		>
 			<View className="h-14 w-14 items-center justify-center rounded-full bg-system-subtle">
 				<CalendarDays size={26} color={colors.primaryStrong} strokeWidth={2} />
@@ -181,7 +198,7 @@ function TimeButton({
 			>
 				<Text
 					className="font-poppins font-semibold text-body-3 text-text"
-					style={{ fontVariant: ["tabular-nums"] }}
+					style={tabularNumberStyle}
 				>
 					{value}
 				</Text>
@@ -207,7 +224,7 @@ function LessonEditorCard({
 	return (
 		<View
 			className="rounded-card border border-border bg-card p-5"
-			style={{ borderCurve: "continuous" }}
+			style={continuousBorderStyle}
 		>
 			<View className="flex-row items-center justify-between">
 				<Text className="font-poppins font-semibold text-body-3 text-text">
@@ -313,6 +330,8 @@ export default function TimetableScreen() {
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [timePickerTarget, setTimePickerTarget] =
 		useState<TimePickerTarget | null>(null);
+	const taskInFlightRef = useRef(false);
+	const manualLessonKeyRef = useRef(0);
 
 	const serverLessons = useMemo(
 		() =>
@@ -363,6 +382,8 @@ export default function TimetableScreen() {
 	};
 
 	const runTask = async (task: () => Promise<void>) => {
+		if (taskInFlightRef.current) return;
+		taskInFlightRef.current = true;
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
@@ -374,8 +395,25 @@ export default function TimetableScreen() {
 				}),
 			);
 		} finally {
+			taskInFlightRef.current = false;
 			setIsBusy(false);
 		}
+	};
+
+	const addManualLesson = () => {
+		void runTask(async () => {
+			const timetableId = selectedTimetable?.id ?? (await ensureDraft());
+			manualLessonKeyRef.current += 1;
+			const currentLessons =
+				selectedTimetable?.id === timetableId ? lessons : [];
+			setEditor({
+				timetableId,
+				lessons: [
+					...currentLessons,
+					createEmptyTimetableLesson(`manual-${manualLessonKeyRef.current}`),
+				],
+			});
+		});
 	};
 
 	const uploadAndExtract = async (asset: UploadAsset) => {
@@ -609,6 +647,29 @@ export default function TimetableScreen() {
 							}
 						/>
 					))}
+
+					<Button
+						accessibilityLabel={
+							lessons.length > 0
+								? "Weitere Unterrichtsstunde hinzufügen"
+								: "Unterrichtsstunde manuell hinzufügen"
+						}
+						disabled={
+							!isAuthenticated ||
+							isBusy ||
+							isProcessing ||
+							lessons.length >= MAX_TIMETABLE_LESSONS
+						}
+						size="sm"
+						variant="outline"
+						onPress={addManualLesson}
+					>
+						<Text>
+							{lessons.length > 0
+								? "Weitere Stunde hinzufügen"
+								: "Stunde manuell hinzufügen"}
+						</Text>
+					</Button>
 
 					{lessons.length > 0 ? (
 						<View>

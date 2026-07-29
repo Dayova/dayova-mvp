@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	getOfflineAccess,
+	getNextAccessRefreshAt,
 	OFFLINE_ACCESS_WINDOW_MS,
 	resolveAccessRoute,
 } from "./access-policy";
@@ -10,6 +11,17 @@ import {
 } from "./auth-routing";
 
 describe("resolveAccessRoute", () => {
+	it("returns unauthenticated users to the public entry route", () => {
+		expect(
+			resolveAccessRoute({
+				accessState: undefined,
+				isSessionLoading: false,
+				pathname: "/home",
+				user: null,
+			}),
+		).toBe("/");
+	});
+
 	it("sends an authenticated account without access to trial activation", () => {
 		expect(
 			resolveAccessRoute({
@@ -137,5 +149,48 @@ describe("getOfflineAccess", () => {
 				verifiedAt,
 			}),
 		).toBe(false);
+	});
+
+	it("uses the later paid or grace expiry for offline access", () => {
+		expect(
+			getOfflineAccess({
+				access: {
+					canUseApp: true,
+					state: "billingGrace",
+					subscriptionExpiresAt: verifiedAt + 48 * 60 * 60 * 1000,
+					subscriptionGraceExpiresAt: verifiedAt + 24 * 60 * 60 * 1000,
+				},
+				now: verifiedAt + 36 * 60 * 60 * 1000,
+				verifiedAt,
+			}),
+		).toBe(true);
+	});
+});
+
+describe("getNextAccessRefreshAt", () => {
+	it("returns only the entitlement cutoff that can change access", () => {
+		const trialExpiresAt = Date.parse("2026-08-11T10:00:00.000Z");
+		expect(
+			getNextAccessRefreshAt({
+				canUseApp: true,
+				state: "trial",
+				trialExpiresAt,
+			}),
+		).toBe(trialExpiresAt);
+
+		expect(
+			getNextAccessRefreshAt({
+				canUseApp: true,
+				state: "billingGrace",
+				subscriptionExpiresAt: trialExpiresAt + 1,
+				subscriptionGraceExpiresAt: trialExpiresAt,
+			}),
+		).toBe(trialExpiresAt + 1);
+		expect(
+			getNextAccessRefreshAt({
+				canUseApp: false,
+				state: "expired",
+			}),
+		).toBeNull();
 	});
 });

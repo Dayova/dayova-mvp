@@ -12,27 +12,19 @@ import {
 import { Platform } from "react-native";
 import { api } from "#convex/_generated/api";
 import { useAuthSession } from "~/context/AuthContext";
-import { type AccessState, getOfflineAccess } from "~/lib/access-policy";
+import {
+	type AccessSnapshot,
+	getNextAccessRefreshAt,
+	getOfflineAccess,
+} from "~/lib/access-policy";
 import { logDiagnosticError } from "~/lib/diagnostics";
 
 const ACCESS_CACHE_PREFIX = "dayova-access:";
 const ACCESS_QUERY_TIMEOUT_MS = 1_500;
 const ACCESS_CLOCK_INTERVAL_MS = 30_000;
+const MAX_TIMER_DELAY_MS = 2_147_000_000;
 
-export type AccessSnapshot = {
-	canUseApp: boolean;
-	state: AccessState;
-	trialStartedAt?: number;
-	trialExpiresAt?: number;
-	reminderAt?: number;
-	trialTermsVersion?: string;
-	subscriptionExpiresAt?: number;
-	subscriptionGraceExpiresAt?: number;
-	managementUrl?: string;
-	productId?: string;
-	store?: string;
-	willRenew?: boolean;
-};
+export type { AccessSnapshot } from "~/lib/access-policy";
 
 type CachedAccess = {
 	access: AccessSnapshot;
@@ -92,6 +84,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	const { user, isSessionLoading } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const [now, setNow] = useState(Date.now);
+	const [queryNow, setQueryNow] = useState(Date.now);
 	const [loadedCache, setLoadedCache] = useState<{
 		appUserId: string;
 		value: CachedAccess | null;
@@ -104,7 +97,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	const canQuery = Boolean(user && isConvexAuthenticated);
 	const serverAccess = useQuery(
 		api.entitlements.getMyAccess,
-		canQuery ? { now } : "skip",
+		canQuery ? { now: queryNow } : "skip",
 	) as AccessSnapshot | undefined;
 
 	useEffect(() => {
@@ -114,6 +107,26 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 		);
 		return () => clearInterval(interval);
 	}, []);
+
+	useEffect(() => {
+		const refreshAt = getNextAccessRefreshAt(serverAccess);
+		if (refreshAt === null) return;
+
+		let timeout: ReturnType<typeof setTimeout>;
+		const scheduleRefresh = () => {
+			const remaining = refreshAt - Date.now();
+			if (remaining <= 0) {
+				setQueryNow(Date.now());
+				return;
+			}
+			timeout = setTimeout(
+				scheduleRefresh,
+				Math.min(remaining + 1, MAX_TIMER_DELAY_MS),
+			);
+		};
+		scheduleRefresh();
+		return () => clearTimeout(timeout);
+	}, [serverAccess]);
 
 	useEffect(() => {
 		if (!user) return;
@@ -141,14 +154,14 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	}, [user]);
 
 	useEffect(() => {
-		if (!canQuery || serverAccess || !user) return;
+		if (serverAccess || !user) return;
 
 		const timeout = setTimeout(
 			() => setTimedOutAppUserId(user.clerkId),
 			ACCESS_QUERY_TIMEOUT_MS,
 		);
 		return () => clearTimeout(timeout);
-	}, [canQuery, serverAccess, user]);
+	}, [serverAccess, user]);
 
 	useEffect(() => {
 		if (!user || !serverAccess) return;
@@ -176,9 +189,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	const offlineAccess = useMemo(() => {
 		if (!cachedAccess) return null;
 		return getOfflineAccess({
-			access: cachedAccess.access as Parameters<
-				typeof getOfflineAccess
-			>[0]["access"],
+			access: cachedAccess.access,
 			now,
 			verifiedAt: cachedAccess.verifiedAt,
 		})
@@ -200,14 +211,18 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	const activateTrial = useCallback(
 		async (termsVersion: string) => {
 			await activateMyTrial({ termsVersion });
-			setNow(Date.now());
+			const refreshedAt = Date.now();
+			setNow(refreshedAt);
+			setQueryNow(refreshedAt);
 		},
 		[activateMyTrial],
 	);
 
 	const refreshPaidAccess = useCallback(async () => {
 		const result = await syncMyEntitlement({});
-		setNow(Date.now());
+		const refreshedAt = Date.now();
+		setNow(refreshedAt);
+		setQueryNow(refreshedAt);
 		return result.active;
 	}, [syncMyEntitlement]);
 

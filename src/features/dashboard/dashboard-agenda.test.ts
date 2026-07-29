@@ -37,15 +37,15 @@ describe("dashboard agenda", () => {
 		).toBe("2026-07-23");
 	});
 
-	it("shows the fixed Sunday-to-Saturday week containing the selected day", () => {
+	it("shows the Monday-to-Sunday week containing the selected day", () => {
 		expect(getDashboardWeekDayKeys("2026-07-29")).toEqual([
-			"2026-07-26",
 			"2026-07-27",
 			"2026-07-28",
 			"2026-07-29",
 			"2026-07-30",
 			"2026-07-31",
 			"2026-08-01",
+			"2026-08-02",
 		]);
 	});
 
@@ -72,13 +72,13 @@ describe("dashboard agenda", () => {
 				lookaheadDays: 2,
 			}),
 		).toEqual([
-			"2026-07-26",
 			"2026-07-27",
 			"2026-07-28",
 			"2026-07-29",
 			"2026-07-30",
 			"2026-07-31",
 			"2026-08-01",
+			"2026-08-02",
 			"2026-08-11",
 			"2026-08-12",
 			"2026-08-13",
@@ -164,6 +164,15 @@ describe("dashboard agenda", () => {
 	it("keeps passive lessons distinct from Dayova learning sessions", () => {
 		expect(
 			classifyAgendaEntry(entry({ title: "Mathematik", kind: "Schulstunde" })),
+		).toBe("schoolLesson");
+		expect(
+			classifyAgendaEntry(
+				entry({
+					title: "Theorie und Praxis",
+					kind: "Unterricht",
+					source: "timetable",
+				}),
+			),
 		).toBe("schoolLesson");
 		expect(
 			classifyAgendaEntry(

@@ -49,6 +49,7 @@ test("a reviewed timetable becomes active and appears as dated school lessons", 
 		expect.objectContaining({
 			title: "Mathematik",
 			kind: "Unterricht",
+			source: "timetable",
 			time: "08:00",
 			durationMinutes: 45,
 			notes: "Raum 204",
@@ -99,6 +100,31 @@ test("an active school lesson blocks overlapping appointments", async () => {
 	).rejects.toThrow('überschneidet sich mit "Biologie"');
 });
 
+test("timetable conflicts normalize legacy ISO day keys", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const timetableId = await t.mutation(api.timetables.createDraft, {});
+	await t.mutation(api.timetables.saveAndActivate, {
+		timetableId,
+		lessons: [
+			{
+				dayOfWeek: 1,
+				subject: "Biologie",
+				startTime: "10:00",
+				endTime: "10:45",
+			},
+		],
+	});
+
+	await expect(
+		t.mutation(api.dayEntries.create, {
+			dayKey: "2026-07-26T22:00:00.000Z",
+			title: "Lernsession",
+			time: "10:30",
+			durationMinutes: 30,
+		}),
+	).rejects.toThrow('überschneidet sich mit "Biologie"');
+});
+
 test("activating a replacement archives the previous timetable", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const firstId = await t.mutation(api.timetables.createDraft, {});
@@ -129,4 +155,8 @@ test("activating a replacement archives the previous timetable", async () => {
 	const timetable = await t.query(api.timetables.getMine, {});
 	expect(timetable.active?.id).toBe(secondId);
 	expect(timetable.active?.lessons[0]?.subject).toBe("Neu");
+	await t.run(async (ctx) => {
+		const first = await ctx.db.get("timetables", firstId);
+		expect(first?.status).toBe("archived");
+	});
 });

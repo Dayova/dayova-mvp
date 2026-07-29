@@ -7,6 +7,7 @@ type RevenueCatPackage = {
 	product: {
 		identifier: string;
 		priceString: string;
+		pricePerMonthString?: string | null;
 	};
 };
 
@@ -35,6 +36,7 @@ export type RevenueCatSdkBoundary = {
 
 export type DayovaStorePlan = {
 	billingPeriod: "annual" | "monthly";
+	monthlyEquivalentPrice?: string;
 	packageIdentifier: string;
 	price: string;
 	productIdentifier: "dayova_annual" | "dayova_monthly";
@@ -59,6 +61,11 @@ const toStorePlan = (
 
 	return {
 		billingPeriod: productIdentifier === "dayova_annual" ? "annual" : "monthly",
+		...(revenueCatPackage.product.pricePerMonthString
+			? {
+					monthlyEquivalentPrice: revenueCatPackage.product.pricePerMonthString,
+				}
+			: {}),
 		packageIdentifier: revenueCatPackage.identifier,
 		price: revenueCatPackage.product.priceString,
 		productIdentifier,
@@ -156,7 +163,8 @@ export const createNativeRevenueCatClient = ({
 }) => {
 	const purchasesModule =
 		require("react-native-purchases") as typeof import("react-native-purchases");
-	const sdk = purchasesModule.default as unknown as RevenueCatSdkBoundary;
+	const sdk = (purchasesModule.default ??
+		purchasesModule) as unknown as RevenueCatSdkBoundary;
 	let ready: Promise<unknown> = Promise.resolve();
 	if (!configuredNativeApiKey) {
 		sdk.configure({ apiKey, appUserID: appUserId });
@@ -170,10 +178,14 @@ export const createNativeRevenueCatClient = ({
 		if (!sdk.logIn) {
 			throw new Error("Das RevenueCat-Konto konnte nicht gewechselt werden.");
 		}
-		ready = sdk.logIn(appUserId).then((result) => {
+		const loginPromise = sdk.logIn(appUserId).then((result) => {
 			configuredNativeAppUserId = appUserId;
 			return result;
 		});
+		// Attach a handler immediately so a rejected native login cannot become an
+		// unhandled promise before a store operation awaits the same promise.
+		void loginPromise.catch(() => undefined);
+		ready = loginPromise;
 	}
 
 	return createRevenueCatClient({

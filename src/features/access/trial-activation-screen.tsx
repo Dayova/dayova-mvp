@@ -1,9 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
 	ActivityIndicator,
-	Linking,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -16,11 +15,13 @@ import { Bell, Check, SquareLock } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
 
 const TRIAL_TERMS_VERSION = "2026-07-28-v1";
 const TRIAL_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const WHITE = DAYOVA_DESIGN_SYSTEM.colors.light1;
+// LinearGradient exposes its full-bleed geometry through the native style API.
 const gradientFillStyle = StyleSheet.absoluteFill;
 
 const timelineItems = [
@@ -41,31 +42,36 @@ const timelineItems = [
 	},
 ] as const;
 
-const openUrl = async (url?: string) => {
-	if (url) await Linking.openURL(url);
-};
-
 export function TrialActivationScreen() {
 	const { access, activateTrial } = useAccess();
 	const insets = useSafeAreaInsets();
 	const { fontScale, height: windowHeight } = useWindowDimensions();
 	const [isStarting, setIsStarting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const activationInFlightRef = useRef(false);
 	const showStarting = isStarting || access?.canUseApp === true;
 	const scrollEnabled = windowHeight < 820 || fontScale > 1;
 
 	const startTrial = async () => {
-		if (showStarting) return;
+		if (showStarting || activationInFlightRef.current) return;
+		activationInFlightRef.current = true;
 		setError(null);
 		setIsStarting(true);
 		try {
 			await activateTrial(TRIAL_TERMS_VERSION);
-		} catch (activationError) {
+		} catch {
+			setError("Deine Testphase konnte nicht gestartet werden.");
+		} finally {
+			activationInFlightRef.current = false;
 			setIsStarting(false);
+		}
+	};
+
+	const openLink = async (url?: string) => {
+		const opened = await openExternalUrl(url);
+		if (!opened) {
 			setError(
-				activationError instanceof Error
-					? activationError.message
-					: "Deine Testphase konnte nicht gestartet werden.",
+				"Der Link konnte nicht geöffnet werden. Bitte versuche es erneut.",
 			);
 		}
 	};
@@ -172,11 +178,9 @@ export function TrialActivationScreen() {
 							<Text className="text-center font-semibold text-body-2 text-white">
 								Danach, nur wenn du dich entscheidest
 							</Text>
-							<Text className="text-center text-body-3 text-white/90">
-								14,99 € / Monat · 159,99 € / Jahr
-							</Text>
 							<Text className="text-center text-body-4 text-white/80">
-								13,33 € pro Monat bei jährlicher Zahlung
+								Die aktuellen Preise werden dir vor dem Kauf im App Store oder
+								bei Google Play angezeigt.
 							</Text>
 						</View>
 
@@ -216,7 +220,7 @@ export function TrialActivationScreen() {
 								accessibilityRole="link"
 								disabled={!env.EXPO_PUBLIC_TERMS_URL}
 								hitSlop={8}
-								onPress={() => void openUrl(env.EXPO_PUBLIC_TERMS_URL)}
+								onPress={() => void openLink(env.EXPO_PUBLIC_TERMS_URL)}
 							>
 								<Text className="text-body-4 text-white underline">
 									Nutzungsbedingungen
@@ -226,7 +230,7 @@ export function TrialActivationScreen() {
 								accessibilityRole="link"
 								disabled={!env.EXPO_PUBLIC_PRIVACY_URL}
 								hitSlop={8}
-								onPress={() => void openUrl(env.EXPO_PUBLIC_PRIVACY_URL)}
+								onPress={() => void openLink(env.EXPO_PUBLIC_PRIVACY_URL)}
 							>
 								<Text className="text-body-4 text-white underline">
 									Datenschutz

@@ -33,15 +33,27 @@ describe("getMissingPublicRuntimeConfig", () => {
 	});
 
 	it("reads configured public app envs from the process environment", () => {
-		const originalClerkKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-		const originalConvexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
-		const originalPostHogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
-		const originalPostHogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST;
+		const publicEnvKeys = [
+			"EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY",
+			"EXPO_PUBLIC_CONVEX_URL",
+			"EXPO_PUBLIC_POSTHOG_API_KEY",
+			"EXPO_PUBLIC_POSTHOG_HOST",
+			"EXPO_PUBLIC_REVENUECAT_IOS_API_KEY",
+			"EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY",
+			"EXPO_PUBLIC_PRIVACY_URL",
+			"EXPO_PUBLIC_TERMS_URL",
+			"EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL",
+			"EXPO_PUBLIC_CANCELLATION_URL",
+			"EXPO_PUBLIC_SUPPORT_URL",
+			"EXPO_PUBLIC_PARENT_CHECKOUT_URL",
+		] as const;
+		const originalValues = new Map(
+			publicEnvKeys.map((key) => [key, process.env[key]]),
+		);
 
+		for (const key of publicEnvKeys) delete process.env[key];
 		process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_process";
 		process.env.EXPO_PUBLIC_CONVEX_URL = "https://process.convex.cloud";
-		delete process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
-		delete process.env.EXPO_PUBLIC_POSTHOG_HOST;
 
 		try {
 			expect(readPublicRuntimeConfig()).toEqual({
@@ -59,25 +71,13 @@ describe("getMissingPublicRuntimeConfig", () => {
 				EXPO_PUBLIC_PARENT_CHECKOUT_URL: undefined,
 			});
 		} finally {
-			if (originalClerkKey === undefined) {
-				delete process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-			} else {
-				process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY = originalClerkKey;
-			}
-			if (originalConvexUrl === undefined) {
-				delete process.env.EXPO_PUBLIC_CONVEX_URL;
-			} else {
-				process.env.EXPO_PUBLIC_CONVEX_URL = originalConvexUrl;
-			}
-			if (originalPostHogApiKey === undefined) {
-				delete process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
-			} else {
-				process.env.EXPO_PUBLIC_POSTHOG_API_KEY = originalPostHogApiKey;
-			}
-			if (originalPostHogHost === undefined) {
-				delete process.env.EXPO_PUBLIC_POSTHOG_HOST;
-			} else {
-				process.env.EXPO_PUBLIC_POSTHOG_HOST = originalPostHogHost;
+			for (const key of publicEnvKeys) {
+				const originalValue = originalValues.get(key);
+				if (originalValue === undefined) {
+					delete process.env[key];
+				} else {
+					process.env[key] = originalValue;
+				}
 			}
 		}
 	});

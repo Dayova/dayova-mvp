@@ -8,10 +8,18 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action } from "./_generated/server";
 import { readOptionalEnv, readRequiredEnv } from "./env";
-import { logDiagnosticError, throwUserFacingError } from "./errors";
+import {
+	getUserFacingBackendErrorMessage,
+	logDiagnosticError,
+	throwUserFacingError,
+} from "./errors";
 import { createManagedReadUrl, type StorageProvider } from "./fileStorage";
+import {
+	MAX_TIMETABLE_FILE_BYTES,
+	MAX_TIMETABLE_LESSONS,
+	TIMETABLE_DOWNLOAD_TIMEOUT_MS,
+} from "./timetablePolicy";
 
-const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MODEL_ID =
 	readOptionalEnv("GOOGLE_VERTEX_FLASH_MODEL") ?? "gemini-3-flash-preview";
 
@@ -21,13 +29,13 @@ const extractionSchema = z.object({
 			z.object({
 				dayOfWeek: z.number().int().min(1).max(7),
 				subject: z.string().min(1).max(80),
-				startTime: z.string().regex(/^\d{2}:\d{2}$/),
-				endTime: z.string().regex(/^\d{2}:\d{2}$/),
+				startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+				endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
 				room: z.string().max(40).optional(),
 			}),
 		)
 		.min(1)
-		.max(150),
+		.max(MAX_TIMETABLE_LESSONS),
 });
 
 type ExtractionContext = {
@@ -69,7 +77,7 @@ export const extract = action({
 		});
 
 		try {
-			if (context.document.fileSizeBytes > MAX_UPLOAD_FILE_BYTES) {
+			if (context.document.fileSizeBytes > MAX_TIMETABLE_FILE_BYTES) {
 				throwUserFacingError("Die Datei ist zu groß (maximal 7 MiB).");
 			}
 			const downloadUrl = await createManagedReadUrl(
@@ -85,14 +93,23 @@ export const extract = action({
 						"Der Stundenplan konnte nicht gelesen werden. Lade ihn bitte erneut hoch.",
 				},
 			);
-			const response = await fetch(downloadUrl);
+			const response = await fetch(downloadUrl, {
+				signal: AbortSignal.timeout(TIMETABLE_DOWNLOAD_TIMEOUT_MS),
+			});
 			if (!response.ok) {
 				throw new Error(
 					`Timetable download failed: ${response.status} ${response.statusText}`,
 				);
 			}
+			const contentLength = Number(response.headers.get("content-length"));
+			if (
+				Number.isFinite(contentLength) &&
+				contentLength > MAX_TIMETABLE_FILE_BYTES
+			) {
+				throwUserFacingError("Die Datei ist zu groß (maximal 7 MiB).");
+			}
 			const bytes = await response.arrayBuffer();
-			if (bytes.byteLength > MAX_UPLOAD_FILE_BYTES) {
+			if (bytes.byteLength > MAX_TIMETABLE_FILE_BYTES) {
 				throwUserFacingError("Die Datei ist zu groß (maximal 7 MiB).");
 			}
 
@@ -132,14 +149,18 @@ export const extract = action({
 				timetableId: context.timetableId,
 				fileName: context.document.fileName,
 			});
-			const message = NoObjectGeneratedError.isInstance(error)
-				? "Wir konnten keine Unterrichtsstunden sicher erkennen. Du kannst sie manuell ergänzen."
-				: "Der Stundenplan konnte nicht automatisch gelesen werden. Du kannst es erneut versuchen oder die Stunden manuell ergänzen.";
+			const userFacingMessage = getUserFacingBackendErrorMessage(error);
+			const message =
+				userFacingMessage ??
+				(NoObjectGeneratedError.isInstance(error)
+					? "Wir konnten keine Unterrichtsstunden sicher erkennen. Du kannst sie manuell ergänzen."
+					: "Der Stundenplan konnte nicht automatisch gelesen werden. Du kannst es erneut versuchen oder die Stunden manuell ergänzen.");
 			await ctx.runMutation(internal.timetables.setProcessingStatus, {
 				timetableId: context.timetableId,
 				status: "failed",
 				errorMessage: message,
 			});
+			if (userFacingMessage) throw error;
 			throwUserFacingError(message);
 		}
 	},

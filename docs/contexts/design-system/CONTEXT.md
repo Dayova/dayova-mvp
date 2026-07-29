@@ -112,10 +112,12 @@ theme-adaptive semantic card surfaces for content that needs primary and
 secondary text. Reusing the shared gradient keeps both ends of the trial flow
 synchronized with future Dayova button-color changes. This treatment is limited
 to focused access-setup moments and is not a third general-purpose light-mode
-button appearance. The expired-trial screen applies the existing runtime theme
-mirror to adaptive card surfaces and their text because the tracked Fabric
-variable-invalidation issue can otherwise leave newly mounted descendants with
-mixed light and dark tokens.
+button appearance. The trial-activation screen may use its white primary button
+for legible contrast on that saturated surface; this does not introduce a
+reusable third button appearance. The expired-trial screen applies the existing
+runtime theme mirror to adaptive card surfaces and their text because the
+tracked Fabric variable-invalidation issue can otherwise leave newly mounted
+descendants with mixed light and dark tokens.
 
 The current app corner system is: info/small boxes use 24px, 345px-wide
 rectangles and card-like surfaces use 32px, and buttons use 44px. Device frame

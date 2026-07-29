@@ -17,6 +17,7 @@ const annualPackage = {
 	packageType: "ANNUAL",
 	product: {
 		identifier: "dayova_annual",
+		pricePerMonthString: "13,33 €",
 		priceString: "159,99 €",
 	},
 };
@@ -61,6 +62,7 @@ describe("createRevenueCatClient", () => {
 		await expect(client.getPlans()).resolves.toEqual([
 			{
 				billingPeriod: "annual",
+				monthlyEquivalentPrice: "13,33 €",
 				packageIdentifier: "$rc_annual",
 				price: "159,99 €",
 				productIdentifier: "dayova_annual",

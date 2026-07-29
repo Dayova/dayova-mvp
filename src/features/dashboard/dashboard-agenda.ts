@@ -40,7 +40,8 @@ export const getDashboardWeekDayKeys = (selectedDayKey: string) => {
 	const selectedDate = parseDayKey(selectedDayKey);
 	if (!selectedDate) return [selectedDayKey];
 
-	const weekStart = addDays(selectedDate, -selectedDate.getDay());
+	const mondayOffset = (selectedDate.getDay() + 6) % 7;
+	const weekStart = addDays(selectedDate, -mondayOffset);
 	return Array.from({ length: 7 }, (_, index) =>
 		getDayKey(addDays(weekStart, index)),
 	);
@@ -162,6 +163,7 @@ export const parseAgendaTime = (time?: string) => {
 export const classifyAgendaEntry = (entry: DayEntry): DashboardAgendaKind => {
 	const searchableText = `${entry.kind ?? ""} ${getAgendaEntryTitle(entry)}`;
 
+	if (entry.source === "timetable") return "schoolLesson";
 	if (
 		entry.relatedLearningPlanSessionId ||
 		LEARNING_SESSION_PATTERN.test(searchableText)
