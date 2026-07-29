@@ -60,6 +60,18 @@ export default function AppLayout() {
 			</NativeTabs.Trigger>
 
 			<NativeTabs.Trigger
+				name="analyse"
+				accessibilityLabel="Analyse"
+				disableAutomaticContentInsets
+			>
+				<NativeTabs.Trigger.Icon
+					md={{ default: "analytics", selected: "analytics" }}
+					sf={{ default: "chart.bar", selected: "chart.bar.fill" }}
+				/>
+				<NativeTabs.Trigger.Label>Analyse</NativeTabs.Trigger.Label>
+			</NativeTabs.Trigger>
+
+			<NativeTabs.Trigger
 				name="settings"
 				accessibilityLabel="Mehr"
 				disableAutomaticContentInsets

@@ -1,5 +1,6 @@
 import {
 	AlertCircleIcon,
+	Analytics01Icon,
 	ArrowDown01Icon,
 	ArrowLeft01Icon,
 	ArrowRight01Icon,
@@ -74,6 +75,7 @@ const createIcon = (icon: HugeiconsProps["icon"]) => (props: IconProps) => (
 );
 
 export const Attachment = createIcon(Attachment01Icon);
+export const Analytics = createIcon(Analytics01Icon);
 export const Atom = createIcon(Atom02Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
 export const ArrowRight = createIcon(ArrowRight01Icon);

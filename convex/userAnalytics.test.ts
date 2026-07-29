@@ -1,0 +1,252 @@
+/// <reference types="vite/client" />
+
+import { convexTest } from "convex-test";
+import { expect, test } from "vitest";
+import { api } from "./_generated/api";
+import schema from "./schema";
+
+const modules = import.meta.glob("./**/*.ts");
+const identity = { tokenIdentifier: "test:analytics-user" };
+
+const seedAnalyticsData = async () => {
+	const backend = convexTest(schema, modules);
+	const t = backend.withIdentity(identity);
+	const learningPlanId = await t.run(async (ctx) => {
+		const now = Date.UTC(2026, 6, 28, 12);
+		return await ctx.db.insert("learningPlans", {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			subject: "Mathe",
+			examTypeLabel: "Klausur",
+			examDateKey: "2026-08-05",
+			examDateLabel: "5. August 2026",
+			durationMinutes: 90,
+			topicDescription: "Lineare Funktionen",
+			status: "accepted",
+			createdAt: now,
+			updatedAt: now,
+		});
+	});
+	const ids = await t.run(async (ctx) => {
+		const base = {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			learningPlanId,
+			dateLabel: "28. Juli 2026",
+			startTime: "16:00",
+			durationMinutes: 30,
+			goal: "Sicher anwenden.",
+			tasks: ["Aufgaben lösen"],
+			expectedOutcome: "Du kannst die Aufgabe lösen.",
+			createdAt: Date.UTC(2026, 6, 27, 10),
+			updatedAt: Date.UTC(2026, 6, 28, 14),
+		};
+		const firstSessionId = await ctx.db.insert("learningPlanSessions", {
+			...base,
+			phase: "practice",
+			title: "Gleichungen üben",
+			dateKey: "2026-07-27",
+			completed: true,
+			executionStatus: "completed",
+			outcomeAt: Date.UTC(2026, 6, 27, 14),
+			activeStudySeconds: 1_200,
+			sortOrder: 0,
+		});
+		const missedSessionId = await ctx.db.insert("learningPlanSessions", {
+			...base,
+			phase: "theory",
+			title: "Grundlagen wiederholen",
+			dateKey: "2026-07-27",
+			completed: false,
+			executionStatus: "adjusted",
+			outcomeAt: Date.UTC(2026, 6, 27, 15),
+			sortOrder: 1,
+		});
+		const recoverySessionId = await ctx.db.insert("learningPlanSessions", {
+			...base,
+			phase: "theory",
+			title: "Kleiner Neustart",
+			dateKey: "2026-07-28",
+			completed: true,
+			executionStatus: "completed",
+			outcomeAt: Date.UTC(2026, 6, 28, 14),
+			activeStudySeconds: 600,
+			adjustedFromSessionId: missedSessionId,
+			sortOrder: 2,
+		});
+		const openSessionId = await ctx.db.insert("learningPlanSessions", {
+			...base,
+			phase: "rehearsal",
+			title: "Generalprobe",
+			dateKey: "2026-07-30",
+			completed: false,
+			executionStatus: "notStarted",
+			sortOrder: 3,
+		});
+		const itemId = await ctx.db.insert("learningSessionContentItems", {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			learningPlanId,
+			sessionId: recoverySessionId,
+			phase: "theory",
+			kind: "written",
+			title: "Steigung",
+			prompt: "Erkläre die Steigung.",
+			explanation: "Die Steigung beschreibt die Änderung.",
+			idealAnswer: "Änderung von y pro Änderung von x.",
+			evaluationKeywords: ["Änderung"],
+			sortOrder: 0,
+			createdAt: Date.UTC(2026, 6, 28, 13),
+			updatedAt: Date.UTC(2026, 6, 28, 13),
+		});
+		await ctx.db.insert("learningSessionAnswerAttempts", {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			learningPlanId,
+			sessionId: recoverySessionId,
+			itemId,
+			answerText: "Änderung von y.",
+			rating: "partiallyCorrect",
+			feedback: "Fast richtig.",
+			perfectAnswer: "Änderung von y pro Änderung von x.",
+			timeSpentSeconds: 45,
+			createdAt: Date.UTC(2026, 6, 28, 13, 30),
+		});
+		await ctx.db.insert("learningSessionAnalyses", {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			learningPlanId,
+			sessionId: recoverySessionId,
+			strengths: ["Du erkennst lineare Zusammenhänge."],
+			gaps: ["Steigung noch präziser erklären."],
+			recommendation: "Übe eine weitere Steigungsaufgabe.",
+			createdAt: Date.UTC(2026, 6, 28, 14),
+			updatedAt: Date.UTC(2026, 6, 28, 14),
+		});
+		return { firstSessionId, openSessionId };
+	});
+	return { backend, t, learningPlanId, ...ids };
+};
+
+test("returns private, actionable learning analytics for the selected period", async () => {
+	const { t, learningPlanId, openSessionId } = await seedAnalyticsData();
+
+	const overview = await t.query(api.userAnalytics.getOverview, {
+		period: "week",
+		todayKey: "2026-07-28",
+		timezoneOffsetMinutes: 0,
+	});
+
+	expect(overview.overall).toEqual({
+		acceptedPlans: 1,
+		finishedPlans: 0,
+		completedSessions: 2,
+		totalSessions: 3,
+		progressPercent: 67,
+	});
+	expect(overview.period).toEqual({
+		completedSessions: 2,
+		activeStudyMinutes: 30,
+		recoveredSessions: 1,
+	});
+	expect(overview.currentStreakDays).toBe(2);
+	expect(overview.nextSession).toMatchObject({
+		id: openSessionId,
+		learningPlanId,
+		subject: "Mathe",
+		title: "Generalprobe",
+	});
+	expect(overview.knowledge).toMatchObject({
+		answeredItems: 1,
+		correct: 0,
+		partiallyCorrect: 1,
+		notCorrect: 0,
+		scorePercent: 50,
+		strengths: ["Du erkennst lineare Zusammenhänge."],
+		gaps: ["Steigung noch präziser erklären."],
+		recommendation: "Übe eine weitere Steigungsaufgabe.",
+	});
+	expect(overview.activity.at(-1)).toEqual({
+		dayKey: "2026-07-28",
+		completedSessions: 1,
+		activeStudyMinutes: 10,
+	});
+});
+
+test("does not expose another learner's analytics", async () => {
+	const { backend } = await seedAnalyticsData();
+	const otherUser = backend.withIdentity({
+		tokenIdentifier: "test:other-user",
+	});
+
+	await expect(
+		otherUser.query(api.userAnalytics.getOverview, {
+			period: "all",
+			todayKey: "2026-07-28",
+			timezoneOffsetMinutes: 0,
+		}),
+	).resolves.toMatchObject({
+		hasData: false,
+		overall: {
+			acceptedPlans: 0,
+			completedSessions: 0,
+			totalSessions: 0,
+		},
+	});
+});
+
+test("keeps future outcomes out of the selected reporting period", async () => {
+	const { t, learningPlanId } = await seedAnalyticsData();
+	await t.run(async (ctx) => {
+		await ctx.db.insert("learningPlanSessions", {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			learningPlanId,
+			phase: "practice",
+			title: "Zukünftige Einheit",
+			dateKey: "2026-07-30",
+			dateLabel: "30. Juli 2026",
+			startTime: "16:00",
+			durationMinutes: 15,
+			goal: "Später üben.",
+			tasks: ["Aufgabe lösen"],
+			expectedOutcome: "Du bist sicherer.",
+			completed: true,
+			executionStatus: "completed",
+			outcomeAt: Date.UTC(2026, 6, 30, 14),
+			activeStudySeconds: 900,
+			sortOrder: 4,
+			createdAt: Date.UTC(2026, 6, 30, 14),
+			updatedAt: Date.UTC(2026, 6, 30, 14),
+		});
+	});
+
+	const overview = await t.query(api.userAnalytics.getOverview, {
+		period: "week",
+		todayKey: "2026-07-28",
+		timezoneOffsetMinutes: 0,
+	});
+
+	expect(overview.overall).toMatchObject({
+		completedSessions: 3,
+		totalSessions: 4,
+	});
+	expect(overview.period).toEqual({
+		completedSessions: 2,
+		activeStudyMinutes: 30,
+		recoveredSessions: 1,
+	});
+});
+
+test("rejects malformed calendar and timezone inputs", async () => {
+	const t = convexTest(schema, modules).withIdentity(identity);
+
+	await expect(
+		t.query(api.userAnalytics.getOverview, {
+			period: "week",
+			todayKey: "2026-02-31",
+			timezoneOffsetMinutes: 0,
+		}),
+	).rejects.toThrow("Ungültiger Kalendertag.");
+	await expect(
+		t.query(api.userAnalytics.getOverview, {
+			period: "week",
+			todayKey: "2026-07-28",
+			timezoneOffsetMinutes: 841,
+		}),
+	).rejects.toThrow("Ungültige Zeitzone.");
+});

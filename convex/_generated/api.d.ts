@@ -44,6 +44,7 @@ import type * as timetableOccurrences from "../timetableOccurrences.js";
 import type * as timetablePolicy from "../timetablePolicy.js";
 import type * as timetables from "../timetables.js";
 import type * as topicDescriptionValidation from "../topicDescriptionValidation.js";
+import type * as userAnalytics from "../userAnalytics.js";
 import type * as users from "../users.js";
 import type * as validationAnalytics from "../validationAnalytics.js";
 
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   timetablePolicy: typeof timetablePolicy;
   timetables: typeof timetables;
   topicDescriptionValidation: typeof topicDescriptionValidation;
+  userAnalytics: typeof userAnalytics;
   users: typeof users;
   validationAnalytics: typeof validationAnalytics;
 }>;
