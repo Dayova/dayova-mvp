@@ -3,6 +3,7 @@ export const ROUTES = {
 	settings: "/settings",
 	learningTimes: "/learning-times",
 	learningPlans: "/learning-plans",
+	analytics: "/analyse",
 	createExam: "/entry/new?type=exam",
 	createHomework: "/entry/new?type=homework",
 	createLearningPlan: "/learning-plans/new",

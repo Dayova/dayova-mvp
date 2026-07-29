@@ -29,12 +29,15 @@ import type * as learningSessionContentConstraints from "../learningSessionConte
 import type * as learningSessionDurationText from "../learningSessionDurationText.js";
 import type * as learningSessionScheduleFormatting from "../learningSessionScheduleFormatting.js";
 import type * as learningSessionSegmentation from "../learningSessionSegmentation.js";
+import type * as learningTimeAvailability from "../learningTimeAvailability.js";
 import type * as learningTimes from "../learningTimes.js";
+import type * as learningTimesBackfill from "../learningTimesBackfill.js";
 import type * as learningTopicMap from "../learningTopicMap.js";
 import type * as notifications from "../notifications.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
 import type * as theoryContent from "../theoryContent.js";
 import type * as topicDescriptionValidation from "../topicDescriptionValidation.js";
+import type * as userAnalytics from "../userAnalytics.js";
 import type * as users from "../users.js";
 import type * as validationAnalytics from "../validationAnalytics.js";
 
@@ -66,12 +69,15 @@ declare const fullApi: ApiFromModules<{
   learningSessionDurationText: typeof learningSessionDurationText;
   learningSessionScheduleFormatting: typeof learningSessionScheduleFormatting;
   learningSessionSegmentation: typeof learningSessionSegmentation;
+  learningTimeAvailability: typeof learningTimeAvailability;
   learningTimes: typeof learningTimes;
+  learningTimesBackfill: typeof learningTimesBackfill;
   learningTopicMap: typeof learningTopicMap;
   notifications: typeof notifications;
   scheduleConflicts: typeof scheduleConflicts;
   theoryContent: typeof theoryContent;
   topicDescriptionValidation: typeof topicDescriptionValidation;
+  userAnalytics: typeof userAnalytics;
   users: typeof users;
   validationAnalytics: typeof validationAnalytics;
 }>;

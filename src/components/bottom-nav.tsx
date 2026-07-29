@@ -7,12 +7,12 @@ import Animated, {
 	withSpring,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Home, Route2, Settings } from "~/components/ui/icon";
+import { Analytics, Home, Route2, Settings } from "~/components/ui/icon";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 
-type BottomNavKey = "home" | "learningPath" | "settings";
-type AppTabRouteName = "home" | "learning-plans" | "settings";
+type BottomNavKey = "home" | "learningPath" | "analytics" | "settings";
+type AppTabRouteName = "home" | "learning-plans" | "analyse" | "settings";
 type BottomNavIcon = typeof Home;
 type AppTabRoute = {
 	key: string;
@@ -46,6 +46,12 @@ const NAV_ITEMS: Array<{
 		icon: Route2,
 		routeName: "learning-plans",
 		label: "Lernpläne",
+	},
+	{
+		key: "analytics",
+		icon: Analytics,
+		routeName: "analyse",
+		label: "Analyse",
 	},
 	{
 		key: "settings",
