@@ -190,6 +190,48 @@ test("does not expose another learner's analytics", async () => {
 	});
 });
 
+test("keeps future outcomes out of the selected reporting period", async () => {
+	const { t, learningPlanId } = await seedAnalyticsData();
+	await t.run(async (ctx) => {
+		await ctx.db.insert("learningPlanSessions", {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			learningPlanId,
+			phase: "practice",
+			title: "Zukünftige Einheit",
+			dateKey: "2026-07-30",
+			dateLabel: "30. Juli 2026",
+			startTime: "16:00",
+			durationMinutes: 15,
+			goal: "Später üben.",
+			tasks: ["Aufgabe lösen"],
+			expectedOutcome: "Du bist sicherer.",
+			completed: true,
+			executionStatus: "completed",
+			outcomeAt: Date.UTC(2026, 6, 30, 14),
+			activeStudySeconds: 900,
+			sortOrder: 4,
+			createdAt: Date.UTC(2026, 6, 30, 14),
+			updatedAt: Date.UTC(2026, 6, 30, 14),
+		});
+	});
+
+	const overview = await t.query(api.userAnalytics.getOverview, {
+		period: "week",
+		todayKey: "2026-07-28",
+		timezoneOffsetMinutes: 0,
+	});
+
+	expect(overview.overall).toMatchObject({
+		completedSessions: 3,
+		totalSessions: 4,
+	});
+	expect(overview.period).toEqual({
+		completedSessions: 2,
+		activeStudyMinutes: 30,
+		recoveredSessions: 1,
+	});
+});
+
 test("rejects malformed calendar and timezone inputs", async () => {
 	const t = convexTest(schema, modules).withIdentity(identity);
 

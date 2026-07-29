@@ -649,6 +649,7 @@ function AnalyticsContent({
 			: period === "month"
 				? "in den letzten 30 Tagen"
 				: "insgesamt";
+	const nextSession = data.nextSession;
 
 	return (
 		<View className="gap-9">
@@ -669,18 +670,15 @@ function AnalyticsContent({
 						</Text>
 					</View>
 				</View>
-				{data.nextSession ? (
+				{nextSession ? (
 					<Button
 						accessibilityHint="Öffnet die nächste relevante Lerneinheit."
 						onPress={() =>
-							onOpenNextSession(
-								data.nextSession?.learningPlanId ?? "",
-								data.nextSession?.id ?? "",
-							)
+							onOpenNextSession(nextSession.learningPlanId, nextSession.id)
 						}
 					>
 						<Text numberOfLines={1}>
-							{`${formatGermanUiText(data.nextSession.subject)} weiterlernen`}
+							{`${formatGermanUiText(nextSession.subject)} weiterlernen`}
 						</Text>
 						<ArrowUpRight size={20} color="#FFFFFF" strokeWidth={2} />
 					</Button>

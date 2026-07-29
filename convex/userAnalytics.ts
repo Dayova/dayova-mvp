@@ -125,10 +125,12 @@ const getSessionStatus = (
 const isWithinPeriod = (
 	timestamp: number,
 	startDayKey: string | null,
+	endDayKey: string,
 	timezoneOffsetMinutes: number,
-) =>
-	startDayKey === null ||
-	timestampToDayKey(timestamp, timezoneOffsetMinutes) >= startDayKey;
+) => {
+	const dayKey = timestampToDayKey(timestamp, timezoneOffsetMinutes);
+	return (startDayKey === null || dayKey >= startDayKey) && dayKey <= endDayKey;
+};
 
 const getPeriodStartDayKey = (period: AnalyticsPeriod, todayKey: string) => {
 	if (period === "all") return null;
@@ -237,6 +239,7 @@ export const getOverview = query({
 				isWithinPeriod(
 					session.outcomeAt,
 					periodStartDayKey,
+					args.todayKey,
 					args.timezoneOffsetMinutes,
 				),
 		);
@@ -328,6 +331,7 @@ export const getOverview = query({
 				!isWithinPeriod(
 					attempt.createdAt,
 					periodStartDayKey,
+					args.todayKey,
 					args.timezoneOffsetMinutes,
 				) ||
 				latestAttemptsByItem.has(attempt.itemId)
@@ -354,15 +358,18 @@ export const getOverview = query({
 			)
 			.order("desc")
 			.take(MAX_ANALYSES);
-		const periodAnalyses = analyses.filter(
-			(analysis) =>
-				planById.has(analysis.learningPlanId) &&
-				isWithinPeriod(
-					analysis.updatedAt,
-					periodStartDayKey,
-					args.timezoneOffsetMinutes,
-				),
-		);
+		const periodAnalyses = analyses
+			.filter(
+				(analysis) =>
+					planById.has(analysis.learningPlanId) &&
+					isWithinPeriod(
+						analysis.updatedAt,
+						periodStartDayKey,
+						args.todayKey,
+						args.timezoneOffsetMinutes,
+					),
+			)
+			.sort((left, right) => right.updatedAt - left.updatedAt);
 
 		const totalSessions = effectiveSessions.length;
 		const completedSessionCount = completedSessions.length;
