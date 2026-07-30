@@ -63,7 +63,7 @@ import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuthSession } from "~/context/AuthContext";
-import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
+import { getExamEntryCreationProgress } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { LearningAvailabilityStep } from "~/features/learning-plans/learning-availability-step";
 import {
@@ -659,7 +659,7 @@ export default function NewEntryScreen() {
 	);
 	useLearningPlanCreationProgress({
 		active: !isHomework,
-		currentStep: LEARNING_PLAN_CREATION_STEPS.examDate,
+		currentStep: getExamEntryCreationProgress(step),
 		onBack: handleBack,
 		title: "Prüfung eintragen",
 	});
