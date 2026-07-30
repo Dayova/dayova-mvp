@@ -1,6 +1,6 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
@@ -9,10 +9,13 @@ import { NotificationButton } from "~/components/notification-button";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import {
+	Analytics,
 	ArrowDataTransferHorizontal,
+	ArrowRight,
 	ArrowUpRight,
 	CalendarDays,
 	Check,
+	CircleAlert,
 	Info,
 	Sparkles,
 	Time04,
@@ -109,6 +112,29 @@ const formatRemainingDays = (days: number) => {
 	return `Noch ${days} Tage`;
 };
 
+// borderCurve is native geometry and has no NativeWind utility.
+const continuousCardStyle = { borderCurve: "continuous" } as const;
+
+function useExamAnalysisQuery(
+	selectedPlanId: Id<"learningPlans"> | null | undefined,
+) {
+	const { user } = useAuthSession();
+	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const today = useCurrentLocalDay();
+	const queryArgs = useMemo(
+		() => ({
+			todayKey: getDayKey(today),
+			...(selectedPlanId ? { learningPlanId: selectedPlanId } : {}),
+		}),
+		[selectedPlanId, today],
+	);
+
+	return useQuery(
+		api.userAnalytics.getExamAnalysis,
+		user && isConvexAuthenticated ? queryArgs : "skip",
+	);
+}
+
 function SectionHeading({
 	title,
 	description,
@@ -186,6 +212,238 @@ function ExamSwitcher({
 				visible={visible}
 			/>
 		</>
+	);
+}
+
+function AnalysisHubCard({
+	accessibilityLabel,
+	children,
+	className,
+	icon,
+	label,
+	labelClassName,
+	onPress,
+}: {
+	accessibilityLabel: string;
+	children: ReactNode;
+	className: string;
+	icon: ReactNode;
+	label: string;
+	labelClassName: string;
+	onPress: () => void;
+}) {
+	const { colors } = useDayovaTheme();
+
+	return (
+		<ActionSurface
+			accessibilityHint="Öffnet die ausführliche Analyse."
+			accessibilityLabel={accessibilityLabel}
+			accessibilityRole="button"
+			className={cn("gap-5 rounded-card border p-5 shadow-none", className)}
+			onPress={onPress}
+			style={continuousCardStyle}
+			variant="flat"
+		>
+			<View className="flex-row items-center justify-between gap-4">
+				<View className="min-w-0 flex-1 flex-row items-center gap-3">
+					<View className="h-11 w-11 items-center justify-center rounded-full bg-card">
+						{icon}
+					</View>
+					<Text
+						className={cn(
+							"min-w-0 flex-1 font-poppins font-semibold text-body-3",
+							labelClassName,
+						)}
+					>
+						{label}
+					</Text>
+				</View>
+				<View className="h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card">
+					<ArrowRight size={19} color={colors.text} strokeWidth={2.2} />
+				</View>
+			</View>
+			{children}
+			<Text className="font-poppins font-semibold text-body-4 text-text">
+				Details ansehen
+			</Text>
+		</ActionSurface>
+	);
+}
+
+function AnalysisHub({
+	analysis,
+	onOpenKnowledge,
+	onOpenNextStep,
+	onOpenProblem,
+}: {
+	analysis: ExamAnalysis;
+	onOpenKnowledge: () => void;
+	onOpenNextStep: () => void;
+	onOpenProblem: () => void;
+}) {
+	const { colors } = useDayovaTheme();
+	const recommendation = analysis.recommendation;
+	const primaryProblem = analysis.primaryProblem;
+	const leadingAbility = analysis.abilities[0];
+	const diagnosis = primaryProblem
+		? DIAGNOSIS_COPY[primaryProblem.diagnosisType]
+		: null;
+
+	return (
+		<View className="gap-5">
+			<View className="gap-1 px-1">
+				<Text className="font-poppins font-semibold text-body-1 text-text">
+					Deine Prüfung auf einen Blick
+				</Text>
+				<Text
+					selectable
+					className="font-poppins text-body-4 text-secondary-text"
+				>
+					Öffne einen Bereich, wenn du die Belege und Details sehen möchtest.
+				</Text>
+			</View>
+
+			<AnalysisHubCard
+				accessibilityLabel={`Nächster Schritt: ${
+					recommendation?.goal ?? "Lernplan prüfen"
+				} Details öffnen`}
+				className="border-primary/25 bg-system-subtle"
+				icon={
+					<Sparkles size={22} color={colors.primaryStrong} strokeWidth={2.2} />
+				}
+				label="Dein nächster Schritt"
+				labelClassName="text-primary-strong"
+				onPress={onOpenNextStep}
+			>
+				<View className="gap-2">
+					<Text
+						selectable
+						className="font-poppins font-semibold text-body-1 text-text"
+						numberOfLines={3}
+					>
+						{formatGermanUiText(
+							recommendation?.goal ??
+								"Dein Lernplan ist für diese Prüfung aktuell abgeschlossen.",
+						)}
+					</Text>
+					<Text
+						selectable
+						className="font-poppins text-body-4 text-secondary-text"
+						numberOfLines={3}
+					>
+						{formatGermanUiText(
+							recommendation?.reason ??
+								"Prüfe deinen Lernplan und entscheide, ob du noch etwas wiederholen möchtest.",
+						)}
+					</Text>
+				</View>
+				<View className="flex-row flex-wrap items-center gap-x-5 gap-y-2">
+					<View className="flex-row items-center gap-2">
+						<Time04 size={17} color={colors.primaryStrong} strokeWidth={2.2} />
+						<Text
+							className="font-poppins font-semibold text-body-4 text-text"
+							style={{ fontVariant: ["tabular-nums"] }}
+						>
+							{recommendation
+								? `${recommendation.durationMinutes} Min.`
+								: `${analysis.preparation.remainingMinutes} Min. geplant`}
+						</Text>
+					</View>
+					<View className="flex-row items-center gap-2">
+						<CalendarDays
+							size={17}
+							color={colors.primaryStrong}
+							strokeWidth={2.2}
+						/>
+						<Text
+							className="font-poppins font-semibold text-body-4 text-text"
+							style={{ fontVariant: ["tabular-nums"] }}
+						>
+							{formatRemainingDays(analysis.preparation.remainingDays)}
+						</Text>
+					</View>
+				</View>
+			</AnalysisHubCard>
+
+			<AnalysisHubCard
+				accessibilityLabel={`Lernhürde: ${
+					primaryProblem?.title ?? "Noch keine klare Schwäche erkannt"
+				} Details öffnen`}
+				className="border-wrong/25 bg-wrong-subtle"
+				icon={<CircleAlert size={22} color={colors.wrong} strokeWidth={2.2} />}
+				label="Das bremst dich gerade"
+				labelClassName="text-wrong"
+				onPress={onOpenProblem}
+			>
+				<View className="gap-2">
+					{diagnosis ? (
+						<Text className="font-poppins font-semibold text-body-5 text-wrong">
+							{diagnosis.label}
+						</Text>
+					) : null}
+					<Text
+						selectable
+						className="font-poppins font-semibold text-body-1 text-text"
+						numberOfLines={3}
+					>
+						{formatGermanUiText(
+							primaryProblem?.observation ??
+								"Noch keine klare Schwäche erkannt",
+						)}
+					</Text>
+					<Text
+						selectable
+						className="font-poppins text-body-4 text-secondary-text"
+						numberOfLines={2}
+					>
+						{primaryProblem
+							? `Hier zeigt es sich: ${formatGermanUiText(primaryProblem.location)}`
+							: "Ungetestete Themen bleiben offen, bis deine Antworten genug Belege liefern."}
+					</Text>
+				</View>
+			</AnalysisHubCard>
+
+			<AnalysisHubCard
+				accessibilityLabel={`Wissensstand: ${analysis.readiness.secure} sicher, ${analysis.readiness.developing} in Arbeit, ${analysis.readiness.unknown} noch unklar. Details öffnen`}
+				className="border-theorie/25 bg-theorie-subtle"
+				icon={<Analytics size={22} color={colors.theorie} strokeWidth={2.2} />}
+				label="Dein Wissensstand"
+				labelClassName="text-theorie"
+				onPress={onOpenKnowledge}
+			>
+				<View className="gap-3">
+					<Text
+						selectable
+						className="font-poppins font-semibold text-body-1 text-text"
+						numberOfLines={3}
+					>
+						{formatGermanUiText(
+							leadingAbility?.statement ?? "Noch nicht genug Belege",
+						)}
+					</Text>
+					<View className="flex-row flex-wrap gap-x-4 gap-y-2">
+						<View className="flex-row items-center gap-2">
+							<View className="h-2.5 w-2.5 rounded-full bg-success" />
+							<Text className="font-poppins text-body-4 text-text">
+								{`${analysis.readiness.secure} sicher`}
+							</Text>
+						</View>
+						<View className="flex-row items-center gap-2">
+							<View className="h-2.5 w-2.5 rounded-full bg-info" />
+							<Text className="font-poppins text-body-4 text-text">
+								{`${analysis.readiness.developing} in Arbeit`}
+							</Text>
+						</View>
+						<View className="flex-row items-center gap-2">
+							<View className="h-2.5 w-2.5 rounded-full bg-primary" />
+							<Text className="font-poppins text-body-4 text-text">
+								{`${analysis.readiness.unknown} noch unklar`}
+							</Text>
+						</View>
+					</View>
+				</View>
+			</AnalysisHubCard>
+		</View>
 	);
 }
 
@@ -834,55 +1092,13 @@ function EmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
 	);
 }
 
-function ExamAnalysisContent({
-	analysis,
-	onOpenPlan,
-	onOpenSession,
-}: {
-	analysis: ExamAnalysis;
-	onOpenPlan: () => void;
-	onOpenSession: (sessionId: Id<"learningPlanSessions">) => void;
-}) {
-	return (
-		<View className="gap-9">
-			<ReadinessSummary analysis={analysis} />
-			<AbilitySection abilities={analysis.abilities} />
-			<ImprovementSection improvements={analysis.improvements} />
-			<ProblemSection
-				primaryProblem={analysis.primaryProblem}
-				secondaryProblems={analysis.secondaryProblems}
-			/>
-			<RecommendationSection
-				analysis={analysis}
-				onOpenPlan={onOpenPlan}
-				onOpenSession={onOpenSession}
-			/>
-			<TopicOverview topics={analysis.topics} />
-			<PreparationSummary analysis={analysis} onOpenPlan={onOpenPlan} />
-		</View>
-	);
-}
-
 export function AnalyticsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const { user } = useAuthSession();
-	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-	const today = useCurrentLocalDay();
 	const [selectedPlanId, setSelectedPlanId] =
 		useState<Id<"learningPlans"> | null>(null);
 	const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-	const queryArgs = useMemo(
-		() => ({
-			todayKey: getDayKey(today),
-			...(selectedPlanId ? { learningPlanId: selectedPlanId } : {}),
-		}),
-		[selectedPlanId, today],
-	);
-	const analysis = useQuery(
-		api.userAnalytics.getExamAnalysis,
-		user && isConvexAuthenticated ? queryArgs : "skip",
-	);
+	const analysis = useExamAnalysisQuery(selectedPlanId);
 
 	const selectedPlanIdForRoute =
 		analysis?.selectedPlan?.id ?? selectedPlanId ?? null;
@@ -945,7 +1161,143 @@ export function AnalyticsScreen() {
 					{analysis === undefined ? (
 						<LoadingState />
 					) : analysis.hasData ? (
-						<ExamAnalysisContent
+						<AnalysisHub
+							analysis={analysis}
+							onOpenKnowledge={() => {
+								if (selectedPlanIdForRoute) {
+									router.push({
+										pathname: ROUTES.analyticsKnowledge,
+										params: { planId: selectedPlanIdForRoute },
+									});
+								}
+							}}
+							onOpenNextStep={() => {
+								if (selectedPlanIdForRoute) {
+									router.push({
+										pathname: ROUTES.analyticsNextStep,
+										params: { planId: selectedPlanIdForRoute },
+									});
+								}
+							}}
+							onOpenProblem={() => {
+								if (selectedPlanIdForRoute) {
+									router.push({
+										pathname: ROUTES.analyticsProblem,
+										params: { planId: selectedPlanIdForRoute },
+									});
+								}
+							}}
+						/>
+					) : (
+						<EmptyState
+							onCreatePlan={() => router.push(ROUTES.createLearningPlan)}
+						/>
+					)}
+				</View>
+			</ScreenScroll>
+		</Screen>
+	);
+}
+
+export type AnalyticsDetailSection = "knowledge" | "problem" | "nextStep";
+
+const DETAIL_DESCRIPTION: Record<AnalyticsDetailSection, string> = {
+	knowledge:
+		"Was du sicher kannst, was noch offen ist und wie dein Prüfungsstoff eingeordnet wird.",
+	problem:
+		"Welche Antwort die Hürde zeigt und welches Missverständnis dahinterliegt.",
+	nextStep:
+		"Was du jetzt konkret tun solltest und wie es bis zur Prüfung in deine Zeit passt.",
+};
+
+function AnalyticsDetailContent({
+	analysis,
+	onOpenPlan,
+	onOpenSession,
+	section,
+}: {
+	analysis: ExamAnalysis;
+	onOpenPlan: () => void;
+	onOpenSession: (sessionId: Id<"learningPlanSessions">) => void;
+	section: AnalyticsDetailSection;
+}) {
+	if (section === "knowledge") {
+		return (
+			<View className="gap-9">
+				<ReadinessSummary analysis={analysis} />
+				<AbilitySection abilities={analysis.abilities} />
+				<ImprovementSection improvements={analysis.improvements} />
+				<TopicOverview topics={analysis.topics} />
+			</View>
+		);
+	}
+
+	if (section === "problem") {
+		return (
+			<ProblemSection
+				primaryProblem={analysis.primaryProblem}
+				secondaryProblems={analysis.secondaryProblems}
+			/>
+		);
+	}
+
+	return (
+		<View className="gap-9">
+			<RecommendationSection
+				analysis={analysis}
+				onOpenPlan={onOpenPlan}
+				onOpenSession={onOpenSession}
+			/>
+			<PreparationSummary analysis={analysis} onOpenPlan={onOpenPlan} />
+		</View>
+	);
+}
+
+export function AnalyticsDetailScreen({
+	planId,
+	section,
+}: {
+	planId?: Id<"learningPlans">;
+	section: AnalyticsDetailSection;
+}) {
+	const router = useRouter();
+	const analysis = useExamAnalysisQuery(planId);
+	const selectedPlanIdForRoute = analysis?.selectedPlan?.id ?? planId ?? null;
+	const selectedExamContext =
+		analysis?.hasData && analysis.selectedPlan
+			? formatGermanUiText(
+					`${analysis.selectedPlan.subject} · ${analysis.selectedPlan.examTypeLabel}`,
+				)
+			: null;
+
+	return (
+		<Screen>
+			<ThemedStatusBar />
+			<ScreenScroll
+				contentInsetAdjustmentBehavior="automatic"
+				includeTopSafeArea={false}
+				topPadding={24}
+				bottomPadding={72}
+				horizontalPadding={24}
+			>
+				{analysis === undefined ? (
+					<LoadingState />
+				) : analysis.hasData ? (
+					<View className="gap-8">
+						<View className="gap-2 px-1">
+							{selectedExamContext ? (
+								<Text className="font-poppins font-semibold text-body-4 text-primary-strong">
+									{selectedExamContext}
+								</Text>
+							) : null}
+							<Text
+								selectable
+								className="font-poppins text-body-2 text-secondary-text"
+							>
+								{DETAIL_DESCRIPTION[section]}
+							</Text>
+						</View>
+						<AnalyticsDetailContent
 							analysis={analysis}
 							onOpenPlan={() => {
 								if (selectedPlanIdForRoute) {
@@ -959,13 +1311,14 @@ export function AnalyticsScreen() {
 									);
 								}
 							}}
+							section={section}
 						/>
-					) : (
-						<EmptyState
-							onCreatePlan={() => router.push(ROUTES.createLearningPlan)}
-						/>
-					)}
-				</View>
+					</View>
+				) : (
+					<EmptyState
+						onCreatePlan={() => router.push(ROUTES.createLearningPlan)}
+					/>
+				)}
 			</ScreenScroll>
 		</Screen>
 	);

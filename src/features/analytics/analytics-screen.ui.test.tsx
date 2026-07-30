@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, within } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import { AnalyticsScreen } from "./analytics-screen";
+import type { Id } from "#convex/_generated/dataModel";
+import { AnalyticsDetailScreen, AnalyticsScreen } from "./analytics-screen";
 
 const mockPush = jest.fn();
 const mockUseQuery = jest.fn();
@@ -126,6 +127,8 @@ jest.mock("~/lib/theme", () => ({
 			primaryStrong: "#00A0E6",
 			secondaryText: "#697586",
 			text: "#151D30",
+			theorie: "#5856D6",
+			wrong: "#FF9500",
 		},
 	}),
 }));
@@ -266,13 +269,13 @@ describe("AnalyticsScreen", () => {
 
 	test("guides a new learner to create the first plan", async () => {
 		const screen = await render(<AnalyticsScreen />);
-		fireEvent.press(
+		await fireEvent.press(
 			screen.getByRole("button", { name: "Ersten Lernplan erstellen" }),
 		);
 		expect(mockPush).toHaveBeenCalledWith("/learning-plans/new");
 	});
 
-	test("turns one selected exam into an evidence-backed next step", async () => {
+	test("condenses one exam into three focused entry points", async () => {
 		mockUseQuery.mockReturnValue(examAnalysis);
 		const screen = await render(<AnalyticsScreen />);
 
@@ -282,12 +285,64 @@ describe("AnalyticsScreen", () => {
 		expect(
 			screen.getByText("Steigung noch präziser erklären."),
 		).toBeOnTheScreen();
-		expect(screen.getByText("„Änderung von y.“")).toBeOnTheScreen();
-		expect(screen.getByText("Dein nächster Lernschritt")).toBeOnTheScreen();
-		expect(screen.queryByText("Antwortqualität")).not.toBeOnTheScreen();
-		expect(screen.queryByText("Lernserie")).not.toBeOnTheScreen();
+		expect(screen.queryByText("„Änderung von y.“")).not.toBeOnTheScreen();
+		expect(screen.getByText("Dein nächster Schritt")).toBeOnTheScreen();
+		expect(screen.getByText("Dein Wissensstand")).toBeOnTheScreen();
+		expect(screen.getByText("Das bremst dich gerade")).toBeOnTheScreen();
+		expect(screen.queryByText("Dein Prüfungsstoff")).not.toBeOnTheScreen();
 
-		fireEvent.press(screen.getByRole("button", { name: "30 Minuten starten" }));
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Nächster Schritt: Steigung vollständig erklären Details öffnen",
+			}),
+		);
+		expect(mockPush).toHaveBeenCalledWith({
+			pathname: "/analyse/naechster-schritt",
+			params: { planId: "plan_1" },
+		});
+
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Lernhürde: Steigung Details öffnen",
+			}),
+		);
+		expect(mockPush).toHaveBeenCalledWith({
+			pathname: "/analyse/lernhuerde",
+			params: { planId: "plan_1" },
+		});
+
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Wissensstand: 1 sicher, 1 in Arbeit, 0 noch unklar. Details öffnen",
+			}),
+		);
+		expect(mockPush).toHaveBeenCalledWith({
+			pathname: "/analyse/wissensstand",
+			params: { planId: "plan_1" },
+		});
+	});
+
+	test("reveals evidence and starts the recommendation from focused pages", async () => {
+		mockUseQuery.mockReturnValue(examAnalysis);
+		const planId = "plan_1" as Id<"learningPlans">;
+		const problemScreen = await render(
+			<AnalyticsDetailScreen planId={planId} section="problem" />,
+		);
+
+		expect(problemScreen.getByText("„Änderung von y.“")).toBeOnTheScreen();
+		expect(
+			problemScreen.getByText(
+				"Die Steigung beschreibt die Änderung von y pro Änderung von x.",
+			),
+		).toBeOnTheScreen();
+
+		await problemScreen.unmount();
+		const nextStepScreen = await render(
+			<AnalyticsDetailScreen planId={planId} section="nextStep" />,
+		);
+		await fireEvent.press(
+			nextStepScreen.getByRole("button", { name: "30 Minuten starten" }),
+		);
 		expect(mockPush).toHaveBeenCalledWith(
 			"/learning-plans/plan_1/sessions/session_1",
 		);
