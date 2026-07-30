@@ -17,6 +17,7 @@ const planQuestionValidator = v.object({
 		),
 	),
 	options: v.optional(v.array(v.string())),
+	correctAnswer: v.optional(v.string()),
 	evaluationKeywords: v.optional(v.array(v.string())),
 });
 
@@ -124,6 +125,25 @@ export default defineSchema({
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
 		.index("by_clerkId", ["clerkId"])
 		.index("by_email", ["email"]),
+	accessEntitlements: defineTable({
+		ownerTokenIdentifier: v.string(),
+		userId: v.id("users"),
+		trialStartedAt: v.number(),
+		trialExpiresAt: v.number(),
+		trialReminderAt: v.number(),
+		trialTermsVersion: v.string(),
+		revenueCatEntitlementActive: v.optional(v.boolean()),
+		subscriptionExpiresAt: v.optional(v.number()),
+		subscriptionGraceExpiresAt: v.optional(v.number()),
+		subscriptionProductId: v.optional(v.string()),
+		subscriptionStore: v.optional(v.string()),
+		subscriptionWillRenew: v.optional(v.boolean()),
+		subscriptionBillingIssueDetectedAt: v.optional(v.number()),
+		subscriptionManagementUrl: v.optional(v.string()),
+		subscriptionVerifiedAt: v.optional(v.number()),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	}).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	validationUserStates: defineTable({
 		ownerTokenIdentifier: v.string(),
 		userId: v.id("users"),
@@ -233,6 +253,7 @@ export default defineSchema({
 			v.literal("dailyBriefing"),
 			v.literal("beforeEvent"),
 			v.literal("forgottenEvent"),
+			v.literal("trialEnding"),
 		),
 		title: v.string(),
 		body: v.string(),
@@ -278,6 +299,57 @@ export default defineSchema({
 			"ownerTokenIdentifier",
 			"dayKey",
 		]),
+	timetables: defineTable({
+		ownerTokenIdentifier: v.string(),
+		title: v.string(),
+		status: v.union(
+			v.literal("draft"),
+			v.literal("processing"),
+			v.literal("review"),
+			v.literal("active"),
+			v.literal("failed"),
+			v.literal("archived"),
+		),
+		errorMessage: v.optional(v.string()),
+		activatedAt: v.optional(v.number()),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+		.index("by_ownerTokenIdentifier_and_status", [
+			"ownerTokenIdentifier",
+			"status",
+		]),
+	timetableDocuments: defineTable({
+		ownerTokenIdentifier: v.string(),
+		timetableId: v.id("timetables"),
+		storageId: v.string(),
+		storageProvider: v.union(v.literal("convex"), v.literal("r2")),
+		fileName: v.string(),
+		fileType: v.string(),
+		fileSizeBytes: v.number(),
+		createdAt: v.number(),
+	})
+		.index("by_timetableId", ["timetableId"])
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+	timetableLessons: defineTable({
+		ownerTokenIdentifier: v.string(),
+		timetableId: v.id("timetables"),
+		dayOfWeek: v.number(),
+		subject: v.string(),
+		startTime: v.string(),
+		endTime: v.string(),
+		room: v.optional(v.string()),
+		sortOrder: v.number(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_timetableId_and_dayOfWeek_and_startTime", [
+			"timetableId",
+			"dayOfWeek",
+			"startTime",
+		])
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	learningPlans: defineTable({
 		ownerTokenIdentifier: v.string(),
 		subject: v.string(),
@@ -387,6 +459,7 @@ export default defineSchema({
 		expectedOutcome: v.string(),
 		contentGenerationStatus: v.optional(contentGenerationStatusValidator),
 		contentGenerationError: v.optional(v.string()),
+		contentGenerationStartedAt: v.optional(v.number()),
 		contentGeneratedAt: v.optional(v.number()),
 		completed: v.optional(v.boolean()),
 		executionStatus: v.optional(sessionExecutionStatusValidator),

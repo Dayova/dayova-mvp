@@ -32,7 +32,15 @@ import {
 	normalizeLearningTopics,
 } from "./learningTopicMap";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
-import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
+import {
+	getActiveTimetableLessons,
+	getTimetableDayOfWeek,
+	getTimetableLessonDuration,
+} from "./timetableOccurrences";
+import {
+	assertMeaningfulTeacherGuidance,
+	assertMeaningfulTopicDescription,
+} from "./topicDescriptionValidation";
 
 const MAX_LEARNING_TIMES = 50;
 // Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
@@ -87,6 +95,7 @@ const planQuestionValidator = v.object({
 		),
 	),
 	options: v.optional(v.array(v.string())),
+	correctAnswer: v.optional(v.string()),
 	evaluationKeywords: v.optional(v.array(v.string())),
 });
 
@@ -257,6 +266,52 @@ const publicAnswer = (answer: Doc<"learningPlanAnswers">): PublicAnswer => ({
 	questionId: answer.questionId,
 	answer: answer.answer,
 });
+
+const publicQuestion = (
+	question: NonNullable<Doc<"learningPlans">["knowledgeQuestions"]>[number],
+) => ({
+	id: question.id,
+	prompt: question.prompt,
+	targetInsight: question.targetInsight,
+	...(question.topicId !== undefined ? { topicId: question.topicId } : {}),
+	...(question.kind !== undefined ? { kind: question.kind } : {}),
+	...(question.responseKind !== undefined
+		? { responseKind: question.responseKind }
+		: {}),
+	...(question.options !== undefined ? { options: question.options } : {}),
+	...(question.evaluationKeywords !== undefined
+		? { evaluationKeywords: question.evaluationKeywords }
+		: {}),
+});
+
+const invalidateDerivedExamEvidence = async (
+	ctx: MutationCtx,
+	learningPlanId: Id<"learningPlans">,
+	updatedAt: number,
+	sourcePatch: Partial<
+		Pick<Doc<"learningPlans">, "teacherGuidance" | "topicDescription">
+	> = {},
+) => {
+	const answers = await ctx.db
+		.query("learningPlanAnswers")
+		.withIndex("by_learningPlanId", (q) =>
+			q.eq("learningPlanId", learningPlanId),
+		)
+		.take(20);
+	for (const answer of answers) {
+		await ctx.db.delete("learningPlanAnswers", answer._id);
+	}
+	await ctx.db.patch("learningPlans", learningPlanId, {
+		...sourcePatch,
+		knowledgeQuestions: undefined,
+		sourceSummary: undefined,
+		topicMap: undefined,
+		scopeConfirmedAt: undefined,
+		topicReadiness: undefined,
+		status: "draft",
+		updatedAt,
+	});
+};
 
 const publicSession = (
 	session: Doc<"learningPlanSessions">,
@@ -618,27 +673,16 @@ export const updateExamEvidence = mutation({
 		}
 
 		const teacherGuidance = args.teacherGuidance.trim();
+		if (teacherGuidance) {
+			assertMeaningfulTeacherGuidance(teacherGuidance);
+		}
 		if ((plan.teacherGuidance ?? "") === teacherGuidance) {
 			return plan.updatedAt;
 		}
-		const answers = await ctx.db
-			.query("learningPlanAnswers")
-			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
-			.take(20);
-		for (const answer of answers) {
-			await ctx.db.delete("learningPlanAnswers", answer._id);
-		}
 		const updatedAt = Date.now();
-		await ctx.db.patch("learningPlans", args.id, {
+		await invalidateDerivedExamEvidence(ctx, args.id, updatedAt, {
 			teacherGuidance: teacherGuidance || undefined,
 			topicDescription: teacherGuidance,
-			knowledgeQuestions: undefined,
-			sourceSummary: undefined,
-			topicMap: undefined,
-			scopeConfirmedAt: undefined,
-			topicReadiness: undefined,
-			status: "draft",
-			updatedAt,
 		});
 		return updatedAt;
 	},
@@ -774,7 +818,7 @@ export const getSnapshot = query({
 				teacherGuidance: plan.teacherGuidance,
 				notes: plan.notes,
 				status: plan.status,
-				knowledgeQuestions: plan.knowledgeQuestions ?? [],
+				knowledgeQuestions: (plan.knowledgeQuestions ?? []).map(publicQuestion),
 				sourceSummary: plan.sourceSummary,
 				topicMap: plan.topicMap ?? [],
 				scopeConfirmedAt: plan.scopeConfirmedAt,
@@ -1011,24 +1055,7 @@ export const storeUploadedDocument = internalMutation({
 		});
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (plan && plan.status !== "accepted" && args.sourceKind === "school") {
-			const answers = await ctx.db
-				.query("learningPlanAnswers")
-				.withIndex("by_learningPlanId", (q) =>
-					q.eq("learningPlanId", args.learningPlanId),
-				)
-				.take(20);
-			for (const answer of answers) {
-				await ctx.db.delete("learningPlanAnswers", answer._id);
-			}
-			await ctx.db.patch("learningPlans", args.learningPlanId, {
-				knowledgeQuestions: undefined,
-				sourceSummary: undefined,
-				topicMap: undefined,
-				scopeConfirmedAt: undefined,
-				topicReadiness: undefined,
-				status: "draft",
-				updatedAt: now,
-			});
+			await invalidateDerivedExamEvidence(ctx, args.learningPlanId, now);
 		}
 		return documentId;
 	},
@@ -1104,24 +1131,11 @@ export const removeDocument = mutation({
 			plan.status !== "accepted" &&
 			(document.sourceKind ?? "school") === "school"
 		) {
-			const answers = await ctx.db
-				.query("learningPlanAnswers")
-				.withIndex("by_learningPlanId", (q) =>
-					q.eq("learningPlanId", document.learningPlanId),
-				)
-				.take(20);
-			for (const answer of answers) {
-				await ctx.db.delete("learningPlanAnswers", answer._id);
-			}
-			await ctx.db.patch("learningPlans", document.learningPlanId, {
-				knowledgeQuestions: undefined,
-				sourceSummary: undefined,
-				topicMap: undefined,
-				scopeConfirmedAt: undefined,
-				topicReadiness: undefined,
-				status: "draft",
-				updatedAt: Date.now(),
-			});
+			await invalidateDerivedExamEvidence(
+				ctx,
+				document.learningPlanId,
+				Date.now(),
+			);
 		}
 		return document.learningPlanId;
 	},
@@ -1259,6 +1273,10 @@ export const getAiContext = internalQuery({
 			time?: string;
 			durationMinutes?: number;
 		}> = [];
+		const timetableLessons = await getActiveTimetableLessons(
+			ctx,
+			identity.tokenIdentifier,
+		);
 		const seenEntryIds = new Set<string>();
 		for (const dayKey of getLearningPlanCalendarDayKeys(plan.examDateKey)) {
 			for (const queryDayKey of getDayKeyQueryVariants(dayKey)) {
@@ -1280,6 +1298,16 @@ export const getAiContext = internalQuery({
 						durationMinutes: entry.durationMinutes,
 					});
 				}
+			}
+			const dayOfWeek = getTimetableDayOfWeek(dayKey);
+			for (const lesson of timetableLessons.filter(
+				(item) => item.dayOfWeek === dayOfWeek,
+			)) {
+				occupiedEntries.push({
+					dayKey,
+					time: lesson.startTime,
+					durationMinutes: getTimetableLessonDuration(lesson) ?? undefined,
+				});
 			}
 		}
 
@@ -1338,6 +1366,9 @@ export const storeKnowledgeQuestions = internalMutation({
 				...question,
 				prompt: normalizeGeneratedGermanText(question.prompt),
 				targetInsight: normalizeGeneratedGermanText(question.targetInsight),
+				correctAnswer: question.correctAnswer
+					? normalizeGeneratedGermanText(question.correctAnswer)
+					: undefined,
 			})),
 			sourceSummary: normalizeGeneratedGermanText(args.sourceSummary),
 			topicMap: normalizeLearningTopics(args.topics ?? []),
@@ -1359,6 +1390,9 @@ export const beginContentGeneration = internalMutation({
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if ((plan.topicMap ?? []).length > 0 && !plan.scopeConfirmedAt) {
+			throwUserFacingError("Bestätige zuerst den erkannten Prüfungsstoff.");
 		}
 		const now = Date.now();
 		if (
@@ -1535,15 +1569,50 @@ export const setSessionContentGenerationStatus = internalMutation({
 			throwUserFacingError("Lernsession nicht gefunden.");
 		}
 
+		const now = Date.now();
 		await ctx.db.patch("learningPlanSessions", args.sessionId, {
 			contentGenerationStatus: args.status,
 			contentGenerationError:
 				args.status === "failed"
 					? (args.errorMessage ?? "Die Fragen konnten nicht erstellt werden.")
 					: undefined,
-			contentGeneratedAt: args.status === "ready" ? Date.now() : undefined,
-			updatedAt: Date.now(),
+			contentGenerationStartedAt:
+				args.status === "generating" ? now : undefined,
+			contentGeneratedAt: args.status === "ready" ? now : undefined,
+			updatedAt: now,
 		});
+	},
+});
+
+export const claimSessionContentGeneration = internalMutation({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const session = await ctx.db.get("learningPlanSessions", args.sessionId);
+		if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernsession nicht gefunden.");
+		}
+
+		const now = Date.now();
+		if (
+			session.contentGenerationStatus === "generating" &&
+			session.contentGenerationStartedAt !== undefined &&
+			now - session.contentGenerationStartedAt < STALE_CONTENT_GENERATION_MS
+		) {
+			return false;
+		}
+
+		await ctx.db.patch("learningPlanSessions", args.sessionId, {
+			contentGenerationStatus: "generating",
+			contentGenerationError: undefined,
+			contentGenerationStartedAt: now,
+			contentGeneratedAt: undefined,
+			updatedAt: now,
+		});
+		return true;
 	},
 });
 

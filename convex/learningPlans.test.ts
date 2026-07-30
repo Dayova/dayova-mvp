@@ -296,6 +296,54 @@ test("commits only the next session while future session content stays adaptive"
 	).resolves.toBe("2026-06-01");
 });
 
+test("atomically claims one session content generation at a time", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		deferReadyUntilContent: true,
+		sessions: [
+			{
+				phase: "practice",
+				title: "Üben",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 15,
+				goal: "Gleichungen lösen.",
+				tasks: ["Löse zwei Gleichungen."],
+				expectedOutcome: "Du löst Gleichungen sicher.",
+			},
+		],
+	});
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const sessionId = snapshot?.sessions[0]?.id;
+	if (!sessionId) throw new Error("Expected generated session.");
+
+	await expect(
+		t.mutation(internal.learningPlans.claimSessionContentGeneration, {
+			sessionId,
+		}),
+	).resolves.toBe(true);
+	await expect(
+		t.mutation(internal.learningPlans.claimSessionContentGeneration, {
+			sessionId,
+		}),
+	).resolves.toBe(false);
+
+	vi.advanceTimersByTime(11 * 60_000);
+	await expect(
+		t.mutation(internal.learningPlans.claimSessionContentGeneration, {
+			sessionId,
+		}),
+	).resolves.toBe(true);
+});
+
 test("claims plan generation atomically and persists an empty failed claim for explicit retry", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
@@ -324,6 +372,50 @@ test("claims plan generation atomically and persists an empty failed claim for e
 		t.mutation(internal.learningPlans.beginContentGeneration, {
 			learningPlanId,
 			generationId: "generation-2",
+		}),
+	).resolves.toBeTypeOf("number");
+});
+
+test("requires scope confirmation before plan generation begins", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		sourceSummary: "Lineare Funktionen mit Steigung und Achsenabschnitt.",
+		topics: [
+			{
+				id: "steigung",
+				title: "Steigung",
+				learningGoal: "Die Steigung einer linearen Funktion berechnen.",
+				keywords: ["Steigung"],
+				priority: "high",
+			},
+		],
+		questions: [
+			{
+				id: "q1",
+				topicId: "steigung",
+				kind: "performance",
+				responseKind: "shortText",
+				prompt: "Wie berechnest du die Steigung einer Geraden?",
+				targetInsight: "Prüft die sichere Berechnung der Steigung.",
+				evaluationKeywords: ["Differenz", "Steigung"],
+			},
+		],
+	});
+
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "before-confirmation",
+		}),
+	).rejects.toThrow("Bestätige zuerst den erkannten Prüfungsstoff.");
+
+	await t.mutation(api.learningPlans.confirmScope, { learningPlanId });
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "after-confirmation",
 		}),
 	).resolves.toBeTypeOf("number");
 });
@@ -1139,6 +1231,18 @@ test("stores a reusable topic map with generated knowledge questions", async () 
 	]);
 });
 
+test("rejects vague teacher guidance when no school material defines scope", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await expect(
+		t.mutation(api.learningPlans.updateExamEvidence, {
+			id: learningPlanId,
+			teacherGuidance: "Mathe Arbeit",
+		}),
+	).rejects.toThrow("Beschreibe den Hinweis deiner Lehrkraft bitte konkreter.");
+});
+
 test("keeps school evidence authoritative while external material remains supportive", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
@@ -1177,6 +1281,7 @@ test("keeps school evidence authoritative while external material remains suppor
 				kind: "performance",
 				responseKind: "multipleChoice",
 				options: ["2", "3", "4"],
+				correctAnswer: "2",
 				prompt: "Welche Steigung hat die Gerade durch (0|1) und (2|5)?",
 				targetInsight: "Prüft die Berechnung der Steigung.",
 				evaluationKeywords: ["2"],
@@ -1193,6 +1298,9 @@ test("keeps school evidence authoritative while external material remains suppor
 		responseKind: "multipleChoice",
 		options: ["2", "3", "4"],
 	});
+	expect(confirmed?.plan.knowledgeQuestions[0]).not.toHaveProperty(
+		"correctAnswer",
+	);
 
 	await t.mutation(internal.learningPlans.storeUploadedDocument, {
 		ownerTokenIdentifier: user.tokenIdentifier,

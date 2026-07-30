@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import {
 	Bell,
+	CalendarDays,
 	Computer,
 	Logout,
 	Moon,
@@ -148,7 +149,7 @@ export default function SettingsScreen() {
 	return (
 		<Screen>
 			<ThemedStatusBar />
-			<ScreenScroll topPadding={118} bottomPadding={150} horizontalPadding={24}>
+			<ScreenScroll topPadding={118} bottomPadding={104} horizontalPadding={24}>
 				<View
 					style={{
 						minHeight: contentMinHeight,
@@ -165,6 +166,11 @@ export default function SettingsScreen() {
 							icon={Timer}
 							label="Lernzeiten"
 							onPress={() => router.push("/learning-times")}
+						/>
+						<SettingsRow
+							icon={CalendarDays}
+							label="Stundenplan"
+							onPress={() => router.push("/timetable")}
 						/>
 						<SettingsRow
 							icon={Palette}

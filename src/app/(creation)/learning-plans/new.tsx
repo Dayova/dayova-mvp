@@ -37,12 +37,12 @@ import {
 	parseDateKey,
 	retryOnceAfterAuthResume,
 } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { getValidationFileSizeBucket } from "~/lib/analytics";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
 const UPLOAD_TIMEOUT_MS = 45_000;
 const UPLOAD_COMPLETION_FAILURE_MESSAGE =
@@ -144,7 +144,7 @@ export default function NewLearningPlanScreen() {
 	const canContinueUpload = canWrite && !isBusy && !openingUploadAction;
 	const canContinueEvidence =
 		Boolean(learningPlanId) &&
-		(hasSchoolMaterial || teacherGuidance.trim().length >= 8) &&
+		(hasSchoolMaterial || teacherGuidance.trim().length >= 12) &&
 		canWrite &&
 		!isBusy;
 	const showLearningTimesWarning =

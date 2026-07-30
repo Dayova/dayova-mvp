@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Check, GraduationCap } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
@@ -146,13 +147,7 @@ export default function LearningPlanScopeScreen() {
 					</View>
 
 					{errorMessage ? (
-						<Text
-							selectable
-							accessibilityRole="alert"
-							className="mt-4 font-poppins text-body-4 text-destructive"
-						>
-							{errorMessage}
-						</Text>
+						<ErrorMessage className="mt-4">{errorMessage}</ErrorMessage>
 					) : null}
 
 					<View className="mt-auto gap-3 pt-8">

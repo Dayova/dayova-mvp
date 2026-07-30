@@ -287,6 +287,7 @@ const questionsSchema = z
 					),
 					4,
 				),
+				correctOptionIndex: z.number().int().min(0).max(3).nullable(),
 				prompt: germanTextSchema(
 					12,
 					"One short, direct German diagnostic question the student can answer without deciphering nested instructions. Ask one thing only and never reference files or uploads.",
@@ -511,6 +512,7 @@ type LearningPlanAiContext = {
 			kind?: "performance" | "confidence";
 			responseKind?: "multipleChoice" | "shortText" | "longText";
 			options?: string[];
+			correctAnswer?: string;
 			evaluationKeywords?: string[];
 		}>;
 		topicMap?: Array<{
@@ -2458,19 +2460,24 @@ const generateTrackedSessionContentBatch = async (
 const generateTrackedSessionContent = async (
 	ctx: ActionCtx,
 	sessionId: Id<"learningPlanSessions">,
-	preparedDocuments?: PreparedModelDocuments,
-	includePriorContent = true,
+	options: {
+		preparedDocuments?: PreparedModelDocuments;
+		includePriorContent?: boolean;
+		generationStatusClaimed?: boolean;
+	} = {},
 ) => {
-	await ctx.runMutation(
-		internal.learningPlans.setSessionContentGenerationStatus,
-		{ sessionId, status: "generating" },
-	);
+	if (!options.generationStatusClaimed) {
+		await ctx.runMutation(
+			internal.learningPlans.setSessionContentGenerationStatus,
+			{ sessionId, status: "generating" },
+		);
+	}
 	try {
 		const result = await generateSessionContent(
 			ctx,
 			sessionId,
-			preparedDocuments,
-			includePriorContent,
+			options.preparedDocuments,
+			options.includePriorContent ?? true,
 		);
 		await ctx.runMutation(
 			internal.learningPlans.setSessionContentGenerationStatus,
@@ -2526,7 +2533,20 @@ export const ensureSessionContent = action({
 		) {
 			return { itemCount: context.existingItemCount };
 		}
-		const generated = await generateTrackedSessionContent(ctx, args.sessionId);
+		const claimed: boolean = await ctx.runMutation(
+			internal.learningPlans.claimSessionContentGeneration,
+			{ sessionId: args.sessionId },
+		);
+		if (!claimed) {
+			const latest: LearningSessionContentAiContext = await ctx.runQuery(
+				internal.learningSessionContent.getSessionGenerationContext,
+				{ sessionId: args.sessionId },
+			);
+			return { itemCount: latest.existingItemCount };
+		}
+		const generated = await generateTrackedSessionContent(ctx, args.sessionId, {
+			generationStatusClaimed: true,
+		});
 		await ctx.runMutation(internal.learningPlans.finalizeContentGeneration, {
 			learningPlanId: context.session.learningPlanId,
 		});
@@ -2685,6 +2705,7 @@ Wähle für jede Frage das Antwortformat mit der geringsten Reibung, das noch be
 - multipleChoice für klare fachliche Unterscheidungen und alle confidence-Fragen; liefere dann 3 bis 4 kurze plausible Optionen.
 - shortText für Zahlen, Formeln, Begriffe oder Antworten bis ungefähr einem Satz; liefere dann options: [].
 - longText nur wenn ein Lösungsweg oder eine Begründung wirklich beobachtet werden muss; liefere dann options: [].
+Liefere für jede performance-multipleChoice-Frage den nullbasierten correctOptionIndex der eindeutig richtigen Option. Für confidence-Fragen sowie shortText und longText ist correctOptionIndex null.
 Verwende bei 5 Fragen mindestens 2 Multiple-Choice-Fragen und höchstens 2 longText-Fragen. "Weiß ich nicht" wird separat von der App angeboten und gehört nicht in options.
 Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.`,
 			},
@@ -2722,14 +2743,24 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 			});
 
 			const questions = result.output.questions.map((question, index) => {
-				const generatedOptions = question.options
-					.map((option) => normalizeAiGeneratedGermanText(option))
-					.filter(Boolean);
+				const normalizedOptions = question.options.map((option) =>
+					normalizeAiGeneratedGermanText(option),
+				);
+				const generatedOptions = normalizedOptions.filter(Boolean);
+				const generatedCorrectAnswer =
+					question.correctOptionIndex === null
+						? undefined
+						: normalizedOptions[question.correctOptionIndex] || undefined;
+				const hasValidPerformanceAnswer =
+					question.kind !== "performance" ||
+					(question.correctOptionIndex !== null &&
+						Boolean(generatedCorrectAnswer) &&
+						generatedOptions.includes(generatedCorrectAnswer ?? ""));
 				const responseKind =
 					question.kind === "confidence"
 						? "multipleChoice"
 						: question.responseKind === "multipleChoice" &&
-								generatedOptions.length < 2
+								(generatedOptions.length < 2 || !hasValidPerformanceAnswer)
 							? "shortText"
 							: question.responseKind;
 				const options =
@@ -2745,6 +2776,10 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 					kind: question.kind,
 					responseKind,
 					options,
+					correctAnswer:
+						responseKind === "multipleChoice" && question.kind === "performance"
+							? generatedCorrectAnswer
+							: undefined,
 					prompt: normalizeAiGeneratedGermanText(question.prompt),
 					targetInsight: normalizeAiGeneratedGermanText(question.targetInsight),
 					evaluationKeywords: question.evaluationKeywords.map((keyword) =>
