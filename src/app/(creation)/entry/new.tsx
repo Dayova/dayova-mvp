@@ -68,7 +68,7 @@ import { useLearningPlanCreationProgress } from "~/features/learning-plans/creat
 import { LearningAvailabilityStep } from "~/features/learning-plans/learning-availability-step";
 import {
 	calculateAvailableStudyMinutes,
-	shouldRequestLearningTimeBeforeExam,
+	shouldShowLearningTimeValidation,
 } from "~/features/learning-plans/plan-workload";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
@@ -594,11 +594,9 @@ export default function NewEntryScreen() {
 	const continueFromExamDate = () => {
 		if (learningTimes === undefined && isFutureExam) return;
 		if (
-			learningTimes &&
-			shouldRequestLearningTimeBeforeExam({
+			shouldShowLearningTimeValidation({
 				fromDateKey: todayDayKey,
 				examDateKey: examDayKey,
-				learningTimes,
 			})
 		) {
 			setDidShowLearningAvailability(true);
