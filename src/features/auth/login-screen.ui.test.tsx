@@ -23,6 +23,20 @@ const mockLogin = jest.fn<
 		{ status: "complete" } | { status: "needs_verification"; message: string }
 	>
 >(async () => ({ status: "complete" }));
+const mockRegister = jest.fn<
+	(input: {
+		birthDate: string;
+		email: string;
+		grade: string;
+		name: string;
+		password: string;
+		schoolType?: string;
+		state: string;
+	}) => Promise<{ status: "needs_verification"; message: string }>
+>(async () => ({
+	status: "needs_verification",
+	message: "Bestätige deine E-Mail-Adresse.",
+}));
 const mockCancelPasswordReset = jest.fn<() => Promise<void>>(
 	async () => undefined,
 );
@@ -192,6 +206,7 @@ jest.mock("~/context/AuthContext", () => ({
 		isLoading: false,
 		login: mockLogin,
 		pendingVerification: null,
+		register: mockRegister,
 		resendPasswordResetCode: mockResendPasswordResetCode,
 		resendVerification: jest.fn(),
 		startPasswordReset: mockStartPasswordReset,
@@ -478,6 +493,11 @@ describe("CreationLoaderScreen", () => {
 
 describe("OnboardingScreen", () => {
 	beforeEach(() => {
+		mockRegister.mockReset();
+		mockRegister.mockResolvedValue({
+			status: "needs_verification",
+			message: "Bestätige deine E-Mail-Adresse.",
+		});
 		mockRouter.replace.mockReset();
 		mockSetOnboardingAnswer.mockReset();
 		mockOnboarding.answers.state = "Sachsen";
@@ -558,5 +578,21 @@ describe("OnboardingScreen", () => {
 			"birthDate",
 			expectedDefaultBirthDate,
 		);
+	});
+
+	test("keeps verification progress aligned with the profile steps", async () => {
+		const screen = await render(<OnboardingScreen initialStepId="password" />);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Konto erstellen" }),
+		);
+		expect(
+			await screen.findByRole("header", { name: "E-Mail bestätigen" }),
+		).toBeOnTheScreen();
+
+		expect(
+			screen.getByTestId("onboarding-verification-scroll").props
+				.contentInsetAdjustmentBehavior,
+		).toBe("never");
 	});
 });
