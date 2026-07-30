@@ -103,7 +103,8 @@ const seedAnalyticsData = async () => {
 			itemId,
 			answerText: "Änderung von y.",
 			rating: "partiallyCorrect",
-			feedback: "Fast richtig.",
+			feedback:
+				"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
 			perfectAnswer: "Änderung von y pro Änderung von x.",
 			timeSpentSeconds: 45,
 			createdAt: Date.UTC(2026, 6, 28, 13, 30),
@@ -168,8 +169,138 @@ test("returns private, actionable learning analytics for the selected period", a
 	});
 });
 
+test("returns a selected exam analysis grounded in topics, answers, and scheduled work", async () => {
+	const { t, learningPlanId, openSessionId } = await seedAnalyticsData();
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			targetStudyMinutes: 90,
+			topicMap: [
+				{
+					id: "steigung",
+					title: "Steigung erklären",
+					learningGoal: "Du kannst die Steigung vollständig erklären.",
+					keywords: ["Steigung", "Änderung"],
+					priority: "high",
+				},
+				{
+					id: "achsenschnitt",
+					title: "Achsenschnittpunkte bestimmen",
+					learningGoal: "Du kannst Achsenschnittpunkte sicher bestimmen.",
+					keywords: ["Achse", "Schnittpunkt"],
+					priority: "medium",
+				},
+			],
+			topicReadiness: [
+				{ topicId: "steigung", status: "developing" },
+				{ topicId: "achsenschnitt", status: "secure" },
+			],
+		});
+		const recoveryItem = await ctx.db
+			.query("learningSessionContentItems")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
+			)
+			.first();
+		if (!recoveryItem) throw new Error("Expected seeded content item");
+		await ctx.db.patch("learningSessionContentItems", recoveryItem._id, {
+			topicId: "steigung",
+		});
+		const sessionAnalysis = await ctx.db
+			.query("learningSessionAnalyses")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
+			)
+			.first();
+		if (!sessionAnalysis) throw new Error("Expected seeded session analysis");
+		await ctx.db.patch("learningSessionAnalyses", sessionAnalysis._id, {
+			strengths: [
+				"Du erkennst lineare Zusammenhänge.",
+				"Du hast erste Ansätze gezeigt und weißt, wo du ansetzen kannst.",
+			],
+		});
+	});
+
+	const analysis = await t.query(api.userAnalytics.getExamAnalysis, {
+		learningPlanId,
+		todayKey: "2026-07-28",
+	});
+
+	expect(analysis).toMatchObject({
+		hasData: true,
+		preliminary: false,
+		selectedPlan: {
+			id: learningPlanId,
+			subject: "Mathe",
+			examTypeLabel: "Klausur",
+			examDateLabel: "5. August 2026",
+			daysRemaining: 8,
+		},
+		readiness: {
+			secure: 1,
+			developing: 1,
+			unknown: 0,
+		},
+		abilities: [
+			{
+				statement: "Du erkennst lineare Zusammenhänge.",
+				evidenceCount: 1,
+			},
+		],
+		primaryProblem: {
+			diagnosisType: "applicationError",
+			title: "Steigung",
+			observation:
+				"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
+			location: "Erkläre die Steigung.",
+			explanation: "Die Steigung beschreibt die Änderung.",
+			evidenceExcerpt: "Änderung von y.",
+			evidenceCount: 1,
+			evidenceLabel: "Einmal beobachtet",
+			topicId: "steigung",
+		},
+		recommendation: {
+			sessionId: openSessionId,
+			title: "Generalprobe",
+			goal: "Sicher anwenden.",
+			methods: ["Aufgaben lösen"],
+			durationMinutes: 30,
+			verification: "Du kannst die Aufgabe lösen.",
+		},
+		preparation: {
+			remainingDays: 8,
+			remainingSessions: 1,
+			remainingMinutes: 30,
+			nextSession: {
+				id: openSessionId,
+				dateKey: "2026-07-30",
+				startTime: "16:00",
+				durationMinutes: 30,
+			},
+		},
+	});
+	expect(analysis.topics).toEqual([
+		expect.objectContaining({
+			id: "steigung",
+			status: "developing",
+			priority: "high",
+		}),
+		expect.objectContaining({
+			id: "achsenschnitt",
+			status: "secure",
+			priority: "medium",
+		}),
+	]);
+	await expect(
+		t.query(api.userAnalytics.getExamAnalysis, {
+			todayKey: "2026-07-28",
+		}),
+	).resolves.toMatchObject({
+		selectedPlan: { id: learningPlanId },
+	});
+});
+
 test("does not expose another learner's analytics", async () => {
-	const { backend } = await seedAnalyticsData();
+	const { backend, learningPlanId } = await seedAnalyticsData();
 	const otherUser = backend.withIdentity({
 		tokenIdentifier: "test:other-user",
 	});
@@ -188,6 +319,20 @@ test("does not expose another learner's analytics", async () => {
 			totalSessions: 0,
 		},
 	});
+	await expect(
+		otherUser.query(api.userAnalytics.getExamAnalysis, {
+			todayKey: "2026-07-28",
+		}),
+	).resolves.toMatchObject({
+		hasData: false,
+		selectedPlan: null,
+	});
+	await expect(
+		otherUser.query(api.userAnalytics.getExamAnalysis, {
+			learningPlanId,
+			todayKey: "2026-07-28",
+		}),
+	).rejects.toThrow("Lernplan nicht gefunden.");
 });
 
 test("keeps future outcomes out of the selected reporting period", async () => {

@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
+import type { ReactNode } from "react";
 import { AnalyticsScreen } from "./analytics-screen";
 
 const mockPush = jest.fn();
@@ -18,7 +18,11 @@ jest.mock("convex/react", () => ({
 }));
 
 jest.mock("#convex/_generated/api", () => ({
-	api: { userAnalytics: { getOverview: "getOverview" } },
+	api: {
+		userAnalytics: {
+			getExamAnalysis: "getExamAnalysis",
+		},
+	},
 }));
 
 jest.mock("~/context/AuthContext", () => ({
@@ -66,74 +70,84 @@ jest.mock("~/components/ui/themed-status-bar", () => ({
 	ThemedStatusBar: () => null,
 }));
 
+jest.mock("~/components/ui/select-sheet", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const Native =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return {
+		SelectSheet: ({
+			visible,
+			options,
+			onSelect,
+			formatOptionLabel,
+		}: {
+			visible: boolean;
+			options: string[];
+			onSelect: (option: string) => void;
+			formatOptionLabel: (option: string) => string;
+		}) =>
+			visible
+				? React.createElement(
+						Native.View,
+						null,
+						options.map((option) =>
+							React.createElement(
+								Native.Pressable,
+								{
+									key: option,
+									accessibilityRole: "radio",
+									accessibilityLabel: formatOptionLabel(option),
+									onPress: () => onSelect(option),
+								},
+								React.createElement(
+									Native.Text,
+									null,
+									formatOptionLabel(option),
+								),
+							),
+						),
+					)
+				: null,
+	};
+});
+
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: {
-			border: "#DCE6EE",
-			info: "#C9A100",
-			light2: "#F3F6FA",
 			primaryStrong: "#00A0E6",
-			success: "#34C759",
-			text: "#1A1A1A",
-			wrong: "#FF9500",
+			secondaryText: "#697586",
 		},
 	}),
 }));
 
-const emptyOverview = {
+const emptyAnalysis = {
 	hasData: false,
-	historyLimited: false,
-	overall: {
-		acceptedPlans: 0,
-		finishedPlans: 0,
-		completedSessions: 0,
-		totalSessions: 0,
-		progressPercent: 0,
-	},
-	period: {
-		completedSessions: 0,
-		activeStudyMinutes: 0,
-		recoveredSessions: 0,
-	},
-	currentStreakDays: 0,
-	activity: [],
+	preliminary: true,
 	plans: [],
-	nextSession: null,
-	knowledge: {
-		answeredItems: 0,
-		correct: 0,
-		partiallyCorrect: 0,
-		notCorrect: 0,
-		scorePercent: null,
-		strengths: [],
-		gaps: [],
-		recommendation: null,
+	selectedPlan: null,
+	readiness: {
+		secure: 0,
+		developing: 0,
+		unknown: 0,
 	},
+	abilities: [],
+	improvements: [],
+	primaryProblem: null,
+	secondaryProblems: [],
+	topics: [],
+	recommendation: null,
+	preparation: {
+		remainingDays: 0,
+		remainingSessions: 0,
+		remainingMinutes: 0,
+		nextSession: null,
+	},
+	updatedAt: null,
 };
 
-const populatedOverview = {
-	...emptyOverview,
+const examAnalysis = {
 	hasData: true,
-	overall: {
-		acceptedPlans: 1,
-		finishedPlans: 0,
-		completedSessions: 2,
-		totalSessions: 3,
-		progressPercent: 67,
-	},
-	period: {
-		completedSessions: 2,
-		activeStudyMinutes: 30,
-		recoveredSessions: 1,
-	},
-	currentStreakDays: 2,
-	activity: [
-		{
-			dayKey: "2026-07-28",
-			completedSessions: 1,
-			activeStudyMinutes: 10,
-		},
-	],
+	preliminary: false,
 	plans: [
 		{
 			id: "plan_1",
@@ -141,43 +155,103 @@ const populatedOverview = {
 			examTypeLabel: "Klausur",
 			examDateKey: "2026-08-05",
 			examDateLabel: "5. August 2026",
-			progressPercent: 67,
-			completedSessions: 2,
-			totalSessions: 3,
+		},
+		{
+			id: "plan_2",
+			subject: "Englisch",
+			examTypeLabel: "Klausur",
+			examDateKey: "2026-08-12",
+			examDateLabel: "12. August 2026",
 		},
 	],
-	nextSession: {
-		id: "session_1",
-		learningPlanId: "plan_1",
+	selectedPlan: {
+		id: "plan_1",
 		subject: "Mathe",
+		examTypeLabel: "Klausur",
+		examDateKey: "2026-08-05",
+		examDateLabel: "5. August 2026",
+		daysRemaining: 8,
+	},
+	readiness: {
+		secure: 1,
+		developing: 1,
+		unknown: 0,
+	},
+	abilities: [
+		{
+			statement: "Du erkennst lineare Zusammenhänge.",
+			evidenceCount: 2,
+			topicId: "steigung",
+		},
+	],
+	improvements: [],
+	primaryProblem: {
+		id: "problem_1",
+		diagnosisType: "applicationError",
+		title: "Steigung",
+		observation: "Steigung noch präziser erklären.",
+		location: "Erkläre die Steigung.",
+		explanation:
+			"Die Steigung beschreibt die Änderung von y pro Änderung von x.",
+		evidenceExcerpt: "Änderung von y.",
+		evidenceCount: 1,
+		evidenceLabel: "Einmal beobachtet",
+		topicId: "steigung",
+	},
+	secondaryProblems: [],
+	topics: [
+		{
+			id: "steigung",
+			title: "Steigung erklären",
+			learningGoal: "Du kannst die Steigung vollständig erklären.",
+			priority: "high",
+			status: "developing",
+		},
+		{
+			id: "achsenschnitt",
+			title: "Achsenschnittpunkte bestimmen",
+			learningGoal: "Du kannst Achsenschnittpunkte sicher bestimmen.",
+			priority: "medium",
+			status: "secure",
+		},
+	],
+	recommendation: {
+		sessionId: "session_1",
 		title: "Generalprobe",
-		dateKey: "2026-07-30",
+		goal: "Steigung vollständig erklären",
+		methods: ["Ein Beispiel ansehen", "Zwei Aufgaben lösen"],
+		durationMinutes: 30,
+		verification: "Du erklärst die Änderung von y pro Änderung von x.",
+		reason: "Festige zuerst die Bedeutung der Steigung.",
 	},
-	knowledge: {
-		answeredItems: 1,
-		correct: 0,
-		partiallyCorrect: 1,
-		notCorrect: 0,
-		scorePercent: 50,
-		strengths: ["Du erkennst lineare Zusammenhänge."],
-		gaps: ["Steigung noch präziser erklären."],
-		recommendation: "Übe eine weitere Steigungsaufgabe.",
+	preparation: {
+		remainingDays: 8,
+		remainingSessions: 1,
+		remainingMinutes: 30,
+		nextSession: {
+			id: "session_1",
+			dateKey: "2026-07-30",
+			dateLabel: "30. Juli 2026",
+			startTime: "16:00",
+			durationMinutes: 30,
+		},
 	},
+	updatedAt: Date.UTC(2026, 6, 28, 14),
 };
 
 describe("AnalyticsScreen", () => {
 	beforeEach(() => {
 		mockPush.mockReset();
 		mockUseQuery.mockReset();
-		mockUseQuery.mockReturnValue(emptyOverview);
+		mockUseQuery.mockReturnValue(emptyAnalysis);
 		mockIsConvexAuthenticated = true;
 		mockUser = { clerkId: "user_123" };
 	});
 
-	test("skips private analytics until both auth layers are ready", async () => {
+	test("skips private exam analysis until both auth layers are ready", async () => {
 		mockIsConvexAuthenticated = false;
 		await render(<AnalyticsScreen />);
-		expect(mockUseQuery).toHaveBeenCalledWith("getOverview", "skip");
+		expect(mockUseQuery).toHaveBeenCalledWith("getExamAnalysis", "skip");
 	});
 
 	test("guides a new learner to create the first plan", async () => {
@@ -188,33 +262,45 @@ describe("AnalyticsScreen", () => {
 		expect(mockPush).toHaveBeenCalledWith("/learning-plans/new");
 	});
 
-	test("shows real progress and refreshes period-sensitive data", async () => {
-		mockUseQuery.mockReturnValue(populatedOverview);
+	test("turns one selected exam into an evidence-backed next step", async () => {
+		mockUseQuery.mockReturnValue(examAnalysis);
 		const screen = await render(<AnalyticsScreen />);
 
-		expect(screen.getAllByText("67%")).toHaveLength(2);
-		expect(screen.getByText("30 min")).toBeOnTheScreen();
-		expect(screen.getByText("Antwortqualität")).toBeOnTheScreen();
 		expect(
-			screen.getByText(
-				"Du hast einen verschobenen Lernblock erfolgreich nachgeholt.",
-			),
+			screen.getByText("Du erkennst lineare Zusammenhänge."),
 		).toBeOnTheScreen();
+		expect(
+			screen.getByText("Steigung noch präziser erklären."),
+		).toBeOnTheScreen();
+		expect(screen.getByText("„Änderung von y.“")).toBeOnTheScreen();
+		expect(screen.getByText("Dein nächster Lernschritt")).toBeOnTheScreen();
+		expect(screen.queryByText("Antwortqualität")).not.toBeOnTheScreen();
+		expect(screen.queryByText("Lernserie")).not.toBeOnTheScreen();
 
-		await fireEvent.press(screen.getByRole("tab", { name: "30 Tage" }));
-		expect(mockUseQuery).toHaveBeenLastCalledWith(
-			"getOverview",
-			expect.objectContaining({ period: "month" }),
+		fireEvent.press(screen.getByRole("button", { name: "30 Minuten starten" }));
+		expect(mockPush).toHaveBeenCalledWith(
+			"/learning-plans/plan_1/sessions/session_1",
 		);
 	});
 
-	test("opens the next learning session from the primary action", async () => {
-		mockUseQuery.mockReturnValue(populatedOverview);
+	test("requests a newly selected exam without mixing its evidence", async () => {
+		mockUseQuery.mockReturnValue(examAnalysis);
 		const screen = await render(<AnalyticsScreen />);
 
-		fireEvent.press(screen.getByRole("button", { name: "Mathe weiterlernen" }));
-		expect(mockPush).toHaveBeenCalledWith(
-			"/learning-plans/plan_1/sessions/session_1",
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Prüfung auswählen. Ausgewählt: Mathe · Klausur · 5. August 2026",
+			}),
+		);
+		await fireEvent.press(
+			screen.getByRole("radio", {
+				name: "Englisch · Klausur · 12. August 2026",
+			}),
+		);
+
+		expect(mockUseQuery).toHaveBeenLastCalledWith(
+			"getExamAnalysis",
+			expect.objectContaining({ learningPlanId: "plan_2" }),
 		);
 	});
 });
