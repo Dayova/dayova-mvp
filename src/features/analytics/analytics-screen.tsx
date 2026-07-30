@@ -1,171 +1,137 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import {
-	Pressable,
-	useWindowDimensions,
-	View,
-	type ViewProps,
-} from "react-native";
-import Svg, { Circle } from "react-native-svg";
+import { type ReactNode, useMemo, useState } from "react";
+import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
+import type { Id } from "#convex/_generated/dataModel";
 import { NotificationButton } from "~/components/notification-button";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import {
+	Analytics,
+	ArrowDataTransferHorizontal,
+	ArrowRight,
 	ArrowUpRight,
+	CalendarDays,
 	Check,
 	CircleAlert,
-	Fire,
-	Route2,
+	Info,
 	Sparkles,
 	Time04,
 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { SelectSheet } from "~/components/ui/select-sheet";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
-import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
+import { getDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
-type AnalyticsPeriod = "week" | "month" | "all";
-type AnalyticsOverview = NonNullable<
-	ReturnType<typeof useQuery<typeof api.userAnalytics.getOverview>>
+type ExamAnalysis = NonNullable<
+	ReturnType<typeof useQuery<typeof api.userAnalytics.getExamAnalysis>>
 >;
+type ExamProblem = NonNullable<ExamAnalysis["primaryProblem"]>;
+type TopicStatus = ExamAnalysis["topics"][number]["status"];
 
-const PERIOD_OPTIONS: Array<{
-	value: AnalyticsPeriod;
-	label: string;
-}> = [
-	{ value: "week", label: "7 Tage" },
-	{ value: "month", label: "30 Tage" },
-	{ value: "all", label: "Gesamt" },
-];
-
-const formatMinutes = (minutes: number) => {
-	if (minutes < 60) return `${minutes} min`;
-	const hours = Math.floor(minutes / 60);
-	const remainder = minutes % 60;
-	return remainder > 0 ? `${hours} h ${remainder} min` : `${hours} h`;
+const DIAGNOSIS_COPY: Record<
+	ExamProblem["diagnosisType"],
+	{ label: string; surfaceClassName: string; textClassName: string }
+> = {
+	knowledgeGap: {
+		label: "Wissenslücke",
+		surfaceClassName: "bg-wrong-subtle",
+		textClassName: "text-wrong",
+	},
+	misconception: {
+		label: "Missverständnis",
+		surfaceClassName: "bg-wrong-subtle",
+		textClassName: "text-wrong",
+	},
+	applicationError: {
+		label: "Anwendungsfehler",
+		surfaceClassName: "bg-info-subtle",
+		textClassName: "text-info",
+	},
+	unclear: {
+		label: "Noch unklar",
+		surfaceClassName: "bg-system-subtle",
+		textClassName: "text-primary-strong",
+	},
 };
 
-const formatCompactDay = (dayKey: string) => {
-	const date = parseDayKey(dayKey);
-	if (!date) return dayKey;
-	return new Intl.DateTimeFormat("de-DE", {
-		day: "2-digit",
-		month: "2-digit",
-	}).format(date);
+const TOPIC_STATUS_COPY: Record<
+	TopicStatus,
+	{
+		label: string;
+		dotClassName: string;
+		pillClassName: string;
+		textClassName: string;
+	}
+> = {
+	secure: {
+		label: "Sicher",
+		dotClassName: "bg-success",
+		pillClassName: "bg-success-subtle",
+		textClassName: "text-success",
+	},
+	developing: {
+		label: "In Arbeit",
+		dotClassName: "bg-info",
+		pillClassName: "bg-info-subtle",
+		textClassName: "text-info",
+	},
+	unknown: {
+		label: "Noch unklar",
+		dotClassName: "bg-primary",
+		pillClassName: "bg-system-subtle",
+		textClassName: "text-primary-strong",
+	},
 };
 
-function PeriodSelector({
-	period,
-	onChange,
-}: {
-	period: AnalyticsPeriod;
-	onChange: (period: AnalyticsPeriod) => void;
-}) {
-	return (
-		<View
-			accessibilityRole="tablist"
-			className="flex-row rounded-full border border-border bg-card p-1"
-		>
-			{PERIOD_OPTIONS.map((option) => {
-				const selected = option.value === period;
-				return (
-					<Pressable
-						key={option.value}
-						accessibilityRole="tab"
-						accessibilityState={{ selected }}
-						className={cn(
-							"h-11 flex-1 items-center justify-center rounded-full",
-							selected ? "bg-button-neutral" : "bg-transparent",
-						)}
-						onPress={() => onChange(option.value)}
-					>
-						<Text
-							className={cn(
-								"font-poppins font-semibold text-body-4",
-								selected ? "text-background" : "text-secondary-text",
-							)}
-						>
-							{option.label}
-						</Text>
-					</Pressable>
-				);
-			})}
-		</View>
+const PRIORITY_COPY = {
+	high: "Hohe Prüfungsrelevanz",
+	medium: "Mittlere Prüfungsrelevanz",
+	low: "Ergänzendes Thema",
+} as const;
+
+const formatExamLabel = (plan: ExamAnalysis["plans"][number]) =>
+	formatGermanUiText(
+		`${plan.subject} · ${plan.examTypeLabel} · ${plan.examDateLabel}`,
 	);
-}
 
-function ProgressRing({
-	progressPercent,
-	size = 112,
-}: {
-	progressPercent: number;
-	size?: number;
-}) {
-	const { colors } = useDayovaTheme();
-	const strokeWidth = 9;
-	const radius = (size - strokeWidth) / 2;
-	const circumference = 2 * Math.PI * radius;
-	const progress = Math.max(0, Math.min(progressPercent, 100));
+const formatRemainingDays = (days: number) => {
+	if (days < 0) return "Prüfung vorbei";
+	if (days === 0) return "Prüfung heute";
+	if (days === 1) return "Noch 1 Tag";
+	return `Noch ${days} Tage`;
+};
 
-	return (
-		<View
-			accessible
-			accessibilityLabel="Fortschritt deiner Lernpläne"
-			accessibilityRole="progressbar"
-			accessibilityValue={{
-				min: 0,
-				max: 100,
-				now: progress,
-				text: `${progress} Prozent`,
-			}}
-			className="items-center justify-center"
-			style={{ height: size, width: size }}
-		>
-			<Svg
-				accessible={false}
-				accessibilityElementsHidden
-				width={size}
-				height={size}
-				style={{ position: "absolute" }}
-			>
-				<Circle
-					cx={size / 2}
-					cy={size / 2}
-					r={radius}
-					stroke={colors.light2}
-					strokeWidth={strokeWidth}
-					fill="none"
-				/>
-				<Circle
-					cx={size / 2}
-					cy={size / 2}
-					r={radius}
-					stroke={colors.primaryStrong}
-					strokeWidth={strokeWidth}
-					fill="none"
-					strokeLinecap="round"
-					strokeDasharray={`${circumference} ${circumference}`}
-					strokeDashoffset={circumference - (progress / 100) * circumference}
-					transform={`rotate(-90 ${size / 2} ${size / 2})`}
-				/>
-			</Svg>
-			<Text
-				selectable
-				className="font-poppins font-semibold text-heading-2 text-text"
-				style={{ fontVariant: ["tabular-nums"] }}
-			>
-				{`${progress}%`}
-			</Text>
-		</View>
+// borderCurve is native geometry and has no NativeWind utility.
+const continuousCardStyle = { borderCurve: "continuous" } as const;
+
+function useExamAnalysisQuery(
+	selectedPlanId: Id<"learningPlans"> | null | undefined,
+) {
+	const { user } = useAuthSession();
+	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const today = useCurrentLocalDay();
+	const queryArgs = useMemo(
+		() => ({
+			todayKey: getDayKey(today),
+			...(selectedPlanId ? { learningPlanId: selectedPlanId } : {}),
+		}),
+		[selectedPlanId, today],
+	);
+
+	return useQuery(
+		api.userAnalytics.getExamAnalysis,
+		user && isConvexAuthenticated ? queryArgs : "skip",
 	);
 }
 
@@ -178,7 +144,10 @@ function SectionHeading({
 }) {
 	return (
 		<View className="gap-1">
-			<Text className="font-poppins font-semibold text-body-1 text-text">
+			<Text
+				selectable
+				className="font-poppins font-semibold text-body-1 text-text"
+			>
 				{title}
 			</Text>
 			{description ? (
@@ -193,407 +162,899 @@ function SectionHeading({
 	);
 }
 
-function MetricCard({
+function ExamSwitcher({
+	analysis,
+	visible,
+	onOpen,
+	onClose,
+	onSelect,
+}: {
+	analysis: ExamAnalysis;
+	visible: boolean;
+	onOpen: () => void;
+	onClose: () => void;
+	onSelect: (planId: Id<"learningPlans">) => void;
+}) {
+	const { colors } = useDayovaTheme();
+	const selectedPlan = analysis.selectedPlan;
+	if (!selectedPlan) return null;
+	const selectedLabel = formatExamLabel(selectedPlan);
+	const planIds = analysis.plans.map((plan) => plan.id);
+	const planById = new Map(analysis.plans.map((plan) => [plan.id, plan]));
+
+	return (
+		<>
+			<ActionSurface
+				accessibilityHint="Öffnet die Liste deiner Prüfungen."
+				accessibilityLabel={`Prüfung wechseln. Ausgewählt: ${selectedLabel}`}
+				accessibilityRole="button"
+				accessibilityState={{ expanded: visible }}
+				className="h-14 w-14 items-center justify-center rounded-full border border-border bg-card shadow-black/5 shadow-sm active:bg-card/80"
+				hitSlop={8}
+				onPress={onOpen}
+			>
+				<ArrowDataTransferHorizontal
+					size={22}
+					color={colors.text}
+					strokeWidth={2.2}
+				/>
+			</ActionSurface>
+			<SelectSheet
+				formatOptionLabel={(planId) => {
+					const plan = planById.get(planId);
+					return plan ? formatExamLabel(plan) : "Prüfung";
+				}}
+				onClose={onClose}
+				onSelect={onSelect}
+				options={planIds}
+				selectedValue={selectedPlan.id}
+				title="Prüfung auswählen"
+				visible={visible}
+			/>
+		</>
+	);
+}
+
+function AnalysisHubCard({
+	accessibilityLabel,
+	children,
+	className,
 	icon,
 	label,
-	value,
-}: {
-	icon: React.JSX.Element;
-	label: string;
-	value: string;
-}) {
-	return (
-		<Surface
-			accessible
-			accessibilityLabel={`${label}: ${value}`}
-			className="min-w-0 flex-1 gap-3 px-3 py-4"
-			variant="flat"
-		>
-			<View className="h-9 w-9 items-center justify-center rounded-full bg-system-subtle">
-				{icon}
-			</View>
-			<View className="gap-0.5">
-				<Text
-					selectable
-					className="font-poppins font-semibold text-body-2 text-text"
-					numberOfLines={1}
-					adjustsFontSizeToFit
-					style={{ fontVariant: ["tabular-nums"] }}
-				>
-					{value}
-				</Text>
-				<Text
-					className="font-poppins text-body-5 text-secondary-text"
-					numberOfLines={1}
-				>
-					{label}
-				</Text>
-			</View>
-		</Surface>
-	);
-}
-
-function ActivityChart({
-	activity,
-	period,
-}: {
-	activity: AnalyticsOverview["activity"];
-	period: AnalyticsPeriod;
-}) {
-	const { width } = useWindowDimensions();
-	const { colors } = useDayovaTheme();
-	const maxValue = Math.max(
-		1,
-		...activity.map((point) =>
-			Math.max(point.activeStudyMinutes, point.completedSessions * 5),
-		),
-	);
-	const chartWidth = Math.max(width - 88, 220);
-	const gap = activity.length <= 7 ? 8 : 3;
-	const barWidth = Math.max(
-		4,
-		(chartWidth - gap * Math.max(activity.length - 1, 0)) /
-			Math.max(activity.length, 1),
-	);
-	const totalMinutes = activity.reduce(
-		(total, point) => total + point.activeStudyMinutes,
-		0,
-	);
-	const totalSessions = activity.reduce(
-		(total, point) => total + point.completedSessions,
-		0,
-	);
-
-	if (activity.length === 0) return null;
-
-	return (
-		<Surface className="gap-5 p-5" variant="flat">
-			<View
-				accessible
-				accessibilityLabel={`Lernaktivität: ${formatMinutes(totalMinutes)} aktive Lernzeit und ${totalSessions} abgeschlossene Einheiten im Diagrammzeitraum.`}
-				className="h-32 flex-row items-end"
-				style={{ columnGap: gap }}
-			>
-				{activity.map((point) => {
-					const value = Math.max(
-						point.activeStudyMinutes,
-						point.completedSessions * 5,
-					);
-					const height = value > 0 ? Math.max(10, (value / maxValue) * 112) : 4;
-					return (
-						<View
-							key={point.dayKey}
-							accessible={false}
-							className="rounded-full bg-progress-track"
-							style={{
-								width: barWidth,
-								height,
-								backgroundColor:
-									value > 0 ? colors.primaryStrong : colors.light2,
-							}}
-						/>
-					);
-				})}
-			</View>
-			<View className="flex-row justify-between">
-				<Text className="font-poppins text-body-5 text-secondary-text">
-					{formatCompactDay(activity[0].dayKey)}
-				</Text>
-				<Text className="font-poppins text-body-5 text-secondary-text">
-					{period === "all" ? "Letzte 30 Tage" : "Lernaktivität"}
-				</Text>
-				<Text className="font-poppins text-body-5 text-secondary-text">
-					{formatCompactDay(activity.at(-1)?.dayKey ?? "")}
-				</Text>
-			</View>
-		</Surface>
-	);
-}
-
-function PlanProgressCard({
-	plan,
+	labelClassName,
 	onPress,
 }: {
-	plan: AnalyticsOverview["plans"][number];
+	accessibilityLabel: string;
+	children: ReactNode;
+	className: string;
+	icon: ReactNode;
+	label: string;
+	labelClassName: string;
 	onPress: () => void;
 }) {
 	const { colors } = useDayovaTheme();
-	const title = formatGermanUiText(
-		`${plan.subject} ${plan.examTypeLabel}`.trim(),
-	);
 
 	return (
 		<ActionSurface
-			accessibilityLabel={`${title}, ${plan.progressPercent} Prozent abgeschlossen`}
-			accessibilityHint="Öffnet den Lernplan."
-			className="gap-4 p-5"
+			accessibilityHint="Öffnet die ausführliche Analyse."
+			accessibilityLabel={accessibilityLabel}
+			accessibilityRole="button"
+			className={cn("gap-5 rounded-card border p-5 shadow-none", className)}
 			onPress={onPress}
+			style={continuousCardStyle}
 			variant="flat"
 		>
-			<View className="flex-row items-center gap-4">
-				<View className="h-11 w-11 items-center justify-center rounded-full bg-system-subtle">
-					<Route2 size={21} color={colors.primaryStrong} strokeWidth={2} />
-				</View>
-				<View className="min-w-0 flex-1">
+			<View className="flex-row items-center justify-between gap-4">
+				<View className="min-w-0 flex-1 flex-row items-center gap-3">
+					<View className="h-11 w-11 items-center justify-center rounded-full bg-card">
+						{icon}
+					</View>
 					<Text
-						className="font-poppins font-semibold text-body-2 text-text"
-						numberOfLines={2}
+						className={cn(
+							"min-w-0 flex-1 font-poppins font-semibold text-body-3",
+							labelClassName,
+						)}
 					>
-						{title}
-					</Text>
-					<Text
-						selectable
-						className="font-poppins text-body-4 text-secondary-text"
-					>
-						{plan.examDateLabel}
+						{label}
 					</Text>
 				</View>
-				<Text
-					selectable
-					className="font-poppins font-semibold text-body-2 text-text"
-					style={{ fontVariant: ["tabular-nums"] }}
-				>
-					{`${plan.progressPercent}%`}
-				</Text>
+				<View className="h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card">
+					<ArrowRight size={19} color={colors.text} strokeWidth={2.2} />
+				</View>
 			</View>
-			<View
-				accessible
-				accessibilityRole="progressbar"
-				accessibilityValue={{
-					min: 0,
-					max: plan.totalSessions,
-					now: plan.completedSessions,
-					text: `${plan.completedSessions} von ${plan.totalSessions} Einheiten`,
-				}}
-				className="h-2 overflow-hidden rounded-full bg-progress-track"
-			>
-				<View
-					className="h-full rounded-full bg-primary-strong"
-					style={{ width: `${plan.progressPercent}%` }}
-				/>
-			</View>
-			<Text
-				selectable
-				className="font-poppins text-body-5 text-secondary-text"
-				style={{ fontVariant: ["tabular-nums"] }}
-			>
-				{`${plan.completedSessions} von ${plan.totalSessions} Einheiten abgeschlossen`}
+			{children}
+			<Text className="font-poppins font-semibold text-body-4 text-text">
+				Details ansehen
 			</Text>
 		</ActionSurface>
 	);
 }
 
-function KnowledgeLegendItem({
-	color,
-	label,
-	value,
+function AnalysisHub({
+	analysis,
+	onOpenKnowledge,
+	onOpenNextStep,
+	onOpenProblem,
 }: {
-	color: string;
-	label: string;
-	value: number;
-}) {
-	return (
-		<View className="flex-row items-center gap-2">
-			<View
-				accessible={false}
-				className="h-2.5 w-2.5 rounded-full"
-				style={{ backgroundColor: color }}
-			/>
-			<Text className="font-poppins text-body-5 text-secondary-text">
-				{`${label} ${value}`}
-			</Text>
-		</View>
-	);
-}
-
-function InsightList({
-	icon,
-	items,
-	title,
-}: {
-	icon: (props: {
-		size?: number;
-		color?: string;
-		strokeWidth?: number;
-	}) => React.JSX.Element;
-	items: string[];
-	title: string;
-}) {
-	const Icon = icon;
-	const { colors } = useDayovaTheme();
-	if (items.length === 0) return null;
-
-	return (
-		<View className="gap-3">
-			<Text className="font-poppins font-semibold text-body-3 text-text">
-				{title}
-			</Text>
-			{items.map((item) => (
-				<View key={item} className="flex-row items-start gap-3">
-					<View className="pt-0.5">
-						<Icon
-							size={18}
-							color={
-								title === "Das sitzt schon" ? colors.success : colors.wrong
-							}
-							strokeWidth={2}
-						/>
-					</View>
-					<Text
-						selectable
-						className="min-w-0 flex-1 font-poppins text-body-4 text-text"
-					>
-						{item}
-					</Text>
-				</View>
-			))}
-		</View>
-	);
-}
-
-function KnowledgeCard({
-	knowledge,
-}: {
-	knowledge: AnalyticsOverview["knowledge"];
+	analysis: ExamAnalysis;
+	onOpenKnowledge: () => void;
+	onOpenNextStep: () => void;
+	onOpenProblem: () => void;
 }) {
 	const { colors } = useDayovaTheme();
-	const score = knowledge.scorePercent ?? 0;
-	const correctWidth =
-		knowledge.answeredItems > 0
-			? (knowledge.correct / knowledge.answeredItems) * 100
-			: 0;
-	const partialWidth =
-		knowledge.answeredItems > 0
-			? (knowledge.partiallyCorrect / knowledge.answeredItems) * 100
-			: 0;
-	const incorrectWidth = Math.max(0, 100 - correctWidth - partialWidth);
+	const recommendation = analysis.recommendation;
+	const primaryProblem = analysis.primaryProblem;
+	const leadingAbility = analysis.abilities[0];
+	const diagnosis = primaryProblem
+		? DIAGNOSIS_COPY[primaryProblem.diagnosisType]
+		: null;
 
-	if (
-		knowledge.answeredItems === 0 &&
-		knowledge.strengths.length === 0 &&
-		knowledge.gaps.length === 0
-	) {
-		return (
-			<Surface className="gap-2 p-5" variant="flat">
-				<Text className="font-poppins font-semibold text-body-3 text-text">
-					Noch kein Wissensbild
+	return (
+		<View className="gap-5">
+			<View className="gap-1 px-1">
+				<Text className="font-poppins font-semibold text-body-1 text-text">
+					Deine Prüfung auf einen Blick
 				</Text>
 				<Text
 					selectable
 					className="font-poppins text-body-4 text-secondary-text"
 				>
-					Nach deiner ersten Übungs- oder Praxiseinheit siehst du hier, was
-					schon sitzt und was du als Nächstes festigen kannst.
+					Öffne einen Bereich, wenn du die Belege und Details sehen möchtest.
+				</Text>
+			</View>
+
+			<AnalysisHubCard
+				accessibilityLabel={`Nächster Schritt: ${
+					recommendation?.goal ?? "Lernplan prüfen"
+				} Details öffnen`}
+				className="border-primary/25 bg-system-subtle"
+				icon={
+					<Sparkles size={22} color={colors.primaryStrong} strokeWidth={2.2} />
+				}
+				label="Dein nächster Schritt"
+				labelClassName="text-primary-strong"
+				onPress={onOpenNextStep}
+			>
+				<View className="gap-2">
+					<Text
+						selectable
+						className="font-poppins font-semibold text-body-1 text-text"
+						numberOfLines={3}
+					>
+						{formatGermanUiText(
+							recommendation?.goal ??
+								"Dein Lernplan ist für diese Prüfung aktuell abgeschlossen.",
+						)}
+					</Text>
+					<Text
+						selectable
+						className="font-poppins text-body-4 text-secondary-text"
+						numberOfLines={3}
+					>
+						{formatGermanUiText(
+							recommendation?.reason ??
+								"Prüfe deinen Lernplan und entscheide, ob du noch etwas wiederholen möchtest.",
+						)}
+					</Text>
+				</View>
+				<View className="flex-row flex-wrap items-center gap-x-5 gap-y-2">
+					<View className="flex-row items-center gap-2">
+						<Time04 size={17} color={colors.primaryStrong} strokeWidth={2.2} />
+						<Text
+							className="font-poppins font-semibold text-body-4 text-text"
+							style={{ fontVariant: ["tabular-nums"] }}
+						>
+							{recommendation
+								? `${recommendation.durationMinutes} Min.`
+								: `${analysis.preparation.remainingMinutes} Min. geplant`}
+						</Text>
+					</View>
+					<View className="flex-row items-center gap-2">
+						<CalendarDays
+							size={17}
+							color={colors.primaryStrong}
+							strokeWidth={2.2}
+						/>
+						<Text
+							className="font-poppins font-semibold text-body-4 text-text"
+							style={{ fontVariant: ["tabular-nums"] }}
+						>
+							{formatRemainingDays(analysis.preparation.remainingDays)}
+						</Text>
+					</View>
+				</View>
+			</AnalysisHubCard>
+
+			<AnalysisHubCard
+				accessibilityLabel={`Lernhürde: ${
+					primaryProblem?.title ?? "Noch keine klare Schwäche erkannt"
+				} Details öffnen`}
+				className="border-wrong/25 bg-wrong-subtle"
+				icon={<CircleAlert size={22} color={colors.wrong} strokeWidth={2.2} />}
+				label="Das bremst dich gerade"
+				labelClassName="text-wrong"
+				onPress={onOpenProblem}
+			>
+				<View className="gap-2">
+					{diagnosis ? (
+						<Text className="font-poppins font-semibold text-body-5 text-wrong">
+							{diagnosis.label}
+						</Text>
+					) : null}
+					<Text
+						selectable
+						className="font-poppins font-semibold text-body-1 text-text"
+						numberOfLines={3}
+					>
+						{formatGermanUiText(
+							primaryProblem?.observation ??
+								"Noch keine klare Schwäche erkannt",
+						)}
+					</Text>
+					<Text
+						selectable
+						className="font-poppins text-body-4 text-secondary-text"
+						numberOfLines={2}
+					>
+						{primaryProblem
+							? `Hier zeigt es sich: ${formatGermanUiText(primaryProblem.location)}`
+							: "Ungetestete Themen bleiben offen, bis deine Antworten genug Belege liefern."}
+					</Text>
+				</View>
+			</AnalysisHubCard>
+
+			<AnalysisHubCard
+				accessibilityLabel={`Wissensstand: ${analysis.readiness.secure} sicher, ${analysis.readiness.developing} in Arbeit, ${analysis.readiness.unknown} noch unklar. Details öffnen`}
+				className="border-theorie/25 bg-theorie-subtle"
+				icon={<Analytics size={22} color={colors.theorie} strokeWidth={2.2} />}
+				label="Dein Wissensstand"
+				labelClassName="text-theorie"
+				onPress={onOpenKnowledge}
+			>
+				<View className="gap-3">
+					<Text
+						selectable
+						className="font-poppins font-semibold text-body-1 text-text"
+						numberOfLines={3}
+					>
+						{formatGermanUiText(
+							leadingAbility?.statement ?? "Noch nicht genug Belege",
+						)}
+					</Text>
+					<View className="flex-row flex-wrap gap-x-4 gap-y-2">
+						<View className="flex-row items-center gap-2">
+							<View className="h-2.5 w-2.5 rounded-full bg-success" />
+							<Text className="font-poppins text-body-4 text-text">
+								{`${analysis.readiness.secure} sicher`}
+							</Text>
+						</View>
+						<View className="flex-row items-center gap-2">
+							<View className="h-2.5 w-2.5 rounded-full bg-info" />
+							<Text className="font-poppins text-body-4 text-text">
+								{`${analysis.readiness.developing} in Arbeit`}
+							</Text>
+						</View>
+						<View className="flex-row items-center gap-2">
+							<View className="h-2.5 w-2.5 rounded-full bg-primary" />
+							<Text className="font-poppins text-body-4 text-text">
+								{`${analysis.readiness.unknown} noch unklar`}
+							</Text>
+						</View>
+					</View>
+				</View>
+			</AnalysisHubCard>
+		</View>
+	);
+}
+
+function ReadinessSummary({ analysis }: { analysis: ExamAnalysis }) {
+	const statusItems = [
+		{
+			label: "Sicher",
+			value: analysis.readiness.secure,
+			className: "bg-success-subtle",
+			valueClassName: "text-success",
+		},
+		{
+			label: "In Arbeit",
+			value: analysis.readiness.developing,
+			className: "bg-info-subtle",
+			valueClassName: "text-info",
+		},
+		{
+			label: "Noch unklar",
+			value: analysis.readiness.unknown,
+			className: "bg-system-subtle",
+			valueClassName: "text-primary-strong",
+		},
+	];
+
+	return (
+		<Surface className="gap-5 p-5" variant="flat">
+			<View className="flex-row items-start justify-between gap-4">
+				<View className="min-w-0 flex-1 gap-1">
+					<Text
+						selectable
+						className="font-poppins font-semibold text-body-1 text-text"
+					>
+						Dein aktueller Stand
+					</Text>
+					<Text
+						selectable
+						className="font-poppins text-body-4 text-secondary-text"
+					>
+						{analysis.preliminary
+							? "Erste Einschätzung aus deinen Antworten. Sie wird mit jeder Einheit genauer."
+							: "Aus deinen bisherigen Antworten für diese Prüfung."}
+					</Text>
+				</View>
+				{analysis.preliminary ? (
+					<View className="rounded-full bg-system-subtle px-3 py-1.5">
+						<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+							Erste Einschätzung
+						</Text>
+					</View>
+				) : null}
+			</View>
+			<View className="flex-row gap-2">
+				{statusItems.map((item) => (
+					<View
+						key={item.label}
+						accessible
+						accessibilityLabel={`${item.label}: ${item.value} Themen`}
+						className={cn(
+							"min-w-0 flex-1 items-center gap-0.5 rounded-info px-2 py-4",
+							item.className,
+						)}
+					>
+						<Text
+							selectable
+							className={cn(
+								"font-poppins font-semibold text-heading-2",
+								item.valueClassName,
+							)}
+							style={{ fontVariant: ["tabular-nums"] }}
+						>
+							{item.value}
+						</Text>
+						<Text className="text-center font-poppins font-semibold text-body-5 text-secondary-text">
+							{item.label}
+						</Text>
+					</View>
+				))}
+			</View>
+		</Surface>
+	);
+}
+
+function AbilitySection({
+	abilities,
+}: {
+	abilities: ExamAnalysis["abilities"];
+}) {
+	if (abilities.length === 0) {
+		return (
+			<View className="gap-4">
+				<SectionHeading title="Das kannst du schon" />
+				<Surface className="gap-2 p-5" variant="flat">
+					<Text
+						selectable
+						className="font-poppins font-semibold text-body-3 text-text"
+					>
+						Noch nicht genug Belege
+					</Text>
+					<Text
+						selectable
+						className="font-poppins text-body-4 text-secondary-text"
+					>
+						Nach deinen nächsten schriftlichen oder gesprochenen Antworten kann
+						Dayova deine Fähigkeiten genauer benennen.
+					</Text>
+				</Surface>
+			</View>
+		);
+	}
+
+	return (
+		<View className="gap-4">
+			<SectionHeading
+				title="Das kannst du schon"
+				description="Konkrete Fähigkeiten, die du bereits gezeigt hast."
+			/>
+			<View className="gap-3">
+				{abilities.map((ability) => (
+					<Surface
+						key={ability.statement}
+						accessible
+						accessibilityLabel={`${ability.statement} Belegt durch ${ability.evidenceCount} Antworten.`}
+						className="flex-row items-start gap-3 p-5"
+						variant="flat"
+					>
+						<View className="h-8 w-8 items-center justify-center rounded-full bg-success-subtle">
+							<Check
+								size={17}
+								color={DAYOVA_DESIGN_SYSTEM.colors.success}
+								strokeWidth={2.4}
+							/>
+						</View>
+						<View className="min-w-0 flex-1 gap-1">
+							<Text
+								selectable
+								className="font-poppins font-semibold text-body-3 text-text"
+							>
+								{ability.statement}
+							</Text>
+							<Text
+								selectable
+								className="font-poppins text-body-5 text-secondary-text"
+							>
+								{`Belegt durch ${ability.evidenceCount} ${ability.evidenceCount === 1 ? "Antwort" : "Antworten"}`}
+							</Text>
+						</View>
+					</Surface>
+				))}
+			</View>
+		</View>
+	);
+}
+
+function ImprovementSection({
+	improvements,
+}: {
+	improvements: ExamAnalysis["improvements"];
+}) {
+	if (improvements.length === 0) return null;
+
+	return (
+		<View className="gap-4">
+			<SectionHeading
+				title="Das hast du verbessert"
+				description="Neuere Antworten ersetzen frühere Unsicherheiten."
+			/>
+			<Surface className="gap-4 bg-success-subtle p-5" variant="flat">
+				{improvements.map((improvement) => (
+					<View
+						key={improvement.statement}
+						className="flex-row items-start gap-3"
+					>
+						<Check
+							size={19}
+							color={DAYOVA_DESIGN_SYSTEM.colors.success}
+							strokeWidth={2.3}
+						/>
+						<Text
+							selectable
+							className="min-w-0 flex-1 font-poppins text-body-3 text-text"
+						>
+							{improvement.statement}
+						</Text>
+					</View>
+				))}
+			</Surface>
+		</View>
+	);
+}
+
+function ProblemCard({
+	problem,
+	compact = false,
+}: {
+	problem: ExamProblem;
+	compact?: boolean;
+}) {
+	const diagnosis = DIAGNOSIS_COPY[problem.diagnosisType];
+
+	if (compact) {
+		return (
+			<Surface className="gap-3 p-5" variant="flat">
+				<View className="flex-row items-center justify-between gap-3">
+					<Text
+						selectable
+						className="min-w-0 flex-1 font-poppins font-semibold text-body-3 text-text"
+					>
+						{problem.title}
+					</Text>
+					<View
+						className={cn(
+							"rounded-full px-3 py-1.5",
+							diagnosis.surfaceClassName,
+						)}
+					>
+						<Text
+							className={cn(
+								"font-poppins font-semibold text-body-5",
+								diagnosis.textClassName,
+							)}
+						>
+							{diagnosis.label}
+						</Text>
+					</View>
+				</View>
+				<Text
+					selectable
+					className="font-poppins text-body-4 text-secondary-text"
+				>
+					{problem.observation}
 				</Text>
 			</Surface>
 		);
 	}
 
 	return (
-		<Surface className="gap-6 p-5" variant="flat">
-			{knowledge.answeredItems > 0 ? (
-				<View className="gap-4">
-					<View className="flex-row items-end justify-between">
-						<View className="gap-1">
-							<Text className="font-poppins text-body-4 text-secondary-text">
-								Antwortqualität
-							</Text>
-							<Text
-								selectable
-								className="font-poppins font-semibold text-heading-2 text-text"
-								style={{ fontVariant: ["tabular-nums"] }}
-							>
-								{`${score}%`}
-							</Text>
-						</View>
+		<Surface className="gap-5 border border-wrong/20 p-5" variant="flat">
+			<View className="gap-3">
+				<View className="flex-row flex-wrap items-center gap-2">
+					<View
+						className={cn(
+							"rounded-full px-3 py-1.5",
+							diagnosis.surfaceClassName,
+						)}
+					>
 						<Text
-							selectable
-							className="font-poppins text-body-5 text-secondary-text"
+							className={cn(
+								"font-poppins font-semibold text-body-5",
+								diagnosis.textClassName,
+							)}
 						>
-							{`${knowledge.answeredItems} ausgewertete Antworten`}
+							{diagnosis.label}
 						</Text>
 					</View>
-					<View
-						accessible
-						accessibilityLabel={`${knowledge.correct} richtig, ${knowledge.partiallyCorrect} teilweise richtig, ${knowledge.notCorrect} noch offen`}
-						className="h-3 flex-row overflow-hidden rounded-full bg-progress-track"
-					>
-						<View
-							className="h-full"
-							style={{
-								width: `${correctWidth}%`,
-								backgroundColor: colors.success,
-							}}
-						/>
-						<View
-							className="h-full"
-							style={{
-								width: `${partialWidth}%`,
-								backgroundColor: colors.info,
-							}}
-						/>
-						<View
-							className="h-full"
-							style={{
-								width: `${incorrectWidth}%`,
-								backgroundColor: colors.wrong,
-							}}
-						/>
-					</View>
-					<View className="flex-row flex-wrap gap-x-4 gap-y-2">
-						<KnowledgeLegendItem
-							color={colors.success}
-							label="Richtig"
-							value={knowledge.correct}
-						/>
-						<KnowledgeLegendItem
-							color={colors.info}
-							label="Teilweise"
-							value={knowledge.partiallyCorrect}
-						/>
-						<KnowledgeLegendItem
-							color={colors.wrong}
-							label="Offen"
-							value={knowledge.notCorrect}
-						/>
+					<View className="rounded-full bg-background px-3 py-1.5">
+						<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+							{problem.evidenceLabel}
+						</Text>
 					</View>
 				</View>
-			) : null}
-			<InsightList
-				icon={Check}
-				items={knowledge.strengths}
-				title="Das sitzt schon"
-			/>
-			<InsightList
-				icon={CircleAlert}
-				items={knowledge.gaps}
-				title="Als Nächstes festigen"
-			/>
-			{knowledge.recommendation ? (
-				<View className="flex-row items-start gap-3 rounded-info bg-system-subtle p-4">
-					<Sparkles size={19} color={colors.primaryStrong} strokeWidth={2} />
+				<Text
+					selectable
+					className="font-poppins font-semibold text-body-1 text-text"
+				>
+					{problem.observation}
+				</Text>
+			</View>
+
+			{problem.evidenceExcerpt ? (
+				<View className="gap-2 rounded-info bg-background p-4">
+					<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+						Deine Antwort
+					</Text>
 					<Text
 						selectable
-						className="min-w-0 flex-1 font-poppins text-body-4 text-text"
-					>
-						{knowledge.recommendation}
-					</Text>
+						className="font-poppins text-body-3 text-text"
+					>{`„${problem.evidenceExcerpt}“`}</Text>
 				</View>
 			) : null}
+
+			<View className="gap-4">
+				<View className="gap-1">
+					<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
+						Hier zeigt es sich
+					</Text>
+					<Text selectable className="font-poppins text-body-3 text-text">
+						{problem.location}
+					</Text>
+				</View>
+				<View className="gap-1">
+					<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
+						Was dahinter steckt
+					</Text>
+					<Text selectable className="font-poppins text-body-3 text-text">
+						{problem.explanation}
+					</Text>
+				</View>
+			</View>
 		</Surface>
+	);
+}
+
+function ProblemSection({
+	primaryProblem,
+	secondaryProblems,
+}: {
+	primaryProblem: ExamAnalysis["primaryProblem"];
+	secondaryProblems: ExamAnalysis["secondaryProblems"];
+}) {
+	return (
+		<View className="gap-4">
+			<SectionHeading
+				title="Das bremst dich gerade"
+				description="Dayova zeigt nur Probleme, die deine Antworten belegen."
+			/>
+			{primaryProblem ? (
+				<ProblemCard problem={primaryProblem} />
+			) : (
+				<Surface className="flex-row items-start gap-3 p-5" variant="flat">
+					<Info
+						size={20}
+						color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
+						strokeWidth={2.2}
+					/>
+					<View className="min-w-0 flex-1 gap-1">
+						<Text
+							selectable
+							className="font-poppins font-semibold text-body-3 text-text"
+						>
+							Noch keine klare Schwäche erkannt
+						</Text>
+						<Text
+							selectable
+							className="font-poppins text-body-4 text-secondary-text"
+						>
+							Ungetestete Themen bleiben als „Noch unklar“ sichtbar. Dayova
+							erfindet kein Problem.
+						</Text>
+					</View>
+				</Surface>
+			)}
+			{secondaryProblems.length > 0 ? (
+				<View className="gap-3 pt-1">
+					<Text className="font-poppins font-semibold text-body-3 text-text">
+						Weitere offene Punkte
+					</Text>
+					{secondaryProblems.map((problem) => (
+						<ProblemCard key={problem.id} compact problem={problem} />
+					))}
+				</View>
+			) : null}
+		</View>
+	);
+}
+
+function RecommendationSection({
+	analysis,
+	onOpenSession,
+	onOpenPlan,
+}: {
+	analysis: ExamAnalysis;
+	onOpenSession: (sessionId: Id<"learningPlanSessions">) => void;
+	onOpenPlan: () => void;
+}) {
+	const recommendation = analysis.recommendation;
+
+	return (
+		<View className="gap-4">
+			<SectionHeading
+				title="Dein nächster Lernschritt"
+				description="Aus deinem aktuellen Stand und der Zeit bis zur Prüfung."
+			/>
+			{recommendation ? (
+				<Surface className="gap-5 p-5">
+					<View className="flex-row items-start gap-3">
+						<View className="h-10 w-10 items-center justify-center rounded-full bg-system-subtle">
+							<Sparkles
+								size={20}
+								color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
+								strokeWidth={2.2}
+							/>
+						</View>
+						<View className="min-w-0 flex-1 gap-1">
+							<Text
+								selectable
+								className="font-poppins font-semibold text-body-1 text-text"
+							>
+								{formatGermanUiText(recommendation.goal)}
+							</Text>
+							{recommendation.reason ? (
+								<Text
+									selectable
+									className="font-poppins text-body-4 text-secondary-text"
+								>
+									{recommendation.reason}
+								</Text>
+							) : null}
+						</View>
+					</View>
+
+					<View className="gap-3">
+						{recommendation.methods.map((method) => (
+							<View key={method} className="flex-row items-start gap-3">
+								<Check
+									size={17}
+									color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
+									strokeWidth={2.3}
+								/>
+								<Text
+									selectable
+									className="min-w-0 flex-1 font-poppins text-body-3 text-text"
+								>
+									{formatGermanUiText(method)}
+								</Text>
+							</View>
+						))}
+					</View>
+
+					<View className="rounded-info bg-system-subtle p-4">
+						<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+							Danach prüfen wir
+						</Text>
+						<Text
+							selectable
+							className="mt-1 font-poppins text-body-4 text-text"
+						>
+							{formatGermanUiText(recommendation.verification)}
+						</Text>
+					</View>
+
+					<Button
+						accessibilityLabel={`${recommendation.durationMinutes} Minuten starten`}
+						onPress={() => onOpenSession(recommendation.sessionId)}
+					>
+						<Text>{`${recommendation.durationMinutes} Min. starten`}</Text>
+						<ArrowUpRight
+							size={20}
+							color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+							strokeWidth={2.1}
+						/>
+					</Button>
+				</Surface>
+			) : (
+				<Surface className="gap-4 p-5" variant="flat">
+					<Text
+						selectable
+						className="font-poppins font-semibold text-body-3 text-text"
+					>
+						Die geplanten Themen sind bearbeitet
+					</Text>
+					<Text
+						selectable
+						className="font-poppins text-body-4 text-secondary-text"
+					>
+						Öffne deinen Lernplan, um die Prüfungsvorbereitung zu prüfen.
+					</Text>
+					<Button variant="neutral" onPress={onOpenPlan}>
+						<Text>Lernplan ansehen</Text>
+					</Button>
+				</Surface>
+			)}
+		</View>
+	);
+}
+
+function TopicOverview({ topics }: { topics: ExamAnalysis["topics"] }) {
+	return (
+		<View className="gap-4">
+			<SectionHeading
+				title="Dein Prüfungsstoff"
+				description="Auch ungetestete Themen bleiben sichtbar."
+			/>
+			<Surface className="overflow-hidden" variant="flat">
+				{topics.map((topic, index) => {
+					const status = TOPIC_STATUS_COPY[topic.status];
+					return (
+						<View
+							key={topic.id}
+							accessible
+							accessibilityLabel={`${topic.title}. ${status.label}. ${PRIORITY_COPY[topic.priority]}.`}
+							className={cn(
+								"flex-row items-center gap-3 px-5 py-4",
+								index > 0 && "border-border border-t",
+							)}
+						>
+							<View
+								accessible={false}
+								className={cn("h-3 w-3 rounded-full", status.dotClassName)}
+							/>
+							<View className="min-w-0 flex-1 gap-0.5">
+								<Text
+									selectable
+									className="font-poppins font-semibold text-body-3 text-text"
+								>
+									{formatGermanUiText(topic.title)}
+								</Text>
+								<Text
+									selectable
+									className="font-poppins text-body-5 text-secondary-text"
+								>
+									{PRIORITY_COPY[topic.priority]}
+								</Text>
+							</View>
+							<View
+								className={cn("rounded-full px-3 py-1.5", status.pillClassName)}
+							>
+								<Text
+									className={cn(
+										"font-poppins font-semibold text-body-5",
+										status.textClassName,
+									)}
+								>
+									{status.label}
+								</Text>
+							</View>
+						</View>
+					);
+				})}
+			</Surface>
+		</View>
+	);
+}
+
+function PreparationSummary({
+	analysis,
+	onOpenPlan,
+}: {
+	analysis: ExamAnalysis;
+	onOpenPlan: () => void;
+}) {
+	const preparation = analysis.preparation;
+
+	return (
+		<View className="gap-4">
+			<SectionHeading
+				title="Bis zur Prüfung"
+				description="Die genaue Planung bleibt in deinem Lernplan."
+			/>
+			<Surface className="gap-5 p-5" variant="flat">
+				<View className="flex-row gap-3">
+					<View className="min-w-0 flex-1 gap-1 rounded-info bg-background p-4">
+						<CalendarDays
+							size={19}
+							color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
+							strokeWidth={2.2}
+						/>
+						<Text
+							selectable
+							className="font-poppins font-semibold text-body-2 text-text"
+							style={{ fontVariant: ["tabular-nums"] }}
+						>
+							{formatRemainingDays(preparation.remainingDays)}
+						</Text>
+						<Text className="font-poppins text-body-5 text-secondary-text">
+							bis zur Prüfung
+						</Text>
+					</View>
+					<View className="min-w-0 flex-1 gap-1 rounded-info bg-background p-4">
+						<Time04
+							size={19}
+							color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
+							strokeWidth={2.2}
+						/>
+						<Text
+							selectable
+							className="font-poppins font-semibold text-body-2 text-text"
+							style={{ fontVariant: ["tabular-nums"] }}
+						>
+							{`${preparation.remainingMinutes} Min.`}
+						</Text>
+						<Text className="font-poppins text-body-5 text-secondary-text">
+							{`${preparation.remainingSessions} ${preparation.remainingSessions === 1 ? "Einheit" : "Einheiten"} geplant`}
+						</Text>
+					</View>
+				</View>
+				{preparation.nextSession ? (
+					<View className="flex-row items-start gap-3 rounded-info bg-system-subtle p-4">
+						<CalendarDays
+							size={19}
+							color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
+							strokeWidth={2.2}
+						/>
+						<View className="min-w-0 flex-1 gap-0.5">
+							<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+								Nächste Einheit
+							</Text>
+							<Text selectable className="font-poppins text-body-4 text-text">
+								{`${preparation.nextSession.dateLabel} · ${preparation.nextSession.startTime} · ${preparation.nextSession.durationMinutes} Min.`}
+							</Text>
+						</View>
+					</View>
+				) : null}
+				<Button variant="neutral" onPress={onOpenPlan}>
+					<Text>Lernplan ansehen</Text>
+				</Button>
+			</Surface>
+		</View>
 	);
 }
 
 function LoadingState() {
 	return (
 		<View
-			accessibilityLabel="Analyse wird geladen"
+			accessibilityLabel="Prüfungsanalyse wird geladen"
 			accessibilityLiveRegion="polite"
 			className="items-center gap-4 py-24"
 		>
 			<AnimatedFlowerLoader size={104} />
 			<Text className="font-poppins text-body-4 text-secondary-text">
-				Deine Analyse wird geladen …
+				Deine Prüfungsanalyse wird geladen …
 			</Text>
 		</View>
 	);
@@ -611,14 +1072,14 @@ function EmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
 			</View>
 			<View className="items-center gap-2">
 				<Text className="text-center font-poppins font-semibold text-body-1 text-text">
-					Hier wächst deine Analyse
+					Deine erste Prüfungsanalyse
 				</Text>
 				<Text
 					selectable
 					className="text-center font-poppins text-body-4 text-secondary-text"
 				>
-					Erstelle deinen ersten Lernplan. Sobald du lernst, siehst du hier
-					deinen Fortschritt, deine Lernzeit und dein Wissensbild.
+					Erstelle einen Lernplan. Danach zeigt Dayova, was du schon kannst, wo
+					dein Problem liegt und welcher Schritt dir als Nächstes hilft.
 				</Text>
 			</View>
 			<Button
@@ -631,183 +1092,101 @@ function EmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
 	);
 }
 
-function AnalyticsContent({
-	data,
-	period,
-	onOpenPlan,
-	onOpenNextSession,
-}: {
-	data: AnalyticsOverview;
-	period: AnalyticsPeriod;
-	onOpenPlan: (planId: string) => void;
-	onOpenNextSession: (planId: string, sessionId: string) => void;
-}) {
-	const { colors } = useDayovaTheme();
-	const periodLabel =
-		period === "week"
-			? "in den letzten 7 Tagen"
-			: period === "month"
-				? "in den letzten 30 Tagen"
-				: "insgesamt";
-	const nextSession = data.nextSession;
-
-	return (
-		<View className="gap-9">
-			<Surface className="gap-6 p-6">
-				<View className="flex-row items-center gap-5">
-					<ProgressRing progressPercent={data.overall.progressPercent} />
-					<View className="min-w-0 flex-1 gap-2">
-						<Text className="font-poppins font-semibold text-body-1 text-text">
-							Dein Lernfortschritt
-						</Text>
-						<Text
-							selectable
-							className="font-poppins text-body-4 text-secondary-text"
-						>
-							{data.overall.totalSessions > 0
-								? `${data.overall.completedSessions} von ${data.overall.totalSessions} geplanten Einheiten sind geschafft.`
-								: "Deine geplanten Einheiten erscheinen hier, sobald dein Lernplan bereit ist."}
-						</Text>
-					</View>
-				</View>
-				{nextSession ? (
-					<Button
-						accessibilityHint="Öffnet die nächste relevante Lerneinheit."
-						onPress={() =>
-							onOpenNextSession(nextSession.learningPlanId, nextSession.id)
-						}
-					>
-						<Text numberOfLines={1}>
-							{`${formatGermanUiText(nextSession.subject)} weiterlernen`}
-						</Text>
-						<ArrowUpRight size={20} color="#FFFFFF" strokeWidth={2} />
-					</Button>
-				) : null}
-			</Surface>
-
-			<View className="gap-4">
-				<SectionHeading
-					title="Dein Einsatz"
-					description={`Was du ${periodLabel} umgesetzt hast.`}
-				/>
-				<View className="flex-row gap-3">
-					<MetricCard
-						icon={
-							<Time04 size={19} color={colors.primaryStrong} strokeWidth={2} />
-						}
-						label="Lernzeit"
-						value={formatMinutes(data.period.activeStudyMinutes)}
-					/>
-					<MetricCard
-						icon={
-							<Check size={19} color={colors.primaryStrong} strokeWidth={2} />
-						}
-						label="Einheiten"
-						value={data.period.completedSessions.toString()}
-					/>
-					<MetricCard
-						icon={
-							<Fire size={19} color={colors.primaryStrong} strokeWidth={2} />
-						}
-						label="Lernserie"
-						value={`${data.currentStreakDays} T`}
-					/>
-				</View>
-				{data.period.recoveredSessions > 0 ? (
-					<View className="flex-row items-start gap-3 rounded-info bg-success-subtle p-4">
-						<Check size={19} color={colors.success} strokeWidth={2.2} />
-						<Text
-							selectable
-							className="min-w-0 flex-1 font-poppins text-body-4 text-text"
-						>
-							{data.period.recoveredSessions === 1
-								? "Du hast einen verschobenen Lernblock erfolgreich nachgeholt."
-								: `Du hast ${data.period.recoveredSessions} verschobene Lernblöcke erfolgreich nachgeholt.`}
-						</Text>
-					</View>
-				) : null}
-				<ActivityChart activity={data.activity} period={period} />
-			</View>
-
-			<View className="gap-4">
-				<SectionHeading
-					title="Deine Lernpläne"
-					description={`${data.overall.finishedPlans} von ${data.overall.acceptedPlans} Plänen vollständig abgeschlossen.`}
-				/>
-				<View className="gap-3">
-					{data.plans.map((plan) => (
-						<PlanProgressCard
-							key={plan.id}
-							plan={plan}
-							onPress={() => onOpenPlan(plan.id)}
-						/>
-					))}
-				</View>
-			</View>
-
-			<View className="gap-4">
-				<SectionHeading
-					title="Dein Wissensbild"
-					description={`Aus deinen ausgewerteten Antworten ${periodLabel}.`}
-				/>
-				<KnowledgeCard knowledge={data.knowledge} />
-			</View>
-
-			{data.historyLimited ? (
-				<Text
-					selectable
-					className="text-center font-poppins text-body-5 text-secondary-text"
-				>
-					Bei sehr umfangreichen Verläufen zeigt Dayova die neuesten Aktivitäten
-					und Analysen.
-				</Text>
-			) : null}
-		</View>
-	);
-}
-
-export function AnalyticsScreen(_props: ViewProps) {
+export function AnalyticsScreen() {
 	const router = useRouter();
-	const { user } = useAuthSession();
-	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-	const today = useCurrentLocalDay();
-	const [period, setPeriod] = useState<AnalyticsPeriod>("week");
-	const queryArgs = useMemo(
-		() => ({
-			period,
-			todayKey: getDayKey(today),
-			timezoneOffsetMinutes: today.getTimezoneOffset(),
-		}),
-		[period, today],
-	);
-	const data = useQuery(
-		api.userAnalytics.getOverview,
-		user && isConvexAuthenticated ? queryArgs : "skip",
-	);
+	const insets = useSafeAreaInsets();
+	const [selectedPlanId, setSelectedPlanId] =
+		useState<Id<"learningPlans"> | null>(null);
+	const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+	const analysis = useExamAnalysisQuery(selectedPlanId);
+
+	const selectedPlanIdForRoute =
+		analysis?.selectedPlan?.id ?? selectedPlanId ?? null;
+	const selectedExamContext =
+		analysis?.hasData && analysis.selectedPlan
+			? formatGermanUiText(
+					`${analysis.selectedPlan.subject} · ${analysis.selectedPlan.examTypeLabel}`,
+				)
+			: null;
 
 	return (
 		<Screen>
 			<ThemedStatusBar />
-			<ScreenScroll topPadding={84} bottomPadding={150} horizontalPadding={24}>
+			<View
+				className="z-10 bg-background px-6 pb-5"
+				// Safe-area padding is runtime device geometry.
+				style={{ paddingTop: insets.top + 16 }}
+			>
 				<View className="flex-row items-center justify-between">
-					<Text className="font-poppins font-semibold text-heading-2 text-text">
-						Analyse
-					</Text>
-					<NotificationButton />
+					<View className="min-w-0 flex-1 pr-4">
+						<Text
+							accessibilityRole="header"
+							className="font-poppins font-semibold text-heading-2 text-text"
+						>
+							Analyse
+						</Text>
+						{selectedExamContext ? (
+							<Text
+								selectable
+								className="font-poppins text-body-4 text-secondary-text"
+								numberOfLines={1}
+							>
+								{selectedExamContext}
+							</Text>
+						) : null}
+					</View>
+					<View className="flex-row items-center gap-2">
+						{analysis?.hasData ? (
+							<ExamSwitcher
+								analysis={analysis}
+								onClose={() => setIsSelectorOpen(false)}
+								onOpen={() => setIsSelectorOpen(true)}
+								onSelect={setSelectedPlanId}
+								visible={isSelectorOpen}
+							/>
+						) : null}
+						<NotificationButton />
+					</View>
 				</View>
+			</View>
 
-				<View className="mt-7 gap-7">
-					<PeriodSelector period={period} onChange={setPeriod} />
-					{data === undefined ? (
+			<ScreenScroll
+				testID="analysis-scroll"
+				includeTopSafeArea={false}
+				topPadding={20}
+				bottomPadding={150}
+				horizontalPadding={24}
+			>
+				<View className="gap-7">
+					{analysis === undefined ? (
 						<LoadingState />
-					) : data.hasData ? (
-						<AnalyticsContent
-							data={data}
-							period={period}
-							onOpenPlan={(planId) => router.push(`/learning-plans/${planId}`)}
-							onOpenNextSession={(planId, sessionId) =>
-								router.push(`/learning-plans/${planId}/sessions/${sessionId}`)
-							}
+					) : analysis.hasData ? (
+						<AnalysisHub
+							analysis={analysis}
+							onOpenKnowledge={() => {
+								if (selectedPlanIdForRoute) {
+									router.push({
+										pathname: ROUTES.analyticsKnowledge,
+										params: { planId: selectedPlanIdForRoute },
+									});
+								}
+							}}
+							onOpenNextStep={() => {
+								if (selectedPlanIdForRoute) {
+									router.push({
+										pathname: ROUTES.analyticsNextStep,
+										params: { planId: selectedPlanIdForRoute },
+									});
+								}
+							}}
+							onOpenProblem={() => {
+								if (selectedPlanIdForRoute) {
+									router.push({
+										pathname: ROUTES.analyticsProblem,
+										params: { planId: selectedPlanIdForRoute },
+									});
+								}
+							}}
 						/>
 					) : (
 						<EmptyState
@@ -815,6 +1194,131 @@ export function AnalyticsScreen(_props: ViewProps) {
 						/>
 					)}
 				</View>
+			</ScreenScroll>
+		</Screen>
+	);
+}
+
+export type AnalyticsDetailSection = "knowledge" | "problem" | "nextStep";
+
+const DETAIL_DESCRIPTION: Record<AnalyticsDetailSection, string> = {
+	knowledge:
+		"Was du sicher kannst, was noch offen ist und wie dein Prüfungsstoff eingeordnet wird.",
+	problem:
+		"Welche Antwort die Hürde zeigt und welches Missverständnis dahinterliegt.",
+	nextStep:
+		"Was du jetzt konkret tun solltest und wie es bis zur Prüfung in deine Zeit passt.",
+};
+
+function AnalyticsDetailContent({
+	analysis,
+	onOpenPlan,
+	onOpenSession,
+	section,
+}: {
+	analysis: ExamAnalysis;
+	onOpenPlan: () => void;
+	onOpenSession: (sessionId: Id<"learningPlanSessions">) => void;
+	section: AnalyticsDetailSection;
+}) {
+	if (section === "knowledge") {
+		return (
+			<View className="gap-9">
+				<ReadinessSummary analysis={analysis} />
+				<AbilitySection abilities={analysis.abilities} />
+				<ImprovementSection improvements={analysis.improvements} />
+				<TopicOverview topics={analysis.topics} />
+			</View>
+		);
+	}
+
+	if (section === "problem") {
+		return (
+			<ProblemSection
+				primaryProblem={analysis.primaryProblem}
+				secondaryProblems={analysis.secondaryProblems}
+			/>
+		);
+	}
+
+	return (
+		<View className="gap-9">
+			<RecommendationSection
+				analysis={analysis}
+				onOpenPlan={onOpenPlan}
+				onOpenSession={onOpenSession}
+			/>
+			<PreparationSummary analysis={analysis} onOpenPlan={onOpenPlan} />
+		</View>
+	);
+}
+
+export function AnalyticsDetailScreen({
+	planId,
+	section,
+}: {
+	planId?: Id<"learningPlans">;
+	section: AnalyticsDetailSection;
+}) {
+	const router = useRouter();
+	const analysis = useExamAnalysisQuery(planId);
+	const selectedPlanIdForRoute = analysis?.selectedPlan?.id ?? planId ?? null;
+	const selectedExamContext =
+		analysis?.hasData && analysis.selectedPlan
+			? formatGermanUiText(
+					`${analysis.selectedPlan.subject} · ${analysis.selectedPlan.examTypeLabel}`,
+				)
+			: null;
+
+	return (
+		<Screen>
+			<ThemedStatusBar />
+			<ScreenScroll
+				contentInsetAdjustmentBehavior="automatic"
+				includeTopSafeArea={false}
+				topPadding={24}
+				bottomPadding={72}
+				horizontalPadding={24}
+			>
+				{analysis === undefined ? (
+					<LoadingState />
+				) : analysis.hasData ? (
+					<View className="gap-8">
+						<View className="gap-2 px-1">
+							{selectedExamContext ? (
+								<Text className="font-poppins font-semibold text-body-4 text-primary-strong">
+									{selectedExamContext}
+								</Text>
+							) : null}
+							<Text
+								selectable
+								className="font-poppins text-body-2 text-secondary-text"
+							>
+								{DETAIL_DESCRIPTION[section]}
+							</Text>
+						</View>
+						<AnalyticsDetailContent
+							analysis={analysis}
+							onOpenPlan={() => {
+								if (selectedPlanIdForRoute) {
+									router.push(`/learning-plans/${selectedPlanIdForRoute}`);
+								}
+							}}
+							onOpenSession={(sessionId) => {
+								if (selectedPlanIdForRoute) {
+									router.push(
+										`/learning-plans/${selectedPlanIdForRoute}/sessions/${sessionId}`,
+									);
+								}
+							}}
+							section={section}
+						/>
+					</View>
+				) : (
+					<EmptyState
+						onCreatePlan={() => router.push(ROUTES.createLearningPlan)}
+					/>
+				)}
 			</ScreenScroll>
 		</Screen>
 	);
