@@ -8,7 +8,6 @@ import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-vie
 import { useAuthSession } from "~/context/AuthContext";
 import { getDiagnosticQuestionCreationStep } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
 import { QuizStep } from "~/features/learning-plans/quiz-step";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
@@ -66,6 +65,10 @@ export default function LearningPlanQuizScreen() {
 			router.replace(planPath(planId, "analysis"));
 			return;
 		}
+		if (!snapshot.plan.scopeConfirmedAt) {
+			router.replace(planPath(planId, "scope"));
+			return;
+		}
 		if (questionIndex >= questions.length) {
 			router.replace(quizPath(planId, questions.length - 1));
 		}
@@ -86,7 +89,7 @@ export default function LearningPlanQuizScreen() {
 			router.replace(quizPath(planId, questionIndex - 1));
 			return true;
 		}
-		goBackOrReplace(router, learningPlanTopicPath(planId));
+		goBackOrReplace(router, planPath(planId, "scope"));
 		return true;
 	};
 

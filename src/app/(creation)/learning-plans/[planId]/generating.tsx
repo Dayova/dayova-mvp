@@ -269,7 +269,7 @@ export default function LearningPlanGeneratingScreen() {
 						<AnimatedFlowerLoader />
 					</View>
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text/70">
-						Wir erstellen jetzt deinen vollständigen Lernplan.
+						Wir bereiten deinen nächsten Lernschritt vor.
 					</Text>
 					<Text className="mt-4 text-center font-poppins text-body-3 text-secondary-text">
 						{progressPresentation.label}

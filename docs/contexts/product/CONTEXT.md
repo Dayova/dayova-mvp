@@ -4,14 +4,28 @@ This context covers Dayova's product language, learning model, user journeys, co
 
 Notion is Dayova's main internal documentation and knowledge workspace. Keep this file focused on implementation-facing terminology and assumptions that must evolve with the code, and link to relevant Notion records instead of duplicating shared documentation.
 
+Canonical product framing: [Dayova Business Plan 2026 — Exact Exam, Real Gaps, Next Step](https://app.notion.com/p/Dayova-Business-Plan-2026-Exact-Exam-Real-Gaps-Next-Step-3ac2e87228bf81efa709e901f684da0d)
+
 ## Language
 
 **Persönlicher Lernplan**:
 The user-facing learning-plan creation flow and accepted study path. It frames five short pre-plan questions, extended up to eight when scope or readiness remains unclear, and optional learning material as the setup for a personalized, ordered plan whose sessions build toward exam readiness.
 _Avoid_: Wissensanalyse, Quiz
 
+**Interne Schulquelle**:
+A teacher instruction, exam-scope statement, worksheet, class note, or other material that came from school. At least one internal school source or concrete teacher instruction is required before Dayova derives the probable exam scope.
+_Avoid_: Treating Dayova or a generic curriculum as the source of truth
+
+**Externe Lernhilfe**:
+Optional supporting material from sources such as explanatory videos, learning platforms, or AI tools. It may improve explanations and practice but never expands the probable exam scope beyond the internal school evidence.
+_Avoid_: Using external material to decide what the teacher will assess
+
+**Bestätigter Prüfungsumfang**:
+The short topic map Dayova derives from internal school evidence and asks the learner to confirm before the pre-plan diagnostic step. Confirmation means that the evidence was interpreted plausibly, not that Dayova guarantees the teacher's exact exam content.
+_Avoid_: Manual classification of every uploaded page, exact-exam guarantee
+
 **Nächster Lernschritt**:
-The next unfinished session in a `Persönlicher Lernplan`. It is the recommended continuation point, while later sessions can remain visible for flexibility.
+The next unfinished session in a `Persönlicher Lernplan`. It is the only session whose detailed learning content must be committed up front; later sessions remain a provisional roadmap and receive their detailed content when they become next.
 _Avoid_: Hard lock, hidden future sessions
 
 **Lernzeit**:

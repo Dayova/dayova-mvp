@@ -9,6 +9,14 @@ const planQuestionValidator = v.object({
 	targetInsight: v.string(),
 	topicId: v.optional(v.string()),
 	kind: v.optional(v.union(v.literal("performance"), v.literal("confidence"))),
+	responseKind: v.optional(
+		v.union(
+			v.literal("multipleChoice"),
+			v.literal("shortText"),
+			v.literal("longText"),
+		),
+	),
+	options: v.optional(v.array(v.string())),
 	evaluationKeywords: v.optional(v.array(v.string())),
 });
 
@@ -287,6 +295,7 @@ export default defineSchema({
 			),
 		),
 		topicDescription: v.string(),
+		teacherGuidance: v.optional(v.string()),
 		notes: v.optional(v.string()),
 		status: v.union(
 			v.literal("draft"),
@@ -298,6 +307,7 @@ export default defineSchema({
 		knowledgeAnswersJson: v.optional(v.string()),
 		sourceSummary: v.optional(v.string()),
 		topicMap: v.optional(v.array(learningTopicValidator)),
+		scopeConfirmedAt: v.optional(v.number()),
 		topicReadiness: v.optional(v.array(topicReadinessValidator)),
 		insight: v.optional(planInsightValidator),
 		planningHint: v.optional(v.string()),
@@ -323,6 +333,7 @@ export default defineSchema({
 		fileName: v.string(),
 		fileType: v.string(),
 		fileSizeBytes: v.number(),
+		sourceKind: v.optional(v.union(v.literal("school"), v.literal("external"))),
 		createdAt: v.number(),
 	})
 		.index("by_learningPlanId", ["learningPlanId"])

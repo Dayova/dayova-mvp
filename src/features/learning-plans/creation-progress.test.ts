@@ -12,10 +12,11 @@ describe("learning-plan creation progress", () => {
 			examType: 2,
 			examSubject: 3,
 			materialUpload: 4,
-			topicDescription: 5,
-			workload: 11,
+			examEvidence: 5,
+			scopeConfirmation: 6,
+			workload: 12,
 		});
-		expect(LEARNING_PLAN_CREATION_TOTAL_STEPS).toBe(11);
+		expect(LEARNING_PLAN_CREATION_TOTAL_STEPS).toBe(12);
 	});
 
 	test("maps all five diagnostic questions between topic and workload", () => {
@@ -23,11 +24,11 @@ describe("learning-plan creation progress", () => {
 			Array.from({ length: 5 }, (_, index) =>
 				getDiagnosticQuestionCreationStep(index),
 			),
-		).toEqual([6, 7, 8, 9, 10]);
+		).toEqual([7, 8, 9, 10, 11]);
 	});
 
 	test("keeps malformed diagnostic indexes inside the question range", () => {
-		expect(getDiagnosticQuestionCreationStep(-1)).toBe(6);
-		expect(getDiagnosticQuestionCreationStep(99)).toBe(10);
+		expect(getDiagnosticQuestionCreationStep(-1)).toBe(7);
+		expect(getDiagnosticQuestionCreationStep(99)).toBe(11);
 	});
 });

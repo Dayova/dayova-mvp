@@ -11,7 +11,7 @@ describe("getGenerationProgressPresentation", () => {
 				failedSessionCount: 0,
 			}),
 		).toEqual({
-			label: "Fragen und Aufgaben für 5 von 14 Lernsessionen erstellt",
+			label: "Dein nächster Lernschritt wird geprüft",
 			progress: 5 / 14,
 			canRetryFailedSessions: false,
 		});
@@ -26,7 +26,7 @@ describe("getGenerationProgressPresentation", () => {
 				failedSessionCount: 2,
 			}),
 		).toEqual({
-			label: "2 Lernsessionen konnten noch nicht erstellt werden",
+			label: "Dein nächster Lernschritt konnte noch nicht vorbereitet werden",
 			progress: 12 / 14,
 			canRetryFailedSessions: true,
 		});
@@ -41,7 +41,7 @@ describe("getGenerationProgressPresentation", () => {
 				failedSessionCount: 0,
 			}),
 		).toEqual({
-			label: "Der Lernplan konnte noch nicht erstellt werden",
+			label: "Dein nächster Lernschritt konnte noch nicht erstellt werden",
 			progress: 0,
 			canRetryFailedSessions: true,
 		});
@@ -56,7 +56,7 @@ describe("getGenerationProgressPresentation", () => {
 				failedSessionCount: 0,
 			}),
 		).toEqual({
-			label: "Alle Lernsessionen sind bereit",
+			label: "Dein nächster Lernschritt ist bereit",
 			progress: 1,
 			canRetryFailedSessions: false,
 		});
