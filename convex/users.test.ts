@@ -122,6 +122,37 @@ test("onboarding persists canonical learning times visible to settings and plans
 	]);
 });
 
+test("compact onboarding persists profile context without inventing learning times", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: {
+			state: "Sachsen",
+			schoolType: "gymnasium",
+			grade: "11",
+		},
+	});
+
+	await expect(t.query(api.learningTimes.listMine, {})).resolves.toEqual([]);
+	const savedKeys = await t.run(async (ctx) => {
+		const answers = await ctx.db
+			.query("userOnboardingAnswers")
+			.withIndex("by_userId", (q) => q.eq("userId", userId))
+			.take(20);
+		const keys: string[] = [];
+		for (const answer of answers) {
+			const question = await ctx.db.get(
+				"onboardingQuestions",
+				answer.questionId,
+			);
+			if (question) keys.push(question.key);
+		}
+		return keys.sort();
+	});
+	expect(savedKeys).toEqual(["grade", "schoolType", "state"]);
+});
+
 test("onboarding synchronization is idempotent and preserves later settings edits", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 	await t.mutation(api.users.syncCurrentUser, { name: "User" });
