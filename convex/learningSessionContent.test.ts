@@ -215,28 +215,85 @@ test("split fallback stores theory then practice inside the same session", async
 	});
 
 	expect(content?.session.compositionVariant).toBe("split");
-	expect(content?.items).toHaveLength(8);
+	expect(content?.items).toHaveLength(10);
 	expect(
-		content?.items.slice(0, 6).every((item) => item.phase === "theory"),
+		content?.items.slice(0, 8).every((item) => item.phase === "theory"),
 	).toBe(true);
 	expect(
-		content?.items.slice(6).every((item) => item.phase === "practice"),
+		content?.items.slice(8).every((item) => item.phase === "practice"),
 	).toBe(true);
 	expect(
-		content?.items.slice(0, 6).every((item) => item.kind === "learnCard"),
+		content?.items.slice(0, 8).every((item) => item.kind === "learnCard"),
 	).toBe(true);
 	expect(
-		content?.items.slice(6).every((item) => item.kind !== "learnCard"),
+		content?.items.slice(8).every((item) => item.kind !== "learnCard"),
 	).toBe(true);
 	expect(
 		content?.items.reduce((total, item) => total + item.estimatedSeconds, 0),
 	).toBe(30 * 60);
-	expect(new Set(content?.items.map((item) => item.coverageKey)).size).toBe(8);
+	expect(new Set(content?.items.map((item) => item.coverageKey)).size).toBe(10);
 	expect(content?.items.map((item) => item.learningBlockIndex)).toEqual([
 		...Array.from({ length: 3 }, () => 0),
 		...Array.from({ length: 3 }, () => 1),
 		...Array.from({ length: 2 }, () => 2),
+		...Array.from({ length: 2 }, () => 3),
 	]);
+});
+
+test("persists deferred and completed theory validation states", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession(
+		"theory",
+		"split",
+	);
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+
+	await t.mutation(api.learningSessionContent.deferTheoryValidation, {
+		sessionId,
+	});
+	const deferred = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	expect(deferred?.session.knowledgeValidationStatus).toBe("skipped");
+
+	await t.mutation(api.learningSessionContent.finishSessionContent, {
+		sessionId,
+		knowledgeValidationConfidence: "sure",
+	});
+	const unchecked = await t.query(
+		api.learningSessionContent.getSessionContent,
+		{ sessionId },
+	);
+	expect(unchecked?.session.knowledgeValidationStatus).toBe("skipped");
+
+	const validationItems =
+		deferred?.items.filter((item) => item.phase === "practice") ?? [];
+	expect(validationItems).toHaveLength(2);
+	for (const item of validationItems) {
+		await t.mutation(api.learningSessionContent.submitAnswer, {
+			itemId: item.id,
+			...(item.kind === "multipleChoice"
+				? { selectedChoiceId: item.choices[0]?.id }
+				: {
+						answerText:
+							"Ich erkläre den Zusammenhang Schritt für Schritt und wende ihn anschließend auf ein neues Beispiel an.",
+					}),
+		});
+	}
+	await t.mutation(api.learningSessionContent.finishSessionContent, {
+		sessionId,
+		knowledgeValidationConfidence: "somewhatSure",
+	});
+
+	const completed = await t.query(
+		api.learningSessionContent.getSessionContent,
+		{ sessionId },
+	);
+	expect(completed?.session).toMatchObject({
+		knowledgeValidationStatus: "completed",
+		knowledgeValidationConfidence: "somewhatSure",
+	});
 });
 
 test("continue learning appends a fresh timed block", async () => {
@@ -263,14 +320,14 @@ test("continue learning appends a fresh timed block", async () => {
 	const newItems = after?.items.slice(extension.firstNewItemIndex) ?? [];
 
 	expect(extension).toMatchObject({
-		firstNewItemIndex: 8,
+		firstNewItemIndex: 10,
 		addedItemCount: 3,
 		durationMinutes: 10,
 	});
-	expect(after?.items.slice(0, 8).map((item) => item.id)).toEqual(
+	expect(after?.items.slice(0, 10).map((item) => item.id)).toEqual(
 		before?.items.map((item) => item.id),
 	);
-	expect(newItems.every((item) => item.learningBlockIndex === 3)).toBe(true);
+	expect(newItems.every((item) => item.learningBlockIndex === 4)).toBe(true);
 	expect(
 		newItems.some((item) => existingCoverageKeys.includes(item.coverageKey)),
 	).toBe(false);
@@ -289,7 +346,7 @@ test("continue learning appends a fresh timed block", async () => {
 	);
 
 	expect(secondExtension).toMatchObject({
-		firstNewItemIndex: 11,
+		firstNewItemIndex: 13,
 		addedItemCount: 3,
 	});
 	expect(duplicatePrompts).toEqual([]);

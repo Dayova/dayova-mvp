@@ -30,6 +30,8 @@ export type PlanSession = {
 	startTime: string;
 	durationMinutes: number;
 	compositionVariant?: "control" | "split";
+	knowledgeValidationStatus?: "pending" | "completed" | "skipped";
+	knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
 	goal: string;
 	tasks: string[];
 	expectedOutcome: string;
@@ -123,6 +125,8 @@ export type LearningSessionContentSnapshot = {
 		startTime: string;
 		durationMinutes: number;
 		compositionVariant: "control" | "split";
+		knowledgeValidationStatus?: "pending" | "completed" | "skipped";
+		knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
 		goal: string;
 		expectedOutcome: string;
 		completed: boolean;

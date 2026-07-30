@@ -78,7 +78,7 @@ const createAcceptedPlanWithSession = async (
 	return { learningPlanId, session };
 };
 
-test("persists the split experiment assignment on an eligible theory session", async () => {
+test("adds the knowledge validation split to theory sessions by default", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
 
@@ -87,7 +87,6 @@ test("persists the split experiment assignment on an eligible theory session", a
 		knowledgeAnswersJson: "[]",
 		sourceSummary: "Testmaterial",
 		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
-		sessionCompositionVariant: "split",
 		sessions: [
 			{
 				phase: "theory",

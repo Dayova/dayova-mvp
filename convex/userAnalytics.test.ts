@@ -119,7 +119,7 @@ const seedAnalyticsData = async () => {
 			createdAt: Date.UTC(2026, 6, 28, 14),
 			updatedAt: Date.UTC(2026, 6, 28, 14),
 		});
-		return { firstSessionId, openSessionId };
+		return { firstSessionId, recoverySessionId, openSessionId };
 	});
 	return { backend, t, learningPlanId, ...ids };
 };
@@ -236,8 +236,8 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 			daysRemaining: 8,
 		},
 		readiness: {
-			secure: 1,
-			developing: 1,
+			secure: 0,
+			developing: 2,
 			unknown: 0,
 		},
 		abilities: [
@@ -286,7 +286,7 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 		}),
 		expect.objectContaining({
 			id: "achsenschnitt",
-			status: "secure",
+			status: "developing",
 			priority: "medium",
 		}),
 	]);
@@ -296,6 +296,33 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 		}),
 	).resolves.toMatchObject({
 		selectedPlan: { id: learningPlanId },
+	});
+});
+
+test("recommends a deferred theory check before the next open session", async () => {
+	const { t, learningPlanId, recoverySessionId } = await seedAnalyticsData();
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlanSessions", recoverySessionId, {
+			compositionVariant: "split",
+			knowledgeValidationStatus: "skipped",
+		});
+	});
+
+	const analysis = await t.query(api.userAnalytics.getExamAnalysis, {
+		learningPlanId,
+		todayKey: "2026-07-28",
+	});
+
+	expect(analysis).toMatchObject({
+		reviewedNotVerified: true,
+		latestKnowledgeChange:
+			"Theorie abgeschlossen · Wissen noch nicht überprüft.",
+		recommendation: {
+			sessionId: recoverySessionId,
+			title: "Wissenscheck",
+			durationMinutes: 3,
+			reason: "Theorie abgeschlossen · Wissen noch nicht überprüft.",
+		},
 	});
 });
 

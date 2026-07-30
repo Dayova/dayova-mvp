@@ -1,6 +1,5 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useFeatureFlag, usePostHog } from "posthog-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
@@ -13,18 +12,13 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
+import { generatePlanWithAnalytics } from "~/features/learning-plans/plan-generation-analytics";
 import {
 	calculateAvailableStudyMinutes,
 	getAutomaticLearningPreparation,
 } from "~/features/learning-plans/plan-workload";
-import { generatePlanWithAnalytics } from "~/features/learning-plans/plan-generation-analytics";
-import {
-	LEARNING_SESSION_COMPOSITION_FLAG,
-	resolveLearningSessionCompositionVariant,
-} from "~/features/learning-plans/session-experiment";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { isPostHogConfigured } from "~/lib/analytics";
 import { getDayKey } from "~/lib/day-key";
 import { goBackOrReplace } from "~/lib/navigation";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
@@ -52,15 +46,10 @@ export default function LearningPlanGeneratingScreen() {
 	const setTargetStudyMinutes = useMutation(
 		api.learningPlans.setTargetStudyMinutes,
 	);
-	const posthog = usePostHog();
 	const { capture } = useValidationAnalytics();
-	const compositionFlagValue = useFeatureFlag(
-		LEARNING_SESSION_COMPOSITION_FLAG,
-	);
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [retryAttempt, setRetryAttempt] = useState(0);
-	const [flagRetryAttempt, setFlagRetryAttempt] = useState(0);
 	const [canRecoverStalledGeneration, setCanRecoverStalledGeneration] =
 		useState(false);
 	const didStartRef = useRef(false);
@@ -113,27 +102,10 @@ export default function LearningPlanGeneratingScreen() {
 				: null,
 		[availableStudyMinutes, snapshot],
 	);
-	const sessionCompositionVariant =
-		snapshot?.plan.sessionCompositionVariant ??
-		resolveLearningSessionCompositionVariant(compositionFlagValue);
-	const isExperimentAssignmentReady =
-		Boolean(snapshot?.plan.sessionCompositionVariant) ||
-		!isPostHogConfigured ||
-		compositionFlagValue !== undefined;
+	const sessionCompositionVariant = "split" as const;
 	const progressPresentation = getGenerationProgressPresentation(
 		snapshot?.plan.contentGeneration,
 	);
-
-	useEffect(() => {
-		void flagRetryAttempt;
-		if (isExperimentAssignmentReady) return undefined;
-		const timeout = setTimeout(() => {
-			setErrorMessage(
-				"Deine Testgruppe konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
-			);
-		}, 8_000);
-		return () => clearTimeout(timeout);
-	}, [flagRetryAttempt, isExperimentAssignmentReady]);
 
 	useEffect(() => {
 		const generation = snapshot?.plan.contentGeneration;
@@ -160,7 +132,7 @@ export default function LearningPlanGeneratingScreen() {
 
 	useEffect(() => {
 		void retryAttempt;
-		if (!planId || !snapshot || !isExperimentAssignmentReady) return;
+		if (!planId || !snapshot) return;
 
 		if (missingAnswerRedirectTimeoutRef.current) {
 			clearTimeout(missingAnswerRedirectTimeoutRef.current);
@@ -233,7 +205,6 @@ export default function LearningPlanGeneratingScreen() {
 		automaticPreparation,
 		capture,
 		generatePlan,
-		isExperimentAssignmentReady,
 		planId,
 		retryAttempt,
 		router,
@@ -252,12 +223,6 @@ export default function LearningPlanGeneratingScreen() {
 
 	const retryGeneration = async () => {
 		if (!planId || isBusy) return;
-		if (!isExperimentAssignmentReady) {
-			posthog.reloadFeatureFlags();
-			setErrorMessage(null);
-			setFlagRetryAttempt((value) => value + 1);
-			return;
-		}
 
 		setIsBusy(true);
 		setErrorMessage(null);

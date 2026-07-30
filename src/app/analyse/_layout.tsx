@@ -37,6 +37,10 @@ export default function AnalyticsLayout() {
 				name="naechster-schritt"
 				options={{ title: "Dein nächster Schritt" }}
 			/>
+			<Stack.Screen
+				name="entwicklung"
+				options={{ title: "Deine Entwicklung" }}
+			/>
 		</Stack>
 	);
 }

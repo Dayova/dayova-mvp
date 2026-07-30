@@ -574,6 +574,7 @@ type LearningSessionContentAiContext = {
 		title: string;
 		goal: string;
 		sortOrder: number;
+		knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
 	}>;
 	documents: LearningPlanAiContext["documents"];
 	answers: Array<{ questionId: string; answer: string }>;
@@ -1675,10 +1676,17 @@ const formatPlanSequence = (
 	sessions.length === 0
 		? "Keine weiteren Sessions gespeichert."
 		: sessions
-				.map(
-					(session) =>
-						`${session.sortOrder + 1}. ${session.title} (${session.phase}): ${session.goal}`,
-				)
+				.map((session) => {
+					const confidence =
+						session.knowledgeValidationConfidence === "unsure"
+							? " · Selbsteinschätzung: unsicher"
+							: session.knowledgeValidationConfidence === "somewhatSure"
+								? " · Selbsteinschätzung: teilweise sicher"
+								: session.knowledgeValidationConfidence === "sure"
+									? " · Selbsteinschätzung: sicher"
+									: "";
+					return `${session.sortOrder + 1}. ${session.title} (${session.phase}): ${session.goal}${confidence}`;
+				})
 				.join("\n");
 
 const formatPriorTheoryCards = (
@@ -2891,9 +2899,9 @@ export const generatePlan = action({
 				context.accessKey,
 			);
 			const sessionCompositionVariant =
-				context.plan.sessionCompositionVariant ??
 				args.sessionCompositionVariant ??
-				"control";
+				context.plan.sessionCompositionVariant ??
+				"split";
 			const personalLearningTimes = describeLearningTimes(
 				context.learningTimes,
 			);
