@@ -18,6 +18,8 @@ import { formatGermanUiText } from "~/lib/german-ui-text";
 
 export function QuizStep({
 	question,
+	questionCount,
+	questionNumber,
 	answer,
 	errorMessage,
 	isBusy,
@@ -25,6 +27,8 @@ export function QuizStep({
 	onContinue,
 }: {
 	question: QuizQuestion;
+	questionCount: number;
+	questionNumber: number;
 	answer: string;
 	errorMessage: string | null;
 	isBusy: boolean;
@@ -75,7 +79,13 @@ export function QuizStep({
 					transform: [{ translateY: contentTranslateY }],
 				}}
 			>
-				<Text className="pt-11 font-poppins font-semibold text-body-1 text-text">
+				<Text
+					className="pt-8 font-poppins font-semibold text-body-4 text-primary"
+					style={{ fontVariant: ["tabular-nums"] }}
+				>
+					Frage {questionNumber} von {questionCount}
+				</Text>
+				<Text className="mt-3 font-poppins font-semibold text-body-1 text-text">
 					{prompt}
 				</Text>
 				{responseKind === "multipleChoice" ? (

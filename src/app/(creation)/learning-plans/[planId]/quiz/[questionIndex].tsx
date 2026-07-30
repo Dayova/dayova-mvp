@@ -118,7 +118,7 @@ export default function LearningPlanQuizScreen() {
 				return;
 			}
 
-			router.replace(planPath(planId, "workload"));
+			router.replace(planPath(planId, "generating"));
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Die Antwort konnte nicht gespeichert werden."),
@@ -144,6 +144,8 @@ export default function LearningPlanQuizScreen() {
 				{currentQuestion ? (
 					<QuizStep
 						question={currentQuestion}
+						questionCount={questions.length}
+						questionNumber={questionIndex + 1}
 						answer={answer}
 						errorMessage={errorMessage}
 						isBusy={isBusy}

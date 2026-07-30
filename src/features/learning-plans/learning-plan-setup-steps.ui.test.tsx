@@ -50,8 +50,6 @@ describe("learning-plan setup steps", () => {
 				isBusy={false}
 				onChangeTeacherGuidance={jest.fn()}
 				onContinue={jest.fn()}
-				onOpenLearningTimes={jest.fn()}
-				showLearningTimesWarning={false}
 				teacherGuidance=""
 			/>,
 		);

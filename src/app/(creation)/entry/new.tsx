@@ -1,13 +1,20 @@
-import { useConvexAuth, useMutation } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
 	type ReactNode,
 	useCallback,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
-import { Keyboard, type LayoutChangeEvent, Platform, View } from "react-native";
+import {
+	ActivityIndicator,
+	Keyboard,
+	type LayoutChangeEvent,
+	Platform,
+	View,
+} from "react-native";
 import {
 	type KeyboardAwareScrollViewRef,
 	KeyboardStickyView,
@@ -56,7 +63,13 @@ import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { useAuthSession } from "~/context/AuthContext";
+import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
+import { LearningAvailabilityStep } from "~/features/learning-plans/learning-availability-step";
+import {
+	calculateAvailableStudyMinutes,
+	shouldRequestLearningTimeBeforeExam,
+} from "~/features/learning-plans/plan-workload";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
@@ -70,12 +83,17 @@ import {
 	shiftEndTimeForStartChange,
 } from "~/lib/entry-time";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
-import { ROUTES } from "~/lib/routes";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 type EntryType = "homework" | "exam";
-type EntryStep = "basics" | "planning" | "examType" | "examDetails";
+type EntryStep =
+	| "basics"
+	| "planning"
+	| "learningAvailability"
+	| "examType"
+	| "examDetails";
 type PickerTarget =
 	| "dueDate"
 	| "plannedDate"
@@ -266,12 +284,23 @@ export default function NewEntryScreen() {
 		type?: string;
 		dayKey?: string;
 		dayLabel?: string;
+		step?: string;
 	}>();
 	const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
 	const isHomework = entryType === "homework";
+	const learningTimes = useQuery(
+		api.learningTimes.listMine,
+		user && isConvexAuthenticated && !isHomework ? {} : "skip",
+	);
 	const [initialDate] = useState(() => parseDateKey(params.dayKey));
 
-	const [step, setStep] = useState<EntryStep>("basics");
+	const [step, setStep] = useState<EntryStep>(() =>
+		!isHomework && params.step === "learningAvailability"
+			? "learningAvailability"
+			: "basics",
+	);
+	const [didShowLearningAvailability, setDidShowLearningAvailability] =
+		useState(() => !isHomework && params.step === "learningAvailability");
 	const [subject, setSubject] = useState("");
 	const [examTypeLabel, setExamTypeLabel] = useState("");
 	const [note, setNote] = useState("");
@@ -317,13 +346,32 @@ export default function NewEntryScreen() {
 	const canCreateHomework = trimmedSubject.length > 0;
 	const canCreateExam = trimmedSubject.length > 0 && Boolean(selectedExamType);
 	const canWriteEntries = Boolean(user && isConvexAuthenticated);
-	const examStepNumber = step === "basics" ? 1 : step === "examType" ? 2 : 3;
+	const todayDayKey = getDayKey(new Date());
+	const examDayKey = getDayKey(plannedDate);
+	const availableStudyMinutes = useMemo(
+		() =>
+			learningTimes === undefined
+				? null
+				: calculateAvailableStudyMinutes({
+						fromDateKey: todayDayKey,
+						examDateKey: examDayKey,
+						learningTimes,
+					}),
+		[examDayKey, learningTimes, todayDayKey],
+	);
+	const isFutureExam = examDayKey > todayDayKey;
+	const isLearningTimeCheckLoading =
+		isFutureExam && learningTimes === undefined;
+	const hasUsableLearningTime =
+		availableStudyMinutes !== null && availableStudyMinutes >= 10;
 	const examStepTitle =
 		step === "basics"
 			? "Wann findet die Prüfung statt?"
-			: step === "examType"
-				? "Welche Art von Prüfung ist es?"
-				: "Welches Fach ist es?";
+			: step === "learningAvailability"
+				? "Wann kannst du dafür lernen?"
+				: step === "examType"
+					? "Welche Art von Prüfung ist es?"
+					: "Welches Fach ist es?";
 	const clearPendingModalOpen = useCallback(() => {
 		keyboardHideSubscriptionRef.current?.remove();
 		keyboardHideSubscriptionRef.current = null;
@@ -543,6 +591,31 @@ export default function NewEntryScreen() {
 		setStep(nextStep);
 	}, []);
 
+	const continueFromExamDate = () => {
+		if (learningTimes === undefined && isFutureExam) return;
+		if (
+			learningTimes &&
+			shouldRequestLearningTimeBeforeExam({
+				fromDateKey: todayDayKey,
+				examDateKey: examDayKey,
+				learningTimes,
+			})
+		) {
+			setDidShowLearningAvailability(true);
+			goToStep("learningAvailability");
+			return;
+		}
+
+		goToStep("examType");
+	};
+
+	const openLearningTimes = () => {
+		const returnTo = `/entry/new?type=exam&dayKey=${encodeURIComponent(
+			examDayKey,
+		)}&step=learningAvailability`;
+		router.push(withReturnTo(ROUTES.learningTimes, returnTo));
+	};
+
 	const handleBack = useCallback(() => {
 		if (selectTarget) {
 			setSelectTarget(null);
@@ -554,8 +627,13 @@ export default function NewEntryScreen() {
 			return true;
 		}
 
-		if (step === "planning" || step === "examType") {
+		if (step === "planning" || step === "learningAvailability") {
 			goToStep("basics");
+			return true;
+		}
+
+		if (step === "examType") {
+			goToStep(didShowLearningAvailability ? "learningAvailability" : "basics");
 			return true;
 		}
 
@@ -566,7 +644,14 @@ export default function NewEntryScreen() {
 
 		goBackOrReplace(router, "/home");
 		return true;
-	}, [goToStep, pickerTarget, router, selectTarget, step]);
+	}, [
+		didShowLearningAvailability,
+		goToStep,
+		pickerTarget,
+		router,
+		selectTarget,
+		step,
+	]);
 
 	useBackIntent(
 		Boolean(selectTarget || pickerTarget || step !== "basics"),
@@ -574,7 +659,7 @@ export default function NewEntryScreen() {
 	);
 	useLearningPlanCreationProgress({
 		active: !isHomework,
-		currentStep: examStepNumber,
+		currentStep: LEARNING_PLAN_CREATION_STEPS.examDate,
 		onBack: handleBack,
 		title: "Prüfung eintragen",
 	});
@@ -803,6 +888,11 @@ export default function NewEntryScreen() {
 									selectedDate={plannedDate}
 									onSelect={setPlannedDate}
 								/>
+							) : step === "learningAvailability" ? (
+								<LearningAvailabilityStep
+									availableStudyMinutes={availableStudyMinutes}
+									examDateLabel={formatCompactDate(plannedDate)}
+								/>
 							) : step === "examType" ? (
 								<ExamTypePicker
 									selectedValue={examTypeLabel}
@@ -895,16 +985,49 @@ export default function NewEntryScreen() {
 							</Button>
 						</View>
 					</StickyActionFooter>
+				) : step === "learningAvailability" ? (
+					<StickyActionFooter bottomInset={insets.bottom}>
+						<Button
+							className="w-full"
+							disabled={availableStudyMinutes === null}
+							onPress={() => {
+								if (hasUsableLearningTime) {
+									goToStep("examType");
+									return;
+								}
+								openLearningTimes();
+							}}
+						>
+							{availableStudyMinutes === null ? (
+								<ActivityIndicator color="#FFFFFF" />
+							) : (
+								<Text>
+									{hasUsableLearningTime ? "Weiter" : "Lernzeit eintragen"}
+								</Text>
+							)}
+						</Button>
+					</StickyActionFooter>
 				) : (
 					<StickyActionFooter bottomInset={insets.bottom}>
 						<Button
 							className="w-full"
-							disabled={step === "examType" && !trimmedExamType}
+							disabled={
+								(step === "examType" && !trimmedExamType) ||
+								(step === "basics" && isLearningTimeCheckLoading)
+							}
 							onPress={() => {
-								goToStep(step === "basics" ? "examType" : "examDetails");
+								if (step === "basics") {
+									continueFromExamDate();
+									return;
+								}
+								goToStep("examDetails");
 							}}
 						>
-							<Text>Weiter</Text>
+							{step === "basics" && isLearningTimeCheckLoading ? (
+								<ActivityIndicator color="#FFFFFF" />
+							) : (
+								<Text>Weiter</Text>
+							)}
 						</Button>
 					</StickyActionFooter>
 				)}

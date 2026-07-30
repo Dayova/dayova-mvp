@@ -5,7 +5,6 @@ import { Globe, GraduationCap, Plus } from "~/components/ui/icon";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
-import { WarningBanner } from "~/components/ui/warning-banner";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 
@@ -191,8 +190,6 @@ export function TeacherGuidanceStep({
 	isBusy,
 	onChangeTeacherGuidance,
 	onContinue,
-	onOpenLearningTimes,
-	showLearningTimesWarning,
 	teacherGuidance,
 }: {
 	canContinue: boolean;
@@ -201,21 +198,10 @@ export function TeacherGuidanceStep({
 	isBusy: boolean;
 	onChangeTeacherGuidance: (value: string) => void;
 	onContinue: () => void;
-	onOpenLearningTimes: () => void;
-	showLearningTimesWarning: boolean;
 	teacherGuidance: string;
 }) {
 	return (
 		<View className="flex-1">
-			{showLearningTimesWarning ? (
-				<WarningBanner
-					className="mb-7"
-					title="Lernzeiten fehlen"
-					description="Ohne Lernzeiten weiß Dayova nicht, wann der Lernplan eingetragen werden soll. Lege mindestens eine Lernzeit an, damit wir deinen Plan erstellen können."
-					ctaLabel="Lernzeiten eintragen"
-					onPressCta={onOpenLearningTimes}
-				/>
-			) : null}
 			<Text className="font-poppins font-semibold text-body-1 text-text">
 				Was hat deine Lehrkraft zur Arbeit gesagt?
 			</Text>
