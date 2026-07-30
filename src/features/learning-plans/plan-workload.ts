@@ -1,3 +1,9 @@
+import {
+	getDefaultPreparationDepth,
+	recommendLearningPreparation,
+	type PreparationDepth,
+} from "#convex/learningPreparationPolicy";
+
 const MIN_TOTAL_STUDY_MINUTES = 30;
 const MAX_TOTAL_STUDY_MINUTES = 180;
 
@@ -41,6 +47,74 @@ export const calculateAvailableStudyMinutes = ({
 	}
 
 	return availableMinutes;
+};
+
+export const shouldRequestLearningTimeBeforeExam = ({
+	fromDateKey,
+	examDateKey,
+	learningTimes,
+}: {
+	fromDateKey: string;
+	examDateKey: string;
+	learningTimes: Array<{
+		dayOfWeek: number;
+		startTime: string;
+		endTime: string;
+	}>;
+}) =>
+	examDateKey > fromDateKey &&
+	calculateAvailableStudyMinutes({
+		fromDateKey,
+		examDateKey,
+		learningTimes,
+	}) < 10;
+
+export const getAutomaticLearningPreparation = ({
+	examTypeLabel,
+	examDurationMinutes,
+	preparationDepth,
+	topicCount,
+	answerCount,
+	topicReadiness,
+	availableMinutes,
+}: {
+	examTypeLabel: string;
+	examDurationMinutes: number;
+	preparationDepth?: PreparationDepth;
+	topicCount: number;
+	answerCount: number;
+	topicReadiness: Array<{
+		status: "secure" | "developing" | "unknown";
+	}>;
+	availableMinutes: number;
+}) => {
+	const resolvedPreparationDepth =
+		preparationDepth ?? getDefaultPreparationDepth(examTypeLabel);
+	const assessedTopicCount = Math.max(topicCount, answerCount);
+	const secure = topicReadiness.filter(
+		(topic) => topic.status === "secure",
+	).length;
+	const developing = topicReadiness.filter(
+		(topic) => topic.status === "developing",
+	).length;
+	const unknown = topicReadiness.filter(
+		(topic) => topic.status === "unknown",
+	).length;
+
+	return {
+		preparationDepth: resolvedPreparationDepth,
+		recommendation: recommendLearningPreparation({
+			examTypeLabel,
+			examDurationMinutes,
+			preparationDepth: resolvedPreparationDepth,
+			topicReadiness: {
+				secure,
+				developing,
+				unknown: Math.max(unknown, assessedTopicCount - topicReadiness.length),
+			},
+			availableMinutes,
+		}),
+	};
 };
 
 const isUncertainAnswer = (answer: string) => {

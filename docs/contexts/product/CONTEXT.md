@@ -69,8 +69,8 @@ The difference between the preparation Dayova recommends for the assessment and 
 _Avoid_: Inventing availability, silently treating reduced coverage as fully recommended preparation
 
 **Preparation depth**:
-The learner-adjustable intensity of a `Persönlicher Lernplan`: compact, thorough, or intensive. Assessment type supplies the recommended default, while the selected depth influences recommended study time, session coverage, and repetition without replacing `Topic readiness` or available learning time.
-_Avoid_: Fixed session count based only on the assessment label, hidden AI-selected intensity
+The internal intensity of a `Persönlicher Lernplan`: compact, thorough, or intensive. Assessment type supplies a deterministic default, while `Topic readiness` and available learning time determine the feasible preparation. It is not a mandatory learner choice in the creation flow.
+_Avoid_: Fixed session count based only on the assessment label, an extra workload-choice screen, AI-selected intensity
 
 **Wissensanalyse**:
 The post-session analysis shown after `Üben` or `Praxis`. It summarizes the learner's strengths, knowledge or execution gaps, and near-term recommendations for the ongoing plan.

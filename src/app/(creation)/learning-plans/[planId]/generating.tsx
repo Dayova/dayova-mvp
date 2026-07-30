@@ -1,4 +1,4 @@
-import { useAction, useConvexAuth, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useFeatureFlag, usePostHog } from "posthog-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -13,6 +13,10 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
+import {
+	calculateAvailableStudyMinutes,
+	getAutomaticLearningPreparation,
+} from "~/features/learning-plans/plan-workload";
 import { generatePlanWithAnalytics } from "~/features/learning-plans/plan-generation-analytics";
 import {
 	LEARNING_SESSION_COMPOSITION_FLAG,
@@ -21,6 +25,7 @@ import {
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { isPostHogConfigured } from "~/lib/analytics";
+import { getDayKey } from "~/lib/day-key";
 import { goBackOrReplace } from "~/lib/navigation";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
@@ -44,6 +49,9 @@ export default function LearningPlanGeneratingScreen() {
 	const retryFailedSessionContent = useAction(
 		api.learningPlanAi.retryFailedSessionContent,
 	);
+	const setTargetStudyMinutes = useMutation(
+		api.learningPlans.setTargetStudyMinutes,
+	);
 	const posthog = usePostHog();
 	const { capture } = useValidationAnalytics();
 	const compositionFlagValue = useFeatureFlag(
@@ -64,6 +72,10 @@ export default function LearningPlanGeneratingScreen() {
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;
+	const learningTimes = useQuery(
+		api.learningTimes.listMine,
+		user && isConvexAuthenticated ? {} : "skip",
+	);
 
 	const answerList = useMemo(() => {
 		const answers = snapshot?.answers ?? [];
@@ -75,6 +87,32 @@ export default function LearningPlanGeneratingScreen() {
 					?.answer.trim() ?? "",
 		}));
 	}, [snapshot]);
+	const availableStudyMinutes = useMemo(
+		() =>
+			snapshot && learningTimes
+				? calculateAvailableStudyMinutes({
+						fromDateKey: getDayKey(new Date()),
+						examDateKey: snapshot.plan.examDateKey,
+						learningTimes,
+					})
+				: null,
+		[learningTimes, snapshot],
+	);
+	const automaticPreparation = useMemo(
+		() =>
+			snapshot && availableStudyMinutes !== null
+				? getAutomaticLearningPreparation({
+						examTypeLabel: snapshot.plan.examTypeLabel,
+						examDurationMinutes: snapshot.plan.durationMinutes,
+						preparationDepth: snapshot.plan.preparationDepth,
+						topicCount: snapshot.plan.topicMap.length,
+						answerCount: snapshot.answers.length,
+						topicReadiness: snapshot.plan.topicReadiness ?? [],
+						availableMinutes: availableStudyMinutes,
+					})
+				: null,
+		[availableStudyMinutes, snapshot],
+	);
 	const sessionCompositionVariant =
 		snapshot?.plan.sessionCompositionVariant ??
 		resolveLearningSessionCompositionVariant(compositionFlagValue);
@@ -142,21 +180,44 @@ export default function LearningPlanGeneratingScreen() {
 			}, 600);
 			return;
 		}
+		if (!snapshot.plan.targetStudyMinutes && !automaticPreparation) return;
+		if (
+			!snapshot.plan.targetStudyMinutes &&
+			automaticPreparation &&
+			automaticPreparation.recommendation.plannedMinutes < 10
+		) {
+			queueMicrotask(() => {
+				setErrorMessage(
+					"Vor deiner Prüfung ist keine passende Lernzeit mehr frei. Gehe zurück und ergänze zuerst ein Zeitfenster.",
+				);
+			});
+			return;
+		}
 		if (didStartRef.current) return;
 
 		didStartRef.current = true;
 		queueMicrotask(() => {
 			setIsBusy(true);
 			setErrorMessage(null);
-			void generatePlanWithAnalytics({
-				generatePlan,
-				capture,
-				args: {
-					learningPlanId: planId,
-					answers: answerList,
-					sessionCompositionVariant,
-				},
-			})
+			void (async () => {
+				if (!snapshot.plan.targetStudyMinutes && automaticPreparation) {
+					await setTargetStudyMinutes({
+						learningPlanId: planId,
+						targetStudyMinutes:
+							automaticPreparation.recommendation.plannedMinutes,
+						preparationDepth: automaticPreparation.preparationDepth,
+					});
+				}
+				await generatePlanWithAnalytics({
+					generatePlan,
+					capture,
+					args: {
+						learningPlanId: planId,
+						answers: answerList,
+						sessionCompositionVariant,
+					},
+				});
+			})()
 				.catch((error: unknown) => {
 					setErrorMessage(
 						getErrorMessage(
@@ -169,12 +230,14 @@ export default function LearningPlanGeneratingScreen() {
 		});
 	}, [
 		answerList,
+		automaticPreparation,
 		capture,
 		generatePlan,
 		isExperimentAssignmentReady,
 		planId,
 		retryAttempt,
 		router,
+		setTargetStudyMinutes,
 		sessionCompositionVariant,
 		snapshot,
 	]);
@@ -239,8 +302,13 @@ export default function LearningPlanGeneratingScreen() {
 	};
 
 	const goBack = () => {
-		if (planId) {
-			router.replace(planPath(planId, "workload"));
+		if (planId && snapshot) {
+			router.replace(
+				quizPath(
+					planId,
+					Math.max(snapshot.plan.knowledgeQuestions.length - 1, 0),
+				),
+			);
 			return;
 		}
 
@@ -248,7 +316,7 @@ export default function LearningPlanGeneratingScreen() {
 	};
 	useLearningPlanCreationProgress({
 		active: true,
-		currentStep: LEARNING_PLAN_CREATION_STEPS.workload,
+		currentStep: LEARNING_PLAN_CREATION_STEPS.planGeneration,
 		onBack: goBack,
 	});
 

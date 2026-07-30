@@ -14,6 +14,8 @@ describe("QuizStep", () => {
 				answer=""
 				errorMessage={null}
 				isBusy={false}
+				questionCount={5}
+				questionNumber={2}
 				onAnswerChange={onAnswerChange}
 				onContinue={jest.fn()}
 				question={{
@@ -34,5 +36,6 @@ describe("QuizStep", () => {
 			screen.getByRole("button", { name: "Weiß ich nicht" }),
 		);
 		expect(onAnswerChange).toHaveBeenLastCalledWith("Weiß ich nicht");
+		expect(screen.getByText("Frage 2 von 5")).toBeOnTheScreen();
 	});
 });

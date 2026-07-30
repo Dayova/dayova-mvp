@@ -88,7 +88,7 @@ export default function LearningPlanAnalysisScreen() {
 	};
 	useLearningPlanCreationProgress({
 		active: true,
-		currentStep: LEARNING_PLAN_CREATION_STEPS.scopeConfirmation,
+		currentStep: LEARNING_PLAN_CREATION_STEPS.materialUpload,
 		onBack: goBack,
 	});
 

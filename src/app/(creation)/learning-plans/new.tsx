@@ -17,10 +17,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import {
-	learningPlanStepPath,
-	learningPlanTopicPath,
-} from "~/features/learning-plans/creation-routes";
+import { learningPlanStepPath } from "~/features/learning-plans/creation-routes";
 import {
 	MaterialUploadStep,
 	TeacherGuidanceStep,
@@ -40,7 +37,7 @@ import {
 import { getValidationFileSizeBucket } from "~/lib/analytics";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
-import { ROUTES, withReturnTo } from "~/lib/routes";
+import { ROUTES } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
@@ -128,10 +125,6 @@ export default function NewLearningPlanScreen() {
 			? { id: learningPlanId }
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
-	const learningTimes = useQuery(
-		api.learningTimes.listMine,
-		user && isConvexAuthenticated && learningPlanId ? {} : "skip",
-	);
 	const canWrite = Boolean(user && isConvexAuthenticated);
 	const teacherGuidance =
 		teacherGuidanceInput ??
@@ -147,8 +140,6 @@ export default function NewLearningPlanScreen() {
 		(hasSchoolMaterial || teacherGuidance.trim().length >= 12) &&
 		canWrite &&
 		!isBusy;
-	const showLearningTimesWarning =
-		learningTimes !== undefined && learningTimes.length === 0;
 	const currentProgressStep =
 		setupStep === "materialUpload"
 			? LEARNING_PLAN_CREATION_STEPS.materialUpload
@@ -535,16 +526,6 @@ export default function NewLearningPlanScreen() {
 		}
 	};
 
-	const openLearningTimes = () => {
-		if (!learningPlanId) return;
-		router.replace(
-			withReturnTo(
-				ROUTES.learningTimes,
-				learningPlanTopicPath(learningPlanId, { teacherGuidance }),
-			),
-		);
-	};
-
 	if (!hasExamEntry) return null;
 
 	return (
@@ -579,8 +560,6 @@ export default function NewLearningPlanScreen() {
 							isBusy={isBusy}
 							onChangeTeacherGuidance={setTeacherGuidanceInput}
 							onContinue={() => void continueToAnalysis()}
-							onOpenLearningTimes={openLearningTimes}
-							showLearningTimesWarning={showLearningTimesWarning}
 							teacherGuidance={teacherGuidance}
 						/>
 					)}
