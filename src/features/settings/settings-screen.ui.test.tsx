@@ -1,14 +1,15 @@
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import type { ReactNode } from "react";
 import SettingsScreen from "../../app/(app)/settings";
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 const mockLogout = jest.fn<() => Promise<void>>(async () => undefined);
 const mockSetPreference = jest.fn(async () => undefined);
 
 jest.mock("expo-router", () => ({
-	useRouter: () => ({ push: jest.fn(), replace: mockReplace }),
+	useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }));
 
 jest.mock("~/context/AuthContext", () => ({
@@ -52,13 +53,25 @@ jest.mock("~/components/ui/themed-status-bar", () => ({
 	ThemedStatusBar: () => null,
 }));
 
-describe("SettingsScreen logout", () => {
+describe("SettingsScreen", () => {
 	beforeEach(() => {
 		mockLogout.mockReset();
 		mockLogout.mockResolvedValue(undefined);
 		mockReplace.mockReset();
+		mockPush.mockReset();
 		mockSetPreference.mockReset();
 		mockSetPreference.mockResolvedValue(undefined);
+	});
+
+	test("groups destinations by learning, app, and account responsibility", async () => {
+		const screen = await render(<SettingsScreen />);
+
+		expect(screen.getByRole("header", { name: "Lernen" })).toBeOnTheScreen();
+		expect(screen.getByRole("header", { name: "App" })).toBeOnTheScreen();
+		expect(screen.getByRole("header", { name: "Konto" })).toBeOnTheScreen();
+
+		await fireEvent.press(screen.getByRole("button", { name: "Stundenplan" }));
+		expect(mockPush).toHaveBeenCalledWith("/timetable");
 	});
 
 	test("exposes each theme preference as an individually selectable radio", async () => {
