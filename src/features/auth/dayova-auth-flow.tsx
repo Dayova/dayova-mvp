@@ -1747,9 +1747,10 @@ function VerificationScreen({
 				className="flex-1"
 			>
 				<ScrollView
+					testID="onboarding-verification-scroll"
 					keyboardShouldPersistTaps="handled"
 					showsVerticalScrollIndicator={false}
-					contentInsetAdjustmentBehavior="automatic"
+					contentInsetAdjustmentBehavior="never"
 					contentContainerStyle={{
 						flexGrow: 1,
 						paddingTop: Math.max(topInset + 12, 20),
