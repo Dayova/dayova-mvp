@@ -3,6 +3,7 @@ import {
 	calculateAvailableStudyMinutes,
 	getAutomaticLearningPreparation,
 	shouldRequestLearningTimeBeforeExam,
+	shouldShowLearningTimeValidation,
 	suggestTotalStudyMinutes,
 } from "./plan-workload";
 
@@ -74,6 +75,21 @@ describe("total study workload suggestion", () => {
 				fromDateKey: "2026-06-01",
 				examDateKey: "2026-06-01",
 				learningTimes: [],
+			}),
+		).toBe(false);
+	});
+
+	test("shows the learning-time validation for every future exam", () => {
+		expect(
+			shouldShowLearningTimeValidation({
+				fromDateKey: "2026-06-01",
+				examDateKey: "2026-06-05",
+			}),
+		).toBe(true);
+		expect(
+			shouldShowLearningTimeValidation({
+				fromDateKey: "2026-06-01",
+				examDateKey: "2026-06-01",
 			}),
 		).toBe(false);
 	});

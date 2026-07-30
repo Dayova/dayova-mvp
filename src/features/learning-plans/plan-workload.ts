@@ -69,6 +69,14 @@ export const shouldRequestLearningTimeBeforeExam = ({
 		learningTimes,
 	}) < 10;
 
+export const shouldShowLearningTimeValidation = ({
+	fromDateKey,
+	examDateKey,
+}: {
+	fromDateKey: string;
+	examDateKey: string;
+}) => examDateKey > fromDateKey;
+
 export const getAutomaticLearningPreparation = ({
 	examTypeLabel,
 	examDurationMinutes,
