@@ -8,6 +8,7 @@ export const learningPlanTopicPath = (
 	id: Id<"learningPlans">,
 	params: {
 		topicDescription?: string;
+		teacherGuidance?: string;
 		errorMessage?: string;
 	} = {},
 ) => {
@@ -15,6 +16,7 @@ export const learningPlanTopicPath = (
 		["learningPlanId", id],
 		["step", "topic"],
 		["topicDescription", params.topicDescription],
+		["teacherGuidance", params.teacherGuidance],
 		["errorMessage", params.errorMessage],
 	]
 		.filter(([, value]) => value !== undefined)

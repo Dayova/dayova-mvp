@@ -47,7 +47,11 @@ export default function LearningPlanAnalysisScreen() {
 			return;
 		}
 		if (snapshot.plan.knowledgeQuestions.length > 0) {
-			router.replace(`/learning-plans/${planId}/quiz/0`);
+			router.replace(
+				snapshot.plan.scopeConfirmedAt
+					? `/learning-plans/${planId}/quiz/0`
+					: planPath(planId, "scope"),
+			);
 			return;
 		}
 		if (didStartRef.current) return;
@@ -60,14 +64,14 @@ export default function LearningPlanAnalysisScreen() {
 				.catch((error: unknown) => {
 					const message = getErrorMessage(
 						error,
-						"Die Wissensanalyse konnte nicht vorbereitet werden.",
+						"Deine Unterlagen konnten nicht zuverlässig analysiert werden.",
 					);
 					setErrorMessage(message);
 					didStartRef.current = false;
 					dismissToOrReplace(
 						router,
 						learningPlanTopicPath(planId, {
-							topicDescription: snapshot.plan.topicDescription,
+							teacherGuidance: snapshot.plan.teacherGuidance,
 							errorMessage: message,
 						}),
 					);
@@ -84,7 +88,7 @@ export default function LearningPlanAnalysisScreen() {
 	};
 	useLearningPlanCreationProgress({
 		active: true,
-		currentStep: LEARNING_PLAN_CREATION_STEPS.topicDescription,
+		currentStep: LEARNING_PLAN_CREATION_STEPS.scopeConfirmation,
 		onBack: goBack,
 	});
 
@@ -105,7 +109,11 @@ export default function LearningPlanAnalysisScreen() {
 						<AnimatedFlowerLoader />
 					</View>
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-						Beantworte 5 kurze Fragen – bei breitem Stoff höchstens 8.
+						Wir ordnen deine Schulunterlagen.
+					</Text>
+					<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
+						Dayova trennt wahrscheinlichen Prüfungsstoff von zusätzlichem
+						Material und bereitet danach kurze Einstiegsfragen vor.
 					</Text>
 					{errorMessage ? (
 						<>

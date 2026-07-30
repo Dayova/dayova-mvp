@@ -139,6 +139,7 @@ type LearningPlanDocument = {
 	fileName: string;
 	fileType: string;
 	fileSizeBytes: number;
+	sourceKind: "school" | "external";
 };
 
 export type UploadAsset = {
@@ -154,6 +155,8 @@ export type QuizQuestion = {
 	targetInsight: string;
 	topicId?: string;
 	kind?: "performance" | "confidence";
+	responseKind?: "multipleChoice" | "shortText" | "longText";
+	options?: string[];
 	evaluationKeywords?: string[];
 };
 
@@ -175,6 +178,7 @@ export type LearningPlanSnapshot = {
 		targetStudyMinutes?: number;
 		preparationDepth: "compact" | "thorough" | "intensive";
 		topicDescription: string;
+		teacherGuidance?: string;
 		notes?: string;
 		status: "draft" | "questionsReady" | "generated" | "accepted";
 		knowledgeQuestions: QuizQuestion[];
@@ -186,6 +190,7 @@ export type LearningPlanSnapshot = {
 			keywords: string[];
 			priority: "high" | "medium" | "low";
 		}>;
+		scopeConfirmedAt?: number;
 		topicReadiness?: Array<{
 			topicId: string;
 			status: "secure" | "developing" | "unknown";

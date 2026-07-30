@@ -1,6 +1,6 @@
-import { useConvexAuth, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Pressable,
@@ -688,6 +688,10 @@ export default function LearningPlanSessionsScreen() {
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const ensureSessionContent = useAction(
+		api.learningPlanAi.ensureSessionContent,
+	);
+	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
@@ -717,6 +721,28 @@ export default function LearningPlanSessionsScreen() {
 			: null;
 	const canOpenSelectedSession =
 		selectedSessionState !== null && selectedSessionState !== "locked";
+
+	useEffect(() => {
+		if (
+			!defaultSession ||
+			defaultSession.contentGenerationStatus === "ready" ||
+			preparingSessionIdRef.current === defaultSession.id
+		) {
+			return;
+		}
+
+		preparingSessionIdRef.current = defaultSession.id;
+		void ensureSessionContent({ sessionId: defaultSession.id })
+			.catch(() => {
+				// The session route owns the user-facing retry state. This is only
+				// an eager preparation attempt when a session becomes current.
+			})
+			.finally(() => {
+				if (preparingSessionIdRef.current === defaultSession.id) {
+					preparingSessionIdRef.current = null;
+				}
+			});
+	}, [defaultSession, ensureSessionContent]);
 
 	const goBack = () => {
 		dismissToOrReplace(router, "/learning-plans");

@@ -223,6 +223,127 @@ test("keeps a plan in generation until every session content payload is ready", 
 	expect(ready?.plan.contentGeneration?.stage).toBe("ready");
 });
 
+test("commits only the next session while future session content stays adaptive", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: {
+			summary: "Der nächste Schritt ist klar.",
+			strengths: [],
+			gaps: ["Umformen"],
+		},
+		deferReadyUntilContent: true,
+		deferFutureContent: true,
+		sessions: [
+			{
+				phase: "practice",
+				title: "Umformen üben",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 15,
+				goal: "Vorzeichen beim Umformen sicher anwenden.",
+				tasks: ["Löse zwei Gleichungen."],
+				expectedOutcome: "Du formst Gleichungen sicher um.",
+			},
+			{
+				phase: "practice",
+				title: "Bruchgleichungen",
+				dateKey: "2026-06-02",
+				dateLabel: "2. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 20,
+				goal: "Der Schwerpunkt wird nach dem ersten Schritt angepasst.",
+				tasks: ["Aufgaben werden später festgelegt."],
+				expectedOutcome: "Der nächste Lernstand bestimmt den Inhalt.",
+			},
+		],
+	});
+
+	const generating = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(generating?.plan.contentGeneration).toEqual({
+		stage: "content",
+		totalSessionCount: 1,
+		readySessionCount: 0,
+		failedSessionCount: 0,
+	});
+	expect(generating?.sessions[0]?.contentGenerationStatus).toBe("queued");
+	expect(generating?.sessions[1]?.contentGenerationStatus).toBeUndefined();
+
+	const nextSessionId = generating?.sessions[0]?.id;
+	if (!nextSessionId) throw new Error("Expected the committed next session.");
+	await t.mutation(internal.learningPlans.setSessionContentGenerationStatus, {
+		sessionId: nextSessionId,
+		status: "ready",
+	});
+	await t.mutation(internal.learningPlans.finalizeContentGeneration, {
+		learningPlanId,
+	});
+
+	const ready = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(ready?.plan.status).toBe("generated");
+	expect(ready?.plan.contentGeneration?.stage).toBe("ready");
+	await expect(
+		t.mutation(api.learningPlans.acceptPlan, { learningPlanId }),
+	).resolves.toBe("2026-06-01");
+});
+
+test("atomically claims one session content generation at a time", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Bereit zum Lernen.", strengths: [], gaps: [] },
+		deferReadyUntilContent: true,
+		sessions: [
+			{
+				phase: "practice",
+				title: "Üben",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 15,
+				goal: "Gleichungen lösen.",
+				tasks: ["Löse zwei Gleichungen."],
+				expectedOutcome: "Du löst Gleichungen sicher.",
+			},
+		],
+	});
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const sessionId = snapshot?.sessions[0]?.id;
+	if (!sessionId) throw new Error("Expected generated session.");
+
+	await expect(
+		t.mutation(internal.learningPlans.claimSessionContentGeneration, {
+			sessionId,
+		}),
+	).resolves.toBe(true);
+	await expect(
+		t.mutation(internal.learningPlans.claimSessionContentGeneration, {
+			sessionId,
+		}),
+	).resolves.toBe(false);
+
+	vi.advanceTimersByTime(11 * 60_000);
+	await expect(
+		t.mutation(internal.learningPlans.claimSessionContentGeneration, {
+			sessionId,
+		}),
+	).resolves.toBe(true);
+});
+
 test("claims plan generation atomically and persists an empty failed claim for explicit retry", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
@@ -251,6 +372,50 @@ test("claims plan generation atomically and persists an empty failed claim for e
 		t.mutation(internal.learningPlans.beginContentGeneration, {
 			learningPlanId,
 			generationId: "generation-2",
+		}),
+	).resolves.toBeTypeOf("number");
+});
+
+test("requires scope confirmation before plan generation begins", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		sourceSummary: "Lineare Funktionen mit Steigung und Achsenabschnitt.",
+		topics: [
+			{
+				id: "steigung",
+				title: "Steigung",
+				learningGoal: "Die Steigung einer linearen Funktion berechnen.",
+				keywords: ["Steigung"],
+				priority: "high",
+			},
+		],
+		questions: [
+			{
+				id: "q1",
+				topicId: "steigung",
+				kind: "performance",
+				responseKind: "shortText",
+				prompt: "Wie berechnest du die Steigung einer Geraden?",
+				targetInsight: "Prüft die sichere Berechnung der Steigung.",
+				evaluationKeywords: ["Differenz", "Steigung"],
+			},
+		],
+	});
+
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "before-confirmation",
+		}),
+	).rejects.toThrow("Bestätige zuerst den erkannten Prüfungsstoff.");
+
+	await t.mutation(api.learningPlans.confirmScope, { learningPlanId });
+	await expect(
+		t.mutation(internal.learningPlans.beginContentGeneration, {
+			learningPlanId,
+			generationId: "after-confirmation",
 		}),
 	).resolves.toBeTypeOf("number");
 });
@@ -1064,6 +1229,109 @@ test("stores a reusable topic map with generated knowledge questions", async () 
 			priority: "medium",
 		},
 	]);
+});
+
+test("rejects vague teacher guidance when no school material defines scope", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await expect(
+		t.mutation(api.learningPlans.updateExamEvidence, {
+			id: learningPlanId,
+			teacherGuidance: "Mathe Arbeit",
+		}),
+	).rejects.toThrow("Beschreibe den Hinweis deiner Lehrkraft bitte konkreter.");
+});
+
+test("keeps school evidence authoritative while external material remains supportive", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.mutation(api.learningPlans.updateExamEvidence, {
+		id: learningPlanId,
+		teacherGuidance: "Die Lehrkraft prüft Steigung und den y-Achsenabschnitt.",
+	});
+	await t.mutation(internal.learningPlans.storeUploadedDocument, {
+		ownerTokenIdentifier: user.tokenIdentifier,
+		learningPlanId,
+		storageId: "school-material",
+		storageProvider: "convex",
+		fileName: "Arbeitsblatt.pdf",
+		fileType: "application/pdf",
+		fileSizeBytes: 1_024,
+		sourceKind: "school",
+	});
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		sourceSummary:
+			"Die Schulunterlagen priorisieren Steigung und y-Achsenabschnitt.",
+		topics: [
+			{
+				id: "steigung",
+				title: "Steigung",
+				learningGoal: "Die Steigung berechnen und in Graphen erkennen.",
+				keywords: ["Steigung", "Differenz"],
+				priority: "high",
+			},
+		],
+		questions: [
+			{
+				id: "q1",
+				topicId: "steigung",
+				kind: "performance",
+				responseKind: "multipleChoice",
+				options: ["2", "3", "4"],
+				correctAnswer: "2",
+				prompt: "Welche Steigung hat die Gerade durch (0|1) und (2|5)?",
+				targetInsight: "Prüft die Berechnung der Steigung.",
+				evaluationKeywords: ["2"],
+			},
+		],
+	});
+	await t.mutation(api.learningPlans.confirmScope, { learningPlanId });
+
+	const confirmed = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(confirmed?.plan.scopeConfirmedAt).toEqual(expect.any(Number));
+	expect(confirmed?.plan.knowledgeQuestions[0]).toMatchObject({
+		responseKind: "multipleChoice",
+		options: ["2", "3", "4"],
+	});
+	expect(confirmed?.plan.knowledgeQuestions[0]).not.toHaveProperty(
+		"correctAnswer",
+	);
+
+	await t.mutation(internal.learningPlans.storeUploadedDocument, {
+		ownerTokenIdentifier: user.tokenIdentifier,
+		learningPlanId,
+		storageId: "external-material",
+		storageProvider: "convex",
+		fileName: "SimpleClub-Zusammenfassung.pdf",
+		fileType: "application/pdf",
+		fileSizeBytes: 2_048,
+		sourceKind: "external",
+	});
+
+	const withExternalSupport = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(withExternalSupport?.plan.scopeConfirmedAt).toBe(
+		confirmed?.plan.scopeConfirmedAt,
+	);
+	expect(withExternalSupport?.plan.status).toBe("questionsReady");
+	expect(withExternalSupport?.documents).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				fileName: "Arbeitsblatt.pdf",
+				sourceKind: "school",
+			}),
+			expect.objectContaining({
+				fileName: "SimpleClub-Zusammenfassung.pdf",
+				sourceKind: "external",
+			}),
+		]),
+	);
 });
 
 test("generated plan sessions reject malformed control characters without replacing the existing plan", async () => {

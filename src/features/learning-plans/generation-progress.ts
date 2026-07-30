@@ -16,7 +16,7 @@ export const getGenerationProgressPresentation = (
 ): GenerationProgressPresentation => {
 	if (!generation) {
 		return {
-			label: "Dein Lernplan wird strukturiert",
+			label: "Dein Lernweg wird strukturiert",
 			progress: 0.05,
 			canRetryFailedSessions: false,
 		};
@@ -27,7 +27,7 @@ export const getGenerationProgressPresentation = (
 
 	if (generation.stage === "ready") {
 		return {
-			label: "Alle Lernsessionen sind bereit",
+			label: "Dein nächster Lernschritt ist bereit",
 			progress: 1,
 			canRetryFailedSessions: false,
 		};
@@ -37,8 +37,8 @@ export const getGenerationProgressPresentation = (
 		return {
 			label:
 				generation.totalSessionCount === 0
-					? "Der Lernplan konnte noch nicht erstellt werden"
-					: `${generation.failedSessionCount} Lernsessionen konnten noch nicht erstellt werden`,
+					? "Dein nächster Lernschritt konnte noch nicht erstellt werden"
+					: "Dein nächster Lernschritt konnte noch nicht vorbereitet werden",
 			progress,
 			canRetryFailedSessions: true,
 		};
@@ -46,14 +46,17 @@ export const getGenerationProgressPresentation = (
 
 	if (generation.stage === "validating") {
 		return {
-			label: "Alle Lernsessionen werden abschließend geprüft",
+			label: "Dein nächster Lernschritt wird abschließend geprüft",
 			progress: Math.max(progress, 0.95),
 			canRetryFailedSessions: false,
 		};
 	}
 
 	return {
-		label: `Fragen und Aufgaben für ${generation.readySessionCount} von ${generation.totalSessionCount} Lernsessionen erstellt`,
+		label:
+			generation.readySessionCount > 0
+				? "Dein nächster Lernschritt wird geprüft"
+				: "Passende Fragen und Aufgaben werden vorbereitet",
 		progress,
 		canRetryFailedSessions: false,
 	};

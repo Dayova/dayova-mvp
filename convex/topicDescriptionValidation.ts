@@ -16,6 +16,24 @@ const placeholderWords = new Set([
 	"todo",
 	"keine",
 	"nichts",
+	"mathe",
+	"mathematik",
+	"arbeit",
+	"prufung",
+	"klausur",
+	"schulaufgabe",
+	"leistungskontrolle",
+	"thema",
+	"und",
+	"oder",
+	"mit",
+	"ohne",
+	"die",
+	"der",
+	"das",
+	"den",
+	"von",
+	"fur",
 ]);
 
 const normalizeTopicWord = (word: string) =>
@@ -50,5 +68,13 @@ export const isMeaningfulTopicDescription = (value: string) => {
 export const assertMeaningfulTopicDescription = (value: string) => {
 	if (!isMeaningfulTopicDescription(value)) {
 		throwUserFacingError("Beschreibe das Prüfungsthema bitte genauer.");
+	}
+};
+
+export const assertMeaningfulTeacherGuidance = (value: string) => {
+	if (!isMeaningfulTopicDescription(value)) {
+		throwUserFacingError(
+			"Beschreibe den Hinweis deiner Lehrkraft bitte konkreter.",
+		);
 	}
 };

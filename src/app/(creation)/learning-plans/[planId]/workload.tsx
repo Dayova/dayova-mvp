@@ -21,17 +21,26 @@ import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 
-const MIN_TOTAL_MINUTES = 10;
-const MAX_TOTAL_MINUTES = 600;
-const STEP_MINUTES = 10;
-
 const DEPTH_OPTIONS: Array<{
 	value: PreparationDepth;
 	label: string;
+	description: string;
 }> = [
-	{ value: "compact", label: "Kompakt" },
-	{ value: "thorough", label: "Gründlich" },
-	{ value: "intensive", label: "Intensiv" },
+	{
+		value: "compact",
+		label: "Kompakt",
+		description: "Konzentriert sich auf die wichtigsten Lücken.",
+	},
+	{
+		value: "thorough",
+		label: "Gründlich",
+		description: "Verbindet relevante Grundlagen, Übung und Praxis.",
+	},
+	{
+		value: "intensive",
+		label: "Intensiv",
+		description: "Plant mehr Wiederholung und zusätzliche Praxis ein.",
+	},
 ];
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
@@ -54,10 +63,10 @@ export default function LearningPlanWorkloadScreen() {
 	const setTargetStudyMinutes = useMutation(
 		api.learningPlans.setTargetStudyMinutes,
 	);
-	const [selectedMinutes, setSelectedMinutes] = useState<number | null>(null);
 	const [selectedDepth, setSelectedDepth] = useState<PreparationDepth | null>(
 		null,
 	);
+	const [isAdjustingDepth, setIsAdjustingDepth] = useState(false);
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -116,7 +125,6 @@ export default function LearningPlanWorkloadScreen() {
 		});
 	}, [availableMinutes, preparationDepth, snapshot]);
 	const minutes =
-		selectedMinutes ??
 		(selectedDepth ? null : snapshot?.plan.targetStudyMinutes) ??
 		recommendation?.plannedMinutes ??
 		null;
@@ -128,15 +136,6 @@ export default function LearningPlanWorkloadScreen() {
 			router.replace(planPath(planId, "review"));
 		}
 	}, [planId, router, snapshot]);
-
-	const adjustMinutes = (delta: number) => {
-		setSelectedMinutes(
-			Math.min(
-				MAX_TOTAL_MINUTES,
-				Math.max(MIN_TOTAL_MINUTES, (minutes ?? 60) + delta),
-			),
-		);
-	};
 
 	const continueToGeneration = async () => {
 		if (!planId || minutes === null || isBusy) return;
@@ -182,19 +181,13 @@ export default function LearningPlanWorkloadScreen() {
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<View className="flex-1 justify-center">
 				<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-					Wie viel Lernzeit planen wir ein?
+					Deine Vorbereitung ist bereit
 				</Text>
 				<Text className="mt-3 text-center font-poppins text-body-3 text-secondary-text">
-					Wähle die Vorbereitungstiefe. Dayova plant daraus mehrere kurze,
-					fokussierte Lernsessionen statt eines langen Blocks.
+					Dayova verbindet deinen Lernstand mit dem Prüfungsstoff und plant
+					innerhalb deiner bestehenden Lernzeiten.
 				</Text>
-				{availableMinutes !== null && availableMinutes > 0 ? (
-					<Text className="mt-2 text-center font-poppins text-body-4 text-secondary-text">
-						Bis zur Prüfung passen maximal {availableMinutes} Min. in deine
-						Lernzeiten. Belegte Kalenderzeiten werden beim Erstellen
-						berücksichtigt.
-					</Text>
-				) : availableMinutes !== null ? (
+				{availableMinutes !== null && availableMinutes <= 0 ? (
 					<>
 						<Text className="mt-3 text-center font-poppins text-body-4 text-destructive">
 							Vor der Prüfung ist noch keine passende Lernzeit hinterlegt.
@@ -218,69 +211,67 @@ export default function LearningPlanWorkloadScreen() {
 					</>
 				) : null}
 
-				<View className="mt-6 flex-row gap-2">
-					{DEPTH_OPTIONS.map((option) => (
-						<Button
-							key={option.value}
-							className="flex-1 px-2"
-							size="sm"
-							variant={
-								preparationDepth === option.value ? "default" : "outline"
-							}
-							onPress={() => {
-								setSelectedDepth(option.value);
-								setSelectedMinutes(null);
-							}}
-						>
-							<Text>{option.label}</Text>
-						</Button>
-					))}
-				</View>
-
-				<Surface
-					className="mt-8 items-center rounded-[32px] px-6 py-8"
-					variant="flat"
-				>
+				<Surface className="mt-8 rounded-[32px] px-6 py-7" variant="flat">
 					<Text className="font-poppins text-body-4 text-secondary-text">
-						Geplante Lernzeit insgesamt
+						Unsere Empfehlung
 					</Text>
-					{recommendation ? (
-						<Text className="mt-2 text-center font-poppins text-body-4 text-secondary-text">
-							Empfohlen {recommendation.recommendedMinutes} Min. · Minimum{" "}
-							{recommendation.minimumMinutes} Min.
-						</Text>
-					) : null}
-					<Text
-						className="mt-2 font-poppins font-semibold text-[52px] text-text leading-[60px]"
-						style={{ fontVariant: ["tabular-nums"] }}
-					>
-						{minutes ?? "–"} Min.
+					<Text className="mt-2 font-poppins font-semibold text-body-1 text-text">
+						{
+							DEPTH_OPTIONS.find((option) => option.value === preparationDepth)
+								?.label
+						}{" "}
+						vorbereiten
 					</Text>
-					<View className="mt-7 w-full flex-row gap-3">
-						<Button
-							className="flex-1"
-							variant="neutral"
-							disabled={minutes === null || minutes <= MIN_TOTAL_MINUTES}
-							onPress={() => adjustMinutes(-STEP_MINUTES)}
-						>
-							<Text>− 10 Min.</Text>
-						</Button>
-						<Button
-							className="flex-1"
-							variant="neutral"
-							disabled={minutes === null || minutes >= MAX_TOTAL_MINUTES}
-							onPress={() => adjustMinutes(STEP_MINUTES)}
-						>
-							<Text>+ 10 Min.</Text>
-						</Button>
-					</View>
+					<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
+						{
+							DEPTH_OPTIONS.find((option) => option.value === preparationDepth)
+								?.description
+						}
+					</Text>
+					<Text className="mt-4 font-poppins text-body-4 text-secondary-text">
+						Die konkreten Inhalte werden nach jedem Lernschritt an deinen
+						Fortschritt angepasst. Deine bestätigten Termine bleiben stabil.
+					</Text>
 				</Surface>
+				<Button
+					className="mt-4"
+					variant="ghost"
+					onPress={() => setIsAdjustingDepth((value) => !value)}
+				>
+					<Text>
+						{isAdjustingDepth
+							? "Empfehlung ausblenden"
+							: "Vorbereitung anpassen"}
+					</Text>
+				</Button>
+				{isAdjustingDepth ? (
+					<View className="mt-3 gap-3">
+						{DEPTH_OPTIONS.map((option) => (
+							<Button
+								key={option.value}
+								className="h-auto min-h-16 justify-start px-5 py-4"
+								variant={
+									preparationDepth === option.value ? "default" : "outline"
+								}
+								onPress={() => setSelectedDepth(option.value)}
+							>
+								<View className="flex-1 items-start">
+									<Text className="font-poppins font-semibold text-body-3">
+										{option.label}
+									</Text>
+									<Text className="mt-1 font-poppins text-body-4 opacity-80">
+										{option.description}
+									</Text>
+								</View>
+							</Button>
+						))}
+					</View>
+				) : null}
 				{recommendation && recommendation.preparationGapMinutes > 0 ? (
 					<Text className="mt-4 text-center font-poppins text-body-4 text-secondary-text">
-						Bis zur Prüfung fehlen in deinen Lernzeiten noch{" "}
-						{recommendation.preparationGapMinutes} Min. zur empfohlenen
-						Vorbereitung. Wir erstellen den stärksten möglichen Plan für deine
-						verfügbare Zeit.
+						Deine verfügbare Zeit reicht nicht für die vollständige Empfehlung.
+						Wir priorisieren deshalb die Themen mit dem größten Einfluss auf
+						deine Arbeit.
 					</Text>
 				) : null}
 				{errorMessage ? (
@@ -298,7 +289,7 @@ export default function LearningPlanWorkloadScreen() {
 				{isBusy ? (
 					<ActivityIndicator color="#FFFFFF" />
 				) : (
-					<Text>Persönlichen Lernplan erstellen</Text>
+					<Text>Empfohlenen Lernweg erstellen</Text>
 				)}
 			</Button>
 		</Screen>

@@ -37,7 +37,10 @@ import {
 	getTimetableDayOfWeek,
 	getTimetableLessonDuration,
 } from "./timetableOccurrences";
-import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
+import {
+	assertMeaningfulTeacherGuidance,
+	assertMeaningfulTopicDescription,
+} from "./topicDescriptionValidation";
 
 const MAX_LEARNING_TIMES = 50;
 // Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
@@ -84,6 +87,15 @@ const planQuestionValidator = v.object({
 	targetInsight: v.string(),
 	topicId: v.optional(v.string()),
 	kind: v.optional(v.union(v.literal("performance"), v.literal("confidence"))),
+	responseKind: v.optional(
+		v.union(
+			v.literal("multipleChoice"),
+			v.literal("shortText"),
+			v.literal("longText"),
+		),
+	),
+	options: v.optional(v.array(v.string())),
+	correctAnswer: v.optional(v.string()),
 	evaluationKeywords: v.optional(v.array(v.string())),
 });
 
@@ -110,6 +122,7 @@ type PublicDocument = {
 	fileName: string;
 	fileType: string;
 	fileSizeBytes: number;
+	sourceKind: "school" | "external";
 };
 
 type PublicAnswer = {
@@ -182,6 +195,7 @@ type CreateLearningPlanArgs = {
 	examTime?: string;
 	durationMinutes: number;
 	topicDescription: string;
+	teacherGuidance?: string;
 	notes?: string;
 };
 
@@ -223,6 +237,7 @@ const createLearningPlan = async (
 		examDateLabel: args.examDateLabel,
 		durationMinutes: args.durationMinutes,
 		topicDescription,
+		teacherGuidance: topicDescription || undefined,
 		notes,
 		status: "draft",
 		preparationDepth: getDefaultPreparationDepth(examTypeLabel),
@@ -243,6 +258,7 @@ const publicDocument = (
 	fileName: document.fileName,
 	fileType: document.fileType,
 	fileSizeBytes: document.fileSizeBytes,
+	sourceKind: document.sourceKind ?? "school",
 });
 
 const publicAnswer = (answer: Doc<"learningPlanAnswers">): PublicAnswer => ({
@@ -250,6 +266,52 @@ const publicAnswer = (answer: Doc<"learningPlanAnswers">): PublicAnswer => ({
 	questionId: answer.questionId,
 	answer: answer.answer,
 });
+
+const publicQuestion = (
+	question: NonNullable<Doc<"learningPlans">["knowledgeQuestions"]>[number],
+) => ({
+	id: question.id,
+	prompt: question.prompt,
+	targetInsight: question.targetInsight,
+	...(question.topicId !== undefined ? { topicId: question.topicId } : {}),
+	...(question.kind !== undefined ? { kind: question.kind } : {}),
+	...(question.responseKind !== undefined
+		? { responseKind: question.responseKind }
+		: {}),
+	...(question.options !== undefined ? { options: question.options } : {}),
+	...(question.evaluationKeywords !== undefined
+		? { evaluationKeywords: question.evaluationKeywords }
+		: {}),
+});
+
+const invalidateDerivedExamEvidence = async (
+	ctx: MutationCtx,
+	learningPlanId: Id<"learningPlans">,
+	updatedAt: number,
+	sourcePatch: Partial<
+		Pick<Doc<"learningPlans">, "teacherGuidance" | "topicDescription">
+	> = {},
+) => {
+	const answers = await ctx.db
+		.query("learningPlanAnswers")
+		.withIndex("by_learningPlanId", (q) =>
+			q.eq("learningPlanId", learningPlanId),
+		)
+		.take(20);
+	for (const answer of answers) {
+		await ctx.db.delete("learningPlanAnswers", answer._id);
+	}
+	await ctx.db.patch("learningPlans", learningPlanId, {
+		...sourcePatch,
+		knowledgeQuestions: undefined,
+		sourceSummary: undefined,
+		topicMap: undefined,
+		scopeConfirmedAt: undefined,
+		topicReadiness: undefined,
+		status: "draft",
+		updatedAt,
+	});
+};
 
 const publicSession = (
 	session: Doc<"learningPlanSessions">,
@@ -594,6 +656,70 @@ export const updateBasics = mutation({
 	},
 });
 
+export const updateExamEvidence = mutation({
+	args: {
+		id: v.id("learningPlans"),
+		teacherGuidance: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.id);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (plan.status !== "draft" && plan.status !== "questionsReady") {
+			throwUserFacingError("Dieser Lernplan wurde bereits erstellt.");
+		}
+
+		const teacherGuidance = args.teacherGuidance.trim();
+		if (teacherGuidance) {
+			assertMeaningfulTeacherGuidance(teacherGuidance);
+		}
+		if ((plan.teacherGuidance ?? "") === teacherGuidance) {
+			return plan.updatedAt;
+		}
+		const updatedAt = Date.now();
+		await invalidateDerivedExamEvidence(ctx, args.id, updatedAt, {
+			teacherGuidance: teacherGuidance || undefined,
+			topicDescription: teacherGuidance,
+		});
+		return updatedAt;
+	},
+});
+
+export const confirmScope = mutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (plan.status !== "questionsReady") {
+			throwUserFacingError(
+				"Der Prüfungsumfang kann in diesem Lernplan nicht mehr geändert werden.",
+			);
+		}
+		if ((plan.topicMap ?? []).length === 0) {
+			throwUserFacingError("Der Prüfungsstoff wurde noch nicht analysiert.");
+		}
+		if ((plan.knowledgeQuestions ?? []).length === 0) {
+			throwUserFacingError("Die kurzen Einstiegsfragen fehlen noch.");
+		}
+
+		const confirmedAt = Date.now();
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			scopeConfirmedAt: confirmedAt,
+			updatedAt: confirmedAt,
+		});
+		return confirmedAt;
+	},
+});
+
 export const setTargetStudyMinutes = mutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
@@ -671,6 +797,9 @@ export const getSnapshot = query({
 		const failedSessionCount = sessions.filter(
 			(session) => session.contentGenerationStatus === "failed",
 		).length;
+		const committedSessionCount = sessions.filter(
+			(session) => session.contentGenerationStatus !== undefined,
+		).length;
 
 		return {
 			plan: {
@@ -686,11 +815,13 @@ export const getSnapshot = query({
 					(plan.preparationDepth as PreparationDepth | undefined) ??
 					getDefaultPreparationDepth(plan.examTypeLabel),
 				topicDescription: plan.topicDescription,
+				teacherGuidance: plan.teacherGuidance,
 				notes: plan.notes,
 				status: plan.status,
-				knowledgeQuestions: plan.knowledgeQuestions ?? [],
+				knowledgeQuestions: (plan.knowledgeQuestions ?? []).map(publicQuestion),
 				sourceSummary: plan.sourceSummary,
 				topicMap: plan.topicMap ?? [],
+				scopeConfirmedAt: plan.scopeConfirmedAt,
 				topicReadiness: plan.topicReadiness ?? [],
 				insight: plan.insight,
 				planningHint: getCurrentPlanningHint(plan.planningHint, {
@@ -701,7 +832,7 @@ export const getSnapshot = query({
 					? {
 							stage: plan.contentGenerationStage,
 							startedAt: plan.contentGenerationStartedAt,
-							totalSessionCount: sessions.length,
+							totalSessionCount: committedSessionCount,
 							readySessionCount,
 							failedSessionCount,
 						}
@@ -914,13 +1045,19 @@ export const storeUploadedDocument = internalMutation({
 		fileName: v.string(),
 		fileType: v.string(),
 		fileSizeBytes: v.number(),
+		sourceKind: v.union(v.literal("school"), v.literal("external")),
 	},
 	handler: async (ctx, args) => {
 		const now = Date.now();
-		return await ctx.db.insert("learningPlanDocuments", {
+		const documentId = await ctx.db.insert("learningPlanDocuments", {
 			...args,
 			createdAt: now,
 		});
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (plan && plan.status !== "accepted" && args.sourceKind === "school") {
+			await invalidateDerivedExamEvidence(ctx, args.learningPlanId, now);
+		}
+		return documentId;
 	},
 });
 
@@ -932,6 +1069,7 @@ export const registerUploadedDocument = action({
 		fileName: v.string(),
 		fileType: v.string(),
 		fileSizeBytes: v.number(),
+		sourceKind: v.union(v.literal("school"), v.literal("external")),
 	},
 	handler: async (ctx, args): Promise<Id<"learningPlanDocuments">> => {
 		const context: {
@@ -965,6 +1103,7 @@ export const registerUploadedDocument = action({
 			fileName: args.fileName,
 			fileType: args.fileType || "application/octet-stream",
 			fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
+			sourceKind: args.sourceKind,
 		});
 	},
 });
@@ -986,6 +1125,18 @@ export const removeDocument = mutation({
 			storageProvider: document.storageProvider,
 		});
 		await ctx.db.delete("learningPlanDocuments", args.id);
+		const plan = await ctx.db.get("learningPlans", document.learningPlanId);
+		if (
+			plan &&
+			plan.status !== "accepted" &&
+			(document.sourceKind ?? "school") === "school"
+		) {
+			await invalidateDerivedExamEvidence(
+				ctx,
+				document.learningPlanId,
+				Date.now(),
+			);
+		}
 		return document.learningPlanId;
 	},
 });
@@ -1215,9 +1366,13 @@ export const storeKnowledgeQuestions = internalMutation({
 				...question,
 				prompt: normalizeGeneratedGermanText(question.prompt),
 				targetInsight: normalizeGeneratedGermanText(question.targetInsight),
+				correctAnswer: question.correctAnswer
+					? normalizeGeneratedGermanText(question.correctAnswer)
+					: undefined,
 			})),
 			sourceSummary: normalizeGeneratedGermanText(args.sourceSummary),
 			topicMap: normalizeLearningTopics(args.topics ?? []),
+			scopeConfirmedAt: undefined,
 			status: "questionsReady",
 			updatedAt: Date.now(),
 		});
@@ -1235,6 +1390,9 @@ export const beginContentGeneration = internalMutation({
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if ((plan.topicMap ?? []).length > 0 && !plan.scopeConfirmedAt) {
+			throwUserFacingError("Bestätige zuerst den erkannten Prüfungsstoff.");
 		}
 		const now = Date.now();
 		if (
@@ -1300,6 +1458,7 @@ export const replaceGeneratedSessions = internalMutation({
 		planningHint: v.optional(v.string()),
 		sessionCompositionVariant: v.optional(sessionCompositionVariantValidator),
 		deferReadyUntilContent: v.optional(v.boolean()),
+		deferFutureContent: v.optional(v.boolean()),
 		generationId: v.optional(v.string()),
 		sessions: v.array(generatedSessionValidator),
 	},
@@ -1362,11 +1521,14 @@ export const replaceGeneratedSessions = internalMutation({
 		const now = Date.now();
 		const sessionIds: Id<"learningPlanSessions">[] = [];
 		for (const [index, session] of normalizedSessions.entries()) {
+			const shouldPrepareContent =
+				args.deferReadyUntilContent &&
+				(!args.deferFutureContent || index === 0);
 			const sessionId = await ctx.db.insert("learningPlanSessions", {
 				ownerTokenIdentifier: plan.ownerTokenIdentifier,
 				learningPlanId: args.learningPlanId,
 				...session,
-				...(args.deferReadyUntilContent
+				...(shouldPrepareContent
 					? { contentGenerationStatus: "queued" as const }
 					: {}),
 				sortOrder: index,
@@ -1407,15 +1569,50 @@ export const setSessionContentGenerationStatus = internalMutation({
 			throwUserFacingError("Lernsession nicht gefunden.");
 		}
 
+		const now = Date.now();
 		await ctx.db.patch("learningPlanSessions", args.sessionId, {
 			contentGenerationStatus: args.status,
 			contentGenerationError:
 				args.status === "failed"
 					? (args.errorMessage ?? "Die Fragen konnten nicht erstellt werden.")
 					: undefined,
-			contentGeneratedAt: args.status === "ready" ? Date.now() : undefined,
-			updatedAt: Date.now(),
+			contentGenerationStartedAt:
+				args.status === "generating" ? now : undefined,
+			contentGeneratedAt: args.status === "ready" ? now : undefined,
+			updatedAt: now,
 		});
+	},
+});
+
+export const claimSessionContentGeneration = internalMutation({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const session = await ctx.db.get("learningPlanSessions", args.sessionId);
+		if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernsession nicht gefunden.");
+		}
+
+		const now = Date.now();
+		if (
+			session.contentGenerationStatus === "generating" &&
+			session.contentGenerationStartedAt !== undefined &&
+			now - session.contentGenerationStartedAt < STALE_CONTENT_GENERATION_MS
+		) {
+			return false;
+		}
+
+		await ctx.db.patch("learningPlanSessions", args.sessionId, {
+			contentGenerationStatus: "generating",
+			contentGenerationError: undefined,
+			contentGenerationStartedAt: now,
+			contentGeneratedAt: undefined,
+			updatedAt: now,
+		});
+		return true;
 	},
 });
 
@@ -1448,8 +1645,12 @@ export const finalizeContentGeneration = internalMutation({
 		const readySessionCount = sessions.filter(
 			(session) => session.contentGenerationStatus === "ready",
 		).length;
+		const committedSessions = sessions.filter(
+			(session) => session.contentGenerationStatus !== undefined,
+		);
 		const isReady =
-			sessions.length > 0 && readySessionCount === sessions.length;
+			committedSessions.length > 0 &&
+			readySessionCount === committedSessions.length;
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
 			status:
@@ -1501,7 +1702,11 @@ export const claimIncompleteContentGenerationSessions = internalMutation({
 			)
 			.take(50);
 		const sessionIds = sessions
-			.filter((session) => session.contentGenerationStatus !== "ready")
+			.filter(
+				(session) =>
+					session.contentGenerationStatus !== undefined &&
+					session.contentGenerationStatus !== "ready",
+			)
 			.map((session) => session._id);
 		const now = Date.now();
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
@@ -1971,10 +2176,14 @@ export const acceptPlan = mutation({
 		}
 		if (
 			plan.contentGenerationStage &&
-			sessions.some((session) => session.contentGenerationStatus !== "ready")
+			sessions.some(
+				(session) =>
+					session.contentGenerationStatus !== undefined &&
+					session.contentGenerationStatus !== "ready",
+			)
 		) {
 			throwUserFacingError(
-				"Warte, bis alle Fragen und Aufgaben vollständig vorbereitet sind.",
+				"Warte, bis dein nächster Lernschritt vollständig vorbereitet ist.",
 			);
 		}
 

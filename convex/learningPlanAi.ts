@@ -63,7 +63,6 @@ import {
 	MAX_LEARNING_TOPIC_COUNT,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
-import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
@@ -279,9 +278,19 @@ const questionsSchema = z
 			z.object({
 				topicId: z.string().min(3).max(48),
 				kind: z.enum(["performance", "confidence"]),
+				responseKind: z.enum(["multipleChoice", "shortText", "longText"]),
+				options: atMostArray(
+					germanTextSchema(
+						1,
+						"One concise German answer option. Only return options for multiple-choice questions.",
+						100,
+					),
+					4,
+				),
+				correctOptionIndex: z.number().int().min(0).max(3).nullable(),
 				prompt: germanTextSchema(
 					12,
-					"One short, direct German diagnostic question the student can answer without deciphering nested instructions. Ask one thing only. No multiple choice and no references to files or uploads.",
+					"One short, direct German diagnostic question the student can answer without deciphering nested instructions. Ask one thing only and never reference files or uploads.",
 					180,
 				),
 				targetInsight: germanTextSchema(
@@ -493,6 +502,7 @@ type LearningPlanAiContext = {
 		preparationDepth?: PreparationDepth;
 		sessionCompositionVariant?: "control" | "split";
 		topicDescription: string;
+		teacherGuidance?: string;
 		notes?: string;
 		knowledgeQuestions?: Array<{
 			id: string;
@@ -500,6 +510,9 @@ type LearningPlanAiContext = {
 			targetInsight: string;
 			topicId?: string;
 			kind?: "performance" | "confidence";
+			responseKind?: "multipleChoice" | "shortText" | "longText";
+			options?: string[];
+			correctAnswer?: string;
 			evaluationKeywords?: string[];
 		}>;
 		topicMap?: Array<{
@@ -520,6 +533,7 @@ type LearningPlanAiContext = {
 		fileName: string;
 		fileType: string;
 		fileSizeBytes: number;
+		sourceKind?: "school" | "external";
 	}>;
 	learningTimes: Array<{
 		dayOfWeek: number;
@@ -578,6 +592,7 @@ type ModelDocumentInput = {
 	fileName: string;
 	fileType: string;
 	fileSizeBytes: number;
+	sourceKind?: "school" | "external";
 };
 
 const createVertexModel = () => {
@@ -824,7 +839,13 @@ const buildModelInputFromDocuments = async (
 				buffer,
 			);
 			if (extractedText) {
-				textSections.push(extractedText);
+				const sourceLabel =
+					(document.sourceKind ?? "school") === "school"
+						? "INTERNES SCHULMATERIAL"
+						: "EXTERNE LERNHILFE";
+				textSections.push(
+					`[${sourceLabel}: ${document.fileName}]\n${extractedText}`,
+				);
 			}
 		} catch {
 			// Images and some PDFs are still useful as native model inputs.
@@ -835,7 +856,7 @@ const buildModelInputFromDocuments = async (
 				type: "file",
 				data: buffer,
 				mediaType,
-				filename: document.fileName,
+				filename: `${(document.sourceKind ?? "school") === "school" ? "INTERN" : "EXTERN"} - ${document.fileName}`,
 			});
 		}
 	}
@@ -1518,9 +1539,14 @@ const buildBaseContext = (
 		`Prüfungsart: ${plan.examTypeLabel}`,
 		`Prüfungstermin: ${plan.examDateLabel}${plan.examTime ? `, ${plan.examTime}` : ""}`,
 		`Bearbeitungszeit der Prüfung: ${plan.durationMinutes} Minuten`,
-		`Prüfungsthema: ${plan.topicDescription}`,
+		plan.teacherGuidance
+			? `Hinweis der Lehrkraft: ${plan.teacherGuidance}`
+			: plan.topicDescription
+				? `Bisherige Themenangabe: ${plan.topicDescription}`
+				: "",
 		plan.notes ? `Notizen: ${plan.notes}` : "",
-		`Hochgeladene Materialien: ${documents.length}`,
+		`Interne Schulmaterialien: ${documents.filter((document) => (document.sourceKind ?? "school") === "school").length}`,
+		`Externe Lernhilfen: ${documents.filter((document) => document.sourceKind === "external").length}`,
 	]
 		.filter(Boolean)
 		.join("\n");
@@ -2434,19 +2460,24 @@ const generateTrackedSessionContentBatch = async (
 const generateTrackedSessionContent = async (
 	ctx: ActionCtx,
 	sessionId: Id<"learningPlanSessions">,
-	preparedDocuments?: PreparedModelDocuments,
-	includePriorContent = true,
+	options: {
+		preparedDocuments?: PreparedModelDocuments;
+		includePriorContent?: boolean;
+		generationStatusClaimed?: boolean;
+	} = {},
 ) => {
-	await ctx.runMutation(
-		internal.learningPlans.setSessionContentGenerationStatus,
-		{ sessionId, status: "generating" },
-	);
+	if (!options.generationStatusClaimed) {
+		await ctx.runMutation(
+			internal.learningPlans.setSessionContentGenerationStatus,
+			{ sessionId, status: "generating" },
+		);
+	}
 	try {
 		const result = await generateSessionContent(
 			ctx,
 			sessionId,
-			preparedDocuments,
-			includePriorContent,
+			options.preparedDocuments,
+			options.includePriorContent ?? true,
 		);
 		await ctx.runMutation(
 			internal.learningPlans.setSessionContentGenerationStatus,
@@ -2502,7 +2533,20 @@ export const ensureSessionContent = action({
 		) {
 			return { itemCount: context.existingItemCount };
 		}
-		const generated = await generateTrackedSessionContent(ctx, args.sessionId);
+		const claimed: boolean = await ctx.runMutation(
+			internal.learningPlans.claimSessionContentGeneration,
+			{ sessionId: args.sessionId },
+		);
+		if (!claimed) {
+			const latest: LearningSessionContentAiContext = await ctx.runQuery(
+				internal.learningSessionContent.getSessionGenerationContext,
+				{ sessionId: args.sessionId },
+			);
+			return { itemCount: latest.existingItemCount };
+		}
+		const generated = await generateTrackedSessionContent(ctx, args.sessionId, {
+			generationStatusClaimed: true,
+		});
 		await ctx.runMutation(internal.learningPlans.finalizeContentGeneration, {
 			learningPlanId: context.session.learningPlanId,
 		});
@@ -2628,14 +2672,18 @@ export const generateKnowledgeQuestions = action({
 			internal.learningPlans.getAiContext,
 			{ learningPlanId: args.learningPlanId },
 		);
-		if (!context.plan.topicDescription.trim()) {
-			throwUserFacingError("Beschreibe zuerst das Prüfungsthema.");
+		const schoolDocuments = context.documents.filter(
+			(document) => (document.sourceKind ?? "school") === "school",
+		);
+		if (schoolDocuments.length === 0 && !context.plan.teacherGuidance?.trim()) {
+			throwUserFacingError(
+				"Füge mindestens eine Information deiner Schule hinzu.",
+			);
 		}
-		assertMeaningfulTopicDescription(context.plan.topicDescription);
 
 		const { fileParts, sourceContext } = await buildModelInputFromDocuments(
 			ctx,
-			context.documents,
+			schoolDocuments,
 			context.accessKey,
 		);
 		const model = createVertexModel();
@@ -2647,13 +2695,18 @@ export const generateKnowledgeQuestions = action({
 				type: "text",
 				text: `${buildBaseContext(context)}
 
-Erstelle zuerst eine Themenkarte mit ${MIN_TOPIC_MAP_COUNT} bis ${MAX_LEARNING_TOPIC_COUNT} klar getrennten Teilthemen. Nutze kurze stabile ASCII-IDs wie "steigung-berechnen". Priorisiere prüfungsrelevante Themen und erkannte Grundlagen.
-Erstelle danach 5 kurze Wissensanalyse-Fragen. Erweitere nur bei breitem Material oder unklarer Lernbereitschaft auf bis zu 8 Fragen. Mindestens 70 Prozent sollen als kind "performance" tatsächliches Wissen durch kurzes Lösen, Erklären oder Anwenden prüfen; höchstens 30 Prozent dürfen als kind "confidence" Selbsteinschätzung oder Sicherheit erfragen. Ordne jede Frage über topicId exakt einer zuvor erzeugten Themen-ID zu und liefere 1 bis 5 fachlich erwartete evaluationKeywords, anhand derer eine tatsächliche Antwort bewertet werden kann. Ziel ist nicht Notengebung, sondern herauszufinden, welche Lernblöcke der Lernplan braucht.
+Erstelle zuerst eine Themenkarte mit ${MIN_TOPIC_MAP_COUNT} bis ${MAX_LEARNING_TOPIC_COUNT} klar getrennten Teilthemen. Nutze kurze stabile ASCII-IDs wie "steigung-berechnen". Leite den wahrscheinlichen Prüfungsstoff ausschließlich aus dem Hinweis der Lehrkraft und den internen Schulmaterialien ab. Externe Lernhilfen definieren niemals den Prüfungsstoff. Priorisiere explizite Prüfungshinweise vor allgemeinen oder älteren Übungsinhalten.
+Erstelle danach 5 kurze Einstiegsfragen. Erweitere nur bei breitem Material oder unklarer Lernbereitschaft auf bis zu 8 Fragen. Mindestens 70 Prozent sollen als kind "performance" tatsächliches Wissen durch kurzes Lösen, Erklären oder Anwenden prüfen; höchstens 30 Prozent dürfen als kind "confidence" Selbsteinschätzung oder Sicherheit erfragen. Ordne jede Frage über topicId exakt einer zuvor erzeugten Themen-ID zu und liefere 1 bis 5 fachlich erwartete evaluationKeywords, anhand derer eine tatsächliche Antwort bewertet werden kann. Ziel ist nicht Notengebung, sondern herauszufinden, welche Lernblöcke der Lernplan braucht.
 Die Fragen müssen sich konkret auf Prüfungsthema und Inhalte aus dem Material beziehen, aber wie normale Prüfungs- oder Verständnisfragen formuliert sein.
 Jede Frage fragt genau eine Sache ab, ist ohne verschachtelte Arbeitsanweisung direkt verständlich und lässt sich in wenigen Sätzen beantworten.
 Keine Frage darf eine andere Aufgabenformulierung zitieren oder Formulierungen wie „Erkläre deinen Lösungsweg zu …“ enthalten.
 Verweise in den Fragen nie direkt auf Quellen oder Uploads: keine Formulierungen wie "laut Material", "im Dokument", "auf dem Bild", "in der Datei", "Material 3 sagt" und keine Dateinamen.
-Keine Multiple-Choice-Fragen.
+Wähle für jede Frage das Antwortformat mit der geringsten Reibung, das noch belastbare Evidenz liefert:
+- multipleChoice für klare fachliche Unterscheidungen und alle confidence-Fragen; liefere dann 3 bis 4 kurze plausible Optionen.
+- shortText für Zahlen, Formeln, Begriffe oder Antworten bis ungefähr einem Satz; liefere dann options: [].
+- longText nur wenn ein Lösungsweg oder eine Begründung wirklich beobachtet werden muss; liefere dann options: [].
+Liefere für jede performance-multipleChoice-Frage den nullbasierten correctOptionIndex der eindeutig richtigen Option. Für confidence-Fragen sowie shortText und longText ist correctOptionIndex null.
+Verwende bei 5 Fragen mindestens 2 Multiple-Choice-Fragen und höchstens 2 longText-Fragen. "Weiß ich nicht" wird separat von der App angeboten und gehört nicht in options.
 Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.`,
 			},
 		];
@@ -2678,7 +2731,7 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 					abortSignal,
 					providerOptions: vertexProviderOptions,
 					output: Output.object({ schema: questionsSchema }),
-					system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+					system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Deutschland. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 					messages: [{ role: "user", content: userContent }],
 				}),
 			);
@@ -2689,16 +2742,51 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 				usage: result.usage,
 			});
 
-			const questions = result.output.questions.map((question, index) => ({
-				id: `q${index + 1}`,
-				topicId: question.topicId,
-				kind: question.kind,
-				prompt: normalizeAiGeneratedGermanText(question.prompt),
-				targetInsight: normalizeAiGeneratedGermanText(question.targetInsight),
-				evaluationKeywords: question.evaluationKeywords.map((keyword) =>
-					normalizeAiGeneratedGermanText(keyword),
-				),
-			}));
+			const questions = result.output.questions.map((question, index) => {
+				const normalizedOptions = question.options.map((option) =>
+					normalizeAiGeneratedGermanText(option),
+				);
+				const generatedOptions = normalizedOptions.filter(Boolean);
+				const generatedCorrectAnswer =
+					question.correctOptionIndex === null
+						? undefined
+						: normalizedOptions[question.correctOptionIndex] || undefined;
+				const hasValidPerformanceAnswer =
+					question.kind !== "performance" ||
+					(question.correctOptionIndex !== null &&
+						Boolean(generatedCorrectAnswer) &&
+						generatedOptions.includes(generatedCorrectAnswer ?? ""));
+				const responseKind =
+					question.kind === "confidence"
+						? "multipleChoice"
+						: question.responseKind === "multipleChoice" &&
+								(generatedOptions.length < 2 || !hasValidPerformanceAnswer)
+							? "shortText"
+							: question.responseKind;
+				const options =
+					responseKind === "multipleChoice"
+						? generatedOptions.length >= 2
+							? generatedOptions
+							: ["Sicher", "Teilweise sicher", "Unsicher"]
+						: [];
+
+				return {
+					id: `q${index + 1}`,
+					topicId: question.topicId,
+					kind: question.kind,
+					responseKind,
+					options,
+					correctAnswer:
+						responseKind === "multipleChoice" && question.kind === "performance"
+							? generatedCorrectAnswer
+							: undefined,
+					prompt: normalizeAiGeneratedGermanText(question.prompt),
+					targetInsight: normalizeAiGeneratedGermanText(question.targetInsight),
+					evaluationKeywords: question.evaluationKeywords.map((keyword) =>
+						normalizeAiGeneratedGermanText(keyword),
+					),
+				};
+			});
 
 			return {
 				questions,
@@ -2827,6 +2915,7 @@ ${qaText}
 
 Erstelle einen konkreten Lernplan, der die Antworten sichtbar berücksichtigt.
 MVP-Vorgabe:
+- Interne Schulmaterialien und Hinweise der Lehrkraft definieren den wahrscheinlichen Prüfungsstoff. Externe Lernhilfen dürfen Erklärungen und Übungsformen verbessern, aber niemals neue Prüfungsthemen einführen.
 - Baue, wenn zeitlich möglich, die Phasen Theorie, Üben und Generalprobe.
 - Theorie nur bis zur Mindestbeherrschung planen.
 - Der größte Block soll die Übungsphase sein.
@@ -2973,11 +3062,12 @@ MVP-Vorgabe:
 					planningHint: generatedPlan.planningHint,
 					sessionCompositionVariant,
 					deferReadyUntilContent: true,
+					deferFutureContent: true,
 					generationId,
 					sessions: generatedPlan.sessions,
 				},
 			);
-			const sessionIds = replacement?.sessionIds ?? [];
+			const sessionIds = (replacement?.sessionIds ?? []).slice(0, 1);
 			const projectedCostMode = await getMonthlyCostMode(
 				ctx,
 				sessionIds.length,
