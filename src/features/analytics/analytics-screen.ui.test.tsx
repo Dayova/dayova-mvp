@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, within } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { AnalyticsScreen } from "./analytics-screen";
 
@@ -15,6 +15,10 @@ jest.mock("expo-router", () => ({
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: mockIsConvexAuthenticated }),
 	useQuery: (...args: unknown[]) => mockUseQuery(...args),
+}));
+
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
 
 jest.mock("#convex/_generated/api", () => ({
@@ -61,8 +65,13 @@ jest.mock("~/components/ui/screen", () => {
 	return {
 		Screen: ({ children }: { children: ReactNode }) =>
 			React.createElement(Native.View, null, children),
-		ScreenScroll: ({ children }: { children: ReactNode }) =>
-			React.createElement(Native.View, null, children),
+		ScreenScroll: ({
+			children,
+			testID,
+		}: {
+			children: ReactNode;
+			testID?: string;
+		}) => React.createElement(Native.View, { testID }, children),
 	};
 });
 
@@ -116,6 +125,7 @@ jest.mock("~/lib/theme", () => ({
 		colors: {
 			primaryStrong: "#00A0E6",
 			secondaryText: "#697586",
+			text: "#151D30",
 		},
 	}),
 }));
@@ -286,12 +296,18 @@ describe("AnalyticsScreen", () => {
 	test("requests a newly selected exam without mixing its evidence", async () => {
 		mockUseQuery.mockReturnValue(examAnalysis);
 		const screen = await render(<AnalyticsScreen />);
+		const switchButton = screen.getByRole("button", {
+			name: "Prüfung wechseln. Ausgewählt: Mathe · Klausur · 5. August 2026",
+		});
 
-		await fireEvent.press(
-			screen.getByRole("button", {
-				name: "Prüfung auswählen. Ausgewählt: Mathe · Klausur · 5. August 2026",
+		expect(screen.getByText("Mathe · Klausur")).toBeOnTheScreen();
+		expect(
+			within(screen.getByTestId("analysis-scroll")).queryByRole("button", {
+				name: /Prüfung wechseln/,
 			}),
-		);
+		).toBeNull();
+
+		await fireEvent.press(switchButton);
 		await fireEvent.press(
 			screen.getByRole("radio", {
 				name: "Englisch · Klausur · 12. August 2026",

@@ -2,18 +2,18 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { NotificationButton } from "~/components/notification-button";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import {
+	ArrowDataTransferHorizontal,
 	ArrowUpRight,
 	CalendarDays,
 	Check,
-	ChevronDown,
 	Info,
-	Route2,
 	Sparkles,
 	Time04,
 } from "~/components/ui/icon";
@@ -136,7 +136,7 @@ function SectionHeading({
 	);
 }
 
-function ExamSelector({
+function ExamSwitcher({
 	analysis,
 	visible,
 	onOpen,
@@ -159,35 +159,19 @@ function ExamSelector({
 	return (
 		<>
 			<ActionSurface
-				accessibilityLabel={`Prüfung auswählen. Ausgewählt: ${selectedLabel}`}
+				accessibilityHint="Öffnet die Liste deiner Prüfungen."
+				accessibilityLabel={`Prüfung wechseln. Ausgewählt: ${selectedLabel}`}
 				accessibilityRole="button"
 				accessibilityState={{ expanded: visible }}
-				className="flex-row items-center gap-4 px-5 py-4"
+				className="h-14 w-14 items-center justify-center rounded-full border border-border bg-card shadow-black/5 shadow-sm active:bg-card/80"
+				hitSlop={8}
 				onPress={onOpen}
-				variant="flat"
 			>
-				<View className="h-11 w-11 items-center justify-center rounded-full bg-system-subtle">
-					<Route2 size={21} color={colors.primaryStrong} strokeWidth={2.2} />
-				</View>
-				<View className="min-w-0 flex-1 gap-0.5">
-					<Text
-						selectable
-						className="font-poppins font-semibold text-body-2 text-text"
-						numberOfLines={1}
-					>
-						{formatGermanUiText(
-							`${selectedPlan.subject} · ${selectedPlan.examTypeLabel}`,
-						)}
-					</Text>
-					<Text
-						selectable
-						className="font-poppins text-body-4 text-secondary-text"
-						numberOfLines={1}
-					>
-						{`${selectedPlan.examDateLabel} · ${formatRemainingDays(selectedPlan.daysRemaining)}`}
-					</Text>
-				</View>
-				<ChevronDown size={20} color={colors.secondaryText} strokeWidth={2.1} />
+				<ArrowDataTransferHorizontal
+					size={22}
+					color={colors.text}
+					strokeWidth={2.2}
+				/>
 			</ActionSurface>
 			<SelectSheet
 				formatOptionLabel={(planId) => {
@@ -881,6 +865,7 @@ function ExamAnalysisContent({
 
 export function AnalyticsScreen() {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
@@ -901,28 +886,62 @@ export function AnalyticsScreen() {
 
 	const selectedPlanIdForRoute =
 		analysis?.selectedPlan?.id ?? selectedPlanId ?? null;
+	const selectedExamContext =
+		analysis?.hasData && analysis.selectedPlan
+			? formatGermanUiText(
+					`${analysis.selectedPlan.subject} · ${analysis.selectedPlan.examTypeLabel}`,
+				)
+			: null;
 
 	return (
 		<Screen>
 			<ThemedStatusBar />
-			<ScreenScroll topPadding={84} bottomPadding={150} horizontalPadding={24}>
+			<View
+				className="z-10 bg-background px-6 pb-5"
+				// Safe-area padding is runtime device geometry.
+				style={{ paddingTop: insets.top + 16 }}
+			>
 				<View className="flex-row items-center justify-between">
-					<Text className="font-poppins font-semibold text-heading-2 text-text">
-						Analyse
-					</Text>
-					<NotificationButton />
+					<View className="min-w-0 flex-1 pr-4">
+						<Text
+							accessibilityRole="header"
+							className="font-poppins font-semibold text-heading-2 text-text"
+						>
+							Analyse
+						</Text>
+						{selectedExamContext ? (
+							<Text
+								selectable
+								className="font-poppins text-body-4 text-secondary-text"
+								numberOfLines={1}
+							>
+								{selectedExamContext}
+							</Text>
+						) : null}
+					</View>
+					<View className="flex-row items-center gap-2">
+						{analysis?.hasData ? (
+							<ExamSwitcher
+								analysis={analysis}
+								onClose={() => setIsSelectorOpen(false)}
+								onOpen={() => setIsSelectorOpen(true)}
+								onSelect={setSelectedPlanId}
+								visible={isSelectorOpen}
+							/>
+						) : null}
+						<NotificationButton />
+					</View>
 				</View>
+			</View>
 
-				<View className="mt-7 gap-7">
-					{analysis?.hasData ? (
-						<ExamSelector
-							analysis={analysis}
-							onClose={() => setIsSelectorOpen(false)}
-							onOpen={() => setIsSelectorOpen(true)}
-							onSelect={setSelectedPlanId}
-							visible={isSelectorOpen}
-						/>
-					) : null}
+			<ScreenScroll
+				testID="analysis-scroll"
+				includeTopSafeArea={false}
+				topPadding={20}
+				bottomPadding={150}
+				horizontalPadding={24}
+			>
+				<View className="gap-7">
 					{analysis === undefined ? (
 						<LoadingState />
 					) : analysis.hasData ? (
