@@ -1176,14 +1176,6 @@ export const removePlan = mutation({
 		for (const answer of answers) {
 			await ctx.db.delete("learningPlanAnswers", answer._id);
 		}
-		const aiUsage = await ctx.db
-			.query("learningPlanAiUsage")
-			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
-			.take(1_000);
-		for (const usage of aiUsage) {
-			await ctx.db.delete("learningPlanAiUsage", usage._id);
-		}
-
 		const sessions = await ctx.db
 			.query("learningPlanSessions")
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>

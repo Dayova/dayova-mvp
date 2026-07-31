@@ -77,9 +77,6 @@ const ENABLE_FLASH_LITE = readBooleanEnv("GOOGLE_ENABLE_FLASH_LITE", false);
 const CONTENT_GENERATION_CONCURRENCY = 3;
 const CONTENT_GENERATION_BATCH_SIZE = 3;
 const ECONOMY_CONTENT_GENERATION_BATCH_SIZE = 4;
-const MONTHLY_ECONOMY_THRESHOLD_USD_MICROS = 2_500_000;
-const MONTHLY_TARGET_CEILING_USD_MICROS = 3_500_000;
-const PROJECTED_SESSION_COST_USD_MICROS = 12_000;
 const MIN_LEARNING_SLOT_MINUTES = 10;
 const MAX_LEARNING_SESSION_MINUTES = 30;
 const MAX_GENERATED_SESSIONS = 40;
@@ -105,70 +102,109 @@ type AiUsageOperation =
 	| "session_practice"
 	| "session_praxis";
 
-const recordAiUsage = async (
+const PROJECTED_AI_COST_USD_MICROS: Record<
+	AiUsageOperation,
+	{ flash: number; flashLite: number }
+> = {
+	diagnostic: { flash: 30_000, flashLite: 15_000 },
+	plan: { flash: 30_000, flashLite: 15_000 },
+	session_theory: { flash: 30_000, flashLite: 15_000 },
+	session_practice: { flash: 22_000, flashLite: 11_000 },
+	session_praxis: { flash: 22_000, flashLite: 22_000 },
+};
+
+const projectedAiCostUsdMicros = (
+	operation: AiUsageOperation,
+	modelId: string,
+) =>
+	modelId.includes("flash-lite")
+		? PROJECTED_AI_COST_USD_MICROS[operation].flashLite
+		: PROJECTED_AI_COST_USD_MICROS[operation].flash;
+
+const runBudgetedAiGeneration = async <T extends { usage: LanguageModelUsage }>(
 	ctx: ActionCtx,
 	args: {
 		learningPlanId: Id<"learningPlans">;
 		sessionId?: Id<"learningPlanSessions">;
 		operation: AiUsageOperation;
 		modelId: string;
-		usage: LanguageModelUsage;
+		projectedCostUsdMicros?: number;
 	},
+	generate: () => Promise<T>,
 ) => {
-	const inputTokens = args.usage.inputTokens ?? 0;
-	const cachedInputTokens = args.usage.inputTokenDetails.cacheReadTokens ?? 0;
-	const outputTokens = args.usage.outputTokens ?? 0;
+	const reservationId = globalThis.crypto.randomUUID();
+	await ctx.runMutation(internal.learningPlanAiUsage.reserve, {
+		learningPlanId: args.learningPlanId,
+		...(args.sessionId ? { sessionId: args.sessionId } : {}),
+		reservationId,
+		operation: args.operation,
+		modelId: args.modelId,
+		projectedCostUsdMicros:
+			args.projectedCostUsdMicros ??
+			projectedAiCostUsdMicros(args.operation, args.modelId),
+	});
+
+	let result: T;
 	try {
-		await ctx.runMutation(internal.learningPlanAiUsage.record, {
-			learningPlanId: args.learningPlanId,
-			...(args.sessionId ? { sessionId: args.sessionId } : {}),
-			operation: args.operation,
+		result = await generate();
+	} catch (error) {
+		try {
+			await ctx.runMutation(internal.learningPlanAiUsage.forfeit, {
+				reservationId,
+			});
+		} catch (accountingError) {
+			logDiagnosticError("learningPlanAi.budgetForfeit", accountingError, {
+				learningPlanId: args.learningPlanId,
+				operation: args.operation,
+				reservationId,
+			});
+		}
+		throw error;
+	}
+
+	const inputTokens = result.usage.inputTokens ?? 0;
+	const cachedInputTokens = result.usage.inputTokenDetails.cacheReadTokens ?? 0;
+	const outputTokens = result.usage.outputTokens ?? 0;
+	await ctx.runMutation(internal.learningPlanAiUsage.settle, {
+		reservationId,
+		inputTokens,
+		cachedInputTokens,
+		outputTokens,
+		estimatedCostUsdMicros: estimateGeminiCostUsdMicros({
 			modelId: args.modelId,
 			inputTokens,
 			cachedInputTokens,
 			outputTokens,
-			estimatedCostUsdMicros: estimateGeminiCostUsdMicros({
-				modelId: args.modelId,
-				inputTokens,
-				cachedInputTokens,
-				outputTokens,
-			}),
-		});
-	} catch (error) {
-		logDiagnosticError("learningPlanAi.usageTelemetry", error, {
-			learningPlanId: args.learningPlanId,
-			operation: args.operation,
-			modelId: args.modelId,
-		});
-	}
+		}),
+	});
+	return result;
 };
 
 const getMonthlyCostMode = async (
 	ctx: ActionCtx,
+	learningPlanId: Id<"learningPlans">,
 	projectedSessionCount = 0,
 ) => {
 	try {
-		const now = new Date();
-		const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
-		const summary: { estimatedCostUsdMicros: number } = await ctx.runQuery(
-			api.learningPlanAiUsage.getMyMonthlyCostSummary,
-			{ monthStart },
+		const status = await ctx.runQuery(
+			internal.learningPlanAiUsage.getBudgetStatus,
+			{
+				learningPlanId,
+				projectedCostUsdMicros:
+					projectedSessionCount *
+					PROJECTED_AI_COST_USD_MICROS.session_theory.flash,
+			},
 		);
-		const projectedCost =
-			summary.estimatedCostUsdMicros +
-			projectedSessionCount * PROJECTED_SESSION_COST_USD_MICROS;
 		return {
-			economyMode:
-				summary.estimatedCostUsdMicros >=
-					MONTHLY_ECONOMY_THRESHOLD_USD_MICROS ||
-				projectedCost >= MONTHLY_TARGET_CEILING_USD_MICROS,
-			estimatedCostUsdMicros: summary.estimatedCostUsdMicros,
+			economyMode: status.economyMode,
+			estimatedCostUsdMicros: status.monthlyCommittedUsdMicros,
 		};
 	} catch (error) {
 		logDiagnosticError("learningPlanAi.costMode", error, {
+			learningPlanId,
 			projectedSessionCount,
 		});
-		return { economyMode: false, estimatedCostUsdMicros: 0 };
+		return { economyMode: true, estimatedCostUsdMicros: 0 };
 	}
 };
 
@@ -2048,28 +2084,31 @@ ${personalLearningTimes}`,
 					: FLASH_MODEL_ID;
 				const generatedTopics = await withGeneratedTextRetry(
 					async (attempt): Promise<GeneratedSessionContentInput[]> => {
-						const result = await runLlmGeneration((abortSignal) =>
-							generateText({
-								model: model(theoryModelId),
-								temperature: 0.2,
-								maxOutputTokens: Math.min(
-									6_000,
-									800 + block.questions.length * 1_000,
+						const result = await runBudgetedAiGeneration(
+							ctx,
+							{
+								learningPlanId: context.session.learningPlanId,
+								sessionId,
+								operation: "session_theory",
+								modelId: theoryModelId,
+							},
+							() =>
+								runLlmGeneration((abortSignal) =>
+									generateText({
+										model: model(theoryModelId),
+										temperature: 0.2,
+										maxOutputTokens: Math.min(
+											6_000,
+											800 + block.questions.length * 1_000,
+										),
+										abortSignal,
+										providerOptions: vertexProviderOptions,
+										output: Output.object({ schema: blockSchema }),
+										system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse. Erstelle eigenständige Theorie-Lernseiten, die jeweils ungefähr vier Minuten Lernzeit sinnvoll füllen. Jede Seite behandelt genau einen Gedanken: eine kurze direkt beantwortbare Leitfrage, eine verständliche Erklärung in drei bis fünf zusammenhängenden Sätzen, zwei bis vier gehaltvolle Kernpunkte, ein wirklich durchgerechnetes oder konkret angewandtes Beispiel, einen eigenen Merksatz und einen fachspezifischen typischen Fehler. Beispiel, Kernpunkte und Merksatz müssen unterschiedliche Inhalte haben. Verwende keine Meta-Anweisungen, internen Labels wie „Variante 1“ oder in Anführungszeichen verschachtelte Aufgaben. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+										messages: [{ role: "user", content: blockContent }],
+									}),
 								),
-								abortSignal,
-								providerOptions: vertexProviderOptions,
-								output: Output.object({ schema: blockSchema }),
-								system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse. Erstelle eigenständige Theorie-Lernseiten, die jeweils ungefähr vier Minuten Lernzeit sinnvoll füllen. Jede Seite behandelt genau einen Gedanken: eine kurze direkt beantwortbare Leitfrage, eine verständliche Erklärung in drei bis fünf zusammenhängenden Sätzen, zwei bis vier gehaltvolle Kernpunkte, ein wirklich durchgerechnetes oder konkret angewandtes Beispiel, einen eigenen Merksatz und einen fachspezifischen typischen Fehler. Beispiel, Kernpunkte und Merksatz müssen unterschiedliche Inhalte haben. Verwende keine Meta-Anweisungen, internen Labels wie „Variante 1“ oder in Anführungszeichen verschachtelte Aufgaben. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
-								messages: [{ role: "user", content: blockContent }],
-							}),
 						);
-						await recordAiUsage(ctx, {
-							learningPlanId: context.session.learningPlanId,
-							sessionId,
-							operation: "session_theory",
-							modelId: theoryModelId,
-							usage: result.usage,
-						});
 						const normalizedItems = normalizeGeneratedTheoryItems(
 							result.output,
 							block.questions,
@@ -2101,28 +2140,31 @@ ${personalLearningTimes}`,
 			const blockSchema = createSessionTasksSchema(block.questions.length);
 			const generatedTasks = await withGeneratedTextRetry(
 				async (attempt) => {
-					const result = await runLlmGeneration((abortSignal) =>
-						generateText({
-							model: model(taskModelId),
-							temperature: isPraxis ? 0.18 : 0.22,
-							maxOutputTokens: Math.min(
-								4_000,
-								500 + block.questions.length * 550,
+					const result = await runBudgetedAiGeneration(
+						ctx,
+						{
+							learningPlanId: context.session.learningPlanId,
+							sessionId,
+							operation: isPraxis ? "session_praxis" : "session_practice",
+							modelId: taskModelId,
+						},
+						() =>
+							runLlmGeneration((abortSignal) =>
+								generateText({
+									model: model(taskModelId),
+									temperature: isPraxis ? 0.18 : 0.22,
+									maxOutputTokens: Math.min(
+										4_000,
+										500 + block.questions.length * 550,
+									),
+									abortSignal,
+									providerOptions: vertexProviderOptions,
+									output: Output.object({ schema: blockSchema }),
+									system: `Du bist ein praxisnaher Lerncoach. Erstelle natürliche, konkrete Aufgaben, die der Schüler ohne Entschlüsseln einer Meta-Anweisung direkt bearbeiten kann. Gib bei Rechen- oder Anwendungsaufgaben alle nötigen Werte und Bedingungen an. Frage pro Aufgabe genau eine Leistung ab. Zitiere keine andere Aufgabenformulierung, verwende keine internen Labels wie „Variante 1“ und schreibe nie Konstruktionen wie „Erkläre deinen Lösungsweg zu …“. Halte die vorgegebene Reihenfolge, Antwortmodi und individuellen Zeitbudgets ein. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+									messages: [{ role: "user", content: blockContent }],
+								}),
 							),
-							abortSignal,
-							providerOptions: vertexProviderOptions,
-							output: Output.object({ schema: blockSchema }),
-							system: `Du bist ein praxisnaher Lerncoach. Erstelle natürliche, konkrete Aufgaben, die der Schüler ohne Entschlüsseln einer Meta-Anweisung direkt bearbeiten kann. Gib bei Rechen- oder Anwendungsaufgaben alle nötigen Werte und Bedingungen an. Frage pro Aufgabe genau eine Leistung ab. Zitiere keine andere Aufgabenformulierung, verwende keine internen Labels wie „Variante 1“ und schreibe nie Konstruktionen wie „Erkläre deinen Lösungsweg zu …“. Halte die vorgegebene Reihenfolge, Antwortmodi und individuellen Zeitbudgets ein. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
-							messages: [{ role: "user", content: blockContent }],
-						}),
 					);
-					await recordAiUsage(ctx, {
-						learningPlanId: context.session.learningPlanId,
-						sessionId,
-						operation: isPraxis ? "session_praxis" : "session_practice",
-						modelId: taskModelId,
-						usage: result.usage,
-					});
 					const normalizedItems = normalizeGeneratedTaskItems(
 						result.output,
 						block.questions,
@@ -2329,37 +2371,43 @@ ${allPriorPrompts.map((prompt) => `- ${prompt}`).join("\n") || "Keine."}`,
 			providerOptions: vertexProviderOptions,
 			messages: [{ role: "user" as const, content: userContent }],
 		};
-		const result = isTheory
-			? await runLlmGeneration((abortSignal) =>
-					generateText({
-						...commonOptions,
-						abortSignal,
-						output: Output.object({
-							schema: createTheoryTopicsSchema(allQuestions.length),
-						}),
-						system: `Du bist ein präziser Lerncoach. Erstelle eigenständige deutsche Theorie-Lernseiten mit Erklärung, Kernpunkten, einem konkreten Beispiel, Merksatz und typischem Fehler. Halte die vorgegebene Reihenfolge exakt ein und antworte ausschließlich im JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
-					}),
-				)
-			: await runLlmGeneration((abortSignal) =>
-					generateText({
-						...commonOptions,
-						abortSignal,
-						output: Output.object({
-							schema: createSessionTasksSchema(allQuestions.length),
-						}),
-						system: `Du bist ein praxisnaher Lerncoach. Erstelle direkte, konkrete deutsche Aufgaben mit allen nötigen Werten und Bedingungen. Halte Reihenfolge, Antwortmodi und Zeitbudgets exakt ein und antworte ausschließlich im JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
-					}),
-				);
-		await recordAiUsage(ctx, {
+		const operation: AiUsageOperation = isTheory
+			? "session_theory"
+			: isPraxis
+				? "session_praxis"
+				: "session_practice";
+		const budgetArgs = {
 			learningPlanId: firstContext.session.learningPlanId,
-			operation: isTheory
-				? "session_theory"
-				: isPraxis
-					? "session_praxis"
-					: "session_practice",
+			operation,
 			modelId,
-			usage: result.usage,
-		});
+			projectedCostUsdMicros:
+				projectedAiCostUsdMicros(operation, modelId) * plannedSessions.length,
+		};
+		const result = isTheory
+			? await runBudgetedAiGeneration(ctx, budgetArgs, () =>
+					runLlmGeneration((abortSignal) =>
+						generateText({
+							...commonOptions,
+							abortSignal,
+							output: Output.object({
+								schema: createTheoryTopicsSchema(allQuestions.length),
+							}),
+							system: `Du bist ein präziser Lerncoach. Erstelle eigenständige deutsche Theorie-Lernseiten mit Erklärung, Kernpunkten, einem konkreten Beispiel, Merksatz und typischem Fehler. Halte die vorgegebene Reihenfolge exakt ein und antworte ausschließlich im JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+						}),
+					),
+				)
+			: await runBudgetedAiGeneration(ctx, budgetArgs, () =>
+					runLlmGeneration((abortSignal) =>
+						generateText({
+							...commonOptions,
+							abortSignal,
+							output: Output.object({
+								schema: createSessionTasksSchema(allQuestions.length),
+							}),
+							system: `Du bist ein praxisnaher Lerncoach. Erstelle direkte, konkrete deutsche Aufgaben mit allen nötigen Werten und Bedingungen. Halte Reihenfolge, Antwortmodi und Zeitbudgets exakt ein und antworte ausschließlich im JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+						}),
+					),
+				);
 		let itemOffset = 0;
 		const normalizedBySession = plannedSessions.map(({ block }) => {
 			const outputItems = result.output.items.slice(
@@ -2596,7 +2644,11 @@ export const retryFailedSessionContent = action({
 				internal.learningPlans.getAiContext,
 				{ learningPlanId: args.learningPlanId },
 			);
-			const { economyMode } = await getMonthlyCostMode(ctx, sessionIds.length);
+			const { economyMode } = await getMonthlyCostMode(
+				ctx,
+				args.learningPlanId,
+				sessionIds.length,
+			);
 			const preparedDocuments = await buildModelInputFromDocuments(
 				ctx,
 				planContext.documents,
@@ -2737,28 +2789,31 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 		}
 		userContent.push(...fileParts);
 
-		const { economyMode } = await getMonthlyCostMode(ctx);
+		const { economyMode } = await getMonthlyCostMode(ctx, args.learningPlanId);
 		const diagnosticModelId =
 			ENABLE_FLASH_LITE || economyMode ? FLASH_LITE_MODEL_ID : FLASH_MODEL_ID;
 		const generatedQuestions = await withGeneratedTextRetry(async (attempt) => {
-			const result = await runLlmGeneration((abortSignal) =>
-				generateText({
-					model: model(diagnosticModelId),
-					temperature: 0.2,
-					maxOutputTokens: 2_600,
-					abortSignal,
-					providerOptions: vertexProviderOptions,
-					output: Output.object({ schema: questionsSchema }),
-					system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Deutschland. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
-					messages: [{ role: "user", content: userContent }],
-				}),
+			const result = await runBudgetedAiGeneration(
+				ctx,
+				{
+					learningPlanId: args.learningPlanId,
+					operation: "diagnostic",
+					modelId: diagnosticModelId,
+				},
+				() =>
+					runLlmGeneration((abortSignal) =>
+						generateText({
+							model: model(diagnosticModelId),
+							temperature: 0.2,
+							maxOutputTokens: 2_600,
+							abortSignal,
+							providerOptions: vertexProviderOptions,
+							output: Output.object({ schema: questionsSchema }),
+							system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Deutschland. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+							messages: [{ role: "user", content: userContent }],
+						}),
+					),
 			);
-			await recordAiUsage(ctx, {
-				learningPlanId: args.learningPlanId,
-				operation: "diagnostic",
-				modelId: diagnosticModelId,
-				usage: result.usage,
-			});
 
 			const questions = result.output.questions.map((question, index) => {
 				const normalizedOptions = question.options.map((option) =>
@@ -2862,7 +2917,10 @@ export const generatePlan = action({
 			generationId,
 		});
 		try {
-			const initialCostMode = await getMonthlyCostMode(ctx);
+			const initialCostMode = await getMonthlyCostMode(
+				ctx,
+				args.learningPlanId,
+			);
 			const context: LearningPlanAiContext = await ctx.runQuery(
 				internal.learningPlans.getAiContext,
 				{ learningPlanId: args.learningPlanId },
@@ -3039,24 +3097,27 @@ MVP-Vorgabe:
 					? FLASH_LITE_MODEL_ID
 					: FLASH_MODEL_ID;
 			const generatedPlan = await withGeneratedTextRetry(async (attempt) => {
-				const result = await runLlmGeneration((abortSignal) =>
-					generateText({
-						model: model(planModelId),
-						temperature: 0.25,
-						maxOutputTokens: 4_800,
-						abortSignal,
-						providerOptions: vertexProviderOptions,
-						output: Output.object({ schema: generatedPlanSchema }),
-						system: `Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
-						messages: [{ role: "user", content: userContent }],
-					}),
+				const result = await runBudgetedAiGeneration(
+					ctx,
+					{
+						learningPlanId: args.learningPlanId,
+						operation: "plan",
+						modelId: planModelId,
+					},
+					() =>
+						runLlmGeneration((abortSignal) =>
+							generateText({
+								model: model(planModelId),
+								temperature: 0.25,
+								maxOutputTokens: 4_800,
+								abortSignal,
+								providerOptions: vertexProviderOptions,
+								output: Output.object({ schema: generatedPlanSchema }),
+								system: `Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+								messages: [{ role: "user", content: userContent }],
+							}),
+						),
 				);
-				await recordAiUsage(ctx, {
-					learningPlanId: args.learningPlanId,
-					operation: "plan",
-					modelId: planModelId,
-					usage: result.usage,
-				});
 
 				return normalizeGeneratedPlan(result.output);
 			}, planFallbackMessage);
@@ -3089,6 +3150,7 @@ MVP-Vorgabe:
 			const sessionIds = (replacement?.sessionIds ?? []).slice(0, 1);
 			const projectedCostMode = await getMonthlyCostMode(
 				ctx,
+				args.learningPlanId,
 				sessionIds.length,
 			);
 			const economyMode =

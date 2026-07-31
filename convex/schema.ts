@@ -437,6 +437,7 @@ export default defineSchema({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
 		sessionId: v.optional(v.id("learningPlanSessions")),
+		reservationId: v.optional(v.string()),
 		operation: v.union(
 			v.literal("diagnostic"),
 			v.literal("plan"),
@@ -449,13 +450,53 @@ export default defineSchema({
 		cachedInputTokens: v.number(),
 		outputTokens: v.number(),
 		estimatedCostUsdMicros: v.number(),
+		budgetCostUsdMicros: v.optional(v.number()),
+		accountingKind: v.optional(
+			v.union(v.literal("measured"), v.literal("projected_failure")),
+		),
 		createdAt: v.number(),
 	})
 		.index("by_learningPlanId", ["learningPlanId"])
+		.index("by_ownerTokenIdentifier_and_reservationId", [
+			"ownerTokenIdentifier",
+			"reservationId",
+		])
 		.index("by_ownerTokenIdentifier_and_createdAt", [
 			"ownerTokenIdentifier",
 			"createdAt",
 		]),
+	learningPlanAiBudgetReservations: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		sessionId: v.optional(v.id("learningPlanSessions")),
+		reservationId: v.string(),
+		operation: v.union(
+			v.literal("diagnostic"),
+			v.literal("plan"),
+			v.literal("session_theory"),
+			v.literal("session_practice"),
+			v.literal("session_praxis"),
+		),
+		modelId: v.string(),
+		projectedCostUsdMicros: v.number(),
+		status: v.union(
+			v.literal("active"),
+			v.literal("settled"),
+			v.literal("forfeited"),
+		),
+		monthStart: v.number(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_ownerTokenIdentifier_and_reservationId", [
+			"ownerTokenIdentifier",
+			"reservationId",
+		])
+		.index("by_ownerTokenIdentifier_and_monthStart", [
+			"ownerTokenIdentifier",
+			"monthStart",
+		])
+		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"]),
 	learningPlanSessions: defineTable({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
