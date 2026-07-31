@@ -19,7 +19,6 @@ import {
 	Info,
 	Sparkles,
 	Time04,
-	TimeManagement,
 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
@@ -307,13 +306,11 @@ function AnalysisHub({
 	onOpenKnowledge,
 	onOpenNextStep,
 	onOpenProblem,
-	onOpenHistory,
 }: {
 	analysis: ExamAnalysis;
 	onOpenKnowledge: () => void;
 	onOpenNextStep: () => void;
 	onOpenProblem: () => void;
-	onOpenHistory: () => void;
 }) {
 	const { colors } = useDayovaTheme();
 	const recommendation = analysis.recommendation;
@@ -452,24 +449,6 @@ function AnalysisHub({
 					</View>
 				</View>
 				<ArrowRight size={19} color={colors.primaryStrong} strokeWidth={2.2} />
-			</ActionSurface>
-
-			<ActionSurface
-				accessibilityLabel="Deine Entwicklung über mehrere Prüfungen öffnen"
-				accessibilityRole="button"
-				className="flex-row items-center gap-3 rounded-info bg-transparent px-4 py-3"
-				onPress={onOpenHistory}
-				variant="flat"
-			>
-				<TimeManagement
-					size={19}
-					color={colors.secondaryText}
-					strokeWidth={2.1}
-				/>
-				<Text className="min-w-0 flex-1 font-poppins font-semibold text-body-4 text-secondary-text">
-					Deine Entwicklung über mehrere Prüfungen
-				</Text>
-				<ArrowRight size={17} color={colors.secondaryText} strokeWidth={2.1} />
 			</ActionSurface>
 		</View>
 	);
@@ -1200,7 +1179,6 @@ export function AnalyticsScreen() {
 									});
 								}
 							}}
-							onOpenHistory={() => router.push(ROUTES.analyticsHistory)}
 						/>
 					) : (
 						<EmptyState

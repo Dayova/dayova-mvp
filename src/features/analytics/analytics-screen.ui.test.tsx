@@ -347,6 +347,9 @@ describe("AnalyticsScreen", () => {
 		expect(screen.getByText("Dein Wissensstand")).toBeOnTheScreen();
 		expect(screen.getByText("Größte Lernhürde")).toBeOnTheScreen();
 		expect(screen.queryByText("Dein Prüfungsstoff")).not.toBeOnTheScreen();
+		expect(
+			screen.queryByText("Deine Entwicklung über mehrere Prüfungen"),
+		).not.toBeOnTheScreen();
 
 		await fireEvent.press(
 			screen.getByRole("button", {
