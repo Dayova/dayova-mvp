@@ -235,6 +235,41 @@ const examAnalysis = {
 			learningGoal: "Du kannst die Steigung vollständig erklären.",
 			priority: "high",
 			status: "developing",
+			summary: "Steigung noch präziser erklären.",
+			evidenceCount: 2,
+			dimensions: [
+				{
+					kind: "understanding",
+					required: true,
+					status: "secure",
+					evidenceCount: 2,
+				},
+				{
+					kind: "problemSolving",
+					required: true,
+					status: "developing",
+					evidenceCount: 1,
+				},
+				{
+					kind: "independent",
+					required: true,
+					status: "unknown",
+					evidenceCount: 0,
+				},
+			],
+			strengths: [
+				{
+					statement: "Du erkennst lineare Zusammenhänge.",
+					evidenceCount: 2,
+				},
+			],
+			weaknesses: [
+				{
+					statement: "Steigung noch präziser erklären.",
+					evidenceCount: 1,
+				},
+			],
+			controlCheckReason: null,
 		},
 		{
 			id: "achsenschnitt",
@@ -242,6 +277,36 @@ const examAnalysis = {
 			learningGoal: "Du kannst Achsenschnittpunkte sicher bestimmen.",
 			priority: "medium",
 			status: "secure",
+			summary: "Alle erforderlichen Wissensbelege vorhanden.",
+			evidenceCount: 3,
+			dimensions: [
+				{
+					kind: "understanding",
+					required: true,
+					status: "secure",
+					evidenceCount: 3,
+				},
+				{
+					kind: "problemSolving",
+					required: true,
+					status: "secure",
+					evidenceCount: 2,
+				},
+				{
+					kind: "independent",
+					required: true,
+					status: "secure",
+					evidenceCount: 2,
+				},
+			],
+			strengths: [
+				{
+					statement: "Du bestimmst Achsenschnittpunkte sicher.",
+					evidenceCount: 3,
+				},
+			],
+			weaknesses: [],
+			controlCheckReason: null,
 		},
 	],
 	recommendation: {
@@ -322,12 +387,14 @@ describe("AnalyticsScreen", () => {
 		expect(mockPush).toHaveBeenCalledWith("/learning-plans/new");
 	});
 
-	test("summarizes secure knowledge and keeps details behind the card", async () => {
+	test("shows every topic and opens its exact knowledge evidence", async () => {
 		mockUseQuery.mockReturnValue(examAnalysis);
 		const screen = await render(<AnalyticsScreen />);
 
 		expect(screen.getByText("1/2")).toBeOnTheScreen();
-		expect(screen.getByText("Themen sicher belegt")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 2 Themen sicher")).toBeOnTheScreen();
+		expect(screen.getByText("Steigung erklären")).toBeOnTheScreen();
+		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
 		expect(
 			screen.getByText("Steigung noch präziser erklären."),
 		).toBeOnTheScreen();
@@ -345,7 +412,7 @@ describe("AnalyticsScreen", () => {
 		).not.toBeOnTheScreen();
 		expect(screen.getByText("Dein nächster Schritt")).toBeOnTheScreen();
 		expect(screen.getByText("Dein Wissensstand")).toBeOnTheScreen();
-		expect(screen.getByText("Größte Lernhürde")).toBeOnTheScreen();
+		expect(screen.queryByText("Größte Lernhürde")).not.toBeOnTheScreen();
 		expect(screen.queryByText("Dein Prüfungsstoff")).not.toBeOnTheScreen();
 		expect(
 			screen.queryByText("Deine Entwicklung über mehrere Prüfungen"),
@@ -363,22 +430,12 @@ describe("AnalyticsScreen", () => {
 
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Lernhürde: Steigung noch präziser erklären. Details öffnen",
-			}),
-		);
-		expect(mockPush).toHaveBeenCalledWith({
-			pathname: "/analyse/lernhuerde",
-			params: { planId: "plan_1" },
-		});
-
-		await fireEvent.press(
-			screen.getByRole("button", {
-				name: "Wissensstand: 1 von 2 Themen sicher belegt. Details öffnen",
+				name: "Steigung erklären. Im Aufbau. Steigung noch präziser erklären.",
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith({
 			pathname: "/analyse/wissensstand",
-			params: { planId: "plan_1" },
+			params: { planId: "plan_1", topicId: "steigung" },
 		});
 	});
 
@@ -394,11 +451,8 @@ describe("AnalyticsScreen", () => {
 		const screen = await render(<AnalyticsScreen />);
 
 		expect(screen.getByText("0/5")).toBeOnTheScreen();
-		expect(
-			screen.getByRole("button", {
-				name: "Wissensstand: 0 von 5 Themen sicher belegt. Details öffnen",
-			}),
-		).toBeOnTheScreen();
+		expect(screen.getByText("0 von 5 Themen sicher")).toBeOnTheScreen();
+		expect(screen.getByText("0 Sicher belegt")).toBeOnTheScreen();
 		expect(
 			screen.queryByText(
 				"Du arbeitest an allen 5 Prüfungsthemen, aber noch keines ist sicher belegt.",
@@ -412,24 +466,53 @@ describe("AnalyticsScreen", () => {
 			readiness: {
 				secure: 0,
 				developing: 0,
-				unknown: 0,
+				unknown: 2,
 			},
+			topics: examAnalysis.topics.map((topic) => ({
+				...topic,
+				status: "unknown",
+				summary: "Noch keine überprüften Antworten.",
+				evidenceCount: 0,
+				dimensions: topic.dimensions.map((dimension) => ({
+					...dimension,
+					status: "unknown",
+					evidenceCount: 0,
+				})),
+				strengths: [],
+				weaknesses: [],
+				controlCheckReason: null,
+			})),
 		});
 		const screen = await render(<AnalyticsScreen />);
 
 		expect(screen.getByText("–")).toBeOnTheScreen();
-		expect(screen.getByText("Noch keine Themen bewertet")).toBeOnTheScreen();
-		expect(
-			screen.getByRole("button", {
-				name: "Wissensstand: Noch keine Prüfungsthemen bewertet. Details öffnen",
-			}),
-		).toBeOnTheScreen();
-		expect(screen.queryByText("0/0")).not.toBeOnTheScreen();
+		expect(screen.getByText("Noch keine Wissensbelege")).toBeOnTheScreen();
+		expect(screen.queryByText("0/2")).not.toBeOnTheScreen();
 	});
 
 	test("reveals evidence and starts the recommendation from focused pages", async () => {
 		mockUseQuery.mockReturnValue(examAnalysis);
 		const planId = "plan_1" as Id<"learningPlans">;
+		const knowledgeScreen = await render(
+			<AnalyticsDetailScreen
+				planId={planId}
+				section="knowledge"
+				topicId="steigung"
+			/>,
+		);
+
+		expect(knowledgeScreen.getByText("Dein Wissensprofil")).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("Verstehen")).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("Probleme lösen")).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("Selbstständig lösen")).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText("Du erkennst lineare Zusammenhänge."),
+		).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getAllByText("Steigung noch präziser erklären."),
+		).not.toHaveLength(0);
+
+		await knowledgeScreen.unmount();
 		const problemScreen = await render(
 			<AnalyticsDetailScreen planId={planId} section="problem" />,
 		);

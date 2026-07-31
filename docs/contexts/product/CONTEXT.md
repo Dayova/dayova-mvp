@@ -64,6 +64,14 @@ _Avoid_: User-facing copy
 An evidence-based estimate of whether the learner's knowledge of one required assessment topic is secure, developing, or unknown. It combines demonstrated performance with self-reported confidence and shapes the topic's theory, practice, and later verification.
 _Avoid_: Treating confidence alone as mastery, one overall score for the entire assessment
 
+**Belegdimension**:
+One of the exam-specific capabilities Dayova evaluates for a topic: `Verstehen`, `Probleme lösen`, or `Selbstständig lösen`. These are evidence axes, not sequential content phases or point categories.
+_Avoid_: Lernphase, Punktebereich, treating the three dimensions as interchangeable
+
+**Kontrollbeleg**:
+A fresh, relevant answer requested when new performance contradicts previously secure evidence. The contradiction moves the affected topic to `Im Aufbau` while preserving its history; it never erases existing evidence into `Noch nicht belegt`.
+_Avoid_: Reset, punishment, treating one contradiction as no prior knowledge
+
 **Preparation gap**:
 The difference between the preparation Dayova recommends for the assessment and the learning time available before it. A plan with a preparation gap prioritizes the strongest feasible coverage without presenting that reduced plan as complete readiness.
 _Avoid_: Inventing availability, silently treating reduced coverage as fully recommended preparation
@@ -134,6 +142,10 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 - Uploaded timetable data remains a draft until the learner reviews and activates at least one valid `Unterrichtsstunde`.
 - Only the active `Stundenplan` produces `Unterrichtstermine`; drafts never affect the daily agenda or learning-plan scheduling.
 - `Unterrichtstermine` block overlapping learning appointments but remain informational and cannot be completed.
+- Topic readiness uses the user-facing states `Sicher belegt`, `Im Aufbau`, and `Noch nicht belegt`; missing evidence is not presented as a demonstrated weakness.
+- An assessment topic is `Sicher belegt` only when every `Belegdimension` required by that topic is secure. New topic maps declare the required dimensions; legacy topics conservatively require all three.
+- Evidence is hierarchical: independent exam-like performance may support `Probleme lösen` and `Verstehen`, and guided problem solving may support `Verstehen`; lower-strength evidence never proves a higher dimension.
+- The Analyse overview may count secure topics but must not collapse readiness into a global percentage or points score. Activity or completed theory review alone never proves secure knowledge.
 
 ## Example Dialogue
 
