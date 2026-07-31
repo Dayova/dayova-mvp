@@ -7,7 +7,7 @@ export const ROUTES = {
 	analyticsKnowledge: "/analyse/wissensstand",
 	analyticsProblem: "/analyse/lernhuerde",
 	analyticsNextStep: "/analyse/naechster-schritt",
-	analyticsHistory: "/analyse/entwicklung",
+	analyticsHistory: "/analyse/development",
 	createExam: "/entry/new?type=exam",
 	createHomework: "/entry/new?type=homework",
 	createLearningPlan: "/learning-plans/new",
