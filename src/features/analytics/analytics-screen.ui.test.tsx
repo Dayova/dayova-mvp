@@ -129,8 +129,10 @@ jest.mock("~/components/ui/select-sheet", () => {
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: {
+			border: "#DCE6EE",
 			primaryStrong: "#00A0E6",
 			secondaryText: "#697586",
+			success: "#34C759",
 			text: "#151D30",
 			theorie: "#5856D6",
 			wrong: "#FF9500",
@@ -320,23 +322,30 @@ describe("AnalyticsScreen", () => {
 		expect(mockPush).toHaveBeenCalledWith("/learning-plans/new");
 	});
 
-	test("leads with current knowledge and keeps the next step compact", async () => {
+	test("summarizes secure knowledge and keeps details behind the card", async () => {
 		mockUseQuery.mockReturnValue(examAnalysis);
 		const screen = await render(<AnalyticsScreen />);
 
-		expect(
-			screen.getByText("Schon belegt: Du erkennst lineare Zusammenhänge."),
-		).toBeOnTheScreen();
+		expect(screen.getByText("1/2")).toBeOnTheScreen();
+		expect(screen.getByText("Themen sicher belegt")).toBeOnTheScreen();
 		expect(
 			screen.getByText("Steigung noch präziser erklären."),
 		).toBeOnTheScreen();
 		expect(screen.queryByText("„Änderung von y.“")).not.toBeOnTheScreen();
+		expect(
+			screen.queryByText("Schon belegt: Du erkennst lineare Zusammenhänge."),
+		).not.toBeOnTheScreen();
+		expect(
+			screen.queryByText("Du kannst 1 von 2 Prüfungsthemen sicher anwenden."),
+		).not.toBeOnTheScreen();
+		expect(
+			screen.queryByText(
+				"Seit deinem letzten Check: Steigung gelingt dir jetzt sicherer.",
+			),
+		).not.toBeOnTheScreen();
 		expect(screen.getByText("Dein nächster Schritt")).toBeOnTheScreen();
 		expect(screen.getByText("Dein Wissensstand")).toBeOnTheScreen();
 		expect(screen.getByText("Größte Lernhürde")).toBeOnTheScreen();
-		expect(
-			screen.getByText("Du kannst 1 von 2 Prüfungsthemen sicher anwenden."),
-		).toBeOnTheScreen();
 		expect(screen.queryByText("Dein Prüfungsstoff")).not.toBeOnTheScreen();
 
 		await fireEvent.press(
@@ -361,13 +370,58 @@ describe("AnalyticsScreen", () => {
 
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Wissensstand: 1 sicher, 1 in Arbeit, 0 noch unklar. Details öffnen",
+				name: "Wissensstand: 1 von 2 Themen sicher belegt. Details öffnen",
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith({
 			pathname: "/analyse/wissensstand",
 			params: { planId: "plan_1" },
 		});
+	});
+
+	test("shows zero of five secure topics without explanatory overview copy", async () => {
+		mockUseQuery.mockReturnValue({
+			...examAnalysis,
+			readiness: {
+				secure: 0,
+				developing: 5,
+				unknown: 0,
+			},
+		});
+		const screen = await render(<AnalyticsScreen />);
+
+		expect(screen.getByText("0/5")).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", {
+				name: "Wissensstand: 0 von 5 Themen sicher belegt. Details öffnen",
+			}),
+		).toBeOnTheScreen();
+		expect(
+			screen.queryByText(
+				"Du arbeitest an allen 5 Prüfungsthemen, aber noch keines ist sicher belegt.",
+			),
+		).not.toBeOnTheScreen();
+	});
+
+	test("does not present zero evaluated topics as zero progress", async () => {
+		mockUseQuery.mockReturnValue({
+			...examAnalysis,
+			readiness: {
+				secure: 0,
+				developing: 0,
+				unknown: 0,
+			},
+		});
+		const screen = await render(<AnalyticsScreen />);
+
+		expect(screen.getByText("–")).toBeOnTheScreen();
+		expect(screen.getByText("Noch keine Themen bewertet")).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", {
+				name: "Wissensstand: Noch keine Prüfungsthemen bewertet. Details öffnen",
+			}),
+		).toBeOnTheScreen();
+		expect(screen.queryByText("0/0")).not.toBeOnTheScreen();
 	});
 
 	test("reveals evidence and starts the recommendation from focused pages", async () => {

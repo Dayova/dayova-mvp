@@ -3,13 +3,13 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { NotificationButton } from "~/components/notification-button";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import {
-	Analytics,
 	ArrowDataTransferHorizontal,
 	ArrowRight,
 	ArrowUpRight,
@@ -113,8 +113,75 @@ const formatRemainingDays = (days: number) => {
 	return `Noch ${days} Tage`;
 };
 
+const KNOWLEDGE_RING_SIZE = 112;
+const KNOWLEDGE_RING_STROKE_WIDTH = 10;
+const KNOWLEDGE_RING_RADIUS =
+	(KNOWLEDGE_RING_SIZE - KNOWLEDGE_RING_STROKE_WIDTH) / 2;
+const KNOWLEDGE_RING_CIRCUMFERENCE = 2 * Math.PI * KNOWLEDGE_RING_RADIUS;
+
 // borderCurve is native geometry and has no NativeWind utility.
 const continuousCardStyle = { borderCurve: "continuous" } as const;
+
+function KnowledgeProgressRing({
+	secureTopics,
+	totalTopics,
+}: {
+	secureTopics: number;
+	totalTopics: number;
+}) {
+	const { colors } = useDayovaTheme();
+	const safeTotal = Math.max(0, totalTopics);
+	const safeSecure = Math.min(Math.max(0, secureTopics), safeTotal);
+	const hasTopics = safeTotal > 0;
+	const progress = hasTopics ? safeSecure / safeTotal : 0;
+	const progressOffset = KNOWLEDGE_RING_CIRCUMFERENCE * (1 - progress);
+
+	return (
+		<View accessible={false} className="h-28 w-28 items-center justify-center">
+			<Svg
+				pointerEvents="none"
+				width={KNOWLEDGE_RING_SIZE}
+				height={KNOWLEDGE_RING_SIZE}
+				viewBox={`0 0 ${KNOWLEDGE_RING_SIZE} ${KNOWLEDGE_RING_SIZE}`}
+				// SVG positioning is native geometry and cannot be expressed with NativeWind.
+				style={{ position: "absolute" }}
+			>
+				<Circle
+					cx={KNOWLEDGE_RING_SIZE / 2}
+					cy={KNOWLEDGE_RING_SIZE / 2}
+					r={KNOWLEDGE_RING_RADIUS}
+					fill="none"
+					stroke={colors.border}
+					strokeWidth={KNOWLEDGE_RING_STROKE_WIDTH}
+				/>
+				{hasTopics && safeSecure > 0 ? (
+					<Circle
+						cx={KNOWLEDGE_RING_SIZE / 2}
+						cy={KNOWLEDGE_RING_SIZE / 2}
+						r={KNOWLEDGE_RING_RADIUS}
+						fill="none"
+						stroke={colors.success}
+						strokeDasharray={`${KNOWLEDGE_RING_CIRCUMFERENCE} ${KNOWLEDGE_RING_CIRCUMFERENCE}`}
+						strokeDashoffset={progressOffset}
+						strokeLinecap="round"
+						strokeWidth={KNOWLEDGE_RING_STROKE_WIDTH}
+						transform={`rotate(-90 ${KNOWLEDGE_RING_SIZE / 2} ${KNOWLEDGE_RING_SIZE / 2})`}
+					/>
+				) : null}
+			</Svg>
+			<Text
+				adjustsFontSizeToFit
+				minimumFontScale={0.7}
+				numberOfLines={1}
+				selectable
+				className="font-poppins font-semibold text-heading-2 text-text"
+				style={{ fontVariant: ["tabular-nums"] }}
+			>
+				{hasTopics ? `${safeSecure}/${safeTotal}` : "–"}
+			</Text>
+		</View>
+	);
+}
 
 function useExamAnalysisQuery(
 	selectedPlanId: Id<"learningPlans"> | null | undefined,
@@ -251,130 +318,43 @@ function AnalysisHub({
 	const { colors } = useDayovaTheme();
 	const recommendation = analysis.recommendation;
 	const primaryProblem = analysis.primaryProblem;
-	const leadingAbility = analysis.abilities[0];
 	const totalTopics =
 		analysis.readiness.secure +
 		analysis.readiness.developing +
 		analysis.readiness.unknown;
-	const knowledgeHeadline =
-		totalTopics === 0
-			? "Noch nicht genug Belege für deinen Wissensstand."
-			: analysis.readiness.secure === 0
-				? analysis.readiness.unknown === totalTopics
-					? `Diese ${totalTopics} Prüfungsthemen wurden noch nicht geprüft.`
-					: analysis.readiness.developing === totalTopics
-						? `Du arbeitest an allen ${totalTopics} Prüfungsthemen, aber noch keines ist sicher belegt.`
-						: `Du arbeitest an ${analysis.readiness.developing} von ${totalTopics} Prüfungsthemen, aber noch keines ist sicher belegt.`
-				: `Du kannst ${analysis.readiness.secure} von ${totalTopics} Prüfungsthemen sicher anwenden.`;
-	const readinessItems = [
-		{
-			label: "Sicher",
-			value: analysis.readiness.secure,
-			barClassName: "bg-success",
-		},
-		{
-			label: "In Arbeit",
-			value: analysis.readiness.developing,
-			barClassName: "bg-info",
-		},
-		{
-			label: "Noch unklar",
-			value: analysis.readiness.unknown,
-			barClassName: "bg-primary",
-		},
-	];
+	const hasTopics = totalTopics > 0;
+	const knowledgeAccessibilityLabel = hasTopics
+		? `Wissensstand: ${analysis.readiness.secure} von ${totalTopics} Themen sicher belegt. Details öffnen`
+		: "Wissensstand: Noch keine Prüfungsthemen bewertet. Details öffnen";
 
 	return (
 		<View className="gap-4">
 			<ActionSurface
 				accessibilityHint="Öffnet alle Themen und Wissensbelege."
-				accessibilityLabel={`Wissensstand: ${analysis.readiness.secure} sicher, ${analysis.readiness.developing} in Arbeit, ${analysis.readiness.unknown} noch unklar. Details öffnen`}
+				accessibilityLabel={knowledgeAccessibilityLabel}
 				accessibilityRole="button"
-				className="gap-5 rounded-card border border-border bg-card p-5 shadow-none"
+				className="flex-row items-center gap-4 rounded-card border border-border bg-card p-5 shadow-none"
 				onPress={onOpenKnowledge}
 				style={continuousCardStyle}
 				variant="flat"
 			>
-				<View className="flex-row items-center justify-between gap-4">
-					<View className="flex-row items-center gap-3">
-						<View className="h-10 w-10 items-center justify-center rounded-full bg-system-subtle">
-							<Analytics
-								size={20}
-								color={colors.primaryStrong}
-								strokeWidth={2.2}
-							/>
-						</View>
-						<Text className="font-poppins font-semibold text-body-3 text-primary-strong">
-							Dein Wissensstand
-						</Text>
-					</View>
-					<ArrowRight
-						size={19}
-						color={colors.secondaryText}
-						strokeWidth={2.2}
-					/>
-				</View>
-
-				<View className="gap-2">
+				<KnowledgeProgressRing
+					secureTopics={analysis.readiness.secure}
+					totalTopics={totalTopics}
+				/>
+				<View className="min-w-0 flex-1 gap-1">
+					<Text className="font-poppins font-semibold text-body-3 text-primary-strong">
+						Dein Wissensstand
+					</Text>
 					<Text
 						selectable
-						className="font-poppins font-semibold text-body-1 text-text"
+						className="font-poppins text-body-4 text-secondary-text"
+						numberOfLines={2}
 					>
-						{knowledgeHeadline}
+						{hasTopics ? "Themen sicher belegt" : "Noch keine Themen bewertet"}
 					</Text>
-					{leadingAbility ? (
-						<Text
-							selectable
-							className="font-poppins text-body-4 text-secondary-text"
-							numberOfLines={2}
-						>
-							{`Schon belegt: ${formatGermanUiText(leadingAbility.statement)}`}
-						</Text>
-					) : null}
 				</View>
-
-				<View className="gap-3">
-					<View
-						accessible
-						accessibilityLabel={`${analysis.readiness.secure} sicher, ${analysis.readiness.developing} in Arbeit, ${analysis.readiness.unknown} noch unklar`}
-						className="h-3 flex-row overflow-hidden rounded-full bg-border/60"
-					>
-						{readinessItems
-							.filter((item) => item.value > 0)
-							.map((item) => (
-								<View
-									key={item.label}
-									className={cn("flex-1", item.barClassName)}
-								/>
-							))}
-					</View>
-					<View className="flex-row flex-wrap gap-x-4 gap-y-2">
-						{readinessItems.map((item) => (
-							<View key={item.label} className="flex-row items-center gap-1.5">
-								<View
-									className={cn("h-2 w-2 rounded-full", item.barClassName)}
-								/>
-								<Text
-									className="font-poppins text-body-5 text-secondary-text"
-									style={{ fontVariant: ["tabular-nums"] }}
-								>
-									{`${item.value} ${item.label}`}
-								</Text>
-							</View>
-						))}
-					</View>
-				</View>
-
-				{analysis.latestKnowledgeChange ? (
-					<View className="rounded-info bg-background px-4 py-3">
-						<Text
-							selectable
-							className="font-poppins text-body-4 text-secondary-text"
-						>
-							{analysis.latestKnowledgeChange}
-						</Text>
-					</View>
-				) : null}
+				<ArrowRight size={19} color={colors.secondaryText} strokeWidth={2.2} />
 			</ActionSurface>
 
 			<ActionSurface
