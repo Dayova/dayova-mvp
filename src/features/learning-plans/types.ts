@@ -45,6 +45,11 @@ export type PlanSession = {
 	outcomeAt?: number;
 	missedReason?: MissedReason;
 	adjustedFromSessionId?: Id<"learningPlanSessions">;
+	planningStatus?: "committed" | "provisional";
+	targetTopicIds?: string[];
+	targetEvidenceDimension?: "understanding" | "problemSolving" | "independent";
+	selectionReason?: string;
+	adaptationRevision?: number;
 };
 
 type SessionContentItemKind =
@@ -205,6 +210,8 @@ export type LearningPlanSnapshot = {
 			gaps: string[];
 		};
 		planningHint?: string;
+		rollingPlanEnabled?: boolean;
+		adaptationRevision?: number;
 		sessionCompositionVariant?: "control" | "split";
 		contentGeneration?: {
 			stage: "content" | "validating" | "ready" | "failed";

@@ -346,7 +346,7 @@ const questionsSchema = z
 						"Short expected concept or result used to evaluate demonstrated knowledge.",
 					),
 					1,
-					5,
+					2,
 				),
 			}),
 			5,
@@ -613,6 +613,8 @@ type LearningSessionContentAiContext = {
 		goal: string;
 		tasks: string[];
 		expectedOutcome: string;
+		targetTopicIds?: string[];
+		planningStatus?: "committed" | "provisional";
 		sortOrder: number;
 	};
 	planSessions: Array<{
@@ -1632,6 +1634,14 @@ const getLearningContentTopics = (
 	context: LearningSessionContentAiContext,
 ): LearningTopic[] => {
 	if (context.plan.topicMap && context.plan.topicMap.length > 0) {
+		const explicitlyTargetedTopics = context.session.targetTopicIds?.length
+			? context.plan.topicMap.filter((topic) =>
+					context.session.targetTopicIds?.includes(topic.id),
+				)
+			: [];
+		if (explicitlyTargetedTopics.length > 0) {
+			return explicitlyTargetedTopics;
+		}
 		const topics = getSessionLearningTopics({
 			topics: context.plan.topicMap,
 			strengths: context.plan.insight?.strengths ?? [],
@@ -2599,6 +2609,18 @@ export const ensureSessionContent = action({
 		) {
 			return { itemCount: context.existingItemCount };
 		}
+		if (context.session.planningStatus === "provisional") {
+			const budgetStatus = await ctx.runQuery(
+				internal.learningPlanAiUsage.getBudgetStatus,
+				{
+					learningPlanId: context.session.learningPlanId,
+					projectedCostUsdMicros: 30_000,
+				},
+			);
+			if (!budgetStatus.speculativeGenerationAllowed) {
+				return { itemCount: 0 };
+			}
+		}
 		const claimed: boolean = await ctx.runMutation(
 			internal.learningPlans.claimSessionContentGeneration,
 			{ sessionId: args.sessionId },
@@ -3002,7 +3024,7 @@ MVP-Vorgabe:
 - Session-Titel müssen kurze UI-Labels mit maximal ${MAX_SESSION_TITLE_CHARS} Zeichen sein.
 - Nenne in Session-Titeln, goal, tasks und expectedOutcome keine Dauer in Minuten. Die tatsächliche Session-Dauer wird anschließend aus den persönlichen Lernzeiten festgelegt und separat angezeigt.
 - insight.strengths darf maximal 4 Punkte enthalten, insight.gaps maximal 5 Punkte.
-- Gib höchstens 5 fachlich unterschiedliche Session-Archetypen zurück. Die Kalenderlogik erweitert sie anschließend auf alle benötigten kurzen Lernsessionen.
+- Gib höchstens 2 fachlich unterschiedliche Session-Archetypen für die unmittelbar nächsten Lernschritte zurück. Spätere Schritte werden erst nach neuer Lernevidenz festgelegt.
 - Bevorzuge mehrere kurze Session-Archetypen: Theorie 10–15 Min., angeleitetes Üben 10–20 Min. und Praxis 20–30 Min. Vermeide lange Sammelblöcke.
 - Plane fachlich sinnvolle Lernblöcke, aber die finale Kalenderplatzierung erfolgt ausschließlich innerhalb der persönlichen Lernzeiten. Verwende keine anderen Tage oder Uhrzeiten als Empfehlung.
 - Nutze dayOffsetBeforeExam relativ zum Prüfungstag: 1 = einen Tag vor der Prüfung.
@@ -3109,7 +3131,7 @@ MVP-Vorgabe:
 							generateText({
 								model: model(planModelId),
 								temperature: 0.25,
-								maxOutputTokens: 4_800,
+								maxOutputTokens: 3_200,
 								abortSignal,
 								providerOptions: vertexProviderOptions,
 								output: Output.object({ schema: generatedPlanSchema }),
@@ -3143,6 +3165,7 @@ MVP-Vorgabe:
 					sessionCompositionVariant,
 					deferReadyUntilContent: true,
 					deferFutureContent: true,
+					rollingWindow: true,
 					generationId,
 					sessions: generatedPlan.sessions,
 				},
