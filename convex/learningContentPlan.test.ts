@@ -93,6 +93,25 @@ describe("learning content plan", () => {
 		).toBe(false);
 	});
 
+	test("creates recall and transfer evidence for a three-minute check", () => {
+		const plan = createLearningContentPlan({
+			segments: [{ phase: "practice", durationMinutes: 3 }],
+			topics,
+		});
+
+		expect(plan.blocks).toHaveLength(1);
+		expect(
+			plan.blocks[0]?.questions.map((question) => ({
+				angle: question.angle,
+				kind: question.kind,
+				estimatedSeconds: question.estimatedSeconds,
+			})),
+		).toEqual([
+			{ angle: "recall", kind: "written", estimatedSeconds: 90 },
+			{ angle: "apply", kind: "multipleChoice", estimatedSeconds: 90 },
+		]);
+	});
+
 	test("can generate one cost-efficient AI payload for a complete short session", () => {
 		const plan = createLearningContentPlan({
 			segments: [{ phase: "practice", durationMinutes: 20 }],

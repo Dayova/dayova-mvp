@@ -45,6 +45,18 @@ const sessionExecutionStatusValidator = v.union(
 	v.literal("adjusted"),
 );
 
+const knowledgeValidationStatusValidator = v.union(
+	v.literal("pending"),
+	v.literal("completed"),
+	v.literal("skipped"),
+);
+
+const knowledgeValidationConfidenceValidator = v.union(
+	v.literal("unsure"),
+	v.literal("somewhatSure"),
+	v.literal("sure"),
+);
+
 const missedReasonValidator = v.union(
 	v.literal("no_time"),
 	v.literal("forgot"),
@@ -466,6 +478,10 @@ export default defineSchema({
 		startedAt: v.optional(v.number()),
 		outcomeAt: v.optional(v.number()),
 		activeStudySeconds: v.optional(v.number()),
+		knowledgeValidationStatus: v.optional(knowledgeValidationStatusValidator),
+		knowledgeValidationConfidence: v.optional(
+			knowledgeValidationConfidenceValidator,
+		),
 		missedReason: v.optional(missedReasonValidator),
 		adjustedFromSessionId: v.optional(v.id("learningPlanSessions")),
 		sortOrder: v.number(),

@@ -59,11 +59,11 @@ import type {
 	SessionContentItem,
 } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
 type SpeechRecognitionModule = typeof import("react-native-nitro-speech");
@@ -412,7 +412,12 @@ function CompletionView({
 	durationMinutes,
 	correctCount,
 	attemptCount,
+	isTheoryValidationAvailable,
+	isTheoryValidationComplete,
+	knowledgeValidationConfidence,
+	onKnowledgeValidationConfidenceChange,
 	onContinueLearning,
+	onDeferValidation,
 	onPrimary,
 	isBusy,
 }: {
@@ -420,7 +425,14 @@ function CompletionView({
 	durationMinutes: number;
 	correctCount: number;
 	attemptCount: number;
+	isTheoryValidationAvailable: boolean;
+	isTheoryValidationComplete: boolean;
+	knowledgeValidationConfidence: "unsure" | "somewhatSure" | "sure" | null;
+	onKnowledgeValidationConfidenceChange: (
+		value: "unsure" | "somewhatSure" | "sure",
+	) => void;
 	onContinueLearning: () => void;
+	onDeferValidation: () => void;
 	onPrimary: () => void;
 	isBusy: boolean;
 }) {
@@ -439,9 +451,95 @@ function CompletionView({
 		);
 	}
 
-	const title = isTheory ? "Theorie abgeschlossen" : "Übung abgeschlossen";
+	if (isTheoryValidationComplete) {
+		const confidenceOptions = [
+			{ value: "unsure" as const, label: "Noch unsicher" },
+			{ value: "somewhatSure" as const, label: "Teilweise sicher" },
+			{ value: "sure" as const, label: "Sicher" },
+		];
+
+		return (
+			<Animated.View
+				entering={FadeIn.duration(280)}
+				className="flex-1 justify-between py-8"
+			>
+				<View className="flex-1 justify-center gap-7">
+					<View className="items-center gap-3">
+						<View className="h-20 w-20 items-center justify-center rounded-info bg-system-subtle">
+							<Check
+								size={36}
+								color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
+								strokeWidth={2.4}
+							/>
+						</View>
+						<Text
+							accessibilityRole="header"
+							className="text-center font-poppins font-semibold text-heading-2 text-text"
+						>
+							Wissen kurz geprüft
+						</Text>
+						<Text className="max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
+							Deine Antworten aktualisieren jetzt deinen Wissensstand. Wie
+							sicher fühlst du dich bei diesem Thema?
+						</Text>
+					</View>
+					<View className="gap-3">
+						{confidenceOptions.map((option) => {
+							const selected = knowledgeValidationConfidence === option.value;
+							return (
+								<TouchableOpacity
+									key={option.value}
+									accessibilityRole="radio"
+									accessibilityState={{ selected }}
+									activeOpacity={0.8}
+									className={cn(
+										"min-h-14 justify-center rounded-info border px-5",
+										selected
+											? "border-primary bg-system-subtle"
+											: "border-border bg-card",
+									)}
+									onPress={() =>
+										onKnowledgeValidationConfidenceChange(option.value)
+									}
+								>
+									<Text
+										className={cn(
+											"font-poppins font-semibold text-body-3",
+											selected ? "text-primary-strong" : "text-text",
+										)}
+									>
+										{option.label}
+									</Text>
+								</TouchableOpacity>
+							);
+						})}
+					</View>
+				</View>
+				<Button
+					className="w-full"
+					disabled={isBusy || knowledgeValidationConfidence === null}
+					onPress={onPrimary}
+				>
+					{isBusy ? (
+						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+					) : (
+						<Text>Auswertung ansehen</Text>
+					)}
+				</Button>
+			</Animated.View>
+		);
+	}
+
+	const title =
+		isTheory && isTheoryValidationAvailable
+			? "Theorie verstanden"
+			: isTheory
+				? "Theorie abgeschlossen"
+				: "Übung abgeschlossen";
 	const description = isTheory
-		? "Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt."
+		? isTheoryValidationAvailable
+			? "Prüfe jetzt in drei Minuten, was wirklich hängen geblieben ist. Erst deine Antworten machen deinen Lernfortschritt sichtbar."
+			: "Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt."
 		: "Du hast alle Aufgaben geschafft. Übe noch einmal weiter oder sieh dir deine Analyse an.";
 	const completionLabel = isTheory ? "Theorie geschafft" : "Übung geschafft";
 	const Icon = isTheory ? BookOpen : Pencil;
@@ -495,17 +593,31 @@ function CompletionView({
 					{isBusy ? (
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 					) : (
-						<Text>{isTheory ? "Theorie abschließen" : "Analyse ansehen"}</Text>
+						<Text>
+							{isTheory && isTheoryValidationAvailable
+								? "Wissen prüfen · 3 Min."
+								: isTheory
+									? "Theorie abschließen"
+									: "Analyse ansehen"}
+						</Text>
 					)}
 				</Button>
 				<Button
 					className="w-full"
 					disabled={isBusy}
 					variant="neutral"
-					onPress={onContinueLearning}
+					onPress={
+						isTheory && isTheoryValidationAvailable
+							? onDeferValidation
+							: onContinueLearning
+					}
 				>
 					<Text>
-						{isTheory ? "Noch 10 Min. weiterlernen" : "Noch 10 Min. üben"}
+						{isTheory && isTheoryValidationAvailable
+							? "Später prüfen"
+							: isTheory
+								? "Noch 10 Min. weiterlernen"
+								: "Noch 10 Min. üben"}
 					</Text>
 				</Button>
 			</View>
@@ -907,6 +1019,9 @@ export default function LearningSessionContentScreen() {
 	const finishSessionContent = useMutation(
 		api.learningSessionContent.finishSessionContent,
 	);
+	const deferTheoryValidation = useMutation(
+		api.learningSessionContent.deferTheoryValidation,
+	);
 	const extendSessionContent = useMutation(
 		api.learningSessionContent.extendSessionContent,
 	);
@@ -933,6 +1048,8 @@ export default function LearningSessionContentScreen() {
 	const [completionPhase, setCompletionPhase] = useState<
 		LearningSessionContentSnapshot["session"]["phase"] | null
 	>(null);
+	const [knowledgeValidationConfidence, setKnowledgeValidationConfidence] =
+		useState<"unsure" | "somewhatSure" | "sure" | null>(null);
 	const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
 	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
@@ -942,6 +1059,7 @@ export default function LearningSessionContentScreen() {
 	const didAutoFinishRef = useRef(false);
 	const didStartTrackingRef = useRef(false);
 	const didRecordOutcomeRef = useRef(false);
+	const didResumeDeferredValidationRef = useRef(false);
 	const activeStudySecondsRef = useRef(0);
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
@@ -995,11 +1113,36 @@ export default function LearningSessionContentScreen() {
 			)
 		: [];
 	const theoryItems = sessionItems.filter((item) => item.kind === "learnCard");
+	const validationItems = sessionItems.filter(
+		(item) => item.phase === "practice" && item.kind !== "learnCard",
+	);
 	const currentItem = sessionItems[currentIndex] ?? null;
 	const shouldTrackActiveStudy = Boolean(
 		currentItem && !showAnalysis && !completionPhase,
 	);
 	const isPraxisSession = content?.session.phase === "rehearsal";
+	const isTheoryValidationSession =
+		content?.session.phase === "theory" &&
+		content.session.compositionVariant === "split" &&
+		validationItems.length > 0;
+
+	useEffect(() => {
+		if (
+			!content ||
+			!isTheoryValidationSession ||
+			content.session.knowledgeValidationStatus !== "skipped" ||
+			didResumeDeferredValidationRef.current
+		) {
+			return;
+		}
+		const firstValidationIndex = sessionItems.findIndex(
+			(item) => item.phase === "practice" && item.kind !== "learnCard",
+		);
+		if (firstValidationIndex < 0) return;
+		didResumeDeferredValidationRef.current = true;
+		setCurrentIndex(firstValidationIndex);
+		setCompletionPhase(null);
+	}, [content, isTheoryValidationSession, sessionItems]);
 	const persistedAttempt = useMemo(() => {
 		if (!currentItem || !content) return null;
 		if (currentItem.id === repeatingItemId) return null;
@@ -1251,7 +1394,12 @@ export default function LearningSessionContentScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
-			await finishSessionContent({ sessionId });
+			await finishSessionContent({
+				sessionId,
+				...(isTheoryValidationSession && knowledgeValidationConfidence
+					? { knowledgeValidationConfidence }
+					: {}),
+			});
 			setCompletionPhase(null);
 			setShowAnalysis(true);
 		} catch (error) {
@@ -1259,6 +1407,38 @@ export default function LearningSessionContentScreen() {
 				getErrorMessage(
 					error,
 					"Die Wissensanalyse konnte nicht erstellt werden.",
+				),
+			);
+		} finally {
+			setIsBusy(false);
+		}
+	};
+
+	const startTheoryValidation = () => {
+		if (!isTheoryValidationSession || isBusy) return;
+		const firstValidationIndex = sessionItems.findIndex(
+			(item) => item.phase === "practice" && item.kind !== "learnCard",
+		);
+		if (firstValidationIndex < 0) return;
+		resetItemState();
+		setCurrentIndex(firstValidationIndex);
+		setCompletionPhase(null);
+	};
+
+	const deferValidationAndLeave = async () => {
+		if (!sessionId || isBusy) return;
+
+		setIsBusy(true);
+		setErrorMessage(null);
+		try {
+			await deferTheoryValidation({ sessionId });
+			await recordCompletedOutcome();
+			goBack();
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(
+					error,
+					"Die Wissensprüfung konnte nicht für später gespeichert werden.",
 				),
 			);
 		} finally {
@@ -1344,18 +1524,13 @@ export default function LearningSessionContentScreen() {
 		if (!content || isBusy) return;
 		runTheoryTopicPrimaryAction({
 			currentIndex,
-			total: sessionItems.length,
+			total: theoryItems.length,
 			onAdvance: (nextIndex) => {
 				setErrorMessage(null);
 				setCurrentIndex(nextIndex);
 			},
 			onComplete: () => {
-				setCompletionPhase(
-					getLearningSessionCompletionPhase(
-						content.session.phase,
-						content.session.compositionVariant,
-					),
-				);
+				setCompletionPhase("theory");
 			},
 		});
 	};
@@ -1510,11 +1685,15 @@ export default function LearningSessionContentScreen() {
 	const title = showAnalysis
 		? "Wissensanalyse"
 		: completionPhase
-			? completionPhase === "theory"
-				? "Theorie"
-				: phaseTitle(completionPhase)
+			? isTheoryValidationSession && completionPhase === "practice"
+				? "Wissenscheck"
+				: completionPhase === "theory"
+					? "Theorie"
+					: phaseTitle(completionPhase)
 			: content
-				? phaseTitle(currentItem?.phase ?? content.session.phase)
+				? isTheoryValidationSession && currentItem?.phase === "practice"
+					? "Wissenscheck"
+					: phaseTitle(currentItem?.phase ?? content.session.phase)
 				: "Lernblock";
 	const showQuestionActions = Boolean(
 		content &&
@@ -1713,11 +1892,24 @@ export default function LearningSessionContentScreen() {
 						durationMinutes={content.session.durationMinutes}
 						correctCount={currentRunCorrectCount}
 						attemptCount={currentRunAttempts.length}
+						isTheoryValidationAvailable={
+							isTheoryValidationSession && completionPhase === "theory"
+						}
+						isTheoryValidationComplete={
+							isTheoryValidationSession && completionPhase === "practice"
+						}
+						knowledgeValidationConfidence={knowledgeValidationConfidence}
+						onKnowledgeValidationConfidenceChange={
+							setKnowledgeValidationConfidence
+						}
 						onContinueLearning={() => void startContinueLearning()}
+						onDeferValidation={() => void deferValidationAndLeave()}
 						onPrimary={
-							completionPhase === "theory"
-								? completeAndLeave
-								: finishAndShowAnalysis
+							isTheoryValidationSession && completionPhase === "theory"
+								? startTheoryValidation
+								: completionPhase === "theory"
+									? completeAndLeave
+									: finishAndShowAnalysis
 						}
 						isBusy={isBusy}
 					/>

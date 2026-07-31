@@ -1,6 +1,6 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { type ReactNode, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
@@ -19,6 +19,7 @@ import {
 	Info,
 	Sparkles,
 	Time04,
+	TimeManagement,
 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
@@ -135,6 +136,25 @@ function useExamAnalysisQuery(
 	);
 }
 
+function useKnowledgeHistoryQuery() {
+	const { user } = useAuthSession();
+	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const today = useCurrentLocalDay();
+	const queryArgs = useMemo(
+		() => ({
+			period: "all" as const,
+			todayKey: getDayKey(today),
+			timezoneOffsetMinutes: today.getTimezoneOffset(),
+		}),
+		[today],
+	);
+
+	return useQuery(
+		api.userAnalytics.getOverview,
+		user && isConvexAuthenticated ? queryArgs : "skip",
+	);
+}
+
 function SectionHeading({
 	title,
 	description,
@@ -215,175 +235,178 @@ function ExamSwitcher({
 	);
 }
 
-function AnalysisHubCard({
-	accessibilityLabel,
-	children,
-	className,
-	icon,
-	label,
-	labelClassName,
-	onPress,
-}: {
-	accessibilityLabel: string;
-	children: ReactNode;
-	className: string;
-	icon: ReactNode;
-	label: string;
-	labelClassName: string;
-	onPress: () => void;
-}) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<ActionSurface
-			accessibilityHint="Öffnet die ausführliche Analyse."
-			accessibilityLabel={accessibilityLabel}
-			accessibilityRole="button"
-			className={cn("gap-5 rounded-card border p-5 shadow-none", className)}
-			onPress={onPress}
-			style={continuousCardStyle}
-			variant="flat"
-		>
-			<View className="flex-row items-center justify-between gap-4">
-				<View className="min-w-0 flex-1 flex-row items-center gap-3">
-					<View className="h-11 w-11 items-center justify-center rounded-full bg-card">
-						{icon}
-					</View>
-					<Text
-						className={cn(
-							"min-w-0 flex-1 font-poppins font-semibold text-body-3",
-							labelClassName,
-						)}
-					>
-						{label}
-					</Text>
-				</View>
-				<View className="h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card">
-					<ArrowRight size={19} color={colors.text} strokeWidth={2.2} />
-				</View>
-			</View>
-			{children}
-			<Text className="font-poppins font-semibold text-body-4 text-text">
-				Details ansehen
-			</Text>
-		</ActionSurface>
-	);
-}
-
 function AnalysisHub({
 	analysis,
 	onOpenKnowledge,
 	onOpenNextStep,
 	onOpenProblem,
+	onOpenHistory,
 }: {
 	analysis: ExamAnalysis;
 	onOpenKnowledge: () => void;
 	onOpenNextStep: () => void;
 	onOpenProblem: () => void;
+	onOpenHistory: () => void;
 }) {
 	const { colors } = useDayovaTheme();
 	const recommendation = analysis.recommendation;
 	const primaryProblem = analysis.primaryProblem;
 	const leadingAbility = analysis.abilities[0];
-	const diagnosis = primaryProblem
-		? DIAGNOSIS_COPY[primaryProblem.diagnosisType]
-		: null;
+	const totalTopics =
+		analysis.readiness.secure +
+		analysis.readiness.developing +
+		analysis.readiness.unknown;
+	const knowledgeHeadline =
+		totalTopics === 0
+			? "Noch nicht genug Belege für deinen Wissensstand."
+			: analysis.readiness.secure === 0
+				? analysis.readiness.unknown === totalTopics
+					? `Diese ${totalTopics} Prüfungsthemen wurden noch nicht geprüft.`
+					: analysis.readiness.developing === totalTopics
+						? `Du arbeitest an allen ${totalTopics} Prüfungsthemen, aber noch keines ist sicher belegt.`
+						: `Du arbeitest an ${analysis.readiness.developing} von ${totalTopics} Prüfungsthemen, aber noch keines ist sicher belegt.`
+				: `Du kannst ${analysis.readiness.secure} von ${totalTopics} Prüfungsthemen sicher anwenden.`;
+	const readinessItems = [
+		{
+			label: "Sicher",
+			value: analysis.readiness.secure,
+			barClassName: "bg-success",
+		},
+		{
+			label: "In Arbeit",
+			value: analysis.readiness.developing,
+			barClassName: "bg-info",
+		},
+		{
+			label: "Noch unklar",
+			value: analysis.readiness.unknown,
+			barClassName: "bg-primary",
+		},
+	];
 
 	return (
-		<View className="gap-5">
-			<View className="gap-1 px-1">
-				<Text className="font-poppins font-semibold text-body-1 text-text">
-					Deine Prüfung auf einen Blick
-				</Text>
-				<Text
-					selectable
-					className="font-poppins text-body-4 text-secondary-text"
-				>
-					Öffne einen Bereich, wenn du die Belege und Details sehen möchtest.
-				</Text>
-			</View>
-
-			<AnalysisHubCard
-				accessibilityLabel={`Nächster Schritt: ${
-					recommendation?.goal ?? "Lernplan prüfen"
-				} Details öffnen`}
-				className="border-primary/25 bg-system-subtle"
-				icon={
-					<Sparkles size={22} color={colors.primaryStrong} strokeWidth={2.2} />
-				}
-				label="Dein nächster Schritt"
-				labelClassName="text-primary-strong"
-				onPress={onOpenNextStep}
+		<View className="gap-4">
+			<ActionSurface
+				accessibilityHint="Öffnet alle Themen und Wissensbelege."
+				accessibilityLabel={`Wissensstand: ${analysis.readiness.secure} sicher, ${analysis.readiness.developing} in Arbeit, ${analysis.readiness.unknown} noch unklar. Details öffnen`}
+				accessibilityRole="button"
+				className="gap-5 rounded-card border border-border bg-card p-5 shadow-none"
+				onPress={onOpenKnowledge}
+				style={continuousCardStyle}
+				variant="flat"
 			>
+				<View className="flex-row items-center justify-between gap-4">
+					<View className="flex-row items-center gap-3">
+						<View className="h-10 w-10 items-center justify-center rounded-full bg-system-subtle">
+							<Analytics
+								size={20}
+								color={colors.primaryStrong}
+								strokeWidth={2.2}
+							/>
+						</View>
+						<Text className="font-poppins font-semibold text-body-3 text-primary-strong">
+							Dein Wissensstand
+						</Text>
+					</View>
+					<ArrowRight
+						size={19}
+						color={colors.secondaryText}
+						strokeWidth={2.2}
+					/>
+				</View>
+
 				<View className="gap-2">
 					<Text
 						selectable
 						className="font-poppins font-semibold text-body-1 text-text"
-						numberOfLines={3}
 					>
-						{formatGermanUiText(
-							recommendation?.goal ??
-								"Dein Lernplan ist für diese Prüfung aktuell abgeschlossen.",
-						)}
+						{knowledgeHeadline}
 					</Text>
-					<Text
-						selectable
-						className="font-poppins text-body-4 text-secondary-text"
-						numberOfLines={3}
-					>
-						{formatGermanUiText(
-							recommendation?.reason ??
-								"Prüfe deinen Lernplan und entscheide, ob du noch etwas wiederholen möchtest.",
-						)}
-					</Text>
-				</View>
-				<View className="flex-row flex-wrap items-center gap-x-5 gap-y-2">
-					<View className="flex-row items-center gap-2">
-						<Time04 size={17} color={colors.primaryStrong} strokeWidth={2.2} />
+					{leadingAbility ? (
 						<Text
-							className="font-poppins font-semibold text-body-4 text-text"
-							style={{ fontVariant: ["tabular-nums"] }}
+							selectable
+							className="font-poppins text-body-4 text-secondary-text"
+							numberOfLines={2}
 						>
-							{recommendation
-								? `${recommendation.durationMinutes} Min.`
-								: `${analysis.preparation.remainingMinutes} Min. geplant`}
-						</Text>
-					</View>
-					<View className="flex-row items-center gap-2">
-						<CalendarDays
-							size={17}
-							color={colors.primaryStrong}
-							strokeWidth={2.2}
-						/>
-						<Text
-							className="font-poppins font-semibold text-body-4 text-text"
-							style={{ fontVariant: ["tabular-nums"] }}
-						>
-							{formatRemainingDays(analysis.preparation.remainingDays)}
-						</Text>
-					</View>
-				</View>
-			</AnalysisHubCard>
-
-			<AnalysisHubCard
-				accessibilityLabel={`Lernhürde: ${
-					primaryProblem?.title ?? "Noch keine klare Schwäche erkannt"
-				} Details öffnen`}
-				className="border-wrong/25 bg-wrong-subtle"
-				icon={<CircleAlert size={22} color={colors.wrong} strokeWidth={2.2} />}
-				label="Das bremst dich gerade"
-				labelClassName="text-wrong"
-				onPress={onOpenProblem}
-			>
-				<View className="gap-2">
-					{diagnosis ? (
-						<Text className="font-poppins font-semibold text-body-5 text-wrong">
-							{diagnosis.label}
+							{`Schon belegt: ${formatGermanUiText(leadingAbility.statement)}`}
 						</Text>
 					) : null}
+				</View>
+
+				<View className="gap-3">
+					<View
+						accessible
+						accessibilityLabel={`${analysis.readiness.secure} sicher, ${analysis.readiness.developing} in Arbeit, ${analysis.readiness.unknown} noch unklar`}
+						className="h-3 flex-row overflow-hidden rounded-full bg-border/60"
+					>
+						{readinessItems
+							.filter((item) => item.value > 0)
+							.map((item) => (
+								<View
+									key={item.label}
+									className={cn("flex-1", item.barClassName)}
+								/>
+							))}
+					</View>
+					<View className="flex-row flex-wrap gap-x-4 gap-y-2">
+						{readinessItems.map((item) => (
+							<View key={item.label} className="flex-row items-center gap-1.5">
+								<View
+									className={cn("h-2 w-2 rounded-full", item.barClassName)}
+								/>
+								<Text
+									className="font-poppins text-body-5 text-secondary-text"
+									style={{ fontVariant: ["tabular-nums"] }}
+								>
+									{`${item.value} ${item.label}`}
+								</Text>
+							</View>
+						))}
+					</View>
+				</View>
+
+				{analysis.latestKnowledgeChange ? (
+					<View className="rounded-info bg-background px-4 py-3">
+						<Text
+							selectable
+							className="font-poppins text-body-4 text-secondary-text"
+						>
+							{analysis.latestKnowledgeChange}
+						</Text>
+					</View>
+				) : null}
+			</ActionSurface>
+
+			<ActionSurface
+				accessibilityHint="Öffnet die Antwort und die genaue Diagnose."
+				accessibilityLabel={`Lernhürde: ${
+					primaryProblem?.observation ?? "Noch keine klare Schwäche erkannt"
+				} Details öffnen`}
+				accessibilityRole="button"
+				className="gap-4 rounded-card border border-wrong/20 bg-card p-5 shadow-none"
+				onPress={onOpenProblem}
+				style={continuousCardStyle}
+				variant="flat"
+			>
+				<View className="flex-row items-center justify-between gap-4">
+					<View className="flex-row items-center gap-3">
+						<View className="h-10 w-10 items-center justify-center rounded-full bg-wrong-subtle">
+							<CircleAlert size={20} color={colors.wrong} strokeWidth={2.2} />
+						</View>
+						<Text className="font-poppins font-semibold text-body-3 text-wrong">
+							Größte Lernhürde
+						</Text>
+					</View>
+					<ArrowRight
+						size={19}
+						color={colors.secondaryText}
+						strokeWidth={2.2}
+					/>
+				</View>
+				<View className="gap-2">
 					<Text
 						selectable
-						className="font-poppins font-semibold text-body-1 text-text"
+						className="font-poppins font-semibold text-body-2 text-text"
 						numberOfLines={3}
 					>
 						{formatGermanUiText(
@@ -396,53 +419,78 @@ function AnalysisHub({
 						className="font-poppins text-body-4 text-secondary-text"
 						numberOfLines={2}
 					>
-						{primaryProblem
-							? `Hier zeigt es sich: ${formatGermanUiText(primaryProblem.location)}`
-							: "Ungetestete Themen bleiben offen, bis deine Antworten genug Belege liefern."}
+						{primaryProblem?.evidenceExcerpt
+							? `Deine Antwort: „${primaryProblem.evidenceExcerpt}“`
+							: "Noch nicht genug Belege für eine konkrete Diagnose."}
 					</Text>
 				</View>
-			</AnalysisHubCard>
+				{analysis.secondaryProblems.length > 0 ? (
+					<Text className="font-poppins font-semibold text-body-5 text-wrong">
+						{`${analysis.secondaryProblems.length} weitere ${analysis.secondaryProblems.length === 1 ? "Lernhürde" : "Lernhürden"} ansehen`}
+					</Text>
+				) : null}
+			</ActionSurface>
 
-			<AnalysisHubCard
-				accessibilityLabel={`Wissensstand: ${analysis.readiness.secure} sicher, ${analysis.readiness.developing} in Arbeit, ${analysis.readiness.unknown} noch unklar. Details öffnen`}
-				className="border-theorie/25 bg-theorie-subtle"
-				icon={<Analytics size={22} color={colors.theorie} strokeWidth={2.2} />}
-				label="Dein Wissensstand"
-				labelClassName="text-theorie"
-				onPress={onOpenKnowledge}
+			<ActionSurface
+				accessibilityHint="Öffnet deinen empfohlenen nächsten Lernschritt."
+				accessibilityLabel={`Nächster Schritt: ${
+					recommendation?.goal ?? "Lernplan prüfen"
+				}`}
+				accessibilityRole="button"
+				className="flex-row items-center gap-4 rounded-info border border-primary/20 bg-system-subtle p-4 shadow-none"
+				onPress={onOpenNextStep}
+				style={continuousCardStyle}
+				variant="flat"
 			>
-				<View className="gap-3">
+				<View className="h-11 w-11 items-center justify-center rounded-full bg-card">
+					<Sparkles size={21} color={colors.primaryStrong} strokeWidth={2.2} />
+				</View>
+				<View className="min-w-0 flex-1 gap-1">
+					<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+						Dein nächster Schritt
+					</Text>
 					<Text
 						selectable
-						className="font-poppins font-semibold text-body-1 text-text"
-						numberOfLines={3}
+						className="font-poppins font-semibold text-body-3 text-text"
+						numberOfLines={2}
 					>
 						{formatGermanUiText(
-							leadingAbility?.statement ?? "Noch nicht genug Belege",
+							recommendation?.goal ??
+								"Dein Lernplan ist für diese Prüfung abgeschlossen.",
 						)}
 					</Text>
-					<View className="flex-row flex-wrap gap-x-4 gap-y-2">
-						<View className="flex-row items-center gap-2">
-							<View className="h-2.5 w-2.5 rounded-full bg-success" />
-							<Text className="font-poppins text-body-4 text-text">
-								{`${analysis.readiness.secure} sicher`}
-							</Text>
-						</View>
-						<View className="flex-row items-center gap-2">
-							<View className="h-2.5 w-2.5 rounded-full bg-info" />
-							<Text className="font-poppins text-body-4 text-text">
-								{`${analysis.readiness.developing} in Arbeit`}
-							</Text>
-						</View>
-						<View className="flex-row items-center gap-2">
-							<View className="h-2.5 w-2.5 rounded-full bg-primary" />
-							<Text className="font-poppins text-body-4 text-text">
-								{`${analysis.readiness.unknown} noch unklar`}
-							</Text>
-						</View>
+					<View className="flex-row items-center gap-2">
+						<Time04 size={15} color={colors.primaryStrong} strokeWidth={2.2} />
+						<Text
+							className="font-poppins text-body-5 text-secondary-text"
+							style={{ fontVariant: ["tabular-nums"] }}
+						>
+							{recommendation
+								? `${recommendation.durationMinutes} Min.`
+								: formatRemainingDays(analysis.preparation.remainingDays)}
+						</Text>
 					</View>
 				</View>
-			</AnalysisHubCard>
+				<ArrowRight size={19} color={colors.primaryStrong} strokeWidth={2.2} />
+			</ActionSurface>
+
+			<ActionSurface
+				accessibilityLabel="Deine Entwicklung über mehrere Prüfungen öffnen"
+				accessibilityRole="button"
+				className="flex-row items-center gap-3 rounded-info bg-transparent px-4 py-3"
+				onPress={onOpenHistory}
+				variant="flat"
+			>
+				<TimeManagement
+					size={19}
+					color={colors.secondaryText}
+					strokeWidth={2.1}
+				/>
+				<Text className="min-w-0 flex-1 font-poppins font-semibold text-body-4 text-secondary-text">
+					Deine Entwicklung über mehrere Prüfungen
+				</Text>
+				<ArrowRight size={17} color={colors.secondaryText} strokeWidth={2.1} />
+			</ActionSurface>
 		</View>
 	);
 }
@@ -635,50 +683,8 @@ function ImprovementSection({
 	);
 }
 
-function ProblemCard({
-	problem,
-	compact = false,
-}: {
-	problem: ExamProblem;
-	compact?: boolean;
-}) {
+function ProblemCard({ problem }: { problem: ExamProblem }) {
 	const diagnosis = DIAGNOSIS_COPY[problem.diagnosisType];
-
-	if (compact) {
-		return (
-			<Surface className="gap-3 p-5" variant="flat">
-				<View className="flex-row items-center justify-between gap-3">
-					<Text
-						selectable
-						className="min-w-0 flex-1 font-poppins font-semibold text-body-3 text-text"
-					>
-						{problem.title}
-					</Text>
-					<View
-						className={cn(
-							"rounded-full px-3 py-1.5",
-							diagnosis.surfaceClassName,
-						)}
-					>
-						<Text
-							className={cn(
-								"font-poppins font-semibold text-body-5",
-								diagnosis.textClassName,
-							)}
-						>
-							{diagnosis.label}
-						</Text>
-					</View>
-				</View>
-				<Text
-					selectable
-					className="font-poppins text-body-4 text-secondary-text"
-				>
-					{problem.observation}
-				</Text>
-			</Surface>
-		);
-	}
 
 	return (
 		<Surface className="gap-5 border border-wrong/20 p-5" variant="flat">
@@ -709,40 +715,67 @@ function ProblemCard({
 					selectable
 					className="font-poppins font-semibold text-body-1 text-text"
 				>
-					{problem.observation}
+					{problem.title}
+				</Text>
+				<Text
+					selectable
+					className="font-poppins text-body-5 text-secondary-text"
+				>
+					{problem.priorityReason}
+				</Text>
+			</View>
+
+			<View className="gap-2 rounded-info bg-background p-4">
+				<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+					Beobachtet bei
+				</Text>
+				<Text selectable className="font-poppins text-body-3 text-text">
+					{problem.location}
 				</Text>
 			</View>
 
 			{problem.evidenceExcerpt ? (
-				<View className="gap-2 rounded-info bg-background p-4">
-					<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+				<View className="gap-2 rounded-info bg-wrong-subtle p-4">
+					<Text className="font-poppins font-semibold text-body-5 text-wrong">
 						Deine Antwort
 					</Text>
-					<Text
-						selectable
-						className="font-poppins text-body-3 text-text"
-					>{`„${problem.evidenceExcerpt}“`}</Text>
+					<Text selectable className="font-poppins text-body-3 text-wrong">
+						{`„${problem.evidenceExcerpt}“`}
+					</Text>
 				</View>
 			) : null}
 
 			<View className="gap-4">
 				<View className="gap-1">
-					<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
-						Hier zeigt es sich
+					<Text className="font-poppins font-semibold text-body-4 text-text">
+						Genau daran liegt es
 					</Text>
 					<Text selectable className="font-poppins text-body-3 text-text">
-						{problem.location}
+						{problem.observation}
 					</Text>
 				</View>
 				<View className="gap-1">
-					<Text className="font-poppins font-semibold text-body-4 text-secondary-text">
-						Was dahinter steckt
+					<Text className="font-poppins font-semibold text-body-4 text-text">
+						Warum das ein Problem ist
 					</Text>
 					<Text selectable className="font-poppins text-body-3 text-text">
 						{problem.explanation}
 					</Text>
 				</View>
 			</View>
+
+			<View className="gap-2 rounded-info bg-success-subtle p-4">
+				<Text className="font-poppins font-semibold text-body-5 text-success">
+					So wäre es korrekt
+				</Text>
+				<Text selectable className="font-poppins text-body-3 text-text">
+					{problem.correctAnswer}
+				</Text>
+			</View>
+
+			<Text selectable className="font-poppins text-body-5 text-secondary-text">
+				{problem.diagnosisConfidence}
+			</Text>
 		</Surface>
 	);
 }
@@ -792,7 +825,7 @@ function ProblemSection({
 						Weitere offene Punkte
 					</Text>
 					{secondaryProblems.map((problem) => (
-						<ProblemCard key={problem.id} compact problem={problem} />
+						<ProblemCard key={problem.id} problem={problem} />
 					))}
 				</View>
 			) : null}
@@ -1187,6 +1220,7 @@ export function AnalyticsScreen() {
 									});
 								}
 							}}
+							onOpenHistory={() => router.push(ROUTES.analyticsHistory)}
 						/>
 					) : (
 						<EmptyState
@@ -1194,6 +1228,186 @@ export function AnalyticsScreen() {
 						/>
 					)}
 				</View>
+			</ScreenScroll>
+		</Screen>
+	);
+}
+
+export function AnalyticsHistoryScreen() {
+	const router = useRouter();
+	const overview = useKnowledgeHistoryQuery();
+
+	return (
+		<Screen>
+			<ThemedStatusBar />
+			<ScreenScroll
+				contentInsetAdjustmentBehavior="automatic"
+				includeTopSafeArea={false}
+				topPadding={24}
+				bottomPadding={72}
+				horizontalPadding={24}
+			>
+				{overview === undefined ? (
+					<LoadingState />
+				) : !overview.hasData ? (
+					<EmptyState
+						onCreatePlan={() => router.push(ROUTES.createLearningPlan)}
+					/>
+				) : (
+					<View className="gap-8">
+						<View className="gap-2 px-1">
+							<Text
+								selectable
+								className="font-poppins text-body-2 text-secondary-text"
+							>
+								Muster aus deinen bisherigen Prüfungen und Lernsessionen.
+								Aktivität allein zählt hier nicht als Wissen.
+							</Text>
+						</View>
+
+						<Surface className="gap-5 border border-border p-5" variant="flat">
+							<View className="gap-1">
+								<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+									DEINE WISSENSBELEGE
+								</Text>
+								<Text
+									selectable
+									className="font-poppins font-semibold text-heading-2 text-text"
+									style={{ fontVariant: ["tabular-nums"] }}
+								>
+									{overview.knowledge.answeredItems}
+								</Text>
+								<Text
+									selectable
+									className="font-poppins text-body-4 text-secondary-text"
+								>
+									{`geprüfte Antworten aus ${overview.overall.acceptedPlans} ${overview.overall.acceptedPlans === 1 ? "Prüfung" : "Prüfungen"}`}
+								</Text>
+							</View>
+							<View className="flex-row gap-2">
+								{[
+									{
+										label: "Sicher gezeigt",
+										value: overview.knowledge.correct,
+										className: "bg-success-subtle",
+										textClassName: "text-success",
+									},
+									{
+										label: "Teilweise",
+										value: overview.knowledge.partiallyCorrect,
+										className: "bg-info-subtle",
+										textClassName: "text-info",
+									},
+									{
+										label: "Noch offen",
+										value: overview.knowledge.notCorrect,
+										className: "bg-wrong-subtle",
+										textClassName: "text-wrong",
+									},
+								].map((item) => (
+									<View
+										key={item.label}
+										className={cn(
+											"min-w-0 flex-1 gap-1 rounded-info px-2 py-4",
+											item.className,
+										)}
+									>
+										<Text
+											className={cn(
+												"font-poppins font-semibold text-body-1",
+												item.textClassName,
+											)}
+											style={{ fontVariant: ["tabular-nums"] }}
+										>
+											{item.value}
+										</Text>
+										<Text className="font-poppins text-body-5 text-secondary-text">
+											{item.label}
+										</Text>
+									</View>
+								))}
+							</View>
+						</Surface>
+
+						<View className="gap-4">
+							<SectionHeading
+								title="Bisher belegte Stärken"
+								description="Fähigkeiten aus deinen gespeicherten Lernständen."
+							/>
+							<Surface className="gap-4 p-5" variant="flat">
+								{overview.knowledge.strengths.length > 0 ? (
+									overview.knowledge.strengths.map((strength) => (
+										<View key={strength} className="flex-row items-start gap-3">
+											<Check
+												size={18}
+												color={DAYOVA_DESIGN_SYSTEM.colors.success}
+												strokeWidth={2.3}
+											/>
+											<Text
+												selectable
+												className="min-w-0 flex-1 font-poppins text-body-3 text-text"
+											>
+												{strength}
+											</Text>
+										</View>
+									))
+								) : (
+									<Text
+										selectable
+										className="font-poppins text-body-4 text-secondary-text"
+									>
+										Noch nicht genug wiederholte Belege.
+									</Text>
+								)}
+							</Surface>
+						</View>
+
+						<View className="gap-4">
+							<SectionHeading
+								title="Bisher beobachtete Lernhürden"
+								description="Nur Hinweise aus deinen gespeicherten Analysen."
+							/>
+							<Surface
+								className="gap-4 border border-wrong/20 p-5"
+								variant="flat"
+							>
+								{overview.knowledge.gaps.length > 0 ? (
+									overview.knowledge.gaps.map((gap) => (
+										<View key={gap} className="flex-row items-start gap-3">
+											<CircleAlert
+												size={18}
+												color={DAYOVA_DESIGN_SYSTEM.colors.wrong}
+												strokeWidth={2.2}
+											/>
+											<Text
+												selectable
+												className="min-w-0 flex-1 font-poppins text-body-3 text-text"
+											>
+												{gap}
+											</Text>
+										</View>
+									))
+								) : (
+									<Text
+										selectable
+										className="font-poppins text-body-4 text-secondary-text"
+									>
+										Noch kein wiederkehrendes Problem erkannt.
+									</Text>
+								)}
+							</Surface>
+						</View>
+
+						{overview.historyLimited ? (
+							<Text
+								selectable
+								className="px-1 font-poppins text-body-5 text-secondary-text"
+							>
+								Die Ansicht zeigt die zuletzt gespeicherten Lernbelege.
+							</Text>
+						) : null}
+					</View>
+				)}
 			</ScreenScroll>
 		</Screen>
 	);

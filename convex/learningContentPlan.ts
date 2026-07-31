@@ -40,7 +40,7 @@ export type LearningContentBlock = {
 };
 
 const MAX_BLOCK_MINUTES = 10;
-const MIN_BLOCK_MINUTES = 5;
+const MIN_BLOCK_MINUTES = 3;
 
 const priorityRank: Record<LearningTopicPriority, number> = {
 	high: 0,
@@ -80,7 +80,7 @@ const splitIntoBlockDurations = (
 		!Number.isInteger(maxBlockMinutes) ||
 		maxBlockMinutes < MIN_BLOCK_MINUTES
 	) {
-		throw new Error("A learning segment must last at least five minutes.");
+		throw new Error("A learning segment must last at least three minutes.");
 	}
 
 	const durations: number[] = [];
@@ -125,6 +125,36 @@ const createQuestions = ({
 	const questions: LearningQuestionBlueprint[] = [];
 	let plannedSeconds = 0;
 	let questionIndex = startIndex;
+
+	if (phase === "practice" && durationMinutes === 3) {
+		const validationBlueprints = [
+			{ angle: "recall" as const, kind: "written" as const },
+			{ angle: "apply" as const, kind: "multipleChoice" as const },
+		];
+		for (const [validationIndex, blueprint] of validationBlueprints.entries()) {
+			const topic = topics[(startIndex + validationIndex) % topics.length];
+			if (!topic)
+				throw new Error("A learning content plan needs at least one topic.");
+			const cycle = Math.floor(
+				(startIndex + validationIndex) /
+					Math.max(topics.length * questionAngles.length, 1),
+			);
+			const coverageKey = `${topic.id}:${blueprint.angle}:validation:${cycle}`;
+			if (excludedCoverageKeys.has(coverageKey)) continue;
+			excludedCoverageKeys.add(coverageKey);
+			questions.push({
+				coverageKey,
+				topic,
+				angle: blueprint.angle,
+				kind: blueprint.kind,
+				estimatedSeconds: 90,
+			});
+		}
+		return {
+			questions,
+			nextIndex: startIndex + validationBlueprints.length,
+		};
+	}
 
 	while (plannedSeconds < targetSeconds) {
 		const globalIndex = questionIndex;

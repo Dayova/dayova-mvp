@@ -94,6 +94,9 @@ const examProblemValidator = v.object({
 	location: v.string(),
 	explanation: v.string(),
 	evidenceExcerpt: v.union(v.string(), v.null()),
+	correctAnswer: v.string(),
+	priorityReason: v.string(),
+	diagnosisConfidence: v.string(),
 	evidenceCount: v.number(),
 	evidenceLabel: v.string(),
 	topicId: v.union(v.string(), v.null()),
@@ -129,6 +132,8 @@ const examAnalysisValidator = v.object({
 			topicId: v.union(v.string(), v.null()),
 		}),
 	),
+	latestKnowledgeChange: v.union(v.string(), v.null()),
+	reviewedNotVerified: v.boolean(),
 	primaryProblem: v.union(examProblemValidator, v.null()),
 	secondaryProblems: v.array(examProblemValidator),
 	topics: v.array(
@@ -325,6 +330,45 @@ const getDiagnosisType = ({
 
 const getEvidenceLabel = (count: number) =>
 	count <= 1 ? "Einmal beobachtet" : `In ${count} Antworten erkannt`;
+
+const getMissingEvaluationKeywords = (
+	attempt: Doc<"learningSessionAnswerAttempts">,
+	item: Doc<"learningSessionContentItems">,
+) => {
+	const excerpt = getAttemptExcerpt(attempt, item)?.toLocaleLowerCase("de-DE");
+	if (!excerpt) return [];
+	return item.evaluationKeywords
+		.map((keyword) => keyword.trim())
+		.filter(
+			(keyword) =>
+				keyword && !excerpt.includes(keyword.toLocaleLowerCase("de-DE")),
+		)
+		.slice(0, 3);
+};
+
+const getExactIssue = (
+	attempt: Doc<"learningSessionAnswerAttempts">,
+	item: Doc<"learningSessionContentItems">,
+) => {
+	const missingKeywords = getMissingEvaluationKeywords(attempt, item);
+	if (missingKeywords.length > 0) {
+		return missingKeywords.length === 1
+			? `In deiner Antwort fehlt noch „${missingKeywords[0]}“.`
+			: `In deiner Antwort fehlen noch ${missingKeywords.map((keyword) => `„${keyword}“`).join(", ")}.`;
+	}
+
+	const feedback = attempt.feedback.trim();
+	if (
+		feedback &&
+		!/^Noch nicht korrekt\. Schau dir die perfekte Antwort/i.test(feedback) &&
+		!/^Teilweise richtig\. Du triffst einen Teil/i.test(feedback)
+	) {
+		return feedback;
+	}
+	return null;
+};
+
+const topicPriorityRank = { high: 0, medium: 1, low: 2 } as const;
 
 export const getOverview = query({
 	args: {
@@ -669,6 +713,8 @@ export const getExamAnalysis = query({
 				readiness: { secure: 0, developing: 0, unknown: 0 },
 				abilities: [],
 				improvements: [],
+				latestKnowledgeChange: null,
+				reviewedNotVerified: false,
 				primaryProblem: null,
 				secondaryProblems: [],
 				topics: [],
@@ -759,22 +805,62 @@ export const getExamAnalysis = query({
 				entry.status,
 			]),
 		);
+		const completedTheorySessionIds = new Set(
+			effectiveSessions
+				.filter(
+					(session) =>
+						session.phase === "theory" &&
+						getSessionStatus(session) === "completed",
+				)
+				.map((session) => session._id),
+		);
+		const reviewedTopicIds = new Set(
+			items
+				.filter(
+					(item) =>
+						item.kind === "learnCard" &&
+						Boolean(item.topicId) &&
+						completedTheorySessionIds.has(item.sessionId),
+				)
+				.flatMap((item) => (item.topicId ? [item.topicId] : [])),
+		);
 		const topics = sourceTopics.map((topic) => {
-			const topicAttempts = latestAttempts.filter(
-				(attempt) => itemById.get(attempt.itemId)?.topicId === topic.id,
-			);
+			const topicAttempts = latestAttempts.filter((attempt) => {
+				const item = itemById.get(attempt.itemId);
+				return item?.topicId === topic.id && item.kind !== "learnCard";
+			});
+			const initialStatus = initialReadiness.get(topic.id) ?? "unknown";
 			let status: "secure" | "developing" | "unknown" =
-				initialReadiness.get(topic.id) ?? "unknown";
+				initialStatus === "unknown" ? "unknown" : "developing";
 			if (topicAttempts.length > 0) {
 				const hasApplicationEvidence = topicAttempts.some((attempt) => {
-					const kind = itemById.get(attempt.itemId)?.kind;
-					return kind === "written" || kind === "voice";
+					const item = itemById.get(attempt.itemId);
+					return (
+						attempt.rating === "correct" &&
+						(item?.phase === "rehearsal" ||
+							["apply", "findError", "compare", "examTransfer"].includes(
+								item?.questionAngle ?? "",
+							))
+					);
 				});
+				const correctOccasions = new Set(
+					topicAttempts
+						.filter((attempt) => attempt.rating === "correct")
+						.map((attempt) => attempt.sessionId),
+				).size;
+				const latestAttempt = topicAttempts
+					.slice()
+					.sort((left, right) => right.createdAt - left.createdAt)[0];
+				const evidenceOccasions =
+					correctOccasions + (initialStatus === "secure" ? 1 : 0);
 				status =
-					topicAttempts.every((attempt) => attempt.rating === "correct") &&
+					latestAttempt?.rating === "correct" &&
+					evidenceOccasions >= 2 &&
 					hasApplicationEvidence
 						? "secure"
 						: "developing";
+			} else if (reviewedTopicIds.has(topic.id)) {
+				status = "developing";
 			}
 			return {
 				id: topic.id,
@@ -859,23 +945,50 @@ export const getExamAnalysis = query({
 			})
 			.slice(0, 3);
 
-		const problemAttempts = latestAttempts.filter(
-			(attempt) => attempt.rating !== "correct" && itemById.has(attempt.itemId),
+		const remainingDays = differenceInCalendarDays(
+			args.todayKey,
+			selectedPlan.examDateKey,
 		);
+		const topicById = new Map(sourceTopics.map((topic) => [topic.id, topic]));
+		const problemAttempts = latestAttempts.filter((attempt) => {
+			const item = itemById.get(attempt.itemId);
+			return (
+				attempt.rating !== "correct" &&
+				Boolean(item) &&
+				(item?.kind === "written" || item?.kind === "voice") &&
+				Boolean(getAttemptExcerpt(attempt, item))
+			);
+		});
 		const problemCandidates = problemAttempts.map((attempt) => {
 			const item = itemById.get(attempt.itemId);
 			if (!item) return null;
-			const observation =
-				attempt.feedback.trim().replace(/^Wiederhole:\s*/i, "") ||
-				`Bei „${item.title}“ ist dein Lösungsweg noch nicht sicher.`;
+			const observation = getExactIssue(attempt, item);
+			if (!observation) return null;
 			const evidenceCount = allAttempts.filter((candidate) => {
 				const candidateItem = itemById.get(candidate.itemId);
 				return (
 					candidate.rating !== "correct" &&
+					(candidateItem?.kind === "written" ||
+						candidateItem?.kind === "voice") &&
 					(candidateItem?.topicId ?? candidate.itemId) ===
 						(item.topicId ?? item._id)
 				);
 			}).length;
+			const topic = item.topicId ? topicById.get(item.topicId) : null;
+			const relevance =
+				topic?.priority === "high"
+					? "Hohe Prüfungsrelevanz"
+					: topic?.priority === "medium"
+						? "Mittlere Prüfungsrelevanz"
+						: "Direkt in deiner Prüfungsvorbereitung beobachtet";
+			const urgency =
+				remainingDays < 0
+					? ""
+					: remainingDays === 0
+						? " · Prüfung heute"
+						: remainingDays === 1
+							? " · Prüfung morgen"
+							: ` · noch ${remainingDays} Tage`;
 			return {
 				id: `${attempt.itemId}`,
 				diagnosisType: getDiagnosisType({ attempt, item, observation }),
@@ -884,9 +997,19 @@ export const getExamAnalysis = query({
 				location: item.prompt,
 				explanation: item.explanation,
 				evidenceExcerpt: getAttemptExcerpt(attempt, item),
+				correctAnswer: attempt.perfectAnswer,
+				priorityReason: `${relevance} · ${getEvidenceLabel(evidenceCount).toLocaleLowerCase("de-DE")}${urgency}`,
+				diagnosisConfidence:
+					evidenceCount > 1
+						? "Wiederholt beobachtet – die Diagnose ist gut belegt."
+						: "Erste Beobachtung – Dayova prüft dieses Muster weiter.",
 				evidenceCount,
 				evidenceLabel: getEvidenceLabel(evidenceCount),
 				topicId: item.topicId ?? null,
+				priorityRank: topic
+					? topicPriorityRank[topic.priority]
+					: topicPriorityRank.low,
+				observedAt: attempt.createdAt,
 			};
 		});
 		const uniqueProblemCandidates = problemCandidates
@@ -900,9 +1023,19 @@ export const getExamAnalysis = query({
 							(candidate.topicId ?? candidate.id) ===
 							(problem.topicId ?? problem.id),
 					) === index,
+			)
+			.sort(
+				(left, right) =>
+					left.priorityRank - right.priorityRank ||
+					right.evidenceCount - left.evidenceCount ||
+					right.observedAt - left.observedAt,
 			);
-		const primaryProblem = uniqueProblemCandidates[0] ?? null;
-		const secondaryProblems = uniqueProblemCandidates.slice(1, 3);
+		const publicProblems = uniqueProblemCandidates.map(
+			({ priorityRank: _priorityRank, observedAt: _observedAt, ...problem }) =>
+				problem,
+		);
+		const primaryProblem = publicProblems[0] ?? null;
+		const secondaryProblems = publicProblems.slice(1, 3);
 
 		const openSessions = effectiveSessions
 			.filter((session) => getSessionStatus(session) !== "completed")
@@ -915,13 +1048,38 @@ export const getExamAnalysis = query({
 			openSessions.find((session) => session.dateKey >= args.todayKey) ??
 			openSessions.at(-1) ??
 			null;
+		const deferredValidationSession =
+			effectiveSessions
+				.filter(
+					(session) =>
+						session.phase === "theory" &&
+						session.compositionVariant === "split" &&
+						getSessionStatus(session) === "completed" &&
+						session.knowledgeValidationStatus !== "completed",
+				)
+				.sort(
+					(left, right) =>
+						(right.outcomeAt ?? right.updatedAt) -
+						(left.outcomeAt ?? left.updatedAt),
+				)[0] ?? null;
+		const latestAttempt = latestAttempts
+			.slice()
+			.sort((left, right) => right.createdAt - left.createdAt)[0];
+		const latestAttemptItem = latestAttempt
+			? itemById.get(latestAttempt.itemId)
+			: null;
+		const latestKnowledgeChange = deferredValidationSession
+			? "Theorie abgeschlossen · Wissen noch nicht überprüft."
+			: improvements[0]?.statement
+				? `Seit deinem letzten Check: ${improvements[0].statement}`
+				: latestAttempt && latestAttemptItem
+					? latestAttempt.rating === "correct"
+						? `Zuletzt gezeigt: ${latestAttemptItem.title} gelingt dir.`
+						: `Zuletzt geprüft: ${latestAttemptItem.title} bleibt in Arbeit.`
+					: null;
 		const remainingMinutes = openSessions.reduce(
 			(total, session) => total + session.durationMinutes,
 			0,
-		);
-		const remainingDays = differenceInCalendarDays(
-			args.todayKey,
-			selectedPlan.examDateKey,
 		);
 
 		return {
@@ -939,20 +1097,37 @@ export const getExamAnalysis = query({
 			readiness,
 			abilities,
 			improvements,
+			latestKnowledgeChange,
+			reviewedNotVerified: Boolean(deferredValidationSession),
 			primaryProblem,
 			secondaryProblems,
 			topics,
-			recommendation: nextSession
+			recommendation: deferredValidationSession
 				? {
-						sessionId: nextSession._id,
-						title: nextSession.title,
-						goal: nextSession.goal,
-						methods: nextSession.tasks,
-						durationMinutes: nextSession.durationMinutes,
-						verification: nextSession.expectedOutcome,
-						reason: latestAnalysis?.recommendation.trim() || null,
+						sessionId: deferredValidationSession._id,
+						title: "Wissenscheck",
+						goal: "Prüfen, was aus der Theorie wirklich hängen geblieben ist",
+						methods: [
+							"Eine Antwort frei formulieren",
+							"Eine kurze Anwendung lösen",
+							"Deine Sicherheit einschätzen",
+						],
+						durationMinutes: 3,
+						verification:
+							"Dayova aktualisiert danach deinen Wissensstand mit neuen Belegen.",
+						reason: "Theorie abgeschlossen · Wissen noch nicht überprüft.",
 					}
-				: null,
+				: nextSession
+					? {
+							sessionId: nextSession._id,
+							title: nextSession.title,
+							goal: nextSession.goal,
+							methods: nextSession.tasks,
+							durationMinutes: nextSession.durationMinutes,
+							verification: nextSession.expectedOutcome,
+							reason: latestAnalysis?.recommendation.trim() || null,
+						}
+					: null,
 			preparation: {
 				remainingDays,
 				remainingSessions: openSessions.length,

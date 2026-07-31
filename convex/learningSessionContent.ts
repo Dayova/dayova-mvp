@@ -834,6 +834,8 @@ export const getSessionGenerationContext = internalQuery({
 				title: planSession.title,
 				goal: planSession.goal,
 				sortOrder: planSession.sortOrder,
+				knowledgeValidationConfidence:
+					planSession.knowledgeValidationConfidence,
 			})),
 			documents,
 			answers,
@@ -1099,6 +1101,8 @@ export const getSessionContent = query({
 				completed: session.completed ?? false,
 				executionStatus: getSessionExecutionStatus(session),
 				compositionVariant: session.compositionVariant ?? "control",
+				knowledgeValidationStatus: session.knowledgeValidationStatus,
+				knowledgeValidationConfidence: session.knowledgeValidationConfidence,
 			},
 			praxisDurationSeconds:
 				session.phase === "rehearsal"
@@ -1169,6 +1173,13 @@ export const submitAnswer = mutation({
 export const finishSessionContent = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
+		knowledgeValidationConfidence: v.optional(
+			v.union(
+				v.literal("unsure"),
+				v.literal("somewhatSure"),
+				v.literal("sure"),
+			),
+		),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -1186,6 +1197,25 @@ export const finishSessionContent = mutation({
 		const attempts = await getLatestAttempts(ctx, items);
 		const result = buildAnalysis(session, items, attempts);
 		const now = Date.now();
+		const attemptedItemIds = new Set(attempts.map((attempt) => attempt.itemId));
+		const validationItems = items.filter(
+			(item) => item.phase === "practice" && item.kind !== "learnCard",
+		);
+		const hasCompletedKnowledgeValidation =
+			validationItems.length > 0 &&
+			validationItems.every((item) => attemptedItemIds.has(item._id));
+		if (
+			session.phase === "theory" &&
+			session.compositionVariant === "split" &&
+			args.knowledgeValidationConfidence &&
+			hasCompletedKnowledgeValidation
+		) {
+			await ctx.db.patch("learningPlanSessions", session._id, {
+				knowledgeValidationStatus: "completed",
+				knowledgeValidationConfidence: args.knowledgeValidationConfidence,
+				updatedAt: now,
+			});
+		}
 		const existing = await ctx.db
 			.query("learningSessionAnalyses")
 			.withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
@@ -1215,5 +1245,32 @@ export const finishSessionContent = mutation({
 		const analysis = await ctx.db.get("learningSessionAnalyses", analysisId);
 		if (!analysis) throwUserFacingError("Wissensanalyse nicht gefunden.");
 		return publicAnalysis(analysis);
+	},
+});
+
+export const deferTheoryValidation = mutation({
+	args: {
+		sessionId: v.id("learningPlanSessions"),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const session = await getOwnedSession(
+			ctx,
+			args.sessionId,
+			ownerTokenIdentifier,
+		);
+		if (session.phase !== "theory" || session.compositionVariant !== "split") {
+			throwUserFacingError(
+				"Für diesen Lernblock gibt es keine Wissensprüfung.",
+			);
+		}
+
+		await ctx.db.patch("learningPlanSessions", session._id, {
+			knowledgeValidationStatus: "skipped",
+			knowledgeValidationConfidence: undefined,
+			updatedAt: Date.now(),
+		});
+
+		return { status: "skipped" as const };
 	},
 });

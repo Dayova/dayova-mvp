@@ -140,6 +140,8 @@ type PublicSession = {
 	startTime: string;
 	durationMinutes: number;
 	compositionVariant?: "control" | "split";
+	knowledgeValidationStatus?: "pending" | "completed" | "skipped";
+	knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
 	goal: string;
 	tasks: string[];
 	expectedOutcome: string;
@@ -327,6 +329,8 @@ const publicSession = (
 	startTime: session.startTime,
 	durationMinutes: session.durationMinutes,
 	compositionVariant: session.compositionVariant,
+	knowledgeValidationStatus: session.knowledgeValidationStatus,
+	knowledgeValidationConfidence: session.knowledgeValidationConfidence,
 	goal: alignSessionDurationReferences({
 		value: session.goal,
 		durationMinutes: session.durationMinutes,
@@ -1495,7 +1499,9 @@ export const replaceGeneratedSessions = internalMutation({
 				getLearningSessionComposition({
 					phase: session.phase,
 					durationMinutes: session.durationMinutes,
-					variant: args.sessionCompositionVariant ?? "control",
+					variant:
+						args.sessionCompositionVariant ??
+						(session.phase === "theory" ? "split" : "control"),
 				}).length > 1
 					? ("split" as const)
 					: ("control" as const),
@@ -1528,6 +1534,9 @@ export const replaceGeneratedSessions = internalMutation({
 				ownerTokenIdentifier: plan.ownerTokenIdentifier,
 				learningPlanId: args.learningPlanId,
 				...session,
+				...(session.compositionVariant === "split"
+					? { knowledgeValidationStatus: "pending" as const }
+					: {}),
 				...(shouldPrepareContent
 					? { contentGenerationStatus: "queued" as const }
 					: {}),
@@ -1543,7 +1552,7 @@ export const replaceGeneratedSessions = internalMutation({
 			planningHint: args.planningHint,
 			sourceSummary: normalizedSourceSummary,
 			insight: normalizedInsight,
-			sessionCompositionVariant: args.sessionCompositionVariant ?? "control",
+			sessionCompositionVariant: args.sessionCompositionVariant ?? "split",
 			status: args.deferReadyUntilContent ? "questionsReady" : "generated",
 			contentGenerationStage: args.deferReadyUntilContent
 				? "content"

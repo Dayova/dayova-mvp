@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, within } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import type { Id } from "#convex/_generated/dataModel";
-import { AnalyticsDetailScreen, AnalyticsScreen } from "./analytics-screen";
+import {
+	AnalyticsDetailScreen,
+	AnalyticsHistoryScreen,
+	AnalyticsScreen,
+} from "./analytics-screen";
 
 const mockPush = jest.fn();
 const mockUseQuery = jest.fn();
@@ -26,6 +30,7 @@ jest.mock("#convex/_generated/api", () => ({
 	api: {
 		userAnalytics: {
 			getExamAnalysis: "getExamAnalysis",
+			getOverview: "getOverview",
 		},
 	},
 }));
@@ -145,6 +150,8 @@ const emptyAnalysis = {
 	},
 	abilities: [],
 	improvements: [],
+	latestKnowledgeChange: null,
+	reviewedNotVerified: false,
 	primaryProblem: null,
 	secondaryProblems: [],
 	topics: [],
@@ -198,6 +205,9 @@ const examAnalysis = {
 		},
 	],
 	improvements: [],
+	latestKnowledgeChange:
+		"Seit deinem letzten Check: Steigung gelingt dir jetzt sicherer.",
+	reviewedNotVerified: false,
 	primaryProblem: {
 		id: "problem_1",
 		diagnosisType: "applicationError",
@@ -207,6 +217,10 @@ const examAnalysis = {
 		explanation:
 			"Die Steigung beschreibt die Änderung von y pro Änderung von x.",
 		evidenceExcerpt: "Änderung von y.",
+		correctAnswer: "Änderung von y pro Änderung von x.",
+		priorityReason: "Hohe Prüfungsrelevanz · einmal beobachtet · noch 8 Tage",
+		diagnosisConfidence:
+			"Erste Beobachtung – Dayova prüft dieses Muster weiter.",
 		evidenceCount: 1,
 		evidenceLabel: "Einmal beobachtet",
 		topicId: "steigung",
@@ -252,6 +266,37 @@ const examAnalysis = {
 	updatedAt: Date.UTC(2026, 6, 28, 14),
 };
 
+const historyOverview = {
+	hasData: true,
+	historyLimited: false,
+	overall: {
+		acceptedPlans: 3,
+		finishedPlans: 1,
+		completedSessions: 8,
+		totalSessions: 12,
+		progressPercent: 67,
+	},
+	period: {
+		completedSessions: 8,
+		activeStudyMinutes: 160,
+		recoveredSessions: 1,
+	},
+	currentStreakDays: 2,
+	activity: [],
+	plans: [],
+	nextSession: null,
+	knowledge: {
+		answeredItems: 14,
+		correct: 8,
+		partiallyCorrect: 3,
+		notCorrect: 3,
+		scorePercent: 68,
+		strengths: ["Du kannst lineare Funktionen sicher erklären."],
+		gaps: ["Vorzeichen beim Umformen bleiben noch fehleranfällig."],
+		recommendation: null,
+	},
+};
+
 describe("AnalyticsScreen", () => {
 	beforeEach(() => {
 		mockPush.mockReset();
@@ -275,12 +320,12 @@ describe("AnalyticsScreen", () => {
 		expect(mockPush).toHaveBeenCalledWith("/learning-plans/new");
 	});
 
-	test("condenses one exam into three focused entry points", async () => {
+	test("leads with current knowledge and keeps the next step compact", async () => {
 		mockUseQuery.mockReturnValue(examAnalysis);
 		const screen = await render(<AnalyticsScreen />);
 
 		expect(
-			screen.getByText("Du erkennst lineare Zusammenhänge."),
+			screen.getByText("Schon belegt: Du erkennst lineare Zusammenhänge."),
 		).toBeOnTheScreen();
 		expect(
 			screen.getByText("Steigung noch präziser erklären."),
@@ -288,12 +333,15 @@ describe("AnalyticsScreen", () => {
 		expect(screen.queryByText("„Änderung von y.“")).not.toBeOnTheScreen();
 		expect(screen.getByText("Dein nächster Schritt")).toBeOnTheScreen();
 		expect(screen.getByText("Dein Wissensstand")).toBeOnTheScreen();
-		expect(screen.getByText("Das bremst dich gerade")).toBeOnTheScreen();
+		expect(screen.getByText("Größte Lernhürde")).toBeOnTheScreen();
+		expect(
+			screen.getByText("Du kannst 1 von 2 Prüfungsthemen sicher anwenden."),
+		).toBeOnTheScreen();
 		expect(screen.queryByText("Dein Prüfungsstoff")).not.toBeOnTheScreen();
 
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Nächster Schritt: Steigung vollständig erklären Details öffnen",
+				name: "Nächster Schritt: Steigung vollständig erklären",
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith({
@@ -303,7 +351,7 @@ describe("AnalyticsScreen", () => {
 
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Lernhürde: Steigung Details öffnen",
+				name: "Lernhürde: Steigung noch präziser erklären. Details öffnen",
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith({
@@ -373,5 +421,19 @@ describe("AnalyticsScreen", () => {
 			"getExamAnalysis",
 			expect.objectContaining({ learningPlanId: "plan_2" }),
 		);
+	});
+
+	test("shows long-term knowledge evidence without turning it into a score", async () => {
+		mockUseQuery.mockReturnValue(historyOverview);
+		const screen = await render(<AnalyticsHistoryScreen />);
+
+		expect(screen.getByText("Bisher belegte Stärken")).toBeOnTheScreen();
+		expect(
+			screen.getByText("Du kannst lineare Funktionen sicher erklären."),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText("Vorzeichen beim Umformen bleiben noch fehleranfällig."),
+		).toBeOnTheScreen();
+		expect(screen.queryByText("68 %")).not.toBeOnTheScreen();
 	});
 });
