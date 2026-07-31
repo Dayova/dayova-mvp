@@ -148,6 +148,7 @@ const emptyAnalysis = {
 	readiness: {
 		secure: 0,
 		developing: 0,
+		uncertain: 0,
 		unknown: 0,
 	},
 	abilities: [],
@@ -196,7 +197,8 @@ const examAnalysis = {
 	},
 	readiness: {
 		secure: 1,
-		developing: 1,
+		developing: 0,
+		uncertain: 1,
 		unknown: 0,
 	},
 	abilities: [
@@ -234,7 +236,7 @@ const examAnalysis = {
 			title: "Steigung erklären",
 			learningGoal: "Du kannst die Steigung vollständig erklären.",
 			priority: "high",
-			status: "developing",
+			status: "uncertain",
 			summary: "Steigung noch präziser erklären.",
 			evidenceCount: 2,
 			dimensions: [
@@ -247,7 +249,7 @@ const examAnalysis = {
 				{
 					kind: "problemSolving",
 					required: true,
-					status: "developing",
+					status: "uncertain",
 					evidenceCount: 1,
 				},
 				{
@@ -393,13 +395,13 @@ describe("AnalyticsScreen", () => {
 
 		expect(screen.getByText("1/2")).toBeOnTheScreen();
 		expect(screen.getByText("1 von 2 sicher belegt")).toBeOnTheScreen();
-		expect(screen.getByText("1 im Aufbau")).toBeOnTheScreen();
+		expect(screen.getByText("1 unsicher")).toBeOnTheScreen();
 		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
 		expect(screen.getByText("Steigung erklären")).toBeOnTheScreen();
 		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
 		expect(
-			screen.queryByText("Steigung noch präziser erklären."),
-		).not.toBeOnTheScreen();
+			screen.getByText("Steigung noch präziser erklären."),
+		).toBeOnTheScreen();
 		expect(screen.queryByText("„Änderung von y.“")).not.toBeOnTheScreen();
 		expect(
 			screen.queryByText("Schon belegt: Du erkennst lineare Zusammenhänge."),
@@ -432,7 +434,7 @@ describe("AnalyticsScreen", () => {
 
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Steigung erklären. Im Aufbau. Steigung noch präziser erklären.",
+				name: "Steigung erklären. Unsicher. Steigung noch präziser erklären.",
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith({
@@ -447,6 +449,7 @@ describe("AnalyticsScreen", () => {
 			readiness: {
 				secure: 0,
 				developing: 5,
+				uncertain: 0,
 				unknown: 0,
 			},
 		});
@@ -468,6 +471,7 @@ describe("AnalyticsScreen", () => {
 			readiness: {
 				secure: 0,
 				developing: 0,
+				uncertain: 0,
 				unknown: 2,
 			},
 			topics: examAnalysis.topics.map((topic) => ({
@@ -507,6 +511,12 @@ describe("AnalyticsScreen", () => {
 		expect(knowledgeScreen.getByText("Verstehen")).toBeOnTheScreen();
 		expect(knowledgeScreen.getByText("Probleme lösen")).toBeOnTheScreen();
 		expect(knowledgeScreen.getByText("Selbstständig lösen")).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText("Warum du hier unsicher bist"),
+		).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText("In einer Antwort beobachtet"),
+		).toBeOnTheScreen();
 		expect(
 			knowledgeScreen.getByText("Du erkennst lineare Zusammenhänge."),
 		).toBeOnTheScreen();

@@ -239,7 +239,8 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 		},
 		readiness: {
 			secure: 0,
-			developing: 2,
+			developing: 1,
+			uncertain: 1,
 			unknown: 0,
 		},
 		abilities: [
@@ -284,7 +285,7 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 	expect(analysis.topics).toEqual([
 		expect.objectContaining({
 			id: "steigung",
-			status: "developing",
+			status: "uncertain",
 			priority: "high",
 			summary:
 				"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
@@ -293,7 +294,7 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 				{
 					kind: "understanding",
 					required: true,
-					status: "developing",
+					status: "uncertain",
 					evidenceCount: 2,
 				},
 				{

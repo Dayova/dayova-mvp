@@ -77,6 +77,7 @@ const examPlanOptionValidator = v.object({
 const examTopicStatusValidator = v.union(
 	v.literal("secure"),
 	v.literal("developing"),
+	v.literal("uncertain"),
 	v.literal("unknown"),
 );
 
@@ -135,6 +136,7 @@ const examAnalysisValidator = v.object({
 	readiness: v.object({
 		secure: v.number(),
 		developing: v.number(),
+		uncertain: v.number(),
 		unknown: v.number(),
 	}),
 	abilities: v.array(
@@ -393,7 +395,8 @@ const getExactIssue = (
 	return null;
 };
 
-type TopicEvidenceStatus = "secure" | "developing" | "unknown";
+type TopicEvidenceStatus = "secure" | "developing" | "uncertain" | "unknown";
+type InitialTopicEvidenceStatus = Exclude<TopicEvidenceStatus, "uncertain">;
 
 const evidenceDimensions: LearningEvidenceDimension[] = [
 	"understanding",
@@ -441,7 +444,7 @@ const deriveDimensionEvidence = ({
 	topicAttempts,
 }: {
 	dimension: LearningEvidenceDimension;
-	initialStatus: TopicEvidenceStatus;
+	initialStatus: InitialTopicEvidenceStatus;
 	itemById: Map<
 		Id<"learningSessionContentItems">,
 		Doc<"learningSessionContentItems">
@@ -471,18 +474,23 @@ const deriveDimensionEvidence = ({
 			.map((attempt) => attempt.sessionId),
 	).size;
 	const evidenceCount = relevantAttempts.length + initialEvidenceCount;
+	const needsControlCheck =
+		required &&
+		Boolean(latestAttempt && latestAttempt.rating !== "correct") &&
+		priorCorrectOccasions + initialEvidenceCount >= 2;
+	const latestShowsDifficulty = Boolean(
+		latestAttempt && latestAttempt.rating !== "correct",
+	);
 	const status: TopicEvidenceStatus = !required
 		? "unknown"
 		: latestAttempt?.rating === "correct" &&
 				correctOccasions + initialEvidenceCount >= 2
 			? "secure"
-			: evidenceCount > 0 || (dimension === "understanding" && reviewed)
-				? "developing"
-				: "unknown";
-	const needsControlCheck =
-		required &&
-		Boolean(latestAttempt && latestAttempt.rating !== "correct") &&
-		priorCorrectOccasions + initialEvidenceCount >= 2;
+			: latestShowsDifficulty && !needsControlCheck
+				? "uncertain"
+				: evidenceCount > 0 || (dimension === "understanding" && reviewed)
+					? "developing"
+					: "unknown";
 
 	return {
 		kind: dimension,
@@ -494,6 +502,12 @@ const deriveDimensionEvidence = ({
 };
 
 const topicPriorityRank = { high: 0, medium: 1, low: 2 } as const;
+const topicStatusRiskRank: Record<TopicEvidenceStatus, number> = {
+	uncertain: 0,
+	developing: 1,
+	unknown: 2,
+	secure: 3,
+};
 
 export const getOverview = query({
 	args: {
@@ -835,7 +849,7 @@ export const getExamAnalysis = query({
 				preliminary: true,
 				plans: planOptions,
 				selectedPlan: null,
-				readiness: { secure: 0, developing: 0, unknown: 0 },
+				readiness: { secure: 0, developing: 0, uncertain: 0, unknown: 0 },
 				abilities: [],
 				improvements: [],
 				latestKnowledgeChange: null,
@@ -955,7 +969,7 @@ export const getExamAnalysis = query({
 				return item?.topicId === topic.id && item.kind !== "learnCard";
 			});
 			const initialStatus = (initialReadiness.get(topic.id) ??
-				"unknown") as TopicEvidenceStatus;
+				"unknown") as InitialTopicEvidenceStatus;
 			const requiredDimensions = new Set(
 				topic.requiredEvidenceDimensions?.length
 					? topic.requiredEvidenceDimensions
@@ -980,7 +994,11 @@ export const getExamAnalysis = query({
 				? "secure"
 				: requiredEvidence.every((dimension) => dimension.status === "unknown")
 					? "unknown"
-					: "developing";
+					: requiredEvidence.some(
+								(dimension) => dimension.status === "uncertain",
+							)
+						? "uncertain"
+						: "developing";
 			const controlDimension = dimensions.find(
 				(dimension) => dimension.needsControlCheck,
 			);
@@ -1167,10 +1185,13 @@ export const getExamAnalysis = query({
 			({ priorityRank: _priorityRank, observedAt: _observedAt, ...problem }) =>
 				problem,
 		);
-		const dimensionGapCopy: Record<LearningEvidenceDimension, string> = {
-			understanding: "Verständnis noch nicht sicher belegt.",
-			problemSolving: "Problemlösen noch nicht sicher belegt.",
-			independent: "Selbstständiges Lösen noch nicht sicher belegt.",
+		const observedDifficultyCopy: Record<LearningEvidenceDimension, string> = {
+			understanding:
+				"Bei einer Verständnisfrage war deine letzte Antwort noch nicht vollständig richtig.",
+			problemSolving:
+				"Beim Problemlösen war deine letzte Antwort noch nicht vollständig richtig.",
+			independent:
+				"Beim selbstständigen Lösen war deine letzte Antwort noch nicht vollständig richtig.",
 		};
 		const topics = topicEvidenceProfiles
 			.map((topic) => {
@@ -1224,10 +1245,10 @@ export const getExamAnalysis = query({
 								statement: problem.observation,
 								evidenceCount: problem.evidenceCount,
 							}))
-						: topic.status === "developing" && firstOpenDimension
+						: topic.status === "uncertain" && firstOpenDimension
 							? [
 									{
-										statement: dimensionGapCopy[firstOpenDimension.kind],
+										statement: observedDifficultyCopy[firstOpenDimension.kind],
 										evidenceCount: firstOpenDimension.evidenceCount,
 									},
 								]
@@ -1237,7 +1258,9 @@ export const getExamAnalysis = query({
 					: (weaknesses[0]?.statement ??
 						(topic.status === "secure"
 							? "Alle erforderlichen Wissensbelege vorhanden."
-							: "Noch keine überprüften Antworten."));
+							: topic.status === "developing"
+								? "Erste Belege vorhanden, aber noch nicht stabil."
+								: "Noch keine überprüften Antworten."));
 
 				return {
 					id: topic.id,
@@ -1254,29 +1277,25 @@ export const getExamAnalysis = query({
 					strengths,
 					weaknesses,
 					controlCheckReason: topic.controlCheckReason,
-					hasObservedProblem: topicProblems.length > 0,
 				};
 			})
 			.sort((left, right) => {
 				const leftRisk =
-					(left.status === "secure" ? 100 : 0) +
 					topicPriorityRank[left.priority] * 10 +
-					(left.hasObservedProblem ? 0 : left.status === "unknown" ? 1 : 2);
+					topicStatusRiskRank[left.status];
 				const rightRisk =
-					(right.status === "secure" ? 100 : 0) +
 					topicPriorityRank[right.priority] * 10 +
-					(right.hasObservedProblem ? 0 : right.status === "unknown" ? 1 : 2);
+					topicStatusRiskRank[right.status];
 				return (
 					leftRisk - rightRisk || left.title.localeCompare(right.title, "de")
 				);
-			})
-			.map(({ hasObservedProblem: _hasObservedProblem, ...topic }) => topic);
+			});
 		const readiness = topics.reduce(
 			(counts, topic) => {
 				counts[topic.status] += 1;
 				return counts;
 			},
-			{ secure: 0, developing: 0, unknown: 0 },
+			{ secure: 0, developing: 0, uncertain: 0, unknown: 0 },
 		);
 		const primaryProblem = publicProblems[0] ?? null;
 		const secondaryProblems = publicProblems.slice(1, 3);

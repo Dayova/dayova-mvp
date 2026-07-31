@@ -83,6 +83,11 @@ const TOPIC_STATUS_COPY: Record<
 		pillClassName: "bg-info-subtle",
 		textClassName: "text-info",
 	},
+	uncertain: {
+		label: "Unsicher",
+		pillClassName: "bg-wrong-subtle",
+		textClassName: "text-wrong",
+	},
 	unknown: {
 		label: "Noch nicht belegt",
 		pillClassName: "bg-light-2",
@@ -317,11 +322,15 @@ function AnalysisHub({
 	const totalTopics =
 		analysis.readiness.secure +
 		analysis.readiness.developing +
+		analysis.readiness.uncertain +
 		analysis.readiness.unknown;
 	const hasKnowledgeEvidence =
 		totalTopics > 0 && analysis.topics.some((topic) => topic.evidenceCount > 0);
 	const remainingStatusSummary = hasKnowledgeEvidence
 		? [
+				analysis.readiness.uncertain > 0
+					? `${analysis.readiness.uncertain} unsicher`
+					: null,
 				analysis.readiness.developing > 0
 					? `${analysis.readiness.developing} im Aufbau`
 					: null,
@@ -366,7 +375,7 @@ function AnalysisHub({
 			<View className="gap-4">
 				<SectionHeading
 					title="Deine Prüfungsthemen"
-					description="Nach aktuellem Lernrisiko sortiert."
+					description="Nach Prüfungsrelevanz und Lernrisiko sortiert."
 				/>
 				<Surface
 					className="overflow-hidden"
@@ -720,32 +729,161 @@ function TopicList({
 				accessibilityLabel={`${topic.title}. ${status.label}. ${topic.summary}`}
 				accessibilityRole="button"
 				className={cn(
-					"min-h-16 flex-row items-center gap-3 bg-card px-4 py-3",
+					"min-h-16 gap-2 bg-card px-4 py-4",
 					index > 0 && "border-border border-t",
 				)}
 				onPress={() => onOpenTopic(topic.id)}
 				variant="flat"
 			>
-				<View className="min-w-0 flex-1">
+				<View className="flex-row items-center gap-3">
 					<Text
 						selectable
-						className="font-poppins font-semibold text-body-3 text-text"
+						className="min-w-0 flex-1 font-poppins font-semibold text-body-3 text-text"
 						numberOfLines={3}
 					>
 						{formatGermanUiText(topic.title)}
 					</Text>
+					<View className="flex-row items-center gap-2">
+						<TopicStatusPill status={topic.status} />
+						<ArrowRight
+							size={17}
+							color={colors.secondaryText}
+							strokeWidth={2.2}
+						/>
+					</View>
 				</View>
-				<View className="flex-row items-center gap-2">
-					<TopicStatusPill status={topic.status} />
-					<ArrowRight
-						size={17}
-						color={colors.secondaryText}
-						strokeWidth={2.2}
-					/>
-				</View>
+				{topic.status === "uncertain" ? (
+					<Text
+						selectable
+						className="font-poppins text-body-5 text-secondary-text"
+						numberOfLines={2}
+					>
+						{formatGermanUiText(topic.summary)}
+					</Text>
+				) : null}
 			</ActionSurface>
 		);
 	});
+}
+
+function TopicWeaknessSection({
+	topic,
+}: {
+	topic: ExamAnalysis["topics"][number];
+}) {
+	if (topic.weaknesses.length === 0) return null;
+
+	return (
+		<View className="gap-3">
+			<SectionHeading
+				title={
+					topic.status === "uncertain"
+						? "Warum du hier unsicher bist"
+						: "Das fehlt noch"
+				}
+			/>
+			<Surface className="gap-4 p-5" variant="flat">
+				{topic.weaknesses.map((weakness, index) => (
+					<View
+						key={weakness.statement}
+						className={cn(
+							"flex-row items-start gap-3",
+							index > 0 && "border-border border-t pt-4",
+						)}
+					>
+						<View className="h-8 w-8 items-center justify-center rounded-full bg-wrong-subtle">
+							<CircleAlert
+								size={16}
+								color={DAYOVA_DESIGN_SYSTEM.colors.wrong}
+								strokeWidth={2.2}
+							/>
+						</View>
+						<View className="min-w-0 flex-1 gap-1">
+							<Text selectable className="font-poppins text-body-3 text-text">
+								{formatGermanUiText(weakness.statement)}
+							</Text>
+							<Text
+								selectable
+								className="font-poppins text-body-5 text-secondary-text"
+							>
+								{weakness.evidenceCount === 1
+									? "In einer Antwort beobachtet"
+									: weakness.evidenceCount > 1
+										? `In ${weakness.evidenceCount} Antworten beobachtet`
+										: "Noch nicht überprüft"}
+							</Text>
+						</View>
+					</View>
+				))}
+			</Surface>
+		</View>
+	);
+}
+
+function TopicStrengthSection({
+	topic,
+}: {
+	topic: ExamAnalysis["topics"][number];
+}) {
+	return topic.strengths.length > 0 ? (
+		<View className="gap-3">
+			<SectionHeading title="Das kannst du schon" />
+			<Surface className="gap-4 p-5" variant="flat">
+				{topic.strengths.map((strength, index) => (
+					<View
+						key={strength.statement}
+						className={cn(
+							"flex-row items-start gap-3",
+							index > 0 && "border-border border-t pt-4",
+						)}
+					>
+						<View className="h-8 w-8 items-center justify-center rounded-full bg-success-subtle">
+							<Check
+								size={16}
+								color={DAYOVA_DESIGN_SYSTEM.colors.success}
+								strokeWidth={2.3}
+							/>
+						</View>
+						<View className="min-w-0 flex-1 gap-1">
+							<Text selectable className="font-poppins text-body-3 text-text">
+								{formatGermanUiText(strength.statement)}
+							</Text>
+							<Text
+								selectable
+								className="font-poppins text-body-5 text-secondary-text"
+							>
+								{`${strength.evidenceCount} ${strength.evidenceCount === 1 ? "Beleg" : "Belege"}`}
+							</Text>
+						</View>
+					</View>
+				))}
+			</Surface>
+		</View>
+	) : (
+		<View className="gap-3">
+			<SectionHeading title="Das kannst du schon" />
+			<Surface className="flex-row items-start gap-3 p-5" variant="flat">
+				<View className="h-8 w-8 items-center justify-center rounded-full bg-system-subtle">
+					<Info
+						size={17}
+						color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
+						strokeWidth={2.2}
+					/>
+				</View>
+				<View className="min-w-0 flex-1 gap-1">
+					<Text className="font-poppins font-semibold text-body-4 text-text">
+						Noch keine sichere Stärke
+					</Text>
+					<Text
+						selectable
+						className="font-poppins text-body-4 text-secondary-text"
+					>
+						Dafür fehlen noch wiederholte richtige Antworten.
+					</Text>
+				</View>
+			</Surface>
+		</View>
+	);
 }
 
 function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
@@ -811,103 +949,8 @@ function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
 				</Surface>
 			</View>
 
-			{topic.strengths.length > 0 ? (
-				<View className="gap-3">
-					<SectionHeading title="Das kannst du schon" />
-					<Surface className="gap-4 p-5" variant="flat">
-						{topic.strengths.map((strength, index) => (
-							<View
-								key={strength.statement}
-								className={cn(
-									"flex-row items-start gap-3",
-									index > 0 && "border-border border-t pt-4",
-								)}
-							>
-								<View className="h-8 w-8 items-center justify-center rounded-full bg-success-subtle">
-									<Check
-										size={16}
-										color={DAYOVA_DESIGN_SYSTEM.colors.success}
-										strokeWidth={2.3}
-									/>
-								</View>
-								<View className="min-w-0 flex-1 gap-1">
-									<Text
-										selectable
-										className="font-poppins text-body-3 text-text"
-									>
-										{formatGermanUiText(strength.statement)}
-									</Text>
-									<Text className="font-poppins text-body-5 text-secondary-text">
-										{`${strength.evidenceCount} ${strength.evidenceCount === 1 ? "Beleg" : "Belege"}`}
-									</Text>
-								</View>
-							</View>
-						))}
-					</Surface>
-				</View>
-			) : (
-				<View className="gap-3">
-					<SectionHeading title="Das kannst du schon" />
-					<Surface className="flex-row items-start gap-3 p-5" variant="flat">
-						<View className="h-8 w-8 items-center justify-center rounded-full bg-system-subtle">
-							<Info
-								size={17}
-								color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
-								strokeWidth={2.2}
-							/>
-						</View>
-						<View className="min-w-0 flex-1 gap-1">
-							<Text className="font-poppins font-semibold text-body-4 text-text">
-								Noch keine sichere Stärke
-							</Text>
-							<Text
-								selectable
-								className="font-poppins text-body-4 text-secondary-text"
-							>
-								Dafür fehlen noch wiederholte richtige Antworten.
-							</Text>
-						</View>
-					</Surface>
-				</View>
-			)}
-
-			{topic.weaknesses.length > 0 ? (
-				<View className="gap-3">
-					<SectionHeading title="Das fehlt noch" />
-					<Surface className="gap-4 p-5" variant="flat">
-						{topic.weaknesses.map((weakness, index) => (
-							<View
-								key={weakness.statement}
-								className={cn(
-									"flex-row items-start gap-3",
-									index > 0 && "border-border border-t pt-4",
-								)}
-							>
-								<View className="h-8 w-8 items-center justify-center rounded-full bg-wrong-subtle">
-									<CircleAlert
-										size={16}
-										color={DAYOVA_DESIGN_SYSTEM.colors.wrong}
-										strokeWidth={2.2}
-									/>
-								</View>
-								<View className="min-w-0 flex-1 gap-1">
-									<Text
-										selectable
-										className="font-poppins text-body-3 text-text"
-									>
-										{formatGermanUiText(weakness.statement)}
-									</Text>
-									<Text className="font-poppins text-body-5 text-secondary-text">
-										{weakness.evidenceCount > 0
-											? `${weakness.evidenceCount} ${weakness.evidenceCount === 1 ? "Beleg" : "Belege"}`
-											: "Noch nicht überprüft"}
-									</Text>
-								</View>
-							</View>
-						))}
-					</Surface>
-				</View>
-			) : null}
+			<TopicWeaknessSection topic={topic} />
+			<TopicStrengthSection topic={topic} />
 
 			{topic.controlCheckReason ? (
 				<Surface
