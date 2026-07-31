@@ -69,26 +69,22 @@ const TOPIC_STATUS_COPY: Record<
 	TopicStatus,
 	{
 		label: string;
-		dotClassName: string;
 		pillClassName: string;
 		textClassName: string;
 	}
 > = {
 	secure: {
 		label: "Sicher belegt",
-		dotClassName: "bg-success",
 		pillClassName: "bg-success-subtle",
 		textClassName: "text-success",
 	},
 	developing: {
 		label: "Im Aufbau",
-		dotClassName: "bg-info",
 		pillClassName: "bg-info-subtle",
 		textClassName: "text-info",
 	},
 	unknown: {
 		label: "Noch nicht belegt",
-		dotClassName: "bg-path-3",
 		pillClassName: "bg-light-2",
 		textClassName: "text-secondary-text",
 	},
@@ -118,8 +114,8 @@ const formatRemainingDays = (days: number) => {
 	return `Noch ${days} Tage`;
 };
 
-const KNOWLEDGE_RING_SIZE = 112;
-const KNOWLEDGE_RING_STROKE_WIDTH = 10;
+const KNOWLEDGE_RING_SIZE = 96;
+const KNOWLEDGE_RING_STROKE_WIDTH = 9;
 const KNOWLEDGE_RING_RADIUS =
 	(KNOWLEDGE_RING_SIZE - KNOWLEDGE_RING_STROKE_WIDTH) / 2;
 const KNOWLEDGE_RING_CIRCUMFERENCE = 2 * Math.PI * KNOWLEDGE_RING_RADIUS;
@@ -142,7 +138,7 @@ function KnowledgeProgressRing({
 	const progressOffset = KNOWLEDGE_RING_CIRCUMFERENCE * (1 - progress);
 
 	return (
-		<View accessible={false} className="h-28 w-28 items-center justify-center">
+		<View accessible={false} className="h-24 w-24 items-center justify-center">
 			<Svg
 				pointerEvents="none"
 				width={KNOWLEDGE_RING_SIZE}
@@ -324,64 +320,62 @@ function AnalysisHub({
 		analysis.readiness.unknown;
 	const hasKnowledgeEvidence =
 		totalTopics > 0 && analysis.topics.some((topic) => topic.evidenceCount > 0);
+	const remainingStatusSummary = hasKnowledgeEvidence
+		? [
+				analysis.readiness.developing > 0
+					? `${analysis.readiness.developing} im Aufbau`
+					: null,
+				analysis.readiness.unknown > 0
+					? `${analysis.readiness.unknown} noch nicht belegt`
+					: null,
+			]
+				.filter(Boolean)
+				.join(" · ") || "Alle Themen sind sicher belegt"
+		: "Noch kein Thema überprüft";
 
 	return (
-		<View className="gap-4">
-			<Surface
-				className="overflow-hidden border border-border"
-				style={continuousCardStyle}
-				variant="flat"
-			>
-				<View className="gap-4 p-5">
-					<View className="flex-row items-center gap-4">
-						<KnowledgeProgressRing
-							secureTopics={analysis.readiness.secure}
-							totalTopics={hasKnowledgeEvidence ? totalTopics : 0}
-						/>
-						<View className="min-w-0 flex-1 gap-1">
-							<Text className="font-poppins font-semibold text-body-3 text-primary-strong">
-								Dein Wissensstand
-							</Text>
-							<Text
-								selectable
-								className="font-poppins font-semibold text-body-1 text-text"
-							>
-								{hasKnowledgeEvidence
-									? `${analysis.readiness.secure} von ${totalTopics} Themen sicher`
-									: "Noch keine Wissensbelege"}
-							</Text>
-							<Text
-								selectable
-								className="font-poppins text-body-5 text-secondary-text"
-							>
-								Nach aktuellem Lernrisiko sortiert
-							</Text>
-						</View>
-					</View>
-					<View className="flex-row flex-wrap gap-x-4 gap-y-2">
-						{(
-							[
-								["secure", analysis.readiness.secure],
-								["developing", analysis.readiness.developing],
-								["unknown", analysis.readiness.unknown],
-							] as const
-						).map(([statusKey, count]) => {
-							const status = TOPIC_STATUS_COPY[statusKey];
-							return (
-								<View key={statusKey} className="flex-row items-center gap-2">
-									<View
-										className={cn("h-2 w-2 rounded-full", status.dotClassName)}
-									/>
-									<Text className="font-poppins text-body-5 text-secondary-text">
-										{`${count} ${status.label}`}
-									</Text>
-								</View>
-							);
-						})}
+		<View className="gap-7">
+			<Surface className="p-5" style={continuousCardStyle} variant="flat">
+				<View className="flex-row items-center gap-4">
+					<KnowledgeProgressRing
+						secureTopics={analysis.readiness.secure}
+						totalTopics={hasKnowledgeEvidence ? totalTopics : 0}
+					/>
+					<View className="min-w-0 flex-1 gap-1">
+						<Text className="font-poppins font-semibold text-body-4 text-primary-strong">
+							Dein Wissensstand
+						</Text>
+						<Text
+							selectable
+							className="font-poppins font-semibold text-body-1 text-text"
+						>
+							{hasKnowledgeEvidence
+								? `${analysis.readiness.secure} von ${totalTopics} sicher belegt`
+								: "Noch keine Wissensbelege"}
+						</Text>
+						<Text
+							selectable
+							className="font-poppins text-body-5 text-secondary-text"
+						>
+							{remainingStatusSummary}
+						</Text>
 					</View>
 				</View>
-				<TopicList topics={analysis.topics} onOpenTopic={onOpenTopic} />
 			</Surface>
+
+			<View className="gap-4">
+				<SectionHeading
+					title="Deine Prüfungsthemen"
+					description="Nach aktuellem Lernrisiko sortiert."
+				/>
+				<Surface
+					className="overflow-hidden"
+					style={continuousCardStyle}
+					variant="flat"
+				>
+					<TopicList topics={analysis.topics} onOpenTopic={onOpenTopic} />
+				</Surface>
+			</View>
 
 			<ActionSurface
 				accessibilityHint="Öffnet deinen empfohlenen nächsten Lernschritt."
@@ -695,6 +689,7 @@ function TopicStatusPill({ status }: { status: TopicStatus }) {
 	return (
 		<View className={cn("rounded-full px-3 py-1.5", copy.pillClassName)}>
 			<Text
+				selectable
 				className={cn(
 					"font-poppins font-semibold text-body-5",
 					copy.textClassName,
@@ -709,58 +704,38 @@ function TopicStatusPill({ status }: { status: TopicStatus }) {
 
 function TopicList({
 	onOpenTopic,
-	selectedTopicId,
 	topics,
 }: {
 	onOpenTopic: (topicId: string) => void;
-	selectedTopicId?: string;
 	topics: ExamAnalysis["topics"];
 }) {
 	const { colors } = useDayovaTheme();
 
-	return topics.map((topic) => {
+	return topics.map((topic, index) => {
 		const status = TOPIC_STATUS_COPY[topic.status];
-		const selected = topic.id === selectedTopicId;
 		return (
 			<ActionSurface
 				key={topic.id}
 				accessibilityHint="Öffnet Stärken, Lücken und Wissensbelege für dieses Thema."
 				accessibilityLabel={`${topic.title}. ${status.label}. ${topic.summary}`}
 				accessibilityRole="button"
-				accessibilityState={{ selected }}
 				className={cn(
-					"flex-row items-center gap-3 border-border border-t bg-card px-5 py-4",
-					selected && "bg-system-subtle",
+					"min-h-16 flex-row items-center gap-3 bg-card px-4 py-3",
+					index > 0 && "border-border border-t",
 				)}
 				onPress={() => onOpenTopic(topic.id)}
 				variant="flat"
 			>
-				<View
-					accessible={false}
-					className={cn(
-						"h-10 w-10 items-center justify-center rounded-full",
-						status.pillClassName,
-					)}
-				>
-					<View className={cn("h-3 w-3 rounded-full", status.dotClassName)} />
-				</View>
-				<View className="min-w-0 flex-1 gap-1">
+				<View className="min-w-0 flex-1">
 					<Text
 						selectable
 						className="font-poppins font-semibold text-body-3 text-text"
-						numberOfLines={2}
+						numberOfLines={3}
 					>
 						{formatGermanUiText(topic.title)}
 					</Text>
-					<Text
-						selectable
-						className="font-poppins text-body-5 text-secondary-text"
-						numberOfLines={2}
-					>
-						{formatGermanUiText(topic.summary)}
-					</Text>
 				</View>
-				<View className="items-end gap-2">
+				<View className="flex-row items-center gap-2">
 					<TopicStatusPill status={topic.status} />
 					<ArrowRight
 						size={17}
@@ -779,14 +754,15 @@ function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
 	);
 
 	return (
-		<Surface className="gap-6 p-5" variant="flat">
-			<View className="gap-3">
-				<View className="flex-row flex-wrap items-center justify-between gap-3">
-					<View className="rounded-full bg-background px-3 py-1.5">
-						<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
-							{PRIORITY_COPY[topic.priority]}
-						</Text>
-					</View>
+		<View className="gap-8">
+			<Surface className="gap-4 p-5" variant="flat">
+				<View className="flex-row items-center justify-between gap-3">
+					<Text
+						selectable
+						className="min-w-0 flex-1 font-poppins font-semibold text-body-5 text-primary-strong"
+					>
+						{PRIORITY_COPY[topic.priority]}
+					</Text>
 					<TopicStatusPill status={topic.status} />
 				</View>
 				<View className="gap-1">
@@ -803,18 +779,16 @@ function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
 						{formatGermanUiText(topic.learningGoal)}
 					</Text>
 				</View>
-			</View>
+			</Surface>
 
 			<View className="gap-3">
-				<Text className="font-poppins font-semibold text-body-4 text-text">
-					Dein Wissensprofil
-				</Text>
-				<View className="overflow-hidden rounded-info border border-border">
+				<SectionHeading title="Dein Wissensprofil" />
+				<Surface className="overflow-hidden" variant="flat">
 					{requiredDimensions.map((dimension, index) => (
 						<View
 							key={dimension.kind}
 							className={cn(
-								"flex-row items-center justify-between gap-3 bg-card px-4 py-3",
+								"flex-row items-center justify-between gap-3 bg-card px-4 py-4",
 								index > 0 && "border-border border-t",
 							)}
 						>
@@ -822,7 +796,10 @@ function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
 								<Text className="font-poppins font-semibold text-body-3 text-text">
 									{EVIDENCE_DIMENSION_COPY[dimension.kind]}
 								</Text>
-								<Text className="font-poppins text-body-5 text-secondary-text">
+								<Text
+									selectable
+									className="font-poppins text-body-5 text-secondary-text"
+								>
 									{dimension.evidenceCount === 0
 										? "Noch kein Beleg"
 										: `${dimension.evidenceCount} ${dimension.evidenceCount === 1 ? "Beleg" : "Belege"}`}
@@ -831,25 +808,28 @@ function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
 							<TopicStatusPill status={dimension.status} />
 						</View>
 					))}
-				</View>
+				</Surface>
 			</View>
 
 			{topic.strengths.length > 0 ? (
 				<View className="gap-3">
-					<Text className="font-poppins font-semibold text-body-4 text-text">
-						Das kannst du schon
-					</Text>
-					<View className="gap-3 rounded-info bg-success-subtle p-4">
-						{topic.strengths.map((strength) => (
+					<SectionHeading title="Das kannst du schon" />
+					<Surface className="gap-4 p-5" variant="flat">
+						{topic.strengths.map((strength, index) => (
 							<View
 								key={strength.statement}
-								className="flex-row items-start gap-3"
+								className={cn(
+									"flex-row items-start gap-3",
+									index > 0 && "border-border border-t pt-4",
+								)}
 							>
-								<Check
-									size={18}
-									color={DAYOVA_DESIGN_SYSTEM.colors.success}
-									strokeWidth={2.3}
-								/>
+								<View className="h-8 w-8 items-center justify-center rounded-full bg-success-subtle">
+									<Check
+										size={16}
+										color={DAYOVA_DESIGN_SYSTEM.colors.success}
+										strokeWidth={2.3}
+									/>
+								</View>
 								<View className="min-w-0 flex-1 gap-1">
 									<Text
 										selectable
@@ -863,45 +843,53 @@ function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
 								</View>
 							</View>
 						))}
-					</View>
+					</Surface>
 				</View>
 			) : (
-				<View className="flex-row items-start gap-3 rounded-info bg-background p-4">
-					<Info
-						size={19}
-						color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
-						strokeWidth={2.2}
-					/>
-					<View className="min-w-0 flex-1 gap-1">
-						<Text className="font-poppins font-semibold text-body-4 text-text">
-							Noch keine sichere Stärke
-						</Text>
-						<Text
-							selectable
-							className="font-poppins text-body-4 text-secondary-text"
-						>
-							Dafür fehlen noch wiederholte richtige Antworten.
-						</Text>
-					</View>
+				<View className="gap-3">
+					<SectionHeading title="Das kannst du schon" />
+					<Surface className="flex-row items-start gap-3 p-5" variant="flat">
+						<View className="h-8 w-8 items-center justify-center rounded-full bg-system-subtle">
+							<Info
+								size={17}
+								color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
+								strokeWidth={2.2}
+							/>
+						</View>
+						<View className="min-w-0 flex-1 gap-1">
+							<Text className="font-poppins font-semibold text-body-4 text-text">
+								Noch keine sichere Stärke
+							</Text>
+							<Text
+								selectable
+								className="font-poppins text-body-4 text-secondary-text"
+							>
+								Dafür fehlen noch wiederholte richtige Antworten.
+							</Text>
+						</View>
+					</Surface>
 				</View>
 			)}
 
 			{topic.weaknesses.length > 0 ? (
 				<View className="gap-3">
-					<Text className="font-poppins font-semibold text-body-4 text-text">
-						Das fehlt noch
-					</Text>
-					<View className="gap-3 rounded-info bg-wrong-subtle p-4">
-						{topic.weaknesses.map((weakness) => (
+					<SectionHeading title="Das fehlt noch" />
+					<Surface className="gap-4 p-5" variant="flat">
+						{topic.weaknesses.map((weakness, index) => (
 							<View
 								key={weakness.statement}
-								className="flex-row items-start gap-3"
+								className={cn(
+									"flex-row items-start gap-3",
+									index > 0 && "border-border border-t pt-4",
+								)}
 							>
-								<CircleAlert
-									size={18}
-									color={DAYOVA_DESIGN_SYSTEM.colors.wrong}
-									strokeWidth={2.2}
-								/>
+								<View className="h-8 w-8 items-center justify-center rounded-full bg-wrong-subtle">
+									<CircleAlert
+										size={16}
+										color={DAYOVA_DESIGN_SYSTEM.colors.wrong}
+										strokeWidth={2.2}
+									/>
+								</View>
 								<View className="min-w-0 flex-1 gap-1">
 									<Text
 										selectable
@@ -917,12 +905,15 @@ function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
 								</View>
 							</View>
 						))}
-					</View>
+					</Surface>
 				</View>
 			) : null}
 
 			{topic.controlCheckReason ? (
-				<View className="flex-row items-start gap-3 rounded-info bg-system-subtle p-4">
+				<Surface
+					className="flex-row items-start gap-3 rounded-info border border-primary/20 bg-system-subtle p-4"
+					variant="flat"
+				>
 					<Info
 						size={19}
 						color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
@@ -936,9 +927,9 @@ function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
 							{topic.controlCheckReason}
 						</Text>
 					</View>
-				</View>
+				</Surface>
 			) : null}
-		</Surface>
+		</View>
 	);
 }
 
@@ -949,11 +940,8 @@ function KnowledgeDetailContent({
 	analysis: ExamAnalysis;
 	initialTopicId?: string;
 }) {
-	const [selectedTopicId, setSelectedTopicId] = useState(
-		initialTopicId ?? analysis.topics[0]?.id,
-	);
 	const selectedTopic =
-		analysis.topics.find((topic) => topic.id === selectedTopicId) ??
+		analysis.topics.find((topic) => topic.id === initialTopicId) ??
 		analysis.topics[0];
 
 	if (!selectedTopic) {
@@ -972,24 +960,7 @@ function KnowledgeDetailContent({
 		);
 	}
 
-	return (
-		<View className="gap-8">
-			<TopicDetailCard topic={selectedTopic} />
-			<View className="gap-4">
-				<SectionHeading
-					title="Alle Prüfungsthemen"
-					description="Nach aktuellem Lernrisiko sortiert."
-				/>
-				<Surface className="overflow-hidden" variant="flat">
-					<TopicList
-						onOpenTopic={setSelectedTopicId}
-						selectedTopicId={selectedTopic.id}
-						topics={analysis.topics}
-					/>
-				</Surface>
-			</View>
-		</View>
-	);
+	return <TopicDetailCard topic={selectedTopic} />;
 }
 
 function PreparationSummary({
@@ -1397,8 +1368,8 @@ export function AnalyticsHistoryScreen() {
 
 export type AnalyticsDetailSection = "knowledge" | "problem" | "nextStep";
 
-const DETAIL_DESCRIPTION: Record<AnalyticsDetailSection, string> = {
-	knowledge: "Stärken, Lücken und Belege – Thema für Thema.",
+const DETAIL_DESCRIPTION: Record<AnalyticsDetailSection, string | null> = {
+	knowledge: null,
 	problem:
 		"Welche Antwort die Hürde zeigt und welches Missverständnis dahinterliegt.",
 	nextStep:
@@ -1487,12 +1458,14 @@ export function AnalyticsDetailScreen({
 									{selectedExamContext}
 								</Text>
 							) : null}
-							<Text
-								selectable
-								className="font-poppins text-body-2 text-secondary-text"
-							>
-								{DETAIL_DESCRIPTION[section]}
-							</Text>
+							{DETAIL_DESCRIPTION[section] ? (
+								<Text
+									selectable
+									className="font-poppins text-body-2 text-secondary-text"
+								>
+									{DETAIL_DESCRIPTION[section]}
+								</Text>
+							) : null}
 						</View>
 						<AnalyticsDetailContent
 							analysis={analysis}

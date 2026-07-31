@@ -392,12 +392,14 @@ describe("AnalyticsScreen", () => {
 		const screen = await render(<AnalyticsScreen />);
 
 		expect(screen.getByText("1/2")).toBeOnTheScreen();
-		expect(screen.getByText("1 von 2 Themen sicher")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 2 sicher belegt")).toBeOnTheScreen();
+		expect(screen.getByText("1 im Aufbau")).toBeOnTheScreen();
+		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
 		expect(screen.getByText("Steigung erklären")).toBeOnTheScreen();
 		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
 		expect(
-			screen.getByText("Steigung noch präziser erklären."),
-		).toBeOnTheScreen();
+			screen.queryByText("Steigung noch präziser erklären."),
+		).not.toBeOnTheScreen();
 		expect(screen.queryByText("„Änderung von y.“")).not.toBeOnTheScreen();
 		expect(
 			screen.queryByText("Schon belegt: Du erkennst lineare Zusammenhänge."),
@@ -451,8 +453,8 @@ describe("AnalyticsScreen", () => {
 		const screen = await render(<AnalyticsScreen />);
 
 		expect(screen.getByText("0/5")).toBeOnTheScreen();
-		expect(screen.getByText("0 von 5 Themen sicher")).toBeOnTheScreen();
-		expect(screen.getByText("0 Sicher belegt")).toBeOnTheScreen();
+		expect(screen.getByText("0 von 5 sicher belegt")).toBeOnTheScreen();
+		expect(screen.getByText("5 im Aufbau")).toBeOnTheScreen();
 		expect(
 			screen.queryByText(
 				"Du arbeitest an allen 5 Prüfungsthemen, aber noch keines ist sicher belegt.",
@@ -511,6 +513,12 @@ describe("AnalyticsScreen", () => {
 		expect(
 			knowledgeScreen.getAllByText("Steigung noch präziser erklären."),
 		).not.toHaveLength(0);
+		expect(
+			knowledgeScreen.queryByText("Alle Prüfungsthemen"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Achsenschnittpunkte bestimmen"),
+		).not.toBeOnTheScreen();
 
 		await knowledgeScreen.unmount();
 		const problemScreen = await render(
