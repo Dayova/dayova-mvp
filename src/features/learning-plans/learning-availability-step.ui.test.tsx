@@ -1,19 +1,20 @@
-import { describe, expect, test } from "@jest/globals";
-import { render } from "@testing-library/react-native";
-import { LearningAvailabilityStep } from "./learning-availability-step";
+import { describe, expect, jest, test } from "@jest/globals";
+import { fireEvent, render } from "@testing-library/react-native";
+import {
+	LearningAvailabilityAction,
+	LearningAvailabilityStep,
+} from "./learning-availability-step";
 
 describe("LearningAvailabilityStep", () => {
 	test("asks for a calm scheduling prerequisite without assigning workload", async () => {
 		const screen = await render(
 			<LearningAvailabilityStep
-				availableStudyMinutes={0}
+				availabilityStatus="missing"
 				examDateLabel="12. August 2026"
 			/>,
 		);
 
-		expect(
-			screen.getByText("Ein Zeitfenster reicht für den Anfang"),
-		).toBeOnTheScreen();
+		expect(screen.getByText("Noch keine freie Lernzeit")).toBeOnTheScreen();
 		expect(
 			screen.getByText(/noch nicht, wie viel du schaffen musst/),
 		).toBeOnTheScreen();
@@ -22,12 +23,46 @@ describe("LearningAvailabilityStep", () => {
 	test("confirms that an existing learning window can be used", async () => {
 		const screen = await render(
 			<LearningAvailabilityStep
-				availableStudyMinutes={30}
+				availabilityStatus="available"
 				examDateLabel="12. August 2026"
 			/>,
 		);
 
 		expect(screen.getByText("Lernzeit gefunden")).toBeOnTheScreen();
 		expect(screen.queryByText(/noch nicht, wie viel/)).not.toBeOnTheScreen();
+	});
+
+	test("explains how to recover when every saved learning time is occupied", async () => {
+		const screen = await render(
+			<LearningAvailabilityStep
+				availabilityStatus="occupied"
+				examDateLabel="12. August 2026"
+			/>,
+		);
+
+		expect(
+			screen.getByText("Deine Lernzeiten sind schon belegt"),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText(/bestehenden Lerntermin.*zusätzliche Lernzeit/),
+		).toBeOnTheScreen();
+		expect(screen.queryByText("Lernzeit gefunden")).not.toBeOnTheScreen();
+	});
+
+	test("opens learning-time editing instead of continuing when time is occupied", async () => {
+		const onContinue = jest.fn();
+		const onEditLearningTimes = jest.fn();
+		const screen = await render(
+			<LearningAvailabilityAction
+				availabilityStatus="occupied"
+				onContinue={onContinue}
+				onEditLearningTimes={onEditLearningTimes}
+			/>,
+		);
+
+		fireEvent.press(screen.getByRole("button", { name: "Lernzeit eintragen" }));
+
+		expect(onEditLearningTimes).toHaveBeenCalledTimes(1);
+		expect(onContinue).not.toHaveBeenCalled();
 	});
 });

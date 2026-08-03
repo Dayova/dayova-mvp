@@ -1,24 +1,26 @@
 import { ActivityIndicator, View } from "react-native";
+import { Button } from "~/components/ui/button";
 import { Check, Clock3 } from "~/components/ui/icon";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
 export function LearningAvailabilityStep({
-	availableStudyMinutes,
+	availabilityStatus,
 	examDateLabel,
 }: {
-	availableStudyMinutes: number | null;
+	availabilityStatus: "available" | "missing" | "occupied" | null;
 	examDateLabel: string;
 }) {
-	const hasUsableLearningTime =
-		availableStudyMinutes !== null && availableStudyMinutes >= 10;
+	const isLoading = availabilityStatus === null;
+	const hasUsableLearningTime = availabilityStatus === "available";
+	const isOccupied = availabilityStatus === "occupied";
 
 	return (
 		<View className="flex-1 pt-2">
 			<Surface className="rounded-[32px] px-6 py-7" variant="soft">
 				<View className="h-14 w-14 items-center justify-center rounded-[20px] bg-system-subtle">
-					{availableStudyMinutes === null ? (
+					{isLoading ? (
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
 					) : hasUsableLearningTime ? (
 						<Check size={27} color="#34C759" strokeWidth={2.5} />
@@ -31,26 +33,59 @@ export function LearningAvailabilityStep({
 					)}
 				</View>
 				<Text className="mt-5 font-poppins font-semibold text-body-2 text-text">
-					{availableStudyMinutes === null
+					{isLoading
 						? "Wir prüfen deine Lernzeiten"
 						: hasUsableLearningTime
 							? "Lernzeit gefunden"
-							: "Ein Zeitfenster reicht für den Anfang"}
+							: isOccupied
+								? "Deine Lernzeiten sind schon belegt"
+								: "Noch keine freie Lernzeit"}
 				</Text>
 				<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
-					{availableStudyMinutes === null
+					{isLoading
 						? "Das dauert nur einen Moment."
 						: hasUsableLearningTime
 							? `Dayova kann deinen Lernweg vor dem ${examDateLabel} in deine gespeicherten Zeiten einplanen.`
-							: `Lege mindestens ein Zeitfenster vor dem ${examDateLabel} fest. Dayova plant später nur innerhalb dieser Zeiten.`}
+							: isOccupied
+								? `Bis zum ${examDateLabel} ist kein freies Zeitfenster von mindestens 10 Minuten mehr verfügbar.`
+								: `Lege mindestens ein Zeitfenster vor dem ${examDateLabel} fest. Dayova plant später nur innerhalb dieser Zeiten.`}
 				</Text>
-				{availableStudyMinutes !== null && !hasUsableLearningTime ? (
+				{!isLoading && !hasUsableLearningTime ? (
 					<Text className="mt-4 font-poppins text-body-4 text-secondary-text">
-						Du entscheidest hier nur, wann Lernen grundsätzlich möglich ist –
-						noch nicht, wie viel du schaffen musst.
+						{isOccupied
+							? "Verschiebe einen bestehenden Lerntermin oder füge eine zusätzliche Lernzeit hinzu."
+							: "Du entscheidest hier nur, wann Lernen grundsätzlich möglich ist – noch nicht, wie viel du schaffen musst."}
 					</Text>
 				) : null}
 			</Surface>
 		</View>
+	);
+}
+
+export function LearningAvailabilityAction({
+	availabilityStatus,
+	onContinue,
+	onEditLearningTimes,
+}: {
+	availabilityStatus: "available" | "missing" | "occupied" | null;
+	onContinue: () => void;
+	onEditLearningTimes: () => void;
+}) {
+	const isLoading = availabilityStatus === null;
+	const hasUsableLearningTime = availabilityStatus === "available";
+
+	return (
+		<Button
+			accessibilityState={{ busy: isLoading, disabled: isLoading }}
+			className="w-full"
+			disabled={isLoading}
+			onPress={hasUsableLearningTime ? onContinue : onEditLearningTimes}
+		>
+			{isLoading ? (
+				<ActivityIndicator color="#FFFFFF" />
+			) : (
+				<Text>{hasUsableLearningTime ? "Weiter" : "Lernzeit eintragen"}</Text>
+			)}
+		</Button>
 	);
 }

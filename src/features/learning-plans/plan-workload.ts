@@ -1,53 +1,16 @@
+import { calculateAvailableStudyMinutes } from "#convex/learningPlanAvailability";
 import {
 	getDefaultPreparationDepth,
-	recommendLearningPreparation,
 	type PreparationDepth,
+	recommendLearningPreparation,
 } from "#convex/learningPreparationPolicy";
+
+export { calculateAvailableStudyMinutes };
 
 const MIN_TOTAL_STUDY_MINUTES = 30;
 const MAX_TOTAL_STUDY_MINUTES = 180;
 
 const roundToTen = (minutes: number) => Math.round(minutes / 10) * 10;
-
-const parseTimeToMinutes = (time: string) => {
-	const [hours, minutes] = time.split(":").map(Number);
-	if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
-	return (hours ?? 0) * 60 + (minutes ?? 0);
-};
-
-export const calculateAvailableStudyMinutes = ({
-	fromDateKey,
-	examDateKey,
-	learningTimes,
-}: {
-	fromDateKey: string;
-	examDateKey: string;
-	learningTimes: Array<{
-		dayOfWeek: number;
-		startTime: string;
-		endTime: string;
-	}>;
-}) => {
-	const cursor = new Date(`${fromDateKey}T00:00:00.000Z`);
-	const examDate = new Date(`${examDateKey}T00:00:00.000Z`);
-	if (Number.isNaN(cursor.getTime()) || Number.isNaN(examDate.getTime()))
-		return 0;
-
-	let availableMinutes = 0;
-	while (cursor < examDate) {
-		const dayOfWeek = cursor.getUTCDay() || 7;
-		for (const learningTime of learningTimes) {
-			if (learningTime.dayOfWeek !== dayOfWeek) continue;
-			const start = parseTimeToMinutes(learningTime.startTime);
-			const end = parseTimeToMinutes(learningTime.endTime);
-			if (start === null || end === null || end - start < 10) continue;
-			availableMinutes += Math.min(120, end - start);
-		}
-		cursor.setUTCDate(cursor.getUTCDate() + 1);
-	}
-
-	return availableMinutes;
-};
 
 export const shouldRequestLearningTimeBeforeExam = ({
 	fromDateKey,
