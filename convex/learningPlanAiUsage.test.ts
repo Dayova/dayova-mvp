@@ -227,3 +227,28 @@ test("forfeits a stale plan reservation from the previous month", async () => {
 
 	expect(july).toMatchObject({ requestCount: 1, budgetCostUsdMicros: 20_000 });
 });
+
+test("stops speculative generation at the normal plan allowance", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t, "generation-policy");
+	await reserve(t, learningPlanId, "target-allowance", 100_000);
+	await t.mutation(internal.learningPlanAiUsage.settle, {
+		reservationId: "target-allowance",
+		inputTokens: 10_000,
+		cachedInputTokens: 0,
+		outputTokens: 10_000,
+		estimatedCostUsdMicros: 100_000,
+	});
+
+	const policy = await t.query(
+		api.learningPlanAiUsage.getPlanGenerationPolicy,
+		{ learningPlanId },
+	);
+
+	expect(policy).toEqual({
+		economyMode: true,
+		speculativeGenerationAllowed: false,
+		limitReached: false,
+		blockReason: null,
+	});
+});

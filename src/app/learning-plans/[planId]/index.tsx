@@ -48,6 +48,11 @@ import {
 	type LearningPathNodeState,
 	type LearningPathNodeTone,
 } from "~/features/learning-plans/learning-path-node-presentation";
+import {
+	getCommittedSessionIndex,
+	getDefaultLearningPlanSession,
+	isLearningPlanSessionHistory,
+} from "~/features/learning-plans/rolling-learning-window";
 import type {
 	LearningPlanSnapshot,
 	PlanSession,
@@ -89,7 +94,7 @@ const LEARNING_PATH_ICON_COMPONENT = {
 } satisfies Record<LearningPathNodeIcon, typeof Dumbbell>;
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
-const SESSION_PREVIEW_CARD_HEIGHT = 174;
+const SESSION_PREVIEW_CARD_HEIGHT = 218;
 const SESSION_PREVIEW_TRANSITION_DURATION_MS = 160;
 
 const getSessionRoute = (
@@ -113,8 +118,21 @@ function SessionPreviewCard({
 		LEARNING_PATH_ICON_COMPONENT[LEARNING_PATH_PHASE_ICON[session.phase]];
 	const title = formatGermanUiText(session.title);
 	const description = formatGermanUiText(session.goal);
+	const hasRecordedOutcome = isLearningPlanSessionHistory(session);
+	const horizonLabel = hasRecordedOutcome
+		? "Bearbeitet"
+		: session.planningStatus === "provisional"
+			? "Danach · Vorschau"
+			: "Als Nächstes";
 	const content = (
 		<View className="gap-2">
+			<View className="flex-row">
+				<View className="rounded-full bg-system-subtle px-3 py-1.5">
+					<Text className="font-poppins font-semibold text-body-5 text-primary">
+						{horizonLabel}
+					</Text>
+				</View>
+			</View>
 			<View className="flex-row items-start justify-between gap-3">
 				<Text
 					className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-2 text-text"
@@ -158,6 +176,14 @@ function SessionPreviewCard({
 			>
 				{description}
 			</Text>
+			{session.selectionReason ? (
+				<Text
+					className="font-medium font-poppins text-body-5 text-primary"
+					numberOfLines={2}
+				>
+					{formatGermanUiText(session.selectionReason)}
+				</Text>
+			) : null}
 		</View>
 	);
 
@@ -224,7 +250,7 @@ function SessionPreviewCard({
 const PATH_NODE_STATE_LABEL: Record<LearningPathNodeState, string> = {
 	completed: "abgeschlossen",
 	current: "verfügbar",
-	locked: "gesperrt",
+	locked: "Vorschau",
 };
 
 type PathNodeFrame = {
@@ -290,13 +316,8 @@ const getFigmaPathHeight = (sessionCount: number) => {
 	return Math.max(FIGMA_PATH_HEIGHT, lastFrame.top + lastFrame.height + 20);
 };
 
-const getCurrentSessionIndex = (sessions: PlanSession[]) => {
-	const firstOpenIndex = sessions.findIndex((session) => !session.completed);
-	return firstOpenIndex === -1 ? null : firstOpenIndex;
-};
-
 const getActiveSegmentLimit = (sessions: PlanSession[]) => {
-	const currentIndex = getCurrentSessionIndex(sessions);
+	const currentIndex = getCommittedSessionIndex(sessions);
 	return currentIndex ?? Math.max(sessions.length - 1, 0);
 };
 
@@ -305,7 +326,8 @@ const getPathNodeState = (
 	index: number,
 	currentIndex: number | null,
 ): LearningPathNodeState => {
-	if (session.completed) return "completed";
+	if (isLearningPlanSessionHistory(session)) return "completed";
+	if (session.planningStatus === "provisional") return "locked";
 	if (currentIndex !== null && index === currentIndex) return "current";
 	return "locked";
 };
@@ -577,7 +599,7 @@ function PathNode({
 			accessibilityLabel={`${title}, ${PHASE_LABEL[session.phase]}, ${session.dateLabel}, ${stateLabel}`}
 			accessibilityHint={
 				isLocked
-					? "Wählt diesen gesperrten Lernblock aus und zeigt die Vorschau. Gesperrte Lernblöcke können noch nicht geöffnet werden."
+					? "Zeigt den voraussichtlich folgenden Lernblock. Er kann sich nach der nächsten Session noch ändern."
 					: "Wählt diesen Lernblock aus und zeigt die Vorschau. Öffnen kannst du ihn danach über die Pfeiltaste in der Vorschau."
 			}
 			accessibilityRole="button"
@@ -618,7 +640,7 @@ function LearningPath({
 	selectedSessionId: Id<"learningPlanSessions"> | null;
 	sessions: PlanSession[];
 }) {
-	const currentIndex = getCurrentSessionIndex(sessions);
+	const currentIndex = getCommittedSessionIndex(sessions);
 	const activeSegmentLimit = getActiveSegmentLimit(sessions);
 	const pathHeight = getFigmaPathHeight(sessions.length);
 	const segments = sessions.slice(1).map((_, index) => ({
@@ -692,16 +714,27 @@ export default function LearningPlanSessionsScreen() {
 		api.learningPlanAi.ensureSessionContent,
 	);
 	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
+	const preparingProvisionalSessionIdRef =
+		useRef<Id<"learningPlanSessions"> | null>(null);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;
+	const generationPolicy = useQuery(
+		api.learningPlanAiUsage.getPlanGenerationPolicy,
+		user && isConvexAuthenticated && planId
+			? { learningPlanId: planId }
+			: "skip",
+	);
 	const [selectedSessionId, setSelectedSessionId] =
 		useState<Id<"learningPlanSessions"> | null>(null);
-	const defaultSession =
-		snapshot?.sessions.find((session) => !session.completed) ??
-		snapshot?.sessions.at(-1) ??
-		null;
+	const defaultSession = snapshot
+		? getDefaultLearningPlanSession(snapshot.sessions)
+		: null;
+	const provisionalSession =
+		snapshot?.sessions.find(
+			(session) => session.planningStatus === "provisional",
+		) ?? null;
 	const selectedSession =
 		snapshot?.sessions.find((session) => session.id === selectedSessionId) ??
 		defaultSession;
@@ -716,11 +749,13 @@ export default function LearningPlanSessionsScreen() {
 			? getPathNodeState(
 					selectedSession,
 					selectedSessionIndex,
-					getCurrentSessionIndex(snapshot.sessions),
+					getCommittedSessionIndex(snapshot.sessions),
 				)
 			: null;
 	const canOpenSelectedSession =
-		selectedSessionState !== null && selectedSessionState !== "locked";
+		selectedSessionState !== null &&
+		selectedSessionState !== "locked" &&
+		selectedSession?.planningStatus !== "provisional";
 
 	useEffect(() => {
 		if (
@@ -743,6 +778,39 @@ export default function LearningPlanSessionsScreen() {
 				}
 			});
 	}, [defaultSession, ensureSessionContent]);
+
+	useEffect(() => {
+		if (
+			!provisionalSession ||
+			generationPolicy?.speculativeGenerationAllowed !== true ||
+			defaultSession?.contentGenerationStatus !== "ready" ||
+			provisionalSession.contentGenerationStatus === "ready" ||
+			provisionalSession.contentGenerationStatus === "generating" ||
+			provisionalSession.contentGenerationStatus === "failed" ||
+			preparingProvisionalSessionIdRef.current === provisionalSession.id
+		) {
+			return;
+		}
+
+		preparingProvisionalSessionIdRef.current = provisionalSession.id;
+		void ensureSessionContent({ sessionId: provisionalSession.id })
+			.catch(() => {
+				// Speculative preparation is best-effort. The promoted session owns
+				// its visible retry state if this background attempt cannot finish.
+			})
+			.finally(() => {
+				if (
+					preparingProvisionalSessionIdRef.current === provisionalSession.id
+				) {
+					preparingProvisionalSessionIdRef.current = null;
+				}
+			});
+	}, [
+		defaultSession?.contentGenerationStatus,
+		ensureSessionContent,
+		generationPolicy?.speculativeGenerationAllowed,
+		provisionalSession,
+	]);
 
 	const goBack = () => {
 		dismissToOrReplace(router, "/learning-plans");

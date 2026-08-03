@@ -261,6 +261,29 @@ export const getBudgetStatus = internalQuery({
 	},
 });
 
+export const getPlanGenerationPolicy = query({
+	args: { learningPlanId: v.id("learningPlans") },
+	handler: async (ctx, args) => {
+		const { identity } = await requireOwnedPlan(ctx, args.learningPlanId);
+		const budget = await loadBudgetInputs(ctx, {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			learningPlanId: args.learningPlanId,
+			now: Date.now(),
+		});
+		const decision = evaluateLearningPlanAiBudget({
+			...budget,
+			projectedCostUsdMicros: 30_000,
+			limits: getLearningPlanAiBudgetLimits(),
+		});
+		return {
+			economyMode: decision.economyMode,
+			speculativeGenerationAllowed: decision.speculativeGenerationAllowed,
+			limitReached: !decision.allowed,
+			blockReason: decision.blockReason,
+		};
+	},
+});
+
 export const reserve = internalMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
