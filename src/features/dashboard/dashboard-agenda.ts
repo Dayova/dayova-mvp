@@ -17,10 +17,25 @@ export type DashboardAgendaItem = {
 
 export type DashboardWeekProgress = {
 	completedLearningSessions: number;
-	completedMinutesToday: number;
 	completionPercent: number;
 	remainingLearningSessions: number;
 	totalLearningSessions: number;
+};
+
+export const getDashboardWeekProgressFooter = ({
+	isLoading,
+	progress,
+}: {
+	isLoading: boolean;
+	progress: DashboardWeekProgress;
+}) => {
+	if (isLoading) return "Diese Woche";
+	if (progress.totalLearningSessions === 0) return "Lernplan öffnen";
+	if (progress.remainingLearningSessions === 0) return "Wochenziel erreicht";
+
+	return `Noch ${progress.remainingLearningSessions} ${
+		progress.remainingLearningSessions === 1 ? "Lernschritt" : "Lernschritte"
+	}`;
 };
 
 export const getAdjacentDashboardDayKey = ({
@@ -119,15 +134,11 @@ export const getDashboardWeekProgress = ({
 			item.entry.completed === true ||
 			item.entry.executionStatus === "completed",
 	);
-	const completedMinutesToday = completedLearningSessions
-		.filter((item) => item.dayKey === todayKey)
-		.reduce((total, item) => total + (item.entry.durationMinutes ?? 0), 0);
 	const totalLearningSessions = learningSessions.length;
 	const completedCount = completedLearningSessions.length;
 
 	return {
 		completedLearningSessions: completedCount,
-		completedMinutesToday,
 		completionPercent:
 			totalLearningSessions === 0
 				? 0

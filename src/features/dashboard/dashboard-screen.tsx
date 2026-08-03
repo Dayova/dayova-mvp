@@ -6,8 +6,8 @@ import {
 	ScrollView,
 	type TextStyle,
 	TouchableOpacity,
-	type ViewStyle,
 	View,
+	type ViewStyle,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,6 +46,7 @@ import {
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
 	getDashboardWeekProgress,
+	getDashboardWeekProgressFooter,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
@@ -532,11 +533,7 @@ function WeeklyProgressCard({
 	const progressOffset =
 		WEEK_PROGRESS_RING_CIRCUMFERENCE *
 		(1 - (isLoading ? 0 : progress.completionPercent) / 100);
-	const footer = isLoading
-		? "Diese Woche"
-		: hasPlannedSessions
-			? `${progress.completedMinutesToday} Min. heute`
-			: "Lernplan öffnen";
+	const footer = getDashboardWeekProgressFooter({ isLoading, progress });
 
 	return (
 		<TouchableOpacity
@@ -546,7 +543,7 @@ function WeeklyProgressCard({
 				isLoading
 					? "Wochenfortschritt wird geladen"
 					: hasPlannedSessions
-						? `Wochenfortschritt: ${progress.completedLearningSessions} von ${progress.totalLearningSessions} Lernschritten geschafft. ${progress.completedMinutesToday} Minuten heute`
+						? `Wochenfortschritt: ${progress.completedLearningSessions} von ${progress.totalLearningSessions} Lernschritten geschafft. ${footer}.`
 						: "Wochenfortschritt: Noch keine Lernschritte geplant"
 			}
 			accessibilityHint="Öffnet deine persönlichen Lernpläne."
@@ -619,10 +616,7 @@ function WeeklyProgressCard({
 				</View>
 			</View>
 			<View className="mt-4 flex-row items-end justify-between gap-2">
-				<View className="flex-1 flex-row items-center gap-2 pr-1">
-					{hasPlannedSessions && !isLoading ? (
-						<Clock3 size={16} color={colors.secondaryText} strokeWidth={1.9} />
-					) : null}
+				<View className="flex-1 pr-1">
 					<Text
 						className="flex-1 font-poppins font-semibold text-body-4 text-text"
 						numberOfLines={2}
@@ -635,7 +629,7 @@ function WeeklyProgressCard({
 					accessible={false}
 					className="h-12 w-12 items-center justify-center rounded-full bg-secondary"
 				>
-					<ArrowUpRight
+					<ArrowRight
 						size={22}
 						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2}
