@@ -10,6 +10,12 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
+import { advanceRollingLearningPlan } from "./adaptiveLearningPlan";
+import {
+	type AdaptiveLearningTarget,
+	adaptiveSessionCopy,
+	selectNextAdaptiveLearningTarget,
+} from "./adaptiveLearningPlanPolicy";
 import { getDayKeyQueryVariants } from "./dayKeyVariants";
 import { deriveTopicReadiness } from "./diagnosticReadiness";
 import { throwUserFacingError } from "./errors";
@@ -117,6 +123,42 @@ const generatedSessionValidator = v.object({
 	expectedOutcome: v.string(),
 });
 
+type NormalizedGeneratedSession = {
+	phase: "theory" | "practice" | "rehearsal";
+	title: string;
+	dateKey: string;
+	dateLabel: string;
+	startTime: string;
+	durationMinutes: number;
+	goal: string;
+	tasks: string[];
+	expectedOutcome: string;
+	compositionVariant: "control" | "split";
+	planningStatus?: "committed" | "provisional";
+	targetTopicIds?: string[];
+	targetEvidenceDimension?: "understanding" | "problemSolving" | "independent";
+	selectionReason?: string;
+	adaptationRevision?: number;
+};
+
+const applyAdaptiveTargetToSession = (
+	session: NormalizedGeneratedSession,
+	target: AdaptiveLearningTarget,
+	planningStatus: "committed" | "provisional",
+	adaptationRevision: number,
+) => ({
+	...session,
+	...adaptiveSessionCopy(target),
+	phase: target.phase,
+	compositionVariant:
+		target.phase === "theory" ? ("split" as const) : ("control" as const),
+	planningStatus,
+	targetTopicIds: [target.topicId],
+	targetEvidenceDimension: target.dimension,
+	selectionReason: target.reason,
+	adaptationRevision,
+});
+
 type PublicDocument = {
 	id: Id<"learningPlanDocuments">;
 	fileName: string;
@@ -167,6 +209,11 @@ type PublicSession = {
 		| "unclear"
 		| "other";
 	adjustedFromSessionId?: Id<"learningPlanSessions">;
+	planningStatus?: "committed" | "provisional";
+	targetTopicIds?: string[];
+	targetEvidenceDimension?: "understanding" | "problemSolving" | "independent";
+	selectionReason?: string;
+	adaptationRevision?: number;
 	sortOrder: number;
 };
 
@@ -346,11 +393,21 @@ const publicSession = (
 	outcomeAt: session.outcomeAt,
 	missedReason: session.missedReason,
 	adjustedFromSessionId: session.adjustedFromSessionId,
+	planningStatus: session.planningStatus,
+	targetTopicIds: session.targetTopicIds,
+	targetEvidenceDimension: session.targetEvidenceDimension,
+	selectionReason: session.selectionReason,
+	adaptationRevision: session.adaptationRevision,
 	sortOrder: session.sortOrder,
 });
 
 const getSessionExecutionStatus = (session: Doc<"learningPlanSessions">) =>
 	session.executionStatus ?? (session.completed ? "completed" : "notStarted");
+
+const isContentCommittedSession = (session: Doc<"learningPlanSessions">) =>
+	session.planningStatus === "committed" ||
+	(session.planningStatus === undefined &&
+		session.contentGenerationStatus !== undefined);
 
 const isCompletedStatus = (
 	status: ReturnType<typeof getSessionExecutionStatus>,
@@ -796,13 +853,17 @@ export const getSnapshot = query({
 			)
 			.take(1);
 		const readySessionCount = sessions.filter(
-			(session) => session.contentGenerationStatus === "ready",
+			(session) =>
+				session.planningStatus !== "provisional" &&
+				session.contentGenerationStatus === "ready",
 		).length;
 		const failedSessionCount = sessions.filter(
-			(session) => session.contentGenerationStatus === "failed",
+			(session) =>
+				session.planningStatus !== "provisional" &&
+				session.contentGenerationStatus === "failed",
 		).length;
 		const committedSessionCount = sessions.filter(
-			(session) => session.contentGenerationStatus !== undefined,
+			isContentCommittedSession,
 		).length;
 
 		return {
@@ -831,6 +892,8 @@ export const getSnapshot = query({
 				planningHint: getCurrentPlanningHint(plan.planningHint, {
 					hasLearningTimes: learningTimes.length > 0,
 				}),
+				rollingPlanEnabled: plan.rollingPlanEnabled,
+				adaptationRevision: plan.adaptationRevision,
 				sessionCompositionVariant: plan.sessionCompositionVariant,
 				contentGeneration: plan.contentGenerationStage
 					? {
@@ -875,7 +938,12 @@ export const listOverview = query({
 				(session) => session.completed === true,
 			).length;
 			const currentSession =
-				sessions.find((session) => session.completed !== true) ??
+				sessions.find(
+					(session) =>
+						["notStarted", "started"].includes(
+							getSessionExecutionStatus(session),
+						) && session.planningStatus !== "provisional",
+				) ??
 				sessions.at(-1) ??
 				null;
 			const progressPercent =
@@ -1176,14 +1244,6 @@ export const removePlan = mutation({
 		for (const answer of answers) {
 			await ctx.db.delete("learningPlanAnswers", answer._id);
 		}
-		const aiUsage = await ctx.db
-			.query("learningPlanAiUsage")
-			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
-			.take(1_000);
-		for (const usage of aiUsage) {
-			await ctx.db.delete("learningPlanAiUsage", usage._id);
-		}
-
 		const sessions = await ctx.db
 			.query("learningPlanSessions")
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
@@ -1463,6 +1523,7 @@ export const replaceGeneratedSessions = internalMutation({
 		sessionCompositionVariant: v.optional(sessionCompositionVariantValidator),
 		deferReadyUntilContent: v.optional(v.boolean()),
 		deferFutureContent: v.optional(v.boolean()),
+		rollingWindow: v.optional(v.boolean()),
 		generationId: v.optional(v.string()),
 		sessions: v.array(generatedSessionValidator),
 	},
@@ -1485,27 +1546,87 @@ export const replaceGeneratedSessions = internalMutation({
 			),
 			gaps: args.insight.gaps.map((gap) => normalizeGeneratedGermanText(gap)),
 		};
-		const normalizedSessions = args.sessions.map((session) => ({
-			phase: session.phase,
-			title: normalizeGeneratedGermanText(session.title),
-			dateKey: session.dateKey,
-			dateLabel: session.dateLabel,
-			startTime: session.startTime,
-			durationMinutes: session.durationMinutes,
-			goal: normalizeGeneratedGermanText(session.goal),
-			tasks: session.tasks.map((task) => normalizeGeneratedGermanText(task)),
-			expectedOutcome: normalizeGeneratedGermanText(session.expectedOutcome),
-			compositionVariant:
-				getLearningSessionComposition({
-					phase: session.phase,
-					durationMinutes: session.durationMinutes,
-					variant:
-						args.sessionCompositionVariant ??
-						(session.phase === "theory" ? "split" : "control"),
-				}).length > 1
-					? ("split" as const)
-					: ("control" as const),
-		}));
+		const normalizedSessions: NormalizedGeneratedSession[] = args.sessions.map(
+			(session) => ({
+				phase: session.phase,
+				title: normalizeGeneratedGermanText(session.title),
+				dateKey: session.dateKey,
+				dateLabel: session.dateLabel,
+				startTime: session.startTime,
+				durationMinutes: session.durationMinutes,
+				goal: normalizeGeneratedGermanText(session.goal),
+				tasks: session.tasks.map((task) => normalizeGeneratedGermanText(task)),
+				expectedOutcome: normalizeGeneratedGermanText(session.expectedOutcome),
+				compositionVariant:
+					getLearningSessionComposition({
+						phase: session.phase,
+						durationMinutes: session.durationMinutes,
+						variant:
+							args.sessionCompositionVariant ??
+							(session.phase === "theory" ? "split" : "control"),
+					}).length > 1
+						? ("split" as const)
+						: ("control" as const),
+			}),
+		);
+		const adaptationRevision = args.rollingWindow
+			? (plan.adaptationRevision ?? 0) + 1
+			: (plan.adaptationRevision ?? 0);
+		const sourceTopics =
+			plan.topicMap && plan.topicMap.length > 0
+				? plan.topicMap
+				: normalizeLearningTopics([
+						{
+							id: "exam-scope",
+							title: plan.topicDescription,
+							learningGoal: plan.topicDescription,
+							keywords: [plan.subject],
+							priority: "high" as const,
+						},
+					]);
+		const firstTarget = args.rollingWindow
+			? selectNextAdaptiveLearningTarget({
+					topics: sourceTopics,
+					initialReadiness: plan.topicReadiness ?? [],
+					evidence: [],
+				})
+			: null;
+		const secondTarget =
+			args.rollingWindow && firstTarget
+				? selectNextAdaptiveLearningTarget({
+						topics: sourceTopics,
+						initialReadiness: plan.topicReadiness ?? [],
+						evidence: [
+							{
+								topicId: firstTarget.topicId,
+								dimension: firstTarget.dimension,
+								rating: "correct",
+								sessionId: "projected-first-session",
+								createdAt: Date.now(),
+							},
+						],
+					})
+				: null;
+		const sessionsToStore = args.rollingWindow
+			? normalizedSessions.slice(0, 2).flatMap((session, index) => {
+					const target = index === 0 ? firstTarget : secondTarget;
+					if (!target && index > 0) return [];
+					return [
+						target
+							? applyAdaptiveTargetToSession(
+									session,
+									target,
+									index === 0 ? "committed" : "provisional",
+									adaptationRevision,
+								)
+							: {
+									...session,
+									planningStatus: "committed" as const,
+									adaptationRevision,
+								},
+					];
+				})
+			: normalizedSessions;
 
 		const existingSessions = await ctx.db
 			.query("learningPlanSessions")
@@ -1526,10 +1647,13 @@ export const replaceGeneratedSessions = internalMutation({
 
 		const now = Date.now();
 		const sessionIds: Id<"learningPlanSessions">[] = [];
-		for (const [index, session] of normalizedSessions.entries()) {
+		for (const [index, session] of sessionsToStore.entries()) {
 			const shouldPrepareContent =
 				args.deferReadyUntilContent &&
-				(!args.deferFutureContent || index === 0);
+				(!args.deferFutureContent ||
+					(args.rollingWindow
+						? session.planningStatus !== "provisional"
+						: index === 0));
 			const sessionId = await ctx.db.insert("learningPlanSessions", {
 				ownerTokenIdentifier: plan.ownerTokenIdentifier,
 				learningPlanId: args.learningPlanId,
@@ -1552,6 +1676,8 @@ export const replaceGeneratedSessions = internalMutation({
 			planningHint: args.planningHint,
 			sourceSummary: normalizedSourceSummary,
 			insight: normalizedInsight,
+			rollingPlanEnabled: args.rollingWindow === true,
+			adaptationRevision,
 			sessionCompositionVariant: args.sessionCompositionVariant ?? "split",
 			status: args.deferReadyUntilContent ? "questionsReady" : "generated",
 			contentGenerationStage: args.deferReadyUntilContent
@@ -1648,15 +1774,13 @@ export const finalizeContentGeneration = internalMutation({
 				q.eq("learningPlanId", args.learningPlanId),
 			)
 			.take(50);
-		const failedSessionCount = sessions.filter(
+		const committedSessions = sessions.filter(isContentCommittedSession);
+		const failedSessionCount = committedSessions.filter(
 			(session) => session.contentGenerationStatus === "failed",
 		).length;
-		const readySessionCount = sessions.filter(
+		const readySessionCount = committedSessions.filter(
 			(session) => session.contentGenerationStatus === "ready",
 		).length;
-		const committedSessions = sessions.filter(
-			(session) => session.contentGenerationStatus !== undefined,
-		);
 		const isReady =
 			committedSessions.length > 0 &&
 			readySessionCount === committedSessions.length;
@@ -1713,6 +1837,7 @@ export const claimIncompleteContentGenerationSessions = internalMutation({
 		const sessionIds = sessions
 			.filter(
 				(session) =>
+					session.planningStatus !== "provisional" &&
 					session.contentGenerationStatus !== undefined &&
 					session.contentGenerationStatus !== "ready",
 			)
@@ -1932,19 +2057,34 @@ export const syncSessionsToCalendar = mutation({
 			.take(50);
 
 		for (const session of sessions) {
-			await syncSessionDayEntry(ctx, plan, session);
+			if (session.planningStatus !== "provisional") {
+				await syncSessionDayEntry(ctx, plan, session);
+			}
 		}
 
 		return sessions.length;
 	},
 });
 
+const advanceOwnedRollingLearningPlan = (
+	ctx: MutationCtx,
+	plan: Doc<"learningPlans">,
+) =>
+	advanceRollingLearningPlan(ctx, plan, {
+		clearSession: clearSessionDayEntry,
+		syncSession: syncSessionDayEntry,
+	});
 export const startSession = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 	},
 	handler: async (ctx, args) => {
 		const { session, plan } = await getOwnedSessionAndPlan(ctx, args.sessionId);
+		if (session.planningStatus === "provisional") {
+			throwUserFacingError(
+				"Dieser Lernblock ist nur eine Vorschau und kann sich noch ändern.",
+			);
+		}
 		const status = getSessionExecutionStatus(session);
 		if (status !== "notStarted") {
 			throwUserFacingError("Dieser Lernblock wurde bereits gestartet.");
@@ -2001,11 +2141,13 @@ export const recordSessionOutcome = mutation({
 				completed: args.outcome === "completed",
 			},
 		);
+		const rollingUpdate = await advanceOwnedRollingLearningPlan(ctx, plan);
 
 		return {
 			...learningSessionEventPayload(plan, updatedSession ?? session),
 			outcome: args.outcome,
 			outcomeAt: now,
+			rollingUpdate,
 		};
 	},
 });
@@ -2074,9 +2216,20 @@ export const adjustMissedSession = mutation({
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
 				q.eq("learningPlanId", session.learningPlanId),
 			)
-			.order("desc")
-			.take(1);
-		const sortOrder = (sessions[0]?.sortOrder ?? -1) + 1;
+			.order("asc")
+			.take(50);
+		const provisional = plan.rollingPlanEnabled
+			? sessions.find((candidate) => candidate.planningStatus === "provisional")
+			: undefined;
+		const sortOrder = plan.rollingPlanEnabled
+			? session.sortOrder + 1
+			: (sessions.at(-1)?.sortOrder ?? -1) + 1;
+		if (provisional && provisional.sortOrder <= sortOrder) {
+			await ctx.db.patch("learningPlanSessions", provisional._id, {
+				sortOrder: sortOrder + 1,
+				updatedAt: Date.now(),
+			});
+		}
 		const now = Date.now();
 		const newSessionId = await ctx.db.insert("learningPlanSessions", {
 			ownerTokenIdentifier,
@@ -2091,6 +2244,17 @@ export const adjustMissedSession = mutation({
 			tasks: session.tasks.slice(0, 2),
 			expectedOutcome: session.expectedOutcome,
 			adjustedFromSessionId: session._id,
+			...(plan.rollingPlanEnabled
+				? {
+						contentGenerationStatus: "queued" as const,
+						planningStatus: "committed" as const,
+						targetTopicIds: session.targetTopicIds,
+						targetEvidenceDimension: session.targetEvidenceDimension,
+						selectionReason:
+							"Neu geplant: Du startest den verpassten Lernblock kleiner, bevor der nächste Schwerpunkt festgelegt wird.",
+						adaptationRevision: plan.adaptationRevision,
+					}
+				: {}),
 			sortOrder,
 			createdAt: now,
 			updatedAt: now,
@@ -2105,6 +2269,13 @@ export const adjustMissedSession = mutation({
 		const newSession = await ctx.db.get("learningPlanSessions", newSessionId);
 		if (newSession && plan.status === "accepted") {
 			await syncSessionDayEntry(ctx, plan, newSession);
+		}
+		if (plan.rollingPlanEnabled) {
+			await ctx.db.patch("learningPlans", plan._id, {
+				contentGenerationStage: "content",
+				contentGenerationStartedAt: now,
+				updatedAt: now,
+			});
 		}
 
 		return {
@@ -2135,6 +2306,9 @@ export const setSessionCompleted = mutation({
 			outcomeAt: args.completed ? now : undefined,
 			missedReason: undefined,
 		});
+		if (args.completed) {
+			await advanceOwnedRollingLearningPlan(ctx, plan);
+		}
 
 		return args.completed;
 	},
@@ -2187,6 +2361,7 @@ export const acceptPlan = mutation({
 			plan.contentGenerationStage &&
 			sessions.some(
 				(session) =>
+					session.planningStatus !== "provisional" &&
 					session.contentGenerationStatus !== undefined &&
 					session.contentGenerationStatus !== "ready",
 			)
@@ -2212,7 +2387,9 @@ export const acceptPlan = mutation({
 		}
 
 		for (const session of sessions) {
-			await syncSessionDayEntry(ctx, plan, session);
+			if (session.planningStatus !== "provisional") {
+				await syncSessionDayEntry(ctx, plan, session);
+			}
 		}
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {

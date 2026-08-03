@@ -1,6 +1,9 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { learningTopicValidator } from "./learningTopicMap";
+import {
+	learningEvidenceDimensionValidator,
+	learningTopicValidator,
+} from "./learningTopicMap";
 import { theoryContentValidator } from "./theoryContent";
 
 const planQuestionValidator = v.object({
@@ -98,6 +101,11 @@ const contentGenerationStageValidator = v.union(
 	v.literal("validating"),
 	v.literal("ready"),
 	v.literal("failed"),
+);
+
+const learningPlanSessionPlanningStatusValidator = v.union(
+	v.literal("committed"),
+	v.literal("provisional"),
 );
 
 const sessionContentItemKindValidator = v.union(
@@ -395,6 +403,8 @@ export default defineSchema({
 		topicReadiness: v.optional(v.array(topicReadinessValidator)),
 		insight: v.optional(planInsightValidator),
 		planningHint: v.optional(v.string()),
+		rollingPlanEnabled: v.optional(v.boolean()),
+		adaptationRevision: v.optional(v.number()),
 		contentGenerationStage: v.optional(contentGenerationStageValidator),
 		contentGenerationId: v.optional(v.string()),
 		contentGenerationStartedAt: v.optional(v.number()),
@@ -437,6 +447,7 @@ export default defineSchema({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
 		sessionId: v.optional(v.id("learningPlanSessions")),
+		reservationId: v.optional(v.string()),
 		operation: v.union(
 			v.literal("diagnostic"),
 			v.literal("plan"),
@@ -449,13 +460,53 @@ export default defineSchema({
 		cachedInputTokens: v.number(),
 		outputTokens: v.number(),
 		estimatedCostUsdMicros: v.number(),
+		budgetCostUsdMicros: v.optional(v.number()),
+		accountingKind: v.optional(
+			v.union(v.literal("measured"), v.literal("projected_failure")),
+		),
 		createdAt: v.number(),
 	})
 		.index("by_learningPlanId", ["learningPlanId"])
+		.index("by_ownerTokenIdentifier_and_reservationId", [
+			"ownerTokenIdentifier",
+			"reservationId",
+		])
 		.index("by_ownerTokenIdentifier_and_createdAt", [
 			"ownerTokenIdentifier",
 			"createdAt",
 		]),
+	learningPlanAiBudgetReservations: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		sessionId: v.optional(v.id("learningPlanSessions")),
+		reservationId: v.string(),
+		operation: v.union(
+			v.literal("diagnostic"),
+			v.literal("plan"),
+			v.literal("session_theory"),
+			v.literal("session_practice"),
+			v.literal("session_praxis"),
+		),
+		modelId: v.string(),
+		projectedCostUsdMicros: v.number(),
+		status: v.union(
+			v.literal("active"),
+			v.literal("settled"),
+			v.literal("forfeited"),
+		),
+		monthStart: v.number(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_ownerTokenIdentifier_and_reservationId", [
+			"ownerTokenIdentifier",
+			"reservationId",
+		])
+		.index("by_ownerTokenIdentifier_and_monthStart", [
+			"ownerTokenIdentifier",
+			"monthStart",
+		])
+		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"]),
 	learningPlanSessions: defineTable({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
@@ -484,6 +535,11 @@ export default defineSchema({
 		),
 		missedReason: v.optional(missedReasonValidator),
 		adjustedFromSessionId: v.optional(v.id("learningPlanSessions")),
+		planningStatus: v.optional(learningPlanSessionPlanningStatusValidator),
+		targetTopicIds: v.optional(v.array(v.string())),
+		targetEvidenceDimension: v.optional(learningEvidenceDimensionValidator),
+		selectionReason: v.optional(v.string()),
+		adaptationRevision: v.optional(v.number()),
 		sortOrder: v.number(),
 		dayEntryId: v.optional(v.id("dayEntries")),
 		createdAt: v.number(),

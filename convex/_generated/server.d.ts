@@ -27,6 +27,11 @@ import type { DataModel } from "./dataModel.js";
 type Env = {
   readonly REVENUECAT_SECRET_API_KEY: string | undefined;
   readonly REVENUECAT_WEBHOOK_AUTHORIZATION: string | undefined;
+  readonly LEARNING_PLAN_AI_MONTHLY_HARD_USD_MICROS: string | undefined;
+  readonly LEARNING_PLAN_AI_MONTHLY_ECONOMY_USD_MICROS: string | undefined;
+  readonly LEARNING_PLAN_AI_MONTHLY_SPECULATION_USD_MICROS: string | undefined;
+  readonly LEARNING_PLAN_AI_PLAN_TARGET_USD_MICROS: string | undefined;
+  readonly LEARNING_PLAN_AI_PLAN_HARD_USD_MICROS: string | undefined;
 };
 
 /**
