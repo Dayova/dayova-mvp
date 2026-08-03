@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
+import type { LearningEvidenceDimension } from "./learningContentPlan";
 
 const analyticsPeriodValidator = v.union(
 	v.literal("week"),
@@ -76,8 +77,27 @@ const examPlanOptionValidator = v.object({
 const examTopicStatusValidator = v.union(
 	v.literal("secure"),
 	v.literal("developing"),
+	v.literal("uncertain"),
 	v.literal("unknown"),
 );
+
+const examEvidenceDimensionValidator = v.union(
+	v.literal("understanding"),
+	v.literal("problemSolving"),
+	v.literal("independent"),
+);
+
+const topicEvidenceDimensionValidator = v.object({
+	kind: examEvidenceDimensionValidator,
+	required: v.boolean(),
+	status: examTopicStatusValidator,
+	evidenceCount: v.number(),
+});
+
+const topicEvidenceStatementValidator = v.object({
+	statement: v.string(),
+	evidenceCount: v.number(),
+});
 
 const examDiagnosisTypeValidator = v.union(
 	v.literal("knowledgeGap"),
@@ -116,6 +136,7 @@ const examAnalysisValidator = v.object({
 	readiness: v.object({
 		secure: v.number(),
 		developing: v.number(),
+		uncertain: v.number(),
 		unknown: v.number(),
 	}),
 	abilities: v.array(
@@ -147,6 +168,12 @@ const examAnalysisValidator = v.object({
 				v.literal("low"),
 			),
 			status: examTopicStatusValidator,
+			summary: v.string(),
+			evidenceCount: v.number(),
+			dimensions: v.array(topicEvidenceDimensionValidator),
+			strengths: v.array(topicEvidenceStatementValidator),
+			weaknesses: v.array(topicEvidenceStatementValidator),
+			controlCheckReason: v.union(v.string(), v.null()),
 		}),
 	),
 	recommendation: v.union(
@@ -368,7 +395,119 @@ const getExactIssue = (
 	return null;
 };
 
+type TopicEvidenceStatus = "secure" | "developing" | "uncertain" | "unknown";
+type InitialTopicEvidenceStatus = Exclude<TopicEvidenceStatus, "uncertain">;
+
+const evidenceDimensions: LearningEvidenceDimension[] = [
+	"understanding",
+	"problemSolving",
+	"independent",
+];
+
+const evidenceDimensionRank: Record<LearningEvidenceDimension, number> = {
+	understanding: 0,
+	problemSolving: 1,
+	independent: 2,
+};
+
+const getItemEvidenceDimension = (
+	item: Doc<"learningSessionContentItems">,
+): LearningEvidenceDimension => {
+	if (item.phase === "rehearsal" || item.questionAngle === "examTransfer") {
+		return "independent";
+	}
+	if (["recall", "recognize"].includes(item.questionAngle ?? "")) {
+		return "understanding";
+	}
+	if (
+		["apply", "findError", "compare"].includes(item.questionAngle ?? "") ||
+		item.phase === "practice"
+	) {
+		return "problemSolving";
+	}
+	return "understanding";
+};
+
+const attemptSupportsDimension = (
+	item: Doc<"learningSessionContentItems">,
+	dimension: LearningEvidenceDimension,
+) =>
+	evidenceDimensionRank[getItemEvidenceDimension(item)] >=
+	evidenceDimensionRank[dimension];
+
+const deriveDimensionEvidence = ({
+	dimension,
+	initialStatus,
+	itemById,
+	required,
+	reviewed,
+	topicAttempts,
+}: {
+	dimension: LearningEvidenceDimension;
+	initialStatus: InitialTopicEvidenceStatus;
+	itemById: Map<
+		Id<"learningSessionContentItems">,
+		Doc<"learningSessionContentItems">
+	>;
+	required: boolean;
+	reviewed: boolean;
+	topicAttempts: Doc<"learningSessionAnswerAttempts">[];
+}) => {
+	const relevantAttempts = topicAttempts
+		.filter((attempt) => {
+			const item = itemById.get(attempt.itemId);
+			return Boolean(item && attemptSupportsDimension(item, dimension));
+		})
+		.sort((left, right) => right.createdAt - left.createdAt);
+	const initialEvidenceCount =
+		dimension === "understanding" && initialStatus !== "unknown" ? 1 : 0;
+	const correctOccasions = new Set(
+		relevantAttempts
+			.filter((attempt) => attempt.rating === "correct")
+			.map((attempt) => attempt.sessionId),
+	).size;
+	const latestAttempt = relevantAttempts[0];
+	const priorCorrectOccasions = new Set(
+		relevantAttempts
+			.slice(1)
+			.filter((attempt) => attempt.rating === "correct")
+			.map((attempt) => attempt.sessionId),
+	).size;
+	const evidenceCount = relevantAttempts.length + initialEvidenceCount;
+	const needsControlCheck =
+		required &&
+		Boolean(latestAttempt && latestAttempt.rating !== "correct") &&
+		priorCorrectOccasions + initialEvidenceCount >= 2;
+	const latestShowsDifficulty = Boolean(
+		latestAttempt && latestAttempt.rating !== "correct",
+	);
+	const status: TopicEvidenceStatus = !required
+		? "unknown"
+		: latestAttempt?.rating === "correct" &&
+				correctOccasions + initialEvidenceCount >= 2
+			? "secure"
+			: latestShowsDifficulty && !needsControlCheck
+				? "uncertain"
+				: evidenceCount > 0 || (dimension === "understanding" && reviewed)
+					? "developing"
+					: "unknown";
+
+	return {
+		kind: dimension,
+		required,
+		status,
+		evidenceCount,
+		needsControlCheck,
+	};
+};
+
 const topicPriorityRank = { high: 0, medium: 1, low: 2 } as const;
+const topicStatusRiskRank: Record<TopicEvidenceStatus, number> = {
+	uncertain: 0,
+	developing: 1,
+	unknown: 2,
+	secure: 3,
+};
 
 export const getOverview = query({
 	args: {
@@ -710,7 +849,7 @@ export const getExamAnalysis = query({
 				preliminary: true,
 				plans: planOptions,
 				selectedPlan: null,
-				readiness: { secure: 0, developing: 0, unknown: 0 },
+				readiness: { secure: 0, developing: 0, uncertain: 0, unknown: 0 },
 				abilities: [],
 				improvements: [],
 				latestKnowledgeChange: null,
@@ -824,59 +963,62 @@ export const getExamAnalysis = query({
 				)
 				.flatMap((item) => (item.topicId ? [item.topicId] : [])),
 		);
-		const topics = sourceTopics.map((topic) => {
+		const topicEvidenceProfiles = sourceTopics.map((topic) => {
 			const topicAttempts = latestAttempts.filter((attempt) => {
 				const item = itemById.get(attempt.itemId);
 				return item?.topicId === topic.id && item.kind !== "learnCard";
 			});
-			const initialStatus = initialReadiness.get(topic.id) ?? "unknown";
-			let status: "secure" | "developing" | "unknown" =
-				initialStatus === "unknown" ? "unknown" : "developing";
-			if (topicAttempts.length > 0) {
-				const hasApplicationEvidence = topicAttempts.some((attempt) => {
-					const item = itemById.get(attempt.itemId);
-					return (
-						attempt.rating === "correct" &&
-						(item?.phase === "rehearsal" ||
-							["apply", "findError", "compare", "examTransfer"].includes(
-								item?.questionAngle ?? "",
-							))
-					);
-				});
-				const correctOccasions = new Set(
-					topicAttempts
-						.filter((attempt) => attempt.rating === "correct")
-						.map((attempt) => attempt.sessionId),
-				).size;
-				const latestAttempt = topicAttempts
-					.slice()
-					.sort((left, right) => right.createdAt - left.createdAt)[0];
-				const evidenceOccasions =
-					correctOccasions + (initialStatus === "secure" ? 1 : 0);
-				status =
-					latestAttempt?.rating === "correct" &&
-					evidenceOccasions >= 2 &&
-					hasApplicationEvidence
-						? "secure"
+			const initialStatus = (initialReadiness.get(topic.id) ??
+				"unknown") as InitialTopicEvidenceStatus;
+			const requiredDimensions = new Set(
+				topic.requiredEvidenceDimensions?.length
+					? topic.requiredEvidenceDimensions
+					: evidenceDimensions,
+			);
+			const dimensions = evidenceDimensions.map((dimension) =>
+				deriveDimensionEvidence({
+					dimension,
+					initialStatus,
+					itemById,
+					required: requiredDimensions.has(dimension),
+					reviewed: reviewedTopicIds.has(topic.id),
+					topicAttempts,
+				}),
+			);
+			const requiredEvidence = dimensions.filter(
+				(dimension) => dimension.required,
+			);
+			const status: TopicEvidenceStatus = requiredEvidence.every(
+				(dimension) => dimension.status === "secure",
+			)
+				? "secure"
+				: requiredEvidence.every((dimension) => dimension.status === "unknown")
+					? "unknown"
+					: requiredEvidence.some(
+								(dimension) => dimension.status === "uncertain",
+							)
+						? "uncertain"
 						: "developing";
-			} else if (reviewedTopicIds.has(topic.id)) {
-				status = "developing";
-			}
+			const controlDimension = dimensions.find(
+				(dimension) => dimension.needsControlCheck,
+			);
+			const controlCheckReason = controlDimension
+				? controlDimension.kind === "understanding"
+					? "Eine neue Antwort widerspricht früheren Belegen zum Verständnis."
+					: controlDimension.kind === "problemSolving"
+						? "Ein neuer Fehler widerspricht früheren Belegen beim Problemlösen."
+						: "Eine neue Prüfungsaufgabe widerspricht früheren sicheren Lösungen."
+				: null;
 			return {
-				id: topic.id,
-				title: topic.title,
-				learningGoal: topic.learningGoal,
-				priority: topic.priority,
+				...topic,
 				status,
+				dimensions,
+				evidenceCount:
+					topicAttempts.length + (initialStatus !== "unknown" ? 1 : 0),
+				controlCheckReason,
+				topicAttempts,
 			};
 		});
-		const readiness = topics.reduce(
-			(counts, topic) => {
-				counts[topic.status] += 1;
-				return counts;
-			},
-			{ secure: 0, developing: 0, unknown: 0 },
-		);
 
 		const strengthStatements = uniqueRecentStrings(
 			analyses.flatMap((analysis) => analysis.strengths),
@@ -901,7 +1043,7 @@ export const getExamAnalysis = query({
 					)
 					.map((analysis) => analysis.sessionId),
 			);
-			const evidenceCount = latestAttempts.filter((attempt) => {
+			const matchingAttempts = latestAttempts.filter((attempt) => {
 				const item = itemById.get(attempt.itemId);
 				return (
 					matchingSessionIds.has(attempt.sessionId) &&
@@ -910,11 +1052,20 @@ export const getExamAnalysis = query({
 					(item?.kind === "written" || item?.kind === "voice") &&
 					Boolean(getAttemptExcerpt(attempt, item))
 				);
-			}).length;
+			});
+			const matchingTopicIds = new Set(
+				matchingAttempts.flatMap((attempt) => {
+					const topicId = itemById.get(attempt.itemId)?.topicId;
+					return topicId ? [topicId] : [];
+				}),
+			);
 			return {
 				statement,
-				evidenceCount: Math.max(1, evidenceCount),
-				topicId: null,
+				evidenceCount: Math.max(1, matchingAttempts.length),
+				topicId:
+					matchingTopicIds.size === 1
+						? ([...matchingTopicIds][0] ?? null)
+						: null,
 			};
 		});
 
@@ -1033,6 +1184,118 @@ export const getExamAnalysis = query({
 		const publicProblems = uniqueProblemCandidates.map(
 			({ priorityRank: _priorityRank, observedAt: _observedAt, ...problem }) =>
 				problem,
+		);
+		const observedDifficultyCopy: Record<LearningEvidenceDimension, string> = {
+			understanding:
+				"Bei einer Verständnisfrage war deine letzte Antwort noch nicht vollständig richtig.",
+			problemSolving:
+				"Beim Problemlösen war deine letzte Antwort noch nicht vollständig richtig.",
+			independent:
+				"Beim selbstständigen Lösen war deine letzte Antwort noch nicht vollständig richtig.",
+		};
+		const topics = topicEvidenceProfiles
+			.map((topic) => {
+				const topicProblems = publicProblems.filter(
+					(problem) => problem.topicId === topic.id,
+				);
+				const mappedStrengths = abilities
+					.filter((ability) => ability.topicId === topic.id)
+					.map(({ statement, evidenceCount }) => ({
+						statement,
+						evidenceCount,
+					}));
+				const fallbackStrengths = topic.topicAttempts
+					.filter((attempt) => attempt.rating === "correct")
+					.sort((left, right) => right.createdAt - left.createdAt)
+					.flatMap((attempt) => {
+						const item = itemById.get(attempt.itemId);
+						return item
+							? [
+									{
+										statement: `„${item.title}“ richtig gelöst.`,
+										evidenceCount: 1,
+									},
+								]
+							: [];
+					})
+					.filter(
+						(strength, index, values) =>
+							values.findIndex(
+								(candidate) => candidate.statement === strength.statement,
+							) === index,
+					);
+				const strengths = (
+					mappedStrengths.length > 0
+						? mappedStrengths
+						: topic.status === "secure"
+							? [
+									{
+										statement: topic.learningGoal,
+										evidenceCount: topic.evidenceCount,
+									},
+								]
+							: fallbackStrengths
+				).slice(0, 2);
+				const firstOpenDimension = topic.dimensions.find(
+					(dimension) => dimension.required && dimension.status !== "secure",
+				);
+				const weaknesses =
+					topicProblems.length > 0
+						? topicProblems.slice(0, 2).map((problem) => ({
+								statement: problem.observation,
+								evidenceCount: problem.evidenceCount,
+							}))
+						: topic.status === "uncertain" && firstOpenDimension
+							? [
+									{
+										statement: observedDifficultyCopy[firstOpenDimension.kind],
+										evidenceCount: firstOpenDimension.evidenceCount,
+									},
+								]
+							: [];
+				const summary = topic.controlCheckReason
+					? "Kontrollbeleg nötig"
+					: (weaknesses[0]?.statement ??
+						(topic.status === "secure"
+							? "Alle erforderlichen Wissensbelege vorhanden."
+							: topic.status === "developing"
+								? "Erste Belege vorhanden, aber noch nicht stabil."
+								: "Noch keine überprüften Antworten."));
+
+				return {
+					id: topic.id,
+					title: topic.title,
+					learningGoal: topic.learningGoal,
+					priority: topic.priority,
+					status: topic.status,
+					summary,
+					evidenceCount: topic.evidenceCount,
+					dimensions: topic.dimensions.map(
+						({ needsControlCheck: _needsControlCheck, ...dimension }) =>
+							dimension,
+					),
+					strengths,
+					weaknesses,
+					controlCheckReason: topic.controlCheckReason,
+				};
+			})
+			.sort((left, right) => {
+				const leftRisk =
+					topicPriorityRank[left.priority] * 10 +
+					topicStatusRiskRank[left.status];
+				const rightRisk =
+					topicPriorityRank[right.priority] * 10 +
+					topicStatusRiskRank[right.status];
+				return (
+					leftRisk - rightRisk || left.title.localeCompare(right.title, "de")
+				);
+			});
+		const readiness = topics.reduce(
+			(counts, topic) => {
+				counts[topic.status] += 1;
+				return counts;
+			},
+			{ secure: 0, developing: 0, uncertain: 0, unknown: 0 },
 		);
 		const primaryProblem = publicProblems[0] ?? null;
 		const secondaryProblems = publicProblems.slice(1, 3);

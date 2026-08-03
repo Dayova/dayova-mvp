@@ -203,6 +203,8 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 			.first();
 		if (!recoveryItem) throw new Error("Expected seeded content item");
 		await ctx.db.patch("learningSessionContentItems", recoveryItem._id, {
+			phase: "practice",
+			questionAngle: "recall",
 			topicId: "steigung",
 		});
 		const sessionAnalysis = await ctx.db
@@ -237,13 +239,15 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 		},
 		readiness: {
 			secure: 0,
-			developing: 2,
+			developing: 1,
+			uncertain: 1,
 			unknown: 0,
 		},
 		abilities: [
 			{
 				statement: "Du erkennst lineare Zusammenhänge.",
 				evidenceCount: 1,
+				topicId: "steigung",
 			},
 		],
 		primaryProblem: {
@@ -281,8 +285,45 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 	expect(analysis.topics).toEqual([
 		expect.objectContaining({
 			id: "steigung",
-			status: "developing",
+			status: "uncertain",
 			priority: "high",
+			summary:
+				"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
+			evidenceCount: 2,
+			dimensions: [
+				{
+					kind: "understanding",
+					required: true,
+					status: "uncertain",
+					evidenceCount: 2,
+				},
+				{
+					kind: "problemSolving",
+					required: true,
+					status: "unknown",
+					evidenceCount: 0,
+				},
+				{
+					kind: "independent",
+					required: true,
+					status: "unknown",
+					evidenceCount: 0,
+				},
+			],
+			strengths: [
+				{
+					statement: "Du erkennst lineare Zusammenhänge.",
+					evidenceCount: 1,
+				},
+			],
+			weaknesses: [
+				{
+					statement:
+						"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
+					evidenceCount: 1,
+				},
+			],
+			controlCheckReason: null,
 		}),
 		expect.objectContaining({
 			id: "achsenschnitt",
@@ -296,6 +337,87 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 		}),
 	).resolves.toMatchObject({
 		selectedPlan: { id: learningPlanId },
+	});
+});
+
+test("requests a control check when new evidence contradicts repeated success", async () => {
+	const { t, learningPlanId, firstSessionId, openSessionId } =
+		await seedAnalyticsData();
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			topicMap: [
+				{
+					id: "steigung",
+					title: "Steigung erklären",
+					learningGoal: "Du kannst die Steigung vollständig erklären.",
+					keywords: ["Steigung", "Änderung"],
+					priority: "high",
+					requiredEvidenceDimensions: [
+						"understanding",
+						"problemSolving",
+						"independent",
+					],
+				},
+			],
+			topicReadiness: [{ topicId: "steigung", status: "developing" }],
+		});
+		const existingItem = await ctx.db
+			.query("learningSessionContentItems")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
+			)
+			.first();
+		if (!existingItem) throw new Error("Expected seeded content item");
+		await ctx.db.patch("learningSessionContentItems", existingItem._id, {
+			topicId: "steigung",
+		});
+
+		for (const [index, sessionId] of [
+			firstSessionId,
+			openSessionId,
+		].entries()) {
+			const itemId = await ctx.db.insert("learningSessionContentItems", {
+				ownerTokenIdentifier: identity.tokenIdentifier,
+				learningPlanId,
+				sessionId,
+				phase: "practice",
+				kind: "written",
+				title: `Transfer ${index + 1}`,
+				prompt: "Bestimme die Steigung in einer neuen Aufgabe.",
+				explanation: "Die Steigung wird aus zwei Punkten bestimmt.",
+				idealAnswer: "Die Steigung ist 2.",
+				evaluationKeywords: ["2"],
+				topicId: "steigung",
+				questionAngle: "examTransfer",
+				sortOrder: index,
+				createdAt: Date.UTC(2026, 6, 28, 10 + index),
+				updatedAt: Date.UTC(2026, 6, 28, 10 + index),
+			});
+			await ctx.db.insert("learningSessionAnswerAttempts", {
+				ownerTokenIdentifier: identity.tokenIdentifier,
+				learningPlanId,
+				sessionId,
+				itemId,
+				answerText: "Die Steigung ist 2.",
+				rating: "correct",
+				feedback: "Richtig.",
+				perfectAnswer: "Die Steigung ist 2.",
+				createdAt: Date.UTC(2026, 6, 28, 10 + index, 30),
+			});
+		}
+	});
+
+	const analysis = await t.query(api.userAnalytics.getExamAnalysis, {
+		learningPlanId,
+		todayKey: "2026-07-28",
+	});
+
+	expect(analysis.topics[0]).toMatchObject({
+		id: "steigung",
+		status: "developing",
+		summary: "Kontrollbeleg nötig",
+		controlCheckReason:
+			"Eine neue Antwort widerspricht früheren Belegen zum Verständnis.",
 	});
 });
 

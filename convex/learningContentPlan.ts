@@ -2,12 +2,18 @@ export type LearningContentPhase = "theory" | "practice" | "rehearsal";
 
 export type LearningTopicPriority = "high" | "medium" | "low";
 
+export type LearningEvidenceDimension =
+	| "understanding"
+	| "problemSolving"
+	| "independent";
+
 export type LearningTopic = {
 	id: string;
 	title: string;
 	learningGoal: string;
 	keywords: string[];
 	priority: LearningTopicPriority;
+	requiredEvidenceDimensions?: LearningEvidenceDimension[];
 };
 
 export type LearningQuestionAngle =

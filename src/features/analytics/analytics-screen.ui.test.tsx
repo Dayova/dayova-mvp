@@ -129,8 +129,10 @@ jest.mock("~/components/ui/select-sheet", () => {
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: {
+			border: "#DCE6EE",
 			primaryStrong: "#00A0E6",
 			secondaryText: "#697586",
+			success: "#34C759",
 			text: "#151D30",
 			theorie: "#5856D6",
 			wrong: "#FF9500",
@@ -146,6 +148,7 @@ const emptyAnalysis = {
 	readiness: {
 		secure: 0,
 		developing: 0,
+		uncertain: 0,
 		unknown: 0,
 	},
 	abilities: [],
@@ -194,7 +197,8 @@ const examAnalysis = {
 	},
 	readiness: {
 		secure: 1,
-		developing: 1,
+		developing: 0,
+		uncertain: 1,
 		unknown: 0,
 	},
 	abilities: [
@@ -232,7 +236,42 @@ const examAnalysis = {
 			title: "Steigung erklären",
 			learningGoal: "Du kannst die Steigung vollständig erklären.",
 			priority: "high",
-			status: "developing",
+			status: "uncertain",
+			summary: "Steigung noch präziser erklären.",
+			evidenceCount: 2,
+			dimensions: [
+				{
+					kind: "understanding",
+					required: true,
+					status: "secure",
+					evidenceCount: 2,
+				},
+				{
+					kind: "problemSolving",
+					required: true,
+					status: "uncertain",
+					evidenceCount: 1,
+				},
+				{
+					kind: "independent",
+					required: true,
+					status: "unknown",
+					evidenceCount: 0,
+				},
+			],
+			strengths: [
+				{
+					statement: "Du erkennst lineare Zusammenhänge.",
+					evidenceCount: 2,
+				},
+			],
+			weaknesses: [
+				{
+					statement: "Steigung noch präziser erklären.",
+					evidenceCount: 1,
+				},
+			],
+			controlCheckReason: null,
 		},
 		{
 			id: "achsenschnitt",
@@ -240,6 +279,36 @@ const examAnalysis = {
 			learningGoal: "Du kannst Achsenschnittpunkte sicher bestimmen.",
 			priority: "medium",
 			status: "secure",
+			summary: "Alle erforderlichen Wissensbelege vorhanden.",
+			evidenceCount: 3,
+			dimensions: [
+				{
+					kind: "understanding",
+					required: true,
+					status: "secure",
+					evidenceCount: 3,
+				},
+				{
+					kind: "problemSolving",
+					required: true,
+					status: "secure",
+					evidenceCount: 2,
+				},
+				{
+					kind: "independent",
+					required: true,
+					status: "secure",
+					evidenceCount: 2,
+				},
+			],
+			strengths: [
+				{
+					statement: "Du bestimmst Achsenschnittpunkte sicher.",
+					evidenceCount: 3,
+				},
+			],
+			weaknesses: [],
+			controlCheckReason: null,
 		},
 	],
 	recommendation: {
@@ -320,24 +389,38 @@ describe("AnalyticsScreen", () => {
 		expect(mockPush).toHaveBeenCalledWith("/learning-plans/new");
 	});
 
-	test("leads with current knowledge and keeps the next step compact", async () => {
+	test("shows every topic and opens its exact knowledge evidence", async () => {
 		mockUseQuery.mockReturnValue(examAnalysis);
 		const screen = await render(<AnalyticsScreen />);
 
-		expect(
-			screen.getByText("Schon belegt: Du erkennst lineare Zusammenhänge."),
-		).toBeOnTheScreen();
+		expect(screen.getByText("1/2")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 2 sicher belegt")).toBeOnTheScreen();
+		expect(screen.getByText("1 unsicher")).toBeOnTheScreen();
+		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
+		expect(screen.getByText("Steigung erklären")).toBeOnTheScreen();
+		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
 		expect(
 			screen.getByText("Steigung noch präziser erklären."),
 		).toBeOnTheScreen();
 		expect(screen.queryByText("„Änderung von y.“")).not.toBeOnTheScreen();
+		expect(
+			screen.queryByText("Schon belegt: Du erkennst lineare Zusammenhänge."),
+		).not.toBeOnTheScreen();
+		expect(
+			screen.queryByText("Du kannst 1 von 2 Prüfungsthemen sicher anwenden."),
+		).not.toBeOnTheScreen();
+		expect(
+			screen.queryByText(
+				"Seit deinem letzten Check: Steigung gelingt dir jetzt sicherer.",
+			),
+		).not.toBeOnTheScreen();
 		expect(screen.getByText("Dein nächster Schritt")).toBeOnTheScreen();
 		expect(screen.getByText("Dein Wissensstand")).toBeOnTheScreen();
-		expect(screen.getByText("Größte Lernhürde")).toBeOnTheScreen();
-		expect(
-			screen.getByText("Du kannst 1 von 2 Prüfungsthemen sicher anwenden."),
-		).toBeOnTheScreen();
+		expect(screen.queryByText("Größte Lernhürde")).not.toBeOnTheScreen();
 		expect(screen.queryByText("Dein Prüfungsstoff")).not.toBeOnTheScreen();
+		expect(
+			screen.queryByText("Deine Entwicklung über mehrere Prüfungen"),
+		).not.toBeOnTheScreen();
 
 		await fireEvent.press(
 			screen.getByRole("button", {
@@ -351,28 +434,103 @@ describe("AnalyticsScreen", () => {
 
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Lernhürde: Steigung noch präziser erklären. Details öffnen",
-			}),
-		);
-		expect(mockPush).toHaveBeenCalledWith({
-			pathname: "/analyse/lernhuerde",
-			params: { planId: "plan_1" },
-		});
-
-		await fireEvent.press(
-			screen.getByRole("button", {
-				name: "Wissensstand: 1 sicher, 1 in Arbeit, 0 noch unklar. Details öffnen",
+				name: "Steigung erklären. Unsicher. Steigung noch präziser erklären.",
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith({
 			pathname: "/analyse/wissensstand",
-			params: { planId: "plan_1" },
+			params: { planId: "plan_1", topicId: "steigung" },
 		});
+	});
+
+	test("shows zero of five secure topics without explanatory overview copy", async () => {
+		mockUseQuery.mockReturnValue({
+			...examAnalysis,
+			readiness: {
+				secure: 0,
+				developing: 5,
+				uncertain: 0,
+				unknown: 0,
+			},
+		});
+		const screen = await render(<AnalyticsScreen />);
+
+		expect(screen.getByText("0/5")).toBeOnTheScreen();
+		expect(screen.getByText("0 von 5 sicher belegt")).toBeOnTheScreen();
+		expect(screen.getByText("5 im Aufbau")).toBeOnTheScreen();
+		expect(
+			screen.queryByText(
+				"Du arbeitest an allen 5 Prüfungsthemen, aber noch keines ist sicher belegt.",
+			),
+		).not.toBeOnTheScreen();
+	});
+
+	test("does not present zero evaluated topics as zero progress", async () => {
+		mockUseQuery.mockReturnValue({
+			...examAnalysis,
+			readiness: {
+				secure: 0,
+				developing: 0,
+				uncertain: 0,
+				unknown: 2,
+			},
+			topics: examAnalysis.topics.map((topic) => ({
+				...topic,
+				status: "unknown",
+				summary: "Noch keine überprüften Antworten.",
+				evidenceCount: 0,
+				dimensions: topic.dimensions.map((dimension) => ({
+					...dimension,
+					status: "unknown",
+					evidenceCount: 0,
+				})),
+				strengths: [],
+				weaknesses: [],
+				controlCheckReason: null,
+			})),
+		});
+		const screen = await render(<AnalyticsScreen />);
+
+		expect(screen.getByText("–")).toBeOnTheScreen();
+		expect(screen.getByText("Noch keine Wissensbelege")).toBeOnTheScreen();
+		expect(screen.queryByText("0/2")).not.toBeOnTheScreen();
 	});
 
 	test("reveals evidence and starts the recommendation from focused pages", async () => {
 		mockUseQuery.mockReturnValue(examAnalysis);
 		const planId = "plan_1" as Id<"learningPlans">;
+		const knowledgeScreen = await render(
+			<AnalyticsDetailScreen
+				planId={planId}
+				section="knowledge"
+				topicId="steigung"
+			/>,
+		);
+
+		expect(knowledgeScreen.getByText("Dein Wissensprofil")).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("Verstehen")).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("Probleme lösen")).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("Selbstständig lösen")).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText("Warum du hier unsicher bist"),
+		).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText("In einer Antwort beobachtet"),
+		).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText("Du erkennst lineare Zusammenhänge."),
+		).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getAllByText("Steigung noch präziser erklären."),
+		).not.toHaveLength(0);
+		expect(
+			knowledgeScreen.queryByText("Alle Prüfungsthemen"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Achsenschnittpunkte bestimmen"),
+		).not.toBeOnTheScreen();
+
+		await knowledgeScreen.unmount();
 		const problemScreen = await render(
 			<AnalyticsDetailScreen planId={planId} section="problem" />,
 		);

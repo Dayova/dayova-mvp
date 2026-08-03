@@ -270,6 +270,13 @@ const questionsSchema = z
 					8,
 				),
 				priority: z.enum(["high", "medium", "low"]),
+				requiredEvidenceDimensions: z
+					.array(z.enum(["understanding", "problemSolving", "independent"]))
+					.min(1)
+					.max(3)
+					.describe(
+						"Evidence dimensions actually required by the exam material for this topic: understanding for explaining concepts, problemSolving for selecting and applying a method, independent for completing exam-like tasks without hints.",
+					),
 			}),
 			MIN_TOPIC_MAP_COUNT,
 			MAX_LEARNING_TOPIC_COUNT,
@@ -521,6 +528,9 @@ type LearningPlanAiContext = {
 			learningGoal: string;
 			keywords: string[];
 			priority: "high" | "medium" | "low";
+			requiredEvidenceDimensions?: Array<
+				"understanding" | "problemSolving" | "independent"
+			>;
 		}>;
 		topicReadiness?: Array<{
 			topicId: string;
@@ -2806,6 +2816,7 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 						normalizeAiGeneratedGermanText(keyword),
 					),
 					priority: topic.priority,
+					requiredEvidenceDimensions: topic.requiredEvidenceDimensions,
 				})),
 				sourceSummary: normalizeAiGeneratedGermanText(
 					result.output.sourceSummary,
