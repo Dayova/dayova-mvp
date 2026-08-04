@@ -3,6 +3,7 @@ import { Check, Clock3 } from "~/components/ui/icon";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { MIN_ROLLING_HORIZON_MINUTES } from "./plan-workload";
 
 export function LearningAvailabilityStep({
 	availableStudyMinutes,
@@ -12,7 +13,8 @@ export function LearningAvailabilityStep({
 	examDateLabel: string;
 }) {
 	const hasUsableLearningTime =
-		availableStudyMinutes !== null && availableStudyMinutes >= 10;
+		availableStudyMinutes !== null &&
+		availableStudyMinutes >= MIN_ROLLING_HORIZON_MINUTES;
 
 	return (
 		<View className="flex-1 pt-2">
@@ -34,15 +36,15 @@ export function LearningAvailabilityStep({
 					{availableStudyMinutes === null
 						? "Wir prüfen deine Lernzeiten"
 						: hasUsableLearningTime
-							? "Lernzeit gefunden"
-							: "Ein Zeitfenster reicht für den Anfang"}
+							? "Lernzeit grundsätzlich vorhanden"
+							: "Noch nicht genug Lernzeit"}
 				</Text>
 				<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
 					{availableStudyMinutes === null
 						? "Das dauert nur einen Moment."
 						: hasUsableLearningTime
-							? `Dayova kann deinen Lernweg vor dem ${examDateLabel} in deine gespeicherten Zeiten einplanen.`
-							: `Lege mindestens ein Zeitfenster vor dem ${examDateLabel} fest. Dayova plant später nur innerhalb dieser Zeiten.`}
+							? `Du hast vor dem ${examDateLabel} genug Lernzeit vorgemerkt. Welche zwei Termine wirklich frei sind, prüft Dayova beim Erstellen.`
+							: `Lege vor dem ${examDateLabel} mindestens zwei kurze Lernblöcke fest. Deine Prüfung kannst du trotzdem ohne Lernplan speichern.`}
 				</Text>
 				{availableStudyMinutes !== null && !hasUsableLearningTime ? (
 					<Text className="mt-4 font-poppins text-body-4 text-secondary-text">

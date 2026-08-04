@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest";
 import {
 	getCommittedSessionIndex,
 	getDefaultLearningPlanSession,
+	getRollingLearningWindowLabel,
+	isDiagnosticLearningPlanSession,
 	isLearningPlanSessionHistory,
 } from "~/features/learning-plans/rolling-learning-window";
 import type { PlanSession } from "~/features/learning-plans/types";
@@ -53,5 +55,23 @@ describe("rolling learning window", () => {
 				session("missed", { executionStatus: "missed" }),
 			),
 		).toBe(true);
+	});
+
+	test("recognizes only explicitly marked diagnostic sessions", () => {
+		expect(
+			isDiagnosticLearningPlanSession(
+				session("diagnostic", { sessionPurpose: "diagnostic" }),
+			),
+		).toBe(true);
+		expect(isDiagnosticLearningPlanSession(session("legacy"))).toBe(false);
+	});
+
+	test("describes the rolling window without implying a fixed total", () => {
+		expect(
+			getRollingLearningWindowLabel({ completedCount: 0, upcomingCount: 2 }),
+		).toBe("0 abgeschlossen · 2 weitere Termine geplant");
+		expect(
+			getRollingLearningWindowLabel({ completedCount: 3, upcomingCount: 1 }),
+		).toBe("3 abgeschlossen · 1 weiterer Termin geplant");
 	});
 });

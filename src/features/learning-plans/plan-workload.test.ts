@@ -55,12 +55,19 @@ describe("total study workload suggestion", () => {
 		).toBe(170);
 	});
 
-	test("requests learning time only when a future exam has no usable window", () => {
+	test("requests enough learning time for the two-session rolling horizon", () => {
 		expect(
 			shouldRequestLearningTimeBeforeExam({
 				fromDateKey: "2026-06-01",
 				examDateKey: "2026-06-05",
 				learningTimes: [],
+			}),
+		).toBe(true);
+		expect(
+			shouldRequestLearningTimeBeforeExam({
+				fromDateKey: "2026-06-01",
+				examDateKey: "2026-06-05",
+				learningTimes: [{ dayOfWeek: 2, startTime: "17:00", endTime: "17:10" }],
 			}),
 		).toBe(true);
 		expect(

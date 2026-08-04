@@ -68,10 +68,9 @@ import { useLearningPlanCreationProgress } from "~/features/learning-plans/creat
 import { LearningAvailabilityStep } from "~/features/learning-plans/learning-availability-step";
 import {
 	calculateAvailableStudyMinutes,
-	shouldShowLearningTimeValidation,
+	MIN_ROLLING_HORIZON_MINUTES,
 } from "~/features/learning-plans/plan-workload";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { EXAM_TYPE_OPTIONS } from "~/lib/entry-options";
@@ -85,6 +84,7 @@ import {
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
 type EntryType = "homework" | "exam";
@@ -285,6 +285,8 @@ export default function NewEntryScreen() {
 		dayKey?: string;
 		dayLabel?: string;
 		step?: string;
+		subject?: string;
+		examTypeLabel?: string;
 	}>();
 	const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
 	const isHomework = entryType === "homework";
@@ -294,15 +296,16 @@ export default function NewEntryScreen() {
 	);
 	const [initialDate] = useState(() => parseDateKey(params.dayKey));
 
-	const [step, setStep] = useState<EntryStep>(() =>
-		!isHomework && params.step === "learningAvailability"
+	const [step, setStep] = useState<EntryStep>(() => {
+		if (isHomework) return "basics";
+		return params.step === "learningAvailability"
 			? "learningAvailability"
-			: "basics",
+			: "examType";
+	});
+	const [subject, setSubject] = useState(params.subject ?? "");
+	const [examTypeLabel, setExamTypeLabel] = useState(
+		params.examTypeLabel ?? "",
 	);
-	const [didShowLearningAvailability, setDidShowLearningAvailability] =
-		useState(() => !isHomework && params.step === "learningAvailability");
-	const [subject, setSubject] = useState("");
-	const [examTypeLabel, setExamTypeLabel] = useState("");
 	const [note, setNote] = useState("");
 	const [dueDate, setDueDate] = useState(initialDate);
 	const [plannedDate, setPlannedDate] = useState(initialDate);
@@ -344,7 +347,7 @@ export default function NewEntryScreen() {
 		isHomework ? undefined : EXAM_DURATION_OPTIONS,
 	);
 	const canCreateHomework = trimmedSubject.length > 0;
-	const canCreateExam = trimmedSubject.length > 0 && Boolean(selectedExamType);
+	const canCreateExam = trimmedSubject.length > 0 && trimmedExamType.length > 0;
 	const canWriteEntries = Boolean(user && isConvexAuthenticated);
 	const todayDayKey = getDayKey(new Date());
 	const examDayKey = getDayKey(plannedDate);
@@ -359,19 +362,18 @@ export default function NewEntryScreen() {
 					}),
 		[examDayKey, learningTimes, todayDayKey],
 	);
-	const isFutureExam = examDayKey > todayDayKey;
-	const isLearningTimeCheckLoading =
-		isFutureExam && learningTimes === undefined;
+	const isLearningTimeCheckLoading = learningTimes === undefined;
 	const hasUsableLearningTime =
-		availableStudyMinutes !== null && availableStudyMinutes >= 10;
+		availableStudyMinutes !== null &&
+		availableStudyMinutes >= MIN_ROLLING_HORIZON_MINUTES;
 	const examStepTitle =
-		step === "basics"
-			? "Wann findet die Prüfung statt?"
-			: step === "learningAvailability"
-				? "Wann kannst du dafür lernen?"
-				: step === "examType"
-					? "Welche Art von Prüfung ist es?"
-					: "Welches Fach ist es?";
+		step === "examType"
+			? "Welche Art von Prüfung ist es?"
+			: step === "examDetails"
+				? "Welches Fach ist es?"
+				: step === "basics"
+					? "Wann findet die Prüfung statt?"
+					: "Ist genug Lernzeit eingeplant?";
 	const clearPendingModalOpen = useCallback(() => {
 		keyboardHideSubscriptionRef.current?.remove();
 		keyboardHideSubscriptionRef.current = null;
@@ -490,7 +492,6 @@ export default function NewEntryScreen() {
 	} = {}) => {
 		if (isHomework && !canCreateHomework) return;
 		if (!isHomework && !canCreateExam) return;
-		if (!isHomework && !selectedExamType) return;
 		const resolvedDurationMinutes = scheduledDurationMinutes;
 		if (!canWriteEntries || isCreating) return;
 
@@ -507,6 +508,7 @@ export default function NewEntryScreen() {
 			createdEntryId = await createDayEntry({
 				dayKey: nextDayKey,
 				title: entryTitle,
+				subject: trimmedSubject,
 				kind: isHomework ? "Hausaufgabe" : "Leistungskontrolle",
 				...(trimmedNote ? { notes: trimmedNote } : {}),
 				...(isHomework
@@ -583,7 +585,14 @@ export default function NewEntryScreen() {
 		]
 			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
 			.join("&");
-		router.push(`${ROUTES.createLearningPlan}?${query}`);
+		router.replace(`${ROUTES.createLearningPlan}?${query}`);
+	};
+
+	const saveExamWithoutPlan = async () => {
+		const createdExam = await createEntry({ redirectToHome: false });
+		if (!createdExam?.createdEntryId) return;
+
+		router.replace(`/entry/${createdExam.createdEntryId}`);
 	};
 
 	const goToStep = useCallback((nextStep: EntryStep) => {
@@ -592,25 +601,21 @@ export default function NewEntryScreen() {
 	}, []);
 
 	const continueFromExamDate = () => {
-		if (learningTimes === undefined && isFutureExam) return;
-		if (
-			shouldShowLearningTimeValidation({
-				fromDateKey: todayDayKey,
-				examDateKey: examDayKey,
-			})
-		) {
-			setDidShowLearningAvailability(true);
-			goToStep("learningAvailability");
-			return;
-		}
-
-		goToStep("examType");
+		if (learningTimes === undefined) return;
+		goToStep("learningAvailability");
 	};
 
 	const openLearningTimes = () => {
-		const returnTo = `/entry/new?type=exam&dayKey=${encodeURIComponent(
-			examDayKey,
-		)}&step=learningAvailability`;
+		const query = [
+			["type", "exam"],
+			["dayKey", examDayKey],
+			["step", "learningAvailability"],
+			["subject", trimmedSubject],
+			["examTypeLabel", trimmedExamType],
+		]
+			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+			.join("&");
+		const returnTo = `/entry/new?${query}`;
 		router.push(withReturnTo(ROUTES.learningTimes, returnTo));
 	};
 
@@ -625,13 +630,18 @@ export default function NewEntryScreen() {
 			return true;
 		}
 
-		if (step === "planning" || step === "learningAvailability") {
+		if (step === "planning") {
 			goToStep("basics");
 			return true;
 		}
 
-		if (step === "examType") {
-			goToStep(didShowLearningAvailability ? "learningAvailability" : "basics");
+		if (step === "learningAvailability") {
+			goToStep("basics");
+			return true;
+		}
+
+		if (step === "basics" && !isHomework) {
+			goToStep("examDetails");
 			return true;
 		}
 
@@ -640,19 +650,17 @@ export default function NewEntryScreen() {
 			return true;
 		}
 
+		if (step === "examType") {
+			goBackOrReplace(router, "/home");
+			return true;
+		}
+
 		goBackOrReplace(router, "/home");
 		return true;
-	}, [
-		didShowLearningAvailability,
-		goToStep,
-		pickerTarget,
-		router,
-		selectTarget,
-		step,
-	]);
+	}, [goToStep, isHomework, pickerTarget, router, selectTarget, step]);
 
 	useBackIntent(
-		Boolean(selectTarget || pickerTarget || step !== "basics"),
+		Boolean(selectTarget || pickerTarget || !isHomework || step !== "basics"),
 		handleBack,
 	);
 	useLearningPlanCreationProgress({
@@ -950,7 +958,7 @@ export default function NewEntryScreen() {
 							<Text>Weiter</Text>
 						</Button>
 					</StickyActionFooter>
-				) : step === "examDetails" ? (
+				) : step === "learningAvailability" ? (
 					<StickyActionFooter bottomInset={insets.bottom}>
 						{errorMessage ? (
 							<Text
@@ -961,64 +969,75 @@ export default function NewEntryScreen() {
 								{errorMessage}
 							</Text>
 						) : null}
-						<View className="flex-row gap-3">
+						<View className="gap-3">
 							<Button
-								className="flex-1"
-								variant="neutral"
-								disabled={!canCreateExam || isCreating || !canWriteEntries}
-								onPress={() => {
-									void createEntry();
-								}}
-							>
-								<Text>Eintragen</Text>
-							</Button>
-							<Button
-								className="flex-1"
-								disabled={!canCreateExam || isCreating || !canWriteEntries}
-								onPress={() => {
-									void createLearningPlan();
-								}}
-							>
-								<Text>Lernplan</Text>
-							</Button>
-						</View>
-					</StickyActionFooter>
-				) : step === "learningAvailability" ? (
-					<StickyActionFooter bottomInset={insets.bottom}>
-						<Button
-							className="w-full"
-							disabled={availableStudyMinutes === null}
-							onPress={() => {
-								if (hasUsableLearningTime) {
-									goToStep("examType");
-									return;
+								className="w-full"
+								disabled={
+									availableStudyMinutes === null ||
+									isCreating ||
+									!canWriteEntries
 								}
-								openLearningTimes();
-							}}
-						>
-							{availableStudyMinutes === null ? (
-								<ActivityIndicator color="#FFFFFF" />
-							) : (
-								<Text>
-									{hasUsableLearningTime ? "Weiter" : "Lernzeit eintragen"}
-								</Text>
-							)}
-						</Button>
+								onPress={() => {
+									if (hasUsableLearningTime) {
+										void createLearningPlan();
+										return;
+									}
+									openLearningTimes();
+								}}
+							>
+								{availableStudyMinutes === null ? (
+									<ActivityIndicator color="#FFFFFF" />
+								) : (
+									<Text>
+										{hasUsableLearningTime ? "Weiter" : "Lernzeit eintragen"}
+									</Text>
+								)}
+							</Button>
+							{availableStudyMinutes !== null && !hasUsableLearningTime ? (
+								<Button
+									className="w-full"
+									variant="neutral"
+									disabled={isCreating || !canWriteEntries}
+									onPress={() => void saveExamWithoutPlan()}
+								>
+									<Text>Ohne Lernplan speichern</Text>
+								</Button>
+							) : null}
+						</View>
 					</StickyActionFooter>
 				) : (
 					<StickyActionFooter bottomInset={insets.bottom}>
+						{errorMessage ? (
+							<Text
+								accessibilityRole="alert"
+								accessibilityLiveRegion="polite"
+								className="mb-3 text-center font-poppins text-body-4 text-destructive"
+							>
+								{errorMessage}
+							</Text>
+						) : null}
 						<Button
 							className="w-full"
 							disabled={
 								(step === "examType" && !trimmedExamType) ||
-								(step === "basics" && isLearningTimeCheckLoading)
+								(step === "examDetails" && !trimmedSubject) ||
+								(step === "basics" &&
+									(isLearningTimeCheckLoading ||
+										isCreating ||
+										!canWriteEntries))
 							}
 							onPress={() => {
-								if (step === "basics") {
-									continueFromExamDate();
+								if (step === "examType") {
+									goToStep("examDetails");
 									return;
 								}
-								goToStep("examDetails");
+								if (step === "examDetails") {
+									goToStep("basics");
+									return;
+								}
+								if (step === "basics") {
+									continueFromExamDate();
+								}
 							}}
 						>
 							{step === "basics" && isLearningTimeCheckLoading ? (

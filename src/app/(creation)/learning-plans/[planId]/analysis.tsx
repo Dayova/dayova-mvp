@@ -42,14 +42,20 @@ export default function LearningPlanAnalysisScreen() {
 		void retryAttempt;
 		if (!planId || !snapshot) return;
 
-		if (snapshot.plan.status === "generated") {
+		if (
+			snapshot.plan.status === "generated" &&
+			snapshot.plan.diagnosticPlacement === "firstSession"
+		) {
 			router.replace(planPath(planId, "review"));
 			return;
 		}
-		if (snapshot.plan.knowledgeQuestions.length > 0) {
+		if (
+			snapshot.plan.diagnosticPlacement === "firstSession" &&
+			snapshot.plan.knowledgeQuestions.length > 0
+		) {
 			router.replace(
 				snapshot.plan.scopeConfirmedAt
-					? `/learning-plans/${planId}/quiz/0`
+					? planPath(planId, "generating")
 					: planPath(planId, "scope"),
 			);
 			return;
@@ -113,7 +119,8 @@ export default function LearningPlanAnalysisScreen() {
 					</Text>
 					<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
 						Dayova trennt wahrscheinlichen Prüfungsstoff von zusätzlichem
-						Material und bereitet danach kurze Einstiegsfragen vor.
+						Material und bereitet den Wissenscheck für deinen ersten Lerntermin
+						vor.
 					</Text>
 					{errorMessage ? (
 						<>

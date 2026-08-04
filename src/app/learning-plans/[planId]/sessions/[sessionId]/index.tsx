@@ -409,6 +409,7 @@ function FeedbackView({ attempt }: { attempt: SessionAnswerAttempt }) {
 
 function CompletionView({
 	phase,
+	isDiagnostic,
 	durationMinutes,
 	correctCount,
 	attemptCount,
@@ -422,6 +423,7 @@ function CompletionView({
 	isBusy,
 }: {
 	phase: LearningSessionContentSnapshot["session"]["phase"];
+	isDiagnostic: boolean;
 	durationMinutes: number;
 	correctCount: number;
 	attemptCount: number;
@@ -438,7 +440,7 @@ function CompletionView({
 }) {
 	const isTheory = phase === "theory";
 	const isPraxis = phase === "rehearsal";
-	if (isPraxis) {
+	if (isPraxis && !isDiagnostic) {
 		return (
 			<PracticeCompletionCard
 				durationMinutes={durationMinutes}
@@ -451,7 +453,7 @@ function CompletionView({
 		);
 	}
 
-	if (isTheoryValidationComplete) {
+	if (isTheoryValidationComplete && !isDiagnostic) {
 		const confidenceOptions = [
 			{ value: "unsure" as const, label: "Noch unsicher" },
 			{ value: "somewhatSure" as const, label: "Teilweise sicher" },
@@ -530,23 +532,43 @@ function CompletionView({
 		);
 	}
 
-	const title =
-		isTheory && isTheoryValidationAvailable
+	let title = "Übung abgeschlossen";
+	let description =
+		"Du hast alle Aufgaben geschafft. Übe noch einmal weiter oder sieh dir deine Auswertung an.";
+	let completionLabel = "Übung geschafft";
+	let Icon = Pencil;
+	let iconClassName = "bg-ueben-subtle";
+	let iconColor: string = DAYOVA_DESIGN_SYSTEM.colors.ueben;
+
+	if (isTheory) {
+		title = isTheoryValidationAvailable
 			? "Theorie verstanden"
-			: isTheory
-				? "Theorie abgeschlossen"
-				: "Übung abgeschlossen";
-	const description = isTheory
-		? isTheoryValidationAvailable
+			: "Theorie abgeschlossen";
+		description = isTheoryValidationAvailable
 			? "Prüfe jetzt in drei Minuten, was wirklich hängen geblieben ist. Erst deine Antworten machen deinen Lernfortschritt sichtbar."
-			: "Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt."
-		: "Du hast alle Aufgaben geschafft. Übe noch einmal weiter oder sieh dir deine Analyse an.";
-	const completionLabel = isTheory ? "Theorie geschafft" : "Übung geschafft";
-	const Icon = isTheory ? BookOpen : Pencil;
-	const iconClassName = isTheory ? "bg-theorie-subtle" : "bg-ueben-subtle";
-	const iconColor = isTheory
-		? DAYOVA_DESIGN_SYSTEM.colors.theorie
-		: DAYOVA_DESIGN_SYSTEM.colors.ueben;
+			: "Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt.";
+		completionLabel = "Theorie geschafft";
+		Icon = BookOpen;
+		iconClassName = "bg-theorie-subtle";
+		iconColor = DAYOVA_DESIGN_SYSTEM.colors.theorie;
+	}
+
+	if (isDiagnostic) {
+		title = "Wissenscheck abgeschlossen";
+		description = `Deine ${attemptCount} Antworten aktualisieren deinen Wissensstand. Damit passt Dayova deinen nächsten Lernschritt an.`;
+		completionLabel = "Wissensstand erfasst";
+		Icon = ClipboardEdit;
+		iconClassName = "bg-system-subtle";
+		iconColor = DAYOVA_DESIGN_SYSTEM.colors.primary;
+	}
+
+	const primaryLabel = isDiagnostic
+		? "Auswertung ansehen"
+		: isTheory && isTheoryValidationAvailable
+			? "Wissen prüfen · 3 Min."
+			: isTheory
+				? "Theorie abschließen"
+				: "Analyse ansehen";
 
 	return (
 		<Animated.View
@@ -593,33 +615,29 @@ function CompletionView({
 					{isBusy ? (
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 					) : (
-						<Text>
-							{isTheory && isTheoryValidationAvailable
-								? "Wissen prüfen · 3 Min."
-								: isTheory
-									? "Theorie abschließen"
-									: "Analyse ansehen"}
-						</Text>
+						<Text>{primaryLabel}</Text>
 					)}
 				</Button>
-				<Button
-					className="w-full"
-					disabled={isBusy}
-					variant="neutral"
-					onPress={
-						isTheory && isTheoryValidationAvailable
-							? onDeferValidation
-							: onContinueLearning
-					}
-				>
-					<Text>
-						{isTheory && isTheoryValidationAvailable
-							? "Später prüfen"
-							: isTheory
-								? "Noch 10 Min. weiterlernen"
-								: "Noch 10 Min. üben"}
-					</Text>
-				</Button>
+				{!isDiagnostic ? (
+					<Button
+						className="w-full"
+						disabled={isBusy}
+						variant="neutral"
+						onPress={
+							isTheory && isTheoryValidationAvailable
+								? onDeferValidation
+								: onContinueLearning
+						}
+					>
+						<Text>
+							{isTheory && isTheoryValidationAvailable
+								? "Später prüfen"
+								: isTheory
+									? "Noch 10 Min. weiterlernen"
+									: "Noch 10 Min. üben"}
+						</Text>
+					</Button>
+				) : null}
 			</View>
 		</Animated.View>
 	);
@@ -939,11 +957,13 @@ function VoiceAnswer({
 
 function AnalysisView({
 	content,
+	isDiagnostic,
 	onContinueLearning,
 	onDone,
 	isBusy,
 }: {
 	content: LearningSessionContentSnapshot;
+	isDiagnostic: boolean;
 	onContinueLearning: () => void;
 	onDone: () => void;
 	isBusy: boolean;
@@ -952,6 +972,17 @@ function AnalysisView({
 
 	return (
 		<View className="flex-1">
+			{isDiagnostic ? (
+				<Surface className="mt-8 rounded-[28px] px-5 py-5" variant="soft">
+					<Text className="font-poppins font-semibold text-body-3 text-text">
+						Dein Ergebnis steuert den nächsten Schritt
+					</Text>
+					<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
+						Wenn du abschließt, plant Dayova mit diesen Antworten den nächsten
+						Lerninhalt und ergänzt einen weiteren Termin.
+					</Text>
+				</Surface>
+			) : null}
 			{analysis ? (
 				<View className="mt-10">
 					<Surface className="rounded-[32px] px-5 py-6" variant="flat">
@@ -990,13 +1021,23 @@ function AnalysisView({
 					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
 				</View>
 			)}
-			<ActionRow
-				secondaryLabel="10 Min. weiterlernen"
-				primaryLabel="Abschließen"
-				onSecondary={onContinueLearning}
-				onPrimary={onDone}
-				isBusy={isBusy}
-			/>
+			{isDiagnostic ? (
+				<Button className="mt-8 w-full" disabled={isBusy} onPress={onDone}>
+					{isBusy ? (
+						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+					) : (
+						<Text>Abschließen &amp; nächsten Schritt planen</Text>
+					)}
+				</Button>
+			) : (
+				<ActionRow
+					secondaryLabel="10 Min. weiterlernen"
+					primaryLabel="Abschließen"
+					onSecondary={onContinueLearning}
+					onPrimary={onDone}
+					isBusy={isBusy}
+				/>
+			)}
 		</View>
 	);
 }
@@ -1105,13 +1146,17 @@ export default function LearningSessionContentScreen() {
 		user && isConvexAuthenticated && sessionId ? { sessionId } : "skip",
 	) ?? null) as LearningSessionContentSnapshot | null;
 
-	const sessionItems = content
-		? getLearningSessionItems(
-				content.items,
-				content.session.phase,
-				content.session.compositionVariant,
-			)
-		: [];
+	const sessionItems = useMemo(
+		() =>
+			content
+				? getLearningSessionItems(
+						content.items,
+						content.session.phase,
+						content.session.compositionVariant,
+					)
+				: [],
+		[content],
+	);
 	const theoryItems = sessionItems.filter((item) => item.kind === "learnCard");
 	const validationItems = sessionItems.filter(
 		(item) => item.phase === "practice" && item.kind !== "learnCard",
@@ -1121,6 +1166,7 @@ export default function LearningSessionContentScreen() {
 		currentItem && !showAnalysis && !completionPhase,
 	);
 	const isPraxisSession = content?.session.phase === "rehearsal";
+	const isDiagnosticSession = content?.session.sessionPurpose === "diagnostic";
 	const isTheoryValidationSession =
 		content?.session.phase === "theory" &&
 		content.session.compositionVariant === "split" &&
@@ -1140,8 +1186,10 @@ export default function LearningSessionContentScreen() {
 		);
 		if (firstValidationIndex < 0) return;
 		didResumeDeferredValidationRef.current = true;
-		setCurrentIndex(firstValidationIndex);
-		setCompletionPhase(null);
+		queueMicrotask(() => {
+			setCurrentIndex(firstValidationIndex);
+			setCompletionPhase(null);
+		});
 	}, [content, isTheoryValidationSession, sessionItems]);
 	const persistedAttempt = useMemo(() => {
 		if (!currentItem || !content) return null;
@@ -1334,6 +1382,7 @@ export default function LearningSessionContentScreen() {
 		if (
 			!sessionId ||
 			displayedRemainingSeconds !== 0 ||
+			isDiagnosticSession ||
 			didAutoFinishRef.current
 		)
 			return;
@@ -1357,7 +1406,7 @@ export default function LearningSessionContentScreen() {
 				setErrorMessage(
 					getErrorMessage(
 						error,
-						"Die Wissensanalyse konnte nicht erstellt werden.",
+						"Die Auswertung konnte nicht erstellt werden.",
 					),
 				);
 			});
@@ -1368,6 +1417,7 @@ export default function LearningSessionContentScreen() {
 		displayedRemainingSeconds,
 		finishSessionContent,
 		isContinuation,
+		isDiagnosticSession,
 		sessionId,
 	]);
 
@@ -1404,10 +1454,7 @@ export default function LearningSessionContentScreen() {
 			setShowAnalysis(true);
 		} catch (error) {
 			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die Wissensanalyse konnte nicht erstellt werden.",
-				),
+				getErrorMessage(error, "Die Auswertung konnte nicht erstellt werden."),
 			);
 		} finally {
 			setIsBusy(false);
@@ -1683,17 +1730,21 @@ export default function LearningSessionContentScreen() {
 			: Boolean(answerText.trim());
 
 	const title = showAnalysis
-		? "Wissensanalyse"
+		? "Deine Auswertung"
 		: completionPhase
-			? isTheoryValidationSession && completionPhase === "practice"
+			? isDiagnosticSession
 				? "Wissenscheck"
-				: completionPhase === "theory"
-					? "Theorie"
-					: phaseTitle(completionPhase)
-			: content
-				? isTheoryValidationSession && currentItem?.phase === "practice"
+				: isTheoryValidationSession && completionPhase === "practice"
 					? "Wissenscheck"
-					: phaseTitle(currentItem?.phase ?? content.session.phase)
+					: completionPhase === "theory"
+						? "Theorie"
+						: phaseTitle(completionPhase)
+			: content
+				? isDiagnosticSession
+					? "Wissenscheck"
+					: isTheoryValidationSession && currentItem?.phase === "practice"
+						? "Wissenscheck"
+						: phaseTitle(currentItem?.phase ?? content.session.phase)
 				: "Lernblock";
 	const showQuestionActions = Boolean(
 		content &&
@@ -1882,6 +1933,7 @@ export default function LearningSessionContentScreen() {
 				) : showAnalysis ? (
 					<AnalysisView
 						content={content}
+						isDiagnostic={isDiagnosticSession}
 						onContinueLearning={() => void startContinueLearning()}
 						onDone={completeAndLeave}
 						isBusy={isBusy}
@@ -1889,6 +1941,7 @@ export default function LearningSessionContentScreen() {
 				) : completionPhase ? (
 					<CompletionView
 						phase={completionPhase}
+						isDiagnostic={isDiagnosticSession}
 						durationMinutes={content.session.durationMinutes}
 						correctCount={currentRunCorrectCount}
 						attemptCount={currentRunAttempts.length}

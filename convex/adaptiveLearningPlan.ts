@@ -5,6 +5,7 @@ import {
 	type AdaptiveTargetHistory,
 	type AdaptiveTopicEvidence,
 	adaptiveSessionCopy,
+	selectAdaptiveMaintenanceTarget,
 	selectNextAdaptiveLearningTarget,
 } from "./adaptiveLearningPlanPolicy";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
@@ -31,6 +32,7 @@ const getSessionExecutionStatus = (session: Doc<"learningPlanSessions">) =>
 const getAdaptiveEvidenceDimension = (
 	item: Doc<"learningSessionContentItems">,
 ): AdaptiveTopicEvidence["dimension"] => {
+	if (item.evidenceDimension) return item.evidenceDimension;
 	if (item.phase === "rehearsal" || item.questionAngle === "examTransfer") {
 		return "independent";
 	}
@@ -49,14 +51,11 @@ const loadAdaptiveEvidence = async (
 ) => {
 	const evidence: AdaptiveTopicEvidence[] = [];
 	const history: AdaptiveTargetHistory[] = [];
+	const diagnosticRatingsByTopicId = new Map<
+		string,
+		Array<AdaptiveTopicEvidence["rating"]>
+	>();
 	for (const session of sessions) {
-		if (session.targetEvidenceDimension && session.targetTopicIds?.[0]) {
-			history.push({
-				topicId: session.targetTopicIds[0],
-				dimension: session.targetEvidenceDimension,
-				targetedAt: session.outcomeAt ?? session.createdAt,
-			});
-		}
 		const items = await ctx.db
 			.query("learningSessionContentItems")
 			.withIndex("by_sessionId_and_sortOrder", (q) =>
@@ -71,6 +70,23 @@ const loadAdaptiveEvidence = async (
 			)
 			.order("desc")
 			.take(100);
+		const executionStatus = getSessionExecutionStatus(session);
+		const wasActuallyAttempted =
+			attempts.length > 0 ||
+			executionStatus === "completed" ||
+			executionStatus === "partiallyCompleted";
+		if (
+			session.planningStatus !== "provisional" &&
+			wasActuallyAttempted &&
+			session.targetEvidenceDimension &&
+			session.targetTopicIds?.[0]
+		) {
+			history.push({
+				topicId: session.targetTopicIds[0],
+				dimension: session.targetEvidenceDimension,
+				targetedAt: session.outcomeAt ?? session.createdAt,
+			});
+		}
 		const seenItemIds = new Set<Id<"learningSessionContentItems">>();
 		for (const attempt of attempts) {
 			if (seenItemIds.has(attempt.itemId)) continue;
@@ -85,9 +101,22 @@ const loadAdaptiveEvidence = async (
 				sessionId: session._id,
 				createdAt: attempt.createdAt,
 			});
+			if (session.sessionPurpose === "diagnostic") {
+				const ratings = diagnosticRatingsByTopicId.get(topicId) ?? [];
+				ratings.push(attempt.rating);
+				diagnosticRatingsByTopicId.set(topicId, ratings);
+			}
 		}
 	}
-	return { evidence, history };
+	const diagnosticReadiness = Array.from(
+		diagnosticRatingsByTopicId.entries(),
+	).map(([topicId, ratings]) => ({
+		topicId,
+		status: ratings.every((rating) => rating === "correct")
+			? ("secure" as const)
+			: ("developing" as const),
+	}));
+	return { evidence, history, diagnosticReadiness };
 };
 
 const parseTimeMinutes = (value: string) => {
@@ -102,6 +131,38 @@ const parseTimeMinutes = (value: string) => {
 
 const formatTimeMinutes = (value: number) =>
 	`${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+
+const getBerlinDateTime = (date: Date) => {
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		timeZone: "Europe/Berlin",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	}).formatToParts(date);
+	const valueFor = (type: Intl.DateTimeFormatPartTypes) =>
+		parts.find((part) => part.type === type)?.value;
+	const year = valueFor("year");
+	const month = valueFor("month");
+	const day = valueFor("day");
+	const hour = Number(valueFor("hour"));
+	const minute = Number(valueFor("minute"));
+	if (
+		!year ||
+		!month ||
+		!day ||
+		!Number.isInteger(hour) ||
+		!Number.isInteger(minute)
+	) {
+		throw new Error("Die aktuelle Zeit konnte nicht bestimmt werden.");
+	}
+	return {
+		dateKey: `${year}-${month}-${day}`,
+		minutes: hour * 60 + minute,
+	};
+};
 
 const startOfUtcDay = (date: Date) => {
 	const next = new Date(date);
@@ -136,12 +197,19 @@ const getRollingSessionSchedule = async (
 	const afterDate = new Date(
 		`${args.afterSession.dateKey.slice(0, 10)}T12:00:00Z`,
 	);
-	const today = startOfUtcDay(new Date());
+	const now = new Date();
+	const berlinNow = getBerlinDateTime(now);
+	const today = startOfUtcDay(new Date(`${berlinNow.dateKey}T12:00:00Z`));
 	const cursor = Number.isNaN(afterDate.getTime()) ? today : afterDate;
 	if (cursor < today) cursor.setTime(today.getTime());
-	cursor.setUTCDate(cursor.getUTCDate() + 1);
 	const examDate = new Date(`${args.plan.examDateKey.slice(0, 10)}T12:00:00Z`);
 	if (Number.isNaN(examDate.getTime())) return null;
+	const afterDateKey = args.afterSession.dateKey.slice(0, 10);
+	const afterStartMinutes = parseTimeMinutes(args.afterSession.startTime);
+	const afterEndMinutes =
+		afterStartMinutes === null
+			? null
+			: afterStartMinutes + args.afterSession.durationMinutes;
 
 	while (cursor < examDate) {
 		const dateKey = cursor.toISOString().slice(0, 10);
@@ -150,25 +218,29 @@ const getRollingSessionSchedule = async (
 		const windows = learningTimes
 			.filter((entry) => entry.dayOfWeek === dayOfWeek)
 			.sort((left, right) => left.startTime.localeCompare(right.startTime));
-		const candidates =
-			windows.length > 0
-				? windows.flatMap((window) => {
-						const start = parseTimeMinutes(window.startTime);
-						const end = parseTimeMinutes(window.endTime);
-						if (start === null || end === null || end - start < 10) return [];
-						return [
-							{
-								startTime: formatTimeMinutes(start),
-								durationMinutes: Math.min(args.durationMinutes, end - start),
-							},
-						];
-					})
-				: [
-						{
-							startTime: args.afterSession.startTime,
-							durationMinutes: args.durationMinutes,
-						},
-					];
+		const earliestStart = Math.max(
+			0,
+			dateKey === afterDateKey ? (afterEndMinutes ?? 0) : 0,
+			dateKey === berlinNow.dateKey ? berlinNow.minutes + 1 : 0,
+		);
+		const candidates = windows.flatMap((window) => {
+			const windowStart = parseTimeMinutes(window.startTime);
+			const end = parseTimeMinutes(window.endTime);
+			if (windowStart === null || end === null) return [];
+			const start = Math.max(windowStart, earliestStart);
+			const windowCandidates = [];
+			for (
+				let candidateStart = start;
+				candidateStart + 10 <= end;
+				candidateStart += 10
+			) {
+				windowCandidates.push({
+					startTime: formatTimeMinutes(candidateStart),
+					durationMinutes: Math.min(args.durationMinutes, end - candidateStart),
+				});
+			}
+			return windowCandidates;
+		});
 
 		for (const candidate of candidates) {
 			const conflict = await getScheduleConflictMessage(ctx, {
@@ -191,6 +263,20 @@ const getRollingSessionSchedule = async (
 		cursor.setUTCDate(cursor.getUTCDate() + 1);
 	}
 	return null;
+};
+
+const isSessionScheduledInFuture = (
+	session: Doc<"learningPlanSessions">,
+	now = new Date(),
+) => {
+	const dateKey = session.dateKey.slice(0, 10);
+	const startMinutes = parseTimeMinutes(session.startTime);
+	if (startMinutes === null) return false;
+	const current = getBerlinDateTime(now);
+	return (
+		dateKey > current.dateKey ||
+		(dateKey === current.dateKey && startMinutes > current.minutes)
+	);
 };
 
 const removeRollingSession = async (
@@ -221,7 +307,11 @@ const patchRollingSessionTarget = async (
 	const targetMatches =
 		args.session.targetTopicIds?.[0] === args.target.topicId &&
 		args.session.targetEvidenceDimension === args.target.dimension;
-	if (!targetMatches) {
+	const isPromotion =
+		args.session.planningStatus === "provisional" &&
+		args.planningStatus === "committed";
+	const shouldRegenerateContent = isPromotion || !targetMatches;
+	if (shouldRegenerateContent) {
 		await deleteSessionLearningDataForSession(ctx, args.session._id);
 	}
 	const copy = adaptiveSessionCopy(args.target);
@@ -229,6 +319,7 @@ const patchRollingSessionTarget = async (
 		...copy,
 		phase: args.target.phase,
 		compositionVariant: args.target.phase === "theory" ? "split" : "control",
+		sessionPurpose: "learning",
 		knowledgeValidationStatus:
 			args.target.phase === "theory" ? "pending" : undefined,
 		knowledgeValidationConfidence: undefined,
@@ -237,7 +328,7 @@ const patchRollingSessionTarget = async (
 		targetEvidenceDimension: args.target.dimension,
 		selectionReason: args.target.reason,
 		adaptationRevision: args.adaptationRevision,
-		...(!targetMatches
+		...(shouldRegenerateContent
 			? {
 					contentGenerationStatus:
 						args.planningStatus === "committed"
@@ -277,7 +368,10 @@ export const advanceRollingLearningPlan = async (
 		)
 		.order("asc")
 		.take(50);
-	const { evidence, history } = await loadAdaptiveEvidence(ctx, sessions);
+	const { evidence, history, diagnosticReadiness } = await loadAdaptiveEvidence(
+		ctx,
+		sessions,
+	);
 	const topics =
 		plan.topicMap && plan.topicMap.length > 0
 			? plan.topicMap
@@ -290,12 +384,22 @@ export const advanceRollingLearningPlan = async (
 						priority: "high" as const,
 					},
 				]);
-	const committedTarget = selectNextAdaptiveLearningTarget({
-		topics,
-		initialReadiness: plan.topicReadiness ?? [],
-		evidence,
-		history,
-	});
+	const diagnosticTopicIds = new Set(
+		diagnosticReadiness.map((entry) => entry.topicId),
+	);
+	const effectiveTopicReadiness = [
+		...(plan.topicReadiness ?? []).filter(
+			(entry) => !diagnosticTopicIds.has(entry.topicId),
+		),
+		...diagnosticReadiness,
+	];
+	const committedTarget =
+		selectNextAdaptiveLearningTarget({
+			topics,
+			initialReadiness: effectiveTopicReadiness,
+			evidence,
+			history,
+		}) ?? selectAdaptiveMaintenanceTarget({ topics, history });
 	const provisionalSessions = sessions.filter(
 		(session) =>
 			session.planningStatus === "provisional" &&
@@ -318,7 +422,6 @@ export const advanceRollingLearningPlan = async (
 
 	let committed: Doc<"learningPlanSessions"> | null = null;
 	if (provisional) {
-		const todayKey = new Date().toISOString().slice(0, 10);
 		const scheduleConflict = await getScheduleConflictMessage(ctx, {
 			ownerTokenIdentifier: plan.ownerTokenIdentifier,
 			dayKey: provisional.dateKey,
@@ -327,7 +430,7 @@ export const advanceRollingLearningPlan = async (
 			excludeDayEntryId: provisional.dayEntryId,
 			excludeLearningPlanSessionId: provisional._id,
 		});
-		if (provisional.dateKey.slice(0, 10) <= todayKey || scheduleConflict) {
+		if (!isSessionScheduledInFuture(provisional) || scheduleConflict) {
 			const previousSession = sessions
 				.filter((session) => session._id !== provisional?._id)
 				.at(-1);
@@ -378,6 +481,7 @@ export const advanceRollingLearningPlan = async (
 				ownerTokenIdentifier: plan.ownerTokenIdentifier,
 				learningPlanId: plan._id,
 				phase: committedTarget.phase,
+				sessionPurpose: "learning",
 				...copy,
 				...schedule,
 				compositionVariant:
@@ -402,21 +506,34 @@ export const advanceRollingLearningPlan = async (
 		}
 	}
 	if (!committed) return null;
-	const previewTarget = selectNextAdaptiveLearningTarget({
-		topics,
-		initialReadiness: plan.topicReadiness ?? [],
-		evidence: [
-			...evidence,
-			{
-				topicId: committedTarget.topicId,
-				dimension: committedTarget.dimension,
-				rating: "correct",
-				sessionId: `projected-${committed._id}`,
-				createdAt: Date.now() + 1,
-			},
-		],
-		history,
-	});
+	const projectedHistory = [
+		...history,
+		{
+			topicId: committedTarget.topicId,
+			dimension: committedTarget.dimension,
+			targetedAt: Date.now() + 1,
+		},
+	];
+	const previewTarget =
+		selectNextAdaptiveLearningTarget({
+			topics,
+			initialReadiness: effectiveTopicReadiness,
+			evidence: [
+				...evidence,
+				{
+					topicId: committedTarget.topicId,
+					dimension: committedTarget.dimension,
+					rating: "correct",
+					sessionId: `projected-${committed._id}`,
+					createdAt: Date.now() + 1,
+				},
+			],
+			history,
+		}) ??
+		selectAdaptiveMaintenanceTarget({
+			topics,
+			history: projectedHistory,
+		});
 	const schedule = previewTarget
 		? await getRollingSessionSchedule(ctx, {
 				ownerTokenIdentifier: plan.ownerTokenIdentifier,
@@ -436,6 +553,7 @@ export const advanceRollingLearningPlan = async (
 			ownerTokenIdentifier: plan.ownerTokenIdentifier,
 			learningPlanId: plan._id,
 			phase: previewTarget.phase,
+			sessionPurpose: "learning",
 			...copy,
 			...schedule,
 			compositionVariant:
@@ -455,6 +573,7 @@ export const advanceRollingLearningPlan = async (
 	}
 	await ctx.db.patch("learningPlans", plan._id, {
 		adaptationRevision,
+		topicReadiness: effectiveTopicReadiness,
 		contentGenerationStage: "ready",
 		updatedAt: Date.now(),
 	});

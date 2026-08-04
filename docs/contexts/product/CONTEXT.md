@@ -9,11 +9,11 @@ Canonical product framing: [Dayova Business Plan 2026 — Exact Exam, Real Gaps,
 ## Language
 
 **Persönlicher Lernplan**:
-The user-facing learning-plan creation flow and accepted study path. It frames five short pre-plan questions, extended up to eight when scope or readiness remains unclear, and optional learning material as the setup for a personalized, ordered plan whose sessions build toward exam readiness.
-_Avoid_: Wissensanalyse, Quiz
+The user-facing adaptive study path created after the learner uploads at least one `Interne Schulquelle`. Creation schedules a `Wissenscheck` and a rolling two-session future window instead of asking setup questions or generating the complete plan up front.
+_Avoid_: Wissensanalyse, setup quiz, fully generated schedule
 
 **Interne Schulquelle**:
-A teacher instruction, exam-scope statement, worksheet, class note, or other material that came from school. At least one internal school source or concrete teacher instruction is required before Dayova derives the probable exam scope.
+A teacher instruction, exam-scope statement, worksheet, class note, or other uploaded material that came from school. An exam may exist without it, but at least one uploaded internal school source is required for a `Persönlicher Lernplan`; typed teacher guidance alone is not a substitute.
 _Avoid_: Treating Dayova or a generic curriculum as the source of truth
 
 **Externe Lernhilfe**:
@@ -21,12 +21,12 @@ Optional supporting material from sources such as explanatory videos, learning p
 _Avoid_: Using external material to decide what the teacher will assess
 
 **Bestätigter Prüfungsumfang**:
-The short topic map Dayova derives from internal school evidence and asks the learner to confirm before the pre-plan diagnostic step. Confirmation means that the evidence was interpreted plausibly, not that Dayova guarantees the teacher's exact exam content.
+The short topic map Dayova derives from internal school evidence and asks the learner to confirm before creating the plan. Confirmation means that the evidence was interpreted plausibly, not that Dayova guarantees the teacher's exact exam content; initial knowledge evidence is collected later in the scheduled `Wissenscheck`.
 _Avoid_: Manual classification of every uploaded page, exact-exam guarantee
 
 **Nächster Lernschritt**:
-The next unfinished session in a `Persönlicher Lernplan`. It is the only session whose detailed learning content must be committed up front; later sessions remain a provisional roadmap and receive their detailed content when they become next.
-_Avoid_: Hard lock, hidden future sessions
+The next unfinished committed, timed session in a `Persönlicher Lernplan`. The learner also sees one dated and timed provisional session after it; that preview has no generated learning content until the preceding session is complete, and its target may change when new evidence arrives.
+_Avoid_: Hard lock, hidden future sessions, fixed full-plan roadmap
 
 **Lernzeit**:
 A recurring availability window chosen by the learner in Einstellungen that tells Dayova when learning may be scheduled. It is not itself a scheduled session or learning content.
@@ -56,9 +56,9 @@ _Avoid_: Separate calendar slot, repeated filler
 An optional learner-initiated extension offered after the planned work of a `Lernsession` is complete. It adds new work and never repeats finished material merely to consume time.
 _Avoid_: Automatic overtime, timer padding
 
-**Pre-plan diagnostic step**:
-The internal name for the adaptive five- to eight-question diagnostic part of `Persönlicher Lernplan`, used when distinguishing it from post-session `Wissensanalyse`.
-_Avoid_: User-facing copy
+**Wissenscheck**:
+The first timed `Lernsession` in every `Persönlicher Lernplan`, containing five to ten questions that test existing knowledge across the confirmed exam scope. Its results seed adaptive target selection; it is neither a creation/setup step nor a `Wissensanalyse`.
+_Avoid_: Setup quiz, pre-plan diagnostic, Wissensanalyse
 
 **Topic readiness**:
 An evidence-based estimate of whether the learner's knowledge of one required assessment topic is secure, developing, or unknown. It combines demonstrated performance with self-reported confidence and shapes the topic's theory, practice, and later verification.
@@ -82,7 +82,7 @@ _Avoid_: Fixed session count based only on the assessment label, an extra worklo
 
 **Wissensanalyse**:
 The post-session analysis shown after `Üben` or `Praxis`. It summarizes the learner's strengths, knowledge or execution gaps, and near-term recommendations for the ongoing plan.
-_Avoid_: Using this term for the pre-plan diagnostic step in new user-facing copy
+_Avoid_: Using this term for the first `Wissenscheck` or for questions during exam creation
 
 **Lernkarte**:
 A theory card for active recall: the front side prompts the learner with a concrete concept, formula, definition, or understanding question; the back side gives the precise answer with details, an example, a memory cue, and common pitfalls when useful.
@@ -139,19 +139,26 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 
 ## Contracts and Constraints
 
+- Saving an exam is independent from creating a `Persönlicher Lernplan`. Without uploaded school material, keep the exam and explain that uploading an `Interne Schulquelle` unlocks a plan; do not create plan sessions.
+- External learning aids and typed teacher guidance may enrich a plan but never satisfy the school-material requirement.
+- Learning-plan creation contains no knowledge-question or quiz step. Its first knowledge test is the scheduled, timed `Wissenscheck` with five to ten questions.
+- An active `Persönlicher Lernplan` always exposes two future sessions with a date and start time: the committed `Nächster Lernschritt` and one provisional adaptive preview. It never materializes the complete remaining plan.
+- Completing the committed session promotes and adapts the provisional session from the latest evidence, then appends a new timed provisional session so two future sessions remain visible.
 - Uploaded timetable data remains a draft until the learner reviews and activates at least one valid `Unterrichtsstunde`.
 - Only the active `Stundenplan` produces `Unterrichtstermine`; drafts never affect the daily agenda or learning-plan scheduling.
 - `Unterrichtstermine` block overlapping learning appointments but remain informational and cannot be completed.
-- Topic readiness uses the user-facing states `Sicher belegt`, `Im Aufbau`, and `Noch nicht belegt`; missing evidence is not presented as a demonstrated weakness.
+- Topic readiness uses the user-facing states `Sicher belegt`, `Im Aufbau`, and `Noch nicht belegt`; missing evidence is not presented as a demonstrated weakness, and initial readiness comes from the first timed `Wissenscheck`, not setup input.
 - An assessment topic is `Sicher belegt` only when every `Belegdimension` required by that topic is secure. New topic maps declare the required dimensions; legacy topics conservatively require all three.
 - Evidence is hierarchical: independent exam-like performance may support `Probleme lösen` and `Verstehen`, and guided problem solving may support `Verstehen`; lower-strength evidence never proves a higher dimension.
 - The Analyse overview may count secure topics but must not collapse readiness into a global percentage or points score. Activity or completed theory review alone never proves secure knowledge.
 
 ## Example Dialogue
 
-Domain: "The learner sees this as their `Persönlicher Lernplan`, not as a diagnostic quiz."
-Engineer: "So I can use `pre-plan diagnostic step` internally, but the UI copy should say things like `Beantworte 5 kurze Fragen für deinen persönlichen Lernplan`?"
-Domain: "Right. `Wissensanalyse` is the post-session analysis after `Üben` or `Praxis`."
+Domain: "An exam can be saved without material, but it has no learning plan yet."
+Engineer: "So saving stays available, while plan creation asks for school material and contains no setup quiz?"
+Domain: "Right. The first five to ten knowledge questions are the timed `Wissenscheck` inside the plan."
+Engineer: "And after each completion we keep two dated future sessions visible, with the second still adaptive?"
+Domain: "Yes. Promote and adapt the preview from the latest evidence, then append the next provisional session."
 Engineer: "And `Praxis` maps to the existing rehearsal phase?"
 Domain: "Yes. It is the Figma/user-facing name for the Generalprobe-style phase."
 Engineer: "For validation, should we count a completed `Praxis` session as `Generalprobe`?"

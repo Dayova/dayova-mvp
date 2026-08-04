@@ -10,6 +10,28 @@ const historyStatuses = new Set<PlanSession["executionStatus"]>([
 export const isLearningPlanSessionHistory = (session: PlanSession) =>
 	session.completed || historyStatuses.has(session.executionStatus);
 
+export const isDiagnosticLearningPlanSession = (session: PlanSession) =>
+	session.sessionPurpose === "diagnostic";
+
+export const getRollingLearningWindowLabel = ({
+	completedCount,
+	upcomingCount,
+}: {
+	completedCount: number;
+	upcomingCount: number;
+}) => {
+	const safeCompletedCount = Math.max(0, Math.trunc(completedCount));
+	const safeUpcomingCount = Math.max(0, Math.trunc(upcomingCount));
+	const upcomingLabel =
+		safeUpcomingCount === 0
+			? "keine weiteren Termine geplant"
+			: safeUpcomingCount === 1
+				? "1 weiterer Termin geplant"
+				: `${safeUpcomingCount} weitere Termine geplant`;
+
+	return `${safeCompletedCount} abgeschlossen · ${upcomingLabel}`;
+};
+
 export const getCommittedSessionIndex = (sessions: PlanSession[]) => {
 	const index = sessions.findIndex(
 		(session) =>

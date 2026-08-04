@@ -34,6 +34,7 @@ import { getLearningSessionComposition } from "./learningSessionComposition";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { alignSessionDurationReferences } from "./learningSessionDurationText";
 import {
+	learningEvidenceDimensionValidator,
 	learningTopicValidator,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
@@ -49,6 +50,8 @@ import {
 } from "./topicDescriptionValidation";
 
 const MAX_LEARNING_TIMES = 50;
+const MIN_DIAGNOSTIC_QUESTION_COUNT = 5;
+const MAX_DIAGNOSTIC_QUESTION_COUNT = 10;
 // Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
 // before a later request may recover work left behind by a terminated action.
 const STALE_CONTENT_GENERATION_MS = 11 * 60_000;
@@ -102,6 +105,9 @@ const planQuestionValidator = v.object({
 	),
 	options: v.optional(v.array(v.string())),
 	correctAnswer: v.optional(v.string()),
+	idealAnswer: v.optional(v.string()),
+	explanation: v.optional(v.string()),
+	evidenceDimension: v.optional(learningEvidenceDimensionValidator),
 	evaluationKeywords: v.optional(v.array(v.string())),
 });
 
@@ -134,6 +140,7 @@ type NormalizedGeneratedSession = {
 	tasks: string[];
 	expectedOutcome: string;
 	compositionVariant: "control" | "split";
+	sessionPurpose?: "diagnostic" | "learning";
 	planningStatus?: "committed" | "provisional";
 	targetTopicIds?: string[];
 	targetEvidenceDimension?: "understanding" | "problemSolving" | "independent";
@@ -159,6 +166,115 @@ const applyAdaptiveTargetToSession = (
 	adaptationRevision,
 });
 
+type StoredKnowledgeQuestion = NonNullable<
+	Doc<"learningPlans">["knowledgeQuestions"]
+>[number];
+
+const validateFirstSessionDiagnosticQuestions = (
+	questions: StoredKnowledgeQuestion[],
+	topics: Doc<"learningPlans">["topicMap"],
+) => {
+	if (
+		questions.length < MIN_DIAGNOSTIC_QUESTION_COUNT ||
+		questions.length > MAX_DIAGNOSTIC_QUESTION_COUNT
+	) {
+		throwUserFacingError(
+			`Der Wissenscheck braucht ${MIN_DIAGNOSTIC_QUESTION_COUNT} bis ${MAX_DIAGNOSTIC_QUESTION_COUNT} Fragen.`,
+		);
+	}
+
+	const topicIds = new Set((topics ?? []).map((topic) => topic.id));
+	const questionIds = new Set<string>();
+	for (const question of questions) {
+		if (!question.id.trim() || questionIds.has(question.id)) {
+			throwUserFacingError(
+				"Die Fragen des Wissenschecks brauchen eindeutige Kennungen.",
+			);
+		}
+		questionIds.add(question.id);
+		if (
+			question.kind !== "performance" ||
+			!question.topicId ||
+			!topicIds.has(question.topicId) ||
+			!question.evidenceDimension ||
+			!question.idealAnswer?.trim() ||
+			!question.explanation?.trim() ||
+			!question.responseKind
+		) {
+			throwUserFacingError(
+				"Jede Frage des Wissenschecks muss Wissen prüfen und einem Prüfungsthema zugeordnet sein.",
+			);
+		}
+
+		if (question.responseKind === "multipleChoice") {
+			const options = question.options ?? [];
+			const uniqueOptions = new Set(options.map((option) => option.trim()));
+			if (
+				options.length < 2 ||
+				uniqueOptions.size !== options.length ||
+				!question.correctAnswer ||
+				!options.includes(question.correctAnswer)
+			) {
+				throwUserFacingError(
+					"Multiple-Choice-Fragen im Wissenscheck brauchen eindeutige Optionen und eine richtige Antwort.",
+				);
+			}
+		}
+	}
+};
+
+const insertFirstSessionDiagnosticItems = async (
+	ctx: MutationCtx,
+	args: {
+		plan: Doc<"learningPlans">;
+		sessionId: Id<"learningPlanSessions">;
+		questions: StoredKnowledgeQuestion[];
+		now: number;
+	},
+) => {
+	for (const [questionIndex, question] of args.questions.entries()) {
+		const choices =
+			question.responseKind === "multipleChoice"
+				? (question.options ?? []).map((option, optionIndex) => ({
+						id: `diagnostic-${questionIndex + 1}-choice-${optionIndex + 1}`,
+						text: option,
+					}))
+				: undefined;
+		const correctChoiceId = choices?.find(
+			(choice) => choice.text === question.correctAnswer,
+		)?.id;
+
+		await ctx.db.insert("learningSessionContentItems", {
+			ownerTokenIdentifier: args.plan.ownerTokenIdentifier,
+			learningPlanId: args.plan._id,
+			sessionId: args.sessionId,
+			phase: "practice",
+			kind:
+				question.responseKind === "multipleChoice"
+					? "multipleChoice"
+					: "written",
+			title: `Frage ${questionIndex + 1}`,
+			prompt: question.prompt,
+			explanation: question.explanation ?? question.targetInsight,
+			idealAnswer: question.idealAnswer ?? question.correctAnswer ?? "",
+			choices,
+			correctChoiceId,
+			evaluationKeywords: (question.evaluationKeywords ?? []).map((keyword) =>
+				keyword.toLowerCase(),
+			),
+			learningBlockIndex: 0,
+			topicId: question.topicId,
+			evidenceDimension: question.evidenceDimension,
+			questionAngle: "diagnostic",
+			coverageKey: `diagnostic:${question.id}`,
+			estimatedSeconds: 60,
+			sortOrder: questionIndex,
+			createdAt: args.now,
+			updatedAt: args.now,
+		});
+	}
+};
+
 type PublicDocument = {
 	id: Id<"learningPlanDocuments">;
 	fileName: string;
@@ -182,6 +298,7 @@ type PublicSession = {
 	startTime: string;
 	durationMinutes: number;
 	compositionVariant?: "control" | "split";
+	sessionPurpose?: "diagnostic" | "learning";
 	knowledgeValidationStatus?: "pending" | "completed" | "skipped";
 	knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
 	goal: string;
@@ -353,10 +470,14 @@ const invalidateDerivedExamEvidence = async (
 	await ctx.db.patch("learningPlans", learningPlanId, {
 		...sourcePatch,
 		knowledgeQuestions: undefined,
+		diagnosticPlacement: undefined,
 		sourceSummary: undefined,
 		topicMap: undefined,
 		scopeConfirmedAt: undefined,
 		topicReadiness: undefined,
+		contentGenerationStage: undefined,
+		contentGenerationId: undefined,
+		contentGenerationStartedAt: undefined,
 		status: "draft",
 		updatedAt,
 	});
@@ -376,6 +497,7 @@ const publicSession = (
 	startTime: session.startTime,
 	durationMinutes: session.durationMinutes,
 	compositionVariant: session.compositionVariant,
+	sessionPurpose: session.sessionPurpose,
 	knowledgeValidationStatus: session.knowledgeValidationStatus,
 	knowledgeValidationConfidence: session.knowledgeValidationConfidence,
 	goal: alignSessionDurationReferences({
@@ -403,6 +525,33 @@ const publicSession = (
 
 const getSessionExecutionStatus = (session: Doc<"learningPlanSessions">) =>
 	session.executionStatus ?? (session.completed ? "completed" : "notStarted");
+
+const assertDiagnosticIsComplete = async (
+	ctx: MutationCtx,
+	session: Doc<"learningPlanSessions">,
+) => {
+	if (session.sessionPurpose !== "diagnostic") return;
+	const items = await ctx.db
+		.query("learningSessionContentItems")
+		.withIndex("by_sessionId_and_sortOrder", (q) =>
+			q.eq("sessionId", session._id),
+		)
+		.take(20);
+	const attempts = await ctx.db
+		.query("learningSessionAnswerAttempts")
+		.withIndex("by_sessionId_and_createdAt", (q) =>
+			q.eq("sessionId", session._id),
+		)
+		.take(100);
+	const attemptedItemIds = new Set(attempts.map((attempt) => attempt.itemId));
+	if (
+		items.length < MIN_DIAGNOSTIC_QUESTION_COUNT ||
+		items.length > MAX_DIAGNOSTIC_QUESTION_COUNT ||
+		items.some((item) => !attemptedItemIds.has(item._id))
+	) {
+		throwUserFacingError("Beantworte zuerst alle Fragen des Wissenschecks.");
+	}
+};
 
 const isContentCommittedSession = (session: Doc<"learningPlanSessions">) =>
 	session.planningStatus === "committed" ||
@@ -884,6 +1033,7 @@ export const getSnapshot = query({
 				notes: plan.notes,
 				status: plan.status,
 				knowledgeQuestions: (plan.knowledgeQuestions ?? []).map(publicQuestion),
+				diagnosticPlacement: plan.diagnosticPlacement,
 				sourceSummary: plan.sourceSummary,
 				topicMap: plan.topicMap ?? [],
 				scopeConfirmedAt: plan.scopeConfirmedAt,
@@ -937,6 +1087,11 @@ export const listOverview = query({
 			const completedCount = sessions.filter(
 				(session) => session.completed === true,
 			).length;
+			const upcomingSessionCount = sessions.filter((session) =>
+				["notStarted", "started"].includes(getSessionExecutionStatus(session)),
+			).length;
+			const hasOpenRollingWindow =
+				plan.rollingPlanEnabled === true && upcomingSessionCount > 0;
 			const currentSession =
 				sessions.find(
 					(session) =>
@@ -946,8 +1101,32 @@ export const listOverview = query({
 				) ??
 				sessions.at(-1) ??
 				null;
-			const progressPercent =
-				sessions.length > 0
+			const completedStudyMinutes = sessions.reduce((total, session) => {
+				const status = getSessionExecutionStatus(session);
+				const activeMinutes = Math.min(
+					session.durationMinutes,
+					Math.max(0, (session.activeStudySeconds ?? 0) / 60),
+				);
+				if (status === "completed") {
+					return (
+						total +
+						(activeMinutes > 0 ? activeMinutes : session.durationMinutes)
+					);
+				}
+				return status === "partiallyCompleted" ? total + activeMinutes : total;
+			}, 0);
+			const rollingProgressPercent =
+				plan.targetStudyMinutes && plan.targetStudyMinutes > 0
+					? Math.round(
+							Math.min(1, completedStudyMinutes / plan.targetStudyMinutes) *
+								100,
+						)
+					: 0;
+			const progressPercent = plan.rollingPlanEnabled
+				? hasOpenRollingWindow
+					? Math.min(99, rollingProgressPercent)
+					: rollingProgressPercent
+				: sessions.length > 0
 					? Math.round((completedCount / sessions.length) * 100)
 					: 0;
 
@@ -959,6 +1138,9 @@ export const listOverview = query({
 				progressPercent,
 				completedCount,
 				sessionCount: sessions.length,
+				upcomingSessionCount,
+				rollingPlanEnabled: plan.rollingPlanEnabled === true,
+				hasOpenRollingWindow,
 				examDateKey: plan.examDateKey,
 				examDateLabel: plan.examDateLabel,
 				currentSession: currentSession
@@ -977,6 +1159,7 @@ export const listOverview = query({
 							startTime: currentSession.startTime,
 							durationMinutes: currentSession.durationMinutes,
 							completed: currentSession.completed === true,
+							sessionPurpose: currentSession.sessionPurpose,
 						}
 					: null,
 				updatedAt: plan.updatedAt,
@@ -1420,23 +1603,64 @@ export const storeKnowledgeQuestions = internalMutation({
 		questions: v.array(planQuestionValidator),
 		sourceSummary: v.string(),
 		topics: v.optional(v.array(learningTopicValidator)),
+		diagnosticPlacement: v.optional(v.literal("firstSession")),
 	},
 	handler: async (ctx, args) => {
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan) throwUserFacingError("Lernplan nicht gefunden.");
+		const topics = normalizeLearningTopics(args.topics ?? []);
+		const normalizedTopicIdByInputId = new Map<string, string>();
+		for (const [index, inputTopic] of (args.topics ?? []).entries()) {
+			const normalizedTopic = topics[index];
+			if (!normalizedTopic) break;
+			const inputId = inputTopic.id.trim();
+			if (inputId && !normalizedTopicIdByInputId.has(inputId)) {
+				normalizedTopicIdByInputId.set(inputId, normalizedTopic.id);
+			}
+		}
+		const questions: StoredKnowledgeQuestion[] = args.questions.map(
+			(question) => {
+				const inputTopicId = question.topicId?.trim();
+				const topicId = inputTopicId
+					? (normalizedTopicIdByInputId.get(inputTopicId) ?? inputTopicId)
+					: undefined;
+				return {
+					...question,
+					id: question.id.trim(),
+					topicId,
+					prompt: normalizeGeneratedGermanText(question.prompt),
+					targetInsight: normalizeGeneratedGermanText(question.targetInsight),
+					options: question.options?.map((option) =>
+						normalizeGeneratedGermanText(option),
+					),
+					correctAnswer: question.correctAnswer
+						? normalizeGeneratedGermanText(question.correctAnswer)
+						: undefined,
+					idealAnswer: question.idealAnswer
+						? normalizeGeneratedGermanText(question.idealAnswer)
+						: undefined,
+					explanation: question.explanation
+						? normalizeGeneratedGermanText(question.explanation)
+						: undefined,
+					evaluationKeywords: question.evaluationKeywords?.map((keyword) =>
+						normalizeGeneratedGermanText(keyword),
+					),
+				};
+			},
+		);
+		if (args.diagnosticPlacement === "firstSession") {
+			validateFirstSessionDiagnosticQuestions(questions, topics);
+		}
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
-			knowledgeQuestions: args.questions.map((question) => ({
-				...question,
-				prompt: normalizeGeneratedGermanText(question.prompt),
-				targetInsight: normalizeGeneratedGermanText(question.targetInsight),
-				correctAnswer: question.correctAnswer
-					? normalizeGeneratedGermanText(question.correctAnswer)
-					: undefined,
-			})),
+			knowledgeQuestions: questions,
+			diagnosticPlacement: args.diagnosticPlacement,
 			sourceSummary: normalizeGeneratedGermanText(args.sourceSummary),
-			topicMap: normalizeLearningTopics(args.topics ?? []),
+			topicMap: topics,
 			scopeConfirmedAt: undefined,
+			contentGenerationStage: undefined,
+			contentGenerationId: undefined,
+			contentGenerationStartedAt: undefined,
 			status: "questionsReady",
 			updatedAt: Date.now(),
 		});
@@ -1454,6 +1678,11 @@ export const beginContentGeneration = internalMutation({
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (plan.diagnosticPlacement !== "firstSession") {
+			throwUserFacingError(
+				"Erstelle zuerst den Wissenscheck neu. Er ist der erste Block jedes Lernplans.",
+			);
 		}
 		if ((plan.topicMap ?? []).length > 0 && !plan.scopeConfirmedAt) {
 			throwUserFacingError("Bestätige zuerst den erkannten Prüfungsstoff.");
@@ -1569,7 +1798,18 @@ export const replaceGeneratedSessions = internalMutation({
 						: ("control" as const),
 			}),
 		);
-		const adaptationRevision = args.rollingWindow
+		const usesFirstSessionDiagnostic =
+			plan.diagnosticPlacement === "firstSession";
+		const rollingWindow =
+			args.rollingWindow === true || usesFirstSessionDiagnostic;
+		const diagnosticQuestions = plan.knowledgeQuestions ?? [];
+		if (usesFirstSessionDiagnostic) {
+			validateFirstSessionDiagnosticQuestions(
+				diagnosticQuestions,
+				plan.topicMap,
+			);
+		}
+		const adaptationRevision = rollingWindow
 			? (plan.adaptationRevision ?? 0) + 1
 			: (plan.adaptationRevision ?? 0);
 		const sourceTopics =
@@ -1584,7 +1824,7 @@ export const replaceGeneratedSessions = internalMutation({
 							priority: "high" as const,
 						},
 					]);
-		const firstTarget = args.rollingWindow
+		const firstTarget = rollingWindow
 			? selectNextAdaptiveLearningTarget({
 					topics: sourceTopics,
 					initialReadiness: plan.topicReadiness ?? [],
@@ -1592,7 +1832,7 @@ export const replaceGeneratedSessions = internalMutation({
 				})
 			: null;
 		const secondTarget =
-			args.rollingWindow && firstTarget
+			rollingWindow && firstTarget
 				? selectNextAdaptiveLearningTarget({
 						topics: sourceTopics,
 						initialReadiness: plan.topicReadiness ?? [],
@@ -1607,26 +1847,78 @@ export const replaceGeneratedSessions = internalMutation({
 						],
 					})
 				: null;
-		const sessionsToStore = args.rollingWindow
-			? normalizedSessions.slice(0, 2).flatMap((session, index) => {
-					const target = index === 0 ? firstTarget : secondTarget;
-					if (!target && index > 0) return [];
-					return [
-						target
-							? applyAdaptiveTargetToSession(
-									session,
-									target,
-									index === 0 ? "committed" : "provisional",
-									adaptationRevision,
-								)
-							: {
-									...session,
-									planningStatus: "committed" as const,
-									adaptationRevision,
-								},
-					];
-				})
-			: normalizedSessions;
+		const sessionsToStore: NormalizedGeneratedSession[] =
+			usesFirstSessionDiagnostic
+				? (() => {
+						const diagnosticSlot = normalizedSessions[0];
+						const provisionalSlot = normalizedSessions[1];
+						if (!diagnosticSlot || !provisionalSlot) {
+							throwUserFacingError(
+								"Für den Wissenscheck und den nächsten Lernschritt werden zwei freie Lernzeiten benötigt.",
+							);
+						}
+						return [
+							{
+								...diagnosticSlot,
+								phase: "practice",
+								title: "Wissenscheck",
+								compositionVariant: "control",
+								sessionPurpose: "diagnostic",
+								goal: "Zeige mit kurzen Aufgaben, was du bereits sicher kannst.",
+								tasks: [
+									"Beantworte 5 bis 10 kurze Fragen ohne Lernhilfen.",
+									"Nutze dein aktuelles Wissen; der nächste Lernschritt wird danach angepasst.",
+								],
+								expectedOutcome:
+									"Dein aktueller Wissensstand ist erfasst und bestimmt den nächsten Lernschritt.",
+								planningStatus: "committed",
+								adaptationRevision,
+							},
+							firstTarget
+								? {
+										...applyAdaptiveTargetToSession(
+											provisionalSlot,
+											firstTarget,
+											"provisional",
+											adaptationRevision,
+										),
+										sessionPurpose: "learning" as const,
+									}
+								: {
+										...provisionalSlot,
+										sessionPurpose: "learning" as const,
+										planningStatus: "provisional" as const,
+										adaptationRevision,
+									},
+						];
+					})()
+				: rollingWindow
+					? normalizedSessions.slice(0, 2).flatMap((session, index) => {
+							const target = index === 0 ? firstTarget : secondTarget;
+							if (!target && index > 0) return [];
+							return [
+								target
+									? {
+											...applyAdaptiveTargetToSession(
+												session,
+												target,
+												index === 0 ? "committed" : "provisional",
+												adaptationRevision,
+											),
+											sessionPurpose: "learning" as const,
+										}
+									: {
+											...session,
+											sessionPurpose: "learning" as const,
+											planningStatus: "committed" as const,
+											adaptationRevision,
+										},
+							];
+						})
+					: normalizedSessions.map((session) => ({
+							...session,
+							sessionPurpose: "learning" as const,
+						}));
 
 		const existingSessions = await ctx.db
 			.query("learningPlanSessions")
@@ -1647,11 +1939,14 @@ export const replaceGeneratedSessions = internalMutation({
 
 		const now = Date.now();
 		const sessionIds: Id<"learningPlanSessions">[] = [];
+		const contentSessionIds: Id<"learningPlanSessions">[] = [];
 		for (const [index, session] of sessionsToStore.entries()) {
+			const isDiagnostic = session.sessionPurpose === "diagnostic";
 			const shouldPrepareContent =
+				!isDiagnostic &&
 				args.deferReadyUntilContent &&
 				(!args.deferFutureContent ||
-					(args.rollingWindow
+					(rollingWindow
 						? session.planningStatus !== "provisional"
 						: index === 0));
 			const sessionId = await ctx.db.insert("learningPlanSessions", {
@@ -1661,14 +1956,29 @@ export const replaceGeneratedSessions = internalMutation({
 				...(session.compositionVariant === "split"
 					? { knowledgeValidationStatus: "pending" as const }
 					: {}),
-				...(shouldPrepareContent
-					? { contentGenerationStatus: "queued" as const }
-					: {}),
+				...(isDiagnostic
+					? {
+							contentGenerationStatus: "ready" as const,
+							contentGeneratedAt: now,
+						}
+					: shouldPrepareContent
+						? { contentGenerationStatus: "queued" as const }
+						: {}),
 				sortOrder: index,
 				createdAt: now,
 				updatedAt: now,
 			});
 			sessionIds.push(sessionId);
+			if (isDiagnostic) {
+				await insertFirstSessionDiagnosticItems(ctx, {
+					plan,
+					sessionId,
+					questions: diagnosticQuestions,
+					now,
+				});
+			} else if (shouldPrepareContent) {
+				contentSessionIds.push(sessionId);
+			}
 		}
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
@@ -1676,7 +1986,7 @@ export const replaceGeneratedSessions = internalMutation({
 			planningHint: args.planningHint,
 			sourceSummary: normalizedSourceSummary,
 			insight: normalizedInsight,
-			rollingPlanEnabled: args.rollingWindow === true,
+			rollingPlanEnabled: rollingWindow,
 			adaptationRevision,
 			sessionCompositionVariant: args.sessionCompositionVariant ?? "split",
 			status: args.deferReadyUntilContent ? "questionsReady" : "generated",
@@ -1686,7 +1996,9 @@ export const replaceGeneratedSessions = internalMutation({
 			updatedAt: now,
 		});
 
-		return args.deferReadyUntilContent ? { sessionIds } : null;
+		return args.deferReadyUntilContent
+			? { sessionIds, contentSessionIds }
+			: null;
 	},
 });
 
@@ -1902,9 +2214,13 @@ export const updateSession = mutation({
 		if (args.durationMinutes <= 0) {
 			throwUserFacingError("Die Dauer muss größer als 0 sein.");
 		}
+		if (session.sessionPurpose === "diagnostic" && args.phase !== "practice") {
+			throwUserFacingError("Der Wissenscheck bleibt eine Fragensession.");
+		}
 		const contentInvalidated =
-			session.phase !== args.phase ||
-			session.durationMinutes !== args.durationMinutes;
+			session.sessionPurpose !== "diagnostic" &&
+			(session.phase !== args.phase ||
+				session.durationMinutes !== args.durationMinutes);
 		await assertNoScheduleConflict(ctx, {
 			ownerTokenIdentifier,
 			dayKey: args.dateKey,
@@ -2008,6 +2324,7 @@ export const addSession = mutation({
 			learningPlanId: args.learningPlanId,
 			phase: "practice",
 			title: "Zusatzübung",
+			sessionPurpose: "learning",
 			dateKey,
 			dateLabel: formatDateLabel(nextDate),
 			startTime,
@@ -2128,6 +2445,14 @@ export const recordSessionOutcome = mutation({
 		if (status !== "started") {
 			throwUserFacingError("Starte den Lernblock zuerst.");
 		}
+		if (session.sessionPurpose === "diagnostic") {
+			if (args.outcome !== "completed") {
+				throwUserFacingError(
+					"Schließe den Wissenscheck vollständig ab, bevor der nächste Lernschritt festgelegt wird.",
+				);
+			}
+			await assertDiagnosticIsComplete(ctx, session);
+		}
 
 		const now = Date.now();
 		const updatedSession = await patchSessionAndSyncedEntry(
@@ -2231,34 +2556,64 @@ export const adjustMissedSession = mutation({
 			});
 		}
 		const now = Date.now();
+		const isDiagnosticRecovery = session.sessionPurpose === "diagnostic";
+		const diagnosticQuestions = plan.knowledgeQuestions ?? [];
+		if (isDiagnosticRecovery) {
+			validateFirstSessionDiagnosticQuestions(
+				diagnosticQuestions,
+				plan.topicMap,
+			);
+		}
 		const newSessionId = await ctx.db.insert("learningPlanSessions", {
 			ownerTokenIdentifier,
 			learningPlanId: session.learningPlanId,
-			phase: session.phase,
-			title: `Recovery: ${session.title}`,
+			phase: isDiagnosticRecovery ? "practice" : session.phase,
+			title: isDiagnosticRecovery
+				? "Wissenscheck nachholen"
+				: `Recovery: ${session.title}`,
+			sessionPurpose: session.sessionPurpose ?? "learning",
 			dateKey: args.dateKey,
 			dateLabel: args.dateLabel,
 			startTime: args.startTime,
 			durationMinutes: args.durationMinutes,
-			goal: "Den verpassten Lernblock kleiner neu starten.",
-			tasks: session.tasks.slice(0, 2),
+			goal: isDiagnosticRecovery
+				? "Zeige mit kurzen Aufgaben, was du bereits sicher kannst."
+				: "Den verpassten Lernblock kleiner neu starten.",
+			tasks: isDiagnosticRecovery
+				? ["Beantworte die kurzen Fragen ohne Lernhilfen."]
+				: session.tasks.slice(0, 2),
 			expectedOutcome: session.expectedOutcome,
 			adjustedFromSessionId: session._id,
-			...(plan.rollingPlanEnabled
+			...(isDiagnosticRecovery
 				? {
-						contentGenerationStatus: "queued" as const,
+						contentGenerationStatus: "ready" as const,
+						contentGeneratedAt: now,
 						planningStatus: "committed" as const,
-						targetTopicIds: session.targetTopicIds,
-						targetEvidenceDimension: session.targetEvidenceDimension,
-						selectionReason:
-							"Neu geplant: Du startest den verpassten Lernblock kleiner, bevor der nächste Schwerpunkt festgelegt wird.",
 						adaptationRevision: plan.adaptationRevision,
 					}
-				: {}),
+				: plan.rollingPlanEnabled
+					? {
+							contentGenerationStatus: "queued" as const,
+							planningStatus: "committed" as const,
+							targetTopicIds: session.targetTopicIds,
+							targetEvidenceDimension: session.targetEvidenceDimension,
+							selectionReason:
+								"Neu geplant: Du startest den verpassten Lernblock kleiner, bevor der nächste Schwerpunkt festgelegt wird.",
+							adaptationRevision: plan.adaptationRevision,
+						}
+					: {}),
 			sortOrder,
 			createdAt: now,
 			updatedAt: now,
 		});
+		if (isDiagnosticRecovery) {
+			await insertFirstSessionDiagnosticItems(ctx, {
+				plan,
+				sessionId: newSessionId,
+				questions: diagnosticQuestions,
+				now,
+			});
+		}
 
 		await patchSessionAndSyncedEntry(ctx, plan, session, {
 			executionStatus: "adjusted",
@@ -2272,8 +2627,8 @@ export const adjustMissedSession = mutation({
 		}
 		if (plan.rollingPlanEnabled) {
 			await ctx.db.patch("learningPlans", plan._id, {
-				contentGenerationStage: "content",
-				contentGenerationStartedAt: now,
+				contentGenerationStage: isDiagnosticRecovery ? "ready" : "content",
+				contentGenerationStartedAt: isDiagnosticRecovery ? undefined : now,
 				updatedAt: now,
 			});
 		}
@@ -2298,6 +2653,10 @@ export const setSessionCompleted = mutation({
 	},
 	handler: async (ctx, args) => {
 		const { session, plan } = await getOwnedSessionAndPlan(ctx, args.sessionId);
+		if (args.completed && getSessionExecutionStatus(session) === "completed") {
+			return true;
+		}
+		if (args.completed) await assertDiagnosticIsComplete(ctx, session);
 		const now = Date.now();
 		await patchSessionAndSyncedEntry(ctx, plan, session, {
 			completed: args.completed,
@@ -2324,6 +2683,11 @@ export const removeSession = mutation({
 		const session = await ctx.db.get("learningPlanSessions", args.id);
 		if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			return null;
+		}
+		if (session.sessionPurpose === "diagnostic") {
+			throwUserFacingError(
+				"Der Wissenscheck ist der erste Block dieses Lernplans und kann nicht entfernt werden.",
+			);
 		}
 
 		if (session.dayEntryId) {
@@ -2356,6 +2720,14 @@ export const acceptPlan = mutation({
 			.take(50);
 		if (sessions.length === 0) {
 			throwUserFacingError("Es gibt noch keine Lerntage zum Eintragen.");
+		}
+		if (
+			plan.diagnosticPlacement !== "firstSession" ||
+			sessions[0]?.sessionPurpose !== "diagnostic"
+		) {
+			throwUserFacingError(
+				"Erstelle zuerst den Wissenscheck neu. Er ist der erste Block jedes Lernplans.",
+			);
 		}
 		if (
 			plan.contentGenerationStage &&
