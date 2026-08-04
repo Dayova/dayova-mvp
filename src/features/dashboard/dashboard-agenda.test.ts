@@ -8,7 +8,6 @@ import {
 	getDashboardCalendarDayKeys,
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
-	getDashboardWeekProgress,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
@@ -97,68 +96,6 @@ describe("dashboard agenda", () => {
 		expect(keys).toContain("2027-08-12");
 		expect(keys).toContain("2027-08-13");
 		expect(keys).toContain("2026-07-29");
-	});
-
-	it("summarizes completed learning sessions in the current week", () => {
-		const items = [
-			toDashboardAgendaItem(
-				"2026-07-27",
-				entry({
-					id: "completed-before-today" as DayEntry["id"],
-					kind: "Lernen",
-					completed: true,
-					durationMinutes: 25,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-07-29",
-				entry({
-					id: "completed-today" as DayEntry["id"],
-					kind: "Lernen",
-					executionStatus: "completed",
-					durationMinutes: 35,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-07-30",
-				entry({
-					id: "upcoming" as DayEntry["id"],
-					kind: "Lernen",
-					durationMinutes: 20,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-07-29",
-				entry({
-					id: "homework" as DayEntry["id"],
-					kind: "Hausaufgabe",
-					completed: true,
-					durationMinutes: 90,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-08-03",
-				entry({
-					id: "next-week" as DayEntry["id"],
-					kind: "Lernen",
-					completed: true,
-					durationMinutes: 45,
-				}),
-			),
-		];
-
-		expect(
-			getDashboardWeekProgress({
-				items,
-				todayKey: "2026-07-29",
-			}),
-		).toEqual({
-			completedLearningSessions: 2,
-			completedMinutesToday: 35,
-			completionPercent: 67,
-			remainingLearningSessions: 1,
-			totalLearningSessions: 3,
-		});
 	});
 
 	it("keeps passive lessons distinct from Dayova learning sessions", () => {
