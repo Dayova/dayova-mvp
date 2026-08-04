@@ -25,16 +25,17 @@ import Svg, { Path } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
+import { Button } from "~/components/ui/button";
 import {
-	ArrowUpRight,
+	ArrowRight,
 	Check,
 	Dumbbell,
+	GraduationCap,
 	Note,
 	Repeat,
 	Sparkles,
 	Time04,
 } from "~/components/ui/icon";
-import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -59,10 +60,12 @@ import type {
 	LearningPlanSnapshot,
 	PlanSession,
 } from "~/features/learning-plans/types";
+import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { dismissToOrReplace } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
@@ -96,15 +99,40 @@ const LEARNING_PATH_ICON_COMPONENT = {
 } satisfies Record<LearningPathNodeIcon, typeof Dumbbell>;
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
-const SESSION_PREVIEW_CARD_HEIGHT = 218;
 const SESSION_PREVIEW_TRANSITION_DURATION_MS = 160;
+const PATH_NODE_LABEL_WIDTH = 116;
+
+const pathDateFormatter = new Intl.DateTimeFormat("de-DE", {
+	day: "numeric",
+	month: "short",
+});
+
+const formatPathDateLabel = (session: PlanSession) => {
+	const date = parseDayKey(session.dateKey);
+	const dateLabel = date ? pathDateFormatter.format(date) : session.dateLabel;
+	return `${dateLabel} · ${session.startTime}`;
+};
+
+export const getExamCountdownLabel = (examDateKey: string, today: Date) => {
+	const examDate = parseDayKey(examDateKey);
+	if (!examDate) return null;
+
+	const remainingDays = Math.round(
+		(examDate.getTime() - today.getTime()) / 86_400_000,
+	);
+
+	if (remainingDays < 0) return "Prüfung vorbei";
+	if (remainingDays === 0) return "Heute";
+	if (remainingDays === 1) return "Noch 1 Tag";
+	return `Noch ${remainingDays} Tage`;
+};
 
 const getSessionRoute = (
 	planId: Id<"learningPlans">,
 	sessionId: Id<"learningPlanSessions">,
 ) => `/learning-plans/${planId}/sessions/${sessionId}` as const;
 
-function SessionPreviewCard({
+export function SessionPreviewCard({
 	canOpen,
 	session,
 	onOpen,
@@ -124,13 +152,18 @@ function SessionPreviewCard({
 	const title = formatGermanUiText(session.title);
 	const description = formatGermanUiText(session.goal);
 	const hasRecordedOutcome = isLearningPlanSessionHistory(session);
+	const actionLabel = hasRecordedOutcome
+		? "Lernsession ansehen"
+		: session.executionStatus === "started"
+			? "Weiterlernen"
+			: "Lernsession starten";
 	const horizonLabel = hasRecordedOutcome
 		? "Bearbeitet"
 		: session.planningStatus === "provisional"
 			? "Danach · Vorschau"
 			: "Als Nächstes";
 	const content = (
-		<View className="gap-2">
+		<View className="gap-3">
 			<View className="flex-row">
 				<View className="rounded-full bg-system-subtle px-3 py-1.5">
 					<Text className="font-poppins font-semibold text-body-5 text-primary">
@@ -176,60 +209,47 @@ function SessionPreviewCard({
 			</View>
 
 			<Text
-				className="max-w-[292px] font-poppins text-body-4 text-secondary-text"
+				className="font-poppins text-body-4 text-secondary-text"
 				numberOfLines={2}
 			>
 				{description}
 			</Text>
 			{session.selectionReason ? (
 				<Text
-					className="pr-8 font-medium font-poppins text-body-5 text-primary"
+					className="font-poppins font-semibold text-body-5 text-primary"
 					numberOfLines={2}
 				>
 					{formatGermanUiText(session.selectionReason)}
 				</Text>
 			) : null}
-		</View>
-	);
 
-	const card = canOpen ? (
-		<CompactNotchedActionCard
-			actionAccessibilityHint="Öffnet die ausgewählte Lerneinheit."
-			actionAccessibilityLabel={`Lerneinheit ${title} öffnen`}
-			actionIcon={
-				<ArrowUpRight
-					size={24}
-					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-					strokeWidth={1.9}
-				/>
-			}
-			actionOffsetBottom={4}
-			onPress={onOpen}
-			pressType="action"
-			cardHeight={SESSION_PREVIEW_CARD_HEIGHT}
-			cardStyle={{
-				paddingTop: 22,
-				paddingBottom: 24,
-			}}
-		>
-			{content}
-		</CompactNotchedActionCard>
-	) : (
-		<View
-			style={{
-				width: "100%",
-				minHeight: SESSION_PREVIEW_CARD_HEIGHT,
-				paddingHorizontal: 24,
-				paddingTop: 22,
-				paddingBottom: 24,
-				borderWidth: 1,
-				borderColor: colors.border,
-				borderRadius: 44,
-				borderCurve: "continuous",
-				backgroundColor: colors.surface,
-			}}
-		>
-			{content}
+			{canOpen ? (
+				<Button
+					accessibilityHint="Öffnet die ausgewählte Lerneinheit."
+					accessibilityLabel={`${actionLabel}: ${title}`}
+					className="mt-1 w-full"
+					onPress={onOpen}
+					size="sm"
+				>
+					<Text>{actionLabel}</Text>
+					<ArrowRight
+						size={18}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={2.2}
+					/>
+				</Button>
+			) : (
+				<View className="mt-1 flex-row items-start gap-2 rounded-[20px] bg-system-subtle px-3 py-3">
+					<Sparkles
+						size={16}
+						color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+						strokeWidth={2.1}
+					/>
+					<Text className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text">
+						Diese Vorschau kann sich nach deinem nächsten Abschluss ändern.
+					</Text>
+				</View>
+			)}
 		</View>
 	);
 
@@ -245,9 +265,11 @@ function SessionPreviewCard({
 					? undefined
 					: FadeOut.duration(SESSION_PREVIEW_TRANSITION_DURATION_MS)
 			}
-			style={{ width: "100%" }}
+			className="w-full rounded-card border border-border bg-card px-5 py-5"
+			// React Native's continuous corner curve has no NativeWind utility.
+			style={{ borderCurve: "continuous" }}
 		>
-			{card}
+			{content}
 		</Animated.View>
 	);
 }
@@ -605,7 +627,7 @@ function PathNode({
 			accessibilityHint={
 				isLocked
 					? "Zeigt den voraussichtlich folgenden Lernblock. Er kann sich nach der nächsten Session noch ändern."
-					: "Wählt diesen Lernblock aus und zeigt die Vorschau. Öffnen kannst du ihn danach über die Pfeiltaste in der Vorschau."
+					: "Wählt diesen Lernblock aus. Über die Vorschau oben kannst du ihn starten oder ansehen."
 			}
 			accessibilityRole="button"
 			accessibilityState={{ selected }}
@@ -636,12 +658,91 @@ function PathNode({
 	);
 }
 
-function LearningPath({
+const PATH_NODE_VISUAL_LABEL: Record<LearningPathNodeState, string> = {
+	completed: "Erledigt",
+	current: "Als Nächstes",
+	locked: "Vorschau",
+};
+
+function PathNodeLabel({
+	frame,
+	session,
+	state,
+}: {
+	frame: PathNodeFrame;
+	session: PlanSession;
+	state: LearningPathNodeState;
+}) {
+	const nodeCenterX = frame.left + frame.width / 2;
+	const appearsOnLeft = nodeCenterX > FIGMA_PATH_WIDTH / 2;
+	const label =
+		state === "locked" && session.planningStatus !== "provisional"
+			? "Geplant"
+			: PATH_NODE_VISUAL_LABEL[state];
+	// The labels follow the fixed path artwork geometry, which is not expressible
+	// through static NativeWind positioning utilities.
+	const position = {
+		left: appearsOnLeft
+			? frame.left - PATH_NODE_LABEL_WIDTH - 8
+			: frame.left + frame.width + 8,
+		top: frame.top + Math.max((frame.height - 46) / 2, 0),
+		width: PATH_NODE_LABEL_WIDTH,
+	} satisfies ViewStyle;
+
+	return (
+		<View
+			accessible={false}
+			accessibilityElementsHidden
+			importantForAccessibility="no-hide-descendants"
+			pointerEvents="none"
+			className={cn(
+				"absolute gap-1",
+				appearsOnLeft ? "items-end" : "items-start",
+			)}
+			style={position}
+		>
+			<View
+				className={cn(
+					"rounded-full px-3 py-1.5",
+					state === "completed" && "bg-success-subtle",
+					state === "current" && "bg-system-subtle",
+					state === "locked" && "border border-border bg-card",
+				)}
+			>
+				<Text
+					className={cn(
+						"font-poppins font-semibold text-body-5",
+						state === "completed" && "text-success",
+						state === "current" && "text-primary",
+						state === "locked" && "text-secondary-text",
+					)}
+				>
+					{label}
+				</Text>
+			</View>
+			<Text
+				className={cn(
+					"font-poppins text-body-5 text-secondary-text",
+					appearsOnLeft ? "text-right" : "text-left",
+				)}
+				numberOfLines={1}
+			>
+				{formatPathDateLabel(session)}
+			</Text>
+		</View>
+	);
+}
+
+export function LearningPath({
+	examCountdownLabel,
+	examDateLabel,
 	onSelectSession,
 	selectedSessionId,
 	sessions,
 	showsAdaptiveContinuation,
 }: {
+	examCountdownLabel: string | null;
+	examDateLabel: string;
 	onSelectSession: (session: PlanSession) => void;
 	selectedSessionId: Id<"learningPlanSessions"> | null;
 	sessions: PlanSession[];
@@ -650,10 +751,15 @@ function LearningPath({
 	const currentIndex = getCommittedSessionIndex(sessions);
 	const activeSegmentLimit = getActiveSegmentLimit(sessions);
 	const lastSessionFrame = getFigmaNodeFrame(Math.max(sessions.length - 1, 0));
-	const continuationTop = lastSessionFrame.top + lastSessionFrame.height + 28;
+	const continuationTop = lastSessionFrame.top + lastSessionFrame.height + 64;
+	const continuationAnchorX = 52;
+	const continuationAnchorY = continuationTop + 36;
+	const continuationStartX = lastSessionFrame.left + lastSessionFrame.width / 2;
+	const continuationStartY = lastSessionFrame.top + lastSessionFrame.height;
+	const continuationPath = `M ${continuationStartX} ${continuationStartY} C ${continuationStartX} ${continuationStartY + 48}, ${continuationAnchorX} ${continuationAnchorY - 48}, ${continuationAnchorX} ${continuationAnchorY}`;
 	const basePathHeight = getFigmaPathHeight(sessions.length);
 	const pathHeight = showsAdaptiveContinuation
-		? Math.max(basePathHeight, continuationTop + 116)
+		? Math.max(basePathHeight, continuationTop + 220)
 		: basePathHeight;
 	const segments = sessions.slice(1).map((_, index) => ({
 		d: getFigmaSegmentPath(index),
@@ -695,45 +801,95 @@ function LearningPath({
 							strokeLinejoin="round"
 						/>
 					))}
+				{showsAdaptiveContinuation ? (
+					<Path
+						d={continuationPath}
+						fill="none"
+						opacity={0.72}
+						stroke={DAYOVA_DESIGN_SYSTEM.colors.primary}
+						strokeDasharray="7 9"
+						strokeLinecap="round"
+						strokeWidth={4}
+					/>
+				) : null}
 			</Svg>
 
 			{sessions.map((session, index) => {
 				const state = getPathNodeState(session, index, currentIndex);
+				const frame = getFigmaNodeFrame(index);
 
 				return (
-					<PathNode
+					<View
 						key={session.id}
-						frame={getFigmaNodeFrame(index)}
-						selected={session.id === selectedSessionId}
-						session={session}
-						state={state}
-						onPress={() => onSelectSession(session)}
-					/>
+						pointerEvents="box-none"
+						className="absolute inset-0"
+					>
+						<PathNode
+							frame={frame}
+							selected={session.id === selectedSessionId}
+							session={session}
+							state={state}
+							onPress={() => onSelectSession(session)}
+						/>
+						<PathNodeLabel frame={frame} session={session} state={state} />
+					</View>
 				);
 			})}
 
 			{showsAdaptiveContinuation ? (
 				<View
 					accessible
-					accessibilityLabel="Der Lernweg geht weiter. Nach jedem Abschluss plant Dayova den nächsten Termin."
-					className="absolute right-6 left-6 flex-row items-start gap-3 rounded-[24px] border border-primary/20 bg-system-subtle px-4 py-4"
+					accessibilityLabel={`Dayova plant mit dir weiter. Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin. Prüfung am ${examDateLabel}${examCountdownLabel ? `, ${examCountdownLabel}` : ""}.`}
+					className="absolute right-2 left-2 gap-4 rounded-info border border-primary/20 bg-system-subtle px-4 py-4"
 					style={{ top: continuationTop }}
 				>
-					<View className="h-9 w-9 shrink-0 items-center justify-center rounded-[14px] bg-primary">
-						<Sparkles
-							size={18}
-							color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-							strokeWidth={2.1}
-						/>
+					<View className="flex-row items-start gap-3">
+						<View className="h-10 w-10 shrink-0 items-center justify-center rounded-[16px] bg-primary">
+							<Sparkles
+								size={19}
+								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+								strokeWidth={2.1}
+							/>
+						</View>
+						<View className="min-w-0 flex-1">
+							<Text className="font-poppins font-semibold text-body-3 text-text">
+								Dayova plant mit dir weiter
+							</Text>
+							<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
+								Nach deinem Abschluss passt Dayova die Vorschau an und plant den
+								nächsten Termin.
+							</Text>
+						</View>
 					</View>
-					<View className="min-w-0 flex-1">
-						<Text className="font-poppins font-semibold text-body-4 text-text">
-							Danach geht dein Lernweg weiter
-						</Text>
-						<Text className="mt-1 font-poppins text-body-5 text-secondary-text">
-							Nach jedem Abschluss ergänzt Dayova den nächsten Termin – solange
-							vor der Prüfung Lernzeit frei ist.
-						</Text>
+
+					<View className="h-px bg-primary/15" />
+
+					<View className="flex-row items-center gap-3">
+						<View className="h-9 w-9 items-center justify-center rounded-[14px] bg-card">
+							<GraduationCap
+								size={18}
+								color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+								strokeWidth={2.1}
+							/>
+						</View>
+						<View className="min-w-0 flex-1">
+							<Text className="font-poppins font-semibold text-body-5 text-primary">
+								Prüfung
+							</Text>
+							<Text
+								className="font-poppins text-body-4 text-text"
+								numberOfLines={1}
+							>
+								{examDateLabel}
+							</Text>
+						</View>
+						{examCountdownLabel ? (
+							<View className="shrink-0 rounded-full bg-card px-3 py-2">
+								<Text className="font-poppins font-semibold text-body-5 text-primary">
+									{examCountdownLabel}
+								</Text>
+							</View>
+						) : null}
 					</View>
 				</View>
 			) : null}
@@ -744,6 +900,7 @@ function LearningPath({
 export default function LearningPlanSessionsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const today = useCurrentLocalDay();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuthSession();
@@ -874,6 +1031,11 @@ export default function LearningPlanSessionsScreen() {
 					<View />
 				) : selectedSession ? (
 					<LearningPath
+						examCountdownLabel={getExamCountdownLabel(
+							snapshot.plan.examDateKey,
+							today,
+						)}
+						examDateLabel={snapshot.plan.examDateLabel}
 						selectedSessionId={selectedSession.id}
 						sessions={snapshot.sessions}
 						showsAdaptiveContinuation={
