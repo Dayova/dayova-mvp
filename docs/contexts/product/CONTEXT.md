@@ -109,8 +109,8 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 
 ## Example Dialogue
 
-Domain: "The learner sees this as their `Persönlicher Lernplan`, not as a diagnostic quiz."
-Engineer: "So I can use `pre-plan diagnostic step` internally, but the UI copy should say things like `Beantworte 5 kurze Fragen für deinen persönlichen Lernplan`?"
+Domain: "The learner sees this as their `Lernplan-Erstellung`, not as a diagnostic questionnaire."
+Engineer: "So I can use `pre-plan diagnostic step` internally, but the UI copy should say things like `Beantworte kurze Fragen für deine Lernplan-Erstellung`?"
 Domain: "Right. `Wissensanalyse` is the post-session analysis after `Üben` or `Praxis`."
 Engineer: "And `Praxis` maps to the existing rehearsal phase?"
 Domain: "Yes. It is the Figma/user-facing name for the Generalprobe-style phase."
