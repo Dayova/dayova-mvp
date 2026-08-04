@@ -15,9 +15,12 @@ import type { Id } from "#convex/_generated/dataModel";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { useAuthSession } from "~/context/AuthContext";
-import { getDiagnosticQuestionCreationStep } from "~/features/learning-plans/creation-progress";
-import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getLearningPlanCreationBackIntent } from "~/features/learning-plans/creation-navigation";
+import {
+	getDiagnosticQuestionCreationStep,
+	getLearningPlanCreationTotalSteps,
+} from "~/features/learning-plans/creation-progress";
+import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { QuizStep } from "~/features/learning-plans/quiz-step";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
@@ -113,8 +116,12 @@ export default function LearningPlanQuizScreen() {
 	useBackIntent(Boolean(planId), goBack);
 	useLearningPlanCreationProgress({
 		active: true,
-		currentStep: getDiagnosticQuestionCreationStep(questionIndex),
+		currentStep: getDiagnosticQuestionCreationStep(
+			questionIndex,
+			questions.length,
+		),
 		onBack: goBack,
+		totalSteps: getLearningPlanCreationTotalSteps(questions.length),
 	});
 
 	const backSwipeGesture = Gesture.Pan()

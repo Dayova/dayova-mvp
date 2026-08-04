@@ -10,7 +10,10 @@ import { Button } from "~/components/ui/button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
-import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
+import {
+	getLearningPlanCreationTotalSteps,
+	getLearningPlanCreationWorkloadStep,
+} from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
 import { generatePlanWithAnalytics } from "~/features/learning-plans/plan-generation-analytics";
@@ -248,8 +251,13 @@ export default function LearningPlanGeneratingScreen() {
 	};
 	useLearningPlanCreationProgress({
 		active: true,
-		currentStep: LEARNING_PLAN_CREATION_STEPS.workload,
+		currentStep: getLearningPlanCreationWorkloadStep(
+			snapshot?.plan.knowledgeQuestions.length,
+		),
 		onBack: goBack,
+		totalSteps: getLearningPlanCreationTotalSteps(
+			snapshot?.plan.knowledgeQuestions.length,
+		),
 	});
 
 	return (

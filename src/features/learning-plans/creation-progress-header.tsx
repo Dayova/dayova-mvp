@@ -8,17 +8,20 @@ import { cn } from "~/lib/utils";
 export function LearningPlanCreationProgressHeader({
 	currentStep,
 	onBack,
+	totalSteps = LEARNING_PLAN_CREATION_TOTAL_STEPS,
 	title = "Lernplan erstellen",
 	className,
 	...props
 }: ViewProps & {
 	currentStep: number;
 	onBack: () => void;
+	totalSteps?: number;
 	title?: string;
 }) {
+	const safeTotalSteps = Math.max(Math.trunc(totalSteps), 1);
 	const safeStep = Math.min(
 		Math.max(Math.trunc(currentStep), 1),
-		LEARNING_PLAN_CREATION_TOTAL_STEPS,
+		safeTotalSteps,
 	);
 
 	return (
@@ -38,17 +41,17 @@ export function LearningPlanCreationProgressHeader({
 						// Tabular figures are a native text-rendering setting, not static layout.
 						style={{ fontVariant: ["tabular-nums"] }}
 					>
-						{safeStep} von {LEARNING_PLAN_CREATION_TOTAL_STEPS}
+						{safeStep} von {safeTotalSteps}
 					</Text>
 				</View>
 				<FlowProgressBar
-					progress={safeStep / LEARNING_PLAN_CREATION_TOTAL_STEPS}
+					progress={safeStep / safeTotalSteps}
 					accessibilityRole="progressbar"
 					accessibilityValue={{
 						min: 1,
-						max: LEARNING_PLAN_CREATION_TOTAL_STEPS,
+						max: safeTotalSteps,
 						now: safeStep,
-						text: `Schritt ${safeStep} von ${LEARNING_PLAN_CREATION_TOTAL_STEPS}`,
+						text: `Schritt ${safeStep} von ${safeTotalSteps}`,
 					}}
 				/>
 			</View>
