@@ -150,7 +150,7 @@ export function SessionPreviewCard({
 			? "Danach · Vorschau"
 			: "Als Nächstes";
 	const content = (
-		<View className="gap-3">
+		<View className="gap-2">
 			<View className="flex-row">
 				<View className="rounded-full bg-system-subtle px-3 py-1.5">
 					<Text className="font-poppins font-semibold text-body-5 text-primary">
@@ -252,7 +252,7 @@ export function SessionPreviewCard({
 					? undefined
 					: FadeOut.duration(SESSION_PREVIEW_TRANSITION_DURATION_MS)
 			}
-			className="w-full rounded-card border border-border bg-card px-5 py-5"
+			className="w-full rounded-card border border-border bg-card px-4 py-4"
 			// React Native's continuous corner curve has no NativeWind utility.
 			style={{ borderCurve: "continuous" }}
 		>
@@ -324,13 +324,18 @@ const getFigmaSegmentPath = (index: number) => {
 	return `M 56 ${348 + y} V ${370 + y} Q 56 ${410 + y} 96 ${410 + y} H 139`;
 };
 
-const getFigmaSegmentEndY = (index: number) => {
+const getFigmaSegmentEndPoint = (index: number) => {
 	const segmentIndex = index % FIGMA_REPEATING_NODE_FRAMES.length;
 	const cycle = Math.floor(index / FIGMA_REPEATING_NODE_FRAMES.length);
 	const cycleOffset = cycle * FIGMA_PATH_CYCLE_HEIGHT;
-	const endY = [102, 234, 293, 410][segmentIndex] ?? 410;
+	const endpoint = [
+		{ x: 289, y: 102 },
+		{ x: 206, y: 234 },
+		{ x: 56, y: 293 },
+		{ x: 139, y: 410 },
+	][segmentIndex] ?? { x: 139, y: 410 };
 
-	return endY + cycleOffset;
+	return { x: endpoint.x, y: endpoint.y + cycleOffset };
 };
 
 const getFigmaPathHeight = (sessionCount: number) => {
@@ -673,7 +678,10 @@ export function LearningPath({
 	const activeSegmentLimit = getActiveSegmentLimit(sessions);
 	const continuationSegmentIndex = Math.max(sessions.length - 1, 0);
 	const continuationPath = getFigmaSegmentPath(continuationSegmentIndex);
-	const continuationTop = getFigmaSegmentEndY(continuationSegmentIndex) + 16;
+	const continuationEndpoint = getFigmaSegmentEndPoint(
+		continuationSegmentIndex,
+	);
+	const continuationTop = continuationEndpoint.y + 16;
 	const basePathHeight = getFigmaPathHeight(sessions.length);
 	const pathHeight = showsAdaptiveContinuation
 		? Math.max(basePathHeight, continuationTop + 220)
@@ -732,6 +740,20 @@ export function LearningPath({
 					/>
 				) : null}
 			</Svg>
+
+			{showsAdaptiveContinuation ? (
+				<View
+					accessible={false}
+					className="absolute h-3 w-3 rounded-full border-2 border-background bg-primary"
+					pointerEvents="none"
+					// The marker is centered on the generated continuation endpoint.
+					style={{
+						left: continuationEndpoint.x - 6,
+						top: continuationEndpoint.y - 6,
+					}}
+					testID="adaptive-continuation-endpoint"
+				/>
+			) : null}
 
 			{sessions.map((session, index) => {
 				const state = getPathNodeState(session, index, currentIndex);

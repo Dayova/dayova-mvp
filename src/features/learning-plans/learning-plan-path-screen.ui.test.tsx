@@ -189,6 +189,9 @@ describe("learning-plan path", () => {
 		expect(continuationPath.props.d).toContain(" Q ");
 		expect(continuationPath.props.d).toContain(" V ");
 		expect(continuationPath.props.d).not.toContain(" C ");
+		expect(
+			screen.getByTestId("adaptive-continuation-endpoint"),
+		).toBeOnTheScreen();
 		expect(screen.getByTestId("adaptive-continuation-card")).toBeOnTheScreen();
 		expect(screen.getByText("Dayova plant mit dir weiter")).toBeOnTheScreen();
 		expect(screen.getByText("18. August 2026")).toBeOnTheScreen();
