@@ -1248,12 +1248,14 @@ export const listOverview = query({
 			.take(50);
 		const materiallessDraftPlans: typeof draftPlans = [];
 		for (const plan of draftPlans) {
-			const schoolDocument = await ctx.db
+			const documents = await ctx.db
 				.query("learningPlanDocuments")
 				.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", plan._id))
-				.filter((q) => q.neq(q.field("sourceKind"), "external"))
-				.first();
-			if (!schoolDocument) {
+				.take(20);
+			const hasSchoolDocument = documents.some(
+				(document) => document.sourceKind !== "external",
+			);
+			if (!hasSchoolDocument) {
 				materiallessDraftPlans.push(plan);
 			}
 		}

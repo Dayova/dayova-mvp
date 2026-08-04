@@ -1075,7 +1075,8 @@ export default function NewEntryScreen() {
 									</Text>
 								)}
 							</Button>
-							{schedulingAvailability !== undefined && !hasUsableLearningTime ? (
+							{schedulingAvailability !== undefined &&
+							!hasUsableLearningTime ? (
 								<Button
 									className="w-full"
 									variant="neutral"
