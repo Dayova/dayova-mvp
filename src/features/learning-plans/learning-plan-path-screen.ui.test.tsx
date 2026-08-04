@@ -155,7 +155,7 @@ describe("learning-plan path", () => {
 		).toBeOnTheScreen();
 	});
 
-	test("labels the rolling window and connects it to the exam", async () => {
+	test("keeps node details out of the path and connects it to the exam", async () => {
 		const sessions = [
 			session("session_done", {
 				completed: true,
@@ -180,15 +180,16 @@ describe("learning-plan path", () => {
 			/>,
 		);
 
-		expect(
-			screen.getByText("Erledigt", { includeHiddenElements: true }),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByText("Als Nächstes", { includeHiddenElements: true }),
-		).toBeOnTheScreen();
-		expect(
-			screen.getByText("Vorschau", { includeHiddenElements: true }),
-		).toBeOnTheScreen();
+		expect(screen.queryByText("Erledigt")).toBeNull();
+		expect(screen.queryByText("Als Nächstes")).toBeNull();
+		expect(screen.queryByText("Vorschau")).toBeNull();
+		expect(screen.queryByText("4. Aug. · 17:20")).toBeNull();
+		const continuationPath = screen.getByTestId("adaptive-continuation-path");
+		expect(continuationPath.props.d).toContain(" H ");
+		expect(continuationPath.props.d).toContain(" Q ");
+		expect(continuationPath.props.d).toContain(" V ");
+		expect(continuationPath.props.d).not.toContain(" C ");
+		expect(screen.getByTestId("adaptive-continuation-card")).toBeOnTheScreen();
 		expect(screen.getByText("Dayova plant mit dir weiter")).toBeOnTheScreen();
 		expect(screen.getByText("18. August 2026")).toBeOnTheScreen();
 		expect(screen.getByText("Noch 14 Tage")).toBeOnTheScreen();
