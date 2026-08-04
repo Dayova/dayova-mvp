@@ -15,29 +15,6 @@ export type DashboardAgendaItem = {
 	endMinutes: number | null;
 };
 
-export type DashboardWeekProgress = {
-	completedLearningSessions: number;
-	completionPercent: number;
-	remainingLearningSessions: number;
-	totalLearningSessions: number;
-};
-
-export const getDashboardWeekProgressFooter = ({
-	isLoading,
-	progress,
-}: {
-	isLoading: boolean;
-	progress: DashboardWeekProgress;
-}) => {
-	if (isLoading) return "Diese Woche";
-	if (progress.totalLearningSessions === 0) return "Lernplan öffnen";
-	if (progress.remainingLearningSessions === 0) return "Wochenziel erreicht";
-
-	return `Noch ${progress.remainingLearningSessions} ${
-		progress.remainingLearningSessions === 1 ? "Lernschritt" : "Lernschritte"
-	}`;
-};
-
 export const getAdjacentDashboardDayKey = ({
 	selectedDayKey,
 	direction,
@@ -116,36 +93,6 @@ export const getDashboardRelevantDayKeys = ({
 	}
 
 	return [...keys].sort();
-};
-
-export const getDashboardWeekProgress = ({
-	items,
-	todayKey,
-}: {
-	items: DashboardAgendaItem[];
-	todayKey: string;
-}): DashboardWeekProgress => {
-	const weekDayKeys = new Set(getDashboardWeekDayKeys(todayKey));
-	const learningSessions = items.filter(
-		(item) => item.kind === "learningSession" && weekDayKeys.has(item.dayKey),
-	);
-	const completedLearningSessions = learningSessions.filter(
-		(item) =>
-			item.entry.completed === true ||
-			item.entry.executionStatus === "completed",
-	);
-	const totalLearningSessions = learningSessions.length;
-	const completedCount = completedLearningSessions.length;
-
-	return {
-		completedLearningSessions: completedCount,
-		completionPercent:
-			totalLearningSessions === 0
-				? 0
-				: Math.round((completedCount / totalLearningSessions) * 100),
-		remainingLearningSessions: totalLearningSessions - completedCount,
-		totalLearningSessions,
-	};
 };
 
 const SCHOOL_LESSON_PATTERN =

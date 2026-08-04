@@ -8,8 +8,6 @@ import {
 	getDashboardCalendarDayKeys,
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
-	getDashboardWeekProgress,
-	getDashboardWeekProgressFooter,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
@@ -98,116 +96,6 @@ describe("dashboard agenda", () => {
 		expect(keys).toContain("2027-08-12");
 		expect(keys).toContain("2027-08-13");
 		expect(keys).toContain("2026-07-29");
-	});
-
-	it("summarizes completed learning sessions in the current week", () => {
-		const items = [
-			toDashboardAgendaItem(
-				"2026-07-27",
-				entry({
-					id: "completed-before-today" as DayEntry["id"],
-					kind: "Lernen",
-					completed: true,
-					durationMinutes: 25,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-07-29",
-				entry({
-					id: "completed-today" as DayEntry["id"],
-					kind: "Lernen",
-					executionStatus: "completed",
-					durationMinutes: 35,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-07-30",
-				entry({
-					id: "upcoming" as DayEntry["id"],
-					kind: "Lernen",
-					durationMinutes: 20,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-07-29",
-				entry({
-					id: "homework" as DayEntry["id"],
-					kind: "Hausaufgabe",
-					completed: true,
-					durationMinutes: 90,
-				}),
-			),
-			toDashboardAgendaItem(
-				"2026-08-03",
-				entry({
-					id: "next-week" as DayEntry["id"],
-					kind: "Lernen",
-					completed: true,
-					durationMinutes: 45,
-				}),
-			),
-		];
-
-		expect(
-			getDashboardWeekProgress({
-				items,
-				todayKey: "2026-07-29",
-			}),
-		).toEqual({
-			completedLearningSessions: 2,
-			completionPercent: 67,
-			remainingLearningSessions: 1,
-			totalLearningSessions: 3,
-		});
-	});
-
-	it("describes the remaining weekly work instead of elapsed minutes", () => {
-		const progress = {
-			completedLearningSessions: 2,
-			completionPercent: 67,
-			remainingLearningSessions: 1,
-			totalLearningSessions: 3,
-		};
-
-		expect(getDashboardWeekProgressFooter({ isLoading: false, progress })).toBe(
-			"Noch 1 Lernschritt",
-		);
-		expect(
-			getDashboardWeekProgressFooter({
-				isLoading: false,
-				progress: {
-					...progress,
-					completedLearningSessions: 1,
-					completionPercent: 33,
-					remainingLearningSessions: 2,
-				},
-			}),
-		).toBe("Noch 2 Lernschritte");
-		expect(
-			getDashboardWeekProgressFooter({
-				isLoading: false,
-				progress: {
-					...progress,
-					completedLearningSessions: 3,
-					completionPercent: 100,
-					remainingLearningSessions: 0,
-				},
-			}),
-		).toBe("Wochenziel erreicht");
-		expect(
-			getDashboardWeekProgressFooter({
-				isLoading: false,
-				progress: {
-					completedLearningSessions: 0,
-					completionPercent: 0,
-					remainingLearningSessions: 0,
-					totalLearningSessions: 0,
-				},
-			}),
-		).toBe("Lernplan öffnen");
-		expect(getDashboardWeekProgressFooter({ isLoading: true, progress })).toBe(
-			"Diese Woche",
-		);
 	});
 
 	it("keeps passive lessons distinct from Dayova learning sessions", () => {

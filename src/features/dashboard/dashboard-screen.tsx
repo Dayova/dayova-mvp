@@ -16,6 +16,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import { NotificationButton } from "~/components/notification-button";
 import {
+	Analytics,
 	ArrowRight,
 	ArrowUpRight,
 	Backpack,
@@ -25,7 +26,6 @@ import {
 	Clock3,
 	Dumbbell,
 	ScanImage,
-	TimeManagement,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -33,24 +33,23 @@ import { useAuthSession } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
+import { ROUTES } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 import type { DayEntry } from "~/types/dayEntries";
 import {
 	type DashboardAgendaItem,
-	type DashboardWeekProgress,
 	findNextActionableAgendaItem,
 	getAgendaEntryTitle,
 	getDashboardCalendarDayKeys,
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
-	getDashboardWeekProgress,
-	getDashboardWeekProgressFooter,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
+import { getDashboardKnowledgeProgressViewModel } from "./dashboard-knowledge-progress";
 
 const triggerDaySelectionHaptic = () => {
 	void triggerSelectionHaptic({
@@ -191,12 +190,12 @@ const getNextStepFooter = (item: DashboardAgendaItem, todayKey: string) => {
 	return "Lernschritt öffnen";
 };
 
-const WEEK_PROGRESS_RING_SIZE = 112;
-const WEEK_PROGRESS_RING_STROKE_WIDTH = 9;
-const WEEK_PROGRESS_RING_RADIUS =
-	(WEEK_PROGRESS_RING_SIZE - WEEK_PROGRESS_RING_STROKE_WIDTH) / 2;
-const WEEK_PROGRESS_RING_CIRCUMFERENCE =
-	2 * Math.PI * WEEK_PROGRESS_RING_RADIUS;
+const KNOWLEDGE_PROGRESS_RING_SIZE = 112;
+const KNOWLEDGE_PROGRESS_RING_STROKE_WIDTH = 9;
+const KNOWLEDGE_PROGRESS_RING_RADIUS =
+	(KNOWLEDGE_PROGRESS_RING_SIZE - KNOWLEDGE_PROGRESS_RING_STROKE_WIDTH) / 2;
+const KNOWLEDGE_PROGRESS_RING_CIRCUMFERENCE =
+	2 * Math.PI * KNOWLEDGE_PROGRESS_RING_RADIUS;
 
 function WeekCalendar({
 	days,
@@ -509,55 +508,54 @@ function NextLearningStepCard({
 	);
 }
 
-function WeeklyProgressCard({
+function KnowledgeProgressCard({
+	hasKnowledgeEvidence,
+	hasLearningPlan,
 	isLoading,
-	progress,
-	onOpenLearningPlans,
+	onPress,
+	secureTopics,
+	totalTopics,
 }: {
+	hasKnowledgeEvidence: boolean;
+	hasLearningPlan: boolean;
 	isLoading: boolean;
-	progress: DashboardWeekProgress;
-	onOpenLearningPlans: () => void;
+	onPress: () => void;
+	secureTopics: number;
+	totalTopics: number;
 }) {
 	const { colors } = useDayovaTheme();
-	const hasPlannedSessions = progress.totalLearningSessions > 0;
-	const ringValue = isLoading
-		? "–"
-		: hasPlannedSessions
-			? `${progress.completedLearningSessions} / ${progress.totalLearningSessions}`
-			: "0";
-	const ringLabel = isLoading
-		? "wird geladen"
-		: hasPlannedSessions
-			? "geschafft"
-			: "geplant";
+	const viewModel = getDashboardKnowledgeProgressViewModel({
+		hasKnowledgeEvidence,
+		hasLearningPlan,
+		isLoading,
+		secureTopics,
+		totalTopics,
+	});
 	const progressOffset =
-		WEEK_PROGRESS_RING_CIRCUMFERENCE *
-		(1 - (isLoading ? 0 : progress.completionPercent) / 100);
-	const footer = getDashboardWeekProgressFooter({ isLoading, progress });
+		KNOWLEDGE_PROGRESS_RING_CIRCUMFERENCE *
+		(1 - viewModel.progressPercent / 100);
 
 	return (
 		<TouchableOpacity
 			activeOpacity={0.82}
 			accessibilityRole="button"
-			accessibilityLabel={
-				isLoading
-					? "Wochenfortschritt wird geladen"
-					: hasPlannedSessions
-						? `Wochenfortschritt: ${progress.completedLearningSessions} von ${progress.totalLearningSessions} Lernschritten geschafft. ${footer}.`
-						: "Wochenfortschritt: Noch keine Lernschritte geplant"
+			accessibilityLabel={viewModel.accessibilityLabel}
+			accessibilityHint={
+				hasLearningPlan
+					? "Öffnet deinen Wissensstand für den ausgewählten Lernplan."
+					: "Öffnet deine persönlichen Lernpläne."
 			}
-			accessibilityHint="Öffnet deine persönlichen Lernpläne."
-			onPress={onOpenLearningPlans}
+			onPress={onPress}
 			className="min-h-72 flex-1 overflow-hidden rounded-card border border-border bg-ueben-subtle px-4 pt-5 pb-4"
 			style={continuousBorderStyle}
 		>
 			<View className="flex-row items-start gap-1">
-				<TimeManagement size={14} color={colors.ueben} strokeWidth={2} />
+				<Analytics size={14} color={colors.ueben} strokeWidth={2} />
 				<Text
 					className="flex-1 font-poppins font-semibold text-body-5 text-ueben"
 					numberOfLines={2}
 				>
-					Wochenfortschritt
+					Wissensstand
 				</Text>
 			</View>
 			<View className="flex-1 items-center justify-center py-2">
@@ -566,38 +564,38 @@ function WeeklyProgressCard({
 					className="items-center justify-center"
 					// SVG ring geometry uses fixed native dimensions.
 					style={{
-						width: WEEK_PROGRESS_RING_SIZE,
-						height: WEEK_PROGRESS_RING_SIZE,
+						width: KNOWLEDGE_PROGRESS_RING_SIZE,
+						height: KNOWLEDGE_PROGRESS_RING_SIZE,
 					}}
 				>
 					<Svg
 						pointerEvents="none"
-						width={WEEK_PROGRESS_RING_SIZE}
-						height={WEEK_PROGRESS_RING_SIZE}
-						viewBox={`0 0 ${WEEK_PROGRESS_RING_SIZE} ${WEEK_PROGRESS_RING_SIZE}`}
+						width={KNOWLEDGE_PROGRESS_RING_SIZE}
+						height={KNOWLEDGE_PROGRESS_RING_SIZE}
+						viewBox={`0 0 ${KNOWLEDGE_PROGRESS_RING_SIZE} ${KNOWLEDGE_PROGRESS_RING_SIZE}`}
 						// SVG positioning is not expressible through NativeWind classes.
 						style={{ position: "absolute" }}
 					>
 						<Circle
-							cx={WEEK_PROGRESS_RING_SIZE / 2}
-							cy={WEEK_PROGRESS_RING_SIZE / 2}
-							r={WEEK_PROGRESS_RING_RADIUS}
+							cx={KNOWLEDGE_PROGRESS_RING_SIZE / 2}
+							cy={KNOWLEDGE_PROGRESS_RING_SIZE / 2}
+							r={KNOWLEDGE_PROGRESS_RING_RADIUS}
 							fill="none"
 							stroke={colors.ueben}
 							strokeOpacity={0.24}
-							strokeWidth={WEEK_PROGRESS_RING_STROKE_WIDTH}
+							strokeWidth={KNOWLEDGE_PROGRESS_RING_STROKE_WIDTH}
 						/>
 						<Circle
-							cx={WEEK_PROGRESS_RING_SIZE / 2}
-							cy={WEEK_PROGRESS_RING_SIZE / 2}
-							r={WEEK_PROGRESS_RING_RADIUS}
+							cx={KNOWLEDGE_PROGRESS_RING_SIZE / 2}
+							cy={KNOWLEDGE_PROGRESS_RING_SIZE / 2}
+							r={KNOWLEDGE_PROGRESS_RING_RADIUS}
 							fill="none"
 							stroke={colors.ueben}
-							strokeDasharray={`${WEEK_PROGRESS_RING_CIRCUMFERENCE} ${WEEK_PROGRESS_RING_CIRCUMFERENCE}`}
+							strokeDasharray={`${KNOWLEDGE_PROGRESS_RING_CIRCUMFERENCE} ${KNOWLEDGE_PROGRESS_RING_CIRCUMFERENCE}`}
 							strokeDashoffset={progressOffset}
 							strokeLinecap="round"
-							strokeWidth={WEEK_PROGRESS_RING_STROKE_WIDTH}
-							transform={`rotate(-90 ${WEEK_PROGRESS_RING_SIZE / 2} ${WEEK_PROGRESS_RING_SIZE / 2})`}
+							strokeWidth={KNOWLEDGE_PROGRESS_RING_STROKE_WIDTH}
+							transform={`rotate(-90 ${KNOWLEDGE_PROGRESS_RING_SIZE / 2} ${KNOWLEDGE_PROGRESS_RING_SIZE / 2})`}
 						/>
 					</Svg>
 					<Text
@@ -605,13 +603,15 @@ function WeeklyProgressCard({
 						numberOfLines={1}
 						style={tabularNumberStyle}
 					>
-						{ringValue}
+						{viewModel.ringValue}
 					</Text>
 					<Text
+						adjustsFontSizeToFit
 						className="font-poppins text-body-5 text-secondary-text"
+						minimumFontScale={0.8}
 						numberOfLines={1}
 					>
-						{ringLabel}
+						{viewModel.ringLabel}
 					</Text>
 				</View>
 			</View>
@@ -622,7 +622,7 @@ function WeeklyProgressCard({
 						numberOfLines={2}
 						style={tabularNumberStyle}
 					>
-						{footer}
+						{viewModel.footer}
 					</Text>
 				</View>
 				<View
@@ -954,6 +954,10 @@ export function DashboardScreen() {
 		api.timetables.getMine,
 		user && isConvexAuthenticated ? {} : "skip",
 	);
+	const knowledgeAnalysis = useQuery(
+		api.userAnalytics.getExamAnalysis,
+		user && isConvexAuthenticated ? { todayKey } : "skip",
+	);
 	const allRelevantAgendaItems = entriesByDay
 		? queriedDayKeys.flatMap((dayKey) =>
 				(entriesByDay[dayKey] ?? []).map((entry) =>
@@ -967,10 +971,18 @@ export function DashboardScreen() {
 		todayKey,
 		currentMinutes,
 	});
-	const weekProgress = getDashboardWeekProgress({
-		items: allRelevantAgendaItems,
-		todayKey,
-	});
+	const secureTopics = knowledgeAnalysis?.readiness.secure ?? 0;
+	const totalTopics = knowledgeAnalysis
+		? knowledgeAnalysis.readiness.secure +
+			knowledgeAnalysis.readiness.developing +
+			knowledgeAnalysis.readiness.unknown
+		: 0;
+	const hasKnowledgeEvidence = Boolean(
+		knowledgeAnalysis &&
+			totalTopics > 0 &&
+			knowledgeAnalysis.topics.some((topic) => topic.evidenceCount > 0),
+	);
+	const selectedKnowledgePlanId = knowledgeAnalysis?.selectedPlan?.id;
 	const nextActionableId = nextLearningStep?.entry.id;
 	const selectedWeekday = formatGermanUiText(
 		new Intl.DateTimeFormat("de-DE", { weekday: "long" }).format(selectedDate),
@@ -1048,6 +1060,17 @@ export function DashboardScreen() {
 		() => router.push("/learning-plans"),
 		[router],
 	);
+	const openKnowledgeProgress = useCallback(() => {
+		if (!selectedKnowledgePlanId) {
+			openLearningPlans();
+			return;
+		}
+
+		router.push({
+			pathname: ROUTES.analyticsKnowledge,
+			params: { planId: selectedKnowledgePlanId },
+		});
+	}, [openLearningPlans, router, selectedKnowledgePlanId]);
 	const openTimetable = useCallback(() => router.push("/timetable"), [router]);
 
 	return (
@@ -1103,10 +1126,13 @@ export function DashboardScreen() {
 						onOpenItem={openItem}
 						onOpenLearningPlans={openLearningPlans}
 					/>
-					<WeeklyProgressCard
-						isLoading={entriesByDay === undefined}
-						progress={weekProgress}
-						onOpenLearningPlans={openLearningPlans}
+					<KnowledgeProgressCard
+						hasKnowledgeEvidence={hasKnowledgeEvidence}
+						hasLearningPlan={Boolean(selectedKnowledgePlanId)}
+						isLoading={knowledgeAnalysis === undefined}
+						onPress={openKnowledgeProgress}
+						secureTopics={secureTopics}
+						totalTopics={totalTopics}
 					/>
 				</View>
 
