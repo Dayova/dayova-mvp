@@ -40,6 +40,7 @@ export default tseslint.config(
 			...reactCompilerRules,
 			"dayova-ui/no-direct-native-controls": "error",
 			"dayova-ui/no-direct-overlay-primitives": "error",
+			"dayova-ui/no-test-modules-in-router": "error",
 			"dayova-ui/require-compose-host-theme": "error",
 		},
   },
