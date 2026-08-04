@@ -307,3 +307,21 @@ test("manual entries can be marked completed and uncompleted", async () => {
 	});
 	expect(entries["2026-06-16"]?.[0]?.completed).toBe(false);
 });
+
+test("legacy exam subject metadata remains schema-compatible", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	const entryId = await t.run(async (ctx) =>
+		ctx.db.insert("dayEntries", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			dayKey: "2026-08-07",
+			title: "Englisch Klassenarbeit",
+			subject: "Englisch",
+			kind: "Leistungskontrolle",
+		}),
+	);
+
+	await expect(
+		t.run(async (ctx) => ctx.db.get("dayEntries", entryId)),
+	).resolves.toMatchObject({ subject: "Englisch" });
+});
