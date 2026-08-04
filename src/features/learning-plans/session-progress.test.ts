@@ -4,11 +4,17 @@ import {
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
+	getTheoryTopicPosition,
 	isQualifiedSessionCompletion,
 } from "./session-progress";
 
-const learnCard = { id: "theory", kind: "learnCard" } as const;
-const practiceTask = { id: "practice", kind: "written" } as const;
+const learnCard = { id: "theory", kind: "learnCard", phase: "theory" } as const;
+const practiceTask = {
+	id: "practice",
+	kind: "written",
+	phase: "practice",
+	coverageKey: "topic:apply:validation:0",
+} as const;
 
 describe("learning session progress", () => {
 	it("keeps a control theory session focused on learning cards", () => {
@@ -17,13 +23,56 @@ describe("learning session progress", () => {
 		).toEqual([learnCard]);
 	});
 
-	it("moves through theory and practice in a split session", () => {
+	it("puts the knowledge check before theory in a split session", () => {
 		expect(
 			getLearningSessionItems([learnCard, practiceTask], "theory", "split"),
-		).toEqual([learnCard, practiceTask]);
+		).toEqual([practiceTask, learnCard]);
 		expect(getLearningSessionCompletionPhase("theory", "split")).toBe(
 			"practice",
 		);
+	});
+
+	it("maps reordered theory cards to their local topic position", () => {
+		const secondLearnCard = {
+			id: "theory-2",
+			kind: "learnCard",
+			phase: "theory",
+		} as const;
+		const items = getLearningSessionItems(
+			[learnCard, secondLearnCard, practiceTask],
+			"theory",
+			"split",
+		);
+
+		expect(getTheoryTopicPosition(items, 1)).toEqual({
+			topicIndex: 0,
+			total: 2,
+			previousSessionIndex: null,
+			nextSessionIndex: 2,
+		});
+		expect(getTheoryTopicPosition(items, 2)).toEqual({
+			topicIndex: 1,
+			total: 2,
+			previousSessionIndex: 1,
+			nextSessionIndex: null,
+		});
+	});
+
+	it("keeps optional follow-up practice after the theory cards", () => {
+		const followUpTask = {
+			id: "follow-up",
+			kind: "written",
+			phase: "practice",
+			coverageKey: "topic:apply:1",
+		} as const;
+
+		expect(
+			getLearningSessionItems(
+				[learnCard, practiceTask, followUpTask],
+				"theory",
+				"split",
+			),
+		).toEqual([practiceTask, learnCard, followUpTask]);
 	});
 
 	it("qualifies a 30-minute completion after 24 active minutes", () => {

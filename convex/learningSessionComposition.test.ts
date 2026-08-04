@@ -15,7 +15,7 @@ describe("learning session composition", () => {
 		).toEqual([{ phase: "theory", durationMinutes: 30 }]);
 	});
 
-	test("adds a three-minute knowledge check to a theory session", () => {
+	test("starts a theory session with a three-minute knowledge check", () => {
 		expect(
 			getLearningSessionComposition({
 				phase: "theory",
@@ -23,8 +23,8 @@ describe("learning session composition", () => {
 				variant: "split",
 			}),
 		).toEqual([
-			{ phase: "theory", durationMinutes: 17 },
 			{ phase: "practice", durationMinutes: 3 },
+			{ phase: "theory", durationMinutes: 17 },
 		]);
 	});
 
@@ -45,11 +45,11 @@ describe("learning session composition", () => {
 		).toEqual([{ phase: "practice", durationMinutes: 30 }]);
 	});
 
-	test("marks every normal theory session as validation eligible", () => {
+	test("marks every theory session that can fit both phases as eligible", () => {
 		expect(
 			isLearningSessionCompositionEligible({
 				phase: "theory",
-				durationMinutes: 10,
+				durationMinutes: 7,
 			}),
 		).toBe(true);
 		expect(
@@ -58,6 +58,12 @@ describe("learning session composition", () => {
 				durationMinutes: 20,
 			}),
 		).toBe(true);
+		expect(
+			isLearningSessionCompositionEligible({
+				phase: "theory",
+				durationMinutes: 5,
+			}),
+		).toBe(false);
 		expect(
 			isLearningSessionCompositionEligible({
 				phase: "practice",

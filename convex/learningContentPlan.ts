@@ -134,8 +134,7 @@ const createQuestions = ({
 
 	if (phase === "practice" && durationMinutes === 3) {
 		const validationBlueprints = [
-			{ angle: "recall" as const, kind: "written" as const },
-			{ angle: "apply" as const, kind: "multipleChoice" as const },
+			{ angle: "apply" as const, kind: "written" as const },
 		];
 		for (const [validationIndex, blueprint] of validationBlueprints.entries()) {
 			const topic = topics[(startIndex + validationIndex) % topics.length];
@@ -153,7 +152,7 @@ const createQuestions = ({
 				topic,
 				angle: blueprint.angle,
 				kind: blueprint.kind,
-				estimatedSeconds: 90,
+				estimatedSeconds: durationMinutes * 60,
 			});
 		}
 		return {

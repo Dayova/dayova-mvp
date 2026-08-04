@@ -626,6 +626,7 @@ type LearningSessionContentAiContext = {
 		phase: GeneratedSessionPhase;
 		title: string;
 		durationMinutes: number;
+		completed?: boolean;
 		compositionVariant?: "control" | "split";
 		sessionPurpose?: "diagnostic" | "learning";
 		goal: string;
@@ -664,6 +665,7 @@ type LearningSessionContentAiContext = {
 	}>;
 	priorCoverageKeys: string[];
 	existingItemCount: number;
+	hasTheoryKnowledgeCheck: boolean;
 	needsLegacyContentReplacement: boolean;
 	accessKey: string;
 };
@@ -2712,6 +2714,19 @@ export const ensureSessionContent = action({
 			context.existingItemCount > 0 &&
 			!context.needsLegacyContentReplacement
 		) {
+			if (
+				!context.session.completed &&
+				!context.hasTheoryKnowledgeCheck &&
+				isLearningSessionCompositionEligible({
+					phase: context.session.phase,
+					durationMinutes: context.session.durationMinutes,
+				})
+			) {
+				return await ctx.runMutation(
+					internal.learningSessionContent.backfillTheoryKnowledgeCheck,
+					{ sessionId: args.sessionId },
+				);
+			}
 			return { itemCount: context.existingItemCount };
 		}
 		if (context.session.sessionPurpose === "diagnostic") {

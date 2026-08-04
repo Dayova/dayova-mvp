@@ -49,6 +49,7 @@ import {
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
+	getTheoryTopicPosition,
 } from "~/features/learning-plans/session-progress";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
@@ -1157,11 +1158,14 @@ export default function LearningSessionContentScreen() {
 				: [],
 		[content],
 	);
-	const theoryItems = sessionItems.filter((item) => item.kind === "learnCard");
 	const validationItems = sessionItems.filter(
 		(item) => item.phase === "practice" && item.kind !== "learnCard",
 	);
 	const currentItem = sessionItems[currentIndex] ?? null;
+	const theoryTopicPosition = getTheoryTopicPosition(
+		sessionItems,
+		currentIndex,
+	);
 	const shouldTrackActiveStudy = Boolean(
 		currentItem && !showAnalysis && !completionPhase,
 	);
@@ -1570,22 +1574,28 @@ export default function LearningSessionContentScreen() {
 	const continueTheory = () => {
 		if (!content || isBusy) return;
 		runTheoryTopicPrimaryAction({
-			currentIndex,
-			total: theoryItems.length,
-			onAdvance: (nextIndex) => {
+			currentIndex: theoryTopicPosition.topicIndex,
+			total: theoryTopicPosition.total,
+			onAdvance: () => {
+				if (theoryTopicPosition.nextSessionIndex === null) return;
 				setErrorMessage(null);
-				setCurrentIndex(nextIndex);
+				setCurrentIndex(theoryTopicPosition.nextSessionIndex);
 			},
 			onComplete: () => {
-				setCompletionPhase("theory");
+				setCompletionPhase(
+					getLearningSessionCompletionPhase(
+						content.session.phase,
+						content.session.compositionVariant,
+					),
+				);
 			},
 		});
 	};
 
 	const showPreviousTheoryTopic = () => {
-		if (isBusy || currentIndex === 0) return;
+		if (isBusy || theoryTopicPosition.previousSessionIndex === null) return;
 		setErrorMessage(null);
-		setCurrentIndex((value) => Math.max(0, value - 1));
+		setCurrentIndex(theoryTopicPosition.previousSessionIndex);
 	};
 
 	const buildSpeechRecognitionConfig =
@@ -1728,6 +1738,9 @@ export default function LearningSessionContentScreen() {
 		currentItem?.kind === "multipleChoice"
 			? Boolean(selectedChoiceId)
 			: Boolean(answerText.trim());
+	const isTheoryKnowledgeCheck = Boolean(
+		isTheoryValidationSession && currentItem?.phase === "practice",
+	);
 
 	const title = showAnalysis
 		? "Deine Auswertung"
@@ -1742,8 +1755,8 @@ export default function LearningSessionContentScreen() {
 			: content
 				? isDiagnosticSession
 					? "Wissenscheck"
-					: isTheoryValidationSession && currentItem?.phase === "practice"
-						? "Wissenscheck"
+					: isTheoryKnowledgeCheck
+						? "Kurz-Check"
 						: phaseTitle(currentItem?.phase ?? content.session.phase)
 				: "Lernblock";
 	const showQuestionActions = Boolean(
@@ -1804,8 +1817,8 @@ export default function LearningSessionContentScreen() {
 				<TheoryTopicPage
 					key={currentItem.id}
 					item={currentItem}
-					currentIndex={currentIndex}
-					total={theoryItems.length}
+					currentIndex={theoryTopicPosition.topicIndex}
+					total={theoryTopicPosition.total}
 					isCompleting={isBusy}
 					onPrevious={showPreviousTheoryTopic}
 					onNext={continueTheory}
@@ -1971,6 +1984,24 @@ export default function LearningSessionContentScreen() {
 				) : currentItem ? (
 					<View className="flex-1 justify-between">
 						<View className="flex-1 pt-8">
+							{isTheoryKnowledgeCheck ? (
+								<View className="mb-6 gap-2 rounded-[24px] bg-system-subtle px-5 py-5">
+									<Text className="font-poppins font-semibold text-body-4 text-primary">
+										Vorwissen
+									</Text>
+									<Text
+										accessibilityRole="header"
+										className="font-poppins font-semibold text-body-1 text-text"
+									>
+										Zeig kurz, was du schon weißt
+									</Text>
+									<Text className="font-poppins text-body-4 text-secondary-text">
+										Deine Antwort hilft Dayova zu entscheiden, ob dein nächster
+										Lernschritt mehr Erklärung oder mehr Übung braucht. Das ist
+										keine Note.
+									</Text>
+								</View>
+							) : null}
 							<Text className="font-poppins font-semibold text-[17px] text-text leading-[26px]">
 								{currentItem.prompt}
 							</Text>
@@ -2002,6 +2033,7 @@ export default function LearningSessionContentScreen() {
 									placeholder="Schreibe hier deine Antwort."
 									editable={!isBusy}
 									fillAvailableSpace
+									autoFocus={!isTheoryKnowledgeCheck}
 								/>
 							)}
 						</View>
@@ -2028,13 +2060,19 @@ export default function LearningSessionContentScreen() {
 					>
 						<ActionRow
 							className="mt-0"
-							secondaryLabel="Weiß ich nicht"
+							secondaryLabel={
+								isTheoryKnowledgeCheck
+									? "Weiß ich noch nicht"
+									: "Weiß ich nicht"
+							}
 							primaryLabel={
-								content.session.phase === "rehearsal"
-									? currentIndex < content.items.length - 1
-										? "Weiter"
-										: "Abgeben"
-									: "Beantworten"
+								isTheoryKnowledgeCheck
+									? "Antwort abgeben"
+									: content.session.phase === "rehearsal"
+										? currentIndex < content.items.length - 1
+											? "Weiter"
+											: "Abgeben"
+										: "Beantworten"
 							}
 							onSecondary={() => void submitCurrentAnswer(true)}
 							onPrimary={() => void submitCurrentAnswer()}
