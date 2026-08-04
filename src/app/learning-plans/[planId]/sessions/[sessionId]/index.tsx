@@ -62,6 +62,7 @@ import { getErrorMessage } from "~/features/learning-plans/utils";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
+import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
@@ -1643,6 +1644,11 @@ export default function LearningSessionContentScreen() {
 				answerText: currentItem.kind === "written" ? writtenAnswer : undefined,
 				transcript: currentItem.kind === "voice" ? writtenAnswer : undefined,
 			});
+			if (attempt.rating === "correct") {
+				void triggerSuccessHaptic({
+					platform: process.env.EXPO_OS,
+				});
+			}
 			if (content?.session.phase === "rehearsal") {
 				resetItemState();
 				if (currentIndex < content.items.length - 1) {
