@@ -112,6 +112,78 @@ const createAcceptedPlanWithSession = async (
 	return { learningPlanId, session };
 };
 
+test("lists a materialless draft so the upload can be resumed", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const examDayEntryId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-08-12",
+		title: "Mathe Klausur",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "12. August 2026",
+		durationMinutes: 90,
+		examTypeLabel: "Klausur",
+	});
+	const learningPlanId = await t.mutation(api.learningPlans.createDraft, {
+		examDayEntryId,
+		subject: "Mathe",
+		examTypeLabel: "Klausur",
+		examDateKey: "2026-08-12",
+		examDateLabel: "12. August 2026",
+		durationMinutes: 90,
+		topicDescription: "",
+	});
+
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
+		expect.objectContaining({
+			id: learningPlanId,
+			status: "draft",
+			needsSchoolMaterial: true,
+		}),
+	]);
+});
+
+test("keeps drafts with school material out of the plan overview", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.run(async (ctx) => {
+		await ctx.db.insert("learningPlanDocuments", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			learningPlanId,
+			storageId: "stored-document",
+			storageProvider: "convex",
+			fileName: "themenblatt.pdf",
+			fileType: "application/pdf",
+			fileSizeBytes: 1_024,
+			sourceKind: "school",
+			createdAt: Date.now(),
+		});
+	});
+
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual(
+		[],
+	);
+});
+
+test("treats legacy documents without a source kind as school material", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.run(async (ctx) => {
+		await ctx.db.insert("learningPlanDocuments", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			learningPlanId,
+			storageId: "legacy-school-document",
+			storageProvider: "convex",
+			fileName: "alte-mitschrift.pdf",
+			fileType: "application/pdf",
+			fileSizeBytes: 1_024,
+			createdAt: Date.now(),
+		});
+	});
+
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual(
+		[],
+	);
+});
+
 test("adds the knowledge validation split to theory sessions by default", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
