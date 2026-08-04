@@ -6,6 +6,7 @@ import {
 	getLearningSessionTimerDurationSeconds,
 	getTheoryTopicPosition,
 	isQualifiedSessionCompletion,
+	isTheoryKnowledgeCheckItem,
 } from "./session-progress";
 
 const learnCard = { id: "theory", kind: "learnCard", phase: "theory" } as const;
@@ -73,6 +74,33 @@ describe("learning session progress", () => {
 				"split",
 			),
 		).toEqual([practiceTask, learnCard, followUpTask]);
+	});
+
+	it("identifies only the pre-theory validation item as a knowledge check", () => {
+		expect(
+			isTheoryKnowledgeCheckItem({
+				item: practiceTask,
+				phase: "theory",
+				compositionVariant: "split",
+			}),
+		).toBe(true);
+		expect(
+			isTheoryKnowledgeCheckItem({
+				item: practiceTask,
+				phase: "practice",
+				compositionVariant: "split",
+			}),
+		).toBe(false);
+		expect(
+			isTheoryKnowledgeCheckItem({
+				item: {
+					...practiceTask,
+					coverageKey: "topic:apply:1",
+				},
+				phase: "theory",
+				compositionVariant: "split",
+			}),
+		).toBe(false);
 	});
 
 	it("qualifies a 30-minute completion after 24 active minutes", () => {
