@@ -52,7 +52,7 @@
 						<p>
 							<strong>Opus 5</strong> wins the deepest engineering test.
 							<strong>Fable 5</strong> owns the other two—but by a hair. For the practical
-							middle, <strong>Terra</strong> is the efficiency story.
+							middle, <strong>Terra at Extra High</strong> is the efficiency story.
 						</p>
 						<a href="#scoreboard">See the evidence <span aria-hidden="true">↘</span></a>
 					</aside>
@@ -184,10 +184,119 @@
 				</div>
 			</section>
 
+			<section class="decision-desk shell" id="effort-guide">
+				<div class="section-heading compact">
+					<div>
+						<span class="section-number">02 / DECISION DESK</span>
+						<h2>How hard should Terra think?</h2>
+					</div>
+					<p>
+						For serious repository work, start at Extra High. Move down when the task is
+						narrow and well tested; move up when a missed edge case costs more than the run.
+					</p>
+				</div>
+
+				<div class="effort-board">
+					<div class="effort-advisor">
+						<div class="effort-advisor-topline">
+							<span>GPT‑5.6 TERRA</span>
+							<span class="recommendation-chip">RECOMMENDED DEFAULT</span>
+						</div>
+
+						<div class="effort-answer" aria-live="polite">
+							<span class="effort-answer-label">Run it at</span>
+							<strong id="effort-answer">Extra High</strong>
+							<p id="effort-answer-copy">
+								The practical sweet spot for substantial feature work, refactors, and bug
+								investigations. You keep most of Max’s score without paying Max’s full premium.
+							</p>
+						</div>
+
+						<div class="effort-controls" role="group" aria-label="Choose your priority">
+							<button type="button" class="effort-control" data-effort="high" aria-pressed="false">
+								<span>Ship faster</span><small>High</small>
+							</button>
+							<button
+								type="button"
+								class="effort-control is-active"
+								data-effort="xhigh"
+								aria-pressed="true"
+							>
+								<span>Best balance</span><small>Extra High</small>
+							</button>
+							<button type="button" class="effort-control" data-effort="max" aria-pressed="false">
+								<span>Max quality</span><small>Max</small>
+							</button>
+						</div>
+
+						<p class="economy-note">
+							Low and Medium are economy modes: useful for triage, boilerplate, and tightly
+							scoped chores—but not the default for ambiguous repository work.
+						</p>
+					</div>
+
+					<div class="effort-evidence">
+						<div class="effort-evidence-head">
+							<div>
+								<span>THE TRADE-OFF</span>
+								<h3 id="effort-evidence-title">Most of Max, for much less.</h3>
+							</div>
+							<span class="evidence-status" id="effort-evidence-status">XHIGH / SELECTED</span>
+						</div>
+
+						<div class="effort-stat-grid">
+							<div>
+								<span>Cursor score</span>
+								<strong id="effort-cursor-score">59.2%</strong>
+								<small id="effort-cursor-cost">$1.15 / task</small>
+							</div>
+							<div>
+								<span>Frontier score</span>
+								<strong id="effort-frontier-score">38.7%</strong>
+								<small id="effort-frontier-cost">$1.30 / task</small>
+							</div>
+							<div>
+								<span>Max score retained</span>
+								<strong id="effort-retained">91–94%</strong>
+								<small id="effort-retained-note">across both benchmarks</small>
+							</div>
+						</div>
+
+						<div
+							class="effort-ladder"
+							role="group"
+							aria-label="Terra effort-level score and cost comparison"
+						>
+							<div class="effort-ladder-head" aria-hidden="true">
+								<span>Effort</span><span>CursorBench</span><span>FrontierCode</span>
+							</div>
+							<div class="effort-ladder-row" data-effort-row="high">
+								<strong>High</strong><span>54.2% <small>$0.71</small></span
+								><span>36.9% <small>$1.10</small></span>
+							</div>
+							<div class="effort-ladder-row is-selected" data-effort-row="xhigh">
+								<strong>Extra High</strong><span>59.2% <small>$1.15</small></span
+								><span>38.7% <small>$1.30</small></span>
+							</div>
+							<div class="effort-ladder-row" data-effort-row="max">
+								<strong>Max</strong><span>64.9% <small>$2.31</small></span
+								><span>41.3% <small>$1.81</small></span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<p class="effort-source-note">
+					Recommendation derived from GPT‑5.6 Terra’s published CursorBench 3.2 and
+					FrontierCode 1.1 Main effort ladders. Costs are benchmark averages, not a quote
+					for your own workload.
+				</p>
+			</section>
+
 			<section class="field-notes shell" id="models">
 				<div class="section-heading compact">
 					<div>
-						<span class="section-number">02 / FIELD NOTES</span>
+						<span class="section-number">03 / FIELD NOTES</span>
 						<h2>Pick for the work, not the logo.</h2>
 					</div>
 					<p>
@@ -287,7 +396,7 @@
 				<div class="shell">
 					<div class="section-heading compact">
 						<div>
-							<span class="section-number">03 / EVIDENCE MATRIX</span>
+							<span class="section-number">04 / EVIDENCE MATRIX</span>
 							<h2>The numbers, without the theater.</h2>
 						</div>
 						<p>Best reported effort per model. Average cost is per benchmark task/run.</p>
@@ -315,7 +424,7 @@
 
 			<section class="method shell" id="method">
 				<div class="method-title">
-					<span class="section-number">04 / READ THE FINE PRINT</span>
+					<span class="section-number">05 / READ THE FINE PRINT</span>
 					<h2>Benchmarks are lenses,<br>not verdicts.</h2>
 				</div>
 				<div class="method-grid">

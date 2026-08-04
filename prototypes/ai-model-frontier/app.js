@@ -117,6 +117,45 @@ const benchmarks = {
 	},
 };
 
+const terraEfforts = {
+	high: {
+		label: "High",
+		copy: "Best for scoped fixes, familiar code, and fast iteration when tests give you a strong safety net.",
+		title: "Move quickly, keep review close.",
+		status: "HIGH / SELECTED",
+		cursorScore: "54.2%",
+		cursorCost: "$0.71 / task",
+		frontierScore: "36.9%",
+		frontierCost: "$1.10 / task",
+		retained: "84–89%",
+		retainedNote: "of Max scores",
+	},
+	xhigh: {
+		label: "Extra High",
+		copy: "The practical sweet spot for substantial feature work, refactors, and bug investigations. You keep most of Max’s score without paying Max’s full premium.",
+		title: "Most of Max, for much less.",
+		status: "XHIGH / SELECTED",
+		cursorScore: "59.2%",
+		cursorCost: "$1.15 / task",
+		frontierScore: "38.7%",
+		frontierCost: "$1.30 / task",
+		retained: "91–94%",
+		retainedNote: "across both benchmarks",
+	},
+	max: {
+		label: "Max",
+		copy: "Reserve Max for ambiguous, high-blast-radius changes, unfamiliar systems, and final passes where a missed edge case costs more than extra inference.",
+		title: "Pay for the last few points.",
+		status: "MAX / SELECTED",
+		cursorScore: "64.9%",
+		cursorCost: "$2.31 / task",
+		frontierScore: "41.3%",
+		frontierCost: "$1.81 / task",
+		retained: "100%",
+		retainedNote: "Terra’s published ceiling",
+	},
+};
+
 let activeBenchmark = "deepswe";
 let selectedModelId = "opus";
 
@@ -127,6 +166,21 @@ const version = document.getElementById("benchmark-version");
 const title = document.getElementById("benchmark-title");
 const description = document.getElementById("benchmark-description");
 const matrixBody = document.getElementById("matrix-body");
+const effortControls = [...document.querySelectorAll(".effort-control")];
+const effortRows = [...document.querySelectorAll(".effort-ladder-row")];
+
+const effortGuide = {
+	answer: document.getElementById("effort-answer"),
+	copy: document.getElementById("effort-answer-copy"),
+	title: document.getElementById("effort-evidence-title"),
+	status: document.getElementById("effort-evidence-status"),
+	cursorScore: document.getElementById("effort-cursor-score"),
+	cursorCost: document.getElementById("effort-cursor-cost"),
+	frontierScore: document.getElementById("effort-frontier-score"),
+	frontierCost: document.getElementById("effort-frontier-cost"),
+	retained: document.getElementById("effort-retained"),
+	retainedNote: document.getElementById("effort-retained-note"),
+};
 
 const spotlight = {
 	monogram: document.getElementById("spotlight-monogram"),
@@ -305,6 +359,31 @@ function renderMatrix() {
 	}
 }
 
+function renderEffortGuide(effort) {
+	const recommendation = terraEfforts[effort];
+
+	effortGuide.answer.textContent = recommendation.label;
+	effortGuide.copy.textContent = recommendation.copy;
+	effortGuide.title.textContent = recommendation.title;
+	effortGuide.status.textContent = recommendation.status;
+	effortGuide.cursorScore.textContent = recommendation.cursorScore;
+	effortGuide.cursorCost.textContent = recommendation.cursorCost;
+	effortGuide.frontierScore.textContent = recommendation.frontierScore;
+	effortGuide.frontierCost.textContent = recommendation.frontierCost;
+	effortGuide.retained.textContent = recommendation.retained;
+	effortGuide.retainedNote.textContent = recommendation.retainedNote;
+
+	effortControls.forEach((control) => {
+		const isActive = control.dataset.effort === effort;
+		control.classList.toggle("is-active", isActive);
+		control.setAttribute("aria-pressed", String(isActive));
+	});
+
+	effortRows.forEach((row) => {
+		row.classList.toggle("is-selected", row.dataset.effortRow === effort);
+	});
+}
+
 tabs.forEach((tab) => {
 	tab.addEventListener("click", () => {
 		activeBenchmark = tab.dataset.benchmark;
@@ -323,6 +402,13 @@ tabs.forEach((tab) => {
 	});
 });
 
+effortControls.forEach((control) => {
+	control.addEventListener("click", () => {
+		renderEffortGuide(control.dataset.effort);
+	});
+});
+
 renderRanking();
 renderSpotlight();
 renderMatrix();
+renderEffortGuide("xhigh");
