@@ -10,7 +10,7 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
-import { getDayKeyQueryVariants } from "./dayKeyVariants";
+import { getBerlinDayKey } from "./dayKeyVariants";
 import { deriveTopicReadiness } from "./diagnosticReadiness";
 import { throwUserFacingError } from "./errors";
 import {
@@ -19,6 +19,7 @@ import {
 	getR2ConfigOrThrow,
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
 	getDefaultPreparationDepth,
@@ -43,6 +44,8 @@ import {
 } from "./topicDescriptionValidation";
 
 const MAX_LEARNING_TIMES = 50;
+const MAX_SCHEDULING_DAY_ENTRIES = 500;
+const MAX_SCHEDULING_LOOKAHEAD_DAYS = 366;
 // Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
 // before a later request may recover work left behind by a terminated action.
 const STALE_CONTENT_GENERATION_MS = 11 * 60_000;
@@ -412,6 +415,99 @@ const getLearningPlanCalendarDayKeys = (examDateKey: string) => {
 	return dayKeys;
 };
 
+const getAvailabilityDayKeys = (fromDateKey: string, examDateKey: string) => {
+	const cursor = new Date(`${fromDateKey}T00:00:00.000Z`);
+	const examDate = new Date(`${examDateKey}T00:00:00.000Z`);
+	if (Number.isNaN(cursor.getTime()) || Number.isNaN(examDate.getTime())) {
+		return [];
+	}
+
+	const dayCount = Math.ceil(
+		(examDate.getTime() - cursor.getTime()) / 86_400_000,
+	);
+	// The exam-date selector exposes one year. Fail closed for malformed route
+	// params beyond that range instead of starting an unbounded database read.
+	if (dayCount > MAX_SCHEDULING_LOOKAHEAD_DAYS) return [];
+	if (dayCount <= 0) return [];
+
+	const dayKeys: string[] = [];
+	while (cursor < examDate) {
+		dayKeys.push(cursor.toISOString().slice(0, 10));
+		cursor.setUTCDate(cursor.getUTCDate() + 1);
+	}
+	return dayKeys;
+};
+
+type SchedulingOccupiedEntry = {
+	dayKey: string;
+	time?: string;
+	durationMinutes?: number;
+};
+
+const getSchedulingOccupiedEntries = async (
+	ctx: QueryCtx,
+	{
+		ownerTokenIdentifier,
+		dayKeys,
+	}: {
+		ownerTokenIdentifier: string;
+		dayKeys: string[];
+	},
+) => {
+	if (dayKeys.length === 0) {
+		return {
+			entries: [] as SchedulingOccupiedEntry[],
+			wasTruncated: false,
+		};
+	}
+
+	const requestedDayKeys = new Set(dayKeys);
+	const queryStart = new Date(`${dayKeys[0]}T00:00:00.000Z`);
+	queryStart.setUTCDate(queryStart.getUTCDate() - 1);
+	const queryEnd = new Date(`${dayKeys.at(-1)}T00:00:00.000Z`);
+	queryEnd.setUTCDate(queryEnd.getUTCDate() + 1);
+	const dayEntries = await ctx.db
+		.query("dayEntries")
+		.withIndex("by_ownerTokenIdentifier_and_dayKey", (q) =>
+			q
+				.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+				.gte("dayKey", queryStart.toISOString().slice(0, 10))
+				.lt("dayKey", queryEnd.toISOString().slice(0, 10)),
+		)
+		.take(MAX_SCHEDULING_DAY_ENTRIES + 1);
+	const wasTruncated = dayEntries.length > MAX_SCHEDULING_DAY_ENTRIES;
+	const entries: SchedulingOccupiedEntry[] = dayEntries
+		.slice(0, MAX_SCHEDULING_DAY_ENTRIES)
+		.flatMap((entry) => {
+			const dayKey = getBerlinDayKey(entry.dayKey);
+			if (!dayKey || !requestedDayKeys.has(dayKey)) return [];
+			return [
+				{
+					dayKey,
+					time: isExamEntry(entry) ? undefined : entry.time,
+					durationMinutes: entry.durationMinutes,
+				},
+			];
+		});
+	const timetableLessons = await getActiveTimetableLessons(
+		ctx,
+		ownerTokenIdentifier,
+	);
+	for (const dayKey of dayKeys) {
+		const dayOfWeek = getTimetableDayOfWeek(dayKey);
+		for (const lesson of timetableLessons) {
+			if (lesson.dayOfWeek !== dayOfWeek) continue;
+			entries.push({
+				dayKey,
+				time: lesson.startTime,
+				durationMinutes: getTimetableLessonDuration(lesson) ?? undefined,
+			});
+		}
+	}
+
+	return { entries, wasTruncated };
+};
+
 const getSessionDayEntryTitle = (
 	plan: Doc<"learningPlans">,
 	session: Pick<Doc<"learningPlanSessions">, "title">,
@@ -758,6 +854,68 @@ export const setTargetStudyMinutes = mutation({
 			updatedAt: Date.now(),
 		});
 		return args.targetStudyMinutes;
+	},
+});
+
+export const getSchedulingAvailability = query({
+	args: {
+		fromDateKey: v.string(),
+		fromTimeMinutes: v.number(),
+		examDateKey: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const dayKeys = getAvailabilityDayKeys(args.fromDateKey, args.examDateKey);
+		const learningTimes = await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(MAX_LEARNING_TIMES);
+		const publicLearningTimes = learningTimes.map((learningTime) => ({
+			dayOfWeek: learningTime.dayOfWeek,
+			startTime: learningTime.startTime,
+			endTime: learningTime.endTime,
+		}));
+		const nominalStudyMinutes = calculateAvailableStudyMinutes({
+			fromDateKey: args.fromDateKey,
+			fromTimeMinutes: args.fromTimeMinutes,
+			examDateKey: args.examDateKey,
+			learningTimes: publicLearningTimes,
+		});
+
+		if (dayKeys.length === 0 || nominalStudyMinutes < 10) {
+			return {
+				availableStudyMinutes: nominalStudyMinutes,
+				status: "missing" as const,
+			};
+		}
+
+		const occupied = await getSchedulingOccupiedEntries(ctx, {
+			ownerTokenIdentifier,
+			dayKeys,
+		});
+		if (occupied.wasTruncated) {
+			return {
+				availableStudyMinutes: 0,
+				status: "occupied" as const,
+			};
+		}
+
+		const availableStudyMinutes = calculateAvailableStudyMinutes({
+			fromDateKey: args.fromDateKey,
+			fromTimeMinutes: args.fromTimeMinutes,
+			examDateKey: args.examDateKey,
+			learningTimes: publicLearningTimes,
+			occupiedEntries: occupied.entries,
+		});
+		return {
+			availableStudyMinutes,
+			status:
+				availableStudyMinutes >= 10
+					? ("available" as const)
+					: ("occupied" as const),
+		};
 	},
 });
 
@@ -1272,54 +1430,16 @@ export const getAiContext = internalQuery({
 				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
 			)
 			.take(MAX_LEARNING_TIMES);
-		const occupiedEntries: Array<{
-			dayKey: string;
-			time?: string;
-			durationMinutes?: number;
-		}> = [];
-		const timetableLessons = await getActiveTimetableLessons(
-			ctx,
-			identity.tokenIdentifier,
-		);
-		const seenEntryIds = new Set<string>();
-		for (const dayKey of getLearningPlanCalendarDayKeys(plan.examDateKey)) {
-			for (const queryDayKey of getDayKeyQueryVariants(dayKey)) {
-				const entries = await ctx.db
-					.query("dayEntries")
-					.withIndex("by_ownerTokenIdentifier_and_dayKey", (q) =>
-						q
-							.eq("ownerTokenIdentifier", identity.tokenIdentifier)
-							.eq("dayKey", queryDayKey),
-					)
-					.take(50);
-
-				for (const entry of entries) {
-					if (seenEntryIds.has(entry._id)) continue;
-					seenEntryIds.add(entry._id);
-					occupiedEntries.push({
-						dayKey,
-						time: isExamEntry(entry) ? undefined : entry.time,
-						durationMinutes: entry.durationMinutes,
-					});
-				}
-			}
-			const dayOfWeek = getTimetableDayOfWeek(dayKey);
-			for (const lesson of timetableLessons.filter(
-				(item) => item.dayOfWeek === dayOfWeek,
-			)) {
-				occupiedEntries.push({
-					dayKey,
-					time: lesson.startTime,
-					durationMinutes: getTimetableLessonDuration(lesson) ?? undefined,
-				});
-			}
-		}
+		const occupied = await getSchedulingOccupiedEntries(ctx, {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			dayKeys: getLearningPlanCalendarDayKeys(plan.examDateKey),
+		});
 
 		return {
 			plan,
 			documents,
 			learningTimes,
-			occupiedEntries,
+			occupiedEntries: occupied.entries,
 			accessKey: buildPlanAccessKey(args.learningPlanId),
 		};
 	},

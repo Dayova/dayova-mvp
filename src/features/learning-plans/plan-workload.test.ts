@@ -55,6 +55,34 @@ describe("total study workload suggestion", () => {
 		).toBe(170);
 	});
 
+	test("does not count a saved Lernzeit that is already fully occupied", () => {
+		expect(
+			calculateAvailableStudyMinutes({
+				fromDateKey: "2026-06-01",
+				examDateKey: "2026-06-03",
+				learningTimes: [{ dayOfWeek: 2, startTime: "17:00", endTime: "18:00" }],
+				occupiedEntries: [
+					{
+						dayKey: "2026-06-02",
+						time: "17:00",
+						durationMinutes: 60,
+					},
+				],
+			}),
+		).toBe(0);
+	});
+
+	test("does not count a learning window that has already started today", () => {
+		expect(
+			calculateAvailableStudyMinutes({
+				fromDateKey: "2026-06-02",
+				fromTimeMinutes: 17 * 60,
+				examDateKey: "2026-06-03",
+				learningTimes: [{ dayOfWeek: 2, startTime: "17:00", endTime: "18:00" }],
+			}),
+		).toBe(0);
+	});
+
 	test("requests learning time only when a future exam has no usable window", () => {
 		expect(
 			shouldRequestLearningTimeBeforeExam({

@@ -1,10 +1,9 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvex, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
 	type ReactNode,
 	useCallback,
 	useEffect,
-	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -23,6 +22,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { ExamCreationActions } from "~/components/entry/exam-creation-actions";
 import {
 	ExamDateSelector,
 	ExamTypePicker,
@@ -65,13 +65,13 @@ import { Textarea } from "~/components/ui/textarea";
 import { useAuthSession } from "~/context/AuthContext";
 import { getExamEntryCreationProgress } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { LearningAvailabilityStep } from "~/features/learning-plans/learning-availability-step";
 import {
-	calculateAvailableStudyMinutes,
-	shouldShowLearningTimeValidation,
-} from "~/features/learning-plans/plan-workload";
+	LearningAvailabilityAction,
+	LearningAvailabilityStep,
+} from "~/features/learning-plans/learning-availability-step";
+import { shouldShowLearningTimeValidation } from "~/features/learning-plans/plan-workload";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/use-validation-analytics";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { EXAM_TYPE_OPTIONS } from "~/lib/entry-options";
@@ -85,6 +85,7 @@ import {
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
 type EntryType = "homework" | "exam";
@@ -163,6 +164,14 @@ const formatCompactDate = (date: Date) =>
 		month: "long",
 		year: "numeric",
 	}).format(date);
+
+const getAvailabilityCheckTime = () => {
+	const now = new Date();
+	return {
+		dayKey: getDayKey(now),
+		timeMinutes: now.getHours() * 60 + now.getMinutes(),
+	};
+};
 
 const homeworkSuccessPath = ({
 	dayKey,
@@ -272,6 +281,7 @@ function StickyActionFooter({
 
 export default function NewEntryScreen() {
 	const router = useRouter();
+	const convex = useConvex();
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
 	const fieldIconColor = colors.secondaryText;
@@ -288,10 +298,6 @@ export default function NewEntryScreen() {
 	}>();
 	const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
 	const isHomework = entryType === "homework";
-	const learningTimes = useQuery(
-		api.learningTimes.listMine,
-		user && isConvexAuthenticated && !isHomework ? {} : "skip",
-	);
 	const [initialDate] = useState(() => parseDateKey(params.dayKey));
 
 	const [step, setStep] = useState<EntryStep>(() =>
@@ -317,6 +323,13 @@ export default function NewEntryScreen() {
 		return next;
 	});
 	const [isCreating, setIsCreating] = useState(false);
+	const [
+		isCheckingLearningPlanAvailability,
+		setIsCheckingLearningPlanAvailability,
+	] = useState(false);
+	const [availabilityCheckTime, setAvailabilityCheckTime] = useState(
+		getAvailabilityCheckTime,
+	);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
 	const [selectTarget, setSelectTarget] = useState<SelectTarget | null>(null);
@@ -331,6 +344,7 @@ export default function NewEntryScreen() {
 	const keyboardDismissFrameRef = useRef<ReturnType<
 		typeof requestAnimationFrame
 	> | null>(null);
+	const entryCreationGateRef = useRef(createAsyncActionGate());
 
 	const trimmedSubject = subject.trim();
 	const trimmedExamType = examTypeLabel.trim();
@@ -346,24 +360,22 @@ export default function NewEntryScreen() {
 	const canCreateHomework = trimmedSubject.length > 0;
 	const canCreateExam = trimmedSubject.length > 0 && Boolean(selectedExamType);
 	const canWriteEntries = Boolean(user && isConvexAuthenticated);
-	const todayDayKey = getDayKey(new Date());
+	const todayDayKey = availabilityCheckTime.dayKey;
 	const examDayKey = getDayKey(plannedDate);
-	const availableStudyMinutes = useMemo(
-		() =>
-			learningTimes === undefined
-				? null
-				: calculateAvailableStudyMinutes({
-						fromDateKey: todayDayKey,
-						examDateKey: examDayKey,
-						learningTimes,
-					}),
-		[examDayKey, learningTimes, todayDayKey],
+	const schedulingAvailability = useQuery(
+		api.learningPlans.getSchedulingAvailability,
+		user && isConvexAuthenticated && !isHomework
+			? {
+					fromDateKey: todayDayKey,
+					fromTimeMinutes: availabilityCheckTime.timeMinutes,
+					examDateKey: examDayKey,
+				}
+			: "skip",
 	);
 	const isFutureExam = examDayKey > todayDayKey;
 	const isLearningTimeCheckLoading =
-		isFutureExam && learningTimes === undefined;
-	const hasUsableLearningTime =
-		availableStudyMinutes !== null && availableStudyMinutes >= 10;
+		isFutureExam && schedulingAvailability === undefined;
+	const hasUsableLearningTime = schedulingAvailability?.status === "available";
 	const examStepTitle =
 		step === "basics"
 			? "Wann findet die Prüfung statt?"
@@ -388,6 +400,33 @@ export default function NewEntryScreen() {
 	}, []);
 
 	useEffect(() => clearPendingModalOpen, [clearPendingModalOpen]);
+
+	useEffect(() => {
+		if (isHomework) return;
+
+		let refreshInterval: ReturnType<typeof setInterval> | null = null;
+		const refresh = () => {
+			setAvailabilityCheckTime((current) => {
+				const next = getAvailabilityCheckTime();
+				return current.dayKey === next.dayKey &&
+					current.timeMinutes === next.timeMinutes
+					? current
+					: next;
+			});
+		};
+		const refreshTimeout = setTimeout(
+			() => {
+				refresh();
+				refreshInterval = setInterval(refresh, 60_000);
+			},
+			60_000 - (Date.now() % 60_000),
+		);
+
+		return () => {
+			clearTimeout(refreshTimeout);
+			if (refreshInterval) clearInterval(refreshInterval);
+		};
+	}, [isHomework]);
 
 	const openAfterKeyboardDismiss = useCallback(
 		(open: () => void) => {
@@ -483,7 +522,7 @@ export default function NewEntryScreen() {
 		}
 	};
 
-	const createEntry = async ({
+	const createEntryWithinGate = async ({
 		redirectToHome = true,
 	}: {
 		redirectToHome?: boolean;
@@ -567,23 +606,71 @@ export default function NewEntryScreen() {
 		return result;
 	};
 
+	const createEntry = async (options: { redirectToHome?: boolean } = {}) => {
+		const result = await entryCreationGateRef.current.run(() =>
+			createEntryWithinGate(options),
+		);
+		return result.status === "completed" ? result.value : undefined;
+	};
+
 	const createLearningPlan = async () => {
-		if (!canCreateExam || isCreating || !canWriteEntries) return;
+		if (
+			!canCreateExam ||
+			!hasUsableLearningTime ||
+			isCreating ||
+			isCheckingLearningPlanAvailability ||
+			!canWriteEntries
+		) {
+			return;
+		}
 
-		const createdExam = await createEntry({ redirectToHome: false });
-		if (!createdExam?.createdEntryId) return;
+		await entryCreationGateRef.current.run(async () => {
+			setIsCheckingLearningPlanAvailability(true);
+			setErrorMessage(null);
+			try {
+				const latestCheckTime = getAvailabilityCheckTime();
+				const latestAvailability = await convex.query(
+					api.learningPlans.getSchedulingAvailability,
+					{
+						fromDateKey: latestCheckTime.dayKey,
+						fromTimeMinutes: latestCheckTime.timeMinutes,
+						examDateKey: getDayKey(plannedDate),
+					},
+				);
+				if (latestAvailability.status !== "available") {
+					setAvailabilityCheckTime(latestCheckTime);
+					setDidShowLearningAvailability(true);
+					goToStep("learningAvailability");
+					return;
+				}
 
-		const query = [
-			["examDayEntryId", createdExam.createdEntryId],
-			["subject", trimmedSubject],
-			["examTypeLabel", trimmedExamType],
-			["examDateKey", getDayKey(plannedDate)],
-			["examDateLabel", formatDate(plannedDate)],
-			["durationMinutes", `${scheduledDurationMinutes}`],
-		]
-			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-			.join("&");
-		router.push(`${ROUTES.createLearningPlan}?${query}`);
+				const createdExam = await createEntryWithinGate({
+					redirectToHome: false,
+				});
+				if (!createdExam?.createdEntryId) return;
+
+				const query = [
+					["examDayEntryId", createdExam.createdEntryId],
+					["subject", trimmedSubject],
+					["examTypeLabel", trimmedExamType],
+					["examDateKey", getDayKey(plannedDate)],
+					["examDateLabel", formatDate(plannedDate)],
+					["durationMinutes", `${scheduledDurationMinutes}`],
+				]
+					.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+					.join("&");
+				router.push(`${ROUTES.createLearningPlan}?${query}`);
+			} catch (error) {
+				setErrorMessage(
+					getErrorMessage(
+						error,
+						"Deine freie Lernzeit konnte nicht geprüft werden. Bitte versuche es erneut.",
+					),
+				);
+			} finally {
+				setIsCheckingLearningPlanAvailability(false);
+			}
+		});
 	};
 
 	const goToStep = useCallback((nextStep: EntryStep) => {
@@ -592,7 +679,7 @@ export default function NewEntryScreen() {
 	}, []);
 
 	const continueFromExamDate = () => {
-		if (learningTimes === undefined && isFutureExam) return;
+		if (schedulingAvailability === undefined && isFutureExam) return;
 		if (
 			shouldShowLearningTimeValidation({
 				fromDateKey: todayDayKey,
@@ -888,7 +975,7 @@ export default function NewEntryScreen() {
 								/>
 							) : step === "learningAvailability" ? (
 								<LearningAvailabilityStep
-									availableStudyMinutes={availableStudyMinutes}
+									availabilityStatus={schedulingAvailability?.status ?? null}
 									examDateLabel={formatCompactDate(plannedDate)}
 								/>
 							) : step === "examType" ? (
@@ -961,54 +1048,38 @@ export default function NewEntryScreen() {
 								{errorMessage}
 							</Text>
 						) : null}
-						<View className="flex-row gap-3">
-							<Button
-								className="flex-1"
-								variant="neutral"
-								disabled={!canCreateExam || isCreating || !canWriteEntries}
-								onPress={() => {
-									void createEntry();
-								}}
-							>
-								<Text>Eintragen</Text>
-							</Button>
-							<Button
-								className="flex-1"
-								disabled={!canCreateExam || isCreating || !canWriteEntries}
-								onPress={() => {
-									void createLearningPlan();
-								}}
-							>
-								<Text>Lernplan</Text>
-							</Button>
-						</View>
+						<ExamCreationActions
+							canCreateExam={canCreateExam && canWriteEntries}
+							canCreateLearningPlan={
+								canCreateExam && hasUsableLearningTime && canWriteEntries
+							}
+							isCheckingLearningPlanAvailability={
+								isCheckingLearningPlanAvailability
+							}
+							isCreating={isCreating}
+							onCreateExam={() => {
+								void createEntry();
+							}}
+							onCreateLearningPlan={() => {
+								void createLearningPlan();
+							}}
+						/>
 					</StickyActionFooter>
 				) : step === "learningAvailability" ? (
 					<StickyActionFooter bottomInset={insets.bottom}>
-						<Button
-							className="w-full"
-							disabled={availableStudyMinutes === null}
-							onPress={() => {
-								if (hasUsableLearningTime) {
-									goToStep("examType");
-									return;
-								}
-								openLearningTimes();
-							}}
-						>
-							{availableStudyMinutes === null ? (
-								<ActivityIndicator color="#FFFFFF" />
-							) : (
-								<Text>
-									{hasUsableLearningTime ? "Weiter" : "Lernzeit eintragen"}
-								</Text>
-							)}
-						</Button>
+						<LearningAvailabilityAction
+							availabilityStatus={schedulingAvailability?.status ?? null}
+							onContinue={() => goToStep("examType")}
+							onEditLearningTimes={openLearningTimes}
+						/>
 					</StickyActionFooter>
 				) : (
 					<StickyActionFooter bottomInset={insets.bottom}>
 						<Button
 							className="w-full"
+							accessibilityState={{
+								busy: step === "basics" && isLearningTimeCheckLoading,
+							}}
 							disabled={
 								(step === "examType" && !trimmedExamType) ||
 								(step === "basics" && isLearningTimeCheckLoading)
