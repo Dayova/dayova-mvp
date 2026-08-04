@@ -24,6 +24,12 @@ defaults:
     pnpm: "11.15.1"
 
 jobs:
+  production_fingerprint:
+    name: Production native fingerprints
+    type: fingerprint
+    environment: production
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+
   checks:
     name: Lint, typecheck, and test
     type: custom
@@ -60,6 +66,7 @@ jobs:
     runs_on: linux-medium
     needs:
       - main_checks
+      - production_fingerprint
     if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
     environment: production
     outputs:
@@ -80,6 +87,8 @@ jobs:
         env:
           APP_VARIANT: production
           EAS_BUILD_PLATFORM: ios
+          OTA_ANDROID_FINGERPRINT: ${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}
+          OTA_IOS_FINGERPRINT: ${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}
         run: |
           if ota_report="$(node scripts/ota-safety.mjs --json)"; then
             ota_safe=true
@@ -116,6 +125,7 @@ jobs:
     runs_on: linux-medium
     needs:
       - ota_checks
+      - production_fingerprint
       - deploy_convex
     if: ${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}
     environment: production
@@ -125,6 +135,8 @@ jobs:
       - name: Verify production manifest and distributed-binary compatibility
         env:
           APP_VARIANT: production
+          OTA_ANDROID_FINGERPRINT: ${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}
+          OTA_IOS_FINGERPRINT: ${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}
         run: node scripts/ota-safety.mjs
       - name: Send production OTA rollout
         env:

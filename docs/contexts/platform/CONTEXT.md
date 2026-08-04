@@ -23,6 +23,12 @@ _Avoid_: User-facing message, learner error text
 
 ## Release Environment
 
+The native runtime boundary, clean-build provenance requirements, verified
+binary baseline, staging/promotion flow, and rollback/resumption policy live in
+[`release/README.md`](../../../release/README.md). Expo SDK 57 starts at app and
+runtime version `1.0.4`; never publish SDK 57 code on the distributed SDK 56
+runtime `1.0.3`.
+
 Native release builds and OTA update bundles must have these public app envs
 available while Expo bundles JavaScript:
 
