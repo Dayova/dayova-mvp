@@ -188,50 +188,66 @@
 				<div class="section-heading compact">
 					<div>
 						<span class="section-number">02 / DECISION DESK</span>
-						<h2>How hard should Terra think?</h2>
+						<h2>Which model. How much effort.</h2>
 					</div>
 					<p>
-						For serious repository work, start at Extra High. Move down when the task is
-						narrow and well tested; move up when a missed edge case costs more than the run.
+						Choose any model in the field. The desk turns its published effort ladder into
+						three practical modes: cheaper, recommended, and capability ceiling.
 					</p>
 				</div>
 
 				<div class="effort-board">
-					<div class="effort-advisor">
+					<div class="effort-advisor" id="effort-advisor">
 						<div class="effort-advisor-topline">
-							<span>GPT‑5.6 TERRA</span>
-							<span class="recommendation-chip">RECOMMENDED DEFAULT</span>
+							<div class="effort-model-picker">
+								<label for="effort-model-select">Choose a model</label>
+								<div class="effort-model-select-row">
+									<span class="effort-model-monogram" id="effort-model-monogram" aria-hidden="true"
+										>TR</span
+									>
+									<select id="effort-model-select" aria-label="Choose a model for effort guidance">
+										<option value="opus">Claude Opus 5</option>
+										<option value="fable">Claude Fable 5</option>
+										<option value="sol">GPT‑5.6 Sol</option>
+										<option value="terra" selected>GPT‑5.6 Terra</option>
+										<option value="luna">GPT‑5.6 Luna</option>
+										<option value="kimi">Kimi K3</option>
+										<option value="gemini">Gemini 3.6 Flash</option>
+									</select>
+								</div>
+							</div>
+							<span class="recommendation-chip" id="effort-mode-chip">RECOMMENDED DEFAULT</span>
 						</div>
 
 						<div class="effort-answer" aria-live="polite">
-							<span class="effort-answer-label">Run it at</span>
+							<span class="effort-answer-label" id="effort-answer-label">Recommended default</span>
 							<strong id="effort-answer">Extra High</strong>
 							<p id="effort-answer-copy">
-								The practical sweet spot for substantial feature work, refactors, and bug
-								investigations. You keep most of Max’s score without paying Max’s full premium.
+								The practical sweet spot for substantial feature work and investigations: most
+								of Max’s published performance without Max’s full premium.
 							</p>
 						</div>
 
-						<div class="effort-controls" role="group" aria-label="Choose your priority">
-							<button type="button" class="effort-control" data-effort="high" aria-pressed="false">
-								<span>Ship faster</span><small>High</small>
+						<div class="effort-controls" role="group" aria-label="Choose a decision mode">
+							<button type="button" class="effort-control" data-choice="economy" aria-pressed="false">
+								<span>Cheaper</span><small>High</small>
 							</button>
 							<button
 								type="button"
 								class="effort-control is-active"
-								data-effort="xhigh"
+								data-choice="recommended"
 								aria-pressed="true"
 							>
-								<span>Best balance</span><small>Extra High</small>
+								<span>Recommended</span><small>Extra High</small>
 							</button>
-							<button type="button" class="effort-control" data-effort="max" aria-pressed="false">
-								<span>Max quality</span><small>Max</small>
+							<button type="button" class="effort-control" data-choice="ceiling" aria-pressed="false">
+								<span>Ceiling</span><small>Max</small>
 							</button>
 						</div>
 
-						<p class="economy-note">
-							Low and Medium are economy modes: useful for triage, boilerplate, and tightly
-							scoped chores—but not the default for ambiguous repository work.
+						<p class="economy-note" id="effort-model-note">
+							Terra has complete CursorBench and FrontierCode effort ladders; both improve
+							steadily as effort rises.
 						</p>
 					</div>
 
@@ -256,40 +272,30 @@
 								<small id="effort-frontier-cost">$1.30 / task</small>
 							</div>
 							<div>
-								<span>Max score retained</span>
-								<strong id="effort-retained">91–94%</strong>
-								<small id="effort-retained-note">across both benchmarks</small>
+								<span>Evidence coverage</span>
+								<strong id="effort-coverage">2 / 2</strong>
+								<small id="effort-coverage-note">published effort ladders</small>
 							</div>
 						</div>
 
 						<div
 							class="effort-ladder"
 							role="group"
-							aria-label="Terra effort-level score and cost comparison"
+							aria-label="Selected model effort-level score and cost comparison"
+							aria-live="polite"
 						>
 							<div class="effort-ladder-head" aria-hidden="true">
 								<span>Effort</span><span>CursorBench</span><span>FrontierCode</span>
 							</div>
-							<div class="effort-ladder-row" data-effort-row="high">
-								<strong>High</strong><span>54.2% <small>$0.71</small></span
-								><span>36.9% <small>$1.10</small></span>
-							</div>
-							<div class="effort-ladder-row is-selected" data-effort-row="xhigh">
-								<strong>Extra High</strong><span>59.2% <small>$1.15</small></span
-								><span>38.7% <small>$1.30</small></span>
-							</div>
-							<div class="effort-ladder-row" data-effort-row="max">
-								<strong>Max</strong><span>64.9% <small>$2.31</small></span
-								><span>41.3% <small>$1.81</small></span>
-							</div>
+							<div id="effort-ladder-body"></div>
 						</div>
 					</div>
 				</div>
 
 				<p class="effort-source-note">
-					Recommendation derived from GPT‑5.6 Terra’s published CursorBench 3.2 and
-					FrontierCode 1.1 Main effort ladders. Costs are benchmark averages, not a quote
-					for your own workload.
+					Recommendations are our inference from official CursorBench 3.2 and
+					FrontierCode 1.1 Main results—not provider guidance. Costs are benchmark
+					averages, not a quote for your own workload; N/R means no matched effort run.
 				</p>
 			</section>
 

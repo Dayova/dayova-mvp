@@ -720,7 +720,8 @@ h1 em {
 	flex-direction: column;
 	padding: 30px;
 	border-right: 1px solid var(--line-strong);
-	background: var(--acid);
+	background: var(--advisor-accent, var(--acid));
+	transition: background-color 220ms ease;
 }
 
 .effort-advisor-topline,
@@ -734,6 +735,7 @@ h1 em {
 }
 
 .effort-advisor-topline > span,
+.effort-model-picker label,
 .effort-evidence-head span,
 .effort-answer-label,
 .economy-note,
@@ -749,14 +751,57 @@ h1 em {
 	text-transform: uppercase;
 }
 
+.effort-advisor-topline {
+	align-items: flex-start;
+}
+
+.effort-model-picker label {
+	display: block;
+	margin-bottom: 8px;
+}
+
+.effort-model-select-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.effort-model-monogram {
+	display: grid;
+	place-items: center;
+	flex: 0 0 auto;
+	width: 34px;
+	height: 34px;
+	border: 1px solid var(--line-strong);
+	border-radius: 50%;
+	font-family: var(--mono);
+	font-size: 9px;
+}
+
+.effort-model-picker select {
+	max-width: 220px;
+	padding: 7px 28px 7px 8px;
+	border: 1px solid var(--line-strong);
+	border-radius: 0;
+	background: transparent;
+	color: var(--ink);
+	font: 600 12px/1.2 var(--sans);
+	cursor: pointer;
+}
+
+.effort-model-picker select:focus-visible {
+	outline: 3px solid var(--ink);
+	outline-offset: 3px;
+}
+
 .recommendation-chip {
 	padding: 5px 8px;
 	background: var(--ink);
-	color: var(--acid);
+	color: var(--advisor-accent, var(--acid));
 }
 
 .effort-answer {
-	padding: 68px 0 56px;
+	padding: 58px 0 52px;
 }
 
 .effort-answer-label {
@@ -1521,6 +1566,24 @@ td {
 	.effort-advisor,
 	.effort-evidence {
 		padding: 22px;
+	}
+
+	.effort-advisor-topline {
+		flex-direction: column;
+	}
+
+	.effort-model-picker,
+	.effort-model-picker select {
+		width: 100%;
+		max-width: none;
+	}
+
+	.effort-model-select-row {
+		width: 100%;
+	}
+
+	.effort-model-select-row select {
+		flex: 1;
 	}
 
 	.effort-answer {
