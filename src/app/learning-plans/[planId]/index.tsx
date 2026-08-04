@@ -183,7 +183,7 @@ function SessionPreviewCard({
 			</Text>
 			{session.selectionReason ? (
 				<Text
-					className="font-medium font-poppins text-body-5 text-primary"
+					className="pr-8 font-medium font-poppins text-body-5 text-primary"
 					numberOfLines={2}
 				>
 					{formatGermanUiText(session.selectionReason)}
