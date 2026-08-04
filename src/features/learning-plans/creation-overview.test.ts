@@ -37,6 +37,23 @@ describe("learning plan creation overview", () => {
 		});
 	});
 
+	test("keeps the first unanswered position for an adaptive eight-question creation", () => {
+		expect(
+			getLearningPlanOverviewState({
+				status: "questionsReady",
+				creationProgress: {
+					questionCount: 8,
+					answeredQuestionCount: 3,
+					firstUnansweredQuestionIndex: 3,
+				},
+			}),
+		).toMatchObject({
+			kind: "creation",
+			progressLabel: "3 von 8 Fragen beantwortet",
+			resumeTarget: { kind: "question", questionIndex: 3 },
+		});
+	});
+
 	test("continues generation when every question was saved before interruption", () => {
 		expect(
 			getLearningPlanOverviewState({

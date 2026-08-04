@@ -169,40 +169,40 @@ export default function LearningPlanQuizScreen() {
 	return (
 		<GestureDetector gesture={backSwipeGesture}>
 			<View className="flex-1 bg-background">
-			<Stack.Screen options={{ gestureEnabled: false }} />
-			<KeyboardSafeScrollView
-				className="flex-1"
-				bottomOffset={32}
-				contentContainerStyle={{
-					flexGrow: 1,
-					paddingHorizontal: 32,
-					paddingTop: 0,
-					paddingBottom: 60,
-				}}
-			>
-				{currentQuestion ? (
-					<QuizStep
-						question={currentQuestion}
-						answer={answer}
-						errorMessage={errorMessage}
-						isBusy={isBusy}
-						onAnswerChange={setAnswer}
-						onContinue={continueQuestion}
-					/>
-				) : null}
-			</KeyboardSafeScrollView>
+				<Stack.Screen options={{ gestureEnabled: false }} />
+				<KeyboardSafeScrollView
+					className="flex-1"
+					bottomOffset={32}
+					contentContainerStyle={{
+						flexGrow: 1,
+						paddingHorizontal: 32,
+						paddingTop: 0,
+						paddingBottom: 60,
+					}}
+				>
+					{currentQuestion ? (
+						<QuizStep
+							question={currentQuestion}
+							answer={answer}
+							errorMessage={errorMessage}
+							isBusy={isBusy}
+							onAnswerChange={setAnswer}
+							onContinue={continueQuestion}
+						/>
+					) : null}
+				</KeyboardSafeScrollView>
 
-			<ConfirmationSheet
-				visible={isPauseConfirmationVisible}
-				title="Lernplan-Erstellung pausieren?"
-				description="Deine bisherigen Antworten bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
-				cancelLabel="Weiter beantworten"
-				confirmLabel="Später fortsetzen"
-				confirmTone="primary"
-				closeAccessibilityLabel="Pause-Dialog schließen"
-				onClose={() => setIsPauseConfirmationVisible(false)}
-				onConfirm={continueLater}
-			/>
+				<ConfirmationSheet
+					visible={isPauseConfirmationVisible}
+					title="Lernplan-Erstellung pausieren?"
+					description="Deine bisherigen Antworten bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
+					cancelLabel="Weiter beantworten"
+					confirmLabel="Später fortsetzen"
+					confirmTone="primary"
+					closeAccessibilityLabel="Pause-Dialog schließen"
+					onClose={() => setIsPauseConfirmationVisible(false)}
+					onConfirm={continueLater}
+				/>
 			</View>
 		</GestureDetector>
 	);
