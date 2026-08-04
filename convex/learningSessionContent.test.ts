@@ -19,6 +19,7 @@ const user = {
 const createGeneratedPlanWithSession = async (
 	phase: "theory" | "practice" | "rehearsal",
 	sessionCompositionVariant: "control" | "split" = "control",
+	durationMinutes = 30,
 ) => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
@@ -99,7 +100,7 @@ const createGeneratedPlanWithSession = async (
 				dateKey: "2026-06-03",
 				dateLabel: "3. Juni 2026",
 				startTime: "16:00",
-				durationMinutes: 30,
+				durationMinutes,
 				goal: "Lineare Gleichungen mit Äquivalenzumformungen sicher lösen.",
 				tasks: [
 					"Vorzeichen bei Klammern prüfen.",
@@ -201,7 +202,42 @@ test("theory fallback creates active recall cards instead of generic summaries",
 	}
 });
 
-test("split fallback stores theory then practice inside the same session", async () => {
+test("opening an existing short theory session backfills its pre-check", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession(
+		"theory",
+		"control",
+		7,
+	);
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+
+	const before = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	expect(before?.items.every((item) => item.kind === "learnCard")).toBe(true);
+
+	await t.action(api.learningPlanAi.ensureSessionContent, { sessionId });
+
+	const after = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	expect(after?.session).toMatchObject({
+		compositionVariant: "split",
+		knowledgeValidationStatus: "pending",
+	});
+	expect(
+		after?.items.filter(
+			(item) =>
+				item.phase === "practice" && item.coverageKey.includes(":validation:"),
+		),
+	).toHaveLength(1);
+	expect(
+		after?.items.find((item) => item.phase === "practice")?.prompt,
+	).toContain(before?.items[0]?.front);
+});
+
+test("split fallback stores one practical check before theory", async () => {
 	const { t, sessionId } = await createGeneratedPlanWithSession(
 		"theory",
 		"split",
@@ -215,27 +251,27 @@ test("split fallback stores theory then practice inside the same session", async
 	});
 
 	expect(content?.session.compositionVariant).toBe("split");
-	expect(content?.items).toHaveLength(10);
+	expect(content?.items).toHaveLength(9);
 	expect(
-		content?.items.slice(0, 8).every((item) => item.phase === "theory"),
+		content?.items.slice(0, 1).every((item) => item.phase === "practice"),
+	).toBe(true);
+	expect(content?.items.slice(1).every((item) => item.phase === "theory")).toBe(
+		true,
+	);
+	expect(
+		content?.items.slice(0, 1).every((item) => item.kind !== "learnCard"),
 	).toBe(true);
 	expect(
-		content?.items.slice(8).every((item) => item.phase === "practice"),
-	).toBe(true);
-	expect(
-		content?.items.slice(0, 8).every((item) => item.kind === "learnCard"),
-	).toBe(true);
-	expect(
-		content?.items.slice(8).every((item) => item.kind !== "learnCard"),
+		content?.items.slice(1).every((item) => item.kind === "learnCard"),
 	).toBe(true);
 	expect(
 		content?.items.reduce((total, item) => total + item.estimatedSeconds, 0),
 	).toBe(30 * 60);
-	expect(new Set(content?.items.map((item) => item.coverageKey)).size).toBe(10);
+	expect(new Set(content?.items.map((item) => item.coverageKey)).size).toBe(9);
 	expect(content?.items.map((item) => item.learningBlockIndex)).toEqual([
-		...Array.from({ length: 3 }, () => 0),
+		0,
 		...Array.from({ length: 3 }, () => 1),
-		...Array.from({ length: 2 }, () => 2),
+		...Array.from({ length: 3 }, () => 2),
 		...Array.from({ length: 2 }, () => 3),
 	]);
 });
@@ -269,7 +305,7 @@ test("persists deferred and completed theory validation states", async () => {
 
 	const validationItems =
 		deferred?.items.filter((item) => item.phase === "practice") ?? [];
-	expect(validationItems).toHaveLength(2);
+	expect(validationItems).toHaveLength(1);
 	for (const item of validationItems) {
 		await t.mutation(api.learningSessionContent.submitAnswer, {
 			itemId: item.id,
@@ -319,11 +355,11 @@ test("continue learning appends a fresh timed block", async () => {
 	const newItems = after?.items.slice(extension.firstNewItemIndex) ?? [];
 
 	expect(extension).toMatchObject({
-		firstNewItemIndex: 10,
+		firstNewItemIndex: 9,
 		addedItemCount: 3,
 		durationMinutes: 10,
 	});
-	expect(after?.items.slice(0, 10).map((item) => item.id)).toEqual(
+	expect(after?.items.slice(0, 9).map((item) => item.id)).toEqual(
 		before?.items.map((item) => item.id),
 	);
 	expect(newItems.every((item) => item.learningBlockIndex === 4)).toBe(true);
@@ -345,7 +381,7 @@ test("continue learning appends a fresh timed block", async () => {
 	);
 
 	expect(secondExtension).toMatchObject({
-		firstNewItemIndex: 13,
+		firstNewItemIndex: 12,
 		addedItemCount: 3,
 	});
 	expect(duplicatePrompts).toEqual([]);
@@ -415,7 +451,7 @@ test("AI theory content gains a practical segment for split sessions", async () 
 	expect(content?.items[0]?.phase).toBe("theory");
 	expect(
 		content?.items.filter((item) => item.phase === "practice"),
-	).toHaveLength(2);
+	).toHaveLength(1);
 });
 
 test("practice fallback creates concrete guided practice tasks", async () => {

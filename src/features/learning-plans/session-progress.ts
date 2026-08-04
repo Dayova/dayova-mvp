@@ -25,7 +25,9 @@ export function getLearningSessionTimerDurationSeconds({
 	return durationMinutes * 60;
 }
 
-export function getLearningSessionItems<Item extends { kind: string }>(
+export function getLearningSessionItems<
+	Item extends { kind: string; phase?: SessionPhase; coverageKey?: string },
+>(
 	items: readonly Item[],
 	phase: SessionPhase,
 	compositionVariant: "control" | "split",
@@ -33,8 +35,42 @@ export function getLearningSessionItems<Item extends { kind: string }>(
 	if (phase === "theory" && compositionVariant !== "split") {
 		return items.filter((item) => item.kind === "learnCard");
 	}
+	if (phase === "theory") {
+		const validationItems = items.filter(
+			(item) =>
+				item.kind !== "learnCard" &&
+				item.phase === "practice" &&
+				item.coverageKey?.includes(":validation:"),
+		);
+		const validationItemSet = new Set(validationItems);
+		return [
+			...validationItems,
+			...items.filter((item) => !validationItemSet.has(item)),
+		];
+	}
 
 	return [...items];
+}
+
+export function getTheoryTopicPosition<Item extends { kind: string }>(
+	items: readonly Item[],
+	currentIndex: number,
+) {
+	const theoryIndices = items.flatMap((item, index) =>
+		item.kind === "learnCard" ? [index] : [],
+	);
+	const topicIndex = theoryIndices.indexOf(currentIndex);
+
+	return {
+		topicIndex,
+		total: theoryIndices.length,
+		previousSessionIndex:
+			topicIndex > 0 ? (theoryIndices[topicIndex - 1] ?? null) : null,
+		nextSessionIndex:
+			topicIndex >= 0 && topicIndex < theoryIndices.length - 1
+				? (theoryIndices[topicIndex + 1] ?? null)
+				: null,
+	};
 }
 
 export function getLearningSessionCompletionPhase(

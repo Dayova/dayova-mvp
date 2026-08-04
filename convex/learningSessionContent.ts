@@ -15,7 +15,10 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
-import { getLearningSessionComposition } from "./learningSessionComposition";
+import {
+	getLearningSessionComposition,
+	isLearningSessionCompositionEligible,
+} from "./learningSessionComposition";
 import {
 	MAX_MULTIPLE_CHOICE_OPTION_CHARS,
 	MAX_MULTIPLE_CHOICE_PROMPT_CHARS,
@@ -742,6 +745,11 @@ const isLegacyTaskItem = (item: Doc<"learningSessionContentItems">) =>
 		item.explanation.includes("Eine starke Antwort nennt den Lösungsweg") ||
 		item.explanation.includes("Prüfungsnah ist die Antwort"));
 
+const isTheoryKnowledgeCheckItem = (item: Doc<"learningSessionContentItems">) =>
+	item.phase === "practice" &&
+	item.kind !== "learnCard" &&
+	item.coverageKey?.includes(":validation:") === true;
+
 export const deleteSessionLearningDataForSession = async (
 	ctx: MutationCtx,
 	sessionId: Id<"learningPlanSessions">,
@@ -914,10 +922,97 @@ export const getSessionGenerationContext = internalQuery({
 			priorSessionEvidence,
 			priorCoverageKeys,
 			existingItemCount: existingItems.length,
+			hasTheoryKnowledgeCheck: existingItems.some(isTheoryKnowledgeCheckItem),
 			needsLegacyContentReplacement:
 				existingItems.some(isLegacyTheoryItem) ||
 				existingItems.some(isLegacyTaskItem),
 			accessKey: `learningPlan:${session.learningPlanId}`,
+		};
+	},
+});
+
+export const backfillTheoryKnowledgeCheck = internalMutation({
+	args: { sessionId: v.id("learningPlanSessions") },
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const session = await getOwnedSession(
+			ctx,
+			args.sessionId,
+			ownerTokenIdentifier,
+		);
+		assertSessionIsCommitted(session);
+		const plan = await getOwnedPlan(
+			ctx,
+			session.learningPlanId,
+			ownerTokenIdentifier,
+		);
+		const existingItems = await listItems(ctx, session._id);
+
+		if (session.completed) {
+			return { itemCount: existingItems.length };
+		}
+
+		if (
+			!isLearningSessionCompositionEligible({
+				phase: session.phase,
+				durationMinutes: session.durationMinutes,
+			})
+		) {
+			return { itemCount: existingItems.length };
+		}
+
+		if (!existingItems.some(isTheoryKnowledgeCheckItem)) {
+			const firstTheoryItem = existingItems.find(
+				(item) => item.kind === "learnCard",
+			);
+			const checkItems: GeneratedItem[] = firstTheoryItem
+				? [
+						{
+							phase: "practice",
+							kind: "written",
+							title: "Vorwissenscheck",
+							prompt: `${firstTheoryItem.front ?? firstTheoryItem.prompt} Begründe deinen ersten Gedanken an einem konkreten Beispiel.`,
+							explanation: firstTheoryItem.explanation,
+							idealAnswer: firstTheoryItem.back ?? firstTheoryItem.idealAnswer,
+							evaluationKeywords: firstTheoryItem.evaluationKeywords,
+							learningBlockIndex: 0,
+							topicId: firstTheoryItem.topicId,
+							evidenceDimension: "understanding",
+							questionAngle: "apply",
+							coverageKey: `${firstTheoryItem.coverageKey ?? firstTheoryItem.topicId ?? "theory"}:validation:prior-knowledge`,
+							estimatedSeconds: 180,
+						},
+					]
+				: createLearningContentPlan({
+						segments: [{ phase: "practice", durationMinutes: 3 }],
+						topics: getSessionTopics(plan, session),
+					}).blocks.flatMap((block) =>
+						buildTaskItems(
+							plan,
+							{ ...session, phase: "practice", durationMinutes: 3 },
+							block.questions,
+						).map((item) => ({
+							...item,
+							phase: "practice" as const,
+							learningBlockIndex: 0,
+						})),
+					);
+			await insertGeneratedItemsForSession(
+				ctx,
+				session,
+				checkItems,
+				existingItems.length,
+			);
+		}
+
+		await ctx.db.patch("learningPlanSessions", session._id, {
+			compositionVariant: "split",
+			knowledgeValidationStatus: session.knowledgeValidationStatus ?? "pending",
+			updatedAt: Date.now(),
+		});
+
+		return {
+			itemCount: (await listItems(ctx, session._id)).length,
 		};
 	},
 });
@@ -1053,7 +1148,10 @@ export const extendSessionContent = mutation({
 
 		const existingItems = await listItems(ctx, args.sessionId);
 		const lastItem = existingItems.at(-1);
-		const continuationPhase = lastItem?.phase ?? session.phase;
+		const continuationPhase =
+			session.phase === "theory" && session.compositionVariant === "split"
+				? "practice"
+				: (lastItem?.phase ?? session.phase);
 		const nextBlockIndex =
 			Math.max(
 				-1,
