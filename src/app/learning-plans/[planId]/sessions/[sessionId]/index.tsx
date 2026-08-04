@@ -50,6 +50,7 @@ import {
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
 	getTheoryTopicPosition,
+	isTheoryKnowledgeCheckItem,
 } from "~/features/learning-plans/session-progress";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
@@ -1102,6 +1103,7 @@ export default function LearningSessionContentScreen() {
 	const didStartTrackingRef = useRef(false);
 	const didRecordOutcomeRef = useRef(false);
 	const didResumeDeferredValidationRef = useRef(false);
+	const advancedTheoryKnowledgeCheckItemIdRef = useRef<string | null>(null);
 	const activeStudySecondsRef = useRef(0);
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
@@ -1158,9 +1160,6 @@ export default function LearningSessionContentScreen() {
 				: [],
 		[content],
 	);
-	const validationItems = sessionItems.filter(
-		(item) => item.phase === "practice" && item.kind !== "learnCard",
-	);
 	const currentItem = sessionItems[currentIndex] ?? null;
 	const theoryTopicPosition = getTheoryTopicPosition(
 		sessionItems,
@@ -1171,10 +1170,22 @@ export default function LearningSessionContentScreen() {
 	);
 	const isPraxisSession = content?.session.phase === "rehearsal";
 	const isDiagnosticSession = content?.session.sessionPurpose === "diagnostic";
+	const validationItems = sessionItems.filter((item) =>
+		isTheoryKnowledgeCheckItem({
+			item,
+			phase: content?.session.phase,
+			compositionVariant: content?.session.compositionVariant,
+		}),
+	);
 	const isTheoryValidationSession =
 		content?.session.phase === "theory" &&
 		content.session.compositionVariant === "split" &&
 		validationItems.length > 0;
+	const isTheoryKnowledgeCheck = isTheoryKnowledgeCheckItem({
+		item: currentItem,
+		phase: content?.session.phase,
+		compositionVariant: content?.session.compositionVariant,
+	});
 
 	useEffect(() => {
 		if (
@@ -1207,13 +1218,10 @@ export default function LearningSessionContentScreen() {
 		return attempt;
 	}, [content, currentItem, repeatingItemId, retryStartedAt]);
 	const visibleAttempt =
-		!isPraxisSession &&
-		localAttempt &&
-		currentItem &&
-		localAttempt.itemId === currentItem.id
-			? localAttempt
-			: isPraxisSession
-				? null
+		isPraxisSession || isTheoryKnowledgeCheck
+			? null
+			: localAttempt && currentItem && localAttempt.itemId === currentItem.id
+				? localAttempt
 				: persistedAttempt;
 	const currentRunAttempts = useMemo(() => {
 		const attempts =
@@ -1425,14 +1433,47 @@ export default function LearningSessionContentScreen() {
 		sessionId,
 	]);
 
-	const resetItemState = () => {
+	const resetItemState = useCallback(() => {
 		if (isRecognizing) speechRecognizer.stopListening();
 		setSelectedChoiceId(null);
 		setAnswerText("");
 		setLocalAttempt(null);
 		setRepeatingItemId(null);
 		setSpeechErrorMessage(null);
-	};
+	}, [isRecognizing, speechRecognizer]);
+
+	const advancePastCurrentItem = useCallback(() => {
+		if (!content) return;
+		resetItemState();
+		if (currentIndex < sessionItems.length - 1) {
+			setCurrentIndex((value) => value + 1);
+			return;
+		}
+		setCompletionPhase(
+			getLearningSessionCompletionPhase(
+				content.session.phase,
+				content.session.compositionVariant,
+			),
+		);
+	}, [content, currentIndex, resetItemState, sessionItems.length]);
+
+	useEffect(() => {
+		if (
+			!isTheoryKnowledgeCheck ||
+			!currentItem ||
+			!persistedAttempt ||
+			advancedTheoryKnowledgeCheckItemIdRef.current === currentItem.id
+		) {
+			return;
+		}
+		advancedTheoryKnowledgeCheckItemIdRef.current = currentItem.id;
+		queueMicrotask(advancePastCurrentItem);
+	}, [
+		advancePastCurrentItem,
+		currentItem,
+		isTheoryKnowledgeCheck,
+		persistedAttempt,
+	]);
 
 	const repeatCurrentQuestion = () => {
 		if (!currentItem || isBusy) return;
@@ -1709,6 +1750,13 @@ export default function LearningSessionContentScreen() {
 				setCompletionPhase("rehearsal");
 				return;
 			}
+			if (isTheoryKnowledgeCheck) {
+				if (advancedTheoryKnowledgeCheckItemIdRef.current !== currentItem.id) {
+					advancedTheoryKnowledgeCheckItemIdRef.current = currentItem.id;
+					advancePastCurrentItem();
+				}
+				return;
+			}
 			setLocalAttempt(attempt as SessionAnswerAttempt);
 		} catch (error) {
 			setErrorMessage(
@@ -1719,29 +1767,15 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const continueTask = async () => {
+	const continueTask = () => {
 		if (!content || isBusy) return;
-		if (currentIndex < sessionItems.length - 1) {
-			resetItemState();
-			setCurrentIndex((value) => value + 1);
-			return;
-		}
-		setCompletionPhase(
-			getLearningSessionCompletionPhase(
-				content.session.phase,
-				content.session.compositionVariant,
-			),
-		);
+		advancePastCurrentItem();
 	};
 
 	const isAnswerReady =
 		currentItem?.kind === "multipleChoice"
 			? Boolean(selectedChoiceId)
 			: Boolean(answerText.trim());
-	const isTheoryKnowledgeCheck = Boolean(
-		isTheoryValidationSession && currentItem?.phase === "practice",
-	);
-
 	const title = showAnalysis
 		? "Deine Auswertung"
 		: completionPhase

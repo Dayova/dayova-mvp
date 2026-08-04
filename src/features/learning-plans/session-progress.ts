@@ -52,6 +52,27 @@ export function getLearningSessionItems<
 	return [...items];
 }
 
+export function isTheoryKnowledgeCheckItem<
+	Item extends { kind: string; phase?: SessionPhase; coverageKey?: string },
+>({
+	item,
+	phase,
+	compositionVariant,
+}: {
+	item: Item | null | undefined;
+	phase: SessionPhase | undefined;
+	compositionVariant: "control" | "split" | undefined;
+}) {
+	return Boolean(
+		item &&
+			phase === "theory" &&
+			compositionVariant === "split" &&
+			item.kind !== "learnCard" &&
+			item.phase === "practice" &&
+			item.coverageKey?.includes(":validation:"),
+	);
+}
+
 export function getTheoryTopicPosition<Item extends { kind: string }>(
 	items: readonly Item[],
 	currentIndex: number,
