@@ -283,7 +283,6 @@ test("persists deferred and completed theory validation states", async () => {
 	}
 	await t.mutation(api.learningSessionContent.finishSessionContent, {
 		sessionId,
-		knowledgeValidationConfidence: "somewhatSure",
 	});
 
 	const completed = await t.query(
@@ -292,8 +291,8 @@ test("persists deferred and completed theory validation states", async () => {
 	);
 	expect(completed?.session).toMatchObject({
 		knowledgeValidationStatus: "completed",
-		knowledgeValidationConfidence: "somewhatSure",
 	});
+	expect(completed?.session.knowledgeValidationConfidence).toBeUndefined();
 });
 
 test("continue learning appends a fresh timed block", async () => {

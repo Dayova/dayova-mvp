@@ -1207,7 +1207,6 @@ export const finishSessionContent = mutation({
 		if (
 			session.phase === "theory" &&
 			session.compositionVariant === "split" &&
-			args.knowledgeValidationConfidence &&
 			hasCompletedKnowledgeValidation
 		) {
 			await ctx.db.patch("learningPlanSessions", session._id, {
