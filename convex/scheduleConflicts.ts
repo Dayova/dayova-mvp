@@ -72,7 +72,16 @@ const getConflictMessage = (
 ) =>
 	`Dieser Zeitraum überschneidet sich mit "${entry.title}" am ${getConflictDateLabel(entry)} von ${timeFromMinutes(interval.start)} bis ${timeFromMinutes(interval.end)}.`;
 
-export const assertNoScheduleConflict = async (
+type ScheduleConflictArgs = {
+	ownerTokenIdentifier: string;
+	dayKey: string;
+	time?: string;
+	durationMinutes?: number;
+	excludeDayEntryId?: Id<"dayEntries">;
+	excludeLearningPlanSessionId?: Id<"learningPlanSessions">;
+};
+
+export const getScheduleConflictMessage = async (
 	ctx: MutationCtx,
 	{
 		ownerTokenIdentifier,
@@ -81,17 +90,10 @@ export const assertNoScheduleConflict = async (
 		durationMinutes,
 		excludeDayEntryId,
 		excludeLearningPlanSessionId,
-	}: {
-		ownerTokenIdentifier: string;
-		dayKey: string;
-		time?: string;
-		durationMinutes?: number;
-		excludeDayEntryId?: Id<"dayEntries">;
-		excludeLearningPlanSessionId?: Id<"learningPlanSessions">;
-	},
+	}: ScheduleConflictArgs,
 ) => {
 	const newInterval = getInterval({ time, durationMinutes });
-	if (!newInterval) return;
+	if (!newInterval) return null;
 
 	const existingEntries = [];
 	for (const queryDayKey of getDayKeyQueryVariants(dayKey)) {
@@ -123,7 +125,7 @@ export const assertNoScheduleConflict = async (
 
 		const existingInterval = getInterval(entry);
 		if (existingInterval && overlaps(newInterval, existingInterval)) {
-			throwUserFacingError(getConflictMessage(entry, existingInterval));
+			return getConflictMessage(entry, existingInterval);
 		}
 	}
 
@@ -138,9 +140,16 @@ export const assertNoScheduleConflict = async (
 			durationMinutes: getTimetableLessonDuration(lesson) ?? undefined,
 		});
 		if (lessonInterval && overlaps(newInterval, lessonInterval)) {
-			throwUserFacingError(
-				`Dieser Zeitraum überschneidet sich mit "${lesson.subject}" von ${timeFromMinutes(lessonInterval.start)} bis ${timeFromMinutes(lessonInterval.end)}.`,
-			);
+			return `Dieser Zeitraum überschneidet sich mit "${lesson.subject}" von ${timeFromMinutes(lessonInterval.start)} bis ${timeFromMinutes(lessonInterval.end)}.`;
 		}
 	}
+	return null;
+};
+
+export const assertNoScheduleConflict = async (
+	ctx: MutationCtx,
+	args: ScheduleConflictArgs,
+) => {
+	const conflictMessage = await getScheduleConflictMessage(ctx, args);
+	if (conflictMessage) throwUserFacingError(conflictMessage);
 };

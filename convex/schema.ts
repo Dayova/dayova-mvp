@@ -1,6 +1,9 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { learningTopicValidator } from "./learningTopicMap";
+import {
+	learningEvidenceDimensionValidator,
+	learningTopicValidator,
+} from "./learningTopicMap";
 import { theoryContentValidator } from "./theoryContent";
 
 const planQuestionValidator = v.object({
@@ -98,6 +101,11 @@ const contentGenerationStageValidator = v.union(
 	v.literal("validating"),
 	v.literal("ready"),
 	v.literal("failed"),
+);
+
+const learningPlanSessionPlanningStatusValidator = v.union(
+	v.literal("committed"),
+	v.literal("provisional"),
 );
 
 const sessionContentItemKindValidator = v.union(
@@ -395,6 +403,8 @@ export default defineSchema({
 		topicReadiness: v.optional(v.array(topicReadinessValidator)),
 		insight: v.optional(planInsightValidator),
 		planningHint: v.optional(v.string()),
+		rollingPlanEnabled: v.optional(v.boolean()),
+		adaptationRevision: v.optional(v.number()),
 		contentGenerationStage: v.optional(contentGenerationStageValidator),
 		contentGenerationId: v.optional(v.string()),
 		contentGenerationStartedAt: v.optional(v.number()),
@@ -484,6 +494,11 @@ export default defineSchema({
 		),
 		missedReason: v.optional(missedReasonValidator),
 		adjustedFromSessionId: v.optional(v.id("learningPlanSessions")),
+		planningStatus: v.optional(learningPlanSessionPlanningStatusValidator),
+		targetTopicIds: v.optional(v.array(v.string())),
+		targetEvidenceDimension: v.optional(learningEvidenceDimensionValidator),
+		selectionReason: v.optional(v.string()),
+		adaptationRevision: v.optional(v.number()),
 		sortOrder: v.number(),
 		dayEntryId: v.optional(v.id("dayEntries")),
 		createdAt: v.number(),
