@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta
+			name="description"
+			content="A sourced August 2026 field guide to frontier coding models across DeepSWE, FrontierCode, and CursorBench."
+		>
+		<meta name="theme-color" content="#111713">
+		<title>Frontier Index — Coding Models, August 2026</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link
+			href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&amp;family=Manrope:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;display=swap"
+			rel="stylesheet"
+		>
+		<link rel="stylesheet" href="./styles.css">
+		<script src="./app.js" defer></script>
+	</head>
+	<body>
+		<div class="noise" aria-hidden="true"></div>
+		<header class="masthead shell">
+			<a class="wordmark" href="#top" aria-label="Frontier Index home">
+				<span class="wordmark-mark" aria-hidden="true">FI</span>
+				<span>Frontier Index</span>
+			</a>
+			<div class="masthead-meta">
+				<span>Independent field notes</span>
+				<span class="live-dot"><i aria-hidden="true"></i> 04 Aug 2026</span>
+			</div>
+		</header>
+
+		<main id="top">
+			<section class="hero shell">
+				<div class="eyebrow-row">
+					<span class="eyebrow">Coding intelligence / issue 01</span>
+					<span class="edition">Berlin · Summer ’26</span>
+				</div>
+
+				<div class="hero-grid">
+					<div class="hero-copy">
+						<h1>The frontier has <em>seven seats.</em></h1>
+						<p class="hero-deck">
+							A clean read on the models that matter—measured on long-horizon engineering,
+							mergeable code, and messy real-world repository work.
+						</p>
+					</div>
+
+					<aside class="hero-note" aria-label="Current benchmark read">
+						<p class="note-kicker">The 30-second read</p>
+						<p>
+							<strong>Opus 5</strong> wins the deepest engineering test.
+							<strong>Fable 5</strong> owns the other two—but by a hair. For the practical
+							middle, <strong>Terra</strong> is the efficiency story.
+						</p>
+						<a href="#scoreboard">See the evidence <span aria-hidden="true">↘</span></a>
+					</aside>
+				</div>
+
+				<section class="winner-strip" aria-label="Benchmark leaders">
+					<article>
+						<span class="winner-index">01</span>
+						<div>
+							<p>DeepSWE v1.1</p>
+							<strong>Opus 5 <b>74%</b></strong>
+						</div>
+					</article>
+					<article>
+						<span class="winner-index">02</span>
+						<div>
+							<p>FrontierCode 1.1</p>
+							<strong>Fable 5 <b>53.5%</b></strong>
+						</div>
+					</article>
+					<article>
+						<span class="winner-index">03</span>
+						<div>
+							<p>CursorBench 3.2</p>
+							<strong>Fable 5 <b>70.5%</b></strong>
+						</div>
+					</article>
+				</section>
+			</section>
+
+			<section class="scoreboard-section" id="scoreboard">
+				<div class="shell">
+					<div class="section-heading">
+						<div>
+							<span class="section-number">01 / SCOREBOARD</span>
+							<h2>One field. Three different games.</h2>
+						</div>
+						<p>
+							Choose a benchmark to see its shape. Scores use each model’s best published
+							configuration—not a blended or invented “overall” number.
+						</p>
+					</div>
+
+					<div class="benchmark-tabs" role="tablist" aria-label="Select a benchmark">
+						<button
+							class="benchmark-tab is-active"
+							type="button"
+							role="tab"
+							aria-selected="true"
+							aria-controls="benchmark-panel"
+							id="tab-deepswe"
+							data-benchmark="deepswe"
+						>
+							<span>DeepSWE</span><small>Long-horizon</small>
+						</button>
+						<button
+							class="benchmark-tab"
+							type="button"
+							role="tab"
+							aria-selected="false"
+							aria-controls="benchmark-panel"
+							id="tab-frontier"
+							data-benchmark="frontier"
+						>
+							<span>FrontierCode</span><small>Mergeability</small>
+						</button>
+						<button
+							class="benchmark-tab"
+							type="button"
+							role="tab"
+							aria-selected="false"
+							aria-controls="benchmark-panel"
+							id="tab-cursor"
+							data-benchmark="cursor"
+						>
+							<span>CursorBench</span><small>Real sessions</small>
+						</button>
+					</div>
+
+					<div
+						class="benchmark-stage"
+						id="benchmark-panel"
+						role="tabpanel"
+						aria-labelledby="tab-deepswe"
+					>
+						<div class="chart-area">
+							<div class="chart-meta">
+								<div>
+									<span id="benchmark-version">DEEPSWE V1.1</span>
+									<strong id="benchmark-title">Original, long-horizon engineering</strong>
+								</div>
+								<p id="benchmark-description">
+									113 tasks · mini-swe-agent · higher is better
+								</p>
+							</div>
+							<div class="scale" aria-hidden="true">
+								<span>0</span><span>20</span><span>40</span><span>60</span><span>80%</span>
+							</div>
+							<div class="ranking" id="ranking" aria-live="polite"></div>
+						</div>
+
+						<aside
+							class="spotlight"
+							id="spotlight"
+							aria-label="Selected model details"
+							aria-live="polite"
+						>
+							<div class="spotlight-head">
+								<span class="model-monogram" id="spotlight-monogram">O5</span>
+								<span class="spotlight-rank" id="spotlight-rank">RANK 01</span>
+							</div>
+							<p class="spotlight-kicker" id="spotlight-maker">ANTHROPIC</p>
+							<h3 id="spotlight-name">Claude Opus 5</h3>
+							<p class="spotlight-copy" id="spotlight-copy">
+								The current long-horizon leader, with Fable-level results at a markedly lower
+								run cost.
+							</p>
+							<dl class="spotlight-stats">
+								<div><dt>Score</dt><dd id="spotlight-score">74%</dd></div>
+								<div><dt>Avg. run</dt><dd id="spotlight-cost">$11.84</dd></div>
+								<div><dt>Effort</dt><dd id="spotlight-effort">Max</dd></div>
+							</dl>
+							<div class="spotlight-foot">
+								<span>Across all three</span>
+								<div id="mini-scores" class="mini-scores"></div>
+							</div>
+						</aside>
+					</div>
+				</div>
+			</section>
+
+			<section class="field-notes shell" id="models">
+				<div class="section-heading compact">
+					<div>
+						<span class="section-number">02 / FIELD NOTES</span>
+						<h2>Pick for the work, not the logo.</h2>
+					</div>
+					<p>
+						The most useful choice is usually one constraint away from “the best.” Here’s
+						what the published runs actually suggest.
+					</p>
+				</div>
+
+				<div class="notes-grid">
+					<article class="note-card note-card-featured">
+						<div class="card-topline"><span>01</span><span>CAPABILITY PICK</span></div>
+						<div class="card-model"><i>O5</i><span>Anthropic</span></div>
+						<h3>Opus 5</h3>
+						<p>
+							First on DeepSWE, 0.1 points off FrontierCode’s lead, and 0.5 off CursorBench.
+							The strongest all-round showing in this snapshot.
+						</p>
+						<div class="card-scores"><span>74</span><span>53.4</span><span>70.0</span></div>
+						<div class="card-labels"><span>Deep</span><span>Frontier</span><span>Cursor</span></div>
+					</article>
+
+					<article class="note-card">
+						<div class="card-topline"><span>02</span><span>CEILING PICK</span></div>
+						<div class="card-model"><i>F5</i><span>Anthropic</span></div>
+						<h3>Fable 5</h3>
+						<p>
+							Wins FrontierCode and CursorBench outright. Its final few points carry the
+							highest run costs in the group.
+						</p>
+						<div class="card-scores"><span>70</span><span>53.5</span><span>70.5</span></div>
+						<div class="card-labels"><span>Deep</span><span>Frontier</span><span>Cursor</span></div>
+					</article>
+
+					<article class="note-card">
+						<div class="card-topline"><span>03</span><span>BALANCE PICK</span></div>
+						<div class="card-model"><i>TR</i><span>OpenAI</span></div>
+						<h3>GPT‑5.6 Terra</h3>
+						<p>
+							Ties Fable on DeepSWE at roughly one-fifth the run cost and stays competitive
+							on both repository benchmarks.
+						</p>
+						<div class="card-scores"><span>70</span><span>41.3</span><span>64.9</span></div>
+						<div class="card-labels"><span>Deep</span><span>Frontier</span><span>Cursor</span></div>
+					</article>
+
+					<article class="note-card">
+						<div class="card-topline"><span>04</span><span>FLAGSHIP PICK</span></div>
+						<div class="card-model"><i>SO</i><span>OpenAI</span></div>
+						<h3>GPT‑5.6 Sol</h3>
+						<p>
+							One point from DeepSWE’s lead, third on FrontierCode among this field, and a
+							stronger cost profile than either top Claude.
+						</p>
+						<div class="card-scores"><span>73</span><span>47.5</span><span>67.2</span></div>
+						<div class="card-labels"><span>Deep</span><span>Frontier</span><span>Cursor</span></div>
+					</article>
+
+					<article class="note-card">
+						<div class="card-topline"><span>05</span><span>VALUE PICK</span></div>
+						<div class="card-model"><i>LU</i><span>OpenAI</span></div>
+						<h3>GPT‑5.6 Luna</h3>
+						<p>
+							A 67 on DeepSWE for $0.61 per run and the lowest reported cost in the other
+							two tests. The throughput choice.
+						</p>
+						<div class="card-scores"><span>67</span><span>39.8</span><span>61.1</span></div>
+						<div class="card-labels"><span>Deep</span><span>Frontier</span><span>Cursor</span></div>
+					</article>
+
+					<article class="note-card">
+						<div class="card-topline"><span>06</span><span>CONTENDER</span></div>
+						<div class="card-model"><i>K3</i><span>Moonshot AI</span></div>
+						<h3>Kimi K3</h3>
+						<p>
+							A genuine top-tier DeepSWE result and fifth place on FrontierCode. More uneven
+							on CursorBench, but firmly in the conversation.
+						</p>
+						<div class="card-scores"><span>69</span><span>44.2</span><span>60.8</span></div>
+						<div class="card-labels"><span>Deep</span><span>Frontier</span><span>Cursor</span></div>
+					</article>
+
+					<article class="note-card">
+						<div class="card-topline"><span>07</span><span>FAST-MODEL PICK</span></div>
+						<div class="card-model"><i>GF</i><span>Google</span></div>
+						<h3>Gemini 3.6 Flash</h3>
+						<p>
+							Behind this frontier pack on the two reported tests. FrontierCode has not
+							published a run, so the evidence is incomplete.
+						</p>
+						<div class="card-scores"><span>49</span><span class="na">N/R</span><span>53.5</span></div>
+						<div class="card-labels"><span>Deep</span><span>Frontier</span><span>Cursor</span></div>
+					</article>
+				</div>
+			</section>
+
+			<section class="matrix-section">
+				<div class="shell">
+					<div class="section-heading compact">
+						<div>
+							<span class="section-number">03 / EVIDENCE MATRIX</span>
+							<h2>The numbers, without the theater.</h2>
+						</div>
+						<p>Best reported effort per model. Average cost is per benchmark task/run.</p>
+					</div>
+
+					<div class="matrix-wrap">
+						<table>
+							<caption class="sr-only">
+								Best published scores and costs for seven AI models on three coding
+								benchmarks
+							</caption>
+							<thead>
+								<tr>
+									<th scope="col">Model</th>
+									<th scope="col">DeepSWE <small>score / cost</small></th>
+									<th scope="col">FrontierCode <small>score / cost</small></th>
+									<th scope="col">CursorBench <small>score / cost</small></th>
+								</tr>
+							</thead>
+							<tbody id="matrix-body"></tbody>
+						</table>
+					</div>
+				</div>
+			</section>
+
+			<section class="method shell" id="method">
+				<div class="method-title">
+					<span class="section-number">04 / READ THE FINE PRINT</span>
+					<h2>Benchmarks are lenses,<br>not verdicts.</h2>
+				</div>
+				<div class="method-grid">
+					<article>
+						<span>DEEPSWE V1.1</span>
+						<h3>Can it finish a deep build?</h3>
+						<p>
+							113 original tasks across 91 repositories and five languages. All models run
+							on the same mini-swe-agent harness; confidence intervals matter.
+						</p>
+						<a href="https://deepswe.datacurve.ai/" target="_blank" rel="noreferrer"
+							>Official leaderboard ↗</a
+						>
+					</article>
+					<article>
+						<span>FRONTIERCODE 1.1 / MAIN</span>
+						<h3>Would a maintainer merge it?</h3>
+						<p>
+							100 maintainer-written tasks scored for correctness, tests, scope discipline,
+							style, and codebase standards. Harnesses differ by model family.
+						</p>
+						<a href="https://cognition.com/frontiercode" target="_blank" rel="noreferrer"
+							>Official leaderboard ↗</a
+						>
+					</article>
+					<article>
+						<span>CURSORBENCH 3.2</span>
+						<h3>Can it navigate messy intent?</h3>
+						<p>
+							Ambiguous, multi-file tasks from real Cursor sessions, including instruction
+							following and advanced tool use. Small score gaps may be noise.
+						</p>
+						<a href="https://cursor.com/cursorbench" target="_blank" rel="noreferrer"
+							>Official leaderboard ↗</a
+						>
+					</article>
+				</div>
+
+				<div class="method-note">
+					<p>
+						<strong>Snapshot:</strong> 04 August 2026. DeepSWE updated 25 July; CursorBench
+						reporting updated 30 July; FrontierCode data retrieved 04 August. “N/R” means
+						no result was reported—not a zero. Scores across benchmarks are not directly
+						interchangeable.
+					</p>
+				</div>
+			</section>
+		</main>
+
+		<footer class="footer shell">
+			<div class="wordmark footer-wordmark">
+				<span class="wordmark-mark" aria-hidden="true">FI</span>
+				<span>Frontier Index</span>
+			</div>
+			<p>Choose with evidence. Re-test on your own codebase.</p>
+			<a href="#top">Back to top ↑</a>
+		</footer>
+	</body>
+</html>
