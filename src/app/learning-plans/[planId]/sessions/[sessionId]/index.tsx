@@ -414,9 +414,6 @@ function CompletionView({
 	correctCount,
 	attemptCount,
 	isTheoryValidationAvailable,
-	isTheoryValidationComplete,
-	knowledgeValidationConfidence,
-	onKnowledgeValidationConfidenceChange,
 	onContinueLearning,
 	onDeferValidation,
 	onPrimary,
@@ -427,11 +424,6 @@ function CompletionView({
 	correctCount: number;
 	attemptCount: number;
 	isTheoryValidationAvailable: boolean;
-	isTheoryValidationComplete: boolean;
-	knowledgeValidationConfidence: "unsure" | "somewhatSure" | "sure" | null;
-	onKnowledgeValidationConfidenceChange: (
-		value: "unsure" | "somewhatSure" | "sure",
-	) => void;
 	onContinueLearning: () => void;
 	onDeferValidation: () => void;
 	onPrimary: () => void;
@@ -449,85 +441,6 @@ function CompletionView({
 				onAnalysis={onPrimary}
 				isBusy={isBusy}
 			/>
-		);
-	}
-
-	if (isTheoryValidationComplete) {
-		const confidenceOptions = [
-			{ value: "unsure" as const, label: "Noch unsicher" },
-			{ value: "somewhatSure" as const, label: "Teilweise sicher" },
-			{ value: "sure" as const, label: "Sicher" },
-		];
-
-		return (
-			<Animated.View
-				entering={FadeIn.duration(280)}
-				className="flex-1 justify-between py-8"
-			>
-				<View className="flex-1 justify-center gap-7">
-					<View className="items-center gap-3">
-						<View className="h-20 w-20 items-center justify-center rounded-info bg-system-subtle">
-							<Check
-								size={36}
-								color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
-								strokeWidth={2.4}
-							/>
-						</View>
-						<Text
-							accessibilityRole="header"
-							className="text-center font-poppins font-semibold text-heading-2 text-text"
-						>
-							Wissen kurz geprüft
-						</Text>
-						<Text className="max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
-							Deine Antworten aktualisieren jetzt deinen Wissensstand. Wie
-							sicher fühlst du dich bei diesem Thema?
-						</Text>
-					</View>
-					<View className="gap-3">
-						{confidenceOptions.map((option) => {
-							const selected = knowledgeValidationConfidence === option.value;
-							return (
-								<TouchableOpacity
-									key={option.value}
-									accessibilityRole="radio"
-									accessibilityState={{ selected }}
-									activeOpacity={0.8}
-									className={cn(
-										"min-h-14 justify-center rounded-info border px-5",
-										selected
-											? "border-primary bg-system-subtle"
-											: "border-border bg-card",
-									)}
-									onPress={() =>
-										onKnowledgeValidationConfidenceChange(option.value)
-									}
-								>
-									<Text
-										className={cn(
-											"font-poppins font-semibold text-body-3",
-											selected ? "text-primary-strong" : "text-text",
-										)}
-									>
-										{option.label}
-									</Text>
-								</TouchableOpacity>
-							);
-						})}
-					</View>
-				</View>
-				<Button
-					className="w-full"
-					disabled={isBusy || knowledgeValidationConfidence === null}
-					onPress={onPrimary}
-				>
-					{isBusy ? (
-						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
-					) : (
-						<Text>Auswertung ansehen</Text>
-					)}
-				</Button>
-			</Animated.View>
 		);
 	}
 
@@ -1049,8 +962,6 @@ export default function LearningSessionContentScreen() {
 	const [completionPhase, setCompletionPhase] = useState<
 		LearningSessionContentSnapshot["session"]["phase"] | null
 	>(null);
-	const [knowledgeValidationConfidence, setKnowledgeValidationConfidence] =
-		useState<"unsure" | "somewhatSure" | "sure" | null>(null);
 	const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
 	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
@@ -1106,13 +1017,17 @@ export default function LearningSessionContentScreen() {
 		user && isConvexAuthenticated && sessionId ? { sessionId } : "skip",
 	) ?? null) as LearningSessionContentSnapshot | null;
 
-	const sessionItems = content
-		? getLearningSessionItems(
-				content.items,
-				content.session.phase,
-				content.session.compositionVariant,
-			)
-		: [];
+	const sessionItems = useMemo(
+		() =>
+			content
+				? getLearningSessionItems(
+						content.items,
+						content.session.phase,
+						content.session.compositionVariant,
+					)
+				: [],
+		[content],
+	);
 	const theoryItems = sessionItems.filter((item) => item.kind === "learnCard");
 	const validationItems = sessionItems.filter(
 		(item) => item.phase === "practice" && item.kind !== "learnCard",
@@ -1141,8 +1056,10 @@ export default function LearningSessionContentScreen() {
 		);
 		if (firstValidationIndex < 0) return;
 		didResumeDeferredValidationRef.current = true;
-		setCurrentIndex(firstValidationIndex);
-		setCompletionPhase(null);
+		queueMicrotask(() => {
+			setCurrentIndex(firstValidationIndex);
+			setCompletionPhase(null);
+		});
 	}, [content, isTheoryValidationSession, sessionItems]);
 	const persistedAttempt = useMemo(() => {
 		if (!currentItem || !content) return null;
@@ -1395,12 +1312,7 @@ export default function LearningSessionContentScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
-			await finishSessionContent({
-				sessionId,
-				...(isTheoryValidationSession && knowledgeValidationConfidence
-					? { knowledgeValidationConfidence }
-					: {}),
-			});
+			await finishSessionContent({ sessionId });
 			setCompletionPhase(null);
 			setShowAnalysis(true);
 		} catch (error) {
@@ -1675,6 +1587,10 @@ export default function LearningSessionContentScreen() {
 			setCurrentIndex((value) => value + 1);
 			return;
 		}
+		if (isTheoryValidationSession) {
+			await finishAndShowAnalysis();
+			return;
+		}
 		setCompletionPhase(
 			getLearningSessionCompletionPhase(
 				content.session.phase,
@@ -1900,13 +1816,6 @@ export default function LearningSessionContentScreen() {
 						attemptCount={currentRunAttempts.length}
 						isTheoryValidationAvailable={
 							isTheoryValidationSession && completionPhase === "theory"
-						}
-						isTheoryValidationComplete={
-							isTheoryValidationSession && completionPhase === "practice"
-						}
-						knowledgeValidationConfidence={knowledgeValidationConfidence}
-						onKnowledgeValidationConfidenceChange={
-							setKnowledgeValidationConfidence
 						}
 						onContinueLearning={() => void startContinueLearning()}
 						onDeferValidation={() => void deferValidationAndLeave()}
