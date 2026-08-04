@@ -16,22 +16,25 @@ import { generatePlanWithAnalytics } from "~/features/learning-plans/plan-genera
 import {
 	calculateAvailableStudyMinutes,
 	getAutomaticLearningPreparation,
+	MIN_ROLLING_HORIZON_MINUTES,
 } from "~/features/learning-plans/plan-workload";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { getDayKey } from "~/lib/day-key";
 import { goBackOrReplace } from "~/lib/navigation";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
-const quizPath = (id: Id<"learningPlans">, questionIndex: number) =>
-	`/learning-plans/${id}/quiz/${questionIndex}` as const;
-
 // Convex may terminate a Node action after 10 minutes. The extra minute avoids
 // presenting recovery while the original action can still be active.
 const STALE_CONTENT_GENERATION_MS = 11 * 60_000;
+const EMPTY_KNOWLEDGE_ANSWERS: Array<{
+	questionId: string;
+	answer: string;
+}> = [];
 
 export default function LearningPlanGeneratingScreen() {
 	const router = useRouter();
@@ -53,10 +56,6 @@ export default function LearningPlanGeneratingScreen() {
 	const [canRecoverStalledGeneration, setCanRecoverStalledGeneration] =
 		useState(false);
 	const didStartRef = useRef(false);
-	const missingAnswerRedirectTimeoutRef = useRef<ReturnType<
-		typeof setTimeout
-	> | null>(null);
-
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
@@ -66,16 +65,6 @@ export default function LearningPlanGeneratingScreen() {
 		user && isConvexAuthenticated ? {} : "skip",
 	);
 
-	const answerList = useMemo(() => {
-		const answers = snapshot?.answers ?? [];
-		return (snapshot?.plan.knowledgeQuestions ?? []).map((question) => ({
-			questionId: question.id,
-			answer:
-				answers
-					.find((item) => item.questionId === question.id)
-					?.answer.trim() ?? "",
-		}));
-	}, [snapshot]);
 	const availableStudyMinutes = useMemo(
 		() =>
 			snapshot && learningTimes
@@ -102,6 +91,11 @@ export default function LearningPlanGeneratingScreen() {
 				: null,
 		[availableStudyMinutes, snapshot],
 	);
+	const needsLearningTime =
+		availableStudyMinutes !== null &&
+		(availableStudyMinutes < MIN_ROLLING_HORIZON_MINUTES ||
+			(automaticPreparation?.recommendation.plannedMinutes ??
+				MIN_ROLLING_HORIZON_MINUTES) < MIN_ROLLING_HORIZON_MINUTES);
 	const sessionCompositionVariant = "split" as const;
 	const progressPresentation = getGenerationProgressPresentation(
 		snapshot?.plan.contentGeneration,
@@ -134,33 +128,26 @@ export default function LearningPlanGeneratingScreen() {
 		void retryAttempt;
 		if (!planId || !snapshot) return;
 
-		if (missingAnswerRedirectTimeoutRef.current) {
-			clearTimeout(missingAnswerRedirectTimeoutRef.current);
-			missingAnswerRedirectTimeoutRef.current = null;
-		}
-
 		if (snapshot.plan.status === "generated") {
 			router.replace(planPath(planId, "review"));
 			return;
 		}
-		if (snapshot.plan.contentGeneration) return;
-
-		const missingAnswerIndex = answerList.findIndex((item) => !item.answer);
-		if (missingAnswerIndex >= 0) {
-			missingAnswerRedirectTimeoutRef.current = setTimeout(() => {
-				router.replace(quizPath(planId, missingAnswerIndex));
-			}, 600);
+		if (snapshot.plan.diagnosticPlacement !== "firstSession") {
+			router.replace(planPath(planId, "analysis"));
 			return;
 		}
+		if (snapshot.plan.contentGeneration) return;
+
 		if (!snapshot.plan.targetStudyMinutes && !automaticPreparation) return;
 		if (
 			!snapshot.plan.targetStudyMinutes &&
 			automaticPreparation &&
-			automaticPreparation.recommendation.plannedMinutes < 10
+			automaticPreparation.recommendation.plannedMinutes <
+				MIN_ROLLING_HORIZON_MINUTES
 		) {
 			queueMicrotask(() => {
 				setErrorMessage(
-					"Vor deiner Prüfung ist keine passende Lernzeit mehr frei. Gehe zurück und ergänze zuerst ein Zeitfenster.",
+					"Vor deiner Prüfung sind noch nicht zwei passende Lerntermine frei. Gehe zurück und ergänze zuerst Lernzeit.",
 				);
 			});
 			return;
@@ -185,7 +172,7 @@ export default function LearningPlanGeneratingScreen() {
 					capture,
 					args: {
 						learningPlanId: planId,
-						answers: answerList,
+						answers: EMPTY_KNOWLEDGE_ANSWERS,
 						sessionCompositionVariant,
 					},
 				});
@@ -201,7 +188,6 @@ export default function LearningPlanGeneratingScreen() {
 				.finally(() => setIsBusy(false));
 		});
 	}, [
-		answerList,
 		automaticPreparation,
 		capture,
 		generatePlan,
@@ -212,14 +198,6 @@ export default function LearningPlanGeneratingScreen() {
 		sessionCompositionVariant,
 		snapshot,
 	]);
-
-	useEffect(() => {
-		return () => {
-			if (missingAnswerRedirectTimeoutRef.current) {
-				clearTimeout(missingAnswerRedirectTimeoutRef.current);
-			}
-		};
-	}, []);
 
 	const retryGeneration = async () => {
 		if (!planId || isBusy) return;
@@ -245,7 +223,7 @@ export default function LearningPlanGeneratingScreen() {
 					capture,
 					args: {
 						learningPlanId: planId,
-						answers: answerList,
+						answers: EMPTY_KNOWLEDGE_ANSWERS,
 						sessionCompositionVariant,
 					},
 				});
@@ -258,7 +236,7 @@ export default function LearningPlanGeneratingScreen() {
 			setErrorMessage(
 				getErrorMessage(
 					error,
-					"Die fehlenden Lernsessionen konnten nicht erstellt werden.",
+					"Die fehlenden Lernblöcke konnten nicht erstellt werden.",
 				),
 			);
 		} finally {
@@ -266,14 +244,17 @@ export default function LearningPlanGeneratingScreen() {
 		}
 	};
 
+	const openLearningTimes = () => {
+		if (!planId) return;
+		didStartRef.current = false;
+		router.push(
+			withReturnTo(ROUTES.learningTimes, planPath(planId, "generating")),
+		);
+	};
+
 	const goBack = () => {
 		if (planId && snapshot) {
-			router.replace(
-				quizPath(
-					planId,
-					Math.max(snapshot.plan.knowledgeQuestions.length - 1, 0),
-				),
-			);
+			router.replace(planPath(planId, "scope"));
 			return;
 		}
 
@@ -323,14 +304,34 @@ export default function LearningPlanGeneratingScreen() {
 							<Button
 								className="mt-6"
 								disabled={isBusy}
-								onPress={() => void retryGeneration()}
+								onPress={() => {
+									if (needsLearningTime) {
+										openLearningTimes();
+										return;
+									}
+									void retryGeneration();
+								}}
 							>
 								{isBusy ? (
 									<ActivityIndicator color="#FFFFFF" />
 								) : (
-									<Text>Erneut versuchen</Text>
+									<Text>
+										{needsLearningTime
+											? "Lernzeit eintragen"
+											: "Erneut versuchen"}
+									</Text>
 								)}
 							</Button>
+							{errorMessage && !needsLearningTime ? (
+								<Button
+									className="mt-3"
+									disabled={isBusy}
+									variant="neutral"
+									onPress={openLearningTimes}
+								>
+									<Text>Lernzeiten anpassen</Text>
+								</Button>
+							) : null}
 						</>
 					) : null}
 				</View>

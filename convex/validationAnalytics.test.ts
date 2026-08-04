@@ -3,6 +3,7 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -18,6 +19,39 @@ const founderIdentity = {
 	subject: "founder",
 	tokenIdentifier: "test:founder",
 	email: "founder@example.com",
+};
+
+const acceptGeneratedTestPlan = async (
+	t: TestBackend,
+	learningPlanId: Id<"learningPlans">,
+) => {
+	// This analytics fixture keeps a minimal generic session; the production
+	// acceptance invariant itself is covered in learningPlans.test.ts.
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const firstSession = snapshot?.sessions[0];
+	if (!firstSession) throw new Error("Expected a generated session.");
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			diagnosticPlacement: "firstSession",
+		});
+		await ctx.db.patch("learningPlanSessions", firstSession.id, {
+			sessionPurpose: "diagnostic",
+		});
+	});
+	try {
+		return await t.mutation(api.learningPlans.acceptPlan, { learningPlanId });
+	} finally {
+		await t.run(async (ctx) => {
+			await ctx.db.patch("learningPlans", learningPlanId, {
+				diagnosticPlacement: undefined,
+			});
+			await ctx.db.patch("learningPlanSessions", firstSession.id, {
+				sessionPurpose: "learning",
+			});
+		});
+	}
 };
 
 const createAcceptedPlanWithSession = async (t: TestBackend) => {
@@ -59,7 +93,7 @@ const createAcceptedPlanWithSession = async (t: TestBackend) => {
 			},
 		],
 	});
-	await t.mutation(api.learningPlans.acceptPlan, { learningPlanId });
+	await acceptGeneratedTestPlan(t, learningPlanId);
 	const snapshot = await t.query(api.learningPlans.getSnapshot, {
 		id: learningPlanId,
 	});

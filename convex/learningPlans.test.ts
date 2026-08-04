@@ -3,6 +3,7 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { USER_FACING_ERROR_KIND } from "./errors";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import schema from "./schema";
@@ -38,6 +39,39 @@ const createPlan = async (t: TestBackend) => {
 	});
 };
 
+const acceptGeneratedTestPlan = async (
+	t: TestBackend,
+	learningPlanId: Id<"learningPlans">,
+) => {
+	// These legacy lifecycle fixtures intentionally keep one generic session so
+	// their assertions stay focused on calendar and outcome behavior.
+	const snapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const firstSession = snapshot?.sessions[0];
+	if (!firstSession) throw new Error("Expected a generated session.");
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			diagnosticPlacement: "firstSession",
+		});
+		await ctx.db.patch("learningPlanSessions", firstSession.id, {
+			sessionPurpose: "diagnostic",
+		});
+	});
+	try {
+		return await t.mutation(api.learningPlans.acceptPlan, { learningPlanId });
+	} finally {
+		await t.run(async (ctx) => {
+			await ctx.db.patch("learningPlans", learningPlanId, {
+				diagnosticPlacement: undefined,
+			});
+			await ctx.db.patch("learningPlanSessions", firstSession.id, {
+				sessionPurpose: "learning",
+			});
+		});
+	}
+};
+
 const createAcceptedPlanWithSession = async (
 	t: TestBackend,
 	overrides: Partial<{
@@ -69,7 +103,7 @@ const createAcceptedPlanWithSession = async (
 			},
 		],
 	});
-	await t.mutation(api.learningPlans.acceptPlan, { learningPlanId });
+	await acceptGeneratedTestPlan(t, learningPlanId);
 	const snapshot = await t.query(api.learningPlans.getSnapshot, {
 		id: learningPlanId,
 	});
@@ -77,6 +111,78 @@ const createAcceptedPlanWithSession = async (
 	if (!session) throw new Error("Expected an accepted learning plan session.");
 	return { learningPlanId, session };
 };
+
+test("lists a materialless draft so the upload can be resumed", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const examDayEntryId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-08-12",
+		title: "Mathe Klausur",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "12. August 2026",
+		durationMinutes: 90,
+		examTypeLabel: "Klausur",
+	});
+	const learningPlanId = await t.mutation(api.learningPlans.createDraft, {
+		examDayEntryId,
+		subject: "Mathe",
+		examTypeLabel: "Klausur",
+		examDateKey: "2026-08-12",
+		examDateLabel: "12. August 2026",
+		durationMinutes: 90,
+		topicDescription: "",
+	});
+
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
+		expect.objectContaining({
+			id: learningPlanId,
+			status: "draft",
+			needsSchoolMaterial: true,
+		}),
+	]);
+});
+
+test("keeps drafts with school material out of the plan overview", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.run(async (ctx) => {
+		await ctx.db.insert("learningPlanDocuments", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			learningPlanId,
+			storageId: "stored-document",
+			storageProvider: "convex",
+			fileName: "themenblatt.pdf",
+			fileType: "application/pdf",
+			fileSizeBytes: 1_024,
+			sourceKind: "school",
+			createdAt: Date.now(),
+		});
+	});
+
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual(
+		[],
+	);
+});
+
+test("treats legacy documents without a source kind as school material", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.run(async (ctx) => {
+		await ctx.db.insert("learningPlanDocuments", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			learningPlanId,
+			storageId: "legacy-school-document",
+			storageProvider: "convex",
+			fileName: "alte-mitschrift.pdf",
+			fileType: "application/pdf",
+			fileSizeBytes: 1_024,
+			createdAt: Date.now(),
+		});
+	});
+
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual(
+		[],
+	);
+});
 
 test("adds the knowledge validation split to theory sessions by default", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
@@ -107,6 +213,34 @@ test("adds the knowledge validation split to theory sessions by default", async 
 	});
 	expect(snapshot?.plan.sessionCompositionVariant).toBe("split");
 	expect(snapshot?.sessions[0]?.compositionVariant).toBe("split");
+});
+
+test("rejects a legacy generated plan without a first-session diagnostic", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: { summary: "Alter Lernplan.", strengths: [], gaps: [] },
+		sessions: [
+			{
+				phase: "practice",
+				title: "Alter erster Lernblock",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 30,
+				goal: "Üben.",
+				tasks: ["Aufgabe lösen"],
+				expectedOutcome: "Aufgabe gelöst.",
+			},
+		],
+	});
+
+	await expect(
+		t.mutation(api.learningPlans.acceptPlan, { learningPlanId }),
+	).rejects.toThrow("Wissenscheck");
 });
 
 test("stores the total study workload confirmed before generation", async () => {
@@ -290,9 +424,9 @@ test("commits only the next session while future session content stays adaptive"
 	});
 	expect(ready?.plan.status).toBe("generated");
 	expect(ready?.plan.contentGeneration?.stage).toBe("ready");
-	await expect(
-		t.mutation(api.learningPlans.acceptPlan, { learningPlanId }),
-	).resolves.toBe("2026-06-01");
+	await expect(acceptGeneratedTestPlan(t, learningPlanId)).resolves.toBe(
+		"2026-06-01",
+	);
 });
 
 test("keeps one committed and one provisional session in the rolling window", async () => {
@@ -387,7 +521,7 @@ test("keeps one committed and one provisional session in the rolling window", as
 	await t.mutation(internal.learningPlans.finalizeContentGeneration, {
 		learningPlanId,
 	});
-	await t.mutation(api.learningPlans.acceptPlan, { learningPlanId });
+	await acceptGeneratedTestPlan(t, learningPlanId);
 	await t.mutation(api.learningPlans.startSession, {
 		sessionId: committedSessionId,
 	});
@@ -545,6 +679,11 @@ test("atomically claims one session content generation at a time", async () => {
 test("claims plan generation atomically and persists an empty failed claim for explicit retry", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			diagnosticPlacement: "firstSession",
+		});
+	});
 	await t.mutation(internal.learningPlans.beginContentGeneration, {
 		learningPlanId,
 		generationId: "generation-1",
@@ -601,6 +740,11 @@ test("requires scope confirmation before plan generation begins", async () => {
 			},
 		],
 	});
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			diagnosticPlacement: "firstSession",
+		});
+	});
 
 	await expect(
 		t.mutation(internal.learningPlans.beginContentGeneration, {
@@ -621,6 +765,11 @@ test("requires scope confirmation before plan generation begins", async () => {
 test("allows generation recovery only after the eleven-minute stale boundary", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			diagnosticPlacement: "firstSession",
+		});
+	});
 	await t.mutation(internal.learningPlans.beginContentGeneration, {
 		learningPlanId,
 		generationId: "long-generation",
@@ -646,9 +795,19 @@ test("allows generation recovery only after the eleven-minute stale boundary", a
 test("atomically claims stale session retries and rejects a second claimant", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			diagnosticPlacement: "firstSession",
+		});
+	});
 	await t.mutation(internal.learningPlans.beginContentGeneration, {
 		learningPlanId,
 		generationId: "active-generation",
+	});
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			diagnosticPlacement: undefined,
+		});
 	});
 	const generated = await t.mutation(
 		internal.learningPlans.replaceGeneratedSessions,
@@ -1070,7 +1229,7 @@ test("review sessions are only synced after the plan is accepted", async () => {
 	});
 	expect(beforeAccept["2026-06-04"]).toHaveLength(0);
 
-	await t.mutation(api.learningPlans.acceptPlan, { learningPlanId });
+	await acceptGeneratedTestPlan(t, learningPlanId);
 
 	const afterAccept = await t.query(api.dayEntries.listByDayKeys, {
 		dayKeys: ["2026-06-04"],
@@ -1240,7 +1399,7 @@ test("removing a learning plan deletes synced sessions and detaches the exam ent
 			},
 		],
 	});
-	await t.mutation(api.learningPlans.acceptPlan, { learningPlanId });
+	await acceptGeneratedTestPlan(t, learningPlanId);
 
 	await expect(
 		t.mutation(api.learningPlans.removePlan, { id: learningPlanId }),

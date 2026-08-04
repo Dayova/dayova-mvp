@@ -3,6 +3,7 @@ import type { Id } from "#convex/_generated/dataModel";
 export type PickerTarget = "editDate" | "editStart" | "editEnd";
 
 export type SessionPhase = "theory" | "practice" | "rehearsal";
+export type SessionPurpose = "diagnostic" | "learning";
 
 export type SessionExecutionStatus =
 	| "notStarted"
@@ -29,6 +30,7 @@ export type PlanSession = {
 	dateLabel: string;
 	startTime: string;
 	durationMinutes: number;
+	sessionPurpose?: SessionPurpose;
 	compositionVariant?: "control" | "split";
 	knowledgeValidationStatus?: "pending" | "completed" | "skipped";
 	knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
@@ -85,6 +87,7 @@ export type SessionContentItem = {
 	choices: Array<{ id: string; text: string }>;
 	learningBlockIndex: number;
 	topicId: string;
+	evidenceDimension?: "understanding" | "problemSolving" | "independent";
 	questionAngle: string;
 	coverageKey: string;
 	estimatedSeconds: number;
@@ -129,6 +132,7 @@ export type LearningSessionContentSnapshot = {
 		dateLabel: string;
 		startTime: string;
 		durationMinutes: number;
+		sessionPurpose?: SessionPurpose;
 		compositionVariant: "control" | "split";
 		knowledgeValidationStatus?: "pending" | "completed" | "skipped";
 		knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
@@ -210,6 +214,7 @@ export type LearningPlanSnapshot = {
 			gaps: string[];
 		};
 		planningHint?: string;
+		diagnosticPlacement?: "firstSession";
 		rollingPlanEnabled?: boolean;
 		adaptationRevision?: number;
 		sessionCompositionVariant?: "control" | "split";

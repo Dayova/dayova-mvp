@@ -1,11 +1,12 @@
 import {
 	getDefaultPreparationDepth,
-	recommendLearningPreparation,
 	type PreparationDepth,
+	recommendLearningPreparation,
 } from "#convex/learningPreparationPolicy";
 
 const MIN_TOTAL_STUDY_MINUTES = 30;
 const MAX_TOTAL_STUDY_MINUTES = 180;
+export const MIN_ROLLING_HORIZON_MINUTES = 20;
 
 const roundToTen = (minutes: number) => Math.round(minutes / 10) * 10;
 
@@ -67,7 +68,7 @@ export const shouldRequestLearningTimeBeforeExam = ({
 		fromDateKey,
 		examDateKey,
 		learningTimes,
-	}) < 10;
+	}) < MIN_ROLLING_HORIZON_MINUTES;
 
 export const shouldShowLearningTimeValidation = ({
 	fromDateKey,

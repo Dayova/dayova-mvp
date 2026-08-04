@@ -83,7 +83,7 @@ const MAX_GENERATED_SESSIONS = 40;
 const MIN_TOPIC_MAP_COUNT = 3;
 const GERMAN_UI_TEXT_RULE =
 	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
-const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return five short diagnostic questions, extended up to eight only when the material scope or learner readiness remains unclear.`;
+const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return five to ten objectively assessable questions for the first-session knowledge check.`;
 const GENERATED_PLAN_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return a realistic, calendar-ready German learning plan with concrete study sessions.`;
 const BERLIN_TIME_ZONE = "Europe/Berlin";
 
@@ -320,7 +320,12 @@ const questionsSchema = z
 		questions: boundedArray(
 			z.object({
 				topicId: z.string().min(3).max(48),
-				kind: z.enum(["performance", "confidence"]),
+				kind: z.literal("performance"),
+				evidenceDimension: z.enum([
+					"understanding",
+					"problemSolving",
+					"independent",
+				]),
 				responseKind: z.enum(["multipleChoice", "shortText", "longText"]),
 				options: atMostArray(
 					germanTextSchema(
@@ -340,17 +345,25 @@ const questionsSchema = z
 					8,
 					"What this answer reveals about the student's strengths, gaps, or needed learning blocks.",
 				),
+				idealAnswer: germanTextSchema(
+					1,
+					"Concise German ideal answer used to evaluate the student's response.",
+				),
+				explanation: germanTextSchema(
+					12,
+					"Brief German feedback that explains why the ideal answer is correct.",
+				),
 				evaluationKeywords: boundedArray(
 					germanTextSchema(
 						1,
 						"Short expected concept or result used to evaluate demonstrated knowledge.",
 					),
 					1,
-					2,
+					5,
 				),
 			}),
 			5,
-			8,
+			10,
 		),
 	})
 	.describe(KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION);
@@ -544,6 +557,7 @@ type LearningPlanAiContext = {
 		targetStudyMinutes?: number;
 		preparationDepth?: PreparationDepth;
 		sessionCompositionVariant?: "control" | "split";
+		diagnosticPlacement?: "firstSession";
 		topicDescription: string;
 		teacherGuidance?: string;
 		notes?: string;
@@ -556,6 +570,9 @@ type LearningPlanAiContext = {
 			responseKind?: "multipleChoice" | "shortText" | "longText";
 			options?: string[];
 			correctAnswer?: string;
+			idealAnswer?: string;
+			explanation?: string;
+			evidenceDimension?: "understanding" | "problemSolving" | "independent";
 			evaluationKeywords?: string[];
 		}>;
 		topicMap?: Array<{
@@ -609,16 +626,23 @@ type LearningSessionContentAiContext = {
 		phase: GeneratedSessionPhase;
 		title: string;
 		durationMinutes: number;
+		completed?: boolean;
 		compositionVariant?: "control" | "split";
+		sessionPurpose?: "diagnostic" | "learning";
 		goal: string;
 		tasks: string[];
 		expectedOutcome: string;
 		targetTopicIds?: string[];
+		targetEvidenceDimension?:
+			| "understanding"
+			| "problemSolving"
+			| "independent";
 		planningStatus?: "committed" | "provisional";
 		sortOrder: number;
 	};
 	planSessions: Array<{
 		phase: GeneratedSessionPhase;
+		sessionPurpose?: "diagnostic" | "learning";
 		title: string;
 		goal: string;
 		sortOrder: number;
@@ -629,8 +653,19 @@ type LearningSessionContentAiContext = {
 	learningTimes: LearningPlanAiContext["learningTimes"];
 	priorTheoryCards: Array<{ front: string; back: string }>;
 	priorSessionItems: Array<{ prompt: string; coverageKey?: string }>;
+	priorSessionEvidence: Array<{
+		sessionTitle: string;
+		question: string;
+		response: string;
+		rating: "notCorrect" | "partiallyCorrect" | "correct";
+		feedback: string;
+		idealAnswer: string;
+		topicId?: string;
+		evidenceDimension?: "understanding" | "problemSolving" | "independent";
+	}>;
 	priorCoverageKeys: string[];
 	existingItemCount: number;
+	hasTheoryKnowledgeCheck: boolean;
 	needsLegacyContentReplacement: boolean;
 	accessKey: string;
 };
@@ -1103,6 +1138,7 @@ const buildLearningSlots = (
 	occupiedEntries: OccupiedEntry[],
 	requestedMinutes: number,
 	maxSessionMinutes = MAX_LEARNING_SESSION_MINUTES,
+	minimumSessionCount = 1,
 ) => {
 	const windowsByDay = new Map<number, LearningTimeWindow[]>();
 	for (const learningTime of learningTimes) {
@@ -1150,6 +1186,39 @@ const buildLearningSlots = (
 				}
 				if (maxSessionMinutes < MAX_LEARNING_SESSION_MINUTES) {
 					let startMinutes = interval.start;
+					if (minimumSessionCount > 1) {
+						const allocatableMinutes = Math.min(
+							requestedMinutes,
+							interval.end - interval.start,
+						);
+						const chunkCount = Math.min(
+							Math.floor(allocatableMinutes / MIN_LEARNING_SLOT_MINUTES),
+							Math.max(
+								minimumSessionCount,
+								Math.ceil(allocatableMinutes / maxSessionMinutes),
+							),
+						);
+						let remainingMinutes = allocatableMinutes;
+						for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex += 1) {
+							const minutesReservedForLater =
+								(chunkCount - chunkIndex - 1) * MIN_LEARNING_SLOT_MINUTES;
+							const capacityMinutes = Math.min(
+								maxSessionMinutes,
+								remainingMinutes - minutesReservedForLater,
+								interval.end - startMinutes,
+							);
+							if (capacityMinutes < MIN_LEARNING_SLOT_MINUTES) break;
+							candidates.push({
+								date,
+								dateKey,
+								startMinutes,
+								endMinutes: startMinutes + capacityMinutes,
+							});
+							startMinutes += capacityMinutes;
+							remainingMinutes -= capacityMinutes;
+						}
+						continue;
+					}
 					while (interval.end - startMinutes >= MIN_LEARNING_SLOT_MINUTES) {
 						const capacityMinutes = Math.min(
 							maxSessionMinutes,
@@ -1189,7 +1258,11 @@ const buildLearningSlots = (
 			left.startMinutes - right.startMinutes,
 	);
 	const minimumPhaseSessionCount =
-		requestedMinutes >= MIN_LEARNING_SLOT_MINUTES * 3 ? 3 : 1;
+		minimumSessionCount > 1
+			? minimumSessionCount
+			: requestedMinutes >= MIN_LEARNING_SLOT_MINUTES * 3
+				? 3
+				: 1;
 	let selectedCapacityMinutes = 0;
 	let selectedCount = 0;
 	while (
@@ -1339,6 +1412,7 @@ type AdaptivePreparationScheduling = {
 	maxSessionMinutes: number;
 	topicReadiness: TopicReadinessCounts;
 	praxisSessionCount: number;
+	minimumSessionCount?: number;
 };
 
 const buildAdaptivePhaseSequence = (
@@ -1429,6 +1503,7 @@ const normalizeSessions = (
 		occupiedEntries,
 		requestedMinutes,
 		adaptivePreparation?.maxSessionMinutes,
+		adaptivePreparation?.minimumSessionCount,
 	);
 	const distributedOffsets = distributeSessionOffsets(availableDays, sessions);
 	const prioritizedSessions = sessions
@@ -1726,6 +1801,28 @@ const formatStoredKnowledgeAnswers = (
 		.join("\n\n");
 };
 
+const formatPriorSessionEvidence = (
+	evidence: LearningSessionContentAiContext["priorSessionEvidence"],
+) => {
+	if (evidence.length === 0) return "Noch keine Antworten aus Lernblöcken.";
+	const compactEvidenceText = (value: string, maxLength = 500) =>
+		value.length <= maxLength
+			? value
+			: `${value.slice(0, maxLength - 1).trimEnd()}…`;
+	const ratingLabel = {
+		correct: "richtig",
+		partiallyCorrect: "teilweise richtig",
+		notCorrect: "noch nicht richtig",
+	} as const;
+	return evidence
+		.slice(0, 20)
+		.map(
+			(entry, index) =>
+				`${index + 1}. Lernblock: ${compactEvidenceText(entry.sessionTitle, 100)}\nFrage: ${compactEvidenceText(entry.question)}\nAntwort des Schülers: ${compactEvidenceText(entry.response)}\nBewertung: ${ratingLabel[entry.rating]}\nRückmeldung: ${compactEvidenceText(entry.feedback)}\nIdeale Antwort: ${compactEvidenceText(entry.idealAnswer)}${entry.topicId ? `\nThema-ID: ${entry.topicId}` : ""}${entry.evidenceDimension ? `\nEvidenzdimension: ${entry.evidenceDimension}` : ""}`,
+		)
+		.join("\n\n");
+};
+
 const formatPlanSequence = (
 	sessions: LearningSessionContentAiContext["planSessions"],
 ) =>
@@ -2003,10 +2100,13 @@ const generateSessionContent = async (
 			));
 		const model = createVertexModel();
 		const personalLearningTimes = describeLearningTimes(context.learningTimes);
-		const knowledgeAnswers = formatStoredKnowledgeAnswers(
-			context.plan.knowledgeQuestions,
-			context.answers,
-		);
+		const learningEvidence =
+			context.priorSessionEvidence.length > 0
+				? formatPriorSessionEvidence(context.priorSessionEvidence)
+				: formatStoredKnowledgeAnswers(
+						context.plan.knowledgeQuestions,
+						context.answers,
+					);
 		const planSequence = formatPlanSequence(context.planSessions);
 		const priorTheoryCards = formatPriorTheoryCards(context.priorTheoryCards);
 		const userContent: Array<
@@ -2020,8 +2120,8 @@ Zusammenfassung des Materials: ${context.plan.sourceSummary ?? "Keine Zusammenfa
 Lernstands-Einschätzung: ${context.plan.insight?.summary ?? "Keine Einschätzung gespeichert."}
 Offene Lücken: ${(context.plan.insight?.gaps ?? []).join("; ") || "Keine Lücken gespeichert."}
 
-Wissensanalyse:
-${knowledgeAnswers}
+Lernevidenz aus abgeschlossenen Sessions:
+${learningEvidence}
 
 Behandle korrekt beantwortete Diagnosefragen als bereits beherrscht. Wiederhole weder deren Frage noch eine gleich schwere Variante. Nutze für beherrschte Themen anspruchsvollere Anwendungen, Fehleranalysen, Vergleiche oder Prüfungstransfers.
 
@@ -2036,6 +2136,7 @@ Titel: ${context.session.title}
 Phase: ${context.session.phase}
 Lernzeit: ${context.session.durationMinutes} Minuten
 Ziel: ${context.session.goal}
+Evidenzziel: ${context.session.targetEvidenceDimension ?? "allgemeiner Lernfortschritt"}
 Aufgaben im Lernslot:
 ${context.session.tasks.map((task) => `- ${task}`).join("\n")}
 Erwartetes Ergebnis: ${context.session.expectedOutcome}
@@ -2314,6 +2415,7 @@ Titel: ${context.session.title}
 Phase: ${context.session.phase}
 Lernzeit: ${context.session.durationMinutes} Minuten
 Ziel: ${context.session.goal}
+Evidenzziel: ${context.session.targetEvidenceDimension ?? "allgemeiner Lernfortschritt"}
 Aufgaben: ${context.session.tasks.join("; ")}
 Erwartetes Ergebnis: ${context.session.expectedOutcome}
 Erzeuge exakt ${block.questions.length} Inhalte in dieser Reihenfolge:
@@ -2331,8 +2433,8 @@ Zusammenfassung des Materials: ${firstContext.plan.sourceSummary ?? "Keine Zusam
 Lernstands-Einschätzung: ${firstContext.plan.insight?.summary ?? "Keine Einschätzung gespeichert."}
 Offene Lücken: ${(firstContext.plan.insight?.gaps ?? []).join("; ") || "Keine Lücken gespeichert."}
 
-Wissensanalyse:
-${formatStoredKnowledgeAnswers(firstContext.plan.knowledgeQuestions, firstContext.answers)}
+Lernevidenz aus abgeschlossenen Sessions:
+${firstContext.priorSessionEvidence.length > 0 ? formatPriorSessionEvidence(firstContext.priorSessionEvidence) : formatStoredKnowledgeAnswers(firstContext.plan.knowledgeQuestions, firstContext.answers)}
 
 Lernplan-Reihenfolge:
 ${formatPlanSequence(firstContext.planSessions)}
@@ -2603,23 +2705,34 @@ export const ensureSessionContent = action({
 			internal.learningSessionContent.getSessionGenerationContext,
 			{ sessionId: args.sessionId },
 		);
+		if (context.session.planningStatus === "provisional") {
+			throwUserFacingError(
+				"Dieser Lernblock ist nur eine Vorschau und kann sich noch ändern.",
+			);
+		}
 		if (
 			context.existingItemCount > 0 &&
 			!context.needsLegacyContentReplacement
 		) {
+			if (
+				!context.session.completed &&
+				!context.hasTheoryKnowledgeCheck &&
+				isLearningSessionCompositionEligible({
+					phase: context.session.phase,
+					durationMinutes: context.session.durationMinutes,
+				})
+			) {
+				return await ctx.runMutation(
+					internal.learningSessionContent.backfillTheoryKnowledgeCheck,
+					{ sessionId: args.sessionId },
+				);
+			}
 			return { itemCount: context.existingItemCount };
 		}
-		if (context.session.planningStatus === "provisional") {
-			const budgetStatus = await ctx.runQuery(
-				internal.learningPlanAiUsage.getBudgetStatus,
-				{
-					learningPlanId: context.session.learningPlanId,
-					projectedCostUsdMicros: 30_000,
-				},
+		if (context.session.sessionPurpose === "diagnostic") {
+			throwUserFacingError(
+				"Die Fragen des Wissenschecks fehlen. Erstelle den Lernplan erneut.",
 			);
-			if (!budgetStatus.speculativeGenerationAllowed) {
-				return { itemCount: 0 };
-			}
 		}
 		const claimed: boolean = await ctx.runMutation(
 			internal.learningPlans.claimSessionContentGeneration,
@@ -2767,9 +2880,9 @@ export const generateKnowledgeQuestions = action({
 		const schoolDocuments = context.documents.filter(
 			(document) => (document.sourceKind ?? "school") === "school",
 		);
-		if (schoolDocuments.length === 0 && !context.plan.teacherGuidance?.trim()) {
+		if (schoolDocuments.length === 0) {
 			throwUserFacingError(
-				"Füge mindestens eine Information deiner Schule hinzu.",
+				"Lade zuerst mindestens eine Schulunterlage hoch, um einen Lernplan zu erhalten.",
 			);
 		}
 
@@ -2788,16 +2901,16 @@ export const generateKnowledgeQuestions = action({
 				text: `${buildBaseContext(context)}
 
 Erstelle zuerst eine Themenkarte mit ${MIN_TOPIC_MAP_COUNT} bis ${MAX_LEARNING_TOPIC_COUNT} klar getrennten Teilthemen. Nutze kurze stabile ASCII-IDs wie "steigung-berechnen". Leite den wahrscheinlichen Prüfungsstoff ausschließlich aus dem Hinweis der Lehrkraft und den internen Schulmaterialien ab. Externe Lernhilfen definieren niemals den Prüfungsstoff. Priorisiere explizite Prüfungshinweise vor allgemeinen oder älteren Übungsinhalten.
-Erstelle danach 5 kurze Einstiegsfragen. Erweitere nur bei breitem Material oder unklarer Lernbereitschaft auf bis zu 8 Fragen. Mindestens 70 Prozent sollen als kind "performance" tatsächliches Wissen durch kurzes Lösen, Erklären oder Anwenden prüfen; höchstens 30 Prozent dürfen als kind "confidence" Selbsteinschätzung oder Sicherheit erfragen. Ordne jede Frage über topicId exakt einer zuvor erzeugten Themen-ID zu und liefere 1 bis 5 fachlich erwartete evaluationKeywords, anhand derer eine tatsächliche Antwort bewertet werden kann. Ziel ist nicht Notengebung, sondern herauszufinden, welche Lernblöcke der Lernplan braucht.
+Erstelle danach 5 bis 10 kurze, objektiv bewertbare Fragen für den Wissenscheck in der ersten Lernsession. Jede Frage muss als kind "performance" tatsächliches Wissen durch kurzes Lösen, Erklären oder Anwenden prüfen. Verwende keine Selbsteinschätzungs- oder Sicherheitsfragen. Ordne jede Frage über topicId exakt einer zuvor erzeugten Themen-ID und über evidenceDimension genau einer Evidenzdimension zu. Liefere außerdem eine fachlich richtige idealAnswer, eine kurze explanation und 1 bis 5 evaluationKeywords. Ziel ist nicht Notengebung, sondern belastbare Evidenz für den jeweils nächsten Lernschritt.
 Die Fragen müssen sich konkret auf Prüfungsthema und Inhalte aus dem Material beziehen, aber wie normale Prüfungs- oder Verständnisfragen formuliert sein.
 Jede Frage fragt genau eine Sache ab, ist ohne verschachtelte Arbeitsanweisung direkt verständlich und lässt sich in wenigen Sätzen beantworten.
 Keine Frage darf eine andere Aufgabenformulierung zitieren oder Formulierungen wie „Erkläre deinen Lösungsweg zu …“ enthalten.
 Verweise in den Fragen nie direkt auf Quellen oder Uploads: keine Formulierungen wie "laut Material", "im Dokument", "auf dem Bild", "in der Datei", "Material 3 sagt" und keine Dateinamen.
 Wähle für jede Frage das Antwortformat mit der geringsten Reibung, das noch belastbare Evidenz liefert:
-- multipleChoice für klare fachliche Unterscheidungen und alle confidence-Fragen; liefere dann 3 bis 4 kurze plausible Optionen.
+- multipleChoice für klare fachliche Unterscheidungen; liefere dann 3 bis 4 kurze plausible Optionen.
 - shortText für Zahlen, Formeln, Begriffe oder Antworten bis ungefähr einem Satz; liefere dann options: [].
 - longText nur wenn ein Lösungsweg oder eine Begründung wirklich beobachtet werden muss; liefere dann options: [].
-Liefere für jede performance-multipleChoice-Frage den nullbasierten correctOptionIndex der eindeutig richtigen Option. Für confidence-Fragen sowie shortText und longText ist correctOptionIndex null.
+Liefere für jede multipleChoice-Frage den nullbasierten correctOptionIndex der eindeutig richtigen Option. Für shortText und longText ist correctOptionIndex null.
 Verwende bei 5 Fragen mindestens 2 Multiple-Choice-Fragen und höchstens 2 longText-Fragen. "Weiß ich nicht" wird separat von der App angeboten und gehört nicht in options.
 Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.`,
 			},
@@ -2827,7 +2940,7 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 						generateText({
 							model: model(diagnosticModelId),
 							temperature: 0.2,
-							maxOutputTokens: 2_600,
+							maxOutputTokens: 3_600,
 							abortSignal,
 							providerOptions: vertexProviderOptions,
 							output: Output.object({ schema: questionsSchema }),
@@ -2846,37 +2959,33 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 					question.correctOptionIndex === null
 						? undefined
 						: normalizedOptions[question.correctOptionIndex] || undefined;
-				const hasValidPerformanceAnswer =
-					question.kind !== "performance" ||
-					(question.correctOptionIndex !== null &&
-						Boolean(generatedCorrectAnswer) &&
-						generatedOptions.includes(generatedCorrectAnswer ?? ""));
+				const hasValidMultipleChoiceAnswer =
+					question.correctOptionIndex !== null &&
+					Boolean(generatedCorrectAnswer) &&
+					generatedOptions.includes(generatedCorrectAnswer ?? "");
 				const responseKind =
-					question.kind === "confidence"
-						? "multipleChoice"
-						: question.responseKind === "multipleChoice" &&
-								(generatedOptions.length < 2 || !hasValidPerformanceAnswer)
-							? "shortText"
-							: question.responseKind;
+					question.responseKind === "multipleChoice" &&
+					(generatedOptions.length < 2 || !hasValidMultipleChoiceAnswer)
+						? "shortText"
+						: question.responseKind;
 				const options =
-					responseKind === "multipleChoice"
-						? generatedOptions.length >= 2
-							? generatedOptions
-							: ["Sicher", "Teilweise sicher", "Unsicher"]
-						: [];
+					responseKind === "multipleChoice" ? generatedOptions : [];
 
 				return {
 					id: `q${index + 1}`,
 					topicId: question.topicId,
-					kind: question.kind,
+					kind: "performance" as const,
+					evidenceDimension: question.evidenceDimension,
 					responseKind,
 					options,
 					correctAnswer:
-						responseKind === "multipleChoice" && question.kind === "performance"
+						responseKind === "multipleChoice"
 							? generatedCorrectAnswer
 							: undefined,
 					prompt: normalizeAiGeneratedGermanText(question.prompt),
 					targetInsight: normalizeAiGeneratedGermanText(question.targetInsight),
+					idealAnswer: normalizeAiGeneratedGermanText(question.idealAnswer),
+					explanation: normalizeAiGeneratedGermanText(question.explanation),
 					evaluationKeywords: question.evaluationKeywords.map((keyword) =>
 						normalizeAiGeneratedGermanText(keyword),
 					),
@@ -2899,13 +3008,14 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 					result.output.sourceSummary,
 				),
 			};
-		}, "Die Wissensanalyse konnte nicht zuverlässig erstellt werden. Formuliere das Prüfungsthema etwas konkreter und versuche es erneut.");
+		}, "Der Wissenscheck konnte nicht zuverlässig erstellt werden. Prüfe deine Schulunterlagen und versuche es erneut.");
 
 		await ctx.runMutation(internal.learningPlans.storeKnowledgeQuestions, {
 			learningPlanId: args.learningPlanId,
 			questions: generatedQuestions.questions,
 			topics: generatedQuestions.topics,
 			sourceSummary: generatedQuestions.sourceSummary,
+			diagnosticPlacement: "firstSession",
 		});
 
 		return { questionCount: generatedQuestions.questions.length };
@@ -2947,24 +3057,44 @@ export const generatePlan = action({
 				internal.learningPlans.getAiContext,
 				{ learningPlanId: args.learningPlanId },
 			);
+			if (context.plan.diagnosticPlacement !== "firstSession") {
+				throwUserFacingError(
+					"Erstelle zuerst den Wissenscheck neu. Er ist der erste Block jedes Lernplans.",
+				);
+			}
 			const questions = context.plan.knowledgeQuestions ?? [];
-			if (questions.length < 5 || questions.length > 8) {
-				throwUserFacingError("Die Wissensanalyse-Fragen fehlen noch.");
+			const usesFirstSessionDiagnostic =
+				context.plan.diagnosticPlacement === "firstSession";
+			const maximumQuestionCount = usesFirstSessionDiagnostic ? 10 : 8;
+			if (questions.length < 5 || questions.length > maximumQuestionCount) {
+				throwUserFacingError("Die Fragen für den Wissenscheck fehlen noch.");
 			}
 
+			const effectiveAnswers = usesFirstSessionDiagnostic ? [] : args.answers;
 			const answersByQuestion = new Map(
-				args.answers.map((answer) => [answer.questionId, answer.answer.trim()]),
+				effectiveAnswers.map((answer) => [
+					answer.questionId,
+					answer.answer.trim(),
+				]),
 			);
-			const qaText = questions
-				.map((question, index) => {
-					const answer = answersByQuestion.get(question.id) || "Keine Antwort";
-					return `${index + 1}. Frage: ${question.prompt}\nAntwort: ${answer}\nAnalyseziel: ${question.targetInsight}`;
-				})
-				.join("\n\n");
+			const qaText = usesFirstSessionDiagnostic
+				? questions
+						.map(
+							(question, index) =>
+								`${index + 1}. Frage im zukünftigen Wissenscheck: ${question.prompt}\nNoch nicht beantwortet.`,
+						)
+						.join("\n\n")
+				: questions
+						.map((question, index) => {
+							const answer =
+								answersByQuestion.get(question.id) || "Keine Antwort";
+							return `${index + 1}. Frage: ${question.prompt}\nAntwort: ${answer}\nAnalyseziel: ${question.targetInsight}`;
+						})
+						.join("\n\n");
 
 			const availableDays = getAvailableDays(context.plan.examDateKey);
 			const confirmedTotalStudyMinutes = context.plan.targetStudyMinutes;
-			if (
+			const availableLearningSlots =
 				confirmedTotalStudyMinutes !== undefined &&
 				Number.isInteger(confirmedTotalStudyMinutes) &&
 				confirmedTotalStudyMinutes >= MIN_LEARNING_SLOT_MINUTES &&
@@ -2975,7 +3105,11 @@ export const generatePlan = action({
 					context.occupiedEntries,
 					confirmedTotalStudyMinutes,
 					20,
-				).length === 0
+					usesFirstSessionDiagnostic ? 2 : 1,
+				);
+			if (
+				availableLearningSlots !== false &&
+				availableLearningSlots.length < (usesFirstSessionDiagnostic ? 2 : 1)
 			) {
 				throwUserFacingError(
 					getEmptyScheduleErrorMessage(
@@ -3009,10 +3143,10 @@ Bestätigte gesamte Lernzeit: ${confirmedTotalStudyMinutes ?? "Noch nicht bestä
 Persönliche Lernzeiten aus den Einstellungen:
 ${personalLearningTimes}
 
-Wissensanalyse:
+${usesFirstSessionDiagnostic ? "Wissenscheck in der ersten Session (noch unbeantwortet)" : "Wissensanalyse"}:
 ${qaText}
 
-Erstelle einen konkreten Lernplan, der die Antworten sichtbar berücksichtigt.
+${usesFirstSessionDiagnostic ? "Erstelle die Kalendergrundlage für den Wissenscheck und den ersten vorläufigen Lernschritt. Der Wissenscheck wird erst in der ersten Session beantwortet." : "Erstelle einen konkreten Lernplan, der die Antworten sichtbar berücksichtigt."}
 MVP-Vorgabe:
 - Interne Schulmaterialien und Hinweise der Lehrkraft definieren den wahrscheinlichen Prüfungsstoff. Externe Lernhilfen dürfen Erklärungen und Übungsformen verbessern, aber niemals neue Prüfungsthemen einführen.
 - Baue, wenn zeitlich möglich, die Phasen Theorie, Üben und Generalprobe.
@@ -3025,6 +3159,7 @@ MVP-Vorgabe:
 - Nenne in Session-Titeln, goal, tasks und expectedOutcome keine Dauer in Minuten. Die tatsächliche Session-Dauer wird anschließend aus den persönlichen Lernzeiten festgelegt und separat angezeigt.
 - insight.strengths darf maximal 4 Punkte enthalten, insight.gaps maximal 5 Punkte.
 - Gib höchstens 2 fachlich unterschiedliche Session-Archetypen für die unmittelbar nächsten Lernschritte zurück. Spätere Schritte werden erst nach neuer Lernevidenz festgelegt.
+- ${usesFirstSessionDiagnostic ? "Der erste Kalender-Slot ist für den Wissenscheck reserviert, der zweite für einen vorläufigen Lernschritt. Behaupte vor dem Wissenscheck keine beobachteten Stärken: insight.strengths muss leer sein. Formuliere Lücken nur als noch zu prüfende oder zunächst abzudeckende Bereiche." : "Berücksichtige die bereits beantworteten Einstiegsfragen bei Stärken und Lücken."}
 - Bevorzuge mehrere kurze Session-Archetypen: Theorie 10–15 Min., angeleitetes Üben 10–20 Min. und Praxis 20–30 Min. Vermeide lange Sammelblöcke.
 - Plane fachlich sinnvolle Lernblöcke, aber die finale Kalenderplatzierung erfolgt ausschließlich innerhalb der persönlichen Lernzeiten. Verwende keine anderen Tage oder Uhrzeiten als Empfehlung.
 - Nutze dayOffsetBeforeExam relativ zum Prüfungstag: 1 = einen Tag vor der Prüfung.
@@ -3048,9 +3183,11 @@ MVP-Vorgabe:
 			) => {
 				const normalizedInsight = {
 					summary: normalizeAiGeneratedGermanText(output.insight.summary),
-					strengths: output.insight.strengths.map((strength) =>
-						normalizeAiGeneratedGermanText(strength),
-					),
+					strengths: usesFirstSessionDiagnostic
+						? []
+						: output.insight.strengths.map((strength) =>
+								normalizeAiGeneratedGermanText(strength),
+							),
 					gaps: output.insight.gaps.map((gap) =>
 						normalizeAiGeneratedGermanText(gap),
 					),
@@ -3060,7 +3197,7 @@ MVP-Vorgabe:
 					getDefaultPreparationDepth(context.plan.examTypeLabel);
 				const topicCount = Math.max(
 					context.plan.topicMap?.length ?? 0,
-					args.answers.length,
+					effectiveAnswers.length,
 				);
 				const readiness = context.plan.topicReadiness ?? [];
 				const secureTopicCount = readiness.filter(
@@ -3097,6 +3234,7 @@ MVP-Vorgabe:
 					}),
 					{
 						maxSessionMinutes: 20,
+						minimumSessionCount: usesFirstSessionDiagnostic ? 2 : 1,
 						topicReadiness,
 						praxisSessionCount: preparationRecommendation.praxisSessionCount,
 					},
@@ -3112,8 +3250,9 @@ MVP-Vorgabe:
 				};
 			};
 
-			const planFallbackMessage =
-				"Aus diesen Antworten konnte kein stabiler Lernplan erstellt werden. Ergänze mindestens ein paar konkrete Stichworte zu deinem Wissenstand und versuche es erneut.";
+			const planFallbackMessage = usesFirstSessionDiagnostic
+				? "Aus den Unterlagen konnte kein stabiler Start für den Lernplan erstellt werden. Prüfe den erkannten Prüfungsstoff und versuche es erneut."
+				: "Aus diesen Antworten konnte kein stabiler Lernplan erstellt werden. Ergänze mindestens ein paar konkrete Stichworte zu deinem Wissensstand und versuche es erneut.";
 			const planModelId =
 				ENABLE_FLASH_LITE || initialCostMode.economyMode
 					? FLASH_LITE_MODEL_ID
@@ -3143,7 +3282,9 @@ MVP-Vorgabe:
 
 				return normalizeGeneratedPlan(result.output);
 			}, planFallbackMessage);
-			if (generatedPlan.sessions.length === 0) {
+			if (
+				generatedPlan.sessions.length < (usesFirstSessionDiagnostic ? 2 : 1)
+			) {
 				throwUserFacingError(
 					getEmptyScheduleErrorMessage(
 						context.learningTimes,
@@ -3154,11 +3295,12 @@ MVP-Vorgabe:
 
 			const replacement: {
 				sessionIds: Id<"learningPlanSessions">[];
+				contentSessionIds: Id<"learningPlanSessions">[];
 			} | null = await ctx.runMutation(
 				internal.learningPlans.replaceGeneratedSessions,
 				{
 					learningPlanId: args.learningPlanId,
-					knowledgeAnswersJson: JSON.stringify(args.answers),
+					knowledgeAnswersJson: JSON.stringify(effectiveAnswers),
 					sourceSummary: generatedPlan.sourceSummary,
 					insight: generatedPlan.insight,
 					planningHint: generatedPlan.planningHint,
@@ -3170,7 +3312,7 @@ MVP-Vorgabe:
 					sessions: generatedPlan.sessions,
 				},
 			);
-			const sessionIds = (replacement?.sessionIds ?? []).slice(0, 1);
+			const sessionIds = replacement?.contentSessionIds ?? [];
 			const projectedCostMode = await getMonthlyCostMode(
 				ctx,
 				args.learningPlanId,
@@ -3218,11 +3360,11 @@ MVP-Vorgabe:
 			}
 
 			return {
-				sessionCount: generatedPlan.sessions.length,
+				sessionCount: replacement?.sessionIds.length ?? 0,
 				contentSessionCount: finalState.readySessionCount,
-				compositionEligibleSessionCount: generatedPlan.sessions.filter(
-					isLearningSessionCompositionEligible,
-				).length,
+				compositionEligibleSessionCount: generatedPlan.sessions
+					.slice(0, replacement?.sessionIds.length ?? 0)
+					.filter(isLearningSessionCompositionEligible).length,
 			};
 		} catch (error) {
 			await ctx.runMutation(

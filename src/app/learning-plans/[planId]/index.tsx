@@ -25,15 +25,17 @@ import Svg, { Path } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
+import { Button } from "~/components/ui/button";
 import {
-	ArrowUpRight,
+	ArrowRight,
 	Check,
 	Dumbbell,
+	GraduationCap,
 	Note,
 	Repeat,
+	Sparkles,
 	Time04,
 } from "~/components/ui/icon";
-import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -51,12 +53,14 @@ import {
 import {
 	getCommittedSessionIndex,
 	getDefaultLearningPlanSession,
+	isDiagnosticLearningPlanSession,
 	isLearningPlanSessionHistory,
 } from "~/features/learning-plans/rolling-learning-window";
 import type {
 	LearningPlanSnapshot,
 	PlanSession,
 } from "~/features/learning-plans/types";
+import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { dismissToOrReplace } from "~/lib/navigation";
@@ -94,15 +98,28 @@ const LEARNING_PATH_ICON_COMPONENT = {
 } satisfies Record<LearningPathNodeIcon, typeof Dumbbell>;
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
-const SESSION_PREVIEW_CARD_HEIGHT = 218;
 const SESSION_PREVIEW_TRANSITION_DURATION_MS = 160;
+
+export const getExamCountdownLabel = (examDateKey: string, today: Date) => {
+	const examDate = parseDayKey(examDateKey);
+	if (!examDate) return null;
+
+	const remainingDays = Math.round(
+		(examDate.getTime() - today.getTime()) / 86_400_000,
+	);
+
+	if (remainingDays < 0) return "Prüfung vorbei";
+	if (remainingDays === 0) return "Heute";
+	if (remainingDays === 1) return "Noch 1 Tag";
+	return `Noch ${remainingDays} Tage`;
+};
 
 const getSessionRoute = (
 	planId: Id<"learningPlans">,
 	sessionId: Id<"learningPlanSessions">,
 ) => `/learning-plans/${planId}/sessions/${sessionId}` as const;
 
-function SessionPreviewCard({
+export function SessionPreviewCard({
 	canOpen,
 	session,
 	onOpen,
@@ -114,11 +131,19 @@ function SessionPreviewCard({
 	const { colors } = useDayovaTheme();
 	const reduceMotion = useReducedMotion();
 	const phase = PHASE_COLOR[session.phase];
+	const sessionTypeLabel = isDiagnosticLearningPlanSession(session)
+		? "Wissenscheck"
+		: PHASE_LABEL[session.phase];
 	const PhaseIcon =
 		LEARNING_PATH_ICON_COMPONENT[LEARNING_PATH_PHASE_ICON[session.phase]];
 	const title = formatGermanUiText(session.title);
 	const description = formatGermanUiText(session.goal);
 	const hasRecordedOutcome = isLearningPlanSessionHistory(session);
+	const actionLabel = hasRecordedOutcome
+		? "Lernsession ansehen"
+		: session.executionStatus === "started"
+			? "Weiterlernen"
+			: "Lernsession starten";
 	const horizonLabel = hasRecordedOutcome
 		? "Bearbeitet"
 		: session.planningStatus === "provisional"
@@ -151,7 +176,7 @@ function SessionPreviewCard({
 							className="font-poppins font-semibold text-body-5"
 							style={{ color: phase.foreground }}
 						>
-							{PHASE_LABEL[session.phase]}
+							{sessionTypeLabel}
 						</Text>
 					</View>
 
@@ -166,65 +191,52 @@ function SessionPreviewCard({
 			<View className="flex-row items-center gap-1.5">
 				<Time04 size={13} color={colors.secondaryText} strokeWidth={2} />
 				<Text className="font-poppins text-body-4 text-secondary-text">
-					{session.dateLabel}
+					{session.dateLabel} · {session.startTime}
 				</Text>
 			</View>
 
 			<Text
-				className="max-w-[292px] font-poppins text-body-4 text-secondary-text"
+				className="font-poppins text-body-4 text-secondary-text"
 				numberOfLines={2}
 			>
 				{description}
 			</Text>
 			{session.selectionReason ? (
 				<Text
-					className="font-medium font-poppins text-body-5 text-primary"
+					className="font-poppins font-semibold text-body-5 text-primary"
 					numberOfLines={2}
 				>
 					{formatGermanUiText(session.selectionReason)}
 				</Text>
 			) : null}
-		</View>
-	);
 
-	const card = canOpen ? (
-		<CompactNotchedActionCard
-			actionAccessibilityHint="Öffnet die ausgewählte Lerneinheit."
-			actionAccessibilityLabel={`Lerneinheit ${title} öffnen`}
-			actionIcon={
-				<ArrowUpRight
-					size={24}
-					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-					strokeWidth={1.9}
-				/>
-			}
-			actionOffsetBottom={4}
-			onPress={onOpen}
-			pressType="action"
-			cardHeight={SESSION_PREVIEW_CARD_HEIGHT}
-			cardStyle={{
-				paddingTop: 22,
-				paddingBottom: 24,
-			}}
-		>
-			{content}
-		</CompactNotchedActionCard>
-	) : (
-		<View
-			style={{
-				width: "100%",
-				minHeight: SESSION_PREVIEW_CARD_HEIGHT,
-				paddingHorizontal: 24,
-				paddingTop: 22,
-				paddingBottom: 24,
-				borderWidth: 1,
-				borderColor: colors.border,
-				borderRadius: 44,
-				borderCurve: "continuous",
-				backgroundColor: colors.surface,
-			}}
-		>
-			{content}
+			{canOpen ? (
+				<Button
+					accessibilityHint="Öffnet die ausgewählte Lerneinheit."
+					accessibilityLabel={`${actionLabel}: ${title}`}
+					className="mt-1 w-full"
+					onPress={onOpen}
+					size="sm"
+				>
+					<Text>{actionLabel}</Text>
+					<ArrowRight
+						size={18}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={2.2}
+					/>
+				</Button>
+			) : (
+				<View className="mt-1 flex-row items-start gap-2 rounded-[20px] bg-system-subtle px-3 py-3">
+					<Sparkles
+						size={16}
+						color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+						strokeWidth={2.1}
+					/>
+					<Text className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text">
+						Diese Vorschau kann sich nach deinem nächsten Abschluss ändern.
+					</Text>
+				</View>
+			)}
 		</View>
 	);
 
@@ -240,9 +252,11 @@ function SessionPreviewCard({
 					? undefined
 					: FadeOut.duration(SESSION_PREVIEW_TRANSITION_DURATION_MS)
 			}
-			style={{ width: "100%" }}
+			className="w-full rounded-card border border-border bg-card px-4 py-4"
+			// React Native's continuous corner curve has no NativeWind utility.
+			style={{ borderCurve: "continuous" }}
 		>
-			{card}
+			{content}
 		</Animated.View>
 	);
 }
@@ -250,7 +264,7 @@ function SessionPreviewCard({
 const PATH_NODE_STATE_LABEL: Record<LearningPathNodeState, string> = {
 	completed: "abgeschlossen",
 	current: "verfügbar",
-	locked: "Vorschau",
+	locked: "adaptive Vorschau",
 };
 
 type PathNodeFrame = {
@@ -308,6 +322,20 @@ const getFigmaSegmentPath = (index: number) => {
 	}
 
 	return `M 56 ${348 + y} V ${370 + y} Q 56 ${410 + y} 96 ${410 + y} H 139`;
+};
+
+const getFigmaSegmentEndPoint = (index: number) => {
+	const segmentIndex = index % FIGMA_REPEATING_NODE_FRAMES.length;
+	const cycle = Math.floor(index / FIGMA_REPEATING_NODE_FRAMES.length);
+	const cycleOffset = cycle * FIGMA_PATH_CYCLE_HEIGHT;
+	const endpoint = [
+		{ x: 289, y: 102 },
+		{ x: 206, y: 234 },
+		{ x: 56, y: 293 },
+		{ x: 139, y: 410 },
+	][segmentIndex] ?? { x: 139, y: 410 };
+
+	return { x: endpoint.x, y: endpoint.y + cycleOffset };
 };
 
 const getFigmaPathHeight = (sessionCount: number) => {
@@ -596,11 +624,11 @@ function PathNode({
 
 	return (
 		<Pressable
-			accessibilityLabel={`${title}, ${PHASE_LABEL[session.phase]}, ${session.dateLabel}, ${stateLabel}`}
+			accessibilityLabel={`${title}, ${isDiagnosticLearningPlanSession(session) ? "Wissenscheck" : PHASE_LABEL[session.phase]}, ${session.dateLabel} um ${session.startTime}, ${stateLabel}`}
 			accessibilityHint={
 				isLocked
 					? "Zeigt den voraussichtlich folgenden Lernblock. Er kann sich nach der nächsten Session noch ändern."
-					: "Wählt diesen Lernblock aus und zeigt die Vorschau. Öffnen kannst du ihn danach über die Pfeiltaste in der Vorschau."
+					: "Wählt diesen Lernblock aus. Über die Vorschau oben kannst du ihn starten oder ansehen."
 			}
 			accessibilityRole="button"
 			accessibilityState={{ selected }}
@@ -631,18 +659,33 @@ function PathNode({
 	);
 }
 
-function LearningPath({
+export function LearningPath({
+	examCountdownLabel,
+	examDateLabel,
 	onSelectSession,
 	selectedSessionId,
 	sessions,
+	showsAdaptiveContinuation,
 }: {
+	examCountdownLabel: string | null;
+	examDateLabel: string;
 	onSelectSession: (session: PlanSession) => void;
 	selectedSessionId: Id<"learningPlanSessions"> | null;
 	sessions: PlanSession[];
+	showsAdaptiveContinuation: boolean;
 }) {
 	const currentIndex = getCommittedSessionIndex(sessions);
 	const activeSegmentLimit = getActiveSegmentLimit(sessions);
-	const pathHeight = getFigmaPathHeight(sessions.length);
+	const continuationSegmentIndex = Math.max(sessions.length - 1, 0);
+	const continuationPath = getFigmaSegmentPath(continuationSegmentIndex);
+	const continuationEndpoint = getFigmaSegmentEndPoint(
+		continuationSegmentIndex,
+	);
+	const continuationTop = continuationEndpoint.y + 16;
+	const basePathHeight = getFigmaPathHeight(sessions.length);
+	const pathHeight = showsAdaptiveContinuation
+		? Math.max(basePathHeight, continuationTop + 220)
+		: basePathHeight;
 	const segments = sessions.slice(1).map((_, index) => ({
 		d: getFigmaSegmentPath(index),
 		active: index < activeSegmentLimit,
@@ -683,7 +726,34 @@ function LearningPath({
 							strokeLinejoin="round"
 						/>
 					))}
+				{showsAdaptiveContinuation ? (
+					<Path
+						d={continuationPath}
+						fill="none"
+						opacity={0.72}
+						stroke={DAYOVA_DESIGN_SYSTEM.colors.primary}
+						strokeDasharray="7 9"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						strokeWidth={4}
+						testID="adaptive-continuation-path"
+					/>
+				) : null}
 			</Svg>
+
+			{showsAdaptiveContinuation ? (
+				<View
+					accessible={false}
+					className="absolute h-3 w-3 rounded-full border-2 border-background bg-primary"
+					pointerEvents="none"
+					// The marker is centered on the generated continuation endpoint.
+					style={{
+						left: continuationEndpoint.x - 6,
+						top: continuationEndpoint.y - 6,
+					}}
+					testID="adaptive-continuation-endpoint"
+				/>
+			) : null}
 
 			{sessions.map((session, index) => {
 				const state = getPathNodeState(session, index, currentIndex);
@@ -699,6 +769,67 @@ function LearningPath({
 					/>
 				);
 			})}
+
+			{showsAdaptiveContinuation ? (
+				<View
+					accessible
+					accessibilityLabel={`Dayova plant mit dir weiter. Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin. Prüfung am ${examDateLabel}${examCountdownLabel ? `, ${examCountdownLabel}` : ""}.`}
+					className="absolute right-2 left-2 gap-4 overflow-hidden rounded-card border border-primary/20 bg-system-subtle px-4 py-4"
+					// The card is positioned against the generated path geometry; the
+					// continuous curve has no NativeWind utility.
+					style={{ top: continuationTop, borderCurve: "continuous" }}
+					testID="adaptive-continuation-card"
+				>
+					<View className="flex-row items-start gap-3">
+						<View className="h-10 w-10 shrink-0 items-center justify-center rounded-[16px] bg-primary">
+							<Sparkles
+								size={19}
+								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+								strokeWidth={2.1}
+							/>
+						</View>
+						<View className="min-w-0 flex-1">
+							<Text className="font-poppins font-semibold text-body-3 text-text">
+								Dayova plant mit dir weiter
+							</Text>
+							<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
+								Nach deinem Abschluss passt Dayova die Vorschau an und plant den
+								nächsten Termin.
+							</Text>
+						</View>
+					</View>
+
+					<View className="h-px bg-primary/15" />
+
+					<View className="flex-row items-center gap-3">
+						<View className="h-9 w-9 items-center justify-center rounded-[14px] bg-card">
+							<GraduationCap
+								size={18}
+								color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+								strokeWidth={2.1}
+							/>
+						</View>
+						<View className="min-w-0 flex-1">
+							<Text className="font-poppins font-semibold text-body-5 text-primary">
+								Prüfung
+							</Text>
+							<Text
+								className="font-poppins text-body-4 text-text"
+								numberOfLines={1}
+							>
+								{examDateLabel}
+							</Text>
+						</View>
+						{examCountdownLabel ? (
+							<View className="shrink-0 rounded-full bg-card px-3 py-2">
+								<Text className="font-poppins font-semibold text-body-5 text-primary">
+									{examCountdownLabel}
+								</Text>
+							</View>
+						) : null}
+					</View>
+				</View>
+			) : null}
 		</View>
 	);
 }
@@ -706,6 +837,7 @@ function LearningPath({
 export default function LearningPlanSessionsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const today = useCurrentLocalDay();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuthSession();
@@ -714,27 +846,15 @@ export default function LearningPlanSessionsScreen() {
 		api.learningPlanAi.ensureSessionContent,
 	);
 	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
-	const preparingProvisionalSessionIdRef =
-		useRef<Id<"learningPlanSessions"> | null>(null);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;
-	const generationPolicy = useQuery(
-		api.learningPlanAiUsage.getPlanGenerationPolicy,
-		user && isConvexAuthenticated && planId
-			? { learningPlanId: planId }
-			: "skip",
-	);
 	const [selectedSessionId, setSelectedSessionId] =
 		useState<Id<"learningPlanSessions"> | null>(null);
 	const defaultSession = snapshot
 		? getDefaultLearningPlanSession(snapshot.sessions)
 		: null;
-	const provisionalSession =
-		snapshot?.sessions.find(
-			(session) => session.planningStatus === "provisional",
-		) ?? null;
 	const selectedSession =
 		snapshot?.sessions.find((session) => session.id === selectedSessionId) ??
 		defaultSession;
@@ -778,39 +898,6 @@ export default function LearningPlanSessionsScreen() {
 				}
 			});
 	}, [defaultSession, ensureSessionContent]);
-
-	useEffect(() => {
-		if (
-			!provisionalSession ||
-			generationPolicy?.speculativeGenerationAllowed !== true ||
-			defaultSession?.contentGenerationStatus !== "ready" ||
-			provisionalSession.contentGenerationStatus === "ready" ||
-			provisionalSession.contentGenerationStatus === "generating" ||
-			provisionalSession.contentGenerationStatus === "failed" ||
-			preparingProvisionalSessionIdRef.current === provisionalSession.id
-		) {
-			return;
-		}
-
-		preparingProvisionalSessionIdRef.current = provisionalSession.id;
-		void ensureSessionContent({ sessionId: provisionalSession.id })
-			.catch(() => {
-				// Speculative preparation is best-effort. The promoted session owns
-				// its visible retry state if this background attempt cannot finish.
-			})
-			.finally(() => {
-				if (
-					preparingProvisionalSessionIdRef.current === provisionalSession.id
-				) {
-					preparingProvisionalSessionIdRef.current = null;
-				}
-			});
-	}, [
-		defaultSession?.contentGenerationStatus,
-		ensureSessionContent,
-		generationPolicy?.speculativeGenerationAllowed,
-		provisionalSession,
-	]);
 
 	const goBack = () => {
 		dismissToOrReplace(router, "/learning-plans");
@@ -881,8 +968,16 @@ export default function LearningPlanSessionsScreen() {
 					<View />
 				) : selectedSession ? (
 					<LearningPath
+						examCountdownLabel={getExamCountdownLabel(
+							snapshot.plan.examDateKey,
+							today,
+						)}
+						examDateLabel={snapshot.plan.examDateLabel}
 						selectedSessionId={selectedSession.id}
 						sessions={snapshot.sessions}
+						showsAdaptiveContinuation={
+							snapshot.plan.rollingPlanEnabled === true
+						}
 						onSelectSession={(session) => setSelectedSessionId(session.id)}
 					/>
 				) : (
