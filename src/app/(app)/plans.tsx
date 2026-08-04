@@ -105,14 +105,16 @@ export default function PlansScreen() {
 				</View>
 
 				<View className="mt-9 gap-5">
-					{learningPlans?.map((plan) => (
-						<LearningPlanCard
-							key={plan.id}
-							subject={plan.subject}
-							examTypeLabel={plan.examTypeLabel}
-							progressPercent={plan.progressPercent}
-						/>
-					)) ?? null}
+					{learningPlans
+						?.filter((plan) => plan.status === "accepted")
+						.map((plan) => (
+							<LearningPlanCard
+								key={plan.id}
+								subject={plan.subject}
+								examTypeLabel={plan.examTypeLabel}
+								progressPercent={plan.progressPercent}
+							/>
+						)) ?? null}
 				</View>
 			</ScreenScroll>
 		</Screen>
