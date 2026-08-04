@@ -731,9 +731,7 @@ export const listOverview = query({
 			)
 			.order("desc")
 			.take(50);
-		const plans = [...acceptedPlans, ...creationPlans].sort(
-			(left, right) => right.updatedAt - left.updatedAt,
-		);
+		const plans = [...creationPlans, ...acceptedPlans];
 
 		const overviews = [];
 		for (const plan of plans) {
