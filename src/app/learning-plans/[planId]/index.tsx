@@ -65,7 +65,6 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { dismissToOrReplace } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
-import { cn } from "~/lib/utils";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
@@ -100,18 +99,6 @@ const LEARNING_PATH_ICON_COMPONENT = {
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
 const SESSION_PREVIEW_TRANSITION_DURATION_MS = 160;
-const PATH_NODE_LABEL_WIDTH = 116;
-
-const pathDateFormatter = new Intl.DateTimeFormat("de-DE", {
-	day: "numeric",
-	month: "short",
-});
-
-const formatPathDateLabel = (session: PlanSession) => {
-	const date = parseDayKey(session.dateKey);
-	const dateLabel = date ? pathDateFormatter.format(date) : session.dateLabel;
-	return `${dateLabel} · ${session.startTime}`;
-};
 
 export const getExamCountdownLabel = (examDateKey: string, today: Date) => {
 	const examDate = parseDayKey(examDateKey);
@@ -335,6 +322,15 @@ const getFigmaSegmentPath = (index: number) => {
 	}
 
 	return `M 56 ${348 + y} V ${370 + y} Q 56 ${410 + y} 96 ${410 + y} H 139`;
+};
+
+const getFigmaSegmentEndY = (index: number) => {
+	const segmentIndex = index % FIGMA_REPEATING_NODE_FRAMES.length;
+	const cycle = Math.floor(index / FIGMA_REPEATING_NODE_FRAMES.length);
+	const cycleOffset = cycle * FIGMA_PATH_CYCLE_HEIGHT;
+	const endY = [102, 234, 293, 410][segmentIndex] ?? 410;
+
+	return endY + cycleOffset;
 };
 
 const getFigmaPathHeight = (sessionCount: number) => {
@@ -658,81 +654,6 @@ function PathNode({
 	);
 }
 
-const PATH_NODE_VISUAL_LABEL: Record<LearningPathNodeState, string> = {
-	completed: "Erledigt",
-	current: "Als Nächstes",
-	locked: "Vorschau",
-};
-
-function PathNodeLabel({
-	frame,
-	session,
-	state,
-}: {
-	frame: PathNodeFrame;
-	session: PlanSession;
-	state: LearningPathNodeState;
-}) {
-	const nodeCenterX = frame.left + frame.width / 2;
-	const appearsOnLeft = nodeCenterX > FIGMA_PATH_WIDTH / 2;
-	const label =
-		state === "locked" && session.planningStatus !== "provisional"
-			? "Geplant"
-			: PATH_NODE_VISUAL_LABEL[state];
-	// The labels follow the fixed path artwork geometry, which is not expressible
-	// through static NativeWind positioning utilities.
-	const position = {
-		left: appearsOnLeft
-			? frame.left - PATH_NODE_LABEL_WIDTH - 8
-			: frame.left + frame.width + 8,
-		top: frame.top + Math.max((frame.height - 46) / 2, 0),
-		width: PATH_NODE_LABEL_WIDTH,
-	} satisfies ViewStyle;
-
-	return (
-		<View
-			accessible={false}
-			accessibilityElementsHidden
-			importantForAccessibility="no-hide-descendants"
-			pointerEvents="none"
-			className={cn(
-				"absolute gap-1",
-				appearsOnLeft ? "items-end" : "items-start",
-			)}
-			style={position}
-		>
-			<View
-				className={cn(
-					"rounded-full px-3 py-1.5",
-					state === "completed" && "bg-success-subtle",
-					state === "current" && "bg-system-subtle",
-					state === "locked" && "border border-border bg-card",
-				)}
-			>
-				<Text
-					className={cn(
-						"font-poppins font-semibold text-body-5",
-						state === "completed" && "text-success",
-						state === "current" && "text-primary",
-						state === "locked" && "text-secondary-text",
-					)}
-				>
-					{label}
-				</Text>
-			</View>
-			<Text
-				className={cn(
-					"font-poppins text-body-5 text-secondary-text",
-					appearsOnLeft ? "text-right" : "text-left",
-				)}
-				numberOfLines={1}
-			>
-				{formatPathDateLabel(session)}
-			</Text>
-		</View>
-	);
-}
-
 export function LearningPath({
 	examCountdownLabel,
 	examDateLabel,
@@ -750,13 +671,9 @@ export function LearningPath({
 }) {
 	const currentIndex = getCommittedSessionIndex(sessions);
 	const activeSegmentLimit = getActiveSegmentLimit(sessions);
-	const lastSessionFrame = getFigmaNodeFrame(Math.max(sessions.length - 1, 0));
-	const continuationTop = lastSessionFrame.top + lastSessionFrame.height + 64;
-	const continuationAnchorX = 52;
-	const continuationAnchorY = continuationTop + 36;
-	const continuationStartX = lastSessionFrame.left + lastSessionFrame.width / 2;
-	const continuationStartY = lastSessionFrame.top + lastSessionFrame.height;
-	const continuationPath = `M ${continuationStartX} ${continuationStartY} C ${continuationStartX} ${continuationStartY + 48}, ${continuationAnchorX} ${continuationAnchorY - 48}, ${continuationAnchorX} ${continuationAnchorY}`;
+	const continuationSegmentIndex = Math.max(sessions.length - 1, 0);
+	const continuationPath = getFigmaSegmentPath(continuationSegmentIndex);
+	const continuationTop = getFigmaSegmentEndY(continuationSegmentIndex) + 16;
 	const basePathHeight = getFigmaPathHeight(sessions.length);
 	const pathHeight = showsAdaptiveContinuation
 		? Math.max(basePathHeight, continuationTop + 220)
@@ -809,30 +726,25 @@ export function LearningPath({
 						stroke={DAYOVA_DESIGN_SYSTEM.colors.primary}
 						strokeDasharray="7 9"
 						strokeLinecap="round"
+						strokeLinejoin="round"
 						strokeWidth={4}
+						testID="adaptive-continuation-path"
 					/>
 				) : null}
 			</Svg>
 
 			{sessions.map((session, index) => {
 				const state = getPathNodeState(session, index, currentIndex);
-				const frame = getFigmaNodeFrame(index);
 
 				return (
-					<View
+					<PathNode
 						key={session.id}
-						pointerEvents="box-none"
-						className="absolute inset-0"
-					>
-						<PathNode
-							frame={frame}
-							selected={session.id === selectedSessionId}
-							session={session}
-							state={state}
-							onPress={() => onSelectSession(session)}
-						/>
-						<PathNodeLabel frame={frame} session={session} state={state} />
-					</View>
+						frame={getFigmaNodeFrame(index)}
+						selected={session.id === selectedSessionId}
+						session={session}
+						state={state}
+						onPress={() => onSelectSession(session)}
+					/>
 				);
 			})}
 
@@ -840,8 +752,11 @@ export function LearningPath({
 				<View
 					accessible
 					accessibilityLabel={`Dayova plant mit dir weiter. Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin. Prüfung am ${examDateLabel}${examCountdownLabel ? `, ${examCountdownLabel}` : ""}.`}
-					className="absolute right-2 left-2 gap-4 rounded-info border border-primary/20 bg-system-subtle px-4 py-4"
-					style={{ top: continuationTop }}
+					className="absolute right-2 left-2 gap-4 overflow-hidden rounded-card border border-primary/20 bg-system-subtle px-4 py-4"
+					// The card is positioned against the generated path geometry; the
+					// continuous curve has no NativeWind utility.
+					style={{ top: continuationTop, borderCurve: "continuous" }}
+					testID="adaptive-continuation-card"
 				>
 					<View className="flex-row items-start gap-3">
 						<View className="h-10 w-10 shrink-0 items-center justify-center rounded-[16px] bg-primary">
