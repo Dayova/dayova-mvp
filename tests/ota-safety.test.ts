@@ -447,4 +447,29 @@ describe("production release configuration", () => {
 		expect(easConfig.cli.requireCommit).toBe(true);
 		expect(easConfig.build.production.env.APP_VARIANT).toBe("production");
 	});
+
+	it("honors the explicit Watchman opt-in for local release exports", () => {
+		const metroConfigPath = fileURLToPath(
+			new URL("../metro.config.js", import.meta.url),
+		);
+		const useWatchman = execFileSync(
+			process.execPath,
+			[
+				"-e",
+				`const config = require(${JSON.stringify(metroConfigPath)}); process.stdout.write(String(config.resolver.useWatchman));`,
+			],
+			{
+				cwd: projectRoot,
+				encoding: "utf8",
+				env: {
+					...process.env,
+					APP_VARIANT: "development",
+					DAYOVA_METRO_USE_WATCHMAN: "true",
+					NODE_ENV: "test",
+				},
+			},
+		).trim();
+
+		expect(useWatchman.split(/\r?\n/).at(-1)).toBe("true");
+	});
 });

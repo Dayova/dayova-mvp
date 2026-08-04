@@ -74,6 +74,16 @@ pnpm exec cross-env \
   node scripts/ota-safety.mjs
 ```
 
+On macOS, a large cold export may exceed the native filesystem watcher's file
+limit. Install Watchman and opt into it for that one export or local update
+publish without changing EAS worker behavior. If an all-platform export still
+exceeds the process limit, export or publish iOS and Android sequentially:
+
+```sh
+DAYOVA_METRO_USE_WATCHMAN=true pnpm exec expo export --platform ios
+DAYOVA_METRO_USE_WATCHMAN=true pnpm exec expo export --platform android
+```
+
 ## Staging, promotion, and rollback
 
 Publish the candidate to a branch that is not connected to the production
