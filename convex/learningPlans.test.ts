@@ -627,6 +627,7 @@ test("list overview keeps an unfinished creation visible alongside fifty accepte
 				updatedAt: index,
 			});
 		}
+		await ctx.db.patch("learningPlans", creationPlanId, { updatedAt: -1 });
 	});
 
 	const overviews = await t.query(api.learningPlans.listOverview, {});
@@ -638,6 +639,7 @@ test("list overview keeps an unfinished creation visible alongside fifty accepte
 			status: "questionsReady",
 		}),
 	);
+	expect(overviews[0]?.id).toBe(creationPlanId);
 	expect(
 		overviews.filter((overview) => overview.status === "accepted"),
 	).toHaveLength(50);
