@@ -1066,7 +1066,7 @@ export const listOverview = query({
 	args: {},
 	handler: async (ctx) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
-		const plans = await ctx.db
+		const acceptedPlans = await ctx.db
 			.query("learningPlans")
 			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
 				q
@@ -1075,6 +1075,29 @@ export const listOverview = query({
 			)
 			.order("desc")
 			.take(50);
+		const draftPlans = await ctx.db
+			.query("learningPlans")
+			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("status", "draft"),
+			)
+			.order("desc")
+			.take(50);
+		const materiallessDraftPlans: typeof draftPlans = [];
+		for (const plan of draftPlans) {
+			const schoolDocument = await ctx.db
+				.query("learningPlanDocuments")
+				.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", plan._id))
+				.filter((q) => q.neq(q.field("sourceKind"), "external"))
+				.first();
+			if (!schoolDocument) {
+				materiallessDraftPlans.push(plan);
+			}
+		}
+		const plans = [...acceptedPlans, ...materiallessDraftPlans]
+			.sort((left, right) => right.updatedAt - left.updatedAt)
+			.slice(0, 50);
 
 		const overviews = [];
 		for (const plan of plans) {
@@ -1135,6 +1158,7 @@ export const listOverview = query({
 				subject: plan.subject,
 				examTypeLabel: plan.examTypeLabel,
 				status: plan.status,
+				needsSchoolMaterial: plan.status === "draft",
 				progressPercent,
 				completedCount,
 				sessionCount: sessions.length,
