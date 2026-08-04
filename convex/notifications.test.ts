@@ -2,6 +2,10 @@
 
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
+import {
+	buildLocalNotificationPlan,
+	buildLocalNotificationRegistrationInput,
+} from "../src/lib/notification-planner";
 import { api } from "./_generated/api";
 import schema from "./schema";
 
@@ -10,6 +14,47 @@ const modules = import.meta.glob("./**/*.ts");
 const user = {
 	tokenIdentifier: "test:user",
 };
+
+test("local notification registration accepts plans containing timetable lessons", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const timetableId = await t.mutation(api.timetables.createDraft, {});
+	await t.mutation(api.timetables.saveAndActivate, {
+		timetableId,
+		lessons: [
+			{
+				dayOfWeek: 1,
+				subject: "Mathematik",
+				startTime: "08:00",
+				endTime: "08:45",
+			},
+		],
+	});
+	const entriesByDay = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-07-27"],
+	});
+	const plan = buildLocalNotificationPlan({
+		now: new Date(2026, 6, 27, 7, 0),
+		preferences: {
+			systemNotificationsEnabled: true,
+			dailyBriefingEnabled: true,
+			dailyBriefingTime: "07:30",
+			beforeExamEnabled: true,
+			beforeLearningTimeEnabled: true,
+			beforeHomeworkWorkEnabled: true,
+			beforeHomeworkDueEnabled: true,
+			reminderOffsetMinutes: 15,
+			forgottenEventEnabled: true,
+		},
+		entriesByDay,
+	});
+
+	await expect(
+		t.mutation(
+			api.notifications.registerLocalNotificationPlan,
+			buildLocalNotificationRegistrationInput(plan),
+		),
+	).resolves.toHaveLength(1);
+});
 
 test("notification preferences default to the MVP reminder settings", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);

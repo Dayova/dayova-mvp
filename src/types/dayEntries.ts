@@ -6,6 +6,7 @@ import type {
 
 export type DayEntry = {
 	id: Id<"dayEntries"> | Id<"learningPlanSessions"> | Id<"timetableLessons">;
+	relatedDayEntryId?: Id<"dayEntries">;
 	source?: "timetable";
 	title?: unknown;
 	time?: string;

@@ -45,6 +45,7 @@ type OptionalEntryFields = {
 
 type PublicDayEntry = OptionalEntryFields & {
 	id: Id<"dayEntries"> | Id<"learningPlanSessions"> | Id<"timetableLessons">;
+	relatedDayEntryId?: Id<"dayEntries">;
 	source?: "timetable";
 	title: string;
 };
@@ -90,6 +91,7 @@ const optionalEntryFields = (
 
 const publicEntry = (entry: Doc<"dayEntries">): PublicDayEntry => ({
 	id: entry._id,
+	relatedDayEntryId: entry._id,
 	title: entry.title,
 	...optionalEntryFields({
 		...entry,
