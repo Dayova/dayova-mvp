@@ -1,3 +1,4 @@
+import type { Id } from "#convex/_generated/dataModel";
 import { parseDayKey } from "./day-key";
 
 export type NotificationPlanningPreferences = {
@@ -13,7 +14,7 @@ export type NotificationPlanningPreferences = {
 };
 
 export type NotificationPlanningEntry = {
-	id: string;
+	relatedDayEntryId?: Id<"dayEntries">;
 	title?: unknown;
 	time?: string;
 	kind?: string;
@@ -30,7 +31,7 @@ export type PlannedLocalNotification = {
 	title: string;
 	body: string;
 	triggerAt: Date;
-	relatedEntryId?: string;
+	relatedDayEntryId?: Id<"dayEntries">;
 };
 
 const TIME_PATTERN = /^(\d{1,2}):(\d{2})$/;
@@ -150,6 +151,8 @@ export const buildLocalNotificationPlan = ({
 
 		for (const entry of entries) {
 			if (entry.completed === true) continue;
+			const relatedDayEntryId = entry.relatedDayEntryId;
+			if (!relatedDayEntryId) continue;
 			const startMinutes = isExamEntry(entry)
 				? null
 				: parseTimeToMinutes(entry.time);
@@ -163,13 +166,13 @@ export const buildLocalNotificationPlan = ({
 				if (beforeDate && beforeDate.getTime() > now.getTime()) {
 					const eventTitle = getEventTitle(entry);
 					plan.push({
-						key: `before:${entry.id}`,
+						key: `before:${relatedDayEntryId}`,
 						type: "beforeEvent",
 						category: getCategory(entry),
 						title: eventTitle,
 						body: `Deine ${getEntryTitle(entry)} startet in ${preferences.reminderOffsetMinutes} Minuten.`,
 						triggerAt: beforeDate,
-						relatedEntryId: entry.id,
+						relatedDayEntryId,
 					});
 				}
 			}
@@ -186,13 +189,13 @@ export const buildLocalNotificationPlan = ({
 				if (forgottenDate && forgottenDate.getTime() > now.getTime()) {
 					const eventTitle = getEventTitle(entry);
 					plan.push({
-						key: `forgotten:${entry.id}`,
+						key: `forgotten:${relatedDayEntryId}`,
 						type: "forgottenEvent",
 						category: getCategory(entry),
 						title: `${eventTitle} nicht vergessen`,
 						body: `Du kannst deine ${getEntryTitle(entry)} noch als erledigt markieren.`,
 						triggerAt: forgottenDate,
-						relatedEntryId: entry.id,
+						relatedDayEntryId,
 					});
 				}
 			}
@@ -205,3 +208,19 @@ export const buildLocalNotificationPlan = ({
 			left.key.localeCompare(right.key),
 	);
 };
+
+export const buildLocalNotificationRegistrationInput = (
+	plan: PlannedLocalNotification[],
+) => ({
+	notifications: plan.map((notification) => ({
+		eventKey: notification.key,
+		category: notification.category,
+		type: notification.type,
+		title: notification.title,
+		body: notification.body,
+		...(notification.relatedDayEntryId
+			? { relatedDayEntryId: notification.relatedDayEntryId }
+			: {}),
+		scheduledFor: notification.triggerAt.toISOString(),
+	})),
+});
