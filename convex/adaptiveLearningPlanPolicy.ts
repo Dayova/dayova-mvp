@@ -211,6 +211,60 @@ export const selectNextAdaptiveLearningTarget = (args: {
 	};
 };
 
+export const selectAdaptiveMaintenanceTarget = (args: {
+	topics: LearningTopic[];
+	history?: AdaptiveTargetHistory[];
+	excludeTargetKeys?: string[];
+}): AdaptiveLearningTarget | null => {
+	const excludedTargetKeys = new Set(args.excludeTargetKeys ?? []);
+	const latestTargetedAtByKey = new Map<string, number>();
+	for (const entry of args.history ?? []) {
+		const key = `${entry.topicId}:${entry.dimension}`;
+		latestTargetedAtByKey.set(
+			key,
+			Math.max(latestTargetedAtByKey.get(key) ?? 0, entry.targetedAt),
+		);
+	}
+	const candidates = args.topics.flatMap((topic) => {
+		const requiredDimensions = topic.requiredEvidenceDimensions?.length
+			? evidenceDimensions.filter((dimension) =>
+					topic.requiredEvidenceDimensions?.includes(dimension),
+				)
+			: evidenceDimensions;
+		return requiredDimensions.flatMap((dimension) => {
+			const key = `${topic.id}:${dimension}`;
+			return excludedTargetKeys.has(key)
+				? []
+				: [
+						{
+							topic,
+							dimension,
+							lastTargetedAt: latestTargetedAtByKey.get(key) ?? 0,
+						},
+					];
+		});
+	});
+	candidates.sort(
+		(left, right) =>
+			left.lastTargetedAt - right.lastTargetedAt ||
+			priorityRank[left.topic.priority] - priorityRank[right.topic.priority] ||
+			dimensionRank[right.dimension] - dimensionRank[left.dimension] ||
+			left.topic.title.localeCompare(right.topic.title, "de"),
+	);
+	const selected = candidates[0];
+	if (!selected) return null;
+	return {
+		topicId: selected.topic.id,
+		topicTitle: selected.topic.title,
+		learningGoal: selected.topic.learningGoal,
+		dimension: selected.dimension,
+		phase: phaseForDimension[selected.dimension],
+		status: "developing",
+		needsControlCheck: false,
+		reason: `Warum jetzt: „${selected.topic.title}“ wird bis zur Prüfung mit einer kurzen Wiederholung sicher gehalten.`,
+	};
+};
+
 export const adaptiveSessionCopy = (target: AdaptiveLearningTarget) => {
 	if (target.dimension === "understanding") {
 		return {

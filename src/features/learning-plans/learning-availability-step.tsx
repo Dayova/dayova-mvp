@@ -36,19 +36,19 @@ export function LearningAvailabilityStep({
 					{isLoading
 						? "Wir prüfen deine Lernzeiten"
 						: hasUsableLearningTime
-							? "Lernzeit gefunden"
+							? "Lernzeit für deinen Lernweg gefunden"
 							: isOccupied
 								? "Deine Lernzeiten sind schon belegt"
-								: "Noch keine freie Lernzeit"}
+								: "Noch nicht genug Lernzeit"}
 				</Text>
 				<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
 					{isLoading
 						? "Das dauert nur einen Moment."
 						: hasUsableLearningTime
-							? `Dayova kann deinen Lernweg vor dem ${examDateLabel} in deine gespeicherten Zeiten einplanen.`
+							? `Dayova kann deine nächsten Lernschritte vor dem ${examDateLabel} in freie gespeicherte Zeiten einplanen.`
 							: isOccupied
-								? `Bis zum ${examDateLabel} ist kein freies Zeitfenster von mindestens 10 Minuten mehr verfügbar.`
-								: `Lege mindestens ein Zeitfenster vor dem ${examDateLabel} fest. Dayova plant später nur innerhalb dieser Zeiten.`}
+								? `Bis zum ${examDateLabel} sind nicht genug freie Lernzeiten für die nächsten zwei Schritte verfügbar.`
+								: `Lege vor dem ${examDateLabel} mindestens zwei kurze Lernblöcke fest. Deine Prüfung kannst du trotzdem ohne Lernplan speichern.`}
 				</Text>
 				{!isLoading && !hasUsableLearningTime ? (
 					<Text className="mt-4 font-poppins text-body-4 text-secondary-text">

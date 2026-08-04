@@ -36,9 +36,11 @@ import {
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
+import { learningPlanResumePath } from "~/features/learning-plans/creation-routes";
+import { getRollingLearningWindowLabel } from "~/features/learning-plans/rolling-learning-window";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
@@ -65,6 +67,7 @@ type LearningPlanOverview = {
 	progressPercent: number;
 	completedCount?: number;
 	sessionCount?: number;
+	upcomingSessionCount?: number;
 	examDateKey?: string;
 	examDateLabel?: string;
 	currentSession?: {
@@ -76,6 +79,7 @@ type LearningPlanOverview = {
 		startTime: string;
 		durationMinutes: number;
 		completed: boolean;
+		sessionPurpose?: "diagnostic" | "learning";
 	} | null;
 };
 
@@ -96,15 +100,8 @@ type DeleteTarget =
 	| { kind: "plan"; item: LearningPlanOverview }
 	| { kind: "homework"; item: HomeworkOverview };
 
-const getPlanHref = (plan: LearningPlanOverview) => {
-	if (plan.status === "draft") {
-		return `${ROUTES.createLearningPlan}?learningPlanId=${encodeURIComponent(plan.id)}` as const;
-	}
-	if (plan.status === "questionsReady") {
-		return `/learning-plans/${plan.id}/quiz/0` as const;
-	}
-	return `/learning-plans/${plan.id}` as const;
-};
+const getPlanHref = (plan: LearningPlanOverview) =>
+	learningPlanResumePath(plan.id, plan.status);
 
 const formatDateFromKey = (dayKey: string) => {
 	const date = parseDayKey(dayKey);
@@ -423,6 +420,12 @@ function LearningPlanCard({
 }) {
 	const { colors } = useDayovaTheme();
 	const progress = Math.max(0, Math.min(plan.progressPercent, 100));
+	const rollingWindowLabel = getRollingLearningWindowLabel({
+		completedCount: plan.completedCount ?? 0,
+		upcomingCount:
+			plan.upcomingSessionCount ??
+			Math.max(0, (plan.sessionCount ?? 0) - (plan.completedCount ?? 0)),
+	});
 	const status = getStatus(plan, todayKey);
 	const remainingDays = Math.max(
 		0,
@@ -431,9 +434,11 @@ function LearningPlanCard({
 			: 0,
 	);
 	const currentTitle =
-		plan.currentSession?.goal ||
-		plan.currentSession?.title ||
-		plan.examTypeLabel;
+		plan.currentSession?.sessionPurpose === "diagnostic"
+			? "Wissenscheck · 5–10 Fragen"
+			: plan.currentSession?.goal ||
+				plan.currentSession?.title ||
+				plan.examTypeLabel;
 	const [isActionRailVisible, setIsActionRailVisible] = useState(false);
 	const translateX = useSharedValue(0);
 	const gestureStartX = useSharedValue(0);
@@ -513,7 +518,7 @@ function LearningPlanCard({
 				<Animated.View style={cardAnimatedStyle}>
 					<NotchedActionCard
 						cardAccessibilityHint="Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
-						cardAccessibilityLabel={`${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`}
+						cardAccessibilityLabel={`${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${rollingWindowLabel}, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`}
 						actionIcon={
 							<ArrowUpRight
 								size={24}
@@ -563,8 +568,8 @@ function LearningPlanCard({
 
 						<View className="mt-4 w-full max-w-[300px] gap-1">
 							<View className="flex-row items-center">
-								<Text className="w-[172px] font-poppins text-body-4 text-secondary-text">
-									{`${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage`}
+								<Text className="w-[198px] font-poppins text-body-5 text-secondary-text">
+									{rollingWindowLabel}
 								</Text>
 								<View className="flex-row items-center gap-1">
 									<ClipboardEdit

@@ -22,6 +22,7 @@ import {
 } from "./learningSessionContentConstraints";
 import {
 	getSessionLearningTopics,
+	learningEvidenceDimensionValidator,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
 import { type TheoryContent, theoryContentValidator } from "./theoryContent";
@@ -48,6 +49,7 @@ type GeneratedItem = {
 	evaluationKeywords: string[];
 	learningBlockIndex?: number;
 	topicId?: string;
+	evidenceDimension?: "understanding" | "problemSolving" | "independent";
 	questionAngle?: string;
 	coverageKey?: string;
 	estimatedSeconds?: number;
@@ -80,6 +82,7 @@ const generatedSessionContentItemValidator = v.object({
 	evaluationKeywords: v.array(v.string()),
 	learningBlockIndex: v.optional(v.number()),
 	topicId: v.optional(v.string()),
+	evidenceDimension: v.optional(learningEvidenceDimensionValidator),
 	questionAngle: v.optional(v.string()),
 	coverageKey: v.optional(v.string()),
 	estimatedSeconds: v.optional(v.number()),
@@ -123,6 +126,14 @@ const getOwnedPlan = async (
 const getSessionExecutionStatus = (session: Doc<"learningPlanSessions">) =>
 	session.executionStatus ?? (session.completed ? "completed" : "notStarted");
 
+const assertSessionIsCommitted = (session: Doc<"learningPlanSessions">) => {
+	if (session.planningStatus === "provisional") {
+		throwUserFacingError(
+			"Dieser Lernblock ist nur eine Vorschau und kann sich noch ändern.",
+		);
+	}
+};
+
 const publicItem = (item: Doc<"learningSessionContentItems">) => ({
 	id: item._id,
 	sessionId: item.sessionId,
@@ -138,6 +149,7 @@ const publicItem = (item: Doc<"learningSessionContentItems">) => ({
 	choices: item.choices ?? [],
 	learningBlockIndex: item.learningBlockIndex ?? 0,
 	topicId: item.topicId ?? item.title,
+	evidenceDimension: item.evidenceDimension,
 	questionAngle: item.questionAngle ?? "legacy",
 	coverageKey: item.coverageKey ?? `${item._id}`,
 	estimatedSeconds: item.estimatedSeconds ?? 40,
@@ -556,6 +568,7 @@ const insertGeneratedItemsForSession = async (
 			),
 			learningBlockIndex: item.learningBlockIndex,
 			topicId: item.topicId,
+			evidenceDimension: item.evidenceDimension,
 			questionAngle: item.questionAngle,
 			coverageKey: item.coverageKey,
 			estimatedSeconds: item.estimatedSeconds,
@@ -571,8 +584,14 @@ const ensureItemsForSession = async (
 	session: Doc<"learningPlanSessions">,
 	plan: Doc<"learningPlans">,
 ) => {
+	assertSessionIsCommitted(session);
 	const existingItems = await listItems(ctx, session._id);
 	if (existingItems.length > 0) return existingItems;
+	if (session.sessionPurpose === "diagnostic") {
+		throwUserFacingError(
+			"Die Fragen des Wissenschecks fehlen. Erstelle den Lernplan erneut.",
+		);
+	}
 
 	await insertGeneratedItemsForSession(
 		ctx,
@@ -763,6 +782,7 @@ export const getSessionGenerationContext = internalQuery({
 			args.sessionId,
 			ownerTokenIdentifier,
 		);
+		assertSessionIsCommitted(session);
 		const plan = await getOwnedPlan(
 			ctx,
 			session.learningPlanId,
@@ -798,31 +818,79 @@ export const getSessionGenerationContext = internalQuery({
 		const priorTheoryCards: Array<{ front: string; back: string }> = [];
 		const priorSessionItems: Array<{ prompt: string; coverageKey?: string }> =
 			[];
+		const priorSessionEvidence: Array<{
+			sessionTitle: string;
+			question: string;
+			response: string;
+			rating: AnswerRating;
+			feedback: string;
+			idealAnswer: string;
+			topicId?: string;
+			evidenceDimension?: "understanding" | "problemSolving" | "independent";
+		}> = [];
 		const priorCoverageKeys: string[] = [];
-		for (const planSession of planSessions) {
-			if (args.includePriorContent === false) break;
+		for (const planSession of planSessions.slice().reverse()) {
 			if (planSession._id === session._id) continue;
 			const wasCompleted =
 				planSession.executionStatus === "completed" || planSession.completed;
 			if (planSession.sortOrder >= session.sortOrder && !wasCompleted) continue;
 
 			const items = await listItems(ctx, planSession._id);
-			for (const item of items) {
-				if (item.coverageKey && priorCoverageKeys.length < 2_000) {
-					priorCoverageKeys.push(item.coverageKey);
+			if (args.includePriorContent !== false) {
+				for (const item of items) {
+					if (item.coverageKey && priorCoverageKeys.length < 2_000) {
+						priorCoverageKeys.push(item.coverageKey);
+					}
+					if (priorSessionItems.length < 100) {
+						priorSessionItems.push({
+							prompt: item.prompt,
+							coverageKey: item.coverageKey,
+						});
+					}
+					if (item.kind === "learnCard" && priorTheoryCards.length < 24) {
+						priorTheoryCards.push({
+							front: item.front ?? item.prompt,
+							back: item.back ?? item.idealAnswer,
+						});
+					}
 				}
-				if (priorSessionItems.length < 100) {
-					priorSessionItems.push({
-						prompt: item.prompt,
-						coverageKey: item.coverageKey,
-					});
+			}
+			const itemById = new Map(items.map((item) => [item._id, item]));
+			const attempts = await ctx.db
+				.query("learningSessionAnswerAttempts")
+				.withIndex("by_sessionId_and_createdAt", (q) =>
+					q.eq("sessionId", planSession._id),
+				)
+				.order("desc")
+				.take(100);
+			const seenAttemptItemIds = new Set<Id<"learningSessionContentItems">>();
+			for (const attempt of attempts) {
+				if (
+					seenAttemptItemIds.has(attempt.itemId) ||
+					priorSessionEvidence.length >= 50
+				) {
+					continue;
 				}
-				if (item.kind === "learnCard" && priorTheoryCards.length < 24) {
-					priorTheoryCards.push({
-						front: item.front ?? item.prompt,
-						back: item.back ?? item.idealAnswer,
-					});
-				}
+				seenAttemptItemIds.add(attempt.itemId);
+				const item = itemById.get(attempt.itemId);
+				if (!item || item.kind === "learnCard") continue;
+				const selectedChoice = item.choices?.find(
+					(choice) => choice.id === attempt.selectedChoiceId,
+				)?.text;
+				priorSessionEvidence.push({
+					sessionTitle: planSession.title,
+					question: item.prompt,
+					response:
+						attempt.transcript ??
+						attempt.answerText ??
+						selectedChoice ??
+						"Keine Antwort",
+					rating: attempt.rating,
+					feedback: attempt.feedback,
+					idealAnswer: attempt.perfectAnswer,
+					topicId: item.topicId,
+					evidenceDimension: item.evidenceDimension,
+				});
 			}
 		}
 
@@ -831,6 +899,7 @@ export const getSessionGenerationContext = internalQuery({
 			session,
 			planSessions: planSessions.map((planSession) => ({
 				phase: planSession.phase,
+				sessionPurpose: planSession.sessionPurpose,
 				title: planSession.title,
 				goal: planSession.goal,
 				sortOrder: planSession.sortOrder,
@@ -842,6 +911,7 @@ export const getSessionGenerationContext = internalQuery({
 			learningTimes,
 			priorTheoryCards,
 			priorSessionItems,
+			priorSessionEvidence,
 			priorCoverageKeys,
 			existingItemCount: existingItems.length,
 			needsLegacyContentReplacement:
@@ -865,6 +935,7 @@ export const storeGeneratedSessionContent = internalMutation({
 			args.sessionId,
 			ownerTokenIdentifier,
 		);
+		assertSessionIsCommitted(session);
 		const plan = await getOwnedPlan(
 			ctx,
 			session.learningPlanId,
@@ -936,6 +1007,7 @@ export const ensureFallbackSessionContent = internalMutation({
 			args.sessionId,
 			ownerTokenIdentifier,
 		);
+		assertSessionIsCommitted(session);
 		const plan = await getOwnedPlan(
 			ctx,
 			session.learningPlanId,
@@ -963,6 +1035,7 @@ export const extendSessionContent = mutation({
 			args.sessionId,
 			ownerTokenIdentifier,
 		);
+		assertSessionIsCommitted(session);
 		const plan = await getOwnedPlan(
 			ctx,
 			session.learningPlanId,
@@ -1047,6 +1120,7 @@ export const ensureSessionContent = mutation({
 			args.sessionId,
 			ownerTokenIdentifier,
 		);
+		assertSessionIsCommitted(session);
 		const plan = await getOwnedPlan(
 			ctx,
 			session.learningPlanId,
@@ -1069,6 +1143,7 @@ export const getSessionContent = query({
 			args.sessionId,
 			ownerTokenIdentifier,
 		);
+		assertSessionIsCommitted(session);
 		const plan = await getOwnedPlan(
 			ctx,
 			session.learningPlanId,
@@ -1092,6 +1167,7 @@ export const getSessionContent = query({
 				id: session._id,
 				learningPlanId: session.learningPlanId,
 				phase: session.phase,
+				sessionPurpose: session.sessionPurpose,
 				title: session.title,
 				dateLabel: session.dateLabel,
 				startTime: session.startTime,
@@ -1129,6 +1205,12 @@ export const submitAnswer = mutation({
 		if (!item || item.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Aufgabe nicht gefunden.");
 		}
+		const session = await getOwnedSession(
+			ctx,
+			item.sessionId,
+			ownerTokenIdentifier,
+		);
+		assertSessionIsCommitted(session);
 
 		const visibleAnswer = compact(
 			args.transcript ?? args.answerText ?? args.selectedChoiceId ?? "",
@@ -1195,6 +1277,14 @@ export const finishSessionContent = mutation({
 		);
 		const items = await ensureItemsForSession(ctx, session, plan);
 		const attempts = await getLatestAttempts(ctx, items);
+		if (
+			session.sessionPurpose === "diagnostic" &&
+			items.some(
+				(item) => !attempts.some((attempt) => attempt.itemId === item._id),
+			)
+		) {
+			throwUserFacingError("Beantworte zuerst alle Fragen des Wissenschecks.");
+		}
 		const result = buildAnalysis(session, items, attempts);
 		const now = Date.now();
 		const attemptedItemIds = new Set(attempts.map((attempt) => attempt.itemId));
@@ -1258,6 +1348,7 @@ export const deferTheoryValidation = mutation({
 			args.sessionId,
 			ownerTokenIdentifier,
 		);
+		assertSessionIsCommitted(session);
 		if (session.phase !== "theory" || session.compositionVariant !== "split") {
 			throwUserFacingError(
 				"Für diesen Lernblock gibt es keine Wissensprüfung.",

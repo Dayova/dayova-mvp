@@ -21,6 +21,9 @@ const planQuestionValidator = v.object({
 	),
 	options: v.optional(v.array(v.string())),
 	correctAnswer: v.optional(v.string()),
+	idealAnswer: v.optional(v.string()),
+	explanation: v.optional(v.string()),
+	evidenceDimension: v.optional(learningEvidenceDimensionValidator),
 	evaluationKeywords: v.optional(v.array(v.string())),
 });
 
@@ -297,6 +300,7 @@ export default defineSchema({
 		ownerTokenIdentifier: v.string(),
 		dayKey: v.string(),
 		title: v.string(),
+		subject: v.optional(v.string()),
 		time: v.optional(v.string()),
 		kind: v.optional(v.string()),
 		notes: v.optional(v.string()),
@@ -396,6 +400,7 @@ export default defineSchema({
 			v.literal("accepted"),
 		),
 		knowledgeQuestions: v.optional(v.array(planQuestionValidator)),
+		diagnosticPlacement: v.optional(v.literal("firstSession")),
 		knowledgeAnswersJson: v.optional(v.string()),
 		sourceSummary: v.optional(v.string()),
 		topicMap: v.optional(v.array(learningTopicValidator)),
@@ -476,6 +481,9 @@ export default defineSchema({
 		startTime: v.string(),
 		durationMinutes: v.number(),
 		compositionVariant: v.optional(sessionCompositionVariantValidator),
+		sessionPurpose: v.optional(
+			v.union(v.literal("diagnostic"), v.literal("learning")),
+		),
 		goal: v.string(),
 		tasks: v.array(v.string()),
 		expectedOutcome: v.string(),
@@ -525,6 +533,7 @@ export default defineSchema({
 		evaluationKeywords: v.array(v.string()),
 		learningBlockIndex: v.optional(v.number()),
 		topicId: v.optional(v.string()),
+		evidenceDimension: v.optional(learningEvidenceDimensionValidator),
 		questionAngle: v.optional(v.string()),
 		coverageKey: v.optional(v.string()),
 		estimatedSeconds: v.optional(v.number()),

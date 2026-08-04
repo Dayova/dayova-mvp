@@ -110,6 +110,46 @@ describe("learning plan AI scheduling", () => {
 		).toBe(60);
 	});
 
+	test("splits one 20-minute window into the diagnostic and provisional slots", () => {
+		const result = __testOnlyLearningPlanAi.normalizeSessions(
+			"2026-06-05",
+			4,
+			[
+				{
+					phase: "practice",
+					title: germanText("Erster Lernschritt"),
+					dayOffsetBeforeExam: 2,
+					startTime: "17:00",
+					durationMinutes: 20,
+					goal: germanText("Prüfe und übe die wichtigsten Grundlagen."),
+					tasks: [germanText("Bearbeite eine kurze Aufgabe.")],
+					expectedOutcome: germanText("Der nächste Schwerpunkt ist klar."),
+				},
+			],
+			[{ dayOfWeek: 3, startTime: "17:00", endTime: "17:20" }],
+			[],
+			20,
+			[],
+			{
+				maxSessionMinutes: 20,
+				minimumSessionCount: 2,
+				topicReadiness: { secure: 1, developing: 0, unknown: 0 },
+				praxisSessionCount: 1,
+			},
+		);
+
+		expect(result.sessions).toHaveLength(2);
+		expect(
+			result.sessions.map((session) => ({
+				startTime: session.startTime,
+				durationMinutes: session.durationMinutes,
+			})),
+		).toEqual([
+			{ startTime: "17:00", durationMinutes: 10 },
+			{ startTime: "17:10", durationMinutes: 10 },
+		]);
+	});
+
 	test("aligns visible duration references when a Praxis session is shortened", () => {
 		const result = __testOnlyLearningPlanAi.normalizeSessions(
 			"2026-06-05",

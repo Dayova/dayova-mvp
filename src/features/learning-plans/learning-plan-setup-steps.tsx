@@ -1,8 +1,8 @@
 import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
-import { Globe, GraduationCap, Plus } from "~/components/ui/icon";
-import { ActionSurface } from "~/components/ui/surface";
+import { Globe, GraduationCap, Plus, Route2 } from "~/components/ui/icon";
+import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
@@ -14,26 +14,29 @@ type MaterialSourceKind = "school" | "external";
 function SetupContinueButton({
 	canContinue,
 	isBusy,
+	label = "Weiter",
 	onPress,
 }: {
 	canContinue: boolean;
 	isBusy: boolean;
+	label?: string;
 	onPress: () => void;
 }) {
 	return (
 		<Button
-			accessibilityLabel={isBusy ? "Weiter, wird geladen" : "Weiter"}
+			accessibilityLabel={isBusy ? `${label}, wird geladen` : label}
 			accessibilityLiveRegion={isBusy ? "polite" : undefined}
 			accessibilityState={{ busy: isBusy, disabled: !canContinue }}
 			disabled={!canContinue}
 			onPress={onPress}
 		>
-			{isBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text>Weiter</Text>}
+			{isBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text>{label}</Text>}
 		</Button>
 	);
 }
 
 export function MaterialUploadStep({
+	canUpload,
 	canContinue,
 	documents,
 	errorMessage,
@@ -41,8 +44,10 @@ export function MaterialUploadStep({
 	onContinue,
 	onOpenUpload,
 	onRemoveDocument,
+	onSkip,
 	openingUploadAction,
 }: {
+	canUpload: boolean;
 	canContinue: boolean;
 	documents: LearningPlanSnapshot["documents"];
 	errorMessage: string | null;
@@ -50,6 +55,7 @@ export function MaterialUploadStep({
 	onContinue: () => void;
 	onOpenUpload: (sourceKind: MaterialSourceKind) => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
+	onSkip: () => void;
 	openingUploadAction: PendingUploadAction | null;
 }) {
 	const schoolDocuments = documents.filter(
@@ -62,19 +68,37 @@ export function MaterialUploadStep({
 	return (
 		<View className="flex-1">
 			<Text className="font-poppins font-semibold text-body-1 text-text">
-				Gib Dayova deine Unterlagen
+				Lernmaterial hinzufügen
 			</Text>
 			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
-				Schulmaterial bestimmt den wahrscheinlichen Prüfungsstoff. Zusätzliche
-				Lernhilfen unterstützen später beim Verstehen und Üben.
+				Mit Unterlagen aus der Schule kann Dayova deinen Prüfungsstoff erkennen
+				und die ersten zwei Lerntermine vorbereiten.
 			</Text>
+
+			<Surface
+				className="mt-5 flex-row items-start gap-3 rounded-[24px] px-4 py-4"
+				variant="soft"
+			>
+				<View className="h-10 w-10 items-center justify-center rounded-[16px] bg-system-subtle">
+					<Route2 size={20} color="#00A0E6" strokeWidth={2.1} />
+				</View>
+				<View className="min-w-0 flex-1">
+					<Text className="font-poppins font-semibold text-body-3 text-text">
+						Ohne Material kein Lernplan
+					</Text>
+					<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
+						Deine Prüfung wird trotzdem gespeichert. Material kannst du später
+						jederzeit über die Prüfung hochladen.
+					</Text>
+				</View>
+			</Surface>
 
 			<View className="mt-7 gap-4">
 				<ActionSurface
 					accessibilityHint="Öffnet die Auswahl für Unterlagen deiner Schule oder Lehrkraft."
 					accessibilityLabel="Material von deiner Schule hinzufügen"
 					accessibilityRole="button"
-					disabled={!canContinue}
+					disabled={!canUpload}
 					onPress={() => onOpenUpload("school")}
 					className="min-h-[132px] flex-row items-center rounded-[32px] px-5 py-5"
 					variant="soft"
@@ -98,7 +122,7 @@ export function MaterialUploadStep({
 					accessibilityHint="Öffnet die Auswahl für zusätzliche externe Lernhilfen."
 					accessibilityLabel="Zusätzliche Lernhilfe hinzufügen"
 					accessibilityRole="button"
-					disabled={!canContinue}
+					disabled={!canUpload || schoolDocuments.length === 0}
 					onPress={() => onOpenUpload("external")}
 					className="min-h-[118px] flex-row items-center rounded-[32px] px-5 py-5"
 					variant="flat"
@@ -172,12 +196,23 @@ export function MaterialUploadStep({
 					{errorMessage}
 				</Text>
 			) : null}
-			<View className="mt-auto w-full pt-8">
+			<View className="mt-auto w-full gap-3 pt-8">
 				<SetupContinueButton
 					canContinue={canContinue}
 					isBusy={isBusy}
+					label="Mit Material weiter"
 					onPress={onContinue}
 				/>
+				{schoolDocuments.length === 0 ? (
+					<Button
+						accessibilityHint="Speichert die Prüfung ohne Lernplan. Material kann später hochgeladen werden."
+						variant="neutral"
+						disabled={!canUpload}
+						onPress={onSkip}
+					>
+						<Text>Ohne Lernplan abschließen</Text>
+					</Button>
+				) : null}
 			</View>
 		</View>
 	);
@@ -206,9 +241,8 @@ export function TeacherGuidanceStep({
 				Was hat deine Lehrkraft zur Arbeit gesagt?
 			</Text>
 			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
-				Schreibe nur auf, was ausdrücklich genannt wurde. Dayova leitet den
-				Prüfungsstoff anschließend aus diesem Hinweis und deinem Schulmaterial
-				ab.
+				Ergänze, was ausdrücklich genannt wurde. Dein hochgeladenes
+				Schulmaterial bleibt die Grundlage für den Prüfungsstoff.
 			</Text>
 			<Textarea
 				accessibilityLabel="Hinweis der Lehrkraft"
@@ -217,16 +251,11 @@ export function TeacherGuidanceStep({
 				onChangeText={onChangeTeacherGuidance}
 				placeholder="Zum Beispiel: Kapitel 3 und 4, keine Beweisaufgaben."
 			/>
-			{hasSchoolMaterial ? (
-				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-					Optional – dein hochgeladenes Schulmaterial reicht als Grundlage.
-				</Text>
-			) : (
-				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-					Ohne Schulmaterial brauchen wir hier mindestens einen konkreten
-					Hinweis deiner Lehrkraft.
-				</Text>
-			)}
+			<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
+				{hasSchoolMaterial
+					? "Optional – dein hochgeladenes Schulmaterial reicht als Grundlage."
+					: "Lade zuerst Schulmaterial hoch, bevor du einen Lernplan erstellst."}
+			</Text>
 			{errorMessage ? (
 				<Text
 					selectable
