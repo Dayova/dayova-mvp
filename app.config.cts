@@ -175,4 +175,4 @@ const config: ExpoConfig = {
 	},
 };
 
-export default config;
+module.exports = config;
