@@ -81,7 +81,7 @@ const getExpiredOfflineSnapshot = (
 });
 
 export function AccessProvider({ children }: { children: ReactNode }) {
-	const { user, isSessionLoading } = useAuthSession();
+	const { user, isSessionLoading, isConvexUserSynced } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const [now, setNow] = useState(Date.now);
 	const [queryNow, setQueryNow] = useState(Date.now);
@@ -94,7 +94,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	);
 	const activateMyTrial = useMutation(api.entitlements.activateMyTrial);
 	const syncMyEntitlement = useAction(api.revenueCat.syncMyEntitlement);
-	const canQuery = Boolean(user && isConvexAuthenticated);
+	const canQuery = Boolean(user && isConvexAuthenticated && isConvexUserSynced);
 	const serverAccess = useQuery(
 		api.entitlements.getMyAccess,
 		canQuery ? { now: queryNow } : "skip",

@@ -107,6 +107,7 @@ interface AuthSessionContextType {
 	user: AuthUser | null;
 	isSessionLoading: boolean;
 	isConvexAuthenticated: boolean;
+	isConvexUserSynced: boolean;
 	isPostAuthSyncing: boolean;
 	pendingSessionTask: string | null;
 }
@@ -1180,6 +1181,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				user,
 				isSessionLoading,
 				isConvexAuthenticated,
+				isConvexUserSynced:
+					Boolean(user) && syncedClerkUserId === user?.clerkId,
 				isPostAuthSyncing:
 					Boolean(user) && (isProfileSyncing || isOnboardingAnswersSyncing),
 				pendingSessionTask,
