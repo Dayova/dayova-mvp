@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import type { ExpoConfig } from "expo/config";
 import { describe, expect, test } from "vitest";
 import {
 	fromMaterialDatePickerDate,
@@ -42,19 +43,22 @@ describe("Android Material controls", () => {
 		]).toEqual([2012, 8, 9, 16, 44, 12, 34]);
 	});
 
-	test("keep native Android fallback colors aligned with the design system", async () => {
+	test("keep native Android fallback colors aligned with the design system", () => {
 		const previousAppVariant = process.env.APP_VARIANT;
 		process.env.APP_VARIANT = "development";
 
-		const appConfig = await import("../../../app.config")
-			.then((module) => module.default)
-			.finally(() => {
-				if (previousAppVariant === undefined) {
-					delete process.env.APP_VARIANT;
-				} else {
-					process.env.APP_VARIANT = previousAppVariant;
-				}
-			});
+		let appConfig: ExpoConfig;
+		try {
+			const appConfigPath = require.resolve("../../../app.config.cts");
+			delete require.cache[appConfigPath];
+			appConfig = require(appConfigPath) as ExpoConfig;
+		} finally {
+			if (previousAppVariant === undefined) {
+				delete process.env.APP_VARIANT;
+			} else {
+				process.env.APP_VARIANT = previousAppVariant;
+			}
+		}
 
 		const pluginNames = (appConfig.plugins ?? []).map((plugin) =>
 			Array.isArray(plugin) ? plugin[0] : plugin,
