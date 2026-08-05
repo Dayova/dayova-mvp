@@ -3,8 +3,6 @@ import * as Speech from "expo-speech";
 import { useCallback, useRef, useState } from "react";
 import {
 	ActivityIndicator,
-	KeyboardAvoidingView,
-	Platform,
 	ScrollView,
 	TouchableOpacity,
 	View,
@@ -15,7 +13,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
-import { ErrorMessage } from "~/components/ui/error-message";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	BookOpen,
@@ -26,7 +23,6 @@ import {
 	VolumeHigh,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
-import { Textarea } from "~/components/ui/textarea";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import {
@@ -48,18 +44,6 @@ type TheoryTopicPageProps = {
 	isCompleting: boolean;
 	onPrevious: () => void;
 	onNext: () => void;
-};
-
-type TheoryPredictionPageProps = {
-	theoryItem: SessionContentItem;
-	currentIndex: number;
-	total: number;
-	value: string;
-	onChange: (value: string) => void;
-	onSubmit: () => void;
-	onSubmitUnknown: () => void;
-	isSubmitting: boolean;
-	errorMessage: string | null;
 };
 
 function TheoryTopicProgress({
@@ -157,97 +141,6 @@ function TopicSectionTitle({
 				{children}
 			</Text>
 		</View>
-	);
-}
-
-export function TheoryPredictionPage({
-	theoryItem,
-	currentIndex,
-	total,
-	value,
-	onChange,
-	onSubmit,
-	onSubmitUnknown,
-	isSubmitting,
-	errorMessage,
-}: TheoryPredictionPageProps) {
-	const insets = useSafeAreaInsets();
-	const reduceMotion = useReducedMotion();
-	const topic = adaptTheoryTopic(theoryItem, currentIndex);
-
-	return (
-		<KeyboardAvoidingView
-			className="flex-1 bg-background"
-			behavior={Platform.OS === "ios" ? "padding" : undefined}
-		>
-			<TheoryTopicProgress currentIndex={currentIndex} total={total} />
-			<ScrollView
-				contentInsetAdjustmentBehavior="automatic"
-				automaticallyAdjustKeyboardInsets
-				contentContainerStyle={{
-					paddingHorizontal: 24,
-					paddingTop: 28,
-					paddingBottom: 36,
-				}}
-				keyboardShouldPersistTaps="handled"
-				showsVerticalScrollIndicator={false}
-			>
-				<Animated.View
-					key={`${theoryItem.id}:prediction`}
-					entering={reduceMotion ? undefined : FadeInDown.duration(220)}
-					className="gap-7"
-				>
-					<TheoryTopicIntroduction topic={topic} />
-					<View className="gap-3">
-						<Text className="font-poppins font-semibold text-body-2 text-text">
-							Deine Einschätzung
-						</Text>
-						<Text className="font-poppins text-body-4 text-secondary-text">
-							Ein erster Gedanke reicht. Die Erklärung folgt direkt danach.
-						</Text>
-						<View className="min-h-40 rounded-[32px] bg-card px-5 py-5">
-							<Textarea
-								accessibilityLabel="Deine Einschätzung"
-								className="min-h-32"
-								editable={!isSubmitting}
-								onChangeText={onChange}
-								placeholder="Schreibe deinen ersten Gedanken auf."
-								value={value}
-							/>
-						</View>
-					</View>
-					{errorMessage ? <ErrorMessage>{errorMessage}</ErrorMessage> : null}
-				</Animated.View>
-			</ScrollView>
-
-			<View
-				className="flex-row gap-3 border-border border-t bg-card px-6 pt-4"
-				// Footer padding depends on the device safe area.
-				style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-			>
-				<Button
-					accessibilityHint="Überspringt die eigene Einschätzung und zeigt die Erklärung."
-					className="flex-1 px-4"
-					disabled={isSubmitting}
-					onPress={onSubmitUnknown}
-					variant="neutral"
-				>
-					<Text>Unsicher</Text>
-				</Button>
-				<Button
-					accessibilityHint="Speichert deine Einschätzung und zeigt direkt die Erklärung."
-					className="flex-[1.35] px-4"
-					disabled={isSubmitting || !value.trim()}
-					onPress={onSubmit}
-				>
-					{isSubmitting ? (
-						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
-					) : (
-						<Text>Erklärung ansehen</Text>
-					)}
-				</Button>
-			</View>
-		</KeyboardAvoidingView>
 	);
 }
 

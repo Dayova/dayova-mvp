@@ -49,16 +49,11 @@ import {
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
-	getPairedTheoryItem,
 	getTheoryTopicPosition,
 	isPairedTheoryQuestionItem,
-	isTheoryKnowledgeCheckItem,
 } from "~/features/learning-plans/session-progress";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
-import {
-	TheoryPredictionPage,
-	TheoryTopicPage,
-} from "~/features/learning-plans/theory-topic-page";
+import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
 	LearningSessionContentSnapshot,
 	SessionAnswerAttempt,
@@ -422,9 +417,7 @@ function CompletionView({
 	durationMinutes,
 	correctCount,
 	attemptCount,
-	isTheoryValidationAvailable,
 	onContinueLearning,
-	onDeferValidation,
 	onPrimary,
 	isBusy,
 }: {
@@ -433,9 +426,7 @@ function CompletionView({
 	durationMinutes: number;
 	correctCount: number;
 	attemptCount: number;
-	isTheoryValidationAvailable: boolean;
 	onContinueLearning: () => void;
-	onDeferValidation: () => void;
 	onPrimary: () => void;
 	isBusy: boolean;
 }) {
@@ -463,12 +454,9 @@ function CompletionView({
 	let iconColor: string = DAYOVA_DESIGN_SYSTEM.colors.ueben;
 
 	if (isTheory) {
-		title = isTheoryValidationAvailable
-			? "Theorie verstanden"
-			: "Theorie abgeschlossen";
-		description = isTheoryValidationAvailable
-			? "Prüfe jetzt in drei Minuten, was wirklich hängen geblieben ist. Erst deine Antworten machen deinen Lernfortschritt sichtbar."
-			: "Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt.";
+		title = "Theorie abgeschlossen";
+		description =
+			"Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt.";
 		completionLabel = "Theorie geschafft";
 		Icon = BookOpen;
 		iconClassName = "bg-theorie-subtle";
@@ -486,11 +474,9 @@ function CompletionView({
 
 	const primaryLabel = isDiagnostic
 		? "Auswertung ansehen"
-		: isTheory && isTheoryValidationAvailable
-			? "Wissen prüfen · 3 Min."
-			: isTheory
-				? "Theorie abschließen"
-				: "Analyse ansehen";
+		: isTheory
+			? "Theorie abschließen"
+			: "Analyse ansehen";
 
 	return (
 		<Animated.View
@@ -545,18 +531,10 @@ function CompletionView({
 						className="w-full"
 						disabled={isBusy}
 						variant="neutral"
-						onPress={
-							isTheory && isTheoryValidationAvailable
-								? onDeferValidation
-								: onContinueLearning
-						}
+						onPress={onContinueLearning}
 					>
 						<Text>
-							{isTheory && isTheoryValidationAvailable
-								? "Später prüfen"
-								: isTheory
-									? "Noch 10 Min. weiterlernen"
-									: "Noch 10 Min. üben"}
+							{isTheory ? "Noch 10 Min. weiterlernen" : "Noch 10 Min. üben"}
 						</Text>
 					</Button>
 				) : null}
@@ -979,9 +957,6 @@ export default function LearningSessionContentScreen() {
 	const finishSessionContent = useMutation(
 		api.learningSessionContent.finishSessionContent,
 	);
-	const deferTheoryValidation = useMutation(
-		api.learningSessionContent.deferTheoryValidation,
-	);
 	const extendSessionContent = useMutation(
 		api.learningSessionContent.extendSessionContent,
 	);
@@ -1016,7 +991,6 @@ export default function LearningSessionContentScreen() {
 	const didAutoFinishRef = useRef(false);
 	const didStartTrackingRef = useRef(false);
 	const didRecordOutcomeRef = useRef(false);
-	const didResumeDeferredValidationRef = useRef(false);
 	const advancedPreTheoryQuestionItemIdRef = useRef<string | null>(null);
 	const activeStudySecondsRef = useRef(0);
 	const activeStudyStartedAtRef = useRef<number | null>(null);
@@ -1075,7 +1049,6 @@ export default function LearningSessionContentScreen() {
 		[content],
 	);
 	const currentItem = sessionItems[currentIndex] ?? null;
-	const pairedTheoryItem = getPairedTheoryItem(sessionItems, currentIndex);
 	const theoryTopicPosition = getTheoryTopicPosition(
 		sessionItems,
 		currentIndex,
@@ -1085,48 +1058,8 @@ export default function LearningSessionContentScreen() {
 	);
 	const isPraxisSession = content?.session.phase === "rehearsal";
 	const isDiagnosticSession = content?.session.sessionPurpose === "diagnostic";
-	const validationItems = sessionItems.filter((item) =>
-		isTheoryKnowledgeCheckItem({
-			item,
-			phase: content?.session.phase,
-			compositionVariant: content?.session.compositionVariant,
-		}),
-	);
-	const hasPairedTheoryQuestions = sessionItems.some(
-		isPairedTheoryQuestionItem,
-	);
-	const isTheoryValidationSession =
-		content?.session.phase === "theory" &&
-		content.session.compositionVariant === "split" &&
-		validationItems.length > 0 &&
-		!hasPairedTheoryQuestions;
-	const isTheoryKnowledgeCheck = isTheoryKnowledgeCheckItem({
-		item: currentItem,
-		phase: content?.session.phase,
-		compositionVariant: content?.session.compositionVariant,
-	});
 	const isPairedTheoryQuestion = isPairedTheoryQuestionItem(currentItem);
-	const isPreTheoryQuestion = isTheoryKnowledgeCheck || isPairedTheoryQuestion;
-
-	useEffect(() => {
-		if (
-			!content ||
-			!isTheoryValidationSession ||
-			content.session.knowledgeValidationStatus !== "skipped" ||
-			didResumeDeferredValidationRef.current
-		) {
-			return;
-		}
-		const firstValidationIndex = sessionItems.findIndex(
-			(item) => item.phase === "practice" && item.kind !== "learnCard",
-		);
-		if (firstValidationIndex < 0) return;
-		didResumeDeferredValidationRef.current = true;
-		queueMicrotask(() => {
-			setCurrentIndex(firstValidationIndex);
-			setCompletionPhase(null);
-		});
-	}, [content, isTheoryValidationSession, sessionItems]);
+	const isPreTheoryQuestion = isPairedTheoryQuestion;
 	const persistedAttempt = useMemo(() => {
 		if (!currentItem || !content) return null;
 		if (currentItem.id === repeatingItemId) return null;
@@ -1419,38 +1352,6 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const startTheoryValidation = () => {
-		if (!isTheoryValidationSession || isBusy) return;
-		const firstValidationIndex = sessionItems.findIndex(
-			(item) => item.phase === "practice" && item.kind !== "learnCard",
-		);
-		if (firstValidationIndex < 0) return;
-		resetItemState();
-		setCurrentIndex(firstValidationIndex);
-		setCompletionPhase(null);
-	};
-
-	const deferValidationAndLeave = async () => {
-		if (!sessionId || isBusy) return;
-
-		setIsBusy(true);
-		setErrorMessage(null);
-		try {
-			await deferTheoryValidation({ sessionId });
-			await recordCompletedOutcome();
-			goBack();
-		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die Wissensprüfung konnte nicht für später gespeichert werden.",
-				),
-			);
-		} finally {
-			setIsBusy(false);
-		}
-	};
-
 	const recordCompletedOutcome = async () => {
 		if (!sessionId || didRecordOutcomeRef.current) return null;
 		if (content?.session.executionStatus === "completed") {
@@ -1704,11 +1605,9 @@ export default function LearningSessionContentScreen() {
 		: completionPhase
 			? isDiagnosticSession
 				? "Wissenscheck"
-				: isTheoryValidationSession && completionPhase === "practice"
-					? "Wissenscheck"
-					: completionPhase === "theory"
-						? "Theorie"
-						: phaseTitle(completionPhase)
+				: completionPhase === "theory"
+					? "Theorie"
+					: phaseTitle(completionPhase)
 			: content
 				? isDiagnosticSession
 					? "Wissenscheck"
@@ -1729,8 +1628,7 @@ export default function LearningSessionContentScreen() {
 
 	if (
 		content?.session.phase === "theory" &&
-		(currentItem?.kind === "learnCard" ||
-			(isPairedTheoryQuestion && pairedTheoryItem)) &&
+		currentItem?.kind === "learnCard" &&
 		!showAnalysis &&
 		!completionPhase
 	) {
@@ -1772,31 +1670,16 @@ export default function LearningSessionContentScreen() {
 					}}
 				/>
 				<ThemedStatusBar />
-				{currentItem.kind === "learnCard" ? (
-					<TheoryTopicPage
-						key={currentItem.id}
-						item={currentItem}
-						currentIndex={theoryTopicPosition.topicIndex}
-						total={theoryTopicPosition.total}
-						isCompleting={isBusy}
-						onPrevious={showPreviousTheoryTopic}
-						onNext={continueTheory}
-					/>
-				) : pairedTheoryItem ? (
-					<TheoryPredictionPage
-						key={currentItem.id}
-						theoryItem={pairedTheoryItem}
-						currentIndex={theoryTopicPosition.topicIndex}
-						total={theoryTopicPosition.total}
-						value={answerText}
-						onChange={setAnswerText}
-						onSubmit={() => void submitCurrentAnswer()}
-						onSubmitUnknown={() => void submitCurrentAnswer(true)}
-						isSubmitting={isBusy}
-						errorMessage={errorMessage}
-					/>
-				) : null}
-				{currentItem.kind === "learnCard" && errorMessage ? (
+				<TheoryTopicPage
+					key={currentItem.id}
+					item={currentItem}
+					currentIndex={theoryTopicPosition.topicIndex}
+					total={theoryTopicPosition.total}
+					isCompleting={isBusy}
+					onPrevious={showPreviousTheoryTopic}
+					onNext={continueTheory}
+				/>
+				{errorMessage ? (
 					<View className="absolute right-6 bottom-28 left-6 rounded-[24px] bg-wrong-subtle px-4 py-3">
 						<Text
 							selectable
@@ -1879,8 +1762,16 @@ export default function LearningSessionContentScreen() {
 					/>
 					{content && currentItem && !showAnalysis && !visibleAttempt ? (
 						<QuestionProgressBar
-							currentIndex={currentIndex}
-							total={sessionItems.length}
+							currentIndex={
+								isPreTheoryQuestion
+									? theoryTopicPosition.topicIndex
+									: currentIndex
+							}
+							total={
+								isPreTheoryQuestion
+									? theoryTopicPosition.total
+									: sessionItems.length
+							}
 							className="mt-5 w-full"
 						/>
 					) : null}
@@ -1931,17 +1822,11 @@ export default function LearningSessionContentScreen() {
 						durationMinutes={content.session.durationMinutes}
 						correctCount={currentRunCorrectCount}
 						attemptCount={currentRunAttempts.length}
-						isTheoryValidationAvailable={
-							isTheoryValidationSession && completionPhase === "theory"
-						}
 						onContinueLearning={() => void startContinueLearning()}
-						onDeferValidation={() => void deferValidationAndLeave()}
 						onPrimary={
-							isTheoryValidationSession && completionPhase === "theory"
-								? startTheoryValidation
-								: completionPhase === "theory"
-									? completeAndLeave
-									: finishAndShowAnalysis
+							completionPhase === "theory"
+								? completeAndLeave
+								: finishAndShowAnalysis
 						}
 						isBusy={isBusy}
 					/>
@@ -1981,7 +1866,7 @@ export default function LearningSessionContentScreen() {
 									placeholder="Schreibe hier deine Antwort."
 									editable={!isBusy}
 									fillAvailableSpace
-									autoFocus={!isTheoryKnowledgeCheck}
+									autoFocus={!isPreTheoryQuestion}
 								/>
 							)}
 						</View>
@@ -2009,10 +1894,10 @@ export default function LearningSessionContentScreen() {
 						<ActionRow
 							className="mt-0"
 							secondaryLabel={
-								isTheoryKnowledgeCheck ? "Noch nicht" : "Weiß ich nicht"
+								isPreTheoryQuestion ? "Noch nicht" : "Weiß ich nicht"
 							}
 							primaryLabel={
-								isTheoryKnowledgeCheck
+								isPreTheoryQuestion
 									? "Abgeben"
 									: content.session.phase === "rehearsal"
 										? currentIndex < content.items.length - 1

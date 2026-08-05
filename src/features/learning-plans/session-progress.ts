@@ -38,13 +38,6 @@ export function getLearningSessionItems<
 		return items.filter((item) => item.kind === "learnCard");
 	}
 	if (phase === "theory") {
-		const validationItems = items.filter(
-			(item) =>
-				item.kind !== "learnCard" &&
-				item.phase === "practice" &&
-				item.coverageKey?.includes(":validation:"),
-		);
-		const validationItemSet = new Set(validationItems);
 		const pairedQuestionByTheoryCoverageKey = new Map(
 			items.flatMap((item) => {
 				const coverageKey = item.coverageKey;
@@ -57,27 +50,13 @@ export function getLearningSessionItems<
 				];
 			}),
 		);
-		const pairedQuestionItems = new Set(
-			pairedQuestionByTheoryCoverageKey.values(),
-		);
-		const pairedItems = items.flatMap((item) => {
+		return items.flatMap((item) => {
 			if (item.kind !== "learnCard") return [];
 			const questionItem = item.coverageKey
 				? pairedQuestionByTheoryCoverageKey.get(item.coverageKey)
 				: undefined;
 			return questionItem ? [questionItem, item] : [item];
 		});
-
-		return [
-			...validationItems,
-			...pairedItems,
-			...items.filter(
-				(item) =>
-					!validationItemSet.has(item) &&
-					item.kind !== "learnCard" &&
-					!pairedQuestionItems.has(item),
-			),
-		];
 	}
 
 	return [...items];
@@ -110,27 +89,6 @@ export function getPairedTheoryItem<
 			(item) =>
 				item.kind === "learnCard" && item.coverageKey === theoryCoverageKey,
 		) ?? null
-	);
-}
-
-export function isTheoryKnowledgeCheckItem<
-	Item extends { kind: string; phase?: SessionPhase; coverageKey?: string },
->({
-	item,
-	phase,
-	compositionVariant,
-}: {
-	item: Item | null | undefined;
-	phase: SessionPhase | undefined;
-	compositionVariant: "control" | "split" | undefined;
-}) {
-	return Boolean(
-		item &&
-			phase === "theory" &&
-			compositionVariant === "split" &&
-			item.kind !== "learnCard" &&
-			item.phase === "practice" &&
-			item.coverageKey?.includes(":validation:"),
 	);
 }
 
