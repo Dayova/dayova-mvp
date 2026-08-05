@@ -200,6 +200,17 @@ test("theory fallback creates active recall cards instead of generic summaries",
 	for (const item of content?.items ?? []) {
 		expect(item.theoryContent?.example).not.toBe(item.theoryContent?.memoryCue);
 	}
+	const applicationQuestions =
+		content?.items.filter((item) => item.questionAngle === "apply") ?? [];
+	expect(applicationQuestions.length).toBeGreaterThan(0);
+	for (const item of applicationQuestions) {
+		expect(item.prompt).toBe(
+			`Was glaubst du: Worauf kommt es bei ${item.title} besonders an?`,
+		);
+	}
+	expect(content?.items.map((item) => item.prompt).join(" ")).not.toMatch(
+		/Schritt für Schritt|vollständige Aufzählung|wofür wird das Verfahren gebraucht/i,
+	);
 });
 
 test("opening an existing short theory session backfills its pre-check", async () => {
@@ -320,6 +331,61 @@ test("reopening a split theory session upgrades an existing paired task to the g
 		title: theoryItem.title,
 		prompt: theoryItem.theoryContent?.question ?? theoryItem.front,
 	});
+});
+
+test("reopening a theory session replaces demanding fallback questions", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession(
+		"theory",
+		"split",
+	);
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	const before = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	const theoryItem = before?.items.find(
+		(item) => item.kind === "learnCard" && item.questionAngle === "apply",
+	);
+	if (!theoryItem?.theoryContent) {
+		throw new Error("Expected an application theory item.");
+	}
+	const theoryContent = theoryItem.theoryContent;
+	const pairedQuestion = before?.items.find(
+		(item) => item.coverageKey === `${theoryItem.coverageKey}:paired-practice`,
+	);
+	if (!pairedQuestion) throw new Error("Expected a paired theory question.");
+	const legacyQuestion = `Wie wendest du ${theoryItem.title} Schritt für Schritt an?`;
+
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningSessionContentItems", theoryItem.id, {
+			prompt: legacyQuestion,
+			front: legacyQuestion,
+			theoryContent: {
+				...theoryContent,
+				question: legacyQuestion,
+			},
+		});
+		await ctx.db.patch("learningSessionContentItems", pairedQuestion.id, {
+			prompt: legacyQuestion,
+		});
+	});
+
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	const after = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	const expectedQuestion = `Was glaubst du: Worauf kommt es bei ${theoryItem.title} besonders an?`;
+	expect(after?.items.find((item) => item.id === theoryItem.id)).toMatchObject({
+		prompt: expectedQuestion,
+		front: expectedQuestion,
+		theoryContent: { question: expectedQuestion },
+	});
+	expect(
+		after?.items.find((item) => item.id === pairedQuestion.id),
+	).toMatchObject({ prompt: expectedQuestion });
 });
 
 test("persists deferred and completed theory validation states", async () => {

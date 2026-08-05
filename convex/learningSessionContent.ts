@@ -305,23 +305,61 @@ const getSessionTopics = (
 	});
 };
 
-const theoryQuestionFor = (blueprint: LearningQuestionBlueprint) => {
-	const topic = blueprint.topic.title;
-	switch (blueprint.angle) {
+const approachableTheoryQuestionFor = (angle: string, topic: string) => {
+	switch (angle) {
 		case "recall":
-			return `Was bedeutet ${topic}, und wofür wird das Verfahren gebraucht?`;
+			return `Was fällt dir zu ${topic} spontan ein?`;
 		case "recognize":
-			return `Woran erkennst du eine Aufgabe zu ${topic}?`;
+			return `In welcher Situation könnte das Thema ${topic} wichtig werden?`;
 		case "apply":
-			return `Wie wendest du ${topic} Schritt für Schritt an?`;
+			return `Was glaubst du: Worauf kommt es bei ${topic} besonders an?`;
 		case "findError":
-			return `Welcher Fehler passiert häufig bei ${topic}, und wie vermeidest du ihn?`;
+			return `Was könnte bei ${topic} leicht schiefgehen?`;
 		case "compare":
-			return `Worin unterscheiden sich zwei Lösungswege bei ${topic}?`;
+			return `Was macht für dich bei ${topic} einen guten Lösungsweg aus?`;
 		case "examTransfer":
-			return `Wie gehst du in einer Prüfungsaufgabe zu ${topic} vor?`;
+			return `Was wäre bei einer Prüfungsaufgabe zu ${topic} dein erster Gedanke?`;
+		default:
+			return null;
 	}
 };
+
+const obsoleteTheoryQuestionsFor = (angle: string, topic: string) => {
+	switch (angle) {
+		case "recall":
+			return [
+				`Was bedeutet ${topic}, und wofür wird das Verfahren gebraucht?`,
+				`Was verbindest du bisher mit ${topic}?`,
+			];
+		case "recognize":
+			return [
+				`Woran erkennst du eine Aufgabe zu ${topic}?`,
+				`Wann könnte ${topic} wichtig werden?`,
+			];
+		case "apply":
+			return [
+				`Wie wendest du ${topic} Schritt für Schritt an?`,
+				`Was würdest du bei ${topic} zuerst beachten?`,
+			];
+		case "findError":
+			return [
+				`Welcher Fehler passiert häufig bei ${topic}, und wie vermeidest du ihn?`,
+			];
+		case "compare":
+			return [
+				`Worin unterscheiden sich zwei Lösungswege bei ${topic}?`,
+				`Woran würdest du bei ${topic} einen guten Lösungsweg erkennen?`,
+			];
+		case "examTransfer":
+			return [`Wie gehst du in einer Prüfungsaufgabe zu ${topic} vor?`];
+		default:
+			return [];
+	}
+};
+
+const theoryQuestionFor = (blueprint: LearningQuestionBlueprint) =>
+	approachableTheoryQuestionFor(blueprint.angle, blueprint.topic.title) ??
+	`Was fällt dir zu ${blueprint.topic.title} als Erstes ein?`;
 
 const buildTheoryItems = (
 	plan: Doc<"learningPlans">,
@@ -781,6 +819,55 @@ const ensurePairedTheoryPracticeItems = async (
 	return existingItems;
 };
 
+const ensureApproachableTheoryQuestions = async (
+	ctx: MutationCtx,
+	session: Doc<"learningPlanSessions">,
+	existingItems: Doc<"learningSessionContentItems">[],
+) => {
+	if (session.phase !== "theory") return existingItems;
+
+	let updated = false;
+	for (const item of existingItems) {
+		if (item.kind !== "learnCard" || !item.questionAngle) continue;
+		const concept = item.theoryContent?.conceptTitle ?? item.title;
+		const obsoleteQuestions = obsoleteTheoryQuestionsFor(
+			item.questionAngle,
+			concept,
+		);
+		const approachableQuestion = approachableTheoryQuestionFor(
+			item.questionAngle,
+			concept,
+		);
+		if (obsoleteQuestions.length === 0 || !approachableQuestion) continue;
+		const containsLegacyQuestion = [
+			item.prompt,
+			item.front,
+			item.theoryContent?.question,
+		].some(
+			(value) =>
+				value !== undefined && obsoleteQuestions.includes(value.trim()),
+		);
+		if (!containsLegacyQuestion) continue;
+
+		await ctx.db.patch("learningSessionContentItems", item._id, {
+			prompt: approachableQuestion,
+			front: approachableQuestion,
+			...(item.theoryContent
+				? {
+						theoryContent: {
+							...item.theoryContent,
+							question: approachableQuestion,
+						},
+					}
+				: {}),
+			updatedAt: Date.now(),
+		});
+		updated = true;
+	}
+
+	return updated ? await listItems(ctx, session._id) : existingItems;
+};
+
 const ensureItemsForSession = async (
 	ctx: MutationCtx,
 	session: Doc<"learningPlanSessions">,
@@ -789,7 +876,12 @@ const ensureItemsForSession = async (
 	assertSessionIsCommitted(session);
 	const existingItems = await listItems(ctx, session._id);
 	if (existingItems.length > 0) {
-		return await ensurePairedTheoryPracticeItems(ctx, session, existingItems);
+		const upgradedItems = await ensureApproachableTheoryQuestions(
+			ctx,
+			session,
+			existingItems,
+		);
+		return await ensurePairedTheoryPracticeItems(ctx, session, upgradedItems);
 	}
 	if (session.sessionPurpose === "diagnostic") {
 		throwUserFacingError(

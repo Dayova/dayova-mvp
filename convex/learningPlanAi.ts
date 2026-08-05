@@ -456,7 +456,7 @@ const generatedTheoryItemSchema = z.object({
 	),
 	question: germanTextSchema(
 		12,
-		"One natural German guiding question that the learner can answer directly. Never quote or restate an instruction inside another instruction.",
+		"One short German curiosity question shown before the theory. The learner has not seen the explanation yet and must be able to answer with an intuitive first guess. Ask one thing only. Never demand a definition, complete list, comparison, or step-by-step solution. Avoid specialist wording when everyday language works.",
 	),
 	explanation: germanTextSchema(
 		160,
@@ -2171,7 +2171,7 @@ ${personalLearningTimes}`,
 								abortSignal,
 								providerOptions: vertexProviderOptions,
 								output: Output.object({ schema: blockSchema }),
-								system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse. Erstelle eigenständige Theorie-Lernseiten, die jeweils ungefähr vier Minuten Lernzeit sinnvoll füllen. Jede Seite behandelt genau einen Gedanken: eine kurze direkt beantwortbare Leitfrage, eine verständliche Erklärung in drei bis fünf zusammenhängenden Sätzen, zwei bis vier gehaltvolle Kernpunkte, ein wirklich durchgerechnetes oder konkret angewandtes Beispiel, einen eigenen Merksatz und einen fachspezifischen typischen Fehler. Beispiel, Kernpunkte und Merksatz müssen unterschiedliche Inhalte haben. Verwende keine Meta-Anweisungen, internen Labels wie „Variante 1“ oder in Anführungszeichen verschachtelte Aufgaben. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+								system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse. Erstelle eigenständige Theorie-Lernseiten, die jeweils ungefähr vier Minuten Lernzeit sinnvoll füllen. Jede Seite behandelt genau einen Gedanken. Die Leitfrage wird dem Schüler vor der Erklärung als lockerer Kurz-Check gezeigt. Sie muss deshalb mit einer Vermutung oder einem ersten Gedanken beantwortbar sein, darf kein bereits gelerntes Fachwissen voraussetzen und weder eine Definition, vollständige Aufzählung, einen Vergleich noch einen schrittweisen Lösungsweg verlangen. Frage genau eine Sache in kurzer, natürlicher Alltagssprache. Danach folgen eine verständliche Erklärung in drei bis fünf zusammenhängenden Sätzen, zwei bis vier gehaltvolle Kernpunkte, ein wirklich durchgerechnetes oder konkret angewandtes Beispiel, ein eigener Merksatz und ein fachspezifischer typischer Fehler. Beispiel, Kernpunkte und Merksatz müssen unterschiedliche Inhalte haben. Verwende keine Meta-Anweisungen, internen Labels wie „Variante 1“ oder in Anführungszeichen verschachtelte Aufgaben. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 								messages: [{ role: "user", content: blockContent }],
 							}),
 						);
@@ -2450,7 +2450,7 @@ ${allPriorPrompts.map((prompt) => `- ${prompt}`).join("\n") || "Keine."}`,
 						output: Output.object({
 							schema: createTheoryTopicsSchema(allQuestions.length),
 						}),
-						system: `Du bist ein präziser Lerncoach. Erstelle eigenständige deutsche Theorie-Lernseiten mit Erklärung, Kernpunkten, einem konkreten Beispiel, Merksatz und typischem Fehler. Halte die vorgegebene Reihenfolge exakt ein und antworte ausschließlich im JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+						system: `Du bist ein präziser Lerncoach. Erstelle eigenständige deutsche Theorie-Lernseiten mit Erklärung, Kernpunkten, einem konkreten Beispiel, Merksatz und typischem Fehler. Die Leitfrage wird vor der Erklärung gezeigt und muss ohne Vorwissen mit einer Vermutung oder einem ersten Gedanken beantwortbar sein. Sie fragt genau eine Sache in kurzer Alltagssprache und verlangt keine Definition, vollständige Aufzählung, keinen Vergleich und keinen schrittweisen Lösungsweg. Halte die vorgegebene Reihenfolge exakt ein und antworte ausschließlich im JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 					}),
 				)
 			: await runLlmGeneration((abortSignal) =>
