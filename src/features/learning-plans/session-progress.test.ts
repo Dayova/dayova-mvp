@@ -9,7 +9,12 @@ import {
 	isTheoryKnowledgeCheckItem,
 } from "./session-progress";
 
-const learnCard = { id: "theory", kind: "learnCard", phase: "theory" } as const;
+const learnCard = {
+	id: "theory",
+	kind: "learnCard",
+	phase: "theory",
+	coverageKey: "topic:recall:0",
+} as const;
 const practiceTask = {
 	id: "practice",
 	kind: "written",
@@ -57,6 +62,47 @@ describe("learning session progress", () => {
 			previousSessionIndex: 1,
 			nextSessionIndex: null,
 		});
+	});
+
+	it("places each practical page directly after its theory page", () => {
+		const secondLearnCard = {
+			id: "theory-2",
+			kind: "learnCard",
+			phase: "theory",
+			coverageKey: "topic:apply:0",
+		} as const;
+		const firstPractice = {
+			id: "practice-1",
+			kind: "written",
+			phase: "practice",
+			coverageKey: "topic:recall:0:paired-practice",
+		} as const;
+		const secondPractice = {
+			id: "practice-2",
+			kind: "written",
+			phase: "practice",
+			coverageKey: "topic:apply:0:paired-practice",
+		} as const;
+
+		expect(
+			getLearningSessionItems(
+				[
+					learnCard,
+					secondLearnCard,
+					practiceTask,
+					firstPractice,
+					secondPractice,
+				],
+				"theory",
+				"split",
+			),
+		).toEqual([
+			practiceTask,
+			learnCard,
+			firstPractice,
+			secondLearnCard,
+			secondPractice,
+		]);
 	});
 
 	it("keeps optional follow-up practice after the theory cards", () => {

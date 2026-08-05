@@ -1,6 +1,7 @@
 import type { SessionPhase } from "./types";
 
 export const CONTINUE_LEARNING_MINUTES = 10;
+export const PAIRED_THEORY_PRACTICE_SUFFIX = ":paired-practice";
 
 export function getLearningSessionTimerDurationSeconds({
 	phase,
@@ -43,13 +44,53 @@ export function getLearningSessionItems<
 				item.coverageKey?.includes(":validation:"),
 		);
 		const validationItemSet = new Set(validationItems);
+		const pairedPracticeByTheoryCoverageKey = new Map(
+			items.flatMap((item) => {
+				const coverageKey = item.coverageKey;
+				if (!isPairedTheoryPracticeItem(item) || !coverageKey) return [];
+				return [
+					[
+						coverageKey.slice(0, -PAIRED_THEORY_PRACTICE_SUFFIX.length),
+						item,
+					] as const,
+				];
+			}),
+		);
+		const pairedPracticeItems = new Set(
+			pairedPracticeByTheoryCoverageKey.values(),
+		);
+		const pairedItems = items.flatMap((item) => {
+			if (item.kind !== "learnCard") return [];
+			const practiceItem = item.coverageKey
+				? pairedPracticeByTheoryCoverageKey.get(item.coverageKey)
+				: undefined;
+			return practiceItem ? [item, practiceItem] : [item];
+		});
+
 		return [
 			...validationItems,
-			...items.filter((item) => !validationItemSet.has(item)),
+			...pairedItems,
+			...items.filter(
+				(item) =>
+					!validationItemSet.has(item) &&
+					item.kind !== "learnCard" &&
+					!pairedPracticeItems.has(item),
+			),
 		];
 	}
 
 	return [...items];
+}
+
+export function isPairedTheoryPracticeItem<
+	Item extends { kind: string; phase?: SessionPhase; coverageKey?: string },
+>(item: Item | null | undefined) {
+	return Boolean(
+		item &&
+			item.kind !== "learnCard" &&
+			item.phase === "practice" &&
+			item.coverageKey?.endsWith(PAIRED_THEORY_PRACTICE_SUFFIX),
+	);
 }
 
 export function isTheoryKnowledgeCheckItem<

@@ -1,4 +1,4 @@
-import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import * as Device from "expo-device";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as Speech from "expo-speech";
@@ -50,6 +50,7 @@ import {
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
 	getTheoryTopicPosition,
+	isPairedTheoryPracticeItem,
 	isTheoryKnowledgeCheckItem,
 } from "~/features/learning-plans/session-progress";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
@@ -60,6 +61,7 @@ import type {
 	SessionAnswerRating,
 	SessionContentItem,
 } from "~/features/learning-plans/types";
+import { usePrepareSessionContent } from "~/features/learning-plans/use-prepare-session-content";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
@@ -969,9 +971,6 @@ export default function LearningSessionContentScreen() {
 	const sessionId = params.sessionId as Id<"learningPlanSessions"> | undefined;
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-	const ensureSessionContent = useAction(
-		api.learningPlanAi.ensureSessionContent,
-	);
 	const submitAnswer = useMutation(api.learningSessionContent.submitAnswer);
 	const finishSessionContent = useMutation(
 		api.learningSessionContent.finishSessionContent,
@@ -1010,7 +1009,6 @@ export default function LearningSessionContentScreen() {
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
 	const remainingSecondsRef = useRef<number | null>(null);
 	const [isContinuation, setIsContinuation] = useState(false);
-	const didEnsureRef = useRef(false);
 	const didAutoFinishRef = useRef(false);
 	const didStartTrackingRef = useRef(false);
 	const didRecordOutcomeRef = useRef(false);
@@ -1240,21 +1238,18 @@ export default function LearningSessionContentScreen() {
 		}
 	}, [shouldTrackActiveStudy]);
 
-	useEffect(() => {
-		if (!sessionId || !user || !isConvexAuthenticated || didEnsureRef.current)
-			return;
-
-		didEnsureRef.current = true;
-		void ensureSessionContent({ sessionId }).catch((error: unknown) => {
-			didEnsureRef.current = false;
+	usePrepareSessionContent({
+		enabled: Boolean(user && isConvexAuthenticated),
+		sessionId,
+		onError: (error) => {
 			setErrorMessage(
 				getErrorMessage(
 					error,
 					"Der Lernblock konnte nicht vorbereitet werden.",
 				),
 			);
-		});
-	}, [ensureSessionContent, isConvexAuthenticated, sessionId, user]);
+		},
+	});
 
 	useEffect(() => {
 		if (
@@ -1525,11 +1520,16 @@ export default function LearningSessionContentScreen() {
 			currentIndex: theoryTopicPosition.topicIndex,
 			total: theoryTopicPosition.total,
 			onAdvance: () => {
-				if (theoryTopicPosition.nextSessionIndex === null) return;
+				if (currentIndex >= sessionItems.length - 1) return;
 				setErrorMessage(null);
-				setCurrentIndex(theoryTopicPosition.nextSessionIndex);
+				setCurrentIndex((value) => value + 1);
 			},
 			onComplete: () => {
+				if (currentIndex < sessionItems.length - 1) {
+					setErrorMessage(null);
+					setCurrentIndex((value) => value + 1);
+					return;
+				}
 				setCompletionPhase(
 					getLearningSessionCompletionPhase(
 						content.session.phase,
@@ -1701,7 +1701,7 @@ export default function LearningSessionContentScreen() {
 			: content
 				? isDiagnosticSession
 					? "Wissenscheck"
-					: isTheoryKnowledgeCheck
+					: isTheoryKnowledgeCheck || isPairedTheoryPracticeItem(currentItem)
 						? "Kurz-Check"
 						: phaseTitle(currentItem?.phase ?? content.session.phase)
 				: "Lernblock";
