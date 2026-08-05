@@ -7,7 +7,6 @@ import {
 	getPairedTheoryItem,
 	getTheoryTopicPosition,
 	isQualifiedSessionCompletion,
-	isTheoryKnowledgeCheckItem,
 } from "./session-progress";
 
 const learnCard = {
@@ -30,10 +29,10 @@ describe("learning session progress", () => {
 		).toEqual([learnCard]);
 	});
 
-	it("puts the knowledge check before theory in a split session", () => {
+	it("omits a detached knowledge check from a split theory session", () => {
 		expect(
 			getLearningSessionItems([learnCard, practiceTask], "theory", "split"),
-		).toEqual([practiceTask, learnCard]);
+		).toEqual([learnCard]);
 		expect(getLearningSessionCompletionPhase("theory", "split")).toBe("theory");
 	});
 
@@ -49,16 +48,16 @@ describe("learning session progress", () => {
 			"split",
 		);
 
-		expect(getTheoryTopicPosition(items, 1)).toEqual({
+		expect(getTheoryTopicPosition(items, 0)).toEqual({
 			topicIndex: 0,
 			total: 2,
 			previousSessionIndex: null,
-			nextSessionIndex: 2,
+			nextSessionIndex: 1,
 		});
-		expect(getTheoryTopicPosition(items, 2)).toEqual({
+		expect(getTheoryTopicPosition(items, 1)).toEqual({
 			topicIndex: 1,
 			total: 2,
-			previousSessionIndex: 1,
+			previousSessionIndex: 0,
 			nextSessionIndex: null,
 		});
 	});
@@ -95,13 +94,7 @@ describe("learning session progress", () => {
 				"theory",
 				"split",
 			),
-		).toEqual([
-			practiceTask,
-			firstPractice,
-			learnCard,
-			secondPractice,
-			secondLearnCard,
-		]);
+		).toEqual([firstPractice, learnCard, secondPractice, secondLearnCard]);
 	});
 
 	it("maps a paired question to the same topic as its theory page", () => {
@@ -122,7 +115,7 @@ describe("learning session progress", () => {
 		});
 	});
 
-	it("keeps optional follow-up practice after the theory cards", () => {
+	it("keeps unrelated practice outside the theory flow", () => {
 		const followUpTask = {
 			id: "follow-up",
 			kind: "written",
@@ -136,34 +129,7 @@ describe("learning session progress", () => {
 				"theory",
 				"split",
 			),
-		).toEqual([practiceTask, learnCard, followUpTask]);
-	});
-
-	it("identifies only the pre-theory validation item as a knowledge check", () => {
-		expect(
-			isTheoryKnowledgeCheckItem({
-				item: practiceTask,
-				phase: "theory",
-				compositionVariant: "split",
-			}),
-		).toBe(true);
-		expect(
-			isTheoryKnowledgeCheckItem({
-				item: practiceTask,
-				phase: "practice",
-				compositionVariant: "split",
-			}),
-		).toBe(false);
-		expect(
-			isTheoryKnowledgeCheckItem({
-				item: {
-					...practiceTask,
-					coverageKey: "topic:apply:1",
-				},
-				phase: "theory",
-				compositionVariant: "split",
-			}),
-		).toBe(false);
+		).toEqual([learnCard]);
 	});
 
 	it("qualifies a 30-minute completion after 24 active minutes", () => {
