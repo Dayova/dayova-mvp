@@ -31,7 +31,7 @@ import {
 	getDefaultPreparationDepth,
 	type PreparationDepth,
 } from "./learningPreparationPolicy";
-import { getLearningSessionComposition } from "./learningSessionComposition";
+import { isLearningSessionCompositionEligible } from "./learningSessionComposition";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { alignSessionDurationReferences } from "./learningSessionDurationText";
 import {
@@ -1945,13 +1945,12 @@ export const replaceGeneratedSessions = internalMutation({
 				tasks: session.tasks.map((task) => normalizeGeneratedGermanText(task)),
 				expectedOutcome: normalizeGeneratedGermanText(session.expectedOutcome),
 				compositionVariant:
-					getLearningSessionComposition({
+					session.phase === "theory" &&
+					(args.sessionCompositionVariant ?? "split") === "split" &&
+					isLearningSessionCompositionEligible({
 						phase: session.phase,
 						durationMinutes: session.durationMinutes,
-						variant:
-							args.sessionCompositionVariant ??
-							(session.phase === "theory" ? "split" : "control"),
-					}).length > 1
+					})
 						? ("split" as const)
 						: ("control" as const),
 			}),
@@ -2001,6 +2000,13 @@ export const replaceGeneratedSessions = internalMutation({
 								rating: "correct",
 								sessionId: "projected-first-session",
 								createdAt: Date.now(),
+							},
+						],
+						history: [
+							{
+								topicId: firstTarget.topicId,
+								dimension: firstTarget.dimension,
+								targetedAt: Date.now(),
 							},
 						],
 					})

@@ -70,7 +70,7 @@ const taskKinds: LearningQuestionKind[] = [
 ];
 
 const estimatedSecondsForKind: Record<LearningQuestionKind, number> = {
-	learnCard: 240,
+	learnCard: 150,
 	multipleChoice: 240,
 	written: 360,
 	voice: 300,
@@ -162,6 +162,13 @@ const createQuestions = ({
 	}
 
 	while (plannedSeconds < targetSeconds) {
+		const remainingSeconds = targetSeconds - plannedSeconds;
+		if (phase !== "theory" && questions.length > 0 && remainingSeconds < 120) {
+			const lastQuestion = questions.at(-1);
+			if (lastQuestion) lastQuestion.estimatedSeconds += remainingSeconds;
+			plannedSeconds = targetSeconds;
+			break;
+		}
 		const globalIndex = questionIndex;
 		questionIndex += 1;
 		const topic = topics[globalIndex % topics.length];

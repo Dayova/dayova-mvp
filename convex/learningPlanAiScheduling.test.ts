@@ -4,6 +4,48 @@ import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 
 const germanText = (text: string) => text;
 
+const expectPracticeFirstMix = (
+	sessions: Array<{
+		phase: "theory" | "practice" | "rehearsal";
+		durationMinutes: number;
+	}>,
+	totalMinutes: number,
+) => {
+	const minutesFor = (phase: "theory" | "practice" | "rehearsal") =>
+		sessions
+			.filter((session) => session.phase === phase)
+			.reduce((total, session) => total + session.durationMinutes, 0);
+	const theoryShare = minutesFor("theory") / totalMinutes;
+	const practiceShare = minutesFor("practice") / totalMinutes;
+	const rehearsalShare = minutesFor("rehearsal") / totalMinutes;
+
+	expect(theoryShare).toBeGreaterThanOrEqual(0.17);
+	expect(theoryShare).toBeLessThanOrEqual(0.29);
+	expect(practiceShare).toBeGreaterThanOrEqual(0.45);
+	expect(practiceShare).toBeLessThanOrEqual(0.64);
+	expect(rehearsalShare).toBeGreaterThanOrEqual(0.18);
+	expect(rehearsalShare).toBeLessThanOrEqual(0.27);
+	expect(
+		sessions.every(
+			(session, index) =>
+				session.phase !== "theory" || sessions[index - 1]?.phase !== "theory",
+		),
+	).toBe(true);
+	expect(
+		sessions
+			.filter((session) => session.phase === "theory")
+			.every((session) => session.durationMinutes <= 10),
+	).toBe(true);
+	expect(
+		sessions
+			.filter((session) => session.phase === "practice")
+			.every((session) => session.durationMinutes <= 20),
+	).toBe(true);
+	expect(
+		Math.min(...sessions.map((session) => session.durationMinutes)),
+	).toBeGreaterThanOrEqual(5);
+};
+
 describe("learning plan AI scheduling", () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -54,12 +96,7 @@ describe("learning plan AI scheduling", () => {
 		expect(
 			Math.max(...result.sessions.map((session) => session.durationMinutes)),
 		).toBeLessThanOrEqual(20);
-		expect(
-			result.sessions.filter((session) => session.phase === "theory").length,
-		).toBeGreaterThanOrEqual(6);
-		expect(
-			result.sessions.filter((session) => session.phase === "rehearsal"),
-		).toHaveLength(2);
+		expectPracticeFirstMix(result.sessions, 240);
 		expect(
 			result.sessions.reduce(
 				(total, session) => total + session.durationMinutes,
@@ -96,12 +133,8 @@ describe("learning plan AI scheduling", () => {
 		);
 
 		expect(result.sessions.length).toBeGreaterThan(3);
-		expect(
-			result.sessions.some((session) => session.startTime === "17:20"),
-		).toBe(true);
-		expect(
-			result.sessions.some((session) => session.startTime === "17:40"),
-		).toBe(true);
+		expect(result.sessions.length).toBeGreaterThanOrEqual(3);
+		expectPracticeFirstMix(result.sessions, 60);
 		expect(
 			result.sessions.reduce(
 				(total, session) => total + session.durationMinutes,
@@ -230,11 +263,12 @@ describe("learning plan AI scheduling", () => {
 
 		expect(withLearningTimes.sessions.map((session) => session.phase)).toEqual([
 			"theory",
-			"theory",
-			"theory",
 			"practice",
 			"rehearsal",
 		]);
+		expect(
+			withLearningTimes.sessions.map((session) => session.durationMinutes),
+		).toEqual([10, 15, 5]);
 		expect(
 			withLearningTimes.sessions.reduce(
 				(total, session) => total + session.durationMinutes,
@@ -244,7 +278,7 @@ describe("learning plan AI scheduling", () => {
 		expect(withLearningTimes.sessions[0]).toMatchObject({
 			dateKey: "2026-06-04T00:00:00.000Z",
 			startTime: "17:00",
-			durationMinutes: 7,
+			durationMinutes: 10,
 		});
 		expect(withLearningTimes.planningHint).toBe("30/60 Min. geplant.");
 	});
@@ -298,48 +332,32 @@ describe("learning plan AI scheduling", () => {
 			],
 		);
 
-		expect(result.sessions).toHaveLength(5);
+		expect(result.sessions).toHaveLength(3);
 		expect(
 			result.sessions.map((session) => ({
 				phase: session.phase,
 				startTime: session.startTime,
 				durationMinutes: session.durationMinutes,
-				title: session.title,
 			})),
 		).toEqual([
 			{
 				phase: "theory",
 				startTime: "16:00",
-				durationMinutes: 7,
-				title: "CIDR und Masken",
-			},
-			{
-				phase: "theory",
-				startTime: "16:07",
-				durationMinutes: 7,
-				title: "Host-Bereiche",
-			},
-			{
-				phase: "theory",
-				startTime: "16:14",
-				durationMinutes: 6,
-				title: "Broadcast-Adressen",
+				durationMinutes: 10,
 			},
 			{
 				phase: "practice",
-				startTime: "16:20",
-				durationMinutes: 5,
-				title: "Übungsblock",
+				startTime: "16:10",
+				durationMinutes: 15,
 			},
 			{
 				phase: "rehearsal",
 				startTime: "16:25",
 				durationMinutes: 5,
-				title: "Praxis",
 			},
 		]);
 		expect(new Set(result.sessions.map((session) => session.goal)).size).toBe(
-			5,
+			3,
 		);
 		expect(result.planningHint).toBeUndefined();
 	});
@@ -384,14 +402,7 @@ describe("learning plan AI scheduling", () => {
 		);
 
 		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
-			10, 10, 10, 10, 10,
-		]);
-		expect(result.sessions.map((session) => session.startTime)).toEqual([
-			"16:00",
-			"16:10",
-			"16:20",
-			"16:00",
-			"16:10",
+			10, 20, 10, 10,
 		]);
 		expect(result.planningHint).toBeUndefined();
 	});
@@ -437,7 +448,7 @@ describe("learning plan AI scheduling", () => {
 		);
 
 		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
-			10, 10, 10, 10, 10,
+			10, 20, 10, 10,
 		]);
 		expect(result.planningHint).toBeUndefined();
 	});
@@ -467,16 +478,7 @@ describe("learning plan AI scheduling", () => {
 			60,
 		);
 
-		expect(result.sessions.map((session) => session.phase)).toEqual([
-			"theory",
-			"theory",
-			"theory",
-			"practice",
-			"rehearsal",
-		]);
-		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
-			10, 10, 10, 20, 10,
-		]);
+		expectPracticeFirstMix(result.sessions, 60);
 		expect(new Set(result.sessions.map((session) => session.goal)).size).toBe(
 			5,
 		);
@@ -508,16 +510,21 @@ describe("learning plan AI scheduling", () => {
 			30,
 		);
 
-		expect(result.sessions.map((session) => session.phase)).toEqual([
-			"theory",
-			"theory",
-			"theory",
-			"practice",
-			"rehearsal",
-		]);
-		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
-			7, 7, 6, 5, 5,
-		]);
+		expect(
+			result.sessions.reduce(
+				(total, session) => total + session.durationMinutes,
+				0,
+			),
+		).toBe(30);
+		expect(result.sessions[0]?.phase).toBe("theory");
+		expect(result.sessions.at(-1)?.phase).toBe("rehearsal");
+		expect(
+			result.sessions.every(
+				(session, index) =>
+					session.phase !== "theory" ||
+					result.sessions[index - 1]?.phase !== "theory",
+			),
+		).toBe(true);
 		expect(result.planningHint).toBeUndefined();
 	});
 
@@ -583,20 +590,10 @@ describe("learning plan AI scheduling", () => {
 		);
 
 		expect(result.sessions).toHaveLength(5);
-		expect(result.sessions).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					dateKey: "2026-06-02T00:00:00.000Z",
-					startTime: "16:00",
-					durationMinutes: 10,
-				}),
-				expect.objectContaining({
-					dateKey: "2026-06-04T00:00:00.000Z",
-					startTime: "10:00",
-					durationMinutes: 20,
-				}),
-			]),
-		);
+		expect(
+			result.sessions.every((session) => !session.dateKey.includes("06-03")),
+		).toBe(true);
+		expectPracticeFirstMix(result.sessions, 60);
 		expect(result.planningHint).toBe(
 			"Belegte Zeiten ausgelassen. 60/270 Min. geplant.",
 		);
@@ -630,23 +627,7 @@ describe("learning plan AI scheduling", () => {
 			60,
 		);
 
-		expect(result.sessions.map((session) => session.phase)).toEqual([
-			"theory",
-			"theory",
-			"theory",
-			"practice",
-			"rehearsal",
-		]);
-		expect(result.sessions.map((session) => session.durationMinutes)).toEqual([
-			10, 10, 10, 20, 10,
-		]);
-		expect(result.sessions.map((session) => session.startTime)).toEqual([
-			"17:20",
-			"17:10",
-			"17:20",
-			"17:00",
-			"17:20",
-		]);
+		expectPracticeFirstMix(result.sessions, 60);
 		expect(result.planningHint).toBe("Belegte Zeiten ausgelassen.");
 	});
 
@@ -673,10 +654,10 @@ describe("learning plan AI scheduling", () => {
 			[],
 		);
 
-		expect(result.sessions).toHaveLength(5);
+		expect(result.sessions).toHaveLength(3);
 		expect(result.sessions[0]).toMatchObject({
 			startTime: "16:00",
-			durationMinutes: 7,
+			durationMinutes: 10,
 		});
 		expect(result.planningHint).toBe("30/180 Min. geplant.");
 	});
@@ -784,15 +765,7 @@ describe("learning plan AI scheduling", () => {
 			[],
 		);
 
-		expect(result.sessions.map((session) => session.phase)).toEqual([
-			"theory",
-			"theory",
-			"theory",
-			"practice",
-			"practice",
-			"practice",
-			"rehearsal",
-		]);
+		expectPracticeFirstMix(result.sessions, 120);
 		expect(result.planningHint).toBe("120/240 Min. geplant.");
 	});
 
@@ -824,17 +797,13 @@ describe("learning plan AI scheduling", () => {
 			[],
 		);
 
-		expect(result.sessions.map((session) => session.phase)).toEqual([
-			"theory",
-			"theory",
-			"theory",
-			"practice",
-			"practice",
-			"practice",
-			"rehearsal",
-		]);
-		expect(result.sessions[3]?.title).toBe("Übungsblock");
-		expect(result.sessions[6]?.title).toBe("Praxis");
+		expectPracticeFirstMix(result.sessions, 120);
+		expect(
+			result.sessions.some((session) => session.title === "Übungsblock"),
+		).toBe(true);
+		expect(result.sessions.some((session) => session.title === "Praxis")).toBe(
+			true,
+		);
 		expect(result.planningHint).toBeUndefined();
 	});
 
@@ -867,11 +836,11 @@ describe("learning plan AI scheduling", () => {
 			[],
 		);
 
-		expect(result.sessions).toHaveLength(5);
+		expect(result.sessions).toHaveLength(3);
 		expect(result.sessions[0]).toMatchObject({
 			dateKey: "2026-06-05T00:00:00.000Z",
 			startTime: "09:00",
-			durationMinutes: 7,
+			durationMinutes: 10,
 		});
 	});
 

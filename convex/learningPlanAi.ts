@@ -459,8 +459,8 @@ const generatedTheoryItemSchema = z.object({
 		"One short German curiosity question shown before the theory. The learner has not seen the explanation yet and must be able to answer with an intuitive first guess. Ask one thing only. Never demand a definition, complete list, comparison, or step-by-step solution. Avoid specialist wording when everyday language works.",
 	),
 	explanation: germanTextSchema(
-		160,
-		"Clear German teaching explanation in three to five connected sentences. Explain why the rule works, not only what the result is.",
+		110,
+		"Concise German teaching explanation in two to three connected sentences. Explain why the rule works, not only what the result is.",
 	),
 	keyPoints: boundedArray(
 		germanTextSchema(
@@ -468,7 +468,7 @@ const generatedTheoryItemSchema = z.object({
 			"One specific German key point that adds information and is not merely a keyword or a copy of another section.",
 		),
 		2,
-		4,
+		3,
 	),
 	example: germanTextSchema(
 		80,
@@ -1397,46 +1397,51 @@ const buildAdaptivePhaseSequence = (
 	const hasTheoryNeed =
 		preparation.topicReadiness.unknown > 0 ||
 		preparation.topicReadiness.developing > 0;
-	const theoryFragmentTarget = hasTheoryNeed
-		? Math.min(
-				8,
-				Math.max(
-					preparation.topicReadiness.unknown > 0 ? 3 : 1,
-					Math.round(
-						preparation.topicReadiness.unknown +
-							preparation.topicReadiness.developing * 0.5,
-					),
-				),
-			)
-		: 0;
-	const theoryFragmentsPerSlot = Math.max(
-		1,
-		Math.ceil(preparation.maxSessionMinutes / 10),
-	);
-	const theorySlotCount = Math.min(
-		Math.max(0, sessionCount - praxisSessionCount - 1),
-		Math.ceil(theoryFragmentTarget / theoryFragmentsPerSlot),
-	);
 	const rehearsalIndexes = new Set<number>();
 	for (let index = 0; index < praxisSessionCount; index += 1) {
 		const position =
 			praxisSessionCount === 1
 				? praxisEligibleIndexes.length - 1
 				: Math.round(
-						(index * (praxisEligibleIndexes.length - 1)) /
-							(praxisSessionCount - 1),
+						((index + 1) * (praxisEligibleIndexes.length - 1)) /
+							praxisSessionCount,
 					);
 		const sessionIndex = praxisEligibleIndexes[position];
 		if (sessionIndex !== undefined) rehearsalIndexes.add(sessionIndex);
 	}
-	let theorySlotsRemaining = theorySlotCount;
+	const learningIndexes = Array.from(
+		{ length: sessionCount },
+		(_, index) => index,
+	).filter((index) => !rehearsalIndexes.has(index));
+	const topicTheoryNeed =
+		preparation.topicReadiness.unknown +
+		Math.ceil(preparation.topicReadiness.developing / 2);
+	const theorySlotCount = hasTheoryNeed
+		? Math.min(
+				Math.max(0, learningIndexes.length - 1),
+				Math.max(1, Math.round(sessionCount * 0.22)),
+				topicTheoryNeed,
+			)
+		: 0;
+	const theoryIndexes = new Set<number>();
+	let lastTheoryIndex = -2;
+	for (let index = 0; index < theorySlotCount; index += 1) {
+		const preferredPosition = Math.floor(
+			(index * learningIndexes.length) / Math.max(theorySlotCount, 1),
+		);
+		const preferredIndex = learningIndexes[preferredPosition];
+		const selectedIndex = learningIndexes.find(
+			(candidate) =>
+				candidate >= (preferredIndex ?? 0) && candidate > lastTheoryIndex + 1,
+		);
+		if (selectedIndex === undefined) break;
+		theoryIndexes.add(selectedIndex);
+		lastTheoryIndex = selectedIndex;
+	}
 
 	return Array.from({ length: sessionCount }, (_, index) => {
 		if (rehearsalIndexes.has(index)) return "rehearsal";
-		if (theorySlotsRemaining > 0) {
-			theorySlotsRemaining -= 1;
-			return "theory";
-		}
+		if (theoryIndexes.has(index)) return "theory";
 		return "practice";
 	});
 };
@@ -1572,12 +1577,10 @@ const normalizeSessions = (
 			...fallbackContentByPhase.rehearsal,
 		},
 	};
-	const phaseBalancedSessions = adaptivePreparation
-		? scheduledSessions
-		: rebalanceLearningPhases({
-				sessions: scheduledSessions,
-				phaseFallbacks,
-			});
+	const phaseBalancedSessions = rebalanceLearningPhases({
+		sessions: scheduledSessions,
+		phaseFallbacks,
+	});
 	const normalizedSessions = splitLargeTheorySessions({
 		sessions: phaseBalancedSessions,
 		topics,
@@ -1794,17 +1797,10 @@ const formatPlanSequence = (
 	sessions.length === 0
 		? "Keine weiteren Sessions gespeichert."
 		: sessions
-				.map((session) => {
-					const confidence =
-						session.knowledgeValidationConfidence === "unsure"
-							? " · Selbsteinschätzung: unsicher"
-							: session.knowledgeValidationConfidence === "somewhatSure"
-								? " · Selbsteinschätzung: teilweise sicher"
-								: session.knowledgeValidationConfidence === "sure"
-									? " · Selbsteinschätzung: sicher"
-									: "";
-					return `${session.sortOrder + 1}. ${session.title} (${session.phase}): ${session.goal}${confidence}`;
-				})
+				.map(
+					(session) =>
+						`${session.sortOrder + 1}. ${session.title} (${session.phase}): ${session.goal}`,
+				)
 				.join("\n");
 
 const formatPriorTheoryCards = (
@@ -2171,7 +2167,7 @@ ${personalLearningTimes}`,
 								abortSignal,
 								providerOptions: vertexProviderOptions,
 								output: Output.object({ schema: blockSchema }),
-								system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse. Erstelle eigenständige Theorie-Lernseiten, die jeweils ungefähr vier Minuten Lernzeit sinnvoll füllen. Jede Seite behandelt genau einen Gedanken. Die Leitfrage wird dem Schüler vor der Erklärung als lockerer Kurz-Check gezeigt. Sie muss deshalb mit einer Vermutung oder einem ersten Gedanken beantwortbar sein, darf kein bereits gelerntes Fachwissen voraussetzen und weder eine Definition, vollständige Aufzählung, einen Vergleich noch einen schrittweisen Lösungsweg verlangen. Frage genau eine Sache in kurzer, natürlicher Alltagssprache. Danach folgen eine verständliche Erklärung in drei bis fünf zusammenhängenden Sätzen, zwei bis vier gehaltvolle Kernpunkte, ein wirklich durchgerechnetes oder konkret angewandtes Beispiel, ein eigener Merksatz und ein fachspezifischer typischer Fehler. Beispiel, Kernpunkte und Merksatz müssen unterschiedliche Inhalte haben. Verwende keine Meta-Anweisungen, internen Labels wie „Variante 1“ oder in Anführungszeichen verschachtelte Aufgaben. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+								system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse. Erstelle kompakte Theorie-Lernseiten, die jeweils ungefähr zwei Minuten Lernzeit sinnvoll füllen. Jede Seite behandelt genau einen Gedanken. Nur die Leitfrage der ersten Seite wird dem Schüler vor allen Erklärungen als lockerer Einstieg gezeigt; alle Seiten brauchen die Leitfrage weiterhin für die einheitliche Seitenstruktur. Sie muss mit einer Vermutung oder einem ersten Gedanken beantwortbar sein, darf kein bereits gelerntes Fachwissen voraussetzen und weder eine Definition, vollständige Aufzählung, einen Vergleich noch einen schrittweisen Lösungsweg verlangen. Frage genau eine Sache in kurzer, natürlicher Alltagssprache. Danach folgen eine verständliche Erklärung in zwei bis drei zusammenhängenden Sätzen, zwei bis drei gehaltvolle Kernpunkte, ein knappes durchgerechnetes oder konkret angewandtes Beispiel, ein eigener Merksatz und ein fachspezifischer typischer Fehler. Beispiel, Kernpunkte und Merksatz müssen unterschiedliche Inhalte haben. Verwende keine Meta-Anweisungen, internen Labels wie „Variante 1“ oder in Anführungszeichen verschachtelte Aufgaben. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 								messages: [{ role: "user", content: blockContent }],
 							}),
 						);
@@ -2450,7 +2446,7 @@ ${allPriorPrompts.map((prompt) => `- ${prompt}`).join("\n") || "Keine."}`,
 						output: Output.object({
 							schema: createTheoryTopicsSchema(allQuestions.length),
 						}),
-						system: `Du bist ein präziser Lerncoach. Erstelle eigenständige deutsche Theorie-Lernseiten mit Erklärung, Kernpunkten, einem konkreten Beispiel, Merksatz und typischem Fehler. Die Leitfrage wird vor der Erklärung gezeigt und muss ohne Vorwissen mit einer Vermutung oder einem ersten Gedanken beantwortbar sein. Sie fragt genau eine Sache in kurzer Alltagssprache und verlangt keine Definition, vollständige Aufzählung, keinen Vergleich und keinen schrittweisen Lösungsweg. Halte die vorgegebene Reihenfolge exakt ein und antworte ausschließlich im JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+						system: `Du bist ein präziser Lerncoach. Erstelle kompakte deutsche Theorie-Lernseiten für ungefähr zwei Minuten Lernzeit mit einer Erklärung in zwei bis drei Sätzen, zwei bis drei Kernpunkten, einem konkreten Beispiel, Merksatz und typischem Fehler. Nur die Leitfrage der ersten Seite wird vor allen Erklärungen gezeigt; alle Seiten brauchen sie für die einheitliche Seitenstruktur. Sie muss ohne Vorwissen mit einer Vermutung oder einem ersten Gedanken beantwortbar sein, fragt genau eine Sache in kurzer Alltagssprache und verlangt keine Definition, vollständige Aufzählung, keinen Vergleich und keinen schrittweisen Lösungsweg. Halte die vorgegebene Reihenfolge exakt ein und antworte ausschließlich im JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 					}),
 				)
 			: await runLlmGeneration((abortSignal) =>

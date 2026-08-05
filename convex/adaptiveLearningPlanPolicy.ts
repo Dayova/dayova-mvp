@@ -123,9 +123,9 @@ const reasonForTarget = (
 		return `Kontrollcheck: Neue Evidenz zu „${topicTitle}“ widerspricht früheren sicheren Lösungen.`;
 	}
 	if (status === "unknown") {
-		return `Warum jetzt: Für „${topicTitle}“ fehlt noch Evidenz im ${dimensionLabel[dimension]}.`;
+		return `Für „${topicTitle}“ fehlt noch Evidenz im ${dimensionLabel[dimension]}.`;
 	}
-	return `Warum jetzt: „${topicTitle}“ ist im ${dimensionLabel[dimension]} noch nicht stabil.`;
+	return `„${topicTitle}“ ist im ${dimensionLabel[dimension]} noch nicht stabil.`;
 };
 
 export const selectNextAdaptiveLearningTarget = (args: {
@@ -149,6 +149,13 @@ export const selectNextAdaptiveLearningTarget = (args: {
 			Math.max(latestTargetedAtByKey.get(key) ?? 0, entry.targetedAt),
 		);
 	}
+	const latestHistoryEntry = (args.history ?? []).reduce<
+		AdaptiveTargetHistory | undefined
+	>(
+		(latest, entry) =>
+			!latest || entry.targetedAt > latest.targetedAt ? entry : latest,
+		undefined,
+	);
 	const excludedTargetKeys = new Set(args.excludeTargetKeys ?? []);
 	const candidates = args.topics.flatMap((topic) => {
 		const requiredDimensions = topic.requiredEvidenceDimensions?.length
@@ -162,12 +169,20 @@ export const selectNextAdaptiveLearningTarget = (args: {
 		return requiredDimensions.flatMap((dimension) => {
 			const key = `${topic.id}:${dimension}`;
 			if (excludedTargetKeys.has(key)) return [];
+			const lastTargetedAt = latestTargetedAtByKey.get(key) ?? 0;
 			const dimensionStatus = deriveDimensionStatus({
 				dimension,
 				initialStatus: readinessByTopicId.get(topic.id) ?? "unknown",
 				evidence: topicEvidence,
 			});
 			if (dimensionStatus.status === "secure") return [];
+			if (
+				dimension === "understanding" &&
+				lastTargetedAt > 0 &&
+				!dimensionStatus.needsControlCheck
+			) {
+				return [];
+			}
 			const status: "unknown" | "developing" = dimensionStatus.status;
 
 			return [
@@ -176,7 +191,11 @@ export const selectNextAdaptiveLearningTarget = (args: {
 					dimension,
 					...dimensionStatus,
 					status,
-					lastTargetedAt: latestTargetedAtByKey.get(key) ?? 0,
+					lastTargetedAt,
+					isImmediateGuidedFollowUp:
+						latestHistoryEntry?.dimension === "understanding" &&
+						latestHistoryEntry.topicId === topic.id &&
+						dimension === "problemSolving",
 				},
 			];
 		});
@@ -185,6 +204,8 @@ export const selectNextAdaptiveLearningTarget = (args: {
 	candidates.sort(
 		(left, right) =>
 			Number(right.needsControlCheck) - Number(left.needsControlCheck) ||
+			Number(right.isImmediateGuidedFollowUp) -
+				Number(left.isImmediateGuidedFollowUp) ||
 			priorityRank[left.topic.priority] - priorityRank[right.topic.priority] ||
 			dimensionRank[left.dimension] - dimensionRank[right.dimension] ||
 			left.lastTargetedAt - right.lastTargetedAt ||
@@ -261,7 +282,7 @@ export const selectAdaptiveMaintenanceTarget = (args: {
 		phase: phaseForDimension[selected.dimension],
 		status: "developing",
 		needsControlCheck: false,
-		reason: `Warum jetzt: „${selected.topic.title}“ wird bis zur Prüfung mit einer kurzen Wiederholung sicher gehalten.`,
+		reason: `„${selected.topic.title}“ wird bis zur Prüfung mit einer kurzen Wiederholung sicher gehalten.`,
 	};
 };
 

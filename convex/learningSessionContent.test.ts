@@ -167,7 +167,7 @@ test("theory fallback creates active recall cards instead of generic summaries",
 		sessionId,
 	});
 
-	expect(content?.items).toHaveLength(9);
+	expect(content?.items).toHaveLength(12);
 	expect(content?.items.every((item) => item.kind === "learnCard")).toBe(true);
 	expect(content?.items[0]).toMatchObject({
 		front: expect.stringContaining("?"),
@@ -240,7 +240,8 @@ test("opening an existing short theory session backfills its pre-check", async (
 	expect(
 		after?.items.filter(
 			(item) =>
-				item.phase === "practice" && item.coverageKey.includes(":validation:"),
+				item.phase === "practice" &&
+				item.coverageKey.endsWith(":paired-practice"),
 		),
 	).toHaveLength(1);
 	expect(
@@ -248,7 +249,7 @@ test("opening an existing short theory session backfills its pre-check", async (
 	).toContain(before?.items[0]?.front);
 });
 
-test("split fallback pairs every theory page with a related prediction question", async () => {
+test("split fallback adds one opening question for the first theory page", async () => {
 	const { t, sessionId } = await createGeneratedPlanWithSession(
 		"theory",
 		"split",
@@ -268,21 +269,17 @@ test("split fallback pairs every theory page with a related prediction question"
 		content?.items.filter((item) =>
 			item.coverageKey.endsWith(":paired-practice"),
 		) ?? [];
-	expect(theoryItems).toHaveLength(8);
-	expect(pairedPracticeItems).toHaveLength(theoryItems.length);
-	for (const theoryItem of theoryItems) {
-		const pairedQuestion = pairedPracticeItems.find(
-			(item) =>
-				item.coverageKey === `${theoryItem.coverageKey}:paired-practice`,
-		);
-		expect(pairedQuestion).toMatchObject({
-			phase: "practice",
-			kind: "written",
-			title: theoryItem.title,
-			topicId: theoryItem.topicId,
-			prompt: theoryItem.theoryContent?.question ?? theoryItem.front,
-		});
-	}
+	expect(theoryItems).toHaveLength(12);
+	expect(pairedPracticeItems).toHaveLength(1);
+	const firstTheoryItem = theoryItems[0];
+	expect(pairedPracticeItems[0]).toMatchObject({
+		phase: "practice",
+		kind: "written",
+		title: firstTheoryItem?.title,
+		topicId: firstTheoryItem?.topicId,
+		prompt: firstTheoryItem?.theoryContent?.question ?? firstTheoryItem?.front,
+		coverageKey: `${firstTheoryItem?.coverageKey}:paired-practice`,
+	});
 	expect(
 		content?.items.reduce((total, item) => total + item.estimatedSeconds, 0),
 	).toBe(30 * 60);
@@ -344,9 +341,7 @@ test("reopening a theory session replaces demanding fallback questions", async (
 	const before = await t.query(api.learningSessionContent.getSessionContent, {
 		sessionId,
 	});
-	const theoryItem = before?.items.find(
-		(item) => item.kind === "learnCard" && item.questionAngle === "apply",
-	);
+	const theoryItem = before?.items.find((item) => item.kind === "learnCard");
 	if (!theoryItem?.theoryContent) {
 		throw new Error("Expected an application theory item.");
 	}
@@ -355,7 +350,7 @@ test("reopening a theory session replaces demanding fallback questions", async (
 		(item) => item.coverageKey === `${theoryItem.coverageKey}:paired-practice`,
 	);
 	if (!pairedQuestion) throw new Error("Expected a paired theory question.");
-	const legacyQuestion = `Wie wendest du ${theoryItem.title} Schritt für Schritt an?`;
+	const legacyQuestion = `Was bedeutet ${theoryItem.title}, und wofür wird das Verfahren gebraucht?`;
 
 	await t.run(async (ctx) => {
 		await ctx.db.patch("learningSessionContentItems", theoryItem.id, {
@@ -377,7 +372,7 @@ test("reopening a theory session replaces demanding fallback questions", async (
 	const after = await t.query(api.learningSessionContent.getSessionContent, {
 		sessionId,
 	});
-	const expectedQuestion = `Was glaubst du: Worauf kommt es bei ${theoryItem.title} besonders an?`;
+	const expectedQuestion = `Was fällt dir zu ${theoryItem.title} spontan ein?`;
 	expect(after?.items.find((item) => item.id === theoryItem.id)).toMatchObject({
 		prompt: expectedQuestion,
 		front: expectedQuestion,
@@ -417,10 +412,7 @@ test("persists deferred and completed theory validation states", async () => {
 
 	const validationItems =
 		deferred?.items.filter((item) => item.phase === "practice") ?? [];
-	expect(validationItems).toHaveLength(
-		(deferred?.items.filter((item) => item.kind === "learnCard").length ?? 0) +
-			1,
-	);
+	expect(validationItems).toHaveLength(1);
 	for (const item of validationItems) {
 		await t.mutation(api.learningSessionContent.submitAnswer, {
 			itemId: item.id,
@@ -472,13 +464,13 @@ test("continue learning appends a fresh timed block", async () => {
 
 	expect(extension).toMatchObject({
 		firstNewItemIndex: existingItemCount,
-		addedItemCount: 3,
+		addedItemCount: 2,
 		durationMinutes: 10,
 	});
 	expect(
 		after?.items.slice(0, existingItemCount).map((item) => item.id),
 	).toEqual(before?.items.map((item) => item.id));
-	expect(newItems.every((item) => item.learningBlockIndex === 4)).toBe(true);
+	expect(newItems.every((item) => item.learningBlockIndex === 3)).toBe(true);
 	expect(
 		newItems.some((item) => existingCoverageKeys.includes(item.coverageKey)),
 	).toBe(false);
@@ -500,8 +492,8 @@ test("continue learning appends a fresh timed block", async () => {
 	);
 
 	expect(secondExtension).toMatchObject({
-		firstNewItemIndex: existingItemCount + 3,
-		addedItemCount: 3,
+		firstNewItemIndex: existingItemCount + 2,
+		addedItemCount: 2,
 	});
 	expect(duplicatePrompts).toEqual([]);
 });
@@ -540,7 +532,7 @@ test("existing theory cards remain readable without structured topic content", a
 	expect(content?.items[0]?.theoryContent).toBeUndefined();
 });
 
-test("AI theory content gains a practical segment for split sessions", async () => {
+test("AI theory content gains one opening question for split sessions", async () => {
 	const { t, sessionId } = await createGeneratedPlanWithSession(
 		"theory",
 		"split",
@@ -575,7 +567,7 @@ test("AI theory content gains a practical segment for split sessions", async () 
 	).toHaveLength(1);
 	expect(
 		content?.items.filter((item) => item.coverageKey.includes(":validation:")),
-	).toHaveLength(1);
+	).toHaveLength(0);
 });
 
 test("practice fallback creates concrete guided practice tasks", async () => {
@@ -589,7 +581,7 @@ test("practice fallback creates concrete guided practice tasks", async () => {
 	});
 	const prompts = content?.items.map((item) => item.prompt).join(" ") ?? "";
 
-	expect(content?.items).toHaveLength(8);
+	expect(content?.items).toHaveLength(6);
 	expect(content?.items.slice(0, 6).map((item) => item.kind)).toEqual([
 		"multipleChoice",
 		"written",
@@ -715,7 +707,7 @@ test("praxis fallback creates generalprobe tasks without generic strategy prompt
 	const prompts = content?.items.map((item) => item.prompt).join(" ") ?? "";
 
 	expect(content?.praxisDurationSeconds).toBe(30 * 60);
-	expect(content?.items).toHaveLength(8);
+	expect(content?.items).toHaveLength(6);
 	expect(prompts).toContain("Generalprobe");
 	expect(prompts).not.toContain("Welche Strategie passt");
 });

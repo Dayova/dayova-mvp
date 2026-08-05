@@ -68,6 +68,27 @@ describe("adaptive learning plan policy", () => {
 		});
 	});
 
+	test("moves from one theory exposure to guided practice for the same topic", () => {
+		expect(
+			selectNextAdaptiveLearningTarget({
+				topics,
+				initialReadiness: [],
+				evidence: [],
+				history: [
+					{
+						topicId: "steigung",
+						dimension: "understanding",
+						targetedAt: 1,
+					},
+				],
+			}),
+		).toMatchObject({
+			topicId: "steigung",
+			dimension: "problemSolving",
+			phase: "practice",
+		});
+	});
+
 	test("uses independent work after repeated problem-solving success", () => {
 		const attempts = [
 			evidence({
