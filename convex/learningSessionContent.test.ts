@@ -237,7 +237,7 @@ test("opening an existing short theory session backfills its pre-check", async (
 	).toContain(before?.items[0]?.front);
 });
 
-test("split fallback pairs every theory page with a practical page", async () => {
+test("split fallback pairs every theory page with a related prediction question", async () => {
 	const { t, sessionId } = await createGeneratedPlanWithSession(
 		"theory",
 		"split",
@@ -260,14 +260,17 @@ test("split fallback pairs every theory page with a practical page", async () =>
 	expect(theoryItems).toHaveLength(8);
 	expect(pairedPracticeItems).toHaveLength(theoryItems.length);
 	for (const theoryItem of theoryItems) {
-		expect(pairedPracticeItems).toContainEqual(
-			expect.objectContaining({
-				phase: "practice",
-				kind: "written",
-				topicId: theoryItem.topicId,
-				coverageKey: `${theoryItem.coverageKey}:paired-practice`,
-			}),
+		const pairedQuestion = pairedPracticeItems.find(
+			(item) =>
+				item.coverageKey === `${theoryItem.coverageKey}:paired-practice`,
 		);
+		expect(pairedQuestion).toMatchObject({
+			phase: "practice",
+			kind: "written",
+			title: theoryItem.title,
+			topicId: theoryItem.topicId,
+			prompt: theoryItem.theoryContent?.question ?? theoryItem.front,
+		});
 	}
 	expect(
 		content?.items.reduce((total, item) => total + item.estimatedSeconds, 0),
@@ -275,6 +278,48 @@ test("split fallback pairs every theory page with a practical page", async () =>
 	expect(new Set(content?.items.map((item) => item.coverageKey)).size).toBe(
 		content?.items.length,
 	);
+});
+
+test("reopening a split theory session upgrades an existing paired task to the guiding question", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession(
+		"theory",
+		"split",
+	);
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	const before = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	const theoryItem = before?.items.find((item) => item.kind === "learnCard");
+	const pairedQuestion = before?.items.find((item) =>
+		item.coverageKey.endsWith(":paired-practice"),
+	);
+	if (!theoryItem || !pairedQuestion) {
+		throw new Error("Expected a paired theory question.");
+	}
+
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningSessionContentItems", pairedQuestion.id, {
+			title: "Kurz-Check",
+			prompt: "Bearbeite eine zusätzliche Transferaufgabe.",
+		});
+	});
+
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	const updated = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+	const updatedPair = updated?.items.find(
+		(item) => item.id === pairedQuestion.id,
+	);
+
+	expect(updatedPair).toMatchObject({
+		title: theoryItem.title,
+		prompt: theoryItem.theoryContent?.question ?? theoryItem.front,
+	});
 });
 
 test("persists deferred and completed theory validation states", async () => {
@@ -380,7 +425,10 @@ test("continue learning appends a fresh timed block", async () => {
 		api.learningSessionContent.getSessionContent,
 		{ sessionId },
 	);
-	const allPrompts = twiceExtended?.items.map((item) => item.prompt) ?? [];
+	const allPrompts =
+		twiceExtended?.items
+			.filter((item) => !item.coverageKey.endsWith(":paired-practice"))
+			.map((item) => item.prompt) ?? [];
 	const duplicatePrompts = allPrompts.filter(
 		(prompt, index) => allPrompts.indexOf(prompt) !== index,
 	);

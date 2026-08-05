@@ -39,6 +39,13 @@ type AnswerRating = "notCorrect" | "partiallyCorrect" | "correct";
 
 const PAIRED_THEORY_PRACTICE_SUFFIX = ":paired-practice";
 
+const isPairedTheoryQuestionItem = (item: {
+	kind: string;
+	coverageKey?: string;
+}) =>
+	item.kind !== "learnCard" &&
+	item.coverageKey?.endsWith(PAIRED_THEORY_PRACTICE_SUFFIX) === true;
+
 type GeneratedItem = {
 	phase?: "theory" | "practice" | "rehearsal";
 	kind: SessionContentItemKind;
@@ -510,11 +517,8 @@ const buildPairedPracticeItem = (
 ): GeneratedItem => {
 	const concept =
 		theoryItem.theoryContent?.conceptTitle ?? theoryItem.title ?? session.title;
-	const application =
-		session.tasks.find((task) => task.trim().length > 0) ?? session.goal;
-	const prompt = theoryItem.theoryContent
-		? `Ausgangspunkt: ${theoryItem.theoryContent.question} Übertrage ${concept} auf eine eigene Variante dieses Beispiels: ${compactToLength(theoryItem.theoryContent.example, 180)} Verändere eine Bedingung, löse die Variante und begründe den entscheidenden Schritt.`
-		: `Bearbeite den Kurz-Check zu ${concept}: ${application} Begründe den entscheidenden Schritt mit Blick auf diese Leitfrage: ${theoryItem.front ?? theoryItem.prompt}`;
+	const prompt =
+		theoryItem.theoryContent?.question ?? theoryItem.front ?? theoryItem.prompt;
 	const idealAnswer = theoryItem.theoryContent
 		? `${theoryItem.theoryContent.keyPoints.join(" ")} Beispiel: ${theoryItem.theoryContent.example}`
 		: (theoryItem.back ?? theoryItem.idealAnswer);
@@ -525,11 +529,10 @@ const buildPairedPracticeItem = (
 	return {
 		phase: "practice",
 		kind: "written",
-		title: "Kurz-Check",
+		title: concept,
 		prompt,
-		explanation: theoryItem.theoryContent
-			? `${theoryItem.theoryContent.explanation} Achte besonders auf diesen typischen Fehler: ${theoryItem.theoryContent.commonMistake}`
-			: theoryItem.explanation,
+		explanation:
+			theoryItem.theoryContent?.explanation ?? theoryItem.explanation,
 		idealAnswer,
 		evaluationKeywords: theoryItem.evaluationKeywords,
 		learningBlockIndex: theoryItem.learningBlockIndex,
@@ -538,7 +541,7 @@ const buildPairedPracticeItem = (
 			theoryItem.evidenceDimension ??
 			session.targetEvidenceDimension ??
 			"understanding",
-		questionAngle: "apply",
+		questionAngle: theoryItem.questionAngle ?? "recall",
 		coverageKey: getPairedPracticeCoverageKey(theoryItem),
 		estimatedSeconds: practiceSeconds,
 	};
@@ -680,21 +683,60 @@ const ensurePairedTheoryPracticeItems = async (
 	if (session.phase !== "theory" || session.compositionVariant !== "split") {
 		return existingItems;
 	}
-	const existingPairKeys = new Set(
+	const existingPairByCoverageKey = new Map(
 		existingItems
-			.filter(
-				(item) =>
-					item.kind !== "learnCard" &&
-					item.coverageKey?.endsWith(PAIRED_THEORY_PRACTICE_SUFFIX),
-			)
-			.map((item) => item.coverageKey),
+			.filter(isPairedTheoryQuestionItem)
+			.flatMap((item) =>
+				item.coverageKey ? ([[item.coverageKey, item]] as const) : [],
+			),
 	);
 	const missingPracticeItems: GeneratedItem[] = [];
+	let updatedExistingPair = false;
 	for (const theoryItem of existingItems.filter(
 		(item) => item.kind === "learnCard",
 	)) {
 		const pairedCoverageKey = getPairedPracticeCoverageKey(theoryItem);
-		if (existingPairKeys.has(pairedCoverageKey)) continue;
+		const existingPair = existingPairByCoverageKey.get(pairedCoverageKey);
+		if (existingPair) {
+			const predictionItem = buildPairedPracticeItem(session, {
+				phase: theoryItem.phase,
+				kind: theoryItem.kind,
+				title: theoryItem.title,
+				prompt: theoryItem.prompt,
+				front: theoryItem.front,
+				back: theoryItem.back,
+				explanation: theoryItem.explanation,
+				idealAnswer: theoryItem.idealAnswer,
+				theoryContent: theoryItem.theoryContent,
+				choices: theoryItem.choices,
+				correctChoiceId: theoryItem.correctChoiceId,
+				evaluationKeywords: theoryItem.evaluationKeywords,
+				learningBlockIndex: theoryItem.learningBlockIndex,
+				topicId: theoryItem.topicId,
+				evidenceDimension: theoryItem.evidenceDimension,
+				questionAngle: theoryItem.questionAngle,
+				coverageKey: theoryItem.coverageKey,
+				estimatedSeconds: theoryItem.estimatedSeconds,
+			});
+			if (
+				existingPair.title !== predictionItem.title ||
+				existingPair.prompt !== predictionItem.prompt ||
+				existingPair.explanation !== predictionItem.explanation ||
+				existingPair.idealAnswer !== predictionItem.idealAnswer ||
+				existingPair.questionAngle !== predictionItem.questionAngle
+			) {
+				await ctx.db.patch("learningSessionContentItems", existingPair._id, {
+					title: normalizeText(predictionItem.title),
+					prompt: normalizeText(predictionItem.prompt),
+					explanation: normalizeText(predictionItem.explanation),
+					idealAnswer: normalizeText(predictionItem.idealAnswer),
+					questionAngle: predictionItem.questionAngle,
+					updatedAt: Date.now(),
+				});
+				updatedExistingPair = true;
+			}
+			continue;
+		}
 		const { theorySeconds } = splitTheoryPageSeconds(
 			theoryItem.estimatedSeconds,
 		);
@@ -735,6 +777,7 @@ const ensurePairedTheoryPracticeItems = async (
 		);
 		return await listItems(ctx, session._id);
 	}
+	if (updatedExistingPair) return await listItems(ctx, session._id);
 	return existingItems;
 };
 
@@ -821,21 +864,25 @@ const buildAnalysis = (
 	attempts: Doc<"learningSessionAnswerAttempts">[],
 ) => {
 	const itemById = new Map(items.map((item) => [item._id, item]));
-	const correctCount = attempts.filter(
+	const scoredAttempts = attempts.filter((attempt) => {
+		const item = itemById.get(attempt.itemId);
+		return item ? !isPairedTheoryQuestionItem(item) : false;
+	});
+	const correctCount = scoredAttempts.filter(
 		(attempt) => attempt.rating === "correct",
 	).length;
-	const partialCount = attempts.filter(
+	const partialCount = scoredAttempts.filter(
 		(attempt) => attempt.rating === "partiallyCorrect",
 	).length;
-	const attemptedCount = attempts.length;
+	const attemptedCount = scoredAttempts.length;
 	const hasStrongResult =
 		attemptedCount > 0 && correctCount + partialCount >= attemptedCount;
-	const missedPrompts = attempts
+	const missedPrompts = scoredAttempts
 		.filter((attempt) => attempt.rating !== "correct")
 		.map((attempt) => itemById.get(attempt.itemId)?.prompt)
 		.filter((prompt): prompt is string => Boolean(prompt))
 		.slice(0, 3);
-	const firstCorrectPrompt = attempts
+	const firstCorrectPrompt = scoredAttempts
 		.map((attempt) =>
 			attempt.rating === "correct"
 				? itemById.get(attempt.itemId)?.prompt
@@ -1039,7 +1086,13 @@ export const getSessionGenerationContext = internalQuery({
 				}
 				seenAttemptItemIds.add(attempt.itemId);
 				const item = itemById.get(attempt.itemId);
-				if (!item || item.kind === "learnCard") continue;
+				if (
+					!item ||
+					item.kind === "learnCard" ||
+					isPairedTheoryQuestionItem(item)
+				) {
+					continue;
+				}
 				const selectedChoice = item.choices?.find(
 					(choice) => choice.id === attempt.selectedChoiceId,
 				)?.text;

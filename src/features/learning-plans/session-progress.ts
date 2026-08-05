@@ -1,7 +1,8 @@
 import type { SessionPhase } from "./types";
 
 export const CONTINUE_LEARNING_MINUTES = 10;
-export const PAIRED_THEORY_PRACTICE_SUFFIX = ":paired-practice";
+// Keep the persisted suffix stable for sessions created by earlier app versions.
+export const PAIRED_THEORY_QUESTION_SUFFIX = ":paired-practice";
 
 export function getLearningSessionTimerDurationSeconds({
 	phase,
@@ -44,27 +45,27 @@ export function getLearningSessionItems<
 				item.coverageKey?.includes(":validation:"),
 		);
 		const validationItemSet = new Set(validationItems);
-		const pairedPracticeByTheoryCoverageKey = new Map(
+		const pairedQuestionByTheoryCoverageKey = new Map(
 			items.flatMap((item) => {
 				const coverageKey = item.coverageKey;
-				if (!isPairedTheoryPracticeItem(item) || !coverageKey) return [];
+				if (!isPairedTheoryQuestionItem(item) || !coverageKey) return [];
 				return [
 					[
-						coverageKey.slice(0, -PAIRED_THEORY_PRACTICE_SUFFIX.length),
+						coverageKey.slice(0, -PAIRED_THEORY_QUESTION_SUFFIX.length),
 						item,
 					] as const,
 				];
 			}),
 		);
-		const pairedPracticeItems = new Set(
-			pairedPracticeByTheoryCoverageKey.values(),
+		const pairedQuestionItems = new Set(
+			pairedQuestionByTheoryCoverageKey.values(),
 		);
 		const pairedItems = items.flatMap((item) => {
 			if (item.kind !== "learnCard") return [];
-			const practiceItem = item.coverageKey
-				? pairedPracticeByTheoryCoverageKey.get(item.coverageKey)
+			const questionItem = item.coverageKey
+				? pairedQuestionByTheoryCoverageKey.get(item.coverageKey)
 				: undefined;
-			return practiceItem ? [item, practiceItem] : [item];
+			return questionItem ? [questionItem, item] : [item];
 		});
 
 		return [
@@ -74,7 +75,7 @@ export function getLearningSessionItems<
 				(item) =>
 					!validationItemSet.has(item) &&
 					item.kind !== "learnCard" &&
-					!pairedPracticeItems.has(item),
+					!pairedQuestionItems.has(item),
 			),
 		];
 	}
@@ -82,14 +83,33 @@ export function getLearningSessionItems<
 	return [...items];
 }
 
-export function isPairedTheoryPracticeItem<
+export function isPairedTheoryQuestionItem<
 	Item extends { kind: string; phase?: SessionPhase; coverageKey?: string },
 >(item: Item | null | undefined) {
 	return Boolean(
 		item &&
 			item.kind !== "learnCard" &&
 			item.phase === "practice" &&
-			item.coverageKey?.endsWith(PAIRED_THEORY_PRACTICE_SUFFIX),
+			item.coverageKey?.endsWith(PAIRED_THEORY_QUESTION_SUFFIX),
+	);
+}
+
+export function getPairedTheoryItem<
+	Item extends { kind: string; phase?: SessionPhase; coverageKey?: string },
+>(items: readonly Item[], currentIndex: number): Item | null {
+	const questionItem = items[currentIndex];
+	if (!isPairedTheoryQuestionItem(questionItem) || !questionItem?.coverageKey) {
+		return null;
+	}
+	const theoryCoverageKey = questionItem.coverageKey.slice(
+		0,
+		-PAIRED_THEORY_QUESTION_SUFFIX.length,
+	);
+	return (
+		items.find(
+			(item) =>
+				item.kind === "learnCard" && item.coverageKey === theoryCoverageKey,
+		) ?? null
 	);
 }
 
@@ -114,14 +134,17 @@ export function isTheoryKnowledgeCheckItem<
 	);
 }
 
-export function getTheoryTopicPosition<Item extends { kind: string }>(
-	items: readonly Item[],
-	currentIndex: number,
-) {
+export function getTheoryTopicPosition<
+	Item extends { kind: string; phase?: SessionPhase; coverageKey?: string },
+>(items: readonly Item[], currentIndex: number) {
 	const theoryIndices = items.flatMap((item, index) =>
 		item.kind === "learnCard" ? [index] : [],
 	);
-	const topicIndex = theoryIndices.indexOf(currentIndex);
+	const pairedTheoryItem = getPairedTheoryItem(items, currentIndex);
+	const activeTheoryIndex = pairedTheoryItem
+		? items.indexOf(pairedTheoryItem)
+		: currentIndex;
+	const topicIndex = theoryIndices.indexOf(activeTheoryIndex);
 
 	return {
 		topicIndex,
@@ -137,11 +160,9 @@ export function getTheoryTopicPosition<Item extends { kind: string }>(
 
 export function getLearningSessionCompletionPhase(
 	phase: SessionPhase,
-	compositionVariant: "control" | "split",
+	_compositionVariant: "control" | "split",
 ): SessionPhase {
-	return phase === "theory" && compositionVariant === "split"
-		? "practice"
-		: phase;
+	return phase;
 }
 
 export function isQualifiedSessionCompletion(

@@ -4,6 +4,7 @@ import {
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
+	getPairedTheoryItem,
 	getTheoryTopicPosition,
 	isQualifiedSessionCompletion,
 	isTheoryKnowledgeCheckItem,
@@ -33,9 +34,7 @@ describe("learning session progress", () => {
 		expect(
 			getLearningSessionItems([learnCard, practiceTask], "theory", "split"),
 		).toEqual([practiceTask, learnCard]);
-		expect(getLearningSessionCompletionPhase("theory", "split")).toBe(
-			"practice",
-		);
+		expect(getLearningSessionCompletionPhase("theory", "split")).toBe("theory");
 	});
 
 	it("maps reordered theory cards to their local topic position", () => {
@@ -64,7 +63,7 @@ describe("learning session progress", () => {
 		});
 	});
 
-	it("places each practical page directly after its theory page", () => {
+	it("places each prediction question directly before its theory page", () => {
 		const secondLearnCard = {
 			id: "theory-2",
 			kind: "learnCard",
@@ -98,11 +97,29 @@ describe("learning session progress", () => {
 			),
 		).toEqual([
 			practiceTask,
-			learnCard,
 			firstPractice,
-			secondLearnCard,
+			learnCard,
 			secondPractice,
+			secondLearnCard,
 		]);
+	});
+
+	it("maps a paired question to the same topic as its theory page", () => {
+		const pairedQuestion = {
+			id: "prediction",
+			kind: "written",
+			phase: "practice",
+			coverageKey: "topic:recall:0:paired-practice",
+		} as const;
+		const items = [practiceTask, pairedQuestion, learnCard];
+
+		expect(getPairedTheoryItem(items, 1)).toBe(learnCard);
+		expect(getTheoryTopicPosition(items, 1)).toEqual({
+			topicIndex: 0,
+			total: 1,
+			previousSessionIndex: null,
+			nextSessionIndex: null,
+		});
 	});
 
 	it("keeps optional follow-up practice after the theory cards", () => {

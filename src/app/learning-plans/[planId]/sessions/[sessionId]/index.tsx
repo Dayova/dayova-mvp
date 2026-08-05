@@ -49,12 +49,16 @@ import {
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
+	getPairedTheoryItem,
 	getTheoryTopicPosition,
-	isPairedTheoryPracticeItem,
+	isPairedTheoryQuestionItem,
 	isTheoryKnowledgeCheckItem,
 } from "~/features/learning-plans/session-progress";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
-import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
+import {
+	TheoryPredictionPage,
+	TheoryTopicPage,
+} from "~/features/learning-plans/theory-topic-page";
 import type {
 	LearningSessionContentSnapshot,
 	SessionAnswerAttempt,
@@ -1013,7 +1017,7 @@ export default function LearningSessionContentScreen() {
 	const didStartTrackingRef = useRef(false);
 	const didRecordOutcomeRef = useRef(false);
 	const didResumeDeferredValidationRef = useRef(false);
-	const advancedTheoryKnowledgeCheckItemIdRef = useRef<string | null>(null);
+	const advancedPreTheoryQuestionItemIdRef = useRef<string | null>(null);
 	const activeStudySecondsRef = useRef(0);
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
@@ -1071,6 +1075,7 @@ export default function LearningSessionContentScreen() {
 		[content],
 	);
 	const currentItem = sessionItems[currentIndex] ?? null;
+	const pairedTheoryItem = getPairedTheoryItem(sessionItems, currentIndex);
 	const theoryTopicPosition = getTheoryTopicPosition(
 		sessionItems,
 		currentIndex,
@@ -1087,15 +1092,21 @@ export default function LearningSessionContentScreen() {
 			compositionVariant: content?.session.compositionVariant,
 		}),
 	);
+	const hasPairedTheoryQuestions = sessionItems.some(
+		isPairedTheoryQuestionItem,
+	);
 	const isTheoryValidationSession =
 		content?.session.phase === "theory" &&
 		content.session.compositionVariant === "split" &&
-		validationItems.length > 0;
+		validationItems.length > 0 &&
+		!hasPairedTheoryQuestions;
 	const isTheoryKnowledgeCheck = isTheoryKnowledgeCheckItem({
 		item: currentItem,
 		phase: content?.session.phase,
 		compositionVariant: content?.session.compositionVariant,
 	});
+	const isPairedTheoryQuestion = isPairedTheoryQuestionItem(currentItem);
+	const isPreTheoryQuestion = isTheoryKnowledgeCheck || isPairedTheoryQuestion;
 
 	useEffect(() => {
 		if (
@@ -1128,7 +1139,7 @@ export default function LearningSessionContentScreen() {
 		return attempt;
 	}, [content, currentItem, repeatingItemId, retryStartedAt]);
 	const visibleAttempt =
-		isPraxisSession || isTheoryKnowledgeCheck
+		isPraxisSession || isPreTheoryQuestion
 			? null
 			: localAttempt && currentItem && localAttempt.itemId === currentItem.id
 				? localAttempt
@@ -1366,19 +1377,19 @@ export default function LearningSessionContentScreen() {
 
 	useEffect(() => {
 		if (
-			!isTheoryKnowledgeCheck ||
+			!isPreTheoryQuestion ||
 			!currentItem ||
 			!persistedAttempt ||
-			advancedTheoryKnowledgeCheckItemIdRef.current === currentItem.id
+			advancedPreTheoryQuestionItemIdRef.current === currentItem.id
 		) {
 			return;
 		}
-		advancedTheoryKnowledgeCheckItemIdRef.current = currentItem.id;
+		advancedPreTheoryQuestionItemIdRef.current = currentItem.id;
 		queueMicrotask(advancePastCurrentItem);
 	}, [
 		advancePastCurrentItem,
 		currentItem,
-		isTheoryKnowledgeCheck,
+		isPreTheoryQuestion,
 		persistedAttempt,
 	]);
 
@@ -1648,7 +1659,7 @@ export default function LearningSessionContentScreen() {
 				answerText: currentItem.kind === "written" ? writtenAnswer : undefined,
 				transcript: currentItem.kind === "voice" ? writtenAnswer : undefined,
 			});
-			if (attempt.rating === "correct") {
+			if (attempt.rating === "correct" && !isPreTheoryQuestion) {
 				void triggerSuccessHaptic({
 					platform: process.env.EXPO_OS,
 				});
@@ -1662,9 +1673,9 @@ export default function LearningSessionContentScreen() {
 				setCompletionPhase("rehearsal");
 				return;
 			}
-			if (isTheoryKnowledgeCheck) {
-				if (advancedTheoryKnowledgeCheckItemIdRef.current !== currentItem.id) {
-					advancedTheoryKnowledgeCheckItemIdRef.current = currentItem.id;
+			if (isPreTheoryQuestion) {
+				if (advancedPreTheoryQuestionItemIdRef.current !== currentItem.id) {
+					advancedPreTheoryQuestionItemIdRef.current = currentItem.id;
 					advancePastCurrentItem();
 				}
 				return;
@@ -1701,7 +1712,7 @@ export default function LearningSessionContentScreen() {
 			: content
 				? isDiagnosticSession
 					? "Wissenscheck"
-					: isTheoryKnowledgeCheck || isPairedTheoryPracticeItem(currentItem)
+					: isPreTheoryQuestion
 						? "Kurz-Check"
 						: phaseTitle(currentItem?.phase ?? content.session.phase)
 				: "Lernblock";
@@ -1718,7 +1729,8 @@ export default function LearningSessionContentScreen() {
 
 	if (
 		content?.session.phase === "theory" &&
-		currentItem?.kind === "learnCard" &&
+		(currentItem?.kind === "learnCard" ||
+			(isPairedTheoryQuestion && pairedTheoryItem)) &&
 		!showAnalysis &&
 		!completionPhase
 	) {
@@ -1760,16 +1772,31 @@ export default function LearningSessionContentScreen() {
 					}}
 				/>
 				<ThemedStatusBar />
-				<TheoryTopicPage
-					key={currentItem.id}
-					item={currentItem}
-					currentIndex={theoryTopicPosition.topicIndex}
-					total={theoryTopicPosition.total}
-					isCompleting={isBusy}
-					onPrevious={showPreviousTheoryTopic}
-					onNext={continueTheory}
-				/>
-				{errorMessage ? (
+				{currentItem.kind === "learnCard" ? (
+					<TheoryTopicPage
+						key={currentItem.id}
+						item={currentItem}
+						currentIndex={theoryTopicPosition.topicIndex}
+						total={theoryTopicPosition.total}
+						isCompleting={isBusy}
+						onPrevious={showPreviousTheoryTopic}
+						onNext={continueTheory}
+					/>
+				) : pairedTheoryItem ? (
+					<TheoryPredictionPage
+						key={currentItem.id}
+						theoryItem={pairedTheoryItem}
+						currentIndex={theoryTopicPosition.topicIndex}
+						total={theoryTopicPosition.total}
+						value={answerText}
+						onChange={setAnswerText}
+						onSubmit={() => void submitCurrentAnswer()}
+						onSubmitUnknown={() => void submitCurrentAnswer(true)}
+						isSubmitting={isBusy}
+						errorMessage={errorMessage}
+					/>
+				) : null}
+				{currentItem.kind === "learnCard" && errorMessage ? (
 					<View className="absolute right-6 bottom-28 left-6 rounded-[24px] bg-wrong-subtle px-4 py-3">
 						<Text
 							selectable

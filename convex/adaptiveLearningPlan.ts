@@ -13,6 +13,10 @@ import { normalizeLearningTopics } from "./learningTopicMap";
 import { getScheduleConflictMessage } from "./scheduleConflicts";
 
 const MAX_LEARNING_TIMES = 50;
+const PAIRED_THEORY_QUESTION_SUFFIX = ":paired-practice";
+
+const isPairedTheoryQuestionItem = (item: Doc<"learningSessionContentItems">) =>
+	item.coverageKey?.endsWith(PAIRED_THEORY_QUESTION_SUFFIX) === true;
 
 type RollingPlanCalendar = {
 	clearSession: (
@@ -93,7 +97,14 @@ const loadAdaptiveEvidence = async (
 			seenItemIds.add(attempt.itemId);
 			const item = itemById.get(attempt.itemId);
 			const topicId = item?.topicId ?? session.targetTopicIds?.[0];
-			if (!item || !topicId || item.kind === "learnCard") continue;
+			if (
+				!item ||
+				!topicId ||
+				item.kind === "learnCard" ||
+				isPairedTheoryQuestionItem(item)
+			) {
+				continue;
+			}
 			evidence.push({
 				topicId,
 				dimension: getAdaptiveEvidenceDimension(item),
