@@ -62,7 +62,7 @@ describe("learning session progress", () => {
 		});
 	});
 
-	it("places each prediction question directly before its theory page", () => {
+	it("shows one opening question before all theory pages", () => {
 		const secondLearnCard = {
 			id: "theory-2",
 			kind: "learnCard",
@@ -94,7 +94,7 @@ describe("learning session progress", () => {
 				"theory",
 				"split",
 			),
-		).toEqual([firstPractice, learnCard, secondPractice, secondLearnCard]);
+		).toEqual([firstPractice, learnCard, secondLearnCard]);
 	});
 
 	it("maps a paired question to the same topic as its theory page", () => {

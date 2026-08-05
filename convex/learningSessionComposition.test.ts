@@ -15,17 +15,14 @@ describe("learning session composition", () => {
 		).toEqual([{ phase: "theory", durationMinutes: 30 }]);
 	});
 
-	test("starts a theory session with a three-minute knowledge check", () => {
+	test("keeps the full theory slot for the opener and theory pages", () => {
 		expect(
 			getLearningSessionComposition({
 				phase: "theory",
 				durationMinutes: 20,
 				variant: "split",
 			}),
-		).toEqual([
-			{ phase: "practice", durationMinutes: 3 },
-			{ phase: "theory", durationMinutes: 17 },
-		]);
+		).toEqual([{ phase: "theory", durationMinutes: 20 }]);
 	});
 
 	test("does not alter short theory slots or non-theory phases", () => {

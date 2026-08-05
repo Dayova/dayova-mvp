@@ -501,7 +501,7 @@ test("keeps one committed and one provisional session in the rolling window", as
 	});
 	expect(initial?.sessions[1]).toMatchObject({
 		planningStatus: "provisional",
-		targetEvidenceDimension: "understanding",
+		targetEvidenceDimension: "problemSolving",
 	});
 	expect(initial?.sessions[1]?.contentGenerationStatus).toBeUndefined();
 	const provisionalSessionId = initial?.sessions[1]?.id;
@@ -546,7 +546,7 @@ test("keeps one committed and one provisional session in the rolling window", as
 	expect(
 		openSessions?.find((session) => session.planningStatus === "committed"),
 	).toMatchObject({
-		targetEvidenceDimension: "understanding",
+		targetEvidenceDimension: "problemSolving",
 		contentGenerationStatus: "queued",
 	});
 	const storedOpenSessions = await t.run(async (ctx) =>

@@ -539,7 +539,7 @@ export const advanceRollingLearningPlan = async (
 					createdAt: Date.now() + 1,
 				},
 			],
-			history,
+			history: projectedHistory,
 		}) ??
 		selectAdaptiveMaintenanceTarget({
 			topics,

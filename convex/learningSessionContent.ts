@@ -592,6 +592,10 @@ const pairGeneratedTheoryItems = (
 	if (session.phase !== "theory" || session.compositionVariant !== "split") {
 		return items;
 	}
+	const firstTheoryItem = items.find((item) => item.kind === "learnCard");
+	if (!firstTheoryItem) return items;
+	const openingQuestionCoverageKey =
+		getPairedPracticeCoverageKey(firstTheoryItem);
 	const existingPairKeys = new Set(
 		items
 			.filter(
@@ -603,9 +607,8 @@ const pairGeneratedTheoryItems = (
 	);
 
 	return items.flatMap((item) => {
-		if (item.kind !== "learnCard") return [item];
-		const pairedCoverageKey = getPairedPracticeCoverageKey(item);
-		if (existingPairKeys.has(pairedCoverageKey)) return [item];
+		if (item !== firstTheoryItem) return [item];
+		if (existingPairKeys.has(openingQuestionCoverageKey)) return [item];
 		const { theorySeconds } = splitTheoryPageSeconds(item.estimatedSeconds);
 		return [
 			{ ...item, estimatedSeconds: theorySeconds },
@@ -730,9 +733,8 @@ const ensurePairedTheoryPracticeItems = async (
 	);
 	const missingPracticeItems: GeneratedItem[] = [];
 	let updatedExistingPair = false;
-	for (const theoryItem of existingItems.filter(
-		(item) => item.kind === "learnCard",
-	)) {
+	const theoryItem = existingItems.find((item) => item.kind === "learnCard");
+	if (theoryItem) {
 		const pairedCoverageKey = getPairedPracticeCoverageKey(theoryItem);
 		const existingPair = existingPairByCoverageKey.get(pairedCoverageKey);
 		if (existingPair) {
@@ -773,37 +775,37 @@ const ensurePairedTheoryPracticeItems = async (
 				});
 				updatedExistingPair = true;
 			}
-			continue;
+		} else {
+			const { theorySeconds } = splitTheoryPageSeconds(
+				theoryItem.estimatedSeconds,
+			);
+			await ctx.db.patch("learningSessionContentItems", theoryItem._id, {
+				estimatedSeconds: theorySeconds,
+				updatedAt: Date.now(),
+			});
+			missingPracticeItems.push(
+				buildPairedPracticeItem(session, {
+					phase: theoryItem.phase,
+					kind: theoryItem.kind,
+					title: theoryItem.title,
+					prompt: theoryItem.prompt,
+					front: theoryItem.front,
+					back: theoryItem.back,
+					explanation: theoryItem.explanation,
+					idealAnswer: theoryItem.idealAnswer,
+					theoryContent: theoryItem.theoryContent,
+					choices: theoryItem.choices,
+					correctChoiceId: theoryItem.correctChoiceId,
+					evaluationKeywords: theoryItem.evaluationKeywords,
+					learningBlockIndex: theoryItem.learningBlockIndex,
+					topicId: theoryItem.topicId,
+					evidenceDimension: theoryItem.evidenceDimension,
+					questionAngle: theoryItem.questionAngle,
+					coverageKey: theoryItem.coverageKey,
+					estimatedSeconds: theoryItem.estimatedSeconds,
+				}),
+			);
 		}
-		const { theorySeconds } = splitTheoryPageSeconds(
-			theoryItem.estimatedSeconds,
-		);
-		await ctx.db.patch("learningSessionContentItems", theoryItem._id, {
-			estimatedSeconds: theorySeconds,
-			updatedAt: Date.now(),
-		});
-		missingPracticeItems.push(
-			buildPairedPracticeItem(session, {
-				phase: theoryItem.phase,
-				kind: theoryItem.kind,
-				title: theoryItem.title,
-				prompt: theoryItem.prompt,
-				front: theoryItem.front,
-				back: theoryItem.back,
-				explanation: theoryItem.explanation,
-				idealAnswer: theoryItem.idealAnswer,
-				theoryContent: theoryItem.theoryContent,
-				choices: theoryItem.choices,
-				correctChoiceId: theoryItem.correctChoiceId,
-				evaluationKeywords: theoryItem.evaluationKeywords,
-				learningBlockIndex: theoryItem.learningBlockIndex,
-				topicId: theoryItem.topicId,
-				evidenceDimension: theoryItem.evidenceDimension,
-				questionAngle: theoryItem.questionAngle,
-				coverageKey: theoryItem.coverageKey,
-				estimatedSeconds: theoryItem.estimatedSeconds,
-			}),
-		);
 	}
 
 	if (missingPracticeItems.length > 0) {
@@ -1043,9 +1045,7 @@ const isLegacyTaskItem = (item: Doc<"learningSessionContentItems">) =>
 		item.explanation.includes("Prüfungsnah ist die Antwort"));
 
 const isTheoryKnowledgeCheckItem = (item: Doc<"learningSessionContentItems">) =>
-	item.phase === "practice" &&
-	item.kind !== "learnCard" &&
-	item.coverageKey?.includes(":validation:") === true;
+	isPairedTheoryQuestionItem(item);
 
 export const deleteSessionLearningDataForSession = async (
 	ctx: MutationCtx,
@@ -1205,7 +1205,7 @@ export const getSessionGenerationContext = internalQuery({
 			}
 		}
 
-		const theoryItems = existingItems.filter(
+		const firstTheoryItem = existingItems.find(
 			(item) => item.kind === "learnCard",
 		);
 		const pairedPracticeKeys = new Set(
@@ -1240,10 +1240,8 @@ export const getSessionGenerationContext = internalQuery({
 			existingItemCount: existingItems.length,
 			hasTheoryKnowledgeCheck: existingItems.some(isTheoryKnowledgeCheckItem),
 			hasCompleteTheoryPracticePairs:
-				theoryItems.length > 0 &&
-				theoryItems.every((item) =>
-					pairedPracticeKeys.has(getPairedPracticeCoverageKey(item)),
-				),
+				firstTheoryItem !== undefined &&
+				pairedPracticeKeys.has(getPairedPracticeCoverageKey(firstTheoryItem)),
 			needsLegacyContentReplacement:
 				existingItems.some(isLegacyTheoryItem) ||
 				existingItems.some(isLegacyTaskItem),
@@ -1262,11 +1260,6 @@ export const backfillTheoryKnowledgeCheck = internalMutation({
 			ownerTokenIdentifier,
 		);
 		assertSessionIsCommitted(session);
-		const plan = await getOwnedPlan(
-			ctx,
-			session.learningPlanId,
-			ownerTokenIdentifier,
-		);
 		const existingItems = await listItems(ctx, session._id);
 
 		if (session.completed) {
@@ -1280,50 +1273,6 @@ export const backfillTheoryKnowledgeCheck = internalMutation({
 			})
 		) {
 			return { itemCount: existingItems.length };
-		}
-
-		if (!existingItems.some(isTheoryKnowledgeCheckItem)) {
-			const firstTheoryItem = existingItems.find(
-				(item) => item.kind === "learnCard",
-			);
-			const checkItems: GeneratedItem[] = firstTheoryItem
-				? [
-						{
-							phase: "practice",
-							kind: "written",
-							title: "Vorwissenscheck",
-							prompt: `${firstTheoryItem.front ?? firstTheoryItem.prompt} Begründe deinen ersten Gedanken an einem konkreten Beispiel.`,
-							explanation: firstTheoryItem.explanation,
-							idealAnswer: firstTheoryItem.back ?? firstTheoryItem.idealAnswer,
-							evaluationKeywords: firstTheoryItem.evaluationKeywords,
-							learningBlockIndex: 0,
-							topicId: firstTheoryItem.topicId,
-							evidenceDimension: "understanding",
-							questionAngle: "apply",
-							coverageKey: `${firstTheoryItem.coverageKey ?? firstTheoryItem.topicId ?? "theory"}:validation:prior-knowledge`,
-							estimatedSeconds: 180,
-						},
-					]
-				: createLearningContentPlan({
-						segments: [{ phase: "practice", durationMinutes: 3 }],
-						topics: getSessionTopics(plan, session),
-					}).blocks.flatMap((block) =>
-						buildTaskItems(
-							plan,
-							{ ...session, phase: "practice", durationMinutes: 3 },
-							block.questions,
-						).map((item) => ({
-							...item,
-							phase: "practice" as const,
-							learningBlockIndex: 0,
-						})),
-					);
-			await insertGeneratedItemsForSession(
-				ctx,
-				session,
-				checkItems,
-				existingItems.length,
-			);
 		}
 
 		await ensurePairedTheoryPracticeItems(

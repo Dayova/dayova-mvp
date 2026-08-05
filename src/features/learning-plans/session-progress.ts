@@ -38,25 +38,19 @@ export function getLearningSessionItems<
 		return items.filter((item) => item.kind === "learnCard");
 	}
 	if (phase === "theory") {
-		const pairedQuestionByTheoryCoverageKey = new Map(
-			items.flatMap((item) => {
-				const coverageKey = item.coverageKey;
-				if (!isPairedTheoryQuestionItem(item) || !coverageKey) return [];
-				return [
-					[
-						coverageKey.slice(0, -PAIRED_THEORY_QUESTION_SUFFIX.length),
-						item,
-					] as const,
-				];
-			}),
-		);
-		return items.flatMap((item) => {
-			if (item.kind !== "learnCard") return [];
-			const questionItem = item.coverageKey
-				? pairedQuestionByTheoryCoverageKey.get(item.coverageKey)
-				: undefined;
-			return questionItem ? [questionItem, item] : [item];
-		});
+		const theoryItems = items.filter((item) => item.kind === "learnCard");
+		const firstTheoryItem = theoryItems[0];
+		const pairedCoverageKey = firstTheoryItem?.coverageKey
+			? `${firstTheoryItem.coverageKey}${PAIRED_THEORY_QUESTION_SUFFIX}`
+			: null;
+		const openingQuestion = pairedCoverageKey
+			? items.find(
+					(item) =>
+						isPairedTheoryQuestionItem(item) &&
+						item.coverageKey === pairedCoverageKey,
+				)
+			: undefined;
+		return openingQuestion ? [openingQuestion, ...theoryItems] : theoryItems;
 	}
 
 	return [...items];
