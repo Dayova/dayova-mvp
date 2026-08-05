@@ -49,6 +49,8 @@ import {
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
+	getTheoryTopicPosition,
+	isTheoryKnowledgeCheckItem,
 } from "~/features/learning-plans/session-progress";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
@@ -410,6 +412,7 @@ function FeedbackView({ attempt }: { attempt: SessionAnswerAttempt }) {
 
 function CompletionView({
 	phase,
+	isDiagnostic,
 	durationMinutes,
 	correctCount,
 	attemptCount,
@@ -420,6 +423,7 @@ function CompletionView({
 	isBusy,
 }: {
 	phase: LearningSessionContentSnapshot["session"]["phase"];
+	isDiagnostic: boolean;
 	durationMinutes: number;
 	correctCount: number;
 	attemptCount: number;
@@ -431,7 +435,7 @@ function CompletionView({
 }) {
 	const isTheory = phase === "theory";
 	const isPraxis = phase === "rehearsal";
-	if (isPraxis) {
+	if (isPraxis && !isDiagnostic) {
 		return (
 			<PracticeCompletionCard
 				durationMinutes={durationMinutes}
@@ -444,23 +448,43 @@ function CompletionView({
 		);
 	}
 
-	const title =
-		isTheory && isTheoryValidationAvailable
+	let title = "Übung abgeschlossen";
+	let description =
+		"Du hast alle Aufgaben geschafft. Übe noch einmal weiter oder sieh dir deine Auswertung an.";
+	let completionLabel = "Übung geschafft";
+	let Icon = Pencil;
+	let iconClassName = "bg-ueben-subtle";
+	let iconColor: string = DAYOVA_DESIGN_SYSTEM.colors.ueben;
+
+	if (isTheory) {
+		title = isTheoryValidationAvailable
 			? "Theorie verstanden"
-			: isTheory
-				? "Theorie abgeschlossen"
-				: "Übung abgeschlossen";
-	const description = isTheory
-		? isTheoryValidationAvailable
+			: "Theorie abgeschlossen";
+		description = isTheoryValidationAvailable
 			? "Prüfe jetzt in drei Minuten, was wirklich hängen geblieben ist. Erst deine Antworten machen deinen Lernfortschritt sichtbar."
-			: "Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt."
-		: "Du hast alle Aufgaben geschafft. Übe noch einmal weiter oder sieh dir deine Analyse an.";
-	const completionLabel = isTheory ? "Theorie geschafft" : "Übung geschafft";
-	const Icon = isTheory ? BookOpen : Pencil;
-	const iconClassName = isTheory ? "bg-theorie-subtle" : "bg-ueben-subtle";
-	const iconColor = isTheory
-		? DAYOVA_DESIGN_SYSTEM.colors.theorie
-		: DAYOVA_DESIGN_SYSTEM.colors.ueben;
+			: "Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt.";
+		completionLabel = "Theorie geschafft";
+		Icon = BookOpen;
+		iconClassName = "bg-theorie-subtle";
+		iconColor = DAYOVA_DESIGN_SYSTEM.colors.theorie;
+	}
+
+	if (isDiagnostic) {
+		title = "Wissenscheck abgeschlossen";
+		description = `Deine ${attemptCount} Antworten aktualisieren deinen Wissensstand. Damit passt Dayova deinen nächsten Lernschritt an.`;
+		completionLabel = "Wissensstand erfasst";
+		Icon = ClipboardEdit;
+		iconClassName = "bg-system-subtle";
+		iconColor = DAYOVA_DESIGN_SYSTEM.colors.primary;
+	}
+
+	const primaryLabel = isDiagnostic
+		? "Auswertung ansehen"
+		: isTheory && isTheoryValidationAvailable
+			? "Wissen prüfen · 3 Min."
+			: isTheory
+				? "Theorie abschließen"
+				: "Analyse ansehen";
 
 	return (
 		<Animated.View
@@ -507,33 +531,29 @@ function CompletionView({
 					{isBusy ? (
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 					) : (
-						<Text>
-							{isTheory && isTheoryValidationAvailable
-								? "Wissen prüfen · 3 Min."
-								: isTheory
-									? "Theorie abschließen"
-									: "Analyse ansehen"}
-						</Text>
+						<Text>{primaryLabel}</Text>
 					)}
 				</Button>
-				<Button
-					className="w-full"
-					disabled={isBusy}
-					variant="neutral"
-					onPress={
-						isTheory && isTheoryValidationAvailable
-							? onDeferValidation
-							: onContinueLearning
-					}
-				>
-					<Text>
-						{isTheory && isTheoryValidationAvailable
-							? "Später prüfen"
-							: isTheory
-								? "Noch 10 Min. weiterlernen"
-								: "Noch 10 Min. üben"}
-					</Text>
-				</Button>
+				{!isDiagnostic ? (
+					<Button
+						className="w-full"
+						disabled={isBusy}
+						variant="neutral"
+						onPress={
+							isTheory && isTheoryValidationAvailable
+								? onDeferValidation
+								: onContinueLearning
+						}
+					>
+						<Text>
+							{isTheory && isTheoryValidationAvailable
+								? "Später prüfen"
+								: isTheory
+									? "Noch 10 Min. weiterlernen"
+									: "Noch 10 Min. üben"}
+						</Text>
+					</Button>
+				) : null}
 			</View>
 		</Animated.View>
 	);
@@ -853,11 +873,13 @@ function VoiceAnswer({
 
 function AnalysisView({
 	content,
+	isDiagnostic,
 	onContinueLearning,
 	onDone,
 	isBusy,
 }: {
 	content: LearningSessionContentSnapshot;
+	isDiagnostic: boolean;
 	onContinueLearning: () => void;
 	onDone: () => void;
 	isBusy: boolean;
@@ -866,6 +888,17 @@ function AnalysisView({
 
 	return (
 		<View className="flex-1">
+			{isDiagnostic ? (
+				<Surface className="mt-8 rounded-[28px] px-5 py-5" variant="soft">
+					<Text className="font-poppins font-semibold text-body-3 text-text">
+						Dein Ergebnis steuert den nächsten Schritt
+					</Text>
+					<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
+						Wenn du abschließt, plant Dayova mit diesen Antworten den nächsten
+						Lerninhalt und ergänzt einen weiteren Termin.
+					</Text>
+				</Surface>
+			) : null}
 			{analysis ? (
 				<View className="mt-10">
 					<Surface className="rounded-[32px] px-5 py-6" variant="flat">
@@ -904,13 +937,23 @@ function AnalysisView({
 					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
 				</View>
 			)}
-			<ActionRow
-				secondaryLabel="10 Min. weiterlernen"
-				primaryLabel="Abschließen"
-				onSecondary={onContinueLearning}
-				onPrimary={onDone}
-				isBusy={isBusy}
-			/>
+			{isDiagnostic ? (
+				<Button className="mt-8 w-full" disabled={isBusy} onPress={onDone}>
+					{isBusy ? (
+						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+					) : (
+						<Text>Abschließen &amp; nächsten Schritt planen</Text>
+					)}
+				</Button>
+			) : (
+				<ActionRow
+					secondaryLabel="10 Min. weiterlernen"
+					primaryLabel="Abschließen"
+					onSecondary={onContinueLearning}
+					onPrimary={onDone}
+					isBusy={isBusy}
+				/>
+			)}
 		</View>
 	);
 }
@@ -972,6 +1015,7 @@ export default function LearningSessionContentScreen() {
 	const didStartTrackingRef = useRef(false);
 	const didRecordOutcomeRef = useRef(false);
 	const didResumeDeferredValidationRef = useRef(false);
+	const advancedTheoryKnowledgeCheckItemIdRef = useRef<string | null>(null);
 	const activeStudySecondsRef = useRef(0);
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
@@ -1028,19 +1072,32 @@ export default function LearningSessionContentScreen() {
 				: [],
 		[content],
 	);
-	const theoryItems = sessionItems.filter((item) => item.kind === "learnCard");
-	const validationItems = sessionItems.filter(
-		(item) => item.phase === "practice" && item.kind !== "learnCard",
-	);
 	const currentItem = sessionItems[currentIndex] ?? null;
+	const theoryTopicPosition = getTheoryTopicPosition(
+		sessionItems,
+		currentIndex,
+	);
 	const shouldTrackActiveStudy = Boolean(
 		currentItem && !showAnalysis && !completionPhase,
 	);
 	const isPraxisSession = content?.session.phase === "rehearsal";
+	const isDiagnosticSession = content?.session.sessionPurpose === "diagnostic";
+	const validationItems = sessionItems.filter((item) =>
+		isTheoryKnowledgeCheckItem({
+			item,
+			phase: content?.session.phase,
+			compositionVariant: content?.session.compositionVariant,
+		}),
+	);
 	const isTheoryValidationSession =
 		content?.session.phase === "theory" &&
 		content.session.compositionVariant === "split" &&
 		validationItems.length > 0;
+	const isTheoryKnowledgeCheck = isTheoryKnowledgeCheckItem({
+		item: currentItem,
+		phase: content?.session.phase,
+		compositionVariant: content?.session.compositionVariant,
+	});
 
 	useEffect(() => {
 		if (
@@ -1073,13 +1130,10 @@ export default function LearningSessionContentScreen() {
 		return attempt;
 	}, [content, currentItem, repeatingItemId, retryStartedAt]);
 	const visibleAttempt =
-		!isPraxisSession &&
-		localAttempt &&
-		currentItem &&
-		localAttempt.itemId === currentItem.id
-			? localAttempt
-			: isPraxisSession
-				? null
+		isPraxisSession || isTheoryKnowledgeCheck
+			? null
+			: localAttempt && currentItem && localAttempt.itemId === currentItem.id
+				? localAttempt
 				: persistedAttempt;
 	const currentRunAttempts = useMemo(() => {
 		const attempts =
@@ -1252,6 +1306,7 @@ export default function LearningSessionContentScreen() {
 		if (
 			!sessionId ||
 			displayedRemainingSeconds !== 0 ||
+			isDiagnosticSession ||
 			didAutoFinishRef.current
 		)
 			return;
@@ -1275,7 +1330,7 @@ export default function LearningSessionContentScreen() {
 				setErrorMessage(
 					getErrorMessage(
 						error,
-						"Die Wissensanalyse konnte nicht erstellt werden.",
+						"Die Auswertung konnte nicht erstellt werden.",
 					),
 				);
 			});
@@ -1286,17 +1341,51 @@ export default function LearningSessionContentScreen() {
 		displayedRemainingSeconds,
 		finishSessionContent,
 		isContinuation,
+		isDiagnosticSession,
 		sessionId,
 	]);
 
-	const resetItemState = () => {
+	const resetItemState = useCallback(() => {
 		if (isRecognizing) speechRecognizer.stopListening();
 		setSelectedChoiceId(null);
 		setAnswerText("");
 		setLocalAttempt(null);
 		setRepeatingItemId(null);
 		setSpeechErrorMessage(null);
-	};
+	}, [isRecognizing, speechRecognizer]);
+
+	const advancePastCurrentItem = useCallback(() => {
+		if (!content) return;
+		resetItemState();
+		if (currentIndex < sessionItems.length - 1) {
+			setCurrentIndex((value) => value + 1);
+			return;
+		}
+		setCompletionPhase(
+			getLearningSessionCompletionPhase(
+				content.session.phase,
+				content.session.compositionVariant,
+			),
+		);
+	}, [content, currentIndex, resetItemState, sessionItems.length]);
+
+	useEffect(() => {
+		if (
+			!isTheoryKnowledgeCheck ||
+			!currentItem ||
+			!persistedAttempt ||
+			advancedTheoryKnowledgeCheckItemIdRef.current === currentItem.id
+		) {
+			return;
+		}
+		advancedTheoryKnowledgeCheckItemIdRef.current = currentItem.id;
+		queueMicrotask(advancePastCurrentItem);
+	}, [
+		advancePastCurrentItem,
+		currentItem,
+		isTheoryKnowledgeCheck,
+		persistedAttempt,
+	]);
 
 	const repeatCurrentQuestion = () => {
 		if (!currentItem || isBusy) return;
@@ -1317,10 +1406,7 @@ export default function LearningSessionContentScreen() {
 			setShowAnalysis(true);
 		} catch (error) {
 			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die Wissensanalyse konnte nicht erstellt werden.",
-				),
+				getErrorMessage(error, "Die Auswertung konnte nicht erstellt werden."),
 			);
 		} finally {
 			setIsBusy(false);
@@ -1436,22 +1522,28 @@ export default function LearningSessionContentScreen() {
 	const continueTheory = () => {
 		if (!content || isBusy) return;
 		runTheoryTopicPrimaryAction({
-			currentIndex,
-			total: theoryItems.length,
-			onAdvance: (nextIndex) => {
+			currentIndex: theoryTopicPosition.topicIndex,
+			total: theoryTopicPosition.total,
+			onAdvance: () => {
+				if (theoryTopicPosition.nextSessionIndex === null) return;
 				setErrorMessage(null);
-				setCurrentIndex(nextIndex);
+				setCurrentIndex(theoryTopicPosition.nextSessionIndex);
 			},
 			onComplete: () => {
-				setCompletionPhase("theory");
+				setCompletionPhase(
+					getLearningSessionCompletionPhase(
+						content.session.phase,
+						content.session.compositionVariant,
+					),
+				);
 			},
 		});
 	};
 
 	const showPreviousTheoryTopic = () => {
-		if (isBusy || currentIndex === 0) return;
+		if (isBusy || theoryTopicPosition.previousSessionIndex === null) return;
 		setErrorMessage(null);
-		setCurrentIndex((value) => Math.max(0, value - 1));
+		setCurrentIndex(theoryTopicPosition.previousSessionIndex);
 	};
 
 	const buildSpeechRecognitionConfig =
@@ -1570,6 +1662,13 @@ export default function LearningSessionContentScreen() {
 				setCompletionPhase("rehearsal");
 				return;
 			}
+			if (isTheoryKnowledgeCheck) {
+				if (advancedTheoryKnowledgeCheckItemIdRef.current !== currentItem.id) {
+					advancedTheoryKnowledgeCheckItemIdRef.current = currentItem.id;
+					advancePastCurrentItem();
+				}
+				return;
+			}
 			setLocalAttempt(attempt as SessionAnswerAttempt);
 		} catch (error) {
 			setErrorMessage(
@@ -1580,42 +1679,31 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const continueTask = async () => {
+	const continueTask = () => {
 		if (!content || isBusy) return;
-		if (currentIndex < sessionItems.length - 1) {
-			resetItemState();
-			setCurrentIndex((value) => value + 1);
-			return;
-		}
-		if (isTheoryValidationSession) {
-			await finishAndShowAnalysis();
-			return;
-		}
-		setCompletionPhase(
-			getLearningSessionCompletionPhase(
-				content.session.phase,
-				content.session.compositionVariant,
-			),
-		);
+		advancePastCurrentItem();
 	};
 
 	const isAnswerReady =
 		currentItem?.kind === "multipleChoice"
 			? Boolean(selectedChoiceId)
 			: Boolean(answerText.trim());
-
 	const title = showAnalysis
-		? "Wissensanalyse"
+		? "Deine Auswertung"
 		: completionPhase
-			? isTheoryValidationSession && completionPhase === "practice"
+			? isDiagnosticSession
 				? "Wissenscheck"
-				: completionPhase === "theory"
-					? "Theorie"
-					: phaseTitle(completionPhase)
-			: content
-				? isTheoryValidationSession && currentItem?.phase === "practice"
+				: isTheoryValidationSession && completionPhase === "practice"
 					? "Wissenscheck"
-					: phaseTitle(currentItem?.phase ?? content.session.phase)
+					: completionPhase === "theory"
+						? "Theorie"
+						: phaseTitle(completionPhase)
+			: content
+				? isDiagnosticSession
+					? "Wissenscheck"
+					: isTheoryKnowledgeCheck
+						? "Kurz-Check"
+						: phaseTitle(currentItem?.phase ?? content.session.phase)
 				: "Lernblock";
 	const showQuestionActions = Boolean(
 		content &&
@@ -1675,8 +1763,8 @@ export default function LearningSessionContentScreen() {
 				<TheoryTopicPage
 					key={currentItem.id}
 					item={currentItem}
-					currentIndex={currentIndex}
-					total={theoryItems.length}
+					currentIndex={theoryTopicPosition.topicIndex}
+					total={theoryTopicPosition.total}
 					isCompleting={isBusy}
 					onPrevious={showPreviousTheoryTopic}
 					onNext={continueTheory}
@@ -1804,6 +1892,7 @@ export default function LearningSessionContentScreen() {
 				) : showAnalysis ? (
 					<AnalysisView
 						content={content}
+						isDiagnostic={isDiagnosticSession}
 						onContinueLearning={() => void startContinueLearning()}
 						onDone={completeAndLeave}
 						isBusy={isBusy}
@@ -1811,6 +1900,7 @@ export default function LearningSessionContentScreen() {
 				) : completionPhase ? (
 					<CompletionView
 						phase={completionPhase}
+						isDiagnostic={isDiagnosticSession}
 						durationMinutes={content.session.durationMinutes}
 						correctCount={currentRunCorrectCount}
 						attemptCount={currentRunAttempts.length}
@@ -1864,6 +1954,7 @@ export default function LearningSessionContentScreen() {
 									placeholder="Schreibe hier deine Antwort."
 									editable={!isBusy}
 									fillAvailableSpace
+									autoFocus={!isTheoryKnowledgeCheck}
 								/>
 							)}
 						</View>
@@ -1890,13 +1981,17 @@ export default function LearningSessionContentScreen() {
 					>
 						<ActionRow
 							className="mt-0"
-							secondaryLabel="Weiß ich nicht"
+							secondaryLabel={
+								isTheoryKnowledgeCheck ? "Noch nicht" : "Weiß ich nicht"
+							}
 							primaryLabel={
-								content.session.phase === "rehearsal"
-									? currentIndex < content.items.length - 1
-										? "Weiter"
-										: "Abgeben"
-									: "Beantworten"
+								isTheoryKnowledgeCheck
+									? "Abgeben"
+									: content.session.phase === "rehearsal"
+										? currentIndex < content.items.length - 1
+											? "Weiter"
+											: "Abgeben"
+										: "Beantworten"
 							}
 							onSecondary={() => void submitCurrentAnswer(true)}
 							onPrimary={() => void submitCurrentAnswer()}

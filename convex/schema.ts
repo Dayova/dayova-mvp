@@ -1,6 +1,9 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { learningTopicValidator } from "./learningTopicMap";
+import {
+	learningEvidenceDimensionValidator,
+	learningTopicValidator,
+} from "./learningTopicMap";
 import { theoryContentValidator } from "./theoryContent";
 
 const planQuestionValidator = v.object({
@@ -18,6 +21,9 @@ const planQuestionValidator = v.object({
 	),
 	options: v.optional(v.array(v.string())),
 	correctAnswer: v.optional(v.string()),
+	idealAnswer: v.optional(v.string()),
+	explanation: v.optional(v.string()),
+	evidenceDimension: v.optional(learningEvidenceDimensionValidator),
 	evaluationKeywords: v.optional(v.array(v.string())),
 });
 
@@ -98,6 +104,11 @@ const contentGenerationStageValidator = v.union(
 	v.literal("validating"),
 	v.literal("ready"),
 	v.literal("failed"),
+);
+
+const learningPlanSessionPlanningStatusValidator = v.union(
+	v.literal("committed"),
+	v.literal("provisional"),
 );
 
 const sessionContentItemKindValidator = v.union(
@@ -390,6 +401,7 @@ export default defineSchema({
 			v.literal("accepted"),
 		),
 		knowledgeQuestions: v.optional(v.array(planQuestionValidator)),
+		diagnosticPlacement: v.optional(v.literal("firstSession")),
 		knowledgeAnswersJson: v.optional(v.string()),
 		sourceSummary: v.optional(v.string()),
 		topicMap: v.optional(v.array(learningTopicValidator)),
@@ -397,6 +409,8 @@ export default defineSchema({
 		topicReadiness: v.optional(v.array(topicReadinessValidator)),
 		insight: v.optional(planInsightValidator),
 		planningHint: v.optional(v.string()),
+		rollingPlanEnabled: v.optional(v.boolean()),
+		adaptationRevision: v.optional(v.number()),
 		contentGenerationStage: v.optional(contentGenerationStageValidator),
 		contentGenerationId: v.optional(v.string()),
 		contentGenerationStartedAt: v.optional(v.number()),
@@ -509,6 +523,9 @@ export default defineSchema({
 		startTime: v.string(),
 		durationMinutes: v.number(),
 		compositionVariant: v.optional(sessionCompositionVariantValidator),
+		sessionPurpose: v.optional(
+			v.union(v.literal("diagnostic"), v.literal("learning")),
+		),
 		goal: v.string(),
 		tasks: v.array(v.string()),
 		expectedOutcome: v.string(),
@@ -527,6 +544,11 @@ export default defineSchema({
 		),
 		missedReason: v.optional(missedReasonValidator),
 		adjustedFromSessionId: v.optional(v.id("learningPlanSessions")),
+		planningStatus: v.optional(learningPlanSessionPlanningStatusValidator),
+		targetTopicIds: v.optional(v.array(v.string())),
+		targetEvidenceDimension: v.optional(learningEvidenceDimensionValidator),
+		selectionReason: v.optional(v.string()),
+		adaptationRevision: v.optional(v.number()),
 		sortOrder: v.number(),
 		dayEntryId: v.optional(v.id("dayEntries")),
 		createdAt: v.number(),
@@ -553,6 +575,7 @@ export default defineSchema({
 		evaluationKeywords: v.array(v.string()),
 		learningBlockIndex: v.optional(v.number()),
 		topicId: v.optional(v.string()),
+		evidenceDimension: v.optional(learningEvidenceDimensionValidator),
 		questionAngle: v.optional(v.string()),
 		coverageKey: v.optional(v.string()),
 		estimatedSeconds: v.optional(v.number()),

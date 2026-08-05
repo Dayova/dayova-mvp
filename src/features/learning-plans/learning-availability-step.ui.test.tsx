@@ -14,7 +14,10 @@ describe("LearningAvailabilityStep", () => {
 			/>,
 		);
 
-		expect(screen.getByText("Noch keine freie Lernzeit")).toBeOnTheScreen();
+		expect(screen.getByText("Noch nicht genug Lernzeit")).toBeOnTheScreen();
+		expect(
+			screen.getByText(/mindestens zwei kurze Lernblöcke/),
+		).toBeOnTheScreen();
 		expect(
 			screen.getByText(/noch nicht, wie viel du schaffen musst/),
 		).toBeOnTheScreen();
@@ -28,7 +31,12 @@ describe("LearningAvailabilityStep", () => {
 			/>,
 		);
 
-		expect(screen.getByText("Lernzeit gefunden")).toBeOnTheScreen();
+		expect(
+			screen.getByText("Lernzeit für deinen Lernweg gefunden"),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText(/nächsten Lernschritte.*freie gespeicherte Zeiten/),
+		).toBeOnTheScreen();
 		expect(screen.queryByText(/noch nicht, wie viel/)).not.toBeOnTheScreen();
 	});
 

@@ -84,6 +84,7 @@ test("multiple exams on one day ignore supplied times and are stored untimed", a
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-07-16",
 		title: "Englisch Klassenarbeit",
+		subject: "Englisch",
 		time: "16:00",
 		kind: "Leistungskontrolle",
 		plannedDateLabel: "Donnerstag, 16. Juli",
@@ -109,6 +110,12 @@ test("multiple exams on one day ignore supplied times and are stored untimed", a
 
 	expect(exams).toHaveLength(2);
 	expect(exams?.every((entry) => entry.time === undefined)).toBe(true);
+	expect(
+		exams?.find((entry) => entry.title === "Englisch Klassenarbeit"),
+	).toMatchObject({
+		dayKey: "2026-07-16",
+		subject: "Englisch",
+	});
 });
 
 test("untimed exams with Berlin-midnight ISO day keys do not block homework", async () => {

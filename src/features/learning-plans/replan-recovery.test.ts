@@ -45,11 +45,8 @@ const snapshot = (
 });
 
 describe("learning time replan recovery", () => {
-	test("builds the stored answers expected by plan generation", () => {
-		expect(buildPlanGenerationAnswers(snapshot())).toEqual([
-			{ questionId: "q1", answer: "Ableitungen" },
-			{ questionId: "q2", answer: "Nullstellen" },
-		]);
+	test("replans without creation-time answers", () => {
+		expect(buildPlanGenerationAnswers(snapshot())).toEqual([]);
 	});
 
 	test("replans only for empty generated plans returning from learning times", () => {
@@ -84,7 +81,7 @@ describe("learning time replan recovery", () => {
 		).toBe(false);
 	});
 
-	test("does not replan when stored quiz answers are incomplete", () => {
+	test("does not require stored answers to replan", () => {
 		expect(
 			shouldReplanAfterLearningTimes(
 				snapshot({
@@ -98,7 +95,7 @@ describe("learning time replan recovery", () => {
 				}),
 				LEARNING_TIME_REPLAN_PARAM,
 			),
-		).toBe(false);
+		).toBe(true);
 	});
 
 	test("does not replan until the missing learning-times hint has cleared", () => {

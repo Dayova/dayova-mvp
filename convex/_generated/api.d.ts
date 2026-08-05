@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as adaptiveLearningPlan from "../adaptiveLearningPlan.js";
+import type * as adaptiveLearningPlanPolicy from "../adaptiveLearningPlanPolicy.js";
 import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
 import type * as diagnosticReadiness from "../diagnosticReadiness.js";
@@ -56,6 +58,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  adaptiveLearningPlan: typeof adaptiveLearningPlan;
+  adaptiveLearningPlanPolicy: typeof adaptiveLearningPlanPolicy;
   dayEntries: typeof dayEntries;
   dayKeyVariants: typeof dayKeyVariants;
   diagnosticReadiness: typeof diagnosticReadiness;
