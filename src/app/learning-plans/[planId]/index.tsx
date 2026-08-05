@@ -144,20 +144,8 @@ export function SessionPreviewCard({
 		: session.executionStatus === "started"
 			? "Weiterlernen"
 			: "Lernsession starten";
-	const horizonLabel = hasRecordedOutcome
-		? "Bearbeitet"
-		: session.planningStatus === "provisional"
-			? "Danach · Vorschau"
-			: "Als Nächstes";
 	const content = (
 		<View className="gap-2">
-			<View className="flex-row">
-				<View className="rounded-full bg-system-subtle px-3 py-1.5">
-					<Text className="font-poppins font-semibold text-body-5 text-primary">
-						{horizonLabel}
-					</Text>
-				</View>
-			</View>
 			<View className="flex-row items-start justify-between gap-3">
 				<Text
 					className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-2 text-text"
@@ -201,15 +189,6 @@ export function SessionPreviewCard({
 			>
 				{description}
 			</Text>
-			{session.selectionReason ? (
-				<Text
-					className="font-poppins font-semibold text-body-5 text-primary"
-					numberOfLines={2}
-				>
-					{formatGermanUiText(session.selectionReason)}
-				</Text>
-			) : null}
-
 			{canOpen ? (
 				<Button
 					accessibilityHint="Öffnet die ausgewählte Lerneinheit."

@@ -133,9 +133,28 @@ describe("learning-plan path", () => {
 			name: "Lernsession starten: Lineare Funktionen verstehen",
 		});
 		expect(screen.getByText("Lernsession starten")).toBeOnTheScreen();
+		expect(screen.queryByText("Als Nächstes")).toBeNull();
 
 		fireEvent.press(startButton);
 		expect(onOpen).toHaveBeenCalledTimes(1);
+	});
+
+	test("keeps status and selection reason labels out of the preview card", async () => {
+		const screen = await render(
+			<SessionPreviewCard
+				canOpen
+				session={session("session_done", {
+					completed: true,
+					executionStatus: "completed",
+					selectionReason:
+						"Warum jetzt: „Lineare Funktionen“ ist noch nicht stabil.",
+				})}
+				onOpen={() => undefined}
+			/>,
+		);
+
+		expect(screen.queryByText("Bearbeitet")).toBeNull();
+		expect(screen.queryByText(/Warum jetzt/)).toBeNull();
 	});
 
 	test("explains that a provisional session can still change", async () => {
@@ -147,7 +166,7 @@ describe("learning-plan path", () => {
 			/>,
 		);
 
-		expect(screen.getByText("Danach · Vorschau")).toBeOnTheScreen();
+		expect(screen.queryByText("Danach · Vorschau")).toBeNull();
 		expect(
 			screen.getByText(
 				"Diese Vorschau kann sich nach deinem nächsten Abschluss ändern.",

@@ -37,6 +37,15 @@ type SessionContentItemKind =
 	| "voice";
 type AnswerRating = "notCorrect" | "partiallyCorrect" | "correct";
 
+const PAIRED_THEORY_PRACTICE_SUFFIX = ":paired-practice";
+
+const isPairedTheoryQuestionItem = (item: {
+	kind: string;
+	coverageKey?: string;
+}) =>
+	item.kind !== "learnCard" &&
+	item.coverageKey?.endsWith(PAIRED_THEORY_PRACTICE_SUFFIX) === true;
+
 type GeneratedItem = {
 	phase?: "theory" | "practice" | "rehearsal";
 	kind: SessionContentItemKind;
@@ -484,6 +493,89 @@ const buildTaskItems = (
 	});
 };
 
+const getPairedPracticeCoverageKey = (item: {
+	coverageKey?: string;
+	topicId?: string;
+}) =>
+	`${item.coverageKey ?? item.topicId ?? "theory"}${PAIRED_THEORY_PRACTICE_SUFFIX}`;
+
+const splitTheoryPageSeconds = (estimatedSeconds?: number) => {
+	const totalSeconds = Math.max(60, estimatedSeconds ?? 240);
+	const practiceSeconds = Math.min(
+		90,
+		Math.max(30, Math.round(totalSeconds * 0.35)),
+	);
+	return {
+		theorySeconds: totalSeconds - practiceSeconds,
+		practiceSeconds,
+	};
+};
+
+const buildPairedPracticeItem = (
+	session: Doc<"learningPlanSessions">,
+	theoryItem: GeneratedItem,
+): GeneratedItem => {
+	const concept =
+		theoryItem.theoryContent?.conceptTitle ?? theoryItem.title ?? session.title;
+	const prompt =
+		theoryItem.theoryContent?.question ?? theoryItem.front ?? theoryItem.prompt;
+	const idealAnswer = theoryItem.theoryContent
+		? `${theoryItem.theoryContent.keyPoints.join(" ")} Beispiel: ${theoryItem.theoryContent.example}`
+		: (theoryItem.back ?? theoryItem.idealAnswer);
+	const { practiceSeconds } = splitTheoryPageSeconds(
+		theoryItem.estimatedSeconds,
+	);
+
+	return {
+		phase: "practice",
+		kind: "written",
+		title: concept,
+		prompt,
+		explanation:
+			theoryItem.theoryContent?.explanation ?? theoryItem.explanation,
+		idealAnswer,
+		evaluationKeywords: theoryItem.evaluationKeywords,
+		learningBlockIndex: theoryItem.learningBlockIndex,
+		topicId: theoryItem.topicId,
+		evidenceDimension:
+			theoryItem.evidenceDimension ??
+			session.targetEvidenceDimension ??
+			"understanding",
+		questionAngle: theoryItem.questionAngle ?? "recall",
+		coverageKey: getPairedPracticeCoverageKey(theoryItem),
+		estimatedSeconds: practiceSeconds,
+	};
+};
+
+const pairGeneratedTheoryItems = (
+	session: Doc<"learningPlanSessions">,
+	items: GeneratedItem[],
+) => {
+	if (session.phase !== "theory" || session.compositionVariant !== "split") {
+		return items;
+	}
+	const existingPairKeys = new Set(
+		items
+			.filter(
+				(item) =>
+					item.kind !== "learnCard" &&
+					item.coverageKey?.endsWith(PAIRED_THEORY_PRACTICE_SUFFIX),
+			)
+			.map((item) => item.coverageKey),
+	);
+
+	return items.flatMap((item) => {
+		if (item.kind !== "learnCard") return [item];
+		const pairedCoverageKey = getPairedPracticeCoverageKey(item);
+		if (existingPairKeys.has(pairedCoverageKey)) return [item];
+		const { theorySeconds } = splitTheoryPageSeconds(item.estimatedSeconds);
+		return [
+			{ ...item, estimatedSeconds: theorySeconds },
+			buildPairedPracticeItem(session, item),
+		];
+	});
+};
+
 const buildGeneratedItems = (
 	plan: Doc<"learningPlans">,
 	session: Doc<"learningPlanSessions">,
@@ -498,7 +590,7 @@ const buildGeneratedItems = (
 		topics: getSessionTopics(plan, session),
 	});
 
-	return contentPlan.blocks.flatMap((block) => {
+	const items = contentPlan.blocks.flatMap((block) => {
 		const segmentSession: Doc<"learningPlanSessions"> = {
 			...session,
 			phase: block.phase,
@@ -514,6 +606,7 @@ const buildGeneratedItems = (
 			learningBlockIndex: block.index,
 		}));
 	});
+	return pairGeneratedTheoryItems(session, items);
 };
 
 const listItems = async (
@@ -582,6 +675,112 @@ const insertGeneratedItemsForSession = async (
 	}
 };
 
+const ensurePairedTheoryPracticeItems = async (
+	ctx: MutationCtx,
+	session: Doc<"learningPlanSessions">,
+	existingItems: Doc<"learningSessionContentItems">[],
+) => {
+	if (session.phase !== "theory" || session.compositionVariant !== "split") {
+		return existingItems;
+	}
+	const existingPairByCoverageKey = new Map(
+		existingItems
+			.filter(isPairedTheoryQuestionItem)
+			.flatMap((item) =>
+				item.coverageKey ? ([[item.coverageKey, item]] as const) : [],
+			),
+	);
+	const missingPracticeItems: GeneratedItem[] = [];
+	let updatedExistingPair = false;
+	for (const theoryItem of existingItems.filter(
+		(item) => item.kind === "learnCard",
+	)) {
+		const pairedCoverageKey = getPairedPracticeCoverageKey(theoryItem);
+		const existingPair = existingPairByCoverageKey.get(pairedCoverageKey);
+		if (existingPair) {
+			const predictionItem = buildPairedPracticeItem(session, {
+				phase: theoryItem.phase,
+				kind: theoryItem.kind,
+				title: theoryItem.title,
+				prompt: theoryItem.prompt,
+				front: theoryItem.front,
+				back: theoryItem.back,
+				explanation: theoryItem.explanation,
+				idealAnswer: theoryItem.idealAnswer,
+				theoryContent: theoryItem.theoryContent,
+				choices: theoryItem.choices,
+				correctChoiceId: theoryItem.correctChoiceId,
+				evaluationKeywords: theoryItem.evaluationKeywords,
+				learningBlockIndex: theoryItem.learningBlockIndex,
+				topicId: theoryItem.topicId,
+				evidenceDimension: theoryItem.evidenceDimension,
+				questionAngle: theoryItem.questionAngle,
+				coverageKey: theoryItem.coverageKey,
+				estimatedSeconds: theoryItem.estimatedSeconds,
+			});
+			if (
+				existingPair.title !== predictionItem.title ||
+				existingPair.prompt !== predictionItem.prompt ||
+				existingPair.explanation !== predictionItem.explanation ||
+				existingPair.idealAnswer !== predictionItem.idealAnswer ||
+				existingPair.questionAngle !== predictionItem.questionAngle
+			) {
+				await ctx.db.patch("learningSessionContentItems", existingPair._id, {
+					title: normalizeText(predictionItem.title),
+					prompt: normalizeText(predictionItem.prompt),
+					explanation: normalizeText(predictionItem.explanation),
+					idealAnswer: normalizeText(predictionItem.idealAnswer),
+					questionAngle: predictionItem.questionAngle,
+					updatedAt: Date.now(),
+				});
+				updatedExistingPair = true;
+			}
+			continue;
+		}
+		const { theorySeconds } = splitTheoryPageSeconds(
+			theoryItem.estimatedSeconds,
+		);
+		await ctx.db.patch("learningSessionContentItems", theoryItem._id, {
+			estimatedSeconds: theorySeconds,
+			updatedAt: Date.now(),
+		});
+		missingPracticeItems.push(
+			buildPairedPracticeItem(session, {
+				phase: theoryItem.phase,
+				kind: theoryItem.kind,
+				title: theoryItem.title,
+				prompt: theoryItem.prompt,
+				front: theoryItem.front,
+				back: theoryItem.back,
+				explanation: theoryItem.explanation,
+				idealAnswer: theoryItem.idealAnswer,
+				theoryContent: theoryItem.theoryContent,
+				choices: theoryItem.choices,
+				correctChoiceId: theoryItem.correctChoiceId,
+				evaluationKeywords: theoryItem.evaluationKeywords,
+				learningBlockIndex: theoryItem.learningBlockIndex,
+				topicId: theoryItem.topicId,
+				evidenceDimension: theoryItem.evidenceDimension,
+				questionAngle: theoryItem.questionAngle,
+				coverageKey: theoryItem.coverageKey,
+				estimatedSeconds: theoryItem.estimatedSeconds,
+			}),
+		);
+	}
+
+	if (missingPracticeItems.length > 0) {
+		await insertGeneratedItemsForSession(
+			ctx,
+			session,
+			missingPracticeItems,
+			existingItems.length,
+		);
+		return await listItems(ctx, session._id);
+	}
+	if (updatedExistingPair) return await listItems(ctx, session._id);
+	return existingItems;
+};
+
 const ensureItemsForSession = async (
 	ctx: MutationCtx,
 	session: Doc<"learningPlanSessions">,
@@ -589,7 +788,9 @@ const ensureItemsForSession = async (
 ) => {
 	assertSessionIsCommitted(session);
 	const existingItems = await listItems(ctx, session._id);
-	if (existingItems.length > 0) return existingItems;
+	if (existingItems.length > 0) {
+		return await ensurePairedTheoryPracticeItems(ctx, session, existingItems);
+	}
 	if (session.sessionPurpose === "diagnostic") {
 		throwUserFacingError(
 			"Die Fragen des Wissenschecks fehlen. Erstelle den Lernplan erneut.",
@@ -663,21 +864,25 @@ const buildAnalysis = (
 	attempts: Doc<"learningSessionAnswerAttempts">[],
 ) => {
 	const itemById = new Map(items.map((item) => [item._id, item]));
-	const correctCount = attempts.filter(
+	const scoredAttempts = attempts.filter((attempt) => {
+		const item = itemById.get(attempt.itemId);
+		return item ? !isPairedTheoryQuestionItem(item) : false;
+	});
+	const correctCount = scoredAttempts.filter(
 		(attempt) => attempt.rating === "correct",
 	).length;
-	const partialCount = attempts.filter(
+	const partialCount = scoredAttempts.filter(
 		(attempt) => attempt.rating === "partiallyCorrect",
 	).length;
-	const attemptedCount = attempts.length;
+	const attemptedCount = scoredAttempts.length;
 	const hasStrongResult =
 		attemptedCount > 0 && correctCount + partialCount >= attemptedCount;
-	const missedPrompts = attempts
+	const missedPrompts = scoredAttempts
 		.filter((attempt) => attempt.rating !== "correct")
 		.map((attempt) => itemById.get(attempt.itemId)?.prompt)
 		.filter((prompt): prompt is string => Boolean(prompt))
 		.slice(0, 3);
-	const firstCorrectPrompt = attempts
+	const firstCorrectPrompt = scoredAttempts
 		.map((attempt) =>
 			attempt.rating === "correct"
 				? itemById.get(attempt.itemId)?.prompt
@@ -881,7 +1086,13 @@ export const getSessionGenerationContext = internalQuery({
 				}
 				seenAttemptItemIds.add(attempt.itemId);
 				const item = itemById.get(attempt.itemId);
-				if (!item || item.kind === "learnCard") continue;
+				if (
+					!item ||
+					item.kind === "learnCard" ||
+					isPairedTheoryQuestionItem(item)
+				) {
+					continue;
+				}
 				const selectedChoice = item.choices?.find(
 					(choice) => choice.id === attempt.selectedChoiceId,
 				)?.text;
@@ -901,6 +1112,19 @@ export const getSessionGenerationContext = internalQuery({
 				});
 			}
 		}
+
+		const theoryItems = existingItems.filter(
+			(item) => item.kind === "learnCard",
+		);
+		const pairedPracticeKeys = new Set(
+			existingItems
+				.filter(
+					(item) =>
+						item.kind !== "learnCard" &&
+						item.coverageKey?.endsWith(PAIRED_THEORY_PRACTICE_SUFFIX),
+				)
+				.map((item) => item.coverageKey),
+		);
 
 		return {
 			plan,
@@ -923,6 +1147,11 @@ export const getSessionGenerationContext = internalQuery({
 			priorCoverageKeys,
 			existingItemCount: existingItems.length,
 			hasTheoryKnowledgeCheck: existingItems.some(isTheoryKnowledgeCheckItem),
+			hasCompleteTheoryPracticePairs:
+				theoryItems.length > 0 &&
+				theoryItems.every((item) =>
+					pairedPracticeKeys.has(getPairedPracticeCoverageKey(item)),
+				),
 			needsLegacyContentReplacement:
 				existingItems.some(isLegacyTheoryItem) ||
 				existingItems.some(isLegacyTaskItem),
@@ -1005,6 +1234,12 @@ export const backfillTheoryKnowledgeCheck = internalMutation({
 			);
 		}
 
+		await ensurePairedTheoryPracticeItems(
+			ctx,
+			{ ...session, compositionVariant: "split" },
+			await listItems(ctx, session._id),
+		);
+
 		await ctx.db.patch("learningPlanSessions", session._id, {
 			compositionVariant: "split",
 			knowledgeValidationStatus: session.knowledgeValidationStatus ?? "pending",
@@ -1084,7 +1319,11 @@ export const storeGeneratedSessionContent = internalMutation({
 					]
 				: args.items;
 
-		await insertGeneratedItemsForSession(ctx, session, items);
+		await insertGeneratedItemsForSession(
+			ctx,
+			session,
+			pairGeneratedTheoryItems(session, items),
+		);
 		const storedItems = await listItems(ctx, args.sessionId);
 		return { itemCount: storedItems.length };
 	},
@@ -1225,6 +1464,16 @@ export const ensureSessionContent = mutation({
 			ownerTokenIdentifier,
 		);
 		const items = await ensureItemsForSession(ctx, session, plan);
+		if (session.contentGenerationStatus !== "ready") {
+			const now = Date.now();
+			await ctx.db.patch("learningPlanSessions", session._id, {
+				contentGenerationStatus: "ready",
+				contentGenerationError: undefined,
+				contentGenerationStartedAt: undefined,
+				contentGeneratedAt: now,
+				updatedAt: now,
+			});
+		}
 
 		return { itemCount: items.length };
 	},

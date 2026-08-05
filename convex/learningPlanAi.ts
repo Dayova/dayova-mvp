@@ -630,6 +630,7 @@ type LearningSessionContentAiContext = {
 	priorCoverageKeys: string[];
 	existingItemCount: number;
 	hasTheoryKnowledgeCheck: boolean;
+	hasCompleteTheoryPracticePairs: boolean;
 	needsLegacyContentReplacement: boolean;
 	accessKey: string;
 };
@@ -2668,7 +2669,8 @@ export const ensureSessionContent = action({
 		) {
 			if (
 				!context.session.completed &&
-				!context.hasTheoryKnowledgeCheck &&
+				(!context.hasTheoryKnowledgeCheck ||
+					!context.hasCompleteTheoryPracticePairs) &&
 				isLearningSessionCompositionEligible({
 					phase: context.session.phase,
 					durationMinutes: context.session.durationMinutes,

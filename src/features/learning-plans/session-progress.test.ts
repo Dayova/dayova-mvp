@@ -4,12 +4,18 @@ import {
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
+	getPairedTheoryItem,
 	getTheoryTopicPosition,
 	isQualifiedSessionCompletion,
 	isTheoryKnowledgeCheckItem,
 } from "./session-progress";
 
-const learnCard = { id: "theory", kind: "learnCard", phase: "theory" } as const;
+const learnCard = {
+	id: "theory",
+	kind: "learnCard",
+	phase: "theory",
+	coverageKey: "topic:recall:0",
+} as const;
 const practiceTask = {
 	id: "practice",
 	kind: "written",
@@ -28,9 +34,7 @@ describe("learning session progress", () => {
 		expect(
 			getLearningSessionItems([learnCard, practiceTask], "theory", "split"),
 		).toEqual([practiceTask, learnCard]);
-		expect(getLearningSessionCompletionPhase("theory", "split")).toBe(
-			"practice",
-		);
+		expect(getLearningSessionCompletionPhase("theory", "split")).toBe("theory");
 	});
 
 	it("maps reordered theory cards to their local topic position", () => {
@@ -55,6 +59,65 @@ describe("learning session progress", () => {
 			topicIndex: 1,
 			total: 2,
 			previousSessionIndex: 1,
+			nextSessionIndex: null,
+		});
+	});
+
+	it("places each prediction question directly before its theory page", () => {
+		const secondLearnCard = {
+			id: "theory-2",
+			kind: "learnCard",
+			phase: "theory",
+			coverageKey: "topic:apply:0",
+		} as const;
+		const firstPractice = {
+			id: "practice-1",
+			kind: "written",
+			phase: "practice",
+			coverageKey: "topic:recall:0:paired-practice",
+		} as const;
+		const secondPractice = {
+			id: "practice-2",
+			kind: "written",
+			phase: "practice",
+			coverageKey: "topic:apply:0:paired-practice",
+		} as const;
+
+		expect(
+			getLearningSessionItems(
+				[
+					learnCard,
+					secondLearnCard,
+					practiceTask,
+					firstPractice,
+					secondPractice,
+				],
+				"theory",
+				"split",
+			),
+		).toEqual([
+			practiceTask,
+			firstPractice,
+			learnCard,
+			secondPractice,
+			secondLearnCard,
+		]);
+	});
+
+	it("maps a paired question to the same topic as its theory page", () => {
+		const pairedQuestion = {
+			id: "prediction",
+			kind: "written",
+			phase: "practice",
+			coverageKey: "topic:recall:0:paired-practice",
+		} as const;
+		const items = [practiceTask, pairedQuestion, learnCard];
+
+		expect(getPairedTheoryItem(items, 1)).toBe(learnCard);
+		expect(getTheoryTopicPosition(items, 1)).toEqual({
+			topicIndex: 0,
+			total: 1,
+			previousSessionIndex: null,
 			nextSessionIndex: null,
 		});
 	});
