@@ -533,6 +533,7 @@ export default defineSchema({
 		contentGenerationError: v.optional(v.string()),
 		contentGenerationStartedAt: v.optional(v.number()),
 		contentGeneratedAt: v.optional(v.number()),
+		contentGenerationVersion: v.optional(v.number()),
 		completed: v.optional(v.boolean()),
 		executionStatus: v.optional(sessionExecutionStatusValidator),
 		startedAt: v.optional(v.number()),

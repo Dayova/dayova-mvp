@@ -28,6 +28,7 @@ import { useDayovaTheme } from "~/lib/theme";
 import {
 	adaptTheoryTopic,
 	buildTheorySpeechText,
+	getTheoryPagePresentation,
 	getTheoryTopicNavigation,
 	splitTheorySpeechText,
 	type TheoryTopic,
@@ -156,6 +157,7 @@ export function TheoryTopicPage({
 	const { colors } = useDayovaTheme();
 	const reduceMotion = useReducedMotion();
 	const topic = adaptTheoryTopic(item, currentIndex);
+	const presentation = getTheoryPagePresentation(item.questionAngle);
 	const navigation = getTheoryTopicNavigation(currentIndex, total);
 	const [isSpeaking, setIsSpeaking] = useState(false);
 	const [speechError, setSpeechError] = useState<string | null>(null);
@@ -183,7 +185,7 @@ export function TheoryTopicPage({
 				if (speechRunRef.current !== nextRun) return;
 
 				const speechChunks = splitTheorySpeechText(
-					buildTheorySpeechText(topic),
+					buildTheorySpeechText(topic, item.questionAngle),
 					Speech.maxSpeechInputLength,
 				);
 				const speakChunk = (chunkIndex: number) => {
@@ -222,7 +224,7 @@ export function TheoryTopicPage({
 				setIsSpeaking(false);
 				setSpeechError(SPEECH_ERROR_MESSAGE);
 			});
-	}, [isSpeaking, stopSpeaking, topic]);
+	}, [isSpeaking, item.questionAngle, stopSpeaking, topic]);
 
 	const stopAndRun = (action: () => void) => {
 		stopSpeaking();
@@ -297,7 +299,7 @@ export function TheoryTopicPage({
 								/>
 							}
 						>
-							Das solltest du wissen
+							{presentation.sectionTitle}
 						</TopicSectionTitle>
 						<Text
 							selectable
@@ -305,7 +307,7 @@ export function TheoryTopicPage({
 						>
 							{topic.explanation}
 						</Text>
-						{topic.keyPoints.length > 0 ? (
+						{presentation.showKeyPoints && topic.keyPoints.length > 0 ? (
 							<View className="gap-3">
 								{topic.keyPoints.map((keyPoint) => (
 									<View key={keyPoint} className="flex-row gap-3">
@@ -322,7 +324,7 @@ export function TheoryTopicPage({
 						) : null}
 					</View>
 
-					{topic.example ? (
+					{presentation.showExample && topic.example ? (
 						<View className="gap-4 rounded-[32px] border border-primary/20 bg-system-subtle px-5 py-5">
 							<TopicSectionTitle
 								icon={
@@ -341,7 +343,7 @@ export function TheoryTopicPage({
 						</View>
 					) : null}
 
-					{topic.memoryCue ? (
+					{presentation.showMemoryCue && topic.memoryCue ? (
 						<View className="gap-4 rounded-[32px] bg-theorie-subtle px-5 py-5">
 							<TopicSectionTitle
 								icon={
@@ -360,7 +362,7 @@ export function TheoryTopicPage({
 						</View>
 					) : null}
 
-					{topic.commonMistake ? (
+					{presentation.showCommonMistake && topic.commonMistake ? (
 						<View className="gap-4 rounded-[32px] bg-wrong-subtle px-5 py-5">
 							<TopicSectionTitle
 								icon={
