@@ -145,6 +145,7 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 
 - Saving an exam is independent from creating a `Persönlicher Lernplan`. Without uploaded school material, keep the exam and explain that uploading an `Interne Schulquelle` unlocks a plan; do not create plan sessions.
 - External learning aids and typed teacher guidance may enrich a plan but never satisfy the school-material requirement.
+- The confirmed exam scope should be an exhaustive map of distinct, assessable capabilities supported by internal school evidence, not a few broad chapter labels. Split broad areas into what the learner must explain and solve or apply, while never inventing or duplicating topics to reach a target count.
 - Learning-plan creation contains no knowledge-question or quiz step. Its first knowledge test is the scheduled, timed `Wissenscheck` with five to ten questions.
 - An active `Persönlicher Lernplan` always exposes two future sessions with a date and start time: the committed `Nächster Lernschritt` and one provisional adaptive preview. It never materializes the complete remaining plan.
 - Completing the committed session promotes and adapts the provisional session from the latest evidence, then appends a new timed provisional session so two future sessions remain visible.
@@ -154,6 +155,7 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 - The post-session Analyse surface uses the user-facing states `Sicher belegt`, `Im Aufbau`, `Unsicher`, and `Noch nicht belegt`. `Unsicher` requires a recent incorrect or partially correct graded answer; missing evidence is never presented as a demonstrated weakness, and initial readiness comes from the first timed `Wissenscheck`, not setup input.
 - An assessment topic is `Sicher belegt` only when every `Belegdimension` required by that topic is secure. New topic maps declare the required dimensions; legacy topics conservatively require all three.
 - Evidence is hierarchical: independent exam-like performance may support `Probleme lösen` and `Verstehen`, and guided problem solving may support `Verstehen`; lower-strength evidence never proves a higher dimension.
+- Adaptive topic progression moves from completed theory to guided practice, repeats guided practice when any required answer is not correct, and advances an all-correct practice session to a harder independent check. One all-correct harder check can secure `Selbstständig lösen`; together with the preceding all-correct practice it supplies the repeated evidence needed for the lower dimensions. Count a multi-question session as correct only when every relevant answer is correct.
 - The Analyse overview may count secure topics but must not collapse readiness into a global percentage or points score. Activity or completed theory review alone never proves secure knowledge.
 
 ## Example Dialogue

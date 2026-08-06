@@ -628,6 +628,129 @@ test("keeps one committed and one provisional session in the rolling window", as
 	).toBeUndefined();
 });
 
+test("legacy theory content advances to practice instead of replaying the same pages", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.mutation(api.learningTimes.upsertMine, {
+		dayOfWeek: 3,
+		startTime: "17:00",
+		endTime: "18:00",
+	});
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		sourceSummary: "Lineare Funktionen mit Steigung.",
+		topics: [
+			{
+				id: "steigung",
+				title: "Steigung berechnen",
+				learningGoal: "Steigungen aus zwei Punkten berechnen.",
+				keywords: ["Steigung"],
+				priority: "high",
+				requiredEvidenceDimensions: ["understanding", "problemSolving"],
+			},
+		],
+		questions: [],
+	});
+	await t.mutation(internal.learningPlans.replaceGeneratedSessions, {
+		learningPlanId,
+		knowledgeAnswersJson: "[]",
+		sourceSummary: "Testmaterial",
+		insight: {
+			summary: "Die Steigung ist noch offen.",
+			strengths: [],
+			gaps: ["Steigung"],
+		},
+		deferReadyUntilContent: true,
+		deferFutureContent: true,
+		rollingWindow: true,
+		sessions: [
+			{
+				phase: "theory",
+				title: "Steigung berechnen",
+				dateKey: "2026-06-01",
+				dateLabel: "1. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 15,
+				goal: "Verstehe, wie Steigungen berechnet werden.",
+				tasks: ["Theorie durcharbeiten"],
+				expectedOutcome: "Du kannst die Berechnung erklären.",
+			},
+			{
+				phase: "practice",
+				title: "Steigung anwenden",
+				dateKey: "2026-06-02",
+				dateLabel: "2. Juni 2026",
+				startTime: "17:00",
+				durationMinutes: 15,
+				goal: "Wende die Steigungsformel an.",
+				tasks: ["Aufgaben lösen"],
+				expectedOutcome: "Du löst eine neue Aufgabe.",
+			},
+		],
+	});
+
+	const initial = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	const theorySessionId = initial?.sessions[0]?.id;
+	if (!theorySessionId) throw new Error("Expected theory session.");
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlanSessions", theorySessionId, {
+			targetTopicIds: undefined,
+			targetEvidenceDimension: undefined,
+		});
+		await ctx.db.insert("learningSessionContentItems", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			learningPlanId,
+			sessionId: theorySessionId,
+			phase: "theory",
+			kind: "learnCard",
+			title: "Steigungsformel",
+			prompt: "Wie wird die Steigung berechnet?",
+			front: "Wie wird die Steigung berechnet?",
+			back: "Änderung von y geteilt durch Änderung von x.",
+			explanation: "Die Steigung beschreibt die Änderung von y pro x-Schritt.",
+			idealAnswer: "m = Δy / Δx",
+			evaluationKeywords: ["Steigung"],
+			topicId: "steigung",
+			evidenceDimension: "understanding",
+			sortOrder: 0,
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+		});
+	});
+	await t.mutation(internal.learningPlans.setSessionContentGenerationStatus, {
+		sessionId: theorySessionId,
+		status: "ready",
+	});
+	await t.mutation(internal.learningPlans.finalizeContentGeneration, {
+		learningPlanId,
+	});
+	await acceptGeneratedTestPlan(t, learningPlanId);
+	await t.mutation(api.learningPlans.startSession, {
+		sessionId: theorySessionId,
+	});
+	await t.mutation(api.learningPlans.recordSessionOutcome, {
+		sessionId: theorySessionId,
+		outcome: "completed",
+	});
+
+	const advanced = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(
+		advanced?.sessions.find(
+			(session) =>
+				session.executionStatus === "notStarted" &&
+				session.planningStatus === "committed",
+		),
+	).toMatchObject({
+		phase: "practice",
+		targetTopicIds: ["steigung"],
+		targetEvidenceDimension: "problemSolving",
+	});
+});
+
 test("atomically claims one session content generation at a time", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);

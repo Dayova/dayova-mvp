@@ -49,6 +49,16 @@ const getAdaptiveEvidenceDimension = (
 	return "understanding";
 };
 
+const getSessionTargetEvidenceDimension = (
+	session: Doc<"learningPlanSessions">,
+): AdaptiveTopicEvidence["dimension"] =>
+	session.targetEvidenceDimension ??
+	(session.phase === "theory"
+		? "understanding"
+		: session.phase === "practice"
+			? "problemSolving"
+			: "independent");
+
 const loadAdaptiveEvidence = async (
 	ctx: MutationCtx,
 	sessions: Doc<"learningPlanSessions">[],
@@ -79,17 +89,24 @@ const loadAdaptiveEvidence = async (
 			attempts.length > 0 ||
 			executionStatus === "completed" ||
 			executionStatus === "partiallyCompleted";
-		if (
-			session.planningStatus !== "provisional" &&
-			wasActuallyAttempted &&
-			session.targetEvidenceDimension &&
-			session.targetTopicIds?.[0]
-		) {
-			history.push({
-				topicId: session.targetTopicIds[0],
-				dimension: session.targetEvidenceDimension,
-				targetedAt: session.outcomeAt ?? session.createdAt,
-			});
+		if (session.planningStatus !== "provisional" && wasActuallyAttempted) {
+			const targetTopicIds =
+				session.targetTopicIds && session.targetTopicIds.length > 0
+					? session.targetTopicIds
+					: Array.from(
+							new Set(
+								items
+									.map((item) => item.topicId)
+									.filter((topicId): topicId is string => Boolean(topicId)),
+							),
+						);
+			for (const topicId of targetTopicIds) {
+				history.push({
+					topicId,
+					dimension: getSessionTargetEvidenceDimension(session),
+					targetedAt: session.outcomeAt ?? session.createdAt,
+				});
+			}
 		}
 		const seenItemIds = new Set<Id<"learningSessionContentItems">>();
 		for (const attempt of attempts) {

@@ -89,7 +89,7 @@ describe("adaptive learning plan policy", () => {
 		});
 	});
 
-	test("uses independent work after repeated problem-solving success", () => {
+	test("uses harder independent work after one fully correct practice session", () => {
 		const attempts = [
 			evidence({
 				dimension: "problemSolving",
@@ -98,7 +98,7 @@ describe("adaptive learning plan policy", () => {
 			}),
 			evidence({
 				dimension: "problemSolving",
-				sessionId: "practice-2",
+				sessionId: "practice-1",
 				createdAt: 2,
 			}),
 		];
@@ -113,6 +113,56 @@ describe("adaptive learning plan policy", () => {
 			dimension: "independent",
 			phase: "rehearsal",
 		});
+	});
+
+	test("repeats guided practice when any answer in the session is wrong", () => {
+		const attempts = [
+			evidence({
+				dimension: "problemSolving",
+				sessionId: "practice-1",
+				createdAt: 1,
+			}),
+			evidence({
+				dimension: "problemSolving",
+				rating: "notCorrect",
+				sessionId: "practice-1",
+				createdAt: 2,
+			}),
+		];
+
+		expect(
+			selectNextAdaptiveLearningTarget({
+				topics: topics.slice(0, 1),
+				initialReadiness: [{ topicId: "steigung", status: "secure" }],
+				evidence: attempts,
+			}),
+		).toMatchObject({
+			dimension: "problemSolving",
+			phase: "practice",
+		});
+	});
+
+	test("finishes a topic after correct guided and harder independent sessions", () => {
+		const attempts = [
+			evidence({
+				dimension: "problemSolving",
+				sessionId: "practice-1",
+				createdAt: 1,
+			}),
+			evidence({
+				dimension: "independent",
+				sessionId: "independent-1",
+				createdAt: 2,
+			}),
+		];
+
+		expect(
+			selectNextAdaptiveLearningTarget({
+				topics: topics.slice(0, 1),
+				initialReadiness: [],
+				evidence: attempts,
+			}),
+		).toBeNull();
 	});
 
 	test("prioritizes a contradictory result as a control check", () => {
