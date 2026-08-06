@@ -173,15 +173,16 @@ while development builds retain watch mode.
 
 ## iOS Privacy Purpose Strings
 
-Dayova uses camera/photo upload for learning material and microphone/speech
-recognition for spoken answers. Keep these App Store privacy purpose strings in
-`app.config.cts`. If a local native `ios/Dayova/Info.plist` exists after
-prebuild, keep it in sync too:
+Dayova uses camera/photo upload for learning material. Keep these App Store
+privacy purpose strings in `app.config.cts`. If a local native
+`ios/Dayova/Info.plist` exists after prebuild, keep it in sync too:
 
-- `NSMicrophoneUsageDescription`
-- `NSSpeechRecognitionUsageDescription`
 - `NSCameraUsageDescription`
 - `NSPhotoLibraryUsageDescription`
+
+Learning-session answers are typed or selected. The image-picker plugin sets
+`microphonePermission: false`, so native builds must not request microphone or
+speech-recognition access.
 
 `tests/ios-privacy-config.test.ts` always guards `app.config.cts` and also
 checks the generated native plist when it exists. Run it before an iOS release

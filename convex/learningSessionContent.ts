@@ -151,7 +151,7 @@ const publicItem = (item: Doc<"learningSessionContentItems">) => ({
 	id: item._id,
 	sessionId: item.sessionId,
 	phase: item.phase,
-	kind: item.kind,
+	kind: item.kind === "voice" ? ("written" as const) : item.kind,
 	title: item.title,
 	prompt: item.prompt,
 	front: item.front,
@@ -491,12 +491,7 @@ const buildTaskItems = (
 					return `Bearbeite eine prüfungsnahe Aufgabe zu ${blueprint.topic.title}. Achte besonders auf: ${task}`;
 			}
 		})();
-		const title =
-			kind === "multipleChoice"
-				? "Auswahlfrage"
-				: kind === "voice"
-					? "Sprachaufgabe"
-					: "Schreibaufgabe";
+		const title = kind === "multipleChoice" ? "Auswahlfrage" : "Schreibaufgabe";
 		const idealAnswer = compact(
 			`${topicTask} Löse die Aufgabe knapp, begründe den entscheidenden Schritt und prüfe dein Ergebnis mit Bezug auf ${plan.topicDescription}.`,
 			session.expectedOutcome,
@@ -540,10 +535,7 @@ const buildTaskItems = (
 		return {
 			kind,
 			title,
-			prompt:
-				kind === "voice"
-					? `${phasePrefix}: ${freshTask} Antworte laut und begründe den entscheidenden Schritt.`
-					: `${phasePrefix}: ${freshTask} Antworte schriftlich und notiere eine passende Kontrolle.`,
+			prompt: `${phasePrefix}: ${freshTask} Antworte schriftlich und notiere eine passende Kontrolle.`,
 			explanation:
 				"Eine starke Antwort nennt den vollständigen Lösungsweg, vermeidet typische Fehler und kontrolliert das Ergebnis.",
 			idealAnswer,

@@ -1,5 +1,4 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
-import * as Device from "expo-device";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as Speech from "expo-speech";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,18 +8,10 @@ import {
 	KeyboardAvoidingView,
 	Platform,
 	ScrollView,
-	type TextInput,
 	TouchableOpacity,
 	View,
 } from "react-native";
-import type {
-	PermissionStatus as NitroPermissionStatus,
-	SpeechRecognitionError as NitroSpeechRecognitionError,
-	RecognizerCallbacks,
-	RecognizerMethods,
-	SpeechRecognitionConfig,
-} from "react-native-nitro-speech";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -33,7 +24,6 @@ import {
 	Check,
 	CircleAlert,
 	ClipboardEdit,
-	Mic,
 	Pencil,
 	Timer,
 } from "~/components/ui/icon";
@@ -70,34 +60,6 @@ import { useDayovaTheme } from "~/lib/theme";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
-type SpeechRecognitionModule = typeof import("react-native-nitro-speech");
-type PermissionStatus = NitroPermissionStatus;
-type SpeechRecognitionError = NitroSpeechRecognitionError;
-
-const PermissionStatus = {
-	GRANTED: 0,
-	DENIED: 1,
-	NOT_REQUESTED: 2,
-} as const satisfies Record<
-	"GRANTED" | "DENIED" | "NOT_REQUESTED",
-	NitroPermissionStatus
->;
-
-const SpeechRecognitionError = {
-	Unknown: 0,
-	LocaleNotSupported: 1,
-	RecognitionTaskFailed: 2,
-	IosSpeechPermissionNotDetermined: 3,
-	SessionStartFailed: 4,
-} as const satisfies Record<
-	| "Unknown"
-	| "LocaleNotSupported"
-	| "RecognitionTaskFailed"
-	| "IosSpeechPermissionNotDetermined"
-	| "SessionStartFailed",
-	NitroSpeechRecognitionError
->;
-
 const ratingCopy: Record<
 	SessionAnswerRating,
 	{
@@ -132,164 +94,7 @@ const phaseTitle = (
 ) =>
 	phase === "theory" ? "Lernkarten" : phase === "practice" ? "Üben" : "Praxis";
 
-const isIosSimulator = Platform.OS === "ios" && !Device.isDevice;
-const iosSimulatorSpeechMessage =
-	"Spracherkennung ist im iOS Simulator nicht zuverlässig verfügbar. Auf einem iPhone kannst du deine Antwort einsprechen. Hier kannst du sie stattdessen eintippen.";
-const nativeSpeechUnavailableMessage =
-	"Spracherkennung ist in dieser App-Version nicht verfügbar. Du kannst deine Antwort stattdessen eintippen.";
 const CURRENT_THEORY_CONTENT_VERSION = 2;
-
-const getSpeechRecognitionErrorMessage = (error: SpeechRecognitionError) => {
-	if (error === SpeechRecognitionError.LocaleNotSupported) {
-		return "Spracherkennung ist auf diesem Gerät für Deutsch gerade nicht verfügbar. Du kannst die Antwort als Text eintragen.";
-	}
-	if (error === SpeechRecognitionError.RecognitionTaskFailed) {
-		return "Wir haben keine Sprache erkannt. Versuch es noch einmal oder bearbeite das Transkript direkt.";
-	}
-	if (error === SpeechRecognitionError.IosSpeechPermissionNotDetermined) {
-		return "Dieses Gerät unterstützt die aktuelle Spracherkennung nicht vollständig. Du kannst die Antwort als Text eintragen.";
-	}
-	if (error === SpeechRecognitionError.SessionStartFailed) {
-		return "Die Spracherkennung konnte nicht gestartet werden. Du kannst die Antwort als Text eintragen.";
-	}
-
-	return "Die Spracherkennung konnte nicht gestartet werden. Du kannst die Antwort als Text eintragen.";
-};
-
-const getSpeechPermissionMessage = (status: PermissionStatus) =>
-	status === PermissionStatus.DENIED
-		? "Mikrofon oder Spracherkennung sind blockiert. Aktiviere sie in den Geräteeinstellungen oder trage die Antwort als Text ein."
-		: "Bitte erlaube Mikrofon und Spracherkennung, damit Dayova deine Sprachantwort transkribieren kann.";
-
-type OptionalSpeechRecognizer = RecognizerMethods & {
-	isAvailable: boolean;
-	loadError: unknown | null;
-};
-
-const unavailableSpeechRecognizerMethods: RecognizerMethods = {
-	prewarm: async () => {
-		throw new Error("Speech recognition is unavailable.");
-	},
-	startListening: () => undefined,
-	stopListening: () => undefined,
-	resetAutoFinishTime: () => undefined,
-	addAutoFinishTime: () => undefined,
-	updateConfig: () => undefined,
-	getIsActive: () => false,
-	getVoiceInputVolume: () => ({ smoothedVolume: 0, rawVolume: 0 }),
-	getPermissions: () => PermissionStatus.DENIED,
-	getSupportedLocalesIOS: () => [],
-};
-
-type SpeechRecognizerLoadState =
-	| {
-			recognizer: SpeechRecognitionModule["SpeechRecognizer"];
-			methods: RecognizerMethods;
-			loadError: null;
-	  }
-	| {
-			recognizer: null;
-			methods: null;
-			loadError: unknown;
-	  };
-
-function loadSpeechRecognizer(): SpeechRecognizerLoadState {
-	try {
-		// Keep Nitro out of module scope so the route can render without it.
-		const speechModule =
-			require("react-native-nitro-speech") as SpeechRecognitionModule;
-		const recognizer = speechModule.SpeechRecognizer;
-
-		return {
-			recognizer,
-			methods: {
-				prewarm: (params, options) => recognizer.prewarm(params, options),
-				startListening: (params) => recognizer.startListening(params),
-				stopListening: () => recognizer.stopListening(),
-				resetAutoFinishTime: () => recognizer.resetAutoFinishTime(),
-				addAutoFinishTime: (additionalTimeMs) =>
-					recognizer.addAutoFinishTime(additionalTimeMs),
-				updateConfig: (newConfig, resetAutoFinishTime) =>
-					recognizer.updateConfig(newConfig, resetAutoFinishTime),
-				getIsActive: () => recognizer.getIsActive(),
-				getVoiceInputVolume: () => recognizer.getVoiceInputVolume(),
-				getPermissions: () => recognizer.getPermissions(),
-				getSupportedLocalesIOS: () =>
-					recognizer.getSupportedLocalesIOS().sort(),
-			},
-			loadError: null,
-		};
-	} catch (error) {
-		return {
-			recognizer: null,
-			methods: null,
-			loadError: error,
-		};
-	}
-}
-
-let cachedSpeechRecognizerLoadState: SpeechRecognizerLoadState | null = null;
-
-function getSpeechRecognizerLoadState(): SpeechRecognizerLoadState {
-	cachedSpeechRecognizerLoadState ??= loadSpeechRecognizer();
-	return cachedSpeechRecognizerLoadState;
-}
-
-function useOptionalSpeechRecognizer(
-	callbacks: RecognizerCallbacks,
-): OptionalSpeechRecognizer {
-	const callbacksRef = useRef(callbacks);
-	const [loadState] = useState(getSpeechRecognizerLoadState);
-	const { methods, loadError } = loadState;
-
-	useEffect(() => {
-		callbacksRef.current = callbacks;
-	}, [callbacks]);
-
-	useEffect(() => {
-		const recognizer = getSpeechRecognizerLoadState().recognizer;
-		if (!recognizer) return undefined;
-
-		recognizer.onReadyForSpeech = () =>
-			callbacksRef.current.onReadyForSpeech?.();
-		recognizer.onRecordingStopped = () =>
-			callbacksRef.current.onRecordingStopped?.();
-		recognizer.onResult = (resultBatches) =>
-			callbacksRef.current.onResult?.(resultBatches);
-		recognizer.onAutoFinishProgress = (timeLeftMs) =>
-			callbacksRef.current.onAutoFinishProgress?.(timeLeftMs);
-		recognizer.onError = (error) => callbacksRef.current.onError?.(error);
-		recognizer.onPermissionDenied = () =>
-			callbacksRef.current.onPermissionDenied?.();
-		recognizer.onVolumeChange = (event) =>
-			callbacksRef.current.onVolumeChange?.(event);
-
-		return () => {
-			try {
-				recognizer.stopListening();
-			} catch {
-				// Native speech may be half-initialized during teardown.
-			}
-
-			recognizer.onReadyForSpeech = undefined;
-			recognizer.onRecordingStopped = undefined;
-			recognizer.onResult = undefined;
-			recognizer.onAutoFinishProgress = undefined;
-			recognizer.onError = undefined;
-			recognizer.onPermissionDenied = undefined;
-			recognizer.onVolumeChange = undefined;
-		};
-	}, []);
-
-	return useMemo(
-		() => ({
-			...(methods ?? unavailableSpeechRecognizerMethods),
-			isAvailable: Boolean(methods),
-			loadError,
-		}),
-		[loadError, methods],
-	);
-}
 
 const formatRemainingTime = (seconds: number) => {
 	const minutes = Math.floor(seconds / 60);
@@ -624,7 +429,6 @@ function TextAnswer({
 	editable,
 	fillAvailableSpace = false,
 	autoFocus,
-	inputRef,
 }: {
 	value: string;
 	onChange: (value: string) => void;
@@ -632,11 +436,9 @@ function TextAnswer({
 	editable: boolean;
 	fillAvailableSpace?: boolean;
 	autoFocus?: boolean;
-	inputRef?: React.Ref<TextInput>;
 }) {
 	return (
 		<Textarea
-			ref={inputRef}
 			autoFocus={(autoFocus ?? fillAvailableSpace) && editable}
 			accessibilityLabel="Antwort"
 			className={cn(
@@ -648,211 +450,6 @@ function TextAnswer({
 			onChangeText={onChange}
 			placeholder={placeholder}
 		/>
-	);
-}
-
-function VoiceAnswer({
-	value,
-	onChange,
-	editable,
-	isRecognizing,
-	speechErrorMessage,
-	speechCaptureUnavailableMessage,
-	onToggleRecording,
-}: {
-	value: string;
-	onChange: (value: string) => void;
-	editable: boolean;
-	isRecognizing: boolean;
-	speechErrorMessage: string | null;
-	speechCaptureUnavailableMessage: string | null;
-	onToggleRecording: () => void;
-}) {
-	const isSpeechCaptureUnavailable = Boolean(speechCaptureUnavailableMessage);
-	const [isEditingTranscript, setIsEditingTranscript] = useState(
-		isSpeechCaptureUnavailable,
-	);
-	const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(false);
-	const transcriptInputRef = useRef<TextInput>(null);
-	const hasTranscript = Boolean(value.trim());
-	const hasLongTranscript = value.trim().length > 180;
-	const liveTranscript = value.trim()
-		? value.trim().length > 220
-			? `…${value
-					.trim()
-					.slice(-220)
-					.replace(/^\S+\s*/, "")}`
-			: value.trim()
-		: "Ich höre zu …";
-
-	const startEditingTranscript = () => {
-		setIsEditingTranscript(true);
-		requestAnimationFrame(() => transcriptInputRef.current?.focus());
-	};
-
-	const handleVoiceCardPress = () => {
-		if (isSpeechCaptureUnavailable) {
-			startEditingTranscript();
-			return;
-		}
-		if (!isRecognizing) {
-			setIsEditingTranscript(false);
-			setIsTranscriptExpanded(false);
-		}
-		onToggleRecording();
-	};
-
-	return (
-		<View>
-			<TouchableOpacity
-				accessibilityRole="button"
-				accessibilityState={{ disabled: !editable, busy: isRecognizing }}
-				activeOpacity={0.86}
-				disabled={!editable}
-				onPress={handleVoiceCardPress}
-				className={cn(
-					"mt-6 min-h-[232px] items-center justify-center rounded-[32px] bg-card px-5",
-					!editable && "opacity-60",
-				)}
-			>
-				<View className="h-40 w-40 items-center justify-center rounded-full bg-primary/10">
-					<View className="h-32 w-32 items-center justify-center rounded-full bg-primary/20">
-						<View
-							className={cn(
-								"h-24 w-24 items-center justify-center rounded-full",
-								isRecognizing ? "bg-wrong" : "bg-primary",
-							)}
-						>
-							<Mic
-								size={34}
-								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-								strokeWidth={2.1}
-							/>
-						</View>
-					</View>
-				</View>
-				<Text
-					className={cn(
-						"mt-5 font-poppins font-semibold text-body-4",
-						isRecognizing ? "text-wrong" : "text-primary",
-					)}
-				>
-					{isRecognizing
-						? "Aufnahme stoppen"
-						: isSpeechCaptureUnavailable
-							? "Antwort eintippen"
-							: "Antwort einsprechen"}
-				</Text>
-			</TouchableOpacity>
-			<Text
-				selectable
-				className="mt-3 px-1 font-poppins text-body-4 text-secondary-text"
-			>
-				{isRecognizing
-					? "Sprich einfach weiter. Du siehst hier nur die letzten erkannten Wörter."
-					: isSpeechCaptureUnavailable
-						? speechCaptureUnavailableMessage
-						: "Nach der Aufnahme kannst du deine Antwort kurz prüfen oder bearbeiten."}
-			</Text>
-
-			{isRecognizing ? (
-				<Animated.View
-					key="live-transcript"
-					entering={FadeIn.duration(160)}
-					exiting={FadeOut.duration(120)}
-				>
-					<Surface className="mt-5 rounded-[24px] px-4 py-4" variant="flat">
-						<Text className="font-poppins font-semibold text-body-4 text-primary">
-							Live-Transkript
-						</Text>
-						<Text
-							selectable
-							className="mt-2 font-poppins text-body-3 text-text"
-							numberOfLines={3}
-						>
-							{liveTranscript}
-						</Text>
-					</Surface>
-				</Animated.View>
-			) : isEditingTranscript ? (
-				<Animated.View
-					key="transcript-editor"
-					entering={FadeIn.duration(160)}
-					exiting={FadeOut.duration(120)}
-					className="mt-5"
-				>
-					<View className="flex-row items-center justify-between gap-4">
-						<Text className="font-poppins font-semibold text-body-4 text-text">
-							Deine Antwort
-						</Text>
-						{hasTranscript && !isSpeechCaptureUnavailable ? (
-							<TouchableOpacity
-								accessibilityRole="button"
-								onPress={() => setIsEditingTranscript(false)}
-								className="min-h-11 justify-center px-2"
-							>
-								<Text className="font-poppins font-semibold text-body-4 text-primary">
-									Fertig
-								</Text>
-							</TouchableOpacity>
-						) : null}
-					</View>
-					<TextAnswer
-						inputRef={transcriptInputRef}
-						value={value}
-						onChange={onChange}
-						placeholder="Schreibe hier deine Antwort."
-						editable={editable}
-						autoFocus={isSpeechCaptureUnavailable}
-					/>
-				</Animated.View>
-			) : hasTranscript ? (
-				<Animated.View
-					key="transcript-preview"
-					entering={FadeIn.duration(160)}
-					exiting={FadeOut.duration(120)}
-				>
-					<Surface className="mt-5 rounded-[24px] px-4 py-4" variant="flat">
-						<View className="flex-row items-center justify-between gap-4">
-							<Text className="font-poppins font-semibold text-body-4 text-text">
-								Deine Antwort
-							</Text>
-							<TouchableOpacity
-								accessibilityRole="button"
-								disabled={!editable}
-								onPress={startEditingTranscript}
-								className="min-h-11 justify-center px-2"
-							>
-								<Text className="font-poppins font-semibold text-body-4 text-primary">
-									Bearbeiten
-								</Text>
-							</TouchableOpacity>
-						</View>
-						<Text
-							selectable
-							className="mt-1 font-poppins text-body-3 text-text"
-							numberOfLines={isTranscriptExpanded ? undefined : 4}
-						>
-							{value.trim()}
-						</Text>
-						{hasLongTranscript ? (
-							<TouchableOpacity
-								accessibilityRole="button"
-								onPress={() => setIsTranscriptExpanded((expanded) => !expanded)}
-								className="min-h-11 justify-center self-start pt-1"
-							>
-								<Text className="font-poppins font-semibold text-body-4 text-primary">
-									{isTranscriptExpanded ? "Weniger anzeigen" : "Alles anzeigen"}
-								</Text>
-							</TouchableOpacity>
-						) : null}
-					</Surface>
-				</Animated.View>
-			) : null}
-			{speechErrorMessage ? (
-				<ErrorMessage className="mt-3 px-1">{speechErrorMessage}</ErrorMessage>
-			) : null}
-		</View>
 	);
 }
 
@@ -979,10 +576,6 @@ export default function LearningSessionContentScreen() {
 	);
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const [isRecognizing, setIsRecognizing] = useState(false);
-	const [speechErrorMessage, setSpeechErrorMessage] = useState<string | null>(
-		null,
-	);
 	const [showAnalysis, setShowAnalysis] = useState(false);
 	const [completionPhase, setCompletionPhase] = useState<
 		LearningSessionContentSnapshot["session"]["phase"] | null
@@ -1004,37 +597,6 @@ export default function LearningSessionContentScreen() {
 	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
 		null,
 	);
-
-	const recognizerCallbacks = useMemo<RecognizerCallbacks>(
-		() => ({
-			onReadyForSpeech: () => {
-				setIsRecognizing(true);
-				setSpeechErrorMessage(null);
-			},
-			onRecordingStopped: () => setIsRecognizing(false),
-			onResult: (resultBatches: string[]) => {
-				const transcript = resultBatches.join(" ").replace(/\s+/g, " ").trim();
-				if (transcript) setAnswerText(transcript);
-			},
-			onError: (error: SpeechRecognitionError) => {
-				setIsRecognizing(false);
-				setSpeechErrorMessage(getSpeechRecognitionErrorMessage(error));
-			},
-			onPermissionDenied: () => {
-				setIsRecognizing(false);
-				setSpeechErrorMessage(
-					getSpeechPermissionMessage(PermissionStatus.DENIED),
-				);
-			},
-		}),
-		[],
-	);
-	const speechRecognizer = useOptionalSpeechRecognizer(recognizerCallbacks);
-	const speechCaptureUnavailableMessage = isIosSimulator
-		? iosSimulatorSpeechMessage
-		: speechRecognizer.isAvailable
-			? null
-			: nativeSpeechUnavailableMessage;
 
 	const content = (useQuery(
 		api.learningSessionContent.getSessionContent,
@@ -1316,13 +878,11 @@ export default function LearningSessionContentScreen() {
 	]);
 
 	const resetItemState = useCallback(() => {
-		if (isRecognizing) speechRecognizer.stopListening();
 		setSelectedChoiceId(null);
 		setAnswerText("");
 		setLocalAttempt(null);
 		setRepeatingItemId(null);
-		setSpeechErrorMessage(null);
-	}, [isRecognizing, speechRecognizer]);
+	}, []);
 
 	const advancePastCurrentItem = useCallback(() => {
 		if (!content) return;
@@ -1504,90 +1064,9 @@ export default function LearningSessionContentScreen() {
 		setCurrentIndex(theoryTopicPosition.previousSessionIndex);
 	};
 
-	const buildSpeechRecognitionConfig =
-		useCallback((): SpeechRecognitionConfig => {
-			const contextualStrings = Array.from(
-				new Set(
-					[
-						content?.plan.subject,
-						content?.plan.topicDescription,
-						content?.session.goal,
-						currentItem?.prompt,
-						currentItem?.idealAnswer,
-					]
-						.map((value) => value?.trim())
-						.filter((value): value is string => Boolean(value)),
-				),
-			).slice(0, 100);
-
-			return {
-				locale: "de-DE",
-				contextualStrings,
-				autoFinishRecognitionMs: 8000,
-				autoFinishProgressIntervalMs: 1000,
-				resetAutoFinishVoiceSensitivity: 0.4,
-				startHapticFeedbackStyle: "medium",
-				stopHapticFeedbackStyle: "medium",
-				iosAddPunctuation: true,
-				iosPreset: "general",
-			};
-		}, [content, currentItem]);
-
-	const toggleVoiceRecording = async () => {
-		if (!content || !currentItem || currentItem.kind !== "voice") return;
-		if (visibleAttempt || isBusy) return;
-
-		setErrorMessage(null);
-		setSpeechErrorMessage(null);
-
-		if (speechCaptureUnavailableMessage) {
-			setSpeechErrorMessage(speechCaptureUnavailableMessage);
-			return;
-		}
-
-		if (isRecognizing || speechRecognizer.getIsActive()) {
-			speechRecognizer.stopListening();
-			return;
-		}
-
-		try {
-			if (Platform.OS === "ios") {
-				const supportedLocales = speechRecognizer.getSupportedLocalesIOS();
-				const supportsGerman =
-					supportedLocales.length === 0 ||
-					supportedLocales.some(
-						(locale) => locale.replace("_", "-").toLowerCase() === "de-de",
-					);
-				if (!supportsGerman) {
-					setSpeechErrorMessage(
-						"Spracherkennung ist auf diesem Gerät für Deutsch gerade nicht verfügbar. Du kannst die Antwort als Text eintragen.",
-					);
-					return;
-				}
-			}
-
-			const speechConfig = buildSpeechRecognitionConfig();
-			await speechRecognizer.prewarm(speechConfig, { requestPermission: true });
-
-			const permissionStatus = speechRecognizer.getPermissions();
-			if (permissionStatus !== PermissionStatus.GRANTED) {
-				setSpeechErrorMessage(getSpeechPermissionMessage(permissionStatus));
-				return;
-			}
-
-			speechRecognizer.startListening(speechConfig);
-		} catch {
-			setIsRecognizing(false);
-			setSpeechErrorMessage(
-				"Die Spracherkennung konnte nicht gestartet werden. Du kannst die Antwort als Text eintragen.",
-			);
-		}
-	};
-
 	const submitCurrentAnswer = async (submitAsUnknown = false) => {
 		if (!currentItem || isBusy) return;
 
-		if (isRecognizing) speechRecognizer.stopListening();
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
@@ -1604,7 +1083,6 @@ export default function LearningSessionContentScreen() {
 							: (selectedChoiceId ?? undefined)
 						: undefined,
 				answerText: currentItem.kind === "written" ? writtenAnswer : undefined,
-				transcript: currentItem.kind === "voice" ? writtenAnswer : undefined,
 			});
 			if (attempt.rating === "correct" && !isPreTheoryQuestion) {
 				void triggerSuccessHaptic({
@@ -1835,9 +1313,7 @@ export default function LearningSessionContentScreen() {
 					showAnalysis ||
 					Boolean(completionPhase)
 				}
-				automaticallyAdjustKeyboardInsets={
-					currentItem?.kind === "written" || currentItem?.kind === "voice"
-				}
+				automaticallyAdjustKeyboardInsets={currentItem?.kind === "written"}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,
@@ -1926,19 +1402,6 @@ export default function LearningSessionContentScreen() {
 									onSelect={setSelectedChoiceId}
 									disabled={isBusy}
 								/>
-							) : currentItem.kind === "voice" ? (
-								<VoiceAnswer
-									key={currentItem.id}
-									value={answerText}
-									onChange={setAnswerText}
-									editable={!isBusy}
-									isRecognizing={isRecognizing}
-									speechErrorMessage={speechErrorMessage}
-									speechCaptureUnavailableMessage={
-										speechCaptureUnavailableMessage
-									}
-									onToggleRecording={toggleVoiceRecording}
-								/>
 							) : (
 								<TextAnswer
 									value={answerText}
@@ -1987,7 +1450,7 @@ export default function LearningSessionContentScreen() {
 							}
 							onSecondary={() => void submitCurrentAnswer(true)}
 							onPrimary={() => void submitCurrentAnswer()}
-							primaryDisabled={isRecognizing || !isAnswerReady}
+							primaryDisabled={!isAnswerReady}
 							isBusy={isBusy}
 						/>
 					</View>

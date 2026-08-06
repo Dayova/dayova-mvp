@@ -153,8 +153,13 @@ test("session content is generated once and reused on reopen", async () => {
 		secondSnapshot?.items.map((item) => item.id),
 	);
 	expect(firstSnapshot?.items.map((item) => item.kind)).toEqual(
-		expect.arrayContaining(["multipleChoice", "written", "voice"]),
+		expect.arrayContaining(["multipleChoice", "written"]),
 	);
+	expect(
+		firstSnapshot?.items.some(
+			(item) => (item as { kind: string }).kind === "voice",
+		),
+	).toBe(false);
 });
 
 test("theory fallback creates active recall cards instead of generic summaries", async () => {
@@ -589,10 +594,10 @@ test("practice fallback creates concrete guided practice tasks", async () => {
 	expect(content?.items.slice(0, 6).map((item) => item.kind)).toEqual([
 		"multipleChoice",
 		"written",
-		"voice",
 		"multipleChoice",
 		"written",
-		"voice",
+		"multipleChoice",
+		"written",
 	]);
 	expect(prompts).toContain("Übung");
 	expect(prompts).not.toContain("Welche Strategie passt");
@@ -679,6 +684,33 @@ test("preserves older theory content after the learner has started", async () =>
 	expect(generationContext.needsLegacyContentReplacement).toBe(false);
 });
 
+test("exposes legacy voice tasks as written tasks", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession("practice");
+
+	await t.mutation(
+		internal.learningSessionContent.storeGeneratedSessionContent,
+		{
+			sessionId,
+			items: [
+				{
+					kind: "voice",
+					title: "Erklärung",
+					prompt: "Erkläre den entscheidenden Schritt.",
+					explanation: "Der Schritt erhält die Lösungsmenge.",
+					idealAnswer: "Beide Seiten werden gleich behandelt.",
+					evaluationKeywords: ["beide Seiten"],
+				},
+			],
+		},
+	);
+
+	const content = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId,
+	});
+
+	expect(content?.items[0]?.kind).toBe("written");
+});
+
 test("marks nested variant exercises for regeneration", async () => {
 	const { t, sessionId } = await createGeneratedPlanWithSession("practice");
 
@@ -763,9 +795,9 @@ test("answers produce feedback and finishing creates a Wissensanalyse", async ()
 	const multipleChoice = content?.items.find(
 		(item) => item.kind === "multipleChoice",
 	);
-	const voice = content?.items.find((item) => item.kind === "voice");
-	if (!multipleChoice || !voice) {
-		throw new Error("Expected Praxis content to include MC and voice tasks.");
+	const written = content?.items.find((item) => item.kind === "written");
+	if (!multipleChoice || !written) {
+		throw new Error("Expected Praxis content to include MC and written tasks.");
 	}
 
 	const wrongAttempt = await t.mutation(
@@ -776,11 +808,11 @@ test("answers produce feedback and finishing creates a Wissensanalyse", async ()
 			timeSpentSeconds: 20,
 		},
 	);
-	const voiceAttempt = await t.mutation(
+	const writtenAttempt = await t.mutation(
 		api.learningSessionContent.submitAnswer,
 		{
-			itemId: voice.id,
-			transcript:
+			itemId: written.id,
+			answerText:
 				"Ich löse die Gleichung Schritt für Schritt und prüfe das Ergebnis.",
 			timeSpentSeconds: 45,
 		},
@@ -794,7 +826,7 @@ test("answers produce feedback and finishing creates a Wissensanalyse", async ()
 		rating: "notCorrect",
 		perfectAnswer: expect.stringContaining("prüfe"),
 	});
-	expect(voiceAttempt.rating).not.toBe("notCorrect");
+	expect(writtenAttempt.rating).not.toBe("notCorrect");
 	expect(analysis.strengths.length).toBeGreaterThan(0);
 	expect(analysis.gaps.length).toBeGreaterThan(0);
 	expect(analysis.recommendation).toContain("Wiederhole");
