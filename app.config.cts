@@ -45,12 +45,8 @@ const PROJECT_ID = "d3d06b26-c8da-4192-a50d-e1bb0ca4902c";
 const IOS_PRIVACY_PURPOSE_STRINGS = {
 	NSCameraUsageDescription:
 		"Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
-	NSMicrophoneUsageDescription:
-		"Dayova braucht Zugriff auf dein Mikrofon, damit du Sprachantworten einsprechen kannst.",
 	NSPhotoLibraryUsageDescription:
 		"Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst.",
-	NSSpeechRecognitionUsageDescription:
-		"Dayova nutzt Spracherkennung, um deine eingesprochenen Antworten als Text auszuwerten.",
 } as const;
 
 const config: ExpoConfig = {
@@ -109,12 +105,12 @@ const config: ExpoConfig = {
 			{
 				cameraPermission:
 					"Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
-				microphonePermission:
-					IOS_PRIVACY_PURPOSE_STRINGS.NSMicrophoneUsageDescription,
+				microphonePermission: false,
 				photosPermission:
 					"Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst.",
 			},
 		],
+		"./plugins/withRemovedVoicePermissions",
 		"expo-localization",
 		"./plugins/withNinjaLongPaths",
 		"./plugins/withAndroidGradleJvmMemory",

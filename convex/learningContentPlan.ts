@@ -24,11 +24,7 @@ export type LearningQuestionAngle =
 	| "compare"
 	| "examTransfer";
 
-export type LearningQuestionKind =
-	| "learnCard"
-	| "multipleChoice"
-	| "written"
-	| "voice";
+export type LearningQuestionKind = "learnCard" | "multipleChoice" | "written";
 
 export type LearningQuestionBlueprint = {
 	coverageKey: string;
@@ -70,17 +66,12 @@ const theoryPageAngles: LearningQuestionAngle[] = [
 	"findError",
 ];
 
-const taskKinds: LearningQuestionKind[] = [
-	"multipleChoice",
-	"written",
-	"voice",
-];
+const taskKinds: LearningQuestionKind[] = ["multipleChoice", "written"];
 
 const estimatedSecondsForKind: Record<LearningQuestionKind, number> = {
 	learnCard: 150,
 	multipleChoice: 240,
 	written: 360,
-	voice: 300,
 };
 
 const splitIntoBlockDurations = (

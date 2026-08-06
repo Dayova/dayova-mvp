@@ -99,6 +99,12 @@ describe("learning content plan", () => {
 			expect(plan.blocks).toHaveLength(1);
 			expect(plan.blocks[0]?.questions).toHaveLength(expectedCount);
 			expect(
+				plan.blocks[0]?.questions.every(
+					(question) =>
+						question.kind === "multipleChoice" || question.kind === "written",
+				),
+			).toBe(true);
+			expect(
 				plan.blocks[0]?.questions.reduce(
 					(total, question) => total + question.estimatedSeconds,
 					0,
