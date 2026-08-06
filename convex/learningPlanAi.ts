@@ -441,14 +441,6 @@ const generatedTaskItemSchema = z.union([
 			"Concrete German written task prompt the learner can answer directly.",
 		),
 	}),
-	z.object({
-		kind: z.literal("voice"),
-		...generatedTaskBaseSchema,
-		prompt: germanTextSchema(
-			12,
-			"Concrete German spoken task prompt the learner can answer directly.",
-		),
-	}),
 ]);
 
 const generatedTheoryItemSchema = z.object({
@@ -1659,6 +1651,7 @@ export const __testOnlyLearningPlanAi = {
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
 	generatedTaskChoiceSchema,
+	generatedTaskItemSchema,
 	normalizeTaskChoiceText,
 	topicMapGenerationInstruction: TOPIC_MAP_GENERATION_INSTRUCTION,
 };
@@ -1895,7 +1888,7 @@ const normalizeTaskKeywords = (
 
 type GeneratedSessionContentInput = {
 	phase: GeneratedSessionPhase;
-	kind: "learnCard" | "multipleChoice" | "written" | "voice";
+	kind: "learnCard" | "multipleChoice" | "written";
 	title: string;
 	prompt: string;
 	front?: string;
@@ -2255,7 +2248,6 @@ ${personalLearningTimes}`,
 			const needsComplexTaskModel = block.questions.some(
 				(question) =>
 					question.kind === "written" ||
-					question.kind === "voice" ||
 					!["recall", "recognize"].includes(question.angle),
 			);
 			const taskModelId =
@@ -2472,7 +2464,6 @@ ${allPriorPrompts.map((prompt) => `- ${prompt}`).join("\n") || "Keine."}`,
 	const needsComplexTaskModel = allQuestions.some(
 		(question) =>
 			question.kind === "written" ||
-			question.kind === "voice" ||
 			!["recall", "recognize"].includes(question.angle),
 	);
 	const modelId = isTheory

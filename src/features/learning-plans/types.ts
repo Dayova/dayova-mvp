@@ -55,11 +55,7 @@ export type PlanSession = {
 	adaptationRevision?: number;
 };
 
-type SessionContentItemKind =
-	| "learnCard"
-	| "multipleChoice"
-	| "written"
-	| "voice";
+type SessionContentItemKind = "learnCard" | "multipleChoice" | "written";
 
 export type SessionAnswerRating = "notCorrect" | "partiallyCorrect" | "correct";
 
