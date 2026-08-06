@@ -396,8 +396,7 @@ const generatedPlanSchema = z
 const generatedTaskChoiceSchema = z.object({
 	text: germanTextSchema(
 		1,
-		"Concise German answer option containing one concept and at most one distinguishing characteristic.",
-		MAX_MULTIPLE_CHOICE_OPTION_CHARS,
+		`Concise German answer option containing one concept and at most one distinguishing characteristic. Keep it within ${MAX_MULTIPLE_CHOICE_OPTION_CHARS} characters.`,
 	),
 	isCorrect: z.boolean(),
 });
@@ -760,6 +759,27 @@ const compactText = (value: string, maxChars: number) => {
 
 	return `${normalized.slice(0, maxChars)}\n\n[Inhalt wurde gekürzt.]`;
 };
+
+const compactInlineText = (value: string, maxChars: number) => {
+	const normalized = value.replace(/\s+/g, " ").trim();
+	if (normalized.length <= maxChars) return normalized;
+
+	const maximumContentLength = Math.max(1, maxChars - 1);
+	const candidate = normalized.slice(0, maximumContentLength).trimEnd();
+	const lastWordBoundary = candidate.lastIndexOf(" ");
+	const minimumUsefulLength = Math.floor(maximumContentLength * 0.6);
+	const content =
+		lastWordBoundary >= minimumUsefulLength
+			? candidate.slice(0, lastWordBoundary)
+			: candidate;
+	return `${content.trimEnd()}…`;
+};
+
+const normalizeTaskChoiceText = (value: GeneratedGermanText) =>
+	compactInlineText(
+		normalizeAiGeneratedGermanText(value),
+		MAX_MULTIPLE_CHOICE_OPTION_CHARS,
+	);
 
 const fallbackTitleByPhase: Record<GeneratedSessionPhase, string> = {
 	theory: "Theorie-Block",
@@ -1636,6 +1656,8 @@ const normalizeSessions = (
 export const __testOnlyLearningPlanAi = {
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
+	generatedTaskChoiceSchema,
+	normalizeTaskChoiceText,
 };
 
 const buildBaseContext = (
@@ -1919,7 +1941,7 @@ const normalizeGeneratedTaskItems = (
 		if (item.kind === "multipleChoice") {
 			const generatedChoices = item.choices.map((choice, choiceIndex) => ({
 				id: `choice-${choiceIndex + 1}`,
-				text: normalizeAiGeneratedGermanText(choice.text),
+				text: normalizeTaskChoiceText(choice.text),
 				isCorrect: choice.isCorrect,
 			}));
 			const correctGeneratedChoice =
