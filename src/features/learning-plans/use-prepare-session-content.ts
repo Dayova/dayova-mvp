@@ -1,4 +1,4 @@
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useEffect, useEffectEvent, useRef } from "react";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -12,8 +12,8 @@ export function usePrepareSessionContent({
 	sessionId: Id<"learningPlanSessions"> | undefined;
 	onError: (error: unknown) => void;
 }) {
-	const ensureSessionContent = useMutation(
-		api.learningSessionContent.ensureSessionContent,
+	const ensureSessionContent = useAction(
+		api.learningPlanAi.ensureSessionContent,
 	);
 	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
 	const preparedSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);

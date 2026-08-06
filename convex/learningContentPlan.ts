@@ -63,6 +63,13 @@ const questionAngles: LearningQuestionAngle[] = [
 	"examTransfer",
 ];
 
+const theoryPageAngles: LearningQuestionAngle[] = [
+	"recall",
+	"recognize",
+	"apply",
+	"findError",
+];
+
 const taskKinds: LearningQuestionKind[] = [
 	"multipleChoice",
 	"written",
@@ -171,16 +178,24 @@ const createQuestions = ({
 		}
 		const globalIndex = questionIndex;
 		questionIndex += 1;
-		const topic = topics[globalIndex % topics.length];
+		const topicIndex =
+			phase === "theory"
+				? Math.floor(globalIndex / theoryPageAngles.length)
+				: globalIndex;
+		const topic = topics[topicIndex % topics.length];
 		if (!topic)
 			throw new Error("A learning content plan needs at least one topic.");
 		const angle =
-			questionAngles[
-				Math.floor(globalIndex / topics.length) % questionAngles.length
-			] ?? "apply";
-		const cycle = Math.floor(
-			globalIndex / Math.max(topics.length * questionAngles.length, 1),
-		);
+			phase === "theory"
+				? (theoryPageAngles[globalIndex % theoryPageAngles.length] ?? "recall")
+				: (questionAngles[
+						Math.floor(globalIndex / topics.length) % questionAngles.length
+					] ?? "apply");
+		const cycleLength =
+			phase === "theory"
+				? topics.length * theoryPageAngles.length
+				: topics.length * questionAngles.length;
+		const cycle = Math.floor(globalIndex / Math.max(cycleLength, 1));
 		const kind = questionKindFor(phase, globalIndex);
 		const estimatedSeconds = Math.min(
 			estimatedSecondsForKind[kind],

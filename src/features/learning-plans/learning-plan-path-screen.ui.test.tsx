@@ -139,6 +139,40 @@ describe("learning-plan path", () => {
 		expect(onOpen).toHaveBeenCalledTimes(1);
 	});
 
+	test("keeps a session closed while its content is being prepared", async () => {
+		const screen = await render(
+			<SessionPreviewCard
+				canOpen={false}
+				preparationState="preparing"
+				session={session("session_preparing")}
+				onOpen={() => undefined}
+			/>,
+		);
+
+		expect(
+			screen.getByText("Lerninhalte werden vorbereitet"),
+		).toBeOnTheScreen();
+		expect(screen.queryByText("Lernsession starten")).toBeNull();
+	});
+
+	test("offers a retry when content preparation fails", async () => {
+		const onRetryPreparation = jest.fn();
+		const screen = await render(
+			<SessionPreviewCard
+				canOpen={false}
+				preparationState="failed"
+				session={session("session_failed")}
+				onOpen={() => undefined}
+				onRetryPreparation={onRetryPreparation}
+			/>,
+		);
+
+		fireEvent.press(
+			screen.getByRole("button", { name: /Vorbereitung erneut/ }),
+		);
+		expect(onRetryPreparation).toHaveBeenCalledTimes(1);
+	});
+
 	test("keeps status and selection reason labels out of the preview card", async () => {
 		const screen = await render(
 			<SessionPreviewCard

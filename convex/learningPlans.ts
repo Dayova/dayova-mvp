@@ -311,6 +311,7 @@ type PublicSession = {
 	contentGenerationStatus?: "queued" | "generating" | "ready" | "failed";
 	contentGenerationError?: string;
 	contentGeneratedAt?: number;
+	contentGenerationVersion?: number;
 	completed: boolean;
 	executionStatus:
 		| "notStarted"
@@ -513,6 +514,7 @@ const publicSession = (
 	contentGenerationStatus: session.contentGenerationStatus,
 	contentGenerationError: session.contentGenerationError,
 	contentGeneratedAt: session.contentGeneratedAt,
+	contentGenerationVersion: session.contentGenerationVersion,
 	completed: session.completed ?? false,
 	executionStatus: getSessionExecutionStatus(session),
 	startedAt: session.startedAt,

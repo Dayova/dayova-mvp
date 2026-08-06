@@ -27,6 +27,7 @@ import {
 import {
 	createLearningContentPlan,
 	type LearningContentBlock,
+	type LearningQuestionAngle,
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
@@ -457,30 +458,36 @@ const generatedTheoryItemSchema = z.object({
 	question: germanTextSchema(
 		12,
 		"One short German curiosity question shown before the theory. The learner has not seen the explanation yet and must be able to answer with an intuitive first guess. Ask one thing only. Never demand a definition, complete list, comparison, or step-by-step solution. Avoid specialist wording when everyday language works.",
+		140,
 	),
 	explanation: germanTextSchema(
-		110,
-		"Concise German teaching explanation in two to three connected sentences. Explain why the rule works, not only what the result is.",
+		60,
+		"Concise German teaching explanation in one or two connected sentences. Explain why the idea works, not only what the result is.",
+		320,
 	),
 	keyPoints: boundedArray(
 		germanTextSchema(
-			20,
+			12,
 			"One specific German key point that adds information and is not merely a keyword or a copy of another section.",
+			150,
 		),
+		1,
 		2,
-		3,
 	),
 	example: germanTextSchema(
-		80,
+		45,
 		"A concrete worked German example with an input or situation, the decisive step, and the result. Never copy the short answer or memory cue.",
+		300,
 	),
 	memoryCue: germanTextSchema(
-		20,
+		12,
 		"One memorable German rule of thumb that helps recall the concept. It must not duplicate the example or a key point.",
+		120,
 	),
 	commonMistake: germanTextSchema(
-		40,
+		24,
 		"One concept-specific German mistake, including how the learner can notice or prevent it.",
+		180,
 	),
 	keywords: atMostArray(
 		germanTextSchema(
@@ -685,6 +692,15 @@ const generatedTextRetrySystemInstruction = (attempt: number) =>
 	attempt === 0
 		? ""
 		: " Die vorherige Ausgabe war ungültig oder wiederholte bereits vorhandene Fragen. Erzeuge alle Fragen vollständig neu, ohne inhaltliche Duplikate und mit korrekten Unicode-Zeichen wie ä, ö, ü, Ä, Ö, Ü und ß.";
+
+const theoryGenerationSystemInstruction = (attempt: number) =>
+	`Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Deutschland. Erstelle eine zusammenhängende Mini-Lektion aus kurzen deutschen Theorie-Seiten. Jede Seite konzentriert sich auf die in der Planung genannte Seitenrolle und baut auf der vorherigen Seite auf. Alle Pflichtfelder des Schemas unterstützen diese Rolle, statt ein zweites Thema einzuführen. Wiederhole keine Erklärung, kein Beispiel und keinen Merksatz auf einer späteren Seite.
+
+Die hochgeladenen Schulunterlagen und die gespeicherte Materialzusammenfassung sind die fachliche Quelle. Übernimm ihre Begriffe und Schwerpunktsetzung. Erfinde keine Gesetze, Grenzwerte, Formeln, Fachbegriffe oder angeblichen Prüfungsanforderungen, die dort nicht belegt sind. Falls für ein Beispiel Details fehlen, verwende ein einfaches, ausdrücklich illustratives Beispiel ohne neue Fachbehauptungen.
+
+Die erste Leitfrage wird vor der Erklärung als lockerer Einstieg gezeigt. Sie muss ohne Vorwissen mit einer Vermutung beantwortbar sein, genau eine Sache fragen und darf keine Definition, vollständige Aufzählung, keinen Vergleich oder fertigen Lösungsweg verlangen. Spätere Leitfragen lenken jeweils auf den nächsten Gedanken der Mini-Lektion.
+
+Schreibe klar und altersgerecht. Halte alle Felder knapp: eine bis zwei Erklärungssätze, ein bis zwei konkrete Kernpunkte, ein kurzes nachvollziehbares Beispiel, einen knappen Merksatz und einen spezifischen Fehlerhinweis. Die Bereiche dürfen sich nicht inhaltlich wiederholen. Verwende keine Meta-Anweisungen oder internen Labels. Halte Reihenfolge und Seitenrollen exakt ein und antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`;
 
 class DuplicateGeneratedPromptError extends Error {}
 
@@ -1742,11 +1758,26 @@ const getLearningContentTopics = (
 	});
 };
 
+const theoryPageRoleForAngle: Record<LearningQuestionAngle, string> = {
+	recall:
+		"Kernidee: Erkläre den zentralen Gedanken in Alltagssprache und warum er wichtig ist.",
+	recognize:
+		"Erkennen: Zeige, woran der Schüler den Gedanken in einer Aufgabe oder Situation erkennt und wovon er ihn abgrenzt.",
+	apply:
+		"Anwendung: Führe ein einziges konkretes Beispiel Schritt für Schritt vom Ausgangspunkt zum Ergebnis.",
+	findError:
+		"Fehlerkontrolle: Zeige einen typischen Denkfehler, wie man ihn bemerkt und wie man ihn korrigiert.",
+	compare:
+		"Einordnung: Stelle genau einen entscheidenden Unterschied oder Zusammenhang heraus.",
+	examTransfer:
+		"Prüfungstransfer: Zeige, wie der Gedanke in einer realistischen Prüfungsaufgabe genutzt wird.",
+};
+
 const formatQuestionBlueprints = (block: LearningContentBlock) =>
 	block.questions
 		.map(
 			(question, index) =>
-				`${index + 1}. Thema: ${question.topic.title}; Lernziel: ${question.topic.learningGoal}; Fragetyp: ${question.angle}; Antwortmodus: ${question.kind}; Zeitbudget: ${question.estimatedSeconds} Sekunden; Coverage-Key: ${question.coverageKey}`,
+				`${index + 1}. Thema: ${question.topic.title}; Lernziel: ${question.topic.learningGoal}; ${block.phase === "theory" ? `Seitenrolle: ${theoryPageRoleForAngle[question.angle]}` : `Fragetyp: ${question.angle}`}; Antwortmodus: ${question.kind}; Zeitbudget: ${question.estimatedSeconds} Sekunden; Coverage-Key: ${question.coverageKey}`,
 		)
 		.join("\n");
 
@@ -2128,7 +2159,7 @@ ${personalLearningTimes}`,
 				...userContent,
 				{
 					type: "text" as const,
-					text: `Dieser Lernblock dauert ${block.durationMinutes} Minuten und enthält genau ${block.questions.length} ${block.phase === "theory" ? "ausführliche Lernseiten" : "neue Fragen"}. Halte dich in Reihenfolge und Themenbezug exakt an diese Planung:\n${blueprintText}`,
+					text: `Dieser Lernblock dauert ${block.durationMinutes} Minuten und enthält genau ${block.questions.length} ${block.phase === "theory" ? "fokussierte Seiten einer zusammenhängenden Mini-Lektion" : "neue Fragen"}. Halte dich in Reihenfolge und Themenbezug exakt an diese Planung:\n${blueprintText}`,
 				},
 				...(previouslyUsedPrompts.length > 0 || generatedItems.length > 0
 					? [
@@ -2167,7 +2198,7 @@ ${personalLearningTimes}`,
 								abortSignal,
 								providerOptions: vertexProviderOptions,
 								output: Output.object({ schema: blockSchema }),
-								system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse. Erstelle kompakte Theorie-Lernseiten, die jeweils ungefähr zwei Minuten Lernzeit sinnvoll füllen. Jede Seite behandelt genau einen Gedanken. Nur die Leitfrage der ersten Seite wird dem Schüler vor allen Erklärungen als lockerer Einstieg gezeigt; alle Seiten brauchen die Leitfrage weiterhin für die einheitliche Seitenstruktur. Sie muss mit einer Vermutung oder einem ersten Gedanken beantwortbar sein, darf kein bereits gelerntes Fachwissen voraussetzen und weder eine Definition, vollständige Aufzählung, einen Vergleich noch einen schrittweisen Lösungsweg verlangen. Frage genau eine Sache in kurzer, natürlicher Alltagssprache. Danach folgen eine verständliche Erklärung in zwei bis drei zusammenhängenden Sätzen, zwei bis drei gehaltvolle Kernpunkte, ein knappes durchgerechnetes oder konkret angewandtes Beispiel, ein eigener Merksatz und ein fachspezifischer typischer Fehler. Beispiel, Kernpunkte und Merksatz müssen unterschiedliche Inhalte haben. Verwende keine Meta-Anweisungen, internen Labels wie „Variante 1“ oder in Anführungszeichen verschachtelte Aufgaben. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+								system: theoryGenerationSystemInstruction(attempt),
 								messages: [{ role: "user", content: blockContent }],
 							}),
 						);
@@ -2446,7 +2477,7 @@ ${allPriorPrompts.map((prompt) => `- ${prompt}`).join("\n") || "Keine."}`,
 						output: Output.object({
 							schema: createTheoryTopicsSchema(allQuestions.length),
 						}),
-						system: `Du bist ein präziser Lerncoach. Erstelle kompakte deutsche Theorie-Lernseiten für ungefähr zwei Minuten Lernzeit mit einer Erklärung in zwei bis drei Sätzen, zwei bis drei Kernpunkten, einem konkreten Beispiel, Merksatz und typischem Fehler. Nur die Leitfrage der ersten Seite wird vor allen Erklärungen gezeigt; alle Seiten brauchen sie für die einheitliche Seitenstruktur. Sie muss ohne Vorwissen mit einer Vermutung oder einem ersten Gedanken beantwortbar sein, fragt genau eine Sache in kurzer Alltagssprache und verlangt keine Definition, vollständige Aufzählung, keinen Vergleich und keinen schrittweisen Lösungsweg. Halte die vorgegebene Reihenfolge exakt ein und antworte ausschließlich im JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+						system: theoryGenerationSystemInstruction(attempt),
 					}),
 				)
 			: await runLlmGeneration((abortSignal) =>

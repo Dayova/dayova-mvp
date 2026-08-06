@@ -204,9 +204,8 @@ test("theory fallback creates active recall cards instead of generic summaries",
 		content?.items.filter((item) => item.questionAngle === "apply") ?? [];
 	expect(applicationQuestions.length).toBeGreaterThan(0);
 	for (const item of applicationQuestions) {
-		expect(item.prompt).toBe(
-			`Was glaubst du: Worauf kommt es bei ${item.title} besonders an?`,
-		);
+		expect(item.prompt).toContain(item.title);
+		expect(item.prompt).toMatch(/\?$/);
 	}
 	expect(content?.items.map((item) => item.prompt).join(" ")).not.toMatch(
 		/Schritt für Schritt|vollständige Aufzählung|wofür wird das Verfahren gebraucht/i,
@@ -222,6 +221,11 @@ test("opening an existing short theory session backfills its pre-check", async (
 	await t.mutation(api.learningSessionContent.ensureSessionContent, {
 		sessionId,
 	});
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlanSessions", sessionId, {
+			contentGenerationVersion: 2,
+		}),
+	);
 
 	const before = await t.query(api.learningSessionContent.getSessionContent, {
 		sessionId,
@@ -637,6 +641,42 @@ test("marks shallow generated theory content for regeneration", async () => {
 	);
 
 	expect(generationContext.needsLegacyContentReplacement).toBe(true);
+});
+
+test("upgrades unstarted fallback theory content to the current AI version", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession("theory");
+
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+
+	const fallbackContent = await t.query(
+		api.learningSessionContent.getSessionContent,
+		{ sessionId },
+	);
+	const generationContext = await t.query(
+		internal.learningSessionContent.getSessionGenerationContext,
+		{ sessionId },
+	);
+
+	expect(fallbackContent?.session.contentGenerationVersion).toBe(1);
+	expect(generationContext.needsLegacyContentReplacement).toBe(true);
+});
+
+test("preserves older theory content after the learner has started", async () => {
+	const { t, sessionId } = await createGeneratedPlanWithSession("theory");
+
+	await t.mutation(api.learningSessionContent.ensureSessionContent, {
+		sessionId,
+	});
+	await t.mutation(api.learningPlans.startSession, { sessionId });
+
+	const generationContext = await t.query(
+		internal.learningSessionContent.getSessionGenerationContext,
+		{ sessionId },
+	);
+
+	expect(generationContext.needsLegacyContentReplacement).toBe(false);
 });
 
 test("marks nested variant exercises for regeneration", async () => {

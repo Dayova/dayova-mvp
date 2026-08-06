@@ -10,18 +10,18 @@ const mockEnsureSessionContent =
 			sessionId: Id<"learningPlanSessions">;
 		}) => Promise<{ itemCount: number }>
 	>();
-const mockUseMutation = jest.fn(
+const mockUseAction = jest.fn(
 	(_reference: unknown) => mockEnsureSessionContent,
 );
 
 jest.mock("convex/react", () => ({
-	useMutation: (reference: unknown) => mockUseMutation(reference),
+	useAction: (reference: unknown) => mockUseAction(reference),
 }));
 
 jest.mock("#convex/_generated/api", () => ({
 	api: {
-		learningSessionContent: {
-			ensureSessionContent: "fastEnsureSessionContent",
+		learningPlanAi: {
+			ensureSessionContent: "qualityEnsureSessionContent",
 		},
 	},
 }));
@@ -42,14 +42,14 @@ function PreparationProbe({
 }
 
 describe("session content preparation", () => {
-	test("uses the immediate Convex mutation once when the session opens", async () => {
+	test("uses the quality content action once when the session opens", async () => {
 		mockEnsureSessionContent.mockResolvedValue({ itemCount: 4 });
 		const onError = jest.fn();
 
 		const screen = await render(<PreparationProbe enabled onError={onError} />);
 
 		await waitFor(() => {
-			expect(mockUseMutation).toHaveBeenCalledWith("fastEnsureSessionContent");
+			expect(mockUseAction).toHaveBeenCalledWith("qualityEnsureSessionContent");
 			expect(mockEnsureSessionContent).toHaveBeenCalledWith({
 				sessionId: "session_1",
 			});

@@ -1,6 +1,12 @@
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	ActivityIndicator,
 	Pressable,
@@ -29,6 +35,7 @@ import { Button } from "~/components/ui/button";
 import {
 	ArrowRight,
 	Check,
+	CircleAlert,
 	Dumbbell,
 	GraduationCap,
 	Note,
@@ -99,6 +106,7 @@ const LEARNING_PATH_ICON_COMPONENT = {
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
 const SESSION_PREVIEW_TRANSITION_DURATION_MS = 160;
+const CURRENT_THEORY_CONTENT_VERSION = 2;
 
 export const getExamCountdownLabel = (examDateKey: string, today: Date) => {
 	const examDate = parseDayKey(examDateKey);
@@ -121,10 +129,14 @@ const getSessionRoute = (
 
 export function SessionPreviewCard({
 	canOpen,
+	onRetryPreparation,
+	preparationState,
 	session,
 	onOpen,
 }: {
 	canOpen: boolean;
+	onRetryPreparation?: () => void;
+	preparationState?: "preparing" | "failed";
 	session: PlanSession;
 	onOpen: () => void;
 }) {
@@ -189,7 +201,48 @@ export function SessionPreviewCard({
 			>
 				{description}
 			</Text>
-			{canOpen ? (
+			{preparationState === "preparing" ? (
+				<View
+					accessible
+					accessibilityLiveRegion="polite"
+					className="mt-1 flex-row items-center gap-3 rounded-[20px] bg-system-subtle px-3 py-3"
+				>
+					<ActivityIndicator
+						color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+						size="small"
+					/>
+					<View className="min-w-0 flex-1">
+						<Text className="font-poppins font-semibold text-body-5 text-text">
+							Lerninhalte werden vorbereitet
+						</Text>
+						<Text className="mt-0.5 font-poppins text-body-5 text-secondary-text">
+							Du kannst den Plan verlassen. Dayova arbeitet im Hintergrund
+							weiter.
+						</Text>
+					</View>
+				</View>
+			) : preparationState === "failed" ? (
+				<View className="mt-1 gap-3 rounded-[20px] bg-wrong-subtle px-3 py-3">
+					<View className="flex-row items-start gap-2">
+						<CircleAlert
+							size={17}
+							color={DAYOVA_DESIGN_SYSTEM.colors.wrong}
+							strokeWidth={2.1}
+						/>
+						<Text className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text">
+							Die Lerninhalte konnten noch nicht vorbereitet werden.
+						</Text>
+					</View>
+					<Button
+						accessibilityLabel={`Vorbereitung erneut versuchen: ${title}`}
+						onPress={onRetryPreparation}
+						size="sm"
+						variant="neutral"
+					>
+						<Text>Erneut versuchen</Text>
+					</Button>
+				</View>
+			) : canOpen ? (
 				<Button
 					accessibilityHint="Öffnet die ausgewählte Lerneinheit."
 					accessibilityLabel={`${actionLabel}: ${title}`}
@@ -851,32 +904,64 @@ export default function LearningPlanSessionsScreen() {
 					getCommittedSessionIndex(snapshot.sessions),
 				)
 			: null;
+	const selectedSessionNeedsTheoryUpgrade = Boolean(
+		selectedSession &&
+			selectedSession.phase === "theory" &&
+			selectedSession.executionStatus === "notStarted" &&
+			(selectedSession.contentGenerationVersion ?? 0) <
+				CURRENT_THEORY_CONTENT_VERSION,
+	);
 	const canOpenSelectedSession =
 		selectedSessionState !== null &&
 		selectedSessionState !== "locked" &&
-		selectedSession?.planningStatus !== "provisional";
+		selectedSession?.planningStatus !== "provisional" &&
+		!selectedSessionNeedsTheoryUpgrade &&
+		(selectedSession?.contentGenerationStatus === undefined ||
+			selectedSession.contentGenerationStatus === "ready");
+	const preparationState =
+		selectedSession?.contentGenerationStatus === "failed"
+			? ("failed" as const)
+			: selectedSessionNeedsTheoryUpgrade ||
+					selectedSession?.contentGenerationStatus === "queued" ||
+					selectedSession?.contentGenerationStatus === "generating"
+				? ("preparing" as const)
+				: undefined;
+
+	const prepareSession = useCallback(
+		(sessionId: Id<"learningPlanSessions">) => {
+			if (preparingSessionIdRef.current === sessionId) return;
+			preparingSessionIdRef.current = sessionId;
+			void ensureSessionContent({ sessionId })
+				.catch(() => {
+					// The reactive session status drives the retry presentation.
+				})
+				.finally(() => {
+					if (preparingSessionIdRef.current === sessionId) {
+						preparingSessionIdRef.current = null;
+					}
+				});
+		},
+		[ensureSessionContent],
+	);
 
 	useEffect(() => {
+		const needsTheoryUpgrade = Boolean(
+			defaultSession &&
+				defaultSession.phase === "theory" &&
+				defaultSession.executionStatus === "notStarted" &&
+				(defaultSession.contentGenerationVersion ?? 0) <
+					CURRENT_THEORY_CONTENT_VERSION,
+		);
 		if (
 			!defaultSession ||
-			defaultSession.contentGenerationStatus === "ready" ||
-			preparingSessionIdRef.current === defaultSession.id
+			(defaultSession.contentGenerationStatus === "ready" &&
+				!needsTheoryUpgrade) ||
+			defaultSession.contentGenerationStatus === "failed"
 		) {
 			return;
 		}
-
-		preparingSessionIdRef.current = defaultSession.id;
-		void ensureSessionContent({ sessionId: defaultSession.id })
-			.catch(() => {
-				// The session route owns the user-facing retry state. This is only
-				// an eager preparation attempt when a session becomes current.
-			})
-			.finally(() => {
-				if (preparingSessionIdRef.current === defaultSession.id) {
-					preparingSessionIdRef.current = null;
-				}
-			});
-	}, [defaultSession, ensureSessionContent]);
+		prepareSession(defaultSession.id);
+	}, [defaultSession, prepareSession]);
 
 	const goBack = () => {
 		dismissToOrReplace(router, "/learning-plans");
@@ -914,7 +999,9 @@ export default function LearningPlanSessionsScreen() {
 					<SessionPreviewCard
 						key={selectedSession.id}
 						canOpen={canOpenSelectedSession}
+						preparationState={preparationState}
 						session={selectedSession}
+						onRetryPreparation={() => prepareSession(selectedSession.id)}
 						onOpen={() => {
 							if (!canOpenSelectedSession) return;
 							router.push(

@@ -38,6 +38,7 @@ type SessionContentItemKind =
 type AnswerRating = "notCorrect" | "partiallyCorrect" | "correct";
 
 const PAIRED_THEORY_PRACTICE_SUFFIX = ":paired-practice";
+const CURRENT_THEORY_CONTENT_VERSION = 2;
 
 const isPairedTheoryQuestionItem = (item: {
 	kind: string;
@@ -305,7 +306,24 @@ const getSessionTopics = (
 	});
 };
 
-const approachableTheoryQuestionFor = (angle: string, topic: string) => {
+const approachableTheoryQuestionFor = (
+	angle: string,
+	topic: string,
+	coverageCycle = 0,
+) => {
+	if (coverageCycle > 0) {
+		const depthLabel = `Vertiefung ${coverageCycle}`;
+		switch (angle) {
+			case "recall":
+				return `${depthLabel}: Welcher Zusammenhang zu ${topic} ist dir jetzt besonders wichtig?`;
+			case "recognize":
+				return `${depthLabel}: Welches konkrete Signal würde dich an ${topic} denken lassen?`;
+			case "apply":
+				return `${depthLabel}: Wo würdest du ${topic} in einem neuen Beispiel einsetzen?`;
+			case "findError":
+				return `${depthLabel}: Welche Kontrolle schützt dich bei ${topic} vor einem Fehler?`;
+		}
+	}
 	switch (angle) {
 		case "recall":
 			return `Was fällt dir zu ${topic} spontan ein?`;
@@ -357,9 +375,16 @@ const obsoleteTheoryQuestionsFor = (angle: string, topic: string) => {
 	}
 };
 
-const theoryQuestionFor = (blueprint: LearningQuestionBlueprint) =>
-	approachableTheoryQuestionFor(blueprint.angle, blueprint.topic.title) ??
-	`Was fällt dir zu ${blueprint.topic.title} als Erstes ein?`;
+const theoryQuestionFor = (blueprint: LearningQuestionBlueprint) => {
+	const coverageCycle = Number(blueprint.coverageKey.split(":").at(-1) ?? "0");
+	return (
+		approachableTheoryQuestionFor(
+			blueprint.angle,
+			blueprint.topic.title,
+			Number.isFinite(coverageCycle) ? coverageCycle : 0,
+		) ?? `Was fällt dir zu ${blueprint.topic.title} als Erstes ein?`
+	);
+};
 
 const buildTheoryItems = (
 	plan: Doc<"learningPlans">,
@@ -1113,6 +1138,12 @@ export const getSessionGenerationContext = internalQuery({
 			)
 			.take(50);
 		const existingItems = await listItems(ctx, args.sessionId);
+		const currentSessionAttempts = await ctx.db
+			.query("learningSessionAnswerAttempts")
+			.withIndex("by_sessionId_and_createdAt", (q) =>
+				q.eq("sessionId", session._id),
+			)
+			.take(1);
 		const planSessions = await ctx.db
 			.query("learningPlanSessions")
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
@@ -1217,6 +1248,14 @@ export const getSessionGenerationContext = internalQuery({
 				)
 				.map((item) => item.coverageKey),
 		);
+		const needsTheoryContentUpgrade =
+			session.phase === "theory" &&
+			existingItems.length > 0 &&
+			session.contentGenerationVersion !== CURRENT_THEORY_CONTENT_VERSION &&
+			(session.executionStatus === undefined ||
+				session.executionStatus === "notStarted") &&
+			!session.completed &&
+			currentSessionAttempts.length === 0;
 
 		return {
 			plan,
@@ -1243,6 +1282,7 @@ export const getSessionGenerationContext = internalQuery({
 				firstTheoryItem !== undefined &&
 				pairedPracticeKeys.has(getPairedPracticeCoverageKey(firstTheoryItem)),
 			needsLegacyContentReplacement:
+				needsTheoryContentUpgrade ||
 				existingItems.some(isLegacyTheoryItem) ||
 				existingItems.some(isLegacyTaskItem),
 			accessKey: `learningPlan:${session.learningPlanId}`,
@@ -1365,6 +1405,13 @@ export const storeGeneratedSessionContent = internalMutation({
 			session,
 			pairGeneratedTheoryItems(session, items),
 		);
+		await ctx.db.patch("learningPlanSessions", session._id, {
+			contentGenerationVersion:
+				session.phase === "theory"
+					? CURRENT_THEORY_CONTENT_VERSION
+					: session.contentGenerationVersion,
+			updatedAt: Date.now(),
+		});
 		const storedItems = await listItems(ctx, args.sessionId);
 		return { itemCount: storedItems.length };
 	},
@@ -1394,6 +1441,15 @@ export const ensureFallbackSessionContent = internalMutation({
 		}
 
 		const items = await ensureItemsForSession(ctx, session, plan);
+		if (
+			session.phase === "theory" &&
+			session.contentGenerationVersion === undefined
+		) {
+			await ctx.db.patch("learningPlanSessions", session._id, {
+				contentGenerationVersion: 1,
+				updatedAt: Date.now(),
+			});
+		}
 		return { itemCount: items.length };
 	},
 });
@@ -1505,13 +1561,21 @@ export const ensureSessionContent = mutation({
 			ownerTokenIdentifier,
 		);
 		const items = await ensureItemsForSession(ctx, session, plan);
-		if (session.contentGenerationStatus !== "ready") {
+		if (
+			session.contentGenerationStatus !== "ready" ||
+			(session.phase === "theory" &&
+				session.contentGenerationVersion === undefined)
+		) {
 			const now = Date.now();
 			await ctx.db.patch("learningPlanSessions", session._id, {
 				contentGenerationStatus: "ready",
 				contentGenerationError: undefined,
 				contentGenerationStartedAt: undefined,
 				contentGeneratedAt: now,
+				contentGenerationVersion:
+					session.phase === "theory"
+						? (session.contentGenerationVersion ?? 1)
+						: session.contentGenerationVersion,
 				updatedAt: now,
 			});
 		}
@@ -1567,6 +1631,8 @@ export const getSessionContent = query({
 				compositionVariant: session.compositionVariant ?? "control",
 				knowledgeValidationStatus: session.knowledgeValidationStatus,
 				knowledgeValidationConfidence: session.knowledgeValidationConfidence,
+				contentGenerationStatus: session.contentGenerationStatus,
+				contentGenerationVersion: session.contentGenerationVersion,
 			},
 			praxisDurationSeconds:
 				session.phase === "rehearsal"

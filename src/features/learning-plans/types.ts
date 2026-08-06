@@ -40,6 +40,7 @@ export type PlanSession = {
 	contentGenerationStatus?: "queued" | "generating" | "ready" | "failed";
 	contentGenerationError?: string;
 	contentGeneratedAt?: number;
+	contentGenerationVersion?: number;
 	sortOrder: number;
 	completed: boolean;
 	executionStatus: SessionExecutionStatus;
@@ -136,6 +137,8 @@ export type LearningSessionContentSnapshot = {
 		compositionVariant: "control" | "split";
 		knowledgeValidationStatus?: "pending" | "completed" | "skipped";
 		knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
+		contentGenerationStatus?: "queued" | "generating" | "ready" | "failed";
+		contentGenerationVersion?: number;
 		goal: string;
 		expectedOutcome: string;
 		completed: boolean;

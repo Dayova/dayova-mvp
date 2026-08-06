@@ -71,6 +71,12 @@ describe("learning content plan", () => {
 
 		expect(plan.blocks).toHaveLength(1);
 		expect(plan.blocks[0]?.questions).toHaveLength(4);
+		expect(plan.blocks[0]?.questions.map((question) => question.angle)).toEqual(
+			["recall", "recognize", "apply", "findError"],
+		);
+		expect(
+			new Set(plan.blocks[0]?.questions.map((question) => question.topic.id)),
+		).toEqual(new Set([topics[0]?.id]));
 		expect(
 			plan.blocks[0]?.questions.reduce(
 				(total, question) => total + question.estimatedSeconds,

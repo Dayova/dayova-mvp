@@ -1,4 +1,4 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import * as Device from "expo-device";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as Speech from "expo-speech";
@@ -137,6 +137,7 @@ const iosSimulatorSpeechMessage =
 	"Spracherkennung ist im iOS Simulator nicht zuverlässig verfügbar. Auf einem iPhone kannst du deine Antwort einsprechen. Hier kannst du sie stattdessen eintippen.";
 const nativeSpeechUnavailableMessage =
 	"Spracherkennung ist in dieser App-Version nicht verfügbar. Du kannst deine Antwort stattdessen eintippen.";
+const CURRENT_THEORY_CONTENT_VERSION = 2;
 
 const getSpeechRecognitionErrorMessage = (error: SpeechRecognitionError) => {
 	if (error === SpeechRecognitionError.LocaleNotSupported) {
@@ -964,6 +965,9 @@ export default function LearningSessionContentScreen() {
 	const recordSessionOutcome = useMutation(
 		api.learningPlans.recordSessionOutcome,
 	);
+	const prepareSessionContent = useAction(
+		api.learningPlanAi.ensureSessionContent,
+	);
 	const { capture } = useValidationAnalytics();
 	const { colors } = useDayovaTheme();
 
@@ -1036,17 +1040,24 @@ export default function LearningSessionContentScreen() {
 		api.learningSessionContent.getSessionContent,
 		user && isConvexAuthenticated && sessionId ? { sessionId } : "skip",
 	) ?? null) as LearningSessionContentSnapshot | null;
+	const needsTheoryContentUpgrade = Boolean(
+		content &&
+			content.session.phase === "theory" &&
+			content.session.executionStatus === "notStarted" &&
+			(content.session.contentGenerationVersion ?? 0) <
+				CURRENT_THEORY_CONTENT_VERSION,
+	);
 
 	const sessionItems = useMemo(
 		() =>
-			content
+			content && !needsTheoryContentUpgrade
 				? getLearningSessionItems(
 						content.items,
 						content.session.phase,
 						content.session.compositionVariant,
 					)
 				: [],
-		[content],
+		[content, needsTheoryContentUpgrade],
 	);
 	const currentItem = sessionItems[currentIndex] ?? null;
 	const theoryTopicPosition = getTheoryTopicPosition(
@@ -1195,10 +1206,30 @@ export default function LearningSessionContentScreen() {
 		},
 	});
 
+	const retrySessionPreparation = async () => {
+		if (!sessionId || isBusy) return;
+		setIsBusy(true);
+		setErrorMessage(null);
+		try {
+			await prepareSessionContent({ sessionId });
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(
+					error,
+					"Der Lernblock konnte nicht vorbereitet werden.",
+				),
+			);
+		} finally {
+			setIsBusy(false);
+		}
+	};
+
 	useEffect(() => {
 		if (
 			!sessionId ||
 			!content ||
+			content.items.length === 0 ||
+			needsTheoryContentUpgrade ||
 			content.session.executionStatus !== "notStarted" ||
 			didStartTrackingRef.current
 		)
@@ -1210,7 +1241,7 @@ export default function LearningSessionContentScreen() {
 				level: "warn",
 			});
 		});
-	}, [content, ensureSessionStarted, sessionId]);
+	}, [content, ensureSessionStarted, needsTheoryContentUpgrade, sessionId]);
 
 	const timerDurationSeconds = getLearningSessionTimerDurationSeconds({
 		phase: content?.session.phase,
@@ -1382,7 +1413,22 @@ export default function LearningSessionContentScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
-			await recordCompletedOutcome();
+			const completed = await recordCompletedOutcome();
+			const nextSessionId = completed?.rollingUpdate?.committedSessionId;
+			if (nextSessionId) {
+				void prepareSessionContent({ sessionId: nextSessionId }).catch(
+					(error: unknown) => {
+						logDiagnosticError(
+							"Failed to prewarm the next learning session.",
+							error,
+							{
+								source: "learningSession.prewarmNextSession",
+								level: "warn",
+							},
+						);
+					},
+				);
+			}
 			goBack();
 		} catch (error) {
 			setErrorMessage(
@@ -1803,9 +1849,43 @@ export default function LearningSessionContentScreen() {
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
 			>
-				{!content || content.items.length === 0 ? (
-					<View className="flex-1 items-center justify-center py-24">
-						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
+				{!content || content.items.length === 0 || needsTheoryContentUpgrade ? (
+					<View className="flex-1 items-center justify-center px-4 py-24">
+						<View className="h-14 w-14 items-center justify-center rounded-full bg-system-subtle">
+							<ActivityIndicator
+								accessibilityLabel="Lerninhalte werden vorbereitet"
+								color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+							/>
+						</View>
+						<Text className="mt-6 text-center font-poppins font-semibold text-body-1 text-text">
+							Dein Lernblock wird vorbereitet
+						</Text>
+						<Text className="mt-2 text-center font-poppins text-body-3 text-secondary-text">
+							Dayova erstellt gerade passende Inhalte aus deinen Unterlagen. Du
+							kannst zum Lernplan zurückgehen – die Vorbereitung läuft weiter.
+						</Text>
+						{errorMessage ? (
+							<ErrorMessage className="mt-5">{errorMessage}</ErrorMessage>
+						) : null}
+						{errorMessage ||
+						content?.session.contentGenerationStatus === "failed" ? (
+							<Button
+								className="mt-8"
+								disabled={isBusy}
+								onPress={retrySessionPreparation}
+							>
+								{isBusy ? (
+									<ActivityIndicator
+										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+									/>
+								) : (
+									<Text>Erneut versuchen</Text>
+								)}
+							</Button>
+						) : null}
+						<Button className="mt-4" onPress={goBack} variant="neutral">
+							<Text>Zurück zum Lernplan</Text>
+						</Button>
 					</View>
 				) : showAnalysis ? (
 					<AnalysisView
