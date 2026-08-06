@@ -45,6 +45,18 @@ const dimensionRank: Record<LearningEvidenceDimension, number> = {
 	independent: 2,
 };
 
+const requiredCorrectSessionCount: Record<LearningEvidenceDimension, number> = {
+	understanding: 2,
+	problemSolving: 1,
+	independent: 1,
+};
+
+const ratingRank: Record<AdaptiveEvidenceRating, number> = {
+	notCorrect: 0,
+	partiallyCorrect: 1,
+	correct: 2,
+};
+
 const priorityRank = { high: 0, medium: 1, low: 2 } as const;
 
 const dimensionLabel: Record<LearningEvidenceDimension, string> = {
@@ -62,23 +74,49 @@ const phaseForDimension: Record<
 	independent: "rehearsal",
 };
 
-const evidenceSupportsDimension = (
+const evidenceAppliesToDimension = (
 	evidence: AdaptiveTopicEvidence,
 	dimension: LearningEvidenceDimension,
-) => dimensionRank[evidence.dimension] >= dimensionRank[dimension];
+) =>
+	evidence.dimension === dimension ||
+	(evidence.rating === "correct" &&
+		dimensionRank[evidence.dimension] > dimensionRank[dimension]);
 
-const deriveDimensionStatus = (args: {
+const collapseEvidenceBySession = (evidence: AdaptiveTopicEvidence[]) => {
+	const bySessionId = new Map<string, AdaptiveTopicEvidence>();
+	for (const entry of evidence) {
+		const existing = bySessionId.get(entry.sessionId);
+		if (!existing) {
+			bySessionId.set(entry.sessionId, entry);
+			continue;
+		}
+		bySessionId.set(entry.sessionId, {
+			...existing,
+			rating:
+				ratingRank[entry.rating] < ratingRank[existing.rating]
+					? entry.rating
+					: existing.rating,
+			createdAt: Math.max(existing.createdAt, entry.createdAt),
+		});
+	}
+	return Array.from(bySessionId.values());
+};
+
+export const deriveAdaptiveDimensionStatus = (args: {
 	dimension: LearningEvidenceDimension;
 	initialStatus: "secure" | "developing" | "unknown";
 	evidence: AdaptiveTopicEvidence[];
 }) => {
-	const relevantEvidence = args.evidence
-		.filter((entry) => evidenceSupportsDimension(entry, args.dimension))
-		.sort((left, right) => right.createdAt - left.createdAt);
+	const relevantEvidence = collapseEvidenceBySession(
+		args.evidence.filter((entry) =>
+			evidenceAppliesToDimension(entry, args.dimension),
+		),
+	).sort((left, right) => right.createdAt - left.createdAt);
+	const requiredCorrectSessions = requiredCorrectSessionCount[args.dimension];
 	const initialEvidenceCount =
 		args.dimension === "understanding"
 			? args.initialStatus === "secure"
-				? 2
+				? requiredCorrectSessions
 				: args.initialStatus === "developing"
 					? 1
 					: 0
@@ -101,17 +139,24 @@ const deriveDimensionStatus = (args: {
 			args.initialStatus === "secure" &&
 			relevantEvidence.length === 0) ||
 		(latest?.rating === "correct" &&
-			correctOccasions + initialEvidenceCount >= 2)
+			correctOccasions + initialEvidenceCount >= requiredCorrectSessions)
 			? ("secure" as const)
 			: evidenceCount > 0
 				? ("developing" as const)
 				: ("unknown" as const);
 	const needsControlCheck =
 		Boolean(latest && latest.rating !== "correct") &&
-		priorCorrectOccasions + initialEvidenceCount >= 2;
+		priorCorrectOccasions + initialEvidenceCount >= requiredCorrectSessions;
 
 	return { status, needsControlCheck, evidenceCount };
 };
+
+const requiredDimensionsForTopic = (topic: LearningTopic) =>
+	topic.requiredEvidenceDimensions?.length
+		? evidenceDimensions.filter((dimension) =>
+				topic.requiredEvidenceDimensions?.includes(dimension),
+			)
+		: evidenceDimensions;
 
 const reasonForTarget = (
 	topicTitle: string,
@@ -158,11 +203,7 @@ export const selectNextAdaptiveLearningTarget = (args: {
 	);
 	const excludedTargetKeys = new Set(args.excludeTargetKeys ?? []);
 	const candidates = args.topics.flatMap((topic) => {
-		const requiredDimensions = topic.requiredEvidenceDimensions?.length
-			? evidenceDimensions.filter((dimension) =>
-					topic.requiredEvidenceDimensions?.includes(dimension),
-				)
-			: evidenceDimensions;
+		const requiredDimensions = requiredDimensionsForTopic(topic);
 		const topicEvidence = args.evidence.filter(
 			(entry) => entry.topicId === topic.id,
 		);
@@ -170,7 +211,7 @@ export const selectNextAdaptiveLearningTarget = (args: {
 			const key = `${topic.id}:${dimension}`;
 			if (excludedTargetKeys.has(key)) return [];
 			const lastTargetedAt = latestTargetedAtByKey.get(key) ?? 0;
-			const dimensionStatus = deriveDimensionStatus({
+			const dimensionStatus = deriveAdaptiveDimensionStatus({
 				dimension,
 				initialStatus: readinessByTopicId.get(topic.id) ?? "unknown",
 				evidence: topicEvidence,
@@ -247,11 +288,7 @@ export const selectAdaptiveMaintenanceTarget = (args: {
 		);
 	}
 	const candidates = args.topics.flatMap((topic) => {
-		const requiredDimensions = topic.requiredEvidenceDimensions?.length
-			? evidenceDimensions.filter((dimension) =>
-					topic.requiredEvidenceDimensions?.includes(dimension),
-				)
-			: evidenceDimensions;
+		const requiredDimensions = requiredDimensionsForTopic(topic);
 		return requiredDimensions.flatMap((dimension) => {
 			const key = `${topic.id}:${dimension}`;
 			return excludedTargetKeys.has(key)

@@ -3,6 +3,16 @@ import { __testOnlyLearningPlanAi } from "./learningPlanAi";
 import { MAX_MULTIPLE_CHOICE_OPTION_CHARS } from "./learningSessionContentConstraints";
 
 describe("learning plan AI practice content", () => {
+	test("asks for an exhaustive capability-level exam topic map", () => {
+		const instruction = __testOnlyLearningPlanAi.topicMapGenerationInstruction;
+
+		expect(instruction).toContain("mindestens 6 Themen");
+		expect(instruction).toContain("erklären");
+		expect(instruction).toMatch(/anwenden|lösen/);
+		expect(instruction).toContain("erfinde oder dupliziere aber keine Themen");
+		expect(instruction).toContain("understanding und problemSolving");
+	});
+
 	test("accepts a usable model-generated choice that is longer than the UI limit", () => {
 		const result = __testOnlyLearningPlanAi.generatedTaskChoiceSchema.safeParse(
 			{

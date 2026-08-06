@@ -340,6 +340,101 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 	});
 });
 
+test("marks a topic secure after correct guided practice and a harder independent check", async () => {
+	const { t, learningPlanId, firstSessionId, openSessionId } =
+		await seedAnalyticsData();
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			topicMap: [
+				{
+					id: "steigung",
+					title: "Steigung berechnen",
+					learningGoal:
+						"Steigungen erklären und in neuen Aufgaben selbstständig berechnen.",
+					keywords: ["Steigung"],
+					priority: "high",
+					requiredEvidenceDimensions: [
+						"understanding",
+						"problemSolving",
+						"independent",
+					],
+				},
+			],
+			topicReadiness: [{ topicId: "steigung", status: "unknown" }],
+		});
+		const existingItem = await ctx.db
+			.query("learningSessionContentItems")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
+			)
+			.first();
+		if (!existingItem) throw new Error("Expected seeded content item");
+		await ctx.db.patch("learningSessionContentItems", existingItem._id, {
+			topicId: undefined,
+		});
+
+		for (const [index, session] of [
+			{
+				id: firstSessionId,
+				phase: "practice" as const,
+				angle: "apply",
+				title: "Geführte Anwendung",
+			},
+			{
+				id: openSessionId,
+				phase: "rehearsal" as const,
+				angle: "examTransfer",
+				title: "Schwieriger Prüfungstransfer",
+			},
+		].entries()) {
+			const itemId = await ctx.db.insert("learningSessionContentItems", {
+				ownerTokenIdentifier: identity.tokenIdentifier,
+				learningPlanId,
+				sessionId: session.id,
+				phase: session.phase,
+				kind: "written",
+				title: session.title,
+				prompt: "Berechne die Steigung aus zwei gegebenen Punkten.",
+				explanation: "Die Steigung ist die Änderung von y geteilt durch x.",
+				idealAnswer: "Die Steigung ist 2.",
+				evaluationKeywords: ["2"],
+				topicId: "steigung",
+				questionAngle: session.angle,
+				sortOrder: index,
+				createdAt: Date.UTC(2026, 6, 28, 10 + index),
+				updatedAt: Date.UTC(2026, 6, 28, 10 + index),
+			});
+			await ctx.db.insert("learningSessionAnswerAttempts", {
+				ownerTokenIdentifier: identity.tokenIdentifier,
+				learningPlanId,
+				sessionId: session.id,
+				itemId,
+				answerText: "Die Steigung ist 2.",
+				rating: "correct",
+				feedback: "Richtig.",
+				perfectAnswer: "Die Steigung ist 2.",
+				createdAt: Date.UTC(2026, 6, 28, 10 + index, 30),
+			});
+		}
+	});
+
+	const analysis = await t.query(api.userAnalytics.getExamAnalysis, {
+		learningPlanId,
+		todayKey: "2026-07-28",
+	});
+
+	expect(analysis.readiness).toMatchObject({ secure: 1 });
+	expect(analysis.topics[0]).toMatchObject({
+		id: "steigung",
+		status: "secure",
+		dimensions: [
+			{ kind: "understanding", status: "secure" },
+			{ kind: "problemSolving", status: "secure" },
+			{ kind: "independent", status: "secure" },
+		],
+	});
+});
+
 test("requests a control check when new evidence contradicts repeated success", async () => {
 	const { t, learningPlanId, firstSessionId, openSessionId } =
 		await seedAnalyticsData();

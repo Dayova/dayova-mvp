@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { query } from "./_generated/server";
+import {
+	type AdaptiveTopicEvidence,
+	deriveAdaptiveDimensionStatus,
+} from "./adaptiveLearningPlanPolicy";
 import { throwUserFacingError } from "./errors";
 import type { LearningEvidenceDimension } from "./learningContentPlan";
 
@@ -404,12 +408,6 @@ const evidenceDimensions: LearningEvidenceDimension[] = [
 	"independent",
 ];
 
-const evidenceDimensionRank: Record<LearningEvidenceDimension, number> = {
-	understanding: 0,
-	problemSolving: 1,
-	independent: 2,
-};
-
 const getItemEvidenceDimension = (
 	item: Doc<"learningSessionContentItems">,
 ): LearningEvidenceDimension => {
@@ -427,14 +425,6 @@ const getItemEvidenceDimension = (
 	}
 	return "understanding";
 };
-
-const attemptSupportsDimension = (
-	item: Doc<"learningSessionContentItems">,
-	dimension: LearningEvidenceDimension,
-) =>
-	evidenceDimensionRank[getItemEvidenceDimension(item)] >=
-	evidenceDimensionRank[dimension];
-
 const deriveDimensionEvidence = ({
 	dimension,
 	initialStatus,
@@ -453,42 +443,42 @@ const deriveDimensionEvidence = ({
 	reviewed: boolean;
 	topicAttempts: Doc<"learningSessionAnswerAttempts">[];
 }) => {
+	const evidence = topicAttempts.flatMap((attempt) => {
+		const item = itemById.get(attempt.itemId);
+		return item
+			? [
+					{
+						topicId: item.topicId ?? "",
+						dimension: getItemEvidenceDimension(item),
+						rating: attempt.rating,
+						sessionId: attempt.sessionId,
+						createdAt: attempt.createdAt,
+					} satisfies AdaptiveTopicEvidence,
+				]
+			: [];
+	});
+	const dimensionStatus = deriveAdaptiveDimensionStatus({
+		dimension,
+		initialStatus,
+		evidence,
+	});
 	const relevantAttempts = topicAttempts
 		.filter((attempt) => {
 			const item = itemById.get(attempt.itemId);
-			return Boolean(item && attemptSupportsDimension(item, dimension));
+			return Boolean(item && getItemEvidenceDimension(item) === dimension);
 		})
 		.sort((left, right) => right.createdAt - left.createdAt);
-	const initialEvidenceCount =
-		dimension === "understanding" && initialStatus !== "unknown" ? 1 : 0;
-	const correctOccasions = new Set(
-		relevantAttempts
-			.filter((attempt) => attempt.rating === "correct")
-			.map((attempt) => attempt.sessionId),
-	).size;
-	const latestAttempt = relevantAttempts[0];
-	const priorCorrectOccasions = new Set(
-		relevantAttempts
-			.slice(1)
-			.filter((attempt) => attempt.rating === "correct")
-			.map((attempt) => attempt.sessionId),
-	).size;
-	const evidenceCount = relevantAttempts.length + initialEvidenceCount;
-	const needsControlCheck =
-		required &&
-		Boolean(latestAttempt && latestAttempt.rating !== "correct") &&
-		priorCorrectOccasions + initialEvidenceCount >= 2;
 	const latestShowsDifficulty = Boolean(
-		latestAttempt && latestAttempt.rating !== "correct",
+		relevantAttempts[0] && relevantAttempts[0].rating !== "correct",
 	);
 	const status: TopicEvidenceStatus = !required
 		? "unknown"
-		: latestAttempt?.rating === "correct" &&
-				correctOccasions + initialEvidenceCount >= 2
+		: dimensionStatus.status === "secure"
 			? "secure"
-			: latestShowsDifficulty && !needsControlCheck
+			: latestShowsDifficulty && !dimensionStatus.needsControlCheck
 				? "uncertain"
-				: evidenceCount > 0 || (dimension === "understanding" && reviewed)
+				: dimensionStatus.evidenceCount > 0 ||
+						(dimension === "understanding" && reviewed)
 					? "developing"
 					: "unknown";
 
@@ -496,8 +486,8 @@ const deriveDimensionEvidence = ({
 		kind: dimension,
 		required,
 		status,
-		evidenceCount,
-		needsControlCheck,
+		evidenceCount: dimensionStatus.evidenceCount,
+		needsControlCheck: required && dimensionStatus.needsControlCheck,
 	};
 };
 
