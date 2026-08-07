@@ -8,6 +8,10 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 
 - Registration is password-based: the learner enters an E-Mail address, sets a
   password, then confirms the account with a 6-digit E-Mail code.
+- Apple and Google social login are intentionally unsupported. Do not enable
+  provider UI, dependencies, or native capabilities without a new product and
+  authentication decision that covers cross-platform account linking and
+  account lifecycle behavior.
 - Clerk `unsafeMetadata.schoolType` stores only the stable bounded `Schulart`
   key. Exact generic legacy labels are normalized on authentication; ambiguous
   values such as school names are removed without including the raw value in
