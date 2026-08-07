@@ -35,4 +35,38 @@ describe("Expo app config loading", () => {
 		);
 		expect(result.status, result.stderr).toBe(0);
 	});
+
+	it(
+		"disables the Expo Dev Menu floating tools button",
+		() => {
+			const result = spawnSync(
+				resolve(process.cwd(), "node_modules/.bin/expo"),
+				["config", "--type", "introspect", "--json"],
+				{
+					cwd: process.cwd(),
+					encoding: "utf8",
+					env: {
+						...process.env,
+						APP_VARIANT: "development",
+					},
+				},
+			);
+
+			expect(result.status, result.stderr).toBe(0);
+			const config = JSON.parse(result.stdout);
+			expect(config.ios.infoPlist.EXDevMenuShowFloatingActionButton).toBe(false);
+
+			const androidMetadata =
+				config._internal.modResults.android.manifest.manifest.application[0][
+					"meta-data"
+				];
+			expect(androidMetadata).toContainEqual({
+				$: {
+					"android:name": "EXDevMenuShowFloatingActionButton",
+					"android:value": "false",
+				},
+			});
+		},
+		15_000,
+	);
 });
