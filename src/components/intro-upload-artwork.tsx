@@ -137,7 +137,7 @@ export function IntroUploadArtwork(props: SvgProps) {
 					fontSize="12"
 					fontFamily="Poppins"
 				>
-					oder Scanne deine Mitschriften
+					oder scanne deine Mitschriften
 				</SvgText>
 			</G>
 		</Svg>
