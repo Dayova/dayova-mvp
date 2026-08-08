@@ -23,6 +23,9 @@ const mockLogin = jest.fn<
 		{ status: "complete" } | { status: "needs_verification"; message: string }
 	>
 >(async () => ({ status: "complete" }));
+const mockStartRegistrationWithEmail = jest.fn<
+	(email: string) => Promise<void>
+>(async () => undefined);
 const mockRegister = jest.fn<
 	(input: {
 		birthDate: string;
@@ -200,20 +203,33 @@ jest.mock("~/components/ui/icon", () => {
 });
 
 jest.mock("~/context/AuthContext", () => ({
-	useAuthFlow: () => ({
-		cancelPasswordReset: mockCancelPasswordReset,
-		completePasswordReset: mockCompletePasswordReset,
-		isLoading: false,
-		login: mockLogin,
-		pendingVerification: null,
-		register: mockRegister,
-		resendPasswordResetCode: mockResendPasswordResetCode,
-		resendVerification: jest.fn(),
-		startPasswordReset: mockStartPasswordReset,
-		verifyEmailCode: jest.fn(),
-		verifyPasswordResetCode: mockVerifyPasswordResetCode,
-		verifyPasswordResetSecondFactor: jest.fn(),
-	}),
+	useAuthFlow: () => {
+		const React = jest.requireActual<typeof import("react")>("react");
+		const [isLoading, setIsLoading] = React.useState(false);
+
+		return {
+			cancelPasswordReset: mockCancelPasswordReset,
+			startRegistrationWithEmail: async (email: string) => {
+				setIsLoading(true);
+				try {
+					await mockStartRegistrationWithEmail(email);
+				} finally {
+					setIsLoading(false);
+				}
+			},
+			completePasswordReset: mockCompletePasswordReset,
+			isLoading,
+			login: mockLogin,
+			pendingVerification: null,
+			register: mockRegister,
+			resendPasswordResetCode: mockResendPasswordResetCode,
+			resendVerification: jest.fn(),
+			startPasswordReset: mockStartPasswordReset,
+			verifyEmailCode: jest.fn(),
+			verifyPasswordResetCode: mockVerifyPasswordResetCode,
+			verifyPasswordResetSecondFactor: jest.fn(),
+		};
+	},
 	useAuthSession: () => ({
 		isConvexAuthenticated: false,
 		isPostAuthSyncing: false,
@@ -493,6 +509,8 @@ describe("CreationLoaderScreen", () => {
 
 describe("OnboardingScreen", () => {
 	beforeEach(() => {
+		mockStartRegistrationWithEmail.mockReset();
+		mockStartRegistrationWithEmail.mockResolvedValue(undefined);
 		mockRegister.mockReset();
 		mockRegister.mockResolvedValue({
 			status: "needs_verification",
@@ -504,6 +522,7 @@ describe("OnboardingScreen", () => {
 		mockOnboarding.answers.schoolType = "prefer_not_to_say";
 		mockOnboarding.answers.grade = "9";
 		mockOnboarding.answers.birthDate = "09.09.2012";
+		mockOnboarding.answers.email = "test@example.com";
 	});
 
 	test("opens with the exact-exam promise and shows compact profile progress", async () => {
@@ -578,6 +597,61 @@ describe("OnboardingScreen", () => {
 			"birthDate",
 			expectedDefaultBirthDate,
 		);
+	});
+
+	test("shows an existing-account error before leaving the email step", async () => {
+		mockStartRegistrationWithEmail.mockRejectedValueOnce(
+			new Error("Für diese E-Mail-Adresse gibt es bereits ein Konto."),
+		);
+		mockOnboarding.answers.email = "existing@example.com";
+		const screen = await render(<OnboardingScreen initialStepId="email" />);
+
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(mockStartRegistrationWithEmail).toHaveBeenCalledWith(
+			"existing@example.com",
+		);
+		expect(
+			await screen.findByRole("alert", {
+				name: "Für diese E-Mail-Adresse gibt es bereits ein Konto.",
+			}),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("header", { name: "Wie lautet deine E-Mail-Adresse?" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.queryByRole("header", { name: "Lege dein Passwort fest." }),
+		).toBeNull();
+	});
+
+	test("blocks duplicate email checks while availability is pending", async () => {
+		let finishEmailCheck!: () => void;
+		mockStartRegistrationWithEmail.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishEmailCheck = resolve;
+				}),
+		);
+		const screen = await render(<OnboardingScreen initialStepId="email" />);
+		const continueButton = screen.getByRole("button", { name: "Weiter" });
+
+		await fireEvent.press(continueButton);
+		await fireEvent.press(continueButton);
+
+		expect(mockStartRegistrationWithEmail).toHaveBeenCalledTimes(1);
+		const busyButton = await screen.findByRole("button", {
+			name: "Wird verarbeitet",
+		});
+		expect(busyButton.props.accessibilityState).toMatchObject({
+			busy: true,
+			disabled: true,
+		});
+
+		await act(async () => finishEmailCheck());
+
+		expect(
+			await screen.findByRole("header", { name: "Lege dein Passwort fest." }),
+		).toBeOnTheScreen();
 	});
 
 	test("keeps verification progress aligned with the profile steps", async () => {
