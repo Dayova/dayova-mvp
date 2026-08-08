@@ -47,7 +47,6 @@ export default tseslint.config(
 		files: ["src/**/*.{test,spec}.{ts,tsx}"],
 		ignores: [
 			"src/components/onboarding/intro-tasks-artwork-assets.test.ts",
-			"src/components/onboarding/intro-upload-artwork.test.ts",
 			"src/lib/ios-appearance-module.test.ts",
 			"src/lib/theme-css.test.ts",
 		],
