@@ -567,8 +567,13 @@ export function OnboardingScreen({
 	const [verificationCode, setVerificationCode] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
 	const [isRegistering, setIsRegistering] = useState(false);
-	const { register, verifyEmailCode, resendVerification, isLoading } =
-		useAuthFlow();
+	const {
+		startRegistrationWithEmail,
+		register,
+		verifyEmailCode,
+		resendVerification,
+		isLoading,
+	} = useAuthFlow();
 	const { user, isConvexAuthenticated, isPostAuthSyncing } = useAuthSession();
 	const { answers, hasAnswers } = useOnboarding();
 	const activeStep = FLOW_STEPS[activeIndex];
@@ -660,6 +665,24 @@ export function OnboardingScreen({
 
 		if (decision.error) {
 			setError(decision.error);
+			return;
+		}
+
+		if (activeStep.kind === "text" && activeStep.field === "email") {
+			await registrationActionGateRef.current.run(async () => {
+				try {
+					await startRegistrationWithEmail(answers.email);
+					setActiveIndex((current) =>
+						getNextOnboardingStepIndex(current, FLOW_STEPS.length),
+					);
+				} catch (emailError) {
+					setError(
+						emailError instanceof Error
+							? emailError.message
+							: "E-Mail-Adresse konnte nicht geprüft werden. Bitte versuche es erneut.",
+					);
+				}
+			});
 			return;
 		}
 
@@ -1112,7 +1135,7 @@ function QuestionStepView({
 			>
 				<DarkPillButton
 					label={continueLabel}
-					onPress={onContinue}
+					onPress={() => void onContinue()}
 					disabled={busy}
 					busy={busy}
 				/>

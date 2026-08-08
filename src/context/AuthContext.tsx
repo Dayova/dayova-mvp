@@ -116,6 +116,7 @@ interface AuthFlowContextType {
 	isLoading: boolean;
 	pendingVerification: PendingVerification | null;
 	login: (input: LoginInput) => Promise<AuthFlowResult>;
+	startRegistrationWithEmail: (email: string) => Promise<void>;
 	register: (input: RegisterInput) => Promise<AuthFlowResult>;
 	verifyEmailCode: (code: string) => Promise<AuthFlowResult>;
 	resendVerification: () => Promise<void>;
@@ -754,6 +755,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			}
 		});
 
+	const startRegistrationWithEmail = async (email: string): Promise<void> =>
+		withSubmitting(async () => {
+			if (!clerk.client) {
+				throw new Error("Authentifizierung ist noch nicht bereit.");
+			}
+
+			try {
+				await clerk.client.signUp.upsert({
+					emailAddress: email.trim().toLowerCase(),
+				});
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"E-Mail-Adresse konnte nicht geprüft werden. Bitte versuche es erneut.",
+					),
+				);
+			}
+		});
+
 	const register = async (input: RegisterInput): Promise<AuthFlowResult> =>
 		withSubmitting(async () => {
 			if (!clerk.client) {
@@ -764,7 +785,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				prepareClerkRegistration(input);
 
 			try {
-				const signUp = await clerk.client.signUp.create(signUpParameters);
+				const signUp = await clerk.client.signUp.upsert(signUpParameters);
 
 				setPendingProfile(profile);
 
@@ -1193,6 +1214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					isLoading,
 					pendingVerification,
 					login,
+					startRegistrationWithEmail,
 					register,
 					verifyEmailCode,
 					resendVerification,
