@@ -178,12 +178,6 @@ export const DARK_THEME_COLORS = {
 	path6: darkThemeHex("--path-6"),
 	path7: darkThemeHex("--path-7"),
 	pathLockedBase: "#ADB3BC",
-	uploadArtworkBorder: darkThemeHex("--border"),
-	uploadArtworkIconBackground: darkThemeHex("--light-2"),
-	uploadArtworkIconBorder: darkThemeHex("--border"),
-	uploadArtworkIconFill: darkThemeHex("--light-3"),
-	uploadArtworkIconMuted: darkThemeHex("--path-3"),
-	uploadArtworkShadow: "#000000",
 } as const;
 
 export const DARK_NAV_THEME_COLORS = {
