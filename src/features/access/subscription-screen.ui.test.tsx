@@ -5,13 +5,27 @@ import { SubscriptionScreen } from "./subscription-screen";
 
 const mockBack = jest.fn();
 const mockReplace = jest.fn();
-const mockGetPlans = jest.fn(async () => []);
+const storePlans = [
+	{
+		billingPeriod: "annual" as const,
+		packageIdentifier: "$rc_annual",
+		price: "$155.88",
+		productIdentifier: "test_store_annual",
+	},
+	{
+		billingPeriod: "monthly" as const,
+		packageIdentifier: "$rc_monthly",
+		price: "$14.99",
+		productIdentifier: "test_store_monthly",
+	},
+];
+const mockGetPlans = jest.fn(async () => storePlans);
 let mockCanGoBack = true;
 let mockStoreInitializationError: Error | null = null;
 
 beforeEach(() => {
 	jest.clearAllMocks();
-	mockGetPlans.mockResolvedValue([]);
+	mockGetPlans.mockResolvedValue(storePlans);
 	mockCanGoBack = true;
 	mockStoreInitializationError = null;
 });
@@ -106,6 +120,14 @@ describe("SubscriptionScreen", () => {
 		expect(
 			screen.getByRole("radio", { name: /Monatlich/ }).props.accessibilityState,
 		).toEqual({ checked: true });
+		expect(
+			screen.getByRole("radio", {
+				name: /Jährlich, 155,88 €. 12,99 € pro Monat · 155,88 € jährlich abgerechnet/,
+			}),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("radio", { name: /Monatlich, 14,99 €/ }),
+		).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("subscription-payment-surface").props.style,
 		).toEqual(

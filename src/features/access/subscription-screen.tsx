@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -31,11 +31,13 @@ import {
 	type DayovaStorePlan,
 } from "~/lib/revenuecat-client";
 import { env } from "~/lib/runtime-config";
+import {
+	DAYOVA_SUBSCRIPTION_PRICING,
+	type DayovaBillingPeriod,
+} from "~/lib/subscription-pricing";
 import type { SubscriptionPayer } from "./paywall-screen";
 
 export type { SubscriptionPayer } from "./paywall-screen";
-
-type ProductIdentifier = DayovaStorePlan["productIdentifier"];
 
 const SUBSCRIPTION_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
@@ -92,8 +94,8 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 	const storeUnavailableMessage = storeConnection.initializationError
 		? "Store-Käufe konnten auf diesem Gerät nicht gestartet werden. Bitte öffne die App erneut oder kontaktiere den Support."
 		: "Store-Käufe sind auf diesem Gerät noch nicht verfügbar.";
-	const [selectedProduct, setSelectedProduct] =
-		useState<ProductIdentifier>("dayova_monthly");
+	const [selectedBillingPeriod, setSelectedBillingPeriod] =
+		useState<DayovaBillingPeriod>("monthly");
 	const [plans, setPlans] = useState<DayovaStorePlan[]>([]);
 	const [isLoadingPlans, setIsLoadingPlans] = useState(
 		payer === "self" && Boolean(storeClient),
@@ -139,8 +141,8 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 		};
 	}, [payer, storeClient, storeConnection.initializationError]);
 
-	const planByProduct = useMemo(
-		() => new Map(plans.map((plan) => [plan.productIdentifier, plan])),
+	const planByBillingPeriod = useMemo(
+		() => new Map(plans.map((plan) => [plan.billingPeriod, plan])),
 		[plans],
 	);
 
@@ -186,7 +188,7 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 
 	const purchase = async () => {
 		if (!storeClient) return;
-		await finishStoreAction(() => storeClient.purchase(selectedProduct));
+		await finishStoreAction(() => storeClient.purchase(selectedBillingPeriod));
 	};
 
 	const restore = async () => {
@@ -206,8 +208,8 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 		}
 	};
 
-	const annualPlan = planByProduct.get("dayova_annual");
-	const monthlyPlan = planByProduct.get("dayova_monthly");
+	const annualPlan = planByBillingPeriod.get("annual");
+	const monthlyPlan = planByBillingPeriod.get("monthly");
 	const unavailablePlanDescription = isLoadingPlans
 		? "Preis wird geladen …"
 		: "Derzeit nicht im Store verfügbar";
@@ -322,27 +324,33 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 								<View className="gap-3">
 									<PlanCard
 										description={
-											annualPlan?.monthlyEquivalentPrice
-												? `${annualPlan.monthlyEquivalentPrice} pro Monat · jährlich abgerechnet`
-												: annualPlan
-													? "Jährlich abgerechnet"
-													: unavailablePlanDescription
+											annualPlan
+												? DAYOVA_SUBSCRIPTION_PRICING.annual.billingDescription
+												: unavailablePlanDescription
 										}
 										label="Jährlich"
-										price={annualPlan?.price ?? "—"}
-										selected={selectedProduct === "dayova_annual"}
-										onPress={() => setSelectedProduct("dayova_annual")}
+										price={
+											annualPlan
+												? DAYOVA_SUBSCRIPTION_PRICING.annual.displayPrice
+												: "—"
+										}
+										selected={selectedBillingPeriod === "annual"}
+										onPress={() => setSelectedBillingPeriod("annual")}
 									/>
 									<PlanCard
 										description={
 											monthlyPlan
-												? "Monatlich abgerechnet"
+												? DAYOVA_SUBSCRIPTION_PRICING.monthly.billingDescription
 												: unavailablePlanDescription
 										}
 										label="Monatlich"
-										price={monthlyPlan?.price ?? "—"}
-										selected={selectedProduct === "dayova_monthly"}
-										onPress={() => setSelectedProduct("dayova_monthly")}
+										price={
+											monthlyPlan
+												? DAYOVA_SUBSCRIPTION_PRICING.monthly.displayPrice
+												: "—"
+										}
+										selected={selectedBillingPeriod === "monthly"}
+										onPress={() => setSelectedBillingPeriod("monthly")}
 									/>
 								</View>
 								{!storeClient ? (
@@ -361,7 +369,7 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 										isLoadingPlans ||
 										isPurchasing ||
 										!storeClient ||
-										!planByProduct.has(selectedProduct)
+										!planByBillingPeriod.has(selectedBillingPeriod)
 									}
 									variant="neutral"
 									style={primaryActionStyle}
