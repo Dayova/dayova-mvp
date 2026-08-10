@@ -47,7 +47,7 @@ export const learningPlanResumePath = (
 	return `/learning-plans/${id}` as const;
 };
 
-export const learningPlanTopicPath = (
+export const learningPlanMaterialPath = (
 	id: Id<"learningPlans">,
 	params: {
 		topicDescription?: string;
@@ -57,7 +57,7 @@ export const learningPlanTopicPath = (
 ) => {
 	const query = buildRouteQuery([
 		["learningPlanId", id],
-		["step", "topic"],
+		["step", "material"],
 		["topicDescription", params.topicDescription],
 		["teacherGuidance", params.teacherGuidance],
 		["errorMessage", params.errorMessage],

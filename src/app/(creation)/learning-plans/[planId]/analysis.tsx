@@ -11,7 +11,7 @@ import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
+import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { dismissToOrReplace, goBackOrReplace } from "~/lib/navigation";
@@ -76,7 +76,7 @@ export default function LearningPlanAnalysisScreen() {
 					didStartRef.current = false;
 					dismissToOrReplace(
 						router,
-						learningPlanTopicPath(planId, {
+						learningPlanMaterialPath(planId, {
 							teacherGuidance: snapshot.plan.teacherGuidance,
 							errorMessage: message,
 						}),
@@ -89,7 +89,7 @@ export default function LearningPlanAnalysisScreen() {
 	const goBack = () => {
 		goBackOrReplace(
 			router,
-			planId ? learningPlanTopicPath(planId) : "/learning-plans/new",
+			planId ? learningPlanMaterialPath(planId) : "/learning-plans/new",
 		);
 	};
 	useLearningPlanCreationProgress({

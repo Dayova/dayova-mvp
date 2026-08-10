@@ -2,8 +2,8 @@ import { expect, test } from "vitest";
 import type { Id } from "#convex/_generated/dataModel";
 import {
 	examEntrySuccessPath,
+	learningPlanMaterialPath,
 	learningPlanResumePath,
-	learningPlanTopicPath,
 } from "./creation-routes";
 
 test("builds the exam confirmation route for a saved materialless plan", () => {
@@ -17,23 +17,23 @@ test("builds the exam confirmation route for a saved materialless plan", () => {
 	);
 });
 
-test("keeps upload and topic on the same mounted setup screen", () => {
+test("returns to material on the same mounted setup screen", () => {
 	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
 
-	expect(learningPlanTopicPath(learningPlanId)).toBe(
-		"/learning-plans/new?learningPlanId=learning-plan-id&step=topic",
+	expect(learningPlanMaterialPath(learningPlanId)).toBe(
+		"/learning-plans/new?learningPlanId=learning-plan-id&step=material",
 	);
 });
 
-test("preserves the teacher guidance when returning to exam evidence", () => {
+test("preserves the teacher guidance when returning to school material", () => {
 	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
 
 	expect(
-		learningPlanTopicPath(learningPlanId, {
+		learningPlanMaterialPath(learningPlanId, {
 			teacherGuidance: "Kapitel 3 & 4, ohne Beweise",
 		}),
 	).toBe(
-		"/learning-plans/new?learningPlanId=learning-plan-id&step=topic&teacherGuidance=Kapitel%203%20%26%204%2C%20ohne%20Beweise",
+		"/learning-plans/new?learningPlanId=learning-plan-id&step=material&teacherGuidance=Kapitel%203%20%26%204%2C%20ohne%20Beweise",
 	);
 });
 

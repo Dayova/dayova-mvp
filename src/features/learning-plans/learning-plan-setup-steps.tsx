@@ -1,7 +1,7 @@
 import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
-import { Globe, GraduationCap, Plus } from "~/components/ui/icon";
+import { GraduationCap, Plus } from "~/components/ui/icon";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
@@ -10,7 +10,6 @@ import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
 
 type PendingUploadAction = "camera" | "files";
-type MaterialSourceKind = "school" | "external";
 
 function SetupContinueButton({
 	canContinue,
@@ -95,7 +94,7 @@ export function MaterialUploadStep({
 	isBusy: boolean;
 	isUploading: boolean;
 	onContinue: () => void;
-	onOpenUpload: (sourceKind: MaterialSourceKind) => void;
+	onOpenUpload: () => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
 	onSkip: () => void;
 	openingUploadAction: PendingUploadAction | null;
@@ -112,7 +111,7 @@ export function MaterialUploadStep({
 			<Text className="font-poppins font-semibold text-body-1 text-text">
 				Schulmaterial hinzufügen
 			</Text>
-			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
+			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
 				Deine Unterlagen bilden die Grundlage für deinen Lernplan.
 			</Text>
 
@@ -125,7 +124,7 @@ export function MaterialUploadStep({
 				}
 				accessibilityRole="button"
 				disabled={!canUpload}
-				onPress={() => onOpenUpload("school")}
+				onPress={onOpenUpload}
 				className="mt-7 min-h-[112px] flex-row items-center rounded-[32px] px-5 py-5"
 				variant="soft"
 			>
@@ -200,44 +199,27 @@ export function MaterialUploadStep({
 }
 
 export function TeacherGuidanceStep({
-	canUpload,
 	canContinue,
-	documents,
 	errorMessage,
 	isBusy,
-	isUploading,
 	onChangeTeacherGuidance,
 	onContinue,
-	onOpenUpload,
-	onRemoveDocument,
-	openingUploadAction,
 	teacherGuidance,
 }: {
-	canUpload: boolean;
 	canContinue: boolean;
-	documents: LearningPlanSnapshot["documents"];
 	errorMessage: string | null;
 	isBusy: boolean;
-	isUploading: boolean;
 	onChangeTeacherGuidance: (value: string) => void;
 	onContinue: () => void;
-	onOpenUpload: () => void;
-	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
-	openingUploadAction: PendingUploadAction | null;
 	teacherGuidance: string;
 }) {
-	const { colors } = useDayovaTheme();
-	const externalDocuments = documents.filter(
-		(document) => document.sourceKind === "external",
-	);
-
 	return (
 		<View className="flex-1">
 			<Text className="font-poppins font-semibold text-body-1 text-text">
 				Prüfung ergänzen
 			</Text>
-			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
-				Füge optional Hinweise oder weitere Lernhilfen hinzu.
+			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
+				Ergänze optional einen Hinweis deiner Lehrkraft.
 			</Text>
 			<Text className="mt-6 font-poppins font-semibold text-body-4 text-text">
 				Hinweis deiner Lehrkraft
@@ -250,56 +232,11 @@ export function TeacherGuidanceStep({
 				placeholder="Zum Beispiel: Kapitel 3 und 4, keine Beweisaufgaben."
 			/>
 
-			<ActionSurface
-				accessibilityHint="Öffnet die Auswahl für eine zusätzliche externe Lernhilfe."
-				accessibilityLabel="Zusätzliche Lernhilfe hinzufügen"
-				accessibilityRole="button"
-				disabled={!canUpload}
-				onPress={onOpenUpload}
-				className="mt-6 min-h-[88px] flex-row items-center rounded-[32px] px-4 py-4"
-				variant="flat"
-			>
-				<View className="h-11 w-11 items-center justify-center rounded-[16px] bg-light-2">
-					<Globe size={22} color={colors.secondaryText} strokeWidth={2.1} />
-				</View>
-				<View className="min-w-0 flex-1 px-3">
-					<Text className="font-poppins font-semibold text-body-3 text-text">
-						Weitere Lernhilfe
-					</Text>
-					<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-						Erklärung oder Material aus einer anderen Quelle
-					</Text>
-				</View>
-				<Plus size={20} color={colors.secondaryText} strokeWidth={2.2} />
-			</ActionSurface>
-
-			<UploadActivity
-				isUploading={isUploading}
-				openingUploadAction={openingUploadAction}
-			/>
-
-			{externalDocuments.length > 0 ? (
-				<View className="mt-5">
-					<Text className="mb-3 font-poppins font-semibold text-body-4 text-secondary-text">
-						Weitere Lernhilfen
-					</Text>
-					{externalDocuments.map((document) => (
-						<MaterialCard
-							key={document.id}
-							name={document.fileName}
-							size={document.fileSizeBytes}
-							onRemove={() => onRemoveDocument(document.id)}
-						/>
-					))}
-				</View>
-			) : null}
-
 			<SetupError message={errorMessage} />
 			<View className="mt-auto pt-8">
 				<SetupContinueButton
 					canContinue={canContinue}
 					isBusy={isBusy}
-					label="Prüfungsstoff analysieren"
 					onPress={onContinue}
 				/>
 			</View>

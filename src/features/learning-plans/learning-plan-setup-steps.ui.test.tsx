@@ -59,7 +59,7 @@ describe("learning-plan setup steps", () => {
 		fireEvent.press(
 			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
 		);
-		expect(onOpenUpload).toHaveBeenCalledWith("school");
+		expect(onOpenUpload).toHaveBeenCalledTimes(1);
 	});
 
 	test("reveals continue after school material is uploaded", async () => {
@@ -165,75 +165,50 @@ describe("learning-plan setup steps", () => {
 		).toBeNull();
 	});
 
-	test("keeps optional context on the second page without forcing the keyboard open", async () => {
-		const onOpenUpload = jest.fn();
+	test("starts with optional teacher guidance without forcing the keyboard open", async () => {
+		const onContinue = jest.fn();
 		const screen = await render(
 			<TeacherGuidanceStep
-				canUpload
-				canContinue={false}
-				documents={[]}
+				canContinue
 				errorMessage={null}
 				isBusy={false}
-				isUploading={false}
 				onChangeTeacherGuidance={jest.fn()}
-				onContinue={jest.fn()}
-				onOpenUpload={onOpenUpload}
-				onRemoveDocument={jest.fn()}
-				openingUploadAction={null}
+				onContinue={onContinue}
 				teacherGuidance=""
 			/>,
 		);
 
 		expect(screen.getByText("Prüfung ergänzen")).toBeOnTheScreen();
 		expect(
+			screen.getByText("Ergänze optional einen Hinweis deiner Lehrkraft."),
+		).toBeOnTheScreen();
+		expect(
 			screen.getByLabelText("Hinweis der Lehrkraft").props.autoFocus,
 		).not.toBe(true);
 		expect(
-			screen.getByRole("button", {
+			screen.queryByRole("button", {
 				name: "Zusätzliche Lernhilfe hinzufügen",
 			}),
-		).toBeEnabled();
-		expect(
-			screen.getByRole("button", { name: "Prüfungsstoff analysieren" }),
-		).toBeDisabled();
+		).toBeNull();
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 
-		fireEvent.press(
-			screen.getByRole("button", {
-				name: "Zusätzliche Lernhilfe hinzufügen",
-			}),
-		);
-		expect(onOpenUpload).toHaveBeenCalledTimes(1);
+		fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(onContinue).toHaveBeenCalledTimes(1);
 	});
 
-	test("shows uploaded external aids only on the optional-context page", async () => {
+	test("does not expose external material on the teacher-guidance page", async () => {
 		const screen = await render(
 			<TeacherGuidanceStep
-				canUpload
 				canContinue
-				documents={[
-					{
-						id: "external-document" as Id<"learningPlanDocuments">,
-						fileName: "Lernhilfe.pdf",
-						fileType: "application/pdf",
-						fileSizeBytes: 1_024,
-						sourceKind: "external",
-					},
-				]}
 				errorMessage={null}
 				isBusy={false}
-				isUploading={false}
 				onChangeTeacherGuidance={jest.fn()}
 				onContinue={jest.fn()}
-				onOpenUpload={jest.fn()}
-				onRemoveDocument={jest.fn()}
-				openingUploadAction={null}
 				teacherGuidance=""
 			/>,
 		);
 
-		expect(screen.getByText("Lernhilfe.pdf")).toBeOnTheScreen();
-		expect(
-			screen.getByRole("button", { name: "Prüfungsstoff analysieren" }),
-		).toBeEnabled();
+		expect(screen.queryByText("Lernhilfe.pdf")).toBeNull();
+		expect(screen.queryByText("Zusätzliche Lernhilfe")).toBeNull();
 	});
 });

@@ -22,6 +22,11 @@ import {
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
 import {
+	getInitialLearningPlanSetupStep,
+	getPreviousLearningPlanSetupStep,
+	type LearningPlanSetupStep,
+} from "~/features/learning-plans/learning-plan-setup-flow";
+import {
 	MaterialUploadStep,
 	TeacherGuidanceStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
@@ -60,12 +65,9 @@ type PreparedUploadAsset = {
 };
 
 type PendingUploadAction = "camera" | "files";
-type MaterialSourceKind = "school" | "external";
 type PendingUploadRequest = {
 	action: PendingUploadAction;
-	sourceKind: MaterialSourceKind;
 };
-type LearningPlanSetupStep = "materialUpload" | "teacherGuidance";
 
 export default function NewLearningPlanScreen() {
 	const router = useRouter();
@@ -107,9 +109,10 @@ export default function NewLearningPlanScreen() {
 	const [learningPlanId, setLearningPlanId] =
 		useState<Id<"learningPlans"> | null>(initialLearningPlanId ?? null);
 	const [setupStep, setSetupStep] = useState<LearningPlanSetupStep>(() =>
-		params.step === "topic" || params.errorMessage
-			? "teacherGuidance"
-			: "materialUpload",
+		getInitialLearningPlanSetupStep({
+			hasError: Boolean(params.errorMessage),
+			routeStep: params.step,
+		}),
 	);
 	const [teacherGuidanceInput, setTeacherGuidanceInput] = useState<
 		string | null
@@ -117,8 +120,6 @@ export default function NewLearningPlanScreen() {
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
-	const [uploadSourceKind, setUploadSourceKind] =
-		useState<MaterialSourceKind>("school");
 	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
 	const [openingUploadAction, setOpeningUploadAction] =
 		useState<PendingUploadAction | null>(null);
@@ -145,18 +146,13 @@ export default function NewLearningPlanScreen() {
 	const isPlanSnapshotLoading = Boolean(learningPlanId && snapshot === null);
 	const canUpload =
 		canWrite && !isBusy && !openingUploadAction && !isPlanSnapshotLoading;
+	const canContinueGuidance = canWrite && !isBusy && !isPlanSnapshotLoading;
 	const canContinueUpload =
 		Boolean(learningPlanId) && hasSchoolMaterial && canUpload;
-	const canContinueEvidence =
-		Boolean(learningPlanId) &&
-		hasSchoolMaterial &&
-		canWrite &&
-		!isBusy &&
-		!openingUploadAction;
 	const currentProgressStep =
-		setupStep === "materialUpload"
-			? LEARNING_PLAN_CREATION_STEPS.materialUpload
-			: LEARNING_PLAN_CREATION_STEPS.examEvidence;
+		setupStep === "teacherGuidance"
+			? LEARNING_PLAN_CREATION_STEPS.teacherGuidance
+			: LEARNING_PLAN_CREATION_STEPS.materialUpload;
 
 	useEffect(() => {
 		if (!hasExamEntry) {
@@ -165,8 +161,10 @@ export default function NewLearningPlanScreen() {
 	}, [hasExamEntry, router]);
 
 	useEffect(() => {
-		if (params.step === "topic" || params.errorMessage) {
+		if (params.step === "material" || params.errorMessage) {
 			// eslint-disable-next-line react-hooks/set-state-in-effect -- Route params can change while this screen remains mounted.
+			setSetupStep("materialUpload");
+		} else if (params.step === "topic") {
 			setSetupStep("teacherGuidance");
 		}
 		if (params.errorMessage) {
@@ -230,7 +228,6 @@ export default function NewLearningPlanScreen() {
 
 	const uploadLearningPlanAsset = async (
 		preparedAsset: PreparedUploadAsset,
-		sourceKind: MaterialSourceKind,
 		existingLearningPlanId?: Id<"learningPlans">,
 	) => {
 		const id = existingLearningPlanId ?? (await ensurePlan());
@@ -334,7 +331,7 @@ export default function NewLearningPlanScreen() {
 				fileName: asset.name,
 				fileType,
 				fileSizeBytes,
-				sourceKind,
+				sourceKind: "school",
 			}),
 		);
 		const analyticsFileType =
@@ -347,7 +344,7 @@ export default function NewLearningPlanScreen() {
 		});
 	};
 
-	const uploadMaterial = async (sourceKind: MaterialSourceKind) => {
+	const uploadMaterial = async () => {
 		if (!canWrite || isBusy) {
 			setOpeningUploadAction(null);
 			return;
@@ -378,7 +375,7 @@ export default function NewLearningPlanScreen() {
 					const id = await ensurePlan();
 
 					for (const asset of preparedAssets) {
-						await uploadLearningPlanAsset(asset, sourceKind, id);
+						await uploadLearningPlanAsset(asset, id);
 					}
 				},
 			);
@@ -395,7 +392,7 @@ export default function NewLearningPlanScreen() {
 		}
 	};
 
-	const takePhoto = async (sourceKind: MaterialSourceKind) => {
+	const takePhoto = async () => {
 		if (!canWrite || isBusy) {
 			setOpeningUploadAction(null);
 			return;
@@ -430,7 +427,6 @@ export default function NewLearningPlanScreen() {
 							mimeType: asset.mimeType ?? "image/jpeg",
 							size: asset.fileSize,
 						}),
-						sourceKind,
 					);
 				},
 			);
@@ -450,14 +446,11 @@ export default function NewLearningPlanScreen() {
 		setIsUploadSheetVisible(false);
 	};
 
-	const runUploadAction = (
-		action: PendingUploadAction,
-		sourceKind: MaterialSourceKind,
-	) => {
+	const runUploadAction = (action: PendingUploadAction) => {
 		if (action === "files") {
-			void uploadMaterial(sourceKind);
+			void uploadMaterial();
 		} else {
-			void takePhoto(sourceKind);
+			void takePhoto();
 		}
 	};
 
@@ -466,15 +459,12 @@ export default function NewLearningPlanScreen() {
 		setIsUploadSheetVisible(false);
 
 		if (process.env.EXPO_OS === "ios") {
-			pendingUploadRequestRef.current = {
-				action,
-				sourceKind: uploadSourceKind,
-			};
+			pendingUploadRequestRef.current = { action };
 			return;
 		}
 
 		pendingUploadRequestRef.current = null;
-		runUploadAction(action, uploadSourceKind);
+		runUploadAction(action);
 	};
 
 	const runPendingUploadAction = () => {
@@ -482,14 +472,30 @@ export default function NewLearningPlanScreen() {
 		pendingUploadRequestRef.current = null;
 		if (!request) return;
 
-		runUploadAction(request.action, request.sourceKind);
+		runUploadAction(request.action);
 	};
 
-	const continueToEvidence = () => {
-		if (!learningPlanId || !canContinueUpload) return;
+	const continueToMaterial = () => {
+		if (!canContinueGuidance) return;
 
-		router.setParams({ learningPlanId, step: "topic" });
-		setSetupStep("teacherGuidance");
+		void runWithErrorHandling(
+			"Der Hinweis deiner Lehrkraft konnte nicht gespeichert werden.",
+			async () => {
+				const id = await ensurePlan();
+				await retryOnceAfterAuthResume(() =>
+					updateExamEvidence({
+						id,
+						teacherGuidance,
+					}),
+				);
+				router.setParams({
+					errorMessage: undefined,
+					learningPlanId: id,
+					step: "material",
+				});
+				setSetupStep("materialUpload");
+			},
+		);
 	};
 
 	const finishWithoutPlan = () => {
@@ -509,10 +515,11 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const goBack = () => {
-		if (setupStep === "teacherGuidance") {
+		const previousSetupStep = getPreviousLearningPlanSetupStep(setupStep);
+		if (previousSetupStep) {
 			setErrorMessage(null);
-			router.setParams({ errorMessage: undefined, step: undefined });
-			setSetupStep("materialUpload");
+			router.setParams({ errorMessage: undefined, step: "topic" });
+			setSetupStep(previousSetupStep);
 			return true;
 		}
 
@@ -531,9 +538,7 @@ export default function NewLearningPlanScreen() {
 
 	useBackIntent(
 		Boolean(
-			examDayEntryId ||
-				initialLearningPlanId ||
-				setupStep === "teacherGuidance",
+			examDayEntryId || initialLearningPlanId || setupStep === "materialUpload",
 		),
 		goBack,
 	);
@@ -543,30 +548,12 @@ export default function NewLearningPlanScreen() {
 		onBack: goBack,
 	});
 
-	const continueToAnalysis = async () => {
-		if (!learningPlanId || !canContinueEvidence) return;
+	const continueToAnalysis = () => {
+		if (!learningPlanId || !canContinueUpload) return;
 
-		setIsBusy(true);
 		setErrorMessage(null);
 		router.setParams({ errorMessage: undefined });
-		try {
-			await retryOnceAfterAuthResume(() =>
-				updateExamEvidence({
-					id: learningPlanId,
-					teacherGuidance,
-				}),
-			);
-			router.push(learningPlanStepPath(learningPlanId, "analysis"));
-		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die Information deiner Lehrkraft konnte nicht gespeichert werden.",
-				),
-			);
-		} finally {
-			setIsBusy(false);
-		}
+		router.push(learningPlanStepPath(learningPlanId, "analysis"));
 	};
 
 	if (!hasExamEntry) return null;
@@ -581,7 +568,16 @@ export default function NewLearningPlanScreen() {
 				contentContainerStyle={{ flexGrow: 1 }}
 			>
 				<View key={setupStep} className="flex-1">
-					{setupStep === "materialUpload" ? (
+					{setupStep === "teacherGuidance" ? (
+						<TeacherGuidanceStep
+							canContinue={canContinueGuidance}
+							errorMessage={errorMessage}
+							isBusy={isBusy}
+							onChangeTeacherGuidance={setTeacherGuidanceInput}
+							onContinue={continueToMaterial}
+							teacherGuidance={teacherGuidance}
+						/>
+					) : (
 						<MaterialUploadStep
 							canUpload={canUpload}
 							canContinue={canContinueUpload}
@@ -589,33 +585,12 @@ export default function NewLearningPlanScreen() {
 							errorMessage={errorMessage}
 							isBusy={isBusy}
 							isUploading={isUploading}
-							onContinue={continueToEvidence}
-							onOpenUpload={(sourceKind) => {
-								setUploadSourceKind(sourceKind);
-								setIsUploadSheetVisible(true);
-							}}
+							onContinue={continueToAnalysis}
+							onOpenUpload={() => setIsUploadSheetVisible(true)}
 							onRemoveDocument={(id) => void removeDocument({ id })}
 							onSkip={finishWithoutPlan}
 							openingUploadAction={openingUploadAction}
 							showSkip={!initialLearningPlanId}
-						/>
-					) : (
-						<TeacherGuidanceStep
-							canUpload={canUpload}
-							canContinue={canContinueEvidence}
-							documents={snapshot?.documents ?? []}
-							errorMessage={errorMessage}
-							isBusy={isBusy}
-							isUploading={isUploading}
-							onChangeTeacherGuidance={setTeacherGuidanceInput}
-							onContinue={() => void continueToAnalysis()}
-							onOpenUpload={() => {
-								setUploadSourceKind("external");
-								setIsUploadSheetVisible(true);
-							}}
-							onRemoveDocument={(id) => void removeDocument({ id })}
-							openingUploadAction={openingUploadAction}
-							teacherGuidance={teacherGuidance}
 						/>
 					)}
 				</View>
@@ -623,16 +598,8 @@ export default function NewLearningPlanScreen() {
 
 			<ActionSheet
 				visible={isUploadSheetVisible}
-				title={
-					uploadSourceKind === "school"
-						? "Material von deiner Schule"
-						: "Zusätzliche Lernhilfe"
-				}
-				description={
-					uploadSourceKind === "school"
-						? "Scanne oder lade Unterlagen deiner Schule oder Lehrkraft hoch."
-						: "Lade eine zusätzliche Erklärung oder Lernhilfe hoch."
-				}
+				title="Material von deiner Schule"
+				description="Scanne oder lade Unterlagen deiner Schule oder Lehrkraft hoch."
 				onClose={closeUploadSheet}
 				onDismiss={runPendingUploadAction}
 				closeAccessibilityLabel="Hochladen schließen"

@@ -13,7 +13,7 @@ import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
+import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 
@@ -58,7 +58,7 @@ export default function LearningPlanScopeScreen() {
 	const goBack = () => {
 		if (!planId || !snapshot) return;
 		router.replace(
-			learningPlanTopicPath(planId, {
+			learningPlanMaterialPath(planId, {
 				teacherGuidance: snapshot.plan.teacherGuidance,
 			}),
 		);
