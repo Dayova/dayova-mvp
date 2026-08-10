@@ -41,7 +41,7 @@ export function LearningAvailabilityStep({
 								? "Deine Lernzeiten sind schon belegt"
 								: "Noch nicht genug Lernzeit"}
 				</Text>
-				<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
+				<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
 					{isLoading
 						? "Das dauert nur einen Moment."
 						: hasUsableLearningTime

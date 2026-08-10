@@ -70,6 +70,14 @@ function AppNavigator() {
 							}}
 						/>
 						<Stack.Screen
+							name="pro-welcome"
+							options={{
+								animation: "none",
+								gestureEnabled: false,
+								presentation: "card",
+							}}
+						/>
+						<Stack.Screen
 							name="learning-times/edit"
 							options={{
 								animation: "slide_from_right",

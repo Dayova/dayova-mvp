@@ -121,6 +121,13 @@ describe("SubscriptionScreen", () => {
 			expect(screen.getByText("Abonnieren")).toBeOnTheScreen();
 		});
 		expect(screen.queryByText("Tarif wählen")).not.toBeOnTheScreen();
+		expect(screen.queryByText("Ich zahle selbst")).not.toBeOnTheScreen();
+		expect(screen.getByLabelText("Zurück").parent).toBe(
+			screen.getByTestId("subscription-header-row"),
+		);
+		expect(
+			screen.getByRole("progressbar", { name: "Schritt 2 von 2" }),
+		).toBeOnTheScreen();
 		expect(
 			screen.queryByTestId("subscription-payment-surface"),
 		).not.toBeOnTheScreen();
@@ -135,14 +142,74 @@ describe("SubscriptionScreen", () => {
 		expect(
 			screen.getByRole("radio", { name: /Monatlich/ }).props.accessibilityState,
 		).toEqual({ checked: true });
+		expect(screen.getByTestId("subscription-plan-annual").props.style).toEqual(
+			expect.objectContaining({
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				borderColor: "rgba(255, 255, 255, 0.6)",
+				borderWidth: 1,
+				boxShadow:
+					"inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 6px 16px rgba(9, 54, 78, 0.08)",
+			}),
+		);
+		expect(screen.getByTestId("subscription-plan-monthly").props.style).toEqual(
+			expect.objectContaining({
+				backgroundColor: "rgba(255, 255, 255, 0.8)",
+				borderColor: "#1A1A1A",
+				borderWidth: 1,
+				boxShadow:
+					"inset 0 1px 0 rgba(255, 255, 255, 0.64), 0 8px 20px rgba(9, 54, 78, 0.1)",
+			}),
+		);
+		expect(
+			screen.getByTestId("subscription-plan-monthly-indicator").props.style,
+		).toEqual(
+			expect.objectContaining({
+				backgroundColor: "#1A1A1A",
+				borderColor: "#1A1A1A",
+			}),
+		);
 		expect(
 			screen.getByRole("radio", {
-				name: /Jährlich, 155,88 €. 12,99 € pro Monat · 155,88 € jährlich abgerechnet/,
+				name: /Jährlich, 12,99 €. 155,88 € jährlich abgerechnet/,
 			}),
 		).toBeOnTheScreen();
 		expect(
 			screen.getByRole("radio", { name: /Monatlich, 14,99 €/ }),
 		).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("subscription-checkout-button").props.style,
+		).toEqual(
+			expect.objectContaining({
+				backgroundColor: "#1A1A1A",
+				borderColor: "#DCE6EE",
+			}),
+		);
+		expect(screen.getByText("Käufe wiederherstellen").props.style).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					color: "#FFFFFF",
+					textDecorationLine: "underline",
+				}),
+			]),
+		);
+		expect(
+			screen.getByTestId("restore-purchases-link").props.accessibilityRole,
+		).toBe("button");
+
+		fireEvent.press(screen.getByRole("radio", { name: /Jährlich/ }));
+		await waitFor(() => {
+			expect(
+				screen.getByTestId("subscription-plan-annual").props.style,
+			).toEqual(
+				expect.objectContaining({
+					backgroundColor: "rgba(255, 255, 255, 0.8)",
+					borderColor: "#1A1A1A",
+					borderWidth: 1,
+					boxShadow:
+						"inset 0 1px 0 rgba(255, 255, 255, 0.64), 0 8px 20px rgba(9, 54, 78, 0.1)",
+				}),
+			);
+		});
 	});
 
 	test("shows the parent payment model on its own page", async () => {
@@ -151,6 +218,7 @@ describe("SubscriptionScreen", () => {
 		expect(
 			screen.getByText("Mit deinen Eltern freischalten"),
 		).toBeOnTheScreen();
+		expect(screen.queryByText("Meine Eltern zahlen")).not.toBeOnTheScreen();
 		expect(
 			screen.getByText("Elternzahlung kommt mit der Dayova-Webzahlung"),
 		).toBeOnTheScreen();
@@ -193,7 +261,7 @@ describe("SubscriptionScreen", () => {
 		).not.toHaveLength(0);
 	});
 
-	test("redirects to the dashboard after a confirmed purchase", async () => {
+	test("redirects to the Pro welcome screen after a confirmed purchase", async () => {
 		const screen = await render(<SubscriptionScreen payer="self" />);
 
 		await screen.findByText("Abonnieren");
@@ -203,6 +271,21 @@ describe("SubscriptionScreen", () => {
 
 		await waitFor(() => {
 			expect(mockPurchase).toHaveBeenCalledWith("monthly");
+			expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(1);
+			expect(mockReplace).toHaveBeenCalledWith("/pro-welcome");
+		});
+	});
+
+	test("restores existing purchases without replaying the welcome screen", async () => {
+		const screen = await render(<SubscriptionScreen payer="self" />);
+
+		await screen.findByText("Käufe wiederherstellen");
+		await act(async () => {
+			fireEvent.press(screen.getByText("Käufe wiederherstellen"));
+		});
+
+		await waitFor(() => {
+			expect(mockRestore).toHaveBeenCalledTimes(1);
 			expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(1);
 			expect(mockReplace).toHaveBeenCalledWith("/home");
 		});

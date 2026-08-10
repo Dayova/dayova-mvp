@@ -13,13 +13,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
-import {
-	ArrowLeft,
-	ArrowRight,
-	CreditCard,
-	SquareLock,
-	UserRound,
-} from "~/components/ui/icon";
+import { ArrowLeft, ArrowRight, Check } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
@@ -58,8 +52,14 @@ const primaryActionStyle = {
 	backgroundColor: BRAND_COLORS.primaryStrong,
 	borderColor: BRAND_COLORS.primaryAccent,
 };
+const subscribeActionStyle = {
+	backgroundColor: BRAND_COLORS.text,
+	borderColor: BRAND_COLORS.border,
+};
 const primaryTextStyle = { color: BRAND_COLORS.text };
 const secondaryTextStyle = { color: BRAND_COLORS.secondaryText };
+const planGlassSurface = "rgba(255, 255, 255, 0.8)";
+const planGlassBorder = "rgba(255, 255, 255, 0.6)";
 
 const getStoreApiKey = () =>
 	Platform.select({
@@ -152,6 +152,7 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 			| { status: "cancelled" }
 			| { status: "notEntitled" }
 		>,
+		successPath: "/home" | "/pro-welcome",
 	) => {
 		if (storeActionInFlightRef.current) return;
 		storeActionInFlightRef.current = true;
@@ -166,7 +167,7 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 			}
 			const active = await refreshPaidAccess();
 			if (active) {
-				router.replace("/home");
+				router.replace(successPath);
 			} else {
 				setError(
 					"Der Kauf wird noch bestätigt. Bitte tippe gleich auf „Käufe wiederherstellen“.",
@@ -190,7 +191,10 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 
 	const purchase = async () => {
 		if (!storeClient) return;
-		await finishStoreAction(() => storeClient.purchase(selectedBillingPeriod));
+		await finishStoreAction(
+			() => storeClient.purchase(selectedBillingPeriod),
+			"/pro-welcome",
+		);
 	};
 
 	const restore = async () => {
@@ -198,7 +202,7 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 			setError("Store-Käufe sind auf diesem Gerät nicht verfügbar.");
 			return;
 		}
-		await finishStoreAction(() => storeClient.restore());
+		await finishStoreAction(() => storeClient.restore(), "/home");
 	};
 
 	const openLink = async (url?: string) => {
@@ -245,25 +249,42 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 				}}
 			>
 				<View className="px-7 pt-4">
-					<Pressable
-						accessibilityHint="Kehrt zur Auswahl zurück, wer bezahlt."
-						accessibilityLabel="Zurück"
-						accessibilityRole="button"
-						className="h-12 w-12 items-center justify-center rounded-full bg-white active:opacity-80"
-						hitSlop={8}
-						onPress={returnToPayerChoice}
+					<View
+						className="flex-row items-center justify-between"
+						testID="subscription-header-row"
 					>
-						<ArrowLeft
-							size={21}
-							color={BRAND_COLORS.primaryStrong}
-							strokeWidth={2.4}
-						/>
-					</Pressable>
+						<Pressable
+							accessibilityHint="Kehrt zur Auswahl zurück, wer bezahlt."
+							accessibilityLabel="Zurück"
+							accessibilityRole="button"
+							className="h-12 w-12 items-center justify-center rounded-full bg-white active:opacity-80"
+							hitSlop={8}
+							onPress={returnToPayerChoice}
+						>
+							<ArrowLeft
+								size={21}
+								color={BRAND_COLORS.primaryStrong}
+								strokeWidth={2.4}
+							/>
+						</Pressable>
+						<View
+							accessible
+							accessibilityLabel="Schritt 2 von 2"
+							accessibilityRole="progressbar"
+							accessibilityValue={{ min: 0, max: 2, now: 2 }}
+							className="items-end gap-2"
+						>
+							<Text className="font-semibold text-body-4 text-white/85">
+								SCHRITT 2 VON 2
+							</Text>
+							<View className="flex-row gap-1.5">
+								<View className="h-1 w-8 rounded-full bg-white/55" />
+								<View className="h-1 w-8 rounded-full bg-white" />
+							</View>
+						</View>
+					</View>
 
-					<View className="gap-2 pt-6 pb-7">
-						<Text className="font-semibold text-body-4 text-white/85">
-							SCHRITT 2 VON 2
-						</Text>
+					<View className="gap-3 pt-5 pb-7" testID="subscription-page-intro">
 						<Text
 							variant="h1"
 							className="max-w-[330px] text-left font-semibold text-heading-1 text-white leading-tight"
@@ -277,35 +298,6 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 								? "Teile den sicheren Zahlungsweg. Dein Lernstand bleibt dabei erhalten."
 								: "Wähle den Tarif, der zu dir passt. Bezahlt wird sicher über deinen Store."}
 						</Text>
-					</View>
-
-					<View className="flex-row items-center pb-5">
-						<View className="h-12 w-12 items-center justify-center rounded-full bg-white">
-							{isParentPayment ? (
-								<UserRound
-									size={24}
-									color={BRAND_COLORS.primaryStrong}
-									strokeWidth={2.3}
-								/>
-							) : (
-								<CreditCard
-									size={24}
-									color={BRAND_COLORS.primaryStrong}
-									strokeWidth={2.3}
-								/>
-							)}
-						</View>
-						<View className="ml-4 flex-1">
-							<Text className="font-semibold text-body-2 text-white">
-								{isParentPayment ? "Meine Eltern zahlen" : "Ich zahle selbst"}
-							</Text>
-							<Text className="mt-1 text-body-4 text-white/80">
-								{isParentPayment
-									? "Zahlungslink oder QR-Code"
-									: "App Store oder Google Play"}
-							</Text>
-						</View>
-						<SquareLock size={22} color={WHITE} strokeWidth={2.2} />
 					</View>
 
 					{isParentPayment ? (
@@ -332,6 +324,7 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 											: "—"
 									}
 									selected={selectedBillingPeriod === "annual"}
+									testID="subscription-plan-annual"
 									onPress={() => setSelectedBillingPeriod("annual")}
 								/>
 								<PlanCard
@@ -347,6 +340,7 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 											: "—"
 									}
 									selected={selectedBillingPeriod === "monthly"}
+									testID="subscription-plan-monthly"
 									onPress={() => setSelectedBillingPeriod("monthly")}
 								/>
 							</View>
@@ -369,7 +363,8 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 									!planByBillingPeriod.has(selectedBillingPeriod)
 								}
 								variant="neutral"
-								style={primaryActionStyle}
+								style={subscribeActionStyle}
+								testID="subscription-checkout-button"
 								onPress={() => void purchase()}
 							>
 								{isLoadingPlans || isPurchasing ? (
@@ -378,6 +373,20 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 									<Text style={{ color: WHITE }}>Abonnieren</Text>
 								)}
 							</Button>
+							<Pressable
+								accessibilityRole="button"
+								className="min-h-12 items-center justify-center px-4"
+								hitSlop={4}
+								onPress={() => void restore()}
+								testID="restore-purchases-link"
+							>
+								<Text
+									className="text-body-4"
+									style={{ color: WHITE, textDecorationLine: "underline" }}
+								>
+									Käufe wiederherstellen
+								</Text>
+							</Pressable>
 						</View>
 					)}
 
@@ -393,23 +402,15 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 						</View>
 					) : null}
 
-					{!isParentPayment || access?.managementUrl ? (
+					{access?.managementUrl ? (
 						<View
 							className="mt-5 rounded-card border px-5 py-2 shadow-black/10 shadow-sm"
 							style={utilitySurfaceStyle}
 						>
-							{!isParentPayment ? (
-								<SubscriptionAction
-									label="Käufe wiederherstellen"
-									onPress={() => void restore()}
-								/>
-							) : null}
-							{access?.managementUrl ? (
-								<SubscriptionAction
-									label="Abo verwalten"
-									onPress={() => void openLink(access.managementUrl)}
-								/>
-							) : null}
+							<SubscriptionAction
+								label="Abo verwalten"
+								onPress={() => void openLink(access.managementUrl)}
+							/>
 						</View>
 					) : null}
 
@@ -504,12 +505,14 @@ function PlanCard({
 	onPress,
 	price,
 	selected,
+	testID,
 }: {
 	description: string;
 	label: string;
 	onPress: () => void;
 	price: string;
 	selected: boolean;
+	testID: string;
 }) {
 	return (
 		<Pressable
@@ -518,13 +521,14 @@ function PlanCard({
 			accessibilityState={{ checked: selected }}
 			className="rounded-3xl border px-5 py-4"
 			onPress={onPress}
+			testID={testID}
 			style={{
-				backgroundColor: selected
-					? BRAND_COLORS.systemSubtle
-					: BRAND_COLORS.surface,
-				borderColor: selected
-					? BRAND_COLORS.primaryStrong
-					: BRAND_COLORS.border,
+				backgroundColor: planGlassSurface,
+				borderColor: selected ? BRAND_COLORS.text : planGlassBorder,
+				borderWidth: 1,
+				boxShadow: selected
+					? "inset 0 1px 0 rgba(255, 255, 255, 0.64), 0 8px 20px rgba(9, 54, 78, 0.1)"
+					: "inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 6px 16px rgba(9, 54, 78, 0.08)",
 			}}
 		>
 			<View className="flex-row items-start">
@@ -536,12 +540,26 @@ function PlanCard({
 						{description}
 					</Text>
 				</View>
-				<Text
-					className="ml-3 font-semibold text-body-2"
-					style={primaryTextStyle}
-				>
-					{price}
-				</Text>
+				<View className="ml-3 flex-row items-center gap-3">
+					<Text className="font-semibold text-body-2" style={primaryTextStyle}>
+						{price}
+					</Text>
+					<View
+						accessible={false}
+						className="h-6 w-6 items-center justify-center rounded-full border"
+						style={{
+							backgroundColor: selected
+								? BRAND_COLORS.text
+								: BRAND_COLORS.surface,
+							borderColor: selected ? BRAND_COLORS.text : BRAND_COLORS.border,
+						}}
+						testID={`${testID}-indicator`}
+					>
+						{selected ? (
+							<Check size={14} color={WHITE} strokeWidth={3} />
+						) : null}
+					</View>
+				</View>
 			</View>
 		</Pressable>
 	);

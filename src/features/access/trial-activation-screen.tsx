@@ -103,7 +103,7 @@ export function TrialActivationScreen() {
 				}}
 			>
 				<View className="flex-1 px-7 pt-5 pb-2">
-					<View className="gap-2 pb-7">
+					<View className="gap-3 pb-7">
 						<Text className="font-semibold text-body-4 text-white/85">
 							14 TAGE KOSTENLOS
 						</Text>

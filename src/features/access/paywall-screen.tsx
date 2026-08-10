@@ -129,7 +129,7 @@ export function PaywallScreen() {
 					}}
 				>
 					<View className="px-7 pt-5">
-						<View className="gap-2 pb-7">
+						<View className="gap-3 pb-7">
 							<Text className="font-semibold text-body-4 text-white/85">
 								TESTPHASE BEENDET
 							</Text>

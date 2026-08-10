@@ -4,8 +4,8 @@ export type DayovaBillingPeriod = "annual" | "monthly";
 // Store products must use the same amounts before a production release.
 export const DAYOVA_SUBSCRIPTION_PRICING = {
 	annual: {
-		billingDescription: "12,99 € pro Monat · 155,88 € jährlich abgerechnet",
-		displayPrice: "155,88 €",
+		billingDescription: "155,88 € jährlich abgerechnet",
+		displayPrice: "12,99 €",
 	},
 	monthly: {
 		billingDescription: "Monatlich abgerechnet",
