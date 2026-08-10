@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/expo";
-import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
@@ -27,11 +27,19 @@ const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
 const WHITE = BRAND_COLORS.light1;
 // LinearGradient exposes its full-bleed geometry through the native style API.
 const gradientFillStyle = StyleSheet.absoluteFill;
-// This focused branded route intentionally keeps its utility surface light in
-// every app theme. Fixed shared tokens avoid stale CSS variables on Fabric.
+// This focused branded route intentionally keeps its primary payer and utility
+// surfaces light in every app theme. Fixed shared tokens avoid stale CSS
+// variables on Fabric.
 const utilitySurfaceStyle = {
 	backgroundColor: BRAND_COLORS.systemSubtle,
 	borderColor: BRAND_COLORS.primaryAccent,
+};
+const primaryPayerSurfaceStyle = {
+	backgroundColor: BRAND_COLORS.surface,
+	borderColor: BRAND_COLORS.light1,
+};
+const primaryPayerIconStyle = {
+	backgroundColor: BRAND_COLORS.primaryStrong,
 };
 
 export function PaywallScreen() {
@@ -145,16 +153,17 @@ export function PaywallScreen() {
 								</Text>
 								<View className="mt-4 gap-3">
 									<PayerButton
+										description="Direkt im App Store oder bei Google Play"
+										emphasis="primary"
+										icon={CreditCard}
+										label="Ich zahle selbst"
+										onPress={() => openSubscription("self")}
+									/>
+									<PayerButton
 										description="Zahlungslink oder QR-Code teilen"
 										icon={UserRound}
 										label="Meine Eltern zahlen"
 										onPress={() => openSubscription("parent")}
-									/>
-									<PayerButton
-										description="Direkt im App Store oder bei Google Play"
-										icon={CreditCard}
-										label="Ich zahle selbst"
-										onPress={() => openSubscription("self")}
 									/>
 								</View>
 							</View>
@@ -189,25 +198,7 @@ export function PaywallScreen() {
 							</View>
 						) : null}
 
-						<View
-							className="mt-8 rounded-card border px-5 py-2 shadow-black/10 shadow-sm"
-							style={utilitySurfaceStyle}
-							testID="paywall-utility-surface"
-						>
-							<EssentialAction
-								icon={<Logout size={19} color={BRAND_COLORS.secondaryText} />}
-								label="Abmelden oder Konto wechseln"
-								onPress={() => void logout()}
-							/>
-							<EssentialAction
-								icon={<Trash2 size={19} color={BRAND_COLORS.destructive} />}
-								label="Konto löschen"
-								destructive
-								onPress={openAccountDeletion}
-							/>
-						</View>
-
-						<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-5">
+						<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-6">
 							<LegalLink
 								label="Support"
 								url={env.EXPO_PUBLIC_SUPPORT_URL}
@@ -229,6 +220,26 @@ export function PaywallScreen() {
 								onOpen={openLink}
 							/>
 						</View>
+
+						<View
+							className="mt-4 flex-row rounded-3xl border px-2 py-1 shadow-black/5 shadow-sm"
+							style={utilitySurfaceStyle}
+							testID="paywall-utility-surface"
+						>
+							<EssentialAction
+								accessibilityLabel="Abmelden oder Konto wechseln"
+								icon={<Logout size={16} color={BRAND_COLORS.secondaryText} />}
+								label="Konto wechseln"
+								onPress={() => void logout()}
+							/>
+							<View className="my-2 w-px bg-border" />
+							<EssentialAction
+								icon={<Trash2 size={16} color={BRAND_COLORS.destructive} />}
+								label="Konto löschen"
+								destructive
+								onPress={openAccountDeletion}
+							/>
+						</View>
 					</View>
 				</ScrollView>
 			</View>
@@ -248,11 +259,13 @@ export function PaywallScreen() {
 
 function PayerButton({
 	description,
+	emphasis = "secondary",
 	icon,
 	label,
 	onPress,
 }: {
 	description: string;
+	emphasis?: "primary" | "secondary";
 	icon: React.ComponentType<{
 		color?: string;
 		size?: number;
@@ -262,33 +275,80 @@ function PayerButton({
 	onPress: () => void;
 }) {
 	const Icon = icon;
+	const isPrimary = emphasis === "primary";
 
 	return (
 		<Pressable
 			accessibilityLabel={`${label}. ${description}`}
 			accessibilityHint="Öffnet die passende Aboseite."
 			accessibilityRole="button"
-			className="min-h-[72px] flex-row items-center rounded-card border border-white/35 bg-white/20 px-4 py-3 active:opacity-80"
+			className={
+				isPrimary
+					? "min-h-20 flex-row items-center rounded-card border px-4 py-3 shadow-black/15 shadow-md active:opacity-90"
+					: "min-h-[72px] flex-row items-center rounded-card border border-white/50 bg-white/25 px-4 py-3 active:bg-white/30"
+			}
 			onPress={onPress}
+			style={isPrimary ? primaryPayerSurfaceStyle : undefined}
+			testID={`payer-${emphasis}-action`}
 		>
-			<View className="h-10 w-10 items-center justify-center rounded-full bg-white/15">
-				<Icon size={21} color={WHITE} strokeWidth={2.2} />
+			<View
+				className="h-11 w-11 items-center justify-center rounded-full bg-white/20"
+				style={isPrimary ? primaryPayerIconStyle : undefined}
+			>
+				<Icon
+					size={22}
+					color={isPrimary ? WHITE : BRAND_COLORS.light1}
+					strokeWidth={2.3}
+				/>
 			</View>
 			<View className="ml-3 flex-1">
-				<Text className="font-semibold text-body-3 text-white">{label}</Text>
-				<Text className="text-body-4 text-white/75">{description}</Text>
+				{isPrimary ? (
+					<Text className="font-semibold text-body-5 text-primary-strong">
+						SOFORT STARTEN
+					</Text>
+				) : null}
+				<Text
+					className={
+						isPrimary
+							? "font-semibold text-body-2"
+							: "font-semibold text-body-3"
+					}
+					style={{
+						color: isPrimary ? BRAND_COLORS.text : BRAND_COLORS.light1,
+					}}
+				>
+					{label}
+				</Text>
+				<Text
+					className="text-body-4"
+					style={{
+						color: isPrimary ? BRAND_COLORS.secondaryText : BRAND_COLORS.light1,
+					}}
+				>
+					{description}
+				</Text>
 			</View>
-			<ArrowRight size={19} color={WHITE} strokeWidth={2} />
+			<View
+				className={
+					isPrimary
+						? "h-9 w-9 items-center justify-center rounded-full bg-primary-strong"
+						: "h-9 w-9 items-center justify-center rounded-full bg-white/15"
+				}
+			>
+				<ArrowRight size={18} color={WHITE} strokeWidth={2.2} />
+			</View>
 		</Pressable>
 	);
 }
 
 function EssentialAction({
+	accessibilityLabel,
 	destructive = false,
 	icon,
 	label,
 	onPress,
 }: {
+	accessibilityLabel?: string;
 	destructive?: boolean;
 	icon: React.ReactNode;
 	label: string;
@@ -296,14 +356,15 @@ function EssentialAction({
 }) {
 	return (
 		<Pressable
+			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
-			className="min-h-12 flex-row items-center py-3"
+			className="min-h-11 flex-1 flex-row items-center justify-center px-2 py-2"
 			hitSlop={4}
 			onPress={onPress}
 		>
-			<View className="mr-3">{icon}</View>
+			<View className="mr-2.5">{icon}</View>
 			<Text
-				className="flex-1 text-body-3"
+				className="font-semibold text-body-5"
 				style={{
 					color: destructive
 						? BRAND_COLORS.destructive
@@ -312,7 +373,6 @@ function EssentialAction({
 			>
 				{label}
 			</Text>
-			<ArrowRight size={18} color={BRAND_COLORS.secondaryText} />
 		</Pressable>
 	);
 }

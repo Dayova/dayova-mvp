@@ -76,6 +76,26 @@ describe("PaywallScreen", () => {
 				borderColor: "#4FD8FF",
 			}),
 		);
+		expect(
+			screen.getByTestId("paywall-utility-surface").props.className,
+		).toContain("rounded-3xl");
+		expect(screen.getByTestId("payer-primary-action").props.style).toEqual(
+			expect.objectContaining({
+				backgroundColor: "#FFFFFF",
+				borderColor: "#FFFFFF",
+			}),
+		);
+		expect(
+			screen.getByTestId("payer-primary-action").props.className,
+		).toContain("shadow-md");
+		expect(
+			screen.getByTestId("payer-secondary-action").props.className,
+		).toContain("bg-white/25");
+		expect(screen.getByText("SOFORT STARTEN")).toBeOnTheScreen();
+		expect(
+			screen.getByLabelText("Abmelden oder Konto wechseln"),
+		).toBeOnTheScreen();
+		expect(screen.getByText("Konto wechseln")).toBeOnTheScreen();
 	});
 
 	test("opens the separate subscription page for the chosen payer", async () => {
