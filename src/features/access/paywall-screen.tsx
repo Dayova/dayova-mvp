@@ -247,16 +247,6 @@ export function PaywallScreen() {
 				onClose={() => setShowSubscriptionManagement(false)}
 				onDismiss={finishSubscriptionManagementDismissal}
 			>
-				<View className="mb-5 rounded-3xl bg-system-subtle px-4 py-4">
-					<Text className="font-semibold text-body-3 text-text">
-						Gut zu wissen
-					</Text>
-					<Text className="mt-1 text-body-4 text-secondary-text">
-						Bei einem Kontowechsel bleibt dein Lernstand erhalten. Ein
-						bestehendes Store-Abo verwaltest und kündigst du direkt im App Store
-						oder bei Google Play.
-					</Text>
-				</View>
 				<View className="overflow-hidden rounded-card border border-border/45 bg-card">
 					<ManagementAction
 						accessibilityLabel="Abmelden oder Konto wechseln"

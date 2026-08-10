@@ -167,8 +167,8 @@ describe("PaywallScreen", () => {
 
 		fireEvent.press(screen.getByRole("link", { name: "Abo verwalten" }));
 
-		expect(await screen.findByText("Gut zu wissen")).toBeOnTheScreen();
-		expect(screen.getByText(/Bei einem Kontowechsel/)).toBeOnTheScreen();
+		expect(await screen.findByText("Konto wechseln")).toBeOnTheScreen();
+		expect(screen.queryByText("Gut zu wissen")).toBeNull();
 		expect(
 			screen.getByLabelText("Abmelden oder Konto wechseln"),
 		).toBeOnTheScreen();
