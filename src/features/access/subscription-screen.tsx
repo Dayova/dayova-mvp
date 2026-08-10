@@ -308,91 +308,78 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 						<SquareLock size={22} color={WHITE} strokeWidth={2.2} />
 					</View>
 
-					<View
-						className="rounded-card border px-5 py-6 shadow-black/10 shadow-sm"
-						style={contentSurfaceStyle}
-						testID="subscription-payment-surface"
-					>
-						{isParentPayment ? (
+					{isParentPayment ? (
+						<View
+							className="rounded-card border px-5 py-6 shadow-black/10 shadow-sm"
+							style={contentSurfaceStyle}
+							testID="subscription-payment-surface"
+						>
 							<ParentPayment onOpen={openLink} />
-						) : (
-							<>
-								<Text
-									className="mb-3 font-semibold text-body-2"
-									style={primaryTextStyle}
-								>
-									Tarif wählen
-								</Text>
-								<View className="gap-3">
-									<PlanCard
-										description={
-											annualPlan
-												? DAYOVA_SUBSCRIPTION_PRICING.annual.billingDescription
-												: unavailablePlanDescription
-										}
-										label="Jährlich"
-										price={
-											annualPlan
-												? DAYOVA_SUBSCRIPTION_PRICING.annual.displayPrice
-												: "—"
-										}
-										selected={selectedBillingPeriod === "annual"}
-										onPress={() => setSelectedBillingPeriod("annual")}
-									/>
-									<PlanCard
-										description={
-											monthlyPlan
-												? DAYOVA_SUBSCRIPTION_PRICING.monthly.billingDescription
-												: unavailablePlanDescription
-										}
-										label="Monatlich"
-										price={
-											monthlyPlan
-												? DAYOVA_SUBSCRIPTION_PRICING.monthly.displayPrice
-												: "—"
-										}
-										selected={selectedBillingPeriod === "monthly"}
-										onPress={() => setSelectedBillingPeriod("monthly")}
-									/>
-								</View>
-								{!storeClient ? (
-									<Text
-										accessibilityLiveRegion="polite"
-										className="mt-3 text-center text-body-4"
-										style={secondaryTextStyle}
-									>
-										{storeUnavailableMessage}
-									</Text>
-								) : null}
-								<Button
-									accessibilityHint="Öffnet den Kauf im App Store oder bei Google Play."
-									className="mt-5"
-									disabled={
-										isLoadingPlans ||
-										isPurchasing ||
-										!storeClient ||
-										!planByBillingPeriod.has(selectedBillingPeriod)
+						</View>
+					) : (
+						<View>
+							<View className="gap-3">
+								<PlanCard
+									description={
+										annualPlan
+											? DAYOVA_SUBSCRIPTION_PRICING.annual.billingDescription
+											: unavailablePlanDescription
 									}
-									variant="neutral"
-									style={primaryActionStyle}
-									onPress={() => void purchase()}
-								>
-									{isLoadingPlans || isPurchasing ? (
-										<ActivityIndicator color={WHITE} />
-									) : (
-										<Text style={{ color: WHITE }}>Im Store abonnieren</Text>
-									)}
-								</Button>
+									label="Jährlich"
+									price={
+										annualPlan
+											? DAYOVA_SUBSCRIPTION_PRICING.annual.displayPrice
+											: "—"
+									}
+									selected={selectedBillingPeriod === "annual"}
+									onPress={() => setSelectedBillingPeriod("annual")}
+								/>
+								<PlanCard
+									description={
+										monthlyPlan
+											? DAYOVA_SUBSCRIPTION_PRICING.monthly.billingDescription
+											: unavailablePlanDescription
+									}
+									label="Monatlich"
+									price={
+										monthlyPlan
+											? DAYOVA_SUBSCRIPTION_PRICING.monthly.displayPrice
+											: "—"
+									}
+									selected={selectedBillingPeriod === "monthly"}
+									onPress={() => setSelectedBillingPeriod("monthly")}
+								/>
+							</View>
+							{!storeClient ? (
 								<Text
+									accessibilityLiveRegion="polite"
 									className="mt-3 text-center text-body-4"
 									style={secondaryTextStyle}
 								>
-									Die Zahlung läuft über den App Store oder Google Play. Das Abo
-									verlängert sich dort bis zur Kündigung.
+									{storeUnavailableMessage}
 								</Text>
-							</>
-						)}
-					</View>
+							) : null}
+							<Button
+								accessibilityHint="Öffnet den Kauf im App Store oder bei Google Play."
+								className="mt-5"
+								disabled={
+									isLoadingPlans ||
+									isPurchasing ||
+									!storeClient ||
+									!planByBillingPeriod.has(selectedBillingPeriod)
+								}
+								variant="neutral"
+								style={primaryActionStyle}
+								onPress={() => void purchase()}
+							>
+								{isLoadingPlans || isPurchasing ? (
+									<ActivityIndicator color={WHITE} />
+								) : (
+									<Text style={{ color: WHITE }}>Abonnieren</Text>
+								)}
+							</Button>
+						</View>
+					)}
 
 					{error ? (
 						<View className="mt-4 rounded-3xl bg-white px-4 py-3">

@@ -118,8 +118,17 @@ describe("SubscriptionScreen", () => {
 		expect(screen.getByText("Dein Dayova-Abo auswählen")).toBeOnTheScreen();
 		await waitFor(() => {
 			expect(mockGetPlans).toHaveBeenCalledTimes(1);
-			expect(screen.getByText("Tarif wählen")).toBeOnTheScreen();
+			expect(screen.getByText("Abonnieren")).toBeOnTheScreen();
 		});
+		expect(screen.queryByText("Tarif wählen")).not.toBeOnTheScreen();
+		expect(
+			screen.queryByTestId("subscription-payment-surface"),
+		).not.toBeOnTheScreen();
+		expect(
+			screen.queryByText(
+				"Die Zahlung läuft über den App Store oder Google Play. Das Abo verlängert sich dort bis zur Kündigung.",
+			),
+		).not.toBeOnTheScreen();
 		expect(
 			screen.getByRole("radio", { name: /Jährlich/ }).props.accessibilityState,
 		).toEqual({ checked: false });
@@ -134,14 +143,6 @@ describe("SubscriptionScreen", () => {
 		expect(
 			screen.getByRole("radio", { name: /Monatlich, 14,99 €/ }),
 		).toBeOnTheScreen();
-		expect(
-			screen.getByTestId("subscription-payment-surface").props.style,
-		).toEqual(
-			expect.objectContaining({
-				backgroundColor: "#FFFFFF",
-				borderColor: "#4FD8FF",
-			}),
-		);
 	});
 
 	test("shows the parent payment model on its own page", async () => {
@@ -153,6 +154,14 @@ describe("SubscriptionScreen", () => {
 		expect(
 			screen.getByText("Elternzahlung kommt mit der Dayova-Webzahlung"),
 		).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("subscription-payment-surface").props.style,
+		).toEqual(
+			expect.objectContaining({
+				backgroundColor: "#FFFFFF",
+				borderColor: "#4FD8FF",
+			}),
+		);
 		expect(screen.queryByText("Tarif wählen")).not.toBeOnTheScreen();
 		expect(mockGetPlans).not.toHaveBeenCalled();
 	});
@@ -187,9 +196,9 @@ describe("SubscriptionScreen", () => {
 	test("redirects to the dashboard after a confirmed purchase", async () => {
 		const screen = await render(<SubscriptionScreen payer="self" />);
 
-		await screen.findByText("Im Store abonnieren");
+		await screen.findByText("Abonnieren");
 		await act(async () => {
-			fireEvent.press(screen.getByText("Im Store abonnieren"));
+			fireEvent.press(screen.getByText("Abonnieren"));
 		});
 
 		await waitFor(() => {
