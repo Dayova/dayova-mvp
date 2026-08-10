@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
+import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import {
 	ArrowRight,
 	CreditCard,
@@ -27,13 +28,9 @@ const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
 const WHITE = BRAND_COLORS.light1;
 // LinearGradient exposes its full-bleed geometry through the native style API.
 const gradientFillStyle = StyleSheet.absoluteFill;
-// This focused branded route intentionally keeps its primary payer and utility
-// surfaces light in every app theme. Fixed shared tokens avoid stale CSS
-// variables on Fabric.
-const utilitySurfaceStyle = {
-	backgroundColor: BRAND_COLORS.systemSubtle,
-	borderColor: BRAND_COLORS.primaryAccent,
-};
+// This focused branded route intentionally keeps its primary payer surface
+// light in every app theme. Fixed shared tokens avoid stale CSS variables on
+// Fabric.
 const primaryPayerSurfaceStyle = {
 	backgroundColor: BRAND_COLORS.surface,
 	borderColor: BRAND_COLORS.light1,
@@ -48,6 +45,9 @@ export function PaywallScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const [error, setError] = useState<string | null>(null);
+	const [showSubscriptionManagement, setShowSubscriptionManagement] =
+		useState(false);
+	const pendingManagementActionRef = useRef<"delete" | null>(null);
 	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -60,9 +60,21 @@ export function PaywallScreen() {
 		});
 	};
 
-	const openAccountDeletion = () => {
+	const requestAccountDeletion = () => {
 		setDeleteError(null);
+		pendingManagementActionRef.current = "delete";
+		setShowSubscriptionManagement(false);
+	};
+
+	const finishSubscriptionManagementDismissal = () => {
+		if (pendingManagementActionRef.current !== "delete") return;
+		pendingManagementActionRef.current = null;
 		setShowDeleteConfirmation(true);
+	};
+
+	const switchAccount = () => {
+		setShowSubscriptionManagement(false);
+		void logout();
 	};
 
 	const deleteAccount = async () => {
@@ -219,30 +231,48 @@ export function PaywallScreen() {
 								url={env.EXPO_PUBLIC_CANCELLATION_URL}
 								onOpen={openLink}
 							/>
-						</View>
-
-						<View
-							className="mt-4 flex-row rounded-3xl border px-2 py-1 shadow-black/5 shadow-sm"
-							style={utilitySurfaceStyle}
-							testID="paywall-utility-surface"
-						>
-							<EssentialAction
-								accessibilityLabel="Abmelden oder Konto wechseln"
-								icon={<Logout size={16} color={BRAND_COLORS.secondaryText} />}
-								label="Konto wechseln"
-								onPress={() => void logout()}
-							/>
-							<View className="my-2 w-px bg-border" />
-							<EssentialAction
-								icon={<Trash2 size={16} color={BRAND_COLORS.destructive} />}
-								label="Konto löschen"
-								destructive
-								onPress={openAccountDeletion}
+							<LegalLink
+								label="Abo verwalten"
+								onPress={() => setShowSubscriptionManagement(true)}
 							/>
 						</View>
 					</View>
 				</ScrollView>
 			</View>
+			<DayovaSheetFrame
+				visible={showSubscriptionManagement}
+				title="Abo verwalten"
+				description="Hier findest du Informationen zu deinem Zugang und kannst dein Dayova-Konto wechseln oder löschen."
+				closeAccessibilityLabel="Abo-Verwaltung schließen"
+				onClose={() => setShowSubscriptionManagement(false)}
+				onDismiss={finishSubscriptionManagementDismissal}
+			>
+				<View className="mb-5 rounded-3xl bg-system-subtle px-4 py-4">
+					<Text className="font-semibold text-body-3 text-text">
+						Gut zu wissen
+					</Text>
+					<Text className="mt-1 text-body-4 text-secondary-text">
+						Bei einem Kontowechsel bleibt dein Lernstand erhalten. Ein
+						bestehendes Store-Abo verwaltest und kündigst du direkt im App Store
+						oder bei Google Play.
+					</Text>
+				</View>
+				<View className="overflow-hidden rounded-card border border-border/45 bg-card">
+					<ManagementAction
+						accessibilityLabel="Abmelden oder Konto wechseln"
+						icon={<Logout size={20} color={BRAND_COLORS.primaryStrong} />}
+						label="Konto wechseln"
+						onPress={switchAccount}
+					/>
+					<View className="mx-4 h-px bg-border" />
+					<ManagementAction
+						destructive
+						icon={<Trash2 size={20} color={BRAND_COLORS.destructive} />}
+						label="Konto löschen"
+						onPress={requestAccountDeletion}
+					/>
+				</View>
+			</DayovaSheetFrame>
 			<ConfirmationSheet
 				visible={showDeleteConfirmation}
 				title="Konto wirklich löschen?"
@@ -341,7 +371,7 @@ function PayerButton({
 	);
 }
 
-function EssentialAction({
+function ManagementAction({
 	accessibilityLabel,
 	destructive = false,
 	icon,
@@ -358,21 +388,28 @@ function EssentialAction({
 		<Pressable
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
-			className="min-h-11 flex-1 flex-row items-center justify-center px-2 py-2"
-			hitSlop={4}
+			className="min-h-14 flex-row items-center px-4 py-3 active:bg-system-subtle"
 			onPress={onPress}
 		>
-			<View className="mr-2.5">{icon}</View>
+			<View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-system-subtle">
+				{icon}
+			</View>
 			<Text
-				className="font-semibold text-body-5"
-				style={{
-					color: destructive
-						? BRAND_COLORS.destructive
-						: BRAND_COLORS.secondaryText,
-				}}
+				className={
+					destructive
+						? "flex-1 font-semibold text-body-3 text-destructive"
+						: "flex-1 font-semibold text-body-3 text-text"
+				}
 			>
 				{label}
 			</Text>
+			<ArrowRight
+				size={18}
+				color={
+					destructive ? BRAND_COLORS.destructive : BRAND_COLORS.secondaryText
+				}
+				strokeWidth={2}
+			/>
 		</Pressable>
 	);
 }
@@ -380,18 +417,26 @@ function EssentialAction({
 function LegalLink({
 	label,
 	onOpen,
+	onPress,
 	url,
 }: {
 	label: string;
-	onOpen: (url?: string) => Promise<void>;
+	onOpen?: (url?: string) => Promise<void>;
+	onPress?: () => void;
 	url?: string;
 }) {
 	return (
 		<Pressable
 			accessibilityRole="link"
-			disabled={!url}
+			disabled={!url && !onPress}
 			hitSlop={8}
-			onPress={() => void onOpen(url)}
+			onPress={() => {
+				if (onPress) {
+					onPress();
+					return;
+				}
+				if (onOpen) void onOpen(url);
+			}}
 		>
 			<Text className="text-body-4 text-white underline">{label}</Text>
 		</Pressable>
