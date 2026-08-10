@@ -166,16 +166,17 @@ export function PaywallScreen() {
 								<View className="mt-4 gap-3">
 									<PayerButton
 										description="Direkt im App Store oder bei Google Play"
-										emphasis="primary"
 										icon={CreditCard}
 										label="Ich zahle selbst"
 										onPress={() => openSubscription("self")}
+										testID="payer-self-action"
 									/>
 									<PayerButton
 										description="Zahlungslink oder QR-Code teilen"
 										icon={UserRound}
 										label="Meine Eltern zahlen"
 										onPress={() => openSubscription("parent")}
+										testID="payer-parent-action"
 									/>
 								</View>
 							</View>
@@ -279,13 +280,12 @@ export function PaywallScreen() {
 
 function PayerButton({
 	description,
-	emphasis = "secondary",
 	icon,
 	label,
 	onPress,
+	testID,
 }: {
 	description: string;
-	emphasis?: "primary" | "secondary";
 	icon: React.ComponentType<{
 		color?: string;
 		size?: number;
@@ -293,68 +293,44 @@ function PayerButton({
 	}>;
 	label: string;
 	onPress: () => void;
+	testID: string;
 }) {
 	const Icon = icon;
-	const isPrimary = emphasis === "primary";
 
 	return (
 		<Pressable
 			accessibilityLabel={`${label}. ${description}`}
 			accessibilityHint="Öffnet die passende Aboseite."
 			accessibilityRole="button"
-			className={
-				isPrimary
-					? "min-h-20 flex-row items-center rounded-card border px-4 py-3 shadow-black/15 shadow-md active:opacity-90"
-					: "min-h-[72px] flex-row items-center rounded-card border border-white/50 bg-white/25 px-4 py-3 active:bg-white/30"
-			}
+			className="min-h-20 flex-row items-center rounded-card border px-4 py-3 shadow-black/15 shadow-md active:opacity-90"
 			onPress={onPress}
-			style={isPrimary ? primaryPayerSurfaceStyle : undefined}
-			testID={`payer-${emphasis}-action`}
+			style={primaryPayerSurfaceStyle}
+			testID={testID}
 		>
 			<View
 				className="h-11 w-11 items-center justify-center rounded-full bg-white/20"
-				style={isPrimary ? primaryPayerIconStyle : undefined}
+				style={primaryPayerIconStyle}
 			>
-				<Icon
-					size={22}
-					color={isPrimary ? WHITE : BRAND_COLORS.light1}
-					strokeWidth={2.3}
-				/>
+				<Icon size={22} color={WHITE} strokeWidth={2.3} />
 			</View>
 			<View className="ml-3 flex-1">
-				{isPrimary ? (
-					<Text className="font-semibold text-body-5 text-primary-strong">
-						SOFORT STARTEN
-					</Text>
-				) : null}
+				<Text className="font-semibold text-body-5 text-primary-strong">
+					SOFORT STARTEN
+				</Text>
 				<Text
-					className={
-						isPrimary
-							? "font-semibold text-body-2"
-							: "font-semibold text-body-3"
-					}
-					style={{
-						color: isPrimary ? BRAND_COLORS.text : BRAND_COLORS.light1,
-					}}
+					className="font-semibold text-body-3"
+					style={{ color: BRAND_COLORS.text }}
 				>
 					{label}
 				</Text>
 				<Text
 					className="text-body-4"
-					style={{
-						color: isPrimary ? BRAND_COLORS.secondaryText : BRAND_COLORS.light1,
-					}}
+					style={{ color: BRAND_COLORS.secondaryText }}
 				>
 					{description}
 				</Text>
 			</View>
-			<View
-				className={
-					isPrimary
-						? "h-9 w-9 items-center justify-center rounded-full bg-primary-strong"
-						: "h-9 w-9 items-center justify-center rounded-full bg-white/15"
-				}
-			>
+			<View className="h-9 w-9 items-center justify-center rounded-full bg-primary-strong">
 				<ArrowRight size={18} color={WHITE} strokeWidth={2.2} />
 			</View>
 		</Pressable>

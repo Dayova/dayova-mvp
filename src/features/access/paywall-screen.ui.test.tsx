@@ -118,19 +118,16 @@ describe("PaywallScreen", () => {
 		).toBeOnTheScreen();
 		expect(screen.getByText("Zugang freischalten")).toBeOnTheScreen();
 		expect(screen.queryByText("Tarif wählen")).not.toBeOnTheScreen();
-		expect(screen.getByTestId("payer-primary-action").props.style).toEqual(
-			expect.objectContaining({
-				backgroundColor: "#FFFFFF",
-				borderColor: "#FFFFFF",
-			}),
-		);
-		expect(
-			screen.getByTestId("payer-primary-action").props.className,
-		).toContain("shadow-md");
-		expect(
-			screen.getByTestId("payer-secondary-action").props.className,
-		).toContain("bg-white/25");
-		expect(screen.getByText("SOFORT STARTEN")).toBeOnTheScreen();
+		for (const testID of ["payer-self-action", "payer-parent-action"]) {
+			expect(screen.getByTestId(testID).props.style).toEqual(
+				expect.objectContaining({
+					backgroundColor: "#FFFFFF",
+					borderColor: "#FFFFFF",
+				}),
+			);
+			expect(screen.getByTestId(testID).props.className).toContain("shadow-md");
+		}
+		expect(screen.getAllByText("SOFORT STARTEN")).toHaveLength(2);
 		expect(
 			screen.getByRole("link", { name: "Abo verwalten" }),
 		).toBeOnTheScreen();
