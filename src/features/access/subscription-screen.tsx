@@ -165,7 +165,9 @@ export function SubscriptionScreen({ payer }: { payer: SubscriptionPayer }) {
 				return;
 			}
 			const active = await refreshPaidAccess();
-			if (!active) {
+			if (active) {
+				router.replace("/home");
+			} else {
 				setError(
 					"Der Kauf wird noch bestätigt. Bitte tippe gleich auf „Käufe wiederherstellen“.",
 				);

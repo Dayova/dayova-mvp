@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { SubscriptionScreen } from "./subscription-screen";
 
@@ -20,12 +20,18 @@ const storePlans = [
 	},
 ];
 const mockGetPlans = jest.fn(async () => storePlans);
+const mockPurchase = jest.fn(async () => ({ status: "purchased" as const }));
+const mockRestore = jest.fn(async () => ({ status: "purchased" as const }));
+const mockRefreshPaidAccess = jest.fn(async () => true);
 let mockCanGoBack = true;
 let mockStoreInitializationError: Error | null = null;
 
 beforeEach(() => {
 	jest.clearAllMocks();
 	mockGetPlans.mockResolvedValue(storePlans);
+	mockPurchase.mockResolvedValue({ status: "purchased" });
+	mockRestore.mockResolvedValue({ status: "purchased" });
+	mockRefreshPaidAccess.mockResolvedValue(true);
 	mockCanGoBack = true;
 	mockStoreInitializationError = null;
 });
@@ -73,7 +79,7 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("~/context/AccessContext", () => ({
 	useAccess: () => ({
 		access: null,
-		refreshPaidAccess: jest.fn(),
+		refreshPaidAccess: mockRefreshPaidAccess,
 	}),
 }));
 
@@ -88,8 +94,8 @@ jest.mock("~/lib/revenuecat-client", () => ({
 		if (mockStoreInitializationError) throw mockStoreInitializationError;
 		return {
 			getPlans: mockGetPlans,
-			purchase: jest.fn(),
-			restore: jest.fn(),
+			purchase: mockPurchase,
+			restore: mockRestore,
 		};
 	},
 }));
@@ -176,5 +182,20 @@ describe("SubscriptionScreen", () => {
 				"Store-Käufe konnten auf diesem Gerät nicht gestartet werden. Bitte öffne die App erneut oder kontaktiere den Support.",
 			),
 		).not.toHaveLength(0);
+	});
+
+	test("redirects to the dashboard after a confirmed purchase", async () => {
+		const screen = await render(<SubscriptionScreen payer="self" />);
+
+		await screen.findByText("Im Store abonnieren");
+		await act(async () => {
+			fireEvent.press(screen.getByText("Im Store abonnieren"));
+		});
+
+		await waitFor(() => {
+			expect(mockPurchase).toHaveBeenCalledWith("monthly");
+			expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(1);
+			expect(mockReplace).toHaveBeenCalledWith("/home");
+		});
 	});
 });
