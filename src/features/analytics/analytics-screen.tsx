@@ -325,8 +325,9 @@ function AnalysisHub({
 					description="Nach Prüfungsrelevanz und Lernrisiko sortiert."
 				/>
 				<Surface
-					className="overflow-hidden"
+					className="overflow-hidden border border-border"
 					style={continuousCardStyle}
+					testID="topic-list"
 					variant="flat"
 				>
 					<TopicList topics={analysis.topics} onOpenTopic={onOpenTopic} />
@@ -669,6 +670,10 @@ function TopicList({
 
 	return topics.map((topic, index) => {
 		const status = TOPIC_STATUS_COPY[topic.status];
+		const answerCountLabel =
+			topic.answeredQuestionCount === 0
+				? "Keine Antworten"
+				: `${topic.answeredQuestionCount} ${topic.answeredQuestionCount === 1 ? "Antwort" : "Antworten"}`;
 		return (
 			<ActionSurface
 				key={topic.id}
@@ -676,37 +681,35 @@ function TopicList({
 				accessibilityLabel={`${topic.title}. ${status.label}. ${topic.answeredQuestionCount} ${topic.answeredQuestionCount === 1 ? "ausgewertete Antwort" : "ausgewertete Antworten"}.`}
 				accessibilityRole="button"
 				className={cn(
-					"min-h-16 gap-2 bg-card px-4 py-4",
+					"min-h-20 gap-2 rounded-none bg-card px-5 py-4",
 					index > 0 && "border-border border-t",
 				)}
 				onPress={() => onOpenTopic(topic.id)}
+				testID={`topic-row-${topic.id}`}
 				variant="flat"
 			>
-				<View className="flex-row items-center gap-3">
+				<View className="flex-row items-start gap-3">
 					<Text
 						selectable
 						className="min-w-0 flex-1 font-poppins font-semibold text-body-3 text-text"
-						numberOfLines={3}
 					>
 						{formatGermanUiText(topic.title)}
 					</Text>
-					<View className="flex-row items-center gap-2">
-						<TopicStatusPill status={topic.status} />
-						<ArrowRight
-							size={17}
-							color={colors.secondaryText}
-							strokeWidth={2.2}
-						/>
-					</View>
+					<ArrowRight
+						size={18}
+						color={colors.secondaryText}
+						strokeWidth={2.2}
+					/>
 				</View>
-				<Text
-					selectable
-					className="font-poppins text-body-5 text-secondary-text"
-				>
-					{topic.answeredQuestionCount === 0
-						? "Noch keine ausgewertete Antwort"
-						: `${topic.answeredQuestionCount} ${topic.answeredQuestionCount === 1 ? "ausgewertete Antwort" : "ausgewertete Antworten"}`}
-				</Text>
+				<View className="flex-row flex-wrap items-center gap-2">
+					<TopicStatusPill status={topic.status} />
+					<Text
+						selectable
+						className="font-poppins text-body-5 text-secondary-text"
+					>
+						{answerCountLabel}
+					</Text>
+				</View>
 			</ActionSurface>
 		);
 	});

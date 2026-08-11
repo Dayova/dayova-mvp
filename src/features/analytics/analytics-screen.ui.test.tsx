@@ -466,10 +466,19 @@ describe("AnalyticsScreen", () => {
 		expect(screen.queryByText("1 von 2 sicher belegt")).not.toBeOnTheScreen();
 		expect(screen.queryByText("1 unsicher")).not.toBeOnTheScreen();
 		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
+		expect(screen.getByTestId("topic-list").props.className).toContain(
+			"border-border",
+		);
 		expect(screen.getByText("Steigung erklären")).toBeOnTheScreen();
 		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
-		expect(screen.getByText("2 ausgewertete Antworten")).toBeOnTheScreen();
-		expect(screen.getByText("3 ausgewertete Antworten")).toBeOnTheScreen();
+		expect(screen.getByText("2 Antworten")).toBeOnTheScreen();
+		expect(screen.getByText("3 Antworten")).toBeOnTheScreen();
+		expect(
+			within(screen.getByTestId("topic-row-steigung")).getByText("Unsicher"),
+		).toBeOnTheScreen();
+		expect(
+			within(screen.getByTestId("topic-row-steigung")).getByText("2 Antworten"),
+		).toBeOnTheScreen();
 		expect(screen.queryByText("„Änderung von y.“")).not.toBeOnTheScreen();
 		expect(
 			screen.queryByText("Schon belegt: Du erkennst lineare Zusammenhänge."),
