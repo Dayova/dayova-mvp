@@ -689,6 +689,11 @@ describe("AnalyticsScreen", () => {
 			),
 		).toBeOnTheScreen();
 		expect(
+			knowledgeScreen.getByText("Änderung von y pro Änderung von x."),
+		).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("RICHTIGE ANTWORT")).toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("IDEALE ANTWORT")).not.toBeOnTheScreen();
+		expect(
 			knowledgeScreen.queryByText("Erkläre die Steigung."),
 		).not.toBeOnTheScreen();
 
@@ -703,6 +708,7 @@ describe("AnalyticsScreen", () => {
 				"Der eingesetzte Rechenweg passt noch nicht zu den gegebenen Punkten.",
 			),
 		).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("m = 2")).toBeOnTheScreen();
 
 		await fireEvent.press(
 			knowledgeScreen.getByTestId("topic-answer-card-item_1"),

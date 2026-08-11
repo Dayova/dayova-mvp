@@ -766,6 +766,7 @@ function TopicAnswerFlipCard({
 	const formattedPrompt = formatGermanUiText(question.prompt);
 	const formattedAnswer = formatGermanUiText(question.answer);
 	const formattedReview = formatTopicAnswerReview(question.review);
+	const formattedCorrectAnswer = formatGermanUiText(question.idealAnswer);
 	const rating = ANSWER_RATING_COPY[question.rating];
 	const hasMeasuredFaces = frontHeight > 0 && backHeight > 0;
 	const cardHeight = Math.max(
@@ -816,7 +817,7 @@ function TopicAnswerFlipCard({
 			}
 			accessibilityLabel={
 				isFlipped
-					? `Deine Antwort: ${formattedAnswer} Auswertung: ${formattedReview} Frage anzeigen.`
+					? `Deine Antwort: ${formattedAnswer} Auswertung: ${formattedReview} Richtige Antwort: ${formattedCorrectAnswer} Frage anzeigen.`
 					: `Frage: ${formattedPrompt} ${rating.label}. Antwort und Auswertung anzeigen.`
 			}
 			accessibilityRole="button"
@@ -896,6 +897,17 @@ function TopicAnswerFlipCard({
 							<Text selectable className="font-poppins text-body-3 text-text">
 								{formattedReview}
 							</Text>
+							<View className="gap-1 pt-1">
+								<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+									RICHTIGE ANTWORT
+								</Text>
+								<Text
+									selectable
+									className="font-poppins font-semibold text-body-3 text-text"
+								>
+									{formattedCorrectAnswer}
+								</Text>
+							</View>
 						</View>
 					</View>
 					<TopicAnswerFlipHint label="Frage ansehen" />
