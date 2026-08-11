@@ -32,7 +32,7 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("SnapCarouselSelector", () => {
-	test("pins the progress arc to the same origin as its circular track", async () => {
+	test("centers the value and both ring layers on one fixed canvas", async () => {
 		const screen = await render(
 			<SnapCarouselSelector
 				accessibilityLabel="Tägliche Lernzeit"
@@ -52,13 +52,35 @@ describe("SnapCarouselSelector", () => {
 		const ring = screen.getByTestId("snap-carousel-progress-ring");
 		const track = screen.getByTestId("snap-carousel-progress-track");
 		const arc = screen.getByTestId("snap-carousel-progress-arc");
+		const valueBubble = screen.getByTestId("snap-carousel-value-bubble");
+		const valueLabel = screen.getByTestId("snap-carousel-value-label");
 
+		expect(StyleSheet.flatten(valueBubble.props.style)).toEqual(
+			expect.objectContaining({
+				height: 88,
+				width: 88,
+			}),
+		);
 		expect(StyleSheet.flatten(ring.props.style)).toEqual(
 			expect.objectContaining({
+				bottom: 0,
 				left: 0,
 				position: "absolute",
+				right: 0,
 				top: 0,
 			}),
+		);
+		expect(StyleSheet.flatten(valueLabel.props.style)).toEqual(
+			expect.objectContaining({
+				bottom: 0,
+				left: 0,
+				position: "absolute",
+				right: 0,
+				top: 0,
+			}),
+		);
+		expect(valueLabel.props.className).toEqual(
+			expect.stringContaining("items-center justify-center"),
 		);
 		expect(track.props).toEqual(
 			expect.objectContaining({

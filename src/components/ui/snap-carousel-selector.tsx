@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
-import { type FlatList, useWindowDimensions, View } from "react-native";
+import {
+	type FlatList,
+	StyleSheet,
+	useWindowDimensions,
+	View,
+} from "react-native";
 import Animated, {
 	interpolate,
 	type SharedValue,
@@ -19,7 +24,11 @@ import { cn } from "~/lib/utils";
 
 const CAROUSEL_ITEM_WIDTH = 68;
 const CAROUSEL_MAX_WIDTH = 360;
-const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * 40;
+const PROGRESS_RING_SIZE = 88;
+const PROGRESS_RING_CENTER = PROGRESS_RING_SIZE / 2;
+const PROGRESS_RING_RADIUS = 40;
+const PROGRESS_RING_STROKE_WIDTH = 4;
+const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RING_RADIUS;
 const MINIMUM_PROGRESS = 0.16;
 
 type SnapCarouselSelectorBaseProps<Item> = {
@@ -160,7 +169,8 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 		<View className="w-full items-center">
 			{showValueBubble ? (
 				<View
-					className="items-center justify-center"
+					testID="snap-carousel-value-bubble"
+					className="items-center justify-center rounded-full"
 					style={{
 						borderRadius: valueBadgeSize / 2,
 						height: valueBadgeSize,
@@ -173,36 +183,42 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 						height={valueBadgeSize}
 						viewBox="0 0 88 88"
 						// SVG geometry is not expressible through NativeWind classes.
-						style={{ left: 0, position: "absolute", top: 0 }}
+						style={StyleSheet.absoluteFill}
 					>
 						<Circle
 							testID="snap-carousel-progress-track"
-							cx="44"
-							cy="44"
-							r="40"
+							cx={PROGRESS_RING_CENTER}
+							cy={PROGRESS_RING_CENTER}
+							r={PROGRESS_RING_RADIUS}
 							fill="transparent"
 							stroke={colors.primary}
 							strokeOpacity={0.2}
-							strokeWidth="4"
+							strokeWidth={PROGRESS_RING_STROKE_WIDTH}
 						/>
 						<Circle
 							testID="snap-carousel-progress-arc"
-							cx="44"
-							cy="44"
-							r="40"
+							cx={PROGRESS_RING_CENTER}
+							cy={PROGRESS_RING_CENTER}
+							r={PROGRESS_RING_RADIUS}
 							fill="transparent"
 							stroke={colors.primary}
-							strokeWidth="4"
+							strokeWidth={PROGRESS_RING_STROKE_WIDTH}
 							strokeLinecap="round"
 							strokeDasharray={`${Math.max(MINIMUM_PROGRESS, safeProgress) * CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`}
-							transform="rotate(-90 44 44)"
+							transform={`rotate(-90 ${PROGRESS_RING_CENTER} ${PROGRESS_RING_CENTER})`}
 						/>
 					</Svg>
 					<View
-						style={{
-							alignItems: "center",
-							transform: [{ translateY: valueContentLayout.verticalOffset }],
-						}}
+						testID="snap-carousel-value-label"
+						className="items-center justify-center"
+						style={[
+							StyleSheet.absoluteFill,
+							{
+								transform: [
+									{ translateY: valueContentLayout.verticalOffset },
+								],
+							},
+						]}
 					>
 						<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
 							{valueBubbleConfig.primaryLabel}
