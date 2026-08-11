@@ -26,6 +26,32 @@ jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
 
+jest.mock("react-native-reanimated", () => {
+	const Native =
+		jest.requireActual<typeof import("react-native")>("react-native");
+
+	return {
+		__esModule: true,
+		default: { View: Native.View },
+		Easing: {
+			cubic: jest.fn(),
+			inOut: (value: unknown) => value,
+		},
+		useAnimatedStyle: (factory: () => unknown) => factory(),
+		useReducedMotion: () => true,
+		useSharedValue: (initialValue: number) => {
+			let currentValue = initialValue;
+			return {
+				get: () => currentValue,
+				set: (value: number) => {
+					currentValue = value;
+				},
+			};
+		},
+		withTiming: (value: number) => value,
+	};
+});
+
 jest.mock("#convex/_generated/api", () => ({
 	api: {
 		userAnalytics: {
@@ -614,6 +640,45 @@ describe("AnalyticsScreen", () => {
 		expect(
 			knowledgeScreen.getByText("Erkläre die Steigung."),
 		).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Änderung von y."),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText(
+				"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
+			),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Änderung von y pro Änderung von x."),
+		).not.toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("m = 2")).not.toBeOnTheScreen();
+		const firstAnswerCard = knowledgeScreen.getByTestId(
+			"topic-answer-card-item_1",
+		);
+		await fireEvent(
+			knowledgeScreen.getByTestId("topic-answer-card-front-item_1"),
+			"layout",
+			{ nativeEvent: { layout: { height: 260 } } },
+		);
+		await fireEvent(
+			knowledgeScreen.getByTestId("topic-answer-card-back-item_1", {
+				includeHiddenElements: true,
+			}),
+			"layout",
+			{ nativeEvent: { layout: { height: 360 } } },
+		);
+		expect(
+			knowledgeScreen.getByTestId("topic-answer-card-item_1").props.style
+				.height,
+		).toBe(360);
+		expect(firstAnswerCard.props.accessibilityState).toEqual({
+			expanded: false,
+		});
+		await fireEvent.press(firstAnswerCard);
+		expect(
+			knowledgeScreen.getByTestId("topic-answer-card-item_1").props
+				.accessibilityState,
+		).toEqual({ expanded: true });
 		expect(knowledgeScreen.getByText("Änderung von y.")).toBeOnTheScreen();
 		expect(
 			knowledgeScreen.getByText(
@@ -621,9 +686,12 @@ describe("AnalyticsScreen", () => {
 			),
 		).toBeOnTheScreen();
 		expect(
-			knowledgeScreen.queryByText("Änderung von y pro Änderung von x."),
+			knowledgeScreen.queryByText("Erkläre die Steigung."),
 		).not.toBeOnTheScreen();
-		expect(knowledgeScreen.queryByText("m = 2")).not.toBeOnTheScreen();
+
+		await fireEvent.press(
+			knowledgeScreen.getByTestId("topic-answer-card-item_2"),
+		);
 		expect(
 			knowledgeScreen.queryByText(/Schau dir die perfekte Antwort an/),
 		).not.toBeOnTheScreen();
@@ -632,6 +700,16 @@ describe("AnalyticsScreen", () => {
 				"Der eingesetzte Rechenweg passt noch nicht zu den gegebenen Punkten.",
 			),
 		).toBeOnTheScreen();
+
+		await fireEvent.press(
+			knowledgeScreen.getByTestId("topic-answer-card-item_1"),
+		);
+		expect(
+			knowledgeScreen.getByText("Erkläre die Steigung."),
+		).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Änderung von y."),
+		).not.toBeOnTheScreen();
 		expect(knowledgeScreen.queryByText("2 von 2")).not.toBeOnTheScreen();
 		expect(
 			knowledgeScreen.queryByText("Alle Prüfungsthemen"),

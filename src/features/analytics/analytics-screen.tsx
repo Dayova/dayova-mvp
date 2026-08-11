@@ -4,9 +4,17 @@ import { useMemo, useState } from "react";
 import {
 	ActivityIndicator,
 	FlatList as NativeFlatList,
+	Pressable,
 	useWindowDimensions,
 	View,
 } from "react-native";
+import Animated, {
+	Easing,
+	useAnimatedStyle,
+	useReducedMotion,
+	useSharedValue,
+	withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -21,6 +29,7 @@ import {
 	Check,
 	CircleAlert,
 	Info,
+	Repeat,
 	Sparkles,
 	Time04,
 } from "~/components/ui/icon";
@@ -45,6 +54,7 @@ type TopicStatus = ExamAnalysis["topics"][number]["status"];
 type TopicQuestionEvidence = NonNullable<
 	ReturnType<typeof useQuery<typeof api.userAnalytics.getTopicQuestionEvidence>>
 >;
+type TopicQuestion = TopicQuestionEvidence["questions"][number];
 
 const DIAGNOSIS_COPY: Record<
 	ExamProblem["diagnosisType"],
@@ -125,6 +135,9 @@ const SESSION_PHASE_COPY = {
 	practice: "Üben",
 	rehearsal: "Praxis",
 } as const;
+
+const TOPIC_ANSWER_FLIP_DURATION_MS = 320;
+const TOPIC_ANSWER_CARD_MIN_HEIGHT = 240;
 
 const formatTopicAnswerReview = (review: string) => {
 	const standaloneReview = review
@@ -699,6 +712,199 @@ function TopicList({
 	});
 }
 
+function TopicAnswerCardHeader({ question }: { question: TopicQuestion }) {
+	const rating = ANSWER_RATING_COPY[question.rating];
+
+	return (
+		<View className="flex-row items-center justify-between gap-3">
+			<Text
+				selectable
+				className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text"
+				numberOfLines={2}
+			>
+				{`${SESSION_PHASE_COPY[question.phase]} · ${formatGermanUiText(question.sessionTitle)}`}
+			</Text>
+			<View className={cn("rounded-full px-3 py-1.5", rating.pillClassName)}>
+				<Text
+					className={cn(
+						"font-poppins font-semibold text-body-5",
+						rating.textClassName,
+					)}
+				>
+					{rating.label}
+				</Text>
+			</View>
+		</View>
+	);
+}
+
+function TopicAnswerFlipHint({ label }: { label: string }) {
+	const { colors } = useDayovaTheme();
+
+	return (
+		<View className="flex-row items-center justify-end gap-2 border-border border-t pt-4">
+			<Repeat size={15} color={colors.primaryStrong} strokeWidth={2.2} />
+			<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+				{label}
+			</Text>
+		</View>
+	);
+}
+
+function TopicAnswerFlipCard({
+	cardWidth,
+	question,
+}: {
+	cardWidth: number;
+	question: TopicQuestion;
+}) {
+	const [isFlipped, setIsFlipped] = useState(false);
+	const [frontHeight, setFrontHeight] = useState(0);
+	const [backHeight, setBackHeight] = useState(0);
+	const rotation = useSharedValue(0);
+	const reduceMotion = useReducedMotion();
+	const formattedPrompt = formatGermanUiText(question.prompt);
+	const formattedAnswer = formatGermanUiText(question.answer);
+	const formattedReview = formatTopicAnswerReview(question.review);
+	const rating = ANSWER_RATING_COPY[question.rating];
+	const hasMeasuredFaces = frontHeight > 0 && backHeight > 0;
+	const cardHeight = Math.max(
+		frontHeight,
+		backHeight,
+		TOPIC_ANSWER_CARD_MIN_HEIGHT,
+	);
+	const frontAnimatedStyle = useAnimatedStyle(() => {
+		const angle = rotation.get();
+		return {
+			backfaceVisibility: "hidden",
+			opacity: angle < 90 ? 1 : 0,
+			transform: [{ perspective: 1_000 }, { rotateY: `${angle}deg` }],
+			zIndex: angle < 90 ? 1 : 0,
+		};
+	});
+	const backAnimatedStyle = useAnimatedStyle(() => {
+		const angle = rotation.get();
+		return {
+			backfaceVisibility: "hidden",
+			opacity: angle >= 90 ? 1 : 0,
+			transform: [{ perspective: 1_000 }, { rotateY: `${angle + 180}deg` }],
+			zIndex: angle >= 90 ? 1 : 0,
+		};
+	});
+
+	const flipCard = () => {
+		const nextFlipped = !isFlipped;
+		setIsFlipped(nextFlipped);
+		const targetRotation = nextFlipped ? 180 : 0;
+		rotation.set(
+			reduceMotion
+				? targetRotation
+				: withTiming(targetRotation, {
+						duration: TOPIC_ANSWER_FLIP_DURATION_MS,
+						easing: Easing.inOut(Easing.cubic),
+					}),
+		);
+	};
+
+	return (
+		<Pressable
+			accessible
+			accessibilityHint={
+				isFlipped
+					? "Zeigt wieder die Frage."
+					: "Zeigt deine letzte Antwort und ihre Auswertung."
+			}
+			accessibilityLabel={
+				isFlipped
+					? `Deine Antwort: ${formattedAnswer} Auswertung: ${formattedReview} Frage anzeigen.`
+					: `Frage: ${formattedPrompt} ${rating.label}. Antwort und Auswertung anzeigen.`
+			}
+			accessibilityRole="button"
+			accessibilityState={{ expanded: isFlipped }}
+			className="relative active:opacity-90"
+			onPress={flipCard}
+			testID={`topic-answer-card-${question.itemId}`}
+			// Width and height depend on the current device and measured face content.
+			style={{ width: cardWidth, height: cardHeight }}
+		>
+			<Animated.View
+				accessibilityElementsHidden={isFlipped}
+				importantForAccessibility={isFlipped ? "no-hide-descendants" : "auto"}
+				pointerEvents="none"
+				className={cn("absolute inset-x-0 top-0", hasMeasuredFaces && "h-full")}
+				onLayout={({ nativeEvent }) =>
+					setFrontHeight(nativeEvent.layout.height)
+				}
+				style={frontAnimatedStyle}
+				testID={`topic-answer-card-front-${question.itemId}`}
+			>
+				<Surface
+					className={cn(
+						"justify-between gap-5 border border-border bg-card p-5",
+						hasMeasuredFaces && "h-full",
+					)}
+					variant="soft"
+				>
+					<View className="gap-5">
+						<TopicAnswerCardHeader question={question} />
+						<View className="gap-2">
+							<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+								FRAGE
+							</Text>
+							<Text
+								selectable
+								className="font-poppins font-semibold text-body-3 text-text"
+							>
+								{formattedPrompt}
+							</Text>
+						</View>
+					</View>
+					<TopicAnswerFlipHint label="Antwort ansehen" />
+				</Surface>
+			</Animated.View>
+
+			<Animated.View
+				accessibilityElementsHidden={!isFlipped}
+				importantForAccessibility={isFlipped ? "auto" : "no-hide-descendants"}
+				pointerEvents="none"
+				className={cn("absolute inset-x-0 top-0", hasMeasuredFaces && "h-full")}
+				onLayout={({ nativeEvent }) => setBackHeight(nativeEvent.layout.height)}
+				style={backAnimatedStyle}
+				testID={`topic-answer-card-back-${question.itemId}`}
+			>
+				<Surface
+					className={cn(
+						"justify-between gap-5 border border-border bg-card p-5",
+						hasMeasuredFaces && "h-full",
+					)}
+					variant="soft"
+				>
+					<View className="gap-4">
+						<TopicAnswerCardHeader question={question} />
+						<View className="gap-2 rounded-info bg-background p-4">
+							<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+								DEINE ANTWORT
+							</Text>
+							<Text selectable className="font-poppins text-body-3 text-text">
+								{formattedAnswer}
+							</Text>
+						</View>
+						<View className="gap-2 border-border border-t pt-4">
+							<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+								AUSWERTUNG
+							</Text>
+							<Text selectable className="font-poppins text-body-3 text-text">
+								{formattedReview}
+							</Text>
+						</View>
+					</View>
+					<TopicAnswerFlipHint label="Frage ansehen" />
+				</Surface>
+			</Animated.View>
+		</Pressable>
+	);
+}
+
 function TopicQuestionEvidenceSection({
 	evidence,
 }: {
@@ -756,78 +962,9 @@ function TopicQuestionEvidenceSection({
 							length: snapInterval,
 							offset: snapInterval * index,
 						})}
-						renderItem={({ item: question }) => {
-							const rating = ANSWER_RATING_COPY[question.rating];
-							return (
-								<Surface
-									className="gap-4 border border-border bg-card p-5"
-									// The card width leaves a visible edge of the next answer at every device width.
-									style={{ width: cardWidth }}
-									variant="soft"
-								>
-									<View className="flex-row items-center justify-between gap-3">
-										<Text
-											selectable
-											className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text"
-											numberOfLines={2}
-										>
-											{`${SESSION_PHASE_COPY[question.phase]} · ${formatGermanUiText(question.sessionTitle)}`}
-										</Text>
-										<View
-											className={cn(
-												"rounded-full px-3 py-1.5",
-												rating.pillClassName,
-											)}
-										>
-											<Text
-												className={cn(
-													"font-poppins font-semibold text-body-5",
-													rating.textClassName,
-												)}
-											>
-												{rating.label}
-											</Text>
-										</View>
-									</View>
-
-									<View className="gap-2">
-										<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
-											FRAGE
-										</Text>
-										<Text
-											selectable
-											className="font-poppins font-semibold text-body-3 text-text"
-										>
-											{formatGermanUiText(question.prompt)}
-										</Text>
-									</View>
-
-									<View className="gap-2 rounded-info bg-background p-4">
-										<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
-											DEINE ANTWORT
-										</Text>
-										<Text
-											selectable
-											className="font-poppins text-body-3 text-text"
-										>
-											{formatGermanUiText(question.answer)}
-										</Text>
-									</View>
-
-									<View className="gap-2 border-border border-t pt-4">
-										<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
-											AUSWERTUNG
-										</Text>
-										<Text
-											selectable
-											className="font-poppins text-body-3 text-text"
-										>
-											{formatTopicAnswerReview(question.review)}
-										</Text>
-									</View>
-								</Surface>
-							);
-						}}
+						renderItem={({ item: question }) => (
+							<TopicAnswerFlipCard cardWidth={cardWidth} question={question} />
+						)}
 					/>
 					{evidence.historyLimited ? (
 						<Text
