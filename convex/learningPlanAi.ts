@@ -2773,7 +2773,7 @@ export const evaluateWrittenAnswer = action({
 			evaluation = {
 				rating: "notCorrect",
 				review:
-					"Du hast noch keine fachliche Antwort gegeben. Vergleiche die ideale Antwort mit der Frage und achte auf den vollständigen Gedankengang.",
+					"Du hast noch keine fachliche Antwort gegeben. Beantworte bei der nächsten Frage mindestens die gefragte Kernaussage und begründe sie.",
 			};
 		} else {
 			try {
@@ -2792,7 +2792,7 @@ export const evaluateWrittenAnswer = action({
 								}),
 								system: `Du bewertest schriftliche Antworten von Schülerinnen und Schülern fachlich präzise und fair. Bewerte Bedeutung, Lösungsweg und Vollständigkeit – niemals Wortanzahl, Schreibstil oder bloße Schlüsselworttreffer. "correct" gilt nur, wenn alle für die Frage wesentlichen Aussagen oder Rechenschritte stimmen. "partiallyCorrect" gilt bei einem fachlich brauchbaren Ansatz mit einer konkreten Lücke. "notCorrect" gilt bei einem falschen Ergebnis, einem grundlegenden Missverständnis oder fehlender fachlicher Substanz.
 
-Die Rückmeldung besteht aus ein bis drei kurzen deutschen Sätzen in direkter Du-Ansprache. Nenne konkret, welcher Teil der Antwort stimmt und welcher Teil fehlt oder falsch ist. Wenn nichts Belastbares stimmt, sage konkret, was der zentrale Fehler oder die zentrale Lücke ist. Wiederhole nicht die vollständige ideale Antwort, denn sie wird direkt darunter separat angezeigt. Verwende keine Überschriften, keine Listen, keine Punktebewertung und keine allgemeinen Floskeln. Antworte ausschließlich im vorgegebenen JSON-Schema. ${GERMAN_UI_TEXT_RULE}`,
+Die Rückmeldung besteht aus ein bis drei kurzen deutschen Sätzen in direkter Du-Ansprache. Nenne konkret, welcher Teil der Antwort stimmt und welcher Teil fehlt oder falsch ist. Wenn nichts Belastbares stimmt, sage konkret, was der zentrale Fehler oder die zentrale Lücke ist. Wiederhole nicht die vollständige ideale Antwort. Die Rückmeldung muss allein verständlich sein und darf den Lernenden nicht auf eine ideale oder perfekte Antwort verweisen. Verwende keine Überschriften, keine Listen, keine Punktebewertung und keine allgemeinen Floskeln. Antworte ausschließlich im vorgegebenen JSON-Schema. ${GERMAN_UI_TEXT_RULE}`,
 								prompt: `Fach: ${context.subject}
 Thema: ${context.topicTitle ?? "Nicht näher benannt"}
 Lernziel: ${context.learningGoal ?? "Nicht näher benannt"}

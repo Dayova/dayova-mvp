@@ -1,7 +1,15 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
+	ActivityIndicator,
+	type FlatList,
+	type NativeScrollEvent,
+	type NativeSyntheticEvent,
+	FlatList as NativeFlatList,
+	useWindowDimensions,
+	View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import { api } from "#convex/_generated/api";
@@ -41,6 +49,7 @@ type TopicStatus = ExamAnalysis["topics"][number]["status"];
 type TopicQuestionEvidence = NonNullable<
 	ReturnType<typeof useQuery<typeof api.userAnalytics.getTopicQuestionEvidence>>
 >;
+type TopicQuestion = TopicQuestionEvidence["questions"][number];
 
 const DIAGNOSIS_COPY: Record<
 	ExamProblem["diagnosisType"],
@@ -133,6 +142,24 @@ const SESSION_PHASE_COPY = {
 	practice: "Üben",
 	rehearsal: "Praxis",
 } as const;
+
+const formatTopicAnswerReview = (review: string) => {
+	const standaloneReview = review
+		.replace(
+			/^Noch nicht korrekt\.\s*Schau dir die perfekte Antwort an und achte auf den vollständigen Lösungsweg\.\s*/i,
+			"",
+		)
+		.replace(
+			/^Teilweise richtig\.\s*Du triffst einen Teil des Lösungswegs, solltest aber noch genauer werden\.\s*/i,
+			"",
+		)
+		.replace(
+			/Vergleiche die ideale Antwort mit der Frage und achte auf den vollständigen Gedankengang\./gi,
+			"Beantworte bei der nächsten Frage die gefragte Kernaussage und begründe sie.",
+		)
+		.trim();
+	return formatGermanUiText(standaloneReview || review);
+};
 
 const formatExamLabel = (plan: ExamAnalysis["plans"][number]) =>
 	formatGermanUiText(
@@ -806,146 +833,61 @@ function TopicList({
 	});
 }
 
-function TopicWeaknessSection({
-	topic,
-}: {
-	topic: ExamAnalysis["topics"][number];
-}) {
-	if (topic.weaknesses.length === 0) return null;
-
-	return (
-		<View className="gap-3">
-			<SectionHeading
-				title={
-					topic.status === "uncertain"
-						? "Warum du hier unsicher bist"
-						: "Das fehlt noch"
-				}
-			/>
-			<Surface className="gap-4 p-5" variant="flat">
-				{topic.weaknesses.map((weakness, index) => (
-					<View
-						key={weakness.statement}
-						className={cn(
-							"flex-row items-start gap-3",
-							index > 0 && "border-border border-t pt-4",
-						)}
-					>
-						<View className="h-8 w-8 items-center justify-center rounded-full bg-wrong-subtle">
-							<CircleAlert
-								size={16}
-								color={DAYOVA_DESIGN_SYSTEM.colors.wrong}
-								strokeWidth={2.2}
-							/>
-						</View>
-						<View className="min-w-0 flex-1 gap-1">
-							<Text selectable className="font-poppins text-body-3 text-text">
-								{formatGermanUiText(weakness.statement)}
-							</Text>
-							<Text
-								selectable
-								className="font-poppins text-body-5 text-secondary-text"
-							>
-								{weakness.evidenceCount === 1
-									? "In einer Antwort beobachtet"
-									: weakness.evidenceCount > 1
-										? `In ${weakness.evidenceCount} Antworten beobachtet`
-										: "Noch nicht überprüft"}
-							</Text>
-						</View>
-					</View>
-				))}
-			</Surface>
-		</View>
-	);
-}
-
-function TopicStrengthSection({
-	topic,
-}: {
-	topic: ExamAnalysis["topics"][number];
-}) {
-	return topic.strengths.length > 0 ? (
-		<View className="gap-3">
-			<SectionHeading title="Das kannst du schon" />
-			<Surface className="gap-4 p-5" variant="flat">
-				{topic.strengths.map((strength, index) => (
-					<View
-						key={strength.statement}
-						className={cn(
-							"flex-row items-start gap-3",
-							index > 0 && "border-border border-t pt-4",
-						)}
-					>
-						<View className="h-8 w-8 items-center justify-center rounded-full bg-success-subtle">
-							<Check
-								size={16}
-								color={DAYOVA_DESIGN_SYSTEM.colors.success}
-								strokeWidth={2.3}
-							/>
-						</View>
-						<View className="min-w-0 flex-1 gap-1">
-							<Text selectable className="font-poppins text-body-3 text-text">
-								{formatGermanUiText(strength.statement)}
-							</Text>
-							<Text
-								selectable
-								className="font-poppins text-body-5 text-secondary-text"
-							>
-								{`${strength.evidenceCount} ${strength.evidenceCount === 1 ? "Beleg" : "Belege"}`}
-							</Text>
-						</View>
-					</View>
-				))}
-			</Surface>
-		</View>
-	) : (
-		<View className="gap-3">
-			<SectionHeading title="Das kannst du schon" />
-			<Surface className="flex-row items-start gap-3 p-5" variant="flat">
-				<View className="h-8 w-8 items-center justify-center rounded-full bg-system-subtle">
-					<Info
-						size={17}
-						color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
-						strokeWidth={2.2}
-					/>
-				</View>
-				<View className="min-w-0 flex-1 gap-1">
-					<Text className="font-poppins font-semibold text-body-4 text-text">
-						Noch keine sichere Stärke
-					</Text>
-					<Text
-						selectable
-						className="font-poppins text-body-4 text-secondary-text"
-					>
-						Dafür fehlen noch wiederholte richtige Antworten.
-					</Text>
-				</View>
-			</Surface>
-		</View>
-	);
-}
-
 function TopicQuestionEvidenceSection({
 	evidence,
 }: {
 	evidence: TopicQuestionEvidence | undefined;
 }) {
+	const listRef = useRef<FlatList<TopicQuestion>>(null);
+	const { width } = useWindowDimensions();
+	const [activeIndex, setActiveIndex] = useState(0);
+	const pagerWidth = Math.max(width - 48, 0);
+	const cardWidth = Math.max(pagerWidth - 24, 240);
+	const snapInterval = cardWidth + 12;
+	const questionCount = evidence?.questions.length ?? 0;
+	const lastIndex = Math.max(questionCount - 1, 0);
+
+	const selectIndex = useCallback(
+		(nextIndex: number) => {
+			const clampedIndex = Math.min(Math.max(nextIndex, 0), lastIndex);
+			setActiveIndex(clampedIndex);
+			listRef.current?.scrollToOffset({
+				offset: clampedIndex * snapInterval,
+				animated: true,
+			});
+		},
+		[lastIndex, snapInterval],
+	);
+
+	const handleScrollEnd = useCallback(
+		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+			const nextIndex = Math.min(
+				Math.max(
+					Math.round(event.nativeEvent.contentOffset.x / snapInterval),
+					0,
+				),
+				lastIndex,
+			);
+			setActiveIndex(nextIndex);
+		},
+		[lastIndex, snapInterval],
+	);
+
 	return (
 		<View className="gap-3">
 			<SectionHeading
 				title="Deine Antworten"
-				description="Je Frage siehst du nur deine letzte Antwort."
+				description="Wische nach links oder rechts, um die nächste Frage zu sehen."
 			/>
 			{evidence === undefined ? (
-				<Surface className="items-center gap-3 p-6" variant="flat">
+				<Surface className="items-center gap-3 border border-border p-6">
 					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
 					<Text className="font-poppins text-body-4 text-secondary-text">
 						Antworten werden geladen …
 					</Text>
 				</Surface>
 			) : evidence.questions.length === 0 ? (
-				<Surface className="gap-2 p-5" variant="flat">
+				<Surface className="gap-2 border border-border p-5">
 					<Text className="font-poppins font-semibold text-body-3 text-text">
 						Noch keine ausgewertete Antwort
 					</Text>
@@ -958,90 +900,138 @@ function TopicQuestionEvidenceSection({
 					</Text>
 				</Surface>
 			) : (
-				<View className="gap-5">
-					{evidence.questions.map((question) => {
-						const rating = ANSWER_RATING_COPY[question.rating];
-						return (
-							<Surface
-								key={question.itemId}
-								className="gap-5 p-5"
-								variant="flat"
-							>
-								<View className="flex-row items-center justify-between gap-3">
-									<Text
-										selectable
-										className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text"
-										numberOfLines={2}
-									>
-										{`${SESSION_PHASE_COPY[question.phase]} · ${formatGermanUiText(question.sessionTitle)}`}
-									</Text>
-									<View
-										className={cn(
-											"rounded-full px-3 py-1.5",
-											rating.pillClassName,
-										)}
-									>
+				<View className="gap-3">
+					<NativeFlatList
+						ref={listRef}
+						data={evidence.questions}
+						keyExtractor={(question) => question.itemId}
+						horizontal
+						bounces={false}
+						decelerationRate="fast"
+						disableIntervalMomentum
+						removeClippedSubviews={false}
+						scrollEnabled={questionCount > 1}
+						showsHorizontalScrollIndicator={false}
+						snapToAlignment="start"
+						snapToInterval={snapInterval}
+						testID="topic-answer-pager"
+						ItemSeparatorComponent={() => <View className="w-3" />}
+						ListFooterComponent={<View className="w-6" />}
+						getItemLayout={(_, index) => ({
+							index,
+							length: snapInterval,
+							offset: snapInterval * index,
+						})}
+						onMomentumScrollEnd={handleScrollEnd}
+						onScrollEndDrag={handleScrollEnd}
+						renderItem={({ item: question }) => {
+							const rating = ANSWER_RATING_COPY[question.rating];
+							return (
+								<Surface
+									className="gap-5 border border-border bg-card p-5"
+									// The card width leaves a visible edge of the next answer at every device width.
+									style={{ width: cardWidth }}
+									variant="soft"
+								>
+									<View className="flex-row items-center justify-between gap-3">
 										<Text
+											selectable
+											className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text"
+											numberOfLines={2}
+										>
+											{`${SESSION_PHASE_COPY[question.phase]} · ${formatGermanUiText(question.sessionTitle)}`}
+										</Text>
+										<View
 											className={cn(
-												"font-poppins font-semibold text-body-5",
-												rating.textClassName,
+												"rounded-full px-3 py-1.5",
+												rating.pillClassName,
 											)}
 										>
-											{rating.label}
+											<Text
+												className={cn(
+													"font-poppins font-semibold text-body-5",
+													rating.textClassName,
+												)}
+											>
+												{rating.label}
+											</Text>
+										</View>
+									</View>
+
+									<View className="gap-2">
+										<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+											FRAGE
+										</Text>
+										<Text
+											selectable
+											className="font-poppins font-semibold text-body-3 text-text"
+										>
+											{formatGermanUiText(question.prompt)}
 										</Text>
 									</View>
-								</View>
 
-								<View className="gap-2">
-									<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
-										FRAGE
-									</Text>
-									<Text
-										selectable
-										className="font-poppins font-semibold text-body-3 text-text"
-									>
-										{formatGermanUiText(question.prompt)}
-									</Text>
-								</View>
+									<View className="gap-2 rounded-info bg-background p-4">
+										<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+											DEINE ANTWORT
+										</Text>
+										<Text
+											selectable
+											className="font-poppins text-body-3 text-text"
+										>
+											{formatGermanUiText(question.answer)}
+										</Text>
+									</View>
 
-								<View className="gap-2 rounded-info bg-background p-4">
-									<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
-										DEINE ANTWORT
-									</Text>
-									<Text
-										selectable
-										className="font-poppins text-body-3 text-text"
-									>
-										{formatGermanUiText(question.answer)}
-									</Text>
-								</View>
+									<View className="gap-2 border-border border-t pt-5">
+										<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+											AUSWERTUNG
+										</Text>
+										<Text
+											selectable
+											className="font-poppins text-body-3 text-text"
+										>
+											{formatTopicAnswerReview(question.review)}
+										</Text>
+									</View>
+								</Surface>
+							);
+						}}
+					/>
 
-								<View className="gap-2">
-									<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
-										AUSWERTUNG
-									</Text>
-									<Text
-										selectable
-										className="font-poppins text-body-3 text-text"
-									>
-										{formatGermanUiText(question.review)}
-									</Text>
-								</View>
+					<View
+						accessible
+						accessibilityActions={[
+							{ name: "decrement", label: "Vorherige Antwort" },
+							{ name: "increment", label: "Nächste Antwort" },
+						]}
+						accessibilityLabel="Antwort auswählen"
+						accessibilityRole="adjustable"
+						accessibilityValue={{
+							text: `${activeIndex + 1} von ${questionCount}`,
+						}}
+						className="flex-row items-center justify-between px-1"
+						onAccessibilityAction={({ nativeEvent }) => {
+							if (nativeEvent.actionName === "increment") {
+								selectIndex(activeIndex + 1);
+							}
+							if (nativeEvent.actionName === "decrement") {
+								selectIndex(activeIndex - 1);
+							}
+						}}
+					>
+						<Text
+							className="font-poppins font-semibold text-body-5 text-primary-strong"
+							style={{ fontVariant: ["tabular-nums"] }}
+						>
+							{`${activeIndex + 1} von ${questionCount}`}
+						</Text>
+						{questionCount > 1 ? (
+							<Text className="font-poppins text-body-5 text-secondary-text">
+								Nach links oder rechts wischen
+							</Text>
+						) : null}
+					</View>
 
-								<View className="gap-2 border-border border-t pt-5">
-									<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
-										IDEALE ANTWORT
-									</Text>
-									<Text
-										selectable
-										className="font-poppins text-body-3 text-text"
-									>
-										{formatGermanUiText(question.idealAnswer)}
-									</Text>
-								</View>
-							</Surface>
-						);
-					})}
 					{evidence.historyLimited ? (
 						<Text
 							selectable
@@ -1104,6 +1094,8 @@ function TopicDetailCard({
 				</View>
 			</Surface>
 
+			<TopicQuestionEvidenceSection evidence={questionEvidence} />
+
 			<View className="gap-3">
 				<SectionHeading title="Dein Wissensprofil" />
 				<Surface className="overflow-hidden" variant="flat">
@@ -1133,10 +1125,6 @@ function TopicDetailCard({
 					))}
 				</Surface>
 			</View>
-
-			<TopicWeaknessSection topic={topic} />
-			<TopicStrengthSection topic={topic} />
-			<TopicQuestionEvidenceSection evidence={questionEvidence} />
 
 			{topic.controlCheckReason ? (
 				<Surface

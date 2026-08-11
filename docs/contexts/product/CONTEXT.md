@@ -85,7 +85,7 @@ The internal intensity of a `Persönlicher Lernplan`: compact, thorough, or inte
 _Avoid_: Fixed session count based only on the assessment label, an extra workload-choice screen, AI-selected intensity
 
 **Wissensanalyse**:
-The persistent Analyse dashboard for one accepted learning plan. It lists every confirmed exam topic and keeps topic-level strengths, weaknesses, readiness, and answer evidence available after completed sessions.
+The persistent Analyse dashboard for one accepted learning plan. It lists every confirmed exam topic and keeps topic readiness and answer evidence available after completed sessions.
 _Avoid_: Using this term for the first `Wissenscheck` or for questions during exam creation
 
 **Lernkarte**:
@@ -153,8 +153,8 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 - Only the active `Stundenplan` produces `Unterrichtstermine`; drafts never affect the daily agenda or learning-plan scheduling.
 - `Unterrichtstermine` block overlapping learning appointments but remain informational and cannot be completed.
 - The post-session Analyse surface uses the user-facing states `Sicher belegt`, `Im Aufbau`, `Unsicher`, and `Noch nicht belegt`. `Unsicher` requires a recent incorrect or partially correct graded answer; missing evidence is never presented as a demonstrated weakness, and initial readiness comes from the first timed `Wissenscheck`, not setup input.
-- Only completed sessions update Analyse. The overview lists every topic in the confirmed exam scope, including topics without answer evidence. Opening a topic shows a short current-knowledge summary, its strengths and weaknesses, and every related question with only the learner's latest answer, its precise review, and the ideal answer; earlier attempts stay hidden.
-- Answer feedback inside a session contains only the review of the learner's answer and the ideal answer. Topic strengths and weaknesses belong only to Analyse.
+- Only completed sessions update Analyse. The overview lists every topic in the confirmed exam scope, including topics without answer evidence. Opening a topic shows a short current-knowledge summary, the required evidence dimensions, and every related question as a horizontally paged card with only the learner's latest answer and its precise review; earlier attempts and ideal answers stay hidden.
+- Answer feedback inside a session contains the review of the learner's answer and the ideal answer. Analyse topic pages do not repeat the ideal answer or show separate strengths and weaknesses cards.
 - Written answers are graded semantically against the question and ideal answer; answer length or isolated keyword overlap never proves correctness. Multiple-choice answers are graded deterministically against the prepared correct option and explanation.
 - A `Kontrollbeleg` is scheduled only as a fresh question in a normal practice session after contradictory evidence. The initial `Wissenscheck` has no retry or control queue.
 - Session duration bounds the number of generated questions, while the rolling plan accumulates broad coverage over time. New questions must not repeat or closely paraphrase earlier questions, including variants that only swap numbers, names, or wording.

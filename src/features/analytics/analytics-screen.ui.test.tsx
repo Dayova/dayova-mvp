@@ -240,7 +240,7 @@ const examAnalysis = {
 			status: "uncertain",
 			summary: "Steigung noch präziser erklären.",
 			evidenceCount: 2,
-			answeredQuestionCount: 1,
+			answeredQuestionCount: 2,
 			dimensions: [
 				{
 					kind: "understanding",
@@ -358,6 +358,19 @@ const topicQuestionEvidence = {
 			rating: "partiallyCorrect",
 			answeredAt: Date.UTC(2026, 6, 28, 13, 30),
 		},
+		{
+			itemId: "item_2",
+			sessionId: "session_done_2",
+			sessionTitle: "Transfer üben",
+			phase: "rehearsal",
+			prompt: "Berechne die Steigung zwischen zwei Punkten.",
+			answer: "Die Steigung ist 2.",
+			review:
+				"Noch nicht korrekt. Schau dir die perfekte Antwort an und achte auf den vollständigen Lösungsweg. Der eingesetzte Rechenweg passt noch nicht zu den gegebenen Punkten.",
+			idealAnswer: "m = 2",
+			rating: "notCorrect",
+			answeredAt: Date.UTC(2026, 6, 29, 13, 30),
+		},
 	],
 	historyLimited: false,
 };
@@ -428,7 +441,7 @@ describe("AnalyticsScreen", () => {
 		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
 		expect(screen.getByText("Steigung erklären")).toBeOnTheScreen();
 		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
-		expect(screen.getByText("1 ausgewertete Antwort")).toBeOnTheScreen();
+		expect(screen.getByText("2 ausgewertete Antworten")).toBeOnTheScreen();
 		expect(screen.getByText("3 ausgewertete Antworten")).toBeOnTheScreen();
 		expect(screen.queryByText("„Änderung von y.“")).not.toBeOnTheScreen();
 		expect(
@@ -462,7 +475,7 @@ describe("AnalyticsScreen", () => {
 
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Steigung erklären. Unsicher. 1 ausgewertete Antwort.",
+				name: "Steigung erklären. Unsicher. 2 ausgewertete Antworten.",
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith({
@@ -544,18 +557,16 @@ describe("AnalyticsScreen", () => {
 		expect(knowledgeScreen.getByText("Probleme lösen")).toBeOnTheScreen();
 		expect(knowledgeScreen.getByText("Selbstständig lösen")).toBeOnTheScreen();
 		expect(
-			knowledgeScreen.getByText("Warum du hier unsicher bist"),
-		).toBeOnTheScreen();
+			knowledgeScreen.queryByText("Warum du hier unsicher bist"),
+		).not.toBeOnTheScreen();
 		expect(
-			knowledgeScreen.getByText("In einer Antwort beobachtet"),
-		).toBeOnTheScreen();
+			knowledgeScreen.queryByText("Das kannst du schon"),
+		).not.toBeOnTheScreen();
 		expect(
-			knowledgeScreen.getByText("Du erkennst lineare Zusammenhänge."),
+			knowledgeScreen.getByText("Steigung noch präziser erklären."),
 		).toBeOnTheScreen();
-		expect(
-			knowledgeScreen.getAllByText("Steigung noch präziser erklären."),
-		).not.toHaveLength(0);
 		expect(knowledgeScreen.getByText("Deine Antworten")).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("1 von 2")).toBeOnTheScreen();
 		expect(
 			knowledgeScreen.getByText("Erkläre die Steigung."),
 		).toBeOnTheScreen();
@@ -566,8 +577,23 @@ describe("AnalyticsScreen", () => {
 			),
 		).toBeOnTheScreen();
 		expect(
-			knowledgeScreen.getByText("Änderung von y pro Änderung von x."),
+			knowledgeScreen.queryByText("Änderung von y pro Änderung von x."),
+		).not.toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("m = 2")).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText(/Schau dir die perfekte Antwort an/),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText(
+				"Der eingesetzte Rechenweg passt noch nicht zu den gegebenen Punkten.",
+			),
 		).toBeOnTheScreen();
+		await fireEvent(
+			knowledgeScreen.getByTestId("topic-answer-pager"),
+			"momentumScrollEnd",
+			{ nativeEvent: { contentOffset: { x: 10_000 } } },
+		);
+		expect(knowledgeScreen.getByText("2 von 2")).toBeOnTheScreen();
 		expect(
 			knowledgeScreen.queryByText("Alle Prüfungsthemen"),
 		).not.toBeOnTheScreen();
