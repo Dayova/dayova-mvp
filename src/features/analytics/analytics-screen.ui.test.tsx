@@ -31,6 +31,7 @@ jest.mock("#convex/_generated/api", () => ({
 		userAnalytics: {
 			getExamAnalysis: "getExamAnalysis",
 			getOverview: "getOverview",
+			getTopicQuestionEvidence: "getTopicQuestionEvidence",
 		},
 	},
 }));
@@ -239,6 +240,7 @@ const examAnalysis = {
 			status: "uncertain",
 			summary: "Steigung noch präziser erklären.",
 			evidenceCount: 2,
+			answeredQuestionCount: 1,
 			dimensions: [
 				{
 					kind: "understanding",
@@ -281,6 +283,7 @@ const examAnalysis = {
 			status: "secure",
 			summary: "Alle erforderlichen Wissensbelege vorhanden.",
 			evidenceCount: 3,
+			answeredQuestionCount: 3,
 			dimensions: [
 				{
 					kind: "understanding",
@@ -335,6 +338,30 @@ const examAnalysis = {
 	updatedAt: Date.UTC(2026, 6, 28, 14),
 };
 
+const topicQuestionEvidence = {
+	topic: {
+		id: "steigung",
+		title: "Steigung erklären",
+		learningGoal: "Du kannst die Steigung vollständig erklären.",
+	},
+	questions: [
+		{
+			itemId: "item_1",
+			sessionId: "session_done",
+			sessionTitle: "Gleichungen üben",
+			phase: "practice",
+			prompt: "Erkläre die Steigung.",
+			answer: "Änderung von y.",
+			review:
+				"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
+			idealAnswer: "Änderung von y pro Änderung von x.",
+			rating: "partiallyCorrect",
+			answeredAt: Date.UTC(2026, 6, 28, 13, 30),
+		},
+	],
+	historyLimited: false,
+};
+
 const historyOverview = {
 	hasData: true,
 	historyLimited: false,
@@ -370,7 +397,9 @@ describe("AnalyticsScreen", () => {
 	beforeEach(() => {
 		mockPush.mockReset();
 		mockUseQuery.mockReset();
-		mockUseQuery.mockReturnValue(emptyAnalysis);
+		mockUseQuery.mockImplementation((query) =>
+			query === "getTopicQuestionEvidence" ? undefined : emptyAnalysis,
+		);
 		mockIsConvexAuthenticated = true;
 		mockUser = { clerkId: "user_123" };
 	});
@@ -399,9 +428,8 @@ describe("AnalyticsScreen", () => {
 		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
 		expect(screen.getByText("Steigung erklären")).toBeOnTheScreen();
 		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
-		expect(
-			screen.getByText("Steigung noch präziser erklären."),
-		).toBeOnTheScreen();
+		expect(screen.getByText("1 ausgewertete Antwort")).toBeOnTheScreen();
+		expect(screen.getByText("3 ausgewertete Antworten")).toBeOnTheScreen();
 		expect(screen.queryByText("„Änderung von y.“")).not.toBeOnTheScreen();
 		expect(
 			screen.queryByText("Schon belegt: Du erkennst lineare Zusammenhänge."),
@@ -434,7 +462,7 @@ describe("AnalyticsScreen", () => {
 
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Steigung erklären. Unsicher. Steigung noch präziser erklären.",
+				name: "Steigung erklären. Unsicher. 1 ausgewertete Antwort.",
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith({
@@ -497,7 +525,11 @@ describe("AnalyticsScreen", () => {
 	});
 
 	test("reveals evidence and starts the recommendation from focused pages", async () => {
-		mockUseQuery.mockReturnValue(examAnalysis);
+		mockUseQuery.mockImplementation((query) =>
+			query === "getTopicQuestionEvidence"
+				? topicQuestionEvidence
+				: examAnalysis,
+		);
 		const planId = "plan_1" as Id<"learningPlans">;
 		const knowledgeScreen = await render(
 			<AnalyticsDetailScreen
@@ -523,6 +555,19 @@ describe("AnalyticsScreen", () => {
 		expect(
 			knowledgeScreen.getAllByText("Steigung noch präziser erklären."),
 		).not.toHaveLength(0);
+		expect(knowledgeScreen.getByText("Deine Antworten")).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText("Erkläre die Steigung."),
+		).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("Änderung von y.")).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText(
+				"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
+			),
+		).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText("Änderung von y pro Änderung von x."),
+		).toBeOnTheScreen();
 		expect(
 			knowledgeScreen.queryByText("Alle Prüfungsthemen"),
 		).not.toBeOnTheScreen();

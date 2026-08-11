@@ -5,6 +5,7 @@ import { throwUserFacingError } from "./errors";
 const operationValidator = v.union(
 	v.literal("diagnostic"),
 	v.literal("plan"),
+	v.literal("answer_evaluation"),
 	v.literal("session_theory"),
 	v.literal("session_practice"),
 	v.literal("session_praxis"),

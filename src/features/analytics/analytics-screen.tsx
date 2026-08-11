@@ -1,7 +1,7 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import { api } from "#convex/_generated/api";
@@ -38,6 +38,9 @@ type ExamAnalysis = NonNullable<
 >;
 type ExamProblem = NonNullable<ExamAnalysis["primaryProblem"]>;
 type TopicStatus = ExamAnalysis["topics"][number]["status"];
+type TopicQuestionEvidence = NonNullable<
+	ReturnType<typeof useQuery<typeof api.userAnalytics.getTopicQuestionEvidence>>
+>;
 
 const DIAGNOSIS_COPY: Record<
 	ExamProblem["diagnosisType"],
@@ -105,6 +108,30 @@ const PRIORITY_COPY = {
 	high: "Hohe Prüfungsrelevanz",
 	medium: "Mittlere Prüfungsrelevanz",
 	low: "Ergänzendes Thema",
+} as const;
+
+const ANSWER_RATING_COPY = {
+	correct: {
+		label: "Richtig",
+		pillClassName: "bg-success-subtle",
+		textClassName: "text-success",
+	},
+	partiallyCorrect: {
+		label: "Teilweise richtig",
+		pillClassName: "bg-info-subtle",
+		textClassName: "text-info",
+	},
+	notCorrect: {
+		label: "Noch nicht richtig",
+		pillClassName: "bg-wrong-subtle",
+		textClassName: "text-wrong",
+	},
+} as const;
+
+const SESSION_PHASE_COPY = {
+	theory: "Theorie",
+	practice: "Üben",
+	rehearsal: "Praxis",
 } as const;
 
 const formatExamLabel = (plan: ExamAnalysis["plans"][number]) =>
@@ -225,6 +252,20 @@ function useKnowledgeHistoryQuery() {
 	return useQuery(
 		api.userAnalytics.getOverview,
 		user && isConvexAuthenticated ? queryArgs : "skip",
+	);
+}
+
+function useTopicQuestionEvidenceQuery(
+	learningPlanId: Id<"learningPlans"> | null | undefined,
+	topicId: string | null | undefined,
+) {
+	const { user } = useAuthSession();
+	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	return useQuery(
+		api.userAnalytics.getTopicQuestionEvidence,
+		user && isConvexAuthenticated && learningPlanId && topicId
+			? { learningPlanId, topicId }
+			: "skip",
 	);
 }
 
@@ -725,8 +766,8 @@ function TopicList({
 		return (
 			<ActionSurface
 				key={topic.id}
-				accessibilityHint="Öffnet Stärken, Lücken und Wissensbelege für dieses Thema."
-				accessibilityLabel={`${topic.title}. ${status.label}. ${topic.summary}`}
+				accessibilityHint="Öffnet deinen Wissensstand und alle ausgewerteten Antworten für dieses Thema."
+				accessibilityLabel={`${topic.title}. ${status.label}. ${topic.answeredQuestionCount} ${topic.answeredQuestionCount === 1 ? "ausgewertete Antwort" : "ausgewertete Antworten"}.`}
 				accessibilityRole="button"
 				className={cn(
 					"min-h-16 gap-2 bg-card px-4 py-4",
@@ -752,15 +793,14 @@ function TopicList({
 						/>
 					</View>
 				</View>
-				{topic.status === "uncertain" ? (
-					<Text
-						selectable
-						className="font-poppins text-body-5 text-secondary-text"
-						numberOfLines={2}
-					>
-						{formatGermanUiText(topic.summary)}
-					</Text>
-				) : null}
+				<Text
+					selectable
+					className="font-poppins text-body-5 text-secondary-text"
+				>
+					{topic.answeredQuestionCount === 0
+						? "Noch keine ausgewertete Antwort"
+						: `${topic.answeredQuestionCount} ${topic.answeredQuestionCount === 1 ? "ausgewertete Antwort" : "ausgewertete Antworten"}`}
+				</Text>
 			</ActionSurface>
 		);
 	});
@@ -886,7 +926,144 @@ function TopicStrengthSection({
 	);
 }
 
-function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
+function TopicQuestionEvidenceSection({
+	evidence,
+}: {
+	evidence: TopicQuestionEvidence | undefined;
+}) {
+	return (
+		<View className="gap-3">
+			<SectionHeading
+				title="Deine Antworten"
+				description="Je Frage siehst du nur deine letzte Antwort."
+			/>
+			{evidence === undefined ? (
+				<Surface className="items-center gap-3 p-6" variant="flat">
+					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
+					<Text className="font-poppins text-body-4 text-secondary-text">
+						Antworten werden geladen …
+					</Text>
+				</Surface>
+			) : evidence.questions.length === 0 ? (
+				<Surface className="gap-2 p-5" variant="flat">
+					<Text className="font-poppins font-semibold text-body-3 text-text">
+						Noch keine ausgewertete Antwort
+					</Text>
+					<Text
+						selectable
+						className="font-poppins text-body-4 text-secondary-text"
+					>
+						Sobald du eine Lernsession zu diesem Thema abschließt, erscheint die
+						Auswertung hier.
+					</Text>
+				</Surface>
+			) : (
+				<View className="gap-5">
+					{evidence.questions.map((question) => {
+						const rating = ANSWER_RATING_COPY[question.rating];
+						return (
+							<Surface
+								key={question.itemId}
+								className="gap-5 p-5"
+								variant="flat"
+							>
+								<View className="flex-row items-center justify-between gap-3">
+									<Text
+										selectable
+										className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text"
+										numberOfLines={2}
+									>
+										{`${SESSION_PHASE_COPY[question.phase]} · ${formatGermanUiText(question.sessionTitle)}`}
+									</Text>
+									<View
+										className={cn(
+											"rounded-full px-3 py-1.5",
+											rating.pillClassName,
+										)}
+									>
+										<Text
+											className={cn(
+												"font-poppins font-semibold text-body-5",
+												rating.textClassName,
+											)}
+										>
+											{rating.label}
+										</Text>
+									</View>
+								</View>
+
+								<View className="gap-2">
+									<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+										FRAGE
+									</Text>
+									<Text
+										selectable
+										className="font-poppins font-semibold text-body-3 text-text"
+									>
+										{formatGermanUiText(question.prompt)}
+									</Text>
+								</View>
+
+								<View className="gap-2 rounded-info bg-background p-4">
+									<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+										DEINE ANTWORT
+									</Text>
+									<Text
+										selectable
+										className="font-poppins text-body-3 text-text"
+									>
+										{formatGermanUiText(question.answer)}
+									</Text>
+								</View>
+
+								<View className="gap-2">
+									<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+										AUSWERTUNG
+									</Text>
+									<Text
+										selectable
+										className="font-poppins text-body-3 text-text"
+									>
+										{formatGermanUiText(question.review)}
+									</Text>
+								</View>
+
+								<View className="gap-2 border-border border-t pt-5">
+									<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+										IDEALE ANTWORT
+									</Text>
+									<Text
+										selectable
+										className="font-poppins text-body-3 text-text"
+									>
+										{formatGermanUiText(question.idealAnswer)}
+									</Text>
+								</View>
+							</Surface>
+						);
+					})}
+					{evidence.historyLimited ? (
+						<Text
+							selectable
+							className="px-1 font-poppins text-body-5 text-secondary-text"
+						>
+							Die Ansicht zeigt die zuletzt gespeicherten Fragen zu diesem
+							Thema.
+						</Text>
+					) : null}
+				</View>
+			)}
+		</View>
+	);
+}
+
+function TopicDetailCard({
+	topic,
+	questionEvidence,
+}: {
+	topic: ExamAnalysis["topics"][number];
+	questionEvidence: TopicQuestionEvidence | undefined;
+}) {
 	const requiredDimensions = topic.dimensions.filter(
 		(dimension) => dimension.required,
 	);
@@ -915,6 +1092,14 @@ function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
 						className="font-poppins text-body-4 text-secondary-text"
 					>
 						{formatGermanUiText(topic.learningGoal)}
+					</Text>
+				</View>
+				<View className="gap-1 border-border border-t pt-4">
+					<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
+						DEIN AKTUELLER WISSENSSTAND
+					</Text>
+					<Text selectable className="font-poppins text-body-3 text-text">
+						{formatGermanUiText(topic.summary)}
 					</Text>
 				</View>
 			</Surface>
@@ -951,6 +1136,7 @@ function TopicDetailCard({ topic }: { topic: ExamAnalysis["topics"][number] }) {
 
 			<TopicWeaknessSection topic={topic} />
 			<TopicStrengthSection topic={topic} />
+			<TopicQuestionEvidenceSection evidence={questionEvidence} />
 
 			{topic.controlCheckReason ? (
 				<Surface
@@ -986,6 +1172,10 @@ function KnowledgeDetailContent({
 	const selectedTopic =
 		analysis.topics.find((topic) => topic.id === initialTopicId) ??
 		analysis.topics[0];
+	const questionEvidence = useTopicQuestionEvidenceQuery(
+		analysis.selectedPlan?.id,
+		selectedTopic?.id,
+	);
 
 	if (!selectedTopic) {
 		return (
@@ -1003,7 +1193,12 @@ function KnowledgeDetailContent({
 		);
 	}
 
-	return <TopicDetailCard topic={selectedTopic} />;
+	return (
+		<TopicDetailCard
+			topic={selectedTopic}
+			questionEvidence={questionEvidence}
+		/>
+	);
 }
 
 function PreparationSummary({
@@ -1130,11 +1325,15 @@ function EmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
 	);
 }
 
-export function AnalyticsScreen() {
+export function AnalyticsScreen({
+	initialPlanId,
+}: {
+	initialPlanId?: Id<"learningPlans">;
+}) {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const [selectedPlanId, setSelectedPlanId] =
-		useState<Id<"learningPlans"> | null>(null);
+		useState<Id<"learningPlans"> | null>(initialPlanId ?? null);
 	const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 	const analysis = useExamAnalysisQuery(selectedPlanId);
 

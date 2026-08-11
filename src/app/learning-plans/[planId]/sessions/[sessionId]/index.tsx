@@ -55,6 +55,7 @@ import { getErrorMessage } from "~/features/learning-plans/utils";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
@@ -139,6 +140,7 @@ function ActionRow({
 	onPrimary,
 	primaryDisabled,
 	isBusy,
+	busyLabel,
 	className,
 }: {
 	secondaryLabel: string;
@@ -147,6 +149,7 @@ function ActionRow({
 	onPrimary: () => void;
 	primaryDisabled?: boolean;
 	isBusy?: boolean;
+	busyLabel?: string;
 	className?: string;
 }) {
 	return (
@@ -165,7 +168,10 @@ function ActionRow({
 				onPress={onPrimary}
 			>
 				{isBusy ? (
-					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+					<View className="flex-row items-center justify-center gap-2">
+						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+						{busyLabel ? <Text>{busyLabel}</Text> : null}
+					</View>
 				) : (
 					<Text>{primaryLabel}</Text>
 				)}
@@ -482,38 +488,19 @@ function AnalysisView({
 				</Surface>
 			) : null}
 			{analysis ? (
-				<View className="mt-10">
-					<Surface className="rounded-[32px] px-5 py-6" variant="flat">
-						<TagPill label="Stärken" icon="evaluation" />
-						{analysis.strengths.map((strength) => (
-							<Text
-								key={strength}
-								className="mt-6 font-poppins text-body-2 text-text"
-							>
-								{"\u2022"} {strength}
-							</Text>
-						))}
-					</Surface>
-					<View className="mx-8 my-8 h-px bg-border" />
-					<Surface className="rounded-[32px] px-5 py-6" variant="flat">
-						<TagPill label="Lücken" icon="answer" />
-						{analysis.gaps.map((gap) => (
-							<Text
-								key={gap}
-								className="mt-6 font-poppins text-body-2 text-text"
-							>
-								{"\u2022"} {gap}
-							</Text>
-						))}
-					</Surface>
-					<View className="mx-8 my-8 h-px bg-border" />
-					<Surface className="rounded-[32px] px-5 py-6" variant="flat">
-						<TagPill label="Empfehlungen" icon="question" />
-						<Text className="mt-8 font-poppins font-semibold text-body-2 text-text">
-							{analysis.recommendation}
-						</Text>
-					</Surface>
-				</View>
+				<Surface
+					className="mt-10 gap-3 rounded-[32px] px-5 py-6"
+					variant="flat"
+				>
+					<TagPill label="Auswertung bereit" icon="evaluation" />
+					<Text className="mt-3 font-poppins font-semibold text-body-2 text-text">
+						Deine Antworten sind ausgewertet.
+					</Text>
+					<Text className="font-poppins text-body-4 text-secondary-text">
+						Schließe den Lernblock ab. Danach findest du Stärken, Schwächen und
+						alle Antworten zu deinen Themen in der Analyse.
+					</Text>
+				</Surface>
 			) : (
 				<View className="items-center py-16">
 					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
@@ -524,13 +511,13 @@ function AnalysisView({
 					{isBusy ? (
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 					) : (
-						<Text>Abschließen &amp; nächsten Schritt planen</Text>
+						<Text>Abschließen &amp; Analyse öffnen</Text>
 					)}
 				</Button>
 			) : (
 				<ActionRow
 					secondaryLabel="10 Min. weiterlernen"
-					primaryLabel="Abschließen"
+					primaryLabel="Zur Analyse"
 					onSecondary={onContinueLearning}
 					onPrimary={onDone}
 					isBusy={isBusy}
@@ -552,6 +539,9 @@ export default function LearningSessionContentScreen() {
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const submitAnswer = useMutation(api.learningSessionContent.submitAnswer);
+	const evaluateWrittenAnswer = useAction(
+		api.learningPlanAi.evaluateWrittenAnswer,
+	);
 	const finishSessionContent = useMutation(
 		api.learningSessionContent.finishSessionContent,
 	);
@@ -1002,6 +992,42 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
+	const completeAndOpenAnalysis = async () => {
+		if (!sessionId || isBusy) return;
+
+		setIsBusy(true);
+		setErrorMessage(null);
+		try {
+			const completed = await recordCompletedOutcome();
+			const nextSessionId = completed?.rollingUpdate?.committedSessionId;
+			if (nextSessionId) {
+				void prepareSessionContent({ sessionId: nextSessionId }).catch(
+					(error: unknown) => {
+						logDiagnosticError(
+							"Failed to prewarm the next learning session.",
+							error,
+							{
+								source: "learningSession.prewarmNextSession",
+								level: "warn",
+							},
+						);
+					},
+				);
+			}
+			router.dismissTo(
+				planId
+					? { pathname: ROUTES.analytics, params: { planId } }
+					: ROUTES.analytics,
+			);
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(error, "Die Analyse konnte nicht geöffnet werden."),
+			);
+		} finally {
+			setIsBusy(false);
+		}
+	};
+
 	const startContinueLearning = async () => {
 		if (!content || isBusy) return;
 
@@ -1074,16 +1100,18 @@ export default function LearningSessionContentScreen() {
 			const writtenAnswer = submitAsUnknown
 				? fallbackAnswer
 				: answerText.trim();
-			const attempt = await submitAnswer({
-				itemId: currentItem.id,
-				selectedChoiceId:
-					currentItem.kind === "multipleChoice"
-						? submitAsUnknown
-							? "unknown"
-							: (selectedChoiceId ?? undefined)
-						: undefined,
-				answerText: currentItem.kind === "written" ? writtenAnswer : undefined,
-			});
+			const attempt =
+				currentItem.kind === "multipleChoice"
+					? await submitAnswer({
+							itemId: currentItem.id,
+							selectedChoiceId: submitAsUnknown
+								? "unknown"
+								: (selectedChoiceId ?? undefined),
+						})
+					: await evaluateWrittenAnswer({
+							itemId: currentItem.id,
+							answerText: writtenAnswer,
+						});
 			if (attempt.rating === "correct" && !isPreTheoryQuestion) {
 				void triggerSuccessHaptic({
 					platform: process.env.EXPO_OS,
@@ -1368,7 +1396,7 @@ export default function LearningSessionContentScreen() {
 						content={content}
 						isDiagnostic={isDiagnosticSession}
 						onContinueLearning={() => void startContinueLearning()}
-						onDone={completeAndLeave}
+						onDone={completeAndOpenAnalysis}
 						isBusy={isBusy}
 					/>
 				) : completionPhase ? (
@@ -1452,6 +1480,9 @@ export default function LearningSessionContentScreen() {
 							onPrimary={() => void submitCurrentAnswer()}
 							primaryDisabled={!isAnswerReady}
 							isBusy={isBusy}
+							busyLabel={
+								currentItem?.kind === "written" ? "Analysiere …" : undefined
+							}
 						/>
 					</View>
 				</KeyboardAvoidingView>

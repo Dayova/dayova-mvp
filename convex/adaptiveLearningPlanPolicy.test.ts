@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+	adaptiveSessionCopy,
 	type AdaptiveTopicEvidence,
 	selectNextAdaptiveLearningTarget,
 } from "./adaptiveLearningPlanPolicy";
@@ -176,16 +177,23 @@ describe("adaptive learning plan policy", () => {
 			}),
 		];
 
-		expect(
-			selectNextAdaptiveLearningTarget({
-				topics,
-				initialReadiness: [],
-				evidence: attempts,
-			}),
-		).toMatchObject({
+		const target = selectNextAdaptiveLearningTarget({
+			topics,
+			initialReadiness: [],
+			evidence: attempts,
+		});
+		expect(target).toMatchObject({
 			topicId: "steigung",
 			dimension: "understanding",
+			phase: "practice",
 			needsControlCheck: true,
+		});
+		if (!target) throw new Error("Expected a control target");
+		expect(adaptiveSessionCopy(target)).toMatchObject({
+			tasks: [
+				"Eine neue Kontrollfrage ohne Vorlage beantworten",
+				"Antwort begründen und Ergebnis prüfen",
+			],
 		});
 	});
 

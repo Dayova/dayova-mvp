@@ -170,7 +170,8 @@ test("returns private, actionable learning analytics for the selected period", a
 });
 
 test("returns a selected exam analysis grounded in topics, answers, and scheduled work", async () => {
-	const { t, learningPlanId, openSessionId } = await seedAnalyticsData();
+	const { t, learningPlanId, openSessionId, recoverySessionId } =
+		await seedAnalyticsData();
 	await t.run(async (ctx) => {
 		await ctx.db.patch("learningPlans", learningPlanId, {
 			targetStudyMinutes: 90,
@@ -219,6 +220,16 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 				"Du erkennst lineare Zusammenhänge.",
 				"Du hast erste Ansätze gezeigt und weißt, wo du ansetzen kannst.",
 			],
+		});
+		await ctx.db.insert("learningSessionAnalyses", {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			learningPlanId,
+			sessionId: openSessionId,
+			strengths: ["Unfertige Sessions dürfen keine Stärke ergänzen."],
+			gaps: ["Unfertige Sessions dürfen keine Schwäche ergänzen."],
+			recommendation: "Diese Empfehlung darf noch nicht erscheinen.",
+			createdAt: Date.UTC(2026, 6, 28, 15),
+			updatedAt: Date.UTC(2026, 6, 28, 15),
 		});
 	});
 
@@ -282,6 +293,13 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 			},
 		},
 	});
+	expect(analysis.abilities).not.toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				statement: "Unfertige Sessions dürfen keine Stärke ergänzen.",
+			}),
+		]),
+	);
 	expect(analysis.topics).toEqual([
 		expect.objectContaining({
 			id: "steigung",
@@ -290,6 +308,7 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 			summary:
 				"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
 			evidenceCount: 2,
+			answeredQuestionCount: 1,
 			dimensions: [
 				{
 					kind: "understanding",
@@ -329,8 +348,47 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 			id: "achsenschnitt",
 			status: "developing",
 			priority: "medium",
+			answeredQuestionCount: 0,
 		}),
 	]);
+	await t.run(async (ctx) => {
+		const item = await ctx.db
+			.query("learningSessionContentItems")
+			.withIndex("by_sessionId_and_sortOrder", (q) =>
+				q.eq("sessionId", recoverySessionId),
+			)
+			.first();
+		if (!item) throw new Error("Expected topic item");
+		await ctx.db.insert("learningSessionAnswerAttempts", {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			learningPlanId,
+			sessionId: item.sessionId,
+			itemId: item._id,
+			answerText: "Eine frühere, unvollständige Antwort.",
+			rating: "notCorrect",
+			feedback: "Frühere Auswertung.",
+			perfectAnswer: "Änderung von y pro Änderung von x.",
+			createdAt: Date.UTC(2026, 6, 28, 13, 20),
+		});
+	});
+	const topicEvidence = await t.query(
+		api.userAnalytics.getTopicQuestionEvidence,
+		{ learningPlanId, topicId: "steigung" },
+	);
+	expect(topicEvidence).toEqual({
+		historyLimited: false,
+		questions: [
+			expect.objectContaining({
+				phase: "practice",
+				prompt: "Erkläre die Steigung.",
+				answer: "Änderung von y.",
+				review:
+					"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
+				idealAnswer: "Änderung von y pro Änderung von x.",
+				rating: "partiallyCorrect",
+			}),
+		],
+	});
 	await expect(
 		t.query(api.userAnalytics.getExamAnalysis, {
 			todayKey: "2026-07-28",
@@ -344,6 +402,11 @@ test("marks a topic secure after correct guided practice and a harder independen
 	const { t, learningPlanId, firstSessionId, openSessionId } =
 		await seedAnalyticsData();
 	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlanSessions", openSessionId, {
+			completed: true,
+			executionStatus: "completed",
+			outcomeAt: Date.UTC(2026, 6, 28, 15),
+		});
 		await ctx.db.patch("learningPlans", learningPlanId, {
 			topicMap: [
 				{
@@ -439,6 +502,11 @@ test("requests a control check when new evidence contradicts repeated success", 
 	const { t, learningPlanId, firstSessionId, openSessionId } =
 		await seedAnalyticsData();
 	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlanSessions", openSessionId, {
+			completed: true,
+			executionStatus: "completed",
+			outcomeAt: Date.UTC(2026, 6, 28, 15),
+		});
 		await ctx.db.patch("learningPlans", learningPlanId, {
 			topicMap: [
 				{

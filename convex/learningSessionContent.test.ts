@@ -423,15 +423,24 @@ test("persists deferred and completed theory validation states", async () => {
 		deferred?.items.filter((item) => item.phase === "practice") ?? [];
 	expect(validationItems).toHaveLength(1);
 	for (const item of validationItems) {
-		await t.mutation(api.learningSessionContent.submitAnswer, {
-			itemId: item.id,
-			...(item.kind === "multipleChoice"
-				? { selectedChoiceId: item.choices[0]?.id }
-				: {
-						answerText:
-							"Ich erkläre den Zusammenhang Schritt für Schritt und wende ihn anschließend auf ein neues Beispiel an.",
-					}),
-		});
+		if (item.kind === "multipleChoice") {
+			await t.mutation(api.learningSessionContent.submitAnswer, {
+				itemId: item.id,
+				selectedChoiceId: item.choices[0]?.id,
+			});
+		} else {
+			await t.mutation(
+				internal.learningSessionContent.storeEvaluatedWrittenAnswer,
+				{
+					itemId: item.id,
+					answerText:
+						"Ich erkläre den Zusammenhang Schritt für Schritt und wende ihn anschließend auf ein neues Beispiel an.",
+					rating: "correct",
+					feedback:
+						"Die Antwort erklärt den gefragten Zusammenhang vollständig.",
+				},
+			);
+		}
 	}
 	await t.mutation(api.learningSessionContent.finishSessionContent, {
 		sessionId,
@@ -809,11 +818,14 @@ test("answers produce feedback and finishing creates a Wissensanalyse", async ()
 		},
 	);
 	const writtenAttempt = await t.mutation(
-		api.learningSessionContent.submitAnswer,
+		internal.learningSessionContent.storeEvaluatedWrittenAnswer,
 		{
 			itemId: written.id,
 			answerText:
 				"Ich löse die Gleichung Schritt für Schritt und prüfe das Ergebnis.",
+			rating: "partiallyCorrect",
+			feedback:
+				"Der Lösungsweg und die Kontrolle sind genannt; der konkrete Rechenschritt fehlt.",
 			timeSpentSeconds: 45,
 		},
 	);
@@ -827,9 +839,12 @@ test("answers produce feedback and finishing creates a Wissensanalyse", async ()
 		perfectAnswer: expect.stringContaining("prüfe"),
 	});
 	expect(writtenAttempt.rating).not.toBe("notCorrect");
-	expect(analysis.strengths.length).toBeGreaterThan(0);
+	expect(analysis.strengths).toEqual([]);
 	expect(analysis.gaps.length).toBeGreaterThan(0);
-	expect(analysis.recommendation).toContain("Wiederhole");
+	expect(analysis.gaps).toContain(
+		"Der Lösungsweg und die Kontrolle sind genannt; der konkrete Rechenschritt fehlt.",
+	);
+	expect(analysis.recommendation).toContain("Bearbeite als Nächstes");
 
 	const updatedContent = await t.query(
 		api.learningSessionContent.getSessionContent,
@@ -880,7 +895,6 @@ test("finishing analyzes only the latest attempt for each item", async () => {
 		itemId: multipleChoice.id,
 		rating: "correct",
 	});
-	expect(analysis.gaps).toEqual([
-		"Halte die Sicherheit bis zur Prüfung durch kurze Wiederholung.",
-	]);
+	expect(analysis.gaps).toEqual([]);
+	expect(analysis.strengths).toHaveLength(1);
 });

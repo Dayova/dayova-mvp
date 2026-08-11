@@ -132,10 +132,17 @@ const answerDiagnostic = async (
 				selectedChoiceId,
 			});
 		} else {
-			await t.mutation(api.learningSessionContent.submitAnswer, {
-				itemId: item.id,
-				answerText: correct ? item.idealAnswer : "Ich weiß es nicht.",
-			});
+			await t.mutation(
+				internal.learningSessionContent.storeEvaluatedWrittenAnswer,
+				{
+					itemId: item.id,
+					answerText: correct ? item.idealAnswer : "Ich weiß es nicht.",
+					rating: correct ? "correct" : "notCorrect",
+					feedback: correct
+						? "Die Antwort deckt die erwartete Lösung ab."
+						: "Es wurde noch keine fachliche Antwort gegeben.",
+				},
+			);
 		}
 	}
 	return items;
