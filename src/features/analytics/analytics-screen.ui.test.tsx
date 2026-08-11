@@ -389,6 +389,26 @@ describe("AnalyticsScreen", () => {
 		expect(mockPush).toHaveBeenCalledWith("/learning-plans/new");
 	});
 
+	test("loads the learning plan requested by the analysis route", async () => {
+		const screen = await render(
+			<AnalyticsScreen
+				key="plan_1"
+				initialPlanId={"plan_1" as Id<"learningPlans">}
+			/>,
+		);
+		await screen.rerender(
+			<AnalyticsScreen
+				key="plan_2"
+				initialPlanId={"plan_2" as Id<"learningPlans">}
+			/>,
+		);
+
+		expect(mockUseQuery).toHaveBeenCalledWith(
+			"getExamAnalysis",
+			expect.objectContaining({ learningPlanId: "plan_2" }),
+		);
+	});
+
 	test("shows every topic and opens its exact knowledge evidence", async () => {
 		mockUseQuery.mockReturnValue(examAnalysis);
 		const screen = await render(<AnalyticsScreen />);

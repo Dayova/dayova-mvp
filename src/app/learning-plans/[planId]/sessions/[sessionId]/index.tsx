@@ -55,6 +55,7 @@ import { getErrorMessage } from "~/features/learning-plans/utils";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
@@ -224,8 +225,10 @@ function CompletionView({
 	correctCount,
 	attemptCount,
 	onContinueLearning,
-	onPrimary,
+	onDone,
+	onAnalysis,
 	isBusy,
+	busyAction,
 }: {
 	phase: LearningSessionContentSnapshot["session"]["phase"];
 	isDiagnostic: boolean;
@@ -233,9 +236,12 @@ function CompletionView({
 	correctCount: number;
 	attemptCount: number;
 	onContinueLearning: () => void;
-	onPrimary: () => void;
+	onDone: () => void;
+	onAnalysis: () => void;
 	isBusy: boolean;
+	busyAction: "done" | "analysis" | null;
 }) {
+	const { colors } = useDayovaTheme();
 	const isTheory = phase === "theory";
 	const isPraxis = phase === "rehearsal";
 	if (isPraxis && !isDiagnostic) {
@@ -245,7 +251,7 @@ function CompletionView({
 				correctCount={correctCount}
 				attemptCount={attemptCount}
 				onRepeat={onContinueLearning}
-				onAnalysis={onPrimary}
+				onAnalysis={onAnalysis}
 				isBusy={isBusy}
 			/>
 		);
@@ -253,7 +259,7 @@ function CompletionView({
 
 	let title = "Übung abgeschlossen";
 	let description =
-		"Du hast alle Aufgaben geschafft. Übe noch einmal weiter oder sieh dir deine Auswertung an.";
+		"Du hast alle Aufgaben geschafft. Deine Ergebnisse fließen in deinen Lernplan ein.";
 	let completionLabel = "Übung geschafft";
 	let Icon = Pencil;
 	let iconClassName = "bg-ueben-subtle";
@@ -262,7 +268,7 @@ function CompletionView({
 	if (isTheory) {
 		title = "Theorie abgeschlossen";
 		description =
-			"Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt.";
+			"Du hast alle Themen dieser Theorieeinheit geschafft. Deine Ergebnisse fließen in deinen Lernplan ein.";
 		completionLabel = "Theorie geschafft";
 		Icon = BookOpen;
 		iconClassName = "bg-theorie-subtle";
@@ -277,12 +283,6 @@ function CompletionView({
 		iconClassName = "bg-system-subtle";
 		iconColor = DAYOVA_DESIGN_SYSTEM.colors.primary;
 	}
-
-	const primaryLabel = isDiagnostic
-		? "Auswertung ansehen"
-		: isTheory
-			? "Theorie abschließen"
-			: "Analyse ansehen";
 
 	return (
 		<Animated.View
@@ -325,25 +325,37 @@ function CompletionView({
 			</View>
 
 			<View className="gap-3">
-				<Button className="w-full" disabled={isBusy} onPress={onPrimary}>
-					{isBusy ? (
+				<Button
+					accessibilityLabel={
+						busyAction === "done" ? "Lernblock wird abgeschlossen" : "Fertig"
+					}
+					className="w-full"
+					disabled={isBusy}
+					onPress={onDone}
+				>
+					{busyAction === "done" ? (
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 					) : (
-						<Text>{primaryLabel}</Text>
+						<Text>Fertig</Text>
 					)}
 				</Button>
-				{!isDiagnostic ? (
-					<Button
-						className="w-full"
-						disabled={isBusy}
-						variant="neutral"
-						onPress={onContinueLearning}
-					>
-						<Text>
-							{isTheory ? "Noch 10 Min. weiterlernen" : "Noch 10 Min. üben"}
-						</Text>
-					</Button>
-				) : null}
+				<Button
+					accessibilityLabel={
+						busyAction === "analysis"
+							? "Auswertung wird geöffnet"
+							: "Auswertung ansehen"
+					}
+					className="w-full"
+					disabled={isBusy}
+					variant="neutral"
+					onPress={onAnalysis}
+				>
+					{busyAction === "analysis" ? (
+						<ActivityIndicator color={colors.background} />
+					) : (
+						<Text>Auswertung ansehen</Text>
+					)}
+				</Button>
 			</View>
 		</Animated.View>
 	);
@@ -453,93 +465,6 @@ function TextAnswer({
 	);
 }
 
-function AnalysisView({
-	content,
-	isDiagnostic,
-	onContinueLearning,
-	onDone,
-	isBusy,
-}: {
-	content: LearningSessionContentSnapshot;
-	isDiagnostic: boolean;
-	onContinueLearning: () => void;
-	onDone: () => void;
-	isBusy: boolean;
-}) {
-	const analysis = content.analysis;
-
-	return (
-		<View className="flex-1">
-			{isDiagnostic ? (
-				<Surface className="mt-8 rounded-[28px] px-5 py-5" variant="soft">
-					<Text className="font-poppins font-semibold text-body-3 text-text">
-						Dein Ergebnis steuert den nächsten Schritt
-					</Text>
-					<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
-						Wenn du abschließt, plant Dayova mit diesen Antworten den nächsten
-						Lerninhalt und ergänzt einen weiteren Termin.
-					</Text>
-				</Surface>
-			) : null}
-			{analysis ? (
-				<View className="mt-10">
-					<Surface className="rounded-[32px] px-5 py-6" variant="flat">
-						<TagPill label="Stärken" icon="evaluation" />
-						{analysis.strengths.map((strength) => (
-							<Text
-								key={strength}
-								className="mt-6 font-poppins text-body-2 text-text"
-							>
-								{"\u2022"} {strength}
-							</Text>
-						))}
-					</Surface>
-					<View className="mx-8 my-8 h-px bg-border" />
-					<Surface className="rounded-[32px] px-5 py-6" variant="flat">
-						<TagPill label="Lücken" icon="answer" />
-						{analysis.gaps.map((gap) => (
-							<Text
-								key={gap}
-								className="mt-6 font-poppins text-body-2 text-text"
-							>
-								{"\u2022"} {gap}
-							</Text>
-						))}
-					</Surface>
-					<View className="mx-8 my-8 h-px bg-border" />
-					<Surface className="rounded-[32px] px-5 py-6" variant="flat">
-						<TagPill label="Empfehlungen" icon="question" />
-						<Text className="mt-8 font-poppins font-semibold text-body-2 text-text">
-							{analysis.recommendation}
-						</Text>
-					</Surface>
-				</View>
-			) : (
-				<View className="items-center py-16">
-					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
-				</View>
-			)}
-			{isDiagnostic ? (
-				<Button className="mt-8 w-full" disabled={isBusy} onPress={onDone}>
-					{isBusy ? (
-						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
-					) : (
-						<Text>Abschließen &amp; nächsten Schritt planen</Text>
-					)}
-				</Button>
-			) : (
-				<ActionRow
-					secondaryLabel="10 Min. weiterlernen"
-					primaryLabel="Abschließen"
-					onSecondary={onContinueLearning}
-					onPrimary={onDone}
-					isBusy={isBusy}
-				/>
-			)}
-		</View>
-	);
-}
-
 export default function LearningSessionContentScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -575,8 +500,10 @@ export default function LearningSessionContentScreen() {
 		null,
 	);
 	const [isBusy, setIsBusy] = useState(false);
+	const [busyCompletionAction, setBusyCompletionAction] = useState<
+		"done" | "analysis" | null
+	>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const [showAnalysis, setShowAnalysis] = useState(false);
 	const [completionPhase, setCompletionPhase] = useState<
 		LearningSessionContentSnapshot["session"]["phase"] | null
 	>(null);
@@ -626,9 +553,7 @@ export default function LearningSessionContentScreen() {
 		sessionItems,
 		currentIndex,
 	);
-	const shouldTrackActiveStudy = Boolean(
-		currentItem && !showAnalysis && !completionPhase,
-	);
+	const shouldTrackActiveStudy = Boolean(currentItem && !completionPhase);
 	const isPraxisSession = content?.session.phase === "rehearsal";
 	const isDiagnosticSession = content?.session.sessionPurpose === "diagnostic";
 	const isPairedTheoryQuestion = isPairedTheoryQuestionItem(currentItem);
@@ -813,7 +738,7 @@ export default function LearningSessionContentScreen() {
 	});
 
 	useEffect(() => {
-		if (!timerDurationSeconds || showAnalysis || completionPhase) {
+		if (!timerDurationSeconds || completionPhase) {
 			remainingSecondsRef.current = null;
 			return undefined;
 		}
@@ -827,10 +752,10 @@ export default function LearningSessionContentScreen() {
 		}, 1000);
 
 		return () => clearInterval(timer);
-	}, [completionPhase, showAnalysis, timerDurationSeconds]);
+	}, [completionPhase, timerDurationSeconds]);
 
 	const displayedRemainingSeconds =
-		timerDurationSeconds !== null && !showAnalysis && !completionPhase
+		timerDurationSeconds !== null && !completionPhase
 			? (remainingSeconds ?? timerDurationSeconds)
 			: null;
 
@@ -856,22 +781,17 @@ export default function LearningSessionContentScreen() {
 			}
 
 			setIsContinuation(false);
-			setCompletionPhase(null);
-			setShowAnalysis(true);
-			void finishSessionContent({ sessionId }).catch((error: unknown) => {
-				setErrorMessage(
-					getErrorMessage(
-						error,
-						"Die Auswertung konnte nicht erstellt werden.",
-					),
-				);
-			});
+			setCompletionPhase(
+				getLearningSessionCompletionPhase(
+					content?.session.phase ?? "practice",
+					content?.session.compositionVariant ?? "control",
+				),
+			);
 		});
 	}, [
 		content?.session.compositionVariant,
 		content?.session.phase,
 		displayedRemainingSeconds,
-		finishSessionContent,
 		isContinuation,
 		isDiagnosticSession,
 		sessionId,
@@ -925,24 +845,6 @@ export default function LearningSessionContentScreen() {
 		contentScrollRef.current?.scrollTo({ y: 0, animated: true });
 	};
 
-	const finishAndShowAnalysis = async () => {
-		if (!sessionId || isBusy) return;
-
-		setIsBusy(true);
-		setErrorMessage(null);
-		try {
-			await finishSessionContent({ sessionId });
-			setCompletionPhase(null);
-			setShowAnalysis(true);
-		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(error, "Die Auswertung konnte nicht erstellt werden."),
-			);
-		} finally {
-			setIsBusy(false);
-		}
-	};
-
 	const recordCompletedOutcome = async () => {
 		if (!sessionId || didRecordOutcomeRef.current) return null;
 		if (content?.session.executionStatus === "completed") {
@@ -967,28 +869,36 @@ export default function LearningSessionContentScreen() {
 		return completed;
 	};
 
+	const completeSession = async (
+		completedSessionId: Id<"learningPlanSessions">,
+	) => {
+		await finishSessionContent({ sessionId: completedSessionId });
+		const completed = await recordCompletedOutcome();
+		const nextSessionId = completed?.rollingUpdate?.committedSessionId;
+		if (nextSessionId) {
+			void prepareSessionContent({ sessionId: nextSessionId }).catch(
+				(error: unknown) => {
+					logDiagnosticError(
+						"Failed to prewarm the next learning session.",
+						error,
+						{
+							source: "learningSession.prewarmNextSession",
+							level: "warn",
+						},
+					);
+				},
+			);
+		}
+	};
+
 	const completeAndLeave = async () => {
 		if (!sessionId || isBusy) return;
 
 		setIsBusy(true);
+		setBusyCompletionAction("done");
 		setErrorMessage(null);
 		try {
-			const completed = await recordCompletedOutcome();
-			const nextSessionId = completed?.rollingUpdate?.committedSessionId;
-			if (nextSessionId) {
-				void prepareSessionContent({ sessionId: nextSessionId }).catch(
-					(error: unknown) => {
-						logDiagnosticError(
-							"Failed to prewarm the next learning session.",
-							error,
-							{
-								source: "learningSession.prewarmNextSession",
-								level: "warn",
-							},
-						);
-					},
-				);
-			}
+			await completeSession(sessionId);
 			goBack();
 		} catch (error) {
 			setErrorMessage(
@@ -998,6 +908,33 @@ export default function LearningSessionContentScreen() {
 				),
 			);
 		} finally {
+			setBusyCompletionAction(null);
+			setIsBusy(false);
+		}
+	};
+
+	const completeAndOpenAnalysis = async () => {
+		if (!sessionId || isBusy) return;
+
+		setIsBusy(true);
+		setBusyCompletionAction("analysis");
+		setErrorMessage(null);
+		try {
+			await completeSession(sessionId);
+			router.dismissTo(
+				planId
+					? {
+							pathname: ROUTES.analytics,
+							params: { planId },
+						}
+					: ROUTES.analytics,
+			);
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(error, "Die Auswertung konnte nicht geöffnet werden."),
+			);
+		} finally {
+			setBusyCompletionAction(null);
 			setIsBusy(false);
 		}
 	};
@@ -1017,7 +954,6 @@ export default function LearningSessionContentScreen() {
 			setRetryStartedAt(Date.now());
 			setCurrentIndex(extension.firstNewItemIndex);
 			setCompletionPhase(null);
-			setShowAnalysis(false);
 			setIsContinuation(true);
 			didAutoFinishRef.current = false;
 		} catch (error) {
@@ -1124,36 +1060,27 @@ export default function LearningSessionContentScreen() {
 		currentItem?.kind === "multipleChoice"
 			? Boolean(selectedChoiceId)
 			: Boolean(answerText.trim());
-	const title = showAnalysis
-		? "Deine Auswertung"
-		: completionPhase
+	const title = completionPhase
+		? isDiagnosticSession
+			? "Wissenscheck"
+			: completionPhase === "theory"
+				? "Theorie"
+				: phaseTitle(completionPhase)
+		: content
 			? isDiagnosticSession
 				? "Wissenscheck"
-				: completionPhase === "theory"
-					? "Theorie"
-					: phaseTitle(completionPhase)
-			: content
-				? isDiagnosticSession
-					? "Wissenscheck"
-					: isPreTheoryQuestion
-						? "Kurz-Check"
-						: phaseTitle(currentItem?.phase ?? content.session.phase)
-				: "Lernblock";
+				: isPreTheoryQuestion
+					? "Kurz-Check"
+					: phaseTitle(currentItem?.phase ?? content.session.phase)
+			: "Lernblock";
 	const showQuestionActions = Boolean(
-		content &&
-			currentItem &&
-			!showAnalysis &&
-			!completionPhase &&
-			!visibleAttempt,
+		content && currentItem && !completionPhase && !visibleAttempt,
 	);
-	const showFeedbackAction = Boolean(
-		visibleAttempt && !showAnalysis && !completionPhase,
-	);
+	const showFeedbackAction = Boolean(visibleAttempt && !completionPhase);
 
 	if (
 		content?.session.phase === "theory" &&
 		currentItem?.kind === "learnCard" &&
-		!showAnalysis &&
 		!completionPhase
 	) {
 		return (
@@ -1262,7 +1189,7 @@ export default function LearningSessionContentScreen() {
 						className="mb-0"
 						titleClassName="px-24 text-center font-poppins font-semibold text-body-1 text-text"
 						right={
-							displayedRemainingSeconds !== null && !showAnalysis ? (
+							displayedRemainingSeconds !== null ? (
 								<View
 									accessible
 									accessibilityLabel={`Verbleibende Zeit: ${formatRemainingTime(displayedRemainingSeconds)}`}
@@ -1284,7 +1211,7 @@ export default function LearningSessionContentScreen() {
 							) : null
 						}
 					/>
-					{content && currentItem && !showAnalysis && !visibleAttempt ? (
+					{content && currentItem && !visibleAttempt ? (
 						<QuestionProgressBar
 							currentIndex={
 								isPreTheoryQuestion
@@ -1310,7 +1237,6 @@ export default function LearningSessionContentScreen() {
 				scrollEnabled={
 					currentItem?.kind !== "multipleChoice" ||
 					Boolean(visibleAttempt) ||
-					showAnalysis ||
 					Boolean(completionPhase)
 				}
 				automaticallyAdjustKeyboardInsets={currentItem?.kind === "written"}
@@ -1363,14 +1289,6 @@ export default function LearningSessionContentScreen() {
 							<Text>Zurück zum Lernplan</Text>
 						</Button>
 					</View>
-				) : showAnalysis ? (
-					<AnalysisView
-						content={content}
-						isDiagnostic={isDiagnosticSession}
-						onContinueLearning={() => void startContinueLearning()}
-						onDone={completeAndLeave}
-						isBusy={isBusy}
-					/>
 				) : completionPhase ? (
 					<CompletionView
 						phase={completionPhase}
@@ -1379,12 +1297,10 @@ export default function LearningSessionContentScreen() {
 						correctCount={currentRunCorrectCount}
 						attemptCount={currentRunAttempts.length}
 						onContinueLearning={() => void startContinueLearning()}
-						onPrimary={
-							completionPhase === "theory"
-								? completeAndLeave
-								: finishAndShowAnalysis
-						}
+						onDone={completeAndLeave}
+						onAnalysis={completeAndOpenAnalysis}
 						isBusy={isBusy}
+						busyAction={busyCompletionAction}
 					/>
 				) : visibleAttempt ? (
 					<FeedbackView attempt={visibleAttempt} />
