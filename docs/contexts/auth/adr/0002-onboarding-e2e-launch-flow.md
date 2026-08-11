@@ -54,8 +54,34 @@ The following constraints are part of the contract:
   navigation across flow, verification, and creation stages.
 - Changes to order, collected fields, deferred fields, or the first-action
   handoff require an updated or superseding canonical Notion decision.
+- Historical Figma screens and prior implementations are evidence, not release
+  authorities. A deliberate divergence is allowed only when the canonical
+  product record captures the learner problem, alternatives, rationale,
+  trade-offs, reversal condition, and verification evidence.
+- An implemented or visually polished change is not complete while its
+  decision-to-code-to-evidence chain is missing. PR 458 remains draft and
+  DAY-292 remains in progress until the traceability and native acceptance
+  gates in the canonical product record are closed by the decision owner.
 
 The changed event contract uses `onboarding_version: 3`.
+
+## Historical Personalization-Screen Reconciliation
+
+The historical Figma sequence showed strengths, challenges, and goals as dense
+chip or row selectors. The launch implementation intentionally differs:
+
+| Historical surface | Launch behavior | Code-facing rationale |
+| --- | --- | --- |
+| Strength-by-subject multi-select | Removed | No launch behavior consumed the answer. Do not collect learner data that neither changes the immediate payoff nor the first plan. |
+| Broad challenge multi-select | Six explanatory cards; one primary blocker | A single stable key gives the payoff and downstream behavior one unambiguous priority. Labels and descriptions must remain readable and accessible at supported sizes. |
+| Broad goal multi-select | Five explanatory cards; one first goal | One initial outcome avoids conflicting personalization. Additional goals are deferred instead of increasing registration friction. |
+| No immediate proof of personalization | Added personalized payoff | Study time, blocker, and goal must visibly change the result before required profile/account collection continues. |
+
+This is a product decision, not a claim that the current rendering is already
+release-ready. The complete alternatives, user rationale, trade-offs, reversal
+conditions, and open proof requirements remain canonical in the linked Notion
+record. Any future change to these boundaries must update that record and
+DAY-292 before implementation is accepted.
 
 ## Consequences
 
