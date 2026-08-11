@@ -273,7 +273,7 @@ const examAnalysis = {
 					evidenceCount: 1,
 				},
 			],
-			controlCheckReason: null,
+			controlCheckReason: "Prüfe die Steigung in einer neuen Aufgabe.",
 		},
 		{
 			id: "achsenschnitt",
@@ -573,7 +573,19 @@ describe("AnalyticsScreen", () => {
 			knowledgeScreen.queryByText("Das kannst du schon"),
 		).not.toBeOnTheScreen();
 		expect(
-			knowledgeScreen.getByText("Steigung noch präziser erklären."),
+			knowledgeScreen.queryByText("Steigung noch präziser erklären."),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("DEIN AKTUELLER WISSENSSTAND"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Kontrollbeleg nötig"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Prüfe die Steigung in einer neuen Aufgabe."),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText("Du kannst die Steigung vollständig erklären."),
 		).toBeOnTheScreen();
 		expect(knowledgeScreen.getByText("Deine Antworten")).toBeOnTheScreen();
 		expect(knowledgeScreen.queryByText("1 von 2")).not.toBeOnTheScreen();
@@ -616,6 +628,14 @@ describe("AnalyticsScreen", () => {
 		expect(
 			knowledgeScreen.queryByText("Achsenschnittpunkte bestimmen"),
 		).not.toBeOnTheScreen();
+		await fireEvent.press(
+			knowledgeScreen.getByRole("button", {
+				name: "Weiterlernen: Steigung vollständig erklären",
+			}),
+		);
+		expect(mockPush).toHaveBeenCalledWith(
+			"/learning-plans/plan_1/sessions/session_1",
+		);
 
 		await knowledgeScreen.unmount();
 		const problemScreen = await render(
@@ -639,6 +659,26 @@ describe("AnalyticsScreen", () => {
 		expect(mockPush).toHaveBeenCalledWith(
 			"/learning-plans/plan_1/sessions/session_1",
 		);
+	});
+
+	test("opens the learning plan when no recommended session remains", async () => {
+		mockUseQuery.mockImplementation((query) =>
+			query === "getTopicQuestionEvidence"
+				? topicQuestionEvidence
+				: { ...examAnalysis, recommendation: null },
+		);
+		const screen = await render(
+			<AnalyticsDetailScreen
+				planId={"plan_1" as Id<"learningPlans">}
+				section="knowledge"
+				topicId="steigung"
+			/>,
+		);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Lernplan öffnen" }),
+		);
+		expect(mockPush).toHaveBeenCalledWith("/learning-plans/plan_1");
 	});
 
 	test("requests a newly selected exam without mixing its evidence", async () => {

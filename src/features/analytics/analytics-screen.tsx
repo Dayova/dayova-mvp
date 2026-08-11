@@ -22,6 +22,7 @@ import {
 	CircleAlert,
 	Info,
 	Sparkles,
+	Telescope,
 	Time04,
 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
@@ -766,7 +767,7 @@ function TopicQuestionEvidenceSection({
 							const rating = ANSWER_RATING_COPY[question.rating];
 							return (
 								<Surface
-									className="gap-5 border border-border bg-card p-5"
+									className="gap-4 border border-border bg-card p-5"
 									// The card width leaves a visible edge of the next answer at every device width.
 									style={{ width: cardWidth }}
 									variant="soft"
@@ -820,7 +821,7 @@ function TopicQuestionEvidenceSection({
 										</Text>
 									</View>
 
-									<View className="gap-2 border-border border-t pt-5">
+									<View className="gap-2 border-border border-t pt-4">
 										<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
 											AUSWERTUNG
 										</Text>
@@ -851,15 +852,23 @@ function TopicQuestionEvidenceSection({
 }
 
 function TopicDetailCard({
+	continueGoal,
+	continueLabel,
+	onContinue,
 	topic,
 	questionEvidence,
 }: {
+	continueGoal?: string;
+	continueLabel: "Weiterlernen" | "Lernplan öffnen";
+	onContinue: () => void;
 	topic: ExamAnalysis["topics"][number];
 	questionEvidence: TopicQuestionEvidence | undefined;
 }) {
+	const { colors } = useDayovaTheme();
+
 	return (
 		<View className="gap-8">
-			<Surface className="gap-4 p-5" variant="flat">
+			<Surface className="gap-5 p-5" variant="flat">
 				<View className="flex-row items-center justify-between gap-3">
 					<Text
 						selectable
@@ -869,52 +878,48 @@ function TopicDetailCard({
 					</Text>
 					<TopicStatusPill status={topic.status} />
 				</View>
-				<View className="gap-1">
+				<Text
+					selectable
+					className="font-poppins font-semibold text-body-1 text-text"
+				>
+					{formatGermanUiText(topic.title)}
+				</Text>
+
+				<View className="flex-row items-center gap-3 rounded-info bg-system-subtle p-4">
+					<View className="h-10 w-10 items-center justify-center rounded-full bg-card">
+						<Telescope
+							size={20}
+							color={colors.primaryStrong}
+							strokeWidth={2.2}
+						/>
+					</View>
 					<Text
 						selectable
-						className="font-poppins font-semibold text-body-1 text-text"
-					>
-						{formatGermanUiText(topic.title)}
-					</Text>
-					<Text
-						selectable
-						className="font-poppins text-body-4 text-secondary-text"
+						className="min-w-0 flex-1 font-poppins text-body-4 text-text"
 					>
 						{formatGermanUiText(topic.learningGoal)}
 					</Text>
 				</View>
-				<View className="gap-1 border-border border-t pt-4">
-					<Text className="font-poppins font-semibold text-body-5 text-primary-strong">
-						DEIN AKTUELLER WISSENSSTAND
-					</Text>
-					<Text selectable className="font-poppins text-body-3 text-text">
-						{formatGermanUiText(topic.summary)}
-					</Text>
-				</View>
+
+				<Button
+					accessibilityHint="Öffnet deinen nächsten Lernschritt."
+					accessibilityLabel={
+						continueGoal
+							? `${continueLabel}: ${formatGermanUiText(continueGoal)}`
+							: continueLabel
+					}
+					onPress={onContinue}
+				>
+					<Text>{continueLabel}</Text>
+					<ArrowUpRight
+						size={20}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={2.1}
+					/>
+				</Button>
 			</Surface>
 
 			<TopicQuestionEvidenceSection evidence={questionEvidence} />
-
-			{topic.controlCheckReason ? (
-				<Surface
-					className="flex-row items-start gap-3 rounded-info border border-primary/20 bg-system-subtle p-4"
-					variant="flat"
-				>
-					<Info
-						size={19}
-						color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
-						strokeWidth={2.2}
-					/>
-					<View className="min-w-0 flex-1 gap-1">
-						<Text className="font-poppins font-semibold text-body-4 text-primary-strong">
-							Kontrollbeleg nötig
-						</Text>
-						<Text selectable className="font-poppins text-body-4 text-text">
-							{topic.controlCheckReason}
-						</Text>
-					</View>
-				</Surface>
-			) : null}
 		</View>
 	);
 }
@@ -922,9 +927,13 @@ function TopicDetailCard({
 function KnowledgeDetailContent({
 	analysis,
 	initialTopicId,
+	onOpenPlan,
+	onOpenSession,
 }: {
 	analysis: ExamAnalysis;
 	initialTopicId?: string;
+	onOpenPlan: () => void;
+	onOpenSession: (sessionId: Id<"learningPlanSessions">) => void;
 }) {
 	const selectedTopic =
 		analysis.topics.find((topic) => topic.id === initialTopicId) ??
@@ -952,6 +961,17 @@ function KnowledgeDetailContent({
 
 	return (
 		<TopicDetailCard
+			continueGoal={analysis.recommendation?.goal}
+			continueLabel={
+				analysis.recommendation ? "Weiterlernen" : "Lernplan öffnen"
+			}
+			onContinue={() => {
+				if (analysis.recommendation) {
+					onOpenSession(analysis.recommendation.sessionId);
+					return;
+				}
+				onOpenPlan();
+			}}
 			topic={selectedTopic}
 			questionEvidence={questionEvidence}
 		/>
@@ -1393,6 +1413,8 @@ function AnalyticsDetailContent({
 			<KnowledgeDetailContent
 				analysis={analysis}
 				initialTopicId={initialTopicId}
+				onOpenPlan={onOpenPlan}
+				onOpenSession={onOpenSession}
 			/>
 		);
 	}
