@@ -2,7 +2,7 @@ import { useUser } from "@clerk/expo";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useRef, useState } from "react";
+import { type RefObject, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
@@ -47,7 +47,8 @@ export function PaywallScreen() {
 	const [error, setError] = useState<string | null>(null);
 	const [showSubscriptionManagement, setShowSubscriptionManagement] =
 		useState(false);
-	const pendingManagementActionRef = useRef<"delete" | null>(null);
+	const subscriptionManagementLinkRef = useRef<View>(null);
+	const pendingManagementActionRef = useRef<"delete" | "switch" | null>(null);
 	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -67,14 +68,19 @@ export function PaywallScreen() {
 	};
 
 	const finishSubscriptionManagementDismissal = () => {
-		if (pendingManagementActionRef.current !== "delete") return;
+		const pendingAction = pendingManagementActionRef.current;
 		pendingManagementActionRef.current = null;
-		setShowDeleteConfirmation(true);
+		if (pendingAction === "delete") {
+			setShowDeleteConfirmation(true);
+		}
+		if (pendingAction === "switch") {
+			void logout();
+		}
 	};
 
 	const switchAccount = () => {
+		pendingManagementActionRef.current = "switch";
 		setShowSubscriptionManagement(false);
-		void logout();
 	};
 
 	const deleteAccount = async () => {
@@ -233,6 +239,7 @@ export function PaywallScreen() {
 								onOpen={openLink}
 							/>
 							<LegalLink
+								buttonRef={subscriptionManagementLinkRef}
 								label="Abo verwalten"
 								onPress={() => setShowSubscriptionManagement(true)}
 							/>
@@ -247,6 +254,7 @@ export function PaywallScreen() {
 				closeAccessibilityLabel="Abo-Verwaltung schließen"
 				onClose={() => setShowSubscriptionManagement(false)}
 				onDismiss={finishSubscriptionManagementDismissal}
+				returnFocusRef={subscriptionManagementLinkRef}
 			>
 				<View className="overflow-hidden rounded-card border border-border/45 bg-card">
 					<ManagementAction
@@ -381,11 +389,13 @@ function ManagementAction({
 }
 
 function LegalLink({
+	buttonRef,
 	label,
 	onOpen,
 	onPress,
 	url,
 }: {
+	buttonRef?: RefObject<View | null>;
 	label: string;
 	onOpen?: (url?: string) => Promise<void>;
 	onPress?: () => void;
@@ -393,6 +403,7 @@ function LegalLink({
 }) {
 	return (
 		<Pressable
+			ref={buttonRef}
 			accessibilityRole="link"
 			disabled={!url && !onPress}
 			hitSlop={8}

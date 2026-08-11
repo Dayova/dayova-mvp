@@ -5,9 +5,18 @@ import { PaywallScreen } from "./paywall-screen";
 
 const mockPush = jest.fn();
 const mockLogout = jest.fn();
+const mockSubscriptionManagementSheet: {
+	onDismiss: null | (() => void);
+	returnFocusRef: null | { current: unknown };
+} = {
+	onDismiss: null,
+	returnFocusRef: null,
+};
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	mockSubscriptionManagementSheet.onDismiss = null;
+	mockSubscriptionManagementSheet.returnFocusRef = null;
 });
 
 jest.mock("@clerk/expo", () => ({
@@ -69,20 +78,19 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => {
 			children,
 			description,
 			onDismiss,
+			returnFocusRef,
 			title,
 			visible,
 		}: {
 			children?: ReactNode;
 			description?: ReactNode;
 			onDismiss?: () => void;
+			returnFocusRef?: { current: unknown };
 			title?: ReactNode;
 			visible: boolean;
 		}) => {
-			const wasVisible = React.useRef(false);
-			React.useEffect(() => {
-				if (wasVisible.current && !visible) onDismiss?.();
-				wasVisible.current = visible;
-			}, [onDismiss, visible]);
+			mockSubscriptionManagementSheet.onDismiss = onDismiss ?? null;
+			mockSubscriptionManagementSheet.returnFocusRef = returnFocusRef ?? null;
 
 			if (!visible) return null;
 			return React.createElement(
@@ -171,8 +179,28 @@ describe("PaywallScreen", () => {
 		).toBeOnTheScreen();
 		expect(screen.getByText("Konto löschen")).toBeOnTheScreen();
 
-		fireEvent.press(screen.getByLabelText("Abmelden oder Konto wechseln"));
+		await act(async () => {
+			fireEvent.press(screen.getByLabelText("Abmelden oder Konto wechseln"));
+		});
+		expect(screen.queryByText("Konto wechseln")).toBeNull();
+		expect(mockLogout).not.toHaveBeenCalled();
+
+		await act(async () => {
+			mockSubscriptionManagementSheet.onDismiss?.();
+		});
 		expect(mockLogout).toHaveBeenCalledTimes(1);
+	});
+
+	test("returns focus to the subscription management link", async () => {
+		const screen = await render(<PaywallScreen />);
+
+		fireEvent.press(screen.getByRole("link", { name: "Abo verwalten" }));
+		expect(await screen.findByText("Konto wechseln")).toBeOnTheScreen();
+
+		expect(mockSubscriptionManagementSheet.returnFocusRef).not.toBeNull();
+		expect(
+			mockSubscriptionManagementSheet.returnFocusRef?.current,
+		).not.toBeNull();
 	});
 
 	test("keeps account deletion behind a separate confirmation", async () => {
@@ -182,6 +210,11 @@ describe("PaywallScreen", () => {
 		const deleteAccountButton = await screen.findByText("Konto löschen");
 		await act(async () => {
 			fireEvent.press(deleteAccountButton);
+		});
+		expect(screen.queryByText("Konto wirklich löschen?")).toBeNull();
+
+		await act(async () => {
+			mockSubscriptionManagementSheet.onDismiss?.();
 		});
 
 		await waitFor(() => {
