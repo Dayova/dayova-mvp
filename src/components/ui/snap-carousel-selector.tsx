@@ -160,7 +160,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 		<View className="w-full items-center">
 			{showValueBubble ? (
 				<View
-					className="items-center justify-center border-4 border-primary/20"
+					className="items-center justify-center"
 					style={{
 						borderRadius: valueBadgeSize / 2,
 						height: valueBadgeSize,
@@ -168,13 +168,25 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 					}}
 				>
 					<Svg
+						testID="snap-carousel-progress-ring"
 						width={valueBadgeSize}
 						height={valueBadgeSize}
 						viewBox="0 0 88 88"
 						// SVG geometry is not expressible through NativeWind classes.
-						style={{ position: "absolute" }}
+						style={{ left: 0, position: "absolute", top: 0 }}
 					>
 						<Circle
+							testID="snap-carousel-progress-track"
+							cx="44"
+							cy="44"
+							r="40"
+							fill="transparent"
+							stroke={colors.primary}
+							strokeOpacity={0.2}
+							strokeWidth="4"
+						/>
+						<Circle
+							testID="snap-carousel-progress-arc"
 							cx="44"
 							cy="44"
 							r="40"
