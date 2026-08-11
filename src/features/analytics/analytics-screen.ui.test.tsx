@@ -558,10 +558,14 @@ describe("AnalyticsScreen", () => {
 			/>,
 		);
 
-		expect(knowledgeScreen.getByText("Dein Wissensprofil")).toBeOnTheScreen();
-		expect(knowledgeScreen.getByText("Verstehen")).toBeOnTheScreen();
-		expect(knowledgeScreen.getByText("Probleme lösen")).toBeOnTheScreen();
-		expect(knowledgeScreen.getByText("Selbstständig lösen")).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Dein Wissensprofil"),
+		).not.toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("Verstehen")).not.toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("Probleme lösen")).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Selbstständig lösen"),
+		).not.toBeOnTheScreen();
 		expect(
 			knowledgeScreen.queryByText("Warum du hier unsicher bist"),
 		).not.toBeOnTheScreen();
@@ -572,7 +576,18 @@ describe("AnalyticsScreen", () => {
 			knowledgeScreen.getByText("Steigung noch präziser erklären."),
 		).toBeOnTheScreen();
 		expect(knowledgeScreen.getByText("Deine Antworten")).toBeOnTheScreen();
-		expect(knowledgeScreen.getByText("1 von 2")).toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("1 von 2")).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Nach links oder rechts wischen"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText(
+				"Wische nach links oder rechts, um die nächste Frage zu sehen.",
+			),
+		).not.toBeOnTheScreen();
+		const answerPager = knowledgeScreen.getByTestId("topic-answer-pager");
+		expect(answerPager.props.horizontal).toBe(true);
+		expect(answerPager.props.snapToInterval).toBeGreaterThan(0);
 		expect(
 			knowledgeScreen.getByText("Erkläre die Steigung."),
 		).toBeOnTheScreen();
@@ -594,12 +609,7 @@ describe("AnalyticsScreen", () => {
 				"Der eingesetzte Rechenweg passt noch nicht zu den gegebenen Punkten.",
 			),
 		).toBeOnTheScreen();
-		await fireEvent(
-			knowledgeScreen.getByTestId("topic-answer-pager"),
-			"momentumScrollEnd",
-			{ nativeEvent: { contentOffset: { x: 10_000 } } },
-		);
-		expect(knowledgeScreen.getByText("2 von 2")).toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("2 von 2")).not.toBeOnTheScreen();
 		expect(
 			knowledgeScreen.queryByText("Alle Prüfungsthemen"),
 		).not.toBeOnTheScreen();

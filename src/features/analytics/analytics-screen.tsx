@@ -1,12 +1,9 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	ActivityIndicator,
-	type FlatList,
 	FlatList as NativeFlatList,
-	type NativeScrollEvent,
-	type NativeSyntheticEvent,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -48,7 +45,6 @@ type TopicStatus = ExamAnalysis["topics"][number]["status"];
 type TopicQuestionEvidence = NonNullable<
 	ReturnType<typeof useQuery<typeof api.userAnalytics.getTopicQuestionEvidence>>
 >;
-type TopicQuestion = TopicQuestionEvidence["questions"][number];
 
 const DIAGNOSIS_COPY: Record<
 	ExamProblem["diagnosisType"],
@@ -105,12 +101,6 @@ const TOPIC_STATUS_COPY: Record<
 		textClassName: "text-secondary-text",
 	},
 };
-
-const EVIDENCE_DIMENSION_COPY = {
-	understanding: "Verstehen",
-	problemSolving: "Probleme lösen",
-	independent: "Selbstständig lösen",
-} as const;
 
 const PRIORITY_COPY = {
 	high: "Hohe Prüfungsrelevanz",
@@ -720,47 +710,15 @@ function TopicQuestionEvidenceSection({
 }: {
 	evidence: TopicQuestionEvidence | undefined;
 }) {
-	const listRef = useRef<FlatList<TopicQuestion>>(null);
 	const { width } = useWindowDimensions();
-	const [activeIndex, setActiveIndex] = useState(0);
 	const pagerWidth = Math.max(width - 48, 0);
 	const cardWidth = Math.max(pagerWidth - 24, 240);
 	const snapInterval = cardWidth + 12;
 	const questionCount = evidence?.questions.length ?? 0;
-	const lastIndex = Math.max(questionCount - 1, 0);
-
-	const selectIndex = useCallback(
-		(nextIndex: number) => {
-			const clampedIndex = Math.min(Math.max(nextIndex, 0), lastIndex);
-			setActiveIndex(clampedIndex);
-			listRef.current?.scrollToOffset({
-				offset: clampedIndex * snapInterval,
-				animated: true,
-			});
-		},
-		[lastIndex, snapInterval],
-	);
-
-	const handleScrollEnd = useCallback(
-		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
-			const nextIndex = Math.min(
-				Math.max(
-					Math.round(event.nativeEvent.contentOffset.x / snapInterval),
-					0,
-				),
-				lastIndex,
-			);
-			setActiveIndex(nextIndex);
-		},
-		[lastIndex, snapInterval],
-	);
 
 	return (
 		<View className="gap-3">
-			<SectionHeading
-				title="Deine Antworten"
-				description="Wische nach links oder rechts, um die nächste Frage zu sehen."
-			/>
+			<SectionHeading title="Deine Antworten" />
 			{evidence === undefined ? (
 				<Surface className="items-center gap-3 border border-border p-6">
 					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
@@ -784,7 +742,7 @@ function TopicQuestionEvidenceSection({
 			) : (
 				<View className="gap-3">
 					<NativeFlatList
-						ref={listRef}
+						accessibilityHint="Enthält horizontal angeordnete Antwortkarten."
 						data={evidence.questions}
 						keyExtractor={(question) => question.itemId}
 						horizontal
@@ -804,8 +762,6 @@ function TopicQuestionEvidenceSection({
 							length: snapInterval,
 							offset: snapInterval * index,
 						})}
-						onMomentumScrollEnd={handleScrollEnd}
-						onScrollEndDrag={handleScrollEnd}
 						renderItem={({ item: question }) => {
 							const rating = ANSWER_RATING_COPY[question.rating];
 							return (
@@ -879,41 +835,6 @@ function TopicQuestionEvidenceSection({
 							);
 						}}
 					/>
-
-					<View
-						accessible
-						accessibilityActions={[
-							{ name: "decrement", label: "Vorherige Antwort" },
-							{ name: "increment", label: "Nächste Antwort" },
-						]}
-						accessibilityLabel="Antwort auswählen"
-						accessibilityRole="adjustable"
-						accessibilityValue={{
-							text: `${activeIndex + 1} von ${questionCount}`,
-						}}
-						className="flex-row items-center justify-between px-1"
-						onAccessibilityAction={({ nativeEvent }) => {
-							if (nativeEvent.actionName === "increment") {
-								selectIndex(activeIndex + 1);
-							}
-							if (nativeEvent.actionName === "decrement") {
-								selectIndex(activeIndex - 1);
-							}
-						}}
-					>
-						<Text
-							className="font-poppins font-semibold text-body-5 text-primary-strong"
-							style={{ fontVariant: ["tabular-nums"] }}
-						>
-							{`${activeIndex + 1} von ${questionCount}`}
-						</Text>
-						{questionCount > 1 ? (
-							<Text className="font-poppins text-body-5 text-secondary-text">
-								Nach links oder rechts wischen
-							</Text>
-						) : null}
-					</View>
-
 					{evidence.historyLimited ? (
 						<Text
 							selectable
@@ -936,10 +857,6 @@ function TopicDetailCard({
 	topic: ExamAnalysis["topics"][number];
 	questionEvidence: TopicQuestionEvidence | undefined;
 }) {
-	const requiredDimensions = topic.dimensions.filter(
-		(dimension) => dimension.required,
-	);
-
 	return (
 		<View className="gap-8">
 			<Surface className="gap-4 p-5" variant="flat">
@@ -977,36 +894,6 @@ function TopicDetailCard({
 			</Surface>
 
 			<TopicQuestionEvidenceSection evidence={questionEvidence} />
-
-			<View className="gap-3">
-				<SectionHeading title="Dein Wissensprofil" />
-				<Surface className="overflow-hidden" variant="flat">
-					{requiredDimensions.map((dimension, index) => (
-						<View
-							key={dimension.kind}
-							className={cn(
-								"flex-row items-center justify-between gap-3 bg-card px-4 py-4",
-								index > 0 && "border-border border-t",
-							)}
-						>
-							<View className="min-w-0 flex-1 gap-0.5">
-								<Text className="font-poppins font-semibold text-body-3 text-text">
-									{EVIDENCE_DIMENSION_COPY[dimension.kind]}
-								</Text>
-								<Text
-									selectable
-									className="font-poppins text-body-5 text-secondary-text"
-								>
-									{dimension.evidenceCount === 0
-										? "Noch kein Beleg"
-										: `${dimension.evidenceCount} ${dimension.evidenceCount === 1 ? "Beleg" : "Belege"}`}
-								</Text>
-							</View>
-							<TopicStatusPill status={dimension.status} />
-						</View>
-					))}
-				</Surface>
-			</View>
 
 			{topic.controlCheckReason ? (
 				<Surface
