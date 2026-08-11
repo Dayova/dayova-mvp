@@ -641,6 +641,9 @@ describe("AnalyticsScreen", () => {
 			knowledgeScreen.getByText("Erkläre die Steigung."),
 		).toBeOnTheScreen();
 		expect(
+			knowledgeScreen.getByText("Erkläre die Steigung.").props.className,
+		).toContain("text-body-1");
+		expect(
 			knowledgeScreen.queryByText("Änderung von y."),
 		).not.toBeOnTheScreen();
 		expect(

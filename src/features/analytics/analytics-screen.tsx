@@ -853,7 +853,7 @@ function TopicAnswerFlipCard({
 							</Text>
 							<Text
 								selectable
-								className="font-poppins font-semibold text-body-3 text-text"
+								className="font-poppins font-semibold text-body-1 text-text"
 							>
 								{formattedPrompt}
 							</Text>
