@@ -93,6 +93,7 @@ jest.mock("react-native-reanimated", () => {
 		__esModule: true,
 		default: {
 			createAnimatedComponent: <T,>(component: T) => component,
+			FlatList: ReactNative.FlatList,
 			Text: ReactNative.Text,
 			View: ReactNative.View,
 		},
@@ -105,13 +106,26 @@ jest.mock("react-native-reanimated", () => {
 		FadeInDown: animationBuilder,
 		FadeInUp: animationBuilder,
 		interpolate: jest.fn(() => 0),
+		interpolateColor: (value: number, _input: number[], output: string[]) =>
+			value >= 1 ? output.at(-1) : output[0],
 		LinearTransition: animationBuilder,
 		useAnimatedProps: (factory: () => unknown) => factory(),
-		useAnimatedScrollHandler: () => jest.fn(),
+		useAnimatedScrollHandler: (handlers: {
+			onScroll: (event: { contentOffset: { x: number } }) => void;
+		}) => handlers.onScroll,
 		useAnimatedStyle: (factory: () => unknown) => factory(),
 		useDerivedValue: (factory: () => unknown) => ({ value: factory() }),
 		useReducedMotion: () => false,
-		useSharedValue: (value: unknown) => ({ value }),
+		useSharedValue: (initialValue: unknown) => {
+			let value = initialValue;
+			return {
+				get: () => value,
+				set: (nextValue: unknown) => {
+					value = nextValue;
+				},
+				value,
+			};
+		},
 		withRepeat: (value: unknown) => value,
 		withSequence: (...values: unknown[]) => values.at(-1),
 		withTiming: (value: unknown) => value,
@@ -268,8 +282,10 @@ jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: {
 			background: "#FFFFFF",
+			border: "#DCE6EE",
 			destructive: "#D92D20",
 			path2: "#D7DCE3",
+			primary: "#00BAFF",
 			secondaryText: "#697586",
 			surface: "#FFFFFF",
 			systemSubtle: "#F1F7FB",
@@ -572,6 +588,22 @@ describe("OnboardingScreen", () => {
 			}),
 		).toBeOnTheScreen();
 		expect(screen.getByText("1 von 14")).toBeOnTheScreen();
+	});
+
+	test("keeps intro indicators coupled to live pager scroll progress", async () => {
+		const screen = await render(<OnboardingScreen />);
+		const pager = screen.getByTestId("intro-pager");
+
+		expect(pager.props.onScroll).toEqual(expect.any(Function));
+		expect(pager.props.scrollEventThrottle).toBe(16);
+		expect(screen.getByTestId("intro-indicator-0")).toHaveStyle({
+			backgroundColor: "#00BAFF",
+			width: 30,
+		});
+		expect(screen.getByTestId("intro-indicator-1")).toHaveStyle({
+			backgroundColor: "#DCE6EE",
+			width: 8,
+		});
 	});
 
 	test("themes the learning path and its fade with semantic colors", async () => {

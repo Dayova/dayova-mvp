@@ -10,7 +10,7 @@ import {
 	useState,
 } from "react";
 import {
-	FlatList,
+	type FlatList,
 	Image,
 	Keyboard,
 	KeyboardAvoidingView,
@@ -28,7 +28,12 @@ import Animated, {
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
+	interpolateColor,
+	type SharedValue,
+	useAnimatedScrollHandler,
+	useAnimatedStyle,
 	useReducedMotion,
+	useSharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { SvgProps } from "react-native-svg";
@@ -40,6 +45,11 @@ import {
 } from "~/components/onboarding/birth-date";
 import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
 import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
+import {
+	getIntroDotWidth,
+	INTRO_DOT_COLLAPSED_WIDTH,
+	INTRO_DOT_EXPANDED_WIDTH,
+} from "~/components/onboarding/intro-pagination";
 import {
 	getNextOnboardingStepIndex,
 	getOnboardingRegistrationPayload,
@@ -984,11 +994,18 @@ function IntroStepView({
 	const { colors: COLORS } = useDayovaTheme();
 	const { width, height } = useWindowDimensions();
 	const listRef = useRef<FlatList<IntroStep>>(null);
+	const previousWidthRef = useRef(width);
 	const reducedMotion = useReducedMotion();
 	const isCompactHeight = height < 760;
 	const introIndex = Math.min(activeIndex, INTRO_STEPS.length - 1);
 	const isLastIntro = introIndex === INTRO_STEPS.length - 1;
 	const artworkHeight = isCompactHeight ? 220 : 286;
+	const scrollX = useSharedValue(introIndex * width);
+	const scrollHandler = useAnimatedScrollHandler({
+		onScroll: (event) => {
+			scrollX.set(event.contentOffset.x);
+		},
+	});
 
 	const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
 		const index = Math.min(
@@ -1008,11 +1025,17 @@ function IntroStepView({
 	};
 
 	useEffect(() => {
+		const widthChanged = previousWidthRef.current !== width;
+		previousWidthRef.current = width;
+
+		if (widthChanged || reducedMotion) {
+			scrollX.set(introIndex * width);
+		}
 		listRef.current?.scrollToIndex({
 			index: introIndex,
-			animated: !reducedMotion,
+			animated: !widthChanged && !reducedMotion,
 		});
-	}, [introIndex, reducedMotion]);
+	}, [introIndex, reducedMotion, scrollX, width]);
 
 	return (
 		<View
@@ -1031,20 +1054,23 @@ function IntroStepView({
 				</View>
 			</View>
 
-			<FlatList
+			<Animated.FlatList
 				ref={listRef}
+				testID="intro-pager"
 				data={INTRO_STEPS}
 				horizontal
 				pagingEnabled
 				bounces={false}
 				initialScrollIndex={introIndex}
 				showsHorizontalScrollIndicator={false}
+				scrollEventThrottle={16}
 				keyExtractor={(step) => step.id}
 				getItemLayout={(_, index) => ({
 					length: width,
 					offset: width * index,
 					index,
 				})}
+				onScroll={scrollHandler}
 				onMomentumScrollEnd={handleScrollEnd}
 				renderItem={({ item }) => {
 					// Pager width and artwork height are measured runtime geometry.
@@ -1112,17 +1138,12 @@ function IntroStepView({
 			/>
 
 			<View className="px-6">
-				<View className="mb-5 flex-row justify-center gap-2">
-					{INTRO_STEPS.map((step, index) => (
-						<View
-							key={step.id}
-							className={cn(
-								"h-2 rounded-full",
-								index === introIndex ? "w-7 bg-primary" : "w-2 bg-border",
-							)}
-						/>
-					))}
-				</View>
+				<IntroDots
+					activeColor={COLORS.primary}
+					inactiveColor={COLORS.border}
+					pageWidth={width}
+					scrollX={scrollX}
+				/>
 				<GradientPillButton
 					label={isLastIntro ? "Meinen Start personalisieren" : "Weiter"}
 					onPress={handleNext}
@@ -1132,6 +1153,76 @@ function IntroStepView({
 				</Text>
 			</View>
 		</View>
+	);
+}
+
+function IntroDots({
+	activeColor,
+	inactiveColor,
+	pageWidth,
+	scrollX,
+}: {
+	activeColor: string;
+	inactiveColor: string;
+	pageWidth: number;
+	scrollX: SharedValue<number>;
+}) {
+	return (
+		<View className="mb-5 flex-row items-center justify-center gap-2">
+			{INTRO_STEPS.map((step, index) => (
+				<IntroDot
+					key={step.id}
+					activeColor={activeColor}
+					inactiveColor={inactiveColor}
+					index={index}
+					pageWidth={pageWidth}
+					scrollX={scrollX}
+				/>
+			))}
+		</View>
+	);
+}
+
+function IntroDot({
+	activeColor,
+	inactiveColor,
+	index,
+	pageWidth,
+	scrollX,
+}: {
+	activeColor: string;
+	inactiveColor: string;
+	index: number;
+	pageWidth: number;
+	scrollX: SharedValue<number>;
+}) {
+	const animatedStyle = useAnimatedStyle(() => {
+		const width = getIntroDotWidth(
+			scrollX.get(),
+			pageWidth,
+			index,
+			INTRO_STEPS.length,
+		);
+		const emphasis =
+			(width - INTRO_DOT_COLLAPSED_WIDTH) /
+			(INTRO_DOT_EXPANDED_WIDTH - INTRO_DOT_COLLAPSED_WIDTH);
+
+		return {
+			backgroundColor: interpolateColor(
+				emphasis,
+				[0, 1],
+				[inactiveColor, activeColor],
+			),
+			width,
+		};
+	});
+
+	return (
+		<Animated.View
+			testID={`intro-indicator-${index}`}
+			className="h-[6px] rounded-full"
+			style={animatedStyle}
+		/>
 	);
 }
 
