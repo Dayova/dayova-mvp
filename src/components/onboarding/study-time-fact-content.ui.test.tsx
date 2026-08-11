@@ -16,6 +16,7 @@ jest.mock("react-native-reanimated", () => {
 		__esModule: true,
 		default: { View: ReactNative.View },
 		FadeInUp: animationBuilder,
+		useReducedMotion: () => false,
 	};
 });
 
@@ -44,7 +45,7 @@ describe("StudyTimeFactContent", () => {
 		expect(screen.getByText("Schon gewusst?")).toBeOnTheScreen();
 		expect(
 			screen.getByText(
-				"Deine 45 Minuten reichen aus, um eine starke Lernroutine aufzubauen. Studien zeigen: Kleine Lerneinheiten bleiben länger hängen als langes Pauken auf einmal.",
+				"Deine 45 Minuten reichen aus, um sinnvoll zu starten. Dayova zerlegt deinen Prüfungsstoff in klare Lerneinheiten, die in diese Zeit passen.",
 			),
 		).toBeOnTheScreen();
 	});

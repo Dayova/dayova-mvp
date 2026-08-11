@@ -63,19 +63,17 @@ const mockRouter = {
 const mockSetOnboardingAnswer = jest.fn();
 const mockOnboarding = {
 	answers: {
-		studyTime: "30 min",
-		strength: "Mathe",
-		challenge: "Organisation",
-		goal: "Mehr Struktur im Lernen",
+		studyTime: "30",
+		challenge: "time_management",
+		goal: "stay_consistent",
 		state: "Sachsen",
 		schoolType: "prefer_not_to_say",
 		grade: "9",
-		dailySchoolTime: "60 min",
-		studyDays: "Montag",
-		learningTime: "16:30",
 		name: "Test User",
 		email: "test@example.com",
-		birthDate: "09.09.2012",
+		birthYear: "2012",
+		birthMonth: "09",
+		birthDay: "09",
 		password: "sicher123",
 	},
 	hasAnswers: false,
@@ -112,6 +110,7 @@ jest.mock("react-native-reanimated", () => {
 		useAnimatedScrollHandler: () => jest.fn(),
 		useAnimatedStyle: (factory: () => unknown) => factory(),
 		useDerivedValue: (factory: () => unknown) => ({ value: factory() }),
+		useReducedMotion: () => false,
 		useSharedValue: (value: unknown) => ({ value }),
 		withRepeat: (value: unknown) => value,
 		withSequence: (...values: unknown[]) => values.at(-1),
@@ -142,6 +141,25 @@ jest.mock("expo-linear-gradient", () => {
 	return {
 		LinearGradient: ({ children, ...props }: { children?: ReactNode }) =>
 			React.createElement("LinearGradient", props, children),
+	};
+});
+
+jest.mock("../../../assets/onboarding/intro-path.svg", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return () => React.createElement("IntroPathArtwork");
+});
+
+jest.mock("~/components/intro-upload-artwork", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		IntroUploadArtwork: () => React.createElement("IntroUploadArtwork"),
+	};
+});
+
+jest.mock("~/components/onboarding/intro-tasks-artwork", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		IntroTasksArtwork: () => React.createElement("IntroTasksArtwork"),
 	};
 });
 
@@ -521,27 +539,28 @@ describe("OnboardingScreen", () => {
 		mockOnboarding.answers.state = "Sachsen";
 		mockOnboarding.answers.schoolType = "prefer_not_to_say";
 		mockOnboarding.answers.grade = "9";
-		mockOnboarding.answers.birthDate = "09.09.2012";
+		mockOnboarding.answers.birthYear = "2012";
+		mockOnboarding.answers.birthMonth = "09";
+		mockOnboarding.answers.birthDay = "09";
 		mockOnboarding.answers.email = "test@example.com";
 	});
 
-	test("opens with the exact-exam promise and shows compact profile progress", async () => {
+	test("teaches the product in three pages before personalized questions", async () => {
 		const screen = await render(<OnboardingScreen />);
 
 		expect(
 			screen.getByRole("header", {
-				name: "Deine Prüfung. Dein nächster Schritt.",
+				name: "Du weißt, was heute wirklich zählt.",
 			}),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText("7 kurze Schritte · dauert etwa 1 Minute"),
+			screen.getByText("Danach 14 kurze, bewusste Schritte · etwa 3 Minuten"),
 		).toBeOnTheScreen();
-		expect(
-			screen.queryByText("Wie viel lernst du aktuell pro Tag?"),
-		).toBeNull();
 
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Profil einrichten" }),
+			screen.getByRole("button", { name: "Meinen Start personalisieren" }),
 		);
 
 		expect(
@@ -549,7 +568,7 @@ describe("OnboardingScreen", () => {
 				name: "Wie dürfen wir dich nennen?",
 			}),
 		).toBeOnTheScreen();
-		expect(screen.getByText("1 von 7")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 14")).toBeOnTheScreen();
 	});
 
 	test("does not preselect a grade and requires an explicit choice", async () => {
@@ -579,24 +598,63 @@ describe("OnboardingScreen", () => {
 		).toBeOnTheScreen();
 	});
 
-	test("keeps date of birth visibly empty until the learner chooses it", async () => {
-		mockOnboarding.answers.birthDate = "";
-		const screen = await render(<OnboardingScreen initialStepId="birthDate" />);
+	test("shows the learner's answers in the personalized payoff", async () => {
+		const screen = await render(
+			<OnboardingScreen initialStepId="personal-payoff" />,
+		);
 
-		expect(screen.getByText("Geburtsdatum auswählen")).toBeOnTheScreen();
-		expect(screen.queryByText("09.09.2012")).toBeNull();
+		expect(
+			screen.getByRole("header", {
+				name: "Test, daraus wird dein persönlicher Weg.",
+			}),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText(
+				"Dayova plant mit deinen 30 Minuten mit einem Plan, der zu deiner echten Zeit passt, damit du verlässlich dranbleiben kannst.",
+			),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText("Mir fehlt ein realistischer Plan"),
+		).toBeOnTheScreen();
+		expect(screen.getByText("Regelmäßig dranbleiben")).toBeOnTheScreen();
+	});
 
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Geburtsdatum auswählen" }),
-		);
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Testauswahl schließen" }),
-		);
-		const expectedDefaultBirthDate = `09.09.${new Date().getFullYear() - 14}`;
-		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith(
-			"birthDate",
-			expectedDefaultBirthDate,
-		);
+	test("never advances the study-time fact on a timer", async () => {
+		jest.useFakeTimers();
+		try {
+			const screen = await render(
+				<OnboardingScreen initialStepId="study-time-fact" />,
+			);
+
+			expect(
+				screen.getByRole("header", { name: "Deine Lernzeit reicht aus." }),
+			).toBeOnTheScreen();
+			await act(async () => jest.advanceTimersByTime(10_000));
+			expect(
+				screen.getByRole("header", { name: "Deine Lernzeit reicht aus." }),
+			).toBeOnTheScreen();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	test("requires birth year, month, and day as separate explicit choices", async () => {
+		mockOnboarding.answers.birthYear = "";
+		mockOnboarding.answers.birthMonth = "";
+		mockOnboarding.answers.birthDay = "";
+		const screen = await render(<OnboardingScreen initialStepId="birthYear" />);
+
+		expect(screen.getByText("Geburtsjahr auswählen")).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("onboarding-birth-year-picker"),
+		).toBeOnTheScreen();
+
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(
+			await screen.findByRole("alert", {
+				name: "Bitte wähle eine Antwort aus.",
+			}),
+		).toBeOnTheScreen();
 	});
 
 	test("shows an existing-account error before leaving the email step", async () => {

@@ -1,38 +1,38 @@
 import type React from "react";
 import { createContext, useContext, useMemo, useState } from "react";
+import type {
+	OnboardingChallenge,
+	OnboardingGoal,
+} from "~/components/onboarding/onboarding-personalization";
 import type { SupportedSchoolType } from "~/lib/school-types";
 
 export type OnboardingAnswers = {
 	studyTime: string;
-	strength: string;
-	challenge: string;
-	goal: string;
+	challenge: OnboardingChallenge | "";
+	goal: OnboardingGoal | "";
 	state: string;
 	schoolType: SupportedSchoolType | "";
 	grade: string;
-	dailySchoolTime: string;
-	studyDays: string;
-	learningTime: string;
 	name: string;
 	email: string;
-	birthDate: string;
+	birthYear: string;
+	birthMonth: string;
+	birthDay: string;
 	password: string;
 };
 
 const emptyAnswers: OnboardingAnswers = {
 	studyTime: "",
-	strength: "",
 	challenge: "",
 	goal: "",
 	state: "",
 	schoolType: "",
 	grade: "",
-	dailySchoolTime: "",
-	studyDays: "",
-	learningTime: "",
 	name: "",
 	email: "",
-	birthDate: "",
+	birthYear: "",
+	birthMonth: "",
+	birthDay: "",
 	password: "",
 };
 

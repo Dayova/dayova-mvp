@@ -1,7 +1,8 @@
 import type { OnboardingAnswers } from "~/context/OnboardingContext";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
+import { formatOnboardingBirthDate } from "./birth-date";
 
-type AnswerStepKind = "chips" | "goals" | "range" | "wheel";
+type AnswerStepKind = "choice" | "range" | "wheel";
 
 export type OnboardingDecisionStep =
 	| {
@@ -9,7 +10,7 @@ export type OnboardingDecisionStep =
 			field: "email" | "name" | "password";
 	  }
 	| { kind: AnswerStepKind; field: keyof OnboardingAnswers }
-	| { kind: "fact" | "infoStack" | "intro" };
+	| { kind: "fact" | "intro" | "payoff" };
 
 export type OnboardingStepDecision = {
 	action: "advance" | "register";
@@ -48,8 +49,7 @@ export function getOnboardingStepDecision(
 	}
 
 	if (
-		(step.kind === "chips" ||
-			step.kind === "goals" ||
+		(step.kind === "choice" ||
 			step.kind === "range" ||
 			step.kind === "wheel") &&
 		!answers[step.field].trim()
@@ -74,7 +74,11 @@ export const getOnboardingRegistrationPayload = (
 	name: answers.name.trim(),
 	email: answers.email.trim().toLowerCase(),
 	password: answers.password,
-	birthDate: answers.birthDate,
+	birthDate: formatOnboardingBirthDate({
+		year: answers.birthYear,
+		month: answers.birthMonth,
+		day: answers.birthDay,
+	}),
 	grade: answers.grade,
 	schoolType: answers.schoolType || undefined,
 	state: answers.state,

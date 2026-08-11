@@ -575,7 +575,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			sharedContext: { validationStudentCode },
 		}).capture("onboarding_completed", {
 			local_day_key: localDayKey,
-			onboarding_version: 2,
+			onboarding_version: 3,
 		});
 	}, [markValidationActivity, posthog, user]);
 
@@ -590,6 +590,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 		let cancelled = false;
 		const answers = {
+			studyTime: onboardingAnswers.studyTime,
+			challenge: onboardingAnswers.challenge,
+			goal: onboardingAnswers.goal,
 			state: onboardingAnswers.state,
 			schoolType: onboardingAnswers.schoolType,
 			grade: onboardingAnswers.grade,

@@ -12,6 +12,11 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
   provider UI, dependencies, or native capabilities without a new product and
   authentication decision that covers cross-platform account linking and
   account lifecycle behavior.
+- Launch onboarding restores a three-page product explanation, then collects a
+  small set of visibly used personalization answers before the required school
+  profile and account fields. The stable implementation contract and canonical
+  product-decision pointer live in
+  [ADR 0002](adr/0002-onboarding-e2e-launch-flow.md).
 - Clerk `unsafeMetadata.schoolType` stores only the stable bounded `Schulart`
   key. Exact generic legacy labels are normalized on authentication; ambiguous
   values such as school names are removed without including the raw value in

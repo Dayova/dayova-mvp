@@ -50,6 +50,7 @@ import {
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
+import { EMPTY_DASHBOARD_PRIMARY_ACTION } from "./dashboard-empty-state";
 
 const triggerDaySelectionHaptic = () => {
 	void triggerSelectionHaptic({
@@ -399,13 +400,13 @@ function NextLearningStepCard({
 	isLoading,
 	todayKey,
 	onOpenItem,
-	onOpenLearningPlans,
+	onPlanFirstExam,
 }: {
 	item: DashboardAgendaItem | undefined;
 	isLoading: boolean;
 	todayKey: string;
 	onOpenItem: (item: DashboardAgendaItem) => void;
-	onOpenLearningPlans: () => void;
+	onPlanFirstExam: () => void;
 }) {
 	const { colors } = useDayovaTheme();
 	const title = isLoading
@@ -419,13 +420,13 @@ function NextLearningStepCard({
 		? "Lernplan öffnen"
 		: item
 			? getNextStepFooter(item, todayKey)
-			: "Lernplan öffnen";
+			: EMPTY_DASHBOARD_PRIMARY_ACTION.label;
 	const handlePress = () => {
 		if (item) {
 			onOpenItem(item);
 			return;
 		}
-		onOpenLearningPlans();
+		onPlanFirstExam();
 	};
 
 	return (
@@ -435,9 +436,13 @@ function NextLearningStepCard({
 			accessibilityLabel={
 				item
 					? `${item.entry.executionStatus === "started" ? "Weiterlernen" : "Nächsten Lernschritt öffnen"}: ${title}. ${dateLabel}, ${timeLabel}`
-					: "Lernpläne öffnen"
+					: EMPTY_DASHBOARD_PRIMARY_ACTION.label
 			}
-			accessibilityHint="Öffnet deinen persönlichen Lernplan."
+			accessibilityHint={
+				item
+					? "Öffnet deinen persönlichen Lernplan."
+					: EMPTY_DASHBOARD_PRIMARY_ACTION.accessibilityHint
+			}
 			onPress={handlePress}
 			className="min-h-72 flex-1 overflow-hidden rounded-card border border-border bg-system-subtle px-4 pt-5 pb-4"
 			style={continuousBorderStyle}
@@ -1054,6 +1059,10 @@ export function DashboardScreen() {
 		() => router.push("/learning-plans"),
 		[router],
 	);
+	const planFirstExam = useCallback(
+		() => router.push(EMPTY_DASHBOARD_PRIMARY_ACTION.route),
+		[router],
+	);
 	const openTimetable = useCallback(() => router.push("/timetable"), [router]);
 
 	return (
@@ -1107,7 +1116,7 @@ export function DashboardScreen() {
 						isLoading={entriesByDay === undefined}
 						todayKey={todayKey}
 						onOpenItem={openItem}
-						onOpenLearningPlans={openLearningPlans}
+						onPlanFirstExam={planFirstExam}
 					/>
 					<WeeklyProgressCard
 						isLoading={entriesByDay === undefined}

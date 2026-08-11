@@ -181,7 +181,7 @@ describe("validation analytics contract", () => {
 
 		analytics.capture("onboarding_completed", {
 			local_day_key: "2026-07-21",
-			onboarding_version: 2,
+			onboarding_version: 3,
 		});
 
 		expect(adapter.identify).toHaveBeenCalledWith("clerk_user_123");
@@ -193,7 +193,7 @@ describe("validation analytics contract", () => {
 			eas_runtime_version: "1.0.3",
 			eas_is_embedded_launch: false,
 			local_day_key: "2026-07-21",
-			onboarding_version: 2,
+			onboarding_version: 3,
 		});
 	});
 

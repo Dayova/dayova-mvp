@@ -1,6 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, router, Stack } from "expo-router";
 import {
+	type ComponentType,
 	type ReactNode,
 	type RefObject,
 	useCallback,
@@ -9,9 +10,12 @@ import {
 	useState,
 } from "react";
 import {
+	FlatList,
 	Image,
 	Keyboard,
 	KeyboardAvoidingView,
+	type NativeScrollEvent,
+	type NativeSyntheticEvent,
 	Platform,
 	Pressable,
 	ScrollView,
@@ -24,20 +28,32 @@ import Animated, {
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
+	useReducedMotion,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { SvgProps } from "react-native-svg";
+import {
+	BIRTH_MONTH_OPTIONS,
+	getBirthDayValues,
+	getBirthMonthValues,
+	getBirthYearValues,
+} from "~/components/onboarding/birth-date";
+import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
+import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import {
 	getNextOnboardingStepIndex,
 	getOnboardingRegistrationPayload,
 	getOnboardingStepDecision,
 } from "~/components/onboarding/onboarding-flow";
+import { OnboardingSelect } from "~/components/onboarding/onboarding-select";
 import {
-	OnboardingSelect,
-	PickerInputTrigger,
-} from "~/components/onboarding/onboarding-select";
+	getOnboardingOptionLabel,
+	getOnboardingPayoff,
+	ONBOARDING_CHALLENGE_OPTIONS,
+	ONBOARDING_GOAL_OPTIONS,
+} from "~/components/onboarding/onboarding-personalization";
+import { StudyTimeFactContent } from "~/components/onboarding/study-time-fact-content";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
-import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
-import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	ArrowLeft,
@@ -56,6 +72,7 @@ import {
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
+import { SnapCarouselSelector } from "~/components/ui/snap-carousel-selector";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthFlow, useAuthSession } from "~/context/AuthContext";
@@ -78,10 +95,12 @@ import {
 import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
+import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
 
 // Password icons represent the current visibility state across this auth flow.
 // Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
+const IntroPathArtwork = IntroPathSvg as unknown as ComponentType<SvgProps>;
 const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
 const CODE_LENGTH = 6;
@@ -106,8 +125,41 @@ type PasswordResetStage =
 
 type IntroStep = {
 	kind: "intro";
-	id: "intro-value";
+	id: "intro-upload" | "intro-path" | "intro-tasks";
 	title: string;
+	description: string;
+	illustration: "upload" | "path" | "tasks";
+};
+
+type RangeStep = {
+	kind: "range";
+	id: "studyTime";
+	title: string;
+	description: string;
+	field: "studyTime";
+	values: readonly number[];
+};
+
+type FactStep = {
+	kind: "fact";
+	id: "study-time-fact";
+	title: string;
+	description: string;
+};
+
+type ChoiceStep = {
+	kind: "choice";
+	id: "challenge" | "goal";
+	title: string;
+	description: string;
+	field: "challenge" | "goal";
+};
+
+type PayoffStep = {
+	kind: "payoff";
+	id: "personal-payoff";
+	title: string;
+	description: string;
 };
 
 type TextStep = {
@@ -125,43 +177,59 @@ type TextStep = {
 
 type WheelStep = {
 	kind: "wheel";
-	id: "state" | "schoolType" | "grade" | "birthDate";
+	id:
+		| "state"
+		| "schoolType"
+		| "grade"
+		| "birthYear"
+		| "birthMonth"
+		| "birthDay";
 	title: string;
 	description: string;
-	field: "state" | "schoolType" | "grade" | "birthDate";
+	field:
+		| "state"
+		| "schoolType"
+		| "grade"
+		| "birthYear"
+		| "birthMonth"
+		| "birthDay";
 };
 
-type OnboardingStep = IntroStep | TextStep | WheelStep;
+type OnboardingStep =
+	| IntroStep
+	| RangeStep
+	| FactStep
+	| ChoiceStep
+	| PayoffStep
+	| TextStep
+	| WheelStep;
 
-const CURRENT_YEAR = new Date().getFullYear();
-const DEFAULT_BIRTH_DAY = "09";
-const DEFAULT_BIRTH_MONTH = "09";
-const DEFAULT_BIRTH_YEAR = String(CURRENT_YEAR - 14);
-
-const DEFAULT_BIRTH_DATE = `${DEFAULT_BIRTH_DAY}.${DEFAULT_BIRTH_MONTH}.${DEFAULT_BIRTH_YEAR}`;
-
-function formatPickerDate(date: Date) {
-	const day = String(date.getDate()).padStart(2, "0");
-	const month = String(date.getMonth() + 1).padStart(2, "0");
-	return `${day}.${month}.${date.getFullYear()}`;
-}
-
-function parsePickerDate(value: string) {
-	const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value);
-	if (!match) return new Date(Number(DEFAULT_BIRTH_YEAR), 8, 9);
-
-	const [, day, month, year] = match;
-	const parsed = new Date(Number(year), Number(month) - 1, Number(day));
-	return Number.isNaN(parsed.getTime())
-		? new Date(Number(DEFAULT_BIRTH_YEAR), 8, 9)
-		: parsed;
-}
+const STUDY_TIME_OPTIONS = [10, 15, 20, 25, 30, 45, 60, 90] as const;
 
 const INTRO_STEPS = [
 	{
 		kind: "intro",
-		id: "intro-value",
-		title: "Deine Prüfung. Dein nächster Schritt.",
+		id: "intro-tasks",
+		title: "Du weißt, was heute wirklich zählt.",
+		description:
+			"Ein machbarer nächster Lernschritt bringt dich jeden Tag näher an deine Prüfung.",
+		illustration: "tasks",
+	},
+	{
+		kind: "intro",
+		id: "intro-upload",
+		title: "Deine Prüfung. Alles an einem Ort.",
+		description:
+			"Lade Aufgaben, Mitschriften und Lernmaterial hoch. Dayova verbindet sie mit deinem echten Prüfungsziel.",
+		illustration: "upload",
+	},
+	{
+		kind: "intro",
+		id: "intro-path",
+		title: "Aus Stoff wird ein klarer Weg.",
+		description:
+			"Dayova erkennt Themen und Lücken und ordnet sie so, dass du nicht mehr raten musst, wo du anfängst.",
+		illustration: "path",
 	},
 ] as const satisfies readonly IntroStep[];
 const FLOW_STEPS: readonly OnboardingStep[] = [
@@ -175,6 +243,40 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		placeholder: "Dein Name",
 		autoComplete: "name",
 		textContentType: "name",
+	},
+	{
+		kind: "range",
+		id: "studyTime",
+		title: "Wie viel lernst du aktuell pro Tag?",
+		description: "Eine ehrliche Schätzung reicht. Du kannst das später ändern.",
+		field: "studyTime",
+		values: STUDY_TIME_OPTIONS,
+	},
+	{
+		kind: "fact",
+		id: "study-time-fact",
+		title: "Deine Lernzeit reicht aus.",
+		description: "Weiter geht es erst, wenn du bereit bist.",
+	},
+	{
+		kind: "choice",
+		id: "challenge",
+		title: "Was macht Lernen gerade am schwierigsten?",
+		description: "Wähle den Punkt, der dich am häufigsten ausbremst.",
+		field: "challenge",
+	},
+	{
+		kind: "choice",
+		id: "goal",
+		title: "Was möchtest du zuerst verändern?",
+		description: "Ein klares erstes Ziel macht deinen Start persönlicher.",
+		field: "goal",
+	},
+	{
+		kind: "payoff",
+		id: "personal-payoff",
+		title: "Dein Weg mit Dayova",
+		description: "Deine Antworten verändern, wie Dayova dich unterstützt.",
 	},
 	{
 		kind: "wheel",
@@ -201,11 +303,25 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 	},
 	{
 		kind: "wheel",
-		id: "birthDate",
-		title: "Wann bist du geboren?",
+		id: "birthYear",
+		title: "In welchem Jahr bist du geboren?",
 		description:
-			"Dein Geburtsdatum hilft uns, dein Konto altersgerecht zu führen.",
-		field: "birthDate",
+			"Wir fragen Jahr, Monat und Tag nacheinander – ohne Vorauswahl.",
+		field: "birthYear",
+	},
+	{
+		kind: "wheel",
+		id: "birthMonth",
+		title: "In welchem Monat bist du geboren?",
+		description: "Damit dein Geburtsdatum eindeutig und korrekt bleibt.",
+		field: "birthMonth",
+	},
+	{
+		kind: "wheel",
+		id: "birthDay",
+		title: "An welchem Tag bist du geboren?",
+		description: "Der letzte Teil deines Geburtsdatums.",
+		field: "birthDay",
 	},
 	{
 		kind: "text",
@@ -646,7 +762,10 @@ export function OnboardingScreen({
 	const stepProgress =
 		stage === "verification" || stage === "creating"
 			? 1
-			: Math.min(activeIndex / PROFILE_STEP_COUNT, 1);
+			: Math.min(
+					(activeIndex - INTRO_STEPS.length + 1) / PROFILE_STEP_COUNT,
+					1,
+				);
 
 	const continueFromStep = async () => {
 		if (
@@ -794,159 +913,200 @@ export function OnboardingScreen({
 
 	const isIntro = activeStep.kind === "intro";
 
+	const flowContent = isIntro ? (
+		<IntroStepView
+			activeIndex={activeIndex}
+			topInset={insets.top}
+			bottomInset={insets.bottom}
+			onActiveIndexChange={setActiveIndex}
+			onNext={continueFromStep}
+		/>
+	) : (
+		<View
+			key={activeStep.id}
+			style={{
+				flex: 1,
+				paddingTop: Math.max(insets.top + 12, 20),
+				paddingHorizontal: 24,
+			}}
+		>
+			<QuestionStepView
+				step={activeStep}
+				progress={stepProgress}
+				stepNumber={activeIndex - INTRO_STEPS.length + 1}
+				stepCount={PROFILE_STEP_COUNT}
+				error={error}
+				busy={isRegistrationBusy}
+				passwordVisible={passwordVisible}
+				inputRef={textInputRef}
+				bottomInset={insets.bottom}
+				onBack={handleBack}
+				onContinue={continueFromStep}
+				onTogglePassword={() => setPasswordVisible((current) => !current)}
+			/>
+		</View>
+	);
+
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen
 				options={{ title: "Registrierung", gestureEnabled: false }}
 			/>
 			<ThemedStatusBar />
-			<KeyboardAvoidingView
-				behavior={Platform.OS === "ios" ? "padding" : undefined}
-				className="flex-1"
-			>
-				{isIntro ? (
-					<IntroStepView
-						topInset={insets.top}
-						bottomInset={insets.bottom}
-						onNext={continueFromStep}
-					/>
-				) : (
-					<View
-						key={activeStep.id}
-						style={{
-							flex: 1,
-							paddingTop: Math.max(insets.top + 12, 20),
-							paddingHorizontal: 24,
-						}}
-					>
-						<QuestionStepView
-							step={activeStep}
-							progress={stepProgress}
-							stepNumber={activeIndex}
-							stepCount={PROFILE_STEP_COUNT}
-							error={error}
-							busy={isRegistrationBusy}
-							passwordVisible={passwordVisible}
-							inputRef={textInputRef}
-							bottomInset={insets.bottom}
-							onBack={handleBack}
-							onContinue={continueFromStep}
-							onTogglePassword={() => setPasswordVisible((current) => !current)}
-						/>
-					</View>
-				)}
-			</KeyboardAvoidingView>
+			{isIntro ? (
+				flowContent
+			) : (
+				<KeyboardAvoidingView
+					behavior={Platform.OS === "ios" ? "padding" : undefined}
+					className="flex-1"
+				>
+					{flowContent}
+				</KeyboardAvoidingView>
+			)}
 		</View>
 	);
 }
 
 function IntroStepView({
+	activeIndex,
 	topInset,
 	bottomInset,
+	onActiveIndexChange,
 	onNext,
 }: {
+	activeIndex: number;
 	topInset: number;
 	bottomInset: number;
+	onActiveIndexChange: (index: number) => void;
 	onNext: () => void;
 }) {
-	const { height } = useWindowDimensions();
+	const { width, height } = useWindowDimensions();
+	const listRef = useRef<FlatList<IntroStep>>(null);
+	const reducedMotion = useReducedMotion();
 	const isCompactHeight = height < 760;
-	const valuePoints = [
-		{
-			icon: ClipboardList,
-			title: "Deine genaue Prüfung",
-			body: "Materialien und Prüfungsziel geben den Rahmen vor.",
-		},
-		{
-			icon: Bulb,
-			title: "Deine echten Lücken",
-			body: "Kurze Fragen zeigen, was schon sitzt und was noch fehlt.",
-		},
-		{
-			icon: Route2,
-			title: "Dein nächster Schritt",
-			body: "Du siehst genau, womit du heute sinnvoll startest.",
-		},
-	] as const;
+	const introIndex = Math.min(activeIndex, INTRO_STEPS.length - 1);
+	const isLastIntro = introIndex === INTRO_STEPS.length - 1;
+	const artworkHeight = isCompactHeight ? 220 : 286;
+
+	const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+		const index = Math.min(
+			Math.max(Math.round(event.nativeEvent.contentOffset.x / width), 0),
+			INTRO_STEPS.length - 1,
+		);
+		onActiveIndexChange(index);
+	};
+
+	const handleNext = () => {
+		if (isLastIntro) {
+			onNext();
+			return;
+		}
+
+		onActiveIndexChange(introIndex + 1);
+	};
+
+	useEffect(() => {
+		listRef.current?.scrollToIndex({
+			index: introIndex,
+			animated: !reducedMotion,
+		});
+	}, [introIndex, reducedMotion]);
 
 	return (
-		<ScrollView
-			contentInsetAdjustmentBehavior="never"
-			alwaysBounceVertical={false}
-			showsVerticalScrollIndicator={false}
-			contentContainerStyle={{
-				minHeight: height,
-				paddingTop: Math.max(topInset + (isCompactHeight ? 20 : 32), 32),
-				paddingBottom: Math.max(bottomInset + 24, 36),
-				paddingHorizontal: 24,
+		<View
+			className="flex-1"
+			style={{
+				paddingTop: Math.max(topInset + (isCompactHeight ? 12 : 20), 24),
+				paddingBottom: Math.max(bottomInset + 20, 28),
 			}}
 		>
-			<Animated.View entering={FadeIn.duration(240)} className="flex-1">
-				<View className="items-center">
-					<View className="flex-row items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
-						<Route2 size={16} color={COLORS.primary} strokeWidth={2.2} />
-						<Text className="font-poppins font-semibold text-body-5 text-primary">
-							DEIN START MIT DAYOVA
+			<View className="items-center px-6">
+				<View className="flex-row items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
+					<Route2 size={16} color={COLORS.primary} strokeWidth={2.2} />
+					<Text className="font-poppins font-semibold text-body-5 text-primary">
+						SO FUNKTIONIERT DAYOVA
+					</Text>
+				</View>
+			</View>
+
+			<FlatList
+				ref={listRef}
+				data={INTRO_STEPS}
+				horizontal
+				pagingEnabled
+				bounces={false}
+				initialScrollIndex={introIndex}
+				showsHorizontalScrollIndicator={false}
+				keyExtractor={(step) => step.id}
+				getItemLayout={(_, index) => ({
+					length: width,
+					offset: width * index,
+					index,
+				})}
+				onMomentumScrollEnd={handleScrollEnd}
+				renderItem={({ item }) => (
+					<View style={{ width }} className="items-center px-6 pt-4">
+						<View
+							className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
+							style={{ height: artworkHeight }}
+						>
+							{item.illustration === "upload" ? (
+								<IntroUploadArtwork
+									width={isCompactHeight ? 246 : 280}
+									height={isCompactHeight ? 222 : 254}
+								/>
+							) : null}
+							{item.illustration === "path" ? (
+								<IntroPathArtwork
+									width={isCompactHeight ? 270 : 320}
+									height={isCompactHeight ? 190 : 230}
+								/>
+							) : null}
+							{item.illustration === "tasks" ? (
+								<IntroTasksArtwork
+									width={isCompactHeight ? 294 : 345}
+									height={isCompactHeight ? 200 : 236}
+								/>
+							) : null}
+						</View>
+
+						<Text
+							accessibilityRole="header"
+							className={cn(
+								"max-w-[350px] text-center font-poppins font-semibold text-text",
+								isCompactHeight ? "mt-4 text-heading-2" : "mt-6 text-heading-1",
+							)}
+						>
+							{item.title}
+						</Text>
+						<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
+							{item.description}
 						</Text>
 					</View>
+				)}
+			/>
 
-					<Text
-						accessibilityRole="header"
-						className={cn(
-							"max-w-[345px] text-center font-poppins font-semibold text-text",
-							isCompactHeight ? "mt-5 text-heading-2" : "mt-7 text-heading-1",
-						)}
-					>
-						{INTRO_STEPS[0]?.title}
-					</Text>
-					<Text className="mt-3 max-w-[330px] text-center font-poppins text-body-3 text-secondary-text">
-						Dayova verbindet deine Unterlagen, deinen Lernstand und deine
-						verfügbare Zeit zu einem klaren Weg bis zur Prüfung.
-					</Text>
+			<View className="px-6">
+				<View className="mb-5 flex-row justify-center gap-2">
+					{INTRO_STEPS.map((step, index) => (
+						<View
+							key={step.id}
+							className={cn(
+								"h-2 rounded-full",
+								index === introIndex ? "w-7 bg-primary" : "w-2 bg-border",
+							)}
+						/>
+					))}
 				</View>
-
-				<View
-					className={cn(
-						"w-full rounded-[32px] border border-border bg-surface px-5",
-						isCompactHeight ? "mt-6 py-3" : "mt-8 py-5",
-					)}
-					style={{ boxShadow: "0 16px 36px rgba(20, 28, 48, 0.06)" }}
-				>
-					{valuePoints.map((point, index) => {
-						const Icon = point.icon;
-						return (
-							<View
-								key={point.title}
-								className={cn(
-									"flex-row gap-4",
-									index < valuePoints.length - 1 && "border-border border-b",
-									isCompactHeight ? "py-3" : "py-4",
-								)}
-							>
-								<View className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10">
-									<Icon size={20} color={COLORS.primary} strokeWidth={2.2} />
-								</View>
-								<View className="flex-1">
-									<Text className="font-poppins font-semibold text-body-3 text-text">
-										{point.title}
-									</Text>
-									<Text className="mt-0.5 font-poppins text-body-4 text-secondary-text">
-										{point.body}
-									</Text>
-								</View>
-							</View>
-						);
-					})}
-				</View>
-
-				<View className={cn("mt-auto", isCompactHeight ? "pt-6" : "pt-8")}>
-					<GradientPillButton label="Profil einrichten" onPress={onNext} />
-					<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
-						7 kurze Schritte · dauert etwa 1 Minute
-					</Text>
-				</View>
-			</Animated.View>
-		</ScrollView>
+				<GradientPillButton
+					label={isLastIntro ? "Meinen Start personalisieren" : "Weiter"}
+					onPress={handleNext}
+				/>
+				<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
+					Danach 14 kurze, bewusste Schritte · etwa 3 Minuten
+				</Text>
+			</View>
+		</View>
 	);
 }
 
@@ -979,8 +1139,10 @@ function QuestionStepView({
 }) {
 	const { colors: COLORS } = useDayovaTheme();
 	const { answers, setAnswer } = useOnboarding();
+	const reducedMotion = useReducedMotion();
 	const isWheelStep = step.kind === "wheel";
-	const titleTopPadding = step.kind === "text" ? 50 : 36;
+	const isImmersiveStep = step.kind === "fact" || step.kind === "payoff";
+	const titleTopPadding = step.kind === "text" ? 50 : 28;
 	const continueLabel =
 		step.kind === "text" && step.field === "password"
 			? busy
@@ -1010,39 +1172,52 @@ function QuestionStepView({
 				}}
 			>
 				<Animated.View
-					entering={FadeInDown.duration(220)}
+					entering={reducedMotion ? undefined : FadeInDown.duration(220)}
 					style={{
 						flex: 1,
 						alignItems: "center",
-						paddingTop: titleTopPadding,
+						paddingTop: isImmersiveStep ? 16 : titleTopPadding,
 					}}
 				>
-					<Text
-						accessibilityRole="header"
-						className="text-center font-poppins"
-						style={{
-							color: COLORS.text,
-							fontSize: QUESTION_TITLE_STYLE.fontSize,
-							lineHeight: QUESTION_TITLE_STYLE.lineHeight,
-							fontWeight: QUESTION_TITLE_STYLE.fontWeight,
-						}}
-					>
-						{step.title}
-					</Text>
-					<Text className="mt-3 max-w-[330px] text-center font-poppins text-body-4 text-secondary-text">
-						{step.description}
-					</Text>
+					{!isImmersiveStep ? (
+						<>
+							<Text
+								accessibilityRole="header"
+								className="text-center font-poppins"
+								style={{
+									color: COLORS.text,
+									fontSize: QUESTION_TITLE_STYLE.fontSize,
+									lineHeight: QUESTION_TITLE_STYLE.lineHeight,
+									fontWeight: QUESTION_TITLE_STYLE.fontWeight,
+								}}
+							>
+								{step.title}
+							</Text>
+							<Text className="mt-3 max-w-[330px] text-center font-poppins text-body-4 text-secondary-text">
+								{step.description}
+							</Text>
+						</>
+					) : null}
 
 					<View
 						style={{
 							width: "100%",
-							marginTop: isWheelStep ? 20 : 22,
+							marginTop: isImmersiveStep ? 0 : isWheelStep ? 20 : 22,
 							flex: isWheelStep ? 1 : undefined,
 							alignItems: "center",
 							justifyContent: isWheelStep ? "center" : undefined,
 						}}
 					>
 						{step.kind === "wheel" ? <WheelAnswer step={step} /> : null}
+						{step.kind === "range" ? <RangeAnswer step={step} /> : null}
+						{step.kind === "choice" ? <ChoiceAnswer step={step} /> : null}
+						{step.kind === "fact" ? (
+							<StudyTimeFactContent
+								title={step.title}
+								studyTime={answers.studyTime}
+							/>
+						) : null}
+						{step.kind === "payoff" ? <PayoffAnswer /> : null}
 
 						{step.kind === "text" ? (
 							<>
@@ -2047,7 +2222,7 @@ function AuthProgressHeader({
 			<View className="flex-1 gap-2">
 				<View className="flex-row items-center justify-between">
 					<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
-						DEIN PROFIL
+						DEIN START
 					</Text>
 					{progressLabel ? (
 						<Text className="font-poppins text-body-5 text-secondary-text">
@@ -2252,45 +2427,171 @@ function OtpCodeInput({
 	);
 }
 
+function RangeAnswer({ step }: { step: RangeStep }) {
+	const { answers, setAnswer } = useOnboarding();
+	useEffect(() => {
+		if (!answers.studyTime) setAnswer("studyTime", "30");
+	}, [answers.studyTime, setAnswer]);
+	const selectedIndex = Math.max(
+		step.values.findIndex((value) => String(value) === answers.studyTime),
+		0,
+	);
+	const selectedValue = step.values[selectedIndex] ?? step.values[0];
+
+	return (
+		<SnapCarouselSelector
+			accessibilityLabel="Tägliche Lernzeit"
+			accessibilityValue={`${answers.studyTime || "Noch nicht gewählt"}${answers.studyTime ? " Minuten" : ""}`}
+			decrementLabel="Weniger Lernzeit"
+			incrementLabel="Mehr Lernzeit"
+			items={step.values}
+			selectedIndex={selectedIndex}
+			getItemKey={(value) => String(value)}
+			primaryLabel={answers.studyTime || "–"}
+			secondaryLabel="Minuten"
+			progress={
+				selectedValue === undefined
+					? 0
+					: (selectedIndex + 1) / step.values.length
+			}
+			onSelect={(value) => setAnswer("studyTime", String(value))}
+		/>
+	);
+}
+
+function ChoiceAnswer({ step }: { step: ChoiceStep }) {
+	const { answers, setAnswer } = useOnboarding();
+	const options =
+		step.field === "challenge"
+			? ONBOARDING_CHALLENGE_OPTIONS
+			: ONBOARDING_GOAL_OPTIONS;
+
+	return (
+		<View className="w-full gap-3">
+			{options.map((option) => {
+				const isSelected = answers[step.field] === option.value;
+				return (
+					<Pressable
+						key={option.value}
+						accessibilityRole="radio"
+						accessibilityLabel={`${option.label}. ${option.description}`}
+						accessibilityState={{ checked: isSelected }}
+						onPress={() => {
+							if (step.field === "challenge") {
+								setAnswer(
+									"challenge",
+									option.value as typeof answers.challenge,
+								);
+								return;
+							}
+							setAnswer("goal", option.value as typeof answers.goal);
+						}}
+						className={cn(
+							"min-h-20 flex-row items-center rounded-[22px] border px-5 py-3 active:opacity-80",
+							isSelected
+								? "border-primary/40 bg-accent"
+								: "border-border bg-surface",
+						)}
+					>
+						<View className="flex-1 pr-4">
+							<Text
+								className={cn(
+									"font-poppins font-semibold text-body-3",
+									isSelected ? "text-primary" : "text-text",
+								)}
+							>
+								{option.label}
+							</Text>
+							<Text className="mt-0.5 font-poppins text-body-5 text-secondary-text">
+								{option.description}
+							</Text>
+						</View>
+						<View
+							className={cn(
+								"h-7 w-7 items-center justify-center rounded-full",
+								isSelected ? "bg-primary" : "border border-border bg-card",
+							)}
+						>
+							{isSelected ? (
+								<Check size={16} color={COLORS.surface} strokeWidth={2.4} />
+							) : null}
+						</View>
+					</Pressable>
+				);
+			})}
+		</View>
+	);
+}
+
+function PayoffAnswer() {
+	const { answers } = useOnboarding();
+	const payoff = getOnboardingPayoff(answers);
+	const summary = [
+		{
+			label: `${answers.studyTime || "30"} Minuten`,
+			value: "deine echte Zeit",
+			icon: Bulb,
+		},
+		{
+			label: getOnboardingOptionLabel(
+				ONBOARDING_CHALLENGE_OPTIONS,
+				answers.challenge,
+			),
+			value: "dein größter Hebel",
+			icon: Route2,
+		},
+		{
+			label: getOnboardingOptionLabel(ONBOARDING_GOAL_OPTIONS, answers.goal),
+			value: "dein erstes Ziel",
+			icon: ClipboardList,
+		},
+	] as const;
+
+	return (
+		<View className="w-full items-center">
+			<View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+				<Route2 size={30} color={COLORS.primary} strokeWidth={2} />
+			</View>
+			<Text
+				accessibilityRole="header"
+				className="mt-5 max-w-[350px] text-center font-poppins font-semibold text-heading-1 text-text"
+			>
+				{payoff.heading}
+			</Text>
+			<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
+				{payoff.body}
+			</Text>
+
+			<View className="mt-7 w-full gap-3">
+				{summary.map((item) => {
+					const Icon = item.icon;
+					return (
+						<View
+							key={item.value}
+							className="min-h-18 flex-row items-center rounded-[22px] border border-border bg-surface px-5 py-3"
+						>
+							<View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+								<Icon size={19} color={COLORS.primary} strokeWidth={2} />
+							</View>
+							<View className="ml-4 flex-1">
+								<Text className="font-poppins font-semibold text-body-3 text-text">
+									{item.label}
+								</Text>
+								<Text className="font-poppins text-body-5 text-secondary-text">
+									{item.value}
+								</Text>
+							</View>
+							<Check size={20} color={COLORS.primary} strokeWidth={2.2} />
+						</View>
+					);
+				})}
+			</View>
+		</View>
+	);
+}
+
 function WheelAnswer({ step }: { step: WheelStep }) {
 	const { answers, setAnswer } = useOnboarding();
-	const [pickerTarget, setPickerTarget] = useState<"birthDate" | null>(null);
-
-	if (step.field === "birthDate") {
-		const value = answers.birthDate;
-		const selectedDate = parsePickerDate(value || DEFAULT_BIRTH_DATE);
-		const handleChange = (event: DateTimePickerEvent, nextDate?: Date) => {
-			if (Platform.OS === "android") setPickerTarget(null);
-			if (event.type === "dismissed" || !nextDate) return;
-			setAnswer("birthDate", formatPickerDate(nextDate));
-		};
-
-		return (
-			<View className="w-full items-center">
-				<PickerInputTrigger
-					accessibilityLabel="Geburtsdatum auswählen"
-					value={value}
-					placeholder="Geburtsdatum auswählen"
-					onPress={() => setPickerTarget("birthDate")}
-				/>
-				{pickerTarget === "birthDate" ? (
-					<DateTimePickerSheet
-						visible
-						value={selectedDate}
-						mode="date"
-						maximumDate={new Date()}
-						onChange={handleChange}
-						onClose={() => {
-							if (!value) {
-								setAnswer("birthDate", formatPickerDate(selectedDate));
-							}
-							setPickerTarget(null);
-						}}
-					/>
-				) : null}
-			</View>
-		);
-	}
 
 	if (step.field === "grade") {
 		return (
@@ -2319,6 +2620,57 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 				testID="onboarding-school-type-picker"
 				title="Schulart auswählen"
 				onChange={(value) => setAnswer("schoolType", value)}
+			/>
+		);
+	}
+
+	if (step.field === "birthYear") {
+		return (
+			<OnboardingSelect
+				accessibilityLabel="Geburtsjahr auswählen"
+				value={answers.birthYear}
+				options={getBirthYearValues()}
+				testID="onboarding-birth-year-picker"
+				title="Geburtsjahr auswählen"
+				onChange={(value) => {
+					setAnswer("birthYear", value);
+					setAnswer("birthMonth", "");
+					setAnswer("birthDay", "");
+				}}
+			/>
+		);
+	}
+
+	if (step.field === "birthMonth") {
+		return (
+			<OnboardingSelect
+				accessibilityLabel="Geburtsmonat auswählen"
+				value={answers.birthMonth}
+				options={getBirthMonthValues(answers.birthYear)}
+				formatLabel={(month) =>
+					BIRTH_MONTH_OPTIONS.find((option) => option.value === month)?.label ??
+					month
+				}
+				testID="onboarding-birth-month-picker"
+				title="Geburtsmonat auswählen"
+				onChange={(value) => {
+					setAnswer("birthMonth", value);
+					setAnswer("birthDay", "");
+				}}
+			/>
+		);
+	}
+
+	if (step.field === "birthDay") {
+		return (
+			<OnboardingSelect
+				accessibilityLabel="Geburtstag auswählen"
+				value={answers.birthDay}
+				options={getBirthDayValues(answers.birthYear, answers.birthMonth)}
+				formatLabel={(day) => `${Number.parseInt(day, 10)}.`}
+				testID="onboarding-birth-day-picker"
+				title="Geburtstag auswählen"
+				onChange={(value) => setAnswer("birthDay", value)}
 			/>
 		);
 	}
