@@ -435,9 +435,10 @@ describe("AnalyticsScreen", () => {
 		mockUseQuery.mockReturnValue(examAnalysis);
 		const screen = await render(<AnalyticsScreen />);
 
-		expect(screen.getByText("1/2")).toBeOnTheScreen();
-		expect(screen.getByText("1 von 2 sicher belegt")).toBeOnTheScreen();
-		expect(screen.getByText("1 unsicher")).toBeOnTheScreen();
+		expect(screen.queryByText("Dein Wissensstand")).not.toBeOnTheScreen();
+		expect(screen.queryByText("1/2")).not.toBeOnTheScreen();
+		expect(screen.queryByText("1 von 2 sicher belegt")).not.toBeOnTheScreen();
+		expect(screen.queryByText("1 unsicher")).not.toBeOnTheScreen();
 		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
 		expect(screen.getByText("Steigung erklären")).toBeOnTheScreen();
 		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
@@ -456,7 +457,6 @@ describe("AnalyticsScreen", () => {
 			),
 		).not.toBeOnTheScreen();
 		expect(screen.getByText("Dein nächster Schritt")).toBeOnTheScreen();
-		expect(screen.getByText("Dein Wissensstand")).toBeOnTheScreen();
 		expect(screen.queryByText("Größte Lernhürde")).not.toBeOnTheScreen();
 		expect(screen.queryByText("Dein Prüfungsstoff")).not.toBeOnTheScreen();
 		expect(
@@ -484,7 +484,7 @@ describe("AnalyticsScreen", () => {
 		});
 	});
 
-	test("shows zero of five secure topics without explanatory overview copy", async () => {
+	test("does not show an aggregate knowledge card with existing evidence", async () => {
 		mockUseQuery.mockReturnValue({
 			...examAnalysis,
 			readiness: {
@@ -496,9 +496,11 @@ describe("AnalyticsScreen", () => {
 		});
 		const screen = await render(<AnalyticsScreen />);
 
-		expect(screen.getByText("0/5")).toBeOnTheScreen();
-		expect(screen.getByText("0 von 5 sicher belegt")).toBeOnTheScreen();
-		expect(screen.getByText("5 im Aufbau")).toBeOnTheScreen();
+		expect(screen.queryByText("Dein Wissensstand")).not.toBeOnTheScreen();
+		expect(screen.queryByText("0/5")).not.toBeOnTheScreen();
+		expect(screen.queryByText("0 von 5 sicher belegt")).not.toBeOnTheScreen();
+		expect(screen.queryByText("5 im Aufbau")).not.toBeOnTheScreen();
+		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
 		expect(
 			screen.queryByText(
 				"Du arbeitest an allen 5 Prüfungsthemen, aber noch keines ist sicher belegt.",
@@ -506,7 +508,7 @@ describe("AnalyticsScreen", () => {
 		).not.toBeOnTheScreen();
 	});
 
-	test("does not present zero evaluated topics as zero progress", async () => {
+	test("does not show an aggregate knowledge card without evidence", async () => {
 		mockUseQuery.mockReturnValue({
 			...examAnalysis,
 			readiness: {
@@ -532,9 +534,13 @@ describe("AnalyticsScreen", () => {
 		});
 		const screen = await render(<AnalyticsScreen />);
 
-		expect(screen.getByText("–")).toBeOnTheScreen();
-		expect(screen.getByText("Noch keine Wissensbelege")).toBeOnTheScreen();
+		expect(screen.queryByText("Dein Wissensstand")).not.toBeOnTheScreen();
+		expect(screen.queryByText("–")).not.toBeOnTheScreen();
+		expect(
+			screen.queryByText("Noch keine Wissensbelege"),
+		).not.toBeOnTheScreen();
 		expect(screen.queryByText("0/2")).not.toBeOnTheScreen();
+		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
 	});
 
 	test("reveals evidence and starts the recommendation from focused pages", async () => {

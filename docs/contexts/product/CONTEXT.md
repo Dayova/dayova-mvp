@@ -161,7 +161,7 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 - An assessment topic is `Sicher belegt` only when every `Belegdimension` required by that topic is secure. New topic maps declare the required dimensions; legacy topics conservatively require all three.
 - Evidence is hierarchical: independent exam-like performance may support `Probleme lösen` and `Verstehen`, and guided problem solving may support `Verstehen`; lower-strength evidence never proves a higher dimension.
 - Adaptive topic progression moves from completed theory to guided practice, repeats guided practice when any required answer is not correct, and advances an all-correct practice session to a harder independent check. One all-correct harder check can secure `Selbstständig lösen`; together with the preceding all-correct practice it supplies the repeated evidence needed for the lower dimensions. Count a multi-question session as correct only when every relevant answer is correct.
-- The Analyse overview may count secure topics but must not collapse readiness into a global percentage or points score. Activity or completed theory review alone never proves secure knowledge.
+- The Analyse overview starts directly with the complete topic list and does not show a separate aggregate knowledge-status card. Activity or completed theory review alone never proves secure knowledge.
 
 ## Example Dialogue
 

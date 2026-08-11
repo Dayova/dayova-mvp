@@ -4,14 +4,13 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	type FlatList,
+	FlatList as NativeFlatList,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
-	FlatList as NativeFlatList,
 	useWindowDimensions,
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { NotificationButton } from "~/components/notification-button";
@@ -173,75 +172,8 @@ const formatRemainingDays = (days: number) => {
 	return `Noch ${days} Tage`;
 };
 
-const KNOWLEDGE_RING_SIZE = 96;
-const KNOWLEDGE_RING_STROKE_WIDTH = 9;
-const KNOWLEDGE_RING_RADIUS =
-	(KNOWLEDGE_RING_SIZE - KNOWLEDGE_RING_STROKE_WIDTH) / 2;
-const KNOWLEDGE_RING_CIRCUMFERENCE = 2 * Math.PI * KNOWLEDGE_RING_RADIUS;
-
 // borderCurve is native geometry and has no NativeWind utility.
 const continuousCardStyle = { borderCurve: "continuous" } as const;
-
-function KnowledgeProgressRing({
-	secureTopics,
-	totalTopics,
-}: {
-	secureTopics: number;
-	totalTopics: number;
-}) {
-	const { colors } = useDayovaTheme();
-	const safeTotal = Math.max(0, totalTopics);
-	const safeSecure = Math.min(Math.max(0, secureTopics), safeTotal);
-	const hasTopics = safeTotal > 0;
-	const progress = hasTopics ? safeSecure / safeTotal : 0;
-	const progressOffset = KNOWLEDGE_RING_CIRCUMFERENCE * (1 - progress);
-
-	return (
-		<View accessible={false} className="h-24 w-24 items-center justify-center">
-			<Svg
-				pointerEvents="none"
-				width={KNOWLEDGE_RING_SIZE}
-				height={KNOWLEDGE_RING_SIZE}
-				viewBox={`0 0 ${KNOWLEDGE_RING_SIZE} ${KNOWLEDGE_RING_SIZE}`}
-				// SVG positioning is native geometry and cannot be expressed with NativeWind.
-				style={{ position: "absolute" }}
-			>
-				<Circle
-					cx={KNOWLEDGE_RING_SIZE / 2}
-					cy={KNOWLEDGE_RING_SIZE / 2}
-					r={KNOWLEDGE_RING_RADIUS}
-					fill="none"
-					stroke={colors.border}
-					strokeWidth={KNOWLEDGE_RING_STROKE_WIDTH}
-				/>
-				{hasTopics && safeSecure > 0 ? (
-					<Circle
-						cx={KNOWLEDGE_RING_SIZE / 2}
-						cy={KNOWLEDGE_RING_SIZE / 2}
-						r={KNOWLEDGE_RING_RADIUS}
-						fill="none"
-						stroke={colors.success}
-						strokeDasharray={`${KNOWLEDGE_RING_CIRCUMFERENCE} ${KNOWLEDGE_RING_CIRCUMFERENCE}`}
-						strokeDashoffset={progressOffset}
-						strokeLinecap="round"
-						strokeWidth={KNOWLEDGE_RING_STROKE_WIDTH}
-						transform={`rotate(-90 ${KNOWLEDGE_RING_SIZE / 2} ${KNOWLEDGE_RING_SIZE / 2})`}
-					/>
-				) : null}
-			</Svg>
-			<Text
-				adjustsFontSizeToFit
-				minimumFontScale={0.7}
-				numberOfLines={1}
-				selectable
-				className="font-poppins font-semibold text-heading-2 text-text"
-				style={{ fontVariant: ["tabular-nums"] }}
-			>
-				{hasTopics ? `${safeSecure}/${safeTotal}` : "–"}
-			</Text>
-		</View>
-	);
-}
 
 function useExamAnalysisQuery(
 	selectedPlanId: Id<"learningPlans"> | null | undefined,
@@ -387,59 +319,9 @@ function AnalysisHub({
 }) {
 	const { colors } = useDayovaTheme();
 	const recommendation = analysis.recommendation;
-	const totalTopics =
-		analysis.readiness.secure +
-		analysis.readiness.developing +
-		analysis.readiness.uncertain +
-		analysis.readiness.unknown;
-	const hasKnowledgeEvidence =
-		totalTopics > 0 && analysis.topics.some((topic) => topic.evidenceCount > 0);
-	const remainingStatusSummary = hasKnowledgeEvidence
-		? [
-				analysis.readiness.uncertain > 0
-					? `${analysis.readiness.uncertain} unsicher`
-					: null,
-				analysis.readiness.developing > 0
-					? `${analysis.readiness.developing} im Aufbau`
-					: null,
-				analysis.readiness.unknown > 0
-					? `${analysis.readiness.unknown} noch nicht belegt`
-					: null,
-			]
-				.filter(Boolean)
-				.join(" · ") || "Alle Themen sind sicher belegt"
-		: "Noch kein Thema überprüft";
 
 	return (
 		<View className="gap-7">
-			<Surface className="p-5" style={continuousCardStyle} variant="flat">
-				<View className="flex-row items-center gap-4">
-					<KnowledgeProgressRing
-						secureTopics={analysis.readiness.secure}
-						totalTopics={hasKnowledgeEvidence ? totalTopics : 0}
-					/>
-					<View className="min-w-0 flex-1 gap-1">
-						<Text className="font-poppins font-semibold text-body-4 text-primary-strong">
-							Dein Wissensstand
-						</Text>
-						<Text
-							selectable
-							className="font-poppins font-semibold text-body-1 text-text"
-						>
-							{hasKnowledgeEvidence
-								? `${analysis.readiness.secure} von ${totalTopics} sicher belegt`
-								: "Noch keine Wissensbelege"}
-						</Text>
-						<Text
-							selectable
-							className="font-poppins text-body-5 text-secondary-text"
-						>
-							{remainingStatusSummary}
-						</Text>
-					</View>
-				</View>
-			</Surface>
-
 			<View className="gap-4">
 				<SectionHeading
 					title="Deine Prüfungsthemen"
