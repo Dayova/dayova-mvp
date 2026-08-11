@@ -587,6 +587,17 @@ describe("AnalyticsScreen", () => {
 		expect(
 			knowledgeScreen.getByText("Du kannst die Steigung vollständig erklären."),
 		).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("Mathe-Klausur")).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Hohe Prüfungsrelevanz"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByTestId("topic-summary-card").props.className,
+		).toContain("border-border");
+		expect(
+			knowledgeScreen.getByText("Du kannst die Steigung vollständig erklären.")
+				.props.className,
+		).toContain("text-secondary-text");
 		expect(knowledgeScreen.getByText("Deine Antworten")).toBeOnTheScreen();
 		expect(knowledgeScreen.queryByText("1 von 2")).not.toBeOnTheScreen();
 		expect(

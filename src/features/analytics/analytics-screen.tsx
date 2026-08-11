@@ -22,7 +22,6 @@ import {
 	CircleAlert,
 	Info,
 	Sparkles,
-	Telescope,
 	Time04,
 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
@@ -102,12 +101,6 @@ const TOPIC_STATUS_COPY: Record<
 		textClassName: "text-secondary-text",
 	},
 };
-
-const PRIORITY_COPY = {
-	high: "Hohe Prüfungsrelevanz",
-	medium: "Mittlere Prüfungsrelevanz",
-	low: "Ergänzendes Thema",
-} as const;
 
 const ANSWER_RATING_COPY = {
 	correct: {
@@ -864,42 +857,28 @@ function TopicDetailCard({
 	topic: ExamAnalysis["topics"][number];
 	questionEvidence: TopicQuestionEvidence | undefined;
 }) {
-	const { colors } = useDayovaTheme();
-
 	return (
 		<View className="gap-8">
-			<Surface className="gap-5 p-5" variant="flat">
-				<View className="flex-row items-center justify-between gap-3">
+			<Surface
+				className="gap-4 border border-border p-5"
+				testID="topic-summary-card"
+				variant="flat"
+			>
+				<View className="flex-row items-start justify-between gap-3">
 					<Text
 						selectable
-						className="min-w-0 flex-1 font-poppins font-semibold text-body-5 text-primary-strong"
+						className="min-w-0 flex-1 font-poppins font-semibold text-body-1 text-text"
 					>
-						{PRIORITY_COPY[topic.priority]}
+						{formatGermanUiText(topic.title)}
 					</Text>
 					<TopicStatusPill status={topic.status} />
 				</View>
 				<Text
 					selectable
-					className="font-poppins font-semibold text-body-1 text-text"
+					className="font-poppins text-body-4 text-secondary-text"
 				>
-					{formatGermanUiText(topic.title)}
+					{formatGermanUiText(topic.learningGoal)}
 				</Text>
-
-				<View className="flex-row items-center gap-3 rounded-info bg-system-subtle p-4">
-					<View className="h-10 w-10 items-center justify-center rounded-full bg-card">
-						<Telescope
-							size={20}
-							color={colors.primaryStrong}
-							strokeWidth={2.2}
-						/>
-					</View>
-					<Text
-						selectable
-						className="min-w-0 flex-1 font-poppins text-body-4 text-text"
-					>
-						{formatGermanUiText(topic.learningGoal)}
-					</Text>
-				</View>
 
 				<Button
 					accessibilityHint="Öffnet deinen nächsten Lernschritt."
@@ -1455,7 +1434,7 @@ export function AnalyticsDetailScreen({
 	const selectedExamContext =
 		analysis?.hasData && analysis.selectedPlan
 			? formatGermanUiText(
-					`${analysis.selectedPlan.subject} · ${analysis.selectedPlan.examTypeLabel}`,
+					`${analysis.selectedPlan.subject}-${analysis.selectedPlan.examTypeLabel}`,
 				)
 			: null;
 
@@ -1475,7 +1454,10 @@ export function AnalyticsDetailScreen({
 					<View className="gap-8">
 						<View className="gap-2 px-1">
 							{selectedExamContext ? (
-								<Text className="font-poppins font-semibold text-body-4 text-primary-strong">
+								<Text
+									selectable
+									className="font-poppins font-semibold text-body-2 text-text"
+								>
 									{selectedExamContext}
 								</Text>
 							) : null}
