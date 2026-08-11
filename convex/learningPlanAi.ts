@@ -14,7 +14,6 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { type ActionCtx, action } from "./_generated/server";
 import { isUnknownWrittenAnswer } from "./answerEvaluation";
-import { areSemanticallyDuplicateQuestions } from "./questionNovelty";
 import { readBooleanEnv, readOptionalEnv, readRequiredEnv } from "./env";
 import {
 	getUserFacingBackendErrorMessage,
@@ -66,6 +65,7 @@ import {
 	MAX_LEARNING_TOPIC_COUNT,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
+import { areSemanticallyDuplicateQuestions } from "./questionNovelty";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
@@ -410,7 +410,7 @@ const writtenAnswerEvaluationSchema = z.object({
 	rating: z.enum(["notCorrect", "partiallyCorrect", "correct"]),
 	review: germanTextSchema(
 		12,
-		"A precise German review of the learner's answer. State what is correct and what is missing or wrong without repeating the full ideal answer.",
+		"A concise German review of the learner's answer. State what is correct and integrate the essential correction or correct result without adding a separate ideal-answer section.",
 		700,
 	),
 });
@@ -2772,8 +2772,7 @@ export const evaluateWrittenAnswer = action({
 		if (isUnknownWrittenAnswer(answerText)) {
 			evaluation = {
 				rating: "notCorrect",
-				review:
-					"Du hast noch keine fachliche Antwort gegeben. Beantworte bei der nächsten Frage mindestens die gefragte Kernaussage und begründe sie.",
+				review: `Du hast noch keine fachliche Antwort gegeben. Richtig ist: ${context.idealAnswer}`,
 			};
 		} else {
 			try {
@@ -2792,7 +2791,7 @@ export const evaluateWrittenAnswer = action({
 								}),
 								system: `Du bewertest schriftliche Antworten von Schülerinnen und Schülern fachlich präzise und fair. Bewerte Bedeutung, Lösungsweg und Vollständigkeit – niemals Wortanzahl, Schreibstil oder bloße Schlüsselworttreffer. "correct" gilt nur, wenn alle für die Frage wesentlichen Aussagen oder Rechenschritte stimmen. "partiallyCorrect" gilt bei einem fachlich brauchbaren Ansatz mit einer konkreten Lücke. "notCorrect" gilt bei einem falschen Ergebnis, einem grundlegenden Missverständnis oder fehlender fachlicher Substanz.
 
-Die Rückmeldung besteht aus ein bis drei kurzen deutschen Sätzen in direkter Du-Ansprache. Nenne konkret, welcher Teil der Antwort stimmt und welcher Teil fehlt oder falsch ist. Wenn nichts Belastbares stimmt, sage konkret, was der zentrale Fehler oder die zentrale Lücke ist. Wiederhole nicht die vollständige ideale Antwort. Die Rückmeldung muss allein verständlich sein und darf den Lernenden nicht auf eine ideale oder perfekte Antwort verweisen. Verwende keine Überschriften, keine Listen, keine Punktebewertung und keine allgemeinen Floskeln. Antworte ausschließlich im vorgegebenen JSON-Schema. ${GERMAN_UI_TEXT_RULE}`,
+Die Rückmeldung besteht aus höchstens zwei kurzen deutschen Sätzen in direkter Du-Ansprache. Nenne konkret, welcher Teil der Antwort stimmt und welcher Teil fehlt oder falsch ist. Integriere das richtige Ergebnis oder die entscheidende fachliche Korrektur ausdrücklich in dieselbe Rückmeldung. Gib dafür nur die nötige Kernaussage der idealen Antwort wieder, nicht die vollständige Musterlösung. Die Rückmeldung muss allein verständlich sein und darf den Lernenden nicht auf eine separate ideale oder perfekte Antwort verweisen. Verwende keine Überschriften, keine Listen, keine Punktebewertung und keine allgemeinen Floskeln. Antworte ausschließlich im vorgegebenen JSON-Schema. ${GERMAN_UI_TEXT_RULE}`,
 								prompt: `Fach: ${context.subject}
 Thema: ${context.topicTitle ?? "Nicht näher benannt"}
 Lernziel: ${context.learningGoal ?? "Nicht näher benannt"}

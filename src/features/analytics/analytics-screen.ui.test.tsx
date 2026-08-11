@@ -379,7 +379,7 @@ const topicQuestionEvidence = {
 			prompt: "Erkläre die Steigung.",
 			answer: "Änderung von y.",
 			review:
-				"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
+				"Du nennst die Änderung von y. Vollständig ist die Steigung die Änderung von y pro Änderung von x.",
 			idealAnswer: "Änderung von y pro Änderung von x.",
 			rating: "partiallyCorrect",
 			answeredAt: Date.UTC(2026, 6, 28, 13, 30),
@@ -392,7 +392,7 @@ const topicQuestionEvidence = {
 			prompt: "Berechne die Steigung zwischen zwei Punkten.",
 			answer: "Die Steigung ist 2.",
 			review:
-				"Noch nicht korrekt. Schau dir die perfekte Antwort an und achte auf den vollständigen Lösungsweg. Der eingesetzte Rechenweg passt noch nicht zu den gegebenen Punkten.",
+				"Noch nicht korrekt. Schau dir die perfekte Antwort an und achte auf den vollständigen Lösungsweg. Der eingesetzte Rechenweg passt noch nicht zu den gegebenen Punkten. Das richtige Ergebnis ist m = 2.",
 			idealAnswer: "m = 2",
 			rating: "notCorrect",
 			answeredAt: Date.UTC(2026, 6, 29, 13, 30),
@@ -648,7 +648,7 @@ describe("AnalyticsScreen", () => {
 		).not.toBeOnTheScreen();
 		expect(
 			knowledgeScreen.queryByText(
-				"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
+				"Du nennst die Änderung von y. Vollständig ist die Steigung die Änderung von y pro Änderung von x.",
 			),
 		).not.toBeOnTheScreen();
 		expect(
@@ -685,13 +685,12 @@ describe("AnalyticsScreen", () => {
 		expect(knowledgeScreen.getByText("Änderung von y.")).toBeOnTheScreen();
 		expect(
 			knowledgeScreen.getByText(
-				"Du nennst die Änderung von y, aber die Änderung von x fehlt noch.",
+				"Du nennst die Änderung von y. Vollständig ist die Steigung die Änderung von y pro Änderung von x.",
 			),
 		).toBeOnTheScreen();
 		expect(
-			knowledgeScreen.getByText("Änderung von y pro Änderung von x."),
-		).toBeOnTheScreen();
-		expect(knowledgeScreen.getByText("RICHTIGE ANTWORT")).toBeOnTheScreen();
+			knowledgeScreen.queryByText("RICHTIGE ANTWORT"),
+		).not.toBeOnTheScreen();
 		expect(knowledgeScreen.queryByText("IDEALE ANTWORT")).not.toBeOnTheScreen();
 		expect(
 			knowledgeScreen.queryByText("Erkläre die Steigung."),
@@ -705,10 +704,12 @@ describe("AnalyticsScreen", () => {
 		).not.toBeOnTheScreen();
 		expect(
 			knowledgeScreen.getByText(
-				"Der eingesetzte Rechenweg passt noch nicht zu den gegebenen Punkten.",
+				"Der eingesetzte Rechenweg passt noch nicht zu den gegebenen Punkten. Das richtige Ergebnis ist m = 2.",
 			),
 		).toBeOnTheScreen();
-		expect(knowledgeScreen.getByText("m = 2")).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("RICHTIGE ANTWORT"),
+		).not.toBeOnTheScreen();
 
 		await fireEvent.press(
 			knowledgeScreen.getByTestId("topic-answer-card-item_1"),
