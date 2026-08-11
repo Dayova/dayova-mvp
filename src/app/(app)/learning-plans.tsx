@@ -37,6 +37,7 @@ import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
 import { learningPlanResumePath } from "~/features/learning-plans/creation-routes";
+import { LearningPlanCardFooter } from "~/features/learning-plans/learning-plan-card-footer";
 import { MaterialRequiredSheet } from "~/features/learning-plans/material-required-sheet";
 import { getRollingLearningWindowLabel } from "~/features/learning-plans/rolling-learning-window";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
@@ -592,51 +593,11 @@ function LearningPlanCard({
 								kann.
 							</Text>
 						) : (
-							<View className="mt-4 w-full max-w-[300px] gap-1">
-								<View className="flex-row items-center">
-									<Text className="w-[198px] font-poppins text-body-5 text-secondary-text">
-										{rollingWindowLabel}
-									</Text>
-									<View className="flex-row items-center gap-1">
-										<ClipboardEdit
-											size={14}
-											color={colors.secondaryText}
-											strokeWidth={2}
-										/>
-										<Text className="font-poppins text-body-4 text-secondary-text">
-											{remainingDays === 1
-												? "noch 1 Tag"
-												: `noch ${remainingDays} Tage`}
-										</Text>
-									</View>
-								</View>
-								<View
-									accessibilityLabel={`${progress} Prozent abgeschlossen`}
-									accessibilityValue={{
-										max: 100,
-										min: 0,
-										now: progress,
-										text: `${progress} Prozent`,
-									}}
-									accessibilityRole="progressbar"
-									className="h-2 w-[258px] max-w-full overflow-hidden rounded-full bg-light-2"
-								>
-									<LinearGradient
-										colors={
-											DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors
-										}
-										start={
-											DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start
-										}
-										end={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end}
-										style={{
-											height: "100%",
-											width: `${Math.max(progress, progress > 0 ? 8 : 0)}%`,
-											borderRadius: 999,
-										}}
-									/>
-								</View>
-							</View>
+							<LearningPlanCardFooter
+								progress={progress}
+								remainingDays={remainingDays}
+								rollingWindowLabel={rollingWindowLabel}
+							/>
 						)}
 					</NotchedActionCard>
 				</Animated.View>
