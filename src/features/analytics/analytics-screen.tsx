@@ -1130,11 +1130,15 @@ function EmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
 	);
 }
 
-export function AnalyticsScreen() {
+export function AnalyticsScreen({
+	initialPlanId,
+}: {
+	initialPlanId?: Id<"learningPlans">;
+}) {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const [selectedPlanId, setSelectedPlanId] =
-		useState<Id<"learningPlans"> | null>(null);
+		useState<Id<"learningPlans"> | null>(initialPlanId ?? null);
 	const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 	const analysis = useExamAnalysisQuery(selectedPlanId);
 
