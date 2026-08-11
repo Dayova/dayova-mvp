@@ -43,10 +43,14 @@ visible until an outgoing `react-native-screens` pop transition finishes. iOS
 keeps the native SwiftUI toggle shape and applies Dayova primary through the
 SwiftUI tint modifier.
 
-App screens that collect a date or time must use `DateTimePickerSheet` from
-`src/components/ui/date-time-picker-sheet`. Do not import the underlying Expo UI
-picker directly from a screen. The wrapper owns platform display normalization,
-German locale, safe-area handling, and native presentation.
+App screens that collect a date or time in one interaction must use
+`DateTimePickerSheet` from `src/components/ui/date-time-picker-sheet`. Do not
+import the underlying Expo UI picker directly from a screen. The wrapper owns
+platform display normalization, German locale, safe-area handling, and native
+presentation. A deliberately segmented onboarding question may use the shared
+selection-sheet pattern when a feature ADR explicitly requires separate fields;
+the current birth-date exception is recorded in
+[`auth/adr/0002-onboarding-e2e-launch-flow.md`](../auth/adr/0002-onboarding-e2e-launch-flow.md).
 
 ## Icons
 

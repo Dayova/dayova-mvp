@@ -385,6 +385,7 @@ export function AuthChoiceScreen() {
 	const contentSizeLayout = useContentSizeLayout({
 		requestedHorizontalPadding: 24,
 	});
+	const reducedMotion = useReducedMotion();
 	const frameScale = Math.min(
 		width / AUTH_CHOICE_FRAME.width,
 		height / AUTH_CHOICE_FRAME.height,
@@ -519,7 +520,7 @@ export function AuthChoiceScreen() {
 					}}
 				>
 					<Animated.View
-						entering={FadeIn.duration(450)}
+						entering={reducedMotion ? undefined : FadeIn.duration(240)}
 						style={{
 							position: "absolute",
 							top: 0,
@@ -536,7 +537,7 @@ export function AuthChoiceScreen() {
 					</Animated.View>
 
 					<Animated.View
-						entering={FadeInDown.duration(520).springify().damping(18)}
+						entering={reducedMotion ? undefined : FadeInDown.duration(240)}
 						style={{
 							position: "absolute",
 							top: scaled(AUTH_CHOICE_FRAME.logoCard.top),
@@ -568,10 +569,9 @@ export function AuthChoiceScreen() {
 					</Animated.View>
 
 					<Animated.View
-						entering={FadeInDown.delay(40)
-							.duration(520)
-							.springify()
-							.damping(18)}
+						entering={
+							reducedMotion ? undefined : FadeInDown.delay(40).duration(240)
+						}
 						style={{
 							position: "absolute",
 							top: scaled(AUTH_CHOICE_FRAME.title.top),
@@ -593,10 +593,9 @@ export function AuthChoiceScreen() {
 					</Animated.View>
 
 					<Animated.View
-						entering={FadeInDown.delay(80)
-							.duration(520)
-							.springify()
-							.damping(18)}
+						entering={
+							reducedMotion ? undefined : FadeInDown.delay(80).duration(240)
+						}
 						style={{
 							position: "absolute",
 							top: scaled(AUTH_CHOICE_FRAME.subtitle.top),
@@ -618,7 +617,9 @@ export function AuthChoiceScreen() {
 					</Animated.View>
 
 					<Animated.View
-						entering={FadeInUp.delay(120).duration(520).springify().damping(18)}
+						entering={
+							reducedMotion ? undefined : FadeInUp.delay(120).duration(240)
+						}
 						style={{
 							position: "absolute",
 							top: scaled(AUTH_CHOICE_FRAME.buttons.top),
@@ -980,6 +981,7 @@ function IntroStepView({
 	onActiveIndexChange: (index: number) => void;
 	onNext: () => void;
 }) {
+	const { colors: COLORS } = useDayovaTheme();
 	const { width, height } = useWindowDimensions();
 	const listRef = useRef<FlatList<IntroStep>>(null);
 	const reducedMotion = useReducedMotion();
@@ -1044,46 +1046,69 @@ function IntroStepView({
 					index,
 				})}
 				onMomentumScrollEnd={handleScrollEnd}
-				renderItem={({ item }) => (
-					<View style={{ width }} className="items-center px-6 pt-4">
-						<View
-							className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
-							style={{ height: artworkHeight }}
-						>
-							{item.illustration === "upload" ? (
-								<IntroUploadArtwork
-									width={isCompactHeight ? 246 : 280}
-									height={isCompactHeight ? 222 : 254}
-								/>
-							) : null}
-							{item.illustration === "path" ? (
-								<IntroPathArtwork
-									width={isCompactHeight ? 270 : 320}
-									height={isCompactHeight ? 190 : 230}
-								/>
-							) : null}
-							{item.illustration === "tasks" ? (
-								<IntroTasksArtwork
-									width={isCompactHeight ? 294 : 345}
-									height={isCompactHeight ? 200 : 236}
-								/>
-							) : null}
-						</View>
+				renderItem={({ item }) => {
+					// Pager width and artwork height are measured runtime geometry.
+					return (
+						<View style={{ width }} className="items-center px-6 pt-4">
+							<View
+								className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
+								style={{ height: artworkHeight }}
+							>
+								{item.illustration === "upload" ? (
+									<IntroUploadArtwork
+										width={isCompactHeight ? 246 : 280}
+										height={isCompactHeight ? 222 : 254}
+									/>
+								) : null}
+								{item.illustration === "path" ? (
+									<View className="overflow-hidden">
+										<IntroPathArtwork
+											color={COLORS.path2}
+											testID="intro-path-artwork"
+											width={isCompactHeight ? 270 : 320}
+											height={isCompactHeight ? 190 : 230}
+										/>
+										<LinearGradient
+											testID="intro-path-fade"
+											colors={[`${COLORS.systemSubtle}0D`, COLORS.systemSubtle]}
+											start={{ x: 0.5, y: 0 }}
+											end={{ x: 0.5, y: 1 }}
+											// Expo LinearGradient requires native geometry through style.
+											style={{
+												position: "absolute",
+												left: 0,
+												right: 0,
+												bottom: 0,
+												height: "63%",
+											}}
+										/>
+									</View>
+								) : null}
+								{item.illustration === "tasks" ? (
+									<IntroTasksArtwork
+										width={isCompactHeight ? 294 : 345}
+										height={isCompactHeight ? 200 : 236}
+									/>
+								) : null}
+							</View>
 
-						<Text
-							accessibilityRole="header"
-							className={cn(
-								"max-w-[350px] text-center font-poppins font-semibold text-text",
-								isCompactHeight ? "mt-4 text-heading-2" : "mt-6 text-heading-1",
-							)}
-						>
-							{item.title}
-						</Text>
-						<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
-							{item.description}
-						</Text>
-					</View>
-				)}
+							<Text
+								accessibilityRole="header"
+								className={cn(
+									"max-w-[350px] text-center font-poppins font-semibold text-text",
+									isCompactHeight
+										? "mt-4 text-heading-2"
+										: "mt-6 text-heading-1",
+								)}
+							>
+								{item.title}
+							</Text>
+							<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
+								{item.description}
+							</Text>
+						</View>
+					);
+				}}
 			/>
 
 			<View className="px-6">
@@ -1286,7 +1311,7 @@ function QuestionStepView({
 							accessibilityLiveRegion="polite"
 							accessibilityRole="alert"
 							selectable
-							entering={FadeIn.duration(180)}
+							entering={reducedMotion ? undefined : FadeIn.duration(180)}
 							style={{
 								marginTop: 12,
 								fontFamily: "Poppins",
@@ -1322,6 +1347,7 @@ function QuestionStepView({
 export function LoginScreen() {
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
+	const reducedMotion = useReducedMotion();
 	const isCompactHeight = height < 850;
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -1479,7 +1505,7 @@ export function LoginScreen() {
 				>
 					<View className="flex-1 items-center px-8">
 						<Animated.View
-							entering={FadeInDown.duration(440).springify().damping(18)}
+							entering={reducedMotion ? undefined : FadeInDown.duration(240)}
 						>
 							<Image
 								source={require("../../../assets/dayova-logo.png")}
@@ -1561,7 +1587,7 @@ export function LoginScreen() {
 								accessibilityLiveRegion="polite"
 								accessibilityRole="alert"
 								selectable
-								entering={FadeIn.duration(180)}
+								entering={reducedMotion ? undefined : FadeIn.duration(180)}
 								className="mt-3 text-center font-poppins text-body-4 text-destructive"
 							>
 								{error}
@@ -1613,6 +1639,7 @@ function PasswordResetScreen({
 	const { colors: COLORS } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
+	const reducedMotion = useReducedMotion();
 	const isCompactHeight = height < 850;
 	const [stage, setStage] = useState<PasswordResetStage>("email");
 	const [email, setEmail] = useState(initialEmail.trim().toLowerCase());
@@ -1887,7 +1914,7 @@ function PasswordResetScreen({
 
 					<Animated.View
 						key={stage}
-						entering={FadeInDown.duration(260)}
+						entering={reducedMotion ? undefined : FadeInDown.duration(240)}
 						className="mt-8 w-full gap-4"
 					>
 						{stage === "email" ? (
@@ -1972,7 +1999,7 @@ function PasswordResetScreen({
 							selectable
 							accessibilityLiveRegion="polite"
 							accessibilityRole="alert"
-							entering={FadeIn.duration(180)}
+							entering={reducedMotion ? undefined : FadeIn.duration(180)}
 							className="mt-4 text-center font-poppins text-body-4 text-wrong"
 						>
 							{error}
@@ -1982,7 +2009,7 @@ function PasswordResetScreen({
 						<Animated.Text
 							selectable
 							accessibilityLiveRegion="polite"
-							entering={FadeIn.duration(180)}
+							entering={reducedMotion ? undefined : FadeIn.duration(180)}
 							className="mt-4 text-center font-poppins text-body-4 text-primary"
 						>
 							{notice}
@@ -2043,6 +2070,8 @@ function VerificationScreen({
 	onChangeCode: (value: string) => void;
 	onResend: () => Promise<void>;
 }) {
+	const reducedMotion = useReducedMotion();
+
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen
@@ -2114,7 +2143,7 @@ function VerificationScreen({
 								accessibilityLiveRegion="polite"
 								accessibilityRole="alert"
 								selectable
-								entering={FadeIn.duration(180)}
+								entering={reducedMotion ? undefined : FadeIn.duration(180)}
 								style={{
 									marginTop: 12,
 									fontFamily: "Poppins",
@@ -2143,6 +2172,8 @@ export function CreationLoaderScreen({
 	bottomInset: number;
 	isComplete: boolean;
 }) {
+	const reducedMotion = useReducedMotion();
+
 	useEffect(() => {
 		if (!isComplete) return;
 
@@ -2172,7 +2203,7 @@ export function CreationLoaderScreen({
 				<AnimatedFlowerLoader size={220} />
 				<Animated.Text
 					key={isComplete ? "complete" : "creating"}
-					entering={FadeIn.duration(220)}
+					entering={reducedMotion ? undefined : FadeIn.duration(220)}
 					className="mt-10 text-center font-poppins font-semibold text-text"
 					style={{ fontSize: 20, lineHeight: 29 }}
 				>
@@ -2473,7 +2504,7 @@ function ChoiceAnswer({ step }: { step: ChoiceStep }) {
 				return (
 					<Pressable
 						key={option.value}
-						accessibilityRole="radio"
+						accessibilityRole="checkbox"
 						accessibilityLabel={`${option.label}. ${option.description}`}
 						accessibilityState={{ checked: isSelected }}
 						onPress={() => {
@@ -2487,7 +2518,7 @@ function ChoiceAnswer({ step }: { step: ChoiceStep }) {
 							setAnswer("goal", option.value as typeof answers.goal);
 						}}
 						className={cn(
-							"min-h-20 flex-row items-center rounded-[22px] border px-5 py-3 active:opacity-80",
+							"min-h-20 flex-row items-center rounded-[24px] border px-5 py-3 active:opacity-80",
 							isSelected
 								? "border-primary/40 bg-accent"
 								: "border-border bg-surface",
@@ -2568,7 +2599,7 @@ function PayoffAnswer() {
 					return (
 						<View
 							key={item.value}
-							className="min-h-18 flex-row items-center rounded-[22px] border border-border bg-surface px-5 py-3"
+							className="min-h-18 flex-row items-center rounded-[24px] border border-border bg-surface px-5 py-3"
 						>
 							<View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
 								<Icon size={19} color={COLORS.primary} strokeWidth={2} />
@@ -2705,12 +2736,15 @@ function AuthChoicePillButton({
 	const responsiveLayout = getResponsiveAuthChoiceLayout(fontScale);
 	const visibleLabel =
 		responsive && label === "Registrierung" ? "Registrie­rung" : label;
+	const [pressed, setPressed] = useState(false);
 
 	return (
 		<Pressable
 			accessibilityLabel={label}
 			accessibilityRole="button"
 			onPress={onPress}
+			onPressIn={() => setPressed(true)}
+			onPressOut={() => setPressed(false)}
 			style={{
 				height: responsive ? undefined : height,
 				minHeight: responsive ? responsiveLayout.buttonMinHeight : undefined,
@@ -2727,6 +2761,7 @@ function AuthChoicePillButton({
 				backgroundColor: tone === "dark" ? COLORS.buttonNeutral : "transparent",
 				paddingHorizontal: responsive ? 24 : 0,
 				paddingVertical: responsive ? 12 : 0,
+				opacity: pressed ? 0.78 : 1,
 			}}
 		>
 			{tone === "gradient" ? (
@@ -2775,6 +2810,7 @@ function GradientPillButton({
 	disabled?: boolean;
 }) {
 	const { shouldStackInlineContent } = useContentSizeLayout();
+	const [pressed, setPressed] = useState(false);
 
 	return (
 		<Pressable
@@ -2784,6 +2820,8 @@ function GradientPillButton({
 			disabled={disabled}
 			onPress={onPress}
 			className="px-6"
+			onPressIn={() => setPressed(true)}
+			onPressOut={() => setPressed(false)}
 			style={{
 				height: shouldStackInlineContent ? undefined : 56,
 				minHeight: 56,
@@ -2791,7 +2829,7 @@ function GradientPillButton({
 				overflow: "hidden",
 				alignItems: "center",
 				justifyContent: "center",
-				opacity: disabled ? 0.55 : 1,
+				opacity: disabled ? 0.55 : pressed ? 0.78 : 1,
 				paddingVertical: shouldStackInlineContent ? 12 : 0,
 			}}
 		>
@@ -2827,6 +2865,7 @@ function DarkPillButton({
 }) {
 	const { colors: COLORS, isDark } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
+	const [pressed, setPressed] = useState(false);
 
 	return (
 		<Pressable
@@ -2836,6 +2875,8 @@ function DarkPillButton({
 			disabled={disabled}
 			onPress={onPress}
 			className="px-6"
+			onPressIn={() => setPressed(true)}
+			onPressOut={() => setPressed(false)}
 			style={{
 				height: shouldStackInlineContent ? undefined : 56,
 				minHeight: 56,
@@ -2843,6 +2884,7 @@ function DarkPillButton({
 				alignItems: "center",
 				justifyContent: "center",
 				backgroundColor: isDark ? COLORS.primaryStrong : COLORS.buttonNeutral,
+				opacity: disabled ? 0.55 : pressed ? 0.78 : 1,
 				boxShadow: disabled
 					? "none"
 					: isDark

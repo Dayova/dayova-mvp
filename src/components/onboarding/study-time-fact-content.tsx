@@ -10,12 +10,8 @@ function StudyTimeFactPanel({ body }: { body: string }) {
 	const reducedMotion = useReducedMotion();
 	return (
 		<Animated.View
-			entering={
-				reducedMotion
-					? undefined
-					: FadeInUp.delay(80).duration(420).springify().damping(18)
-			}
-			className="mt-7 w-full rounded-[28px] border border-primary/15 bg-primary/5 px-6 py-6"
+			entering={reducedMotion ? undefined : FadeInUp.delay(60).duration(220)}
+			className="mt-7 w-full rounded-[24px] border border-primary/15 bg-primary/5 px-6 py-6"
 		>
 			<View className="flex-row items-center gap-2 self-start rounded-full bg-primary/10 px-3 py-1.5">
 				<Sparkles size={16} color={COLORS.primary} strokeWidth={2} />

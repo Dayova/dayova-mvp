@@ -146,7 +146,8 @@ jest.mock("expo-linear-gradient", () => {
 
 jest.mock("../../../assets/onboarding/intro-path.svg", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
-	return () => React.createElement("IntroPathArtwork");
+	return (props: Record<string, unknown>) =>
+		React.createElement("IntroPathArtwork", props);
 });
 
 jest.mock("~/components/intro-upload-artwork", () => {
@@ -268,8 +269,10 @@ jest.mock("~/lib/theme", () => ({
 		colors: {
 			background: "#FFFFFF",
 			destructive: "#D92D20",
+			path2: "#D7DCE3",
 			secondaryText: "#697586",
 			surface: "#FFFFFF",
+			systemSubtle: "#F1F7FB",
 			text: "#1A1A1A",
 		},
 	}),
@@ -569,6 +572,22 @@ describe("OnboardingScreen", () => {
 			}),
 		).toBeOnTheScreen();
 		expect(screen.getByText("1 von 14")).toBeOnTheScreen();
+	});
+
+	test("themes the learning path and its fade with semantic colors", async () => {
+		const screen = await render(<OnboardingScreen />);
+
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(screen.getByTestId("intro-path-artwork")).toHaveProp(
+			"color",
+			"#D7DCE3",
+		);
+		expect(screen.getByTestId("intro-path-fade")).toHaveProp("colors", [
+			"#F1F7FB0D",
+			"#F1F7FB",
+		]);
 	});
 
 	test("does not preselect a grade and requires an explicit choice", async () => {
