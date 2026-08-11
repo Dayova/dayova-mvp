@@ -77,7 +77,6 @@ const config: ExpoConfig = {
 		supportsTablet: true,
 		bundleIdentifier: isProduction ? "de.dayova.app" : "de.dayova.app-dev",
 		runtimeVersion: APP_VERSION,
-		usesAppleSignIn: true,
 		infoPlist: {
 			ITSAppUsesNonExemptEncryption: false,
 			...IOS_PRIVACY_PURPOSE_STRINGS,
@@ -97,7 +96,14 @@ const config: ExpoConfig = {
 	plugins: [
 		"expo-router",
 		"expo-status-bar",
-		"@clerk/expo",
+		[
+			"@clerk/expo",
+			{
+				// Dayova uses its own email/password authentication flow. Clerk's
+				// default would otherwise add an unused Sign in with Apple entitlement.
+				appleSignIn: false,
+			},
+		],
 		[
 			"expo-notifications",
 			{
