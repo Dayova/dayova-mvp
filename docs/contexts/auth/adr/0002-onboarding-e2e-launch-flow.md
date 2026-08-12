@@ -115,6 +115,11 @@ The following constraints are part of the contract:
 - The backend continues accepting legacy optional onboarding fields for older
   app versions, but the launch client neither asks for nor submits them.
 - Nonessential onboarding motion follows the system reduced-motion setting.
+- The profile-step progress fill animates forward and backward over 260 ms with
+  a restrained ease-out. It starts at the current value on first render rather
+  than replaying progress from zero, while reduced-motion users receive the new
+  value immediately. The textual step count and accessibility value always
+  update synchronously with the actual step.
 - Registration guards synchronous repeated actions and preserves one-step back
   navigation across flow and verification. The visible back action and Android
   system/predictive back always resolve the nearest reversible state first:
