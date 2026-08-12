@@ -718,6 +718,22 @@ describe("OnboardingScreen", () => {
 		expect(screen.getByText("1 von 14")).toBeOnTheScreen();
 	});
 
+	test("keeps the progress bar mounted while advancing between profile steps", async () => {
+		const screen = await render(<OnboardingScreen />);
+
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Meinen Start personalisieren" }),
+		);
+
+		const firstStepProgressBar = screen.getByRole("progressbar");
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(screen.getByText("2 von 14")).toBeOnTheScreen();
+		expect(screen.getByRole("progressbar")).toBe(firstStepProgressBar);
+	});
+
 	test("keeps intro indicators coupled to live pager scroll progress", async () => {
 		const screen = await render(<OnboardingScreen />);
 		const pager = screen.getByTestId("intro-pager");

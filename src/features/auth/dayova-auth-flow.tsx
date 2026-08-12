@@ -1002,7 +1002,6 @@ export function OnboardingScreen({
 		/>
 	) : (
 		<View
-			key={activeStep.id}
 			style={{
 				flex: 1,
 				paddingTop: Math.max(insets.top + 12, 20),
@@ -1036,11 +1035,7 @@ export function OnboardingScreen({
 				}}
 			/>
 			<ThemedStatusBar />
-			<OnboardingEdgeBackGesture
-				key={`${stage}:${activeIndex}`}
-				enabled={edgeBackEnabled}
-				onBack={handleBack}
-			>
+			<OnboardingEdgeBackGesture enabled={edgeBackEnabled} onBack={handleBack}>
 				{isIntro ? (
 					flowContent
 				) : (
@@ -1368,6 +1363,7 @@ function QuestionStepView({
 			/>
 
 			<ScrollView
+				key={step.id}
 				className="flex-1"
 				keyboardShouldPersistTaps="handled"
 				contentInsetAdjustmentBehavior="never"
