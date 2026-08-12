@@ -8,6 +8,10 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
+import {
+	type AnswerRating,
+	evaluateMultipleChoiceAnswer,
+} from "./answerEvaluation";
 import { throwUserFacingError } from "./errors";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import {
@@ -35,7 +39,6 @@ type SessionContentItemKind =
 	| "multipleChoice"
 	| "written"
 	| "voice";
-type AnswerRating = "notCorrect" | "partiallyCorrect" | "correct";
 
 const PAIRED_THEORY_PRACTICE_SUFFIX = ":paired-practice";
 const CURRENT_THEORY_CONTENT_VERSION = 2;
@@ -99,6 +102,40 @@ const generatedSessionContentItemValidator = v.object({
 	questionAngle: v.optional(v.string()),
 	coverageKey: v.optional(v.string()),
 	estimatedSeconds: v.optional(v.number()),
+});
+
+const answerRatingValidator = v.union(
+	v.literal("notCorrect"),
+	v.literal("partiallyCorrect"),
+	v.literal("correct"),
+);
+
+const publicAnswerAttemptValidator = v.object({
+	id: v.id("learningSessionAnswerAttempts"),
+	itemId: v.id("learningSessionContentItems"),
+	sessionId: v.id("learningPlanSessions"),
+	selectedChoiceId: v.optional(v.string()),
+	answerText: v.optional(v.string()),
+	transcript: v.optional(v.string()),
+	rating: answerRatingValidator,
+	feedback: v.string(),
+	perfectAnswer: v.string(),
+	timeSpentSeconds: v.optional(v.number()),
+	createdAt: v.number(),
+});
+
+const writtenAnswerEvaluationContextValidator = v.object({
+	learningPlanId: v.id("learningPlans"),
+	sessionId: v.id("learningPlanSessions"),
+	subject: v.string(),
+	topicTitle: v.union(v.string(), v.null()),
+	learningGoal: v.union(v.string(), v.null()),
+	prompt: v.string(),
+	idealAnswer: v.string(),
+	explanation: v.string(),
+	evaluationKeywords: v.array(v.string()),
+	evidenceDimension: v.union(learningEvidenceDimensionValidator, v.null()),
+	questionAngle: v.union(v.string(), v.null()),
 });
 
 const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
@@ -933,44 +970,7 @@ const getLatestAttempts = async (
 	return attempts;
 };
 
-const normalizedAnswerWords = (value: string) =>
-	new Set(
-		(normalizeText(value).toLowerCase().match(wordPattern) ?? []).filter(
-			Boolean,
-		),
-	);
-
-const evaluateTextAnswer = (
-	item: Doc<"learningSessionContentItems">,
-	answer: string,
-): AnswerRating => {
-	const answerWords = normalizedAnswerWords(answer);
-	const keywords = item.evaluationKeywords.filter(Boolean);
-	const matchedCount = keywords.filter((keyword) =>
-		answerWords.has(keyword),
-	).length;
-	const ratio = keywords.length === 0 ? 0 : matchedCount / keywords.length;
-
-	if (ratio >= 0.45 || answerWords.size >= 18) return "correct";
-	if (ratio > 0 || answerWords.size >= 7) return "partiallyCorrect";
-	return "notCorrect";
-};
-
-const feedbackForRating = (
-	item: Doc<"learningSessionContentItems">,
-	rating: AnswerRating,
-) => {
-	if (rating === "correct") {
-		return `Richtige Antwort. ${item.explanation}`;
-	}
-	if (rating === "partiallyCorrect") {
-		return `Teilweise richtig. Du triffst einen Teil des Lösungswegs, solltest aber noch genauer werden. ${item.explanation}`;
-	}
-	return `Noch nicht korrekt. Schau dir die perfekte Antwort an und achte auf den vollständigen Lösungsweg. ${item.explanation}`;
-};
-
 const buildAnalysis = (
-	session: Doc<"learningPlanSessions">,
 	items: Doc<"learningSessionContentItems">[],
 	attempts: Doc<"learningSessionAnswerAttempts">[],
 ) => {
@@ -982,58 +982,45 @@ const buildAnalysis = (
 	const correctCount = scoredAttempts.filter(
 		(attempt) => attempt.rating === "correct",
 	).length;
-	const partialCount = scoredAttempts.filter(
-		(attempt) => attempt.rating === "partiallyCorrect",
-	).length;
-	const attemptedCount = scoredAttempts.length;
-	const hasStrongResult =
-		attemptedCount > 0 && correctCount + partialCount >= attemptedCount;
-	const missedPrompts = scoredAttempts
-		.filter((attempt) => attempt.rating !== "correct")
+	const missedAttempts = scoredAttempts.filter(
+		(attempt) => attempt.rating !== "correct",
+	);
+	const missedPrompts = missedAttempts
 		.map((attempt) => itemById.get(attempt.itemId)?.prompt)
-		.filter((prompt): prompt is string => Boolean(prompt))
-		.slice(0, 3);
-	const firstCorrectPrompt = scoredAttempts
-		.map((attempt) =>
-			attempt.rating === "correct"
-				? itemById.get(attempt.itemId)?.prompt
-				: undefined,
-		)
-		.find((prompt): prompt is string => Boolean(prompt));
+		.filter((prompt): prompt is string => Boolean(prompt));
+	const strengths = Array.from(
+		new Set(
+			scoredAttempts
+				.filter((attempt) => attempt.rating === "correct")
+				.map((attempt) => itemById.get(attempt.itemId))
+				.filter((item): item is Doc<"learningSessionContentItems"> =>
+					Boolean(item),
+				)
+				.map(
+					(item) =>
+						`Bei „${item.title}“ hast du die erwartete Lösung vollständig getroffen.`,
+				),
+		),
+	).slice(0, 3);
+	const gaps = Array.from(
+		new Set(
+			missedAttempts.map((attempt) => attempt.feedback.trim()).filter(Boolean),
+		),
+	).slice(0, 3);
+	const attemptedCount = scoredAttempts.length;
+	const firstMissedPrompt = missedPrompts[0];
 
 	return {
-		strengths:
-			attemptedCount === 0
-				? ["Du hast den Lernblock geöffnet und kannst jetzt gezielt starten."]
-				: correctCount === attemptedCount
-					? ["Du hast alle bearbeiteten Aufgaben sicher gelöst."]
-					: hasStrongResult
-						? [
-								firstCorrectPrompt
-									? `Du zeigst sichere Ansätze bei: ${firstCorrectPrompt}`
-									: "Du zeigst sichere Ansätze und kommst bei mehreren Aufgaben voran.",
-							]
-						: [
-								"Du hast erste Ansätze gezeigt und weißt, wo du ansetzen kannst.",
-							],
-		gaps:
-			attemptedCount === 0
-				? ["Bearbeite die Aufgaben, damit deine Wissensanalyse genauer wird."]
-				: correctCount === attemptedCount
-					? ["Halte die Sicherheit bis zur Prüfung durch kurze Wiederholung."]
-					: missedPrompts.length > 0
-						? missedPrompts.map((prompt) => `Wiederhole: ${prompt}`)
-						: [
-								"Wiederhole die Aufgaben, bei denen Lösungsweg oder Kontrolle noch fehlen.",
-							],
+		strengths,
+		gaps,
 		recommendation:
-			session.phase === "rehearsal"
-				? missedPrompts[0]
-					? `Wiederhole zuerst diese Prüfungsaufgabe: ${missedPrompts[0]}`
-					: "Wiederhole heute die unsicheren Prüfungsschritte und plane morgen eine kurze Kontrolle."
-				: missedPrompts[0]
-					? `Übe als Nächstes gezielt: ${missedPrompts[0]}`
-					: "Übe als Nächstes gezielt die markierten Lücken und wiederhole danach eine passende Lernkarte.",
+			attemptedCount === 0
+				? "Bearbeite zuerst die Aufgaben dieses Lernblocks, damit dein Wissensstand ausgewertet werden kann."
+				: firstMissedPrompt
+					? `Bearbeite als Nächstes eine neue Aufgabe zu: ${firstMissedPrompt}`
+					: correctCount === attemptedCount
+						? "Festige die sicheren Ergebnisse später mit einer neuen Transferaufgabe."
+						: "Bearbeite als Nächstes eine neue Aufgabe zu deiner noch offenen Wissenslücke.",
 	};
 };
 
@@ -1169,7 +1156,7 @@ export const getSessionGenerationContext = internalQuery({
 					if (item.coverageKey && priorCoverageKeys.length < 2_000) {
 						priorCoverageKeys.push(item.coverageKey);
 					}
-					if (priorSessionItems.length < 100) {
+					if (priorSessionItems.length < 300) {
 						priorSessionItems.push({
 							prompt: item.prompt,
 							coverageKey: item.coverageKey,
@@ -1637,6 +1624,103 @@ export const getSessionContent = query({
 	},
 });
 
+export const getWrittenAnswerEvaluationContext = internalQuery({
+	args: {
+		itemId: v.id("learningSessionContentItems"),
+	},
+	returns: writtenAnswerEvaluationContextValidator,
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const item = await ctx.db.get("learningSessionContentItems", args.itemId);
+		if (!item || item.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Aufgabe nicht gefunden.");
+		}
+		if (item.kind !== "written" && item.kind !== "voice") {
+			throwUserFacingError("Diese Aufgabe benötigt keine Textanalyse.");
+		}
+		const session = await getOwnedSession(
+			ctx,
+			item.sessionId,
+			ownerTokenIdentifier,
+		);
+		assertSessionIsCommitted(session);
+		const plan = await getOwnedPlan(
+			ctx,
+			item.learningPlanId,
+			ownerTokenIdentifier,
+		);
+		const topic = item.topicId
+			? plan.topicMap?.find((candidate) => candidate.id === item.topicId)
+			: null;
+
+		return {
+			learningPlanId: plan._id,
+			sessionId: session._id,
+			subject: plan.subject,
+			topicTitle: topic?.title ?? null,
+			learningGoal: topic?.learningGoal ?? null,
+			prompt: item.prompt,
+			idealAnswer: item.idealAnswer,
+			explanation: item.explanation,
+			evaluationKeywords: item.evaluationKeywords,
+			evidenceDimension: item.evidenceDimension ?? null,
+			questionAngle: item.questionAngle ?? null,
+		};
+	},
+});
+
+export const storeEvaluatedWrittenAnswer = internalMutation({
+	args: {
+		itemId: v.id("learningSessionContentItems"),
+		answerText: v.string(),
+		rating: answerRatingValidator,
+		feedback: v.string(),
+		timeSpentSeconds: v.optional(v.number()),
+	},
+	returns: publicAnswerAttemptValidator,
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const item = await ctx.db.get("learningSessionContentItems", args.itemId);
+		if (!item || item.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Aufgabe nicht gefunden.");
+		}
+		if (item.kind !== "written" && item.kind !== "voice") {
+			throwUserFacingError("Diese Aufgabe benötigt keine Textanalyse.");
+		}
+		const session = await getOwnedSession(
+			ctx,
+			item.sessionId,
+			ownerTokenIdentifier,
+		);
+		assertSessionIsCommitted(session);
+		const answerText = compact(args.answerText, "");
+		const feedback = compact(args.feedback, "");
+		if (!answerText) throwUserFacingError("Antwort fehlt.");
+		if (!feedback) throwUserFacingError("Die Auswertung fehlt.");
+
+		const attemptId = await ctx.db.insert("learningSessionAnswerAttempts", {
+			ownerTokenIdentifier,
+			learningPlanId: item.learningPlanId,
+			sessionId: item.sessionId,
+			itemId: item._id,
+			answerText,
+			rating: args.rating,
+			feedback,
+			perfectAnswer: item.idealAnswer,
+			timeSpentSeconds: args.timeSpentSeconds,
+			createdAt: Date.now(),
+		});
+		const attempt = await ctx.db.get(
+			"learningSessionAnswerAttempts",
+			attemptId,
+		);
+		if (!attempt) {
+			throwUserFacingError("Antwort konnte nicht gespeichert werden.");
+		}
+		return publicAttempt(attempt);
+	},
+});
+
 export const submitAnswer = mutation({
 	args: {
 		itemId: v.id("learningSessionContentItems"),
@@ -1645,6 +1729,7 @@ export const submitAnswer = mutation({
 		transcript: v.optional(v.string()),
 		timeSpentSeconds: v.optional(v.number()),
 	},
+	returns: publicAnswerAttemptValidator,
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
 		const item = await ctx.db.get("learningSessionContentItems", args.itemId);
@@ -1657,32 +1742,25 @@ export const submitAnswer = mutation({
 			ownerTokenIdentifier,
 		);
 		assertSessionIsCommitted(session);
-
-		const visibleAnswer = compact(
-			args.transcript ?? args.answerText ?? args.selectedChoiceId ?? "",
-			"",
-		);
-		if (!visibleAnswer) {
-			throwUserFacingError("Antwort fehlt.");
+		if (item.kind !== "multipleChoice") {
+			throwUserFacingError("Diese Antwort muss zuerst analysiert werden.");
 		}
-
-		const rating: AnswerRating =
-			item.kind === "multipleChoice"
-				? args.selectedChoiceId === item.correctChoiceId
-					? "correct"
-					: "notCorrect"
-				: evaluateTextAnswer(item, visibleAnswer);
+		const selectedChoiceId = compact(args.selectedChoiceId ?? "", "");
+		if (!selectedChoiceId) throwUserFacingError("Antwort fehlt.");
+		const evaluation = evaluateMultipleChoiceAnswer({
+			selectedChoiceId,
+			correctChoiceId: item.correctChoiceId,
+			explanation: item.explanation,
+		});
 		const now = Date.now();
 		const attemptId = await ctx.db.insert("learningSessionAnswerAttempts", {
 			ownerTokenIdentifier,
 			learningPlanId: item.learningPlanId,
 			sessionId: item.sessionId,
 			itemId: item._id,
-			selectedChoiceId: args.selectedChoiceId,
-			answerText: args.answerText ? normalizeText(args.answerText) : undefined,
-			transcript: args.transcript ? normalizeText(args.transcript) : undefined,
-			rating,
-			feedback: feedbackForRating(item, rating),
+			selectedChoiceId,
+			rating: evaluation.rating,
+			feedback: evaluation.review,
 			perfectAnswer: item.idealAnswer,
 			timeSpentSeconds: args.timeSpentSeconds,
 			createdAt: now,
@@ -1731,7 +1809,7 @@ export const finishSessionContent = mutation({
 		) {
 			throwUserFacingError("Beantworte zuerst alle Fragen des Wissenschecks.");
 		}
-		const result = buildAnalysis(session, items, attempts);
+		const result = buildAnalysis(items, attempts);
 		const now = Date.now();
 		const attemptedItemIds = new Set(attempts.map((attempt) => attempt.itemId));
 		const validationItems = items.filter(

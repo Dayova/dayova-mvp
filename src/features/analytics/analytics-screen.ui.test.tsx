@@ -26,11 +26,38 @@ jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
 
+jest.mock("react-native-reanimated", () => {
+	const Native =
+		jest.requireActual<typeof import("react-native")>("react-native");
+
+	return {
+		__esModule: true,
+		default: { View: Native.View },
+		Easing: {
+			cubic: jest.fn(),
+			inOut: (value: unknown) => value,
+		},
+		useAnimatedStyle: (factory: () => unknown) => factory(),
+		useReducedMotion: () => true,
+		useSharedValue: (initialValue: number) => {
+			let currentValue = initialValue;
+			return {
+				get: () => currentValue,
+				set: (value: number) => {
+					currentValue = value;
+				},
+			};
+		},
+		withTiming: (value: number) => value,
+	};
+});
+
 jest.mock("#convex/_generated/api", () => ({
 	api: {
 		userAnalytics: {
 			getExamAnalysis: "getExamAnalysis",
 			getOverview: "getOverview",
+			getTopicQuestionEvidence: "getTopicQuestionEvidence",
 		},
 	},
 }));
@@ -239,6 +266,7 @@ const examAnalysis = {
 			status: "uncertain",
 			summary: "Steigung noch präziser erklären.",
 			evidenceCount: 2,
+			answeredQuestionCount: 2,
 			dimensions: [
 				{
 					kind: "understanding",
@@ -271,7 +299,7 @@ const examAnalysis = {
 					evidenceCount: 1,
 				},
 			],
-			controlCheckReason: null,
+			controlCheckReason: "Prüfe die Steigung in einer neuen Aufgabe.",
 		},
 		{
 			id: "achsenschnitt",
@@ -281,6 +309,7 @@ const examAnalysis = {
 			status: "secure",
 			summary: "Alle erforderlichen Wissensbelege vorhanden.",
 			evidenceCount: 3,
+			answeredQuestionCount: 3,
 			dimensions: [
 				{
 					kind: "understanding",
@@ -335,6 +364,43 @@ const examAnalysis = {
 	updatedAt: Date.UTC(2026, 6, 28, 14),
 };
 
+const topicQuestionEvidence = {
+	topic: {
+		id: "steigung",
+		title: "Steigung erklären",
+		learningGoal: "Du kannst die Steigung vollständig erklären.",
+	},
+	questions: [
+		{
+			itemId: "item_1",
+			sessionId: "session_done",
+			sessionTitle: "Gleichungen üben",
+			phase: "practice",
+			prompt: "Erkläre die Steigung.",
+			answer: "Änderung von y.",
+			review:
+				"Du nennst die Änderung von y. Vollständig ist die Steigung die Änderung von y pro Änderung von x.",
+			idealAnswer: "Änderung von y pro Änderung von x.",
+			rating: "partiallyCorrect",
+			answeredAt: Date.UTC(2026, 6, 28, 13, 30),
+		},
+		{
+			itemId: "item_2",
+			sessionId: "session_done_2",
+			sessionTitle: "Transfer üben",
+			phase: "rehearsal",
+			prompt: "Berechne die Steigung zwischen zwei Punkten.",
+			answer: "Die Steigung ist 2.",
+			review:
+				"Noch nicht korrekt. Schau dir die perfekte Antwort an und achte auf den vollständigen Lösungsweg. Der eingesetzte Rechenweg passt noch nicht zu den gegebenen Punkten. Das richtige Ergebnis ist m = 2.",
+			idealAnswer: "m = 2",
+			rating: "notCorrect",
+			answeredAt: Date.UTC(2026, 6, 29, 13, 30),
+		},
+	],
+	historyLimited: false,
+};
+
 const historyOverview = {
 	hasData: true,
 	historyLimited: false,
@@ -370,7 +436,9 @@ describe("AnalyticsScreen", () => {
 	beforeEach(() => {
 		mockPush.mockReset();
 		mockUseQuery.mockReset();
-		mockUseQuery.mockReturnValue(emptyAnalysis);
+		mockUseQuery.mockImplementation((query) =>
+			query === "getTopicQuestionEvidence" ? undefined : emptyAnalysis,
+		);
 		mockIsConvexAuthenticated = true;
 		mockUser = { clerkId: "user_123" };
 	});
@@ -393,14 +461,23 @@ describe("AnalyticsScreen", () => {
 		mockUseQuery.mockReturnValue(examAnalysis);
 		const screen = await render(<AnalyticsScreen />);
 
-		expect(screen.getByText("1/2")).toBeOnTheScreen();
-		expect(screen.getByText("1 von 2 sicher belegt")).toBeOnTheScreen();
-		expect(screen.getByText("1 unsicher")).toBeOnTheScreen();
+		expect(screen.queryByText("Dein Wissensstand")).not.toBeOnTheScreen();
+		expect(screen.queryByText("1/2")).not.toBeOnTheScreen();
+		expect(screen.queryByText("1 von 2 sicher belegt")).not.toBeOnTheScreen();
+		expect(screen.queryByText("1 unsicher")).not.toBeOnTheScreen();
 		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
+		expect(screen.getByTestId("topic-list").props.className).toContain(
+			"border-border",
+		);
 		expect(screen.getByText("Steigung erklären")).toBeOnTheScreen();
 		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
+		expect(screen.getByText("2 Antworten")).toBeOnTheScreen();
+		expect(screen.getByText("3 Antworten")).toBeOnTheScreen();
 		expect(
-			screen.getByText("Steigung noch präziser erklären."),
+			within(screen.getByTestId("topic-row-steigung")).getByText("Unsicher"),
+		).toBeOnTheScreen();
+		expect(
+			within(screen.getByTestId("topic-row-steigung")).getByText("2 Antworten"),
 		).toBeOnTheScreen();
 		expect(screen.queryByText("„Änderung von y.“")).not.toBeOnTheScreen();
 		expect(
@@ -415,7 +492,6 @@ describe("AnalyticsScreen", () => {
 			),
 		).not.toBeOnTheScreen();
 		expect(screen.getByText("Dein nächster Schritt")).toBeOnTheScreen();
-		expect(screen.getByText("Dein Wissensstand")).toBeOnTheScreen();
 		expect(screen.queryByText("Größte Lernhürde")).not.toBeOnTheScreen();
 		expect(screen.queryByText("Dein Prüfungsstoff")).not.toBeOnTheScreen();
 		expect(
@@ -434,7 +510,7 @@ describe("AnalyticsScreen", () => {
 
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Steigung erklären. Unsicher. Steigung noch präziser erklären.",
+				name: "Steigung erklären. Unsicher. 2 ausgewertete Antworten.",
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith({
@@ -443,7 +519,7 @@ describe("AnalyticsScreen", () => {
 		});
 	});
 
-	test("shows zero of five secure topics without explanatory overview copy", async () => {
+	test("does not show an aggregate knowledge card with existing evidence", async () => {
 		mockUseQuery.mockReturnValue({
 			...examAnalysis,
 			readiness: {
@@ -455,9 +531,11 @@ describe("AnalyticsScreen", () => {
 		});
 		const screen = await render(<AnalyticsScreen />);
 
-		expect(screen.getByText("0/5")).toBeOnTheScreen();
-		expect(screen.getByText("0 von 5 sicher belegt")).toBeOnTheScreen();
-		expect(screen.getByText("5 im Aufbau")).toBeOnTheScreen();
+		expect(screen.queryByText("Dein Wissensstand")).not.toBeOnTheScreen();
+		expect(screen.queryByText("0/5")).not.toBeOnTheScreen();
+		expect(screen.queryByText("0 von 5 sicher belegt")).not.toBeOnTheScreen();
+		expect(screen.queryByText("5 im Aufbau")).not.toBeOnTheScreen();
+		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
 		expect(
 			screen.queryByText(
 				"Du arbeitest an allen 5 Prüfungsthemen, aber noch keines ist sicher belegt.",
@@ -465,7 +543,7 @@ describe("AnalyticsScreen", () => {
 		).not.toBeOnTheScreen();
 	});
 
-	test("does not present zero evaluated topics as zero progress", async () => {
+	test("does not show an aggregate knowledge card without evidence", async () => {
 		mockUseQuery.mockReturnValue({
 			...examAnalysis,
 			readiness: {
@@ -491,13 +569,21 @@ describe("AnalyticsScreen", () => {
 		});
 		const screen = await render(<AnalyticsScreen />);
 
-		expect(screen.getByText("–")).toBeOnTheScreen();
-		expect(screen.getByText("Noch keine Wissensbelege")).toBeOnTheScreen();
+		expect(screen.queryByText("Dein Wissensstand")).not.toBeOnTheScreen();
+		expect(screen.queryByText("–")).not.toBeOnTheScreen();
+		expect(
+			screen.queryByText("Noch keine Wissensbelege"),
+		).not.toBeOnTheScreen();
 		expect(screen.queryByText("0/2")).not.toBeOnTheScreen();
+		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
 	});
 
 	test("reveals evidence and starts the recommendation from focused pages", async () => {
-		mockUseQuery.mockReturnValue(examAnalysis);
+		mockUseQuery.mockImplementation((query) =>
+			query === "getTopicQuestionEvidence"
+				? topicQuestionEvidence
+				: examAnalysis,
+		);
 		const planId = "plan_1" as Id<"learningPlans">;
 		const knowledgeScreen = await render(
 			<AnalyticsDetailScreen
@@ -507,28 +593,157 @@ describe("AnalyticsScreen", () => {
 			/>,
 		);
 
-		expect(knowledgeScreen.getByText("Dein Wissensprofil")).toBeOnTheScreen();
-		expect(knowledgeScreen.getByText("Verstehen")).toBeOnTheScreen();
-		expect(knowledgeScreen.getByText("Probleme lösen")).toBeOnTheScreen();
-		expect(knowledgeScreen.getByText("Selbstständig lösen")).toBeOnTheScreen();
 		expect(
-			knowledgeScreen.getByText("Warum du hier unsicher bist"),
+			knowledgeScreen.queryByText("Dein Wissensprofil"),
+		).not.toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("Verstehen")).not.toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("Probleme lösen")).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Selbstständig lösen"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Warum du hier unsicher bist"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Das kannst du schon"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Steigung noch präziser erklären."),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("DEIN AKTUELLER WISSENSSTAND"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Kontrollbeleg nötig"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Prüfe die Steigung in einer neuen Aufgabe."),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText("Du kannst die Steigung vollständig erklären."),
+		).toBeOnTheScreen();
+		expect(knowledgeScreen.getByText("Mathe-Klausur")).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Hohe Prüfungsrelevanz"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByTestId("topic-summary-card").props.className,
+		).toContain("border-border");
+		expect(
+			knowledgeScreen.getByText("Du kannst die Steigung vollständig erklären.")
+				.props.className,
+		).toContain("text-secondary-text");
+		expect(knowledgeScreen.getByText("Deine Antworten")).toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("1 von 2")).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Nach links oder rechts wischen"),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText(
+				"Wische nach links oder rechts, um die nächste Frage zu sehen.",
+			),
+		).not.toBeOnTheScreen();
+		const answerPager = knowledgeScreen.getByTestId("topic-answer-pager");
+		expect(answerPager.props.horizontal).toBe(true);
+		expect(answerPager.props.snapToInterval).toBeGreaterThan(0);
+		expect(
+			knowledgeScreen.getByText("Erkläre die Steigung."),
 		).toBeOnTheScreen();
 		expect(
-			knowledgeScreen.getByText("In einer Antwort beobachtet"),
+			knowledgeScreen.getByText("Erkläre die Steigung.").props.className,
+		).toContain("text-body-1");
+		expect(
+			knowledgeScreen.queryByText("Änderung von y."),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText(
+				"Du nennst die Änderung von y. Vollständig ist die Steigung die Änderung von y pro Änderung von x.",
+			),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Änderung von y pro Änderung von x."),
+		).not.toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("m = 2")).not.toBeOnTheScreen();
+		const firstAnswerCard = knowledgeScreen.getByTestId(
+			"topic-answer-card-item_1",
+		);
+		await fireEvent(
+			knowledgeScreen.getByTestId("topic-answer-card-front-item_1"),
+			"layout",
+			{ nativeEvent: { layout: { height: 260 } } },
+		);
+		await fireEvent(
+			knowledgeScreen.getByTestId("topic-answer-card-back-item_1", {
+				includeHiddenElements: true,
+			}),
+			"layout",
+			{ nativeEvent: { layout: { height: 360 } } },
+		);
+		expect(
+			knowledgeScreen.getByTestId("topic-answer-card-item_1").props.style
+				.height,
+		).toBe(360);
+		expect(firstAnswerCard.props.accessibilityState).toEqual({
+			expanded: false,
+		});
+		await fireEvent.press(firstAnswerCard);
+		expect(
+			knowledgeScreen.getByTestId("topic-answer-card-item_1").props
+				.accessibilityState,
+		).toEqual({ expanded: true });
+		expect(knowledgeScreen.getByText("Änderung von y.")).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText(
+				"Du nennst die Änderung von y. Vollständig ist die Steigung die Änderung von y pro Änderung von x.",
+			),
 		).toBeOnTheScreen();
 		expect(
-			knowledgeScreen.getByText("Du erkennst lineare Zusammenhänge."),
+			knowledgeScreen.queryByText("RICHTIGE ANTWORT"),
+		).not.toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("IDEALE ANTWORT")).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Erkläre die Steigung."),
+		).not.toBeOnTheScreen();
+
+		await fireEvent.press(
+			knowledgeScreen.getByTestId("topic-answer-card-item_2"),
+		);
+		expect(
+			knowledgeScreen.queryByText(/Schau dir die perfekte Antwort an/),
+		).not.toBeOnTheScreen();
+		expect(
+			knowledgeScreen.getByText(
+				"Der eingesetzte Rechenweg passt noch nicht zu den gegebenen Punkten. Das richtige Ergebnis ist m = 2.",
+			),
 		).toBeOnTheScreen();
 		expect(
-			knowledgeScreen.getAllByText("Steigung noch präziser erklären."),
-		).not.toHaveLength(0);
+			knowledgeScreen.queryByText("RICHTIGE ANTWORT"),
+		).not.toBeOnTheScreen();
+
+		await fireEvent.press(
+			knowledgeScreen.getByTestId("topic-answer-card-item_1"),
+		);
+		expect(
+			knowledgeScreen.getByText("Erkläre die Steigung."),
+		).toBeOnTheScreen();
+		expect(
+			knowledgeScreen.queryByText("Änderung von y."),
+		).not.toBeOnTheScreen();
+		expect(knowledgeScreen.queryByText("2 von 2")).not.toBeOnTheScreen();
 		expect(
 			knowledgeScreen.queryByText("Alle Prüfungsthemen"),
 		).not.toBeOnTheScreen();
 		expect(
 			knowledgeScreen.queryByText("Achsenschnittpunkte bestimmen"),
 		).not.toBeOnTheScreen();
+		await fireEvent.press(
+			knowledgeScreen.getByRole("button", {
+				name: "Weiterlernen: Steigung vollständig erklären",
+			}),
+		);
+		expect(mockPush).toHaveBeenCalledWith(
+			"/learning-plans/plan_1/sessions/session_1",
+		);
 
 		await knowledgeScreen.unmount();
 		const problemScreen = await render(
@@ -552,6 +767,26 @@ describe("AnalyticsScreen", () => {
 		expect(mockPush).toHaveBeenCalledWith(
 			"/learning-plans/plan_1/sessions/session_1",
 		);
+	});
+
+	test("opens the learning plan when no recommended session remains", async () => {
+		mockUseQuery.mockImplementation((query) =>
+			query === "getTopicQuestionEvidence"
+				? topicQuestionEvidence
+				: { ...examAnalysis, recommendation: null },
+		);
+		const screen = await render(
+			<AnalyticsDetailScreen
+				planId={"plan_1" as Id<"learningPlans">}
+				section="knowledge"
+				topicId="steigung"
+			/>,
+		);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Lernplan öffnen" }),
+		);
+		expect(mockPush).toHaveBeenCalledWith("/learning-plans/plan_1");
 	});
 
 	test("requests a newly selected exam without mixing its evidence", async () => {

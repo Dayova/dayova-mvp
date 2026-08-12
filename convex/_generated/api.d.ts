@@ -10,6 +10,7 @@
 
 import type * as adaptiveLearningPlan from "../adaptiveLearningPlan.js";
 import type * as adaptiveLearningPlanPolicy from "../adaptiveLearningPlanPolicy.js";
+import type * as answerEvaluation from "../answerEvaluation.js";
 import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
 import type * as diagnosticReadiness from "../diagnosticReadiness.js";
@@ -39,6 +40,7 @@ import type * as learningTimes from "../learningTimes.js";
 import type * as learningTimesBackfill from "../learningTimesBackfill.js";
 import type * as learningTopicMap from "../learningTopicMap.js";
 import type * as notifications from "../notifications.js";
+import type * as questionNovelty from "../questionNovelty.js";
 import type * as revenueCat from "../revenueCat.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
 import type * as theoryContent from "../theoryContent.js";
@@ -60,6 +62,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   adaptiveLearningPlan: typeof adaptiveLearningPlan;
   adaptiveLearningPlanPolicy: typeof adaptiveLearningPlanPolicy;
+  answerEvaluation: typeof answerEvaluation;
   dayEntries: typeof dayEntries;
   dayKeyVariants: typeof dayKeyVariants;
   diagnosticReadiness: typeof diagnosticReadiness;
@@ -89,6 +92,7 @@ declare const fullApi: ApiFromModules<{
   learningTimesBackfill: typeof learningTimesBackfill;
   learningTopicMap: typeof learningTopicMap;
   notifications: typeof notifications;
+  questionNovelty: typeof questionNovelty;
   revenueCat: typeof revenueCat;
   scheduleConflicts: typeof scheduleConflicts;
   theoryContent: typeof theoryContent;

@@ -13,6 +13,7 @@ import { z } from "zod";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { type ActionCtx, action } from "./_generated/server";
+import { isUnknownWrittenAnswer } from "./answerEvaluation";
 import { readBooleanEnv, readOptionalEnv, readRequiredEnv } from "./env";
 import {
 	getUserFacingBackendErrorMessage,
@@ -64,6 +65,7 @@ import {
 	MAX_LEARNING_TOPIC_COUNT,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
+import { areSemanticallyDuplicateQuestions } from "./questionNovelty";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
@@ -104,6 +106,7 @@ const vertexProviderOptions = {
 type AiUsageOperation =
 	| "diagnostic"
 	| "plan"
+	| "answer_evaluation"
 	| "session_theory"
 	| "session_practice"
 	| "session_praxis";
@@ -402,6 +405,47 @@ const generatedTaskChoiceSchema = z.object({
 	),
 	isCorrect: z.boolean(),
 });
+
+const writtenAnswerEvaluationSchema = z.object({
+	rating: z.enum(["notCorrect", "partiallyCorrect", "correct"]),
+	review: germanTextSchema(
+		12,
+		"A concise German review of the learner's answer. State what is correct and integrate the essential correction or correct result without adding a separate ideal-answer section.",
+		700,
+	),
+});
+
+const evaluatedAnswerAttemptValidator = v.object({
+	id: v.id("learningSessionAnswerAttempts"),
+	itemId: v.id("learningSessionContentItems"),
+	sessionId: v.id("learningPlanSessions"),
+	selectedChoiceId: v.optional(v.string()),
+	answerText: v.optional(v.string()),
+	transcript: v.optional(v.string()),
+	rating: v.union(
+		v.literal("notCorrect"),
+		v.literal("partiallyCorrect"),
+		v.literal("correct"),
+	),
+	feedback: v.string(),
+	perfectAnswer: v.string(),
+	timeSpentSeconds: v.optional(v.number()),
+	createdAt: v.number(),
+});
+
+type EvaluatedAnswerAttempt = {
+	id: Id<"learningSessionAnswerAttempts">;
+	itemId: Id<"learningSessionContentItems">;
+	sessionId: Id<"learningPlanSessions">;
+	selectedChoiceId?: string;
+	answerText?: string;
+	transcript?: string;
+	rating: "notCorrect" | "partiallyCorrect" | "correct";
+	feedback: string;
+	perfectAnswer: string;
+	timeSpentSeconds?: number;
+	createdAt: number;
+};
 
 const generatedTaskBaseSchema = {
 	title: germanTextSchema(3, "Short German UI label for this task."),
@@ -2056,9 +2100,7 @@ const assertFreshGeneratedPrompts = (
 	items: GeneratedSessionContentInput[],
 	existingPrompts: string[],
 ) => {
-	const seen = new Set(
-		existingPrompts.map((prompt) => prompt.trim().toLocaleLowerCase("de")),
-	);
+	const seen = [...existingPrompts];
 	for (const item of items) {
 		if (
 			/\bVariante\s+\d+\b/i.test(item.prompt) ||
@@ -2068,13 +2110,16 @@ const assertFreshGeneratedPrompts = (
 				`Generated learning question contains a nested planning instruction: ${item.prompt}`,
 			);
 		}
-		const promptKey = item.prompt.trim().toLocaleLowerCase("de");
-		if (seen.has(promptKey)) {
+		if (
+			seen.some((prompt) =>
+				areSemanticallyDuplicateQuestions(prompt, item.prompt),
+			)
+		) {
 			throw new DuplicateGeneratedPromptError(
-				`Generated duplicate learning question: ${item.prompt}`,
+				`Generated duplicate or near-duplicate learning question: ${item.prompt}`,
 			);
 		}
-		seen.add(promptKey);
+		seen.push(item.prompt);
 	}
 };
 
@@ -2183,7 +2228,7 @@ ${personalLearningTimes}`,
 					? [
 							{
 								type: "text" as const,
-								text: `Diese Fragen wurden bereits in der Wissensanalyse, einer früheren Lernsession oder im aktuellen Lernblock verwendet und dürfen weder wörtlich noch inhaltlich wiederholt werden:\n${[...previouslyUsedPrompts, ...generatedItems.map((item) => item.prompt)].map((prompt) => `- ${prompt}`).join("\n")}`,
+								text: `Diese Fragen wurden bereits in der Wissensanalyse, einer früheren Lernsession oder im aktuellen Lernblock verwendet und dürfen weder wörtlich noch inhaltlich wiederholt werden. Nur Zahlen, Namen oder Formulierungen auszutauschen zählt weiterhin als Wiederholung; ändere stattdessen Denkschritt, Anwendungssituation oder Darstellungsform:\n${[...previouslyUsedPrompts, ...generatedItems.map((item) => item.prompt)].map((prompt) => `- ${prompt}`).join("\n")}`,
 							},
 						]
 					: []),
@@ -2454,7 +2499,7 @@ Erstelle die Inhalte für die folgenden ${plannedSessions.length} kurzen Session
 
 ${sessionInstructions}
 
-Bereits verwendete Fragen, die weder wörtlich noch inhaltlich wiederholt werden dürfen:
+Bereits verwendete Fragen, die weder wörtlich noch inhaltlich wiederholt werden dürfen. Nur Zahlen, Namen oder Formulierungen auszutauschen zählt weiterhin als Wiederholung; neue Fragen brauchen einen anderen Denkschritt, eine andere Anwendungssituation oder Darstellungsform:
 ${allPriorPrompts.map((prompt) => `- ${prompt}`).join("\n") || "Keine."}`,
 		},
 	];
@@ -2691,6 +2736,123 @@ const mapWithConcurrency = async <TItem, TResult>(
 	);
 	return results;
 };
+
+export const evaluateWrittenAnswer = action({
+	args: {
+		itemId: v.id("learningSessionContentItems"),
+		answerText: v.string(),
+		timeSpentSeconds: v.optional(v.number()),
+	},
+	returns: evaluatedAnswerAttemptValidator,
+	handler: async (ctx, args): Promise<EvaluatedAnswerAttempt> => {
+		const answerText = compactInlineText(args.answerText, 6_000);
+		if (!answerText) throwUserFacingError("Antwort fehlt.");
+		const context: {
+			learningPlanId: Id<"learningPlans">;
+			sessionId: Id<"learningPlanSessions">;
+			subject: string;
+			topicTitle: string | null;
+			learningGoal: string | null;
+			prompt: string;
+			idealAnswer: string;
+			explanation: string;
+			evaluationKeywords: string[];
+			evidenceDimension:
+				| "understanding"
+				| "problemSolving"
+				| "independent"
+				| null;
+			questionAngle: string | null;
+		} = await ctx.runQuery(
+			internal.learningSessionContent.getWrittenAnswerEvaluationContext,
+			{ itemId: args.itemId },
+		);
+
+		let evaluation: z.infer<typeof writtenAnswerEvaluationSchema>;
+		if (isUnknownWrittenAnswer(answerText)) {
+			evaluation = {
+				rating: "notCorrect",
+				review: `Du hast noch keine fachliche Antwort gegeben. Richtig ist: ${context.idealAnswer}`,
+			};
+		} else {
+			try {
+				const model = createVertexModel();
+				const result = await withStructuredOutputErrorHandling(
+					() =>
+						runLlmGeneration((abortSignal) =>
+							generateText({
+								model: model(FLASH_MODEL_ID),
+								temperature: 0.1,
+								maxOutputTokens: 700,
+								abortSignal,
+								providerOptions: vertexProviderOptions,
+								output: Output.object({
+									schema: writtenAnswerEvaluationSchema,
+								}),
+								system: `Du bewertest schriftliche Antworten von Schülerinnen und Schülern fachlich präzise und fair. Bewerte Bedeutung, Lösungsweg und Vollständigkeit – niemals Wortanzahl, Schreibstil oder bloße Schlüsselworttreffer. "correct" gilt nur, wenn alle für die Frage wesentlichen Aussagen oder Rechenschritte stimmen. "partiallyCorrect" gilt bei einem fachlich brauchbaren Ansatz mit einer konkreten Lücke. "notCorrect" gilt bei einem falschen Ergebnis, einem grundlegenden Missverständnis oder fehlender fachlicher Substanz.
+
+Die Rückmeldung besteht aus höchstens zwei kurzen deutschen Sätzen in direkter Du-Ansprache. Nenne konkret, welcher Teil der Antwort stimmt und welcher Teil fehlt oder falsch ist. Integriere das richtige Ergebnis oder die entscheidende fachliche Korrektur ausdrücklich in dieselbe Rückmeldung. Gib dafür nur die nötige Kernaussage der idealen Antwort wieder, nicht die vollständige Musterlösung. Die Rückmeldung muss allein verständlich sein und darf den Lernenden nicht auf eine separate ideale oder perfekte Antwort verweisen. Verwende keine Überschriften, keine Listen, keine Punktebewertung und keine allgemeinen Floskeln. Antworte ausschließlich im vorgegebenen JSON-Schema. ${GERMAN_UI_TEXT_RULE}`,
+								prompt: `Fach: ${context.subject}
+Thema: ${context.topicTitle ?? "Nicht näher benannt"}
+Lernziel: ${context.learningGoal ?? "Nicht näher benannt"}
+Evidenzdimension: ${context.evidenceDimension ?? "allgemein"}
+Aufgabenart: ${context.questionAngle ?? "allgemein"}
+
+Frage:
+${context.prompt}
+
+Antwort des Lernenden:
+${answerText}
+
+Ideale Antwort:
+${context.idealAnswer}
+
+Fachliche Erklärung:
+${context.explanation}
+
+Erwartete Kernbegriffe oder Ergebnisse (nur als Hilfsmittel, nicht als Worttreffer-Test):
+${context.evaluationKeywords.join("; ") || "Keine zusätzlichen Kernbegriffe"}`,
+							}),
+						),
+					"Die Antwort konnte nicht zuverlässig ausgewertet werden. Versuche es erneut.",
+				);
+				await recordAiUsage(ctx, {
+					learningPlanId: context.learningPlanId,
+					sessionId: context.sessionId,
+					operation: "answer_evaluation",
+					modelId: FLASH_MODEL_ID,
+					usage: result.usage,
+				});
+				evaluation = {
+					rating: result.output.rating,
+					review: normalizeAiGeneratedGermanText(result.output.review),
+				};
+			} catch (error) {
+				logDiagnosticError("learningPlanAi.evaluateWrittenAnswer", error, {
+					learningPlanId: context.learningPlanId,
+					sessionId: context.sessionId,
+					itemId: args.itemId,
+				});
+				const message = getUserFacingBackendErrorMessage(error);
+				throwUserFacingError(
+					message ??
+						"Die Antwort konnte nicht zuverlässig ausgewertet werden. Versuche es erneut.",
+				);
+			}
+		}
+
+		return await ctx.runMutation(
+			internal.learningSessionContent.storeEvaluatedWrittenAnswer,
+			{
+				itemId: args.itemId,
+				answerText,
+				rating: evaluation.rating,
+				feedback: evaluation.review,
+				timeSpentSeconds: args.timeSpentSeconds,
+			},
+		);
+	},
+});
 
 export const ensureSessionContent = action({
 	args: {

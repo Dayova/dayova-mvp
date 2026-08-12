@@ -261,7 +261,9 @@ export const selectNextAdaptiveLearningTarget = (args: {
 		topicTitle: selected.topic.title,
 		learningGoal: selected.topic.learningGoal,
 		dimension: selected.dimension,
-		phase: phaseForDimension[selected.dimension],
+		phase: selected.needsControlCheck
+			? "practice"
+			: phaseForDimension[selected.dimension],
 		status: selected.status,
 		needsControlCheck: selected.needsControlCheck,
 		reason: reasonForTarget(
@@ -324,6 +326,17 @@ export const selectAdaptiveMaintenanceTarget = (args: {
 };
 
 export const adaptiveSessionCopy = (target: AdaptiveLearningTarget) => {
+	if (target.needsControlCheck) {
+		return {
+			title: target.topicTitle,
+			goal: `Prüfe deinen Wissensstand zu ${target.topicTitle} mit einer neuen Aufgabe.`,
+			tasks: [
+				"Eine neue Kontrollfrage ohne Vorlage beantworten",
+				"Antwort begründen und Ergebnis prüfen",
+			],
+			expectedOutcome: `Eine neue Antwort klärt, wie sicher du ${target.topicTitle} aktuell beherrschst.`,
+		};
+	}
 	if (target.dimension === "understanding") {
 		return {
 			title: target.topicTitle,

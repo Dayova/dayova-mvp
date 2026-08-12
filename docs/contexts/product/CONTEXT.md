@@ -73,8 +73,8 @@ One of the exam-specific capabilities Dayova evaluates for a topic: `Verstehen`,
 _Avoid_: Lernphase, Punktebereich, treating the three dimensions as interchangeable
 
 **Kontrollbeleg**:
-A fresh, relevant answer requested when new performance contradicts previously secure evidence. The contradiction moves the affected topic to `Im Aufbau` while preserving its history; it never erases existing evidence into `Noch nicht belegt`.
-_Avoid_: Reset, punishment, treating one contradiction as no prior knowledge
+A fresh practice question requested in a normal learning session when new performance contradicts previously secure evidence. The contradiction moves the affected topic to `Im Aufbau` while preserving its history; the initial `Wissenscheck` never creates retry or control-question queues.
+_Avoid_: Reset, punishment, repeating the same question, control questions inside the first Wissenscheck
 
 **Preparation gap**:
 The difference between the preparation Dayova recommends for the assessment and the learning time available before it. A plan with a preparation gap prioritizes the strongest feasible coverage without presenting that reduced plan as complete readiness.
@@ -85,7 +85,7 @@ The internal intensity of a `Persönlicher Lernplan`: compact, thorough, or inte
 _Avoid_: Fixed session count based only on the assessment label, an extra workload-choice screen, AI-selected intensity
 
 **Wissensanalyse**:
-The post-session analysis shown after `Üben` or `Praxis`. It summarizes the learner's strengths, knowledge or execution gaps, and near-term recommendations for the ongoing plan.
+The persistent Analyse dashboard for one accepted learning plan. It lists every confirmed exam topic and keeps topic readiness and answer evidence available after completed sessions.
 _Avoid_: Using this term for the first `Wissenscheck` or for questions during exam creation
 
 **Lernkarte**:
@@ -97,8 +97,8 @@ The learner marks a specific `Lernkarte` for another pass in the same theory ses
 _Avoid_: Restarting the whole theory session, grading the learner
 
 **Üben**:
-The guided practice phase of a learning session. It mixes multiple-choice, written, and spoken tasks, then gives answer-level feedback with a rating, explanation, and ideal answer.
-_Avoid_: Only drilling the learner's mistakes, single-mode quiz
+The guided practice phase of a learning session. Its current learner-facing tasks are multiple-choice and written answers. Each submitted answer shows only a precise review and the ideal answer before the learner can continue; voice remains an internal capability until a dedicated frontend is introduced.
+_Avoid_: Only drilling mistakes, exposing voice controls prematurely, showing topic strengths or weaknesses as answer feedback
 
 **Praxis**:
 The user-facing name for the rehearsal or `Generalprobe` phase. It creates an authentic but compressed 20- to 30-minute test situation with mixed task types and leads into a `Wissensanalyse`; important assessments prefer multiple short Praxis sessions over one full-duration simulation.
@@ -153,10 +153,15 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 - Only the active `Stundenplan` produces `Unterrichtstermine`; drafts never affect the daily agenda or learning-plan scheduling.
 - `Unterrichtstermine` block overlapping learning appointments but remain informational and cannot be completed.
 - The post-session Analyse surface uses the user-facing states `Sicher belegt`, `Im Aufbau`, `Unsicher`, and `Noch nicht belegt`. `Unsicher` requires a recent incorrect or partially correct graded answer; missing evidence is never presented as a demonstrated weakness, and initial readiness comes from the first timed `Wissenscheck`, not setup input.
+- Only completed sessions update Analyse. The overview lists every topic in the confirmed exam scope, including topics without answer evidence, in one neutral bordered surface. Each compact row gives the topic title its own primary line and keeps readiness plus the concise answer count together on a secondary line. Opening a topic shows a clear exam context, the topic title with its readiness, a neutral learning-goal description, a primary action that continues with the plan's recommended session, and every related question as a horizontally paged card. Each answer card initially shows only the question; activating it flips the card by 180 degrees to reveal the learner's latest answer and one concise evaluation that includes the essential correction or correct result, and activating it again returns to the question. The flip keeps a stable card size, exposes its state and complete content accessibly, and becomes an immediate state change when reduced motion is enabled. The detail header does not repeat topic priority or decorate the learning goal as a separate colored/icon card. Detailed diagnosis stays in the answer review; earlier attempts, separate ideal-answer cards or sections, separate knowledge-summary or evidence-dimension cards, control-check explanations, and visible paging instructions or counters stay hidden. When no recommended session remains, the primary action opens the learning plan instead.
+- Answer feedback inside a session contains the review of the learner's answer and the ideal answer. Analyse topic pages use one concise evaluation that integrates only the essential correction or correct result, and do not show separate ideal-answer or strengths-and-weaknesses sections.
+- Written answers are graded semantically against the question and ideal answer; answer length or isolated keyword overlap never proves correctness. Multiple-choice answers are graded deterministically against the prepared correct option and explanation.
+- A `Kontrollbeleg` is scheduled only as a fresh question in a normal practice session after contradictory evidence. The initial `Wissenscheck` has no retry or control queue.
+- Session duration bounds the number of generated questions, while the rolling plan accumulates broad coverage over time. New questions must not repeat or closely paraphrase earlier questions, including variants that only swap numbers, names, or wording.
 - An assessment topic is `Sicher belegt` only when every `Belegdimension` required by that topic is secure. New topic maps declare the required dimensions; legacy topics conservatively require all three.
 - Evidence is hierarchical: independent exam-like performance may support `Probleme lösen` and `Verstehen`, and guided problem solving may support `Verstehen`; lower-strength evidence never proves a higher dimension.
 - Adaptive topic progression moves from completed theory to guided practice, repeats guided practice when any required answer is not correct, and advances an all-correct practice session to a harder independent check. One all-correct harder check can secure `Selbstständig lösen`; together with the preceding all-correct practice it supplies the repeated evidence needed for the lower dimensions. Count a multi-question session as correct only when every relevant answer is correct.
-- The Analyse overview may count secure topics but must not collapse readiness into a global percentage or points score. Activity or completed theory review alone never proves secure knowledge.
+- The Analyse overview starts directly with the complete topic list and does not show a separate aggregate knowledge-status card. Activity or completed theory review alone never proves secure knowledge.
 
 ## Example Dialogue
 
