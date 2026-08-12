@@ -17,8 +17,8 @@ const annualPackage = {
 	packageType: "ANNUAL",
 	product: {
 		identifier: "dayova_annual",
-		pricePerMonthString: "13,33 €",
-		priceString: "159,99 €",
+		pricePerMonthString: "12,99 €",
+		priceString: "155,88 €",
 	},
 };
 
@@ -62,9 +62,8 @@ describe("createRevenueCatClient", () => {
 		await expect(client.getPlans()).resolves.toEqual([
 			{
 				billingPeriod: "annual",
-				monthlyEquivalentPrice: "13,33 €",
 				packageIdentifier: "$rc_annual",
-				price: "159,99 €",
+				price: "155,88 €",
 				productIdentifier: "dayova_annual",
 			},
 			{
@@ -87,7 +86,7 @@ describe("createRevenueCatClient", () => {
 			sdk: createSdk(),
 		});
 
-		await expect(client.purchase("dayova_monthly")).resolves.toEqual({
+		await expect(client.purchase("monthly")).resolves.toEqual({
 			status: "purchased",
 		});
 	});
@@ -103,7 +102,7 @@ describe("createRevenueCatClient", () => {
 			sdk,
 		});
 
-		await expect(client.purchase("dayova_monthly")).resolves.toEqual({
+		await expect(client.purchase("monthly")).resolves.toEqual({
 			status: "cancelled",
 		});
 	});

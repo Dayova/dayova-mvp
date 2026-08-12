@@ -97,6 +97,28 @@ describe("resolveAccessRoute", () => {
 			}),
 		).toBe("/home");
 	});
+
+	it("keeps a newly paid account on the Pro welcome route", () => {
+		expect(
+			resolveAccessRoute({
+				accessState: "paid",
+				isSessionLoading: false,
+				pathname: "/pro-welcome",
+				user: { id: "user_1" },
+			}),
+		).toBeNull();
+	});
+
+	it("does not show the Pro welcome route to trial accounts", () => {
+		expect(
+			resolveAccessRoute({
+				accessState: "trial",
+				isSessionLoading: false,
+				pathname: "/pro-welcome",
+				user: { id: "user_1" },
+			}),
+		).toBe("/home");
+	});
 });
 
 describe("getOfflineAccess", () => {

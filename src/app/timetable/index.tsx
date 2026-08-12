@@ -110,7 +110,7 @@ function TimetableIntro() {
 			<Text className="mt-5 font-poppins font-semibold text-heading-2 text-text">
 				Deine Schulzeiten im Tagesplan
 			</Text>
-			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
+			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
 				Lade ein Bild oder PDF hoch. Prüfe die erkannten Stunden, bevor sie bei
 				„Heute“ erscheinen und Lernzeiten blockieren.
 			</Text>

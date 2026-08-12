@@ -22,9 +22,14 @@ if (!["development", "preview", "production"].includes(APP_VARIANT)) {
 const isProduction = APP_VARIANT === "production";
 const isReleaseConfig =
 	process.env.EAS_BUILD === "true" || process.env.NODE_ENV === "production";
+const releasePlatform =
+	process.env.EAS_BUILD_PLATFORM === "android" ||
+	process.env.EAS_BUILD_PLATFORM === "ios"
+		? process.env.EAS_BUILD_PLATFORM
+		: undefined;
 
 if (isReleaseConfig) {
-	validatePublicEnvForRelease();
+	validatePublicEnvForRelease(undefined, { platform: releasePlatform });
 }
 
 const APP_VERSION = "1.0.3";
@@ -72,7 +77,6 @@ const config: ExpoConfig = {
 		supportsTablet: true,
 		bundleIdentifier: isProduction ? "de.dayova.app" : "de.dayova.app-dev",
 		runtimeVersion: APP_VERSION,
-		usesAppleSignIn: true,
 		infoPlist: {
 			ITSAppUsesNonExemptEncryption: false,
 			...IOS_PRIVACY_PURPOSE_STRINGS,
@@ -92,7 +96,14 @@ const config: ExpoConfig = {
 	plugins: [
 		"expo-router",
 		"expo-status-bar",
-		"@clerk/expo",
+		[
+			"@clerk/expo",
+			{
+				// Dayova uses its own email/password authentication flow. Clerk's
+				// default would otherwise add an unused Sign in with Apple entitlement.
+				appleSignIn: false,
+			},
+		],
 		[
 			"expo-notifications",
 			{
