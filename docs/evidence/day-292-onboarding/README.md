@@ -93,9 +93,20 @@ in a production build.
 Selecting or unselecting a weekday uses a 180 ms ease-out transition. The
 background, border, label, and fixed-slot checkmark interpolate together;
 press-in and press-out add 80 ms and 120 ms scale feedback. The icon slot stays
-mounted in both states, so neither the pill nor the surrounding layout moves.
-When the operating system requests reduced motion, the semantic selected state
-still changes but the decorative transition is skipped.
+mounted in both states and a matching trailing slot keeps the label visually
+centered, so neither the pill, its label, nor the surrounding layout moves.
+Unselected pills use the semantic `systemSubtle` fill and `path1` border rather
+than a white surface. This makes the all-unselected state read as one calm,
+interactive choice group in light mode without borrowing the cyan selected
+state; the same tokens preserve clear separation in dark mode. When the
+operating system requests reduced motion, the semantic selected state still
+changes but the decorative transition is skipped.
+
+- `ios-light-weekday-pills-empty.png`: all-unselected light-mode state with
+  centered labels and a visible grouped surface.
+- `ios-dark-weekday-pills-empty.png`: all-unselected dark-mode state.
+- `android-light-weekday-pills-empty.png`: matching Android light-mode state;
+  the floating gear is the development-launcher overlay described above.
 
 The same implementation was verified on both native platforms:
 

@@ -2653,12 +2653,12 @@ function AnimatedStudyDayPill({
 		backgroundColor: interpolateColor(
 			selectionProgress.get(),
 			[0, 1],
-			[colors.surface, colors.primary],
+			[colors.systemSubtle, colors.primary],
 		),
 		borderColor: interpolateColor(
 			selectionProgress.get(),
 			[0, 1],
-			[colors.border, colors.primary],
+			[colors.path1, colors.primary],
 		),
 		transform: [{ scale: pressedScale.get() }],
 	}));
@@ -2695,11 +2695,14 @@ function AnimatedStudyDayPill({
 			onPress={onToggle}
 			onPressIn={() => setPressedScale(0.97, STUDY_DAY_PRESS_IN_DURATION_MS)}
 			onPressOut={() => setPressedScale(1, STUDY_DAY_PRESS_OUT_DURATION_MS)}
-			className="min-h-12 min-w-[100px] flex-row items-center justify-center rounded-full border px-5 py-3"
+			className="min-h-12 min-w-[100px] flex-row items-center justify-center rounded-full border px-3 py-3"
 			// Runtime state and press feedback intentionally animate outside NativeWind.
 			style={pillStyle}
 		>
-			<View className="h-4 w-4 items-center justify-center">
+			<View
+				testID={`study-day-pill-check-slot-${label}`}
+				className="h-4 w-4 items-center justify-center"
+			>
 				<Animated.View style={checkStyle}>
 					<Check size={16} color={colors.surface} strokeWidth={2.4} />
 				</Animated.View>
@@ -2713,6 +2716,10 @@ function AnimatedStudyDayPill({
 			>
 				{label}
 			</Animated.Text>
+			<View
+				testID={`study-day-pill-balance-slot-${label}`}
+				className="ml-2 h-4 w-4"
+			/>
 		</AnimatedPressable>
 	);
 }

@@ -320,6 +320,7 @@ jest.mock("~/lib/theme", () => ({
 			border: "#DCE6EE",
 			destructive: "#D92D20",
 			path2: "#D7DCE3",
+			path1: "#D7DCE3",
 			primary: "#00BAFF",
 			secondaryText: "#697586",
 			surface: "#FFFFFF",
@@ -725,6 +726,18 @@ describe("OnboardingScreen", () => {
 
 		const monday = screen.getByRole("checkbox", { name: "Montag" });
 		expect(monday.props.accessibilityState).toEqual({ checked: false });
+		expect(monday).toHaveStyle({
+			backgroundColor: "#F1F7FB",
+			borderColor: "#D7DCE3",
+		});
+		expect(screen.getByTestId("study-day-pill-check-slot-Montag")).toHaveProp(
+			"className",
+			"h-4 w-4 items-center justify-center",
+		);
+		expect(screen.getByTestId("study-day-pill-balance-slot-Montag")).toHaveProp(
+			"className",
+			"ml-2 h-4 w-4",
+		);
 		await fireEvent.press(monday);
 		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyDays", "Montag");
 	});
