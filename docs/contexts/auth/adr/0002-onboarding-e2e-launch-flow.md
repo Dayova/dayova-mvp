@@ -27,6 +27,50 @@ The complete rationale, meeting evidence, ownership history, superseded work,
 and product boundaries remain canonical in Notion. This ADR records only the
 code-facing contract that must evolve with the implementation.
 
+## Correction Chronology
+
+This section records an implementation and synthesis error. It is not a claim
+that Julius's input was unclear.
+
+1. The 23 July review rejected the isolated "best learning time" screen
+   because its answer was unused. It proposed a real learning-time setup at
+   the payment/start boundary instead of decorative collection.
+2. In Julius's detailed walkthrough at 06:14-07:10, he explicitly kept the
+   weekday question. For the following time step he named two acceptable
+   outcomes: collect actual learning times, or, if that made onboarding too
+   long, show an explicit handoff to complete them in Settings. His objection
+   was to an unused question, not to operational scheduling.
+3. The first restoration in commit `37e7a0e` collapsed those scoped statements
+   into the broader rule that all availability belonged in Settings or a later
+   contextual step. It then collected duration, blocker, and goal and treated
+   a changed local payoff as sufficient personalization. No planner, lesson,
+   recommendation, or schedule consumer used blocker or goal.
+4. That was the wrong synthesis. The available evidence was sufficient; the
+   failure was that the implementation did not reconcile each source at the
+   level of learner job, persistence, and runtime consumer. It also treated a
+   decision made while time data was unused as a permanent prohibition without
+   re-auditing the existing `userLearningTimes` and scheduler path.
+5. After the decision owner challenged whether the answers actually changed
+   the product, commit `3a4826f` replaced blocker and goal with recurring days
+   and a confirmed start time. It wired duration, days, and time through
+   registration into `userLearningTimes`, which the scheduler consumes.
+6. Commit `44b69da` extended the same truthfulness audit to the remaining
+   onboarding promises and made the consumer map a release contract.
+
+The accepted flow therefore selects Julius's operational alternative and
+deliberately does not select the payment/Settings fallback. The reason is now
+explicit: the launch implementation has a real scheduler consumer, can show
+the exact persisted windows before account creation, and the decision owner
+accepted that value as worth the additional steps. If that consumer is removed
+or completion materially harms onboarding, the payment/Settings handoff is the
+documented fallback to reconsider.
+
+Future reconciliation must preserve this distinction. "Remove an unused
+screen" cannot be generalized to "remove the learner job", and local copy is
+not a runtime consumer. A source conflict or deliberate deviation must be
+recorded before implementation with the source statement, chosen alternative,
+decision owner, rationale, trade-off, and reversal condition.
+
 ## Decision
 
 The launch flow is ordered as follows:
