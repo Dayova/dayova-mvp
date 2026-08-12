@@ -2,11 +2,12 @@ import { expect, test } from "vitest";
 import type { Id } from "#convex/_generated/dataModel";
 import {
 	examEntrySuccessPath,
+	learningPlanMaterialPath,
 	learningPlanResumePath,
-	learningPlanTopicPath,
+	learningPlanTopicsPath,
 } from "./creation-routes";
 
-test("builds the exam confirmation route for a saved materialless plan", () => {
+test("builds the exam confirmation route for a saved materialless exam", () => {
 	expect(
 		examEntrySuccessPath({
 			dayKey: "2026-08-12",
@@ -17,23 +18,26 @@ test("builds the exam confirmation route for a saved materialless plan", () => {
 	);
 });
 
-test("keeps upload and topic on the same mounted setup screen", () => {
+test("routes explicitly between topics and material on the mounted setup screen", () => {
 	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
 
-	expect(learningPlanTopicPath(learningPlanId)).toBe(
+	expect(learningPlanTopicsPath(learningPlanId)).toBe(
 		"/learning-plans/new?learningPlanId=learning-plan-id&step=topic",
+	);
+	expect(learningPlanMaterialPath(learningPlanId)).toBe(
+		"/learning-plans/new?learningPlanId=learning-plan-id&step=material",
 	);
 });
 
-test("preserves the teacher guidance when returning to exam evidence", () => {
+test("preserves required topics when returning to the first step", () => {
 	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
 
 	expect(
-		learningPlanTopicPath(learningPlanId, {
-			teacherGuidance: "Kapitel 3 & 4, ohne Beweise",
+		learningPlanTopicsPath(learningPlanId, {
+			topicDescription: "Kapitel 3 & 4, ohne Beweise",
 		}),
 	).toBe(
-		"/learning-plans/new?learningPlanId=learning-plan-id&step=topic&teacherGuidance=Kapitel%203%20%26%204%2C%20ohne%20Beweise",
+		"/learning-plans/new?learningPlanId=learning-plan-id&step=topic&topicDescription=Kapitel%203%20%26%204%2C%20ohne%20Beweise",
 	);
 });
 
@@ -41,7 +45,7 @@ test("resumes creation without routing through a separate question screen", () =
 	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
 
 	expect(learningPlanResumePath(learningPlanId, "draft")).toBe(
-		"/learning-plans/new?learningPlanId=learning-plan-id",
+		"/learning-plans/new?learningPlanId=learning-plan-id&step=material",
 	);
 	expect(learningPlanResumePath(learningPlanId, "questionsReady")).toBe(
 		"/learning-plans/learning-plan-id/analysis",

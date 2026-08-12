@@ -310,6 +310,7 @@ export default defineSchema({
 		plannedDateLabel: v.optional(v.string()),
 		durationMinutes: v.optional(v.number()),
 		examTypeLabel: v.optional(v.string()),
+		topicDescription: v.optional(v.string()),
 		completed: v.optional(v.boolean()),
 		executionStatus: v.optional(sessionExecutionStatusValidator),
 		startedAt: v.optional(v.number()),

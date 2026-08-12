@@ -1,7 +1,7 @@
 import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
-import { Globe, GraduationCap, Plus } from "~/components/ui/icon";
+import { GraduationCap, Plus } from "~/components/ui/icon";
 import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
@@ -199,107 +199,42 @@ export function MaterialUploadStep({
 	);
 }
 
-export function TeacherGuidanceStep({
-	canUpload,
+export function RequiredTopicsStep({
 	canContinue,
-	documents,
 	errorMessage,
 	isBusy,
-	isUploading,
-	onChangeTeacherGuidance,
+	onChangeTopics,
 	onContinue,
-	onOpenUpload,
-	onRemoveDocument,
-	openingUploadAction,
-	teacherGuidance,
+	topics,
 }: {
-	canUpload: boolean;
 	canContinue: boolean;
-	documents: LearningPlanSnapshot["documents"];
 	errorMessage: string | null;
 	isBusy: boolean;
-	isUploading: boolean;
-	onChangeTeacherGuidance: (value: string) => void;
+	onChangeTopics: (value: string) => void;
 	onContinue: () => void;
-	onOpenUpload: () => void;
-	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
-	openingUploadAction: PendingUploadAction | null;
-	teacherGuidance: string;
+	topics: string;
 }) {
-	const { colors } = useDayovaTheme();
-	const externalDocuments = documents.filter(
-		(document) => document.sourceKind === "external",
-	);
-
 	return (
 		<View className="flex-1">
 			<Text className="font-poppins font-semibold text-body-1 text-text">
-				Prüfung ergänzen
+				Welche Themen kommen in der Prüfung dran?
 			</Text>
 			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
-				Füge optional Hinweise oder weitere Lernhilfen hinzu.
-			</Text>
-			<Text className="mt-6 font-poppins font-semibold text-body-4 text-text">
-				Hinweis deiner Lehrkraft
+				Nenne alle Themen, die du für diese Prüfung lernen musst.
 			</Text>
 			<Textarea
-				accessibilityLabel="Hinweis der Lehrkraft"
-				className="mt-2 h-40 flex-none rounded-[24px] bg-card px-4 py-4"
-				value={teacherGuidance}
-				onChangeText={onChangeTeacherGuidance}
-				placeholder="Zum Beispiel: Kapitel 3 und 4, keine Beweisaufgaben."
+				accessibilityLabel="Prüfungsthemen"
+				className="mt-6 h-48 flex-none rounded-[24px] bg-card px-4 py-4"
+				value={topics}
+				onChangeText={onChangeTopics}
+				placeholder="Zum Beispiel: Lineare Funktionen, Steigung berechnen und den y-Achsenabschnitt bestimmen."
 			/>
-
-			<ActionSurface
-				accessibilityHint="Öffnet die Auswahl für eine zusätzliche externe Lernhilfe."
-				accessibilityLabel="Zusätzliche Lernhilfe hinzufügen"
-				accessibilityRole="button"
-				disabled={!canUpload}
-				onPress={onOpenUpload}
-				className="mt-6 min-h-[88px] flex-row items-center rounded-[32px] px-4 py-4"
-				variant="flat"
-			>
-				<View className="h-11 w-11 items-center justify-center rounded-[16px] bg-light-2">
-					<Globe size={22} color={colors.secondaryText} strokeWidth={2.1} />
-				</View>
-				<View className="min-w-0 flex-1 px-3">
-					<Text className="font-poppins font-semibold text-body-3 text-text">
-						Weitere Lernhilfe
-					</Text>
-					<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-						Erklärung oder Material aus einer anderen Quelle
-					</Text>
-				</View>
-				<Plus size={20} color={colors.secondaryText} strokeWidth={2.2} />
-			</ActionSurface>
-
-			<UploadActivity
-				isUploading={isUploading}
-				openingUploadAction={openingUploadAction}
-			/>
-
-			{externalDocuments.length > 0 ? (
-				<View className="mt-5">
-					<Text className="mb-3 font-poppins font-semibold text-body-4 text-secondary-text">
-						Weitere Lernhilfen
-					</Text>
-					{externalDocuments.map((document) => (
-						<MaterialCard
-							key={document.id}
-							name={document.fileName}
-							size={document.fileSizeBytes}
-							onRemove={() => onRemoveDocument(document.id)}
-						/>
-					))}
-				</View>
-			) : null}
 
 			<SetupError message={errorMessage} />
 			<View className="mt-auto pt-8">
 				<SetupContinueButton
 					canContinue={canContinue}
 					isBusy={isBusy}
-					label="Prüfungsstoff analysieren"
 					onPress={onContinue}
 				/>
 			</View>

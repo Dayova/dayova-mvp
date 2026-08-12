@@ -1,3 +1,4 @@
+import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
@@ -23,7 +24,7 @@ import {
 } from "~/features/learning-plans/creation-routes";
 import {
 	MaterialUploadStep,
-	TeacherGuidanceStep,
+	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
 import type {
 	LearningPlanSnapshot,
@@ -38,6 +39,7 @@ import {
 	retryOnceAfterAuthResume,
 } from "~/features/learning-plans/utils";
 import { getValidationFileSizeBucket } from "~/lib/analytics";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import {
 	dismissToOrReplace,
@@ -65,7 +67,7 @@ type PendingUploadRequest = {
 	action: PendingUploadAction;
 	sourceKind: MaterialSourceKind;
 };
-type LearningPlanSetupStep = "materialUpload" | "teacherGuidance";
+type LearningPlanSetupStep = "requiredTopics" | "materialUpload";
 
 export default function NewLearningPlanScreen() {
 	const router = useRouter();
@@ -85,8 +87,11 @@ export default function NewLearningPlanScreen() {
 	const { user } = useAuthSession();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const updateExamTopics = useMutation(api.dayEntries.updateExamTopics);
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
-	const updateExamEvidence = useMutation(api.learningPlans.updateExamEvidence);
+	const updateRequiredTopics = useMutation(
+		api.learningPlans.updateRequiredTopics,
+	);
 	const generateUploadUrl = useMutation(api.learningPlans.generateUploadUrl);
 	const registerUploadedDocument = useAction(
 		api.learningPlans.registerUploadedDocument,
@@ -106,20 +111,22 @@ export default function NewLearningPlanScreen() {
 
 	const [learningPlanId, setLearningPlanId] =
 		useState<Id<"learningPlans"> | null>(initialLearningPlanId ?? null);
-	const [setupStep, setSetupStep] = useState<LearningPlanSetupStep>(() =>
-		params.step === "topic" || params.errorMessage
-			? "teacherGuidance"
-			: "materialUpload",
+	const [setupStep, setSetupStep] = useState<LearningPlanSetupStep>(() => {
+		if (params.step === "topic") return "requiredTopics";
+		if (params.step === "material" || params.errorMessage)
+			return "materialUpload";
+		return initialLearningPlanId ? "materialUpload" : "requiredTopics";
+	});
+	const [topicsInput, setTopicsInput] = useState<string | null>(
+		params.topicDescription ?? params.teacherGuidance ?? null,
 	);
-	const [teacherGuidanceInput, setTeacherGuidanceInput] = useState<
-		string | null
-	>(params.teacherGuidance ?? params.topicDescription ?? null);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [uploadSourceKind, setUploadSourceKind] =
 		useState<MaterialSourceKind>("school");
 	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
+	const topicActionGateRef = useRef(createAsyncActionGate());
 	const [openingUploadAction, setOpeningUploadAction] =
 		useState<PendingUploadAction | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(
@@ -134,29 +141,28 @@ export default function NewLearningPlanScreen() {
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
 	const canWrite = Boolean(user && isConvexAuthenticated);
-	const teacherGuidance =
-		teacherGuidanceInput ??
-		snapshot?.plan.teacherGuidance ??
-		snapshot?.plan.topicDescription ??
-		"";
+	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
 	const hasSchoolMaterial = Boolean(
 		snapshot?.documents.some((document) => document.sourceKind === "school"),
 	);
 	const isPlanSnapshotLoading = Boolean(learningPlanId && snapshot === null);
 	const canUpload =
-		canWrite && !isBusy && !openingUploadAction && !isPlanSnapshotLoading;
-	const canContinueUpload =
-		Boolean(learningPlanId) && hasSchoolMaterial && canUpload;
-	const canContinueEvidence =
-		Boolean(learningPlanId) &&
-		hasSchoolMaterial &&
 		canWrite &&
 		!isBusy &&
-		!openingUploadAction;
+		!openingUploadAction &&
+		!isPlanSnapshotLoading &&
+		isMeaningfulTopicDescription(topics);
+	const canContinueTopics =
+		canWrite &&
+		!isBusy &&
+		!openingUploadAction &&
+		isMeaningfulTopicDescription(topics);
+	const canContinueUpload =
+		Boolean(learningPlanId) && hasSchoolMaterial && canUpload;
 	const currentProgressStep =
-		setupStep === "materialUpload"
-			? LEARNING_PLAN_CREATION_STEPS.materialUpload
-			: LEARNING_PLAN_CREATION_STEPS.examEvidence;
+		setupStep === "requiredTopics"
+			? LEARNING_PLAN_CREATION_STEPS.examTopics
+			: LEARNING_PLAN_CREATION_STEPS.materialUpload;
 
 	useEffect(() => {
 		if (!hasExamEntry) {
@@ -165,16 +171,20 @@ export default function NewLearningPlanScreen() {
 	}, [hasExamEntry, router]);
 
 	useEffect(() => {
-		if (params.step === "topic" || params.errorMessage) {
+		if (params.step === "topic") {
 			// eslint-disable-next-line react-hooks/set-state-in-effect -- Route params can change while this screen remains mounted.
-			setSetupStep("teacherGuidance");
+			setSetupStep("requiredTopics");
+		} else if (params.step === "material" || params.errorMessage) {
+			setSetupStep("materialUpload");
 		}
 		if (params.errorMessage) {
 			setErrorMessage(params.errorMessage);
 		}
 	}, [params.errorMessage, params.step]);
 
-	const ensurePlan = async () => {
+	const ensurePlan = async (
+		topicDescription = params.topicDescription ?? "",
+	) => {
 		if (learningPlanId) {
 			return learningPlanId;
 		}
@@ -191,11 +201,12 @@ export default function NewLearningPlanScreen() {
 				examDateKey,
 				examDateLabel,
 				durationMinutes,
-				topicDescription: params.topicDescription ?? "",
+				topicDescription,
 				notes: "",
 			}),
 		);
 		setLearningPlanId(id);
+		router.setParams({ learningPlanId: id, step: "material" });
 		return id;
 	};
 
@@ -233,7 +244,8 @@ export default function NewLearningPlanScreen() {
 		sourceKind: MaterialSourceKind,
 		existingLearningPlanId?: Id<"learningPlans">,
 	) => {
-		const id = existingLearningPlanId ?? (await ensurePlan());
+		const id =
+			existingLearningPlanId ?? learningPlanId ?? (await ensurePlan(topics));
 		const { asset, file, fileSizeBytes, fileType } = preparedAsset;
 
 		const uploadData = await retryOnceAfterAuthResume(() =>
@@ -375,7 +387,7 @@ export default function NewLearningPlanScreen() {
 							size: asset.size,
 						}),
 					);
-					const id = await ensurePlan();
+					const id = await ensurePlan(topics);
 
 					for (const asset of preparedAssets) {
 						await uploadLearningPlanAsset(asset, sourceKind, id);
@@ -485,11 +497,49 @@ export default function NewLearningPlanScreen() {
 		runUploadAction(request.action, request.sourceKind);
 	};
 
-	const continueToEvidence = () => {
-		if (!learningPlanId || !canContinueUpload) return;
+	const continueToMaterial = async () => {
+		if (!canContinueTopics) return;
 
-		router.setParams({ learningPlanId, step: "topic" });
-		setSetupStep("teacherGuidance");
+		await topicActionGateRef.current.run(async () => {
+			setIsBusy(true);
+			setErrorMessage(null);
+			try {
+				if (examDayEntryId) {
+					await retryOnceAfterAuthResume(() =>
+						updateExamTopics({
+							id: examDayEntryId,
+							topicDescription: topics,
+						}),
+					);
+				}
+				if (learningPlanId) {
+					await retryOnceAfterAuthResume(() =>
+						updateRequiredTopics({
+							id: learningPlanId,
+							topicDescription: topics,
+						}),
+					);
+				}
+				if (!examDayEntryId && !learningPlanId) {
+					throw new Error("Prüfung nicht gefunden.");
+				}
+				router.setParams({
+					errorMessage: undefined,
+					step: "material",
+					topicDescription: topics,
+				});
+				setSetupStep("materialUpload");
+			} catch (error) {
+				setErrorMessage(
+					getErrorMessage(
+						error,
+						"Die Prüfungsthemen konnten nicht gespeichert werden.",
+					),
+				);
+			} finally {
+				setIsBusy(false);
+			}
+		});
 	};
 
 	const finishWithoutPlan = () => {
@@ -497,7 +547,9 @@ export default function NewLearningPlanScreen() {
 			"Die Prüfung konnte nicht ohne Lernplan abgeschlossen werden.",
 			async () => {
 				if (!examDayEntryId) throw new Error("Prüfung nicht gefunden.");
-				await ensurePlan();
+				if (!isMeaningfulTopicDescription(topics)) {
+					throw new Error("Prüfungsthemen fehlen.");
+				}
 				router.replace(
 					examEntrySuccessPath({
 						dayKey: examDateKey,
@@ -509,10 +561,10 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const goBack = () => {
-		if (setupStep === "teacherGuidance") {
+		if (setupStep === "materialUpload") {
 			setErrorMessage(null);
-			router.setParams({ errorMessage: undefined, step: undefined });
-			setSetupStep("materialUpload");
+			router.setParams({ errorMessage: undefined, step: "topic" });
+			setSetupStep("requiredTopics");
 			return true;
 		}
 
@@ -531,9 +583,7 @@ export default function NewLearningPlanScreen() {
 
 	useBackIntent(
 		Boolean(
-			examDayEntryId ||
-				initialLearningPlanId ||
-				setupStep === "teacherGuidance",
+			examDayEntryId || initialLearningPlanId || setupStep === "materialUpload",
 		),
 		goBack,
 	);
@@ -543,30 +593,9 @@ export default function NewLearningPlanScreen() {
 		onBack: goBack,
 	});
 
-	const continueToAnalysis = async () => {
-		if (!learningPlanId || !canContinueEvidence) return;
-
-		setIsBusy(true);
-		setErrorMessage(null);
-		router.setParams({ errorMessage: undefined });
-		try {
-			await retryOnceAfterAuthResume(() =>
-				updateExamEvidence({
-					id: learningPlanId,
-					teacherGuidance,
-				}),
-			);
-			router.push(learningPlanStepPath(learningPlanId, "analysis"));
-		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die Information deiner Lehrkraft konnte nicht gespeichert werden.",
-				),
-			);
-		} finally {
-			setIsBusy(false);
-		}
+	const continueToAnalysis = () => {
+		if (!learningPlanId || !canContinueUpload) return;
+		router.push(learningPlanStepPath(learningPlanId, "analysis"));
 	};
 
 	if (!hasExamEntry) return null;
@@ -581,7 +610,16 @@ export default function NewLearningPlanScreen() {
 				contentContainerStyle={{ flexGrow: 1 }}
 			>
 				<View key={setupStep} className="flex-1">
-					{setupStep === "materialUpload" ? (
+					{setupStep === "requiredTopics" ? (
+						<RequiredTopicsStep
+							canContinue={canContinueTopics}
+							errorMessage={errorMessage}
+							isBusy={isBusy}
+							onChangeTopics={setTopicsInput}
+							onContinue={() => void continueToMaterial()}
+							topics={topics}
+						/>
+					) : (
 						<MaterialUploadStep
 							canUpload={canUpload}
 							canContinue={canContinueUpload}
@@ -589,7 +627,7 @@ export default function NewLearningPlanScreen() {
 							errorMessage={errorMessage}
 							isBusy={isBusy}
 							isUploading={isUploading}
-							onContinue={continueToEvidence}
+							onContinue={continueToAnalysis}
 							onOpenUpload={(sourceKind) => {
 								setUploadSourceKind(sourceKind);
 								setIsUploadSheetVisible(true);
@@ -598,24 +636,6 @@ export default function NewLearningPlanScreen() {
 							onSkip={finishWithoutPlan}
 							openingUploadAction={openingUploadAction}
 							showSkip={!initialLearningPlanId}
-						/>
-					) : (
-						<TeacherGuidanceStep
-							canUpload={canUpload}
-							canContinue={canContinueEvidence}
-							documents={snapshot?.documents ?? []}
-							errorMessage={errorMessage}
-							isBusy={isBusy}
-							isUploading={isUploading}
-							onChangeTeacherGuidance={setTeacherGuidanceInput}
-							onContinue={() => void continueToAnalysis()}
-							onOpenUpload={() => {
-								setUploadSourceKind("external");
-								setIsUploadSheetVisible(true);
-							}}
-							onRemoveDocument={(id) => void removeDocument({ id })}
-							openingUploadAction={openingUploadAction}
-							teacherGuidance={teacherGuidance}
 						/>
 					)}
 				</View>

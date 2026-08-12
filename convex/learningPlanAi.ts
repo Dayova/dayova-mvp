@@ -88,7 +88,7 @@ const MAX_LEARNING_SESSION_MINUTES = 30;
 const MAX_GENERATED_SESSIONS = 40;
 const MIN_TOPIC_MAP_COUNT = 3;
 const PREFERRED_TOPIC_MAP_COUNT = 6;
-const TOPIC_MAP_GENERATION_INSTRUCTION = `Erstelle zuerst eine möglichst vollständige Themenkarte mit ${MIN_TOPIC_MAP_COUNT} bis ${MAX_LEARNING_TOPIC_COUNT} klar getrennten, einzeln prüfbaren Fähigkeiten. Ziele auf mindestens ${PREFERRED_TOPIC_MAP_COUNT} Themen, wenn die internen Schulmaterialien genügend fachliche Substanz enthalten; erfinde oder dupliziere aber keine Themen, um diese Zahl zu erreichen. Zerlege breite Sammelthemen in konkrete Fähigkeiten, die der Schüler jeweils erklären und in einer Aufgabe anwenden oder lösen können muss. Nutze kurze stabile ASCII-IDs wie "steigung-berechnen". Das learningGoal beschreibt beobachtbar, was der Schüler zu diesem Thema verstehen und lösen oder anwenden können muss. requiredEvidenceDimensions enthält grundsätzlich understanding und problemSolving; ergänze independent, wenn das Material eine selbstständige prüfungsnahe Anwendung verlangt. Lass problemSolving nur bei nachweislich reinem Faktenwissen weg. Leite den wahrscheinlichen Prüfungsstoff ausschließlich aus dem Hinweis der Lehrkraft und den internen Schulmaterialien ab. Externe Lernhilfen definieren niemals den Prüfungsstoff. Priorisiere explizite Prüfungshinweise vor allgemeinen oder älteren Übungsinhalten.`;
+const TOPIC_MAP_GENERATION_INSTRUCTION = `Erstelle zuerst eine möglichst vollständige Themenkarte mit ${MIN_TOPIC_MAP_COUNT} bis ${MAX_LEARNING_TOPIC_COUNT} klar getrennten, einzeln prüfbaren Fähigkeiten. Ziele auf mindestens ${PREFERRED_TOPIC_MAP_COUNT} Themen, wenn die internen Schulmaterialien genügend fachliche Substanz enthalten; erfinde oder dupliziere aber keine Themen, um diese Zahl zu erreichen. Zerlege breite Sammelthemen in konkrete Fähigkeiten, die der Schüler jeweils erklären und in einer Aufgabe anwenden oder lösen können muss. Nutze kurze stabile ASCII-IDs wie "steigung-berechnen". Das learningGoal beschreibt beobachtbar, was der Schüler zu diesem Thema verstehen und lösen oder anwenden können muss. requiredEvidenceDimensions enthält grundsätzlich understanding und problemSolving; ergänze independent, wenn das Material eine selbstständige prüfungsnahe Anwendung verlangt. Lass problemSolving nur bei nachweislich reinem Faktenwissen weg. Nutze die vom Lernenden angegebenen Prüfungsthemen, um die relevanten Inhalte in den internen Schulmaterialien zu erkennen. Leite den wahrscheinlichen Prüfungsstoff aus dieser Themenangabe und den internen Schulmaterialien ab; die Schulmaterialien bleiben für die konkrete Ausgestaltung maßgeblich. Externe Lernhilfen definieren niemals den Prüfungsstoff. Priorisiere explizite Prüfungshinweise vor allgemeinen oder älteren Übungsinhalten.`;
 const GERMAN_UI_TEXT_RULE =
 	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
 const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return five to ten objectively assessable questions for the first-session knowledge check.`;
@@ -1709,11 +1709,9 @@ const buildBaseContext = (
 		`Prüfungsart: ${plan.examTypeLabel}`,
 		`Prüfungstermin: ${plan.examDateLabel}${plan.examTime ? `, ${plan.examTime}` : ""}`,
 		`Bearbeitungszeit der Prüfung: ${plan.durationMinutes} Minuten`,
-		plan.teacherGuidance
-			? `Hinweis der Lehrkraft: ${plan.teacherGuidance}`
-			: plan.topicDescription
-				? `Bisherige Themenangabe: ${plan.topicDescription}`
-				: "",
+		plan.topicDescription
+			? `Vom Lernenden angegebene Prüfungsthemen: ${plan.topicDescription}`
+			: "",
 		plan.notes ? `Notizen: ${plan.notes}` : "",
 		`Interne Schulmaterialien: ${documents.filter((document) => (document.sourceKind ?? "school") === "school").length}`,
 		`Externe Lernhilfen: ${documents.filter((document) => document.sourceKind === "external").length}`,
@@ -3297,7 +3295,7 @@ ${qaText}
 
 ${usesFirstSessionDiagnostic ? "Erstelle die Kalendergrundlage für den Wissenscheck und den ersten vorläufigen Lernschritt. Der Wissenscheck wird erst in der ersten Session beantwortet." : "Erstelle einen konkreten Lernplan, der die Antworten sichtbar berücksichtigt."}
 MVP-Vorgabe:
-- Interne Schulmaterialien und Hinweise der Lehrkraft definieren den wahrscheinlichen Prüfungsstoff. Externe Lernhilfen dürfen Erklärungen und Übungsformen verbessern, aber niemals neue Prüfungsthemen einführen.
+- Die vom Lernenden angegebenen Prüfungsthemen und die internen Schulmaterialien definieren gemeinsam den wahrscheinlichen Prüfungsstoff; die Materialien konkretisieren den Inhalt. Externe Lernhilfen dürfen Erklärungen und Übungsformen verbessern, aber niemals neue Prüfungsthemen einführen.
 - Baue, wenn zeitlich möglich, die Phasen Theorie, Üben und Generalprobe.
 - Theorie nur bis zur Mindestbeherrschung planen.
 - Der größte Block soll die Übungsphase sein.

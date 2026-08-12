@@ -921,12 +921,12 @@ test("uses diagnostic correctness to choose a different evidence target", async 
 	);
 });
 
-test("does not start diagnostic generation from teacher guidance without material", async () => {
+test("does not start diagnostic generation from required topics without material", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
-	await t.mutation(api.learningPlans.updateExamEvidence, {
+	await t.mutation(api.learningPlans.updateRequiredTopics, {
 		id: learningPlanId,
-		teacherGuidance:
+		topicDescription:
 			"Die Klausur behandelt lineare Gleichungen und lineare Funktionen aus Kapitel drei.",
 	});
 	await expect(

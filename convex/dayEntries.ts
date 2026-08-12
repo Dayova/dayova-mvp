@@ -10,6 +10,7 @@ import {
 	getTimetableDayOfWeek,
 	getTimetableLessonDuration,
 } from "./timetableOccurrences";
+import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 type OptionalEntryFields = {
 	subject?: string;
@@ -21,6 +22,7 @@ type OptionalEntryFields = {
 	plannedDateLabel?: string;
 	durationMinutes?: number;
 	examTypeLabel?: string;
+	topicDescription?: string;
 	completed?: boolean;
 	executionStatus?:
 		| "notStarted"
@@ -71,6 +73,9 @@ const optionalEntryFields = (
 		: {}),
 	...(entry.examTypeLabel !== undefined
 		? { examTypeLabel: entry.examTypeLabel }
+		: {}),
+	...(entry.topicDescription !== undefined
+		? { topicDescription: entry.topicDescription }
 		: {}),
 	...(entry.completed !== undefined ? { completed: entry.completed } : {}),
 	...(entry.executionStatus !== undefined
@@ -371,6 +376,29 @@ export const get = query({
 		}
 
 		return publicEntry(entry);
+	},
+});
+
+export const updateExamTopics = mutation({
+	args: {
+		id: v.id("dayEntries"),
+		topicDescription: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const entry = await ctx.db.get("dayEntries", args.id);
+		if (entry === null || entry.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Prüfung nicht gefunden.");
+		}
+		if (!isExamEntry(entry)) {
+			throwUserFacingError("Prüfung nicht gefunden.");
+		}
+
+		const topicDescription = args.topicDescription.trim();
+		assertMeaningfulTopicDescription(topicDescription);
+		if (entry.topicDescription === topicDescription) return;
+
+		await ctx.db.patch("dayEntries", args.id, { topicDescription });
 	},
 });
 

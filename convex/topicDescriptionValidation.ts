@@ -70,11 +70,3 @@ export const assertMeaningfulTopicDescription = (value: string) => {
 		throwUserFacingError("Beschreibe das Prüfungsthema bitte genauer.");
 	}
 };
-
-export const assertMeaningfulTeacherGuidance = (value: string) => {
-	if (!isMeaningfulTopicDescription(value)) {
-		throwUserFacingError(
-			"Beschreibe den Hinweis deiner Lehrkraft bitte konkreter.",
-		);
-	}
-};

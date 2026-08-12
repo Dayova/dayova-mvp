@@ -12,6 +12,33 @@ const user = {
 	tokenIdentifier: "test:user",
 };
 
+test("stores required exam topics without creating a learning plan", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const examDayEntryId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-08-12",
+		title: "Mathematik Klausur",
+		subject: "Mathematik",
+		kind: "Leistungskontrolle",
+		examTypeLabel: "Klausur",
+		plannedDateLabel: "12. August 2026",
+		durationMinutes: 90,
+	});
+
+	await t.mutation(api.dayEntries.updateExamTopics, {
+		id: examDayEntryId,
+		topicDescription: "Lineare Funktionen, Steigung und Achsenabschnitt",
+	});
+
+	await expect(
+		t.query(api.dayEntries.get, { id: examDayEntryId }),
+	).resolves.toMatchObject({
+		topicDescription: "Lineare Funktionen, Steigung und Achsenabschnitt",
+	});
+	expect(await t.run((ctx) => ctx.db.query("learningPlans").take(1))).toEqual(
+		[],
+	);
+});
+
 test("manual timed entry overlapping an existing entry is rejected with conflict details", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 

@@ -1711,25 +1711,25 @@ test("stores a reusable topic map with generated knowledge questions", async () 
 	]);
 });
 
-test("rejects vague teacher guidance when no school material defines scope", async () => {
+test("rejects a vague required-topics answer before material upload", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
 
 	await expect(
-		t.mutation(api.learningPlans.updateExamEvidence, {
+		t.mutation(api.learningPlans.updateRequiredTopics, {
 			id: learningPlanId,
-			teacherGuidance: "Mathe Arbeit",
+			topicDescription: "Mathe Arbeit",
 		}),
-	).rejects.toThrow("Beschreibe den Hinweis deiner Lehrkraft bitte konkreter.");
+	).rejects.toThrow("Beschreibe das Prüfungsthema bitte genauer.");
 });
 
 test("keeps school evidence authoritative while external material remains supportive", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
 
-	await t.mutation(api.learningPlans.updateExamEvidence, {
+	await t.mutation(api.learningPlans.updateRequiredTopics, {
 		id: learningPlanId,
-		teacherGuidance: "Die Lehrkraft prüft Steigung und den y-Achsenabschnitt.",
+		topicDescription: "Die Lehrkraft prüft Steigung und den y-Achsenabschnitt.",
 	});
 	await t.mutation(internal.learningPlans.storeUploadedDocument, {
 		ownerTokenIdentifier: user.tokenIdentifier,

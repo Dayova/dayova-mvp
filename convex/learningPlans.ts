@@ -45,10 +45,7 @@ import {
 	getTimetableDayOfWeek,
 	getTimetableLessonDuration,
 } from "./timetableOccurrences";
-import {
-	assertMeaningfulTeacherGuidance,
-	assertMeaningfulTopicDescription,
-} from "./topicDescriptionValidation";
+import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_LEARNING_TIMES = 50;
 const MAX_SCHEDULING_DAY_ENTRIES = 500;
@@ -408,7 +405,6 @@ const createLearningPlan = async (
 		examDateLabel: args.examDateLabel,
 		durationMinutes: args.durationMinutes,
 		topicDescription,
-		teacherGuidance: topicDescription || undefined,
 		notes,
 		status: "draft",
 		preparationDepth: getDefaultPreparationDepth(examTypeLabel),
@@ -418,6 +414,7 @@ const createLearningPlan = async (
 	});
 	await ctx.db.patch("dayEntries", args.examDayEntryId, {
 		relatedLearningPlanId: learningPlanId,
+		...(topicDescription ? { topicDescription } : {}),
 	});
 	return learningPlanId;
 };
@@ -965,10 +962,10 @@ export const updateBasics = mutation({
 	},
 });
 
-export const updateExamEvidence = mutation({
+export const updateRequiredTopics = mutation({
 	args: {
 		id: v.id("learningPlans"),
-		teacherGuidance: v.string(),
+		topicDescription: v.string(),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
@@ -981,18 +978,21 @@ export const updateExamEvidence = mutation({
 			throwUserFacingError("Dieser Lernplan wurde bereits erstellt.");
 		}
 
-		const teacherGuidance = args.teacherGuidance.trim();
-		if (teacherGuidance) {
-			assertMeaningfulTeacherGuidance(teacherGuidance);
-		}
-		if ((plan.teacherGuidance ?? "") === teacherGuidance) {
+		const topicDescription = args.topicDescription.trim();
+		assertMeaningfulTopicDescription(topicDescription);
+		if (plan.topicDescription === topicDescription && !plan.teacherGuidance) {
 			return plan.updatedAt;
 		}
 		const updatedAt = Date.now();
 		await invalidateDerivedExamEvidence(ctx, args.id, updatedAt, {
-			teacherGuidance: teacherGuidance || undefined,
-			topicDescription: teacherGuidance,
+			teacherGuidance: undefined,
+			topicDescription,
 		});
+		if (plan.examDayEntryId) {
+			await ctx.db.patch("dayEntries", plan.examDayEntryId, {
+				topicDescription,
+			});
+		}
 		return updatedAt;
 	},
 });

@@ -13,7 +13,7 @@ import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
+import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 
@@ -57,11 +57,7 @@ export default function LearningPlanScopeScreen() {
 
 	const goBack = () => {
 		if (!planId || !snapshot) return;
-		router.replace(
-			learningPlanTopicPath(planId, {
-				teacherGuidance: snapshot.plan.teacherGuidance,
-			}),
-		);
+		router.replace(learningPlanMaterialPath(planId));
 	};
 
 	useLearningPlanCreationProgress({
@@ -103,7 +99,7 @@ export default function LearningPlanScopeScreen() {
 					</Text>
 					<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
 						Dieser wahrscheinliche Prüfungsstoff basiert nur auf deinen
-						Schulunterlagen und den Hinweisen deiner Lehrkraft.
+						Schulunterlagen und deiner Themenangabe.
 					</Text>
 
 					<Surface className="mt-7 rounded-[32px] px-5 py-5" variant="soft">

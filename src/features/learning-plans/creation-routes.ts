@@ -32,7 +32,7 @@ export const learningPlanResumePath = (
 	diagnosticPlacement?: "firstSession",
 ) => {
 	if (status === "draft") {
-		return `${ROUTES.createLearningPlan}?learningPlanId=${encodeURIComponent(id)}` as const;
+		return `${ROUTES.createLearningPlan}?learningPlanId=${encodeURIComponent(id)}&step=material` as const;
 	}
 	if (status === "questionsReady") {
 		return learningPlanStepPath(id, "analysis");
@@ -47,11 +47,10 @@ export const learningPlanResumePath = (
 	return `/learning-plans/${id}` as const;
 };
 
-export const learningPlanTopicPath = (
+export const learningPlanTopicsPath = (
 	id: Id<"learningPlans">,
 	params: {
 		topicDescription?: string;
-		teacherGuidance?: string;
 		errorMessage?: string;
 	} = {},
 ) => {
@@ -59,7 +58,19 @@ export const learningPlanTopicPath = (
 		["learningPlanId", id],
 		["step", "topic"],
 		["topicDescription", params.topicDescription],
-		["teacherGuidance", params.teacherGuidance],
+		["errorMessage", params.errorMessage],
+	]);
+
+	return `${ROUTES.createLearningPlan}?${query}` as const;
+};
+
+export const learningPlanMaterialPath = (
+	id: Id<"learningPlans">,
+	params: { errorMessage?: string } = {},
+) => {
+	const query = buildRouteQuery([
+		["learningPlanId", id],
+		["step", "material"],
 		["errorMessage", params.errorMessage],
 	]);
 

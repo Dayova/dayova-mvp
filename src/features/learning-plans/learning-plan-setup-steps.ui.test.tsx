@@ -3,7 +3,7 @@ import { fireEvent, render } from "@testing-library/react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import {
 	MaterialUploadStep,
-	TeacherGuidanceStep,
+	RequiredTopicsStep,
 } from "./learning-plan-setup-steps";
 
 jest.mock("~/lib/theme", () => ({
@@ -18,6 +18,40 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("learning-plan setup steps", () => {
+	test("collects required exam topics before material upload", async () => {
+		const onChangeTopics = jest.fn();
+		const onContinue = jest.fn();
+		const screen = await render(
+			<RequiredTopicsStep
+				canContinue
+				errorMessage={null}
+				isBusy={false}
+				onChangeTopics={onChangeTopics}
+				onContinue={onContinue}
+				topics="Lineare Gleichungen und Funktionen"
+			/>,
+		);
+
+		expect(
+			screen.getByText("Welche Themen kommen in der Prüfung dran?"),
+		).toBeOnTheScreen();
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
+			"Lineare Gleichungen und Funktionen",
+		);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
+
+		await fireEvent.changeText(
+			screen.getByLabelText("Prüfungsthemen"),
+			"Lineare Funktionen, Steigung und Achsenabschnitt",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(onChangeTopics).toHaveBeenCalledWith(
+			"Lineare Funktionen, Steigung und Achsenabschnitt",
+		);
+		expect(onContinue).toHaveBeenCalledTimes(1);
+	});
+
 	test("keeps the empty school-material page focused on one upload action", async () => {
 		const onOpenUpload = jest.fn();
 		const screen = await render(
@@ -56,7 +90,7 @@ describe("learning-plan setup steps", () => {
 			}),
 		).toBeOnTheScreen();
 
-		fireEvent.press(
+		await fireEvent.press(
 			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
 		);
 		expect(onOpenUpload).toHaveBeenCalledWith("school");
@@ -165,75 +199,19 @@ describe("learning-plan setup steps", () => {
 		).toBeNull();
 	});
 
-	test("keeps optional context on the second page without forcing the keyboard open", async () => {
-		const onOpenUpload = jest.fn();
+	test("disables the topic continuation until the answer is valid", async () => {
 		const screen = await render(
-			<TeacherGuidanceStep
-				canUpload
+			<RequiredTopicsStep
 				canContinue={false}
-				documents={[]}
 				errorMessage={null}
 				isBusy={false}
-				isUploading={false}
-				onChangeTeacherGuidance={jest.fn()}
+				onChangeTopics={jest.fn()}
 				onContinue={jest.fn()}
-				onOpenUpload={onOpenUpload}
-				onRemoveDocument={jest.fn()}
-				openingUploadAction={null}
-				teacherGuidance=""
+				topics="Mathe"
 			/>,
 		);
 
-		expect(screen.getByText("Prüfung ergänzen")).toBeOnTheScreen();
-		expect(
-			screen.getByLabelText("Hinweis der Lehrkraft").props.autoFocus,
-		).not.toBe(true);
-		expect(
-			screen.getByRole("button", {
-				name: "Zusätzliche Lernhilfe hinzufügen",
-			}),
-		).toBeEnabled();
-		expect(
-			screen.getByRole("button", { name: "Prüfungsstoff analysieren" }),
-		).toBeDisabled();
-
-		fireEvent.press(
-			screen.getByRole("button", {
-				name: "Zusätzliche Lernhilfe hinzufügen",
-			}),
-		);
-		expect(onOpenUpload).toHaveBeenCalledTimes(1);
-	});
-
-	test("shows uploaded external aids only on the optional-context page", async () => {
-		const screen = await render(
-			<TeacherGuidanceStep
-				canUpload
-				canContinue
-				documents={[
-					{
-						id: "external-document" as Id<"learningPlanDocuments">,
-						fileName: "Lernhilfe.pdf",
-						fileType: "application/pdf",
-						fileSizeBytes: 1_024,
-						sourceKind: "external",
-					},
-				]}
-				errorMessage={null}
-				isBusy={false}
-				isUploading={false}
-				onChangeTeacherGuidance={jest.fn()}
-				onContinue={jest.fn()}
-				onOpenUpload={jest.fn()}
-				onRemoveDocument={jest.fn()}
-				openingUploadAction={null}
-				teacherGuidance=""
-			/>,
-		);
-
-		expect(screen.getByText("Lernhilfe.pdf")).toBeOnTheScreen();
-		expect(
-			screen.getByRole("button", { name: "Prüfungsstoff analysieren" }),
-		).toBeEnabled();
+		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue("Mathe");
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
 	});
 });

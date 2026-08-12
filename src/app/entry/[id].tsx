@@ -301,6 +301,13 @@ export default function EntryDetailScreen() {
 			["examDateLabel", plannedDate ?? ""],
 			["durationMinutes", String(entry.durationMinutes ?? 45)],
 			["learningPlanId", relatedLearningPlanId],
+			["topicDescription", entry.topicDescription],
+			[
+				"step",
+				!relatedLearningPlanId && entry.topicDescription
+					? "material"
+					: undefined,
+			],
 		]
 			.filter(([, value]) => value !== undefined && value !== "")
 			.map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
@@ -325,7 +332,11 @@ export default function EntryDetailScreen() {
 					? "Prüfungsstoff prüfen"
 					: relatedLearningPlanId && hasRelatedSchoolMaterial
 						? "Vorbereitung fortsetzen"
-						: "Material hochladen";
+						: relatedLearningPlanId
+							? "Material hochladen"
+							: entry?.topicDescription
+								? "Material hochladen"
+								: "Lernplan erstellen";
 
 	return (
 		<View className="flex-1 bg-background">

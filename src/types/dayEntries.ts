@@ -19,6 +19,7 @@ export type DayEntry = {
 	plannedDateLabel?: string;
 	durationMinutes?: number;
 	examTypeLabel?: string;
+	topicDescription?: string;
 	completed?: boolean;
 	executionStatus?: SessionExecutionStatus;
 	startedAt?: number;
