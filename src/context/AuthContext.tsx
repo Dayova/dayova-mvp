@@ -13,6 +13,7 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
+	useReducer,
 	useRef,
 	useState,
 } from "react";
@@ -110,6 +111,8 @@ interface AuthSessionContextType {
 	isConvexAuthenticated: boolean;
 	isConvexUserSynced: boolean;
 	isPostAuthSyncing: boolean;
+	postAuthSyncError: string | null;
+	retryPostAuthSync: () => void;
 	pendingSessionTask: string | null;
 }
 
@@ -409,9 +412,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const [isProfileSyncing, setIsProfileSyncing] = useState(false);
 	const [isOnboardingAnswersSyncing, setIsOnboardingAnswersSyncing] =
 		useState(false);
+	const [postAuthSyncFailure, setPostAuthSyncFailure] = useState<
+		"profile" | "answers" | null
+	>(null);
+	const [profileSyncAttempt, retryProfileSync] = useReducer(
+		(attempt: number) => attempt + 1,
+		0,
+	);
+	const [answersSyncAttempt, retryAnswersSync] = useReducer(
+		(attempt: number) => attempt + 1,
+		0,
+	);
 	const [syncedClerkUserId, setSyncedClerkUserId] = useState<string | null>(
 		null,
 	);
+	const retryPostAuthSync = useCallback(() => {
+		const failedBoundary = postAuthSyncFailure;
+		setPostAuthSyncFailure(null);
+		if (failedBoundary === "profile") {
+			retryProfileSync();
+		} else if (failedBoundary === "answers") {
+			retryAnswersSync();
+		}
+	}, [postAuthSyncFailure]);
 
 	const user = useMemo<AuthUser | null>(() => {
 		if (!clerkUser) return null;
@@ -484,6 +507,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	);
 
 	useEffect(() => {
+		void profileSyncAttempt;
 		if (!user || !isConvexAuthenticated) return;
 
 		let cancelled = false;
@@ -505,6 +529,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 		void (async () => {
 			setIsProfileSyncing(true);
+			setPostAuthSyncFailure(null);
 			setSyncedClerkUserId(null);
 			try {
 				const result = await runWithAuthSettleRetries(() =>
@@ -529,6 +554,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 						},
 					);
 				}
+				if (!cancelled) setPostAuthSyncFailure("profile");
 			} finally {
 				if (!cancelled) setIsProfileSyncing(false);
 			}
@@ -537,7 +563,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		return () => {
 			cancelled = true;
 		};
-	}, [isConvexAuthenticated, pendingProfile, syncCurrentUser, user]);
+	}, [
+		isConvexAuthenticated,
+		pendingProfile,
+		profileSyncAttempt,
+		syncCurrentUser,
+		user,
+	]);
 
 	const captureOnboardingCompleted = useCallback(async () => {
 		if (!isPostHogConfigured || !user) return;
@@ -581,6 +613,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	}, [markValidationActivity, posthog, user]);
 
 	useEffect(() => {
+		void answersSyncAttempt;
 		if (
 			!user ||
 			!isConvexAuthenticated ||
@@ -594,6 +627,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 		void (async () => {
 			setIsOnboardingAnswersSyncing(true);
+			setPostAuthSyncFailure(null);
 			try {
 				const result = await runWithAuthSettleRetries(() =>
 					saveOnboardingAnswers({ answers }),
@@ -623,6 +657,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 						},
 					);
 				}
+				if (!cancelled) setPostAuthSyncFailure("answers");
 			} finally {
 				if (!cancelled) setIsOnboardingAnswersSyncing(false);
 			}
@@ -633,6 +668,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		};
 	}, [
 		clearAnswers,
+		answersSyncAttempt,
 		captureOnboardingCompleted,
 		hasAnswers,
 		isConvexAuthenticated,
@@ -1183,6 +1219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				setPendingProfile(null);
 				setPendingProfileEmail(null);
 				setSyncedClerkUserId(null);
+				setPostAuthSyncFailure(null);
 				passwordResetHasRemoteAttemptRef.current = false;
 				clearAnswers();
 			},
@@ -1203,6 +1240,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					Boolean(user) && syncedClerkUserId === user?.clerkId,
 				isPostAuthSyncing:
 					Boolean(user) && (isProfileSyncing || isOnboardingAnswersSyncing),
+				postAuthSyncError: postAuthSyncFailure
+					? "Deine Angaben konnten noch nicht gespeichert werden. Prüfe deine Verbindung und versuche es erneut."
+					: null,
+				retryPostAuthSync,
 				pendingSessionTask,
 			}}
 		>

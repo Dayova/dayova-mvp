@@ -9,6 +9,7 @@ import {
 	getOnboardingPersistenceAnswers,
 	getOnboardingRegistrationPayload,
 	getOnboardingStepDecision,
+	isOnboardingStepReady,
 } from "./onboarding-flow";
 
 const answers = (
@@ -49,6 +50,39 @@ describe("onboarding flow decisions", () => {
 				answers({ state: "" }),
 			).error,
 		).toBe("Bitte wähle eine Antwort aus.");
+	});
+
+	test("accepts learner names across writing systems", () => {
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "text", field: "name" },
+				answers({ name: "Łukasz" }),
+			).error,
+		).toBeNull();
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "text", field: "name" },
+				answers({ name: "李 明" }),
+			).error,
+		).toBeNull();
+	});
+
+	test("exposes the same validity contract to the primary action", () => {
+		expect(
+			isOnboardingStepReady(
+				{ kind: "wheel", field: "grade" },
+				answers({ grade: "" }),
+			),
+		).toBe(false);
+		expect(
+			isOnboardingStepReady(
+				{ kind: "text", field: "email" },
+				answers({ email: "keine-adresse" }),
+			),
+		).toBe(false);
+		expect(
+			isOnboardingStepReady({ kind: "days", field: "studyDays" }, answers()),
+		).toBe(true);
 	});
 
 	test("requires operational learning days and a valid same-day start time", () => {

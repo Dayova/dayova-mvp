@@ -22,7 +22,7 @@ const isValidEmail = (value: string) =>
 	/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim().toLowerCase());
 
 const isValidName = (value: string) =>
-	value.trim().length >= 2 && /^[A-Za-zÀ-ÿ' -]+$/.test(value.trim());
+	value.trim().length >= 2 && /^[\p{L}\p{M}' -]+$/u.test(value.trim());
 
 export function getOnboardingStepDecision(
 	step: OnboardingDecisionStep,
@@ -75,6 +75,13 @@ export function getOnboardingStepDecision(
 	}
 
 	return { action: "advance", error: null };
+}
+
+export function isOnboardingStepReady(
+	step: OnboardingDecisionStep,
+	answers: OnboardingAnswers,
+) {
+	return getOnboardingStepDecision(step, answers).error === null;
 }
 
 export function getNextOnboardingStepIndex(

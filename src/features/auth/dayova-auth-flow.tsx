@@ -56,6 +56,7 @@ import {
 	getNextOnboardingStepIndex,
 	getOnboardingRegistrationPayload,
 	getOnboardingStepDecision,
+	isOnboardingStepReady,
 } from "~/components/onboarding/onboarding-flow";
 import {
 	dateForOnboardingTime,
@@ -69,6 +70,7 @@ import {
 import { OnboardingSelect } from "~/components/onboarding/onboarding-select";
 import { StudyTimeFactContent } from "~/components/onboarding/study-time-fact-content";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
+import { BackButton, Button } from "~/components/ui/button";
 import {
 	type DateTimePickerEvent,
 	DateTimePickerSheet,
@@ -79,6 +81,7 @@ import {
 	Atom,
 	CalendarDays,
 	Check,
+	CircleAlert,
 	Clock3,
 	Globe,
 	GreekHelmet,
@@ -319,15 +322,14 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		kind: "wheel",
 		id: "grade",
 		title: "Welche Klassenstufe besuchst du?",
-		description: "So passen Sprache und Aufgaben besser zu deinem Schulalltag.",
+		description: "Diese Angabe wird in deinem Schulprofil gespeichert.",
 		field: "grade",
 	},
 	{
 		kind: "wheel",
 		id: "state",
 		title: "In welchem Bundesland gehst du zur Schule?",
-		description:
-			"Schulbegriffe und Rahmenbedingungen unterscheiden sich regional.",
+		description: "Diese Angabe wird in deinem Schulprofil gespeichert.",
 		field: "state",
 	},
 	{
@@ -728,7 +730,13 @@ export function OnboardingScreen({
 		resendVerification,
 		isLoading,
 	} = useAuthFlow();
-	const { user, isConvexAuthenticated, isPostAuthSyncing } = useAuthSession();
+	const {
+		user,
+		isConvexAuthenticated,
+		isPostAuthSyncing,
+		postAuthSyncError,
+		retryPostAuthSync,
+	} = useAuthSession();
 	const { answers, hasAnswers } = useOnboarding();
 	const activeStep = FLOW_STEPS[activeIndex];
 	const textInputRef = useRef<TextInput | null>(null);
@@ -923,6 +931,8 @@ export function OnboardingScreen({
 				topInset={insets.top}
 				bottomInset={insets.bottom}
 				isComplete={isCreationComplete}
+				error={postAuthSyncError}
+				onRetry={retryPostAuthSync}
 			/>
 		);
 	}
@@ -1178,10 +1188,14 @@ function IntroStepView({
 					pageWidth={width}
 					scrollX={scrollX}
 				/>
-				<GradientPillButton
-					label={isLastIntro ? "Meinen Start personalisieren" : "Weiter"}
+				<Button
+					accessibilityLabel={
+						isLastIntro ? "Meinen Start personalisieren" : "Weiter"
+					}
 					onPress={handleNext}
-				/>
+				>
+					<Text>{isLastIntro ? "Meinen Start personalisieren" : "Weiter"}</Text>
+				</Button>
 				<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
 					Danach 14 kurze, bewusste Schritte · etwa 3 Minuten
 				</Text>
@@ -1287,10 +1301,18 @@ function QuestionStepView({
 	onContinue: () => void;
 	onTogglePassword: () => void;
 }) {
-	const { colors: COLORS } = useDayovaTheme();
+	const { colors: COLORS, isDark } = useDayovaTheme();
 	const { answers, setAnswer } = useOnboarding();
 	const reducedMotion = useReducedMotion();
 	const isWheelStep = step.kind === "wheel";
+	const stepDecision = getOnboardingStepDecision(step, answers);
+	const canContinue = isOnboardingStepReady(step, answers);
+	const currentAnswer = "field" in step ? answers[step.field] : "";
+	const localValidationError =
+		step.kind === "text" && currentAnswer.trim() && step.field !== "password"
+			? stepDecision.error
+			: null;
+	const visibleError = error ?? localValidationError;
 	const isImmersiveStep = step.kind === "fact" || step.kind === "payoff";
 	const titleTopPadding = step.kind === "text" ? 50 : 28;
 	const continueLabel =
@@ -1437,7 +1459,7 @@ function QuestionStepView({
 								testID="onboarding-answer-error-slot"
 								className="mt-3 min-h-8 px-3"
 							>
-								{error ? (
+								{visibleError ? (
 									<Animated.Text
 										accessibilityLiveRegion="polite"
 										accessibilityRole="alert"
@@ -1451,7 +1473,7 @@ function QuestionStepView({
 											textAlign: "center",
 										}}
 									>
-										{error}
+										{visibleError}
 									</Animated.Text>
 								) : null}
 							</View>
@@ -1466,12 +1488,15 @@ function QuestionStepView({
 					paddingBottom: Math.max(bottomInset + 52, 60),
 				}}
 			>
-				<DarkPillButton
-					label={continueLabel}
+				<Button
+					accessibilityLabel={continueLabel}
+					accessibilityState={{ busy, disabled: busy || !canContinue }}
+					disabled={busy || !canContinue}
+					variant={isDark ? "default" : "neutral"}
 					onPress={() => void onContinue()}
-					disabled={busy}
-					busy={busy}
-				/>
+				>
+					<Text>{continueLabel}</Text>
+				</Button>
 			</View>
 		</View>
 	);
@@ -1728,11 +1753,17 @@ export function LoginScreen() {
 						) : null}
 
 						<View className="mt-2 w-full">
-							<GradientPillButton
-								label={isLoading || isSubmittingLogin ? "LOGIN..." : "LOGIN"}
+							<Button
+								accessibilityLabel={
+									isLoading || isSubmittingLogin ? "LOGIN..." : "LOGIN"
+								}
 								onPress={submitLogin}
 								disabled={isLoading || isSubmittingLogin}
-							/>
+							>
+								<Text>
+									{isLoading || isSubmittingLogin ? "LOGIN..." : "LOGIN"}
+								</Text>
+							</Button>
 						</View>
 
 						<View
@@ -2150,11 +2181,13 @@ function PasswordResetScreen({
 					) : null}
 
 					<View className="mt-6 w-full">
-						<GradientPillButton
-							label={isLoading ? `${buttonLabel}...` : buttonLabel}
+						<Button
+							accessibilityLabel={isLoading ? `${buttonLabel}...` : buttonLabel}
 							disabled={isLoading}
 							onPress={runPrimaryAction}
-						/>
+						>
+							<Text>{isLoading ? `${buttonLabel}...` : buttonLabel}</Text>
+						</Button>
 					</View>
 
 					{stage === "reset_code" || stage === "second_factor" ? (
@@ -2300,22 +2333,17 @@ export function CreationLoaderScreen({
 	topInset,
 	bottomInset,
 	isComplete,
+	error = null,
+	onRetry,
 }: {
 	topInset: number;
 	bottomInset: number;
 	isComplete: boolean;
+	error?: string | null;
+	onRetry?: () => void;
 }) {
 	const reducedMotion = useReducedMotion();
-
-	useEffect(() => {
-		if (!isComplete) return;
-
-		const timeout = setTimeout(() => {
-			router.replace("/trial");
-		}, 1800);
-
-		return () => clearTimeout(timeout);
-	}, [isComplete]);
+	const { colors } = useDayovaTheme();
 
 	return (
 		<View className="flex-1 bg-background">
@@ -2333,17 +2361,52 @@ export function CreationLoaderScreen({
 					justifyContent: "center",
 				}}
 			>
-				<AnimatedFlowerLoader size={220} />
+				{error ? (
+					<View className="h-[144px] w-[144px] items-center justify-center rounded-full bg-wrong-subtle">
+						<CircleAlert size={56} color={colors.wrong} strokeWidth={1.8} />
+					</View>
+				) : (
+					<AnimatedFlowerLoader size={220} />
+				)}
 				<Animated.Text
-					key={isComplete ? "complete" : "creating"}
+					key={error ? "error" : isComplete ? "complete" : "creating"}
 					entering={reducedMotion ? undefined : FadeIn.duration(220)}
 					className="mt-10 text-center font-poppins font-semibold text-text"
 					style={{ fontSize: 20, lineHeight: 29 }}
 				>
-					{isComplete
-						? "Alles bereit.\nStarte jetzt mit deiner ersten Prüfung."
-						: "Dein Konto wird\nfür dich eingerichtet."}
+					{error
+						? "Die Einrichtung ist noch nicht abgeschlossen."
+						: isComplete
+							? "Dein Konto ist bereit.\nAls Nächstes startest du deine Testphase."
+							: "Dein Konto wird\nfür dich eingerichtet."}
 				</Animated.Text>
+				{error ? (
+					<>
+						<Text
+							accessibilityLiveRegion="assertive"
+							accessibilityRole="alert"
+							className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text"
+						>
+							{error}
+						</Text>
+						<Button
+							accessibilityLabel="Erneut versuchen"
+							className="mt-8 w-full"
+							onPress={onRetry}
+						>
+							<Text>Erneut versuchen</Text>
+						</Button>
+					</>
+				) : null}
+				{isComplete ? (
+					<Button
+						accessibilityLabel="Weiter zur Testphase"
+						className="mt-8 w-full"
+						onPress={() => router.replace("/trial")}
+					>
+						<Text>Weiter zur Testphase</Text>
+					</Button>
+				) : null}
 			</View>
 		</View>
 	);
@@ -2360,29 +2423,15 @@ function AuthProgressHeader({
 	onBack: () => boolean;
 	disabled?: boolean;
 }) {
-	const { colors: COLORS } = useDayovaTheme();
-
 	return (
 		<View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-			<Pressable
-				accessibilityRole="button"
-				accessibilityLabel="Zurück"
+			<BackButton
 				accessibilityState={{ disabled }}
 				disabled={disabled}
+				iconSize={18}
+				strokeWidth={2.2}
 				onPress={() => onBack()}
-				style={{
-					width: 48,
-					height: 48,
-					borderRadius: 24,
-					alignItems: "center",
-					justifyContent: "center",
-					backgroundColor: COLORS.surface,
-					borderWidth: 1,
-					borderColor: "rgba(17, 24, 39, 0.06)",
-				}}
-			>
-				<ArrowLeft size={18} color={COLORS.text} strokeWidth={2.2} />
-			</Pressable>
+			/>
 			<View className="flex-1 gap-2">
 				<View className="flex-row items-center justify-between">
 					<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
@@ -2673,7 +2722,7 @@ function AnimatedStudyDayPill({
 		color: interpolateColor(
 			selectionProgress.get(),
 			[0, 1],
-			[colors.text, colors.surface],
+			[colors.text, colors.onPrimary],
 		),
 	}));
 
@@ -2704,7 +2753,7 @@ function AnimatedStudyDayPill({
 				className="h-4 w-4 items-center justify-center"
 			>
 				<Animated.View style={checkStyle}>
-					<Check size={16} color={colors.surface} strokeWidth={2.4} />
+					<Check size={16} color={colors.onPrimary} strokeWidth={2.4} />
 				</Animated.View>
 			</View>
 			<Animated.Text
@@ -3062,106 +3111,6 @@ function AuthChoicePillButton({
 				}}
 			>
 				{visibleLabel}
-			</Text>
-		</Pressable>
-	);
-}
-
-function GradientPillButton({
-	label,
-	onPress,
-	disabled,
-}: {
-	label: string;
-	onPress: () => void;
-	disabled?: boolean;
-}) {
-	const { shouldStackInlineContent } = useContentSizeLayout();
-	const [pressed, setPressed] = useState(false);
-
-	return (
-		<Pressable
-			accessibilityLabel={label}
-			accessibilityRole="button"
-			accessibilityState={{ disabled }}
-			disabled={disabled}
-			onPress={onPress}
-			className="px-6"
-			onPressIn={() => setPressed(true)}
-			onPressOut={() => setPressed(false)}
-			style={{
-				height: shouldStackInlineContent ? undefined : 56,
-				minHeight: 56,
-				borderRadius: DAYOVA_DESIGN_SYSTEM.radius.button,
-				overflow: "hidden",
-				alignItems: "center",
-				justifyContent: "center",
-				opacity: disabled ? 0.55 : pressed ? 0.78 : 1,
-				paddingVertical: shouldStackInlineContent ? 12 : 0,
-			}}
-		>
-			<LinearGradient
-				colors={PRIMARY_GRADIENT.colors}
-				start={PRIMARY_GRADIENT.start}
-				end={PRIMARY_GRADIENT.end}
-				style={{
-					position: "absolute",
-					left: 0,
-					right: 0,
-					top: 0,
-					bottom: 0,
-				}}
-			/>
-			<Text className="font-poppins font-semibold text-body-2 text-white">
-				{label}
-			</Text>
-		</Pressable>
-	);
-}
-
-function DarkPillButton({
-	label,
-	onPress,
-	disabled,
-	busy = false,
-}: {
-	label: string;
-	onPress: () => void;
-	disabled?: boolean;
-	busy?: boolean;
-}) {
-	const { colors: COLORS, isDark } = useDayovaTheme();
-	const { shouldStackInlineContent } = useContentSizeLayout();
-	const [pressed, setPressed] = useState(false);
-
-	return (
-		<Pressable
-			accessibilityLabel={label}
-			accessibilityRole="button"
-			accessibilityState={{ busy, disabled }}
-			disabled={disabled}
-			onPress={onPress}
-			className="px-6"
-			onPressIn={() => setPressed(true)}
-			onPressOut={() => setPressed(false)}
-			style={{
-				height: shouldStackInlineContent ? undefined : 56,
-				minHeight: 56,
-				borderRadius: DAYOVA_DESIGN_SYSTEM.radius.button,
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: isDark ? COLORS.primaryStrong : COLORS.buttonNeutral,
-				opacity: disabled ? 0.55 : pressed ? 0.78 : 1,
-				boxShadow: disabled
-					? "none"
-					: isDark
-						? "0 8px 18px rgba(0, 160, 230, 0.18)"
-						: "0 8px 18px rgba(20, 28, 48, 0.08)",
-				paddingVertical: shouldStackInlineContent ? 12 : 0,
-			}}
-		>
-			<Text className="font-poppins font-semibold text-body-2 text-white">
-				{label}
 			</Text>
 		</Pressable>
 	);

@@ -51,6 +51,9 @@ The following constraints are part of the contract:
   steps so the visible count matches the remaining forward actions.
 - No screen advances on a timer or animation callback.
 - Grade, state, school type, and every birth-date part require explicit input.
+- A required step's primary action is visibly disabled until the local answer
+  is valid. Submit-time validation remains the defensive boundary; it is not
+  the first indication that an empty answer is required.
 - Duration, weekday selection, and start time are mandatory operational input,
   not survey data. The visible confirmation must match the derived windows.
 - The native time picker keeps changes in draft state and persists an answer
@@ -70,6 +73,18 @@ The following constraints are part of the contract:
 - Nonessential onboarding motion follows the system reduced-motion setting.
 - Registration guards synchronous repeated actions and preserves internal back
   navigation across flow, verification, and creation stages.
+- Profile or onboarding-answer persistence failures after authentication must
+  replace the indefinite loader with a user-visible error and an explicit retry
+  of the failed boundary. Answers remain local until persistence succeeds.
+- Successful account setup does not auto-advance. It truthfully announces trial
+  activation as the next step and waits for the learner's explicit CTA.
+- Grade and federal state are launch profile data only. Their question copy
+  must not claim that language, tasks, terminology, or recommendations already
+  adapt to them. Such a promise may return only with a tested downstream
+  consumer and an updated canonical decision.
+- Auth-flow primary and back actions use the shared `Button` and `BackButton`
+  contracts. Solid cyan selection controls use the documented `onPrimary`
+  foreground instead of borrowing a theme surface token.
 - Changes to order, collected fields, deferred fields, or the first-action
   handoff require an updated or superseding canonical Notion decision.
 - Historical Figma screens and prior implementations are evidence, not release
@@ -112,6 +127,10 @@ DAY-292 before implementation is accepted.
   describe the real persistence boundary and the Settings edit path.
 - The old auto-advance defect is structurally impossible because the launch
   flow contains no timed navigation.
+- Post-auth failure is recoverable in place; completion can no longer strand a
+  learner behind an animation-only state.
+- The former grade/state personalization claims are removed until the product
+  actually consumes those values. Storing profile data is not personalization.
 - DAY-60, DAY-81, DAY-235, and DAY-236 are verified as children of DAY-292.
 - UI and backend tests cover multi-day input, native time input, exact window
   derivation, persistence into `userLearningTimes`, scheduler visibility,

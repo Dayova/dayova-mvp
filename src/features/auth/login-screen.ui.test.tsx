@@ -66,6 +66,14 @@ const mockRouter = {
 	push: jest.fn(),
 	replace: jest.fn(),
 };
+const mockRetryPostAuthSync = jest.fn();
+const mockAuthSession = {
+	isConvexAuthenticated: false,
+	isPostAuthSyncing: false,
+	postAuthSyncError: null as string | null,
+	retryPostAuthSync: mockRetryPostAuthSync,
+	user: null as { clerkId: string; email: string } | null,
+};
 const mockSetOnboardingAnswer = jest.fn();
 const mockOnboarding = {
 	answers: {
@@ -299,9 +307,7 @@ jest.mock("~/context/AuthContext", () => ({
 		};
 	},
 	useAuthSession: () => ({
-		isConvexAuthenticated: false,
-		isPostAuthSyncing: false,
-		user: null,
+		...mockAuthSession,
 	}),
 }));
 
@@ -322,6 +328,7 @@ jest.mock("~/lib/theme", () => ({
 			path2: "#D7DCE3",
 			path1: "#D7DCE3",
 			primary: "#00BAFF",
+			onPrimary: "#1A1A1A",
 			secondaryText: "#697586",
 			surface: "#FFFFFF",
 			systemSubtle: "#F1F7FB",
@@ -545,7 +552,7 @@ describe("CreationLoaderScreen", () => {
 		jest.useRealTimers();
 	});
 
-	test("confirms account setup before continuing to trial activation", async () => {
+	test("requires an explicit handoff to trial activation", async () => {
 		const screen = await render(
 			<CreationLoaderScreen
 				topInset={24}
@@ -564,19 +571,42 @@ describe("CreationLoaderScreen", () => {
 
 		expect(
 			screen.getByText(
-				"Alles bereit.\nStarte jetzt mit deiner ersten Prüfung.",
+				"Dein Konto ist bereit.\nAls Nächstes startest du deine Testphase.",
 			),
 		).toBeOnTheScreen();
 
 		await act(async () => {
-			jest.advanceTimersByTime(1799);
+			jest.advanceTimersByTime(10_000);
 		});
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 
-		await act(async () => {
-			jest.advanceTimersByTime(1);
-		});
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Weiter zur Testphase" }),
+		);
 		expect(mockRouter.replace).toHaveBeenCalledWith("/trial");
+	});
+
+	test("turns a failed post-auth sync into a visible retry path", async () => {
+		const retry = jest.fn();
+		const screen = await render(
+			<CreationLoaderScreen
+				topInset={24}
+				bottomInset={24}
+				isComplete={false}
+				error="Deine Angaben konnten noch nicht gespeichert werden."
+				onRetry={retry}
+			/>,
+		);
+
+		expect(
+			screen.getByRole("alert", {
+				name: "Deine Angaben konnten noch nicht gespeichert werden.",
+			}),
+		).toBeOnTheScreen();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Erneut versuchen" }),
+		);
+		expect(retry).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -591,6 +621,11 @@ describe("OnboardingScreen", () => {
 		});
 		mockRouter.replace.mockReset();
 		mockSetOnboardingAnswer.mockReset();
+		mockRetryPostAuthSync.mockReset();
+		mockAuthSession.isConvexAuthenticated = false;
+		mockAuthSession.isPostAuthSyncing = false;
+		mockAuthSession.postAuthSyncError = null;
+		mockAuthSession.user = null;
 		mockOnboarding.answers.studyTime = "30";
 		mockOnboarding.answers.studyDays = "Montag, Donnerstag, Samstag";
 		mockOnboarding.answers.learningTime = "16:30";
@@ -661,11 +696,14 @@ describe("OnboardingScreen", () => {
 		]);
 	});
 
-	test("does not preselect a grade and requires an explicit choice", async () => {
+	test("does not preselect a grade and disables continuation until it is valid", async () => {
 		mockOnboarding.answers.grade = "";
 		const screen = await render(<OnboardingScreen initialStepId="grade" />);
 
 		expect(screen.getByText("Klassenstufe auswählen")).toBeOnTheScreen();
+		expect(
+			screen.getByText("Diese Angabe wird in deinem Schulprofil gespeichert."),
+		).toBeOnTheScreen();
 		const answerGroup = screen.getByTestId("onboarding-answer-group");
 		const errorSlot = within(answerGroup).getByTestId(
 			"onboarding-answer-error-slot",
@@ -673,13 +711,9 @@ describe("OnboardingScreen", () => {
 		expect(errorSlot).toHaveProp("className", "mt-3 min-h-8 px-3");
 		expect(within(errorSlot).queryByRole("alert")).toBeNull();
 
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
-
 		expect(
-			await within(errorSlot).findByRole("alert", {
-				name: "Bitte wähle eine Antwort aus.",
-			}),
-		).toBeOnTheScreen();
+			screen.getByRole("button", { name: "Weiter" }).props.accessibilityState,
+		).toMatchObject({ disabled: true });
 
 		await act(async () => {
 			mockOnboarding.answers = { ...mockOnboarding.answers, grade: "10" };
@@ -687,7 +721,17 @@ describe("OnboardingScreen", () => {
 		});
 		await waitFor(() => {
 			expect(within(errorSlot).queryByRole("alert")).toBeNull();
+			expect(
+				screen.getByRole("button", { name: "Weiter" }).props.accessibilityState,
+			).toMatchObject({ disabled: false });
 		});
+	});
+
+	test("uses a semantic high-contrast foreground on selected weekdays", async () => {
+		mockOnboarding.answers.studyDays = "Montag";
+		const screen = await render(<OnboardingScreen initialStepId="studyDays" />);
+
+		expect(screen.getByText("Montag")).toHaveStyle({ color: "#1A1A1A" });
 	});
 
 	test("renders school type through the shared bottom-sheet select trigger", async () => {
@@ -799,12 +843,9 @@ describe("OnboardingScreen", () => {
 			screen.getByTestId("onboarding-birth-year-picker"),
 		).toBeOnTheScreen();
 
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		expect(
-			await screen.findByRole("alert", {
-				name: "Bitte wähle eine Antwort aus.",
-			}),
-		).toBeOnTheScreen();
+			screen.getByRole("button", { name: "Weiter" }).props.accessibilityState,
+		).toMatchObject({ disabled: true });
 	});
 
 	test("shows an existing-account error before leaving the email step", async () => {
@@ -830,6 +871,20 @@ describe("OnboardingScreen", () => {
 		expect(
 			screen.queryByRole("header", { name: "Lege dein Passwort fest." }),
 		).toBeNull();
+	});
+
+	test("explains invalid typed input while keeping continuation disabled", async () => {
+		mockOnboarding.answers.email = "keine-adresse";
+		const screen = await render(<OnboardingScreen initialStepId="email" />);
+
+		expect(
+			screen.getByRole("alert", {
+				name: "Bitte gib eine gültige E-Mail-Adresse ein.",
+			}),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Weiter" }).props.accessibilityState,
+		).toMatchObject({ disabled: true });
 	});
 
 	test("blocks duplicate email checks while availability is pending", async () => {

@@ -99,7 +99,13 @@ hausaufgabe `#B88AAE`. Current badge subtle fills are: wrong
 Do not add `*-foreground` color partners without an explicit design-system
 decision that introduces them as real semantic palette tokens. Use the palette
 directly: `text-text` for primary text, `text-secondary-text` for secondary
-text, and `text-white` for white text on dark or saturated surfaces.
+text, and `text-white` for white text on dark surfaces or the existing
+primary-interactive gradient. The solid system cyan selection surface is the
+documented exception: its content uses `onPrimary` (`#1A1A1A`) in both themes.
+That pairing has a 7.85:1 contrast ratio on `#00BAFF`; white has only 2.22:1.
+Use `onPrimary` for solid selected pills, tabs, their checkmarks, and equivalent
+compact controls. Do not reuse `surface` or theme-dependent primary text as an
+implicit foreground token.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold.
@@ -116,6 +122,10 @@ There are no white pill buttons in the current light-mode design system. Both
 appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
 buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
 with a white stroke, and black buttons use the light border token `#DCE6EE`.
+Production screens use the shared `Button` and `BackButton` components for
+these actions. A screen-local clone is not an allowed visual variant; add a
+shared variant and update this context if a new interaction contract is truly
+needed.
 
 The trial-activation and expired-trial payment flow are deliberate full-bleed
 branded exceptions. The expired-trial flow separates payer selection from

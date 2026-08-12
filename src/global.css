@@ -45,6 +45,7 @@
 		--popover: 0 0% 100%;
 		--surface: 0 0% 100%;
 		--primary: 196.2 100% 50%;
+		--on-primary: 0 0% 10.2%;
 		--primary-strong: 198.3 100% 45.1%;
 		--progress-track: 204 100% 90.6%;
 		--button-neutral: 0 0% 10.2%;
@@ -143,6 +144,7 @@
 		--popover: 248 10% 13%;
 		--surface: 248 10% 13%;
 		--primary: 196.2 100% 50%;
+		--on-primary: 0 0% 10.2%;
 		--primary-strong: 198.3 100% 58%;
 		--progress-track: 195.3 56.1% 13.5%;
 		--button-neutral: 0 0% 100%;

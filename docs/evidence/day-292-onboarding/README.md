@@ -4,6 +4,40 @@ These artifacts document native rendering and interaction work on PR #458.
 They are review evidence, not app assets. The canonical product decision lives
 in Notion; DAY-292 remains the delivery source of truth.
 
+## Release-contract audit — 12 August 2026
+
+A code/spec/design-system audit found four gaps that earlier green tests did
+not catch because one test had encoded the timer transition itself as expected
+behavior:
+
+1. completed account setup advanced to trial after 1.8 seconds even though the
+   accepted ADR prohibits timer navigation, and its copy incorrectly promised
+   an immediate first exam before trial activation;
+2. failed profile or onboarding-answer persistence only logged a warning and
+   left the creation loader on screen indefinitely;
+3. mandatory question CTAs looked active before their local answer was valid;
+4. selected weekday content borrowed `surface` as a foreground and therefore
+   changed meaning by theme, while the shared design system lacked the correct
+   solid-cyan foreground token.
+
+The code contract now requires a manual “Weiter zur Testphase” handoff, exposes
+post-auth failures with an “Erneut versuchen” action, derives CTA availability
+from the same validation used at submission, and uses `onPrimary` for solid
+cyan selections. `onPrimary` is `#1A1A1A` in both themes: measured contrast on
+`#00BAFF` is 7.85:1, versus 2.22:1 for white. Auth-flow primary and back actions
+now reuse the shared `Button` and `BackButton` implementations.
+
+The audit also removed two unsupported promises. Grade and federal state are
+stored profile data at launch, but no current task, language, or recommendation
+consumer uses them. Their copy now says only that the answer is stored in the
+school profile. Reintroducing a personalization claim requires an implemented,
+tested consumer and an updated decision record.
+
+Automated regression coverage proves the four code contracts, but the changed
+completion and retry screens still need fresh native light/dark evidence before
+this PR can leave Draft. The existing screenshots below predate this audit and
+must not be cited as proof of those changed screens.
+
 ## Field-local validation feedback — 12 August 2026
 
 The wheel-style question layout previously centered the answer control in a
