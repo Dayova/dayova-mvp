@@ -733,6 +733,7 @@ export function OnboardingScreen({
 	const activeStep = FLOW_STEPS[activeIndex];
 	const textInputRef = useRef<TextInput | null>(null);
 	const verificationInputRef = useRef<TextInput | null>(null);
+	const previousAnswersRef = useRef(answers);
 	const verificationSubmittedRef = useRef(false);
 	const isCreationComplete = Boolean(
 		stage === "creating" &&
@@ -743,6 +744,12 @@ export function OnboardingScreen({
 	);
 	const registrationActionGateRef = useRef(createAsyncActionGate());
 	const isRegistrationBusy = isLoading || isRegistering;
+
+	useEffect(() => {
+		if (previousAnswersRef.current === answers) return;
+		previousAnswersRef.current = answers;
+		setError(null);
+	}, [answers]);
 
 	useEffect(() => {
 		if (stage !== "verification") return;
@@ -1343,6 +1350,7 @@ function QuestionStepView({
 					) : null}
 
 					<View
+						testID="onboarding-answer-group"
 						style={{
 							width: "100%",
 							marginTop: isImmersiveStep ? 0 : isWheelStep ? 20 : 22,
@@ -1423,26 +1431,32 @@ function QuestionStepView({
 								) : null}
 							</>
 						) : null}
-					</View>
 
-					{error ? (
-						<Animated.Text
-							accessibilityLiveRegion="polite"
-							accessibilityRole="alert"
-							selectable
-							entering={reducedMotion ? undefined : FadeIn.duration(180)}
-							style={{
-								marginTop: 12,
-								fontFamily: "Poppins",
-								fontSize: 12,
-								lineHeight: 18,
-								color: COLORS.destructive,
-								textAlign: "center",
-							}}
-						>
-							{error}
-						</Animated.Text>
-					) : null}
+						{!isImmersiveStep ? (
+							<View
+								testID="onboarding-answer-error-slot"
+								className="mt-3 min-h-8 px-3"
+							>
+								{error ? (
+									<Animated.Text
+										accessibilityLiveRegion="polite"
+										accessibilityRole="alert"
+										selectable
+										entering={reducedMotion ? undefined : FadeIn.duration(180)}
+										style={{
+											fontFamily: "Poppins",
+											fontSize: 12,
+											lineHeight: 18,
+											color: COLORS.destructive,
+											textAlign: "center",
+										}}
+									>
+										{error}
+									</Animated.Text>
+								) : null}
+							</View>
+						) : null}
+					</View>
 				</Animated.View>
 			</ScrollView>
 

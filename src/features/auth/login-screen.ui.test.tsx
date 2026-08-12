@@ -6,7 +6,13 @@ import {
 	jest,
 	test,
 } from "@jest/globals";
-import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import {
+	act,
+	fireEvent,
+	render,
+	waitFor,
+	within,
+} from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import {
 	AuthChoiceScreen,
@@ -659,13 +665,28 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingScreen initialStepId="grade" />);
 
 		expect(screen.getByText("Klassenstufe auswählen")).toBeOnTheScreen();
+		const answerGroup = screen.getByTestId("onboarding-answer-group");
+		const errorSlot = within(answerGroup).getByTestId(
+			"onboarding-answer-error-slot",
+		);
+		expect(errorSlot).toHaveProp("className", "mt-3 min-h-8 px-3");
+		expect(within(errorSlot).queryByRole("alert")).toBeNull();
+
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
 		expect(
-			await screen.findByRole("alert", {
+			await within(errorSlot).findByRole("alert", {
 				name: "Bitte wähle eine Antwort aus.",
 			}),
 		).toBeOnTheScreen();
+
+		await act(async () => {
+			mockOnboarding.answers = { ...mockOnboarding.answers, grade: "10" };
+			screen.rerender(<OnboardingScreen initialStepId="grade" />);
+		});
+		await waitFor(() => {
+			expect(within(errorSlot).queryByRole("alert")).toBeNull();
+		});
 	});
 
 	test("renders school type through the shared bottom-sheet select trigger", async () => {

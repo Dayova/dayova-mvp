@@ -4,6 +4,32 @@ These artifacts document native rendering and interaction work on PR #458.
 They are review evidence, not app assets. The canonical product decision lives
 in Notion; DAY-292 remains the delivery source of truth.
 
+## Field-local validation feedback — 12 August 2026
+
+The wheel-style question layout previously centered the answer control in a
+flexible region but rendered validation feedback after that region. The result
+was an orphaned message halfway between the control and the fixed CTA. This was
+not an intentional global form-error location: it weakened the relationship
+between the error and the field that needs correction.
+
+The shared question renderer now keeps a reserved validation slot directly
+below the answer control. The slot exists before and after validation so the
+control does not jump when the message fades in. A changed answer immediately
+clears the stale field error instead of waiting for another CTA press. This
+applies to grade, federal state, school type, birth-date segments, and the other
+non-immersive question types; informational fact and payoff screens do not
+receive an empty slot.
+
+- `ios-dark-state-validation-error.png`: native iOS dark-mode validation state
+  on the federal-state screen.
+- `android-dark-state-validation-error.png`: native Android dark-mode
+  validation state on the same screen. The floating gear is the development
+  launcher overlay and is not production UI.
+
+Automated regression evidence first failed while the alert remained a sibling
+of the answer group, then passed after the alert moved into the reserved slot.
+The test also verifies that the slot is present while empty before submission.
+
 ## Accepted operational learning-time flow — 12 August 2026
 
 The accepted release behavior asks for an intended duration, one or more
