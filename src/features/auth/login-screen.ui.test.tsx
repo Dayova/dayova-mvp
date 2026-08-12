@@ -63,9 +63,11 @@ const mockCompletePasswordReset = jest.fn<
 >(async () => ({ status: "complete" }));
 const mockRouter = {
 	back: jest.fn(),
+	canGoBack: jest.fn(() => true),
 	push: jest.fn(),
 	replace: jest.fn(),
 };
+const mockStackScreens: Array<Record<string, unknown>> = [];
 const mockRetryPostAuthSync = jest.fn();
 const mockAuthSession = {
 	isConvexAuthenticated: false,
@@ -148,17 +150,50 @@ jest.mock("react-native-reanimated", () => {
 	};
 });
 
+jest.mock("react-native-worklets", () => ({
+	scheduleOnRN: (
+		callback: (...args: unknown[]) => unknown,
+		...args: unknown[]
+	) => callback(...args),
+}));
+
+jest.mock("react-native-gesture-handler", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const createGesture = () => {
+		const gesture = new Proxy(
+			{},
+			{
+				get:
+					() =>
+					(..._args: unknown[]) =>
+						gesture,
+			},
+		);
+		return gesture;
+	};
+
+	return {
+		Gesture: { Pan: createGesture },
+		GestureDetector: ({ children }: { children?: ReactNode }) =>
+			React.createElement("GestureDetector", null, children),
+	};
+});
+
 jest.mock("expo-router", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const Stack = ({ children }: { children?: ReactNode }) =>
 		React.createElement("Stack", null, children);
-	Stack.Screen = () => null;
+	Stack.Screen = (props: Record<string, unknown>) => {
+		mockStackScreens.push(props);
+		return null;
+	};
 
 	return {
 		Redirect: () => null,
 		Stack,
 		router: {
 			back: (...args: never[]) => mockRouter.back(...args),
+			canGoBack: () => mockRouter.canGoBack(),
 			push: (...args: [string]) => mockRouter.push(...args),
 			replace: (...args: [string]) => mockRouter.replace(...args),
 		},
@@ -620,6 +655,8 @@ describe("OnboardingScreen", () => {
 			message: "Bestätige deine E-Mail-Adresse.",
 		});
 		mockRouter.replace.mockReset();
+		mockRouter.canGoBack.mockReset();
+		mockRouter.canGoBack.mockReturnValue(true);
 		mockSetOnboardingAnswer.mockReset();
 		mockRetryPostAuthSync.mockReset();
 		mockAuthSession.isConvexAuthenticated = false;
@@ -636,6 +673,23 @@ describe("OnboardingScreen", () => {
 		mockOnboarding.answers.birthMonth = "09";
 		mockOnboarding.answers.birthDay = "09";
 		mockOnboarding.answers.email = "test@example.com";
+		mockStackScreens.length = 0;
+	});
+
+	test("keeps the native route gesture only on the onboarding entry step", async () => {
+		const screen = await render(<OnboardingScreen />);
+
+		expect(mockStackScreens.at(-1)?.options).toMatchObject({
+			gestureEnabled: true,
+			fullScreenGestureEnabled: false,
+		});
+
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(mockStackScreens.at(-1)?.options).toMatchObject({
+			gestureEnabled: false,
+			fullScreenGestureEnabled: false,
+		});
 	});
 
 	test("teaches the product in three pages before personalized questions", async () => {

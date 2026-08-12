@@ -204,5 +204,13 @@ learning-time contract.
 
 This evidence set proves the operational learning-time segment on native iOS
 and Android. It does not by itself prove account creation, email verification,
-trial activation, first empty-home action, reduced motion, or a second device
-size. PR #458 stays Draft until the canonical acceptance gates are closed.
+trial activation, first empty-home action, reduced motion, the complete back
+contract, or a second device size. The 2026-08-12 implementation pass confirmed
+Android system back from an internal profile step returns exactly one step, and
+confirmed Android native time-picker back closes the picker without changing
+the underlying onboarding step. The iOS simulator also confirmed an incomplete
+edge drag leaves the internal step unchanged. Remaining back-navigation
+evidence must still cover iOS entry-route pop, iOS committed internal edge
+swipe, Android predictive-back invocation, and shared select-sheet-first
+dismissal before an underlying onboarding step changes. PR #458 stays Draft
+until the canonical acceptance gates are closed.

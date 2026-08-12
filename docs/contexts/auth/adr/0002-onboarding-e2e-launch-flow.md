@@ -115,8 +115,16 @@ The following constraints are part of the contract:
 - The backend continues accepting legacy optional onboarding fields for older
   app versions, but the launch client neither asks for nor submits them.
 - Nonessential onboarding motion follows the system reduced-motion setting.
-- Registration guards synchronous repeated actions and preserves internal back
-  navigation across flow, verification, and creation stages.
+- Registration guards synchronous repeated actions and preserves one-step back
+  navigation across flow and verification. The visible back action and Android
+  system/predictive back always resolve the nearest reversible state first:
+  dismiss an open picker or sheet, then return one onboarding step. iOS keeps
+  the native edge-pop only on the first intro page, where it returns to the auth
+  choice. Later conflict-free steps use an interactive edge swipe that returns
+  exactly one internal step; the intro pager and horizontal duration carousel
+  retain their own horizontal gestures. Route gestures and internal edge-back
+  are disabled while registration or account creation is in flight, and the
+  completed account handoff remains forward-only.
 - Profile or onboarding-answer persistence failures after authentication must
   replace the indefinite loader with a user-visible error and an explicit retry
   of the failed boundary. Answers remain local until persistence succeeds.

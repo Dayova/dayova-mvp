@@ -9,9 +9,11 @@ import {
 import type { ReactNode, RefObject } from "react";
 import { useCallback, useEffect, useId, useMemo, useRef } from "react";
 import {
-	AccessibilityInfo,
-	findNodeHandle,
 	type AccessibilityActionEvent,
+	AccessibilityInfo,
+	BackHandler,
+	findNodeHandle,
+	Platform,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -140,6 +142,20 @@ function DayovaSheetFrame({
 		if (!dismissible) return;
 		sheetRef.current?.dismiss();
 	}, [dismissible]);
+
+	useEffect(() => {
+		if (!visible || Platform.OS !== "android") return undefined;
+
+		const subscription = BackHandler.addEventListener(
+			"hardwareBackPress",
+			() => {
+				if (dismissible) dismiss();
+				return true;
+			},
+		);
+
+		return () => subscription.remove();
+	}, [dismiss, dismissible, visible]);
 
 	const handleDismiss = useCallback(() => {
 		const wasControlledDismissal = phaseRef.current === "closing";

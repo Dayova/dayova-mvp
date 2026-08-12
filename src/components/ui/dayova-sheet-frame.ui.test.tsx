@@ -1,7 +1,7 @@
-import type { ReactElement, ReactNode } from "react";
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
-import { AccessibilityInfo, View } from "react-native";
+import type { ReactElement, ReactNode } from "react";
+import { AccessibilityInfo, BackHandler, Platform, View } from "react-native";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
 import {
 	SheetAccessibilityProvider,
@@ -103,6 +103,9 @@ describe("DayovaSheetFrame", () => {
 	let focusSpy: jest.SpiedFunction<
 		typeof AccessibilityInfo.setAccessibilityFocus
 	>;
+	let androidBackHandler:
+		| null
+		| Parameters<typeof BackHandler.addEventListener>[1];
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
@@ -110,6 +113,13 @@ describe("DayovaSheetFrame", () => {
 		mockSheetHarness.dismiss.mockReset();
 		mockSheetHarness.onChange = null;
 		mockSheetHarness.onDismiss = null;
+		androidBackHandler = null;
+		jest
+			.spyOn(BackHandler, "addEventListener")
+			.mockImplementation((_eventName, handler) => {
+				androidBackHandler = handler;
+				return { remove: jest.fn() };
+			});
 		focusSpy = jest
 			.spyOn(AccessibilityInfo, "setAccessibilityFocus")
 			.mockImplementation(() => undefined);
@@ -179,6 +189,34 @@ describe("DayovaSheetFrame", () => {
 		fireEvent.press(view.getByLabelText("Dialog schließen"));
 
 		expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
+	});
+
+	test("Android system back dismisses the sheet before the underlying route", async () => {
+		const onClose = jest.fn();
+		const originalPlatform = Platform.OS;
+		Object.defineProperty(Platform, "OS", {
+			configurable: true,
+			value: "android",
+		});
+		try {
+			await render(
+				<DayovaSheetFrame visible onClose={onClose} title="Auswahl" />,
+			);
+			await act(flushAnimationFrames);
+
+			expect(androidBackHandler).not.toBeNull();
+			expect(androidBackHandler?.(undefined as never)).toBe(true);
+			expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
+
+			await act(() => mockSheetHarness.onDismiss?.());
+			expect(onClose).toHaveBeenCalledTimes(1);
+			expect(mockSheetHarness.present).toHaveBeenCalledTimes(1);
+		} finally {
+			Object.defineProperty(Platform, "OS", {
+				configurable: true,
+				value: originalPlatform,
+			});
+		}
 	});
 
 	test("exposes modal semantics, moves focus to its heading, and handles escape", async () => {

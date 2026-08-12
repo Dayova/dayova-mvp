@@ -52,6 +52,7 @@ import {
 	INTRO_DOT_EXPANDED_WIDTH,
 } from "~/components/onboarding/intro-pagination";
 import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
+import { OnboardingEdgeBackGesture } from "~/components/onboarding/onboarding-edge-back-gesture";
 import {
 	getNextOnboardingStepIndex,
 	getOnboardingRegistrationPayload,
@@ -116,6 +117,8 @@ import { useBackIntent } from "~/lib/navigation";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
 import {
 	type RegistrationStage,
+	shouldEnableRegistrationEdgeBack,
+	shouldEnableRegistrationRouteBack,
 	shouldHandleRegistrationBack,
 } from "~/lib/registration-navigation";
 import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
@@ -811,6 +814,21 @@ export function OnboardingScreen({
 		stage,
 	);
 	useBackIntent(shouldHandleInternalBack, handleBack);
+	// The async gate remains the authoritative event-time guard in handleBack;
+	// render-time gesture state follows React state so it updates deterministically.
+	const isBackBusy = isRegistrationBusy;
+	const routeBackEnabled = shouldEnableRegistrationRouteBack(
+		activeIndex,
+		stage,
+		isBackBusy,
+	);
+	const edgeBackEnabled = shouldEnableRegistrationEdgeBack({
+		activeIndex,
+		isBusy: isBackBusy,
+		platform: Platform.OS,
+		stage,
+		stepKind: activeStep.kind,
+	});
 
 	const stepProgress =
 		stage === "verification" || stage === "creating"
@@ -939,30 +957,36 @@ export function OnboardingScreen({
 
 	if (stage === "verification") {
 		return (
-			<VerificationScreen
-				email={answers.email.trim().toLowerCase()}
-				code={verificationCode}
-				error={error}
-				disabled={isLoading}
-				inputRef={verificationInputRef}
-				progress={stepProgress}
-				topInset={insets.top}
-				bottomInset={insets.bottom}
+			<OnboardingEdgeBackGesture
+				key={stage}
+				enabled={edgeBackEnabled}
 				onBack={handleBack}
-				onChangeCode={handleVerificationChange}
-				onResend={async () => {
-					try {
-						setError(null);
-						await resendVerification();
-					} catch (resendError) {
-						setError(
-							resendError instanceof Error
-								? resendError.message
-								: "Code konnte nicht erneut gesendet werden.",
-						);
-					}
-				}}
-			/>
+			>
+				<VerificationScreen
+					email={answers.email.trim().toLowerCase()}
+					code={verificationCode}
+					error={error}
+					disabled={isLoading}
+					inputRef={verificationInputRef}
+					progress={stepProgress}
+					topInset={insets.top}
+					bottomInset={insets.bottom}
+					onBack={handleBack}
+					onChangeCode={handleVerificationChange}
+					onResend={async () => {
+						try {
+							setError(null);
+							await resendVerification();
+						} catch (resendError) {
+							setError(
+								resendError instanceof Error
+									? resendError.message
+									: "Code konnte nicht erneut gesendet werden.",
+							);
+						}
+					}}
+				/>
+			</OnboardingEdgeBackGesture>
 		);
 	}
 
@@ -1005,19 +1029,29 @@ export function OnboardingScreen({
 	return (
 		<View className="flex-1 bg-background">
 			<Stack.Screen
-				options={{ title: "Registrierung", gestureEnabled: false }}
+				options={{
+					title: "Registrierung",
+					gestureEnabled: routeBackEnabled,
+					fullScreenGestureEnabled: false,
+				}}
 			/>
 			<ThemedStatusBar />
-			{isIntro ? (
-				flowContent
-			) : (
-				<KeyboardAvoidingView
-					behavior={Platform.OS === "ios" ? "padding" : undefined}
-					className="flex-1"
-				>
-					{flowContent}
-				</KeyboardAvoidingView>
-			)}
+			<OnboardingEdgeBackGesture
+				key={`${stage}:${activeIndex}`}
+				enabled={edgeBackEnabled}
+				onBack={handleBack}
+			>
+				{isIntro ? (
+					flowContent
+				) : (
+					<KeyboardAvoidingView
+						behavior={Platform.OS === "ios" ? "padding" : undefined}
+						className="flex-1"
+					>
+						{flowContent}
+					</KeyboardAvoidingView>
+				)}
+			</OnboardingEdgeBackGesture>
 		</View>
 	);
 }
