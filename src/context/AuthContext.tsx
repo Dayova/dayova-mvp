@@ -17,6 +17,7 @@ import {
 	useState,
 } from "react";
 import { api } from "#convex/_generated/api";
+import { getOnboardingPersistenceAnswers } from "~/components/onboarding/onboarding-flow";
 import { useOnboarding } from "~/context/OnboardingContext";
 import {
 	createValidationAnalytics,
@@ -589,14 +590,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			return;
 
 		let cancelled = false;
-		const answers = {
-			studyTime: onboardingAnswers.studyTime,
-			challenge: onboardingAnswers.challenge,
-			goal: onboardingAnswers.goal,
-			state: onboardingAnswers.state,
-			schoolType: onboardingAnswers.schoolType,
-			grade: onboardingAnswers.grade,
-		};
+		const answers = getOnboardingPersistenceAnswers(onboardingAnswers);
 
 		void (async () => {
 			setIsOnboardingAnswersSyncing(true);

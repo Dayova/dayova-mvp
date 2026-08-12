@@ -30,6 +30,7 @@ function DateTimePickerSheet({
 	doneLabel = "Fertig",
 	onChange,
 	onClose,
+	onConfirm,
 }: DateTimePickerSheetProps) {
 	const { width } = useWindowDimensions();
 	const accessibilityLabel = {
@@ -40,6 +41,10 @@ function DateTimePickerSheet({
 	const handleValueChange = (event: DateTimePickerChangeEvent, date: Date) => {
 		onChange({ ...event, type: "set" }, date);
 	};
+	const handleConfirm = () => {
+		onConfirm?.(value);
+		onClose();
+	};
 
 	return (
 		<DayovaSheetFrame
@@ -49,7 +54,7 @@ function DateTimePickerSheet({
 			showCloseButton={false}
 			closeAccessibilityLabel="Auswahl schließen"
 			footer={
-				<Button accessibilityLabel="Auswahl schließen" onPress={onClose}>
+				<Button accessibilityLabel="Auswahl bestätigen" onPress={handleConfirm}>
 					<Text>{doneLabel}</Text>
 				</Button>
 			}

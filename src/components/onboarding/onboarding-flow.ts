@@ -1,8 +1,9 @@
 import type { OnboardingAnswers } from "~/context/OnboardingContext";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
 import { formatOnboardingBirthDate } from "./birth-date";
+import { getOnboardingLearningTimeValidationError } from "./onboarding-learning-times";
 
-type AnswerStepKind = "choice" | "range" | "wheel";
+type AnswerStepKind = "days" | "range" | "time" | "wheel";
 
 export type OnboardingDecisionStep =
 	| {
@@ -49,12 +50,28 @@ export function getOnboardingStepDecision(
 	}
 
 	if (
-		(step.kind === "choice" ||
+		(step.kind === "days" ||
 			step.kind === "range" ||
+			step.kind === "time" ||
 			step.kind === "wheel") &&
 		!answers[step.field].trim()
 	) {
-		return { action: "advance", error: "Bitte wähle eine Antwort aus." };
+		return {
+			action: "advance",
+			error:
+				step.kind === "days"
+					? "Bitte wähle mindestens einen Lerntag aus."
+					: step.kind === "time"
+						? "Bitte wähle eine Uhrzeit aus."
+						: "Bitte wähle eine Antwort aus.",
+		};
+	}
+
+	if (step.kind === "time") {
+		return {
+			action: "advance",
+			error: getOnboardingLearningTimeValidationError(answers),
+		};
 	}
 
 	return { action: "advance", error: null };
@@ -82,4 +99,15 @@ export const getOnboardingRegistrationPayload = (
 	grade: answers.grade,
 	schoolType: answers.schoolType || undefined,
 	state: answers.state,
+});
+
+export const getOnboardingPersistenceAnswers = (
+	answers: OnboardingAnswers,
+) => ({
+	dailySchoolTime: `${Number.parseInt(answers.studyTime, 10)} min`,
+	studyDays: answers.studyDays,
+	learningTime: answers.learningTime,
+	state: answers.state,
+	schoolType: answers.schoolType,
+	grade: answers.grade,
 });

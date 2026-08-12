@@ -15,8 +15,8 @@ usable at a large font scale.
 - The six visual verification-code cells are decorative. Assistive technology
   receives one full-size, labelled six-digit input instead of six unrelated
   cells or an invisible one-pixel target.
-- Choice chips and goals expose checkbox state. Selection sheets expose radio
-  state. Progress indicators expose a numeric progress value.
+- Multi-select weekday chips expose checkbox state. Selection sheets expose
+  radio state. Progress indicators expose a numeric progress value.
 
 ## Errors and status changes
 

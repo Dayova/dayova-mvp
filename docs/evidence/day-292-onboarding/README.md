@@ -1,55 +1,106 @@
 # DAY-292 onboarding review evidence
 
-These artifacts and linked Linear attachments document the native rendering of
-PR #458. They are review evidence for the accepted onboarding flow, not app
-assets.
+These artifacts document native rendering and interaction work on PR #458.
+They are review evidence, not app assets. The canonical product decision lives
+in Notion; DAY-292 remains the delivery source of truth.
 
-## Screen recording
+## Accepted operational learning-time flow — 12 August 2026
 
-- `ios-onboarding-e2e-2x.mp4` records the visible iOS journey from the first
-  educational intro through the final, still-empty `Konto erstellen` step.
+The accepted release behavior asks for an intended duration, one or more
+weekdays, and a start time. The confirmation shows the exact recurring windows
+that registration persists as `userLearningTimes` and the planner consumes.
+The former blocker/goal survey is superseded because its answers changed only
+local copy.
+
+### iOS dark mode
+
+- `ios-dark-learning-duration.png`: centered, readable duration selector.
+- `ios-dark-learning-days.png`: weekday multi-select with stable chip geometry.
+- `ios-dark-learning-time-picker.png`: native iOS spinner inside the shared
+  sheet.
+- `ios-dark-learning-time-selected.png`: confirmed `16:00 Uhr` answer.
+- `ios-dark-learning-times-payoff.png`: exact `30 Minuten`, `Montag, Mittwoch
+  und Samstag`, and `16:00–16:30 Uhr` confirmation.
+
+`ios-learning-times-e2e.mp4` covers the interactive journey from duration
+through the confirmed start-time answer. Complete-timeline inspection:
+
+> Coverage: 79.19-second video; 79 full-timeline frames sampled at 1 fps
+> (1-second interval); 5 contact sheet(s); no audio stream.
+
+Timestamped observations:
+
+- `00:00–00:08`: duration input.
+- `00:09–00:17`: manual explanation of operational time windows.
+- `00:18–00:42`: weekday input; Monday, Wednesday, and Saturday are selected
+  without chip reflow.
+- `00:43–00:51`: start-time prompt.
+- `00:52–00:59`: native iOS time picker.
+- `01:00–01:18`: confirmed `16:00 Uhr` answer.
+
+The recording ends before the confirmation page because simulator video output
+lagged behind the interaction. `ios-learning-times-payoff.mp4` separately
+records the rendered confirmation state. Complete-timeline inspection:
+
+> Coverage: 1.34-second video; 3 full-timeline frames sampled at 2 fps
+> (0.5-second interval); 1 contact sheet(s); no audio stream.
+
+The split is explicit: neither clip alone is evidence of the entire flow.
+
+### Android dark mode
+
+- `android-dark-learning-duration.png`: centered, readable duration selector.
+- `android-dark-learning-days.png`: stable weekday multi-select with Monday,
+  Wednesday, and Saturday selected.
+- `android-dark-learning-time-picker.png`: native Android 24-hour dialog with
+  separate cancel and confirm actions.
+- `android-dark-learning-time-selected.png`: confirmed `16:00 Uhr` answer.
+- `android-dark-learning-times-payoff.png`: exact `30 Minuten`, `Montag,
+  Mittwoch und Samstag`, and `16:00–16:30 Uhr` confirmation.
+
+The Android screenshots were captured in a development client. Its floating
+gear in the upper-right is a development-launcher overlay and is not rendered
+in a production build.
+
+### Supporting automated evidence
+
+- UI tests require explicit weekday input, hold picker changes as draft state,
+  and persist the start time only after confirmation.
+- Flow tests require duration, weekdays, and start time and map only those
+  operational answers into the registration payload.
+- Backend tests assert that the release payload creates one concrete recurring
+  window per selected weekday.
+- Planner tests assert that those persisted windows are visible to learning-plan
+  scheduling.
+
+## Historical evidence — superseded 11 August state
+
+`ios-onboarding-e2e-2x.mp4` predates the accepted operational learning-time
+decision. It documents the former blocker/goal implementation and therefore
+does **not** verify the current weekday, time-picker, confirmation, or
+persistence behavior.
+
 - Runtime: 02:28 at 2x playback; H.264, 720 x 1566, no audio.
 - Full-timeline sampling coverage: **Coverage: 148.30-second video; 80
   full-timeline frames sampled at 0.539447 fps (1.85375-second interval); 5
   contact sheet(s); no audio stream.**
-- Timestamped observations from that complete-timeline pass:
+- Timestamped observations:
   - `00:00–00:14`: all three educational intro pages.
-  - `00:14–00:22`: name and daily study-time input.
-  - `00:22–00:37`: manual learning fact, blocker, and goal.
-  - `00:37–00:42`: personalized payoff using the entered answers.
+  - `00:14–00:22`: name and the former daily study-time input.
+  - `00:22–00:37`: the now-superseded fact, blocker, and goal.
+  - `00:37–00:42`: the now-superseded local-copy payoff.
   - `00:42–01:23`: grade, federal state, and bounded school type.
   - `01:23–02:11`: birth year, month, and day as separate selections.
   - `02:11–02:17`: email input.
-  - `02:17–02:28`: empty password screen and disabled-looking requirement;
-    the account-creation action is not submitted.
-- The recording does **not** demonstrate account creation, email verification,
-  trial activation, the first empty-home action, dark mode, Android, reduced
-  motion, or a second device size. Those require separate evidence; automated
-  tests are supporting evidence but do not turn these runtime states into
-  recorded observations.
+  - `02:17–02:28`: empty password screen; account creation is not submitted.
 
-### Fresh dark-mode follow-up
+The older light/dark intro screenshots and linked Linear attachments remain
+historical rendering evidence. They must not be cited as proof of the accepted
+learning-time contract.
 
-- [iOS Intro 3 screenshot](https://uploads.linear.app/25636614-9b48-4853-ae2c-f1d96a015b4e/619e3bf0-cf7d-4f0b-80eb-0007640211c0/a57a5f18-ee45-453d-85c2-4b3a609fe958)
-  and [7.93-second recording](https://uploads.linear.app/25636614-9b48-4853-ae2c-f1d96a015b4e/56d07bc4-d7ed-40ef-be11-2ccccaf2fd5b/984485cb-6446-4362-a41e-8d10e31835d3)
-  verify the theme-aware Intro 3 path/fade and centered CTA. Coverage: 16
-  full-timeline frames at 2 fps, one contact sheet, no audio.
-- [Android Intro 3 screenshot](https://uploads.linear.app/25636614-9b48-4853-ae2c-f1d96a015b4e/752bac08-51ba-4b9e-ad63-9367f88b9361/8765aee5-0e6e-48d8-b016-7f8f91a9751d)
-  verifies the same theme-aware path/fade and centered CTA on a Pixel 9
-  emulator.
-- [Android auth-to-Intro-1 recording](https://uploads.linear.app/25636614-9b48-4853-ae2c-f1d96a015b4e/7f61b475-6a6d-446a-942e-ee03cfce5b32/1345e43f-3aa6-4062-ad45-123f2831cc10)
-  covers auth at `00:00–00:07` and Intro 1 at `00:07.5–00:09.42`. Coverage:
-  19 full-timeline frames at 2 fps, two contact sheets, no audio. It does not
-  evidence Intro 2 or Intro 3.
+## Remaining release evidence
 
-## Screenshots
-
-- iOS light: all three intro screens, study-time input, personalized fact,
-  personalized payoff, and final account-creation boundary.
-- iOS dark: the first and third educational intros.
-- Android light: the first educational intro.
-- Android dark: the auth choice and first and third educational intros.
-
-The canonical product decision lives in Notion and DAY-292 remains the Linear
-source of truth. Future screenshots should be added only when they document a
-materially different accepted state.
+This evidence set proves the operational learning-time segment on native iOS
+and Android. It does not by itself prove account creation, email verification,
+trial activation, first empty-home action, reduced motion, or a second device
+size. PR #458 stays Draft until the canonical acceptance gates are closed.

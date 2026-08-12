@@ -138,7 +138,7 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	},
 	{
 		key: "dailySchoolTime",
-		prompt: "Wie viel Zeit willst du pro Tag für die Schule aufwenden?",
+		prompt: "Wie lange möchtest du pro Lerntag einplanen?",
 		kind: "select" as const,
 		order: 7,
 		options: [...DURATION_OPTIONS],
@@ -160,7 +160,7 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	},
 	{
 		key: "learningTime",
-		prompt: "Wann ist die beste Uhrzeit für dich zum Lernen?",
+		prompt: "Wann möchtest du an diesen Tagen starten?",
 		kind: "input" as const,
 		order: 9,
 	},

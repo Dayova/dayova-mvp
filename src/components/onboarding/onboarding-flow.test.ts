@@ -6,6 +6,7 @@ import {
 } from "~/lib/clerk-registration";
 import {
 	getNextOnboardingStepIndex,
+	getOnboardingPersistenceAnswers,
 	getOnboardingRegistrationPayload,
 	getOnboardingStepDecision,
 } from "./onboarding-flow";
@@ -13,9 +14,9 @@ import {
 const answers = (
 	patch: Partial<OnboardingAnswers> = {},
 ): OnboardingAnswers => ({
-	studyTime: "30 min",
-	challenge: "time_management",
-	goal: "stay_consistent",
+	studyTime: "30",
+	studyDays: "Montag, Donnerstag, Samstag",
+	learningTime: "16:30",
 	state: "Sachsen",
 	schoolType: "gymnasium",
 	grade: "9",
@@ -48,6 +49,38 @@ describe("onboarding flow decisions", () => {
 				answers({ state: "" }),
 			).error,
 		).toBe("Bitte wähle eine Antwort aus.");
+	});
+
+	test("requires operational learning days and a valid same-day start time", () => {
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "days", field: "studyDays" },
+				answers({ studyDays: "" }),
+			).error,
+		).toBe("Bitte wähle mindestens einen Lerntag aus.");
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "time", field: "learningTime" },
+				answers({ learningTime: "" }),
+			).error,
+		).toBe("Bitte wähle eine Uhrzeit aus.");
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "time", field: "learningTime" },
+				answers({ studyTime: "60", learningTime: "23:30" }),
+			).error,
+		).toContain("vor Mitternacht");
+	});
+
+	test("maps the visible schedule to the backend's operational fields", () => {
+		expect(getOnboardingPersistenceAnswers(answers())).toEqual({
+			dailySchoolTime: "30 min",
+			studyDays: "Montag, Donnerstag, Samstag",
+			learningTime: "16:30",
+			state: "Sachsen",
+			schoolType: "gymnasium",
+			grade: "9",
+		});
 	});
 
 	test("registers only from a valid password step", () => {

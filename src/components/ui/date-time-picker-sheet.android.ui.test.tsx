@@ -33,12 +33,14 @@ describe("Android DateTimePickerSheet", () => {
 	test("renders the native date dialog inside a Dayova-themed Compose host", async () => {
 		const onChange = jest.fn();
 		const onClose = jest.fn();
+		const onConfirm = jest.fn();
 		const value = new Date(2012, 8, 9, 16, 44);
 		const screen = await render(
 			<DateTimePickerSheet
 				mode="date"
 				onChange={onChange}
 				onClose={onClose}
+				onConfirm={onConfirm}
 				value={value}
 				visible
 			/>,
@@ -63,6 +65,7 @@ describe("Android DateTimePickerSheet", () => {
 			expect.any(Date),
 		);
 		expect(onClose).toHaveBeenCalledTimes(1);
+		expect(onConfirm).toHaveBeenCalledWith(expect.any(Date));
 	});
 
 	test("continues a datetime selection from date to time before closing", async () => {

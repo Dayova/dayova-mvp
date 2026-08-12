@@ -122,6 +122,51 @@ test("onboarding persists canonical learning times visible to settings and plans
 	]);
 });
 
+test("release onboarding payload creates operational windows without decorative answers", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: {
+			dailySchoolTime: "30 min",
+			studyDays: "Montag, Donnerstag, Samstag",
+			learningTime: "16:30",
+			state: "Sachsen",
+			schoolType: "gymnasium",
+			grade: "9",
+		},
+	});
+
+	await expect(t.query(api.learningTimes.listMine, {})).resolves.toMatchObject([
+		{ dayOfWeek: 1, startTime: "16:30", endTime: "17:00" },
+		{ dayOfWeek: 4, startTime: "16:30", endTime: "17:00" },
+		{ dayOfWeek: 6, startTime: "16:30", endTime: "17:00" },
+	]);
+	const savedKeys = await t.run(async (ctx) => {
+		const answers = await ctx.db
+			.query("userOnboardingAnswers")
+			.withIndex("by_userId", (query) => query.eq("userId", userId))
+			.take(20);
+		const keys: string[] = [];
+		for (const answer of answers) {
+			const question = await ctx.db.get(
+				"onboardingQuestions",
+				answer.questionId,
+			);
+			if (question) keys.push(question.key);
+		}
+		return keys.sort();
+	});
+	expect(savedKeys).toEqual([
+		"dailySchoolTime",
+		"grade",
+		"learningTime",
+		"schoolType",
+		"state",
+		"studyDays",
+	]);
+});
+
 test("compact onboarding persists profile context without inventing learning times", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });

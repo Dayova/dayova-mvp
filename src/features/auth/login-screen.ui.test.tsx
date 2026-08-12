@@ -64,8 +64,8 @@ const mockSetOnboardingAnswer = jest.fn();
 const mockOnboarding = {
 	answers: {
 		studyTime: "30",
-		challenge: "time_management",
-		goal: "stay_consistent",
+		studyDays: "Montag, Donnerstag, Samstag",
+		learningTime: "16:30",
 		state: "Sachsen",
 		schoolType: "prefer_not_to_say",
 		grade: "9",
@@ -187,12 +187,39 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => {
 	const ReactNative =
 		jest.requireActual<typeof import("react-native")>("react-native");
 	return {
-		DateTimePickerSheet: ({ onClose }: { onClose: () => void }) =>
-			React.createElement(ReactNative.Pressable, {
-				accessibilityLabel: "Testauswahl schließen",
-				accessibilityRole: "button",
-				onPress: onClose,
-			}),
+		DateTimePickerSheet: ({
+			visible,
+			onChange,
+			onClose,
+			onConfirm,
+		}: {
+			visible: boolean;
+			onChange: (event: { type: "set" }, date: Date) => void;
+			onClose: () => void;
+			onConfirm?: (date: Date) => void;
+		}) =>
+			visible
+				? React.createElement(
+						ReactNative.View,
+						null,
+						React.createElement(ReactNative.Pressable, {
+							accessibilityLabel: "Testzeit 18:05 auswählen",
+							accessibilityRole: "button",
+							onPress: () =>
+								onChange({ type: "set" }, new Date(2026, 0, 1, 18, 5, 0, 0)),
+						}),
+						React.createElement(ReactNative.Pressable, {
+							accessibilityLabel: "Testauswahl schließen",
+							accessibilityRole: "button",
+							onPress: onClose,
+						}),
+						React.createElement(ReactNative.Pressable, {
+							accessibilityLabel: "Testauswahl bestätigen",
+							accessibilityRole: "button",
+							onPress: () => onConfirm?.(new Date(2026, 0, 1, 18, 5, 0, 0)),
+						}),
+					)
+				: null,
 	};
 });
 
@@ -555,6 +582,9 @@ describe("OnboardingScreen", () => {
 		});
 		mockRouter.replace.mockReset();
 		mockSetOnboardingAnswer.mockReset();
+		mockOnboarding.answers.studyTime = "30";
+		mockOnboarding.answers.studyDays = "Montag, Donnerstag, Samstag";
+		mockOnboarding.answers.learningTime = "16:30";
 		mockOnboarding.answers.state = "Sachsen";
 		mockOnboarding.answers.schoolType = "prefer_not_to_say";
 		mockOnboarding.answers.grade = "9";
@@ -649,25 +679,54 @@ describe("OnboardingScreen", () => {
 		).toBeOnTheScreen();
 	});
 
-	test("shows the learner's answers in the personalized payoff", async () => {
+	test("shows the exact operational schedule before registration", async () => {
 		const screen = await render(
-			<OnboardingScreen initialStepId="personal-payoff" />,
+			<OnboardingScreen initialStepId="learning-time-payoff" />,
 		);
 
 		expect(
 			screen.getByRole("header", {
-				name: "Test, daraus wird dein persönlicher Weg.",
+				name: "Test, deine Lernzeiten sind vorbereitet.",
 			}),
 		).toBeOnTheScreen();
+		expect(screen.getByText("30 Minuten")).toBeOnTheScreen();
 		expect(
-			screen.getByText(
-				"Dayova plant mit deinen 30 Minuten mit einem Plan, der zu deiner echten Zeit passt, damit du verlässlich dranbleiben kannst.",
-			),
+			screen.getByText("Montag, Donnerstag und Samstag"),
 		).toBeOnTheScreen();
-		expect(
-			screen.getByText("Mir fehlt ein realistischer Plan"),
-		).toBeOnTheScreen();
-		expect(screen.getByText("Regelmäßig dranbleiben")).toBeOnTheScreen();
+		expect(screen.getByText("16:30–17:00 Uhr")).toBeOnTheScreen();
+	});
+
+	test("collects real recurring weekdays with multi-select semantics", async () => {
+		mockOnboarding.answers.studyDays = "";
+		const screen = await render(<OnboardingScreen initialStepId="studyDays" />);
+
+		const monday = screen.getByRole("checkbox", { name: "Montag" });
+		expect(monday.props.accessibilityState).toEqual({ checked: false });
+		await fireEvent.press(monday);
+		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyDays", "Montag");
+	});
+
+	test("collects the native start time instead of a decorative answer", async () => {
+		mockOnboarding.answers.learningTime = "";
+		const screen = await render(
+			<OnboardingScreen initialStepId="learningTime" />,
+		);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Startzeit auswählen" }),
+		);
+		expect(mockSetOnboardingAnswer).not.toHaveBeenCalled();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Testzeit 18:05 auswählen" }),
+		);
+		expect(mockSetOnboardingAnswer).not.toHaveBeenCalled();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Testauswahl bestätigen" }),
+		);
+		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith(
+			"learningTime",
+			"18:05",
+		);
 	});
 
 	test("never advances the study-time fact on a timer", async () => {
@@ -678,11 +737,15 @@ describe("OnboardingScreen", () => {
 			);
 
 			expect(
-				screen.getByRole("header", { name: "Deine Lernzeit reicht aus." }),
+				screen.getByRole("header", {
+					name: "Dein Lernplan braucht echte Zeitfenster.",
+				}),
 			).toBeOnTheScreen();
 			await act(async () => jest.advanceTimersByTime(10_000));
 			expect(
-				screen.getByRole("header", { name: "Deine Lernzeit reicht aus." }),
+				screen.getByRole("header", {
+					name: "Dein Lernplan braucht echte Zeitfenster.",
+				}),
 			).toBeOnTheScreen();
 		} finally {
 			jest.useRealTimers();

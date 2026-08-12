@@ -8,4 +8,4 @@ const getStudyTimeMinutes = (value: string) => {
 };
 
 export const getStudyTimeFactBody = (studyTime: string) =>
-	`Deine ${getStudyTimeMinutes(studyTime)} Minuten reichen aus, um sinnvoll zu starten. Dayova zerlegt deinen Prüfungsstoff in klare Lerneinheiten, die in diese Zeit passen.`;
+	`Wir verwenden ${getStudyTimeMinutes(studyTime)} Minuten als Dauer deiner ersten Lernzeiten. Als Nächstes wählst du die passenden Tage und deine Startzeit.`;

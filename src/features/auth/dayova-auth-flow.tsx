@@ -55,22 +55,29 @@ import {
 	getOnboardingRegistrationPayload,
 	getOnboardingStepDecision,
 } from "~/components/onboarding/onboarding-flow";
-import { OnboardingSelect } from "~/components/onboarding/onboarding-select";
 import {
-	getOnboardingOptionLabel,
-	getOnboardingPayoff,
-	ONBOARDING_CHALLENGE_OPTIONS,
-	ONBOARDING_GOAL_OPTIONS,
-} from "~/components/onboarding/onboarding-personalization";
+	dateForOnboardingTime,
+	formatOnboardingTime,
+	getDefaultOnboardingLearningStartTime,
+	getOnboardingLearningTimeSummary,
+	ONBOARDING_DURATION_OPTIONS,
+	parseOnboardingStudyDays,
+	toggleOnboardingStudyDay,
+} from "~/components/onboarding/onboarding-learning-times";
+import { OnboardingSelect } from "~/components/onboarding/onboarding-select";
 import { StudyTimeFactContent } from "~/components/onboarding/study-time-fact-content";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
+import {
+	type DateTimePickerEvent,
+	DateTimePickerSheet,
+} from "~/components/ui/date-time-picker-sheet";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	ArrowLeft,
 	Atom,
-	Bulb,
+	CalendarDays,
 	Check,
-	ClipboardList,
+	Clock3,
 	Globe,
 	GreekHelmet,
 	Palette,
@@ -91,6 +98,10 @@ import {
 	getOtpCellLayout,
 	getResponsiveAuthChoiceLayout,
 } from "~/features/auth/auth-content-size-layout";
+import {
+	LEARNING_DAYS,
+	type LearningDayLabel,
+} from "~/features/learning-times/learning-time-days";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { PASSWORD_RESET_SUCCESS_PATH } from "~/lib/auth-routing";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -157,17 +168,25 @@ type FactStep = {
 	description: string;
 };
 
-type ChoiceStep = {
-	kind: "choice";
-	id: "challenge" | "goal";
+type DaysStep = {
+	kind: "days";
+	id: "studyDays";
 	title: string;
 	description: string;
-	field: "challenge" | "goal";
+	field: "studyDays";
+};
+
+type TimeStep = {
+	kind: "time";
+	id: "learningTime";
+	title: string;
+	description: string;
+	field: "learningTime";
 };
 
 type PayoffStep = {
 	kind: "payoff";
-	id: "personal-payoff";
+	id: "learning-time-payoff";
 	title: string;
 	description: string;
 };
@@ -209,12 +228,11 @@ type OnboardingStep =
 	| IntroStep
 	| RangeStep
 	| FactStep
-	| ChoiceStep
+	| DaysStep
+	| TimeStep
 	| PayoffStep
 	| TextStep
 	| WheelStep;
-
-const STUDY_TIME_OPTIONS = [10, 15, 20, 25, 30, 45, 60, 90] as const;
 
 const INTRO_STEPS = [
 	{
@@ -257,36 +275,39 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 	{
 		kind: "range",
 		id: "studyTime",
-		title: "Wie viel lernst du aktuell pro Tag?",
-		description: "Eine ehrliche Schätzung reicht. Du kannst das später ändern.",
+		title: "Wie lange möchtest du pro Lerntag einplanen?",
+		description:
+			"Damit legst du die Dauer deiner ersten Lernzeiten fest. Du kannst sie später ändern.",
 		field: "studyTime",
-		values: STUDY_TIME_OPTIONS,
+		values: ONBOARDING_DURATION_OPTIONS,
 	},
 	{
 		kind: "fact",
 		id: "study-time-fact",
-		title: "Deine Lernzeit reicht aus.",
-		description: "Weiter geht es erst, wenn du bereit bist.",
+		title: "Dein Lernplan braucht echte Zeitfenster.",
+		description: "Dauer, Tage und Uhrzeit werden im Lernplan gespeichert.",
 	},
 	{
-		kind: "choice",
-		id: "challenge",
-		title: "Was macht Lernen gerade am schwierigsten?",
-		description: "Wähle den Punkt, der dich am häufigsten ausbremst.",
-		field: "challenge",
+		kind: "days",
+		id: "studyDays",
+		title: "An welchen Tagen kannst du lernen?",
+		description:
+			"Wähle alle passenden Tage. Für jeden entsteht dieselbe erste Lernzeit.",
+		field: "studyDays",
 	},
 	{
-		kind: "choice",
-		id: "goal",
-		title: "Was möchtest du zuerst verändern?",
-		description: "Ein klares erstes Ziel macht deinen Start persönlicher.",
-		field: "goal",
+		kind: "time",
+		id: "learningTime",
+		title: "Wann möchtest du an diesen Tagen starten?",
+		description:
+			"Dayova kombiniert diese Startzeit mit deiner gewählten Dauer.",
+		field: "learningTime",
 	},
 	{
 		kind: "payoff",
-		id: "personal-payoff",
-		title: "Dein Weg mit Dayova",
-		description: "Deine Antworten verändern, wie Dayova dich unterstützt.",
+		id: "learning-time-payoff",
+		title: "Deine Lernzeiten",
+		description: "Prüfe dein wiederkehrendes Zeitfenster.",
 	},
 	{
 		kind: "wheel",
@@ -1326,7 +1347,8 @@ function QuestionStepView({
 					>
 						{step.kind === "wheel" ? <WheelAnswer step={step} /> : null}
 						{step.kind === "range" ? <RangeAnswer step={step} /> : null}
-						{step.kind === "choice" ? <ChoiceAnswer step={step} /> : null}
+						{step.kind === "days" ? <StudyDaysAnswer /> : null}
+						{step.kind === "time" ? <LearningTimeAnswer /> : null}
 						{step.kind === "fact" ? (
 							<StudyTimeFactContent
 								title={step.title}
@@ -2581,63 +2603,49 @@ function RangeAnswer({ step }: { step: RangeStep }) {
 	);
 }
 
-function ChoiceAnswer({ step }: { step: ChoiceStep }) {
+function StudyDaysAnswer() {
 	const { answers, setAnswer } = useOnboarding();
-	const options =
-		step.field === "challenge"
-			? ONBOARDING_CHALLENGE_OPTIONS
-			: ONBOARDING_GOAL_OPTIONS;
+	const selectedDays = new Set(parseOnboardingStudyDays(answers.studyDays));
 
 	return (
-		<View className="w-full gap-3">
-			{options.map((option) => {
-				const isSelected = answers[step.field] === option.value;
+		<View className="w-full flex-row flex-wrap justify-center gap-3 px-2">
+			{LEARNING_DAYS.map((day) => {
+				const isSelected = selectedDays.has(day.label);
 				return (
 					<Pressable
-						key={option.value}
+						key={day.value}
 						accessibilityRole="checkbox"
-						accessibilityLabel={`${option.label}. ${option.description}`}
+						accessibilityLabel={day.label}
 						accessibilityState={{ checked: isSelected }}
-						onPress={() => {
-							if (step.field === "challenge") {
-								setAnswer(
-									"challenge",
-									option.value as typeof answers.challenge,
-								);
-								return;
-							}
-							setAnswer("goal", option.value as typeof answers.goal);
-						}}
+						onPress={() =>
+							setAnswer(
+								"studyDays",
+								toggleOnboardingStudyDay(
+									answers.studyDays,
+									day.label as LearningDayLabel,
+								),
+							)
+						}
 						className={cn(
-							"min-h-20 flex-row items-center rounded-[24px] border px-5 py-3 active:opacity-80",
+							"min-h-12 min-w-[100px] flex-row items-center justify-center rounded-full border px-5 py-3 active:opacity-80",
 							isSelected
-								? "border-primary/40 bg-accent"
+								? "border-primary bg-primary"
 								: "border-border bg-surface",
 						)}
 					>
-						<View className="flex-1 pr-4">
-							<Text
-								className={cn(
-									"font-poppins font-semibold text-body-3",
-									isSelected ? "text-primary" : "text-text",
-								)}
-							>
-								{option.label}
-							</Text>
-							<Text className="mt-0.5 font-poppins text-body-5 text-secondary-text">
-								{option.description}
-							</Text>
-						</View>
-						<View
-							className={cn(
-								"h-7 w-7 items-center justify-center rounded-full",
-								isSelected ? "bg-primary" : "border border-border bg-card",
-							)}
-						>
+						<View className="h-4 w-4 items-center justify-center">
 							{isSelected ? (
 								<Check size={16} color={COLORS.surface} strokeWidth={2.4} />
 							) : null}
 						</View>
+						<Text
+							className={cn(
+								"ml-2 font-poppins font-semibold text-body-3",
+								isSelected ? "text-surface" : "text-text",
+							)}
+						>
+							{day.label}
+						</Text>
 					</Pressable>
 				);
 			})}
@@ -2645,43 +2653,114 @@ function ChoiceAnswer({ step }: { step: ChoiceStep }) {
 	);
 }
 
+function LearningTimeAnswer() {
+	const { answers, setAnswer } = useOnboarding();
+	const { colors } = useDayovaTheme();
+	const [pickerVisible, setPickerVisible] = useState(false);
+	const [pendingTime, setPendingTime] = useState(() =>
+		dateForOnboardingTime(answers.learningTime),
+	);
+	const openPicker = () => {
+		setPendingTime(
+			dateForOnboardingTime(
+				answers.learningTime || getDefaultOnboardingLearningStartTime(),
+			),
+		);
+		setPickerVisible(true);
+	};
+	const updateTime = (event: DateTimePickerEvent, selectedDate?: Date) => {
+		if (event.type !== "set" || !selectedDate) return;
+		setPendingTime(selectedDate);
+	};
+	const confirmTime = (selectedDate: Date) => {
+		setAnswer("learningTime", formatOnboardingTime(selectedDate));
+	};
+
+	return (
+		<>
+			<Pressable
+				accessibilityRole="button"
+				accessibilityLabel={
+					answers.learningTime
+						? `Lernzeit beginnt um ${answers.learningTime} Uhr`
+						: "Startzeit auswählen"
+				}
+				accessibilityHint="Öffnet die native Uhrzeitauswahl"
+				onPress={openPicker}
+				className="min-h-24 w-full max-w-[345px] flex-row items-center rounded-[28px] border border-border bg-surface px-6 active:opacity-80"
+				style={{ borderCurve: "continuous" }}
+			>
+				<View className="h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+					<Clock3 size={24} color={colors.primary} strokeWidth={2} />
+				</View>
+				<View className="ml-4 flex-1">
+					<Text className="font-poppins text-body-5 text-secondary-text">
+						Start deiner Lernzeit
+					</Text>
+					<Text
+						className={cn(
+							"mt-1 font-poppins font-semibold text-heading-2",
+							answers.learningTime ? "text-text" : "text-secondary-text",
+						)}
+						style={{ fontVariant: ["tabular-nums"] }}
+					>
+						{answers.learningTime
+							? `${answers.learningTime} Uhr`
+							: "Uhrzeit auswählen"}
+					</Text>
+				</View>
+			</Pressable>
+
+			<DateTimePickerSheet
+				visible={pickerVisible}
+				value={pendingTime}
+				mode="time"
+				doneLabel="Zeit übernehmen"
+				onChange={updateTime}
+				onClose={() => setPickerVisible(false)}
+				onConfirm={confirmTime}
+			/>
+		</>
+	);
+}
+
 function PayoffAnswer() {
 	const { answers } = useOnboarding();
-	const payoff = getOnboardingPayoff(answers);
+	const firstName = answers.name.trim().split(/\s+/)[0] || "Du";
+	const schedule = getOnboardingLearningTimeSummary(answers);
 	const summary = [
 		{
-			label: `${answers.studyTime || "30"} Minuten`,
-			value: "deine echte Zeit",
-			icon: Bulb,
+			label: schedule.durationLabel,
+			value: "Dauer pro Lerntag",
+			icon: Clock3,
 		},
 		{
-			label: getOnboardingOptionLabel(
-				ONBOARDING_CHALLENGE_OPTIONS,
-				answers.challenge,
-			),
-			value: "dein größter Hebel",
-			icon: Route2,
+			label: schedule.daysLabel,
+			value: "deine wiederkehrenden Lerntage",
+			icon: CalendarDays,
 		},
 		{
-			label: getOnboardingOptionLabel(ONBOARDING_GOAL_OPTIONS, answers.goal),
-			value: "dein erstes Ziel",
-			icon: ClipboardList,
+			label: schedule.windowLabel,
+			value: "dein Zeitfenster",
+			icon: Clock3,
 		},
 	] as const;
 
 	return (
 		<View className="w-full items-center">
 			<View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-				<Route2 size={30} color={COLORS.primary} strokeWidth={2} />
+				<CalendarDays size={30} color={COLORS.primary} strokeWidth={2} />
 			</View>
 			<Text
 				accessibilityRole="header"
 				className="mt-5 max-w-[350px] text-center font-poppins font-semibold text-heading-1 text-text"
 			>
-				{payoff.heading}
+				{firstName}, deine Lernzeiten sind vorbereitet.
 			</Text>
 			<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
-				{payoff.body}
+				Dayova speichert diese Zeitfenster nach der Registrierung und nutzt sie
+				für die Planung deiner Lerntermine. In den Einstellungen kannst du sie
+				später einzeln ändern.
 			</Text>
 
 			<View className="mt-7 w-full gap-3">

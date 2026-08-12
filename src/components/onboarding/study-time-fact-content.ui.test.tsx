@@ -34,18 +34,20 @@ describe("StudyTimeFactContent", () => {
 	test("renders the selected study-time fact with a screen-reader heading", async () => {
 		const screen = await render(
 			<StudyTimeFactContent
-				title="Deine Lernzeit reicht aus"
+				title="Dein Lernplan braucht echte Zeitfenster"
 				studyTime="45 min"
 			/>,
 		);
 
 		expect(
-			screen.getByRole("header", { name: "Deine Lernzeit reicht aus" }),
+			screen.getByRole("header", {
+				name: "Dein Lernplan braucht echte Zeitfenster",
+			}),
 		).toBeOnTheScreen();
 		expect(screen.getByText("Schon gewusst?")).toBeOnTheScreen();
 		expect(
 			screen.getByText(
-				"Deine 45 Minuten reichen aus, um sinnvoll zu starten. Dayova zerlegt deinen Prüfungsstoff in klare Lerneinheiten, die in diese Zeit passen.",
+				"Wir verwenden 45 Minuten als Dauer deiner ersten Lernzeiten. Als Nächstes wählst du die passenden Tage und deine Startzeit.",
 			),
 		).toBeOnTheScreen();
 	});
