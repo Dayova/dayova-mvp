@@ -51,8 +51,6 @@ import {
 	getLearningPathNodePresentation,
 	LEARNING_PATH_BREATHING,
 	LEARNING_PATH_PHASE_ICON,
-	LEARNING_PATH_SEGMENTED_HALO_TONES,
-	type LearningPathNodeHalo,
 	type LearningPathNodeIcon,
 	type LearningPathNodeState,
 	type LearningPathNodeTone,
@@ -405,17 +403,13 @@ const STEP_SELECTION_HEIGHT = 86;
 const STEP_SELECTION_STROKE_WIDTH = 7;
 const STEP_HALO_PATH =
 	"M46 3.5C69.4721 3.5 88.5 21.1848 88.5 43C88.5 64.8152 69.4721 82.5 46 82.5C22.5279 82.5 3.5 64.8152 3.5 43C3.5 21.1848 22.5279 3.5 46 3.5Z";
-const STEP_SEGMENTED_HALO_PATHS = [
-	"M40 4C21.8 6.5 7.5 19.5 3.9 36.5",
-	"M52 4.1C69.5 6.2 83.5 18.8 87.6 35.2",
-	"M88.1 51.2C83.9 68.4 69.3 80.3 52 82",
-	"M39.7 81.4C22.1 78.8 8.1 66.2 4 49.8",
-] as const;
 
 function StepHalo({
-	variant,
+	testID,
+	tone,
 }: {
-	variant: Exclude<LearningPathNodeHalo, "none">;
+	testID: string;
+	tone: LearningPathNodeTone;
 }) {
 	return (
 		<Svg
@@ -425,37 +419,17 @@ function StepHalo({
 			viewBox={`0 0 ${STEP_SELECTION_WIDTH} ${STEP_SELECTION_HEIGHT}`}
 			style={{ position: "absolute", left: 0, top: 0 }}
 		>
-			{variant === "solid" ? (
-				<>
-					<Path
-						d={STEP_HALO_PATH}
-						fill="none"
-						stroke={DAYOVA_DESIGN_SYSTEM.colors.path4}
-						strokeWidth={STEP_SELECTION_STROKE_WIDTH}
-					/>
-					<Path
-						d={STEP_HALO_PATH}
-						fill="none"
-						stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
-						strokeWidth={3.5}
-					/>
-				</>
-			) : (
-				STEP_SEGMENTED_HALO_PATHS.map((path, index) => (
-					<Path
-						key={path}
-						d={path}
-						fill="none"
-						stroke={
-							LEARNING_PATH_SEGMENTED_HALO_TONES[index] === "blue"
-								? DAYOVA_DESIGN_SYSTEM.colors.path6
-								: DAYOVA_DESIGN_SYSTEM.colors.path1
-						}
-						strokeLinecap="round"
-						strokeWidth={STEP_SELECTION_STROKE_WIDTH}
-					/>
-				))
-			)}
+			<Path
+				d={STEP_HALO_PATH}
+				fill="none"
+				stroke={
+					tone === "blue"
+						? DAYOVA_DESIGN_SYSTEM.colors.path6
+						: DAYOVA_DESIGN_SYSTEM.colors.path1
+				}
+				strokeWidth={STEP_SELECTION_STROKE_WIDTH}
+				testID={testID}
+			/>
 		</Svg>
 	);
 }
@@ -660,13 +634,16 @@ function PathNode({
 			accessibilityHint={
 				isLocked
 					? "Zeigt den voraussichtlich folgenden Lernblock. Er kann sich nach der nächsten Session noch ändern."
-					: "Wählt diesen Lernblock aus. Über die Vorschau oben kannst du ihn starten oder ansehen."
+					: selected
+						? "Öffnet diesen Lernblock."
+						: "Wählt diesen Lernblock aus. Ein weiterer Tipp öffnet ihn."
 			}
 			accessibilityRole="button"
 			accessibilityState={{ selected }}
 			onPress={onPress}
 			className="absolute items-center justify-center"
 			style={position}
+			testID={`learning-path-node-${session.id}`}
 		>
 			<BreathingStep
 				enabled={presentation.motion === "breathe"}
@@ -674,7 +651,10 @@ function PathNode({
 				top={(frame.height - STEP_SELECTION_HEIGHT) / 2}
 			>
 				{presentation.halo !== "none" ? (
-					<StepHalo variant={presentation.halo} />
+					<StepHalo
+						testID={`learning-path-node-halo-${session.id}`}
+						tone={presentation.tone}
+					/>
 				) : null}
 				<View
 					style={{
@@ -694,6 +674,7 @@ function PathNode({
 export function LearningPath({
 	examCountdownLabel,
 	examDateLabel,
+	onOpenSession,
 	onSelectSession,
 	selectedSessionId,
 	sessions,
@@ -701,6 +682,7 @@ export function LearningPath({
 }: {
 	examCountdownLabel: string | null;
 	examDateLabel: string;
+	onOpenSession: (session: PlanSession) => void;
 	onSelectSession: (session: PlanSession) => void;
 	selectedSessionId: Id<"learningPlanSessions"> | null;
 	sessions: PlanSession[];
@@ -789,15 +771,22 @@ export function LearningPath({
 
 			{sessions.map((session, index) => {
 				const state = getPathNodeState(session, index, currentIndex);
+				const selected = session.id === selectedSessionId;
 
 				return (
 					<PathNode
 						key={session.id}
 						frame={getFigmaNodeFrame(index)}
-						selected={session.id === selectedSessionId}
+						selected={selected}
 						session={session}
 						state={state}
-						onPress={() => onSelectSession(session)}
+						onPress={() => {
+							if (selected && state !== "locked") {
+								onOpenSession(session);
+								return;
+							}
+							onSelectSession(session);
+						}}
 					/>
 				);
 			})}
@@ -1044,6 +1033,15 @@ export default function LearningPlanSessionsScreen() {
 						showsAdaptiveContinuation={
 							snapshot.plan.rollingPlanEnabled === true
 						}
+						onOpenSession={(session) => {
+							if (
+								!canOpenSelectedSession ||
+								session.id !== selectedSession.id
+							) {
+								return;
+							}
+							router.push(getSessionRoute(snapshot.plan.id, session.id));
+						}}
 						onSelectSession={(session) => setSelectedSessionId(session.id)}
 					/>
 				) : (
