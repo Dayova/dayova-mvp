@@ -62,10 +62,8 @@ type PreparedUploadAsset = {
 };
 
 type PendingUploadAction = "camera" | "files";
-type MaterialSourceKind = "school" | "external";
 type PendingUploadRequest = {
 	action: PendingUploadAction;
-	sourceKind: MaterialSourceKind;
 };
 type LearningPlanSetupStep = "requiredTopics" | "materialUpload";
 
@@ -97,6 +95,7 @@ export default function NewLearningPlanScreen() {
 		api.learningPlans.registerUploadedDocument,
 	);
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
+	const removePlan = useMutation(api.learningPlans.removePlan);
 
 	const subject = params.subject?.trim() || "Fach";
 	const examTypeLabel = params.examTypeLabel?.trim() || "Leistungskontrolle";
@@ -123,8 +122,6 @@ export default function NewLearningPlanScreen() {
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
-	const [uploadSourceKind, setUploadSourceKind] =
-		useState<MaterialSourceKind>("school");
 	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
 	const topicActionGateRef = useRef(createAsyncActionGate());
 	const [openingUploadAction, setOpeningUploadAction] =
@@ -186,7 +183,7 @@ export default function NewLearningPlanScreen() {
 		topicDescription = params.topicDescription ?? "",
 	) => {
 		if (learningPlanId) {
-			return learningPlanId;
+			return { id: learningPlanId, created: false };
 		}
 
 		if (!examDayEntryId) {
@@ -207,7 +204,13 @@ export default function NewLearningPlanScreen() {
 		);
 		setLearningPlanId(id);
 		router.setParams({ learningPlanId: id, step: "material" });
-		return id;
+		return { id, created: true };
+	};
+
+	const discardNewMateriallessPlan = async (id: Id<"learningPlans">) => {
+		await retryOnceAfterAuthResume(() => removePlan({ id }));
+		setLearningPlanId(null);
+		router.setParams({ learningPlanId: undefined, step: "material" });
 	};
 
 	const runWithErrorHandling = async (
@@ -241,11 +244,10 @@ export default function NewLearningPlanScreen() {
 
 	const uploadLearningPlanAsset = async (
 		preparedAsset: PreparedUploadAsset,
-		sourceKind: MaterialSourceKind,
 		existingLearningPlanId?: Id<"learningPlans">,
 	) => {
 		const id =
-			existingLearningPlanId ?? learningPlanId ?? (await ensurePlan(topics));
+			existingLearningPlanId ?? learningPlanId ?? (await ensurePlan(topics)).id;
 		const { asset, file, fileSizeBytes, fileType } = preparedAsset;
 
 		const uploadData = await retryOnceAfterAuthResume(() =>
@@ -346,7 +348,7 @@ export default function NewLearningPlanScreen() {
 				fileName: asset.name,
 				fileType,
 				fileSizeBytes,
-				sourceKind,
+				sourceKind: "school",
 			}),
 		);
 		const analyticsFileType =
@@ -359,7 +361,7 @@ export default function NewLearningPlanScreen() {
 		});
 	};
 
-	const uploadMaterial = async (sourceKind: MaterialSourceKind) => {
+	const uploadMaterial = async () => {
 		if (!canWrite || isBusy) {
 			setOpeningUploadAction(null);
 			return;
@@ -387,10 +389,18 @@ export default function NewLearningPlanScreen() {
 							size: asset.size,
 						}),
 					);
-					const id = await ensurePlan(topics);
-
-					for (const asset of preparedAssets) {
-						await uploadLearningPlanAsset(asset, sourceKind, id);
+					const { id, created } = await ensurePlan(topics);
+					let uploadedAny = false;
+					try {
+						for (const asset of preparedAssets) {
+							await uploadLearningPlanAsset(asset, id);
+							uploadedAny = true;
+						}
+					} catch (error) {
+						if (created && !uploadedAny) {
+							await discardNewMateriallessPlan(id);
+						}
+						throw error;
 					}
 				},
 			);
@@ -407,7 +417,7 @@ export default function NewLearningPlanScreen() {
 		}
 	};
 
-	const takePhoto = async (sourceKind: MaterialSourceKind) => {
+	const takePhoto = async () => {
 		if (!canWrite || isBusy) {
 			setOpeningUploadAction(null);
 			return;
@@ -435,15 +445,21 @@ export default function NewLearningPlanScreen() {
 			await runWithErrorHandling(
 				"Das Foto konnte nicht hochgeladen werden.",
 				async () => {
-					await uploadLearningPlanAsset(
-						prepareUploadAsset({
-							uri: asset.uri,
-							name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
-							mimeType: asset.mimeType ?? "image/jpeg",
-							size: asset.fileSize,
-						}),
-						sourceKind,
-					);
+					const { id, created } = await ensurePlan(topics);
+					try {
+						await uploadLearningPlanAsset(
+							prepareUploadAsset({
+								uri: asset.uri,
+								name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
+								mimeType: asset.mimeType ?? "image/jpeg",
+								size: asset.fileSize,
+							}),
+							id,
+						);
+					} catch (error) {
+						if (created) await discardNewMateriallessPlan(id);
+						throw error;
+					}
 				},
 			);
 		} catch (error) {
@@ -462,14 +478,11 @@ export default function NewLearningPlanScreen() {
 		setIsUploadSheetVisible(false);
 	};
 
-	const runUploadAction = (
-		action: PendingUploadAction,
-		sourceKind: MaterialSourceKind,
-	) => {
+	const runUploadAction = (action: PendingUploadAction) => {
 		if (action === "files") {
-			void uploadMaterial(sourceKind);
+			void uploadMaterial();
 		} else {
-			void takePhoto(sourceKind);
+			void takePhoto();
 		}
 	};
 
@@ -478,15 +491,12 @@ export default function NewLearningPlanScreen() {
 		setIsUploadSheetVisible(false);
 
 		if (process.env.EXPO_OS === "ios") {
-			pendingUploadRequestRef.current = {
-				action,
-				sourceKind: uploadSourceKind,
-			};
+			pendingUploadRequestRef.current = { action };
 			return;
 		}
 
 		pendingUploadRequestRef.current = null;
-		runUploadAction(action, uploadSourceKind);
+		runUploadAction(action);
 	};
 
 	const runPendingUploadAction = () => {
@@ -494,7 +504,7 @@ export default function NewLearningPlanScreen() {
 		pendingUploadRequestRef.current = null;
 		if (!request) return;
 
-		runUploadAction(request.action, request.sourceKind);
+		runUploadAction(request.action);
 	};
 
 	const continueToMaterial = async () => {
@@ -558,6 +568,26 @@ export default function NewLearningPlanScreen() {
 				);
 			},
 		);
+	};
+
+	const removeUploadedDocument = async (
+		documentId: Id<"learningPlanDocuments">,
+	) => {
+		const removedDocument = snapshot?.documents.find(
+			(document) => document.id === documentId,
+		);
+		const isLastSchoolDocument =
+			removedDocument?.sourceKind === "school" &&
+			snapshot?.documents.filter((document) => document.sourceKind === "school")
+				.length === 1;
+		await removeDocument({ id: documentId });
+		if (
+			learningPlanId &&
+			snapshot?.plan.status === "draft" &&
+			isLastSchoolDocument
+		) {
+			await discardNewMateriallessPlan(learningPlanId);
+		}
 	};
 
 	const goBack = () => {
@@ -628,11 +658,8 @@ export default function NewLearningPlanScreen() {
 							isBusy={isBusy}
 							isUploading={isUploading}
 							onContinue={continueToAnalysis}
-							onOpenUpload={(sourceKind) => {
-								setUploadSourceKind(sourceKind);
-								setIsUploadSheetVisible(true);
-							}}
-							onRemoveDocument={(id) => void removeDocument({ id })}
+							onOpenUpload={() => setIsUploadSheetVisible(true)}
+							onRemoveDocument={(id) => void removeUploadedDocument(id)}
 							onSkip={finishWithoutPlan}
 							openingUploadAction={openingUploadAction}
 							showSkip={!initialLearningPlanId}
@@ -643,16 +670,8 @@ export default function NewLearningPlanScreen() {
 
 			<ActionSheet
 				visible={isUploadSheetVisible}
-				title={
-					uploadSourceKind === "school"
-						? "Material von deiner Schule"
-						: "Zusätzliche Lernhilfe"
-				}
-				description={
-					uploadSourceKind === "school"
-						? "Scanne oder lade Unterlagen deiner Schule oder Lehrkraft hoch."
-						: "Lade eine zusätzliche Erklärung oder Lernhilfe hoch."
-				}
+				title="Material von deiner Schule"
+				description="Scanne oder lade Unterlagen deiner Schule oder Lehrkraft hoch."
 				onClose={closeUploadSheet}
 				onDismiss={runPendingUploadAction}
 				closeAccessibilityLabel="Hochladen schließen"

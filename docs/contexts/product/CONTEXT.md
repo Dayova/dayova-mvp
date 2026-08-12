@@ -144,7 +144,7 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 ## Contracts and Constraints
 
 - Saving an exam is independent from creating a `Persönlicher Lernplan`. Without uploaded school material, keep the exam and explain that uploading an `Interne Schulquelle` unlocks a plan; do not create plan sessions.
-- Learning-plan setup asks the learner for the required exam topics before school-material upload. Persist that answer on the exam entry so back navigation and later resume retain it. Do not create a `learningPlans` record, analyze material, or generate plan sessions until the learner uploads at least one `Interne Schulquelle`.
+- Learning-plan setup asks the learner for the required exam topics before school-material upload. Persist that answer on the exam entry so back navigation and later resume retain it. Do not retain a `learningPlans` record, analyze material, or generate plan sessions unless the learner successfully uploads at least one `Interne Schulquelle`; clean up a newly created upload draft when its first upload fails or its last school document is removed.
 - External learning aids and typed teacher guidance may enrich a plan but never satisfy the school-material requirement.
 - The confirmed exam scope should be an exhaustive map of distinct, assessable capabilities supported by internal school evidence, not a few broad chapter labels. Split broad areas into what the learner must explain and solve or apply, while never inventing or duplicating topics to reach a target count.
 - Learning-plan creation contains no knowledge-question or quiz step. Its first knowledge test is the scheduled, timed `Wissenscheck` with five to ten questions.

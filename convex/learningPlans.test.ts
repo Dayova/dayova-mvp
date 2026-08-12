@@ -1547,6 +1547,7 @@ test("removing a learning plan deletes synced sessions and detaches the exam ent
 	expect(examEntries["2026-06-05"]?.[0]).toMatchObject({
 		title: "Mathe Klausur",
 		kind: "Leistungskontrolle",
+		topicDescription: "Lineare Funktionen",
 	});
 	expect(examEntries["2026-06-05"]?.[0]).not.toHaveProperty(
 		"relatedLearningPlanId",

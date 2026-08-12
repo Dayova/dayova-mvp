@@ -168,7 +168,7 @@ export default function LearningPlanScopeScreen() {
 							)}
 						</Button>
 						<Button variant="neutral" disabled={isBusy} onPress={goBack}>
-							<Text>Hinweis ergänzen</Text>
+							<Text>Material ändern</Text>
 						</Button>
 					</View>
 				</View>

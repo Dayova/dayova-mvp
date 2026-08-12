@@ -959,6 +959,11 @@ export const updateBasics = mutation({
 			notes,
 			updatedAt: Date.now(),
 		});
+		if (plan.examDayEntryId) {
+			await ctx.db.patch("dayEntries", plan.examDayEntryId, {
+				topicDescription,
+			});
+		}
 	},
 });
 

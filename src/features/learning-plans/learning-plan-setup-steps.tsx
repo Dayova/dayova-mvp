@@ -10,7 +10,6 @@ import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
 
 type PendingUploadAction = "camera" | "files";
-type MaterialSourceKind = "school" | "external";
 
 function SetupContinueButton({
 	canContinue,
@@ -95,7 +94,7 @@ export function MaterialUploadStep({
 	isBusy: boolean;
 	isUploading: boolean;
 	onContinue: () => void;
-	onOpenUpload: (sourceKind: MaterialSourceKind) => void;
+	onOpenUpload: () => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
 	onSkip: () => void;
 	openingUploadAction: PendingUploadAction | null;
@@ -125,7 +124,7 @@ export function MaterialUploadStep({
 				}
 				accessibilityRole="button"
 				disabled={!canUpload}
-				onPress={() => onOpenUpload("school")}
+				onPress={onOpenUpload}
 				className="mt-7 min-h-[112px] flex-row items-center rounded-[32px] px-5 py-5"
 				variant="soft"
 			>
@@ -219,7 +218,7 @@ export function RequiredTopicsStep({
 			<Text className="font-poppins font-semibold text-body-1 text-text">
 				Welche Themen kommen in der Prüfung dran?
 			</Text>
-			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
+			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
 				Nenne alle Themen, die du für diese Prüfung lernen musst.
 			</Text>
 			<Textarea
