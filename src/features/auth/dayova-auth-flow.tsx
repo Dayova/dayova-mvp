@@ -2690,6 +2690,8 @@ function RangeAnswer({ step }: { step: RangeStep }) {
 			items={step.values}
 			selectedIndex={selectedIndex}
 			getItemKey={(value) => String(value)}
+			getItemPrimaryLabel={(value) => String(value)}
+			getItemProgress={(_, index) => (index + 1) / step.values.length}
 			primaryLabel={answers.studyTime || "–"}
 			secondaryLabel="Minuten"
 			progress={

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	type FlatList,
 	StyleSheet,
@@ -12,6 +12,7 @@ import Animated, {
 	useAnimatedStyle,
 	useSharedValue,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import Svg, { Circle } from "react-native-svg";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
@@ -31,6 +32,20 @@ const PROGRESS_RING_STROKE_WIDTH = 4;
 const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RING_RADIUS;
 const MINIMUM_PROGRESS = 0.16;
 
+export const getSnapCarouselPreviewIndex = ({
+	offsetX,
+	itemWidth,
+	lastIndex,
+}: {
+	offsetX: number;
+	itemWidth: number;
+	lastIndex: number;
+}) =>
+	Math.min(
+		Math.max(Math.round(offsetX / Math.max(itemWidth, 1)), 0),
+		lastIndex,
+	);
+
 type SnapCarouselSelectorBaseProps<Item> = {
 	accessibilityLabel: string;
 	accessibilityValue: string;
@@ -42,7 +57,9 @@ type SnapCarouselSelectorBaseProps<Item> = {
 	selectedIndex: number;
 };
 
-type SnapCarouselValueBubbleProps = {
+type SnapCarouselValueBubbleProps<Item> = {
+	getItemPrimaryLabel?: (item: Item, index: number) => string;
+	getItemProgress?: (item: Item, index: number) => number;
 	primaryLabel: string;
 	progress: number;
 	secondaryLabel: string;
@@ -58,7 +75,7 @@ type SnapCarouselTickLabelProps<Item> = {
 };
 
 type SnapCarouselSelectorProps<Item> = SnapCarouselSelectorBaseProps<Item> &
-	(SnapCarouselValueBubbleProps | SnapCarouselTickLabelProps<Item>);
+	(SnapCarouselValueBubbleProps<Item> | SnapCarouselTickLabelProps<Item>);
 
 function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 	const {
@@ -78,6 +95,8 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 					primaryLabel: props.primaryLabel,
 					progress: props.progress,
 					secondaryLabel: props.secondaryLabel,
+					getItemPrimaryLabel: props.getItemPrimaryLabel,
+					getItemProgress: props.getItemProgress,
 				};
 	const renderItemLabel =
 		props.showValueBubble === false ? props.renderItemLabel : undefined;
@@ -109,6 +128,32 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 			: Math.min(Math.max(valueBubbleConfig.progress, 0), 1);
 	const showValueBubble = valueBubbleConfig !== null;
 	const scrollX = useSharedValue(safeSelectedIndex * itemWidth);
+	const previewIndexOnUI = useSharedValue(safeSelectedIndex);
+	const [previewIndex, setPreviewIndex] = useState(safeSelectedIndex);
+	const safePreviewIndex = Math.min(Math.max(previewIndex, 0), lastIndex);
+	const previewItem = items[safePreviewIndex];
+	const previewPrimaryLabel =
+		valueBubbleConfig !== null &&
+		previewItem !== undefined &&
+		valueBubbleConfig.getItemPrimaryLabel
+			? valueBubbleConfig.getItemPrimaryLabel(previewItem, safePreviewIndex)
+			: valueBubbleConfig?.primaryLabel;
+	const previewProgress =
+		valueBubbleConfig !== null &&
+		previewItem !== undefined &&
+		valueBubbleConfig.getItemProgress
+			? valueBubbleConfig.getItemProgress(previewItem, safePreviewIndex)
+			: valueBubbleConfig?.progress;
+	const safePreviewProgress = Math.min(
+		Math.max(previewProgress ?? safeProgress, 0),
+		1,
+	);
+
+	const updatePreviewIndex = useCallback((nextIndex: number) => {
+		setPreviewIndex((currentIndex) =>
+			currentIndex === nextIndex ? currentIndex : nextIndex,
+		);
+	}, []);
 
 	const selectIndex = useCallback(
 		(nextIndex: number, animated = true) => {
@@ -127,15 +172,26 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 
 	useEffect(() => {
 		scrollX.set(safeSelectedIndex * itemWidth);
+		previewIndexOnUI.set(safeSelectedIndex);
 		listRef.current?.scrollToOffset({
 			offset: safeSelectedIndex * itemWidth,
 			animated: false,
 		});
-	}, [itemWidth, safeSelectedIndex, scrollX]);
+	}, [itemWidth, previewIndexOnUI, safeSelectedIndex, scrollX]);
 
 	const scrollHandler = useAnimatedScrollHandler({
 		onScroll: (event) => {
-			scrollX.set(event.contentOffset.x);
+			const nextOffset = event.contentOffset.x;
+			scrollX.set(nextOffset);
+			if (!showValueBubble) return;
+			const nextPreviewIndex = getSnapCarouselPreviewIndex({
+				offsetX: nextOffset,
+				itemWidth,
+				lastIndex,
+			});
+			if (nextPreviewIndex === previewIndexOnUI.get()) return;
+			previewIndexOnUI.set(nextPreviewIndex);
+			scheduleOnRN(updatePreviewIndex, nextPreviewIndex);
 		},
 	});
 
@@ -204,7 +260,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 							stroke={colors.primary}
 							strokeWidth={PROGRESS_RING_STROKE_WIDTH}
 							strokeLinecap="round"
-							strokeDasharray={`${Math.max(MINIMUM_PROGRESS, safeProgress) * CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`}
+							strokeDasharray={`${Math.max(MINIMUM_PROGRESS, safePreviewProgress) * CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`}
 							transform={`rotate(-90 ${PROGRESS_RING_CENTER} ${PROGRESS_RING_CENTER})`}
 						/>
 					</Svg>
@@ -221,7 +277,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 						]}
 					>
 						<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-							{valueBubbleConfig.primaryLabel}
+							{previewPrimaryLabel}
 						</Text>
 						<Text
 							className="text-center font-poppins font-semibold text-body-5 text-text"
@@ -259,6 +315,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 				style={{ width: carouselWidth }}
 			>
 				<Animated.FlatList
+					testID="snap-carousel-list"
 					ref={listRef}
 					data={items}
 					keyExtractor={getItemKey}

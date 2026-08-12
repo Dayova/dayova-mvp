@@ -100,6 +100,10 @@ The following constraints are part of the contract:
   the first indication that an empty answer is required.
 - Duration, weekday selection, and start time are mandatory operational input,
   not survey data. The visible confirmation must match the derived windows.
+- The duration carousel previews the currently centered duration and its ring
+  during the drag, before momentum or snapping settles. The persisted answer
+  changes only after the carousel settles. This preserves the direct feedback
+  of the original gesture slider without committing a transient drag value.
 - The native time picker keeps changes in draft state and persists an answer
   only after explicit confirmation. Cancelling the picker leaves the prior
   answer unchanged and cannot unlock the next step.
