@@ -62,6 +62,37 @@ The Android screenshots were captured in a development client. Its floating
 gear in the upper-right is a development-launcher overlay and is not rendered
 in a production build.
 
+### Weekday pill motion contract
+
+Selecting or unselecting a weekday uses a 180 ms ease-out transition. The
+background, border, label, and fixed-slot checkmark interpolate together;
+press-in and press-out add 80 ms and 120 ms scale feedback. The icon slot stays
+mounted in both states, so neither the pill nor the surrounding layout moves.
+When the operating system requests reduced motion, the semantic selected state
+still changes but the decorative transition is skipped.
+
+The same implementation was verified on both native platforms:
+
+- `ios-weekday-pill-animation.mp4`: Monday and Wednesday are selected and
+  unselected. Complete-timeline and 20 fps focused inspection show intermediate
+  fill/checkmark states at `00:10.05–00:10.20`, `00:11.85–00:12.00`,
+  `00:13.55–00:13.70`, and `00:15.25–00:15.35`. No pill geometry or neighboring
+  position changes.
+
+  > Coverage: 16.61-second video; 33 full-timeline frames sampled at 2 fps
+  > (0.5-second interval); 3 contact sheet(s); 107 additional frames from
+  > 00:00:10.000 to 00:00:16.500 at 20 fps; no audio stream.
+
+- `android-weekday-pill-animation.mp4`: Monday and Wednesday are selected and
+  unselected. Complete-timeline and 20 fps focused inspection show intermediate
+  fill/checkmark states at `00:01.40–00:01.50`, `00:02.50–00:02.65`,
+  `00:03.85–00:04.00`, and `00:05.10–00:05.15`. The fixed layout is preserved.
+  The floating gear is the development-launcher overlay described above.
+
+  > Coverage: 6.04-second video; 12 full-timeline frames sampled at 2 fps
+  > (0.5-second interval); 1 contact sheet(s); 94 additional frames from
+  > 00:00:00.500 to 00:00:05.200 at 20 fps; no audio stream.
+
 ### Supporting automated evidence
 
 - UI tests require explicit weekday input, hold picker changes as draft state,

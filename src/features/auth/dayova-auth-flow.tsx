@@ -25,6 +25,7 @@ import {
 	View,
 } from "react-native";
 import Animated, {
+	Easing,
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
@@ -34,22 +35,23 @@ import Animated, {
 	useAnimatedStyle,
 	useReducedMotion,
 	useSharedValue,
+	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { SvgProps } from "react-native-svg";
+import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
 import {
 	BIRTH_MONTH_OPTIONS,
 	getBirthDayValues,
 	getBirthMonthValues,
 	getBirthYearValues,
 } from "~/components/onboarding/birth-date";
-import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
-import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import {
 	getIntroDotWidth,
 	INTRO_DOT_COLLAPSED_WIDTH,
 	INTRO_DOT_EXPANDED_WIDTH,
 } from "~/components/onboarding/intro-pagination";
+import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import {
 	getNextOnboardingStepIndex,
 	getOnboardingRegistrationPayload,
@@ -123,6 +125,10 @@ import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
 const IntroPathArtwork = IntroPathSvg as unknown as ComponentType<SvgProps>;
 const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const STUDY_DAY_SELECTION_DURATION_MS = 180;
+const STUDY_DAY_PRESS_IN_DURATION_MS = 80;
+const STUDY_DAY_PRESS_OUT_DURATION_MS = 120;
 const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
 const CODE_LENGTH = 6;
 const OTP_CELL_KEYS = [
@@ -2603,52 +2609,122 @@ function RangeAnswer({ step }: { step: RangeStep }) {
 	);
 }
 
+function AnimatedStudyDayPill({
+	label,
+	isSelected,
+	onToggle,
+}: {
+	label: LearningDayLabel;
+	isSelected: boolean;
+	onToggle: () => void;
+}) {
+	const { colors } = useDayovaTheme();
+	const reducedMotion = useReducedMotion();
+	const selectionProgress = useSharedValue(isSelected ? 1 : 0);
+	const pressedScale = useSharedValue(1);
+
+	useEffect(() => {
+		const nextProgress = isSelected ? 1 : 0;
+		selectionProgress.set(
+			reducedMotion
+				? nextProgress
+				: withTiming(nextProgress, {
+						duration: STUDY_DAY_SELECTION_DURATION_MS,
+						easing: Easing.out(Easing.cubic),
+					}),
+		);
+	}, [isSelected, reducedMotion, selectionProgress]);
+
+	const pillStyle = useAnimatedStyle(() => ({
+		backgroundColor: interpolateColor(
+			selectionProgress.get(),
+			[0, 1],
+			[colors.surface, colors.primary],
+		),
+		borderColor: interpolateColor(
+			selectionProgress.get(),
+			[0, 1],
+			[colors.border, colors.primary],
+		),
+		transform: [{ scale: pressedScale.get() }],
+	}));
+	const checkStyle = useAnimatedStyle(() => {
+		const progress = selectionProgress.get();
+		return {
+			opacity: progress,
+			transform: [{ scale: 0.72 + progress * 0.28 }],
+		};
+	});
+	const labelStyle = useAnimatedStyle(() => ({
+		color: interpolateColor(
+			selectionProgress.get(),
+			[0, 1],
+			[colors.text, colors.surface],
+		),
+	}));
+
+	const setPressedScale = (scale: number, duration: number) => {
+		if (reducedMotion) return;
+		pressedScale.set(
+			withTiming(scale, {
+				duration,
+				easing: Easing.out(Easing.cubic),
+			}),
+		);
+	};
+
+	return (
+		<AnimatedPressable
+			accessibilityRole="checkbox"
+			accessibilityLabel={label}
+			accessibilityState={{ checked: isSelected }}
+			onPress={onToggle}
+			onPressIn={() => setPressedScale(0.97, STUDY_DAY_PRESS_IN_DURATION_MS)}
+			onPressOut={() => setPressedScale(1, STUDY_DAY_PRESS_OUT_DURATION_MS)}
+			className="min-h-12 min-w-[100px] flex-row items-center justify-center rounded-full border px-5 py-3"
+			// Runtime state and press feedback intentionally animate outside NativeWind.
+			style={pillStyle}
+		>
+			<View className="h-4 w-4 items-center justify-center">
+				<Animated.View style={checkStyle}>
+					<Check size={16} color={colors.surface} strokeWidth={2.4} />
+				</Animated.View>
+			</View>
+			<Animated.Text
+				className="ml-2 font-poppins font-semibold text-body-3"
+				style={[
+					Platform.select({ android: { includeFontPadding: false } }),
+					labelStyle,
+				]}
+			>
+				{label}
+			</Animated.Text>
+		</AnimatedPressable>
+	);
+}
+
 function StudyDaysAnswer() {
 	const { answers, setAnswer } = useOnboarding();
 	const selectedDays = new Set(parseOnboardingStudyDays(answers.studyDays));
 
 	return (
 		<View className="w-full flex-row flex-wrap justify-center gap-3 px-2">
-			{LEARNING_DAYS.map((day) => {
-				const isSelected = selectedDays.has(day.label);
-				return (
-					<Pressable
-						key={day.value}
-						accessibilityRole="checkbox"
-						accessibilityLabel={day.label}
-						accessibilityState={{ checked: isSelected }}
-						onPress={() =>
-							setAnswer(
-								"studyDays",
-								toggleOnboardingStudyDay(
-									answers.studyDays,
-									day.label as LearningDayLabel,
-								),
-							)
-						}
-						className={cn(
-							"min-h-12 min-w-[100px] flex-row items-center justify-center rounded-full border px-5 py-3 active:opacity-80",
-							isSelected
-								? "border-primary bg-primary"
-								: "border-border bg-surface",
-						)}
-					>
-						<View className="h-4 w-4 items-center justify-center">
-							{isSelected ? (
-								<Check size={16} color={COLORS.surface} strokeWidth={2.4} />
-							) : null}
-						</View>
-						<Text
-							className={cn(
-								"ml-2 font-poppins font-semibold text-body-3",
-								isSelected ? "text-surface" : "text-text",
-							)}
-						>
-							{day.label}
-						</Text>
-					</Pressable>
-				);
-			})}
+			{LEARNING_DAYS.map((day) => (
+				<AnimatedStudyDayPill
+					key={day.value}
+					label={day.label}
+					isSelected={selectedDays.has(day.label)}
+					onToggle={() =>
+						setAnswer(
+							"studyDays",
+							toggleOnboardingStudyDay(
+								answers.studyDays,
+								day.label as LearningDayLabel,
+							),
+						)
+					}
+				/>
+			))}
 		</View>
 	);
 }

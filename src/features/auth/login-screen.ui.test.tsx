@@ -98,8 +98,10 @@ jest.mock("react-native-reanimated", () => {
 			View: ReactNative.View,
 		},
 		Easing: {
+			cubic: jest.fn(),
 			inOut: (value: unknown) => value,
 			linear: jest.fn(),
+			out: (value: unknown) => value,
 			quad: jest.fn(),
 		},
 		FadeIn: animationBuilder,
