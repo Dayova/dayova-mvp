@@ -263,6 +263,10 @@ describe("learning-plan path", () => {
 				.width,
 		).toBe(60);
 		expect(
+			screen.getByTestId("learning-path-node-puck-session_current-face").props
+				.style.backgroundColor,
+		).toBe(DAYOVA_DESIGN_SYSTEM.colors.path1);
+		expect(
 			screen.getByTestId("learning-path-node-puck-session_preview").props.style
 				.width,
 		).toBe(52);

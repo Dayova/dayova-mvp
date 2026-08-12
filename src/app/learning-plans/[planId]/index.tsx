@@ -520,17 +520,13 @@ function StepPuck({
 	} = STEP_PUCK_DIMENSIONS[locked ? "compact" : "prominent"];
 	const baseColor = isCompleted
 		? DAYOVA_DESIGN_SYSTEM.colors.path5
-		: locked
-			? DAYOVA_DESIGN_SYSTEM.colors.pathLockedBase
-			: DAYOVA_DESIGN_SYSTEM.colors.path4;
+		: DAYOVA_DESIGN_SYSTEM.colors.pathLockedBase;
 	const faceColor = isCompleted
 		? DAYOVA_DESIGN_SYSTEM.colors.path6
-		: locked
-			? DAYOVA_DESIGN_SYSTEM.colors.path1
-			: DAYOVA_DESIGN_SYSTEM.colors.path3;
-	const iconColor = locked
-		? DAYOVA_DESIGN_SYSTEM.colors.path3
-		: DAYOVA_DESIGN_SYSTEM.colors.light1;
+		: DAYOVA_DESIGN_SYSTEM.colors.path1;
+	const iconColor = isCompleted
+		? DAYOVA_DESIGN_SYSTEM.colors.light1
+		: DAYOVA_DESIGN_SYSTEM.colors.path3;
 
 	return (
 		<View
@@ -572,6 +568,7 @@ function StepPuck({
 				}}
 			>
 				<View
+					testID={`${testID}-face`}
 					style={{
 						position: "absolute",
 						left: 4,
@@ -594,7 +591,7 @@ function StepPuck({
 							backgroundColor: isCompleted
 								? DAYOVA_DESIGN_SYSTEM.colors.path7
 								: DAYOVA_DESIGN_SYSTEM.colors.light1,
-							opacity: locked ? 0.2 : isCompleted ? 0.68 : 0.16,
+							opacity: isCompleted ? 0.68 : 0.2,
 							transform: [{ rotate: "31deg" }],
 						}}
 					/>
