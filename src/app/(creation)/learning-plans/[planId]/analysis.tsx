@@ -11,7 +11,7 @@ import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
+import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { dismissToOrReplace, goBackOrReplace } from "~/lib/navigation";
@@ -42,12 +42,22 @@ export default function LearningPlanAnalysisScreen() {
 		void retryAttempt;
 		if (!planId || !snapshot) return;
 
-		if (snapshot.plan.status === "generated") {
+		if (
+			snapshot.plan.status === "generated" &&
+			snapshot.plan.diagnosticPlacement === "firstSession"
+		) {
 			router.replace(planPath(planId, "review"));
 			return;
 		}
-		if (snapshot.plan.knowledgeQuestions.length > 0) {
-			router.replace(`/learning-plans/${planId}/quiz/0`);
+		if (
+			snapshot.plan.diagnosticPlacement === "firstSession" &&
+			snapshot.plan.knowledgeQuestions.length > 0
+		) {
+			router.replace(
+				snapshot.plan.scopeConfirmedAt
+					? planPath(planId, "generating")
+					: planPath(planId, "scope"),
+			);
 			return;
 		}
 		if (didStartRef.current) return;
@@ -60,14 +70,13 @@ export default function LearningPlanAnalysisScreen() {
 				.catch((error: unknown) => {
 					const message = getErrorMessage(
 						error,
-						"Die Wissensanalyse konnte nicht vorbereitet werden.",
+						"Deine Unterlagen konnten nicht zuverlässig analysiert werden.",
 					);
 					setErrorMessage(message);
 					didStartRef.current = false;
 					dismissToOrReplace(
 						router,
-						learningPlanTopicPath(planId, {
-							topicDescription: snapshot.plan.topicDescription,
+						learningPlanMaterialPath(planId, {
 							errorMessage: message,
 						}),
 					);
@@ -79,12 +88,12 @@ export default function LearningPlanAnalysisScreen() {
 	const goBack = () => {
 		goBackOrReplace(
 			router,
-			planId ? learningPlanTopicPath(planId) : "/learning-plans/new",
+			planId ? learningPlanMaterialPath(planId) : "/learning-plans/new",
 		);
 	};
 	useLearningPlanCreationProgress({
 		active: true,
-		currentStep: LEARNING_PLAN_CREATION_STEPS.topicDescription,
+		currentStep: LEARNING_PLAN_CREATION_STEPS.materialAnalysis,
 		onBack: goBack,
 	});
 
@@ -105,7 +114,12 @@ export default function LearningPlanAnalysisScreen() {
 						<AnimatedFlowerLoader />
 					</View>
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-						Beantworte 5 kurze Fragen – bei breitem Stoff höchstens 8.
+						Wir ordnen deine Schulunterlagen.
+					</Text>
+					<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
+						Dayova trennt wahrscheinlichen Prüfungsstoff von zusätzlichem
+						Material und bereitet den Wissenscheck für deinen ersten Lerntermin
+						vor.
 					</Text>
 					{errorMessage ? (
 						<>

@@ -36,9 +36,13 @@ import {
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
+import { learningPlanResumePath } from "~/features/learning-plans/creation-routes";
+import { LearningPlanCardFooter } from "~/features/learning-plans/learning-plan-card-footer";
+import { MaterialRequiredSheet } from "~/features/learning-plans/material-required-sheet";
+import { getRollingLearningWindowLabel } from "~/features/learning-plans/rolling-learning-window";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
@@ -62,9 +66,11 @@ type LearningPlanOverview = {
 	subject: string;
 	examTypeLabel: string;
 	status: "draft" | "questionsReady" | "generated" | "accepted";
+	needsSchoolMaterial: boolean;
 	progressPercent: number;
 	completedCount?: number;
 	sessionCount?: number;
+	upcomingSessionCount?: number;
 	examDateKey?: string;
 	examDateLabel?: string;
 	currentSession?: {
@@ -76,6 +82,7 @@ type LearningPlanOverview = {
 		startTime: string;
 		durationMinutes: number;
 		completed: boolean;
+		sessionPurpose?: "diagnostic" | "learning";
 	} | null;
 };
 
@@ -96,15 +103,8 @@ type DeleteTarget =
 	| { kind: "plan"; item: LearningPlanOverview }
 	| { kind: "homework"; item: HomeworkOverview };
 
-const getPlanHref = (plan: LearningPlanOverview) => {
-	if (plan.status === "draft") {
-		return `${ROUTES.createLearningPlan}?learningPlanId=${encodeURIComponent(plan.id)}` as const;
-	}
-	if (plan.status === "questionsReady") {
-		return `/learning-plans/${plan.id}/quiz/0` as const;
-	}
-	return `/learning-plans/${plan.id}` as const;
-};
+const getPlanHref = (plan: LearningPlanOverview) =>
+	learningPlanResumePath(plan.id, plan.status);
 
 const formatDateFromKey = (dayKey: string) => {
 	const date = parseDayKey(dayKey);
@@ -422,18 +422,34 @@ function LearningPlanCard({
 	onPress: () => void;
 }) {
 	const { colors } = useDayovaTheme();
+	const needsSchoolMaterial = plan.needsSchoolMaterial;
 	const progress = Math.max(0, Math.min(plan.progressPercent, 100));
-	const status = getStatus(plan, todayKey);
+	const rollingWindowLabel = getRollingLearningWindowLabel({
+		completedCount: plan.completedCount ?? 0,
+		upcomingCount:
+			plan.upcomingSessionCount ??
+			Math.max(0, (plan.sessionCount ?? 0) - (plan.completedCount ?? 0)),
+	});
+	const status = needsSchoolMaterial
+		? {
+				label: "Material fehlt",
+				background: STATUS_NEUTRAL_BACKGROUND,
+				foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
+			}
+		: getStatus(plan, todayKey);
 	const remainingDays = Math.max(
 		0,
 		plan.examDateKey
 			? (differenceInCalendarDays(plan.examDateKey, todayKey) ?? 0)
 			: 0,
 	);
-	const currentTitle =
-		plan.currentSession?.goal ||
-		plan.currentSession?.title ||
-		plan.examTypeLabel;
+	const currentTitle = needsSchoolMaterial
+		? "Lernmaterial hochladen"
+		: plan.currentSession?.sessionPurpose === "diagnostic"
+			? "Wissenscheck · 5–10 Fragen"
+			: plan.currentSession?.goal ||
+				plan.currentSession?.title ||
+				plan.examTypeLabel;
 	const [isActionRailVisible, setIsActionRailVisible] = useState(false);
 	const translateX = useSharedValue(0);
 	const gestureStartX = useSharedValue(0);
@@ -512,8 +528,16 @@ function LearningPlanCard({
 			<GestureDetector gesture={panGesture}>
 				<Animated.View style={cardAnimatedStyle}>
 					<NotchedActionCard
-						cardAccessibilityHint="Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
-						cardAccessibilityLabel={`${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`}
+						cardAccessibilityHint={
+							needsSchoolMaterial
+								? "Öffnet einen Hinweis und bietet an, Schulmaterial hochzuladen."
+								: "Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
+						}
+						cardAccessibilityLabel={
+							needsSchoolMaterial
+								? `${formatGermanUiText(plan.subject)}, Material fehlt, ${plan.examDateLabel ?? "Termin wird geladen"}, Lernmaterial hochladen`
+								: `${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${rollingWindowLabel}, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`
+						}
 						actionIcon={
 							<ArrowUpRight
 								size={24}
@@ -534,11 +558,13 @@ function LearningPlanCard({
 								</Text>
 								<View className="shrink-0 flex-row gap-2">
 									<Badge {...status} />
-									<Badge
-										label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
-										background={STATUS_NEUTRAL_BACKGROUND}
-										foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
-									/>
+									{needsSchoolMaterial ? null : (
+										<Badge
+											label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
+											background={STATUS_NEUTRAL_BACKGROUND}
+											foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
+										/>
+									)}
 								</View>
 							</View>
 
@@ -561,51 +587,18 @@ function LearningPlanCard({
 							</Text>
 						</View>
 
-						<View className="mt-4 w-full max-w-[300px] gap-1">
-							<View className="flex-row items-center">
-								<Text className="w-[172px] font-poppins text-body-4 text-secondary-text">
-									{`${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage`}
-								</Text>
-								<View className="flex-row items-center gap-1">
-									<ClipboardEdit
-										size={14}
-										color={colors.secondaryText}
-										strokeWidth={2}
-									/>
-									<Text className="font-poppins text-body-4 text-secondary-text">
-										{remainingDays === 1
-											? "noch 1 Tag"
-											: `noch ${remainingDays} Tage`}
-									</Text>
-								</View>
-							</View>
-							<View
-								accessibilityLabel={`${progress} Prozent abgeschlossen`}
-								accessibilityValue={{
-									max: 100,
-									min: 0,
-									now: progress,
-									text: `${progress} Prozent`,
-								}}
-								accessibilityRole="progressbar"
-								className="h-2 w-[258px] max-w-full overflow-hidden rounded-full bg-light-2"
-							>
-								<LinearGradient
-									colors={
-										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors
-									}
-									start={
-										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start
-									}
-									end={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end}
-									style={{
-										height: "100%",
-										width: `${Math.max(progress, progress > 0 ? 8 : 0)}%`,
-										borderRadius: 999,
-									}}
-								/>
-							</View>
-						</View>
+						{needsSchoolMaterial ? (
+							<Text className="mt-4 max-w-[282px] font-poppins text-body-4 text-secondary-text">
+								Lade Schulmaterial hoch, damit Dayova deinen Lernplan erstellen
+								kann.
+							</Text>
+						) : (
+							<LearningPlanCardFooter
+								progress={progress}
+								remainingDays={remainingDays}
+								rollingWindowLabel={rollingWindowLabel}
+							/>
+						)}
 					</NotchedActionCard>
 				</Animated.View>
 			</GestureDetector>
@@ -778,6 +771,8 @@ export default function LearningPlansScreen() {
 	const removeHomework = useMutation(api.dayEntries.remove);
 	const [activeTab, setActiveTab] = useState<PlanTab>("learningPlans");
 	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
+	const [materialUploadTarget, setMaterialUploadTarget] =
+		useState<LearningPlanOverview | null>(null);
 	const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -794,6 +789,20 @@ export default function LearningPlansScreen() {
 	);
 	const visiblePlans = plans ?? [];
 	const visibleHomework = homework ?? [];
+	const openPlan = (plan: LearningPlanOverview) => {
+		if (plan.needsSchoolMaterial) {
+			setMaterialUploadTarget(plan);
+			return;
+		}
+
+		router.push(getPlanHref(plan));
+	};
+	const continueToMaterialUpload = () => {
+		if (!materialUploadTarget) return;
+		const target = materialUploadTarget;
+		setMaterialUploadTarget(null);
+		router.push(getPlanHref(target));
+	};
 
 	const confirmDeletePlan = (plan: LearningPlanOverview) => {
 		setDeleteError(null);
@@ -874,7 +883,7 @@ export default function LearningPlansScreen() {
 				contentContainerStyle={{
 					paddingHorizontal: 24,
 					paddingTop: 0,
-					paddingBottom: Math.max(insets.bottom + 120, 150),
+					paddingBottom: Math.max(insets.bottom + 72, 104),
 				}}
 				showsVerticalScrollIndicator={false}
 			>
@@ -886,7 +895,7 @@ export default function LearningPlansScreen() {
 									key={plan.id}
 									plan={plan}
 									todayKey={todayKey}
-									onPress={() => router.push(getPlanHref(plan))}
+									onPress={() => openPlan(plan)}
 									onDelete={() => confirmDeletePlan(plan)}
 								/>
 							))
@@ -978,6 +987,11 @@ export default function LearningPlansScreen() {
 				visible={showCreateTypePicker}
 				onRequestClose={() => setShowCreateTypePicker(false)}
 				onSelect={selectCreateType}
+			/>
+			<MaterialRequiredSheet
+				onClose={() => setMaterialUploadTarget(null)}
+				onUpload={continueToMaterialUpload}
+				subject={materialUploadTarget?.subject ?? null}
 			/>
 			<ConfirmationSheet
 				visible={Boolean(deleteTarget)}

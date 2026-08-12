@@ -5,8 +5,12 @@ import type {
 } from "~/features/learning-plans/types";
 
 export type DayEntry = {
-	id: Id<"dayEntries"> | Id<"learningPlanSessions">;
+	id: Id<"dayEntries"> | Id<"learningPlanSessions"> | Id<"timetableLessons">;
+	relatedDayEntryId?: Id<"dayEntries">;
+	dayKey?: string;
+	source?: "timetable";
 	title?: unknown;
+	subject?: string;
 	time?: string;
 	kind?: string;
 	notes?: string;
@@ -15,6 +19,7 @@ export type DayEntry = {
 	plannedDateLabel?: string;
 	durationMinutes?: number;
 	examTypeLabel?: string;
+	topicDescription?: string;
 	completed?: boolean;
 	executionStatus?: SessionExecutionStatus;
 	startedAt?: number;

@@ -17,10 +17,12 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { AuthNavigationGate } from "~/components/auth-navigation-gate";
 import { NotificationSync } from "~/components/notification-sync";
+import { TrialReminderSync } from "~/components/trial-reminder-sync";
 import {
 	SheetAccessibilityProvider,
 	useSheetAccessibility,
 } from "~/components/ui/sheet-accessibility";
+import { AccessProvider } from "~/context/AccessContext";
 import { AuthProvider } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
 import {
@@ -42,6 +44,7 @@ function AppNavigator() {
 	return (
 		<>
 			<NotificationSync />
+			<TrialReminderSync />
 			<View
 				className="flex-1"
 				accessibilityElementsHidden={sheetAccessibility?.hasOpenSheet ?? false}
@@ -59,7 +62,32 @@ function AppNavigator() {
 						<Stack.Screen name="(auth)" options={{ animation: "none" }} />
 						<Stack.Screen name="(app)" options={{ animation: "none" }} />
 						<Stack.Screen
+							name="subscription"
+							options={{
+								animation: "slide_from_right",
+								gestureEnabled: true,
+								presentation: "card",
+							}}
+						/>
+						<Stack.Screen
+							name="pro-welcome"
+							options={{
+								animation: "none",
+								gestureEnabled: false,
+								presentation: "card",
+							}}
+						/>
+						<Stack.Screen
 							name="learning-times/edit"
+							options={{
+								animation: "slide_from_right",
+								contentStyle: { backgroundColor: colors.background },
+								gestureEnabled: true,
+								presentation: "card",
+							}}
+						/>
+						<Stack.Screen
+							name="timetable/index"
 							options={{
 								animation: "slide_from_right",
 								contentStyle: { backgroundColor: colors.background },
@@ -152,8 +180,10 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 										<SheetAccessibilityProvider>
 											<OnboardingProvider>
 												<AuthProvider>
-													<AnalyticsIdentity />
-													<AppNavigator />
+													<AccessProvider>
+														<AnalyticsIdentity />
+														<AppNavigator />
+													</AccessProvider>
 												</AuthProvider>
 											</OnboardingProvider>
 										</SheetAccessibilityProvider>

@@ -2,12 +2,18 @@ export type LearningContentPhase = "theory" | "practice" | "rehearsal";
 
 export type LearningTopicPriority = "high" | "medium" | "low";
 
+export type LearningEvidenceDimension =
+	| "understanding"
+	| "problemSolving"
+	| "independent";
+
 export type LearningTopic = {
 	id: string;
 	title: string;
 	learningGoal: string;
 	keywords: string[];
 	priority: LearningTopicPriority;
+	requiredEvidenceDimensions?: LearningEvidenceDimension[];
 };
 
 export type LearningQuestionAngle =
@@ -18,11 +24,7 @@ export type LearningQuestionAngle =
 	| "compare"
 	| "examTransfer";
 
-export type LearningQuestionKind =
-	| "learnCard"
-	| "multipleChoice"
-	| "written"
-	| "voice";
+export type LearningQuestionKind = "learnCard" | "multipleChoice" | "written";
 
 export type LearningQuestionBlueprint = {
 	coverageKey: string;
@@ -40,7 +42,7 @@ export type LearningContentBlock = {
 };
 
 const MAX_BLOCK_MINUTES = 10;
-const MIN_BLOCK_MINUTES = 5;
+const MIN_BLOCK_MINUTES = 3;
 
 const priorityRank: Record<LearningTopicPriority, number> = {
 	high: 0,
@@ -57,17 +59,19 @@ const questionAngles: LearningQuestionAngle[] = [
 	"examTransfer",
 ];
 
-const taskKinds: LearningQuestionKind[] = [
-	"multipleChoice",
-	"written",
-	"voice",
+const theoryPageAngles: LearningQuestionAngle[] = [
+	"recall",
+	"recognize",
+	"apply",
+	"findError",
 ];
 
+const taskKinds: LearningQuestionKind[] = ["multipleChoice", "written"];
+
 const estimatedSecondsForKind: Record<LearningQuestionKind, number> = {
-	learnCard: 240,
+	learnCard: 150,
 	multipleChoice: 240,
 	written: 360,
-	voice: 300,
 };
 
 const splitIntoBlockDurations = (
@@ -80,7 +84,7 @@ const splitIntoBlockDurations = (
 		!Number.isInteger(maxBlockMinutes) ||
 		maxBlockMinutes < MIN_BLOCK_MINUTES
 	) {
-		throw new Error("A learning segment must last at least five minutes.");
+		throw new Error("A learning segment must last at least three minutes.");
 	}
 
 	const durations: number[] = [];
@@ -126,19 +130,63 @@ const createQuestions = ({
 	let plannedSeconds = 0;
 	let questionIndex = startIndex;
 
+	if (phase === "practice" && durationMinutes === 3) {
+		const validationBlueprints = [
+			{ angle: "apply" as const, kind: "written" as const },
+		];
+		for (const [validationIndex, blueprint] of validationBlueprints.entries()) {
+			const topic = topics[(startIndex + validationIndex) % topics.length];
+			if (!topic)
+				throw new Error("A learning content plan needs at least one topic.");
+			const cycle = Math.floor(
+				(startIndex + validationIndex) /
+					Math.max(topics.length * questionAngles.length, 1),
+			);
+			const coverageKey = `${topic.id}:${blueprint.angle}:validation:${cycle}`;
+			if (excludedCoverageKeys.has(coverageKey)) continue;
+			excludedCoverageKeys.add(coverageKey);
+			questions.push({
+				coverageKey,
+				topic,
+				angle: blueprint.angle,
+				kind: blueprint.kind,
+				estimatedSeconds: durationMinutes * 60,
+			});
+		}
+		return {
+			questions,
+			nextIndex: startIndex + validationBlueprints.length,
+		};
+	}
+
 	while (plannedSeconds < targetSeconds) {
+		const remainingSeconds = targetSeconds - plannedSeconds;
+		if (phase !== "theory" && questions.length > 0 && remainingSeconds < 120) {
+			const lastQuestion = questions.at(-1);
+			if (lastQuestion) lastQuestion.estimatedSeconds += remainingSeconds;
+			plannedSeconds = targetSeconds;
+			break;
+		}
 		const globalIndex = questionIndex;
 		questionIndex += 1;
-		const topic = topics[globalIndex % topics.length];
+		const topicIndex =
+			phase === "theory"
+				? Math.floor(globalIndex / theoryPageAngles.length)
+				: globalIndex;
+		const topic = topics[topicIndex % topics.length];
 		if (!topic)
 			throw new Error("A learning content plan needs at least one topic.");
 		const angle =
-			questionAngles[
-				Math.floor(globalIndex / topics.length) % questionAngles.length
-			] ?? "apply";
-		const cycle = Math.floor(
-			globalIndex / Math.max(topics.length * questionAngles.length, 1),
-		);
+			phase === "theory"
+				? (theoryPageAngles[globalIndex % theoryPageAngles.length] ?? "recall")
+				: (questionAngles[
+						Math.floor(globalIndex / topics.length) % questionAngles.length
+					] ?? "apply");
+		const cycleLength =
+			phase === "theory"
+				? topics.length * theoryPageAngles.length
+				: topics.length * questionAngles.length;
+		const cycle = Math.floor(globalIndex / Math.max(cycleLength, 1));
 		const kind = questionKindFor(phase, globalIndex);
 		const estimatedSeconds = Math.min(
 			estimatedSecondsForKind[kind],

@@ -2,7 +2,10 @@ import { View, type ViewProps } from "react-native";
 import { BackButton } from "~/components/ui/button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
-import { LEARNING_PLAN_CREATION_TOTAL_STEPS } from "~/features/learning-plans/creation-progress";
+import {
+	getLearningPlanCreationProgressPercentage,
+	LEARNING_PLAN_CREATION_TOTAL_STEPS,
+} from "~/features/learning-plans/creation-progress";
 import { cn } from "~/lib/utils";
 
 export function LearningPlanCreationProgressHeader({
@@ -16,10 +19,12 @@ export function LearningPlanCreationProgressHeader({
 	onBack: () => void;
 	title?: string;
 }) {
-	const safeStep = Math.min(
-		Math.max(Math.trunc(currentStep), 1),
+	const safeProgress = Math.min(
+		Math.max(currentStep, 1),
 		LEARNING_PLAN_CREATION_TOTAL_STEPS,
 	);
+	const progressPercentage =
+		getLearningPlanCreationProgressPercentage(safeProgress);
 
 	return (
 		<View className={cn("flex-row items-center gap-4", className)} {...props}>
@@ -38,17 +43,17 @@ export function LearningPlanCreationProgressHeader({
 						// Tabular figures are a native text-rendering setting, not static layout.
 						style={{ fontVariant: ["tabular-nums"] }}
 					>
-						{safeStep} von {LEARNING_PLAN_CREATION_TOTAL_STEPS}
+						{progressPercentage} %
 					</Text>
 				</View>
 				<FlowProgressBar
-					progress={safeStep / LEARNING_PLAN_CREATION_TOTAL_STEPS}
+					progress={safeProgress / LEARNING_PLAN_CREATION_TOTAL_STEPS}
 					accessibilityRole="progressbar"
 					accessibilityValue={{
-						min: 1,
-						max: LEARNING_PLAN_CREATION_TOTAL_STEPS,
-						now: safeStep,
-						text: `Schritt ${safeStep} von ${LEARNING_PLAN_CREATION_TOTAL_STEPS}`,
+						min: 0,
+						max: 100,
+						now: progressPercentage,
+						text: `Fortschritt ${progressPercentage} Prozent`,
 					}}
 				/>
 			</View>

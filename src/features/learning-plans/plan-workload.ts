@@ -1,15 +1,19 @@
+import { calculateAvailableStudyMinutes } from "#convex/learningPlanAvailability";
+import {
+	getDefaultPreparationDepth,
+	type PreparationDepth,
+	recommendLearningPreparation,
+} from "#convex/learningPreparationPolicy";
+
+export { calculateAvailableStudyMinutes };
+
 const MIN_TOTAL_STUDY_MINUTES = 30;
 const MAX_TOTAL_STUDY_MINUTES = 180;
+export const MIN_ROLLING_HORIZON_MINUTES = 20;
 
 const roundToTen = (minutes: number) => Math.round(minutes / 10) * 10;
 
-const parseTimeToMinutes = (time: string) => {
-	const [hours, minutes] = time.split(":").map(Number);
-	if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
-	return (hours ?? 0) * 60 + (minutes ?? 0);
-};
-
-export const calculateAvailableStudyMinutes = ({
+export const shouldRequestLearningTimeBeforeExam = ({
 	fromDateKey,
 	examDateKey,
 	learningTimes,
@@ -21,26 +25,68 @@ export const calculateAvailableStudyMinutes = ({
 		startTime: string;
 		endTime: string;
 	}>;
+}) =>
+	examDateKey > fromDateKey &&
+	calculateAvailableStudyMinutes({
+		fromDateKey,
+		examDateKey,
+		learningTimes,
+	}) < MIN_ROLLING_HORIZON_MINUTES;
+
+export const shouldShowLearningTimeValidation = ({
+	fromDateKey,
+	examDateKey,
+}: {
+	fromDateKey: string;
+	examDateKey: string;
+}) => examDateKey > fromDateKey;
+
+export const getAutomaticLearningPreparation = ({
+	examTypeLabel,
+	examDurationMinutes,
+	preparationDepth,
+	topicCount,
+	answerCount,
+	topicReadiness,
+	availableMinutes,
+}: {
+	examTypeLabel: string;
+	examDurationMinutes: number;
+	preparationDepth?: PreparationDepth;
+	topicCount: number;
+	answerCount: number;
+	topicReadiness: Array<{
+		status: "secure" | "developing" | "unknown";
+	}>;
+	availableMinutes: number;
 }) => {
-	const cursor = new Date(`${fromDateKey}T00:00:00.000Z`);
-	const examDate = new Date(`${examDateKey}T00:00:00.000Z`);
-	if (Number.isNaN(cursor.getTime()) || Number.isNaN(examDate.getTime()))
-		return 0;
+	const resolvedPreparationDepth =
+		preparationDepth ?? getDefaultPreparationDepth(examTypeLabel);
+	const assessedTopicCount = Math.max(topicCount, answerCount);
+	const secure = topicReadiness.filter(
+		(topic) => topic.status === "secure",
+	).length;
+	const developing = topicReadiness.filter(
+		(topic) => topic.status === "developing",
+	).length;
+	const unknown = topicReadiness.filter(
+		(topic) => topic.status === "unknown",
+	).length;
 
-	let availableMinutes = 0;
-	while (cursor < examDate) {
-		const dayOfWeek = cursor.getUTCDay() || 7;
-		for (const learningTime of learningTimes) {
-			if (learningTime.dayOfWeek !== dayOfWeek) continue;
-			const start = parseTimeToMinutes(learningTime.startTime);
-			const end = parseTimeToMinutes(learningTime.endTime);
-			if (start === null || end === null || end - start < 10) continue;
-			availableMinutes += Math.min(120, end - start);
-		}
-		cursor.setUTCDate(cursor.getUTCDate() + 1);
-	}
-
-	return availableMinutes;
+	return {
+		preparationDepth: resolvedPreparationDepth,
+		recommendation: recommendLearningPreparation({
+			examTypeLabel,
+			examDurationMinutes,
+			preparationDepth: resolvedPreparationDepth,
+			topicReadiness: {
+				secure,
+				developing,
+				unknown: Math.max(unknown, assessedTopicCount - topicReadiness.length),
+			},
+			availableMinutes,
+		}),
+	};
 };
 
 const isUncertainAnswer = (answer: string) => {

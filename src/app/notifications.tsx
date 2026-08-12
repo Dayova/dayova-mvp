@@ -49,7 +49,7 @@ type InboxCategory = "all" | "learningPlan" | "task";
 type InboxNotification = {
 	id: Id<"notificationHistory">;
 	category: "learningPlan" | "task" | "message";
-	type: "dailyBriefing" | "beforeEvent" | "forgottenEvent";
+	type: "dailyBriefing" | "beforeEvent" | "forgottenEvent" | "trialEnding";
 	title: string;
 	body: string;
 	triggeredAt: number;

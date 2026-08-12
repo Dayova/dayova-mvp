@@ -9,6 +9,7 @@ type SuccessConfirmationScreenProps = {
 	title: string;
 	detailLabel: string;
 	detailValue?: string;
+	description?: string;
 	onFinish: () => void;
 };
 
@@ -16,6 +17,7 @@ function SuccessConfirmationScreen({
 	title,
 	detailLabel,
 	detailValue,
+	description,
 	onFinish,
 }: SuccessConfirmationScreenProps) {
 	const insets = useSafeAreaInsets();
@@ -56,6 +58,11 @@ function SuccessConfirmationScreen({
 						</Text>
 					) : null}
 				</View>
+				{description ? (
+					<Text className="mt-5 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
+						{description}
+					</Text>
+				) : null}
 			</View>
 
 			<View

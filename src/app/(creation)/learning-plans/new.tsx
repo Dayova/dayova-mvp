@@ -1,3 +1,4 @@
+import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
@@ -5,8 +6,7 @@ import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, useWindowDimensions } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
+import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
@@ -19,12 +19,12 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import {
+	examEntrySuccessPath,
 	learningPlanStepPath,
-	learningPlanTopicPath,
 } from "~/features/learning-plans/creation-routes";
 import {
 	MaterialUploadStep,
-	TopicDescriptionStep,
+	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
 import type {
 	LearningPlanSnapshot,
@@ -38,12 +38,17 @@ import {
 	parseDateKey,
 	retryOnceAfterAuthResume,
 } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { getValidationFileSizeBucket } from "~/lib/analytics";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { logDiagnosticError } from "~/lib/diagnostics";
-import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
-import { ROUTES, withReturnTo } from "~/lib/routes";
+import {
+	dismissToOrReplace,
+	goBackOrReplace,
+	useBackIntent,
+} from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
 const UPLOAD_TIMEOUT_MS = 45_000;
 const UPLOAD_COMPLETION_FAILURE_MESSAGE =
@@ -57,11 +62,13 @@ type PreparedUploadAsset = {
 };
 
 type PendingUploadAction = "camera" | "files";
-type LearningPlanSetupStep = "materialUpload" | "topicDescription";
+type PendingUploadRequest = {
+	action: PendingUploadAction;
+};
+type LearningPlanSetupStep = "requiredTopics" | "materialUpload";
 
 export default function NewLearningPlanScreen() {
 	const router = useRouter();
-	const { width: windowWidth } = useWindowDimensions();
 	const params = useLocalSearchParams<{
 		step?: string;
 		learningPlanId?: string;
@@ -72,18 +79,23 @@ export default function NewLearningPlanScreen() {
 		examDateLabel?: string;
 		durationMinutes?: string;
 		topicDescription?: string;
+		teacherGuidance?: string;
 		errorMessage?: string;
 	}>();
 	const { user } = useAuthSession();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const updateExamTopics = useMutation(api.dayEntries.updateExamTopics);
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
-	const updateBasics = useMutation(api.learningPlans.updateBasics);
+	const updateRequiredTopics = useMutation(
+		api.learningPlans.updateRequiredTopics,
+	);
 	const generateUploadUrl = useMutation(api.learningPlans.generateUploadUrl);
 	const registerUploadedDocument = useAction(
 		api.learningPlans.registerUploadedDocument,
 	);
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
+	const removePlan = useMutation(api.learningPlans.removePlan);
 
 	const subject = params.subject?.trim() || "Fach";
 	const examTypeLabel = params.examTypeLabel?.trim() || "Leistungskontrolle";
@@ -98,17 +110,20 @@ export default function NewLearningPlanScreen() {
 
 	const [learningPlanId, setLearningPlanId] =
 		useState<Id<"learningPlans"> | null>(initialLearningPlanId ?? null);
-	const [setupStep, setSetupStep] = useState<LearningPlanSetupStep>(() =>
-		params.step === "topic" || params.errorMessage
-			? "topicDescription"
-			: "materialUpload",
+	const [setupStep, setSetupStep] = useState<LearningPlanSetupStep>(() => {
+		if (params.step === "topic") return "requiredTopics";
+		if (params.step === "material" || params.errorMessage)
+			return "materialUpload";
+		return initialLearningPlanId ? "materialUpload" : "requiredTopics";
+	});
+	const [topicsInput, setTopicsInput] = useState<string | null>(
+		params.topicDescription ?? params.teacherGuidance ?? null,
 	);
-	const [topicDescriptionInput, setTopicDescriptionInput] = useState<
-		string | null
-	>(params.topicDescription ?? null);
 	const [isBusy, setIsBusy] = useState(false);
+	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
-	const pendingUploadActionRef = useRef<PendingUploadAction | null>(null);
+	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
+	const topicActionGateRef = useRef(createAsyncActionGate());
 	const [openingUploadAction, setOpeningUploadAction] =
 		useState<PendingUploadAction | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(
@@ -122,27 +137,29 @@ export default function NewLearningPlanScreen() {
 			? { id: learningPlanId }
 			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
-	const learningTimes = useQuery(
-		api.learningTimes.listMine,
-		user && isConvexAuthenticated && learningPlanId ? {} : "skip",
-	);
 	const canWrite = Boolean(user && isConvexAuthenticated);
-	const topicDescription =
-		topicDescriptionInput ?? snapshot?.plan.topicDescription ?? "";
-	const canContinueUpload = canWrite && !isBusy && !openingUploadAction;
-	const canContinueTopic =
-		Boolean(learningPlanId) &&
-		topicDescription.trim().length >= 8 &&
+	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
+	const hasSchoolMaterial = Boolean(
+		snapshot?.documents.some((document) => document.sourceKind === "school"),
+	);
+	const isPlanSnapshotLoading = Boolean(learningPlanId && snapshot === null);
+	const canUpload =
 		canWrite &&
-		!isBusy;
-	const showLearningTimesWarning =
-		learningTimes !== undefined && learningTimes.length === 0;
+		!isBusy &&
+		!openingUploadAction &&
+		!isPlanSnapshotLoading &&
+		isMeaningfulTopicDescription(topics);
+	const canContinueTopics =
+		canWrite &&
+		!isBusy &&
+		!openingUploadAction &&
+		isMeaningfulTopicDescription(topics);
+	const canContinueUpload =
+		Boolean(learningPlanId) && hasSchoolMaterial && canUpload;
 	const currentProgressStep =
-		setupStep === "materialUpload"
-			? LEARNING_PLAN_CREATION_STEPS.materialUpload
-			: LEARNING_PLAN_CREATION_STEPS.topicDescription;
-	const uploadArtworkWidth = Math.min(Math.max(windowWidth - 64, 240), 345);
-	const uploadArtworkHeight = (uploadArtworkWidth * 313) / 345;
+		setupStep === "requiredTopics"
+			? LEARNING_PLAN_CREATION_STEPS.examTopics
+			: LEARNING_PLAN_CREATION_STEPS.materialUpload;
 
 	useEffect(() => {
 		if (!hasExamEntry) {
@@ -151,18 +168,22 @@ export default function NewLearningPlanScreen() {
 	}, [hasExamEntry, router]);
 
 	useEffect(() => {
-		if (params.step === "topic" || params.errorMessage) {
+		if (params.step === "topic") {
 			// eslint-disable-next-line react-hooks/set-state-in-effect -- Route params can change while this screen remains mounted.
-			setSetupStep("topicDescription");
+			setSetupStep("requiredTopics");
+		} else if (params.step === "material" || params.errorMessage) {
+			setSetupStep("materialUpload");
 		}
 		if (params.errorMessage) {
 			setErrorMessage(params.errorMessage);
 		}
 	}, [params.errorMessage, params.step]);
 
-	const ensurePlan = async () => {
+	const ensurePlan = async (
+		topicDescription = params.topicDescription ?? "",
+	) => {
 		if (learningPlanId) {
-			return learningPlanId;
+			return { id: learningPlanId, created: false };
 		}
 
 		if (!examDayEntryId) {
@@ -177,12 +198,19 @@ export default function NewLearningPlanScreen() {
 				examDateKey,
 				examDateLabel,
 				durationMinutes,
-				topicDescription: params.topicDescription ?? "",
+				topicDescription,
 				notes: "",
 			}),
 		);
 		setLearningPlanId(id);
-		return id;
+		router.setParams({ learningPlanId: id, step: "material" });
+		return { id, created: true };
+	};
+
+	const discardNewMateriallessPlan = async (id: Id<"learningPlans">) => {
+		await retryOnceAfterAuthResume(() => removePlan({ id }));
+		setLearningPlanId(null);
+		router.setParams({ learningPlanId: undefined, step: "material" });
 	};
 
 	const runWithErrorHandling = async (
@@ -218,7 +246,8 @@ export default function NewLearningPlanScreen() {
 		preparedAsset: PreparedUploadAsset,
 		existingLearningPlanId?: Id<"learningPlans">,
 	) => {
-		const id = existingLearningPlanId ?? (await ensurePlan());
+		const id =
+			existingLearningPlanId ?? learningPlanId ?? (await ensurePlan(topics)).id;
 		const { asset, file, fileSizeBytes, fileType } = preparedAsset;
 
 		const uploadData = await retryOnceAfterAuthResume(() =>
@@ -319,6 +348,7 @@ export default function NewLearningPlanScreen() {
 				fileName: asset.name,
 				fileType,
 				fileSizeBytes,
+				sourceKind: "school",
 			}),
 		);
 		const analyticsFileType =
@@ -347,6 +377,7 @@ export default function NewLearningPlanScreen() {
 			setOpeningUploadAction(null);
 			if (result.canceled) return;
 
+			setIsUploading(true);
 			await runWithErrorHandling(
 				"Die Datei konnte nicht hochgeladen werden.",
 				async () => {
@@ -358,10 +389,18 @@ export default function NewLearningPlanScreen() {
 							size: asset.size,
 						}),
 					);
-					const id = await ensurePlan();
-
-					for (const asset of preparedAssets) {
-						await uploadLearningPlanAsset(asset, id);
+					const { id, created } = await ensurePlan(topics);
+					let uploadedAny = false;
+					try {
+						for (const asset of preparedAssets) {
+							await uploadLearningPlanAsset(asset, id);
+							uploadedAny = true;
+						}
+					} catch (error) {
+						if (created && !uploadedAny) {
+							await discardNewMateriallessPlan(id);
+						}
+						throw error;
 					}
 				},
 			);
@@ -373,6 +412,7 @@ export default function NewLearningPlanScreen() {
 				),
 			);
 		} finally {
+			setIsUploading(false);
 			setOpeningUploadAction(null);
 		}
 	};
@@ -401,17 +441,25 @@ export default function NewLearningPlanScreen() {
 			const asset = result.assets[0];
 			if (!asset) return;
 
+			setIsUploading(true);
 			await runWithErrorHandling(
 				"Das Foto konnte nicht hochgeladen werden.",
 				async () => {
-					await uploadLearningPlanAsset(
-						prepareUploadAsset({
-							uri: asset.uri,
-							name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
-							mimeType: asset.mimeType ?? "image/jpeg",
-							size: asset.fileSize,
-						}),
-					);
+					const { id, created } = await ensurePlan(topics);
+					try {
+						await uploadLearningPlanAsset(
+							prepareUploadAsset({
+								uri: asset.uri,
+								name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
+								mimeType: asset.mimeType ?? "image/jpeg",
+								size: asset.fileSize,
+							}),
+							id,
+						);
+					} catch (error) {
+						if (created) await discardNewMateriallessPlan(id);
+						throw error;
+					}
 				},
 			);
 		} catch (error) {
@@ -419,12 +467,13 @@ export default function NewLearningPlanScreen() {
 				getErrorMessage(error, "Die Kamera konnte nicht geöffnet werden."),
 			);
 		} finally {
+			setIsUploading(false);
 			setOpeningUploadAction(null);
 		}
 	};
 
 	const closeUploadSheet = () => {
-		pendingUploadActionRef.current = null;
+		pendingUploadRequestRef.current = null;
 		setOpeningUploadAction(null);
 		setIsUploadSheetVisible(false);
 	};
@@ -442,40 +491,119 @@ export default function NewLearningPlanScreen() {
 		setIsUploadSheetVisible(false);
 
 		if (process.env.EXPO_OS === "ios") {
-			pendingUploadActionRef.current = action;
+			pendingUploadRequestRef.current = { action };
 			return;
 		}
 
-		pendingUploadActionRef.current = null;
+		pendingUploadRequestRef.current = null;
 		runUploadAction(action);
 	};
 
 	const runPendingUploadAction = () => {
-		const action = pendingUploadActionRef.current;
-		pendingUploadActionRef.current = null;
-		if (!action) return;
+		const request = pendingUploadRequestRef.current;
+		pendingUploadRequestRef.current = null;
+		if (!request) return;
 
-		runUploadAction(action);
+		runUploadAction(request.action);
 	};
 
-	const continueToTopic = async () => {
-		if (!canContinueUpload) return;
+	const continueToMaterial = async () => {
+		if (!canContinueTopics) return;
 
-		await runWithErrorHandling(
-			"Der Lernplan konnte nicht vorbereitet werden.",
+		await topicActionGateRef.current.run(async () => {
+			setIsBusy(true);
+			setErrorMessage(null);
+			try {
+				if (examDayEntryId) {
+					await retryOnceAfterAuthResume(() =>
+						updateExamTopics({
+							id: examDayEntryId,
+							topicDescription: topics,
+						}),
+					);
+				}
+				if (learningPlanId) {
+					await retryOnceAfterAuthResume(() =>
+						updateRequiredTopics({
+							id: learningPlanId,
+							topicDescription: topics,
+						}),
+					);
+				}
+				if (!examDayEntryId && !learningPlanId) {
+					throw new Error("Prüfung nicht gefunden.");
+				}
+				router.setParams({
+					errorMessage: undefined,
+					step: "material",
+					topicDescription: topics,
+				});
+				setSetupStep("materialUpload");
+			} catch (error) {
+				setErrorMessage(
+					getErrorMessage(
+						error,
+						"Die Prüfungsthemen konnten nicht gespeichert werden.",
+					),
+				);
+			} finally {
+				setIsBusy(false);
+			}
+		});
+	};
+
+	const finishWithoutPlan = () => {
+		void runWithErrorHandling(
+			"Die Prüfung konnte nicht ohne Lernplan abgeschlossen werden.",
 			async () => {
-				const id = await ensurePlan();
-				router.setParams({ learningPlanId: id, step: "topic" });
-				setSetupStep("topicDescription");
+				if (!examDayEntryId) throw new Error("Prüfung nicht gefunden.");
+				if (!isMeaningfulTopicDescription(topics)) {
+					throw new Error("Prüfungsthemen fehlen.");
+				}
+				router.replace(
+					examEntrySuccessPath({
+						dayKey: examDateKey,
+						examDateLabel,
+					}),
+				);
 			},
 		);
 	};
 
+	const removeUploadedDocument = async (
+		documentId: Id<"learningPlanDocuments">,
+	) => {
+		const removedDocument = snapshot?.documents.find(
+			(document) => document.id === documentId,
+		);
+		const isLastSchoolDocument =
+			removedDocument?.sourceKind === "school" &&
+			snapshot?.documents.filter((document) => document.sourceKind === "school")
+				.length === 1;
+		await removeDocument({ id: documentId });
+		if (
+			learningPlanId &&
+			snapshot?.plan.status === "draft" &&
+			isLastSchoolDocument
+		) {
+			await discardNewMateriallessPlan(learningPlanId);
+		}
+	};
+
 	const goBack = () => {
-		if (setupStep === "topicDescription") {
+		if (setupStep === "materialUpload") {
 			setErrorMessage(null);
-			router.setParams({ errorMessage: undefined, step: undefined });
-			setSetupStep("materialUpload");
+			router.setParams({ errorMessage: undefined, step: "topic" });
+			setSetupStep("requiredTopics");
+			return true;
+		}
+
+		if (examDayEntryId) {
+			dismissToOrReplace(router, `/entry/${examDayEntryId}`);
+			return true;
+		}
+		if (initialLearningPlanId) {
+			goBackOrReplace(router, ROUTES.learningPlans);
 			return true;
 		}
 
@@ -483,48 +611,21 @@ export default function NewLearningPlanScreen() {
 		return true;
 	};
 
-	useBackIntent(setupStep === "topicDescription", goBack);
+	useBackIntent(
+		Boolean(
+			examDayEntryId || initialLearningPlanId || setupStep === "materialUpload",
+		),
+		goBack,
+	);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,
 		onBack: goBack,
 	});
 
-	const continueToAnalysis = async () => {
-		if (!learningPlanId || !canContinueTopic) return;
-
-		setIsBusy(true);
-		setErrorMessage(null);
-		router.setParams({ errorMessage: undefined });
-		try {
-			await retryOnceAfterAuthResume(() =>
-				updateBasics({
-					id: learningPlanId,
-					topicDescription,
-					notes: "",
-				}),
-			);
-			router.push(learningPlanStepPath(learningPlanId, "analysis"));
-		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Das Prüfungsthema konnte nicht gespeichert werden.",
-				),
-			);
-		} finally {
-			setIsBusy(false);
-		}
-	};
-
-	const openLearningTimes = () => {
-		if (!learningPlanId) return;
-		router.replace(
-			withReturnTo(
-				ROUTES.learningTimes,
-				learningPlanTopicPath(learningPlanId, { topicDescription }),
-			),
-		);
+	const continueToAnalysis = () => {
+		if (!learningPlanId || !canContinueUpload) return;
+		router.push(learningPlanStepPath(learningPlanId, "analysis"));
 	};
 
 	if (!hasExamEntry) return null;
@@ -538,43 +639,39 @@ export default function NewLearningPlanScreen() {
 				topPadding={0}
 				contentContainerStyle={{ flexGrow: 1 }}
 			>
-				<Animated.View
-					key={setupStep}
-					entering={FadeIn.duration(180)}
-					className="flex-1"
-				>
-					{setupStep === "materialUpload" ? (
+				<View key={setupStep} className="flex-1">
+					{setupStep === "requiredTopics" ? (
+						<RequiredTopicsStep
+							canContinue={canContinueTopics}
+							errorMessage={errorMessage}
+							isBusy={isBusy}
+							onChangeTopics={setTopicsInput}
+							onContinue={() => void continueToMaterial()}
+							topics={topics}
+						/>
+					) : (
 						<MaterialUploadStep
-							artworkHeight={uploadArtworkHeight}
-							artworkWidth={uploadArtworkWidth}
+							canUpload={canUpload}
 							canContinue={canContinueUpload}
 							documents={snapshot?.documents ?? []}
 							errorMessage={errorMessage}
 							isBusy={isBusy}
-							onContinue={() => void continueToTopic()}
+							isUploading={isUploading}
+							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}
-							onRemoveDocument={(id) => void removeDocument({ id })}
+							onRemoveDocument={(id) => void removeUploadedDocument(id)}
+							onSkip={finishWithoutPlan}
 							openingUploadAction={openingUploadAction}
-						/>
-					) : (
-						<TopicDescriptionStep
-							canContinue={canContinueTopic}
-							errorMessage={errorMessage}
-							isBusy={isBusy}
-							onChangeTopicDescription={setTopicDescriptionInput}
-							onContinue={() => void continueToAnalysis()}
-							onOpenLearningTimes={openLearningTimes}
-							showLearningTimesWarning={showLearningTimesWarning}
-							topicDescription={topicDescription}
+							showSkip={!initialLearningPlanId}
 						/>
 					)}
-				</Animated.View>
+				</View>
 			</ScreenScroll>
 
 			<ActionSheet
-				visible={setupStep === "materialUpload" && isUploadSheetVisible}
-				title="Was möchtest du hochladen?"
-				description="Lade hier deine Unterlagen hoch oder scanne sie ganz einfach."
+				visible={isUploadSheetVisible}
+				title="Material von deiner Schule"
+				description="Scanne oder lade Unterlagen deiner Schule oder Lehrkraft hoch."
 				onClose={closeUploadSheet}
 				onDismiss={runPendingUploadAction}
 				closeAccessibilityLabel="Hochladen schließen"
@@ -584,7 +681,7 @@ export default function NewLearningPlanScreen() {
 					{
 						value: "camera",
 						title: "Scannen",
-						disabled: !canContinueUpload,
+						disabled: !canUpload,
 						icon:
 							openingUploadAction === "camera" || isBusy ? (
 								<ActivityIndicator color={actionSheetIconColor} />
@@ -599,7 +696,7 @@ export default function NewLearningPlanScreen() {
 					{
 						value: "files",
 						title: "Dateien",
-						disabled: !canContinueUpload,
+						disabled: !canUpload,
 						icon:
 							openingUploadAction === "files" || isBusy ? (
 								<ActivityIndicator color={actionSheetIconColor} />

@@ -1,7 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, router, Stack } from "expo-router";
 import {
-	type ComponentType,
 	type ReactNode,
 	type RefObject,
 	useCallback,
@@ -10,7 +9,6 @@ import {
 	useState,
 } from "react";
 import {
-	type FlatList,
 	Image,
 	Keyboard,
 	KeyboardAvoidingView,
@@ -26,41 +24,8 @@ import Animated, {
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
-	LinearTransition,
-	type SharedValue,
-	useAnimatedProps,
-	useAnimatedScrollHandler,
-	useAnimatedStyle,
-	useDerivedValue,
-	useSharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, {
-	Circle,
-	type CircleProps,
-	Defs,
-	Path,
-	Rect,
-	Stop,
-	LinearGradient as SvgLinearGradient,
-	type SvgProps,
-} from "react-native-svg";
-import {
-	deriveOnboardingLearningTimes,
-	getOnboardingLearningTimeErrorMessage,
-	ONBOARDING_DURATION_MINUTES,
-} from "#convex/learningTimeAvailability";
-import {
-	getCenteredIntroDotsTop,
-	getIntroButtonProgress,
-	getIntroDotWidth,
-	getIntroInterpolatedValue,
-	getIntroPageIndex,
-	INTRO_DOT_COLLAPSED_WIDTH,
-	INTRO_DOT_EXPANDED_WIDTH,
-	INTRO_DOT_HEIGHT,
-} from "~/components/onboarding/intro-pagination";
-import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import {
 	getNextOnboardingStepIndex,
 	getOnboardingRegistrationPayload,
@@ -70,30 +35,18 @@ import {
 	OnboardingSelect,
 	PickerInputTrigger,
 } from "~/components/onboarding/onboarding-select";
-import { StudyTimeFactContent } from "~/components/onboarding/study-time-fact-content";
-import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	ArrowLeft,
-	ArrowRight,
 	Atom,
-	BookOpen,
 	Bulb,
-	Calculator,
-	CalendarDays,
-	Chemistry,
-	ClipboardEdit,
+	Check,
 	ClipboardList,
-	Dna,
-	Earth,
-	Football,
 	Globe,
 	GreekHelmet,
-	Language,
-	PaintBrush,
 	Palette,
 	Plant,
 	Route2,
@@ -102,7 +55,6 @@ import {
 } from "~/components/ui/icon";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
-import { SnapCarouselSelector } from "~/components/ui/snap-carousel-selector";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthFlow, useAuthSession } from "~/context/AuthContext";
@@ -121,14 +73,10 @@ import {
 import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
-import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
 
 // Password icons represent the current visibility state across this auth flow.
 // Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
-const AnimatedCircle = Animated.createAnimatedComponent(
-	Circle,
-) as ComponentType<CircleProps & { animatedProps?: Partial<CircleProps> }>;
 const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
 const CODE_LENGTH = 6;
@@ -145,12 +93,6 @@ const otpAutoComplete = Platform.select<TextInputProps["autoComplete"]>({
 	default: "one-time-code",
 });
 
-type IconComponent = ComponentType<{
-	size?: number;
-	color?: string;
-	strokeWidth?: number;
-}>;
-
 type PasswordResetStage =
 	| "email"
 	| "reset_code"
@@ -159,52 +101,7 @@ type PasswordResetStage =
 
 type IntroStep = {
 	kind: "intro";
-	id: "intro-tasks" | "intro-upload" | "intro-path";
-	title: string;
-	illustration: "tasks" | "upload" | "path";
-};
-
-type RangeStep = {
-	kind: "range";
-	id: "studyTime" | "dailySchoolTime";
-	title: string;
-	field: "studyTime" | "dailySchoolTime";
-	values: readonly number[];
-};
-
-type FactStepBase = {
-	kind: "fact";
-	title: string;
-	autoAdvance?: boolean;
-	cardIcon?: "bulb" | "calendar" | "route";
-	disabledButton?: boolean;
-};
-
-type FactStep = FactStepBase &
-	(
-		| { id: "short-study-fact" }
-		| { id: "routine-fit" | "later-adjust"; body: string }
-	);
-
-type ChipsStep = {
-	kind: "chips";
-	id: "strength" | "challenge" | "studyDays";
-	title: string;
-	field: "strength" | "challenge" | "studyDays";
-	options: readonly ChipOption[];
-};
-
-type GoalStep = {
-	kind: "goals";
-	id: "goal";
-	title: string;
-	field: "goal";
-	options: readonly string[];
-};
-
-type InfoStackStep = {
-	kind: "infoStack";
-	id: "plan-fit";
+	id: "intro-value";
 	title: string;
 };
 
@@ -212,6 +109,7 @@ type TextStep = {
 	kind: "text";
 	id: "name" | "email" | "password";
 	title: string;
+	description: string;
 	field: "name" | "email" | "password";
 	placeholder: string;
 	secure?: boolean;
@@ -222,74 +120,13 @@ type TextStep = {
 
 type WheelStep = {
 	kind: "wheel";
-	id: "state" | "schoolType" | "grade" | "birthDate" | "learningTime";
+	id: "state" | "schoolType" | "grade" | "birthDate";
 	title: string;
-	field: "state" | "schoolType" | "grade" | "birthDate" | "learningTime";
+	description: string;
+	field: "state" | "schoolType" | "grade" | "birthDate";
 };
 
-type OnboardingStep =
-	| IntroStep
-	| RangeStep
-	| FactStep
-	| ChipsStep
-	| GoalStep
-	| InfoStackStep
-	| TextStep
-	| WheelStep;
-
-type ChipOption = {
-	label: string;
-	icon?: IconComponent;
-};
-
-const SUBJECT_OPTIONS = [
-	{ label: "Mathe", icon: Calculator },
-	{ label: "Geographie", icon: Earth },
-	{ label: "Kunst", icon: PaintBrush },
-	{ label: "Physik", icon: Route2 },
-	{ label: "Sprachen", icon: Language },
-	{ label: "Biologie", icon: Dna },
-	{ label: "Astronomie", icon: Route2 },
-	{ label: "Chemie", icon: Chemistry },
-	{ label: "Deutsch", icon: BookOpen },
-	{ label: "Politik", icon: ClipboardList },
-	{ label: "Sport", icon: Football },
-	{ label: "Geschichte", icon: ClipboardEdit },
-] as const;
-
-const CHALLENGE_OPTIONS = [
-	{ label: "Mündlich erklären" },
-	{ label: "Aufschieben" },
-	{ label: "Rechnen" },
-	{ label: "Schreiben" },
-	{ label: "Konzentration" },
-	{ label: "Motivation" },
-	{ label: "Vokabeln" },
-	{ label: "Ablenkung" },
-	{ label: "Zeitmanagement" },
-	{ label: "Prüfungsangst" },
-	{ label: "Organisation" },
-] as const;
-
-const DAY_OPTIONS = [
-	{ label: "Montag" },
-	{ label: "Dienstag" },
-	{ label: "Mittwoch" },
-	{ label: "Donnerstag" },
-	{ label: "Freitag" },
-	{ label: "Samstag" },
-	{ label: "Sonntag" },
-] as const;
-
-const GOAL_OPTIONS = [
-	"Bessere Noten",
-	"Weniger Aufschieben",
-	"Prüfung sicher bestehen",
-	"Lernlücke schließen",
-	"Mehr Struktur im Lernen",
-	"Dranbleiben",
-	"Besser vorbereitet sein",
-] as const;
+type OnboardingStep = IntroStep | TextStep | WheelStep;
 
 const CURRENT_YEAR = new Date().getFullYear();
 const DEFAULT_BIRTH_DAY = "09";
@@ -297,7 +134,6 @@ const DEFAULT_BIRTH_MONTH = "09";
 const DEFAULT_BIRTH_YEAR = String(CURRENT_YEAR - 14);
 
 const DEFAULT_BIRTH_DATE = `${DEFAULT_BIRTH_DAY}.${DEFAULT_BIRTH_MONTH}.${DEFAULT_BIRTH_YEAR}`;
-const DEFAULT_LEARNING_TIME = "16:44";
 
 function formatPickerDate(date: Date) {
 	const day = String(date.getDate()).padStart(2, "0");
@@ -316,196 +152,64 @@ function parsePickerDate(value: string) {
 		: parsed;
 }
 
-function formatPickerTime(date: Date) {
-	const hour = String(date.getHours()).padStart(2, "0");
-	const minute = String(date.getMinutes()).padStart(2, "0");
-	return `${hour}:${minute}`;
-}
-
-function parsePickerTime(value: string) {
-	const match = /^(\d{2}):(\d{2})$/.exec(value);
-	const [, hour = "16", minute = "44"] = match ?? [];
-	const parsed = new Date();
-	parsed.setHours(Number(hour), Number(minute), 0, 0);
-	if (!Number.isNaN(parsed.getTime())) return parsed;
-
-	const fallback = new Date();
-	fallback.setHours(16, 44, 0, 0);
-	return fallback;
-}
-
-const INTRO_REFERENCE_WIDTH = 393;
-const INTRO_REFERENCE_HEIGHT = 852;
-const INTRO_TITLE_LINE_HEIGHT = 36.6;
-const IntroPathArtwork = IntroPathSvg as unknown as ComponentType<SvgProps>;
-const INTRO_LAYOUTS = {
-	tasks: {
-		artwork: { width: 356, height: 242, top: 206 },
-		titleTop: 501,
-		buttonTop: 704,
-	},
-	upload: {
-		artwork: { width: 345, height: 313, top: 153 },
-		titleTop: 510,
-		buttonTop: 704,
-	},
-	path: {
-		artwork: { width: 369, height: 467, top: 131 },
-		titleTop: 574,
-		buttonTop: 760,
-	},
-} as const satisfies Record<
-	IntroStep["illustration"],
-	{
-		artwork: { width: number; height: number; top: number };
-		titleTop: number;
-		buttonTop: number;
-	}
->;
-const INTRO_ARTWORKS = [
-	{ kind: "tasks", Component: IntroTasksArtwork },
-	{ kind: "upload", Component: IntroUploadArtwork },
-	{ kind: "path", Component: IntroPathArtwork },
-] as const satisfies readonly {
-	kind: IntroStep["illustration"];
-	Component: ComponentType<SvgProps>;
-}[];
 const INTRO_STEPS = [
 	{
 		kind: "intro",
-		id: "intro-tasks",
-		illustration: "tasks",
-		title: "Schluss mit\nAufschieben. Dein\nLernplan wartet.",
-	},
-	{
-		kind: "intro",
-		id: "intro-upload",
-		illustration: "upload",
-		title: "Einfach Unterlagen\nhochladen und\nlernen.",
-	},
-	{
-		kind: "intro",
-		id: "intro-path",
-		illustration: "path",
-		title: "Dein Lernplan\nstartet jetzt.",
+		id: "intro-value",
+		title: "Deine Prüfung. Dein nächster Schritt.",
 	},
 ] as const satisfies readonly IntroStep[];
 const FLOW_STEPS: readonly OnboardingStep[] = [
 	...INTRO_STEPS,
 	{
-		kind: "range",
-		id: "studyTime",
-		title: "Wie viel lernst du\naktuell pro Tag?",
-		field: "studyTime",
-		values: ONBOARDING_DURATION_MINUTES,
-	},
-	{
-		kind: "fact",
-		id: "short-study-fact",
-		title: "Du brauchst nicht\nstundenlang zu\nlernen.",
-		cardIcon: "route",
-	},
-	{
-		kind: "chips",
-		id: "strength",
-		title: "Wo liegen deine\nStärken?",
-		field: "strength",
-		options: SUBJECT_OPTIONS,
-	},
-	{
-		kind: "chips",
-		id: "challenge",
-		title: "Was sind deine\ngrößten Baustellen\nin der Schule?",
-		field: "challenge",
-		options: CHALLENGE_OPTIONS,
-	},
-	{
-		kind: "goals",
-		id: "goal",
-		title: "Was möchtest du\nmit uns erreichen?",
-		field: "goal",
-		options: GOAL_OPTIONS,
-	},
-	{
-		kind: "infoStack",
-		id: "plan-fit",
-		title: "Dein Lernplan passt\nsich genau dir an.",
-	},
-	{
 		kind: "text",
 		id: "name",
-		title: "Wie heißt du?",
+		title: "Wie dürfen wir dich nennen?",
+		description: "Damit sich Dayova von Anfang an persönlich anfühlt.",
 		field: "name",
-		placeholder: "Max Muster",
+		placeholder: "Dein Name",
 		autoComplete: "name",
 		textContentType: "name",
 	},
 	{
 		kind: "wheel",
+		id: "grade",
+		title: "Welche Klassenstufe besuchst du?",
+		description: "So passen Sprache und Aufgaben besser zu deinem Schulalltag.",
+		field: "grade",
+	},
+	{
+		kind: "wheel",
 		id: "state",
-		title: "Aus welchem\nBundesland\nkommst du?",
+		title: "In welchem Bundesland gehst du zur Schule?",
+		description:
+			"Schulbegriffe und Rahmenbedingungen unterscheiden sich regional.",
 		field: "state",
 	},
 	{
 		kind: "wheel",
 		id: "schoolType",
 		title: "Welche Schulart besuchst du?",
+		description:
+			"Wir speichern nur die Schulart, nicht den Namen deiner Schule.",
 		field: "schoolType",
 	},
 	{
 		kind: "wheel",
-		id: "grade",
-		title: "Welche\nKlassenstufe\nbesuchst du?",
-		field: "grade",
-	},
-	{
-		kind: "wheel",
 		id: "birthDate",
-		title: "Wie alt bist du?",
+		title: "Wann bist du geboren?",
+		description:
+			"Dein Geburtsdatum hilft uns, dein Konto altersgerecht zu führen.",
 		field: "birthDate",
-	},
-	{
-		kind: "range",
-		id: "dailySchoolTime",
-		title: "Wie viel Zeit willst\ndu pro Tag für die\nSchule aufwenden?",
-		field: "dailySchoolTime",
-		values: ONBOARDING_DURATION_MINUTES,
-	},
-	{
-		kind: "fact",
-		id: "routine-fit",
-		title: "Dein Lernplan passt\nsich deinem Alltag\nan.",
-		body: "Wir erstellen für dich einen Lernplan, der sich an deinen Alltag und deinen Lernstand anpasst. Dayova berücksichtigt dabei deine Fortschritte und passt den Plan laufend an.",
-		autoAdvance: true,
-		cardIcon: "route",
-		disabledButton: true,
-	},
-	{
-		kind: "chips",
-		id: "studyDays",
-		title: "An welchen Tagen\nkannst du lernen?",
-		field: "studyDays",
-		options: DAY_OPTIONS,
-	},
-	{
-		kind: "wheel",
-		id: "learningTime",
-		title: "Wann ist die beste\nUhrzeit für dich zum\nlernen?",
-		field: "learningTime",
-	},
-	{
-		kind: "fact",
-		id: "later-adjust",
-		title: "Keine Sorge, du\nkannst deine\nLernzeiten später\nanpassen.",
-		body: "Heute steht eine Lerneinheit für deine Mathe Klassenarbeit an.",
-		cardIcon: "calendar",
 	},
 	{
 		kind: "text",
 		id: "email",
-		title: "Wie lautet deine\nE-Mail?",
+		title: "Wie lautet deine E-Mail-Adresse?",
+		description:
+			"Dorthin senden wir gleich deinen sechsstelligen Bestätigungscode.",
 		field: "email",
-		placeholder: "max.mustermann@gmail.de",
+		placeholder: "name@beispiel.de",
 		keyboardType: "email-address",
 		autoComplete: "email",
 		textContentType: "emailAddress",
@@ -513,49 +217,20 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 	{
 		kind: "text",
 		id: "password",
-		title: "Lege dein Passwort\nfest",
+		title: "Lege dein Passwort fest.",
+		description: "Mindestens 8 Zeichen schützen dein Konto.",
 		field: "password",
-		placeholder: "••••••••",
+		placeholder: "Passwort eingeben",
 		secure: true,
 		autoComplete: "new-password",
 		textContentType: "newPassword",
 	},
 ] as const;
 
-const QUESTION_STEP_COUNT = FLOW_STEPS.length + 2;
+const PROFILE_STEP_COUNT = FLOW_STEPS.length - INTRO_STEPS.length;
 
 const isValidEmail = (value: string) =>
 	/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-
-const toggleListValue = (current: string, label: string) => {
-	const values = current
-		.split(",")
-		.map((item) => item.trim())
-		.filter(Boolean);
-	const exists = values.includes(label);
-	const next = exists
-		? values.filter((item) => item !== label)
-		: [...values, label];
-	return next.join(", ");
-};
-
-const hasListValue = (current: string, label: string) =>
-	current
-		.split(",")
-		.map((item) => item.trim())
-		.includes(label);
-
-const defaultAnswerForStep = (step: OnboardingStep) => {
-	if (step.kind === "range") return "30 min";
-	if (step.kind === "wheel") {
-		if (step.field === "state") return "Sachsen";
-		if (step.field === "schoolType") return "prefer_not_to_say";
-		if (step.field === "grade") return "9";
-		if (step.field === "birthDate") return DEFAULT_BIRTH_DATE;
-		if (step.field === "learningTime") return DEFAULT_LEARNING_TIME;
-	}
-	return "";
-};
 
 const AUTH_CHOICE_FRAME = {
 	width: 393,
@@ -786,7 +461,7 @@ export function OnboardingScreen({
 	const { register, verifyEmailCode, resendVerification, isLoading } =
 		useAuthFlow();
 	const { user, isConvexAuthenticated, isPostAuthSyncing } = useAuthSession();
-	const { answers, setAnswer, hasAnswers } = useOnboarding();
+	const { answers, hasAnswers } = useOnboarding();
 	const activeStep = FLOW_STEPS[activeIndex];
 	const textInputRef = useRef<TextInput | null>(null);
 	const verificationInputRef = useRef<TextInput | null>(null);
@@ -802,32 +477,6 @@ export function OnboardingScreen({
 	const isRegistrationBusy = isLoading || isRegistering;
 
 	useEffect(() => {
-		const defaultValue = defaultAnswerForStep(activeStep);
-		if (!defaultValue) return;
-		if (!("field" in activeStep)) return;
-		if (answers[activeStep.field]?.trim()) return;
-		setAnswer(activeStep.field, defaultValue);
-	}, [activeStep, answers, setAnswer]);
-
-	useEffect(() => {
-		if (
-			activeStep.kind !== "fact" ||
-			!activeStep.autoAdvance ||
-			stage !== "flow"
-		) {
-			return;
-		}
-
-		const timeout = setTimeout(() => {
-			setActiveIndex((current) =>
-				getNextOnboardingStepIndex(current, FLOW_STEPS.length),
-			);
-		}, 1850);
-
-		return () => clearTimeout(timeout);
-	}, [activeStep, stage]);
-
-	useEffect(() => {
 		if (stage !== "verification") return;
 		const frame = requestAnimationFrame(() =>
 			verificationInputRef.current?.focus(),
@@ -839,7 +488,7 @@ export function OnboardingScreen({
 		if (stage !== "flow" || !user || hasAnswers || isPostAuthSyncing) return;
 
 		const frame = requestAnimationFrame(() => {
-			router.replace("/home");
+			router.replace("/trial");
 		});
 
 		return () => cancelAnimationFrame(frame);
@@ -882,8 +531,8 @@ export function OnboardingScreen({
 
 	const stepProgress =
 		stage === "verification" || stage === "creating"
-			? (FLOW_STEPS.length + 1) / QUESTION_STEP_COUNT
-			: (activeIndex + 1) / QUESTION_STEP_COUNT;
+			? 1
+			: Math.min(activeIndex / PROFILE_STEP_COUNT, 1);
 
 	const continueFromStep = async () => {
 		if (
@@ -903,18 +552,6 @@ export function OnboardingScreen({
 		if (decision.error) {
 			setError(decision.error);
 			return;
-		}
-
-		if (activeStep.kind === "wheel" && activeStep.field === "learningTime") {
-			const result = deriveOnboardingLearningTimes({
-				studyDays: answers.studyDays,
-				learningTime: answers.learningTime,
-				dailySchoolTime: answers.dailySchoolTime,
-			});
-			if (!result.ok) {
-				setError(getOnboardingLearningTimeErrorMessage(result.reason));
-				return;
-			}
 		}
 
 		if (decision.action === "register") {
@@ -1037,8 +674,8 @@ export function OnboardingScreen({
 			>
 				{isIntro ? (
 					<IntroStepView
-						activeIndex={activeIndex}
-						onActiveIndexChange={setActiveIndex}
+						topInset={insets.top}
+						bottomInset={insets.bottom}
 						onNext={continueFromStep}
 					/>
 				) : (
@@ -1053,6 +690,8 @@ export function OnboardingScreen({
 						<QuestionStepView
 							step={activeStep}
 							progress={stepProgress}
+							stepNumber={activeIndex}
+							stepCount={PROFILE_STEP_COUNT}
 							error={error}
 							busy={isRegistrationBusy}
 							passwordVisible={passwordVisible}
@@ -1070,243 +709,120 @@ export function OnboardingScreen({
 }
 
 function IntroStepView({
-	activeIndex,
-	onActiveIndexChange,
+	topInset,
+	bottomInset,
 	onNext,
 }: {
-	activeIndex: number;
-	onActiveIndexChange: (index: number) => void;
+	topInset: number;
+	bottomInset: number;
 	onNext: () => void;
 }) {
-	const { width, height } = useWindowDimensions();
-	const listRef = useRef<FlatList<IntroStep>>(null);
-	const previousWidthRef = useRef(width);
-	const [titleMeasurements, setTitleMeasurements] = useState<
-		Partial<Record<IntroStep["id"], { height: number; scale: number }>>
-	>({});
-	const scrollX = useSharedValue(activeIndex * width);
-	const scale = Math.min(
-		width / INTRO_REFERENCE_WIDTH,
-		height / INTRO_REFERENCE_HEIGHT,
-	);
-	const nextButtonSize = 76 * scale;
-	const nextButtonTops = INTRO_STEPS.map((step) => {
-		const layout = INTRO_LAYOUTS[step.illustration];
-		return Math.min(
-			layout.buttonTop * scale,
-			height - nextButtonSize - 48 * scale,
-		);
-	});
-	const dotsTops = INTRO_STEPS.map((step, index) => {
-		const layout = INTRO_LAYOUTS[step.illustration];
-		const measurement = titleMeasurements[step.id];
-		const fallbackTitleHeight =
-			step.title.split("\n").length * INTRO_TITLE_LINE_HEIGHT * scale;
-		const titleHeight =
-			measurement?.scale === scale ? measurement.height : fallbackTitleHeight;
-		const titleBottom = layout.titleTop * scale + titleHeight;
-		const buttonVisualTop =
-			(nextButtonTops[index] ?? 0) + (76 - nextButtonSize) / 2;
-		return getCenteredIntroDotsTop(
-			titleBottom,
-			buttonVisualTop,
-			INTRO_DOT_HEIGHT,
-		);
-	});
-	const scrollHandler = useAnimatedScrollHandler({
-		onScroll: (event) => {
-			scrollX.set(event.contentOffset.x);
+	const { height } = useWindowDimensions();
+	const isCompactHeight = height < 760;
+	const valuePoints = [
+		{
+			icon: ClipboardList,
+			title: "Deine genaue Prüfung",
+			body: "Materialien und Prüfungsziel geben den Rahmen vor.",
 		},
-	});
-	const dotsPositionStyle = useAnimatedStyle(() => ({
-		top: getIntroInterpolatedValue(scrollX.get(), width, dotsTops),
-	}));
-	const nextButtonPositionStyle = useAnimatedStyle(() => ({
-		top: getIntroInterpolatedValue(scrollX.get(), width, nextButtonTops),
-	}));
-	const nextButtonProgress = useDerivedValue(() =>
-		getIntroButtonProgress(scrollX.get(), width, INTRO_STEPS.length),
-	);
-	const handleTitleLayout = useCallback(
-		(stepId: IntroStep["id"], titleHeight: number) => {
-			setTitleMeasurements((current) => {
-				const previous = current[stepId];
-				if (
-					previous?.scale === scale &&
-					Math.abs(previous.height - titleHeight) < 0.5
-				) {
-					return current;
-				}
-
-				return {
-					...current,
-					[stepId]: { height: titleHeight, scale },
-				};
-			});
+		{
+			icon: Bulb,
+			title: "Deine echten Lücken",
+			body: "Kurze Fragen zeigen, was schon sitzt und was noch fehlt.",
 		},
-		[scale],
-	);
-
-	useEffect(() => {
-		const widthChanged = previousWidthRef.current !== width;
-		previousWidthRef.current = width;
-
-		if (widthChanged) {
-			scrollX.set(activeIndex * width);
-		}
-		listRef.current?.scrollToOffset({
-			offset: activeIndex * width,
-			animated: !widthChanged,
-		});
-	}, [activeIndex, scrollX, width]);
-
-	const handleNext = () => {
-		if (activeIndex < INTRO_STEPS.length - 1) {
-			onActiveIndexChange(activeIndex + 1);
-			return;
-		}
-
-		onNext();
-	};
+		{
+			icon: Route2,
+			title: "Dein nächster Schritt",
+			body: "Du siehst genau, womit du heute sinnvoll startest.",
+		},
+	] as const;
 
 	return (
-		<View className="flex-1">
-			<Animated.FlatList
-				ref={listRef}
-				data={INTRO_STEPS}
-				horizontal
-				pagingEnabled
-				bounces={false}
-				decelerationRate="fast"
-				disableIntervalMomentum
-				showsHorizontalScrollIndicator={false}
-				scrollEventThrottle={16}
-				initialScrollIndex={activeIndex}
-				getItemLayout={(_, index) => ({
-					length: width,
-					offset: width * index,
-					index,
-				})}
-				keyExtractor={(item) => item.id}
-				onScroll={scrollHandler}
-				onMomentumScrollEnd={(event) => {
-					const nextIndex = getIntroPageIndex(
-						event.nativeEvent.contentOffset.x,
-						width,
-						INTRO_STEPS.length,
-					);
-					if (nextIndex !== activeIndex) onActiveIndexChange(nextIndex);
-				}}
-				renderItem={({ item }) => (
-					<IntroSlide
-						step={item}
-						width={width}
-						scale={scale}
-						onTitleLayout={(titleHeight) =>
-							handleTitleLayout(item.id, titleHeight)
-						}
-					/>
-				)}
-			/>
-
-			<Animated.View
-				pointerEvents="none"
-				className="absolute inset-x-0 items-center"
-				// Runtime viewport scaling keeps the controls aligned with the Figma artboard.
-				style={dotsPositionStyle}
-			>
-				<IntroDots pageWidth={width} scrollX={scrollX} />
-			</Animated.View>
-			<Animated.View
-				className="absolute"
-				// Runtime viewport scaling and swipe progress align this control to each page.
-				style={[
-					{
-						left: (width - nextButtonSize) / 2,
-						transform: [{ scale }],
-					},
-					nextButtonPositionStyle,
-				]}
-			>
-				<CircularNextButton
-					onPress={handleNext}
-					progress={nextButtonProgress}
-				/>
-			</Animated.View>
-		</View>
-	);
-}
-
-function IntroSlide({
-	step,
-	width,
-	scale,
-	onTitleLayout,
-}: {
-	step: IntroStep;
-	width: number;
-	scale: number;
-	onTitleLayout: (height: number) => void;
-}) {
-	const layout = INTRO_LAYOUTS[step.illustration];
-	const artwork = INTRO_ARTWORKS.find(
-		(candidate) => candidate.kind === step.illustration,
-	);
-	if (!artwork) {
-		// FlatList page width is runtime viewport data.
-		return <View style={{ width }} />;
-	}
-
-	const artworkWidth = layout.artwork.width * scale;
-	const artworkHeight = layout.artwork.height * scale;
-	const titleWidth = 360 * scale;
-	const SvgArtwork = artwork.Component;
-
-	return (
-		<View
-			className="h-full"
-			// Runtime viewport width makes each FlatList item exactly one page.
-			style={{ width }}
+		<ScrollView
+			contentInsetAdjustmentBehavior="never"
+			alwaysBounceVertical={false}
+			showsVerticalScrollIndicator={false}
+			contentContainerStyle={{
+				minHeight: height,
+				paddingTop: Math.max(topInset + (isCompactHeight ? 20 : 32), 32),
+				paddingBottom: Math.max(bottomInset + 24, 36),
+				paddingHorizontal: 24,
+			}}
 		>
-			<View
-				pointerEvents="none"
-				className="absolute items-center justify-center"
-				// Runtime scale maps the fixed Figma artboard geometry onto this device.
-				style={{
-					left: (width - artworkWidth) / 2,
-					top: layout.artwork.top * scale,
-					width: artworkWidth,
-					height: artworkHeight,
-				}}
-			>
-				<SvgArtwork width={artworkWidth} height={artworkHeight} />
-			</View>
+			<Animated.View entering={FadeIn.duration(240)} className="flex-1">
+				<View className="items-center">
+					<View className="flex-row items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
+						<Route2 size={16} color={COLORS.primary} strokeWidth={2.2} />
+						<Text className="font-poppins font-semibold text-body-5 text-primary">
+							DEIN START MIT DAYOVA
+						</Text>
+					</View>
 
-			<Text
-				onLayout={(event) => onTitleLayout(event.nativeEvent.layout.height)}
-				// Exact Figma typography and position scale with the current viewport.
-				style={{
-					position: "absolute",
-					left: (width - titleWidth) / 2,
-					top: layout.titleTop * scale,
-					width: titleWidth,
-					textAlign: "center",
-					fontFamily: "Poppins",
-					fontWeight: "700",
-					fontSize: 32 * scale,
-					lineHeight: INTRO_TITLE_LINE_HEIGHT * scale,
-					color: COLORS.text,
-				}}
-			>
-				{step.title}
-			</Text>
-		</View>
+					<Text
+						accessibilityRole="header"
+						className={cn(
+							"max-w-[345px] text-center font-poppins font-semibold text-text",
+							isCompactHeight ? "mt-5 text-heading-2" : "mt-7 text-heading-1",
+						)}
+					>
+						{INTRO_STEPS[0]?.title}
+					</Text>
+					<Text className="mt-3 max-w-[330px] text-center font-poppins text-body-3 text-secondary-text">
+						Dayova verbindet deine Unterlagen, deinen Lernstand und deine
+						verfügbare Zeit zu einem klaren Weg bis zur Prüfung.
+					</Text>
+				</View>
+
+				<View
+					className={cn(
+						"w-full rounded-[32px] border border-border bg-surface px-5",
+						isCompactHeight ? "mt-6 py-3" : "mt-8 py-5",
+					)}
+					style={{ boxShadow: "0 16px 36px rgba(20, 28, 48, 0.06)" }}
+				>
+					{valuePoints.map((point, index) => {
+						const Icon = point.icon;
+						return (
+							<View
+								key={point.title}
+								className={cn(
+									"flex-row gap-4",
+									index < valuePoints.length - 1 && "border-border border-b",
+									isCompactHeight ? "py-3" : "py-4",
+								)}
+							>
+								<View className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10">
+									<Icon size={20} color={COLORS.primary} strokeWidth={2.2} />
+								</View>
+								<View className="flex-1">
+									<Text className="font-poppins font-semibold text-body-3 text-text">
+										{point.title}
+									</Text>
+									<Text className="mt-0.5 font-poppins text-body-4 text-secondary-text">
+										{point.body}
+									</Text>
+								</View>
+							</View>
+						);
+					})}
+				</View>
+
+				<View className={cn("mt-auto", isCompactHeight ? "pt-6" : "pt-8")}>
+					<GradientPillButton label="Profil einrichten" onPress={onNext} />
+					<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
+						7 kurze Schritte · dauert etwa 1 Minute
+					</Text>
+				</View>
+			</Animated.View>
+		</ScrollView>
 	);
 }
 
 function QuestionStepView({
 	step,
 	progress,
+	stepNumber,
+	stepCount,
 	error,
 	busy,
 	passwordVisible,
@@ -1318,6 +834,8 @@ function QuestionStepView({
 }: {
 	step: Exclude<OnboardingStep, IntroStep>;
 	progress: number;
+	stepNumber: number;
+	stepCount: number;
 	error: string | null;
 	busy: boolean;
 	passwordVisible: boolean;
@@ -1329,50 +847,25 @@ function QuestionStepView({
 }) {
 	const { colors: COLORS } = useDayovaTheme();
 	const { answers, setAnswer } = useOnboarding();
-	const isShortFactStep =
-		step.kind === "fact" && step.id === "short-study-fact";
-
-	if (isShortFactStep) {
-		return (
-			<ShortStudyTimeFactStep
-				title={step.title}
-				studyTime={answers.studyTime}
-				bottomInset={bottomInset}
-				onContinue={onContinue}
-			/>
-		);
-	}
-
-	const showBottomButton = step.kind !== "text";
-	const buttonDisabled = step.kind === "fact" && step.disabledButton;
-	const isRangeStep = step.kind === "range";
 	const isWheelStep = step.kind === "wheel";
-	const factBody = step.kind === "fact" ? step.body : "";
-	const isPlanFitStep = step.kind === "infoStack";
-	const titleTopPadding = isRangeStep
-		? 36
-		: isPlanFitStep
-			? 36
-			: step.kind === "text"
-				? 50
-				: step.kind === "chips"
-					? 24
-					: 36;
-	const contentTopMargin = isRangeStep
-		? 28
-		: isPlanFitStep
-			? 22
-			: step.kind === "chips"
-				? 40
-				: step.kind === "goals"
-					? 28
-					: step.kind === "text"
-						? 22
-						: 30;
+	const titleTopPadding = step.kind === "text" ? 50 : 36;
+	const continueLabel =
+		step.kind === "text" && step.field === "password"
+			? busy
+				? "Konto wird erstellt"
+				: "Konto erstellen"
+			: busy
+				? "Wird verarbeitet"
+				: "Weiter";
 
 	return (
 		<View className="flex-1">
-			<AuthProgressHeader progress={progress} onBack={onBack} disabled={busy} />
+			<AuthProgressHeader
+				progress={progress}
+				progressLabel={`${stepNumber} von ${stepCount}`}
+				onBack={onBack}
+				disabled={busy}
+			/>
 
 			<ScrollView
 				className="flex-1"
@@ -1381,13 +874,11 @@ function QuestionStepView({
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={{
 					flexGrow: 1,
-					paddingBottom: showBottomButton
-						? Math.max(bottomInset + 112, 122)
-						: Math.max(bottomInset + 20, 32),
+					paddingBottom: Math.max(bottomInset + 112, 122),
 				}}
 			>
 				<Animated.View
-					entering={FadeInDown.duration(360).springify().damping(18)}
+					entering={FadeInDown.duration(220)}
 					style={{
 						flex: 1,
 						alignItems: "center",
@@ -1406,83 +897,80 @@ function QuestionStepView({
 					>
 						{step.title}
 					</Text>
+					<Text className="mt-3 max-w-[330px] text-center font-poppins text-body-4 text-secondary-text">
+						{step.description}
+					</Text>
 
 					<View
 						style={{
 							width: "100%",
-							marginTop: isWheelStep ? 0 : contentTopMargin,
+							marginTop: isWheelStep ? 20 : 22,
 							flex: isWheelStep ? 1 : undefined,
 							alignItems: "center",
 							justifyContent: isWheelStep ? "center" : undefined,
 						}}
 					>
-						{step.kind === "range" ? (
-							<RangeSelector
-								value={answers[step.field] || "30 min"}
-								values={step.values}
-								accessibilityLabel={step.title.replace(/\n/g, " ")}
-								onChange={(value) => setAnswer(step.field, value)}
-							/>
-						) : null}
-
-						{step.kind === "fact" ? (
-							<FactPanel step={step} body={factBody} />
-						) : null}
-
-						{step.kind === "chips" ? (
-							<ChipCloud
-								options={step.options}
-								value={answers[step.field]}
-								onToggle={(label) =>
-									setAnswer(
-										step.field,
-										toggleListValue(answers[step.field], label),
-									)
-								}
-							/>
-						) : null}
-
-						{step.kind === "goals" ? (
-							<GoalList
-								options={step.options}
-								value={answers.goal}
-								onToggle={(label) =>
-									setAnswer("goal", toggleListValue(answers.goal, label))
-								}
-							/>
-						) : null}
-
-						{step.kind === "infoStack" ? <PlanFitStack /> : null}
-
 						{step.kind === "wheel" ? <WheelAnswer step={step} /> : null}
 
 						{step.kind === "text" ? (
-							<PillTextInput
-								refObject={inputRef}
-								value={answers[step.field]}
-								accessibilityLabel={step.title.replace(/\n/g, " ")}
-								placeholder={step.placeholder}
-								secure={step.secure && !passwordVisible}
-								disabled={busy}
-								keyboardType={step.keyboardType}
-								autoComplete={step.autoComplete}
-								textContentType={step.textContentType}
-								autoCapitalize={
-									step.field === "email" || step.secure ? "none" : "words"
-								}
-								onChangeText={(value) => setAnswer(step.field, value)}
-								onSubmit={onContinue}
-								accessory={
-									step.secure ? (
-										<PasswordVisibilityButton
-											fieldLabel="Passwort"
-											visible={passwordVisible}
-											disabled={busy}
-											onToggle={onTogglePassword}
-										/>
-									) : null
-								}
-							/>
+							<>
+								<PillTextInput
+									refObject={inputRef}
+									value={answers[step.field]}
+									accessibilityLabel={step.title.replace(/\n/g, " ")}
+									placeholder={step.placeholder}
+									secure={step.secure && !passwordVisible}
+									disabled={busy}
+									keyboardType={step.keyboardType}
+									autoComplete={step.autoComplete}
+									textContentType={step.textContentType}
+									autoCapitalize={
+										step.field === "email" || step.secure ? "none" : "words"
+									}
+									onChangeText={(value) => setAnswer(step.field, value)}
+									onSubmit={onContinue}
+									accessory={
+										step.secure ? (
+											<PasswordVisibilityButton
+												fieldLabel="Passwort"
+												visible={passwordVisible}
+												disabled={busy}
+												onToggle={onTogglePassword}
+											/>
+										) : null
+									}
+								/>
+								{step.field === "password" ? (
+									<View className="mt-4 w-full max-w-[345px] flex-row items-center gap-3 px-1">
+										<View
+											className={cn(
+												"h-6 w-6 items-center justify-center rounded-full",
+												meetsPasswordRequirements(answers.password)
+													? "bg-success"
+													: "border border-border bg-surface",
+											)}
+										>
+											{meetsPasswordRequirements(answers.password) ? (
+												<Check
+													size={14}
+													color={COLORS.surface}
+													strokeWidth={2.4}
+												/>
+											) : null}
+										</View>
+										<Text
+											className={cn(
+												"font-poppins text-body-4",
+												meetsPasswordRequirements(answers.password)
+													? "text-success"
+													: "text-secondary-text",
+											)}
+										>
+											Mindestens 8 Zeichen
+										</Text>
+									</View>
+								) : null}
+							</>
 						) : null}
 					</View>
 
@@ -1507,61 +995,18 @@ function QuestionStepView({
 				</Animated.View>
 			</ScrollView>
 
-			{showBottomButton ? (
-				<View
-					style={{
-						paddingTop: 8,
-						paddingBottom: Math.max(bottomInset + 52, 60),
-					}}
-				>
-					<DarkPillButton
-						label={busy ? "Wird verarbeitet" : "Weiter"}
-						onPress={onContinue}
-						disabled={buttonDisabled || busy}
-						busy={busy}
-					/>
-				</View>
-			) : null}
-		</View>
-	);
-}
-
-function ShortStudyTimeFactStep({
-	title,
-	studyTime,
-	bottomInset,
-	onContinue,
-}: {
-	title: string;
-	studyTime: string;
-	bottomInset: number;
-	onContinue: () => void;
-}) {
-	return (
-		<View className="flex-1">
-			<ScrollView
-				contentInsetAdjustmentBehavior="never"
-				alwaysBounceVertical={false}
-				showsVerticalScrollIndicator={false}
-				className="flex-1"
-				// ScrollView exposes content growth through this native container prop;
-				// className styles the scroll host instead of its content container.
-				contentContainerStyle={{ flexGrow: 1 }}
-			>
-				<Animated.View
-					entering={FadeInDown.duration(360).springify().damping(18)}
-					className="flex-1 items-center pt-14"
-				>
-					<StudyTimeFactContent title={title} studyTime={studyTime} />
-				</Animated.View>
-			</ScrollView>
-
 			<View
-				className="pt-2"
-				// The bottom inset is runtime device geometry.
-				style={{ paddingBottom: Math.max(bottomInset + 52, 60) }}
+				style={{
+					paddingTop: 8,
+					paddingBottom: Math.max(bottomInset + 52, 60),
+				}}
 			>
-				<DarkPillButton label="Weiter" onPress={onContinue} />
+				<DarkPillButton
+					label={continueLabel}
+					onPress={onContinue}
+					disabled={busy}
+					busy={busy}
+				/>
 			</View>
 		</View>
 	);
@@ -2302,9 +1747,10 @@ function VerificationScreen({
 				className="flex-1"
 			>
 				<ScrollView
+					testID="onboarding-verification-scroll"
 					keyboardShouldPersistTaps="handled"
 					showsVerticalScrollIndicator={false}
-					contentInsetAdjustmentBehavior="automatic"
+					contentInsetAdjustmentBehavior="never"
 					contentContainerStyle={{
 						flexGrow: 1,
 						paddingTop: Math.max(topInset + 12, 20),
@@ -2312,7 +1758,11 @@ function VerificationScreen({
 						paddingHorizontal: 24,
 					}}
 				>
-					<AuthProgressHeader progress={progress} onBack={onBack} />
+					<AuthProgressHeader
+						progress={progress}
+						progressLabel="Fast geschafft"
+						onBack={onBack}
+					/>
 					<View style={{ flex: 1, alignItems: "center", paddingTop: 38 }}>
 						<Text
 							accessibilityRole="header"
@@ -2390,7 +1840,7 @@ export function CreationLoaderScreen({
 		if (!isComplete) return;
 
 		const timeout = setTimeout(() => {
-			router.replace("/home");
+			router.replace("/trial");
 		}, 1800);
 
 		return () => clearTimeout(timeout);
@@ -2398,7 +1848,9 @@ export function CreationLoaderScreen({
 
 	return (
 		<View className="flex-1 bg-background">
-			<Stack.Screen options={{ title: "Lernprofil", gestureEnabled: false }} />
+			<Stack.Screen
+				options={{ title: "Konto einrichten", gestureEnabled: false }}
+			/>
 			<ThemedStatusBar />
 			<View
 				style={{
@@ -2418,8 +1870,8 @@ export function CreationLoaderScreen({
 					style={{ fontSize: 20, lineHeight: 29 }}
 				>
 					{isComplete
-						? "Deine Lernzeiten sind gespeichert.\nDu kannst sie jederzeit unter\nEinstellungen → Lernzeiten anpassen."
-						: "Dein persönliches Lernprofil\nwird nun für dich erstellt."}
+						? "Alles bereit.\nStarte jetzt mit deiner ersten Prüfung."
+						: "Dein Konto wird\nfür dich eingerichtet."}
 				</Animated.Text>
 			</View>
 		</View>
@@ -2428,10 +1880,12 @@ export function CreationLoaderScreen({
 
 function AuthProgressHeader({
 	progress,
+	progressLabel,
 	onBack,
 	disabled = false,
 }: {
 	progress: number;
+	progressLabel?: string;
 	onBack: () => boolean;
 	disabled?: boolean;
 }) {
@@ -2458,18 +1912,29 @@ function AuthProgressHeader({
 			>
 				<ArrowLeft size={18} color={COLORS.text} strokeWidth={2.2} />
 			</Pressable>
-			<FlowProgressBar
-				progress={progress}
-				className="flex-1"
-				accessible
-				accessibilityLabel={`Fortschritt ${Math.round(Math.min(Math.max(progress, 0), 1) * 100)} Prozent`}
-				accessibilityRole="progressbar"
-				accessibilityValue={{
-					min: 0,
-					max: 100,
-					now: Math.round(Math.min(Math.max(progress, 0), 1) * 100),
-				}}
-			/>
+			<View className="flex-1 gap-2">
+				<View className="flex-row items-center justify-between">
+					<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+						DEIN PROFIL
+					</Text>
+					{progressLabel ? (
+						<Text className="font-poppins text-body-5 text-secondary-text">
+							{progressLabel}
+						</Text>
+					) : null}
+				</View>
+				<FlowProgressBar
+					progress={progress}
+					accessible
+					accessibilityLabel={`Fortschritt ${Math.round(Math.min(Math.max(progress, 0), 1) * 100)} Prozent`}
+					accessibilityRole="progressbar"
+					accessibilityValue={{
+						min: 0,
+						max: 100,
+						now: Math.round(Math.min(Math.max(progress, 0), 1) * 100),
+					}}
+				/>
+			</View>
 		</View>
 	);
 }
@@ -2509,15 +1974,16 @@ function PillTextInput({
 		<View
 			style={{
 				width: "100%",
-				minHeight: 40,
-				borderRadius: 24,
-				borderWidth: 1.4,
+				maxWidth: 345,
+				minHeight: 64,
+				borderRadius: 32,
+				borderWidth: 1,
 				borderColor: COLORS.primary,
 				backgroundColor: COLORS.surface,
 				flexDirection: "row",
 				alignItems: "center",
-				paddingLeft: 16,
-				paddingRight: 4,
+				paddingLeft: 20,
+				paddingRight: 12,
 			}}
 		>
 			<TextInput
@@ -2540,16 +2006,15 @@ function PillTextInput({
 				selectionColor={COLORS.primary}
 				style={{
 					flex: 1,
-					height: 38,
+					height: 62,
 					fontFamily: "Poppins",
-					fontSize: 13,
+					fontSize: 16,
 					color: COLORS.text,
 					padding: 0,
 					includeFontPadding: false,
 				}}
 			/>
 			{accessory}
-			<SmallArrowButton disabled={disabled} onPress={onSubmit} />
 		</View>
 	);
 }
@@ -2578,47 +2043,6 @@ function FormPill({
 			/>
 			{rightAccessory ? <View className="ml-2">{rightAccessory}</View> : null}
 		</View>
-	);
-}
-
-function SmallArrowButton({
-	disabled = false,
-	onPress,
-}: {
-	disabled?: boolean;
-	onPress: () => void;
-}) {
-	return (
-		<Pressable
-			accessibilityRole="button"
-			accessibilityLabel={disabled ? "Weiter, wird verarbeitet" : "Weiter"}
-			accessibilityState={{ busy: disabled, disabled }}
-			disabled={disabled}
-			hitSlop={8}
-			onPress={onPress}
-			style={{
-				width: 32,
-				height: 32,
-				borderRadius: 16,
-				alignItems: "center",
-				justifyContent: "center",
-				overflow: "hidden",
-			}}
-		>
-			<LinearGradient
-				colors={PRIMARY_GRADIENT.colors}
-				start={PRIMARY_GRADIENT.start}
-				end={PRIMARY_GRADIENT.end}
-				style={{
-					position: "absolute",
-					left: 0,
-					right: 0,
-					top: 0,
-					bottom: 0,
-				}}
-			/>
-			<ArrowRight size={16} color="#FFFFFF" strokeWidth={2.3} />
-		</Pressable>
 	);
 }
 
@@ -2696,351 +2120,13 @@ function OtpCodeInput({
 	);
 }
 
-function RangeSelector({
-	value,
-	values,
-	accessibilityLabel,
-	onChange,
-}: {
-	value: string;
-	values: readonly number[];
-	accessibilityLabel: string;
-	onChange: (value: string) => void;
-}) {
-	const parsedValue = Number.parseInt(value, 10);
-	const fallbackValue = values.includes(30) ? 30 : (values[0] ?? 0);
-	const selected = values.includes(parsedValue) ? parsedValue : fallbackValue;
-	const selectedIndex = Math.max(0, values.indexOf(selected));
-	const lastIndex = Math.max(values.length - 1, 1);
-
-	return (
-		<SnapCarouselSelector
-			accessibilityLabel={accessibilityLabel}
-			accessibilityValue={`${selected} Minuten`}
-			decrementLabel="Weniger Zeit"
-			getItemKey={(minutes) => String(minutes)}
-			incrementLabel="Mehr Zeit"
-			items={values}
-			onSelect={(minutes) => onChange(`${minutes} min`)}
-			primaryLabel={`${selected}`}
-			progress={selectedIndex / lastIndex}
-			secondaryLabel="min"
-			selectedIndex={selectedIndex}
-		/>
-	);
-}
-
-function ChipCloud({
-	options,
-	value,
-	onToggle,
-}: {
-	options: readonly ChipOption[];
-	value: string;
-	onToggle: (label: string) => void;
-}) {
-	return (
-		<View
-			style={{
-				width: "88%",
-				flexDirection: "row",
-				flexWrap: "wrap",
-				justifyContent: "center",
-				columnGap: 10,
-				rowGap: 12,
-			}}
-		>
-			{options.map((option) => {
-				const selected = hasListValue(value, option.label);
-				const Icon = option.icon;
-				return (
-					<Animated.View
-						key={option.label}
-						layout={LinearTransition.duration(180)}
-					>
-						<Pressable
-							accessibilityLabel={option.label}
-							accessibilityRole="checkbox"
-							accessibilityState={{ checked: selected }}
-							onPress={() => onToggle(option.label)}
-							style={{
-								minHeight: 44,
-								borderRadius: DAYOVA_DESIGN_SYSTEM.radius.button,
-								paddingHorizontal: option.label.length > 8 ? 12 : 16,
-								paddingVertical: 8,
-								flexDirection: "row",
-								alignItems: "center",
-								justifyContent: "center",
-								gap: 8,
-								overflow: "hidden",
-								backgroundColor: selected ? COLORS.primary : COLORS.surface,
-								borderWidth: selected
-									? 0
-									: DAYOVA_DESIGN_SYSTEM.size.button.borderWidth,
-								borderColor: COLORS.border,
-								boxShadow: selected
-									? "0 8px 18px rgba(0, 186, 255, 0.14)"
-									: "0 8px 18px rgba(20, 28, 48, 0.05)",
-							}}
-						>
-							{selected ? (
-								<LinearGradient
-									colors={PRIMARY_GRADIENT.colors}
-									start={PRIMARY_GRADIENT.start}
-									end={PRIMARY_GRADIENT.end}
-									style={{
-										position: "absolute",
-										top: 0,
-										right: 0,
-										bottom: 0,
-										left: 0,
-									}}
-								/>
-							) : null}
-							{Icon ? (
-								<Icon
-									size={18}
-									color={selected ? COLORS.surface : COLORS.primary}
-									strokeWidth={2}
-								/>
-							) : null}
-							<Text
-								className="font-poppins"
-								style={{
-									color: selected ? COLORS.surface : COLORS.text,
-									fontSize: DAYOVA_DESIGN_SYSTEM.typography.body.sm.fontSize,
-									lineHeight:
-										DAYOVA_DESIGN_SYSTEM.typography.body.sm.lineHeight,
-									fontWeight:
-										DAYOVA_DESIGN_SYSTEM.typography.body.sm.fontWeight,
-								}}
-							>
-								{option.label}
-							</Text>
-						</Pressable>
-					</Animated.View>
-				);
-			})}
-		</View>
-	);
-}
-
-function GoalList({
-	options,
-	value,
-	onToggle,
-}: {
-	options: readonly string[];
-	value: string;
-	onToggle: (label: string) => void;
-}) {
-	return (
-		<View style={{ width: "100%", gap: 10 }}>
-			{options.map((option, index) => {
-				const selected = hasListValue(value, option);
-				return (
-					<Animated.View
-						key={option}
-						entering={FadeInDown.delay(index * 25).duration(240)}
-					>
-						<Pressable
-							accessibilityLabel={option}
-							accessibilityRole="checkbox"
-							accessibilityState={{ checked: selected }}
-							onPress={() => onToggle(option)}
-							style={{
-								minHeight: 44,
-								borderRadius: 22,
-								backgroundColor: selected ? COLORS.primary : COLORS.surface,
-								flexDirection: "row",
-								alignItems: "center",
-								paddingHorizontal: 16,
-								gap: 10,
-							}}
-						>
-							<View
-								style={{
-									width: 16,
-									height: 16,
-									borderRadius: 8,
-									borderWidth: 1.5,
-									borderColor: selected ? "#FFFFFF" : COLORS.text,
-									backgroundColor: selected
-										? "rgba(255,255,255,0.28)"
-										: "transparent",
-								}}
-							/>
-							<Text
-								className="font-poppins text-body-3"
-								style={{ color: selected ? "#FFFFFF" : COLORS.text }}
-							>
-								{option}
-							</Text>
-						</Pressable>
-					</Animated.View>
-				);
-			})}
-		</View>
-	);
-}
-
-function FactPanel({ step, body }: { step: FactStep; body: string }) {
-	const Icon =
-		step.cardIcon === "calendar"
-			? CalendarDays
-			: step.cardIcon === "bulb"
-				? Bulb
-				: Route2;
-
-	return (
-		<View style={{ width: "100%", minHeight: 260, alignItems: "center" }}>
-			<View
-				style={{
-					position: "absolute",
-					top: -8,
-					width: 8,
-					height: 150,
-					borderRadius: 999,
-					backgroundColor: "#E5EAF0",
-					left: "25%",
-				}}
-			/>
-			<View
-				style={{
-					position: "absolute",
-					top: -8,
-					width: 8,
-					height: 150,
-					borderRadius: 999,
-					backgroundColor: "#E5EAF0",
-					right: "25%",
-				}}
-			/>
-			<Animated.View
-				entering={FadeInUp.delay(80).duration(420).springify().damping(18)}
-				style={{
-					marginTop: 132,
-					width: "88%",
-					borderRadius: 20,
-					backgroundColor: COLORS.surface,
-					padding: 18,
-					boxShadow: "0 16px 28px rgba(20, 28, 48, 0.05)",
-				}}
-			>
-				<View
-					style={{
-						alignSelf: "flex-start",
-						borderRadius: 999,
-						backgroundColor: "rgba(0, 186, 255, 0.1)",
-						paddingHorizontal: 9,
-						paddingVertical: 5,
-						flexDirection: "row",
-						alignItems: "center",
-						gap: 4,
-					}}
-				>
-					<Icon size={13} color={COLORS.primary} strokeWidth={2} />
-					<Text className="font-poppins font-semibold text-body-5 text-primary">
-						Lernfakt
-					</Text>
-				</View>
-				<Text className="mt-4 font-poppins text-body-5 text-secondary-text">
-					{body}
-				</Text>
-			</Animated.View>
-		</View>
-	);
-}
-
-export function PlanFitStack() {
-	const items = [
-		{
-			icon: BookOpen,
-			text: "Lerninhalte, die genau zu deinen Schwächen passen.",
-		},
-		{
-			icon: Route2,
-			text: "Aufgaben mit direktem Feedback nach jeder Antwort.",
-		},
-		{
-			icon: ClipboardEdit,
-			text: "Prüfungsmodus mit Zeitdruck und anschließender Auswertung.",
-		},
-	] as const;
-	const cardTransforms = [
-		{ rotate: "-2.5deg", translateX: -1 },
-		{ rotate: "2deg", translateX: 1 },
-		{ rotate: "-2deg", translateX: -1 },
-	] as const;
-
-	return (
-		<View
-			style={{
-				width: "100%",
-				minHeight: 390,
-				alignItems: "center",
-				overflow: "visible",
-			}}
-		>
-			<View
-				pointerEvents="none"
-				style={{
-					position: "absolute",
-					top: -4,
-					width: 502,
-					height: 508,
-					opacity: 1,
-				}}
-			>
-				<PhoneBackground width="100%" height="115%" />
-			</View>
-			<View style={{ position: "absolute", top: 58, width: "100%", gap: 18 }}>
-				{items.map((item, index) => {
-					const Icon = item.icon;
-					return (
-						<Animated.View
-							key={item.text}
-							testID="plan-fit-card-animation"
-							entering={FadeInDown.delay(index * 80)
-								.duration(360)
-								.springify()
-								.damping(18)}
-							className="w-[84%] self-center"
-						>
-							<View
-								className="min-h-16 w-full flex-row items-center gap-4 rounded-[14px] bg-surface px-4 shadow-black/5 shadow-lg"
-								// Each card has a distinct design transform, so this remains runtime style data.
-								style={{
-									transform: [
-										{ translateX: cardTransforms[index].translateX },
-										{ rotate: cardTransforms[index].rotate },
-									],
-								}}
-							>
-								<View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-									<Icon size={18} color={COLORS.primary} strokeWidth={2} />
-								</View>
-								<Text className="flex-1 font-poppins text-body-3 text-text">
-									{item.text}
-								</Text>
-							</View>
-						</Animated.View>
-					);
-				})}
-			</View>
-		</View>
-	);
-}
-
 function WheelAnswer({ step }: { step: WheelStep }) {
 	const { answers, setAnswer } = useOnboarding();
-	const [pickerTarget, setPickerTarget] = useState<
-		"birthDate" | "learningTime" | null
-	>(null);
+	const [pickerTarget, setPickerTarget] = useState<"birthDate" | null>(null);
 
 	if (step.field === "birthDate") {
-		const value = answers.birthDate || DEFAULT_BIRTH_DATE;
-		const selectedDate = parsePickerDate(value);
+		const value = answers.birthDate;
+		const selectedDate = parsePickerDate(value || DEFAULT_BIRTH_DATE);
 		const handleChange = (event: DateTimePickerEvent, nextDate?: Date) => {
 			if (Platform.OS === "android") setPickerTarget(null);
 			if (event.type === "dismissed" || !nextDate) return;
@@ -3062,37 +2148,12 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 						mode="date"
 						maximumDate={new Date()}
 						onChange={handleChange}
-						onClose={() => setPickerTarget(null)}
-					/>
-				) : null}
-			</View>
-		);
-	}
-
-	if (step.field === "learningTime") {
-		const value = answers.learningTime || DEFAULT_LEARNING_TIME;
-		const selectedTime = parsePickerTime(value);
-		const handleChange = (event: DateTimePickerEvent, nextDate?: Date) => {
-			if (Platform.OS === "android") setPickerTarget(null);
-			if (event.type === "dismissed" || !nextDate) return;
-			setAnswer("learningTime", formatPickerTime(nextDate));
-		};
-
-		return (
-			<View className="w-full items-center">
-				<PickerInputTrigger
-					accessibilityLabel="Lernzeit auswählen"
-					value={value}
-					placeholder="Uhrzeit auswählen"
-					onPress={() => setPickerTarget("learningTime")}
-				/>
-				{pickerTarget === "learningTime" ? (
-					<DateTimePickerSheet
-						visible
-						value={selectedTime}
-						mode="time"
-						onChange={handleChange}
-						onClose={() => setPickerTarget(null)}
+						onClose={() => {
+							if (!value) {
+								setAnswer("birthDate", formatPickerDate(selectedDate));
+							}
+							setPickerTarget(null);
+						}}
 					/>
 				) : null}
 			</View>
@@ -3103,7 +2164,7 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 		return (
 			<OnboardingSelect
 				accessibilityLabel="Klassenstufe auswählen"
-				value={answers.grade || "9"}
+				value={answers.grade}
 				options={GRADE_OPTIONS}
 				formatLabel={(grade) => `${grade}. Klasse`}
 				testID="onboarding-grade-picker"
@@ -3117,7 +2178,7 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 		return (
 			<OnboardingSelect
 				accessibilityLabel="Schulart auswählen"
-				value={answers.schoolType || "prefer_not_to_say"}
+				value={answers.schoolType}
 				options={SCHOOL_TYPE_VALUES}
 				formatLabel={(schoolType) =>
 					SCHOOL_TYPE_OPTIONS.find((option) => option.value === schoolType)
@@ -3133,144 +2194,12 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 	return (
 		<OnboardingSelect
 			accessibilityLabel="Bundesland auswählen"
-			value={answers.state || "Sachsen"}
+			value={answers.state}
 			options={GERMAN_FEDERAL_STATES}
 			testID="onboarding-state-picker"
 			title="Bundesland auswählen"
 			onChange={(value) => setAnswer("state", value)}
 		/>
-	);
-}
-
-function IntroDots({
-	pageWidth,
-	scrollX,
-}: {
-	pageWidth: number;
-	scrollX: SharedValue<number>;
-}) {
-	return (
-		<View className="flex-row items-center gap-2">
-			{INTRO_STEPS.map((step, index) => (
-				<IntroDot
-					key={step.id}
-					index={index}
-					pageWidth={pageWidth}
-					scrollX={scrollX}
-				/>
-			))}
-		</View>
-	);
-}
-
-function IntroDot({
-	index,
-	pageWidth,
-	scrollX,
-}: {
-	index: number;
-	pageWidth: number;
-	scrollX: SharedValue<number>;
-}) {
-	const animatedStyle = useAnimatedStyle(() => {
-		const width = getIntroDotWidth(
-			scrollX.get(),
-			pageWidth,
-			index,
-			INTRO_STEPS.length,
-		);
-		const emphasis =
-			(width - INTRO_DOT_COLLAPSED_WIDTH) /
-			(INTRO_DOT_EXPANDED_WIDTH - INTRO_DOT_COLLAPSED_WIDTH);
-
-		return {
-			width,
-			opacity: 0.35 + emphasis * 0.65,
-		};
-	});
-
-	return (
-		<Animated.View
-			className="rounded-full bg-text"
-			// Shared geometry keeps the rendered height aligned with midpoint positioning.
-			style={[{ height: INTRO_DOT_HEIGHT }, animatedStyle]}
-		/>
-	);
-}
-
-function CircularNextButton({
-	onPress,
-	disabled,
-	progress,
-	style,
-}: {
-	onPress: () => void;
-	disabled?: boolean;
-	progress: SharedValue<number>;
-	style?: object;
-}) {
-	const circumference = 2 * Math.PI * 34;
-	const animatedProgressProps = useAnimatedProps<CircleProps>(() => {
-		const clampedProgress = Math.min(Math.max(progress.get(), 0.08), 1);
-		return {
-			strokeDashoffset: circumference * (1 - clampedProgress),
-		};
-	});
-
-	return (
-		<View
-			style={[
-				{
-					width: 76,
-					height: 76,
-					alignItems: "center",
-					justifyContent: "center",
-				},
-				style,
-			]}
-		>
-			<View style={{ position: "absolute", width: 76, height: 76 }}>
-				<Svg width={76} height={76}>
-					<Circle
-						cx="38"
-						cy="38"
-						r="34"
-						fill="transparent"
-						stroke="rgba(26,26,26,0.12)"
-						strokeWidth="4"
-					/>
-					<AnimatedCircle
-						cx="38"
-						cy="38"
-						r="34"
-						fill="transparent"
-						stroke={disabled ? "rgba(26,26,26,0.18)" : COLORS.primary}
-						strokeWidth="4"
-						strokeLinecap="round"
-						strokeDasharray={`${circumference} ${circumference}`}
-						transform="rotate(-90 38 38)"
-						animatedProps={animatedProgressProps}
-					/>
-				</Svg>
-			</View>
-			<Pressable
-				accessibilityLabel="Weiter"
-				accessibilityRole="button"
-				accessibilityState={{ disabled }}
-				disabled={disabled}
-				onPress={onPress}
-				style={{
-					width: 60,
-					height: 60,
-					borderRadius: 30,
-					alignItems: "center",
-					justifyContent: "center",
-					backgroundColor: disabled ? "rgba(26,26,26,0.32)" : "#1A1A1A",
-				}}
-			>
-				<ArrowRight size={22} color="#FFFFFF" strokeWidth={2.4} />
-			</Pressable>
-		</View>
 	);
 }
 
@@ -3386,6 +2315,8 @@ function DarkPillButton({
 	disabled?: boolean;
 	busy?: boolean;
 }) {
+	const { colors: COLORS, isDark } = useDayovaTheme();
+
 	return (
 		<Pressable
 			accessibilityLabel={label}
@@ -3398,14 +2329,15 @@ function DarkPillButton({
 				borderRadius: 28,
 				alignItems: "center",
 				justifyContent: "center",
-				backgroundColor: COLORS.buttonNeutral,
-				boxShadow: disabled ? "none" : "0 8px 18px rgba(20, 28, 48, 0.08)",
+				backgroundColor: isDark ? COLORS.primaryStrong : COLORS.buttonNeutral,
+				boxShadow: disabled
+					? "none"
+					: isDark
+						? "0 8px 18px rgba(0, 160, 230, 0.18)"
+						: "0 8px 18px rgba(20, 28, 48, 0.08)",
 			}}
 		>
-			<Text
-				className="font-poppins font-semibold text-body-2"
-				style={{ color: COLORS.surface }}
-			>
+			<Text className="font-poppins font-semibold text-body-2 text-white">
 				{label}
 			</Text>
 		</Pressable>
@@ -3502,55 +2434,5 @@ function AuthBackgroundPattern({
 				);
 			})}
 		</View>
-	);
-}
-
-function PhoneBackground(props: SvgProps) {
-	return (
-		<Svg width={393} height={583} viewBox="0 0 393 583" fill="none" {...props}>
-			<Rect
-				x="42.7754"
-				y="15.6278"
-				width="307.449"
-				height="665.744"
-				rx="52"
-				fill="white"
-			/>
-			<Path
-				fillRule="evenodd"
-				clipRule="evenodd"
-				d="M33.2685 30.7185C27.1293 42.7532 27.1293 58.5075 27.1293 90.0162V124.241H25.5646C24.7005 124.241 24 124.941 24 125.804V147.683C24 148.546 24.7005 149.246 25.5646 149.246H27.1293V169.562H25.5646C24.7005 169.562 24 170.261 24 171.124V216.445C24 217.308 24.7005 218.008 25.5646 218.008H27.1293V232.854H25.5646C24.7005 232.854 24 233.554 24 234.417V279.738C24 280.601 24.7005 281.3 25.5646 281.3H27.1293V606.984C27.1293 638.492 27.1293 654.247 33.2685 666.281C38.6687 676.867 47.2856 685.474 57.8841 690.868C69.933 697 85.7059 697 117.252 697H275.748C307.294 697 323.067 697 335.116 690.868C345.714 685.474 354.331 676.867 359.732 666.281C365.871 654.247 365.871 638.492 365.871 606.984V280.519H367.435C368.299 280.519 369 279.819 369 278.956V205.506C369 204.642 368.299 203.943 367.435 203.943H365.871V90.0162C365.871 58.5075 365.871 42.7532 359.732 30.7185C354.331 20.1325 345.714 11.5258 335.116 6.13198C323.067 0 307.294 0 275.748 0H117.252C85.7059 0 69.933 0 57.8841 6.13198C47.2856 11.5258 38.6687 20.1325 33.2685 30.7185ZM47.2094 37.8134C42.7755 46.5051 42.7755 57.8833 42.7755 80.6395V616.361C42.7755 639.117 42.7755 650.495 47.2094 659.187C51.1096 666.832 57.3328 673.048 64.9873 676.944C73.6893 681.372 85.0809 681.372 107.864 681.372H285.136C307.919 681.372 319.311 681.372 328.013 676.944C335.667 673.048 341.89 666.832 345.791 659.187C350.224 650.495 350.224 639.117 350.224 616.361V80.6395C350.224 57.8832 350.224 46.5051 345.791 37.8134C341.89 30.168 335.667 23.952 328.013 20.0565C319.311 15.6278 307.919 15.6278 285.136 15.6278H107.864C85.0809 15.6278 73.6893 15.6278 64.9873 20.0565C57.3328 23.952 51.1096 30.168 47.2094 37.8134Z"
-				fill="#F2F2F5"
-			/>
-			<Path
-				d="M149.952 37.5067C149.952 29.7388 156.257 23.4417 164.034 23.4417H225.837C233.614 23.4417 239.918 29.7388 239.918 37.5067C239.918 45.2746 233.614 51.5717 225.837 51.5717H164.034C156.257 51.5717 149.952 45.2746 149.952 37.5067Z"
-				fill="#F2F2F5"
-			/>
-			<Path
-				d="M231.313 36.7253C231.313 39.3146 229.211 41.4137 226.619 41.4137C224.026 41.4137 221.925 39.3146 221.925 36.7253C221.925 34.136 224.026 32.037 226.619 32.037C229.211 32.037 231.313 34.136 231.313 36.7253Z"
-				fill="#DEDEE4"
-			/>
-			<Rect
-				x="-110.697"
-				y="211.377"
-				width="530.783"
-				height="466.956"
-				transform="rotate(-15 -110.697 211.377)"
-				fill="url(#paint0_linear_2375_9304)"
-			/>
-			<Defs>
-				<SvgLinearGradient
-					id="paint0_linear_2375_9304"
-					x1="154.694"
-					y1="211.377"
-					x2="154.694"
-					y2="678.332"
-					gradientUnits="userSpaceOnUse"
-				>
-					<Stop stopColor="white" stopOpacity="0.05" />
-					<Stop offset="1" stopColor="#F6F6F4" />
-				</SvgLinearGradient>
-			</Defs>
-		</Svg>
 	);
 }
