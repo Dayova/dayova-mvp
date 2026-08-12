@@ -391,16 +391,16 @@ const getPathNodeState = (
 };
 
 const STEP_PUCK_DIMENSIONS = {
-	blue: { faceHeight: 52, height: 59, width: 60 },
-	gray: { faceHeight: 46, height: 52, width: 52 },
+	compact: { faceHeight: 46, height: 52, width: 52 },
+	prominent: { faceHeight: 52, height: 59, width: 60 },
 } satisfies Record<
-	LearningPathNodeTone,
+	"compact" | "prominent",
 	{ faceHeight: number; height: number; width: number }
 >;
 const STEP_PUCK_LIP_OFFSET = 6;
 const STEP_SELECTION_WIDTH = 92;
 const STEP_SELECTION_HEIGHT = 86;
-const STEP_SELECTION_STROKE_WIDTH = 7;
+const STEP_SELECTION_STROKE_WIDTH = 4;
 const STEP_HALO_PATH =
 	"M46 3.5C69.4721 3.5 88.5 21.1848 88.5 43C88.5 64.8152 69.4721 82.5 46 82.5C22.5279 82.5 3.5 64.8152 3.5 43C3.5 21.1848 22.5279 3.5 46 3.5Z";
 
@@ -425,7 +425,7 @@ function StepHalo({
 				stroke={
 					tone === "blue"
 						? DAYOVA_DESIGN_SYSTEM.colors.path6
-						: DAYOVA_DESIGN_SYSTEM.colors.path1
+						: DAYOVA_DESIGN_SYSTEM.colors.path4
 				}
 				strokeWidth={STEP_SELECTION_STROKE_WIDTH}
 				testID={testID}
@@ -502,39 +502,50 @@ function BreathingStep({
 
 function StepPuck({
 	icon,
+	locked,
+	testID,
 	tone,
 }: {
 	icon: LearningPathNodeIcon;
+	locked: boolean;
+	testID: string;
 	tone: LearningPathNodeTone;
 }) {
-	const isLocked = tone === "gray";
+	const isCompleted = tone === "blue";
 	const Icon = LEARNING_PATH_ICON_COMPONENT[icon];
 	const {
 		faceHeight,
 		height: puckHeight,
 		width: puckWidth,
-	} = STEP_PUCK_DIMENSIONS[tone];
-	const baseColor = isLocked
-		? DAYOVA_DESIGN_SYSTEM.colors.pathLockedBase
-		: DAYOVA_DESIGN_SYSTEM.colors.path5;
-	const faceColor = isLocked
-		? DAYOVA_DESIGN_SYSTEM.colors.path1
-		: DAYOVA_DESIGN_SYSTEM.colors.path6;
-	const iconColor = isLocked
+	} = STEP_PUCK_DIMENSIONS[locked ? "compact" : "prominent"];
+	const baseColor = isCompleted
+		? DAYOVA_DESIGN_SYSTEM.colors.path5
+		: locked
+			? DAYOVA_DESIGN_SYSTEM.colors.pathLockedBase
+			: DAYOVA_DESIGN_SYSTEM.colors.path4;
+	const faceColor = isCompleted
+		? DAYOVA_DESIGN_SYSTEM.colors.path6
+		: locked
+			? DAYOVA_DESIGN_SYSTEM.colors.path1
+			: DAYOVA_DESIGN_SYSTEM.colors.path3;
+	const iconColor = locked
 		? DAYOVA_DESIGN_SYSTEM.colors.path3
 		: DAYOVA_DESIGN_SYSTEM.colors.light1;
 
 	return (
 		<View
 			pointerEvents="none"
+			testID={testID}
 			style={{
 				width: puckWidth,
 				height: puckHeight,
 				alignItems: "center",
 				borderRadius: puckHeight / 2,
-				boxShadow: isLocked
-					? "0 5px 8px rgba(105, 117, 134, 0.16)"
-					: "0 5px 9px rgba(0, 160, 230, 0.2)",
+				boxShadow: isCompleted
+					? "0 5px 9px rgba(0, 160, 230, 0.2)"
+					: locked
+						? "0 5px 8px rgba(105, 117, 134, 0.16)"
+						: "0 5px 9px rgba(105, 117, 134, 0.22)",
 			}}
 		>
 			<View
@@ -576,20 +587,20 @@ function StepPuck({
 						style={{
 							position: "absolute",
 							top: -9,
-							right: isLocked ? -5 : -2,
-							width: isLocked ? 17 : 21,
-							height: isLocked ? 42 : 48,
+							right: locked ? -5 : -2,
+							width: locked ? 17 : 21,
+							height: locked ? 42 : 48,
 							borderRadius: 12,
-							backgroundColor: isLocked
-								? DAYOVA_DESIGN_SYSTEM.colors.light1
-								: DAYOVA_DESIGN_SYSTEM.colors.path7,
-							opacity: isLocked ? 0.2 : 0.68,
+							backgroundColor: isCompleted
+								? DAYOVA_DESIGN_SYSTEM.colors.path7
+								: DAYOVA_DESIGN_SYSTEM.colors.light1,
+							opacity: locked ? 0.2 : isCompleted ? 0.68 : 0.16,
 							transform: [{ rotate: "31deg" }],
 						}}
 					/>
 				</View>
 				<Icon
-					size={isLocked ? 23 : 28}
+					size={locked ? 23 : 28}
 					color={iconColor}
 					strokeWidth={icon === "check" ? 3.6 : 2.75}
 					style={{ zIndex: 1 }}
@@ -618,7 +629,8 @@ function PathNode({
 		selected,
 		state,
 	});
-	const puckDimensions = STEP_PUCK_DIMENSIONS[presentation.tone];
+	const puckDimensions =
+		STEP_PUCK_DIMENSIONS[isLocked ? "compact" : "prominent"];
 	const title = formatGermanUiText(session.title);
 	const stateLabel = PATH_NODE_STATE_LABEL[state];
 	const position = {
@@ -664,7 +676,12 @@ function PathNode({
 						zIndex: 1,
 					}}
 				>
-					<StepPuck icon={presentation.icon} tone={presentation.tone} />
+					<StepPuck
+						icon={presentation.icon}
+						locked={isLocked}
+						testID={`learning-path-node-puck-${session.id}`}
+						tone={presentation.tone}
+					/>
 				</View>
 			</BreathingStep>
 		</Pressable>

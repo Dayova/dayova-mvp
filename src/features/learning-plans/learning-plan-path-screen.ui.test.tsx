@@ -257,7 +257,15 @@ describe("learning-plan path", () => {
 		expect(
 			screen.getByTestId("learning-path-node-halo-session_current").props.stroke
 				.payload,
-		).toEqual(processColor(DAYOVA_DESIGN_SYSTEM.colors.path1));
+		).toEqual(processColor(DAYOVA_DESIGN_SYSTEM.colors.path4));
+		expect(
+			screen.getByTestId("learning-path-node-puck-session_current").props.style
+				.width,
+		).toBe(60);
+		expect(
+			screen.getByTestId("learning-path-node-puck-session_preview").props.style
+				.width,
+		).toBe(52);
 		expect(
 			screen.queryByTestId("learning-path-node-halo-session_done"),
 		).toBeNull();
