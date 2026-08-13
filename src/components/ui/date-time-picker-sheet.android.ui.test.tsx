@@ -53,6 +53,8 @@ describe("Android DateTimePickerSheet", () => {
 		const picker = screen.getByTestId("date-picker-dialog");
 		expect(picker.props.initialDate).toBe("2012-09-09T00:00:00.000Z");
 
+		// Compose transports the selected calendar day in UTC components; the
+		// production converter intentionally reads getUTC* before restoring local time.
 		const materialDate = new Date("2012-09-10T00:00:00Z");
 		await act(() => picker.props.onDateSelected(materialDate));
 		const expectedDate = new Date(value);
