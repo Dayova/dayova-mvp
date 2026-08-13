@@ -81,7 +81,12 @@ const getExpiredOfflineSnapshot = (
 });
 
 export function AccessProvider({ children }: { children: ReactNode }) {
-	const { user, isSessionLoading, isConvexUserSynced } = useAuthSession();
+	const {
+		user,
+		isSessionLoading,
+		isConvexUserSynced,
+		onboardingCompletionStatus,
+	} = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const [now, setNow] = useState(Date.now);
 	const [queryNow, setQueryNow] = useState(Date.now);
@@ -94,7 +99,13 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	);
 	const activateMyTrial = useMutation(api.entitlements.activateMyTrial);
 	const syncMyEntitlement = useAction(api.revenueCat.syncMyEntitlement);
-	const canQuery = Boolean(user && isConvexAuthenticated && isConvexUserSynced);
+	const canQuery = Boolean(
+		user &&
+			isConvexAuthenticated &&
+			isConvexUserSynced &&
+			(onboardingCompletionStatus === "none" ||
+				onboardingCompletionStatus === "ready_for_trial"),
+	);
 	const serverAccess = useQuery(
 		api.entitlements.getMyAccess,
 		canQuery ? { now: queryNow } : "skip",
@@ -205,6 +216,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	const isAccessLoading =
 		Boolean(user) &&
 		!isSessionLoading &&
+		(onboardingCompletionStatus === "none" ||
+			onboardingCompletionStatus === "ready_for_trial") &&
 		!access &&
 		(!isCacheLoaded || !didQueryTimeout);
 

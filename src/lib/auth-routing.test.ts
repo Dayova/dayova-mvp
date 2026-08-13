@@ -100,4 +100,34 @@ describe("getAuthNavigationTarget", () => {
 			}),
 		).toBe("/");
 	});
+
+	test("waits for the durable onboarding outbox and resumes it before app access", () => {
+		expect(
+			getAuthNavigationTarget({
+				hasUser: true,
+				isSessionLoading: false,
+				onboardingCompletionStatus: "loading",
+				pathname: "/home",
+				pendingSessionTask: null,
+			}),
+		).toBeNull();
+		expect(
+			getAuthNavigationTarget({
+				hasUser: true,
+				isSessionLoading: false,
+				onboardingCompletionStatus: "pending",
+				pathname: "/home",
+				pendingSessionTask: null,
+			}),
+		).toBe("/onboarding");
+		expect(
+			getAuthNavigationTarget({
+				hasUser: true,
+				isSessionLoading: false,
+				onboardingCompletionStatus: "ready_for_trial",
+				pathname: "/onboarding",
+				pendingSessionTask: null,
+			}),
+		).toBeNull();
+	});
 });

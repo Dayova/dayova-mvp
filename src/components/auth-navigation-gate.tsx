@@ -15,11 +15,17 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const rootNavigationState = useRootNavigationState();
-	const { user, isSessionLoading, pendingSessionTask } = useAuthSession();
+	const {
+		user,
+		isSessionLoading,
+		pendingSessionTask,
+		onboardingCompletionStatus,
+	} = useAuthSession();
 	const { access, isAccessLoading } = useAccess();
 	const authTargetRoute = getAuthNavigationTarget({
 		hasUser: Boolean(user),
 		isSessionLoading,
+		onboardingCompletionStatus,
 		pathname,
 		pendingSessionTask,
 	});
@@ -32,11 +38,14 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 			})
 		: null;
 	const targetRoute =
-		pendingSessionTask !== null
+		pendingSessionTask !== null || onboardingCompletionStatus !== "none"
 			? authTargetRoute
 			: (accessTargetRoute ?? authTargetRoute);
 	const shouldMaskRoute =
-		isSessionLoading || isAccessLoading || targetRoute !== null;
+		isSessionLoading ||
+		onboardingCompletionStatus === "loading" ||
+		isAccessLoading ||
+		targetRoute !== null;
 
 	useEffect(() => {
 		if (!targetRoute || !rootNavigationState?.key) return;

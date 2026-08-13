@@ -32,6 +32,14 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
   mutations. Screens must not depend on a broader auth surface than they use.
 - Native Clerk tokens always use Clerk's secure persistent Expo token cache.
   There is no `Angemeldet bleiben` preference or memory-only cache path.
+- Pending onboarding persistence uses a separate outbox. Native builds store it
+  in encrypted SecureStore; the web fallback uses origin-scoped browser storage
+  and is therefore restricted to the same non-secret operational payload. It is
+  bound to the Clerk registration attempt and eventual Clerk user, is resumed
+  before normal app routing after a process restart, and removes the answer
+  payload only after Convex confirms success. Never add credentials,
+  verification codes, tokens, names, birth dates, or raw e-mail addresses to
+  this outbox. The full lifecycle contract lives in ADR 0002.
 - Password recovery uses neutral account-existence copy, signs out other
   sessions after a successful reset, and supports Clerk's forced
   `reset-password` session task at `/session-tasks/reset-password`. Recovery

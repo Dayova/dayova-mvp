@@ -18,7 +18,6 @@ import {
 	useState,
 } from "react";
 import { api } from "#convex/_generated/api";
-import { getOnboardingPersistenceAnswers } from "~/components/onboarding/onboarding-flow";
 import { useOnboarding } from "~/context/OnboardingContext";
 import {
 	createValidationAnalytics,
@@ -40,6 +39,15 @@ import {
 } from "~/lib/forced-password-reset";
 import { isSupportedGrade } from "~/lib/grades";
 import { signOutAndResetState } from "~/lib/logout-state";
+import {
+	type PendingOnboardingSyncAnswers,
+	type PendingOnboardingSyncResumeResult,
+	syncPendingOnboardingAnswers,
+} from "~/lib/pending-onboarding-sync";
+import {
+	getOnboardingAccountFingerprint,
+	pendingOnboardingSyncOutbox,
+} from "~/lib/pending-onboarding-sync-secure-store";
 import {
 	type PasswordChangeInput,
 	changePassword as updateAccountPassword,
@@ -88,6 +96,7 @@ type AuthUser = {
 	state?: string;
 	avatarUrl?: string;
 	validationStudentCode?: string;
+	onboardingRegistrationAttemptId?: string;
 };
 
 type AuthFlowResult =
@@ -113,6 +122,11 @@ interface AuthSessionContextType {
 	isPostAuthSyncing: boolean;
 	postAuthSyncError: string | null;
 	retryPostAuthSync: () => void;
+	onboardingCompletionStatus:
+		| PendingOnboardingSyncResumeResult["status"]
+		| "loading"
+		| "storage_error";
+	completeOnboardingHandoff: () => Promise<boolean>;
 	pendingSessionTask: string | null;
 }
 
@@ -122,6 +136,12 @@ interface AuthFlowContextType {
 	login: (input: LoginInput) => Promise<AuthFlowResult>;
 	startRegistrationWithEmail: (email: string) => Promise<void>;
 	register: (input: RegisterInput) => Promise<AuthFlowResult>;
+	stageOnboardingRecovery: (
+		answers: PendingOnboardingSyncAnswers,
+	) => Promise<void>;
+	replaceOnboardingRecoveryAnswers: (
+		answers: PendingOnboardingSyncAnswers,
+	) => Promise<void>;
 	verifyEmailCode: (code: string) => Promise<AuthFlowResult>;
 	resendVerification: () => Promise<void>;
 	startPasswordReset: (email: string) => Promise<void>;
@@ -393,11 +413,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		api.validationAnalytics.markActivity,
 	);
 	const updateConvexProfile = useMutation(api.users.updateProfile);
-	const {
-		answers: onboardingAnswers,
-		clearAnswers,
-		hasAnswers,
-	} = useOnboarding();
+	const { clearAnswers } = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const passwordResetHasRemoteAttemptRef = useRef(false);
 	const [pendingVerification, setPendingVerification] =
@@ -413,8 +429,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const [isOnboardingAnswersSyncing, setIsOnboardingAnswersSyncing] =
 		useState(false);
 	const [postAuthSyncFailure, setPostAuthSyncFailure] = useState<
-		"profile" | "answers" | null
+		"profile" | "answers" | "completion" | "restore" | null
 	>(null);
+	const [onboardingCompletion, setOnboardingCompletion] = useState<{
+		clerkUserId: string | null;
+		accountFingerprint: string | null;
+		result:
+			| PendingOnboardingSyncResumeResult
+			| { status: "loading" | "storage_error" };
+	}>({
+		clerkUserId: null,
+		accountFingerprint: null,
+		result: { status: "loading" },
+	});
+	const [onboardingRestoreAttempt, retryOnboardingRestore] = useReducer(
+		(attempt: number) => attempt + 1,
+		0,
+	);
 	const [profileSyncAttempt, retryProfileSync] = useReducer(
 		(attempt: number) => attempt + 1,
 		0,
@@ -426,15 +457,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const [syncedClerkUserId, setSyncedClerkUserId] = useState<string | null>(
 		null,
 	);
-	const retryPostAuthSync = useCallback(() => {
-		const failedBoundary = postAuthSyncFailure;
-		setPostAuthSyncFailure(null);
-		if (failedBoundary === "profile") {
-			retryProfileSync();
-		} else if (failedBoundary === "answers") {
-			retryAnswersSync();
-		}
-	}, [postAuthSyncFailure]);
 
 	const user = useMemo<AuthUser | null>(() => {
 		if (!clerkUser) return null;
@@ -467,8 +489,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				unsafeMetadata,
 				"validationStudentCode",
 			),
+			onboardingRegistrationAttemptId: getMetadataString(
+				unsafeMetadata,
+				"onboardingRegistrationAttemptId",
+			),
 		};
 	}, [clerkUser]);
+
+	useEffect(() => {
+		void onboardingRestoreAttempt;
+		if (!user) return;
+
+		let cancelled = false;
+		void (async () => {
+			try {
+				const accountFingerprint = await getOnboardingAccountFingerprint(
+					user.email,
+				);
+				const result = await pendingOnboardingSyncOutbox.resume({
+					clerkUserId: user.clerkId,
+					accountFingerprint,
+					registrationAttemptId: user.onboardingRegistrationAttemptId,
+				});
+				if (!cancelled) {
+					setPostAuthSyncFailure((current) =>
+						current === "restore" ? null : current,
+					);
+					setOnboardingCompletion({
+						clerkUserId: user.clerkId,
+						accountFingerprint,
+						result,
+					});
+				}
+			} catch (error) {
+				logDiagnosticError(
+					"Failed to restore pending onboarding sync.",
+					error,
+					{ source: "auth.onboarding.outbox.restore", level: "warn" },
+				);
+				if (!cancelled) {
+					setPostAuthSyncFailure("restore");
+					setOnboardingCompletion({
+						clerkUserId: user.clerkId,
+						accountFingerprint: null,
+						result: { status: "storage_error" },
+					});
+				}
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [onboardingRestoreAttempt, user]);
 
 	useEffect(() => {
 		if (!clerkUser) return;
@@ -618,24 +691,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			!user ||
 			!isConvexAuthenticated ||
 			syncedClerkUserId !== user.clerkId ||
-			!hasAnswers
+			onboardingCompletion.clerkUserId !== user.clerkId ||
+			!onboardingCompletion.accountFingerprint ||
+			onboardingCompletion.result.status !== "pending"
 		)
 			return;
 
 		let cancelled = false;
-		const answers = getOnboardingPersistenceAnswers(onboardingAnswers);
+		const identity = {
+			clerkUserId: user.clerkId,
+			accountFingerprint: onboardingCompletion.accountFingerprint,
+		};
 
 		void (async () => {
 			setIsOnboardingAnswersSyncing(true);
 			setPostAuthSyncFailure(null);
 			try {
 				const result = await runWithAuthSettleRetries(() =>
-					saveOnboardingAnswers({ answers }),
+					syncPendingOnboardingAnswers({
+						outbox: pendingOnboardingSyncOutbox,
+						identity,
+						sync: (answers) => saveOnboardingAnswers({ answers }),
+					}),
 				);
 				if (result.ok) {
 					if (!cancelled) {
 						void captureOnboardingCompleted();
 						clearAnswers();
+						setOnboardingCompletion({
+							clerkUserId: user.clerkId,
+							accountFingerprint: identity.accountFingerprint,
+							result: { status: "ready_for_trial" },
+						});
 					}
 					return;
 				}
@@ -670,9 +757,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		clearAnswers,
 		answersSyncAttempt,
 		captureOnboardingCompleted,
-		hasAnswers,
 		isConvexAuthenticated,
-		onboardingAnswers,
+		onboardingCompletion,
 		saveOnboardingAnswers,
 		syncedClerkUserId,
 		user,
@@ -686,6 +772,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			setIsSubmitting(false);
 		}
 	};
+
+	const completeOnboardingHandoff = useCallback(async () => {
+		if (
+			!user ||
+			onboardingCompletion.clerkUserId !== user.clerkId ||
+			!onboardingCompletion.accountFingerprint ||
+			onboardingCompletion.result.status !== "ready_for_trial"
+		) {
+			return false;
+		}
+		try {
+			await pendingOnboardingSyncOutbox.acknowledgeCompletion({
+				clerkUserId: user.clerkId,
+				accountFingerprint: onboardingCompletion.accountFingerprint,
+			});
+			setPostAuthSyncFailure(null);
+			setOnboardingCompletion({
+				clerkUserId: user.clerkId,
+				accountFingerprint: onboardingCompletion.accountFingerprint,
+				result: { status: "none" },
+			});
+			return true;
+		} catch (error) {
+			logDiagnosticError(
+				"Failed to acknowledge completed onboarding sync.",
+				error,
+				{ source: "auth.onboarding.outbox.complete", level: "warn" },
+			);
+			setPostAuthSyncFailure("completion");
+			return false;
+		}
+	}, [onboardingCompletion, user]);
+
+	const retryPostAuthSync = useCallback(() => {
+		const failedBoundary = postAuthSyncFailure;
+		setPostAuthSyncFailure(null);
+		if (failedBoundary === "profile") {
+			retryProfileSync();
+		} else if (failedBoundary === "answers") {
+			retryAnswersSync();
+		} else if (failedBoundary === "restore" && user) {
+			setOnboardingCompletion({
+				clerkUserId: user.clerkId,
+				accountFingerprint: null,
+				result: { status: "loading" },
+			});
+			retryOnboardingRestore();
+		}
+	}, [postAuthSyncFailure, user]);
 
 	const login = async (input: LoginInput): Promise<AuthFlowResult> =>
 		withSubmitting(async () => {
@@ -808,6 +943,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			}
 		});
 
+	const stageOnboardingRecovery = async (
+		answers: PendingOnboardingSyncAnswers,
+	) => {
+		if (!clerk.client) {
+			throw new Error("Authentifizierung ist noch nicht bereit.");
+		}
+		const signUp = clerk.client.signUp;
+		if (!signUp.id || !signUp.emailAddress) {
+			throw new Error(
+				"Die Registrierung konnte nicht sicher vorbereitet werden. Bitte prüfe deine E-Mail-Adresse erneut.",
+			);
+		}
+		const accountFingerprint = await getOnboardingAccountFingerprint(
+			signUp.emailAddress,
+		);
+		try {
+			await pendingOnboardingSyncOutbox.stage({
+				registrationAttemptId: signUp.id,
+				accountFingerprint,
+				answers,
+			});
+			await pendingOnboardingSyncOutbox.ensureStaged({
+				registrationAttemptId: signUp.id,
+				accountFingerprint,
+			});
+		} catch (error) {
+			logDiagnosticError("Failed to stage pending onboarding sync.", error, {
+				source: "auth.onboarding.outbox.stage",
+				level: "warn",
+			});
+			throw new Error(
+				"Deine Lernzeiten konnten nicht sicher für die Kontoerstellung vorbereitet werden. Bitte versuche es erneut.",
+			);
+		}
+	};
+
+	const replaceOnboardingRecoveryAnswers = async (
+		answers: PendingOnboardingSyncAnswers,
+	) => {
+		if (
+			!user ||
+			onboardingCompletion.clerkUserId !== user.clerkId ||
+			!onboardingCompletion.accountFingerprint ||
+			onboardingCompletion.result.status !== "recovery_required"
+		) {
+			throw new Error("Es gibt keine offene Onboarding-Wiederherstellung.");
+		}
+		await pendingOnboardingSyncOutbox.stageForUser({
+			registrationAttemptId: "recovery",
+			clerkUserId: user.clerkId,
+			accountFingerprint: onboardingCompletion.accountFingerprint,
+			answers,
+		});
+		setPostAuthSyncFailure(null);
+		setOnboardingCompletion({
+			clerkUserId: user.clerkId,
+			accountFingerprint: onboardingCompletion.accountFingerprint,
+			result: { status: "pending", answers },
+		});
+	};
+
 	const register = async (input: RegisterInput): Promise<AuthFlowResult> =>
 		withSubmitting(async () => {
 			if (!clerk.client) {
@@ -816,13 +1012,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 			const { profile, signUp: signUpParameters } =
 				prepareClerkRegistration(input);
+			const registrationAttemptId = clerk.client.signUp.id;
+			if (!registrationAttemptId) {
+				throw new Error(
+					"Registrierungsversuch konnte nicht zugeordnet werden.",
+				);
+			}
+			const signUpParametersWithRecovery = {
+				...signUpParameters,
+				unsafeMetadata: {
+					...signUpParameters.unsafeMetadata,
+					onboardingRegistrationAttemptId: registrationAttemptId,
+				},
+			};
 
 			try {
-				const signUp = await clerk.client.signUp.upsert(signUpParameters);
+				const signUp = await clerk.client.signUp.upsert(
+					signUpParametersWithRecovery,
+				);
+				if (!signUp.id) {
+					throw new Error(
+						"Registrierungsversuch konnte nicht zugeordnet werden.",
+					);
+				}
+				const accountFingerprint = await getOnboardingAccountFingerprint(
+					input.email,
+				);
+				await pendingOnboardingSyncOutbox.ensureStaged({
+					registrationAttemptId: signUp.id,
+					accountFingerprint,
+				});
 
 				setPendingProfile(profile);
 
 				if (signUp.status === "complete") {
+					if (!signUp.createdUserId) {
+						throw new Error(
+							"Registriertes Konto konnte nicht zugeordnet werden.",
+						);
+					}
+					await pendingOnboardingSyncOutbox.bindToUser({
+						registrationAttemptId: signUp.id,
+						accountFingerprint,
+						clerkUserId: signUp.createdUserId,
+					});
 					await activateSession(signUp.createdSessionId);
 					return { status: "complete" };
 				}
@@ -840,6 +1073,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					message: "Wir haben dir einen Bestätigungscode per E-Mail gesendet.",
 				};
 			} catch (error) {
+				if (
+					error instanceof Error &&
+					(error.message.includes("onboarding sync payload") ||
+						error.message.includes("Registriertes Konto") ||
+						error.message.includes("Registrierungsversuch"))
+				) {
+					logDiagnosticError(
+						"Registration stopped because onboarding recovery was unavailable.",
+						error,
+						{ source: "auth.onboarding.outbox.registration", level: "warn" },
+					);
+					throw new Error(
+						"Deine Lernzeiten konnten nicht sicher mit deinem Konto verknüpft werden. Bitte versuche es erneut.",
+					);
+				}
 				throw new Error(
 					getClerkErrorMessage(error, "Registrierung fehlgeschlagen."),
 				);
@@ -1000,6 +1248,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					if (signUp.status !== "complete") {
 						throw new Error("Der Code konnte nicht bestätigt werden.");
 					}
+					if (!signUp.id || !signUp.createdUserId || !signUp.emailAddress) {
+						throw new Error(
+							"Registriertes Konto konnte nicht zugeordnet werden.",
+						);
+					}
+					const accountFingerprint = await getOnboardingAccountFingerprint(
+						signUp.emailAddress,
+					);
+					await pendingOnboardingSyncOutbox.bindToUser({
+						registrationAttemptId: signUp.id,
+						accountFingerprint,
+						clerkUserId: signUp.createdUserId,
+					});
 					await activateSession(signUp.createdSessionId);
 					return { status: "complete" };
 				}
@@ -1220,6 +1481,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				setPendingProfileEmail(null);
 				setSyncedClerkUserId(null);
 				setPostAuthSyncFailure(null);
+				setOnboardingCompletion({
+					clerkUserId: null,
+					accountFingerprint: null,
+					result: { status: "none" },
+				});
 				passwordResetHasRemoteAttemptRef.current = false;
 				clearAnswers();
 			},
@@ -1229,6 +1495,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const isSessionLoading = !clerk.loaded || !isUserLoaded;
 	const isLoading = isSessionLoading || isSubmitting;
 	const pendingSessionTask = clerk.session?.currentTask?.key ?? null;
+	const onboardingCompletionStatus = !user
+		? "none"
+		: onboardingCompletion.clerkUserId === user.clerkId
+			? onboardingCompletion.result.status
+			: "loading";
+	const postAuthSyncError = postAuthSyncFailure
+		? postAuthSyncFailure === "restore"
+			? "Deine gespeicherten Angaben konnten gerade nicht geladen werden. Prüfe deine Verbindung und versuche es erneut."
+			: postAuthSyncFailure === "completion"
+				? "Der Übergang zur Testphase konnte noch nicht abgeschlossen werden. Bitte versuche es erneut."
+				: "Deine Angaben konnten noch nicht gespeichert werden. Prüfe deine Verbindung und versuche es erneut."
+		: null;
 
 	return (
 		<AuthSessionContext.Provider
@@ -1240,10 +1518,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					Boolean(user) && syncedClerkUserId === user?.clerkId,
 				isPostAuthSyncing:
 					Boolean(user) && (isProfileSyncing || isOnboardingAnswersSyncing),
-				postAuthSyncError: postAuthSyncFailure
-					? "Deine Angaben konnten noch nicht gespeichert werden. Prüfe deine Verbindung und versuche es erneut."
-					: null,
+				postAuthSyncError,
 				retryPostAuthSync,
+				onboardingCompletionStatus,
+				completeOnboardingHandoff,
 				pendingSessionTask,
 			}}
 		>
@@ -1254,6 +1532,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					login,
 					startRegistrationWithEmail,
 					register,
+					stageOnboardingRecovery,
+					replaceOnboardingRecoveryAnswers,
 					verifyEmailCode,
 					resendVerification,
 					startPasswordReset,

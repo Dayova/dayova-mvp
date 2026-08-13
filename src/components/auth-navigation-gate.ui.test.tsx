@@ -10,6 +10,13 @@ const mockRouterState = {
 };
 const mockSession = {
 	isSessionLoading: false,
+	onboardingCompletionStatus: "none" as
+		| "loading"
+		| "none"
+		| "pending"
+		| "ready_for_trial"
+		| "recovery_required"
+		| "storage_error",
 	pendingSessionTask: null as string | null,
 	user: { clerkId: "user_123" } as { clerkId: string } | null,
 };
@@ -49,6 +56,7 @@ describe("AuthNavigationGate", () => {
 		mockRouterState.pathname = "/";
 		mockRouterState.rootNavigationState = { key: "root" };
 		mockSession.isSessionLoading = false;
+		mockSession.onboardingCompletionStatus = "none";
 		mockSession.pendingSessionTask = null;
 		mockSession.user = { clerkId: "user_123" };
 		mockAccess.access = { state: "paid" };
@@ -131,6 +139,23 @@ describe("AuthNavigationGate", () => {
 		expect(routeContent.props.accessibilityElementsHidden).toBe(false);
 		expect(routeContent.props.importantForAccessibility).toBe("auto");
 		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
+		expect(mockReplace).not.toHaveBeenCalled();
+	});
+
+	test("keeps durable onboarding recovery above a cached paid-access redirect", async () => {
+		mockRouterState.pathname = "/onboarding";
+		mockSession.onboardingCompletionStatus = "pending";
+		mockAccess.access = { state: "paid" };
+
+		const screen = await render(
+			<AuthNavigationGate>
+				<Text>Onboarding wiederherstellen</Text>
+			</AuthNavigationGate>,
+		);
+
+		expect(screen.getByText("Onboarding wiederherstellen")).toBeOnTheScreen();
+		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
+		await act(flushAnimationFrames);
 		expect(mockReplace).not.toHaveBeenCalled();
 	});
 });

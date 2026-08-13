@@ -17,6 +17,7 @@ import type { ReactNode } from "react";
 import {
 	AuthChoiceScreen,
 	CreationLoaderScreen,
+	OnboardingRecoveryScreen,
 	LoginScreen,
 	OnboardingScreen,
 } from "./dayova-auth-flow";
@@ -69,9 +70,19 @@ const mockRouter = {
 };
 const mockStackScreens: Array<Record<string, unknown>> = [];
 const mockRetryPostAuthSync = jest.fn();
+const mockCompleteOnboardingHandoff = jest.fn(async () => true);
+const mockStageOnboardingRecovery = jest.fn(async () => undefined);
 const mockAuthSession = {
+	completeOnboardingHandoff: mockCompleteOnboardingHandoff,
 	isConvexAuthenticated: false,
 	isPostAuthSyncing: false,
+	onboardingCompletionStatus: "none" as
+		| "loading"
+		| "none"
+		| "pending"
+		| "ready_for_trial"
+		| "recovery_required"
+		| "storage_error",
 	postAuthSyncError: null as string | null,
 	retryPostAuthSync: mockRetryPostAuthSync,
 	user: null as { clerkId: string; email: string } | null,
@@ -333,6 +344,8 @@ jest.mock("~/context/AuthContext", () => ({
 			login: mockLogin,
 			pendingVerification: null,
 			register: mockRegister,
+			stageOnboardingRecovery: mockStageOnboardingRecovery,
+			replaceOnboardingRecoveryAnswers: jest.fn(async () => undefined),
 			resendPasswordResetCode: mockResendPasswordResetCode,
 			resendVerification: jest.fn(),
 			startPasswordReset: mockStartPasswordReset,
@@ -588,6 +601,7 @@ describe("CreationLoaderScreen", () => {
 	});
 
 	test("requires an explicit handoff to trial activation", async () => {
+		const complete = jest.fn(async () => undefined);
 		const screen = await render(
 			<CreationLoaderScreen
 				topInset={24}
@@ -601,7 +615,12 @@ describe("CreationLoaderScreen", () => {
 		).toBeOnTheScreen();
 
 		await screen.rerender(
-			<CreationLoaderScreen topInset={24} bottomInset={24} isComplete={true} />,
+			<CreationLoaderScreen
+				topInset={24}
+				bottomInset={24}
+				isComplete={true}
+				onComplete={complete}
+			/>,
 		);
 
 		expect(
@@ -618,7 +637,8 @@ describe("CreationLoaderScreen", () => {
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Weiter zur Testphase" }),
 		);
-		expect(mockRouter.replace).toHaveBeenCalledWith("/trial");
+		expect(complete).toHaveBeenCalledTimes(1);
+		expect(mockRouter.replace).not.toHaveBeenCalled();
 	});
 
 	test("turns a failed post-auth sync into a visible retry path", async () => {
@@ -645,6 +665,47 @@ describe("CreationLoaderScreen", () => {
 	});
 });
 
+describe("OnboardingRecoveryScreen", () => {
+	test("collects only the operational learning-time answers after a lost payload", async () => {
+		const change = jest.fn();
+		const submit = jest.fn(async () => undefined);
+		const screen = await render(
+			<OnboardingRecoveryScreen
+				topInset={24}
+				bottomInset={24}
+				answers={{ studyTime: "30", studyDays: "", learningTime: "" }}
+				error={null}
+				onChange={change}
+				onSubmit={submit}
+			/>,
+		);
+
+		expect(
+			screen.getByRole("header", {
+				name: "Stelle deine Lernzeiten wieder her.",
+			}),
+		).toBeOnTheScreen();
+		expect(screen.queryByLabelText("E-Mail-Adresse")).toBeNull();
+		expect(screen.queryByLabelText("Passwort")).toBeNull();
+
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Montag" }));
+		expect(change).toHaveBeenCalledWith("studyDays", "Montag");
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Startzeit auswählen" }),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Testauswahl bestätigen" }),
+		);
+		expect(change).toHaveBeenCalledWith("learningTime", "18:05");
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Lernzeiten erneut speichern" }),
+		);
+		expect(submit).toHaveBeenCalledTimes(1);
+	});
+});
+
 describe("OnboardingScreen", () => {
 	beforeEach(() => {
 		mockStartRegistrationWithEmail.mockReset();
@@ -659,9 +720,14 @@ describe("OnboardingScreen", () => {
 		mockRouter.canGoBack.mockReturnValue(true);
 		mockSetOnboardingAnswer.mockReset();
 		mockRetryPostAuthSync.mockReset();
+		mockCompleteOnboardingHandoff.mockReset();
+		mockCompleteOnboardingHandoff.mockResolvedValue(true);
+		mockStageOnboardingRecovery.mockReset();
+		mockStageOnboardingRecovery.mockResolvedValue(undefined);
 		mockAuthSession.isConvexAuthenticated = false;
 		mockAuthSession.isPostAuthSyncing = false;
 		mockAuthSession.postAuthSyncError = null;
+		mockAuthSession.onboardingCompletionStatus = "none";
 		mockAuthSession.user = null;
 		mockOnboarding.answers.studyTime = "30";
 		mockOnboarding.answers.studyDays = "Montag, Donnerstag, Samstag";

@@ -64,6 +64,34 @@ Automated regression evidence first failed while the alert remained a sibling
 of the answer group, then passed after the alert moved into the reserved slot.
 The test also verifies that the slot is present while empty before submission.
 
+## Restart-safe post-auth completion — 13 August 2026
+
+The earlier retry implementation kept onboarding answers only in React state.
+It prevented an infinite loader in the current process, but a terminated app
+could restore the Clerk session with no local answers and incorrectly continue
+to trial before `userLearningTimes` existed.
+
+The registration boundary now writes the exact operational persistence payload
+to an encrypted, versioned, account-bound outbox before Clerk can finish account
+creation. The created Clerk user is bound before session activation. On launch,
+auth routing waits for the outbox and returns an affected account to the setup
+surface. A failed profile or answer sync leaves the payload available for the
+same targeted retry after a process restart. Confirmed Convex success removes
+the answer values but keeps an answer-free completion marker until the learner
+explicitly chooses “Weiter zur Testphase”.
+
+Corrupt and expired entries discard their answer values and enter a focused
+learning-time recovery step instead of silently continuing. The durable payload
+never contains a password, verification code, token, name, birth date, or raw
+e-mail address.
+
+Automated evidence covers process restart, exact-payload resume, failed sync
+retention, success cleanup, registration-attempt and Clerk-user binding,
+cross-account rejection, expiry/corruption recovery, and routing precedence.
+Fresh native iOS and Android recordings of failure → force-close → resume →
+success remain required before this PR leaves Draft; automated tests are not
+cited as native process-lifecycle proof.
+
 ## Accepted operational learning-time flow — 12 August 2026
 
 The accepted release behavior asks for an intended duration, one or more

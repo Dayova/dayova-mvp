@@ -55,6 +55,7 @@ import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import { OnboardingEdgeBackGesture } from "~/components/onboarding/onboarding-edge-back-gesture";
 import {
 	getNextOnboardingStepIndex,
+	getOnboardingPersistenceAnswers,
 	getOnboardingRegistrationPayload,
 	getOnboardingStepDecision,
 	isOnboardingStepReady,
@@ -64,6 +65,7 @@ import {
 	formatOnboardingTime,
 	getDefaultOnboardingLearningStartTime,
 	getOnboardingLearningTimeSummary,
+	getOnboardingLearningTimeValidationError,
 	ONBOARDING_DURATION_OPTIONS,
 	parseOnboardingStudyDays,
 	toggleOnboardingStudyDay,
@@ -729,6 +731,8 @@ export function OnboardingScreen({
 	const {
 		startRegistrationWithEmail,
 		register,
+		stageOnboardingRecovery,
+		replaceOnboardingRecoveryAnswers,
 		verifyEmailCode,
 		resendVerification,
 		isLoading,
@@ -739,20 +743,34 @@ export function OnboardingScreen({
 		isPostAuthSyncing,
 		postAuthSyncError,
 		retryPostAuthSync,
+		onboardingCompletionStatus,
+		completeOnboardingHandoff,
 	} = useAuthSession();
-	const { answers, hasAnswers } = useOnboarding();
+	const { answers } = useOnboarding();
+	const [recoveryAnswers, setRecoveryAnswers] = useState({
+		studyTime: "30",
+		studyDays: "",
+		learningTime: "",
+	});
 	const activeStep = FLOW_STEPS[activeIndex];
 	const textInputRef = useRef<TextInput | null>(null);
 	const verificationInputRef = useRef<TextInput | null>(null);
 	const previousAnswersRef = useRef(answers);
 	const verificationSubmittedRef = useRef(false);
 	const isCreationComplete = Boolean(
-		stage === "creating" &&
+		(stage === "creating" || onboardingCompletionStatus !== "none") &&
 			user &&
 			isConvexAuthenticated &&
-			!hasAnswers &&
-			!isPostAuthSyncing,
+			onboardingCompletionStatus === "ready_for_trial" &&
+			!isPostAuthSyncing &&
+			!postAuthSyncError,
 	);
+	const isRestoringCreation = Boolean(
+		user &&
+			onboardingCompletionStatus !== "none" &&
+			onboardingCompletionStatus !== "loading",
+	);
+	const isRecoveryRequired = onboardingCompletionStatus === "recovery_required";
 	const registrationActionGateRef = useRef(createAsyncActionGate());
 	const isRegistrationBusy = isLoading || isRegistering;
 
@@ -771,14 +789,20 @@ export function OnboardingScreen({
 	}, [stage]);
 
 	useEffect(() => {
-		if (stage !== "flow" || !user || hasAnswers || isPostAuthSyncing) return;
+		if (
+			stage !== "flow" ||
+			!user ||
+			onboardingCompletionStatus !== "none" ||
+			isPostAuthSyncing
+		)
+			return;
 
 		const frame = requestAnimationFrame(() => {
 			router.replace("/trial");
 		});
 
 		return () => cancelAnimationFrame(frame);
-	}, [hasAnswers, isPostAuthSyncing, stage, user]);
+	}, [isPostAuthSyncing, onboardingCompletionStatus, stage, user]);
 
 	const handleBack = useCallback(() => {
 		if (
@@ -890,6 +914,7 @@ export function OnboardingScreen({
 		await registrationActionGateRef.current.run(async () => {
 			setIsRegistering(true);
 			try {
+				await stageOnboardingRecovery(getOnboardingPersistenceAnswers(answers));
 				const result = await register(
 					getOnboardingRegistrationPayload(answers),
 				);
@@ -943,14 +968,68 @@ export function OnboardingScreen({
 		}
 	};
 
-	if (stage === "creating") {
+	if (stage === "creating" || isRestoringCreation) {
+		if (isRecoveryRequired) {
+			return (
+				<OnboardingRecoveryScreen
+					topInset={insets.top}
+					bottomInset={insets.bottom}
+					answers={recoveryAnswers}
+					error={error}
+					onChange={(field, value) => {
+						setRecoveryAnswers((current) => ({
+							...current,
+							[field]: value,
+						}));
+						setError(null);
+					}}
+					onSubmit={async () => {
+						const validationError =
+							getOnboardingLearningTimeValidationError(recoveryAnswers);
+						if (validationError) {
+							setError(validationError);
+							return;
+						}
+						try {
+							await replaceOnboardingRecoveryAnswers({
+								dailySchoolTime: `${recoveryAnswers.studyTime} min`,
+								studyDays: recoveryAnswers.studyDays,
+								learningTime: recoveryAnswers.learningTime,
+								state: user?.state ?? "",
+								schoolType: user?.schoolType ?? "",
+								grade: user?.grade ?? "",
+							});
+						} catch (recoveryError) {
+							setError(
+								recoveryError instanceof Error
+									? recoveryError.message
+									: "Deine Lernzeiten konnten nicht gespeichert werden.",
+							);
+						}
+					}}
+				/>
+			);
+		}
 		return (
 			<CreationLoaderScreen
 				topInset={insets.top}
 				bottomInset={insets.bottom}
 				isComplete={isCreationComplete}
 				error={postAuthSyncError}
-				onRetry={retryPostAuthSync}
+				onRetry={() => {
+					if (onboardingCompletionStatus === "ready_for_trial") {
+						void completeOnboardingHandoff().then((completed) => {
+							if (completed) router.replace("/trial");
+						});
+						return;
+					}
+					retryPostAuthSync();
+				}}
+				onComplete={async () => {
+					if (await completeOnboardingHandoff()) {
+						router.replace("/trial");
+					}
+				}}
 			/>
 		);
 	}
@@ -2359,18 +2438,195 @@ function VerificationScreen({
 	);
 }
 
+export function OnboardingRecoveryScreen({
+	topInset,
+	bottomInset,
+	answers,
+	error,
+	onChange,
+	onSubmit,
+}: {
+	topInset: number;
+	bottomInset: number;
+	answers: { studyTime: string; studyDays: string; learningTime: string };
+	error: string | null;
+	onChange: (
+		field: "studyTime" | "studyDays" | "learningTime",
+		value: string,
+	) => void;
+	onSubmit: () => void | Promise<void>;
+}) {
+	const [pickerVisible, setPickerVisible] = useState(false);
+	const [pendingTime, setPendingTime] = useState(() =>
+		dateForOnboardingTime(answers.learningTime),
+	);
+	const selectedDays = new Set(parseOnboardingStudyDays(answers.studyDays));
+	return (
+		<View
+			className="flex-1 bg-background px-6"
+			style={{
+				paddingTop: Math.max(topInset + 24, 36),
+				paddingBottom: Math.max(bottomInset + 22, 32),
+			}}
+		>
+			<Stack.Screen
+				options={{
+					title: "Lernzeiten wiederherstellen",
+					gestureEnabled: false,
+				}}
+			/>
+			<ThemedStatusBar />
+			<Text
+				accessibilityRole="header"
+				className="mt-8 text-center font-poppins font-semibold text-heading-2 text-text"
+			>
+				Stelle deine Lernzeiten wieder her.
+			</Text>
+			<Text className="mt-3 text-center font-poppins text-body-3 text-secondary-text">
+				Dein Konto ist sicher. Die letzte Übertragung deiner Lernzeiten war
+				unvollständig – bitte bestätige nur diese drei Angaben erneut.
+			</Text>
+
+			<KeyboardSafeScrollView
+				contentContainerStyle={{ flexGrow: 1, paddingTop: 28 }}
+			>
+				<Text className="font-poppins font-semibold text-body-3 text-text">
+					Dauer pro Lerntag
+				</Text>
+				<View className="mt-3 flex-row flex-wrap gap-2">
+					{ONBOARDING_DURATION_OPTIONS.map((duration) => {
+						const selected = answers.studyTime === String(duration);
+						return (
+							<Pressable
+								key={duration}
+								accessibilityRole="radio"
+								accessibilityState={{ selected }}
+								onPress={() => onChange("studyTime", String(duration))}
+								className={cn(
+									"rounded-full border px-4 py-3",
+									selected
+										? "border-primary bg-primary"
+										: "border-path-1 bg-system-subtle",
+								)}
+							>
+								<Text
+									className={cn(
+										"font-poppins font-semibold text-body-4",
+										selected ? "text-on-primary" : "text-text",
+									)}
+								>
+									{duration} Minuten
+								</Text>
+							</Pressable>
+						);
+					})}
+				</View>
+
+				<Text className="mt-6 font-poppins font-semibold text-body-3 text-text">
+					Lerntage
+				</Text>
+				<View className="mt-3 flex-row flex-wrap gap-2">
+					{LEARNING_DAYS.map((day) => {
+						const selected = selectedDays.has(day.label);
+						return (
+							<Pressable
+								key={day.label}
+								accessibilityRole="checkbox"
+								accessibilityState={{ checked: selected }}
+								onPress={() =>
+									onChange(
+										"studyDays",
+										toggleOnboardingStudyDay(answers.studyDays, day.label),
+									)
+								}
+								className={cn(
+									"rounded-full border px-4 py-3",
+									selected
+										? "border-primary bg-primary"
+										: "border-path-1 bg-system-subtle",
+								)}
+							>
+								<Text
+									className={cn(
+										"font-poppins font-semibold text-body-4",
+										selected ? "text-on-primary" : "text-text",
+									)}
+								>
+									{day.label}
+								</Text>
+							</Pressable>
+						);
+					})}
+				</View>
+
+				<Text className="mt-6 font-poppins font-semibold text-body-3 text-text">
+					Startzeit
+				</Text>
+				<Pressable
+					accessibilityRole="button"
+					accessibilityLabel={
+						answers.learningTime
+							? `Lernzeit beginnt um ${answers.learningTime} Uhr`
+							: "Startzeit auswählen"
+					}
+					onPress={() => {
+						setPendingTime(
+							dateForOnboardingTime(
+								answers.learningTime || getDefaultOnboardingLearningStartTime(),
+							),
+						);
+						setPickerVisible(true);
+					}}
+					className="mt-3 min-h-16 justify-center rounded-[20px] border border-path-1 bg-system-subtle px-4"
+				>
+					<Text className="font-poppins font-semibold text-body-3 text-text">
+						{answers.learningTime
+							? `${answers.learningTime} Uhr`
+							: "Uhrzeit auswählen"}
+					</Text>
+				</Pressable>
+				{error ? (
+					<ErrorMessage className="mt-4 text-center">{error}</ErrorMessage>
+				) : null}
+			</KeyboardSafeScrollView>
+			<Button
+				accessibilityLabel="Lernzeiten erneut speichern"
+				onPress={onSubmit}
+			>
+				<Text>Lernzeiten erneut speichern</Text>
+			</Button>
+			<DateTimePickerSheet
+				visible={pickerVisible}
+				value={pendingTime}
+				mode="time"
+				doneLabel="Zeit übernehmen"
+				onChange={(event, selectedDate) => {
+					if (event.type === "set" && selectedDate)
+						setPendingTime(selectedDate);
+				}}
+				onClose={() => setPickerVisible(false)}
+				onConfirm={(selectedDate) => {
+					onChange("learningTime", formatOnboardingTime(selectedDate));
+				}}
+			/>
+		</View>
+	);
+}
+
 export function CreationLoaderScreen({
 	topInset,
 	bottomInset,
 	isComplete,
 	error = null,
 	onRetry,
+	onComplete,
 }: {
 	topInset: number;
 	bottomInset: number;
 	isComplete: boolean;
 	error?: string | null;
 	onRetry?: () => void;
+	onComplete?: () => void | Promise<void>;
 }) {
 	const reducedMotion = useReducedMotion();
 	const { colors } = useDayovaTheme();
@@ -2432,7 +2688,7 @@ export function CreationLoaderScreen({
 					<Button
 						accessibilityLabel="Weiter zur Testphase"
 						className="mt-8 w-full"
-						onPress={() => router.replace("/trial")}
+						onPress={() => void onComplete?.()}
 					>
 						<Text>Weiter zur Testphase</Text>
 					</Button>

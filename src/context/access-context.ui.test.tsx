@@ -9,6 +9,7 @@ const mockUseQuery = jest.fn<(query: unknown, args: unknown) => unknown>(
 const mockSession = {
 	isConvexUserSynced: false,
 	isSessionLoading: false,
+	onboardingCompletionStatus: "none",
 	user: { clerkId: "user_123" },
 };
 

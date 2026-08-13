@@ -139,6 +139,26 @@ The following constraints are part of the contract:
 - Profile or onboarding-answer persistence failures after authentication must
   replace the indefinite loader with a user-visible error and an explicit retry
   of the failed boundary. Answers remain local until persistence succeeds.
+- Before account creation can continue, the exact non-secret onboarding sync
+  payload is written to a schema-versioned outbox bound to the active Clerk
+  registration attempt and a one-way account fingerprint. Native builds use
+  encrypted SecureStore; the web fallback is origin-scoped browser storage and
+  must remain limited to the same non-secret payload.
+  It contains duration, weekdays, start time, state, school type, and grade;
+  it never contains a password, verification code, token, name, birth date, or
+  raw e-mail address.
+- The outbox is rebound to the created Clerk user before session activation.
+  On process restart, routing waits for outbox hydration and returns that user
+  to onboarding until profile and answer persistence have succeeded. A failed
+  sync leaves the same payload retryable; successful Convex persistence first
+  replaces the answers with an answer-free completion marker. Only the
+  learner's explicit trial CTA removes that marker.
+- A corrupt or expired outbox never silently grants app access. Its answer
+  values are discarded after seven days and the learner is routed to a focused
+  recovery screen that asks only for duration, weekdays, and start time again;
+  the account-bound profile fields are recovered from Clerk metadata. The
+  answer-free completion marker has no TTL and remains until the explicit trial
+  handoff succeeds.
 - Successful account setup does not auto-advance. It truthfully announces trial
   activation as the next step and waits for the learner's explicit CTA.
 - Grade and federal state are launch profile data only. Their question copy
@@ -192,6 +212,10 @@ DAY-292 before implementation is accepted.
   flow contains no timed navigation.
 - Post-auth failure is recoverable in place; completion can no longer strand a
   learner behind an animation-only state.
+- A terminated app process can no longer turn empty React state into a false
+  onboarding success. Account-bound SecureStore state resumes the same
+  idempotent Convex mutation, while a corrupt or expired payload produces an
+  explicit recovery step instead of a silent trial handoff.
 - The former grade/state personalization claims are removed until the product
   actually consumes those values. Storing profile data is not personalization.
 - DAY-60, DAY-81, DAY-235, and DAY-236 are verified as children of DAY-292.
