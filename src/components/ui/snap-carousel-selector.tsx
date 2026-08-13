@@ -184,11 +184,12 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 			const nextOffset = event.contentOffset.x;
 			scrollX.set(nextOffset);
 			if (!showValueBubble) return;
-			const nextPreviewIndex = getSnapCarouselPreviewIndex({
-				offsetX: nextOffset,
-				itemWidth,
+			// Keep UI-thread arithmetic inside the worklet. Calling a normal JS helper
+			// synchronously here crashes native Reanimated/Worklets while dragging.
+			const nextPreviewIndex = Math.min(
+				Math.max(Math.round(nextOffset / Math.max(itemWidth, 1)), 0),
 				lastIndex,
-			});
+			);
 			if (nextPreviewIndex === previewIndexOnUI.get()) return;
 			previewIndexOnUI.set(nextPreviewIndex);
 			scheduleOnRN(updatePreviewIndex, nextPreviewIndex);

@@ -92,6 +92,23 @@ Fresh native iOS and Android recordings of failure → force-close → resume �
 success remain required before this PR leaves Draft; automated tests are not
 cited as native process-lifecycle proof.
 
+## Live duration preview worklet crash — 13 August 2026
+
+The first live-preview implementation called the ordinary JavaScript helper
+`getSnapCarouselPreviewIndex` synchronously from Reanimated's UI-runtime scroll
+handler. Native dragging therefore raised `Tried to synchronously call a Remote
+Function`, although the Jest mock passed because it executed that handler on the
+JavaScript thread.
+
+The preview-index arithmetic now stays entirely inside the UI worklet; only the
+result crosses back through `scheduleOnRN`. The UI regression test asserts that
+the registered scroll callback no longer references the remote helper. The
+current iOS bundle was exercised on iPhone 17 Pro / iOS 26.5 in dark mode: the
+preview number and ring advanced from 10 to 45 during native UI-runtime scroll,
+repeated three times without an error overlay. This is evidence for the reported
+iOS crash only; Android drag verification remains part of the broader native
+matrix.
+
 ## Accepted operational learning-time flow — 12 August 2026
 
 The accepted release behavior asks for an intended duration, one or more
