@@ -138,7 +138,7 @@ describe("AuthNavigationGate", () => {
 	});
 
 	test("keeps durable onboarding recovery above a cached paid-access redirect", async () => {
-		mockRouterState.pathname = "/onboarding";
+		mockRouterState.pathname = "/onboarding/creating";
 		mockSession.onboardingCompletionStatus = "pending";
 		mockAccess.access = { state: "paid" };
 

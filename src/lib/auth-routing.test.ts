@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
 	getAuthNavigationTarget,
 	isOnboardingSettled,
+	ONBOARDING_CREATION_PATH,
 	PASSWORD_RESET_SUCCESS_PATH,
 	SESSION_TASK_RESET_PASSWORD_PATH,
 } from "./auth-routing";
@@ -53,6 +54,9 @@ describe("getAuthNavigationTarget", () => {
 				pendingSessionTask: "reset-password",
 			}),
 		).toBeNull();
+	});
+
+	test("routes a completed signed-in onboarding handoff through creation", () => {
 		expect(
 			getAuthNavigationTarget({
 				hasUser: true,
@@ -119,7 +123,6 @@ describe("getAuthNavigationTarget", () => {
 			}),
 		).toBe("/");
 	});
-
 	test("waits for the durable onboarding outbox and resumes it before app access", () => {
 		expect(
 			getAuthNavigationTarget({
@@ -138,13 +141,24 @@ describe("getAuthNavigationTarget", () => {
 				pathname: "/home",
 				pendingSessionTask: null,
 			}),
-		).toBe("/onboarding");
+		).toBe(ONBOARDING_CREATION_PATH);
 		expect(
 			getAuthNavigationTarget({
 				hasUser: true,
 				isSessionLoading: false,
 				onboardingCompletionStatus: "ready_for_trial",
-				pathname: "/onboarding",
+				pathname: ONBOARDING_CREATION_PATH,
+				pendingSessionTask: null,
+			}),
+		).toBeNull();
+	});
+
+	test("keeps native onboarding step routes public during registration", () => {
+		expect(
+			getAuthNavigationTarget({
+				hasUser: false,
+				isSessionLoading: false,
+				pathname: "/onboarding/studyTime",
 				pendingSessionTask: null,
 			}),
 		).toBeNull();
@@ -156,6 +170,6 @@ describe("getAuthNavigationTarget", () => {
 				pathname: "/home",
 				pendingSessionTask: null,
 			}),
-		).toBe("/onboarding");
+		).toBe(ONBOARDING_CREATION_PATH);
 	});
 });

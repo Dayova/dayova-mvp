@@ -58,6 +58,8 @@ const ACCESS_BYPASS_PATHS = new Set([
 	PASSWORD_RESET_SUCCESS_PATH,
 	SESSION_TASK_RESET_PASSWORD_PATH,
 ]);
+const isOnboardingPath = (pathname: string) =>
+	pathname === "/onboarding" || pathname.startsWith("/onboarding/");
 const PRO_WELCOME_PATH = "/pro-welcome";
 
 export const resolveAccessRoute = ({
@@ -73,9 +75,11 @@ export const resolveAccessRoute = ({
 }) => {
 	if (isSessionLoading) return null;
 
-	const isAuthRoute = PUBLIC_AUTH_PATHS.has(pathname);
+	const isAuthRoute =
+		PUBLIC_AUTH_PATHS.has(pathname) || isOnboardingPath(pathname);
 	if (!user) return isAuthRoute ? null : "/";
-	if (ACCESS_BYPASS_PATHS.has(pathname)) return null;
+	if (ACCESS_BYPASS_PATHS.has(pathname) || isOnboardingPath(pathname))
+		return null;
 	if (!accessState) return null;
 
 	if (accessState === "needsActivation") {

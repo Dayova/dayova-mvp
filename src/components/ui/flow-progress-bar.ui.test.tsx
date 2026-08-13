@@ -69,6 +69,16 @@ describe("FlowProgressBar", () => {
 		expect(mockSetProgress).toHaveBeenLastCalledWith(0.5);
 	});
 
+	test("animates a newly pushed screen from its previous route progress", async () => {
+		await render(<FlowProgressBar initialProgress={0.25} progress={0.5} />);
+
+		expect(mockWithTiming).toHaveBeenCalledWith(0.5, {
+			duration: 260,
+			easing: "cubic",
+		});
+		expect(mockSetProgress).toHaveBeenLastCalledWith({ animatedTo: 0.5 });
+	});
+
 	test("animates backward progress changes with the same restrained transition", async () => {
 		const screen = await render(<FlowProgressBar progress={0.5} />);
 
