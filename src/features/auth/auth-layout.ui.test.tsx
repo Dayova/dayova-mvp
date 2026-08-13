@@ -62,18 +62,25 @@ describe("AuthLayout", () => {
 		expect(mockRedirect).not.toHaveBeenCalled();
 	});
 
-	test("keeps the native edge-back gesture on the onboarding entry route", async () => {
+	test("declares native history routes for onboarding steps and irreversible creation", async () => {
 		mockSession.user = null;
 
 		await render(<AuthLayout />);
 
 		expect(mockStackScreens).toContainEqual({
-			name: "onboarding",
+			name: "onboarding/index",
 			options: {
 				title: "Registrierung",
 				gestureEnabled: true,
-				fullScreenGestureEnabled: false,
 			},
+		});
+		expect(mockStackScreens).toContainEqual({
+			name: "onboarding/[step]",
+			options: { title: "Registrierung", gestureEnabled: true },
+		});
+		expect(mockStackScreens).toContainEqual({
+			name: "onboarding/creating",
+			options: { title: "Konto einrichten", gestureEnabled: false },
 		});
 	});
 });

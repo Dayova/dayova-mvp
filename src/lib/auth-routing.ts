@@ -2,6 +2,7 @@ import type { PendingOnboardingSyncResumeResult } from "./pending-onboarding-syn
 
 export const SESSION_TASK_RESET_PASSWORD_PATH = "/session-tasks/reset-password";
 export const PASSWORD_RESET_SUCCESS_PATH = "/password-reset-success";
+export const ONBOARDING_CREATION_PATH = "/onboarding/creating";
 
 export type OnboardingCompletionStatus =
 	| PendingOnboardingSyncResumeResult["status"]
@@ -18,6 +19,9 @@ const PUBLIC_AUTH_PATHS = new Set([
 	"/onboarding",
 	PASSWORD_RESET_SUCCESS_PATH,
 ]);
+
+const isPublicAuthPath = (pathname: string) =>
+	PUBLIC_AUTH_PATHS.has(pathname) || pathname.startsWith("/onboarding/");
 
 const SIGNED_IN_REDIRECT_PATHS = new Set(["/", "/login", "/register"]);
 
@@ -47,13 +51,13 @@ export const getAuthNavigationTarget = ({
 	if (pathname === SESSION_TASK_RESET_PASSWORD_PATH) {
 		return hasUser ? "/home" : "/";
 	}
-
 	if (hasUser && onboardingCompletionStatus !== "none") {
-		return pathname === "/onboarding" ? null : "/onboarding";
+		return pathname === ONBOARDING_CREATION_PATH
+			? null
+			: ONBOARDING_CREATION_PATH;
 	}
 
-	const isPublicAuthPath = PUBLIC_AUTH_PATHS.has(pathname);
-	if (!hasUser && !isPublicAuthPath) return "/";
+	if (!hasUser && !isPublicAuthPath(pathname)) return "/";
 	if (hasUser && SIGNED_IN_REDIRECT_PATHS.has(pathname)) return "/home";
 
 	return null;
