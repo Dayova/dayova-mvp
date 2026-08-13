@@ -146,6 +146,18 @@ Together these recordings close the platform recovery-lifecycle gate and add
 fresh light/dark rendering evidence for the changed retry and completion
 surfaces. They do not prove trial activation or the first empty-home action.
 
+### Explicit completion handoff to trial terms
+
+`ios-completion-to-trial-terms-final-head.mp4` is an uncut iPhone 17 Pro /
+iOS 26.5 simulator recording. It retains the explicit completion screen through
+`00:08.5`; the learner-triggered “Weiter zur Testphase” action then reaches the
+trial-terms screen at `00:09`. The trial CTA is not invoked because it explicitly
+accepts the trial conditions, so this clip is evidence for the handoff boundary
+only, not trial activation or app-home entry.
+
+> Coverage: 9.33-second video; 19 full-timeline frames sampled at 2 fps
+> (0.5-second interval); 2 contact sheet(s); no audio stream.
+
 ## Live duration preview worklet crash — 13 August 2026
 
 The first live-preview implementation called the ordinary JavaScript helper
@@ -209,9 +221,18 @@ A true per-step native stack remains the long-term solution in DAY-349.
   > Coverage: 15.88-second video; 32 full-timeline frames sampled at 2 fps
   > (0.5-second interval); 2 contact sheet(s); no audio stream.
 
-The last recording proves native time-picker-first dismissal only. A distinct
-bounded select-sheet-first recording is still required; the filename is kept
-for traceability and must not be read as proof of both surfaces.
+- `android-select-sheet-first-back-final-head.mp4`: starts on the empty grade
+  step, opens the shared bounded `SelectSheet` at `00:11`, keeps it fully open
+  through `00:16.5`, and shows native Android back dismissing it at `00:17`.
+  The remaining five seconds retain the same `7 von 14` step, empty grade
+  value, disabled CTA, and progress value.
+
+  > Coverage: 22.26-second video; 45 full-timeline frames sampled at 2 fps
+  > (0.5-second interval); 3 contact sheet(s); no audio stream.
+
+The time-picker and bounded-select recordings are separate on purpose. Together
+they close both sheet-first dismissal branches without treating one surface as
+evidence for the other.
 
 ## Accepted operational learning-time flow — 12 August 2026
 
@@ -353,9 +374,9 @@ learning-time contract.
 
 This evidence set now proves the operational learning-time segment, native
 iOS/Android restart recovery, Android live duration preview, committed iOS entry
-and internal edge behavior, Android predictive back, and native time-picker-first
-dismissal. It does not by itself prove a separate shared select-sheet-first
-dismissal, the complete small/large-device and theme matrix, long German copy at
+and internal edge behavior, Android predictive back, native time-picker-first
+dismissal, and shared bounded-select-first dismissal. It does not by itself
+prove the complete small/large-device and theme matrix, long German copy at
 larger system text sizes, reduced motion, physical VoiceOver/TalkBack behavior,
 trial activation, or the first empty-home action. PR #458 stays Draft until the
 remaining canonical acceptance gates are closed by the decision owner.
