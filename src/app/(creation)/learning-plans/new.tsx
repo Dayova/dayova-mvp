@@ -85,7 +85,6 @@ export default function NewLearningPlanScreen() {
 	const { user } = useAuthSession();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-	const updateExamTopics = useMutation(api.dayEntries.updateExamTopics);
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
 	const updateRequiredTopics = useMutation(
 		api.learningPlans.updateRequiredTopics,
@@ -95,7 +94,6 @@ export default function NewLearningPlanScreen() {
 		api.learningPlans.registerUploadedDocument,
 	);
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
-	const removePlan = useMutation(api.learningPlans.removePlan);
 
 	const subject = params.subject?.trim() || "Fach";
 	const examTypeLabel = params.examTypeLabel?.trim() || "Leistungskontrolle";
@@ -183,7 +181,7 @@ export default function NewLearningPlanScreen() {
 		topicDescription = params.topicDescription ?? "",
 	) => {
 		if (learningPlanId) {
-			return { id: learningPlanId, created: false };
+			return learningPlanId;
 		}
 
 		if (!examDayEntryId) {
@@ -204,13 +202,7 @@ export default function NewLearningPlanScreen() {
 		);
 		setLearningPlanId(id);
 		router.setParams({ learningPlanId: id, step: "material" });
-		return { id, created: true };
-	};
-
-	const discardNewMateriallessPlan = async (id: Id<"learningPlans">) => {
-		await retryOnceAfterAuthResume(() => removePlan({ id }));
-		setLearningPlanId(null);
-		router.setParams({ learningPlanId: undefined, step: "material" });
+		return id;
 	};
 
 	const runWithErrorHandling = async (
@@ -247,7 +239,7 @@ export default function NewLearningPlanScreen() {
 		existingLearningPlanId?: Id<"learningPlans">,
 	) => {
 		const id =
-			existingLearningPlanId ?? learningPlanId ?? (await ensurePlan(topics)).id;
+			existingLearningPlanId ?? learningPlanId ?? (await ensurePlan(topics));
 		const { asset, file, fileSizeBytes, fileType } = preparedAsset;
 
 		const uploadData = await retryOnceAfterAuthResume(() =>
@@ -389,18 +381,9 @@ export default function NewLearningPlanScreen() {
 							size: asset.size,
 						}),
 					);
-					const { id, created } = await ensurePlan(topics);
-					let uploadedAny = false;
-					try {
-						for (const asset of preparedAssets) {
-							await uploadLearningPlanAsset(asset, id);
-							uploadedAny = true;
-						}
-					} catch (error) {
-						if (created && !uploadedAny) {
-							await discardNewMateriallessPlan(id);
-						}
-						throw error;
+					const id = await ensurePlan(topics);
+					for (const asset of preparedAssets) {
+						await uploadLearningPlanAsset(asset, id);
 					}
 				},
 			);
@@ -445,21 +428,16 @@ export default function NewLearningPlanScreen() {
 			await runWithErrorHandling(
 				"Das Foto konnte nicht hochgeladen werden.",
 				async () => {
-					const { id, created } = await ensurePlan(topics);
-					try {
-						await uploadLearningPlanAsset(
-							prepareUploadAsset({
-								uri: asset.uri,
-								name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
-								mimeType: asset.mimeType ?? "image/jpeg",
-								size: asset.fileSize,
-							}),
-							id,
-						);
-					} catch (error) {
-						if (created) await discardNewMateriallessPlan(id);
-						throw error;
-					}
+					const id = await ensurePlan(topics);
+					await uploadLearningPlanAsset(
+						prepareUploadAsset({
+							uri: asset.uri,
+							name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
+							mimeType: asset.mimeType ?? "image/jpeg",
+							size: asset.fileSize,
+						}),
+						id,
+					);
 				},
 			);
 		} catch (error) {
@@ -514,14 +492,6 @@ export default function NewLearningPlanScreen() {
 			setIsBusy(true);
 			setErrorMessage(null);
 			try {
-				if (examDayEntryId) {
-					await retryOnceAfterAuthResume(() =>
-						updateExamTopics({
-							id: examDayEntryId,
-							topicDescription: topics,
-						}),
-					);
-				}
 				if (learningPlanId) {
 					await retryOnceAfterAuthResume(() =>
 						updateRequiredTopics({
@@ -529,9 +499,8 @@ export default function NewLearningPlanScreen() {
 							topicDescription: topics,
 						}),
 					);
-				}
-				if (!examDayEntryId && !learningPlanId) {
-					throw new Error("Prüfung nicht gefunden.");
+				} else {
+					await ensurePlan(topics);
 				}
 				router.setParams({
 					errorMessage: undefined,
@@ -552,11 +521,11 @@ export default function NewLearningPlanScreen() {
 		});
 	};
 
-	const finishWithoutPlan = () => {
+	const finishWithMaterialLater = () => {
 		void runWithErrorHandling(
-			"Die Prüfung konnte nicht ohne Lernplan abgeschlossen werden.",
+			"Der Lernplan-Entwurf konnte nicht gespeichert werden.",
 			async () => {
-				if (!examDayEntryId) throw new Error("Prüfung nicht gefunden.");
+				if (!learningPlanId) throw new Error("Lernplan nicht gefunden.");
 				if (!isMeaningfulTopicDescription(topics)) {
 					throw new Error("Prüfungsthemen fehlen.");
 				}
@@ -573,21 +542,7 @@ export default function NewLearningPlanScreen() {
 	const removeUploadedDocument = async (
 		documentId: Id<"learningPlanDocuments">,
 	) => {
-		const removedDocument = snapshot?.documents.find(
-			(document) => document.id === documentId,
-		);
-		const isLastSchoolDocument =
-			removedDocument?.sourceKind === "school" &&
-			snapshot?.documents.filter((document) => document.sourceKind === "school")
-				.length === 1;
 		await removeDocument({ id: documentId });
-		if (
-			learningPlanId &&
-			snapshot?.plan.status === "draft" &&
-			isLastSchoolDocument
-		) {
-			await discardNewMateriallessPlan(learningPlanId);
-		}
 	};
 
 	const goBack = () => {
@@ -660,7 +615,7 @@ export default function NewLearningPlanScreen() {
 							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}
 							onRemoveDocument={(id) => void removeUploadedDocument(id)}
-							onSkip={finishWithoutPlan}
+							onSkip={finishWithMaterialLater}
 							openingUploadAction={openingUploadAction}
 							showSkip={!initialLearningPlanId}
 						/>
