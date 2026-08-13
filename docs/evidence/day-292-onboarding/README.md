@@ -33,10 +33,12 @@ consumer uses them. Their copy now says only that the answer is stored in the
 school profile. Reintroducing a personalization claim requires an implemented,
 tested consumer and an updated decision record.
 
-Automated regression coverage proves the four code contracts, but the changed
-completion and retry screens still need fresh native light/dark evidence before
-this PR can leave Draft. The existing screenshots below predate this audit and
-must not be cited as proof of those changed screens.
+Automated regression coverage proves the four code contracts. Fresh native
+recovery recordings now cover the changed retry and completion screens in iOS
+dark mode and Android light mode. They do not replace the remaining broader
+device, theme, system-text-size, reduced-motion, and assistive-technology
+matrix. The older screenshots below predate this audit and are not cited as
+proof of the changed completion boundary.
 
 ## Field-local validation feedback — 12 August 2026
 
@@ -88,9 +90,61 @@ e-mail address.
 Automated evidence covers process restart, exact-payload resume, failed sync
 retention, success cleanup, registration-attempt and Clerk-user binding,
 cross-account rejection, expiry/corruption recovery, and routing precedence.
-Fresh native iOS and Android recordings of failure → force-close → resume →
-success remain required before this PR leaves Draft; automated tests are not
-cited as native process-lifecycle proof.
+
+The following recordings add native process-lifecycle evidence. Both use a
+development client and a temporary local fault gate to make the sync boundary
+fail deterministically. The recordings exercise the real native lifecycle and
+encrypted SecureStore adapter, but they are not Store-binary evidence. The
+temporary gate and source-level test prefills were removed after capture;
+Android development-app data and the host/simulator pasteboards were cleared.
+None of that instrumentation is part of the committed product code.
+
+### iOS dark-mode recovery
+
+`ios-restart-safe-recovery-final-head.mp4` is an uncut iPhone 17 Pro / iOS 26.5
+simulator recording:
+
+> Coverage: 237.84-second video; 80 full-timeline frames sampled at 0.336368 fps
+> (2.972938-second interval); 5 contact sheet(s); no audio stream.
+
+Timestamped observations:
+
+- `00:00–00:44`: the failed completion surface stays actionable with “Erneut
+  versuchen”.
+- `00:47–02:12`: the app process is terminated; the recording contains no app
+  UI during the stopped interval.
+- `02:21–02:29`: a fresh development-client launch is visible.
+- `02:32–02:38`: account setup resumes through the creation loader.
+- `02:41–03:18`: the persisted failure returns to the same retry surface; the
+  app does not remain on the loader.
+- `03:21–03:57`: the manual retry reaches “Dein Konto ist bereit” and remains on
+  the explicit “Weiter zur Testphase” handoff.
+
+### Android light-mode recovery
+
+`android-restart-safe-recovery-final-head.mp4` is an uncut Pixel 9 emulator
+recording. The Android application is force-stopped with `am force-stop` and
+then launched again while the screen recording continues:
+
+> Coverage: 143.62-second video; 80 full-timeline frames sampled at 0.557028 fps
+> (1.795241-second interval); 5 contact sheet(s); 144 additional frames from
+> 00:00:15.000 to 00:01:00.000 at 2 fps; 28 additional frames from
+> 00:01:32.000 to 00:01:50.000 at 4 fps; no audio stream.
+
+Timestamped observations:
+
+- `00:00–00:18`: the initial failed completion surface remains actionable.
+- `00:19–00:22`: the app is absent while the native process is stopped.
+- `00:23–00:47`: the development client follows a fresh launch path.
+- `00:48–00:53`: account setup resumes through the creation loader.
+- `00:55–01:42`: the persisted failure returns to the retry surface rather than
+  an endless loader.
+- `01:44–02:23`: the manual retry reaches and retains the explicit success
+  handoff.
+
+Together these recordings close the platform recovery-lifecycle gate and add
+fresh light/dark rendering evidence for the changed retry and completion
+surfaces. They do not prove trial activation or the first empty-home action.
 
 ## Live duration preview worklet crash — 13 August 2026
 
@@ -102,12 +156,62 @@ JavaScript thread.
 
 The preview-index arithmetic now stays entirely inside the UI worklet; only the
 result crosses back through `scheduleOnRN`. The UI regression test asserts that
-the registered scroll callback no longer references the remote helper. The
-current iOS bundle was exercised on iPhone 17 Pro / iOS 26.5 in dark mode: the
-preview number and ring advanced from 10 to 45 during native UI-runtime scroll,
-repeated three times without an error overlay. This is evidence for the reported
-iOS crash only; Android drag verification remains part of the broader native
-matrix.
+the registered scroll callback no longer references the remote helper. The iOS
+bundle was exercised on iPhone 17 Pro / iOS 26.5 in dark mode: the preview
+number and ring advanced from 10 to 45 during native UI-runtime scroll, repeated
+three times without an error overlay.
+
+`android-live-duration-preview-final-head.mp4` covers the corresponding Pixel 9
+native UI-runtime drag. The value, ring, and centered selector move together
+from 10 through 20 to 30 minutes without a Worklets error overlay:
+
+> Coverage: 6.42-second video; 13 full-timeline frames sampled at 2 fps
+> (0.5-second interval); 1 contact sheet(s); no audio stream.
+
+This closes the Android live-preview crash/interaction gate; it is not a claim
+about every Android device size.
+
+## Native back contract — 13 August 2026
+
+The launch architecture keeps the native iOS route gesture enabled on the first
+intro page, but the full-screen intro pager can win that gesture before the
+router receives it. The production-safe launch behavior therefore also installs
+the same guarded interactive edge handler on the entry page. Its commit action
+calls the normal route back/replace logic. This is a documented hybrid fallback,
+not a claim that the captured entry transition is a native route-pop animation.
+A true per-step native stack remains the long-term solution in DAY-349.
+
+- `ios-entry-edge-back-final-head.mp4`: starts on the auth choice, opens the
+  first intro, shows the committed edge translation at `00:18–00:20`, and
+  returns to the auth choice at `00:20.5`.
+
+  > Coverage: 23.29-second video; 47 full-timeline frames sampled at 2 fps
+  > (0.5-second interval); 3 contact sheet(s); no audio stream.
+
+- `ios-internal-edge-back-final-head.mp4`: starts on the conflict-free
+  explanation step, shows the committed interactive translation at
+  `00:18–00:20`, and returns exactly one step to duration at `00:20.5`.
+
+  > Coverage: 21.87-second video; 44 full-timeline frames sampled at 2 fps
+  > (0.5-second interval); 3 contact sheet(s); no audio stream.
+
+- `android-predictive-back-internal-step-final-head.mp4`: the Android predictive
+  back preview becomes visible while dragging and a committed invocation returns
+  from duration to the immediately preceding name step at `00:04.5`.
+
+  > Coverage: 5.08-second video; 10 full-timeline frames sampled at 2 fps
+  > (0.5-second interval); 1 contact sheet(s); no audio stream.
+
+- `android-picker-sheet-first-back-final-head.mp4`: Android native back closes
+  the open time picker by `00:04` and leaves the confirmed `16:00` answer and
+  underlying onboarding step unchanged for the remainder of the clip.
+
+  > Coverage: 15.88-second video; 32 full-timeline frames sampled at 2 fps
+  > (0.5-second interval); 2 contact sheet(s); no audio stream.
+
+The last recording proves native time-picker-first dismissal only. A distinct
+bounded select-sheet-first recording is still required; the filename is kept
+for traceability and must not be read as proof of both surfaces.
 
 ## Accepted operational learning-time flow — 12 August 2026
 
@@ -247,15 +351,11 @@ learning-time contract.
 
 ## Remaining release evidence
 
-This evidence set proves the operational learning-time segment on native iOS
-and Android. It does not by itself prove account creation, email verification,
-trial activation, first empty-home action, reduced motion, the complete back
-contract, or a second device size. The 2026-08-12 implementation pass confirmed
-Android system back from an internal profile step returns exactly one step, and
-confirmed Android native time-picker back closes the picker without changing
-the underlying onboarding step. The iOS simulator also confirmed an incomplete
-edge drag leaves the internal step unchanged. Remaining back-navigation
-evidence must still cover iOS entry-route pop, iOS committed internal edge
-swipe, Android predictive-back invocation, and shared select-sheet-first
-dismissal before an underlying onboarding step changes. PR #458 stays Draft
-until the canonical acceptance gates are closed.
+This evidence set now proves the operational learning-time segment, native
+iOS/Android restart recovery, Android live duration preview, committed iOS entry
+and internal edge behavior, Android predictive back, and native time-picker-first
+dismissal. It does not by itself prove a separate shared select-sheet-first
+dismissal, the complete small/large-device and theme matrix, long German copy at
+larger system text sizes, reduced motion, physical VoiceOver/TalkBack behavior,
+trial activation, or the first empty-home action. PR #458 stays Draft until the
+remaining canonical acceptance gates are closed by the decision owner.

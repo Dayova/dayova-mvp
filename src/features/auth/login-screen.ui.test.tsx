@@ -764,13 +764,14 @@ describe("OnboardingScreen", () => {
 		mockStackScreens.length = 0;
 	});
 
-	test("keeps the native route gesture only on the onboarding entry step", async () => {
+	test("enables route and interactive edge back only on the onboarding entry step", async () => {
 		const screen = await render(<OnboardingScreen />);
 
 		expect(mockStackScreens.at(-1)?.options).toMatchObject({
 			gestureEnabled: true,
 			fullScreenGestureEnabled: false,
 		});
+		expect(screen.getByTestId("onboarding-ios-edge-back")).toBeOnTheScreen();
 
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
@@ -778,6 +779,7 @@ describe("OnboardingScreen", () => {
 			gestureEnabled: false,
 			fullScreenGestureEnabled: false,
 		});
+		expect(screen.queryByTestId("onboarding-ios-edge-back")).toBeNull();
 	});
 
 	test("teaches the product in three pages before personalized questions", async () => {

@@ -43,7 +43,7 @@ export const shouldEnableRegistrationEdgeBack = ({
 }: RegistrationBackContext) => {
 	if (platform !== "ios" || isBusy || stage === "creating") return false;
 	if (stage === "verification") return true;
-	if (activeIndex === 0) return false;
+	if (activeIndex === 0) return stage === "flow" && stepKind === "intro";
 
 	return !HORIZONTAL_GESTURE_STEP_KINDS.has(stepKind);
 };

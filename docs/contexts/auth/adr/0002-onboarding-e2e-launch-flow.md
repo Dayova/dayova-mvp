@@ -130,12 +130,16 @@ The following constraints are part of the contract:
   navigation across flow and verification. The visible back action and Android
   system/predictive back always resolve the nearest reversible state first:
   dismiss an open picker or sheet, then return one onboarding step. iOS keeps
-  the native edge-pop only on the first intro page, where it returns to the auth
-  choice. Later conflict-free steps use an interactive edge swipe that returns
-  exactly one internal step; the intro pager and horizontal duration carousel
+  the native route gesture enabled on the first intro page, but the full-screen
+  intro pager can win that gesture before Expo Router receives it. The launch
+  contract therefore adds the guarded interactive edge handler on the entry
+  page as a production fallback; committing it calls the normal route
+  back/replace action. Later conflict-free steps use the same handler to return
+  exactly one internal step. The intro pager and horizontal duration carousel
   retain their own horizontal gestures. Route gestures and internal edge-back
   are disabled while registration or account creation is in flight, and the
-  completed account handoff remains forward-only.
+  completed account handoff remains forward-only. This hybrid is accepted for
+  launch; replacing it with a true per-step native stack is tracked in DAY-349.
 - Profile or onboarding-answer persistence failures after authentication must
   replace the indefinite loader with a user-visible error and an explicit retry
   of the failed boundary. Answers remain local until persistence succeeds.

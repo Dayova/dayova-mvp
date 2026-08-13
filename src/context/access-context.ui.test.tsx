@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { render } from "@testing-library/react-native";
+import { render, waitFor } from "@testing-library/react-native";
+import * as SecureStore from "expo-secure-store";
 import { Text } from "react-native";
 import { AccessProvider } from "./AccessContext";
 
@@ -61,6 +62,24 @@ describe("AccessProvider", () => {
 			expect(mockUseQuery.mock.calls[0]?.[1]).toEqual({
 				now: expect.any(Number),
 			});
+		} finally {
+			screen.unmount();
+		}
+	});
+
+	test("uses a SecureStore-compatible cache key", async () => {
+		const screen = await render(
+			<AccessProvider>
+				<Text>App</Text>
+			</AccessProvider>,
+		);
+
+		try {
+			await waitFor(() =>
+				expect(SecureStore.getItemAsync).toHaveBeenCalledWith(
+					"dayova-access.user_123",
+				),
+			);
 		} finally {
 			screen.unmount();
 		}

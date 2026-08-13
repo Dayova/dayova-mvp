@@ -30,7 +30,7 @@ describe("shouldEnableRegistrationRouteBack", () => {
 });
 
 describe("shouldEnableRegistrationEdgeBack", () => {
-	test("enables iOS edge back only on conflict-free internal steps", () => {
+	test("enables iOS edge back on the entry page and conflict-free internal steps", () => {
 		const base = {
 			activeIndex: 4,
 			isBusy: false,
@@ -50,6 +50,13 @@ describe("shouldEnableRegistrationEdgeBack", () => {
 		expect(
 			shouldEnableRegistrationEdgeBack({ ...base, stepKind: "intro" }),
 		).toBe(false);
+		expect(
+			shouldEnableRegistrationEdgeBack({
+				...base,
+				activeIndex: 0,
+				stepKind: "intro",
+			}),
+		).toBe(true);
 		expect(
 			shouldEnableRegistrationEdgeBack({ ...base, stepKind: "wheel" }),
 		).toBe(true);

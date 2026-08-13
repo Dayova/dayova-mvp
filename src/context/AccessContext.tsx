@@ -19,7 +19,8 @@ import {
 } from "~/lib/access-policy";
 import { logDiagnosticError } from "~/lib/diagnostics";
 
-const ACCESS_CACHE_PREFIX = "dayova-access:";
+// SecureStore keys may only contain alphanumeric characters, `.`, `-`, and `_`.
+const ACCESS_CACHE_PREFIX = "dayova-access.";
 const ACCESS_QUERY_TIMEOUT_MS = 1_500;
 const ACCESS_CLOCK_INTERVAL_MS = 30_000;
 const MAX_TIMER_DELAY_MS = 2_147_000_000;
