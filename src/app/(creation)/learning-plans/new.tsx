@@ -26,6 +26,7 @@ import {
 	MaterialUploadStep,
 	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
+import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import type {
 	LearningPlanSnapshot,
 	UploadAsset,
@@ -105,6 +106,7 @@ export default function NewLearningPlanScreen() {
 	const initialLearningPlanId = params.learningPlanId as
 		| Id<"learningPlans">
 		| undefined;
+	const setupOrigin = useLearningPlanSetupOrigin(initialLearningPlanId);
 
 	const [learningPlanId, setLearningPlanId] =
 		useState<Id<"learningPlans"> | null>(initialLearningPlanId ?? null);
@@ -617,7 +619,7 @@ export default function NewLearningPlanScreen() {
 							onRemoveDocument={(id) => void removeUploadedDocument(id)}
 							onSkip={finishWithMaterialLater}
 							openingUploadAction={openingUploadAction}
-							showSkip={!initialLearningPlanId}
+							showSkip={setupOrigin === "newExam"}
 						/>
 					)}
 				</View>
