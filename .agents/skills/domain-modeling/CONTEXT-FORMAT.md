@@ -20,14 +20,22 @@ _Avoid_: Bill, payment request
 **Customer**:
 A person or organization that places orders.
 _Avoid_: Client, buyer, account
+
+## Contracts and Constraints
+
+- Capture concise, stable code-facing architecture, constraints, implementation contracts, and conventions that must evolve with the code.
+- Link significant technical decisions to the relevant ADR and shared internal decisions to their canonical knowledge-system record.
 ```
 
 ## Rules
 
 - **Be opinionated.** When multiple words exist for the same concept, pick the best one and list the others under `_Avoid_`.
 - **Keep definitions tight.** One or two sentences max. Define what it IS, not what it does.
-- **Only include terms specific to this project's context.** General programming concepts (timeouts, error types, utility patterns) don't belong even if the project uses them extensively. Before adding a term, ask: is this a concept unique to this context, or a general programming concept? Only the former belongs.
+- **Only include language specific to this project's context.** General programming concepts (timeouts, error types, utility patterns) do not belong in the glossary even if the project uses them extensively. Before adding a term, ask: is this a concept unique to this context, or a general programming concept? Only the former belongs under `Language`.
 - **Group terms under subheadings** when natural clusters emerge. If all terms belong to a single cohesive area, a flat list is fine.
+- **Keep other sections code-facing and durable.** Include architecture, constraints, contracts, conventions, and decision pointers only when an agent needs them to change the repository safely and they must evolve with the code.
+- **Do not create another source of truth.** Exclude task status, scratch notes, transient plans, and copied internal documentation. Link the canonical work or knowledge record and summarize only the implementation-critical detail.
+- **Use ADRs for significant trade-offs.** Keep the durable operational consequence in context documentation when useful, and link the ADR that explains the decision and rationale.
 
 ## Single vs multi-context repos
 

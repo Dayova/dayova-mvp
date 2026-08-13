@@ -9,12 +9,12 @@ import { ActivityIndicator, Share, TouchableOpacity, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
-import { useContentSizeLayout } from "~/components/ui/portrait-content";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { SESSION_EXECUTION_STATUS_LABEL } from "~/features/learning-plans/constants";
 import { addDays, getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
@@ -96,10 +96,7 @@ function AttributionButton({
 
 export default function ValidationOverviewScreen() {
 	const router = useRouter();
-	const { shouldStackInlineContent } = useContentSizeLayout({
-		requestedHorizontalPadding: 24,
-	});
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const [dayOffset, setDayOffset] = useState(0);
 	const [pendingSessionId, setPendingSessionId] =
@@ -226,19 +223,12 @@ export default function ValidationOverviewScreen() {
 
 				<Surface className="rounded-[28px] px-5 py-5">
 					<Text
-						className="font-bold font-poppins text-[#202127]"
+						className="font-poppins font-semibold text-text"
 						style={{ fontSize: 24, lineHeight: 30, includeFontPadding: false }}
 					>
 						{dayKey}
 					</Text>
-					<View
-						className={
-							shouldStackInlineContent
-								? "mt-4 flex-row flex-wrap gap-2"
-								: "mt-4 flex-row"
-						}
-						style={shouldStackInlineContent ? undefined : { gap: 10 }}
-					>
+					<View className="mt-4 flex-row" style={{ gap: 10 }}>
 						<PillButton
 							label="Gestern"
 							onPress={() => setDayOffset((value) => value - 1)}
@@ -270,15 +260,15 @@ export default function ValidationOverviewScreen() {
 
 				{accessErrorMessage ? (
 					<Surface className="rounded-[24px] px-5 py-5">
-						<Text className="font-poppins text-14 text-destructive">
+						<ErrorMessage className="text-body-3">
 							{accessErrorMessage}
-						</Text>
+						</ErrorMessage>
 					</Surface>
 				) : null}
 
 				{hasNoAccess ? (
 					<Surface className="rounded-[24px] px-5 py-5">
-						<Text className="font-poppins text-14 text-[#6F727C]">
+						<Text className="text-body-3 text-secondary-text">
 							Kein Zugriff auf die Validierungsübersicht.
 						</Text>
 					</Surface>
@@ -292,9 +282,9 @@ export default function ValidationOverviewScreen() {
 
 				{overviewErrorMessage ? (
 					<Surface className="rounded-[24px] px-5 py-5">
-						<Text className="font-poppins text-14 text-destructive">
+						<ErrorMessage className="text-body-3">
 							{overviewErrorMessage}
-						</Text>
+						</ErrorMessage>
 					</Surface>
 				) : null}
 
@@ -305,11 +295,7 @@ export default function ValidationOverviewScreen() {
 						style={{ rowGap: 12 }}
 					>
 						<View
-							className={
-								shouldStackInlineContent
-									? "items-start"
-									: "flex-row items-start justify-between"
-							}
+							className="flex-row items-start justify-between"
 							style={{ gap: 12 }}
 						>
 							<View className="flex-1">
@@ -334,13 +320,7 @@ export default function ValidationOverviewScreen() {
 									{`${row.subject} · ${row.examTypeLabel}`}
 								</Text>
 							</View>
-							<View
-								className={
-									shouldStackInlineContent
-										? "min-h-8 max-w-full rounded-full bg-[#F2F3F6] px-3 py-2"
-										: "rounded-full bg-[#F2F3F6] px-3 py-2"
-								}
-							>
+							<View className="rounded-full bg-[#F2F3F6] px-3 py-2">
 								<Text
 									className="font-poppins font-semibold text-[#6F727C]"
 									style={{
@@ -381,7 +361,7 @@ export default function ValidationOverviewScreen() {
 
 				{overview && overview.rows.length === 0 ? (
 					<Surface className="rounded-[24px] px-5 py-5">
-						<Text className="text-center font-poppins text-14 text-[#6F727C]">
+						<Text className="text-center text-body-3 text-secondary-text">
 							Keine Lernblöcke für diesen Tag.
 						</Text>
 					</Surface>

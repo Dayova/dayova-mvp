@@ -4,7 +4,7 @@ This context covers Convex schema, functions, indexes, migrations, backend data 
 
 When working on Convex code, always read `convex/_generated/ai/guidelines.md` first.
 
-Confluence is the current cross-functional documentation hub. Keep this file focused on implementation-facing terminology, conventions, and assumptions that agents need while working in this repo.
+Notion is Dayova's main internal documentation and knowledge workspace. Keep this file focused on implementation-facing terminology, conventions, and assumptions that must evolve with the code, and link to relevant Notion records instead of duplicating shared documentation.
 
 ## Language
 
@@ -18,5 +18,9 @@ _Avoid_: User-facing message, learner error text
 
 ## Notes
 
+- Convex keeps `users.schoolType` schema-compatible with legacy strings while
+  every current write boundary accepts only the seven stable `Schulart` keys.
+  Authenticated profile sync lazily maps exact generic legacy values and
+  removes ambiguous user/profile-answer values without logging them.
 - Capture backend data model, function boundaries, and migration decisions here.
 - Put backend ADRs in `docs/contexts/backend-convex/adr/`.

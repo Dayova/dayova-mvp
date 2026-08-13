@@ -5,66 +5,99 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import * as SystemUI from "expo-system-ui";
-import {
-	Stack,
-	usePathname,
-	useRootNavigationState,
-	useRouter,
-} from "expo-router";
+import { Stack } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
+import * as SystemUI from "expo-system-ui";
+import { vars } from "nativewind";
 import { PostHogProvider } from "posthog-react-native";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Text, View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
+import { AuthNavigationGate } from "~/components/auth-navigation-gate";
 import { NotificationSync } from "~/components/notification-sync";
-import { AuthProvider, useAuth } from "~/context/AuthContext";
+import { TrialReminderSync } from "~/components/trial-reminder-sync";
+import {
+	SheetAccessibilityProvider,
+	useSheetAccessibility,
+} from "~/components/ui/sheet-accessibility";
+import { AccessProvider } from "~/context/AccessContext";
+import { AuthProvider } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
 import {
 	isPostHogConfigured,
 	postHogApiKey,
 	postHogHost,
-} from "~/lib/analytics-core";
+	validationAnalyticsBeforeSend,
+} from "~/lib/analytics";
 import { env, missingPublicRuntimeConfig } from "~/lib/runtime-config";
 import { DayovaThemeProvider, NAV_THEMES, useDayovaTheme } from "~/lib/theme";
+import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
 
 const convexUrl = env.EXPO_PUBLIC_CONVEX_URL?.trim();
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
-const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
-
-const isPublicAuthPath = (pathname: string) => PUBLIC_AUTH_PATHS.has(pathname);
-
 function AppNavigator() {
-	const router = useRouter();
-	const pathname = usePathname();
-	const rootNavigationState = useRootNavigationState();
-	const { user, isSessionLoading } = useAuth();
-
-	useEffect(() => {
-		if (isSessionLoading || !rootNavigationState?.key) return;
-
-		const isAuthRoute = isPublicAuthPath(pathname);
-		const targetRoute =
-			!user && !isAuthRoute
-				? "/"
-				: user && isAuthRoute && pathname !== "/onboarding"
-					? "/home"
-					: null;
-		if (!targetRoute) return;
-
-		const frame = requestAnimationFrame(() => {
-			router.replace(targetRoute);
-		});
-
-		return () => cancelAnimationFrame(frame);
-	}, [isSessionLoading, pathname, rootNavigationState?.key, router, user]);
+	const sheetAccessibility = useSheetAccessibility();
+	const { colors } = useDayovaTheme();
 
 	return (
 		<>
 			<NotificationSync />
-			<Stack screenOptions={{ headerShown: false }} />
+			<TrialReminderSync />
+			<View
+				className="flex-1"
+				accessibilityElementsHidden={sheetAccessibility?.hasOpenSheet ?? false}
+				importantForAccessibility={
+					sheetAccessibility?.hasOpenSheet ? "no-hide-descendants" : "auto"
+				}
+			>
+				<AuthNavigationGate>
+					<Stack
+						screenOptions={{
+							headerShown: false,
+							contentStyle: { backgroundColor: colors.background },
+						}}
+					>
+						<Stack.Screen name="(auth)" options={{ animation: "none" }} />
+						<Stack.Screen name="(app)" options={{ animation: "none" }} />
+						<Stack.Screen
+							name="subscription"
+							options={{
+								animation: "slide_from_right",
+								gestureEnabled: true,
+								presentation: "card",
+							}}
+						/>
+						<Stack.Screen
+							name="pro-welcome"
+							options={{
+								animation: "none",
+								gestureEnabled: false,
+								presentation: "card",
+							}}
+						/>
+						<Stack.Screen
+							name="learning-times/edit"
+							options={{
+								animation: "slide_from_right",
+								contentStyle: { backgroundColor: colors.background },
+								gestureEnabled: true,
+								presentation: "card",
+							}}
+						/>
+						<Stack.Screen
+							name="timetable/index"
+							options={{
+								animation: "slide_from_right",
+								contentStyle: { backgroundColor: colors.background },
+								gestureEnabled: true,
+								presentation: "card",
+							}}
+						/>
+					</Stack>
+				</AuthNavigationGate>
+			</View>
 			<PortalHost />
 		</>
 	);
@@ -107,6 +140,10 @@ export default function RootLayout() {
 
 function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 	const { colors, resolvedTheme } = useDayovaTheme();
+	const themeVariables = useMemo(
+		() => vars(resolvedTheme === "dark" ? DARK_THEME_VARIABLES : {}),
+		[resolvedTheme],
+	);
 
 	useEffect(() => {
 		void SystemUI.setBackgroundColorAsync(colors.background);
@@ -114,38 +151,49 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 
 	return (
 		<GestureHandlerRootView style={gestureRootStyle}>
-			<KeyboardProvider preload={false}>
-				<PostHogProvider
-					apiKey={postHogApiKey}
-					autocapture={false}
-					options={{
-						host: postHogHost,
-						disabled: !isPostHogConfigured,
-						captureAppLifecycleEvents: false,
-					}}
-				>
-					<ClerkProvider
-						publishableKey={env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""}
-						tokenCache={tokenCache}
+			<View style={[gestureRootStyle, themeVariables]}>
+				<KeyboardProvider preload={false}>
+					<PostHogProvider
+						apiKey={postHogApiKey}
+						autocapture={false}
+						options={{
+							host: postHogHost,
+							disabled: !isPostHogConfigured,
+							captureAppLifecycleEvents: false,
+							before_send: validationAnalyticsBeforeSend,
+						}}
 					>
-						<ConvexProviderWithClerk
-							client={convexClient}
-							useAuth={useClerkAuth}
+						{/* Native sessions persist by default; there is no per-login opt-out.
+						    Decision: https://app.notion.com/p/3a02e87228bf81bf9f65f6214759a770 */}
+						<ClerkProvider
+							publishableKey={
+								env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ""
+							}
+							tokenCache={tokenCache}
 						>
-							<ThemeProvider value={NAV_THEMES[resolvedTheme]}>
-								<BottomSheetModalProvider>
-									<OnboardingProvider>
-										<AuthProvider>
-											<AnalyticsIdentity />
-											<AppNavigator />
-										</AuthProvider>
-									</OnboardingProvider>
-								</BottomSheetModalProvider>
-							</ThemeProvider>
-						</ConvexProviderWithClerk>
-					</ClerkProvider>
-				</PostHogProvider>
-			</KeyboardProvider>
+							<ConvexProviderWithClerk
+								client={convexClient}
+								useAuth={useClerkAuth}
+							>
+								<ThemeProvider value={NAV_THEMES[resolvedTheme]}>
+									<BottomSheetModalProvider>
+										<SheetAccessibilityProvider>
+											<OnboardingProvider>
+												<AuthProvider>
+													<AccessProvider>
+														<AnalyticsIdentity />
+														<AppNavigator />
+													</AccessProvider>
+												</AuthProvider>
+											</OnboardingProvider>
+										</SheetAccessibilityProvider>
+									</BottomSheetModalProvider>
+								</ThemeProvider>
+							</ConvexProviderWithClerk>
+						</ClerkProvider>
+					</PostHogProvider>
+				</KeyboardProvider>
+			</View>
 		</GestureHandlerRootView>
 	);
 }

@@ -1,8 +1,8 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { type ReactNode, useEffect, useState } from "react";
-import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	Easing,
@@ -18,6 +18,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
 import { Button } from "~/components/ui/button";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
@@ -32,19 +33,19 @@ import {
 	CompactNotchedActionCard,
 	NotchedActionCard,
 } from "~/components/ui/notched-action-card";
-import {
-	PortraitContent,
-	useContentSizeLayout,
-} from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
+import { learningPlanResumePath } from "~/features/learning-plans/creation-routes";
+import { LearningPlanCardFooter } from "~/features/learning-plans/learning-plan-card-footer";
+import { MaterialRequiredSheet } from "~/features/learning-plans/material-required-sheet";
+import { getRollingLearningWindowLabel } from "~/features/learning-plans/rolling-learning-window";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
-import { cn } from "~/lib/utils";
 
 const PLAN_ACTION_RAIL_WIDTH = 104;
 const PLAN_SWIPE_OPEN_THRESHOLD = 44;
@@ -60,87 +61,16 @@ const PLANS_TAB_INDICATOR_HEIGHT = 44;
 type PlanTab = "learningPlans" | "homework";
 type CreateType = "homework" | "exam";
 
-function LearningPlansPageFrame({
-	children,
-	containerMaxWidth,
-	isEnlarged,
-	paddingBottom,
-}: {
-	children: ReactNode;
-	containerMaxWidth: number;
-	isEnlarged: boolean;
-	paddingBottom: number;
-}) {
-	if (!isEnlarged) return <>{children}</>;
-
-	return (
-		<ScrollView
-			className="flex-1"
-			// Runtime readable-width and safe-area values define the enlarged viewport.
-			contentContainerStyle={{
-				alignSelf: "center",
-				maxWidth: containerMaxWidth,
-				paddingBottom,
-				width: "100%",
-			}}
-			showsVerticalScrollIndicator={false}
-		>
-			{children}
-		</ScrollView>
-	);
-}
-
-function LearningPlansListViewport({
-	children,
-	containerMaxWidth,
-	horizontalPadding,
-	isEnlarged,
-	paddingBottom,
-}: {
-	children: ReactNode;
-	containerMaxWidth: number;
-	horizontalPadding: number;
-	isEnlarged: boolean;
-	paddingBottom: number;
-}) {
-	const contentStyle = {
-		paddingHorizontal: horizontalPadding,
-		paddingTop: 0,
-	};
-
-	if (isEnlarged) {
-		return (
-			// Responsive horizontal padding is calculated from the current viewport.
-			<View style={contentStyle}>{children}</View>
-		);
-	}
-
-	return (
-		<ScrollView
-			className="flex-1"
-			// Runtime readable-width and safe-area values define the list viewport.
-			contentContainerStyle={{
-				...contentStyle,
-				alignSelf: "center",
-				maxWidth: containerMaxWidth,
-				paddingBottom,
-				width: "100%",
-			}}
-			showsVerticalScrollIndicator={false}
-		>
-			{children}
-		</ScrollView>
-	);
-}
-
 type LearningPlanOverview = {
 	id: Id<"learningPlans">;
 	subject: string;
 	examTypeLabel: string;
 	status: "draft" | "questionsReady" | "generated" | "accepted";
+	needsSchoolMaterial: boolean;
 	progressPercent: number;
 	completedCount?: number;
 	sessionCount?: number;
+	upcomingSessionCount?: number;
 	examDateKey?: string;
 	examDateLabel?: string;
 	currentSession?: {
@@ -152,6 +82,7 @@ type LearningPlanOverview = {
 		startTime: string;
 		durationMinutes: number;
 		completed: boolean;
+		sessionPurpose?: "diagnostic" | "learning";
 	} | null;
 };
 
@@ -168,13 +99,12 @@ type HomeworkOverview = {
 	completed: boolean;
 };
 
-const getPlanHref = (plan: LearningPlanOverview) => {
-	if (plan.status === "draft") return ROUTES.createLearningPlan;
-	if (plan.status === "questionsReady") {
-		return `/learning-plans/${plan.id}/quiz/0` as const;
-	}
-	return `/learning-plans/${plan.id}` as const;
-};
+type DeleteTarget =
+	| { kind: "plan"; item: LearningPlanOverview }
+	| { kind: "homework"; item: HomeworkOverview };
+
+const getPlanHref = (plan: LearningPlanOverview) =>
+	learningPlanResumePath(plan.id, plan.status);
 
 const formatDateFromKey = (dayKey: string) => {
 	const date = parseDayKey(dayKey);
@@ -295,7 +225,7 @@ function Badge({
 }) {
 	return (
 		<View
-			className="min-h-7 justify-center rounded-full px-3 py-1"
+			className="h-7 justify-center rounded-full px-3"
 			style={{ backgroundColor: background }}
 		>
 			<Text
@@ -315,12 +245,9 @@ function PlansTabSwitch({
 	activeTab: PlanTab;
 	onChange: (tab: PlanTab) => void;
 }) {
-	const { shouldStackInlineContent } = useContentSizeLayout({
-		requestedHorizontalPadding: 24,
-	});
 	const tabs: Array<{ key: PlanTab; label: string }> = [
 		{ key: "learningPlans", label: "Lernpläne" },
-		{ key: "homework", label: "Haus\u00ADaufgaben" },
+		{ key: "homework", label: "Hausaufgaben" },
 	];
 	const [switchWidth, setSwitchWidth] = useState(0);
 	const activeTabIndex = activeTab === "learningPlans" ? 0 : 1;
@@ -348,59 +275,6 @@ function PlansTabSwitch({
 			},
 		],
 	}));
-
-	if (shouldStackInlineContent) {
-		return (
-			<View
-				accessibilityRole="tablist"
-				className="gap-2 rounded-[32px] border border-border bg-card p-2"
-			>
-				{tabs.map((tab) => {
-					const isActive = tab.key === activeTab;
-					return (
-						<TouchableOpacity
-							key={tab.key}
-							accessibilityRole="tab"
-							accessibilityState={{ selected: isActive }}
-							activeOpacity={0.9}
-							onPress={() => onChange(tab.key)}
-							className="min-h-11 w-full overflow-hidden rounded-[44px]"
-						>
-							{isActive ? (
-								<LinearGradient
-									colors={
-										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors
-									}
-									start={
-										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start
-									}
-									end={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end}
-									// Expo LinearGradient exposes its absolute fill through style.
-									style={{
-										position: "absolute",
-										top: 0,
-										right: 0,
-										bottom: 0,
-										left: 0,
-									}}
-								/>
-							) : null}
-							<View className="min-h-11 w-full items-center justify-center px-4 py-2">
-								<Text
-									className={cn(
-										"text-center font-poppins font-semibold text-body-2",
-										isActive ? "text-light-1" : "text-text",
-									)}
-								>
-									{tab.label}
-								</Text>
-							</View>
-						</TouchableOpacity>
-					);
-				})}
-			</View>
-		);
-	}
 
 	return (
 		<View
@@ -548,21 +422,34 @@ function LearningPlanCard({
 	onPress: () => void;
 }) {
 	const { colors } = useDayovaTheme();
-	const { shouldStackInlineContent } = useContentSizeLayout({
-		requestedHorizontalPadding: 24,
-	});
+	const needsSchoolMaterial = plan.needsSchoolMaterial;
 	const progress = Math.max(0, Math.min(plan.progressPercent, 100));
-	const status = getStatus(plan, todayKey);
+	const rollingWindowLabel = getRollingLearningWindowLabel({
+		completedCount: plan.completedCount ?? 0,
+		upcomingCount:
+			plan.upcomingSessionCount ??
+			Math.max(0, (plan.sessionCount ?? 0) - (plan.completedCount ?? 0)),
+	});
+	const status = needsSchoolMaterial
+		? {
+				label: "Material fehlt",
+				background: STATUS_NEUTRAL_BACKGROUND,
+				foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
+			}
+		: getStatus(plan, todayKey);
 	const remainingDays = Math.max(
 		0,
 		plan.examDateKey
 			? (differenceInCalendarDays(plan.examDateKey, todayKey) ?? 0)
 			: 0,
 	);
-	const currentTitle =
-		plan.currentSession?.goal ||
-		plan.currentSession?.title ||
-		plan.examTypeLabel;
+	const currentTitle = needsSchoolMaterial
+		? "Lernmaterial hochladen"
+		: plan.currentSession?.sessionPurpose === "diagnostic"
+			? "Wissenscheck · 5–10 Fragen"
+			: plan.currentSession?.goal ||
+				plan.currentSession?.title ||
+				plan.examTypeLabel;
 	const [isActionRailVisible, setIsActionRailVisible] = useState(false);
 	const translateX = useSharedValue(0);
 	const gestureStartX = useSharedValue(0);
@@ -641,8 +528,16 @@ function LearningPlanCard({
 			<GestureDetector gesture={panGesture}>
 				<Animated.View style={cardAnimatedStyle}>
 					<NotchedActionCard
-						cardAccessibilityHint="Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
-						cardAccessibilityLabel={`${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`}
+						cardAccessibilityHint={
+							needsSchoolMaterial
+								? "Öffnet einen Hinweis und bietet an, Schulmaterial hochzuladen."
+								: "Öffnet diesen Lernplan und zeigt die zugehörigen Lernsessions an."
+						}
+						cardAccessibilityLabel={
+							needsSchoolMaterial
+								? `${formatGermanUiText(plan.subject)}, Material fehlt, ${plan.examDateLabel ?? "Termin wird geladen"}, Lernmaterial hochladen`
+								: `${formatGermanUiText(plan.subject)}, ${status.label}, ${plan.examDateLabel ?? "Termin wird geladen"}, ${formatGermanUiText(currentTitle)}, ${rollingWindowLabel}, ${remainingDays === 1 ? "noch 1 Tag" : `noch ${remainingDays} Tage`}`
+						}
 						actionIcon={
 							<ArrowUpRight
 								size={24}
@@ -650,132 +545,60 @@ function LearningPlanCard({
 								strokeWidth={1.9}
 							/>
 						}
-						cardStyle={
-							shouldStackInlineContent ? { paddingBottom: 72 } : undefined
-						}
 						onPress={onPress}
 						pressType="card"
 					>
 						<View className="gap-2">
-							<View
-								className={cn(
-									"items-start gap-3",
-									!shouldStackInlineContent && "flex-row justify-between",
-								)}
-							>
+							<View className="flex-row items-start justify-between gap-3">
 								<Text
-									className={cn(
-										"min-w-0 flex-1 font-poppins font-semibold text-body-1 text-text",
-										!shouldStackInlineContent && "pr-2",
-									)}
-									numberOfLines={shouldStackInlineContent ? undefined : 2}
+									className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
+									numberOfLines={2}
 								>
 									{formatGermanUiText(plan.subject)}
 								</Text>
-								<View
-									className={cn(
-										"shrink-0 flex-row gap-2",
-										shouldStackInlineContent && "w-full flex-wrap",
-									)}
-								>
+								<View className="shrink-0 flex-row gap-2">
 									<Badge {...status} />
-									<Badge
-										label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
-										background={STATUS_NEUTRAL_BACKGROUND}
-										foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
-									/>
+									{needsSchoolMaterial ? null : (
+										<Badge
+											label={`${plan.currentSession?.durationMinutes ?? "–"} min`}
+											background={STATUS_NEUTRAL_BACKGROUND}
+											foreground={DAYOVA_DESIGN_SYSTEM.colors.primary}
+										/>
+									)}
 								</View>
 							</View>
 
-							<View
-								className={cn(
-									"flex-row gap-1",
-									shouldStackInlineContent ? "items-start" : "items-center",
-								)}
-							>
+							<View className="flex-row items-center gap-1">
 								<GraduationCap
 									size={14}
 									color={colors.secondaryText}
 									strokeWidth={2}
 								/>
-								<Text className="min-w-0 flex-1 font-poppins text-body-4 text-secondary-text">
+								<Text className="font-poppins text-body-4 text-secondary-text">
 									{plan.examDateLabel ?? "Termin wird geladen"}
 								</Text>
 							</View>
 
 							<Text
 								className="max-w-[282px] font-poppins font-semibold text-body-2 text-text"
-								numberOfLines={shouldStackInlineContent ? undefined : 2}
+								numberOfLines={2}
 							>
 								{formatGermanUiText(currentTitle)}
 							</Text>
 						</View>
 
-						<View
-							className={cn(
-								"mt-4 w-full gap-1",
-								!shouldStackInlineContent && "max-w-[300px]",
-							)}
-						>
-							<View
-								className={cn(
-									"gap-1",
-									shouldStackInlineContent
-										? "items-start"
-										: "flex-row items-center",
-								)}
-							>
-								<Text
-									className={cn(
-										"font-poppins text-body-4 text-secondary-text",
-										!shouldStackInlineContent && "w-[172px]",
-									)}
-								>
-									{`${plan.completedCount ?? 0} von ${plan.sessionCount ?? 0} Lerntage`}
-								</Text>
-								<View className="flex-row items-center gap-1">
-									<ClipboardEdit
-										size={14}
-										color={colors.secondaryText}
-										strokeWidth={2}
-									/>
-									<Text className="font-poppins text-body-4 text-secondary-text">
-										{remainingDays === 1
-											? "noch 1 Tag"
-											: `noch ${remainingDays} Tage`}
-									</Text>
-								</View>
-							</View>
-							<View
-								accessibilityLabel={`${progress} Prozent abgeschlossen`}
-								accessibilityValue={{
-									max: 100,
-									min: 0,
-									now: progress,
-									text: `${progress} Prozent`,
-								}}
-								accessibilityRole="progressbar"
-								className={cn(
-									"h-2 max-w-full overflow-hidden rounded-full bg-light-2",
-									shouldStackInlineContent ? "w-full" : "w-[258px]",
-								)}
-							>
-								<LinearGradient
-									colors={
-										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.colors
-									}
-									start={
-										DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.start
-									}
-									end={DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive.end}
-									style={{
-										height: "100%",
-										width: `${Math.max(progress, progress > 0 ? 8 : 0)}%`,
-										borderRadius: 999,
-									}}
-								/>
-							</View>
-						</View>
+						{needsSchoolMaterial ? (
+							<Text className="mt-4 max-w-[282px] font-poppins text-body-4 text-secondary-text">
+								Lade Schulmaterial hoch, damit Dayova deinen Lernplan erstellen
+								kann.
+							</Text>
+						) : (
+							<LearningPlanCardFooter
+								progress={progress}
+								remainingDays={remainingDays}
+								rollingWindowLabel={rollingWindowLabel}
+							/>
+						)}
 					</NotchedActionCard>
 				</Animated.View>
 			</GestureDetector>
@@ -795,9 +618,6 @@ function HomeworkCard({
 	onPress: () => void;
 }) {
 	const { colors } = useDayovaTheme();
-	const { shouldStackInlineContent } = useContentSizeLayout({
-		requestedHorizontalPadding: 24,
-	});
 	const status = getHomeworkStatus(homework, todayKey);
 	const subject = getHomeworkSubject(homework) || "Hausaufgabe";
 	const dateLabel =
@@ -893,34 +713,18 @@ function HomeworkCard({
 								strokeWidth={1.9}
 							/>
 						}
-						cardStyle={
-							shouldStackInlineContent ? { paddingBottom: 72 } : undefined
-						}
 						onPress={onPress}
 						pressType="card"
 					>
 						<View className="gap-2">
-							<View
-								className={cn(
-									"items-start gap-3",
-									!shouldStackInlineContent && "flex-row justify-between",
-								)}
-							>
+							<View className="flex-row items-start justify-between gap-3">
 								<Text
-									className={cn(
-										"min-w-0 flex-1 font-poppins font-semibold text-body-1 text-text",
-										!shouldStackInlineContent && "pr-2",
-									)}
-									numberOfLines={shouldStackInlineContent ? undefined : 2}
+									className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
+									numberOfLines={2}
 								>
 									{subject}
 								</Text>
-								<View
-									className={cn(
-										"shrink-0 flex-row gap-2",
-										shouldStackInlineContent && "w-full flex-wrap",
-									)}
-								>
+								<View className="shrink-0 flex-row gap-2">
 									<Badge {...status} />
 									<Badge
 										label={`${homework.durationMinutes ?? "–"} min`}
@@ -930,12 +734,7 @@ function HomeworkCard({
 								</View>
 							</View>
 
-							<View
-								className={cn(
-									"flex-row gap-1",
-									shouldStackInlineContent ? "items-start" : "items-center",
-								)}
-							>
+							<View className="flex-row items-center gap-1">
 								<Clock3
 									size={14}
 									color={colors.secondaryText}
@@ -943,7 +742,7 @@ function HomeworkCard({
 								/>
 								<Text
 									className="flex-1 font-poppins text-body-4 text-secondary-text"
-									numberOfLines={shouldStackInlineContent ? undefined : 1}
+									numberOfLines={1}
 								>
 									{details}
 								</Text>
@@ -951,7 +750,7 @@ function HomeworkCard({
 
 							<Text
 								className="max-w-[282px] font-poppins font-semibold text-body-4 text-text"
-								numberOfLines={shouldStackInlineContent ? undefined : 2}
+								numberOfLines={2}
 							>
 								{description}
 							</Text>
@@ -966,15 +765,18 @@ function HomeworkCard({
 export default function LearningPlansScreen() {
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
-	const contentSizeLayout = useContentSizeLayout({
-		requestedHorizontalPadding: 24,
-	});
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const removePlan = useMutation(api.learningPlans.removePlan);
 	const removeHomework = useMutation(api.dayEntries.remove);
 	const [activeTab, setActiveTab] = useState<PlanTab>("learningPlans");
 	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
+	const [materialUploadTarget, setMaterialUploadTarget] =
+		useState<LearningPlanOverview | null>(null);
+	const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+	const [isDeleting, setIsDeleting] = useState(false);
+	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const deleteActionGateRef = useRef(createAsyncActionGate());
 	const today = useCurrentLocalDay();
 	const todayKey = getDayKey(today);
 	const plans = useQuery(
@@ -987,48 +789,54 @@ export default function LearningPlansScreen() {
 	);
 	const visiblePlans = plans ?? [];
 	const visibleHomework = homework ?? [];
+	const openPlan = (plan: LearningPlanOverview) => {
+		if (plan.needsSchoolMaterial) {
+			setMaterialUploadTarget(plan);
+			return;
+		}
+
+		router.push(getPlanHref(plan));
+	};
+	const continueToMaterialUpload = () => {
+		if (!materialUploadTarget) return;
+		const target = materialUploadTarget;
+		setMaterialUploadTarget(null);
+		router.push(getPlanHref(target));
+	};
 
 	const confirmDeletePlan = (plan: LearningPlanOverview) => {
-		Alert.alert(
-			"Lernplan löschen",
-			`Möchtest du den Lernplan ${formatGermanUiText(plan.subject)} wirklich löschen?`,
-			[
-				{ text: "Abbrechen", style: "cancel" },
-				{
-					text: "Löschen",
-					style: "destructive",
-					onPress: () => {
-						void removePlan({ id: plan.id }).catch(() => {
-							Alert.alert(
-								"Lernplan konnte nicht gelöscht werden",
-								"Bitte versuche es gleich noch einmal.",
-							);
-						});
-					},
-				},
-			],
-		);
+		setDeleteError(null);
+		setDeleteTarget({ kind: "plan", item: plan });
 	};
 	const confirmDeleteHomework = (homeworkEntry: HomeworkOverview) => {
-		Alert.alert(
-			"Hausaufgabe löschen",
-			`Möchtest du ${formatGermanUiText(homeworkEntry.title)} wirklich löschen?`,
-			[
-				{ text: "Abbrechen", style: "cancel" },
-				{
-					text: "Löschen",
-					style: "destructive",
-					onPress: () => {
-						void removeHomework({ id: homeworkEntry.id }).catch(() => {
-							Alert.alert(
-								"Hausaufgabe konnte nicht gelöscht werden",
-								"Bitte versuche es gleich noch einmal.",
-							);
-						});
-					},
-				},
-			],
-		);
+		setDeleteError(null);
+		setDeleteTarget({ kind: "homework", item: homeworkEntry });
+	};
+	const closeDeleteSheet = () => {
+		if (deleteActionGateRef.current.isRunning) return;
+		setDeleteTarget(null);
+		setDeleteError(null);
+	};
+	const deleteSelectedItem = async () => {
+		if (!deleteTarget) return;
+		const target = deleteTarget;
+
+		await deleteActionGateRef.current.run(async () => {
+			setIsDeleting(true);
+			setDeleteError(null);
+			try {
+				if (target.kind === "plan") {
+					await removePlan({ id: target.item.id });
+				} else {
+					await removeHomework({ id: target.item.id });
+				}
+				setDeleteTarget(null);
+			} catch {
+				setDeleteError("Bitte versuche es gleich noch einmal.");
+			} finally {
+				setIsDeleting(false);
+			}
+		});
 	};
 	const openCreateTypePicker = () => {
 		setShowCreateTypePicker(true);
@@ -1043,163 +851,165 @@ export default function LearningPlansScreen() {
 	return (
 		<View className="flex-1 bg-background">
 			<ThemedStatusBar />
-			<LearningPlansPageFrame
-				containerMaxWidth={contentSizeLayout.containerMaxWidth}
-				isEnlarged={contentSizeLayout.shouldStackInlineContent}
-				paddingBottom={Math.max(insets.bottom + 120, 150)}
+			<View
+				className="gap-6 px-6"
+				style={{
+					paddingTop: Math.max(insets.top - 4, 32),
+					paddingBottom: 18,
+				}}
 			>
-				<PortraitContent
-					className="gap-6 px-6"
-					// Safe-area padding is runtime device data.
-					style={{
-						paddingTop: Math.max(insets.top - 4, 32),
-						paddingBottom: 18,
-					}}
-				>
-					<View
-						className={cn(
-							"mt-7 justify-between",
-							contentSizeLayout.shouldStackInlineContent
-								? "items-stretch gap-3"
-								: "flex-row items-center",
-						)}
+				<View className="mt-7 flex-row items-center justify-between">
+					<Text className="font-poppins font-semibold text-heading-1 text-text">
+						Deine Pläne
+					</Text>
+
+					<TouchableOpacity
+						accessibilityRole="button"
+						accessibilityLabel="Neuen Eintrag erstellen."
+						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
+						activeOpacity={0.88}
+						onPress={openCreateTypePicker}
+						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
 					>
-						<Text
-							className={cn(
-								"min-w-0 font-poppins font-semibold text-heading-1 text-text",
-								contentSizeLayout.shouldStackInlineContent
-									? "w-full"
-									: "flex-1 pr-3",
-							)}
-						>
-							Deine Pläne
-						</Text>
+						<Plus size={28} color={colors.text} strokeWidth={1.8} />
+					</TouchableOpacity>
+				</View>
 
-						<TouchableOpacity
-							accessibilityRole="button"
-							accessibilityLabel="Neuen Eintrag erstellen."
-							accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
-							activeOpacity={0.88}
-							onPress={openCreateTypePicker}
-							className={cn(
-								"h-12 w-12 items-center justify-center rounded-full border border-border bg-card",
-								contentSizeLayout.shouldStackInlineContent && "self-end",
-							)}
-						>
-							<Plus size={28} color={colors.text} strokeWidth={1.8} />
-						</TouchableOpacity>
+				<PlansTabSwitch activeTab={activeTab} onChange={setActiveTab} />
+			</View>
+
+			<ScrollView
+				className="flex-1"
+				contentContainerStyle={{
+					paddingHorizontal: 24,
+					paddingTop: 0,
+					paddingBottom: Math.max(insets.bottom + 72, 104),
+				}}
+				showsVerticalScrollIndicator={false}
+			>
+				{activeTab === "learningPlans" ? (
+					<View className="gap-3">
+						{visiblePlans.length > 0 ? (
+							visiblePlans.map((plan) => (
+								<LearningPlanCard
+									key={plan.id}
+									plan={plan}
+									todayKey={todayKey}
+									onPress={() => openPlan(plan)}
+									onDelete={() => confirmDeletePlan(plan)}
+								/>
+							))
+						) : (
+							<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
+								<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
+									<Route2
+										size={30}
+										color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+										strokeWidth={2.2}
+									/>
+								</View>
+								<Text className="text-center font-poppins font-semibold text-body-1 text-text">
+									Noch keine Lernpläne
+								</Text>
+								<Text className="text-center font-poppins text-body-3 text-secondary-text">
+									Erstelle einen Lernplan aus einer Prüfung, damit er hier als
+									Übersicht erscheint.
+								</Text>
+								<Button
+									accessibilityLabel="Lernplan erstellen"
+									onPress={() => router.push(ROUTES.createExam)}
+									size="sm"
+									className="mt-2"
+								>
+									<Plus
+										size={18}
+										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+										strokeWidth={2.4}
+									/>
+									<Text className="font-poppins font-semibold text-body-4">
+										Neuen Lernplan starten
+									</Text>
+								</Button>
+							</View>
+						)}
 					</View>
-
-					<PlansTabSwitch activeTab={activeTab} onChange={setActiveTab} />
-				</PortraitContent>
-
-				<LearningPlansListViewport
-					containerMaxWidth={contentSizeLayout.containerMaxWidth}
-					horizontalPadding={contentSizeLayout.horizontalPadding}
-					isEnlarged={contentSizeLayout.shouldStackInlineContent}
-					paddingBottom={Math.max(insets.bottom + 120, 150)}
-				>
-					{activeTab === "learningPlans" ? (
-						<View className="gap-3">
-							{visiblePlans.length > 0 ? (
-								visiblePlans.map((plan) => (
-									<LearningPlanCard
-										key={plan.id}
-										plan={plan}
-										todayKey={todayKey}
-										onPress={() => router.push(getPlanHref(plan))}
-										onDelete={() => confirmDeletePlan(plan)}
+				) : (
+					<View className="gap-3">
+						{visibleHomework.length > 0 ? (
+							visibleHomework.map((homeworkEntry) => (
+								<HomeworkCard
+									key={homeworkEntry.id}
+									homework={homeworkEntry}
+									todayKey={todayKey}
+									onDelete={() => confirmDeleteHomework(homeworkEntry)}
+									onPress={() =>
+										router.push(`/entry/${homeworkEntry.id}` as const)
+									}
+								/>
+							))
+						) : (
+							<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
+								<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
+									<ClipboardEdit
+										size={30}
+										color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+										strokeWidth={2.2}
 									/>
-								))
-							) : (
-								<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
-									<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
-										<Route2
-											size={30}
-											color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-											strokeWidth={2.2}
-										/>
-									</View>
-									<Text className="text-center font-poppins font-semibold text-body-1 text-text">
-										{"Noch keine Lern\u00ADpläne"}
-									</Text>
-									<Text className="text-center font-poppins text-body-3 text-secondary-text">
-										Erstelle einen Lernplan aus einer Prüfung, damit er hier als
-										Übersicht erscheint.
-									</Text>
-									<Button
-										accessibilityLabel="Lernplan erstellen"
-										onPress={() => router.push(ROUTES.createExam)}
-										size="sm"
-										className="mt-2"
-									>
-										<Plus
-											size={18}
-											color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-											strokeWidth={2.4}
-										/>
-										<Text className="font-poppins font-semibold text-body-4">
-											Neuen Lernplan starten
-										</Text>
-									</Button>
 								</View>
-							)}
-						</View>
-					) : (
-						<View className="gap-3">
-							{visibleHomework.length > 0 ? (
-								visibleHomework.map((homeworkEntry) => (
-									<HomeworkCard
-										key={homeworkEntry.id}
-										homework={homeworkEntry}
-										todayKey={todayKey}
-										onDelete={() => confirmDeleteHomework(homeworkEntry)}
-										onPress={() =>
-											router.push(`/entry/${homeworkEntry.id}` as const)
-										}
+								<Text className="text-center font-poppins font-semibold text-body-1 text-text">
+									Noch keine Hausaufgaben
+								</Text>
+								<Text className="text-center font-poppins text-body-3 text-secondary-text">
+									Trage deine nächste Hausaufgabe ein, damit sie hier als
+									Übersicht erscheint.
+								</Text>
+								<Button
+									accessibilityLabel="Hausaufgabe erstellen"
+									onPress={() => router.push(ROUTES.createHomework)}
+									size="sm"
+									className="mt-2"
+								>
+									<Plus
+										size={18}
+										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+										strokeWidth={2.4}
 									/>
-								))
-							) : (
-								<View className="items-center gap-3 rounded-[30px] border border-border bg-card px-5 py-7">
-									<View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
-										<ClipboardEdit
-											size={30}
-											color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-											strokeWidth={2.2}
-										/>
-									</View>
-									<Text className="text-center font-poppins font-semibold text-body-1 text-text">
-										{"Noch keine Haus\u00ADaufgaben"}
+									<Text className="font-poppins font-semibold text-body-4">
+										Neue Hausaufgabe eintragen
 									</Text>
-									<Text className="text-center font-poppins text-body-3 text-secondary-text">
-										Trage deine nächste Hausaufgabe ein, damit sie hier als
-										Übersicht erscheint.
-									</Text>
-									<Button
-										accessibilityLabel="Hausaufgabe erstellen"
-										onPress={() => router.push(ROUTES.createHomework)}
-										size="sm"
-										className="mt-2"
-									>
-										<Plus
-											size={18}
-											color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-											strokeWidth={2.4}
-										/>
-										<Text className="font-poppins font-semibold text-body-4">
-											Neue Hausaufgabe eintragen
-										</Text>
-									</Button>
-								</View>
-							)}
-						</View>
-					)}
-				</LearningPlansListViewport>
-			</LearningPlansPageFrame>
+								</Button>
+							</View>
+						)}
+					</View>
+				)}
+			</ScrollView>
 			<CreateTypePickerModal
 				visible={showCreateTypePicker}
 				onRequestClose={() => setShowCreateTypePicker(false)}
 				onSelect={selectCreateType}
+			/>
+			<MaterialRequiredSheet
+				onClose={() => setMaterialUploadTarget(null)}
+				onUpload={continueToMaterialUpload}
+				subject={materialUploadTarget?.subject ?? null}
+			/>
+			<ConfirmationSheet
+				visible={Boolean(deleteTarget)}
+				title={
+					deleteTarget?.kind === "homework"
+						? "Hausaufgabe löschen"
+						: "Lernplan löschen"
+				}
+				description={
+					deleteTarget?.kind === "homework"
+						? `Möchtest du ${formatGermanUiText(deleteTarget.item.title)} wirklich löschen?`
+						: `Möchtest du den Lernplan ${formatGermanUiText(deleteTarget?.item.subject ?? "")} wirklich löschen?`
+				}
+				confirmLabel="Löschen"
+				isBusy={isDeleting}
+				errorMessage={deleteError}
+				onClose={closeDeleteSheet}
+				onConfirm={() => void deleteSelectedItem()}
 			/>
 		</View>
 	);

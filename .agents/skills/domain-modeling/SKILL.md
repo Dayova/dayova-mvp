@@ -1,6 +1,6 @@
 ---
 name: domain-modeling
-description: Build and sharpen a project's domain model. Use when the user wants to pin down domain terminology or a ubiquitous language, record an architectural decision, or when another skill needs to maintain the domain model.
+description: Build and sharpen a project's domain model. Use when the user wants to pin down domain terminology or a ubiquitous language, capture stable code-facing constraints or contracts, record an architectural decision, or when another skill needs to maintain the domain model.
 ---
 
 # Domain Modeling
@@ -37,7 +37,7 @@ If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts. The ma
 │       └── docs/adr/
 ```
 
-Create files lazily — only when you have something to write. If no `CONTEXT.md` exists, create one when the first term is resolved. If no `docs/adr/` exists, create it when the first ADR is needed.
+Create files lazily — only when you have something to write. If no `CONTEXT.md` exists, create one when the first term or stable code-facing constraint is resolved. If no `docs/adr/` exists, create it when the first ADR is needed. Follow repo-local domain-documentation guidance when it defines a narrower or broader role for context files.
 
 ## During the session
 
@@ -57,11 +57,11 @@ When domain relationships are being discussed, stress-test them with specific sc
 
 When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
 
-### Update CONTEXT.md inline
+### Update context documentation inline
 
-When a term is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
+When a term, stable code-facing constraint, or implementation contract is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
 
-`CONTEXT.md` should be totally devoid of implementation details. Do not treat `CONTEXT.md` as a spec, a scratch pad, or a repository for implementation decisions. It is a glossary and nothing else.
+Follow the repository's documented scope for context files. In Dayova, `CONTEXT.md` may combine the domain glossary with concise, stable code-facing architecture, constraints, implementation contracts, and decision pointers that must evolve with the code. Keep shared product, business, research, and organizational knowledge in the canonical knowledge system and link to it instead of duplicating it. Do not treat `CONTEXT.md` as a task spec, scratch pad, status log, or implementation journal.
 
 ### Offer ADRs sparingly
 

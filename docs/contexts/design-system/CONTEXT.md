@@ -2,7 +2,7 @@
 
 This context covers shared UI components, styling conventions, tokens, themes, visual language, and design implementation patterns.
 
-Confluence is the current cross-functional documentation hub. Keep this file focused on implementation-facing terminology, conventions, and assumptions that agents need while working in this repo.
+Notion is Dayova's main internal documentation and knowledge workspace. Keep this file focused on implementation-facing terminology, conventions, and assumptions that must evolve with the code, and link to relevant Notion records instead of duplicating shared documentation.
 
 ## Language
 
@@ -13,7 +13,7 @@ _Avoid_: Pixel-identical layouts at every accessibility size, merely fitting wit
 ## Current Design Delivery Model
 
 Effective 14 July 2026, existing Figma work is a visual reference and baseline,
-not a required approval, sequencing, or release gate. Jakob Roessner and Fabius
+not a required approval, sequencing, or release gate. Jakob Rössner and Fabius
 Schurig may make product-design, UI, and UX decisions and implement them
 directly. Record deliberate changes in Linear and update the app's semantic
 tokens and repository guidance; any later Figma reconciliation is non-blocking
@@ -26,6 +26,7 @@ unless the team explicitly supersedes this temporary model.
 
 - `docs/styling.md`
 - `docs/bottom-sheets.md`
+- `docs/accessibility.md`
 
 ## Native controls
 
@@ -33,15 +34,37 @@ All app switches must use `Switch` from `src/components/ui/switch`. Do not
 import or use `Switch` from `react-native`, and do not render Expo UI switches
 directly from app screens.
 
-The app `Switch` wraps Expo UI native controls with `Host matchContents`.
-Android uses the Jetpack Compose switch with explicit Dayova primary colors so
-Material You wallpaper colors cannot override the brand. iOS keeps the native
-SwiftUI toggle shape and applies Dayova primary through the SwiftUI tint modifier.
+The app `Switch` owns the platform-native control and its accessible switch
+semantics. Android uses the Expo UI Jetpack Compose Material 3 switch with
+explicit Dayova colors so Material You wallpaper colors cannot override the
+brand. Keep `expo-modules-core` at 56.0.18 or newer: the upstream lifecycle fix
+in [Expo #47099](https://github.com/expo/expo/pull/47099) keeps Compose content
+visible until an outgoing `react-native-screens` pop transition finishes. iOS
+keeps the native SwiftUI toggle shape and applies Dayova primary through the
+SwiftUI tint modifier.
 
 App screens that collect a date or time must use `DateTimePickerSheet` from
 `src/components/ui/date-time-picker-sheet`. Do not import the underlying Expo UI
 picker directly from a screen. The wrapper owns platform display normalization,
 German locale, safe-area handling, and native presentation.
+
+## Icons
+
+Hugeicons is the standard icon source for app interface icons. Add the selected
+glyph from `@hugeicons/core-free-icons` to the semantic wrapper in
+`src/components/ui/icon.tsx`, then import that wrapper from app code instead of
+importing icon packages or custom assets directly.
+
+Code review must verify icon provenance by checking that the semantic wrapper
+maps to the intended Hugeicons export. At each usage, also review the icon's
+size, stroke weight, color, alignment, and whether it is decorative or needs an
+accessible label.
+
+Custom SVGs, platform symbols, or icons from another source are exceptions.
+Each exception requires an explicit Linear issue and a repo-local rationale
+explaining why Hugeicons cannot meet the requirement. Link that rationale from
+the implementation or an ADR; reviewers should reject untracked custom icon
+assets.
 
 ## Styling Tokens
 
@@ -75,10 +98,13 @@ directly: `text-text` for primary text, `text-secondary-text` for secondary
 text, and `text-white` for white text on dark or saturated surfaces.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
-tabs, labels that need emphasis, and other highlighted text use SemiBold. The
-supported hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30,
-`body-2` 16/24, `body-3` 14/21, `body-4` 12/18, and `body-5` 10/15, all with
-0px letter spacing.
+tabs, labels that need emphasis, and other highlighted text use SemiBold.
+Large numeric counters use `display-counter` 60/68. The supported content
+hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30, `body-2`
+16/24, `body-3` 14/21, `body-4` 12/18, and `body-5` 10/15, all with 0px letter
+spacing. Top-level page-intro groups use 12px between their heading and
+supporting copy. Compact navigation chrome, dense data rows, and headings inside
+cards may keep tighter spacing when the elements form one local unit.
 
 Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
@@ -87,14 +113,50 @@ appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
 buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
 with a white stroke, and black buttons use the light border token `#DCE6EE`.
 
+The trial-activation and expired-trial payment flow are deliberate full-bleed
+branded exceptions. The expired-trial flow separates payer selection from
+subscription completion into two routes. Both use the shared
+`primaryInteractive` gradient as the view's only gradient, white text on the
+saturated outer surface, and
+theme-independent light surfaces for content that needs primary and secondary
+text. Payer choices stay on the first route; they never expand subscription
+details in place, and the subscription route does not repeat the chosen payer
+as a summary row. On the subscription route, plan choices use a translucent
+white surface with a thin border, restrained inset highlight, and shadow, while
+their text stays dark in every app theme. The selected plan uses a dark outline
+and checked indicator instead of a tinted fill. The annual plan emphasizes its
+monthly equivalent and keeps the annual charge in the description. The
+subscription header pairs its back action with the current two-step progress in
+one compact row instead of isolating navigation above the page title. Secondary
+actions use `systemSubtle`,
+payment details use `surface` with a primary-accent border, the subscription
+checkout action uses the standard black treatment, and purchase restoration is
+an underlined white link. The parent-payment checkout link continues to use
+`primaryStrong`. Reusing shared semantic values keeps both ends of the trial flow
+synchronized with future Dayova color changes. This treatment is limited to
+focused access-setup moments and is not a third general-purpose light-mode
+button appearance. The trial-activation screen may use its white primary button
+for legible contrast on that saturated surface; this does not introduce a
+reusable third button appearance. The expired-trial screen passes the fixed
+shared light tokens through the native style API because the tracked Fabric
+variable-invalidation issue can otherwise leave newly mounted descendants with
+mixed light and dark tokens.
+
+The post-purchase confirmation route extends this focused access-flow exception:
+it uses the same `primaryInteractive` gradient and fixed light surfaces, then
+offers one forward-only action into the app. Show it after a newly completed
+purchase, not after restoring an existing subscription, so the celebration
+acknowledges a real transition without becoming recurring friction.
+
 The current app corner system is: info/small boxes use 24px, 345px-wide
 rectangles and card-like surfaces use 32px, and buttons use 44px. Device frame
 radii are not app tokens because they depend on the phone/mockup. When nesting
 rounded surfaces, the outer radius equals the inner radius plus the padding
 between them.
 
-Dark-mode tokens live in `src/global.css` and native runtime color mirrors live
-in `src/lib/theme.ts`. Theme preference handling lives in
+Dark-mode tokens live in `src/global.css`; native/runtime color mirrors derived
+from those tokens live in `src/lib/theme-variables.ts`; and theme orchestration
+lives in `src/lib/theme.ts`. Theme preference handling lives in
 `src/lib/theme-preference.ts`; settings should expose the existing light,
 system, and dark options rather than introducing another toggle model.
 
@@ -105,3 +167,6 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 
 - Capture reusable component and styling decisions here.
 - Put design-system ADRs in `docs/contexts/design-system/adr/`.
+- Use NativeWind for static app UI. Follow the rendering-choice matrix in
+  `docs/styling.md` when deciding between NativeWind, RN geometry styles, SVGs,
+  and native artwork modules.

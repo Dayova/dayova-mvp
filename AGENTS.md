@@ -24,6 +24,22 @@ Convex agent skills for common tasks can be installed by running
 
 ## Agent skills
 
+### Delivery workflow
+
+For explicitly mutating repository work (for example implementation, fixes, refactors, or review-feedback changes), completion normally includes:
+
+1. validate the result;
+2. review the change;
+3. commit only the coherent in-scope changes;
+4. publish them to a branch owned by the current work; and
+5. update the existing pull request, or open a draft pull request when appropriate.
+
+The user does not need to repeat “commit and push.” Preserve the existing branch, pull request, and stack when the task belongs to one. Push only a branch that already represents the current work item or pull request, or a new branch intentionally created for this work.
+
+For new work, determine the correct integration base from the task, current branch, stack, and repository workflow; create a scoped `codex/` branch from that base. Do not assume the default branch is always the correct base.
+
+Never push directly to the default branch, treat another developer's, release, shared integration, or stack-parent branch as safe merely because it is non-default, stage unrelated user changes, or mix a distinct follow-up into the current branch. Put unrelated follow-up work on a separate branch, commit, and pull request. Read-only review, diagnosis, explanation, research, and status requests remain non-mutating. Stop and surface the blocker when scope or branch ownership is ambiguous, unrelated changes cannot be separated safely, validation has a material failure, authentication is unavailable, or the remote changed unexpectedly.
+
 ### Issue tracker
 
 Linear is the source of truth for issues and PRDs: use workspace `dayova`, team `Dayova` (`DAY`). `Dayova/dayova-mvp` GitHub Issues remains a bidirectionally synced compatibility surface. See `docs/agents/issue-tracker.md`.
@@ -34,7 +50,7 @@ Map the `bug` and `enhancement` category roles plus the five triage disposition 
 
 ### Domain docs
 
-Use a multi-context documentation layout with `CONTEXT-MAP.md` at the repo root; Confluence is the current cross-functional documentation hub for the wider team, while repo-local context docs guide agents and technical work. See `docs/agents/domain.md`.
+Use a multi-context documentation layout with `CONTEXT-MAP.md` at the repo root. Notion is Dayova's main internal documentation and knowledge workspace; consult it when product, business, research, or decision context materially affects the task. Repo-local context docs and ADRs contain only the code-facing guidance that must evolve with this repository. Link to relevant Notion pages instead of duplicating shared internal documentation. See `docs/agents/domain.md`.
 
 ### Skill maintenance
 

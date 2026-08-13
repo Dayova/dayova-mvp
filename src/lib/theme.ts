@@ -4,7 +4,6 @@ import {
 	type Theme,
 } from "expo-router/react-navigation";
 import * as SecureStore from "expo-secure-store";
-import { useColorScheme as useNativeWindColorScheme } from "nativewind";
 import {
 	createContext,
 	createElement,
@@ -15,50 +14,30 @@ import {
 	useMemo,
 	useState,
 } from "react";
-import { Platform } from "react-native";
+import { Appearance, Platform } from "react-native";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { useSystemColorScheme } from "~/lib/system-color-scheme";
+import {
+	DARK_NAV_THEME_COLORS,
+	DARK_THEME_COLORS,
+} from "~/lib/theme-variables";
 import {
 	isThemePreference,
+	type ResolvedTheme,
 	resolveThemePreference,
 	THEME_STORAGE_KEY,
-	type ResolvedTheme,
 	type ThemePreference,
 } from "~/lib/theme-preference";
 
-export type DayovaThemeColors = {
+type DayovaThemeColors = {
 	[Key in keyof typeof DAYOVA_DESIGN_SYSTEM.colors]: string;
 };
 
 const LIGHT_COLORS: DayovaThemeColors = DAYOVA_DESIGN_SYSTEM.colors;
 
-const DARK_COLORS = {
-	...LIGHT_COLORS,
-	buttonNeutral: "#FFFFFF",
-	text: "#EFECE7",
-	secondaryText: "#A7AAB4",
-	background: "#131217",
-	appBackground: "#131217",
-	surface: "#222127",
-	light1: "#FFFFFF",
-	light2: "#2B2A31",
-	light3: "#34323A",
-	mutedSurface: "#2B2A31",
-	border: "#3A3942",
-	successSubtle: "#163321",
-	wrongSubtle: "#3A2512",
-	infoSubtle: "#332B12",
-	systemSubtle: "#0F2C36",
-	theorieSubtle: "#25223B",
-	uebenSubtle: "#30213A",
-	praxisSubtle: "#123532",
-	hausaufgabeSubtle: "#332433",
-	path1: "#3A3942",
-	path2: "#3A3942",
-	path3: "#8D8F98",
-	path4: "#A7AAB4",
-} satisfies DayovaThemeColors;
+const DARK_COLORS: DayovaThemeColors = DARK_THEME_COLORS;
 
-export const DAYOVA_THEME_COLORS = {
+const DAYOVA_THEME_COLORS = {
 	light: LIGHT_COLORS,
 	dark: DARK_COLORS,
 } as const;
@@ -80,17 +59,10 @@ export const NAV_THEMES: Record<ResolvedTheme, Theme> = {
 		...DarkTheme,
 		colors: {
 			...DarkTheme.colors,
-			background: "hsl(250 10% 8%)",
-			border: "hsl(224 12% 24%)",
-			card: "hsl(248 10% 13%)",
-			notification: "hsl(35.1 100% 58%)",
-			primary: "hsl(196.2 100% 50%)",
-			text: "hsl(36 15% 92%)",
+			...DARK_NAV_THEME_COLORS,
 		},
 	},
 };
-
-export const NAV_THEME: Theme = NAV_THEMES.light;
 
 type ThemeContextValue = {
 	colors: (typeof DAYOVA_THEME_COLORS)[ResolvedTheme];
@@ -123,10 +95,9 @@ async function writeStoredThemePreference(preference: ThemePreference) {
 }
 
 function DayovaThemeProvider({ children }: { children: ReactNode }) {
-	const { colorScheme, setColorScheme } = useNativeWindColorScheme();
+	const systemTheme = useSystemColorScheme();
 	const [preference, setPreferenceState] = useState<ThemePreference>("system");
 	const [isLoaded, setIsLoaded] = useState(false);
-	const systemTheme = colorScheme === "dark" ? "dark" : "light";
 	const resolvedTheme = resolveThemePreference(preference, systemTheme);
 	const colors = DAYOVA_THEME_COLORS[resolvedTheme];
 
@@ -139,11 +110,9 @@ function DayovaThemeProvider({ children }: { children: ReactNode }) {
 
 				const nextPreference = storedPreference ?? "system";
 				setPreferenceState(nextPreference);
-				setColorScheme(nextPreference);
 			})
 			.catch((error: unknown) => {
 				console.warn("Unable to load Dayova theme preference", error);
-				setColorScheme("system");
 			})
 			.finally(() => {
 				if (isActive) setIsLoaded(true);
@@ -152,16 +121,18 @@ function DayovaThemeProvider({ children }: { children: ReactNode }) {
 		return () => {
 			isActive = false;
 		};
-	}, [setColorScheme]);
+	}, []);
 
-	const setPreference = useCallback(
-		async (nextPreference: ThemePreference) => {
-			setPreferenceState(nextPreference);
-			setColorScheme(nextPreference);
-			await writeStoredThemePreference(nextPreference);
-		},
-		[setColorScheme],
-	);
+	useEffect(() => {
+		const nativePreference =
+			preference === "system" ? "unspecified" : preference;
+		Appearance.setColorScheme(nativePreference);
+	}, [preference]);
+
+	const setPreference = useCallback(async (nextPreference: ThemePreference) => {
+		setPreferenceState(nextPreference);
+		await writeStoredThemePreference(nextPreference);
+	}, []);
 
 	const value = useMemo(
 		() => ({

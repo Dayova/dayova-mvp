@@ -83,10 +83,11 @@ With that configuration:
 
 - When adding or removing custom `fontSize` tokens in `tailwind.config.ts`, update the `theme.text` list in `src/lib/utils.ts`.
 - Use Tailwind's standard spacing scale. Spacing must stay on a 4px rhythm: `gap-1` is 4px, `gap-2` is 8px, `gap-3` is 12px, `gap-4` is 16px, and so on. Do not redefine spacing keys so class numbers mean raw pixels.
-- The app supports light, dark, and system theme preferences. Keep palette
-  changes centralized in `src/global.css`, `src/lib/theme.ts`, and
-  `src/lib/theme-preference.ts` so NativeWind classes, React Navigation, and
-  native-only color props stay aligned.
+- The app supports light, dark, and system theme preferences. Keep CSS tokens
+  in `src/global.css`, their native/runtime mirrors in
+  `src/lib/theme-variables.ts`, theme orchestration in `src/lib/theme.ts`, and
+  preference handling in `src/lib/theme-preference.ts` so NativeWind classes,
+  React Navigation, and native-only color props stay aligned.
 - The current typography baseline is Poppins: Regular for body copy and
   SemiBold for headings and highlighted text. Figma records that baseline but
   is not an approval gate for app changes; deliberate changes must update the
@@ -111,6 +112,34 @@ constraint:
 
 When adding a new style prop, leave a nearby comment explaining which exception
 applies.
+
+## Choosing NativeWind, RN Styles, SVG, Or Native Artwork
+
+NativeWind is the default for app UI. Use the smallest exception that fits the
+rendering problem:
+
+| Need | Default choice | Why |
+| --- | --- | --- |
+| Static layout, spacing, color, typography, borders, radius, or shadow | NativeWind classes | Keeps implementation consistent, searchable, and tied to semantic tokens. |
+| Runtime dimensions, safe areas, measurements, responsive transforms, or animation values | `style` | These values do not exist at build time and cannot be represented by static classes. |
+| Fixed illustration artboard coordinates or transforms copied from Figma | NativeWind for static visual tokens; a small, named RN style for geometry only | Preserves exact composition without turning normal app UI into coordinate-based layout. |
+| Static vector artwork with no editable copy, state, or embedded raster data | Imported SVG | Keeps complex vector paths compact when the export is correct and truly static. |
+| Artwork containing product copy, theme tokens, native icons/images, state, or data that must remain inspectable | A native React Native module | Keeps content maintainable and testable instead of hiding it in generated vector paths. |
+| Photographic or intentionally raster artwork | PNG/WebP through `Image` | Avoids pretending raster content is vector data. |
+
+An SVG is a rendering format, not the source of truth for mutable product copy.
+Before accepting a Figma SVG export, inspect it for path-converted text, embedded
+base64 images, duplicate layers, hard-coded colors, and clipping masks. If an
+asset is replaced, search the repository for references and remove the obsolete
+file in the same change; do not retain a known-broken export as an undocumented
+fallback.
+
+Illustration-specific microtype may use exact Figma sizes below `body-5`, but it
+must remain inside the decorative artwork module. Normal app UI still uses the
+semantic typography hierarchy above.
+
+See the concrete onboarding decision in
+[`contexts/design-system/adr/onboarding-artwork-rendering.md`](contexts/design-system/adr/onboarding-artwork-rendering.md).
 
 ## Debugging Checklist
 

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "channel": "production",
+  "runtimeVersion": "1.0.3",
+  "reviewedAt": "2026-07-20",
+  "platforms": {
+    "ios": {
+      "buildId": "8affd4cf-54c4-4506-b58a-871f4867fe25",
+      "buildVersion": "49",
+      "sourceSha": "908ed3d11fd1145e89a616d8bb1c7e62a33e87ab",
+      "fingerprint": "34e4ee95d362a57480923555057b68d1e1953495",
+      "distribution": {
+        "status": "verified",
+        "audience": "TestFlight internal Team (Expo) and External Students groups"
+      }
+    },
+    "android": {
+      "buildId": "def7bb56-9303-4b2c-8d59-aa03cc34a96d",
+      "buildVersion": "11",
+      "sourceSha": "f26df3faf277a8aab924961539ea8204f531d4fa",
+      "fingerprint": "1965558afee860310450105f65ceb015579b6c38",
+      "distribution": {
+        "status": "unverified",
+        "audience": "EAS store build exists; EAS has no submission and non-EAS distribution is not yet confirmed"
+      }
+    }
+  }
+}

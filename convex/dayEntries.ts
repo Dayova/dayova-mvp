@@ -4,9 +4,16 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
-import { assertNoScheduleConflict } from "./scheduleConflicts";
+import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
+import {
+	getActiveTimetableLessons,
+	getTimetableDayOfWeek,
+	getTimetableLessonDuration,
+} from "./timetableOccurrences";
+import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 type OptionalEntryFields = {
+	subject?: string;
 	time?: string;
 	kind?: string;
 	notes?: string;
@@ -15,6 +22,7 @@ type OptionalEntryFields = {
 	plannedDateLabel?: string;
 	durationMinutes?: number;
 	examTypeLabel?: string;
+	topicDescription?: string;
 	completed?: boolean;
 	executionStatus?:
 		| "notStarted"
@@ -39,7 +47,10 @@ type OptionalEntryFields = {
 };
 
 type PublicDayEntry = OptionalEntryFields & {
-	id: Id<"dayEntries"> | Id<"learningPlanSessions">;
+	id: Id<"dayEntries"> | Id<"learningPlanSessions"> | Id<"timetableLessons">;
+	relatedDayEntryId?: Id<"dayEntries">;
+	dayKey?: string;
+	source?: "timetable";
 	title: string;
 };
 
@@ -47,6 +58,7 @@ const optionalEntryFields = (
 	entry: OptionalEntryFields,
 ): OptionalEntryFields => ({
 	...(entry.time !== undefined ? { time: entry.time } : {}),
+	...(entry.subject !== undefined ? { subject: entry.subject } : {}),
 	...(entry.kind !== undefined ? { kind: entry.kind } : {}),
 	...(entry.notes !== undefined ? { notes: entry.notes } : {}),
 	...(entry.dueDateKey !== undefined ? { dueDateKey: entry.dueDateKey } : {}),
@@ -61,6 +73,9 @@ const optionalEntryFields = (
 		: {}),
 	...(entry.examTypeLabel !== undefined
 		? { examTypeLabel: entry.examTypeLabel }
+		: {}),
+	...(entry.topicDescription !== undefined
+		? { topicDescription: entry.topicDescription }
 		: {}),
 	...(entry.completed !== undefined ? { completed: entry.completed } : {}),
 	...(entry.executionStatus !== undefined
@@ -84,8 +99,13 @@ const optionalEntryFields = (
 
 const publicEntry = (entry: Doc<"dayEntries">): PublicDayEntry => ({
 	id: entry._id,
+	relatedDayEntryId: entry._id,
+	dayKey: entry.dayKey,
 	title: entry.title,
-	...optionalEntryFields(entry),
+	...optionalEntryFields({
+		...entry,
+		...(isExamEntry(entry) ? { time: undefined } : {}),
+	}),
 });
 
 const publicLearningSessionEntry = (
@@ -135,7 +155,11 @@ const isSameCreatePayload = (
 	args: OptionalEntryFields & { title: string },
 ) =>
 	entry.title === args.title &&
-	optionalValuesMatch(entry.time, args.time) &&
+	optionalValuesMatch(entry.subject, args.subject) &&
+	optionalValuesMatch(
+		isExamEntry(entry) ? undefined : entry.time,
+		isExamEntry(args) ? undefined : args.time,
+	) &&
 	optionalValuesMatch(entry.kind, args.kind) &&
 	optionalValuesMatch(entry.notes, args.notes) &&
 	optionalValuesMatch(entry.dueDateKey, args.dueDateKey) &&
@@ -175,6 +199,7 @@ const findExistingSameEntry = async (
 
 const entryFields = {
 	title: v.string(),
+	subject: v.optional(v.string()),
 	time: v.optional(v.string()),
 	kind: v.optional(v.string()),
 	notes: v.optional(v.string()),
@@ -209,6 +234,10 @@ export const listByDayKeys = query({
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
 		const grouped: Record<string, PublicDayEntry[]> = {};
 		const queryKeyToRequestedDayKey = new Map<string, string>();
+		const activeTimetableLessons = await getActiveTimetableLessons(
+			ctx,
+			ownerTokenIdentifier,
+		);
 		for (const dayKey of args.dayKeys) {
 			grouped[dayKey] = [];
 			for (const queryDayKey of getDayKeyQueryVariants(dayKey)) {
@@ -232,6 +261,25 @@ export const listByDayKeys = query({
 				seenEntryIds.add(entry.id);
 				return true;
 			});
+
+			const dayOfWeek = getTimetableDayOfWeek(dayKey);
+			const timetableLessons =
+				dayOfWeek === null
+					? []
+					: activeTimetableLessons.filter(
+							(lesson) => lesson.dayOfWeek === dayOfWeek,
+						);
+			grouped[dayKey].push(
+				...timetableLessons.map((lesson) => ({
+					id: lesson._id,
+					source: "timetable" as const,
+					title: lesson.subject,
+					time: lesson.startTime,
+					kind: "Unterricht",
+					...(lesson.room ? { notes: `Raum ${lesson.room}` } : {}),
+					durationMinutes: getTimetableLessonDuration(lesson) ?? undefined,
+				})),
+			);
 		}
 
 		const learningSessions = await ctx.db
@@ -245,6 +293,7 @@ export const listByDayKeys = query({
 			Doc<"learningPlans"> | null
 		>();
 		for (const session of learningSessions) {
+			if (session.planningStatus === "provisional") continue;
 			const requestedDayKey = getRequestedDayKey(
 				session.dateKey,
 				queryKeyToRequestedDayKey,
@@ -330,6 +379,29 @@ export const get = query({
 	},
 });
 
+export const updateExamTopics = mutation({
+	args: {
+		id: v.id("dayEntries"),
+		topicDescription: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const entry = await ctx.db.get("dayEntries", args.id);
+		if (entry === null || entry.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Prüfung nicht gefunden.");
+		}
+		if (!isExamEntry(entry)) {
+			throwUserFacingError("Prüfung nicht gefunden.");
+		}
+
+		const topicDescription = args.topicDescription.trim();
+		assertMeaningfulTopicDescription(topicDescription);
+		if (entry.topicDescription === topicDescription) return;
+
+		await ctx.db.patch("dayEntries", args.id, { topicDescription });
+	},
+});
+
 export const create = mutation({
 	args: {
 		dayKey: v.string(),
@@ -341,10 +413,16 @@ export const create = mutation({
 		if (!title) {
 			throwUserFacingError("Titel darf nicht leer sein.");
 		}
+		const normalizedArgs = {
+			...args,
+			title,
+			...(args.subject?.trim() ? { subject: args.subject.trim() } : {}),
+			...(isExamEntry(args) ? { time: undefined } : {}),
+		};
 		const existingSameEntry = await findExistingSameEntry(ctx, {
 			ownerTokenIdentifier,
 			dayKey: args.dayKey,
-			args: { ...args, title },
+			args: normalizedArgs,
 		});
 		if (existingSameEntry) {
 			return existingSameEntry._id;
@@ -353,15 +431,15 @@ export const create = mutation({
 		await assertNoScheduleConflict(ctx, {
 			ownerTokenIdentifier,
 			dayKey: args.dayKey,
-			time: args.time,
-			durationMinutes: args.durationMinutes,
+			time: normalizedArgs.time,
+			durationMinutes: normalizedArgs.durationMinutes,
 		});
 
 		return await ctx.db.insert("dayEntries", {
 			ownerTokenIdentifier,
 			dayKey: args.dayKey,
 			title,
-			...optionalEntryFields(args),
+			...optionalEntryFields(normalizedArgs),
 		});
 	},
 });
@@ -377,23 +455,15 @@ export const setCompleted = mutation({
 		if (entry === null || entry.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Eintrag nicht gefunden.");
 		}
+		if (entry.relatedLearningPlanSessionId) {
+			throwUserFacingError(
+				"Öffne den Lernblock, um ihn mit seinen Aufgaben abzuschließen.",
+			);
+		}
 
 		await ctx.db.patch("dayEntries", args.id, {
 			completed: args.completed,
 		});
-
-		if (entry.relatedLearningPlanSessionId) {
-			const session = await ctx.db.get(
-				"learningPlanSessions",
-				entry.relatedLearningPlanSessionId,
-			);
-			if (session?.ownerTokenIdentifier === ownerTokenIdentifier) {
-				await ctx.db.patch("learningPlanSessions", session._id, {
-					completed: args.completed,
-					updatedAt: Date.now(),
-				});
-			}
-		}
 
 		return args.completed;
 	},

@@ -1,6 +1,12 @@
-import { useConvexAuth, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	ActivityIndicator,
 	Pressable,
@@ -8,39 +14,64 @@ import {
 	View,
 	type ViewStyle,
 } from "react-native";
+import Animated, {
+	cancelAnimation,
+	Easing,
+	FadeIn,
+	FadeOut,
+	useAnimatedStyle,
+	useReducedMotion,
+	useSharedValue,
+	withRepeat,
+	withSequence,
+	withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
+import { Button } from "~/components/ui/button";
 import {
-	ArrowUpRight,
-	BookOpen,
+	ArrowRight,
+	Check,
+	CircleAlert,
 	Dumbbell,
+	GraduationCap,
 	Note,
-	Rocket,
-	SquareLock,
+	Repeat,
+	Sparkles,
 	Time04,
 } from "~/components/ui/icon";
-import { CompactNotchedActionCard } from "~/components/ui/notched-action-card";
-import {
-	PortraitContent,
-	useContentSizeLayout,
-} from "~/components/ui/portrait-content";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
+import {
+	getLearningPathNodePresentation,
+	LEARNING_PATH_BREATHING,
+	LEARNING_PATH_PHASE_ICON,
+	LEARNING_PATH_SEGMENTED_HALO_TONES,
+	type LearningPathNodeHalo,
+	type LearningPathNodeIcon,
+	type LearningPathNodeState,
+	type LearningPathNodeTone,
+} from "~/features/learning-plans/learning-path-node-presentation";
+import {
+	getCommittedSessionIndex,
+	getDefaultLearningPlanSession,
+	isDiagnosticLearningPlanSession,
+	isLearningPlanSessionHistory,
+} from "~/features/learning-plans/rolling-learning-window";
 import type {
 	LearningPlanSnapshot,
 	PlanSession,
 } from "~/features/learning-plans/types";
+import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
-import { getLearningPathFrame } from "~/lib/learning-path-layout";
-import { goBackOrReplace } from "~/lib/navigation";
+import { dismissToOrReplace } from "~/lib/navigation";
 import { useDayovaTheme } from "~/lib/theme";
-import { cn } from "~/lib/utils";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
 	theory: "Theorie",
@@ -66,136 +97,206 @@ const PHASE_COLOR: Record<
 	},
 };
 
-const PHASE_ICON = {
-	theory: BookOpen,
-	practice: Dumbbell,
-	rehearsal: Rocket,
-} satisfies Record<PlanSession["phase"], typeof Dumbbell>;
+const LEARNING_PATH_ICON_COMPONENT = {
+	check: Check,
+	dumbbell: Dumbbell,
+	note: Note,
+	repeat: Repeat,
+} satisfies Record<LearningPathNodeIcon, typeof Dumbbell>;
 
 const screenContentStyle = { rowGap: 28 } satisfies ViewStyle;
-const SESSION_PREVIEW_CARD_HEIGHT = 174;
+const SESSION_PREVIEW_TRANSITION_DURATION_MS = 160;
+const CURRENT_THEORY_CONTENT_VERSION = 2;
+
+export const getExamCountdownLabel = (examDateKey: string, today: Date) => {
+	const examDate = parseDayKey(examDateKey);
+	if (!examDate) return null;
+
+	const remainingDays = Math.round(
+		(examDate.getTime() - today.getTime()) / 86_400_000,
+	);
+
+	if (remainingDays < 0) return "Prüfung vorbei";
+	if (remainingDays === 0) return "Heute";
+	if (remainingDays === 1) return "Noch 1 Tag";
+	return `Noch ${remainingDays} Tage`;
+};
 
 const getSessionRoute = (
 	planId: Id<"learningPlans">,
 	sessionId: Id<"learningPlanSessions">,
 ) => `/learning-plans/${planId}/sessions/${sessionId}` as const;
 
-function SessionPreviewCard({
+export function SessionPreviewCard({
 	canOpen,
+	onRetryPreparation,
+	preparationState,
 	session,
 	onOpen,
 }: {
 	canOpen: boolean;
+	onRetryPreparation?: () => void;
+	preparationState?: "preparing" | "failed";
 	session: PlanSession;
 	onOpen: () => void;
 }) {
 	const { colors } = useDayovaTheme();
-	const { shouldStackInlineContent } = useContentSizeLayout({
-		requestedHorizontalPadding: 16,
-	});
+	const reduceMotion = useReducedMotion();
 	const phase = PHASE_COLOR[session.phase];
-	const PhaseIcon = PHASE_ICON[session.phase];
+	const sessionTypeLabel = isDiagnosticLearningPlanSession(session)
+		? "Wissenscheck"
+		: PHASE_LABEL[session.phase];
+	const PhaseIcon =
+		LEARNING_PATH_ICON_COMPONENT[LEARNING_PATH_PHASE_ICON[session.phase]];
 	const title = formatGermanUiText(session.title);
 	const description = formatGermanUiText(session.goal);
-
-	return (
-		<CompactNotchedActionCard
-			actionAccessibilityHint={
-				canOpen
-					? "Öffnet die ausgewählte Lerneinheit."
-					: "Dieser Lernblock ist noch gesperrt und wird erst nach dem vorherigen Lernblock freigeschaltet."
-			}
-			actionAccessibilityLabel={
-				canOpen
-					? `Lerneinheit ${title} öffnen`
-					: `Lerneinheit ${title} ist gesperrt`
-			}
-			actionDisabled={!canOpen}
-			actionIcon={
-				<ArrowUpRight
-					size={24}
-					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-					strokeWidth={1.9}
-				/>
-			}
-			actionOffsetBottom={4}
-			onPress={onOpen}
-			pressType="action"
-			cardHeight={SESSION_PREVIEW_CARD_HEIGHT}
-			cardStyle={{
-				paddingTop: 22,
-				paddingBottom: shouldStackInlineContent ? 72 : 24,
-			}}
-		>
-			<View className="gap-2">
-				<View
-					className={cn(
-						"items-start justify-between gap-3",
-						!shouldStackInlineContent && "flex-row",
-					)}
+	const hasRecordedOutcome = isLearningPlanSessionHistory(session);
+	const actionLabel = hasRecordedOutcome
+		? "Lernsession ansehen"
+		: session.executionStatus === "started"
+			? "Weiterlernen"
+			: "Lernsession starten";
+	const content = (
+		<View className="gap-2">
+			<View className="flex-row items-start justify-between gap-3">
+				<Text
+					className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-2 text-text"
+					numberOfLines={2}
 				>
-					<Text
-						className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-2 text-text"
-						numberOfLines={shouldStackInlineContent ? undefined : 2}
-					>
-						{title}
-					</Text>
+					{title}
+				</Text>
 
+				<View className="shrink-0 flex-row items-center justify-end gap-2">
 					<View
-						className={cn(
-							"shrink-0 flex-row flex-wrap items-center justify-end gap-2",
-							shouldStackInlineContent && "w-full self-end",
-						)}
+						className="flex-row items-center gap-1 rounded-full px-2.5 py-1.5"
+						style={{ backgroundColor: phase.background }}
 					>
-						<View
-							className="flex-row items-center gap-1 rounded-full px-2.5 py-1.5"
-							style={{ backgroundColor: phase.background }}
+						<PhaseIcon size={12} color={phase.foreground} strokeWidth={2.1} />
+						<Text
+							className="font-poppins font-semibold text-body-5"
+							style={{ color: phase.foreground }}
 						>
-							<PhaseIcon size={12} color={phase.foreground} strokeWidth={2.1} />
-							<Text
-								className="font-poppins font-semibold text-body-5"
-								style={{ color: phase.foreground }}
-							>
-								{PHASE_LABEL[session.phase]}
-							</Text>
-						</View>
+							{sessionTypeLabel}
+						</Text>
+					</View>
 
-						<View className="rounded-full bg-system-subtle px-3 py-1.5">
-							<Text className="font-poppins font-semibold text-body-5 text-primary">
-								{`${session.durationMinutes} min`}
-							</Text>
-						</View>
+					<View className="rounded-full bg-system-subtle px-3 py-1.5">
+						<Text className="font-poppins font-semibold text-body-5 text-primary">
+							{`${session.durationMinutes} min`}
+						</Text>
 					</View>
 				</View>
+			</View>
 
-				<View className="flex-row items-center gap-1.5">
-					<Time04 size={13} color={colors.secondaryText} strokeWidth={2} />
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						{session.dateLabel}
-					</Text>
-				</View>
-
-				<Text
-					className={
-						shouldStackInlineContent
-							? "font-poppins text-body-4 text-secondary-text"
-							: "max-w-[292px] font-poppins text-body-4 text-secondary-text"
-					}
-					numberOfLines={shouldStackInlineContent ? undefined : 2}
-				>
-					{description}
+			<View className="flex-row items-center gap-1.5">
+				<Time04 size={13} color={colors.secondaryText} strokeWidth={2} />
+				<Text className="font-poppins text-body-4 text-secondary-text">
+					{session.dateLabel} · {session.startTime}
 				</Text>
 			</View>
-		</CompactNotchedActionCard>
+
+			<Text
+				className="font-poppins text-body-4 text-secondary-text"
+				numberOfLines={2}
+			>
+				{description}
+			</Text>
+			{preparationState === "preparing" ? (
+				<View
+					accessible
+					accessibilityLiveRegion="polite"
+					className="mt-1 flex-row items-center gap-3 rounded-[20px] bg-system-subtle px-3 py-3"
+				>
+					<ActivityIndicator
+						color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+						size="small"
+					/>
+					<View className="min-w-0 flex-1">
+						<Text className="font-poppins font-semibold text-body-5 text-text">
+							Lerninhalte werden vorbereitet
+						</Text>
+						<Text className="mt-0.5 font-poppins text-body-5 text-secondary-text">
+							Du kannst den Plan verlassen. Dayova arbeitet im Hintergrund
+							weiter.
+						</Text>
+					</View>
+				</View>
+			) : preparationState === "failed" ? (
+				<View className="mt-1 gap-3 rounded-[20px] bg-wrong-subtle px-3 py-3">
+					<View className="flex-row items-start gap-2">
+						<CircleAlert
+							size={17}
+							color={DAYOVA_DESIGN_SYSTEM.colors.wrong}
+							strokeWidth={2.1}
+						/>
+						<Text className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text">
+							Die Lerninhalte konnten noch nicht vorbereitet werden.
+						</Text>
+					</View>
+					<Button
+						accessibilityLabel={`Vorbereitung erneut versuchen: ${title}`}
+						onPress={onRetryPreparation}
+						size="sm"
+						variant="neutral"
+					>
+						<Text>Erneut versuchen</Text>
+					</Button>
+				</View>
+			) : canOpen ? (
+				<Button
+					accessibilityHint="Öffnet die ausgewählte Lerneinheit."
+					accessibilityLabel={`${actionLabel}: ${title}`}
+					className="mt-1 w-full"
+					onPress={onOpen}
+					size="sm"
+				>
+					<Text>{actionLabel}</Text>
+					<ArrowRight
+						size={18}
+						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={2.2}
+					/>
+				</Button>
+			) : (
+				<View className="mt-1 flex-row items-start gap-2 rounded-[20px] bg-system-subtle px-3 py-3">
+					<Sparkles
+						size={16}
+						color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+						strokeWidth={2.1}
+					/>
+					<Text className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text">
+						Diese Vorschau kann sich nach deinem nächsten Abschluss ändern.
+					</Text>
+				</View>
+			)}
+		</View>
+	);
+
+	return (
+		<Animated.View
+			entering={
+				reduceMotion
+					? undefined
+					: FadeIn.duration(SESSION_PREVIEW_TRANSITION_DURATION_MS)
+			}
+			exiting={
+				reduceMotion
+					? undefined
+					: FadeOut.duration(SESSION_PREVIEW_TRANSITION_DURATION_MS)
+			}
+			className="w-full rounded-card border border-border bg-card px-4 py-4"
+			// React Native's continuous corner curve has no NativeWind utility.
+			style={{ borderCurve: "continuous" }}
+		>
+			{content}
+		</Animated.View>
 	);
 }
 
-type PathNodeState = "completed" | "current" | "locked";
-
-const PATH_NODE_STATE_LABEL: Record<PathNodeState, string> = {
+const PATH_NODE_STATE_LABEL: Record<LearningPathNodeState, string> = {
 	completed: "abgeschlossen",
 	current: "verfügbar",
-	locked: "gesperrt",
+	locked: "adaptive Vorschau",
 };
 
 type PathNodeFrame = {
@@ -255,19 +356,28 @@ const getFigmaSegmentPath = (index: number) => {
 	return `M 56 ${348 + y} V ${370 + y} Q 56 ${410 + y} 96 ${410 + y} H 139`;
 };
 
+const getFigmaSegmentEndPoint = (index: number) => {
+	const segmentIndex = index % FIGMA_REPEATING_NODE_FRAMES.length;
+	const cycle = Math.floor(index / FIGMA_REPEATING_NODE_FRAMES.length);
+	const cycleOffset = cycle * FIGMA_PATH_CYCLE_HEIGHT;
+	const endpoint = [
+		{ x: 289, y: 102 },
+		{ x: 206, y: 234 },
+		{ x: 56, y: 293 },
+		{ x: 139, y: 410 },
+	][segmentIndex] ?? { x: 139, y: 410 };
+
+	return { x: endpoint.x, y: endpoint.y + cycleOffset };
+};
+
 const getFigmaPathHeight = (sessionCount: number) => {
 	const lastFrame = getFigmaNodeFrame(Math.max(sessionCount - 1, 0));
 
 	return Math.max(FIGMA_PATH_HEIGHT, lastFrame.top + lastFrame.height + 20);
 };
 
-const getCurrentSessionIndex = (sessions: PlanSession[]) => {
-	const firstOpenIndex = sessions.findIndex((session) => !session.completed);
-	return firstOpenIndex === -1 ? null : firstOpenIndex;
-};
-
 const getActiveSegmentLimit = (sessions: PlanSession[]) => {
-	const currentIndex = getCurrentSessionIndex(sessions);
+	const currentIndex = getCommittedSessionIndex(sessions);
 	return currentIndex ?? Math.max(sessions.length - 1, 0);
 };
 
@@ -275,21 +385,38 @@ const getPathNodeState = (
 	session: PlanSession,
 	index: number,
 	currentIndex: number | null,
-): PathNodeState => {
-	if (session.completed) return "completed";
+): LearningPathNodeState => {
+	if (isLearningPlanSessionHistory(session)) return "completed";
+	if (session.planningStatus === "provisional") return "locked";
 	if (currentIndex !== null && index === currentIndex) return "current";
 	return "locked";
 };
 
-const STEP_PUCK_WIDTH = 68;
-const STEP_PUCK_HEIGHT = 64;
-const STEP_LOCKED_FACE_WIDTH = 58;
-const STEP_LOCKED_FACE_HEIGHT = 50;
+const STEP_PUCK_DIMENSIONS = {
+	blue: { faceHeight: 52, height: 59, width: 60 },
+	gray: { faceHeight: 46, height: 52, width: 52 },
+} satisfies Record<
+	LearningPathNodeTone,
+	{ faceHeight: number; height: number; width: number }
+>;
+const STEP_PUCK_LIP_OFFSET = 6;
 const STEP_SELECTION_WIDTH = 92;
 const STEP_SELECTION_HEIGHT = 86;
 const STEP_SELECTION_STROKE_WIDTH = 7;
+const STEP_HALO_PATH =
+	"M46 3.5C69.4721 3.5 88.5 21.1848 88.5 43C88.5 64.8152 69.4721 82.5 46 82.5C22.5279 82.5 3.5 64.8152 3.5 43C3.5 21.1848 22.5279 3.5 46 3.5Z";
+const STEP_SEGMENTED_HALO_PATHS = [
+	"M40 4C21.8 6.5 7.5 19.5 3.9 36.5",
+	"M52 4.1C69.5 6.2 83.5 18.8 87.6 35.2",
+	"M88.1 51.2C83.9 68.4 69.3 80.3 52 82",
+	"M39.7 81.4C22.1 78.8 8.1 66.2 4 49.8",
+] as const;
 
-function SelectedStepRing() {
+function StepHalo({
+	variant,
+}: {
+	variant: Exclude<LearningPathNodeHalo, "none">;
+}) {
 	return (
 		<Svg
 			pointerEvents="none"
@@ -298,104 +425,200 @@ function SelectedStepRing() {
 			viewBox={`0 0 ${STEP_SELECTION_WIDTH} ${STEP_SELECTION_HEIGHT}`}
 			style={{ position: "absolute", left: 0, top: 0 }}
 		>
-			<Path
-				d="M46 3.5C69.4721 3.5 88.5 21.1848 88.5 43C88.5 64.8152 69.4721 82.5 46 82.5C22.5279 82.5 3.5 64.8152 3.5 43C3.5 21.1848 22.5279 3.5 46 3.5Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.light1}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path4}
-				strokeWidth={STEP_SELECTION_STROKE_WIDTH}
-			/>
+			{variant === "solid" ? (
+				<>
+					<Path
+						d={STEP_HALO_PATH}
+						fill="none"
+						stroke={DAYOVA_DESIGN_SYSTEM.colors.path4}
+						strokeWidth={STEP_SELECTION_STROKE_WIDTH}
+					/>
+					<Path
+						d={STEP_HALO_PATH}
+						fill="none"
+						stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
+						strokeWidth={3.5}
+					/>
+				</>
+			) : (
+				STEP_SEGMENTED_HALO_PATHS.map((path, index) => (
+					<Path
+						key={path}
+						d={path}
+						fill="none"
+						stroke={
+							LEARNING_PATH_SEGMENTED_HALO_TONES[index] === "blue"
+								? DAYOVA_DESIGN_SYSTEM.colors.path6
+								: DAYOVA_DESIGN_SYSTEM.colors.path1
+						}
+						strokeLinecap="round"
+						strokeWidth={STEP_SELECTION_STROKE_WIDTH}
+					/>
+				))
+			)}
 		</Svg>
 	);
 }
 
-function CompletedStepPuck() {
+function BreathingStep({
+	children,
+	enabled,
+	left,
+	top,
+}: {
+	children: ReactNode;
+	enabled: boolean;
+	left: number;
+	top: number;
+}) {
+	const scale = useSharedValue(1);
+	const reduceMotion = useReducedMotion();
+
+	useEffect(() => {
+		cancelAnimation(scale);
+
+		if (!enabled || reduceMotion) {
+			scale.set(1);
+			return;
+		}
+
+		scale.set(
+			withRepeat(
+				withSequence(
+					withTiming(LEARNING_PATH_BREATHING.maxScale, {
+						duration: LEARNING_PATH_BREATHING.halfCycleMs,
+						easing: Easing.inOut(Easing.sin),
+					}),
+					withTiming(LEARNING_PATH_BREATHING.minScale, {
+						duration: LEARNING_PATH_BREATHING.halfCycleMs,
+						easing: Easing.inOut(Easing.sin),
+					}),
+				),
+				-1,
+			),
+		);
+
+		return () => cancelAnimation(scale);
+	}, [enabled, reduceMotion, scale]);
+
+	const animatedStyle = useAnimatedStyle(() => ({
+		transform: [{ scale: scale.get() }],
+	}));
+
 	return (
-		<Svg
+		<Animated.View
 			pointerEvents="none"
-			width={92}
-			height={88}
-			viewBox="0 0 92 88"
-			style={{ position: "absolute", left: -12, top: -9 }}
+			style={[
+				{
+					position: "absolute",
+					left,
+					top,
+					width: STEP_SELECTION_WIDTH,
+					height: STEP_SELECTION_HEIGHT,
+					alignItems: "center",
+					justifyContent: "center",
+				},
+				animatedStyle,
+			]}
 		>
-			<Path
-				d="M46 12.5C64.5705 12.5 79.5 25.548 79.5 41.5C79.5 57.452 64.5705 70.5 46 70.5C27.4295 70.5 12.5 57.452 12.5 41.5C12.5 25.548 27.4295 12.5 46 12.5Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path5}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path5}
-			/>
-			<Path
-				d="M46 9.5C64.2349 9.5 78.5 21.6237 78.5 36C78.5 50.3763 64.2349 62.5 46 62.5C27.7651 62.5 13.5 50.3763 13.5 36C13.5 21.6237 27.7651 9.5 46 9.5Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path6}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-				strokeWidth={3}
-			/>
-			<Path
-				d="M30.903 51.7622L64.11 20.7115C64.6597 20.1975 65.4516 20.0363 66.1352 20.3511C67.4469 20.9552 69.6663 22.1316 71.5059 23.8738C72.701 25.0056 73.9512 26.8471 74.7291 28.0839C75.204 28.839 75.0746 29.8117 74.4487 30.4472L45.3875 59.9555C43.8835 61.4827 41.7537 62.2676 39.6626 61.7967C38.2507 61.4787 36.668 61.0154 35.5059 60.3738C34.2835 59.6989 33.0612 59.0586 31.929 58.4839C29.3791 57.1896 28.8143 53.7152 30.903 51.7622Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path7}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-			/>
-			<Path
-				d="M24.908 48.3639L53.6381 18.3474C54.6965 17.2416 54.1599 15.4799 52.6404 15.2961C46.6945 14.5769 34.1009 14.4277 25.0055 23.8734C15.7121 33.5246 18.4286 43.1756 20.7331 47.8944C21.5365 49.5396 23.642 49.6866 24.908 48.3639Z"
-				fill={DAYOVA_DESIGN_SYSTEM.colors.path7}
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-				strokeLinecap="round"
-			/>
-			<Path
-				d="M39.5 37.2591L42.0858 39.9567C42.7525 40.6522 43.0858 41 43.5 41C43.9143 41 44.2476 40.6522 44.9143 39.9567L53.5 31"
-				fill="none"
-				stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
-				strokeWidth={4}
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			/>
-		</Svg>
+			{children}
+		</Animated.View>
 	);
 }
 
-function CurrentStepPuck() {
+function StepPuck({
+	icon,
+	tone,
+}: {
+	icon: LearningPathNodeIcon;
+	tone: LearningPathNodeTone;
+}) {
+	const isLocked = tone === "gray";
+	const Icon = LEARNING_PATH_ICON_COMPONENT[icon];
+	const {
+		faceHeight,
+		height: puckHeight,
+		width: puckWidth,
+	} = STEP_PUCK_DIMENSIONS[tone];
+	const baseColor = isLocked
+		? DAYOVA_DESIGN_SYSTEM.colors.pathLockedBase
+		: DAYOVA_DESIGN_SYSTEM.colors.path5;
+	const faceColor = isLocked
+		? DAYOVA_DESIGN_SYSTEM.colors.path1
+		: DAYOVA_DESIGN_SYSTEM.colors.path6;
+	const iconColor = isLocked
+		? DAYOVA_DESIGN_SYSTEM.colors.path3
+		: DAYOVA_DESIGN_SYSTEM.colors.light1;
+
 	return (
 		<View
 			pointerEvents="none"
 			style={{
-				position: "absolute",
-				left: 0,
-				top: 0,
-				width: STEP_PUCK_WIDTH,
-				height: STEP_PUCK_HEIGHT,
+				width: puckWidth,
+				height: puckHeight,
 				alignItems: "center",
-				justifyContent: "center",
+				borderRadius: puckHeight / 2,
+				boxShadow: isLocked
+					? "0 5px 8px rgba(105, 117, 134, 0.16)"
+					: "0 5px 9px rgba(0, 160, 230, 0.2)",
 			}}
 		>
-			<Svg
-				width={STEP_PUCK_WIDTH}
-				height={STEP_PUCK_HEIGHT}
-				viewBox={`0 0 ${STEP_PUCK_WIDTH} ${STEP_PUCK_HEIGHT}`}
-			>
-				<Path
-					d="M34 4.5C52.5705 4.5 67.5 17.548 67.5 33.5C67.5 49.452 52.5705 62.5 34 62.5C15.4295 62.5 0.5 49.452 0.5 33.5C0.5 17.548 15.4295 4.5 34 4.5Z"
-					fill={DAYOVA_DESIGN_SYSTEM.colors.path5}
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.path5}
-				/>
-
-				<Path
-					d="M34 1.5C52.2349 1.5 66.5 13.6237 66.5 28C66.5 42.3763 52.2349 54.5 34 54.5C15.7651 54.5 1.5 42.3763 1.5 28C1.5 13.6237 15.7651 1.5 34 1.5Z"
-					fill={DAYOVA_DESIGN_SYSTEM.colors.path6}
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.path6}
-					strokeWidth={3}
-				/>
-			</Svg>
-
 			<View
 				style={{
 					position: "absolute",
-					top: 15,
-					left: 22,
+					top: STEP_PUCK_LIP_OFFSET,
+					width: puckWidth,
+					height: faceHeight,
+					borderRadius: faceHeight / 2,
+					backgroundColor: baseColor,
+				}}
+			/>
+			<View
+				style={{
+					position: "absolute",
+					top: 0,
+					width: puckWidth,
+					height: faceHeight,
+					borderRadius: faceHeight / 2,
+					backgroundColor: baseColor,
+					alignItems: "center",
+					justifyContent: "center",
+					overflow: "hidden",
 				}}
 			>
-				<Note
-					width={24}
-					height={24}
-					color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-					stroke={DAYOVA_DESIGN_SYSTEM.colors.light1}
+				<View
+					style={{
+						position: "absolute",
+						left: 4,
+						top: 3,
+						width: puckWidth - 8,
+						height: faceHeight - 7,
+						borderRadius: (faceHeight - 7) / 2,
+						backgroundColor: faceColor,
+						overflow: "hidden",
+					}}
+				>
+					<View
+						style={{
+							position: "absolute",
+							top: -9,
+							right: isLocked ? -5 : -2,
+							width: isLocked ? 17 : 21,
+							height: isLocked ? 42 : 48,
+							borderRadius: 12,
+							backgroundColor: isLocked
+								? DAYOVA_DESIGN_SYSTEM.colors.light1
+								: DAYOVA_DESIGN_SYSTEM.colors.path7,
+							opacity: isLocked ? 0.2 : 0.68,
+							transform: [{ rotate: "31deg" }],
+						}}
+					/>
+				</View>
+				<Icon
+					size={isLocked ? 23 : 28}
+					color={iconColor}
+					strokeWidth={icon === "check" ? 3.6 : 2.75}
+					style={{ zIndex: 1 }}
 				/>
 			</View>
 		</View>
@@ -412,10 +635,16 @@ function PathNode({
 	frame: PathNodeFrame;
 	selected: boolean;
 	session: PlanSession;
-	state: PathNodeState;
+	state: LearningPathNodeState;
 	onPress: () => void;
 }) {
 	const isLocked = state === "locked";
+	const presentation = getLearningPathNodePresentation({
+		phase: session.phase,
+		selected,
+		state,
+	});
+	const puckDimensions = STEP_PUCK_DIMENSIONS[presentation.tone];
 	const title = formatGermanUiText(session.title);
 	const stateLabel = PATH_NODE_STATE_LABEL[state];
 	const position = {
@@ -425,37 +654,13 @@ function PathNode({
 		height: frame.height,
 	} satisfies ViewStyle;
 
-	const selectedRing = selected ? (
-		<View
-			pointerEvents="none"
-			className="absolute"
-			style={{
-				left: (frame.width - STEP_SELECTION_WIDTH) / 2,
-				top: (frame.height - STEP_SELECTION_HEIGHT) / 2,
-				width: STEP_SELECTION_WIDTH,
-				height: STEP_SELECTION_HEIGHT,
-				zIndex: 0,
-			}}
-		>
-			<SelectedStepRing />
-		</View>
-	) : null;
-
-	const lockedIcon = (
-		<SquareLock
-			size={25}
-			color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-			strokeWidth={1.9}
-		/>
-	);
-
 	return (
 		<Pressable
-			accessibilityLabel={`${title}, ${PHASE_LABEL[session.phase]}, ${session.dateLabel}, ${stateLabel}`}
+			accessibilityLabel={`${title}, ${isDiagnosticLearningPlanSession(session) ? "Wissenscheck" : PHASE_LABEL[session.phase]}, ${session.dateLabel} um ${session.startTime}, ${stateLabel}`}
 			accessibilityHint={
 				isLocked
-					? "Wählt diesen gesperrten Lernblock aus und zeigt die Vorschau. Gesperrte Lernblöcke können noch nicht geöffnet werden."
-					: "Wählt diesen Lernblock aus und zeigt die Vorschau. Öffnen kannst du ihn danach über die Pfeiltaste in der Vorschau."
+					? "Zeigt den voraussichtlich folgenden Lernblock. Er kann sich nach der nächsten Session noch ändern."
+					: "Wählt diesen Lernblock aus. Über die Vorschau oben kannst du ihn starten oder ansehen."
 			}
 			accessibilityRole="button"
 			accessibilityState={{ selected }}
@@ -463,82 +668,56 @@ function PathNode({
 			className="absolute items-center justify-center"
 			style={position}
 		>
-			{selectedRing}
-			<View
-				className="absolute items-center"
-				style={{
-					left: (frame.width - STEP_PUCK_WIDTH) / 2,
-					top: (frame.height - STEP_PUCK_HEIGHT) / 2,
-					width: STEP_PUCK_WIDTH,
-					height: STEP_PUCK_HEIGHT,
-					borderRadius: STEP_PUCK_HEIGHT / 2,
-					zIndex: 1,
-					backgroundColor:
-						state === "completed"
-							? DAYOVA_DESIGN_SYSTEM.colors.path5
-							: "transparent",
-					boxShadow:
-						state === "completed"
-							? "0 4px 12px rgba(0, 0, 0, 0.1)"
-							: isLocked
-								? "0 8px 14px rgba(105, 117, 134, 0.22)"
-								: "0 4px 12px rgba(0, 0, 0, 0.1)",
-				}}
+			<BreathingStep
+				enabled={presentation.motion === "breathe"}
+				left={(frame.width - STEP_SELECTION_WIDTH) / 2}
+				top={(frame.height - STEP_SELECTION_HEIGHT) / 2}
 			>
-				{state === "completed" ? (
-					<CompletedStepPuck />
-				) : isLocked ? (
-					<>
-						<View
-							className="absolute rounded-full"
-							style={{
-								top: 0,
-								width: STEP_PUCK_WIDTH,
-								height: STEP_PUCK_HEIGHT,
-								backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.path1,
-								borderRadius: STEP_PUCK_HEIGHT / 2,
-							}}
-						/>
-						<View
-							className="absolute items-center justify-center rounded-full"
-							style={{
-								top: 5,
-								width: STEP_LOCKED_FACE_WIDTH,
-								height: STEP_LOCKED_FACE_HEIGHT,
-								backgroundColor: DAYOVA_DESIGN_SYSTEM.colors.path3,
-								borderRadius: STEP_LOCKED_FACE_HEIGHT / 2,
-							}}
-						>
-							{lockedIcon}
-						</View>
-					</>
-				) : (
-					<CurrentStepPuck />
-				)}
-			</View>
+				{presentation.halo !== "none" ? (
+					<StepHalo variant={presentation.halo} />
+				) : null}
+				<View
+					style={{
+						position: "absolute",
+						left: (STEP_SELECTION_WIDTH - puckDimensions.width) / 2,
+						top: (STEP_SELECTION_HEIGHT - puckDimensions.height) / 2,
+						zIndex: 1,
+					}}
+				>
+					<StepPuck icon={presentation.icon} tone={presentation.tone} />
+				</View>
+			</BreathingStep>
 		</Pressable>
 	);
 }
 
-function LearningPath({
-	availableWidth,
+export function LearningPath({
+	examCountdownLabel,
+	examDateLabel,
 	onSelectSession,
 	selectedSessionId,
 	sessions,
+	showsAdaptiveContinuation,
 }: {
-	availableWidth: number;
+	examCountdownLabel: string | null;
+	examDateLabel: string;
 	onSelectSession: (session: PlanSession) => void;
 	selectedSessionId: Id<"learningPlanSessions"> | null;
 	sessions: PlanSession[];
+	showsAdaptiveContinuation: boolean;
 }) {
-	const currentIndex = getCurrentSessionIndex(sessions);
+	const currentIndex = getCommittedSessionIndex(sessions);
 	const activeSegmentLimit = getActiveSegmentLimit(sessions);
-	const pathHeight = getFigmaPathHeight(sessions.length);
-	const frame = getLearningPathFrame({
-		availableWidth,
-		pathHeight,
-		pathWidth: FIGMA_PATH_WIDTH,
-	});
+	const continuationSegmentIndex = Math.max(sessions.length - 1, 0);
+	const continuationPath = getFigmaSegmentPath(continuationSegmentIndex);
+	const continuationEndpoint = getFigmaSegmentEndPoint(
+		continuationSegmentIndex,
+	);
+	const continuationTop = continuationEndpoint.y + 16;
+	const basePathHeight = getFigmaPathHeight(sessions.length);
+	const pathHeight = showsAdaptiveContinuation
+		? Math.max(basePathHeight, continuationTop + 220)
+		: basePathHeight;
 	const segments = sessions.slice(1).map((_, index) => ({
 		d: getFigmaSegmentPath(index),
 		active: index < activeSegmentLimit,
@@ -546,68 +725,143 @@ function LearningPath({
 
 	return (
 		<View
-			className="self-center"
-			// Runtime viewport width determines the scaled learning-path frame.
-			style={{ width: frame.width, height: frame.height }}
+			className="relative self-center"
+			style={{ width: FIGMA_PATH_WIDTH, height: pathHeight }}
 		>
-			<View
-				className="relative"
-				// Runtime scale preserves the authored SVG geometry on narrow viewports.
-				style={{
-					width: FIGMA_PATH_WIDTH,
-					height: pathHeight,
-					transform: [{ scale: frame.scale }],
-					transformOrigin: "top left",
-				}}
+			<Svg
+				width={FIGMA_PATH_WIDTH}
+				height={pathHeight}
+				viewBox={`0 0 ${FIGMA_PATH_WIDTH} ${pathHeight}`}
+				style={{ position: "absolute", left: 0, top: 0 }}
 			>
-				<Svg
-					width={FIGMA_PATH_WIDTH}
-					height={pathHeight}
-					viewBox={`0 0 ${FIGMA_PATH_WIDTH} ${pathHeight}`}
-					// SVG geometry is positioned inside the runtime-scaled frame.
-					style={{ position: "absolute", left: 0, top: 0 }}
-				>
-					{segments.map((segment) => (
+				{segments.map((segment) => (
+					<Path
+						key={`track-${segment.d}`}
+						d={segment.d}
+						fill="none"
+						stroke={DAYOVA_DESIGN_SYSTEM.colors.path1}
+						strokeWidth={4}
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					/>
+				))}
+				{segments
+					.filter((segment) => segment.active)
+					.map((segment) => (
 						<Path
-							key={`track-${segment.d}`}
+							key={`active-${segment.d}`}
 							d={segment.d}
 							fill="none"
-							stroke={DAYOVA_DESIGN_SYSTEM.colors.path1}
+							stroke={DAYOVA_DESIGN_SYSTEM.colors.primary}
 							strokeWidth={4}
 							strokeLinecap="round"
 							strokeLinejoin="round"
 						/>
 					))}
-					{segments
-						.filter((segment) => segment.active)
-						.map((segment) => (
-							<Path
-								key={`active-${segment.d}`}
-								d={segment.d}
-								fill="none"
-								stroke={DAYOVA_DESIGN_SYSTEM.colors.primary}
-								strokeWidth={4}
-								strokeLinecap="round"
-								strokeLinejoin="round"
+				{showsAdaptiveContinuation ? (
+					<Path
+						d={continuationPath}
+						fill="none"
+						opacity={0.72}
+						stroke={DAYOVA_DESIGN_SYSTEM.colors.primary}
+						strokeDasharray="7 9"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						strokeWidth={4}
+						testID="adaptive-continuation-path"
+					/>
+				) : null}
+			</Svg>
+
+			{showsAdaptiveContinuation ? (
+				<View
+					accessible={false}
+					className="absolute h-3 w-3 rounded-full border-2 border-background bg-primary"
+					pointerEvents="none"
+					// The marker is centered on the generated continuation endpoint.
+					style={{
+						left: continuationEndpoint.x - 6,
+						top: continuationEndpoint.y - 6,
+					}}
+					testID="adaptive-continuation-endpoint"
+				/>
+			) : null}
+
+			{sessions.map((session, index) => {
+				const state = getPathNodeState(session, index, currentIndex);
+
+				return (
+					<PathNode
+						key={session.id}
+						frame={getFigmaNodeFrame(index)}
+						selected={session.id === selectedSessionId}
+						session={session}
+						state={state}
+						onPress={() => onSelectSession(session)}
+					/>
+				);
+			})}
+
+			{showsAdaptiveContinuation ? (
+				<View
+					accessible
+					accessibilityLabel={`Dayova plant mit dir weiter. Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin. Prüfung am ${examDateLabel}${examCountdownLabel ? `, ${examCountdownLabel}` : ""}.`}
+					className="absolute right-2 left-2 gap-4 overflow-hidden rounded-card border border-primary/20 bg-system-subtle px-4 py-4"
+					// The card is positioned against the generated path geometry; the
+					// continuous curve has no NativeWind utility.
+					style={{ top: continuationTop, borderCurve: "continuous" }}
+					testID="adaptive-continuation-card"
+				>
+					<View className="flex-row items-start gap-3">
+						<View className="h-10 w-10 shrink-0 items-center justify-center rounded-[16px] bg-primary">
+							<Sparkles
+								size={19}
+								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+								strokeWidth={2.1}
 							/>
-						))}
-				</Svg>
+						</View>
+						<View className="min-w-0 flex-1">
+							<Text className="font-poppins font-semibold text-body-3 text-text">
+								Dayova plant mit dir weiter
+							</Text>
+							<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
+								Nach deinem Abschluss passt Dayova die Vorschau an und plant den
+								nächsten Termin.
+							</Text>
+						</View>
+					</View>
 
-				{sessions.map((session, index) => {
-					const state = getPathNodeState(session, index, currentIndex);
+					<View className="h-px bg-primary/15" />
 
-					return (
-						<PathNode
-							key={session.id}
-							frame={getFigmaNodeFrame(index)}
-							selected={session.id === selectedSessionId}
-							session={session}
-							state={state}
-							onPress={() => onSelectSession(session)}
-						/>
-					);
-				})}
-			</View>
+					<View className="flex-row items-center gap-3">
+						<View className="h-9 w-9 items-center justify-center rounded-[14px] bg-card">
+							<GraduationCap
+								size={18}
+								color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+								strokeWidth={2.1}
+							/>
+						</View>
+						<View className="min-w-0 flex-1">
+							<Text className="font-poppins font-semibold text-body-5 text-primary">
+								Prüfung
+							</Text>
+							<Text
+								className="font-poppins text-body-4 text-text"
+								numberOfLines={1}
+							>
+								{examDateLabel}
+							</Text>
+						</View>
+						{examCountdownLabel ? (
+							<View className="shrink-0 rounded-full bg-card px-3 py-2">
+								<Text className="font-poppins font-semibold text-body-5 text-primary">
+									{examCountdownLabel}
+								</Text>
+							</View>
+						) : null}
+					</View>
+				</View>
+			) : null}
 		</View>
 	);
 }
@@ -615,23 +869,24 @@ function LearningPath({
 export default function LearningPlanSessionsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const { shouldStackInlineContent, usableWidth } = useContentSizeLayout({
-		requestedHorizontalPadding: 16,
-	});
+	const today = useCurrentLocalDay();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+	const ensureSessionContent = useAction(
+		api.learningPlanAi.ensureSessionContent,
+	);
+	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
 	) ?? null) as LearningPlanSnapshot | null;
 	const [selectedSessionId, setSelectedSessionId] =
 		useState<Id<"learningPlanSessions"> | null>(null);
-	const defaultSession =
-		snapshot?.sessions.find((session) => !session.completed) ??
-		snapshot?.sessions.at(-1) ??
-		null;
+	const defaultSession = snapshot
+		? getDefaultLearningPlanSession(snapshot.sessions)
+		: null;
 	const selectedSession =
 		snapshot?.sessions.find((session) => session.id === selectedSessionId) ??
 		defaultSession;
@@ -646,23 +901,78 @@ export default function LearningPlanSessionsScreen() {
 			? getPathNodeState(
 					selectedSession,
 					selectedSessionIndex,
-					getCurrentSessionIndex(snapshot.sessions),
+					getCommittedSessionIndex(snapshot.sessions),
 				)
 			: null;
+	const selectedSessionNeedsTheoryUpgrade = Boolean(
+		selectedSession &&
+			selectedSession.phase === "theory" &&
+			selectedSession.executionStatus === "notStarted" &&
+			(selectedSession.contentGenerationVersion ?? 0) <
+				CURRENT_THEORY_CONTENT_VERSION,
+	);
 	const canOpenSelectedSession =
-		selectedSessionState !== null && selectedSessionState !== "locked";
+		selectedSessionState !== null &&
+		selectedSessionState !== "locked" &&
+		selectedSession?.planningStatus !== "provisional" &&
+		!selectedSessionNeedsTheoryUpgrade &&
+		(selectedSession?.contentGenerationStatus === undefined ||
+			selectedSession.contentGenerationStatus === "ready");
+	const preparationState =
+		selectedSession?.contentGenerationStatus === "failed"
+			? ("failed" as const)
+			: selectedSessionNeedsTheoryUpgrade ||
+					selectedSession?.contentGenerationStatus === "queued" ||
+					selectedSession?.contentGenerationStatus === "generating"
+				? ("preparing" as const)
+				: undefined;
+
+	const prepareSession = useCallback(
+		(sessionId: Id<"learningPlanSessions">) => {
+			if (preparingSessionIdRef.current === sessionId) return;
+			preparingSessionIdRef.current = sessionId;
+			void ensureSessionContent({ sessionId })
+				.catch(() => {
+					// The reactive session status drives the retry presentation.
+				})
+				.finally(() => {
+					if (preparingSessionIdRef.current === sessionId) {
+						preparingSessionIdRef.current = null;
+					}
+				});
+		},
+		[ensureSessionContent],
+	);
+
+	useEffect(() => {
+		const needsTheoryUpgrade = Boolean(
+			defaultSession &&
+				defaultSession.phase === "theory" &&
+				defaultSession.executionStatus === "notStarted" &&
+				(defaultSession.contentGenerationVersion ?? 0) <
+					CURRENT_THEORY_CONTENT_VERSION,
+		);
+		if (
+			!defaultSession ||
+			(defaultSession.contentGenerationStatus === "ready" &&
+				!needsTheoryUpgrade) ||
+			defaultSession.contentGenerationStatus === "failed"
+		) {
+			return;
+		}
+		prepareSession(defaultSession.id);
+	}, [defaultSession, prepareSession]);
 
 	const goBack = () => {
-		goBackOrReplace(router, "/learning-plans");
+		dismissToOrReplace(router, "/learning-plans");
 	};
 
 	return (
 		<Screen>
 			<Stack.Screen options={{ gestureEnabled: true }} />
 			<ThemedStatusBar />
-			<PortraitContent
+			<View
 				className="px-4"
-				// Safe-area padding is runtime device data.
 				style={{
 					paddingTop: Math.max(insets.top + 8, 24),
 					paddingBottom: 16,
@@ -672,11 +982,11 @@ export default function LearningPlanSessionsScreen() {
 					title="Lernplan"
 					onBack={goBack}
 					className="mb-0"
-					titleClassName="text-center font-poppins font-semibold text-[22px] text-text leading-[30px]"
+					titleClassName="text-center font-poppins font-semibold text-heading-2 text-text"
 				/>
-			</PortraitContent>
+			</View>
 
-			<PortraitContent className="px-4 pb-5">
+			<View className="px-4 pb-5">
 				{snapshot === null ? (
 					<View className="items-center py-10">
 						<ActivityIndicator
@@ -687,8 +997,11 @@ export default function LearningPlanSessionsScreen() {
 					</View>
 				) : selectedSession ? (
 					<SessionPreviewCard
+						key={selectedSession.id}
 						canOpen={canOpenSelectedSession}
+						preparationState={preparationState}
 						session={selectedSession}
+						onRetryPreparation={() => prepareSession(selectedSession.id)}
 						onOpen={() => {
 							if (!canOpenSelectedSession) return;
 							router.push(
@@ -703,13 +1016,12 @@ export default function LearningPlanSessionsScreen() {
 						</Text>
 					</View>
 				)}
-			</PortraitContent>
+			</View>
 
 			<ScrollView
 				className="flex-1 bg-background"
 				contentContainerStyle={[
 					{
-						alignItems: "center",
 						paddingHorizontal: 16,
 						paddingTop: 18,
 						paddingBottom: Math.max(insets.bottom + 36, 54),
@@ -722,11 +1034,16 @@ export default function LearningPlanSessionsScreen() {
 					<View />
 				) : selectedSession ? (
 					<LearningPath
-						availableWidth={
-							shouldStackInlineContent ? usableWidth : FIGMA_PATH_WIDTH
-						}
+						examCountdownLabel={getExamCountdownLabel(
+							snapshot.plan.examDateKey,
+							today,
+						)}
+						examDateLabel={snapshot.plan.examDateLabel}
 						selectedSessionId={selectedSession.id}
 						sessions={snapshot.sessions}
+						showsAdaptiveContinuation={
+							snapshot.plan.rollingPlanEnabled === true
+						}
 						onSelectSession={(session) => setSelectedSessionId(session.id)}
 					/>
 				) : (

@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
 import { BackButton } from "~/components/ui/button";
-import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
-import { cn } from "~/lib/utils";
 
 export function ScreenHeader({
 	title,
@@ -20,12 +18,8 @@ export function ScreenHeader({
 	className?: string;
 	titleClassName?: string;
 }) {
-	const { shouldStackInlineContent } = useContentSizeLayout();
-	const defaultTitleClassName =
-		"text-center font-poppins font-semibold text-body-2 text-text";
-
 	return (
-		<View className={cn("relative min-h-12 justify-center", className)}>
+		<View className={`relative min-h-12 justify-center ${className}`}>
 			{showBack ? (
 				<View className="absolute left-0 z-10">
 					<BackButton onPress={onBack} />
@@ -35,25 +29,17 @@ export function ScreenHeader({
 				<Text
 					accessibilityRole="header"
 					className={
-						shouldStackInlineContent
-							? cn("px-14", defaultTitleClassName, titleClassName)
-							: (titleClassName ?? defaultTitleClassName)
+						titleClassName ??
+						"px-20 text-center font-poppins font-semibold text-body-2 text-text"
 					}
+					numberOfLines={1}
 				>
 					{title}
 				</Text>
 			) : null}
-			{right ? (
-				<View
-					className={
-						shouldStackInlineContent
-							? "mt-2 min-h-12 items-end justify-center self-end"
-							: "absolute right-0 z-10 h-12 w-12 items-center justify-center"
-					}
-				>
-					{right}
-				</View>
-			) : null}
+			<View className="absolute right-0 z-10 min-h-12 min-w-12 items-center justify-center">
+				{right}
+			</View>
 		</View>
 	);
 }

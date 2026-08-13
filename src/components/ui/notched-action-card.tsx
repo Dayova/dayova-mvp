@@ -10,7 +10,6 @@ import {
 	type ViewStyle,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { resolveNotchedCardFrameHeight } from "~/components/ui/notched-action-card-layout";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -314,31 +313,37 @@ export function NotchedActionCard({
 	style,
 	...props
 }: NotchedActionCardProps) {
-	const [cardWidth, setCardWidth] = useState(DEFAULT_CARD_WIDTH);
-	const [measuredContentHeight, setMeasuredContentHeight] = useState(0);
+	const [cardLayout, setCardLayout] = useState({
+		height: cardHeight,
+		width: DEFAULT_CARD_WIDTH,
+	});
 	const { colors } = useDayovaTheme();
 
 	const handleLayout = useCallback(
 		(event: LayoutChangeEvent) => {
 			const { height: nextHeight, width: nextWidth } = event.nativeEvent.layout;
 
-			setCardWidth((currentWidth) =>
-				Math.abs(currentWidth - nextWidth) < 0.5 ? currentWidth : nextWidth,
-			);
-			setMeasuredContentHeight((currentHeight) =>
-				Math.abs(currentHeight - nextHeight) < 0.5 ? currentHeight : nextHeight,
-			);
+			setCardLayout((currentLayout) => {
+				if (
+					Math.abs(currentLayout.height - nextHeight) < 0.5 &&
+					Math.abs(currentLayout.width - nextWidth) < 0.5
+				) {
+					return currentLayout;
+				}
+
+				return { height: nextHeight, width: nextWidth };
+			});
 
 			onLayout?.(event);
 		},
 		[onLayout],
 	);
 
-	const resolvedCardWidth = Math.max(cardWidth, actionSize + actionOffsetRight);
-	const resolvedCardHeight = resolveNotchedCardFrameHeight({
-		measuredContentHeight,
-		minimumHeight: cardHeight,
-	});
+	const resolvedCardHeight = Math.max(cardHeight, cardLayout.height);
+	const resolvedCardWidth = Math.max(
+		cardLayout.width,
+		actionSize + actionOffsetRight,
+	);
 
 	const resolvedCardPath = useMemo(
 		() =>

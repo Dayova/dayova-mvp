@@ -14,6 +14,7 @@ type WarningBannerProps = ViewProps & {
 };
 
 function WarningBanner({
+	accessibilityLiveRegion,
 	className,
 	ctaAccessibilityLabel,
 	ctaLabel,
@@ -27,6 +28,7 @@ function WarningBanner({
 
 	return (
 		<View
+			accessibilityLiveRegion={accessibilityLiveRegion ?? "polite"}
 			className={cn(
 				"flex-row items-start gap-4 rounded-[28px] bg-info-subtle px-5 py-5",
 				className,
@@ -34,7 +36,12 @@ function WarningBanner({
 			style={style}
 			{...props}
 		>
-			<View className="h-10 w-10 items-center justify-center rounded-full bg-card/65">
+			<View
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				className="h-10 w-10 items-center justify-center rounded-full bg-card/65"
+			>
 				<CircleAlert
 					size={21}
 					color={DAYOVA_DESIGN_SYSTEM.colors.info}

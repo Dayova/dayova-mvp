@@ -1,0 +1,268 @@
+export type LearningContentPhase = "theory" | "practice" | "rehearsal";
+
+export type LearningTopicPriority = "high" | "medium" | "low";
+
+export type LearningEvidenceDimension =
+	| "understanding"
+	| "problemSolving"
+	| "independent";
+
+export type LearningTopic = {
+	id: string;
+	title: string;
+	learningGoal: string;
+	keywords: string[];
+	priority: LearningTopicPriority;
+	requiredEvidenceDimensions?: LearningEvidenceDimension[];
+};
+
+export type LearningQuestionAngle =
+	| "recall"
+	| "recognize"
+	| "apply"
+	| "findError"
+	| "compare"
+	| "examTransfer";
+
+export type LearningQuestionKind = "learnCard" | "multipleChoice" | "written";
+
+export type LearningQuestionBlueprint = {
+	coverageKey: string;
+	topic: LearningTopic;
+	angle: LearningQuestionAngle;
+	kind: LearningQuestionKind;
+	estimatedSeconds: number;
+};
+
+export type LearningContentBlock = {
+	index: number;
+	phase: LearningContentPhase;
+	durationMinutes: number;
+	questions: LearningQuestionBlueprint[];
+};
+
+const MAX_BLOCK_MINUTES = 10;
+const MIN_BLOCK_MINUTES = 3;
+
+const priorityRank: Record<LearningTopicPriority, number> = {
+	high: 0,
+	medium: 1,
+	low: 2,
+};
+
+const questionAngles: LearningQuestionAngle[] = [
+	"recall",
+	"recognize",
+	"apply",
+	"findError",
+	"compare",
+	"examTransfer",
+];
+
+const theoryPageAngles: LearningQuestionAngle[] = [
+	"recall",
+	"recognize",
+	"apply",
+	"findError",
+];
+
+const taskKinds: LearningQuestionKind[] = ["multipleChoice", "written"];
+
+const estimatedSecondsForKind: Record<LearningQuestionKind, number> = {
+	learnCard: 150,
+	multipleChoice: 240,
+	written: 360,
+};
+
+const splitIntoBlockDurations = (
+	durationMinutes: number,
+	maxBlockMinutes = MAX_BLOCK_MINUTES,
+) => {
+	if (
+		!Number.isInteger(durationMinutes) ||
+		durationMinutes < MIN_BLOCK_MINUTES ||
+		!Number.isInteger(maxBlockMinutes) ||
+		maxBlockMinutes < MIN_BLOCK_MINUTES
+	) {
+		throw new Error("A learning segment must last at least three minutes.");
+	}
+
+	const durations: number[] = [];
+	let remainingMinutes = durationMinutes;
+	while (remainingMinutes > maxBlockMinutes) {
+		const afterMaximumBlock = remainingMinutes - maxBlockMinutes;
+		if (afterMaximumBlock > 0 && afterMaximumBlock < MIN_BLOCK_MINUTES) {
+			durations.push(remainingMinutes - MIN_BLOCK_MINUTES);
+			remainingMinutes = MIN_BLOCK_MINUTES;
+			break;
+		}
+		durations.push(maxBlockMinutes);
+		remainingMinutes = afterMaximumBlock;
+	}
+
+	if (remainingMinutes > 0) durations.push(remainingMinutes);
+	return durations;
+};
+
+const questionKindFor = (
+	phase: LearningContentPhase,
+	questionIndex: number,
+): LearningQuestionKind => {
+	if (phase === "theory") return "learnCard";
+	return taskKinds[questionIndex % taskKinds.length] ?? "written";
+};
+
+const createQuestions = ({
+	phase,
+	durationMinutes,
+	topics,
+	startIndex,
+	excludedCoverageKeys,
+}: {
+	phase: LearningContentPhase;
+	durationMinutes: number;
+	topics: LearningTopic[];
+	startIndex: number;
+	excludedCoverageKeys: Set<string>;
+}) => {
+	const targetSeconds = durationMinutes * 60;
+	const questions: LearningQuestionBlueprint[] = [];
+	let plannedSeconds = 0;
+	let questionIndex = startIndex;
+
+	if (phase === "practice" && durationMinutes === 3) {
+		const validationBlueprints = [
+			{ angle: "apply" as const, kind: "written" as const },
+		];
+		for (const [validationIndex, blueprint] of validationBlueprints.entries()) {
+			const topic = topics[(startIndex + validationIndex) % topics.length];
+			if (!topic)
+				throw new Error("A learning content plan needs at least one topic.");
+			const cycle = Math.floor(
+				(startIndex + validationIndex) /
+					Math.max(topics.length * questionAngles.length, 1),
+			);
+			const coverageKey = `${topic.id}:${blueprint.angle}:validation:${cycle}`;
+			if (excludedCoverageKeys.has(coverageKey)) continue;
+			excludedCoverageKeys.add(coverageKey);
+			questions.push({
+				coverageKey,
+				topic,
+				angle: blueprint.angle,
+				kind: blueprint.kind,
+				estimatedSeconds: durationMinutes * 60,
+			});
+		}
+		return {
+			questions,
+			nextIndex: startIndex + validationBlueprints.length,
+		};
+	}
+
+	while (plannedSeconds < targetSeconds) {
+		const remainingSeconds = targetSeconds - plannedSeconds;
+		if (phase !== "theory" && questions.length > 0 && remainingSeconds < 120) {
+			const lastQuestion = questions.at(-1);
+			if (lastQuestion) lastQuestion.estimatedSeconds += remainingSeconds;
+			plannedSeconds = targetSeconds;
+			break;
+		}
+		const globalIndex = questionIndex;
+		questionIndex += 1;
+		const topicIndex =
+			phase === "theory"
+				? Math.floor(globalIndex / theoryPageAngles.length)
+				: globalIndex;
+		const topic = topics[topicIndex % topics.length];
+		if (!topic)
+			throw new Error("A learning content plan needs at least one topic.");
+		const angle =
+			phase === "theory"
+				? (theoryPageAngles[globalIndex % theoryPageAngles.length] ?? "recall")
+				: (questionAngles[
+						Math.floor(globalIndex / topics.length) % questionAngles.length
+					] ?? "apply");
+		const cycleLength =
+			phase === "theory"
+				? topics.length * theoryPageAngles.length
+				: topics.length * questionAngles.length;
+		const cycle = Math.floor(globalIndex / Math.max(cycleLength, 1));
+		const kind = questionKindFor(phase, globalIndex);
+		const estimatedSeconds = Math.min(
+			estimatedSecondsForKind[kind],
+			targetSeconds - plannedSeconds,
+		);
+
+		const coverageKey = `${topic.id}:${angle}:${cycle}`;
+		if (excludedCoverageKeys.has(coverageKey)) continue;
+		excludedCoverageKeys.add(coverageKey);
+		questions.push({
+			coverageKey,
+			topic,
+			angle,
+			kind,
+			estimatedSeconds,
+		});
+		plannedSeconds += estimatedSeconds;
+	}
+
+	return { questions, nextIndex: questionIndex };
+};
+
+export const createLearningContentPlan = ({
+	segments,
+	topics,
+	excludedCoverageKeys = [],
+	blockIndexOffset = 0,
+	questionIndexOffset = 0,
+	maxBlockMinutes = MAX_BLOCK_MINUTES,
+}: {
+	segments: Array<{
+		phase: LearningContentPhase;
+		durationMinutes: number;
+	}>;
+	topics: LearningTopic[];
+	excludedCoverageKeys?: string[];
+	blockIndexOffset?: number;
+	questionIndexOffset?: number;
+	maxBlockMinutes?: number;
+}) => {
+	const orderedTopics = topics
+		.filter((topic) => topic.id.trim() && topic.title.trim())
+		.slice()
+		.sort(
+			(left, right) =>
+				priorityRank[left.priority] - priorityRank[right.priority] ||
+				left.title.localeCompare(right.title, "de"),
+		);
+	if (orderedTopics.length === 0) {
+		throw new Error("A learning content plan needs at least one topic.");
+	}
+
+	const blocks: LearningContentBlock[] = [];
+	let questionOffset = questionIndexOffset;
+	const excludedKeys = new Set(excludedCoverageKeys);
+	for (const segment of segments) {
+		for (const durationMinutes of splitIntoBlockDurations(
+			segment.durationMinutes,
+			maxBlockMinutes,
+		)) {
+			const result = createQuestions({
+				phase: segment.phase,
+				durationMinutes,
+				topics: orderedTopics,
+				startIndex: questionOffset,
+				excludedCoverageKeys: excludedKeys,
+			});
+			blocks.push({
+				index: blockIndexOffset + blocks.length,
+				phase: segment.phase,
+				durationMinutes,
+				questions: result.questions,
+			});
+			questionOffset = result.nextIndex;
+		}
+	}
+
+	return { blocks };
+};

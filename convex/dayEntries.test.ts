@@ -12,6 +12,33 @@ const user = {
 	tokenIdentifier: "test:user",
 };
 
+test("stores required exam topics without creating a learning plan", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const examDayEntryId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-08-12",
+		title: "Mathematik Klausur",
+		subject: "Mathematik",
+		kind: "Leistungskontrolle",
+		examTypeLabel: "Klausur",
+		plannedDateLabel: "12. August 2026",
+		durationMinutes: 90,
+	});
+
+	await t.mutation(api.dayEntries.updateExamTopics, {
+		id: examDayEntryId,
+		topicDescription: "Lineare Funktionen, Steigung und Achsenabschnitt",
+	});
+
+	await expect(
+		t.query(api.dayEntries.get, { id: examDayEntryId }),
+	).resolves.toMatchObject({
+		topicDescription: "Lineare Funktionen, Steigung und Achsenabschnitt",
+	});
+	expect(await t.run((ctx) => ctx.db.query("learningPlans").take(1))).toEqual(
+		[],
+	);
+});
+
 test("manual timed entry overlapping an existing entry is rejected with conflict details", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 
@@ -69,7 +96,56 @@ test("manual timed entry conflicts are marked as user-facing backend errors", as
 	});
 });
 
-test("manual timed entry conflicts with Berlin-midnight ISO day keys", async () => {
+test("multiple exams on one day ignore supplied times and are stored untimed", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-07-16",
+		title: "Englisch Hausaufgabe",
+		time: "16:00",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "Donnerstag, 16. Juli",
+		durationMinutes: 30,
+	});
+
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-07-16",
+		title: "Englisch Klassenarbeit",
+		subject: "Englisch",
+		time: "16:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "Donnerstag, 16. Juli",
+		durationMinutes: 30,
+		examTypeLabel: "Klassenarbeit",
+	});
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-07-16",
+		title: "Geschichte Test",
+		time: "16:00",
+		kind: "Leistungskontrolle",
+		plannedDateLabel: "Donnerstag, 16. Juli",
+		durationMinutes: 30,
+		examTypeLabel: "Test",
+	});
+
+	const entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-07-16"],
+	});
+	const exams = entries["2026-07-16"]?.filter(
+		(entry) => entry.kind === "Leistungskontrolle",
+	);
+
+	expect(exams).toHaveLength(2);
+	expect(exams?.every((entry) => entry.time === undefined)).toBe(true);
+	expect(
+		exams?.find((entry) => entry.title === "Englisch Klassenarbeit"),
+	).toMatchObject({
+		dayKey: "2026-07-16",
+		subject: "Englisch",
+	});
+});
+
+test("untimed exams with Berlin-midnight ISO day keys do not block homework", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 
 	await t.mutation(api.dayEntries.create, {
@@ -90,9 +166,15 @@ test("manual timed entry conflicts with Berlin-midnight ISO day keys", async () 
 			plannedDateLabel: "31. Mai 2026",
 			durationMinutes: 30,
 		}),
-	).rejects.toThrow(
-		'Dieser Zeitraum überschneidet sich mit "Englisch Kurzkontrolle" am 31. Mai 2026 von 16:00 bis 16:30.',
+	).resolves.toBeTruthy();
+
+	const entries = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-05-31"],
+	});
+	const exam = entries["2026-05-31"]?.find(
+		(entry) => entry.kind === "Leistungskontrolle",
 	);
+	expect(exam?.time).toBeUndefined();
 });
 
 test("manual timed entry adjacent to an existing entry is allowed", async () => {
@@ -258,4 +340,22 @@ test("manual entries can be marked completed and uncompleted", async () => {
 		dayKeys: ["2026-06-16"],
 	});
 	expect(entries["2026-06-16"]?.[0]?.completed).toBe(false);
+});
+
+test("legacy exam subject metadata remains schema-compatible", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	const entryId = await t.run(async (ctx) =>
+		ctx.db.insert("dayEntries", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			dayKey: "2026-08-07",
+			title: "Englisch Klassenarbeit",
+			subject: "Englisch",
+			kind: "Leistungskontrolle",
+		}),
+	);
+
+	await expect(
+		t.run(async (ctx) => ctx.db.get("dayEntries", entryId)),
+	).resolves.toMatchObject({ subject: "Englisch" });
 });

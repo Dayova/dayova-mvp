@@ -5,6 +5,12 @@ Issues, specs, and tickets for this repo live in Linear.
 - Workspace: `<workspace>`
 - Team: `<team name>`
 - Team key: `<KEY>`
+- Backlog status: `<exact name>`
+- Unstarted status: `<exact name>`
+- Started status: `<exact name>`
+- Review status: `<exact name>`
+- Completed status: `<exact name>`
+- Canceled status: `<exact name>`
 - External PRs as a request surface: `no`
 - GitHub Issues compatibility sync: `<none or owner/repo and sync direction>`
 
@@ -17,7 +23,7 @@ Use a semantic Linear connector such as the Linear plugin or hosted MCP. If both
 - Preserve existing labels when applying mapped category or disposition roles; some connector update operations replace the complete label set.
 - Use Linear parent/sub-issue and blocking relationships, not prose alone. Keep human-readable `Parent` and `Blocked by` sections when a publishing skill requires them.
 - Post triage comments with the disclaimer required by the `triage` skill.
-- Use the team's backlog/unstarted/started/completed/canceled statuses consistently and record their exact names here.
+- Use the team's backlog/unstarted/started/review/completed/canceled statuses consistently and record their exact names here.
 
 Do not infer GitHub as canonical merely because `git remote` points there. A configured GitHub sync is a compatibility surface, not a second source of truth. After a fallback write, verify the synced Linear issue before reporting success; never create the same item independently in both systems.
 

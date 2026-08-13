@@ -2,6 +2,10 @@
 
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
+import {
+	buildLocalNotificationPlan,
+	buildLocalNotificationRegistrationInput,
+} from "../src/lib/notification-planner";
 import { api } from "./_generated/api";
 import schema from "./schema";
 
@@ -10,6 +14,47 @@ const modules = import.meta.glob("./**/*.ts");
 const user = {
 	tokenIdentifier: "test:user",
 };
+
+test("local notification registration accepts plans containing timetable lessons", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const timetableId = await t.mutation(api.timetables.createDraft, {});
+	await t.mutation(api.timetables.saveAndActivate, {
+		timetableId,
+		lessons: [
+			{
+				dayOfWeek: 1,
+				subject: "Mathematik",
+				startTime: "08:00",
+				endTime: "08:45",
+			},
+		],
+	});
+	const entriesByDay = await t.query(api.dayEntries.listByDayKeys, {
+		dayKeys: ["2026-07-27"],
+	});
+	const plan = buildLocalNotificationPlan({
+		now: new Date(2026, 6, 27, 7, 0),
+		preferences: {
+			systemNotificationsEnabled: true,
+			dailyBriefingEnabled: true,
+			dailyBriefingTime: "07:30",
+			beforeExamEnabled: true,
+			beforeLearningTimeEnabled: true,
+			beforeHomeworkWorkEnabled: true,
+			beforeHomeworkDueEnabled: true,
+			reminderOffsetMinutes: 15,
+			forgottenEventEnabled: true,
+		},
+		entriesByDay,
+	});
+
+	await expect(
+		t.mutation(
+			api.notifications.registerLocalNotificationPlan,
+			buildLocalNotificationRegistrationInput(plan),
+		),
+	).resolves.toHaveLength(1);
+});
 
 test("notification preferences default to the MVP reminder settings", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
@@ -50,6 +95,39 @@ test("notification preferences persist per user", async () => {
 		reminderOffsetMinutes: 30,
 		forgottenEventEnabled: true,
 	});
+});
+
+test("system delivery can be disabled without disabling the in-app inbox", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	await t.mutation(api.notifications.updatePreferences, {
+		systemNotificationsEnabled: false,
+	});
+	await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-06-16",
+		title: "Mathe Hausaufgabe",
+		time: "16:00",
+		kind: "Hausaufgabe",
+		plannedDateLabel: "16. Juni 2026",
+		durationMinutes: 45,
+	});
+
+	await expect(
+		t.mutation(api.notifications.syncDueNotifications, {
+			now: "2026-06-16T15:45:00.000Z",
+			localDayKey: "2026-06-16",
+			localMinutes: 15 * 60 + 45,
+		}),
+	).resolves.toEqual({ created: 1 });
+	await expect(
+		t.query(api.notifications.listInbox, { category: "all" }),
+	).resolves.toMatchObject([
+		{
+			category: "task",
+			type: "beforeEvent",
+			title: "Hausaufgabe",
+		},
+	]);
 });
 
 test("due entry reminders create one unread in-app notification", async () => {
@@ -443,7 +521,7 @@ test("daily briefing summarizes today's entries at the configured time", async (
 			category: "message",
 			type: "dailyBriefing",
 			title: "Tagesüberblick",
-			body: "Heute stehen 2 Einträge an: Englisch Test um 10:00, Mathe Hausaufgabe um 16:00.",
+			body: "Heute stehen 2 Einträge an: Mathe Hausaufgabe um 16:00, Englisch Test.",
 		},
 	]);
 });

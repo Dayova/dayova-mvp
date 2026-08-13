@@ -20,6 +20,6 @@
   <path d="M219 179v-13M214 171l5-5 5 5" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
   <rect x="120" y="203" width="107" height="30" rx="15" fill="url(#uploadBlue)"/>
   <text x="173.5" y="223" text-anchor="middle" fill="white" font-size="12" font-family="Poppins" font-weight="700">Hochladen</text>
-  <text x="172.5" y="270" text-anchor="middle" fill="#697586" font-size="12" font-family="Poppins">oder Scanne deine Mitschriften</text>
+  <text x="172.5" y="270" text-anchor="middle" fill="#697586" font-size="12" font-family="Poppins">oder scanne deine Mitschriften</text>
 </g>
 </svg>

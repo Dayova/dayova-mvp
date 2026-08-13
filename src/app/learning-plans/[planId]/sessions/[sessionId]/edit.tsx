@@ -1,19 +1,16 @@
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
-import { ActivityIndicator, Platform, ScrollView, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
-import { ActionModal } from "~/components/ui/action-modal";
-import { Button } from "~/components/ui/button";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
+import { ErrorMessage } from "~/components/ui/error-message";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
-import { X } from "~/components/ui/icon";
-import { useContentSizeLayout } from "~/components/ui/portrait-content";
-import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuth } from "~/context/AuthContext";
+import { useAuthSession } from "~/context/AuthContext";
 import { SessionEditForm } from "~/features/learning-plans/learning-plan-ui";
 import type {
 	LearningPlanSnapshot,
@@ -32,7 +29,7 @@ import {
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
-import { cn } from "~/lib/utils";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 
 const reviewPath = (id: Id<"learningPlans">) =>
 	`/learning-plans/${id}/review` as const;
@@ -45,9 +42,10 @@ function LoadedSessionEditScreen({
 	session: PlanSession;
 }) {
 	const router = useRouter();
-	const { horizontalPadding, shouldStackInlineContent } =
-		useContentSizeLayout();
 	const updateSession = useMutation(api.learningPlans.updateSession);
+	const regenerateSessionContent = useAction(
+		api.learningPlanAi.ensureSessionContent,
+	);
 	const removeSession = useMutation(api.learningPlans.removeSession);
 
 	const [isBusy, setIsBusy] = useState(false);
@@ -62,6 +60,7 @@ function LoadedSessionEditScreen({
 		),
 	);
 	const [editPhase, setEditPhase] = useState<SessionPhase>(session.phase);
+	const actionGateRef = useRef(createAsyncActionGate());
 
 	const closeScreen = useCallback(() => {
 		if (pickerTarget) {
@@ -85,15 +84,17 @@ function LoadedSessionEditScreen({
 		fallback: string,
 		task: () => Promise<void>,
 	) => {
-		setIsBusy(true);
-		setErrorMessage(null);
-		try {
-			await task();
-		} catch (error) {
-			setErrorMessage(getErrorMessage(error, fallback));
-		} finally {
-			setIsBusy(false);
-		}
+		await actionGateRef.current.run(async () => {
+			setIsBusy(true);
+			setErrorMessage(null);
+			try {
+				await task();
+			} catch (error) {
+				setErrorMessage(getErrorMessage(error, fallback));
+			} finally {
+				setIsBusy(false);
+			}
+		});
 	};
 
 	const saveEdit = async () => {
@@ -109,7 +110,7 @@ function LoadedSessionEditScreen({
 						? endMinutes - startMinutes
 						: session.durationMinutes;
 
-				await updateSession({
+				const result = await updateSession({
 					id: session.id,
 					phase: editPhase,
 					dateKey: getDateKey(editDate),
@@ -117,6 +118,9 @@ function LoadedSessionEditScreen({
 					startTime: editStart,
 					durationMinutes: duration,
 				});
+				if (result.contentInvalidated) {
+					await regenerateSessionContent({ sessionId: session.id });
+				}
 				router.replace(reviewPath(planId));
 			},
 		);
@@ -138,7 +142,6 @@ function LoadedSessionEditScreen({
 		event: DateTimePickerEvent,
 		selectedDate?: Date,
 	) => {
-		if (Platform.OS === "android") setPickerTarget(null);
 		if (event.type === "dismissed" || !selectedDate || !pickerTarget) return;
 
 		if (pickerTarget === "editDate")
@@ -176,13 +179,10 @@ function LoadedSessionEditScreen({
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
-					alignSelf: "center",
 					flexGrow: 1,
-					maxWidth: 480,
-					paddingHorizontal: horizontalPadding,
+					paddingHorizontal: 32,
 					paddingTop: 80,
 					paddingBottom: 60,
-					width: "100%",
 				}}
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
@@ -199,58 +199,31 @@ function LoadedSessionEditScreen({
 					onChangeStart={() => setPickerTarget("editStart")}
 					onChangeEnd={() => setPickerTarget("editEnd")}
 					onChangePhase={setEditPhase}
-					onRemove={() => setIsDeleteVisible(true)}
+					onRemove={() => {
+						setErrorMessage(null);
+						setIsDeleteVisible(true);
+					}}
 					onSave={saveEdit}
 				/>
 				{errorMessage ? (
-					<Text className="mt-4 font-poppins text-body-4 text-destructive">
-						{errorMessage}
-					</Text>
+					<ErrorMessage className="mt-4">{errorMessage}</ErrorMessage>
 				) : null}
 			</ScrollView>
 
-			<ActionModal
+			<ConfirmationSheet
 				visible={isDeleteVisible}
-				dismissible
-				onClose={() => setIsDeleteVisible(false)}
-				accessibilityLabel="Entfernen-Dialog schließen"
+				onClose={() => {
+					setErrorMessage(null);
+					setIsDeleteVisible(false);
+				}}
+				closeAccessibilityLabel="Entfernen-Dialog schließen"
 				title="Bist du dir sicher?"
 				description="Tippe auf Entfernen, wenn du diesen Lerntag wirklich löschen möchtest."
-				icon={<X size={48} color="#FF5147" strokeWidth={1.8} />}
-				iconContainerClassName="bg-red-100"
-			>
-				<View
-					className={cn("mt-6 gap-3", !shouldStackInlineContent && "flex-row")}
-				>
-					<Button
-						variant="neutral"
-						className={
-							shouldStackInlineContent
-								? "w-full shadow-none"
-								: "flex-1 shadow-none"
-						}
-						onPress={() => setIsDeleteVisible(false)}
-					>
-						<Text>Abbrechen</Text>
-					</Button>
-					<Button
-						accessibilityLabel={
-							isBusy ? "Entfernen, wird geladen" : "Entfernen"
-						}
-						accessibilityLiveRegion={isBusy ? "polite" : undefined}
-						accessibilityState={{ busy: isBusy, disabled: isBusy }}
-						className={shouldStackInlineContent ? "w-full" : "flex-1"}
-						onPress={confirmDelete}
-						disabled={isBusy}
-					>
-						{isBusy ? (
-							<ActivityIndicator color="#FFFFFF" />
-						) : (
-							<Text>Entfernen</Text>
-						)}
-					</Button>
-				</View>
-			</ActionModal>
+				confirmLabel="Entfernen"
+				isBusy={isBusy}
+				errorMessage={isDeleteVisible ? errorMessage : null}
+				onConfirm={confirmDelete}
+			/>
 
 			{renderPicker()}
 		</View>
@@ -259,14 +232,13 @@ function LoadedSessionEditScreen({
 
 export default function LearningPlanSessionEditScreen() {
 	const router = useRouter();
-	const { horizontalPadding } = useContentSizeLayout();
 	const params = useLocalSearchParams<{
 		planId?: string;
 		sessionId?: string;
 	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const sessionId = params.sessionId as Id<"learningPlanSessions"> | undefined;
-	const { user } = useAuth();
+	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 
 	const snapshot = (useQuery(
@@ -306,13 +278,10 @@ export default function LearningPlanSessionEditScreen() {
 			<ScrollView
 				className="flex-1"
 				contentContainerStyle={{
-					alignSelf: "center",
 					flexGrow: 1,
-					maxWidth: 480,
-					paddingHorizontal: horizontalPadding,
+					paddingHorizontal: 32,
 					paddingTop: 80,
 					paddingBottom: 60,
-					width: "100%",
 				}}
 				showsVerticalScrollIndicator={false}
 			>

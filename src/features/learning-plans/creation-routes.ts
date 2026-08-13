@@ -1,0 +1,78 @@
+import type { Id } from "#convex/_generated/dataModel";
+import { ROUTES } from "~/lib/routes";
+
+const buildRouteQuery = (entries: Array<[string, string | undefined]>) =>
+	entries
+		.filter(([, value]) => value !== undefined)
+		.map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
+		.join("&");
+
+export const examEntrySuccessPath = ({
+	dayKey,
+	examDateLabel,
+}: {
+	dayKey: string;
+	examDateLabel: string;
+}) => {
+	const query = buildRouteQuery([
+		["type", "exam"],
+		["dayKey", dayKey],
+		["examDateLabel", examDateLabel],
+	]);
+
+	return `/entry/success?${query}` as const;
+};
+
+export const learningPlanStepPath = (id: Id<"learningPlans">, step: string) =>
+	`/learning-plans/${id}/${step}` as const;
+
+export const learningPlanResumePath = (
+	id: Id<"learningPlans">,
+	status: "draft" | "questionsReady" | "generated" | "accepted",
+	diagnosticPlacement?: "firstSession",
+) => {
+	if (status === "draft") {
+		return `${ROUTES.createLearningPlan}?learningPlanId=${encodeURIComponent(id)}&step=material` as const;
+	}
+	if (status === "questionsReady") {
+		return learningPlanStepPath(id, "analysis");
+	}
+	if (status === "generated") {
+		return learningPlanStepPath(
+			id,
+			diagnosticPlacement === "firstSession" ? "review" : "analysis",
+		);
+	}
+
+	return `/learning-plans/${id}` as const;
+};
+
+export const learningPlanTopicsPath = (
+	id: Id<"learningPlans">,
+	params: {
+		topicDescription?: string;
+		errorMessage?: string;
+	} = {},
+) => {
+	const query = buildRouteQuery([
+		["learningPlanId", id],
+		["step", "topic"],
+		["topicDescription", params.topicDescription],
+		["errorMessage", params.errorMessage],
+	]);
+
+	return `${ROUTES.createLearningPlan}?${query}` as const;
+};
+
+export const learningPlanMaterialPath = (
+	id: Id<"learningPlans">,
+	params: { errorMessage?: string } = {},
+) => {
+	const query = buildRouteQuery([
+		["learningPlanId", id],
+		["step", "material"],
+		["errorMessage", params.errorMessage],
+	]);
+
+	return `${ROUTES.createLearningPlan}?${query}` as const;
+};

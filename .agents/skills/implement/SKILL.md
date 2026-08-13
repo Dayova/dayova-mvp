@@ -11,4 +11,4 @@ Run typechecking regularly, single test files regularly, and the full test suite
 
 Once done, use /code-review to review the work.
 
-Commit only when the user requested a commit or the issue workflow explicitly requires one. Otherwise leave the completed changes in the worktree and report the files changed plus the validation run.
+Follow the repository's delivery policy. For explicitly mutating Dayova repository work, validate and review the result, then commit only the coherent in-scope changes. Publish only to a branch that already represents the current work item or pull request, or a new branch intentionally created for this work from the correct integration base. Preserve an existing pull request and stack. Never treat “non-default” alone as authorization to push, push the default branch, or stage unrelated changes. If safe delivery is blocked, report the blocker instead of silently leaving completed work unpublished.

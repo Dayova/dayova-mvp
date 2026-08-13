@@ -1,0 +1,71 @@
+diff --git a/android/src/main/java/com/reactnativekeyboardcontroller/listeners/FocusedInputObserver.kt b/android/src/main/java/com/reactnativekeyboardcontroller/listeners/FocusedInputObserver.kt
+index 4de762dae05587ab8e6562fd583e8ec35d8aafda..02494863733af4f42c6a843672ad6bbea1b5bb51 100644
+--- a/android/src/main/java/com/reactnativekeyboardcontroller/listeners/FocusedInputObserver.kt
++++ b/android/src/main/java/com/reactnativekeyboardcontroller/listeners/FocusedInputObserver.kt
+@@ -7,7 +7,6 @@ import android.view.ViewTreeObserver.OnGlobalFocusChangeListener
+ import android.widget.EditText
+ import com.facebook.react.bridge.Arguments
+ import com.facebook.react.uimanager.ThemedReactContext
+-import com.facebook.react.uimanager.UIManagerHelper
+ import com.facebook.react.views.view.ReactViewGroup
+ import com.reactnativekeyboardcontroller.events.FocusedInputLayoutChangedEvent
+ import com.reactnativekeyboardcontroller.events.FocusedInputLayoutChangedEventData
+@@ -41,10 +40,8 @@ class FocusedInputObserver(
+   val view: View,
+   private val eventPropagationView: ReactViewGroup,
+   private val context: ThemedReactContext?,
++  private val surfaceId: Int,
+ ) {
+-  // constructor variables
+-  private val surfaceId = UIManagerHelper.getSurfaceId(view)
+-
+   // state variables
+   private var lastFocusedInput: EditText? = null
+   private var lastEventDispatched: FocusedInputLayoutChangedEventData = noFocusedInputEvent
+diff --git a/android/src/main/java/com/reactnativekeyboardcontroller/listeners/KeyboardAnimationCallback.kt b/android/src/main/java/com/reactnativekeyboardcontroller/listeners/KeyboardAnimationCallback.kt
+index ef37c24dbd82b8cf70bf09fe349a6f15f0408296..0a3bd8b929dcc0585c67e77d93752d48069484a6 100644
+--- a/android/src/main/java/com/reactnativekeyboardcontroller/listeners/KeyboardAnimationCallback.kt
++++ b/android/src/main/java/com/reactnativekeyboardcontroller/listeners/KeyboardAnimationCallback.kt
+@@ -58,11 +58,10 @@ class KeyboardAnimationCallback(
+   val view: View,
+   val context: ThemedReactContext?,
+   private val config: KeyboardAnimationCallbackConfig,
++  private val surfaceId: Int = UIManagerHelper.getSurfaceId(eventPropagationView),
+ ) : WindowInsetsAnimationCompat.Callback(config.dispatchMode),
+   OnApplyWindowInsetsListener,
+   Suspendable {
+-  private val surfaceId = UIManagerHelper.getSurfaceId(eventPropagationView)
+-
+   // state variables
+   private var persistentKeyboardHeight = 0.0
+   private var prevKeyboardHeight = 0.0
+@@ -126,7 +125,13 @@ class KeyboardAnimationCallback(
+         " same WindowInsetsCompat.Type values"
+     }
+ 
+-    layoutObserver = FocusedInputObserver(view = view, eventPropagationView = eventPropagationView, context = context)
++    layoutObserver =
++      FocusedInputObserver(
++        view = view,
++        eventPropagationView = eventPropagationView,
++        context = context,
++        surfaceId = surfaceId,
++      )
+     view.viewTreeObserver.addOnGlobalFocusChangeListener(focusListener)
+   }
+ 
+diff --git a/android/src/main/java/com/reactnativekeyboardcontroller/modal/ModalAttachedWatcher.kt b/android/src/main/java/com/reactnativekeyboardcontroller/modal/ModalAttachedWatcher.kt
+index a00689bbf20c95fb690b5f7d061881fbd0fbc056..de0b4e53a5b4184b3b55a104ef67e8d74d0ae3d9 100644
+--- a/android/src/main/java/com/reactnativekeyboardcontroller/modal/ModalAttachedWatcher.kt
++++ b/android/src/main/java/com/reactnativekeyboardcontroller/modal/ModalAttachedWatcher.kt
+@@ -60,6 +60,10 @@ class ModalAttachedWatcher(
+           eventPropagationView = view,
+           context = reactContext,
+           config = config,
++          // The dialog decor view is not Fabric-managed. Reuse the surface that
++          // emitted the modal show event instead of trying to infer it from the
++          // modal window hierarchy.
++          surfaceId = event.surfaceId,
+         )
+ 
+       rootView.addView(eventView)

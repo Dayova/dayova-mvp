@@ -1,0 +1,13 @@
+diff --git a/settings.gradle.kts b/settings.gradle.kts
+index 14f1e9c2063ef10ca3f2ecbb2336b8a4aacfcc9c..74834849f556d5ce1f94e7154b5fd38161ac255a 100644
+--- a/settings.gradle.kts
++++ b/settings.gradle.kts
+@@ -13,8 +13,6 @@ pluginManagement {
+   }
+ }
+ 
+-plugins { id("org.gradle.toolchains.foojay-resolver-convention").version("1.0.0") }
+-
+ include(
+     ":react-native-gradle-plugin",
+     ":settings-plugin",

@@ -1,4 +1,9 @@
-import { isClerkAPIResponseError, useClerk, useUser } from "@clerk/expo";
+import {
+	isClerkAPIResponseError,
+	useClerk,
+	useSignIn,
+	useUser,
+} from "@clerk/expo";
 import { useConvexAuth, useMutation } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import type React from "react";
@@ -8,32 +13,57 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import { api } from "#convex/_generated/api";
 import { useOnboarding } from "~/context/OnboardingContext";
 import {
-	captureValidationEvent,
-	definedAnalyticsProperties,
+	createValidationAnalytics,
 	isPostHogConfigured,
-} from "~/lib/analytics-core";
+} from "~/lib/analytics";
+import { runWithAuthSettleRetries } from "~/lib/auth-settle-retry";
+import {
+	getDefinedProfileFields as definedProfileFields,
+	prepareClerkRegistration,
+	type ClerkRegistrationInput as RegisterInput,
+	type ClerkProfile as RegisterProfile,
+	splitClerkName as splitName,
+} from "~/lib/clerk-registration";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import {
+	type ForcedPasswordResetUser,
+	completeForcedPasswordReset as submitForcedPasswordReset,
+} from "~/lib/forced-password-reset";
+import { isSupportedGrade } from "~/lib/grades";
+import { signOutAndResetState } from "~/lib/logout-state";
+import {
+	type PasswordChangeInput,
+	changePassword as updateAccountPassword,
+} from "~/lib/password-change";
+import {
+	startPasswordReset as beginPasswordReset,
+	cancelPasswordReset as cancelPasswordResetAttempt,
+	type PasswordResetCodeStage,
+	resendPasswordResetCode as resendPasswordResetAttempt,
+	completePasswordReset as submitPasswordReset,
+	verifyPasswordResetCode as verifyPasswordResetAttempt,
+	verifyPasswordResetSecondFactor as verifyPasswordResetSecondFactorAttempt,
+} from "~/lib/password-reset";
+import {
+	type PasswordReverificationSession,
+	reverifyPasswordFactor,
+} from "~/lib/password-reverification";
+import {
+	isSupportedSchoolType,
+	normalizeLegacySchoolType,
+	type SupportedSchoolType,
+} from "~/lib/school-types";
 
 type LoginInput = {
 	email: string;
 	password: string;
-};
-
-type RegisterInput = {
-	email: string;
-	password: string;
-	name?: string;
-	phone?: string;
-	birthDate?: string;
-	grade?: string;
-	schoolType?: string;
-	state?: string;
 };
 
 type UpdateProfileInput = {
@@ -41,7 +71,7 @@ type UpdateProfileInput = {
 	name: string;
 	birthDate: string;
 	grade: string;
-	schoolType: string;
+	schoolType?: SupportedSchoolType;
 	state: string;
 };
 
@@ -52,7 +82,7 @@ type AuthUser = {
 	phone?: string;
 	birthDate?: string;
 	grade?: string;
-	schoolType?: string;
+	schoolType?: SupportedSchoolType;
 	state?: string;
 	avatarUrl?: string;
 	validationStudentCode?: string;
@@ -73,30 +103,40 @@ type PendingVerification = {
 
 type PendingLoginStage = "first_factor" | "second_factor";
 
-interface AuthContextType {
+interface AuthSessionContextType {
 	user: AuthUser | null;
-	isLoading: boolean;
 	isSessionLoading: boolean;
 	isConvexAuthenticated: boolean;
+	isConvexUserSynced: boolean;
 	isPostAuthSyncing: boolean;
+	pendingSessionTask: string | null;
+}
+
+interface AuthFlowContextType {
+	isLoading: boolean;
 	pendingVerification: PendingVerification | null;
 	login: (input: LoginInput) => Promise<AuthFlowResult>;
 	register: (input: RegisterInput) => Promise<AuthFlowResult>;
-	updateProfile: (input: UpdateProfileInput) => Promise<ProfileUpdateResult>;
-	verifyProfileEmailCode: (code: string) => Promise<void>;
 	verifyEmailCode: (code: string) => Promise<AuthFlowResult>;
 	resendVerification: () => Promise<void>;
-	logout: () => Promise<void>;
+	startPasswordReset: (email: string) => Promise<void>;
+	verifyPasswordResetCode: (code: string) => Promise<void>;
+	completePasswordReset: (
+		password: string,
+	) => Promise<{ status: "complete" | "needs_second_factor" }>;
+	verifyPasswordResetSecondFactor: (code: string) => Promise<void>;
+	resendPasswordResetCode: (stage: PasswordResetCodeStage) => Promise<void>;
+	cancelPasswordReset: () => Promise<void>;
 }
 
-type RegisterProfile = {
-	name?: string;
-	phone?: string;
-	birthDate?: string;
-	grade?: string;
-	schoolType?: string;
-	state?: string;
-};
+interface AccountActionsContextType {
+	isLoading: boolean;
+	updateProfile: (input: UpdateProfileInput) => Promise<ProfileUpdateResult>;
+	verifyProfileEmailCode: (code: string) => Promise<void>;
+	changePassword: (input: PasswordChangeInput) => Promise<void>;
+	completeForcedPasswordReset: (password: string) => Promise<void>;
+	logout: () => Promise<void>;
+}
 
 type PendingProfileEmail = {
 	email: string;
@@ -107,18 +147,28 @@ type PendingProfileEmail = {
 	profile: UpdateProfileInput;
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthSessionContext = createContext<AuthSessionContextType | undefined>(
+	undefined,
+);
+const AuthFlowContext = createContext<AuthFlowContextType | undefined>(
+	undefined,
+);
+const AccountActionsContext = createContext<
+	AccountActionsContextType | undefined
+>(undefined);
 
 const getMetadataString = (metadata: Record<string, unknown>, key: string) =>
 	typeof metadata[key] === "string" ? metadata[key] : undefined;
 
-const splitName = (name?: string) => {
-	const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
-	const [firstName, ...rest] = parts;
-	return {
-		firstName,
-		lastName: rest.length > 0 ? rest.join(" ") : undefined,
-	};
+const normalizeOptionalSchoolTypeInput = (
+	value: unknown,
+): SupportedSchoolType | undefined => {
+	if (typeof value !== "string" || value.trim().length === 0) return undefined;
+	const normalizedValue = value.trim();
+	if (!isSupportedSchoolType(normalizedValue)) {
+		throw new Error("Bitte wähle eine gültige Schulart aus.");
+	}
+	return normalizedValue;
 };
 
 const getGermanClerkErrorByCode = (code?: string) => {
@@ -254,16 +304,19 @@ const getClerkErrorMessage = (error: unknown, fallback: string) => {
 		: fallback;
 };
 
-const definedProfileFields = (profile: RegisterProfile) => ({
-	...(profile.name !== undefined ? { name: profile.name } : {}),
-	...(profile.phone !== undefined ? { phone: profile.phone } : {}),
-	...(profile.birthDate !== undefined ? { birthDate: profile.birthDate } : {}),
-	...(profile.grade !== undefined ? { grade: profile.grade } : {}),
-	...(profile.schoolType !== undefined
-		? { schoolType: profile.schoolType }
-		: {}),
-	...(profile.state !== undefined ? { state: profile.state } : {}),
-});
+const getPasswordChangeErrorMessage = (error: unknown) => {
+	if (
+		isClerkAPIResponseError(error) &&
+		error.errors.some(({ code }) => code === "form_password_incorrect")
+	) {
+		return "Das aktuelle Passwort ist falsch.";
+	}
+
+	return getClerkErrorMessage(
+		error,
+		"Das Passwort konnte nicht geändert werden. Bitte versuche es erneut.",
+	);
+};
 
 const findEmailAddressId = (factors: unknown) => {
 	if (!Array.isArray(factors)) return null;
@@ -321,35 +374,11 @@ const getAuthFactorList = (factors: unknown) => {
 		: "keine unterstützte Methode";
 };
 
-const wait = (milliseconds: number) =>
-	new Promise((resolve) => setTimeout(resolve, milliseconds));
-const authSettleRetryDelays = [0, 750, 1250, 2000] as const;
-const runWithAuthSettleRetries = async <TResult,>(
-	task: () => Promise<TResult>,
-): Promise<
-	| { ok: true; value: TResult }
-	| { ok: false; firstError: unknown; lastError: unknown }
-> => {
-	let firstError: unknown;
-	let lastError: unknown;
-
-	for (const delay of authSettleRetryDelays) {
-		try {
-			if (delay > 0) await wait(delay);
-			return { ok: true, value: await task() };
-		} catch (error) {
-			firstError ??= error;
-			lastError = error;
-		}
-	}
-
-	return { ok: false, firstError, lastError };
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	children,
 }) => {
 	const clerk = useClerk();
+	const { signIn: passwordResetSignIn } = useSignIn();
 	const posthog = usePostHog();
 	const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -365,6 +394,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		hasAnswers,
 	} = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const passwordResetHasRemoteAttemptRef = useRef(false);
 	const [pendingVerification, setPendingVerification] =
 		useState<PendingVerification | null>(null);
 	const [pendingLoginStage, setPendingLoginStage] =
@@ -392,6 +422,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			clerkName.trim().length > 0
 				? clerkName
 				: getMetadataString(unsafeMetadata, "name");
+		const schoolType = normalizeLegacySchoolType(
+			getMetadataString(unsafeMetadata, "schoolType"),
+		);
 
 		return {
 			clerkId: clerkUser.id,
@@ -402,7 +435,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				clerkUser.primaryPhoneNumber?.phoneNumber,
 			birthDate: getMetadataString(unsafeMetadata, "birthDate"),
 			grade: getMetadataString(unsafeMetadata, "grade"),
-			schoolType: getMetadataString(unsafeMetadata, "schoolType"),
+			schoolType,
 			state: getMetadataString(unsafeMetadata, "state"),
 			avatarUrl: clerkUser.imageUrl,
 			validationStudentCode: getMetadataString(
@@ -410,6 +443,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				"validationStudentCode",
 			),
 		};
+	}, [clerkUser]);
+
+	useEffect(() => {
+		if (!clerkUser) return;
+		const rawSchoolType = getMetadataString(
+			clerkUser.unsafeMetadata ?? {},
+			"schoolType",
+		);
+		if (!rawSchoolType) return;
+		const schoolType = normalizeLegacySchoolType(rawSchoolType);
+		if (schoolType === rawSchoolType) return;
+
+		void clerkUser
+			.updateMetadata({
+				unsafeMetadata: { schoolType: schoolType ?? null },
+			})
+			.catch(() => {
+				logDiagnosticError(
+					"Failed to sanitize legacy school type metadata.",
+					new Error("Clerk metadata cleanup failed."),
+					{ source: "auth.sanitizeSchoolType", level: "warn" },
+				);
+			});
 	}, [clerkUser]);
 
 	const activateSession = useCallback(
@@ -486,31 +542,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 		const localDayKey = getDayKey(new Date());
 		let validationStudentCode = user.validationStudentCode ?? null;
-		try {
-			const activity = await markValidationActivity({ localDayKey });
-			validationStudentCode =
-				activity.validationStudentCode ?? validationStudentCode;
-		} catch (error) {
+		const activityResult = await runWithAuthSettleRetries(() =>
+			markValidationActivity({ localDayKey }),
+		);
+		if (!activityResult.ok) {
 			logDiagnosticError(
 				"Failed to mark onboarding validation activity.",
-				error,
+				activityResult.lastError,
 				{
 					source: "auth.onboarding.analytics.markActivity",
 					level: "warn",
 				},
 			);
+			if (activityResult.lastError !== activityResult.firstError) {
+				logDiagnosticError(
+					"Initial onboarding validation activity error.",
+					activityResult.firstError,
+					{
+						source: "auth.onboarding.analytics.markActivity.initial",
+						level: "warn",
+					},
+				);
+			}
+			return;
 		}
+		validationStudentCode =
+			activityResult.value.validationStudentCode ?? validationStudentCode;
 
-		captureValidationEvent(
-			posthog,
-			"onboarding_completed",
-			user.clerkId,
-			definedAnalyticsProperties({
-				local_day_key: localDayKey,
-				answer_count: 5,
-				validation_student_code: validationStudentCode,
-			}),
-		);
+		createValidationAnalytics(posthog, {
+			distinctId: user.clerkId,
+			sharedContext: { validationStudentCode },
+		}).capture("onboarding_completed", {
+			local_day_key: localDayKey,
+			onboarding_version: 2,
+		});
 	}, [markValidationActivity, posthog, user]);
 
 	useEffect(() => {
@@ -524,16 +589,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 		let cancelled = false;
 		const answers = {
-			studyTime: onboardingAnswers.studyTime,
-			strength: onboardingAnswers.strength,
-			challenge: onboardingAnswers.challenge,
-			goal: onboardingAnswers.goal,
 			state: onboardingAnswers.state,
 			schoolType: onboardingAnswers.schoolType,
 			grade: onboardingAnswers.grade,
-			dailySchoolTime: onboardingAnswers.dailySchoolTime,
-			studyDays: onboardingAnswers.studyDays,
-			learningTime: onboardingAnswers.learningTime,
 		};
 
 		void (async () => {
@@ -702,24 +760,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				throw new Error("Authentifizierung ist noch nicht bereit.");
 			}
 
-			const profile = {
-				name: input.name?.trim(),
-				phone: input.phone?.trim(),
-				birthDate: input.birthDate,
-				grade: input.grade?.trim(),
-				schoolType: input.schoolType?.trim(),
-				state: input.state?.trim(),
-			};
-			const { firstName, lastName } = splitName(profile.name);
+			const { profile, signUp: signUpParameters } =
+				prepareClerkRegistration(input);
 
 			try {
-				const signUp = await clerk.client.signUp.create({
-					emailAddress: input.email.trim().toLowerCase(),
-					password: input.password,
-					firstName,
-					lastName,
-					unsafeMetadata: definedProfileFields(profile),
-				});
+				const signUp = await clerk.client.signUp.create(signUpParameters);
 
 				setPendingProfile(profile);
 
@@ -772,17 +817,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				name: input.name.trim(),
 				birthDate: input.birthDate.trim(),
 				grade: input.grade.trim(),
-				schoolType: input.schoolType.trim(),
+				schoolType: normalizeOptionalSchoolTypeInput(input.schoolType),
 				state: input.state.trim(),
 			};
+			if (
+				normalizedProfile.grade &&
+				!isSupportedGrade(normalizedProfile.grade)
+			) {
+				throw new Error("Bitte wähle eine gültige Klassenstufe aus.");
+			}
 			const { firstName, lastName } = splitName(normalizedProfile.name);
-			const unsafeMetadata = {
+			const unsafeMetadata: Record<string, unknown> = {
 				...(clerkUser.unsafeMetadata ?? {}),
 				birthDate: normalizedProfile.birthDate,
 				grade: normalizedProfile.grade,
-				schoolType: normalizedProfile.schoolType,
 				state: normalizedProfile.state,
 			};
+			delete unsafeMetadata.schoolType;
+			if (normalizedProfile.schoolType) {
+				unsafeMetadata.schoolType = normalizedProfile.schoolType;
+			}
 
 			try {
 				await clerkUser.update({
@@ -957,43 +1011,236 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			});
 		});
 
+	const getPasswordResetSignIn = () => {
+		if (!passwordResetSignIn) {
+			throw new Error("Authentifizierung ist noch nicht bereit.");
+		}
+		return passwordResetSignIn;
+	};
+
+	const startPasswordReset = async (email: string) =>
+		withSubmitting(async () => {
+			try {
+				setPendingVerification(null);
+				setPendingLoginStage(null);
+				const result = await beginPasswordReset(
+					getPasswordResetSignIn(),
+					email,
+				);
+				passwordResetHasRemoteAttemptRef.current =
+					result.status === "code_sent";
+			} catch (error) {
+				passwordResetHasRemoteAttemptRef.current = false;
+				logDiagnosticError("Failed to start password recovery.", error, {
+					source: "auth.passwordReset.start",
+					level: "warn",
+				});
+				throw new Error(
+					"Der Zurücksetzungscode konnte nicht gesendet werden. Bitte versuche es später erneut.",
+				);
+			}
+		});
+
+	const verifyPasswordResetCode = async (code: string) =>
+		withSubmitting(async () => {
+			try {
+				await verifyPasswordResetAttempt(getPasswordResetSignIn(), code);
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"Der Code konnte nicht bestätigt werden.",
+					),
+				);
+			}
+		});
+
+	const completePasswordReset = async (password: string) =>
+		withSubmitting(async () => {
+			try {
+				return await submitPasswordReset(getPasswordResetSignIn(), password);
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"Das Passwort konnte nicht zurückgesetzt werden.",
+					),
+				);
+			}
+		});
+
+	const verifyPasswordResetSecondFactor = async (code: string) =>
+		withSubmitting(async () => {
+			try {
+				await verifyPasswordResetSecondFactorAttempt(
+					getPasswordResetSignIn(),
+					code,
+				);
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"Die Sicherheitsprüfung konnte nicht abgeschlossen werden.",
+					),
+				);
+			}
+		});
+
+	const resendPasswordResetCode = async (stage: PasswordResetCodeStage) =>
+		withSubmitting(async () => {
+			try {
+				await resendPasswordResetAttempt(
+					getPasswordResetSignIn(),
+					stage,
+					passwordResetHasRemoteAttemptRef.current,
+				);
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"Code konnte nicht erneut gesendet werden.",
+					),
+				);
+			}
+		});
+
+	const cancelPasswordReset = async () => {
+		try {
+			if (!passwordResetSignIn) return;
+			await cancelPasswordResetAttempt(passwordResetSignIn);
+		} finally {
+			passwordResetHasRemoteAttemptRef.current = false;
+		}
+	};
+
+	const changePassword = async (input: PasswordChangeInput) =>
+		withSubmitting(async () => {
+			if (!clerkUser || !clerk.session) {
+				throw new Error(
+					"Du musst angemeldet sein, um dein Passwort zu ändern.",
+				);
+			}
+
+			try {
+				await reverifyPasswordFactor(
+					clerk.session as PasswordReverificationSession,
+					input.currentPassword,
+				);
+				await updateAccountPassword(clerkUser, input);
+			} catch (error) {
+				throw new Error(getPasswordChangeErrorMessage(error));
+			}
+		});
+
+	const completeForcedPasswordReset = async (password: string) =>
+		withSubmitting(async () => {
+			const taskUser = clerk.session?.user ?? clerkUser;
+			if (!taskUser) {
+				throw new Error(
+					"Die Passwort-Aufgabe ist nicht mehr verfügbar. Bitte melde dich erneut an.",
+				);
+			}
+
+			try {
+				await submitForcedPasswordReset(
+					taskUser as ForcedPasswordResetUser,
+					password,
+				);
+			} catch (error) {
+				throw new Error(
+					getClerkErrorMessage(
+						error,
+						"Das neue Passwort konnte nicht gespeichert werden.",
+					),
+				);
+			}
+		});
+
 	const logout = async () => {
-		setPendingVerification(null);
-		setPendingLoginStage(null);
-		setPendingProfile(null);
-		setSyncedClerkUserId(null);
-		await clerk.signOut();
+		await signOutAndResetState(
+			() => clerk.signOut(),
+			() => {
+				setPendingVerification(null);
+				setPendingLoginStage(null);
+				setPendingProfile(null);
+				setPendingProfileEmail(null);
+				setSyncedClerkUserId(null);
+				passwordResetHasRemoteAttemptRef.current = false;
+				clearAnswers();
+			},
+		);
 	};
 
 	const isSessionLoading = !clerk.loaded || !isUserLoaded;
 	const isLoading = isSessionLoading || isSubmitting;
+	const pendingSessionTask = clerk.session?.currentTask?.key ?? null;
 
 	return (
-		<AuthContext.Provider
+		<AuthSessionContext.Provider
 			value={{
 				user,
-				isLoading,
 				isSessionLoading,
 				isConvexAuthenticated,
+				isConvexUserSynced:
+					Boolean(user) && syncedClerkUserId === user?.clerkId,
 				isPostAuthSyncing:
 					Boolean(user) && (isProfileSyncing || isOnboardingAnswersSyncing),
-				pendingVerification,
-				login,
-				register,
-				updateProfile,
-				verifyProfileEmailCode,
-				verifyEmailCode,
-				resendVerification,
-				logout,
+				pendingSessionTask,
 			}}
 		>
-			{children}
-		</AuthContext.Provider>
+			<AuthFlowContext.Provider
+				value={{
+					isLoading,
+					pendingVerification,
+					login,
+					register,
+					verifyEmailCode,
+					resendVerification,
+					startPasswordReset,
+					verifyPasswordResetCode,
+					completePasswordReset,
+					verifyPasswordResetSecondFactor,
+					resendPasswordResetCode,
+					cancelPasswordReset,
+				}}
+			>
+				<AccountActionsContext.Provider
+					value={{
+						isLoading,
+						updateProfile,
+						verifyProfileEmailCode,
+						changePassword,
+						completeForcedPasswordReset,
+						logout,
+					}}
+				>
+					{children}
+				</AccountActionsContext.Provider>
+			</AuthFlowContext.Provider>
+		</AuthSessionContext.Provider>
 	);
 };
 
-export const useAuth = () => {
-	const context = useContext(AuthContext);
-	if (!context) throw new Error("useAuth must be used within an AuthProvider");
+export const useAuthSession = () => {
+	const context = useContext(AuthSessionContext);
+	if (!context) {
+		throw new Error("useAuthSession must be used within an AuthProvider");
+	}
+	return context;
+};
+
+export const useAuthFlow = () => {
+	const context = useContext(AuthFlowContext);
+	if (!context) {
+		throw new Error("useAuthFlow must be used within an AuthProvider");
+	}
+	return context;
+};
+
+export const useAccountActions = () => {
+	const context = useContext(AccountActionsContext);
+	if (!context) {
+		throw new Error("useAccountActions must be used within an AuthProvider");
+	}
 	return context;
 };
