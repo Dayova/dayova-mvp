@@ -24,6 +24,7 @@ import {
 	isPostHogConfigured,
 } from "~/lib/analytics";
 import { runWithAuthSettleRetries } from "~/lib/auth-settle-retry";
+import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
 import {
 	getDefinedProfileFields as definedProfileFields,
 	prepareClerkRegistration,
@@ -40,6 +41,7 @@ import {
 import { isSupportedGrade } from "~/lib/grades";
 import { signOutAndResetState } from "~/lib/logout-state";
 import {
+	PendingOnboardingSyncError,
 	type PendingOnboardingSyncAnswers,
 	type PendingOnboardingSyncResumeResult,
 	syncPendingOnboardingAnswers,
@@ -52,6 +54,10 @@ import {
 	type PasswordChangeInput,
 	changePassword as updateAccountPassword,
 } from "~/lib/password-change";
+import {
+	clearOwnedPostAuthSyncFailure,
+	type PostAuthSyncFailure,
+} from "~/lib/post-auth-sync-failure";
 import {
 	startPasswordReset as beginPasswordReset,
 	cancelPasswordReset as cancelPasswordResetAttempt,
@@ -122,10 +128,7 @@ interface AuthSessionContextType {
 	isPostAuthSyncing: boolean;
 	postAuthSyncError: string | null;
 	retryPostAuthSync: () => void;
-	onboardingCompletionStatus:
-		| PendingOnboardingSyncResumeResult["status"]
-		| "loading"
-		| "storage_error";
+	onboardingCompletionStatus: OnboardingCompletionStatus;
 	completeOnboardingHandoff: () => Promise<boolean>;
 	pendingSessionTask: string | null;
 }
@@ -428,9 +431,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const [isProfileSyncing, setIsProfileSyncing] = useState(false);
 	const [isOnboardingAnswersSyncing, setIsOnboardingAnswersSyncing] =
 		useState(false);
-	const [postAuthSyncFailure, setPostAuthSyncFailure] = useState<
-		"profile" | "answers" | "completion" | "restore" | null
-	>(null);
+	const [postAuthSyncFailure, setPostAuthSyncFailure] =
+		useState<PostAuthSyncFailure | null>(null);
 	const [onboardingCompletion, setOnboardingCompletion] = useState<{
 		clerkUserId: string | null;
 		accountFingerprint: string | null;
@@ -602,7 +604,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 		void (async () => {
 			setIsProfileSyncing(true);
-			setPostAuthSyncFailure(null);
+			setPostAuthSyncFailure((current) =>
+				clearOwnedPostAuthSyncFailure(current, "profile"),
+			);
 			setSyncedClerkUserId(null);
 			try {
 				const result = await runWithAuthSettleRetries(() =>
@@ -705,7 +709,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 		void (async () => {
 			setIsOnboardingAnswersSyncing(true);
-			setPostAuthSyncFailure(null);
+			setPostAuthSyncFailure((current) =>
+				clearOwnedPostAuthSyncFailure(current, "answers"),
+			);
 			try {
 				const result = await runWithAuthSettleRetries(() =>
 					syncPendingOnboardingAnswers({
@@ -1014,7 +1020,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				prepareClerkRegistration(input);
 			const registrationAttemptId = clerk.client.signUp.id;
 			if (!registrationAttemptId) {
-				throw new Error(
+				throw new PendingOnboardingSyncError(
+					"payload_unavailable",
 					"Registrierungsversuch konnte nicht zugeordnet werden.",
 				);
 			}
@@ -1031,7 +1038,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					signUpParametersWithRecovery,
 				);
 				if (!signUp.id) {
-					throw new Error(
+					throw new PendingOnboardingSyncError(
+						"payload_unavailable",
 						"Registrierungsversuch konnte nicht zugeordnet werden.",
 					);
 				}
@@ -1047,7 +1055,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 				if (signUp.status === "complete") {
 					if (!signUp.createdUserId) {
-						throw new Error(
+						throw new PendingOnboardingSyncError(
+							"payload_unavailable",
 							"Registriertes Konto konnte nicht zugeordnet werden.",
 						);
 					}
@@ -1073,12 +1082,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					message: "Wir haben dir einen Bestätigungscode per E-Mail gesendet.",
 				};
 			} catch (error) {
-				if (
-					error instanceof Error &&
-					(error.message.includes("onboarding sync payload") ||
-						error.message.includes("Registriertes Konto") ||
-						error.message.includes("Registrierungsversuch"))
-				) {
+				if (error instanceof PendingOnboardingSyncError) {
 					logDiagnosticError(
 						"Registration stopped because onboarding recovery was unavailable.",
 						error,

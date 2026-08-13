@@ -52,6 +52,7 @@ const REGISTRATION_EDGE_BACK_MIN_DISTANCE = 64;
 const REGISTRATION_EDGE_BACK_MAX_DISTANCE = 92;
 const REGISTRATION_EDGE_BACK_VIEWPORT_RATIO = 0.18;
 const REGISTRATION_EDGE_BACK_MIN_VELOCITY = 760;
+const REGISTRATION_EDGE_BACK_FLING_MIN_DISTANCE = 28;
 
 export const shouldCommitRegistrationEdgeBack = ({
 	direction,
@@ -77,7 +78,7 @@ export const shouldCommitRegistrationEdgeBack = ({
 
 	return (
 		directionalTranslation >= distanceThreshold ||
-		(directionalTranslation >= 28 &&
+		(directionalTranslation >= REGISTRATION_EDGE_BACK_FLING_MIN_DISTANCE &&
 			directionalVelocity >= REGISTRATION_EDGE_BACK_MIN_VELOCITY)
 	);
 };

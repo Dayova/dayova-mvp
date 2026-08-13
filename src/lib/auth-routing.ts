@@ -1,5 +1,12 @@
+import type { PendingOnboardingSyncResumeResult } from "./pending-onboarding-sync";
+
 export const SESSION_TASK_RESET_PASSWORD_PATH = "/session-tasks/reset-password";
 export const PASSWORD_RESET_SUCCESS_PATH = "/password-reset-success";
+
+export type OnboardingCompletionStatus =
+	| PendingOnboardingSyncResumeResult["status"]
+	| "loading"
+	| "storage_error";
 
 const PUBLIC_AUTH_PATHS = new Set([
 	"/",
@@ -14,13 +21,7 @@ const SIGNED_IN_REDIRECT_PATHS = new Set(["/", "/login", "/register"]);
 type AuthNavigationState = {
 	hasUser: boolean;
 	isSessionLoading: boolean;
-	onboardingCompletionStatus?:
-		| "loading"
-		| "none"
-		| "pending"
-		| "ready_for_trial"
-		| "recovery_required"
-		| "storage_error";
+	onboardingCompletionStatus?: OnboardingCompletionStatus;
 	pathname: string;
 	pendingSessionTask: string | null;
 };

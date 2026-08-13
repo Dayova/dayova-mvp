@@ -72,6 +72,21 @@ export type PendingOnboardingSyncResumeResult =
 	| { status: "ready_for_trial" }
 	| { status: "recovery_required"; reason: "expired" | "invalid" };
 
+export type PendingOnboardingSyncErrorCode =
+	| "invalid_payload"
+	| "payload_unavailable"
+	| "completion_unavailable";
+
+export class PendingOnboardingSyncError extends Error {
+	readonly code: PendingOnboardingSyncErrorCode;
+
+	constructor(code: PendingOnboardingSyncErrorCode, message: string) {
+		super(message);
+		this.name = "PendingOnboardingSyncError";
+		this.code = code;
+	}
+}
+
 const isRecordBase = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null;
 
@@ -202,6 +217,10 @@ export const createPendingOnboardingSyncOutbox = ({
 			storageKey(record.accountFingerprint),
 			JSON.stringify(record),
 		);
+	const isExpiredPendingRecord = (createdAt: number) => {
+		const elapsedMs = now() - createdAt;
+		return elapsedMs < 0 || elapsedMs > ttlMs;
+	};
 
 	return {
 		stage: async ({
@@ -218,7 +237,10 @@ export const createPendingOnboardingSyncOutbox = ({
 				!ACCOUNT_FINGERPRINT_PATTERN.test(accountFingerprint) ||
 				!isValidAnswers(answers)
 			) {
-				throw new Error("Invalid pending onboarding sync payload.");
+				throw new PendingOnboardingSyncError(
+					"invalid_payload",
+					"Invalid pending onboarding sync payload.",
+				);
 			}
 			await write({
 				version: SCHEMA_VERSION,
@@ -245,7 +267,10 @@ export const createPendingOnboardingSyncOutbox = ({
 				!ACCOUNT_FINGERPRINT_PATTERN.test(accountFingerprint) ||
 				!isValidAnswers(answers)
 			) {
-				throw new Error("Invalid pending onboarding sync payload.");
+				throw new PendingOnboardingSyncError(
+					"invalid_payload",
+					"Invalid pending onboarding sync payload.",
+				);
 			}
 			await write({
 				version: SCHEMA_VERSION,
@@ -272,9 +297,12 @@ export const createPendingOnboardingSyncOutbox = ({
 				record.status !== "pending" ||
 				record.registrationAttemptId !== registrationAttemptId ||
 				record.accountFingerprint !== accountFingerprint ||
-				now() - record.createdAt > ttlMs
+				isExpiredPendingRecord(record.createdAt)
 			) {
-				throw new Error("Pending onboarding sync payload is unavailable.");
+				throw new PendingOnboardingSyncError(
+					"payload_unavailable",
+					"Pending onboarding sync payload is unavailable.",
+				);
 			}
 		},
 
@@ -290,9 +318,13 @@ export const createPendingOnboardingSyncOutbox = ({
 				record.status !== "pending" ||
 				record.registrationAttemptId !== registrationAttemptId ||
 				record.accountFingerprint !== accountFingerprint ||
-				(record.clerkUserId && record.clerkUserId !== clerkUserId)
+				(record.clerkUserId && record.clerkUserId !== clerkUserId) ||
+				isExpiredPendingRecord(record.createdAt)
 			) {
-				throw new Error("Pending onboarding sync payload is unavailable.");
+				throw new PendingOnboardingSyncError(
+					"payload_unavailable",
+					"Pending onboarding sync payload is unavailable.",
+				);
 			}
 			await write({ ...record, clerkUserId });
 		},
@@ -327,7 +359,7 @@ export const createPendingOnboardingSyncOutbox = ({
 			if (record.status === "ready_for_trial") {
 				return { status: "ready_for_trial" };
 			}
-			if (now() - record.createdAt > ttlMs) {
+			if (isExpiredPendingRecord(record.createdAt)) {
 				await write({
 					version: SCHEMA_VERSION,
 					status: "recovery_required",
@@ -356,7 +388,10 @@ export const createPendingOnboardingSyncOutbox = ({
 				!record.clerkUserId ||
 				!matchesAccount(record, identity)
 			) {
-				throw new Error("Pending onboarding sync payload is unavailable.");
+				throw new PendingOnboardingSyncError(
+					"payload_unavailable",
+					"Pending onboarding sync payload is unavailable.",
+				);
 			}
 			await write({
 				version: SCHEMA_VERSION,
@@ -376,7 +411,10 @@ export const createPendingOnboardingSyncOutbox = ({
 				record.status !== "ready_for_trial" ||
 				!matchesAccount(record, identity)
 			) {
-				throw new Error("Completed onboarding sync payload is unavailable.");
+				throw new PendingOnboardingSyncError(
+					"completion_unavailable",
+					"Completed onboarding sync payload is unavailable.",
+				);
 			}
 			await storage.deleteItem(storageKey(identity.accountFingerprint));
 		},

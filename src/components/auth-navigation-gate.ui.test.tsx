@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, render } from "@testing-library/react-native";
 import { Text } from "react-native";
+import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
 import { AuthNavigationGate } from "./auth-navigation-gate";
 
 const mockReplace = jest.fn();
@@ -10,13 +11,7 @@ const mockRouterState = {
 };
 const mockSession = {
 	isSessionLoading: false,
-	onboardingCompletionStatus: "none" as
-		| "loading"
-		| "none"
-		| "pending"
-		| "ready_for_trial"
-		| "recovery_required"
-		| "storage_error",
+	onboardingCompletionStatus: "none" as OnboardingCompletionStatus,
 	pendingSessionTask: null as string | null,
 	user: { clerkId: "user_123" } as { clerkId: string } | null,
 };

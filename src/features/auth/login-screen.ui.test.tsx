@@ -14,6 +14,7 @@ import {
 	within,
 } from "@testing-library/react-native";
 import type { ReactNode } from "react";
+import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
 import {
 	AuthChoiceScreen,
 	CreationLoaderScreen,
@@ -76,13 +77,7 @@ const mockAuthSession = {
 	completeOnboardingHandoff: mockCompleteOnboardingHandoff,
 	isConvexAuthenticated: false,
 	isPostAuthSyncing: false,
-	onboardingCompletionStatus: "none" as
-		| "loading"
-		| "none"
-		| "pending"
-		| "ready_for_trial"
-		| "recovery_required"
-		| "storage_error",
+	onboardingCompletionStatus: "none" as OnboardingCompletionStatus,
 	postAuthSyncError: null as string | null,
 	retryPostAuthSync: mockRetryPostAuthSync,
 	user: null as { clerkId: string; email: string } | null,
@@ -704,6 +699,33 @@ describe("OnboardingRecoveryScreen", () => {
 		);
 		expect(submit).toHaveBeenCalledTimes(1);
 	});
+
+	test("disables recovery controls while the durable payload is being replaced", async () => {
+		const screen = await render(
+			<OnboardingRecoveryScreen
+				topInset={24}
+				bottomInset={24}
+				answers={{
+					studyTime: "30",
+					studyDays: "Montag",
+					learningTime: "16:00",
+				}}
+				error={null}
+				isSubmitting
+				onChange={jest.fn()}
+				onSubmit={jest.fn<() => void>()}
+			/>,
+		);
+
+		expect(
+			screen.getByRole("button", { name: "Lernzeiten werden gespeichert" }),
+		).toBeDisabled();
+		expect(screen.getByRole("radio", { name: "30 Minuten" })).toBeDisabled();
+		expect(screen.getByRole("checkbox", { name: "Montag" })).toBeDisabled();
+		expect(
+			screen.getByRole("button", { name: "Lernzeit beginnt um 16:00 Uhr" }),
+		).toBeDisabled();
+	});
 });
 
 describe("OnboardingScreen", () => {
@@ -898,6 +920,14 @@ describe("OnboardingScreen", () => {
 			screen.getByText("Montag, Donnerstag und Samstag"),
 		).toBeOnTheScreen();
 		expect(screen.getByText("16:30–17:00 Uhr")).toBeOnTheScreen();
+	});
+
+	test("normalizes a recovered duration to the nearest supported option", async () => {
+		mockOnboarding.answers.studyTime = "37";
+		const screen = await render(<OnboardingScreen initialStepId="studyTime" />);
+
+		expect(screen.getByText("30")).toBeOnTheScreen();
+		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyTime", "30");
 	});
 
 	test("collects real recurring weekdays with multi-select semantics", async () => {

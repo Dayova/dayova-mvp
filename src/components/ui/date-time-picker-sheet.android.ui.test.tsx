@@ -53,9 +53,10 @@ describe("Android DateTimePickerSheet", () => {
 		const picker = screen.getByTestId("date-picker-dialog");
 		expect(picker.props.initialDate).toBe("2012-09-09T00:00:00.000Z");
 
-		await act(() =>
-			picker.props.onDateSelected(new Date("2012-09-10T00:00:00Z")),
-		);
+		const materialDate = new Date("2012-09-10T00:00:00Z");
+		await act(() => picker.props.onDateSelected(materialDate));
+		const expectedDate = new Date(value);
+		expectedDate.setFullYear(2012, 8, 10);
 
 		expect(onChange).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -65,7 +66,10 @@ describe("Android DateTimePickerSheet", () => {
 			expect.any(Date),
 		);
 		expect(onClose).toHaveBeenCalledTimes(1);
-		expect(onConfirm).toHaveBeenCalledWith(expect.any(Date));
+		expect(onConfirm).toHaveBeenCalledTimes(1);
+		expect((onConfirm.mock.calls[0]?.[0] as Date).getTime()).toBe(
+			expectedDate.getTime(),
+		);
 	});
 
 	test("continues a datetime selection from date to time before closing", async () => {

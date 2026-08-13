@@ -16,7 +16,9 @@ describe("shouldHandleRegistrationBack", () => {
 		expect(shouldHandleRegistrationBack(0, "verification")).toBe(true);
 		expect(shouldHandleRegistrationBack(0, "creating")).toBe(true);
 	});
+});
 
+describe("shouldEnableRegistrationRouteBack", () => {
 	test("only leaves the native route gesture enabled on the idle entry step", () => {
 		expect(shouldEnableRegistrationRouteBack(0, "flow", false)).toBe(true);
 		expect(shouldEnableRegistrationRouteBack(1, "flow", false)).toBe(false);
@@ -25,7 +27,9 @@ describe("shouldHandleRegistrationBack", () => {
 		);
 		expect(shouldEnableRegistrationRouteBack(0, "flow", true)).toBe(false);
 	});
+});
 
+describe("shouldEnableRegistrationEdgeBack", () => {
 	test("enables iOS edge back only on conflict-free internal steps", () => {
 		const base = {
 			activeIndex: 4,
@@ -42,6 +46,9 @@ describe("shouldHandleRegistrationBack", () => {
 		).toBe(true);
 		expect(
 			shouldEnableRegistrationEdgeBack({ ...base, stepKind: "range" }),
+		).toBe(false);
+		expect(
+			shouldEnableRegistrationEdgeBack({ ...base, stepKind: "intro" }),
 		).toBe(false);
 		expect(
 			shouldEnableRegistrationEdgeBack({ ...base, stepKind: "wheel" }),
@@ -63,12 +70,21 @@ describe("shouldHandleRegistrationBack", () => {
 		expect(
 			shouldEnableRegistrationEdgeBack({
 				...base,
+				stage: "creating",
+				stepKind: "text",
+			}),
+		).toBe(false);
+		expect(
+			shouldEnableRegistrationEdgeBack({
+				...base,
 				stage: "verification",
 				stepKind: "text",
 			}),
 		).toBe(true);
 	});
+});
 
+describe("shouldCommitRegistrationEdgeBack", () => {
 	test("commits deliberate drags and directional flings, not small movements", () => {
 		expect(
 			shouldCommitRegistrationEdgeBack({

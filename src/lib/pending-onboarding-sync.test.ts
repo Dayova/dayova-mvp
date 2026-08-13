@@ -157,6 +157,37 @@ describe("pending onboarding sync outbox", () => {
 		).resolves.toBeUndefined();
 	});
 
+	it("rejects a future-dated pending payload before account creation", async () => {
+		const { storage } = createMemoryStorage();
+		const stagedProcess = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 13, 10, 5),
+		});
+		await stagedProcess.stage({
+			registrationAttemptId: "signup_123",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+			answers: ANSWERS,
+		});
+
+		const clockMovedBack = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 13, 10),
+		});
+		await expect(
+			clockMovedBack.ensureStaged({
+				registrationAttemptId: "signup_123",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+			}),
+		).rejects.toMatchObject({ code: "payload_unavailable" });
+		await expect(
+			clockMovedBack.bindToUser({
+				registrationAttemptId: "signup_123",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+				clerkUserId: "user_123",
+			}),
+		).rejects.toMatchObject({ code: "payload_unavailable" });
+	});
+
 	it("keeps a failed answer sync retryable across a process restart and clears answers after success", async () => {
 		const { storage } = createMemoryStorage();
 		const identity = {
@@ -248,6 +279,18 @@ describe("pending onboarding sync outbox", () => {
 				accountFingerprint: ACCOUNT_FINGERPRINT,
 				clerkUserId: "user_123",
 				createdAt: Date.UTC(2026, 7, 1),
+				answers: ANSWERS,
+			}),
+		],
+		[
+			"expired",
+			JSON.stringify({
+				version: 1,
+				status: "pending",
+				registrationAttemptId: "signup_123",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+				clerkUserId: "user_123",
+				createdAt: Date.UTC(2026, 7, 13, 10, 5),
 				answers: ANSWERS,
 			}),
 		],

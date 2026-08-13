@@ -752,6 +752,7 @@ export function OnboardingScreen({
 		studyDays: "",
 		learningTime: "",
 	});
+	const [isRecoverySubmitting, setIsRecoverySubmitting] = useState(false);
 	const activeStep = FLOW_STEPS[activeIndex];
 	const textInputRef = useRef<TextInput | null>(null);
 	const verificationInputRef = useRef<TextInput | null>(null);
@@ -976,7 +977,9 @@ export function OnboardingScreen({
 					bottomInset={insets.bottom}
 					answers={recoveryAnswers}
 					error={error}
+					isSubmitting={isRecoverySubmitting}
 					onChange={(field, value) => {
+						if (isRecoverySubmitting) return;
 						setRecoveryAnswers((current) => ({
 							...current,
 							[field]: value,
@@ -990,22 +993,27 @@ export function OnboardingScreen({
 							setError(validationError);
 							return;
 						}
-						try {
-							await replaceOnboardingRecoveryAnswers({
-								dailySchoolTime: `${recoveryAnswers.studyTime} min`,
-								studyDays: recoveryAnswers.studyDays,
-								learningTime: recoveryAnswers.learningTime,
-								state: user?.state ?? "",
-								schoolType: user?.schoolType ?? "",
-								grade: user?.grade ?? "",
-							});
-						} catch (recoveryError) {
-							setError(
-								recoveryError instanceof Error
-									? recoveryError.message
-									: "Deine Lernzeiten konnten nicht gespeichert werden.",
-							);
-						}
+						await registrationActionGateRef.current.run(async () => {
+							setIsRecoverySubmitting(true);
+							try {
+								await replaceOnboardingRecoveryAnswers({
+									dailySchoolTime: `${recoveryAnswers.studyTime} min`,
+									studyDays: recoveryAnswers.studyDays,
+									learningTime: recoveryAnswers.learningTime,
+									state: user?.state ?? "",
+									schoolType: user?.schoolType ?? "",
+									grade: user?.grade ?? "",
+								});
+							} catch (recoveryError) {
+								setError(
+									recoveryError instanceof Error
+										? recoveryError.message
+										: "Deine Lernzeiten konnten nicht gespeichert werden.",
+								);
+							} finally {
+								setIsRecoverySubmitting(false);
+							}
+						});
 					}}
 				/>
 			);
@@ -2443,6 +2451,7 @@ export function OnboardingRecoveryScreen({
 	bottomInset,
 	answers,
 	error,
+	isSubmitting = false,
 	onChange,
 	onSubmit,
 }: {
@@ -2450,6 +2459,7 @@ export function OnboardingRecoveryScreen({
 	bottomInset: number;
 	answers: { studyTime: string; studyDays: string; learningTime: string };
 	error: string | null;
+	isSubmitting?: boolean;
 	onChange: (
 		field: "studyTime" | "studyDays" | "learningTime",
 		value: string,
@@ -2500,7 +2510,8 @@ export function OnboardingRecoveryScreen({
 							<Pressable
 								key={duration}
 								accessibilityRole="radio"
-								accessibilityState={{ selected }}
+								accessibilityState={{ disabled: isSubmitting, selected }}
+								disabled={isSubmitting}
 								onPress={() => onChange("studyTime", String(duration))}
 								className={cn(
 									"rounded-full border px-4 py-3",
@@ -2532,7 +2543,11 @@ export function OnboardingRecoveryScreen({
 							<Pressable
 								key={day.label}
 								accessibilityRole="checkbox"
-								accessibilityState={{ checked: selected }}
+								accessibilityState={{
+									checked: selected,
+									disabled: isSubmitting,
+								}}
+								disabled={isSubmitting}
 								onPress={() =>
 									onChange(
 										"studyDays",
@@ -2564,6 +2579,8 @@ export function OnboardingRecoveryScreen({
 				</Text>
 				<Pressable
 					accessibilityRole="button"
+					accessibilityState={{ disabled: isSubmitting }}
+					disabled={isSubmitting}
 					accessibilityLabel={
 						answers.learningTime
 							? `Lernzeit beginnt um ${answers.learningTime} Uhr`
@@ -2590,10 +2607,19 @@ export function OnboardingRecoveryScreen({
 				) : null}
 			</KeyboardSafeScrollView>
 			<Button
-				accessibilityLabel="Lernzeiten erneut speichern"
+				accessibilityLabel={
+					isSubmitting
+						? "Lernzeiten werden gespeichert"
+						: "Lernzeiten erneut speichern"
+				}
+				disabled={isSubmitting}
 				onPress={onSubmit}
 			>
-				<Text>Lernzeiten erneut speichern</Text>
+				<Text>
+					{isSubmitting
+						? "Lernzeiten werden gespeichert …"
+						: "Lernzeiten erneut speichern"}
+				</Text>
 			</Button>
 			<DateTimePickerSheet
 				visible={pickerVisible}
@@ -2928,19 +2954,32 @@ function OtpCodeInput({
 
 function RangeAnswer({ step }: { step: RangeStep }) {
 	const { answers, setAnswer } = useOnboarding();
-	useEffect(() => {
-		if (!answers.studyTime) setAnswer("studyTime", "30");
-	}, [answers.studyTime, setAnswer]);
-	const selectedIndex = Math.max(
-		step.values.findIndex((value) => String(value) === answers.studyTime),
-		0,
+	const parsedStudyTime = Number.parseInt(answers.studyTime, 10);
+	const defaultStudyTime = step.values.includes(30)
+		? 30
+		: (step.values[0] ?? 30);
+	const normalizedStudyTime = step.values.reduce(
+		(nearest, value) =>
+			Math.abs(value - parsedStudyTime) < Math.abs(nearest - parsedStudyTime)
+				? value
+				: nearest,
+		defaultStudyTime,
 	);
+	const displayedStudyTime = Number.isFinite(parsedStudyTime)
+		? normalizedStudyTime
+		: defaultStudyTime;
+	useEffect(() => {
+		if (answers.studyTime !== String(displayedStudyTime)) {
+			setAnswer("studyTime", String(displayedStudyTime));
+		}
+	}, [answers.studyTime, displayedStudyTime, setAnswer]);
+	const selectedIndex = Math.max(step.values.indexOf(displayedStudyTime), 0);
 	const selectedValue = step.values[selectedIndex] ?? step.values[0];
 
 	return (
 		<SnapCarouselSelector
 			accessibilityLabel="Tägliche Lernzeit"
-			accessibilityValue={`${answers.studyTime || "Noch nicht gewählt"}${answers.studyTime ? " Minuten" : ""}`}
+			accessibilityValue={`${displayedStudyTime} Minuten`}
 			decrementLabel="Weniger Lernzeit"
 			incrementLabel="Mehr Lernzeit"
 			items={step.values}
@@ -2948,7 +2987,7 @@ function RangeAnswer({ step }: { step: RangeStep }) {
 			getItemKey={(value) => String(value)}
 			getItemPrimaryLabel={(value) => String(value)}
 			getItemProgress={(_, index) => (index + 1) / step.values.length}
-			primaryLabel={answers.studyTime || "–"}
+			primaryLabel={String(displayedStudyTime)}
 			secondaryLabel="Minuten"
 			progress={
 				selectedValue === undefined
@@ -3160,6 +3199,7 @@ function LearningTimeAnswer() {
 
 function PayoffAnswer() {
 	const { answers } = useOnboarding();
+	const { colors } = useDayovaTheme();
 	const firstName = answers.name.trim().split(/\s+/)[0] || "Du";
 	const schedule = getOnboardingLearningTimeSummary(answers);
 	const summary = [
@@ -3183,7 +3223,7 @@ function PayoffAnswer() {
 	return (
 		<View className="w-full items-center">
 			<View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-				<CalendarDays size={30} color={COLORS.primary} strokeWidth={2} />
+				<CalendarDays size={30} color={colors.primary} strokeWidth={2} />
 			</View>
 			<Text
 				accessibilityRole="header"
@@ -3206,7 +3246,7 @@ function PayoffAnswer() {
 							className="min-h-18 flex-row items-center rounded-[24px] border border-border bg-surface px-5 py-3"
 						>
 							<View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-								<Icon size={19} color={COLORS.primary} strokeWidth={2} />
+								<Icon size={19} color={colors.primary} strokeWidth={2} />
 							</View>
 							<View className="ml-4 flex-1">
 								<Text className="font-poppins font-semibold text-body-3 text-text">
@@ -3216,7 +3256,7 @@ function PayoffAnswer() {
 									{item.value}
 								</Text>
 							</View>
-							<Check size={20} color={COLORS.primary} strokeWidth={2.2} />
+							<Check size={20} color={colors.primary} strokeWidth={2.2} />
 						</View>
 					);
 				})}

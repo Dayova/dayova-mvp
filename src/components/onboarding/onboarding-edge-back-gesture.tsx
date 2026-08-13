@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { I18nManager, Keyboard, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -40,6 +40,12 @@ function OnboardingEdgeBackGesture({
 		translateX.set(0);
 		onBack();
 	}, [onBack, translateX]);
+
+	useEffect(() => {
+		if (enabled) return;
+		isCommitting.set(false);
+		translateX.set(0);
+	}, [enabled, isCommitting, translateX]);
 
 	const gesture = Gesture.Pan()
 		.enabled(enabled)

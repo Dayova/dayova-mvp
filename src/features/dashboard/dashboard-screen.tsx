@@ -417,11 +417,12 @@ function NextLearningStepCard({
 	const dateLabel = item ? getNextStepDateLabel(item, todayKey) : null;
 	const timeLabel = item ? getNextStepTimeLabel(item) : null;
 	const footer = isLoading
-		? "Lernplan öffnen"
+		? "Lernplan wird geladen …"
 		: item
 			? getNextStepFooter(item, todayKey)
 			: EMPTY_DASHBOARD_PRIMARY_ACTION.label;
 	const handlePress = () => {
+		if (isLoading) return;
 		if (item) {
 			onOpenItem(item);
 			return;
@@ -433,16 +434,22 @@ function NextLearningStepCard({
 		<TouchableOpacity
 			activeOpacity={0.82}
 			accessibilityRole="button"
+			accessibilityState={{ disabled: isLoading }}
 			accessibilityLabel={
-				item
-					? `${item.entry.executionStatus === "started" ? "Weiterlernen" : "Nächsten Lernschritt öffnen"}: ${title}. ${dateLabel}, ${timeLabel}`
-					: EMPTY_DASHBOARD_PRIMARY_ACTION.label
+				isLoading
+					? "Nächster Lernschritt wird geladen"
+					: item
+						? `${item.entry.executionStatus === "started" ? "Weiterlernen" : "Nächsten Lernschritt öffnen"}: ${title}. ${dateLabel}, ${timeLabel}`
+						: EMPTY_DASHBOARD_PRIMARY_ACTION.label
 			}
 			accessibilityHint={
-				item
-					? "Öffnet deinen persönlichen Lernplan."
-					: EMPTY_DASHBOARD_PRIMARY_ACTION.accessibilityHint
+				isLoading
+					? "Warte, bis dein Lernplan geladen wurde."
+					: item
+						? "Öffnet deinen persönlichen Lernplan."
+						: EMPTY_DASHBOARD_PRIMARY_ACTION.accessibilityHint
 			}
+			disabled={isLoading}
 			onPress={handlePress}
 			className="min-h-72 flex-1 overflow-hidden rounded-card border border-border bg-system-subtle px-4 pt-5 pb-4"
 			style={continuousBorderStyle}
