@@ -88,7 +88,7 @@ describe("learning-plan setup steps", () => {
 		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
 		expect(
 			screen.getByRole("button", {
-				name: "Material später hochladen",
+				name: "Ohne Lernmaterial erstellen",
 			}),
 		).toBeOnTheScreen();
 
@@ -136,7 +136,7 @@ describe("learning-plan setup steps", () => {
 		).toBeNull();
 		expect(
 			screen.queryByRole("button", {
-				name: "Material später hochladen",
+				name: "Ohne Lernmaterial erstellen",
 			}),
 		).toBeNull();
 	});
@@ -169,7 +169,7 @@ describe("learning-plan setup steps", () => {
 		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
 		expect(screen.queryByText("Lernhilfe.pdf")).toBeNull();
 		expect(
-			screen.getByRole("button", { name: "Material später hochladen" }),
+			screen.getByRole("button", { name: "Ohne Lernmaterial erstellen" }),
 		).toBeOnTheScreen();
 	});
 
@@ -197,7 +197,7 @@ describe("learning-plan setup steps", () => {
 			),
 		).toBeOnTheScreen();
 		expect(
-			screen.queryByRole("button", { name: "Material später hochladen" }),
+			screen.queryByRole("button", { name: "Ohne Lernmaterial erstellen" }),
 		).toBeNull();
 	});
 
