@@ -9,6 +9,7 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 
 	return {
 		ConfirmationSheet: ({
+			actionLayout,
 			cancelLabel,
 			confirmLabel,
 			description,
@@ -17,6 +18,7 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 			title,
 			visible,
 		}: {
+			actionLayout?: "inline" | "stacked";
 			cancelLabel: string;
 			confirmLabel: string;
 			description: import("react").ReactNode;
@@ -28,7 +30,10 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 			visible
 				? React.createElement(
 						Native.View,
-						{ accessibilityViewIsModal: true },
+						{
+							accessibilityViewIsModal: true,
+							testID: `confirmation-actions-${actionLayout ?? "inline"}`,
+						},
 						React.createElement(Native.Text, null, title),
 						React.createElement(Native.Text, null, description),
 						React.createElement(
@@ -63,6 +68,9 @@ describe("MaterialRequiredSheet", () => {
 
 		expect(
 			screen.getByText("Für diesen Lernplan fehlt Material"),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("confirmation-actions-stacked"),
 		).toBeOnTheScreen();
 		expect(
 			screen.getByText(

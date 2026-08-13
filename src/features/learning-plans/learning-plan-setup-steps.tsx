@@ -191,7 +191,7 @@ export function MaterialUploadStep({
 						disabled={!canUpload}
 						onPress={onSkip}
 					>
-						<Text>Material später hochladen</Text>
+						<Text>Ohne Lernmaterial erstellen</Text>
 					</Button>
 				) : null}
 			</View>
