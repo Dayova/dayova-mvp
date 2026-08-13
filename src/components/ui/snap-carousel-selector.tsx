@@ -271,9 +271,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 						style={[
 							StyleSheet.absoluteFill,
 							{
-								transform: [
-									{ translateY: valueContentLayout.verticalOffset },
-								],
+								transform: [{ translateY: valueContentLayout.verticalOffset }],
 							},
 						]}
 					>

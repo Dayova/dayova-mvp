@@ -78,6 +78,7 @@ import {
 	type DateTimePickerEvent,
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	ArrowLeft,
@@ -102,10 +103,7 @@ import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthFlow, useAuthSession } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
-import {
-	getOtpCellLayout,
-	getResponsiveAuthChoiceLayout,
-} from "~/features/auth/auth-content-size-layout";
+import { getResponsiveAuthChoiceLayout } from "~/features/auth/auth-content-size-layout";
 import {
 	LEARNING_DAYS,
 	type LearningDayLabel,

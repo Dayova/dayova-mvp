@@ -102,7 +102,7 @@ describe("SnapCarouselSelector", () => {
 		);
 	});
 
-	test("centers the value and both ring layers on one fixed canvas", async () => {
+	test("centers the value and both ring layers on one responsive canvas", async () => {
 		const screen = await render(
 			<SnapCarouselSelector
 				accessibilityLabel="Tägliche Lernzeit"
@@ -124,13 +124,11 @@ describe("SnapCarouselSelector", () => {
 		const arc = screen.getByTestId("snap-carousel-progress-arc");
 		const valueBubble = screen.getByTestId("snap-carousel-value-bubble");
 		const valueLabel = screen.getByTestId("snap-carousel-value-label");
+		const valueBubbleStyle = StyleSheet.flatten(valueBubble.props.style);
 
-		expect(StyleSheet.flatten(valueBubble.props.style)).toEqual(
-			expect.objectContaining({
-				height: 88,
-				width: 88,
-			}),
-		);
+		expect(valueBubbleStyle.height).toBe(valueBubbleStyle.width);
+		expect(ring.props.height).toBe(valueBubbleStyle.height);
+		expect(ring.props.width).toBe(valueBubbleStyle.width);
 		expect(StyleSheet.flatten(ring.props.style)).toEqual(
 			expect.objectContaining({
 				bottom: 0,
