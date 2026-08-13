@@ -34,6 +34,7 @@ export function MaterialRequiredSheet({
 
 	return (
 		<ConfirmationSheet
+			actionLayout="stacked"
 			cancelLabel="Später"
 			closeAccessibilityLabel="Materialhinweis schließen"
 			confirmLabel="Material hochladen"
