@@ -1,5 +1,4 @@
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -15,7 +14,6 @@ import Animated, {
 	interpolate,
 	interpolateColor,
 	LinearTransition,
-	type SharedValue,
 	useAnimatedStyle,
 	useSharedValue,
 	withSpring,
@@ -37,14 +35,16 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
+import {
+	CategoryTabs,
+	type InboxCategory,
+} from "~/features/notifications/category-tabs";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace } from "~/lib/navigation";
 import { useNotificationPermissionStatus } from "~/lib/notification-permissions";
 import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
 import { getPushNotificationDeliveryState } from "~/lib/notification-preferences";
-
-type InboxCategory = "all" | "learningPlan" | "task";
 
 type InboxNotification = {
 	id: Id<"notificationHistory">;
@@ -57,13 +57,6 @@ type InboxNotification = {
 	deletedAt: number | null;
 };
 
-const CATEGORIES: Array<{ key: InboxCategory; label: string }> = [
-	{ key: "all", label: "Alle" },
-	{ key: "learningPlan", label: "Lernpläne" },
-	{ key: "task", label: "Aufgaben" },
-];
-const PRIMARY_INTERACTIVE_GRADIENT =
-	DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const SWIPE_DELETE_MIN_DISTANCE = 96;
 const SWIPE_DELETE_MAX_DISTANCE = 132;
 const SWIPE_DELETE_FLING_DISTANCE = 40;
@@ -114,127 +107,6 @@ function NotificationIcon({
 			color={DAYOVA_DESIGN_SYSTEM.colors.primary}
 			strokeWidth={2}
 		/>
-	);
-}
-
-function CategoryTabs({
-	value,
-	onChange,
-}: {
-	value: InboxCategory;
-	onChange: (category: InboxCategory) => void;
-}) {
-	const selectedIndex = CATEGORIES.findIndex(
-		(category) => category.key === value,
-	);
-	const indicatorWidth = useSharedValue(0);
-	const selectionPosition = useSharedValue(selectedIndex);
-	const indicatorStyle = useAnimatedStyle(() => ({
-		width: indicatorWidth.get(),
-		transform: [{ translateX: selectionPosition.get() * indicatorWidth.get() }],
-	}));
-
-	useEffect(() => {
-		selectionPosition.set(
-			withTiming(selectedIndex, {
-				duration: 240,
-				easing: Easing.out(Easing.cubic),
-			}),
-		);
-	}, [selectedIndex, selectionPosition]);
-
-	return (
-		<View
-			className="flex-row rounded-full bg-card"
-			onLayout={({ nativeEvent }) => {
-				const nextIndicatorWidth =
-					(nativeEvent.layout.width - 8) / CATEGORIES.length;
-				indicatorWidth.set(nextIndicatorWidth);
-			}}
-			style={{
-				minHeight: 60,
-				paddingHorizontal: 4,
-				paddingVertical: 6,
-				boxShadow: "0 6px 16px rgba(20, 28, 48, 0.06)",
-			}}
-		>
-			<Animated.View
-				pointerEvents="none"
-				style={[
-					{
-						position: "absolute",
-						left: 4,
-						top: 6,
-						height: 48,
-						borderRadius: 999,
-						overflow: "hidden",
-					},
-					indicatorStyle,
-				]}
-			>
-				<LinearGradient
-					colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
-					start={PRIMARY_INTERACTIVE_GRADIENT.start}
-					end={PRIMARY_INTERACTIVE_GRADIENT.end}
-					style={{ flex: 1 }}
-				/>
-			</Animated.View>
-			{CATEGORIES.map((category, index) => {
-				const selected = value === category.key;
-
-				return (
-					<TouchableOpacity
-						key={category.key}
-						accessibilityRole="tab"
-						accessibilityState={{ selected }}
-						activeOpacity={0.84}
-						onPress={() => onChange(category.key)}
-						className="items-center justify-center rounded-full"
-						style={{
-							zIndex: 1,
-							flexGrow: 1,
-							flexBasis: 0,
-							height: 48,
-							minHeight: 48,
-						}}
-					>
-						<CategoryTabLabel
-							index={index}
-							label={category.label}
-							selectionPosition={selectionPosition}
-						/>
-					</TouchableOpacity>
-				);
-			})}
-		</View>
-	);
-}
-
-function CategoryTabLabel({
-	index,
-	label,
-	selectionPosition,
-}: {
-	index: number;
-	label: string;
-	selectionPosition: SharedValue<number>;
-}) {
-	const animatedStyle = useAnimatedStyle(() => ({
-		color: interpolateColor(
-			Math.min(Math.abs(selectionPosition.get() - index), 1),
-			[0, 1],
-			["#FFFFFF", "#1A1A1A"],
-		),
-	}));
-
-	return (
-		<Animated.Text
-			className="font-poppins font-semibold text-body-4"
-			// Reanimated owns the interpolated tab text color.
-			style={animatedStyle}
-		>
-			{label}
-		</Animated.Text>
 	);
 }
 
