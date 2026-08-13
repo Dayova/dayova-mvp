@@ -8,7 +8,12 @@ import Animated, {
 	useSharedValue,
 } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
+import {
+	getRangeValueBadgeSize,
+	getRangeValueContentLayout,
+} from "~/features/auth/auth-content-size-layout";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
@@ -70,9 +75,23 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 	const hasTickLabels = renderItemLabel !== undefined;
 	const { colors } = useDayovaTheme();
 	const listRef = useRef<FlatList<Item>>(null);
-	const { width } = useWindowDimensions();
-	const carouselWidth = Math.min(width, CAROUSEL_MAX_WIDTH);
-	const sidePadding = Math.max((carouselWidth - CAROUSEL_ITEM_WIDTH) / 2, 0);
+	const { fontScale, width } = useWindowDimensions();
+	const { shouldStackInlineContent, usableWidth } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
+	const carouselWidth = Math.min(
+		shouldStackInlineContent ? usableWidth : width,
+		CAROUSEL_MAX_WIDTH,
+	);
+	const itemWidth = shouldStackInlineContent
+		? Math.min(112, Math.max(CAROUSEL_ITEM_WIDTH, 52 * fontScale))
+		: CAROUSEL_ITEM_WIDTH;
+	const sidePadding = Math.max((carouselWidth - itemWidth) / 2, 0);
+	const valueBadgeSize = getRangeValueBadgeSize({
+		fontScale,
+		shouldStackInlineContent,
+	});
+	const valueContentLayout = getRangeValueContentLayout(fontScale);
 	const lastIndex = Math.max(items.length - 1, 0);
 	const safeSelectedIndex = Math.min(Math.max(selectedIndex, 0), lastIndex);
 	const safeProgress =
@@ -80,7 +99,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 			? 0
 			: Math.min(Math.max(valueBubbleConfig.progress, 0), 1);
 	const showValueBubble = valueBubbleConfig !== null;
-	const scrollX = useSharedValue(safeSelectedIndex * CAROUSEL_ITEM_WIDTH);
+	const scrollX = useSharedValue(safeSelectedIndex * itemWidth);
 
 	const selectIndex = useCallback(
 		(nextIndex: number, animated = true) => {
@@ -90,20 +109,20 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 
 			onSelect(nextItem);
 			listRef.current?.scrollToOffset({
-				offset: clampedIndex * CAROUSEL_ITEM_WIDTH,
+				offset: clampedIndex * itemWidth,
 				animated,
 			});
 		},
-		[items, lastIndex, onSelect],
+		[itemWidth, items, lastIndex, onSelect],
 	);
 
 	useEffect(() => {
-		scrollX.set(safeSelectedIndex * CAROUSEL_ITEM_WIDTH);
+		scrollX.set(safeSelectedIndex * itemWidth);
 		listRef.current?.scrollToOffset({
-			offset: safeSelectedIndex * CAROUSEL_ITEM_WIDTH,
+			offset: safeSelectedIndex * itemWidth,
 			animated: false,
 		});
-	}, [safeSelectedIndex, scrollX]);
+	}, [itemWidth, safeSelectedIndex, scrollX]);
 
 	const scrollHandler = useAnimatedScrollHandler({
 		onScroll: (event) => {
@@ -114,14 +133,14 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 	const handleScrollEnd = useCallback(
 		(offsetX: number) => {
 			const nextIndex = Math.min(
-				Math.max(Math.round(offsetX / CAROUSEL_ITEM_WIDTH), 0),
+				Math.max(Math.round(offsetX / itemWidth), 0),
 				lastIndex,
 			);
 			if (nextIndex === safeSelectedIndex) return;
 			const nextItem = items[nextIndex];
 			if (nextItem !== undefined) onSelect(nextItem);
 		},
-		[items, lastIndex, onSelect, safeSelectedIndex],
+		[itemWidth, items, lastIndex, onSelect, safeSelectedIndex],
 	);
 
 	const handleAccessibilityAction = ({
@@ -140,10 +159,18 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 	return (
 		<View className="w-full items-center">
 			{showValueBubble ? (
-				<View className="h-22 w-22 items-center justify-center rounded-full border-4 border-primary/20">
+				<View
+					className="items-center justify-center border-4 border-primary/20"
+					style={{
+						borderRadius: valueBadgeSize / 2,
+						height: valueBadgeSize,
+						width: valueBadgeSize,
+					}}
+				>
 					<Svg
-						width={88}
-						height={88}
+						width={valueBadgeSize}
+						height={valueBadgeSize}
+						viewBox="0 0 88 88"
 						// SVG geometry is not expressible through NativeWind classes.
 						style={{ position: "absolute" }}
 					>
@@ -159,12 +186,22 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 							transform="rotate(-90 44 44)"
 						/>
 					</Svg>
-					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-						{valueBubbleConfig.primaryLabel}
-					</Text>
-					<Text className="-mt-1 text-center font-poppins font-semibold text-body-5 text-text">
-						{valueBubbleConfig.secondaryLabel}
-					</Text>
+					<View
+						style={{
+							alignItems: "center",
+							transform: [{ translateY: valueContentLayout.verticalOffset }],
+						}}
+					>
+						<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
+							{valueBubbleConfig.primaryLabel}
+						</Text>
+						<Text
+							className="text-center font-poppins font-semibold text-body-5 text-text"
+							style={{ marginTop: valueContentLayout.unitMarginTop }}
+						>
+							{valueBubbleConfig.secondaryLabel}
+						</Text>
+					</View>
 				</View>
 			) : null}
 
@@ -181,9 +218,13 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 				className={cn(
 					"justify-center",
 					showValueBubble
-						? "mt-12 h-[92px]"
+						? shouldStackInlineContent
+							? "mt-8 min-h-[112px]"
+							: "mt-12 h-[92px]"
 						: hasTickLabels
-							? "h-[132px]"
+							? shouldStackInlineContent
+								? "min-h-[168px]"
+								: "h-[132px]"
 							: "h-[92px]",
 				)}
 				// The carousel width follows the current window width.
@@ -196,7 +237,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 					horizontal
 					bounces={false}
 					decelerationRate="fast"
-					snapToInterval={CAROUSEL_ITEM_WIDTH}
+					snapToInterval={itemWidth}
 					snapToAlignment="start"
 					showsHorizontalScrollIndicator={false}
 					scrollEventThrottle={16}
@@ -208,8 +249,8 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 						handleScrollEnd(event.nativeEvent.contentOffset.x)
 					}
 					getItemLayout={(_, index) => ({
-						length: CAROUSEL_ITEM_WIDTH,
-						offset: CAROUSEL_ITEM_WIDTH * index,
+						length: itemWidth,
+						offset: itemWidth * index,
 						index,
 					})}
 					contentContainerStyle={{
@@ -221,7 +262,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 					renderItem={({ item, index }) => (
 						<SnapCarouselTick
 							index={index}
-							itemWidth={CAROUSEL_ITEM_WIDTH}
+							itemWidth={itemWidth}
 							scrollX={scrollX}
 							activeColor={colors.primary}
 							inactiveColor={colors.border}
@@ -284,7 +325,7 @@ function SnapCarouselTick({
 		<Animated.View
 			className={cn(
 				"items-center justify-center",
-				label ? "h-[118px]" : "h-[78px]",
+				label ? "min-h-[118px]" : "h-[78px]",
 			)}
 			// Width and transform depend on the carousel geometry and animated position.
 			style={[{ width: itemWidth }, animatedStyle]}
@@ -299,7 +340,6 @@ function SnapCarouselTick({
 			{label ? (
 				<Text
 					className="mt-1 min-h-9 text-center font-poppins font-semibold text-body-5"
-					numberOfLines={2}
 					// The active label color follows the runtime theme.
 					style={{ color: selected ? activeColor : inactiveLabelColor }}
 				>

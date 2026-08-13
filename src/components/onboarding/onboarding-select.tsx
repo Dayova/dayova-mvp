@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { FieldAccessory, FieldTrigger } from "~/components/ui/field";
 import { ChevronDown } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
@@ -25,11 +26,12 @@ function PickerInputTrigger({
 	onPress,
 }: PickerInputTriggerProps) {
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 	const hasValue = value.trim().length > 0;
 
 	return (
 		<FieldTrigger
-			accessibilityLabel={accessibilityLabel}
+			accessibilityLabel={`${accessibilityLabel}: ${hasValue ? value : placeholder}`}
 			accessibilityRole="button"
 			accessibilityState={expanded === undefined ? undefined : { expanded }}
 			accessibilityValue={hasValue ? { text: value } : undefined}
@@ -43,7 +45,7 @@ function PickerInputTrigger({
 					"flex-1 font-poppins text-body-2",
 					hasValue ? "text-text" : "text-text/40",
 				)}
-				numberOfLines={1}
+				numberOfLines={shouldStackInlineContent ? undefined : 1}
 			>
 				{hasValue ? value : placeholder}
 			</Text>

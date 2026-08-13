@@ -55,10 +55,15 @@ import {
 } from "~/components/ui/icon";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthFlow, useAuthSession } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
+import {
+	getOtpCellLayout,
+	getResponsiveAuthChoiceLayout,
+} from "~/features/auth/auth-content-size-layout";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { PASSWORD_RESET_SUCCESS_PATH } from "~/lib/auth-routing";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -259,7 +264,11 @@ const AUTH_BACKGROUND_TILE = {
 
 export function AuthChoiceScreen() {
 	const { colors: COLORS } = useDayovaTheme();
-	const { width, height } = useWindowDimensions();
+	const { width, height, fontScale } = useWindowDimensions();
+	const insets = useSafeAreaInsets();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const frameScale = Math.min(
 		width / AUTH_CHOICE_FRAME.width,
 		height / AUTH_CHOICE_FRAME.height,
@@ -271,6 +280,106 @@ export function AuthChoiceScreen() {
 		(AUTH_CHOICE_FRAME.width - AUTH_CHOICE_FRAME.buttons.width) / 2,
 	);
 	const verticalPadding = Math.max(0, (height - frameHeight) / 2);
+	const responsiveLayout = getResponsiveAuthChoiceLayout(fontScale);
+
+	if (contentSizeLayout.shouldStackInlineContent) {
+		return (
+			<View className="flex-1 bg-background">
+				<Stack.Screen options={{ title: "Dayova" }} />
+				<ThemedStatusBar />
+				<View pointerEvents="none" className="absolute inset-0 overflow-hidden">
+					<AuthBackgroundPattern
+						scale={Math.max(width / AUTH_CHOICE_FRAME.width, 0.78)}
+						yOffset={AUTH_CHOICE_FRAME.patternYOffset}
+					/>
+				</View>
+				<ScrollView
+					bounces={false}
+					contentInsetAdjustmentBehavior="never"
+					showsVerticalScrollIndicator={false}
+					contentContainerStyle={{
+						alignItems: "center",
+						alignSelf: "center",
+						justifyContent: responsiveLayout.verticallyCenterContent
+							? "center"
+							: "flex-start",
+						maxWidth: contentSizeLayout.containerMaxWidth,
+						minHeight: height,
+						paddingBottom: Math.max(insets.bottom + 32, 48),
+						paddingHorizontal: contentSizeLayout.horizontalPadding,
+						paddingTop: Math.max(insets.top + 32, 48),
+						width: "100%",
+					}}
+				>
+					<Animated.View
+						entering={FadeInDown.duration(520).springify().damping(18)}
+						className="h-28 w-28 items-center justify-center rounded-[28px] bg-card shadow-lg"
+					>
+						<Image
+							source={require("../../../assets/onboarding/dayova-y.png")}
+							resizeMode="contain"
+							className="h-[104px] w-[104px]"
+						/>
+					</Animated.View>
+
+					<Text
+						allowFontScaling={false}
+						className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
+						style={{
+							fontSize: responsiveLayout.brandFontSize,
+							lineHeight: responsiveLayout.brandLineHeight,
+							width: Math.min(
+								Math.max(width - 16, 0),
+								contentSizeLayout.containerMaxWidth,
+							),
+						}}
+					>
+						Dayova
+					</Text>
+					<Text
+						allowFontScaling={false}
+						className="mt-4 text-center font-poppins text-body-2 text-secondary-text"
+						style={{
+							fontSize: responsiveLayout.bodyFontSize,
+							lineHeight: responsiveLayout.bodyLineHeight,
+						}}
+					>
+						Du bist neu hier, dann registriere dich. Andernfalls willkommen
+						zurück
+					</Text>
+
+					<View className="mt-8 w-full gap-3">
+						<AuthChoicePillButton
+							label="Registrierung"
+							responsive
+							scale={1}
+							tone="gradient"
+							onPress={() => router.push("/onboarding")}
+						/>
+						<AuthChoicePillButton
+							label="Login"
+							responsive
+							scale={1}
+							tone="dark"
+							onPress={() => router.push("/login")}
+						/>
+					</View>
+
+					<Text
+						allowFontScaling={false}
+						className="mt-7 w-full text-center font-poppins text-body-4 text-secondary-text"
+						style={{
+							fontSize: responsiveLayout.termsFontSize,
+							lineHeight: responsiveLayout.termsLineHeight,
+						}}
+					>
+						Mit dem Start akzeptierst du Daten­schutz­bestimmungen und
+						Nutzungs­bedingungen.
+					</Text>
+				</ScrollView>
+			</View>
+		);
+	}
 
 	return (
 		<View className="flex-1 bg-background">
@@ -2206,15 +2315,21 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 function AuthChoicePillButton({
 	label,
 	onPress,
+	responsive = false,
 	scale,
 	tone,
 }: {
 	label: string;
 	onPress: () => void;
+	responsive?: boolean;
 	scale: number;
 	tone: "gradient" | "dark";
 }) {
 	const height = AUTH_CHOICE_FRAME.buttons.height * scale;
+	const { fontScale } = useWindowDimensions();
+	const responsiveLayout = getResponsiveAuthChoiceLayout(fontScale);
+	const visibleLabel =
+		responsive && label === "Registrierung" ? "Registrie­rung" : label;
 
 	return (
 		<Pressable
@@ -2222,12 +2337,21 @@ function AuthChoicePillButton({
 			accessibilityRole="button"
 			onPress={onPress}
 			style={{
-				height,
-				borderRadius: height / 2,
+				height: responsive ? undefined : height,
+				minHeight: responsive ? responsiveLayout.buttonMinHeight : undefined,
+				borderRadius: responsive
+					? DAYOVA_DESIGN_SYSTEM.radius.button
+					: height / 2,
+				borderColor: tone === "gradient" ? COLORS.surface : COLORS.border,
+				borderWidth: responsive
+					? DAYOVA_DESIGN_SYSTEM.size.button.borderWidth
+					: 0,
 				overflow: "hidden",
 				alignItems: "center",
 				justifyContent: "center",
 				backgroundColor: tone === "dark" ? COLORS.buttonNeutral : "transparent",
+				paddingHorizontal: responsive ? 24 : 0,
+				paddingVertical: responsive ? 12 : 0,
 			}}
 		>
 			{tone === "gradient" ? (
@@ -2245,16 +2369,22 @@ function AuthChoicePillButton({
 				/>
 			) : null}
 			<Text
-				className="font-poppins font-semibold"
+				allowFontScaling={responsive ? false : undefined}
+				className={
+					responsive
+						? "text-center font-poppins font-semibold text-body-2"
+						: "font-poppins font-semibold"
+				}
 				style={{
 					color: COLORS.surface,
-					fontSize: 16 * scale,
-					lineHeight: 24 * scale,
+					fontSize: responsive ? responsiveLayout.bodyFontSize : 16 * scale,
+					lineHeight: responsive ? responsiveLayout.bodyLineHeight : 24 * scale,
 					includeFontPadding: false,
+					width: responsive ? "100%" : undefined,
 					textAlignVertical: "center",
 				}}
 			>
-				{label}
+				{visibleLabel}
 			</Text>
 		</Pressable>
 	);
@@ -2269,6 +2399,8 @@ function GradientPillButton({
 	onPress: () => void;
 	disabled?: boolean;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+
 	return (
 		<Pressable
 			accessibilityLabel={label}
@@ -2276,13 +2408,16 @@ function GradientPillButton({
 			accessibilityState={{ disabled }}
 			disabled={disabled}
 			onPress={onPress}
+			className="px-6"
 			style={{
-				height: 56,
-				borderRadius: 28,
+				height: shouldStackInlineContent ? undefined : 56,
+				minHeight: 56,
+				borderRadius: DAYOVA_DESIGN_SYSTEM.radius.button,
 				overflow: "hidden",
 				alignItems: "center",
 				justifyContent: "center",
 				opacity: disabled ? 0.55 : 1,
+				paddingVertical: shouldStackInlineContent ? 12 : 0,
 			}}
 		>
 			<LinearGradient
@@ -2316,6 +2451,7 @@ function DarkPillButton({
 	busy?: boolean;
 }) {
 	const { colors: COLORS, isDark } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 
 	return (
 		<Pressable
@@ -2324,9 +2460,11 @@ function DarkPillButton({
 			accessibilityState={{ busy, disabled }}
 			disabled={disabled}
 			onPress={onPress}
+			className="px-6"
 			style={{
-				height: 56,
-				borderRadius: 28,
+				height: shouldStackInlineContent ? undefined : 56,
+				minHeight: 56,
+				borderRadius: DAYOVA_DESIGN_SYSTEM.radius.button,
 				alignItems: "center",
 				justifyContent: "center",
 				backgroundColor: isDark ? COLORS.primaryStrong : COLORS.buttonNeutral,
@@ -2335,6 +2473,7 @@ function DarkPillButton({
 					: isDark
 						? "0 8px 18px rgba(0, 160, 230, 0.18)"
 						: "0 8px 18px rgba(20, 28, 48, 0.08)",
+				paddingVertical: shouldStackInlineContent ? 12 : 0,
 			}}
 		>
 			<Text className="font-poppins font-semibold text-body-2 text-white">
