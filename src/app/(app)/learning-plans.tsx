@@ -65,6 +65,7 @@ type LearningPlanOverview = {
 	id: Id<"learningPlans">;
 	subject: string;
 	examTypeLabel: string;
+	topicDescription: string;
 	status: "draft" | "questionsReady" | "generated" | "accepted";
 	needsSchoolMaterial: boolean;
 	progressPercent: number;
@@ -992,6 +993,7 @@ export default function LearningPlansScreen() {
 				onClose={() => setMaterialUploadTarget(null)}
 				onUpload={continueToMaterialUpload}
 				subject={materialUploadTarget?.subject ?? null}
+				topicDescription={materialUploadTarget?.topicDescription ?? null}
 			/>
 			<ConfirmationSheet
 				visible={Boolean(deleteTarget)}

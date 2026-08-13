@@ -76,7 +76,9 @@ describe("learning-plan setup steps", () => {
 			}),
 		).toBeEnabled();
 		expect(
-			screen.getByText("Ohne Material wird nur deine Prüfung gespeichert."),
+			screen.getByText(
+				"Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du später ergänzen.",
+			),
 		).toBeOnTheScreen();
 		expect(
 			screen.queryByRole("button", {
@@ -86,14 +88,14 @@ describe("learning-plan setup steps", () => {
 		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
 		expect(
 			screen.getByRole("button", {
-				name: "Ohne Lernplan abschließen",
+				name: "Material später hochladen",
 			}),
 		).toBeOnTheScreen();
 
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
 		);
-		expect(onOpenUpload).toHaveBeenCalledWith("school");
+		expect(onOpenUpload).toHaveBeenCalledWith();
 	});
 
 	test("reveals continue after school material is uploaded", async () => {
@@ -134,7 +136,7 @@ describe("learning-plan setup steps", () => {
 		).toBeNull();
 		expect(
 			screen.queryByRole("button", {
-				name: "Ohne Lernplan abschließen",
+				name: "Material später hochladen",
 			}),
 		).toBeNull();
 	});
@@ -167,7 +169,7 @@ describe("learning-plan setup steps", () => {
 		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
 		expect(screen.queryByText("Lernhilfe.pdf")).toBeNull();
 		expect(
-			screen.getByRole("button", { name: "Ohne Lernplan abschließen" }),
+			screen.getByRole("button", { name: "Material später hochladen" }),
 		).toBeOnTheScreen();
 	});
 
@@ -195,7 +197,7 @@ describe("learning-plan setup steps", () => {
 			),
 		).toBeOnTheScreen();
 		expect(
-			screen.queryByRole("button", { name: "Ohne Lernplan abschließen" }),
+			screen.queryByRole("button", { name: "Material später hochladen" }),
 		).toBeNull();
 	});
 

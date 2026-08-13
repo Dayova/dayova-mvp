@@ -129,7 +129,7 @@ test("lists a materialless draft so the upload can be resumed", async () => {
 		examDateKey: "2026-08-12",
 		examDateLabel: "12. August 2026",
 		durationMinutes: 90,
-		topicDescription: "",
+		topicDescription: "Lineare Funktionen, Steigung und Nullstellen",
 	});
 
 	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
@@ -137,6 +137,7 @@ test("lists a materialless draft so the upload can be resumed", async () => {
 			id: learningPlanId,
 			status: "draft",
 			needsSchoolMaterial: true,
+			topicDescription: "Lineare Funktionen, Steigung und Nullstellen",
 		}),
 	]);
 });

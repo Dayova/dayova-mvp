@@ -1328,6 +1328,7 @@ export const listOverview = query({
 				id: plan._id,
 				subject: plan.subject,
 				examTypeLabel: plan.examTypeLabel,
+				topicDescription: plan.topicDescription,
 				status: plan.status,
 				needsSchoolMaterial: plan.status === "draft",
 				progressPercent,

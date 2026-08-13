@@ -150,7 +150,8 @@ export function MaterialUploadStep({
 
 			{showSkip && !hasSchoolMaterial ? (
 				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-					Ohne Material wird nur deine Prüfung gespeichert.
+					Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du
+					später ergänzen.
 				</Text>
 			) : null}
 
@@ -185,12 +186,12 @@ export function MaterialUploadStep({
 					/>
 				) : showSkip ? (
 					<Button
-						accessibilityHint="Speichert die Prüfung ohne Lernplan. Material kann später hochgeladen werden."
+						accessibilityHint="Speichert den Lernplan-Entwurf. Material kann später hochgeladen werden."
 						variant="neutral"
 						disabled={!canUpload}
 						onPress={onSkip}
 					>
-						<Text>Ohne Lernplan abschließen</Text>
+						<Text>Material später hochladen</Text>
 					</Button>
 				) : null}
 			</View>

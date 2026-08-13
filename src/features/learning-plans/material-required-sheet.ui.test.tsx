@@ -55,6 +55,9 @@ describe("MaterialRequiredSheet", () => {
 				onClose={onClose}
 				onUpload={onUpload}
 				subject="Mathe"
+				topicDescription={
+					"Lineare Funktionen, Steigung berechnen; Nullstellen\nbestimmen"
+				}
 			/>,
 		);
 
@@ -63,10 +66,9 @@ describe("MaterialRequiredSheet", () => {
 		).toBeOnTheScreen();
 		expect(
 			screen.getByText(
-				"Lade mindestens eine Schulunterlage für Mathe hoch. Danach kann Dayova deinen Lernplan erstellen.",
+				"Lade mindestens eine Schulunterlage für Mathe hoch.\n\nDafür brauchst du Material:\n• Lineare Funktionen\n• Steigung berechnen\n• Nullstellen\n• bestimmen\n\nDanach kann Dayova deinen Lernplan erstellen.",
 			),
 		).toBeOnTheScreen();
-
 		fireEvent.press(screen.getByRole("button", { name: "Material hochladen" }));
 		expect(onUpload).toHaveBeenCalledTimes(1);
 		expect(onClose).not.toHaveBeenCalled();
@@ -80,6 +82,7 @@ describe("MaterialRequiredSheet", () => {
 				onClose={onClose}
 				onUpload={onUpload}
 				subject="Biologie"
+				topicDescription="Zellbiologie"
 			/>,
 		);
 
@@ -94,6 +97,7 @@ describe("MaterialRequiredSheet", () => {
 				onClose={() => undefined}
 				onUpload={() => undefined}
 				subject={null}
+				topicDescription={null}
 			/>,
 		);
 
