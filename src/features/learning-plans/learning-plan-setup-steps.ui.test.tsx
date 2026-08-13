@@ -95,7 +95,7 @@ describe("learning-plan setup steps", () => {
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
 		);
-		expect(onOpenUpload).toHaveBeenCalledWith();
+		expect(onOpenUpload).toHaveBeenCalledTimes(1);
 	});
 
 	test("reveals continue after school material is uploaded", async () => {
