@@ -2,7 +2,6 @@ import { describe, expect, test } from "vitest";
 import {
 	getLearningPathNodePresentation,
 	LEARNING_PATH_BREATHING,
-	LEARNING_PATH_SEGMENTED_HALO_TONES,
 } from "./learning-path-node-presentation";
 
 describe("getLearningPathNodePresentation", () => {
@@ -34,7 +33,7 @@ describe("getLearningPathNodePresentation", () => {
 		});
 	});
 
-	test("the current session keeps its phase icon inside the segmented breathing treatment", () => {
+	test("unfinished sessions stay gray and only show a continuous halo when selected", () => {
 		expect([
 			getLearningPathNodePresentation({
 				phase: "theory",
@@ -52,32 +51,23 @@ describe("getLearningPathNodePresentation", () => {
 				state: "current",
 			}),
 		]).toEqual([
-			{ halo: "segmented", icon: "note", motion: "breathe", tone: "blue" },
+			{ halo: "solid", icon: "note", motion: "breathe", tone: "gray" },
 			{
-				halo: "segmented",
+				halo: "none",
 				icon: "dumbbell",
 				motion: "breathe",
-				tone: "blue",
+				tone: "gray",
 			},
 			{
-				halo: "segmented",
+				halo: "none",
 				icon: "repeat",
 				motion: "breathe",
-				tone: "blue",
+				tone: "gray",
 			},
 		]);
 	});
 
-	test("the current-session halo alternates gray and blue across four separate arcs", () => {
-		expect(LEARNING_PATH_SEGMENTED_HALO_TONES).toEqual([
-			"gray",
-			"blue",
-			"gray",
-			"blue",
-		]);
-	});
-
-	test("locked sessions keep their phase icons on compact gray coins without motion or halos", () => {
+	test("locked sessions keep their phase icons on compact gray coins and use the same selected halo", () => {
 		expect([
 			getLearningPathNodePresentation({
 				phase: "theory",
@@ -96,7 +86,7 @@ describe("getLearningPathNodePresentation", () => {
 			}),
 		]).toEqual([
 			{ halo: "none", icon: "note", motion: "still", tone: "gray" },
-			{ halo: "none", icon: "dumbbell", motion: "still", tone: "gray" },
+			{ halo: "solid", icon: "dumbbell", motion: "still", tone: "gray" },
 			{ halo: "none", icon: "repeat", motion: "still", tone: "gray" },
 		]);
 	});

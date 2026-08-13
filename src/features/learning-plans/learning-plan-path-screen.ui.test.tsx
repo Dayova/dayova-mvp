@@ -1,11 +1,13 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
+import { processColor } from "react-native";
 import {
 	getExamCountdownLabel,
 	LearningPath,
 	SessionPreviewCard,
 } from "~/app/learning-plans/[planId]/index";
 import type { PlanSession } from "~/features/learning-plans/types";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
 jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
@@ -209,6 +211,8 @@ describe("learning-plan path", () => {
 	});
 
 	test("keeps node details out of the path and connects it to the exam", async () => {
+		const onOpenSession = jest.fn();
+		const onSelectSession = jest.fn();
 		const sessions = [
 			session("session_done", {
 				completed: true,
@@ -226,7 +230,8 @@ describe("learning-plan path", () => {
 			<LearningPath
 				examCountdownLabel="Noch 14 Tage"
 				examDateLabel="18. August 2026"
-				onSelectSession={() => undefined}
+				onOpenSession={onOpenSession}
+				onSelectSession={onSelectSession}
 				selectedSessionId={sessions[1]?.id ?? null}
 				sessions={sessions}
 				showsAdaptiveContinuation
@@ -249,6 +254,37 @@ describe("learning-plan path", () => {
 		expect(screen.getByText("Dayova plant mit dir weiter")).toBeOnTheScreen();
 		expect(screen.getByText("18. August 2026")).toBeOnTheScreen();
 		expect(screen.getByText("Noch 14 Tage")).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("learning-path-node-halo-session_current").props.stroke
+				.payload,
+		).toEqual(processColor(DAYOVA_DESIGN_SYSTEM.colors.path4));
+		expect(
+			screen.getByTestId("learning-path-node-puck-session_current").props.style
+				.width,
+		).toBe(60);
+		expect(
+			screen.getByTestId("learning-path-node-puck-session_current-face").props
+				.style.backgroundColor,
+		).toBe(DAYOVA_DESIGN_SYSTEM.colors.path1);
+		expect(
+			screen.getByTestId("learning-path-node-puck-session_preview").props.style
+				.width,
+		).toBe(52);
+		expect(
+			screen.queryByTestId("learning-path-node-halo-session_done"),
+		).toBeNull();
+
+		await fireEvent.press(
+			screen.getByTestId("learning-path-node-session_current"),
+		);
+		expect(onOpenSession).toHaveBeenCalledWith(sessions[1]);
+		expect(onSelectSession).not.toHaveBeenCalled();
+
+		await fireEvent.press(
+			screen.getByTestId("learning-path-node-session_preview"),
+		);
+		expect(onOpenSession).toHaveBeenCalledTimes(1);
+		expect(onSelectSession).toHaveBeenCalledWith(sessions[2]);
 	});
 
 	test("formats the exam countdown for today and future dates", () => {
