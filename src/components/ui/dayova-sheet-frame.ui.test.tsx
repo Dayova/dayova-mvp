@@ -118,7 +118,11 @@ describe("DayovaSheetFrame", () => {
 			.spyOn(BackHandler, "addEventListener")
 			.mockImplementation((_eventName, handler) => {
 				androidBackHandler = handler;
-				return { remove: jest.fn() };
+				return {
+					remove: jest.fn(() => {
+						if (androidBackHandler === handler) androidBackHandler = null;
+					}),
+				};
 			});
 		focusSpy = jest
 			.spyOn(AccessibilityInfo, "setAccessibilityFocus")
@@ -205,12 +209,82 @@ describe("DayovaSheetFrame", () => {
 			await act(flushAnimationFrames);
 
 			expect(androidBackHandler).not.toBeNull();
-			expect(androidBackHandler?.(undefined as never)).toBe(true);
+			let handled = false;
+			await act(() => {
+				handled = androidBackHandler?.(undefined as never) ?? false;
+			});
+			expect(handled).toBe(true);
 			expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
 
 			await act(() => mockSheetHarness.onDismiss?.());
 			expect(onClose).toHaveBeenCalledTimes(1);
 			expect(mockSheetHarness.present).toHaveBeenCalledTimes(1);
+		} finally {
+			Object.defineProperty(Platform, "OS", {
+				configurable: true,
+				value: originalPlatform,
+			});
+		}
+	});
+
+	test("Android back cancels a deferred opening before the sheet can appear", async () => {
+		const onClose = jest.fn();
+		const originalPlatform = Platform.OS;
+		Object.defineProperty(Platform, "OS", {
+			configurable: true,
+			value: "android",
+		});
+		try {
+			await render(
+				<DayovaSheetFrame visible onClose={onClose} title="Auswahl" />,
+			);
+
+			let handled = false;
+			await act(() => {
+				handled = androidBackHandler?.(undefined as never) ?? false;
+			});
+			expect(handled).toBe(true);
+			expect(onClose).toHaveBeenCalledTimes(1);
+			await act(flushAnimationFrames);
+			expect(mockSheetHarness.present).not.toHaveBeenCalled();
+		} finally {
+			Object.defineProperty(Platform, "OS", {
+				configurable: true,
+				value: originalPlatform,
+			});
+		}
+	});
+
+	test("Android back remains captured until a closing sheet is fully dismissed", async () => {
+		const originalPlatform = Platform.OS;
+		Object.defineProperty(Platform, "OS", {
+			configurable: true,
+			value: "android",
+		});
+		try {
+			const view = await render(
+				<DayovaSheetFrame visible onClose={jest.fn()} title="Auswahl" />,
+			);
+			await act(flushAnimationFrames);
+			await act(() => mockSheetHarness.onChange?.(0));
+
+			await view.rerender(
+				<DayovaSheetFrame
+					visible={false}
+					onClose={jest.fn()}
+					title="Auswahl"
+				/>,
+			);
+			expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
+			expect(androidBackHandler).not.toBeNull();
+			let handled = false;
+			await act(() => {
+				handled = androidBackHandler?.(undefined as never) ?? false;
+			});
+			expect(handled).toBe(true);
+
+			await act(() => mockSheetHarness.onDismiss?.());
+			expect(androidBackHandler).toBeNull();
 		} finally {
 			Object.defineProperty(Platform, "OS", {
 				configurable: true,

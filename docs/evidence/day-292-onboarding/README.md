@@ -412,6 +412,15 @@ bound outbox records cannot be replaced by another registration or Clerk user;
 owned sync success cannot clear an unrelated failure; and dashboard
 announcements omit unavailable date/time values instead of speaking “null”.
 
+The final lifecycle pass then closed two additional race windows. Android back
+is captured from a sheet's requested opening through its native dismissal, so
+back cannot leak to the underlying route before presentation or while the sheet
+is still closing. Trial-reminder cleanup now waits until both access loading and
+onboarding completion are settled; logout still removes the reminder
+immediately, while transient unresolved state preserves it. Focused native-UI
+tests cover deferred opening, in-flight dismissal, access loading, and pending
+onboarding before the complete repository suite is run on the final commit.
+
 These are code and automated-test conclusions. They do not replace the
 remaining owner, physical-assistive-technology, or legal trial-activation gates
 listed in the PR checklist.
