@@ -97,7 +97,7 @@ describe("TheoryTopicPage", () => {
 		expect(screen.queryByRole("button", { name: /vorlesen/i })).toBeNull();
 	});
 
-	test("lets every theory section collapse and expand independently", async () => {
+	test("starts every theory section collapsed and toggles independently", async () => {
 		const screen = await render(
 			<TheoryTopicPage
 				currentIndex={0}
@@ -118,12 +118,7 @@ describe("TheoryTopicPage", () => {
 
 		for (const [title, content] of sections) {
 			expect(content).toBeDefined();
-			expect(screen.getByText(content ?? "")).toBeOnTheScreen();
-
-			fireEvent.press(
-				screen.getByRole("button", { name: `${title} einklappen` }),
-			);
-			await waitFor(() => expect(screen.queryByText(content ?? "")).toBeNull());
+			expect(screen.queryByText(content ?? "")).toBeNull();
 			expect(
 				screen.getByRole("button", { name: `${title} ausklappen` }).props
 					.accessibilityState,
@@ -135,10 +130,19 @@ describe("TheoryTopicPage", () => {
 			await waitFor(() =>
 				expect(screen.getByText(content ?? "")).toBeOnTheScreen(),
 			);
+			expect(
+				screen.getByRole("button", { name: `${title} einklappen` }).props
+					.accessibilityState,
+			).toEqual({ expanded: true });
+
+			fireEvent.press(
+				screen.getByRole("button", { name: `${title} einklappen` }),
+			);
+			await waitFor(() => expect(screen.queryByText(content ?? "")).toBeNull());
 		}
 	});
 
-	test("also makes the focused Kernidee section collapsible", async () => {
+	test("also starts the focused Kernidee section collapsed", async () => {
 		const focusedItem = { ...item, questionAngle: "recall" };
 		const screen = await render(
 			<TheoryTopicPage
@@ -151,17 +155,21 @@ describe("TheoryTopicPage", () => {
 			/>,
 		);
 
-		fireEvent.press(
-			screen.getByRole("button", { name: "Kernidee einklappen" }),
-		);
-		await waitFor(() =>
-			expect(
-				screen.queryByText(item.theoryContent?.explanation ?? ""),
-			).toBeNull(),
-		);
+		expect(
+			screen.queryByText(item.theoryContent?.explanation ?? ""),
+		).toBeNull();
 		expect(
 			screen.getByRole("button", { name: "Kernidee ausklappen" }).props
 				.accessibilityState,
 		).toEqual({ expanded: false });
+
+		fireEvent.press(
+			screen.getByRole("button", { name: "Kernidee ausklappen" }),
+		);
+		await waitFor(() =>
+			expect(
+				screen.getByText(item.theoryContent?.explanation ?? ""),
+			).toBeOnTheScreen(),
+		);
 	});
 });

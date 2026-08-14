@@ -105,7 +105,7 @@ function CollapsibleTheorySection({
 	icon: React.ReactNode;
 	title: string;
 }) {
-	const [isExpanded, setIsExpanded] = useState(true);
+	const [isExpanded, setIsExpanded] = useState(false);
 	const { colors } = useDayovaTheme();
 
 	return (
