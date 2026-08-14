@@ -2,7 +2,10 @@ import { View, type ViewProps } from "react-native";
 import { BackButton } from "~/components/ui/button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
-import { LEARNING_PLAN_CREATION_TOTAL_STEPS } from "~/features/learning-plans/creation-progress";
+import {
+	getSafeLearningPlanCreationProgress,
+	LEARNING_PLAN_CREATION_TOTAL_STEPS,
+} from "~/features/learning-plans/creation-progress";
 import { cn } from "~/lib/utils";
 
 export function LearningPlanCreationProgressHeader({
@@ -18,11 +21,8 @@ export function LearningPlanCreationProgressHeader({
 	totalSteps?: number;
 	title?: string;
 }) {
-	const safeTotalSteps = Math.max(Math.trunc(totalSteps), 1);
-	const safeStep = Math.min(
-		Math.max(Math.trunc(currentStep), 1),
-		safeTotalSteps,
-	);
+	const { currentStep: safeStep, totalSteps: safeTotalSteps } =
+		getSafeLearningPlanCreationProgress({ currentStep, totalSteps });
 
 	return (
 		<View className={cn("flex-row items-center gap-4", className)} {...props}>

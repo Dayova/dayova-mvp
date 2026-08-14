@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
 	getDiagnosticQuestionCreationStep,
+	getSafeLearningPlanCreationProgress,
 	getLearningPlanCreationTotalSteps,
 	getLearningPlanCreationWorkloadStep,
 	LEARNING_PLAN_CREATION_STEPS,
@@ -41,5 +42,20 @@ describe("learning-plan creation progress", () => {
 	test("keeps malformed diagnostic indexes inside the question range", () => {
 		expect(getDiagnosticQuestionCreationStep(-1)).toBe(6);
 		expect(getDiagnosticQuestionCreationStep(99)).toBe(10);
+	});
+
+	test("normalizes non-finite progress for visual and accessible output", () => {
+		expect(
+			getSafeLearningPlanCreationProgress({
+				currentStep: Number.NaN,
+				totalSteps: Number.POSITIVE_INFINITY,
+			}),
+		).toEqual({ currentStep: 1, totalSteps: 11 });
+		expect(
+			getSafeLearningPlanCreationProgress({
+				currentStep: Number.POSITIVE_INFINITY,
+				totalSteps: 8,
+			}),
+		).toEqual({ currentStep: 1, totalSteps: 8 });
 	});
 });

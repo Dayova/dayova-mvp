@@ -14,6 +14,27 @@ export const LEARNING_PLAN_CREATION_TOTAL_STEPS =
 	DEFAULT_DIAGNOSTIC_QUESTION_COUNT +
 	1;
 
+export const getSafeLearningPlanCreationProgress = ({
+	currentStep,
+	totalSteps = LEARNING_PLAN_CREATION_TOTAL_STEPS,
+}: {
+	currentStep: number;
+	totalSteps?: number;
+}) => {
+	const safeTotalSteps = Math.max(
+		Number.isFinite(totalSteps)
+			? Math.trunc(totalSteps)
+			: LEARNING_PLAN_CREATION_TOTAL_STEPS,
+		1,
+	);
+	const safeCurrentStep = Math.min(
+		Math.max(Number.isFinite(currentStep) ? Math.trunc(currentStep) : 1, 1),
+		safeTotalSteps,
+	);
+
+	return { currentStep: safeCurrentStep, totalSteps: safeTotalSteps };
+};
+
 const getDiagnosticQuestionCount = (questionCount?: number) => {
 	const parsedCount = Math.trunc(
 		questionCount ?? DEFAULT_DIAGNOSTIC_QUESTION_COUNT,
