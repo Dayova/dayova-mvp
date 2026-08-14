@@ -9,9 +9,10 @@ import { useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Platform,
-	type ViewStyle,
 	View,
+	type ViewStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
@@ -26,6 +27,10 @@ import {
 	Check,
 	ScanImage,
 } from "~/components/ui/icon";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
@@ -212,6 +217,10 @@ function TimetableSourceActions({
 
 export default function TimetableScreen() {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const { user } = useAuthSession();
 	const { isAuthenticated } = useConvexAuth();
 	const timetableState = useQuery(
@@ -499,8 +508,16 @@ export default function TimetableScreen() {
 	return (
 		<Screen>
 			<ThemedStatusBar />
-			<ScreenScroll topPadding={64} bottomPadding={120} horizontalPadding={24}>
+			<PortraitContent
+				className="bg-background"
+				style={{
+					// Safe-area and responsive horizontal padding are runtime layout data.
+					paddingHorizontal: contentSizeLayout.horizontalPadding,
+					paddingTop: Math.max(insets.top + 28, 64),
+				}}
+			>
 				<ScreenHeader
+					className="mb-5"
 					title="Stundenplan"
 					onBack={() => router.back()}
 					right={
@@ -522,6 +539,13 @@ export default function TimetableScreen() {
 						) : undefined
 					}
 				/>
+			</PortraitContent>
+			<ScreenScroll
+				includeTopSafeArea={false}
+				topPadding={0}
+				bottomPadding={120}
+				horizontalPadding={24}
+			>
 				<View className="gap-5">
 					{selectedTimetable ? (
 						<TimetableStatus
@@ -561,16 +585,6 @@ export default function TimetableScreen() {
 						</>
 					) : (
 						<>
-							<View>
-								<Text className="font-poppins font-semibold text-heading-2 text-text">
-									Stunden prüfen
-								</Text>
-								<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-									Prüfe jeden Wochentag und bestätige den gesamten Stundenplan
-									oben mit dem Haken.
-								</Text>
-							</View>
-
 							{validationError ? (
 								<View
 									accessibilityLiveRegion="polite"
@@ -603,12 +617,6 @@ export default function TimetableScreen() {
 							/>
 
 							<View className="border-border border-t pt-5">
-								<Text className="font-poppins font-semibold text-body-3 text-text">
-									Stundenplan neu einlesen
-								</Text>
-								<Text className="mt-1 mb-4 font-poppins text-body-4 text-secondary-text">
-									Ersetze die aktuellen Stunden durch ein neues Bild oder PDF.
-								</Text>
 								<TimetableSourceActions
 									isBusy={isBusy}
 									isProcessing={isProcessing}

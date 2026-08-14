@@ -284,10 +284,6 @@ function TimetableWeekEditor({
 				})}
 			</View>
 
-			<Text className="font-poppins text-body-4 text-secondary-text">
-				Wische nach links oder rechts, um die Stunden zu prüfen.
-			</Text>
-
 			<View className="flex-row items-baseline justify-between gap-4">
 				<Text className="font-poppins font-semibold text-heading-2 text-text">
 					{selectedDayData?.label}
