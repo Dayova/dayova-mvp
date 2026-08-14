@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-	type LayoutChangeEvent,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
 	Pressable,
 	ScrollView,
 	type TextStyle,
-	type ViewStyle,
 	View,
+	type ViewStyle,
 } from "react-native";
 import { Button } from "~/components/ui/button";
 import { CalendarDays, Clock3, Trash2 } from "~/components/ui/icon";
@@ -184,8 +183,12 @@ function TimetableWeekEditor({
 	onOpenTime,
 	onOpenDayPicker,
 }: TimetableWeekEditorProps) {
-	const pagerRef = useRef<ScrollView>(null);
-	const [pagerWidth, setPagerWidth] = useState(0);
+	const lessonPagerRef = useRef<ScrollView>(null);
+	const shouldAnimateLessonScrollRef = useRef(false);
+	const [lessonPagerWidth, setLessonPagerWidth] = useState(0);
+	const [lessonIndexByDay, setLessonIndexByDay] = useState<
+		Record<number, number>
+	>({});
 	const lessonsByDay = useMemo(
 		() =>
 			TIMETABLE_WEEKDAYS.map((day) => ({
@@ -200,157 +203,170 @@ function TimetableWeekEditor({
 		0,
 		TIMETABLE_WEEKDAYS.findIndex((day) => day.value === selectedDay),
 	);
+	const selectedDayData = lessonsByDay[selectedDayIndex] ?? lessonsByDay[0];
+	const selectedDayLessons = selectedDayData?.lessons ?? [];
+	const selectedLessonIndex = Math.max(
+		0,
+		Math.min(
+			lessonIndexByDay[selectedDay] ?? 0,
+			Math.max(0, selectedDayLessons.length - 1),
+		),
+	);
 
 	useEffect(() => {
-		if (pagerWidth <= 0) return;
-		pagerRef.current?.scrollTo({
-			x: selectedDayIndex * pagerWidth,
-			animated: false,
+		if (lessonPagerWidth <= 0) return;
+		lessonPagerRef.current?.scrollTo({
+			x: selectedLessonIndex * lessonPagerWidth,
+			animated: shouldAnimateLessonScrollRef.current,
 		});
-	}, [pagerWidth, selectedDayIndex]);
+		shouldAnimateLessonScrollRef.current = false;
+	}, [lessonPagerWidth, selectedLessonIndex]);
 
-	const handlePagerLayout = (event: LayoutChangeEvent) => {
-		setPagerWidth(event.nativeEvent.layout.width);
-	};
-
-	const handlePageChange = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-		if (pagerWidth <= 0) return;
+	const handleLessonPageChange = (
+		event: NativeSyntheticEvent<NativeScrollEvent>,
+	) => {
+		if (lessonPagerWidth <= 0) return;
 		const nextIndex = Math.max(
 			0,
 			Math.min(
-				TIMETABLE_WEEKDAYS.length - 1,
-				Math.round(event.nativeEvent.contentOffset.x / pagerWidth),
+				Math.max(0, selectedDayLessons.length - 1),
+				Math.round(event.nativeEvent.contentOffset.x / lessonPagerWidth),
 			),
 		);
-		const nextDay = TIMETABLE_WEEKDAYS[nextIndex];
-		if (nextDay && nextDay.value !== selectedDay) {
-			onSelectedDayChange(nextDay.value);
-		}
+		setLessonIndexByDay((current) => ({
+			...current,
+			[selectedDay]: nextIndex,
+		}));
+	};
+
+	const handleAddLesson = () => {
+		shouldAnimateLessonScrollRef.current = true;
+		setLessonIndexByDay((current) => ({
+			...current,
+			[selectedDay]: selectedDayLessons.length,
+		}));
+		onAddLesson(selectedDay);
 	};
 
 	return (
 		<View className="gap-4">
-			<ScrollView
-				horizontal
+			<View
 				accessibilityLabel="Wochentag auswählen"
-				showsHorizontalScrollIndicator={false}
+				className="flex-row justify-between gap-1"
 			>
-				<View className="flex-row gap-2">
-					{lessonsByDay.map((day) => {
-						const selected = day.value === selectedDay;
-						const lessonCount = day.lessons.length;
+				{lessonsByDay.map((day) => {
+					const selected = day.value === selectedDay;
+					const lessonCount = day.lessons.length;
 
-						return (
-							<Pressable
-								key={day.value}
-								accessible
-								accessibilityLabel={`${day.label}, ${lessonCount} ${lessonCount === 1 ? "Stunde" : "Stunden"}`}
-								accessibilityRole="button"
-								accessibilityState={{ selected }}
+					return (
+						<Pressable
+							key={day.value}
+							accessible
+							accessibilityLabel={`${day.label}, ${lessonCount} ${lessonCount === 1 ? "Stunde" : "Stunden"}`}
+							accessibilityRole="button"
+							accessibilityState={{ selected }}
+							className={cn(
+								"h-11 min-w-11 items-center justify-center rounded-full active:opacity-75",
+								selected ? "bg-primary" : "bg-muted",
+							)}
+							onPress={() => onSelectedDayChange(day.value)}
+						>
+							<Text
 								className={cn(
-									"h-11 min-w-11 items-center justify-center rounded-full px-3 active:opacity-75",
-									selected ? "bg-primary" : "bg-muted",
+									"font-poppins font-semibold text-body-4",
+									selected ? "text-white" : "text-secondary-text",
 								)}
-								onPress={() => onSelectedDayChange(day.value)}
 							>
-								<Text
-									className={cn(
-										"font-poppins font-semibold text-body-4",
-										selected ? "text-white" : "text-secondary-text",
-									)}
-								>
-									{day.shortLabel}
-								</Text>
-							</Pressable>
-						);
-					})}
-				</View>
-			</ScrollView>
+								{day.shortLabel}
+							</Text>
+						</Pressable>
+					);
+				})}
+			</View>
 
 			<Text className="font-poppins text-body-4 text-secondary-text">
-				Wische nach links oder rechts, um den Tag zu wechseln.
+				Wische nach links oder rechts, um die Stunden zu prüfen.
 			</Text>
 
-			<View
-				testID="timetable-week-pager-frame"
-				className="overflow-hidden"
-				onLayout={handlePagerLayout}
-			>
-				<ScrollView
-					ref={pagerRef}
-					testID="timetable-week-pager"
-					horizontal
-					pagingEnabled
-					accessibilityLabel="Stunden nach Wochentag"
-					accessibilityHint="Wische nach links oder rechts, um den Wochentag zu wechseln."
-					onMomentumScrollEnd={handlePageChange}
-					scrollEventThrottle={16}
-					showsHorizontalScrollIndicator={false}
+			<View className="flex-row items-baseline justify-between gap-4">
+				<Text className="font-poppins font-semibold text-heading-2 text-text">
+					{selectedDayData?.label}
+				</Text>
+				<Text
+					accessibilityLiveRegion="polite"
+					className="font-poppins text-body-4 text-secondary-text"
 				>
-					{lessonsByDay.map((day) => {
-						const isSelectedDay = day.value === selectedDay;
-
-						return (
-							<View
-								key={day.value}
-								accessibilityElementsHidden={!isSelectedDay}
-								importantForAccessibility={
-									isSelectedDay ? "yes" : "no-hide-descendants"
-								}
-								className="gap-4 pr-1"
-								// Horizontal paging requires each page to match the measured viewport.
-								style={{ width: pagerWidth }}
-							>
-								<View className="flex-row items-baseline justify-between gap-4">
-									<Text className="font-poppins font-semibold text-heading-2 text-text">
-										{day.label}
-									</Text>
-									<Text className="font-poppins text-body-4 text-secondary-text">
-										{day.lessons.length}{" "}
-										{day.lessons.length === 1 ? "Stunde" : "Stunden"}
-									</Text>
-								</View>
-
-								{day.lessons.length === 0 ? (
-									<View className="rounded-card border border-border bg-card px-5 py-6">
-										<Text className="font-poppins font-semibold text-body-3 text-text">
-											Noch keine Stunden
-										</Text>
-										<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
-											Für {day.label} ist noch kein Unterricht eingetragen.
-										</Text>
-									</View>
-								) : (
-									day.lessons.map((lesson, index) => (
-										<LessonEditorCard
-											key={lesson.key}
-											lesson={lesson}
-											position={index + 1}
-											onChange={(patch) => onChangeLesson(lesson.key, patch)}
-											onRemove={() => onRemoveLesson(lesson.key)}
-											onOpenTime={(field) => onOpenTime(lesson.key, field)}
-											onOpenDayPicker={() => onOpenDayPicker(lesson.key)}
-										/>
-									))
-								)}
-
-								<Button
-									accessibilityLabel={`Unterrichtsstunde für ${day.label} hinzufügen`}
-									disabled={isAddDisabled}
-									size="sm"
-									variant="outline"
-									onPress={() => onAddLesson(day.value)}
-								>
-									<Text>Stunde für {day.label} hinzufügen</Text>
-								</Button>
-							</View>
-						);
-					})}
-				</ScrollView>
+					{selectedDayLessons.length === 0
+						? "0 Stunden"
+						: `${selectedLessonIndex + 1} / ${selectedDayLessons.length}`}
+				</Text>
 			</View>
+
+			{selectedDayLessons.length === 0 ? (
+				<View className="rounded-card border border-border bg-card px-5 py-6">
+					<Text className="font-poppins font-semibold text-body-3 text-text">
+						Noch keine Stunden
+					</Text>
+					<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
+						Für {selectedDayData?.label} ist noch kein Unterricht eingetragen.
+					</Text>
+				</View>
+			) : (
+				<View
+					testID="timetable-lesson-pager-frame"
+					className="overflow-hidden"
+					onLayout={(event) =>
+						setLessonPagerWidth(event.nativeEvent.layout.width)
+					}
+				>
+					<ScrollView
+						ref={lessonPagerRef}
+						testID="timetable-lesson-pager"
+						horizontal
+						pagingEnabled
+						accessibilityLabel={`Stunden für ${selectedDayData?.label}`}
+						accessibilityHint="Wische nach links oder rechts, um zwischen den Stunden zu wechseln."
+						onMomentumScrollEnd={handleLessonPageChange}
+						scrollEventThrottle={16}
+						showsHorizontalScrollIndicator={false}
+					>
+						{selectedDayLessons.map((lesson, index) => (
+							<View
+								key={lesson.key}
+								accessibilityElementsHidden={index !== selectedLessonIndex}
+								importantForAccessibility={
+									index === selectedLessonIndex ? "yes" : "no-hide-descendants"
+								}
+								className="pr-1"
+								// Horizontal paging requires each page to match the measured viewport.
+								style={{ width: lessonPagerWidth }}
+							>
+								<LessonEditorCard
+									lesson={lesson}
+									position={index + 1}
+									onChange={(patch) => onChangeLesson(lesson.key, patch)}
+									onRemove={() => onRemoveLesson(lesson.key)}
+									onOpenTime={(field) => onOpenTime(lesson.key, field)}
+									onOpenDayPicker={() => onOpenDayPicker(lesson.key)}
+								/>
+							</View>
+						))}
+					</ScrollView>
+				</View>
+			)}
+
+			<Button
+				accessibilityLabel={`Unterrichtsstunde für ${selectedDayData?.label} hinzufügen`}
+				disabled={isAddDisabled}
+				size="sm"
+				variant="outline"
+				onPress={handleAddLesson}
+			>
+				<Text>Stunde für {selectedDayData?.label} hinzufügen</Text>
+			</Button>
 		</View>
 	);
 }
 
-export { TimetableWeekEditor };
 export type { TimetableWeekEditorProps };
+export { TimetableWeekEditor };

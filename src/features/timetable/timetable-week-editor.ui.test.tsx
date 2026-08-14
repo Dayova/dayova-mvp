@@ -34,6 +34,14 @@ const lessons = [
 		room: "A1",
 	},
 	{
+		key: "science",
+		dayOfWeek: 1,
+		subject: "Naturwissenschaften",
+		startTime: "08:50",
+		endTime: "09:35",
+		room: "A2",
+	},
+	{
 		key: "german",
 		dayOfWeek: 2,
 		subject: "Deutsch",
@@ -67,7 +75,7 @@ const renderEditor = async (selectedDay = 1) => {
 describe("TimetableWeekEditor", () => {
 	test("navigates by weekday tabs and adds to the visible day", async () => {
 		const { screen, callbacks } = await renderEditor();
-		const monday = screen.getByRole("button", { name: "Montag, 1 Stunde" });
+		const monday = screen.getByRole("button", { name: "Montag, 2 Stunden" });
 		const tuesday = screen.getByRole("button", {
 			name: "Dienstag, 1 Stunde",
 		});
@@ -86,21 +94,24 @@ describe("TimetableWeekEditor", () => {
 		expect(callbacks.onAddLesson).toHaveBeenCalledWith(1);
 	});
 
-	test("changes the visible weekday after a horizontal page swipe", async () => {
-		const { screen, callbacks } = await renderEditor();
+	test("pages horizontally through one lesson card at a time", async () => {
+		const { screen } = await renderEditor();
+		const pager = screen.getByTestId("timetable-lesson-pager");
+
+		expect(pager.props.horizontal).toBe(true);
+		expect(pager.props.pagingEnabled).toBe(true);
+		expect(screen.getByText("1 / 2")).toBeTruthy();
 
 		await fireEvent(
-			screen.getByTestId("timetable-week-pager-frame"),
+			screen.getByTestId("timetable-lesson-pager-frame"),
 			"layout",
 			{ nativeEvent: { layout: { width: 320, height: 500, x: 0, y: 0 } } },
 		);
-		await fireEvent(
-			screen.getByTestId("timetable-week-pager"),
-			"momentumScrollEnd",
-			{ nativeEvent: { contentOffset: { x: 320, y: 0 } } },
-		);
+		await fireEvent(pager, "momentumScrollEnd", {
+			nativeEvent: { contentOffset: { x: 320, y: 0 } },
+		});
 
-		expect(callbacks.onSelectedDayChange).toHaveBeenCalledWith(2);
+		expect(screen.getByText("2 / 2")).toBeTruthy();
 	});
 
 	test("keeps weekday correction available without seven controls per card", async () => {
