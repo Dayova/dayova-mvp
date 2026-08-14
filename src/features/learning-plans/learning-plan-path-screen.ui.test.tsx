@@ -18,13 +18,17 @@ jest.mock("expo-router", () => ({
 jest.mock("convex/react", () => ({
 	useAction: () => jest.fn(),
 	useConvexAuth: () => ({ isAuthenticated: true }),
+	useMutation: () => jest.fn(),
 	useQuery: () => null,
 }));
 
 jest.mock("#convex/_generated/api", () => ({
 	api: {
 		learningPlanAi: { ensureSessionContent: "ensureSessionContent" },
-		learningPlans: { getSnapshot: "getSnapshot" },
+		learningPlans: {
+			ensureNextRepeat: "ensureNextRepeat",
+			getSnapshot: "getSnapshot",
+		},
 	},
 }));
 
@@ -285,6 +289,37 @@ describe("learning-plan path", () => {
 		);
 		expect(onOpenSession).toHaveBeenCalledTimes(1);
 		expect(onSelectSession).toHaveBeenCalledWith(sessions[2]);
+	});
+
+	test("asks for learning time instead of claiming an exhausted plan is finished", async () => {
+		const onAddLearningTime = jest.fn();
+		const sessions = [
+			session("session_done", {
+				completed: true,
+				executionStatus: "completed",
+			}),
+		];
+		const screen = await render(
+			<LearningPath
+				examCountdownLabel="Noch 1 Tag"
+				examDateLabel="15. August 2026"
+				onAddLearningTime={onAddLearningTime}
+				onOpenSession={() => undefined}
+				onSelectSession={() => undefined}
+				selectedSessionId={sessions[0]?.id ?? null}
+				sessions={sessions}
+				showsAdaptiveContinuation
+			/>,
+		);
+
+		expect(screen.getByText("Wiederholung offen")).toBeOnTheScreen();
+		expect(screen.queryByText("Dayova plant mit dir weiter")).toBeNull();
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Lernzeit für die nächste Wiederholung ergänzen",
+			}),
+		);
+		expect(onAddLearningTime).toHaveBeenCalledTimes(1);
 	});
 
 	test("formats the exam countdown for today and future dates", () => {

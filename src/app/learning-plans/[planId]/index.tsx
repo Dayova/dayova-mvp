@@ -1,4 +1,4 @@
-import { useAction, useConvexAuth, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
 	type ReactNode,
@@ -69,6 +69,7 @@ import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { dismissToOrReplace } from "~/lib/navigation";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 
 const PHASE_LABEL: Record<PlanSession["phase"], string> = {
@@ -688,6 +689,7 @@ function PathNode({
 export function LearningPath({
 	examCountdownLabel,
 	examDateLabel,
+	onAddLearningTime,
 	onOpenSession,
 	onSelectSession,
 	selectedSessionId,
@@ -696,6 +698,7 @@ export function LearningPath({
 }: {
 	examCountdownLabel: string | null;
 	examDateLabel: string;
+	onAddLearningTime?: () => void;
 	onOpenSession: (session: PlanSession) => void;
 	onSelectSession: (session: PlanSession) => void;
 	selectedSessionId: Id<"learningPlanSessions"> | null;
@@ -711,8 +714,16 @@ export function LearningPath({
 	);
 	const continuationTop = continuationEndpoint.y + 16;
 	const basePathHeight = getFigmaPathHeight(sessions.length);
+	const hasScheduledContinuation = sessions.some(
+		(session) => !isLearningPlanSessionHistory(session),
+	);
+	const needsLearningTime =
+		showsAdaptiveContinuation && !hasScheduledContinuation;
 	const pathHeight = showsAdaptiveContinuation
-		? Math.max(basePathHeight, continuationTop + 220)
+		? Math.max(
+				basePathHeight,
+				continuationTop + (needsLearningTime ? 280 : 220),
+			)
 		: basePathHeight;
 	const segments = sessions.slice(1).map((_, index) => ({
 		d: getFigmaSegmentPath(index),
@@ -807,8 +818,12 @@ export function LearningPath({
 
 			{showsAdaptiveContinuation ? (
 				<View
-					accessible
-					accessibilityLabel={`Dayova plant mit dir weiter. Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin. Prüfung am ${examDateLabel}${examCountdownLabel ? `, ${examCountdownLabel}` : ""}.`}
+					accessible={!needsLearningTime}
+					accessibilityLabel={
+						needsLearningTime
+							? undefined
+							: `Dayova plant mit dir weiter. Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin. Prüfung am ${examDateLabel}${examCountdownLabel ? `, ${examCountdownLabel}` : ""}.`
+					}
 					className="absolute right-2 left-2 gap-4 overflow-hidden rounded-card border border-primary/20 bg-system-subtle px-4 py-4"
 					// The card is positioned against the generated path geometry; the
 					// continuous curve has no NativeWind utility.
@@ -825,12 +840,25 @@ export function LearningPath({
 						</View>
 						<View className="min-w-0 flex-1">
 							<Text className="font-poppins font-semibold text-body-3 text-text">
-								Dayova plant mit dir weiter
+								{needsLearningTime
+									? "Wiederholung offen"
+									: "Dayova plant mit dir weiter"}
 							</Text>
 							<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-								Nach deinem Abschluss passt Dayova die Vorschau an und plant den
-								nächsten Termin.
+								{needsLearningTime
+									? "Dein Wissen ist noch nicht sicher. Ergänze eine Lernzeit vor der Prüfung, damit Dayova die nächste Wiederholung planen kann."
+									: "Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin."}
 							</Text>
+							{needsLearningTime && onAddLearningTime ? (
+								<Button
+									accessibilityLabel="Lernzeit für die nächste Wiederholung ergänzen"
+									className="mt-3 self-start"
+									size="sm"
+									onPress={onAddLearningTime}
+								>
+									<Text>Lernzeit ergänzen</Text>
+								</Button>
+							) : null}
 						</View>
 					</View>
 
@@ -880,7 +908,11 @@ export default function LearningPlanSessionsScreen() {
 	const ensureSessionContent = useAction(
 		api.learningPlanAi.ensureSessionContent,
 	);
+	const ensureNextRepeat = useMutation(api.learningPlans.ensureNextRepeat);
 	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
+	const repeatPlanningAttemptedForPlanRef = useRef<Id<"learningPlans"> | null>(
+		null,
+	);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
@@ -921,6 +953,13 @@ export default function LearningPlanSessionsScreen() {
 		!selectedSessionNeedsTheoryUpgrade &&
 		(selectedSession?.contentGenerationStatus === undefined ||
 			selectedSession.contentGenerationStatus === "ready");
+	const needsRepeatScheduling = Boolean(
+		snapshot?.plan.rollingPlanEnabled === true &&
+			snapshot.plan.masteryStatus !== "mastered" &&
+			!snapshot.sessions.some(
+				(session) => !isLearningPlanSessionHistory(session),
+			),
+	);
 	const preparationState =
 		selectedSession?.contentGenerationStatus === "failed"
 			? ("failed" as const)
@@ -946,6 +985,20 @@ export default function LearningPlanSessionsScreen() {
 		},
 		[ensureSessionContent],
 	);
+
+	useEffect(() => {
+		if (
+			!planId ||
+			!needsRepeatScheduling ||
+			repeatPlanningAttemptedForPlanRef.current === planId
+		) {
+			return;
+		}
+		repeatPlanningAttemptedForPlanRef.current = planId;
+		void ensureNextRepeat({ learningPlanId: planId }).catch(() => {
+			// The reactive plan state keeps the repeat affordance available for retry.
+		});
+	}, [ensureNextRepeat, needsRepeatScheduling, planId]);
 
 	useEffect(() => {
 		const needsTheoryUpgrade = Boolean(
@@ -1045,7 +1098,16 @@ export default function LearningPlanSessionsScreen() {
 						selectedSessionId={selectedSession.id}
 						sessions={snapshot.sessions}
 						showsAdaptiveContinuation={
-							snapshot.plan.rollingPlanEnabled === true
+							snapshot.plan.rollingPlanEnabled === true &&
+							snapshot.plan.masteryStatus !== "mastered"
+						}
+						onAddLearningTime={() =>
+							router.push(
+								withReturnTo(
+									ROUTES.learningTimes,
+									`/learning-plans/${snapshot.plan.id}`,
+								),
+							)
 						}
 						onOpenSession={(session) => {
 							if (
