@@ -129,7 +129,16 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 	const showValueBubble = valueBubbleConfig !== null;
 	const scrollX = useSharedValue(safeSelectedIndex * itemWidth);
 	const previewIndexOnUI = useSharedValue(safeSelectedIndex);
-	const [previewIndex, setPreviewIndex] = useState(safeSelectedIndex);
+	const [previewState, setPreviewState] = useState({
+		index: safeSelectedIndex,
+		selectedIndex: safeSelectedIndex,
+	});
+	// A parent selection change invalidates any in-progress drag preview. Keep the
+	// parent selection with the preview state so stale labels cannot survive it.
+	const previewIndex =
+		previewState.selectedIndex === safeSelectedIndex
+			? previewState.index
+			: safeSelectedIndex;
 	const safePreviewIndex = Math.min(Math.max(previewIndex, 0), lastIndex);
 	const previewItem = items[safePreviewIndex];
 	const previewPrimaryLabel =
@@ -149,11 +158,17 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 		1,
 	);
 
-	const updatePreviewIndex = useCallback((nextIndex: number) => {
-		setPreviewIndex((currentIndex) =>
-			currentIndex === nextIndex ? currentIndex : nextIndex,
-		);
-	}, []);
+	const updatePreviewIndex = useCallback(
+		(nextIndex: number) => {
+			setPreviewState((currentState) =>
+				currentState.index === nextIndex &&
+				currentState.selectedIndex === safeSelectedIndex
+					? currentState
+					: { index: nextIndex, selectedIndex: safeSelectedIndex },
+			);
+		},
+		[safeSelectedIndex],
+	);
 
 	const selectIndex = useCallback(
 		(nextIndex: number, animated = true) => {

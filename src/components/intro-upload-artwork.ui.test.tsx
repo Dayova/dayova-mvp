@@ -23,6 +23,23 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("IntroUploadArtwork", () => {
+	test("keeps decorative SVG content out of the accessibility tree", async () => {
+		const screen = await render(
+			<IntroUploadArtwork testID="intro-upload-artwork" accessible />,
+		);
+		const svg = screen.getByTestId("intro-upload-artwork", {
+			includeHiddenElements: true,
+		});
+
+		expect(svg.props).toEqual(
+			expect.objectContaining({
+				accessible: false,
+				accessibilityElementsHidden: true,
+				importantForAccessibility: "no-hide-descendants",
+			}),
+		);
+	});
+
 	test("uses sentence case for the scan instruction", async () => {
 		const screen = await render(<IntroUploadArtwork />);
 		const renderedLabels =

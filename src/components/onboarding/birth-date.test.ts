@@ -45,4 +45,19 @@ describe("onboarding birth date", () => {
 			formatOnboardingBirthDate({ year: "2012", month: "02", day: "31" }),
 		).toBe("");
 	});
+
+	test("rejects partial or otherwise non-canonical year and month values", () => {
+		const today = new Date(2026, 7, 11);
+
+		expect(getBirthMonthValues("2026x", today)).toEqual([]);
+		expect(getBirthDayValues("2012x", "02", today)).toEqual([]);
+		expect(getBirthDayValues("2012", "02x", today)).toEqual([]);
+		expect(
+			formatOnboardingBirthDate({
+				year: "2012x",
+				month: "02x",
+				day: "09",
+			}),
+		).toBe("");
+	});
 });

@@ -67,6 +67,15 @@ describe("onboarding flow decisions", () => {
 		).toBeNull();
 	});
 
+	test("rejects a learner name made only from combining marks", () => {
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "text", field: "name" },
+				answers({ name: "\u0301\u0302" }),
+			).error,
+		).toBe("Bitte gib deinen Namen ein.");
+	});
+
 	test("exposes the same validity contract to the primary action", () => {
 		expect(
 			isOnboardingStepReady(

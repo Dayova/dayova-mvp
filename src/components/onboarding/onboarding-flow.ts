@@ -22,7 +22,8 @@ const isValidEmail = (value: string) =>
 	/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim().toLowerCase());
 
 const isValidName = (value: string) =>
-	value.trim().length >= 2 && /^[\p{L}\p{M}' -]+$/u.test(value.trim());
+	value.trim().length >= 2 &&
+	/^(?=.*\p{L})[\p{L}\p{M}' -]+$/u.test(value.trim());
 
 export function getOnboardingStepDecision(
 	step: OnboardingDecisionStep,

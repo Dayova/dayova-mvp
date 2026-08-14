@@ -28,7 +28,14 @@ export function IntroUploadArtwork(props: SvgProps) {
 	const artworkFontSize = (size: number) => size / Math.max(fontScale, 1);
 
 	return (
-		<Svg viewBox={UPLOAD_ARTWORK_VIEW_BOX} fill="none" {...props}>
+		<Svg
+			viewBox={UPLOAD_ARTWORK_VIEW_BOX}
+			fill="none"
+			{...props}
+			accessible={false}
+			accessibilityElementsHidden
+			importantForAccessibility="no-hide-descendants"
+		>
 			<Defs>
 				<LinearGradient id="uploadBlue" x1="0" y1="0" x2="0" y2="1">
 					<Stop offset="0" stopColor={colors.primaryStrong} />

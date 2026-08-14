@@ -17,12 +17,16 @@ export const BIRTH_MONTH_VALUES = BIRTH_MONTH_OPTIONS.map(
 	(option) => option.value,
 );
 
+const isCanonicalBirthYear = (value: string) => /^\d{4}$/.test(value);
+const isCanonicalBirthMonth = (value: string) =>
+	/^(0[1-9]|1[0-2])$/.test(value);
+
 export function getBirthYearValues(currentYear = new Date().getFullYear()) {
 	return Array.from({ length: 121 }, (_, index) => String(currentYear - index));
 }
 
 export function getBirthMonthValues(year: string, today = new Date()) {
-	const parsedYear = Number.parseInt(year, 10);
+	const parsedYear = isCanonicalBirthYear(year) ? Number(year) : Number.NaN;
 	if (!Number.isInteger(parsedYear) || parsedYear > today.getFullYear())
 		return [];
 	if (parsedYear < today.getFullYear()) return BIRTH_MONTH_VALUES;
@@ -34,8 +38,8 @@ export function getBirthDayValues(
 	month: string,
 	today = new Date(),
 ) {
-	const parsedYear = Number.parseInt(year, 10);
-	const parsedMonth = Number.parseInt(month, 10);
+	const parsedYear = isCanonicalBirthYear(year) ? Number(year) : Number.NaN;
+	const parsedMonth = isCanonicalBirthMonth(month) ? Number(month) : Number.NaN;
 	if (
 		!Number.isInteger(parsedYear) ||
 		parsedYear > today.getFullYear() ||

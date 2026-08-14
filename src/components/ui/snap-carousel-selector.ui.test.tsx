@@ -102,6 +102,40 @@ describe("SnapCarouselSelector", () => {
 		);
 	});
 
+	test("synchronizes the preview when selection changes externally", async () => {
+		const props = {
+			accessibilityLabel: "Tägliche Lernzeit",
+			accessibilityValue: "10 Minuten",
+			decrementLabel: "Weniger Lernzeit",
+			incrementLabel: "Mehr Lernzeit",
+			items: [10, 20, 30],
+			getItemKey: String,
+			getItemPrimaryLabel: String,
+			getItemProgress: (_item: number, index: number) => (index + 1) / 3,
+			secondaryLabel: "Minuten",
+			progress: 1 / 3,
+			onSelect: jest.fn(),
+		};
+		const screen = await render(
+			<SnapCarouselSelector {...props} selectedIndex={0} primaryLabel="10" />,
+		);
+
+		await screen.rerender(
+			<SnapCarouselSelector
+				{...props}
+				accessibilityValue="30 Minuten"
+				selectedIndex={2}
+				primaryLabel="30"
+				progress={1}
+			/>,
+		);
+
+		expect(screen.getByText("30")).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("snap-carousel-progress-arc").props.strokeDasharray,
+		).toEqual([String(2 * Math.PI * 40), String(2 * Math.PI * 40)]);
+	});
+
 	test("centers the value and both ring layers on one responsive canvas", async () => {
 		const screen = await render(
 			<SnapCarouselSelector
