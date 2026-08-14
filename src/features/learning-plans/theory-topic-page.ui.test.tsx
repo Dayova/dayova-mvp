@@ -1,4 +1,4 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { SessionContentItem } from "./types";
 import { TheoryTopicPage } from "./theory-topic-page";
@@ -36,13 +36,17 @@ jest.mock("~/components/ui/icon", () => {
 });
 
 jest.mock("~/lib/theme", () => ({
-	useDayovaTheme: () => ({
+	useDayovaTheme: jest.fn(() => ({
 		colors: {
 			light1: "#FFFFFF",
 			secondaryText: "#697586",
 		},
-	}),
+	})),
 }));
+
+const mockUseDayovaTheme = jest.requireMock<{
+	useDayovaTheme: jest.Mock;
+}>("~/lib/theme").useDayovaTheme;
 
 const item: SessionContentItem = {
 	id: "content-item" as SessionContentItem["id"],
@@ -77,6 +81,10 @@ const item: SessionContentItem = {
 };
 
 describe("TheoryTopicPage", () => {
+	beforeEach(() => {
+		mockUseDayovaTheme.mockClear();
+	});
+
 	test("uses the question as the plain page heading without a read control", async () => {
 		const screen = await render(
 			<TheoryTopicPage
@@ -95,6 +103,7 @@ describe("TheoryTopicPage", () => {
 		expect(screen.queryByText("IT-Schadensszenarien")).toBeNull();
 		expect(screen.queryByText("Leitfrage")).toBeNull();
 		expect(screen.queryByRole("button", { name: /vorlesen/i })).toBeNull();
+		expect(mockUseDayovaTheme).toHaveBeenCalledTimes(1);
 	});
 
 	test("starts every theory section collapsed and toggles independently", async () => {

@@ -95,18 +95,19 @@ function TheoryTopicIntroduction({ topic }: { topic: TheoryTopic }) {
 }
 
 function CollapsibleTheorySection({
+	chevronColor,
 	children,
 	className,
 	icon,
 	title,
 }: {
+	chevronColor: string;
 	children: React.ReactNode;
 	className?: string;
 	icon: React.ReactNode;
 	title: string;
 }) {
 	const [isExpanded, setIsExpanded] = useState(false);
-	const { colors } = useDayovaTheme();
 
 	return (
 		<View className={cn("gap-4", className)}>
@@ -130,11 +131,7 @@ function CollapsibleTheorySection({
 					{title}
 				</Text>
 				<View className={cn(isExpanded && "rotate-180")}>
-					<ChevronDown
-						size={20}
-						color={colors.secondaryText}
-						strokeWidth={2.1}
-					/>
+					<ChevronDown size={20} color={chevronColor} strokeWidth={2.1} />
 				</View>
 			</TouchableOpacity>
 			{isExpanded ? children : null}
@@ -178,6 +175,7 @@ export function TheoryTopicPage({
 					<TheoryTopicIntroduction topic={topic} />
 
 					<CollapsibleTheorySection
+						chevronColor={colors.secondaryText}
 						title={presentation.sectionTitle}
 						icon={
 							<BookOpen
@@ -212,6 +210,7 @@ export function TheoryTopicPage({
 
 					{presentation.showExample && topic.example ? (
 						<CollapsibleTheorySection
+							chevronColor={colors.secondaryText}
 							className="rounded-[32px] border border-primary/20 bg-system-subtle px-5 py-5"
 							title="Beispiel"
 							icon={
@@ -230,6 +229,7 @@ export function TheoryTopicPage({
 
 					{presentation.showMemoryCue && topic.memoryCue ? (
 						<CollapsibleTheorySection
+							chevronColor={colors.secondaryText}
 							className="rounded-[32px] bg-theorie-subtle px-5 py-5"
 							title="Merksatz"
 							icon={
@@ -248,6 +248,7 @@ export function TheoryTopicPage({
 
 					{presentation.showCommonMistake && topic.commonMistake ? (
 						<CollapsibleTheorySection
+							chevronColor={colors.secondaryText}
 							className="rounded-[32px] bg-wrong-subtle px-5 py-5"
 							title="Typischer Fehler"
 							icon={
