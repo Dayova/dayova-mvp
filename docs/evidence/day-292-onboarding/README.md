@@ -36,7 +36,7 @@ tested consumer and an updated decision record.
 Automated regression coverage proves the four code contracts. Fresh native
 recovery recordings now cover the changed retry and completion screens in iOS
 dark mode and Android light mode. They do not replace the remaining broader
-device, theme, system-text-size, reduced-motion, and assistive-technology
+profile-screen device, theme, system-text-size, and assistive-technology
 matrix. The older screenshots below predate this audit and are not cited as
 proof of the changed completion boundary.
 
@@ -450,6 +450,35 @@ Timestamped observations:
 - `00:13.920`: page three is first encoded as a complete destination after the
   page-two CTA; there is no encoded horizontal or partial pager state.
 
+`android-reduced-motion-intro-final-head.mp4` is an uncut Pixel 9 emulator /
+Android recording with all three system animation scales set to zero before
+the React Native tree reloaded. The development runtime independently logged
+that Reanimated detected Reduced Motion. An initial candidate recording was
+rejected because the non-animated `FlatList` jump exposed one blank virtualized
+page frame. The accepted implementation keeps all three fixed intro pages
+mounted and disables clipped-subview removal; the focused final-head recording
+contains no blank, horizontally displaced, or partially mounted pager content.
+The three temporary system animation settings were restored to `1 / 1 / 1`
+and verified immediately after capture.
+
+> Coverage: 13.47-second video; 27 full-timeline frames sampled at 2 fps
+> (0.5-second interval); 2 contact sheet(s); 154 additional frames from
+> 00:00:08.000 to 00:00:08.500 at 30 fps; 5 additional frames from
+> 00:00:13.000 to 00:00:13.460 at 30 fps; no audio stream.
+
+Timestamped observations from the source encoder frames:
+
+- `00:00.000–00:08.262`: page one remains complete, including the pressed CTA
+  state.
+- `00:08.293`: page two is first encoded as a complete destination; there is
+  no encoded horizontal, blank, or partial pager state.
+- `00:08.307–00:13.314`: page two remains complete and actionable.
+- `00:13.433`: the fixed CTA has its destination label while the complete page
+  two pager content remains mounted; this compositor step lasts until the next
+  encoded frame and does not expose an empty or partial page.
+- `00:13.446`: page three is encoded completely, including artwork, copy,
+  indicator, and CTA.
+
 The initial clipped maximum-size screenshot and theme-transition frames that
 were captured before all text had rendered are deliberately not retained as
 release evidence.
@@ -486,9 +515,8 @@ iOS/Android restart recovery, Android live duration preview, committed iOS entry
 and internal edge behavior, Android predictive back, native time-picker-first
 dismissal, shared bounded-select-first dismissal, the intro's small/large
 light/dark matrix, and the responsive intro at maximum iOS and enlarged Android
-system text. It also proves the intro's iOS reduced-motion CTA behavior. It does
-not by itself prove every one of the 14 profile screens in every
-device/theme/text-size combination, Android reduced-motion behavior, physical
-VoiceOver/TalkBack behavior, trial activation, or the first empty-home action.
-PR #458 stays Draft until the remaining canonical acceptance gates are closed
-by the decision owner.
+system text. It also proves the intro's iOS and Android reduced-motion CTA
+behavior. It does not by itself prove every one of the 14 profile screens in
+every device/theme/text-size combination, physical VoiceOver/TalkBack behavior,
+trial activation, or the first empty-home action. PR #458 stays Draft until the
+remaining canonical acceptance gates are closed by the decision owner.

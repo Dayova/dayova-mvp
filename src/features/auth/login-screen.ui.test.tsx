@@ -883,6 +883,15 @@ describe("OnboardingScreen", () => {
 		});
 	});
 
+	test("keeps every intro page mounted for direct reduced-motion page changes", async () => {
+		const screen = await render(<OnboardingScreen />);
+		const pager = screen.getByTestId("intro-pager");
+
+		expect(pager).toHaveProp("initialNumToRender", 3);
+		expect(pager).toHaveProp("maxToRenderPerBatch", 3);
+		expect(pager).toHaveProp("removeClippedSubviews", false);
+	});
+
 	test("themes the learning path and its fade with semantic colors", async () => {
 		const screen = await render(<OnboardingScreen />);
 

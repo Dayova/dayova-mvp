@@ -1284,6 +1284,9 @@ function IntroStepView({
 				pagingEnabled
 				bounces={false}
 				initialScrollIndex={introIndex}
+				initialNumToRender={INTRO_STEPS.length}
+				maxToRenderPerBatch={INTRO_STEPS.length}
+				removeClippedSubviews={false}
 				showsHorizontalScrollIndicator={false}
 				scrollEventThrottle={16}
 				keyExtractor={(step) => step.id}
