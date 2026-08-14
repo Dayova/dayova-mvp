@@ -2,7 +2,6 @@ import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
-import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
@@ -46,6 +45,8 @@ import {
 	type TimetableLessonDraft,
 } from "~/features/timetable/timetable-editor";
 import { TimetableWeekEditor } from "~/features/timetable/timetable-week-editor";
+import { ROUTES } from "~/lib/routes";
+import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { validateUploadFile } from "~/lib/upload-policy";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
@@ -461,7 +462,8 @@ export default function TimetableScreen() {
 				})),
 			});
 			setEditor(null);
-			await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			router.replace(ROUTES.home);
+			void triggerSuccessHaptic({ platform: Platform.OS });
 		});
 	};
 
