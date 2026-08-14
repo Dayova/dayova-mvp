@@ -53,7 +53,7 @@ export function LearningSessionCompletion({
 	if (isTheory) {
 		title = "Theorie abgeschlossen";
 		description =
-			"Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt.";
+			"Du hast alle Themen dieser Theorieeinheit geschafft. Gehe jetzt zum nächsten Schritt.";
 		completionLabel = "Theorie geschafft";
 		Icon = BookOpen;
 		iconClassName = "bg-theorie-subtle";
@@ -115,7 +115,7 @@ export function LearningSessionCompletion({
 				</Text>
 			</View>
 
-			<View className="gap-3">
+			<View>
 				<Button className="w-full" disabled={isBusy} onPress={onPrimary}>
 					{isBusy ? (
 						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
@@ -123,16 +123,6 @@ export function LearningSessionCompletion({
 						<Text>{primaryLabel}</Text>
 					)}
 				</Button>
-				{isTheory ? (
-					<Button
-						className="w-full"
-						disabled={isBusy}
-						variant="neutral"
-						onPress={onContinueLearning}
-					>
-						<Text>Noch 10 Min. weiterlernen</Text>
-					</Button>
-				) : null}
 			</View>
 		</Animated.View>
 	);

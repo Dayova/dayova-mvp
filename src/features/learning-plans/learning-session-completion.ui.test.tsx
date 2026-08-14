@@ -59,6 +59,39 @@ jest.mock("react-native-reanimated", () => {
 });
 
 describe("learning session completion", () => {
+	test("finishes theory without offering another learning block", async () => {
+		const onPrimary = jest.fn();
+		const onContinueLearning = jest.fn();
+		const screen = await render(
+			<LearningSessionCompletion
+				attemptCount={0}
+				correctCount={0}
+				durationMinutes={10}
+				isBusy={false}
+				isDiagnostic={false}
+				onContinueLearning={onContinueLearning}
+				onPrimary={onPrimary}
+				phase="theory"
+			/>,
+		);
+
+		expect(
+			screen.getByRole("button", { name: "Theorie abschließen" }),
+		).toBeEnabled();
+		expect(screen.queryByText("Noch 10 Min. weiterlernen")).toBeNull();
+		expect(
+			screen.getByText(
+				"Du hast alle Themen dieser Theorieeinheit geschafft. Gehe jetzt zum nächsten Schritt.",
+			),
+		).toBeTruthy();
+
+		fireEvent.press(
+			screen.getByRole("button", { name: "Theorie abschließen" }),
+		);
+		expect(onPrimary).toHaveBeenCalledTimes(1);
+		expect(onContinueLearning).not.toHaveBeenCalled();
+	});
+
 	test("opens Analyse directly without offering another practice block", async () => {
 		const onPrimary = jest.fn();
 		const onContinueLearning = jest.fn();
