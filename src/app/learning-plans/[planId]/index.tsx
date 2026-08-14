@@ -23,7 +23,6 @@ import Animated, {
 	useReducedMotion,
 	useSharedValue,
 	withRepeat,
-	withSequence,
 	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -445,7 +444,7 @@ function BreathingStep({
 	left: number;
 	top: number;
 }) {
-	const scale = useSharedValue(1);
+	const scale = useSharedValue<number>(LEARNING_PATH_BREATHING.minScale);
 	const reduceMotion = useReducedMotion();
 
 	useEffect(() => {
@@ -456,19 +455,15 @@ function BreathingStep({
 			return;
 		}
 
+		scale.set(LEARNING_PATH_BREATHING.minScale);
 		scale.set(
 			withRepeat(
-				withSequence(
-					withTiming(LEARNING_PATH_BREATHING.maxScale, {
-						duration: LEARNING_PATH_BREATHING.halfCycleMs,
-						easing: Easing.inOut(Easing.sin),
-					}),
-					withTiming(LEARNING_PATH_BREATHING.minScale, {
-						duration: LEARNING_PATH_BREATHING.halfCycleMs,
-						easing: Easing.inOut(Easing.sin),
-					}),
-				),
+				withTiming(LEARNING_PATH_BREATHING.maxScale, {
+					duration: LEARNING_PATH_BREATHING.halfCycleMs,
+					easing: Easing.inOut(Easing.sin),
+				}),
 				-1,
+				true,
 			),
 		);
 

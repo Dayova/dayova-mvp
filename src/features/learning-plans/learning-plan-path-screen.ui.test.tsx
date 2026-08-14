@@ -1,4 +1,4 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import { processColor } from "react-native";
 import {
@@ -6,8 +6,21 @@ import {
 	LearningPath,
 	SessionPreviewCard,
 } from "~/app/learning-plans/[planId]/index";
+import { LEARNING_PATH_BREATHING } from "~/features/learning-plans/learning-path-node-presentation";
 import type { PlanSession } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+
+const mockWithRepeat = jest.fn(
+	(value: unknown, repeatCount: number, reverse?: boolean) => ({
+		repeatCount,
+		reverse,
+		value,
+	}),
+);
+const mockSetSharedValue = jest.fn();
+const mockWithSequence = jest.fn((...values: unknown[]) => values.at(-1));
+const mockWithTiming = jest.fn((value: unknown, _config?: unknown) => value);
+let mockReduceMotion = true;
 
 jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
@@ -56,19 +69,22 @@ jest.mock("react-native-reanimated", () => {
 		FadeIn: { duration: () => undefined },
 		FadeOut: { duration: () => undefined },
 		useAnimatedStyle: (factory: () => unknown) => factory(),
-		useReducedMotion: () => true,
+		useReducedMotion: () => mockReduceMotion,
 		useSharedValue: (initialValue: number) => {
-			let value = initialValue;
+			let value: unknown = initialValue;
 			return {
 				get: () => value,
-				set: (nextValue: number) => {
+				set: (nextValue: unknown) => {
 					value = nextValue;
+					mockSetSharedValue(nextValue);
 				},
 			};
 		},
-		withRepeat: (value: unknown) => value,
-		withSequence: (value: unknown) => value,
-		withTiming: (value: unknown) => value,
+		withRepeat: (value: unknown, repeatCount: number, reverse?: boolean) =>
+			mockWithRepeat(value, repeatCount, reverse),
+		withSequence: (...values: unknown[]) => mockWithSequence(...values),
+		withTiming: (value: unknown, config?: unknown) =>
+			mockWithTiming(value, config),
 	};
 });
 
@@ -121,6 +137,42 @@ const session = (
 });
 
 describe("learning-plan path", () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockReduceMotion = true;
+	});
+
+	test("reverses one timing animation so the next-step breathing loop stays continuous", async () => {
+		mockReduceMotion = false;
+		const currentSession = session("session_current");
+
+		await render(
+			<LearningPath
+				examCountdownLabel="Noch 14 Tage"
+				examDateLabel="18. August 2026"
+				onOpenSession={() => undefined}
+				onSelectSession={() => undefined}
+				selectedSessionId={currentSession.id}
+				sessions={[currentSession]}
+				showsAdaptiveContinuation={false}
+			/>,
+		);
+
+		expect(mockWithSequence).not.toHaveBeenCalled();
+		expect(mockSetSharedValue).toHaveBeenNthCalledWith(
+			1,
+			LEARNING_PATH_BREATHING.minScale,
+		);
+		expect(mockWithTiming).toHaveBeenCalledWith(
+			LEARNING_PATH_BREATHING.maxScale,
+			{
+				duration: LEARNING_PATH_BREATHING.halfCycleMs,
+				easing: "sin",
+			},
+		);
+		expect(mockWithRepeat).toHaveBeenCalledWith(expect.anything(), -1, true);
+	});
+
 	test("uses a named action for the available session", async () => {
 		const onOpen = jest.fn();
 		const screen = await render(
