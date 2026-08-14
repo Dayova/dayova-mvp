@@ -133,6 +133,40 @@ describe("AccessProvider", () => {
 		}
 	});
 
+	test("clears an earlier access timeout while onboarding blocks the query", async () => {
+		jest.useFakeTimers();
+		mockSession.isConvexUserSynced = true;
+		const screen = await render(
+			<AccessProvider>
+				<AccessProbe />
+			</AccessProvider>,
+		);
+
+		try {
+			await act(async () => {
+				jest.advanceTimersByTime(2_000);
+			});
+			expect(screen.getByText("expired")).toBeOnTheScreen();
+
+			mockSession.onboardingCompletionStatus = "pending";
+			await screen.rerender(
+				<AccessProvider>
+					<AccessProbe />
+				</AccessProvider>,
+			);
+			mockSession.onboardingCompletionStatus = "ready_for_trial";
+			await screen.rerender(
+				<AccessProvider>
+					<AccessProbe />
+				</AccessProvider>,
+			);
+
+			expect(screen.getByText("loading")).toBeOnTheScreen();
+		} finally {
+			screen.unmount();
+		}
+	});
+
 	test("migrates the legacy web cache key to the SecureStore-compatible prefix", async () => {
 		const originalPlatform = Platform.OS;
 		const values = new Map<string, string>([

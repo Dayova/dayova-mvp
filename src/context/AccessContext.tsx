@@ -183,12 +183,16 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
 	useEffect(() => {
 		if (serverAccess || !user || !canQuery) return;
-
 		const timeout = setTimeout(
 			() => setTimedOutAppUserId(user.clerkId),
 			ACCESS_QUERY_TIMEOUT_MS,
 		);
-		return () => clearTimeout(timeout);
+		return () => {
+			clearTimeout(timeout);
+			setTimedOutAppUserId((current) =>
+				current === user.clerkId ? null : current,
+			);
+		};
 	}, [canQuery, serverAccess, user]);
 
 	useEffect(() => {

@@ -422,8 +422,9 @@ tests cover deferred opening, in-flight dismissal, access loading, and pending
 onboarding before the complete repository suite is run on the final commit.
 
 The exact-head CodeRabbit full-diff review then found six additional contract
-gaps. The accepted fixes gate the access timeout on an active query, migrate the
-legacy web access-cache key, keep a Clerk-completed registration recoverable
+gaps. The accepted fixes gate the access timeout on an active query and clear
+any prior timeout while onboarding blocks it, migrate the legacy web
+access-cache key, keep a Clerk-completed registration recoverable
 when outbox binding fails, synchronize intro state on a no-momentum drag end,
 align the artwork matrix with its ADR, and prohibit plaintext durable onboarding
 answers in production web builds. The same pass hardened rejected trial
