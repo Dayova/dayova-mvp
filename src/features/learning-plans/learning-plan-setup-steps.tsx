@@ -124,7 +124,7 @@ export function MaterialUploadStep({
 				}
 				accessibilityRole="button"
 				disabled={!canUpload}
-				onPress={onOpenUpload}
+				onPress={() => onOpenUpload()}
 				className="mt-7 min-h-[112px] flex-row items-center rounded-[32px] px-5 py-5"
 				variant="soft"
 			>
