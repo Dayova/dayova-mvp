@@ -6,15 +6,18 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
 	getDefaultPreparationDepth,
-	recommendLearningPreparation,
 	type PreparationDepth,
+	recommendLearningPreparation,
 } from "#convex/learningPreparationPolicy";
 import { Button } from "~/components/ui/button";
 import { Screen } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
-import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
+import {
+	getLearningPlanCreationTotalSteps,
+	getLearningPlanCreationWorkloadStep,
+} from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { calculateAvailableStudyMinutes } from "~/features/learning-plans/plan-workload";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
@@ -173,8 +176,13 @@ export default function LearningPlanWorkloadScreen() {
 	};
 	useLearningPlanCreationProgress({
 		active: true,
-		currentStep: LEARNING_PLAN_CREATION_STEPS.workload,
+		currentStep: getLearningPlanCreationWorkloadStep(
+			snapshot?.plan.knowledgeQuestions.length,
+		),
 		onBack: goBack,
+		totalSteps: getLearningPlanCreationTotalSteps(
+			snapshot?.plan.knowledgeQuestions.length,
+		),
 	});
 
 	return (

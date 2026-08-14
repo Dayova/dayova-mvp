@@ -6,9 +6,13 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 
 ## Language
 
+**Lernplan-Erstellung**:
+The user-facing setup flow that collects the learner's exam details, optional learning material, and answers to five short questions, extended to at most eight when scope or readiness remains unclear, before a personal learning plan exists.
+_Avoid_: Quiz, completed learning-plan steps, Wissensanalyse
+
 **Persönlicher Lernplan**:
-The user-facing learning-plan creation flow and accepted study path. It frames five short pre-plan questions, extended up to eight when scope or readiness remains unclear, and optional learning material as the setup for a personalized, ordered plan whose sessions build toward exam readiness.
-_Avoid_: Wissensanalyse, Quiz
+The generated and accepted study path whose ordered sessions build toward exam readiness. It exists only after the `Lernplan-Erstellung` is complete.
+_Avoid_: The setup questions or their completion progress, Wissensanalyse, Quiz
 
 **Nächster Lernschritt**:
 The next unfinished session in a `Persönlicher Lernplan`. It is the recommended continuation point, while later sessions can remain visible for flexibility.
@@ -31,7 +35,7 @@ An optional learner-initiated extension offered after the planned work of a `Ler
 _Avoid_: Automatic overtime, timer padding
 
 **Pre-plan diagnostic step**:
-The internal name for the adaptive five- to eight-question diagnostic part of `Persönlicher Lernplan`, used when distinguishing it from post-session `Wissensanalyse`.
+The internal name for the adaptive five- to eight-question diagnostic part of `Lernplan-Erstellung`, used when distinguishing it from post-session `Wissensanalyse`.
 _Avoid_: User-facing copy
 
 **Topic readiness**:
@@ -105,8 +109,8 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 
 ## Example Dialogue
 
-Domain: "The learner sees this as their `Persönlicher Lernplan`, not as a diagnostic quiz."
-Engineer: "So I can use `pre-plan diagnostic step` internally, but the UI copy should say things like `Beantworte 5 kurze Fragen für deinen persönlichen Lernplan`?"
+Domain: "The learner sees this as their `Lernplan-Erstellung`, not as a diagnostic questionnaire."
+Engineer: "So I can use `pre-plan diagnostic step` internally, but the UI copy should say things like `Beantworte kurze Fragen für deine Lernplan-Erstellung`?"
 Domain: "Right. `Wissensanalyse` is the post-session analysis after `Üben` or `Praxis`."
 Engineer: "And `Praxis` maps to the existing rehearsal phase?"
 Domain: "Yes. It is the Figma/user-facing name for the Generalprobe-style phase."
