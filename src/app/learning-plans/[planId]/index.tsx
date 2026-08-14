@@ -444,8 +444,10 @@ function BreathingStep({
 	left: number;
 	top: number;
 }) {
-	const scale = useSharedValue<number>(LEARNING_PATH_BREATHING.minScale);
 	const reduceMotion = useReducedMotion();
+	const scale = useSharedValue<number>(
+		enabled && !reduceMotion ? LEARNING_PATH_BREATHING.minScale : 1,
+	);
 
 	useEffect(() => {
 		cancelAnimation(scale);
