@@ -54,7 +54,6 @@ import {
 	SparklesIcon,
 	SquareLock02Icon,
 	SquareRootSquareIcon,
-	StopIcon,
 	Sun01Icon,
 	Task01Icon,
 	TaskEdit01Icon,
@@ -65,7 +64,6 @@ import {
 	UserCircleIcon,
 	ViewIcon,
 	ViewOffIcon,
-	VolumeHighIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type HugeiconsProps } from "@hugeicons/react-native";
 
@@ -132,7 +130,6 @@ export const Repeat = createIcon(RepeatIcon);
 export const Route2 = createIcon(Route02Icon);
 export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(Settings01Icon);
-export const Stop = createIcon(StopIcon);
 export const SquareLock = createIcon(SquareLock02Icon);
 export const SquareRootSquare = createIcon(SquareRootSquareIcon);
 export const Sparkles = createIcon(SparklesIcon);
@@ -143,5 +140,4 @@ export const TimeManagement = createIcon(TimeManagementCircleIcon);
 export const Timer = createIcon(Clock03Icon);
 export const Trash2 = createIcon(Delete02Icon);
 export const UserRound = createIcon(UserCircleIcon);
-export const VolumeHigh = createIcon(VolumeHighIcon);
 export const X = createIcon(Cancel01Icon);

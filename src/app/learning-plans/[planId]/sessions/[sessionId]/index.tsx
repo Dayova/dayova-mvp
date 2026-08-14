@@ -1,6 +1,5 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import * as Speech from "expo-speech";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -455,7 +454,6 @@ export default function LearningSessionContentScreen() {
 	).length;
 
 	const goBack = useCallback(() => {
-		void Speech.stop().catch(() => undefined);
 		if (planId) {
 			dismissToOrReplace(router, `/learning-plans/${planId}` as const);
 			return true;
