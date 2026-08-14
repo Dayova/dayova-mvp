@@ -6,7 +6,7 @@ import { OnboardingEdgeBackGesture } from "./onboarding-edge-back-gesture";
 
 const mockGestureCalls: string[] = [];
 const mockGestureCallbacks = new Map<string, (...args: unknown[]) => void>();
-const mockSharedValueSetters: Array<jest.Mock> = [];
+const mockSharedValueSetters = new Map<string, jest.Mock>();
 
 jest.mock("react-native-gesture-handler", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
@@ -47,7 +47,7 @@ jest.mock("react-native-reanimated", () => {
 		useReducedMotion: () => false,
 		useSharedValue: (value: unknown) => {
 			const set = jest.fn();
-			mockSharedValueSetters.push(set);
+			mockSharedValueSetters.set(String(value), set);
 			return { get: () => value, set };
 		},
 		withTiming: (value: unknown) => value,
@@ -86,7 +86,7 @@ describe("OnboardingEdgeBackGesture", () => {
 
 	test("never commits a cancelled active gesture", async () => {
 		mockGestureCallbacks.clear();
-		mockSharedValueSetters.length = 0;
+		mockSharedValueSetters.clear();
 		await render(
 			<OnboardingEdgeBackGesture enabled onBack={jest.fn()}>
 				<View testID="content" />
@@ -97,12 +97,12 @@ describe("OnboardingEdgeBackGesture", () => {
 			{ translationX: 180, velocityX: 1200 },
 			false,
 		);
-		expect(mockSharedValueSetters[0]).toHaveBeenCalledWith(0);
-		expect(mockSharedValueSetters[1]).not.toHaveBeenCalledWith(true);
+		expect(mockSharedValueSetters.get("0")).toHaveBeenCalledWith(0);
+		expect(mockSharedValueSetters.get("false")).not.toHaveBeenCalledWith(true);
 	});
 
 	test("does not intercept the screen edge when disabled", async () => {
-		mockSharedValueSetters.length = 0;
+		mockSharedValueSetters.clear();
 		const screen = await render(
 			<OnboardingEdgeBackGesture enabled={false} onBack={jest.fn()}>
 				<View testID="content" />
@@ -110,7 +110,7 @@ describe("OnboardingEdgeBackGesture", () => {
 		);
 
 		expect(screen.queryByTestId("onboarding-ios-edge-back")).toBeNull();
-		expect(mockSharedValueSetters[0]).toHaveBeenCalledWith(0);
-		expect(mockSharedValueSetters[1]).toHaveBeenCalledWith(false);
+		expect(mockSharedValueSetters.get("0")).toHaveBeenCalledWith(0);
+		expect(mockSharedValueSetters.get("false")).toHaveBeenCalledWith(false);
 	});
 });

@@ -421,6 +421,23 @@ immediately, while transient unresolved state preserves it. Focused native-UI
 tests cover deferred opening, in-flight dismissal, access loading, and pending
 onboarding before the complete repository suite is run on the final commit.
 
+The exact-head CodeRabbit full-diff review then found six additional contract
+gaps. The accepted fixes gate the access timeout on an active query, migrate the
+legacy web access-cache key, keep a Clerk-completed registration recoverable
+when outbox binding fails, synchronize intro state on a no-momentum drag end,
+align the artwork matrix with its ADR, and prohibit plaintext durable onboarding
+answers in production web builds. The same pass hardened rejected trial
+handoffs, recovery-answer storage failures, routing assertions, controlled
+time-picker mocks, outbox case labels, and cancelled-edge-gesture assertions.
+
+Two low-value refactor suggestions were deliberately not applied. The live
+duration arithmetic remains inline in the UI worklet because moving it back
+behind a referenced helper touches the exact native Worklets boundary that
+previously crashed and is already protected by native evidence. The edge-pan
+builder remains render-created because no production defect or measurable
+handler churn was shown, while memoizing its worklet closures would add change
+risk to the accepted launch gesture. Neither changes the product contract.
+
 These are code and automated-test conclusions. They do not replace the
 remaining owner, physical-assistive-technology, or legal trial-activation gates
 listed in the PR checklist.

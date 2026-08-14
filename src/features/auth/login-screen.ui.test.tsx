@@ -259,11 +259,13 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => {
 	return {
 		DateTimePickerSheet: ({
 			visible,
+			value,
 			onChange,
 			onClose,
 			onConfirm,
 		}: {
 			visible: boolean;
+			value: Date;
 			onChange: (event: { type: "set" }, date: Date) => void;
 			onClose: () => void;
 			onConfirm?: (date: Date) => void;
@@ -286,7 +288,7 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => {
 						React.createElement(ReactNative.Pressable, {
 							accessibilityLabel: "Testauswahl bestätigen",
 							accessibilityRole: "button",
-							onPress: () => onConfirm?.(new Date(2026, 0, 1, 18, 5, 0, 0)),
+							onPress: () => onConfirm?.(value),
 						}),
 					)
 				: null,
@@ -728,13 +730,22 @@ describe("OnboardingRecoveryScreen", () => {
 		await fireEvent.press(screen.getByRole("checkbox", { name: "Dienstag" }));
 		expect(change).toHaveBeenCalledWith("studyDays", "Montag, Dienstag");
 
-		await fireEvent.press(
-			screen.getByRole("button", {
-				name: "Lernzeit beginnt um 16:00 Uhr",
-			}),
+		await act(() =>
+			fireEvent.press(
+				screen.getByRole("button", {
+					name: "Lernzeit beginnt um 16:00 Uhr",
+				}),
+			),
 		);
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Testauswahl bestätigen" }),
+		await act(() =>
+			fireEvent.press(
+				screen.getByRole("button", { name: "Testzeit 18:05 auswählen" }),
+			),
+		);
+		await act(() =>
+			fireEvent.press(
+				screen.getByRole("button", { name: "Testauswahl bestätigen" }),
+			),
 		);
 		expect(change).toHaveBeenCalledWith("learningTime", "18:05");
 
@@ -920,6 +931,7 @@ describe("OnboardingScreen", () => {
 		const pager = screen.getByTestId("intro-pager");
 
 		expect(pager.props.onScroll).toEqual(expect.any(Function));
+		expect(pager.props.onScrollEndDrag).toEqual(expect.any(Function));
 		expect(pager.props.scrollEventThrottle).toBe(16);
 		expect(screen.getByTestId("intro-indicator-0")).toHaveStyle({
 			backgroundColor: "#00BAFF",
@@ -935,6 +947,29 @@ describe("OnboardingScreen", () => {
 			now: 1,
 			text: "Seite 1 von 3",
 		});
+	});
+
+	test("surfaces an unexpected trial-handoff rejection as an actionable error", async () => {
+		mockAuthSession.user = {
+			clerkId: "user_123",
+			email: "test@example.com",
+		};
+		mockAuthSession.isConvexAuthenticated = true;
+		mockAuthSession.onboardingCompletionStatus = "ready_for_trial";
+		mockCompleteOnboardingHandoff.mockRejectedValueOnce(
+			new Error("secure storage unavailable"),
+		);
+		const screen = await render(<OnboardingScreen />);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Weiter zur Testphase" }),
+		);
+
+		expect(
+			await screen.findByRole("alert", {
+				name: "Der Wechsel zur Testphase ist fehlgeschlagen. Bitte versuche es erneut.",
+			}),
+		).toBeOnTheScreen();
 	});
 
 	test("keeps every intro page mounted for direct reduced-motion page changes", async () => {

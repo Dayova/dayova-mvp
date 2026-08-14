@@ -330,8 +330,9 @@ describe("pending onboarding sync outbox", () => {
 	});
 
 	it.each([
-		["invalid", "not-json"],
+		["corrupt", "invalid", "not-json"],
 		[
+			"ttl-elapsed",
 			"expired",
 			JSON.stringify({
 				version: 1,
@@ -344,6 +345,7 @@ describe("pending onboarding sync outbox", () => {
 			}),
 		],
 		[
+			"clock-rolled-back",
 			"expired",
 			JSON.stringify({
 				version: 1,
@@ -355,7 +357,7 @@ describe("pending onboarding sync outbox", () => {
 				answers: ANSWERS,
 			}),
 		],
-	] as const)("never applies and removes an %s payload", async (reason, serialized) => {
+	] as const)("never applies and removes a %s payload", async (_label, reason, serialized) => {
 		const { storage, values } = createMemoryStorage();
 		values.set(
 			`dayova.pending-onboarding-sync.${ACCOUNT_FINGERPRINT}`,

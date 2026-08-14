@@ -150,14 +150,21 @@ The following constraints are part of the contract:
 - Before account creation can continue, the exact non-secret onboarding sync
   payload is written to a schema-versioned outbox bound to the active Clerk
   registration attempt and a one-way account fingerprint. Native builds use
-  encrypted SecureStore; the web fallback is origin-scoped browser storage and
-  must remain limited to the same non-secret payload.
-  It contains duration, weekdays, start time, state, school type, and grade;
-  it never contains a password, verification code, token, name, birth date, or
-  raw e-mail address.
-- The outbox is rebound to the created Clerk user before session activation.
-  On process restart, routing waits for outbox hydration and returns that user
-  to onboarding until profile and answer persistence have succeeded. A failed
+  encrypted SecureStore. Production web does not silently degrade to plaintext
+  browser storage: durable recovery is rejected there until an encrypted web
+  storage design is accepted. Development web may use origin-scoped
+  localStorage only for local debugging, with that reduced guarantee explicit
+  in the adapter. The payload contains duration, weekdays, start time, state,
+  school type, and grade; it never contains a password, verification code,
+  token, name, birth date, or raw e-mail address.
+- The outbox is normally rebound to the created Clerk user before session
+  activation. If that bind fails after Clerk has already completed the account,
+  the completed session is still activated so the same verification code is not
+  required again. The failure enters the owned restore boundary; a missing or
+  mismatched payload routes to explicit learning-time recovery, while a storage
+  failure remains retryable. On process restart, routing waits for outbox
+  hydration and returns that user to onboarding until profile and answer
+  persistence have succeeded. A failed
   sync leaves the same payload retryable; successful Convex persistence first
   replaces the answers with an answer-free completion marker. Only the
   learner's explicit trial CTA removes that marker.

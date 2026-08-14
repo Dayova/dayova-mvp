@@ -8,32 +8,64 @@ import {
 
 const WEB_STORAGE_PREFIX = "dayova.secure-fallback:";
 
-const secureStorage: PendingOnboardingSyncStorage = {
-	getItem: async (key) => {
-		if (Platform.OS === "web") {
-			return (
-				globalThis.localStorage?.getItem(`${WEB_STORAGE_PREFIX}${key}`) ?? null
+type WebStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+type StorageOptions = {
+	platform?: string;
+	isDevelopment?: boolean;
+	webStorage?: WebStorage;
+};
+
+export const createPendingOnboardingSyncStorage = ({
+	platform = Platform.OS,
+	isDevelopment = __DEV__,
+	webStorage = globalThis.localStorage,
+}: StorageOptions = {}): PendingOnboardingSyncStorage => {
+	const getDevelopmentWebStorage = () => {
+		if (!isDevelopment) {
+			throw new Error(
+				"Production web onboarding recovery is unsupported without encrypted storage.",
 			);
 		}
-		return SecureStore.getItemAsync(key);
-	},
-	setItem: async (key, value) => {
-		if (Platform.OS === "web") {
-			globalThis.localStorage?.setItem(`${WEB_STORAGE_PREFIX}${key}`, value);
-			return;
+		if (!webStorage) {
+			throw new Error("Development web storage is unavailable.");
 		}
-		await SecureStore.setItemAsync(key, value, {
-			keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
-		});
-	},
-	deleteItem: async (key) => {
-		if (Platform.OS === "web") {
-			globalThis.localStorage?.removeItem(`${WEB_STORAGE_PREFIX}${key}`);
-			return;
-		}
-		await SecureStore.deleteItemAsync(key);
-	},
+		return webStorage;
+	};
+
+	return {
+		getItem: async (key) => {
+			if (platform === "web") {
+				return (
+					getDevelopmentWebStorage().getItem(`${WEB_STORAGE_PREFIX}${key}`) ??
+					null
+				);
+			}
+			return SecureStore.getItemAsync(key);
+		},
+		setItem: async (key, value) => {
+			if (platform === "web") {
+				getDevelopmentWebStorage().setItem(
+					`${WEB_STORAGE_PREFIX}${key}`,
+					value,
+				);
+				return;
+			}
+			await SecureStore.setItemAsync(key, value, {
+				keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+			});
+		},
+		deleteItem: async (key) => {
+			if (platform === "web") {
+				getDevelopmentWebStorage().removeItem(`${WEB_STORAGE_PREFIX}${key}`);
+				return;
+			}
+			await SecureStore.deleteItemAsync(key);
+		},
+	};
 };
+
+const secureStorage = createPendingOnboardingSyncStorage();
 
 export const pendingOnboardingSyncOutbox = createPendingOnboardingSyncOutbox({
 	storage: secureStorage,

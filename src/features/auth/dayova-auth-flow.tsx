@@ -964,6 +964,21 @@ export function OnboardingScreen({
 		}
 	};
 
+	const continueToTrial = async () => {
+		setError(null);
+		try {
+			if (await completeOnboardingHandoff()) {
+				router.replace("/trial");
+				return;
+			}
+		} catch {
+			// The local message also covers failures outside the owned outbox path.
+		}
+		setError(
+			"Der Wechsel zur Testphase ist fehlgeschlagen. Bitte versuche es erneut.",
+		);
+	};
+
 	const handleVerificationChange = (value: string) => {
 		const sanitized = value.replace(/\D/g, "").slice(0, CODE_LENGTH);
 		setVerificationCode(sanitized);
@@ -1026,21 +1041,15 @@ export function OnboardingScreen({
 				topInset={insets.top}
 				bottomInset={insets.bottom}
 				isComplete={isCreationComplete}
-				error={postAuthSyncError}
+				error={error ?? postAuthSyncError}
 				onRetry={() => {
 					if (onboardingCompletionStatus === "ready_for_trial") {
-						void completeOnboardingHandoff().then((completed) => {
-							if (completed) router.replace("/trial");
-						});
+						void continueToTrial();
 						return;
 					}
 					retryPostAuthSync();
 				}}
-				onComplete={async () => {
-					if (await completeOnboardingHandoff()) {
-						router.replace("/trial");
-					}
-				}}
+				onComplete={continueToTrial}
 			/>
 		);
 	}
@@ -1303,6 +1312,7 @@ function IntroStepView({
 				})}
 				onScroll={scrollHandler}
 				onMomentumScrollEnd={handleScrollEnd}
+				onScrollEndDrag={handleScrollEnd}
 				renderItem={({ item }) => {
 					// Pager width and artwork height are measured runtime geometry.
 					return (

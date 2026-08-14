@@ -129,5 +129,14 @@ describe("getAuthNavigationTarget", () => {
 				pendingSessionTask: null,
 			}),
 		).toBeNull();
+		expect(
+			getAuthNavigationTarget({
+				hasUser: true,
+				isSessionLoading: false,
+				onboardingCompletionStatus: "ready_for_trial",
+				pathname: "/home",
+				pendingSessionTask: null,
+			}),
+		).toBe("/onboarding");
 	});
 });

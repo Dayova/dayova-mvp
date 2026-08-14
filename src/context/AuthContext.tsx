@@ -50,6 +50,7 @@ import {
 	getOnboardingAccountFingerprint,
 	pendingOnboardingSyncOutbox,
 } from "~/lib/pending-onboarding-sync-secure-store";
+import { finalizeVerifiedRegistration } from "~/lib/registration-verification";
 import {
 	type PasswordChangeInput,
 	changePassword as updateAccountPassword,
@@ -419,6 +420,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const { clearAnswers } = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const passwordResetHasRemoteAttemptRef = useRef(false);
+	const verificationRecoveryRef = useRef<{
+		registrationAttemptId: string;
+		clerkUserId: string;
+		accountFingerprint: string;
+	} | null>(null);
 	const [pendingVerification, setPendingVerification] =
 		useState<PendingVerification | null>(null);
 	const [pendingLoginStage, setPendingLoginStage] =
@@ -508,6 +514,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				const accountFingerprint = await getOnboardingAccountFingerprint(
 					user.email,
 				);
+				const forcedRecovery = verificationRecoveryRef.current;
+				if (
+					forcedRecovery?.clerkUserId === user.clerkId &&
+					forcedRecovery.accountFingerprint === accountFingerprint
+				) {
+					if (!cancelled) {
+						setPostAuthSyncFailure("restore");
+						setOnboardingCompletion({
+							clerkUserId: user.clerkId,
+							accountFingerprint,
+							result: { status: "recovery_required", reason: "invalid" },
+						});
+					}
+					return;
+				}
 				const result = await pendingOnboardingSyncOutbox.resume({
 					clerkUserId: user.clerkId,
 					accountFingerprint,
@@ -998,19 +1019,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		) {
 			throw new Error("Es gibt keine offene Onboarding-Wiederherstellung.");
 		}
-		await pendingOnboardingSyncOutbox.stageForUser({
-			registrationAttemptId: "recovery",
-			clerkUserId: user.clerkId,
-			accountFingerprint: onboardingCompletion.accountFingerprint,
-			answers,
-		});
+		try {
+			await pendingOnboardingSyncOutbox.stageForUser({
+				registrationAttemptId: "recovery",
+				clerkUserId: user.clerkId,
+				accountFingerprint: onboardingCompletion.accountFingerprint,
+				answers,
+			});
+		} catch (error) {
+			logDiagnosticError(
+				"Failed to replace onboarding recovery answers.",
+				error,
+				{ source: "auth.onboarding.outbox.recovery", level: "warn" },
+			);
+			setPostAuthSyncFailure("answers");
+			throw new Error(
+				"Deine Lernzeiten konnten nicht sicher gespeichert werden. Bitte versuche es erneut.",
+			);
+		}
+		const clearsVerificationRecovery =
+			verificationRecoveryRef.current?.clerkUserId === user.clerkId;
+		if (clearsVerificationRecovery) verificationRecoveryRef.current = null;
 		setPostAuthSyncFailure((current) =>
-			clearOwnedPostAuthSyncFailure(current, "answers"),
+			clearOwnedPostAuthSyncFailure(
+				current,
+				clearsVerificationRecovery ? "restore" : "answers",
+			),
 		);
 		setOnboardingCompletion({
 			clerkUserId: user.clerkId,
 			accountFingerprint: onboardingCompletion.accountFingerprint,
 			result: { status: "pending", answers },
+		});
+	};
+
+	const handleOnboardingBindingFailure = (
+		error: unknown,
+		identity: {
+			registrationAttemptId: string;
+			clerkUserId: string;
+			accountFingerprint: string;
+		},
+	) => {
+		logDiagnosticError("Failed to bind verified onboarding recovery.", error, {
+			source: "auth.onboarding.outbox.bind",
+			level: "warn",
+		});
+		setPostAuthSyncFailure("restore");
+		if (error instanceof PendingOnboardingSyncError) {
+			verificationRecoveryRef.current = identity;
+			setOnboardingCompletion({
+				clerkUserId: identity.clerkUserId,
+				accountFingerprint: identity.accountFingerprint,
+				result: { status: "recovery_required", reason: "invalid" },
+			});
+			return;
+		}
+		setOnboardingCompletion({
+			clerkUserId: identity.clerkUserId,
+			accountFingerprint: identity.accountFingerprint,
+			result: { status: "storage_error" },
 		});
 	};
 
@@ -1064,12 +1132,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 							"Registriertes Konto konnte nicht zugeordnet werden.",
 						);
 					}
-					await pendingOnboardingSyncOutbox.bindToUser({
-						registrationAttemptId: signUp.id,
-						accountFingerprint,
-						clerkUserId: signUp.createdUserId,
+					await finalizeVerifiedRegistration({
+						identity: {
+							registrationAttemptId: signUp.id,
+							accountFingerprint,
+							clerkUserId: signUp.createdUserId,
+							sessionId: signUp.createdSessionId,
+						},
+						bindToUser: (identity) =>
+							pendingOnboardingSyncOutbox.bindToUser(identity),
+						activateSession,
+						onBindingFailure: handleOnboardingBindingFailure,
 					});
-					await activateSession(signUp.createdSessionId);
 					return { status: "complete" };
 				}
 
@@ -1264,12 +1338,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					const accountFingerprint = await getOnboardingAccountFingerprint(
 						signUp.emailAddress,
 					);
-					await pendingOnboardingSyncOutbox.bindToUser({
-						registrationAttemptId: signUp.id,
-						accountFingerprint,
-						clerkUserId: signUp.createdUserId,
+					await finalizeVerifiedRegistration({
+						identity: {
+							registrationAttemptId: signUp.id,
+							accountFingerprint,
+							clerkUserId: signUp.createdUserId,
+							sessionId: signUp.createdSessionId,
+						},
+						bindToUser: (identity) =>
+							pendingOnboardingSyncOutbox.bindToUser(identity),
+						activateSession,
+						onBindingFailure: handleOnboardingBindingFailure,
 					});
-					await activateSession(signUp.createdSessionId);
 					return { status: "complete" };
 				}
 
@@ -1494,6 +1574,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					accountFingerprint: null,
 					result: { status: "none" },
 				});
+				verificationRecoveryRef.current = null;
 				passwordResetHasRemoteAttemptRef.current = false;
 				clearAnswers();
 			},
