@@ -483,6 +483,85 @@ The initial clipped maximum-size screenshot and theme-transition frames that
 were captured before all text had rendered are deliberately not retained as
 release evidence.
 
+## Full profile/account matrix — 14 August 2026
+
+Three accepted native runs now cover the complete intro plus all 14 profile and
+account questions through the empty password screen. Each profile directory
+contains the uncut recording and one screenshot for every captured state. The
+shared reproducible Android flow is
+`maestro/android-profile-account.yaml`. It deliberately stops before entering a
+password: no account is created, no trial terms are accepted, and none of these
+runs is evidence for trial activation or app-home entry.
+
+### Android Pixel 9, dark, standard system text
+
+`profile-matrix/android-pixel9-dark/android-pixel9-dark-profile-account.mp4`
+starts on the auth choice, traverses all three intro pages and all 14 profile
+and account steps, and retains the empty password screen at the end. The 15
+adjacent screenshots cover the empty and selected duration states plus every
+subsequent step. The floating gear is the development-launcher overlay, not
+production UI.
+
+> Coverage: 126.04-second video; 80 full-timeline frames sampled at 0.634697 fps
+> (1.575554-second interval); 5 contact sheet(s); 17 additional frames from
+> 00:02:02.500 to 00:02:06.040 at 5 fps; no audio stream.
+
+### Android Pixel 9, light, `font_scale=2.0`
+
+`profile-matrix/android-pixel9-light-font2/android-pixel9-light-font2-profile-account.mp4`
+repeats the same complete path with Android system text enlarged to 2.0. An
+earlier candidate exposed a real collision between the duration number and
+unit at large content sizes. The accepted run uses the corrected optical
+spacing: number and unit remain distinct without disabling system text scaling.
+Focused inspection shows the live duration preview moving through 30, 45, 60,
+and 90 minutes while the native selector is in motion, with no Worklets error
+overlay. Android display, theme, font scale, and animation-scale overrides were
+restored after capture.
+
+> Coverage: 237.17-second video; 80 full-timeline frames sampled at 0.337317 fps
+> (2.964573-second interval); 5 contact sheet(s); 93 additional frames from
+> 00:00:44.000 to 00:01:00.000 at 5 fps; 36 additional frames from
+> 00:03:50.000 to 00:03:57.166 at 5 fps; no audio stream.
+
+Seven earlier automation candidates are intentionally not cited as release
+proof: they contained the pre-fix collision, a blank development-client/auth
+surface, or selector timing/coordinate failures. The eighth run above is the
+first accepted complete candidate.
+
+### iPhone 17 Pro Max, dark, standard system text
+
+`profile-matrix/ios-iphone17promax-dark/ios-iphone17promax-dark-profile-account.mp4`
+is an uncut simulator recording of the auth choice, all intro pages, all 14
+profile/account steps, and the final empty password screen. Simulator
+accessibility-driver stalls made this an automation-assisted manual run; the
+long stationary intervals reflect external control retries and must not be
+used as performance evidence. All user-visible states remain in the source
+timeline.
+
+> Coverage: 1224.50-second video; 80 full-timeline frames sampled at 0.065333
+> fps (15.306229-second interval); 5 contact sheet(s); 300 additional frames
+> from 00:04:00.000 to 00:04:45.000 at 5 fps; 172 additional frames from
+> 00:19:50.000 to 00:20:24.498 at 5 fps; no audio stream.
+
+Timestamped observations:
+
+- `00:00–00:46`: auth choice and all three intro pages.
+- `01:01–08:40`: name, operational duration, weekday/time input, and exact
+  learning-time payoff. Focused frames show the live duration value changing
+  from 30 to 45, 60, and 90 at `04:25.2–04:25.8`, before release.
+- `08:55–18:06`: grade, federal state, school type, and the three birth-date
+  segments.
+- `18:22–20:18`: e-mail input. An invalid intermediate value produces the
+  field-local error and is corrected on the same screen; the valid value clears
+  the error and enables “Weiter”.
+- `20:22.0–20:22.8`: the e-mail is processed and the empty password screen
+  replaces it. The recording stops there.
+
+This closes a representative complete-profile rendering and interaction pass
+for Android dark, Android light with enlarged text, and iOS dark. It does not
+turn those three profiles into proof for every platform/device/theme/text-size
+permutation or for physical assistive-technology behavior.
+
 ## Historical evidence — superseded 11 August state
 
 `ios-onboarding-e2e-2x.mp4` predates the accepted operational learning-time
@@ -516,7 +595,9 @@ and internal edge behavior, Android predictive back, native time-picker-first
 dismissal, shared bounded-select-first dismissal, the intro's small/large
 light/dark matrix, and the responsive intro at maximum iOS and enlarged Android
 system text. It also proves the intro's iOS and Android reduced-motion CTA
-behavior. It does not by itself prove every one of the 14 profile screens in
-every device/theme/text-size combination, physical VoiceOver/TalkBack behavior,
-trial activation, or the first empty-home action. PR #458 stays Draft until the
-remaining canonical acceptance gates are closed by the decision owner.
+behavior and three complete 14-step native profile/account runs: Android dark,
+Android light at `font_scale=2.0`, and iOS dark. It does not by itself prove
+every profile screen in every device/theme/text-size combination, physical
+VoiceOver/TalkBack behavior, trial activation, or the first empty-home action.
+PR #458 stays Draft until the remaining canonical acceptance gates are closed
+by the decision owner.
