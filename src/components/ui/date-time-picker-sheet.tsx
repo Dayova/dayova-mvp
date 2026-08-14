@@ -4,6 +4,7 @@ import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { getDateTimePickerConfirmAccessibilityLabel } from "./date-time-picker-sheet.types";
 import type {
 	DateTimePickerChangeEvent,
 	DateTimePickerDisplay,
@@ -54,7 +55,12 @@ function DateTimePickerSheet({
 			showCloseButton={false}
 			closeAccessibilityLabel="Auswahl schließen"
 			footer={
-				<Button accessibilityLabel="Auswahl bestätigen" onPress={handleConfirm}>
+				<Button
+					accessibilityLabel={getDateTimePickerConfirmAccessibilityLabel(
+						doneLabel,
+					)}
+					onPress={handleConfirm}
+				>
 					<Text>{doneLabel}</Text>
 				</Button>
 			}

@@ -146,7 +146,8 @@ The following constraints are part of the contract:
   launch; replacing it with a true per-step native stack is tracked in DAY-349.
 - Profile or onboarding-answer persistence failures after authentication must
   replace the indefinite loader with a user-visible error and an explicit retry
-  of the failed boundary. Answers remain local until persistence succeeds.
+  of the failed boundary, including the final completion-marker handoff.
+  Answers remain local until persistence succeeds.
 - Before account creation can continue, the exact non-secret onboarding sync
   payload is written to a schema-versioned outbox bound to the active Clerk
   registration attempt and a one-way account fingerprint. Native builds use
@@ -157,6 +158,9 @@ The following constraints are part of the contract:
   in the adapter. The payload contains duration, weekdays, start time, state,
   school type, and grade; it never contains a password, verification code,
   token, name, birth date, or raw e-mail address.
+- Every read-check-write outbox operation is serialized per account fingerprint.
+  Concurrent staging, binding, resume, sync, and completion calls therefore
+  cannot overwrite a newer registration attempt with stale account ownership.
 - The outbox is normally rebound to the created Clerk user before session
   activation. If that bind fails after Clerk has already completed the account,
   the completed session is still activated so the same verification code is not

@@ -29,6 +29,7 @@ export async function finalizeVerifiedRegistration({
 		await bindToUser(identity);
 	} catch (error) {
 		onBindingFailure(error, identity);
+	} finally {
+		await activateSession(identity.sessionId);
 	}
-	await activateSession(identity.sessionId);
 }

@@ -57,6 +57,7 @@ import {
 } from "~/lib/password-change";
 import {
 	clearOwnedPostAuthSyncFailure,
+	retryPostAuthSyncFailure,
 	type PostAuthSyncFailure,
 } from "~/lib/post-auth-sync-failure";
 import {
@@ -837,19 +838,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const retryPostAuthSync = useCallback(() => {
 		const failedBoundary = postAuthSyncFailure;
 		setPostAuthSyncFailure(null);
-		if (failedBoundary === "profile") {
-			retryProfileSync();
-		} else if (failedBoundary === "answers") {
-			retryAnswersSync();
-		} else if (failedBoundary === "restore" && user) {
-			setOnboardingCompletion({
-				clerkUserId: user.clerkId,
-				accountFingerprint: null,
-				result: { status: "loading" },
-			});
-			retryOnboardingRestore();
-		}
-	}, [postAuthSyncFailure, user]);
+		retryPostAuthSyncFailure(failedBoundary, {
+			profile: retryProfileSync,
+			answers: retryAnswersSync,
+			completion: () => {
+				void completeOnboardingHandoff();
+			},
+			restore: () => {
+				if (!user) return;
+				setOnboardingCompletion({
+					clerkUserId: user.clerkId,
+					accountFingerprint: null,
+					result: { status: "loading" },
+				});
+				retryOnboardingRestore();
+			},
+		});
+	}, [completeOnboardingHandoff, postAuthSyncFailure, user]);
 
 	const login = async (input: LoginInput): Promise<AuthFlowResult> =>
 		withSubmitting(async () => {

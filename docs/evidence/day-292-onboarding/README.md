@@ -431,6 +431,25 @@ answers in production web builds. The same pass hardened rejected trial
 handoffs, recovery-answer storage failures, routing assertions, controlled
 time-picker mocks, outbox case labels, and cancelled-edge-gesture assertions.
 
+A second exact-head full-diff review found seven additional closure gaps. All
+seven were accepted. Production web recovery documentation now matches the
+encrypted-storage rejection in code; the native date/time confirmation exposes
+the same visible and spoken label; retry dispatch includes the completion
+boundary; and a successful onboarding handoff no longer reports a later router
+exception as a persistence failure. The mocked selected-palette contract now
+uses a genuinely distinct `onPrimary` value. More importantly, every outbox
+read-check-write operation is serialized per account fingerprint, with a
+controlled interleaving regression test, so a stale registration cannot
+overwrite a newly staged and bound payload. Session activation now runs in a
+`finally` boundary after Clerk verification, so even a throwing binding-failure
+observer cannot strand a completed account behind the already-consumed code.
+
+The CodeRabbit CLI installation and authentication were also verified locally
+(`coderabbit doctor`: 9/9 checks). Its review transport closed the WebSocket
+before analysis on repeated attempts, so CLI output is not cited as a review
+pass. The substantive GitHub full-diff review is the authoritative external
+review record for this candidate.
+
 Two low-value refactor suggestions were deliberately not applied. The live
 duration arithmetic remains inline in the UI worklet because moving it back
 behind a referenced helper touches the exact native Worklets boundary that

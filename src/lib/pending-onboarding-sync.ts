@@ -221,6 +221,22 @@ export const createPendingOnboardingSyncOutbox = ({
 		const elapsedMs = now() - createdAt;
 		return elapsedMs < 0 || elapsedMs > ttlMs;
 	};
+	const accountOperationQueues = new Map<string, Promise<unknown>>();
+	const serializeAccountOperation = <TResult>(
+		accountFingerprint: string,
+		operation: () => Promise<TResult>,
+	): Promise<TResult> => {
+		const previous = accountOperationQueues.get(accountFingerprint);
+		const current = (previous ?? Promise.resolve())
+			.catch(() => undefined)
+			.then(operation);
+		accountOperationQueues.set(accountFingerprint, current);
+		return current.finally(() => {
+			if (accountOperationQueues.get(accountFingerprint) === current) {
+				accountOperationQueues.delete(accountFingerprint);
+			}
+		});
+	};
 
 	return {
 		stage: async ({
@@ -242,24 +258,26 @@ export const createPendingOnboardingSyncOutbox = ({
 					"Invalid pending onboarding sync payload.",
 				);
 			}
-			const existingRecord = await read(accountFingerprint);
-			if (
-				existingRecord !== null &&
-				existingRecord !== "invalid" &&
-				existingRecord.clerkUserId
-			) {
-				throw new PendingOnboardingSyncError(
-					"payload_unavailable",
-					"Pending onboarding sync payload is unavailable.",
-				);
-			}
-			await write({
-				version: SCHEMA_VERSION,
-				status: "pending",
-				registrationAttemptId,
-				accountFingerprint,
-				createdAt: now(),
-				answers,
+			return serializeAccountOperation(accountFingerprint, async () => {
+				const existingRecord = await read(accountFingerprint);
+				if (
+					existingRecord !== null &&
+					existingRecord !== "invalid" &&
+					existingRecord.clerkUserId
+				) {
+					throw new PendingOnboardingSyncError(
+						"payload_unavailable",
+						"Pending onboarding sync payload is unavailable.",
+					);
+				}
+				await write({
+					version: SCHEMA_VERSION,
+					status: "pending",
+					registrationAttemptId,
+					accountFingerprint,
+					createdAt: now(),
+					answers,
+				});
 			});
 		},
 
@@ -283,26 +301,28 @@ export const createPendingOnboardingSyncOutbox = ({
 					"Invalid pending onboarding sync payload.",
 				);
 			}
-			const existingRecord = await read(accountFingerprint);
-			if (
-				existingRecord !== null &&
-				existingRecord !== "invalid" &&
-				existingRecord.clerkUserId &&
-				existingRecord.clerkUserId !== clerkUserId
-			) {
-				throw new PendingOnboardingSyncError(
-					"payload_unavailable",
-					"Pending onboarding sync payload is unavailable.",
-				);
-			}
-			await write({
-				version: SCHEMA_VERSION,
-				status: "pending",
-				registrationAttemptId,
-				clerkUserId,
-				accountFingerprint,
-				createdAt: now(),
-				answers,
+			return serializeAccountOperation(accountFingerprint, async () => {
+				const existingRecord = await read(accountFingerprint);
+				if (
+					existingRecord !== null &&
+					existingRecord !== "invalid" &&
+					existingRecord.clerkUserId &&
+					existingRecord.clerkUserId !== clerkUserId
+				) {
+					throw new PendingOnboardingSyncError(
+						"payload_unavailable",
+						"Pending onboarding sync payload is unavailable.",
+					);
+				}
+				await write({
+					version: SCHEMA_VERSION,
+					status: "pending",
+					registrationAttemptId,
+					clerkUserId,
+					accountFingerprint,
+					createdAt: now(),
+					answers,
+				});
 			});
 		},
 
@@ -313,20 +333,22 @@ export const createPendingOnboardingSyncOutbox = ({
 			registrationAttemptId: string;
 			accountFingerprint: string;
 		}) => {
-			const record = await read(accountFingerprint);
-			if (
-				record === null ||
-				record === "invalid" ||
-				record.status !== "pending" ||
-				record.registrationAttemptId !== registrationAttemptId ||
-				record.accountFingerprint !== accountFingerprint ||
-				isExpiredPendingRecord(record.createdAt)
-			) {
-				throw new PendingOnboardingSyncError(
-					"payload_unavailable",
-					"Pending onboarding sync payload is unavailable.",
-				);
-			}
+			return serializeAccountOperation(accountFingerprint, async () => {
+				const record = await read(accountFingerprint);
+				if (
+					record === null ||
+					record === "invalid" ||
+					record.status !== "pending" ||
+					record.registrationAttemptId !== registrationAttemptId ||
+					record.accountFingerprint !== accountFingerprint ||
+					isExpiredPendingRecord(record.createdAt)
+				) {
+					throw new PendingOnboardingSyncError(
+						"payload_unavailable",
+						"Pending onboarding sync payload is unavailable.",
+					);
+				}
+			});
 		},
 
 		bindToUser: async ({
@@ -334,112 +356,125 @@ export const createPendingOnboardingSyncOutbox = ({
 			clerkUserId,
 			accountFingerprint,
 		}: AccountIdentity & { registrationAttemptId: string }) => {
-			const record = await read(accountFingerprint);
-			if (
-				record === null ||
-				record === "invalid" ||
-				record.status !== "pending" ||
-				record.registrationAttemptId !== registrationAttemptId ||
-				record.accountFingerprint !== accountFingerprint ||
-				(record.clerkUserId && record.clerkUserId !== clerkUserId) ||
-				isExpiredPendingRecord(record.createdAt)
-			) {
-				throw new PendingOnboardingSyncError(
-					"payload_unavailable",
-					"Pending onboarding sync payload is unavailable.",
-				);
-			}
-			await write({ ...record, clerkUserId });
+			return serializeAccountOperation(accountFingerprint, async () => {
+				const record = await read(accountFingerprint);
+				if (
+					record === null ||
+					record === "invalid" ||
+					record.status !== "pending" ||
+					record.registrationAttemptId !== registrationAttemptId ||
+					record.accountFingerprint !== accountFingerprint ||
+					(record.clerkUserId && record.clerkUserId !== clerkUserId) ||
+					isExpiredPendingRecord(record.createdAt)
+				) {
+					throw new PendingOnboardingSyncError(
+						"payload_unavailable",
+						"Pending onboarding sync payload is unavailable.",
+					);
+				}
+				await write({ ...record, clerkUserId });
+			});
 		},
 
 		resume: async (
 			identity: AccountIdentity,
-		): Promise<PendingOnboardingSyncResumeResult> => {
-			const record = await read(identity.accountFingerprint);
-			if (record === null) return { status: "none" };
-			if (record === "invalid") {
-				await write({
-					version: SCHEMA_VERSION,
-					status: "recovery_required",
-					registrationAttemptId: "recovery",
-					accountFingerprint: identity.accountFingerprint,
-					clerkUserId: identity.clerkUserId,
-					createdAt: now(),
-					reason: "invalid",
-				});
-				return { status: "recovery_required", reason: "invalid" };
-			}
-			if (!matchesAccount(record, identity)) return { status: "none" };
-			if (
-				!record.clerkUserId &&
-				identity.registrationAttemptId !== record.registrationAttemptId
-			) {
-				return { status: "none" };
-			}
-			if (record.status === "recovery_required") {
-				return { status: "recovery_required", reason: record.reason };
-			}
-			if (record.status === "ready_for_trial") {
-				return { status: "ready_for_trial" };
-			}
-			if (isExpiredPendingRecord(record.createdAt)) {
-				await write({
-					version: SCHEMA_VERSION,
-					status: "recovery_required",
-					registrationAttemptId: record.registrationAttemptId,
-					accountFingerprint: identity.accountFingerprint,
-					clerkUserId: identity.clerkUserId,
-					createdAt: now(),
-					reason: "expired",
-				});
-				return { status: "recovery_required", reason: "expired" };
-			}
+		): Promise<PendingOnboardingSyncResumeResult> =>
+			serializeAccountOperation(identity.accountFingerprint, async () => {
+				const record = await read(identity.accountFingerprint);
+				if (record === null) return { status: "none" };
+				if (record === "invalid") {
+					await write({
+						version: SCHEMA_VERSION,
+						status: "recovery_required",
+						registrationAttemptId: "recovery",
+						accountFingerprint: identity.accountFingerprint,
+						clerkUserId: identity.clerkUserId,
+						createdAt: now(),
+						reason: "invalid",
+					});
+					return { status: "recovery_required", reason: "invalid" };
+				}
+				if (!matchesAccount(record, identity)) return { status: "none" };
+				if (
+					!record.clerkUserId &&
+					identity.registrationAttemptId !== record.registrationAttemptId
+				) {
+					return { status: "none" };
+				}
+				if (record.status === "recovery_required") {
+					return { status: "recovery_required", reason: record.reason };
+				}
+				if (record.status === "ready_for_trial") {
+					return { status: "ready_for_trial" };
+				}
+				if (isExpiredPendingRecord(record.createdAt)) {
+					await write({
+						version: SCHEMA_VERSION,
+						status: "recovery_required",
+						registrationAttemptId: record.registrationAttemptId,
+						accountFingerprint: identity.accountFingerprint,
+						clerkUserId: identity.clerkUserId,
+						createdAt: now(),
+						reason: "expired",
+					});
+					return { status: "recovery_required", reason: "expired" };
+				}
 
-			if (!record.clerkUserId) {
-				record.clerkUserId = identity.clerkUserId;
-				await write(record);
-			}
-			return { status: "pending", answers: record.answers };
-		},
+				if (!record.clerkUserId) {
+					record.clerkUserId = identity.clerkUserId;
+					await write(record);
+				}
+				return { status: "pending", answers: record.answers };
+			}),
 
 		markSynced: async (identity: AccountIdentity) => {
-			const record = await read(identity.accountFingerprint);
-			if (
-				record === null ||
-				record === "invalid" ||
-				record.status !== "pending" ||
-				!record.clerkUserId ||
-				!matchesAccount(record, identity)
-			) {
-				throw new PendingOnboardingSyncError(
-					"payload_unavailable",
-					"Pending onboarding sync payload is unavailable.",
-				);
-			}
-			await write({
-				version: SCHEMA_VERSION,
-				status: "ready_for_trial",
-				registrationAttemptId: record.registrationAttemptId,
-				accountFingerprint: record.accountFingerprint,
-				clerkUserId: record.clerkUserId,
-				createdAt: record.createdAt,
-			});
+			return serializeAccountOperation(
+				identity.accountFingerprint,
+				async () => {
+					const record = await read(identity.accountFingerprint);
+					if (
+						record === null ||
+						record === "invalid" ||
+						record.status !== "pending" ||
+						!record.clerkUserId ||
+						!matchesAccount(record, identity)
+					) {
+						throw new PendingOnboardingSyncError(
+							"payload_unavailable",
+							"Pending onboarding sync payload is unavailable.",
+						);
+					}
+					await write({
+						version: SCHEMA_VERSION,
+						status: "ready_for_trial",
+						registrationAttemptId: record.registrationAttemptId,
+						accountFingerprint: record.accountFingerprint,
+						clerkUserId: record.clerkUserId,
+						createdAt: record.createdAt,
+					});
+				},
+			);
 		},
 
 		acknowledgeCompletion: async (identity: AccountIdentity) => {
-			const record = await read(identity.accountFingerprint);
-			if (record === null) return;
-			if (
-				record === "invalid" ||
-				record.status !== "ready_for_trial" ||
-				!matchesAccount(record, identity)
-			) {
-				throw new PendingOnboardingSyncError(
-					"completion_unavailable",
-					"Completed onboarding sync payload is unavailable.",
-				);
-			}
-			await storage.deleteItem(storageKey(identity.accountFingerprint));
+			return serializeAccountOperation(
+				identity.accountFingerprint,
+				async () => {
+					const record = await read(identity.accountFingerprint);
+					if (record === null) return;
+					if (
+						record === "invalid" ||
+						record.status !== "ready_for_trial" ||
+						!matchesAccount(record, identity)
+					) {
+						throw new PendingOnboardingSyncError(
+							"completion_unavailable",
+							"Completed onboarding sync payload is unavailable.",
+						);
+					}
+					await storage.deleteItem(storageKey(identity.accountFingerprint));
+				},
+			);
 		},
 	};
 };

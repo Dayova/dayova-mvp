@@ -966,13 +966,15 @@ export function OnboardingScreen({
 
 	const continueToTrial = async () => {
 		setError(null);
+		let handedOff = false;
 		try {
-			if (await completeOnboardingHandoff()) {
-				router.replace("/trial");
-				return;
-			}
+			handedOff = await completeOnboardingHandoff();
 		} catch {
 			// The local message also covers failures outside the owned outbox path.
+		}
+		if (handedOff) {
+			router.replace("/trial");
+			return;
 		}
 		setError(
 			"Der Wechsel zur Testphase ist fehlgeschlagen. Bitte versuche es erneut.",

@@ -33,8 +33,10 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 - Native Clerk tokens always use Clerk's secure persistent Expo token cache.
   There is no `Angemeldet bleiben` preference or memory-only cache path.
 - Pending onboarding persistence uses a separate outbox. Native builds store it
-  in encrypted SecureStore; the web fallback uses origin-scoped browser storage
-  and is therefore restricted to the same non-secret operational payload. It is
+  in encrypted SecureStore. Production web rejects durable recovery until an
+  encrypted web-storage design is accepted. Development web may use
+  origin-scoped browser storage only for local debugging and only for the same
+  non-secret operational payload. It is
   bound to the Clerk registration attempt and eventual Clerk user, is resumed
   before normal app routing after a process restart, and removes the answer
   payload only after Convex confirms success. Never add credentials,

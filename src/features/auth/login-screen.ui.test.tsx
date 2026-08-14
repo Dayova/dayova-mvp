@@ -386,7 +386,7 @@ jest.mock("~/lib/theme", () => ({
 			path2: "#D7DCE3",
 			path1: "#D7DCE3",
 			primary: "#00BAFF",
-			onPrimary: "#1A1A1A",
+			onPrimary: "#FFFFFF",
 			secondaryText: "#697586",
 			surface: "#FFFFFF",
 			systemSubtle: "#F1F7FB",
@@ -1032,7 +1032,7 @@ describe("OnboardingScreen", () => {
 		mockOnboarding.answers.studyDays = "Montag";
 		const screen = await render(<OnboardingScreen initialStepId="studyDays" />);
 
-		expect(screen.getByText("Montag")).toHaveStyle({ color: "#1A1A1A" });
+		expect(screen.getByText("Montag")).toHaveStyle({ color: "#FFFFFF" });
 	});
 
 	test("renders school type through the shared bottom-sheet select trigger", async () => {

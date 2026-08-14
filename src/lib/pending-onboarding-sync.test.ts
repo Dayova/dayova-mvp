@@ -32,6 +32,66 @@ const createMemoryStorage = () => {
 };
 
 describe("pending onboarding sync outbox", () => {
+	it("serializes staging and binding for the same account", async () => {
+		const values = new Map<string, string>();
+		let releaseFirstRead: (value: string | null) => void = () => undefined;
+		let firstReadStarted: () => void = () => undefined;
+		const firstReadStartedPromise = new Promise<void>((resolve) => {
+			firstReadStarted = resolve;
+		});
+		let readCount = 0;
+		const storage: PendingOnboardingSyncStorage = {
+			getItem: vi.fn(async (key) => {
+				readCount += 1;
+				if (readCount === 1) {
+					firstReadStarted();
+					return new Promise<string | null>((resolve) => {
+						releaseFirstRead = resolve;
+					});
+				}
+				return values.get(key) ?? null;
+			}),
+			setItem: vi.fn(async (key, value) => {
+				values.set(key, value);
+			}),
+			deleteItem: vi.fn(async (key) => {
+				values.delete(key);
+			}),
+		};
+		const outbox = createPendingOnboardingSyncOutbox({ storage });
+		const delayedStage = outbox.stage({
+			registrationAttemptId: "signup_delayed",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+			answers: ANSWERS,
+		});
+		await firstReadStartedPromise;
+		const currentStage = outbox.stage({
+			registrationAttemptId: "signup_current",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+			answers: ANSWERS,
+		});
+		const currentBind = currentStage.then(() =>
+			outbox.bindToUser({
+				registrationAttemptId: "signup_current",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+				clerkUserId: "user_123",
+			}),
+		);
+
+		await new Promise<void>((resolve) => {
+			setTimeout(() => {
+				releaseFirstRead(null);
+				resolve();
+			}, 0);
+		});
+		await Promise.all([delayedStage, currentBind]);
+
+		expect(JSON.parse([...values.values()][0] ?? "{}")).toMatchObject({
+			registrationAttemptId: "signup_current",
+			clerkUserId: "user_123",
+		});
+	});
+
 	it("resumes the exact account-bound answers after a process restart and removes the payload only after sync", async () => {
 		const { storage, values } = createMemoryStorage();
 		const firstProcess = createPendingOnboardingSyncOutbox({
