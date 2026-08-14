@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import type {
+	LearningEvidenceDimension,
 	LearningTopic,
 	LearningTopicPriority,
 } from "./learningContentPlan";
@@ -14,13 +15,28 @@ export const learningTopicPriorityValidator = v.union(
 	v.literal("low"),
 );
 
+export const learningEvidenceDimensionValidator = v.union(
+	v.literal("understanding"),
+	v.literal("problemSolving"),
+	v.literal("independent"),
+);
+
 export const learningTopicValidator = v.object({
 	id: v.string(),
 	title: v.string(),
 	learningGoal: v.string(),
 	keywords: v.array(v.string()),
 	priority: learningTopicPriorityValidator,
+	requiredEvidenceDimensions: v.optional(
+		v.array(learningEvidenceDimensionValidator),
+	),
 });
+
+const ALL_EVIDENCE_DIMENSIONS: LearningEvidenceDimension[] = [
+	"understanding",
+	"problemSolving",
+	"independent",
+];
 
 const normalizeTopicId = (value: string, index: number) => {
 	const normalized = value
@@ -41,6 +57,7 @@ export const normalizeLearningTopics = (
 		learningGoal: string;
 		keywords: string[];
 		priority: LearningTopicPriority;
+		requiredEvidenceDimensions?: LearningEvidenceDimension[];
 	}>,
 ): LearningTopic[] => {
 	const usedIds = new Set<string>();
@@ -55,6 +72,10 @@ export const normalizeLearningTopics = (
 		}
 		usedIds.add(id);
 
+		const requiredEvidenceDimensions = ALL_EVIDENCE_DIMENSIONS.filter(
+			(dimension) => topic.requiredEvidenceDimensions?.includes(dimension),
+		);
+
 		return {
 			id,
 			title,
@@ -64,6 +85,9 @@ export const normalizeLearningTopics = (
 				.filter(Boolean)
 				.slice(0, MAX_LEARNING_TOPIC_KEYWORD_COUNT),
 			priority: topic.priority,
+			...(requiredEvidenceDimensions.length > 0
+				? { requiredEvidenceDimensions }
+				: {}),
 		};
 	});
 };

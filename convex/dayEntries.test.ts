@@ -12,6 +12,26 @@ const user = {
 	tokenIdentifier: "test:user",
 };
 
+test("keeps adaptive exam entries with a stored subject schema-compatible", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	await expect(
+		t.run((ctx) =>
+			ctx.db.insert("dayEntries", {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				dayKey: "2026-08-13",
+				title: "Mathematik Klausur",
+				subject: "Mathematik",
+				topicDescription: "Analysis und Integralrechnung",
+				kind: "Leistungskontrolle",
+				plannedDateLabel: "Donnerstag, 13. August",
+				durationMinutes: 30,
+				examTypeLabel: "Klausur",
+			}),
+		),
+	).resolves.toEqual(expect.any(String));
+});
+
 test("manual timed entry overlapping an existing entry is rejected with conflict details", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 
