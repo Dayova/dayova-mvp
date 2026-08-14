@@ -1150,14 +1150,18 @@ function IntroStepView({
 	onNext: () => void;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
-	const { width, height } = useWindowDimensions();
+	const { width, height, fontScale } = useWindowDimensions();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const listRef = useRef<FlatList<IntroStep>>(null);
 	const previousWidthRef = useRef(width);
 	const reducedMotion = useReducedMotion();
 	const isCompactHeight = height < 760;
+	const usesAccessibleContentLayout =
+		contentSizeLayout.shouldStackInlineContent && fontScale > 1;
 	const introIndex = Math.min(activeIndex, INTRO_STEPS.length - 1);
 	const isLastIntro = introIndex === INTRO_STEPS.length - 1;
-	const artworkHeight = isCompactHeight ? 220 : 286;
 	const scrollX = useSharedValue(introIndex * width);
 	const scrollHandler = useAnimatedScrollHandler({
 		onScroll: (event) => {
@@ -1186,14 +1190,74 @@ function IntroStepView({
 		const widthChanged = previousWidthRef.current !== width;
 		previousWidthRef.current = width;
 
-		if (widthChanged || reducedMotion) {
+		if (widthChanged || reducedMotion || usesAccessibleContentLayout) {
 			scrollX.set(introIndex * width);
 		}
-		listRef.current?.scrollToIndex({
-			index: introIndex,
-			animated: !widthChanged && !reducedMotion,
-		});
-	}, [introIndex, reducedMotion, scrollX, width]);
+		if (!usesAccessibleContentLayout) {
+			listRef.current?.scrollToIndex({
+				index: introIndex,
+				animated: !widthChanged && !reducedMotion,
+			});
+		}
+	}, [introIndex, reducedMotion, scrollX, usesAccessibleContentLayout, width]);
+
+	if (usesAccessibleContentLayout) {
+		const item = INTRO_STEPS[introIndex];
+		return (
+			<View
+				className="flex-1"
+				style={{ paddingTop: Math.max(topInset + 12, 24) }}
+			>
+				<ScrollView
+					key={item.id}
+					testID="intro-responsive-scroll"
+					contentInsetAdjustmentBehavior="never"
+					showsVerticalScrollIndicator={false}
+					contentContainerStyle={{
+						alignItems: "center",
+						paddingBottom: Math.max(bottomInset + 20, 28),
+						paddingHorizontal: contentSizeLayout.horizontalPadding,
+					}}
+				>
+					<View className="w-full">
+						<IntroArtwork accessibleLayout colors={COLORS} item={item} />
+					</View>
+
+					<Text
+						accessibilityRole="header"
+						className="mt-6 max-w-[350px] text-center font-poppins font-semibold text-heading-2 text-text"
+					>
+						{item.title}
+					</Text>
+					<Text className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text">
+						{item.description}
+					</Text>
+
+					<View className="mt-8 w-full">
+						<IntroDots
+							activeColor={COLORS.primary}
+							inactiveColor={COLORS.border}
+							pageWidth={width}
+							scrollX={scrollX}
+						/>
+						<Button
+							accessibilityLabel={
+								isLastIntro ? "Meinen Start personalisieren" : "Weiter"
+							}
+							onPress={handleNext}
+						>
+							<Text>
+								{isLastIntro ? "Meinen Start personalisieren" : "Weiter"}
+							</Text>
+						</Button>
+						<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
+							Danach 14 kurze, bewusste Schritte · etwa 3 Minuten
+						</Text>
+					</View>
+				</ScrollView>
+			</View>
+		);
+	}
 
 	return (
 		<View
@@ -1234,47 +1298,11 @@ function IntroStepView({
 					// Pager width and artwork height are measured runtime geometry.
 					return (
 						<View style={{ width }} className="items-center px-6 pt-4">
-							<View
-								className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
-								style={{ height: artworkHeight }}
-							>
-								{item.illustration === "upload" ? (
-									<IntroUploadArtwork
-										width={isCompactHeight ? 246 : 280}
-										height={isCompactHeight ? 222 : 254}
-									/>
-								) : null}
-								{item.illustration === "path" ? (
-									<View className="overflow-hidden">
-										<IntroPathArtwork
-											color={COLORS.path2}
-											testID="intro-path-artwork"
-											width={isCompactHeight ? 270 : 320}
-											height={isCompactHeight ? 190 : 230}
-										/>
-										<LinearGradient
-											testID="intro-path-fade"
-											colors={[`${COLORS.systemSubtle}0D`, COLORS.systemSubtle]}
-											start={{ x: 0.5, y: 0 }}
-											end={{ x: 0.5, y: 1 }}
-											// Expo LinearGradient requires native geometry through style.
-											style={{
-												position: "absolute",
-												left: 0,
-												right: 0,
-												bottom: 0,
-												height: "63%",
-											}}
-										/>
-									</View>
-								) : null}
-								{item.illustration === "tasks" ? (
-									<IntroTasksArtwork
-										width={isCompactHeight ? 294 : 345}
-										height={isCompactHeight ? 200 : 236}
-									/>
-								) : null}
-							</View>
+							<IntroArtwork
+								colors={COLORS}
+								compactHeight={isCompactHeight}
+								item={item}
+							/>
 
 							<Text
 								accessibilityRole="header"
@@ -1314,6 +1342,65 @@ function IntroStepView({
 					Danach 14 kurze, bewusste Schritte · etwa 3 Minuten
 				</Text>
 			</View>
+		</View>
+	);
+}
+
+function IntroArtwork({
+	accessibleLayout = false,
+	colors,
+	compactHeight = false,
+	item,
+}: {
+	accessibleLayout?: boolean;
+	colors: Record<keyof typeof DAYOVA_DESIGN_SYSTEM.colors, string>;
+	compactHeight?: boolean;
+	item: IntroStep;
+}) {
+	const containerHeight = accessibleLayout ? 184 : compactHeight ? 220 : 286;
+
+	return (
+		<View
+			className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
+			// Runtime content-size mode chooses the bounded decorative-artwork height.
+			style={{ height: containerHeight }}
+		>
+			{item.illustration === "upload" ? (
+				<IntroUploadArtwork
+					width={accessibleLayout ? 210 : compactHeight ? 246 : 280}
+					height={accessibleLayout ? 190 : compactHeight ? 222 : 254}
+				/>
+			) : null}
+			{item.illustration === "path" ? (
+				<View className="overflow-hidden">
+					<IntroPathArtwork
+						color={colors.path2}
+						testID="intro-path-artwork"
+						width={accessibleLayout ? 238 : compactHeight ? 270 : 320}
+						height={accessibleLayout ? 168 : compactHeight ? 190 : 230}
+					/>
+					<LinearGradient
+						testID="intro-path-fade"
+						colors={[`${colors.systemSubtle}0D`, colors.systemSubtle]}
+						start={{ x: 0.5, y: 0 }}
+						end={{ x: 0.5, y: 1 }}
+						// Expo LinearGradient requires native geometry through style.
+						style={{
+							position: "absolute",
+							left: 0,
+							right: 0,
+							bottom: 0,
+							height: "63%",
+						}}
+					/>
+				</View>
+			) : null}
+			{item.illustration === "tasks" ? (
+				<IntroTasksArtwork
+					width={accessibleLayout ? 262 : compactHeight ? 294 : 345}
+					height={accessibleLayout ? 178 : compactHeight ? 200 : 236}
+				/>
+			) : null}
 		</View>
 	);
 }

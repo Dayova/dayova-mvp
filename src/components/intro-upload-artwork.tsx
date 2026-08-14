@@ -1,3 +1,4 @@
+import { useWindowDimensions } from "react-native";
 import Svg, {
 	Circle,
 	Defs,
@@ -20,6 +21,11 @@ const UPLOAD_ARTWORK_LABEL_WEIGHT = "700";
 
 export function IntroUploadArtwork(props: SvgProps) {
 	const { colors, isDark } = useDayovaTheme();
+	const { fontScale } = useWindowDimensions();
+	// Text inside this decorative fixed artboard is illustration microtype, not
+	// semantic app copy. Counter system scaling so the exported composition stays
+	// intact while the real onboarding heading and body copy scale normally.
+	const artworkFontSize = (size: number) => size / Math.max(fontScale, 1);
 
 	return (
 		<Svg viewBox={UPLOAD_ARTWORK_VIEW_BOX} fill="none" {...props}>
@@ -52,7 +58,7 @@ export function IntroUploadArtwork(props: SvgProps) {
 					y="39"
 					textAnchor="middle"
 					fill={colors.text}
-					fontSize="20"
+					fontSize={artworkFontSize(20)}
 					fontFamily="Poppins"
 					fontWeight={UPLOAD_ARTWORK_LABEL_WEIGHT}
 				>
@@ -63,7 +69,7 @@ export function IntroUploadArtwork(props: SvgProps) {
 					y="67"
 					textAnchor="middle"
 					fill={colors.secondaryText}
-					fontSize="12"
+					fontSize={artworkFontSize(12)}
 					fontFamily="Poppins"
 				>
 					Lade deine Mitschriften hoch
@@ -123,7 +129,7 @@ export function IntroUploadArtwork(props: SvgProps) {
 					y="223"
 					textAnchor="middle"
 					fill={colors.light1}
-					fontSize="12"
+					fontSize={artworkFontSize(12)}
 					fontFamily="Poppins"
 					fontWeight={UPLOAD_ARTWORK_LABEL_WEIGHT}
 				>
@@ -134,7 +140,7 @@ export function IntroUploadArtwork(props: SvgProps) {
 					y="270"
 					textAnchor="middle"
 					fill={colors.secondaryText}
-					fontSize="12"
+					fontSize={artworkFontSize(12)}
 					fontFamily="Poppins"
 				>
 					oder scanne deine Mitschriften

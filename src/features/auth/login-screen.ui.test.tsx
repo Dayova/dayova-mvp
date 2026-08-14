@@ -18,8 +18,8 @@ import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
 import {
 	AuthChoiceScreen,
 	CreationLoaderScreen,
-	OnboardingRecoveryScreen,
 	LoginScreen,
+	OnboardingRecoveryScreen,
 	OnboardingScreen,
 } from "./dayova-auth-flow";
 
@@ -101,6 +101,18 @@ const mockOnboarding = {
 	hasAnswers: false,
 	setAnswer: mockSetOnboardingAnswer,
 };
+
+let mockWindowDimensions = {
+	fontScale: 1,
+	height: 844,
+	scale: 3,
+	width: 390,
+};
+
+jest.mock("react-native/Libraries/Utilities/useWindowDimensions", () => ({
+	__esModule: true,
+	default: () => mockWindowDimensions,
+}));
 
 jest.mock("react-native-reanimated", () => {
 	const ReactNative =
@@ -382,6 +394,12 @@ jest.mock("~/lib/theme", () => ({
 
 describe("LoginScreen", () => {
 	beforeEach(() => {
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 844,
+			scale: 3,
+			width: 390,
+		};
 		mockCancelPasswordReset.mockReset();
 		mockCancelPasswordReset.mockResolvedValue(undefined);
 		mockLogin.mockReset();
@@ -730,6 +748,12 @@ describe("OnboardingRecoveryScreen", () => {
 
 describe("OnboardingScreen", () => {
 	beforeEach(() => {
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 844,
+			scale: 3,
+			width: 390,
+		};
 		mockStartRegistrationWithEmail.mockReset();
 		mockStartRegistrationWithEmail.mockResolvedValue(undefined);
 		mockRegister.mockReset();
@@ -806,6 +830,25 @@ describe("OnboardingScreen", () => {
 			}),
 		).toBeOnTheScreen();
 		expect(screen.getByText("1 von 14")).toBeOnTheScreen();
+	});
+
+	test("reflows the intro into a vertical scroll at accessibility text sizes", async () => {
+		mockWindowDimensions = {
+			fontScale: 3,
+			height: 667,
+			scale: 2,
+			width: 375,
+		};
+		const screen = await render(<OnboardingScreen />);
+
+		expect(screen.getByTestId("intro-responsive-scroll")).toBeOnTheScreen();
+		expect(screen.queryByTestId("intro-pager")).toBeNull();
+		expect(
+			screen.getByRole("header", {
+				name: "Du weißt, was heute wirklich zählt.",
+			}),
+		).toBeOnTheScreen();
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeOnTheScreen();
 	});
 
 	test("keeps the progress bar mounted while advancing between profile steps", async () => {

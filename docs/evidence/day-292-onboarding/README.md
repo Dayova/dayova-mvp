@@ -345,6 +345,115 @@ The same implementation was verified on both native platforms:
 - Planner tests assert that those persisted windows are visible to learning-plan
   scheduling.
 
+## Content-size and compact-phone audit — 14 August 2026
+
+The first iPhone 13 mini / maximum Dynamic Type pass exposed a real release
+defect: the fixed intro composition kept its artwork, title, description, dots,
+and CTA in one viewport while every text descendant scaled. The result clipped
+the meaningful heading and button and also enlarged microtype inside the
+decorative artwork until it escaped its cards.
+
+The intro now keeps the approved fixed pager at the default content size but
+switches to a vertically scrollable composition when system text is enlarged.
+The actual title, description, CTA, and duration note continue to use native
+system scaling and reflow; only the decorative fixed-artboard microtype opts out
+of scaling. The decorative section badge is omitted in that accessibility
+layout so the learner reaches the useful explanation and action sooner.
+
+- `ios-small-light-intro-final-head.png`: iPhone 13 mini, standard content
+  size, light appearance.
+- `ios-small-dark-intro-final-head.png`: the same compact phone and content
+  size in dark appearance.
+- `ios-large-light-intro-final-head.png`: iPhone 17 Pro Max, standard content
+  size, light appearance.
+- `ios-large-dark-intro-final-head.png`: the same large phone and content size
+  in dark appearance.
+- `android-small-light-intro-final-head.png`: Pixel 9 emulator with a temporary
+  720 × 1600 / 320 dpi logical-display override, standard font scale, light
+  appearance.
+- `android-small-dark-intro-final-head.png`: the same compact logical display
+  and font scale in dark appearance.
+- `android-large-light-intro-final-head.png`: Pixel 9 emulator at its physical
+  1080 × 2424 / 420 dpi display, standard font scale, light appearance.
+- `android-large-dark-intro-final-head.png`: the same large display and font
+  scale in dark appearance.
+
+The iPhone 13 mini pair was captured after the responsive implementation was
+loaded in the development client. The four Android captures and the two large
+iOS captures extend that check across the compact/large and light/dark intro
+matrix.
+Android's compact size is an explicit logical-display override on the same
+Pixel 9 AVD, not a claim of separate small-phone hardware. Every override was
+reset to the physical display after capture. The floating gear is the
+development-launcher overlay and is not production UI.
+
+`ios-small-axxxl-intro-scroll-final-head.mp4` is an uncut iPhone 13 mini /
+iOS 26.5 recording at the maximum accessibility content size. Five native
+vertical swipes are sent on each page. The first and second CTA transitions
+reset the following page to its top before that page is scrolled. The title,
+description, dots, CTA, and footer remain readable and reachable on all three
+pages; the final CTA wraps but remains fully visible and operable.
+
+> Coverage: 64.47-second video; 64 full-timeline frames sampled at 1 fps
+> (1-second interval); 4 contact sheet(s); 25 additional frames from
+> 00:00:32.000 to 00:00:37.000 at 5 fps; 25 additional frames from
+> 00:00:45.000 to 00:00:50.000 at 5 fps; no audio stream.
+
+Timestamped observations:
+
+- `00:00–00:25`: page one is scrolled until “Weiter” and the duration note are
+  reachable.
+- `00:34.6`: page two opens at its top; its CTA is reached by approximately
+  `00:39`.
+- `00:47.6`: page three opens at its top; the wrapped final CTA is reached by
+  approximately `00:52` and retained through the end.
+
+`android-large-font2-intro-final-head.mp4` is an uncut Pixel 9 emulator
+recording at Android `font_scale=2.0`. The large display can show each complete
+responsive page without vertical displacement, so the recorded native swipes
+reach the scroll boundary immediately. Both CTA transitions complete and the
+final CTA remains readable and reachable. The final two seconds show the
+development activity clearing while the temporary system settings are reset;
+the verified intro journey has already completed and page three is retained
+before that teardown.
+
+> Coverage: 62.50-second video; 63 full-timeline frames sampled at 1 fps
+> (1-second interval); 4 contact sheet(s); 67 additional frames from
+> 00:00:22.000 to 00:00:38.000 at 4 fps; no audio stream.
+
+Timestamped observations:
+
+- `00:00–00:22`: page one remains complete and actionable at font scale 2.0.
+- `00:22.00–00:22.25`: the first CTA advances cleanly to page two.
+- `00:22.25–00:31.00`: page two remains complete and actionable.
+- `00:31.00–00:31.25`: the second CTA advances cleanly to page three.
+- `00:31.25–01:00`: page three and “Meinen Start personalisieren” remain
+  visible without an error overlay.
+
+`ios-small-reduced-motion-intro-final-head.mp4` is an uncut iPhone 13 mini /
+iOS 26.5 recording with the system `ReduceMotionEnabled` preference set before
+the React Native tree mounted. The development runtime independently reported
+that reduced motion was enabled. Both CTA advances replace the current page
+directly with the fully composed destination page; the encoded frames contain
+no horizontal pager position or partially composed intermediate state. The
+preference was reset to its original disabled value after capture.
+
+> Coverage: 14.02-second video; 42 full-timeline frames sampled at 2 fps
+> (0.5-second interval); 3 contact sheet(s); 143 additional frames from
+> 00:00:06.000 to 00:00:07.500 at 20 fps; 143 additional frames from
+> 00:00:13.000 to 00:00:14.023 at 20 fps; no audio stream.
+
+Timestamped observations:
+
+- `00:06.758`: page two is first encoded as a complete destination after the
+  page-one CTA; there is no encoded horizontal or partial pager state.
+- `00:13.920`: page three is first encoded as a complete destination after the
+  page-two CTA; there is no encoded horizontal or partial pager state.
+
+The initial clipped maximum-size screenshot and theme-transition frames that
+were captured before all text had rendered are deliberately not retained as
+release evidence.
+
 ## Historical evidence — superseded 11 August state
 
 `ios-onboarding-e2e-2x.mp4` predates the accepted operational learning-time
@@ -375,8 +484,11 @@ learning-time contract.
 This evidence set now proves the operational learning-time segment, native
 iOS/Android restart recovery, Android live duration preview, committed iOS entry
 and internal edge behavior, Android predictive back, native time-picker-first
-dismissal, and shared bounded-select-first dismissal. It does not by itself
-prove the complete small/large-device and theme matrix, long German copy at
-larger system text sizes, reduced motion, physical VoiceOver/TalkBack behavior,
-trial activation, or the first empty-home action. PR #458 stays Draft until the
-remaining canonical acceptance gates are closed by the decision owner.
+dismissal, shared bounded-select-first dismissal, the intro's small/large
+light/dark matrix, and the responsive intro at maximum iOS and enlarged Android
+system text. It also proves the intro's iOS reduced-motion CTA behavior. It does
+not by itself prove every one of the 14 profile screens in every
+device/theme/text-size combination, Android reduced-motion behavior, physical
+VoiceOver/TalkBack behavior, trial activation, or the first empty-home action.
+PR #458 stays Draft until the remaining canonical acceptance gates are closed
+by the decision owner.

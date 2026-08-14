@@ -43,7 +43,10 @@ function TaskCard() {
 					style={gradientBackgroundStyle}
 				/>
 				<ClipboardEdit size={10} color={COLORS.light1} strokeWidth={2} />
-				<Text className="font-poppins font-semibold text-[8px] text-white leading-3">
+				<Text
+					allowFontScaling={false}
+					className="font-poppins font-semibold text-[8px] text-white leading-3"
+				>
 					Deine Aufgaben
 				</Text>
 			</View>
@@ -59,6 +62,7 @@ function TaskCard() {
 					>
 						<View className="h-2 w-2 rounded-full border border-primary" />
 						<Text
+							allowFontScaling={false}
 							numberOfLines={1}
 							className="flex-1 font-normal font-poppins text-[6.5px] text-primary leading-[9px]"
 						>
@@ -80,12 +84,18 @@ function StreakDay({
 }) {
 	return (
 		<View className="w-[17px] items-center gap-0.5">
-			<Text className="font-normal font-poppins text-[6px] text-white leading-2">
+			<Text
+				allowFontScaling={false}
+				className="font-normal font-poppins text-[6px] text-white leading-2"
+			>
 				{label}
 			</Text>
 			{state === "question" ? (
 				<View className="h-[17px] w-[17px] items-center justify-center rounded-full bg-primary-strong">
-					<Text className="font-poppins font-semibold text-[9px] text-white leading-[11px]">
+					<Text
+						allowFontScaling={false}
+						className="font-poppins font-semibold text-[9px] text-white leading-[11px]"
+					>
 						?
 					</Text>
 				</View>
@@ -141,11 +151,17 @@ function StreakCard() {
 				<View className="items-center">
 					<View className="flex-row items-center gap-[3px]">
 						<Fire size={14} color={COLORS.light1} strokeWidth={1.5} />
-						<Text className="font-poppins font-semibold text-[14px] text-white leading-[17px]">
+						<Text
+							allowFontScaling={false}
+							className="font-poppins font-semibold text-[14px] text-white leading-[17px]"
+						>
 							4
 						</Text>
 					</View>
-					<Text className="font-normal font-poppins text-[6px] text-white leading-2">
+					<Text
+						allowFontScaling={false}
+						className="font-normal font-poppins text-[6px] text-white leading-2"
+					>
 						Erfolgreiche Lerntage
 					</Text>
 				</View>
@@ -156,7 +172,10 @@ function StreakCard() {
 					))}
 				</View>
 
-				<Text className="mt-1.5 text-center font-normal font-poppins text-[6px] text-white leading-2">
+				<Text
+					allowFontScaling={false}
+					className="mt-1.5 text-center font-normal font-poppins text-[6px] text-white leading-2"
+				>
 					Weiter so! Du hast schon 4{"\n"}Lerntage abgeschlossen
 				</Text>
 			</View>
@@ -175,10 +194,16 @@ function ReminderCard() {
 			</View>
 			<View className="mr-4 ml-[11.5px] h-[47px] w-px bg-border" />
 			<View className="flex-1 gap-0.5">
-				<Text className="font-normal font-poppins text-body-4 text-primary">
+				<Text
+					allowFontScaling={false}
+					className="font-normal font-poppins text-body-4 text-primary"
+				>
 					Mathe lernen
 				</Text>
-				<Text className="font-normal font-poppins text-body-5 text-text">
+				<Text
+					allowFontScaling={false}
+					className="font-normal font-poppins text-body-5 text-text"
+				>
 					Deine Lernstunde startet in 60{"\n"}Minuten
 				</Text>
 			</View>

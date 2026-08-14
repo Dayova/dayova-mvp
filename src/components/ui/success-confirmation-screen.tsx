@@ -95,55 +95,55 @@ function SuccessConfirmationScreen({
 	return (
 		<View className="flex-1 bg-background">
 			<PortraitContent className="flex-1 px-7">
-			<View className="items-center" style={{ paddingTop: successMarkTop }}>
-				<View className="h-36 w-36 items-center justify-center rounded-full bg-success-subtle">
-					<Check
-						size={64}
-						color={DAYOVA_DESIGN_SYSTEM.colors.success}
-						strokeWidth={2.2}
-					/>
-				</View>
+				<View className="items-center" style={{ paddingTop: successMarkTop }}>
+					<View className="h-36 w-36 items-center justify-center rounded-full bg-success-subtle">
+						<Check
+							size={64}
+							color={DAYOVA_DESIGN_SYSTEM.colors.success}
+							strokeWidth={2.2}
+						/>
+					</View>
 
-				<Text
-					accessibilityRole="header"
-					className="text-center font-poppins font-semibold text-heading-1 text-text"
-					style={{ marginTop: headlineTopMargin }}
-				>
-					{title}
-				</Text>
-
-				<View className="mt-6 items-center">
-					<Text className="text-center font-poppins text-body-2 text-text">
-						{detailLabel}
+					<Text
+						accessibilityRole="header"
+						className="text-center font-poppins font-semibold text-heading-1 text-text"
+						style={{ marginTop: headlineTopMargin }}
+					>
+						{title}
 					</Text>
-					{detailValue ? (
-						<Text
-							selectable
-							className="text-center font-poppins text-body-2 text-secondary-text"
-						>
-							{detailValue}
+
+					<View className="mt-6 items-center">
+						<Text className="text-center font-poppins text-body-2 text-text">
+							{detailLabel}
+						</Text>
+						{detailValue ? (
+							<Text
+								selectable
+								className="text-center font-poppins text-body-2 text-secondary-text"
+							>
+								{detailValue}
+							</Text>
+						) : null}
+					</View>
+					{description ? (
+						<Text className="mt-5 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
+							{description}
 						</Text>
 					) : null}
 				</View>
-				{description ? (
-					<Text className="mt-5 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
-						{description}
-					</Text>
-				) : null}
-			</View>
 
-			<View
-				className="absolute right-0 bottom-0 left-0 px-7"
-				style={{ paddingBottom: buttonBottomPadding }}
-			>
-				<Button
-					accessibilityLabel="Fertig"
-					className="w-full"
-					onPress={onFinish}
+				<View
+					className="absolute right-0 bottom-0 left-0 px-7"
+					style={{ paddingBottom: buttonBottomPadding }}
 				>
-					<Text>Fertig</Text>
-				</Button>
-			</View>
+					<Button
+						accessibilityLabel="Fertig"
+						className="w-full"
+						onPress={onFinish}
+					>
+						<Text>Fertig</Text>
+					</Button>
+				</View>
 			</PortraitContent>
 		</View>
 	);
