@@ -1212,6 +1212,9 @@ export const getSnapshot = query({
 					hasLearningTimes: learningTimes.length > 0,
 				}),
 				rollingPlanEnabled: plan.rollingPlanEnabled,
+				masteryStatus:
+					plan.masteryStatus ??
+					(plan.rollingPlanEnabled ? ("learning" as const) : undefined),
 				adaptationRevision: plan.adaptationRevision,
 				sessionCompositionVariant: plan.sessionCompositionVariant,
 				contentGeneration: plan.contentGenerationStage
@@ -1286,6 +1289,9 @@ export const listOverview = query({
 			).length;
 			const hasOpenRollingWindow =
 				plan.rollingPlanEnabled === true && upcomingSessionCount > 0;
+			const masteryStatus =
+				plan.masteryStatus ??
+				(plan.rollingPlanEnabled ? ("learning" as const) : undefined);
 			const currentSession =
 				sessions.find(
 					(session) =>
@@ -1317,9 +1323,9 @@ export const listOverview = query({
 						)
 					: 0;
 			const progressPercent = plan.rollingPlanEnabled
-				? hasOpenRollingWindow
-					? Math.min(99, rollingProgressPercent)
-					: rollingProgressPercent
+				? masteryStatus === "mastered"
+					? 100
+					: Math.min(99, rollingProgressPercent)
 				: sessions.length > 0
 					? Math.round((completedCount / sessions.length) * 100)
 					: 0;
@@ -1336,6 +1342,7 @@ export const listOverview = query({
 				sessionCount: sessions.length,
 				upcomingSessionCount,
 				rollingPlanEnabled: plan.rollingPlanEnabled === true,
+				masteryStatus,
 				hasOpenRollingWindow,
 				examDateKey: plan.examDateKey,
 				examDateLabel: plan.examDateLabel,
@@ -2159,6 +2166,7 @@ export const replaceGeneratedSessions = internalMutation({
 			sourceSummary: normalizedSourceSummary,
 			insight: normalizedInsight,
 			rollingPlanEnabled: rollingWindow,
+			masteryStatus: rollingWindow ? "learning" : undefined,
 			adaptationRevision,
 			sessionCompositionVariant: args.sessionCompositionVariant ?? "split",
 			status: args.deferReadyUntilContent ? "questionsReady" : "generated",
@@ -2563,6 +2571,69 @@ const advanceOwnedRollingLearningPlan = (
 		clearSession: clearSessionDayEntry,
 		syncSession: syncSessionDayEntry,
 	});
+
+export const ensureNextRepeat = mutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+	},
+	returns: v.object({
+		status: v.union(
+			v.literal("notAdaptive"),
+			v.literal("scheduled"),
+			v.literal("mastered"),
+			v.literal("needsLearningTime"),
+		),
+		sessionId: v.union(v.id("learningPlanSessions"), v.null()),
+	}),
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (!plan.rollingPlanEnabled || plan.status !== "accepted") {
+			return { status: "notAdaptive" as const, sessionId: null };
+		}
+
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", args.learningPlanId),
+			)
+			.order("asc")
+			.take(50);
+		const openCommittedSession = sessions.find(
+			(session) =>
+				session.planningStatus !== "provisional" &&
+				["notStarted", "started"].includes(getSessionExecutionStatus(session)),
+		);
+		if (openCommittedSession) {
+			return {
+				status: "scheduled" as const,
+				sessionId: openCommittedSession._id,
+			};
+		}
+
+		const update = await advanceOwnedRollingLearningPlan(ctx, plan);
+		if (update?.committedSessionId) {
+			return {
+				status: "scheduled" as const,
+				sessionId: update.committedSessionId,
+			};
+		}
+
+		const updatedPlan = await ctx.db.get("learningPlans", args.learningPlanId);
+		return {
+			status:
+				updatedPlan?.masteryStatus === "mastered"
+					? ("mastered" as const)
+					: ("needsLearningTime" as const),
+			sessionId: null,
+		};
+	},
+});
+
 export const startSession = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),

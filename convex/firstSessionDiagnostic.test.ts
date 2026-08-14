@@ -526,6 +526,10 @@ test("does not invent a rolling slot when no learning time is saved", async () =
 		rollingWindow: true,
 		sessions: generatedSlots,
 	});
+	await t.mutation(internal.learningPlans.finalizeContentGeneration, {
+		learningPlanId,
+	});
+	await t.mutation(api.learningPlans.acceptPlan, { learningPlanId });
 	const initial = await t.query(api.learningPlans.getSnapshot, {
 		id: learningPlanId,
 	});
@@ -549,6 +553,42 @@ test("does not invent a rolling slot when no learning time is saved", async () =
 			(session) => session.planningStatus === "provisional",
 		),
 	).toBe(false);
+
+	const repeatSessionId = openSessions?.[0]?.id;
+	if (!repeatSessionId) throw new Error("Expected a committed repeat session.");
+	await t.mutation(api.learningPlans.setSessionCompleted, {
+		sessionId: repeatSessionId,
+		completed: true,
+	});
+	const [overview] = await t.query(api.learningPlans.listOverview, {});
+	expect(overview).toMatchObject({
+		id: learningPlanId,
+		completedCount: 2,
+		sessionCount: 2,
+		upcomingSessionCount: 0,
+		masteryStatus: "learning",
+	});
+
+	await t.mutation(api.learningTimes.upsertMine, {
+		dayOfWeek: 3,
+		startTime: "17:00",
+		endTime: "18:00",
+	});
+	await expect(
+		t.mutation(api.learningPlans.ensureNextRepeat, { learningPlanId }),
+	).resolves.toMatchObject({ status: "scheduled" });
+	const resumed = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(
+		resumed?.sessions.find(
+			(session) => session.planningStatus === "committed" && !session.completed,
+		),
+	).toMatchObject({
+		dateKey: "2026-06-03",
+		startTime: "17:00",
+		targetEvidenceDimension: "understanding",
+	});
 });
 
 test("requires every diagnostic answer before the rolling plan can advance", async () => {

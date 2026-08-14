@@ -215,6 +215,7 @@ export type LearningPlanSnapshot = {
 		planningHint?: string;
 		diagnosticPlacement?: "firstSession";
 		rollingPlanEnabled?: boolean;
+		masteryStatus?: "learning" | "mastered";
 		adaptationRevision?: number;
 		sessionCompositionVariant?: "control" | "split";
 		contentGeneration?: {

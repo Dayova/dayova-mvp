@@ -421,13 +421,12 @@ export const advanceRollingLearningPlan = async (
 		),
 		...diagnosticReadiness,
 	];
-	const committedTarget =
-		selectNextAdaptiveLearningTarget({
-			topics,
-			initialReadiness: effectiveTopicReadiness,
-			evidence,
-			history,
-		}) ?? selectAdaptiveMaintenanceTarget({ topics, history });
+	const committedTarget = selectNextAdaptiveLearningTarget({
+		topics,
+		initialReadiness: effectiveTopicReadiness,
+		evidence,
+		history,
+	});
 	const provisionalSessions = sessions.filter(
 		(session) =>
 			session.planningStatus === "provisional" &&
@@ -443,6 +442,9 @@ export const advanceRollingLearningPlan = async (
 		if (provisional) await removeRollingSession(ctx, provisional);
 		await ctx.db.patch("learningPlans", plan._id, {
 			adaptationRevision,
+			masteryStatus: "mastered",
+			topicReadiness: effectiveTopicReadiness,
+			contentGenerationStage: "ready",
 			updatedAt: Date.now(),
 		});
 		return { committedSessionId: null, provisionalSessionId: null };
@@ -533,7 +535,16 @@ export const advanceRollingLearningPlan = async (
 			}
 		}
 	}
-	if (!committed) return null;
+	if (!committed) {
+		await ctx.db.patch("learningPlans", plan._id, {
+			adaptationRevision,
+			masteryStatus: "learning",
+			topicReadiness: effectiveTopicReadiness,
+			contentGenerationStage: "ready",
+			updatedAt: Date.now(),
+		});
+		return null;
+	}
 	const projectedHistory = [
 		...history,
 		{
@@ -601,6 +612,7 @@ export const advanceRollingLearningPlan = async (
 	}
 	await ctx.db.patch("learningPlans", plan._id, {
 		adaptationRevision,
+		masteryStatus: "learning",
 		topicReadiness: effectiveTopicReadiness,
 		contentGenerationStage: "ready",
 		updatedAt: Date.now(),
