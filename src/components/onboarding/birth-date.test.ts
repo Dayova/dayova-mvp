@@ -34,6 +34,7 @@ describe("onboarding birth date", () => {
 			"08",
 		]);
 		expect(getBirthDayValues("2026", "08", today)).toHaveLength(11);
+		expect(getBirthDayValues("2026", "09", today)).toEqual([]);
 		expect(getBirthDayValues("2027", "01", today)).toEqual([]);
 	});
 

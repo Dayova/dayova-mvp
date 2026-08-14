@@ -49,6 +49,10 @@ export function getBirthDayValues(
 		return [];
 	}
 
+	const monthIsFuture =
+		parsedYear === today.getFullYear() && parsedMonth > today.getMonth() + 1;
+	if (monthIsFuture) return [];
+
 	const monthIsCurrent =
 		parsedYear === today.getFullYear() && parsedMonth === today.getMonth() + 1;
 	const dayCount = monthIsCurrent
