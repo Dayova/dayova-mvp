@@ -22,6 +22,7 @@ test("keeps adaptive exam entries with a stored subject schema-compatible", asyn
 				dayKey: "2026-08-13",
 				title: "Mathematik Klausur",
 				subject: "Mathematik",
+				topicDescription: "Analysis und Integralrechnung",
 				kind: "Leistungskontrolle",
 				plannedDateLabel: "Donnerstag, 13. August",
 				durationMinutes: 30,
