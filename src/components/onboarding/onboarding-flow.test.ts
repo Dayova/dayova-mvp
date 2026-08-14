@@ -92,6 +92,18 @@ describe("onboarding flow decisions", () => {
 		expect(
 			isOnboardingStepReady({ kind: "days", field: "studyDays" }, answers()),
 		).toBe(true);
+		expect(
+			isOnboardingStepReady(
+				{ kind: "range", field: "studyTime", values: [10, 20, 30] },
+				answers({ studyTime: "" }),
+			),
+		).toBe(false);
+		expect(
+			isOnboardingStepReady(
+				{ kind: "range", field: "studyTime", values: [10, 20, 30] },
+				answers({ studyTime: "37" }),
+			),
+		).toBe(false);
 	});
 
 	test("requires operational learning days and a valid same-day start time", () => {

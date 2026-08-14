@@ -24,10 +24,6 @@ const otherIdentity = {
 
 const onboardingAnswers = (
 	overrides: Partial<{
-		studyTime: string;
-		strength: string;
-		challenge: string;
-		goal: string;
 		state: string;
 		schoolType: string;
 		grade: string;
@@ -36,10 +32,6 @@ const onboardingAnswers = (
 		learningTime: string;
 	}> = {},
 ) => ({
-	studyTime: "30 min",
-	strength: "Mathe",
-	challenge: "Zeitmanagement",
-	goal: "Bessere Noten",
 	state: "Sachsen",
 	schoolType: "gymnasium",
 	grade: "9",
@@ -156,6 +148,46 @@ test("release onboarding payload creates operational windows without decorative 
 			if (question) keys.push(question.key);
 		}
 		return keys.sort();
+	});
+	expect(savedKeys).toEqual([
+		"dailySchoolTime",
+		"grade",
+		"learningTime",
+		"schoolType",
+		"state",
+		"studyDays",
+	]);
+});
+
+test("accepts but never persists legacy decorative answers from installed clients", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	const userId = await t.mutation(api.users.syncCurrentUser, { name: "User" });
+	const legacyPayload = {
+		...onboardingAnswers(),
+		studyTime: "30 min",
+		strength: "Mathe",
+		challenge: "Zeitmanagement",
+		goal: "Bessere Noten",
+	};
+
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: legacyPayload,
+	});
+	const savedKeys = await t.run(async (ctx) => {
+		const answers = await ctx.db
+			.query("userOnboardingAnswers")
+			.withIndex("by_userId", (query) => query.eq("userId", userId))
+			.take(20);
+		const keys = await Promise.all(
+			answers.map(async (answer) => {
+				const question = await ctx.db.get(
+					"onboardingQuestions",
+					answer.questionId,
+				);
+				return question?.key;
+			}),
+		);
+		return keys.filter((key): key is string => Boolean(key)).sort();
 	});
 	expect(savedKeys).toEqual([
 		"dailySchoolTime",

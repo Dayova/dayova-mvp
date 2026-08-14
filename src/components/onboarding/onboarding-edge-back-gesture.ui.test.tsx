@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { OnboardingEdgeBackGesture } from "./onboarding-edge-back-gesture";
 
 const mockGestureCalls: string[] = [];
+const mockGestureCallbacks = new Map<string, (...args: unknown[]) => void>();
 const mockSharedValueSetters: Array<jest.Mock> = [];
 
 jest.mock("react-native-gesture-handler", () => {
@@ -14,8 +15,14 @@ jest.mock("react-native-gesture-handler", () => {
 		{
 			get:
 				(_target, property) =>
-				(..._args: unknown[]) => {
+				(...args: unknown[]) => {
 					mockGestureCalls.push(String(property));
+					if (typeof args[0] === "function") {
+						mockGestureCallbacks.set(
+							String(property),
+							args[0] as (...args: unknown[]) => void,
+						);
+					}
 					return gesture;
 				},
 		},
@@ -54,6 +61,7 @@ jest.mock("react-native-worklets", () => ({
 describe("OnboardingEdgeBackGesture", () => {
 	test("mounts a stable edge hit target and configures a cancellable pan", async () => {
 		mockGestureCalls.length = 0;
+		mockGestureCallbacks.clear();
 		const screen = await render(
 			<OnboardingEdgeBackGesture enabled onBack={jest.fn()}>
 				<View testID="content" />
@@ -74,6 +82,23 @@ describe("OnboardingEdgeBackGesture", () => {
 				"onFinalize",
 			]),
 		);
+	});
+
+	test("never commits a cancelled active gesture", async () => {
+		mockGestureCallbacks.clear();
+		mockSharedValueSetters.length = 0;
+		await render(
+			<OnboardingEdgeBackGesture enabled onBack={jest.fn()}>
+				<View testID="content" />
+			</OnboardingEdgeBackGesture>,
+		);
+
+		mockGestureCallbacks.get("onEnd")?.(
+			{ translationX: 180, velocityX: 1200 },
+			false,
+		);
+		expect(mockSharedValueSetters[0]).toHaveBeenCalledWith(0);
+		expect(mockSharedValueSetters[1]).not.toHaveBeenCalledWith(true);
 	});
 
 	test("does not intercept the screen edge when disabled", async () => {

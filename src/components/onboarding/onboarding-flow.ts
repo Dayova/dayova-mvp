@@ -3,12 +3,17 @@ import { meetsPasswordRequirements } from "~/lib/password-validation";
 import { formatOnboardingBirthDate } from "./birth-date";
 import { getOnboardingLearningTimeValidationError } from "./onboarding-learning-times";
 
-type AnswerStepKind = "days" | "range" | "time" | "wheel";
+type AnswerStepKind = "days" | "time" | "wheel";
 
 export type OnboardingDecisionStep =
 	| {
 			kind: "text";
 			field: "email" | "name" | "password";
+	  }
+	| {
+			kind: "range";
+			field: keyof OnboardingAnswers;
+			values: readonly number[];
 	  }
 	| { kind: AnswerStepKind; field: keyof OnboardingAnswers }
 	| { kind: "fact" | "intro" | "payoff" };
@@ -66,6 +71,12 @@ export function getOnboardingStepDecision(
 						? "Bitte wähle eine Uhrzeit aus."
 						: "Bitte wähle eine Antwort aus.",
 		};
+	}
+	if (
+		step.kind === "range" &&
+		!step.values.includes(Number(answers[step.field]))
+	) {
+		return { action: "advance", error: "Bitte wähle eine Antwort aus." };
 	}
 
 	if (step.kind === "time") {

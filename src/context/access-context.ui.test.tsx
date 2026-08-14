@@ -33,6 +33,8 @@ jest.mock("~/context/AuthContext", () => ({
 describe("AccessProvider", () => {
 	beforeEach(() => {
 		mockUseQuery.mockClear();
+		jest.mocked(SecureStore.getItemAsync).mockClear();
+		jest.mocked(SecureStore.setItemAsync).mockClear();
 		mockSession.isConvexUserSynced = false;
 	});
 

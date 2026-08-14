@@ -242,6 +242,17 @@ export const createPendingOnboardingSyncOutbox = ({
 					"Invalid pending onboarding sync payload.",
 				);
 			}
+			const existingRecord = await read(accountFingerprint);
+			if (
+				existingRecord !== null &&
+				existingRecord !== "invalid" &&
+				existingRecord.clerkUserId
+			) {
+				throw new PendingOnboardingSyncError(
+					"payload_unavailable",
+					"Pending onboarding sync payload is unavailable.",
+				);
+			}
 			await write({
 				version: SCHEMA_VERSION,
 				status: "pending",
@@ -270,6 +281,18 @@ export const createPendingOnboardingSyncOutbox = ({
 				throw new PendingOnboardingSyncError(
 					"invalid_payload",
 					"Invalid pending onboarding sync payload.",
+				);
+			}
+			const existingRecord = await read(accountFingerprint);
+			if (
+				existingRecord !== null &&
+				existingRecord !== "invalid" &&
+				existingRecord.clerkUserId &&
+				existingRecord.clerkUserId !== clerkUserId
+			) {
+				throw new PendingOnboardingSyncError(
+					"payload_unavailable",
+					"Pending onboarding sync payload is unavailable.",
 				);
 			}
 			await write({

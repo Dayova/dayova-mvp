@@ -74,7 +74,16 @@ function OnboardingEdgeBackGesture({
 				direction * Math.min(directionalTranslation, width * 0.34),
 			);
 		})
-		.onEnd((event) => {
+		.onEnd((event, success) => {
+			if (!success) {
+				translateX.set(
+					withTiming(0, {
+						duration: reducedMotion ? 0 : 180,
+						easing: Easing.out(Easing.cubic),
+					}),
+				);
+				return;
+			}
 			const shouldCommit = shouldCommitRegistrationEdgeBack({
 				direction,
 				translationX: event.translationX,

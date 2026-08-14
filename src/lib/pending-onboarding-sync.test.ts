@@ -131,6 +131,67 @@ describe("pending onboarding sync outbox", () => {
 		).resolves.toEqual({ status: "none" });
 	});
 
+	it("preserves an account-bound payload when the same email starts another registration", async () => {
+		const { storage } = createMemoryStorage();
+		const outbox = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 13, 10),
+		});
+		await outbox.stage({
+			registrationAttemptId: "signup_123",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+			answers: ANSWERS,
+		});
+		await outbox.bindToUser({
+			registrationAttemptId: "signup_123",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+			clerkUserId: "user_123",
+		});
+
+		await expect(
+			outbox.stage({
+				registrationAttemptId: "signup_other",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+				answers: { ...ANSWERS, learningTime: "18:00" },
+			}),
+		).rejects.toMatchObject({ code: "payload_unavailable" });
+		await expect(
+			outbox.resume({
+				clerkUserId: "user_123",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+			}),
+		).resolves.toEqual({ status: "pending", answers: ANSWERS });
+	});
+
+	it("never replaces a payload that is bound to another account", async () => {
+		const { storage } = createMemoryStorage();
+		const outbox = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 13, 10),
+		});
+		await outbox.stageForUser({
+			registrationAttemptId: "recovery",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+			clerkUserId: "user_123",
+			answers: ANSWERS,
+		});
+
+		await expect(
+			outbox.stageForUser({
+				registrationAttemptId: "recovery",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+				clerkUserId: "user_other",
+				answers: { ...ANSWERS, learningTime: "18:00" },
+			}),
+		).rejects.toMatchObject({ code: "payload_unavailable" });
+		await expect(
+			outbox.resume({
+				clerkUserId: "user_123",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+			}),
+		).resolves.toEqual({ status: "pending", answers: ANSWERS });
+	});
+
 	it("refuses account creation when the staged payload belongs to another registration attempt", async () => {
 		const { storage } = createMemoryStorage();
 		const outbox = createPendingOnboardingSyncOutbox({

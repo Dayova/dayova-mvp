@@ -339,7 +339,8 @@ The same implementation was verified on both native platforms:
 - UI tests require explicit weekday input, hold picker changes as draft state,
   and persist the start time only after confirmation.
 - Flow tests require duration, weekdays, and start time and map only those
-  operational answers into the registration payload.
+  operational answers plus state, school type, and grade into the persistence
+  payload. The separate registration payload contains account and profile fields.
 - Backend tests assert that the release payload creates one concrete recurring
   window per selected weekday.
 - Planner tests assert that those persisted windows are visible to learning-plan
@@ -386,6 +387,34 @@ Android's compact size is an explicit logical-display override on the same
 Pixel 9 AVD, not a claim of separate small-phone hardware. Every override was
 reset to the physical display after capture. The floating gear is the
 development-launcher overlay and is not production UI.
+
+## Final code-review closure — 14 August 2026
+
+The final Standards and Spec review found two product-contract gaps and five
+concrete implementation/documentation gaps that the earlier focused review had
+not covered. They are closed in the final code candidate:
+
+- the centered 30-minute duration is now an uncommitted preview until the
+  learner explicitly selects it or another value;
+- the large-text auth-choice entrance respects Reduced Motion;
+- incomplete recovery answers cannot submit;
+- post-auth persistence failures use the shared polite, selectable error
+  contract;
+- the three-page introduction exposes numeric accessibility progress;
+- a cancelled iOS edge gesture cannot commit back navigation;
+- the editable upload artwork and its theme/content-size behavior are now
+  covered by the artwork rendering ADR.
+
+The same closure also tightens integration boundaries found by the full-diff
+review: legacy decorative answers are accepted only for installed-client
+compatibility and are excluded by an explicit persistence allowlist; account-
+bound outbox records cannot be replaced by another registration or Clerk user;
+owned sync success cannot clear an unrelated failure; and dashboard
+announcements omit unavailable date/time values instead of speaking “null”.
+
+These are code and automated-test conclusions. They do not replace the
+remaining owner, physical-assistive-technology, or legal trial-activation gates
+listed in the PR checklist.
 
 `ios-small-axxxl-intro-scroll-final-head.mp4` is an uncut iPhone 13 mini /
 iOS 26.5 recording at the maximum accessibility content size. Five native

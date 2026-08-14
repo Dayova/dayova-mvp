@@ -99,7 +99,10 @@ The following constraints are part of the contract:
   is valid. Submit-time validation remains the defensive boundary; it is not
   the first indication that an empty answer is required.
 - Duration, weekday selection, and start time are mandatory operational input,
-  not survey data. The visible confirmation must match the derived windows.
+  not survey data. The centered default duration is a preview until the learner
+  explicitly selects it or another value; merely opening the screen cannot
+  manufacture an answer. The visible confirmation must match the derived
+  windows.
 - The duration carousel previews the currently centered duration and its ring
   during the drag, before momentum or snapping settles. The persisted answer
   is never changed by that live-preview callback; the existing end-of-drag and
@@ -118,8 +121,9 @@ The following constraints are part of the contract:
 - Strength, blocker, and goal are not collected until a defined product
   consumer changes learner behavior. Changing local payoff copy alone does not
   qualify as a consumer.
-- The backend continues accepting legacy optional onboarding fields for older
-  app versions, but the launch client neither asks for nor submits them.
+- The backend temporarily accepts legacy optional onboarding fields for older
+  installed app versions, but an explicit allowlist excludes those decorative
+  values from persistence. The launch client neither asks for nor submits them.
 - Nonessential onboarding motion follows the system reduced-motion setting.
 - The profile-step progress fill animates forward and backward over 260 ms with
   a restrained ease-out. It starts at the current value on first render rather

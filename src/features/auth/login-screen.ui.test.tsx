@@ -108,6 +108,7 @@ let mockWindowDimensions = {
 	scale: 3,
 	width: 390,
 };
+let mockReducedMotion = false;
 
 jest.mock("react-native/Libraries/Utilities/useWindowDimensions", () => ({
 	__esModule: true,
@@ -151,7 +152,7 @@ jest.mock("react-native-reanimated", () => {
 		}) => handlers.onScroll,
 		useAnimatedStyle: (factory: () => unknown) => factory(),
 		useDerivedValue: (factory: () => unknown) => ({ value: factory() }),
-		useReducedMotion: () => false,
+		useReducedMotion: () => mockReducedMotion,
 		useSharedValue: (initialValue: unknown) => {
 			let value = initialValue;
 			return {
@@ -394,6 +395,7 @@ jest.mock("~/lib/theme", () => ({
 
 describe("LoginScreen", () => {
 	beforeEach(() => {
+		mockReducedMotion = false;
 		mockWindowDimensions = {
 			fontScale: 1,
 			height: 844,
@@ -431,6 +433,21 @@ describe("LoginScreen", () => {
 		);
 
 		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding");
+	});
+
+	test("removes the large-text auth entrance animation when reduced motion is enabled", async () => {
+		mockReducedMotion = true;
+		mockWindowDimensions = {
+			fontScale: 3,
+			height: 667,
+			scale: 2,
+			width: 375,
+		};
+		const screen = await render(<AuthChoiceScreen />);
+
+		expect(
+			screen.getByTestId("auth-choice-logo-card").props.entering,
+		).toBeUndefined();
 	});
 
 	test("keeps password recovery reachable from sign-in", async () => {
@@ -671,6 +688,9 @@ describe("CreationLoaderScreen", () => {
 				name: "Deine Angaben konnten noch nicht gespeichert werden.",
 			}),
 		).toBeOnTheScreen();
+		const error = screen.getByRole("alert");
+		expect(error).toHaveProp("accessibilityLiveRegion", "polite");
+		expect(error).toHaveProp("selectable", true);
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Erneut versuchen" }),
 		);
@@ -686,7 +706,11 @@ describe("OnboardingRecoveryScreen", () => {
 			<OnboardingRecoveryScreen
 				topInset={24}
 				bottomInset={24}
-				answers={{ studyTime: "30", studyDays: "", learningTime: "" }}
+				answers={{
+					studyTime: "30",
+					studyDays: "Montag",
+					learningTime: "16:00",
+				}}
 				error={null}
 				onChange={change}
 				onSubmit={submit}
@@ -701,11 +725,13 @@ describe("OnboardingRecoveryScreen", () => {
 		expect(screen.queryByLabelText("E-Mail-Adresse")).toBeNull();
 		expect(screen.queryByLabelText("Passwort")).toBeNull();
 
-		await fireEvent.press(screen.getByRole("checkbox", { name: "Montag" }));
-		expect(change).toHaveBeenCalledWith("studyDays", "Montag");
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Dienstag" }));
+		expect(change).toHaveBeenCalledWith("studyDays", "Montag, Dienstag");
 
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Startzeit auswählen" }),
+			screen.getByRole("button", {
+				name: "Lernzeit beginnt um 16:00 Uhr",
+			}),
 		);
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Testauswahl bestätigen" }),
@@ -716,6 +742,27 @@ describe("OnboardingRecoveryScreen", () => {
 			screen.getByRole("button", { name: "Lernzeiten erneut speichern" }),
 		);
 		expect(submit).toHaveBeenCalledTimes(1);
+	});
+
+	test("keeps recovery submission disabled until all operational answers are explicit", async () => {
+		const submit = jest.fn(async () => undefined);
+		const screen = await render(
+			<OnboardingRecoveryScreen
+				topInset={24}
+				bottomInset={24}
+				answers={{ studyTime: "", studyDays: "", learningTime: "" }}
+				error={null}
+				onChange={jest.fn()}
+				onSubmit={submit}
+			/>,
+		);
+
+		const button = screen.getByRole("button", {
+			name: "Lernzeiten erneut speichern",
+		});
+		expect(button).toBeDisabled();
+		await fireEvent.press(button);
+		expect(submit).not.toHaveBeenCalled();
 	});
 
 	test("disables recovery controls while the durable payload is being replaced", async () => {
@@ -748,6 +795,7 @@ describe("OnboardingRecoveryScreen", () => {
 
 describe("OnboardingScreen", () => {
 	beforeEach(() => {
+		mockReducedMotion = false;
 		mockWindowDimensions = {
 			fontScale: 1,
 			height: 844,
@@ -881,6 +929,12 @@ describe("OnboardingScreen", () => {
 			backgroundColor: "#DCE6EE",
 			width: 8,
 		});
+		expect(screen.getByRole("progressbar")).toHaveProp("accessibilityValue", {
+			min: 1,
+			max: 3,
+			now: 1,
+			text: "Seite 1 von 3",
+		});
 	});
 
 	test("keeps every intro page mounted for direct reduced-motion page changes", async () => {
@@ -981,6 +1035,22 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingScreen initialStepId="studyTime" />);
 
 		expect(screen.getByText("30")).toBeOnTheScreen();
+		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyTime", "30");
+	});
+
+	test("requires an explicit duration confirmation before continuing", async () => {
+		mockOnboarding.answers.studyTime = "";
+		const screen = await render(<OnboardingScreen initialStepId="studyTime" />);
+
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		expect(
+			screen.getByRole("adjustable", { name: "Tägliche Lernzeit" }),
+		).toHaveAccessibilityValue({
+			text: "30 Minuten Vorschau, noch nicht ausgewählt",
+		});
+		await fireEvent.press(
+			screen.getByRole("button", { name: "30 Minuten auswählen" }),
+		);
 		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyTime", "30");
 	});
 

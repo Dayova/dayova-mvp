@@ -471,7 +471,12 @@ export function AuthChoiceScreen() {
 					}}
 				>
 					<Animated.View
-						entering={FadeInDown.duration(520).springify().damping(18)}
+						testID="auth-choice-logo-card"
+						entering={
+							reducedMotion
+								? undefined
+								: FadeInDown.duration(520).springify().damping(18)
+						}
 						className="h-28 w-28 items-center justify-center rounded-[28px] bg-card shadow-lg"
 					>
 						<Image
@@ -746,7 +751,7 @@ export function OnboardingScreen({
 	} = useAuthSession();
 	const { answers } = useOnboarding();
 	const [recoveryAnswers, setRecoveryAnswers] = useState({
-		studyTime: "30",
+		studyTime: "",
 		studyDays: "",
 		learningTime: "",
 	});
@@ -1236,6 +1241,7 @@ function IntroStepView({
 					<View className="mt-8 w-full">
 						<IntroDots
 							activeColor={COLORS.primary}
+							currentIndex={introIndex}
 							inactiveColor={COLORS.border}
 							pageWidth={width}
 							scrollX={scrollX}
@@ -1329,6 +1335,7 @@ function IntroStepView({
 			<View className="px-6">
 				<IntroDots
 					activeColor={COLORS.primary}
+					currentIndex={introIndex}
 					inactiveColor={COLORS.border}
 					pageWidth={width}
 					scrollX={scrollX}
@@ -1410,17 +1417,30 @@ function IntroArtwork({
 
 function IntroDots({
 	activeColor,
+	currentIndex,
 	inactiveColor,
 	pageWidth,
 	scrollX,
 }: {
 	activeColor: string;
+	currentIndex: number;
 	inactiveColor: string;
 	pageWidth: number;
 	scrollX: SharedValue<number>;
 }) {
 	return (
-		<View className="mb-5 flex-row items-center justify-center gap-2">
+		<View
+			accessible
+			accessibilityLabel="Einführung"
+			accessibilityRole="progressbar"
+			accessibilityValue={{
+				min: 1,
+				max: INTRO_STEPS.length,
+				now: currentIndex + 1,
+				text: `Seite ${currentIndex + 1} von ${INTRO_STEPS.length}`,
+			}}
+			className="mb-5 flex-row items-center justify-center gap-2"
+		>
 			{INTRO_STEPS.map((step, index) => (
 				<IntroDot
 					key={step.id}
@@ -2559,6 +2579,8 @@ export function OnboardingRecoveryScreen({
 		dateForOnboardingTime(answers.learningTime),
 	);
 	const selectedDays = new Set(parseOnboardingStudyDays(answers.studyDays));
+	const validationError = getOnboardingLearningTimeValidationError(answers);
+	const isSubmitDisabled = isSubmitting || validationError !== null;
 	return (
 		<View
 			className="flex-1 bg-background px-6"
@@ -2682,7 +2704,7 @@ export function OnboardingRecoveryScreen({
 						);
 						setPickerVisible(true);
 					}}
-					className="mt-3 min-h-16 justify-center rounded-[20px] border border-path-1 bg-system-subtle px-4"
+					className="mt-3 min-h-16 justify-center rounded-input border border-path-1 bg-system-subtle px-4"
 				>
 					<Text className="font-poppins font-semibold text-body-3 text-text">
 						{answers.learningTime
@@ -2700,7 +2722,7 @@ export function OnboardingRecoveryScreen({
 						? "Lernzeiten werden gespeichert"
 						: "Lernzeiten erneut speichern"
 				}
-				disabled={isSubmitting}
+				disabled={isSubmitDisabled}
 				onPress={onSubmit}
 			>
 				<Text>
@@ -2782,13 +2804,9 @@ export function CreationLoaderScreen({
 				</Animated.Text>
 				{error ? (
 					<>
-						<Text
-							accessibilityLiveRegion="assertive"
-							accessibilityRole="alert"
-							className="mt-3 max-w-[340px] text-center font-poppins text-body-3 text-secondary-text"
-						>
+						<ErrorMessage className="mt-3 max-w-[340px] text-center">
 							{error}
-						</Text>
+						</ErrorMessage>
 						<Button
 							accessibilityLabel="Erneut versuchen"
 							className="mt-8 w-full"
@@ -3042,6 +3060,7 @@ function OtpCodeInput({
 
 function RangeAnswer({ step }: { step: RangeStep }) {
 	const { answers, setAnswer } = useOnboarding();
+	const hasExplicitSelection = answers.studyTime.trim().length > 0;
 	const parsedStudyTime = Number.parseInt(answers.studyTime, 10);
 	const defaultStudyTime = step.values.includes(30)
 		? 30
@@ -3057,33 +3076,52 @@ function RangeAnswer({ step }: { step: RangeStep }) {
 		? normalizedStudyTime
 		: defaultStudyTime;
 	useEffect(() => {
-		if (answers.studyTime !== String(displayedStudyTime)) {
+		if (
+			hasExplicitSelection &&
+			answers.studyTime !== String(displayedStudyTime)
+		) {
 			setAnswer("studyTime", String(displayedStudyTime));
 		}
-	}, [answers.studyTime, displayedStudyTime, setAnswer]);
+	}, [answers.studyTime, displayedStudyTime, hasExplicitSelection, setAnswer]);
 	const selectedIndex = Math.max(step.values.indexOf(displayedStudyTime), 0);
 	const selectedValue = step.values[selectedIndex] ?? step.values[0];
 
 	return (
-		<SnapCarouselSelector
-			accessibilityLabel="Tägliche Lernzeit"
-			accessibilityValue={`${displayedStudyTime} Minuten`}
-			decrementLabel="Weniger Lernzeit"
-			incrementLabel="Mehr Lernzeit"
-			items={step.values}
-			selectedIndex={selectedIndex}
-			getItemKey={(value) => String(value)}
-			getItemPrimaryLabel={(value) => String(value)}
-			getItemProgress={(_, index) => (index + 1) / step.values.length}
-			primaryLabel={String(displayedStudyTime)}
-			secondaryLabel="Minuten"
-			progress={
-				selectedValue === undefined
-					? 0
-					: (selectedIndex + 1) / step.values.length
-			}
-			onSelect={(value) => setAnswer("studyTime", String(value))}
-		/>
+		<View className="w-full items-center">
+			<SnapCarouselSelector
+				accessibilityLabel="Tägliche Lernzeit"
+				accessibilityValue={
+					hasExplicitSelection
+						? `${displayedStudyTime} Minuten`
+						: `${displayedStudyTime} Minuten Vorschau, noch nicht ausgewählt`
+				}
+				decrementLabel="Weniger Lernzeit"
+				incrementLabel="Mehr Lernzeit"
+				items={step.values}
+				selectedIndex={selectedIndex}
+				getItemKey={(value) => String(value)}
+				getItemPrimaryLabel={(value) => String(value)}
+				getItemProgress={(_, index) => (index + 1) / step.values.length}
+				primaryLabel={String(displayedStudyTime)}
+				secondaryLabel="Minuten"
+				progress={
+					selectedValue === undefined
+						? 0
+						: (selectedIndex + 1) / step.values.length
+				}
+				onSelect={(value) => setAnswer("studyTime", String(value))}
+			/>
+			{hasExplicitSelection ? null : (
+				<Button
+					size="sm"
+					accessibilityLabel={`${displayedStudyTime} Minuten auswählen`}
+					className="mt-4 self-center"
+					onPress={() => setAnswer("studyTime", String(displayedStudyTime))}
+				>
+					<Text>{displayedStudyTime} Minuten auswählen</Text>
+				</Button>
+			)}
+		</View>
 	);
 }
 
@@ -3248,7 +3286,7 @@ function LearningTimeAnswer() {
 				}
 				accessibilityHint="Öffnet die native Uhrzeitauswahl"
 				onPress={openPicker}
-				className="min-h-24 w-full max-w-[345px] flex-row items-center rounded-[28px] border border-border bg-surface px-6 active:opacity-80"
+				className="min-h-24 w-full max-w-[345px] flex-row items-center rounded-card border border-border bg-surface px-6 active:opacity-80"
 				style={{ borderCurve: "continuous" }}
 			>
 				<View className="h-12 w-12 items-center justify-center rounded-full bg-primary/10">

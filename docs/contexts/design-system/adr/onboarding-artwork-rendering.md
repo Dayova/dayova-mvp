@@ -1,4 +1,4 @@
-# ADR: Render Editable Onboarding Artwork As Native UI
+# ADR: Render Editable Onboarding Artwork As Maintainable Components
 
 - Status: Accepted
 - Date: 2026-07-13
@@ -15,9 +15,14 @@ learning reminder. Its Figma SVG export was not a reliable source asset:
 - colors, icons, and copy were hidden inside generated SVG data instead of using
   the app's design-system tokens and shared modules.
 
-The other onboarding SVGs remain static artwork and do not have this failure
-mode. This decision therefore applies to the editable first illustration; it is
-not a blanket SVG ban.
+The upload illustration has a related but different requirement. Its route,
+document nodes, copy, and colors must remain theme-aware and responsive to large
+system text. A static export would hide those semantics and cannot counter-scale
+the embedded labels when the surrounding layout grows.
+
+The path illustration remains static artwork and does not have either failure
+mode. This decision therefore applies only to the editable task and upload
+illustrations; it is not a blanket SVG ban.
 
 ## Decision
 
@@ -36,17 +41,33 @@ Implement the first illustration behind the small
 - Remove the superseded broken SVG after verifying that it has no remaining
   consumers.
 
+Implement the upload illustration behind the equally small
+`IntroUploadArtwork({ width, height })` interface as a maintainable TSX module
+using `react-native-svg`.
+
+- Keep paths, document nodes, and labels local to the illustration instead of
+  leaking SVG details into the onboarding screen.
+- Resolve semantic colors at runtime so the same composition has intentional
+  light and dark variants.
+- Counter-scale the embedded text for large system-font settings so the artwork
+  remains readable without destroying its composition.
+- Hide the composed illustration from the accessibility tree because the
+  onboarding heading and description communicate its meaning.
+
 ## Why Not Repair The SVG?
 
-A clean, static SVG is still preferred for complex vector-only artwork. Repairing
-this export would preserve the same underlying problem: important product copy
-and the logo implementation would remain opaque generated data. Re-exporting
-could fix today's pixels, but a future wording or token change would again
-require Figma and another generated asset instead of a normal code review.
+A clean, static SVG is still preferred for complex vector-only artwork.
+Repairing the task export would preserve the same underlying problem: important
+product copy and the logo implementation would remain opaque generated data.
+Re-exporting either editable illustration could fix today's pixels, but a future
+wording, theme, or token change would again require Figma and another generated
+asset instead of a normal code review.
 
-The native module creates a useful seam: the onboarding flow only supplies a
-width and height, while the copy, tokens, logo, composition, and scaling remain
-local to the artwork implementation.
+Both modules create the same useful seam: the onboarding flow only supplies a
+width and height, while copy, tokens, composition, and scaling remain local to
+the artwork implementation. React Native primitives are appropriate for the
+card-like task composition; `react-native-svg` is appropriate for the upload
+composition's connected vector route and document nodes.
 
 ## Consequences
 
@@ -54,6 +75,7 @@ local to the artwork implementation.
 - The artwork can be regression-tested without parsing generated SVG paths.
 - Exact Figma artboard geometry remains coordinate-based and still needs visual
   verification on representative device sizes.
-- Native implementation is more verbose than importing one SVG, so it should be
-  chosen only when artwork contains maintainable UI content or a broken export,
+- Maintainable TSX artwork is more verbose than importing one SVG, so it should
+  be chosen only when artwork contains maintainable UI content, needs runtime
+  theming or accessibility-responsive behavior, or has a broken export,
   following the matrix in `docs/styling.md`.

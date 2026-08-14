@@ -46,6 +46,7 @@ import {
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
 	getDashboardWeekProgress,
+	getNextLearningStepAccessibilityLabel,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
@@ -439,7 +440,12 @@ function NextLearningStepCard({
 				isLoading
 					? "Nächster Lernschritt wird geladen"
 					: item
-						? `${item.entry.executionStatus === "started" ? "Weiterlernen" : "Nächsten Lernschritt öffnen"}: ${title}. ${dateLabel}, ${timeLabel}`
+						? getNextLearningStepAccessibilityLabel({
+								isStarted: item.entry.executionStatus === "started",
+								title,
+								dateLabel,
+								timeLabel,
+							})
 						: EMPTY_DASHBOARD_PRIMARY_ACTION.label
 			}
 			accessibilityHint={

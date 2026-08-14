@@ -793,7 +793,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				clerkUserId: user.clerkId,
 				accountFingerprint: onboardingCompletion.accountFingerprint,
 			});
-			setPostAuthSyncFailure(null);
+			setPostAuthSyncFailure((current) =>
+				clearOwnedPostAuthSyncFailure(current, "completion"),
+			);
 			setOnboardingCompletion({
 				clerkUserId: user.clerkId,
 				accountFingerprint: onboardingCompletion.accountFingerprint,
@@ -1002,7 +1004,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			accountFingerprint: onboardingCompletion.accountFingerprint,
 			answers,
 		});
-		setPostAuthSyncFailure(null);
+		setPostAuthSyncFailure((current) =>
+			clearOwnedPostAuthSyncFailure(current, "answers"),
+		);
 		setOnboardingCompletion({
 			clerkUserId: user.clerkId,
 			accountFingerprint: onboardingCompletion.accountFingerprint,
