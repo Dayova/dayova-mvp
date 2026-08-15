@@ -1235,49 +1235,53 @@ export const listOverview = query({
 	args: {},
 	handler: async (ctx) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
-		const acceptedPlans = await ctx.db
-			.query("learningPlans")
-			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
-				q
-					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
-					.eq("status", "accepted"),
-			)
-			.order("desc")
-			.take(50);
-		const draftPlans = await ctx.db
-			.query("learningPlans")
-			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
-				q
-					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
-					.eq("status", "draft"),
-			)
-			.order("desc")
-			.take(50);
-		const materiallessDraftPlans: typeof draftPlans = [];
-		for (const plan of draftPlans) {
-			const documents = await ctx.db
-				.query("learningPlanDocuments")
-				.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", plan._id))
-				.take(20);
-			const hasSchoolDocument = documents.some(
-				(document) => document.sourceKind !== "external",
-			);
-			if (!hasSchoolDocument) {
-				materiallessDraftPlans.push(plan);
-			}
-		}
-		const plans = [...acceptedPlans, ...materiallessDraftPlans]
+		const statuses = [
+			"accepted",
+			"draft",
+			"questionsReady",
+			"generated",
+		] as const;
+		const planGroups = await Promise.all(
+			statuses.map((status) =>
+				ctx.db
+					.query("learningPlans")
+					.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
+						q
+							.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+							.eq("status", status),
+					)
+					.order("desc")
+					.take(50),
+			),
+		);
+		const plans = planGroups
+			.flat()
 			.sort((left, right) => right.updatedAt - left.updatedAt)
 			.slice(0, 50);
 
 		const overviews = [];
 		for (const plan of plans) {
-			const sessions = await ctx.db
-				.query("learningPlanSessions")
-				.withIndex("by_learningPlanId_and_sortOrder", (q) =>
-					q.eq("learningPlanId", plan._id),
-				)
-				.take(50);
+			const documents =
+				plan.status === "draft"
+					? await ctx.db
+							.query("learningPlanDocuments")
+							.withIndex("by_learningPlanId", (q) =>
+								q.eq("learningPlanId", plan._id),
+							)
+							.take(20)
+					: [];
+			const needsSchoolMaterial =
+				plan.status === "draft" &&
+				!documents.some((document) => document.sourceKind !== "external");
+			const sessions =
+				plan.status === "accepted"
+					? await ctx.db
+							.query("learningPlanSessions")
+							.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+								q.eq("learningPlanId", plan._id),
+							)
+							.take(50)
+					: [];
 			const completedCount = sessions.filter(
 				(session) => session.completed === true,
 			).length;
@@ -1330,7 +1334,9 @@ export const listOverview = query({
 				examTypeLabel: plan.examTypeLabel,
 				topicDescription: plan.topicDescription,
 				status: plan.status,
-				needsSchoolMaterial: plan.status === "draft",
+				needsSchoolMaterial,
+				diagnosticPlacement: plan.diagnosticPlacement,
+				scopeConfirmedAt: plan.scopeConfirmedAt,
 				progressPercent,
 				completedCount,
 				sessionCount: sessions.length,

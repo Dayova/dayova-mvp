@@ -16,6 +16,8 @@ import { useLearningPlanCreationProgress } from "~/features/learning-plans/creat
 import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -56,10 +58,15 @@ export default function LearningPlanScopeScreen() {
 	}, [planId, router, snapshot]);
 
 	const goBack = () => {
-		if (!planId || !snapshot) return;
+		if (!planId) {
+			goBackOrReplace(router, ROUTES.learningPlans);
+			return true;
+		}
 		router.replace(learningPlanMaterialPath(planId));
+		return true;
 	};
 
+	useBackIntent(true, goBack);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: LEARNING_PLAN_CREATION_STEPS.scopeConfirmation,
