@@ -104,5 +104,9 @@ describe("onboarding learning times", () => {
 	test("round-trips the native picker value without a timezone conversion", () => {
 		const date = dateForOnboardingTime("18:05");
 		expect(formatOnboardingTime(date)).toBe("18:05");
+		expect(formatOnboardingTime(dateForOnboardingTime("00:00"))).toBe("00:00");
+		expect(formatOnboardingTime(dateForOnboardingTime("nach der Schule"))).toBe(
+			"16:00",
+		);
 	});
 });

@@ -58,10 +58,12 @@ export const formatOnboardingTime = (date: Date) =>
 	`${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
 export const dateForOnboardingTime = (value: string) => {
-	const [hours, minutes] = (value.trim() || DEFAULT_LEARNING_START_TIME)
-		.split(":")
-		.map(Number);
-	return new Date(2026, 0, 1, hours || 0, minutes || 0, 0, 0);
+	const normalizedValue =
+		parseTimeToMinutes(value) === null
+			? DEFAULT_LEARNING_START_TIME
+			: value.trim();
+	const [hours, minutes] = normalizedValue.split(":").map(Number);
+	return new Date(2026, 0, 1, hours, minutes, 0, 0);
 };
 
 export const getOnboardingLearningTimeWindow = (input: {

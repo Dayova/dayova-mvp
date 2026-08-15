@@ -200,6 +200,32 @@ describe("DayovaSheetFrame", () => {
 		expect(onClose).toHaveBeenCalledTimes(1);
 	});
 
+	test("releases Android back when a controlled reopen is cancelled", async () => {
+		setPlatformOS("android");
+		const view = await render(
+			<DayovaSheetFrame visible onClose={jest.fn()} title="Auswahl" />,
+		);
+		await act(flushAnimationFrames);
+		await act(() => mockSheetHarness.onChange?.(0));
+		await act(flushAnimationFrames);
+
+		await view.rerender(
+			<DayovaSheetFrame visible={false} onClose={jest.fn()} title="Auswahl" />,
+		);
+		await view.rerender(
+			<DayovaSheetFrame visible onClose={jest.fn()} title="Auswahl" />,
+		);
+		await act(() => mockSheetHarness.onDismiss?.());
+
+		await view.rerender(
+			<DayovaSheetFrame visible={false} onClose={jest.fn()} title="Auswahl" />,
+		);
+		await act(flushAnimationFrames);
+
+		expect(mockSheetHarness.present).toHaveBeenCalledTimes(1);
+		expect(androidBackHandler).toBeNull();
+	});
+
 	test("the close control requests a native dismissal", async () => {
 		const view = await render(
 			<DayovaSheetFrame visible onClose={jest.fn()} title="Auswahl" />,
@@ -256,6 +282,7 @@ describe("DayovaSheetFrame", () => {
 		);
 		await act(flushAnimationFrames);
 		await act(() => mockSheetHarness.onChange?.(0));
+		await act(flushAnimationFrames);
 
 		await view.rerender(
 			<DayovaSheetFrame visible={false} onClose={jest.fn()} title="Auswahl" />,
@@ -303,6 +330,7 @@ describe("DayovaSheetFrame", () => {
 		expect(modalContent?.props.accessibilityActions).toEqual([
 			{ name: "escape", label: "Auswahl schließen" },
 		]);
+		focusSpy.mockClear();
 
 		await act(() => mockSheetHarness.onChange?.(0));
 		await act(flushAnimationFrames);

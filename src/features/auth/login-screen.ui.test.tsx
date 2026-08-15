@@ -705,6 +705,16 @@ describe("CreationLoaderScreen", () => {
 });
 
 describe("OnboardingRecoveryScreen", () => {
+	beforeEach(() => {
+		mockReducedMotion = false;
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 844,
+			scale: 3,
+			width: 390,
+		};
+	});
+
 	test("collects only the operational learning-time answers after a lost payload", async () => {
 		const change = jest.fn();
 		const submit = jest.fn(async () => undefined);

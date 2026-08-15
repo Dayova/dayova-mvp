@@ -137,6 +137,10 @@ function DayovaSheetFrame({
 			sheetRef.current?.dismiss();
 			return;
 		}
+
+		if (phaseRef.current === "closed") {
+			setIsNativeSheetActive(false);
+		}
 	}, [presentIfDesired, visible]);
 
 	useEffect(
