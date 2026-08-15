@@ -169,6 +169,34 @@ describe("pending onboarding sync outbox", () => {
 		).resolves.toEqual({ status: "none" });
 	});
 
+	it("keeps schema-v1 durations readable when the current selector is narrower", async () => {
+		const { storage, values } = createMemoryStorage();
+		const historicalAnswers = { ...ANSWERS, dailySchoolTime: "75 min" };
+		values.set(
+			`dayova.pending-onboarding-sync.${ACCOUNT_FINGERPRINT}`,
+			JSON.stringify({
+				version: 1,
+				status: "pending",
+				registrationAttemptId: "signup_historical",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+				clerkUserId: "user_123",
+				createdAt: Date.UTC(2026, 7, 13, 10),
+				answers: historicalAnswers,
+			}),
+		);
+		const outbox = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 13, 10, 5),
+		});
+
+		await expect(
+			outbox.resume({
+				clerkUserId: "user_123",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+			}),
+		).resolves.toEqual({ status: "pending", answers: historicalAnswers });
+	});
+
 	it("claims an unbound pre-verification payload only for the matching account", async () => {
 		const { storage } = createMemoryStorage();
 		const outbox = createPendingOnboardingSyncOutbox({

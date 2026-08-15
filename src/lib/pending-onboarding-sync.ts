@@ -1,16 +1,18 @@
 import { isGermanFederalState } from "~/lib/federal-states";
 import { isSupportedGrade } from "~/lib/grades";
 import { isSupportedSchoolType } from "~/lib/school-types";
-import {
-	getOnboardingLearningTimeWindow,
-	parseOnboardingDurationMinutes,
-	parseOnboardingStudyDays,
-} from "~/components/onboarding/onboarding-learning-times";
+import { parseOnboardingStudyDays } from "~/components/onboarding/onboarding-learning-times";
 
 const STORAGE_KEY_PREFIX = "dayova.pending-onboarding-sync";
 const SCHEMA_VERSION = 1;
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const ACCOUNT_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/;
+// Schema-v1 records must remain readable when the launch selector narrows.
+// Treat this compatibility set as append-only until a stored-record migration exists.
+const PERSISTED_ONBOARDING_DURATION_MINUTES = [
+	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
+] as const;
+const MINUTES_PER_DAY = 24 * 60;
 
 export type PendingOnboardingSyncAnswers = {
 	dailySchoolTime: string;
@@ -98,6 +100,21 @@ export class PendingOnboardingSyncError extends Error {
 const isRecordBase = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null;
 
+const parsePersistedDurationMinutes = (value: string) => {
+	const normalizedValue = value.trim();
+	return (
+		PERSISTED_ONBOARDING_DURATION_MINUTES.find(
+			(option) => String(option) === normalizedValue,
+		) ?? null
+	);
+};
+
+const parsePersistedLearningTimeMinutes = (value: string) => {
+	const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
+	if (!match) return null;
+	return Number(match[1]) * 60 + Number(match[2]);
+};
+
 const isValidAnswers = (
 	value: unknown,
 ): value is PendingOnboardingSyncAnswers => {
@@ -120,18 +137,17 @@ const isValidAnswers = (
 	}
 
 	const duration = dailySchoolTime.endsWith(" min")
-		? parseOnboardingDurationMinutes(dailySchoolTime.slice(0, -4))
+		? parsePersistedDurationMinutes(dailySchoolTime.slice(0, -4))
 		: null;
+	const startMinutes = parsePersistedLearningTimeMinutes(learningTime);
 	const parsedDays = parseOnboardingStudyDays(studyDays);
 	const canonicalDays = parsedDays.join(", ");
 	return Boolean(
 		duration !== null &&
+			startMinutes !== null &&
+			startMinutes + duration < MINUTES_PER_DAY &&
 			parsedDays.length > 0 &&
 			canonicalDays === studyDays &&
-			getOnboardingLearningTimeWindow({
-				studyTime: String(duration),
-				learningTime,
-			}) &&
 			isGermanFederalState(state) &&
 			isSupportedSchoolType(schoolType) &&
 			isSupportedGrade(grade),
@@ -533,6 +549,10 @@ export const syncPendingOnboardingAnswers = async ({
 }: {
 	outbox: ReturnType<typeof createPendingOnboardingSyncOutbox>;
 	identity: AccountIdentity;
+	/**
+	 * Must be idempotent for the same account and answers. A successful remote
+	 * write can be retried if persisting the local completion marker fails.
+	 */
 	sync: (answers: PendingOnboardingSyncAnswers) => Promise<unknown>;
 }) =>
 	serializePendingSyncOperation({

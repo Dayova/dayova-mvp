@@ -87,6 +87,13 @@ describe("onboarding learning times", () => {
 		).toBe("Bitte wähle eine Uhrzeit aus.");
 		expect(
 			getOnboardingLearningTimeValidationError({
+				studyTime: "30",
+				studyDays: "Montag",
+				learningTime: "nach der Schule",
+			}),
+		).toBe("Bitte wähle eine gültige Uhrzeit aus.");
+		expect(
+			getOnboardingLearningTimeValidationError({
 				studyTime: "60",
 				studyDays: "Montag",
 				learningTime: "23:30",

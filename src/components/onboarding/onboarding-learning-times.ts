@@ -95,6 +95,9 @@ export const getOnboardingLearningTimeValidationError = (input: {
 	if (!input.learningTime.trim()) {
 		return "Bitte wähle eine Uhrzeit aus.";
 	}
+	if (parseTimeToMinutes(input.learningTime) === null) {
+		return "Bitte wähle eine gültige Uhrzeit aus.";
+	}
 	if (!getOnboardingLearningTimeWindow(input)) {
 		return "Wähle bitte eine frühere Startzeit, damit deine Lernzeit vor Mitternacht endet.";
 	}

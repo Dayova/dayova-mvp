@@ -166,6 +166,11 @@ The following constraints are part of the contract:
   in the adapter. The payload contains duration, weekdays, start time, state,
   school type, and grade; it never contains a password, verification code,
   token, name, birth date, or raw e-mail address.
+- The current duration selector and the persisted outbox schema are separate
+  contracts. Schema-version-1 validation keeps the wider backend-compatible
+  duration set readable for its seven-day recovery window even when the launch
+  selector is narrowed; removing an accepted persisted value requires a stored
+  record migration.
 - Every read-check-write outbox operation is serialized per account fingerprint,
   and the complete `resume → remote sync → mark synced` transaction is serialized
   per outbox and account. Concurrent staging, binding, restore-triggered sync,
