@@ -1134,22 +1134,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 			const { profile, signUp: signUpParameters } =
 				prepareClerkRegistration(input);
-			const registrationAttemptId = clerk.client.signUp.id;
-			if (!registrationAttemptId) {
-				throw new PendingOnboardingSyncError(
-					"payload_unavailable",
-					"Registrierungsversuch konnte nicht zugeordnet werden.",
-				);
-			}
-			const signUpParametersWithRecovery = {
-				...signUpParameters,
-				unsafeMetadata: {
-					...signUpParameters.unsafeMetadata,
-					onboardingRegistrationAttemptId: registrationAttemptId,
-				},
-			};
 
 			try {
+				const registrationAttemptId = clerk.client.signUp.id;
+				if (!registrationAttemptId) {
+					throw new PendingOnboardingSyncError(
+						"payload_unavailable",
+						"Registrierungsversuch konnte nicht zugeordnet werden.",
+					);
+				}
+				const signUpParametersWithRecovery = {
+					...signUpParameters,
+					unsafeMetadata: {
+						...signUpParameters.unsafeMetadata,
+						onboardingRegistrationAttemptId: registrationAttemptId,
+					},
+				};
 				const signUp = await clerk.client.signUp.upsert(
 					signUpParametersWithRecovery,
 				);

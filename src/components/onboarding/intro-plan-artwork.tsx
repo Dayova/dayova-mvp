@@ -1,25 +1,20 @@
 import { View } from "react-native";
-import type { SvgProps } from "react-native-svg";
 import { LearningPlanCardVisual } from "~/features/learning-plans/learning-plan-card-visual";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
 const ARTWORK_WIDTH = 368;
 const ARTWORK_HEIGHT = 211;
 
-function numericDimension(
-	value: SvgProps["width"] | SvgProps["height"],
-	fallback: number,
-) {
-	return typeof value === "number" ? value : fallback;
-}
+type IntroPlanArtworkProps = {
+	height?: number;
+	width?: number;
+};
 
-export function IntroPlanArtwork({ width, height }: SvgProps) {
-	const resolvedWidth = numericDimension(width, ARTWORK_WIDTH);
-	const resolvedHeight = numericDimension(height, ARTWORK_HEIGHT);
-	const scale = Math.min(
-		resolvedWidth / ARTWORK_WIDTH,
-		resolvedHeight / ARTWORK_HEIGHT,
-	);
+export function IntroPlanArtwork({
+	width = ARTWORK_WIDTH,
+	height = ARTWORK_HEIGHT,
+}: IntroPlanArtworkProps) {
+	const scale = Math.min(width / ARTWORK_WIDTH, height / ARTWORK_HEIGHT);
 
 	return (
 		<View
@@ -27,7 +22,7 @@ export function IntroPlanArtwork({ width, height }: SvgProps) {
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
 			className="items-center justify-center"
-			style={{ width: resolvedWidth, height: resolvedHeight }}
+			style={{ width, height }}
 			testID="intro-plan-artwork"
 		>
 			<View className="h-[211px] w-[368px]" style={{ transform: [{ scale }] }}>

@@ -40,4 +40,13 @@ describe("IntroPlanArtwork", () => {
 		).toBeOnTheScreen();
 		expect(screen.queryByRole("button")).toBeNull();
 	});
+
+	test("preserves explicit numeric artboard dimensions", async () => {
+		const screen = await render(<IntroPlanArtwork width={250} height={144} />);
+		const artwork = screen.getByTestId("intro-plan-artwork", {
+			includeHiddenElements: true,
+		});
+
+		expect(artwork).toHaveStyle({ width: 250, height: 144 });
+	});
 });

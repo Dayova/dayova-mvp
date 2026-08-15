@@ -518,6 +518,15 @@ review cleanup also shares the duration parser, onboarding-settled predicate,
 worklet-safe carousel index helper, error-message map, and test setup contracts
 instead of allowing parallel copies to drift.
 
+The substantive full-PR review of exact head `593c09e` against base `056a61f`
+then found two minor but valid boundary problems. The shared plan-preview
+artwork now accepts only numeric artboard dimensions instead of advertising the
+broader SVG string-dimension contract and silently falling back for it. The
+missing-registration-attempt guard also executes inside the existing mapped and
+diagnosed registration error boundary, preserving fail-closed behavior while
+showing the intended recovery message. Both findings are fixed and covered by
+the final validation pass.
+
 The CodeRabbit CLI installation and authentication were also verified locally
 (`coderabbit doctor`: 9/9 checks). Its review transport closed the WebSocket
 before analysis on repeated attempts, so CLI output is not cited as a review
