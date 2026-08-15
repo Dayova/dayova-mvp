@@ -981,6 +981,44 @@ describe("OnboardingScreen", () => {
 		).toBeOnTheScreen();
 	});
 
+	test("prevents parallel trial-handoff writes after repeated presses", async () => {
+		let finishHandoff!: (value: boolean) => void;
+		mockAuthSession.user = {
+			clerkId: "user_123",
+			email: "test@example.com",
+		};
+		mockAuthSession.isConvexAuthenticated = true;
+		mockAuthSession.onboardingCompletionStatus = "ready_for_trial";
+		mockCompleteOnboardingHandoff.mockImplementationOnce(
+			() =>
+				new Promise<boolean>((resolve) => {
+					finishHandoff = resolve;
+				}),
+		);
+		const screen = await render(<OnboardingScreen />);
+		const continueButton = screen.getByRole("button", {
+			name: "Weiter zur Testphase",
+		});
+
+		await fireEvent.press(continueButton);
+		await fireEvent.press(continueButton);
+
+		expect(mockCompleteOnboardingHandoff).toHaveBeenCalledTimes(1);
+		const busyButton = await screen.findByRole("button", {
+			name: "Testphase wird geöffnet",
+		});
+		expect(busyButton.props.accessibilityState).toMatchObject({
+			busy: true,
+			disabled: true,
+		});
+
+		await act(async () => finishHandoff(true));
+
+		await waitFor(() =>
+			expect(mockRouter.replace).toHaveBeenCalledWith("/trial"),
+		);
+	});
+
 	test("keeps every intro page mounted for direct reduced-motion page changes", async () => {
 		const screen = await render(<OnboardingScreen />);
 		const pager = screen.getByTestId("intro-pager");

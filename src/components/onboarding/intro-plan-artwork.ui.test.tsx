@@ -38,7 +38,7 @@ describe("IntroPlanArtwork", () => {
 		expect(
 			screen.getByText("3 nächste Lernschritte", hidden),
 		).toBeOnTheScreen();
-		expect(screen.queryByRole("button")).toBeNull();
+		expect(screen.queryByRole("button", hidden)).toBeNull();
 	});
 
 	test("preserves explicit numeric artboard dimensions", async () => {

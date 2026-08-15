@@ -728,6 +728,7 @@ export function OnboardingScreen({
 	const [verificationCode, setVerificationCode] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
 	const [isRegistering, setIsRegistering] = useState(false);
+	const [isCompletingHandoff, setIsCompletingHandoff] = useState(false);
 	const {
 		startRegistrationWithEmail,
 		register,
@@ -962,14 +963,20 @@ export function OnboardingScreen({
 	};
 
 	const continueToTrial = async () => {
-		setError(null);
-		let handedOff = false;
-		try {
-			handedOff = await completeOnboardingHandoff();
-		} catch {
-			// The local message also covers failures outside the owned outbox path.
-		}
-		if (handedOff) {
+		const result = await registrationActionGateRef.current.run(async () => {
+			setError(null);
+			setIsCompletingHandoff(true);
+			try {
+				return await completeOnboardingHandoff();
+			} catch {
+				// The local message also covers failures outside the owned outbox path.
+				return false;
+			} finally {
+				setIsCompletingHandoff(false);
+			}
+		});
+		if (result.status === "skipped") return;
+		if (result.value) {
 			router.replace("/trial");
 			return;
 		}
@@ -1040,6 +1047,7 @@ export function OnboardingScreen({
 				topInset={insets.top}
 				bottomInset={insets.bottom}
 				isComplete={isCreationComplete}
+				isCompleting={isCompletingHandoff}
 				error={error ?? postAuthSyncError}
 				onRetry={() => {
 					if (onboardingCompletionStatus === "ready_for_trial") {
@@ -2740,6 +2748,7 @@ export function CreationLoaderScreen({
 	topInset,
 	bottomInset,
 	isComplete,
+	isCompleting = false,
 	error = null,
 	onRetry,
 	onComplete,
@@ -2747,6 +2756,7 @@ export function CreationLoaderScreen({
 	topInset: number;
 	bottomInset: number;
 	isComplete: boolean;
+	isCompleting?: boolean;
 	error?: string | null;
 	onRetry?: () => void;
 	onComplete?: () => void | Promise<void>;
@@ -2805,11 +2815,19 @@ export function CreationLoaderScreen({
 				) : null}
 				{isComplete ? (
 					<Button
-						accessibilityLabel="Weiter zur Testphase"
+						accessibilityLabel={
+							isCompleting ? "Testphase wird geöffnet" : "Weiter zur Testphase"
+						}
+						accessibilityState={{ busy: isCompleting }}
 						className="mt-8 w-full"
+						disabled={isCompleting}
 						onPress={() => void onComplete?.()}
 					>
-						<Text>Weiter zur Testphase</Text>
+						<Text>
+							{isCompleting
+								? "Testphase wird geöffnet …"
+								: "Weiter zur Testphase"}
+						</Text>
 					</Button>
 				) : null}
 			</View>

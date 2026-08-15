@@ -94,6 +94,9 @@ describe("TrialReminderSync", () => {
 		mockSystemNotificationsEnabled = undefined;
 
 		await render(<TrialReminderSync />);
+		await act(async () => {
+			await Promise.resolve();
+		});
 
 		expect(mockGetPermissionsAsync).not.toHaveBeenCalled();
 		expect(mockCancelScheduledNotificationAsync).not.toHaveBeenCalled();
@@ -113,6 +116,9 @@ describe("TrialReminderSync", () => {
 		mockOnboardingCompletionStatus = status;
 
 		await render(<TrialReminderSync />);
+		await act(async () => {
+			await Promise.resolve();
+		});
 
 		expect(mockCancelScheduledNotificationAsync).not.toHaveBeenCalled();
 		expect(mockScheduled).toHaveLength(1);
