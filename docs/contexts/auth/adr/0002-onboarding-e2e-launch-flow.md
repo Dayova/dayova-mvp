@@ -106,7 +106,11 @@ The following constraints are part of the contract:
   not survey data. The centered default duration is a preview until the learner
   explicitly selects it or another value; merely opening the screen cannot
   manufacture an answer. The visible confirmation must match the derived
-  windows.
+  windows. The launch selector's canonical, deliberately bounded duration set is
+  `10`, `20`, `30`, `45`, `60`, and `90` minutes. The backend accepts additional
+  legacy/settings durations through 180 minutes for compatibility; that wider
+  acceptance range is not an instruction to expose every value during
+  onboarding.
 - The duration carousel previews the currently centered duration and its ring
   during the drag, before momentum or snapping settles. The persisted answer
   is never changed by that live-preview callback; the existing end-of-drag and
@@ -162,9 +166,12 @@ The following constraints are part of the contract:
   in the adapter. The payload contains duration, weekdays, start time, state,
   school type, and grade; it never contains a password, verification code,
   token, name, birth date, or raw e-mail address.
-- Every read-check-write outbox operation is serialized per account fingerprint.
-  Concurrent staging, binding, resume, sync, and completion calls therefore
-  cannot overwrite a newer registration attempt with stale account ownership.
+- Every read-check-write outbox operation is serialized per account fingerprint,
+  and the complete `resume → remote sync → mark synced` transaction is serialized
+  per outbox and account. Concurrent staging, binding, restore-triggered sync,
+  and completion calls therefore cannot overwrite a newer registration attempt,
+  duplicate the remote sync, or turn an already-completed handoff into a false
+  `payload_unavailable` failure.
 - The outbox is normally rebound to the created Clerk user before session
   activation. If that bind fails after Clerk has already completed the account,
   the completed session is still activated so the same verification code is not

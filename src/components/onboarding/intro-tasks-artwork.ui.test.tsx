@@ -35,6 +35,15 @@ describe("IntroTasksArtwork", () => {
 			screen.getByText("Prüfungsaufgaben trainieren", hidden),
 		).toBeOnTheScreen();
 		expect(screen.getAllByTestId("property-edit-icon", hidden)).toHaveLength(3);
-		expect(screen.queryByRole("button")).toBeNull();
+		expect(screen.queryByRole("button", hidden)).toBeNull();
+	});
+
+	test("uses the numeric artwork dimensions supplied by the onboarding layout", async () => {
+		const screen = await render(<IntroTasksArtwork width={294} height={200} />);
+		const artwork = screen.getByTestId("intro-tasks-artwork", {
+			includeHiddenElements: true,
+		});
+
+		expect(artwork.props.style).toEqual({ width: 294, height: 200 });
 	});
 });

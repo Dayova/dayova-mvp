@@ -493,6 +493,39 @@ export const createPendingOnboardingSyncOutbox = ({
 	};
 };
 
+const pendingSyncOperationQueues = new WeakMap<
+	object,
+	Map<string, Promise<unknown>>
+>();
+
+const serializePendingSyncOperation = <TResult>({
+	outbox,
+	accountFingerprint,
+	operation,
+}: {
+	outbox: object;
+	accountFingerprint: string;
+	operation: () => Promise<TResult>;
+}) => {
+	let accountQueues = pendingSyncOperationQueues.get(outbox);
+	if (!accountQueues) {
+		accountQueues = new Map<string, Promise<unknown>>();
+		pendingSyncOperationQueues.set(outbox, accountQueues);
+	}
+	const previous = accountQueues.get(accountFingerprint);
+	const current = (previous ?? Promise.resolve())
+		.catch(() => undefined)
+		.then(operation);
+	accountQueues.set(accountFingerprint, current);
+
+	return current.finally(() => {
+		if (accountQueues?.get(accountFingerprint) === current) {
+			accountQueues.delete(accountFingerprint);
+			if (accountQueues.size === 0) pendingSyncOperationQueues.delete(outbox);
+		}
+	});
+};
+
 export const syncPendingOnboardingAnswers = async ({
 	outbox,
 	identity,
@@ -501,10 +534,15 @@ export const syncPendingOnboardingAnswers = async ({
 	outbox: ReturnType<typeof createPendingOnboardingSyncOutbox>;
 	identity: AccountIdentity;
 	sync: (answers: PendingOnboardingSyncAnswers) => Promise<unknown>;
-}) => {
-	const pending = await outbox.resume(identity);
-	if (pending.status !== "pending") return pending;
-	await sync(pending.answers);
-	await outbox.markSynced(identity);
-	return { status: "ready_for_trial" } as const;
-};
+}) =>
+	serializePendingSyncOperation({
+		outbox,
+		accountFingerprint: identity.accountFingerprint,
+		operation: async () => {
+			const pending = await outbox.resume(identity);
+			if (pending.status !== "pending") return pending;
+			await sync(pending.answers);
+			await outbox.markSynced(identity);
+			return { status: "ready_for_trial" } as const;
+		},
+	});

@@ -1,13 +1,10 @@
 import { describe, expect, test } from "vitest";
+import { ONBOARDING_DURATION_OPTIONS } from "./onboarding-learning-times";
 import { getStudyTimeFactBody } from "./study-time-fact";
-
-const STUDY_TIME_OPTIONS = [
-	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
-] as const;
 
 describe("getStudyTimeFactBody", () => {
 	test.each(
-		STUDY_TIME_OPTIONS,
+		ONBOARDING_DURATION_OPTIONS,
 	)("uses the selected %i-minute duration", (minutes) => {
 		expect(getStudyTimeFactBody(`${minutes} min`)).toContain(
 			`Wir verwenden ${minutes} Minuten als Dauer`,

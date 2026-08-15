@@ -46,6 +46,17 @@ describe("IntroUploadArtwork", () => {
 		expect(
 			screen.getByText("Themenblatt, Arbeitsblätter oder Mitschriften", hidden),
 		).toBeOnTheScreen();
-		expect(screen.queryByRole("button")).toBeNull();
+		expect(screen.queryByRole("button", hidden)).toBeNull();
+	});
+
+	test("uses the numeric artwork dimensions supplied by the onboarding layout", async () => {
+		const screen = await render(
+			<IntroUploadArtwork width={280} height={254} />,
+		);
+		const artwork = screen.getByTestId("intro-upload-artwork", {
+			includeHiddenElements: true,
+		});
+
+		expect(artwork.props.style).toEqual({ width: 280, height: 254 });
 	});
 });

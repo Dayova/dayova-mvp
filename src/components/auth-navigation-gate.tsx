@@ -44,7 +44,7 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 	const shouldMaskRoute =
 		isSessionLoading ||
 		onboardingCompletionStatus === "loading" ||
-		isAccessLoading ||
+		(onboardingCompletionStatus === "none" && isAccessLoading) ||
 		targetRoute !== null;
 
 	useEffect(() => {

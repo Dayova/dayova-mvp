@@ -1,7 +1,10 @@
 import type { OnboardingAnswers } from "~/context/OnboardingContext";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
 import { formatOnboardingBirthDate } from "./birth-date";
-import { getOnboardingLearningTimeValidationError } from "./onboarding-learning-times";
+import {
+	getOnboardingLearningTimeValidationError,
+	parseOnboardingDurationMinutes,
+} from "./onboarding-learning-times";
 
 type AnswerStepKind = "days" | "time" | "wheel";
 
@@ -120,13 +123,18 @@ export const getOnboardingRegistrationPayload = (
 	state: answers.state,
 });
 
-export const getOnboardingPersistenceAnswers = (
-	answers: OnboardingAnswers,
-) => ({
-	dailySchoolTime: `${Number.parseInt(answers.studyTime, 10)} min`,
-	studyDays: answers.studyDays,
-	learningTime: answers.learningTime,
-	state: answers.state,
-	schoolType: answers.schoolType,
-	grade: answers.grade,
-});
+export const getOnboardingPersistenceAnswers = (answers: OnboardingAnswers) => {
+	const durationMinutes = parseOnboardingDurationMinutes(answers.studyTime);
+	if (durationMinutes === null) {
+		throw new Error("Bitte wähle deine Lerndauer aus.");
+	}
+
+	return {
+		dailySchoolTime: `${durationMinutes} min`,
+		studyDays: answers.studyDays,
+		learningTime: answers.learningTime,
+		state: answers.state,
+		schoolType: answers.schoolType,
+		grade: answers.grade,
+	};
+};

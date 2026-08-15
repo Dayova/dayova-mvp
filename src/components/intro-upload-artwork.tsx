@@ -1,5 +1,4 @@
 import { View } from "react-native";
-import type { SvgProps } from "react-native-svg";
 import {
 	MaterialUploadActionCard,
 	MaterialUploadStepLead,
@@ -8,20 +7,16 @@ import {
 const ARTWORK_WIDTH = 345;
 const ARTWORK_HEIGHT = 313;
 
-function numericDimension(
-	value: SvgProps["width"] | SvgProps["height"],
-	fallback: number,
-) {
-	return typeof value === "number" ? value : fallback;
-}
+type IntroUploadArtworkProps = {
+	height?: number;
+	width?: number;
+};
 
-export function IntroUploadArtwork({ width, height }: SvgProps) {
-	const resolvedWidth = numericDimension(width, ARTWORK_WIDTH);
-	const resolvedHeight = numericDimension(height, ARTWORK_HEIGHT);
-	const scale = Math.min(
-		resolvedWidth / ARTWORK_WIDTH,
-		resolvedHeight / ARTWORK_HEIGHT,
-	);
+export function IntroUploadArtwork({
+	width = ARTWORK_WIDTH,
+	height = ARTWORK_HEIGHT,
+}: IntroUploadArtworkProps) {
+	const scale = Math.min(width / ARTWORK_WIDTH, height / ARTWORK_HEIGHT);
 
 	return (
 		<View
@@ -29,7 +24,7 @@ export function IntroUploadArtwork({ width, height }: SvgProps) {
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
 			className="items-center justify-center"
-			style={{ width: resolvedWidth, height: resolvedHeight }}
+			style={{ width, height }}
 			testID="intro-upload-artwork"
 		>
 			<View

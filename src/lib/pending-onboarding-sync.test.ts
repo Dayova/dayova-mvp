@@ -414,6 +414,46 @@ describe("pending onboarding sync outbox", () => {
 		});
 	});
 
+	it("coalesces overlapping answer syncs for the same account", async () => {
+		const { storage } = createMemoryStorage();
+		const identity = {
+			clerkUserId: "user_123",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+		};
+		const outbox = createPendingOnboardingSyncOutbox({ storage });
+		await outbox.stageForUser({
+			...identity,
+			registrationAttemptId: "signup_123",
+			answers: ANSWERS,
+		});
+
+		let releaseFirstSync: () => void = () => undefined;
+		let announceSyncStarted: () => void = () => undefined;
+		const syncStarted = new Promise<void>((resolve) => {
+			announceSyncStarted = resolve;
+		});
+		let syncInvocation = 0;
+		const sync = vi.fn(() => {
+			syncInvocation += 1;
+			if (syncInvocation > 1) return Promise.resolve();
+			return new Promise<void>((resolve) => {
+				releaseFirstSync = resolve;
+				announceSyncStarted();
+			});
+		});
+
+		const first = syncPendingOnboardingAnswers({ outbox, identity, sync });
+		await syncStarted;
+		const second = syncPendingOnboardingAnswers({ outbox, identity, sync });
+		releaseFirstSync();
+
+		await expect(Promise.all([first, second])).resolves.toEqual([
+			{ status: "ready_for_trial" },
+			{ status: "ready_for_trial" },
+		]);
+		expect(sync).toHaveBeenCalledTimes(1);
+	});
+
 	it("keeps the answer-free completion marker until the learner acknowledges it", async () => {
 		const { storage } = createMemoryStorage();
 		const firstProcess = createPendingOnboardingSyncOutbox({

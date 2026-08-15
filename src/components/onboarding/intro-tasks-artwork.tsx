@@ -1,11 +1,15 @@
 import { StyleSheet, View } from "react-native";
-import type { SvgProps } from "react-native-svg";
 import type { Id } from "#convex/_generated/dataModel";
 import { SessionCard } from "~/features/learning-plans/learning-plan-ui";
 import type { PlanSession } from "~/features/learning-plans/types";
 
 const ARTWORK_WIDTH = 356;
 const ARTWORK_HEIGHT = 242;
+
+type IntroTasksArtworkProps = {
+	height?: number;
+	width?: number;
+};
 
 const learningSteps: PlanSession[] = [
 	{
@@ -55,20 +59,11 @@ const learningSteps: PlanSession[] = [
 	},
 ];
 
-function numericDimension(
-	value: SvgProps["width"] | SvgProps["height"],
-	fallback: number,
-) {
-	return typeof value === "number" ? value : fallback;
-}
-
-export function IntroTasksArtwork({ width, height }: SvgProps) {
-	const resolvedWidth = numericDimension(width, ARTWORK_WIDTH);
-	const resolvedHeight = numericDimension(height, ARTWORK_HEIGHT);
-	const scale = Math.min(
-		resolvedWidth / ARTWORK_WIDTH,
-		resolvedHeight / ARTWORK_HEIGHT,
-	);
+export function IntroTasksArtwork({
+	width = ARTWORK_WIDTH,
+	height = ARTWORK_HEIGHT,
+}: IntroTasksArtworkProps) {
+	const scale = Math.min(width / ARTWORK_WIDTH, height / ARTWORK_HEIGHT);
 
 	return (
 		<View
@@ -76,7 +71,7 @@ export function IntroTasksArtwork({ width, height }: SvgProps) {
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
 			className="items-center justify-center"
-			style={{ width: resolvedWidth, height: resolvedHeight }}
+			style={{ width, height }}
 			testID="intro-tasks-artwork"
 		>
 			<View

@@ -153,4 +153,25 @@ describe("AuthNavigationGate", () => {
 		await act(flushAnimationFrames);
 		expect(mockReplace).not.toHaveBeenCalled();
 	});
+
+	test("does not hide the confirmed trial handoff behind access loading", async () => {
+		mockRouterState.pathname = "/onboarding";
+		mockSession.onboardingCompletionStatus = "ready_for_trial";
+		mockAccess.access = undefined;
+		mockAccess.isAccessLoading = true;
+
+		const screen = await render(
+			<AuthNavigationGate>
+				<Text>Onboarding abgeschlossen</Text>
+			</AuthNavigationGate>,
+		);
+
+		expect(screen.getByText("Onboarding abgeschlossen")).toBeOnTheScreen();
+		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
+		expect(
+			screen.getByTestId("auth-route-content").props.className,
+		).not.toContain("opacity-0");
+		await act(flushAnimationFrames);
+		expect(mockReplace).not.toHaveBeenCalled();
+	});
 });

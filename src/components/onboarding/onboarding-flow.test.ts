@@ -138,6 +138,17 @@ describe("onboarding flow decisions", () => {
 		});
 	});
 
+	test.each([
+		"",
+		"abc",
+		"30 min",
+		"37",
+	])("rejects invalid duration %j at the durable persistence boundary", (studyTime) => {
+		expect(() =>
+			getOnboardingPersistenceAnswers(answers({ studyTime })),
+		).toThrow("Bitte wähle deine Lerndauer aus.");
+	});
+
 	test("registers only from a valid password step", () => {
 		expect(
 			getOnboardingStepDecision(
