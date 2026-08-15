@@ -142,7 +142,7 @@ test("lists a materialless draft so the upload can be resumed", async () => {
 	]);
 });
 
-test("keeps drafts with school material out of the plan overview", async () => {
+test("keeps drafts with school material resumable from the plan overview", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
 	await t.run(async (ctx) => {
@@ -159,12 +159,16 @@ test("keeps drafts with school material out of the plan overview", async () => {
 		});
 	});
 
-	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual(
-		[],
-	);
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
+		expect.objectContaining({
+			id: learningPlanId,
+			status: "draft",
+			needsSchoolMaterial: false,
+		}),
+	]);
 });
 
-test("treats legacy documents without a source kind as school material", async () => {
+test("keeps legacy school-material drafts resumable", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
 	await t.run(async (ctx) => {
@@ -180,9 +184,43 @@ test("treats legacy documents without a source kind as school material", async (
 		});
 	});
 
-	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual(
-		[],
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
+		expect.objectContaining({
+			id: learningPlanId,
+			status: "draft",
+			needsSchoolMaterial: false,
+		}),
+	]);
+});
+
+test("keeps analyzed and generated plans resumable until acceptance", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlans", learningPlanId, {
+			status: "questionsReady",
+			diagnosticPlacement: "firstSession",
+		}),
 	);
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
+		expect.objectContaining({
+			id: learningPlanId,
+			status: "questionsReady",
+			diagnosticPlacement: "firstSession",
+			needsSchoolMaterial: false,
+		}),
+	]);
+
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlans", learningPlanId, { status: "generated" }),
+	);
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
+		expect.objectContaining({
+			id: learningPlanId,
+			status: "generated",
+		}),
+	]);
 });
 
 test("adds the knowledge validation split to theory sessions by default", async () => {

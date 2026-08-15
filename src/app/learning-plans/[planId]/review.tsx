@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { Button } from "~/components/ui/button";
+import { BackButton, Button } from "~/components/ui/button";
 import {
 	CalendarDays,
 	Check,
@@ -19,6 +19,8 @@ import { useAuthSession } from "~/context/AuthContext";
 import { isDiagnosticLearningPlanSession } from "~/features/learning-plans/rolling-learning-window";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useBackIntent } from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -57,6 +59,11 @@ export default function LearningPlanReviewScreen() {
 	const canStartNow = Boolean(
 		nextSession && nextSession.dateKey.slice(0, 10) <= localDateKey(),
 	);
+	const goBack = () => {
+		router.replace(ROUTES.learningPlans);
+		return true;
+	};
+	useBackIntent(true, goBack);
 
 	useEffect(() => {
 		if (!planId || !snapshot) return;
@@ -114,9 +121,12 @@ export default function LearningPlanReviewScreen() {
 
 	return (
 		<Screen>
-			<Stack.Screen options={{ gestureEnabled: false }} />
+			<Stack.Screen options={{ gestureEnabled: true }} />
 			<ScreenScroll contentContainerStyle={{ flexGrow: 1 }} includeTopSafeArea>
 				<View className="flex-1">
+					<View className="mb-6 items-start">
+						<BackButton onPress={goBack} />
+					</View>
 					<View className="items-center">
 						<View className="h-16 w-16 items-center justify-center rounded-[24px] bg-system-subtle">
 							<Sparkles size={30} color="#00A0E6" strokeWidth={2.1} />

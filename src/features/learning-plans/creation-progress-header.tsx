@@ -4,7 +4,7 @@ import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
 import {
 	getLearningPlanCreationProgressPercentage,
-	LEARNING_PLAN_CREATION_TOTAL_STEPS,
+	getSafeLearningPlanCreationProgress,
 } from "~/features/learning-plans/creation-progress";
 import { cn } from "~/lib/utils";
 
@@ -19,10 +19,8 @@ export function LearningPlanCreationProgressHeader({
 	onBack: () => void;
 	title?: string;
 }) {
-	const safeProgress = Math.min(
-		Math.max(currentStep, 1),
-		LEARNING_PLAN_CREATION_TOTAL_STEPS,
-	);
+	const { currentStep: safeProgress, totalSteps } =
+		getSafeLearningPlanCreationProgress({ currentStep });
 	const progressPercentage =
 		getLearningPlanCreationProgressPercentage(safeProgress);
 
@@ -47,7 +45,7 @@ export function LearningPlanCreationProgressHeader({
 					</Text>
 				</View>
 				<FlowProgressBar
-					progress={safeProgress / LEARNING_PLAN_CREATION_TOTAL_STEPS}
+					progress={safeProgress / totalSteps}
 					accessibilityRole="progressbar"
 					accessibilityValue={{
 						min: 0,
