@@ -49,6 +49,13 @@ describe("onboarding learning times", () => {
 	test("requires a complete schedule and blocks windows crossing midnight", () => {
 		expect(
 			getOnboardingLearningTimeValidationError({
+				studyTime: "",
+				studyDays: "Montag",
+				learningTime: "16:00",
+			}),
+		).toBe("Bitte wähle deine Lerndauer aus.");
+		expect(
+			getOnboardingLearningTimeValidationError({
 				studyTime: "30",
 				studyDays: "",
 				learningTime: "16:00",

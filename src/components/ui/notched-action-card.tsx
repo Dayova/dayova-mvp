@@ -68,8 +68,21 @@ type CardPressProps = {
 	actionDisabled?: never;
 };
 
+type DecorativeProps = {
+	pressType: "none";
+
+	onPress?: never;
+	actionAccessibilityLabel?: never;
+	actionAccessibilityHint?: never;
+	actionDisabled?: never;
+	cardAccessibilityLabel?: never;
+	cardAccessibilityHint?: never;
+	cardAccessibilityRole?: never;
+	cardDisabled?: never;
+};
+
 export type NotchedActionCardProps = CommonProps &
-	(ActionPressProps | CardPressProps);
+	(ActionPressProps | CardPressProps | DecorativeProps);
 
 const DEFAULT_CARD_WIDTH = 368;
 const DEFAULT_CARD_HEIGHT = 211;
@@ -439,6 +452,32 @@ export function NotchedActionCard({
 					actionSize={actionSize}
 				/>
 			</Pressable>
+		);
+	}
+
+	if (props.pressType === "none") {
+		const { pressType: _pressType, ...viewProps } = props;
+
+		return (
+			<View
+				{...viewProps}
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				pointerEvents="none"
+				className={cn("relative w-full", className)}
+				onLayout={handleLayout}
+				style={[{ minHeight: cardHeight }, style]}
+			>
+				{cardContents}
+
+				<DecorativeAction
+					actionIcon={actionIcon}
+					actionOffsetBottom={actionOffsetBottom}
+					actionOffsetRight={actionOffsetRight}
+					actionSize={actionSize}
+				/>
+			</View>
 		);
 	}
 

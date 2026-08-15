@@ -1,7 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, router, Stack } from "expo-router";
 import {
-	type ComponentType,
 	type ReactNode,
 	type RefObject,
 	useCallback,
@@ -38,7 +37,6 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { SvgProps } from "react-native-svg";
 import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
 import {
 	BIRTH_MONTH_OPTIONS,
@@ -51,6 +49,7 @@ import {
 	INTRO_DOT_COLLAPSED_WIDTH,
 	INTRO_DOT_EXPANDED_WIDTH,
 } from "~/components/onboarding/intro-pagination";
+import { IntroPlanArtwork } from "~/components/onboarding/intro-plan-artwork";
 import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import { OnboardingEdgeBackGesture } from "~/components/onboarding/onboarding-edge-back-gesture";
 import {
@@ -124,12 +123,10 @@ import {
 import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
-import IntroPathSvg from "../../../assets/onboarding/intro-path.svg";
 
 // Password icons represent the current visibility state across this auth flow.
 // Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
-const IntroPathArtwork = IntroPathSvg as unknown as ComponentType<SvgProps>;
 const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const STUDY_DAY_SELECTION_DURATION_MS = 180;
@@ -161,7 +158,7 @@ type IntroStep = {
 	id: "intro-upload" | "intro-path" | "intro-tasks";
 	title: string;
 	description: string;
-	illustration: "upload" | "path" | "tasks";
+	illustration: "plan" | "tasks" | "upload";
 };
 
 type RangeStep = {
@@ -269,7 +266,7 @@ const INTRO_STEPS = [
 		title: "Aus Stoff wird ein klarer Weg.",
 		description:
 			"Dayova erkennt Themen und Lücken und ordnet sie so, dass du nicht mehr raten musst, wo du anfängst.",
-		illustration: "path",
+		illustration: "plan",
 	},
 ] as const satisfies readonly IntroStep[];
 const FLOW_STEPS: readonly OnboardingStep[] = [
@@ -1236,7 +1233,7 @@ function IntroStepView({
 					}}
 				>
 					<View className="w-full">
-						<IntroArtwork accessibleLayout colors={COLORS} item={item} />
+						<IntroArtwork accessibleLayout item={item} />
 					</View>
 
 					<Text
@@ -1319,11 +1316,7 @@ function IntroStepView({
 					// Pager width and artwork height are measured runtime geometry.
 					return (
 						<View style={{ width }} className="items-center px-6 pt-4">
-							<IntroArtwork
-								colors={COLORS}
-								compactHeight={isCompactHeight}
-								item={item}
-							/>
+							<IntroArtwork compactHeight={isCompactHeight} item={item} />
 
 							<Text
 								accessibilityRole="header"
@@ -1370,12 +1363,10 @@ function IntroStepView({
 
 function IntroArtwork({
 	accessibleLayout = false,
-	colors,
 	compactHeight = false,
 	item,
 }: {
 	accessibleLayout?: boolean;
-	colors: Record<keyof typeof DAYOVA_DESIGN_SYSTEM.colors, string>;
 	compactHeight?: boolean;
 	item: IntroStep;
 }) {
@@ -1393,29 +1384,11 @@ function IntroArtwork({
 					height={accessibleLayout ? 190 : compactHeight ? 222 : 254}
 				/>
 			) : null}
-			{item.illustration === "path" ? (
-				<View className="overflow-hidden">
-					<IntroPathArtwork
-						color={colors.path2}
-						testID="intro-path-artwork"
-						width={accessibleLayout ? 238 : compactHeight ? 270 : 320}
-						height={accessibleLayout ? 168 : compactHeight ? 190 : 230}
-					/>
-					<LinearGradient
-						testID="intro-path-fade"
-						colors={[`${colors.systemSubtle}0D`, colors.systemSubtle]}
-						start={{ x: 0.5, y: 0 }}
-						end={{ x: 0.5, y: 1 }}
-						// Expo LinearGradient requires native geometry through style.
-						style={{
-							position: "absolute",
-							left: 0,
-							right: 0,
-							bottom: 0,
-							height: "63%",
-						}}
-					/>
-				</View>
+			{item.illustration === "plan" ? (
+				<IntroPlanArtwork
+					width={accessibleLayout ? 250 : compactHeight ? 284 : 330}
+					height={accessibleLayout ? 144 : compactHeight ? 164 : 190}
+				/>
 			) : null}
 			{item.illustration === "tasks" ? (
 				<IntroTasksArtwork
@@ -2724,8 +2697,10 @@ export function OnboardingRecoveryScreen({
 							: "Uhrzeit auswählen"}
 					</Text>
 				</Pressable>
-				{error ? (
-					<ErrorMessage className="mt-4 text-center">{error}</ErrorMessage>
+				{(error ?? validationError) ? (
+					<ErrorMessage className="mt-4 text-center">
+						{error ?? validationError}
+					</ErrorMessage>
 				) : null}
 			</KeyboardSafeScrollView>
 			<Button

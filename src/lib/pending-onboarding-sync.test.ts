@@ -1,9 +1,27 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, test, vi } from "vitest";
 import {
 	createPendingOnboardingSyncOutbox,
+	getPendingOnboardingSyncTransition,
 	syncPendingOnboardingAnswers,
 	type PendingOnboardingSyncStorage,
 } from "./pending-onboarding-sync";
+
+describe("getPendingOnboardingSyncTransition", () => {
+	test("finalizes only a confirmed ready-for-trial result", () => {
+		expect(
+			getPendingOnboardingSyncTransition({ status: "ready_for_trial" }),
+		).toMatchObject({ shouldFinalize: true });
+		expect(
+			getPendingOnboardingSyncTransition({
+				status: "recovery_required",
+				reason: "invalid",
+			}),
+		).toEqual({
+			result: { status: "recovery_required", reason: "invalid" },
+			shouldFinalize: false,
+		});
+	});
+});
 
 const ANSWERS = {
 	dailySchoolTime: "30 min",

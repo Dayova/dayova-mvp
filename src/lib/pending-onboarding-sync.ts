@@ -72,6 +72,13 @@ export type PendingOnboardingSyncResumeResult =
 	| { status: "ready_for_trial" }
 	| { status: "recovery_required"; reason: "expired" | "invalid" };
 
+export const getPendingOnboardingSyncTransition = (
+	result: PendingOnboardingSyncResumeResult,
+) => ({
+	result,
+	shouldFinalize: result.status === "ready_for_trial",
+});
+
 export type PendingOnboardingSyncErrorCode =
 	| "invalid_payload"
 	| "payload_unavailable"

@@ -84,6 +84,9 @@ export const getOnboardingLearningTimeValidationError = (input: {
 	studyDays: string;
 	learningTime: string;
 }) => {
+	if (parseDurationMinutes(input.studyTime) === null) {
+		return "Bitte wähle deine Lerndauer aus.";
+	}
 	if (parseOnboardingStudyDays(input.studyDays).length === 0) {
 		return "Bitte wähle mindestens einen Lerntag aus.";
 	}

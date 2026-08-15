@@ -228,16 +228,20 @@ jest.mock("expo-linear-gradient", () => {
 	};
 });
 
-jest.mock("../../../assets/onboarding/intro-path.svg", () => {
-	const React = jest.requireActual<typeof import("react")>("react");
-	return (props: Record<string, unknown>) =>
-		React.createElement("IntroPathArtwork", props);
-});
-
 jest.mock("~/components/intro-upload-artwork", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	return {
 		IntroUploadArtwork: () => React.createElement("IntroUploadArtwork"),
+	};
+});
+
+jest.mock("~/components/onboarding/intro-plan-artwork", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		IntroPlanArtwork: () =>
+			React.createElement("IntroPlanArtwork", {
+				testID: "intro-plan-artwork",
+			}),
 	};
 });
 
@@ -772,6 +776,11 @@ describe("OnboardingRecoveryScreen", () => {
 			name: "Lernzeiten erneut speichern",
 		});
 		expect(button).toBeDisabled();
+		expect(
+			screen.getByRole("alert", {
+				name: "Bitte wähle deine Lerndauer aus.",
+			}),
+		).toBeOnTheScreen();
 		await fireEvent.press(button);
 		expect(submit).not.toHaveBeenCalled();
 	});
@@ -981,20 +990,13 @@ describe("OnboardingScreen", () => {
 		expect(pager).toHaveProp("removeClippedSubviews", false);
 	});
 
-	test("themes the learning path and its fade with semantic colors", async () => {
+	test("renders the maintained learning-plan preview on the final intro page", async () => {
 		const screen = await render(<OnboardingScreen />);
 
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
-		expect(screen.getByTestId("intro-path-artwork")).toHaveProp(
-			"color",
-			"#D7DCE3",
-		);
-		expect(screen.getByTestId("intro-path-fade")).toHaveProp("colors", [
-			"#F1F7FB0D",
-			"#F1F7FB",
-		]);
+		expect(screen.getByTestId("intro-plan-artwork")).toBeOnTheScreen();
 	});
 
 	test("does not preselect a grade and disables continuation until it is valid", async () => {

@@ -4,6 +4,55 @@ These artifacts document native rendering and interaction work on PR #458.
 They are review evidence, not app assets. The canonical product decision lives
 in Notion; DAY-292 remains the delivery source of truth.
 
+## Shared product-preview contract — 15 August 2026
+
+The intro previously maintained separate approximations of Dayova's task,
+upload, and learning-path UI. Those approximations drifted after the real
+learning-plan overview, individual session cards, and material-upload step were
+redesigned. Updating the illustrations alone would have left two sources of
+truth.
+
+The intro now renders the real shared presentation modules in a typed,
+non-interactive artwork mode:
+
+- page one uses the same `SessionCard` structure as individual learning steps;
+- page two uses the same upload lead and action card as plan creation;
+- page three uses the same `LearningPlanCardVisual` as the plan overview.
+
+The wrappers own only fixed preview data, scaling, and arrangement. The old
+static path SVG and onboarding-only task/upload compositions were removed. The
+design-system decision is recorded in
+`docs/contexts/design-system/adr/onboarding-artwork-rendering.md`.
+
+All older intro screenshots and recordings below prove the superseded artwork
+only. They remain historical interaction/layout evidence, but they do not prove
+the new shared previews.
+
+The shared-preview matrix was captured from freshly compiled development
+clients on iPhone 17 / iOS 26.5 and Pixel 9 / Android in both themes. The iOS
+native build completed with zero compiler errors. The Android native build
+completed successfully across 651 Gradle tasks. The following captures were
+inspected at native resolution; all three pages retain their hierarchy,
+centering, contrast, and complete German copy:
+
+- `ios-light-intro-learning-steps-shared.png`
+- `ios-light-intro-upload-shared.png`
+- `ios-light-intro-plan-shared.png`
+- `ios-dark-intro-learning-steps-shared.png`
+- `ios-dark-intro-upload-shared.png`
+- `ios-dark-intro-plan-shared.png`
+- `android-light-intro-learning-steps-shared.png`
+- `android-light-intro-upload-shared.png`
+- `android-light-intro-plan-shared.png`
+- `android-dark-intro-learning-steps-shared.png`
+- `android-dark-intro-upload-shared.png`
+- `android-dark-intro-plan-shared.png`
+
+The gray gear visible in the native captures is the development-launcher
+overlay and is not product UI. These captures close the shared-preview visual
+matrix; they are not Store-binary, assistive-technology, or full-onboarding E2E
+evidence.
+
 ## Release-contract audit — 12 August 2026
 
 A code/spec/design-system audit found four gaps that earlier green tests did

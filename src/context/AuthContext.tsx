@@ -41,6 +41,7 @@ import {
 import { isSupportedGrade } from "~/lib/grades";
 import { signOutAndResetState } from "~/lib/logout-state";
 import {
+	getPendingOnboardingSyncTransition,
 	PendingOnboardingSyncError,
 	type PendingOnboardingSyncAnswers,
 	type PendingOnboardingSyncResumeResult,
@@ -50,7 +51,10 @@ import {
 	getOnboardingAccountFingerprint,
 	pendingOnboardingSyncOutbox,
 } from "~/lib/pending-onboarding-sync-secure-store";
-import { finalizeVerifiedRegistration } from "~/lib/registration-verification";
+import {
+	finalizeCompletedRegistration,
+	IncompleteRegistrationIdentityError,
+} from "~/lib/registration-verification";
 import {
 	type PasswordChangeInput,
 	changePassword as updateAccountPassword,
@@ -115,10 +119,9 @@ type ProfileUpdateResult =
 	| { status: "complete" }
 	| { status: "needs_email_verification"; message: string };
 
-type PendingVerification = {
-	mode: "login" | "register";
-	email: string;
-};
+type PendingVerification =
+	| { mode: "login"; email: string }
+	| { mode: "register"; email: string; registrationAttemptId: string };
 
 type PendingLoginStage = "first_factor" | "second_factor";
 
@@ -744,12 +747,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				);
 				if (result.ok) {
 					if (!cancelled) {
-						void captureOnboardingCompleted();
-						clearAnswers();
+						const transition = getPendingOnboardingSyncTransition(result.value);
+						if (transition.shouldFinalize) {
+							void captureOnboardingCompleted();
+							clearAnswers();
+						}
 						setOnboardingCompletion({
 							clerkUserId: user.clerkId,
 							accountFingerprint: identity.accountFingerprint,
-							result: { status: "ready_for_trial" },
+							result: transition.result,
 						});
 					}
 					return;
@@ -1087,6 +1093,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		});
 	};
 
+	const handleOnboardingIdentityFailure = (
+		error: unknown,
+		candidate: {
+			registrationAttemptId: string | null | undefined;
+			clerkUserId: string | null | undefined;
+		},
+	) => {
+		logDiagnosticError(
+			"Failed to resolve verified onboarding recovery identity.",
+			error,
+			{ source: "auth.onboarding.outbox.identity", level: "warn" },
+		);
+		setPostAuthSyncFailure("restore");
+		setOnboardingCompletion({
+			clerkUserId: candidate.clerkUserId ?? null,
+			accountFingerprint: null,
+			result:
+				error instanceof IncompleteRegistrationIdentityError
+					? { status: "recovery_required", reason: "invalid" }
+					: { status: "storage_error" },
+		});
+	};
+
 	const register = async (input: RegisterInput): Promise<AuthFlowResult> =>
 		withSubmitting(async () => {
 			if (!clerk.client) {
@@ -1131,23 +1160,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				setPendingProfile(profile);
 
 				if (signUp.status === "complete") {
-					if (!signUp.createdUserId) {
-						throw new PendingOnboardingSyncError(
-							"payload_unavailable",
-							"Registriertes Konto konnte nicht zugeordnet werden.",
-						);
-					}
-					await finalizeVerifiedRegistration({
-						identity: {
+					await finalizeCompletedRegistration({
+						candidate: {
 							registrationAttemptId: signUp.id,
-							accountFingerprint,
 							clerkUserId: signUp.createdUserId,
+							emailAddress: signUp.emailAddress ?? input.email,
 							sessionId: signUp.createdSessionId,
 						},
+						getAccountFingerprint: async () => accountFingerprint,
 						bindToUser: (identity) =>
 							pendingOnboardingSyncOutbox.bindToUser(identity),
 						activateSession,
 						onBindingFailure: handleOnboardingBindingFailure,
+						onIdentityFailure: handleOnboardingIdentityFailure,
 					});
 					return { status: "complete" };
 				}
@@ -1158,6 +1183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				setPendingVerification({
 					mode: "register",
 					email: input.email.trim().toLowerCase(),
+					registrationAttemptId: signUp.id,
 				});
 
 				return {
@@ -1335,25 +1361,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					if (signUp.status !== "complete") {
 						throw new Error("Der Code konnte nicht bestätigt werden.");
 					}
-					if (!signUp.id || !signUp.createdUserId || !signUp.emailAddress) {
-						throw new Error(
-							"Registriertes Konto konnte nicht zugeordnet werden.",
-						);
-					}
-					const accountFingerprint = await getOnboardingAccountFingerprint(
-						signUp.emailAddress,
-					);
-					await finalizeVerifiedRegistration({
-						identity: {
-							registrationAttemptId: signUp.id,
-							accountFingerprint,
+					await finalizeCompletedRegistration({
+						candidate: {
+							registrationAttemptId:
+								signUp.id ?? pendingVerification.registrationAttemptId,
 							clerkUserId: signUp.createdUserId,
+							emailAddress: signUp.emailAddress ?? pendingVerification.email,
 							sessionId: signUp.createdSessionId,
 						},
+						getAccountFingerprint: getOnboardingAccountFingerprint,
 						bindToUser: (identity) =>
 							pendingOnboardingSyncOutbox.bindToUser(identity),
 						activateSession,
 						onBindingFailure: handleOnboardingBindingFailure,
+						onIdentityFailure: handleOnboardingIdentityFailure,
 					});
 					return { status: "complete" };
 				}

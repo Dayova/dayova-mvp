@@ -1,5 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
-import { finalizeVerifiedRegistration } from "./registration-verification";
+import {
+	finalizeCompletedRegistration,
+	finalizeVerifiedRegistration,
+	IncompleteRegistrationIdentityError,
+} from "./registration-verification";
 
 describe("finalizeVerifiedRegistration", () => {
 	test("activates the completed Clerk session even when durable binding fails", async () => {
@@ -58,5 +62,66 @@ describe("finalizeVerifiedRegistration", () => {
 			}),
 		).rejects.toBe(failureError);
 		expect(events).toEqual(["failure-recording", "activate"]);
+	});
+
+	test("activates the completed session when Clerk identity fields are missing", async () => {
+		const events: string[] = [];
+		const onIdentityFailure = vi.fn(() => {
+			events.push("identity-failure");
+		});
+
+		await finalizeCompletedRegistration({
+			candidate: {
+				registrationAttemptId: "signup_123",
+				clerkUserId: null,
+				emailAddress: "learner@example.com",
+				sessionId: "session_123",
+			},
+			getAccountFingerprint: async () => "fingerprint",
+			bindToUser: async () => {
+				events.push("bind");
+			},
+			onBindingFailure: vi.fn(),
+			onIdentityFailure,
+			activateSession: async () => {
+				events.push("activate");
+			},
+		});
+
+		expect(onIdentityFailure).toHaveBeenCalledWith(
+			expect.any(IncompleteRegistrationIdentityError),
+			expect.objectContaining({ sessionId: "session_123" }),
+		);
+		expect(events).toEqual(["identity-failure", "activate"]);
+	});
+
+	test("activates the completed session when fingerprint resolution fails", async () => {
+		const events: string[] = [];
+		const fingerprintError = new Error("fingerprint unavailable");
+
+		await finalizeCompletedRegistration({
+			candidate: {
+				registrationAttemptId: "signup_123",
+				clerkUserId: "user_123",
+				emailAddress: "learner@example.com",
+				sessionId: "session_123",
+			},
+			getAccountFingerprint: async () => {
+				throw fingerprintError;
+			},
+			bindToUser: async () => {
+				events.push("bind");
+			},
+			onBindingFailure: vi.fn(),
+			onIdentityFailure: (error) => {
+				expect(error).toBe(fingerprintError);
+				events.push("identity-failure");
+			},
+			activateSession: async () => {
+				events.push("activate");
+			},
+		});
+
+		expect(events).toEqual(["identity-failure", "activate"]);
 	});
 });

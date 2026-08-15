@@ -1,158 +1,44 @@
-import { useWindowDimensions } from "react-native";
-import Svg, {
-	Circle,
-	Defs,
-	FeDropShadow,
-	Filter,
-	G,
-	LinearGradient,
-	Path,
-	Rect,
-	Stop,
-	type SvgProps,
-	Text as SvgText,
-} from "react-native-svg";
-import { useDayovaTheme } from "~/lib/theme";
+import { View } from "react-native";
+import type { SvgProps } from "react-native-svg";
+import {
+	MaterialUploadActionCard,
+	MaterialUploadStepLead,
+} from "~/features/learning-plans/learning-plan-setup-steps";
 
-const UPLOAD_ARTWORK_VIEW_BOX = "0 0 345 313";
-// Preserve the approved Figma illustration's exported label weight. This is
-// artwork typography rather than an app text-hierarchy role.
-const UPLOAD_ARTWORK_LABEL_WEIGHT = "700";
+const ARTWORK_WIDTH = 345;
+const ARTWORK_HEIGHT = 313;
 
-export function IntroUploadArtwork(props: SvgProps) {
-	const { colors, isDark } = useDayovaTheme();
-	const { fontScale } = useWindowDimensions();
-	// Text inside this decorative fixed artboard is illustration microtype, not
-	// semantic app copy. Counter system scaling so the exported composition stays
-	// intact while the real onboarding heading and body copy scale normally.
-	const artworkFontSize = (size: number) => size / Math.max(fontScale, 1);
+function numericDimension(
+	value: SvgProps["width"] | SvgProps["height"],
+	fallback: number,
+) {
+	return typeof value === "number" ? value : fallback;
+}
+
+export function IntroUploadArtwork({ width, height }: SvgProps) {
+	const resolvedWidth = numericDimension(width, ARTWORK_WIDTH);
+	const resolvedHeight = numericDimension(height, ARTWORK_HEIGHT);
+	const scale = Math.min(
+		resolvedWidth / ARTWORK_WIDTH,
+		resolvedHeight / ARTWORK_HEIGHT,
+	);
 
 	return (
-		<Svg
-			viewBox={UPLOAD_ARTWORK_VIEW_BOX}
-			fill="none"
-			{...props}
+		<View
 			accessible={false}
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
+			className="items-center justify-center"
+			style={{ width: resolvedWidth, height: resolvedHeight }}
+			testID="intro-upload-artwork"
 		>
-			<Defs>
-				<LinearGradient id="uploadBlue" x1="0" y1="0" x2="0" y2="1">
-					<Stop offset="0" stopColor={colors.primaryStrong} />
-					<Stop offset="1" stopColor={colors.primaryAccent} />
-				</LinearGradient>
-				<Filter
-					id="uploadShadow"
-					x="-28"
-					y="-18"
-					width="401"
-					height="381"
-					filterUnits="userSpaceOnUse"
-				>
-					<FeDropShadow
-						dx="0"
-						dy="32"
-						stdDeviation="20"
-						floodColor={colors.uploadArtworkShadow}
-						floodOpacity={isDark ? 0.2 : 0.12}
-					/>
-				</Filter>
-			</Defs>
-			<G filter="url(#uploadShadow)">
-				<Rect width="345" height="313" rx="32" fill={colors.surface} />
-				<SvgText
-					x="172.5"
-					y="39"
-					textAnchor="middle"
-					fill={colors.text}
-					fontSize={artworkFontSize(20)}
-					fontFamily="Poppins"
-					fontWeight={UPLOAD_ARTWORK_LABEL_WEIGHT}
-				>
-					Hochladen
-				</SvgText>
-				<SvgText
-					x="172.5"
-					y="67"
-					textAnchor="middle"
-					fill={colors.secondaryText}
-					fontSize={artworkFontSize(12)}
-					fontFamily="Poppins"
-				>
-					Lade deine Mitschriften hoch
-				</SvgText>
-				<Rect
-					x="13"
-					y="81"
-					width="321"
-					height="220"
-					rx="20"
-					fill={colors.surface}
-					stroke={colors.uploadArtworkBorder}
-					strokeWidth="2"
-					strokeDasharray="20 10"
-				/>
-				<Rect
-					x="149"
-					y="130"
-					width="47"
-					height="47"
-					fill={colors.uploadArtworkIconBackground}
-					stroke={colors.uploadArtworkIconBorder}
-					strokeWidth="2"
-				/>
-				<Rect
-					x="158"
-					y="142"
-					width="18"
-					height="18"
-					rx="4"
-					fill={colors.uploadArtworkIconFill}
-				/>
-				<Path
-					d="M168 177h39"
-					stroke={colors.uploadArtworkIconMuted}
-					strokeWidth="2"
-					strokeDasharray="3 3"
-				/>
-				<Circle cx="219" cy="172" r="14" fill={colors.uploadArtworkIconMuted} />
-				<Path
-					d="M219 179v-13M214 171l5-5 5 5"
-					stroke={colors.light1}
-					strokeWidth="2.4"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-				/>
-				<Rect
-					x="120"
-					y="203"
-					width="107"
-					height="30"
-					rx="15"
-					fill="url(#uploadBlue)"
-				/>
-				<SvgText
-					x="173.5"
-					y="223"
-					textAnchor="middle"
-					fill={colors.light1}
-					fontSize={artworkFontSize(12)}
-					fontFamily="Poppins"
-					fontWeight={UPLOAD_ARTWORK_LABEL_WEIGHT}
-				>
-					Hochladen
-				</SvgText>
-				<SvgText
-					x="172.5"
-					y="270"
-					textAnchor="middle"
-					fill={colors.secondaryText}
-					fontSize={artworkFontSize(12)}
-					fontFamily="Poppins"
-				>
-					oder scanne deine Mitschriften
-				</SvgText>
-			</G>
-		</Svg>
+			<View
+				className="h-[313px] w-[345px] justify-center rounded-[32px] bg-background px-5 py-6 shadow-black/10 shadow-sm"
+				style={{ transform: [{ scale }] }}
+			>
+				<MaterialUploadStepLead mode="artwork" />
+				<MaterialUploadActionCard hasSchoolMaterial={false} mode="artwork" />
+			</View>
+		</View>
 	);
 }

@@ -5,33 +5,20 @@ import { IntroUploadArtwork } from "./intro-upload-artwork";
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: {
-			light1: "#FFFFFF",
-			primaryAccent: "#4EA7FC",
 			primaryStrong: "#2F80ED",
-			secondaryText: "#697586",
-			surface: "#FFFFFF",
 			text: "#101828",
-			uploadArtworkBorder: "#D0D5DD",
-			uploadArtworkIconBackground: "#F2F4F7",
-			uploadArtworkIconBorder: "#D0D5DD",
-			uploadArtworkIconFill: "#98A2B3",
-			uploadArtworkIconMuted: "#667085",
-			uploadArtworkShadow: "#101828",
 		},
-		isDark: false,
 	}),
 }));
 
 describe("IntroUploadArtwork", () => {
-	test("keeps decorative SVG content out of the accessibility tree", async () => {
-		const screen = await render(
-			<IntroUploadArtwork testID="intro-upload-artwork" accessible />,
-		);
-		const svg = screen.getByTestId("intro-upload-artwork", {
+	test("keeps the shared product preview out of the accessibility tree", async () => {
+		const screen = await render(<IntroUploadArtwork />);
+		const artwork = screen.getByTestId("intro-upload-artwork", {
 			includeHiddenElements: true,
 		});
 
-		expect(svg.props).toEqual(
+		expect(artwork.props).toEqual(
 			expect.objectContaining({
 				accessible: false,
 				accessibilityElementsHidden: true,
@@ -40,14 +27,25 @@ describe("IntroUploadArtwork", () => {
 		);
 	});
 
-	test("uses sentence case for the scan instruction", async () => {
+	test("reuses the current material-upload lead and action copy", async () => {
 		const screen = await render(<IntroUploadArtwork />);
-		const renderedLabels =
-			screen.root
-				?.queryAll((element) => element.type === "RNSVGTSpan")
-				.map((label) => label.props.content) ?? [];
+		const hidden = { includeHiddenElements: true };
 
-		expect(renderedLabels).toContain("oder scanne deine Mitschriften");
-		expect(renderedLabels).not.toContain("oder Scanne deine Mitschriften");
+		expect(
+			screen.getByText("Schulmaterial hinzufügen", hidden),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText(
+				"Deine Unterlagen bilden die Grundlage für deinen Lernplan.",
+				hidden,
+			),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText("Schulmaterial hochladen", hidden),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText("Themenblatt, Arbeitsblätter oder Mitschriften", hidden),
+		).toBeOnTheScreen();
+		expect(screen.queryByRole("button")).toBeNull();
 	});
 });
