@@ -162,6 +162,19 @@ offers one forward-only action into the app. Show it after a newly completed
 purchase, not after restoring an existing subscription, so the celebration
 acknowledges a real transition without becoming recurring friction.
 
+## Product-surface previews
+
+Onboarding artwork or other explanatory UI that depicts a live Dayova product
+surface must render the same shared presentation module through an explicit
+screen/artwork contract. Do not recreate the product card, upload surface,
+copy, tokens, or status/progress layout as a parallel component or static
+mockup. Artwork mode stays decorative, non-interactive, accessibility-hidden,
+and bounded to its artboard; the surrounding screen owns the accessible
+explanation. A deliberate divergence requires a superseding decision with the
+learner reason, alternatives, trade-off, reversal condition, and fresh native
+evidence. See
+[ADR: Render Onboarding Product Previews Through Shared Product Modules](adr/onboarding-artwork-rendering.md).
+
 The current app corner system is: info/small boxes use 24px, 345px-wide
 rectangles and card-like surfaces use 32px, and buttons use 44px. Device frame
 radii are not app tokens because they depend on the phone/mockup. When nesting
