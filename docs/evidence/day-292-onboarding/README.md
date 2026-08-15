@@ -527,11 +527,30 @@ diagnosed registration error boundary, preserving fail-closed behavior while
 showing the intended recovery message. Both findings are fixed and covered by
 the final validation pass.
 
+The next substantive full-PR review of exact head `e23e6be` against the same
+base found eight actionable comments. Exact-head candidate `cae2156` closes the
+six valid implementation/test findings: access loading no longer masks the
+confirmed trial handoff; upload and learning-step artwork expose numeric
+artboard dimensions; hidden-tree tests can detect leaked interaction; the
+durable payload rejects invalid duration values through the canonical parser;
+overlapping answer syncs serialize the complete
+`resume → remote sync → mark synced` transaction; and analytics retains
+version-2 as well as version-3 coverage. The duration test now derives from the
+intentional onboarding subset while ADR 0002 distinguishes the backend's wider
+legacy/settings compatibility range. CodeRabbit explicitly withdrew that
+original range-expansion finding after verifying the decision. It likewise
+withdrew the request to remove the guarded iOS entry edge fallback after
+verifying the accepted hybrid contract and DAY-349 follow-up. Every thread is
+answered and resolved, and the exact `cae2156` repository validation passes 858
+automated tests.
+
 The CodeRabbit CLI installation and authentication were also verified locally
 (`coderabbit doctor`: 9/9 checks). Its review transport closed the WebSocket
-before analysis on repeated attempts, so CLI output is not cited as a review
-pass. The substantive GitHub full-diff review is the authoritative external
-review record for this candidate.
+before analysis on repeated attempts, including the post-fix candidate, so CLI
+output is not cited as a review pass. The substantive GitHub full-diff review is
+the authoritative external review record. A requested complete-diff rerun on
+the post-fix exact head was acknowledged with the correct head/base but then
+rate-limited; it remains a merge gate rather than being misreported as success.
 
 The edge-pan builder remains render-created because no production defect or
 measurable handler churn was shown, while memoizing its worklet closures would
