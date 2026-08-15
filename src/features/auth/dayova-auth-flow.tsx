@@ -1520,6 +1520,9 @@ function QuestionStepView({
 }) {
 	const { colors: COLORS, isDark } = useDayovaTheme();
 	const { answers, setAnswer } = useOnboarding();
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const reducedMotion = useReducedMotion();
 	const isWheelStep = step.kind === "wheel";
 	const stepDecision = getOnboardingStepDecision(step, answers);
@@ -1540,6 +1543,26 @@ function QuestionStepView({
 			: busy
 				? "Wird verarbeitet"
 				: "Weiter";
+	const primaryAction = (
+		<View
+			style={{
+				paddingTop: 8,
+				paddingBottom: shouldStackInlineContent
+					? Math.max(bottomInset + 20, 28)
+					: Math.max(bottomInset + 52, 60),
+			}}
+		>
+			<Button
+				accessibilityLabel={continueLabel}
+				accessibilityState={{ busy, disabled: busy || !canContinue }}
+				disabled={busy || !canContinue}
+				variant={isDark ? "default" : "neutral"}
+				onPress={() => void onContinue()}
+			>
+				<Text>{continueLabel}</Text>
+			</Button>
+		</View>
+	);
 
 	return (
 		<View className="flex-1">
@@ -1552,19 +1575,22 @@ function QuestionStepView({
 
 			<ScrollView
 				key={step.id}
+				testID="onboarding-question-scroll"
 				className="flex-1"
 				keyboardShouldPersistTaps="handled"
 				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={{
 					flexGrow: 1,
-					paddingBottom: Math.max(bottomInset + 112, 122),
+					paddingBottom: shouldStackInlineContent
+						? 0
+						: Math.max(bottomInset + 112, 122),
 				}}
 			>
 				<Animated.View
 					entering={reducedMotion ? undefined : FadeInDown.duration(220)}
 					style={{
-						flex: 1,
+						flex: shouldStackInlineContent ? undefined : 1,
 						alignItems: "center",
 						paddingTop: isImmersiveStep ? 16 : titleTopPadding,
 					}}
@@ -1594,9 +1620,10 @@ function QuestionStepView({
 						style={{
 							width: "100%",
 							marginTop: isImmersiveStep ? 0 : isWheelStep ? 20 : 22,
-							flex: isWheelStep ? 1 : undefined,
+							flex: isWheelStep && !shouldStackInlineContent ? 1 : undefined,
 							alignItems: "center",
-							justifyContent: isWheelStep ? "center" : undefined,
+							justifyContent:
+								isWheelStep && !shouldStackInlineContent ? "center" : undefined,
 						}}
 					>
 						{step.kind === "wheel" ? <WheelAnswer step={step} /> : null}
@@ -1698,24 +1725,10 @@ function QuestionStepView({
 						) : null}
 					</View>
 				</Animated.View>
+				{shouldStackInlineContent ? primaryAction : null}
 			</ScrollView>
 
-			<View
-				style={{
-					paddingTop: 8,
-					paddingBottom: Math.max(bottomInset + 52, 60),
-				}}
-			>
-				<Button
-					accessibilityLabel={continueLabel}
-					accessibilityState={{ busy, disabled: busy || !canContinue }}
-					disabled={busy || !canContinue}
-					variant={isDark ? "default" : "neutral"}
-					onPress={() => void onContinue()}
-				>
-					<Text>{continueLabel}</Text>
-				</Button>
-			</View>
+			{shouldStackInlineContent ? null : primaryAction}
 		</View>
 	);
 }
@@ -2846,8 +2859,18 @@ function AuthProgressHeader({
 	onBack: () => boolean;
 	disabled?: boolean;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
+
 	return (
-		<View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+		<View
+			style={{
+				flexDirection: "row",
+				alignItems: shouldStackInlineContent ? "flex-start" : "center",
+				gap: 14,
+			}}
+		>
 			<BackButton
 				accessibilityState={{ disabled }}
 				disabled={disabled}
@@ -2856,7 +2879,14 @@ function AuthProgressHeader({
 				onPress={() => onBack()}
 			/>
 			<View className="flex-1 gap-2">
-				<View className="flex-row items-center justify-between">
+				<View
+					testID="onboarding-progress-metadata"
+					className={cn(
+						shouldStackInlineContent
+							? "flex-col items-start gap-1"
+							: "flex-row items-center justify-between",
+					)}
+				>
 					<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
 						DEIN START
 					</Text>

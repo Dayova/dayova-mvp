@@ -678,15 +678,16 @@ The initial clipped maximum-size screenshot and theme-transition frames that
 were captured before all text had rendered are deliberately not retained as
 release evidence.
 
-## Full profile/account matrix — 14 August 2026
+## Full profile/account matrix — 15 August 2026
 
-Three accepted native runs now cover the complete intro plus all 14 profile and
+Four accepted native runs now cover the complete intro plus all 14 profile and
 account questions through the empty password screen. Each profile directory
 contains the uncut recording and one screenshot for every captured state. The
 shared reproducible Android flow is
-`maestro/android-profile-account.yaml`. It deliberately stops before entering a
-password: no account is created, no trial terms are accepted, and none of these
-runs is evidence for trial activation or app-home entry.
+`maestro/android-profile-account.yaml`; the maximum-size iOS flow is
+`maestro/ios-mini-axxxl-profile-account.yaml`. Both deliberately stop before
+entering a password: no account is created, no trial terms are accepted, and
+none of these runs is evidence for trial activation or app-home entry.
 
 ### Android Pixel 9, dark, standard system text
 
@@ -757,6 +758,57 @@ for Android dark, Android light with enlarged text, and iOS dark. It does not
 turn those three profiles into proof for every platform/device/theme/text-size
 permutation or for physical assistive-technology behavior.
 
+### iPhone 13 mini, light, maximum Dynamic Type
+
+`profile-matrix/ios-iphone13mini-light-axxxl/ios-iphone13mini-light-axxxl-profile-account.mp4`
+is an uncut iPhone 13 mini / iOS 26.5 simulator recording at
+`accessibility-extra-extra-extra-large`. The first native pass exposed two real
+small-screen defects: the fixed question CTA could cover scaled answer content,
+and the progress label and step count competed for the same horizontal row.
+At accessibility text sizes, the accepted implementation now moves the primary
+action into the question's vertical scroll flow and stacks the progress
+metadata. Default content sizes retain the approved sticky CTA and horizontal
+header.
+
+The accepted run starts from the previous empty-password terminal state, stops
+and relaunches the development client, traverses the auth choice, all three
+intro pages, and all 14 profile/account steps, and finishes with the empty
+password field, minimum-length requirement, and disabled “Konto erstellen”
+action visible after scrolling. The 17 adjacent screenshots come from this
+same accepted run. The development-launcher gear is not product UI.
+
+> Coverage: 319.77-second video; 80 full-timeline frames sampled at 0.250182 fps
+> (3.997083-second interval); 5 contact sheet(s); 40 additional frames from
+> 00:02:28.000 to 00:02:38.000 at 4 fps; 45 additional frames from
+> 00:04:57.000 to 00:05:19.700 at 2 fps; no audio stream.
+
+Timestamped observations:
+
+- `00:00–00:24`: the prior empty-password state remains inert before the
+  scripted stop/relaunch; the disabled account action is not invoked.
+- `00:28–01:11`: development-client relaunch, auth choice, and all three intro
+  pages remain vertically scrollable at the maximum content size.
+- `01:15–02:27`: name, live duration, duration explanation, weekday selection,
+  and the start-time prompt remain reachable in a single vertical flow.
+- `02:30.500–02:32.250`: the native time sheet is visible, “Zeit übernehmen”
+  remains reachable at maximum text size, and confirmation dismisses the
+  sheet.
+- `02:34.500–02:37.750`: the selected `16:00 Uhr` card and “Weiter” action are
+  both reached by scrolling, with no fixed CTA covering the card.
+- `02:39–04:47`: the learning-time payoff, grade, federal state, school type,
+  and all three birth-date selectors remain operable; the bounded sheets scroll
+  to the selected values.
+- `04:51–05:04.500`: the e-mail field scrolls above the native keyboard and
+  accepts the complete non-real matrix address.
+- `05:05–05:19`: the password screen scrolls through its title, empty field,
+  minimum-length requirement, and disabled “Konto erstellen” action. No
+  password is entered and no account request is submitted.
+
+This closes the additional small-iPhone/maximum-Dynamic-Type rendering and
+interaction gate. It is simulator evidence without VoiceOver; it does not prove
+a physical-device assistive-technology pass, account creation, trial activation,
+or app-home entry.
+
 ## Historical evidence — superseded 11 August state
 
 `ios-onboarding-e2e-2x.mp4` predates the accepted operational learning-time
@@ -791,9 +843,9 @@ and internal edge behavior, Android predictive back, native time-picker-first
 dismissal, shared bounded-select-first dismissal, the intro's small/large
 light/dark matrix, and the responsive intro at maximum iOS and enlarged Android
 system text. It also proves the intro's iOS and Android reduced-motion CTA
-behavior and three complete 14-step native profile/account runs: Android dark,
-Android light at `font_scale=2.0`, and iOS dark. It does not by itself prove
-every profile screen in every device/theme/text-size combination, physical
-VoiceOver/TalkBack behavior, trial activation, or the first empty-home action.
-PR #458 stays Draft until the remaining canonical acceptance gates are closed
-by the decision owner.
+behavior and four complete 14-step native profile/account runs: Android dark,
+Android light at `font_scale=2.0`, iOS dark, and iPhone 13 mini light at maximum
+Dynamic Type. It does not by itself prove every profile screen in every
+device/theme/text-size combination, physical VoiceOver/TalkBack behavior,
+trial activation, or the first empty-home action. PR #458 stays Draft until the
+remaining canonical acceptance gates are closed by the decision owner.

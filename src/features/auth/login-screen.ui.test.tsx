@@ -929,6 +929,24 @@ describe("OnboardingScreen", () => {
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeOnTheScreen();
 	});
 
+	test("keeps scaled question content and its primary action in one scroll flow", async () => {
+		mockWindowDimensions = {
+			fontScale: 3,
+			height: 667,
+			scale: 2,
+			width: 375,
+		};
+		const screen = await render(<OnboardingScreen initialStepId="studyTime" />);
+
+		const questionScroll = screen.getByTestId("onboarding-question-scroll");
+		expect(
+			within(questionScroll).getByRole("button", { name: "Weiter" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("onboarding-progress-metadata").props.className,
+		).toContain("flex-col");
+	});
+
 	test("keeps the progress bar mounted while advancing between profile steps", async () => {
 		const screen = await render(<OnboardingScreen />);
 
