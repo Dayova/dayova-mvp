@@ -13,9 +13,14 @@ import {
 	ActionSheet,
 	actionSheetIconColor,
 } from "~/components/ui/action-sheet";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { Attachment, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { useAuthSession } from "~/context/AuthContext";
+import {
+	getLearningPlanCreationBackIntent,
+	type LearningPlanSetupStep,
+} from "~/features/learning-plans/creation-navigation";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import {
@@ -66,7 +71,6 @@ type PendingUploadAction = "camera" | "files";
 type PendingUploadRequest = {
 	action: PendingUploadAction;
 };
-type LearningPlanSetupStep = "requiredTopics" | "materialUpload";
 
 export default function NewLearningPlanScreen() {
 	const router = useRouter();
@@ -122,6 +126,8 @@ export default function NewLearningPlanScreen() {
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
+	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
+		useState(false);
 	const pendingUploadRequestRef = useRef<PendingUploadRequest | null>(null);
 	const topicActionGateRef = useRef(createAsyncActionGate());
 	const [openingUploadAction, setOpeningUploadAction] =
@@ -547,14 +553,11 @@ export default function NewLearningPlanScreen() {
 		await removeDocument({ id: documentId });
 	};
 
-	const goBack = () => {
-		if (setupStep === "materialUpload") {
-			setErrorMessage(null);
-			router.setParams({ errorMessage: undefined, step: "topic" });
-			setSetupStep("requiredTopics");
+	const exitCreation = () => {
+		if (learningPlanId) {
+			dismissToOrReplace(router, ROUTES.learningPlans);
 			return true;
 		}
-
 		if (examDayEntryId) {
 			dismissToOrReplace(router, `/entry/${examDayEntryId}`);
 			return true;
@@ -568,12 +571,27 @@ export default function NewLearningPlanScreen() {
 		return true;
 	};
 
-	useBackIntent(
-		Boolean(
-			examDayEntryId || initialLearningPlanId || setupStep === "materialUpload",
-		),
-		goBack,
-	);
+	const goBack = () => {
+		const intent = getLearningPlanCreationBackIntent({
+			step: setupStep,
+			hasSavedDraft: Boolean(learningPlanId),
+			isPauseConfirmationVisible,
+		});
+		if (intent.kind === "ignore") return true;
+		if (intent.kind === "previousStep") {
+			setErrorMessage(null);
+			router.setParams({ errorMessage: undefined, step: "topic" });
+			setSetupStep(intent.step);
+			return true;
+		}
+		if (intent.kind === "confirmPause") {
+			setIsPauseConfirmationVisible(true);
+			return true;
+		}
+		return exitCreation();
+	};
+
+	useBackIntent(hasExamEntry, goBack);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: currentProgressStep,
@@ -666,6 +684,19 @@ export default function NewLearningPlanScreen() {
 							),
 					},
 				]}
+			/>
+			<ConfirmationSheet
+				visible={isPauseConfirmationVisible}
+				title="Lernplan-Erstellung pausieren?"
+				description="Deine bisherigen Angaben und Unterlagen bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
+				cancelLabel="Weiter bearbeiten"
+				confirmLabel="Später fortsetzen"
+				confirmTone="primary"
+				onClose={() => setIsPauseConfirmationVisible(false)}
+				onConfirm={() => {
+					setIsPauseConfirmationVisible(false);
+					dismissToOrReplace(router, ROUTES.learningPlans);
+				}}
 			/>
 		</Screen>
 	);

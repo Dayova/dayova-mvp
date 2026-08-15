@@ -42,11 +42,13 @@ export function IntroPlanArtwork({ width, height }: SvgProps) {
 						},
 						examDateLabel: "Klassenarbeit · 24. August",
 						currentTitle: "Lineare Funktionen verstehen",
-						durationMinutes: 30,
-						needsSchoolMaterial: false,
-						progress: 42,
-						remainingDays: 10,
-						rollingWindowLabel: "3 nächste Lernschritte",
+						state: {
+							kind: "ready",
+							durationMinutes: 30,
+							progress: 42,
+							remainingDays: 10,
+							rollingWindowLabel: "3 nächste Lernschritte",
+						},
 					}}
 				/>
 			</View>

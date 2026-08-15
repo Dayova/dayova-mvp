@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
 	getExamEntryCreationProgress,
 	getLearningPlanCreationProgressPercentage,
+	getSafeLearningPlanCreationProgress,
 	LEARNING_PLAN_CREATION_STEPS,
 	LEARNING_PLAN_CREATION_TOTAL_STEPS,
 } from "./creation-progress";
@@ -41,5 +42,15 @@ describe("learning-plan creation progress", () => {
 				.map(getExamEntryCreationProgress)
 				.map(getLearningPlanCreationProgressPercentage),
 		).toEqual([20, 30, 40, 50]);
+	});
+
+	test("normalizes non-finite progress for visual and accessible output", () => {
+		expect(
+			getSafeLearningPlanCreationProgress({
+				currentStep: Number.NaN,
+				totalSteps: Number.POSITIVE_INFINITY,
+			}),
+		).toEqual({ currentStep: 1, totalSteps: 5 });
+		expect(getLearningPlanCreationProgressPercentage(Number.NaN)).toBe(20);
 	});
 });

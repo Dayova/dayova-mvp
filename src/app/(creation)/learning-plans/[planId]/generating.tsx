@@ -21,7 +21,7 @@ import {
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { getDayKey } from "~/lib/day-key";
-import { goBackOrReplace } from "~/lib/navigation";
+import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
@@ -255,11 +255,13 @@ export default function LearningPlanGeneratingScreen() {
 	const goBack = () => {
 		if (planId && snapshot) {
 			router.replace(planPath(planId, "scope"));
-			return;
+			return true;
 		}
 
 		goBackOrReplace(router, "/home");
+		return true;
 	};
+	useBackIntent(true, goBack);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: LEARNING_PLAN_CREATION_STEPS.planGeneration,

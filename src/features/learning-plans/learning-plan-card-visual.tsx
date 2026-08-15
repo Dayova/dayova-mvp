@@ -1,5 +1,9 @@
 import { View } from "react-native";
-import { ArrowUpRight, GraduationCap } from "~/components/ui/icon";
+import {
+	ArrowUpRight,
+	ClipboardEdit,
+	GraduationCap,
+} from "~/components/ui/icon";
 import { NotchedActionCard } from "~/components/ui/notched-action-card";
 import { Text } from "~/components/ui/text";
 import { LearningPlanCardFooter } from "~/features/learning-plans/learning-plan-card-footer";
@@ -12,16 +16,28 @@ type LearningPlanCardStatus = {
 	foreground: string;
 };
 
+type LearningPlanCardVisualState =
+	| {
+			kind: "creation";
+			progressLabel: string;
+	  }
+	| {
+			kind: "materialRequired";
+	  }
+	| {
+			kind: "ready";
+			durationMinutes: number | string | null;
+			progress: number;
+			remainingDays: number;
+			rollingWindowLabel: string;
+	  };
+
 export type LearningPlanCardVisualModel = {
 	subject: string;
 	status: LearningPlanCardStatus;
 	examDateLabel: string;
 	currentTitle: string;
-	durationMinutes: number | string | null;
-	needsSchoolMaterial: boolean;
-	progress: number;
-	remainingDays: number;
-	rollingWindowLabel: string;
+	state: LearningPlanCardVisualState;
 };
 
 type ScreenLearningPlanCardVisualProps = {
@@ -100,16 +116,16 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 							status={model.status}
 							fixedTextScale={fixedTextScale}
 						/>
-						{model.needsSchoolMaterial ? null : (
+						{model.state.kind === "ready" ? (
 							<StatusBadge
 								fixedTextScale={fixedTextScale}
 								status={{
-									label: `${model.durationMinutes ?? "–"} min`,
+									label: `${model.state.durationMinutes ?? "–"} min`,
 									background: DAYOVA_DESIGN_SYSTEM.colors.systemSubtle,
 									foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
 								}}
 							/>
-						)}
+						) : null}
 					</View>
 				</View>
 
@@ -136,7 +152,21 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 				</Text>
 			</View>
 
-			{model.needsSchoolMaterial ? (
+			{model.state.kind === "creation" ? (
+				<View className="mt-4 flex-row items-center gap-1.5">
+					<ClipboardEdit
+						size={14}
+						color={colors.secondaryText}
+						strokeWidth={2}
+					/>
+					<Text
+						allowFontScaling={!fixedTextScale}
+						className="font-poppins text-body-4 text-secondary-text"
+					>
+						{model.state.progressLabel}
+					</Text>
+				</View>
+			) : model.state.kind === "materialRequired" ? (
 				<Text
 					allowFontScaling={!fixedTextScale}
 					className="mt-4 max-w-[282px] font-poppins text-body-4 text-secondary-text"
@@ -146,9 +176,9 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 			) : (
 				<LearningPlanCardFooter
 					fixedTextScale={fixedTextScale}
-					progress={model.progress}
-					remainingDays={model.remainingDays}
-					rollingWindowLabel={model.rollingWindowLabel}
+					progress={model.state.progress}
+					remainingDays={model.state.remainingDays}
+					rollingWindowLabel={model.state.rollingWindowLabel}
 				/>
 			)}
 		</NotchedActionCard>
