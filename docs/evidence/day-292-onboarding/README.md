@@ -53,6 +53,25 @@ overlay and is not product UI. These captures close the shared-preview visual
 matrix; they are not Store-binary, assistive-technology, or full-onboarding E2E
 evidence.
 
+The shared previews were recaptured after the final component-sharing change
+on the two most demanding content-size configurations used in this review:
+
+- `ios-mini-axxxl-intro-learning-steps-shared.png`
+- `ios-mini-axxxl-intro-upload-shared.png`
+- `ios-mini-axxxl-intro-plan-shared.png`
+- `android-font2-intro-learning-steps-shared.png`
+- `android-font2-intro-upload-shared.png`
+- `android-font2-intro-plan-shared.png`
+
+The iOS captures are native iPhone 13 mini / iOS 26.5 screenshots at
+`accessibility-extra-extra-extra-large`; the Android captures are native Pixel
+9 emulator screenshots at `font_scale=2.0`. They prove that the current shared
+learning-step cards, current shared material-upload UI, and current shared
+learning-plan card remain legible and contained at those extremes. They are
+still-image evidence only: the existing complete-timeline recordings below
+remain the evidence for scrolling and CTA reachability. The screenshots do not
+claim VoiceOver or TalkBack coverage.
+
 ## Release-contract audit — 12 August 2026
 
 A code/spec/design-system audit found four gaps that earlier green tests did
