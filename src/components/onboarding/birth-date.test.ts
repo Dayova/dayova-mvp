@@ -61,4 +61,26 @@ describe("onboarding birth date", () => {
 			}),
 		).toBe("");
 	});
+
+	test("rejects years outside the same 121-year range exposed by the picker", () => {
+		const today = new Date(2026, 7, 11);
+
+		expect(getBirthMonthValues("1906", today)).toHaveLength(12);
+		expect(getBirthDayValues("1906", "08", today)).toHaveLength(31);
+		expect(
+			formatOnboardingBirthDate(
+				{ year: "1906", month: "08", day: "11" },
+				today,
+			),
+		).toBe("11.08.1906");
+
+		expect(getBirthMonthValues("1905", today)).toEqual([]);
+		expect(getBirthDayValues("1905", "08", today)).toEqual([]);
+		expect(
+			formatOnboardingBirthDate(
+				{ year: "1905", month: "08", day: "11" },
+				today,
+			),
+		).toBe("");
+	});
 });

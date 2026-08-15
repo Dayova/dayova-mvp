@@ -21,14 +21,20 @@ const isCanonicalBirthYear = (value: string) => /^\d{4}$/.test(value);
 const isCanonicalBirthMonth = (value: string) =>
 	/^(0[1-9]|1[0-2])$/.test(value);
 
+const isSelectableBirthYear = (value: string, today: Date) => {
+	if (!isCanonicalBirthYear(value)) return false;
+	const parsedYear = Number(value);
+	const currentYear = today.getFullYear();
+	return parsedYear >= currentYear - 120 && parsedYear <= currentYear;
+};
+
 export function getBirthYearValues(currentYear = new Date().getFullYear()) {
 	return Array.from({ length: 121 }, (_, index) => String(currentYear - index));
 }
 
 export function getBirthMonthValues(year: string, today = new Date()) {
-	const parsedYear = isCanonicalBirthYear(year) ? Number(year) : Number.NaN;
-	if (!Number.isInteger(parsedYear) || parsedYear > today.getFullYear())
-		return [];
+	if (!isSelectableBirthYear(year, today)) return [];
+	const parsedYear = Number(year);
 	if (parsedYear < today.getFullYear()) return BIRTH_MONTH_VALUES;
 	return BIRTH_MONTH_VALUES.slice(0, today.getMonth() + 1);
 }
@@ -38,11 +44,10 @@ export function getBirthDayValues(
 	month: string,
 	today = new Date(),
 ) {
-	const parsedYear = isCanonicalBirthYear(year) ? Number(year) : Number.NaN;
+	const parsedYear = Number(year);
 	const parsedMonth = isCanonicalBirthMonth(month) ? Number(month) : Number.NaN;
 	if (
-		!Number.isInteger(parsedYear) ||
-		parsedYear > today.getFullYear() ||
+		!isSelectableBirthYear(year, today) ||
 		parsedMonth < 1 ||
 		parsedMonth > 12
 	) {
@@ -63,12 +68,15 @@ export function getBirthDayValues(
 	);
 }
 
-export function formatOnboardingBirthDate(input: {
-	year: string;
-	month: string;
-	day: string;
-}) {
-	const validDays = getBirthDayValues(input.year, input.month);
+export function formatOnboardingBirthDate(
+	input: {
+		year: string;
+		month: string;
+		day: string;
+	},
+	today = new Date(),
+) {
+	const validDays = getBirthDayValues(input.year, input.month, today);
 	if (!validDays.includes(input.day)) return "";
 	return `${input.day}.${input.month}.${input.year}`;
 }
