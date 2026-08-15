@@ -1,9 +1,28 @@
 import { describe, expect, test } from "vitest";
 import {
 	getAuthNavigationTarget,
+	isOnboardingSettled,
 	PASSWORD_RESET_SUCCESS_PATH,
 	SESSION_TASK_RESET_PASSWORD_PATH,
 } from "./auth-routing";
+
+describe("isOnboardingSettled", () => {
+	test.each([
+		"none",
+		"ready_for_trial",
+	] as const)("accepts %s as settled", (status) => {
+		expect(isOnboardingSettled(status)).toBe(true);
+	});
+
+	test.each([
+		"loading",
+		"pending",
+		"recovery_required",
+		"storage_error",
+	] as const)("keeps %s gated", (status) => {
+		expect(isOnboardingSettled(status)).toBe(false);
+	});
+});
 
 describe("getAuthNavigationTarget", () => {
 	test("waits for Clerk before making a navigation decision", () => {

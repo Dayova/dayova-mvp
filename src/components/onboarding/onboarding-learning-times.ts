@@ -20,11 +20,13 @@ const formatTimeFromMinutes = (minutes: number) => {
 	return `${String(hours).padStart(2, "0")}:${String(remainingMinutes).padStart(2, "0")}`;
 };
 
-const parseDurationMinutes = (value: string) => {
-	const minutes = Number.parseInt(value, 10);
-	return ONBOARDING_DURATION_OPTIONS.some((option) => option === minutes)
-		? minutes
-		: null;
+export const parseOnboardingDurationMinutes = (value: string) => {
+	const normalizedValue = value.trim();
+	return (
+		ONBOARDING_DURATION_OPTIONS.find(
+			(option) => String(option) === normalizedValue,
+		) ?? null
+	);
 };
 
 export const parseOnboardingStudyDays = (value: string) => {
@@ -67,7 +69,7 @@ export const getOnboardingLearningTimeWindow = (input: {
 	learningTime: string;
 }) => {
 	const startMinutes = parseTimeToMinutes(input.learningTime);
-	const durationMinutes = parseDurationMinutes(input.studyTime);
+	const durationMinutes = parseOnboardingDurationMinutes(input.studyTime);
 	if (startMinutes === null || durationMinutes === null) return null;
 	const endMinutes = startMinutes + durationMinutes;
 	if (endMinutes >= MINUTES_PER_DAY) return null;
@@ -84,7 +86,7 @@ export const getOnboardingLearningTimeValidationError = (input: {
 	studyDays: string;
 	learningTime: string;
 }) => {
-	if (parseDurationMinutes(input.studyTime) === null) {
+	if (parseOnboardingDurationMinutes(input.studyTime) === null) {
 		return "Bitte wähle deine Lerndauer aus.";
 	}
 	if (parseOnboardingStudyDays(input.studyDays).length === 0) {
@@ -112,9 +114,11 @@ export const getOnboardingLearningTimeSummary = (input: {
 }) => {
 	const days = parseOnboardingStudyDays(input.studyDays);
 	const window = getOnboardingLearningTimeWindow(input);
+	const durationMinutes =
+		window?.durationMinutes ?? parseOnboardingDurationMinutes(input.studyTime);
 	return {
 		daysLabel: joinGermanList(days),
-		durationLabel: `${window?.durationMinutes ?? Number.parseInt(input.studyTime, 10)} Minuten`,
+		durationLabel: durationMinutes === null ? "" : `${durationMinutes} Minuten`,
 		windowLabel: window
 			? `${window.startTime}–${window.endTime} Uhr`
 			: input.learningTime,

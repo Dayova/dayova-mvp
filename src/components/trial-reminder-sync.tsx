@@ -6,6 +6,7 @@ import { api } from "#convex/_generated/api";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import { isOnboardingSettled } from "~/lib/auth-routing";
 import { DAYOVA_NOTIFICATION_CHANNEL_ID } from "~/lib/local-notification-scheduler";
 import type { NotificationPlanningPreferences } from "~/lib/notification-planner";
 import {
@@ -38,9 +39,7 @@ export function TrialReminderSync() {
 	) as NotificationPlanningPreferences | undefined;
 	const preferencesLoaded = preferences !== undefined;
 	const systemNotificationsEnabled = preferences?.systemNotificationsEnabled;
-	const isOnboardingSettled =
-		onboardingCompletionStatus === "none" ||
-		onboardingCompletionStatus === "ready_for_trial";
+	const onboardingIsSettled = isOnboardingSettled(onboardingCompletionStatus);
 	const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
 	useEffect(() => {
@@ -52,7 +51,7 @@ export function TrialReminderSync() {
 				await syncTrialReminderNotification(notifications, null);
 				return;
 			}
-			if (isAccessLoading || !isOnboardingSettled) return;
+			if (isAccessLoading || !onboardingIsSettled) return;
 			if (!access) {
 				await syncTrialReminderNotification(notifications, null);
 				return;
@@ -102,7 +101,7 @@ export function TrialReminderSync() {
 	}, [
 		access,
 		isAccessLoading,
-		isOnboardingSettled,
+		onboardingIsSettled,
 		preferencesLoaded,
 		systemNotificationsEnabled,
 		user,

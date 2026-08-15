@@ -18,6 +18,7 @@ import {
 	getOfflineAccess,
 } from "~/lib/access-policy";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import { isOnboardingSettled } from "~/lib/auth-routing";
 
 // SecureStore keys may only contain alphanumeric characters, `.`, `-`, and `_`.
 const ACCESS_CACHE_PREFIX = "dayova-access.";
@@ -120,8 +121,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 		user &&
 			isConvexAuthenticated &&
 			isConvexUserSynced &&
-			(onboardingCompletionStatus === "none" ||
-				onboardingCompletionStatus === "ready_for_trial"),
+			isOnboardingSettled(onboardingCompletionStatus),
 	);
 	const serverAccess = useQuery(
 		api.entitlements.getMyAccess,
@@ -238,8 +238,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	const isAccessLoading =
 		Boolean(user) &&
 		!isSessionLoading &&
-		(onboardingCompletionStatus === "none" ||
-			onboardingCompletionStatus === "ready_for_trial") &&
+		isOnboardingSettled(onboardingCompletionStatus) &&
 		!access &&
 		(!isCacheLoaded || !didQueryTimeout);
 

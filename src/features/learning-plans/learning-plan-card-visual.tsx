@@ -66,7 +66,7 @@ function StatusBadge({
 }) {
 	return (
 		<View
-			className="h-7 justify-center rounded-full px-3"
+			className="min-h-7 justify-center rounded-full px-3 py-1"
 			style={{ backgroundColor: status.background }}
 		>
 			<Text

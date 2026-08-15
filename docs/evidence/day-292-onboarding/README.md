@@ -215,10 +215,11 @@ handler. Native dragging therefore raised `Tried to synchronously call a Remote
 Function`, although the Jest mock passed because it executed that handler on the
 JavaScript thread.
 
-The preview-index arithmetic now stays entirely inside the UI worklet; only the
-result crosses back through `scheduleOnRN`. The UI regression test asserts that
-the registered scroll callback no longer references the remote helper. The iOS
-bundle was exercised on iPhone 17 Pro / iOS 26.5 in dark mode: the preview
+The preview-index arithmetic now lives in a shared helper that is explicitly
+marked as a worklet and is therefore safe to call from the UI-runtime scroll
+handler; only the result crosses back through `scheduleOnRN`. The UI regression
+test executes the registered scroll callback with the real helper contract. The
+iOS bundle was exercised on iPhone 17 Pro / iOS 26.5 in dark mode: the preview
 number and ring advanced from 10 to 45 during native UI-runtime scroll, repeated
 three times without an error overlay.
 
@@ -231,6 +232,18 @@ from 10 through 20 to 30 minutes without a Worklets error overlay:
 
 This closes the Android live-preview crash/interaction gate; it is not a claim
 about every Android device size.
+
+`android-learning-duration-drag-final-head.mp4` re-runs the native Android
+gesture after the final worklet-helper refactor. A real `adb input swipe` moves
+the carousel from the uncommitted 30-minute preview; the centered tick begins
+moving at `00:09.8`, the number and ring update to 45 minutes by `00:10.3`, and
+the 45-minute state remains usable through `00:11.1`. The post-gesture
+`ReactNativeJS`/`AndroidRuntime` log contains no Worklets, remote-function,
+uncaught-error, or fatal-exception entry.
+
+> Coverage: 11.37-second video; 23 full-timeline frames sampled at 2 fps
+> (0.5-second interval); 2 contact sheet(s); 17 additional frames from
+> 00:00:09.500 to 00:00:11.200 at 10 fps; no audio stream.
 
 ## Native back contract — 13 August 2026
 
@@ -493,19 +506,30 @@ overwrite a newly staged and bound payload. Session activation now runs in a
 `finally` boundary after Clerk verification, so even a throwing binding-failure
 observer cannot strand a completed account behind the already-consumed code.
 
+A third exact-head full-diff review found four additional release-relevant
+contracts, and all four are closed in the final candidate. Invalid or absent
+duration text can no longer render `NaN Minuten`; restart recovery preserves the
+completion boundary instead of degrading it into an answer-sync retry; the
+status badge can grow with scaled text instead of clipping inside a fixed
+height; and an expired account-bound `pending` outbox record can be replaced by
+a later registration attempt without weakening the no-TTL protection for
+`ready_for_trial` or the account binding for `recovery_required`. The associated
+review cleanup also shares the duration parser, onboarding-settled predicate,
+worklet-safe carousel index helper, error-message map, and test setup contracts
+instead of allowing parallel copies to drift.
+
 The CodeRabbit CLI installation and authentication were also verified locally
 (`coderabbit doctor`: 9/9 checks). Its review transport closed the WebSocket
 before analysis on repeated attempts, so CLI output is not cited as a review
 pass. The substantive GitHub full-diff review is the authoritative external
 review record for this candidate.
 
-Two low-value refactor suggestions were deliberately not applied. The live
-duration arithmetic remains inline in the UI worklet because moving it back
-behind a referenced helper touches the exact native Worklets boundary that
-previously crashed and is already protected by native evidence. The edge-pan
-builder remains render-created because no production defect or measurable
-handler churn was shown, while memoizing its worklet closures would add change
-risk to the accepted launch gesture. Neither changes the product contract.
+The edge-pan builder remains render-created because no production defect or
+measurable handler churn was shown, while memoizing its worklet closures would
+add change risk to the accepted launch gesture. The carousel arithmetic was
+shared only after the helper itself became a worklet and the refactor passed the
+new Android native-drag recording above, so the earlier crash boundary remains
+explicitly protected.
 
 These are code and automated-test conclusions. They do not replace the
 remaining owner, physical-assistive-technology, or legal trial-activation gates
@@ -714,7 +738,8 @@ learning-time contract.
 ## Remaining release evidence
 
 This evidence set now proves the operational learning-time segment, native
-iOS/Android restart recovery, Android live duration preview, committed iOS entry
+iOS/Android restart recovery, Android live duration preview on the final
+worklet-helper implementation, committed iOS entry
 and internal edge behavior, Android predictive back, native time-picker-first
 dismissal, shared bounded-select-first dismissal, the intro's small/large
 light/dark matrix, and the responsive intro at maximum iOS and enlarged Android

@@ -222,7 +222,7 @@ export function SessionCard(props: SessionCardProps) {
 		shouldStack ? "items-stretch gap-3" : "flex-row items-center",
 	);
 
-	if (mode === "artwork") {
+	if (props.mode === "artwork") {
 		return (
 			<Surface
 				accessible={false}

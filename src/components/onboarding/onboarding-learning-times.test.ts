@@ -46,6 +46,23 @@ describe("onboarding learning times", () => {
 		});
 	});
 
+	test("never renders an invalid duration as NaN minutes", () => {
+		expect(
+			getOnboardingLearningTimeSummary({
+				studyTime: "",
+				studyDays: "Montag",
+				learningTime: "16:30",
+			}),
+		).toMatchObject({ durationLabel: "" });
+		expect(
+			getOnboardingLearningTimeSummary({
+				studyTime: "30 minutes",
+				studyDays: "Montag",
+				learningTime: "16:30",
+			}),
+		).toMatchObject({ durationLabel: "" });
+	});
+
 	test("requires a complete schedule and blocks windows crossing midnight", () => {
 		expect(
 			getOnboardingLearningTimeValidationError({

@@ -241,6 +241,39 @@ describe("pending onboarding sync outbox", () => {
 		).resolves.toEqual({ status: "pending", answers: ANSWERS });
 	});
 
+	it("replaces an expired bound pending payload with the current registration attempt", async () => {
+		const { storage } = createMemoryStorage();
+		const firstProcess = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 1),
+		});
+		await firstProcess.stageForUser({
+			registrationAttemptId: "signup_expired",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+			clerkUserId: "user_expired",
+			answers: ANSWERS,
+		});
+
+		const currentProcess = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 9, 0, 0, 1),
+		});
+		const currentAnswers = { ...ANSWERS, learningTime: "18:00" };
+		await expect(
+			currentProcess.stage({
+				registrationAttemptId: "signup_current",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+				answers: currentAnswers,
+			}),
+		).resolves.toBeUndefined();
+		await expect(
+			currentProcess.ensureStaged({
+				registrationAttemptId: "signup_current",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+			}),
+		).resolves.toBeUndefined();
+	});
+
 	it("never replaces a payload that is bound to another account", async () => {
 		const { storage } = createMemoryStorage();
 		const outbox = createPendingOnboardingSyncOutbox({
@@ -405,6 +438,13 @@ describe("pending onboarding sync outbox", () => {
 		await expect(restartedAfterTtl.resume(identity)).resolves.toEqual({
 			status: "ready_for_trial",
 		});
+		await expect(
+			restartedAfterTtl.stage({
+				registrationAttemptId: "signup_new",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+				answers: ANSWERS,
+			}),
+		).rejects.toMatchObject({ code: "payload_unavailable" });
 	});
 
 	it.each([

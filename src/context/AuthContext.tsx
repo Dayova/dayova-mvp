@@ -61,6 +61,7 @@ import {
 } from "~/lib/password-change";
 import {
 	clearOwnedPostAuthSyncFailure,
+	getOnboardingRecoveryOwnedBoundary,
 	retryPostAuthSyncFailure,
 	type PostAuthSyncFailure,
 } from "~/lib/post-auth-sync-failure";
@@ -189,6 +190,17 @@ const AuthFlowContext = createContext<AuthFlowContextType | undefined>(
 const AccountActionsContext = createContext<
 	AccountActionsContextType | undefined
 >(undefined);
+
+const POST_AUTH_SYNC_ERROR_MESSAGES: Record<PostAuthSyncFailure, string> = {
+	restore:
+		"Deine gespeicherten Angaben konnten gerade nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
+	completion:
+		"Der Übergang zur Testphase konnte noch nicht abgeschlossen werden. Bitte versuche es erneut.",
+	profile:
+		"Deine Angaben konnten noch nicht gespeichert werden. Prüfe deine Verbindung und versuche es erneut.",
+	answers:
+		"Deine Angaben konnten noch nicht gespeichert werden. Prüfe deine Verbindung und versuche es erneut.",
+};
 
 const getMetadataString = (metadata: Record<string, unknown>, key: string) =>
 	typeof metadata[key] === "string" ? metadata[key] : undefined;
@@ -1030,6 +1042,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		) {
 			throw new Error("Es gibt keine offene Onboarding-Wiederherstellung.");
 		}
+		const ownedBoundary = getOnboardingRecoveryOwnedBoundary(
+			verificationRecoveryRef.current?.clerkUserId === user.clerkId,
+		);
 		try {
 			await pendingOnboardingSyncOutbox.stageForUser({
 				registrationAttemptId: "recovery",
@@ -1043,19 +1058,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				error,
 				{ source: "auth.onboarding.outbox.recovery", level: "warn" },
 			);
-			setPostAuthSyncFailure("answers");
+			setPostAuthSyncFailure(ownedBoundary);
 			throw new Error(
 				"Deine Lernzeiten konnten nicht sicher gespeichert werden. Bitte versuche es erneut.",
 			);
 		}
-		const clearsVerificationRecovery =
-			verificationRecoveryRef.current?.clerkUserId === user.clerkId;
-		if (clearsVerificationRecovery) verificationRecoveryRef.current = null;
+		if (ownedBoundary === "restore") verificationRecoveryRef.current = null;
 		setPostAuthSyncFailure((current) =>
-			clearOwnedPostAuthSyncFailure(
-				current,
-				clearsVerificationRecovery ? "restore" : "answers",
-			),
+			clearOwnedPostAuthSyncFailure(current, ownedBoundary),
 		);
 		setOnboardingCompletion({
 			clerkUserId: user.clerkId,
@@ -1616,11 +1626,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			? onboardingCompletion.result.status
 			: "loading";
 	const postAuthSyncError = postAuthSyncFailure
-		? postAuthSyncFailure === "restore"
-			? "Deine gespeicherten Angaben konnten gerade nicht geladen werden. Prüfe deine Verbindung und versuche es erneut."
-			: postAuthSyncFailure === "completion"
-				? "Der Übergang zur Testphase konnte noch nicht abgeschlossen werden. Bitte versuche es erneut."
-				: "Deine Angaben konnten noch nicht gespeichert werden. Prüfe deine Verbindung und versuche es erneut."
+		? POST_AUTH_SYNC_ERROR_MESSAGES[postAuthSyncFailure]
 		: null;
 
 	return (

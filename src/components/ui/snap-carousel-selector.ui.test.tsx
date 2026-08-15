@@ -97,9 +97,6 @@ describe("SnapCarouselSelector", () => {
 			screen.getByTestId("snap-carousel-progress-arc").props.strokeDasharray,
 		).toEqual([String((2 / 3) * 2 * Math.PI * 40), String(2 * Math.PI * 40)]);
 		expect(onSelect).not.toHaveBeenCalled();
-		expect(mockAnimatedScrollHandler?.toString()).not.toContain(
-			"getSnapCarouselPreviewIndex",
-		);
 	});
 
 	test("synchronizes the preview when selection changes externally", async () => {

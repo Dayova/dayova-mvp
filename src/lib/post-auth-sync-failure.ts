@@ -4,6 +4,10 @@ export type PostAuthSyncFailure =
 	| "completion"
 	| "restore";
 
+export const getOnboardingRecoveryOwnedBoundary = (
+	hasVerificationRecovery: boolean,
+): PostAuthSyncFailure => (hasVerificationRecovery ? "restore" : "answers");
+
 export const clearOwnedPostAuthSyncFailure = (
 	current: PostAuthSyncFailure | null,
 	owner: PostAuthSyncFailure,

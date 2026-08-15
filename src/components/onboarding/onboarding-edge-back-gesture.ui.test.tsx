@@ -1,4 +1,4 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { render } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { View } from "react-native";
@@ -6,7 +6,13 @@ import { OnboardingEdgeBackGesture } from "./onboarding-edge-back-gesture";
 
 const mockGestureCalls: string[] = [];
 const mockGestureCallbacks = new Map<string, (...args: unknown[]) => void>();
-const mockSharedValueSetters = new Map<string, jest.Mock>();
+const mockSharedValues: Array<{ initialValue: unknown; set: jest.Mock }> = [];
+
+const getSharedValueSetter = (index: number) => {
+	const sharedValue = mockSharedValues[index];
+	if (!sharedValue) throw new Error(`Missing shared value at index ${index}`);
+	return sharedValue.set;
+};
 
 jest.mock("react-native-gesture-handler", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
@@ -47,7 +53,7 @@ jest.mock("react-native-reanimated", () => {
 		useReducedMotion: () => false,
 		useSharedValue: (value: unknown) => {
 			const set = jest.fn();
-			mockSharedValueSetters.set(String(value), set);
+			mockSharedValues.push({ initialValue: value, set });
 			return { get: () => value, set };
 		},
 		withTiming: (value: unknown) => value,
@@ -59,9 +65,13 @@ jest.mock("react-native-worklets", () => ({
 }));
 
 describe("OnboardingEdgeBackGesture", () => {
-	test("mounts a stable edge hit target and configures a cancellable pan", async () => {
+	beforeEach(() => {
 		mockGestureCalls.length = 0;
 		mockGestureCallbacks.clear();
+		mockSharedValues.length = 0;
+	});
+
+	test("mounts a stable edge hit target and configures a cancellable pan", async () => {
 		const screen = await render(
 			<OnboardingEdgeBackGesture enabled onBack={jest.fn()}>
 				<View testID="content" />
@@ -85,8 +95,6 @@ describe("OnboardingEdgeBackGesture", () => {
 	});
 
 	test("never commits a cancelled active gesture", async () => {
-		mockGestureCallbacks.clear();
-		mockSharedValueSetters.clear();
 		await render(
 			<OnboardingEdgeBackGesture enabled onBack={jest.fn()}>
 				<View testID="content" />
@@ -97,12 +105,15 @@ describe("OnboardingEdgeBackGesture", () => {
 			{ translationX: 180, velocityX: 1200 },
 			false,
 		);
-		expect(mockSharedValueSetters.get("0")).toHaveBeenCalledWith(0);
-		expect(mockSharedValueSetters.get("false")).not.toHaveBeenCalledWith(true);
+		expect(mockSharedValues.map(({ initialValue }) => initialValue)).toEqual([
+			0,
+			false,
+		]);
+		expect(getSharedValueSetter(0)).toHaveBeenCalledWith(0);
+		expect(getSharedValueSetter(1)).not.toHaveBeenCalledWith(true);
 	});
 
 	test("does not intercept the screen edge when disabled", async () => {
-		mockSharedValueSetters.clear();
 		const screen = await render(
 			<OnboardingEdgeBackGesture enabled={false} onBack={jest.fn()}>
 				<View testID="content" />
@@ -110,7 +121,7 @@ describe("OnboardingEdgeBackGesture", () => {
 		);
 
 		expect(screen.queryByTestId("onboarding-ios-edge-back")).toBeNull();
-		expect(mockSharedValueSetters.get("0")).toHaveBeenCalledWith(0);
-		expect(mockSharedValueSetters.get("false")).toHaveBeenCalledWith(false);
+		expect(getSharedValueSetter(0)).toHaveBeenCalledWith(0);
+		expect(getSharedValueSetter(1)).toHaveBeenCalledWith(false);
 	});
 });

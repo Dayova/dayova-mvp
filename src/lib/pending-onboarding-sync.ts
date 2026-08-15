@@ -3,6 +3,7 @@ import { isSupportedGrade } from "~/lib/grades";
 import { isSupportedSchoolType } from "~/lib/school-types";
 import {
 	getOnboardingLearningTimeWindow,
+	parseOnboardingDurationMinutes,
 	parseOnboardingStudyDays,
 } from "~/components/onboarding/onboarding-learning-times";
 
@@ -118,15 +119,17 @@ const isValidAnswers = (
 		return false;
 	}
 
-	const duration = /^(10|20|30|45|60|90) min$/.exec(dailySchoolTime)?.[1];
+	const duration = dailySchoolTime.endsWith(" min")
+		? parseOnboardingDurationMinutes(dailySchoolTime.slice(0, -4))
+		: null;
 	const parsedDays = parseOnboardingStudyDays(studyDays);
 	const canonicalDays = parsedDays.join(", ");
 	return Boolean(
-		duration &&
+		duration !== null &&
 			parsedDays.length > 0 &&
 			canonicalDays === studyDays &&
 			getOnboardingLearningTimeWindow({
-				studyTime: duration,
+				studyTime: String(duration),
 				learningTime,
 			}) &&
 			isGermanFederalState(state) &&
@@ -270,7 +273,11 @@ export const createPendingOnboardingSyncOutbox = ({
 				if (
 					existingRecord !== null &&
 					existingRecord !== "invalid" &&
-					existingRecord.clerkUserId
+					existingRecord.clerkUserId &&
+					!(
+						existingRecord.status === "pending" &&
+						isExpiredPendingRecord(existingRecord.createdAt)
+					)
 				) {
 					throw new PendingOnboardingSyncError(
 						"payload_unavailable",

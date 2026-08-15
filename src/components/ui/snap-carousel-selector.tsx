@@ -40,11 +40,13 @@ export const getSnapCarouselPreviewIndex = ({
 	offsetX: number;
 	itemWidth: number;
 	lastIndex: number;
-}) =>
-	Math.min(
+}) => {
+	"worklet";
+	return Math.min(
 		Math.max(Math.round(offsetX / Math.max(itemWidth, 1)), 0),
 		lastIndex,
 	);
+};
 
 type SnapCarouselSelectorBaseProps<Item> = {
 	accessibilityLabel: string;
@@ -199,12 +201,11 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 			const nextOffset = event.contentOffset.x;
 			scrollX.set(nextOffset);
 			if (!showValueBubble) return;
-			// Keep UI-thread arithmetic inside the worklet. Calling a normal JS helper
-			// synchronously here crashes native Reanimated/Worklets while dragging.
-			const nextPreviewIndex = Math.min(
-				Math.max(Math.round(nextOffset / Math.max(itemWidth, 1)), 0),
+			const nextPreviewIndex = getSnapCarouselPreviewIndex({
+				offsetX: nextOffset,
+				itemWidth,
 				lastIndex,
-			);
+			});
 			if (nextPreviewIndex === previewIndexOnUI.get()) return;
 			previewIndexOnUI.set(nextPreviewIndex);
 			scheduleOnRN(updatePreviewIndex, nextPreviewIndex);
@@ -253,7 +254,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 						testID="snap-carousel-progress-ring"
 						width={valueBadgeSize}
 						height={valueBadgeSize}
-						viewBox="0 0 88 88"
+						viewBox={`0 0 ${PROGRESS_RING_SIZE} ${PROGRESS_RING_SIZE}`}
 						// SVG geometry is not expressible through NativeWind classes.
 						style={StyleSheet.absoluteFill}
 					>

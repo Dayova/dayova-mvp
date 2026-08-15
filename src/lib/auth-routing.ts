@@ -8,6 +8,9 @@ export type OnboardingCompletionStatus =
 	| "loading"
 	| "storage_error";
 
+export const isOnboardingSettled = (status: OnboardingCompletionStatus) =>
+	status === "none" || status === "ready_for_trial";
+
 const PUBLIC_AUTH_PATHS = new Set([
 	"/",
 	"/login",
