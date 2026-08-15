@@ -188,6 +188,10 @@ The following constraints are part of the contract:
   sync leaves the same payload retryable; successful Convex persistence first
   replaces the answers with an answer-free completion marker. Only the
   learner's explicit trial CTA removes that marker.
+- If session activation exposes an unbound staged payload without the matching
+  registration-attempt ID, the outbox discards its answers and persists an
+  account-bound `recovery_required` marker. Restore must never downgrade that
+  boundary to `none` or apply the unproven answers to the authenticated user.
 - A corrupt or expired outbox never silently grants app access. Its answer
   values are discarded after seven days and the learner is routed to a focused
   recovery screen that asks only for duration, weekdays, and start time again;

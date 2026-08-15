@@ -197,7 +197,7 @@ describe("pending onboarding sync outbox", () => {
 		).resolves.toEqual({ status: "pending", answers: historicalAnswers });
 	});
 
-	it("claims an unbound pre-verification payload only for the matching account", async () => {
+	it("claims an unbound pre-verification payload only for the matching registration", async () => {
 		const { storage } = createMemoryStorage();
 		const outbox = createPendingOnboardingSyncOutbox({
 			storage,
@@ -217,12 +217,6 @@ describe("pending onboarding sync outbox", () => {
 		).resolves.toEqual({ status: "none" });
 		await expect(
 			outbox.resume({
-				clerkUserId: "existing_user_same_email",
-				accountFingerprint: ACCOUNT_FINGERPRINT,
-			}),
-		).resolves.toEqual({ status: "none" });
-		await expect(
-			outbox.resume({
 				clerkUserId: "user_123",
 				accountFingerprint: ACCOUNT_FINGERPRINT,
 				registrationAttemptId: "signup_123",
@@ -235,6 +229,38 @@ describe("pending onboarding sync outbox", () => {
 				registrationAttemptId: "signup_123",
 			}),
 		).resolves.toEqual({ status: "none" });
+	});
+
+	it("preserves account-bound recovery across restart when an unbound payload has no matching attempt", async () => {
+		const { storage, values } = createMemoryStorage();
+		const stagedProcess = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 13, 10),
+		});
+		await stagedProcess.stage({
+			registrationAttemptId: "signup_123",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+			answers: ANSWERS,
+		});
+
+		await expect(
+			stagedProcess.resume({
+				clerkUserId: "user_123",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+			}),
+		).resolves.toEqual({ status: "recovery_required", reason: "invalid" });
+		expect([...values.values()][0]).not.toContain("Montag");
+
+		const restartedProcess = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 13, 10, 5),
+		});
+		await expect(
+			restartedProcess.resume({
+				clerkUserId: "user_123",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+			}),
+		).resolves.toEqual({ status: "recovery_required", reason: "invalid" });
 	});
 
 	it("preserves an account-bound payload when the same email starts another registration", async () => {

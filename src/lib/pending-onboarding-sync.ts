@@ -429,7 +429,16 @@ export const createPendingOnboardingSyncOutbox = ({
 					!record.clerkUserId &&
 					identity.registrationAttemptId !== record.registrationAttemptId
 				) {
-					return { status: "none" };
+					await write({
+						version: SCHEMA_VERSION,
+						status: "recovery_required",
+						registrationAttemptId: record.registrationAttemptId,
+						accountFingerprint: identity.accountFingerprint,
+						clerkUserId: identity.clerkUserId,
+						createdAt: now(),
+						reason: "invalid",
+					});
+					return { status: "recovery_required", reason: "invalid" };
 				}
 				if (record.status === "recovery_required") {
 					return { status: "recovery_required", reason: record.reason };
