@@ -8,13 +8,11 @@ import {
 } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import { StyleSheet } from "react-native";
 import {
 	AuthChoiceScreen,
 	CreationLoaderScreen,
 	LoginScreen,
 	OnboardingScreen,
-	PlanFitStack,
 } from "./dayova-auth-flow";
 
 const mockLogin = jest.fn<
@@ -25,6 +23,20 @@ const mockLogin = jest.fn<
 		{ status: "complete" } | { status: "needs_verification"; message: string }
 	>
 >(async () => ({ status: "complete" }));
+const mockRegister = jest.fn<
+	(input: {
+		birthDate: string;
+		email: string;
+		grade: string;
+		name: string;
+		password: string;
+		schoolType?: string;
+		state: string;
+	}) => Promise<{ status: "needs_verification"; message: string }>
+>(async () => ({
+	status: "needs_verification",
+	message: "Bestätige deine E-Mail-Adresse.",
+}));
 const mockCancelPasswordReset = jest.fn<() => Promise<void>>(
 	async () => undefined,
 );
@@ -134,9 +146,19 @@ jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ bottom: 24, left: 0, right: 0, top: 24 }),
 }));
 
-jest.mock("~/components/ui/date-time-picker-sheet", () => ({
-	DateTimePickerSheet: () => null,
-}));
+jest.mock("~/components/ui/date-time-picker-sheet", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const ReactNative =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return {
+		DateTimePickerSheet: ({ onClose }: { onClose: () => void }) =>
+			React.createElement(ReactNative.Pressable, {
+				accessibilityLabel: "Testauswahl schließen",
+				accessibilityRole: "button",
+				onPress: onClose,
+			}),
+	};
+});
 
 jest.mock("~/components/ui/animated-flower-loader", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
@@ -184,6 +206,7 @@ jest.mock("~/context/AuthContext", () => ({
 		isLoading: false,
 		login: mockLogin,
 		pendingVerification: null,
+		register: mockRegister,
 		resendPasswordResetCode: mockResendPasswordResetCode,
 		resendVerification: jest.fn(),
 		startPasswordReset: mockStartPasswordReset,
@@ -241,20 +264,6 @@ describe("LoginScreen", () => {
 
 		expect(screen.queryByText("Angemeldet bleiben")).toBeNull();
 		expect(screen.getByText("Passwort vergessen?")).toBeOnTheScreen();
-	});
-
-	test("keeps layout animations and static transforms on separate native views", async () => {
-		const screen = await render(<PlanFitStack />);
-		const conflictingViews = screen
-			.getAllByTestId("plan-fit-card-animation")
-			.filter((view) => {
-				const style = StyleSheet.flatten(view.props.style);
-				return (
-					view.props.entering !== undefined && style?.transform !== undefined
-				);
-			});
-
-		expect(conflictingViews).toHaveLength(0);
 	});
 
 	test("pushes registration so the native back gesture keeps its entry route", async () => {
@@ -447,7 +456,7 @@ describe("CreationLoaderScreen", () => {
 		jest.useRealTimers();
 	});
 
-	test("confirms saved learning times before continuing home", async () => {
+	test("confirms account setup before continuing to trial activation", async () => {
 		const screen = await render(
 			<CreationLoaderScreen
 				topInset={24}
@@ -457,9 +466,7 @@ describe("CreationLoaderScreen", () => {
 		);
 
 		expect(
-			screen.getByText(
-				"Dein persönliches Lernprofil\nwird nun für dich erstellt.",
-			),
+			screen.getByText("Dein Konto wird\nfür dich eingerichtet."),
 		).toBeOnTheScreen();
 
 		await screen.rerender(
@@ -468,7 +475,7 @@ describe("CreationLoaderScreen", () => {
 
 		expect(
 			screen.getByText(
-				"Deine Lernzeiten sind gespeichert.\nDu kannst sie jederzeit unter\nEinstellungen → Lernzeiten anpassen.",
+				"Alles bereit.\nStarte jetzt mit deiner ersten Prüfung.",
 			),
 		).toBeOnTheScreen();
 
@@ -480,56 +487,112 @@ describe("CreationLoaderScreen", () => {
 		await act(async () => {
 			jest.advanceTimersByTime(1);
 		});
-		expect(mockRouter.replace).toHaveBeenCalledWith("/home");
+		expect(mockRouter.replace).toHaveBeenCalledWith("/trial");
 	});
 });
 
 describe("OnboardingScreen", () => {
 	beforeEach(() => {
+		mockRegister.mockReset();
+		mockRegister.mockResolvedValue({
+			status: "needs_verification",
+			message: "Bestätige deine E-Mail-Adresse.",
+		});
 		mockRouter.replace.mockReset();
 		mockSetOnboardingAnswer.mockReset();
-		mockOnboarding.answers.studyDays = "Montag";
-		mockOnboarding.answers.learningTime = "23:30";
-		mockOnboarding.answers.dailySchoolTime = "60 min";
+		mockOnboarding.answers.state = "Sachsen";
+		mockOnboarding.answers.schoolType = "prefer_not_to_say";
+		mockOnboarding.answers.grade = "9";
+		mockOnboarding.answers.birthDate = "09.09.2012";
 	});
 
-	test("shows an actionable error instead of advancing past a cross-midnight time", async () => {
-		const screen = await render(
-			<OnboardingScreen initialStepId="learningTime" />,
+	test("opens with the exact-exam promise and shows compact profile progress", async () => {
+		const screen = await render(<OnboardingScreen />);
+
+		expect(
+			screen.getByRole("header", {
+				name: "Deine Prüfung. Dein nächster Schritt.",
+			}),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText("7 kurze Schritte · dauert etwa 1 Minute"),
+		).toBeOnTheScreen();
+		expect(
+			screen.queryByText("Wie viel lernst du aktuell pro Tag?"),
+		).toBeNull();
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Profil einrichten" }),
 		);
 
 		expect(
-			screen.getByText("Wann ist die beste\nUhrzeit für dich zum\nlernen?"),
+			await screen.findByRole("header", {
+				name: "Wie dürfen wir dich nennen?",
+			}),
 		).toBeOnTheScreen();
+		expect(screen.getByText("1 von 7")).toBeOnTheScreen();
+	});
 
+	test("does not preselect a grade and requires an explicit choice", async () => {
+		mockOnboarding.answers.grade = "";
+		const screen = await render(<OnboardingScreen initialStepId="grade" />);
+
+		expect(screen.getByText("Klassenstufe auswählen")).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
 		expect(
 			await screen.findByRole("alert", {
-				name: "Wähle bitte eine frühere Lernzeit oder eine kürzere tägliche Lernzeit, damit deine Lernzeit vor Mitternacht endet.",
+				name: "Bitte wähle eine Antwort aus.",
 			}),
 		).toBeOnTheScreen();
-		expect(
-			screen.getByText("Wann ist die beste\nUhrzeit für dich zum\nlernen?"),
-		).toBeOnTheScreen();
-		expect(
-			screen.queryByText(
-				"Keine Sorge, du\nkannst deine\nLernzeiten später\nanpassen.",
-			),
-		).toBeNull();
 	});
 
 	test("renders school type through the shared bottom-sheet select trigger", async () => {
+		mockOnboarding.answers.schoolType = "";
 		const screen = await render(
 			<OnboardingScreen initialStepId="schoolType" />,
 		);
 
 		expect(screen.getByText("Welche Schulart besuchst du?")).toBeOnTheScreen();
-		expect(
-			screen.getByRole("button", { name: "Schulart auswählen" }),
-		).toHaveAccessibilityValue({ text: "Keine Angabe" });
+		expect(screen.getByText("Schulart auswählen")).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("onboarding-school-type-picker"),
 		).toBeOnTheScreen();
+	});
+
+	test("keeps date of birth visibly empty until the learner chooses it", async () => {
+		mockOnboarding.answers.birthDate = "";
+		const screen = await render(<OnboardingScreen initialStepId="birthDate" />);
+
+		expect(screen.getByText("Geburtsdatum auswählen")).toBeOnTheScreen();
+		expect(screen.queryByText("09.09.2012")).toBeNull();
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Geburtsdatum auswählen" }),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Testauswahl schließen" }),
+		);
+		const expectedDefaultBirthDate = `09.09.${new Date().getFullYear() - 14}`;
+		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith(
+			"birthDate",
+			expectedDefaultBirthDate,
+		);
+	});
+
+	test("keeps verification progress aligned with the profile steps", async () => {
+		const screen = await render(<OnboardingScreen initialStepId="password" />);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Konto erstellen" }),
+		);
+		expect(
+			await screen.findByRole("header", { name: "E-Mail bestätigen" }),
+		).toBeOnTheScreen();
+
+		expect(
+			screen.getByTestId("onboarding-verification-scroll").props
+				.contentInsetAdjustmentBehavior,
+		).toBe("never");
 	});
 });

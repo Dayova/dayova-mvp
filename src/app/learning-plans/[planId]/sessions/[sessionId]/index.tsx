@@ -1,5 +1,4 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
-import * as Device from "expo-device";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as Speech from "expo-speech";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,18 +8,9 @@ import {
 	KeyboardAvoidingView,
 	Platform,
 	ScrollView,
-	type TextInput,
 	TouchableOpacity,
 	View,
 } from "react-native";
-import type {
-	PermissionStatus as NitroPermissionStatus,
-	SpeechRecognitionError as NitroSpeechRecognitionError,
-	RecognizerCallbacks,
-	RecognizerMethods,
-	SpeechRecognitionConfig,
-} from "react-native-nitro-speech";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -29,11 +19,9 @@ import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
-	BookOpen,
 	Check,
 	CircleAlert,
 	ClipboardEdit,
-	Mic,
 	Pencil,
 	Timer,
 } from "~/components/ui/icon";
@@ -42,13 +30,16 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
-import { PracticeCompletionCard } from "~/features/learning-plans/practice-completion-card";
+import { LearningSessionCompletion } from "~/features/learning-plans/learning-session-completion";
+import { getLearningSessionAnalysisDestination } from "~/features/learning-plans/session-analysis-navigation";
 import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
 import {
 	CONTINUE_LEARNING_MINUTES,
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
+	getTheoryTopicPosition,
+	isPairedTheoryQuestionItem,
 } from "~/features/learning-plans/session-progress";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
@@ -58,41 +49,15 @@ import type {
 	SessionAnswerRating,
 	SessionContentItem,
 } from "~/features/learning-plans/types";
+import { usePrepareSessionContent } from "~/features/learning-plans/use-prepare-session-content";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
+import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
+import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
-
-type SpeechRecognitionModule = typeof import("react-native-nitro-speech");
-type PermissionStatus = NitroPermissionStatus;
-type SpeechRecognitionError = NitroSpeechRecognitionError;
-
-const PermissionStatus = {
-	GRANTED: 0,
-	DENIED: 1,
-	NOT_REQUESTED: 2,
-} as const satisfies Record<
-	"GRANTED" | "DENIED" | "NOT_REQUESTED",
-	NitroPermissionStatus
->;
-
-const SpeechRecognitionError = {
-	Unknown: 0,
-	LocaleNotSupported: 1,
-	RecognitionTaskFailed: 2,
-	IosSpeechPermissionNotDetermined: 3,
-	SessionStartFailed: 4,
-} as const satisfies Record<
-	| "Unknown"
-	| "LocaleNotSupported"
-	| "RecognitionTaskFailed"
-	| "IosSpeechPermissionNotDetermined"
-	| "SessionStartFailed",
-	NitroSpeechRecognitionError
->;
 
 const ratingCopy: Record<
 	SessionAnswerRating,
@@ -128,163 +93,7 @@ const phaseTitle = (
 ) =>
 	phase === "theory" ? "Lernkarten" : phase === "practice" ? "Üben" : "Praxis";
 
-const isIosSimulator = Platform.OS === "ios" && !Device.isDevice;
-const iosSimulatorSpeechMessage =
-	"Spracherkennung ist im iOS Simulator nicht zuverlässig verfügbar. Auf einem iPhone kannst du deine Antwort einsprechen. Hier kannst du sie stattdessen eintippen.";
-const nativeSpeechUnavailableMessage =
-	"Spracherkennung ist in dieser App-Version nicht verfügbar. Du kannst deine Antwort stattdessen eintippen.";
-
-const getSpeechRecognitionErrorMessage = (error: SpeechRecognitionError) => {
-	if (error === SpeechRecognitionError.LocaleNotSupported) {
-		return "Spracherkennung ist auf diesem Gerät für Deutsch gerade nicht verfügbar. Du kannst die Antwort als Text eintragen.";
-	}
-	if (error === SpeechRecognitionError.RecognitionTaskFailed) {
-		return "Wir haben keine Sprache erkannt. Versuch es noch einmal oder bearbeite das Transkript direkt.";
-	}
-	if (error === SpeechRecognitionError.IosSpeechPermissionNotDetermined) {
-		return "Dieses Gerät unterstützt die aktuelle Spracherkennung nicht vollständig. Du kannst die Antwort als Text eintragen.";
-	}
-	if (error === SpeechRecognitionError.SessionStartFailed) {
-		return "Die Spracherkennung konnte nicht gestartet werden. Du kannst die Antwort als Text eintragen.";
-	}
-
-	return "Die Spracherkennung konnte nicht gestartet werden. Du kannst die Antwort als Text eintragen.";
-};
-
-const getSpeechPermissionMessage = (status: PermissionStatus) =>
-	status === PermissionStatus.DENIED
-		? "Mikrofon oder Spracherkennung sind blockiert. Aktiviere sie in den Geräteeinstellungen oder trage die Antwort als Text ein."
-		: "Bitte erlaube Mikrofon und Spracherkennung, damit Dayova deine Sprachantwort transkribieren kann.";
-
-type OptionalSpeechRecognizer = RecognizerMethods & {
-	isAvailable: boolean;
-	loadError: unknown | null;
-};
-
-const unavailableSpeechRecognizerMethods: RecognizerMethods = {
-	prewarm: async () => {
-		throw new Error("Speech recognition is unavailable.");
-	},
-	startListening: () => undefined,
-	stopListening: () => undefined,
-	resetAutoFinishTime: () => undefined,
-	addAutoFinishTime: () => undefined,
-	updateConfig: () => undefined,
-	getIsActive: () => false,
-	getVoiceInputVolume: () => ({ smoothedVolume: 0, rawVolume: 0 }),
-	getPermissions: () => PermissionStatus.DENIED,
-	getSupportedLocalesIOS: () => [],
-};
-
-type SpeechRecognizerLoadState =
-	| {
-			recognizer: SpeechRecognitionModule["SpeechRecognizer"];
-			methods: RecognizerMethods;
-			loadError: null;
-	  }
-	| {
-			recognizer: null;
-			methods: null;
-			loadError: unknown;
-	  };
-
-function loadSpeechRecognizer(): SpeechRecognizerLoadState {
-	try {
-		// Keep Nitro out of module scope so the route can render without it.
-		const speechModule =
-			require("react-native-nitro-speech") as SpeechRecognitionModule;
-		const recognizer = speechModule.SpeechRecognizer;
-
-		return {
-			recognizer,
-			methods: {
-				prewarm: (params, options) => recognizer.prewarm(params, options),
-				startListening: (params) => recognizer.startListening(params),
-				stopListening: () => recognizer.stopListening(),
-				resetAutoFinishTime: () => recognizer.resetAutoFinishTime(),
-				addAutoFinishTime: (additionalTimeMs) =>
-					recognizer.addAutoFinishTime(additionalTimeMs),
-				updateConfig: (newConfig, resetAutoFinishTime) =>
-					recognizer.updateConfig(newConfig, resetAutoFinishTime),
-				getIsActive: () => recognizer.getIsActive(),
-				getVoiceInputVolume: () => recognizer.getVoiceInputVolume(),
-				getPermissions: () => recognizer.getPermissions(),
-				getSupportedLocalesIOS: () =>
-					recognizer.getSupportedLocalesIOS().sort(),
-			},
-			loadError: null,
-		};
-	} catch (error) {
-		return {
-			recognizer: null,
-			methods: null,
-			loadError: error,
-		};
-	}
-}
-
-let cachedSpeechRecognizerLoadState: SpeechRecognizerLoadState | null = null;
-
-function getSpeechRecognizerLoadState(): SpeechRecognizerLoadState {
-	cachedSpeechRecognizerLoadState ??= loadSpeechRecognizer();
-	return cachedSpeechRecognizerLoadState;
-}
-
-function useOptionalSpeechRecognizer(
-	callbacks: RecognizerCallbacks,
-): OptionalSpeechRecognizer {
-	const callbacksRef = useRef(callbacks);
-	const [loadState] = useState(getSpeechRecognizerLoadState);
-	const { methods, loadError } = loadState;
-
-	useEffect(() => {
-		callbacksRef.current = callbacks;
-	}, [callbacks]);
-
-	useEffect(() => {
-		const recognizer = getSpeechRecognizerLoadState().recognizer;
-		if (!recognizer) return undefined;
-
-		recognizer.onReadyForSpeech = () =>
-			callbacksRef.current.onReadyForSpeech?.();
-		recognizer.onRecordingStopped = () =>
-			callbacksRef.current.onRecordingStopped?.();
-		recognizer.onResult = (resultBatches) =>
-			callbacksRef.current.onResult?.(resultBatches);
-		recognizer.onAutoFinishProgress = (timeLeftMs) =>
-			callbacksRef.current.onAutoFinishProgress?.(timeLeftMs);
-		recognizer.onError = (error) => callbacksRef.current.onError?.(error);
-		recognizer.onPermissionDenied = () =>
-			callbacksRef.current.onPermissionDenied?.();
-		recognizer.onVolumeChange = (event) =>
-			callbacksRef.current.onVolumeChange?.(event);
-
-		return () => {
-			try {
-				recognizer.stopListening();
-			} catch {
-				// Native speech may be half-initialized during teardown.
-			}
-
-			recognizer.onReadyForSpeech = undefined;
-			recognizer.onRecordingStopped = undefined;
-			recognizer.onResult = undefined;
-			recognizer.onAutoFinishProgress = undefined;
-			recognizer.onError = undefined;
-			recognizer.onPermissionDenied = undefined;
-			recognizer.onVolumeChange = undefined;
-		};
-	}, []);
-
-	return useMemo(
-		() => ({
-			...(methods ?? unavailableSpeechRecognizerMethods),
-			isAvailable: Boolean(methods),
-			loadError,
-		}),
-		[loadError, methods],
-	);
-}
+const CURRENT_THEORY_CONTENT_VERSION = 2;
 
 const formatRemainingTime = (seconds: number) => {
 	const minutes = Math.floor(seconds / 60);
@@ -329,6 +138,7 @@ function ActionRow({
 	onPrimary,
 	primaryDisabled,
 	isBusy,
+	busyLabel,
 	className,
 }: {
 	secondaryLabel: string;
@@ -337,6 +147,7 @@ function ActionRow({
 	onPrimary: () => void;
 	primaryDisabled?: boolean;
 	isBusy?: boolean;
+	busyLabel?: string;
 	className?: string;
 }) {
 	return (
@@ -355,7 +166,10 @@ function ActionRow({
 				onPress={onPrimary}
 			>
 				{isBusy ? (
-					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+					<View className="flex-row items-center justify-center gap-2">
+						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+						{busyLabel ? <Text>{busyLabel}</Text> : null}
+					</View>
 				) : (
 					<Text>{primaryLabel}</Text>
 				)}
@@ -404,112 +218,6 @@ function FeedbackView({ attempt }: { attempt: SessionAnswerAttempt }) {
 				</Surface>
 			</View>
 		</View>
-	);
-}
-
-function CompletionView({
-	phase,
-	durationMinutes,
-	correctCount,
-	attemptCount,
-	onContinueLearning,
-	onPrimary,
-	isBusy,
-}: {
-	phase: LearningSessionContentSnapshot["session"]["phase"];
-	durationMinutes: number;
-	correctCount: number;
-	attemptCount: number;
-	onContinueLearning: () => void;
-	onPrimary: () => void;
-	isBusy: boolean;
-}) {
-	const isTheory = phase === "theory";
-	const isPraxis = phase === "rehearsal";
-	if (isPraxis) {
-		return (
-			<PracticeCompletionCard
-				durationMinutes={durationMinutes}
-				correctCount={correctCount}
-				attemptCount={attemptCount}
-				onRepeat={onContinueLearning}
-				onAnalysis={onPrimary}
-				isBusy={isBusy}
-			/>
-		);
-	}
-
-	const title = isTheory ? "Theorie abgeschlossen" : "Übung abgeschlossen";
-	const description = isTheory
-		? "Du hast alle Themen dieser Theorieeinheit geschafft. Wiederhole sie noch einmal oder gehe zum nächsten Schritt."
-		: "Du hast alle Aufgaben geschafft. Übe noch einmal weiter oder sieh dir deine Analyse an.";
-	const completionLabel = isTheory ? "Theorie geschafft" : "Übung geschafft";
-	const Icon = isTheory ? BookOpen : Pencil;
-	const iconClassName = isTheory ? "bg-theorie-subtle" : "bg-ueben-subtle";
-	const iconColor = isTheory
-		? DAYOVA_DESIGN_SYSTEM.colors.theorie
-		: DAYOVA_DESIGN_SYSTEM.colors.ueben;
-
-	return (
-		<Animated.View
-			entering={FadeIn.duration(280)}
-			className="flex-1 justify-between py-8"
-		>
-			<View className="flex-1 items-center justify-center px-2 pb-10">
-				<View className="relative">
-					<View
-						className={cn(
-							"h-28 w-28 items-center justify-center rounded-[32px]",
-							iconClassName,
-						)}
-					>
-						<Icon size={52} color={iconColor} strokeWidth={2.1} />
-					</View>
-					<View className="absolute -right-2 -bottom-2 h-10 w-10 items-center justify-center rounded-full border-4 border-background bg-success">
-						<Check
-							size={20}
-							color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-							strokeWidth={3}
-						/>
-					</View>
-				</View>
-
-				<View className="mt-8 rounded-full bg-success-subtle px-4 py-2">
-					<Text className="font-poppins font-semibold text-body-4 text-success">
-						{completionLabel}
-					</Text>
-				</View>
-				<Text
-					accessibilityRole="header"
-					className="mt-4 text-center font-poppins font-semibold text-heading-2 text-text"
-				>
-					{title}
-				</Text>
-				<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
-					{description}
-				</Text>
-			</View>
-
-			<View className="gap-3">
-				<Button className="w-full" disabled={isBusy} onPress={onPrimary}>
-					{isBusy ? (
-						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
-					) : (
-						<Text>{isTheory ? "Theorie abschließen" : "Analyse ansehen"}</Text>
-					)}
-				</Button>
-				<Button
-					className="w-full"
-					disabled={isBusy}
-					variant="neutral"
-					onPress={onContinueLearning}
-				>
-					<Text>
-						{isTheory ? "Noch 10 Min. weiterlernen" : "Noch 10 Min. üben"}
-					</Text>
-				</Button>
-			</View>
-		</Animated.View>
 	);
 }
 
@@ -593,7 +301,6 @@ function TextAnswer({
 	editable,
 	fillAvailableSpace = false,
 	autoFocus,
-	inputRef,
 }: {
 	value: string;
 	onChange: (value: string) => void;
@@ -601,11 +308,9 @@ function TextAnswer({
 	editable: boolean;
 	fillAvailableSpace?: boolean;
 	autoFocus?: boolean;
-	inputRef?: React.Ref<TextInput>;
 }) {
 	return (
 		<Textarea
-			ref={inputRef}
 			autoFocus={(autoFocus ?? fillAvailableSpace) && editable}
 			accessibilityLabel="Antwort"
 			className={cn(
@@ -620,275 +325,6 @@ function TextAnswer({
 	);
 }
 
-function VoiceAnswer({
-	value,
-	onChange,
-	editable,
-	isRecognizing,
-	speechErrorMessage,
-	speechCaptureUnavailableMessage,
-	onToggleRecording,
-}: {
-	value: string;
-	onChange: (value: string) => void;
-	editable: boolean;
-	isRecognizing: boolean;
-	speechErrorMessage: string | null;
-	speechCaptureUnavailableMessage: string | null;
-	onToggleRecording: () => void;
-}) {
-	const isSpeechCaptureUnavailable = Boolean(speechCaptureUnavailableMessage);
-	const [isEditingTranscript, setIsEditingTranscript] = useState(
-		isSpeechCaptureUnavailable,
-	);
-	const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(false);
-	const transcriptInputRef = useRef<TextInput>(null);
-	const hasTranscript = Boolean(value.trim());
-	const hasLongTranscript = value.trim().length > 180;
-	const liveTranscript = value.trim()
-		? value.trim().length > 220
-			? `…${value
-					.trim()
-					.slice(-220)
-					.replace(/^\S+\s*/, "")}`
-			: value.trim()
-		: "Ich höre zu …";
-
-	const startEditingTranscript = () => {
-		setIsEditingTranscript(true);
-		requestAnimationFrame(() => transcriptInputRef.current?.focus());
-	};
-
-	const handleVoiceCardPress = () => {
-		if (isSpeechCaptureUnavailable) {
-			startEditingTranscript();
-			return;
-		}
-		if (!isRecognizing) {
-			setIsEditingTranscript(false);
-			setIsTranscriptExpanded(false);
-		}
-		onToggleRecording();
-	};
-
-	return (
-		<View>
-			<TouchableOpacity
-				accessibilityRole="button"
-				accessibilityState={{ disabled: !editable, busy: isRecognizing }}
-				activeOpacity={0.86}
-				disabled={!editable}
-				onPress={handleVoiceCardPress}
-				className={cn(
-					"mt-6 min-h-[232px] items-center justify-center rounded-[32px] bg-card px-5",
-					!editable && "opacity-60",
-				)}
-			>
-				<View className="h-40 w-40 items-center justify-center rounded-full bg-primary/10">
-					<View className="h-32 w-32 items-center justify-center rounded-full bg-primary/20">
-						<View
-							className={cn(
-								"h-24 w-24 items-center justify-center rounded-full",
-								isRecognizing ? "bg-wrong" : "bg-primary",
-							)}
-						>
-							<Mic
-								size={34}
-								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-								strokeWidth={2.1}
-							/>
-						</View>
-					</View>
-				</View>
-				<Text
-					className={cn(
-						"mt-5 font-poppins font-semibold text-body-4",
-						isRecognizing ? "text-wrong" : "text-primary",
-					)}
-				>
-					{isRecognizing
-						? "Aufnahme stoppen"
-						: isSpeechCaptureUnavailable
-							? "Antwort eintippen"
-							: "Antwort einsprechen"}
-				</Text>
-			</TouchableOpacity>
-			<Text
-				selectable
-				className="mt-3 px-1 font-poppins text-body-4 text-secondary-text"
-			>
-				{isRecognizing
-					? "Sprich einfach weiter. Du siehst hier nur die letzten erkannten Wörter."
-					: isSpeechCaptureUnavailable
-						? speechCaptureUnavailableMessage
-						: "Nach der Aufnahme kannst du deine Antwort kurz prüfen oder bearbeiten."}
-			</Text>
-
-			{isRecognizing ? (
-				<Animated.View
-					key="live-transcript"
-					entering={FadeIn.duration(160)}
-					exiting={FadeOut.duration(120)}
-				>
-					<Surface className="mt-5 rounded-[24px] px-4 py-4" variant="flat">
-						<Text className="font-poppins font-semibold text-body-4 text-primary">
-							Live-Transkript
-						</Text>
-						<Text
-							selectable
-							className="mt-2 font-poppins text-body-3 text-text"
-							numberOfLines={3}
-						>
-							{liveTranscript}
-						</Text>
-					</Surface>
-				</Animated.View>
-			) : isEditingTranscript ? (
-				<Animated.View
-					key="transcript-editor"
-					entering={FadeIn.duration(160)}
-					exiting={FadeOut.duration(120)}
-					className="mt-5"
-				>
-					<View className="flex-row items-center justify-between gap-4">
-						<Text className="font-poppins font-semibold text-body-4 text-text">
-							Deine Antwort
-						</Text>
-						{hasTranscript && !isSpeechCaptureUnavailable ? (
-							<TouchableOpacity
-								accessibilityRole="button"
-								onPress={() => setIsEditingTranscript(false)}
-								className="min-h-11 justify-center px-2"
-							>
-								<Text className="font-poppins font-semibold text-body-4 text-primary">
-									Fertig
-								</Text>
-							</TouchableOpacity>
-						) : null}
-					</View>
-					<TextAnswer
-						inputRef={transcriptInputRef}
-						value={value}
-						onChange={onChange}
-						placeholder="Schreibe hier deine Antwort."
-						editable={editable}
-						autoFocus={isSpeechCaptureUnavailable}
-					/>
-				</Animated.View>
-			) : hasTranscript ? (
-				<Animated.View
-					key="transcript-preview"
-					entering={FadeIn.duration(160)}
-					exiting={FadeOut.duration(120)}
-				>
-					<Surface className="mt-5 rounded-[24px] px-4 py-4" variant="flat">
-						<View className="flex-row items-center justify-between gap-4">
-							<Text className="font-poppins font-semibold text-body-4 text-text">
-								Deine Antwort
-							</Text>
-							<TouchableOpacity
-								accessibilityRole="button"
-								disabled={!editable}
-								onPress={startEditingTranscript}
-								className="min-h-11 justify-center px-2"
-							>
-								<Text className="font-poppins font-semibold text-body-4 text-primary">
-									Bearbeiten
-								</Text>
-							</TouchableOpacity>
-						</View>
-						<Text
-							selectable
-							className="mt-1 font-poppins text-body-3 text-text"
-							numberOfLines={isTranscriptExpanded ? undefined : 4}
-						>
-							{value.trim()}
-						</Text>
-						{hasLongTranscript ? (
-							<TouchableOpacity
-								accessibilityRole="button"
-								onPress={() => setIsTranscriptExpanded((expanded) => !expanded)}
-								className="min-h-11 justify-center self-start pt-1"
-							>
-								<Text className="font-poppins font-semibold text-body-4 text-primary">
-									{isTranscriptExpanded ? "Weniger anzeigen" : "Alles anzeigen"}
-								</Text>
-							</TouchableOpacity>
-						) : null}
-					</Surface>
-				</Animated.View>
-			) : null}
-			{speechErrorMessage ? (
-				<ErrorMessage className="mt-3 px-1">{speechErrorMessage}</ErrorMessage>
-			) : null}
-		</View>
-	);
-}
-
-function AnalysisView({
-	content,
-	onContinueLearning,
-	onDone,
-	isBusy,
-}: {
-	content: LearningSessionContentSnapshot;
-	onContinueLearning: () => void;
-	onDone: () => void;
-	isBusy: boolean;
-}) {
-	const analysis = content.analysis;
-
-	return (
-		<View className="flex-1">
-			{analysis ? (
-				<View className="mt-10">
-					<Surface className="rounded-[32px] px-5 py-6" variant="flat">
-						<TagPill label="Stärken" icon="evaluation" />
-						{analysis.strengths.map((strength) => (
-							<Text
-								key={strength}
-								className="mt-6 font-poppins text-body-2 text-text"
-							>
-								{"\u2022"} {strength}
-							</Text>
-						))}
-					</Surface>
-					<View className="mx-8 my-8 h-px bg-border" />
-					<Surface className="rounded-[32px] px-5 py-6" variant="flat">
-						<TagPill label="Lücken" icon="answer" />
-						{analysis.gaps.map((gap) => (
-							<Text
-								key={gap}
-								className="mt-6 font-poppins text-body-2 text-text"
-							>
-								{"\u2022"} {gap}
-							</Text>
-						))}
-					</Surface>
-					<View className="mx-8 my-8 h-px bg-border" />
-					<Surface className="rounded-[32px] px-5 py-6" variant="flat">
-						<TagPill label="Empfehlungen" icon="question" />
-						<Text className="mt-8 font-poppins font-semibold text-body-2 text-text">
-							{analysis.recommendation}
-						</Text>
-					</Surface>
-				</View>
-			) : (
-				<View className="items-center py-16">
-					<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
-				</View>
-			)}
-			<ActionRow
-				secondaryLabel="10 Min. weiterlernen"
-				primaryLabel="Abschließen"
-				onSecondary={onContinueLearning}
-				onPrimary={onDone}
-				isBusy={isBusy}
-			/>
-		</View>
-	);
-}
-
 export default function LearningSessionContentScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -900,10 +336,10 @@ export default function LearningSessionContentScreen() {
 	const sessionId = params.sessionId as Id<"learningPlanSessions"> | undefined;
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-	const ensureSessionContent = useAction(
-		api.learningPlanAi.ensureSessionContent,
-	);
 	const submitAnswer = useMutation(api.learningSessionContent.submitAnswer);
+	const evaluateWrittenAnswer = useAction(
+		api.learningPlanAi.evaluateWrittenAnswer,
+	);
 	const finishSessionContent = useMutation(
 		api.learningSessionContent.finishSessionContent,
 	);
@@ -913,6 +349,9 @@ export default function LearningSessionContentScreen() {
 	const startSession = useMutation(api.learningPlans.startSession);
 	const recordSessionOutcome = useMutation(
 		api.learningPlans.recordSessionOutcome,
+	);
+	const prepareSessionContent = useAction(
+		api.learningPlanAi.ensureSessionContent,
 	);
 	const { capture } = useValidationAnalytics();
 	const { colors } = useDayovaTheme();
@@ -925,11 +364,6 @@ export default function LearningSessionContentScreen() {
 	);
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const [isRecognizing, setIsRecognizing] = useState(false);
-	const [speechErrorMessage, setSpeechErrorMessage] = useState<string | null>(
-		null,
-	);
-	const [showAnalysis, setShowAnalysis] = useState(false);
 	const [completionPhase, setCompletionPhase] = useState<
 		LearningSessionContentSnapshot["session"]["phase"] | null
 	>(null);
@@ -938,10 +372,10 @@ export default function LearningSessionContentScreen() {
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
 	const remainingSecondsRef = useRef<number | null>(null);
 	const [isContinuation, setIsContinuation] = useState(false);
-	const didEnsureRef = useRef(false);
 	const didAutoFinishRef = useRef(false);
 	const didStartTrackingRef = useRef(false);
 	const didRecordOutcomeRef = useRef(false);
+	const advancedPreTheoryQuestionItemIdRef = useRef<string | null>(null);
 	const activeStudySecondsRef = useRef(0);
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
@@ -951,55 +385,39 @@ export default function LearningSessionContentScreen() {
 		null,
 	);
 
-	const recognizerCallbacks = useMemo<RecognizerCallbacks>(
-		() => ({
-			onReadyForSpeech: () => {
-				setIsRecognizing(true);
-				setSpeechErrorMessage(null);
-			},
-			onRecordingStopped: () => setIsRecognizing(false),
-			onResult: (resultBatches: string[]) => {
-				const transcript = resultBatches.join(" ").replace(/\s+/g, " ").trim();
-				if (transcript) setAnswerText(transcript);
-			},
-			onError: (error: SpeechRecognitionError) => {
-				setIsRecognizing(false);
-				setSpeechErrorMessage(getSpeechRecognitionErrorMessage(error));
-			},
-			onPermissionDenied: () => {
-				setIsRecognizing(false);
-				setSpeechErrorMessage(
-					getSpeechPermissionMessage(PermissionStatus.DENIED),
-				);
-			},
-		}),
-		[],
-	);
-	const speechRecognizer = useOptionalSpeechRecognizer(recognizerCallbacks);
-	const speechCaptureUnavailableMessage = isIosSimulator
-		? iosSimulatorSpeechMessage
-		: speechRecognizer.isAvailable
-			? null
-			: nativeSpeechUnavailableMessage;
-
 	const content = (useQuery(
 		api.learningSessionContent.getSessionContent,
 		user && isConvexAuthenticated && sessionId ? { sessionId } : "skip",
 	) ?? null) as LearningSessionContentSnapshot | null;
-
-	const sessionItems = content
-		? getLearningSessionItems(
-				content.items,
-				content.session.phase,
-				content.session.compositionVariant,
-			)
-		: [];
-	const theoryItems = sessionItems.filter((item) => item.kind === "learnCard");
-	const currentItem = sessionItems[currentIndex] ?? null;
-	const shouldTrackActiveStudy = Boolean(
-		currentItem && !showAnalysis && !completionPhase,
+	const needsTheoryContentUpgrade = Boolean(
+		content &&
+			content.session.phase === "theory" &&
+			content.session.executionStatus === "notStarted" &&
+			(content.session.contentGenerationVersion ?? 0) <
+				CURRENT_THEORY_CONTENT_VERSION,
 	);
+
+	const sessionItems = useMemo(
+		() =>
+			content && !needsTheoryContentUpgrade
+				? getLearningSessionItems(
+						content.items,
+						content.session.phase,
+						content.session.compositionVariant,
+					)
+				: [],
+		[content, needsTheoryContentUpgrade],
+	);
+	const currentItem = sessionItems[currentIndex] ?? null;
+	const theoryTopicPosition = getTheoryTopicPosition(
+		sessionItems,
+		currentIndex,
+	);
+	const shouldTrackActiveStudy = Boolean(currentItem && !completionPhase);
 	const isPraxisSession = content?.session.phase === "rehearsal";
+	const isDiagnosticSession = content?.session.sessionPurpose === "diagnostic";
+	const isPairedTheoryQuestion = isPairedTheoryQuestionItem(currentItem);
+	const isPreTheoryQuestion = isPairedTheoryQuestion;
 	const persistedAttempt = useMemo(() => {
 		if (!currentItem || !content) return null;
 		if (currentItem.id === repeatingItemId) return null;
@@ -1012,13 +430,10 @@ export default function LearningSessionContentScreen() {
 		return attempt;
 	}, [content, currentItem, repeatingItemId, retryStartedAt]);
 	const visibleAttempt =
-		!isPraxisSession &&
-		localAttempt &&
-		currentItem &&
-		localAttempt.itemId === currentItem.id
-			? localAttempt
-			: isPraxisSession
-				? null
+		isPraxisSession || isPreTheoryQuestion
+			? null
+			: localAttempt && currentItem && localAttempt.itemId === currentItem.id
+				? localAttempt
 				: persistedAttempt;
 	const currentRunAttempts = useMemo(() => {
 		const attempts =
@@ -1125,26 +540,43 @@ export default function LearningSessionContentScreen() {
 		}
 	}, [shouldTrackActiveStudy]);
 
-	useEffect(() => {
-		if (!sessionId || !user || !isConvexAuthenticated || didEnsureRef.current)
-			return;
-
-		didEnsureRef.current = true;
-		void ensureSessionContent({ sessionId }).catch((error: unknown) => {
-			didEnsureRef.current = false;
+	usePrepareSessionContent({
+		enabled: Boolean(user && isConvexAuthenticated),
+		sessionId,
+		onError: (error) => {
 			setErrorMessage(
 				getErrorMessage(
 					error,
 					"Der Lernblock konnte nicht vorbereitet werden.",
 				),
 			);
-		});
-	}, [ensureSessionContent, isConvexAuthenticated, sessionId, user]);
+		},
+	});
+
+	const retrySessionPreparation = async () => {
+		if (!sessionId || isBusy) return;
+		setIsBusy(true);
+		setErrorMessage(null);
+		try {
+			await prepareSessionContent({ sessionId });
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(
+					error,
+					"Der Lernblock konnte nicht vorbereitet werden.",
+				),
+			);
+		} finally {
+			setIsBusy(false);
+		}
+	};
 
 	useEffect(() => {
 		if (
 			!sessionId ||
 			!content ||
+			content.items.length === 0 ||
+			needsTheoryContentUpgrade ||
 			content.session.executionStatus !== "notStarted" ||
 			didStartTrackingRef.current
 		)
@@ -1156,7 +588,7 @@ export default function LearningSessionContentScreen() {
 				level: "warn",
 			});
 		});
-	}, [content, ensureSessionStarted, sessionId]);
+	}, [content, ensureSessionStarted, needsTheoryContentUpgrade, sessionId]);
 
 	const timerDurationSeconds = getLearningSessionTimerDurationSeconds({
 		phase: content?.session.phase,
@@ -1166,7 +598,7 @@ export default function LearningSessionContentScreen() {
 	});
 
 	useEffect(() => {
-		if (!timerDurationSeconds || showAnalysis || completionPhase) {
+		if (!timerDurationSeconds || completionPhase) {
 			remainingSecondsRef.current = null;
 			return undefined;
 		}
@@ -1180,10 +612,10 @@ export default function LearningSessionContentScreen() {
 		}, 1000);
 
 		return () => clearInterval(timer);
-	}, [completionPhase, showAnalysis, timerDurationSeconds]);
+	}, [completionPhase, timerDurationSeconds]);
 
 	const displayedRemainingSeconds =
-		timerDurationSeconds !== null && !showAnalysis && !completionPhase
+		timerDurationSeconds !== null && !completionPhase
 			? (remainingSeconds ?? timerDurationSeconds)
 			: null;
 
@@ -1191,51 +623,68 @@ export default function LearningSessionContentScreen() {
 		if (
 			!sessionId ||
 			displayedRemainingSeconds !== 0 ||
+			isDiagnosticSession ||
 			didAutoFinishRef.current
 		)
 			return;
 
 		didAutoFinishRef.current = true;
 		queueMicrotask(() => {
-			if (!isContinuation && content?.session.phase !== "rehearsal") {
-				setCompletionPhase(
-					getLearningSessionCompletionPhase(
-						content?.session.phase ?? "practice",
-						content?.session.compositionVariant ?? "control",
-					),
-				);
-				return;
-			}
-
 			setIsContinuation(false);
-			setCompletionPhase(null);
-			setShowAnalysis(true);
-			void finishSessionContent({ sessionId }).catch((error: unknown) => {
-				setErrorMessage(
-					getErrorMessage(
-						error,
-						"Die Wissensanalyse konnte nicht erstellt werden.",
-					),
-				);
-			});
+			setCompletionPhase(
+				getLearningSessionCompletionPhase(
+					content?.session.phase ?? "practice",
+					content?.session.compositionVariant ?? "control",
+				),
+			);
 		});
 	}, [
 		content?.session.compositionVariant,
 		content?.session.phase,
 		displayedRemainingSeconds,
-		finishSessionContent,
-		isContinuation,
+		isDiagnosticSession,
 		sessionId,
 	]);
 
-	const resetItemState = () => {
-		if (isRecognizing) speechRecognizer.stopListening();
+	const resetItemState = useCallback(() => {
 		setSelectedChoiceId(null);
 		setAnswerText("");
 		setLocalAttempt(null);
 		setRepeatingItemId(null);
-		setSpeechErrorMessage(null);
-	};
+	}, []);
+
+	const advancePastCurrentItem = useCallback(() => {
+		if (!content) return;
+		resetItemState();
+		if (currentIndex < sessionItems.length - 1) {
+			setCurrentIndex((value) => value + 1);
+			return;
+		}
+		setCompletionPhase(
+			getLearningSessionCompletionPhase(
+				content.session.phase,
+				content.session.compositionVariant,
+			),
+		);
+	}, [content, currentIndex, resetItemState, sessionItems.length]);
+
+	useEffect(() => {
+		if (
+			!isPreTheoryQuestion ||
+			!currentItem ||
+			!persistedAttempt ||
+			advancedPreTheoryQuestionItemIdRef.current === currentItem.id
+		) {
+			return;
+		}
+		advancedPreTheoryQuestionItemIdRef.current = currentItem.id;
+		queueMicrotask(advancePastCurrentItem);
+	}, [
+		advancePastCurrentItem,
+		currentItem,
+		isPreTheoryQuestion,
+		persistedAttempt,
+	]);
 
 	const repeatCurrentQuestion = () => {
 		if (!currentItem || isBusy) return;
@@ -1243,27 +692,6 @@ export default function LearningSessionContentScreen() {
 		setRepeatingItemId(currentItem.id);
 		setErrorMessage(null);
 		contentScrollRef.current?.scrollTo({ y: 0, animated: true });
-	};
-
-	const finishAndShowAnalysis = async () => {
-		if (!sessionId || isBusy) return;
-
-		setIsBusy(true);
-		setErrorMessage(null);
-		try {
-			await finishSessionContent({ sessionId });
-			setCompletionPhase(null);
-			setShowAnalysis(true);
-		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die Wissensanalyse konnte nicht erstellt werden.",
-				),
-			);
-		} finally {
-			setIsBusy(false);
-		}
 	};
 
 	const recordCompletedOutcome = async () => {
@@ -1296,7 +724,23 @@ export default function LearningSessionContentScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
-			await recordCompletedOutcome();
+			await finishSessionContent({ sessionId });
+			const completed = await recordCompletedOutcome();
+			const nextSessionId = completed?.rollingUpdate?.committedSessionId;
+			if (nextSessionId) {
+				void prepareSessionContent({ sessionId: nextSessionId }).catch(
+					(error: unknown) => {
+						logDiagnosticError(
+							"Failed to prewarm the next learning session.",
+							error,
+							{
+								source: "learningSession.prewarmNextSession",
+								level: "warn",
+							},
+						);
+					},
+				);
+			}
 			goBack();
 		} catch (error) {
 			setErrorMessage(
@@ -1304,6 +748,38 @@ export default function LearningSessionContentScreen() {
 					error,
 					"Der Lernblock konnte nicht abgeschlossen werden.",
 				),
+			);
+		} finally {
+			setIsBusy(false);
+		}
+	};
+
+	const completeAndOpenAnalysis = async () => {
+		if (!sessionId || isBusy) return;
+
+		setIsBusy(true);
+		setErrorMessage(null);
+		try {
+			const completed = await recordCompletedOutcome();
+			const nextSessionId = completed?.rollingUpdate?.committedSessionId;
+			if (nextSessionId) {
+				void prepareSessionContent({ sessionId: nextSessionId }).catch(
+					(error: unknown) => {
+						logDiagnosticError(
+							"Failed to prewarm the next learning session.",
+							error,
+							{
+								source: "learningSession.prewarmNextSession",
+								level: "warn",
+							},
+						);
+					},
+				);
+			}
+			router.dismissTo(getLearningSessionAnalysisDestination(planId));
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(error, "Die Analyse konnte nicht geöffnet werden."),
 			);
 		} finally {
 			setIsBusy(false);
@@ -1325,7 +801,6 @@ export default function LearningSessionContentScreen() {
 			setRetryStartedAt(Date.now());
 			setCurrentIndex(extension.firstNewItemIndex);
 			setCompletionPhase(null);
-			setShowAnalysis(false);
 			setIsContinuation(true);
 			didAutoFinishRef.current = false;
 		} catch (error) {
@@ -1343,13 +818,19 @@ export default function LearningSessionContentScreen() {
 	const continueTheory = () => {
 		if (!content || isBusy) return;
 		runTheoryTopicPrimaryAction({
-			currentIndex,
-			total: sessionItems.length,
-			onAdvance: (nextIndex) => {
+			currentIndex: theoryTopicPosition.topicIndex,
+			total: theoryTopicPosition.total,
+			onAdvance: () => {
+				if (currentIndex >= sessionItems.length - 1) return;
 				setErrorMessage(null);
-				setCurrentIndex(nextIndex);
+				setCurrentIndex((value) => value + 1);
 			},
 			onComplete: () => {
+				if (currentIndex < sessionItems.length - 1) {
+					setErrorMessage(null);
+					setCurrentIndex((value) => value + 1);
+					return;
+				}
 				setCompletionPhase(
 					getLearningSessionCompletionPhase(
 						content.session.phase,
@@ -1361,95 +842,14 @@ export default function LearningSessionContentScreen() {
 	};
 
 	const showPreviousTheoryTopic = () => {
-		if (isBusy || currentIndex === 0) return;
+		if (isBusy || theoryTopicPosition.previousSessionIndex === null) return;
 		setErrorMessage(null);
-		setCurrentIndex((value) => Math.max(0, value - 1));
-	};
-
-	const buildSpeechRecognitionConfig =
-		useCallback((): SpeechRecognitionConfig => {
-			const contextualStrings = Array.from(
-				new Set(
-					[
-						content?.plan.subject,
-						content?.plan.topicDescription,
-						content?.session.goal,
-						currentItem?.prompt,
-						currentItem?.idealAnswer,
-					]
-						.map((value) => value?.trim())
-						.filter((value): value is string => Boolean(value)),
-				),
-			).slice(0, 100);
-
-			return {
-				locale: "de-DE",
-				contextualStrings,
-				autoFinishRecognitionMs: 8000,
-				autoFinishProgressIntervalMs: 1000,
-				resetAutoFinishVoiceSensitivity: 0.4,
-				startHapticFeedbackStyle: "medium",
-				stopHapticFeedbackStyle: "medium",
-				iosAddPunctuation: true,
-				iosPreset: "general",
-			};
-		}, [content, currentItem]);
-
-	const toggleVoiceRecording = async () => {
-		if (!content || !currentItem || currentItem.kind !== "voice") return;
-		if (visibleAttempt || isBusy) return;
-
-		setErrorMessage(null);
-		setSpeechErrorMessage(null);
-
-		if (speechCaptureUnavailableMessage) {
-			setSpeechErrorMessage(speechCaptureUnavailableMessage);
-			return;
-		}
-
-		if (isRecognizing || speechRecognizer.getIsActive()) {
-			speechRecognizer.stopListening();
-			return;
-		}
-
-		try {
-			if (Platform.OS === "ios") {
-				const supportedLocales = speechRecognizer.getSupportedLocalesIOS();
-				const supportsGerman =
-					supportedLocales.length === 0 ||
-					supportedLocales.some(
-						(locale) => locale.replace("_", "-").toLowerCase() === "de-de",
-					);
-				if (!supportsGerman) {
-					setSpeechErrorMessage(
-						"Spracherkennung ist auf diesem Gerät für Deutsch gerade nicht verfügbar. Du kannst die Antwort als Text eintragen.",
-					);
-					return;
-				}
-			}
-
-			const speechConfig = buildSpeechRecognitionConfig();
-			await speechRecognizer.prewarm(speechConfig, { requestPermission: true });
-
-			const permissionStatus = speechRecognizer.getPermissions();
-			if (permissionStatus !== PermissionStatus.GRANTED) {
-				setSpeechErrorMessage(getSpeechPermissionMessage(permissionStatus));
-				return;
-			}
-
-			speechRecognizer.startListening(speechConfig);
-		} catch {
-			setIsRecognizing(false);
-			setSpeechErrorMessage(
-				"Die Spracherkennung konnte nicht gestartet werden. Du kannst die Antwort als Text eintragen.",
-			);
-		}
+		setCurrentIndex(theoryTopicPosition.previousSessionIndex);
 	};
 
 	const submitCurrentAnswer = async (submitAsUnknown = false) => {
 		if (!currentItem || isBusy) return;
 
-		if (isRecognizing) speechRecognizer.stopListening();
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
@@ -1457,17 +857,23 @@ export default function LearningSessionContentScreen() {
 			const writtenAnswer = submitAsUnknown
 				? fallbackAnswer
 				: answerText.trim();
-			const attempt = await submitAnswer({
-				itemId: currentItem.id,
-				selectedChoiceId:
-					currentItem.kind === "multipleChoice"
-						? submitAsUnknown
-							? "unknown"
-							: (selectedChoiceId ?? undefined)
-						: undefined,
-				answerText: currentItem.kind === "written" ? writtenAnswer : undefined,
-				transcript: currentItem.kind === "voice" ? writtenAnswer : undefined,
-			});
+			const attempt =
+				currentItem.kind === "multipleChoice"
+					? await submitAnswer({
+							itemId: currentItem.id,
+							selectedChoiceId: submitAsUnknown
+								? "unknown"
+								: (selectedChoiceId ?? undefined),
+						})
+					: await evaluateWrittenAnswer({
+							itemId: currentItem.id,
+							answerText: writtenAnswer,
+						});
+			if (attempt.rating === "correct" && !isPreTheoryQuestion) {
+				void triggerSuccessHaptic({
+					platform: process.env.EXPO_OS,
+				});
+			}
 			if (content?.session.phase === "rehearsal") {
 				resetItemState();
 				if (currentIndex < content.items.length - 1) {
@@ -1475,6 +881,13 @@ export default function LearningSessionContentScreen() {
 					return;
 				}
 				setCompletionPhase("rehearsal");
+				return;
+			}
+			if (isPreTheoryQuestion) {
+				if (advancedPreTheoryQuestionItemIdRef.current !== currentItem.id) {
+					advancedPreTheoryQuestionItemIdRef.current = currentItem.id;
+					advancePastCurrentItem();
+				}
 				return;
 			}
 			setLocalAttempt(attempt as SessionAnswerAttempt);
@@ -1487,50 +900,36 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const continueTask = async () => {
+	const continueTask = () => {
 		if (!content || isBusy) return;
-		if (currentIndex < sessionItems.length - 1) {
-			resetItemState();
-			setCurrentIndex((value) => value + 1);
-			return;
-		}
-		setCompletionPhase(
-			getLearningSessionCompletionPhase(
-				content.session.phase,
-				content.session.compositionVariant,
-			),
-		);
+		advancePastCurrentItem();
 	};
 
 	const isAnswerReady =
 		currentItem?.kind === "multipleChoice"
 			? Boolean(selectedChoiceId)
 			: Boolean(answerText.trim());
-
-	const title = showAnalysis
-		? "Wissensanalyse"
-		: completionPhase
-			? completionPhase === "theory"
+	const title = completionPhase
+		? isDiagnosticSession
+			? "Wissenscheck"
+			: completionPhase === "theory"
 				? "Theorie"
 				: phaseTitle(completionPhase)
-			: content
-				? phaseTitle(currentItem?.phase ?? content.session.phase)
-				: "Lernblock";
+		: content
+			? isDiagnosticSession
+				? "Wissenscheck"
+				: isPreTheoryQuestion
+					? "Kurz-Check"
+					: phaseTitle(currentItem?.phase ?? content.session.phase)
+			: "Lernblock";
 	const showQuestionActions = Boolean(
-		content &&
-			currentItem &&
-			!showAnalysis &&
-			!completionPhase &&
-			!visibleAttempt,
+		content && currentItem && !completionPhase && !visibleAttempt,
 	);
-	const showFeedbackAction = Boolean(
-		visibleAttempt && !showAnalysis && !completionPhase,
-	);
+	const showFeedbackAction = Boolean(visibleAttempt && !completionPhase);
 
 	if (
 		content?.session.phase === "theory" &&
 		currentItem?.kind === "learnCard" &&
-		!showAnalysis &&
 		!completionPhase
 	) {
 		return (
@@ -1574,8 +973,8 @@ export default function LearningSessionContentScreen() {
 				<TheoryTopicPage
 					key={currentItem.id}
 					item={currentItem}
-					currentIndex={currentIndex}
-					total={theoryItems.length}
+					currentIndex={theoryTopicPosition.topicIndex}
+					total={theoryTopicPosition.total}
 					isCompleting={isBusy}
 					onPrevious={showPreviousTheoryTopic}
 					onNext={continueTheory}
@@ -1639,7 +1038,7 @@ export default function LearningSessionContentScreen() {
 						className="mb-0"
 						titleClassName="px-24 text-center font-poppins font-semibold text-body-1 text-text"
 						right={
-							displayedRemainingSeconds !== null && !showAnalysis ? (
+							displayedRemainingSeconds !== null ? (
 								<View
 									accessible
 									accessibilityLabel={`Verbleibende Zeit: ${formatRemainingTime(displayedRemainingSeconds)}`}
@@ -1661,10 +1060,18 @@ export default function LearningSessionContentScreen() {
 							) : null
 						}
 					/>
-					{content && currentItem && !showAnalysis && !visibleAttempt ? (
+					{content && currentItem && !visibleAttempt ? (
 						<QuestionProgressBar
-							currentIndex={currentIndex}
-							total={sessionItems.length}
+							currentIndex={
+								isPreTheoryQuestion
+									? theoryTopicPosition.topicIndex
+									: currentIndex
+							}
+							total={
+								isPreTheoryQuestion
+									? theoryTopicPosition.total
+									: sessionItems.length
+							}
 							className="mt-5 w-full"
 						/>
 					) : null}
@@ -1679,12 +1086,9 @@ export default function LearningSessionContentScreen() {
 				scrollEnabled={
 					currentItem?.kind !== "multipleChoice" ||
 					Boolean(visibleAttempt) ||
-					showAnalysis ||
 					Boolean(completionPhase)
 				}
-				automaticallyAdjustKeyboardInsets={
-					currentItem?.kind === "written" || currentItem?.kind === "voice"
-				}
+				automaticallyAdjustKeyboardInsets={currentItem?.kind === "written"}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,
@@ -1696,20 +1100,48 @@ export default function LearningSessionContentScreen() {
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
 			>
-				{!content || content.items.length === 0 ? (
-					<View className="flex-1 items-center justify-center py-24">
-						<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.primary} />
+				{!content || content.items.length === 0 || needsTheoryContentUpgrade ? (
+					<View className="flex-1 items-center justify-center px-4 py-24">
+						<View className="h-14 w-14 items-center justify-center rounded-full bg-system-subtle">
+							<ActivityIndicator
+								accessibilityLabel="Lerninhalte werden vorbereitet"
+								color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+							/>
+						</View>
+						<Text className="mt-6 text-center font-poppins font-semibold text-body-1 text-text">
+							Dein Lernblock wird vorbereitet
+						</Text>
+						<Text className="mt-2 text-center font-poppins text-body-3 text-secondary-text">
+							Dayova erstellt gerade passende Inhalte aus deinen Unterlagen. Du
+							kannst zum Lernplan zurückgehen – die Vorbereitung läuft weiter.
+						</Text>
+						{errorMessage ? (
+							<ErrorMessage className="mt-5">{errorMessage}</ErrorMessage>
+						) : null}
+						{errorMessage ||
+						content?.session.contentGenerationStatus === "failed" ? (
+							<Button
+								className="mt-8"
+								disabled={isBusy}
+								onPress={retrySessionPreparation}
+							>
+								{isBusy ? (
+									<ActivityIndicator
+										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
+									/>
+								) : (
+									<Text>Erneut versuchen</Text>
+								)}
+							</Button>
+						) : null}
+						<Button className="mt-4" onPress={goBack} variant="neutral">
+							<Text>Zurück zum Lernplan</Text>
+						</Button>
 					</View>
-				) : showAnalysis ? (
-					<AnalysisView
-						content={content}
-						onContinueLearning={() => void startContinueLearning()}
-						onDone={completeAndLeave}
-						isBusy={isBusy}
-					/>
 				) : completionPhase ? (
-					<CompletionView
+					<LearningSessionCompletion
 						phase={completionPhase}
+						isDiagnostic={isDiagnosticSession}
 						durationMinutes={content.session.durationMinutes}
 						correctCount={currentRunCorrectCount}
 						attemptCount={currentRunAttempts.length}
@@ -1717,7 +1149,7 @@ export default function LearningSessionContentScreen() {
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave
-								: finishAndShowAnalysis
+								: completeAndOpenAnalysis
 						}
 						isBusy={isBusy}
 					/>
@@ -1737,19 +1169,6 @@ export default function LearningSessionContentScreen() {
 									onSelect={setSelectedChoiceId}
 									disabled={isBusy}
 								/>
-							) : currentItem.kind === "voice" ? (
-								<VoiceAnswer
-									key={currentItem.id}
-									value={answerText}
-									onChange={setAnswerText}
-									editable={!isBusy}
-									isRecognizing={isRecognizing}
-									speechErrorMessage={speechErrorMessage}
-									speechCaptureUnavailableMessage={
-										speechCaptureUnavailableMessage
-									}
-									onToggleRecording={toggleVoiceRecording}
-								/>
 							) : (
 								<TextAnswer
 									value={answerText}
@@ -1757,6 +1176,7 @@ export default function LearningSessionContentScreen() {
 									placeholder="Schreibe hier deine Antwort."
 									editable={!isBusy}
 									fillAvailableSpace
+									autoFocus={!isPreTheoryQuestion}
 								/>
 							)}
 						</View>
@@ -1783,18 +1203,25 @@ export default function LearningSessionContentScreen() {
 					>
 						<ActionRow
 							className="mt-0"
-							secondaryLabel="Weiß ich nicht"
+							secondaryLabel={
+								isPreTheoryQuestion ? "Noch nicht" : "Weiß ich nicht"
+							}
 							primaryLabel={
-								content.session.phase === "rehearsal"
-									? currentIndex < content.items.length - 1
-										? "Weiter"
-										: "Abgeben"
-									: "Beantworten"
+								isPreTheoryQuestion
+									? "Abgeben"
+									: content.session.phase === "rehearsal"
+										? currentIndex < content.items.length - 1
+											? "Weiter"
+											: "Abgeben"
+										: "Beantworten"
 							}
 							onSecondary={() => void submitCurrentAnswer(true)}
 							onPrimary={() => void submitCurrentAnswer()}
-							primaryDisabled={isRecognizing || !isAnswerReady}
+							primaryDisabled={!isAnswerReady}
 							isBusy={isBusy}
+							busyLabel={
+								currentItem?.kind === "written" ? "Analysiere …" : undefined
+							}
 						/>
 					</View>
 				</KeyboardAvoidingView>

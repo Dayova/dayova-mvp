@@ -1,22 +1,26 @@
+type LearningPlanSetupStep = "requiredTopics" | "materialUpload";
+
 type LearningPlanCreationBackIntent =
-	| { kind: "previousQuestion"; questionIndex: number }
+	| { kind: "previousStep"; step: "requiredTopics" }
 	| { kind: "confirmPause" }
+	| { kind: "exit" }
 	| { kind: "ignore" };
 
 export const getLearningPlanCreationBackIntent = ({
-	questionIndex,
+	step,
+	hasSavedDraft,
 	isPauseConfirmationVisible,
 }: {
-	questionIndex: number;
+	step: LearningPlanSetupStep;
+	hasSavedDraft: boolean;
 	isPauseConfirmationVisible: boolean;
 }): LearningPlanCreationBackIntent => {
 	if (isPauseConfirmationVisible) return { kind: "ignore" };
-	if (questionIndex <= 0) return { kind: "confirmPause" };
-
-	return {
-		kind: "previousQuestion",
-		questionIndex: questionIndex - 1,
-	};
+	if (step === "materialUpload") {
+		return { kind: "previousStep", step: "requiredTopics" };
+	}
+	if (hasSavedDraft) return { kind: "confirmPause" };
+	return { kind: "exit" };
 };
 
-export type { LearningPlanCreationBackIntent };
+export type { LearningPlanCreationBackIntent, LearningPlanSetupStep };

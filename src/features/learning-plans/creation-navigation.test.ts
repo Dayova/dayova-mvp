@@ -2,28 +2,41 @@ import { describe, expect, test } from "vitest";
 import { getLearningPlanCreationBackIntent } from "./creation-navigation";
 
 describe("learning plan creation back intent", () => {
-	test("moves directly to the preceding question after question one", () => {
+	test("moves directly to the previous setup step", () => {
 		expect(
 			getLearningPlanCreationBackIntent({
-				questionIndex: 3,
+				step: "materialUpload",
+				hasSavedDraft: true,
 				isPauseConfirmationVisible: false,
 			}),
-		).toEqual({ kind: "previousQuestion", questionIndex: 2 });
+		).toEqual({ kind: "previousStep", step: "requiredTopics" });
 	});
 
-	test("requests pause confirmation before leaving question one", () => {
+	test("confirms before pausing a saved draft from the first step", () => {
 		expect(
 			getLearningPlanCreationBackIntent({
-				questionIndex: 0,
+				step: "requiredTopics",
+				hasSavedDraft: true,
 				isPauseConfirmationVisible: false,
 			}),
 		).toEqual({ kind: "confirmPause" });
 	});
 
-	test("ignores another back intent while pause confirmation is visible", () => {
+	test("exits an unsaved first step without creating an empty draft", () => {
 		expect(
 			getLearningPlanCreationBackIntent({
-				questionIndex: 0,
+				step: "requiredTopics",
+				hasSavedDraft: false,
+				isPauseConfirmationVisible: false,
+			}),
+		).toEqual({ kind: "exit" });
+	});
+
+	test("ignores duplicate back intents while confirmation is visible", () => {
+		expect(
+			getLearningPlanCreationBackIntent({
+				step: "requiredTopics",
+				hasSavedDraft: true,
 				isPauseConfirmationVisible: true,
 			}),
 		).toEqual({ kind: "ignore" });

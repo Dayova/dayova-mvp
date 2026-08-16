@@ -22,9 +22,14 @@ if (!["development", "preview", "production"].includes(APP_VARIANT)) {
 const isProduction = APP_VARIANT === "production";
 const isReleaseConfig =
 	process.env.EAS_BUILD === "true" || process.env.NODE_ENV === "production";
+const releasePlatform =
+	process.env.EAS_BUILD_PLATFORM === "android" ||
+	process.env.EAS_BUILD_PLATFORM === "ios"
+		? process.env.EAS_BUILD_PLATFORM
+		: undefined;
 
 if (isReleaseConfig) {
-	validatePublicEnvForRelease();
+	validatePublicEnvForRelease(undefined, { platform: releasePlatform });
 }
 
 const APP_VERSION = "1.0.3";
@@ -45,12 +50,8 @@ const PROJECT_ID = "d3d06b26-c8da-4192-a50d-e1bb0ca4902c";
 const IOS_PRIVACY_PURPOSE_STRINGS = {
 	NSCameraUsageDescription:
 		"Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
-	NSMicrophoneUsageDescription:
-		"Dayova braucht Zugriff auf dein Mikrofon, damit du Sprachantworten einsprechen kannst.",
 	NSPhotoLibraryUsageDescription:
 		"Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst.",
-	NSSpeechRecognitionUsageDescription:
-		"Dayova nutzt Spracherkennung, um deine eingesprochenen Antworten als Text auszuwerten.",
 } as const;
 
 const config: ExpoConfig = {
@@ -76,7 +77,6 @@ const config: ExpoConfig = {
 		supportsTablet: true,
 		bundleIdentifier: isProduction ? "de.dayova.app" : "de.dayova.app-dev",
 		runtimeVersion: APP_VERSION,
-		usesAppleSignIn: true,
 		infoPlist: {
 			ITSAppUsesNonExemptEncryption: false,
 			...IOS_PRIVACY_PURPOSE_STRINGS,
@@ -96,7 +96,14 @@ const config: ExpoConfig = {
 	plugins: [
 		"expo-router",
 		"expo-status-bar",
-		"@clerk/expo",
+		[
+			"@clerk/expo",
+			{
+				// Dayova uses its own email/password authentication flow. Clerk's
+				// default would otherwise add an unused Sign in with Apple entitlement.
+				appleSignIn: false,
+			},
+		],
 		[
 			"expo-notifications",
 			{
@@ -109,12 +116,12 @@ const config: ExpoConfig = {
 			{
 				cameraPermission:
 					"Dayova braucht Zugriff auf deine Kamera, damit du Mitschriften fotografieren kannst.",
-				microphonePermission:
-					IOS_PRIVACY_PURPOSE_STRINGS.NSMicrophoneUsageDescription,
+				microphonePermission: false,
 				photosPermission:
 					"Dayova braucht Zugriff auf deine Fotos, damit du Schulmaterial hochladen kannst.",
 			},
 		],
+		"./plugins/withRemovedVoicePermissions",
 		"expo-localization",
 		"./plugins/withNinjaLongPaths",
 		"./plugins/withAndroidGradleJvmMemory",
@@ -175,4 +182,4 @@ const config: ExpoConfig = {
 	},
 };
 
-export default config;
+module.exports = config;

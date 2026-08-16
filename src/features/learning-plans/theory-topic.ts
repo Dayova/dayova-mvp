@@ -10,6 +10,61 @@ export type TheoryTopic = {
 	commonMistake?: string;
 };
 
+export type TheoryPagePresentation = {
+	sectionTitle: string;
+	showKeyPoints: boolean;
+	showExample: boolean;
+	showMemoryCue: boolean;
+	showCommonMistake: boolean;
+};
+
+export const getTheoryPagePresentation = (
+	questionAngle: string | undefined,
+): TheoryPagePresentation => {
+	switch (questionAngle) {
+		case "recall":
+			return {
+				sectionTitle: "Kernidee",
+				showKeyPoints: true,
+				showExample: false,
+				showMemoryCue: true,
+				showCommonMistake: false,
+			};
+		case "recognize":
+			return {
+				sectionTitle: "Woran du es erkennst",
+				showKeyPoints: true,
+				showExample: true,
+				showMemoryCue: false,
+				showCommonMistake: false,
+			};
+		case "apply":
+			return {
+				sectionTitle: "So funktioniert es",
+				showKeyPoints: false,
+				showExample: true,
+				showMemoryCue: true,
+				showCommonMistake: false,
+			};
+		case "findError":
+			return {
+				sectionTitle: "Darauf musst du achten",
+				showKeyPoints: false,
+				showExample: false,
+				showMemoryCue: true,
+				showCommonMistake: true,
+			};
+		default:
+			return {
+				sectionTitle: "Das solltest du wissen",
+				showKeyPoints: true,
+				showExample: true,
+				showMemoryCue: true,
+				showCommonMistake: true,
+			};
+	}
+};
+
 const isGenericLearningCardTitle = (title: string) =>
 	/^Lernkarte\s+\d+$/i.test(title.trim());
 
@@ -32,23 +87,32 @@ export const adaptTheoryTopic = (
 	};
 };
 
-export const buildTheorySpeechText = (topic: TheoryTopic) =>
-	[
+export const buildTheorySpeechText = (
+	topic: TheoryTopic,
+	questionAngle?: string,
+) => {
+	const presentation = getTheoryPagePresentation(questionAngle);
+	return [
 		topic.conceptTitle,
 		`Leitfrage: ${topic.question}`,
 		`Erklärung: ${topic.explanation}`,
-		topic.keyPoints.length > 0
+		presentation.showKeyPoints && topic.keyPoints.length > 0
 			? `Wichtig: ${topic.keyPoints.join(" ")}`
 			: undefined,
-		topic.example ? `Beispiel: ${topic.example}` : undefined,
-		topic.memoryCue ? `Merksatz: ${topic.memoryCue}` : undefined,
-		topic.commonMistake
+		presentation.showExample && topic.example
+			? `Beispiel: ${topic.example}`
+			: undefined,
+		presentation.showMemoryCue && topic.memoryCue
+			? `Merksatz: ${topic.memoryCue}`
+			: undefined,
+		presentation.showCommonMistake && topic.commonMistake
 			? `Typischer Fehler: ${topic.commonMistake}`
 			: undefined,
 	]
 		.filter((section): section is string => Boolean(section))
 		.map((section) => (/[.!?]$/.test(section) ? section : `${section}.`))
 		.join(" ");
+};
 
 export const splitTheorySpeechText = (text: string, maximumLength: number) => {
 	const remainingText = text.trim();

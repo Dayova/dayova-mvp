@@ -12,7 +12,7 @@
 			"convex/**",
 			"plugins/**",
 			"scripts/**",
-			"app.config.ts",
+			"app.config.cts",
 			"babel.config.js",
 			"biome.jsonc",
 			"components.json",

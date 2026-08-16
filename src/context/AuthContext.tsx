@@ -26,35 +26,35 @@ import { runWithAuthSettleRetries } from "~/lib/auth-settle-retry";
 import {
 	getDefinedProfileFields as definedProfileFields,
 	prepareClerkRegistration,
-	splitClerkName as splitName,
 	type ClerkRegistrationInput as RegisterInput,
 	type ClerkProfile as RegisterProfile,
+	splitClerkName as splitName,
 } from "~/lib/clerk-registration";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import {
-	completeForcedPasswordReset as submitForcedPasswordReset,
 	type ForcedPasswordResetUser,
+	completeForcedPasswordReset as submitForcedPasswordReset,
 } from "~/lib/forced-password-reset";
+import { isSupportedGrade } from "~/lib/grades";
+import { signOutAndResetState } from "~/lib/logout-state";
 import {
-	changePassword as updateAccountPassword,
 	type PasswordChangeInput,
+	changePassword as updateAccountPassword,
 } from "~/lib/password-change";
 import {
-	cancelPasswordReset as cancelPasswordResetAttempt,
-	completePasswordReset as submitPasswordReset,
-	resendPasswordResetCode as resendPasswordResetAttempt,
 	startPasswordReset as beginPasswordReset,
+	cancelPasswordReset as cancelPasswordResetAttempt,
+	type PasswordResetCodeStage,
+	resendPasswordResetCode as resendPasswordResetAttempt,
+	completePasswordReset as submitPasswordReset,
 	verifyPasswordResetCode as verifyPasswordResetAttempt,
 	verifyPasswordResetSecondFactor as verifyPasswordResetSecondFactorAttempt,
-	type PasswordResetCodeStage,
 } from "~/lib/password-reset";
 import {
-	reverifyPasswordFactor,
 	type PasswordReverificationSession,
+	reverifyPasswordFactor,
 } from "~/lib/password-reverification";
-import { signOutAndResetState } from "~/lib/logout-state";
-import { isSupportedGrade } from "~/lib/grades";
 import {
 	isSupportedSchoolType,
 	normalizeLegacySchoolType,
@@ -107,6 +107,7 @@ interface AuthSessionContextType {
 	user: AuthUser | null;
 	isSessionLoading: boolean;
 	isConvexAuthenticated: boolean;
+	isConvexUserSynced: boolean;
 	isPostAuthSyncing: boolean;
 	pendingSessionTask: string | null;
 }
@@ -573,7 +574,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			sharedContext: { validationStudentCode },
 		}).capture("onboarding_completed", {
 			local_day_key: localDayKey,
-			onboarding_version: 1,
+			onboarding_version: 2,
 		});
 	}, [markValidationActivity, posthog, user]);
 
@@ -588,16 +589,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 		let cancelled = false;
 		const answers = {
-			studyTime: onboardingAnswers.studyTime,
-			strength: onboardingAnswers.strength,
-			challenge: onboardingAnswers.challenge,
-			goal: onboardingAnswers.goal,
 			state: onboardingAnswers.state,
 			schoolType: onboardingAnswers.schoolType,
 			grade: onboardingAnswers.grade,
-			dailySchoolTime: onboardingAnswers.dailySchoolTime,
-			studyDays: onboardingAnswers.studyDays,
-			learningTime: onboardingAnswers.learningTime,
 		};
 
 		void (async () => {
@@ -1187,6 +1181,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				user,
 				isSessionLoading,
 				isConvexAuthenticated,
+				isConvexUserSynced:
+					Boolean(user) && syncedClerkUserId === user?.clerkId,
 				isPostAuthSyncing:
 					Boolean(user) && (isProfileSyncing || isOnboardingAnswersSyncing),
 				pendingSessionTask,

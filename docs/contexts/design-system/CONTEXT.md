@@ -4,6 +4,12 @@ This context covers shared UI components, styling conventions, tokens, themes, v
 
 Notion is Dayova's main internal documentation and knowledge workspace. Keep this file focused on implementation-facing terminology, conventions, and assumptions that must evolve with the code, and link to relevant Notion records instead of duplicating shared documentation.
 
+## Language
+
+**Content-size resilience**:
+Dayova's quality contract for every portrait phone and tablet layout across system text and display sizing: default sizing stays visually identical to the approved baseline, while non-default sizes may reflow, stack, grow, or vertically scroll but must remain polished, complete, and fully usable. Screens stay bounded to the portrait viewport; horizontal scrolling remains valid only where it is an intentional part of an inherently horizontal component, never as a workaround for larger text or display sizing. Meaningful copy and actions remain present at their system-scaled size and reflow vertically; intentional ellipsis is valid only when the complete value remains accessible. Portrait-tablet compatibility keeps the phone information architecture in a centered, bounded-width single column and changes only behavior that is buggy or visibly awkward. Dedicated tablet composition, navigation, information density, landscape, split-screen, and foldable postures are separate product modes.
+_Avoid_: Pixel-identical layouts at every accessibility size, merely fitting without visual quality, clipping content, shrinking or capping meaningful text, hiding actions, inaccessible truncation, disabling system scaling, screen-level horizontal scrolling, treating portrait tablet compatibility as a dedicated tablet mode
+
 ## Current Design Delivery Model
 
 Effective 14 July 2026, existing Figma work is a visual reference and baseline,
@@ -96,7 +102,9 @@ tabs, labels that need emphasis, and other highlighted text use SemiBold.
 Large numeric counters use `display-counter` 60/68. The supported content
 hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30, `body-2`
 16/24, `body-3` 14/21, `body-4` 12/18, and `body-5` 10/15, all with 0px letter
-spacing.
+spacing. Top-level page-intro groups use 12px between their heading and
+supporting copy. Compact navigation chrome, dense data rows, and headings inside
+cards may keep tighter spacing when the elements form one local unit.
 
 Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
@@ -104,6 +112,41 @@ There are no white pill buttons in the current light-mode design system. Both
 appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
 buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
 with a white stroke, and black buttons use the light border token `#DCE6EE`.
+
+The trial-activation and expired-trial payment flow are deliberate full-bleed
+branded exceptions. The expired-trial flow separates payer selection from
+subscription completion into two routes. Both use the shared
+`primaryInteractive` gradient as the view's only gradient, white text on the
+saturated outer surface, and
+theme-independent light surfaces for content that needs primary and secondary
+text. Payer choices stay on the first route; they never expand subscription
+details in place, and the subscription route does not repeat the chosen payer
+as a summary row. On the subscription route, plan choices use a translucent
+white surface with a thin border, restrained inset highlight, and shadow, while
+their text stays dark in every app theme. The selected plan uses a dark outline
+and checked indicator instead of a tinted fill. The annual plan emphasizes its
+monthly equivalent and keeps the annual charge in the description. The
+subscription header pairs its back action with the current two-step progress in
+one compact row instead of isolating navigation above the page title. Secondary
+actions use `systemSubtle`,
+payment details use `surface` with a primary-accent border, the subscription
+checkout action uses the standard black treatment, and purchase restoration is
+an underlined white link. The parent-payment checkout link continues to use
+`primaryStrong`. Reusing shared semantic values keeps both ends of the trial flow
+synchronized with future Dayova color changes. This treatment is limited to
+focused access-setup moments and is not a third general-purpose light-mode
+button appearance. The trial-activation screen may use its white primary button
+for legible contrast on that saturated surface; this does not introduce a
+reusable third button appearance. The expired-trial screen passes the fixed
+shared light tokens through the native style API because the tracked Fabric
+variable-invalidation issue can otherwise leave newly mounted descendants with
+mixed light and dark tokens.
+
+The post-purchase confirmation route extends this focused access-flow exception:
+it uses the same `primaryInteractive` gradient and fixed light surfaces, then
+offers one forward-only action into the app. Show it after a newly completed
+purchase, not after restoring an existing subscription, so the celebration
+acknowledges a real transition without becoming recurring friction.
 
 The current app corner system is: info/small boxes use 24px, 345px-wide
 rectangles and card-like surfaces use 32px, and buttons use 44px. Device frame

@@ -427,7 +427,7 @@ rebuild the app. A Metro reload cannot add native code to an existing binary.
 
 Check, in order:
 
-1. [`app.config.ts`](../../app.config.ts) still sets
+1. [`app.config.cts`](../../app.config.cts) still sets
    `userInterfaceStyle: "automatic"`.
 2. The stored Dayova preference is the expected Light, System, or Dark value.
 3. System mode passes `"unspecified"` to `Appearance.setColorScheme`.

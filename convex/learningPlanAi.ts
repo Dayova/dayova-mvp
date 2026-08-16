@@ -13,6 +13,7 @@ import { z } from "zod";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { type ActionCtx, action } from "./_generated/server";
+import { isUnknownWrittenAnswer } from "./answerEvaluation";
 import { readBooleanEnv, readOptionalEnv, readRequiredEnv } from "./env";
 import {
 	getUserFacingBackendErrorMessage,
@@ -27,6 +28,7 @@ import {
 import {
 	createLearningContentPlan,
 	type LearningContentBlock,
+	type LearningQuestionAngle,
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
@@ -63,7 +65,7 @@ import {
 	MAX_LEARNING_TOPIC_COUNT,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
-import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
+import { areSemanticallyDuplicateQuestions } from "./questionNovelty";
 
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
@@ -85,9 +87,11 @@ const MIN_LEARNING_SLOT_MINUTES = 10;
 const MAX_LEARNING_SESSION_MINUTES = 30;
 const MAX_GENERATED_SESSIONS = 40;
 const MIN_TOPIC_MAP_COUNT = 3;
+const PREFERRED_TOPIC_MAP_COUNT = 6;
+const TOPIC_MAP_GENERATION_INSTRUCTION = `Erstelle zuerst eine möglichst vollständige Themenkarte mit ${MIN_TOPIC_MAP_COUNT} bis ${MAX_LEARNING_TOPIC_COUNT} klar getrennten, einzeln prüfbaren Fähigkeiten. Ziele auf mindestens ${PREFERRED_TOPIC_MAP_COUNT} Themen, wenn die internen Schulmaterialien genügend fachliche Substanz enthalten; erfinde oder dupliziere aber keine Themen, um diese Zahl zu erreichen. Zerlege breite Sammelthemen in konkrete Fähigkeiten, die der Schüler jeweils erklären und in einer Aufgabe anwenden oder lösen können muss. Nutze kurze stabile ASCII-IDs wie "steigung-berechnen". Das learningGoal beschreibt beobachtbar, was der Schüler zu diesem Thema verstehen und lösen oder anwenden können muss. requiredEvidenceDimensions enthält grundsätzlich understanding und problemSolving; ergänze independent, wenn das Material eine selbstständige prüfungsnahe Anwendung verlangt. Lass problemSolving nur bei nachweislich reinem Faktenwissen weg. Nutze die vom Lernenden angegebenen Prüfungsthemen, um die relevanten Inhalte in den internen Schulmaterialien zu erkennen. Leite den wahrscheinlichen Prüfungsstoff aus dieser Themenangabe und den internen Schulmaterialien ab; die Schulmaterialien bleiben für die konkrete Ausgestaltung maßgeblich. Externe Lernhilfen definieren niemals den Prüfungsstoff. Priorisiere explizite Prüfungshinweise vor allgemeinen oder älteren Übungsinhalten.`;
 const GERMAN_UI_TEXT_RULE =
 	"All visible German UI text must use correct umlauts and ß, not ae/oe/ue/ss substitutions.";
-const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return five short diagnostic questions, extended up to eight only when the material scope or learner readiness remains unclear.`;
+const KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return five to ten objectively assessable questions for the first-session knowledge check.`;
 const GENERATED_PLAN_OUTPUT_DESCRIPTION = `${GERMAN_UI_TEXT_RULE} Return a realistic, calendar-ready German learning plan with concrete study sessions.`;
 const BERLIN_TIME_ZONE = "Europe/Berlin";
 
@@ -102,6 +106,7 @@ const vertexProviderOptions = {
 type AiUsageOperation =
 	| "diagnostic"
 	| "plan"
+	| "answer_evaluation"
 	| "session_theory"
 	| "session_practice"
 	| "session_praxis";
@@ -271,6 +276,13 @@ const questionsSchema = z
 					8,
 				),
 				priority: z.enum(["high", "medium", "low"]),
+				requiredEvidenceDimensions: z
+					.array(z.enum(["understanding", "problemSolving", "independent"]))
+					.min(1)
+					.max(3)
+					.describe(
+						"Evidence dimensions actually required by the exam material for this topic: understanding for explaining concepts, problemSolving for selecting and applying a method, independent for completing exam-like tasks without hints.",
+					),
 			}),
 			MIN_TOPIC_MAP_COUNT,
 			MAX_LEARNING_TOPIC_COUNT,
@@ -278,15 +290,38 @@ const questionsSchema = z
 		questions: boundedArray(
 			z.object({
 				topicId: z.string().min(3).max(48),
-				kind: z.enum(["performance", "confidence"]),
+				kind: z.literal("performance"),
+				evidenceDimension: z.enum([
+					"understanding",
+					"problemSolving",
+					"independent",
+				]),
+				responseKind: z.enum(["multipleChoice", "shortText", "longText"]),
+				options: atMostArray(
+					germanTextSchema(
+						1,
+						"One concise German answer option. Only return options for multiple-choice questions.",
+						100,
+					),
+					4,
+				),
+				correctOptionIndex: z.number().int().min(0).max(3).nullable(),
 				prompt: germanTextSchema(
 					12,
-					"One short, direct German diagnostic question the student can answer without deciphering nested instructions. Ask one thing only. No multiple choice and no references to files or uploads.",
+					"One short, direct German diagnostic question the student can answer without deciphering nested instructions. Ask one thing only and never reference files or uploads.",
 					180,
 				),
 				targetInsight: germanTextSchema(
 					8,
 					"What this answer reveals about the student's strengths, gaps, or needed learning blocks.",
+				),
+				idealAnswer: germanTextSchema(
+					1,
+					"Concise German ideal answer used to evaluate the student's response.",
+				),
+				explanation: germanTextSchema(
+					12,
+					"Brief German feedback that explains why the ideal answer is correct.",
 				),
 				evaluationKeywords: boundedArray(
 					germanTextSchema(
@@ -298,7 +333,7 @@ const questionsSchema = z
 				),
 			}),
 			5,
-			8,
+			10,
 		),
 	})
 	.describe(KNOWLEDGE_QUESTIONS_OUTPUT_DESCRIPTION);
@@ -366,11 +401,51 @@ const generatedPlanSchema = z
 const generatedTaskChoiceSchema = z.object({
 	text: germanTextSchema(
 		1,
-		"Concise German answer option containing one concept and at most one distinguishing characteristic.",
-		MAX_MULTIPLE_CHOICE_OPTION_CHARS,
+		`Concise German answer option containing one concept and at most one distinguishing characteristic. Keep it within ${MAX_MULTIPLE_CHOICE_OPTION_CHARS} characters.`,
 	),
 	isCorrect: z.boolean(),
 });
+
+const writtenAnswerEvaluationSchema = z.object({
+	rating: z.enum(["notCorrect", "partiallyCorrect", "correct"]),
+	review: germanTextSchema(
+		12,
+		"A concise German review of the learner's answer. State what is correct and integrate the essential correction or correct result without adding a separate ideal-answer section.",
+		700,
+	),
+});
+
+const evaluatedAnswerAttemptValidator = v.object({
+	id: v.id("learningSessionAnswerAttempts"),
+	itemId: v.id("learningSessionContentItems"),
+	sessionId: v.id("learningPlanSessions"),
+	selectedChoiceId: v.optional(v.string()),
+	answerText: v.optional(v.string()),
+	transcript: v.optional(v.string()),
+	rating: v.union(
+		v.literal("notCorrect"),
+		v.literal("partiallyCorrect"),
+		v.literal("correct"),
+	),
+	feedback: v.string(),
+	perfectAnswer: v.string(),
+	timeSpentSeconds: v.optional(v.number()),
+	createdAt: v.number(),
+});
+
+type EvaluatedAnswerAttempt = {
+	id: Id<"learningSessionAnswerAttempts">;
+	itemId: Id<"learningSessionContentItems">;
+	sessionId: Id<"learningPlanSessions">;
+	selectedChoiceId?: string;
+	answerText?: string;
+	transcript?: string;
+	rating: "notCorrect" | "partiallyCorrect" | "correct";
+	feedback: string;
+	perfectAnswer: string;
+	timeSpentSeconds?: number;
+	createdAt: number;
+};
 
 const generatedTaskBaseSchema = {
 	title: germanTextSchema(3, "Short German UI label for this task."),
@@ -410,14 +485,6 @@ const generatedTaskItemSchema = z.union([
 			"Concrete German written task prompt the learner can answer directly.",
 		),
 	}),
-	z.object({
-		kind: z.literal("voice"),
-		...generatedTaskBaseSchema,
-		prompt: germanTextSchema(
-			12,
-			"Concrete German spoken task prompt the learner can answer directly.",
-		),
-	}),
 ]);
 
 const generatedTheoryItemSchema = z.object({
@@ -427,31 +494,37 @@ const generatedTheoryItemSchema = z.object({
 	),
 	question: germanTextSchema(
 		12,
-		"One natural German guiding question that the learner can answer directly. Never quote or restate an instruction inside another instruction.",
+		"One short German curiosity question shown before the theory. The learner has not seen the explanation yet and must be able to answer with an intuitive first guess. Ask one thing only. Never demand a definition, complete list, comparison, or step-by-step solution. Avoid specialist wording when everyday language works.",
+		140,
 	),
 	explanation: germanTextSchema(
-		160,
-		"Clear German teaching explanation in three to five connected sentences. Explain why the rule works, not only what the result is.",
+		60,
+		"Concise German teaching explanation in one or two connected sentences. Explain why the idea works, not only what the result is.",
+		320,
 	),
 	keyPoints: boundedArray(
 		germanTextSchema(
-			20,
+			12,
 			"One specific German key point that adds information and is not merely a keyword or a copy of another section.",
+			150,
 		),
+		1,
 		2,
-		4,
 	),
 	example: germanTextSchema(
-		80,
+		45,
 		"A concrete worked German example with an input or situation, the decisive step, and the result. Never copy the short answer or memory cue.",
+		300,
 	),
 	memoryCue: germanTextSchema(
-		20,
+		12,
 		"One memorable German rule of thumb that helps recall the concept. It must not duplicate the example or a key point.",
+		120,
 	),
 	commonMistake: germanTextSchema(
-		40,
+		24,
 		"One concept-specific German mistake, including how the learner can notice or prevent it.",
+		180,
 	),
 	keywords: atMostArray(
 		germanTextSchema(
@@ -492,7 +565,9 @@ type LearningPlanAiContext = {
 		targetStudyMinutes?: number;
 		preparationDepth?: PreparationDepth;
 		sessionCompositionVariant?: "control" | "split";
+		diagnosticPlacement?: "firstSession";
 		topicDescription: string;
+		teacherGuidance?: string;
 		notes?: string;
 		knowledgeQuestions?: Array<{
 			id: string;
@@ -500,6 +575,12 @@ type LearningPlanAiContext = {
 			targetInsight: string;
 			topicId?: string;
 			kind?: "performance" | "confidence";
+			responseKind?: "multipleChoice" | "shortText" | "longText";
+			options?: string[];
+			correctAnswer?: string;
+			idealAnswer?: string;
+			explanation?: string;
+			evidenceDimension?: "understanding" | "problemSolving" | "independent";
 			evaluationKeywords?: string[];
 		}>;
 		topicMap?: Array<{
@@ -508,6 +589,9 @@ type LearningPlanAiContext = {
 			learningGoal: string;
 			keywords: string[];
 			priority: "high" | "medium" | "low";
+			requiredEvidenceDimensions?: Array<
+				"understanding" | "problemSolving" | "independent"
+			>;
 		}>;
 		topicReadiness?: Array<{
 			topicId: string;
@@ -520,6 +604,7 @@ type LearningPlanAiContext = {
 		fileName: string;
 		fileType: string;
 		fileSizeBytes: number;
+		sourceKind?: "school" | "external";
 	}>;
 	learningTimes: Array<{
 		dayOfWeek: number;
@@ -549,25 +634,47 @@ type LearningSessionContentAiContext = {
 		phase: GeneratedSessionPhase;
 		title: string;
 		durationMinutes: number;
+		completed?: boolean;
 		compositionVariant?: "control" | "split";
+		sessionPurpose?: "diagnostic" | "learning";
 		goal: string;
 		tasks: string[];
 		expectedOutcome: string;
+		targetTopicIds?: string[];
+		targetEvidenceDimension?:
+			| "understanding"
+			| "problemSolving"
+			| "independent";
+		planningStatus?: "committed" | "provisional";
 		sortOrder: number;
 	};
 	planSessions: Array<{
 		phase: GeneratedSessionPhase;
+		sessionPurpose?: "diagnostic" | "learning";
 		title: string;
 		goal: string;
 		sortOrder: number;
+		knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
 	}>;
 	documents: LearningPlanAiContext["documents"];
 	answers: Array<{ questionId: string; answer: string }>;
 	learningTimes: LearningPlanAiContext["learningTimes"];
 	priorTheoryCards: Array<{ front: string; back: string }>;
 	priorSessionItems: Array<{ prompt: string; coverageKey?: string }>;
+	priorSessionEvidence: Array<{
+		sessionTitle: string;
+		question: string;
+		response: string;
+		rating: "notCorrect" | "partiallyCorrect" | "correct";
+		feedback: string;
+		idealAnswer: string;
+		topicId?: string;
+		evidenceDimension?: "understanding" | "problemSolving" | "independent";
+	}>;
 	priorCoverageKeys: string[];
 	existingItemCount: number;
+	hasTheoryKnowledgeCheck: boolean;
+	hasCompleteTheoryPracticePairs: boolean;
 	needsLegacyContentReplacement: boolean;
 	accessKey: string;
 };
@@ -578,6 +685,7 @@ type ModelDocumentInput = {
 	fileName: string;
 	fileType: string;
 	fileSizeBytes: number;
+	sourceKind?: "school" | "external";
 };
 
 const createVertexModel = () => {
@@ -621,6 +729,15 @@ const generatedTextRetrySystemInstruction = (attempt: number) =>
 	attempt === 0
 		? ""
 		: " Die vorherige Ausgabe war ungültig oder wiederholte bereits vorhandene Fragen. Erzeuge alle Fragen vollständig neu, ohne inhaltliche Duplikate und mit korrekten Unicode-Zeichen wie ä, ö, ü, Ä, Ö, Ü und ß.";
+
+const theoryGenerationSystemInstruction = (attempt: number) =>
+	`Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Deutschland. Erstelle eine zusammenhängende Mini-Lektion aus kurzen deutschen Theorie-Seiten. Jede Seite konzentriert sich auf die in der Planung genannte Seitenrolle und baut auf der vorherigen Seite auf. Alle Pflichtfelder des Schemas unterstützen diese Rolle, statt ein zweites Thema einzuführen. Wiederhole keine Erklärung, kein Beispiel und keinen Merksatz auf einer späteren Seite.
+
+Die hochgeladenen Schulunterlagen und die gespeicherte Materialzusammenfassung sind die fachliche Quelle. Übernimm ihre Begriffe und Schwerpunktsetzung. Erfinde keine Gesetze, Grenzwerte, Formeln, Fachbegriffe oder angeblichen Prüfungsanforderungen, die dort nicht belegt sind. Falls für ein Beispiel Details fehlen, verwende ein einfaches, ausdrücklich illustratives Beispiel ohne neue Fachbehauptungen.
+
+Die erste Leitfrage wird vor der Erklärung als lockerer Einstieg gezeigt. Sie muss ohne Vorwissen mit einer Vermutung beantwortbar sein, genau eine Sache fragen und darf keine Definition, vollständige Aufzählung, keinen Vergleich oder fertigen Lösungsweg verlangen. Spätere Leitfragen lenken jeweils auf den nächsten Gedanken der Mini-Lektion.
+
+Schreibe klar und altersgerecht. Halte alle Felder knapp: eine bis zwei Erklärungssätze, ein bis zwei konkrete Kernpunkte, ein kurzes nachvollziehbares Beispiel, einen knappen Merksatz und einen spezifischen Fehlerhinweis. Die Bereiche dürfen sich nicht inhaltlich wiederholen. Verwende keine Meta-Anweisungen oder internen Labels. Halte Reihenfolge und Seitenrollen exakt ein und antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`;
 
 class DuplicateGeneratedPromptError extends Error {}
 
@@ -680,6 +797,27 @@ const compactText = (value: string, maxChars: number) => {
 
 	return `${normalized.slice(0, maxChars)}\n\n[Inhalt wurde gekürzt.]`;
 };
+
+const compactInlineText = (value: string, maxChars: number) => {
+	const normalized = value.replace(/\s+/g, " ").trim();
+	if (normalized.length <= maxChars) return normalized;
+
+	const maximumContentLength = Math.max(1, maxChars - 1);
+	const candidate = normalized.slice(0, maximumContentLength).trimEnd();
+	const lastWordBoundary = candidate.lastIndexOf(" ");
+	const minimumUsefulLength = Math.floor(maximumContentLength * 0.6);
+	const content =
+		lastWordBoundary >= minimumUsefulLength
+			? candidate.slice(0, lastWordBoundary)
+			: candidate;
+	return `${content.trimEnd()}…`;
+};
+
+const normalizeTaskChoiceText = (value: GeneratedGermanText) =>
+	compactInlineText(
+		normalizeAiGeneratedGermanText(value),
+		MAX_MULTIPLE_CHOICE_OPTION_CHARS,
+	);
 
 const fallbackTitleByPhase: Record<GeneratedSessionPhase, string> = {
 	theory: "Theorie-Block",
@@ -824,7 +962,13 @@ const buildModelInputFromDocuments = async (
 				buffer,
 			);
 			if (extractedText) {
-				textSections.push(extractedText);
+				const sourceLabel =
+					(document.sourceKind ?? "school") === "school"
+						? "INTERNES SCHULMATERIAL"
+						: "EXTERNE LERNHILFE";
+				textSections.push(
+					`[${sourceLabel}: ${document.fileName}]\n${extractedText}`,
+				);
 			}
 		} catch {
 			// Images and some PDFs are still useful as native model inputs.
@@ -835,7 +979,7 @@ const buildModelInputFromDocuments = async (
 				type: "file",
 				data: buffer,
 				mediaType,
-				filename: document.fileName,
+				filename: `${(document.sourceKind ?? "school") === "school" ? "INTERN" : "EXTERN"} - ${document.fileName}`,
 			});
 		}
 	}
@@ -1033,6 +1177,7 @@ const buildLearningSlots = (
 	occupiedEntries: OccupiedEntry[],
 	requestedMinutes: number,
 	maxSessionMinutes = MAX_LEARNING_SESSION_MINUTES,
+	minimumSessionCount = 1,
 ) => {
 	const windowsByDay = new Map<number, LearningTimeWindow[]>();
 	for (const learningTime of learningTimes) {
@@ -1080,6 +1225,39 @@ const buildLearningSlots = (
 				}
 				if (maxSessionMinutes < MAX_LEARNING_SESSION_MINUTES) {
 					let startMinutes = interval.start;
+					if (minimumSessionCount > 1) {
+						const allocatableMinutes = Math.min(
+							requestedMinutes,
+							interval.end - interval.start,
+						);
+						const chunkCount = Math.min(
+							Math.floor(allocatableMinutes / MIN_LEARNING_SLOT_MINUTES),
+							Math.max(
+								minimumSessionCount,
+								Math.ceil(allocatableMinutes / maxSessionMinutes),
+							),
+						);
+						let remainingMinutes = allocatableMinutes;
+						for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex += 1) {
+							const minutesReservedForLater =
+								(chunkCount - chunkIndex - 1) * MIN_LEARNING_SLOT_MINUTES;
+							const capacityMinutes = Math.min(
+								maxSessionMinutes,
+								remainingMinutes - minutesReservedForLater,
+								interval.end - startMinutes,
+							);
+							if (capacityMinutes < MIN_LEARNING_SLOT_MINUTES) break;
+							candidates.push({
+								date,
+								dateKey,
+								startMinutes,
+								endMinutes: startMinutes + capacityMinutes,
+							});
+							startMinutes += capacityMinutes;
+							remainingMinutes -= capacityMinutes;
+						}
+						continue;
+					}
 					while (interval.end - startMinutes >= MIN_LEARNING_SLOT_MINUTES) {
 						const capacityMinutes = Math.min(
 							maxSessionMinutes,
@@ -1119,7 +1297,11 @@ const buildLearningSlots = (
 			left.startMinutes - right.startMinutes,
 	);
 	const minimumPhaseSessionCount =
-		requestedMinutes >= MIN_LEARNING_SLOT_MINUTES * 3 ? 3 : 1;
+		minimumSessionCount > 1
+			? minimumSessionCount
+			: requestedMinutes >= MIN_LEARNING_SLOT_MINUTES * 3
+				? 3
+				: 1;
 	let selectedCapacityMinutes = 0;
 	let selectedCount = 0;
 	while (
@@ -1269,6 +1451,7 @@ type AdaptivePreparationScheduling = {
 	maxSessionMinutes: number;
 	topicReadiness: TopicReadinessCounts;
 	praxisSessionCount: number;
+	minimumSessionCount?: number;
 };
 
 const buildAdaptivePhaseSequence = (
@@ -1288,46 +1471,51 @@ const buildAdaptivePhaseSequence = (
 	const hasTheoryNeed =
 		preparation.topicReadiness.unknown > 0 ||
 		preparation.topicReadiness.developing > 0;
-	const theoryFragmentTarget = hasTheoryNeed
-		? Math.min(
-				8,
-				Math.max(
-					preparation.topicReadiness.unknown > 0 ? 3 : 1,
-					Math.round(
-						preparation.topicReadiness.unknown +
-							preparation.topicReadiness.developing * 0.5,
-					),
-				),
-			)
-		: 0;
-	const theoryFragmentsPerSlot = Math.max(
-		1,
-		Math.ceil(preparation.maxSessionMinutes / 10),
-	);
-	const theorySlotCount = Math.min(
-		Math.max(0, sessionCount - praxisSessionCount - 1),
-		Math.ceil(theoryFragmentTarget / theoryFragmentsPerSlot),
-	);
 	const rehearsalIndexes = new Set<number>();
 	for (let index = 0; index < praxisSessionCount; index += 1) {
 		const position =
 			praxisSessionCount === 1
 				? praxisEligibleIndexes.length - 1
 				: Math.round(
-						(index * (praxisEligibleIndexes.length - 1)) /
-							(praxisSessionCount - 1),
+						((index + 1) * (praxisEligibleIndexes.length - 1)) /
+							praxisSessionCount,
 					);
 		const sessionIndex = praxisEligibleIndexes[position];
 		if (sessionIndex !== undefined) rehearsalIndexes.add(sessionIndex);
 	}
-	let theorySlotsRemaining = theorySlotCount;
+	const learningIndexes = Array.from(
+		{ length: sessionCount },
+		(_, index) => index,
+	).filter((index) => !rehearsalIndexes.has(index));
+	const topicTheoryNeed =
+		preparation.topicReadiness.unknown +
+		Math.ceil(preparation.topicReadiness.developing / 2);
+	const theorySlotCount = hasTheoryNeed
+		? Math.min(
+				Math.max(0, learningIndexes.length - 1),
+				Math.max(1, Math.round(sessionCount * 0.22)),
+				topicTheoryNeed,
+			)
+		: 0;
+	const theoryIndexes = new Set<number>();
+	let lastTheoryIndex = -2;
+	for (let index = 0; index < theorySlotCount; index += 1) {
+		const preferredPosition = Math.floor(
+			(index * learningIndexes.length) / Math.max(theorySlotCount, 1),
+		);
+		const preferredIndex = learningIndexes[preferredPosition];
+		const selectedIndex = learningIndexes.find(
+			(candidate) =>
+				candidate >= (preferredIndex ?? 0) && candidate > lastTheoryIndex + 1,
+		);
+		if (selectedIndex === undefined) break;
+		theoryIndexes.add(selectedIndex);
+		lastTheoryIndex = selectedIndex;
+	}
 
 	return Array.from({ length: sessionCount }, (_, index) => {
 		if (rehearsalIndexes.has(index)) return "rehearsal";
-		if (theorySlotsRemaining > 0) {
-			theorySlotsRemaining -= 1;
-			return "theory";
-		}
+		if (theoryIndexes.has(index)) return "theory";
 		return "practice";
 	});
 };
@@ -1359,6 +1547,7 @@ const normalizeSessions = (
 		occupiedEntries,
 		requestedMinutes,
 		adaptivePreparation?.maxSessionMinutes,
+		adaptivePreparation?.minimumSessionCount,
 	);
 	const distributedOffsets = distributeSessionOffsets(availableDays, sessions);
 	const prioritizedSessions = sessions
@@ -1462,12 +1651,10 @@ const normalizeSessions = (
 			...fallbackContentByPhase.rehearsal,
 		},
 	};
-	const phaseBalancedSessions = adaptivePreparation
-		? scheduledSessions
-		: rebalanceLearningPhases({
-				sessions: scheduledSessions,
-				phaseFallbacks,
-			});
+	const phaseBalancedSessions = rebalanceLearningPhases({
+		sessions: scheduledSessions,
+		phaseFallbacks,
+	});
 	const normalizedSessions = splitLargeTheorySessions({
 		sessions: phaseBalancedSessions,
 		topics,
@@ -1507,6 +1694,10 @@ const normalizeSessions = (
 export const __testOnlyLearningPlanAi = {
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
+	generatedTaskChoiceSchema,
+	generatedTaskItemSchema,
+	normalizeTaskChoiceText,
+	topicMapGenerationInstruction: TOPIC_MAP_GENERATION_INSTRUCTION,
 };
 
 const buildBaseContext = (
@@ -1518,9 +1709,12 @@ const buildBaseContext = (
 		`Prüfungsart: ${plan.examTypeLabel}`,
 		`Prüfungstermin: ${plan.examDateLabel}${plan.examTime ? `, ${plan.examTime}` : ""}`,
 		`Bearbeitungszeit der Prüfung: ${plan.durationMinutes} Minuten`,
-		`Prüfungsthema: ${plan.topicDescription}`,
+		plan.topicDescription
+			? `Vom Lernenden angegebene Prüfungsthemen: ${plan.topicDescription}`
+			: "",
 		plan.notes ? `Notizen: ${plan.notes}` : "",
-		`Hochgeladene Materialien: ${documents.length}`,
+		`Interne Schulmaterialien: ${documents.filter((document) => (document.sourceKind ?? "school") === "school").length}`,
+		`Externe Lernhilfen: ${documents.filter((document) => document.sourceKind === "external").length}`,
 	]
 		.filter(Boolean)
 		.join("\n");
@@ -1559,6 +1753,14 @@ const getLearningContentTopics = (
 	context: LearningSessionContentAiContext,
 ): LearningTopic[] => {
 	if (context.plan.topicMap && context.plan.topicMap.length > 0) {
+		const explicitlyTargetedTopics = context.session.targetTopicIds?.length
+			? context.plan.topicMap.filter((topic) =>
+					context.session.targetTopicIds?.includes(topic.id),
+				)
+			: [];
+		if (explicitlyTargetedTopics.length > 0) {
+			return explicitlyTargetedTopics;
+		}
 		const topics = getSessionLearningTopics({
 			topics: context.plan.topicMap,
 			strengths: context.plan.insight?.strengths ?? [],
@@ -1616,11 +1818,26 @@ const getLearningContentTopics = (
 	});
 };
 
+const theoryPageRoleForAngle: Record<LearningQuestionAngle, string> = {
+	recall:
+		"Kernidee: Erkläre den zentralen Gedanken in Alltagssprache und warum er wichtig ist.",
+	recognize:
+		"Erkennen: Zeige, woran der Schüler den Gedanken in einer Aufgabe oder Situation erkennt und wovon er ihn abgrenzt.",
+	apply:
+		"Anwendung: Führe ein einziges konkretes Beispiel Schritt für Schritt vom Ausgangspunkt zum Ergebnis.",
+	findError:
+		"Fehlerkontrolle: Zeige einen typischen Denkfehler, wie man ihn bemerkt und wie man ihn korrigiert.",
+	compare:
+		"Einordnung: Stelle genau einen entscheidenden Unterschied oder Zusammenhang heraus.",
+	examTransfer:
+		"Prüfungstransfer: Zeige, wie der Gedanke in einer realistischen Prüfungsaufgabe genutzt wird.",
+};
+
 const formatQuestionBlueprints = (block: LearningContentBlock) =>
 	block.questions
 		.map(
 			(question, index) =>
-				`${index + 1}. Thema: ${question.topic.title}; Lernziel: ${question.topic.learningGoal}; Fragetyp: ${question.angle}; Antwortmodus: ${question.kind}; Zeitbudget: ${question.estimatedSeconds} Sekunden; Coverage-Key: ${question.coverageKey}`,
+				`${index + 1}. Thema: ${question.topic.title}; Lernziel: ${question.topic.learningGoal}; ${block.phase === "theory" ? `Seitenrolle: ${theoryPageRoleForAngle[question.angle]}` : `Fragetyp: ${question.angle}`}; Antwortmodus: ${question.kind}; Zeitbudget: ${question.estimatedSeconds} Sekunden; Coverage-Key: ${question.coverageKey}`,
 		)
 		.join("\n");
 
@@ -1640,6 +1857,28 @@ const formatStoredKnowledgeAnswers = (
 			const answer = answersByQuestion.get(question.id) || "Keine Antwort";
 			return `${index + 1}. Frage: ${question.prompt}\nAntwort: ${answer}\nAnalyseziel: ${question.targetInsight}`;
 		})
+		.join("\n\n");
+};
+
+const formatPriorSessionEvidence = (
+	evidence: LearningSessionContentAiContext["priorSessionEvidence"],
+) => {
+	if (evidence.length === 0) return "Noch keine Antworten aus Lernblöcken.";
+	const compactEvidenceText = (value: string, maxLength = 500) =>
+		value.length <= maxLength
+			? value
+			: `${value.slice(0, maxLength - 1).trimEnd()}…`;
+	const ratingLabel = {
+		correct: "richtig",
+		partiallyCorrect: "teilweise richtig",
+		notCorrect: "noch nicht richtig",
+	} as const;
+	return evidence
+		.slice(0, 20)
+		.map(
+			(entry, index) =>
+				`${index + 1}. Lernblock: ${compactEvidenceText(entry.sessionTitle, 100)}\nFrage: ${compactEvidenceText(entry.question)}\nAntwort des Schülers: ${compactEvidenceText(entry.response)}\nBewertung: ${ratingLabel[entry.rating]}\nRückmeldung: ${compactEvidenceText(entry.feedback)}\nIdeale Antwort: ${compactEvidenceText(entry.idealAnswer)}${entry.topicId ? `\nThema-ID: ${entry.topicId}` : ""}${entry.evidenceDimension ? `\nEvidenzdimension: ${entry.evidenceDimension}` : ""}`,
+		)
 		.join("\n\n");
 };
 
@@ -1691,7 +1930,7 @@ const normalizeTaskKeywords = (
 
 type GeneratedSessionContentInput = {
 	phase: GeneratedSessionPhase;
-	kind: "learnCard" | "multipleChoice" | "written" | "voice";
+	kind: "learnCard" | "multipleChoice" | "written";
 	title: string;
 	prompt: string;
 	front?: string;
@@ -1740,7 +1979,7 @@ const normalizeGeneratedTaskItems = (
 		if (item.kind === "multipleChoice") {
 			const generatedChoices = item.choices.map((choice, choiceIndex) => ({
 				id: `choice-${choiceIndex + 1}`,
-				text: normalizeAiGeneratedGermanText(choice.text),
+				text: normalizeTaskChoiceText(choice.text),
 				isCorrect: choice.isCorrect,
 			}));
 			const correctGeneratedChoice =
@@ -1859,9 +2098,7 @@ const assertFreshGeneratedPrompts = (
 	items: GeneratedSessionContentInput[],
 	existingPrompts: string[],
 ) => {
-	const seen = new Set(
-		existingPrompts.map((prompt) => prompt.trim().toLocaleLowerCase("de")),
-	);
+	const seen = [...existingPrompts];
 	for (const item of items) {
 		if (
 			/\bVariante\s+\d+\b/i.test(item.prompt) ||
@@ -1871,13 +2108,16 @@ const assertFreshGeneratedPrompts = (
 				`Generated learning question contains a nested planning instruction: ${item.prompt}`,
 			);
 		}
-		const promptKey = item.prompt.trim().toLocaleLowerCase("de");
-		if (seen.has(promptKey)) {
+		if (
+			seen.some((prompt) =>
+				areSemanticallyDuplicateQuestions(prompt, item.prompt),
+			)
+		) {
 			throw new DuplicateGeneratedPromptError(
-				`Generated duplicate learning question: ${item.prompt}`,
+				`Generated duplicate or near-duplicate learning question: ${item.prompt}`,
 			);
 		}
-		seen.add(promptKey);
+		seen.push(item.prompt);
 	}
 };
 
@@ -1913,10 +2153,13 @@ const generateSessionContent = async (
 			));
 		const model = createVertexModel();
 		const personalLearningTimes = describeLearningTimes(context.learningTimes);
-		const knowledgeAnswers = formatStoredKnowledgeAnswers(
-			context.plan.knowledgeQuestions,
-			context.answers,
-		);
+		const learningEvidence =
+			context.priorSessionEvidence.length > 0
+				? formatPriorSessionEvidence(context.priorSessionEvidence)
+				: formatStoredKnowledgeAnswers(
+						context.plan.knowledgeQuestions,
+						context.answers,
+					);
 		const planSequence = formatPlanSequence(context.planSessions);
 		const priorTheoryCards = formatPriorTheoryCards(context.priorTheoryCards);
 		const userContent: Array<
@@ -1930,8 +2173,8 @@ Zusammenfassung des Materials: ${context.plan.sourceSummary ?? "Keine Zusammenfa
 Lernstands-Einschätzung: ${context.plan.insight?.summary ?? "Keine Einschätzung gespeichert."}
 Offene Lücken: ${(context.plan.insight?.gaps ?? []).join("; ") || "Keine Lücken gespeichert."}
 
-Wissensanalyse:
-${knowledgeAnswers}
+Lernevidenz aus abgeschlossenen Sessions:
+${learningEvidence}
 
 Behandle korrekt beantwortete Diagnosefragen als bereits beherrscht. Wiederhole weder deren Frage noch eine gleich schwere Variante. Nutze für beherrschte Themen anspruchsvollere Anwendungen, Fehleranalysen, Vergleiche oder Prüfungstransfers.
 
@@ -1946,6 +2189,7 @@ Titel: ${context.session.title}
 Phase: ${context.session.phase}
 Lernzeit: ${context.session.durationMinutes} Minuten
 Ziel: ${context.session.goal}
+Evidenzziel: ${context.session.targetEvidenceDimension ?? "allgemeiner Lernfortschritt"}
 Aufgaben im Lernslot:
 ${context.session.tasks.map((task) => `- ${task}`).join("\n")}
 Erwartetes Ergebnis: ${context.session.expectedOutcome}
@@ -1976,13 +2220,13 @@ ${personalLearningTimes}`,
 				...userContent,
 				{
 					type: "text" as const,
-					text: `Dieser Lernblock dauert ${block.durationMinutes} Minuten und enthält genau ${block.questions.length} ${block.phase === "theory" ? "ausführliche Lernseiten" : "neue Fragen"}. Halte dich in Reihenfolge und Themenbezug exakt an diese Planung:\n${blueprintText}`,
+					text: `Dieser Lernblock dauert ${block.durationMinutes} Minuten und enthält genau ${block.questions.length} ${block.phase === "theory" ? "fokussierte Seiten einer zusammenhängenden Mini-Lektion" : "neue Fragen"}. Halte dich in Reihenfolge und Themenbezug exakt an diese Planung:\n${blueprintText}`,
 				},
 				...(previouslyUsedPrompts.length > 0 || generatedItems.length > 0
 					? [
 							{
 								type: "text" as const,
-								text: `Diese Fragen wurden bereits in der Wissensanalyse, einer früheren Lernsession oder im aktuellen Lernblock verwendet und dürfen weder wörtlich noch inhaltlich wiederholt werden:\n${[...previouslyUsedPrompts, ...generatedItems.map((item) => item.prompt)].map((prompt) => `- ${prompt}`).join("\n")}`,
+								text: `Diese Fragen wurden bereits in der Wissensanalyse, einer früheren Lernsession oder im aktuellen Lernblock verwendet und dürfen weder wörtlich noch inhaltlich wiederholt werden. Nur Zahlen, Namen oder Formulierungen auszutauschen zählt weiterhin als Wiederholung; ändere stattdessen Denkschritt, Anwendungssituation oder Darstellungsform:\n${[...previouslyUsedPrompts, ...generatedItems.map((item) => item.prompt)].map((prompt) => `- ${prompt}`).join("\n")}`,
 							},
 						]
 					: []),
@@ -2015,7 +2259,7 @@ ${personalLearningTimes}`,
 								abortSignal,
 								providerOptions: vertexProviderOptions,
 								output: Output.object({ schema: blockSchema }),
-								system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse. Erstelle eigenständige Theorie-Lernseiten, die jeweils ungefähr vier Minuten Lernzeit sinnvoll füllen. Jede Seite behandelt genau einen Gedanken: eine kurze direkt beantwortbare Leitfrage, eine verständliche Erklärung in drei bis fünf zusammenhängenden Sätzen, zwei bis vier gehaltvolle Kernpunkte, ein wirklich durchgerechnetes oder konkret angewandtes Beispiel, einen eigenen Merksatz und einen fachspezifischen typischen Fehler. Beispiel, Kernpunkte und Merksatz müssen unterschiedliche Inhalte haben. Verwende keine Meta-Anweisungen, internen Labels wie „Variante 1“ oder in Anführungszeichen verschachtelte Aufgaben. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+								system: theoryGenerationSystemInstruction(attempt),
 								messages: [{ role: "user", content: blockContent }],
 							}),
 						);
@@ -2047,7 +2291,6 @@ ${personalLearningTimes}`,
 			const needsComplexTaskModel = block.questions.some(
 				(question) =>
 					question.kind === "written" ||
-					question.kind === "voice" ||
 					!["recall", "recognize"].includes(question.angle),
 			);
 			const taskModelId =
@@ -2218,6 +2461,7 @@ Titel: ${context.session.title}
 Phase: ${context.session.phase}
 Lernzeit: ${context.session.durationMinutes} Minuten
 Ziel: ${context.session.goal}
+Evidenzziel: ${context.session.targetEvidenceDimension ?? "allgemeiner Lernfortschritt"}
 Aufgaben: ${context.session.tasks.join("; ")}
 Erwartetes Ergebnis: ${context.session.expectedOutcome}
 Erzeuge exakt ${block.questions.length} Inhalte in dieser Reihenfolge:
@@ -2235,8 +2479,8 @@ Zusammenfassung des Materials: ${firstContext.plan.sourceSummary ?? "Keine Zusam
 Lernstands-Einschätzung: ${firstContext.plan.insight?.summary ?? "Keine Einschätzung gespeichert."}
 Offene Lücken: ${(firstContext.plan.insight?.gaps ?? []).join("; ") || "Keine Lücken gespeichert."}
 
-Wissensanalyse:
-${formatStoredKnowledgeAnswers(firstContext.plan.knowledgeQuestions, firstContext.answers)}
+Lernevidenz aus abgeschlossenen Sessions:
+${firstContext.priorSessionEvidence.length > 0 ? formatPriorSessionEvidence(firstContext.priorSessionEvidence) : formatStoredKnowledgeAnswers(firstContext.plan.knowledgeQuestions, firstContext.answers)}
 
 Lernplan-Reihenfolge:
 ${formatPlanSequence(firstContext.planSessions)}
@@ -2253,7 +2497,7 @@ Erstelle die Inhalte für die folgenden ${plannedSessions.length} kurzen Session
 
 ${sessionInstructions}
 
-Bereits verwendete Fragen, die weder wörtlich noch inhaltlich wiederholt werden dürfen:
+Bereits verwendete Fragen, die weder wörtlich noch inhaltlich wiederholt werden dürfen. Nur Zahlen, Namen oder Formulierungen auszutauschen zählt weiterhin als Wiederholung; neue Fragen brauchen einen anderen Denkschritt, eine andere Anwendungssituation oder Darstellungsform:
 ${allPriorPrompts.map((prompt) => `- ${prompt}`).join("\n") || "Keine."}`,
 		},
 	];
@@ -2263,7 +2507,6 @@ ${allPriorPrompts.map((prompt) => `- ${prompt}`).join("\n") || "Keine."}`,
 	const needsComplexTaskModel = allQuestions.some(
 		(question) =>
 			question.kind === "written" ||
-			question.kind === "voice" ||
 			!["recall", "recognize"].includes(question.angle),
 	);
 	const modelId = isTheory
@@ -2293,7 +2536,7 @@ ${allPriorPrompts.map((prompt) => `- ${prompt}`).join("\n") || "Keine."}`,
 						output: Output.object({
 							schema: createTheoryTopicsSchema(allQuestions.length),
 						}),
-						system: `Du bist ein präziser Lerncoach. Erstelle eigenständige deutsche Theorie-Lernseiten mit Erklärung, Kernpunkten, einem konkreten Beispiel, Merksatz und typischem Fehler. Halte die vorgegebene Reihenfolge exakt ein und antworte ausschließlich im JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+						system: theoryGenerationSystemInstruction(attempt),
 					}),
 				)
 			: await runLlmGeneration((abortSignal) =>
@@ -2434,19 +2677,24 @@ const generateTrackedSessionContentBatch = async (
 const generateTrackedSessionContent = async (
 	ctx: ActionCtx,
 	sessionId: Id<"learningPlanSessions">,
-	preparedDocuments?: PreparedModelDocuments,
-	includePriorContent = true,
+	options: {
+		preparedDocuments?: PreparedModelDocuments;
+		includePriorContent?: boolean;
+		generationStatusClaimed?: boolean;
+	} = {},
 ) => {
-	await ctx.runMutation(
-		internal.learningPlans.setSessionContentGenerationStatus,
-		{ sessionId, status: "generating" },
-	);
+	if (!options.generationStatusClaimed) {
+		await ctx.runMutation(
+			internal.learningPlans.setSessionContentGenerationStatus,
+			{ sessionId, status: "generating" },
+		);
+	}
 	try {
 		const result = await generateSessionContent(
 			ctx,
 			sessionId,
-			preparedDocuments,
-			includePriorContent,
+			options.preparedDocuments,
+			options.includePriorContent ?? true,
 		);
 		await ctx.runMutation(
 			internal.learningPlans.setSessionContentGenerationStatus,
@@ -2487,6 +2735,123 @@ const mapWithConcurrency = async <TItem, TResult>(
 	return results;
 };
 
+export const evaluateWrittenAnswer = action({
+	args: {
+		itemId: v.id("learningSessionContentItems"),
+		answerText: v.string(),
+		timeSpentSeconds: v.optional(v.number()),
+	},
+	returns: evaluatedAnswerAttemptValidator,
+	handler: async (ctx, args): Promise<EvaluatedAnswerAttempt> => {
+		const answerText = compactInlineText(args.answerText, 6_000);
+		if (!answerText) throwUserFacingError("Antwort fehlt.");
+		const context: {
+			learningPlanId: Id<"learningPlans">;
+			sessionId: Id<"learningPlanSessions">;
+			subject: string;
+			topicTitle: string | null;
+			learningGoal: string | null;
+			prompt: string;
+			idealAnswer: string;
+			explanation: string;
+			evaluationKeywords: string[];
+			evidenceDimension:
+				| "understanding"
+				| "problemSolving"
+				| "independent"
+				| null;
+			questionAngle: string | null;
+		} = await ctx.runQuery(
+			internal.learningSessionContent.getWrittenAnswerEvaluationContext,
+			{ itemId: args.itemId },
+		);
+
+		let evaluation: z.infer<typeof writtenAnswerEvaluationSchema>;
+		if (isUnknownWrittenAnswer(answerText)) {
+			evaluation = {
+				rating: "notCorrect",
+				review: `Du hast noch keine fachliche Antwort gegeben. Richtig ist: ${context.idealAnswer}`,
+			};
+		} else {
+			try {
+				const model = createVertexModel();
+				const result = await withStructuredOutputErrorHandling(
+					() =>
+						runLlmGeneration((abortSignal) =>
+							generateText({
+								model: model(FLASH_MODEL_ID),
+								temperature: 0.1,
+								maxOutputTokens: 700,
+								abortSignal,
+								providerOptions: vertexProviderOptions,
+								output: Output.object({
+									schema: writtenAnswerEvaluationSchema,
+								}),
+								system: `Du bewertest schriftliche Antworten von Schülerinnen und Schülern fachlich präzise und fair. Bewerte Bedeutung, Lösungsweg und Vollständigkeit – niemals Wortanzahl, Schreibstil oder bloße Schlüsselworttreffer. "correct" gilt nur, wenn alle für die Frage wesentlichen Aussagen oder Rechenschritte stimmen. "partiallyCorrect" gilt bei einem fachlich brauchbaren Ansatz mit einer konkreten Lücke. "notCorrect" gilt bei einem falschen Ergebnis, einem grundlegenden Missverständnis oder fehlender fachlicher Substanz.
+
+Die Rückmeldung besteht aus höchstens zwei kurzen deutschen Sätzen in direkter Du-Ansprache. Nenne konkret, welcher Teil der Antwort stimmt und welcher Teil fehlt oder falsch ist. Integriere das richtige Ergebnis oder die entscheidende fachliche Korrektur ausdrücklich in dieselbe Rückmeldung. Gib dafür nur die nötige Kernaussage der idealen Antwort wieder, nicht die vollständige Musterlösung. Die Rückmeldung muss allein verständlich sein und darf den Lernenden nicht auf eine separate ideale oder perfekte Antwort verweisen. Verwende keine Überschriften, keine Listen, keine Punktebewertung und keine allgemeinen Floskeln. Antworte ausschließlich im vorgegebenen JSON-Schema. ${GERMAN_UI_TEXT_RULE}`,
+								prompt: `Fach: ${context.subject}
+Thema: ${context.topicTitle ?? "Nicht näher benannt"}
+Lernziel: ${context.learningGoal ?? "Nicht näher benannt"}
+Evidenzdimension: ${context.evidenceDimension ?? "allgemein"}
+Aufgabenart: ${context.questionAngle ?? "allgemein"}
+
+Frage:
+${context.prompt}
+
+Antwort des Lernenden:
+${answerText}
+
+Ideale Antwort:
+${context.idealAnswer}
+
+Fachliche Erklärung:
+${context.explanation}
+
+Erwartete Kernbegriffe oder Ergebnisse (nur als Hilfsmittel, nicht als Worttreffer-Test):
+${context.evaluationKeywords.join("; ") || "Keine zusätzlichen Kernbegriffe"}`,
+							}),
+						),
+					"Die Antwort konnte nicht zuverlässig ausgewertet werden. Versuche es erneut.",
+				);
+				await recordAiUsage(ctx, {
+					learningPlanId: context.learningPlanId,
+					sessionId: context.sessionId,
+					operation: "answer_evaluation",
+					modelId: FLASH_MODEL_ID,
+					usage: result.usage,
+				});
+				evaluation = {
+					rating: result.output.rating,
+					review: normalizeAiGeneratedGermanText(result.output.review),
+				};
+			} catch (error) {
+				logDiagnosticError("learningPlanAi.evaluateWrittenAnswer", error, {
+					learningPlanId: context.learningPlanId,
+					sessionId: context.sessionId,
+					itemId: args.itemId,
+				});
+				const message = getUserFacingBackendErrorMessage(error);
+				throwUserFacingError(
+					message ??
+						"Die Antwort konnte nicht zuverlässig ausgewertet werden. Versuche es erneut.",
+				);
+			}
+		}
+
+		return await ctx.runMutation(
+			internal.learningSessionContent.storeEvaluatedWrittenAnswer,
+			{
+				itemId: args.itemId,
+				answerText,
+				rating: evaluation.rating,
+				feedback: evaluation.review,
+				timeSpentSeconds: args.timeSpentSeconds,
+			},
+		);
+	},
+});
+
 export const ensureSessionContent = action({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
@@ -2496,13 +2861,50 @@ export const ensureSessionContent = action({
 			internal.learningSessionContent.getSessionGenerationContext,
 			{ sessionId: args.sessionId },
 		);
+		if (context.session.planningStatus === "provisional") {
+			throwUserFacingError(
+				"Dieser Lernblock ist nur eine Vorschau und kann sich noch ändern.",
+			);
+		}
 		if (
 			context.existingItemCount > 0 &&
 			!context.needsLegacyContentReplacement
 		) {
+			if (
+				!context.session.completed &&
+				(!context.hasTheoryKnowledgeCheck ||
+					!context.hasCompleteTheoryPracticePairs) &&
+				isLearningSessionCompositionEligible({
+					phase: context.session.phase,
+					durationMinutes: context.session.durationMinutes,
+				})
+			) {
+				return await ctx.runMutation(
+					internal.learningSessionContent.backfillTheoryKnowledgeCheck,
+					{ sessionId: args.sessionId },
+				);
+			}
 			return { itemCount: context.existingItemCount };
 		}
-		const generated = await generateTrackedSessionContent(ctx, args.sessionId);
+		if (context.session.sessionPurpose === "diagnostic") {
+			throwUserFacingError(
+				"Die Fragen des Wissenschecks fehlen. Erstelle den Lernplan erneut.",
+			);
+		}
+		const claimed: boolean = await ctx.runMutation(
+			internal.learningPlans.claimSessionContentGeneration,
+			{ sessionId: args.sessionId },
+		);
+		if (!claimed) {
+			const latest: LearningSessionContentAiContext = await ctx.runQuery(
+				internal.learningSessionContent.getSessionGenerationContext,
+				{ sessionId: args.sessionId },
+			);
+			return { itemCount: latest.existingItemCount };
+		}
+		const generated = await generateTrackedSessionContent(ctx, args.sessionId, {
+			generationStatusClaimed: true,
+		});
 		await ctx.runMutation(internal.learningPlans.finalizeContentGeneration, {
 			learningPlanId: context.session.learningPlanId,
 		});
@@ -2628,14 +3030,18 @@ export const generateKnowledgeQuestions = action({
 			internal.learningPlans.getAiContext,
 			{ learningPlanId: args.learningPlanId },
 		);
-		if (!context.plan.topicDescription.trim()) {
-			throwUserFacingError("Beschreibe zuerst das Prüfungsthema.");
+		const schoolDocuments = context.documents.filter(
+			(document) => (document.sourceKind ?? "school") === "school",
+		);
+		if (schoolDocuments.length === 0) {
+			throwUserFacingError(
+				"Lade zuerst mindestens eine Schulunterlage hoch, um einen Lernplan zu erhalten.",
+			);
 		}
-		assertMeaningfulTopicDescription(context.plan.topicDescription);
 
 		const { fileParts, sourceContext } = await buildModelInputFromDocuments(
 			ctx,
-			context.documents,
+			schoolDocuments,
 			context.accessKey,
 		);
 		const model = createVertexModel();
@@ -2647,13 +3053,18 @@ export const generateKnowledgeQuestions = action({
 				type: "text",
 				text: `${buildBaseContext(context)}
 
-Erstelle zuerst eine Themenkarte mit ${MIN_TOPIC_MAP_COUNT} bis ${MAX_LEARNING_TOPIC_COUNT} klar getrennten Teilthemen. Nutze kurze stabile ASCII-IDs wie "steigung-berechnen". Priorisiere prüfungsrelevante Themen und erkannte Grundlagen.
-Erstelle danach 5 kurze Wissensanalyse-Fragen. Erweitere nur bei breitem Material oder unklarer Lernbereitschaft auf bis zu 8 Fragen. Mindestens 70 Prozent sollen als kind "performance" tatsächliches Wissen durch kurzes Lösen, Erklären oder Anwenden prüfen; höchstens 30 Prozent dürfen als kind "confidence" Selbsteinschätzung oder Sicherheit erfragen. Ordne jede Frage über topicId exakt einer zuvor erzeugten Themen-ID zu und liefere 1 bis 5 fachlich erwartete evaluationKeywords, anhand derer eine tatsächliche Antwort bewertet werden kann. Ziel ist nicht Notengebung, sondern herauszufinden, welche Lernblöcke der Lernplan braucht.
+${TOPIC_MAP_GENERATION_INSTRUCTION}
+Erstelle danach 5 bis 10 kurze, objektiv bewertbare Fragen für den Wissenscheck in der ersten Lernsession. Jede Frage muss als kind "performance" tatsächliches Wissen durch kurzes Lösen, Erklären oder Anwenden prüfen. Verwende keine Selbsteinschätzungs- oder Sicherheitsfragen. Ordne jede Frage über topicId exakt einer zuvor erzeugten Themen-ID und über evidenceDimension genau einer Evidenzdimension zu. Liefere außerdem eine fachlich richtige idealAnswer, eine kurze explanation und 1 bis 5 evaluationKeywords. Ziel ist nicht Notengebung, sondern belastbare Evidenz für den jeweils nächsten Lernschritt.
 Die Fragen müssen sich konkret auf Prüfungsthema und Inhalte aus dem Material beziehen, aber wie normale Prüfungs- oder Verständnisfragen formuliert sein.
 Jede Frage fragt genau eine Sache ab, ist ohne verschachtelte Arbeitsanweisung direkt verständlich und lässt sich in wenigen Sätzen beantworten.
 Keine Frage darf eine andere Aufgabenformulierung zitieren oder Formulierungen wie „Erkläre deinen Lösungsweg zu …“ enthalten.
 Verweise in den Fragen nie direkt auf Quellen oder Uploads: keine Formulierungen wie "laut Material", "im Dokument", "auf dem Bild", "in der Datei", "Material 3 sagt" und keine Dateinamen.
-Keine Multiple-Choice-Fragen.
+Wähle für jede Frage das Antwortformat mit der geringsten Reibung, das noch belastbare Evidenz liefert:
+- multipleChoice für klare fachliche Unterscheidungen; liefere dann 3 bis 4 kurze plausible Optionen.
+- shortText für Zahlen, Formeln, Begriffe oder Antworten bis ungefähr einem Satz; liefere dann options: [].
+- longText nur wenn ein Lösungsweg oder eine Begründung wirklich beobachtet werden muss; liefere dann options: [].
+Liefere für jede multipleChoice-Frage den nullbasierten correctOptionIndex der eindeutig richtigen Option. Für shortText und longText ist correctOptionIndex null.
+Verwende bei 5 Fragen mindestens 2 Multiple-Choice-Fragen und höchstens 2 longText-Fragen. "Weiß ich nicht" wird separat von der App angeboten und gehört nicht in options.
 Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzeichen: ä, ö, ü, Ä, Ö, Ü, ß. Verwende keine Ersatzschreibweisen wie ae, oe, ue oder ss, wenn ein Umlaut oder ß gemeint ist.`,
 			},
 		];
@@ -2674,11 +3085,11 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 				generateText({
 					model: model(diagnosticModelId),
 					temperature: 0.2,
-					maxOutputTokens: 2_600,
+					maxOutputTokens: 3_600,
 					abortSignal,
 					providerOptions: vertexProviderOptions,
 					output: Output.object({ schema: questionsSchema }),
-					system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Sachsen. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+					system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Deutschland. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
 					messages: [{ role: "user", content: userContent }],
 				}),
 			);
@@ -2689,16 +3100,47 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 				usage: result.usage,
 			});
 
-			const questions = result.output.questions.map((question, index) => ({
-				id: `q${index + 1}`,
-				topicId: question.topicId,
-				kind: question.kind,
-				prompt: normalizeAiGeneratedGermanText(question.prompt),
-				targetInsight: normalizeAiGeneratedGermanText(question.targetInsight),
-				evaluationKeywords: question.evaluationKeywords.map((keyword) =>
-					normalizeAiGeneratedGermanText(keyword),
-				),
-			}));
+			const questions = result.output.questions.map((question, index) => {
+				const normalizedOptions = question.options.map((option) =>
+					normalizeAiGeneratedGermanText(option),
+				);
+				const generatedOptions = normalizedOptions.filter(Boolean);
+				const generatedCorrectAnswer =
+					question.correctOptionIndex === null
+						? undefined
+						: normalizedOptions[question.correctOptionIndex] || undefined;
+				const hasValidMultipleChoiceAnswer =
+					question.correctOptionIndex !== null &&
+					Boolean(generatedCorrectAnswer) &&
+					generatedOptions.includes(generatedCorrectAnswer ?? "");
+				const responseKind =
+					question.responseKind === "multipleChoice" &&
+					(generatedOptions.length < 2 || !hasValidMultipleChoiceAnswer)
+						? "shortText"
+						: question.responseKind;
+				const options =
+					responseKind === "multipleChoice" ? generatedOptions : [];
+
+				return {
+					id: `q${index + 1}`,
+					topicId: question.topicId,
+					kind: "performance" as const,
+					evidenceDimension: question.evidenceDimension,
+					responseKind,
+					options,
+					correctAnswer:
+						responseKind === "multipleChoice"
+							? generatedCorrectAnswer
+							: undefined,
+					prompt: normalizeAiGeneratedGermanText(question.prompt),
+					targetInsight: normalizeAiGeneratedGermanText(question.targetInsight),
+					idealAnswer: normalizeAiGeneratedGermanText(question.idealAnswer),
+					explanation: normalizeAiGeneratedGermanText(question.explanation),
+					evaluationKeywords: question.evaluationKeywords.map((keyword) =>
+						normalizeAiGeneratedGermanText(keyword),
+					),
+				};
+			});
 
 			return {
 				questions,
@@ -2710,18 +3152,20 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 						normalizeAiGeneratedGermanText(keyword),
 					),
 					priority: topic.priority,
+					requiredEvidenceDimensions: topic.requiredEvidenceDimensions,
 				})),
 				sourceSummary: normalizeAiGeneratedGermanText(
 					result.output.sourceSummary,
 				),
 			};
-		}, "Die Wissensanalyse konnte nicht zuverlässig erstellt werden. Formuliere das Prüfungsthema etwas konkreter und versuche es erneut.");
+		}, "Der Wissenscheck konnte nicht zuverlässig erstellt werden. Prüfe deine Schulunterlagen und versuche es erneut.");
 
 		await ctx.runMutation(internal.learningPlans.storeKnowledgeQuestions, {
 			learningPlanId: args.learningPlanId,
 			questions: generatedQuestions.questions,
 			topics: generatedQuestions.topics,
 			sourceSummary: generatedQuestions.sourceSummary,
+			diagnosticPlacement: "firstSession",
 		});
 
 		return { questionCount: generatedQuestions.questions.length };
@@ -2760,24 +3204,44 @@ export const generatePlan = action({
 				internal.learningPlans.getAiContext,
 				{ learningPlanId: args.learningPlanId },
 			);
+			if (context.plan.diagnosticPlacement !== "firstSession") {
+				throwUserFacingError(
+					"Erstelle zuerst den Wissenscheck neu. Er ist der erste Block jedes Lernplans.",
+				);
+			}
 			const questions = context.plan.knowledgeQuestions ?? [];
-			if (questions.length < 5 || questions.length > 8) {
-				throwUserFacingError("Die Wissensanalyse-Fragen fehlen noch.");
+			const usesFirstSessionDiagnostic =
+				context.plan.diagnosticPlacement === "firstSession";
+			const maximumQuestionCount = usesFirstSessionDiagnostic ? 10 : 8;
+			if (questions.length < 5 || questions.length > maximumQuestionCount) {
+				throwUserFacingError("Die Fragen für den Wissenscheck fehlen noch.");
 			}
 
+			const effectiveAnswers = usesFirstSessionDiagnostic ? [] : args.answers;
 			const answersByQuestion = new Map(
-				args.answers.map((answer) => [answer.questionId, answer.answer.trim()]),
+				effectiveAnswers.map((answer) => [
+					answer.questionId,
+					answer.answer.trim(),
+				]),
 			);
-			const qaText = questions
-				.map((question, index) => {
-					const answer = answersByQuestion.get(question.id) || "Keine Antwort";
-					return `${index + 1}. Frage: ${question.prompt}\nAntwort: ${answer}\nAnalyseziel: ${question.targetInsight}`;
-				})
-				.join("\n\n");
+			const qaText = usesFirstSessionDiagnostic
+				? questions
+						.map(
+							(question, index) =>
+								`${index + 1}. Frage im zukünftigen Wissenscheck: ${question.prompt}\nNoch nicht beantwortet.`,
+						)
+						.join("\n\n")
+				: questions
+						.map((question, index) => {
+							const answer =
+								answersByQuestion.get(question.id) || "Keine Antwort";
+							return `${index + 1}. Frage: ${question.prompt}\nAntwort: ${answer}\nAnalyseziel: ${question.targetInsight}`;
+						})
+						.join("\n\n");
 
 			const availableDays = getAvailableDays(context.plan.examDateKey);
 			const confirmedTotalStudyMinutes = context.plan.targetStudyMinutes;
-			if (
+			const availableLearningSlots =
 				confirmedTotalStudyMinutes !== undefined &&
 				Number.isInteger(confirmedTotalStudyMinutes) &&
 				confirmedTotalStudyMinutes >= MIN_LEARNING_SLOT_MINUTES &&
@@ -2788,7 +3252,11 @@ export const generatePlan = action({
 					context.occupiedEntries,
 					confirmedTotalStudyMinutes,
 					20,
-				).length === 0
+					usesFirstSessionDiagnostic ? 2 : 1,
+				);
+			if (
+				availableLearningSlots !== false &&
+				availableLearningSlots.length < (usesFirstSessionDiagnostic ? 2 : 1)
 			) {
 				throwUserFacingError(
 					getEmptyScheduleErrorMessage(
@@ -2803,9 +3271,9 @@ export const generatePlan = action({
 				context.accessKey,
 			);
 			const sessionCompositionVariant =
-				context.plan.sessionCompositionVariant ??
 				args.sessionCompositionVariant ??
-				"control";
+				context.plan.sessionCompositionVariant ??
+				"split";
 			const personalLearningTimes = describeLearningTimes(
 				context.learningTimes,
 			);
@@ -2822,11 +3290,12 @@ Bestätigte gesamte Lernzeit: ${confirmedTotalStudyMinutes ?? "Noch nicht bestä
 Persönliche Lernzeiten aus den Einstellungen:
 ${personalLearningTimes}
 
-Wissensanalyse:
+${usesFirstSessionDiagnostic ? "Wissenscheck in der ersten Session (noch unbeantwortet)" : "Wissensanalyse"}:
 ${qaText}
 
-Erstelle einen konkreten Lernplan, der die Antworten sichtbar berücksichtigt.
+${usesFirstSessionDiagnostic ? "Erstelle die Kalendergrundlage für den Wissenscheck und den ersten vorläufigen Lernschritt. Der Wissenscheck wird erst in der ersten Session beantwortet." : "Erstelle einen konkreten Lernplan, der die Antworten sichtbar berücksichtigt."}
 MVP-Vorgabe:
+- Die vom Lernenden angegebenen Prüfungsthemen und die internen Schulmaterialien definieren gemeinsam den wahrscheinlichen Prüfungsstoff; die Materialien konkretisieren den Inhalt. Externe Lernhilfen dürfen Erklärungen und Übungsformen verbessern, aber niemals neue Prüfungsthemen einführen.
 - Baue, wenn zeitlich möglich, die Phasen Theorie, Üben und Generalprobe.
 - Theorie nur bis zur Mindestbeherrschung planen.
 - Der größte Block soll die Übungsphase sein.
@@ -2836,7 +3305,8 @@ MVP-Vorgabe:
 - Session-Titel müssen kurze UI-Labels mit maximal ${MAX_SESSION_TITLE_CHARS} Zeichen sein.
 - Nenne in Session-Titeln, goal, tasks und expectedOutcome keine Dauer in Minuten. Die tatsächliche Session-Dauer wird anschließend aus den persönlichen Lernzeiten festgelegt und separat angezeigt.
 - insight.strengths darf maximal 4 Punkte enthalten, insight.gaps maximal 5 Punkte.
-- Gib höchstens 5 fachlich unterschiedliche Session-Archetypen zurück. Die Kalenderlogik erweitert sie anschließend auf alle benötigten kurzen Lernsessionen.
+- Gib höchstens 2 fachlich unterschiedliche Session-Archetypen für die unmittelbar nächsten Lernschritte zurück. Spätere Schritte werden erst nach neuer Lernevidenz festgelegt.
+- ${usesFirstSessionDiagnostic ? "Der erste Kalender-Slot ist für den Wissenscheck reserviert, der zweite für einen vorläufigen Lernschritt. Behaupte vor dem Wissenscheck keine beobachteten Stärken: insight.strengths muss leer sein. Formuliere Lücken nur als noch zu prüfende oder zunächst abzudeckende Bereiche." : "Berücksichtige die bereits beantworteten Einstiegsfragen bei Stärken und Lücken."}
 - Bevorzuge mehrere kurze Session-Archetypen: Theorie 10–15 Min., angeleitetes Üben 10–20 Min. und Praxis 20–30 Min. Vermeide lange Sammelblöcke.
 - Plane fachlich sinnvolle Lernblöcke, aber die finale Kalenderplatzierung erfolgt ausschließlich innerhalb der persönlichen Lernzeiten. Verwende keine anderen Tage oder Uhrzeiten als Empfehlung.
 - Nutze dayOffsetBeforeExam relativ zum Prüfungstag: 1 = einen Tag vor der Prüfung.
@@ -2860,9 +3330,11 @@ MVP-Vorgabe:
 			) => {
 				const normalizedInsight = {
 					summary: normalizeAiGeneratedGermanText(output.insight.summary),
-					strengths: output.insight.strengths.map((strength) =>
-						normalizeAiGeneratedGermanText(strength),
-					),
+					strengths: usesFirstSessionDiagnostic
+						? []
+						: output.insight.strengths.map((strength) =>
+								normalizeAiGeneratedGermanText(strength),
+							),
 					gaps: output.insight.gaps.map((gap) =>
 						normalizeAiGeneratedGermanText(gap),
 					),
@@ -2872,7 +3344,7 @@ MVP-Vorgabe:
 					getDefaultPreparationDepth(context.plan.examTypeLabel);
 				const topicCount = Math.max(
 					context.plan.topicMap?.length ?? 0,
-					args.answers.length,
+					effectiveAnswers.length,
 				);
 				const readiness = context.plan.topicReadiness ?? [];
 				const secureTopicCount = readiness.filter(
@@ -2909,6 +3381,7 @@ MVP-Vorgabe:
 					}),
 					{
 						maxSessionMinutes: 20,
+						minimumSessionCount: usesFirstSessionDiagnostic ? 2 : 1,
 						topicReadiness,
 						praxisSessionCount: preparationRecommendation.praxisSessionCount,
 					},
@@ -2924,8 +3397,9 @@ MVP-Vorgabe:
 				};
 			};
 
-			const planFallbackMessage =
-				"Aus diesen Antworten konnte kein stabiler Lernplan erstellt werden. Ergänze mindestens ein paar konkrete Stichworte zu deinem Wissenstand und versuche es erneut.";
+			const planFallbackMessage = usesFirstSessionDiagnostic
+				? "Aus den Unterlagen konnte kein stabiler Start für den Lernplan erstellt werden. Prüfe den erkannten Prüfungsstoff und versuche es erneut."
+				: "Aus diesen Antworten konnte kein stabiler Lernplan erstellt werden. Ergänze mindestens ein paar konkrete Stichworte zu deinem Wissensstand und versuche es erneut.";
 			const planModelId =
 				ENABLE_FLASH_LITE || initialCostMode.economyMode
 					? FLASH_LITE_MODEL_ID
@@ -2935,7 +3409,7 @@ MVP-Vorgabe:
 					generateText({
 						model: model(planModelId),
 						temperature: 0.25,
-						maxOutputTokens: 4_800,
+						maxOutputTokens: 3_200,
 						abortSignal,
 						providerOptions: vertexProviderOptions,
 						output: Output.object({ schema: generatedPlanSchema }),
@@ -2952,7 +3426,9 @@ MVP-Vorgabe:
 
 				return normalizeGeneratedPlan(result.output);
 			}, planFallbackMessage);
-			if (generatedPlan.sessions.length === 0) {
+			if (
+				generatedPlan.sessions.length < (usesFirstSessionDiagnostic ? 2 : 1)
+			) {
 				throwUserFacingError(
 					getEmptyScheduleErrorMessage(
 						context.learningTimes,
@@ -2963,21 +3439,24 @@ MVP-Vorgabe:
 
 			const replacement: {
 				sessionIds: Id<"learningPlanSessions">[];
+				contentSessionIds: Id<"learningPlanSessions">[];
 			} | null = await ctx.runMutation(
 				internal.learningPlans.replaceGeneratedSessions,
 				{
 					learningPlanId: args.learningPlanId,
-					knowledgeAnswersJson: JSON.stringify(args.answers),
+					knowledgeAnswersJson: JSON.stringify(effectiveAnswers),
 					sourceSummary: generatedPlan.sourceSummary,
 					insight: generatedPlan.insight,
 					planningHint: generatedPlan.planningHint,
 					sessionCompositionVariant,
 					deferReadyUntilContent: true,
+					deferFutureContent: true,
+					rollingWindow: true,
 					generationId,
 					sessions: generatedPlan.sessions,
 				},
 			);
-			const sessionIds = replacement?.sessionIds ?? [];
+			const sessionIds = replacement?.contentSessionIds ?? [];
 			const projectedCostMode = await getMonthlyCostMode(
 				ctx,
 				sessionIds.length,
@@ -3024,11 +3503,11 @@ MVP-Vorgabe:
 			}
 
 			return {
-				sessionCount: generatedPlan.sessions.length,
+				sessionCount: replacement?.sessionIds.length ?? 0,
 				contentSessionCount: finalState.readySessionCount,
-				compositionEligibleSessionCount: generatedPlan.sessions.filter(
-					isLearningSessionCompositionEligible,
-				).length,
+				compositionEligibleSessionCount: generatedPlan.sessions
+					.slice(0, replacement?.sessionIds.length ?? 0)
+					.filter(isLearningSessionCompositionEligible).length,
 			};
 		} catch (error) {
 			await ctx.runMutation(

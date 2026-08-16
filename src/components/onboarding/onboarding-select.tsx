@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { FieldAccessory, FieldTrigger } from "~/components/ui/field";
 import { ChevronDown } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
@@ -25,6 +26,7 @@ function PickerInputTrigger({
 	onPress,
 }: PickerInputTriggerProps) {
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 	const hasValue = value.trim().length > 0;
 
 	return (
@@ -43,7 +45,7 @@ function PickerInputTrigger({
 					"flex-1 font-poppins text-body-2",
 					hasValue ? "text-text" : "text-text/40",
 				)}
-				numberOfLines={1}
+				numberOfLines={shouldStackInlineContent ? undefined : 1}
 			>
 				{hasValue ? value : placeholder}
 			</Text>
@@ -55,7 +57,7 @@ function PickerInputTrigger({
 }
 
 type OnboardingSelectProps<T extends string> = {
-	value: T;
+	value: T | "";
 	options: readonly T[];
 	formatLabel?: (option: T) => string;
 	accessibilityLabel: string;
@@ -74,7 +76,7 @@ function OnboardingSelect<T extends string>({
 	onChange,
 }: OnboardingSelectProps<T>) {
 	const [visible, setVisible] = useState(false);
-	const selectedLabel = formatLabel ? formatLabel(value) : value;
+	const selectedLabel = value ? (formatLabel ? formatLabel(value) : value) : "";
 
 	return (
 		<View className="w-full items-center">

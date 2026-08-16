@@ -21,8 +21,9 @@ export function LearningPlanCreationProgressHeader({
 	totalSteps?: number;
 	title?: string;
 }) {
-	const { currentStep: safeStep, totalSteps: safeTotalSteps } =
+	const { currentStep: safeProgress, totalSteps: safeTotalSteps } =
 		getSafeLearningPlanCreationProgress({ currentStep, totalSteps });
+	const progressPercentage = Math.round((safeProgress / safeTotalSteps) * 100);
 
 	return (
 		<View className={cn("flex-row items-center gap-4", className)} {...props}>
@@ -41,17 +42,17 @@ export function LearningPlanCreationProgressHeader({
 						// Tabular figures are a native text-rendering setting, not static layout.
 						style={{ fontVariant: ["tabular-nums"] }}
 					>
-						{safeStep} von {safeTotalSteps}
+						{progressPercentage} %
 					</Text>
 				</View>
 				<FlowProgressBar
-					progress={safeStep / safeTotalSteps}
+					progress={safeProgress / safeTotalSteps}
 					accessibilityRole="progressbar"
 					accessibilityValue={{
-						min: 1,
-						max: safeTotalSteps,
-						now: safeStep,
-						text: `Schritt ${safeStep} von ${safeTotalSteps}`,
+						min: 0,
+						max: 100,
+						now: progressPercentage,
+						text: `Fortschritt ${progressPercentage} Prozent`,
 					}}
 				/>
 			</View>

@@ -29,7 +29,7 @@ available while Expo bundles JavaScript:
 - `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `EXPO_PUBLIC_CONVEX_URL`
 
-`app.config.ts` fails release config evaluation when either value is missing, so
+`app.config.cts` fails release config evaluation when either value is missing, so
 a broken artifact cannot ship and crash on startup. Set these in EAS/CI for the
 target environment before running production builds or publishing updates.
 
@@ -39,8 +39,16 @@ The mobile app reads these values through `src/lib/runtime-config.ts`, which use
 
 When adding a new required public app env, add it to `publicEnvSchema` in
 `src/lib/runtime-config.ts`. The app runtime fallback, tests, and
-`app.config.ts` release validation all derive their required-key list from that
+`app.config.cts` release validation all derive their required-key list from that
 schema.
+
+Keep the dynamic Expo config at `app.config.cts` and export it through
+`module.exports`. The config loads the shared TypeScript runtime validator with
+`require`, so the explicit CommonJS extension prevents Node and EAS Build from
+classifying the config as ESM and removing `require` from its module scope. A
+future ESM migration must convert the config and its imported TypeScript module
+as one change and keep `tests/app-config-loading.test.ts` green under Node's
+native TypeScript loader.
 
 PostHog validation analytics envs are optional public app envs:
 
@@ -165,17 +173,18 @@ while development builds retain watch mode.
 
 ## iOS Privacy Purpose Strings
 
-Dayova uses camera/photo upload for learning material and microphone/speech
-recognition for spoken answers. Keep these App Store privacy purpose strings in
-`app.config.ts`. If a local native `ios/Dayova/Info.plist` exists after
-prebuild, keep it in sync too:
+Dayova uses camera/photo upload for learning material. Keep these App Store
+privacy purpose strings in `app.config.cts`. If a local native
+`ios/Dayova/Info.plist` exists after prebuild, keep it in sync too:
 
-- `NSMicrophoneUsageDescription`
-- `NSSpeechRecognitionUsageDescription`
 - `NSCameraUsageDescription`
 - `NSPhotoLibraryUsageDescription`
 
-`src/lib/ios-privacy-config.test.ts` always guards `app.config.ts` and also
+Learning-session answers are typed or selected. The image-picker plugin sets
+`microphonePermission: false`, so native builds must not request microphone or
+speech-recognition access.
+
+`tests/ios-privacy-config.test.ts` always guards `app.config.cts` and also
 checks the generated native plist when it exists. Run it before an iOS release
 build so App Store Connect does not reject the uploaded bundle for missing
 purpose strings.

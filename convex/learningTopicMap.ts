@@ -86,7 +86,9 @@ export const normalizeLearningTopics = (
 				.slice(0, MAX_LEARNING_TOPIC_KEYWORD_COUNT),
 			priority: topic.priority,
 			...(requiredEvidenceDimensions.length > 0
-				? { requiredEvidenceDimensions }
+				? {
+						requiredEvidenceDimensions,
+					}
 				: {}),
 		};
 	});
