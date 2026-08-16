@@ -1,81 +1,33 @@
 import { describe, expect, test } from "vitest";
-import { getLearningPlanOverviewState } from "./creation-overview";
+import { getLearningPlanCreationOverview } from "./creation-overview";
 
 describe("learning plan creation overview", () => {
 	test.each([
-		undefined,
-		null,
-	])("does not invent progress when creation data is %s", (creationProgress) => {
+		["draft", true, undefined, "Schulmaterial fehlt"],
+		["draft", false, undefined, "Schulmaterial gespeichert"],
+		["questionsReady", false, undefined, "Prüfungsstoff bestätigen"],
+		["questionsReady", false, 1, "Lernweg wird vorbereitet"],
+		["generated", false, 1, "Lernweg prüfen"],
+	] as const)("presents %s plans as resumable creation work", (status, needsSchoolMaterial, scopeConfirmedAt, progressLabel) => {
 		expect(
-			getLearningPlanOverviewState({
-				status: "questionsReady",
-				creationProgress,
-			}),
-		).toMatchObject({
-			kind: "creation",
-			progressLabel: "Fortschritt wird geladen",
-			resumeTarget: { kind: "question", questionIndex: 0 },
-		});
-	});
-
-	test("presents exact creation progress and resumes at the first unanswered question", () => {
-		expect(
-			getLearningPlanOverviewState({
-				status: "questionsReady",
-				creationProgress: {
-					questionCount: 5,
-					answeredQuestionCount: 2,
-					firstUnansweredQuestionIndex: 2,
-				},
+			getLearningPlanCreationOverview({
+				status,
+				needsSchoolMaterial,
+				scopeConfirmedAt,
 			}),
 		).toEqual({
-			kind: "creation",
 			badgeLabel: "Noch nicht erstellt",
 			actionLabel: "Lernplan-Erstellung fortsetzen",
-			progressLabel: "2 von 5 Fragen beantwortet",
-			resumeTarget: { kind: "question", questionIndex: 2 },
+			progressLabel,
 		});
 	});
 
-	test("keeps the first unanswered position for an adaptive eight-question creation", () => {
+	test("keeps accepted plans out of the creation section", () => {
 		expect(
-			getLearningPlanOverviewState({
-				status: "questionsReady",
-				creationProgress: {
-					questionCount: 8,
-					answeredQuestionCount: 3,
-					firstUnansweredQuestionIndex: 3,
-				},
-			}),
-		).toMatchObject({
-			kind: "creation",
-			progressLabel: "3 von 8 Fragen beantwortet",
-			resumeTarget: { kind: "question", questionIndex: 3 },
-		});
-	});
-
-	test("continues generation when every question was saved before interruption", () => {
-		expect(
-			getLearningPlanOverviewState({
-				status: "questionsReady",
-				creationProgress: {
-					questionCount: 5,
-					answeredQuestionCount: 5,
-					firstUnansweredQuestionIndex: null,
-				},
-			}),
-		).toMatchObject({
-			kind: "creation",
-			progressLabel: "5 von 5 Fragen beantwortet",
-			resumeTarget: { kind: "generation" },
-		});
-	});
-
-	test("keeps accepted plans in the created-plan presentation", () => {
-		expect(
-			getLearningPlanOverviewState({
+			getLearningPlanCreationOverview({
 				status: "accepted",
+				needsSchoolMaterial: false,
 			}),
-		).toEqual({ kind: "created" });
+		).toBeNull();
 	});
 });

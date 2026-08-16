@@ -1,47 +1,47 @@
 import { describe, expect, test } from "vitest";
 import {
-	getDiagnosticQuestionCreationStep,
+	getExamEntryCreationProgress,
+	getLearningPlanCreationProgressPercentage,
 	getSafeLearningPlanCreationProgress,
-	getLearningPlanCreationTotalSteps,
-	getLearningPlanCreationWorkloadStep,
 	LEARNING_PLAN_CREATION_STEPS,
 	LEARNING_PLAN_CREATION_TOTAL_STEPS,
 } from "./creation-progress";
 
 describe("learning-plan creation progress", () => {
-	test("counts every learner input page from exam details through workload", () => {
+	test("advances visibly through the opening exam steps", () => {
 		expect(LEARNING_PLAN_CREATION_STEPS).toEqual({
-			examDate: 1,
-			examType: 2,
-			examSubject: 3,
-			materialUpload: 4,
-			topicDescription: 5,
-			workload: 11,
+			examType: 1,
+			examSubject: 1.5,
+			examDate: 2,
+			learningAvailability: 2.5,
+			examTopics: 3,
+			materialUpload: 3.5,
+			materialAnalysis: 4,
+			scopeConfirmation: 4.5,
+			planGeneration: 5,
 		});
-		expect(LEARNING_PLAN_CREATION_TOTAL_STEPS).toBe(11);
-	});
+		expect(LEARNING_PLAN_CREATION_TOTAL_STEPS).toBe(5);
 
-	test("maps all five diagnostic questions between topic and workload", () => {
+		const openingProgress = [
+			LEARNING_PLAN_CREATION_STEPS.examType,
+			LEARNING_PLAN_CREATION_STEPS.examSubject,
+			LEARNING_PLAN_CREATION_STEPS.examDate,
+			LEARNING_PLAN_CREATION_STEPS.learningAvailability,
+		];
 		expect(
-			Array.from({ length: 5 }, (_, index) =>
-				getDiagnosticQuestionCreationStep(index),
+			openingProgress.every(
+				(progress, index) =>
+					index === 0 || progress > (openingProgress[index - 1] ?? 0),
 			),
-		).toEqual([6, 7, 8, 9, 10]);
+		).toBe(true);
 	});
 
-	test("maps an extended diagnostic flow through each question step", () => {
+	test("turns intermediate progress into a changing percentage", () => {
 		expect(
-			Array.from({ length: 8 }, (_, index) =>
-				getDiagnosticQuestionCreationStep(index, 8),
-			),
-		).toEqual([6, 7, 8, 9, 10, 11, 12, 13]);
-		expect(getLearningPlanCreationWorkloadStep(8)).toBe(14);
-		expect(getLearningPlanCreationTotalSteps(8)).toBe(14);
-	});
-
-	test("keeps malformed diagnostic indexes inside the question range", () => {
-		expect(getDiagnosticQuestionCreationStep(-1)).toBe(6);
-		expect(getDiagnosticQuestionCreationStep(99)).toBe(10);
+			(["examType", "examDetails", "basics", "learningAvailability"] as const)
+				.map(getExamEntryCreationProgress)
+				.map(getLearningPlanCreationProgressPercentage),
+		).toEqual([20, 30, 40, 50]);
 	});
 
 	test("normalizes non-finite progress for visual and accessible output", () => {
@@ -50,12 +50,7 @@ describe("learning-plan creation progress", () => {
 				currentStep: Number.NaN,
 				totalSteps: Number.POSITIVE_INFINITY,
 			}),
-		).toEqual({ currentStep: 1, totalSteps: 11 });
-		expect(
-			getSafeLearningPlanCreationProgress({
-				currentStep: Number.POSITIVE_INFINITY,
-				totalSteps: 8,
-			}),
-		).toEqual({ currentStep: 1, totalSteps: 8 });
+		).toEqual({ currentStep: 1, totalSteps: 5 });
+		expect(getLearningPlanCreationProgressPercentage(Number.NaN)).toBe(20);
 	});
 });

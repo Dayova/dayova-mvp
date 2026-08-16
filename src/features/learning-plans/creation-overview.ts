@@ -1,62 +1,38 @@
 type LearningPlanStatus = "draft" | "questionsReady" | "generated" | "accepted";
 
-type LearningPlanOverviewInput = {
+type LearningPlanCreationOverviewInput = {
 	status: LearningPlanStatus;
-	creationProgress?: {
-		questionCount: number;
-		answeredQuestionCount: number;
-		firstUnansweredQuestionIndex: number | null;
-	} | null;
+	needsSchoolMaterial: boolean;
+	scopeConfirmedAt?: number;
 };
 
-type LearningPlanOverviewState =
-	| {
-			kind: "creation";
-			badgeLabel: "Noch nicht erstellt";
-			actionLabel: "Lernplan-Erstellung fortsetzen";
-			progressLabel: string;
-			resumeTarget:
-				| { kind: "question"; questionIndex: number }
-				| { kind: "generation" };
-	  }
-	| { kind: "created" };
+type LearningPlanCreationOverview = {
+	badgeLabel: "Noch nicht erstellt";
+	actionLabel: "Lernplan-Erstellung fortsetzen";
+	progressLabel: string;
+};
 
-export const getLearningPlanOverviewState = (
-	overview: LearningPlanOverviewInput,
-): LearningPlanOverviewState => {
-	if (overview.status !== "questionsReady") return { kind: "created" };
+export const getLearningPlanCreationOverview = (
+	plan: LearningPlanCreationOverviewInput,
+): LearningPlanCreationOverview | null => {
+	if (plan.status === "accepted") return null;
 
-	let progressLabel: string;
-	let resumeTarget:
-		| { kind: "question"; questionIndex: number }
-		| { kind: "generation" };
-
-	if (!overview.creationProgress) {
-		progressLabel = "Fortschritt wird geladen";
-		resumeTarget = { kind: "question", questionIndex: 0 };
-	} else {
-		const {
-			questionCount,
-			answeredQuestionCount,
-			firstUnansweredQuestionIndex,
-		} = overview.creationProgress;
-		progressLabel = `${answeredQuestionCount} von ${questionCount} Fragen beantwortet`;
-		resumeTarget =
-			firstUnansweredQuestionIndex === null
-				? { kind: "generation" }
-				: {
-						kind: "question",
-						questionIndex: Math.max(firstUnansweredQuestionIndex, 0),
-					};
+	let progressLabel = "Prüfungsthemen gespeichert";
+	if (plan.needsSchoolMaterial) {
+		progressLabel = "Schulmaterial fehlt";
+	} else if (plan.status === "draft") {
+		progressLabel = "Schulmaterial gespeichert";
+	} else if (plan.status === "questionsReady" && !plan.scopeConfirmedAt) {
+		progressLabel = "Prüfungsstoff bestätigen";
+	} else if (plan.status === "questionsReady") {
+		progressLabel = "Lernweg wird vorbereitet";
+	} else if (plan.status === "generated") {
+		progressLabel = "Lernweg prüfen";
 	}
 
 	return {
-		kind: "creation",
 		badgeLabel: "Noch nicht erstellt",
 		actionLabel: "Lernplan-Erstellung fortsetzen",
 		progressLabel,
-		resumeTarget,
 	};
 };
-
-export type { LearningPlanOverviewInput, LearningPlanOverviewState };

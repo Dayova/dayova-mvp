@@ -11,7 +11,20 @@ const mockRouterState = {
 const mockSession = {
 	isSessionLoading: false,
 	pendingSessionTask: null as string | null,
-	user: { id: "user_123" } as { id: string } | null,
+	user: { clerkId: "user_123" } as { clerkId: string } | null,
+};
+const mockAccess = {
+	access: { state: "paid" } as
+		| {
+				state:
+					| "needsActivation"
+					| "trial"
+					| "paid"
+					| "billingGrace"
+					| "expired";
+		  }
+		| undefined,
+	isAccessLoading: false,
 };
 
 jest.mock("expo-router", () => ({
@@ -24,6 +37,10 @@ jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => mockSession,
 }));
 
+jest.mock("~/context/AccessContext", () => ({
+	useAccess: () => mockAccess,
+}));
+
 describe("AuthNavigationGate", () => {
 	let animationFrames: FrameRequestCallback[];
 
@@ -33,7 +50,9 @@ describe("AuthNavigationGate", () => {
 		mockRouterState.rootNavigationState = { key: "root" };
 		mockSession.isSessionLoading = false;
 		mockSession.pendingSessionTask = null;
-		mockSession.user = { id: "user_123" };
+		mockSession.user = { clerkId: "user_123" };
+		mockAccess.access = { state: "paid" };
+		mockAccess.isAccessLoading = false;
 		animationFrames = [];
 		global.requestAnimationFrame = (callback: FrameRequestCallback) => {
 			animationFrames.push(callback);

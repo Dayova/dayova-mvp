@@ -1,178 +1,236 @@
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
-import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
 import { Button } from "~/components/ui/button";
+import { GraduationCap, Plus } from "~/components/ui/icon";
+import { ActionSurface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
-import { WarningBanner } from "~/components/ui/warning-banner";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
+import { useDayovaTheme } from "~/lib/theme";
 
 type PendingUploadAction = "camera" | "files";
 
 function SetupContinueButton({
 	canContinue,
 	isBusy,
+	label = "Weiter",
 	onPress,
 }: {
 	canContinue: boolean;
 	isBusy: boolean;
+	label?: string;
 	onPress: () => void;
 }) {
 	return (
 		<Button
-			accessibilityLabel={isBusy ? "Weiter, wird geladen" : "Weiter"}
+			accessibilityLabel={isBusy ? `${label}, wird geladen` : label}
 			accessibilityLiveRegion={isBusy ? "polite" : undefined}
 			accessibilityState={{ busy: isBusy, disabled: !canContinue }}
 			disabled={!canContinue}
 			onPress={onPress}
 		>
-			{isBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text>Weiter</Text>}
+			{isBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text>{label}</Text>}
 		</Button>
 	);
 }
 
+function UploadActivity({
+	isUploading,
+	openingUploadAction,
+}: {
+	isUploading: boolean;
+	openingUploadAction: PendingUploadAction | null;
+}) {
+	const { colors } = useDayovaTheme();
+	if (!isUploading && !openingUploadAction) return null;
+
+	return (
+		<View className="mt-5 flex-row items-center gap-3 rounded-[24px] bg-system-subtle px-4 py-4">
+			<ActivityIndicator color={colors.primaryStrong} />
+			<Text className="flex-1 font-poppins text-body-4 text-secondary-text">
+				{openingUploadAction === "files"
+					? "Dateiauswahl wird geöffnet …"
+					: openingUploadAction === "camera"
+						? "Kamera wird geöffnet …"
+						: "Material wird hochgeladen …"}
+			</Text>
+		</View>
+	);
+}
+
+function SetupError({ message }: { message: string | null }) {
+	if (!message) return null;
+
+	return (
+		<Text
+			selectable
+			accessibilityRole="alert"
+			className="mt-4 w-full font-poppins text-body-4 text-destructive"
+		>
+			{message}
+		</Text>
+	);
+}
+
 export function MaterialUploadStep({
-	artworkHeight,
-	artworkWidth,
+	canUpload,
 	canContinue,
 	documents,
 	errorMessage,
 	isBusy,
+	isUploading,
 	onContinue,
 	onOpenUpload,
 	onRemoveDocument,
+	onSkip,
 	openingUploadAction,
+	showSkip = true,
 }: {
-	artworkHeight: number;
-	artworkWidth: number;
+	canUpload: boolean;
 	canContinue: boolean;
 	documents: LearningPlanSnapshot["documents"];
 	errorMessage: string | null;
 	isBusy: boolean;
+	isUploading: boolean;
 	onContinue: () => void;
 	onOpenUpload: () => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
+	onSkip: () => void;
 	openingUploadAction: PendingUploadAction | null;
+	showSkip?: boolean;
 }) {
+	const { colors } = useDayovaTheme();
+	const schoolDocuments = documents.filter(
+		(document) => document.sourceKind === "school",
+	);
+	const hasSchoolMaterial = schoolDocuments.length > 0;
+
 	return (
-		<View className="flex-1 items-center">
-			<TouchableOpacity
-				accessibilityHint="Öffnet die Auswahl zum Scannen oder Hochladen von Dateien."
-				accessibilityLabel="Schulmaterial hinzufügen"
+		<View className="flex-1">
+			<Text className="font-poppins font-semibold text-body-1 text-text">
+				Schulmaterial hinzufügen
+			</Text>
+			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
+				Deine Unterlagen bilden die Grundlage für deinen Lernplan.
+			</Text>
+
+			<ActionSurface
+				accessibilityHint="Öffnet die Auswahl zum Scannen oder Hochladen von Schulmaterial."
+				accessibilityLabel={
+					hasSchoolMaterial
+						? "Weiteres Schulmaterial hinzufügen"
+						: "Schulmaterial hinzufügen"
+				}
 				accessibilityRole="button"
-				accessibilityState={{ disabled: !canContinue }}
-				activeOpacity={0.86}
-				disabled={!canContinue}
-				onPress={onOpenUpload}
-				className="relative overflow-hidden rounded-[32px]"
-				style={{
-					// The dimensions follow the runtime viewport; borderCurve is a
-					// native-only rendering property without a NativeWind utility.
-					width: artworkWidth,
-					height: artworkHeight,
-					borderCurve: "continuous",
-				}}
+				disabled={!canUpload}
+				onPress={() => onOpenUpload()}
+				className="mt-7 min-h-[112px] flex-row items-center rounded-[32px] px-5 py-5"
+				variant="soft"
 			>
-				<IntroUploadArtwork width={artworkWidth} height={artworkHeight} />
-				{isBusy || openingUploadAction ? (
-					<View className="absolute inset-0 items-center justify-center rounded-[32px] bg-surface/80">
-						<ActivityIndicator color="#00A0E6" />
-						<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-							{openingUploadAction === "files"
-								? "Dateiauswahl wird geöffnet …"
-								: openingUploadAction === "camera"
-									? "Kamera wird geöffnet …"
-									: "Material wird hochgeladen …"}
-						</Text>
-					</View>
-				) : null}
-			</TouchableOpacity>
-
-			<View className="mt-6 w-full">
-				{documents.map((document) => (
-					<MaterialCard
-						key={document.id}
-						name={document.fileName}
-						size={document.fileSizeBytes}
-						onRemove={() => onRemoveDocument(document.id)}
+				<View className="h-12 w-12 items-center justify-center rounded-[18px] bg-system-subtle">
+					<GraduationCap
+						size={24}
+						color={colors.primaryStrong}
+						strokeWidth={2.1}
 					/>
-				))}
-			</View>
+				</View>
+				<View className="min-w-0 flex-1 px-4">
+					<Text className="font-poppins font-semibold text-body-2 text-text">
+						{hasSchoolMaterial
+							? "Weiteres Schulmaterial"
+							: "Schulmaterial hochladen"}
+					</Text>
+					<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
+						Themenblatt, Arbeitsblätter oder Mitschriften
+					</Text>
+				</View>
+				<Plus size={22} color={colors.primaryStrong} strokeWidth={2.2} />
+			</ActionSurface>
 
-			{errorMessage ? (
-				<Text
-					selectable
-					accessibilityRole="alert"
-					className="mb-4 w-full font-poppins text-body-4 text-destructive"
-				>
-					{errorMessage}
+			{showSkip && !hasSchoolMaterial ? (
+				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
+					Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du
+					später ergänzen.
 				</Text>
 			) : null}
-			<View className="mt-auto w-full pt-8">
-				<SetupContinueButton
-					canContinue={canContinue}
-					isBusy={isBusy}
-					onPress={onContinue}
-				/>
+
+			<UploadActivity
+				isUploading={isUploading}
+				openingUploadAction={openingUploadAction}
+			/>
+
+			{hasSchoolMaterial ? (
+				<View className="mt-7">
+					<Text className="mb-3 font-poppins font-semibold text-body-4 text-secondary-text">
+						Hochgeladen
+					</Text>
+					{schoolDocuments.map((document) => (
+						<MaterialCard
+							key={document.id}
+							name={document.fileName}
+							size={document.fileSizeBytes}
+							onRemove={() => onRemoveDocument(document.id)}
+						/>
+					))}
+				</View>
+			) : null}
+
+			<SetupError message={errorMessage} />
+			<View className="mt-auto w-full gap-3 pt-8">
+				{hasSchoolMaterial ? (
+					<SetupContinueButton
+						canContinue={canContinue}
+						isBusy={isBusy}
+						onPress={onContinue}
+					/>
+				) : showSkip ? (
+					<Button
+						accessibilityHint="Speichert den Lernplan-Entwurf. Material kann später hochgeladen werden."
+						variant="neutral"
+						disabled={!canUpload}
+						onPress={onSkip}
+					>
+						<Text>Ohne Lernmaterial erstellen</Text>
+					</Button>
+				) : null}
 			</View>
 		</View>
 	);
 }
 
-export function TopicDescriptionStep({
+export function RequiredTopicsStep({
 	canContinue,
 	errorMessage,
 	isBusy,
-	onChangeTopicDescription,
+	onChangeTopics,
 	onContinue,
-	onOpenLearningTimes,
-	showLearningTimesWarning,
-	topicDescription,
+	topics,
 }: {
 	canContinue: boolean;
 	errorMessage: string | null;
 	isBusy: boolean;
-	onChangeTopicDescription: (value: string) => void;
+	onChangeTopics: (value: string) => void;
 	onContinue: () => void;
-	onOpenLearningTimes: () => void;
-	showLearningTimesWarning: boolean;
-	topicDescription: string;
+	topics: string;
 }) {
 	return (
 		<View className="flex-1">
-			{showLearningTimesWarning ? (
-				<WarningBanner
-					className="mb-7"
-					title="Lernzeiten fehlen"
-					description="Ohne Lernzeiten weiß Dayova nicht, wann der Lernplan eingetragen werden soll. Lege mindestens eine Lernzeit an, damit wir deinen Plan erstellen können."
-					ctaLabel="Lernzeiten eintragen"
-					onPressCta={onOpenLearningTimes}
-				/>
-			) : null}
 			<Text className="font-poppins font-semibold text-body-1 text-text">
-				Welche Themen kommen in deiner Prüfung dran?
+				Welche Themen kommen in der Prüfung dran?
 			</Text>
-			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
-				Nenne die wichtigsten Inhalte, Kapitel oder Schwerpunkte.
+			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
+				Nenne alle Themen, die du für diese Prüfung lernen musst.
 			</Text>
 			<Textarea
-				autoFocus
 				accessibilityLabel="Prüfungsthemen"
-				className="mt-4 min-h-[180px] flex-1 py-2"
-				value={topicDescription}
-				onChangeText={onChangeTopicDescription}
-				placeholder="Beschreibe kurz deine Prüfungsthemen."
+				className="mt-6 h-48 flex-none rounded-[24px] bg-card px-4 py-4"
+				value={topics}
+				onChangeText={onChangeTopics}
+				placeholder="Zum Beispiel: Lineare Funktionen, Steigung berechnen und den y-Achsenabschnitt bestimmen."
 			/>
-			{errorMessage ? (
-				<Text
-					selectable
-					accessibilityRole="alert"
-					className="mt-4 font-poppins text-body-4 text-destructive"
-				>
-					{errorMessage}
-				</Text>
-			) : null}
+
+			<SetupError message={errorMessage} />
 			<View className="mt-auto pt-8">
 				<SetupContinueButton
 					canContinue={canContinue}

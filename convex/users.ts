@@ -482,16 +482,16 @@ export const getMe = query({
 export const saveOnboardingAnswers = mutation({
 	args: {
 		answers: v.object({
-			studyTime: v.string(),
-			strength: v.string(),
-			challenge: v.string(),
-			goal: v.string(),
+			studyTime: v.optional(v.string()),
+			strength: v.optional(v.string()),
+			challenge: v.optional(v.string()),
+			goal: v.optional(v.string()),
 			state: v.string(),
 			schoolType: v.string(),
 			grade: v.string(),
-			dailySchoolTime: v.string(),
-			studyDays: v.string(),
-			learningTime: v.string(),
+			dailySchoolTime: v.optional(v.string()),
+			studyDays: v.optional(v.string()),
+			learningTime: v.optional(v.string()),
 		}),
 	},
 	handler: async (ctx, args) => {
@@ -521,15 +521,27 @@ export const saveOnboardingAnswers = mutation({
 			throwUserFacingError("Bitte wähle ein gültiges Bundesland aus.");
 		}
 
-		const learningTimes = await insertLearningTimesWhenAbsent(ctx, {
-			ownerTokenIdentifier: identity.tokenIdentifier,
-			input: {
-				studyDays: args.answers.studyDays,
-				learningTime: args.answers.learningTime,
-				dailySchoolTime: args.answers.dailySchoolTime,
-			},
-			invalidInput: "reject",
-		});
+		const legacyLearningTimeInput: OnboardingLearningTimeInput = {
+			studyDays: args.answers.studyDays?.trim() ?? "",
+			learningTime: args.answers.learningTime?.trim() ?? "",
+			dailySchoolTime: args.answers.dailySchoolTime?.trim() ?? "",
+		};
+		const suppliedLearningTimeValues = Object.values(
+			legacyLearningTimeInput,
+		).filter(Boolean).length;
+		if (suppliedLearningTimeValues > 0 && suppliedLearningTimeValues < 3) {
+			throwUserFacingError(
+				"Bitte vervollständige deine Lerntage, Uhrzeit und tägliche Lernzeit.",
+			);
+		}
+		const learningTimes =
+			suppliedLearningTimeValues === 3
+				? await insertLearningTimesWhenAbsent(ctx, {
+						ownerTokenIdentifier: identity.tokenIdentifier,
+						input: legacyLearningTimeInput,
+						invalidInput: "reject",
+					})
+				: { createdCount: 0 };
 		await markLearningTimesBackfillHandled(
 			ctx,
 			user._id,
@@ -567,8 +579,9 @@ export const saveOnboardingAnswers = mutation({
 		}
 
 		for (const [key, answer] of Object.entries(args.answers) as Array<
-			[keyof typeof args.answers, string]
+			[keyof typeof args.answers, string | undefined]
 		>) {
+			if (answer === undefined) continue;
 			const normalizedAnswer =
 				key === "grade"
 					? normalizedGrade

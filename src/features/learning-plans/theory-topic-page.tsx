@@ -1,5 +1,5 @@
-import * as Speech from "expo-speech";
 import { useFocusEffect } from "expo-router";
+import * as Speech from "expo-speech";
 import { useCallback, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -28,8 +28,10 @@ import { useDayovaTheme } from "~/lib/theme";
 import {
 	adaptTheoryTopic,
 	buildTheorySpeechText,
+	getTheoryPagePresentation,
 	getTheoryTopicNavigation,
 	splitTheorySpeechText,
+	type TheoryTopic,
 } from "./theory-topic";
 import type { SessionContentItem } from "./types";
 
@@ -44,6 +46,82 @@ type TheoryTopicPageProps = {
 	onPrevious: () => void;
 	onNext: () => void;
 };
+
+function TheoryTopicProgress({
+	currentIndex,
+	total,
+}: {
+	currentIndex: number;
+	total: number;
+}) {
+	const safeTotal = Math.max(total, 1);
+	const safeIndex = Math.min(Math.max(currentIndex, 0), safeTotal - 1);
+
+	return (
+		<View className="border-border border-b bg-background px-6 py-5">
+			<View className="mb-3 flex-row items-center justify-between">
+				<Text
+					selectable
+					className="font-poppins font-semibold text-body-5 text-primary"
+				>
+					THEMA {safeIndex + 1}
+				</Text>
+				<Text
+					selectable
+					className="font-poppins text-body-5 text-secondary-text"
+					// Tabular counter alignment requires React Native's text style API.
+					style={{ fontVariant: ["tabular-nums"] }}
+				>
+					{safeIndex + 1} von {safeTotal}
+				</Text>
+			</View>
+			<FlowProgressBar
+				progress={(safeIndex + 1) / safeTotal}
+				accessibilityRole="progressbar"
+				accessibilityValue={{
+					min: 1,
+					max: safeTotal,
+					now: safeIndex + 1,
+					text: `Thema ${safeIndex + 1} von ${safeTotal}`,
+				}}
+			/>
+		</View>
+	);
+}
+
+function TheoryTopicIntroduction({
+	topic,
+	accessory,
+}: {
+	topic: TheoryTopic;
+	accessory?: React.ReactNode;
+}) {
+	return (
+		<View className="gap-4">
+			<View className="flex-row items-start gap-4">
+				<Text
+					selectable
+					accessibilityRole="header"
+					className="flex-1 font-poppins font-semibold text-heading-2 text-text"
+				>
+					{topic.conceptTitle}
+				</Text>
+				{accessory}
+			</View>
+			<View className="rounded-[24px] bg-system-subtle px-5 py-5">
+				<Text className="font-poppins font-semibold text-body-4 text-primary">
+					Leitfrage
+				</Text>
+				<Text
+					selectable
+					className="mt-2 font-poppins font-semibold text-body-1 text-text"
+				>
+					{topic.question}
+				</Text>
+			</View>
+		</View>
+	);
+}
 
 function TopicSectionTitle({
 	icon,
@@ -79,6 +157,7 @@ export function TheoryTopicPage({
 	const { colors } = useDayovaTheme();
 	const reduceMotion = useReducedMotion();
 	const topic = adaptTheoryTopic(item, currentIndex);
+	const presentation = getTheoryPagePresentation(item.questionAngle);
 	const navigation = getTheoryTopicNavigation(currentIndex, total);
 	const [isSpeaking, setIsSpeaking] = useState(false);
 	const [speechError, setSpeechError] = useState<string | null>(null);
@@ -106,7 +185,7 @@ export function TheoryTopicPage({
 				if (speechRunRef.current !== nextRun) return;
 
 				const speechChunks = splitTheorySpeechText(
-					buildTheorySpeechText(topic),
+					buildTheorySpeechText(topic, item.questionAngle),
 					Speech.maxSpeechInputLength,
 				);
 				const speakChunk = (chunkIndex: number) => {
@@ -145,7 +224,7 @@ export function TheoryTopicPage({
 				setIsSpeaking(false);
 				setSpeechError(SPEECH_ERROR_MESSAGE);
 			});
-	}, [isSpeaking, stopSpeaking, topic]);
+	}, [isSpeaking, item.questionAngle, stopSpeaking, topic]);
 
 	const stopAndRun = (action: () => void) => {
 		stopSpeaking();
@@ -154,34 +233,7 @@ export function TheoryTopicPage({
 
 	return (
 		<View className="flex-1 bg-background">
-			<View className="border-border border-b bg-background px-6 py-5">
-				<View className="mb-3 flex-row items-center justify-between">
-					<Text
-						selectable
-						className="font-poppins font-semibold text-body-5 text-primary"
-					>
-						THEMA {currentIndex + 1}
-					</Text>
-					<Text
-						selectable
-						className="font-poppins text-body-5 text-secondary-text"
-						// Tabular counter alignment requires React Native's text style API.
-						style={{ fontVariant: ["tabular-nums"] }}
-					>
-						{currentIndex + 1} von {total}
-					</Text>
-				</View>
-				<FlowProgressBar
-					progress={(currentIndex + 1) / Math.max(total, 1)}
-					accessibilityRole="progressbar"
-					accessibilityValue={{
-						min: 1,
-						max: Math.max(total, 1),
-						now: currentIndex + 1,
-						text: `Thema ${currentIndex + 1} von ${total}`,
-					}}
-				/>
-			</View>
+			<TheoryTopicProgress currentIndex={currentIndex} total={total} />
 
 			<ScrollView
 				contentInsetAdjustmentBehavior="automatic"
@@ -197,15 +249,9 @@ export function TheoryTopicPage({
 					entering={reduceMotion ? undefined : FadeInDown.duration(220)}
 					className="gap-7"
 				>
-					<View className="gap-4">
-						<View className="flex-row items-start gap-4">
-							<Text
-								selectable
-								accessibilityRole="header"
-								className="flex-1 font-poppins font-semibold text-heading-2 text-text"
-							>
-								{topic.conceptTitle}
-							</Text>
+					<TheoryTopicIntroduction
+						topic={topic}
+						accessory={
 							<TouchableOpacity
 								accessibilityLabel={
 									isSpeaking ? "Vorlesen stoppen" : "Thema vorlesen"
@@ -231,28 +277,17 @@ export function TheoryTopicPage({
 									/>
 								)}
 							</TouchableOpacity>
-						</View>
-						<View className="rounded-[24px] bg-system-subtle px-5 py-5">
-							<Text className="font-poppins font-semibold text-body-4 text-primary">
-								Leitfrage
-							</Text>
-							<Text
-								selectable
-								className="mt-2 font-poppins font-semibold text-body-1 text-text"
-							>
-								{topic.question}
-							</Text>
-						</View>
-						{speechError ? (
-							<Text
-								selectable
-								accessibilityLiveRegion="polite"
-								className="font-poppins text-body-4 text-wrong"
-							>
-								{speechError}
-							</Text>
-						) : null}
-					</View>
+						}
+					/>
+					{speechError ? (
+						<Text
+							selectable
+							accessibilityLiveRegion="polite"
+							className="font-poppins text-body-4 text-wrong"
+						>
+							{speechError}
+						</Text>
+					) : null}
 
 					<View className="gap-4">
 						<TopicSectionTitle
@@ -264,7 +299,7 @@ export function TheoryTopicPage({
 								/>
 							}
 						>
-							Das solltest du wissen
+							{presentation.sectionTitle}
 						</TopicSectionTitle>
 						<Text
 							selectable
@@ -272,7 +307,7 @@ export function TheoryTopicPage({
 						>
 							{topic.explanation}
 						</Text>
-						{topic.keyPoints.length > 0 ? (
+						{presentation.showKeyPoints && topic.keyPoints.length > 0 ? (
 							<View className="gap-3">
 								{topic.keyPoints.map((keyPoint) => (
 									<View key={keyPoint} className="flex-row gap-3">
@@ -289,7 +324,7 @@ export function TheoryTopicPage({
 						) : null}
 					</View>
 
-					{topic.example ? (
+					{presentation.showExample && topic.example ? (
 						<View className="gap-4 rounded-[32px] border border-primary/20 bg-system-subtle px-5 py-5">
 							<TopicSectionTitle
 								icon={
@@ -308,7 +343,7 @@ export function TheoryTopicPage({
 						</View>
 					) : null}
 
-					{topic.memoryCue ? (
+					{presentation.showMemoryCue && topic.memoryCue ? (
 						<View className="gap-4 rounded-[32px] bg-theorie-subtle px-5 py-5">
 							<TopicSectionTitle
 								icon={
@@ -327,7 +362,7 @@ export function TheoryTopicPage({
 						</View>
 					) : null}
 
-					{topic.commonMistake ? (
+					{presentation.showCommonMistake && topic.commonMistake ? (
 						<View className="gap-4 rounded-[32px] bg-wrong-subtle px-5 py-5">
 							<TopicSectionTitle
 								icon={

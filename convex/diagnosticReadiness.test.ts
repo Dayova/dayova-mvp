@@ -62,3 +62,41 @@ test("keeps mixed performance evidence below secure", () => {
 
 	expect(readiness).toEqual([{ topicId: "analysis", status: "developing" }]);
 });
+
+test("scores performance multiple choice against the explicit correct answer", () => {
+	const wrongAnswer = deriveTopicReadiness({
+		topicIds: ["quadratische-gleichungen"],
+		questions: [
+			{
+				id: "q1",
+				topicId: "quadratische-gleichungen",
+				kind: "performance",
+				responseKind: "multipleChoice",
+				correctAnswer: "x = 2",
+				evaluationKeywords: ["x", "2"],
+			},
+		],
+		answers: [{ questionId: "q1", answer: "x = 2 oder x = -2" }],
+	});
+	const correctAnswer = deriveTopicReadiness({
+		topicIds: ["quadratische-gleichungen"],
+		questions: [
+			{
+				id: "q1",
+				topicId: "quadratische-gleichungen",
+				kind: "performance",
+				responseKind: "multipleChoice",
+				correctAnswer: "x = 2",
+				evaluationKeywords: ["x", "2"],
+			},
+		],
+		answers: [{ questionId: "q1", answer: "x = 2" }],
+	});
+
+	expect(wrongAnswer).toEqual([
+		{ topicId: "quadratische-gleichungen", status: "unknown" },
+	]);
+	expect(correctAnswer).toEqual([
+		{ topicId: "quadratische-gleichungen", status: "secure" },
+	]);
+});

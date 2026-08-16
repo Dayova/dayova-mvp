@@ -74,13 +74,21 @@ function DayovaSheetFrame({
 	const phaseRef = useRef<DayovaSheetPhase>("closed");
 	const insets = useSafeAreaInsets();
 	const { colors, isDark } = useDayovaTheme();
-	const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+	const {
+		fontScale,
+		height: windowHeight,
+		width: windowWidth,
+	} = useWindowDimensions();
 	const sheetWidth = Math.min(windowWidth, MAX_SHEET_WIDTH);
+	const sheetHorizontalInset = Math.max((windowWidth - sheetWidth) / 2, 0);
 	const maximumHeight = Math.max(
 		240,
 		Math.min(windowHeight - insets.top - 20, 720),
 	);
-	const fixedHeight = Math.min(maximumHeight, windowHeight * 0.68, 560);
+	const fixedHeight =
+		fontScale >= 1.2
+			? maximumHeight
+			: Math.min(maximumHeight, windowHeight * 0.68, 560);
 	const snapPoints = useMemo(
 		() => (size === "content" ? undefined : [fixedHeight]),
 		[fixedHeight, size],
@@ -319,9 +327,9 @@ function DayovaSheetFrame({
 			onDismiss={handleDismiss}
 			snapPoints={snapPoints}
 			style={{
-				alignSelf: "center",
 				borderTopLeftRadius: DAYOVA_DESIGN_SYSTEM.radius.rectangle,
 				borderTopRightRadius: DAYOVA_DESIGN_SYSTEM.radius.rectangle,
+				marginHorizontal: sheetHorizontalInset,
 				overflow: "hidden",
 				width: sheetWidth,
 			}}

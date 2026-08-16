@@ -6,10 +6,13 @@ import { describe, expect, it } from "vitest";
 const IOS_INFO_PLIST_PATH = resolve(process.cwd(), "ios/Dayova/Info.plist");
 
 const REQUIRED_IOS_PRIVACY_KEYS = [
-	"NSMicrophoneUsageDescription",
-	"NSSpeechRecognitionUsageDescription",
 	"NSCameraUsageDescription",
 	"NSPhotoLibraryUsageDescription",
+] as const;
+
+const REMOVED_IOS_PRIVACY_KEYS = [
+	"NSMicrophoneUsageDescription",
+	"NSSpeechRecognitionUsageDescription",
 ] as const;
 
 const readNativeInfoPlistValue = (key: string) => {
@@ -56,6 +59,10 @@ describe("iOS privacy purpose strings", () => {
 					`${key} missing from ios/Dayova/Info.plist`,
 				).toEqual(appConfigValue);
 			}
+		}
+
+		for (const key of REMOVED_IOS_PRIVACY_KEYS) {
+			expect(finalInfoPlist[key], `${key} should not be requested`).toBeUndefined();
 		}
 	}, 15_000);
 });

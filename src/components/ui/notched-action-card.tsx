@@ -313,23 +313,37 @@ export function NotchedActionCard({
 	style,
 	...props
 }: NotchedActionCardProps) {
-	const [cardWidth, setCardWidth] = useState(DEFAULT_CARD_WIDTH);
+	const [cardLayout, setCardLayout] = useState({
+		height: cardHeight,
+		width: DEFAULT_CARD_WIDTH,
+	});
 	const { colors } = useDayovaTheme();
 
 	const handleLayout = useCallback(
 		(event: LayoutChangeEvent) => {
-			const nextWidth = event.nativeEvent.layout.width;
+			const { height: nextHeight, width: nextWidth } = event.nativeEvent.layout;
 
-			setCardWidth((currentWidth) =>
-				Math.abs(currentWidth - nextWidth) < 0.5 ? currentWidth : nextWidth,
-			);
+			setCardLayout((currentLayout) => {
+				if (
+					Math.abs(currentLayout.height - nextHeight) < 0.5 &&
+					Math.abs(currentLayout.width - nextWidth) < 0.5
+				) {
+					return currentLayout;
+				}
+
+				return { height: nextHeight, width: nextWidth };
+			});
 
 			onLayout?.(event);
 		},
 		[onLayout],
 	);
 
-	const resolvedCardWidth = Math.max(cardWidth, actionSize + actionOffsetRight);
+	const resolvedCardHeight = Math.max(cardHeight, cardLayout.height);
+	const resolvedCardWidth = Math.max(
+		cardLayout.width,
+		actionSize + actionOffsetRight,
+	);
 
 	const resolvedCardPath = useMemo(
 		() =>
@@ -338,15 +352,15 @@ export function NotchedActionCard({
 				actionOffsetBottom,
 				actionOffsetRight,
 				actionSize,
-				height: cardHeight,
+				height: resolvedCardHeight,
 				width: resolvedCardWidth,
 			}),
 		[
 			actionOffsetBottom,
 			actionOffsetRight,
 			actionSize,
-			cardHeight,
 			cardPath,
+			resolvedCardHeight,
 			resolvedCardWidth,
 		],
 	);
@@ -359,8 +373,8 @@ export function NotchedActionCard({
 				importantForAccessibility="no-hide-descendants"
 				pointerEvents="none"
 				width="100%"
-				height={cardHeight}
-				viewBox={`0 0 ${resolvedCardWidth} ${cardHeight}`}
+				height={resolvedCardHeight}
+				viewBox={`0 0 ${resolvedCardWidth} ${resolvedCardHeight}`}
 				preserveAspectRatio="none"
 				style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
 			>
