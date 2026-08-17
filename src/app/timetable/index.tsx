@@ -2,18 +2,16 @@ import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
-import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Platform,
-	Pressable,
-	type TextStyle,
-	type ViewStyle,
 	View,
+	type ViewStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
@@ -26,12 +24,14 @@ import {
 	Attachment,
 	CalendarDays,
 	Check,
-	Clock3,
 	ScanImage,
-	Trash2,
 } from "~/components/ui/icon";
-import { Input } from "~/components/ui/input";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
@@ -44,6 +44,9 @@ import {
 	TIMETABLE_WEEKDAYS,
 	type TimetableLessonDraft,
 } from "~/features/timetable/timetable-editor";
+import { TimetableWeekEditor } from "~/features/timetable/timetable-week-editor";
+import { ROUTES } from "~/lib/routes";
+import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { validateUploadFile } from "~/lib/upload-policy";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
@@ -57,14 +60,12 @@ const TIMETABLE_FILE_TYPES = [
 const UPLOAD_TIMEOUT_MS = 45_000;
 const UPLOAD_COMPLETION_FAILURE_MESSAGE =
 	"Die Datei wurde übertragen, aber Dayova konnte den Upload nicht abschließen. Bitte versuche es erneut.";
+const TIMETABLE_WEEKDAY_VALUES = TIMETABLE_WEEKDAYS.map((day) => day.value);
 
-// These are native rendering controls with no NativeWind equivalent.
+// This is a native rendering control with no NativeWind equivalent.
 const continuousBorderStyle = {
 	borderCurve: "continuous",
 } satisfies ViewStyle;
-const tabularNumberStyle = {
-	fontVariant: ["tabular-nums"],
-} satisfies TextStyle;
 
 type TimePickerTarget = {
 	lessonKey: string;
@@ -175,142 +176,53 @@ function TimetableStatus({
 	return null;
 }
 
-function TimeButton({
-	label,
-	value,
-	onPress,
+function TimetableSourceActions({
+	isBusy,
+	isProcessing,
+	onPickFile,
+	onTakePhoto,
 }: {
-	label: string;
-	value: string;
-	onPress: () => void;
+	isBusy: boolean;
+	isProcessing: boolean;
+	onPickFile: () => void;
+	onTakePhoto: () => void;
 }) {
 	const { colors } = useDayovaTheme();
+
 	return (
-		<View className="flex-1">
-			<Text className="mb-1 font-poppins text-body-5 text-secondary-text">
-				{label}
-			</Text>
-			<Pressable
-				accessibilityLabel={`${label}: ${value}`}
-				accessibilityRole="button"
-				className="h-12 flex-row items-center justify-between rounded-2xl bg-muted px-4 active:opacity-75"
-				onPress={onPress}
+		<View className="flex-row gap-3">
+			<Button
+				accessibilityLabel="Stundenplan als Datei auswählen"
+				className="flex-1 px-4"
+				size="sm"
+				disabled={isBusy || isProcessing}
+				onPress={onPickFile}
 			>
-				<Text
-					className="font-poppins font-semibold text-body-3 text-text"
-					style={tabularNumberStyle}
-				>
-					{value}
-				</Text>
-				<Clock3 size={17} color={colors.secondaryText} strokeWidth={2} />
-			</Pressable>
-		</View>
-	);
-}
-
-function LessonEditorCard({
-	lesson,
-	onChange,
-	onRemove,
-	onOpenTime,
-}: {
-	lesson: TimetableLessonDraft;
-	onChange: (patch: Partial<TimetableLessonDraft>) => void;
-	onRemove: () => void;
-	onOpenTime: (field: "startTime" | "endTime") => void;
-}) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<View
-			className="rounded-card border border-border bg-card p-5"
-			style={continuousBorderStyle}
-		>
-			<View className="flex-row items-center justify-between">
-				<Text className="font-poppins font-semibold text-body-3 text-text">
-					Unterrichtsstunde
-				</Text>
-				<Pressable
-					accessibilityLabel={`${lesson.subject || "Leere Stunde"} entfernen`}
-					accessibilityRole="button"
-					hitSlop={8}
-					className="h-11 w-11 items-center justify-center rounded-full bg-muted active:opacity-75"
-					onPress={onRemove}
-				>
-					<Trash2 size={18} color={colors.wrong} strokeWidth={2} />
-				</Pressable>
-			</View>
-
-			<View className="mt-4 flex-row flex-wrap gap-2">
-				{TIMETABLE_WEEKDAYS.map((day) => {
-					const selected = lesson.dayOfWeek === day.value;
-					return (
-						<Pressable
-							key={day.value}
-							accessibilityLabel={day.label}
-							accessibilityRole="radio"
-							accessibilityState={{ checked: selected }}
-							className={
-								selected
-									? "h-11 min-w-11 items-center justify-center rounded-full bg-primary px-3"
-									: "h-11 min-w-11 items-center justify-center rounded-full bg-muted px-3"
-							}
-							onPress={() => onChange({ dayOfWeek: day.value })}
-						>
-							<Text
-								className={
-									selected
-										? "font-poppins font-semibold text-body-4 text-white"
-										: "font-poppins font-semibold text-body-4 text-secondary-text"
-								}
-							>
-								{day.shortLabel}
-							</Text>
-						</Pressable>
-					);
-				})}
-			</View>
-
-			<View className="mt-4 h-14 justify-center rounded-2xl bg-muted px-4">
-				<Input
-					accessibilityLabel="Unterrichtsfach"
-					autoCapitalize="words"
-					maxLength={80}
-					placeholder="Fach, z. B. Mathematik"
-					value={lesson.subject}
-					onChangeText={(subject) => onChange({ subject })}
-				/>
-			</View>
-			<View className="mt-3 h-14 justify-center rounded-2xl bg-muted px-4">
-				<Input
-					accessibilityLabel="Raum, optional"
-					autoCapitalize="characters"
-					maxLength={40}
-					placeholder="Raum (optional)"
-					value={lesson.room}
-					onChangeText={(room) => onChange({ room })}
-				/>
-			</View>
-			<View className="mt-4 flex-row gap-3">
-				<TimeButton
-					label="Beginn"
-					value={lesson.startTime}
-					onPress={() => onOpenTime("startTime")}
-				/>
-				<TimeButton
-					label="Ende"
-					value={lesson.endTime}
-					onPress={() => onOpenTime("endTime")}
-				/>
-			</View>
+				<Attachment size={19} color="#FFFFFF" strokeWidth={2} />
+				<Text>Datei</Text>
+			</Button>
+			<Button
+				accessibilityLabel="Stundenplan fotografieren"
+				className="flex-1 px-4"
+				size="sm"
+				variant="neutral"
+				disabled={isBusy || isProcessing}
+				onPress={onTakePhoto}
+			>
+				<ScanImage size={19} color={colors.background} strokeWidth={2} />
+				<Text>Foto</Text>
+			</Button>
 		</View>
 	);
 }
 
 export default function TimetableScreen() {
 	const router = useRouter();
+	const insets = useSafeAreaInsets();
+	const contentSizeLayout = useContentSizeLayout({
+		requestedHorizontalPadding: 24,
+	});
 	const { user } = useAuthSession();
-	const { colors } = useDayovaTheme();
 	const { isAuthenticated } = useConvexAuth();
 	const timetableState = useQuery(
 		api.timetables.getMine,
@@ -330,6 +242,10 @@ export default function TimetableScreen() {
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [timePickerTarget, setTimePickerTarget] =
 		useState<TimePickerTarget | null>(null);
+	const [dayPickerLessonKey, setDayPickerLessonKey] = useState<string | null>(
+		null,
+	);
+	const [selectedDay, setSelectedDay] = useState(1);
 	const taskInFlightRef = useRef(false);
 	const manualLessonKeyRef = useRef(0);
 
@@ -369,6 +285,17 @@ export default function TimetableScreen() {
 			lessons: update(current),
 		});
 	};
+	const updateLesson = (
+		lessonKey: string,
+		patch: Partial<TimetableLessonDraft>,
+	) => {
+		if (!selectedTimetable) return;
+		updateLessons(selectedTimetable.id, (current) =>
+			current.map((lesson) =>
+				lesson.key === lessonKey ? { ...lesson, ...patch } : lesson,
+			),
+		);
+	};
 
 	const ensureDraft = async () => {
 		if (
@@ -400,7 +327,7 @@ export default function TimetableScreen() {
 		}
 	};
 
-	const addManualLesson = () => {
+	const addManualLesson = (dayOfWeek = selectedDay) => {
 		void runTask(async () => {
 			const timetableId = selectedTimetable?.id ?? (await ensureDraft());
 			manualLessonKeyRef.current += 1;
@@ -410,7 +337,10 @@ export default function TimetableScreen() {
 				timetableId,
 				lessons: [
 					...currentLessons,
-					createEmptyTimetableLesson(`manual-${manualLessonKeyRef.current}`),
+					createEmptyTimetableLesson(
+						`manual-${manualLessonKeyRef.current}`,
+						dayOfWeek,
+					),
 				],
 			});
 		});
@@ -532,7 +462,8 @@ export default function TimetableScreen() {
 				})),
 			});
 			setEditor(null);
-			await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			router.replace(ROUTES.home);
+			void triggerSuccessHaptic({ platform: Platform.OS });
 		});
 	};
 
@@ -543,6 +474,18 @@ export default function TimetableScreen() {
 		activePickerLesson && timePickerTarget
 			? activePickerLesson[timePickerTarget.field]
 			: "08:00";
+	const activeDayPickerLesson = dayPickerLessonKey
+		? lessons.find((lesson) => lesson.key === dayPickerLessonKey)
+		: null;
+	const isAddDisabled =
+		!isAuthenticated ||
+		isBusy ||
+		isProcessing ||
+		lessons.length >= MAX_TIMETABLE_LESSONS;
+	const saveAccessibilityLabel =
+		selectedTimetable?.status === "active"
+			? "Änderungen am Stundenplan speichern"
+			: "Stundenplan übernehmen";
 
 	const updateTime = (event: DateTimePickerEvent, selectedDate?: Date) => {
 		if (
@@ -567,10 +510,45 @@ export default function TimetableScreen() {
 	return (
 		<Screen>
 			<ThemedStatusBar />
-			<ScreenScroll topPadding={64} bottomPadding={120} horizontalPadding={24}>
-				<ScreenHeader title="Stundenplan" onBack={() => router.back()} />
+			<PortraitContent
+				className="bg-background"
+				style={{
+					// Safe-area and responsive horizontal padding are runtime layout data.
+					paddingHorizontal: contentSizeLayout.horizontalPadding,
+					paddingTop: Math.max(insets.top + 28, 64),
+				}}
+			>
+				<ScreenHeader
+					className="mb-5"
+					title="Stundenplan"
+					onBack={() => router.back()}
+					right={
+						lessons.length > 0 ? (
+							<Button
+								accessibilityLabel={saveAccessibilityLabel}
+								accessibilityHint="Prüft und aktiviert den gesamten Stundenplan."
+								accessibilityState={{ busy: isBusy }}
+								disabled={!canSave}
+								size="icon"
+								onPress={save}
+							>
+								{isBusy ? (
+									<ActivityIndicator color="#FFFFFF" />
+								) : (
+									<Check size={20} color="#FFFFFF" strokeWidth={2.4} />
+								)}
+							</Button>
+						) : undefined
+					}
+				/>
+			</PortraitContent>
+			<ScreenScroll
+				includeTopSafeArea={false}
+				topPadding={0}
+				bottomPadding={120}
+				horizontalPadding={24}
+			>
 				<View className="gap-5">
-					<TimetableIntro />
 					{selectedTimetable ? (
 						<TimetableStatus
 							status={selectedTimetable.status}
@@ -588,109 +566,68 @@ export default function TimetableScreen() {
 						</View>
 					) : null}
 
-					<View className="flex-row gap-3">
-						<Button
-							accessibilityLabel="Stundenplan als Datei auswählen"
-							className="flex-1 px-4"
-							size="sm"
-							disabled={isBusy || isProcessing}
-							onPress={pickFile}
-						>
-							<Attachment size={19} color="#FFFFFF" strokeWidth={2} />
-							<Text>Datei</Text>
-						</Button>
-						<Button
-							accessibilityLabel="Stundenplan fotografieren"
-							className="flex-1 px-4"
-							size="sm"
-							variant="neutral"
-							disabled={isBusy || isProcessing}
-							onPress={takePhoto}
-						>
-							<ScanImage size={19} color={colors.background} strokeWidth={2} />
-							<Text>Foto</Text>
-						</Button>
-					</View>
-
-					{lessons.length > 0 ? (
-						<View className="pt-3">
-							<Text className="font-poppins font-semibold text-heading-2 text-text">
-								Stunden prüfen
-							</Text>
-							<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-								Kontrolliere Fach, Wochentag und Uhrzeit. Erst danach wird der
-								Stundenplan aktiv.
-							</Text>
-						</View>
-					) : null}
-
-					{sortTimetableLessons(lessons).map((lesson) => (
-						<LessonEditorCard
-							key={lesson.key}
-							lesson={lesson}
-							onChange={(patch) => {
-								if (!selectedTimetable) return;
-								updateLessons(selectedTimetable.id, (current) =>
-									current.map((item) =>
-										item.key === lesson.key ? { ...item, ...patch } : item,
-									),
-								);
-							}}
-							onRemove={() => {
-								if (!selectedTimetable) return;
-								updateLessons(selectedTimetable.id, (current) =>
-									current.filter((item) => item.key !== lesson.key),
-								);
-							}}
-							onOpenTime={(field) =>
-								setTimePickerTarget({ lessonKey: lesson.key, field })
-							}
-						/>
-					))}
-
-					<Button
-						accessibilityLabel={
-							lessons.length > 0
-								? "Weitere Unterrichtsstunde hinzufügen"
-								: "Unterrichtsstunde manuell hinzufügen"
-						}
-						disabled={
-							!isAuthenticated ||
-							isBusy ||
-							isProcessing ||
-							lessons.length >= MAX_TIMETABLE_LESSONS
-						}
-						size="sm"
-						variant="outline"
-						onPress={addManualLesson}
-					>
-						<Text>
-							{lessons.length > 0
-								? "Weitere Stunde hinzufügen"
-								: "Stunde manuell hinzufügen"}
-						</Text>
-					</Button>
-
-					{lessons.length > 0 ? (
-						<View>
-							<Button disabled={!canSave} onPress={save}>
-								{isBusy ? (
-									<ActivityIndicator color="#FFFFFF" />
-								) : (
-									<Text>
-										{selectedTimetable?.status === "active"
-											? "Änderungen speichern"
-											: "Stundenplan übernehmen"}
-									</Text>
-								)}
+					{lessons.length === 0 ? (
+						<>
+							<TimetableIntro />
+							<TimetableSourceActions
+								isBusy={isBusy}
+								isProcessing={isProcessing}
+								onPickFile={pickFile}
+								onTakePhoto={takePhoto}
+							/>
+							<Button
+								accessibilityLabel="Unterrichtsstunde manuell hinzufügen"
+								disabled={isAddDisabled}
+								size="sm"
+								variant="outline"
+								onPress={() => addManualLesson(selectedDay)}
+							>
+								<Text>Stunde manuell hinzufügen</Text>
 							</Button>
+						</>
+					) : (
+						<>
 							{validationError ? (
-								<Text className="mt-3 text-center font-poppins text-body-4 text-secondary-text">
-									{validationError}
-								</Text>
+								<View
+									accessibilityLiveRegion="polite"
+									accessibilityRole="alert"
+									className="rounded-3xl bg-wrong-subtle px-5 py-4"
+								>
+									<Text className="font-poppins text-body-4 text-text">
+										{validationError}
+									</Text>
+								</View>
 							) : null}
-						</View>
-					) : null}
+
+							<TimetableWeekEditor
+								lessons={lessons}
+								selectedDay={selectedDay}
+								isAddDisabled={isAddDisabled}
+								onSelectedDayChange={setSelectedDay}
+								onAddLesson={addManualLesson}
+								onChangeLesson={updateLesson}
+								onRemoveLesson={(lessonKey) => {
+									if (!selectedTimetable) return;
+									updateLessons(selectedTimetable.id, (current) =>
+										current.filter((lesson) => lesson.key !== lessonKey),
+									);
+								}}
+								onOpenTime={(lessonKey, field) =>
+									setTimePickerTarget({ lessonKey, field })
+								}
+								onOpenDayPicker={setDayPickerLessonKey}
+							/>
+
+							<View className="border-border border-t pt-5">
+								<TimetableSourceActions
+									isBusy={isBusy}
+									isProcessing={isProcessing}
+									onPickFile={pickFile}
+									onTakePhoto={takePhoto}
+								/>
+							</View>
+						</>
+					)}
 				</View>
 			</ScreenScroll>
 
@@ -701,6 +638,23 @@ export default function TimetableScreen() {
 				display="spinner"
 				onChange={updateTime}
 				onClose={() => setTimePickerTarget(null)}
+			/>
+
+			<SelectSheet
+				visible={Boolean(activeDayPickerLesson)}
+				title="Wochentag ändern"
+				options={TIMETABLE_WEEKDAY_VALUES}
+				selectedValue={activeDayPickerLesson?.dayOfWeek ?? ""}
+				formatOptionLabel={(value) =>
+					TIMETABLE_WEEKDAYS.find((day) => day.value === value)?.label ??
+					String(value)
+				}
+				onSelect={(dayOfWeek) => {
+					if (!activeDayPickerLesson) return;
+					updateLesson(activeDayPickerLesson.key, { dayOfWeek });
+					setSelectedDay(dayOfWeek);
+				}}
+				onClose={() => setDayPickerLessonKey(null)}
 			/>
 		</Screen>
 	);

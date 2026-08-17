@@ -69,6 +69,7 @@ import { getErrorMessage } from "~/features/learning-plans/utils";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { getExamDatePickerRange } from "~/lib/exam-date";
 import { EXAM_TYPE_OPTIONS } from "~/lib/entry-options";
 import {
 	constrainEndTimeForStart,
@@ -782,12 +783,19 @@ export default function NewEntryScreen() {
 					: pickerTarget === "plannedEndTime"
 						? plannedEndTime
 						: plannedDate;
+		const isExamDatePicker = !isHomework && pickerTarget === "plannedDate";
+		const examDateRange = isExamDatePicker
+			? getExamDatePickerRange({ selectedDate: plannedDate })
+			: null;
 
 		return (
 			<DateTimePickerSheet
+				display={isExamDatePicker ? "inline" : undefined}
 				visible
 				value={value}
 				mode={mode}
+				minimumDate={examDateRange?.minimumDate}
+				maximumDate={examDateRange?.maximumDate}
 				onChange={handlePickerChange}
 				onClose={closePicker}
 			/>
@@ -972,7 +980,7 @@ export default function NewEntryScreen() {
 							{step === "basics" ? (
 								<ExamDateSelector
 									selectedDate={plannedDate}
-									onSelect={setPlannedDate}
+									onOpen={() => openPicker("plannedDate")}
 								/>
 							) : step === "learningAvailability" ? (
 								<LearningAvailabilityStep
