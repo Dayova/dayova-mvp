@@ -1298,10 +1298,13 @@ export function AnalyticsScreen({
 							analysis={analysis}
 							onOpenNextStep={() => {
 								if (selectedPlanIdForRoute) {
-									router.push({
-										pathname: ROUTES.analyticsNextStep,
-										params: { planId: selectedPlanIdForRoute },
-									});
+									if (analysis.recommendation) {
+										router.push(
+											`/learning-plans/${selectedPlanIdForRoute}/sessions/${analysis.recommendation.sessionId}`,
+										);
+										return;
+									}
+									router.push(`/learning-plans/${selectedPlanIdForRoute}`);
 								}
 							}}
 							onOpenTopic={(topicId) => {

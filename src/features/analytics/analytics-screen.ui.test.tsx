@@ -503,10 +503,9 @@ describe("AnalyticsScreen", () => {
 				name: "Nächster Schritt: Steigung vollständig erklären",
 			}),
 		);
-		expect(mockPush).toHaveBeenCalledWith({
-			pathname: "/analyse/naechster-schritt",
-			params: { planId: "plan_1" },
-		});
+		expect(mockPush).toHaveBeenCalledWith(
+			"/learning-plans/plan_1/sessions/session_1",
+		);
 
 		await fireEvent.press(
 			screen.getByRole("button", {
@@ -517,6 +516,18 @@ describe("AnalyticsScreen", () => {
 			pathname: "/analyse/wissensstand",
 			params: { planId: "plan_1", topicId: "steigung" },
 		});
+	});
+
+	test("opens the related learning plan when the next step has no session", async () => {
+		mockUseQuery.mockReturnValue({ ...examAnalysis, recommendation: null });
+		const screen = await render(<AnalyticsScreen />);
+
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Nächster Schritt: Lernplan prüfen",
+			}),
+		);
+		expect(mockPush).toHaveBeenCalledWith("/learning-plans/plan_1");
 	});
 
 	test("does not show an aggregate knowledge card with existing evidence", async () => {
