@@ -42,7 +42,7 @@ import { useAuthSession } from "~/context/AuthContext";
 import { getDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
-import { ROUTES } from "~/lib/routes";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
@@ -1300,7 +1300,10 @@ export function AnalyticsScreen({
 								if (selectedPlanIdForRoute) {
 									if (analysis.recommendation) {
 										router.push(
-											`/learning-plans/${selectedPlanIdForRoute}/sessions/${analysis.recommendation.sessionId}`,
+											withReturnTo(
+												`/learning-plans/${selectedPlanIdForRoute}/sessions/${analysis.recommendation.sessionId}`,
+												ROUTES.analytics,
+											),
 										);
 										return;
 									}

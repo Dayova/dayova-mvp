@@ -23,9 +23,10 @@ import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
 import { LearningSessionCompletion } from "~/features/learning-plans/learning-session-completion";
-import { FeedbackView } from "~/features/learning-plans/session-feedback";
 import { getLearningSessionAnalysisDestination } from "~/features/learning-plans/session-analysis-navigation";
 import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
+import { FeedbackView } from "~/features/learning-plans/session-feedback";
+import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
 	CONTINUE_LEARNING_MINUTES,
 	getLearningSessionCompletionPhase,
@@ -222,6 +223,7 @@ export default function LearningSessionContentScreen() {
 	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{
 		planId?: string;
+		returnTo?: string;
 		sessionId?: string;
 	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
@@ -345,15 +347,12 @@ export default function LearningSessionContentScreen() {
 	const currentRunCorrectCount = currentRunAttempts.filter(
 		(attempt) => attempt.rating === "correct",
 	).length;
+	const backTarget = getLearningSessionBackTarget(planId, params.returnTo);
 
 	const goBack = useCallback(() => {
-		if (planId) {
-			dismissToOrReplace(router, `/learning-plans/${planId}` as const);
-			return true;
-		}
-		dismissToOrReplace(router, "/learning-plans");
+		dismissToOrReplace(router, backTarget);
 		return true;
-	}, [planId, router]);
+	}, [backTarget, router]);
 
 	useBackIntent(Boolean(planId), goBack);
 
@@ -842,7 +841,6 @@ export default function LearningSessionContentScreen() {
 						},
 						headerLeft: () => (
 							<BackButton
-								accessibilityHint="Kehrt zum Lernplan zurück."
 								onPress={goBack}
 								className="h-11 min-h-11 w-11 min-w-11"
 							/>
@@ -905,7 +903,6 @@ export default function LearningSessionContentScreen() {
 								},
 								headerLeft: () => (
 									<BackButton
-										accessibilityHint="Kehrt zum Lernplan zurück."
 										onPress={goBack}
 										className="h-11 min-h-11 w-11 min-w-11"
 									/>

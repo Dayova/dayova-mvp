@@ -504,7 +504,7 @@ describe("AnalyticsScreen", () => {
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith(
-			"/learning-plans/plan_1/sessions/session_1",
+			"/learning-plans/plan_1/sessions/session_1?returnTo=%2Fanalyse",
 		);
 
 		await fireEvent.press(
