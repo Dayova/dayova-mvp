@@ -17,6 +17,8 @@ type NotificationLike = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	value !== null && typeof value === "object" && !Array.isArray(value);
 
+const unixSecondsUpperBound = 10_000_000_000;
+
 export const getDeliveredNotificationInput = (
 	notification: NotificationLike,
 	expectedOwnerId?: string,
@@ -35,7 +37,11 @@ export const getDeliveredNotificationInput = (
 		return null;
 	}
 
-	const triggeredAt = new Date(notification.date);
+	const timestampMilliseconds =
+		notification.date >= 0 && notification.date < unixSecondsUpperBound
+			? notification.date * 1000
+			: notification.date;
+	const triggeredAt = new Date(timestampMilliseconds);
 	if (!Number.isFinite(triggeredAt.getTime())) return null;
 
 	return {

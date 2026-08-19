@@ -95,6 +95,7 @@ const config: ExpoConfig = {
 	},
 	plugins: [
 		"expo-router",
+		["expo-dev-client", { toolsButton: false }],
 		"expo-status-bar",
 		[
 			"@clerk/expo",
