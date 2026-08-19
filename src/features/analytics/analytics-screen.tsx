@@ -5,7 +5,6 @@ import {
 	ActivityIndicator,
 	FlatList as NativeFlatList,
 	Pressable,
-	useWindowDimensions,
 	View,
 } from "react-native";
 import Animated, {
@@ -33,7 +32,10 @@ import {
 	Sparkles,
 	Time04,
 } from "~/components/ui/icon";
-import { useContentSizeLayout } from "~/components/ui/portrait-content";
+import {
+	PortraitContent,
+	useContentSizeLayout,
+} from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { ActionSurface, Surface } from "~/components/ui/surface";
@@ -162,6 +164,8 @@ const SESSION_PHASE_COPY = {
 
 const TOPIC_ANSWER_FLIP_DURATION_MS = 320;
 const TOPIC_ANSWER_CARD_MIN_HEIGHT = 240;
+const ANALYTICS_CONTENT_MAX_WIDTH = 560;
+const ANALYTICS_HORIZONTAL_PADDING = 24;
 
 const formatTopicAnswerReview = (review: string) => {
 	const standaloneReview = review
@@ -974,8 +978,10 @@ function TopicQuestionEvidenceSection({
 }: {
 	evidence: TopicQuestionEvidence | undefined;
 }) {
-	const { width } = useWindowDimensions();
-	const pagerWidth = Math.max(width - 48, 0);
+	const { usableWidth: pagerWidth } = useContentSizeLayout({
+		containerMaxWidth: ANALYTICS_CONTENT_MAX_WIDTH,
+		requestedHorizontalPadding: ANALYTICS_HORIZONTAL_PADDING,
+	});
 	const cardWidth = Math.max(pagerWidth - 24, 240);
 	const snapInterval = cardWidth + 12;
 	const questionCount = evidence?.questions.length ?? 0;
@@ -1308,59 +1314,66 @@ export function AnalyticsScreen({
 		<Screen>
 			<ThemedStatusBar />
 			<View
-				className="z-10 bg-background px-6 pb-5"
+				className="z-10 bg-background pb-5"
 				// Safe-area padding is runtime device geometry.
 				style={{ paddingTop: insets.top + 16 }}
 			>
-				<View
-					className={cn(
-						"gap-4",
-						!shouldStackInlineContent &&
-							"flex-row items-center justify-between",
-					)}
+				<PortraitContent
+					className="px-6"
+					maxWidth={ANALYTICS_CONTENT_MAX_WIDTH}
+					testID="analysis-header-content"
 				>
 					<View
 						className={cn(
-							shouldStackInlineContent ? "w-full" : "min-w-0 flex-1 pr-4",
+							"gap-4",
+							!shouldStackInlineContent &&
+								"flex-row items-center justify-between",
 						)}
 					>
-						<Text
-							accessibilityRole="header"
-							className="font-poppins font-semibold text-heading-2 text-text"
+						<View
+							className={cn(
+								shouldStackInlineContent ? "w-full" : "min-w-0 flex-1 pr-4",
+							)}
 						>
-							Analyse
-						</Text>
-						{selectedExamContext ? (
 							<Text
-								selectable
-								className="font-poppins text-body-4 text-secondary-text"
-								numberOfLines={shouldStackInlineContent ? undefined : 1}
+								accessibilityRole="header"
+								className="font-poppins font-semibold text-heading-2 text-text"
 							>
-								{selectedExamContext}
+								Analyse
 							</Text>
-						) : null}
+							{selectedExamContext ? (
+								<Text
+									selectable
+									className="font-poppins text-body-4 text-secondary-text"
+									numberOfLines={shouldStackInlineContent ? undefined : 1}
+								>
+									{selectedExamContext}
+								</Text>
+							) : null}
+						</View>
+						<View className="flex-row items-center gap-2 self-end">
+							{analysis?.hasData ? (
+								<ExamSwitcher
+									analysis={analysis}
+									onClose={() => setIsSelectorOpen(false)}
+									onOpen={() => setIsSelectorOpen(true)}
+									onSelect={setSelectedPlanId}
+									visible={isSelectorOpen}
+								/>
+							) : null}
+							<NotificationButton />
+						</View>
 					</View>
-					<View className="flex-row items-center gap-2 self-end">
-						{analysis?.hasData ? (
-							<ExamSwitcher
-								analysis={analysis}
-								onClose={() => setIsSelectorOpen(false)}
-								onOpen={() => setIsSelectorOpen(true)}
-								onSelect={setSelectedPlanId}
-								visible={isSelectorOpen}
-							/>
-						) : null}
-						<NotificationButton />
-					</View>
-				</View>
+				</PortraitContent>
 			</View>
 
 			<ScreenScroll
 				testID="analysis-scroll"
+				contentMaxWidth={ANALYTICS_CONTENT_MAX_WIDTH}
 				includeTopSafeArea={false}
 				topPadding={20}
 				bottomPadding={150}
-				horizontalPadding={24}
+				horizontalPadding={ANALYTICS_HORIZONTAL_PADDING}
 			>
 				<View className="gap-7">
 					{analysis === undefined ? (
@@ -1410,11 +1423,12 @@ export function AnalyticsHistoryScreen() {
 		<Screen>
 			<ThemedStatusBar />
 			<ScreenScroll
+				contentMaxWidth={ANALYTICS_CONTENT_MAX_WIDTH}
 				contentInsetAdjustmentBehavior="automatic"
 				includeTopSafeArea={false}
 				topPadding={24}
 				bottomPadding={72}
-				horizontalPadding={24}
+				horizontalPadding={ANALYTICS_HORIZONTAL_PADDING}
 			>
 				{overview === undefined ? (
 					<LoadingState />
@@ -1660,11 +1674,12 @@ export function AnalyticsDetailScreen({
 		<Screen>
 			<ThemedStatusBar />
 			<ScreenScroll
+				contentMaxWidth={ANALYTICS_CONTENT_MAX_WIDTH}
 				contentInsetAdjustmentBehavior="automatic"
 				includeTopSafeArea={false}
 				topPadding={24}
 				bottomPadding={72}
-				horizontalPadding={24}
+				horizontalPadding={ANALYTICS_HORIZONTAL_PADDING}
 			>
 				{analysis === undefined ? (
 					<LoadingState />

@@ -100,11 +100,18 @@ jest.mock("~/components/ui/screen", () => {
 			React.createElement(Native.View, null, children),
 		ScreenScroll: ({
 			children,
+			contentMaxWidth,
 			testID,
 		}: {
 			children: ReactNode;
+			contentMaxWidth?: number;
 			testID?: string;
-		}) => React.createElement(Native.View, { testID }, children),
+		}) =>
+			React.createElement(
+				Native.View,
+				{ style: { maxWidth: contentMaxWidth }, testID },
+				children,
+			),
 	};
 });
 
@@ -476,6 +483,12 @@ describe("AnalyticsScreen", () => {
 		expect(screen.queryByText("1 von 2 sicher belegt")).not.toBeOnTheScreen();
 		expect(screen.queryByText("1 unsicher")).not.toBeOnTheScreen();
 		expect(screen.getByText("Deine Themen im Detail")).toBeOnTheScreen();
+		expect(screen.getByTestId("analysis-scroll").props.style.maxWidth).toBe(
+			560,
+		);
+		expect(screen.getByTestId("analysis-header-content").props.style).toEqual(
+			expect.arrayContaining([expect.objectContaining({ maxWidth: 560 })]),
+		);
 		expect(
 			screen.getByText("Stark – du bist auf dem richtigen Weg"),
 		).toBeOnTheScreen();
@@ -713,7 +726,7 @@ describe("AnalyticsScreen", () => {
 		).not.toBeOnTheScreen();
 		const answerPager = knowledgeScreen.getByTestId("topic-answer-pager");
 		expect(answerPager.props.horizontal).toBe(true);
-		expect(answerPager.props.snapToInterval).toBeGreaterThan(0);
+		expect(answerPager.props.snapToInterval).toBeLessThan(560);
 		expect(
 			knowledgeScreen.getByText("Erkläre die Steigung."),
 		).toBeOnTheScreen();
