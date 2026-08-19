@@ -44,8 +44,20 @@ jest.mock("~/components/ui/screen", () => {
 	return {
 		Screen: ({ children }: { children: ReactNode }) =>
 			React.createElement(Native.View, null, children),
-		ScreenScroll: ({ children }: { children: ReactNode }) =>
-			React.createElement(Native.View, null, children),
+		ScreenScroll: ({
+			children,
+			contentMaxWidth,
+			testID,
+		}: {
+			children: ReactNode;
+			contentMaxWidth?: number;
+			testID?: string;
+		}) =>
+			React.createElement(
+				Native.View,
+				{ style: { maxWidth: contentMaxWidth }, testID },
+				children,
+			),
 	};
 });
 
@@ -69,6 +81,9 @@ describe("SettingsScreen", () => {
 		expect(screen.getByRole("header", { name: "Lernen" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "App" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "Konto" })).toBeOnTheScreen();
+		expect(screen.getByTestId("settings-scroll").props.style.maxWidth).toBe(
+			640,
+		);
 
 		await fireEvent.press(screen.getByRole("button", { name: "Stundenplan" }));
 		expect(mockPush).toHaveBeenCalledWith("/timetable");

@@ -254,6 +254,11 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 			uncertain: 1,
 			unknown: 0,
 		},
+		answerAccuracy: {
+			answeredQuestions: 1,
+			correctAnswers: 0,
+			percent: 0,
+		},
 		abilities: [
 			{
 				statement: "Du erkennst lineare Zusammenhänge.",
@@ -395,6 +400,51 @@ test("returns a selected exam analysis grounded in topics, answers, and schedule
 		}),
 	).resolves.toMatchObject({
 		selectedPlan: { id: learningPlanId },
+	});
+});
+
+test("calculates answer correctness across all latest question answers", async () => {
+	const { t, learningPlanId, firstSessionId } = await seedAnalyticsData();
+	await t.run(async (ctx) => {
+		for (let index = 0; index < 9; index += 1) {
+			const itemId = await ctx.db.insert("learningSessionContentItems", {
+				ownerTokenIdentifier: identity.tokenIdentifier,
+				learningPlanId,
+				sessionId: firstSessionId,
+				phase: "practice",
+				kind: "written",
+				title: `Richtige Antwort ${index + 1}`,
+				prompt: `Beantworte Frage ${index + 1}.`,
+				explanation: "Die Antwort ist richtig.",
+				idealAnswer: "Richtig",
+				evaluationKeywords: ["Richtig"],
+				sortOrder: index,
+				createdAt: Date.UTC(2026, 6, 27, 10, index),
+				updatedAt: Date.UTC(2026, 6, 27, 10, index),
+			});
+			await ctx.db.insert("learningSessionAnswerAttempts", {
+				ownerTokenIdentifier: identity.tokenIdentifier,
+				learningPlanId,
+				sessionId: firstSessionId,
+				itemId,
+				answerText: "Richtig",
+				rating: "correct",
+				feedback: "Richtig.",
+				perfectAnswer: "Richtig",
+				createdAt: Date.UTC(2026, 6, 27, 10, index, 30),
+			});
+		}
+	});
+
+	const analysis = await t.query(api.userAnalytics.getExamAnalysis, {
+		learningPlanId,
+		todayKey: "2026-07-28",
+	});
+
+	expect(analysis.answerAccuracy).toEqual({
+		answeredQuestions: 10,
+		correctAnswers: 9,
+		percent: 90,
 	});
 });
 
