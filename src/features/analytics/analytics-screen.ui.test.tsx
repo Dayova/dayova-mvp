@@ -471,7 +471,9 @@ describe("AnalyticsScreen", () => {
 		).toBeOnTheScreen();
 		expect(screen.getByText("67%")).toBeOnTheScreen();
 		expect(
-			screen.getByText("1 von 2 Prüfungsthemen ist sicher belegt."),
+			screen.getByText(
+				"4 von 6 Lernkriterien sitzen sicher – du bist auf einem guten Weg.",
+			),
 		).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("analysis-progress-ring").props.accessibilityValue,
@@ -522,7 +524,7 @@ describe("AnalyticsScreen", () => {
 			screen.queryByText(
 				"Seit deinem letzten Check: Steigung gelingt dir jetzt sicherer.",
 			),
-		).toBeOnTheScreen();
+		).not.toBeOnTheScreen();
 		expect(screen.getByText("Dein nächster Schritt")).toBeOnTheScreen();
 		expect(screen.queryByText("Größte Lernhürde")).not.toBeOnTheScreen();
 		expect(screen.queryByText("Dein Prüfungsstoff")).not.toBeOnTheScreen();

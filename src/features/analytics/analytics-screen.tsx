@@ -353,7 +353,6 @@ function AnalysisHub({
 	return (
 		<View className="gap-7">
 			<AnalyticsProgressCard
-				latestKnowledgeChange={analysis.latestKnowledgeChange}
 				preliminary={analysis.preliminary}
 				progress={{
 					assessedCriteria,
@@ -762,7 +761,7 @@ function TopicList({
 					</Text>
 				</View>
 				{requiredDimensions.length > 0 ? (
-					<View className="flex-row flex-wrap items-center gap-3">
+					<View className="flex-row items-center gap-3">
 						<View
 							accessibilityElementsHidden
 							importantForAccessibility="no-hide-descendants"
@@ -783,7 +782,7 @@ function TopicList({
 						</View>
 						<Text
 							selectable
-							className="font-poppins text-body-5 text-secondary-text"
+							className="min-w-0 flex-1 font-poppins text-body-5 text-secondary-text"
 						>
 							{`${secureDimensionCount} von ${requiredDimensions.length} Lernkriterien sicher`}
 						</Text>

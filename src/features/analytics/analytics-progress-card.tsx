@@ -1,6 +1,5 @@
 import { View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
-import { Sparkles } from "~/components/ui/icon";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
@@ -66,43 +65,26 @@ function getProgressHeadline({
 	return "Dein Lernstand wird jetzt sichtbar";
 }
 
-function getProgressDescription({
-	secureTopics,
-	totalTopics,
-}: AnalyticsProgress) {
-	if (totalTopics === 0) return "Noch keine Prüfungsthemen bewertet.";
-	if (secureTopics === 1 && totalTopics === 1) {
-		return "Dein Prüfungsthema ist sicher belegt.";
-	}
-	if (secureTopics === 1) {
-		return `1 von ${totalTopics} Prüfungsthemen ist sicher belegt.`;
-	}
-	return `${secureTopics} von ${totalTopics} Prüfungsthemen sind sicher belegt.`;
-}
-
-function getProgressInsight({
-	latestKnowledgeChange,
-	progress,
-}: {
-	latestKnowledgeChange: string | null;
-	progress: AnalyticsProgress;
-}) {
-	if (latestKnowledgeChange) return latestKnowledgeChange;
+function getProgressMotivation(
+	progress: AnalyticsProgress,
+	ringProgress: RingProgress,
+) {
 	if (progress.totalTopics === 0) {
-		return "Öffne deinen Lernplan und ergänze zuerst die Prüfungsthemen.";
+		return "Ergänze deine Prüfungsthemen, damit dein Fortschritt sichtbar wird.";
 	}
-
-	const remainingTopics = Math.max(
-		progress.totalTopics - progress.secureTopics,
-		0,
-	);
-	if (remainingTopics === 0) {
-		return "Alle Themen sind sicher belegt. Wiederhole sie bis zur Prüfung.";
+	if (ringProgress.progressPercent === null) {
+		return "Beantworte deine ersten Fragen – dann wird dein Fortschritt sichtbar.";
 	}
-	if (remainingTopics === 1) {
-		return "Noch 1 Thema braucht weitere sichere Belege.";
+	if (ringProgress.progressPercent === 100) {
+		return "Alles sitzt – halte dein Wissen bis zur Prüfung frisch.";
 	}
-	return `Noch ${remainingTopics} Themen brauchen weitere sichere Belege.`;
+	if (ringProgress.completed === 0) {
+		return "Dein Lernstand ist jetzt sichtbar – mit jeder Aufgabe baust du darauf auf.";
+	}
+	if (ringProgress.completed === 1) {
+		return "Ein Lernkriterium sitzt bereits sicher – baue jetzt darauf auf.";
+	}
+	return `${ringProgress.completed} von ${ringProgress.total} ${ringProgress.unit} sitzen sicher – du bist auf einem guten Weg.`;
 }
 
 function TopicProgressRing({
@@ -190,28 +172,25 @@ function TopicProgressRing({
 }
 
 export function AnalyticsProgressCard({
-	latestKnowledgeChange,
 	preliminary,
 	progress,
 }: {
-	latestKnowledgeChange: string | null;
 	preliminary: boolean;
 	progress: AnalyticsProgress;
 }) {
-	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const ringProgress = getRingProgress(progress);
 
 	return (
 		<Surface
-			className="gap-3 border border-border p-2"
+			className="border border-border p-5"
 			style={continuousCardStyle}
 			testID="analysis-progress-card"
 			variant="flat"
 		>
 			<View
 				className={cn(
-					"gap-5 px-3 pt-3",
+					"gap-5",
 					shouldStackInlineContent ? "items-start" : "flex-row items-center",
 				)}
 			>
@@ -232,7 +211,7 @@ export function AnalyticsProgressCard({
 						selectable
 						className="font-poppins text-body-4 text-secondary-text"
 					>
-						{getProgressDescription(progress)}
+						{getProgressMotivation(progress, ringProgress)}
 					</Text>
 				</View>
 
@@ -242,16 +221,6 @@ export function AnalyticsProgressCard({
 						progress={ringProgress}
 					/>
 				</View>
-			</View>
-
-			<View className="flex-row items-start gap-3 rounded-lg bg-system-subtle p-4">
-				<Sparkles size={19} color={colors.primaryStrong} strokeWidth={2.2} />
-				<Text
-					selectable
-					className="min-w-0 flex-1 font-poppins text-body-4 text-text"
-				>
-					{getProgressInsight({ latestKnowledgeChange, progress })}
-				</Text>
 			</View>
 		</Surface>
 	);
