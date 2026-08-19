@@ -340,27 +340,11 @@ function AnalysisHub({
 }) {
 	const { colors } = useDayovaTheme();
 	const recommendation = analysis.recommendation;
-	const requiredCriteria = analysis.topics.flatMap((topic) =>
-		topic.dimensions.filter((dimension) => dimension.required),
-	);
-	const secureCriteria = requiredCriteria.filter(
-		(criterion) => criterion.status === "secure",
-	).length;
-	const assessedCriteria = requiredCriteria.filter(
-		(criterion) => criterion.status !== "unknown",
-	).length;
-
 	return (
 		<View className="gap-7">
 			<AnalyticsProgressCard
+				accuracy={analysis.answerAccuracy}
 				preliminary={analysis.preliminary}
-				progress={{
-					assessedCriteria,
-					secureCriteria,
-					secureTopics: analysis.readiness.secure,
-					totalCriteria: requiredCriteria.length,
-					totalTopics: analysis.topics.length,
-				}}
 			/>
 
 			<View className="gap-4">

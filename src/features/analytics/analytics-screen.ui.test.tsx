@@ -178,6 +178,11 @@ const emptyAnalysis = {
 		uncertain: 0,
 		unknown: 0,
 	},
+	answerAccuracy: {
+		answeredQuestions: 0,
+		correctAnswers: 0,
+		percent: null,
+	},
 	abilities: [],
 	improvements: [],
 	latestKnowledgeChange: null,
@@ -227,6 +232,11 @@ const examAnalysis = {
 		developing: 0,
 		uncertain: 1,
 		unknown: 0,
+	},
+	answerAccuracy: {
+		answeredQuestions: 10,
+		correctAnswers: 9,
+		percent: 90,
 	},
 	abilities: [
 		{
@@ -467,21 +477,19 @@ describe("AnalyticsScreen", () => {
 		expect(screen.queryByText("1 unsicher")).not.toBeOnTheScreen();
 		expect(screen.getByText("Deine Themen im Detail")).toBeOnTheScreen();
 		expect(
-			screen.getByText("Guter Fortschritt – bleib dran"),
+			screen.getByText("Stark – du bist auf dem richtigen Weg"),
 		).toBeOnTheScreen();
-		expect(screen.getByText("67%")).toBeOnTheScreen();
+		expect(screen.getByText("90%")).toBeOnTheScreen();
 		expect(
-			screen.getByText(
-				"4 von 6 Lernkriterien sitzen sicher – du bist auf einem guten Weg.",
-			),
+			screen.getByText("9 von 10 Fragen richtig – das ist ein starker Stand."),
 		).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("analysis-progress-ring").props.accessibilityValue,
 		).toEqual({
 			min: 0,
 			max: 100,
-			now: 67,
-			text: "67 Prozent der Lernkriterien sicher belegt",
+			now: 90,
+			text: "90 Prozent der Antworten richtig",
 		});
 		expect(screen.getByTestId("topic-list").props.className).toContain(
 			"border-border",
@@ -591,6 +599,11 @@ describe("AnalyticsScreen", () => {
 	test("does not show an aggregate knowledge card without evidence", async () => {
 		mockUseQuery.mockReturnValue({
 			...examAnalysis,
+			answerAccuracy: {
+				answeredQuestions: 0,
+				correctAnswers: 0,
+				percent: null,
+			},
 			readiness: {
 				secure: 0,
 				developing: 0,
@@ -618,7 +631,7 @@ describe("AnalyticsScreen", () => {
 		expect(screen.getByText("–")).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("analysis-progress-ring").props.accessibilityValue,
-		).toEqual({ text: "Noch keine Lernkriterien bewertet" });
+		).toEqual({ text: "Noch keine Antworten bewertet" });
 		expect(
 			screen.queryByText("Noch keine Wissensbelege"),
 		).not.toBeOnTheScreen();

@@ -13,40 +13,29 @@ const PROGRESS_RING_STROKE_WIDTH = 9;
 // borderCurve is native geometry and has no NativeWind utility.
 const continuousCardStyle = { borderCurve: "continuous" } as const;
 
-export type AnalyticsProgress = {
-	assessedCriteria: number;
-	secureCriteria: number;
-	secureTopics: number;
-	totalCriteria: number;
-	totalTopics: number;
+export type AnalyticsAnswerAccuracy = {
+	answeredQuestions: number;
+	correctAnswers: number;
+	percent: number | null;
 };
 
 type RingProgress = {
-	completed: number;
+	answered: number;
+	correct: number;
 	progressPercent: number | null;
-	total: number;
-	unit: "Lernkriterien" | "Prüfungsthemen";
 };
 
-function getRingProgress(progress: AnalyticsProgress): RingProgress {
-	const usesCriteria = progress.totalCriteria > 0;
-	const safeTotal = Math.max(
-		0,
-		usesCriteria ? progress.totalCriteria : progress.totalTopics,
-	);
-	const safeCompleted = Math.min(
-		Math.max(0, usesCriteria ? progress.secureCriteria : progress.secureTopics),
-		safeTotal,
-	);
+function getRingProgress(accuracy: AnalyticsAnswerAccuracy): RingProgress {
+	const answered = Math.max(0, accuracy.answeredQuestions);
+	const correct = Math.min(Math.max(0, accuracy.correctAnswers), answered);
 
 	return {
-		completed: safeCompleted,
+		answered,
+		correct,
 		progressPercent:
-			progress.assessedCriteria > 0 && safeTotal > 0
-				? Math.round((safeCompleted / safeTotal) * 100)
+			answered > 0 && accuracy.percent !== null
+				? Math.min(Math.max(Math.round(accuracy.percent), 0), 100)
 				: null,
-		total: safeTotal,
-		unit: usesCriteria ? "Lernkriterien" : "Prüfungsthemen",
 	};
 }
 
@@ -58,36 +47,32 @@ function getProgressHeadline({
 	progressPercent: number | null;
 }) {
 	if (preliminary) return "Dein Startpunkt ist sichtbar";
-	if (progressPercent === null) return "Noch kein Lernstand belegt";
-	if (progressPercent === 100) return "Stark – du hast alles sicher belegt";
-	if (progressPercent >= 50) return "Guter Fortschritt – bleib dran";
-	if (progressPercent > 0) return "Dein Fortschritt nimmt Form an";
-	return "Dein Lernstand wird jetzt sichtbar";
+	if (progressPercent === null) return "Noch keine Antworten bewertet";
+	if (progressPercent === 100) return "Stark – alle Antworten sind richtig";
+	if (progressPercent >= 80) return "Stark – du bist auf dem richtigen Weg";
+	if (progressPercent >= 50) return "Guter Anfang – bleib dran";
+	if (progressPercent > 0) return "Jede richtige Antwort zählt";
+	return "Jetzt kannst du gezielt besser werden";
 }
 
-function getProgressMotivation(
-	progress: AnalyticsProgress,
-	ringProgress: RingProgress,
-) {
-	if (progress.totalTopics === 0) {
-		return "Ergänze deine Prüfungsthemen, damit dein Fortschritt sichtbar wird.";
-	}
+function getProgressMotivation(ringProgress: RingProgress) {
 	if (ringProgress.progressPercent === null) {
-		return "Beantworte deine ersten Fragen – dann wird dein Fortschritt sichtbar.";
+		return "Beantworte deine erste Frage – dann wird dein Fortschritt sichtbar.";
 	}
+	const questionLabel = ringProgress.answered === 1 ? "Frage" : "Fragen";
 	if (ringProgress.progressPercent === 100) {
-		return "Alles sitzt – halte dein Wissen bis zur Prüfung frisch.";
+		return `${ringProgress.correct} von ${ringProgress.answered} ${questionLabel} richtig – stark, halte dieses Niveau.`;
 	}
-	if (ringProgress.completed === 0) {
-		return "Dein Lernstand ist jetzt sichtbar – mit jeder Aufgabe baust du darauf auf.";
+	if (ringProgress.progressPercent >= 80) {
+		return `${ringProgress.correct} von ${ringProgress.answered} ${questionLabel} richtig – das ist ein starker Stand.`;
 	}
-	if (ringProgress.completed === 1) {
-		return "Ein Lernkriterium sitzt bereits sicher – baue jetzt darauf auf.";
+	if (ringProgress.progressPercent >= 50) {
+		return `${ringProgress.correct} von ${ringProgress.answered} ${questionLabel} richtig – du bist auf einem guten Weg.`;
 	}
-	return `${ringProgress.completed} von ${ringProgress.total} ${ringProgress.unit} sitzen sicher – du bist auf einem guten Weg.`;
+	return `${ringProgress.correct} von ${ringProgress.answered} ${questionLabel} richtig – jede weitere bringt dich voran.`;
 }
 
-function TopicProgressRing({
+function AnswerAccuracyRing({
 	large,
 	progress,
 }: {
@@ -102,12 +87,12 @@ function TopicProgressRing({
 		ringCircumference * (1 - (progress.progressPercent ?? 0) / 100);
 	const accessibilityValue =
 		progress.progressPercent === null
-			? { text: `Noch keine ${progress.unit} bewertet` }
+			? { text: "Noch keine Antworten bewertet" }
 			: {
 					min: 0,
 					max: 100,
 					now: progress.progressPercent,
-					text: `${progress.progressPercent} Prozent der ${progress.unit} sicher belegt`,
+					text: `${progress.progressPercent} Prozent der Antworten richtig`,
 				};
 
 	return (
@@ -115,8 +100,8 @@ function TopicProgressRing({
 			accessible
 			accessibilityLabel={
 				progress.progressPercent === null
-					? `Noch keine ${progress.unit} bewertet`
-					: `${progress.completed} von ${progress.total} ${progress.unit} sicher belegt`
+					? "Noch keine Antworten bewertet"
+					: `${progress.correct} von ${progress.answered} Antworten richtig`
 			}
 			accessibilityRole="progressbar"
 			accessibilityValue={accessibilityValue}
@@ -165,21 +150,21 @@ function TopicProgressRing({
 					: `${progress.progressPercent}%`}
 			</Text>
 			<Text className="font-poppins text-body-5 text-secondary-text">
-				{progress.progressPercent === null ? "noch offen" : "Kriterien sicher"}
+				{progress.progressPercent === null ? "noch offen" : "Antworten richtig"}
 			</Text>
 		</View>
 	);
 }
 
 export function AnalyticsProgressCard({
+	accuracy,
 	preliminary,
-	progress,
 }: {
+	accuracy: AnalyticsAnswerAccuracy;
 	preliminary: boolean;
-	progress: AnalyticsProgress;
 }) {
 	const { shouldStackInlineContent } = useContentSizeLayout();
-	const ringProgress = getRingProgress(progress);
+	const ringProgress = getRingProgress(accuracy);
 
 	return (
 		<Surface
@@ -211,12 +196,12 @@ export function AnalyticsProgressCard({
 						selectable
 						className="font-poppins text-body-4 text-secondary-text"
 					>
-						{getProgressMotivation(progress, ringProgress)}
+						{getProgressMotivation(ringProgress)}
 					</Text>
 				</View>
 
 				<View className={shouldStackInlineContent ? "self-center" : undefined}>
-					<TopicProgressRing
+					<AnswerAccuracyRing
 						large={shouldStackInlineContent}
 						progress={ringProgress}
 					/>
