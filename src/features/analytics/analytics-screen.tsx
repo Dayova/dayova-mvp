@@ -33,6 +33,7 @@ import {
 	Sparkles,
 	Time04,
 } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { ActionSurface, Surface } from "~/components/ui/surface";
@@ -45,6 +46,7 @@ import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
+import { AnalyticsProgressCard } from "./analytics-progress-card";
 
 type ExamAnalysis = NonNullable<
 	ReturnType<typeof useQuery<typeof api.userAnalytics.getExamAnalysis>>
@@ -111,6 +113,28 @@ const TOPIC_STATUS_COPY: Record<
 		textClassName: "text-secondary-text",
 	},
 };
+
+const TOPIC_CRITERION_CLASS: Record<TopicStatus, string> = {
+	secure: "border-success bg-success",
+	developing: "border-info bg-info",
+	uncertain: "border-wrong bg-wrong",
+	unknown: "border-border bg-transparent",
+};
+
+function TopicCriterionIcon({ status }: { status: TopicStatus }) {
+	const iconColor = DAYOVA_DESIGN_SYSTEM.colors.buttonNeutral;
+
+	if (status === "secure") {
+		return <Check size={12} color={iconColor} strokeWidth={3} />;
+	}
+	if (status === "developing") {
+		return <ArrowUpRight size={12} color={iconColor} strokeWidth={3} />;
+	}
+	if (status === "uncertain") {
+		return <CircleAlert size={12} color={iconColor} strokeWidth={2.5} />;
+	}
+	return null;
+}
 
 const ANSWER_RATING_COPY = {
 	correct: {
@@ -316,12 +340,33 @@ function AnalysisHub({
 }) {
 	const { colors } = useDayovaTheme();
 	const recommendation = analysis.recommendation;
+	const requiredCriteria = analysis.topics.flatMap((topic) =>
+		topic.dimensions.filter((dimension) => dimension.required),
+	);
+	const secureCriteria = requiredCriteria.filter(
+		(criterion) => criterion.status === "secure",
+	).length;
+	const assessedCriteria = requiredCriteria.filter(
+		(criterion) => criterion.status !== "unknown",
+	).length;
 
 	return (
 		<View className="gap-7">
+			<AnalyticsProgressCard
+				latestKnowledgeChange={analysis.latestKnowledgeChange}
+				preliminary={analysis.preliminary}
+				progress={{
+					assessedCriteria,
+					secureCriteria,
+					secureTopics: analysis.readiness.secure,
+					totalCriteria: requiredCriteria.length,
+					totalTopics: analysis.topics.length,
+				}}
+			/>
+
 			<View className="gap-4">
 				<SectionHeading
-					title="Deine Prüfungsthemen"
+					title="Deine Themen im Detail"
 					description="Nach Prüfungsrelevanz und Lernrisiko sortiert."
 				/>
 				<Surface
@@ -670,6 +715,12 @@ function TopicList({
 
 	return topics.map((topic, index) => {
 		const status = TOPIC_STATUS_COPY[topic.status];
+		const requiredDimensions = topic.dimensions.filter(
+			(dimension) => dimension.required,
+		);
+		const secureDimensionCount = requiredDimensions.filter(
+			(dimension) => dimension.status === "secure",
+		).length;
 		const answerCountLabel =
 			topic.answeredQuestionCount === 0
 				? "Keine Antworten"
@@ -678,7 +729,7 @@ function TopicList({
 			<ActionSurface
 				key={topic.id}
 				accessibilityHint="Öffnet deinen Wissensstand und alle ausgewerteten Antworten für dieses Thema."
-				accessibilityLabel={`${topic.title}. ${status.label}. ${topic.answeredQuestionCount} ${topic.answeredQuestionCount === 1 ? "ausgewertete Antwort" : "ausgewertete Antworten"}.`}
+				accessibilityLabel={`${topic.title}. ${status.label}. ${topic.answeredQuestionCount} ${topic.answeredQuestionCount === 1 ? "ausgewertete Antwort" : "ausgewertete Antworten"}. ${secureDimensionCount} von ${requiredDimensions.length} Lernkriterien sicher belegt.`}
 				accessibilityRole="button"
 				className={cn(
 					"min-h-20 gap-2 rounded-none bg-card px-5 py-4",
@@ -710,6 +761,34 @@ function TopicList({
 						{answerCountLabel}
 					</Text>
 				</View>
+				{requiredDimensions.length > 0 ? (
+					<View className="flex-row flex-wrap items-center gap-3">
+						<View
+							accessibilityElementsHidden
+							importantForAccessibility="no-hide-descendants"
+							className="flex-row gap-2"
+						>
+							{requiredDimensions.map((dimension) => (
+								<View
+									key={dimension.kind}
+									className={cn(
+										"h-5 w-5 items-center justify-center rounded-full border-2",
+										TOPIC_CRITERION_CLASS[dimension.status],
+									)}
+									testID={`topic-criterion-${topic.id}-${dimension.kind}`}
+								>
+									<TopicCriterionIcon status={dimension.status} />
+								</View>
+							))}
+						</View>
+						<Text
+							selectable
+							className="font-poppins text-body-5 text-secondary-text"
+						>
+							{`${secureDimensionCount} von ${requiredDimensions.length} Lernkriterien sicher`}
+						</Text>
+					</View>
+				) : null}
 			</ActionSurface>
 		);
 	});
@@ -1228,6 +1307,7 @@ export function AnalyticsScreen({
 }) {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 	const [selectedPlanId, setSelectedPlanId] =
 		useState<Id<"learningPlans"> | null>(initialPlanId ?? null);
 	const [isSelectorOpen, setIsSelectorOpen] = useState(false);
@@ -1250,8 +1330,18 @@ export function AnalyticsScreen({
 				// Safe-area padding is runtime device geometry.
 				style={{ paddingTop: insets.top + 16 }}
 			>
-				<View className="flex-row items-center justify-between">
-					<View className="min-w-0 flex-1 pr-4">
+				<View
+					className={cn(
+						"gap-4",
+						!shouldStackInlineContent &&
+							"flex-row items-center justify-between",
+					)}
+				>
+					<View
+						className={cn(
+							shouldStackInlineContent ? "w-full" : "min-w-0 flex-1 pr-4",
+						)}
+					>
 						<Text
 							accessibilityRole="header"
 							className="font-poppins font-semibold text-heading-2 text-text"
@@ -1262,13 +1352,13 @@ export function AnalyticsScreen({
 							<Text
 								selectable
 								className="font-poppins text-body-4 text-secondary-text"
-								numberOfLines={1}
+								numberOfLines={shouldStackInlineContent ? undefined : 1}
 							>
 								{selectedExamContext}
 							</Text>
 						) : null}
 					</View>
-					<View className="flex-row items-center gap-2">
+					<View className="flex-row items-center gap-2 self-end">
 						{analysis?.hasData ? (
 							<ExamSwitcher
 								analysis={analysis}

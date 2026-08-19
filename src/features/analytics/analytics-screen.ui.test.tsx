@@ -465,7 +465,22 @@ describe("AnalyticsScreen", () => {
 		expect(screen.queryByText("1/2")).not.toBeOnTheScreen();
 		expect(screen.queryByText("1 von 2 sicher belegt")).not.toBeOnTheScreen();
 		expect(screen.queryByText("1 unsicher")).not.toBeOnTheScreen();
-		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
+		expect(screen.getByText("Deine Themen im Detail")).toBeOnTheScreen();
+		expect(
+			screen.getByText("Guter Fortschritt – bleib dran"),
+		).toBeOnTheScreen();
+		expect(screen.getByText("67%")).toBeOnTheScreen();
+		expect(
+			screen.getByText("1 von 2 Prüfungsthemen ist sicher belegt."),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("analysis-progress-ring").props.accessibilityValue,
+		).toEqual({
+			min: 0,
+			max: 100,
+			now: 67,
+			text: "67 Prozent der Lernkriterien sicher belegt",
+		});
 		expect(screen.getByTestId("topic-list").props.className).toContain(
 			"border-border",
 		);
@@ -473,6 +488,23 @@ describe("AnalyticsScreen", () => {
 		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
 		expect(screen.getByText("2 Antworten")).toBeOnTheScreen();
 		expect(screen.getByText("3 Antworten")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 3 Lernkriterien sicher")).toBeOnTheScreen();
+		expect(screen.getByText("3 von 3 Lernkriterien sicher")).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("topic-criterion-steigung-understanding", {
+				includeHiddenElements: true,
+			}).props.className,
+		).toContain("bg-success");
+		expect(
+			screen.getByTestId("topic-criterion-steigung-problemSolving", {
+				includeHiddenElements: true,
+			}).props.className,
+		).toContain("bg-wrong");
+		expect(
+			screen.getByTestId("topic-criterion-steigung-independent", {
+				includeHiddenElements: true,
+			}).props.className,
+		).toContain("bg-transparent");
 		expect(
 			within(screen.getByTestId("topic-row-steigung")).getByText("Unsicher"),
 		).toBeOnTheScreen();
@@ -490,7 +522,7 @@ describe("AnalyticsScreen", () => {
 			screen.queryByText(
 				"Seit deinem letzten Check: Steigung gelingt dir jetzt sicherer.",
 			),
-		).not.toBeOnTheScreen();
+		).toBeOnTheScreen();
 		expect(screen.getByText("Dein nächster Schritt")).toBeOnTheScreen();
 		expect(screen.queryByText("Größte Lernhürde")).not.toBeOnTheScreen();
 		expect(screen.queryByText("Dein Prüfungsstoff")).not.toBeOnTheScreen();
@@ -509,7 +541,7 @@ describe("AnalyticsScreen", () => {
 
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Steigung erklären. Unsicher. 2 ausgewertete Antworten.",
+				name: "Steigung erklären. Unsicher. 2 ausgewertete Antworten. 1 von 3 Lernkriterien sicher belegt.",
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith({
@@ -546,7 +578,7 @@ describe("AnalyticsScreen", () => {
 		expect(screen.queryByText("0/5")).not.toBeOnTheScreen();
 		expect(screen.queryByText("0 von 5 sicher belegt")).not.toBeOnTheScreen();
 		expect(screen.queryByText("5 im Aufbau")).not.toBeOnTheScreen();
-		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
+		expect(screen.getByText("Deine Themen im Detail")).toBeOnTheScreen();
 		expect(
 			screen.queryByText(
 				"Du arbeitest an allen 5 Prüfungsthemen, aber noch keines ist sicher belegt.",
@@ -581,12 +613,15 @@ describe("AnalyticsScreen", () => {
 		const screen = await render(<AnalyticsScreen />);
 
 		expect(screen.queryByText("Dein Wissensstand")).not.toBeOnTheScreen();
-		expect(screen.queryByText("–")).not.toBeOnTheScreen();
+		expect(screen.getByText("–")).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("analysis-progress-ring").props.accessibilityValue,
+		).toEqual({ text: "Noch keine Lernkriterien bewertet" });
 		expect(
 			screen.queryByText("Noch keine Wissensbelege"),
 		).not.toBeOnTheScreen();
 		expect(screen.queryByText("0/2")).not.toBeOnTheScreen();
-		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
+		expect(screen.getByText("Deine Themen im Detail")).toBeOnTheScreen();
 	});
 
 	test("reveals evidence and starts the recommendation from focused pages", async () => {
