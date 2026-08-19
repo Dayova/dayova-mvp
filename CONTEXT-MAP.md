@@ -16,6 +16,7 @@ Notion is Dayova's main internal documentation and knowledge workspace. The loca
 
 ## Existing Repo Docs
 
+- Agent-system governance: `docs/agents/agent-system.md`
 - Bottom sheets: `docs/bottom-sheets.md`
 - Styling: `docs/styling.md`
 - Package patches: `patches/README.md`
