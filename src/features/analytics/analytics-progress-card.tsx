@@ -150,7 +150,7 @@ function AnswerAccuracyRing({
 					: `${progress.progressPercent}%`}
 			</Text>
 			<Text className="font-poppins text-body-5 text-secondary-text">
-				{progress.progressPercent === null ? "noch offen" : "Antworten richtig"}
+				{progress.progressPercent === null ? "noch offen" : "richtig"}
 			</Text>
 		</View>
 	);

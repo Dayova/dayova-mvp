@@ -735,8 +735,7 @@ function TopicList({
 						strokeWidth={2.2}
 					/>
 				</View>
-				<View className="flex-row flex-wrap items-center gap-2">
-					<TopicStatusPill status={topic.status} />
+				<View className="flex-row flex-wrap items-center">
 					<Text
 						selectable
 						className="font-poppins text-body-5 text-secondary-text"

@@ -480,6 +480,8 @@ describe("AnalyticsScreen", () => {
 			screen.getByText("Stark – du bist auf dem richtigen Weg"),
 		).toBeOnTheScreen();
 		expect(screen.getByText("90%")).toBeOnTheScreen();
+		expect(screen.getByText("richtig")).toBeOnTheScreen();
+		expect(screen.queryByText("Antworten richtig")).not.toBeOnTheScreen();
 		expect(
 			screen.getByText("9 von 10 Fragen richtig – das ist ein starker Stand."),
 		).toBeOnTheScreen();
@@ -516,8 +518,13 @@ describe("AnalyticsScreen", () => {
 			}).props.className,
 		).toContain("bg-transparent");
 		expect(
-			within(screen.getByTestId("topic-row-steigung")).getByText("Unsicher"),
-		).toBeOnTheScreen();
+			within(screen.getByTestId("topic-row-steigung")).queryByText("Unsicher"),
+		).not.toBeOnTheScreen();
+		expect(
+			within(screen.getByTestId("topic-row-achsenschnitt")).queryByText(
+				"Sicher belegt",
+			),
+		).not.toBeOnTheScreen();
 		expect(
 			within(screen.getByTestId("topic-row-steigung")).getByText("2 Antworten"),
 		).toBeOnTheScreen();
