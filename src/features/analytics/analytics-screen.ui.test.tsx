@@ -468,6 +468,9 @@ describe("AnalyticsScreen", () => {
 
 	test("guides a new learner to create the first plan", async () => {
 		const screen = await render(<AnalyticsScreen />);
+		expect(
+			screen.getByTestId("analysis-empty-state-icon").props.className,
+		).toContain("h-20 w-20");
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Ersten Lernplan erstellen" }),
 		);

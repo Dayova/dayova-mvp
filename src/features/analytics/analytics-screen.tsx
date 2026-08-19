@@ -166,6 +166,7 @@ const TOPIC_ANSWER_FLIP_DURATION_MS = 320;
 const TOPIC_ANSWER_CARD_MIN_HEIGHT = 240;
 const ANALYTICS_CONTENT_MAX_WIDTH = 560;
 const ANALYTICS_HORIZONTAL_PADDING = 24;
+const ANALYTICS_EXPANDED_CONTENT_MIN_WIDTH = 500;
 
 const formatTopicAnswerReview = (review: string) => {
 	const standaloneReview = review
@@ -1257,22 +1258,49 @@ function LoadingState() {
 }
 
 function EmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
+	const { usableWidth } = useContentSizeLayout({
+		containerMaxWidth: ANALYTICS_CONTENT_MAX_WIDTH,
+		requestedHorizontalPadding: ANALYTICS_HORIZONTAL_PADDING,
+	});
+	const expanded = usableWidth >= ANALYTICS_EXPANDED_CONTENT_MIN_WIDTH;
+
 	return (
-		<Surface className="items-center gap-5 px-6 py-10" variant="flat">
-			<View className="h-16 w-16 items-center justify-center rounded-full bg-system-subtle">
+		<Surface
+			className={cn(
+				"items-center gap-5 px-6 py-10",
+				expanded && "gap-6 px-10 py-12",
+			)}
+			testID="analysis-empty-state"
+			variant="flat"
+		>
+			<View
+				className={cn(
+					"h-16 w-16 items-center justify-center rounded-full bg-system-subtle",
+					expanded && "h-20 w-20",
+				)}
+				testID="analysis-empty-state-icon"
+			>
 				<Sparkles
-					size={30}
+					size={expanded ? 36 : 30}
 					color={DAYOVA_DESIGN_SYSTEM.colors.primaryStrong}
 					strokeWidth={2}
 				/>
 			</View>
-			<View className="items-center gap-2">
-				<Text className="text-center font-poppins font-semibold text-body-1 text-text">
+			<View className={cn("items-center gap-2", expanded && "gap-3")}>
+				<Text
+					className={cn(
+						"text-center font-poppins font-semibold text-body-1 text-text",
+						expanded && "text-heading-2",
+					)}
+				>
 					Deine erste Prüfungsanalyse
 				</Text>
 				<Text
 					selectable
-					className="text-center font-poppins text-body-4 text-secondary-text"
+					className={cn(
+						"text-center font-poppins text-body-4 text-secondary-text",
+						expanded && "text-body-3",
+					)}
 				>
 					Erstelle einen Lernplan. Danach zeigt Dayova, was du schon kannst, wo
 					dein Problem liegt und welcher Schritt dir als Nächstes hilft.
@@ -1280,9 +1308,12 @@ function EmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
 			</View>
 			<Button
 				accessibilityLabel="Ersten Lernplan erstellen"
+				className={expanded ? "min-h-16 px-10" : undefined}
 				onPress={onCreatePlan}
 			>
-				<Text>Ersten Lernplan erstellen</Text>
+				<Text className={expanded ? "text-body-1" : undefined}>
+					Ersten Lernplan erstellen
+				</Text>
 			</Button>
 		</Surface>
 	);
