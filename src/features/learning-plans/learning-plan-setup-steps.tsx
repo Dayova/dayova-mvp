@@ -1,5 +1,9 @@
 import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
+import {
+	getLearningPlanUploadCapacity,
+	LEARNING_PLAN_MAX_FILE_COUNT,
+} from "#convex/learningPlanUploadPolicy";
 import { Button } from "~/components/ui/button";
 import { GraduationCap, Plus } from "~/components/ui/icon";
 import { ActionSurface } from "~/components/ui/surface";
@@ -8,6 +12,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
+import { formatFileSize } from "~/lib/upload-policy";
 
 type PendingUploadAction = "camera" | "files";
 
@@ -83,8 +88,10 @@ export function MaterialUploadStep({
 	onContinue,
 	onOpenUpload,
 	onRemoveDocument,
+	onRetryDocument,
 	onSkip,
 	openingUploadAction,
+	retryingDocumentId,
 	showSkip = true,
 }: {
 	canUpload: boolean;
@@ -96,8 +103,10 @@ export function MaterialUploadStep({
 	onContinue: () => void;
 	onOpenUpload: () => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
+	onRetryDocument?: (id: Id<"learningPlanDocuments">) => Promise<void>;
 	onSkip: () => void;
 	openingUploadAction: PendingUploadAction | null;
+	retryingDocumentId?: Id<"learningPlanDocuments"> | null;
 	showSkip?: boolean;
 }) {
 	const { colors } = useDayovaTheme();
@@ -105,6 +114,7 @@ export function MaterialUploadStep({
 		(document) => document.sourceKind === "school",
 	);
 	const hasSchoolMaterial = schoolDocuments.length > 0;
+	const capacity = getLearningPlanUploadCapacity(documents);
 
 	return (
 		<View className="flex-1">
@@ -113,6 +123,10 @@ export function MaterialUploadStep({
 			</Text>
 			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
 				Deine Unterlagen bilden die Grundlage für deinen Lernplan.
+			</Text>
+			<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
+				Noch {capacity.remainingCount} von {LEARNING_PLAN_MAX_FILE_COUNT}{" "}
+				Dateien und {formatFileSize(capacity.remainingBytes)} verfügbar
 			</Text>
 
 			<ActionSurface
@@ -168,8 +182,13 @@ export function MaterialUploadStep({
 					{schoolDocuments.map((document) => (
 						<MaterialCard
 							key={document.id}
+							isRetrying={retryingDocumentId === document.id}
 							name={document.fileName}
 							size={document.fileSizeBytes}
+							status={document.processingStatus}
+							onRetry={
+								onRetryDocument ? () => onRetryDocument(document.id) : undefined
+							}
 							onRemove={() => onRemoveDocument(document.id)}
 						/>
 					))}

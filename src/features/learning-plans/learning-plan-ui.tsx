@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { Button } from "~/components/ui/button";
 import {
@@ -30,6 +30,7 @@ import {
 	parseDateKey,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
 import { formatFileSize } from "~/lib/upload-policy";
@@ -107,16 +108,23 @@ export function PlanningHintBanner({
 }
 
 export function MaterialCard({
+	isRetrying = false,
 	name,
-	size,
+	onRetry,
 	onRemove,
+	size,
+	status,
 }: {
+	isRetrying?: boolean;
 	name: string;
-	size: number;
+	onRetry?: () => void | Promise<void>;
 	onRemove: () => void;
+	size: number;
+	status?: "queued" | "processing" | "ready" | "failed";
 }) {
 	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
+	const retryGateRef = useRef(createAsyncActionGate());
 
 	return (
 		<Surface
@@ -135,7 +143,26 @@ export function MaterialCard({
 				</Text>
 				<Text className="mt-1 font-poppins text-body-4 text-text/50">
 					{formatFileSize(size)}
+					{status === "queued" || status === "processing"
+						? " · Wird verarbeitet …"
+						: ""}
 				</Text>
+				{status === "failed" && onRetry ? (
+					<TouchableOpacity
+						accessibilityLabel={`${name} erneut verarbeiten`}
+						accessibilityRole="button"
+						accessibilityState={{ busy: isRetrying, disabled: isRetrying }}
+						disabled={isRetrying}
+						onPress={() => {
+							void retryGateRef.current.run(async () => await onRetry());
+						}}
+						className="mt-1 self-start"
+					>
+						<Text className="font-poppins font-semibold text-body-4 text-destructive">
+							{isRetrying ? "Wird erneut verarbeitet …" : "Erneut versuchen"}
+						</Text>
+					</TouchableOpacity>
+				) : null}
 			</View>
 			<TouchableOpacity
 				accessibilityHint="Entfernt dieses hochgeladene Material aus dem Lernplan."
