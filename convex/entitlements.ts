@@ -176,17 +176,38 @@ export const applyRevenueCatSnapshot = internalMutation({
 	},
 });
 
-export const findOwnerTokenIdentifierByClerkId = internalQuery({
+export const findOwnersByClerkIds = internalQuery({
 	args: {
-		clerkId: v.string(),
+		clerkIds: v.array(v.string()),
 	},
+	returns: v.array(
+		v.object({
+			clerkId: v.string(),
+			ownerTokenIdentifier: v.string(),
+		}),
+	),
 	handler: async (ctx, args) => {
-		const user = await ctx.db
-			.query("users")
-			.withIndex("by_clerkId", (query) => query.eq("clerkId", args.clerkId))
-			.unique();
+		const owners: Array<{
+			clerkId: string;
+			ownerTokenIdentifier: string;
+		}> = [];
+		const ownerTokens = new Set<string>();
 
-		return user?.tokenIdentifier ?? null;
+		for (const clerkId of args.clerkIds) {
+			const user = await ctx.db
+				.query("users")
+				.withIndex("by_clerkId", (query) => query.eq("clerkId", clerkId))
+				.unique();
+			if (user && !ownerTokens.has(user.tokenIdentifier)) {
+				ownerTokens.add(user.tokenIdentifier);
+				owners.push({
+					clerkId,
+					ownerTokenIdentifier: user.tokenIdentifier,
+				});
+			}
+		}
+
+		return owners;
 	},
 });
 

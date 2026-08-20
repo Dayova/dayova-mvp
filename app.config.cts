@@ -4,6 +4,9 @@ const {
 	validatePublicEnvForRelease,
 }: typeof import("./src/lib/runtime-config") =
 	require("./src/lib/runtime-config.ts");
+const {
+	getRevenueCatRedemptionScheme,
+}: typeof import("./src/lib/revenuecat-redemption-config") = require("./src/lib/revenuecat-redemption-config.ts");
 
 const APP_VARIANT = process.env.APP_VARIANT;
 
@@ -27,6 +30,10 @@ const releasePlatform =
 	process.env.EAS_BUILD_PLATFORM === "ios"
 		? process.env.EAS_BUILD_PLATFORM
 		: undefined;
+const revenueCatRedemptionScheme = getRevenueCatRedemptionScheme(
+	process.env.REVENUECAT_REDEMPTION_SCHEME,
+	{ required: isReleaseConfig },
+);
 
 if (isReleaseConfig) {
 	validatePublicEnvForRelease(undefined, { platform: releasePlatform });
@@ -57,7 +64,9 @@ const IOS_PRIVACY_PURPOSE_STRINGS = {
 const config: ExpoConfig = {
 	name: "Dayova",
 	slug: "dayova",
-	scheme: "dayova",
+	scheme: revenueCatRedemptionScheme
+		? ["dayova", revenueCatRedemptionScheme]
+		: "dayova",
 	version: APP_VERSION,
 	primaryColor: DAYOVA_PRIMARY,
 	owner: "dayova",

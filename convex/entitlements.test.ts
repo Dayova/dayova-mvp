@@ -260,6 +260,184 @@ test("authorized RevenueCat webhook refreshes access while the app is closed", a
 	});
 });
 
+test.each([
+	["PURCHASE_REDEEMED", "redeemed_by"],
+	["TRANSFER", "transferred_to"],
+] as const)("%s RevenueCat webhook resolves the destination Dayova account from %s", async (eventType, identityField) => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
+	vi.stubEnv("REVENUECAT_SECRET_API_KEY", "sk_test_revenuecat");
+	vi.stubEnv("REVENUECAT_WEBHOOK_AUTHORIZATION", "Bearer webhook-secret");
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => ({
+			ok: true,
+			json: async () => ({
+				subscriber: {
+					entitlements: {
+						dayova_full_access: {
+							expires_date: "2026-09-28T10:00:00Z",
+							grace_period_expires_date: null,
+							product_identifier: "dayova_annual",
+						},
+					},
+					management_url: null,
+					subscriptions: {
+						dayova_annual: {
+							billing_issues_detected_at: null,
+							expires_date: "2026-09-28T10:00:00Z",
+							store: "rc_billing",
+							unsubscribe_detected_at: null,
+						},
+					},
+				},
+			}),
+		})),
+	);
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.entitlements.activateMyTrial, {
+		termsVersion: "2026-07-28",
+	});
+
+	const response = await t.fetch("/revenuecat-webhook", {
+		method: "POST",
+		headers: {
+			Authorization: "Bearer webhook-secret",
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			api_version: "1.0",
+			event: {
+				[identityField]: [user.subject],
+				id: `evt_${eventType.toLowerCase()}`,
+				type: eventType,
+			},
+		}),
+	});
+
+	expect(response.status).toBe(200);
+	await expect(
+		t.query(api.entitlements.getMyAccess, {
+			now: Date.parse("2026-08-12T10:00:00.000Z"),
+		}),
+	).resolves.toMatchObject({
+		canUseApp: true,
+		state: "paid",
+		store: "rc_billing",
+	});
+});
+
+test("TRANSFER webhook grants the destination and revokes the source account", async () => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
+	vi.stubEnv("REVENUECAT_SECRET_API_KEY", "sk_test_revenuecat");
+	vi.stubEnv("REVENUECAT_WEBHOOK_AUTHORIZATION", "Bearer webhook-secret");
+	const sourceUser = {
+		subject: "clerk_transfer_source",
+		tokenIdentifier: "https://clerk.example|clerk_transfer_source",
+		email: "source@example.com",
+		name: "Source User",
+	};
+	let transferCompleted = false;
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async (input: string | URL | Request) => {
+			const url = String(input);
+			const isDestination = url.includes(encodeURIComponent(user.subject));
+			const isActive = transferCompleted ? isDestination : !isDestination;
+			return {
+				ok: true,
+				json: async () => ({
+					subscriber: {
+						entitlements: isActive
+							? {
+									dayova_full_access: {
+										expires_date: "2026-09-28T10:00:00Z",
+										grace_period_expires_date: null,
+										product_identifier: "dayova_annual",
+									},
+								}
+							: {},
+						management_url: null,
+						subscriptions: isActive
+							? {
+									dayova_annual: {
+										billing_issues_detected_at: null,
+										expires_date: "2026-09-28T10:00:00Z",
+										store: "rc_billing",
+										unsubscribe_detected_at: null,
+									},
+								}
+							: {},
+					},
+				}),
+			};
+		}),
+	);
+	const backend = convexTest(schema, modules);
+	const source = backend.withIdentity(sourceUser);
+	const destination = backend.withIdentity(user);
+	for (const client of [source, destination]) {
+		await client.mutation(api.users.syncCurrentUser, {});
+		await client.mutation(api.entitlements.activateMyTrial, {
+			termsVersion: "2026-07-28",
+		});
+	}
+	await source.action(api.revenueCat.syncMyEntitlement, {});
+
+	transferCompleted = true;
+	const response = await backend.fetch("/revenuecat-webhook", {
+		method: "POST",
+		headers: {
+			Authorization: "Bearer webhook-secret",
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			event: {
+				id: "evt_transfer_accounts",
+				transferred_from: [sourceUser.subject],
+				transferred_to: [user.subject],
+				type: "TRANSFER",
+			},
+		}),
+	});
+
+	expect(response.status).toBe(200);
+	await expect(
+		destination.query(api.entitlements.getMyAccess, {
+			now: Date.parse("2026-08-12T10:00:00.000Z"),
+		}),
+	).resolves.toMatchObject({ canUseApp: true, state: "paid" });
+	await expect(
+		source.query(api.entitlements.getMyAccess, {
+			now: Date.parse("2026-08-12T10:00:00.000Z"),
+		}),
+	).resolves.toMatchObject({ canUseApp: false, state: "expired" });
+});
+
+test("RevenueCat webhook acknowledges anonymous purchases before redemption", async () => {
+	vi.stubEnv("REVENUECAT_WEBHOOK_AUTHORIZATION", "Bearer webhook-secret");
+	const t = convexTest(schema, modules);
+
+	const response = await t.fetch("/revenuecat-webhook", {
+		method: "POST",
+		headers: {
+			Authorization: "Bearer webhook-secret",
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			event: {
+				app_user_id: "$RCAnonymousID:web-purchaser",
+				id: "evt_anonymous_purchase",
+				type: "INITIAL_PURCHASE",
+			},
+		}),
+	});
+
+	expect(response.status).toBe(202);
+});
+
 test("RevenueCat webhook rejects requests without the configured authorization", async () => {
 	vi.stubEnv("REVENUECAT_WEBHOOK_AUTHORIZATION", "Bearer webhook-secret");
 	const t = convexTest(schema, modules);
