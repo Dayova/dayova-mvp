@@ -108,11 +108,15 @@ export function PlanningHintBanner({
 
 export function MaterialCard({
 	name,
+	onRetry,
 	size,
+	status,
 	onRemove,
 }: {
 	name: string;
+	onRetry?: () => void;
 	size: number;
+	status?: "queued" | "processing" | "ready" | "failed";
 	onRemove: () => void;
 }) {
 	const { colors } = useDayovaTheme();
@@ -133,8 +137,19 @@ export function MaterialCard({
 				>
 					{name}
 				</Text>
-				<Text className="mt-1 font-poppins text-body-4 text-text/50">
+				<Text
+					onPress={status === "failed" ? onRetry : undefined}
+					className={cn(
+						"mt-1 font-poppins text-body-4 text-text/50",
+						status === "failed" && "text-destructive",
+					)}
+				>
 					{formatFileSize(size)}
+					{status === "queued" || status === "processing"
+						? " · Wird verarbeitet …"
+						: status === "failed"
+							? " · Fehlgeschlagen – erneut versuchen"
+							: ""}
 				</Text>
 			</View>
 			<TouchableOpacity

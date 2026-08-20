@@ -435,10 +435,44 @@ export default defineSchema({
 		fileType: v.string(),
 		fileSizeBytes: v.number(),
 		sourceKind: v.optional(v.union(v.literal("school"), v.literal("external"))),
+		processingStatus: v.optional(
+			v.union(
+				v.literal("queued"),
+				v.literal("processing"),
+				v.literal("ready"),
+				v.literal("failed"),
+			),
+		),
+		processingVersion: v.optional(v.number()),
+		processingError: v.optional(v.string()),
 		createdAt: v.number(),
 	})
 		.index("by_learningPlanId", ["learningPlanId"])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+	learningPlanDocumentContexts: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		documentId: v.id("learningPlanDocuments"),
+		processingVersion: v.number(),
+		status: v.union(
+			v.literal("processing"),
+			v.literal("ready"),
+			v.literal("failed"),
+		),
+		claimId: v.optional(v.string()),
+		sourceFileSizeBytes: v.number(),
+		normalizedText: v.optional(v.string()),
+		extractionMethod: v.optional(
+			v.union(v.literal("local"), v.literal("vision")),
+		),
+		sourceChecksum: v.optional(v.string()),
+		errorMessage: v.optional(v.string()),
+		processedAt: v.optional(v.number()),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_documentId", ["documentId"])
+		.index("by_learningPlanId", ["learningPlanId"]),
 	learningPlanAnswers: defineTable({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
@@ -456,6 +490,7 @@ export default defineSchema({
 		sessionId: v.optional(v.id("learningPlanSessions")),
 		reservationId: v.optional(v.string()),
 		operation: v.union(
+			v.literal("document_extraction"),
 			v.literal("diagnostic"),
 			v.literal("plan"),
 			v.literal("answer_evaluation"),
@@ -479,6 +514,30 @@ export default defineSchema({
 			"ownerTokenIdentifier",
 			"reservationId",
 		])
+		.index("by_ownerTokenIdentifier_and_createdAt", [
+			"ownerTokenIdentifier",
+			"createdAt",
+		]),
+	learningPlanAiTransferAttempts: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		attemptId: v.string(),
+		operation: v.union(
+			v.literal("diagnostic"),
+			v.literal("plan"),
+			v.literal("session_content"),
+			v.literal("session_retry"),
+		),
+		processingVersion: v.number(),
+		sourceDocumentCount: v.number(),
+		sourceBytes: v.number(),
+		reusedDocumentCount: v.number(),
+		sourceFileReadCount: v.number(),
+		rawFilePartCount: v.number(),
+		compactContextBytes: v.number(),
+		createdAt: v.number(),
+	})
+		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"])
 		.index("by_ownerTokenIdentifier_and_createdAt", [
 			"ownerTokenIdentifier",
 			"createdAt",
@@ -558,6 +617,10 @@ export default defineSchema({
 		updatedAt: v.number(),
 	})
 		.index("by_learningPlanId_and_sortOrder", ["learningPlanId", "sortOrder"])
+		.index("by_ownerTokenIdentifier_and_dateKey", [
+			"ownerTokenIdentifier",
+			"dateKey",
+		])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
 		.index("by_dateKey", ["dateKey"]),
 	learningSessionContentItems: defineTable({
@@ -604,6 +667,7 @@ export default defineSchema({
 	})
 		.index("by_sessionId_and_createdAt", ["sessionId", "createdAt"])
 		.index("by_itemId_and_createdAt", ["itemId", "createdAt"])
+		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	learningSessionAnalyses: defineTable({
 		ownerTokenIdentifier: v.string(),
@@ -616,5 +680,6 @@ export default defineSchema({
 		updatedAt: v.number(),
 	})
 		.index("by_sessionId", ["sessionId"])
+		.index("by_learningPlanId", ["learningPlanId"])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 });

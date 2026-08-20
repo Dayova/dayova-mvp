@@ -1,20 +1,11 @@
-const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
+import {
+	LEARNING_PLAN_ACCEPTED_FILE_TYPES,
+	LEARNING_PLAN_MAX_FILE_BYTES,
+} from "#convex/learningPlanUploadPolicy";
+
 const MAX_UPLOAD_FILE_LABEL = "7 MiB";
 
-export const ACCEPTED_FILE_TYPES = [
-	"application/pdf",
-	"application/msword",
-	"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-	"application/vnd.ms-powerpoint",
-	"application/vnd.openxmlformats-officedocument.presentationml.presentation",
-	"text/plain",
-	"text/markdown",
-	"text/csv",
-	"application/json",
-	"image/jpeg",
-	"image/png",
-	"image/webp",
-] as const;
+export const ACCEPTED_FILE_TYPES = LEARNING_PLAN_ACCEPTED_FILE_TYPES;
 
 const ACCEPTED_UPLOAD_EXTENSIONS = [
 	"pdf",
@@ -76,7 +67,7 @@ export const validateUploadFile = (file: {
 		};
 	}
 
-	if ((file.size ?? 0) > MAX_UPLOAD_FILE_BYTES) {
+	if ((file.size ?? 0) > LEARNING_PLAN_MAX_FILE_BYTES) {
 		return {
 			valid: false,
 			message: `Die Datei ist mit ${formatFileSize(file.size ?? 0)} zu groß (maximal ${MAX_UPLOAD_FILE_LABEL}).`,

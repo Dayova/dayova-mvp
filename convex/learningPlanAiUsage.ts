@@ -3,6 +3,7 @@ import { internalMutation, query } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 
 const operationValidator = v.union(
+	v.literal("document_extraction"),
 	v.literal("diagnostic"),
 	v.literal("plan"),
 	v.literal("answer_evaluation"),
@@ -23,16 +24,14 @@ export const record = internalMutation({
 		estimatedCostUsdMicros: v.number(),
 	},
 	handler: async (ctx, args) => {
-		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) throwUserFacingError("Nicht authentifiziert.");
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
-		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
+		if (!plan) {
 			throwUserFacingError("Lernplan nicht gefunden.");
 		}
 
 		return await ctx.db.insert("learningPlanAiUsage", {
 			...args,
-			ownerTokenIdentifier: identity.tokenIdentifier,
+			ownerTokenIdentifier: plan.ownerTokenIdentifier,
 			createdAt: Date.now(),
 		});
 	},

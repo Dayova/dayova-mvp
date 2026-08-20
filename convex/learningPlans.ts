@@ -18,7 +18,7 @@ import {
 } from "./adaptiveLearningPlanPolicy";
 import { getBerlinDayKey } from "./dayKeyVariants";
 import { deriveTopicReadiness } from "./diagnosticReadiness";
-import { throwUserFacingError } from "./errors";
+import { logDiagnosticError, throwUserFacingError } from "./errors";
 import {
 	deleteManagedFile,
 	getConfiguredStorageProvider,
@@ -27,6 +27,13 @@ import {
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
+import {
+	getLearningPlanUploadCapacity,
+	isAcceptedLearningPlanFileName,
+	LEARNING_PLAN_MAX_FILE_BYTES,
+	LEARNING_PLAN_MAX_FILE_COUNT,
+	LEARNING_PLAN_MAX_TOTAL_BYTES,
+} from "./learningPlanUploadPolicy";
 import {
 	getDefaultPreparationDepth,
 	type PreparationDepth,
@@ -282,6 +289,8 @@ type PublicDocument = {
 	fileType: string;
 	fileSizeBytes: number;
 	sourceKind: "school" | "external";
+	processingStatus: "queued" | "processing" | "ready" | "failed";
+	processingError?: string;
 };
 
 type PublicAnswer = {
@@ -427,6 +436,10 @@ const publicDocument = (
 	fileType: document.fileType,
 	fileSizeBytes: document.fileSizeBytes,
 	sourceKind: document.sourceKind ?? "school",
+	processingStatus: document.processingStatus ?? "queued",
+	...(document.processingStatus === "failed" && document.processingError
+		? { processingError: document.processingError }
+		: {}),
 });
 
 const publicAnswer = (answer: Doc<"learningPlanAnswers">): PublicAnswer => ({
@@ -1548,15 +1561,54 @@ export const storeUploadedDocument = internalMutation({
 		sourceKind: v.union(v.literal("school"), v.literal("external")),
 	},
 	handler: async (ctx, args) => {
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== args.ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (!isAcceptedLearningPlanFileName(args.fileName)) {
+			throwUserFacingError(
+				"Dieser Dateityp wird nicht unterstützt. Bitte nutze PDF, DOCX, PPTX, Text oder Bilder.",
+			);
+		}
+		if (!Number.isFinite(args.fileSizeBytes) || args.fileSizeBytes <= 0) {
+			throwUserFacingError(
+				"Die Datei ist leer oder konnte nicht gelesen werden.",
+			);
+		}
+		if (args.fileSizeBytes > LEARNING_PLAN_MAX_FILE_BYTES) {
+			throwUserFacingError("Die Datei ist zu groß (maximal 7 MiB).");
+		}
+		const existingDocuments = await ctx.db
+			.query("learningPlanDocuments")
+			.withIndex("by_learningPlanId", (q) =>
+				q.eq("learningPlanId", args.learningPlanId),
+			)
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
+		const capacity = getLearningPlanUploadCapacity(existingDocuments);
+		if (capacity.remainingCount < 1) {
+			throwUserFacingError(
+				`Pro Lernplan sind höchstens ${LEARNING_PLAN_MAX_FILE_COUNT} Dateien möglich.`,
+			);
+		}
+		if (args.fileSizeBytes > capacity.remainingBytes) {
+			throwUserFacingError(
+				`Pro Lernplan sind insgesamt höchstens ${Math.round(LEARNING_PLAN_MAX_TOTAL_BYTES / 1024 / 1024)} MiB möglich.`,
+			);
+		}
 		const now = Date.now();
 		const documentId = await ctx.db.insert("learningPlanDocuments", {
 			...args,
+			processingStatus: "queued",
 			createdAt: now,
 		});
-		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (plan && plan.status !== "accepted" && args.sourceKind === "school") {
 			await invalidateDerivedExamEvidence(ctx, args.learningPlanId, now);
 		}
+		await ctx.scheduler.runAfter(
+			0,
+			internal.learningPlanAi.processUploadedDocument,
+			{ documentId },
+		);
 		return documentId;
 	},
 });
@@ -1595,16 +1647,39 @@ export const registerUploadedDocument = action({
 			throwUserFacingError("Upload konnte nicht verifiziert werden.");
 		}
 
-		return await ctx.runMutation(internal.learningPlans.storeUploadedDocument, {
-			ownerTokenIdentifier: context.ownerTokenIdentifier,
-			learningPlanId: args.learningPlanId,
-			storageId: args.storageId,
-			storageProvider: finalizedUpload.storageProvider,
-			fileName: args.fileName,
-			fileType: args.fileType || "application/octet-stream",
-			fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
-			sourceKind: args.sourceKind,
-		});
+		try {
+			return await ctx.runMutation(
+				internal.learningPlans.storeUploadedDocument,
+				{
+					ownerTokenIdentifier: context.ownerTokenIdentifier,
+					learningPlanId: args.learningPlanId,
+					storageId: args.storageId,
+					storageProvider: finalizedUpload.storageProvider,
+					fileName: args.fileName,
+					fileType: args.fileType || "application/octet-stream",
+					fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
+					sourceKind: args.sourceKind,
+				},
+			);
+		} catch (error) {
+			try {
+				await deleteManagedFile(ctx, {
+					storageId: args.storageId,
+					storageProvider: finalizedUpload.storageProvider,
+				});
+			} catch (cleanupError) {
+				logDiagnosticError(
+					"learningPlans.rejectedUploadCleanup",
+					cleanupError,
+					{
+						learningPlanId: args.learningPlanId,
+						storageProvider: finalizedUpload.storageProvider,
+						fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
+					},
+				);
+			}
+			throw error;
+		}
 	},
 });
 
@@ -1624,6 +1699,13 @@ export const removeDocument = mutation({
 			storageId: document.storageId,
 			storageProvider: document.storageProvider,
 		});
+		const processedContext = await ctx.db
+			.query("learningPlanDocumentContexts")
+			.withIndex("by_documentId", (q) => q.eq("documentId", args.id))
+			.unique();
+		if (processedContext) {
+			await ctx.db.delete("learningPlanDocumentContexts", processedContext._id);
+		}
 		await ctx.db.delete("learningPlanDocuments", args.id);
 		const plan = await ctx.db.get("learningPlans", document.learningPlanId);
 		if (
@@ -1657,6 +1739,13 @@ export const removePlan = mutation({
 			.query("learningPlanDocuments")
 			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
 			.take(100);
+		const documentContexts = await ctx.db
+			.query("learningPlanDocumentContexts")
+			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
+			.take(100);
+		for (const context of documentContexts) {
+			await ctx.db.delete("learningPlanDocumentContexts", context._id);
+		}
 		for (const document of documents) {
 			await deleteManagedFile(ctx, {
 				storageId: document.storageId,
@@ -1678,6 +1767,15 @@ export const removePlan = mutation({
 			.take(1_000);
 		for (const usage of aiUsage) {
 			await ctx.db.delete("learningPlanAiUsage", usage._id);
+		}
+		const transferAttempts = await ctx.db
+			.query("learningPlanAiTransferAttempts")
+			.withIndex("by_learningPlanId_and_createdAt", (q) =>
+				q.eq("learningPlanId", args.id),
+			)
+			.take(1_000);
+		for (const attempt of transferAttempts) {
+			await ctx.db.delete("learningPlanAiTransferAttempts", attempt._id);
 		}
 
 		const sessions = await ctx.db

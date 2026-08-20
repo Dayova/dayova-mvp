@@ -1,4 +1,3 @@
-import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
@@ -9,6 +8,13 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import {
+	getLearningPlanUploadCapacity,
+	LEARNING_PLAN_MAX_FILE_COUNT,
+	LEARNING_PLAN_MAX_TOTAL_BYTES,
+	validateLearningPlanUploadBatch,
+} from "#convex/learningPlanUploadPolicy";
+import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import {
 	ActionSheet,
 	actionSheetIconColor,
@@ -27,11 +33,11 @@ import {
 	examEntrySuccessPath,
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
+import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
 	MaterialUploadStep,
 	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
-import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import type {
 	LearningPlanSnapshot,
 	UploadAsset,
@@ -99,6 +105,9 @@ export default function NewLearningPlanScreen() {
 		api.learningPlans.registerUploadedDocument,
 	);
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
+	const retryDocumentProcessing = useAction(
+		api.learningPlanAi.retryDocumentProcessing,
+	);
 
 	const subject = params.subject?.trim() || "Fach";
 	const examTypeLabel = params.examTypeLabel?.trim() || "Leistungskontrolle";
@@ -148,12 +157,24 @@ export default function NewLearningPlanScreen() {
 	const hasSchoolMaterial = Boolean(
 		snapshot?.documents.some((document) => document.sourceKind === "school"),
 	);
+	const uploadCapacity = getLearningPlanUploadCapacity(
+		snapshot?.documents ?? [],
+	);
+	const hasFailedMaterial = Boolean(
+		snapshot?.documents.some(
+			(document) =>
+				document.sourceKind === "school" &&
+				document.processingStatus === "failed",
+		),
+	);
 	const isPlanSnapshotLoading = Boolean(learningPlanId && snapshot === null);
 	const canUpload =
 		canWrite &&
 		!isBusy &&
 		!openingUploadAction &&
 		!isPlanSnapshotLoading &&
+		uploadCapacity.remainingCount > 0 &&
+		uploadCapacity.remainingBytes > 0 &&
 		isMeaningfulTopicDescription(topics);
 	const canContinueTopics =
 		canWrite &&
@@ -161,7 +182,12 @@ export default function NewLearningPlanScreen() {
 		!openingUploadAction &&
 		isMeaningfulTopicDescription(topics);
 	const canContinueUpload =
-		Boolean(learningPlanId) && hasSchoolMaterial && canUpload;
+		Boolean(learningPlanId) &&
+		hasSchoolMaterial &&
+		!hasFailedMaterial &&
+		canWrite &&
+		!isBusy &&
+		!isPlanSnapshotLoading;
 	const currentProgressStep =
 		setupStep === "requiredTopics"
 			? LEARNING_PLAN_CREATION_STEPS.examTopics
@@ -240,6 +266,28 @@ export default function NewLearningPlanScreen() {
 		if (!validation.valid) throw new Error(validation.message);
 
 		return { asset, file, fileSizeBytes, fileType };
+	};
+
+	const assertUploadBatchFits = (assets: PreparedUploadAsset[]) => {
+		const validation = validateLearningPlanUploadBatch(
+			snapshot?.documents ?? [],
+			assets.map(({ asset, fileSizeBytes }) => ({
+				name: asset.name,
+				size: fileSizeBytes,
+			})),
+		);
+		if (validation.valid) return;
+		if (validation.code === "too_many_files") {
+			throw new Error(
+				`Pro Lernplan sind höchstens ${LEARNING_PLAN_MAX_FILE_COUNT} Dateien möglich.`,
+			);
+		}
+		if (validation.code === "total_too_large") {
+			throw new Error(
+				`Pro Lernplan sind insgesamt höchstens ${Math.round(LEARNING_PLAN_MAX_TOTAL_BYTES / 1024 / 1024)} MiB möglich.`,
+			);
+		}
+		throw new Error("Mindestens eine Datei kann nicht hochgeladen werden.");
 	};
 
 	const uploadLearningPlanAsset = async (
@@ -389,6 +437,7 @@ export default function NewLearningPlanScreen() {
 							size: asset.size,
 						}),
 					);
+					assertUploadBatchFits(preparedAssets);
 					const id = await ensurePlan(topics);
 					for (const asset of preparedAssets) {
 						await uploadLearningPlanAsset(asset, id);
@@ -437,15 +486,14 @@ export default function NewLearningPlanScreen() {
 				"Das Foto konnte nicht hochgeladen werden.",
 				async () => {
 					const id = await ensurePlan(topics);
-					await uploadLearningPlanAsset(
-						prepareUploadAsset({
-							uri: asset.uri,
-							name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
-							mimeType: asset.mimeType ?? "image/jpeg",
-							size: asset.fileSize,
-						}),
-						id,
-					);
+					const preparedAsset = prepareUploadAsset({
+						uri: asset.uri,
+						name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
+						mimeType: asset.mimeType ?? "image/jpeg",
+						size: asset.fileSize,
+					});
+					assertUploadBatchFits([preparedAsset]);
+					await uploadLearningPlanAsset(preparedAsset, id);
 				},
 			);
 		} catch (error) {
@@ -553,6 +601,17 @@ export default function NewLearningPlanScreen() {
 		await removeDocument({ id: documentId });
 	};
 
+	const retryUploadedDocument = async (
+		documentId: Id<"learningPlanDocuments">,
+	) => {
+		await runWithErrorHandling(
+			"Das Material konnte nicht erneut verarbeitet werden.",
+			async () => {
+				await retryDocumentProcessing({ documentId });
+			},
+		);
+	};
+
 	const exitCreation = () => {
 		if (learningPlanId) {
 			dismissToOrReplace(router, ROUTES.learningPlans);
@@ -635,6 +694,7 @@ export default function NewLearningPlanScreen() {
 							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}
 							onRemoveDocument={(id) => void removeUploadedDocument(id)}
+							onRetryDocument={(id) => void retryUploadedDocument(id)}
 							onSkip={finishWithMaterialLater}
 							openingUploadAction={openingUploadAction}
 							showSkip={setupOrigin === "newExam"}

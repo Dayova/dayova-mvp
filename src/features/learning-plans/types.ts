@@ -152,6 +152,8 @@ type LearningPlanDocument = {
 	fileType: string;
 	fileSizeBytes: number;
 	sourceKind: "school" | "external";
+	processingStatus?: "queued" | "processing" | "ready" | "failed";
+	processingError?: string;
 };
 
 export type UploadAsset = {
