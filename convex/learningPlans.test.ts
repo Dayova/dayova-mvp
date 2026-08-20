@@ -6,6 +6,7 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { USER_FACING_ERROR_KIND } from "./errors";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
+import { LEARNING_PLAN_MAX_FILE_COUNT } from "./learningPlanUploadPolicy";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -1961,6 +1962,130 @@ test("rejects a vague required-topics answer before material upload", async () =
 			topicDescription: "Mathe Arbeit",
 		}),
 	).rejects.toThrow("Beschreibe das Prüfungsthema bitte genauer.");
+});
+
+test("serializes concurrent upload registration at the server-side count limit", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.run(async (ctx) => {
+		for (let index = 0; index < LEARNING_PLAN_MAX_FILE_COUNT - 1; index += 1) {
+			await ctx.db.insert("learningPlanDocuments", {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				learningPlanId,
+				storageId: `existing-${index}`,
+				storageProvider: "convex",
+				fileName: `existing-${index}.pdf`,
+				fileType: "application/pdf",
+				fileSizeBytes: 1,
+				sourceKind: "school",
+				processingStatus: "queued",
+				createdAt: Date.now(),
+			});
+		}
+	});
+
+	const register = (suffix: string) =>
+		t.mutation(internal.learningPlans.storeUploadedDocument, {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			learningPlanId,
+			storageId: `concurrent-${suffix}`,
+			storageProvider: "convex" as const,
+			fileName: `concurrent-${suffix}.pdf`,
+			fileType: "application/pdf",
+			fileSizeBytes: 1,
+			sourceKind: "school" as const,
+		});
+	const results = await Promise.all([register("a"), register("b")]);
+
+	expect(results.filter((result) => result.status === "stored")).toHaveLength(
+		1,
+	);
+	expect(results.filter((result) => result.status === "rejected")).toEqual([
+		expect.objectContaining({
+			code: "too_many_files",
+			existingFileCount: LEARNING_PLAN_MAX_FILE_COUNT,
+		}),
+	]);
+	const storedCount = await t.run(
+		async (ctx) =>
+			(
+				await ctx.db
+					.query("learningPlanDocuments")
+					.withIndex("by_learningPlanId", (q) =>
+						q.eq("learningPlanId", learningPlanId),
+					)
+					.take(LEARNING_PLAN_MAX_FILE_COUNT + 1)
+			).length,
+	);
+	expect(storedCount).toBe(LEARNING_PLAN_MAX_FILE_COUNT);
+});
+
+test("isolates generation progress from plan metadata and other users", async () => {
+	const backend = convexTest(schema, modules);
+	const t = backend.withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			diagnosticPlacement: "firstSession",
+		});
+		for (let index = 0; index < 6; index += 1) {
+			await ctx.db.insert("learningPlanDocuments", {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				learningPlanId,
+				storageId: `material-${index}`,
+				storageProvider: "convex",
+				fileName: `umfangreiches-arbeitsblatt-${index}.pdf`,
+				fileType: "application/pdf",
+				fileSizeBytes: 1_000_000,
+				sourceKind: "school",
+				processingStatus: "ready",
+				createdAt: Date.now(),
+			});
+		}
+	});
+	await t.mutation(internal.learningPlans.beginContentGeneration, {
+		learningPlanId,
+		generationId: "generation-1",
+	});
+
+	const before = await t.query(api.learningPlans.getGenerationProgress, {
+		learningPlanId,
+	});
+	expect(before).toMatchObject({
+		sessionCount: 0,
+		contentGeneration: { stage: "content", totalSessionCount: 0 },
+	});
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlans", learningPlanId, {
+			notes: "Diese statische Notiz darf die Progress-Abfrage nicht erweitern.",
+			updatedAt: Date.now(),
+		});
+	});
+	const afterStaticWrite = await t.query(
+		api.learningPlans.getGenerationProgress,
+		{ learningPlanId },
+	);
+	expect(afterStaticWrite).toEqual(before);
+	expect(
+		await backend
+			.withIdentity({ tokenIdentifier: "test:other" })
+			.query(api.learningPlans.getGenerationProgress, { learningPlanId }),
+	).toBeNull();
+
+	const broadSnapshot = await t.query(api.learningPlans.getSnapshot, {
+		id: learningPlanId,
+	});
+	expect(JSON.stringify(before).length).toBeLessThan(
+		JSON.stringify(broadSnapshot).length / 2,
+	);
+
+	await t.mutation(internal.learningPlans.clearEmptyContentGeneration, {
+		learningPlanId,
+		generationId: "generation-1",
+	});
+	expect(
+		await t.query(api.learningPlans.getGenerationProgress, { learningPlanId }),
+	).toMatchObject({ contentGeneration: { stage: "failed" } });
 });
 
 test("keeps school evidence authoritative while external material remains supportive", async () => {

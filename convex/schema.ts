@@ -263,6 +263,10 @@ export default defineSchema({
 		.index("by_ownerTokenIdentifier_and_expiresAt", [
 			"ownerTokenIdentifier",
 			"expiresAt",
+		])
+		.index("by_ownerTokenIdentifier_and_relatedLearningPlanId", [
+			"ownerTokenIdentifier",
+			"relatedLearningPlanId",
 		]),
 	notificationHistory: defineTable({
 		ownerTokenIdentifier: v.string(),
@@ -295,6 +299,11 @@ export default defineSchema({
 		.index("by_ownerTokenIdentifier_and_eventKey", [
 			"ownerTokenIdentifier",
 			"eventKey",
+		])
+		.index("by_ownerTokenIdentifier_and_relatedLearningPlanId_and_createdAt", [
+			"ownerTokenIdentifier",
+			"relatedLearningPlanId",
+			"createdAt",
 		]),
 	dayEntries: defineTable({
 		ownerTokenIdentifier: v.string(),
@@ -412,6 +421,9 @@ export default defineSchema({
 		planningHint: v.optional(v.string()),
 		rollingPlanEnabled: v.optional(v.boolean()),
 		adaptationRevision: v.optional(v.number()),
+		// Legacy fields remain widened until old rows are migrated. New writes use
+		// learningPlanGenerationProgress exclusively so static plan queries do not
+		// subscribe to high-churn generation state.
 		contentGenerationStage: v.optional(contentGenerationStageValidator),
 		contentGenerationId: v.optional(v.string()),
 		contentGenerationStartedAt: v.optional(v.number()),
@@ -425,6 +437,19 @@ export default defineSchema({
 		.index("by_ownerTokenIdentifier_and_status", [
 			"ownerTokenIdentifier",
 			"status",
+		]),
+	learningPlanGenerationProgress: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		stage: contentGenerationStageValidator,
+		generationId: v.optional(v.string()),
+		startedAt: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_learningPlanId", ["learningPlanId"])
+		.index("by_ownerTokenIdentifier_and_learningPlanId", [
+			"ownerTokenIdentifier",
+			"learningPlanId",
 		]),
 	learningPlanDocuments: defineTable({
 		ownerTokenIdentifier: v.string(),
@@ -448,6 +473,10 @@ export default defineSchema({
 		createdAt: v.number(),
 	})
 		.index("by_learningPlanId", ["learningPlanId"])
+		.index("by_ownerTokenIdentifier_and_learningPlanId", [
+			"ownerTokenIdentifier",
+			"learningPlanId",
+		])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	learningPlanDocumentContexts: defineTable({
 		ownerTokenIdentifier: v.string(),
@@ -462,6 +491,8 @@ export default defineSchema({
 		claimId: v.optional(v.string()),
 		sourceFileSizeBytes: v.number(),
 		normalizedText: v.optional(v.string()),
+		chunkCount: v.optional(v.number()),
+		totalTextChars: v.optional(v.number()),
 		extractionMethod: v.optional(
 			v.union(v.literal("local"), v.literal("vision")),
 		),
@@ -473,12 +504,47 @@ export default defineSchema({
 	})
 		.index("by_documentId", ["documentId"])
 		.index("by_learningPlanId", ["learningPlanId"]),
+	learningPlanDocumentChunks: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		documentId: v.id("learningPlanDocuments"),
+		contextId: v.id("learningPlanDocumentContexts"),
+		processingVersion: v.number(),
+		chunkIndex: v.number(),
+		charStart: v.number(),
+		charEnd: v.number(),
+		text: v.string(),
+		createdAt: v.number(),
+	})
+		.index("by_documentId_and_chunkIndex", ["documentId", "chunkIndex"])
+		.index("by_contextId_and_chunkIndex", ["contextId", "chunkIndex"])
+		.index("by_learningPlanId", ["learningPlanId"])
+		.searchIndex("search_text", {
+			searchField: "text",
+			filterFields: ["learningPlanId"],
+		}),
 	learningPlanUploadRejections: defineTable({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
 		fileSizeBytes: v.number(),
 		fileType: v.string(),
-		reason: v.literal("registration_rejected"),
+		reason: v.union(
+			v.literal("registration_rejected"),
+			v.literal("too_many_files"),
+			v.literal("file_too_large"),
+			v.literal("total_too_large"),
+			v.literal("unsupported_type"),
+			v.literal("empty_file"),
+		),
+		fileSizeBucket: v.optional(
+			v.union(
+				v.literal("lt_1_mib"),
+				v.literal("1_to_7_mib"),
+				v.literal("gt_7_mib"),
+			),
+		),
+		existingFileCount: v.optional(v.number()),
+		existingTotalBytes: v.optional(v.number()),
 		createdAt: v.number(),
 	})
 		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"])
@@ -495,6 +561,10 @@ export default defineSchema({
 		updatedAt: v.number(),
 	})
 		.index("by_learningPlanId", ["learningPlanId"])
+		.index("by_ownerTokenIdentifier_and_learningPlanId", [
+			"ownerTokenIdentifier",
+			"learningPlanId",
+		])
 		.index("by_learningPlanId_and_questionId", ["learningPlanId", "questionId"])
 		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	learningPlanAiUsage: defineTable({
@@ -535,11 +605,29 @@ export default defineSchema({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
 		attemptId: v.string(),
+		parentAttemptId: v.optional(v.string()),
+		documentId: v.optional(v.id("learningPlanDocuments")),
+		dedupeKey: v.optional(v.string()),
 		operation: v.union(
+			v.literal("document_ingestion"),
 			v.literal("diagnostic"),
 			v.literal("plan"),
 			v.literal("session_content"),
 			v.literal("session_retry"),
+		),
+		environment: v.optional(
+			v.union(
+				v.literal("development"),
+				v.literal("production"),
+				v.literal("unknown"),
+			),
+		),
+		status: v.optional(
+			v.union(
+				v.literal("running"),
+				v.literal("succeeded"),
+				v.literal("failed"),
+			),
 		),
 		processingVersion: v.number(),
 		sourceDocumentCount: v.number(),
@@ -547,14 +635,62 @@ export default defineSchema({
 		reusedDocumentCount: v.number(),
 		sourceFileReadCount: v.number(),
 		rawFilePartCount: v.number(),
+		rawFilePartBytes: v.optional(v.number()),
 		compactContextBytes: v.number(),
+		selectedChunkCount: v.optional(v.number()),
+		selectedChunkBytes: v.optional(v.number()),
+		providerContextMode: v.optional(
+			v.union(v.literal("one_time_ingestion"), v.literal("persisted_chunks")),
+		),
+		providerReferenceCacheStatus: v.optional(v.literal("not_applicable")),
+		modelRequestCount: v.optional(v.number()),
+		structuredRetryCount: v.optional(v.number()),
+		sessionContentBatchCount: v.optional(v.number()),
+		duplicateStartCount: v.optional(v.number()),
+		errorCode: v.optional(v.string()),
+		startedAt: v.optional(v.number()),
+		completedAt: v.optional(v.number()),
 		createdAt: v.number(),
 	})
+		.index("by_attemptId", ["attemptId"])
+		.index("by_parentAttemptId", ["parentAttemptId"])
+		.index("by_learningPlanId_and_operation_and_dedupeKey_and_status", [
+			"learningPlanId",
+			"operation",
+			"dedupeKey",
+			"status",
+		])
 		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"])
+		.index("by_environment_and_createdAt", ["environment", "createdAt"])
+		.index("by_ownerTokenIdentifier_and_environment_and_createdAt", [
+			"ownerTokenIdentifier",
+			"environment",
+			"createdAt",
+		])
 		.index("by_ownerTokenIdentifier_and_createdAt", [
 			"ownerTokenIdentifier",
 			"createdAt",
 		]),
+	learningPlanAiModelRequests: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		attemptId: v.string(),
+		operation: v.union(
+			v.literal("document_extraction"),
+			v.literal("diagnostic"),
+			v.literal("plan"),
+			v.literal("answer_evaluation"),
+			v.literal("session_theory"),
+			v.literal("session_practice"),
+			v.literal("session_praxis"),
+		),
+		modelId: v.string(),
+		retryIndex: v.number(),
+		batchIndex: v.optional(v.number()),
+		createdAt: v.number(),
+	})
+		.index("by_attemptId", ["attemptId"])
+		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"]),
 	learningPlanAiBudgetReservations: defineTable({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
@@ -630,6 +766,11 @@ export default defineSchema({
 		updatedAt: v.number(),
 	})
 		.index("by_learningPlanId_and_sortOrder", ["learningPlanId", "sortOrder"])
+		.index("by_ownerTokenIdentifier_and_learningPlanId_and_sortOrder", [
+			"ownerTokenIdentifier",
+			"learningPlanId",
+			"sortOrder",
+		])
 		.index("by_ownerTokenIdentifier_and_dateKey", [
 			"ownerTokenIdentifier",
 			"dateKey",

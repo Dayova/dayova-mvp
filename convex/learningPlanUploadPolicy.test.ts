@@ -19,6 +19,29 @@ describe("learning-plan upload policy", () => {
 		).toEqual({ valid: true, code: null });
 	});
 
+	test("accepts the exact file, count, and aggregate boundaries", () => {
+		expect(
+			validateLearningPlanUploadBatch(
+				[],
+				[{ name: "scan.pdf", size: LEARNING_PLAN_MAX_FILE_BYTES }],
+			),
+		).toEqual({ valid: true, code: null });
+		expect(
+			validateLearningPlanUploadBatch(
+				Array.from({ length: LEARNING_PLAN_MAX_FILE_COUNT - 1 }, () => ({
+					fileSizeBytes: 1,
+				})),
+				[{ name: "zehnte-datei.pdf", size: 1 }],
+			),
+		).toEqual({ valid: true, code: null });
+		expect(
+			validateLearningPlanUploadBatch(
+				[{ fileSizeBytes: LEARNING_PLAN_MAX_TOTAL_BYTES - 1 }],
+				[{ name: "letztes-byte.txt", size: 1 }],
+			),
+		).toEqual({ valid: true, code: null });
+	});
+
 	test("rejects count and aggregate bypasses", () => {
 		expect(
 			validateLearningPlanUploadBatch(
@@ -35,6 +58,31 @@ describe("learning-plan upload policy", () => {
 				[{ name: "extra.pdf", size: 101 }],
 			),
 		).toEqual({ valid: false, code: "total_too_large" });
+	});
+
+	test.each([
+		["quelle.pdf", "application/pdf"],
+		["quelle.doc", "application/msword"],
+		[
+			"quelle.docx",
+			"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		],
+		["quelle.ppt", "application/vnd.ms-powerpoint"],
+		[
+			"quelle.pptx",
+			"application/vnd.openxmlformats-officedocument.presentationml.presentation",
+		],
+		["quelle.txt", "text/plain"],
+		["quelle.md", "text/markdown"],
+		["quelle.csv", "text/csv"],
+		["quelle.json", "application/json"],
+		["quelle.jpg", "image/jpeg"],
+		["quelle.png", "image/png"],
+		["quelle.webp", "image/webp"],
+	])("accepts supported material %s", (name, type) => {
+		expect(
+			validateLearningPlanUploadBatch([], [{ name, type, size: 1_024 }]),
+		).toEqual({ valid: true, code: null });
 	});
 
 	test("rejects unsupported and oversized files", () => {

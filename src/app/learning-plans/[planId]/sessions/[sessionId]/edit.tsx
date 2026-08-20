@@ -6,14 +6,13 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
-import { ErrorMessage } from "~/components/ui/error-message";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
 import { SessionEditForm } from "~/features/learning-plans/learning-plan-ui";
 import type {
-	LearningPlanSnapshot,
 	PickerTarget,
 	PlanSession,
 	SessionPhase,
@@ -28,8 +27,8 @@ import {
 	parseDateKey,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
-import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
+import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 
 const reviewPath = (id: Id<"learningPlans">) =>
 	`/learning-plans/${id}/review` as const;
@@ -241,12 +240,14 @@ export default function LearningPlanSessionEditScreen() {
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 
-	const snapshot = (useQuery(
-		api.learningPlans.getSnapshot,
-		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
-	) ?? null) as LearningPlanSnapshot | null;
+	const sessions = useQuery(
+		api.learningPlans.listSessions,
+		user && isConvexAuthenticated && planId
+			? { learningPlanId: planId }
+			: "skip",
+	);
 
-	const session = snapshot?.sessions.find((item) => item.id === sessionId) as
+	const session = sessions?.find((item) => item.id === sessionId) as
 		| PlanSession
 		| undefined;
 

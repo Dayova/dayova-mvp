@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import {
@@ -12,7 +11,6 @@ import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
-import { createKeyedAsyncActionGate } from "~/lib/async-action-gate";
 import { useDayovaTheme } from "~/lib/theme";
 import { formatFileSize } from "~/lib/upload-policy";
 
@@ -117,9 +115,6 @@ export function MaterialUploadStep({
 	);
 	const hasSchoolMaterial = schoolDocuments.length > 0;
 	const capacity = getLearningPlanUploadCapacity(documents);
-	const retryGateRef = useRef(
-		createKeyedAsyncActionGate<Id<"learningPlanDocuments">>(),
-	);
 
 	return (
 		<View className="flex-1">
@@ -192,12 +187,7 @@ export function MaterialUploadStep({
 							size={document.fileSizeBytes}
 							status={document.processingStatus}
 							onRetry={
-								onRetryDocument
-									? () =>
-											void retryGateRef.current.run(document.id, () =>
-												onRetryDocument(document.id),
-											)
-									: undefined
+								onRetryDocument ? () => onRetryDocument(document.id) : undefined
 							}
 							onRemove={() => onRemoveDocument(document.id)}
 						/>

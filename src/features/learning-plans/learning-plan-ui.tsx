@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { Button } from "~/components/ui/button";
 import {
@@ -30,6 +30,7 @@ import {
 	parseDateKey,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
 import { formatFileSize } from "~/lib/upload-policy";
@@ -116,13 +117,14 @@ export function MaterialCard({
 }: {
 	isRetrying?: boolean;
 	name: string;
-	onRetry?: () => void;
+	onRetry?: () => void | Promise<void>;
 	onRemove: () => void;
 	size: number;
 	status?: "queued" | "processing" | "ready" | "failed";
 }) {
 	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
+	const retryGateRef = useRef(createAsyncActionGate());
 
 	return (
 		<Surface
@@ -151,7 +153,9 @@ export function MaterialCard({
 						accessibilityRole="button"
 						accessibilityState={{ busy: isRetrying, disabled: isRetrying }}
 						disabled={isRetrying}
-						onPress={onRetry}
+						onPress={() => {
+							void retryGateRef.current.run(async () => await onRetry());
+						}}
 						className="mt-1 self-start"
 					>
 						<Text className="font-poppins font-semibold text-body-4 text-destructive">
