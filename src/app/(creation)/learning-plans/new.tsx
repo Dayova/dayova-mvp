@@ -10,8 +10,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
 	getLearningPlanUploadCapacity,
-	LEARNING_PLAN_MAX_FILE_COUNT,
-	LEARNING_PLAN_MAX_TOTAL_BYTES,
+	getLearningPlanUploadRejectionMessage,
 	validateLearningPlanUploadBatch,
 } from "#convex/learningPlanUploadPolicy";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
@@ -39,7 +38,7 @@ import {
 	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
 import type {
-	LearningPlanSnapshot,
+	LearningPlanSetupSnapshot,
 	UploadAsset,
 } from "~/features/learning-plans/types";
 import {
@@ -134,6 +133,8 @@ export default function NewLearningPlanScreen() {
 	);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
+	const [retryingDocumentId, setRetryingDocumentId] =
+		useState<Id<"learningPlanDocuments"> | null>(null);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
 		useState(false);
@@ -147,11 +148,11 @@ export default function NewLearningPlanScreen() {
 
 	const hasExamEntry = Boolean(examDayEntryId || learningPlanId);
 	const snapshot = (useQuery(
-		api.learningPlans.getSnapshot,
+		api.learningPlans.getSetupSnapshot,
 		user && isConvexAuthenticated && learningPlanId
 			? { id: learningPlanId }
 			: "skip",
-	) ?? null) as LearningPlanSnapshot | null;
+	) ?? null) as LearningPlanSetupSnapshot | null;
 	const canWrite = Boolean(user && isConvexAuthenticated);
 	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
 	const hasSchoolMaterial = Boolean(
@@ -274,20 +275,11 @@ export default function NewLearningPlanScreen() {
 			assets.map(({ asset, fileSizeBytes }) => ({
 				name: asset.name,
 				size: fileSizeBytes,
+				type: asset.mimeType ?? undefined,
 			})),
 		);
 		if (validation.valid) return;
-		if (validation.code === "too_many_files") {
-			throw new Error(
-				`Pro Lernplan sind höchstens ${LEARNING_PLAN_MAX_FILE_COUNT} Dateien möglich.`,
-			);
-		}
-		if (validation.code === "total_too_large") {
-			throw new Error(
-				`Pro Lernplan sind insgesamt höchstens ${Math.round(LEARNING_PLAN_MAX_TOTAL_BYTES / 1024 / 1024)} MiB möglich.`,
-			);
-		}
-		throw new Error("Mindestens eine Datei kann nicht hochgeladen werden.");
+		throw new Error(getLearningPlanUploadRejectionMessage(validation.code));
 	};
 
 	const uploadLearningPlanAsset = async (
@@ -604,12 +596,17 @@ export default function NewLearningPlanScreen() {
 	const retryUploadedDocument = async (
 		documentId: Id<"learningPlanDocuments">,
 	) => {
-		await runWithErrorHandling(
-			"Das Material konnte nicht erneut verarbeitet werden.",
-			async () => {
-				await retryDocumentProcessing({ documentId });
-			},
-		);
+		setRetryingDocumentId(documentId);
+		try {
+			await runWithErrorHandling(
+				"Das Material konnte nicht erneut verarbeitet werden.",
+				async () => {
+					await retryDocumentProcessing({ documentId });
+				},
+			);
+		} finally {
+			setRetryingDocumentId(null);
+		}
 	};
 
 	const exitCreation = () => {
@@ -694,9 +691,10 @@ export default function NewLearningPlanScreen() {
 							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}
 							onRemoveDocument={(id) => void removeUploadedDocument(id)}
-							onRetryDocument={(id) => void retryUploadedDocument(id)}
+							onRetryDocument={retryUploadedDocument}
 							onSkip={finishWithMaterialLater}
 							openingUploadAction={openingUploadAction}
+							retryingDocumentId={retryingDocumentId}
 							showSkip={setupOrigin === "newExam"}
 						/>
 					)}

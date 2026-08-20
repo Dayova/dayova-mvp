@@ -138,6 +138,15 @@ test("lists a materialless draft so the upload can be resumed", async () => {
 		durationMinutes: 90,
 		topicDescription: "Lineare Funktionen, Steigung und Nullstellen",
 	});
+	await expect(
+		t.query(api.learningPlans.getSetupSnapshot, { id: learningPlanId }),
+	).resolves.toEqual({
+		plan: {
+			id: learningPlanId,
+			topicDescription: "Lineare Funktionen, Steigung und Nullstellen",
+		},
+		documents: [],
+	});
 
 	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
 		expect.objectContaining({

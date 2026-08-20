@@ -473,6 +473,19 @@ export default defineSchema({
 	})
 		.index("by_documentId", ["documentId"])
 		.index("by_learningPlanId", ["learningPlanId"]),
+	learningPlanUploadRejections: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		fileSizeBytes: v.number(),
+		fileType: v.string(),
+		reason: v.literal("registration_rejected"),
+		createdAt: v.number(),
+	})
+		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"])
+		.index("by_ownerTokenIdentifier_and_createdAt", [
+			"ownerTokenIdentifier",
+			"createdAt",
+		]),
 	learningPlanAnswers: defineTable({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),

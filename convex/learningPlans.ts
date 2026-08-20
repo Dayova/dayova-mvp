@@ -28,11 +28,8 @@ import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
-	getLearningPlanUploadCapacity,
-	isAcceptedLearningPlanFileName,
-	LEARNING_PLAN_MAX_FILE_BYTES,
-	LEARNING_PLAN_MAX_FILE_COUNT,
-	LEARNING_PLAN_MAX_TOTAL_BYTES,
+	getLearningPlanUploadRejectionMessage,
+	validateLearningPlanUploadBatch,
 } from "./learningPlanUploadPolicy";
 import {
 	getDefaultPreparationDepth,
@@ -1244,6 +1241,25 @@ export const getSnapshot = query({
 	},
 });
 
+export const getSetupSnapshot = query({
+	args: { id: v.id("learningPlans") },
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const plan = await ctx.db.get("learningPlans", args.id);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier)
+			return null;
+		const documents = await ctx.db
+			.query("learningPlanDocuments")
+			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
+			.order("asc")
+			.take(20);
+		return {
+			plan: { id: plan._id, topicDescription: plan.topicDescription },
+			documents: documents.map(publicDocument),
+		};
+	},
+});
+
 export const listOverview = query({
 	args: {},
 	handler: async (ctx) => {
@@ -1565,34 +1581,25 @@ export const storeUploadedDocument = internalMutation({
 		if (!plan || plan.ownerTokenIdentifier !== args.ownerTokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
 		}
-		if (!isAcceptedLearningPlanFileName(args.fileName)) {
-			throwUserFacingError(
-				"Dieser Dateityp wird nicht unterstützt. Bitte nutze PDF, DOCX, PPTX, Text oder Bilder.",
-			);
-		}
-		if (!Number.isFinite(args.fileSizeBytes) || args.fileSizeBytes <= 0) {
-			throwUserFacingError(
-				"Die Datei ist leer oder konnte nicht gelesen werden.",
-			);
-		}
-		if (args.fileSizeBytes > LEARNING_PLAN_MAX_FILE_BYTES) {
-			throwUserFacingError("Die Datei ist zu groß (maximal 7 MiB).");
-		}
 		const existingDocuments = await ctx.db
 			.query("learningPlanDocuments")
 			.withIndex("by_learningPlanId", (q) =>
 				q.eq("learningPlanId", args.learningPlanId),
 			)
-			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
-		const capacity = getLearningPlanUploadCapacity(existingDocuments);
-		if (capacity.remainingCount < 1) {
+			.take(11);
+		const uploadValidation = validateLearningPlanUploadBatch(
+			existingDocuments,
+			[
+				{
+					name: args.fileName,
+					size: args.fileSizeBytes,
+					type: args.fileType,
+				},
+			],
+		);
+		if (!uploadValidation.valid) {
 			throwUserFacingError(
-				`Pro Lernplan sind höchstens ${LEARNING_PLAN_MAX_FILE_COUNT} Dateien möglich.`,
-			);
-		}
-		if (args.fileSizeBytes > capacity.remainingBytes) {
-			throwUserFacingError(
-				`Pro Lernplan sind insgesamt höchstens ${Math.round(LEARNING_PLAN_MAX_TOTAL_BYTES / 1024 / 1024)} MiB möglich.`,
+				getLearningPlanUploadRejectionMessage(uploadValidation.code),
 			);
 		}
 		const now = Date.now();
@@ -1662,6 +1669,29 @@ export const registerUploadedDocument = action({
 				},
 			);
 		} catch (error) {
+			logDiagnosticError("learningPlans.uploadRejected", error, {
+				learningPlanId: args.learningPlanId,
+				storageProvider: finalizedUpload.storageProvider,
+				fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
+			});
+			try {
+				await ctx.runMutation(
+					internal.learningPlanUploadTelemetry.recordRejection,
+					{
+						ownerTokenIdentifier: context.ownerTokenIdentifier,
+						learningPlanId: args.learningPlanId,
+						fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
+						fileType: args.fileType || "application/octet-stream",
+						reason: "registration_rejected",
+					},
+				);
+			} catch (telemetryError) {
+				logDiagnosticError(
+					"learningPlans.uploadRejectionTelemetry",
+					telemetryError,
+					{ learningPlanId: args.learningPlanId },
+				);
+			}
 			try {
 				await deleteManagedFile(ctx, {
 					storageId: args.storageId,
@@ -1768,15 +1798,6 @@ export const removePlan = mutation({
 		for (const usage of aiUsage) {
 			await ctx.db.delete("learningPlanAiUsage", usage._id);
 		}
-		const transferAttempts = await ctx.db
-			.query("learningPlanAiTransferAttempts")
-			.withIndex("by_learningPlanId_and_createdAt", (q) =>
-				q.eq("learningPlanId", args.id),
-			)
-			.take(1_000);
-		for (const attempt of transferAttempts) {
-			await ctx.db.delete("learningPlanAiTransferAttempts", attempt._id);
-		}
 
 		const sessions = await ctx.db
 			.query("learningPlanSessions")
@@ -1835,6 +1856,16 @@ export const removePlan = mutation({
 		}
 
 		await ctx.db.delete("learningPlans", args.id);
+		await ctx.scheduler.runAfter(
+			0,
+			internal.learningPlanAiTransfers.removeByPlan,
+			{ learningPlanId: args.id },
+		);
+		await ctx.scheduler.runAfter(
+			0,
+			internal.learningPlanUploadTelemetry.removeByPlan,
+			{ learningPlanId: args.id },
+		);
 		return args.id;
 	},
 });

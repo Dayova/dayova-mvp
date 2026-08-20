@@ -1,4 +1,5 @@
 import {
+	isAcceptedLearningPlanFileName,
 	LEARNING_PLAN_ACCEPTED_FILE_TYPES,
 	LEARNING_PLAN_MAX_FILE_BYTES,
 } from "#convex/learningPlanUploadPolicy";
@@ -6,28 +7,6 @@ import {
 const MAX_UPLOAD_FILE_LABEL = "7 MiB";
 
 export const ACCEPTED_FILE_TYPES = LEARNING_PLAN_ACCEPTED_FILE_TYPES;
-
-const ACCEPTED_UPLOAD_EXTENSIONS = [
-	"pdf",
-	"ppt",
-	"pptx",
-	"doc",
-	"docx",
-	"txt",
-	"md",
-	"markdown",
-	"csv",
-	"json",
-	"jpg",
-	"jpeg",
-	"png",
-	"webp",
-];
-
-const getFileExtension = (fileName: string) => {
-	const match = /\.([a-z0-9]+)$/i.exec(fileName);
-	return match?.[1]?.toLowerCase() ?? "";
-};
 
 export const formatFileSize = (sizeBytes: number) => {
 	if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
@@ -51,8 +30,7 @@ export const validateUploadFile = (file: {
 	name: string;
 	size?: number | null;
 }) => {
-	const extension = getFileExtension(file.name);
-	if (!ACCEPTED_UPLOAD_EXTENSIONS.includes(extension)) {
+	if (!isAcceptedLearningPlanFileName(file.name)) {
 		return {
 			valid: false,
 			message:

@@ -33,12 +33,26 @@ const ACCEPTED_EXTENSIONS = new Set([
 	"png",
 	"webp",
 ]);
+const ACCEPTED_FILE_TYPES = new Set<string>(LEARNING_PLAN_ACCEPTED_FILE_TYPES);
 
 const fileExtension = (fileName: string) =>
 	/\.([a-z0-9]+)$/i.exec(fileName)?.[1]?.toLowerCase() ?? "";
 
 export const isAcceptedLearningPlanFileName = (fileName: string) =>
 	ACCEPTED_EXTENSIONS.has(fileExtension(fileName));
+
+export const isAcceptedLearningPlanFileType = (
+	fileName: string,
+	fileType?: string,
+) => {
+	const normalizedType = fileType?.toLowerCase().split(";")[0]?.trim();
+	return (
+		isAcceptedLearningPlanFileName(fileName) &&
+		(!normalizedType ||
+			normalizedType === "application/octet-stream" ||
+			ACCEPTED_FILE_TYPES.has(normalizedType))
+	);
+};
 
 export const getLearningPlanUploadCapacity = (
 	documents: Array<{ fileSizeBytes: number }>,
@@ -60,10 +74,10 @@ export const getLearningPlanUploadCapacity = (
 
 export const validateLearningPlanUploadBatch = (
 	existingDocuments: Array<{ fileSizeBytes: number }>,
-	newFiles: Array<{ name: string; size: number }>,
+	newFiles: Array<{ name: string; size: number; type?: string }>,
 ) => {
 	for (const file of newFiles) {
-		if (!isAcceptedLearningPlanFileName(file.name)) {
+		if (!isAcceptedLearningPlanFileType(file.name, file.type)) {
 			return {
 				valid: false,
 				code: "unsupported_type" as const,
@@ -86,4 +100,26 @@ export const validateLearningPlanUploadBatch = (
 		return { valid: false, code: "total_too_large" as const };
 	}
 	return { valid: true, code: null } as const;
+};
+
+export type LearningPlanUploadRejectionCode = Exclude<
+	ReturnType<typeof validateLearningPlanUploadBatch>["code"],
+	null
+>;
+
+export const getLearningPlanUploadRejectionMessage = (
+	code: LearningPlanUploadRejectionCode,
+) => {
+	switch (code) {
+		case "unsupported_type":
+			return "Dieser Dateityp wird nicht unterstützt. Bitte nutze PDF, DOCX, PPTX, Text oder Bilder.";
+		case "empty_file":
+			return "Die Datei ist leer oder konnte nicht gelesen werden.";
+		case "file_too_large":
+			return "Die Datei ist zu groß (maximal 7 MiB).";
+		case "too_many_files":
+			return `Pro Lernplan sind höchstens ${LEARNING_PLAN_MAX_FILE_COUNT} Dateien möglich.`;
+		case "total_too_large":
+			return `Pro Lernplan sind insgesamt höchstens ${Math.round(LEARNING_PLAN_MAX_TOTAL_BYTES / 1024 / 1024)} MiB möglich.`;
+	}
 };

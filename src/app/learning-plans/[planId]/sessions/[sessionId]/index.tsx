@@ -279,10 +279,30 @@ export default function LearningSessionContentScreen() {
 		null,
 	);
 
-	const content = (useQuery(
-		api.learningSessionContent.getSessionContent,
+	const staticContent = (useQuery(
+		api.learningSessionContent.getSessionStaticContent,
 		user && isConvexAuthenticated && sessionId ? { sessionId } : "skip",
-	) ?? null) as LearningSessionContentSnapshot | null;
+	) ?? null) as Omit<
+		LearningSessionContentSnapshot,
+		"attempts" | "analysis"
+	> | null;
+	const progress = (useQuery(
+		api.learningSessionContent.getSessionProgress,
+		user && isConvexAuthenticated && sessionId && staticContent
+			? {
+					sessionId,
+					itemIds: staticContent.items.map((item) => item.id),
+				}
+			: "skip",
+	) ?? null) as Pick<
+		LearningSessionContentSnapshot,
+		"attempts" | "analysis"
+	> | null;
+	const content = useMemo<LearningSessionContentSnapshot | null>(
+		() =>
+			staticContent && progress ? { ...staticContent, ...progress } : null,
+		[progress, staticContent],
+	);
 	const needsTheoryContentUpgrade = Boolean(
 		content &&
 			content.session.phase === "theory" &&

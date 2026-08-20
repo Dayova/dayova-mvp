@@ -141,6 +141,51 @@ describe("learning-plan setup steps", () => {
 		).toBeNull();
 	});
 
+	test("locks duplicate document retries and exposes the busy state", async () => {
+		const onRetryDocument = jest.fn(() => new Promise<void>(() => undefined));
+		const documentId = "document" as Id<"learningPlanDocuments">;
+		const props = {
+			canUpload: true,
+			canContinue: false,
+			documents: [
+				{
+					id: documentId,
+					fileName: "Arbeitsblatt.pdf",
+					fileType: "application/pdf",
+					fileSizeBytes: 1_024,
+					sourceKind: "school" as const,
+					processingStatus: "failed" as const,
+				},
+			],
+			errorMessage: null,
+			isBusy: false,
+			isUploading: false,
+			onContinue: jest.fn(),
+			onOpenUpload: jest.fn(),
+			onRemoveDocument: jest.fn(),
+			onRetryDocument,
+			onSkip: jest.fn(),
+			openingUploadAction: null,
+		};
+		const screen = await render(<MaterialUploadStep {...props} />);
+		const retry = screen.getByRole("button", {
+			name: "Arbeitsblatt.pdf erneut verarbeiten",
+		});
+
+		await fireEvent.press(retry);
+		await fireEvent.press(retry);
+
+		expect(onRetryDocument).toHaveBeenCalledTimes(1);
+		await screen.rerender(
+			<MaterialUploadStep {...props} retryingDocumentId={documentId} />,
+		);
+		expect(
+			screen.getByRole("button", {
+				name: "Arbeitsblatt.pdf erneut verarbeiten",
+			}),
+		).toBeDisabled();
+	});
+
 	test("still offers the no-plan path when only an external aid remains", async () => {
 		const screen = await render(
 			<MaterialUploadStep

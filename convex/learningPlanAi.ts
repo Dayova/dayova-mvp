@@ -945,7 +945,7 @@ const extractDocumentWithVision = async (
 							type: "file",
 							data: buffer,
 							mediaType,
-							filename: document.fileName,
+							filename: `source-material.${fileExtension(document.fileName) || "bin"}`,
 						},
 						{
 							type: "text",
@@ -1055,34 +1055,6 @@ const processClaimedDocument = async (
 	}
 };
 
-const waitForProcessedDocument = async (
-	ctx: ActionCtx,
-	documentId: Id<"learningPlanDocuments">,
-) => {
-	for (let attempt = 0; attempt < 40; attempt += 1) {
-		await new Promise((resolve) => setTimeout(resolve, 500));
-		const state: {
-			status: "processing" | "ready" | "failed";
-			normalizedText?: string;
-			errorMessage?: string;
-		} | null = await ctx.runQuery(internal.learningPlanDocumentProcessing.get, {
-			documentId,
-			processingVersion: DOCUMENT_PROCESSING_VERSION,
-		});
-		if (state?.status === "ready" && state.normalizedText !== undefined) {
-			return state.normalizedText;
-		}
-		if (state?.status === "failed") {
-			throwUserFacingError(
-				state.errorMessage ?? "Das Dokument konnte nicht verarbeitet werden.",
-			);
-		}
-	}
-	throwUserFacingError(
-		"Die Unterlagen werden noch verarbeitet. Versuche es gleich erneut.",
-	);
-};
-
 const getProcessedDocumentText = async (
 	ctx: ActionCtx,
 	document: ModelDocumentInput,
@@ -1101,10 +1073,9 @@ const getProcessedDocumentText = async (
 	}
 	if (claim.status === "failed") throwUserFacingError(claim.errorMessage);
 	if (claim.status === "processing") {
-		return {
-			text: await waitForProcessedDocument(ctx, document._id),
-			reused: true,
-		};
+		throwUserFacingError(
+			"Die Unterlagen werden noch verarbeitet. Versuche es gleich erneut.",
+		);
 	}
 	return {
 		text: await processClaimedDocument(ctx, claim.document, claimId),
@@ -1123,7 +1094,7 @@ const buildModelInputFromDocuments = async (
 	const textSections: string[] = [];
 	let reusedDocumentCount = 0;
 
-	for (const document of documents) {
+	for (const [index, document] of documents.entries()) {
 		const processed = await getProcessedDocumentText(ctx, document);
 		if (processed.reused) reusedDocumentCount += 1;
 		const sourceLabel =
@@ -1131,7 +1102,7 @@ const buildModelInputFromDocuments = async (
 				? "INTERNES SCHULMATERIAL"
 				: "EXTERNE LERNHILFE";
 		textSections.push(
-			`<dayova-source type="${sourceLabel}" name="${document.fileName}">\n${processed.text}\n</dayova-source>`,
+			`<dayova-source index="${index + 1}" type="${sourceLabel}">\n${processed.text}\n</dayova-source>`,
 		);
 	}
 
@@ -1213,7 +1184,9 @@ export const retryDocumentProcessing = action({
 		if (claim.status === "claimed") {
 			await processClaimedDocument(ctx, claim.document, claimId);
 		} else if (claim.status === "processing") {
-			await waitForProcessedDocument(ctx, args.documentId);
+			throwUserFacingError(
+				"Das Dokument wird bereits verarbeitet. Versuche es gleich erneut.",
+			);
 		} else if (claim.status === "failed") {
 			throwUserFacingError(claim.errorMessage);
 		}

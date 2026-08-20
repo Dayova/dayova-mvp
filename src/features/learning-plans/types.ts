@@ -231,3 +231,8 @@ export type LearningPlanSnapshot = {
 	answers: LearningPlanAnswer[];
 	sessions: PlanSession[];
 };
+
+export type LearningPlanSetupSnapshot = {
+	plan: Pick<LearningPlanSnapshot["plan"], "id" | "topicDescription">;
+	documents: LearningPlanSnapshot["documents"];
+};

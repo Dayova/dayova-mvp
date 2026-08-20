@@ -123,38 +123,6 @@ export const claim = internalMutation({
 	},
 });
 
-export const get = internalQuery({
-	args: {
-		documentId: v.id("learningPlanDocuments"),
-		processingVersion: v.number(),
-	},
-	returns: v.union(
-		v.null(),
-		v.object({
-			status: v.union(
-				v.literal("processing"),
-				v.literal("ready"),
-				v.literal("failed"),
-			),
-			normalizedText: v.optional(v.string()),
-			errorMessage: v.optional(v.string()),
-		}),
-	),
-	handler: async (ctx, args) => {
-		const context = await ctx.db
-			.query("learningPlanDocumentContexts")
-			.withIndex("by_documentId", (q) => q.eq("documentId", args.documentId))
-			.unique();
-		if (!context || context.processingVersion !== args.processingVersion)
-			return null;
-		return {
-			status: context.status,
-			normalizedText: context.normalizedText,
-			errorMessage: context.errorMessage,
-		};
-	},
-});
-
 export const authorize = internalQuery({
 	args: { documentId: v.id("learningPlanDocuments") },
 	returns: v.boolean(),

@@ -47,6 +47,12 @@ describe("learning-plan upload policy", () => {
 		expect(
 			validateLearningPlanUploadBatch(
 				[],
+				[{ name: "renamed.pdf", size: 1_024, type: "application/zip" }],
+			),
+		).toEqual({ valid: false, code: "unsupported_type" });
+		expect(
+			validateLearningPlanUploadBatch(
+				[],
 				[{ name: "scan.pdf", size: LEARNING_PLAN_MAX_FILE_BYTES + 1 }],
 			),
 		).toEqual({ valid: false, code: "file_too_large" });

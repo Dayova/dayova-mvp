@@ -107,17 +107,19 @@ export function PlanningHintBanner({
 }
 
 export function MaterialCard({
+	isRetrying = false,
 	name,
 	onRetry,
+	onRemove,
 	size,
 	status,
-	onRemove,
 }: {
+	isRetrying?: boolean;
 	name: string;
 	onRetry?: () => void;
+	onRemove: () => void;
 	size: number;
 	status?: "queued" | "processing" | "ready" | "failed";
-	onRemove: () => void;
 }) {
 	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
@@ -137,20 +139,26 @@ export function MaterialCard({
 				>
 					{name}
 				</Text>
-				<Text
-					onPress={status === "failed" ? onRetry : undefined}
-					className={cn(
-						"mt-1 font-poppins text-body-4 text-text/50",
-						status === "failed" && "text-destructive",
-					)}
-				>
+				<Text className="mt-1 font-poppins text-body-4 text-text/50">
 					{formatFileSize(size)}
 					{status === "queued" || status === "processing"
 						? " · Wird verarbeitet …"
-						: status === "failed"
-							? " · Fehlgeschlagen – erneut versuchen"
-							: ""}
+						: ""}
 				</Text>
+				{status === "failed" && onRetry ? (
+					<TouchableOpacity
+						accessibilityLabel={`${name} erneut verarbeiten`}
+						accessibilityRole="button"
+						accessibilityState={{ busy: isRetrying, disabled: isRetrying }}
+						disabled={isRetrying}
+						onPress={onRetry}
+						className="mt-1 self-start"
+					>
+						<Text className="font-poppins font-semibold text-body-4 text-destructive">
+							{isRetrying ? "Wird erneut verarbeitet …" : "Erneut versuchen"}
+						</Text>
+					</TouchableOpacity>
+				) : null}
 			</View>
 			<TouchableOpacity
 				accessibilityHint="Entfernt dieses hochgeladene Material aus dem Lernplan."
