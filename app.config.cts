@@ -124,6 +124,7 @@ const config: ExpoConfig = {
 		"./plugins/withRemovedVoicePermissions",
 		"expo-localization",
 		"./plugins/withNinjaLongPaths",
+		"./plugins/withAndroidGradleDaemonJvm",
 		"./plugins/withAndroidGradleJvmMemory",
 		"./plugins/withAndroidPackagingOptions",
 		"./plugins/withDayovaAndroidTheme",
