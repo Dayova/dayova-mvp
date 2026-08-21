@@ -107,7 +107,10 @@ import {
 	type LearningDayLabel,
 } from "~/features/learning-times/learning-time-days";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
-import { PASSWORD_RESET_SUCCESS_PATH } from "~/lib/auth-routing";
+import {
+	ONBOARDING_CREATION_PATH,
+	PASSWORD_RESET_SUCCESS_PATH,
+} from "~/lib/auth-routing";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { GERMAN_FEDERAL_STATES } from "~/lib/federal-states";
 import { GRADE_OPTIONS } from "~/lib/grades";
@@ -598,7 +601,11 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 			setRegistrationStage("flow");
 		}, [setRegistrationStage]),
 	);
-	useBackIntent(isRegistrationBusy, () => true);
+	const blockNativeBack = useCallback(
+		() => isRegistrationBusy || registrationActionGateRef.current.isRunning,
+		[isRegistrationBusy],
+	);
+	useBackIntent(true, blockNativeBack);
 
 	const handleBack = useCallback(() => {
 		if (isRegistrationBusy || registrationActionGateRef.current.isRunning) {
@@ -627,7 +634,7 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 				);
 				if (result.status === "complete") {
 					setRegistrationStage("creating");
-					router.replace("/onboarding/creating");
+					router.replace(ONBOARDING_CREATION_PATH);
 					return;
 				}
 				setRegistrationStage("verification");
@@ -692,10 +699,10 @@ export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
 				className="flex-1"
 			>
 				<View
+					className="flex-1 px-6"
+					// The routed question clears the runtime device safe-area inset.
 					style={{
-						flex: 1,
 						paddingTop: Math.max(insets.top + 12, 20),
-						paddingHorizontal: 24,
 					}}
 				>
 					<QuestionStepView
@@ -738,7 +745,11 @@ export function OnboardingVerificationScreen() {
 		);
 		return () => cancelAnimationFrame(frame);
 	}, []);
-	useBackIntent(isLoading, () => true);
+	const blockNativeBack = useCallback(
+		() => isLoading || verificationSubmittedRef.current,
+		[isLoading],
+	);
+	useBackIntent(true, blockNativeBack);
 
 	const handleBack = useCallback(() => {
 		if (isLoading || verificationSubmittedRef.current) return true;
@@ -755,7 +766,7 @@ export function OnboardingVerificationScreen() {
 		Keyboard.dismiss();
 		setVerificationError(null);
 		setRegistrationStage("creating");
-		router.replace("/onboarding/creating");
+		router.replace(ONBOARDING_CREATION_PATH);
 		try {
 			await verifyEmailCode(code);
 		} catch (error) {
@@ -826,7 +837,9 @@ export function OnboardingCreationScreen() {
 	const [recoveryError, setRecoveryError] = useState<string | null>(null);
 	const [handoffError, setHandoffError] = useState<string | null>(null);
 	const [isRecoverySubmitting, setIsRecoverySubmitting] = useState(false);
+	const [isCompletingHandoff, setIsCompletingHandoff] = useState(false);
 	const recoveryActionGateRef = useRef(createAsyncActionGate());
+	const handoffActionGateRef = useRef(createAsyncActionGate());
 	const isCreationComplete = Boolean(
 		user &&
 			isConvexAuthenticated &&
@@ -836,14 +849,22 @@ export function OnboardingCreationScreen() {
 	);
 	useBackIntent(true, () => true);
 	const continueToTrial = async () => {
-		setHandoffError(null);
-		try {
-			if (await completeOnboardingHandoff()) {
-				router.replace("/trial");
-				return;
+		const result = await handoffActionGateRef.current.run(async () => {
+			setHandoffError(null);
+			setIsCompletingHandoff(true);
+			try {
+				return await completeOnboardingHandoff();
+			} catch {
+				// The local message also covers failures outside the owned outbox path.
+				return false;
+			} finally {
+				setIsCompletingHandoff(false);
 			}
-		} catch {
-			// The local message also covers failures outside the owned outbox path.
+		});
+		if (result.status === "skipped") return;
+		if (result.value) {
+			router.replace("/trial");
+			return;
 		}
 		setHandoffError(
 			"Der Wechsel zur Testphase ist fehlgeschlagen. Bitte versuche es erneut.",
@@ -904,6 +925,7 @@ export function OnboardingCreationScreen() {
 			topInset={insets.top}
 			bottomInset={insets.bottom}
 			isComplete={isCreationComplete}
+			isCompleting={isCompletingHandoff}
 			error={handoffError ?? postAuthSyncError}
 			onRetry={() => {
 				if (onboardingCompletionStatus === "ready_for_trial") {

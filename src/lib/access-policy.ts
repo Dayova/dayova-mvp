@@ -1,4 +1,6 @@
 import {
+	isOnboardingPath,
+	ONBOARDING_PATH,
 	PASSWORD_RESET_SUCCESS_PATH,
 	SESSION_TASK_RESET_PASSWORD_PATH,
 } from "~/lib/auth-routing";
@@ -50,16 +52,19 @@ export type AccessSnapshot =
 			subscriptionGraceExpiresAt: number;
 	  } & AccessMetadata);
 
-const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
+const PUBLIC_AUTH_PATHS = new Set([
+	"/",
+	"/login",
+	"/register",
+	ONBOARDING_PATH,
+]);
 const ACCESS_SETUP_PATHS = new Set(["/trial", "/paywall", "/subscription"]);
 const EXPIRED_ACCESS_PATHS = new Set(["/paywall", "/subscription"]);
 const ACCESS_BYPASS_PATHS = new Set([
-	"/onboarding",
+	ONBOARDING_PATH,
 	PASSWORD_RESET_SUCCESS_PATH,
 	SESSION_TASK_RESET_PASSWORD_PATH,
 ]);
-const isOnboardingPath = (pathname: string) =>
-	pathname === "/onboarding" || pathname.startsWith("/onboarding/");
 const PRO_WELCOME_PATH = "/pro-welcome";
 
 export const resolveAccessRoute = ({

@@ -73,6 +73,8 @@ const mockRouter = {
 	push: jest.fn(),
 	replace: jest.fn(),
 };
+const mockUseBackIntent =
+	jest.fn<(enabled: boolean, onBack: () => boolean) => void>();
 const mockStackScreens: Array<Record<string, unknown>> = [];
 const mockRetryPostAuthSync = jest.fn();
 const mockCompleteOnboardingHandoff = jest.fn(async () => true);
@@ -406,7 +408,8 @@ jest.mock("~/context/OnboardingContext", () => ({
 }));
 
 jest.mock("~/lib/navigation", () => ({
-	useBackIntent: jest.fn(),
+	useBackIntent: (enabled: boolean, onBack: () => boolean) =>
+		mockUseBackIntent(enabled, onBack),
 }));
 
 jest.mock("~/lib/theme", () => {
@@ -929,6 +932,7 @@ describe("OnboardingCreationScreen", () => {
 		mockCompleteOnboardingHandoff.mockReset();
 		mockCompleteOnboardingHandoff.mockResolvedValue(true);
 		mockReplaceOnboardingRecoveryAnswers.mockReset();
+		mockUseBackIntent.mockClear();
 		mockReplaceOnboardingRecoveryAnswers.mockResolvedValue(undefined);
 		mockRetryPostAuthSync.mockReset();
 		mockAuthSession.user = {
@@ -1021,6 +1025,7 @@ describe("OnboardingScreen", () => {
 		mockStageOnboardingRecovery.mockResolvedValue(undefined);
 		mockReplaceOnboardingRecoveryAnswers.mockReset();
 		mockReplaceOnboardingRecoveryAnswers.mockResolvedValue(undefined);
+		mockUseBackIntent.mockClear();
 		mockAuthSession.isConvexAuthenticated = false;
 		mockAuthSession.isPostAuthSyncing = false;
 		mockAuthSession.postAuthSyncError = null;
@@ -1185,7 +1190,7 @@ describe("OnboardingScreen", () => {
 					finishHandoff = resolve;
 				}),
 		);
-		const screen = await render(<OnboardingScreen />);
+		const screen = await render(<OnboardingCreationScreen />);
 		const continueButton = screen.getByRole("button", {
 			name: "Weiter zur Testphase",
 		});
@@ -1450,8 +1455,16 @@ describe("OnboardingScreen", () => {
 		);
 		const screen = await render(<OnboardingStepScreen stepId="email" />);
 		const continueButton = screen.getByRole("button", { name: "Weiter" });
+		const backIntentCall = mockUseBackIntent.mock.calls.at(-1);
+		expect(backIntentCall).toBeDefined();
+		if (!backIntentCall) {
+			throw new Error("Expected the native back guard to be registered");
+		}
+		const [backIntentEnabled, onNativeBack] = backIntentCall;
+		expect(backIntentEnabled).toBe(true);
 
 		await fireEvent.press(continueButton);
+		expect(onNativeBack()).toBe(true);
 		await fireEvent.press(continueButton);
 
 		expect(mockStartRegistrationWithEmail).toHaveBeenCalledTimes(1);
@@ -1464,6 +1477,7 @@ describe("OnboardingScreen", () => {
 		});
 
 		await act(async () => finishEmailCheck());
+		expect(onNativeBack()).toBe(false);
 
 		expect(mockVisitOnboardingStep).toHaveBeenCalledWith("password");
 		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/password");
@@ -1500,5 +1514,9 @@ describe("OnboardingScreen", () => {
 			screen.getByTestId("onboarding-verification-scroll").props
 				.contentInsetAdjustmentBehavior,
 		).toBe("never");
+
+		await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+		expect(mockSetRegistrationStage).toHaveBeenLastCalledWith("flow");
+		expect(mockRouter.back).toHaveBeenCalledTimes(1);
 	});
 });
