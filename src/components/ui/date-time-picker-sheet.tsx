@@ -34,6 +34,13 @@ function DateTimePickerSheet({
 	onConfirm,
 }: DateTimePickerSheetProps) {
 	const { width } = useWindowDimensions();
+	const normalizedDisplay = normalizeIosDisplay(display);
+	const pickerHeight =
+		mode === "date" && normalizedDisplay === "inline"
+			? 340
+			: mode === "datetime"
+				? 260
+				: 216;
 	const accessibilityLabel = {
 		date: "Datum auswählen",
 		time: "Uhrzeit auswählen",
@@ -70,7 +77,7 @@ function DateTimePickerSheet({
 					accentColor={DAYOVA_PRIMARY}
 					value={value}
 					mode={mode}
-					display={normalizeIosDisplay(display)}
+					display={normalizedDisplay}
 					maximumDate={maximumDate}
 					minimumDate={minimumDate}
 					locale="de-DE"
@@ -78,7 +85,7 @@ function DateTimePickerSheet({
 					// Expo's native picker needs explicit measured dimensions.
 					style={{
 						width: Math.min(width, 560) - 48,
-						height: mode === "datetime" ? 260 : 216,
+						height: pickerHeight,
 					}}
 				/>
 			</View>

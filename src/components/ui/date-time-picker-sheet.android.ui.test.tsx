@@ -74,6 +74,28 @@ describe("Android DateTimePickerSheet", () => {
 		);
 	});
 
+	test("keeps calendar display and selectable date bounds", async () => {
+		const minimumDate = new Date(2026, 7, 14);
+		const maximumDate = new Date(2027, 7, 14);
+		const screen = await render(
+			<DateTimePickerSheet
+				display="inline"
+				maximumDate={maximumDate}
+				minimumDate={minimumDate}
+				mode="date"
+				onChange={jest.fn()}
+				onClose={jest.fn()}
+				value={minimumDate}
+				visible
+			/>,
+		);
+
+		expect(screen.getByTestId("date-picker-dialog").props).toMatchObject({
+			selectableDates: { start: minimumDate, end: maximumDate },
+			variant: "picker",
+		});
+	});
+
 	test("continues a datetime selection from date to time before closing", async () => {
 		const onChange = jest.fn();
 		const onClose = jest.fn();

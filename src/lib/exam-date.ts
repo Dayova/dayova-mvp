@@ -1,10 +1,6 @@
-import { addDays, getDayKey, startOfLocalDay } from "./day-key";
+import { addDays, startOfLocalDay } from "./day-key";
 
 const DEFAULT_EXAM_DATE_FUTURE_DAYS = 365;
-
-const germanMonthFormatter = new Intl.DateTimeFormat("de-DE", {
-	month: "long",
-});
 
 const germanAccessibleDateFormatter = new Intl.DateTimeFormat("de-DE", {
 	day: "numeric",
@@ -12,7 +8,7 @@ const germanAccessibleDateFormatter = new Intl.DateTimeFormat("de-DE", {
 	year: "numeric",
 });
 
-function buildExamDateOptions({
+function getExamDatePickerRange({
 	selectedDate,
 	today = new Date(),
 	futureDays = DEFAULT_EXAM_DATE_FUTURE_DAYS,
@@ -32,41 +28,11 @@ function buildExamDateOptions({
 		localSelectedDate.getTime() > defaultRangeEnd.getTime()
 			? localSelectedDate
 			: defaultRangeEnd;
-	const options: Date[] = [];
-
-	for (
-		let date = rangeStart;
-		date.getTime() <= rangeEnd.getTime();
-		date = addDays(date, 1)
-	) {
-		options.push(date);
-	}
-
-	return options;
-}
-
-function findExamDateIndex(options: readonly Date[], selectedDate: Date) {
-	const selectedDayKey = getDayKey(selectedDate);
-	const index = options.findIndex((date) => getDayKey(date) === selectedDayKey);
-	return index < 0 ? 0 : index;
-}
-
-function formatExamDateDay(date: Date) {
-	return `${date.getDate()}`;
-}
-
-function formatExamDateMonth(date: Date) {
-	return germanMonthFormatter.format(date);
+	return { minimumDate: rangeStart, maximumDate: rangeEnd };
 }
 
 function formatAccessibleExamDate(date: Date) {
 	return germanAccessibleDateFormatter.format(date);
 }
 
-export {
-	buildExamDateOptions,
-	findExamDateIndex,
-	formatAccessibleExamDate,
-	formatExamDateDay,
-	formatExamDateMonth,
-};
+export { getExamDatePickerRange, formatAccessibleExamDate };
