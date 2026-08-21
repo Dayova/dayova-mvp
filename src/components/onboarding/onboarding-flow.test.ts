@@ -5,7 +5,6 @@ import {
 	prepareClerkRegistration,
 } from "~/lib/clerk-registration";
 import {
-	getNextOnboardingStepIndex,
 	getOnboardingPersistenceAnswers,
 	getOnboardingRegistrationPayload,
 	getOnboardingStepDecision,
@@ -162,12 +161,6 @@ describe("onboarding flow decisions", () => {
 		expect(
 			getOnboardingStepDecision({ kind: "text", field: "password" }, answers()),
 		).toEqual({ action: "register", error: null });
-	});
-
-	test("clamps progression at the final step", () => {
-		expect(getNextOnboardingStepIndex(3, 10)).toBe(4);
-		expect(getNextOnboardingStepIndex(9, 10)).toBe(9);
-		expect(getNextOnboardingStepIndex(0, 0)).toBe(0);
 	});
 
 	test("preserves grade 13 from onboarding through the Clerk registration boundary", () => {

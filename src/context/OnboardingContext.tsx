@@ -25,6 +25,8 @@ export type OnboardingAnswers = {
 	password: string;
 };
 
+type OnboardingRegistrationStage = "flow" | "verification" | "creating";
+
 const emptyAnswers: OnboardingAnswers = {
 	studyTime: "",
 	studyDays: "",
@@ -55,9 +57,9 @@ type OnboardingContextValue = {
 	isStepVisited: (stepId: OnboardingStepId) => boolean;
 	stepErrors: Readonly<Partial<Record<OnboardingStepId, string>>>;
 	setStepError: (stepId: OnboardingStepId, error: string | null) => void;
-	registrationStage: "flow" | "verification" | "creating";
-	setRegistrationStage: (stage: "flow" | "verification" | "creating") => void;
-	isRegistrationStage: (stage: "flow" | "verification" | "creating") => boolean;
+	registrationStage: OnboardingRegistrationStage;
+	setRegistrationStage: (stage: OnboardingRegistrationStage) => void;
+	isRegistrationStage: (stage: OnboardingRegistrationStage) => boolean;
 	verificationError: string | null;
 	setVerificationError: (error: string | null) => void;
 	progressOrigin: number | null;
@@ -80,12 +82,9 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
 	const [stepErrors, setStepErrors] = useState<
 		Partial<Record<OnboardingStepId, string>>
 	>({});
-	const [registrationStage, setRegistrationStageState] = useState<
-		"flow" | "verification" | "creating"
-	>("flow");
-	const registrationStageRef = useRef<"flow" | "verification" | "creating">(
-		"flow",
-	);
+	const [registrationStage, setRegistrationStageState] =
+		useState<OnboardingRegistrationStage>("flow");
+	const registrationStageRef = useRef<OnboardingRegistrationStage>("flow");
 	const [verificationError, setVerificationError] = useState<string | null>(
 		null,
 	);
@@ -101,14 +100,14 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
 		[],
 	);
 	const setRegistrationStage = useCallback(
-		(stage: "flow" | "verification" | "creating") => {
+		(stage: OnboardingRegistrationStage) => {
 			registrationStageRef.current = stage;
 			setRegistrationStageState(stage);
 		},
 		[],
 	);
 	const isRegistrationStage = useCallback(
-		(stage: "flow" | "verification" | "creating") =>
+		(stage: OnboardingRegistrationStage) =>
 			registrationStageRef.current === stage,
 		[],
 	);

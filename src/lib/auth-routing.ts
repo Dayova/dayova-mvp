@@ -2,7 +2,11 @@ import type { PendingOnboardingSyncResumeResult } from "./pending-onboarding-syn
 
 export const SESSION_TASK_RESET_PASSWORD_PATH = "/session-tasks/reset-password";
 export const PASSWORD_RESET_SUCCESS_PATH = "/password-reset-success";
-export const ONBOARDING_CREATION_PATH = "/onboarding/creating";
+export const ONBOARDING_PATH = "/onboarding";
+export const ONBOARDING_CREATION_PATH = `${ONBOARDING_PATH}/creating`;
+
+export const isOnboardingPath = (pathname: string) =>
+	pathname === ONBOARDING_PATH || pathname.startsWith(`${ONBOARDING_PATH}/`);
 
 export type OnboardingCompletionStatus =
 	| PendingOnboardingSyncResumeResult["status"]
@@ -16,12 +20,12 @@ const PUBLIC_AUTH_PATHS = new Set([
 	"/",
 	"/login",
 	"/register",
-	"/onboarding",
+	ONBOARDING_PATH,
 	PASSWORD_RESET_SUCCESS_PATH,
 ]);
 
 const isPublicAuthPath = (pathname: string) =>
-	PUBLIC_AUTH_PATHS.has(pathname) || pathname.startsWith("/onboarding/");
+	PUBLIC_AUTH_PATHS.has(pathname) || isOnboardingPath(pathname);
 
 const SIGNED_IN_REDIRECT_PATHS = new Set(["/", "/login", "/register"]);
 

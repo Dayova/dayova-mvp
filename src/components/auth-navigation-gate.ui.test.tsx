@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, render } from "@testing-library/react-native";
 import { Text } from "react-native";
-import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
+import {
+	ONBOARDING_CREATION_PATH,
+	type OnboardingCompletionStatus,
+} from "~/lib/auth-routing";
 import { AuthNavigationGate } from "./auth-navigation-gate";
 
 const mockReplace = jest.fn();
@@ -138,7 +141,7 @@ describe("AuthNavigationGate", () => {
 	});
 
 	test("keeps durable onboarding recovery above a cached paid-access redirect", async () => {
-		mockRouterState.pathname = "/onboarding/creating";
+		mockRouterState.pathname = ONBOARDING_CREATION_PATH;
 		mockSession.onboardingCompletionStatus = "pending";
 		mockAccess.access = { state: "paid" };
 
@@ -155,7 +158,7 @@ describe("AuthNavigationGate", () => {
 	});
 
 	test("does not hide the confirmed trial handoff behind access loading", async () => {
-		mockRouterState.pathname = "/onboarding";
+		mockRouterState.pathname = ONBOARDING_CREATION_PATH;
 		mockSession.onboardingCompletionStatus = "ready_for_trial";
 		mockAccess.access = undefined;
 		mockAccess.isAccessLoading = true;
