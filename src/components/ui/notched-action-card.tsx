@@ -389,6 +389,7 @@ export function NotchedActionCard({
 				height={resolvedCardHeight}
 				viewBox={`0 0 ${resolvedCardWidth} ${resolvedCardHeight}`}
 				preserveAspectRatio="none"
+				// react-native-svg positioning is expressed through its native style prop.
 				style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
 			>
 				<Path
@@ -401,6 +402,7 @@ export function NotchedActionCard({
 
 			<View
 				className="relative z-10 w-full px-6 pt-6 pb-[22px]"
+				// The content clears the card's measured runtime geometry and caller override.
 				style={[
 					cardStyle,
 					{
@@ -436,6 +438,7 @@ export function NotchedActionCard({
 				disabled={cardDisabled}
 				onLayout={handleLayout}
 				onPress={onPress}
+				// Measured height, caller style, and press state are runtime inputs.
 				style={({ pressed }) => [
 					{ minHeight: cardHeight },
 					style,
@@ -467,6 +470,7 @@ export function NotchedActionCard({
 				pointerEvents="none"
 				className={cn("relative w-full", className)}
 				onLayout={handleLayout}
+				// Measured card height and caller-provided styles are runtime inputs.
 				style={[{ minHeight: cardHeight }, style]}
 			>
 				{cardContents}
@@ -495,6 +499,7 @@ export function NotchedActionCard({
 			{...viewProps}
 			className={cn("relative w-full", className)}
 			onLayout={handleLayout}
+			// Measured card height and caller-provided styles are runtime inputs.
 			style={[{ minHeight: cardHeight }, style]}
 		>
 			{cardContents}

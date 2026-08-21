@@ -15,6 +15,7 @@ import {
 } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import {
 	AuthChoiceScreen,
 	CreationLoaderScreen,
@@ -381,23 +382,28 @@ jest.mock("~/lib/navigation", () => ({
 	useBackIntent: jest.fn(),
 }));
 
-jest.mock("~/lib/theme", () => ({
-	useDayovaTheme: () => ({
-		colors: {
-			background: "#FFFFFF",
-			border: "#DCE6EE",
-			destructive: "#D92D20",
-			path2: "#D7DCE3",
-			path1: "#D7DCE3",
-			primary: "#00BAFF",
-			onPrimary: "#FFFFFF",
-			secondaryText: "#697586",
-			surface: "#FFFFFF",
-			systemSubtle: "#F1F7FB",
-			text: "#1A1A1A",
-		},
-	}),
-}));
+jest.mock("~/lib/theme", () => {
+	const { DAYOVA_DESIGN_SYSTEM: designSystem } = jest.requireActual<
+		typeof import("~/lib/design-system")
+	>("~/lib/design-system");
+	return {
+		useDayovaTheme: () => ({
+			colors: {
+				background: "#FFFFFF",
+				border: "#DCE6EE",
+				destructive: "#D92D20",
+				path2: "#D7DCE3",
+				path1: "#D7DCE3",
+				primary: "#00BAFF",
+				onPrimary: designSystem.colors.onPrimary,
+				secondaryText: "#697586",
+				surface: "#FFFFFF",
+				systemSubtle: "#F1F7FB",
+				text: "#1A1A1A",
+			},
+		}),
+	};
+});
 
 describe("LoginScreen", () => {
 	beforeEach(() => {
@@ -1100,7 +1106,9 @@ describe("OnboardingScreen", () => {
 		mockOnboarding.answers.studyDays = "Montag";
 		const screen = await render(<OnboardingScreen initialStepId="studyDays" />);
 
-		expect(screen.getByText("Montag")).toHaveStyle({ color: "#FFFFFF" });
+		expect(screen.getByText("Montag")).toHaveStyle({
+			color: DAYOVA_DESIGN_SYSTEM.colors.onPrimary,
+		});
 	});
 
 	test("renders school type through the shared bottom-sheet select trigger", async () => {

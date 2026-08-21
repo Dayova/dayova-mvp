@@ -1108,10 +1108,10 @@ export function OnboardingScreen({
 		/>
 	) : (
 		<View
+			className="flex-1 px-6"
+			// The question flow clears the runtime device safe-area inset.
 			style={{
-				flex: 1,
 				paddingTop: Math.max(insets.top + 12, 20),
-				paddingHorizontal: 24,
 			}}
 		>
 			<QuestionStepView
@@ -1227,6 +1227,7 @@ function IntroStepView({
 		return (
 			<View
 				className="flex-1"
+				// The accessible layout clears the runtime safe area.
 				style={{ paddingTop: Math.max(topInset + 12, 24) }}
 			>
 				<ScrollView
@@ -1234,6 +1235,7 @@ function IntroStepView({
 					testID="intro-responsive-scroll"
 					contentInsetAdjustmentBehavior="never"
 					showsVerticalScrollIndicator={false}
+					// Runtime safe-area and content-size values define the scrollable frame.
 					contentContainerStyle={{
 						alignItems: "center",
 						paddingBottom: Math.max(bottomInset + 20, 28),
@@ -1284,6 +1286,7 @@ function IntroStepView({
 	return (
 		<View
 			className="flex-1"
+			// Runtime safe-area and compact-height state define the pager frame.
 			style={{
 				paddingTop: Math.max(topInset + (isCompactHeight ? 12 : 20), 24),
 				paddingBottom: Math.max(bottomInset + 20, 28),
@@ -1486,6 +1489,7 @@ function IntroDot({
 		<Animated.View
 			testID={`intro-indicator-${index}`}
 			className="h-[6px] rounded-full"
+			// Pager position animates indicator width and color on the UI thread.
 			style={animatedStyle}
 		/>
 	);
@@ -1545,8 +1549,9 @@ function QuestionStepView({
 				: "Weiter";
 	const primaryAction = (
 		<View
+			className="pt-2"
+			// Runtime safe-area and layout mode keep the action reachable.
 			style={{
-				paddingTop: 8,
 				paddingBottom: shouldStackInlineContent
 					? Math.max(bottomInset + 20, 28)
 					: Math.max(bottomInset + 52, 60),
@@ -1580,6 +1585,7 @@ function QuestionStepView({
 				keyboardShouldPersistTaps="handled"
 				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
+				// Runtime safe-area and layout mode reserve space for the primary action.
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingBottom: shouldStackInlineContent
@@ -1589,6 +1595,7 @@ function QuestionStepView({
 			>
 				<Animated.View
 					entering={reducedMotion ? undefined : FadeInDown.duration(220)}
+					// Step kind and content-size mode determine the runtime answer layout.
 					style={{
 						flex: shouldStackInlineContent ? undefined : 1,
 						alignItems: "center",
@@ -1600,6 +1607,7 @@ function QuestionStepView({
 							<Text
 								accessibilityRole="header"
 								className="text-center font-poppins"
+								// The approved question token uses runtime theme color and shared metrics.
 								style={{
 									color: COLORS.text,
 									fontSize: QUESTION_TITLE_STYLE.fontSize,
@@ -1617,6 +1625,7 @@ function QuestionStepView({
 
 					<View
 						testID="onboarding-answer-group"
+						// Step kind and content-size mode determine the runtime answer layout.
 						style={{
 							width: "100%",
 							marginTop: isImmersiveStep ? 0 : isWheelStep ? 20 : 22,
@@ -1710,13 +1719,7 @@ function QuestionStepView({
 										accessibilityRole="alert"
 										selectable
 										entering={reducedMotion ? undefined : FadeIn.duration(180)}
-										style={{
-											fontFamily: "Poppins",
-											fontSize: 12,
-											lineHeight: 18,
-											color: COLORS.destructive,
-											textAlign: "center",
-										}}
+										className="text-center font-poppins text-body-4 text-destructive"
 									>
 										{visibleError}
 									</Animated.Text>
@@ -2590,6 +2593,7 @@ export function OnboardingRecoveryScreen({
 	return (
 		<View
 			className="flex-1 bg-background px-6"
+			// Recovery content must clear the runtime device safe-area insets.
 			style={{
 				paddingTop: Math.max(topInset + 24, 36),
 				paddingBottom: Math.max(bottomInset + 22, 32),
@@ -2614,6 +2618,7 @@ export function OnboardingRecoveryScreen({
 			</Text>
 
 			<KeyboardSafeScrollView
+				// The keyboard-controller content container accepts React Native styles only.
 				contentContainerStyle={{ flexGrow: 1, paddingTop: 28 }}
 			>
 				<Text className="font-poppins font-semibold text-body-3 text-text">
@@ -2784,13 +2789,11 @@ export function CreationLoaderScreen({
 			/>
 			<ThemedStatusBar />
 			<View
+				className="flex-1 items-center justify-center px-[26px]"
+				// Loader content clears the runtime device safe-area insets.
 				style={{
-					flex: 1,
 					paddingTop: Math.max(topInset + 24, 36),
 					paddingBottom: Math.max(bottomInset + 22, 32),
-					paddingHorizontal: 26,
-					alignItems: "center",
-					justifyContent: "center",
 				}}
 			>
 				{error ? (
@@ -2804,6 +2807,7 @@ export function CreationLoaderScreen({
 					key={error ? "error" : isComplete ? "complete" : "creating"}
 					entering={reducedMotion ? undefined : FadeIn.duration(220)}
 					className="mt-10 text-center font-poppins font-semibold text-text"
+					// This launch-approved display size does not map to a shared text token.
 					style={{ fontSize: 20, lineHeight: 29 }}
 				>
 					{error
@@ -2865,10 +2869,10 @@ function AuthProgressHeader({
 
 	return (
 		<View
+			className="flex-row gap-3.5"
+			// Content-size mode changes the runtime cross-axis alignment.
 			style={{
-				flexDirection: "row",
 				alignItems: shouldStackInlineContent ? "flex-start" : "center",
-				gap: 14,
 			}}
 		>
 			<BackButton
@@ -3034,7 +3038,7 @@ function OtpCodeInput({
 
 	return (
 		<View>
-			<View style={{ flexDirection: "row", gap: 8 }}>
+			<View className="flex-row gap-2">
 				{OTP_CELL_KEYS.map((cellKey, index) => {
 					const symbol = value[index] ?? "";
 					const focused =
@@ -3046,6 +3050,7 @@ function OtpCodeInput({
 							key={cellKey}
 							accessibilityElementsHidden
 							importantForAccessibility="no-hide-descendants"
+							// Focus state and theme colors determine each OTP cell at runtime.
 							style={{
 								flex: 1,
 								height: 42,
@@ -3059,6 +3064,7 @@ function OtpCodeInput({
 						>
 							<Text
 								className="text-center font-poppins font-semibold text-text"
+								// OTP digits require native tabular numerals and launch-specific metrics.
 								style={{
 									fontSize: 22,
 									lineHeight: 28,
@@ -3240,12 +3246,16 @@ function AnimatedStudyDayPill({
 				testID={`study-day-pill-check-slot-${label}`}
 				className="h-4 w-4 items-center justify-center"
 			>
-				<Animated.View style={checkStyle}>
+				<Animated.View
+					// Selection animates the checkmark on the UI thread.
+					style={checkStyle}
+				>
 					<Check size={16} color={colors.onPrimary} strokeWidth={2.4} />
 				</Animated.View>
 			</View>
 			<Animated.Text
 				className="ml-2 font-poppins font-semibold text-body-3"
+				// Selection animation and Android font metrics require native styles.
 				style={[
 					Platform.select({ android: { includeFontPadding: false } }),
 					labelStyle,
@@ -3322,6 +3332,7 @@ function LearningTimeAnswer() {
 				accessibilityHint="Öffnet die native Uhrzeitauswahl"
 				onPress={openPicker}
 				className="min-h-24 w-full max-w-[345px] flex-row items-center rounded-card border border-border bg-surface px-6 active:opacity-80"
+				// borderCurve is an iOS-native geometry property without a NativeWind utility.
 				style={{ borderCurve: "continuous" }}
 			>
 				<View className="h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -3336,6 +3347,7 @@ function LearningTimeAnswer() {
 							"mt-1 font-poppins font-semibold text-heading-2",
 							answers.learningTime ? "text-text" : "text-secondary-text",
 						)}
+						// Tabular numerals are a native text feature without a NativeWind utility.
 						style={{ fontVariant: ["tabular-nums"] }}
 					>
 						{answers.learningTime

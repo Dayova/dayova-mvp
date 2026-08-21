@@ -97,6 +97,30 @@ export class PendingOnboardingSyncError extends Error {
 	}
 }
 
+type SerializeKeyedOperation = <TResult>(
+	key: string,
+	operation: () => Promise<TResult>,
+) => Promise<TResult>;
+
+const createKeyedOperationSerializer = (): SerializeKeyedOperation => {
+	const queues = new Map<string, Promise<unknown>>();
+
+	return <TResult>(
+		key: string,
+		operation: () => Promise<TResult>,
+	): Promise<TResult> => {
+		const previous = queues.get(key);
+		const current = (previous ?? Promise.resolve())
+			.catch(() => undefined)
+			.then(operation);
+		queues.set(key, current);
+
+		return current.finally(() => {
+			if (queues.get(key) === current) queues.delete(key);
+		});
+	};
+};
+
 const isRecordBase = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null;
 
@@ -247,22 +271,7 @@ export const createPendingOnboardingSyncOutbox = ({
 		const elapsedMs = now() - createdAt;
 		return elapsedMs < 0 || elapsedMs > ttlMs;
 	};
-	const accountOperationQueues = new Map<string, Promise<unknown>>();
-	const serializeAccountOperation = <TResult>(
-		accountFingerprint: string,
-		operation: () => Promise<TResult>,
-	): Promise<TResult> => {
-		const previous = accountOperationQueues.get(accountFingerprint);
-		const current = (previous ?? Promise.resolve())
-			.catch(() => undefined)
-			.then(operation);
-		accountOperationQueues.set(accountFingerprint, current);
-		return current.finally(() => {
-			if (accountOperationQueues.get(accountFingerprint) === current) {
-				accountOperationQueues.delete(accountFingerprint);
-			}
-		});
-	};
+	const serializeAccountOperation = createKeyedOperationSerializer();
 
 	return {
 		stage: async ({
@@ -520,7 +529,7 @@ export const createPendingOnboardingSyncOutbox = ({
 
 const pendingSyncOperationQueues = new WeakMap<
 	object,
-	Map<string, Promise<unknown>>
+	SerializeKeyedOperation
 >();
 
 const serializePendingSyncOperation = <TResult>({
@@ -532,23 +541,13 @@ const serializePendingSyncOperation = <TResult>({
 	accountFingerprint: string;
 	operation: () => Promise<TResult>;
 }) => {
-	let accountQueues = pendingSyncOperationQueues.get(outbox);
-	if (!accountQueues) {
-		accountQueues = new Map<string, Promise<unknown>>();
-		pendingSyncOperationQueues.set(outbox, accountQueues);
+	let serializeOperation = pendingSyncOperationQueues.get(outbox);
+	if (!serializeOperation) {
+		serializeOperation = createKeyedOperationSerializer();
+		pendingSyncOperationQueues.set(outbox, serializeOperation);
 	}
-	const previous = accountQueues.get(accountFingerprint);
-	const current = (previous ?? Promise.resolve())
-		.catch(() => undefined)
-		.then(operation);
-	accountQueues.set(accountFingerprint, current);
 
-	return current.finally(() => {
-		if (accountQueues?.get(accountFingerprint) === current) {
-			accountQueues.delete(accountFingerprint);
-			if (accountQueues.size === 0) pendingSyncOperationQueues.delete(outbox);
-		}
-	});
+	return serializeOperation(accountFingerprint, operation);
 };
 
 export const syncPendingOnboardingAnswers = async ({

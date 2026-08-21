@@ -24,11 +24,13 @@ export function IntroUploadArtwork({
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
 			className="items-center justify-center"
+			// The artwork frame dimensions are runtime component inputs.
 			style={{ width, height }}
 			testID="intro-upload-artwork"
 		>
 			<View
 				className="h-[313px] w-[345px] justify-center rounded-[32px] bg-background px-5 py-6 shadow-black/10 shadow-sm"
+				// The fixed artboard scales to the runtime frame while preserving its geometry.
 				style={{ transform: [{ scale }] }}
 			>
 				<MaterialUploadStepLead mode="artwork" />

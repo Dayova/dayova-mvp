@@ -22,10 +22,15 @@ export function IntroPlanArtwork({
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
 			className="items-center justify-center"
+			// The artwork frame dimensions are runtime component inputs.
 			style={{ width, height }}
 			testID="intro-plan-artwork"
 		>
-			<View className="h-[211px] w-[368px]" style={{ transform: [{ scale }] }}>
+			<View
+				className="h-[211px] w-[368px]"
+				// The fixed artboard scales to the runtime frame while preserving its geometry.
+				style={{ transform: [{ scale }] }}
+			>
 				<LearningPlanCardVisual
 					mode="artwork"
 					model={{

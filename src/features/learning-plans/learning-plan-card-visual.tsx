@@ -67,11 +67,13 @@ function StatusBadge({
 	return (
 		<View
 			className="min-h-7 justify-center rounded-full px-3 py-1"
+			// Badge colors are semantic runtime values supplied by the card model.
 			style={{ backgroundColor: status.background }}
 		>
 			<Text
 				allowFontScaling={!fixedTextScale}
 				className="font-poppins font-semibold text-body-5"
+				// Badge colors are semantic runtime values supplied by the card model.
 				style={{ color: status.foreground }}
 			>
 				{status.label}

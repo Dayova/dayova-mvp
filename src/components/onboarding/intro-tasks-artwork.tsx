@@ -71,16 +71,19 @@ export function IntroTasksArtwork({
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
 			className="items-center justify-center"
+			// The artwork frame dimensions are runtime component inputs.
 			style={{ width, height }}
 			testID="intro-tasks-artwork"
 		>
 			<View
 				className="relative h-[242px] w-[356px]"
+				// The fixed artboard scales to the runtime frame while preserving its geometry.
 				style={{ transform: [{ scale }] }}
 			>
 				{learningSteps.map((session, index) => (
 					<View
 						key={session.id}
+						// Indexed offsets are part of the fixed overlapping illustration geometry.
 						style={[artworkGeometry.card, { top: index * 78 }]}
 					>
 						<SessionCard mode="artwork" session={session} />

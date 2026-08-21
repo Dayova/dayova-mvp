@@ -137,7 +137,11 @@ function OnboardingEdgeBackGesture({
 
 	return (
 		<View className="flex-1">
-			<Animated.View className="flex-1" style={animatedStyle}>
+			<Animated.View
+				className="flex-1"
+				// The gesture drives this transform and opacity on the UI thread at runtime.
+				style={animatedStyle}
+			>
 				{children}
 			</Animated.View>
 			{enabled ? (

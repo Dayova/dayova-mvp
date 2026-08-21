@@ -10,6 +10,17 @@ jest.mock("expo-linear-gradient", () => {
 	};
 });
 
+jest.mock("~/components/ui/icon", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const Icon = (props: Record<string, unknown>) =>
+		React.createElement("Icon", props);
+	return {
+		ArrowUpRight: Icon,
+		ClipboardEdit: Icon,
+		GraduationCap: Icon,
+	};
+});
+
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: {

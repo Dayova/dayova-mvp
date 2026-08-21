@@ -244,6 +244,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 				<View
 					testID="snap-carousel-value-bubble"
 					className="items-center justify-center rounded-full"
+					// Bubble dimensions are derived from the runtime content-size layout.
 					style={{
 						borderRadius: valueBadgeSize / 2,
 						height: valueBadgeSize,
@@ -284,6 +285,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 					<View
 						testID="snap-carousel-value-label"
 						className="items-center justify-center"
+						// Runtime font metrics center the value inside the circular progress ring.
 						style={[
 							StyleSheet.absoluteFill,
 							{
@@ -296,6 +298,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 						</Text>
 						<Text
 							className="text-center font-poppins font-semibold text-body-5 text-text"
+							// Runtime font metrics keep the unit optically aligned with the value.
 							style={{ marginTop: valueContentLayout.unitMarginTop }}
 						>
 							{valueBubbleConfig.secondaryLabel}
