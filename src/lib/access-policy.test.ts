@@ -42,6 +42,14 @@ describe("resolveAccessRoute", () => {
 				user: { id: "user_1" },
 			}),
 		).toBeNull();
+		expect(
+			resolveAccessRoute({
+				accessState: "needsActivation",
+				isSessionLoading: false,
+				pathname: "/onboarding/verification",
+				user: { id: "user_1" },
+			}),
+		).toBeNull();
 	});
 
 	it.each([

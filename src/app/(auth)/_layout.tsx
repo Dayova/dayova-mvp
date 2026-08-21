@@ -15,15 +15,27 @@ export default function AuthLayout() {
 			screenOptions={{
 				headerShown: false,
 				keyboardHandlingEnabled: false,
+				fullScreenGestureEnabled: false,
 			}}
 		>
 			<Stack.Screen
-				name="onboarding"
+				name="onboarding/index"
 				options={{
 					title: "Registrierung",
 					gestureEnabled: true,
-					fullScreenGestureEnabled: false,
 				}}
+			/>
+			<Stack.Screen
+				name="onboarding/[step]"
+				options={{ title: "Registrierung", gestureEnabled: true }}
+			/>
+			<Stack.Screen
+				name="onboarding/verification"
+				options={{ title: "E-Mail bestätigen", gestureEnabled: true }}
+			/>
+			<Stack.Screen
+				name="onboarding/creating"
+				options={{ title: "Konto einrichten", gestureEnabled: false }}
 			/>
 		</Stack>
 	);
