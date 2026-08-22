@@ -31,34 +31,45 @@ Generation brief preserved for provenance:
 The generated source itself is retained so the exact visible result—not prompt
 text alone—is the authoritative provenance artifact.
 
-## Screenshots — still required
+## Ready phone-screenshot set
 
-Google Play requires at least two phone screenshots. Capture four portrait
-screens from the exact Play internal-test release candidate, using synthetic
-data and no personal information:
+Upload the eight files in `screenshots/phone/` in filename order. Every final
+file is a 1080 × 1920 portrait, 24-bit RGB PNG with no alpha channel. The
+benefit header occupies less than 20% of the canvas; the rest is current,
+readable Android UI without a physical device frame.
 
-1. **Home / next step** — upcoming exam and next learning action.
-2. **Personal learning plan** — a populated plan with dated sessions.
-3. **Focused learning session or analysis** — a representative question,
-   feedback, or progress view without unverifiable claims.
-4. **Settings / trust** — support, privacy, subscription management, and the
-   completed account-deletion entry.
+| Order | File | Product coverage | Suggested Play alt text |
+| --- | --- | --- | --- |
+| 1 | `01-dein-naechster-lernschritt.png` | Home, weekly context, next learning action | Dayova home screen showing Lea's next biology learning step and weekly progress. |
+| 2 | `02-lernplaene-die-sich-anpassen.png` | Plan overview, exam date, progress | Dayova plan overview with a biology exam, adaptive next topic, duration, and remaining days. |
+| 3 | `03-dein-weg-bis-zur-pruefung.png` | Populated learning path, completed and upcoming steps | Dayova learning path showing the next mitosis and meiosis session and the route toward the exam. |
+| 4 | `04-aktiv-lernen.png` | Active learning session and question formats | A Dayova learning session with a multiple-choice biology question about mitosis and meiosis. |
+| 5 | `05-direktes-feedback.png` | Immediate evaluation and ideal answer | Dayova feedback screen explaining a correct answer and showing the ideal answer. |
+| 6 | `06-staerken-und-luecken.png` | Topic-level analysis, evidence, learning gaps | Dayova analysis ranking biology exam topics and showing securely evidenced knowledge and gaps. |
+| 7 | `07-lernzeiten-die-passen.png` | Weekly learning availability | Dayova learning-time settings with Monday and Wednesday availability. |
+| 8 | `08-stundenplan-verbunden.png` | School timetable and class details | Dayova timetable with an active Monday mathematics class, room, and lesson times. |
 
-Use a modern Android phone resolution and keep the same device, locale (de-DE),
-time, and synthetic account across the set. Screenshots must show the app UI,
-not a developer menu, browser, iPhone frame, or generated mock interface.
+The matching lossless 1280 × 2856 captures are retained in
+`screenshots/source/`. They were captured on 2026-08-22 from the current-source
+Android app in German using one synthetic learner, Lea, with a consistent
+biology exam, timetable, availability, learning path, session answers, and
+analysis. The Expo development tools button was disabled and Android System UI
+demo mode supplied a clean, consistent status bar. No personal user data is
+present.
 
-The current emulator attempt was rejected as screenshot evidence because its
-installed development client had a native/JavaScript Worklets mismatch
-(0.8.3/0.10.0) and rendered a blank screen. The Dayova website repo was also
-inspected; its product images are older iPhone-framed marketing compositions,
-so they are useful brand references but not valid current Android screenshots.
+The app UI is genuine and was not generated or redrawn. Only deterministic
+cropping, scaling, a rounded presentation card, and concise German benefit
+headers were applied by `../scripts/compose-screenshots.cjs`. The website's
+older iPhone-framed product images were intentionally not reused.
 
 ## Final asset QA
 
 - [x] App icon is exactly 512 × 512 PNG.
 - [x] Feature graphic is exactly 1024 × 500 and has no alpha channel.
 - [x] Artwork uses the official brand mark and no unsupported marketing claim.
-- [ ] Screenshots come from the approved current Play internal-test build.
-- [ ] At least two screenshots are uploaded; four are recommended above.
-- [ ] Store listing and screenshots accurately match every shipping feature.
+- [x] Eight phone screenshots are exactly 1080 × 1920 and have no alpha channel.
+- [x] Screenshots show current Android UI, not a developer menu, browser, iPhone frame, or mock interface.
+- [x] The first three screenshots prioritize the actual home, plan overview, and learning-path experience.
+- [x] Headers are concise, localized to German, and confined to the top 17% of each image.
+- [x] All visible learner data is synthetic and internally consistent across the set.
+- [x] Store listing claims and screenshots match implemented Dayova features.
