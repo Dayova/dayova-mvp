@@ -1,0 +1,392 @@
+appId: de.dayova.app-dev
+name: iPhone 13 mini light AXXXL profile and account flow
+---
+- stopApp
+- openLink: "exp+dayova://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081"
+- extendedWaitUntil:
+    visible: "Dayova"
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: "Registrierung"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
+- tapOn: "Registrierung"
+
+- extendedWaitUntil:
+    visible: "Du weißt, was heute wirklich zählt."
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 40000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "Deine Prüfung. Alles an einem Ort."
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 40000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "Aus Stoff wird ein klarer Weg."
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: "Meinen Start personalisieren"
+    direction: DOWN
+    timeout: 40000
+    speed: 50
+- tapOn: "Meinen Start personalisieren"
+
+- extendedWaitUntil:
+    visible: "Wie dürfen wir dich nennen?"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: "Dein Name"
+    direction: DOWN
+    timeout: 40000
+    speed: 50
+- takeScreenshot: "01-name-empty"
+- tapOn:
+    id: "onboarding-name-input"
+- inputText: "Matrix Test"
+- assertVisible: "Matrix Test"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 40000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "Wie lange möchtest du pro Lerntag einplanen?"
+    timeout: 30000
+- takeScreenshot: "02-study-duration-empty"
+- scrollUntilVisible:
+    element:
+      text: "30 Minuten auswählen"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- tapOn: "30 Minuten auswählen"
+- assertVisible: "30 Minuten"
+- takeScreenshot: "02-study-duration-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 40000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "Dein Lernplan braucht echte Zeitfenster."
+    timeout: 30000
+- takeScreenshot: "03-study-duration-fact"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "An welchen Tagen kannst du lernen?"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: "Montag"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+- tapOn:
+    text: "Montag"
+    retryTapIfNoChange: true
+- takeScreenshot: "04-study-days-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "Wann möchtest du an diesen Tagen starten?"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ".*Startzeit auswählen.*"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- tapOn: "Startzeit auswählen"
+- extendedWaitUntil:
+    visible: "Zeit übernehmen"
+    timeout: 30000
+- tapOn: "Zeit übernehmen"
+- extendedWaitUntil:
+    notVisible: "Zeit übernehmen"
+    timeout: 30000
+- takeScreenshot: "05-learning-time-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: ".*Lernzeiten sind vorbereitet.*"
+    timeout: 30000
+- takeScreenshot: "06-learning-times-payoff"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "Welche Klassenstufe besuchst du?"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ".*Klassenstufe auswählen.*"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- tapOn:
+    id: "onboarding-grade-picker"
+- scrollUntilVisible:
+    element:
+      text: "9. Klasse"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 80
+- tapOn: "9. Klasse"
+- takeScreenshot: "07-grade-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "In welchem Bundesland gehst du zur Schule?"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ".*Bundesland auswählen.*"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- tapOn:
+    id: "onboarding-state-picker"
+- scrollUntilVisible:
+    element:
+      text: "Sachsen"
+    direction: DOWN
+    timeout: 60000
+    speed: 60
+    visibilityPercentage: 80
+- tapOn: "Sachsen"
+- takeScreenshot: "08-state-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "Welche Schulart besuchst du?"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ".*Schulart auswählen.*"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- tapOn:
+    id: "onboarding-school-type-picker"
+- scrollUntilVisible:
+    element:
+      text: "Gymnasium"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 80
+- tapOn: "Gymnasium"
+- takeScreenshot: "09-school-type-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "In welchem Jahr bist du geboren?"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ".*Geburtsjahr auswählen.*"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- tapOn:
+    id: "onboarding-birth-year-picker"
+- scrollUntilVisible:
+    element:
+      text: "2014"
+    direction: DOWN
+    timeout: 60000
+    speed: 60
+    visibilityPercentage: 80
+- tapOn: "2014"
+- takeScreenshot: "10-birth-year-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "In welchem Monat bist du geboren?"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ".*Geburtsmonat auswählen.*"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- tapOn:
+    id: "onboarding-birth-month-picker"
+- scrollUntilVisible:
+    element:
+      text: "September"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 80
+- tapOn: "September"
+- takeScreenshot: "11-birth-month-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "An welchem Tag bist du geboren?"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ".*Geburtstag auswählen.*"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- tapOn:
+    id: "onboarding-birth-day-picker"
+- scrollUntilVisible:
+    element:
+      text: "^9\\.$"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 80
+- tapOn:
+    text: "^9\\.$"
+- takeScreenshot: "12-birth-day-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "Wie lautet deine E-Mail-Adresse?"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ".*name@beispiel.de.*"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- tapOn:
+    id: "onboarding-email-input"
+- inputText: "matrix.day292.ios-mini-axxxl@example.com"
+- assertVisible: "matrix.day292.ios-mini-axxxl@example.com"
+- takeScreenshot: "13-email-filled"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 40000
+    speed: 50
+- tapOn: "Weiter"
+
+- extendedWaitUntil:
+    visible: "Lege dein Passwort fest."
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: "Passwort eingeben"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- takeScreenshot: "14-password-empty"
+- scrollUntilVisible:
+    element:
+      text: "Mindestens 8 Zeichen"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- takeScreenshot: "14-password-requirement"
+- scrollUntilVisible:
+    element:
+      text: "Konto erstellen"
+    direction: DOWN
+    timeout: 50000
+    speed: 50
+    visibilityPercentage: 20
+- takeScreenshot: "14-account-create-disabled"

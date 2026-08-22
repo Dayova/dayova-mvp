@@ -7,8 +7,8 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 ## Language
 
 **Content-size resilience**:
-Dayova's quality contract for every portrait phone and tablet layout across system text and display sizing: default sizing stays visually identical to the approved baseline, while non-default sizes may reflow, stack, grow, or vertically scroll but must remain polished, complete, and fully usable. Screens stay bounded to the portrait viewport; horizontal scrolling remains valid only where it is an intentional part of an inherently horizontal component, never as a workaround for larger text or display sizing. Meaningful copy and actions remain present at their system-scaled size and reflow vertically; intentional ellipsis is valid only when the complete value remains accessible. Portrait-tablet compatibility keeps the phone information architecture in a centered, bounded-width single column and changes only behavior that is buggy or visibly awkward. Dedicated tablet composition, navigation, information density, landscape, split-screen, and foldable postures are separate product modes.
-_Avoid_: Pixel-identical layouts at every accessibility size, merely fitting without visual quality, clipping content, shrinking or capping meaningful text, hiding actions, inaccessible truncation, disabling system scaling, screen-level horizontal scrolling, treating portrait tablet compatibility as a dedicated tablet mode
+Dayova's quality contract for every portrait phone and tablet layout across system text and display sizing: default sizing stays visually identical to the approved baseline, while non-default sizes may reflow, stack, grow, or vertically scroll but must remain polished, complete, and fully usable. Screens stay bounded to the portrait viewport; horizontal scrolling remains valid only where it is an intentional part of an inherently horizontal component, never as a workaround for larger text or display sizing. Meaningful copy and actions remain present at their system-scaled size and reflow vertically; intentional ellipsis is valid only when the complete value remains accessible. Semantic display headings use Dayova's shared native-style large-title curve (currently a 1.75 maximum multiplier), while body copy, controls, field values, errors, and supporting text continue to receive the user's full text-size preference. This heading-only curve prevents custom Poppins display type from growing linearly to roughly three times its base size and splitting ordinary German words into isolated fragments at AXXXL. Portrait-tablet compatibility keeps the phone information architecture in a centered, bounded-width single column and changes only behavior that is buggy or visibly awkward. Dedicated tablet composition, navigation, information density, landscape, split-screen, and foldable postures are separate product modes.
+_Avoid_: Pixel-identical layouts at every accessibility size, merely fitting without visual quality, clipping content, arbitrary screen-local text caps, shrinking or capping body/action/error content, hiding actions, inaccessible truncation, disabling system scaling, screen-level horizontal scrolling, treating portrait tablet compatibility as a dedicated tablet mode
 
 ## Current Design Delivery Model
 
@@ -43,10 +43,14 @@ visible until an outgoing `react-native-screens` pop transition finishes. iOS
 keeps the native SwiftUI toggle shape and applies Dayova primary through the
 SwiftUI tint modifier.
 
-App screens that collect a date or time must use `DateTimePickerSheet` from
-`src/components/ui/date-time-picker-sheet`. Do not import the underlying Expo UI
-picker directly from a screen. The wrapper owns platform display normalization,
-German locale, safe-area handling, and native presentation.
+App screens that collect a date or time in one interaction must use
+`DateTimePickerSheet` from `src/components/ui/date-time-picker-sheet`. Do not
+import the underlying Expo UI picker directly from a screen. The wrapper owns
+platform display normalization, German locale, safe-area handling, and native
+presentation. A deliberately segmented onboarding question may use the shared
+selection-sheet pattern when a feature ADR explicitly requires separate fields;
+the current birth-date exception is recorded in
+[`auth/adr/0002-onboarding-e2e-launch-flow.md`](../auth/adr/0002-onboarding-e2e-launch-flow.md).
 
 ## Icons
 
@@ -95,7 +99,13 @@ hausaufgabe `#B88AAE`. Current badge subtle fills are: wrong
 Do not add `*-foreground` color partners without an explicit design-system
 decision that introduces them as real semantic palette tokens. Use the palette
 directly: `text-text` for primary text, `text-secondary-text` for secondary
-text, and `text-white` for white text on dark or saturated surfaces.
+text, and `text-white` for white text on dark surfaces or the existing
+primary-interactive gradient. The solid system cyan selection surface is the
+documented exception: its content uses `onPrimary` (`#1A1A1A`) in both themes.
+That pairing has a 7.85:1 contrast ratio on `#00BAFF`; white has only 2.22:1.
+Use `onPrimary` for solid selected pills, tabs, their checkmarks, and equivalent
+compact controls. Do not reuse `surface` or theme-dependent primary text as an
+implicit foreground token.
 
 Typography uses Poppins only. Body text is Regular; headings, buttons, selected
 tabs, labels that need emphasis, and other highlighted text use SemiBold.
@@ -105,6 +115,10 @@ hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30, `body-2`
 spacing. Top-level page-intro groups use 12px between their heading and
 supporting copy. Compact navigation chrome, dense data rows, and headings inside
 cards may keep tighter spacing when the elements form one local unit.
+Semantic headings must go through the shared `Text` primitive with a heading
+variant or `accessibilityRole="header"`; the primitive owns the documented
+large-title scaling curve. Do not reproduce `maxFontSizeMultiplier` values in
+individual screens. Non-heading text keeps unrestricted system scaling.
 
 Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.
@@ -112,6 +126,10 @@ There are no white pill buttons in the current light-mode design system. Both
 appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
 buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
 with a white stroke, and black buttons use the light border token `#DCE6EE`.
+Production screens use the shared `Button` and `BackButton` components for
+these actions. A screen-local clone is not an allowed visual variant; add a
+shared variant and update this context if a new interaction contract is truly
+needed.
 
 The trial-activation and expired-trial payment flow are deliberate full-bleed
 branded exceptions. The expired-trial flow separates payer selection from
@@ -147,6 +165,19 @@ it uses the same `primaryInteractive` gradient and fixed light surfaces, then
 offers one forward-only action into the app. Show it after a newly completed
 purchase, not after restoring an existing subscription, so the celebration
 acknowledges a real transition without becoming recurring friction.
+
+## Product-surface previews
+
+Onboarding artwork or other explanatory UI that depicts a live Dayova product
+surface must render the same shared presentation module through an explicit
+screen/artwork contract. Do not recreate the product card, upload surface,
+copy, tokens, or status/progress layout as a parallel component or static
+mockup. Artwork mode stays decorative, non-interactive, accessibility-hidden,
+and bounded to its artboard; the surrounding screen owns the accessible
+explanation. A deliberate divergence requires a superseding decision with the
+learner reason, alternatives, trade-off, reversal condition, and fresh native
+evidence. See
+[ADR: Render Onboarding Product Previews Through Shared Product Modules](adr/onboarding-artwork-rendering.md).
 
 The current app corner system is: info/small boxes use 24px, 345px-wide
 rectangles and card-like surfaces use 32px, and buttons use 44px. Device frame

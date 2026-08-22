@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { Bell, Check, SquareLock } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
@@ -186,13 +187,9 @@ export function TrialActivationScreen() {
 
 						{error ? (
 							<View className="mb-3 rounded-3xl bg-white/95 px-4 py-3">
-								<Text
-									accessibilityLiveRegion="polite"
-									className="text-center text-body-3 text-destructive"
-									selectable
-								>
+								<ErrorMessage className="text-center text-body-3">
 									{error}
-								</Text>
+								</ErrorMessage>
 							</View>
 						) : null}
 						<Button

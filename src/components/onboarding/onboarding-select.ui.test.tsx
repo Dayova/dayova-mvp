@@ -73,7 +73,7 @@ describe("OnboardingSelect", () => {
 		);
 
 		const trigger = screen.getByRole("button", {
-			name: "Klassenstufe auswählen",
+			name: "Klassenstufe auswählen: 9. Klasse",
 		});
 		expect(trigger.props.accessibilityState).toEqual({ expanded: false });
 		expect(trigger.props.accessibilityValue).toEqual({ text: "9. Klasse" });

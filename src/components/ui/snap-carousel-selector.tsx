@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useRef } from "react";
-import { type FlatList, useWindowDimensions, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	type FlatList,
+	StyleSheet,
+	useWindowDimensions,
+	View,
+} from "react-native";
 import Animated, {
 	interpolate,
 	type SharedValue,
@@ -7,6 +12,7 @@ import Animated, {
 	useAnimatedStyle,
 	useSharedValue,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import Svg, { Circle } from "react-native-svg";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
@@ -19,8 +25,28 @@ import { cn } from "~/lib/utils";
 
 const CAROUSEL_ITEM_WIDTH = 68;
 const CAROUSEL_MAX_WIDTH = 360;
-const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * 40;
+const PROGRESS_RING_SIZE = 88;
+const PROGRESS_RING_CENTER = PROGRESS_RING_SIZE / 2;
+const PROGRESS_RING_RADIUS = 40;
+const PROGRESS_RING_STROKE_WIDTH = 4;
+const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RING_RADIUS;
 const MINIMUM_PROGRESS = 0.16;
+
+export const getSnapCarouselPreviewIndex = ({
+	offsetX,
+	itemWidth,
+	lastIndex,
+}: {
+	offsetX: number;
+	itemWidth: number;
+	lastIndex: number;
+}) => {
+	"worklet";
+	return Math.min(
+		Math.max(Math.round(offsetX / Math.max(itemWidth, 1)), 0),
+		lastIndex,
+	);
+};
 
 type SnapCarouselSelectorBaseProps<Item> = {
 	accessibilityLabel: string;
@@ -33,7 +59,9 @@ type SnapCarouselSelectorBaseProps<Item> = {
 	selectedIndex: number;
 };
 
-type SnapCarouselValueBubbleProps = {
+type SnapCarouselValueBubbleProps<Item> = {
+	getItemPrimaryLabel?: (item: Item, index: number) => string;
+	getItemProgress?: (item: Item, index: number) => number;
 	primaryLabel: string;
 	progress: number;
 	secondaryLabel: string;
@@ -49,7 +77,7 @@ type SnapCarouselTickLabelProps<Item> = {
 };
 
 type SnapCarouselSelectorProps<Item> = SnapCarouselSelectorBaseProps<Item> &
-	(SnapCarouselValueBubbleProps | SnapCarouselTickLabelProps<Item>);
+	(SnapCarouselValueBubbleProps<Item> | SnapCarouselTickLabelProps<Item>);
 
 function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 	const {
@@ -69,6 +97,8 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 					primaryLabel: props.primaryLabel,
 					progress: props.progress,
 					secondaryLabel: props.secondaryLabel,
+					getItemPrimaryLabel: props.getItemPrimaryLabel,
+					getItemProgress: props.getItemProgress,
 				};
 	const renderItemLabel =
 		props.showValueBubble === false ? props.renderItemLabel : undefined;
@@ -100,6 +130,47 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 			: Math.min(Math.max(valueBubbleConfig.progress, 0), 1);
 	const showValueBubble = valueBubbleConfig !== null;
 	const scrollX = useSharedValue(safeSelectedIndex * itemWidth);
+	const previewIndexOnUI = useSharedValue(safeSelectedIndex);
+	const [previewState, setPreviewState] = useState({
+		index: safeSelectedIndex,
+		selectedIndex: safeSelectedIndex,
+	});
+	// A parent selection change invalidates any in-progress drag preview. Keep the
+	// parent selection with the preview state so stale labels cannot survive it.
+	const previewIndex =
+		previewState.selectedIndex === safeSelectedIndex
+			? previewState.index
+			: safeSelectedIndex;
+	const safePreviewIndex = Math.min(Math.max(previewIndex, 0), lastIndex);
+	const previewItem = items[safePreviewIndex];
+	const previewPrimaryLabel =
+		valueBubbleConfig !== null &&
+		previewItem !== undefined &&
+		valueBubbleConfig.getItemPrimaryLabel
+			? valueBubbleConfig.getItemPrimaryLabel(previewItem, safePreviewIndex)
+			: valueBubbleConfig?.primaryLabel;
+	const previewProgress =
+		valueBubbleConfig !== null &&
+		previewItem !== undefined &&
+		valueBubbleConfig.getItemProgress
+			? valueBubbleConfig.getItemProgress(previewItem, safePreviewIndex)
+			: valueBubbleConfig?.progress;
+	const safePreviewProgress = Math.min(
+		Math.max(previewProgress ?? safeProgress, 0),
+		1,
+	);
+
+	const updatePreviewIndex = useCallback(
+		(nextIndex: number) => {
+			setPreviewState((currentState) =>
+				currentState.index === nextIndex &&
+				currentState.selectedIndex === safeSelectedIndex
+					? currentState
+					: { index: nextIndex, selectedIndex: safeSelectedIndex },
+			);
+		},
+		[safeSelectedIndex],
+	);
 
 	const selectIndex = useCallback(
 		(nextIndex: number, animated = true) => {
@@ -118,15 +189,26 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 
 	useEffect(() => {
 		scrollX.set(safeSelectedIndex * itemWidth);
+		previewIndexOnUI.set(safeSelectedIndex);
 		listRef.current?.scrollToOffset({
 			offset: safeSelectedIndex * itemWidth,
 			animated: false,
 		});
-	}, [itemWidth, safeSelectedIndex, scrollX]);
+	}, [itemWidth, previewIndexOnUI, safeSelectedIndex, scrollX]);
 
 	const scrollHandler = useAnimatedScrollHandler({
 		onScroll: (event) => {
-			scrollX.set(event.contentOffset.x);
+			const nextOffset = event.contentOffset.x;
+			scrollX.set(nextOffset);
+			if (!showValueBubble) return;
+			const nextPreviewIndex = getSnapCarouselPreviewIndex({
+				offsetX: nextOffset,
+				itemWidth,
+				lastIndex,
+			});
+			if (nextPreviewIndex === previewIndexOnUI.get()) return;
+			previewIndexOnUI.set(nextPreviewIndex);
+			scheduleOnRN(updatePreviewIndex, nextPreviewIndex);
 		},
 	});
 
@@ -160,7 +242,9 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 		<View className="w-full items-center">
 			{showValueBubble ? (
 				<View
-					className="items-center justify-center border-4 border-primary/20"
+					testID="snap-carousel-value-bubble"
+					className="items-center justify-center rounded-full"
+					// Bubble dimensions are derived from the runtime content-size layout.
 					style={{
 						borderRadius: valueBadgeSize / 2,
 						height: valueBadgeSize,
@@ -168,35 +252,53 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 					}}
 				>
 					<Svg
+						testID="snap-carousel-progress-ring"
 						width={valueBadgeSize}
 						height={valueBadgeSize}
-						viewBox="0 0 88 88"
+						viewBox={`0 0 ${PROGRESS_RING_SIZE} ${PROGRESS_RING_SIZE}`}
 						// SVG geometry is not expressible through NativeWind classes.
-						style={{ position: "absolute" }}
+						style={StyleSheet.absoluteFill}
 					>
 						<Circle
-							cx="44"
-							cy="44"
-							r="40"
+							testID="snap-carousel-progress-track"
+							cx={PROGRESS_RING_CENTER}
+							cy={PROGRESS_RING_CENTER}
+							r={PROGRESS_RING_RADIUS}
 							fill="transparent"
 							stroke={colors.primary}
-							strokeWidth="4"
+							strokeOpacity={0.2}
+							strokeWidth={PROGRESS_RING_STROKE_WIDTH}
+						/>
+						<Circle
+							testID="snap-carousel-progress-arc"
+							cx={PROGRESS_RING_CENTER}
+							cy={PROGRESS_RING_CENTER}
+							r={PROGRESS_RING_RADIUS}
+							fill="transparent"
+							stroke={colors.primary}
+							strokeWidth={PROGRESS_RING_STROKE_WIDTH}
 							strokeLinecap="round"
-							strokeDasharray={`${Math.max(MINIMUM_PROGRESS, safeProgress) * CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`}
-							transform="rotate(-90 44 44)"
+							strokeDasharray={`${Math.max(MINIMUM_PROGRESS, safePreviewProgress) * CIRCLE_CIRCUMFERENCE} ${CIRCLE_CIRCUMFERENCE}`}
+							transform={`rotate(-90 ${PROGRESS_RING_CENTER} ${PROGRESS_RING_CENTER})`}
 						/>
 					</Svg>
 					<View
-						style={{
-							alignItems: "center",
-							transform: [{ translateY: valueContentLayout.verticalOffset }],
-						}}
+						testID="snap-carousel-value-label"
+						className="items-center justify-center"
+						// Runtime font metrics center the value inside the circular progress ring.
+						style={[
+							StyleSheet.absoluteFill,
+							{
+								transform: [{ translateY: valueContentLayout.verticalOffset }],
+							},
+						]}
 					>
 						<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-							{valueBubbleConfig.primaryLabel}
+							{previewPrimaryLabel}
 						</Text>
 						<Text
 							className="text-center font-poppins font-semibold text-body-5 text-text"
+							// Runtime font metrics keep the unit optically aligned with the value.
 							style={{ marginTop: valueContentLayout.unitMarginTop }}
 						>
 							{valueBubbleConfig.secondaryLabel}
@@ -231,6 +333,7 @@ function SnapCarouselSelector<Item>(props: SnapCarouselSelectorProps<Item>) {
 				style={{ width: carouselWidth }}
 			>
 				<Animated.FlatList
+					testID="snap-carousel-list"
 					ref={listRef}
 					data={items}
 					keyExtractor={getItemKey}

@@ -6,12 +6,21 @@ import {
 	jest,
 	test,
 } from "@jest/globals";
-import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import {
+	act,
+	fireEvent,
+	render,
+	waitFor,
+	within,
+} from "@testing-library/react-native";
 import type { ReactNode } from "react";
+import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import {
 	AuthChoiceScreen,
 	CreationLoaderScreen,
 	LoginScreen,
+	OnboardingRecoveryScreen,
 	OnboardingScreen,
 } from "./dayova-auth-flow";
 
@@ -23,6 +32,9 @@ const mockLogin = jest.fn<
 		{ status: "complete" } | { status: "needs_verification"; message: string }
 	>
 >(async () => ({ status: "complete" }));
+const mockStartRegistrationWithEmail = jest.fn<
+	(email: string) => Promise<void>
+>(async () => undefined);
 const mockRegister = jest.fn<
 	(input: {
 		birthDate: string;
@@ -54,30 +66,55 @@ const mockCompletePasswordReset = jest.fn<
 >(async () => ({ status: "complete" }));
 const mockRouter = {
 	back: jest.fn(),
+	canGoBack: jest.fn(() => true),
 	push: jest.fn(),
 	replace: jest.fn(),
+};
+const mockStackScreens: Array<Record<string, unknown>> = [];
+const mockRetryPostAuthSync = jest.fn();
+const mockCompleteOnboardingHandoff = jest.fn(async () => true);
+const mockStageOnboardingRecovery = jest.fn(async () => undefined);
+const mockAuthSession = {
+	completeOnboardingHandoff: mockCompleteOnboardingHandoff,
+	isConvexAuthenticated: false,
+	isPostAuthSyncing: false,
+	onboardingCompletionStatus: "none" as OnboardingCompletionStatus,
+	postAuthSyncError: null as string | null,
+	retryPostAuthSync: mockRetryPostAuthSync,
+	user: null as { clerkId: string; email: string } | null,
 };
 const mockSetOnboardingAnswer = jest.fn();
 const mockOnboarding = {
 	answers: {
-		studyTime: "30 min",
-		strength: "Mathe",
-		challenge: "Organisation",
-		goal: "Mehr Struktur im Lernen",
+		studyTime: "30",
+		studyDays: "Montag, Donnerstag, Samstag",
+		learningTime: "16:30",
 		state: "Sachsen",
 		schoolType: "prefer_not_to_say",
 		grade: "9",
-		dailySchoolTime: "60 min",
-		studyDays: "Montag",
-		learningTime: "16:30",
 		name: "Test User",
 		email: "test@example.com",
-		birthDate: "09.09.2012",
+		birthYear: "2012",
+		birthMonth: "09",
+		birthDay: "09",
 		password: "sicher123",
 	},
 	hasAnswers: false,
 	setAnswer: mockSetOnboardingAnswer,
 };
+
+let mockWindowDimensions = {
+	fontScale: 1,
+	height: 844,
+	scale: 3,
+	width: 390,
+};
+let mockReducedMotion = false;
+
+jest.mock("react-native/Libraries/Utilities/useWindowDimensions", () => ({
+	__esModule: true,
+	default: () => mockWindowDimensions,
+}));
 
 jest.mock("react-native-reanimated", () => {
 	const ReactNative =
@@ -92,27 +129,73 @@ jest.mock("react-native-reanimated", () => {
 		__esModule: true,
 		default: {
 			createAnimatedComponent: <T,>(component: T) => component,
+			FlatList: ReactNative.FlatList,
 			Text: ReactNative.Text,
 			View: ReactNative.View,
 		},
 		Easing: {
+			cubic: jest.fn(),
 			inOut: (value: unknown) => value,
 			linear: jest.fn(),
+			out: (value: unknown) => value,
 			quad: jest.fn(),
 		},
 		FadeIn: animationBuilder,
 		FadeInDown: animationBuilder,
 		FadeInUp: animationBuilder,
 		interpolate: jest.fn(() => 0),
+		interpolateColor: (value: number, _input: number[], output: string[]) =>
+			value >= 1 ? output.at(-1) : output[0],
 		LinearTransition: animationBuilder,
 		useAnimatedProps: (factory: () => unknown) => factory(),
-		useAnimatedScrollHandler: () => jest.fn(),
+		useAnimatedScrollHandler: (handlers: {
+			onScroll: (event: { contentOffset: { x: number } }) => void;
+		}) => handlers.onScroll,
 		useAnimatedStyle: (factory: () => unknown) => factory(),
 		useDerivedValue: (factory: () => unknown) => ({ value: factory() }),
-		useSharedValue: (value: unknown) => ({ value }),
+		useReducedMotion: () => mockReducedMotion,
+		useSharedValue: (initialValue: unknown) => {
+			let value = initialValue;
+			return {
+				get: () => value,
+				set: (nextValue: unknown) => {
+					value = nextValue;
+				},
+				value,
+			};
+		},
 		withRepeat: (value: unknown) => value,
 		withSequence: (...values: unknown[]) => values.at(-1),
 		withTiming: (value: unknown) => value,
+	};
+});
+
+jest.mock("react-native-worklets", () => ({
+	scheduleOnRN: (
+		callback: (...args: unknown[]) => unknown,
+		...args: unknown[]
+	) => callback(...args),
+}));
+
+jest.mock("react-native-gesture-handler", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const createGesture = () => {
+		const gesture = new Proxy(
+			{},
+			{
+				get:
+					() =>
+					(..._args: unknown[]) =>
+						gesture,
+			},
+		);
+		return gesture;
+	};
+
+	return {
+		Gesture: { Pan: createGesture },
+		GestureDetector: ({ children }: { children?: ReactNode }) =>
+			React.createElement("GestureDetector", null, children),
 	};
 });
 
@@ -120,13 +203,17 @@ jest.mock("expo-router", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const Stack = ({ children }: { children?: ReactNode }) =>
 		React.createElement("Stack", null, children);
-	Stack.Screen = () => null;
+	Stack.Screen = (props: Record<string, unknown>) => {
+		mockStackScreens.push(props);
+		return null;
+	};
 
 	return {
 		Redirect: () => null,
 		Stack,
 		router: {
 			back: (...args: never[]) => mockRouter.back(...args),
+			canGoBack: () => mockRouter.canGoBack(),
 			push: (...args: [string]) => mockRouter.push(...args),
 			replace: (...args: [string]) => mockRouter.replace(...args),
 		},
@@ -142,6 +229,30 @@ jest.mock("expo-linear-gradient", () => {
 	};
 });
 
+jest.mock("~/components/intro-upload-artwork", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		IntroUploadArtwork: () => React.createElement("IntroUploadArtwork"),
+	};
+});
+
+jest.mock("~/components/onboarding/intro-plan-artwork", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		IntroPlanArtwork: () =>
+			React.createElement("IntroPlanArtwork", {
+				testID: "intro-plan-artwork",
+			}),
+	};
+});
+
+jest.mock("~/components/onboarding/intro-tasks-artwork", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		IntroTasksArtwork: () => React.createElement("IntroTasksArtwork"),
+	};
+});
+
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ bottom: 24, left: 0, right: 0, top: 24 }),
 }));
@@ -151,12 +262,41 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => {
 	const ReactNative =
 		jest.requireActual<typeof import("react-native")>("react-native");
 	return {
-		DateTimePickerSheet: ({ onClose }: { onClose: () => void }) =>
-			React.createElement(ReactNative.Pressable, {
-				accessibilityLabel: "Testauswahl schließen",
-				accessibilityRole: "button",
-				onPress: onClose,
-			}),
+		DateTimePickerSheet: ({
+			visible,
+			value,
+			onChange,
+			onClose,
+			onConfirm,
+		}: {
+			visible: boolean;
+			value: Date;
+			onChange: (event: { type: "set" }, date: Date) => void;
+			onClose: () => void;
+			onConfirm?: (date: Date) => void;
+		}) =>
+			visible
+				? React.createElement(
+						ReactNative.View,
+						null,
+						React.createElement(ReactNative.Pressable, {
+							accessibilityLabel: "Testzeit 18:05 auswählen",
+							accessibilityRole: "button",
+							onPress: () =>
+								onChange({ type: "set" }, new Date(2026, 0, 1, 18, 5, 0, 0)),
+						}),
+						React.createElement(ReactNative.Pressable, {
+							accessibilityLabel: "Testauswahl schließen",
+							accessibilityRole: "button",
+							onPress: onClose,
+						}),
+						React.createElement(ReactNative.Pressable, {
+							accessibilityLabel: "Testauswahl bestätigen",
+							accessibilityRole: "button",
+							onPress: () => onConfirm?.(value),
+						}),
+					)
+				: null,
 	};
 });
 
@@ -200,24 +340,37 @@ jest.mock("~/components/ui/icon", () => {
 });
 
 jest.mock("~/context/AuthContext", () => ({
-	useAuthFlow: () => ({
-		cancelPasswordReset: mockCancelPasswordReset,
-		completePasswordReset: mockCompletePasswordReset,
-		isLoading: false,
-		login: mockLogin,
-		pendingVerification: null,
-		register: mockRegister,
-		resendPasswordResetCode: mockResendPasswordResetCode,
-		resendVerification: jest.fn(),
-		startPasswordReset: mockStartPasswordReset,
-		verifyEmailCode: jest.fn(),
-		verifyPasswordResetCode: mockVerifyPasswordResetCode,
-		verifyPasswordResetSecondFactor: jest.fn(),
-	}),
+	useAuthFlow: () => {
+		const React = jest.requireActual<typeof import("react")>("react");
+		const [isLoading, setIsLoading] = React.useState(false);
+
+		return {
+			cancelPasswordReset: mockCancelPasswordReset,
+			startRegistrationWithEmail: async (email: string) => {
+				setIsLoading(true);
+				try {
+					await mockStartRegistrationWithEmail(email);
+				} finally {
+					setIsLoading(false);
+				}
+			},
+			completePasswordReset: mockCompletePasswordReset,
+			isLoading,
+			login: mockLogin,
+			pendingVerification: null,
+			register: mockRegister,
+			stageOnboardingRecovery: mockStageOnboardingRecovery,
+			replaceOnboardingRecoveryAnswers: jest.fn(async () => undefined),
+			resendPasswordResetCode: mockResendPasswordResetCode,
+			resendVerification: jest.fn(),
+			startPasswordReset: mockStartPasswordReset,
+			verifyEmailCode: jest.fn(),
+			verifyPasswordResetCode: mockVerifyPasswordResetCode,
+			verifyPasswordResetSecondFactor: jest.fn(),
+		};
+	},
 	useAuthSession: () => ({
-		isConvexAuthenticated: false,
-		isPostAuthSyncing: false,
-		user: null,
+		...mockAuthSession,
 	}),
 }));
 
@@ -229,20 +382,38 @@ jest.mock("~/lib/navigation", () => ({
 	useBackIntent: jest.fn(),
 }));
 
-jest.mock("~/lib/theme", () => ({
-	useDayovaTheme: () => ({
-		colors: {
-			background: "#FFFFFF",
-			destructive: "#D92D20",
-			secondaryText: "#697586",
-			surface: "#FFFFFF",
-			text: "#1A1A1A",
-		},
-	}),
-}));
+jest.mock("~/lib/theme", () => {
+	const { DAYOVA_DESIGN_SYSTEM: designSystem } = jest.requireActual<
+		typeof import("~/lib/design-system")
+	>("~/lib/design-system");
+	return {
+		useDayovaTheme: () => ({
+			colors: {
+				background: "#FFFFFF",
+				border: "#DCE6EE",
+				destructive: "#D92D20",
+				path2: "#D7DCE3",
+				path1: "#D7DCE3",
+				primary: "#00BAFF",
+				onPrimary: designSystem.colors.onPrimary,
+				secondaryText: "#697586",
+				surface: "#FFFFFF",
+				systemSubtle: "#F1F7FB",
+				text: "#1A1A1A",
+			},
+		}),
+	};
+});
 
 describe("LoginScreen", () => {
 	beforeEach(() => {
+		mockReducedMotion = false;
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 844,
+			scale: 3,
+			width: 390,
+		};
 		mockCancelPasswordReset.mockReset();
 		mockCancelPasswordReset.mockResolvedValue(undefined);
 		mockLogin.mockReset();
@@ -274,6 +445,21 @@ describe("LoginScreen", () => {
 		);
 
 		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding");
+	});
+
+	test("removes the large-text auth entrance animation when reduced motion is enabled", async () => {
+		mockReducedMotion = true;
+		mockWindowDimensions = {
+			fontScale: 3,
+			height: 667,
+			scale: 2,
+			width: 375,
+		};
+		const screen = await render(<AuthChoiceScreen />);
+
+		expect(
+			screen.getByTestId("auth-choice-logo-card").props.entering,
+		).toBeUndefined();
 	});
 
 	test("keeps password recovery reachable from sign-in", async () => {
@@ -448,6 +634,12 @@ describe("LoginScreen", () => {
 describe("CreationLoaderScreen", () => {
 	beforeEach(() => {
 		jest.useFakeTimers();
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 844,
+			scale: 3,
+			width: 390,
+		};
 		mockRouter.replace.mockReset();
 	});
 
@@ -456,7 +648,8 @@ describe("CreationLoaderScreen", () => {
 		jest.useRealTimers();
 	});
 
-	test("confirms account setup before continuing to trial activation", async () => {
+	test("requires an explicit handoff to trial activation", async () => {
+		const complete = jest.fn(async () => undefined);
 		const screen = await render(
 			<CreationLoaderScreen
 				topInset={24}
@@ -468,61 +661,307 @@ describe("CreationLoaderScreen", () => {
 		expect(
 			screen.getByText("Dein Konto wird\nfür dich eingerichtet."),
 		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("status", {
+				name: "Dein Konto wird für dich eingerichtet.",
+			}),
+		).toHaveProp("accessibilityState", { busy: true });
 
 		await screen.rerender(
-			<CreationLoaderScreen topInset={24} bottomInset={24} isComplete={true} />,
+			<CreationLoaderScreen
+				topInset={24}
+				bottomInset={24}
+				isComplete={true}
+				onComplete={complete}
+			/>,
 		);
 
 		expect(
 			screen.getByText(
-				"Alles bereit.\nStarte jetzt mit deiner ersten Prüfung.",
+				"Dein Konto ist bereit.\nAls Nächstes startest du deine Testphase.",
 			),
 		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("status", {
+				name: "Dein Konto ist bereit. Als Nächstes startest du deine Testphase.",
+			}),
+		).toHaveProp("accessibilityLiveRegion", "polite");
 
 		await act(async () => {
-			jest.advanceTimersByTime(1799);
+			jest.advanceTimersByTime(10_000);
 		});
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 
-		await act(async () => {
-			jest.advanceTimersByTime(1);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Weiter zur Testphase" }),
+		);
+		expect(complete).toHaveBeenCalledTimes(1);
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+	});
+
+	test("turns a failed post-auth sync into a visible retry path", async () => {
+		const retry = jest.fn();
+		const screen = await render(
+			<CreationLoaderScreen
+				topInset={24}
+				bottomInset={24}
+				isComplete={false}
+				error="Deine Angaben konnten noch nicht gespeichert werden."
+				onRetry={retry}
+			/>,
+		);
+
+		expect(
+			screen.getByRole("alert", {
+				name: "Deine Angaben konnten noch nicht gespeichert werden.",
+			}),
+		).toBeOnTheScreen();
+		const error = screen.getByRole("alert");
+		expect(error).toHaveProp("accessibilityLiveRegion", "polite");
+		expect(error).toHaveProp("selectable", true);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Erneut versuchen" }),
+		);
+		expect(retry).toHaveBeenCalledTimes(1);
+	});
+
+	test("keeps terminal recovery actions reachable at accessibility text sizes", async () => {
+		mockWindowDimensions = {
+			fontScale: 3,
+			height: 667,
+			scale: 2,
+			width: 375,
+		};
+		const screen = await render(
+			<CreationLoaderScreen
+				topInset={20}
+				bottomInset={20}
+				isComplete={false}
+				error="Deine Angaben konnten noch nicht gespeichert werden."
+				onRetry={jest.fn<() => void>()}
+			/>,
+		);
+
+		const scroll = screen.getByTestId("creation-loader-scroll");
+		expect(scroll).toHaveProp("showsVerticalScrollIndicator", false);
+		expect(scroll.props.contentContainerStyle).toMatchObject({
+			flexGrow: 1,
+			justifyContent: "flex-start",
 		});
-		expect(mockRouter.replace).toHaveBeenCalledWith("/trial");
+		expect(
+			within(scroll).getByRole("button", { name: "Erneut versuchen" }),
+		).toBeOnTheScreen();
+
+		await screen.rerender(
+			<CreationLoaderScreen
+				topInset={20}
+				bottomInset={20}
+				isComplete
+				onComplete={jest.fn<() => void>()}
+			/>,
+		);
+		expect(
+			within(scroll).getByRole("button", { name: "Weiter zur Testphase" }),
+		).toBeOnTheScreen();
+	});
+});
+
+describe("OnboardingRecoveryScreen", () => {
+	beforeEach(() => {
+		mockReducedMotion = false;
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 844,
+			scale: 3,
+			width: 390,
+		};
+	});
+
+	test("collects only the operational learning-time answers after a lost payload", async () => {
+		const change = jest.fn();
+		const submit = jest.fn(async () => undefined);
+		const screen = await render(
+			<OnboardingRecoveryScreen
+				topInset={24}
+				bottomInset={24}
+				answers={{
+					studyTime: "30",
+					studyDays: "Montag",
+					learningTime: "16:00",
+				}}
+				error={null}
+				onChange={change}
+				onSubmit={submit}
+			/>,
+		);
+
+		expect(
+			screen.getByRole("header", {
+				name: "Stelle deine Lernzeiten wieder her.",
+			}),
+		).toBeOnTheScreen();
+		expect(screen.queryByLabelText("E-Mail-Adresse")).toBeNull();
+		expect(screen.queryByLabelText("Passwort")).toBeNull();
+
+		await fireEvent.press(screen.getByRole("checkbox", { name: "Dienstag" }));
+		expect(change).toHaveBeenCalledWith("studyDays", "Montag, Dienstag");
+
+		await act(() =>
+			fireEvent.press(
+				screen.getByRole("button", {
+					name: "Lernzeit beginnt um 16:00 Uhr",
+				}),
+			),
+		);
+		await act(() =>
+			fireEvent.press(
+				screen.getByRole("button", { name: "Testzeit 18:05 auswählen" }),
+			),
+		);
+		await act(() =>
+			fireEvent.press(
+				screen.getByRole("button", { name: "Testauswahl bestätigen" }),
+			),
+		);
+		expect(change).toHaveBeenCalledWith("learningTime", "18:05");
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Lernzeiten erneut speichern" }),
+		);
+		expect(submit).toHaveBeenCalledTimes(1);
+	});
+
+	test("keeps recovery submission disabled until all operational answers are explicit", async () => {
+		const submit = jest.fn(async () => undefined);
+		const screen = await render(
+			<OnboardingRecoveryScreen
+				topInset={24}
+				bottomInset={24}
+				answers={{ studyTime: "", studyDays: "", learningTime: "" }}
+				error={null}
+				onChange={jest.fn()}
+				onSubmit={submit}
+			/>,
+		);
+
+		const button = screen.getByRole("button", {
+			name: "Lernzeiten erneut speichern",
+		});
+		expect(button).toBeDisabled();
+		expect(
+			screen.getByRole("alert", {
+				name: "Bitte wähle deine Lerndauer aus.",
+			}),
+		).toBeOnTheScreen();
+		await fireEvent.press(button);
+		expect(submit).not.toHaveBeenCalled();
+	});
+
+	test("disables recovery controls while the durable payload is being replaced", async () => {
+		const screen = await render(
+			<OnboardingRecoveryScreen
+				topInset={24}
+				bottomInset={24}
+				answers={{
+					studyTime: "30",
+					studyDays: "Montag",
+					learningTime: "16:00",
+				}}
+				error={null}
+				isSubmitting
+				onChange={jest.fn()}
+				onSubmit={jest.fn<() => void>()}
+			/>,
+		);
+
+		expect(
+			screen.getByRole("button", { name: "Lernzeiten werden gespeichert" }),
+		).toBeDisabled();
+		expect(screen.getByRole("radio", { name: "30 Minuten" })).toBeDisabled();
+		expect(screen.getByRole("checkbox", { name: "Montag" })).toBeDisabled();
+		expect(
+			screen.getByRole("button", { name: "Lernzeit beginnt um 16:00 Uhr" }),
+		).toBeDisabled();
 	});
 });
 
 describe("OnboardingScreen", () => {
 	beforeEach(() => {
+		mockReducedMotion = false;
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 844,
+			scale: 3,
+			width: 390,
+		};
+		mockStartRegistrationWithEmail.mockReset();
+		mockStartRegistrationWithEmail.mockResolvedValue(undefined);
 		mockRegister.mockReset();
 		mockRegister.mockResolvedValue({
 			status: "needs_verification",
 			message: "Bestätige deine E-Mail-Adresse.",
 		});
 		mockRouter.replace.mockReset();
+		mockRouter.canGoBack.mockReset();
+		mockRouter.canGoBack.mockReturnValue(true);
 		mockSetOnboardingAnswer.mockReset();
+		mockRetryPostAuthSync.mockReset();
+		mockCompleteOnboardingHandoff.mockReset();
+		mockCompleteOnboardingHandoff.mockResolvedValue(true);
+		mockStageOnboardingRecovery.mockReset();
+		mockStageOnboardingRecovery.mockResolvedValue(undefined);
+		mockAuthSession.isConvexAuthenticated = false;
+		mockAuthSession.isPostAuthSyncing = false;
+		mockAuthSession.postAuthSyncError = null;
+		mockAuthSession.onboardingCompletionStatus = "none";
+		mockAuthSession.user = null;
+		mockOnboarding.answers.studyTime = "30";
+		mockOnboarding.answers.studyDays = "Montag, Donnerstag, Samstag";
+		mockOnboarding.answers.learningTime = "16:30";
 		mockOnboarding.answers.state = "Sachsen";
 		mockOnboarding.answers.schoolType = "prefer_not_to_say";
 		mockOnboarding.answers.grade = "9";
-		mockOnboarding.answers.birthDate = "09.09.2012";
+		mockOnboarding.answers.birthYear = "2012";
+		mockOnboarding.answers.birthMonth = "09";
+		mockOnboarding.answers.birthDay = "09";
+		mockOnboarding.answers.email = "test@example.com";
+		mockStackScreens.length = 0;
 	});
 
-	test("opens with the exact-exam promise and shows compact profile progress", async () => {
+	test("enables route and interactive edge back only on the onboarding entry step", async () => {
+		const screen = await render(<OnboardingScreen />);
+
+		expect(mockStackScreens.at(-1)?.options).toMatchObject({
+			gestureEnabled: true,
+			fullScreenGestureEnabled: false,
+		});
+		expect(screen.getByTestId("onboarding-ios-edge-back")).toBeOnTheScreen();
+
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(mockStackScreens.at(-1)?.options).toMatchObject({
+			gestureEnabled: false,
+			fullScreenGestureEnabled: false,
+		});
+		expect(screen.queryByTestId("onboarding-ios-edge-back")).toBeNull();
+	});
+
+	test("teaches the product in three pages before personalized questions", async () => {
 		const screen = await render(<OnboardingScreen />);
 
 		expect(
 			screen.getByRole("header", {
-				name: "Deine Prüfung. Dein nächster Schritt.",
+				name: "Du weißt, was heute wirklich zählt.",
 			}),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText("7 kurze Schritte · dauert etwa 1 Minute"),
+			screen.getByText("Danach 14 kurze, bewusste Schritte · etwa 3 Minuten"),
 		).toBeOnTheScreen();
-		expect(
-			screen.queryByText("Wie viel lernst du aktuell pro Tag?"),
-		).toBeNull();
 
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Profil einrichten" }),
+			screen.getByRole("button", { name: "Meinen Start personalisieren" }),
 		);
 
 		expect(
@@ -530,21 +969,203 @@ describe("OnboardingScreen", () => {
 				name: "Wie dürfen wir dich nennen?",
 			}),
 		).toBeOnTheScreen();
-		expect(screen.getByText("1 von 7")).toBeOnTheScreen();
+		expect(screen.getByTestId("onboarding-name-input")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 14")).toBeOnTheScreen();
 	});
 
-	test("does not preselect a grade and requires an explicit choice", async () => {
+	test("reflows the intro into a vertical scroll at accessibility text sizes", async () => {
+		mockWindowDimensions = {
+			fontScale: 3,
+			height: 667,
+			scale: 2,
+			width: 375,
+		};
+		const screen = await render(<OnboardingScreen />);
+
+		expect(screen.getByTestId("intro-responsive-scroll")).toBeOnTheScreen();
+		expect(screen.queryByTestId("intro-pager")).toBeNull();
+		expect(
+			screen.getByRole("header", {
+				name: "Du weißt, was heute wirklich zählt.",
+			}),
+		).toBeOnTheScreen();
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeOnTheScreen();
+	});
+
+	test("keeps scaled question content and its primary action in one scroll flow", async () => {
+		mockWindowDimensions = {
+			fontScale: 3,
+			height: 667,
+			scale: 2,
+			width: 375,
+		};
+		const screen = await render(<OnboardingScreen initialStepId="studyTime" />);
+
+		const questionScroll = screen.getByTestId("onboarding-question-scroll");
+		expect(
+			within(questionScroll).getByRole("button", { name: "Weiter" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("onboarding-progress-metadata").props.className,
+		).toContain("flex-col");
+	});
+
+	test("keeps the progress bar mounted while advancing between profile steps", async () => {
+		const screen = await render(<OnboardingScreen />);
+
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Meinen Start personalisieren" }),
+		);
+
+		const firstStepProgressBar = screen.getByRole("progressbar");
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(screen.getByText("2 von 14")).toBeOnTheScreen();
+		expect(screen.getByRole("progressbar")).toBe(firstStepProgressBar);
+	});
+
+	test("keeps intro indicators coupled to live pager scroll progress", async () => {
+		const screen = await render(<OnboardingScreen />);
+		const pager = screen.getByTestId("intro-pager");
+
+		expect(pager.props.onScroll).toEqual(expect.any(Function));
+		expect(pager.props.onScrollEndDrag).toEqual(expect.any(Function));
+		expect(pager.props.scrollEventThrottle).toBe(16);
+		expect(screen.getByTestId("intro-indicator-0")).toHaveStyle({
+			backgroundColor: "#00BAFF",
+			width: 30,
+		});
+		expect(screen.getByTestId("intro-indicator-1")).toHaveStyle({
+			backgroundColor: "#DCE6EE",
+			width: 8,
+		});
+		expect(screen.getByRole("progressbar")).toHaveProp("accessibilityValue", {
+			min: 1,
+			max: 3,
+			now: 1,
+			text: "Seite 1 von 3",
+		});
+	});
+
+	test("surfaces an unexpected trial-handoff rejection as an actionable error", async () => {
+		mockAuthSession.user = {
+			clerkId: "user_123",
+			email: "test@example.com",
+		};
+		mockAuthSession.isConvexAuthenticated = true;
+		mockAuthSession.onboardingCompletionStatus = "ready_for_trial";
+		mockCompleteOnboardingHandoff.mockRejectedValueOnce(
+			new Error("secure storage unavailable"),
+		);
+		const screen = await render(<OnboardingScreen />);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Weiter zur Testphase" }),
+		);
+
+		expect(
+			await screen.findByRole("alert", {
+				name: "Der Wechsel zur Testphase ist fehlgeschlagen. Bitte versuche es erneut.",
+			}),
+		).toBeOnTheScreen();
+	});
+
+	test("prevents parallel trial-handoff writes after repeated presses", async () => {
+		let finishHandoff!: (value: boolean) => void;
+		mockAuthSession.user = {
+			clerkId: "user_123",
+			email: "test@example.com",
+		};
+		mockAuthSession.isConvexAuthenticated = true;
+		mockAuthSession.onboardingCompletionStatus = "ready_for_trial";
+		mockCompleteOnboardingHandoff.mockImplementationOnce(
+			() =>
+				new Promise<boolean>((resolve) => {
+					finishHandoff = resolve;
+				}),
+		);
+		const screen = await render(<OnboardingScreen />);
+		const continueButton = screen.getByRole("button", {
+			name: "Weiter zur Testphase",
+		});
+
+		await fireEvent.press(continueButton);
+		await fireEvent.press(continueButton);
+
+		expect(mockCompleteOnboardingHandoff).toHaveBeenCalledTimes(1);
+		const busyButton = await screen.findByRole("button", {
+			name: "Testphase wird geöffnet",
+		});
+		expect(busyButton.props.accessibilityState).toMatchObject({
+			busy: true,
+			disabled: true,
+		});
+
+		await act(async () => finishHandoff(true));
+
+		await waitFor(() =>
+			expect(mockRouter.replace).toHaveBeenCalledWith("/trial"),
+		);
+	});
+
+	test("keeps every intro page mounted for direct reduced-motion page changes", async () => {
+		const screen = await render(<OnboardingScreen />);
+		const pager = screen.getByTestId("intro-pager");
+
+		expect(pager).toHaveProp("initialNumToRender", 3);
+		expect(pager).toHaveProp("maxToRenderPerBatch", 3);
+		expect(pager).toHaveProp("removeClippedSubviews", false);
+	});
+
+	test("renders the maintained learning-plan preview on the final intro page", async () => {
+		const screen = await render(<OnboardingScreen />);
+
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(screen.getByTestId("intro-plan-artwork")).toBeOnTheScreen();
+	});
+
+	test("does not preselect a grade and disables continuation until it is valid", async () => {
 		mockOnboarding.answers.grade = "";
 		const screen = await render(<OnboardingScreen initialStepId="grade" />);
 
 		expect(screen.getByText("Klassenstufe auswählen")).toBeOnTheScreen();
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(
+			screen.getByText("Diese Angabe wird in deinem Schulprofil gespeichert."),
+		).toBeOnTheScreen();
+		const answerGroup = screen.getByTestId("onboarding-answer-group");
+		const errorSlot = within(answerGroup).getByTestId(
+			"onboarding-answer-error-slot",
+		);
+		expect(errorSlot).toHaveProp("className", "mt-3 min-h-8 px-3");
+		expect(within(errorSlot).queryByRole("alert")).toBeNull();
 
 		expect(
-			await screen.findByRole("alert", {
-				name: "Bitte wähle eine Antwort aus.",
-			}),
-		).toBeOnTheScreen();
+			screen.getByRole("button", { name: "Weiter" }).props.accessibilityState,
+		).toMatchObject({ disabled: true });
+
+		await act(async () => {
+			mockOnboarding.answers = { ...mockOnboarding.answers, grade: "10" };
+			screen.rerender(<OnboardingScreen initialStepId="grade" />);
+		});
+		await waitFor(() => {
+			expect(within(errorSlot).queryByRole("alert")).toBeNull();
+			expect(
+				screen.getByRole("button", { name: "Weiter" }).props.accessibilityState,
+			).toMatchObject({ disabled: false });
+		});
+	});
+
+	test("uses a semantic high-contrast foreground on selected weekdays", async () => {
+		mockOnboarding.answers.studyDays = "Montag";
+		const screen = await render(<OnboardingScreen initialStepId="studyDays" />);
+
+		expect(screen.getByText("Montag")).toHaveStyle({
+			color: DAYOVA_DESIGN_SYSTEM.colors.onPrimary,
+		});
 	});
 
 	test("renders school type through the shared bottom-sheet select trigger", async () => {
@@ -560,24 +1181,198 @@ describe("OnboardingScreen", () => {
 		).toBeOnTheScreen();
 	});
 
-	test("keeps date of birth visibly empty until the learner chooses it", async () => {
-		mockOnboarding.answers.birthDate = "";
-		const screen = await render(<OnboardingScreen initialStepId="birthDate" />);
+	test("shows the exact operational schedule before registration", async () => {
+		const screen = await render(
+			<OnboardingScreen initialStepId="learning-time-payoff" />,
+		);
 
-		expect(screen.getByText("Geburtsdatum auswählen")).toBeOnTheScreen();
-		expect(screen.queryByText("09.09.2012")).toBeNull();
+		expect(
+			screen.getByRole("header", {
+				name: "Test, deine Lernzeiten sind vorbereitet.",
+			}),
+		).toBeOnTheScreen();
+		expect(screen.getByText("30 Minuten")).toBeOnTheScreen();
+		expect(
+			screen.getByText("Montag, Donnerstag und Samstag"),
+		).toBeOnTheScreen();
+		expect(screen.getByText("16:30–17:00 Uhr")).toBeOnTheScreen();
+	});
+
+	test("normalizes a recovered duration to the nearest supported option", async () => {
+		mockOnboarding.answers.studyTime = "37";
+		const screen = await render(<OnboardingScreen initialStepId="studyTime" />);
+
+		expect(screen.getByText("30")).toBeOnTheScreen();
+		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyTime", "30");
+	});
+
+	test("requires an explicit duration confirmation before continuing", async () => {
+		mockOnboarding.answers.studyTime = "";
+		const screen = await render(<OnboardingScreen initialStepId="studyTime" />);
+
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		expect(
+			screen.getByRole("adjustable", { name: "Tägliche Lernzeit" }),
+		).toHaveAccessibilityValue({
+			text: "30 Minuten Vorschau, noch nicht ausgewählt",
+		});
+		await fireEvent.press(
+			screen.getByRole("button", { name: "30 Minuten auswählen" }),
+		);
+		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyTime", "30");
+	});
+
+	test("collects real recurring weekdays with multi-select semantics", async () => {
+		mockOnboarding.answers.studyDays = "";
+		const screen = await render(<OnboardingScreen initialStepId="studyDays" />);
+
+		const monday = screen.getByRole("checkbox", { name: "Montag" });
+		expect(monday.props.accessibilityState).toEqual({ checked: false });
+		expect(monday).toHaveStyle({
+			backgroundColor: "#F1F7FB",
+			borderColor: "#D7DCE3",
+		});
+		expect(screen.getByTestId("study-day-pill-check-slot-Montag")).toHaveProp(
+			"className",
+			"h-4 w-4 items-center justify-center",
+		);
+		expect(screen.getByTestId("study-day-pill-balance-slot-Montag")).toHaveProp(
+			"className",
+			"ml-2 h-4 w-4",
+		);
+		await fireEvent.press(monday);
+		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith("studyDays", "Montag");
+	});
+
+	test("collects the native start time instead of a decorative answer", async () => {
+		mockOnboarding.answers.learningTime = "";
+		const screen = await render(
+			<OnboardingScreen initialStepId="learningTime" />,
+		);
 
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Geburtsdatum auswählen" }),
+			screen.getByRole("button", { name: "Startzeit auswählen" }),
 		);
+		expect(mockSetOnboardingAnswer).not.toHaveBeenCalled();
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Testauswahl schließen" }),
+			screen.getByRole("button", { name: "Testzeit 18:05 auswählen" }),
 		);
-		const expectedDefaultBirthDate = `09.09.${new Date().getFullYear() - 14}`;
+		expect(mockSetOnboardingAnswer).not.toHaveBeenCalled();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Testauswahl bestätigen" }),
+		);
 		expect(mockSetOnboardingAnswer).toHaveBeenCalledWith(
-			"birthDate",
-			expectedDefaultBirthDate,
+			"learningTime",
+			"18:05",
 		);
+	});
+
+	test("never advances the study-time fact on a timer", async () => {
+		jest.useFakeTimers();
+		try {
+			const screen = await render(
+				<OnboardingScreen initialStepId="study-time-fact" />,
+			);
+
+			expect(
+				screen.getByRole("header", {
+					name: "Dein Lernplan braucht echte Zeitfenster.",
+				}),
+			).toBeOnTheScreen();
+			await act(async () => jest.advanceTimersByTime(10_000));
+			expect(
+				screen.getByRole("header", {
+					name: "Dein Lernplan braucht echte Zeitfenster.",
+				}),
+			).toBeOnTheScreen();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	test("requires birth year, month, and day as separate explicit choices", async () => {
+		mockOnboarding.answers.birthYear = "";
+		mockOnboarding.answers.birthMonth = "";
+		mockOnboarding.answers.birthDay = "";
+		const screen = await render(<OnboardingScreen initialStepId="birthYear" />);
+
+		expect(screen.getByText("Geburtsjahr auswählen")).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("onboarding-birth-year-picker"),
+		).toBeOnTheScreen();
+
+		expect(
+			screen.getByRole("button", { name: "Weiter" }).props.accessibilityState,
+		).toMatchObject({ disabled: true });
+	});
+
+	test("shows an existing-account error before leaving the email step", async () => {
+		mockStartRegistrationWithEmail.mockRejectedValueOnce(
+			new Error("Für diese E-Mail-Adresse gibt es bereits ein Konto."),
+		);
+		mockOnboarding.answers.email = "existing@example.com";
+		const screen = await render(<OnboardingScreen initialStepId="email" />);
+
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(mockStartRegistrationWithEmail).toHaveBeenCalledWith(
+			"existing@example.com",
+		);
+		expect(
+			await screen.findByRole("alert", {
+				name: "Für diese E-Mail-Adresse gibt es bereits ein Konto.",
+			}),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("header", { name: "Wie lautet deine E-Mail-Adresse?" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.queryByRole("header", { name: "Lege dein Passwort fest." }),
+		).toBeNull();
+	});
+
+	test("explains invalid typed input while keeping continuation disabled", async () => {
+		mockOnboarding.answers.email = "keine-adresse";
+		const screen = await render(<OnboardingScreen initialStepId="email" />);
+
+		expect(
+			screen.getByRole("alert", {
+				name: "Bitte gib eine gültige E-Mail-Adresse ein.",
+			}),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Weiter" }).props.accessibilityState,
+		).toMatchObject({ disabled: true });
+	});
+
+	test("blocks duplicate email checks while availability is pending", async () => {
+		let finishEmailCheck!: () => void;
+		mockStartRegistrationWithEmail.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishEmailCheck = resolve;
+				}),
+		);
+		const screen = await render(<OnboardingScreen initialStepId="email" />);
+		const continueButton = screen.getByRole("button", { name: "Weiter" });
+
+		await fireEvent.press(continueButton);
+		await fireEvent.press(continueButton);
+
+		expect(mockStartRegistrationWithEmail).toHaveBeenCalledTimes(1);
+		const busyButton = await screen.findByRole("button", {
+			name: "Wird verarbeitet",
+		});
+		expect(busyButton.props.accessibilityState).toMatchObject({
+			busy: true,
+			disabled: true,
+		});
+
+		await act(async () => finishEmailCheck());
+
+		expect(
+			await screen.findByRole("header", { name: "Lege dein Passwort fest." }),
+		).toBeOnTheScreen();
 	});
 
 	test("keeps verification progress aligned with the profile steps", async () => {

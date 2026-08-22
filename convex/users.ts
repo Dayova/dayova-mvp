@@ -44,6 +44,12 @@ const ONBOARDING_LEARNING_TIME_KEYS = [
 	"learningTime",
 	"dailySchoolTime",
 ] as const;
+const ONBOARDING_PERSISTED_ANSWER_KEYS = [
+	"state",
+	"schoolType",
+	"grade",
+	...ONBOARDING_LEARNING_TIME_KEYS,
+] as const satisfies readonly OnboardingQuestionKey[];
 
 const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	key: OnboardingQuestionKey;
@@ -138,7 +144,7 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	},
 	{
 		key: "dailySchoolTime",
-		prompt: "Wie viel Zeit willst du pro Tag für die Schule aufwenden?",
+		prompt: "Wie lange möchtest du pro Lerntag einplanen?",
 		kind: "select" as const,
 		order: 7,
 		options: [...DURATION_OPTIONS],
@@ -160,7 +166,7 @@ const DEFAULT_ONBOARDING_QUESTIONS: Array<{
 	},
 	{
 		key: "learningTime",
-		prompt: "Wann ist die beste Uhrzeit für dich zum Lernen?",
+		prompt: "Wann möchtest du an diesen Tagen starten?",
 		kind: "input" as const,
 		order: 9,
 	},
@@ -482,6 +488,8 @@ export const getMe = query({
 export const saveOnboardingAnswers = mutation({
 	args: {
 		answers: v.object({
+			// Accepted temporarily for older installed clients. These decorative
+			// answers are intentionally excluded from ONBOARDING_PERSISTED_ANSWER_KEYS.
 			studyTime: v.optional(v.string()),
 			strength: v.optional(v.string()),
 			challenge: v.optional(v.string()),
@@ -578,9 +586,8 @@ export const saveOnboardingAnswers = mutation({
 			questionIdsByKey[question.key] = questionId;
 		}
 
-		for (const [key, answer] of Object.entries(args.answers) as Array<
-			[keyof typeof args.answers, string | undefined]
-		>) {
+		for (const key of ONBOARDING_PERSISTED_ANSWER_KEYS) {
+			const answer = args.answers[key];
 			if (answer === undefined) continue;
 			const normalizedAnswer =
 				key === "grade"

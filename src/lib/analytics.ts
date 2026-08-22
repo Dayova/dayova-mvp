@@ -208,7 +208,7 @@ const identityOutputRules = {
 const eventPropertyRules = {
 	onboarding_completed: {
 		local_day_key: required(isDayKey),
-		onboarding_version: required(oneOf([1, 2] as const)),
+		onboarding_version: required(oneOf([1, 2, 3] as const)),
 	},
 	homework_created: {
 		day_entry_id: required(isNonEmptyString),

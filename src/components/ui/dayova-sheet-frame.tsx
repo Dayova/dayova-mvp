@@ -7,11 +7,20 @@ import {
 	BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import type { ReactNode, RefObject } from "react";
-import { useCallback, useEffect, useId, useMemo, useRef } from "react";
 import {
-	AccessibilityInfo,
-	findNodeHandle,
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import {
 	type AccessibilityActionEvent,
+	AccessibilityInfo,
+	BackHandler,
+	findNodeHandle,
+	Platform,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -26,7 +35,7 @@ import { cn } from "~/lib/utils";
 const MAX_SHEET_WIDTH = 560;
 
 type DayovaSheetSize = "content" | "medium";
-type DayovaSheetPhase = "closed" | "opening" | "closing";
+type DayovaSheetPhase = "closed" | "opening" | "presented" | "closing";
 
 type DayovaSheetFrameProps = {
 	visible: boolean;
@@ -72,6 +81,8 @@ function DayovaSheetFrame({
 	const setSheetOpen = sheetAccessibility?.setSheetOpen;
 	const desiredVisibleRef = useRef(visible);
 	const phaseRef = useRef<DayovaSheetPhase>("closed");
+	const [isNativeSheetActive, setIsNativeSheetActive] = useState(false);
+	const capturesAndroidBack = visible || isNativeSheetActive;
 	const insets = useSafeAreaInsets();
 	const { colors, isDark } = useDayovaTheme();
 	const {
@@ -107,6 +118,7 @@ function DayovaSheetFrame({
 
 	const presentIfDesired = useCallback(() => {
 		if (!desiredVisibleRef.current || phaseRef.current !== "closed") return;
+		setIsNativeSheetActive(true);
 		phaseRef.current = "opening";
 		sheetRef.current?.present();
 	}, []);
@@ -120,9 +132,14 @@ function DayovaSheetFrame({
 			return () => cancelAnimationFrame(frame);
 		}
 
-		if (phaseRef.current === "opening") {
+		if (phaseRef.current === "opening" || phaseRef.current === "presented") {
 			phaseRef.current = "closing";
 			sheetRef.current?.dismiss();
+			return;
+		}
+
+		if (phaseRef.current === "closed") {
+			setIsNativeSheetActive(false);
 		}
 	}, [presentIfDesired, visible]);
 
@@ -138,12 +155,34 @@ function DayovaSheetFrame({
 
 	const dismiss = useCallback(() => {
 		if (!dismissible) return;
+		if (phaseRef.current === "closed") {
+			desiredVisibleRef.current = false;
+			setIsNativeSheetActive(false);
+			onClose();
+			return;
+		}
 		sheetRef.current?.dismiss();
-	}, [dismissible]);
+	}, [dismissible, onClose]);
+
+	useEffect(() => {
+		if (!capturesAndroidBack || Platform.OS !== "android") return undefined;
+
+		const subscription = BackHandler.addEventListener(
+			"hardwareBackPress",
+			() => {
+				if (dismissible) dismiss();
+				return true;
+			},
+		);
+
+		return () => subscription.remove();
+	}, [capturesAndroidBack, dismiss, dismissible]);
 
 	const handleDismiss = useCallback(() => {
 		const wasControlledDismissal = phaseRef.current === "closing";
+		const shouldReopen = wasControlledDismissal && desiredVisibleRef.current;
 		phaseRef.current = "closed";
+		setIsNativeSheetActive(shouldReopen);
 		didMoveFocusRef.current = false;
 		setSheetOpen?.(sheetId, false);
 		if (initialFocusFrameRef.current !== null) {
@@ -179,6 +218,8 @@ function DayovaSheetFrame({
 	const handleChange = useCallback(
 		(index: number) => {
 			if (index < 0) return;
+			phaseRef.current = "presented";
+			setIsNativeSheetActive(true);
 			setSheetOpen?.(sheetId, true);
 			if (didMoveFocusRef.current) return;
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, render } from "@testing-library/react-native";
 import { Text } from "react-native";
+import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
 import { AuthNavigationGate } from "./auth-navigation-gate";
 
 const mockReplace = jest.fn();
@@ -10,6 +11,7 @@ const mockRouterState = {
 };
 const mockSession = {
 	isSessionLoading: false,
+	onboardingCompletionStatus: "none" as OnboardingCompletionStatus,
 	pendingSessionTask: null as string | null,
 	user: { clerkId: "user_123" } as { clerkId: string } | null,
 };
@@ -49,6 +51,7 @@ describe("AuthNavigationGate", () => {
 		mockRouterState.pathname = "/";
 		mockRouterState.rootNavigationState = { key: "root" };
 		mockSession.isSessionLoading = false;
+		mockSession.onboardingCompletionStatus = "none";
 		mockSession.pendingSessionTask = null;
 		mockSession.user = { clerkId: "user_123" };
 		mockAccess.access = { state: "paid" };
@@ -131,6 +134,44 @@ describe("AuthNavigationGate", () => {
 		expect(routeContent.props.accessibilityElementsHidden).toBe(false);
 		expect(routeContent.props.importantForAccessibility).toBe("auto");
 		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
+		expect(mockReplace).not.toHaveBeenCalled();
+	});
+
+	test("keeps durable onboarding recovery above a cached paid-access redirect", async () => {
+		mockRouterState.pathname = "/onboarding";
+		mockSession.onboardingCompletionStatus = "pending";
+		mockAccess.access = { state: "paid" };
+
+		const screen = await render(
+			<AuthNavigationGate>
+				<Text>Onboarding wiederherstellen</Text>
+			</AuthNavigationGate>,
+		);
+
+		expect(screen.getByText("Onboarding wiederherstellen")).toBeOnTheScreen();
+		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
+		await act(flushAnimationFrames);
+		expect(mockReplace).not.toHaveBeenCalled();
+	});
+
+	test("does not hide the confirmed trial handoff behind access loading", async () => {
+		mockRouterState.pathname = "/onboarding";
+		mockSession.onboardingCompletionStatus = "ready_for_trial";
+		mockAccess.access = undefined;
+		mockAccess.isAccessLoading = true;
+
+		const screen = await render(
+			<AuthNavigationGate>
+				<Text>Onboarding abgeschlossen</Text>
+			</AuthNavigationGate>,
+		);
+
+		expect(screen.getByText("Onboarding abgeschlossen")).toBeOnTheScreen();
+		expect(screen.queryByTestId("auth-bootstrap-mask")).toBeNull();
+		expect(
+			screen.getByTestId("auth-route-content").props.className,
+		).not.toContain("opacity-0");
+		await act(flushAnimationFrames);
 		expect(mockReplace).not.toHaveBeenCalled();
 	});
 });

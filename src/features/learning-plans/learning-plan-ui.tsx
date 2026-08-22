@@ -152,20 +152,89 @@ export function MaterialCard({
 	);
 }
 
-export function SessionCard({
-	session,
-	onEdit,
-}: {
-	session: PlanSession;
-	onEdit: () => void;
-}) {
+type SessionCardProps =
+	| {
+			session: PlanSession;
+			mode?: "screen";
+			onEdit: () => void;
+	  }
+	| {
+			session: PlanSession;
+			mode: "artwork";
+			onEdit?: never;
+	  };
+
+export function SessionCard(props: SessionCardProps) {
+	const { session } = props;
+	const mode = props.mode ?? "screen";
 	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
+	const fixedTextScale = mode === "artwork";
+	const shouldStack = mode === "screen" && shouldStackInlineContent;
 	const endTime = timeFromMinutes(
 		minutesFromTime(session.startTime) + session.durationMinutes,
 	);
 	const sessionDate = parseDateKey(session.dateKey);
 	const title = formatGermanUiText(session.title);
+
+	const content = (
+		<>
+			<View className="h-14 w-14 items-center justify-center rounded-full bg-button-neutral">
+				<Text
+					allowFontScaling={!fixedTextScale}
+					className="font-poppins font-semibold text-background text-body-2"
+				>
+					{formatDayOfMonth(sessionDate)}
+				</Text>
+				<Text
+					allowFontScaling={!fixedTextScale}
+					className="-mt-1 font-poppins font-semibold text-background text-body-5"
+				>
+					{formatShortWeekday(sessionDate)}
+				</Text>
+			</View>
+			<View className={shouldStack ? "flex-1" : "flex-1 px-3"}>
+				<Text
+					allowFontScaling={!fixedTextScale}
+					className="font-poppins font-semibold text-body-3 text-text"
+				>
+					{title}
+				</Text>
+				<Text
+					allowFontScaling={!fixedTextScale}
+					className="mt-1 font-poppins text-body-4 text-text/55"
+				>
+					{session.startTime} - {endTime}
+				</Text>
+			</View>
+			<View
+				className={cn(
+					"h-11 w-11 items-center justify-center rounded-full border border-black/10",
+					shouldStack && "self-end",
+				)}
+			>
+				<PropertyEdit size={19} color={colors.text} strokeWidth={1.5} />
+			</View>
+		</>
+	);
+	const className = cn(
+		"rounded-[28px] px-5 py-5",
+		shouldStack ? "items-stretch gap-3" : "flex-row items-center",
+	);
+
+	if (props.mode === "artwork") {
+		return (
+			<Surface
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				className={className}
+				variant="soft"
+			>
+				{content}
+			</Surface>
+		);
+	}
 
 	return (
 		<ActionSurface
@@ -173,39 +242,11 @@ export function SessionCard({
 			accessibilityLabel={`${title}, ${session.dateLabel}, ${session.startTime} bis ${endTime} bearbeiten`}
 			accessibilityRole="button"
 			activeOpacity={0.88}
-			onPress={onEdit}
-			className={cn(
-				"rounded-[28px] px-5 py-5",
-				shouldStackInlineContent
-					? "items-stretch gap-3"
-					: "flex-row items-center",
-			)}
+			onPress={props.onEdit}
+			className={className}
 			variant="soft"
 		>
-			<View className="h-14 w-14 items-center justify-center rounded-full bg-button-neutral">
-				<Text className="font-poppins font-semibold text-background text-body-2">
-					{formatDayOfMonth(sessionDate)}
-				</Text>
-				<Text className="-mt-1 font-poppins font-semibold text-background text-body-5">
-					{formatShortWeekday(sessionDate)}
-				</Text>
-			</View>
-			<View className={shouldStackInlineContent ? "flex-1" : "flex-1 px-3"}>
-				<Text className="font-poppins font-semibold text-body-3 text-text">
-					{title}
-				</Text>
-				<Text className="mt-1 font-poppins text-body-4 text-text/55">
-					{session.startTime} - {endTime}
-				</Text>
-			</View>
-			<View
-				className={cn(
-					"h-11 w-11 items-center justify-center rounded-full border border-black/10",
-					shouldStackInlineContent && "self-end",
-				)}
-			>
-				<PropertyEdit size={19} color={colors.text} strokeWidth={1.5} />
-			</View>
+			{content}
 		</ActionSurface>
 	);
 }

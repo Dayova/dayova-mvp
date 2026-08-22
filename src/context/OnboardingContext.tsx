@@ -4,35 +4,31 @@ import type { SupportedSchoolType } from "~/lib/school-types";
 
 export type OnboardingAnswers = {
 	studyTime: string;
-	strength: string;
-	challenge: string;
-	goal: string;
+	studyDays: string;
+	learningTime: string;
 	state: string;
 	schoolType: SupportedSchoolType | "";
 	grade: string;
-	dailySchoolTime: string;
-	studyDays: string;
-	learningTime: string;
 	name: string;
 	email: string;
-	birthDate: string;
+	birthYear: string;
+	birthMonth: string;
+	birthDay: string;
 	password: string;
 };
 
 const emptyAnswers: OnboardingAnswers = {
 	studyTime: "",
-	strength: "",
-	challenge: "",
-	goal: "",
+	studyDays: "",
+	learningTime: "",
 	state: "",
 	schoolType: "",
 	grade: "",
-	dailySchoolTime: "",
-	studyDays: "",
-	learningTime: "",
 	name: "",
 	email: "",
-	birthDate: "",
+	birthYear: "",
+	birthMonth: "",
+	birthDay: "",
 	password: "",
 };
 

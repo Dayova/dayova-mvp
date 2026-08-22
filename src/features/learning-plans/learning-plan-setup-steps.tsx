@@ -2,7 +2,7 @@ import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
 import { GraduationCap, Plus } from "~/components/ui/icon";
-import { ActionSurface } from "~/components/ui/surface";
+import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
@@ -73,6 +73,113 @@ function SetupError({ message }: { message: string | null }) {
 	);
 }
 
+export function MaterialUploadStepLead({
+	mode = "screen",
+}: {
+	mode?: "screen" | "artwork";
+}) {
+	const fixedTextScale = mode === "artwork";
+	return (
+		<>
+			<Text
+				allowFontScaling={!fixedTextScale}
+				className="font-poppins font-semibold text-body-1 text-text"
+			>
+				Schulmaterial hinzufügen
+			</Text>
+			<Text
+				allowFontScaling={!fixedTextScale}
+				className="mt-2 font-poppins text-body-3 text-secondary-text"
+			>
+				Deine Unterlagen bilden die Grundlage für deinen Lernplan.
+			</Text>
+		</>
+	);
+}
+
+type MaterialUploadActionCardProps =
+	| {
+			canUpload: boolean;
+			hasSchoolMaterial: boolean;
+			mode?: "screen";
+			onPress: () => void;
+	  }
+	| {
+			canUpload?: never;
+			hasSchoolMaterial: boolean;
+			mode: "artwork";
+			onPress?: never;
+	  };
+
+export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
+	const { hasSchoolMaterial } = props;
+	const mode = props.mode ?? "screen";
+	const { colors } = useDayovaTheme();
+	const fixedTextScale = mode === "artwork";
+	const content = (
+		<>
+			<View className="h-12 w-12 items-center justify-center rounded-[18px] bg-system-subtle">
+				<GraduationCap
+					size={24}
+					color={colors.primaryStrong}
+					strokeWidth={2.1}
+				/>
+			</View>
+			<View className="min-w-0 flex-1 px-4">
+				<Text
+					allowFontScaling={!fixedTextScale}
+					className="font-poppins font-semibold text-body-2 text-text"
+				>
+					{hasSchoolMaterial
+						? "Weiteres Schulmaterial"
+						: "Schulmaterial hochladen"}
+				</Text>
+				<Text
+					allowFontScaling={!fixedTextScale}
+					className="mt-1 font-poppins text-body-4 text-secondary-text"
+				>
+					Themenblatt, Arbeitsblätter oder Mitschriften
+				</Text>
+			</View>
+			<Plus size={22} color={colors.primaryStrong} strokeWidth={2.2} />
+		</>
+	);
+	const className =
+		"mt-7 min-h-[112px] flex-row items-center rounded-[32px] px-5 py-5";
+
+	if (props.mode === "artwork") {
+		return (
+			<Surface
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				className={className}
+				variant="soft"
+			>
+				{content}
+			</Surface>
+		);
+	}
+
+	return (
+		<ActionSurface
+			accessibilityHint="Öffnet die Auswahl zum Scannen oder Hochladen von Schulmaterial."
+			accessibilityLabel={
+				hasSchoolMaterial
+					? "Weiteres Schulmaterial hinzufügen"
+					: "Schulmaterial hinzufügen"
+			}
+			accessibilityRole="button"
+			disabled={!props.canUpload}
+			onPress={() => props.onPress()}
+			className={className}
+			variant="soft"
+		>
+			{content}
+		</ActionSurface>
+	);
+}
+
 export function MaterialUploadStep({
 	canUpload,
 	canContinue,
@@ -100,7 +207,6 @@ export function MaterialUploadStep({
 	openingUploadAction: PendingUploadAction | null;
 	showSkip?: boolean;
 }) {
-	const { colors } = useDayovaTheme();
 	const schoolDocuments = documents.filter(
 		(document) => document.sourceKind === "school",
 	);
@@ -108,45 +214,12 @@ export function MaterialUploadStep({
 
 	return (
 		<View className="flex-1">
-			<Text className="font-poppins font-semibold text-body-1 text-text">
-				Schulmaterial hinzufügen
-			</Text>
-			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
-				Deine Unterlagen bilden die Grundlage für deinen Lernplan.
-			</Text>
-
-			<ActionSurface
-				accessibilityHint="Öffnet die Auswahl zum Scannen oder Hochladen von Schulmaterial."
-				accessibilityLabel={
-					hasSchoolMaterial
-						? "Weiteres Schulmaterial hinzufügen"
-						: "Schulmaterial hinzufügen"
-				}
-				accessibilityRole="button"
-				disabled={!canUpload}
+			<MaterialUploadStepLead />
+			<MaterialUploadActionCard
+				canUpload={canUpload}
+				hasSchoolMaterial={hasSchoolMaterial}
 				onPress={onOpenUpload}
-				className="mt-7 min-h-[112px] flex-row items-center rounded-[32px] px-5 py-5"
-				variant="soft"
-			>
-				<View className="h-12 w-12 items-center justify-center rounded-[18px] bg-system-subtle">
-					<GraduationCap
-						size={24}
-						color={colors.primaryStrong}
-						strokeWidth={2.1}
-					/>
-				</View>
-				<View className="min-w-0 flex-1 px-4">
-					<Text className="font-poppins font-semibold text-body-2 text-text">
-						{hasSchoolMaterial
-							? "Weiteres Schulmaterial"
-							: "Schulmaterial hochladen"}
-					</Text>
-					<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-						Themenblatt, Arbeitsblätter oder Mitschriften
-					</Text>
-				</View>
-				<Plus size={22} color={colors.primaryStrong} strokeWidth={2.2} />
-			</ActionSurface>
+			/>
 
 			{showSkip && !hasSchoolMaterial ? (
 				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
