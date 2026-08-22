@@ -127,7 +127,9 @@ The mobile app owns the account-binding step:
 4. Convex grants access only from that server-verified snapshot. The webhook
    refreshes every known Dayova account in the bounded identity fields,
    including redemption/transfer destinations and transfer sources, so access
-   is both granted and revoked from canonical subscriber snapshots.
+   is both granted and revoked from canonical subscriber snapshots. A verified
+   active purchase creates paid access directly when the account has no prior
+   trial entitlement; redeeming a purchase must never require trial activation.
 
 The website and every mobile build environment must use the matching scheme
 from the same RevenueCat web config. Enabling Redemption Links requires a new

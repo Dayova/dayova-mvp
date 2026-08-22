@@ -90,7 +90,7 @@ test("trial access expires exactly 14 days after activation", async () => {
 	});
 });
 
-test("verified RevenueCat subscription unlocks paid account access", async () => {
+test("verified RevenueCat subscription unlocks a new account without starting a trial", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
 	vi.stubEnv("REVENUECAT_SECRET_API_KEY", "sk_test_revenuecat");
@@ -124,9 +124,6 @@ test("verified RevenueCat subscription unlocks paid account access", async () =>
 	);
 	const t = convexTest(schema, modules).withIdentity(user);
 	await t.mutation(api.users.syncCurrentUser, {});
-	await t.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "2026-07-28",
-	});
 
 	await t.action(api.revenueCat.syncMyEntitlement, {});
 
@@ -139,6 +136,25 @@ test("verified RevenueCat subscription unlocks paid account access", async () =>
 		managementUrl: "https://apps.apple.com/account/subscriptions",
 		productId: "dayova_monthly",
 		state: "paid",
+		subscriptionExpiresAt: Date.parse("2026-08-28T10:00:00Z"),
+	});
+	const storedEntitlement = await t.run(async (ctx) =>
+		ctx.db
+			.query("accessEntitlements")
+			.withIndex("by_ownerTokenIdentifier", (query) =>
+				query.eq("ownerTokenIdentifier", user.tokenIdentifier),
+			)
+			.unique(),
+	);
+	expect(storedEntitlement).not.toHaveProperty("trialStartedAt");
+	expect(storedEntitlement).not.toHaveProperty("trialExpiresAt");
+	await expect(
+		t.query(api.entitlements.getMyAccess, {
+			now: Date.parse("2026-08-29T10:00:00.000Z"),
+		}),
+	).resolves.toMatchObject({
+		canUseApp: false,
+		state: "expired",
 		subscriptionExpiresAt: Date.parse("2026-08-28T10:00:00Z"),
 	});
 });
