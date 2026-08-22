@@ -1,6 +1,6 @@
 export type RegistrationStage = "flow" | "verification" | "creating";
 
-export type RegistrationStepKind =
+type RegistrationStepKind =
 	| "intro"
 	| "range"
 	| "fact"

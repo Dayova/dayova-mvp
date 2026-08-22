@@ -23,14 +23,14 @@ name: Android Pixel 9 profile and account flow
     timeout: 5000
 - takeScreenshot: "02-study-duration-empty"
 - swipe:
-    start: 80%, 70%
-    end: 20%, 70%
+    start: 80%, 75%
+    end: 20%, 75%
     duration: 700
 - waitForAnimationToEnd:
     timeout: 5000
 - swipe:
-    start: 80%, 70%
-    end: 20%, 70%
+    start: 80%, 75%
+    end: 20%, 75%
     duration: 700
 - assertVisible: "90"
 - takeScreenshot: "02-study-duration-selected"
@@ -50,6 +50,12 @@ name: Android Pixel 9 profile and account flow
     text: "Montag"
     checked: true
 - takeScreenshot: "04-study-days-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "Weiter"
 
 - assertVisible: "Wann möchtest du an diesen Tagen starten?"
@@ -58,10 +64,22 @@ name: Android Pixel 9 profile and account flow
 - tapOn: "Zeit übernehmen"
 - assertVisible: "16:00 Uhr"
 - takeScreenshot: "05-learning-time-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "Weiter"
 
 - assertVisible: ".*Lernzeiten sind vorbereitet.*"
 - takeScreenshot: "06-learning-times-payoff"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "Weiter"
 
 - assertVisible: "Welche Klassenstufe besuchst du?"
@@ -69,6 +87,12 @@ name: Android Pixel 9 profile and account flow
 - tapOn: "9. Klasse"
 - assertVisible: "9. Klasse"
 - takeScreenshot: "07-grade-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "Weiter"
 
 - assertVisible: "In welchem Bundesland gehst du zur Schule?"
@@ -76,6 +100,12 @@ name: Android Pixel 9 profile and account flow
 - tapOn: "Sachsen"
 - assertVisible: "Sachsen"
 - takeScreenshot: "08-state-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "Weiter"
 
 - assertVisible: "Welche Schulart besuchst du?"
@@ -83,55 +113,77 @@ name: Android Pixel 9 profile and account flow
 - tapOn: "Gymnasium"
 - assertVisible: "Gymnasium"
 - takeScreenshot: "09-school-type-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "Weiter"
 
 - assertVisible: "In welchem Jahr bist du geboren?"
 - tapOn: "Geburtsjahr auswählen"
 - waitForAnimationToEnd:
     timeout: 5000
-- swipe:
-    start: 50%, 78%
-    end: 50%, 52%
-    duration: 800
-- swipe:
-    start: 50%, 78%
-    end: 50%, 52%
-    duration: 800
-- swipe:
-    start: 50%, 78%
-    end: 50%, 52%
-    duration: 800
+- scrollUntilVisible:
+    element:
+      text: "2014"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "2014"
 - assertVisible: "2014"
 - takeScreenshot: "10-birth-year-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "Weiter"
 
 - assertVisible: "In welchem Monat bist du geboren?"
 - tapOn: "Geburtsmonat auswählen"
 - waitForAnimationToEnd:
     timeout: 5000
-- swipe:
-    start: 50%, 78%
-    end: 50%, 52%
-    duration: 800
+- scrollUntilVisible:
+    element:
+      text: "September"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "September"
 - assertVisible: "September"
 - takeScreenshot: "11-birth-month-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "Weiter"
 
 - assertVisible: "An welchem Tag bist du geboren?"
 - tapOn: "Geburtstag auswählen"
 - waitForAnimationToEnd:
     timeout: 5000
-- swipe:
-    start: 50%, 78%
-    end: 50%, 52%
-    duration: 800
+- scrollUntilVisible:
+    element:
+      text: "^9\\.$"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn:
     text: "^9\\.$"
 - assertVisible:
     text: "^9\\.$"
 - takeScreenshot: "12-birth-day-selected"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "Weiter"
 
 - assertVisible: "Wie lautet deine E-Mail-Adresse?"
@@ -139,6 +191,12 @@ name: Android Pixel 9 profile and account flow
 - inputText: "matrix.day292.profile@example.com"
 - hideKeyboard
 - takeScreenshot: "13-email-filled"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
 - tapOn: "Weiter"
 
 - assertVisible: "Lege dein Passwort fest."

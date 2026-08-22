@@ -7,8 +7,8 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 ## Language
 
 **Content-size resilience**:
-Dayova's quality contract for every portrait phone and tablet layout across system text and display sizing: default sizing stays visually identical to the approved baseline, while non-default sizes may reflow, stack, grow, or vertically scroll but must remain polished, complete, and fully usable. Screens stay bounded to the portrait viewport; horizontal scrolling remains valid only where it is an intentional part of an inherently horizontal component, never as a workaround for larger text or display sizing. Meaningful copy and actions remain present at their system-scaled size and reflow vertically; intentional ellipsis is valid only when the complete value remains accessible. Portrait-tablet compatibility keeps the phone information architecture in a centered, bounded-width single column and changes only behavior that is buggy or visibly awkward. Dedicated tablet composition, navigation, information density, landscape, split-screen, and foldable postures are separate product modes.
-_Avoid_: Pixel-identical layouts at every accessibility size, merely fitting without visual quality, clipping content, shrinking or capping meaningful text, hiding actions, inaccessible truncation, disabling system scaling, screen-level horizontal scrolling, treating portrait tablet compatibility as a dedicated tablet mode
+Dayova's quality contract for every portrait phone and tablet layout across system text and display sizing: default sizing stays visually identical to the approved baseline, while non-default sizes may reflow, stack, grow, or vertically scroll but must remain polished, complete, and fully usable. Screens stay bounded to the portrait viewport; horizontal scrolling remains valid only where it is an intentional part of an inherently horizontal component, never as a workaround for larger text or display sizing. Meaningful copy and actions remain present at their system-scaled size and reflow vertically; intentional ellipsis is valid only when the complete value remains accessible. Semantic display headings use Dayova's shared native-style large-title curve (currently a 1.75 maximum multiplier), while body copy, controls, field values, errors, and supporting text continue to receive the user's full text-size preference. This heading-only curve prevents custom Poppins display type from growing linearly to roughly three times its base size and splitting ordinary German words into isolated fragments at AXXXL. Portrait-tablet compatibility keeps the phone information architecture in a centered, bounded-width single column and changes only behavior that is buggy or visibly awkward. Dedicated tablet composition, navigation, information density, landscape, split-screen, and foldable postures are separate product modes.
+_Avoid_: Pixel-identical layouts at every accessibility size, merely fitting without visual quality, clipping content, arbitrary screen-local text caps, shrinking or capping body/action/error content, hiding actions, inaccessible truncation, disabling system scaling, screen-level horizontal scrolling, treating portrait tablet compatibility as a dedicated tablet mode
 
 ## Current Design Delivery Model
 
@@ -115,6 +115,10 @@ hierarchy is `heading-1` 32/48, `heading-2` 24/36, `body-1` 20/30, `body-2`
 spacing. Top-level page-intro groups use 12px between their heading and
 supporting copy. Compact navigation chrome, dense data rows, and headings inside
 cards may keep tighter spacing when the elements form one local unit.
+Semantic headings must go through the shared `Text` primitive with a heading
+variant or `accessibilityRole="header"`; the primitive owns the documented
+large-title scaling curve. Do not reproduce `maxFontSizeMultiplier` values in
+individual screens. Non-heading text keeps unrestricted system scaling.
 
 Light-mode pill buttons have exactly two visual appearances: the light-mode
 gradient button and the black button using the primary text color `#1A1A1A`.

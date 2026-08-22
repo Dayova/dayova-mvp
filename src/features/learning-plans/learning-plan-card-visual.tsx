@@ -32,7 +32,7 @@ type LearningPlanCardVisualState =
 			rollingWindowLabel: string;
 	  };
 
-export type LearningPlanCardVisualModel = {
+type LearningPlanCardVisualModel = {
 	subject: string;
 	status: LearningPlanCardStatus;
 	examDateLabel: string;

@@ -634,6 +634,12 @@ describe("LoginScreen", () => {
 describe("CreationLoaderScreen", () => {
 	beforeEach(() => {
 		jest.useFakeTimers();
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 844,
+			scale: 3,
+			width: 390,
+		};
 		mockRouter.replace.mockReset();
 	});
 
@@ -655,6 +661,11 @@ describe("CreationLoaderScreen", () => {
 		expect(
 			screen.getByText("Dein Konto wird\nfür dich eingerichtet."),
 		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("status", {
+				name: "Dein Konto wird für dich eingerichtet.",
+			}),
+		).toHaveProp("accessibilityState", { busy: true });
 
 		await screen.rerender(
 			<CreationLoaderScreen
@@ -670,6 +681,11 @@ describe("CreationLoaderScreen", () => {
 				"Dein Konto ist bereit.\nAls Nächstes startest du deine Testphase.",
 			),
 		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("status", {
+				name: "Dein Konto ist bereit. Als Nächstes startest du deine Testphase.",
+			}),
+		).toHaveProp("accessibilityLiveRegion", "polite");
 
 		await act(async () => {
 			jest.advanceTimersByTime(10_000);
@@ -707,6 +723,46 @@ describe("CreationLoaderScreen", () => {
 			screen.getByRole("button", { name: "Erneut versuchen" }),
 		);
 		expect(retry).toHaveBeenCalledTimes(1);
+	});
+
+	test("keeps terminal recovery actions reachable at accessibility text sizes", async () => {
+		mockWindowDimensions = {
+			fontScale: 3,
+			height: 667,
+			scale: 2,
+			width: 375,
+		};
+		const screen = await render(
+			<CreationLoaderScreen
+				topInset={20}
+				bottomInset={20}
+				isComplete={false}
+				error="Deine Angaben konnten noch nicht gespeichert werden."
+				onRetry={jest.fn<() => void>()}
+			/>,
+		);
+
+		const scroll = screen.getByTestId("creation-loader-scroll");
+		expect(scroll).toHaveProp("showsVerticalScrollIndicator", false);
+		expect(scroll.props.contentContainerStyle).toMatchObject({
+			flexGrow: 1,
+			justifyContent: "flex-start",
+		});
+		expect(
+			within(scroll).getByRole("button", { name: "Erneut versuchen" }),
+		).toBeOnTheScreen();
+
+		await screen.rerender(
+			<CreationLoaderScreen
+				topInset={20}
+				bottomInset={20}
+				isComplete
+				onComplete={jest.fn<() => void>()}
+			/>,
+		);
+		expect(
+			within(scroll).getByRole("button", { name: "Weiter zur Testphase" }),
+		).toBeOnTheScreen();
 	});
 });
 
@@ -913,6 +969,7 @@ describe("OnboardingScreen", () => {
 				name: "Wie dürfen wir dich nennen?",
 			}),
 		).toBeOnTheScreen();
+		expect(screen.getByTestId("onboarding-name-input")).toBeOnTheScreen();
 		expect(screen.getByText("1 von 14")).toBeOnTheScreen();
 	});
 

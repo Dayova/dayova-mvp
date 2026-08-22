@@ -680,7 +680,7 @@ release evidence.
 
 ## Full profile/account matrix — 15 August 2026
 
-Four accepted native runs now cover the complete intro plus all 14 profile and
+Seven accepted native runs now cover the complete intro plus all 14 profile and
 account questions through the empty password screen. Each profile directory
 contains the uncut recording and one screenshot for every captured state. The
 shared reproducible Android flow is
@@ -723,6 +723,41 @@ Seven earlier automation candidates are intentionally not cited as release
 proof: they contained the pre-fix collision, a blank development-client/auth
 surface, or selector timing/coordinate failures. The eighth run above is the
 first accepted complete candidate.
+
+### Android Pixel 9, dark, `font_scale=2.0`, final candidate
+
+`profile-matrix/android-pixel9-dark-font2-final/android-pixel9-dark-font2-final-profile-account.mp4`
+is the final dark-theme maximum-system-text run after the semantic-heading cap
+and scroll-safe terminal-action changes. It starts at the auth choice, covers
+all three intro pages and all 14 profile/account steps, and stops on the empty
+password screen without creating an account. The 15 adjacent screenshots come
+from the same accepted run. The floating gear is the development-launcher
+overlay, not product UI.
+
+> Coverage: 149.36-second video; 80 full-timeline frames sampled at 0.535631 fps
+> (1.866956-second interval); 5 contact sheet(s); 58 additional frames from
+> 00:00:22.000 to 00:00:33.000 at 5 fps; no audio stream.
+
+Timestamped observations:
+
+- `00:00–00:10`: the auth choice and all three intro pages remain complete and
+  actionable in dark mode at `font_scale=2.0`.
+- `00:11–00:22`: the name field, keyboard interaction, and transition into the
+  duration step remain reachable without a fixed action covering content.
+- `00:23.6–00:24.8`: the uncommitted 30-minute preview and explicit selection
+  action are visible.
+- `00:25.8–00:26.2`: during the first native drag, the value and circular ring
+  update through 45 to 60 minutes before the gesture settles.
+- `00:30.8–00:31.2`: during the second drag, both update to 90 minutes; the
+  committed 90-minute state then remains actionable.
+- `00:33–02:10`: the duration fact, weekday and time inputs, exact payoff,
+  school-profile selectors, and three birth-date segments all remain operable.
+- `02:12–02:27`: the e-mail field accepts and validates the complete address;
+  the run reaches the empty password screen without an error overlay.
+
+This closes the final Android dark/enlarged-text visual, reachability, and live-
+duration interaction variant. It is emulator evidence and does not claim a
+physical TalkBack pass.
 
 ### iPhone 17 Pro Max, dark, standard system text
 
@@ -809,6 +844,73 @@ interaction gate. It is simulator evidence without VoiceOver; it does not prove
 a physical-device assistive-technology pass, account creation, trial activation,
 or app-home entry.
 
+### iPhone 17 Pro Max, light and dark, maximum Dynamic Type
+
+`profile-matrix/ios-iphone17promax-light-axxxl-final/` and
+`profile-matrix/ios-iphone17promax-dark-axxxl-final/` contain the 17 adjacent
+screenshots from each accepted iPhone 17 Pro Max / iOS 26.5 simulator run at
+`accessibility-extra-extra-extra-large`. Both runs traverse the complete
+14-step profile/account segment from the empty name step through the empty
+password state. They were captured after the semantic-heading scale cap and
+scroll-safe terminal-action changes.
+
+The screenshots verify that semantic Poppins headings remain readable without
+splitting German words into isolated fragments, while body copy, labels,
+controls, and validation content continue to follow the unrestricted system
+text scale. The duration input, learning-time summary, bounded profile pickers,
+keyboard-driven e-mail step, password requirement, and disabled account action
+all remain reachable in both themes. The reused Maestro scenario still carries
+`iPhone 13 mini` in its scenario title, but the simulator destination for both
+runs was CoreSimulator device `035B6E86-F3FE-4661-BE5A-CD0C44BE8D39`, which
+`simctl` identifies as an iPhone 17 Pro Max. The device mapping, rather than the
+scenario title, is authoritative.
+
+These screenshot sequences close the requested large-iPhone/light/dark/maximum-
+Dynamic-Type visual and reachability variants. They do not claim VoiceOver or
+physical-device coverage.
+
+### Android account, verification, trial, and first-exam action
+
+`account-e2e/android-final-head/android-account-verification-trial-first-exam-final-head.mp4`
+is an uncut Pixel 9 emulator recording of the release-candidate client against
+the matching development Convex functions. It covers account submission, OTP
+verification with the development code, backend onboarding persistence,
+explicit trial activation, the first empty Home, and the first exam action. The
+four adjacent screenshots preserve the account-ready, trial-activation,
+empty-home, and first-exam states.
+
+> Coverage: 132.14-second video; 80 full-timeline frames sampled at 0.605428
+> fps (1.651725-second interval); 5 contact sheet(s); 53 additional frames from
+> 00:01:55.000 to 00:02:06.000 at 5 fps; no audio stream.
+
+Timestamped observations:
+
+- `00:00–00:30`: the password is entered and `Konto erstellen` is submitted.
+- `00:31–00:43`: `E-Mail bestätigen` appears and the development OTP `424242`
+  is entered.
+- `00:44–00:59`: the app remains on `Dein Konto wird für dich eingerichtet`
+  while profile and onboarding answers are persisted.
+- `00:61–01:55`: `Dein Konto ist bereit. Als Nächstes startest du deine
+  Testphase.` and `Weiter zur Testphase` are visible; the action is taken.
+- `01:56.2–01:59.4`: `So läuft deine Testphase`, `14 TAGE KOSTENLOS`, and the
+  explicit `Dayova starten` action are visible.
+- `01:59.6–02:03.6`: `Dayova starten` is pressed; Home loads and settles without
+  an error surface.
+- `02:08.8–02:10.486`: `Erste Prüfung planen` is pressed and the first exam
+  screen asks `Welche Art von Prüfung ist es?`.
+
+The client and backend must be released in dependency order: deploy the Convex
+functions containing the accepted onboarding-answer and learning-time validators
+before distributing the client. The first candidate exposed the stale deployed
+validators; deploying the exact branch functions with
+`pnpm exec convex dev --once --tail-logs disable` made the recorded end-to-end
+path succeed. This is a release-order requirement, not evidence that an older
+backend is compatible with the new client payload.
+
+This closes the account creation → verification → explicit trial activation
+→ first empty-home exam-action gate on native Android runtime. It is emulator
+evidence and therefore does not claim physical TalkBack coverage.
+
 ## Historical evidence — superseded 11 August state
 
 `ios-onboarding-e2e-2x.mp4` predates the accepted operational learning-time
@@ -838,14 +940,19 @@ learning-time contract.
 
 This evidence set now proves the operational learning-time segment, native
 iOS/Android restart recovery, Android live duration preview on the final
-worklet-helper implementation, committed iOS entry
-and internal edge behavior, Android predictive back, native time-picker-first
-dismissal, shared bounded-select-first dismissal, the intro's small/large
-light/dark matrix, and the responsive intro at maximum iOS and enlarged Android
-system text. It also proves the intro's iOS and Android reduced-motion CTA
-behavior and four complete 14-step native profile/account runs: Android dark,
-Android light at `font_scale=2.0`, iOS dark, and iPhone 13 mini light at maximum
-Dynamic Type. It does not by itself prove every profile screen in every
-device/theme/text-size combination, physical VoiceOver/TalkBack behavior,
-trial activation, or the first empty-home action. PR #458 stays Draft until the
-remaining canonical acceptance gates are closed by the decision owner.
+worklet-helper implementation, committed iOS entry and internal edge behavior,
+Android predictive back, native time-picker-first dismissal, shared bounded-
+select-first dismissal, the intro's small/large light/dark matrix, and the
+responsive intro at maximum iOS and enlarged Android system text. It also proves
+the intro's iOS and Android reduced-motion CTA behavior, the Android account →
+verification → explicit trial → first-exam path, and seven complete 14-step
+native profile/account runs: Android dark at standard and enlarged system text,
+Android light at `font_scale=2.0`, iOS dark, iPhone 13 mini light at maximum
+Dynamic Type, and iPhone 17 Pro Max light and dark at maximum Dynamic Type.
+
+The remaining evidence gates are a physical-device VoiceOver pass on the
+connected iPhone, a physical-device TalkBack pass on an Android device, and the
+decision owner's final cross-screen/release-readiness acceptance. Simulator or
+emulator runs must not be relabelled as physical assistive-technology proof.
+PR #458 stays Draft and DAY-292 stays In Progress until those gates are closed
+or the decision owner explicitly changes the acceptance contract.

@@ -58,11 +58,17 @@ name: iPhone 13 mini light AXXXL profile and account flow
     speed: 50
 - takeScreenshot: "01-name-empty"
 - tapOn:
-    point: "50%,69%"
+    id: "onboarding-name-input"
 - inputText: "Matrix Test"
 - assertVisible: "Matrix Test"
-- tapOn:
-    point: "87%,88%"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 40000
+    speed: 50
+- tapOn: "Weiter"
 
 - extendedWaitUntil:
     visible: "Wie lange möchtest du pro Lerntag einplanen?"
@@ -344,12 +350,18 @@ name: iPhone 13 mini light AXXXL profile and account flow
     speed: 50
     visibilityPercentage: 20
 - tapOn:
-    point: "50%,69%"
+    id: "onboarding-email-input"
 - inputText: "matrix.day292.ios-mini-axxxl@example.com"
 - assertVisible: "matrix.day292.ios-mini-axxxl@example.com"
 - takeScreenshot: "13-email-filled"
-- tapOn:
-    point: "87%,88%"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 40000
+    speed: 50
+- tapOn: "Weiter"
 
 - extendedWaitUntil:
     visible: "Lege dein Passwort fest."

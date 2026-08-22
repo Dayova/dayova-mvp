@@ -13,9 +13,7 @@ export const BIRTH_MONTH_OPTIONS = [
 	{ value: "12", label: "Dezember" },
 ] as const;
 
-export const BIRTH_MONTH_VALUES = BIRTH_MONTH_OPTIONS.map(
-	(option) => option.value,
-);
+const BIRTH_MONTH_VALUES = BIRTH_MONTH_OPTIONS.map((option) => option.value);
 
 const isCanonicalBirthYear = (value: string) => /^\d{4}$/.test(value);
 const isCanonicalBirthMonth = (value: string) =>

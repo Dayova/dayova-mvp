@@ -1651,6 +1651,7 @@ function QuestionStepView({
 							<>
 								<PillTextInput
 									refObject={inputRef}
+									testID={`onboarding-${step.field}-input`}
 									value={answers[step.field]}
 									accessibilityLabel={step.title.replace(/\n/g, " ")}
 									placeholder={step.placeholder}
@@ -2781,6 +2782,14 @@ export function CreationLoaderScreen({
 }) {
 	const reducedMotion = useReducedMotion();
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout({
+		requestedHorizontalPadding: 26,
+	});
+	const statusMessage = error
+		? "Die Einrichtung ist noch nicht abgeschlossen."
+		: isComplete
+			? "Dein Konto ist bereit. Als Nächstes startest du deine Testphase."
+			: "Dein Konto wird für dich eingerichtet.";
 
 	return (
 		<View className="flex-1 bg-background">
@@ -2788,12 +2797,19 @@ export function CreationLoaderScreen({
 				options={{ title: "Konto einrichten", gestureEnabled: false }}
 			/>
 			<ThemedStatusBar />
-			<View
-				className="flex-1 items-center justify-center px-[26px]"
+			<ScrollView
+				testID="creation-loader-scroll"
+				alwaysBounceVertical={false}
+				contentInsetAdjustmentBehavior="never"
+				showsVerticalScrollIndicator={false}
 				// Loader content clears the runtime device safe-area insets.
-				style={{
+				contentContainerStyle={{
+					alignItems: "center",
+					flexGrow: 1,
+					justifyContent: shouldStackInlineContent ? "flex-start" : "center",
 					paddingTop: Math.max(topInset + 24, 36),
 					paddingBottom: Math.max(bottomInset + 22, 32),
+					paddingHorizontal: 26,
 				}}
 			>
 				{error ? (
@@ -2801,17 +2817,25 @@ export function CreationLoaderScreen({
 						<CircleAlert size={56} color={colors.wrong} strokeWidth={1.8} />
 					</View>
 				) : (
-					<AnimatedFlowerLoader size={220} />
+					<AnimatedFlowerLoader
+						accessibilityLabel="Konto wird eingerichtet"
+						size={shouldStackInlineContent ? 168 : 220}
+					/>
 				)}
 				<Animated.Text
 					key={error ? "error" : isComplete ? "complete" : "creating"}
+					accessible
+					accessibilityLabel={statusMessage}
+					accessibilityLiveRegion="polite"
+					accessibilityState={{ busy: !error && !isComplete }}
+					role="status"
 					entering={reducedMotion ? undefined : FadeIn.duration(220)}
 					className="mt-10 text-center font-poppins font-semibold text-text"
 					// This launch-approved display size does not map to a shared text token.
 					style={{ fontSize: 20, lineHeight: 29 }}
 				>
 					{error
-						? "Die Einrichtung ist noch nicht abgeschlossen."
+						? statusMessage
 						: isComplete
 							? "Dein Konto ist bereit.\nAls Nächstes startest du deine Testphase."
 							: "Dein Konto wird\nfür dich eingerichtet."}
@@ -2847,7 +2871,7 @@ export function CreationLoaderScreen({
 						</Text>
 					</Button>
 				) : null}
-			</View>
+			</ScrollView>
 		</View>
 	);
 }
@@ -2918,6 +2942,7 @@ function AuthProgressHeader({
 
 function PillTextInput({
 	refObject,
+	testID,
 	value,
 	accessibilityLabel,
 	placeholder,
@@ -2932,6 +2957,7 @@ function PillTextInput({
 	onSubmit,
 }: {
 	refObject: RefObject<TextInput | null>;
+	testID: string;
 	value: string;
 	accessibilityLabel: string;
 	placeholder: string;
@@ -2965,6 +2991,7 @@ function PillTextInput({
 		>
 			<TextInput
 				ref={refObject}
+				testID={testID}
 				accessibilityLabel={accessibilityLabel}
 				accessibilityState={{ busy: disabled, disabled }}
 				editable={!disabled}
