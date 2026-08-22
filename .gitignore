@@ -47,3 +47,6 @@ __pycache__/
 # generated native folders
 /ios
 /android
+
+# Downloaded store binaries are release evidence, not source artifacts.
+/release/google-play/artifacts/*.aab

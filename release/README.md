@@ -23,3 +23,6 @@ commits until compatible binaries become the recorded baseline.
 
 The current provenance and distribution evidence is tracked in
 [DAY-114](https://linear.app/dayova/issue/DAY-114/replace-submitted-ios-v103-build-49-with-the-corrected-analytics).
+
+The Google Play launch command center, listing copy, disclosure draft, assets,
+and build audit live in [`google-play/`](./google-play/README.md).
