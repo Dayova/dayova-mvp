@@ -17,7 +17,7 @@ complete. DAY-217/DAY-183 and their child tasks remain open.
 | Question | Draft answer | Status / evidence needed |
 | --- | --- | --- |
 | Does the app collect or share required user-data types? | Yes — it collects account, learner, content, purchase, and analytics data. | Confirm against production processors and the Play-delivered build. |
-| Is all collected user data encrypted in transit? | Yes, based on HTTPS/TLS services used by the app. | `CONFIRM` with infrastructure/processor evidence. |
+| Is all collected user data encrypted in transit? | `PENDING` — expected Yes from the HTTPS/TLS service architecture, but not yet fully evidenced. | `CONFIRM` the final production AAB and every Clerk, Convex, PostHog, RevenueCat, upload, and other SDK traffic path before treating Yes as verified. |
 | Can users request deletion? | A Console answer was submitted, but compliant end-to-end release evidence is still missing. | DAY-183/DAY-360/DAY-362/DAY-363 require the public URL, in-app route, complete pipeline, and Play-delivered QA. |
 | Does the app show ads or use data for advertising? | No. | Confirm no release dependency introduces ads/ad attribution. |
 | Is data sold? | No. | Legal confirmation required. |
@@ -32,7 +32,7 @@ complete. DAY-217/DAY-183 and their child tasks remain open.
 | Personal info — User IDs | Yes | Yes | No | Authentication; app functionality; analytics; subscriptions | Clerk ID is used across the app and as the identified PostHog distinct ID; RevenueCat uses an app user ID. |
 | Personal info — Phone number | Possible | Yes | `CONFIRM` | Account/profile functionality | Supported by the user schema. Confirm whether the production flow actually requests it. |
 | Personal info — Other info | Yes | Yes | `CONFIRM` | Personalization; app functionality | Date of birth, grade, school type, and German state can be stored. Exact required/optional status depends on onboarding. |
-| Financial info — Purchase history | Yes | Yes | Yes until purchase | Subscription entitlement and account management | Google Play/RevenueCat purchase and entitlement state. Do not declare payment-card details; the app does not handle them. |
+| Financial info — Purchase history | Yes | Yes | No | Subscription entitlement and account management | RevenueCat documents this collection as required and not user-disableable when its SDK is used. Do not declare payment-card details; the app does not handle them. |
 | Photos and videos — Photos | Yes when uploaded | Yes | Yes | App functionality | Learners can upload photographed school material. Confirm whether video upload is supported; current evidence only supports photos. |
 | Files and docs — Files and docs | Yes when uploaded | Yes | Yes | App functionality | Uploaded worksheets, class notes, and other school material. |
 | App activity — App interactions | Yes | Yes | No while analytics is enabled | Analytics; app functionality | PostHog is initialized with an identified Clerk user. Autocapture, lifecycle capture, and session replay are disabled, but custom product events are linked. |

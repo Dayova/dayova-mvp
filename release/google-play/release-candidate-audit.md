@@ -6,7 +6,7 @@ Audited: 2026-08-23
 
 | Item | Value |
 | --- | --- |
-| Production build source | `31f7f25` |
+| Production build source | `31f7f25787d2c4cdfde96384379f47b3e321fc17` |
 | Expo/EAS project | account `dayova`, project `d3d06b26-c8da-4192-a50d-e1bb0ca4902c` |
 | Android application ID | `com.dayova` |
 | Configured app/runtime version | `1.0.3` |
@@ -45,7 +45,7 @@ useful for provenance only.
 The release owner kept app/runtime version **1.0.3** and submitted version code
 **20**. This supersedes the earlier 1.0.5 recommendation. The exact submitted
 artifact is EAS build `1b52de89-746d-4600-9670-7c395079ff02`, built from
-`31f7f25`, and connected to Play by submission
+`31f7f25787d2c4cdfde96384379f47b3e321fc17`, and connected to Play by submission
 `d3e7d523-cac4-4be9-a55c-2245d1095972`.
 
 Do not treat later documentation commits as artifact source. Production OTA
@@ -74,7 +74,8 @@ Record in DAY-218 and the OTA baseline once actually distributed:
 
 - public approval/availability timestamp and public listing install evidence
 - exact distributed version name and version code
-- exact source SHA (`31f7f25`) and EAS build ID
+- exact source SHA (`31f7f25787d2c4cdfde96384379f47b3e321fc17`) and EAS
+  build ID
 - runtime version
 - EAS native fingerprint
 - full AAB SHA-256 and byte size

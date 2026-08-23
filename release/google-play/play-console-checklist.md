@@ -58,7 +58,7 @@ No account credentials or signing secrets are stored in this checklist.
 | Target audience and content | 13+ | Submitted/in review; DAY-357 still owns reconciliation with actual product/marketing scope. |
 | News apps | No | Confirm. |
 | COVID-19 contact/status | No | Confirm. |
-| Data safety | Submitted from the reconciled release draft | In review; privacy/deletion implementation verification remains open. |
+| Data safety | Submitted from the current release draft | In review; legal/technical reconciliation and privacy/deletion implementation verification remain open. |
 | Government apps | No | Confirm. |
 | Financial features | No; ordinary subscription billing does not make Dayova a financial-services app | Confirm form wording in current Console. |
 | Health apps | No | Submitted/in review. |
@@ -73,6 +73,10 @@ No account credentials or signing secrets are stored in this checklist.
       review taxes and Play-localized prices before activation.
 - [ ] Connect both products to the existing RevenueCat entitlement and current
       offering.
+- [ ] Verify the RevenueCat offering exposes package `$rc_monthly` for Play
+      product `dayova_monthly` and package `$rc_annual` for Play product
+      `dayova_annual`. Package identifiers and Play product IDs are different
+      fields; the client requires these exact package identifiers.
 - [x] Add `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` to the EAS **production**
       environment using the Android public SDK key.
 - [ ] Keep external parent web checkout disabled in the Android app unless
@@ -88,7 +92,8 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
 ## 6. Release candidate and submission
 
 - [x] Keep the approved app/runtime version at `1.0.3` and build Android version
-      code `20` from source `31f7f25`.
+      code `20` from source
+      `31f7f25787d2c4cdfde96384379f47b3e321fc17`.
 - [x] Build `com.dayova` with EAS production profile: build
       `1b52de89-746d-4600-9670-7c395079ff02`.
 - [x] Submit to Production for Germany: submission
