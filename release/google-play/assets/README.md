@@ -1,6 +1,7 @@
 # Google Play asset manifest
 
-Prepared: 2026-08-22
+Prepared: 2026-08-22; uploaded to the production listing under review on
+2026-08-23
 
 ## Ready assets
 

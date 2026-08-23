@@ -1,6 +1,6 @@
 # Google Play store listing — de-DE
 
-Last drafted: 2026-08-22
+Last verified/submitted: 2026-08-23
 
 ## Main store listing
 
@@ -45,7 +45,7 @@ Erste Android-Version von Dayova: Organisiere Prüfungen und Schulmaterial, erst
 | Category | Education |
 | Support email | contact@dayova.de |
 | Website | https://dayova.com/ |
-| Privacy policy | `BLOCKED` — replace with the published app-specific privacy-policy URL; do not use the current website-only text as final evidence |
+| Privacy policy | https://dayova.com/datenschutz — submitted for review; still website-specific and must be completed under DAY-217/DAY-359 |
 | Package name | `com.dayova` |
 
 ## App access / reviewer instructions
@@ -57,15 +57,17 @@ Console's **App access** section; never commit them here.
 
 Suggested instructions after the account is verified:
 
-> Sign in with the review account supplied below. The account has an active
-> entitlement and synthetic school data. From “Lernpläne”, open the prepared
-> mathematics plan and its next session. “Analyse” shows the associated sample
-> progress. Subscription management and account deletion are available from
-> Settings. No device-level authentication or external hardware is required.
+> Sign in with the review account supplied below. It has permanent full paid
+> access and synthetic school data. No free trial, purchase, one-time code,
+> two-factor authentication, or special device is required. From “Lernpläne”,
+> open the prepared plan and its next session; “Analyse” shows the associated
+> sample progress.
 
-`BLOCKED`: the current Settings screen does not yet expose a complete account
-deletion flow. Update this reviewer text only after DAY-183 is verified in the
-Play-delivered build.
+The submitted Play reviewer instructions use a dedicated synthetic Clerk
+account with permanent RevenueCat `dayova_full_access`. No free trial, purchase,
+OTP, 2FA, or special device is required. Credentials are stored only in Play
+Console. The complete account-deletion flow remains separate open work under
+DAY-183 and must not be inferred from reviewer access.
 
 ## Copy checks before submission
 

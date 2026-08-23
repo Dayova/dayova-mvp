@@ -1,11 +1,16 @@
 # Google Play Data safety draft
 
-Last audited against the repository: 2026-08-22
+Last audited against the repository and submitted Console state: 2026-08-23
 
 This is a conservative engineering inventory for the Play Console form. It is
 **not legal approval**. Product/legal must reconcile it with the final privacy
 policy, processor contracts, retention schedule, target audience, and the exact
-release build before the declaration is submitted.
+release build for the current review and every future update.
+
+The Data safety and related deletion declarations were submitted to Google and
+are in review. That submission is not evidence that the website policy, public
+deletion resource, in-app deletion flow, or downstream deletion behavior is
+complete. DAY-217/DAY-183 and their child tasks remain open.
 
 ## Top-level answers
 
@@ -13,7 +18,7 @@ release build before the declaration is submitted.
 | --- | --- | --- |
 | Does the app collect or share required user-data types? | Yes — it collects account, learner, content, purchase, and analytics data. | Confirm against production processors and the Play-delivered build. |
 | Is all collected user data encrypted in transit? | Yes, based on HTTPS/TLS services used by the app. | `CONFIRM` with infrastructure/processor evidence. |
-| Can users request deletion? | No compliant release evidence yet. | `BLOCKED` by DAY-183: in-app route plus a functional public web deletion URL are required. |
+| Can users request deletion? | A Console answer was submitted, but compliant end-to-end release evidence is still missing. | DAY-183/DAY-360/DAY-362/DAY-363 require the public URL, in-app route, complete pipeline, and Play-delivered QA. |
 | Does the app show ads or use data for advertising? | No. | Confirm no release dependency introduces ads/ad attribution. |
 | Is data sold? | No. | Legal confirmation required. |
 | Is data “shared” with third parties under Google's definition? | Draft **No** where Clerk, Convex, PostHog, and RevenueCat act only as service providers on Dayova's behalf. | `CONFIRM` DPAs, purposes, and Google policy exceptions. A service-provider transfer is not automatically “sharing.” |
