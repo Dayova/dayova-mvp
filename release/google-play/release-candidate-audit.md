@@ -64,9 +64,14 @@ the Android baseline records this exact native build and fingerprint.
 - Google Play automated quick checks passed. Missing R8/ProGuard deobfuscation
   mapping is a non-blocking warning for this review.
 - Review is active. Managed publishing is off.
-- Open operational work: Julius's Play payments-profile action; Play
-  monthly/annual product and RevenueCat linkage verification; Play-signed
-  billing lifecycle QA; and the separate privacy/account-deletion tasks.
+- Payments Center access was rechecked on 2026-08-23: the Dayova Organization
+  profile is reachable by the release operator as **Admin, primary contact** and
+  showed no alerts. Play Console's separate Payments profile page remains
+  owner-only, so Julius must still confirm or resolve the previously reported
+  Play payments-account action.
+- Other open operational work: Play monthly/annual product and RevenueCat
+  linkage verification; Play-signed billing lifecycle QA; and the separate
+  privacy/account-deletion tasks.
 
 ## Evidence to capture for the new candidate
 

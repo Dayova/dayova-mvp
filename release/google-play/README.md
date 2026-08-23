@@ -17,7 +17,7 @@ non-blocking warning.
 
 | Area | Current evidence | Remaining completion |
 | --- | --- | --- |
-| Play account and app | Verified Organization account, developer account ID `4912315867079102345`, app ID `4976075040375716512`, package `com.dayova`, production track ID `4697718440238285251`. | Julius resolves Play's owner-only “Action required with your payments account” notification. It did not block review submission. |
+| Play account and app | Verified Organization account, developer account ID `4912315867079102345`, app ID `4976075040375716512`, package `com.dayova`, production track ID `4697718440238285251`. The Dayova Organization payments profile is reachable by the release operator as Payments Center admin and primary contact; Payments Center showed no alerts on 2026-08-23. | Julius, as the original Play account owner, must still open Play Console's owner-only Payments profile page and confirm or resolve its previously reported “Action required with your payments account” item. Payments Center admin access does not grant access to that Play-only page. The item did not block review submission. |
 | Production submission | EAS build `1b52de89-746d-4600-9670-7c395079ff02`, source `31f7f25787d2c4cdfde96384379f47b3e321fc17`, submission `d3e7d523-cac4-4be9-a55c-2245d1095972`; release `1.0.3 – Erste Play-Store-Version` is in review. | Monitor review. On approval, verify public installability in Germany and record the production OTA baseline. |
 | Listing and declarations | German listing, icon, feature graphic, eight current phone screenshots, Education category, Germany targeting, 13+ audience, content rating, privacy URL, Data safety, Ads, Health, Government, Financial features, App access, and review notes are in review. | Treat accepted declarations as review input, not proof that the open privacy/deletion implementation is complete. |
 | Reviewer access | Dedicated synthetic Clerk account has permanent RevenueCat `dayova_full_access`; Play instructions require no trial, purchase, OTP, 2FA, or special device. | Keep the account valid and synthetic until review is complete. Credentials stay only in Play Console. |
@@ -29,8 +29,10 @@ non-blocking warning.
 1. **Do not restart review unnecessarily.** Monitor Publishing overview, Policy
    status, owner email, and review messages; change the release only for a real
    blocker or rejection.
-2. **Resolve the payment-owner notification.** Julius completes the missing Play
-   payments-profile information.
+2. **Resolve the Play-owner notification.** Payments Center access is verified
+   for the release operator, but Google reserves Play Console's Payments profile
+   page for the original developer-account owner. Julius opens that page and
+   confirms or resolves the previously reported action.
 3. **Finish monetization before conversion.** Verify the approved monthly and
    annual Play products/base plans, their RevenueCat linkage, and purchase,
    restore, renewal, expiry, refund, and revocation on a Play-signed build before
@@ -50,7 +52,8 @@ non-blocking warning.
 
 | Workstream | Suggested owner | Tracker |
 | --- | --- | --- |
-| Play account, review, and payments-profile owner action | Julius / account owner | DAY-218 / DAY-325 |
+| Play account and review | Jakob / Play and Payments Center admin | DAY-218 / DAY-325 |
+| Owner-only Play Payments profile page | Julius / original account owner | DAY-218 / DAY-325 |
 | App privacy, target ages, retention | Product + legal | DAY-217 |
 | Account deletion implementation | App/backend | DAY-183 |
 | Play products and RevenueCat Android verification | Billing owner | DAY-218 (DAY-228 implementation is Done) |
@@ -74,6 +77,7 @@ non-blocking warning.
 ## Human-confirmation boundary
 
 The authorized account actions and production review submission are complete.
-This pack does not claim Google approval, public availability, payment-profile
-completion, Play product activation, legal approval, or privacy/deletion
-implementation until their dedicated evidence exists.
+Payments Center administrator access is verified, but the separate owner-only
+Play Payments profile action is not. This pack does not claim Google approval,
+public availability, Play product activation, legal approval, or
+privacy/deletion implementation until their dedicated evidence exists.

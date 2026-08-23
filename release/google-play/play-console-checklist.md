@@ -13,12 +13,20 @@ old build 15 AAB was not used as the production candidate.
       evidence still need one recorded source.
 - [x] Invite the release operator with the minimum permissions needed to create
       and release `com.dayova`.
+- [x] Verify that the release operator can open the Dayova Organization profile
+      in Google Payments Center as **Admin, primary contact**. Payments Center
+      showed no alerts on 2026-08-23.
+- [ ] Have Julius open Play Console's owner-only Payments profile page and
+      confirm or resolve the previously reported payments-account action.
 - [ ] Reconfirm the public developer email, address, and phone shown by Google
       before public availability. Organization contact details may be displayed
       on Google Play.
 
-Developer account ID: `4912315867079102345`. Julius owns the account and must
-still resolve Play's “Action required with your payments account” notification.
+Developer account ID: `4912315867079102345`. Jakob has Play account-level
+**Admin (all permissions)** and Payments Center **Admin, primary contact**
+access. Google nevertheless reserves the Play Console Payments profile page for
+the original developer-account owner, so Julius must perform that final
+Play-specific check.
 
 ## 2. Create the app
 

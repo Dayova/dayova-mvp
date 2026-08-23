@@ -8,6 +8,8 @@ Checked: 2026-08-23
 - [Provide information for Google Play's Data safety section](https://support.google.com/googleplay/android-developer/answer/10787469)
 - [Manage target audience and app content settings](https://support.google.com/googleplay/android-developer/answer/9867159)
 - [Payments policy — Google Play Console Help](https://support.google.com/googleplay/android-developer/answer/9858738)
+- [Add developer-account users and manage permissions — Google Play Console Help](https://support.google.com/googleplay/android-developer/answer/9844686) — distinguishes account owner from administrators and reserves Play Console's Payments settings page for the owner.
+- [Manage users in your payments profile — Google Payments Center Help](https://support.google.com/paymentscenter/answer/7162853) — documents Payments Center admin and primary-contact access independently from Play Console ownership.
 - [Target API level requirements for Google Play apps](https://support.google.com/googleplay/android-developer/answer/11926878)
 - [App testing requirements for new personal developer accounts](https://support.google.com/googleplay/android-developer/answer/14151465) — applies to Personal accounts created after 13 November 2023; Dayova's verified Organization account is outside this rule.
 - [Submit to the Google Play Store — Expo documentation](https://docs.expo.dev/submit/android/)
