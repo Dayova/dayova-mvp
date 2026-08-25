@@ -106,6 +106,15 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
       `1b52de89-746d-4600-9670-7c395079ff02`.
 - [x] Submit to Production for Germany: submission
       `d3e7d523-cac4-4be9-a55c-2245d1095972`.
+- [x] Prepare the exact `1.0.3` / version-code-`20` artifact for Closed and Open
+      testing without creating another build. Configure the existing Dayova
+      internal list as the deferred Closed audience and keep Germany selected.
+- [x] Cancel the Play warning that would restart the Production review. Leave
+      all four Closed/Open changes under **Changes not yet submitted for review**
+      until the Production review resolves.
+- [ ] After Production review resolves, revalidate the saved test-track drafts,
+      add the approved feedback channel, audit the EAS service-account
+      permissions, and only then submit Closed/Open for review.
 - [ ] Install from the Play opt-in link on a clean physical Android device and a
       supported emulator/device size.
 - [ ] Verify signup/login, onboarding, trial, plans, uploads, learning session,

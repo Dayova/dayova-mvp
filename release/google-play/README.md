@@ -9,17 +9,18 @@ availability.
 
 ## Current verdict
 
-**Production state last verified 2026-08-23: submitted and in Google review.**
-Android `1.0.3` (version code `20`) was submitted to the Production track for
-Germany. Managed publishing is off, so an approval should publish automatically.
-Google Play's automated quick checks passed; the missing R8/ProGuard
-deobfuscation mapping file is the only recorded non-blocking warning.
+**Production state live-verified 2026-08-25: submitted and still in Google
+review since 2026-08-23.** Android `1.0.3` (version code `20`) was submitted to
+the Production track for Germany. Managed publishing is off, so an approval
+should publish automatically. Google Play's automated quick checks passed; the
+missing R8/ProGuard deobfuscation mapping file is the only recorded non-blocking
+warning.
 
 | Area | Current evidence | Remaining completion |
 | --- | --- | --- |
 | Play account and app | Verified Organization account, developer account ID `4912315867079102345`, app ID `4976075040375716512`, package `com.dayova`, production track ID `4697718440238285251`. The Dayova Organization payments profile is reachable by the release operator as Payments Center admin and primary contact; Payments Center showed no alerts on 2026-08-23. | Julius, as the original Play account owner, must still open Play Console's owner-only Payments profile page and confirm or resolve its previously reported “Action required with your payments account” item. Payments Center admin access does not grant access to that Play-only page. The item did not block review submission. |
 | Production submission | EAS build `1b52de89-746d-4600-9670-7c395079ff02`, source `31f7f25787d2c4cdfde96384379f47b3e321fc17`, submission `d3e7d523-cac4-4be9-a55c-2245d1095972`; release `1.0.3 – Erste Play-Store-Version` is in review. | Monitor review. On approval, verify public installability in Germany and record the production OTA baseline. |
-| Test distribution | The repo now has explicit EAS Submit profiles for Internal, Closed (`alpha`), Open (`beta`), and draft Production plus a manual checked/approved EAS Workflow for new Closed/Open candidates. The 2026-08-24 meeting record reports the Internal test as live. | Configure and verify the Closed tester audience and Open country/cap settings in Play Console, then copy the Console opt-in links. Prefer promoting the exact accepted Closed artifact to Open. |
+| Test distribution | The repo now has explicit EAS Submit profiles for Internal, Closed (`alpha`), Open (`beta`), and draft Production plus a manual checked/approved EAS Workflow for new Closed/Open candidates. Play Console contains prepared but deliberately unsubmitted Closed/Open changes for `1.0.3` / version code `20`; the Closed audience uses the existing Dayova internal list and both tracks target Germany. | Do not submit the four pending Closed/Open changes while Production review is active. After that review resolves, revalidate feedback, audience, country/cap, service-account permissions, and version-code precedence before submitting and running install QA. |
 | Listing and declarations | German listing, icon, feature graphic, eight current phone screenshots, Education category, Germany targeting, 13+ audience, content rating, privacy URL, Data safety, Ads, Health, Government, Financial features, App access, and review notes are in review. | Treat accepted declarations as review input, not proof that the open privacy/deletion implementation is complete. |
 | Reviewer access | Dedicated synthetic Clerk account has permanent RevenueCat `dayova_full_access`; Play instructions require no trial, purchase, OTP, 2FA, or special device. | Keep the account valid and synthetic until review is complete. Credentials stay only in Play Console. |
 | RevenueCat and billing | RevenueCat project `413fab77` is connected; production EAS has Android and iOS public SDK keys; production Convex has the server key. Old/exposed temporary keys were rotated or revoked. | Before the first 14-day trials expire, finish/verify the Play monthly and annual base plans, RevenueCat product linkage, and Play-signed purchase/restore/lifecycle QA under DAY-218. |
@@ -29,7 +30,9 @@ deobfuscation mapping file is the only recorded non-blocking warning.
 
 1. **Do not restart review unnecessarily.** Monitor Publishing overview, Policy
    status, owner email, and review messages; change the release only for a real
-   blocker or rejection.
+   blocker or rejection. The 2026-08-25 Closed/Open changes are intentionally
+   left under **Changes not yet submitted for review** because Google warned that
+   submitting them would cancel and restart the Production review.
 2. **Resolve the Play-owner notification.** Payments Center access is verified
    for the release operator, but Google reserves Play Console's Payments profile
    page for the original developer-account owner. Julius opens that page and

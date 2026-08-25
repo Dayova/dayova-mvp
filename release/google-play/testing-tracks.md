@@ -21,6 +21,24 @@ The store build always uses EAS build profile `production`, which resolves
 the `production` update channel, and remote auto-incremented Android version
 codes. Do not use `preview`, `apk-test`, or `com.dayova.dev` for a Play track.
 
+## Current rollout gate
+
+On 2026-08-25, Play Console was prepared with the existing production artifact
+`1.0.3` / version code `20` for Closed and Open testing, the existing Dayova
+internal email list for the Closed audience, and Germany for both tracks. These
+four changes are deliberately left under **Changes not yet submitted for
+review**. Google warned that submitting them would cancel and restart the
+Production review that has been running since 2026-08-23, so the restart was
+cancelled.
+
+Do not submit, rebuild, promote, or otherwise modify the Closed/Open rollout
+until the current Production review resolves. Then verify the final Production
+status, version-code precedence, feedback channel, audience, country/cap,
+service-account permissions, and listing state before resuming this runbook.
+The checked workflow remains the path for a genuinely new candidate; the saved
+version-code-20 Console changes are only a deferred draft and not evidence that
+either test track is available.
+
 ## Create a new test candidate
 
 Run the manual EAS Workflow from the exact Git revision approved for testing:
