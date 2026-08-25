@@ -95,10 +95,10 @@ as defense in depth without filtering PostHog SDK/system properties.
 Dayova uses pnpm 11.15.1 on Node 24.18.0. The pnpm version is repeated because
 each install surface selects its toolchain independently: `package.json`
 controls local Corepack, the shared `eas.json` profile controls native EAS
-Build workers, and `.eas/workflows/ci.yml` controls EAS Workflow jobs. Keep
-those pins exact and identical so no surface falls back to a different image
-default. Keep `pmOnFail: error` in `pnpm-workspace.yaml` so a mismatched pnpm
-binary fails immediately instead of downloading and running another version.
+Build workers, and the files in `.eas/workflows/` control EAS Workflow jobs.
+Keep those pins exact and identical so no surface falls back to a different
+image default. Keep `pmOnFail: error` in `pnpm-workspace.yaml` so a mismatched
+pnpm binary fails immediately instead of downloading and running another version.
 The removed pnpm 10 setting `packageManagerStrictVersion` must not be restored;
 pnpm 11 replaced it with `pmOnFail`. `tests/pnpm-toolchain.test.ts` guards this
 policy against drift.
@@ -170,6 +170,34 @@ measured build proves a different ceiling is safe. An apparent stop around
 `createBundle*JsAndAssets` must be diagnosed from the Gradle and Node processes
 before deleting caches; the one-shot release bundle is expected to complete
 while development builds retain watch mode.
+
+## Android Google Play Testing Releases
+
+Google Play Internal, Closed, Open, and Production releases all use the EAS
+`production` build profile. They are tracks of the same Play app and therefore
+must keep package `com.dayova`, the production EAS environment, production OTA
+channel/runtime, Play signing, and remote version-code auto-increment. Do not
+create track-specific package names or use the preview/internal-distribution
+build profiles for Play testing.
+
+The EAS Submit profile contract is:
+
+- `internal` → Play `internal`, released to the configured internal audience;
+- `closed` → Play `alpha`, released to the configured Closed audience;
+- `open` → Play `beta`, released to the configured Open audience; and
+- `production` → Play `production` as a draft, preserving a separate human
+  rollout decision.
+
+`.eas/workflows/android-play-test.yml` is the checked path for a new Closed or
+Open candidate. It runs the normal repository checks, builds a production AAB,
+shows immutable build provenance, requires approval, and only then submits to
+the selected test track. Prefer Play Console promotion when moving an already
+accepted Closed artifact to Open so the exact tested version code is retained;
+running the Open workflow creates a new candidate that must be validated again.
+
+Tester audiences, opt-in links, Open countries/cap, and promotion remain Play
+Console state and must not be encoded as secrets or personal data in Git. The
+operator runbook is `release/google-play/testing-tracks.md`.
 
 ## iOS Privacy Purpose Strings
 
