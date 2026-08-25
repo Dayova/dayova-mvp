@@ -9,11 +9,11 @@ availability.
 
 ## Current verdict
 
-**Submitted and in Google review.** Android `1.0.3` (version code `20`) was
-submitted to the Production track for Germany. Managed publishing is off, so an
-approval should publish automatically. Google Play's automated quick checks
-passed; the missing R8/ProGuard deobfuscation mapping file is the only recorded
-non-blocking warning.
+**Production state last verified 2026-08-23: submitted and in Google review.**
+Android `1.0.3` (version code `20`) was submitted to the Production track for
+Germany. Managed publishing is off, so an approval should publish automatically.
+Google Play's automated quick checks passed; the missing R8/ProGuard
+deobfuscation mapping file is the only recorded non-blocking warning.
 
 | Area | Current evidence | Remaining completion |
 | --- | --- | --- |
