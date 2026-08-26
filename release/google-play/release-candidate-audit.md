@@ -56,6 +56,29 @@ clean SDK 57 app/runtime `1.0.4` artifact. EAS remote Android version code is
 verification from its immutable build metadata. Never record build 20 in the
 OTA baseline, even if Google approves it before withdrawal.
 
+## Replacement candidate — built, not submitted
+
+| Item | Value |
+| --- | --- |
+| EAS build ID | `6df6e426-b361-46b5-8a17-a28f5be6d9ea` |
+| Version / version code | `1.0.4` / `21` |
+| Source revision | `1e3ee7d1efc5ac979fb509adb20654c95b879c15` |
+| Runtime version | `1.0.4` |
+| Expo SDK / channel | 57 / `production` |
+| Android application ID | `com.dayova` |
+| Native fingerprint | `8900552bda373cf9e678669a17c6f0dded5f755e` |
+| Embedded update ID | `c782fa10-3626-4aa3-b072-921580c9c31b` |
+| Embedded runtime / channel | `1.0.4` / `production` |
+| AAB size | 89,202,561 bytes |
+| SHA-256 | `58BDE082DE86C20DA05ADB9A04F1C94CA52E7FECCDA3A0414A695B5FB4E96CB9` |
+| Local path | `release/google-play/artifacts/dayova-1.0.4-build21.aab` (ignored by Git) |
+
+EAS finished this clean production-profile build on 2026-08-26. Bundletool
+inspection of the signed AAB confirmed package `com.dayova`, version `1.0.4`,
+version code `21`, the production update header, and resource runtime `1.0.4`.
+The artifact is the replacement candidate, but it has not been uploaded to Play
+and is not distribution or install evidence.
+
 The exact Apple submission already uses the intended boundary: iOS EAS build
 `a218ee2f-29f1-4873-9b49-36b52625cb71`, app/runtime `1.0.4`, build `55`, source
 `82c1ff3636f17c414ced684cc404f9cb99e9b854`, fingerprint

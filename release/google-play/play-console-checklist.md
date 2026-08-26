@@ -116,10 +116,14 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
 - [ ] Withdraw build 20 from Production review because SDK 57 must use the
       `1.0.4` runtime boundary. Keep Closed/Open untouched until the Production
       review is no longer active.
-- [ ] After withdrawal, discard the obsolete version-code-20 testing drafts,
-      build a clean app/runtime `1.0.4` artifact (expected version code `21`),
-      and verify its immutable EAS source, runtime, SDK, channel, identifier, and
-      fingerprint metadata.
+- [x] Build and artifact-audit clean app/runtime `1.0.4`, version code `21`:
+      EAS build `6df6e426-b361-46b5-8a17-a28f5be6d9ea`, source
+      `1e3ee7d1efc5ac979fb509adb20654c95b879c15`, fingerprint
+      `8900552bda373cf9e678669a17c6f0dded5f755e`, embedded update
+      `c782fa10-3626-4aa3-b072-921580c9c31b`, runtime/channel
+      `1.0.4`/`production`, AAB SHA-256
+      `58BDE082DE86C20DA05ADB9A04F1C94CA52E7FECCDA3A0414A695B5FB4E96CB9`.
+- [ ] After withdrawal, discard the obsolete version-code-20 testing drafts.
 - [ ] Submit and install-verify the replacement through the approved testing
       progression, then promote the same version code to Production review.
 - [ ] Install from the Play opt-in link on a clean physical Android device and a

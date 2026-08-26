@@ -100,14 +100,22 @@ The exact submitted SDK 57 binaries do not share a runtime:
   `78a442f2623d4417068794025c4d669bc9105be9`, source
   `82c1ff3636f17c414ced684cc404f9cb99e9b854`, through submission
   `85aa2c51-c562-485d-b28b-ff53e89ae9af`.
+- The clean Android replacement is now built but not submitted: EAS build
+  `6df6e426-b361-46b5-8a17-a28f5be6d9ea`, app/runtime `1.0.4`, version code
+  `21`, fingerprint `8900552bda373cf9e678669a17c6f0dded5f755e`, source
+  `1e3ee7d1efc5ac979fb509adb20654c95b879c15`. The signed AAB is 89,202,561
+  bytes with SHA-256
+  `58BDE082DE86C20DA05ADB9A04F1C94CA52E7FECCDA3A0414A695B5FB4E96CB9`;
+  its embedded update ID is `c782fa10-3626-4aa3-b072-921580c9c31b` and the
+  artifact reports runtime `1.0.4` on channel `production`.
 
 The Play candidate must be withdrawn and replaced. Shipping SDK 57 on runtime
 `1.0.3` would preserve the same OTA selector as already distributed SDK 56
 binaries, contradicting the DAY-248 runtime boundary. Even if Google approves it
-before withdrawal, never record build 20 as a verified OTA baseline. Build the
-replacement from the current guarded `1.0.4` release source with a version code
-greater than `20`, then distribute and install-verify that exact artifact before
-replacing the baseline.
+before withdrawal, never record build 20 as a verified OTA baseline. The clean
+replacement is code `21` from the current guarded `1.0.4` release source. After
+the active review is withdrawn, distribute and install-verify that exact
+artifact before replacing the baseline.
 
 The four prepared Closed/Open changes remain unsent while Production review is
 active. Do not submit, rebuild, or promote either testing track as part of this
