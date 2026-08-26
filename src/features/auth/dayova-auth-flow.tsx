@@ -60,10 +60,7 @@ import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthFlow, useAuthSession } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
-import {
-	getOtpCellLayout,
-	getResponsiveAuthChoiceLayout,
-} from "~/features/auth/auth-content-size-layout";
+import { getResponsiveAuthChoiceLayout } from "~/features/auth/auth-content-size-layout";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { PASSWORD_RESET_SUCCESS_PATH } from "~/lib/auth-routing";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";

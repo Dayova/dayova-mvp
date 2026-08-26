@@ -16,6 +16,13 @@ const user = {
 };
 const originalTimeZone = process.env.TZ;
 
+const createKnowledgeQuestions = () =>
+	Array.from({ length: 5 }, (_, index) => ({
+		id: `q${index + 1}`,
+		prompt: `Frage ${index + 1}`,
+		targetInsight: `Erkenntnis ${index + 1}`,
+	}));
+
 const createPlan = async (t: TestBackend) => {
 	const examDayEntryId = await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-06-05",
@@ -142,7 +149,7 @@ test("lists a materialless draft so the upload can be resumed", async () => {
 	]);
 });
 
-test("keeps drafts with school material out of the plan overview", async () => {
+test("keeps drafts with school material resumable from the plan overview", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
 	await t.run(async (ctx) => {
@@ -159,12 +166,16 @@ test("keeps drafts with school material out of the plan overview", async () => {
 		});
 	});
 
-	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual(
-		[],
-	);
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
+		expect.objectContaining({
+			id: learningPlanId,
+			status: "draft",
+			needsSchoolMaterial: false,
+		}),
+	]);
 });
 
-test("treats legacy documents without a source kind as school material", async () => {
+test("keeps legacy school-material drafts resumable", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 	const learningPlanId = await createPlan(t);
 	await t.run(async (ctx) => {
@@ -180,9 +191,43 @@ test("treats legacy documents without a source kind as school material", async (
 		});
 	});
 
-	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual(
-		[],
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
+		expect.objectContaining({
+			id: learningPlanId,
+			status: "draft",
+			needsSchoolMaterial: false,
+		}),
+	]);
+});
+
+test("keeps analyzed and generated plans resumable until acceptance", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlans", learningPlanId, {
+			status: "questionsReady",
+			diagnosticPlacement: "firstSession",
+		}),
 	);
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
+		expect.objectContaining({
+			id: learningPlanId,
+			status: "questionsReady",
+			diagnosticPlacement: "firstSession",
+			needsSchoolMaterial: false,
+		}),
+	]);
+
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlans", learningPlanId, { status: "generated" }),
+	);
+	await expect(t.query(api.learningPlans.listOverview, {})).resolves.toEqual([
+		expect.objectContaining({
+			id: learningPlanId,
+			status: "generated",
+		}),
+	]);
 });
 
 test("adds the knowledge validation split to theory sessions by default", async () => {
@@ -1098,6 +1143,190 @@ test("invalidates only educational session edits while calendar moves preserve c
 	expect(afterEducationalEdit?.sessions[0]?.contentGenerationStatus).toBe(
 		"queued",
 	);
+});
+
+test("list overview exposes unfinished creation progress and its first unanswered question", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	const questions = createKnowledgeQuestions();
+
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		questions,
+		sourceSummary: "Testmaterial",
+	});
+	await t.mutation(api.learningPlans.saveKnowledgeAnswer, {
+		learningPlanId,
+		questionId: "q1",
+		answer: "Antwort 1",
+	});
+	await t.mutation(api.learningPlans.saveKnowledgeAnswer, {
+		learningPlanId,
+		questionId: "q3",
+		answer: "Antwort 3",
+	});
+
+	const overviews = await t.query(api.learningPlans.listOverview, {});
+
+	expect(overviews).toHaveLength(1);
+	expect(overviews[0]).toMatchObject({
+		id: learningPlanId,
+		status: "questionsReady",
+		creationProgress: {
+			questionCount: 5,
+			answeredQuestionCount: 2,
+			firstUnansweredQuestionIndex: 1,
+		},
+	});
+});
+
+test("list overview reports when every creation question has been answered", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	const questions = createKnowledgeQuestions();
+
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		questions,
+		sourceSummary: "Testmaterial",
+	});
+	for (const question of questions) {
+		await t.mutation(api.learningPlans.saveKnowledgeAnswer, {
+			learningPlanId,
+			questionId: question.id,
+			answer: `Antwort ${question.id}`,
+		});
+	}
+
+	const overviews = await t.query(api.learningPlans.listOverview, {});
+
+	expect(overviews[0]).toMatchObject({
+		id: learningPlanId,
+		creationProgress: {
+			questionCount: 5,
+			answeredQuestionCount: 5,
+			firstUnansweredQuestionIndex: null,
+		},
+	});
+});
+
+test("list overview finds current answers after stale question generations", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	const questions = createKnowledgeQuestions();
+
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId,
+		questions,
+		sourceSummary: "Testmaterial",
+	});
+	await t.run(async (ctx) => {
+		for (let index = 0; index < 21; index += 1) {
+			await ctx.db.insert("learningPlanAnswers", {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				learningPlanId,
+				questionId: `stale-${index}`,
+				answer: `Alte Antwort ${index}`,
+				createdAt: index,
+				updatedAt: index,
+			});
+		}
+	});
+	await t.mutation(api.learningPlans.saveKnowledgeAnswer, {
+		learningPlanId,
+		questionId: "q1",
+		answer: "Aktuelle Antwort",
+	});
+
+	const overviews = await t.query(api.learningPlans.listOverview, {});
+
+	expect(overviews[0]).toMatchObject({
+		creationProgress: {
+			answeredQuestionCount: 1,
+			firstUnansweredQuestionIndex: 1,
+		},
+	});
+});
+
+test("list overview keeps unfinished creation progress scoped to its owner", async () => {
+	const t = convexTest(schema, modules);
+	const mine = t.withIdentity(user);
+	const other = t.withIdentity({ tokenIdentifier: "test:other-user" });
+	const myLearningPlanId = await createPlan(mine);
+	const otherLearningPlanId = await createPlan(other);
+	const questions = [
+		{
+			id: "q1",
+			prompt: "Frage 1",
+			targetInsight: "Erkenntnis 1",
+		},
+	];
+
+	await mine.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId: myLearningPlanId,
+		questions,
+		sourceSummary: "Meine Unterlagen",
+	});
+	await other.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId: otherLearningPlanId,
+		questions,
+		sourceSummary: "Andere Unterlagen",
+	});
+
+	const overviews = await mine.query(api.learningPlans.listOverview, {});
+
+	expect(overviews).toHaveLength(1);
+	expect(overviews[0]?.id).toBe(myLearningPlanId);
+	expect(overviews[0]?.id).not.toBe(otherLearningPlanId);
+});
+
+test("list overview keeps an unfinished creation visible alongside fifty accepted plans", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const creationPlanId = await createPlan(t);
+
+	await t.mutation(internal.learningPlans.storeKnowledgeQuestions, {
+		learningPlanId: creationPlanId,
+		questions: [
+			{
+				id: "q1",
+				prompt: "Frage 1",
+				targetInsight: "Erkenntnis 1",
+			},
+		],
+		sourceSummary: "Testmaterial",
+	});
+	await t.run(async (ctx) => {
+		for (let index = 0; index < 50; index += 1) {
+			await ctx.db.insert("learningPlans", {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				subject: `Fach ${index + 1}`,
+				examTypeLabel: "Klausur",
+				examDateKey: "2026-06-05",
+				examDateLabel: "5. Juni 2026",
+				examTime: "09:00",
+				durationMinutes: 90,
+				topicDescription: "Testthema",
+				status: "accepted",
+				createdAt: index,
+				updatedAt: index,
+			});
+		}
+		await ctx.db.patch("learningPlans", creationPlanId, { updatedAt: -1 });
+	});
+
+	const overviews = await t.query(api.learningPlans.listOverview, {});
+
+	expect(overviews).toHaveLength(51);
+	expect(overviews).toContainEqual(
+		expect.objectContaining({
+			id: creationPlanId,
+			status: "questionsReady",
+		}),
+	);
+	expect(overviews[0]?.id).toBe(creationPlanId);
+	expect(
+		overviews.filter((overview) => overview.status === "accepted"),
+	).toHaveLength(50);
 });
 
 beforeEach(() => {

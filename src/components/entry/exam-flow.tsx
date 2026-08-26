@@ -6,23 +6,23 @@ import Animated, {
 } from "react-native-reanimated";
 import {
 	Computer,
+	CalendarDays,
+	ChevronDown,
 	GraduationCap,
 	Mic,
 	NotebookPen,
 	Pencil,
 	Plus,
 } from "~/components/ui/icon";
-import { Input } from "~/components/ui/input";
-import { SnapCarouselSelector } from "~/components/ui/snap-carousel-selector";
-import { Text } from "~/components/ui/text";
-import { getDayKey } from "~/lib/day-key";
 import {
-	buildExamDateOptions,
-	findExamDateIndex,
-	formatAccessibleExamDate,
-	formatExamDateDay,
-	formatExamDateMonth,
-} from "~/lib/exam-date";
+	Field,
+	FieldAccessory,
+	FieldLabel,
+	FieldTrigger,
+} from "~/components/ui/field";
+import { Input } from "~/components/ui/input";
+import { Text } from "~/components/ui/text";
+import { formatAccessibleExamDate } from "~/lib/exam-date";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
@@ -193,40 +193,44 @@ function RadioIndicator({
 
 function ExamDateSelector({
 	selectedDate,
-	onSelect,
+	onOpen,
 }: {
 	selectedDate: Date;
-	onSelect: (date: Date) => void;
+	onOpen: () => void;
 }) {
-	const [dateOptions] = useState(() => buildExamDateOptions({ selectedDate }));
-	const selectedIndex = findExamDateIndex(dateOptions, selectedDate);
+	const { colors } = useDayovaTheme();
+	const selectedDateLabel = formatAccessibleExamDate(selectedDate);
 
 	return (
-		<View className="mt-6 w-full items-center">
-			<View className="mb-3 flex-row items-baseline justify-center gap-2">
+		<Field className="mt-6 mb-0">
+			<FieldLabel>Prüfungsdatum</FieldLabel>
+			<FieldTrigger
+				accessibilityLabel="Prüfungsdatum ändern"
+				accessibilityRole="button"
+				accessibilityValue={{ text: selectedDateLabel }}
+				onPress={onOpen}
+			>
+				<View className="mr-4 h-9 w-9 items-center justify-center rounded-full bg-accent">
+					<CalendarDays size={20} color={colors.primary} strokeWidth={2.1} />
+				</View>
 				<Text
-					className="font-poppins font-semibold text-display-counter text-text"
-					// The day number is a counter, so tabular figures avoid width jumps.
-					style={{ fontVariant: ["tabular-nums"] }}
+					className="flex-1 font-poppins font-semibold text-body-2 text-text"
+					numberOfLines={2}
 				>
-					{formatExamDateDay(selectedDate)}
+					{selectedDateLabel}
 				</Text>
-				<Text className="font-poppins font-semibold text-heading-2 text-primary">
-					{formatExamDateMonth(selectedDate)}
-				</Text>
-			</View>
-			<SnapCarouselSelector
-				accessibilityLabel="Prüfungstag auswählen"
-				accessibilityValue={formatAccessibleExamDate(selectedDate)}
-				decrementLabel="Vorheriger Tag"
-				getItemKey={getDayKey}
-				incrementLabel="Nächster Tag"
-				items={dateOptions}
-				onSelect={onSelect}
-				selectedIndex={selectedIndex}
-				showValueBubble={false}
-			/>
-		</View>
+				<FieldAccessory>
+					<ChevronDown
+						size={20}
+						color={colors.secondaryText}
+						strokeWidth={2.1}
+					/>
+				</FieldAccessory>
+			</FieldTrigger>
+			<Text className="mt-2 ml-1 font-poppins text-body-4 text-secondary-text">
+				Im Kalender auswählen
+			</Text>
+		</Field>
 	);
 }
 

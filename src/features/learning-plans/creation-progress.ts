@@ -13,6 +13,25 @@ export const LEARNING_PLAN_CREATION_STEPS = {
 export const LEARNING_PLAN_CREATION_TOTAL_STEPS =
 	LEARNING_PLAN_CREATION_STEPS.planGeneration;
 
+export const getSafeLearningPlanCreationProgress = ({
+	currentStep,
+	totalSteps = LEARNING_PLAN_CREATION_TOTAL_STEPS,
+}: {
+	currentStep: number;
+	totalSteps?: number;
+}) => {
+	const safeTotalSteps =
+		Number.isFinite(totalSteps) && totalSteps > 0
+			? totalSteps
+			: LEARNING_PLAN_CREATION_TOTAL_STEPS;
+	const safeCurrentStep = Math.min(
+		Math.max(Number.isFinite(currentStep) ? currentStep : 1, 1),
+		safeTotalSteps,
+	);
+
+	return { currentStep: safeCurrentStep, totalSteps: safeTotalSteps };
+};
+
 export const getExamEntryCreationProgress = (
 	step:
 		| "basics"
@@ -34,9 +53,8 @@ export const getExamEntryCreationProgress = (
 };
 
 export const getLearningPlanCreationProgressPercentage = (progress: number) => {
-	const safeProgress = Math.min(
-		Math.max(progress, LEARNING_PLAN_CREATION_STEPS.examType),
-		LEARNING_PLAN_CREATION_TOTAL_STEPS,
-	);
+	const { currentStep: safeProgress } = getSafeLearningPlanCreationProgress({
+		currentStep: progress,
+	});
 	return Math.round((safeProgress / LEARNING_PLAN_CREATION_TOTAL_STEPS) * 100);
 };

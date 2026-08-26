@@ -14,7 +14,11 @@ import { useLearningPlanCreationProgress } from "~/features/learning-plans/creat
 import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { dismissToOrReplace, goBackOrReplace } from "~/lib/navigation";
+import {
+	dismissToOrReplace,
+	goBackOrReplace,
+	useBackIntent,
+} from "~/lib/navigation";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -90,7 +94,9 @@ export default function LearningPlanAnalysisScreen() {
 			router,
 			planId ? learningPlanMaterialPath(planId) : "/learning-plans/new",
 		);
+		return true;
 	};
+	useBackIntent(true, goBack);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: LEARNING_PLAN_CREATION_STEPS.materialAnalysis,

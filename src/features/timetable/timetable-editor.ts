@@ -87,9 +87,10 @@ export const sortTimetableLessons = (
 
 export const createEmptyTimetableLesson = (
 	key: string,
+	dayOfWeek = 1,
 ): TimetableLessonDraft => ({
 	key,
-	dayOfWeek: 1,
+	dayOfWeek,
 	subject: "",
 	startTime: "08:00",
 	endTime: "08:45",
