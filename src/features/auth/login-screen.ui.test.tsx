@@ -802,6 +802,17 @@ describe("OnboardingRecoveryScreen", () => {
 		).toBeOnTheScreen();
 		expect(screen.queryByLabelText("E-Mail-Adresse")).toBeNull();
 		expect(screen.queryByLabelText("Passwort")).toBeNull();
+		const recoveryScroll = screen.getByTestId("onboarding-recovery-scroll");
+		expect(
+			within(recoveryScroll).getByRole("header", {
+				name: "Stelle deine Lernzeiten wieder her.",
+			}),
+		).toBeOnTheScreen();
+		expect(
+			within(recoveryScroll).getByRole("button", {
+				name: "Lernzeiten erneut speichern",
+			}),
+		).toBeOnTheScreen();
 
 		await fireEvent.press(screen.getByRole("checkbox", { name: "Dienstag" }));
 		expect(change).toHaveBeenCalledWith("studyDays", "Montag, Dienstag");
