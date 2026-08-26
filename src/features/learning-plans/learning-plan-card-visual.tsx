@@ -5,10 +5,12 @@ import {
 	GraduationCap,
 } from "~/components/ui/icon";
 import { NotchedActionCard } from "~/components/ui/notched-action-card";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { LearningPlanCardFooter } from "~/features/learning-plans/learning-plan-card-footer";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 type LearningPlanCardStatus = {
 	label: string;
@@ -86,6 +88,8 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 	const { colors } = useDayovaTheme();
 	const { model } = props;
 	const fixedTextScale = props.mode === "artwork";
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const shouldReflowCard = !fixedTextScale && shouldStackInlineContent;
 	const card = (
 		<NotchedActionCard
 			actionIcon={
@@ -105,15 +109,24 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 					})}
 		>
 			<View className="gap-2">
-				<View className="flex-row items-start justify-between gap-3">
+				<View
+					className={cn(
+						"items-start justify-between gap-3",
+						shouldReflowCard ? "flex-col" : "flex-row",
+					)}
+					testID="learning-plan-card-heading-row"
+				>
 					<Text
 						allowFontScaling={!fixedTextScale}
-						className="min-w-0 flex-1 pr-2 font-poppins font-semibold text-body-1 text-text"
-						numberOfLines={2}
+						className={cn(
+							"min-w-0 font-poppins font-semibold text-body-1 text-text",
+							shouldReflowCard ? "w-full" : "flex-1 pr-2",
+						)}
+						numberOfLines={shouldReflowCard ? undefined : 2}
 					>
 						{model.subject}
 					</Text>
-					<View className="shrink-0 flex-row gap-2">
+					<View className="shrink-0 flex-row flex-wrap gap-2">
 						<StatusBadge
 							status={model.status}
 							fixedTextScale={fixedTextScale}
@@ -139,7 +152,7 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 					/>
 					<Text
 						allowFontScaling={!fixedTextScale}
-						className="font-poppins text-body-4 text-secondary-text"
+						className="min-w-0 flex-1 font-poppins text-body-4 text-secondary-text"
 					>
 						{model.examDateLabel}
 					</Text>
@@ -147,8 +160,11 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 
 				<Text
 					allowFontScaling={!fixedTextScale}
-					className="max-w-[282px] font-poppins font-semibold text-body-2 text-text"
-					numberOfLines={2}
+					className={cn(
+						"font-poppins font-semibold text-body-2 text-text",
+						!shouldReflowCard && "max-w-[282px]",
+					)}
+					numberOfLines={shouldReflowCard ? undefined : 2}
 				>
 					{model.currentTitle}
 				</Text>
@@ -163,7 +179,7 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 					/>
 					<Text
 						allowFontScaling={!fixedTextScale}
-						className="font-poppins text-body-4 text-secondary-text"
+						className="min-w-0 flex-1 font-poppins text-body-4 text-secondary-text"
 					>
 						{model.state.progressLabel}
 					</Text>

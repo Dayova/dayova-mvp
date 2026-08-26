@@ -127,7 +127,6 @@ import { cn } from "~/lib/utils";
 // Password icons represent the current visibility state across this auth flow.
 // Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
-const PRIMARY_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const STUDY_DAY_SELECTION_DURATION_MS = 180;
 const STUDY_DAY_PRESS_IN_DURATION_MS = 80;
@@ -2830,9 +2829,7 @@ export function CreationLoaderScreen({
 					accessibilityState={{ busy: !error && !isComplete }}
 					role="status"
 					entering={reducedMotion ? undefined : FadeIn.duration(220)}
-					className="mt-10 text-center font-poppins font-semibold text-text"
-					// This launch-approved display size does not map to a shared text token.
-					style={{ fontSize: 20, lineHeight: 29 }}
+					className="mt-10 text-center font-poppins font-semibold text-body-1 text-text"
 				>
 					{error
 						? statusMessage
@@ -3580,67 +3577,38 @@ function AuthChoicePillButton({
 	const responsiveLayout = getResponsiveAuthChoiceLayout(fontScale);
 	const visibleLabel =
 		responsive && label === "Registrierung" ? "Registrie­rung" : label;
-	const [pressed, setPressed] = useState(false);
 
 	return (
-		<Pressable
+		<Button
 			accessibilityLabel={label}
-			accessibilityRole="button"
+			className={cn("w-full", !responsive && "border-0 px-0 py-0 shadow-none")}
 			onPress={onPress}
-			onPressIn={() => setPressed(true)}
-			onPressOut={() => setPressed(false)}
-			style={{
+			variant={tone === "gradient" ? "default" : "neutral"}
+			style={({ pressed }) => ({
 				height: responsive ? undefined : height,
 				minHeight: responsive ? responsiveLayout.buttonMinHeight : undefined,
+				opacity: pressed ? 0.78 : 1,
 				borderRadius: responsive
 					? DAYOVA_DESIGN_SYSTEM.radius.button
 					: height / 2,
-				borderColor: tone === "gradient" ? COLORS.surface : COLORS.border,
-				borderWidth: responsive
-					? DAYOVA_DESIGN_SYSTEM.size.button.borderWidth
-					: 0,
-				overflow: "hidden",
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: tone === "dark" ? COLORS.buttonNeutral : "transparent",
-				paddingHorizontal: responsive ? 24 : 0,
-				paddingVertical: responsive ? 12 : 0,
-				opacity: pressed ? 0.78 : 1,
-			}}
+			})}
 		>
-			{tone === "gradient" ? (
-				<LinearGradient
-					colors={PRIMARY_GRADIENT.colors}
-					start={PRIMARY_GRADIENT.start}
-					end={PRIMARY_GRADIENT.end}
-					style={{
-						position: "absolute",
-						top: 0,
-						right: 0,
-						bottom: 0,
-						left: 0,
-					}}
-				/>
-			) : null}
 			<Text
-				allowFontScaling={responsive ? false : undefined}
 				className={
 					responsive
-						? "text-center font-poppins font-semibold text-body-2"
+						? "w-full text-center font-poppins font-semibold text-body-2"
 						: "font-poppins font-semibold"
 				}
 				style={{
-					color: COLORS.surface,
-					fontSize: responsive ? responsiveLayout.bodyFontSize : 16 * scale,
-					lineHeight: responsive ? responsiveLayout.bodyLineHeight : 24 * scale,
+					fontSize: responsive ? undefined : 16 * scale,
+					lineHeight: responsive ? undefined : 24 * scale,
 					includeFontPadding: false,
-					width: responsive ? "100%" : undefined,
 					textAlignVertical: "center",
 				}}
 			>
 				{visibleLabel}
 			</Text>
-		</Pressable>
+		</Button>
 	);
 }
 

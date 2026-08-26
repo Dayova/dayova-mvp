@@ -51,7 +51,10 @@ import {
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
-import { EMPTY_DASHBOARD_PRIMARY_ACTION } from "./dashboard-empty-state";
+import {
+	getDashboardNextStepFallbackAction,
+	type DashboardNextStepFallbackAction,
+} from "./dashboard-empty-state";
 
 const triggerDaySelectionHaptic = () => {
 	void triggerSelectionHaptic({
@@ -397,17 +400,19 @@ function LearningSessionCard({
 }
 
 function NextLearningStepCard({
+	fallbackAction,
 	item,
 	isLoading,
 	todayKey,
+	onOpenFallback,
 	onOpenItem,
-	onPlanFirstExam,
 }: {
+	fallbackAction: DashboardNextStepFallbackAction;
 	item: DashboardAgendaItem | undefined;
 	isLoading: boolean;
 	todayKey: string;
+	onOpenFallback: () => void;
 	onOpenItem: (item: DashboardAgendaItem) => void;
-	onPlanFirstExam: () => void;
 }) {
 	const { colors } = useDayovaTheme();
 	const title = isLoading
@@ -421,14 +426,14 @@ function NextLearningStepCard({
 		? "Lernplan wird geladen …"
 		: item
 			? getNextStepFooter(item, todayKey)
-			: EMPTY_DASHBOARD_PRIMARY_ACTION.label;
+			: fallbackAction.label;
 	const handlePress = () => {
 		if (isLoading) return;
 		if (item) {
 			onOpenItem(item);
 			return;
 		}
-		onPlanFirstExam();
+		onOpenFallback();
 	};
 
 	return (
@@ -446,14 +451,14 @@ function NextLearningStepCard({
 								dateLabel,
 								timeLabel,
 							})
-						: EMPTY_DASHBOARD_PRIMARY_ACTION.label
+						: fallbackAction.label
 			}
 			accessibilityHint={
 				isLoading
 					? "Warte, bis dein Lernplan geladen wurde."
 					: item
 						? "Öffnet deinen persönlichen Lernplan."
-						: EMPTY_DASHBOARD_PRIMARY_ACTION.accessibilityHint
+						: fallbackAction.accessibilityHint
 			}
 			disabled={isLoading}
 			onPress={handlePress}
@@ -978,6 +983,10 @@ export function DashboardScreen() {
 		api.timetables.getMine,
 		user && isConvexAuthenticated ? {} : "skip",
 	);
+	const learningPlans = useQuery(
+		api.learningPlans.listOverview,
+		user && isConvexAuthenticated ? {} : "skip",
+	);
 	const allRelevantAgendaItems = entriesByDay
 		? queriedDayKeys.flatMap((dayKey) =>
 				(entriesByDay[dayKey] ?? []).map((entry) =>
@@ -996,6 +1005,9 @@ export function DashboardScreen() {
 		todayKey,
 	});
 	const nextActionableId = nextLearningStep?.entry.id;
+	const nextStepFallbackAction = getDashboardNextStepFallbackAction({
+		hasLearningPlans: Boolean(learningPlans?.length),
+	});
 	const selectedWeekday = formatGermanUiText(
 		new Intl.DateTimeFormat("de-DE", { weekday: "long" }).format(selectedDate),
 	);
@@ -1072,9 +1084,9 @@ export function DashboardScreen() {
 		() => router.push("/learning-plans"),
 		[router],
 	);
-	const planFirstExam = useCallback(
-		() => router.push(EMPTY_DASHBOARD_PRIMARY_ACTION.route),
-		[router],
+	const openNextStepFallback = useCallback(
+		() => router.push(nextStepFallbackAction.route),
+		[nextStepFallbackAction.route, router],
 	);
 	const openTimetable = useCallback(() => router.push("/timetable"), [router]);
 
@@ -1125,11 +1137,14 @@ export function DashboardScreen() {
 			>
 				<View className="flex-row gap-3 px-6 pt-10 pb-5">
 					<NextLearningStepCard
+						fallbackAction={nextStepFallbackAction}
 						item={nextLearningStep}
-						isLoading={entriesByDay === undefined}
+						isLoading={
+							entriesByDay === undefined || learningPlans === undefined
+						}
 						todayKey={todayKey}
+						onOpenFallback={openNextStepFallback}
 						onOpenItem={openItem}
-						onPlanFirstExam={planFirstExam}
 					/>
 					<WeeklyProgressCard
 						isLoading={entriesByDay === undefined}
