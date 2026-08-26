@@ -293,22 +293,22 @@ a short edge-directed interaction that leaves the first intro page selected,
 the duration selector's 30-to-90-minute swipe, and routed back navigation to the
 name step with `Stack Test` preserved.
 
-> Coverage: 31.41-second video; 31 full-timeline frames sampled at 1 fps
-> (1-second interval); 2 contact sheet(s); 35 additional frames from
-> 00:00:02.000 to 00:00:10.000 at 4 fps; 46 additional frames from
-> 00:00:20.000 to 00:00:31.400 at 4 fps; no audio stream.
+> Coverage: 77.34-second video; 77 full-timeline frames sampled at 1 fps
+> (1-second interval); 5 contact sheet(s); 50 additional frames from
+> 00:00:44.000 to 00:00:56.000 at 4 fps; 46 additional frames from
+> 00:01:03.000 to 00:01:12.000 at 4 fps; no audio stream.
 
 Timestamped observations:
 
-- `00:02.000–00:03.750`: a bounded left swipe advances intro page one to page
+- `00:46.000–00:47.750`: a bounded left swipe advances intro page one to page
   two.
-- `00:05.000–00:05.750`: the reverse bounded swipe restores page one.
-- `00:05.750–00:09.500`: page one remains selected after the short
+- `00:49.000–00:50.000`: the reverse bounded swipe restores page one.
+- `00:50.000–00:53.750`: page one remains selected after the short
   edge-directed interaction; this does not claim a native interactive-pop
   preview because simulator automation did not render one.
-- `00:20.000–00:25.250`: the duration step starts at 30 minutes and the
-  selector advances through 60 to 90 minutes.
-- `00:27.500–00:31.400`: the routed back action returns exactly one route to
+- `01:04.000–01:09.250`: the duration step starts at 30 minutes and the
+  selector advances through 45 to 90 minutes.
+- `01:11.000–01:12.000`: the routed back action returns exactly one route to
   the name step and retains `Stack Test`.
 
 The iOS simulator recording does not prove the physical interactive edge-pop
@@ -323,28 +323,27 @@ to `1.0` for this pager-specific run and restored to `2.0` immediately after
 capture. The separate maximum-text recordings above remain authoritative for
 the responsive `intro-responsive-scroll` layout.
 
-> Coverage: 131.49-second video; 80 full-timeline frames sampled at 0.608421
-> fps (1.643598-second interval); 5 contact sheet(s); 43 additional frames from
-> 00:00:43.000 to 00:00:54.000 at 4 fps; 48 additional frames from
-> 00:01:10.000 to 00:01:22.000 at 4 fps; 58 additional frames from
-> 00:01:32.000 to 00:01:46.000 at 4 fps; 46 additional frames from
-> 00:02:00.000 to 00:02:11.400 at 4 fps; 44 additional frames from
-> 00:01:44.000 to 00:01:53.000 at 4 fps; no audio stream.
+> Coverage: 148.06-second video; 80 full-timeline frames sampled at 0.540308
+> fps (1.850795-second interval); 5 contact sheet(s); 61 additional frames from
+> 00:00:59.000 to 00:01:12.000 at 4 fps; 48 additional frames from
+> 00:01:34.000 to 00:01:46.000 at 4 fps; 64 additional frames from
+> 00:01:59.000 to 00:02:15.000 at 4 fps; 35 additional frames from
+> 00:02:19.000 to 00:02:27.800 at 4 fps; no audio stream.
 
 Timestamped observations:
 
-- `00:45.000–00:46.250`: the bounded pager swipe advances intro page one to
-  page two; `00:47.500–00:48.500` restores page one.
-- `01:11.750–01:15.250`: the duration selector advances from 30 through 45
-  and 60 to 90 minutes.
-- `01:16.750–01:19.500`: Android renders the predictive-back arrow and route
-  transition; by `01:19.750`, exactly the name route is visible with
+- `01:03.000–01:05.750`: the bounded pager swipe advances intro page one to
+  page two; `01:07.000–01:08.500` restores page one.
+- `01:36.750–01:39.000`: the duration selector advances from 30 through 45
+  to 90 minutes.
+- `01:41.000–01:43.250`: Android renders the predictive-back arrow and route
+  transition; by `01:43.500`, exactly the name route is visible with
   `Stack Test` preserved.
-- `01:40.500–01:43.500`: the native time picker opens and the first system back
+- `02:02.750–02:04.500`: the native time picker opens and the first system back
   dismisses it while retaining the underlying start-time route.
-- `01:46.500–01:52.000`: the picker reopens and accepting it produces the
+- `02:07.750–02:12.000`: the picker reopens and accepting it produces the
   confirmed `16:00 Uhr` answer.
-- `02:04.000–02:05.250`: the shared bounded grade sheet opens and the first
+- `02:23.250–02:25.000`: the shared bounded grade sheet opens and the first
   system back dismisses it without changing the empty grade step.
 
 This closes the Android emulator predictive-back and sheet-first dismissal
