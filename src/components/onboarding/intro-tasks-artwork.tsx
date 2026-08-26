@@ -1,4 +1,4 @@
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import { SessionCard } from "~/features/learning-plans/learning-plan-ui";
 import type { PlanSession } from "~/features/learning-plans/types";
@@ -76,30 +76,21 @@ export function IntroTasksArtwork({
 			testID="intro-tasks-artwork"
 		>
 			<View
-				className="relative h-[242px] w-[356px]"
+				className="h-[242px] w-[356px] items-center justify-center"
 				// The fixed artboard scales to the runtime frame while preserving its geometry.
 				style={{ transform: [{ scale }] }}
 			>
-				{learningSteps.map((session, index) => (
-					<View
-						key={session.id}
-						// Indexed offsets are part of the fixed overlapping illustration geometry.
-						style={[artworkGeometry.card, { top: index * 78 }]}
-					>
-						<SessionCard mode="artwork" session={session} />
-					</View>
-				))}
+				<View className="w-[336px] gap-2" testID="intro-tasks-card-stack">
+					{learningSteps.map((session, index) => (
+						<SessionCard
+							key={session.id}
+							mode="artwork"
+							session={session}
+							testID={`intro-task-card-${index + 1}`}
+						/>
+					))}
+				</View>
 			</View>
 		</View>
 	);
 }
-
-const artworkGeometry = StyleSheet.create({
-	card: {
-		position: "absolute",
-		left: 6,
-		width: 344,
-		transform: [{ scale: 0.74 }],
-		transformOrigin: [0, 0, 0],
-	},
-});

@@ -46,4 +46,18 @@ describe("IntroTasksArtwork", () => {
 
 		expect(artwork.props.style).toEqual({ width: 294, height: 200 });
 	});
+
+	test("centers equal-height cards with one consistent gap", async () => {
+		const screen = await render(<IntroTasksArtwork />);
+		const hidden = { includeHiddenElements: true };
+		const stack = screen.getByTestId("intro-tasks-card-stack", hidden);
+
+		expect(stack.props.className).toContain("w-[336px]");
+		expect(stack.props.className).toContain("gap-2");
+		for (const index of [1, 2, 3]) {
+			expect(
+				screen.getByTestId(`intro-task-card-${index}`, hidden).props.className,
+			).toContain("h-[72px]");
+		}
+	});
 });
