@@ -129,6 +129,30 @@ const sessionContentChoiceValidator = v.object({
 	text: v.string(),
 });
 
+const accessEntitlementWithoutTrialValidator = v.object({
+	ownerTokenIdentifier: v.string(),
+	userId: v.id("users"),
+	revenueCatEntitlementActive: v.optional(v.boolean()),
+	subscriptionExpiresAt: v.optional(v.number()),
+	subscriptionGraceExpiresAt: v.optional(v.number()),
+	subscriptionProductId: v.optional(v.string()),
+	subscriptionStore: v.optional(v.string()),
+	subscriptionWillRenew: v.optional(v.boolean()),
+	subscriptionBillingIssueDetectedAt: v.optional(v.number()),
+	subscriptionManagementUrl: v.optional(v.string()),
+	subscriptionVerifiedAt: v.optional(v.number()),
+	createdAt: v.number(),
+	updatedAt: v.number(),
+});
+
+const accessEntitlementWithTrialValidator =
+	accessEntitlementWithoutTrialValidator.extend({
+		trialStartedAt: v.number(),
+		trialExpiresAt: v.number(),
+		trialReminderAt: v.number(),
+		trialTermsVersion: v.string(),
+	});
+
 export default defineSchema({
 	users: defineTable({
 		tokenIdentifier: v.string(),
@@ -148,25 +172,12 @@ export default defineSchema({
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
 		.index("by_clerkId", ["clerkId"])
 		.index("by_email", ["email"]),
-	accessEntitlements: defineTable({
-		ownerTokenIdentifier: v.string(),
-		userId: v.id("users"),
-		trialStartedAt: v.number(),
-		trialExpiresAt: v.number(),
-		trialReminderAt: v.number(),
-		trialTermsVersion: v.string(),
-		revenueCatEntitlementActive: v.optional(v.boolean()),
-		subscriptionExpiresAt: v.optional(v.number()),
-		subscriptionGraceExpiresAt: v.optional(v.number()),
-		subscriptionProductId: v.optional(v.string()),
-		subscriptionStore: v.optional(v.string()),
-		subscriptionWillRenew: v.optional(v.boolean()),
-		subscriptionBillingIssueDetectedAt: v.optional(v.number()),
-		subscriptionManagementUrl: v.optional(v.string()),
-		subscriptionVerifiedAt: v.optional(v.number()),
-		createdAt: v.number(),
-		updatedAt: v.number(),
-	}).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
+	accessEntitlements: defineTable(
+		v.union(
+			accessEntitlementWithoutTrialValidator,
+			accessEntitlementWithTrialValidator,
+		),
+	).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	validationUserStates: defineTable({
 		ownerTokenIdentifier: v.string(),
 		userId: v.id("users"),

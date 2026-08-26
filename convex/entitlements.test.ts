@@ -71,6 +71,81 @@ test("authenticated account without an entitlement requires activation", async (
 	});
 });
 
+test("paid-only entitlement remains valid without trial metadata", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.users.syncCurrentUser, {});
+	const now = Date.parse("2026-07-28T10:00:00.000Z");
+	const expiresAt = Date.parse("2026-08-28T10:00:00.000Z");
+
+	await t.run(async (ctx) => {
+		const storedUser = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (query) =>
+				query.eq("tokenIdentifier", user.tokenIdentifier),
+			)
+			.unique();
+		if (!storedUser) throw new Error("Expected the test user to exist.");
+
+		await ctx.db.insert("accessEntitlements", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			userId: storedUser._id,
+			revenueCatEntitlementActive: true,
+			subscriptionExpiresAt: expiresAt,
+			subscriptionProductId: "dayova_annual_web",
+			subscriptionStore: "rc_billing",
+			subscriptionVerifiedAt: now,
+			subscriptionWillRenew: true,
+			createdAt: now,
+			updatedAt: now,
+		});
+	});
+
+	await expect(
+		t.query(api.entitlements.getMyAccess, { now }),
+	).resolves.toMatchObject({
+		canUseApp: true,
+		state: "paid",
+		subscriptionExpiresAt: expiresAt,
+	});
+	await expect(
+		t.query(api.entitlements.getMyAccess, { now: expiresAt }),
+	).resolves.toMatchObject({
+		canUseApp: false,
+		state: "expired",
+		subscriptionExpiresAt: expiresAt,
+	});
+});
+
+test("partial trial metadata is rejected", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.users.syncCurrentUser, {});
+	const now = Date.parse("2026-07-28T10:00:00.000Z");
+
+	await expect(
+		t.run(async (ctx) => {
+			const storedUser = await ctx.db
+				.query("users")
+				.withIndex("by_tokenIdentifier", (query) =>
+					query.eq("tokenIdentifier", user.tokenIdentifier),
+				)
+				.unique();
+			if (!storedUser) throw new Error("Expected the test user to exist.");
+
+			const partialTrialEntitlement = {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				userId: storedUser._id,
+				trialStartedAt: now,
+				createdAt: now,
+				updatedAt: now,
+			};
+			await ctx.db.insert(
+				"accessEntitlements",
+				partialTrialEntitlement as never,
+			);
+		}),
+	).rejects.toThrow();
+});
+
 test("trial access expires exactly 14 days after activation", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));

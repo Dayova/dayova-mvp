@@ -64,6 +64,28 @@ const toPaidAccess = (entitlement: {
 	willRenew: entitlement.subscriptionWillRenew ?? false,
 });
 
+const toExpiredAccess = (
+	entitlement: {
+		subscriptionExpiresAt?: number;
+		subscriptionGraceExpiresAt?: number;
+		subscriptionManagementUrl?: string;
+		subscriptionProductId?: string;
+		subscriptionStore?: string;
+		subscriptionWillRenew?: boolean;
+	},
+	trialAccess?: ReturnType<typeof toTrialAccess>,
+) => ({
+	...trialAccess,
+	canUseApp: false,
+	managementUrl: entitlement.subscriptionManagementUrl,
+	productId: entitlement.subscriptionProductId,
+	state: "expired" as const,
+	store: entitlement.subscriptionStore,
+	subscriptionExpiresAt: entitlement.subscriptionExpiresAt,
+	subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
+	willRenew: entitlement.subscriptionWillRenew ?? false,
+});
+
 const getCurrentAccess = (
 	entitlement: Doc<"accessEntitlements">,
 	now: number,
@@ -75,21 +97,22 @@ const getCurrentAccess = (
 		return toPaidAccess(entitlement);
 	}
 
-	if (now >= entitlement.trialExpiresAt) {
-		return {
-			...toTrialAccess(entitlement),
-			canUseApp: false,
-			managementUrl: entitlement.subscriptionManagementUrl,
-			productId: entitlement.subscriptionProductId,
-			state: "expired" as const,
-			store: entitlement.subscriptionStore,
-			subscriptionExpiresAt: entitlement.subscriptionExpiresAt,
-			subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
-			willRenew: entitlement.subscriptionWillRenew ?? false,
-		};
+	if (!("trialStartedAt" in entitlement)) {
+		return toExpiredAccess(entitlement);
 	}
 
-	return toTrialAccess(entitlement);
+	const trialAccess = toTrialAccess({
+		trialStartedAt: entitlement.trialStartedAt,
+		trialExpiresAt: entitlement.trialExpiresAt,
+		trialReminderAt: entitlement.trialReminderAt,
+		trialTermsVersion: entitlement.trialTermsVersion,
+	});
+
+	if (now >= entitlement.trialExpiresAt) {
+		return toExpiredAccess(entitlement, trialAccess);
+	}
+
+	return trialAccess;
 };
 
 const getCurrentUser = async (ctx: MutationCtx | QueryCtx) => {
@@ -204,6 +227,7 @@ export const deliverTrialReminder = internalMutation({
 			.unique();
 		if (
 			!entitlement ||
+			!("trialStartedAt" in entitlement) ||
 			entitlement.trialExpiresAt !== args.expectedTrialExpiresAt
 		) {
 			return { created: false };
