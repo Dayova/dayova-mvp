@@ -452,6 +452,23 @@ describe("production release configuration", () => {
 		expect(easConfig.build.production.env.APP_VARIANT).toBe("production");
 	});
 
+	it("isolates OTA staging builds from the production channel", () => {
+		const easConfig = JSON.parse(
+			readFileSync(new URL("../eas.json", import.meta.url), "utf8"),
+		);
+
+		expect(easConfig.build["ota-staging"]).toMatchObject({
+			extends: "base",
+			distribution: "internal",
+			channel: "ota-staging",
+			environment: "production",
+			env: { APP_VARIANT: "production" },
+		});
+		expect(easConfig.build["ota-staging"].channel).not.toBe(
+			easConfig.build.production.channel,
+		);
+	});
+
 	it("honors the explicit Watchman opt-in for local release exports", () => {
 		const metroConfigPath = fileURLToPath(
 			new URL("../metro.config.js", import.meta.url),

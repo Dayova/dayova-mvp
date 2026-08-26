@@ -125,15 +125,20 @@ review. The Google Play command center and testing runbook live in
 
 ## Staging, promotion, and rollback
 
-Publish the candidate to a branch that is not connected to the production
-channel, for both platforms and with the production environment. Verify the
-result reports runtime `1.0.4`, then install and launch it through both replacement
-binaries. This staging group proves runtime compatibility; it is not connected
-to production. After the schema 2 baseline lands and the main workflow is green,
-the automatic production job creates the production bundle from that exact main
-commit. If a release owner instead promotes a code-identical staging group
-manually, use `eas update:republish --group <group> --destination-channel
-production` so the verified bundle is not rebuilt.
+Build dedicated internal QA binaries for both platforms with the `ota-staging`
+profile from the exact release source. This profile uses production app config
+and EAS environment but embeds the isolated `ota-staging` channel. Publish the
+candidate to that channel, verify the result reports runtime `1.0.4`, and record
+the update ID actually downloaded by each QA binary. Do not remap the production
+channel or publish/republish to it for staging.
+
+The staging builds prove the new-runtime update path without exposing production
+binaries. They are not substitutes for installing and checking the exact store
+artifacts, and their native fingerprints differ because the embedded channel is
+part of native configuration. After the exact production binaries are
+distributed and install-verified, the schema 2 baseline lands, and the main
+workflow is green, the automatic production job creates the production update
+from that exact main commit.
 
 If a production OTA is unhealthy:
 
@@ -154,7 +159,8 @@ Automatic publication may resume only after all of the following are true:
 - their clean-source provenance and embedded updates are recorded in one schema 2
   baseline change;
 - the EAS production fingerprint job matches both exact builds;
-- a runtime `1.0.4` staging update succeeds on iOS and Android;
+- a runtime `1.0.4` update succeeds on dedicated `ota-staging` iOS and Android
+  QA builds, with both downloaded update IDs recorded;
 - a deliberately mismatched native fingerprint still fails closed; and
 - the baseline change lands on `main` and the complete main workflow is green.
 

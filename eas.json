@@ -37,6 +37,15 @@
         "APP_VARIANT": "production"
       }
     },
+    "ota-staging": {
+      "extends": "base",
+      "distribution": "internal",
+      "channel": "ota-staging",
+      "environment": "production",
+      "env": {
+        "APP_VARIANT": "production"
+      }
+    },
     "apk-test": {
       "extends": "base",
       "distribution": "internal",
