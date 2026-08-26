@@ -19,6 +19,12 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
   The stable implementation contract and canonical product-decision pointer
   live in
   [ADR 0002](adr/0002-onboarding-e2e-launch-flow.md).
+- Onboarding profile/account steps are native history entries in the existing
+  auth stack. Answers and field errors live above route screens; the route
+  history, not a parallel `activeIndex`, owns forward/back navigation. The
+  three homogeneous intro pages remain one native pager route, and a cold
+  direct step URL falls back to the auth choice. See
+  [mobile-app ADR 0003](../mobile-app/adr/0003-model-onboarding-as-native-stack-history.md).
 - Clerk `unsafeMetadata.schoolType` stores only the stable bounded `Schulart`
   key. Exact generic legacy labels are normalized on authentication; ambiguous
   values such as school names are removed without including the raw value in

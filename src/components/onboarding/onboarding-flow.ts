@@ -99,14 +99,6 @@ export function isOnboardingStepReady(
 	return getOnboardingStepDecision(step, answers).error === null;
 }
 
-export function getNextOnboardingStepIndex(
-	activeIndex: number,
-	stepCount: number,
-) {
-	if (stepCount <= 0) return 0;
-	return Math.min(Math.max(activeIndex + 1, 0), stepCount - 1);
-}
-
 export const getOnboardingRegistrationPayload = (
 	answers: OnboardingAnswers,
 ) => ({

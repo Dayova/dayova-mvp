@@ -1,5 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, router, Stack } from "expo-router";
+import { useFocusEffect } from "expo-router/react-navigation";
 import {
 	type ReactNode,
 	type RefObject,
@@ -51,9 +52,7 @@ import {
 } from "~/components/onboarding/intro-pagination";
 import { IntroPlanArtwork } from "~/components/onboarding/intro-plan-artwork";
 import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
-import { OnboardingEdgeBackGesture } from "~/components/onboarding/onboarding-edge-back-gesture";
 import {
-	getNextOnboardingStepIndex,
 	getOnboardingPersistenceAnswers,
 	getOnboardingRegistrationPayload,
 	getOnboardingStepDecision,
@@ -108,18 +107,24 @@ import {
 	type LearningDayLabel,
 } from "~/features/learning-times/learning-time-days";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
-import { PASSWORD_RESET_SUCCESS_PATH } from "~/lib/auth-routing";
+import {
+	ONBOARDING_CREATION_PATH,
+	PASSWORD_RESET_SUCCESS_PATH,
+} from "~/lib/auth-routing";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { GERMAN_FEDERAL_STATES } from "~/lib/federal-states";
 import { GRADE_OPTIONS } from "~/lib/grades";
 import { useBackIntent } from "~/lib/navigation";
+import { goBackOrReplace } from "~/lib/navigation-actions";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
 import {
-	type RegistrationStage,
-	shouldEnableRegistrationEdgeBack,
-	shouldEnableRegistrationRouteBack,
-	shouldHandleRegistrationBack,
-} from "~/lib/registration-navigation";
+	getNextOnboardingStep,
+	getOnboardingStep,
+	getOnboardingStepPath,
+	getOnboardingStepProgress,
+	type OnboardingProfileStep,
+	type OnboardingStepId,
+} from "~/features/auth/onboarding-route-model";
 import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -160,88 +165,6 @@ type IntroStep = {
 	illustration: "plan" | "tasks" | "upload";
 };
 
-type RangeStep = {
-	kind: "range";
-	id: "studyTime";
-	title: string;
-	description: string;
-	field: "studyTime";
-	values: readonly number[];
-};
-
-type FactStep = {
-	kind: "fact";
-	id: "study-time-fact";
-	title: string;
-	description: string;
-};
-
-type DaysStep = {
-	kind: "days";
-	id: "studyDays";
-	title: string;
-	description: string;
-	field: "studyDays";
-};
-
-type TimeStep = {
-	kind: "time";
-	id: "learningTime";
-	title: string;
-	description: string;
-	field: "learningTime";
-};
-
-type PayoffStep = {
-	kind: "payoff";
-	id: "learning-time-payoff";
-	title: string;
-	description: string;
-};
-
-type TextStep = {
-	kind: "text";
-	id: "name" | "email" | "password";
-	title: string;
-	description: string;
-	field: "name" | "email" | "password";
-	placeholder: string;
-	secure?: boolean;
-	keyboardType?: TextInputProps["keyboardType"];
-	autoComplete?: TextInputProps["autoComplete"];
-	textContentType?: TextInputProps["textContentType"];
-};
-
-type WheelStep = {
-	kind: "wheel";
-	id:
-		| "state"
-		| "schoolType"
-		| "grade"
-		| "birthYear"
-		| "birthMonth"
-		| "birthDay";
-	title: string;
-	description: string;
-	field:
-		| "state"
-		| "schoolType"
-		| "grade"
-		| "birthYear"
-		| "birthMonth"
-		| "birthDay";
-};
-
-type OnboardingStep =
-	| IntroStep
-	| RangeStep
-	| FactStep
-	| DaysStep
-	| TimeStep
-	| PayoffStep
-	| TextStep
-	| WheelStep;
-
 const INTRO_STEPS = [
 	{
 		kind: "intro",
@@ -268,125 +191,6 @@ const INTRO_STEPS = [
 		illustration: "plan",
 	},
 ] as const satisfies readonly IntroStep[];
-const FLOW_STEPS: readonly OnboardingStep[] = [
-	...INTRO_STEPS,
-	{
-		kind: "text",
-		id: "name",
-		title: "Wie dürfen wir dich nennen?",
-		description: "Damit sich Dayova von Anfang an persönlich anfühlt.",
-		field: "name",
-		placeholder: "Dein Name",
-		autoComplete: "name",
-		textContentType: "name",
-	},
-	{
-		kind: "range",
-		id: "studyTime",
-		title: "Wie lange möchtest du pro Lerntag einplanen?",
-		description:
-			"Damit legst du die Dauer deiner ersten Lernzeiten fest. Du kannst sie später ändern.",
-		field: "studyTime",
-		values: ONBOARDING_DURATION_OPTIONS,
-	},
-	{
-		kind: "fact",
-		id: "study-time-fact",
-		title: "Dein Lernplan braucht echte Zeitfenster.",
-		description: "Dauer, Tage und Uhrzeit werden im Lernplan gespeichert.",
-	},
-	{
-		kind: "days",
-		id: "studyDays",
-		title: "An welchen Tagen kannst du lernen?",
-		description:
-			"Wähle alle passenden Tage. Für jeden entsteht dieselbe erste Lernzeit.",
-		field: "studyDays",
-	},
-	{
-		kind: "time",
-		id: "learningTime",
-		title: "Wann möchtest du an diesen Tagen starten?",
-		description:
-			"Dayova kombiniert diese Startzeit mit deiner gewählten Dauer.",
-		field: "learningTime",
-	},
-	{
-		kind: "payoff",
-		id: "learning-time-payoff",
-		title: "Deine Lernzeiten",
-		description: "Prüfe dein wiederkehrendes Zeitfenster.",
-	},
-	{
-		kind: "wheel",
-		id: "grade",
-		title: "Welche Klassenstufe besuchst du?",
-		description: "Diese Angabe wird in deinem Schulprofil gespeichert.",
-		field: "grade",
-	},
-	{
-		kind: "wheel",
-		id: "state",
-		title: "In welchem Bundesland gehst du zur Schule?",
-		description: "Diese Angabe wird in deinem Schulprofil gespeichert.",
-		field: "state",
-	},
-	{
-		kind: "wheel",
-		id: "schoolType",
-		title: "Welche Schulart besuchst du?",
-		description:
-			"Wir speichern nur die Schulart, nicht den Namen deiner Schule.",
-		field: "schoolType",
-	},
-	{
-		kind: "wheel",
-		id: "birthYear",
-		title: "In welchem Jahr bist du geboren?",
-		description:
-			"Wir fragen Jahr, Monat und Tag nacheinander – ohne Vorauswahl.",
-		field: "birthYear",
-	},
-	{
-		kind: "wheel",
-		id: "birthMonth",
-		title: "In welchem Monat bist du geboren?",
-		description: "Damit dein Geburtsdatum eindeutig und korrekt bleibt.",
-		field: "birthMonth",
-	},
-	{
-		kind: "wheel",
-		id: "birthDay",
-		title: "An welchem Tag bist du geboren?",
-		description: "Der letzte Teil deines Geburtsdatums.",
-		field: "birthDay",
-	},
-	{
-		kind: "text",
-		id: "email",
-		title: "Wie lautet deine E-Mail-Adresse?",
-		description:
-			"Dorthin senden wir gleich deinen sechsstelligen Bestätigungscode.",
-		field: "email",
-		placeholder: "name@beispiel.de",
-		keyboardType: "email-address",
-		autoComplete: "email",
-		textContentType: "emailAddress",
-	},
-	{
-		kind: "text",
-		id: "password",
-		title: "Lege dein Passwort fest.",
-		description: "Mindestens 8 Zeichen schützen dein Konto.",
-		field: "password",
-		placeholder: "Passwort eingeben",
-		secure: true,
-		autoComplete: "new-password",
-		textContentType: "newPassword",
-	},
-] as const;
-
-const PROFILE_STEP_COUNT = FLOW_STEPS.length - INTRO_STEPS.length;
 
 const isValidEmail = (value: string) =>
 	/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -709,207 +513,116 @@ export function RegisterRedirectScreen() {
 	return <Redirect href="/onboarding" />;
 }
 
-export function OnboardingScreen({
-	initialStepId,
-}: {
-	initialStepId?: OnboardingStep["id"];
-} = {}) {
+export function OnboardingScreen() {
 	const insets = useSafeAreaInsets();
-	const [activeIndex, setActiveIndex] = useState(() => {
-		if (!initialStepId) return 0;
-		const initialIndex = FLOW_STEPS.findIndex(
-			(step) => step.id === initialStepId,
-		);
-		return Math.max(initialIndex, 0);
-	});
-	const [stage, setStage] = useState<RegistrationStage>("flow");
-	const [error, setError] = useState<string | null>(null);
-	const [verificationCode, setVerificationCode] = useState("");
+	const { introIndex, setIntroIndex, visitStep } = useOnboarding();
+	const [activeIntroIndex, setActiveIntroIndex] = useState(introIndex);
+	const updateIntroIndex = useCallback(
+		(index: number) => {
+			setActiveIntroIndex(index);
+			setIntroIndex(index);
+		},
+		[setIntroIndex],
+	);
+
+	const handleIntroBack = useCallback(() => {
+		if (activeIntroIndex === 0) return false;
+		updateIntroIndex(Math.max(activeIntroIndex - 1, 0));
+		return true;
+	}, [activeIntroIndex, updateIntroIndex]);
+	useBackIntent(activeIntroIndex > 0, handleIntroBack);
+
+	const continueFromIntro = useCallback(() => {
+		visitStep("name");
+		router.push(getOnboardingStepPath("name"));
+	}, [visitStep]);
+
+	return (
+		<View className="flex-1 bg-background">
+			<Stack.Screen
+				options={{
+					title: "Registrierung",
+					gestureEnabled: activeIntroIndex === 0,
+					fullScreenGestureEnabled: false,
+				}}
+			/>
+			<ThemedStatusBar />
+			<IntroStepView
+				activeIndex={activeIntroIndex}
+				topInset={insets.top}
+				bottomInset={insets.bottom}
+				onActiveIndexChange={updateIntroIndex}
+				onNext={continueFromIntro}
+			/>
+		</View>
+	);
+}
+
+export function OnboardingStepScreen({ stepId }: { stepId: OnboardingStepId }) {
+	const insets = useSafeAreaInsets();
+	const step = getOnboardingStep(stepId);
+	const { progress, stepCount, stepNumber } = getOnboardingStepProgress(stepId);
 	const [passwordVisible, setPasswordVisible] = useState(false);
 	const [isRegistering, setIsRegistering] = useState(false);
-	const [isCompletingHandoff, setIsCompletingHandoff] = useState(false);
+	const [renderError, setRenderError] = useState<string | null>(null);
+	const textInputRef = useRef<TextInput | null>(null);
+	const registrationActionGateRef = useRef(createAsyncActionGate());
 	const {
 		startRegistrationWithEmail,
 		register,
 		stageOnboardingRecovery,
-		replaceOnboardingRecoveryAnswers,
-		verifyEmailCode,
-		resendVerification,
 		isLoading,
 	} = useAuthFlow();
 	const {
-		user,
-		isConvexAuthenticated,
-		isPostAuthSyncing,
-		postAuthSyncError,
-		retryPostAuthSync,
-		onboardingCompletionStatus,
-		completeOnboardingHandoff,
-	} = useAuthSession();
-	const { answers } = useOnboarding();
-	const [recoveryAnswers, setRecoveryAnswers] = useState({
-		studyTime: "",
-		studyDays: "",
-		learningTime: "",
-	});
-	const [isRecoverySubmitting, setIsRecoverySubmitting] = useState(false);
-	const activeStep = FLOW_STEPS[activeIndex];
-	const textInputRef = useRef<TextInput | null>(null);
-	const verificationInputRef = useRef<TextInput | null>(null);
+		answers,
+		progressOrigin,
+		setRegistrationStage,
+		setProgressOrigin,
+		setStepError,
+		stepErrors,
+		visitStep,
+	} = useOnboarding();
 	const previousAnswersRef = useRef(answers);
-	const verificationSubmittedRef = useRef(false);
-	const isCreationComplete = Boolean(
-		(stage === "creating" || onboardingCompletionStatus !== "none") &&
-			user &&
-			isConvexAuthenticated &&
-			onboardingCompletionStatus === "ready_for_trial" &&
-			!isPostAuthSyncing &&
-			!postAuthSyncError,
-	);
-	const isRestoringCreation = Boolean(
-		user &&
-			onboardingCompletionStatus !== "none" &&
-			onboardingCompletionStatus !== "loading",
-	);
-	const isRecoveryRequired = onboardingCompletionStatus === "recovery_required";
-	const registrationActionGateRef = useRef(createAsyncActionGate());
 	const isRegistrationBusy = isLoading || isRegistering;
-
+	const updateError = useCallback(
+		(error: string | null) => {
+			setRenderError(error);
+			setStepError(stepId, error);
+		},
+		[setStepError, stepId],
+	);
 	useEffect(() => {
 		if (previousAnswersRef.current === answers) return;
 		previousAnswersRef.current = answers;
-		setError(null);
+		setRenderError(null);
 	}, [answers]);
-
-	useEffect(() => {
-		if (stage !== "verification") return;
-		const frame = requestAnimationFrame(() =>
-			verificationInputRef.current?.focus(),
-		);
-		return () => cancelAnimationFrame(frame);
-	}, [stage]);
-
-	useEffect(() => {
-		if (
-			stage !== "flow" ||
-			!user ||
-			onboardingCompletionStatus !== "none" ||
-			isPostAuthSyncing
-		)
-			return;
-
-		const frame = requestAnimationFrame(() => {
-			router.replace("/trial");
-		});
-
-		return () => cancelAnimationFrame(frame);
-	}, [isPostAuthSyncing, onboardingCompletionStatus, stage, user]);
+	useFocusEffect(
+		useCallback(() => {
+			setRegistrationStage("flow");
+		}, [setRegistrationStage]),
+	);
+	const blockNativeBack = useCallback(
+		() => isRegistrationBusy || registrationActionGateRef.current.isRunning,
+		[isRegistrationBusy],
+	);
+	useBackIntent(true, blockNativeBack);
 
 	const handleBack = useCallback(() => {
-		if (
-			stage === "creating" ||
-			isRegistrationBusy ||
-			registrationActionGateRef.current.isRunning
-		) {
-			return true;
-		}
-		if (stage === "verification") {
-			setStage("flow");
-			setVerificationCode("");
-			setError(null);
-			verificationSubmittedRef.current = false;
-			return true;
-		}
-		if (activeIndex === 0) {
-			if (router.canGoBack()) {
-				router.back();
-			} else {
-				router.replace("/");
-			}
+		if (isRegistrationBusy || registrationActionGateRef.current.isRunning) {
 			return true;
 		}
 		Keyboard.dismiss();
-		setError(null);
-		setActiveIndex((current) => current - 1);
+		goBackOrReplace(router, "/");
 		return true;
-	}, [activeIndex, isRegistrationBusy, stage]);
+	}, [isRegistrationBusy]);
 
-	const shouldHandleInternalBack = shouldHandleRegistrationBack(
-		activeIndex,
-		stage,
-	);
-	useBackIntent(shouldHandleInternalBack, handleBack);
-	// The async gate remains the authoritative event-time guard in handleBack;
-	// render-time gesture state follows React state so it updates deterministically.
-	const isBackBusy = isRegistrationBusy;
-	const routeBackEnabled = shouldEnableRegistrationRouteBack(
-		activeIndex,
-		stage,
-		isBackBusy,
-	);
-	const edgeBackEnabled = shouldEnableRegistrationEdgeBack({
-		activeIndex,
-		isBusy: isBackBusy,
-		platform: Platform.OS,
-		stage,
-		stepKind: activeStep.kind,
-	});
-
-	const stepProgress =
-		stage === "verification" || stage === "creating"
-			? 1
-			: Math.min(
-					(activeIndex - INTRO_STEPS.length + 1) / PROFILE_STEP_COUNT,
-					1,
-				);
-
-	const continueFromStep = async () => {
-		if (
-			stage !== "flow" ||
-			isRegistrationBusy ||
-			registrationActionGateRef.current.isRunning
-		) {
-			return;
-		}
-		setError(null);
-		const decision = getOnboardingStepDecision(activeStep, answers);
-
-		if (activeStep.kind === "text") {
-			Keyboard.dismiss();
-		}
-
-		if (decision.error) {
-			setError(decision.error);
-			return;
-		}
-
-		if (activeStep.kind === "text" && activeStep.field === "email") {
-			await registrationActionGateRef.current.run(async () => {
-				try {
-					await startRegistrationWithEmail(answers.email);
-					setActiveIndex((current) =>
-						getNextOnboardingStepIndex(current, FLOW_STEPS.length),
-					);
-				} catch (emailError) {
-					setError(
-						emailError instanceof Error
-							? emailError.message
-							: "E-Mail-Adresse konnte nicht geprüft werden. Bitte versuche es erneut.",
-					);
-				}
-			});
-			return;
-		}
-
-		if (decision.action === "register") {
-			await startRegistration();
-			return;
-		}
-
-		setActiveIndex((current) =>
-			getNextOnboardingStepIndex(current, FLOW_STEPS.length),
-		);
-	};
+	const pushNextStep = useCallback(() => {
+		const nextStep = getNextOnboardingStep(stepId);
+		if (!nextStep) return;
+		setProgressOrigin(progress);
+		visitStep(nextStep.id);
+		router.push(getOnboardingStepPath(nextStep.id));
+	}, [progress, setProgressOrigin, stepId, visitStep]);
 
 	const startRegistration = async () => {
 		await registrationActionGateRef.current.run(async () => {
@@ -919,17 +632,15 @@ export function OnboardingScreen({
 				const result = await register(
 					getOnboardingRegistrationPayload(answers),
 				);
-
 				if (result.status === "complete") {
-					setStage("creating");
+					setRegistrationStage("creating");
+					router.replace(ONBOARDING_CREATION_PATH);
 					return;
 				}
-
-				setStage("verification");
-				setVerificationCode("");
-				verificationSubmittedRef.current = false;
+				setRegistrationStage("verification");
+				router.push("/onboarding/verification");
 			} catch (registrationError) {
-				setError(
+				updateError(
 					registrationError instanceof Error
 						? registrationError.message
 						: "Registrierung fehlgeschlagen. Bitte versuche es erneut.",
@@ -940,30 +651,206 @@ export function OnboardingScreen({
 		});
 	};
 
+	const continueFromStep = async () => {
+		if (isRegistrationBusy || registrationActionGateRef.current.isRunning) {
+			return;
+		}
+		updateError(null);
+		const decision = getOnboardingStepDecision(step, answers);
+		if (step.kind === "text") Keyboard.dismiss();
+		if (decision.error) {
+			updateError(decision.error);
+			return;
+		}
+		if (step.kind === "text" && step.field === "email") {
+			await registrationActionGateRef.current.run(async () => {
+				try {
+					await startRegistrationWithEmail(answers.email);
+					pushNextStep();
+				} catch (emailError) {
+					updateError(
+						emailError instanceof Error
+							? emailError.message
+							: "E-Mail-Adresse konnte nicht geprüft werden. Bitte versuche es erneut.",
+					);
+				}
+			});
+			return;
+		}
+		if (decision.action === "register") {
+			await startRegistration();
+			return;
+		}
+		pushNextStep();
+	};
+
+	return (
+		<View className="flex-1 bg-background">
+			<Stack.Screen
+				options={{
+					title: "Registrierung",
+					gestureEnabled: !isRegistrationBusy,
+					fullScreenGestureEnabled: false,
+				}}
+			/>
+			<ThemedStatusBar />
+			<KeyboardAvoidingView
+				behavior={Platform.OS === "ios" ? "padding" : undefined}
+				className="flex-1"
+			>
+				<View
+					className="flex-1 px-6"
+					// The routed question clears the runtime device safe-area inset.
+					style={{
+						paddingTop: Math.max(insets.top + 12, 20),
+					}}
+				>
+					<QuestionStepView
+						step={step}
+						progress={progress}
+						initialProgress={progressOrigin}
+						stepNumber={stepNumber}
+						stepCount={stepCount}
+						error={renderError ?? stepErrors[stepId] ?? null}
+						busy={isRegistrationBusy}
+						passwordVisible={passwordVisible}
+						inputRef={textInputRef}
+						bottomInset={insets.bottom}
+						onBack={handleBack}
+						onContinue={continueFromStep}
+						onTogglePassword={() => setPasswordVisible((current) => !current)}
+					/>
+				</View>
+			</KeyboardAvoidingView>
+		</View>
+	);
+}
+
+export function OnboardingVerificationScreen() {
+	const insets = useSafeAreaInsets();
+	const [verificationCode, setVerificationCode] = useState("");
+	const verificationInputRef = useRef<TextInput | null>(null);
+	const verificationSubmittedRef = useRef(false);
+	const { verifyEmailCode, resendVerification, isLoading } = useAuthFlow();
+	const {
+		answers,
+		setRegistrationStage,
+		setVerificationError,
+		verificationError,
+	} = useOnboarding();
+
+	useEffect(() => {
+		const frame = requestAnimationFrame(() =>
+			verificationInputRef.current?.focus(),
+		);
+		return () => cancelAnimationFrame(frame);
+	}, []);
+	const blockNativeBack = useCallback(
+		() => isLoading || verificationSubmittedRef.current,
+		[isLoading],
+	);
+	useBackIntent(true, blockNativeBack);
+
+	const handleBack = useCallback(() => {
+		if (isLoading || verificationSubmittedRef.current) return true;
+		setVerificationCode("");
+		setVerificationError(null);
+		setRegistrationStage("flow");
+		goBackOrReplace(router, getOnboardingStepPath("password"));
+		return true;
+	}, [isLoading, setRegistrationStage, setVerificationError]);
+
 	const submitVerificationCode = async (code: string) => {
 		if (verificationSubmittedRef.current) return;
 		verificationSubmittedRef.current = true;
 		Keyboard.dismiss();
-		setStage("creating");
-		setError(null);
+		setVerificationError(null);
+		setRegistrationStage("creating");
+		router.replace(ONBOARDING_CREATION_PATH);
 		try {
 			await verifyEmailCode(code);
-		} catch (verificationError) {
+		} catch (error) {
 			verificationSubmittedRef.current = false;
-			setStage("verification");
-			setVerificationCode("");
-			setError(
-				verificationError instanceof Error
-					? verificationError.message
+			setRegistrationStage("verification");
+			setVerificationError(
+				error instanceof Error
+					? error.message
 					: "Der Code konnte nicht bestätigt werden.",
 			);
-			requestAnimationFrame(() => verificationInputRef.current?.focus());
+			router.replace("/onboarding/verification");
 		}
 	};
 
+	const handleVerificationChange = (value: string) => {
+		const sanitized = value.replace(/\D/g, "").slice(0, CODE_LENGTH);
+		setVerificationCode(sanitized);
+		if (sanitized.length === CODE_LENGTH) {
+			void submitVerificationCode(sanitized);
+		}
+	};
+	return (
+		<VerificationScreen
+			email={answers.email.trim().toLowerCase()}
+			code={verificationCode}
+			error={verificationError}
+			disabled={isLoading}
+			gestureEnabled={!isLoading}
+			inputRef={verificationInputRef}
+			progress={1}
+			topInset={insets.top}
+			bottomInset={insets.bottom}
+			onBack={handleBack}
+			onChangeCode={handleVerificationChange}
+			onResend={async () => {
+				try {
+					setVerificationError(null);
+					await resendVerification();
+				} catch (error) {
+					setVerificationError(
+						error instanceof Error
+							? error.message
+							: "Code konnte nicht erneut gesendet werden.",
+					);
+				}
+			}}
+		/>
+	);
+}
+
+export function OnboardingCreationScreen() {
+	const insets = useSafeAreaInsets();
+	const { replaceOnboardingRecoveryAnswers } = useAuthFlow();
+	const {
+		user,
+		isConvexAuthenticated,
+		isPostAuthSyncing,
+		postAuthSyncError,
+		retryPostAuthSync,
+		onboardingCompletionStatus,
+		completeOnboardingHandoff,
+	} = useAuthSession();
+	const [recoveryAnswers, setRecoveryAnswers] = useState({
+		studyTime: "",
+		studyDays: "",
+		learningTime: "",
+	});
+	const [recoveryError, setRecoveryError] = useState<string | null>(null);
+	const [handoffError, setHandoffError] = useState<string | null>(null);
+	const [isRecoverySubmitting, setIsRecoverySubmitting] = useState(false);
+	const [isCompletingHandoff, setIsCompletingHandoff] = useState(false);
+	const recoveryActionGateRef = useRef(createAsyncActionGate());
+	const handoffActionGateRef = useRef(createAsyncActionGate());
+	const isCreationComplete = Boolean(
+		user &&
+			isConvexAuthenticated &&
+			onboardingCompletionStatus === "ready_for_trial" &&
+			!isPostAuthSyncing &&
+			!postAuthSyncError,
+	);
+	useBackIntent(true, () => true);
 	const continueToTrial = async () => {
-		const result = await registrationActionGateRef.current.run(async () => {
-			setError(null);
+		const result = await handoffActionGateRef.current.run(async () => {
+			setHandoffError(null);
 			setIsCompletingHandoff(true);
 			try {
 				return await completeOnboardingHandoff();
@@ -979,180 +866,76 @@ export function OnboardingScreen({
 			router.replace("/trial");
 			return;
 		}
-		setError(
+		setHandoffError(
 			"Der Wechsel zur Testphase ist fehlgeschlagen. Bitte versuche es erneut.",
 		);
 	};
 
-	const handleVerificationChange = (value: string) => {
-		const sanitized = value.replace(/\D/g, "").slice(0, CODE_LENGTH);
-		setVerificationCode(sanitized);
-		if (sanitized.length === CODE_LENGTH) {
-			void submitVerificationCode(sanitized);
-		}
-	};
-
-	if (stage === "creating" || isRestoringCreation) {
-		if (isRecoveryRequired) {
-			return (
-				<OnboardingRecoveryScreen
-					topInset={insets.top}
-					bottomInset={insets.bottom}
-					answers={recoveryAnswers}
-					error={error}
-					isSubmitting={isRecoverySubmitting}
-					onChange={(field, value) => {
-						if (isRecoverySubmitting) return;
-						setRecoveryAnswers((current) => ({
-							...current,
-							[field]: value,
-						}));
-						setError(null);
-					}}
-					onSubmit={async () => {
-						const validationError =
-							getOnboardingLearningTimeValidationError(recoveryAnswers);
-						if (validationError) {
-							setError(validationError);
-							return;
-						}
-						await registrationActionGateRef.current.run(async () => {
-							setIsRecoverySubmitting(true);
-							try {
-								await replaceOnboardingRecoveryAnswers({
-									dailySchoolTime: `${recoveryAnswers.studyTime} min`,
-									studyDays: recoveryAnswers.studyDays,
-									learningTime: recoveryAnswers.learningTime,
-									state: user?.state ?? "",
-									schoolType: user?.schoolType ?? "",
-									grade: user?.grade ?? "",
-								});
-							} catch (recoveryError) {
-								setError(
-									recoveryError instanceof Error
-										? recoveryError.message
-										: "Deine Lernzeiten konnten nicht gespeichert werden.",
-								);
-							} finally {
-								setIsRecoverySubmitting(false);
-							}
-						});
-					}}
-				/>
-			);
-		}
+	if (onboardingCompletionStatus === "recovery_required") {
 		return (
-			<CreationLoaderScreen
+			<OnboardingRecoveryScreen
 				topInset={insets.top}
 				bottomInset={insets.bottom}
-				isComplete={isCreationComplete}
-				isCompleting={isCompletingHandoff}
-				error={error ?? postAuthSyncError}
-				onRetry={() => {
-					if (onboardingCompletionStatus === "ready_for_trial") {
-						void continueToTrial();
+				answers={recoveryAnswers}
+				error={recoveryError}
+				isSubmitting={isRecoverySubmitting}
+				onChange={(field, value) => {
+					if (isRecoverySubmitting) return;
+					setRecoveryAnswers((current) => ({
+						...current,
+						[field]: value,
+					}));
+					setRecoveryError(null);
+				}}
+				onSubmit={async () => {
+					const validationError =
+						getOnboardingLearningTimeValidationError(recoveryAnswers);
+					if (validationError) {
+						setRecoveryError(validationError);
 						return;
 					}
-					retryPostAuthSync();
-				}}
-				onComplete={continueToTrial}
-			/>
-		);
-	}
-
-	if (stage === "verification") {
-		return (
-			<OnboardingEdgeBackGesture
-				key={stage}
-				enabled={edgeBackEnabled}
-				onBack={handleBack}
-			>
-				<VerificationScreen
-					email={answers.email.trim().toLowerCase()}
-					code={verificationCode}
-					error={error}
-					disabled={isLoading}
-					inputRef={verificationInputRef}
-					progress={stepProgress}
-					topInset={insets.top}
-					bottomInset={insets.bottom}
-					onBack={handleBack}
-					onChangeCode={handleVerificationChange}
-					onResend={async () => {
+					await recoveryActionGateRef.current.run(async () => {
+						setIsRecoverySubmitting(true);
 						try {
-							setError(null);
-							await resendVerification();
-						} catch (resendError) {
-							setError(
-								resendError instanceof Error
-									? resendError.message
-									: "Code konnte nicht erneut gesendet werden.",
+							await replaceOnboardingRecoveryAnswers({
+								dailySchoolTime: `${recoveryAnswers.studyTime} min`,
+								studyDays: recoveryAnswers.studyDays,
+								learningTime: recoveryAnswers.learningTime,
+								state: user?.state ?? "",
+								schoolType: user?.schoolType ?? "",
+								grade: user?.grade ?? "",
+							});
+						} catch (error) {
+							setRecoveryError(
+								error instanceof Error
+									? error.message
+									: "Deine Lernzeiten konnten nicht gespeichert werden.",
 							);
+						} finally {
+							setIsRecoverySubmitting(false);
 						}
-					}}
-				/>
-			</OnboardingEdgeBackGesture>
+					});
+				}}
+			/>
 		);
 	}
-
-	const isIntro = activeStep.kind === "intro";
-
-	const flowContent = isIntro ? (
-		<IntroStepView
-			activeIndex={activeIndex}
-			topInset={insets.top}
-			bottomInset={insets.bottom}
-			onActiveIndexChange={setActiveIndex}
-			onNext={continueFromStep}
-		/>
-	) : (
-		<View
-			className="flex-1 px-6"
-			// The question flow clears the runtime device safe-area inset.
-			style={{
-				paddingTop: Math.max(insets.top + 12, 20),
-			}}
-		>
-			<QuestionStepView
-				step={activeStep}
-				progress={stepProgress}
-				stepNumber={activeIndex - INTRO_STEPS.length + 1}
-				stepCount={PROFILE_STEP_COUNT}
-				error={error}
-				busy={isRegistrationBusy}
-				passwordVisible={passwordVisible}
-				inputRef={textInputRef}
-				bottomInset={insets.bottom}
-				onBack={handleBack}
-				onContinue={continueFromStep}
-				onTogglePassword={() => setPasswordVisible((current) => !current)}
-			/>
-		</View>
-	);
 
 	return (
-		<View className="flex-1 bg-background">
-			<Stack.Screen
-				options={{
-					title: "Registrierung",
-					gestureEnabled: routeBackEnabled,
-					fullScreenGestureEnabled: false,
-				}}
-			/>
-			<ThemedStatusBar />
-			<OnboardingEdgeBackGesture enabled={edgeBackEnabled} onBack={handleBack}>
-				{isIntro ? (
-					flowContent
-				) : (
-					<KeyboardAvoidingView
-						behavior={Platform.OS === "ios" ? "padding" : undefined}
-						className="flex-1"
-					>
-						{flowContent}
-					</KeyboardAvoidingView>
-				)}
-			</OnboardingEdgeBackGesture>
-		</View>
+		<CreationLoaderScreen
+			topInset={insets.top}
+			bottomInset={insets.bottom}
+			isComplete={isCreationComplete}
+			isCompleting={isCompletingHandoff}
+			error={handoffError ?? postAuthSyncError}
+			onRetry={() => {
+				if (onboardingCompletionStatus === "ready_for_trial") {
+					void continueToTrial();
+					return;
+				}
+				retryPostAuthSync();
+			}}
+			onComplete={continueToTrial}
+		/>
 	);
 }
 
@@ -1497,6 +1280,7 @@ function IntroDot({
 function QuestionStepView({
 	step,
 	progress,
+	initialProgress,
 	stepNumber,
 	stepCount,
 	error,
@@ -1508,8 +1292,9 @@ function QuestionStepView({
 	onContinue,
 	onTogglePassword,
 }: {
-	step: Exclude<OnboardingStep, IntroStep>;
+	step: OnboardingProfileStep;
 	progress: number;
+	initialProgress?: number | null;
 	stepNumber: number;
 	stepCount: number;
 	error: string | null;
@@ -1572,6 +1357,7 @@ function QuestionStepView({
 		<View className="flex-1">
 			<AuthProgressHeader
 				progress={progress}
+				initialProgress={initialProgress}
 				progressLabel={`${stepNumber} von ${stepCount}`}
 				onBack={onBack}
 				disabled={busy}
@@ -2450,6 +2236,7 @@ function VerificationScreen({
 	code,
 	error,
 	disabled,
+	gestureEnabled = false,
 	inputRef,
 	progress,
 	topInset,
@@ -2462,6 +2249,7 @@ function VerificationScreen({
 	code: string;
 	error: string | null;
 	disabled: boolean;
+	gestureEnabled?: boolean;
 	inputRef: RefObject<TextInput | null>;
 	progress: number;
 	topInset: number;
@@ -2474,9 +2262,7 @@ function VerificationScreen({
 
 	return (
 		<View className="flex-1 bg-background">
-			<Stack.Screen
-				options={{ title: "E-Mail bestätigen", gestureEnabled: false }}
-			/>
+			<Stack.Screen options={{ title: "E-Mail bestätigen", gestureEnabled }} />
 			<ThemedStatusBar />
 			<KeyboardAvoidingView
 				behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -2877,11 +2663,13 @@ export function CreationLoaderScreen({
 
 function AuthProgressHeader({
 	progress,
+	initialProgress,
 	progressLabel,
 	onBack,
 	disabled = false,
 }: {
 	progress: number;
+	initialProgress?: number | null;
 	progressLabel?: string;
 	onBack: () => boolean;
 	disabled?: boolean;
@@ -2925,6 +2713,7 @@ function AuthProgressHeader({
 				</View>
 				<FlowProgressBar
 					progress={progress}
+					initialProgress={initialProgress}
 					accessible
 					accessibilityLabel={`Fortschritt ${Math.round(Math.min(Math.max(progress, 0), 1) * 100)} Prozent`}
 					accessibilityRole="progressbar"
@@ -3125,7 +2914,11 @@ function OtpCodeInput({
 	);
 }
 
-function RangeAnswer({ step }: { step: RangeStep }) {
+function RangeAnswer({
+	step,
+}: {
+	step: Extract<OnboardingProfileStep, { kind: "range" }>;
+}) {
 	const { answers, setAnswer } = useOnboarding();
 	const hasExplicitSelection = answers.studyTime.trim().length > 0;
 	const parsedStudyTime = Number.parseInt(answers.studyTime, 10);
@@ -3464,7 +3257,11 @@ function PayoffAnswer() {
 	);
 }
 
-function WheelAnswer({ step }: { step: WheelStep }) {
+function WheelAnswer({
+	step,
+}: {
+	step: Extract<OnboardingProfileStep, { kind: "wheel" }>;
+}) {
 	const { answers, setAnswer } = useOnboarding();
 
 	if (step.field === "grade") {
