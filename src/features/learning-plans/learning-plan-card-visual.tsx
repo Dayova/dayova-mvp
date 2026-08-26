@@ -171,7 +171,7 @@ export function LearningPlanCardVisual(props: LearningPlanCardVisualProps) {
 			</View>
 
 			{model.state.kind === "creation" ? (
-				<View className="mt-4 flex-row items-center gap-1.5">
+				<View className="mt-4 flex-row items-center gap-2">
 					<ClipboardEdit
 						size={14}
 						color={colors.secondaryText}

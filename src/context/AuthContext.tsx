@@ -134,10 +134,13 @@ interface AuthSessionContextType {
 	isConvexUserSynced: boolean;
 	isPostAuthSyncing: boolean;
 	postAuthSyncError: string | null;
-	retryPostAuthSync: () => void;
 	onboardingCompletionStatus: OnboardingCompletionStatus;
-	completeOnboardingHandoff: () => Promise<boolean>;
 	pendingSessionTask: string | null;
+}
+
+interface OnboardingHandoffContextType {
+	retryPostAuthSync: () => void;
+	completeOnboardingHandoff: () => Promise<boolean>;
 }
 
 interface AuthFlowContextType {
@@ -185,6 +188,9 @@ type PendingProfileEmail = {
 const AuthSessionContext = createContext<AuthSessionContextType | undefined>(
 	undefined,
 );
+const OnboardingHandoffContext = createContext<
+	OnboardingHandoffContextType | undefined
+>(undefined);
 const AuthFlowContext = createContext<AuthFlowContextType | undefined>(
 	undefined,
 );
@@ -1653,44 +1659,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				isPostAuthSyncing:
 					Boolean(user) && (isProfileSyncing || isOnboardingAnswersSyncing),
 				postAuthSyncError,
-				retryPostAuthSync,
 				onboardingCompletionStatus,
-				completeOnboardingHandoff,
 				pendingSessionTask,
 			}}
 		>
-			<AuthFlowContext.Provider
+			<OnboardingHandoffContext.Provider
 				value={{
-					isLoading,
-					pendingVerification,
-					login,
-					startRegistrationWithEmail,
-					register,
-					stageOnboardingRecovery,
-					replaceOnboardingRecoveryAnswers,
-					verifyEmailCode,
-					resendVerification,
-					startPasswordReset,
-					verifyPasswordResetCode,
-					completePasswordReset,
-					verifyPasswordResetSecondFactor,
-					resendPasswordResetCode,
-					cancelPasswordReset,
+					retryPostAuthSync,
+					completeOnboardingHandoff,
 				}}
 			>
-				<AccountActionsContext.Provider
+				<AuthFlowContext.Provider
 					value={{
 						isLoading,
-						updateProfile,
-						verifyProfileEmailCode,
-						changePassword,
-						completeForcedPasswordReset,
-						logout,
+						pendingVerification,
+						login,
+						startRegistrationWithEmail,
+						register,
+						stageOnboardingRecovery,
+						replaceOnboardingRecoveryAnswers,
+						verifyEmailCode,
+						resendVerification,
+						startPasswordReset,
+						verifyPasswordResetCode,
+						completePasswordReset,
+						verifyPasswordResetSecondFactor,
+						resendPasswordResetCode,
+						cancelPasswordReset,
 					}}
 				>
-					{children}
-				</AccountActionsContext.Provider>
-			</AuthFlowContext.Provider>
+					<AccountActionsContext.Provider
+						value={{
+							isLoading,
+							updateProfile,
+							verifyProfileEmailCode,
+							changePassword,
+							completeForcedPasswordReset,
+							logout,
+						}}
+					>
+						{children}
+					</AccountActionsContext.Provider>
+				</AuthFlowContext.Provider>
+			</OnboardingHandoffContext.Provider>
 		</AuthSessionContext.Provider>
 	);
 };
@@ -1707,6 +1718,14 @@ export const useAuthFlow = () => {
 	const context = useContext(AuthFlowContext);
 	if (!context) {
 		throw new Error("useAuthFlow must be used within an AuthProvider");
+	}
+	return context;
+};
+
+export const useOnboardingHandoff = () => {
+	const context = useContext(OnboardingHandoffContext);
+	if (!context) {
+		throw new Error("useOnboardingHandoff must be used within an AuthProvider");
 	}
 	return context;
 };

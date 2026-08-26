@@ -32,10 +32,12 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 - Native session lifetime, per-device logout, compromise response, app-lock,
   and step-up decisions are recorded in
   [ADR 0001](adr/0001-native-session-policy.md).
-- The auth provider intentionally exposes three narrow interfaces:
+- The auth provider intentionally exposes four narrow interfaces:
   `useAuthSession` for identity/session state, `useAuthFlow` for sign-in,
-  registration and recovery, and `useAccountActions` for authenticated account
-  mutations. Screens must not depend on a broader auth surface than they use.
+  registration and recovery, `useOnboardingHandoff` for post-authentication
+  onboarding retries and the trial handoff, and `useAccountActions` for other
+  authenticated account mutations. Screens must not depend on a broader auth
+  surface than they use.
 - Native Clerk tokens always use Clerk's secure persistent Expo token cache.
   There is no `Angemeldet bleiben` preference or memory-only cache path.
 - Pending onboarding persistence uses a separate outbox. Native builds store it

@@ -81,12 +81,10 @@ const mockCompleteOnboardingHandoff = jest.fn(async () => true);
 const mockStageOnboardingRecovery = jest.fn(async () => undefined);
 const mockReplaceOnboardingRecoveryAnswers = jest.fn(async () => undefined);
 const mockAuthSession = {
-	completeOnboardingHandoff: mockCompleteOnboardingHandoff,
 	isConvexAuthenticated: false,
 	isPostAuthSyncing: false,
 	onboardingCompletionStatus: "none" as OnboardingCompletionStatus,
 	postAuthSyncError: null as string | null,
-	retryPostAuthSync: mockRetryPostAuthSync,
 	user: null as {
 		clerkId: string;
 		email: string;
@@ -400,6 +398,10 @@ jest.mock("~/context/AuthContext", () => ({
 	},
 	useAuthSession: () => ({
 		...mockAuthSession,
+	}),
+	useOnboardingHandoff: () => ({
+		completeOnboardingHandoff: mockCompleteOnboardingHandoff,
+		retryPostAuthSync: mockRetryPostAuthSync,
 	}),
 }));
 

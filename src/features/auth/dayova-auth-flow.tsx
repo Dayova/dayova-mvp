@@ -99,7 +99,11 @@ import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { SnapCarouselSelector } from "~/components/ui/snap-carousel-selector";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAuthFlow, useAuthSession } from "~/context/AuthContext";
+import {
+	useAuthFlow,
+	useAuthSession,
+	useOnboardingHandoff,
+} from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
 import { getResponsiveAuthChoiceLayout } from "~/features/auth/auth-content-size-layout";
 import {
@@ -825,10 +829,10 @@ export function OnboardingCreationScreen() {
 		isConvexAuthenticated,
 		isPostAuthSyncing,
 		postAuthSyncError,
-		retryPostAuthSync,
 		onboardingCompletionStatus,
-		completeOnboardingHandoff,
 	} = useAuthSession();
+	const { completeOnboardingHandoff, retryPostAuthSync } =
+		useOnboardingHandoff();
 	const [recoveryAnswers, setRecoveryAnswers] = useState({
 		studyTime: "",
 		studyDays: "",
@@ -2514,7 +2518,7 @@ export function OnboardingRecoveryScreen({
 						{error ?? validationError}
 					</ErrorMessage>
 				) : null}
-				<View className="pt-8" style={{ marginTop: "auto" }}>
+				<View className="mt-auto pt-8">
 					<Button
 						accessibilityLabel={
 							isSubmitting
@@ -2680,7 +2684,7 @@ function AuthProgressHeader({
 
 	return (
 		<View
-			className="flex-row gap-3.5"
+			className="flex-row gap-3"
 			// Content-size mode changes the runtime cross-axis alignment.
 			style={{
 				alignItems: shouldStackInlineContent ? "flex-start" : "center",

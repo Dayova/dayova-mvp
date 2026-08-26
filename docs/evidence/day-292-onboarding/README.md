@@ -265,15 +265,105 @@ uncaught-error, or fatal-exception entry.
 > (0.5-second interval); 2 contact sheet(s); 17 additional frames from
 > 00:00:09.500 to 00:00:11.200 at 10 fps; no audio stream.
 
-## Native back contract — 13 August 2026
+## DAY-349 native stack and gesture ownership — 26 August 2026
 
-The launch architecture keeps the native iOS route gesture enabled on the first
-intro page, but the full-screen intro pager can win that gesture before the
-router receives it. The production-safe launch behavior therefore also installs
-the same guarded interactive edge handler on the entry page. Its commit action
-calls the normal route back/replace logic. This is a documented hybrid fallback,
-not a claim that the captured entry transition is a native route-pop animation.
-A true per-step native stack remains the long-term solution in DAY-349.
+The onboarding questions now use real native stack routes. Intro and duration
+controls keep their bounded, non-edge horizontal gesture surfaces; platform
+back owns the route edge; and an open native picker or shared bounded sheet
+receives Android back before the underlying route. The two checked-in Maestro
+flows reproduce the exact scenarios:
+
+- `maestro/ios-native-stack-back.yaml`
+- `maestro/android-native-stack-back.yaml`
+
+The Android flow expects `METRO_BUNDLE_URL` to be supplied as the URL-encoded
+development bundle URL (for example through Maestro's `-e` option), so the
+checked-in scenario does not depend on the capture machine's LAN address.
+
+Both development clients were built from the merge candidate after current
+`main` was merged. The iOS build completed with zero compiler errors. The
+Android build completed successfully across 632 Gradle tasks. The floating gear
+in both recordings is the development-launcher overlay, not product UI.
+
+### iOS simulator
+
+`ios-day-349-native-route-final-head.mp4` is an iPhone 17 Pro Max / iOS 26.5
+simulator recording. It verifies the intro pager's bounded forward/back swipes,
+a short edge-directed interaction that leaves the first intro page selected,
+the duration selector's 30-to-90-minute swipe, and routed back navigation to the
+name step with `Stack Test` preserved.
+
+> Coverage: 31.41-second video; 31 full-timeline frames sampled at 1 fps
+> (1-second interval); 2 contact sheet(s); 35 additional frames from
+> 00:00:02.000 to 00:00:10.000 at 4 fps; 46 additional frames from
+> 00:00:20.000 to 00:00:31.400 at 4 fps; no audio stream.
+
+Timestamped observations:
+
+- `00:02.000–00:03.750`: a bounded left swipe advances intro page one to page
+  two.
+- `00:05.000–00:05.750`: the reverse bounded swipe restores page one.
+- `00:05.750–00:09.500`: page one remains selected after the short
+  edge-directed interaction; this does not claim a native interactive-pop
+  preview because simulator automation did not render one.
+- `00:20.000–00:25.250`: the duration step starts at 30 minutes and the
+  selector advances through 60 to 90 minutes.
+- `00:27.500–00:31.400`: the routed back action returns exactly one route to
+  the name step and retains `Stack Test`.
+
+The iOS simulator recording does not prove the physical interactive edge-pop
+animation or VoiceOver behavior. Those remain physical-device acceptance
+checks.
+
+### Android emulator
+
+`android-day-349-native-stack-final-head.mp4` is an uncut Pixel 9 emulator
+recording. The AVD's existing `font_scale=2.0` setting was temporarily changed
+to `1.0` for this pager-specific run and restored to `2.0` immediately after
+capture. The separate maximum-text recordings above remain authoritative for
+the responsive `intro-responsive-scroll` layout.
+
+> Coverage: 131.49-second video; 80 full-timeline frames sampled at 0.608421
+> fps (1.643598-second interval); 5 contact sheet(s); 43 additional frames from
+> 00:00:43.000 to 00:00:54.000 at 4 fps; 48 additional frames from
+> 00:01:10.000 to 00:01:22.000 at 4 fps; 58 additional frames from
+> 00:01:32.000 to 00:01:46.000 at 4 fps; 46 additional frames from
+> 00:02:00.000 to 00:02:11.400 at 4 fps; 44 additional frames from
+> 00:01:44.000 to 00:01:53.000 at 4 fps; no audio stream.
+
+Timestamped observations:
+
+- `00:45.000–00:46.250`: the bounded pager swipe advances intro page one to
+  page two; `00:47.500–00:48.500` restores page one.
+- `01:11.750–01:15.250`: the duration selector advances from 30 through 45
+  and 60 to 90 minutes.
+- `01:16.750–01:19.500`: Android renders the predictive-back arrow and route
+  transition; by `01:19.750`, exactly the name route is visible with
+  `Stack Test` preserved.
+- `01:40.500–01:43.500`: the native time picker opens and the first system back
+  dismisses it while retaining the underlying start-time route.
+- `01:46.500–01:52.000`: the picker reopens and accepting it produces the
+  confirmed `16:00 Uhr` answer.
+- `02:04.000–02:05.250`: the shared bounded grade sheet opens and the first
+  system back dismisses it without changing the empty grade step.
+
+This closes the Android emulator predictive-back and sheet-first dismissal
+checks. It does not claim physical TalkBack coverage.
+
+## Historical native back contract — superseded by DAY-349
+
+The following recordings predate the native per-step stack. They document the
+former hybrid edge-handler implementation and must not be cited as evidence for
+the current DAY-349 route architecture. The current exact-head recordings above
+replace them.
+
+The former launch architecture kept the native iOS route gesture enabled on the
+first intro page, but the full-screen intro pager could win that gesture before
+the router received it. That implementation therefore installed the same
+guarded interactive edge handler on the entry page. Its commit action called
+the normal route back/replace logic. This was a documented hybrid fallback, not
+a claim that the captured entry transition was a native route-pop animation.
+DAY-349 has now replaced it with the per-step native stack documented above.
 
 - `ios-entry-edge-back-final-head.mp4`: starts on the auth choice, opens the
   first intro, shows the committed edge translation at `00:18–00:20`, and
@@ -941,7 +1031,7 @@ learning-time contract.
 
 This evidence set now proves the operational learning-time segment, native
 iOS/Android restart recovery, Android live duration preview on the final
-worklet-helper implementation, committed iOS entry and internal edge behavior,
+worklet-helper implementation, the current DAY-349 routed-back behavior,
 Android predictive back, native time-picker-first dismissal, shared bounded-
 select-first dismissal, the intro's small/large light/dark matrix, and the
 responsive intro at maximum iOS and enlarged Android system text. It also proves
@@ -951,9 +1041,11 @@ native profile/account runs: Android dark at standard and enlarged system text,
 Android light at `font_scale=2.0`, iOS dark, iPhone 13 mini light at maximum
 Dynamic Type, and iPhone 17 Pro Max light and dark at maximum Dynamic Type.
 
-The remaining evidence gates are a physical-device VoiceOver pass on the
-connected iPhone, a physical-device TalkBack pass on an Android device, and the
-decision owner's final cross-screen/release-readiness acceptance. Simulator or
-emulator runs must not be relabelled as physical assistive-technology proof.
-PR #458 stays Draft and DAY-292 stays In Progress until those gates are closed
-or the decision owner explicitly changes the acceptance contract.
+The remaining evidence gates are a physical-device VoiceOver pass on iPhone, a
+physical-device TalkBack pass on Android, physical confirmation of the iOS
+interactive edge-pop animation, and the decision owner's final cross-screen /
+release-readiness acceptance and mutually exclusive delivery-path selection.
+Simulator or emulator runs must not be relabelled as physical assistive-
+technology proof. PR #515 and the older #458/#473 path stay Draft until the
+owner selects one delivery path and its remaining acceptance gates are closed
+or explicitly changed.

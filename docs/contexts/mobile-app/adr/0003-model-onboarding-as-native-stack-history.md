@@ -34,9 +34,11 @@ the [canonical onboarding decision](https://app.notion.com/p/3b92e87228bf817faac
    pop back to the auth choice. Route files remain thin adapters.
 3. **A screen-independent flow state machine.** Retained only for state that is
    not navigation: answers, confirmed learning times, field errors, intro page,
-   and visited-step authorization. The route history itself is the navigation
-   state machine; keeping a second `activeIndex` would recreate two sources of
-   truth.
+   visited-step authorization, and the transient registration operation stage
+   used to authorize verification/creation routes across screen unmounts. That
+   stage describes the in-flight auth operation; it does not choose the visible
+   route. The route history itself is the navigation state machine, and there is
+   no second `activeIndex` that can advance or rewind it.
 
 The three educational intro pages remain one native horizontal pager route.
 That is the documented native equivalent for those homogeneous pages: it gives
