@@ -423,7 +423,7 @@ describe("production release configuration", () => {
 		expect(otaChecks.needs).toEqual(
 			expect.arrayContaining(["main_checks", "production_fingerprint"]),
 		);
-		expect(otaGuard.env).toEqual({
+		expect(otaChecks.env).toEqual({
 			APP_VARIANT: "production",
 			EAS_BUILD_PLATFORM: "ios",
 			OTA_ANDROID_FINGERPRINT:
@@ -431,6 +431,7 @@ describe("production release configuration", () => {
 			OTA_IOS_FINGERPRINT:
 				"${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}",
 		});
+		expect(otaGuard.env).toBeUndefined();
 		const sendUpdates = workflow.jobs.send_updates;
 		const finalGuard = sendUpdates.steps.find(
 			(step: { name?: string }) =>
@@ -440,7 +441,8 @@ describe("production release configuration", () => {
 
 		expect(sendUpdates.needs).toContain("ota_checks");
 		expect(sendUpdates.needs).toContain("production_fingerprint");
-		expect(finalGuard.env).toEqual(otaGuard.env);
+		expect(sendUpdates.env).toEqual(otaChecks.env);
+		expect(finalGuard.env).toBeUndefined();
 	});
 
 	it("requires a clean commit before EAS builds upload source", () => {
