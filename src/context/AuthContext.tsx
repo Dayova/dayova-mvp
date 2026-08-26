@@ -41,6 +41,7 @@ import {
 import { isSupportedGrade } from "~/lib/grades";
 import { signOutAndResetState } from "~/lib/logout-state";
 import {
+	finalizePendingOnboardingCompletion,
 	getPendingOnboardingSyncTransition,
 	PendingOnboardingSyncError,
 	type PendingOnboardingSyncAnswers,
@@ -822,23 +823,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const completeOnboardingHandoff = useCallback(async () => {
 		if (
 			!user ||
+			!clerkUser ||
+			clerkUser.id !== user.clerkId ||
 			onboardingCompletion.clerkUserId !== user.clerkId ||
 			!onboardingCompletion.accountFingerprint ||
 			onboardingCompletion.result.status !== "ready_for_trial"
 		) {
 			return false;
 		}
+		const accountFingerprint = onboardingCompletion.accountFingerprint;
 		try {
-			await pendingOnboardingSyncOutbox.acknowledgeCompletion({
-				clerkUserId: user.clerkId,
-				accountFingerprint: onboardingCompletion.accountFingerprint,
+			await finalizePendingOnboardingCompletion({
+				clearRegistrationAttempt: async () => {
+					if (!user.onboardingRegistrationAttemptId) return;
+					await clerkUser.updateMetadata({
+						unsafeMetadata: { onboardingRegistrationAttemptId: null },
+					});
+				},
+				acknowledgeCompletion: () =>
+					pendingOnboardingSyncOutbox.acknowledgeCompletion({
+						clerkUserId: user.clerkId,
+						accountFingerprint,
+					}),
 			});
 			setPostAuthSyncFailure((current) =>
 				clearOwnedPostAuthSyncFailure(current, "completion"),
 			);
 			setOnboardingCompletion({
 				clerkUserId: user.clerkId,
-				accountFingerprint: onboardingCompletion.accountFingerprint,
+				accountFingerprint,
 				result: { status: "none" },
 			});
 			return true;
@@ -851,7 +864,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			setPostAuthSyncFailure("completion");
 			return false;
 		}
-	}, [onboardingCompletion, user]);
+	}, [clerkUser, onboardingCompletion, user]);
 
 	const retryPostAuthSync = useCallback(() => {
 		const failedBoundary = postAuthSyncFailure;

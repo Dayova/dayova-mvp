@@ -2592,14 +2592,7 @@ export function OnboardingRecoveryScreen({
 	const validationError = getOnboardingLearningTimeValidationError(answers);
 	const isSubmitDisabled = isSubmitting || validationError !== null;
 	return (
-		<View
-			className="flex-1 bg-background px-6"
-			// Recovery content must clear the runtime device safe-area insets.
-			style={{
-				paddingTop: Math.max(topInset + 24, 36),
-				paddingBottom: Math.max(bottomInset + 22, 32),
-			}}
-		>
+		<View className="flex-1 bg-background">
 			<Stack.Screen
 				options={{
 					title: "Lernzeiten wiederherstellen",
@@ -2607,22 +2600,29 @@ export function OnboardingRecoveryScreen({
 				}}
 			/>
 			<ThemedStatusBar />
-			<Text
-				accessibilityRole="header"
-				className="mt-8 text-center font-poppins font-semibold text-heading-2 text-text"
-			>
-				Stelle deine Lernzeiten wieder her.
-			</Text>
-			<Text className="mt-3 text-center font-poppins text-body-3 text-secondary-text">
-				Dein Konto ist sicher. Die letzte Übertragung deiner Lernzeiten war
-				unvollständig – bitte bestätige nur diese drei Angaben erneut.
-			</Text>
-
 			<KeyboardSafeScrollView
+				testID="onboarding-recovery-scroll"
 				// The keyboard-controller content container accepts React Native styles only.
-				contentContainerStyle={{ flexGrow: 1, paddingTop: 28 }}
+				// Recovery content and its terminal action share one safe-area-aware flow.
+				contentContainerStyle={{
+					flexGrow: 1,
+					paddingTop: Math.max(topInset + 24, 36),
+					paddingBottom: Math.max(bottomInset + 22, 32),
+					paddingHorizontal: 24,
+				}}
 			>
-				<Text className="font-poppins font-semibold text-body-3 text-text">
+				<Text
+					accessibilityRole="header"
+					className="mt-8 text-center font-poppins font-semibold text-heading-2 text-text"
+				>
+					Stelle deine Lernzeiten wieder her.
+				</Text>
+				<Text className="mt-3 text-center font-poppins text-body-3 text-secondary-text">
+					Dein Konto ist sicher. Die letzte Übertragung deiner Lernzeiten war
+					unvollständig – bitte bestätige nur diese drei Angaben erneut.
+				</Text>
+
+				<Text className="mt-7 font-poppins font-semibold text-body-3 text-text">
 					Dauer pro Lerntag
 				</Text>
 				<View className="mt-3 flex-row flex-wrap gap-2">
@@ -2729,22 +2729,24 @@ export function OnboardingRecoveryScreen({
 						{error ?? validationError}
 					</ErrorMessage>
 				) : null}
+				<View className="pt-8" style={{ marginTop: "auto" }}>
+					<Button
+						accessibilityLabel={
+							isSubmitting
+								? "Lernzeiten werden gespeichert"
+								: "Lernzeiten erneut speichern"
+						}
+						disabled={isSubmitDisabled}
+						onPress={onSubmit}
+					>
+						<Text>
+							{isSubmitting
+								? "Lernzeiten werden gespeichert …"
+								: "Lernzeiten erneut speichern"}
+						</Text>
+					</Button>
+				</View>
 			</KeyboardSafeScrollView>
-			<Button
-				accessibilityLabel={
-					isSubmitting
-						? "Lernzeiten werden gespeichert"
-						: "Lernzeiten erneut speichern"
-				}
-				disabled={isSubmitDisabled}
-				onPress={onSubmit}
-			>
-				<Text>
-					{isSubmitting
-						? "Lernzeiten werden gespeichert …"
-						: "Lernzeiten erneut speichern"}
-				</Text>
-			</Button>
 			<DateTimePickerSheet
 				visible={pickerVisible}
 				value={pendingTime}

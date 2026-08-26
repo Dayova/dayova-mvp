@@ -1,6 +1,7 @@
 import { describe, expect, it, test, vi } from "vitest";
 import {
 	createPendingOnboardingSyncOutbox,
+	finalizePendingOnboardingCompletion,
 	getPendingOnboardingSyncTransition,
 	syncPendingOnboardingAnswers,
 	type PendingOnboardingSyncStorage,
@@ -20,6 +21,40 @@ describe("getPendingOnboardingSyncTransition", () => {
 			result: { status: "recovery_required", reason: "invalid" },
 			shouldFinalize: false,
 		});
+	});
+});
+
+describe("finalizePendingOnboardingCompletion", () => {
+	it("clears registration provenance before deleting the local completion marker", async () => {
+		const calls: string[] = [];
+
+		await finalizePendingOnboardingCompletion({
+			clearRegistrationAttempt: async () => {
+				calls.push("clear-registration-attempt");
+			},
+			acknowledgeCompletion: async () => {
+				calls.push("acknowledge-completion");
+			},
+		});
+
+		expect(calls).toEqual([
+			"clear-registration-attempt",
+			"acknowledge-completion",
+		]);
+	});
+
+	it("retains the local completion marker when provenance cleanup fails", async () => {
+		const acknowledgeCompletion = vi.fn(async () => undefined);
+
+		await expect(
+			finalizePendingOnboardingCompletion({
+				clearRegistrationAttempt: async () => {
+					throw new Error("metadata unavailable");
+				},
+				acknowledgeCompletion,
+			}),
+		).rejects.toThrow("metadata unavailable");
+		expect(acknowledgeCompletion).not.toHaveBeenCalled();
 	});
 });
 
@@ -261,6 +296,29 @@ describe("pending onboarding sync outbox", () => {
 				accountFingerprint: ACCOUNT_FINGERPRINT,
 			}),
 		).resolves.toEqual({ status: "recovery_required", reason: "invalid" });
+	});
+
+	it("routes an authenticated onboarding account with a missing payload to recovery", async () => {
+		const { storage, values } = createMemoryStorage();
+		const outbox = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 13, 10),
+		});
+
+		await expect(
+			outbox.resume({
+				clerkUserId: "user_123",
+				accountFingerprint: ACCOUNT_FINGERPRINT,
+				registrationAttemptId: "signup_123",
+			}),
+		).resolves.toEqual({ status: "recovery_required", reason: "invalid" });
+		expect(JSON.parse([...values.values()][0] ?? "{}")).toMatchObject({
+			status: "recovery_required",
+			registrationAttemptId: "signup_123",
+			clerkUserId: "user_123",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+			reason: "invalid",
+		});
 	});
 
 	it("preserves an account-bound payload when the same email starts another registration", async () => {
@@ -539,6 +597,33 @@ describe("pending onboarding sync outbox", () => {
 				answers: ANSWERS,
 			}),
 		).rejects.toMatchObject({ code: "payload_unavailable" });
+	});
+
+	it("rejects a future-dated completion marker without expiring old valid markers", async () => {
+		const { storage } = createMemoryStorage();
+		const identity = {
+			clerkUserId: "user_123",
+			accountFingerprint: ACCOUNT_FINGERPRINT,
+		};
+		const futureProcess = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 13, 10, 5),
+		});
+		await futureProcess.stageForUser({
+			...identity,
+			registrationAttemptId: "signup_123",
+			answers: ANSWERS,
+		});
+		await futureProcess.markSynced(identity);
+
+		const clockMovedBack = createPendingOnboardingSyncOutbox({
+			storage,
+			now: () => Date.UTC(2026, 7, 13, 10),
+		});
+		await expect(clockMovedBack.resume(identity)).resolves.toEqual({
+			status: "recovery_required",
+			reason: "expired",
+		});
 	});
 
 	it.each([

@@ -271,7 +271,30 @@ export const createPendingOnboardingSyncOutbox = ({
 		const elapsedMs = now() - createdAt;
 		return elapsedMs < 0 || elapsedMs > ttlMs;
 	};
+	const isFutureDatedRecord = (createdAt: number) => now() - createdAt < 0;
 	const serializeAccountOperation = createKeyedOperationSerializer();
+	const writeRecoveryRequired = async ({
+		registrationAttemptId,
+		clerkUserId,
+		accountFingerprint,
+		reason,
+	}: {
+		registrationAttemptId: string;
+		clerkUserId: string;
+		accountFingerprint: string;
+		reason: RecoveryRequiredRecord["reason"];
+	}) => {
+		await write({
+			version: SCHEMA_VERSION,
+			status: "recovery_required",
+			registrationAttemptId,
+			accountFingerprint,
+			clerkUserId,
+			createdAt: now(),
+			reason,
+		});
+		return { status: "recovery_required", reason } as const;
+	};
 
 	return {
 		stage: async ({
@@ -420,34 +443,42 @@ export const createPendingOnboardingSyncOutbox = ({
 		): Promise<PendingOnboardingSyncResumeResult> =>
 			serializeAccountOperation(identity.accountFingerprint, async () => {
 				const record = await read(identity.accountFingerprint);
-				if (record === null) return { status: "none" };
+				if (record === null) {
+					if (!identity.registrationAttemptId) return { status: "none" };
+					return writeRecoveryRequired({
+						registrationAttemptId: identity.registrationAttemptId,
+						accountFingerprint: identity.accountFingerprint,
+						clerkUserId: identity.clerkUserId,
+						reason: "invalid",
+					});
+				}
 				if (record === "invalid") {
-					await write({
-						version: SCHEMA_VERSION,
-						status: "recovery_required",
+					return writeRecoveryRequired({
 						registrationAttemptId: "recovery",
 						accountFingerprint: identity.accountFingerprint,
 						clerkUserId: identity.clerkUserId,
-						createdAt: now(),
 						reason: "invalid",
 					});
-					return { status: "recovery_required", reason: "invalid" };
 				}
 				if (!matchesAccount(record, identity)) return { status: "none" };
 				if (
 					!record.clerkUserId &&
 					identity.registrationAttemptId !== record.registrationAttemptId
 				) {
-					await write({
-						version: SCHEMA_VERSION,
-						status: "recovery_required",
+					return writeRecoveryRequired({
 						registrationAttemptId: record.registrationAttemptId,
 						accountFingerprint: identity.accountFingerprint,
 						clerkUserId: identity.clerkUserId,
-						createdAt: now(),
 						reason: "invalid",
 					});
-					return { status: "recovery_required", reason: "invalid" };
+				}
+				if (isFutureDatedRecord(record.createdAt)) {
+					return writeRecoveryRequired({
+						registrationAttemptId: record.registrationAttemptId,
+						accountFingerprint: identity.accountFingerprint,
+						clerkUserId: identity.clerkUserId,
+						reason: "expired",
+					});
 				}
 				if (record.status === "recovery_required") {
 					return { status: "recovery_required", reason: record.reason };
@@ -456,16 +487,12 @@ export const createPendingOnboardingSyncOutbox = ({
 					return { status: "ready_for_trial" };
 				}
 				if (isExpiredPendingRecord(record.createdAt)) {
-					await write({
-						version: SCHEMA_VERSION,
-						status: "recovery_required",
+					return writeRecoveryRequired({
 						registrationAttemptId: record.registrationAttemptId,
 						accountFingerprint: identity.accountFingerprint,
 						clerkUserId: identity.clerkUserId,
-						createdAt: now(),
 						reason: "expired",
 					});
-					return { status: "recovery_required", reason: "expired" };
 				}
 
 				if (!record.clerkUserId) {
@@ -525,6 +552,17 @@ export const createPendingOnboardingSyncOutbox = ({
 			);
 		},
 	};
+};
+
+export const finalizePendingOnboardingCompletion = async ({
+	clearRegistrationAttempt,
+	acknowledgeCompletion,
+}: {
+	clearRegistrationAttempt: () => Promise<void>;
+	acknowledgeCompletion: () => Promise<void>;
+}) => {
+	await clearRegistrationAttempt();
+	await acknowledgeCompletion();
 };
 
 const pendingSyncOperationQueues = new WeakMap<
