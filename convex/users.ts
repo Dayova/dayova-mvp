@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import {
+	BIRTH_DATE_REQUIRED_ERROR,
 	getAgeAssuranceResult,
 	getBirthDateError,
 } from "../src/lib/age-assurance";
@@ -336,6 +337,9 @@ const normalizeOptionalBirthDate = (birthDate?: string) => {
 	return result.normalizedBirthDate;
 };
 
+const getProvidedBirthDate = (birthDate?: string) =>
+	birthDate?.trim() ? birthDate : undefined;
+
 const profileFields = (args: {
 	email?: string;
 	name?: string;
@@ -416,7 +420,12 @@ export const syncCurrentUser = mutation({
 				q.eq("tokenIdentifier", identity.tokenIdentifier),
 			)
 			.unique();
-		normalizeOptionalBirthDate(args.birthDate ?? existingUser?.birthDate);
+		const providedBirthDate = getProvidedBirthDate(args.birthDate);
+		const effectiveBirthDate = providedBirthDate ?? existingUser?.birthDate;
+		if (!existingUser && !effectiveBirthDate?.trim()) {
+			throwUserFacingError(BIRTH_DATE_REQUIRED_ERROR);
+		}
+		normalizeOptionalBirthDate(effectiveBirthDate);
 
 		const email = normalizeEmail(identity.email) || existingUser?.email;
 
@@ -429,7 +438,7 @@ export const syncCurrentUser = mutation({
 			clerkId: identity.subject,
 			email,
 			name: args.name ?? identity.name,
-			...profileFields(args),
+			...profileFields({ ...args, birthDate: providedBirthDate }),
 		};
 
 		let userId: Id<"users">;
@@ -478,9 +487,14 @@ export const updateProfile = mutation({
 		if (!user) {
 			throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
 		}
-		normalizeOptionalBirthDate(args.birthDate ?? user.birthDate);
+		const providedBirthDate = getProvidedBirthDate(args.birthDate);
+		normalizeOptionalBirthDate(providedBirthDate ?? user.birthDate);
 
-		await ctx.db.patch("users", user._id, profileFields(args));
+		await ctx.db.patch(
+			"users",
+			user._id,
+			profileFields({ ...args, birthDate: providedBirthDate }),
+		);
 		return { success: true };
 	},
 });
