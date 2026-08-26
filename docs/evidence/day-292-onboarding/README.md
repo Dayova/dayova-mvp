@@ -1,8 +1,9 @@
 # DAY-292 onboarding review evidence
 
-These artifacts document native rendering and interaction work on PR #458.
-They are review evidence, not app assets. The canonical product decision lives
-in Notion; DAY-292 remains the delivery source of truth.
+These artifacts document native rendering and interaction work on PR #515, the
+mutually exclusive `main` delivery alternative to PR #458. They are review
+evidence, not app assets. The canonical product decision lives in Notion;
+DAY-292 remains the delivery source of truth.
 
 ## Shared product-preview contract — 15 August 2026
 
