@@ -1,6 +1,6 @@
 # Google Play Closed and Open testing runbook
 
-Last updated: 2026-08-25
+Last updated: 2026-08-26
 
 This runbook owns Dayova's repeatable Android tester-distribution path for the
 existing Play app `com.dayova`. It does not create another Android application,
@@ -31,13 +31,13 @@ review**. Google warned that submitting them would cancel and restart the
 Production review that has been running since 2026-08-23, so the restart was
 cancelled.
 
-Do not submit, rebuild, promote, or otherwise modify the Closed/Open rollout
-until the current Production review resolves. Then verify the final Production
-status, version-code precedence, feedback channel, audience, country/cap,
-service-account permissions, and listing state before resuming this runbook.
-The checked workflow remains the path for a genuinely new candidate; the saved
-version-code-20 Console changes are only a deferred draft and not evidence that
-either test track is available.
+Do not submit, rebuild, promote, remove, or otherwise modify the Closed/Open
+rollout until the current Production review resolves or is withdrawn. Build 20
+uses SDK 57 with legacy runtime `1.0.3`, so its saved testing drafts are obsolete
+release evidence, not a candidate to resume. After Production review is no
+longer active, discard those drafts, verify version-code precedence, feedback
+channel, audience, country/cap, service-account permissions, and listing state,
+then use the checked workflow for a clean app/runtime `1.0.4` replacement.
 
 ## Create a new test candidate
 

@@ -410,8 +410,8 @@ describe("production release configuration", () => {
 			readFileSync(new URL("../.eas/workflows/ci.yml", import.meta.url), "utf8"),
 		);
 		const fingerprint = workflow.jobs.production_fingerprint;
-		const mainChecks = workflow.jobs.main_checks;
-		const otaGuard = mainChecks.steps.find(
+		const otaChecks = workflow.jobs.ota_checks;
+		const otaGuard = otaChecks.steps.find(
 			(step: { id?: string }) => step.id === "ota_guard",
 		);
 
@@ -420,9 +420,12 @@ describe("production release configuration", () => {
 			environment: "production",
 		});
 		expect(fingerprint.params?.unstable_skip_cng_check).not.toBe(true);
-		expect(mainChecks.needs).toContain("production_fingerprint");
+		expect(otaChecks.needs).toEqual(
+			expect.arrayContaining(["main_checks", "production_fingerprint"]),
+		);
 		expect(otaGuard.env).toEqual({
 			APP_VARIANT: "production",
+			EAS_BUILD_PLATFORM: "ios",
 			OTA_ANDROID_FINGERPRINT:
 				"${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}",
 			OTA_IOS_FINGERPRINT:
@@ -435,6 +438,7 @@ describe("production release configuration", () => {
 				"Verify production manifest and distributed-binary compatibility",
 		);
 
+		expect(sendUpdates.needs).toContain("ota_checks");
 		expect(sendUpdates.needs).toContain("production_fingerprint");
 		expect(finalGuard.env).toEqual(otaGuard.env);
 	});

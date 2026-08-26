@@ -1,9 +1,10 @@
 # Play Console submission checklist
 
-Last updated: 2026-08-23
+Last updated: 2026-08-26
 
-This checklist records the submitted state and the remaining launch work. The
-old build 15 AAB was not used as the production candidate.
+This checklist records the submitted state and the replacement launch work. The
+old build 15 AAB was not used as the production candidate, and reviewed build 20
+cannot remain the DAY-248 candidate because it uses runtime `1.0.3`.
 
 ## 1. Developer account
 
@@ -99,8 +100,8 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
 
 ## 6. Release candidate and submission
 
-- [x] Keep the approved app/runtime version at `1.0.3` and build Android version
-      code `20` from source
+- [x] Record the submitted app/runtime version `1.0.3` and Android version code
+      `20` from source
       `31f7f25787d2c4cdfde96384379f47b3e321fc17`.
 - [x] Build `com.dayova` with EAS production profile: build
       `1b52de89-746d-4600-9670-7c395079ff02`.
@@ -112,9 +113,15 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
 - [x] Cancel the Play warning that would restart the Production review. Leave
       all four Closed/Open changes under **Changes not yet submitted for review**
       until the Production review resolves.
-- [ ] After Production review resolves, revalidate the saved test-track drafts,
-      add the approved feedback channel, audit the EAS service-account
-      permissions, and only then submit Closed/Open for review.
+- [ ] Withdraw build 20 from Production review because SDK 57 must use the
+      `1.0.4` runtime boundary. Keep Closed/Open untouched until the Production
+      review is no longer active.
+- [ ] After withdrawal, discard the obsolete version-code-20 testing drafts,
+      build a clean app/runtime `1.0.4` artifact (expected version code `21`),
+      and verify its immutable EAS source, runtime, SDK, channel, identifier, and
+      fingerprint metadata.
+- [ ] Submit and install-verify the replacement through the approved testing
+      progression, then promote the same version code to Production review.
 - [ ] Install from the Play opt-in link on a clean physical Android device and a
       supported emulator/device size.
 - [ ] Verify signup/login, onboarding, trial, plans, uploads, learning session,
@@ -138,8 +145,9 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
       missing deobfuscation mapping is recorded as non-blocking.
 - [x] Obtain authorized human confirmation immediately before **Start rollout
       to Production**.
-- [ ] Monitor Google review without unnecessary resubmission. Managed publishing
-      is off, so approval should publish automatically.
+- [ ] Monitor Google review until coordinated withdrawal. Managed publishing is
+      off, so approval could publish automatically; build 20 must still never be
+      recorded as the OTA baseline.
 - [ ] After availability, install from the public listing and record the exact
-      distributed build in `release/production-ota-baseline.json` before relying
+      replacement build in `release/production-ota-baseline.json` before relying
       on production OTA updates.

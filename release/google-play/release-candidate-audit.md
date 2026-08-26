@@ -1,6 +1,6 @@
 # Android release-candidate audit
 
-Audited: 2026-08-23
+Audited: 2026-08-26
 
 ## Current source
 
@@ -18,6 +18,7 @@ Audited: 2026-08-23
 | EAS submission ID | `d3e7d523-cac4-4be9-a55c-2245d1095972` |
 | Play release | `1.0.3 – Erste Play-Store-Version` |
 | Play status | Production, Germany, **In review**; Managed publishing off |
+| Native fingerprint | `bbcbaae5c8ae69231aa15692d7197e4e87f61cac` |
 
 Expo SDK 57 satisfies Android API level 36. Google requires new apps and app
 updates to target API 36 from 2026-08-31; cutting the candidate on SDK 57 avoids
@@ -40,17 +41,26 @@ shipping immediately below that deadline.
 audited source and current native subscription implementation. Its existence is
 useful for provenance only.
 
-## Actual submitted release boundary
+## Submitted boundary reconciliation
 
-The release owner kept app/runtime version **1.0.3** and submitted version code
-**20**. This supersedes the earlier 1.0.5 recommendation. The exact submitted
+The release owner submitted app/runtime **1.0.3**, version code **20**. The exact
 artifact is EAS build `1b52de89-746d-4600-9670-7c395079ff02`, built from
-`31f7f25787d2c4cdfde96384379f47b3e321fc17`, and connected to Play by submission
+`31f7f25787d2c4cdfde96384379f47b3e321fc17`, fingerprint
+`bbcbaae5c8ae69231aa15692d7197e4e87f61cac`, and connected to Play by submission
 `d3e7d523-cac4-4be9-a55c-2245d1095972`.
 
-Do not treat later documentation commits as artifact source. Production OTA
-eligibility remains blocked until the public Play distribution is verified and
-the Android baseline records this exact native build and fingerprint.
+This is not the safe DAY-248 boundary. It would share runtime `1.0.3` with
+already distributed SDK 56 binaries, so it must be withdrawn and replaced by a
+clean SDK 57 app/runtime `1.0.4` artifact. EAS remote Android version code is
+`20`; the next production-profile build is expected to use `21`, subject to
+verification from its immutable build metadata. Never record build 20 in the
+OTA baseline, even if Google approves it before withdrawal.
+
+The exact Apple submission already uses the intended boundary: iOS EAS build
+`a218ee2f-29f1-4873-9b49-36b52625cb71`, app/runtime `1.0.4`, build `55`, source
+`82c1ff3636f17c414ced684cc404f9cb99e9b854`, fingerprint
+`78a442f2623d4417068794025c4d669bc9105be9`, submission
+`85aa2c51-c562-485d-b28b-ff53e89ae9af`.
 
 ## Environment and review state
 
@@ -75,12 +85,12 @@ the Android baseline records this exact native build and fingerprint.
 
 ## Evidence to capture for the new candidate
 
-Record in DAY-218 and the OTA baseline once actually distributed:
+Record in DAY-218/DAY-248 and the OTA baseline once the replacement is actually
+distributed:
 
 - public approval/availability timestamp and public listing install evidence
 - exact distributed version name and version code
-- exact source SHA (`31f7f25787d2c4cdfde96384379f47b3e321fc17`) and EAS
-  build ID
+- exact replacement source SHA and EAS build ID
 - runtime version
 - EAS native fingerprint
 - full AAB SHA-256 and byte size
