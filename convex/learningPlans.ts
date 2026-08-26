@@ -1256,8 +1256,12 @@ export const listOverview = query({
 		);
 		const plans = planGroups
 			.flat()
-			.sort((left, right) => right.updatedAt - left.updatedAt)
-			.slice(0, 50);
+			.sort(
+				(left, right) =>
+					Number(left.status === "accepted") -
+						Number(right.status === "accepted") ||
+					right.updatedAt - left.updatedAt,
+			);
 
 		const overviews = [];
 		for (const plan of plans) {
@@ -1327,6 +1331,44 @@ export const listOverview = query({
 				: sessions.length > 0
 					? Math.round((completedCount / sessions.length) * 100)
 					: 0;
+			let creationProgress: {
+				questionCount: number;
+				answeredQuestionCount: number;
+				firstUnansweredQuestionIndex: number | null;
+			} | null = null;
+			if (plan.status === "questionsReady") {
+				const questions = plan.knowledgeQuestions ?? [];
+				const answers = await Promise.all(
+					questions.map((question) =>
+						ctx.db
+							.query("learningPlanAnswers")
+							.withIndex("by_learningPlanId_and_questionId", (q) =>
+								q.eq("learningPlanId", plan._id).eq("questionId", question.id),
+							)
+							.unique(),
+					),
+				);
+				const answeredQuestionIds = new Set(
+					answers
+						.filter(
+							(answer): answer is NonNullable<typeof answer> =>
+								answer !== null && answer.answer.trim().length > 0,
+						)
+						.map((answer) => answer.questionId),
+				);
+				const firstUnansweredQuestionIndex = questions.findIndex(
+					(question) => !answeredQuestionIds.has(question.id),
+				);
+
+				creationProgress = {
+					questionCount: questions.length,
+					answeredQuestionCount: answeredQuestionIds.size,
+					firstUnansweredQuestionIndex:
+						firstUnansweredQuestionIndex >= 0
+							? firstUnansweredQuestionIndex
+							: null,
+				};
+			}
 
 			overviews.push({
 				id: plan._id,
@@ -1364,6 +1406,7 @@ export const listOverview = query({
 							sessionPurpose: currentSession.sessionPurpose,
 						}
 					: null,
+				creationProgress,
 				updatedAt: plan.updatedAt,
 			});
 		}

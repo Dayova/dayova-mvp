@@ -35,6 +35,8 @@ jobs:
       - name: Run lint and typecheck
         run: pnpm check
       - name: Run tests
+        env:
+          EAS_BUILD: "false"
         run: pnpm test
 
   main_checks:
@@ -42,6 +44,24 @@ jobs:
     type: custom
     runs_on: linux-medium
     if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Run lint and typecheck
+        run: pnpm check
+      - name: Run tests
+        env:
+          EAS_BUILD: "false"
+        run: pnpm test
+
+  ota_checks:
+    name: Production OTA gates
+    type: custom
+    runs_on: linux-medium
+    needs:
+      - main_checks
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    environment: production
     outputs:
       ota_safe: ${{ steps.ota_guard.outputs.ota_safe }}
       ota_reason: ${{ steps.ota_guard.outputs.ota_reason }}
@@ -50,18 +70,16 @@ jobs:
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
-      - name: Run lint and typecheck
-        run: pnpm check
-      - name: Run tests
-        run: pnpm test
       - name: Verify Expo export
         env:
           APP_VARIANT: production
-        run: pnpm exec expo export --platform all --output-dir dist
+          EAS_BUILD_PLATFORM: ios
+        run: pnpm exec expo export --platform ios --output-dir dist
       - id: ota_guard
         name: Check OTA safety against distributed binaries
         env:
           APP_VARIANT: production
+          EAS_BUILD_PLATFORM: ios
         run: |
           if ota_report="$(node scripts/ota-safety.mjs --json)"; then
             ota_safe=true
@@ -97,9 +115,9 @@ jobs:
     type: custom
     runs_on: linux-medium
     needs:
-      - main_checks
+      - ota_checks
       - deploy_convex
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && needs.main_checks.outputs.ota_safe == 'true' }}
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}
     environment: production
     steps:
       - uses: eas/checkout
@@ -115,7 +133,7 @@ jobs:
           pnpm dlx eas-cli@18.11.0 update \
             --branch production \
             --environment production \
-            --platform all \
+            --platform ios \
             --message "Production OTA from ${{ github.sha }}" \
             --non-interactive
 
@@ -123,18 +141,18 @@ jobs:
     name: OTA update skipped
     type: doc
     needs:
-      - main_checks
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && needs.main_checks.outputs.ota_safe != 'true' }}
+      - ota_checks
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe != 'true' }}
     params:
       md: |
         ## OTA update skipped
 
         The production OTA update was not sent.
 
-        **Reason:** ${{ needs.main_checks.outputs.ota_reason }}
+        **Reason:** ${{ needs.ota_checks.outputs.ota_reason }}
 
-        **Distributed baseline:** ${{ needs.main_checks.outputs.ota_baseline }}
+        **Distributed baseline:** ${{ needs.ota_checks.outputs.ota_baseline }}
 
-        **Current fingerprints:** ${{ needs.main_checks.outputs.ota_current_fingerprints }}
+        **Current fingerprints:** ${{ needs.ota_checks.outputs.ota_current_fingerprints }}
 
         This block persists across later commits until the production manifest and native fingerprints match verified distributed binaries.

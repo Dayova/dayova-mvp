@@ -31,7 +31,7 @@ function PickerInputTrigger({
 
 	return (
 		<FieldTrigger
-			accessibilityLabel={`${accessibilityLabel}: ${hasValue ? value : placeholder}`}
+			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
 			accessibilityState={expanded === undefined ? undefined : { expanded }}
 			accessibilityValue={hasValue ? { text: value } : undefined}

@@ -1,6 +1,4 @@
-import { useFocusEffect } from "expo-router";
-import * as Speech from "expo-speech";
-import { useCallback, useRef, useState } from "react";
+import { useState } from "react";
 import {
 	ActivityIndicator,
 	ScrollView,
@@ -17,26 +15,21 @@ import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import {
 	BookOpen,
 	Bulb,
+	ChevronDown,
 	CircleAlert,
 	Pencil,
-	Stop,
-	VolumeHigh,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 import {
 	adaptTheoryTopic,
-	buildTheorySpeechText,
 	getTheoryPagePresentation,
 	getTheoryTopicNavigation,
-	splitTheorySpeechText,
 	type TheoryTopic,
 } from "./theory-topic";
 import type { SessionContentItem } from "./types";
-
-const SPEECH_ERROR_MESSAGE =
-	"Vorlesen ist gerade nicht verfügbar. Lies das Thema selbst weiter oder versuche es erneut.";
 
 type TheoryTopicPageProps = {
 	item: SessionContentItem;
@@ -89,58 +82,59 @@ function TheoryTopicProgress({
 	);
 }
 
-function TheoryTopicIntroduction({
-	topic,
-	accessory,
-}: {
-	topic: TheoryTopic;
-	accessory?: React.ReactNode;
-}) {
+function TheoryTopicIntroduction({ topic }: { topic: TheoryTopic }) {
 	return (
-		<View className="gap-4">
-			<View className="flex-row items-start gap-4">
-				<Text
-					selectable
-					accessibilityRole="header"
-					className="flex-1 font-poppins font-semibold text-heading-2 text-text"
-				>
-					{topic.conceptTitle}
-				</Text>
-				{accessory}
-			</View>
-			<View className="rounded-[24px] bg-system-subtle px-5 py-5">
-				<Text className="font-poppins font-semibold text-body-4 text-primary">
-					Leitfrage
-				</Text>
-				<Text
-					selectable
-					className="mt-2 font-poppins font-semibold text-body-1 text-text"
-				>
-					{topic.question}
-				</Text>
-			</View>
-		</View>
+		<Text
+			selectable
+			accessibilityRole="header"
+			className="font-poppins font-semibold text-heading-2 text-text"
+		>
+			{topic.question}
+		</Text>
 	);
 }
 
-function TopicSectionTitle({
-	icon,
+function CollapsibleTheorySection({
+	chevronColor,
 	children,
+	className,
+	icon,
+	title,
 }: {
+	chevronColor: string;
+	children: React.ReactNode;
+	className?: string;
 	icon: React.ReactNode;
-	children: string;
+	title: string;
 }) {
+	const [isExpanded, setIsExpanded] = useState(false);
+
 	return (
-		<View className="flex-row items-center gap-3">
-			<View className="h-10 w-10 items-center justify-center rounded-full bg-system-subtle">
-				{icon}
-			</View>
-			<Text
-				selectable
-				className="flex-1 font-poppins font-semibold text-body-2 text-text"
+		<View className={cn("gap-4", className)}>
+			<TouchableOpacity
+				accessibilityHint={
+					isExpanded
+						? "Blendet den Inhalt dieses Abschnitts aus."
+						: "Blendet den Inhalt dieses Abschnitts ein."
+				}
+				accessibilityLabel={`${title} ${isExpanded ? "einklappen" : "ausklappen"}`}
+				accessibilityRole="button"
+				accessibilityState={{ expanded: isExpanded }}
+				activeOpacity={0.72}
+				className="min-h-12 flex-row items-center gap-3"
+				onPress={() => setIsExpanded((value) => !value)}
 			>
-				{children}
-			</Text>
+				<View className="h-10 w-10 items-center justify-center rounded-full bg-system-subtle">
+					{icon}
+				</View>
+				<Text className="flex-1 font-poppins font-semibold text-body-2 text-text">
+					{title}
+				</Text>
+				<View className={cn(isExpanded && "rotate-180")}>
+					<ChevronDown size={20} color={chevronColor} strokeWidth={2.1} />
+				</View>
+			</TouchableOpacity>
+			{isExpanded ? children : null}
 		</View>
 	);
 }
@@ -159,77 +153,6 @@ export function TheoryTopicPage({
 	const topic = adaptTheoryTopic(item, currentIndex);
 	const presentation = getTheoryPagePresentation(item.questionAngle);
 	const navigation = getTheoryTopicNavigation(currentIndex, total);
-	const [isSpeaking, setIsSpeaking] = useState(false);
-	const [speechError, setSpeechError] = useState<string | null>(null);
-	const speechRunRef = useRef(0);
-
-	const stopSpeaking = useCallback(() => {
-		speechRunRef.current += 1;
-		setIsSpeaking(false);
-		void Speech.stop().catch(() => undefined);
-	}, []);
-
-	useFocusEffect(useCallback(() => () => stopSpeaking(), [stopSpeaking]));
-
-	const toggleSpeech = useCallback(() => {
-		if (isSpeaking) {
-			stopSpeaking();
-			return;
-		}
-
-		const nextRun = speechRunRef.current + 1;
-		speechRunRef.current = nextRun;
-		setSpeechError(null);
-		void Speech.stop()
-			.then(() => {
-				if (speechRunRef.current !== nextRun) return;
-
-				const speechChunks = splitTheorySpeechText(
-					buildTheorySpeechText(topic, item.questionAngle),
-					Speech.maxSpeechInputLength,
-				);
-				const speakChunk = (chunkIndex: number) => {
-					const chunk = speechChunks[chunkIndex];
-					if (!chunk || speechRunRef.current !== nextRun) return;
-
-					Speech.speak(chunk, {
-						language: "de-DE",
-						rate: 0.92,
-						useApplicationAudioSession: false,
-						onStart: () => {
-							if (speechRunRef.current === nextRun) setIsSpeaking(true);
-						},
-						onDone: () => {
-							if (speechRunRef.current !== nextRun) return;
-							if (chunkIndex < speechChunks.length - 1) {
-								speakChunk(chunkIndex + 1);
-								return;
-							}
-							setIsSpeaking(false);
-						},
-						onStopped: () => {
-							if (speechRunRef.current === nextRun) setIsSpeaking(false);
-						},
-						onError: () => {
-							if (speechRunRef.current !== nextRun) return;
-							setIsSpeaking(false);
-							setSpeechError(SPEECH_ERROR_MESSAGE);
-						},
-					});
-				};
-				speakChunk(0);
-			})
-			.catch(() => {
-				if (speechRunRef.current !== nextRun) return;
-				setIsSpeaking(false);
-				setSpeechError(SPEECH_ERROR_MESSAGE);
-			});
-	}, [isSpeaking, item.questionAngle, stopSpeaking, topic]);
-
-	const stopAndRun = (action: () => void) => {
-		stopSpeaking();
-		action();
-	};
 
 	return (
 		<View className="flex-1 bg-background">
@@ -249,58 +172,19 @@ export function TheoryTopicPage({
 					entering={reduceMotion ? undefined : FadeInDown.duration(220)}
 					className="gap-7"
 				>
-					<TheoryTopicIntroduction
-						topic={topic}
-						accessory={
-							<TouchableOpacity
-								accessibilityLabel={
-									isSpeaking ? "Vorlesen stoppen" : "Thema vorlesen"
-								}
-								accessibilityRole="button"
-								accessibilityState={{ selected: isSpeaking }}
-								activeOpacity={0.8}
-								hitSlop={8}
-								onPress={toggleSpeech}
-								className="h-12 w-12 items-center justify-center rounded-full bg-system-subtle"
-							>
-								{isSpeaking ? (
-									<Stop
-										size={21}
-										color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-										strokeWidth={2.2}
-									/>
-								) : (
-									<VolumeHigh
-										size={22}
-										color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-										strokeWidth={2.2}
-									/>
-								)}
-							</TouchableOpacity>
-						}
-					/>
-					{speechError ? (
-						<Text
-							selectable
-							accessibilityLiveRegion="polite"
-							className="font-poppins text-body-4 text-wrong"
-						>
-							{speechError}
-						</Text>
-					) : null}
+					<TheoryTopicIntroduction topic={topic} />
 
-					<View className="gap-4">
-						<TopicSectionTitle
-							icon={
-								<BookOpen
-									size={20}
-									color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-									strokeWidth={2.1}
-								/>
-							}
-						>
-							{presentation.sectionTitle}
-						</TopicSectionTitle>
+					<CollapsibleTheorySection
+						chevronColor={colors.secondaryText}
+						title={presentation.sectionTitle}
+						icon={
+							<BookOpen
+								size={20}
+								color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+								strokeWidth={2.1}
+							/>
+						}
+					>
 						<Text
 							selectable
 							className="font-poppins text-body-2 text-secondary-text"
@@ -322,63 +206,63 @@ export function TheoryTopicPage({
 								))}
 							</View>
 						) : null}
-					</View>
+					</CollapsibleTheorySection>
 
 					{presentation.showExample && topic.example ? (
-						<View className="gap-4 rounded-[32px] border border-primary/20 bg-system-subtle px-5 py-5">
-							<TopicSectionTitle
-								icon={
-									<Pencil
-										size={19}
-										color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-										strokeWidth={2.1}
-									/>
-								}
-							>
-								Beispiel
-							</TopicSectionTitle>
+						<CollapsibleTheorySection
+							chevronColor={colors.secondaryText}
+							className="rounded-[32px] border border-primary/20 bg-system-subtle px-5 py-5"
+							title="Beispiel"
+							icon={
+								<Pencil
+									size={19}
+									color={DAYOVA_DESIGN_SYSTEM.colors.primary}
+									strokeWidth={2.1}
+								/>
+							}
+						>
 							<Text selectable className="font-poppins text-body-2 text-text">
 								{topic.example}
 							</Text>
-						</View>
+						</CollapsibleTheorySection>
 					) : null}
 
 					{presentation.showMemoryCue && topic.memoryCue ? (
-						<View className="gap-4 rounded-[32px] bg-theorie-subtle px-5 py-5">
-							<TopicSectionTitle
-								icon={
-									<Bulb
-										size={20}
-										color={DAYOVA_DESIGN_SYSTEM.colors.theorie}
-										strokeWidth={2.1}
-									/>
-								}
-							>
-								Merksatz
-							</TopicSectionTitle>
+						<CollapsibleTheorySection
+							chevronColor={colors.secondaryText}
+							className="rounded-[32px] bg-theorie-subtle px-5 py-5"
+							title="Merksatz"
+							icon={
+								<Bulb
+									size={20}
+									color={DAYOVA_DESIGN_SYSTEM.colors.theorie}
+									strokeWidth={2.1}
+								/>
+							}
+						>
 							<Text selectable className="font-poppins text-body-2 text-text">
 								{topic.memoryCue}
 							</Text>
-						</View>
+						</CollapsibleTheorySection>
 					) : null}
 
 					{presentation.showCommonMistake && topic.commonMistake ? (
-						<View className="gap-4 rounded-[32px] bg-wrong-subtle px-5 py-5">
-							<TopicSectionTitle
-								icon={
-									<CircleAlert
-										size={20}
-										color={DAYOVA_DESIGN_SYSTEM.colors.wrong}
-										strokeWidth={2.1}
-									/>
-								}
-							>
-								Typischer Fehler
-							</TopicSectionTitle>
+						<CollapsibleTheorySection
+							chevronColor={colors.secondaryText}
+							className="rounded-[32px] bg-wrong-subtle px-5 py-5"
+							title="Typischer Fehler"
+							icon={
+								<CircleAlert
+									size={20}
+									color={DAYOVA_DESIGN_SYSTEM.colors.wrong}
+									strokeWidth={2.1}
+								/>
+							}
+						>
 							<Text selectable className="font-poppins text-body-2 text-text">
 								{topic.commonMistake}
 							</Text>
-						</View>
+						</CollapsibleTheorySection>
 					) : null}
 				</Animated.View>
 			</ScrollView>
@@ -391,7 +275,7 @@ export function TheoryTopicPage({
 				<Button
 					className="flex-1 px-4"
 					disabled={!navigation.canGoPrevious || isCompleting}
-					onPress={() => stopAndRun(onPrevious)}
+					onPress={onPrevious}
 					variant="neutral"
 				>
 					<Text>Zurück</Text>
@@ -399,7 +283,7 @@ export function TheoryTopicPage({
 				<Button
 					className="flex-[1.35] px-4"
 					disabled={isCompleting}
-					onPress={() => stopAndRun(onNext)}
+					onPress={onNext}
 				>
 					{isCompleting ? (
 						<ActivityIndicator color={colors.light1} />

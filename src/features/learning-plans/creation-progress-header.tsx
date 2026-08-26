@@ -3,26 +3,27 @@ import { BackButton } from "~/components/ui/button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
 import {
-	getLearningPlanCreationProgressPercentage,
 	getSafeLearningPlanCreationProgress,
+	LEARNING_PLAN_CREATION_TOTAL_STEPS,
 } from "~/features/learning-plans/creation-progress";
 import { cn } from "~/lib/utils";
 
 export function LearningPlanCreationProgressHeader({
 	currentStep,
 	onBack,
+	totalSteps = LEARNING_PLAN_CREATION_TOTAL_STEPS,
 	title = "Lernplan erstellen",
 	className,
 	...props
 }: ViewProps & {
 	currentStep: number;
 	onBack: () => void;
+	totalSteps?: number;
 	title?: string;
 }) {
-	const { currentStep: safeProgress, totalSteps } =
-		getSafeLearningPlanCreationProgress({ currentStep });
-	const progressPercentage =
-		getLearningPlanCreationProgressPercentage(safeProgress);
+	const { currentStep: safeProgress, totalSteps: safeTotalSteps } =
+		getSafeLearningPlanCreationProgress({ currentStep, totalSteps });
+	const progressPercentage = Math.round((safeProgress / safeTotalSteps) * 100);
 
 	return (
 		<View className={cn("flex-row items-center gap-4", className)} {...props}>
@@ -45,7 +46,7 @@ export function LearningPlanCreationProgressHeader({
 					</Text>
 				</View>
 				<FlowProgressBar
-					progress={safeProgress / totalSteps}
+					progress={safeProgress / safeTotalSteps}
 					accessibilityRole="progressbar"
 					accessibilityValue={{
 						min: 0,

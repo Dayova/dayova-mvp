@@ -1,6 +1,5 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import * as Speech from "expo-speech";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -18,14 +17,7 @@ import { QuestionProgressBar } from "~/components/question-progress-bar";
 import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
-import {
-	Check,
-	CircleAlert,
-	ClipboardEdit,
-	Pencil,
-	Timer,
-} from "~/components/ui/icon";
-import { Surface } from "~/components/ui/surface";
+import { Check, Timer } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -33,6 +25,8 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LearningSessionCompletion } from "~/features/learning-plans/learning-session-completion";
 import { getLearningSessionAnalysisDestination } from "~/features/learning-plans/session-analysis-navigation";
 import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
+import { FeedbackView } from "~/features/learning-plans/session-feedback";
+import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
 	CONTINUE_LEARNING_MINUTES,
 	getLearningSessionCompletionPhase,
@@ -46,7 +40,6 @@ import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
 	LearningSessionContentSnapshot,
 	SessionAnswerAttempt,
-	SessionAnswerRating,
 	SessionContentItem,
 } from "~/features/learning-plans/types";
 import { usePrepareSessionContent } from "~/features/learning-plans/use-prepare-session-content";
@@ -58,35 +51,6 @@ import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
-
-const ratingCopy: Record<
-	SessionAnswerRating,
-	{
-		title: string;
-		color: string;
-		subtleClassName: string;
-		textClassName: string;
-	}
-> = {
-	notCorrect: {
-		title: "Noch nicht gewusst",
-		color: DAYOVA_DESIGN_SYSTEM.colors.wrong,
-		subtleClassName: "bg-wrong-subtle",
-		textClassName: "text-wrong",
-	},
-	partiallyCorrect: {
-		title: "Teilweise richtig",
-		color: DAYOVA_DESIGN_SYSTEM.colors.info,
-		subtleClassName: "bg-info-subtle",
-		textClassName: "text-info",
-	},
-	correct: {
-		title: "Richtige Antwort",
-		color: DAYOVA_DESIGN_SYSTEM.colors.success,
-		subtleClassName: "bg-success-subtle",
-		textClassName: "text-success",
-	},
-};
 
 const phaseTitle = (
 	phase: LearningSessionContentSnapshot["session"]["phase"],
@@ -102,34 +66,6 @@ const formatRemainingTime = (seconds: number) => {
 		.toString()
 		.padStart(2, "0")}`;
 };
-
-function TagPill({
-	label,
-	icon,
-}: {
-	label: string;
-	icon: "answer" | "evaluation" | "question";
-}) {
-	const Icon =
-		icon === "answer"
-			? Pencil
-			: icon === "evaluation"
-				? ClipboardEdit
-				: CircleAlert;
-
-	return (
-		<View className="flex-row items-center gap-2 self-start rounded-full bg-system-subtle px-3 py-2">
-			<Icon
-				size={16}
-				color={DAYOVA_DESIGN_SYSTEM.colors.primary}
-				strokeWidth={2.1}
-			/>
-			<Text className="font-poppins font-semibold text-body-4 text-primary">
-				{label}
-			</Text>
-		</View>
-	);
-}
 
 function ActionRow({
 	secondaryLabel,
@@ -174,49 +110,6 @@ function ActionRow({
 					<Text>{primaryLabel}</Text>
 				)}
 			</Button>
-		</View>
-	);
-}
-
-function FeedbackView({ attempt }: { attempt: SessionAnswerAttempt }) {
-	const copy = ratingCopy[attempt.rating];
-	const StatusIcon = attempt.rating === "correct" ? Check : CircleAlert;
-	return (
-		<View className="flex-1 justify-between">
-			<View className="items-center pt-6">
-				<View
-					className={cn(
-						"h-20 w-20 items-center justify-center rounded-full",
-						copy.subtleClassName,
-					)}
-				>
-					<StatusIcon size={34} color={copy.color} strokeWidth={2.4} />
-				</View>
-				<Text
-					className={cn(
-						"mt-3 font-poppins font-semibold text-body-3",
-						copy.textClassName,
-					)}
-				>
-					{copy.title}
-				</Text>
-			</View>
-
-			<View className="mt-9">
-				<Surface className="rounded-[32px] px-5 py-6" variant="flat">
-					<TagPill label="Auswertung" icon="evaluation" />
-					<Text className="mt-8 font-poppins text-body-2 text-secondary-text">
-						{attempt.feedback}
-					</Text>
-				</Surface>
-				<View className="mx-8 my-8 h-px bg-border" />
-				<Surface className="rounded-[32px] px-5 py-6" variant="flat">
-					<TagPill label="Ideale Antwort" icon="answer" />
-					<Text className="mt-8 font-poppins text-body-2 text-secondary-text">
-						{attempt.perfectAnswer}
-					</Text>
-				</Surface>
-			</View>
 		</View>
 	);
 }
@@ -330,6 +223,7 @@ export default function LearningSessionContentScreen() {
 	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{
 		planId?: string;
+		returnTo?: string;
 		sessionId?: string;
 	}>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
@@ -453,16 +347,12 @@ export default function LearningSessionContentScreen() {
 	const currentRunCorrectCount = currentRunAttempts.filter(
 		(attempt) => attempt.rating === "correct",
 	).length;
+	const backTarget = getLearningSessionBackTarget(planId, params.returnTo);
 
 	const goBack = useCallback(() => {
-		void Speech.stop().catch(() => undefined);
-		if (planId) {
-			dismissToOrReplace(router, `/learning-plans/${planId}` as const);
-			return true;
-		}
-		dismissToOrReplace(router, "/learning-plans");
+		dismissToOrReplace(router, backTarget);
 		return true;
-	}, [planId, router]);
+	}, [backTarget, router]);
 
 	useBackIntent(Boolean(planId), goBack);
 
@@ -951,7 +841,6 @@ export default function LearningSessionContentScreen() {
 						},
 						headerLeft: () => (
 							<BackButton
-								accessibilityHint="Kehrt zum Lernplan zurück."
 								onPress={goBack}
 								className="h-11 min-h-11 w-11 min-w-11"
 							/>
@@ -1014,7 +903,6 @@ export default function LearningSessionContentScreen() {
 								},
 								headerLeft: () => (
 									<BackButton
-										accessibilityHint="Kehrt zum Lernplan zurück."
 										onPress={goBack}
 										className="h-11 min-h-11 w-11 min-w-11"
 									/>

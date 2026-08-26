@@ -23,3 +23,10 @@ commits until compatible binaries become the recorded baseline.
 
 The current provenance and distribution evidence is tracked in
 [DAY-114](https://linear.app/dayova/issue/DAY-114/replace-submitted-ios-v103-build-49-with-the-corrected-analytics).
+
+The Google Play launch command center, listing copy, disclosure draft, assets,
+build audit, and Closed/Open testing runbook live in
+[`google-play/`](./google-play/README.md). Android
+`1.0.3` / version code `20` is in Google production review for Germany; do not
+mark its OTA baseline verified until the public listing can install that exact
+build.

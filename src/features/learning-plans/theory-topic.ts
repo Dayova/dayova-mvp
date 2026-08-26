@@ -87,52 +87,6 @@ export const adaptTheoryTopic = (
 	};
 };
 
-export const buildTheorySpeechText = (
-	topic: TheoryTopic,
-	questionAngle?: string,
-) => {
-	const presentation = getTheoryPagePresentation(questionAngle);
-	return [
-		topic.conceptTitle,
-		`Leitfrage: ${topic.question}`,
-		`Erklärung: ${topic.explanation}`,
-		presentation.showKeyPoints && topic.keyPoints.length > 0
-			? `Wichtig: ${topic.keyPoints.join(" ")}`
-			: undefined,
-		presentation.showExample && topic.example
-			? `Beispiel: ${topic.example}`
-			: undefined,
-		presentation.showMemoryCue && topic.memoryCue
-			? `Merksatz: ${topic.memoryCue}`
-			: undefined,
-		presentation.showCommonMistake && topic.commonMistake
-			? `Typischer Fehler: ${topic.commonMistake}`
-			: undefined,
-	]
-		.filter((section): section is string => Boolean(section))
-		.map((section) => (/[.!?]$/.test(section) ? section : `${section}.`))
-		.join(" ");
-};
-
-export const splitTheorySpeechText = (text: string, maximumLength: number) => {
-	const remainingText = text.trim();
-	const safeMaximumLength = Math.max(1, Math.floor(maximumLength));
-	if (remainingText.length <= safeMaximumLength) return [remainingText];
-
-	const chunks: string[] = [];
-	let remaining = remainingText;
-	while (remaining.length > safeMaximumLength) {
-		const candidate = remaining.slice(0, safeMaximumLength + 1);
-		const lastWhitespace = candidate.lastIndexOf(" ");
-		const splitIndex = lastWhitespace > 0 ? lastWhitespace : safeMaximumLength;
-		chunks.push(remaining.slice(0, splitIndex).trimEnd());
-		remaining = remaining.slice(splitIndex).trimStart();
-	}
-
-	if (remaining) chunks.push(remaining);
-	return chunks;
-};
-
 export const getTheoryTopicNavigation = (
 	currentIndex: number,
 	total: number,
