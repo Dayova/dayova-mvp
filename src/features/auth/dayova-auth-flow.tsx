@@ -62,6 +62,7 @@ import { useAuthFlow, useAuthSession } from "~/context/AuthContext";
 import { useOnboarding } from "~/context/OnboardingContext";
 import { getResponsiveAuthChoiceLayout } from "~/features/auth/auth-content-size-layout";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
+import { getLatestEligibleBirthDate } from "~/lib/age-assurance";
 import { PASSWORD_RESET_SUCCESS_PATH } from "~/lib/auth-routing";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { GERMAN_FEDERAL_STATES } from "~/lib/federal-states";
@@ -200,8 +201,7 @@ const FLOW_STEPS: readonly OnboardingStep[] = [
 		kind: "wheel",
 		id: "birthDate",
 		title: "Wann bist du geboren?",
-		description:
-			"Dein Geburtsdatum hilft uns, dein Konto altersgerecht zu führen.",
+		description: "Du musst mindestens 13 Jahre alt sein, um Dayova zu nutzen.",
 		field: "birthDate",
 	},
 	{
@@ -2252,7 +2252,7 @@ function WheelAnswer({ step }: { step: WheelStep }) {
 						visible
 						value={selectedDate}
 						mode="date"
-						maximumDate={new Date()}
+						maximumDate={getLatestEligibleBirthDate()}
 						onChange={handleChange}
 						onClose={() => {
 							if (!value) {

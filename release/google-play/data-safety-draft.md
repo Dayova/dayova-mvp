@@ -8,6 +8,13 @@ This is a conservative engineering inventory for the Play Console form. It is
 policy, processor contracts, retention schedule, target audience, and the exact
 release build for the current review and every future update.
 
+The submitted Google Play target audience is `13+`, but Android version code
+`20` predates the registration gate. Next-release source rejects invalid and
+under-13 dates at the onboarding, Clerk-registration, and Convex profile-write
+boundaries. That source change is not evidence about version `20`; a replacement
+AAB must be inspected and tested at the under-13 and exact-13th-birthday
+boundaries before the declaration can be called enforced.
+
 The cross-platform source inventory, release-provenance split, proposed legal
 bases and exact retention/deletion schedule are maintained in the
 [mobile privacy data contract](../../docs/contexts/integrations/mobile-privacy-data-contract.md).

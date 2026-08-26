@@ -615,6 +615,40 @@ test("profile and onboarding writes reject values outside the federal-state voca
 	).rejects.toThrow("Bundesland");
 });
 
+test("profile writes reject an under-13 birth date", async () => {
+	const currentYear = new Date().getFullYear();
+	const underThirteenBirthDate = `01.01.${currentYear - 12}`;
+	const eligibleBirthDate = `01.01.${currentYear - 13}`;
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+
+	await expect(
+		t.mutation(api.users.syncCurrentUser, {
+			birthDate: underThirteenBirthDate,
+		}),
+	).rejects.toThrow("mindestens 13 Jahre");
+
+	const userId = await t.mutation(api.users.syncCurrentUser, {
+		birthDate: eligibleBirthDate,
+	});
+	await expect(
+		t.mutation(api.users.updateProfile, {
+			birthDate: underThirteenBirthDate,
+		}),
+	).rejects.toThrow("mindestens 13 Jahre");
+
+	await t.run(async (ctx) => {
+		await ctx.db.patch("users", userId, {
+			birthDate: underThirteenBirthDate,
+		});
+	});
+	await expect(
+		t.mutation(api.users.updateProfile, { name: "Updated" }),
+	).rejects.toThrow("mindestens 13 Jahre");
+	await expect(
+		t.mutation(api.users.syncCurrentUser, { name: "Synced" }),
+	).rejects.toThrow("mindestens 13 Jahre");
+});
+
 test("profile and onboarding writes reject grades outside the product vocabulary", async () => {
 	const t = convexTest(schema, modules).withIdentity(userIdentity);
 
