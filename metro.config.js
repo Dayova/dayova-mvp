@@ -36,6 +36,14 @@ config.resolver = {
 	sourceExts: [...resolver.sourceExts, "svg"],
 };
 
+// Expo's Metro file-map fork defaults to the native filesystem watcher. Large
+// production exports can exceed macOS's per-process file limit even when
+// Watchman is installed, so release operators can opt into Watchman explicitly.
+// Keep this opt-in: EAS workers use their image's supported default.
+if (process.env.DAYOVA_METRO_USE_WATCHMAN === "true") {
+	config.resolver.useWatchman = true;
+}
+
 module.exports = withNativeWind(config, {
 	input: "./src/global.css",
 	inlineRem: 16,

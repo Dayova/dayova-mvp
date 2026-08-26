@@ -1,6 +1,6 @@
 # Google Play launch command center
 
-Last audited: 2026-08-25
+Last audited: 2026-08-26
 
 This directory is the evidence and handoff pack for the first Dayova Google
 Play release. The production release has now been submitted; use this pack to
@@ -9,17 +9,18 @@ availability.
 
 ## Current verdict
 
-**Production state live-verified 2026-08-25: submitted and still in Google
-review since 2026-08-23.** Android `1.0.3` (version code `20`) was submitted to
-the Production track for Germany. Managed publishing is off, so an approval
-should publish automatically. Google Play's automated quick checks passed; the
-missing R8/ProGuard deobfuscation mapping file is the only recorded non-blocking
-warning.
+**Production state live-verified 2026-08-26: submitted and still in Google
+review since 2026-08-23, but the candidate must be replaced.** Android SDK 57
+build `1.0.3` (version code `20`) uses runtime `1.0.3`, while DAY-248 requires
+the new SDK 57 native boundary at runtime `1.0.4`. Managed publishing is off, so
+approval could publish automatically. Production OTA remains fail-closed and
+build 20 must never become the verified OTA baseline.
 
 | Area | Current evidence | Remaining completion |
 | --- | --- | --- |
 | Play account and app | Verified Organization account, developer account ID `4912315867079102345`, app ID `4976075040375716512`, package `com.dayova`, production track ID `4697718440238285251`. The Dayova Organization payments profile is reachable by the release operator as Payments Center admin and primary contact; Payments Center showed no alerts on 2026-08-23. | Julius, as the original Play account owner, must still open Play Console's owner-only Payments profile page and confirm or resolve its previously reported “Action required with your payments account” item. Payments Center admin access does not grant access to that Play-only page. The item did not block review submission. |
-| Production submission | EAS build `1b52de89-746d-4600-9670-7c395079ff02`, source `31f7f25787d2c4cdfde96384379f47b3e321fc17`, submission `d3e7d523-cac4-4be9-a55c-2245d1095972`; release `1.0.3 – Erste Play-Store-Version` is in review. | Monitor review. On approval, verify public installability in Germany and record the production OTA baseline. |
+| Production submission | EAS build `1b52de89-746d-4600-9670-7c395079ff02`, SDK 57, app/runtime `1.0.3`, version code `20`, fingerprint `bbcbaae5c8ae69231aa15692d7197e4e87f61cac`, source `31f7f25787d2c4cdfde96384379f47b3e321fc17`, submission `d3e7d523-cac4-4be9-a55c-2245d1095972`; release `1.0.3 – Erste Play-Store-Version` is in review. | Withdraw build 20, then replace it with the audited app/runtime `1.0.4`, version-code-`21` artifact below. Never record build 20 as the OTA baseline. |
+| Replacement artifact | EAS build `6df6e426-b361-46b5-8a17-a28f5be6d9ea`, SDK 57, app/runtime `1.0.4`, version code `21`, fingerprint `8900552bda373cf9e678669a17c6f0dded5f755e`, source `1e3ee7d1efc5ac979fb509adb20654c95b879c15`; signed AAB SHA-256 `58BDE082DE86C20DA05ADB9A04F1C94CA52E7FECCDA3A0414A695B5FB4E96CB9`. The artifact embeds update `c782fa10-3626-4aa3-b072-921580c9c31b`, runtime `1.0.4`, channel `production`. | Built and artifact-audited, but deliberately not submitted while build 20 remains in Production review. After coordinated withdrawal, use this exact AAB for the approved testing and Production progression. |
 | Test distribution | The repo now has explicit EAS Submit profiles for Internal, Closed (`alpha`), Open (`beta`), and draft Production plus a manual checked/approved EAS Workflow for new Closed/Open candidates. Play Console contains prepared but deliberately unsubmitted Closed/Open changes for `1.0.3` / version code `20`; the Closed audience uses the existing Dayova internal list and both tracks target Germany. | Do not submit the four pending Closed/Open changes while Production review is active. After that review resolves, revalidate feedback, audience, country/cap, service-account permissions, and version-code precedence before submitting and running install QA. |
 | Listing and declarations | German listing, icon, feature graphic, eight current phone screenshots, Education category, Germany targeting, 13+ audience, content rating, privacy URL, Data safety, Ads, Health, Government, Financial features, App access, and review notes are in review. | Treat accepted declarations as review input, not proof that the open privacy/deletion implementation is complete. |
 | Reviewer access | Dedicated synthetic Clerk account has permanent RevenueCat `dayova_full_access`; Play instructions require no trial, purchase, OTP, 2FA, or special device. | Keep the account valid and synthetic until review is complete. Credentials stay only in Play Console. |
@@ -28,11 +29,12 @@ warning.
 
 ## Fastest path from review to a usable launch
 
-1. **Do not restart review unnecessarily.** Monitor Publishing overview, Policy
-   status, owner email, and review messages; change the release only for a real
-   blocker or rejection. The 2026-08-25 Closed/Open changes are intentionally
-   left under **Changes not yet submitted for review** because Google warned that
-   submitting them would cancel and restart the Production review.
+1. **Keep test tracks untouched while Production review is active.** The four
+   Closed/Open changes remain under **Changes not yet submitted for review**.
+   Do not submit, rebuild, promote, or remove them until the Production review
+   is withdrawn or otherwise resolves. Build 20's runtime collision is a real
+   release blocker, so coordinate withdrawal and replacement rather than
+   accepting it as the DAY-248 candidate.
 2. **Resolve the Play-owner notification.** Payments Center access is verified
    for the release operator, but Google reserves Play Console's Payments profile
    page for the original developer-account owner. Julius opens that page and
@@ -45,9 +47,10 @@ warning.
    DAY-183 and their child tasks. Publish the app-specific policy and deletion
    resource, implement the secure deletion pipeline/settings flow, and run
    DAY-363 on the Play-delivered build.
-5. **Verify launch immediately after approval.** Install from a non-team German
-   account, record the public timestamp/version, and update
-   `release/production-ota-baseline.json` before relying on production OTA.
+5. **Verify the replacement, not build 20.** Distribute and install the exact
+   app/runtime `1.0.4` artifact, promote that same version code to Production,
+   verify the public German listing, and only then atomically replace
+   `release/production-ota-baseline.json` with both verified platforms.
 6. **Start the promotion clock from real users, not review.** PRICING-002's
    roughly day 8–10 email is anchored to public availability / authoritative
    trial start and must still expire no later than the 14-day trial.
@@ -82,8 +85,9 @@ warning.
 
 ## Human-confirmation boundary
 
-The authorized account actions and production review submission are complete.
-Payments Center administrator access is verified, but the separate owner-only
-Play Payments profile action is not. This pack does not claim Google approval,
-public availability, Play product activation, legal approval, or
+The original production review submission is complete but is no longer the safe
+release candidate. Withdrawing it, discarding the obsolete testing drafts after
+review ends, and submitting the replacement are separate external release
+actions that require release-owner confirmation. This pack does not claim Google
+approval, public availability, Play product activation, legal approval, or
 privacy/deletion implementation until their dedicated evidence exists.
