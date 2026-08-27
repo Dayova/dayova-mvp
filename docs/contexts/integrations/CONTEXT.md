@@ -135,6 +135,10 @@ The website and every mobile build environment must use the matching scheme
 from the same RevenueCat web config. Enabling Redemption Links requires a new
 native build; an OTA update cannot add a URL scheme. Test the complete sandbox
 purchase and email-link flow before enabling production Redemption Links.
+Local development builds register Dayova's sandbox redemption scheme by
+default so rebuilding the simulator app cannot silently remove link support.
+Preview and production builds still take the scheme from
+`REVENUECAT_REDEMPTION_SCHEME` in their EAS environment.
 
 References:
 

@@ -30,8 +30,15 @@ const releasePlatform =
 	process.env.EAS_BUILD_PLATFORM === "ios"
 		? process.env.EAS_BUILD_PLATFORM
 		: undefined;
+// RevenueCat URL schemes are public native routing identifiers. Keep the
+// development fallback in source so `pnpm ios` cannot silently replace a
+// redemption-capable simulator build with one that drops the scheme.
+const DEVELOPMENT_REVENUECAT_REDEMPTION_SCHEME = "rc-27a39b9faa";
 const revenueCatRedemptionScheme = getRevenueCatRedemptionScheme(
-	process.env.REVENUECAT_REDEMPTION_SCHEME,
+	process.env.REVENUECAT_REDEMPTION_SCHEME ??
+		(APP_VARIANT === "development"
+			? DEVELOPMENT_REVENUECAT_REDEMPTION_SCHEME
+			: undefined),
 	{ required: isReleaseConfig },
 );
 
