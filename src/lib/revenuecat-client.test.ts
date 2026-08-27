@@ -48,6 +48,19 @@ const createSdk = (): RevenueCatSdkBoundary => ({
 			},
 		},
 	})),
+	parseAsWebPurchaseRedemption: vi.fn(async (redemptionLink: string) => ({
+		redemptionLink,
+	})),
+	redeemWebPurchase: vi.fn(async () => ({
+		result: "SUCCESS" as const,
+		customerInfo: {
+			entitlements: {
+				active: {
+					dayova_full_access: {},
+				},
+			},
+		},
+	})),
 });
 
 describe("createRevenueCatClient", () => {
@@ -117,5 +130,65 @@ describe("createRevenueCatClient", () => {
 		await expect(client.restore()).resolves.toEqual({
 			status: "purchased",
 		});
+	});
+
+	it("redeems a RevenueCat web purchase for the configured account", async () => {
+		const sdk = createSdk();
+		const client = createRevenueCatClient({
+			apiKey: "appl_test",
+			appUserId: "clerk_user_1",
+			sdk,
+		});
+		const redemptionUrl =
+			"rc-abc123://redeem_web_purchase?redemption_token=secret";
+
+		await expect(client.redeemWebPurchase(redemptionUrl)).resolves.toEqual({
+			status: "redeemed",
+		});
+		expect(sdk.parseAsWebPurchaseRedemption).toHaveBeenCalledWith(
+			redemptionUrl,
+		);
+		expect(sdk.redeemWebPurchase).toHaveBeenCalledWith({
+			redemptionLink: redemptionUrl,
+		});
+	});
+
+	it.each([
+		["EXPIRED", { status: "expired", obfuscatedEmail: "f***@example.com" }],
+		["INVALID_TOKEN", { status: "invalidToken" }],
+		["PURCHASE_BELONGS_TO_OTHER_USER", { status: "belongsToOtherUser" }],
+	] as const)("maps the %s redemption result", async (result, expected) => {
+		const sdk = createSdk();
+		sdk.redeemWebPurchase = vi.fn(async () =>
+			result === "EXPIRED"
+				? { result, obfuscatedEmail: "f***@example.com" }
+				: { result },
+		);
+		const client = createRevenueCatClient({
+			apiKey: "appl_test",
+			appUserId: "clerk_user_1",
+			sdk,
+		});
+
+		await expect(client.redeemWebPurchase("rc-test://link")).resolves.toEqual(
+			expected,
+		);
+	});
+
+	it("rejects links the RevenueCat SDK does not recognize", async () => {
+		const sdk = createSdk();
+		sdk.parseAsWebPurchaseRedemption = vi.fn(async () => null);
+		const client = createRevenueCatClient({
+			apiKey: "appl_test",
+			appUserId: "clerk_user_1",
+			sdk,
+		});
+
+		await expect(
+			client.redeemWebPurchase("rc-test://invalid"),
+		).resolves.toEqual({
+			status: "invalidToken",
+		});
+		expect(sdk.redeemWebPurchase).not.toHaveBeenCalled();
 	});
 });

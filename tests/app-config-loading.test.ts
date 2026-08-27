@@ -35,4 +35,33 @@ describe("Expo app config loading", () => {
 		);
 		expect(result.status, result.stderr).toBe(0);
 	});
+
+	it("always registers the RevenueCat redemption scheme for local development builds", () => {
+		expect(APP_CONFIG_PATH).toBeDefined();
+		const {
+			REVENUECAT_REDEMPTION_SCHEME: _redemptionScheme,
+			...envWithoutRedemptionScheme
+		} = process.env;
+
+		const result = spawnSync(
+			process.execPath,
+			[
+				"--experimental-strip-types",
+				"--eval",
+				`console.log(JSON.stringify(require(${JSON.stringify(APP_CONFIG_PATH ?? "")})))`,
+			],
+			{
+				cwd: process.cwd(),
+				encoding: "utf8",
+				env: {
+					...envWithoutRedemptionScheme,
+					APP_VARIANT: "development",
+				},
+			},
+		);
+
+		expect(result.status, result.stderr).toBe(0);
+		const config = JSON.parse(result.stdout) as { scheme?: string | string[] };
+		expect(config.scheme).toEqual(["dayova", "rc-27a39b9faa"]);
+	});
 });

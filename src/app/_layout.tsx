@@ -17,6 +17,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { AuthNavigationGate } from "~/components/auth-navigation-gate";
 import { NotificationSync } from "~/components/notification-sync";
+import { RevenueCatRedemptionSync } from "~/components/revenuecat-redemption-sync";
 import { TrialReminderSync } from "~/components/trial-reminder-sync";
 import {
 	SheetAccessibilityProvider,
@@ -182,6 +183,7 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 												<AuthProvider>
 													<AccessProvider>
 														<AnalyticsIdentity />
+														<RevenueCatRedemptionSync />
 														<AppNavigator />
 													</AccessProvider>
 												</AuthProvider>
