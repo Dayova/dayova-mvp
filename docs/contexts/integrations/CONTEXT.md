@@ -140,6 +140,17 @@ default so rebuilding the simulator app cannot silently remove link support.
 Preview and production builds still take the scheme from
 `REVENUECAT_REDEMPTION_SCHEME` in their EAS environment.
 
+Native store checkout availability is an explicit release decision through
+`EXPO_PUBLIC_NATIVE_STORE_PURCHASES_ENABLED`. Local development may set it to
+`true` with RevenueCat Test Store. Preview may enable it only with connected
+platform-store sandbox products and the corresponding public platform SDK key;
+never ship a Test Store key in preview or production. Set the flag to `false`
+in production until App Store and Google Play products are connected to the
+production RevenueCat offering; the app then exposes only the web-purchase
+redemption instructions. Release validation requires an explicit value so a
+missing environment variable cannot accidentally expose an unfinished
+checkout.
+
 References:
 
 - [RevenueCat Redemption Links](https://www.revenuecat.com/docs/web/redemption-links)

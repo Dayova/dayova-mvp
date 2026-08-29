@@ -9,6 +9,9 @@ const publicEnvSchema = {
 	EXPO_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
 	EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: z.string().min(1).optional(),
 	EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: z.string().min(1).optional(),
+	EXPO_PUBLIC_NATIVE_STORE_PURCHASES_ENABLED: z
+		.enum(["true", "false"])
+		.optional(),
 	EXPO_PUBLIC_PRIVACY_URL: z.string().url().optional(),
 	EXPO_PUBLIC_TERMS_URL: z.string().url().optional(),
 	EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL: z.string().url().optional(),
@@ -40,6 +43,7 @@ const requiredReleasePublicEnvKeys = [
 	"EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL",
 	"EXPO_PUBLIC_CANCELLATION_URL",
 	"EXPO_PUBLIC_SUPPORT_URL",
+	"EXPO_PUBLIC_NATIVE_STORE_PURCHASES_ENABLED",
 ] satisfies PublicRuntimeConfigKey[];
 const revenueCatPublicEnvKeyByPlatform = {
 	ios: "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY",
@@ -57,6 +61,8 @@ export const readPublicRuntimeConfig = (): StrictPublicRuntimeConfigValues => ({
 		process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY,
 	EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY:
 		process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY,
+	EXPO_PUBLIC_NATIVE_STORE_PURCHASES_ENABLED:
+		process.env.EXPO_PUBLIC_NATIVE_STORE_PURCHASES_ENABLED,
 	EXPO_PUBLIC_PRIVACY_URL: process.env.EXPO_PUBLIC_PRIVACY_URL,
 	EXPO_PUBLIC_TERMS_URL: process.env.EXPO_PUBLIC_TERMS_URL,
 	EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL:

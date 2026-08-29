@@ -148,6 +148,15 @@ offers one forward-only action into the app. Show it after a newly completed
 purchase, not after restoring an existing subscription, so the celebration
 acknowledges a real transition without becoming recurring friction.
 
+When neither native store purchases nor the parent checkout are released in a
+build environment, the expired-trial route becomes a redemption-only state. It
+must not show empty prices, disabled purchase choices, or a checkout described
+as available. Instead, one fixed light surface explains that an existing web
+purchase is connected by opening its personal redemption link on the same
+device. Development may retain the full payer flow while testing RevenueCat
+Test Store products; preview may enable it only with connected platform-store
+sandbox products and the corresponding platform SDK key.
+
 The current app corner system is: info/small boxes use 24px, 345px-wide
 rectangles and card-like surfaces use 32px, and buttons use 44px. Device frame
 radii are not app tokens because they depend on the phone/mockup. When nesting

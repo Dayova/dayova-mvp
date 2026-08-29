@@ -18,6 +18,7 @@ import {
 import { Text } from "~/components/ui/text";
 import { useAccountActions } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { areNativeStorePurchasesEnabled } from "~/lib/native-store-purchases";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
 
@@ -39,7 +40,17 @@ const primaryPayerIconStyle = {
 	backgroundColor: BRAND_COLORS.primaryStrong,
 };
 
-export function PaywallScreen() {
+type PaywallScreenProps = {
+	nativeStorePurchasesEnabled?: boolean;
+	parentPaymentEnabled?: boolean;
+};
+
+export function PaywallScreen({
+	nativeStorePurchasesEnabled = areNativeStorePurchasesEnabled(
+		env.EXPO_PUBLIC_NATIVE_STORE_PURCHASES_ENABLED,
+	),
+	parentPaymentEnabled = Boolean(env.EXPO_PUBLIC_PARENT_CHECKOUT_URL),
+}: PaywallScreenProps = {}) {
 	const { user: clerkUser } = useUser();
 	const { logout } = useAccountActions();
 	const router = useRouter();
@@ -53,6 +64,8 @@ export function PaywallScreen() {
 	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const deletionInFlightRef = useRef(false);
+	const hasPurchaseChoices =
+		nativeStorePurchasesEnabled || parentPaymentEnabled;
 
 	const openSubscription = (payer: SubscriptionPayer) => {
 		router.push({
@@ -146,64 +159,75 @@ export function PaywallScreen() {
 								Deine Testphase ist beendet
 							</Text>
 							<Text className="max-w-[340px] text-body-3 text-white/90">
-								Dein Lernstand bleibt erhalten. Wähle jetzt, wie du mit Dayova
-								weitermachen möchtest.
+								{hasPurchaseChoices
+									? "Dein Lernstand bleibt erhalten. Wähle jetzt, wie du mit Dayova weitermachen möchtest."
+									: "Dein Lernstand bleibt erhalten. Ein bereits gekauftes Dayova-Abo verbindest du mit deinem persönlichen Einlöse-Link."}
 							</Text>
 						</View>
 
-						<View className="flex-row">
-							<View className="mr-5 items-center">
-								<View className="z-10 h-12 w-12 items-center justify-center rounded-full bg-white">
-									<UserRound
-										size={24}
-										color={BRAND_COLORS.primaryStrong}
-										strokeWidth={2.3}
-									/>
+						{hasPurchaseChoices ? (
+							<>
+								<View className="flex-row">
+									<View className="mr-5 items-center">
+										<View className="z-10 h-12 w-12 items-center justify-center rounded-full bg-white">
+											<UserRound
+												size={24}
+												color={BRAND_COLORS.primaryStrong}
+												strokeWidth={2.3}
+											/>
+										</View>
+										<View className="my-1 min-h-10 w-[3px] flex-1 rounded-full bg-white/35" />
+									</View>
+									<View className="flex-1 pt-1 pb-6">
+										<Text className="font-semibold text-body-2 text-white">
+											Wer bezahlt?
+										</Text>
+										<Text className="mt-1 text-body-3 text-white/85">
+											Wähle den passenden Weg für dich.
+										</Text>
+										<View className="mt-4 gap-3">
+											{nativeStorePurchasesEnabled ? (
+												<PayerButton
+													description="Direkt im App Store oder bei Google Play"
+													icon={CreditCard}
+													label="Ich zahle selbst"
+													onPress={() => openSubscription("self")}
+													testID="payer-self-action"
+												/>
+											) : null}
+											{parentPaymentEnabled ? (
+												<PayerButton
+													description="Zahlungslink oder QR-Code teilen"
+													icon={UserRound}
+													label="Meine Eltern zahlen"
+													onPress={() => openSubscription("parent")}
+													testID="payer-parent-action"
+												/>
+											) : null}
+										</View>
+									</View>
 								</View>
-								<View className="my-1 min-h-10 w-[3px] flex-1 rounded-full bg-white/35" />
-							</View>
-							<View className="flex-1 pt-1 pb-6">
-								<Text className="font-semibold text-body-2 text-white">
-									Wer bezahlt?
-								</Text>
-								<Text className="mt-1 text-body-3 text-white/85">
-									Wähle den passenden Weg für dich.
-								</Text>
-								<View className="mt-4 gap-3">
-									<PayerButton
-										description="Direkt im App Store oder bei Google Play"
-										icon={CreditCard}
-										label="Ich zahle selbst"
-										onPress={() => openSubscription("self")}
-										testID="payer-self-action"
-									/>
-									<PayerButton
-										description="Zahlungslink oder QR-Code teilen"
-										icon={UserRound}
-										label="Meine Eltern zahlen"
-										onPress={() => openSubscription("parent")}
-										testID="payer-parent-action"
-									/>
-								</View>
-							</View>
-						</View>
 
-						<View className="flex-row">
-							<View className="mr-5 items-center">
-								<View className="h-12 w-12 items-center justify-center rounded-full border border-white/35 bg-white/20">
-									<SquareLock size={24} color={WHITE} strokeWidth={2.3} />
+								<View className="flex-row">
+									<View className="mr-5 items-center">
+										<View className="h-12 w-12 items-center justify-center rounded-full border border-white/35 bg-white/20">
+											<SquareLock size={24} color={WHITE} strokeWidth={2.3} />
+										</View>
+									</View>
+									<View className="flex-1 pt-1 pb-2">
+										<Text className="font-semibold text-body-2 text-white">
+											Zugang freischalten
+										</Text>
+										<Text className="mt-1 text-body-3 text-white/85">
+											Auf der nächsten Seite schließt du den gewählten
+											Zahlungsweg ab.
+										</Text>
+									</View>
 								</View>
-							</View>
-							<View className="flex-1 pt-1 pb-2">
-								<Text className="font-semibold text-body-2 text-white">
-									Zugang freischalten
-								</Text>
-								<Text className="mt-1 text-body-3 text-white/85">
-									Auf der nächsten Seite schließt du den gewählten Zahlungsweg
-									ab.
-								</Text>
-							</View>
-						</View>
+							</>
+						) : (
+							<RedemptionOnlyState />
+						)}
 
 						{error ? (
 							<View className="mt-4 rounded-3xl bg-white px-4 py-3">
@@ -283,6 +307,42 @@ export function PaywallScreen() {
 				onConfirm={() => void deleteAccount()}
 			/>
 		</>
+	);
+}
+
+function RedemptionOnlyState() {
+	return (
+		<View
+			accessible
+			accessibilityLabel="Abo bereits gekauft. Öffne deinen persönlichen Einlöse-Link aus der Kaufbestätigung auf diesem iPhone. Dayova verbindet das Abo nach deiner Anmeldung automatisch."
+			className="rounded-card border px-5 py-6 shadow-black/15 shadow-md"
+			style={primaryPayerSurfaceStyle}
+			testID="redemption-only-state"
+		>
+			<View className="h-12 w-12 items-center justify-center rounded-full bg-primary-strong">
+				<SquareLock size={24} color={WHITE} strokeWidth={2.3} />
+			</View>
+			<Text
+				className="mt-5 font-semibold text-body-2"
+				style={{ color: BRAND_COLORS.text }}
+			>
+				Abo bereits gekauft?
+			</Text>
+			<Text
+				className="mt-2 text-body-3"
+				style={{ color: BRAND_COLORS.secondaryText }}
+			>
+				Öffne deinen persönlichen Einlöse-Link aus der Kaufbestätigung auf
+				diesem iPhone. Dayova verbindet das Abo nach deiner Anmeldung
+				automatisch.
+			</Text>
+			<Text
+				className="mt-4 text-body-4"
+				style={{ color: BRAND_COLORS.secondaryText }}
+			>
+				Kein Link mehr vorhanden? Nutze unten den Support-Link.
+			</Text>
+		</View>
 	);
 }
 
