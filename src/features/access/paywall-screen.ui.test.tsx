@@ -111,7 +111,10 @@ jest.mock("~/context/AuthContext", () => ({
 }));
 
 jest.mock("~/lib/runtime-config", () => ({
-	env: {},
+	env: {
+		EXPO_PUBLIC_NATIVE_STORE_PURCHASES_ENABLED: "true",
+		EXPO_PUBLIC_PARENT_CHECKOUT_URL: "https://dayova.com/kasse",
+	},
 }));
 
 describe("PaywallScreen", () => {
@@ -165,6 +168,25 @@ describe("PaywallScreen", () => {
 			params: { payer: "self" },
 		});
 		expect(screen.queryByText("Tarif wählen")).not.toBeOnTheScreen();
+	});
+
+	test("shows only web purchase redemption when no in-app checkout is released", async () => {
+		const screen = await render(
+			<PaywallScreen
+				nativeStorePurchasesEnabled={false}
+				parentPaymentEnabled={false}
+			/>,
+		);
+
+		expect(screen.queryByTestId("payer-self-action")).toBeNull();
+		expect(screen.queryByTestId("payer-parent-action")).toBeNull();
+		expect(screen.getByTestId("redemption-only-state")).toBeOnTheScreen();
+		expect(screen.getByText("Abo bereits gekauft?")).toBeOnTheScreen();
+		expect(
+			screen.getByText(
+				"Dein Lernstand bleibt erhalten. Ein bereits gekauftes Dayova-Abo verbindest du mit deinem persönlichen Einlöse-Link.",
+			),
+		).toBeOnTheScreen();
 	});
 
 	test("moves account actions into subscription management", async () => {
