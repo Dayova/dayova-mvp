@@ -47,7 +47,7 @@ const buttonVariants = cva(
 					"active:bg-accent",
 					Platform.select({ web: "hover:bg-accent" }),
 				),
-				link: "",
+				link: "shadow-none",
 			},
 			size: {
 				default: cn(

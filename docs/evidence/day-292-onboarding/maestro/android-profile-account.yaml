@@ -58,7 +58,7 @@ name: Android Pixel 9 profile and account flow
     speed: 50
 - tapOn: "Weiter"
 
-- assertVisible: "Wann möchtest du an diesen Tagen starten?"
+- assertVisible: "Um wie viel Uhr möchtest du starten?"
 - tapOn: "Startzeit auswählen"
 - assertVisible: "Zeit übernehmen"
 - tapOn: "Zeit übernehmen"

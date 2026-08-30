@@ -107,6 +107,14 @@ import {
 import { useOnboarding } from "~/context/OnboardingContext";
 import { getResponsiveAuthChoiceLayout } from "~/features/auth/auth-content-size-layout";
 import {
+	getNextOnboardingStep,
+	getOnboardingStep,
+	getOnboardingStepPath,
+	getOnboardingStepProgress,
+	type OnboardingProfileStep,
+	type OnboardingStepId,
+} from "~/features/auth/onboarding-route-model";
+import {
 	LEARNING_DAYS,
 	type LearningDayLabel,
 } from "~/features/learning-times/learning-time-days";
@@ -121,14 +129,6 @@ import { GRADE_OPTIONS } from "~/lib/grades";
 import { useBackIntent } from "~/lib/navigation";
 import { goBackOrReplace } from "~/lib/navigation-actions";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
-import {
-	getNextOnboardingStep,
-	getOnboardingStep,
-	getOnboardingStepPath,
-	getOnboardingStepProgress,
-	type OnboardingProfileStep,
-	type OnboardingStepId,
-} from "~/features/auth/onboarding-route-model";
 import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -1323,10 +1323,39 @@ function QuestionStepView({
 	const localValidationError =
 		step.kind === "text" && currentAnswer.trim() && step.field !== "password"
 			? stepDecision.error
-			: null;
+			: step.kind === "time" && currentAnswer.trim()
+				? stepDecision.error
+				: null;
 	const visibleError = error ?? localValidationError;
 	const isImmersiveStep = step.kind === "fact" || step.kind === "payoff";
 	const titleTopPadding = step.kind === "text" ? 50 : 28;
+	const isLearningTimeStep = step.kind === "time";
+	const [timePickerVisible, setTimePickerVisible] = useState(false);
+	const [pendingLearningTime, setPendingLearningTime] = useState(() =>
+		dateForOnboardingTime(answers.learningTime),
+	);
+	const openLearningTimePicker = () => {
+		setPendingLearningTime(
+			dateForOnboardingTime(
+				answers.learningTime || getDefaultOnboardingLearningStartTime(),
+			),
+		);
+		setTimePickerVisible(true);
+	};
+	const updatePendingLearningTime = (
+		event: DateTimePickerEvent,
+		selectedDate?: Date,
+	) => {
+		if (event.type !== "set" || !selectedDate) return;
+		setPendingLearningTime(selectedDate);
+	};
+	const confirmLearningTime = (selectedDate: Date) => {
+		setAnswer("learningTime", formatOnboardingTime(selectedDate));
+	};
+	const hasSelectedLearningTime =
+		isLearningTimeStep && Boolean(answers.learningTime.trim());
+	const hasInvalidLearningTime = hasSelectedLearningTime && !canContinue;
+	const shouldOpenLearningTimePicker = isLearningTimeStep && !canContinue;
 	const continueLabel =
 		step.kind === "text" && step.field === "password"
 			? busy
@@ -1335,6 +1364,13 @@ function QuestionStepView({
 			: busy
 				? "Wird verarbeitet"
 				: "Weiter";
+	const primaryActionLabel = shouldOpenLearningTimePicker
+		? hasInvalidLearningTime
+			? "Frühere Startzeit wählen"
+			: "Startzeit auswählen"
+		: continueLabel;
+	const isPrimaryActionDisabled =
+		busy || (!canContinue && !shouldOpenLearningTimePicker);
 	const primaryAction = (
 		<View
 			className="pt-2"
@@ -1346,13 +1382,24 @@ function QuestionStepView({
 			}}
 		>
 			<Button
-				accessibilityLabel={continueLabel}
-				accessibilityState={{ busy, disabled: busy || !canContinue }}
-				disabled={busy || !canContinue}
+				accessibilityLabel={primaryActionLabel}
+				accessibilityHint={
+					shouldOpenLearningTimePicker
+						? "Öffnet die native Uhrzeitauswahl"
+						: undefined
+				}
+				accessibilityState={{ busy, disabled: isPrimaryActionDisabled }}
+				disabled={isPrimaryActionDisabled}
 				variant={isDark ? "default" : "neutral"}
-				onPress={() => void onContinue()}
+				onPress={() => {
+					if (shouldOpenLearningTimePicker) {
+						openLearningTimePicker();
+						return;
+					}
+					void onContinue();
+				}}
 			>
-				<Text>{continueLabel}</Text>
+				<Text>{primaryActionLabel}</Text>
 			</Button>
 		</View>
 	);
@@ -1427,7 +1474,13 @@ function QuestionStepView({
 						{step.kind === "wheel" ? <WheelAnswer step={step} /> : null}
 						{step.kind === "range" ? <RangeAnswer step={step} /> : null}
 						{step.kind === "days" ? <StudyDaysAnswer /> : null}
-						{step.kind === "time" ? <LearningTimeAnswer /> : null}
+						{step.kind === "time" ? (
+							<LearningTimeAnswer
+								learningTime={answers.learningTime}
+								onOpenPicker={openLearningTimePicker}
+								showChangeAction={canContinue}
+							/>
+						) : null}
 						{step.kind === "fact" ? (
 							<StudyTimeFactContent
 								title={step.title}
@@ -1522,6 +1575,17 @@ function QuestionStepView({
 			</ScrollView>
 
 			{shouldStackInlineContent ? null : primaryAction}
+			{isLearningTimeStep ? (
+				<DateTimePickerSheet
+					visible={timePickerVisible}
+					value={pendingLearningTime}
+					mode="time"
+					doneLabel="Zeit übernehmen"
+					onChange={updatePendingLearningTime}
+					onClose={() => setTimePickerVisible(false)}
+					onConfirm={confirmLearningTime}
+				/>
+			) : null}
 		</View>
 	);
 }
@@ -3120,76 +3184,55 @@ function StudyDaysAnswer() {
 	);
 }
 
-function LearningTimeAnswer() {
-	const { answers, setAnswer } = useOnboarding();
+function LearningTimeAnswer({
+	learningTime,
+	onOpenPicker,
+	showChangeAction,
+}: {
+	learningTime: string;
+	onOpenPicker: () => void;
+	showChangeAction: boolean;
+}) {
 	const { colors } = useDayovaTheme();
-	const [pickerVisible, setPickerVisible] = useState(false);
-	const [pendingTime, setPendingTime] = useState(() =>
-		dateForOnboardingTime(answers.learningTime),
-	);
-	const openPicker = () => {
-		setPendingTime(
-			dateForOnboardingTime(
-				answers.learningTime || getDefaultOnboardingLearningStartTime(),
-			),
-		);
-		setPickerVisible(true);
-	};
-	const updateTime = (event: DateTimePickerEvent, selectedDate?: Date) => {
-		if (event.type !== "set" || !selectedDate) return;
-		setPendingTime(selectedDate);
-	};
-	const confirmTime = (selectedDate: Date) => {
-		setAnswer("learningTime", formatOnboardingTime(selectedDate));
-	};
+	const hasLearningTime = Boolean(learningTime);
 
 	return (
-		<>
-			<Pressable
-				accessibilityRole="button"
-				accessibilityLabel={
-					answers.learningTime
-						? `Lernzeit beginnt um ${answers.learningTime} Uhr`
-						: "Startzeit auswählen"
-				}
-				accessibilityHint="Öffnet die native Uhrzeitauswahl"
-				onPress={openPicker}
-				className="min-h-24 w-full max-w-[345px] flex-row items-center rounded-card border border-border bg-surface px-6 active:opacity-80"
-				// borderCurve is an iOS-native geometry property without a NativeWind utility.
-				style={{ borderCurve: "continuous" }}
+		<View className="w-full items-center px-6 py-2">
+			<View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+				<Clock3 size={30} color={colors.primary} strokeWidth={2} />
+			</View>
+			<Text className="mt-4 font-poppins text-body-4 text-secondary-text">
+				Deine Startzeit
+			</Text>
+			<Text
+				selectable={hasLearningTime}
+				accessibilityLiveRegion="polite"
+				className={cn(
+					"mt-1 text-center font-poppins font-semibold",
+					hasLearningTime
+						? "text-heading-1 text-text"
+						: "text-heading-2 text-secondary-text",
+				)}
+				// Tabular numerals are a native text feature without a NativeWind utility.
+				style={{ fontVariant: ["tabular-nums"] }}
 			>
-				<View className="h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-					<Clock3 size={24} color={colors.primary} strokeWidth={2} />
-				</View>
-				<View className="ml-4 flex-1">
-					<Text className="font-poppins text-body-5 text-secondary-text">
-						Start deiner Lernzeit
-					</Text>
-					<Text
-						className={cn(
-							"mt-1 font-poppins font-semibold text-heading-2",
-							answers.learningTime ? "text-text" : "text-secondary-text",
-						)}
-						// Tabular numerals are a native text feature without a NativeWind utility.
-						style={{ fontVariant: ["tabular-nums"] }}
-					>
-						{answers.learningTime
-							? `${answers.learningTime} Uhr`
-							: "Uhrzeit auswählen"}
-					</Text>
-				</View>
-			</Pressable>
+				{hasLearningTime ? `${learningTime} Uhr` : "Noch nicht gewählt"}
+			</Text>
 
-			<DateTimePickerSheet
-				visible={pickerVisible}
-				value={pendingTime}
-				mode="time"
-				doneLabel="Zeit übernehmen"
-				onChange={updateTime}
-				onClose={() => setPickerVisible(false)}
-				onConfirm={confirmTime}
-			/>
-		</>
+			{hasLearningTime && showChangeAction ? (
+				<Button
+					accessibilityLabel={`Startzeit ändern, aktuell ${learningTime} Uhr`}
+					accessibilityHint="Öffnet die native Uhrzeitauswahl"
+					hitSlop={8}
+					onPress={onOpenPicker}
+					className="mt-2"
+					variant="link"
+					size="sm"
+				>
+					<Text>Ändern</Text>
+				</Button>
+			) : null}
+		</View>
 	);
 }
 

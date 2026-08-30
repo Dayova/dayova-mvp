@@ -63,14 +63,14 @@ name: DAY-349 Android native stack back and sheet ownership
     timeout: 30000
     speed: 50
 - tapOn: "Weiter"
-- assertVisible: "Wann möchtest du an diesen Tagen starten?"
+- assertVisible: "Um wie viel Uhr möchtest du starten?"
 - tapOn: "Startzeit auswählen"
 - assertVisible: "Zeit übernehmen"
 
 # The first system back belongs to the native picker sheet, not the route.
 - pressKey: BACK
 - assertNotVisible: "Zeit übernehmen"
-- assertVisible: "Wann möchtest du an diesen Tagen starten?"
+- assertVisible: "Um wie viel Uhr möchtest du starten?"
 - tapOn: "Startzeit auswählen"
 - tapOn: "Zeit übernehmen"
 - scrollUntilVisible:

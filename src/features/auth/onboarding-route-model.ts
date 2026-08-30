@@ -1,6 +1,6 @@
 import type { TextInputProps } from "react-native";
-import type { OnboardingAnswers } from "~/context/OnboardingContext";
 import { ONBOARDING_DURATION_OPTIONS } from "~/components/onboarding/onboarding-learning-times";
+import type { OnboardingAnswers } from "~/context/OnboardingContext";
 
 type RangeStep = {
 	kind: "range";
@@ -119,9 +119,8 @@ export const ONBOARDING_PROFILE_STEPS = [
 	{
 		kind: "time",
 		id: "learningTime",
-		title: "Wann möchtest du an diesen Tagen starten?",
-		description:
-			"Dayova kombiniert diese Startzeit mit deiner gewählten Dauer.",
+		title: "Um wie viel Uhr möchtest du starten?",
+		description: "Diese Startzeit gilt für alle ausgewählten Lerntage.",
 		field: "learningTime",
 	},
 	{

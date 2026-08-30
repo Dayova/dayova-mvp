@@ -19,8 +19,8 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import {
 	AuthChoiceScreen,
 	CreationLoaderScreen,
-	OnboardingCreationScreen,
 	LoginScreen,
+	OnboardingCreationScreen,
 	OnboardingRecoveryScreen,
 	OnboardingScreen,
 	OnboardingStepScreen,
@@ -1352,6 +1352,11 @@ describe("OnboardingScreen", () => {
 		mockOnboarding.answers.learningTime = "";
 		const screen = await render(<OnboardingStepScreen stepId="learningTime" />);
 
+		expect(screen.getByText("Noch nicht gewählt")).toBeOnTheScreen();
+		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
+		expect(
+			screen.getByRole("button", { name: "Startzeit auswählen" }),
+		).toBeEnabled();
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Startzeit auswählen" }),
 		);
@@ -1367,6 +1372,51 @@ describe("OnboardingScreen", () => {
 			"learningTime",
 			"18:05",
 		);
+	});
+
+	test("shows a confirmed start time with explicit change and continue actions", async () => {
+		mockOnboarding.answers.learningTime = "16:30";
+		const screen = await render(<OnboardingStepScreen stepId="learningTime" />);
+
+		expect(screen.getByText("16:30 Uhr")).toBeOnTheScreen();
+		const changeTimeButton = screen.getByRole("button", {
+			name: "Startzeit ändern, aktuell 16:30 Uhr",
+		});
+		expect(changeTimeButton).toBeEnabled();
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
+
+		await fireEvent.press(changeTimeButton);
+		expect(
+			screen.getByRole("button", { name: "Testauswahl bestätigen" }),
+		).toBeEnabled();
+	});
+
+	test("explains and corrects a start time that would cross midnight", async () => {
+		mockOnboarding.answers.studyTime = "90";
+		mockOnboarding.answers.learningTime = "23:00";
+		const screen = await render(<OnboardingStepScreen stepId="learningTime" />);
+
+		expect(screen.getByText("23:00 Uhr")).toBeOnTheScreen();
+		expect(
+			screen.getByText(
+				"Wähle bitte eine frühere Startzeit, damit deine Lernzeit vor Mitternacht endet.",
+			),
+		).toBeOnTheScreen();
+		expect(
+			screen.queryByRole("button", {
+				name: "Startzeit ändern, aktuell 23:00 Uhr",
+			}),
+		).toBeNull();
+		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
+
+		const correctionButton = screen.getByRole("button", {
+			name: "Frühere Startzeit wählen",
+		});
+		expect(correctionButton).toBeEnabled();
+		await fireEvent.press(correctionButton);
+		expect(
+			screen.getByRole("button", { name: "Testauswahl bestätigen" }),
+		).toBeEnabled();
 	});
 
 	test("never advances the study-time fact on a timer", async () => {

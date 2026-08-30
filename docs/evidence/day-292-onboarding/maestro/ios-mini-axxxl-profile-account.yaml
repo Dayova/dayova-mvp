@@ -126,7 +126,7 @@ name: iPhone 13 mini light AXXXL profile and account flow
 - tapOn: "Weiter"
 
 - extendedWaitUntil:
-    visible: "Wann möchtest du an diesen Tagen starten?"
+    visible: "Um wie viel Uhr möchtest du starten?"
     timeout: 30000
 - scrollUntilVisible:
     element:
