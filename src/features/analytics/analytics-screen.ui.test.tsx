@@ -100,11 +100,18 @@ jest.mock("~/components/ui/screen", () => {
 			React.createElement(Native.View, null, children),
 		ScreenScroll: ({
 			children,
+			contentMaxWidth,
 			testID,
 		}: {
 			children: ReactNode;
+			contentMaxWidth?: number;
 			testID?: string;
-		}) => React.createElement(Native.View, { testID }, children),
+		}) =>
+			React.createElement(
+				Native.View,
+				{ style: { maxWidth: contentMaxWidth }, testID },
+				children,
+			),
 	};
 });
 
@@ -178,6 +185,11 @@ const emptyAnalysis = {
 		uncertain: 0,
 		unknown: 0,
 	},
+	answerAccuracy: {
+		answeredQuestions: 0,
+		correctAnswers: 0,
+		percent: null,
+	},
 	abilities: [],
 	improvements: [],
 	latestKnowledgeChange: null,
@@ -227,6 +239,11 @@ const examAnalysis = {
 		developing: 0,
 		uncertain: 1,
 		unknown: 0,
+	},
+	answerAccuracy: {
+		answeredQuestions: 10,
+		correctAnswers: 9,
+		percent: 90,
 	},
 	abilities: [
 		{
@@ -451,6 +468,9 @@ describe("AnalyticsScreen", () => {
 
 	test("guides a new learner to create the first plan", async () => {
 		const screen = await render(<AnalyticsScreen />);
+		expect(
+			screen.getByTestId("analysis-empty-state-icon").props.className,
+		).toContain("h-20 w-20");
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Ersten Lernplan erstellen" }),
 		);
@@ -465,7 +485,30 @@ describe("AnalyticsScreen", () => {
 		expect(screen.queryByText("1/2")).not.toBeOnTheScreen();
 		expect(screen.queryByText("1 von 2 sicher belegt")).not.toBeOnTheScreen();
 		expect(screen.queryByText("1 unsicher")).not.toBeOnTheScreen();
-		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
+		expect(screen.getByText("Deine Themen im Detail")).toBeOnTheScreen();
+		expect(screen.getByTestId("analysis-scroll").props.style.maxWidth).toBe(
+			560,
+		);
+		expect(screen.getByTestId("analysis-header-content").props.style).toEqual(
+			expect.arrayContaining([expect.objectContaining({ maxWidth: 560 })]),
+		);
+		expect(
+			screen.getByText("Stark – du bist auf dem richtigen Weg"),
+		).toBeOnTheScreen();
+		expect(screen.getByText("90%")).toBeOnTheScreen();
+		expect(screen.getByText("richtig")).toBeOnTheScreen();
+		expect(screen.queryByText("Antworten richtig")).not.toBeOnTheScreen();
+		expect(
+			screen.getByText("9 von 10 Fragen richtig – das ist ein starker Stand."),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("analysis-progress-ring").props.accessibilityValue,
+		).toEqual({
+			min: 0,
+			max: 100,
+			now: 90,
+			text: "90 Prozent der Antworten richtig",
+		});
 		expect(screen.getByTestId("topic-list").props.className).toContain(
 			"border-border",
 		);
@@ -473,9 +516,31 @@ describe("AnalyticsScreen", () => {
 		expect(screen.getByText("Achsenschnittpunkte bestimmen")).toBeOnTheScreen();
 		expect(screen.getByText("2 Antworten")).toBeOnTheScreen();
 		expect(screen.getByText("3 Antworten")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 3 Lernkriterien sicher")).toBeOnTheScreen();
+		expect(screen.getByText("3 von 3 Lernkriterien sicher")).toBeOnTheScreen();
 		expect(
-			within(screen.getByTestId("topic-row-steigung")).getByText("Unsicher"),
-		).toBeOnTheScreen();
+			screen.getByTestId("topic-criterion-steigung-understanding", {
+				includeHiddenElements: true,
+			}).props.className,
+		).toContain("bg-success");
+		expect(
+			screen.getByTestId("topic-criterion-steigung-problemSolving", {
+				includeHiddenElements: true,
+			}).props.className,
+		).toContain("bg-wrong");
+		expect(
+			screen.getByTestId("topic-criterion-steigung-independent", {
+				includeHiddenElements: true,
+			}).props.className,
+		).toContain("bg-transparent");
+		expect(
+			within(screen.getByTestId("topic-row-steigung")).queryByText("Unsicher"),
+		).not.toBeOnTheScreen();
+		expect(
+			within(screen.getByTestId("topic-row-achsenschnitt")).queryByText(
+				"Sicher belegt",
+			),
+		).not.toBeOnTheScreen();
 		expect(
 			within(screen.getByTestId("topic-row-steigung")).getByText("2 Antworten"),
 		).toBeOnTheScreen();
@@ -509,7 +574,7 @@ describe("AnalyticsScreen", () => {
 
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Steigung erklären. Unsicher. 2 ausgewertete Antworten.",
+				name: "Steigung erklären. Unsicher. 2 ausgewertete Antworten. 1 von 3 Lernkriterien sicher belegt.",
 			}),
 		);
 		expect(mockPush).toHaveBeenCalledWith({
@@ -546,7 +611,7 @@ describe("AnalyticsScreen", () => {
 		expect(screen.queryByText("0/5")).not.toBeOnTheScreen();
 		expect(screen.queryByText("0 von 5 sicher belegt")).not.toBeOnTheScreen();
 		expect(screen.queryByText("5 im Aufbau")).not.toBeOnTheScreen();
-		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
+		expect(screen.getByText("Deine Themen im Detail")).toBeOnTheScreen();
 		expect(
 			screen.queryByText(
 				"Du arbeitest an allen 5 Prüfungsthemen, aber noch keines ist sicher belegt.",
@@ -557,6 +622,11 @@ describe("AnalyticsScreen", () => {
 	test("does not show an aggregate knowledge card without evidence", async () => {
 		mockUseQuery.mockReturnValue({
 			...examAnalysis,
+			answerAccuracy: {
+				answeredQuestions: 0,
+				correctAnswers: 0,
+				percent: null,
+			},
 			readiness: {
 				secure: 0,
 				developing: 0,
@@ -581,12 +651,15 @@ describe("AnalyticsScreen", () => {
 		const screen = await render(<AnalyticsScreen />);
 
 		expect(screen.queryByText("Dein Wissensstand")).not.toBeOnTheScreen();
-		expect(screen.queryByText("–")).not.toBeOnTheScreen();
+		expect(screen.getByText("–")).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("analysis-progress-ring").props.accessibilityValue,
+		).toEqual({ text: "Noch keine Antworten bewertet" });
 		expect(
 			screen.queryByText("Noch keine Wissensbelege"),
 		).not.toBeOnTheScreen();
 		expect(screen.queryByText("0/2")).not.toBeOnTheScreen();
-		expect(screen.getByText("Deine Prüfungsthemen")).toBeOnTheScreen();
+		expect(screen.getByText("Deine Themen im Detail")).toBeOnTheScreen();
 	});
 
 	test("reveals evidence and starts the recommendation from focused pages", async () => {
@@ -656,7 +729,7 @@ describe("AnalyticsScreen", () => {
 		).not.toBeOnTheScreen();
 		const answerPager = knowledgeScreen.getByTestId("topic-answer-pager");
 		expect(answerPager.props.horizontal).toBe(true);
-		expect(answerPager.props.snapToInterval).toBeGreaterThan(0);
+		expect(answerPager.props.snapToInterval).toBeLessThan(560);
 		expect(
 			knowledgeScreen.getByText("Erkläre die Steigung."),
 		).toBeOnTheScreen();

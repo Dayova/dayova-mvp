@@ -7,7 +7,9 @@ import { cn } from "~/lib/utils";
 
 type ListRowProps = React.ComponentProps<typeof ActionSurface> & {
 	icon?: ReactNode;
+	iconContainerClassName?: string;
 	label: string;
+	labelClassName?: string;
 	description?: string;
 	trailing?: ReactNode;
 };
@@ -16,7 +18,9 @@ function ListRow({
 	className,
 	description,
 	icon,
+	iconContainerClassName,
 	label,
+	labelClassName,
 	trailing,
 	...props
 }: ListRowProps) {
@@ -54,6 +58,7 @@ function ListRow({
 						className={cn(
 							"h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted",
 							shouldStackInlineContent ? "mb-3" : "mr-3",
+							iconContainerClassName,
 						)}
 					>
 						{icon}
@@ -61,7 +66,10 @@ function ListRow({
 				) : null}
 				<View className="min-w-0 flex-1">
 					<Text
-						className="font-poppins font-semibold text-body-2 text-text"
+						className={cn(
+							"font-poppins font-semibold text-body-2 text-text",
+							labelClassName,
+						)}
 						numberOfLines={shouldStackInlineContent ? undefined : 1}
 					>
 						{label}
