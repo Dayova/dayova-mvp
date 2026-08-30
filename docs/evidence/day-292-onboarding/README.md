@@ -22,10 +22,10 @@ settled. The device's normal `font_scale=1.15` light/dark states and the
 enlarged `font_scale=2.0` light/dark states all retain the complete artwork,
 heading, description, page indicator, primary action, and duration note:
 
-- `android-light-intro-learning-path-shared.png`
-- `android-dark-intro-learning-path-shared.png`
-- `android-light-font2-intro-learning-path-shared.png`
-- `android-dark-font2-intro-learning-path-shared.png`
+- `android-light-intro-learning-path-settled.png`
+- `android-dark-intro-learning-path-settled.png`
+- `android-light-font2-intro-learning-path-settled.png`
+- `android-dark-font2-intro-learning-path-settled.png`
 
 The development-launcher gear is not production UI. The temporary device theme
 and font-scale overrides were restored to the original light theme and `1.15`
