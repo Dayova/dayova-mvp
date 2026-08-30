@@ -60,10 +60,7 @@ import {
 	isDiagnosticLearningPlanSession,
 	isLearningPlanSessionHistory,
 } from "~/features/learning-plans/rolling-learning-window";
-import type {
-	LearningPlanSnapshot,
-	PlanSession,
-} from "~/features/learning-plans/types";
+import type { PlanSession } from "~/features/learning-plans/types";
 import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -878,10 +875,17 @@ export default function LearningPlanSessionsScreen() {
 		api.learningPlanAi.ensureSessionContent,
 	);
 	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
-	const snapshot = (useQuery(
-		api.learningPlans.getSnapshot,
+	const plan = useQuery(
+		api.learningPlans.getPlanDetails,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
-	) ?? null) as LearningPlanSnapshot | null;
+	);
+	const sessions = useQuery(
+		api.learningPlans.listSessions,
+		user && isConvexAuthenticated && planId
+			? { learningPlanId: planId }
+			: "skip",
+	);
+	const snapshot = plan && sessions ? { plan, sessions } : null;
 	const [selectedSessionId, setSelectedSessionId] =
 		useState<Id<"learningPlanSessions"> | null>(null);
 	const defaultSession = snapshot

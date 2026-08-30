@@ -18,6 +18,9 @@ _Avoid_: User-facing message, learner error text
 
 ## Notes
 
+- The learning-material ingestion, egress diagnostics, upload limits, recovery
+  policy, incident baseline, and operational checks live in
+  [`convex-egress-runbook.md`](./convex-egress-runbook.md).
 - Convex keeps `users.schoolType` schema-compatible with legacy strings while
   every current write boundary accepts only the seven stable `Schulart` keys.
   Authenticated profile sync lazily maps exact generic legacy values and
