@@ -16,10 +16,11 @@ and one adaptive locked node without exposing Pressables, accessibility noise,
 or breathing motion.
 
 The following source-resolution captures come from the freshly bundled
-development client on a connected physical Pixel 9. The device's normal
-`font_scale=1.15` light/dark states and the enlarged `font_scale=2.0` light/dark
-states all retain the complete artwork, heading, description, page indicator,
-primary action, and duration note:
+development client on a connected physical Pixel 9. Each capture was taken
+after the native theme/content-size transition and its fonts and icons had
+settled. The device's normal `font_scale=1.15` light/dark states and the
+enlarged `font_scale=2.0` light/dark states all retain the complete artwork,
+heading, description, page indicator, primary action, and duration note:
 
 - `android-light-intro-learning-path-shared.png`
 - `android-dark-intro-learning-path-shared.png`
@@ -28,8 +29,17 @@ primary action, and duration note:
 
 The development-launcher gear is not production UI. The temporary device theme
 and font-scale overrides were restored to the original light theme and `1.15`
-font scale after capture. This host has no iOS runtime, so these fresh captures
-do not replace the remaining native iOS rendering gate.
+font scale after capture.
+
+The simulator-targeted iOS development-client build
+[`470a1abb-4b14-4ecc-9131-ca56823c9f9e`](https://expo.dev/accounts/dayova/projects/dayova/builds/470a1abb-4b14-4ecc-9131-ca56823c9f9e)
+succeeded from code commit `c576928` with native fingerprint
+`e0596a85c3ac761cee36c9c41819f0bad7a1891c`. A remote iOS session could not be
+created because EAS Simulator is not enabled for the Dayova account; the CLI
+returned `EAS Simulator isn't available on dayova yet`. This Windows host has
+no local iOS runtime, so the fresh iOS light/dark and enlarged-text screenshots
+remain an explicit release gate rather than being inferred from the successful
+build or older evidence.
 
 The earlier `*-intro-plan-shared.png` files below prove the superseded
 `LearningPlanCardVisual` implementation only. The amended design-system decision
