@@ -170,8 +170,8 @@ acknowledges a real transition without becoming recurring friction.
 
 Onboarding artwork or other explanatory UI that depicts a live Dayova product
 surface must render the same shared presentation module through an explicit
-screen/artwork contract. Do not recreate the product card, upload surface,
-copy, tokens, or status/progress layout as a parallel component or static
+screen/artwork contract. Do not recreate the product card, learning path,
+upload surface, copy, tokens, or status/progress layout as a parallel component or static
 mockup. Artwork mode stays decorative, non-interactive, accessibility-hidden,
 and bounded to its artboard; the surrounding screen owns the accessible
 explanation. A deliberate divergence requires a superseding decision with the

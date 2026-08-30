@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-14
+- Amended: 2026-08-30 (final intro uses the shared Learning Path)
 - Supersedes: the 2026-07-13 decision to maintain three onboarding-only
   illustration implementations
 
@@ -27,8 +28,8 @@ product surfaces:
 - learning-step previews render `SessionCard` from `learning-plan-ui.tsx`;
 - the material preview renders `MaterialUploadStepLead` and
   `MaterialUploadActionCard` from `learning-plan-setup-steps.tsx`;
-- the plan preview and the real plan overview both render
-  `LearningPlanCardVisual`.
+- the final intro preview and the real plan-detail screen both render
+  `LearningPathVisual` from `learning-path-visual.tsx`.
 
 Each shared module has an explicit screen/artwork contract. Screen mode keeps
 the real action, accessibility label, dynamic-type behavior, and responsive
@@ -41,11 +42,26 @@ or exposes a dead control.
 mode. It renders the shared card and action affordance without creating a
 `Pressable`. The screen modes remain unchanged and interactive.
 
-The three small onboarding wrappers own only preview data, artboard dimensions,
-scaling, and arrangement. They do not duplicate card structure, typography,
-semantic colors, upload copy, or learning-plan status/progress layout. The
-superseded static `intro-path.svg` and custom upload/task compositions are
-removed.
+The three small onboarding wrappers own only preview data, available artwork
+dimensions, and arrangement. They do not duplicate card or path structure,
+typography, semantic colors, upload copy, learning-path geometry, node icons,
+or state rules. The superseded static `intro-path.svg` and custom upload/task
+compositions are removed.
+
+The final intro's learner job is to understand that Dayova turns material into
+an ordered route, not to inspect the metadata of a single plan. Its artwork mode
+therefore composes a bounded excerpt of the real path: one completed node, the
+current selected node, and one adaptive locked node. This uses the same
+connector geometry, pucks, icons, colors, and completed/current/locked rules as
+the live screen. Artwork mode is deliberately motion-free and renders Views,
+not dead Pressables; screen mode retains reduced-motion-aware breathing,
+selection, accessibility labels, and open/select behavior.
+
+We rejected two alternatives. Reusing `LearningPlanCardVisual` prevented code
+drift but communicated plan metadata and a next step, repeating the first intro
+page instead of explaining order and progression. Restoring the old #458 static
+path matched the desired composition more closely, but recreated a second
+source of truth for geometry, icons, tokens, and state semantics.
 
 ## Guardrail
 
@@ -66,7 +82,18 @@ is not a second reading path.
 - Copy, tokens, icons, and structure stay searchable and regression-testable.
 - The shared modules have a slightly wider API because they support a bounded
   decorative context as well as the live product screen.
+- The Learning Path geometry moved out of its route into a feature presentation
+  module. This gives both contexts one seam, at the cost of a discriminated
+  screen/artwork interface.
 - A product redesign can still require onboarding artboard adjustments, but it
   cannot silently leave onboarding on the former product UI.
 - Every affected intro page needs fresh native light/dark evidence because the
   previous screenshots prove the superseded illustrations, not this decision.
+
+## Reversal condition
+
+Reconsider this choice only if the live product no longer uses an ordered
+Learning Path, or if the final intro's learner job changes from explaining
+sequence and adaptation. A future replacement must still share its product
+presentation module and must include fresh native evidence; a copied card,
+Figma export, or onboarding-only SVG is not a valid reversal.

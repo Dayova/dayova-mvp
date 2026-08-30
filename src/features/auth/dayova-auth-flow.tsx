@@ -45,12 +45,12 @@ import {
 	getBirthMonthValues,
 	getBirthYearValues,
 } from "~/components/onboarding/birth-date";
+import { IntroLearningPathArtwork } from "~/components/onboarding/intro-learning-path-artwork";
 import {
 	getIntroDotWidth,
 	INTRO_DOT_COLLAPSED_WIDTH,
 	INTRO_DOT_EXPANDED_WIDTH,
 } from "~/components/onboarding/intro-pagination";
-import { IntroPlanArtwork } from "~/components/onboarding/intro-plan-artwork";
 import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import {
 	getOnboardingPersistenceAnswers,
@@ -166,7 +166,7 @@ type IntroStep = {
 	id: "intro-upload" | "intro-path" | "intro-tasks";
 	title: string;
 	description: string;
-	illustration: "plan" | "tasks" | "upload";
+	illustration: "path" | "tasks" | "upload";
 };
 
 const INTRO_STEPS = [
@@ -192,7 +192,7 @@ const INTRO_STEPS = [
 		title: "Aus Stoff wird ein klarer Weg.",
 		description:
 			"Dayova erkennt Themen und Lücken und ordnet sie so, dass du nicht mehr raten musst, wo du anfängst.",
-		illustration: "plan",
+		illustration: "path",
 	},
 ] as const satisfies readonly IntroStep[];
 
@@ -1181,10 +1181,10 @@ function IntroArtwork({
 					height={accessibleLayout ? 190 : compactHeight ? 222 : 254}
 				/>
 			) : null}
-			{item.illustration === "plan" ? (
-				<IntroPlanArtwork
+			{item.illustration === "path" ? (
+				<IntroLearningPathArtwork
 					width={accessibleLayout ? 250 : compactHeight ? 284 : 330}
-					height={accessibleLayout ? 144 : compactHeight ? 164 : 190}
+					height={accessibleLayout ? 168 : compactHeight ? 208 : 254}
 				/>
 			) : null}
 			{item.illustration === "tasks" ? (

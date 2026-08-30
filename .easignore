@@ -1,4 +1,4 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# Keep this file aligned with .gitignore; EAS uses it instead of .gitignore.
 
 # dependencies
 node_modules/
@@ -35,19 +35,23 @@ yarn-error.*
 __pycache__/
 *.py[cod]
 
-# local env files
+# local env files and simulator state
 .env.local
 .env
 .env.eas-simulator
 
 .idea
 
-# typescript
+# TypeScript
 *.tsbuildinfo
 
-# generated native folders
+# Generated native folders
 /ios
 /android
+
+# Review evidence and local capture scratch space are not build inputs.
+/docs/evidence/
+/.tmp/
 
 # Downloaded store binaries are release evidence, not source artifacts.
 /release/google-play/artifacts/*.aab

@@ -91,7 +91,7 @@ The launch flow is ordered as follows:
 The following constraints are part of the contract:
 
 - Intro pages remain a fixed three-page native pager with stable keys. Their
-  learning-step, material-upload, and learning-plan previews render the same
+  learning-step, material-upload, and learning-path previews render the same
   shared presentation modules as the corresponding product screens, in an
   explicitly non-interactive artwork mode. Onboarding wrappers may arrange and
   scale those modules but must not fork their product UI or copy.

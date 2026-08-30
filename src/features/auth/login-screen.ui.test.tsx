@@ -263,12 +263,12 @@ jest.mock("~/components/intro-upload-artwork", () => {
 	};
 });
 
-jest.mock("~/components/onboarding/intro-plan-artwork", () => {
+jest.mock("~/components/onboarding/intro-learning-path-artwork", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	return {
-		IntroPlanArtwork: () =>
-			React.createElement("IntroPlanArtwork", {
-				testID: "intro-plan-artwork",
+		IntroLearningPathArtwork: () =>
+			React.createElement("IntroLearningPathArtwork", {
+				testID: "intro-learning-path-artwork",
 			}),
 	};
 });
@@ -1225,13 +1225,13 @@ describe("OnboardingScreen", () => {
 		expect(pager).toHaveProp("removeClippedSubviews", false);
 	});
 
-	test("renders the maintained learning-plan preview on the final intro page", async () => {
+	test("renders the maintained learning-path preview on the final intro page", async () => {
 		const screen = await render(<OnboardingScreen />);
 
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
-		expect(screen.getByTestId("intro-plan-artwork")).toBeOnTheScreen();
+		expect(screen.getByTestId("intro-learning-path-artwork")).toBeOnTheScreen();
 	});
 
 	test("does not preselect a grade and disables continuation until it is valid", async () => {

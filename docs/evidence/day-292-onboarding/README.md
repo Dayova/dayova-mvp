@@ -5,7 +5,40 @@ mutually exclusive `main` delivery alternative to PR #458. They are review
 evidence, not app assets. The canonical product decision lives in Notion;
 DAY-292 remains the delivery source of truth.
 
-## Shared product-preview contract — 15 August 2026
+## Shared Learning Path amendment — 30 August 2026
+
+The final intro page now renders a focused excerpt of the real Learning Path
+through `LearningPathVisual`'s typed artwork mode. The live plan-detail screen
+uses the same module in screen mode. Both contexts therefore share connector
+geometry, node pucks, phase icons, semantic colors, and completed/current/locked
+state rules. The artwork composes one completed node, the selected current node,
+and one adaptive locked node without exposing Pressables, accessibility noise,
+or breathing motion.
+
+The following source-resolution captures come from the freshly bundled
+development client on a connected physical Pixel 9. The device's normal
+`font_scale=1.15` light/dark states and the enlarged `font_scale=2.0` light/dark
+states all retain the complete artwork, heading, description, page indicator,
+primary action, and duration note:
+
+- `android-light-intro-learning-path-shared.png`
+- `android-dark-intro-learning-path-shared.png`
+- `android-light-font2-intro-learning-path-shared.png`
+- `android-dark-font2-intro-learning-path-shared.png`
+
+The development-launcher gear is not production UI. The temporary device theme
+and font-scale overrides were restored to the original light theme and `1.15`
+font scale after capture. This host has no iOS runtime, so these fresh captures
+do not replace the remaining native iOS rendering gate.
+
+The earlier `*-intro-plan-shared.png` files below prove the superseded
+`LearningPlanCardVisual` implementation only. The amended design-system decision
+records why the card and the older #458 static SVG were both rejected for this
+page.
+
+## Original shared product-preview contract — 15 August 2026
+
+The page-three mapping in this section was superseded on 30 August 2026.
 
 The intro previously maintained separate approximations of Dayova's task,
 upload, and learning-path UI. Those approximations drifted after the real
@@ -18,7 +51,7 @@ non-interactive artwork mode:
 
 - page one uses the same `SessionCard` structure as individual learning steps;
 - page two uses the same upload lead and action card as plan creation;
-- page three uses the same `LearningPlanCardVisual` as the plan overview.
+- page three used the same `LearningPlanCardVisual` as the plan overview.
 
 The wrappers own only fixed preview data, scaling, and arrangement. The old
 static path SVG and onboarding-only task/upload compositions were removed. The
