@@ -5,6 +5,26 @@ mutually exclusive `main` delivery alternative to PR #458. They are review
 evidence, not app assets. The canonical product decision lives in Notion;
 DAY-292 remains the delivery source of truth.
 
+## Daily-guidance composition amendment — 31 August 2026
+
+The first intro page restores the layered hierarchy from the earlier Figma
+direction without restoring its copied task, streak, or reminder cards. The
+background now renders the live dashboard's shared agenda-entry and
+weekly-progress presentations; the foreground renders the shared next-learning-
+step presentation. `IntroTasksArtwork` owns only preview data, overlap,
+rotation, scale, and shadow. All three shared cards use non-interactive,
+accessibility-hidden artwork mode, while their dashboard screen mode remains
+interactive.
+
+This amendment supersedes every earlier `*-intro-learning-steps-shared.png`
+capture and the three-equal-session-card interpretation described below. The
+current Android code head is captured in
+`android-light-intro-daily-guidance-shared.png`,
+`android-dark-intro-daily-guidance-shared.png`, and
+`android-dark-font2-intro-daily-guidance-shared.png`. Together they cover the
+new composition in light, dark, and `font_scale=2.0`; older captures remain
+layout history only and are not evidence for this composition.
+
 ## Shared Learning Path amendment — 30 August 2026
 
 The final intro page now renders a focused excerpt of the real Learning Path
@@ -48,7 +68,8 @@ page.
 
 ## Original shared product-preview contract — 15 August 2026
 
-The page-three mapping in this section was superseded on 30 August 2026.
+The page-three mapping in this section was superseded on 30 August 2026; the
+page-one mapping was superseded on 31 August 2026.
 
 The intro previously maintained separate approximations of Dayova's task,
 upload, and learning-path UI. Those approximations drifted after the real
@@ -59,7 +80,7 @@ truth.
 The intro now renders the real shared presentation modules in a typed,
 non-interactive artwork mode:
 
-- page one uses the same `SessionCard` structure as individual learning steps;
+- page one used the same `SessionCard` structure as individual learning steps;
 - page two uses the same upload lead and action card as plan creation;
 - page three used the same `LearningPlanCardVisual` as the plan overview.
 

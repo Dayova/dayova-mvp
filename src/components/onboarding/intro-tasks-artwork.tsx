@@ -1,63 +1,51 @@
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
-import { SessionCard } from "~/features/learning-plans/learning-plan-ui";
-import type { PlanSession } from "~/features/learning-plans/types";
+import {
+	type DashboardWeekProgress,
+	toDashboardAgendaItem,
+} from "~/features/dashboard/dashboard-agenda";
+import {
+	DashboardAgendaEntryCard,
+	DashboardNextStepCard,
+	DashboardWeeklyProgressCard,
+} from "~/features/dashboard/dashboard-product-cards";
 
 const ARTWORK_WIDTH = 356;
 const ARTWORK_HEIGHT = 242;
+const PREVIEW_DAY_KEY = "2026-08-31";
 
 type IntroTasksArtworkProps = {
 	height?: number;
 	width?: number;
 };
 
-const learningSteps: PlanSession[] = [
-	{
-		id: "intro-session-theory" as Id<"learningPlanSessions">,
-		phase: "theory",
-		title: "Lineare Funktionen verstehen",
-		dateKey: "2026-08-17",
-		dateLabel: "Montag, 17. August",
-		startTime: "16:30",
-		durationMinutes: 30,
-		goal: "Grundlagen verstehen",
-		tasks: [],
-		expectedOutcome: "Die Grundlagen sind klar.",
-		sortOrder: 0,
-		completed: false,
-		executionStatus: "notStarted",
-	},
-	{
-		id: "intro-session-practice" as Id<"learningPlanSessions">,
-		phase: "practice",
-		title: "Steigung berechnen",
-		dateKey: "2026-08-19",
-		dateLabel: "Mittwoch, 19. August",
-		startTime: "16:30",
-		durationMinutes: 30,
-		goal: "Aufgaben sicher lösen",
-		tasks: [],
-		expectedOutcome: "Die Rechenschritte sitzen.",
-		sortOrder: 1,
-		completed: false,
-		executionStatus: "notStarted",
-	},
-	{
-		id: "intro-session-rehearsal" as Id<"learningPlanSessions">,
-		phase: "rehearsal",
-		title: "Prüfungsaufgaben trainieren",
-		dateKey: "2026-08-22",
-		dateLabel: "Samstag, 22. August",
-		startTime: "10:00",
-		durationMinutes: 30,
-		goal: "Sicher in die Prüfung gehen",
-		tasks: [],
-		expectedOutcome: "Die Prüfung kann kommen.",
-		sortOrder: 2,
-		completed: false,
-		executionStatus: "notStarted",
-	},
-];
+const agendaPreview = toDashboardAgendaItem(PREVIEW_DAY_KEY, {
+	id: "intro-dashboard-task" as Id<"dayEntries">,
+	title: "Mathe lernen",
+	kind: "Hausaufgabe",
+	notes: "Funktionen üben",
+	time: "15:30",
+	durationMinutes: 30,
+});
+
+const nextStepPreview = toDashboardAgendaItem(PREVIEW_DAY_KEY, {
+	id: "intro-dashboard-next-step" as Id<"learningPlanSessions">,
+	relatedLearningPlanSessionId:
+		"intro-dashboard-next-step" as Id<"learningPlanSessions">,
+	title: "Lineare Funktionen verstehen",
+	kind: "Lernsession",
+	time: "16:30",
+	durationMinutes: 30,
+	executionStatus: "notStarted",
+});
+
+const progressPreview = {
+	completedLearningSessions: 4,
+	completedMinutesToday: 30,
+	completionPercent: 57,
+	remainingLearningSessions: 3,
+	totalLearningSessions: 7,
+} satisfies DashboardWeekProgress;
 
 export function IntroTasksArtwork({
 	width = ARTWORK_WIDTH,
@@ -70,27 +58,81 @@ export function IntroTasksArtwork({
 			accessible={false}
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
+			pointerEvents="none"
 			className="items-center justify-center"
 			// The artwork frame dimensions are runtime component inputs.
 			style={{ width, height }}
 			testID="intro-tasks-artwork"
 		>
 			<View
-				className="h-[242px] w-[356px] items-center justify-center"
+				className="h-[242px] w-[356px]"
 				// The fixed artboard scales to the runtime frame while preserving its geometry.
 				style={{ transform: [{ scale }] }}
+				testID="intro-tasks-product-composition"
 			>
-				<View className="w-[336px] gap-2" testID="intro-tasks-card-stack">
-					{learningSteps.map((session, index) => (
-						<SessionCard
-							key={session.id}
-							mode="artwork"
-							session={session}
-							testID={`intro-task-card-${index + 1}`}
-						/>
-					))}
+				<View
+					className="absolute shadow-black/10 shadow-lg"
+					style={artworkGeometry.agenda}
+					testID="intro-tasks-agenda-layer"
+				>
+					<DashboardAgendaEntryCard
+						mode="artwork"
+						item={agendaPreview}
+						testID="intro-task-agenda-card"
+					/>
+				</View>
+				<View
+					className="absolute shadow-black/10 shadow-lg"
+					style={artworkGeometry.progress}
+					testID="intro-tasks-progress-layer"
+				>
+					<DashboardWeeklyProgressCard
+						mode="artwork"
+						progress={progressPreview}
+						testID="intro-task-progress-card"
+					/>
+				</View>
+				<View
+					className="absolute shadow-black/15 shadow-xl"
+					style={artworkGeometry.nextStep}
+					testID="intro-tasks-next-step-layer"
+				>
+					<DashboardNextStepCard
+						mode="artwork"
+						item={nextStepPreview}
+						todayKey={PREVIEW_DAY_KEY}
+						testID="intro-task-next-step-card"
+					/>
 				</View>
 			</View>
 		</View>
 	);
 }
+
+// The onboarding wrapper owns only the overlap, rotation, scale, and shadow.
+// Product structure and tokens stay inside the shared dashboard components.
+const artworkGeometry = StyleSheet.create({
+	agenda: {
+		left: 6,
+		top: 42,
+		width: 202,
+		height: 106,
+		transform: [{ rotate: "-10deg" }],
+		transformOrigin: [0, 0, 0],
+	},
+	progress: {
+		left: 188,
+		top: 14,
+		width: 164,
+		height: 134,
+		transform: [{ rotate: "7deg" }],
+		transformOrigin: [0, 0, 0],
+	},
+	nextStep: {
+		left: 32,
+		top: 120,
+		zIndex: 2,
+		width: 292,
+		height: 114,
+	},
+});

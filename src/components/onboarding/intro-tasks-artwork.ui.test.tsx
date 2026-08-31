@@ -2,25 +2,28 @@ import { describe, expect, jest, test } from "@jest/globals";
 import { render } from "@testing-library/react-native";
 import { IntroTasksArtwork } from "./intro-tasks-artwork";
 
-jest.mock("~/components/ui/icon", () => {
+jest.mock("~/features/dashboard/dashboard-product-cards", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
-	const icon = (name: string) => (props: Record<string, unknown>) =>
-		React.createElement("Icon", { ...props, testID: `${name}-icon` });
+	const { Text, View } =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	const productCard = (label: string) =>
+		function MockProductCard({ testID }: { testID?: string }) {
+			return React.createElement(
+				View,
+				{ testID },
+				React.createElement(Text, null, label),
+			);
+		};
+
 	return {
-		PropertyEdit: icon("property-edit"),
+		DashboardAgendaEntryCard: productCard("Geteilte Agenda"),
+		DashboardNextStepCard: productCard("Geteilter nächster Lernschritt"),
+		DashboardWeeklyProgressCard: productCard("Geteilter Wochenfortschritt"),
 	};
 });
 
-jest.mock("~/components/ui/portrait-content", () => ({
-	useContentSizeLayout: () => ({ shouldStackInlineContent: false }),
-}));
-
-jest.mock("~/lib/theme", () => ({
-	useDayovaTheme: () => ({ colors: { text: "#111111" } }),
-}));
-
 describe("IntroTasksArtwork", () => {
-	test("renders current shared learning-step cards as one decorative artwork", async () => {
+	test("restores the layered product composition through shared dashboard modules", async () => {
 		const screen = await render(<IntroTasksArtwork />);
 		const hidden = { includeHiddenElements: true };
 		const artwork = screen.getByTestId("intro-tasks-artwork", hidden);
@@ -28,13 +31,21 @@ describe("IntroTasksArtwork", () => {
 		expect(artwork.props.accessibilityElementsHidden).toBe(true);
 		expect(artwork.props.importantForAccessibility).toBe("no-hide-descendants");
 		expect(
-			screen.getByText("Lineare Funktionen verstehen", hidden),
+			screen.getByTestId("intro-task-agenda-card", hidden),
 		).toBeOnTheScreen();
-		expect(screen.getByText("Steigung berechnen", hidden)).toBeOnTheScreen();
 		expect(
-			screen.getByText("Prüfungsaufgaben trainieren", hidden),
+			screen.getByTestId("intro-task-progress-card", hidden),
 		).toBeOnTheScreen();
-		expect(screen.getAllByTestId("property-edit-icon", hidden)).toHaveLength(3);
+		expect(
+			screen.getByTestId("intro-task-next-step-card", hidden),
+		).toBeOnTheScreen();
+		expect(screen.getByText("Geteilte Agenda", hidden)).toBeOnTheScreen();
+		expect(
+			screen.getByText("Geteilter Wochenfortschritt", hidden),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByText("Geteilter nächster Lernschritt", hidden),
+		).toBeOnTheScreen();
 		expect(screen.queryByRole("button", hidden)).toBeNull();
 	});
 
@@ -47,17 +58,28 @@ describe("IntroTasksArtwork", () => {
 		expect(artwork.props.style).toEqual({ width: 294, height: 200 });
 	});
 
-	test("centers equal-height cards with one consistent gap", async () => {
+	test("keeps the agenda and progress behind the dominant next-step layer", async () => {
 		const screen = await render(<IntroTasksArtwork />);
 		const hidden = { includeHiddenElements: true };
-		const stack = screen.getByTestId("intro-tasks-card-stack", hidden);
 
-		expect(stack.props.className).toContain("w-[336px]");
-		expect(stack.props.className).toContain("gap-2");
-		for (const index of [1, 2, 3]) {
-			expect(
-				screen.getByTestId(`intro-task-card-${index}`, hidden).props.className,
-			).toContain("h-[72px]");
-		}
+		expect(screen.getByTestId("intro-tasks-agenda-layer", hidden)).toHaveStyle({
+			left: 6,
+			top: 42,
+			transform: [{ rotate: "-10deg" }],
+		});
+		expect(
+			screen.getByTestId("intro-tasks-progress-layer", hidden),
+		).toHaveStyle({
+			left: 188,
+			top: 14,
+			transform: [{ rotate: "7deg" }],
+		});
+		expect(
+			screen.getByTestId("intro-tasks-next-step-layer", hidden),
+		).toHaveStyle({
+			left: 32,
+			top: 120,
+			zIndex: 2,
+		});
 	});
 });
