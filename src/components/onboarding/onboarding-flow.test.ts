@@ -31,6 +31,39 @@ const answers = (
 });
 
 describe("onboarding flow decisions", () => {
+	test("rejects an under-13 birth date before registration", () => {
+		const currentYear = new Date().getFullYear();
+		const underThirteenBirthDate = `01.01.${currentYear - 12}`;
+		const eligibleBirthDate = `01.01.${currentYear - 13}`;
+
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "wheel", field: "birthDate" },
+				answers({ birthDate: underThirteenBirthDate }),
+			),
+		).toEqual({
+			action: "advance",
+			error: "Du musst mindestens 13 Jahre alt sein, um Dayova zu nutzen.",
+		});
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "wheel", field: "birthDate" },
+				answers({ birthDate: eligibleBirthDate }),
+			),
+		).toEqual({ action: "advance", error: null });
+	});
+
+	test("rejects an under-13 birth date at the Clerk registration boundary", () => {
+		const currentYear = new Date().getFullYear();
+		const registrationPayload = getOnboardingRegistrationPayload(
+			answers({ birthDate: `01.01.${currentYear - 12}` }),
+		);
+
+		expect(() => prepareClerkRegistration(registrationPayload)).toThrow(
+			"Du musst mindestens 13 Jahre alt sein, um Dayova zu nutzen.",
+		);
+	});
+
 	test("validates learner input before advancing", () => {
 		expect(
 			getOnboardingStepDecision(

@@ -1,4 +1,5 @@
 import type { OnboardingAnswers } from "~/context/OnboardingContext";
+import { getBirthDateError } from "~/lib/age-assurance";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
 
 type AnswerStepKind = "chips" | "goals" | "range" | "wheel";
@@ -45,6 +46,10 @@ export function getOnboardingStepDecision(
 						error: "Bitte gib ein Passwort mit mindestens 8 Zeichen ein.",
 					};
 		}
+	}
+
+	if (step.kind === "wheel" && step.field === "birthDate") {
+		return { action: "advance", error: getBirthDateError(answers.birthDate) };
 	}
 
 	if (

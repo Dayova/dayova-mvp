@@ -1,5 +1,10 @@
 import { v } from "convex/values";
 import {
+	BIRTH_DATE_REQUIRED_ERROR,
+	getAgeAssuranceResult,
+	getBirthDateError,
+} from "../src/lib/age-assurance";
+import {
 	GERMAN_FEDERAL_STATES,
 	isGermanFederalState,
 } from "../src/lib/federal-states";
@@ -319,6 +324,22 @@ const normalizeOptionalSchoolType = (schoolType?: string) => {
 	return normalizedSchoolType;
 };
 
+const normalizeOptionalBirthDate = (birthDate?: string) => {
+	if (!birthDate?.trim()) return undefined;
+
+	const referenceDate = new Date();
+	const error = getBirthDateError(birthDate, referenceDate);
+	if (error) throwUserFacingError(error);
+	const result = getAgeAssuranceResult(birthDate, referenceDate);
+	if (result.status !== "verified") {
+		throwUserFacingError("Bitte wähle ein gültiges Geburtsdatum aus.");
+	}
+	return result.normalizedBirthDate;
+};
+
+const getProvidedBirthDate = (birthDate?: string) =>
+	birthDate?.trim() ? birthDate : undefined;
+
 const profileFields = (args: {
 	email?: string;
 	name?: string;
@@ -330,6 +351,7 @@ const profileFields = (args: {
 	avatarUrl?: string;
 	validationStudentCode?: string;
 }) => {
+	const birthDate = normalizeOptionalBirthDate(args.birthDate);
 	const grade = normalizeOptionalGrade(args.grade);
 	const schoolType = normalizeOptionalSchoolType(args.schoolType);
 	const state = normalizeOptionalFederalState(args.state);
@@ -337,7 +359,7 @@ const profileFields = (args: {
 		...(args.email !== undefined ? { email: normalizeEmail(args.email) } : {}),
 		...(args.name !== undefined ? { name: args.name } : {}),
 		...(args.phone !== undefined ? { phone: args.phone } : {}),
-		...(args.birthDate !== undefined ? { birthDate: args.birthDate } : {}),
+		...(birthDate !== undefined ? { birthDate } : {}),
 		...(grade !== undefined ? { grade } : {}),
 		...(schoolType !== undefined ? { schoolType } : {}),
 		...(state !== undefined ? { state } : {}),
@@ -398,6 +420,12 @@ export const syncCurrentUser = mutation({
 				q.eq("tokenIdentifier", identity.tokenIdentifier),
 			)
 			.unique();
+		const providedBirthDate = getProvidedBirthDate(args.birthDate);
+		const effectiveBirthDate = providedBirthDate ?? existingUser?.birthDate;
+		if (!existingUser && !effectiveBirthDate?.trim()) {
+			throwUserFacingError(BIRTH_DATE_REQUIRED_ERROR);
+		}
+		normalizeOptionalBirthDate(effectiveBirthDate);
 
 		const email = normalizeEmail(identity.email) || existingUser?.email;
 
@@ -410,7 +438,7 @@ export const syncCurrentUser = mutation({
 			clerkId: identity.subject,
 			email,
 			name: args.name ?? identity.name,
-			...profileFields(args),
+			...profileFields({ ...args, birthDate: providedBirthDate }),
 		};
 
 		let userId: Id<"users">;
@@ -459,8 +487,14 @@ export const updateProfile = mutation({
 		if (!user) {
 			throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
 		}
+		const providedBirthDate = getProvidedBirthDate(args.birthDate);
+		normalizeOptionalBirthDate(providedBirthDate ?? user.birthDate);
 
-		await ctx.db.patch("users", user._id, profileFields(args));
+		await ctx.db.patch(
+			"users",
+			user._id,
+			profileFields({ ...args, birthDate: providedBirthDate }),
+		);
 		return { success: true };
 	},
 });

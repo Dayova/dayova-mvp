@@ -8,6 +8,12 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 
 - Registration is password-based: the learner enters an E-Mail address, sets a
   password, then confirms the account with a 6-digit E-Mail code.
+- Registration has a hard minimum age of 13. `src/lib/age-assurance.ts` is the
+  shared calendar-date contract: onboarding blocks an ineligible selection,
+  the Clerk registration boundary validates again before identity creation,
+  and Convex rejects invalid or under-13 birth dates on profile writes. A
+  learner is eligible on their 13th birthday. Do not weaken any one of these
+  boundaries or implement a second age calculation.
 - Apple and Google social login are intentionally unsupported. Do not enable
   provider UI, dependencies, or native capabilities without a new product and
   authentication decision that covers cross-platform account linking and

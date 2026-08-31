@@ -151,11 +151,19 @@ jest.mock("~/components/ui/date-time-picker-sheet", () => {
 	const ReactNative =
 		jest.requireActual<typeof import("react-native")>("react-native");
 	return {
-		DateTimePickerSheet: ({ onClose }: { onClose: () => void }) =>
+		DateTimePickerSheet: ({
+			maximumDate,
+			onClose,
+		}: {
+			maximumDate?: Date;
+			onClose: () => void;
+		}) =>
 			React.createElement(ReactNative.Pressable, {
+				accessibilityHint: maximumDate?.toISOString(),
 				accessibilityLabel: "Testauswahl schließen",
 				accessibilityRole: "button",
 				onPress: onClose,
+				testID: "birth-date-picker-sheet",
 			}),
 	};
 });
@@ -570,6 +578,12 @@ describe("OnboardingScreen", () => {
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Geburtsdatum auswählen" }),
 		);
+		const latestEligibleBirthDate = new Date(
+			screen.getByTestId("birth-date-picker-sheet").props.accessibilityHint,
+		);
+		expect(latestEligibleBirthDate.getFullYear()).toBe(
+			new Date().getFullYear() - 13,
+		);
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Testauswahl schließen" }),
 		);
@@ -578,6 +592,25 @@ describe("OnboardingScreen", () => {
 			"birthDate",
 			expectedDefaultBirthDate,
 		);
+	});
+
+	test("states and enforces the minimum registration age", async () => {
+		mockOnboarding.answers.birthDate = `01.01.${new Date().getFullYear() - 12}`;
+		const screen = await render(<OnboardingScreen initialStepId="birthDate" />);
+
+		expect(
+			screen.getByText(
+				"Du musst mindestens 13 Jahre alt sein, um Dayova zu nutzen.",
+			),
+		).toBeOnTheScreen();
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+
+		expect(
+			await screen.findByRole("alert", {
+				name: "Du musst mindestens 13 Jahre alt sein, um Dayova zu nutzen.",
+			}),
+		).toBeOnTheScreen();
+		expect(mockRegister).not.toHaveBeenCalled();
 	});
 
 	test("keeps verification progress aligned with the profile steps", async () => {

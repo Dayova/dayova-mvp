@@ -64,7 +64,7 @@ No account credentials or signing secrets are stored in this checklist.
 | App access | Restricted by login; dedicated synthetic reviewer account has permanent `dayova_full_access` | Submitted/in review; credentials exist only in Play Console. |
 | Ads | No | Submitted/in review. |
 | Content rating | Completed from current app content | Submitted/in review. |
-| Target audience and content | 13+ | Submitted/in review; DAY-357 still owns reconciliation with actual product/marketing scope. |
+| Target audience and content | 13+ | Submitted/in review. Android version 20 predates the 13+ registration gate; next-release source adds client, Clerk-boundary, and Convex rejection, but a replacement Play binary and real-device boundary QA are still required before claiming enforcement. DAY-357 owns policy approval and reconciliation. |
 | News apps | No | Confirm. |
 | COVID-19 contact/status | No | Confirm. |
 | Data safety | Submitted from the current release draft | In review; legal/technical reconciliation and privacy/deletion implementation verification remain open. |

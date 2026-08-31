@@ -23,6 +23,7 @@ import {
 	isPostHogConfigured,
 } from "~/lib/analytics";
 import { runWithAuthSettleRetries } from "~/lib/auth-settle-retry";
+import { normalizeEligibleBirthDateIfPresent } from "~/lib/age-assurance";
 import {
 	getDefinedProfileFields as definedProfileFields,
 	prepareClerkRegistration,
@@ -815,7 +816,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			const normalizedProfile = {
 				email: input.email.trim().toLowerCase(),
 				name: input.name.trim(),
-				birthDate: input.birthDate.trim(),
+				birthDate: normalizeEligibleBirthDateIfPresent(input.birthDate) ?? "",
 				grade: input.grade.trim(),
 				schoolType: normalizeOptionalSchoolTypeInput(input.schoolType),
 				state: input.state.trim(),
