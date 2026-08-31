@@ -16,6 +16,14 @@ rotation, scale, and shadow. All three shared cards use non-interactive,
 accessibility-hidden artwork mode, while their dashboard screen mode remains
 interactive.
 
+The final containment pass widens the composition artboard so the agenda and
+weekly-progress cards overlap without obscuring their primary copy. Artwork
+mode uses a larger progress ring, bounded single-line labels, and a tucked
+action affordance; the foreground card fully owns the visual handoff. The
+result keeps `Wochenfortschritt`, `4 / 7`, and `geschafft` inside their intended
+bounds in light, dark, and Android `font_scale=2.0`, without changing the live
+dashboard card layout.
+
 This amendment supersedes every earlier `*-intro-learning-steps-shared.png`
 capture and the three-equal-session-card interpretation described below. The
 current Android code head is captured in

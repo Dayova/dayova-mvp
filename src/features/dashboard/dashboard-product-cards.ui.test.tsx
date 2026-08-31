@@ -102,6 +102,36 @@ describe("shared dashboard product cards", () => {
 		expect(screen.queryAllByRole("button", hidden)).toHaveLength(0);
 	});
 
+	test("keeps artwork progress copy inside a legible ring and header row", async () => {
+		const screen = await render(
+			<DashboardWeeklyProgressCard
+				mode="artwork"
+				progress={progress}
+				testID="progress-artwork"
+			/>,
+		);
+		const hidden = { includeHiddenElements: true };
+
+		expect(
+			screen.getByTestId("dashboard-progress-artwork-ring", hidden),
+		).toHaveStyle({ width: 76, height: 76 });
+		expect(screen.getByText("Wochenfortschritt", hidden)).toHaveProp(
+			"adjustsFontSizeToFit",
+			true,
+		);
+		expect(screen.getByText("Wochenfortschritt", hidden)).toHaveProp(
+			"minimumFontScale",
+			0.82,
+		);
+		expect(screen.getByText("geschafft", hidden).props.className).toContain(
+			"max-w-16",
+		);
+		expect(
+			screen.getByTestId("dashboard-progress-artwork-footer", hidden).props
+				.className,
+		).toContain("pr-3");
+	});
+
 	test("keeps the live dashboard presentations interactive", async () => {
 		const onOpenAgenda = jest.fn();
 		const onOpenNext = jest.fn();
@@ -151,5 +181,8 @@ describe("shared dashboard product cards", () => {
 		expect(onOpenProgress).toHaveBeenCalledTimes(1);
 		expect(onOpenNext).toHaveBeenCalledWith(nextStep);
 		expect(onOpenFallback).not.toHaveBeenCalled();
+		expect(screen.getByText("geschafft").props.className).not.toContain(
+			"max-w-16",
+		);
 	});
 });

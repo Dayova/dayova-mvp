@@ -342,8 +342,8 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 		: hasPlannedSessions
 			? "geschafft"
 			: "geplant";
-	const ringSize = isArtwork ? 64 : 112;
-	const ringStrokeWidth = isArtwork ? 6 : 9;
+	const ringSize = isArtwork ? 76 : 112;
+	const ringStrokeWidth = isArtwork ? 7 : 9;
 	const ringRadius = (ringSize - ringStrokeWidth) / 2;
 	const ringCircumference = 2 * Math.PI * ringRadius;
 	const progressOffset =
@@ -364,7 +364,9 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 				/>
 				<Text
 					allowFontScaling={!isArtwork}
+					adjustsFontSizeToFit={isArtwork}
 					maxFontSizeMultiplier={isArtwork ? 1 : undefined}
+					minimumFontScale={isArtwork ? 0.82 : undefined}
 					className="flex-1 font-poppins font-semibold text-body-5 text-ueben"
 					numberOfLines={isArtwork ? 1 : 2}
 				>
@@ -382,6 +384,7 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 					className="items-center justify-center"
 					// SVG ring geometry uses runtime dimensions for the artwork density.
 					style={{ width: ringSize, height: ringSize }}
+					testID={isArtwork ? "dashboard-progress-artwork-ring" : undefined}
 				>
 					<Svg
 						pointerEvents="none"
@@ -415,10 +418,12 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 					</Svg>
 					<Text
 						allowFontScaling={!isArtwork}
+						adjustsFontSizeToFit={isArtwork}
 						maxFontSizeMultiplier={isArtwork ? 1 : undefined}
+						minimumFontScale={isArtwork ? 0.82 : undefined}
 						className={cn(
 							"font-poppins font-semibold text-text",
-							isArtwork ? "text-body-4" : "text-body-1",
+							isArtwork ? "max-w-16 text-center text-body-4" : "text-body-1",
 						)}
 						numberOfLines={1}
 						style={tabularNumberStyle}
@@ -427,8 +432,13 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 					</Text>
 					<Text
 						allowFontScaling={!isArtwork}
+						adjustsFontSizeToFit={isArtwork}
 						maxFontSizeMultiplier={isArtwork ? 1 : undefined}
-						className="font-poppins text-body-5 text-secondary-text"
+						minimumFontScale={isArtwork ? 0.82 : undefined}
+						className={cn(
+							"font-poppins text-body-5 text-secondary-text",
+							isArtwork && "max-w-16 text-center",
+						)}
 						numberOfLines={1}
 					>
 						{ringLabel}
@@ -438,8 +448,9 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 			<View
 				className={cn(
 					"flex-row items-end justify-between gap-2",
-					isArtwork ? "mt-1" : "mt-4",
+					isArtwork ? "mt-1 pr-3" : "mt-4",
 				)}
+				testID={isArtwork ? "dashboard-progress-artwork-footer" : undefined}
 			>
 				<View className="flex-1 flex-row items-center gap-2 pr-1">
 					{hasPlannedSessions && !isLoading ? (

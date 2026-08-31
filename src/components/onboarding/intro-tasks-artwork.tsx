@@ -10,7 +10,7 @@ import {
 	DashboardWeeklyProgressCard,
 } from "~/features/dashboard/dashboard-product-cards";
 
-const ARTWORK_WIDTH = 356;
+const ARTWORK_WIDTH = 380;
 const ARTWORK_HEIGHT = 242;
 const PREVIEW_DAY_KEY = "2026-08-31";
 
@@ -65,7 +65,7 @@ export function IntroTasksArtwork({
 			testID="intro-tasks-artwork"
 		>
 			<View
-				className="h-[242px] w-[356px]"
+				className="h-[242px] w-[380px]"
 				// The fixed artboard scales to the runtime frame while preserving its geometry.
 				style={{ transform: [{ scale }] }}
 				testID="intro-tasks-product-composition"
@@ -113,26 +113,26 @@ export function IntroTasksArtwork({
 // Product structure and tokens stay inside the shared dashboard components.
 const artworkGeometry = StyleSheet.create({
 	agenda: {
-		left: 6,
-		top: 42,
-		width: 202,
-		height: 106,
-		transform: [{ rotate: "-10deg" }],
+		left: 8,
+		top: 45,
+		width: 220,
+		height: 110,
+		transform: [{ rotate: "-7deg" }],
 		transformOrigin: [0, 0, 0],
 	},
 	progress: {
-		left: 188,
-		top: 14,
-		width: 164,
-		height: 134,
-		transform: [{ rotate: "7deg" }],
+		left: 198,
+		top: 10,
+		width: 172,
+		height: 150,
+		transform: [{ rotate: "5deg" }],
 		transformOrigin: [0, 0, 0],
 	},
 	nextStep: {
-		left: 32,
-		top: 120,
+		left: 34,
+		top: 121,
 		zIndex: 2,
-		width: 292,
-		height: 114,
+		width: 312,
+		height: 110,
 	},
 });

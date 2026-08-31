@@ -63,23 +63,29 @@ describe("IntroTasksArtwork", () => {
 		const hidden = { includeHiddenElements: true };
 
 		expect(screen.getByTestId("intro-tasks-agenda-layer", hidden)).toHaveStyle({
-			left: 6,
-			top: 42,
-			transform: [{ rotate: "-10deg" }],
+			left: 8,
+			top: 45,
+			width: 220,
+			height: 110,
+			transform: [{ rotate: "-7deg" }],
 		});
 		expect(
 			screen.getByTestId("intro-tasks-progress-layer", hidden),
 		).toHaveStyle({
-			left: 188,
-			top: 14,
-			transform: [{ rotate: "7deg" }],
+			left: 198,
+			top: 10,
+			width: 172,
+			height: 150,
+			transform: [{ rotate: "5deg" }],
 		});
 		expect(
 			screen.getByTestId("intro-tasks-next-step-layer", hidden),
 		).toHaveStyle({
-			left: 32,
-			top: 120,
+			left: 34,
+			top: 121,
 			zIndex: 2,
+			width: 312,
+			height: 110,
 		});
 	});
 });
