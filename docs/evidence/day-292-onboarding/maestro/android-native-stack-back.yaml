@@ -1,0 +1,98 @@
+appId: com.dayova.dev
+name: DAY-349 Android native stack back and sheet ownership
+---
+# Pass the URL-encoded Metro bundle URL as METRO_BUNDLE_URL.
+- stopApp
+- openLink: "exp+dayova://expo-development-client/?url=${METRO_BUNDLE_URL}"
+- extendedWaitUntil:
+    visible: "Registrierung"
+    timeout: 60000
+- tapOn: "Registrierung"
+
+# The intro pager retains the non-edge horizontal gesture surface.
+- swipe:
+    start: 80%, 55%
+    end: 10%, 55%
+    duration: 800
+- assertVisible: "Deine Prüfung. Alles an einem Ort."
+- swipe:
+    start: 10%, 55%
+    end: 80%, 55%
+    duration: 800
+- assertVisible: "Du weißt, was heute wirklich zählt."
+- tapOn: "Weiter"
+- tapOn: "Weiter"
+- tapOn: "Meinen Start personalisieren"
+- extendedWaitUntil:
+    visible: "Wie dürfen wir dich nennen?"
+    timeout: 30000
+- tapOn:
+    id: "onboarding-name-input"
+- inputText: "Stack Test"
+- hideKeyboard
+- tapOn: "Weiter"
+- assertVisible: "Wie lange möchtest du pro Lerntag einplanen?"
+
+# The duration selector keeps its own non-edge gesture surface.
+- swipe:
+    start: 82%, 50%
+    end: 18%, 50%
+    duration: 800
+- assertVisible: "90"
+
+# An edge-directed back gesture returns exactly one native route and preserves
+# answers held above both route screens. Recording inspection verifies the
+# predictive-back preview; the assertions verify the committed route state.
+- swipe:
+    start: 0%, 48%
+    end: 92%, 48%
+    duration: 1200
+- assertVisible: "Wie dürfen wir dich nennen?"
+- assertVisible: "Stack Test"
+- tapOn: "Weiter"
+- tapOn: "Weiter"
+- assertVisible: "Dein Lernplan braucht echte Zeitfenster."
+- tapOn: "Weiter"
+- tapOn:
+    text: "Montag"
+    retryTapIfNoChange: true
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
+- tapOn: "Weiter"
+- assertVisible: "Um wie viel Uhr möchtest du starten?"
+- tapOn: "Startzeit auswählen"
+- assertVisible: "Zeit übernehmen"
+
+# The first system back belongs to the native picker sheet, not the route.
+- pressKey: BACK
+- assertNotVisible: "Zeit übernehmen"
+- assertVisible: "Um wie viel Uhr möchtest du starten?"
+- tapOn: "Startzeit auswählen"
+- tapOn: "Zeit übernehmen"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
+- tapOn: "Weiter"
+- assertVisible: ".*Lernzeiten sind vorbereitet.*"
+- scrollUntilVisible:
+    element:
+      text: "Weiter"
+    direction: DOWN
+    timeout: 30000
+    speed: 50
+- tapOn: "Weiter"
+- assertVisible: "Welche Klassenstufe besuchst du?"
+- tapOn: "Klassenstufe auswählen"
+- assertVisible: "9. Klasse"
+
+# The first system back belongs to the shared bounded SelectSheet.
+- pressKey: BACK
+- assertNotVisible: "9. Klasse"
+- assertVisible: "Welche Klassenstufe besuchst du?"

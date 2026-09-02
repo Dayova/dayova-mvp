@@ -32,12 +32,14 @@ function VisibleDateTimePickerSheet({
 	doneLabel = "Fertig",
 	onChange,
 	onClose,
+	onConfirm,
 }: DateTimePickerSheetProps) {
 	const { resolvedTheme } = useDayovaTheme();
 	const [datetimeDate, setDatetimeDate] = useState<Date | null>(null);
 
 	const handleValueChange = (date: Date) => {
 		onChange(buildDateTimePickerChangeEvent(date), date);
+		onConfirm?.(date);
 		if (shouldCloseDateTimePickerAfterChange("android")) onClose();
 	};
 	const handleDateSelected = (date: Date) => {

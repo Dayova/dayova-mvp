@@ -4,6 +4,7 @@ import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { getDateTimePickerConfirmAccessibilityLabel } from "./date-time-picker-sheet.types";
 import type {
 	DateTimePickerChangeEvent,
 	DateTimePickerDisplay,
@@ -30,6 +31,7 @@ function DateTimePickerSheet({
 	doneLabel = "Fertig",
 	onChange,
 	onClose,
+	onConfirm,
 }: DateTimePickerSheetProps) {
 	const { width } = useWindowDimensions();
 	const normalizedDisplay = normalizeIosDisplay(display);
@@ -47,6 +49,10 @@ function DateTimePickerSheet({
 	const handleValueChange = (event: DateTimePickerChangeEvent, date: Date) => {
 		onChange({ ...event, type: "set" }, date);
 	};
+	const handleConfirm = () => {
+		onConfirm?.(value);
+		onClose();
+	};
 
 	return (
 		<DayovaSheetFrame
@@ -56,7 +62,12 @@ function DateTimePickerSheet({
 			showCloseButton={false}
 			closeAccessibilityLabel="Auswahl schließen"
 			footer={
-				<Button accessibilityLabel="Auswahl schließen" onPress={onClose}>
+				<Button
+					accessibilityLabel={getDateTimePickerConfirmAccessibilityLabel(
+						doneLabel,
+					)}
+					onPress={handleConfirm}
+				>
 					<Text>{doneLabel}</Text>
 				</Button>
 			}

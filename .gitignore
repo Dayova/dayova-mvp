@@ -38,6 +38,7 @@ __pycache__/
 # local env files
 .env.local
 .env
+.env.eas-simulator
 
 .idea
 

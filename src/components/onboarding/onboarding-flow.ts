@@ -1,15 +1,25 @@
 import type { OnboardingAnswers } from "~/context/OnboardingContext";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
+import { formatOnboardingBirthDate } from "./birth-date";
+import {
+	getOnboardingLearningTimeValidationError,
+	parseOnboardingDurationMinutes,
+} from "./onboarding-learning-times";
 
-type AnswerStepKind = "chips" | "goals" | "range" | "wheel";
+type AnswerStepKind = "days" | "time" | "wheel";
 
 export type OnboardingDecisionStep =
 	| {
 			kind: "text";
 			field: "email" | "name" | "password";
 	  }
+	| {
+			kind: "range";
+			field: keyof OnboardingAnswers;
+			values: readonly number[];
+	  }
 	| { kind: AnswerStepKind; field: keyof OnboardingAnswers }
-	| { kind: "fact" | "infoStack" | "intro" };
+	| { kind: "fact" | "intro" | "payoff" };
 
 export type OnboardingStepDecision = {
 	action: "advance" | "register";
@@ -20,7 +30,8 @@ const isValidEmail = (value: string) =>
 	/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim().toLowerCase());
 
 const isValidName = (value: string) =>
-	value.trim().length >= 2 && /^[A-Za-zÀ-ÿ' -]+$/.test(value.trim());
+	value.trim().length >= 2 &&
+	/^(?=.*\p{L})[\p{L}\p{M}' -]+$/u.test(value.trim());
 
 export function getOnboardingStepDecision(
 	step: OnboardingDecisionStep,
@@ -48,24 +59,44 @@ export function getOnboardingStepDecision(
 	}
 
 	if (
-		(step.kind === "chips" ||
-			step.kind === "goals" ||
+		(step.kind === "days" ||
 			step.kind === "range" ||
+			step.kind === "time" ||
 			step.kind === "wheel") &&
 		!answers[step.field].trim()
 	) {
+		return {
+			action: "advance",
+			error:
+				step.kind === "days"
+					? "Bitte wähle mindestens einen Lerntag aus."
+					: step.kind === "time"
+						? "Bitte wähle eine Uhrzeit aus."
+						: "Bitte wähle eine Antwort aus.",
+		};
+	}
+	if (
+		step.kind === "range" &&
+		!step.values.includes(Number(answers[step.field]))
+	) {
 		return { action: "advance", error: "Bitte wähle eine Antwort aus." };
+	}
+
+	if (step.kind === "time") {
+		return {
+			action: "advance",
+			error: getOnboardingLearningTimeValidationError(answers),
+		};
 	}
 
 	return { action: "advance", error: null };
 }
 
-export function getNextOnboardingStepIndex(
-	activeIndex: number,
-	stepCount: number,
+export function isOnboardingStepReady(
+	step: OnboardingDecisionStep,
+	answers: OnboardingAnswers,
 ) {
-	if (stepCount <= 0) return 0;
-	return Math.min(Math.max(activeIndex + 1, 0), stepCount - 1);
+	return getOnboardingStepDecision(step, answers).error === null;
 }
 
 export const getOnboardingRegistrationPayload = (
@@ -74,8 +105,28 @@ export const getOnboardingRegistrationPayload = (
 	name: answers.name.trim(),
 	email: answers.email.trim().toLowerCase(),
 	password: answers.password,
-	birthDate: answers.birthDate,
+	birthDate: formatOnboardingBirthDate({
+		year: answers.birthYear,
+		month: answers.birthMonth,
+		day: answers.birthDay,
+	}),
 	grade: answers.grade,
 	schoolType: answers.schoolType || undefined,
 	state: answers.state,
 });
+
+export const getOnboardingPersistenceAnswers = (answers: OnboardingAnswers) => {
+	const durationMinutes = parseOnboardingDurationMinutes(answers.studyTime);
+	if (durationMinutes === null) {
+		throw new Error("Bitte wähle deine Lerndauer aus.");
+	}
+
+	return {
+		dailySchoolTime: `${durationMinutes} min`,
+		studyDays: answers.studyDays,
+		learningTime: answers.learningTime,
+		state: answers.state,
+		schoolType: answers.schoolType,
+		grade: answers.grade,
+	};
+};

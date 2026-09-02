@@ -6,6 +6,7 @@ export const DAYOVA_DESIGN_SYSTEM = {
 	},
 	colors: {
 		primary: "#00BAFF",
+		onPrimary: "#1A1A1A",
 		primaryStrong: "#00A0E6",
 		primaryAccent: "#4FD8FF",
 		buttonNeutral: "#1A1A1A",

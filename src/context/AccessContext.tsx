@@ -18,8 +18,11 @@ import {
 	getOfflineAccess,
 } from "~/lib/access-policy";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import { isOnboardingSettled } from "~/lib/auth-routing";
 
-const ACCESS_CACHE_PREFIX = "dayova-access:";
+// SecureStore keys may only contain alphanumeric characters, `.`, `-`, and `_`.
+const ACCESS_CACHE_PREFIX = "dayova-access.";
+const LEGACY_WEB_ACCESS_CACHE_PREFIX = "dayova-access:";
 const ACCESS_QUERY_TIMEOUT_MS = 1_500;
 const ACCESS_CLOCK_INTERVAL_MS = 30_000;
 const MAX_TIMER_DELAY_MS = 2_147_000_000;
@@ -44,10 +47,25 @@ const cacheKey = (appUserId: string) => `${ACCESS_CACHE_PREFIX}${appUserId}`;
 
 const readCachedAccess = async (appUserId: string) => {
 	const key = cacheKey(appUserId);
-	const serialized =
+	let serialized =
 		Platform.OS === "web"
 			? globalThis.localStorage?.getItem(key)
 			: await SecureStore.getItemAsync(key);
+	if (!serialized && Platform.OS === "web") {
+		const legacyKey = `${LEGACY_WEB_ACCESS_CACHE_PREFIX}${appUserId}`;
+		serialized = globalThis.localStorage?.getItem(legacyKey) ?? null;
+		if (serialized) {
+			try {
+				globalThis.localStorage?.setItem(key, serialized);
+				globalThis.localStorage?.removeItem(legacyKey);
+			} catch (error) {
+				logDiagnosticError("Unable to migrate cached web access.", error, {
+					source: "access.cache.migrate",
+					level: "warn",
+				});
+			}
+		}
+	}
 	if (!serialized) return null;
 
 	try {
@@ -81,7 +99,12 @@ const getExpiredOfflineSnapshot = (
 });
 
 export function AccessProvider({ children }: { children: ReactNode }) {
-	const { user, isSessionLoading, isConvexUserSynced } = useAuthSession();
+	const {
+		user,
+		isSessionLoading,
+		isConvexUserSynced,
+		onboardingCompletionStatus,
+	} = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const [now, setNow] = useState(Date.now);
 	const [queryNow, setQueryNow] = useState(Date.now);
@@ -94,7 +117,12 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	);
 	const activateMyTrial = useMutation(api.entitlements.activateMyTrial);
 	const syncMyEntitlement = useAction(api.revenueCat.syncMyEntitlement);
-	const canQuery = Boolean(user && isConvexAuthenticated && isConvexUserSynced);
+	const canQuery = Boolean(
+		user &&
+			isConvexAuthenticated &&
+			isConvexUserSynced &&
+			isOnboardingSettled(onboardingCompletionStatus),
+	);
 	const serverAccess = useQuery(
 		api.entitlements.getMyAccess,
 		canQuery ? { now: queryNow } : "skip",
@@ -154,14 +182,18 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	}, [user]);
 
 	useEffect(() => {
-		if (serverAccess || !user) return;
-
+		if (serverAccess || !user || !canQuery) return;
 		const timeout = setTimeout(
 			() => setTimedOutAppUserId(user.clerkId),
 			ACCESS_QUERY_TIMEOUT_MS,
 		);
-		return () => clearTimeout(timeout);
-	}, [serverAccess, user]);
+		return () => {
+			clearTimeout(timeout);
+			setTimedOutAppUserId((current) =>
+				current === user.clerkId ? null : current,
+			);
+		};
+	}, [canQuery, serverAccess, user]);
 
 	useEffect(() => {
 		if (!user || !serverAccess) return;
@@ -185,7 +217,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 			: null;
 	const isCacheLoaded =
 		!user || (loadedCache !== null && loadedCache.appUserId === user.clerkId);
-	const didQueryTimeout = Boolean(user) && timedOutAppUserId === user?.clerkId;
+	const didQueryTimeout =
+		canQuery && Boolean(user) && timedOutAppUserId === user?.clerkId;
 	const offlineAccess = useMemo(() => {
 		if (!cachedAccess) return null;
 		return getOfflineAccess({
@@ -205,6 +238,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 	const isAccessLoading =
 		Boolean(user) &&
 		!isSessionLoading &&
+		isOnboardingSettled(onboardingCompletionStatus) &&
 		!access &&
 		(!isCacheLoaded || !didQueryTimeout);
 

@@ -1,38 +1,44 @@
 import type React from "react";
-import { createContext, useContext, useMemo, useState } from "react";
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import type { OnboardingStepId } from "~/features/auth/onboarding-route-model";
 import type { SupportedSchoolType } from "~/lib/school-types";
 
 export type OnboardingAnswers = {
 	studyTime: string;
-	strength: string;
-	challenge: string;
-	goal: string;
+	studyDays: string;
+	learningTime: string;
 	state: string;
 	schoolType: SupportedSchoolType | "";
 	grade: string;
-	dailySchoolTime: string;
-	studyDays: string;
-	learningTime: string;
 	name: string;
 	email: string;
-	birthDate: string;
+	birthYear: string;
+	birthMonth: string;
+	birthDay: string;
 	password: string;
 };
 
+type OnboardingRegistrationStage = "flow" | "verification" | "creating";
+
 const emptyAnswers: OnboardingAnswers = {
 	studyTime: "",
-	strength: "",
-	challenge: "",
-	goal: "",
+	studyDays: "",
+	learningTime: "",
 	state: "",
 	schoolType: "",
 	grade: "",
-	dailySchoolTime: "",
-	studyDays: "",
-	learningTime: "",
 	name: "",
 	email: "",
-	birthDate: "",
+	birthYear: "",
+	birthMonth: "",
+	birthDay: "",
 	password: "",
 };
 
@@ -44,6 +50,20 @@ type OnboardingContextValue = {
 	) => void;
 	clearAnswers: () => void;
 	hasAnswers: boolean;
+	introIndex: number;
+	setIntroIndex: (index: number) => void;
+	visitedSteps: ReadonlySet<OnboardingStepId>;
+	visitStep: (stepId: OnboardingStepId) => void;
+	isStepVisited: (stepId: OnboardingStepId) => boolean;
+	stepErrors: Readonly<Partial<Record<OnboardingStepId, string>>>;
+	setStepError: (stepId: OnboardingStepId, error: string | null) => void;
+	registrationStage: OnboardingRegistrationStage;
+	setRegistrationStage: (stage: OnboardingRegistrationStage) => void;
+	isRegistrationStage: (stage: OnboardingRegistrationStage) => boolean;
+	verificationError: string | null;
+	setVerificationError: (error: string | null) => void;
+	progressOrigin: number | null;
+	setProgressOrigin: (progress: number | null) => void;
 };
 
 const OnboardingContext = createContext<OnboardingContextValue | undefined>(
@@ -54,19 +74,111 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
 	children,
 }) => {
 	const [answers, setAnswers] = useState<OnboardingAnswers>(emptyAnswers);
+	const [introIndex, setIntroIndex] = useState(0);
+	const [visitedSteps, setVisitedSteps] = useState<
+		ReadonlySet<OnboardingStepId>
+	>(() => new Set());
+	const visitedStepsRef = useRef<ReadonlySet<OnboardingStepId>>(new Set());
+	const [stepErrors, setStepErrors] = useState<
+		Partial<Record<OnboardingStepId, string>>
+	>({});
+	const [registrationStage, setRegistrationStageState] =
+		useState<OnboardingRegistrationStage>("flow");
+	const registrationStageRef = useRef<OnboardingRegistrationStage>("flow");
+	const [verificationError, setVerificationError] = useState<string | null>(
+		null,
+	);
+	const [progressOrigin, setProgressOrigin] = useState<number | null>(null);
+	const visitStep = useCallback((stepId: OnboardingStepId) => {
+		if (visitedStepsRef.current.has(stepId)) return;
+		const next = new Set([...visitedStepsRef.current, stepId]);
+		visitedStepsRef.current = next;
+		setVisitedSteps(next);
+	}, []);
+	const isStepVisited = useCallback(
+		(stepId: OnboardingStepId) => visitedStepsRef.current.has(stepId),
+		[],
+	);
+	const setRegistrationStage = useCallback(
+		(stage: OnboardingRegistrationStage) => {
+			registrationStageRef.current = stage;
+			setRegistrationStageState(stage);
+		},
+		[],
+	);
+	const isRegistrationStage = useCallback(
+		(stage: OnboardingRegistrationStage) =>
+			registrationStageRef.current === stage,
+		[],
+	);
+	const setStepError = useCallback(
+		(stepId: OnboardingStepId, error: string | null) => {
+			setStepErrors((current) => {
+				if (error) return { ...current, [stepId]: error };
+				if (!(stepId in current)) return current;
+				const next = { ...current };
+				delete next[stepId];
+				return next;
+			});
+		},
+		[],
+	);
 
 	const value = useMemo<OnboardingContextValue>(
 		() => ({
 			answers,
 			setAnswer: (field, value) => {
 				setAnswers((current) => ({ ...current, [field]: value }));
+				setStepErrors((current) => {
+					const stepId = field as OnboardingStepId;
+					if (!(stepId in current)) return current;
+					const next = { ...current };
+					delete next[stepId];
+					return next;
+				});
 			},
-			clearAnswers: () => setAnswers(emptyAnswers),
+			clearAnswers: () => {
+				setAnswers(emptyAnswers);
+				setIntroIndex(0);
+				visitedStepsRef.current = new Set();
+				setVisitedSteps(new Set());
+				setStepErrors({});
+				setRegistrationStage("flow");
+				setVerificationError(null);
+				setProgressOrigin(null);
+			},
 			hasAnswers: Object.values(answers).some(
 				(value) => value.trim().length > 0,
 			),
+			introIndex,
+			setIntroIndex,
+			visitedSteps,
+			visitStep,
+			isStepVisited,
+			stepErrors,
+			setStepError,
+			registrationStage,
+			setRegistrationStage,
+			isRegistrationStage,
+			verificationError,
+			setVerificationError,
+			progressOrigin,
+			setProgressOrigin,
 		}),
-		[answers],
+		[
+			answers,
+			introIndex,
+			progressOrigin,
+			registrationStage,
+			isRegistrationStage,
+			isStepVisited,
+			setStepError,
+			setRegistrationStage,
+			stepErrors,
+			verificationError,
+			visitStep,
+			visitedSteps,
+		],
 	);
 
 	return (

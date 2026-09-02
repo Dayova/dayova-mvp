@@ -12,6 +12,19 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
   provider UI, dependencies, or native capabilities without a new product and
   authentication decision that covers cross-platform account linking and
   account lifecycle behavior.
+- Launch onboarding restores a three-page product explanation, then collects
+  duration, recurring weekdays, and a start time. After authentication these
+  values create the `userLearningTimes` windows consumed by learning-plan
+  scheduling; local copy changes alone are not accepted as personalization.
+  The stable implementation contract and canonical product-decision pointer
+  live in
+  [ADR 0002](adr/0002-onboarding-e2e-launch-flow.md).
+- Onboarding profile/account steps are native history entries in the existing
+  auth stack. Answers and field errors live above route screens; the route
+  history, not a parallel `activeIndex`, owns forward/back navigation. The
+  three homogeneous intro pages remain one native pager route, and a cold
+  direct step URL falls back to the auth choice. See
+  [mobile-app ADR 0003](../mobile-app/adr/0003-model-onboarding-as-native-stack-history.md).
 - Clerk `unsafeMetadata.schoolType` stores only the stable bounded `Schulart`
   key. Exact generic legacy labels are normalized on authentication; ambiguous
   values such as school names are removed without including the raw value in
@@ -19,12 +32,24 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
 - Native session lifetime, per-device logout, compromise response, app-lock,
   and step-up decisions are recorded in
   [ADR 0001](adr/0001-native-session-policy.md).
-- The auth provider intentionally exposes three narrow interfaces:
+- The auth provider intentionally exposes four narrow interfaces:
   `useAuthSession` for identity/session state, `useAuthFlow` for sign-in,
-  registration and recovery, and `useAccountActions` for authenticated account
-  mutations. Screens must not depend on a broader auth surface than they use.
+  registration and recovery, `useOnboardingHandoff` for post-authentication
+  onboarding retries and the trial handoff, and `useAccountActions` for other
+  authenticated account mutations. Screens must not depend on a broader auth
+  surface than they use.
 - Native Clerk tokens always use Clerk's secure persistent Expo token cache.
   There is no `Angemeldet bleiben` preference or memory-only cache path.
+- Pending onboarding persistence uses a separate outbox. Native builds store it
+  in encrypted SecureStore. Production web rejects durable recovery until an
+  encrypted web-storage design is accepted. Development web may use
+  origin-scoped browser storage only for local debugging and only for the same
+  non-secret operational payload. It is
+  bound to the Clerk registration attempt and eventual Clerk user, is resumed
+  before normal app routing after a process restart, and removes the answer
+  payload only after Convex confirms success. Never add credentials,
+  verification codes, tokens, names, birth dates, or raw e-mail addresses to
+  this outbox. The full lifecycle contract lives in ADR 0002.
 - Password recovery uses neutral account-existence copy, signs out other
   sessions after a successful reset, and supports Clerk's forced
   `reset-password` session task at `/session-tasks/reset-password`. Recovery

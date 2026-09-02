@@ -6,6 +6,8 @@ import { TrialReminderSync } from "./trial-reminder-sync";
 let mockAccess: AccessSnapshot | undefined;
 let mockUser: { clerkId: string } | null;
 let mockSystemNotificationsEnabled: boolean | undefined = true;
+let mockIsAccessLoading = false;
+let mockOnboardingCompletionStatus = "none";
 
 const mockScheduled: Array<{
 	identifier: string;
@@ -35,6 +37,8 @@ beforeEach(() => {
 	jest.clearAllMocks();
 	mockScheduled.splice(0);
 	mockSystemNotificationsEnabled = true;
+	mockIsAccessLoading = false;
+	mockOnboardingCompletionStatus = "none";
 	mockAccess = undefined;
 	mockUser = null;
 });
@@ -59,11 +63,17 @@ jest.mock("expo-notifications", () => ({
 }));
 
 jest.mock("~/context/AccessContext", () => ({
-	useAccess: () => ({ access: mockAccess }),
+	useAccess: () => ({
+		access: mockAccess,
+		isAccessLoading: mockIsAccessLoading,
+	}),
 }));
 
 jest.mock("~/context/AuthContext", () => ({
-	useAuthSession: () => ({ user: mockUser }),
+	useAuthSession: () => ({
+		onboardingCompletionStatus: mockOnboardingCompletionStatus,
+		user: mockUser,
+	}),
 }));
 
 const activeTrial = (): AccessSnapshot => ({
@@ -84,8 +94,32 @@ describe("TrialReminderSync", () => {
 		mockSystemNotificationsEnabled = undefined;
 
 		await render(<TrialReminderSync />);
+		await act(async () => {
+			await Promise.resolve();
+		});
 
 		expect(mockGetPermissionsAsync).not.toHaveBeenCalled();
+		expect(mockCancelScheduledNotificationAsync).not.toHaveBeenCalled();
+		expect(mockScheduled).toHaveLength(1);
+	});
+
+	test.each([
+		["access is loading", true, "none"],
+		["onboarding completion is unresolved", false, "pending"],
+	])("preserves an existing reminder while %s", async (_label, loading, status) => {
+		mockScheduled.push({
+			identifier: "existing-trial",
+			content: { data: { dayovaTrialReminderKey: "trial-ending:old" } },
+		});
+		mockUser = { clerkId: "user-1" };
+		mockIsAccessLoading = loading;
+		mockOnboardingCompletionStatus = status;
+
+		await render(<TrialReminderSync />);
+		await act(async () => {
+			await Promise.resolve();
+		});
+
 		expect(mockCancelScheduledNotificationAsync).not.toHaveBeenCalled();
 		expect(mockScheduled).toHaveLength(1);
 	});

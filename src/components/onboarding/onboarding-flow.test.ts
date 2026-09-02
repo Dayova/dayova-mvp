@@ -5,27 +5,26 @@ import {
 	prepareClerkRegistration,
 } from "~/lib/clerk-registration";
 import {
-	getNextOnboardingStepIndex,
+	getOnboardingPersistenceAnswers,
 	getOnboardingRegistrationPayload,
 	getOnboardingStepDecision,
+	isOnboardingStepReady,
 } from "./onboarding-flow";
 
 const answers = (
 	patch: Partial<OnboardingAnswers> = {},
 ): OnboardingAnswers => ({
-	studyTime: "30 min",
-	strength: "Mathe",
-	challenge: "Organisation",
-	goal: "Mehr Struktur im Lernen",
+	studyTime: "30",
+	studyDays: "Montag, Donnerstag, Samstag",
+	learningTime: "16:30",
 	state: "Sachsen",
 	schoolType: "gymnasium",
 	grade: "9",
-	dailySchoolTime: "60 min",
-	studyDays: "Montag, Mittwoch",
-	learningTime: "16:44",
 	name: "Jakob Rössner",
 	email: "jakob@example.de",
-	birthDate: "09.09.2012",
+	birthYear: "2012",
+	birthMonth: "09",
+	birthDay: "09",
 	password: "supersecret",
 	...patch,
 });
@@ -52,6 +51,103 @@ describe("onboarding flow decisions", () => {
 		).toBe("Bitte wähle eine Antwort aus.");
 	});
 
+	test("accepts learner names across writing systems", () => {
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "text", field: "name" },
+				answers({ name: "Łukasz" }),
+			).error,
+		).toBeNull();
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "text", field: "name" },
+				answers({ name: "李 明" }),
+			).error,
+		).toBeNull();
+	});
+
+	test("rejects a learner name made only from combining marks", () => {
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "text", field: "name" },
+				answers({ name: "\u0301\u0302" }),
+			).error,
+		).toBe("Bitte gib deinen Namen ein.");
+	});
+
+	test("exposes the same validity contract to the primary action", () => {
+		expect(
+			isOnboardingStepReady(
+				{ kind: "wheel", field: "grade" },
+				answers({ grade: "" }),
+			),
+		).toBe(false);
+		expect(
+			isOnboardingStepReady(
+				{ kind: "text", field: "email" },
+				answers({ email: "keine-adresse" }),
+			),
+		).toBe(false);
+		expect(
+			isOnboardingStepReady({ kind: "days", field: "studyDays" }, answers()),
+		).toBe(true);
+		expect(
+			isOnboardingStepReady(
+				{ kind: "range", field: "studyTime", values: [10, 20, 30] },
+				answers({ studyTime: "" }),
+			),
+		).toBe(false);
+		expect(
+			isOnboardingStepReady(
+				{ kind: "range", field: "studyTime", values: [10, 20, 30] },
+				answers({ studyTime: "37" }),
+			),
+		).toBe(false);
+	});
+
+	test("requires operational learning days and a valid same-day start time", () => {
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "days", field: "studyDays" },
+				answers({ studyDays: "" }),
+			).error,
+		).toBe("Bitte wähle mindestens einen Lerntag aus.");
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "time", field: "learningTime" },
+				answers({ learningTime: "" }),
+			).error,
+		).toBe("Bitte wähle eine Uhrzeit aus.");
+		expect(
+			getOnboardingStepDecision(
+				{ kind: "time", field: "learningTime" },
+				answers({ studyTime: "60", learningTime: "23:30" }),
+			).error,
+		).toContain("vor Mitternacht");
+	});
+
+	test("maps the visible schedule to the backend's operational fields", () => {
+		expect(getOnboardingPersistenceAnswers(answers())).toEqual({
+			dailySchoolTime: "30 min",
+			studyDays: "Montag, Donnerstag, Samstag",
+			learningTime: "16:30",
+			state: "Sachsen",
+			schoolType: "gymnasium",
+			grade: "9",
+		});
+	});
+
+	test.each([
+		"",
+		"abc",
+		"30 min",
+		"37",
+	])("rejects invalid duration %j at the durable persistence boundary", (studyTime) => {
+		expect(() =>
+			getOnboardingPersistenceAnswers(answers({ studyTime })),
+		).toThrow("Bitte wähle deine Lerndauer aus.");
+	});
+
 	test("registers only from a valid password step", () => {
 		expect(
 			getOnboardingStepDecision(
@@ -65,12 +161,6 @@ describe("onboarding flow decisions", () => {
 		expect(
 			getOnboardingStepDecision({ kind: "text", field: "password" }, answers()),
 		).toEqual({ action: "register", error: null });
-	});
-
-	test("clamps progression at the final step", () => {
-		expect(getNextOnboardingStepIndex(3, 10)).toBe(4);
-		expect(getNextOnboardingStepIndex(9, 10)).toBe(9);
-		expect(getNextOnboardingStepIndex(0, 0)).toBe(0);
 	});
 
 	test("preserves grade 13 from onboarding through the Clerk registration boundary", () => {

@@ -1,0 +1,57 @@
+# Keep this file aligned with .gitignore; EAS uses it instead of .gitignore.
+
+# dependencies
+node_modules/
+.pnpm-store/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# Python tooling caches
+__pycache__/
+*.py[cod]
+
+# local env files and simulator state
+.env.local
+.env
+.env.eas-simulator
+
+.idea
+
+# TypeScript
+*.tsbuildinfo
+
+# Generated native folders
+/ios
+/android
+
+# Review evidence and local capture scratch space are not build inputs.
+/docs/evidence/
+/.tmp/
+
+# Downloaded store binaries are release evidence, not source artifacts.
+/release/google-play/artifacts/*.aab

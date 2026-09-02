@@ -8,4 +8,4 @@ const getStudyTimeMinutes = (value: string) => {
 };
 
 export const getStudyTimeFactBody = (studyTime: string) =>
-	`Deine ${getStudyTimeMinutes(studyTime)} Minuten reichen aus, um eine starke Lernroutine aufzubauen. Studien zeigen: Kleine Lerneinheiten bleiben länger hängen als langes Pauken auf einmal.`;
+	`Wir verwenden ${getStudyTimeMinutes(studyTime)} Minuten als Dauer deiner ersten Lernzeiten. Als Nächstes wählst du die passenden Tage und deine Startzeit.`;

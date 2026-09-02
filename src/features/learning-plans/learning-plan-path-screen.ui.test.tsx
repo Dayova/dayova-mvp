@@ -3,9 +3,9 @@ import { fireEvent, render } from "@testing-library/react-native";
 import { processColor } from "react-native";
 import {
 	getExamCountdownLabel,
-	LearningPath,
 	SessionPreviewCard,
 } from "~/app/learning-plans/[planId]/index";
+import { LearningPathVisual } from "~/features/learning-plans/learning-path-visual";
 import type { PlanSession } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
@@ -227,7 +227,8 @@ describe("learning-plan path", () => {
 			}),
 		];
 		const screen = await render(
-			<LearningPath
+			<LearningPathVisual
+				mode="screen"
 				examCountdownLabel="Noch 14 Tage"
 				examDateLabel="18. August 2026"
 				onOpenSession={onOpenSession}

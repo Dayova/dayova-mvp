@@ -57,7 +57,7 @@ function getRangeValueContentLayout(
 	fontScale: number,
 ): RangeValueContentLayout {
 	return {
-		unitMarginTop: 2 - 10 * fontScale,
+		unitMarginTop: Math.round(-8 / Math.max(fontScale, 1)),
 		verticalOffset: -2 * fontScale,
 	};
 }
