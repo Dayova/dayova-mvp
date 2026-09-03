@@ -87,6 +87,9 @@ export const resolveAccessRoute = ({
 	if (pathname === PRO_WELCOME_PATH) {
 		return accessState === "paid" ? null : "/home";
 	}
+	if (accessState === "trial" && pathname === "/subscription") {
+		return null;
+	}
 	if (isAuthRoute || ACCESS_SETUP_PATHS.has(pathname)) {
 		return "/home";
 	}

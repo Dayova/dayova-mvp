@@ -98,6 +98,17 @@ describe("resolveAccessRoute", () => {
 		).toBe("/home");
 	});
 
+	it("lets trial accounts subscribe before the trial expires", () => {
+		expect(
+			resolveAccessRoute({
+				accessState: "trial",
+				isSessionLoading: false,
+				pathname: "/subscription",
+				user: { id: "user_1" },
+			}),
+		).toBeNull();
+	});
+
 	it("keeps a newly paid account on the Pro welcome route", () => {
 		expect(
 			resolveAccessRoute({

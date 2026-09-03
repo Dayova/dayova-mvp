@@ -114,33 +114,27 @@ buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
 with a white stroke, and black buttons use the light border token `#DCE6EE`.
 
 The trial-activation and expired-trial payment flow are deliberate full-bleed
-branded exceptions. The expired-trial flow separates payer selection from
-subscription completion into two routes. Both use the shared
+branded exceptions. The expired-trial route presents one Store-only path into
+the subscription route; it must not offer payer selection, QR codes, website
+checkout links, or other purchase steering. Both routes use the shared
 `primaryInteractive` gradient as the view's only gradient, white text on the
-saturated outer surface, and
-theme-independent light surfaces for content that needs primary and secondary
-text. Payer choices stay on the first route; they never expand subscription
-details in place, and the subscription route does not repeat the chosen payer
-as a summary row. On the subscription route, plan choices use a translucent
-white surface with a thin border, restrained inset highlight, and shadow, while
-their text stays dark in every app theme. The selected plan uses a dark outline
-and checked indicator instead of a tinted fill. The annual plan emphasizes its
-monthly equivalent and keeps the annual charge in the description. The
-subscription header pairs its back action with the current two-step progress in
-one compact row instead of isolating navigation above the page title. Secondary
-actions use `systemSubtle`,
-payment details use `surface` with a primary-accent border, the subscription
-checkout action uses the standard black treatment, and purchase restoration is
-an underlined white link. The parent-payment checkout link continues to use
-`primaryStrong`. Reusing shared semantic values keeps both ends of the trial flow
-synchronized with future Dayova color changes. This treatment is limited to
-focused access-setup moments and is not a third general-purpose light-mode
-button appearance. The trial-activation screen may use its white primary button
-for legible contrast on that saturated surface; this does not introduce a
-reusable third button appearance. The expired-trial screen passes the fixed
-shared light tokens through the native style API because the tracked Fabric
-variable-invalidation issue can otherwise leave newly mounted descendants with
-mixed light and dark tokens.
+saturated outer surface, and theme-independent light surfaces for content that
+needs primary and secondary text. On the subscription route, plan choices use a
+translucent white surface with a thin border, restrained inset highlight, and
+shadow, while their text stays dark in every app theme. The selected plan uses a
+dark outline and checked indicator instead of a tinted fill. Prices and billing
+periods always come from the native Store: the complete charge is prominent and
+an annual monthly equivalent is secondary when the Store provides one. The
+subscription checkout action uses the standard black treatment, and purchase
+restoration is an underlined white link. Reusing shared semantic values keeps
+both ends of the trial flow synchronized with future Dayova color changes. This
+treatment is limited to focused access-setup moments and is not a third
+general-purpose light-mode button appearance. The trial-activation screen may
+use its white primary button for legible contrast on that saturated surface;
+this does not introduce a reusable third button appearance. The expired-trial
+screen passes the fixed shared light tokens through the native style API because
+the tracked Fabric variable-invalidation issue can otherwise leave newly mounted
+descendants with mixed light and dark tokens.
 
 The post-purchase confirmation route extends this focused access-flow exception:
 it uses the same `primaryInteractive` gradient and fixed light surfaces, then
