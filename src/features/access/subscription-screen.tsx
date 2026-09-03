@@ -250,7 +250,7 @@ export function SubscriptionScreen() {
 					<View className="gap-3 pt-5 pb-6" testID="subscription-page-intro">
 						<Text
 							variant="h1"
-							className="max-w-[330px] text-left font-semibold text-heading-1 text-white leading-tight"
+							className="text-left font-semibold text-body-1 text-white"
 						>
 							Dayova Pro abonnieren
 						</Text>
