@@ -154,6 +154,34 @@ describe("SubscriptionScreen", () => {
 		});
 	});
 
+	test("disables restore and exposes its busy state while a Store action runs", async () => {
+		let finishRestore: (() => void) | undefined;
+		mockRestore.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishRestore = () => resolve({ status: "purchased" });
+				}),
+		);
+		const screen = await render(<SubscriptionScreen />);
+		const restoreButton = await screen.findByTestId("restore-purchases-link");
+
+		fireEvent.press(restoreButton);
+
+		await waitFor(() => {
+			expect(screen.getByTestId("restore-purchases-link")).toHaveProp(
+				"accessibilityState",
+				{
+					busy: true,
+					disabled: true,
+				},
+			);
+		});
+		fireEvent.press(screen.getByTestId("restore-purchases-link"));
+		expect(mockRestore).toHaveBeenCalledTimes(1);
+
+		await act(async () => finishRestore?.());
+	});
+
 	test("returns direct links to the expired-access page", async () => {
 		mockCanGoBack = false;
 		const screen = await render(<SubscriptionScreen />);

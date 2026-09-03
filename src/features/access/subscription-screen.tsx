@@ -322,7 +322,12 @@ export function SubscriptionScreen() {
 
 					<Pressable
 						accessibilityRole="button"
+						accessibilityState={{
+							busy: isPurchasing,
+							disabled: isPurchasing || !storeClient,
+						}}
 						className="min-h-12 items-center justify-center px-4"
+						disabled={isPurchasing || !storeClient}
 						hitSlop={4}
 						onPress={() => void restore()}
 						testID="restore-purchases-link"
