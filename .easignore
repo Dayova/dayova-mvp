@@ -50,8 +50,8 @@ __pycache__/
 /android
 
 # Review evidence and local capture scratch space are not build inputs.
-/docs/evidence/
-/.tmp/
+docs/evidence/
+.tmp/
 
 # Downloaded store binaries are release evidence, not source artifacts.
-/release/google-play/artifacts/*.aab
+release/google-play/artifacts/*.aab
