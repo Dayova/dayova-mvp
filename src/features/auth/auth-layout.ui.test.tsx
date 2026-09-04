@@ -76,7 +76,11 @@ describe("AuthLayout", () => {
 		});
 		expect(mockStackScreens).toContainEqual({
 			name: "onboarding/[step]",
-			options: { title: "Registrierung", gestureEnabled: true },
+			options: {
+				animation: "none",
+				title: "Registrierung",
+				gestureEnabled: true,
+			},
 		});
 		expect(mockStackScreens).toContainEqual({
 			name: "onboarding/creating",

@@ -27,7 +27,11 @@ export default function AuthLayout() {
 			/>
 			<Stack.Screen
 				name="onboarding/[step]"
-				options={{ title: "Registrierung", gestureEnabled: true }}
+				options={{
+					animation: "none",
+					title: "Registrierung",
+					gestureEnabled: true,
+				}}
 			/>
 			<Stack.Screen
 				name="onboarding/verification"
