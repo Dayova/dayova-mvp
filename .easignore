@@ -4,6 +4,9 @@
 node_modules/
 .pnpm-store/
 
+# Git history is not a build input and can contain large archived evidence blobs.
+.git
+
 # Expo
 .expo/
 dist/
