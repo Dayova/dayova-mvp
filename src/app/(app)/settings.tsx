@@ -7,7 +7,10 @@ import {
 	Bell,
 	CalendarDays,
 	Computer,
+	CreditCard,
+	Globe,
 	Logout,
+	Mail,
 	Moon,
 	Palette,
 	Settings,
@@ -20,9 +23,13 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { useAccess } from "~/context/AccessContext";
 import { useAccountActions } from "~/context/AuthContext";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import { openExternalUrl } from "~/lib/open-external-url";
+import { env } from "~/lib/runtime-config";
+import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
 import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
 import { cn } from "~/lib/utils";
@@ -156,8 +163,10 @@ function ThemePreferenceToggle({
 export default function SettingsScreen() {
 	const router = useRouter();
 	const { logout } = useAccountActions();
+	const { access } = useAccess();
 	const { preference, setPreference } = useDayovaTheme();
 	const [logoutError, setLogoutError] = useState<string | null>(null);
+	const [linkError, setLinkError] = useState<string | null>(null);
 	const [isLoggingOut, setIsLoggingOut] = useState(false);
 	const logoutGateRef = useRef(createAsyncActionGate());
 	const handleLogout = () => {
@@ -179,12 +188,50 @@ export default function SettingsScreen() {
 			}
 		});
 	};
+	const openLink = (url?: string) => {
+		void openExternalUrl(url).then((opened) => {
+			setLinkError(
+				opened
+					? null
+					: "Der Link konnte nicht geöffnet werden. Bitte versuche es erneut.",
+			);
+		});
+	};
+	const nativeManagementUrl = getNativeSubscriptionManagementUrl({
+		platform: process.env.EXPO_OS,
+		store: access?.store,
+	});
+	const isStoreSubscriber =
+		access?.state === "paid" || access?.state === "billingGrace";
 
 	return (
 		<Screen>
 			<ThemedStatusBar />
 			<ScreenScroll topPadding={104} bottomPadding={120} horizontalPadding={24}>
 				<View className="gap-7">
+					<SettingsSection title="Dayova Pro">
+						{access?.state === "trial" ? (
+							<SettingsRow
+								icon={CreditCard}
+								label="Dayova Pro abonnieren"
+								onPress={() => router.push("/subscription")}
+							/>
+						) : (
+							<SettingsRow
+								icon={CreditCard}
+								label={
+									nativeManagementUrl
+										? "Abo im Store verwalten"
+										: "Hilfe zum Abo"
+								}
+								onPress={() =>
+									openLink(nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL)
+								}
+								disabled={!isStoreSubscriber}
+							/>
+						)}
+					</SettingsSection>
+
 					<SettingsSection title="Lernen">
 						<SettingsRow
 							icon={Timer}
@@ -217,6 +264,29 @@ export default function SettingsScreen() {
 							}
 						/>
 					</SettingsSection>
+
+					<View className="gap-3">
+						<SettingsSection title="Rechtliches & Hilfe">
+							<SettingsRow
+								icon={Globe}
+								label="Datenschutz"
+								onPress={() => openLink(env.EXPO_PUBLIC_PRIVACY_URL)}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={Globe}
+								label="Nutzungsbedingungen"
+								onPress={() => openLink(env.EXPO_PUBLIC_TERMS_URL)}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={Mail}
+								label="Support"
+								onPress={() => openLink(env.EXPO_PUBLIC_SUPPORT_URL)}
+							/>
+						</SettingsSection>
+						{linkError ? <ErrorMessage>{linkError}</ErrorMessage> : null}
+					</View>
 
 					<View className="gap-3">
 						<SettingsSection title="Konto">

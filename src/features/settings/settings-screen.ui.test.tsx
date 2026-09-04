@@ -7,6 +7,12 @@ const mockReplace = jest.fn();
 const mockPush = jest.fn();
 const mockLogout = jest.fn<() => Promise<void>>(async () => undefined);
 const mockSetPreference = jest.fn(async () => undefined);
+const mockOpenExternalUrl = jest.fn<(url?: string) => Promise<boolean>>(
+	async () => true,
+);
+let mockAccess: { state: "trial" } | { state: "paid"; store: string } = {
+	state: "trial",
+};
 
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: mockPush, replace: mockReplace }),
@@ -14,6 +20,22 @@ jest.mock("expo-router", () => ({
 
 jest.mock("~/context/AuthContext", () => ({
 	useAccountActions: () => ({ logout: mockLogout }),
+}));
+
+jest.mock("~/context/AccessContext", () => ({
+	useAccess: () => ({ access: mockAccess }),
+}));
+
+jest.mock("~/lib/open-external-url", () => ({
+	openExternalUrl: (url?: string) => mockOpenExternalUrl(url),
+}));
+
+jest.mock("~/lib/runtime-config", () => ({
+	env: {
+		EXPO_PUBLIC_PRIVACY_URL: "https://example.com/privacy",
+		EXPO_PUBLIC_SUPPORT_URL: "https://example.com/support",
+		EXPO_PUBLIC_TERMS_URL: "https://example.com/terms",
+	},
 }));
 
 jest.mock("~/lib/theme", () => ({
@@ -61,6 +83,9 @@ describe("SettingsScreen", () => {
 		mockPush.mockReset();
 		mockSetPreference.mockReset();
 		mockSetPreference.mockResolvedValue(undefined);
+		mockOpenExternalUrl.mockReset();
+		mockOpenExternalUrl.mockResolvedValue(true);
+		mockAccess = { state: "trial" };
 	});
 
 	test("groups destinations by learning, app, and account responsibility", async () => {
@@ -69,9 +94,29 @@ describe("SettingsScreen", () => {
 		expect(screen.getByRole("header", { name: "Lernen" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "App" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "Konto" })).toBeOnTheScreen();
+		expect(
+			screen.getByRole("header", { name: "Dayova Pro" }),
+		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("header", { name: "Rechtliches & Hilfe" }),
+		).toBeOnTheScreen();
 
 		await fireEvent.press(screen.getByRole("button", { name: "Stundenplan" }));
 		expect(mockPush).toHaveBeenCalledWith("/timetable");
+	});
+
+	test("lets trial users subscribe and keeps privacy available in settings", async () => {
+		const screen = await render(<SettingsScreen />);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Dayova Pro abonnieren" }),
+		);
+		expect(mockPush).toHaveBeenCalledWith("/subscription");
+
+		await fireEvent.press(screen.getByRole("button", { name: "Datenschutz" }));
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			"https://example.com/privacy",
+		);
 	});
 
 	test("exposes each theme preference as an individually selectable radio", async () => {

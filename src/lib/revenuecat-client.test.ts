@@ -77,12 +77,14 @@ describe("createRevenueCatClient", () => {
 				billingPeriod: "annual",
 				packageIdentifier: "$rc_annual",
 				price: "155,88 €",
+				pricePerMonth: "12,99 €",
 				productIdentifier: "dayova_annual",
 			},
 			{
 				billingPeriod: "monthly",
 				packageIdentifier: "$rc_monthly",
 				price: "14,99 €",
+				pricePerMonth: null,
 				productIdentifier: "dayova_monthly",
 			},
 		]);

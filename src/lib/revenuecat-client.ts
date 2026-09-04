@@ -1,5 +1,3 @@
-import type { DayovaBillingPeriod } from "./subscription-pricing";
-
 const ENTITLEMENT_ID = "dayova_full_access";
 const OFFERING_ID = "default";
 const PACKAGE_BILLING_PERIOD = {
@@ -61,8 +59,11 @@ export type DayovaStorePlan = {
 	billingPeriod: DayovaBillingPeriod;
 	packageIdentifier: keyof typeof PACKAGE_BILLING_PERIOD;
 	price: string;
+	pricePerMonth: string | null;
 	productIdentifier: string;
 };
+
+export type DayovaBillingPeriod = "annual" | "monthly";
 
 type PurchaseResult =
 	| { status: "purchased" }
@@ -91,6 +92,7 @@ const toStorePlan = (
 		billingPeriod: PACKAGE_BILLING_PERIOD[packageIdentifier],
 		packageIdentifier,
 		price: revenueCatPackage.product.priceString,
+		pricePerMonth: revenueCatPackage.product.pricePerMonthString ?? null,
 		productIdentifier: revenueCatPackage.product.identifier,
 	};
 };

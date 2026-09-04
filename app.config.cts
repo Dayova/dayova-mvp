@@ -139,6 +139,7 @@ const config: ExpoConfig = {
 		],
 		"./plugins/withRemovedVoicePermissions",
 		"expo-localization",
+		"./plugins/withIosInAppPurchase",
 		"./plugins/withNinjaLongPaths",
 		"./plugins/withAndroidGradleJvmMemory",
 		"./plugins/withAndroidPackagingOptions",

@@ -13,15 +13,12 @@ import {
 	Logout,
 	SquareLock,
 	Trash2,
-	UserRound,
 } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { useAccountActions } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
-
-export type SubscriptionPayer = "parent" | "self";
 
 const PAYWALL_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
@@ -54,12 +51,7 @@ export function PaywallScreen() {
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const deletionInFlightRef = useRef(false);
 
-	const openSubscription = (payer: SubscriptionPayer) => {
-		router.push({
-			pathname: "/subscription",
-			params: { payer },
-		});
-	};
+	const openSubscription = () => router.push("/subscription");
 
 	const requestAccountDeletion = () => {
 		setDeleteError(null);
@@ -154,7 +146,7 @@ export function PaywallScreen() {
 						<View className="flex-row">
 							<View className="mr-5 items-center">
 								<View className="z-10 h-12 w-12 items-center justify-center rounded-full bg-white">
-									<UserRound
+									<CreditCard
 										size={24}
 										color={BRAND_COLORS.primaryStrong}
 										strokeWidth={2.3}
@@ -164,27 +156,13 @@ export function PaywallScreen() {
 							</View>
 							<View className="flex-1 pt-1 pb-6">
 								<Text className="font-semibold text-body-2 text-white">
-									Wer bezahlt?
+									Dayova Pro freischalten
 								</Text>
 								<Text className="mt-1 text-body-3 text-white/85">
-									Wähle den passenden Weg für dich.
+									Wähle im Store ein Monats- oder Jahresabo. Dein Lernstand
+									bleibt erhalten.
 								</Text>
-								<View className="mt-4 gap-3">
-									<PayerButton
-										description="Direkt im App Store oder bei Google Play"
-										icon={CreditCard}
-										label="Ich zahle selbst"
-										onPress={() => openSubscription("self")}
-										testID="payer-self-action"
-									/>
-									<PayerButton
-										description="Zahlungslink oder QR-Code teilen"
-										icon={UserRound}
-										label="Meine Eltern zahlen"
-										onPress={() => openSubscription("parent")}
-										testID="payer-parent-action"
-									/>
-								</View>
+								<CheckoutButton onPress={openSubscription} />
 							</View>
 						</View>
 
@@ -196,11 +174,11 @@ export function PaywallScreen() {
 							</View>
 							<View className="flex-1 pt-1 pb-2">
 								<Text className="font-semibold text-body-2 text-white">
-									Zugang freischalten
+									Sicher über den Store
 								</Text>
 								<Text className="mt-1 text-body-3 text-white/85">
-									Auf der nächsten Seite schließt du den gewählten Zahlungsweg
-									ab.
+									Kauf, Verlängerung und Kündigung laufen über den App Store
+									oder Google Play.
 								</Text>
 							</View>
 						</View>
@@ -234,13 +212,8 @@ export function PaywallScreen() {
 								onOpen={openLink}
 							/>
 							<LegalLink
-								label="Kündigung"
-								url={env.EXPO_PUBLIC_CANCELLATION_URL}
-								onOpen={openLink}
-							/>
-							<LegalLink
 								buttonRef={subscriptionManagementLinkRef}
-								label="Abo verwalten"
+								label="Konto verwalten"
 								onPress={() => setShowSubscriptionManagement(true)}
 							/>
 						</View>
@@ -249,9 +222,9 @@ export function PaywallScreen() {
 			</View>
 			<DayovaSheetFrame
 				visible={showSubscriptionManagement}
-				title="Abo verwalten"
-				description="Hier findest du Informationen zu deinem Zugang und kannst dein Dayova-Konto wechseln oder löschen."
-				closeAccessibilityLabel="Abo-Verwaltung schließen"
+				title="Konto verwalten"
+				description="Hier kannst du dein Dayova-Konto wechseln oder löschen. Store-Abos verwaltest du direkt in deinem Store."
+				closeAccessibilityLabel="Kontoverwaltung schließen"
 				onClose={() => setShowSubscriptionManagement(false)}
 				onDismiss={finishSubscriptionManagementDismissal}
 				returnFocusRef={subscriptionManagementLinkRef}
@@ -286,40 +259,22 @@ export function PaywallScreen() {
 	);
 }
 
-function PayerButton({
-	description,
-	icon,
-	label,
-	onPress,
-	testID,
-}: {
-	description: string;
-	icon: React.ComponentType<{
-		color?: string;
-		size?: number;
-		strokeWidth?: number;
-	}>;
-	label: string;
-	onPress: () => void;
-	testID: string;
-}) {
-	const Icon = icon;
-
+function CheckoutButton({ onPress }: { onPress: () => void }) {
 	return (
 		<Pressable
-			accessibilityLabel={`${label}. ${description}`}
-			accessibilityHint="Öffnet die passende Aboseite."
+			accessibilityLabel="Tarife im Store auswählen"
+			accessibilityHint="Öffnet die Aboseite mit den verfügbaren Store-Tarifen."
 			accessibilityRole="button"
-			className="min-h-20 flex-row items-center rounded-card border px-4 py-3 shadow-black/15 shadow-md active:opacity-90"
+			className="mt-4 min-h-20 flex-row items-center rounded-card border px-4 py-3 shadow-black/15 shadow-md active:opacity-90"
 			onPress={onPress}
 			style={primaryPayerSurfaceStyle}
-			testID={testID}
+			testID="store-subscription-action"
 		>
 			<View
 				className="h-11 w-11 items-center justify-center rounded-full bg-white/20"
 				style={primaryPayerIconStyle}
 			>
-				<Icon size={22} color={WHITE} strokeWidth={2.3} />
+				<CreditCard size={22} color={WHITE} strokeWidth={2.3} />
 			</View>
 			<View className="ml-3 flex-1">
 				<Text className="font-semibold text-body-5 text-primary-strong">
@@ -329,13 +284,13 @@ function PayerButton({
 					className="font-semibold text-body-3"
 					style={{ color: BRAND_COLORS.text }}
 				>
-					{label}
+					Tarife auswählen
 				</Text>
 				<Text
 					className="text-body-4"
 					style={{ color: BRAND_COLORS.secondaryText }}
 				>
-					{description}
+					Direkt im App Store oder bei Google Play
 				</Text>
 			</View>
 			<View className="h-9 w-9 items-center justify-center rounded-full bg-primary-strong">
