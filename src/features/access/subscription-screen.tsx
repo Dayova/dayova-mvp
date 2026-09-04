@@ -29,9 +29,14 @@ import { getStoreName, getStoreSubscribeLabel } from "~/lib/store-subscription";
 const SUBSCRIPTION_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
 const WHITE = BRAND_COLORS.light1;
+// LinearGradient accepts its full-bleed geometry only through the native style API.
 const gradientFillStyle = StyleSheet.absoluteFill;
+// Fixed native design tokens keep Fabric descendants on this branded light
+// surface legible when the system theme changes.
 const primaryTextStyle = { color: BRAND_COLORS.text };
 const secondaryTextStyle = { color: BRAND_COLORS.secondaryText };
+// Button state styles are merged natively, so the branded Store action uses
+// fixed design tokens instead of CSS variables.
 const subscribeActionStyle = {
 	backgroundColor: BRAND_COLORS.text,
 	borderColor: BRAND_COLORS.border,
@@ -226,6 +231,7 @@ export function SubscriptionScreen() {
 				className="flex-1"
 				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
+				// Runtime safe-area values cannot be represented by static classes.
 				contentContainerStyle={{
 					paddingBottom: Math.max(insets.bottom, 24),
 					paddingTop: insets.top,
@@ -288,8 +294,7 @@ export function SubscriptionScreen() {
 					{!storeClient ? (
 						<Text
 							accessibilityLiveRegion="polite"
-							className="mt-3 text-center text-body-4"
-							style={{ color: WHITE }}
+							className="mt-3 text-center text-body-4 text-white"
 						>
 							{storeUnavailableMessage}
 						</Text>
@@ -309,7 +314,7 @@ export function SubscriptionScreen() {
 						{isLoadingPlans || isPurchasing ? (
 							<ActivityIndicator color={WHITE} />
 						) : (
-							<Text style={{ color: WHITE }}>
+							<Text className="text-white">
 								{getStoreSubscribeLabel(process.env.EXPO_OS)}
 							</Text>
 						)}
@@ -332,10 +337,7 @@ export function SubscriptionScreen() {
 						onPress={() => void restore()}
 						testID="restore-purchases-link"
 					>
-						<Text
-							className="text-body-4"
-							style={{ color: WHITE, textDecorationLine: "underline" }}
-						>
+						<Text className="text-body-4 text-white underline">
 							Käufe wiederherstellen
 						</Text>
 					</Pressable>
@@ -414,6 +416,7 @@ function PlanCard({
 			className="rounded-3xl border px-5 py-4"
 			onPress={onPress}
 			testID={testID}
+			// Selection changes native glass border and shadow values at runtime.
 			style={{
 				backgroundColor: planGlassSurface,
 				borderColor: selected ? BRAND_COLORS.text : planGlassBorder,
@@ -439,6 +442,7 @@ function PlanCard({
 					<View
 						accessible={false}
 						className="h-6 w-6 items-center justify-center rounded-full border"
+						// The selected radio state drives both native colors.
 						style={{
 							backgroundColor: selected
 								? BRAND_COLORS.text
