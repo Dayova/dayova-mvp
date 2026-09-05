@@ -1,4 +1,4 @@
-import { captureRevenueCatRedemptionUrl } from "~/lib/revenuecat-redemption";
+import { redirectNativeIntentPath } from "~/lib/native-intent-redirect";
 
 export function redirectSystemPath({
 	path,
@@ -6,9 +6,5 @@ export function redirectSystemPath({
 	path: string;
 	initial: boolean;
 }) {
-	try {
-		return captureRevenueCatRedemptionUrl(path) ? "/" : path;
-	} catch {
-		return "/";
-	}
+	return redirectNativeIntentPath(path);
 }

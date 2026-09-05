@@ -56,19 +56,10 @@ type TextStep = {
 
 type WheelStep = {
 	kind: "wheel";
-	id:
-		| "state"
-		| "schoolType"
-		| "grade"
-		| "birthYear"
-		| "birthMonth"
-		| "birthDay";
+	id: "state" | "schoolType" | "grade";
 	title: string;
 	description: string;
-	field: Extract<
-		keyof OnboardingAnswers,
-		"state" | "schoolType" | "grade" | "birthYear" | "birthMonth" | "birthDay"
-	>;
+	field: Extract<keyof OnboardingAnswers, "state" | "schoolType" | "grade">;
 };
 
 export type OnboardingProfileStep =
@@ -150,28 +141,6 @@ export const ONBOARDING_PROFILE_STEPS = [
 		description:
 			"Wir speichern nur die Schulart, nicht den Namen deiner Schule.",
 		field: "schoolType",
-	},
-	{
-		kind: "wheel",
-		id: "birthYear",
-		title: "In welchem Jahr bist du geboren?",
-		description:
-			"Wir fragen Jahr, Monat und Tag nacheinander – ohne Vorauswahl.",
-		field: "birthYear",
-	},
-	{
-		kind: "wheel",
-		id: "birthMonth",
-		title: "In welchem Monat bist du geboren?",
-		description: "Damit dein Geburtsdatum eindeutig und korrekt bleibt.",
-		field: "birthMonth",
-	},
-	{
-		kind: "wheel",
-		id: "birthDay",
-		title: "An welchem Tag bist du geboren?",
-		description: "Der letzte Teil deines Geburtsdatums.",
-		field: "birthDay",
 	},
 	{
 		kind: "text",

@@ -5,6 +5,7 @@ import { PaywallScreen } from "./paywall-screen";
 
 const mockPush = jest.fn();
 const mockLogout = jest.fn();
+const mockDeleteAccount = jest.fn(async () => undefined);
 const mockSubscriptionManagementSheet: {
 	onDismiss: null | (() => void);
 	returnFocusRef: null | { current: unknown };
@@ -18,14 +19,6 @@ beforeEach(() => {
 	mockSubscriptionManagementSheet.onDismiss = null;
 	mockSubscriptionManagementSheet.returnFocusRef = null;
 });
-
-jest.mock("@clerk/expo", () => ({
-	useUser: () => ({
-		user: {
-			delete: jest.fn(),
-		},
-	}),
-}));
 
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: mockPush }),
@@ -106,6 +99,7 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => {
 
 jest.mock("~/context/AuthContext", () => ({
 	useAccountActions: () => ({
+		deleteAccount: mockDeleteAccount,
 		logout: mockLogout,
 	}),
 }));

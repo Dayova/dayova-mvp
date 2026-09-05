@@ -7,19 +7,19 @@ import {
 	useSyncExternalStore,
 } from "react";
 import { Platform } from "react-native";
-import {
-	RedemptionStatusOverlay,
-	type RedemptionFailure,
-} from "~/features/access/redemption-status-overlay";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
+import {
+	type RedemptionFailure,
+	RedemptionStatusOverlay,
+} from "~/features/access/redemption-status-overlay";
 import { logDiagnosticError } from "~/lib/diagnostics";
-import { createNativeRevenueCatClient } from "~/lib/revenuecat-client";
 import {
 	clearPendingRevenueCatRedemptionUrl,
 	getPendingRevenueCatRedemptionUrl,
 	subscribeToRevenueCatRedemptionUrl,
 } from "~/lib/revenuecat-redemption";
+import { createNativeRevenueCatRedemptionClient } from "~/lib/revenuecat-redemption-client";
 import { env } from "~/lib/runtime-config";
 
 const CONFIGURATION_FAILURE: RedemptionFailure = {
@@ -130,7 +130,7 @@ export function RevenueCatRedemptionSync() {
 			if (!pendingUrl) return;
 
 			try {
-				const client = createNativeRevenueCatClient({
+				const client = createNativeRevenueCatRedemptionClient({
 					apiKey: storeApiKey,
 					appUserId: user.clerkId,
 				});

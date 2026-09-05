@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { type ReactNode, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	ArrowRight,
@@ -17,6 +18,7 @@ import {
 	SquareLock,
 	Sun,
 	Timer,
+	Trash2,
 } from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
@@ -55,6 +57,7 @@ function SettingsRow({
 	disabled = false,
 	busy = false,
 	showDisclosure = true,
+	destructive = false,
 }: {
 	icon: (props: {
 		size?: number;
@@ -67,14 +70,22 @@ function SettingsRow({
 	disabled?: boolean;
 	busy?: boolean;
 	showDisclosure?: boolean;
+	destructive?: boolean;
 }) {
 	const Icon = icon;
 	const { colors } = useDayovaTheme();
 
 	return (
 		<ListRow
-			icon={<Icon size={22} color={colors.text} strokeWidth={2} />}
+			icon={
+				<Icon
+					size={22}
+					color={destructive ? colors.destructive : colors.text}
+					strokeWidth={2}
+				/>
+			}
 			label={label}
+			tone={destructive ? "destructive" : "default"}
 			onPress={onPress}
 			disabled={disabled}
 			accessibilityState={{
@@ -162,13 +173,17 @@ function ThemePreferenceToggle({
 
 export default function SettingsScreen() {
 	const router = useRouter();
-	const { logout } = useAccountActions();
+	const { deleteAccount, logout } = useAccountActions();
 	const { access } = useAccess();
 	const { preference, setPreference } = useDayovaTheme();
 	const [logoutError, setLogoutError] = useState<string | null>(null);
 	const [linkError, setLinkError] = useState<string | null>(null);
 	const [isLoggingOut, setIsLoggingOut] = useState(false);
+	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const logoutGateRef = useRef(createAsyncActionGate());
+	const deleteGateRef = useRef(createAsyncActionGate());
 	const handleLogout = () => {
 		void logoutGateRef.current.run(async () => {
 			setLogoutError(null);
@@ -185,6 +200,26 @@ export default function SettingsScreen() {
 				);
 			} finally {
 				setIsLoggingOut(false);
+			}
+		});
+	};
+	const handleDeleteAccount = () => {
+		void deleteGateRef.current.run(async () => {
+			setDeleteError(null);
+			setIsDeletingAccount(true);
+			try {
+				await deleteAccount();
+				setShowDeleteConfirmation(false);
+			} catch (error) {
+				logDiagnosticError("Failed to delete account.", error, {
+					source: "settings.accountDeletion",
+					level: "error",
+				});
+				setDeleteError(
+					"Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.",
+				);
+			} finally {
+				setIsDeletingAccount(false);
 			}
 		});
 	};
@@ -205,116 +240,145 @@ export default function SettingsScreen() {
 		access?.state === "paid" || access?.state === "billingGrace";
 
 	return (
-		<Screen>
-			<ThemedStatusBar />
-			<ScreenScroll topPadding={104} bottomPadding={120} horizontalPadding={24}>
-				<View className="gap-7">
-					<SettingsSection title="Dayova Pro">
-						{access?.state === "trial" ? (
-							<SettingsRow
-								icon={CreditCard}
-								label="Dayova Pro abonnieren"
-								onPress={() => router.push("/subscription")}
-							/>
-						) : (
-							<SettingsRow
-								icon={CreditCard}
-								label={
-									nativeManagementUrl
-										? "Abo im Store verwalten"
-										: "Hilfe zum Abo"
-								}
-								onPress={() =>
-									openLink(nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL)
-								}
-								disabled={!isStoreSubscriber}
-							/>
-						)}
-					</SettingsSection>
-
-					<SettingsSection title="Lernen">
-						<SettingsRow
-							icon={Timer}
-							label="Lernzeiten"
-							onPress={() => router.push("/learning-times")}
-						/>
-						<SettingsDivider />
-						<SettingsRow
-							icon={CalendarDays}
-							label="Stundenplan"
-							onPress={() => router.push("/timetable")}
-						/>
-					</SettingsSection>
-
-					<SettingsSection title="App">
-						<SettingsRow
-							icon={Bell}
-							label="Mitteilungen"
-							onPress={() => router.push("/notification-settings")}
-						/>
-						<SettingsDivider />
-						<SettingsRow
-							icon={Palette}
-							label="Design"
-							trailing={
-								<ThemePreferenceToggle
-									preference={preference}
-									setPreference={setPreference}
+		<>
+			<Screen>
+				<ThemedStatusBar />
+				<ScreenScroll
+					topPadding={104}
+					bottomPadding={120}
+					horizontalPadding={24}
+				>
+					<View className="gap-7">
+						<SettingsSection title="Dayova Pro">
+							{access?.state === "trial" ? (
+								<SettingsRow
+									icon={CreditCard}
+									label="Dayova Pro abonnieren"
+									onPress={() => router.push("/subscription")}
 								/>
-							}
-						/>
-					</SettingsSection>
+							) : (
+								<SettingsRow
+									icon={CreditCard}
+									label={
+										nativeManagementUrl
+											? "Abo im Store verwalten"
+											: "Hilfe zum Abo"
+									}
+									onPress={() =>
+										openLink(nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL)
+									}
+									disabled={!isStoreSubscriber}
+								/>
+							)}
+						</SettingsSection>
 
-					<View className="gap-3">
-						<SettingsSection title="Rechtliches & Hilfe">
+						<SettingsSection title="Lernen">
 							<SettingsRow
-								icon={Globe}
-								label="Datenschutz"
-								onPress={() => openLink(env.EXPO_PUBLIC_PRIVACY_URL)}
+								icon={Timer}
+								label="Lernzeiten"
+								onPress={() => router.push("/learning-times")}
 							/>
 							<SettingsDivider />
 							<SettingsRow
-								icon={Globe}
-								label="Nutzungsbedingungen"
-								onPress={() => openLink(env.EXPO_PUBLIC_TERMS_URL)}
-							/>
-							<SettingsDivider />
-							<SettingsRow
-								icon={Mail}
-								label="Support"
-								onPress={() => openLink(env.EXPO_PUBLIC_SUPPORT_URL)}
+								icon={CalendarDays}
+								label="Stundenplan"
+								onPress={() => router.push("/timetable")}
 							/>
 						</SettingsSection>
-						{linkError ? <ErrorMessage>{linkError}</ErrorMessage> : null}
-					</View>
 
-					<View className="gap-3">
-						<SettingsSection title="Konto">
+						<SettingsSection title="App">
 							<SettingsRow
-								icon={Settings}
-								label="Profil"
-								onPress={() => router.push("/profile")}
+								icon={Bell}
+								label="Mitteilungen"
+								onPress={() => router.push("/notification-settings")}
 							/>
 							<SettingsDivider />
 							<SettingsRow
-								icon={SquareLock}
-								label="Passwort ändern"
-								onPress={() => router.push("/change-password")}
-							/>
-							<SettingsDivider />
-							<SettingsRow
-								icon={Logout}
-								label="Abmelden"
-								onPress={handleLogout}
-								disabled={isLoggingOut}
-								busy={isLoggingOut}
-								showDisclosure={false}
+								icon={Palette}
+								label="Design"
+								trailing={
+									<ThemePreferenceToggle
+										preference={preference}
+										setPreference={setPreference}
+									/>
+								}
 							/>
 						</SettingsSection>
-						{logoutError ? <ErrorMessage>{logoutError}</ErrorMessage> : null}
+
+						<View className="gap-3">
+							<SettingsSection title="Rechtliches & Hilfe">
+								<SettingsRow
+									icon={Globe}
+									label="Datenschutz"
+									onPress={() => openLink(env.EXPO_PUBLIC_PRIVACY_URL)}
+								/>
+								<SettingsDivider />
+								<SettingsRow
+									icon={Globe}
+									label="Nutzungsbedingungen"
+									onPress={() => openLink(env.EXPO_PUBLIC_TERMS_URL)}
+								/>
+								<SettingsDivider />
+								<SettingsRow
+									icon={Mail}
+									label="Support"
+									onPress={() => openLink(env.EXPO_PUBLIC_SUPPORT_URL)}
+								/>
+							</SettingsSection>
+							{linkError ? <ErrorMessage>{linkError}</ErrorMessage> : null}
+						</View>
+
+						<View className="gap-3">
+							<SettingsSection title="Konto">
+								<SettingsRow
+									icon={Settings}
+									label="Profil"
+									onPress={() => router.push("/profile")}
+								/>
+								<SettingsDivider />
+								<SettingsRow
+									icon={SquareLock}
+									label="Passwort ändern"
+									onPress={() => router.push("/change-password")}
+								/>
+								<SettingsDivider />
+								<SettingsRow
+									icon={Logout}
+									label="Abmelden"
+									onPress={handleLogout}
+									disabled={isLoggingOut}
+									busy={isLoggingOut}
+									showDisclosure={false}
+								/>
+								<SettingsDivider />
+								<SettingsRow
+									destructive
+									icon={Trash2}
+									label="Konto löschen"
+									onPress={() => {
+										setDeleteError(null);
+										setShowDeleteConfirmation(true);
+									}}
+									disabled={isDeletingAccount}
+									busy={isDeletingAccount}
+									showDisclosure={false}
+								/>
+							</SettingsSection>
+							{logoutError ? <ErrorMessage>{logoutError}</ErrorMessage> : null}
+						</View>
 					</View>
-				</View>
-			</ScreenScroll>
-		</Screen>
+				</ScreenScroll>
+			</Screen>
+			<ConfirmationSheet
+				visible={showDeleteConfirmation}
+				title="Konto wirklich löschen?"
+				description="Dein Dayova-Konto und deine gespeicherten Daten werden dauerhaft gelöscht. Ein aktives App-Store-Abo musst du zusätzlich im App Store kündigen."
+				confirmLabel="Konto löschen"
+				isBusy={isDeletingAccount}
+				errorMessage={deleteError}
+				onClose={() => setShowDeleteConfirmation(false)}
+				onConfirm={handleDeleteAccount}
+			/>
+		</>
 	);
 }

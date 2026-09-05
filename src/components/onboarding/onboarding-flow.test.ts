@@ -22,9 +22,6 @@ const answers = (
 	grade: "9",
 	name: "Jakob Rössner",
 	email: "jakob@example.de",
-	birthYear: "2012",
-	birthMonth: "09",
-	birthDay: "09",
 	password: "supersecret",
 	...patch,
 });
@@ -176,7 +173,6 @@ describe("onboarding flow decisions", () => {
 			name: "Jakob Rössner",
 			email: "jakob@example.de",
 			password: "supersecret",
-			birthDate: "09.09.2012",
 			grade: "13",
 			schoolType: "gymnasium",
 			state: "Sachsen",

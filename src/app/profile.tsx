@@ -85,7 +85,6 @@ export default function ProfileScreen() {
 			const result = await updateProfile({
 				email: normalizedEmail,
 				name: normalizedName,
-				birthDate: user?.birthDate ?? "",
 				grade: user?.grade ?? "",
 				schoolType: user?.schoolType,
 				state: user?.state ?? "",

@@ -40,7 +40,6 @@ const mockStartRegistrationWithEmail = jest.fn<
 >(async () => undefined);
 const mockRegister = jest.fn<
 	(input: {
-		birthDate: string;
 		email: string;
 		grade: string;
 		name: string;
@@ -107,9 +106,6 @@ const mockOnboarding = {
 		grade: "9",
 		name: "Test User",
 		email: "test@example.com",
-		birthYear: "2012",
-		birthMonth: "09",
-		birthDay: "09",
 		password: "sicher123",
 	},
 	hasAnswers: false,
@@ -1039,9 +1035,6 @@ describe("OnboardingScreen", () => {
 		mockOnboarding.answers.state = "Sachsen";
 		mockOnboarding.answers.schoolType = "prefer_not_to_say";
 		mockOnboarding.answers.grade = "9";
-		mockOnboarding.answers.birthYear = "2012";
-		mockOnboarding.answers.birthMonth = "09";
-		mockOnboarding.answers.birthDay = "09";
 		mockOnboarding.answers.email = "test@example.com";
 		mockStackScreens.length = 0;
 	});
@@ -1070,7 +1063,7 @@ describe("OnboardingScreen", () => {
 			}),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText("Danach 14 kurze, bewusste Schritte · etwa 3 Minuten"),
+			screen.getByText("Danach 11 kurze, bewusste Schritte · etwa 2 Minuten"),
 		).toBeOnTheScreen();
 
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
@@ -1124,7 +1117,7 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingStepScreen stepId="name" />);
 
 		expect(screen.getByTestId("onboarding-name-input")).toBeOnTheScreen();
-		expect(screen.getByText("1 von 14")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 11")).toBeOnTheScreen();
 		expect(screen.getByRole("progressbar")).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
@@ -1440,22 +1433,6 @@ describe("OnboardingScreen", () => {
 		} finally {
 			jest.useRealTimers();
 		}
-	});
-
-	test("requires birth year, month, and day as separate explicit choices", async () => {
-		mockOnboarding.answers.birthYear = "";
-		mockOnboarding.answers.birthMonth = "";
-		mockOnboarding.answers.birthDay = "";
-		const screen = await render(<OnboardingStepScreen stepId="birthYear" />);
-
-		expect(screen.getByText("Geburtsjahr auswählen")).toBeOnTheScreen();
-		expect(
-			screen.getByTestId("onboarding-birth-year-picker"),
-		).toBeOnTheScreen();
-
-		expect(
-			screen.getByRole("button", { name: "Weiter" }).props.accessibilityState,
-		).toMatchObject({ disabled: true });
 	});
 
 	test("shows an existing-account error before leaving the email step", async () => {

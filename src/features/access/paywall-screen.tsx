@@ -1,4 +1,3 @@
-import { useUser } from "@clerk/expo";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -37,8 +36,7 @@ const primaryPayerIconStyle = {
 };
 
 export function PaywallScreen() {
-	const { user: clerkUser } = useUser();
-	const { logout } = useAccountActions();
+	const { deleteAccount, logout } = useAccountActions();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const [error, setError] = useState<string | null>(null);
@@ -75,14 +73,13 @@ export function PaywallScreen() {
 		setShowSubscriptionManagement(false);
 	};
 
-	const deleteAccount = async () => {
-		if (!clerkUser || deletionInFlightRef.current) return;
+	const executeAccountDeletion = async () => {
+		if (deletionInFlightRef.current) return;
 		deletionInFlightRef.current = true;
 		setDeleteError(null);
 		setIsDeletingAccount(true);
 		try {
-			await clerkUser.delete();
-			await logout();
+			await deleteAccount();
 			setShowDeleteConfirmation(false);
 		} catch {
 			setDeleteError(
@@ -253,7 +250,7 @@ export function PaywallScreen() {
 				isBusy={isDeletingAccount}
 				errorMessage={deleteError}
 				onClose={() => setShowDeleteConfirmation(false)}
-				onConfirm={() => void deleteAccount()}
+				onConfirm={() => void executeAccountDeletion()}
 			/>
 		</>
 	);
