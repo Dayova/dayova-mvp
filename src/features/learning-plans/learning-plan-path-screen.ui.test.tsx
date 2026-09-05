@@ -32,6 +32,10 @@ jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { clerkId: "user_1" } }),
 }));
 
+jest.mock("~/context/AiConsentContext", () => ({
+	useAiConsent: () => ({ requestAiConsent: async () => true }),
+}));
+
 jest.mock("~/components/ui/screen", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const Native =

@@ -30,6 +30,7 @@ import {
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import {
 	LEARNING_PATH_PHASE_ICON,
@@ -282,6 +283,7 @@ export default function LearningPlanSessionsScreen() {
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuthSession();
+	const { requestAiConsent } = useAiConsent();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const ensureSessionContent = useAction(
 		api.learningPlanAi.ensureSessionContent,
@@ -340,7 +342,10 @@ export default function LearningPlanSessionsScreen() {
 		(sessionId: Id<"learningPlanSessions">) => {
 			if (preparingSessionIdRef.current === sessionId) return;
 			preparingSessionIdRef.current = sessionId;
-			void ensureSessionContent({ sessionId })
+			void requestAiConsent()
+				.then((allowed) =>
+					allowed ? ensureSessionContent({ sessionId }) : undefined,
+				)
 				.catch(() => {
 					// The reactive session status drives the retry presentation.
 				})
@@ -350,7 +355,7 @@ export default function LearningPlanSessionsScreen() {
 					}
 				});
 		},
-		[ensureSessionContent],
+		[ensureSessionContent, requestAiConsent],
 	);
 
 	useEffect(() => {

@@ -11,6 +11,7 @@
 import type * as accountDeletion from "../accountDeletion.js";
 import type * as adaptiveLearningPlan from "../adaptiveLearningPlan.js";
 import type * as adaptiveLearningPlanPolicy from "../adaptiveLearningPlanPolicy.js";
+import type * as aiConsent from "../aiConsent.js";
 import type * as answerEvaluation from "../answerEvaluation.js";
 import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   accountDeletion: typeof accountDeletion;
   adaptiveLearningPlan: typeof adaptiveLearningPlan;
   adaptiveLearningPlanPolicy: typeof adaptiveLearningPlanPolicy;
+  aiConsent: typeof aiConsent;
   answerEvaluation: typeof answerEvaluation;
   dayEntries: typeof dayEntries;
   dayKeyVariants: typeof dayKeyVariants;

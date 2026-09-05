@@ -15,6 +15,7 @@ import {
 	Moon,
 	Palette,
 	Settings,
+	Sparkles,
 	SquareLock,
 	Sun,
 	Timer,
@@ -26,6 +27,7 @@ import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAccess } from "~/context/AccessContext";
+import { useAiConsent } from "~/context/AiConsentContext";
 import { useAccountActions } from "~/context/AuthContext";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { logDiagnosticError } from "~/lib/diagnostics";
@@ -58,6 +60,7 @@ function SettingsRow({
 	busy = false,
 	showDisclosure = true,
 	destructive = false,
+	accessibilityLabel,
 }: {
 	icon: (props: {
 		size?: number;
@@ -71,12 +74,14 @@ function SettingsRow({
 	busy?: boolean;
 	showDisclosure?: boolean;
 	destructive?: boolean;
+	accessibilityLabel?: string;
 }) {
 	const Icon = icon;
 	const { colors } = useDayovaTheme();
 
 	return (
 		<ListRow
+			accessibilityLabel={accessibilityLabel}
 			icon={
 				<Icon
 					size={22}
@@ -175,6 +180,8 @@ export default function SettingsScreen() {
 	const router = useRouter();
 	const { deleteAccount, logout } = useAccountActions();
 	const { access } = useAccess();
+	const { openAiConsentSettings, statusLabel: aiConsentStatusLabel } =
+		useAiConsent();
 	const { preference, setPreference } = useDayovaTheme();
 	const [logoutError, setLogoutError] = useState<string | null>(null);
 	const [linkError, setLinkError] = useState<string | null>(null);
@@ -307,6 +314,20 @@ export default function SettingsScreen() {
 
 						<View className="gap-3">
 							<SettingsSection title="Rechtliches & Hilfe">
+								<SettingsRow
+									icon={Sparkles}
+									label="KI & Datenschutz"
+									onPress={openAiConsentSettings}
+									accessibilityLabel={`KI & Datenschutz, ${aiConsentStatusLabel}`}
+									trailing={
+										<View className="rounded-full bg-muted px-3 py-2">
+											<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+												{aiConsentStatusLabel}
+											</Text>
+										</View>
+									}
+								/>
+								<SettingsDivider />
 								<SettingsRow
 									icon={Globe}
 									label="Datenschutz"

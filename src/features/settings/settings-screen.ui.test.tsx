@@ -8,6 +8,7 @@ const mockPush = jest.fn();
 const mockLogout = jest.fn<() => Promise<void>>(async () => undefined);
 const mockDeleteAccount = jest.fn<() => Promise<void>>(async () => undefined);
 const mockSetPreference = jest.fn(async () => undefined);
+const mockOpenAiConsentSettings = jest.fn();
 const mockOpenExternalUrl = jest.fn<(url?: string) => Promise<boolean>>(
 	async () => true,
 );
@@ -23,6 +24,13 @@ jest.mock("~/context/AuthContext", () => ({
 	useAccountActions: () => ({
 		deleteAccount: mockDeleteAccount,
 		logout: mockLogout,
+	}),
+}));
+
+jest.mock("~/context/AiConsentContext", () => ({
+	useAiConsent: () => ({
+		openAiConsentSettings: mockOpenAiConsentSettings,
+		statusLabel: "Nicht aktiv",
 	}),
 }));
 
@@ -133,6 +141,7 @@ describe("SettingsScreen", () => {
 		mockOpenExternalUrl.mockReset();
 		mockOpenExternalUrl.mockResolvedValue(true);
 		mockAccess = { state: "trial" };
+		mockOpenAiConsentSettings.mockReset();
 	});
 
 	test("groups destinations by learning, app, and account responsibility", async () => {
@@ -147,6 +156,7 @@ describe("SettingsScreen", () => {
 		expect(
 			screen.getByRole("header", { name: "Rechtliches & Hilfe" }),
 		).toBeOnTheScreen();
+		expect(screen.getByText("Nicht aktiv")).toBeOnTheScreen();
 
 		await fireEvent.press(screen.getByRole("button", { name: "Stundenplan" }));
 		expect(mockPush).toHaveBeenCalledWith("/timetable");
@@ -164,6 +174,13 @@ describe("SettingsScreen", () => {
 		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
 			"https://example.com/privacy",
 		);
+
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "KI & Datenschutz, Nicht aktiv",
+			}),
+		);
+		expect(mockOpenAiConsentSettings).toHaveBeenCalledTimes(1);
 	});
 
 	test("exposes each theme preference as an individually selectable radio", async () => {

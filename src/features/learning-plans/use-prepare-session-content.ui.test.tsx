@@ -1,4 +1,4 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { render, waitFor } from "@testing-library/react-native";
 import { View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
@@ -13,9 +13,14 @@ const mockEnsureSessionContent =
 const mockUseAction = jest.fn(
 	(_reference: unknown) => mockEnsureSessionContent,
 );
+const mockRequestAiConsent = jest.fn(async () => true);
 
 jest.mock("convex/react", () => ({
 	useAction: (reference: unknown) => mockUseAction(reference),
+}));
+
+jest.mock("~/context/AiConsentContext", () => ({
+	useAiConsent: () => ({ requestAiConsent: mockRequestAiConsent }),
 }));
 
 jest.mock("#convex/_generated/api", () => ({
@@ -42,6 +47,13 @@ function PreparationProbe({
 }
 
 describe("session content preparation", () => {
+	beforeEach(() => {
+		mockEnsureSessionContent.mockClear();
+		mockUseAction.mockClear();
+		mockRequestAiConsent.mockReset();
+		mockRequestAiConsent.mockResolvedValue(true);
+	});
+
 	test("uses the quality content action once when the session opens", async () => {
 		mockEnsureSessionContent.mockResolvedValue({ itemCount: 4 });
 		const onError = jest.fn();
@@ -50,6 +62,7 @@ describe("session content preparation", () => {
 
 		await waitFor(() => {
 			expect(mockUseAction).toHaveBeenCalledWith("qualityEnsureSessionContent");
+			expect(mockRequestAiConsent).toHaveBeenCalledTimes(1);
 			expect(mockEnsureSessionContent).toHaveBeenCalledWith({
 				sessionId: "session_1",
 			});
@@ -59,5 +72,18 @@ describe("session content preparation", () => {
 
 		await screen.rerender(<PreparationProbe enabled onError={onError} />);
 		expect(mockEnsureSessionContent).toHaveBeenCalledTimes(1);
+	});
+
+	test("does not prepare AI content when consent is declined", async () => {
+		mockRequestAiConsent.mockResolvedValue(false);
+		const onError = jest.fn();
+
+		await render(<PreparationProbe enabled onError={onError} />);
+
+		await waitFor(() =>
+			expect(mockRequestAiConsent).toHaveBeenCalledTimes(1),
+		);
+		expect(mockEnsureSessionContent).not.toHaveBeenCalled();
+		expect(onError).not.toHaveBeenCalled();
 	});
 });

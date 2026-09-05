@@ -267,6 +267,7 @@ function DayovaSheetFrame({
 
 	const canShowCloseButton = showCloseButton && dismissible;
 	const hasHeader = Boolean(title || description || canShowCloseButton);
+	const hasFixedFooter = scrollable && Boolean(footer);
 	const content = (
 		<View
 			accessibilityActions={
@@ -283,7 +284,11 @@ function DayovaSheetFrame({
 				size !== "content" && !scrollable && "flex-1",
 			)}
 			// Safe-area padding is runtime device data and cannot be a static utility.
-			style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}
+			style={{
+				paddingBottom: hasFixedFooter
+					? 12
+					: Math.max(insets.bottom + 20, 32),
+			}}
 		>
 			{!title ? (
 				<View
@@ -338,7 +343,7 @@ function DayovaSheetFrame({
 					{children}
 				</View>
 			) : null}
-			{footer ? (
+			{footer && !hasFixedFooter ? (
 				<View className={children ? "mt-6" : undefined}>{footer}</View>
 			) : null}
 		</View>
@@ -376,16 +381,26 @@ function DayovaSheetFrame({
 			}}
 		>
 			{scrollable ? (
-				<BottomSheetScrollView
-					bounces={false}
-					keyboardShouldPersistTaps="handled"
-					nestedScrollEnabled
-					showsVerticalScrollIndicator={false}
-					// Gorhom scrollables require their fill geometry through `style`.
-					style={{ flex: 1 }}
-				>
-					{content}
-				</BottomSheetScrollView>
+				<View className="flex-1 bg-card">
+					<BottomSheetScrollView
+						bounces={false}
+						keyboardShouldPersistTaps="handled"
+						nestedScrollEnabled
+						showsVerticalScrollIndicator={false}
+						// Gorhom scrollables require their fill geometry through `style`.
+						style={{ flex: 1 }}
+					>
+						{content}
+					</BottomSheetScrollView>
+					{hasFixedFooter ? (
+						<View
+							className="bg-card px-6 pt-4"
+							style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}
+						>
+							{footer}
+						</View>
+					) : null}
+				</View>
 			) : (
 				<BottomSheetView
 					// Gorhom views do not expose NativeWind class props.
