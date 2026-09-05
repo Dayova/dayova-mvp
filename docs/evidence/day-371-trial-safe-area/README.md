@@ -74,27 +74,29 @@ successful backend activation. The development-tools gear is simulator tooling.
 
 ## Screenshots
 
+Previews are limited to 280 px wide. Click any screenshot to view the original.
+
 ### Android: status bar
 
-Before: ![Android status-bar overlap](android-compact-before.png)
-
-After: ![Android status-bar clearance](android-compact-after.png)
+| Before | After |
+| --- | --- |
+| [<img src="android-compact-before.png" alt="Android status-bar overlap" width="280">](android-compact-before.png) | [<img src="android-compact-after.png" alt="Android status-bar clearance" width="280">](android-compact-after.png) |
 
 ### Android: three-button navigation
 
-Before: ![Android footer obscured](android-threebutton-before.png)
-
-After scrolling: ![Android footer reachable](android-threebutton-after.png)
+| Before | After scrolling |
+| --- | --- |
+| [<img src="android-threebutton-before.png" alt="Android footer obscured" width="280">](android-threebutton-before.png) | [<img src="android-threebutton-after.png" alt="Android footer reachable" width="280">](android-threebutton-after.png) |
 
 ### Android: 200% font scale
 
-![Large text footer after scrolling](android-large-text-after.png)
+[<img src="android-large-text-after.png" alt="Large text footer after scrolling" width="280">](android-large-text-after.png)
 
 ### iOS comparison
 
-Before: ![iOS baseline](ios-before.png)
-
-After: ![iOS with explicit safe-area viewport](ios-after.png)
+| Before | After |
+| --- | --- |
+| [<img src="ios-before.png" alt="iOS baseline" width="280">](ios-before.png) | [<img src="ios-after.png" alt="iOS with explicit safe-area viewport" width="280">](ios-after.png) |
 
 ## Regression tests
 
