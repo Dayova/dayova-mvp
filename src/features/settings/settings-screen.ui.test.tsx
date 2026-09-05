@@ -162,7 +162,7 @@ describe("SettingsScreen", () => {
 		expect(mockPush).toHaveBeenCalledWith("/timetable");
 	});
 
-	test("lets trial users subscribe and keeps privacy available in settings", async () => {
+	test("lets trial users subscribe and keeps every legal destination available in settings", async () => {
 		const screen = await render(<SettingsScreen />);
 
 		await fireEvent.press(
@@ -173,6 +173,18 @@ describe("SettingsScreen", () => {
 		await fireEvent.press(screen.getByRole("button", { name: "Datenschutz" }));
 		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
 			"https://example.com/privacy",
+		);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Nutzungsbedingungen" }),
+		);
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			"https://example.com/terms",
+		);
+
+		await fireEvent.press(screen.getByRole("button", { name: "Support" }));
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			"https://example.com/support",
 		);
 
 		await fireEvent.press(
