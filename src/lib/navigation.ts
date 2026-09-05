@@ -35,7 +35,23 @@ export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
 	const navigation = useNavigation();
 	const isHandlingNativeBackRef = useRef(false);
 
-	useAndroidBackHandler(enabled, onBack);
+	const runBackIntent = useCallback(() => {
+		if (isHandlingNativeBackRef.current) return true;
+
+		isHandlingNativeBackRef.current = true;
+		const handled = onBack();
+		if (!handled) {
+			isHandlingNativeBackRef.current = false;
+			return false;
+		}
+
+		requestAnimationFrame(() => {
+			isHandlingNativeBackRef.current = false;
+		});
+		return true;
+	}, [onBack]);
+
+	useAndroidBackHandler(enabled, runBackIntent);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -44,22 +60,19 @@ export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
 			const unsubscribe = navigation.addListener("beforeRemove", (event) => {
 				if (!isBackRemovalAction(event)) return;
 
-				if (isHandlingNativeBackRef.current) {
-					event.preventDefault();
-					return;
-				}
+				// A route removal started by runBackIntent is the intended result of
+				// the custom back control. Let that nested navigation action through.
+				if (isHandlingNativeBackRef.current) return;
 
-				const handled = onBack();
+				const handled = runBackIntent();
 				if (!handled) return;
 
-				isHandlingNativeBackRef.current = true;
 				event.preventDefault();
-				requestAnimationFrame(() => {
-					isHandlingNativeBackRef.current = false;
-				});
 			});
 
 			return unsubscribe;
-		}, [enabled, navigation, onBack]),
+		}, [enabled, navigation, runBackIntent]),
 	);
+
+	return runBackIntent;
 };
