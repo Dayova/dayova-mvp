@@ -21,17 +21,6 @@ type RevenueCatCustomerInfo = {
 	};
 };
 
-type RevenueCatWebPurchaseRedemption = {
-	redemptionLink: string;
-};
-
-type RevenueCatWebPurchaseRedemptionResult =
-	| { result: "SUCCESS"; customerInfo: RevenueCatCustomerInfo }
-	| { result: "ERROR"; error: unknown }
-	| { result: "PURCHASE_BELONGS_TO_OTHER_USER" }
-	| { result: "INVALID_TOKEN" }
-	| { result: "EXPIRED"; obfuscatedEmail: string };
-
 type RevenueCatOffering = {
 	availablePackages: RevenueCatPackage[];
 };
@@ -47,12 +36,6 @@ export type RevenueCatSdkBoundary = {
 		packageToPurchase: RevenueCatPackage,
 	) => Promise<{ customerInfo: RevenueCatCustomerInfo }>;
 	restorePurchases: () => Promise<RevenueCatCustomerInfo>;
-	parseAsWebPurchaseRedemption: (
-		url: string,
-	) => Promise<RevenueCatWebPurchaseRedemption | null>;
-	redeemWebPurchase: (
-		redemption: RevenueCatWebPurchaseRedemption,
-	) => Promise<RevenueCatWebPurchaseRedemptionResult>;
 };
 
 export type DayovaStorePlan = {
@@ -69,13 +52,6 @@ type PurchaseResult =
 	| { status: "purchased" }
 	| { status: "cancelled" }
 	| { status: "notEntitled" };
-
-export type WebPurchaseRedemptionResult =
-	| { status: "redeemed" }
-	| { status: "expired"; obfuscatedEmail: string }
-	| { status: "invalidToken" }
-	| { status: "belongsToOtherUser" }
-	| { status: "error"; error: unknown };
 
 const isDayovaPackage = (
 	packageIdentifier: string,
@@ -174,30 +150,6 @@ export const createRevenueCatClient = ({
 			return hasFullAccess(customerInfo)
 				? { status: "purchased" }
 				: { status: "notEntitled" };
-		},
-		redeemWebPurchase: async (
-			url: string,
-		): Promise<WebPurchaseRedemptionResult> => {
-			await ready;
-			const redemption = await sdk.parseAsWebPurchaseRedemption(url);
-			if (!redemption) return { status: "invalidToken" };
-
-			const result = await sdk.redeemWebPurchase(redemption);
-			switch (result.result) {
-				case "SUCCESS":
-					return { status: "redeemed" };
-				case "EXPIRED":
-					return {
-						status: "expired",
-						obfuscatedEmail: result.obfuscatedEmail,
-					};
-				case "PURCHASE_BELONGS_TO_OTHER_USER":
-					return { status: "belongsToOtherUser" };
-				case "INVALID_TOKEN":
-					return { status: "invalidToken" };
-				case "ERROR":
-					return { status: "error", error: result.error };
-			}
 		},
 	};
 };

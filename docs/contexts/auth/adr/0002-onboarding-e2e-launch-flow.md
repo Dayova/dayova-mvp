@@ -83,10 +83,9 @@ The launch flow is ordered as follows:
 6. one recurring start time;
 7. an exact schedule confirmation showing days, duration, and start–end time;
 8. grade, federal state, and bounded school type;
-9. date of birth as explicit year, month, then day selection;
-10. email with a remote existing-account check at the email boundary;
-11. password, six-digit verification, and account creation;
-12. trial activation and a direct first-exam action from the empty home state.
+9. email with a remote existing-account check at the email boundary;
+10. password, six-digit verification, and account creation;
+11. trial activation and a direct first-exam action from the empty home state.
 
 The following constraints are part of the contract:
 
@@ -98,7 +97,7 @@ The following constraints are part of the contract:
 - Question/profile progress starts after the intro and includes informational
   steps so the visible count matches the remaining forward actions.
 - No screen advances on a timer or animation callback.
-- Grade, state, school type, and every birth-date part require explicit input.
+- Grade, state, and school type require explicit input.
 - A required step's primary action is visibly disabled until the local answer
   is valid. Submit-time validation remains the defensive boundary; it is not
   the first indication that an empty answer is required.
@@ -219,6 +218,15 @@ The following constraints are part of the contract:
   gates in the canonical product record are closed by the decision owner.
 
 The changed event contract uses `onboarding_version: 3`.
+
+## 2026-09-05 Data-Minimization Amendment
+
+The launch client no longer asks for or submits a date of birth. Grade remains
+the age-adjacent school context used by the product, so collecting a precise
+birth date is not necessary for the launch learner job. Existing optional
+birth-date fields remain readable in Clerk and Convex only for compatibility
+with previously installed clients; the current onboarding and profile flows do
+not write them. The profile/account sequence therefore contains 11 steps.
 
 ## Historical Input-Screen Reconciliation
 

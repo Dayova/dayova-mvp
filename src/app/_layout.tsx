@@ -24,6 +24,7 @@ import {
 	useSheetAccessibility,
 } from "~/components/ui/sheet-accessibility";
 import { AccessProvider } from "~/context/AccessContext";
+import { AiConsentProvider } from "~/context/AiConsentContext";
 import { AuthProvider } from "~/context/AuthContext";
 import { OnboardingProvider } from "~/context/OnboardingContext";
 import {
@@ -182,9 +183,11 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 											<OnboardingProvider>
 												<AuthProvider>
 													<AccessProvider>
-														<AnalyticsIdentity />
-														<RevenueCatRedemptionSync />
-														<AppNavigator />
+														<AiConsentProvider>
+															<AnalyticsIdentity />
+															<RevenueCatRedemptionSync />
+															<AppNavigator />
+														</AiConsentProvider>
 													</AccessProvider>
 												</AuthProvider>
 											</OnboardingProvider>

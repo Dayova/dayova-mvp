@@ -36,7 +36,7 @@ describe("Expo app config loading", () => {
 		expect(result.status, result.stderr).toBe(0);
 	});
 
-	it("always registers the RevenueCat redemption scheme for local development builds", () => {
+	it("registers RevenueCat redemption only for Android builds", () => {
 		expect(APP_CONFIG_PATH).toBeDefined();
 		const {
 			REVENUECAT_REDEMPTION_SCHEME: _redemptionScheme,
@@ -61,7 +61,13 @@ describe("Expo app config loading", () => {
 		);
 
 		expect(result.status, result.stderr).toBe(0);
-		const config = JSON.parse(result.stdout) as { scheme?: string | string[] };
-		expect(config.scheme).toEqual(["dayova", "rc-27a39b9faa"]);
+		const config = JSON.parse(result.stdout) as {
+			scheme?: string | string[];
+			android?: { scheme?: string | string[] };
+			ios?: { scheme?: string | string[] };
+		};
+		expect(config.scheme).toBe("dayova");
+		expect(config.ios?.scheme).toBeUndefined();
+		expect(config.android?.scheme).toBe("rc-27a39b9faa");
 	});
 });

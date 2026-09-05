@@ -21,6 +21,7 @@ import { Check, Timer } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { LearningSessionCompletion } from "~/features/learning-plans/learning-session-completion";
 import { getLearningSessionAnalysisDestination } from "~/features/learning-plans/session-analysis-navigation";
@@ -229,6 +230,7 @@ export default function LearningSessionContentScreen() {
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const sessionId = params.sessionId as Id<"learningPlanSessions"> | undefined;
 	const { user } = useAuthSession();
+	const { requestAiConsent } = useAiConsent();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const submitAnswer = useMutation(api.learningSessionContent.submitAnswer);
 	const evaluateWrittenAnswer = useAction(
@@ -448,6 +450,7 @@ export default function LearningSessionContentScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
+			if (!(await requestAiConsent())) return;
 			await prepareSessionContent({ sessionId });
 		} catch (error) {
 			setErrorMessage(
@@ -747,6 +750,13 @@ export default function LearningSessionContentScreen() {
 			const writtenAnswer = submitAsUnknown
 				? fallbackAnswer
 				: answerText.trim();
+			if (
+				currentItem.kind !== "multipleChoice" &&
+				!submitAsUnknown &&
+				!(await requestAiConsent())
+			) {
+				return;
+			}
 			const attempt =
 				currentItem.kind === "multipleChoice"
 					? await submitAnswer({

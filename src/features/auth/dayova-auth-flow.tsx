@@ -39,12 +39,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
-import {
-	BIRTH_MONTH_OPTIONS,
-	getBirthDayValues,
-	getBirthMonthValues,
-	getBirthYearValues,
-} from "~/components/onboarding/birth-date";
 import { IntroLearningPathArtwork } from "~/components/onboarding/intro-learning-path-artwork";
 import {
 	getIntroDotWidth,
@@ -111,6 +105,7 @@ import {
 	getOnboardingStep,
 	getOnboardingStepPath,
 	getOnboardingStepProgress,
+	ONBOARDING_PROFILE_STEPS,
 	type OnboardingProfileStep,
 	type OnboardingStepId,
 } from "~/features/auth/onboarding-route-model";
@@ -1061,7 +1056,8 @@ function IntroStepView({
 							</Text>
 						</Button>
 						<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
-							Danach 14 kurze, bewusste Schritte · etwa 3 Minuten
+							Danach {ONBOARDING_PROFILE_STEPS.length} kurze, bewusste Schritte
+							· etwa 2 Minuten
 						</Text>
 					</View>
 				</ScrollView>
@@ -1151,7 +1147,8 @@ function IntroStepView({
 					<Text>{isLastIntro ? "Meinen Start personalisieren" : "Weiter"}</Text>
 				</Button>
 				<Text className="mt-3 text-center font-poppins text-body-5 text-secondary-text">
-					Danach 14 kurze, bewusste Schritte · etwa 3 Minuten
+					Danach {ONBOARDING_PROFILE_STEPS.length} kurze, bewusste Schritte ·
+					etwa 2 Minuten
 				</Text>
 			</View>
 		</View>
@@ -3338,57 +3335,6 @@ function WheelAnswer({
 				testID="onboarding-school-type-picker"
 				title="Schulart auswählen"
 				onChange={(value) => setAnswer("schoolType", value)}
-			/>
-		);
-	}
-
-	if (step.field === "birthYear") {
-		return (
-			<OnboardingSelect
-				accessibilityLabel="Geburtsjahr auswählen"
-				value={answers.birthYear}
-				options={getBirthYearValues()}
-				testID="onboarding-birth-year-picker"
-				title="Geburtsjahr auswählen"
-				onChange={(value) => {
-					setAnswer("birthYear", value);
-					setAnswer("birthMonth", "");
-					setAnswer("birthDay", "");
-				}}
-			/>
-		);
-	}
-
-	if (step.field === "birthMonth") {
-		return (
-			<OnboardingSelect
-				accessibilityLabel="Geburtsmonat auswählen"
-				value={answers.birthMonth}
-				options={getBirthMonthValues(answers.birthYear)}
-				formatLabel={(month) =>
-					BIRTH_MONTH_OPTIONS.find((option) => option.value === month)?.label ??
-					month
-				}
-				testID="onboarding-birth-month-picker"
-				title="Geburtsmonat auswählen"
-				onChange={(value) => {
-					setAnswer("birthMonth", value);
-					setAnswer("birthDay", "");
-				}}
-			/>
-		);
-	}
-
-	if (step.field === "birthDay") {
-		return (
-			<OnboardingSelect
-				accessibilityLabel="Geburtstag auswählen"
-				value={answers.birthDay}
-				options={getBirthDayValues(answers.birthYear, answers.birthMonth)}
-				formatLabel={(day) => `${Number.parseInt(day, 10)}.`}
-				testID="onboarding-birth-day-picker"
-				title="Geburtstag auswählen"
-				onChange={(value) => setAnswer("birthDay", value)}
 			/>
 		);
 	}

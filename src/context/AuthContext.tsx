@@ -23,8 +23,8 @@ import {
 	createValidationAnalytics,
 	isPostHogConfigured,
 } from "~/lib/analytics";
-import { runWithAuthSettleRetries } from "~/lib/auth-settle-retry";
 import type { OnboardingCompletionStatus } from "~/lib/auth-routing";
+import { runWithAuthSettleRetries } from "~/lib/auth-settle-retry";
 import {
 	getDefinedProfileFields as definedProfileFields,
 	prepareClerkRegistration,
@@ -41,31 +41,9 @@ import {
 import { isSupportedGrade } from "~/lib/grades";
 import { signOutAndResetState } from "~/lib/logout-state";
 import {
-	finalizePendingOnboardingCompletion,
-	getPendingOnboardingSyncTransition,
-	PendingOnboardingSyncError,
-	type PendingOnboardingSyncAnswers,
-	type PendingOnboardingSyncResumeResult,
-	syncPendingOnboardingAnswers,
-} from "~/lib/pending-onboarding-sync";
-import {
-	getOnboardingAccountFingerprint,
-	pendingOnboardingSyncOutbox,
-} from "~/lib/pending-onboarding-sync-secure-store";
-import {
-	finalizeCompletedRegistration,
-	IncompleteRegistrationIdentityError,
-} from "~/lib/registration-verification";
-import {
 	type PasswordChangeInput,
 	changePassword as updateAccountPassword,
 } from "~/lib/password-change";
-import {
-	clearOwnedPostAuthSyncFailure,
-	getOnboardingRecoveryOwnedBoundary,
-	retryPostAuthSyncFailure,
-	type PostAuthSyncFailure,
-} from "~/lib/post-auth-sync-failure";
 import {
 	startPasswordReset as beginPasswordReset,
 	cancelPasswordReset as cancelPasswordResetAttempt,
@@ -80,6 +58,28 @@ import {
 	reverifyPasswordFactor,
 } from "~/lib/password-reverification";
 import {
+	finalizePendingOnboardingCompletion,
+	getPendingOnboardingSyncTransition,
+	type PendingOnboardingSyncAnswers,
+	PendingOnboardingSyncError,
+	type PendingOnboardingSyncResumeResult,
+	syncPendingOnboardingAnswers,
+} from "~/lib/pending-onboarding-sync";
+import {
+	getOnboardingAccountFingerprint,
+	pendingOnboardingSyncOutbox,
+} from "~/lib/pending-onboarding-sync-secure-store";
+import {
+	clearOwnedPostAuthSyncFailure,
+	getOnboardingRecoveryOwnedBoundary,
+	type PostAuthSyncFailure,
+	retryPostAuthSyncFailure,
+} from "~/lib/post-auth-sync-failure";
+import {
+	finalizeCompletedRegistration,
+	IncompleteRegistrationIdentityError,
+} from "~/lib/registration-verification";
+import {
 	isSupportedSchoolType,
 	normalizeLegacySchoolType,
 	type SupportedSchoolType,
@@ -93,7 +93,6 @@ type LoginInput = {
 type UpdateProfileInput = {
 	email: string;
 	name: string;
-	birthDate: string;
 	grade: string;
 	schoolType?: SupportedSchoolType;
 	state: string;
@@ -173,6 +172,7 @@ interface AccountActionsContextType {
 	verifyProfileEmailCode: (code: string) => Promise<void>;
 	changePassword: (input: PasswordChangeInput) => Promise<void>;
 	completeForcedPasswordReset: (password: string) => Promise<void>;
+	deleteAccount: () => Promise<void>;
 	logout: () => Promise<void>;
 }
 
@@ -440,6 +440,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		api.validationAnalytics.markActivity,
 	);
 	const updateConvexProfile = useMutation(api.users.updateProfile);
+	const deleteCurrentUserDataBatch = useMutation(
+		api.accountDeletion.deleteCurrentUserDataBatch,
+	);
 	const { clearAnswers } = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const passwordResetHasRemoteAttemptRef = useRef(false);
@@ -635,7 +638,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			...definedProfileFields({
 				name: pendingProfile?.name ?? user.name,
 				phone: pendingProfile?.phone ?? user.phone,
-				birthDate: pendingProfile?.birthDate ?? user.birthDate,
 				grade: pendingProfile?.grade ?? user.grade,
 				schoolType: pendingProfile?.schoolType ?? user.schoolType,
 				state: pendingProfile?.state ?? user.state,
@@ -1241,7 +1243,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		await updateConvexProfile({
 			email: profile.email,
 			name: profile.name,
-			birthDate: profile.birthDate,
 			grade: profile.grade,
 			schoolType: profile.schoolType,
 			state: profile.state,
@@ -1259,7 +1260,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			const normalizedProfile = {
 				email: input.email.trim().toLowerCase(),
 				name: input.name.trim(),
-				birthDate: input.birthDate.trim(),
 				grade: input.grade.trim(),
 				schoolType: normalizeOptionalSchoolTypeInput(input.schoolType),
 				state: input.state.trim(),
@@ -1273,7 +1273,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			const { firstName, lastName } = splitName(normalizedProfile.name);
 			const unsafeMetadata: Record<string, unknown> = {
 				...(clerkUser.unsafeMetadata ?? {}),
-				birthDate: normalizedProfile.birthDate,
 				grade: normalizedProfile.grade,
 				state: normalizedProfile.state,
 			};
@@ -1329,7 +1328,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				await persistProfileToConvex(normalizedProfile);
 				setPendingProfile({
 					name: normalizedProfile.name,
-					birthDate: normalizedProfile.birthDate,
 					grade: normalizedProfile.grade,
 					schoolType: normalizedProfile.schoolType,
 					state: normalizedProfile.state,
@@ -1362,7 +1360,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				await persistProfileToConvex(pendingProfileEmail.profile);
 				setPendingProfile({
 					name: pendingProfileEmail.profile.name,
-					birthDate: pendingProfileEmail.profile.birthDate,
 					grade: pendingProfileEmail.profile.grade,
 					schoolType: pendingProfileEmail.profile.schoolType,
 					state: pendingProfileEmail.profile.state,
@@ -1618,6 +1615,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		await signOutAndResetState(
 			() => clerk.signOut(),
 			() => {
+				createValidationAnalytics(posthog).identify(null);
 				setPendingVerification(null);
 				setPendingLoginStage(null);
 				setPendingProfile(null);
@@ -1634,6 +1632,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				clearAnswers();
 			},
 		);
+	};
+
+	const deleteAccount = async () => {
+		if (!clerkUser) {
+			throw new Error("Das Konto ist nicht mehr verfügbar.");
+		}
+
+		while (true) {
+			const deletion = await deleteCurrentUserDataBatch({});
+			if (deletion.done) break;
+		}
+
+		try {
+			await clerkUser.delete();
+			await logout();
+		} catch (error) {
+			throw new Error(
+				getClerkErrorMessage(
+					error,
+					"Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.",
+				),
+			);
+		}
 	};
 
 	const isSessionLoading = !clerk.loaded || !isUserLoaded;
@@ -1695,6 +1716,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 							verifyProfileEmailCode,
 							changePassword,
 							completeForcedPasswordReset,
+							deleteAccount,
 							logout,
 						}}
 					>

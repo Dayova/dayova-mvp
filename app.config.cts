@@ -39,7 +39,9 @@ const revenueCatRedemptionScheme = getRevenueCatRedemptionScheme(
 		(APP_VARIANT === "development"
 			? DEVELOPMENT_REVENUECAT_REDEMPTION_SCHEME
 			: undefined),
-	{ required: isReleaseConfig },
+	{
+		required: isReleaseConfig && releasePlatform !== "ios",
+	},
 );
 
 if (isReleaseConfig) {
@@ -71,9 +73,7 @@ const IOS_PRIVACY_PURPOSE_STRINGS = {
 const config: ExpoConfig = {
 	name: "Dayova",
 	slug: "dayova",
-	scheme: revenueCatRedemptionScheme
-		? ["dayova", revenueCatRedemptionScheme]
-		: "dayova",
+	scheme: "dayova",
 	version: APP_VERSION,
 	primaryColor: DAYOVA_PRIMARY,
 	owner: "dayova",
@@ -99,6 +99,7 @@ const config: ExpoConfig = {
 		},
 	},
 	android: {
+		scheme: revenueCatRedemptionScheme ?? undefined,
 		adaptiveIcon: {
 			foregroundImage: DAYOVA_ANDROID_FOREGROUND,
 			backgroundColor: BACKGROUND_COLOR,

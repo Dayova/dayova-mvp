@@ -1,6 +1,5 @@
 import type { OnboardingAnswers } from "~/context/OnboardingContext";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
-import { formatOnboardingBirthDate } from "./birth-date";
 import {
 	getOnboardingLearningTimeValidationError,
 	parseOnboardingDurationMinutes,
@@ -105,11 +104,6 @@ export const getOnboardingRegistrationPayload = (
 	name: answers.name.trim(),
 	email: answers.email.trim().toLowerCase(),
 	password: answers.password,
-	birthDate: formatOnboardingBirthDate({
-		year: answers.birthYear,
-		month: answers.birthMonth,
-		day: answers.birthDay,
-	}),
 	grade: answers.grade,
 	schoolType: answers.schoolType || undefined,
 	state: answers.state,

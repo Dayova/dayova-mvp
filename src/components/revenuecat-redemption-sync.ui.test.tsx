@@ -6,7 +6,11 @@ import {
 	getPendingRevenueCatRedemptionUrl,
 	resetRevenueCatRedemptionForTests,
 } from "~/lib/revenuecat-redemption";
-import { RevenueCatRedemptionSync } from "./revenuecat-redemption-sync";
+const { RevenueCatRedemptionSync } = require(
+	"./revenuecat-redemption-sync.tsx",
+) as {
+	RevenueCatRedemptionSync: () => ReactNode;
+};
 
 const redemptionUrl =
 	"rc-abc123://redeem_web_purchase?redemption_token=secret-token";
@@ -18,7 +22,7 @@ const mockRedeemWebPurchase =
 			{ status: "redeemed" } | { status: "expired"; obfuscatedEmail: string }
 		>
 	>();
-const mockCreateNativeRevenueCatClient = jest.fn(
+const mockCreateNativeRevenueCatRedemptionClient = jest.fn(
 	(_options: { apiKey: string; appUserId: string }) => ({
 		redeemWebPurchase: mockRedeemWebPurchase,
 	}),
@@ -78,11 +82,11 @@ jest.mock("~/lib/diagnostics", () => ({
 	logDiagnosticError: jest.fn(),
 }));
 
-jest.mock("~/lib/revenuecat-client", () => ({
-	createNativeRevenueCatClient: (options: {
+jest.mock("~/lib/revenuecat-redemption-client", () => ({
+	createNativeRevenueCatRedemptionClient: (options: {
 		apiKey: string;
 		appUserId: string;
-	}) => mockCreateNativeRevenueCatClient(options),
+	}) => mockCreateNativeRevenueCatRedemptionClient(options),
 }));
 
 jest.mock("~/lib/runtime-config", () => ({
@@ -103,7 +107,7 @@ describe("RevenueCatRedemptionSync", () => {
 		await waitFor(() =>
 			expect(mockReplace).toHaveBeenCalledWith("/pro-welcome"),
 		);
-		expect(mockCreateNativeRevenueCatClient).toHaveBeenCalledWith({
+		expect(mockCreateNativeRevenueCatRedemptionClient).toHaveBeenCalledWith({
 			apiKey: expect.any(String),
 			appUserId: "clerk_user_1",
 		});
@@ -116,7 +120,7 @@ describe("RevenueCatRedemptionSync", () => {
 		const screen = await render(<RevenueCatRedemptionSync />);
 
 		expect(screen.queryByTestId("revenuecat-redemption-overlay")).toBeNull();
-		expect(mockCreateNativeRevenueCatClient).not.toHaveBeenCalled();
+		expect(mockCreateNativeRevenueCatRedemptionClient).not.toHaveBeenCalled();
 		expect(getPendingRevenueCatRedemptionUrl()).toBe(redemptionUrl);
 
 		mockUser = { clerkId: "clerk_user_1" };

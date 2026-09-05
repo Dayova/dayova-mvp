@@ -19,9 +19,6 @@ export type OnboardingAnswers = {
 	grade: string;
 	name: string;
 	email: string;
-	birthYear: string;
-	birthMonth: string;
-	birthDay: string;
 	password: string;
 };
 
@@ -36,9 +33,6 @@ const emptyAnswers: OnboardingAnswers = {
 	grade: "",
 	name: "",
 	email: "",
-	birthYear: "",
-	birthMonth: "",
-	birthDay: "",
 	password: "",
 };
 

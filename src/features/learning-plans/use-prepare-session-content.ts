@@ -2,6 +2,7 @@ import { useAction } from "convex/react";
 import { useEffect, useEffectEvent, useRef } from "react";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { useAiConsent } from "~/context/AiConsentContext";
 
 export function usePrepareSessionContent({
 	enabled,
@@ -15,6 +16,7 @@ export function usePrepareSessionContent({
 	const ensureSessionContent = useAction(
 		api.learningPlanAi.ensureSessionContent,
 	);
+	const { requestAiConsent } = useAiConsent();
 	const preparingSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
 	const preparedSessionIdRef = useRef<Id<"learningPlanSessions"> | null>(null);
 	const reportError = useEffectEvent(onError);
@@ -30,9 +32,14 @@ export function usePrepareSessionContent({
 		}
 
 		preparingSessionIdRef.current = sessionId;
-		void ensureSessionContent({ sessionId })
-			.then(() => {
-				preparedSessionIdRef.current = sessionId;
+		void requestAiConsent()
+			.then(async (allowed) => {
+				if (!allowed) return false;
+				await ensureSessionContent({ sessionId });
+				return true;
+			})
+			.then((didPrepare) => {
+				if (didPrepare) preparedSessionIdRef.current = sessionId;
 			})
 			.catch((error: unknown) => {
 				reportError(error);
@@ -42,5 +49,5 @@ export function usePrepareSessionContent({
 					preparingSessionIdRef.current = null;
 				}
 			});
-	}, [enabled, ensureSessionContent, sessionId]);
+	}, [enabled, ensureSessionContent, requestAiConsent, sessionId]);
 }

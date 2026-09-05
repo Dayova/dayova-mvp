@@ -8,6 +8,7 @@ import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
+import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
@@ -41,6 +42,7 @@ export default function LearningPlanGeneratingScreen() {
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuthSession();
+	const { requestAiConsent } = useAiConsent();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generatePlan = useAction(api.learningPlanAi.generatePlan);
 	const retryFailedSessionContent = useAction(
@@ -159,6 +161,11 @@ export default function LearningPlanGeneratingScreen() {
 			setIsBusy(true);
 			setErrorMessage(null);
 			void (async () => {
+				if (!(await requestAiConsent())) {
+					didStartRef.current = false;
+					router.replace(planPath(planId, "scope"));
+					return;
+				}
 				if (!snapshot.plan.targetStudyMinutes && automaticPreparation) {
 					await setTargetStudyMinutes({
 						learningPlanId: planId,
@@ -192,6 +199,7 @@ export default function LearningPlanGeneratingScreen() {
 		capture,
 		generatePlan,
 		planId,
+		requestAiConsent,
 		retryAttempt,
 		router,
 		setTargetStudyMinutes,
@@ -205,6 +213,7 @@ export default function LearningPlanGeneratingScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
+			if (!(await requestAiConsent())) return;
 			if (
 				snapshot?.plan.contentGeneration &&
 				snapshot.plan.contentGeneration.stage !== "ready" &&
