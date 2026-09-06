@@ -81,6 +81,30 @@
   existing optical-centering checks pass. Native PowerPoint limitation below
   still applies. CodeRabbit reviewed this follow-up with zero findings.
 
+## Native learning-path cover — 6 September 2026
+
+- Replaced the invented cover staircase with the exact native artwork crop
+  `(430, 375, 950, 1085)` from the settled Android light capture dated 30 August
+  2026 (`LearningPathVisual`, source commit `c576928`). The source resolution
+  is 1080 × 2424; the 520 × 710 crop is displayed proportionally at 352 ×
+  480.615 pixels. It is recorded product evidence, not a fresh device capture.
+- The cover uses the same pale `#F1F7FB` surface as the capture. No retouching,
+  color substitution, icon replacement or invented state was applied.
+- Removed all 18 old number/connector/circle/caption elements in the existing
+  Canva master and changed its panel to the same pale color. Inserted and
+  committed the original crop as a replaceable image.
+- Reference PDF cover inspected. Pixel comparison verifies the crop against
+  its native source, and PPTX embeds that exact image. All eight remaining
+  optical label checks and six dark bullet-label checks pass; the four removed
+  cover labels are no longer part of the regression. Office packages pass.
+- Live Canva cover inspected after saving; its speaker notes now record the
+  source, crop and refresh guidance. Temporary editing locks were removed.
+- PDF pages 2–20 render pixel-identically to the previous committed version;
+  PPTX slide XML for pages 2–20 is unchanged. Workbook package contents differ
+  only in build metadata; the previous exact workbook bytes were retained.
+- CodeRabbit reported two minor findings (duplicate heading and explicit image
+  dimension comparison); both were corrected before final validation.
+
 ## Boundaries
 
 - Native PowerPoint desktop rendering and save/reopen remain blocked. The

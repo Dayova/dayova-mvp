@@ -12,6 +12,13 @@ closing slides and appears in the Start worksheet header. Reuse the unchanged
 transparent PNG in `dist/Assets/dayova-logo.png`; preserve its proportions and
 padding. Interior slides retain the quieter wordmark treatment.
 
+The cover now uses an exact crop of the recorded native `LearningPathVisual`
+artwork (30 August 2026, source commit `c576928`). It replaces the invented
+numbered stair graphic. The image is replaceable as one asset; its internal
+nodes are deliberately not reconstructed as editable presentation shapes.
+`dist/Assets/dayova-learning-path.png` preserves the source pixels within crop
+box `(430, 375, 950, 1085)`. Refresh from real product evidence after a redesign.
+
 - [Canva master](https://www.canva.com/d/ZR9ywq-VkjwOv5x)
 - [Google Sheets master](https://docs.google.com/spreadsheets/d/1ClE8G9dB5NRH9ctSDZWapyqK85FrSm8Fri0-BQM4ues/edit)
 - [Canonical design decision in Notion](https://app.notion.com/p/3d32e87228bf81ec8b1ae2c3e2c3c052)
@@ -71,6 +78,7 @@ screenshot from a real current app rendering before public use.
 | `dist/Dayova-Canva.html` | Self-contained 20-page editable Canva import source |
 | `dist/Dayova-Reference.pdf` | Vector visual reference with Poppins preserved |
 | `dist/Dayova-Overview.png` | Contact sheet of all layouts |
+| `dist/Dayova-Cover.png` | Current cover preview |
 | `dist/Fonts/` | Original fonts and SIL Open Font License |
 | `dist/brand-tokens.json` | Versioned communication tokens |
 | `QA.md` | Exact checks and remaining verification limitations |
@@ -95,7 +103,8 @@ Implementation-critical differences are:
 - Cyan uses dark text. Communication-only secondary text is `#5F6B7C`;
   the app's original `#697586` is retained as `appMuted` for provenance.
 - Native editable Office elements and simple Canva geometry are preferred
-  over rasterized slides. The abstract route is not a cloned app component.
+  over rasterized slides. Product artwork uses recorded native pixels; the
+  cover's former abstract route has been removed.
 - No app tokens or flows were changed. No platform is automatically synchronized.
 
 ## Rebuild
@@ -108,7 +117,8 @@ python brand/templates/build.py
 python brand/templates/check_layout.py
 ```
 
-The builder reads existing repository fonts and one recorded app screenshot.
+The builder reads existing repository fonts, the original logo and two recorded
+app screenshots (daily guidance and the shared learning path).
 It requires no API credentials, makes no network calls, and writes only under
 `brand/templates/dist`. The distributed PDF is rendered from the shared layout
 model; it is not a PowerPoint-produced PDF and does not prove PowerPoint's

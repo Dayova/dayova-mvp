@@ -19,8 +19,7 @@ if not __debug__:
 doc=pymupdf.open(sys.argv[1] if len(sys.argv)>1 else OUT/'Dayova-Reference.pdf')
 assert len(doc)==20
 checks=[]
-regions=[(1,x,y,70,70,'FFFFFF' if i==0 else '1A1A1A') for i,(x,y) in enumerate([(889,477),(1070,381),(906,268),(1070,181)])]
-regions += [(8,56+i*300,337,64,64,'1A1A1A') for i in range(4)]
+regions=[(8,56+i*300,337,64,64,'1A1A1A') for i in range(4)]
 regions += [(16,152+i*400,314,176,176,'5F6B7C') for i in range(3)]
 regions += [(18,114,512,314,64,'FFFFFF')]
 for page,x,y,w,h,color in regions:
@@ -61,6 +60,12 @@ for filename in ['Dayova-Presentation.pptx','Dayova-Presentation.potx','Dayova-W
             if n.endswith('.xml'):etree.fromstring(z.read(n))
 prs=Presentation(OUT/'Dayova-Presentation.pptx')
 assert len(prs.slides)==20
+with Image.open(OUT.parents[2]/'docs/evidence/day-292-onboarding/android-light-intro-learning-path-settled.png') as capture:
+    expected=capture.crop((430,375,950,1085)).convert('RGBA')
+with Image.open(OUT/'Assets/dayova-learning-path.png') as artwork:
+    assert artwork.size == expected.size, 'Native path dimensions changed'
+    assert artwork.convert('RGBA').tobytes()==expected.tobytes(), 'Native path pixels changed'
+assert any(s.shape_type==13 and s.image.blob==(OUT/'Assets/dayova-learning-path.png').read_bytes() for s in prs.slides[0].shapes)
 for slide in prs.slides:
     assert slide.notes_slide.notes_text_frame.text.strip()
     for sh in slide.shapes:

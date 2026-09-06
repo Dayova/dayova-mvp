@@ -29,6 +29,11 @@ OUT = Path(__file__).resolve().parent / 'dist'
 OUT.mkdir(exist_ok=True)
 (OUT/'Assets').mkdir(exist_ok=True)
 (OUT/'Assets/dayova-logo.png').write_bytes((ROOT/'assets/dayova-logo.png').read_bytes())
+# Exact excerpt from recorded native LearningPathVisual artwork; no redrawing.
+PATH_CAPTURE=ROOT/'docs/evidence/day-292-onboarding/android-light-intro-learning-path-settled.png'
+PATH_CROP=(430,375,950,1085)
+with Image.open(PATH_CAPTURE) as capture:
+    capture.crop(PATH_CROP).save(OUT/'Assets/dayova-learning-path.png')
 C = dict(bg='F6F6F4', ink='1A1A1A', muted='5F6B7C', appMuted='697586', cyan='00BAFF', strong='00A0E6', ice='F1F7FB', white='FFFFFF', border='DCE6EE', purple='5856D6', lavender='EEECFF', green='34C759', palegreen='EAFFF1', orange='FF9500', paleorange='FFECD6', dark='212325')
 W,H=1280,720
 pages=[]
@@ -68,20 +73,12 @@ def card(p,x,y,w,h,num,title,body,color='white'):
     rect(p,x,y,w,h,color,24);text(p,num,x+28,y+24,w-56,52,32,'ink',True)
     text(p,title,x+28,y+100,w-56,70,25,'ink',True);text(p,body,x+28,y+185,w-56,h-195,19,'muted')
 
-p=page('Titel',brand_logo=True,note='Titel durch maximal 7 Wörter ersetzen. Untertitel: ein Satz. Absender, Anlass und Datum ergänzen. Die abstrakte Route ist ein Kommunikationsmotiv, keine nachgebaute App-Oberfläche. Originales Dayova-Bildzeichen unverzerrt mit Wortmarke verwenden.')
-rect(p,816,112,408,524,'cyan',32)
+p=page('Titel',brand_logo=True,note='Titel durch maximal 7 Wörter ersetzen. Untertitel: ein Satz. Absender, Anlass und Datum ergänzen. Lernpfad: unveränderter Ausschnitt der nativen Android-Aufnahme android-light-intro-learning-path-settled.png vom 30.08.2026, LearningPathVisual, Quellcommit c576928. Erledigt blau; aktueller Schritt grau mit Auswahlring; weitere Vorschau grau. Keine frisch aufgenommene App-Ansicht. Bei Änderungen am Produkt neu exportieren, nicht nachzeichnen. Originales Dayova-Bildzeichen unverzerrt mit Wortmarke verwenden.')
+rect(p,816,112,408,524,'ice',32)
+p['elements'].append(dict(kind='image',path=str(OUT/'Assets/dayova-learning-path.png'),x=844,y=129,w=352,h=480.6153846154,alt='Dayova Lernpfad: erledigter Schritt, ausgewählter nächster Schritt und adaptive Vorschau. Nativer Bildausschnitt vom 30.08.2026.'))
 text(p,'Einfach\nloslernen.',56,181,735,195,76,'ink',True)
 text(p,'Der Plan steht schon.',60,412,700,58,34,'ink',True)
 text(p,'[Anlass / Präsentation]\n[Name] · [Datum]',60,537,660,70,20,'muted')
-route=[(889,477),(1070,381),(906,268),(1070,181)]
-for (x1,y1),(x2,y2) in zip(route,route[1:]):
-    mid=(y1+y2)/2+35
-    rect(p,x1+33,mid,4,y1+35-mid,'ink',2)
-    rect(p,min(x1,x2)+35,mid-2,abs(x2-x1),4,'ink',2)
-    rect(p,x2+33,y2+35,4,mid-y2-35,'ink',2)
-for i,(x,y) in enumerate(route):
-    circle(p,x,y,70,'ink' if i==0 else 'white');centered_text(p,f'{i+1:02}',x,y,70,70,25,'white' if i==0 else 'ink')
-text(p,'SCHRITT FÜR SCHRITT',853,573,330,28,14,'ink',True)
 
 p=page('Anleitung','Eine Vorlage. Viele Möglichkeiten.','Kopieren, Inhalte ersetzen, loslegen.',note='Diese Hilfsfolie vor dem Präsentieren entfernen. Schrift Poppins installieren. Alle Text- und Formelemente sind bearbeitbar. PowerPoint: Folie duplizieren; Canva: Seite duplizieren. Zahlen sind fiktiv.')
 for x,n,t,b in [(56,'01','Layout wählen','Wähle die Folie passend zur Aussage. Eine Kernbotschaft pro Seite.'),(456,'02','Inhalte einsetzen','Ersetze eckige Klammern. Prüfe Quellen, Zahlen und Bildrechte.'),(856,'03','Kurz prüfen','Lies in Präsentationsgröße. Prüfe Umbrüche und exportiere ein PDF.')]:card(p,x,310,368,305,n,t,b)
@@ -375,4 +372,5 @@ for i,pg in enumerate(doc):
 sheet=Image.new('RGB',(512*4,288*5),(220,220,220))
 for i,im in enumerate(thumbs):sheet.paste(im,((i%4)*512,(i//4)*288))
 sheet.save(OUT/'Dayova-Overview.png')
+doc[0].get_pixmap().save(OUT/'Dayova-Cover.png')
 print(json.dumps({'slides':len(pages),'sheets':wb.sheetnames,'output':str(OUT)},indent=2))

@@ -3,30 +3,6 @@
   "officePackages": 3,
   "opticalLabels": [
     {
-      "page": 1,
-      "x": 889,
-      "verticalOffsetCanvasPx": 0.167,
-      "horizontalOffsetCanvasPx": -0.5
-    },
-    {
-      "page": 1,
-      "x": 1070,
-      "verticalOffsetCanvasPx": 0.0,
-      "horizontalOffsetCanvasPx": 0.167
-    },
-    {
-      "page": 1,
-      "x": 906,
-      "verticalOffsetCanvasPx": 0.0,
-      "horizontalOffsetCanvasPx": -0.167
-    },
-    {
-      "page": 1,
-      "x": 1070,
-      "verticalOffsetCanvasPx": 0.167,
-      "horizontalOffsetCanvasPx": 0.0
-    },
-    {
       "page": 8,
       "x": 56,
       "verticalOffsetCanvasPx": 0.167,
