@@ -1,0 +1,79 @@
+{
+  "pdfPages": 20,
+  "officePackages": 3,
+  "opticalLabels": [
+    {
+      "page": 1,
+      "x": 889,
+      "verticalOffsetCanvasPx": 0.167,
+      "horizontalOffsetCanvasPx": -0.5
+    },
+    {
+      "page": 1,
+      "x": 1070,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": 0.167
+    },
+    {
+      "page": 1,
+      "x": 906,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": -0.167
+    },
+    {
+      "page": 1,
+      "x": 1070,
+      "verticalOffsetCanvasPx": 0.167,
+      "horizontalOffsetCanvasPx": 0.0
+    },
+    {
+      "page": 8,
+      "x": 56,
+      "verticalOffsetCanvasPx": 0.167,
+      "horizontalOffsetCanvasPx": -0.667
+    },
+    {
+      "page": 8,
+      "x": 356,
+      "verticalOffsetCanvasPx": -0.167,
+      "horizontalOffsetCanvasPx": 0.167
+    },
+    {
+      "page": 8,
+      "x": 656,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": -0.167
+    },
+    {
+      "page": 8,
+      "x": 956,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": 0.0
+    },
+    {
+      "page": 16,
+      "x": 152,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": 0.167
+    },
+    {
+      "page": 16,
+      "x": 552,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": 0.167
+    },
+    {
+      "page": 16,
+      "x": 952,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": 0.167
+    },
+    {
+      "page": 18,
+      "x": 114,
+      "verticalOffsetCanvasPx": 0.0,
+      "horizontalOffsetCanvasPx": -0.167
+    }
+  ],
+  "nativePowerPointRender": "blocked by window ownership error; not covered by these tests"
+}

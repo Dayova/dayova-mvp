@@ -1,5 +1,38 @@
 # Validation — 6 September 2026
 
+## Second visual audit and corrections
+
+- Reviewed all 20 reference-PDF pages individually at 1280 × 720, including
+  the cover, process, initial placeholders, tables, chart, dark layouts and
+  footer text. Corrected optical centering on pages 1, 8, 16 and 18; table
+  vertical alignment on page 13; process connector alignment; and missing
+  arrow glyphs on page 19. Normal table text shares one baseline per row.
+- `python brand/templates/check_layout.py` measures visible rendered ink at
+  3× resolution and normalizes offsets to the 1280 × 720 source canvas.
+  It fails against the original committed PDF: process labels were roughly
+  8 canvas pixels too high. The corrected twelve circle/button labels have
+  at most 0.167 canvas pixels vertical and 0.667 horizontal displacement.
+  `dist/layout-check.json` contains the measured values. Assertions cannot
+  silently be disabled: the checker refuses Python's `-O` mode.
+- Canva: saved 28 position corrections on pages 1/8/13/16/18 and replaced
+  missing arrow separators on page 19. The existing master ID is retained.
+  Individual page review additionally found collapsed blank paragraphs on
+  pages 6/10/12/17. Restored six body blocks using nonbreaking-space blank
+  lines and included that import fix in the HTML source. All editing
+  transactions were committed; previews were displayed before saving.
+- Google Sheets: visually inspected all five tabs. Aligned dashboard values
+  with their labels and centered narrow minutes/completion columns. Exported
+  before and after the formatting edits: every populated cell's data/formula
+  is unchanged across all five tabs. No cached formula errors. Current values
+  remain 6 / 50% / 160 minutes and €210 / €205 / €5. Verified formatting at
+  both first and last supported input rows in the fresh native export.
+- Revalidated the editable PPTX/POTX/XLSX packages, XML, all slide bounds,
+  notes, and native middle anchors. The numeric label correction is retained
+  in the PowerPoint source, not just in the PDF preview.
+- CodeRabbit reviewed this follow-up. Addressed its validation-mode and
+  measurement-unit findings by refusing `-O` and explicitly naming offsets
+  in source-canvas pixels. The follow-up review returned zero findings.
+
 ## Completed
 
 - Parsed all PPTX/POTX/XLSX XML parts and checked ZIP integrity.
@@ -31,9 +64,13 @@
 
 ## Boundaries
 
-- Native PowerPoint desktop rendering and save/reopen were not exercised:
-  native-app computer control was unavailable in this session. Office package
-  checks and the separate reference PDF do not substitute for that test.
+- Native PowerPoint desktop rendering and save/reopen remain blocked. The
+  supported Windows helper launched PowerPoint but repeatedly rejected its
+  own returned window with `window id ... no longer belongs to
+  Microsoft.Office.POWERPNT.EXE.15; current owner is
+  Microsoft.Office.POWERPNT.EXE.15`. Retrying fresh window selection did not
+  resolve it. Office package checks and the separate reference PDF do not
+  substitute for that test. Native rendering is therefore **not certified**.
   Install the bundled Poppins fonts and inspect line wrapping before delivery.
 - Canva is an editable duplicable master, not an organizational Brand Template.
   Chart bars and table cells are editable shapes/text, not linked data objects.

@@ -17,7 +17,8 @@ from openpyxl.workbook.properties import CalcProperties
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from PIL import Image
+from PIL import Image, ImageFont
+from functools import lru_cache
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).resolve().parent / 'dist'
@@ -38,6 +39,18 @@ def page(label, title=None, subtitle=None, dark=False, note=''):
     return p
 def text(p,s,x,y,w,h,size=22,color='ink',bold=False,align='left'):
     p['elements'].append(dict(kind='text',text=s,x=x,y=y,w=w,h=h,size=size,color=C.get(color,color),bold=bold,align=align))
+
+@lru_cache
+def ink_bounds(s, bold):
+    """Visible glyph bounds relative to the baseline, in em units."""
+    font=ImageFont.truetype(str(ROOT/'assets/fonts'/('Poppins-SemiBold.ttf' if bold else 'Poppins-Regular.ttf')),1000)
+    left,top,right,bottom=font.getbbox(s,anchor='ls')
+    return top/1000,bottom/1000
+
+def centered_text(p,s,x,y,w,h,size=22,color='ink',bold=True,align='center'):
+    """Center visible ink, not the font's asymmetric ascender/descender box."""
+    text(p,s,x,y,w,h,size,color,bold,align)
+    p['elements'][-1]['optical_center']=True
 def rect(p,x,y,w,h,color='white',radius=0):
     p['elements'].append(dict(kind='rect',x=x,y=y,w=w,h=h,color=C.get(color,color),radius=radius))
 def circle(p,x,y,d,color='cyan'):
@@ -58,7 +71,7 @@ for (x1,y1),(x2,y2) in zip(route,route[1:]):
     rect(p,min(x1,x2)+35,mid-2,abs(x2-x1),4,'ink',2)
     rect(p,x2+33,y2+35,4,mid-y2-35,'ink',2)
 for i,(x,y) in enumerate(route):
-    circle(p,x,y,70,'ink' if i==0 else 'white');text(p,f'{i+1:02}',x,y+16,70,40,25,'white' if i==0 else 'ink',True,'center')
+    circle(p,x,y,70,'ink' if i==0 else 'white');centered_text(p,f'{i+1:02}',x,y,70,70,25,'white' if i==0 else 'ink')
 text(p,'SCHRITT FÜR SCHRITT',853,573,330,28,14,'ink',True)
 
 p=page('Anleitung','Eine Vorlage. Viele Möglichkeiten.','Kopieren, Inhalte ersetzen, loslegen.',note='Diese Hilfsfolie vor dem Präsentieren entfernen. Schrift Poppins installieren. Alle Text- und Formelemente sind bearbeitbar. PowerPoint: Folie duplizieren; Canva: Seite duplizieren. Zahlen sind fiktiv.')
@@ -85,8 +98,8 @@ for x,n,t,b,col in [(56,'01','Prüfung','Termin, Themen und verfügbare Zeit geb
 
 p=page('Prozess','Vom Stoff zum Lernschritt.','Ein Ablauf, den man auf einen Blick versteht.',note='Prozessgrafik als bearbeitbare Formen. Kein Screenshot und keine Behauptung über eine konkrete App-Ansicht.')
 for i,(t,b) in enumerate([('Eintragen','Prüfung, Themen\nund freie Zeit'),('Plan ansehen','Die nächsten\nLerntage im Blick'),('Starten','Ein klarer Fokus\nfür heute'),('Weiterlernen','Antworten geben\ndie Richtung vor')]):
-    x=56+i*300;circle(p,x,337,64);text(p,str(i+1),x,348,64,44,28,'ink',True,'center')
-    if i<3:rect(p,x+85,366,197,3,'border')
+    x=56+i*300;circle(p,x,337,64);centered_text(p,str(i+1),x,337,64,64,28)
+    if i<3:rect(p,x+84,367.5,196,3,'border')
     text(p,t,x,433,268,58,26,'ink',True);text(p,b,x,511,264,90,21,'muted')
 
 p=page('Produkteinblick','Ein klarer Fokus\nfür heute.',note='Referenz: Repository docs/evidence/day-292-onboarding/android-light-intro-daily-guidance-shared.png. Echter aufgezeichneter App-Zustand, nicht frisch live aufgenommen. Vor externer Nutzung auf Aktualität prüfen. Bild mit Quelle ersetzen; Seitenverhältnis beibehalten.')
@@ -120,19 +133,19 @@ text(p,'“',50,97,180,180,140,'cyan',True);text(p,'[Ein kurzer Gedanke,\nder in
 
 p=page('Menschen','Die Menschen hinter dem nächsten Schritt.','[Team / Ansprechpartner]',note='Personen sind Platzhalter. Freigegebene Fotos ersetzen die Initialen. Keine erfundenen Namen oder Rollen.')
 for x in [56,456,856]:
-    circle(p,x+95,314,176,'ice');text(p,'[AB]',x+95,368,176,70,40,'muted',True,'center');text(p,'[Name]',x+25,518,318,49,29,'ink',True,'center');text(p,'[Rolle / Schwerpunkt]',x+12,583,344,40,18,'muted',False,'center')
+    circle(p,x+96,314,176,'ice');centered_text(p,'[AB]',x+96,314,176,176,40,'muted');text(p,'[Name]',x+25,518,318,49,29,'ink',True,'center');text(p,'[Rolle / Schwerpunkt]',x+12,583,344,40,18,'muted',False,'center')
 
 p=page('Entscheidung','Die Optionen im Überblick.','[Welche Entscheidung steht an?]',note='Kriterien parallel halten. Empfohlene Option mit Begründung hervorheben. Platzhalter ersetzen; keine Preisangaben ohne aktuelle Quelle.')
 for x,t,col in [(56,'Option A','white'),(652,'Option B','ice')]:
     rect(p,x,313,572,310,col,28);text(p,t,x+30,338,510,50,30,'ink',True);text(p,'[Nutzen]\n\n[Aufwand / Voraussetzung]\n\n[Wichtigste Einschränkung]',x+30,417,510,195,21,'muted')
 
 p=page('Abschluss',note='Abschluss: eine konkrete Handlung, Person und Termin. Kontakt / Link vor Veröffentlichung prüfen.')
-rect(p,56,126,1168,500,'cyan',32);text(p,'Was ist unser\nnächster Schritt?',96,166,1080,190,64,'ink',True);text(p,'[Konkrete Handlung]  ·  [Name]  ·  [Termin]',99,401,1050,65,25,'ink');rect(p,99,512,344,64,'ink',32);text(p,'[Aktion benennen]',114,529,314,45,22,'white',True,'center');text(p,'dayova.com',913,546,261,36,19,'ink',False,'right')
+rect(p,56,126,1168,500,'cyan',32);text(p,'Was ist unser\nnächster Schritt?',96,166,1080,190,64,'ink',True);text(p,'[Konkrete Handlung]  ·  [Name]  ·  [Termin]',99,401,1050,65,25,'ink');rect(p,99,512,344,64,'ink',32);centered_text(p,'[Aktion benennen]',114,512,314,64,22,'white');text(p,'dayova.com',913,546,261,36,19,'ink',False,'right')
 
 p=page('Markenbausteine','Dayova, konsistent eingesetzt.','Poppins · klare Hierarchie · warmes Weiß · Cyan als Akzent',note='Hilfsfolie vor dem Präsentieren entfernen. Primärfarbe #00BAFF mit #1A1A1A Text. Poppins Regular für Fließtext; SemiBold für Überschriften. Kleine farbige Texte vermeiden. Diese Kommunikationsskala 64/44/28/20 px ändert keine App-Tokens.')
 for i,(label,col) in enumerate([('Cyan','cyan'),('Text','ink'),('Fläche','white'),('Hintergrund','bg'),('Theorie','purple')]):
     x=56+i*236;rect(p,x,324,220,119,col,20);text(p,label,x,461,220,35,19,'ink',True);text(p,'#'+C[col],x,505,220,32,17,'muted')
-text(p,'64  /  44  /  28  /  20',56,573,620,60,32,'ink',True);text(p,'Titel → Aussage → Abschnitt → Text',726,581,498,60,20,'muted')
+text(p,'64  /  44  /  28  /  20',56,573,620,60,32,'ink',True);text(p,'Titel / Aussage / Abschnitt / Text',726,581,498,60,20,'muted')
 
 p=page('Dunkle Inhaltsfolie','Fokus auf das Wesentliche.','[Eine klare Aussage für den dunklen Modus]',dark=True,note='Dunkle Inhaltsvariante. Weiß auf #212325; Cyan nur als Akzent. Keine Übertragung auf die App-Themesteuerung.')
 for i,(t,b) in enumerate([('[Gedanke 1]','[Kurze Erläuterung]'),('[Gedanke 2]','[Kurze Erläuterung]'),('[Gedanke 3]','[Kurze Erläuterung]')]):
@@ -145,9 +158,18 @@ def box(s,e):return tuple(Inches(e[k]/96) for k in ['x','y','w','h'])
 def ppt_text(s,e):
     sh=s.shapes.add_textbox(*box(s,e));tf=sh.text_frame;tf.clear();tf.word_wrap=True
     tf.margin_left=tf.margin_right=tf.margin_top=tf.margin_bottom=0
-    from pptx.enum.text import PP_ALIGN
+    from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
     for i,line in enumerate(e['text'].split('\n')):
         p=tf.paragraphs[0] if i==0 else tf.add_paragraph();p.text=line;p.font.name='Poppins SemiBold' if e['bold'] else 'Poppins';p.font.size=Pt(e['size']*.75);p.font.color.rgb=rgb(e['color']);p.font.bold=False;p.space_before=Pt(0);p.space_after=Pt(0);p.line_spacing=1.25;p.alignment={'left':PP_ALIGN.LEFT,'right':PP_ALIGN.RIGHT,'center':PP_ALIGN.CENTER}[e['align']]
+    if e.get('optical_center'):
+        tf.vertical_anchor=MSO_ANCHOR.MIDDLE
+        # Poppins ascent/descent are 1.05/-0.35 em. Compensate its
+        # typographic midpoint to center the actual label's visible ink.
+        top,bottom=ink_bounds(e['text'],e['bold'])
+        shift=(-.35-(top+bottom)/2)*e['size']
+        tf.margin_top=Inches(max(0,2*shift)/96)
+        tf.margin_bottom=Inches(max(0,-2*shift)/96)
+        p.line_spacing=1.0
     return sh
 for pg in pages:
     s=prs.slides.add_slide(prs.slide_layouts[6]);s.background.fill.solid();s.background.fill.fore_color.rgb=rgb(pg['bg']);s.notes_slide.notes_text_frame.text=pg['note']
@@ -166,7 +188,8 @@ for pg in pages:
             tb=s.shapes.add_table(len(e['rows']),4,*box(s,e)).table
             for r,row in enumerate(e['rows']):
                 for c,value in enumerate(row):
-                    cell=tb.cell(r,c);cell.text=value;cell.fill.solid();cell.fill.fore_color.rgb=rgb(C['ink'] if r==0 else C['white'] if r%2 else C['ice']);cell.margin_left=Inches(.18);cell.margin_top=Inches(.19)
+                    from pptx.enum.text import MSO_ANCHOR
+                    cell=tb.cell(r,c);cell.text=value;cell.fill.solid();cell.fill.fore_color.rgb=rgb(C['ink'] if r==0 else C['white'] if r%2 else C['ice']);cell.margin_left=Inches(.18);cell.margin_top=cell.margin_bottom=0;cell.vertical_anchor=MSO_ANCHOR.MIDDLE
                     for pp in cell.text_frame.paragraphs:pp.font.name='Poppins';pp.font.size=Pt(14);pp.font.color.rgb=rgb(C['white'] if r==0 else C['ink'])
     for sh in s.shapes:
         if sh.has_text_frame:sh.name=(sh.text[:60] or 'Text')
@@ -196,7 +219,7 @@ def table_elements(e):
     out=[];q={'elements':out};cw=e['w']/4;rh=e['h']/len(e['rows'])
     for r,row in enumerate(e['rows']):
         for c,v in enumerate(row):
-            x=e['x']+c*cw;y=e['y']+r*rh;rect(q,x,y,cw,rh,'ink' if r==0 else 'white' if r%2 else 'ice');text(q,v,x+17,y+21,cw-34,rh-25,18,'white' if r==0 else 'ink',r==0)
+            x=e['x']+c*cw;y=e['y']+r*rh;rect(q,x,y,cw,rh,'ink' if r==0 else 'white' if r%2 else 'ice');centered_text(q,v,x+17,y,cw-34,rh,18,'white' if r==0 else 'ink',r==0,'left');out[-1]['center_reference']='Ag'
     return out
 def flattened(pg):
     out=[]
@@ -209,6 +232,13 @@ sections=[]
 for pg in pages:
     els=[]
     for e in flattened(pg):
+        e=e.copy()
+        if e['kind']=='text':e['text']=e['text'].replace('\n\n','\n\u00a0\n')
+        if e.get('optical_center'):
+            top,bottom=ink_bounds(e.get('center_reference',e['text']),e['bold'])
+            # Browser line-height 1.25 gives a Poppins baseline at .975 em.
+            e['y']+=e['h']/2-(top+bottom)*e['size']/2-.975*e['size']
+            e['h']=e['size']*1.4
         style=f"position:absolute;left:{e['x']}px;top:{e['y']}px;width:{e['w']}px;height:{e['h']}px;"
         if e['kind']=='text':els.append(f'<div style="{style}font-size:{e["size"]}px;color:#{e["color"]};font-weight:{600 if e["bold"] else 400};text-align:{e["align"]};line-height:1.25;white-space:pre-wrap">{html.escape(e["text"])}</div>')
         elif e['kind']=='image':els.append(f'<img alt="Dayova App — aufgezeichneter Onboarding-Zustand" style="{style}object-fit:contain" src="data:image/png;base64,{base64.b64encode(Path(e["path"]).read_bytes()).decode()}">')
@@ -235,7 +265,10 @@ for pg in pages:
                     else:line=test
                 lines.append(line)
             for i,line in enumerate(lines):
-                yy=H-y-e['size']*.82-i*e['size']*1.25
+                if e.get('optical_center'):
+                    top,bottom=ink_bounds(e.get('center_reference',line),e['bold'])
+                    yy=H-y-h/2+(top+bottom)*e['size']/2
+                else:yy=H-y-e['size']*.82-i*e['size']*1.25
                 if e['align']=='center':pdf.drawCentredString(x+w/2,yy,line)
                 elif e['align']=='right':pdf.drawRightString(x+w,yy,line)
                 else:pdf.drawString(x,yy,line)
@@ -268,7 +301,7 @@ def block(ws,range_,value,size=13,fill='white'):
     ws.merge_cells(range_)
     for row in ws[range_]:
         for cell in row:cell.fill=PatternFill('solid',fgColor=C[fill])
-    c=ws[range_.split(':')[0]];c.value=value;c.font=Font(name='Poppins',size=size,color=C['ink'],bold=size>=20);c.alignment=Alignment(vertical='center',wrap_text=True)
+    c=ws[range_.split(':')[0]];c.value=value;c.font=Font(name='Poppins',size=size,color=C['ink'],bold=size>=20);c.alignment=Alignment(horizontal='left',vertical='center',wrap_text=True)
 ws=wb['Start'];block(ws,'B6:J7','Einfach eintragen. Den Überblick behalten.',23,'ice')
 for r,t,b in [(9,'01  Kopie erstellen','Datei → Kopie erstellen. Diese Vorlage als unverändertes Original behalten.'),(12,'02  Eingaben ersetzen','Lernschritte und Budget: hellblaue Zellen bearbeiten. Zeilen 7–106 sind vorbereitet. Beispielzeilen ersetzen oder Eingaben löschen.'),(15,'03  Überblick nutzen','Dashboard berechnet aus den Eingaben. Zeilen nur mit ID (Lernschritte) bzw. Position (Budget) zählen. Keine personenbezogenen Lernerdaten nötig.'),(18,'04  Vor dem Teilen prüfen','Beispieldaten, Datumsbereich, Formeln und Diagramm prüfen. Zahlen in Präsentationen manuell aktualisieren. Kein automatischer App- oder Linear-Abgleich.')]:
     block(ws,f'B{r}:J{r}',t,17);block(ws,f'B{r+1}:J{r+2}',b,12)
@@ -279,6 +312,7 @@ sample=[('Mathematik','Lineare Funktionen','Theorie',30,'Erledigt'),('Biologie',
 for r in range(7,107):
     for c in list(range(2,9))+[10]:ws.cell(r,c).fill=PatternFill('solid',fgColor=C['ice'])
     ws.cell(r,9,f'=IF(B{r}="","",IF(H{r}="Erledigt",1,0))').number_format='0%'
+    for c in [7,9]:ws.cell(r,c).alignment=Alignment(horizontal='center',vertical='center',wrap_text=True)
     ws.cell(r,3).number_format='dd.mm.yyyy';ws.cell(r,7).number_format='0" Min."'
     if r<13:
         subj,topic,typ,mins,status=sample[r-7]
