@@ -149,7 +149,7 @@ text(p,'64  /  44  /  28  /  20',56,573,620,60,32,'ink',True);text(p,'Titel / Au
 
 p=page('Dunkle Inhaltsfolie','Fokus auf das Wesentliche.','[Eine klare Aussage für den dunklen Modus]',dark=True,note='Dunkle Inhaltsvariante. Weiß auf #212325; Cyan nur als Akzent. Keine Übertragung auf die App-Themesteuerung.')
 for i,(t,b) in enumerate([('[Gedanke 1]','[Kurze Erläuterung]'),('[Gedanke 2]','[Kurze Erläuterung]'),('[Gedanke 3]','[Kurze Erläuterung]')]):
-    y=332+i*99;circle(p,58,y+4,17);text(p,t,111,y,530,59,28,'white',True);text(p,b,660,y+5,560,59,22,'white')
+    y=332+i*99;circle(p,58,y+4,17);centered_text(p,t,111,y-17,530,59,28,'white',True,'left');centered_text(p,b,660,y-17,560,59,22,'white',False,'left')
 
 prs=Presentation();prs.slide_width=Inches(13.333333);prs.slide_height=Inches(7.5)
 prs.core_properties.title='Dayova — Präsentationsvorlage';prs.core_properties.author='Dayova';prs.core_properties.subject='20 reusable layouts; fictional examples explicitly labelled'

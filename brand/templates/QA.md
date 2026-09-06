@@ -20,6 +20,10 @@
   pages 6/10/12/17. Restored six body blocks using nonbreaking-space blank
   lines and included that import fix in the HTML source. All editing
   transactions were committed; previews were displayed before saving.
+  The final pass also aligned the dark-content text optically with its bullets
+  and restored regular-weight supporting text on the three dark Canva pages.
+  All 20 Canva pages were inspected individually in the editor; corrected
+  pages were also checked through editing-transaction previews.
 - Google Sheets: visually inspected all five tabs. Aligned dashboard values
   with their labels and centered narrow minutes/completion columns. Exported
   before and after the formatting edits: every populated cell's data/formula

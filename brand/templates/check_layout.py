@@ -37,6 +37,16 @@ for page,x,y,w,h,color in regions:
     checks.append(dict(page=page,x=x,verticalOffsetCanvasPx=round(dy,3),horizontalOffsetCanvasPx=round(dx,3)))
 assert max(abs(c['verticalOffsetCanvasPx']) for c in checks)<=1,checks
 assert max(abs(c['horizontalOffsetCanvasPx']) for c in checks)<=2,checks
+bullet_checks=[]
+for i in range(3):
+    for x,w in [(111,530),(660,560)]:
+        pix=doc[19].get_pixmap(matrix=pymupdf.Matrix(3,3),clip=pymupdf.Rect(x,315+i*99,x+w,374+i*99))
+        im=Image.frombytes('RGB',[pix.width,pix.height],pix.samples)
+        ys=[y for y in range(im.height) for xx in range(im.width) if min(im.getpixel((xx,y)))>235]
+        assert ys, 'Missing dark-content label'
+        dy=(min(ys)+max(ys)+1)/6-29.5
+        assert abs(dy)<=1,dy
+        bullet_checks.append(dict(row=i+1,x=x,verticalOffsetCanvasPx=round(dy,3)))
 for pg in doc:
     for b in pg.get_text('dict')['blocks']:
         for line in b.get('lines',[]):
@@ -64,7 +74,7 @@ for cell in ['B10','E10','H10','B22','E22','H22']:
     assert wb['Dashboard'][cell].alignment.horizontal=='left'
 for cell in ['G7','G106','I7','I106']:
     assert wb['Lernschritte'][cell].alignment.horizontal=='center'
-result=dict(pdfPages=20,officePackages=3,opticalLabels=checks,nativePowerPointRender='blocked by window ownership error; not covered by these tests')
+result=dict(pdfPages=20,officePackages=3,opticalLabels=checks,bulletRows=bullet_checks,nativePowerPointRender='blocked by window ownership error; not covered by these tests')
 (OUT/'layout-check.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8',newline='\n')
 doc[7].get_pixmap().save(OUT/'Dayova-Process.png')
 print(json.dumps(result,indent=2))

@@ -75,5 +75,37 @@
       "horizontalOffsetCanvasPx": -0.167
     }
   ],
+  "bulletRows": [
+    {
+      "row": 1,
+      "x": 111,
+      "verticalOffsetCanvasPx": 0.0
+    },
+    {
+      "row": 1,
+      "x": 660,
+      "verticalOffsetCanvasPx": -0.167
+    },
+    {
+      "row": 2,
+      "x": 111,
+      "verticalOffsetCanvasPx": 0.0
+    },
+    {
+      "row": 2,
+      "x": 660,
+      "verticalOffsetCanvasPx": -0.167
+    },
+    {
+      "row": 3,
+      "x": 111,
+      "verticalOffsetCanvasPx": 0.0
+    },
+    {
+      "row": 3,
+      "x": 660,
+      "verticalOffsetCanvasPx": -0.167
+    }
+  ],
   "nativePowerPointRender": "blocked by window ownership error; not covered by these tests"
 }
