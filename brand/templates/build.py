@@ -9,6 +9,10 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.chart import XL_CHART_TYPE, XL_LABEL_POSITION, XL_LEGEND_POSITION
 from pptx.chart.data import CategoryChartData
 from openpyxl import Workbook, load_workbook
+from openpyxl.drawing.image import Image as SheetImage
+from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
+from openpyxl.drawing.xdr import XDRPositiveSize2D
+from openpyxl.utils.units import pixels_to_EMU
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.formatting.rule import FormulaRule, DataBarRule
@@ -23,13 +27,18 @@ from functools import lru_cache
 ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).resolve().parent / 'dist'
 OUT.mkdir(exist_ok=True)
+(OUT/'Assets').mkdir(exist_ok=True)
+(OUT/'Assets/dayova-logo.png').write_bytes((ROOT/'assets/dayova-logo.png').read_bytes())
 C = dict(bg='F6F6F4', ink='1A1A1A', muted='5F6B7C', appMuted='697586', cyan='00BAFF', strong='00A0E6', ice='F1F7FB', white='FFFFFF', border='DCE6EE', purple='5856D6', lavender='EEECFF', green='34C759', palegreen='EAFFF1', orange='FF9500', paleorange='FFECD6', dark='212325')
 W,H=1280,720
 pages=[]
-def page(label, title=None, subtitle=None, dark=False, note=''):
+def page(label, title=None, subtitle=None, dark=False, note='', brand_logo=False):
     p={'label':label,'bg':C['dark'] if dark else C['bg'],'elements':[], 'note':note}
     pages.append(p)
-    text(p,'dayova.',56,32,200,42,28,'white' if dark else 'ink',True)
+    if brand_logo:
+        p['elements'].append(dict(kind='image',path=str(ROOT/'assets/dayova-logo.png'),x=40,y=12,w=80,h=80,alt='Dayova – originales Bildzeichen'))
+        centered_text(p,'dayova.',122,12,200,80,28,'ink',True,'left')
+    else:text(p,'dayova.',56,32,200,42,28,'white' if dark else 'ink',True)
     text(p,label.upper(),900,46,324,24,12,'white' if dark else 'muted',False,'right')
     if title: text(p,title,56,126,1168,100,44,'white' if dark else 'ink',True)
     if subtitle: text(p,subtitle,56,229,1120,52,20,'white' if dark else 'muted')
@@ -59,7 +68,7 @@ def card(p,x,y,w,h,num,title,body,color='white'):
     rect(p,x,y,w,h,color,24);text(p,num,x+28,y+24,w-56,52,32,'ink',True)
     text(p,title,x+28,y+100,w-56,70,25,'ink',True);text(p,body,x+28,y+185,w-56,h-195,19,'muted')
 
-p=page('Titel',note='Titel durch maximal 7 Wörter ersetzen. Untertitel: ein Satz. Absender, Anlass und Datum ergänzen. Die abstrakte Route ist ein Kommunikationsmotiv, keine nachgebaute App-Oberfläche.')
+p=page('Titel',brand_logo=True,note='Titel durch maximal 7 Wörter ersetzen. Untertitel: ein Satz. Absender, Anlass und Datum ergänzen. Die abstrakte Route ist ein Kommunikationsmotiv, keine nachgebaute App-Oberfläche. Originales Dayova-Bildzeichen unverzerrt mit Wortmarke verwenden.')
 rect(p,816,112,408,524,'cyan',32)
 text(p,'Einfach\nloslernen.',56,181,735,195,76,'ink',True)
 text(p,'Der Plan steht schon.',60,412,700,58,34,'ink',True)
@@ -139,7 +148,7 @@ p=page('Entscheidung','Die Optionen im Überblick.','[Welche Entscheidung steht 
 for x,t,col in [(56,'Option A','white'),(652,'Option B','ice')]:
     rect(p,x,313,572,310,col,28);text(p,t,x+30,338,510,50,30,'ink',True);text(p,'[Nutzen]\n\n[Aufwand / Voraussetzung]\n\n[Wichtigste Einschränkung]',x+30,417,510,195,21,'muted')
 
-p=page('Abschluss',note='Abschluss: eine konkrete Handlung, Person und Termin. Kontakt / Link vor Veröffentlichung prüfen.')
+p=page('Abschluss',brand_logo=True,note='Abschluss: eine konkrete Handlung, Person und Termin. Kontakt / Link vor Veröffentlichung prüfen. Originales Dayova-Bildzeichen unverzerrt mit Wortmarke verwenden.')
 rect(p,56,126,1168,500,'cyan',32);text(p,'Was ist unser\nnächster Schritt?',96,166,1080,190,64,'ink',True);text(p,'[Konkrete Handlung]  ·  [Name]  ·  [Termin]',99,401,1050,65,25,'ink');rect(p,99,512,344,64,'ink',32);centered_text(p,'[Aktion benennen]',114,512,314,64,22,'white');text(p,'dayova.com',913,546,261,36,19,'ink',False,'right')
 
 p=page('Markenbausteine','Dayova, konsistent eingesetzt.','Poppins · klare Hierarchie · warmes Weiß · Cyan als Akzent',note='Hilfsfolie vor dem Präsentieren entfernen. Primärfarbe #00BAFF mit #1A1A1A Text. Poppins Regular für Fließtext; SemiBold für Überschriften. Kleine farbige Texte vermeiden. Diese Kommunikationsskala 64/44/28/20 px ändert keine App-Tokens.')
@@ -179,7 +188,9 @@ for pg in pages:
         elif kind in ['rect','circle']:
             sh=s.shapes.add_shape(MSO_SHAPE.OVAL if kind=='circle' else MSO_SHAPE.ROUNDED_RECTANGLE if e.get('radius') else MSO_SHAPE.RECTANGLE,*box(s,e));sh.fill.solid();sh.fill.fore_color.rgb=rgb(e['color']);sh.line.fill.background()
             if kind=='rect' and e.get('radius'):sh.adjustments[0]=min(.5,e['radius']/min(e['w'],e['h']))
-        elif kind=='image':s.shapes.add_picture(e['path'],*box(s,e))
+        elif kind=='image':
+            pic=s.shapes.add_picture(e['path'],*box(s,e))
+            pic._element.nvPicPr.cNvPr.set('descr',e.get('alt','Dayova App – aufgezeichneter Onboarding-Zustand'))
         elif kind=='chart':
             d=CategoryChartData();d.categories=e['labels'];d.add_series('Lernschritte',e['values']);ch=s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED,*box(s,e),d).chart;ch.has_legend=False;ch.value_axis.minimum_scale=0;ch.value_axis.major_unit=5
             ch.category_axis.tick_labels.font.name='Poppins';ch.category_axis.tick_labels.font.size=Pt(12);ch.value_axis.tick_labels.font.size=Pt(10)
@@ -241,7 +252,7 @@ for pg in pages:
             e['h']=e['size']*1.4
         style=f"position:absolute;left:{e['x']}px;top:{e['y']}px;width:{e['w']}px;height:{e['h']}px;"
         if e['kind']=='text':els.append(f'<div style="{style}font-size:{e["size"]}px;color:#{e["color"]};font-weight:{600 if e["bold"] else 400};text-align:{e["align"]};line-height:1.25;white-space:pre-wrap">{html.escape(e["text"])}</div>')
-        elif e['kind']=='image':els.append(f'<img alt="Dayova App — aufgezeichneter Onboarding-Zustand" style="{style}object-fit:contain" src="data:image/png;base64,{base64.b64encode(Path(e["path"]).read_bytes()).decode()}">')
+        elif e['kind']=='image':els.append(f'<img alt="{html.escape(e.get("alt","Dayova App – aufgezeichneter Onboarding-Zustand"),quote=True)}" style="{style}object-fit:contain" src="data:image/png;base64,{base64.b64encode(Path(e["path"]).read_bytes()).decode()}">')
         else:els.append(f'<div style="{style}background:#{e["color"]};border-radius:{e.get("radius",999 if e["kind"]=="circle" else 0)}px"></div>')
     sections.append(f'<section data-document-role="page" data-label="{pg["label"]}" data-speaker-notes="{html.escape(pg["note"],quote=True)}" style="position:relative;width:1280px;height:720px;background:#{pg["bg"]};overflow:hidden">'+''.join(els)+'</section>')
 (OUT/'Dayova-Canva.html').write_text('<!doctype html><html lang="de"><meta charset="utf-8"><title>Dayova — Vorlagen</title><style>'+fontcss+'*{box-sizing:border-box}body{margin:0;background:#ddd;font-family:Poppins}section{margin:24px auto}@media print{body{background:white}section{margin:0;break-after:page}@page{size:1280px 720px;margin:0}}</style>'+''.join(sections)+'</html>',encoding='utf-8', newline='\n')
@@ -303,6 +314,10 @@ def block(ws,range_,value,size=13,fill='white'):
         for cell in row:cell.fill=PatternFill('solid',fgColor=C[fill])
     c=ws[range_.split(':')[0]];c.value=value;c.font=Font(name='Poppins',size=size,color=C['ink'],bold=size>=20);c.alignment=Alignment(horizontal='left',vertical='center',wrap_text=True)
 ws=wb['Start'];block(ws,'B6:J7','Einfach eintragen. Den Überblick behalten.',23,'ice')
+ws.unmerge_cells('B2:J3');ws.merge_cells('B2:H3');ws.merge_cells('I2:J3')
+logo=SheetImage(str(ROOT/'assets/dayova-logo.png'));logo.width=logo.height=84
+logo.anchor=OneCellAnchor(_from=AnchorMarker(col=8,row=1,colOff=pixels_to_EMU(84)),ext=XDRPositiveSize2D(pixels_to_EMU(84),pixels_to_EMU(84)))
+ws.add_image(logo)
 for r,t,b in [(9,'01  Kopie erstellen','Datei → Kopie erstellen. Diese Vorlage als unverändertes Original behalten.'),(12,'02  Eingaben ersetzen','Lernschritte und Budget: hellblaue Zellen bearbeiten. Zeilen 7–106 sind vorbereitet. Beispielzeilen ersetzen oder Eingaben löschen.'),(15,'03  Überblick nutzen','Dashboard berechnet aus den Eingaben. Zeilen nur mit ID (Lernschritte) bzw. Position (Budget) zählen. Keine personenbezogenen Lernerdaten nötig.'),(18,'04  Vor dem Teilen prüfen','Beispieldaten, Datumsbereich, Formeln und Diagramm prüfen. Zahlen in Präsentationen manuell aktualisieren. Kein automatischer App- oder Linear-Abgleich.')]:
     block(ws,f'B{r}:J{r}',t,17);block(ws,f'B{r+1}:J{r+2}',b,12)
 block(ws,'B23:J25','Zeilen 7–106 = 100 Datensätze. Darüber hinaus müssen Formeln, Filter und Validierungen erweitert werden. 0 % bedeutet: keine erfassten abgeschlossenen Lernschritte. Nur Blau = Eingabe; Grau/Weiß = berechnet oder Anleitung. Status wird zusätzlich als Text angezeigt.',12,'ice')

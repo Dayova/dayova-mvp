@@ -66,6 +66,21 @@
 - CodeRabbit 0.7.5 reviewed the builder. Fixed numeric-ID exclusion and a fixed
   chart maximum; the follow-up review reported zero findings.
 
+## Original logo follow-up — 6 September 2026
+
+- Added the unchanged production `assets/dayova-logo.png` to slides 1 and 18,
+  beside the optically aligned wordmark; inspected both reference-PDF renders.
+- Committed both logo additions to the existing Canva master. The Start tab
+  in Google Sheets has a centered in-cell logo in I2:J3; its title uses B2:H3.
+  Inspected the live Start header after saving.
+- Compared Google Sheets exports immediately before and after this change:
+  every existing cell value and formula is identical. Both the exported Sheet
+  and the local XLSX embed the original PNG bytes. PPTX embeds that same asset
+  on exactly slides 1 and 18. The original PNG is included in `dist/Assets`.
+- Rebuilt all formats and reran `check_layout.py`: Office packages and all
+  existing optical-centering checks pass. Native PowerPoint limitation below
+  still applies. CodeRabbit reviewed this follow-up with zero findings.
+
 ## Boundaries
 
 - Native PowerPoint desktop rendering and save/reopen remain blocked. The

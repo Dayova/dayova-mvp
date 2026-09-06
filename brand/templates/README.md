@@ -7,6 +7,11 @@ consistent table alignment, restored Canva paragraph spacing and aligned
 spreadsheet metrics. See `QA.md` for measurements and the outstanding native
 PowerPoint rendering check.
 
+The original Dayova image mark accompanies the wordmark on the title and
+closing slides and appears in the Start worksheet header. Reuse the unchanged
+transparent PNG in `dist/Assets/dayova-logo.png`; preserve its proportions and
+padding. Interior slides retain the quieter wordmark treatment.
+
 - [Canva master](https://www.canva.com/d/ZR9ywq-VkjwOv5x)
 - [Google Sheets master](https://docs.google.com/spreadsheets/d/1ClE8G9dB5NRH9ctSDZWapyqK85FrSm8Fri0-BQM4ues/edit)
 - [Canonical design decision in Notion](https://app.notion.com/p/3d32e87228bf81ec8b1ae2c3e2c3c052)
