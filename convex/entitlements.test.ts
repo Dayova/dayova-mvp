@@ -159,6 +159,51 @@ test("verified RevenueCat subscription unlocks a new account without starting a 
 	});
 });
 
+test("RevenueCat web billing does not unlock mobile app access", async () => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
+	vi.stubEnv("REVENUECAT_SECRET_API_KEY", "sk_test_revenuecat");
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => ({
+			ok: true,
+			json: async () => ({
+				subscriber: {
+					entitlements: {
+						dayova_full_access: {
+							expires_date: "2026-08-28T10:00:00Z",
+							product_identifier: "dayova_monthly_web",
+						},
+					},
+					management_url: "https://dayova.com/account",
+					subscriptions: {
+						dayova_monthly_web: {
+							expires_date: "2026-08-28T10:00:00Z",
+							store: "rc_billing",
+						},
+					},
+				},
+			}),
+		})),
+	);
+	const t = convexTest(schema, modules).withIdentity(user);
+	await t.mutation(api.users.syncCurrentUser, {});
+
+	await expect(t.action(api.revenueCat.syncMyEntitlement, {})).resolves.toEqual(
+		{
+			active: false,
+		},
+	);
+	await expect(
+		t.query(api.entitlements.getMyAccess, {
+			now: Date.parse("2026-08-12T10:00:00.000Z"),
+		}),
+	).resolves.toEqual({
+		canUseApp: false,
+		state: "needsActivation",
+	});
+});
+
 test("RevenueCat subscription grace keeps full access during a billing issue", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
@@ -276,74 +321,6 @@ test("authorized RevenueCat webhook refreshes access while the app is closed", a
 	});
 });
 
-test.each([
-	["PURCHASE_REDEEMED", "redeemed_by"],
-	["TRANSFER", "transferred_to"],
-] as const)("%s RevenueCat webhook resolves the destination Dayova account from %s", async (eventType, identityField) => {
-	vi.useFakeTimers();
-	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
-	vi.stubEnv("REVENUECAT_SECRET_API_KEY", "sk_test_revenuecat");
-	vi.stubEnv("REVENUECAT_WEBHOOK_AUTHORIZATION", "Bearer webhook-secret");
-	vi.stubGlobal(
-		"fetch",
-		vi.fn(async () => ({
-			ok: true,
-			json: async () => ({
-				subscriber: {
-					entitlements: {
-						dayova_full_access: {
-							expires_date: "2026-09-28T10:00:00Z",
-							grace_period_expires_date: null,
-							product_identifier: "dayova_annual",
-						},
-					},
-					management_url: null,
-					subscriptions: {
-						dayova_annual: {
-							billing_issues_detected_at: null,
-							expires_date: "2026-09-28T10:00:00Z",
-							store: "rc_billing",
-							unsubscribe_detected_at: null,
-						},
-					},
-				},
-			}),
-		})),
-	);
-	const t = convexTest(schema, modules).withIdentity(user);
-	await t.mutation(api.users.syncCurrentUser, {});
-	await t.mutation(api.entitlements.activateMyTrial, {
-		termsVersion: "2026-07-28",
-	});
-
-	const response = await t.fetch("/revenuecat-webhook", {
-		method: "POST",
-		headers: {
-			Authorization: "Bearer webhook-secret",
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			api_version: "1.0",
-			event: {
-				[identityField]: [user.subject],
-				id: `evt_${eventType.toLowerCase()}`,
-				type: eventType,
-			},
-		}),
-	});
-
-	expect(response.status).toBe(200);
-	await expect(
-		t.query(api.entitlements.getMyAccess, {
-			now: Date.parse("2026-08-12T10:00:00.000Z"),
-		}),
-	).resolves.toMatchObject({
-		canUseApp: true,
-		state: "paid",
-		store: "rc_billing",
-	});
-});
-
 test("TRANSFER webhook grants the destination and revokes the source account", async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date("2026-07-28T10:00:00.000Z"));
@@ -381,7 +358,7 @@ test("TRANSFER webhook grants the destination and revokes the source account", a
 									dayova_annual: {
 										billing_issues_detected_at: null,
 										expires_date: "2026-09-28T10:00:00Z",
-										store: "rc_billing",
+										store: "app_store",
 										unsubscribe_detected_at: null,
 									},
 								}
@@ -430,28 +407,6 @@ test("TRANSFER webhook grants the destination and revokes the source account", a
 			now: Date.parse("2026-08-12T10:00:00.000Z"),
 		}),
 	).resolves.toMatchObject({ canUseApp: false, state: "expired" });
-});
-
-test("RevenueCat webhook acknowledges anonymous purchases before redemption", async () => {
-	vi.stubEnv("REVENUECAT_WEBHOOK_AUTHORIZATION", "Bearer webhook-secret");
-	const t = convexTest(schema, modules);
-
-	const response = await t.fetch("/revenuecat-webhook", {
-		method: "POST",
-		headers: {
-			Authorization: "Bearer webhook-secret",
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			event: {
-				app_user_id: "$RCAnonymousID:web-purchaser",
-				id: "evt_anonymous_purchase",
-				type: "INITIAL_PURCHASE",
-			},
-		}),
-	});
-
-	expect(response.status).toBe(202);
 });
 
 test("RevenueCat webhook rejects requests without the configured authorization", async () => {
