@@ -6,7 +6,6 @@ import {
 	Pressable,
 	ScrollView,
 	StyleSheet,
-	useWindowDimensions,
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,12 +45,10 @@ const timelineItems = [
 export function TrialActivationScreen() {
 	const { access, activateTrial } = useAccess();
 	const insets = useSafeAreaInsets();
-	const { fontScale, height: windowHeight } = useWindowDimensions();
 	const [isStarting, setIsStarting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const activationInFlightRef = useRef(false);
 	const showStarting = isStarting || access?.canUseApp === true;
-	const scrollEnabled = windowHeight < 820 || fontScale > 1;
 
 	const startTrial = async () => {
 		if (showStarting || activationInFlightRef.current) return;
@@ -88,22 +85,26 @@ export function TrialActivationScreen() {
 				style={gradientFillStyle}
 			/>
 			<ScrollView
+				testID="trial-scroll-view"
 				alwaysBounceVertical={false}
-				bounces={scrollEnabled}
+				bounces={false}
 				className="flex-1"
-				contentInsetAdjustmentBehavior={scrollEnabled ? "automatic" : "never"}
-				key={scrollEnabled ? "scrollable-trial" : "fixed-trial"}
-				scrollEnabled={scrollEnabled}
+				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
-				// Disabled iOS ScrollViews do not apply automatic top insets, so
-				// fixed mode owns that runtime safe-area value explicitly.
+				// Runtime safe areas bound the viewport on both platforms, including
+				// while scrolling. Automatic content insets only apply on iOS.
+				style={{
+					marginTop: insets.top,
+					marginBottom: insets.bottom,
+					marginLeft: insets.left,
+					marginRight: insets.right,
+				}}
 				contentContainerStyle={{
 					flexGrow: 1,
-					paddingBottom: Math.max(insets.bottom, 16),
-					paddingTop: scrollEnabled ? 0 : insets.top,
+					paddingBottom: Math.max(16 - insets.bottom, 0),
 				}}
 			>
-				<View className="flex-1 px-7 pt-5 pb-2">
+				<View className="grow px-7 pt-5 pb-2">
 					<View className="gap-3 pb-7">
 						<Text className="font-semibold text-body-4 text-white/85">
 							14 TAGE KOSTENLOS
