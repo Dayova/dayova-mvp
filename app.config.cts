@@ -4,9 +4,6 @@ const {
 	validatePublicEnvForRelease,
 }: typeof import("./src/lib/runtime-config") =
 	require("./src/lib/runtime-config.ts");
-const {
-	getRevenueCatRedemptionScheme,
-}: typeof import("./src/lib/revenuecat-redemption-config") = require("./src/lib/revenuecat-redemption-config.ts");
 
 const APP_VARIANT = process.env.APP_VARIANT;
 
@@ -30,19 +27,6 @@ const releasePlatform =
 	process.env.EAS_BUILD_PLATFORM === "ios"
 		? process.env.EAS_BUILD_PLATFORM
 		: undefined;
-// RevenueCat URL schemes are public native routing identifiers. Keep the
-// development fallback in source so `pnpm ios` cannot silently replace a
-// redemption-capable simulator build with one that drops the scheme.
-const DEVELOPMENT_REVENUECAT_REDEMPTION_SCHEME = "rc-27a39b9faa";
-const revenueCatRedemptionScheme = getRevenueCatRedemptionScheme(
-	process.env.REVENUECAT_REDEMPTION_SCHEME ??
-		(APP_VARIANT === "development"
-			? DEVELOPMENT_REVENUECAT_REDEMPTION_SCHEME
-			: undefined),
-	{
-		required: isReleaseConfig && releasePlatform !== "ios",
-	},
-);
 
 if (isReleaseConfig) {
 	validatePublicEnvForRelease(undefined, { platform: releasePlatform });
@@ -99,7 +83,6 @@ const config: ExpoConfig = {
 		},
 	},
 	android: {
-		scheme: revenueCatRedemptionScheme ?? undefined,
 		adaptiveIcon: {
 			foregroundImage: DAYOVA_ANDROID_FOREGROUND,
 			backgroundColor: BACKGROUND_COLOR,
