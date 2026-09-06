@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "date": "2026-09-06",
+  "colors": {
+    "bg": "F6F6F4",
+    "ink": "1A1A1A",
+    "muted": "5F6B7C",
+    "appMuted": "697586",
+    "cyan": "00BAFF",
+    "strong": "00A0E6",
+    "ice": "F1F7FB",
+    "white": "FFFFFF",
+    "border": "DCE6EE",
+    "purple": "5856D6",
+    "lavender": "EEECFF",
+    "green": "34C759",
+    "palegreen": "EAFFF1",
+    "orange": "FF9500",
+    "paleorange": "FFECD6",
+    "dark": "212325"
+  },
+  "font": "Poppins",
+  "presentation": {
+    "width": 1280,
+    "height": 720,
+    "margin": 56,
+    "bodyPx": 20,
+    "titlePx": 44
+  },
+  "scope": "Communication templates; does not change app tokens"
+}
