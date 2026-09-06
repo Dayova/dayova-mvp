@@ -105,6 +105,13 @@
 - CodeRabbit reported two minor findings (duplicate heading and explicit image
   dimension comparison); both were corrected before final validation.
 
+## Canva account migration — 6 September 2026
+
+Canva account migration verified on 6 September 2026: the connected account
+owns the copied master `DAHUcEl3ACs` (20 pages). All page text is readable, the
+cover remains 1280 × 720, and its updated product-source notes were retained.
+The copied cover was inspected in Canva. Canonical links now target this copy.
+
 ## Boundaries
 
 - Native PowerPoint desktop rendering and save/reopen remain blocked. The

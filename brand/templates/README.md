@@ -19,7 +19,7 @@ nodes are deliberately not reconstructed as editable presentation shapes.
 `dist/Assets/dayova-learning-path.png` preserves the source pixels within crop
 box `(430, 375, 950, 1085)`. Refresh from real product evidence after a redesign.
 
-- [Canva master](https://www.canva.com/d/ZR9ywq-VkjwOv5x)
+- [Canva master](https://www.canva.com/d/V3bfWBUDPvnLAPb)
 - [Google Sheets master](https://docs.google.com/spreadsheets/d/1ClE8G9dB5NRH9ctSDZWapyqK85FrSm8Fri0-BQM4ues/edit)
 - [Canonical design decision in Notion](https://app.notion.com/p/3d32e87228bf81ec8b1ae2c3e2c3c052)
 
