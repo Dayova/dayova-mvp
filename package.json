@@ -35,7 +35,7 @@
 		"test:unit": "run-s test:unit:vitest test:unit:metro-cache test:unit:android-autolinking test:unit:skills",
 		"test:unit:android-autolinking": "node --test scripts/android-autolinking-cache.test.cjs",
 		"test:unit:vitest": "vitest run",
-		"test:unit:metro-cache": "node --test scripts/metro-cache-concurrency.test.cjs",
+		"test:unit:metro-cache": "node --test scripts/metro-cache-concurrency.test.cjs scripts/metro-watcher.test.cjs",
 		"test:unit:skills": "node --test scripts/skills-catalog-validation.test.mjs",
 		"test:ui": "jest --runInBand",
 		"check": "run-s lint typecheck",
