@@ -36,10 +36,8 @@ const getStringArray = (value: unknown) => {
 const getAppUserIdCandidates = (event: Record<string, unknown>) => {
 	const candidates = [
 		getString(event.app_user_id),
-		...getStringArray(event.redeemed_by),
 		...getStringArray(event.transferred_to),
 		...getStringArray(event.transferred_from),
-		...getStringArray(event.redeemed_from),
 		...getStringArray(event.aliases),
 		getString(event.original_app_user_id),
 	].filter((candidate): candidate is string => candidate !== null);

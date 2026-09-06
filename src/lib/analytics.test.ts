@@ -3,6 +3,7 @@ import {
 	type AnalyticsIdentityInput,
 	createValidationAnalytics,
 	getValidationFileSizeBucket,
+	isPostHogConfiguredForPlatform,
 	type ValidationEventName,
 	validationAnalyticsBeforeSend,
 } from "./analytics";
@@ -14,6 +15,21 @@ const createAdapter = () => ({
 });
 
 describe("validation analytics contract", () => {
+	it("disables PostHog on iOS even when a production key is configured", () => {
+		expect(
+			isPostHogConfiguredForPlatform({
+				apiKey: "phc_production",
+				platform: "ios",
+			}),
+		).toBe(false);
+		expect(
+			isPostHogConfiguredForPlatform({
+				apiKey: "phc_production",
+				platform: "android",
+			}),
+		).toBe(true);
+	});
+
 	it("exposes exactly the eleven Validation Phase event names", () => {
 		type ExpectedEventName =
 			| "onboarding_completed"
