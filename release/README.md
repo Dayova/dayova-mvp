@@ -7,7 +7,15 @@ manifest. It never infers safety from the previous Git commit.
 
 ## Runtime boundary
 
-This SDK 57 migration creates a new app/runtime boundary at `1.0.4`; the already
+The current app/runtime boundary is **1.0.5**. The September 2026 patch upgrade
+uses Expo 57.0.20, React Native 0.86.3, Reanimated 4.5.1, and Worklets 0.10.1 to
+remove the [Hermes V1 memory regression](https://expo.dev/changelog/sdk-57#known-regressions).
+These native dependencies require a new store binary; do not send its JavaScript
+to existing 1.0.4 binaries. Both platforms resolve 1.0.5 even when only Android
+is being built. Keep the distributed-binary baseline unchanged until the exact
+replacement binaries satisfy the verification requirements below.
+
+The original SDK 57 migration created an app/runtime boundary at `1.0.4`; the already
 distributed SDK 56 binaries remain on runtime `1.0.3`. Future native changes
 must either cut another runtime boundary or document why the existing runtime
 remains compatible.
@@ -128,7 +136,7 @@ review. The Google Play command center and testing runbook live in
 Build dedicated internal QA binaries for both platforms with the `ota-staging`
 profile from the exact release source. This profile uses production app config
 and EAS environment but embeds the isolated `ota-staging` channel. Publish the
-candidate to that channel, verify the result reports runtime `1.0.4`, and record
+candidate to that channel, verify the result reports runtime `1.0.5`, and record
 the update ID actually downloaded by each QA binary. Do not remap the production
 channel or publish/republish to it for staging.
 
@@ -138,7 +146,8 @@ artifacts, and their native fingerprints differ because the embedded channel is
 part of native configuration. After the exact production binaries are
 distributed and install-verified, the schema 2 baseline lands, and the main
 workflow is green, the automatic production job creates the production update
-from that exact main commit.
+from that exact main commit. The August 2026 build records above remain historical
+evidence and are not the current release candidate.
 
 If a production OTA is unhealthy:
 
@@ -159,7 +168,7 @@ Automatic publication may resume only after all of the following are true:
 - their clean-source provenance and embedded updates are recorded in one schema 2
   baseline change;
 - the EAS production fingerprint job matches both exact builds;
-- a runtime `1.0.4` update succeeds on dedicated `ota-staging` iOS and Android
+- a runtime `1.0.5` update succeeds on dedicated `ota-staging` iOS and Android
   QA builds, with both downloaded update IDs recorded;
 - a deliberately mismatched native fingerprint still fails closed; and
 - the baseline change lands on `main` and the complete main workflow is green.

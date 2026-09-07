@@ -373,7 +373,7 @@ describe("production release configuration", () => {
 		}
 	});
 
-	it("resolves the SDK 57 production binary behind runtime 1.0.4", () => {
+	it("resolves the patched SDK 57 production binary behind runtime 1.0.5", () => {
 		const expoCliPath = require.resolve("expo/bin/cli");
 		const resolvedConfig = JSON.parse(
 			execFileSync(
@@ -391,11 +391,11 @@ describe("production release configuration", () => {
 		);
 
 		expect(resolvedConfig).toMatchObject({
-			version: "1.0.4",
+			version: "1.0.5",
 			sdkVersion: "57.0.0",
 			ios: {
 				bundleIdentifier: "de.dayova.app",
-				runtimeVersion: "1.0.4",
+				runtimeVersion: "1.0.5",
 			},
 			android: {
 				package: "com.dayova",

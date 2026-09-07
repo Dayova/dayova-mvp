@@ -29,6 +29,12 @@ binary baseline, staging/promotion flow, and rollback/resumption policy live in
 runtime version `1.0.4`; never publish SDK 57 code on the distributed SDK 56
 runtime `1.0.3`.
 
+The patched SDK 57 release uses app/runtime `1.0.5` to isolate Expo 57.0.20 and
+React Native 0.86.3 (including the Hermes V1 memory fix) from older native
+binaries. The Metro cache-read limit, Gradle toolchain resolver removal, and
+iOS update splash-screen trait patches remain required and are reapplied to
+the upgraded packages through `pnpm-workspace.yaml`.
+
 Native release builds and OTA update bundles must have these public app envs
 available while Expo bundles JavaScript:
 
