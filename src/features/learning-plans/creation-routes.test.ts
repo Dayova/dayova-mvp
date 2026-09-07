@@ -29,6 +29,19 @@ test("routes explicitly between topics and material on the mounted setup screen"
 	);
 });
 
+test("preserves a typed recovery code independently from learner-facing copy", () => {
+	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
+
+	expect(
+		learningPlanMaterialPath(learningPlanId, {
+			errorCode: "aiConsentRequired",
+			errorMessage: "Die Formulierung darf sich ändern.",
+		}),
+	).toBe(
+		"/learning-plans/new?learningPlanId=learning-plan-id&step=material&errorCode=aiConsentRequired&errorMessage=Die%20Formulierung%20darf%20sich%20%C3%A4ndern.",
+	);
+});
+
 test("preserves required topics when returning to the first step", () => {
 	const learningPlanId = "learning-plan-id" as Id<"learningPlans">;
 

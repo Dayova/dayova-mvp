@@ -1,5 +1,6 @@
 import type { Id } from "#convex/_generated/dataModel";
 import { ROUTES } from "~/lib/routes";
+import type { UserFacingErrorCode } from "~/lib/user-facing-error-contract";
 
 const buildRouteQuery = (entries: Array<[string, string | undefined]>) =>
 	entries
@@ -66,11 +67,12 @@ export const learningPlanTopicsPath = (
 
 export const learningPlanMaterialPath = (
 	id: Id<"learningPlans">,
-	params: { errorMessage?: string } = {},
+	params: { errorCode?: UserFacingErrorCode; errorMessage?: string } = {},
 ) => {
 	const query = buildRouteQuery([
 		["learningPlanId", id],
 		["step", "material"],
+		["errorCode", params.errorCode],
 		["errorMessage", params.errorMessage],
 	]);
 
