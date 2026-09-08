@@ -147,7 +147,7 @@ export function SubscriptionScreen() {
 			| { status: "cancelled" }
 			| { status: "notEntitled" }
 		>,
-		successPath: "/home" | "/pro-welcome",
+		successPath: "/home" | "/subscription-success",
 	) => {
 		if (storeActionInFlightRef.current) return;
 		storeActionInFlightRef.current = true;
@@ -186,7 +186,7 @@ export function SubscriptionScreen() {
 		if (storeClient) {
 			await finishStoreAction(
 				() => storeClient.purchase(selectedBillingPeriod),
-				"/pro-welcome",
+				"/subscription-success",
 			);
 		}
 	};
@@ -258,7 +258,7 @@ export function SubscriptionScreen() {
 							variant="h1"
 							className="text-left font-semibold text-body-1 text-white"
 						>
-							Dayova Pro abonnieren
+							Dayova abonnieren
 						</Text>
 						<Text className="max-w-[340px] text-body-3 text-white/90">
 							Wähle deinen Tarif. Der Kauf und die Verlängerung werden sicher

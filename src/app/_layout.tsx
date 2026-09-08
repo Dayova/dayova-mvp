@@ -71,7 +71,7 @@ function AppNavigator() {
 							}}
 						/>
 						<Stack.Screen
-							name="pro-welcome"
+							name="subscription-success"
 							options={{
 								animation: "none",
 								gestureEnabled: false,

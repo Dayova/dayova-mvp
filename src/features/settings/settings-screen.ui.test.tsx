@@ -150,9 +150,7 @@ describe("SettingsScreen", () => {
 		expect(screen.getByRole("header", { name: "Lernen" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "App" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "Konto" })).toBeOnTheScreen();
-		expect(
-			screen.getByRole("header", { name: "Dayova Pro" }),
-		).toBeOnTheScreen();
+		expect(screen.getByRole("header", { name: "Dayova" })).toBeOnTheScreen();
 		expect(
 			screen.getByRole("header", { name: "Rechtliches & Hilfe" }),
 		).toBeOnTheScreen();
@@ -166,7 +164,7 @@ describe("SettingsScreen", () => {
 		const screen = await render(<SettingsScreen />);
 
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Dayova Pro abonnieren" }),
+			screen.getByRole("button", { name: "Dayova abonnieren" }),
 		);
 		expect(mockPush).toHaveBeenCalledWith("/subscription");
 

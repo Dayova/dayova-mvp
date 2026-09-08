@@ -65,7 +65,7 @@ const ACCESS_BYPASS_PATHS = new Set([
 	PASSWORD_RESET_SUCCESS_PATH,
 	SESSION_TASK_RESET_PASSWORD_PATH,
 ]);
-const PRO_WELCOME_PATH = "/pro-welcome";
+const SUBSCRIPTION_SUCCESS_PATH = "/subscription-success";
 
 export const resolveAccessRoute = ({
 	accessState,
@@ -93,7 +93,7 @@ export const resolveAccessRoute = ({
 	if (accessState === "expired") {
 		return EXPIRED_ACCESS_PATHS.has(pathname) ? null : "/paywall";
 	}
-	if (pathname === PRO_WELCOME_PATH) {
+	if (pathname === SUBSCRIPTION_SUCCESS_PATH) {
 		return accessState === "paid" ? null : "/home";
 	}
 	if (accessState === "trial" && pathname === "/subscription") {
