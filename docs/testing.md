@@ -38,6 +38,9 @@ artifact and a running virtual device. Jest and Vitest do not require Maestro.
 2. Start a **disposable Android emulator or iOS simulator** in portrait at default
    text/display size. iOS requires macOS and Xcode. Use `adb devices -l` or
    `xcrun simctl list devices booted` to get its ID, and pass that ID explicitly.
+   For Android development-client runs, use at least 4 GB emulator RAM with enough
+   host memory available. A 2 GB Google Play emulator exhausted memory during
+   local validation; check device memory pressure before changing flow timeouts.
    Do not target a personal device or a simulator containing accounts you need:
    each run clears the app's local storage and **the entire iOS Keychain**.
    Development and preview builds share an app ID, so installing one replaces
