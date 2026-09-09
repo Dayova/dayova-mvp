@@ -16,7 +16,10 @@ recoverable error in the surface where the action occurred.
 
 The Mehr page prioritizes Profil, Hilfe & Support, Lernen, App, Dayova Pro,
 then Datenschutz & Rechtliches. Profil owns personal details, password changes,
-sign-out, and confirmed account deletion. Settings groups and rows are shared
+sign-out, and confirmed account deletion. Profile, support, and subscription
+entries use standalone cards without repeated headings; the profile card shows
+the user's name and “Profil & Konto”, with that label alone as the fallback.
+Only groups of settings retain section headings. Settings groups and rows are shared
 through `src/features/settings/settings-list.tsx`; external-link errors appear
 beside their originating group. See [DAY-383](https://linear.app/dayova/issue/DAY-383/prioritize-profile-and-support-on-the-more-page).
 

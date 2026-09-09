@@ -19,12 +19,18 @@ const mockOpenAiConsentSettings = jest.fn();
 const mockOpenExternalUrl = jest.fn<(url?: string) => Promise<boolean>>(
 	async () => true,
 );
+let mockProfileName: string | undefined = "Test Person";
+
 let mockAccess: { state: "trial" } | { state: "paid"; store: string } = {
 	state: "trial",
 };
 
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: mockPush, replace: mockReplace }),
+}));
+
+jest.mock("~/context/AuthContext", () => ({
+	useAuthSession: () => ({ user: { name: mockProfileName } }),
 }));
 
 jest.mock("~/context/AiConsentContext", () => ({
@@ -100,6 +106,7 @@ describe("SettingsScreen", () => {
 		mockOpenExternalUrl.mockReset();
 		mockOpenExternalUrl.mockResolvedValue(true);
 		mockAccess = { state: "trial" };
+		mockProfileName = "Test Person";
 		mockOpenAiConsentSettings.mockReset();
 	});
 
@@ -108,30 +115,30 @@ describe("SettingsScreen", () => {
 		expect(screen.getByRole("header", { name: "Lernen" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "App" })).toBeOnTheScreen();
 		expect(
-			screen.getByRole("header", { name: "Dayova Pro" }),
-		).toBeOnTheScreen();
-		expect(
 			screen.getByRole("header", { name: "Datenschutz & Rechtliches" }),
 		).toBeOnTheScreen();
 		expect(
 			screen.getAllByRole("header").map((heading) => heading.props.children),
-		).toEqual([
-			"Profil",
-			"Hilfe & Support",
-			"Lernen",
-			"App",
-			"Dayova Pro",
-			"Datenschutz & Rechtliches",
-		]);
+		).toEqual(["Lernen", "App", "Datenschutz & Rechtliches"]);
 		expect(screen.getByText("Nicht aktiv")).toBeOnTheScreen();
+		expect(screen.getByText("Test Person")).toBeOnTheScreen();
+		expect(screen.getByText("Profil & Konto")).toBeOnTheScreen();
+		expect(screen.getAllByRole("button").slice(0, 2)).toEqual([
+			screen.getByRole("button", { name: "Test Person, Profil & Konto" }),
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+		]);
 		expect(
 			screen.queryByRole("button", { name: "Passwort ändern" }),
 		).toBeNull();
 		expect(screen.queryByRole("button", { name: "Abmelden" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Konto löschen" })).toBeNull();
-		await fireEvent.press(screen.getByRole("button", { name: "Profil" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Test Person, Profil & Konto" }),
+		);
 		expect(mockPush).toHaveBeenCalledWith("/profile");
-		await fireEvent.press(screen.getByRole("button", { name: "Support" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+		);
 		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
 			"https://example.com/support",
 		);
@@ -140,17 +147,15 @@ describe("SettingsScreen", () => {
 	});
 
 	test.each([
-		["Support", "Hilfe & Support"],
-		["Datenschutz", "Datenschutz & Rechtliches"],
-		["Hilfe zum Abo", "Dayova Pro"],
+		["Support kontaktieren", "settings-support"],
+		["Datenschutz", "settings-legal"],
+		["Dayova Pro, Hilfe zum Abo", "settings-subscription"],
 	])("shows a failed %s link beside its section and clears it after retry", async (label, section) => {
 		mockAccess = { state: "paid", store: "unknown" };
 		mockOpenExternalUrl.mockResolvedValueOnce(false);
 		const screen = await render(<SettingsScreen />);
 		await fireEvent.press(screen.getByRole("button", { name: label }));
-		const sectionContainer = screen.getByRole("header", { name: section })
-			.parent?.parent;
-		if (!sectionContainer) throw new Error("Settings section is missing.");
+		const sectionContainer = screen.getByTestId(section);
 		expect(
 			await within(sectionContainer).findByRole("alert"),
 		).toHaveTextContent(

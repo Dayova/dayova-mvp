@@ -9,6 +9,7 @@ import { useDayovaTheme } from "~/lib/theme";
 function SettingsRow({
 	icon,
 	label,
+	description,
 	trailing,
 	onPress,
 	disabled = false,
@@ -23,6 +24,7 @@ function SettingsRow({
 		strokeWidth?: number;
 	}) => React.JSX.Element;
 	label: string;
+	description?: string;
 	trailing?: React.JSX.Element;
 	onPress?: () => void;
 	disabled?: boolean;
@@ -44,6 +46,7 @@ function SettingsRow({
 				/>
 			}
 			label={label}
+			description={description}
 			tone={destructive ? "destructive" : "default"}
 			onPress={onPress}
 			disabled={disabled}
@@ -67,6 +70,10 @@ function SettingsDivider() {
 	return <View className="mx-4 h-px bg-border" />;
 }
 
+function SettingsCard({ children }: { children: ReactNode }) {
+	return <Surface className="overflow-hidden p-2">{children}</Surface>;
+}
+
 function SettingsSection({
 	children,
 	title,
@@ -82,9 +89,9 @@ function SettingsSection({
 			>
 				{title}
 			</Text>
-			<Surface className="overflow-hidden p-2">{children}</Surface>
+			<SettingsCard>{children}</SettingsCard>
 		</View>
 	);
 }
 
-export { SettingsDivider, SettingsRow, SettingsSection };
+export { SettingsCard, SettingsDivider, SettingsRow, SettingsSection };

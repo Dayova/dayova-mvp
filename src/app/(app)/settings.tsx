@@ -21,7 +21,9 @@ import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAccess } from "~/context/AccessContext";
 import { useAiConsent } from "~/context/AiConsentContext";
+import { useAuthSession } from "~/context/AuthContext";
 import {
+	SettingsCard,
 	SettingsDivider,
 	SettingsRow,
 	SettingsSection,
@@ -91,6 +93,8 @@ function ThemePreferenceToggle({
 
 export default function SettingsScreen() {
 	const router = useRouter();
+	const { user } = useAuthSession();
+	const profileName = user?.name?.trim();
 	const { access } = useAccess();
 	const { openAiConsentSettings, statusLabel: aiConsentStatusLabel } =
 		useAiConsent();
@@ -123,22 +127,28 @@ export default function SettingsScreen() {
 			<ThemedStatusBar />
 			<ScreenScroll topPadding={104} bottomPadding={120} horizontalPadding={24}>
 				<View className="gap-7">
-					<SettingsSection title="Profil">
+					<SettingsCard>
 						<SettingsRow
 							icon={UserRound}
-							label="Profil"
+							label={profileName || "Profil & Konto"}
+							description={profileName ? "Profil & Konto" : undefined}
+							accessibilityLabel={
+								profileName
+									? `${profileName}, Profil & Konto`
+									: "Profil & Konto"
+							}
 							onPress={() => router.push("/profile")}
 						/>
-					</SettingsSection>
+					</SettingsCard>
 
-					<View className="gap-3">
-						<SettingsSection title="Hilfe & Support">
+					<View className="gap-3" testID="settings-support">
+						<SettingsCard>
 							<SettingsRow
 								icon={Mail}
-								label="Support"
+								label="Support kontaktieren"
 								onPress={() => openLink("support", env.EXPO_PUBLIC_SUPPORT_URL)}
 							/>
-						</SettingsSection>
+						</SettingsCard>
 						{linkErrors.support ? (
 							<ErrorMessage>{linkErrors.support}</ErrorMessage>
 						) : null}
@@ -177,8 +187,8 @@ export default function SettingsScreen() {
 						/>
 					</SettingsSection>
 
-					<View className="gap-3">
-						<SettingsSection title="Dayova Pro">
+					<View className="gap-3" testID="settings-subscription">
+						<SettingsCard>
 							{access?.state === "trial" ? (
 								<SettingsRow
 									icon={CreditCard}
@@ -188,7 +198,9 @@ export default function SettingsScreen() {
 							) : (
 								<SettingsRow
 									icon={CreditCard}
-									label={
+									label="Dayova Pro"
+									accessibilityLabel={`Dayova Pro, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
+									description={
 										nativeManagementUrl
 											? "Abo im Store verwalten"
 											: "Hilfe zum Abo"
@@ -202,13 +214,13 @@ export default function SettingsScreen() {
 									disabled={!isStoreSubscriber}
 								/>
 							)}
-						</SettingsSection>
+						</SettingsCard>
 						{linkErrors.subscription ? (
 							<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
 						) : null}
 					</View>
 
-					<View className="gap-3">
+					<View className="gap-3" testID="settings-legal">
 						<SettingsSection title="Datenschutz & Rechtliches">
 							<SettingsRow
 								icon={Sparkles}
