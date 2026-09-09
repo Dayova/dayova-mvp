@@ -1,6 +1,6 @@
 import * as Application from "expo-application";
 import { type ReactNode, useCallback, useRef, useState } from "react";
-import { Platform, type View } from "react-native";
+import { Platform, Share, type View } from "react-native";
 import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
@@ -31,6 +31,7 @@ export function SupportContact({
 }) {
 	const [showFallback, setShowFallback] = useState(false);
 	const [websiteError, setWebsiteError] = useState(false);
+	const [shareError, setShareError] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const inFlight = useRef(false);
 	const buttonRef = useRef<View>(null);
@@ -43,6 +44,7 @@ export function SupportContact({
 		inFlight.current = true;
 		setBusy(true);
 		setWebsiteError(false);
+		setShareError(false);
 		const body = [
 			"Hallo Dayova-Team,",
 			"",
@@ -79,6 +81,21 @@ export function SupportContact({
 		}
 	};
 
+	const shareAddress = async () => {
+		if (inFlight.current) return;
+		inFlight.current = true;
+		setBusy(true);
+		setShareError(false);
+		try {
+			await Share.share({ message: SUPPORT_EMAIL });
+		} catch {
+			setShareError(true);
+		} finally {
+			inFlight.current = false;
+			setBusy(false);
+		}
+	};
+
 	return (
 		<>
 			{children ? (
@@ -94,6 +111,7 @@ export function SupportContact({
 					className={className}
 					variant="neutral"
 					size="sm"
+					accessibilityLabel="Support kontaktieren"
 					accessibilityHint="Öffnet einen E-Mail-Entwurf an das Dayova-Team."
 					accessibilityState={{ busy }}
 					disabled={busy}
@@ -120,6 +138,23 @@ export function SupportContact({
 					App-Version und ein Screenshot.
 				</Text>
 				<Button
+					accessibilityLabel="Adresse kopieren oder teilen"
+					className="mb-3"
+					variant="neutral"
+					onPress={() => void shareAddress()}
+					disabled={busy}
+					accessibilityState={{ busy }}
+				>
+					<Text>Adresse kopieren oder teilen</Text>
+				</Button>
+				{shareError ? (
+					<ErrorMessage className="mb-3">
+						Die Adresse konnte nicht geteilt werden. Du kannst uns direkt an
+						kontakt@dayova.de schreiben.
+					</ErrorMessage>
+				) : null}
+				<Button
+					accessibilityLabel="Support-Webseite öffnen"
 					variant="neutral"
 					onPress={() => void openWebsite()}
 					disabled={busy}

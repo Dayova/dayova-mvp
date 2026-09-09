@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import type { ReactNode } from "react";
+import { Share } from "react-native";
 import { SupportContact } from "./support-contact";
 
 jest.mock("~/components/ui/icon", () => ({ ArrowLeft: () => null }));
@@ -25,10 +26,26 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 }));
 
 beforeEach(() => {
+	jest.restoreAllMocks();
 	mockOpen.mockReset().mockResolvedValue(true);
 });
 
 describe("SupportContact", () => {
+	test("offers the native copy/share sheet when no email app can open", async () => {
+		mockOpen.mockResolvedValue(false);
+		const share = jest
+			.spyOn(Share, "share")
+			.mockResolvedValue({ action: Share.sharedAction });
+		const screen = await render(<SupportContact context="Abonnement" />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Adresse kopieren oder teilen" }),
+		);
+		expect(share).toHaveBeenCalledWith({ message: "kontakt@dayova.de" });
+	});
+
 	test("opens an editable email with screen and version context", async () => {
 		const screen = await render(<SupportContact context="Abonnement" />);
 		await fireEvent.press(
@@ -41,6 +58,24 @@ describe("SupportContact", () => {
 		expect(url.searchParams.get("body")).toContain("Bereich: Abonnement");
 		expect(url.searchParams.get("body")).toContain("App-Version: 1.0.5 (42)");
 		expect(screen.queryByText("kontakt@dayova.de")).toBeNull();
+	});
+
+	test("keeps the address available if the native share sheet fails", async () => {
+		mockOpen.mockResolvedValue(false);
+		jest
+			.spyOn(Share, "share")
+			.mockRejectedValue(new Error("Share unavailable"));
+		const screen = await render(<SupportContact context="Abonnement" />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Adresse kopieren oder teilen" }),
+		);
+		expect(screen.getByRole("alert")).toHaveTextContent(
+			/Die Adresse konnte nicht geteilt werden/,
+		);
+		expect(screen.getByText("kontakt@dayova.de")).toBeOnTheScreen();
 	});
 
 	test("keeps a selectable address available when email and website cannot open", async () => {

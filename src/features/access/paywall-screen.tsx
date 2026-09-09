@@ -198,6 +198,7 @@ export function PaywallScreen() {
 								{({ onPress, busy, buttonRef }) => (
 									<Pressable
 										ref={buttonRef}
+										accessibilityLabel="Support"
 										accessibilityRole="button"
 										accessibilityState={{ busy, disabled: busy }}
 										disabled={busy}

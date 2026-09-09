@@ -191,8 +191,10 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
   and blocking operational errors. Put the action beside the failure and keep
   existing recovery actions available. Pass a static, user-facing screen name
   as `context`; never pass raw errors, account identifiers, or learning content.
-  It opens an editable email draft and provides a selectable address and website
-  fallback in `DayovaSheetFrame`. See [DAY-381](https://linear.app/dayova/issue/DAY-381/make-support-easy-to-contact-from-app-failures).
+  It opens an editable email draft and provides the address, a native copy/share
+  action, and a website fallback in `DayovaSheetFrame`. Keep explicit accessible
+  labels on launch controls so returning from another app preserves their names.
+  See [DAY-381](https://linear.app/dayova/issue/DAY-381/make-support-easy-to-contact-from-app-failures).
 - Capture reusable component and styling decisions here.
 - Put design-system ADRs in `docs/contexts/design-system/adr/`.
 - Use NativeWind for static app UI. Follow the rendering-choice matrix in
