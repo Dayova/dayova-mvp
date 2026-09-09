@@ -12,6 +12,14 @@ actions should use a synchronous transaction gate when a second invocation
 would duplicate a mutation, expose busy state to accessibility, and render a
 recoverable error in the surface where the action occurred.
 
+## Settings navigation
+
+The Mehr page prioritizes Profil, Hilfe & Support, Lernen, App, Dayova Pro,
+then Datenschutz & Rechtliches. Profil owns personal details, password changes,
+sign-out, and confirmed account deletion. Settings groups and rows are shared
+through `src/features/settings/settings-list.tsx`; external-link errors appear
+beside their originating group. See [DAY-383](https://linear.app/dayova/issue/DAY-383/prioritize-profile-and-support-on-the-more-page).
+
 ## Language
 
 **User-facing error message**:
