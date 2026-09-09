@@ -45,6 +45,10 @@ export function SupportContact({
 		setBusy(true);
 		setWebsiteError(false);
 		setShareError(false);
+		const osVersion =
+			Platform.OS === "android"
+				? Platform.constants.Release || `API ${Platform.Version}`
+				: Platform.Version;
 		const body = [
 			"Hallo Dayova-Team,",
 			"",
@@ -53,7 +57,7 @@ export function SupportContact({
 			"",
 			`Bereich: ${context}`,
 			`App-Version: ${Application.nativeApplicationVersion ?? "unbekannt"} (${Application.nativeBuildVersion ?? "unbekannt"})`,
-			`System: ${Platform.OS} ${Platform.Version}`,
+			`System: ${Platform.OS} ${osVersion}`,
 		].join("\n");
 		try {
 			const opened = await openExternalUrl(

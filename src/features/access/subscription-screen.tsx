@@ -36,6 +36,9 @@ const gradientFillStyle = StyleSheet.absoluteFill;
 // surface legible when the system theme changes.
 const primaryTextStyle = { color: BRAND_COLORS.text };
 const secondaryTextStyle = { color: BRAND_COLORS.secondaryText };
+const errorSurfaceStyle = { backgroundColor: BRAND_COLORS.surface };
+const errorTextStyle = { color: BRAND_COLORS.destructive };
+const onDarkActionTextStyle = { color: WHITE };
 // Button state styles are merged natively, so the branded Store action uses
 // fixed design tokens instead of CSS variables.
 const subscribeActionStyle = {
@@ -293,11 +296,15 @@ export function SubscriptionScreen() {
 					</View>
 
 					{error || !storeClient || (!isLoadingPlans && plans.length === 0) ? (
-						<View className="mt-4 gap-3 rounded-3xl bg-card px-4 py-4">
+						<View
+							className="mt-4 gap-3 rounded-3xl px-4 py-4"
+							style={errorSurfaceStyle}
+						>
 							<Text
 								accessibilityLiveRegion="polite"
 								accessibilityRole="alert"
-								className="text-center text-body-3 text-destructive"
+								className="text-center text-body-3"
+								style={errorTextStyle}
 								selectable
 							>
 								{error ??
@@ -305,7 +312,25 @@ export function SubscriptionScreen() {
 										? storeUnavailableMessage
 										: "Im Store sind gerade keine Tarife verfügbar.")}
 							</Text>
-							<SupportContact context="Abonnement" />
+							<SupportContact context="Abonnement">
+								{({ onPress, busy, buttonRef }) => (
+									<Button
+										ref={buttonRef}
+										variant="neutral"
+										size="sm"
+										style={subscribeActionStyle}
+										accessibilityLabel="Support kontaktieren"
+										accessibilityHint="Öffnet einen E-Mail-Entwurf an das Dayova-Team."
+										accessibilityState={{ busy }}
+										disabled={busy}
+										onPress={onPress}
+									>
+										<Text style={onDarkActionTextStyle}>
+											Support kontaktieren
+										</Text>
+									</Button>
+								)}
+							</SupportContact>
 						</View>
 					) : null}
 

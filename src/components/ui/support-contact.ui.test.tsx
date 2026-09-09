@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import { Share } from "react-native";
+import { Platform, Share } from "react-native";
 import { SupportContact } from "./support-contact";
 
 jest.mock("~/components/ui/icon", () => ({ ArrowLeft: () => null }));
@@ -31,6 +31,40 @@ beforeEach(() => {
 });
 
 describe("SupportContact", () => {
+	test.each([
+		{
+			os: "android" as const,
+			version: 34,
+			release: "14",
+			expected: "android 14",
+		},
+		{
+			os: "android" as const,
+			version: 34,
+			release: "",
+			expected: "android API 34",
+		},
+		{ os: "ios" as const, version: "18.5", release: "", expected: "ios 18.5" },
+	])("reports $expected in the email draft", async ({
+		os,
+		version,
+		release,
+		expected,
+	}) => {
+		jest.replaceProperty(Platform, "OS", os);
+		jest.spyOn(Platform, "Version", "get").mockReturnValue(version);
+		jest.spyOn(Platform, "constants", "get").mockReturnValue({
+			...Platform.constants,
+			Release: release,
+		} as typeof Platform.constants);
+		const screen = await render(<SupportContact context="Abonnement" />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+		);
+		const url = new URL(mockOpen.mock.calls[0][0] ?? "");
+		expect(url.searchParams.get("body")).toContain(`System: ${expected}`);
+	});
+
 	test("offers the native copy/share sheet when no email app can open", async () => {
 		mockOpen.mockResolvedValue(false);
 		const share = jest
