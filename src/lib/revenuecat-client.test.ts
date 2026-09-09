@@ -9,7 +9,9 @@ const monthlyPackage = {
 	packageType: "MONTHLY",
 	product: {
 		identifier: "dayova_monthly",
-		priceString: "14,99 €",
+		price: 14.99,
+		currencyCode: "EUR",
+		priceString: "€14.99",
 	},
 };
 const annualPackage = {
@@ -17,8 +19,11 @@ const annualPackage = {
 	packageType: "ANNUAL",
 	product: {
 		identifier: "dayova_annual",
-		pricePerMonthString: "12,99 €",
-		priceString: "155,88 €",
+		price: 155.88,
+		currencyCode: "EUR",
+		pricePerMonth: 12.99,
+		pricePerMonthString: "EUR12.99",
+		priceString: "€155.88",
 	},
 };
 
@@ -79,6 +84,63 @@ describe("createRevenueCatClient", () => {
 			apiKey: "appl_test",
 			appUserID: "clerk_user_1",
 		});
+	});
+
+	it("uses the store amount and currency instead of hardcoded launch prices", async () => {
+		const sdk = createSdk();
+		sdk.getOfferings = vi.fn(async () => ({
+			all: {},
+			current: {
+				availablePackages: [
+					{
+						...annualPackage,
+						product: {
+							...annualPackage.product,
+							price: 15000,
+							pricePerMonth: 1250,
+							currencyCode: "JPY",
+						},
+					},
+				],
+			},
+		}));
+		const client = createRevenueCatClient({
+			apiKey: "test",
+			appUserId: "test",
+			sdk,
+		});
+
+		await expect(client.getPlans()).resolves.toEqual([
+			expect.objectContaining({ price: "15.000 ¥", pricePerMonth: "1.250 ¥" }),
+		]);
+	});
+
+	it("preserves store text when numeric or currency data cannot be formatted", async () => {
+		const sdk = createSdk();
+		sdk.getOfferings = vi.fn(async () => ({
+			all: {},
+			current: {
+				availablePackages: [
+					{
+						...annualPackage,
+						product: {
+							...annualPackage.product,
+							currencyCode: "",
+							pricePerMonth: null,
+						},
+					},
+				],
+			},
+		}));
+		const client = createRevenueCatClient({
+			apiKey: "test",
+			appUserId: "test",
+			sdk,
+		});
+
+		await expect(client.getPlans()).resolves.toEqual([
+			expect.objectContaining({ price: "€155.88", pricePerMonth: "EUR12.99" }),
+		]);
 	});
 
 	it("unlocks only when RevenueCat returns the full-access entitlement", async () => {
