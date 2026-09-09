@@ -20,7 +20,17 @@ tags:
           visible: Development Build
           timeout: 60000
       - openLink:
-          link: ${'exp+dayova://expo-development-client/?url=' + encodeURIComponent(DEV_SERVER_URL) + '&disableOnboarding=1'}
+          # iOS reads the inner server URL; keep the outer flag for Android compatibility.
+          link: >-
+            ${'exp+dayova://expo-development-client/?url=' +
+            encodeURIComponent(DEV_SERVER_URL + (DEV_SERVER_URL.indexOf('?') == -1 ? '?' : '&') +
+            'disableOnboarding=1') + '&disableOnboarding=1'}
+      # iOS can require confirmation on the first custom-scheme launch.
+      - runFlow:
+          when:
+            visible: 'Open in .Dayova.\?'
+          commands:
+            - tapOn: Open
       - extendedWaitUntil:
           visible: 'Login|Reload'
           timeout: 60000
@@ -36,6 +46,9 @@ tags:
       enabled: true
     timeout: 60000
 - assertVisible: Registrierung
+# The welcome controls become accessible before their entrance animation settles.
+- waitForAnimationToEnd:
+    timeout: 5000
 - takeScreenshot: welcome
 - tapOn: Login
 - extendedWaitUntil:

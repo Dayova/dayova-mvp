@@ -25,6 +25,8 @@ non-production app from clean local state, checks the welcome actions, opens
 Login, and checks the email/password fields and login/recovery/registration
 controls. It uses existing German accessibility labels, bounded condition waits,
 and scrolling to visible controls; it never signs in or submits learner data.
+The welcome controls have entrance animations, so the flow also waits briefly
+for UI stability before tapping Login; the navigation assertion still must pass.
 
 These device tests are opt-in and are not part of `pnpm test`. They need a native
 artifact and a running virtual device. Jest and Vitest do not require Maestro.
@@ -79,6 +81,63 @@ artifact and a running virtual device. Jest and Vitest do not require Maestro.
    An embedded preview bundle is the reference path. Ensure the artifact's
    update channel cannot replace the intended revision with an unrelated OTA.
 
+### Local iOS artifact and provenance
+
+Create a fresh simulator, rather than resetting an existing personal simulator.
+For example, with the iOS 26.5 runtime installed:
+
+```sh
+xcrun simctl create DAY-314-disposable com.apple.CoreSimulator.SimDeviceType.iPhone-17 com.apple.CoreSimulator.SimRuntime.iOS-26-5
+xcrun simctl boot <returned-udid>
+xcrun simctl bootstatus <returned-udid> -b
+```
+
+Explicitly export the public configuration before **both** native generation and
+bundling. Set `EXPO_NO_DOTENV=1` to prevent another `.env.local` from supplying
+production settings or enabling analytics, `APP_VARIANT=preview`, and
+`EAS_BUILD_PLATFORM=ios` for platform-specific release validation. Check the
+actual Convex deployment type and its Clerk issuer; a deployment name, EAS
+environment label, or `pk_test_` key alone does not establish both services'
+isolation. The preview environment must also contain the required RevenueCat
+public iOS store key and legal URLs. This journey never initializes purchases.
+
+For a local artifact that must use the embedded revision, generate iOS in a clean
+checkout, disable updates in the **generated, ignored** native project, and build
+without running prebuild again:
+
+```sh
+pnpm exec expo prebuild --platform ios --no-install
+(cd ios && pod install)
+/usr/libexec/PlistBuddy -c 'Set :EXUpdatesEnabled false' ios/Dayova/Supporting/Expo.plist
+NODE_ENV=production xcodebuild -workspace ios/Dayova.xcworkspace -scheme Dayova \
+  -configuration Release -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath .maestro/artifacts/ios-build -jobs 2 \
+  CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
+xcrun simctl install <simulator-udid> .maestro/artifacts/ios-build/Build/Products/Release-iphonesimulator/Dayova.app
+```
+
+The architecture above is for Apple Silicon. Record the source SHA, environment
+sources, build command, `.app` executable and `main.jsbundle` hashes. Inspect the
+artifact's `Info.plist` for `de.dayova.app-dev` and `iPhoneSimulator`, its
+`Expo.plist` for disabled updates, and the embedded bundle for the intended
+public backend configuration. Run the reference flow without Metro or
+`DEV_SERVER_URL`. This local OTA-disabled artifact verifies embedded startup;
+it does not validate EAS preview-channel delivery. Shut down the owned simulator
+and stop any Metro/build/keep-awake processes when finished.
+Keep the Mac's lid open during validation; `caffeinate` prevents idle sleep but
+does not prevent clamshell sleep, which can time out the XCUITest driver.
+
+Keep Xcode's simulator signing enabled with the ad hoc identity `-`. An unsigned
+build can install and launch while Clerk/SecureStore Keychain operations fail
+with `OSStatus -34018`. Xcode generates the simulator's `application-identifier`
+in `Dayova.app-Simulated.xcent` and embeds it in the executable's
+`__TEXT,__entitlements` section. The ordinary `codesign --display --entitlements`
+output can be empty for a correctly signed simulator app; inspect the simulated
+entitlements as well. This local simulator signing uses no distribution
+certificate or provisioning profile. See Apple's
+[Keychain entitlement documentation](https://developer.apple.com/documentation/security/errsecmissingentitlement).
+
 ### Run
 
 From the repository root, with Maestro on PATH:
@@ -89,7 +148,12 @@ pnpm test:smoke:ios --device <simulator-udid>
 ```
 
 For local iteration, the same flow also supports a compatible development build
-and Metro serving this checkout with non-production public configuration:
+and Metro serving this checkout with non-production public configuration.
+
+For iOS, the local Xcode recipe above can produce that development client by
+using `APP_VARIANT=development`, `NODE_ENV=development`, and
+`-configuration Debug`, then installing `Debug-iphonesimulator/Dayova.app`.
+Keep the same explicit test backend configuration when starting Metro.
 
 ```sh
 pnpm expo:start --dev-client --port 8081
@@ -103,11 +167,24 @@ running; select the port of this checkout, not another working tree. The flow
 waits for the development launcher, then opens Expo's development-client URL
 after resetting state, with
 [`disableOnboarding=1`](https://docs.expo.dev/develop/development-builds/development-workflows/)
-to skip the dev client's onboarding. If SDK 57 still opens its developer menu,
+on both the encoded server URL (read by iOS SDK 57) and the outer link
+(for Android compatibility) to skip the dev client's onboarding.
+If SDK 57 still opens its developer menu,
 the flow closes it using its accessible Close control. All app assertions remain
 the same. Do not pass `DEV_SERVER_URL` for an embedded preview build. Expo Go is not
 supported by this app. Dev-client runs verify the installed native runtime plus
 the current Metro bundle; they do not prove an embedded release bundle launches.
+
+On iOS, the first custom-scheme launch can show an **Open in Dayova?** system
+confirmation. The helper conditionally accepts that specific prompt before
+waiting for the app/developer menu. It was validated with the simulator's English
+system language; Dayova's app assertions use German accessibility labels.
+The OS can retain this confirmation across app-state resets. See Maestro's
+[iOS deep-link behavior](https://docs.maestro.dev/api-reference/commands/openlink).
+If an older flow stopped at this dialog, dismiss its pending prompt before
+rerunning; resetting the app does not dismiss that existing system dialog.
+Record whether Metro's bundle cache was already warm when collecting evidence;
+starting the server alone does not precompile the app's JavaScript.
 
 On Windows, Maestro 2.10.0 can stall while starting/reinstalling its Android
 driver before any flow commands run. If the same CLI version's driver is already
