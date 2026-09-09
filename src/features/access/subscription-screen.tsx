@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
 import { ArrowLeft, Check } from "~/components/ui/icon";
+import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
@@ -291,13 +292,21 @@ export function SubscriptionScreen() {
 						/>
 					</View>
 
-					{!storeClient ? (
-						<Text
-							accessibilityLiveRegion="polite"
-							className="mt-3 text-center text-body-4 text-white"
-						>
-							{storeUnavailableMessage}
-						</Text>
+					{error || !storeClient || (!isLoadingPlans && plans.length === 0) ? (
+						<View className="mt-4 gap-3 rounded-3xl bg-card px-4 py-4">
+							<Text
+								accessibilityLiveRegion="polite"
+								accessibilityRole="alert"
+								className="text-center text-body-3 text-destructive"
+								selectable
+							>
+								{error ??
+									(!storeClient
+										? storeUnavailableMessage
+										: "Im Store sind gerade keine Tarife verfügbar.")}
+							</Text>
+							<SupportContact context="Abonnement" />
+						</View>
 					) : null}
 
 					<Button
@@ -342,24 +351,23 @@ export function SubscriptionScreen() {
 						</Text>
 					</Pressable>
 
-					{error ? (
-						<View className="mt-4 rounded-3xl bg-white px-4 py-3">
-							<Text
-								accessibilityLiveRegion="polite"
-								className="text-center text-body-3 text-destructive"
-								selectable
-							>
-								{error}
-							</Text>
-						</View>
-					) : null}
-
 					<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-5">
-						<LegalLink
-							label="Support"
-							url={env.EXPO_PUBLIC_SUPPORT_URL}
-							onOpen={openLink}
-						/>
+						<SupportContact context="Abonnement">
+							{({ onPress, busy, buttonRef }) => (
+								<Pressable
+									ref={buttonRef}
+									accessibilityRole="button"
+									accessibilityState={{ busy, disabled: busy }}
+									disabled={busy}
+									className="min-h-12 justify-center"
+									onPress={onPress}
+								>
+									<Text className="text-body-4 text-white underline">
+										Support
+									</Text>
+								</Pressable>
+							)}
+						</SupportContact>
 						<LegalLink
 							label="Datenschutz"
 							url={env.EXPO_PUBLIC_PRIVACY_URL}

@@ -13,6 +13,7 @@ import {
 	SquareLock,
 	Trash2,
 } from "~/components/ui/icon";
+import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAccountActions } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -193,11 +194,22 @@ export function PaywallScreen() {
 						) : null}
 
 						<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-6">
-							<LegalLink
-								label="Support"
-								url={env.EXPO_PUBLIC_SUPPORT_URL}
-								onOpen={openLink}
-							/>
+							<SupportContact context="Zugang zur App">
+								{({ onPress, busy, buttonRef }) => (
+									<Pressable
+										ref={buttonRef}
+										accessibilityRole="button"
+										accessibilityState={{ busy, disabled: busy }}
+										disabled={busy}
+										className="min-h-12 justify-center"
+										onPress={onPress}
+									>
+										<Text className="text-body-4 text-white underline">
+											Support
+										</Text>
+									</Pressable>
+								)}
+							</SupportContact>
 							<LegalLink
 								label="Datenschutz"
 								url={env.EXPO_PUBLIC_PRIVACY_URL}

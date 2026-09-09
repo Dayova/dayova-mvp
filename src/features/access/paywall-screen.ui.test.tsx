@@ -3,6 +3,15 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { PaywallScreen } from "./paywall-screen";
 
+jest.mock("~/components/ui/icon", () => ({
+	ArrowLeft: () => null,
+	ArrowRight: () => null,
+	CreditCard: () => null,
+	Logout: () => null,
+	SquareLock: () => null,
+	Trash2: () => null,
+}));
+
 const mockPush = jest.fn();
 const mockLogout = jest.fn();
 const mockDeleteAccount = jest.fn(async () => undefined);
