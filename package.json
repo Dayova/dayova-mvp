@@ -38,6 +38,8 @@
 		"test:unit:metro-cache": "node --test scripts/metro-cache-concurrency.test.cjs",
 		"test:unit:skills": "node --test scripts/skills-catalog-validation.test.mjs",
 		"test:ui": "jest --runInBand",
+		"test:smoke:android": "maestro --platform android test -e APP_ID=com.dayova.dev --format junit --output .maestro/artifacts/android/report.xml --test-output-dir .maestro/artifacts/android --debug-output .maestro/artifacts/android/debug .maestro",
+		"test:smoke:ios": "maestro --platform ios test -e APP_ID=de.dayova.app-dev --format junit --output .maestro/artifacts/ios/report.xml --test-output-dir .maestro/artifacts/ios --debug-output .maestro/artifacts/ios/debug .maestro",
 		"check": "run-s lint typecheck",
 		"check:compiler": "pnpm dlx react-compiler-healthcheck@latest",
 		"typecheck": "tsc --noEmit",
