@@ -121,8 +121,18 @@ The architecture above is for Apple Silicon. Record the source SHA, environment
 sources, build command, `.app` executable and `main.jsbundle` hashes. Inspect the
 artifact's `Info.plist` for `de.dayova.app-dev` and `iPhoneSimulator`, its
 `Expo.plist` for disabled updates, and the embedded bundle for the intended
-public backend configuration. Run the reference flow without Metro or
-`DEV_SERVER_URL`. This local OTA-disabled artifact verifies embedded startup;
+public backend configuration. Stop Metro and explicitly disable the development
+helper for the reference run, even if the shell was previously used for local
+development:
+
+```sh
+unset DEV_SERVER_URL
+test -z "${DEV_SERVER_URL:-}"
+pnpm test:smoke:ios --device <simulator-udid> -e DEV_SERVER_URL=
+```
+
+Check the command log to confirm the development-client helper was skipped.
+This local OTA-disabled artifact verifies embedded startup;
 it does not validate EAS preview-channel delivery. Shut down the owned simulator
 and stop any Metro/build/keep-awake processes when finished.
 Keep the Mac's lid open during validation; `caffeinate` prevents idle sleep but

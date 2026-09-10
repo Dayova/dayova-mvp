@@ -176,7 +176,7 @@ has no embedded app bundle; its app/runtime version is 1.0.4, ID is
 Metro used the same explicit test environment with `EXPO_NO_DOTENV=1`:
 
 ```sh
-APP_VARIANT=development NODE_ENV=development pnpm exec expo start --dev-client --port 8095 --max-workers 2
+EXPO_NO_DOTENV=1 APP_VARIANT=development NODE_ENV=development pnpm exec expo start --dev-client --port 8095 --max-workers 2
 ```
 
 The development manifest identified this checkout's absolute project root.
@@ -267,6 +267,8 @@ Review totals: Standards 0; Spec 0.
   DAY-316). Authenticated journeys remain in DAY-321.
 - Android's two successful runs belong to the previous `dfc95ef` validation;
   Android was not rerun during this macOS iOS work.
+  The [subsequent Windows check](day-314-android-followup.md) validates the final
+  shared flow on Android and reviews the retained iOS evidence.
 - DAY-194 retains the visual observations; this smoke flow does not certify
   every layout or the temporal behavior of welcome imagery.
 - Both owned disposable simulators were shut down and deleted. The owned Metro
