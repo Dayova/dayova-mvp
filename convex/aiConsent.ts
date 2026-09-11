@@ -4,6 +4,7 @@ import {
 	AI_CONSENT_REQUIRED_MESSAGE,
 	AI_CONSENT_VERSION,
 } from "../src/lib/ai-consent";
+import { AI_CONSENT_REQUIRED_ERROR_CODE } from "../src/lib/user-facing-error-contract";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalQuery, mutation, query } from "./_generated/server";
@@ -114,7 +115,10 @@ export const requireCurrentConsent = internalQuery({
 	handler: async (ctx) => {
 		const snapshot = toSnapshot(await getCurrentUser(ctx));
 		if (!snapshot.hasCurrentConsent) {
-			throwUserFacingError(AI_CONSENT_REQUIRED_MESSAGE);
+			throwUserFacingError(
+				AI_CONSENT_REQUIRED_MESSAGE,
+				AI_CONSENT_REQUIRED_ERROR_CODE,
+			);
 		}
 		return null;
 	},

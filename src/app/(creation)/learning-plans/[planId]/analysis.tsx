@@ -20,6 +20,7 @@ import {
 	goBackOrReplace,
 	useBackIntent,
 } from "~/lib/navigation";
+import { extractUserFacingErrorCode } from "~/lib/user-facing-errors";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -82,6 +83,7 @@ export default function LearningPlanAnalysisScreen() {
 					return generateKnowledgeQuestions({ learningPlanId: planId });
 				})
 				.catch((error: unknown) => {
+					const errorCode = extractUserFacingErrorCode(error) ?? undefined;
 					const message = getErrorMessage(
 						error,
 						"Deine Unterlagen konnten nicht zuverlässig analysiert werden.",
@@ -91,6 +93,7 @@ export default function LearningPlanAnalysisScreen() {
 					dismissToOrReplace(
 						router,
 						learningPlanMaterialPath(planId, {
+							errorCode,
 							errorMessage: message,
 						}),
 					);
