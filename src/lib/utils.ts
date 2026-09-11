@@ -6,6 +6,11 @@ import { extendTailwindMerge } from "tailwind-merge";
 // `text-body-2` as conflicting with color classes like `text-text`.
 const twMerge = extendTailwindMerge({
 	extend: {
+		// NativeWind's custom width must not be treated as a border color.
+		// Otherwise selecting a card with border-primary removes its border.
+		classGroups: {
+			"border-w": [{ border: ["hairline"] }],
+		},
 		theme: {
 			text: [
 				"heading-1",

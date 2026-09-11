@@ -149,7 +149,7 @@ describe("SettingsScreen", () => {
 	test.each([
 		["Support kontaktieren", "settings-support"],
 		["Datenschutz", "settings-legal"],
-		["Dayova Pro, Hilfe zum Abo", "settings-subscription"],
+		["Dayova, Hilfe zum Abo", "settings-subscription"],
 	])("shows a failed %s link beside its section and clears it after retry", async (label, section) => {
 		mockAccess = { state: "paid", store: "unknown" };
 		mockOpenExternalUrl.mockResolvedValueOnce(false);
@@ -168,7 +168,7 @@ describe("SettingsScreen", () => {
 	test("lets trial users subscribe and keeps privacy available in settings", async () => {
 		const screen = await render(<SettingsScreen />);
 		await fireEvent.press(
-			screen.getByRole("button", { name: "Dayova Pro abonnieren" }),
+			screen.getByRole("button", { name: "Dayova abonnieren" }),
 		);
 		expect(mockPush).toHaveBeenCalledWith("/subscription");
 		await fireEvent.press(screen.getByRole("button", { name: "Datenschutz" }));

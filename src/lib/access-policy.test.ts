@@ -117,23 +117,23 @@ describe("resolveAccessRoute", () => {
 		).toBeNull();
 	});
 
-	it("keeps a newly paid account on the Pro welcome route", () => {
+	it("keeps a newly paid account on the subscription success route", () => {
 		expect(
 			resolveAccessRoute({
 				accessState: "paid",
 				isSessionLoading: false,
-				pathname: "/pro-welcome",
+				pathname: "/subscription-success",
 				user: { id: "user_1" },
 			}),
 		).toBeNull();
 	});
 
-	it("does not show the Pro welcome route to trial accounts", () => {
+	it("does not show the subscription success route to trial accounts", () => {
 		expect(
 			resolveAccessRoute({
 				accessState: "trial",
 				isSessionLoading: false,
-				pathname: "/pro-welcome",
+				pathname: "/subscription-success",
 				user: { id: "user_1" },
 			}),
 		).toBe("/home");

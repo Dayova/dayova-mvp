@@ -192,14 +192,14 @@ export default function SettingsScreen() {
 							{access?.state === "trial" ? (
 								<SettingsRow
 									icon={CreditCard}
-									label="Dayova Pro abonnieren"
+									label="Dayova abonnieren"
 									onPress={() => router.push("/subscription")}
 								/>
 							) : (
 								<SettingsRow
 									icon={CreditCard}
-									label="Dayova Pro"
-									accessibilityLabel={`Dayova Pro, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
+									label="Dayova"
+									accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
 									description={
 										nativeManagementUrl
 											? "Abo im Store verwalten"
