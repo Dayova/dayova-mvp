@@ -23,21 +23,24 @@ codes. Do not use `preview`, `apk-test`, or `com.dayova.dev` for a Play track.
 
 ## Current rollout gate
 
-On 2026-08-25, Play Console was prepared with the existing production artifact
-`1.0.3` / version code `20` for Closed and Open testing, the existing Dayova
-internal email list for the Closed audience, and Germany for both tracks. These
-four changes are deliberately left under **Changes not yet submitted for
-review**. Google warned that submitting them would cancel and restart the
-Production review that has been running since 2026-08-23, so the restart was
-cancelled.
+The latest recorded state is the 2026-09-07 submission in
+[PR #545](https://github.com/Dayova/dayova-mvp/pull/545): app/runtime `1.0.5`,
+version code `23`, was available to Internal testers. The same bundle was
+promoted to Closed Alpha and Open testing and replaced the Production
+`1.0.4`/code-21 draft. Full rollouts on all three tracks plus resuming Open
+testing were sent for review, preserving Germany targeting with Managed
+publishing off.
 
-Do not submit, rebuild, promote, remove, or otherwise modify the Closed/Open
-rollout until the current Production review resolves or is withdrawn. Build 20
-uses SDK 57 with legacy runtime `1.0.3`, so its saved testing drafts are obsolete
-release evidence, not a candidate to resume. After Production review is no
-longer active, discard those drafts, verify version-code precedence, feedback
-channel, audience, country/cap, service-account permissions, and listing state,
-then use the checked workflow for a clean app/runtime `1.0.4` replacement.
+Recheck Console for subsequent review/availability changes before acting. Run
+install and billing QA on the exact build 23 identified in the
+[candidate audit](./release-candidate-audit.md), and record the track, device,
+and results. Public approval and successful Play install QA are not established
+by the submission record.
+
+The August build-20 testing drafts and build-21 replacement instructions are
+superseded. Do not resume that withdrawal/replacement sequence or run the
+new-candidate workflow below just to complete build-23 verification. Use that
+workflow only for a separately approved future candidate.
 
 ## Create a new test candidate
 
