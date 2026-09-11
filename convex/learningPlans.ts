@@ -2612,6 +2612,41 @@ const advanceOwnedRollingLearningPlan = (
 		clearSession: clearSessionDayEntry,
 		syncSession: syncSessionDayEntry,
 	});
+export const restoreNextSession = mutation({
+	args: { learningPlanId: v.id("learningPlans") },
+	returns: v.boolean(),
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (plan.status !== "accepted" || !plan.rollingPlanEnabled) return false;
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", plan._id),
+			)
+			.order("asc")
+			.take(51);
+		// The adaptive planner currently supports at most 50 sessions. Do not
+		// repair from a truncated history or create duplicate unfinished work.
+		if (sessions.length >= 50) return false;
+		if (
+			sessions.some((session) =>
+				["notStarted", "started"].includes(getSessionExecutionStatus(session)),
+			)
+		)
+			return true;
+		const lastSession = sessions.at(-1);
+		if (!lastSession || getSessionExecutionStatus(lastSession) !== "completed")
+			return false;
+		const result = await advanceOwnedRollingLearningPlan(ctx, plan);
+		return Boolean(result?.committedSessionId);
+	},
+});
+
 export const startSession = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),

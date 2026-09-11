@@ -852,8 +852,14 @@ test("never schedules outside saved learning windows", async () => {
 	expect(upcoming).toHaveLength(2);
 	expect(upcoming).toEqual(
 		expect.arrayContaining([
+			// The diagnostic was completed before its appointment, so its saved
+			// learning window is available again. The preview uses Monday's window.
+			expect.objectContaining({
+				dateKey: "2026-05-30",
+				startTime: "13:00",
+				durationMinutes: 10,
+			}),
 			expect.objectContaining({ dateKey: "2026-06-01", startTime: "15:00" }),
-			expect.objectContaining({ dateKey: "2026-06-01", startTime: "15:10" }),
 		]),
 	);
 });

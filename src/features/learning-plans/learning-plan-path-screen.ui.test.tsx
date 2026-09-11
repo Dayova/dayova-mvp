@@ -1,7 +1,7 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import { processColor } from "react-native";
-import {
+import LearningPlanSessionsScreen, {
 	getExamCountdownLabel,
 	SessionPreviewCard,
 } from "~/app/learning-plans/[planId]/index";
@@ -9,22 +9,40 @@ import { LearningPathVisual } from "~/features/learning-plans/learning-path-visu
 import type { PlanSession } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
+let mockSnapshot: unknown = null;
+const mockRestore = jest.fn<() => Promise<boolean>>();
+beforeEach(() => {
+	mockSnapshot = null;
+	mockRestore.mockReset().mockResolvedValue(false);
+});
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
 jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
 	useLocalSearchParams: () => ({ planId: "plan_1" }),
 	useRouter: () => ({ push: jest.fn() }),
+	useFocusEffect: (callback: () => void) => {
+		const React = jest.requireActual<typeof import("react")>("react");
+		React.useEffect(callback, [callback]);
+	},
 }));
 
 jest.mock("convex/react", () => ({
 	useAction: () => jest.fn(),
 	useConvexAuth: () => ({ isAuthenticated: true }),
-	useQuery: () => null,
+	useQuery: () => mockSnapshot,
+	useMutation: () => mockRestore,
 }));
 
 jest.mock("#convex/_generated/api", () => ({
 	api: {
 		learningPlanAi: { ensureSessionContent: "ensureSessionContent" },
-		learningPlans: { getSnapshot: "getSnapshot" },
+		learningPlans: {
+			getSnapshot: "getSnapshot",
+			restoreNextSession: "restoreNextSession",
+		},
 	},
 }));
 
@@ -125,6 +143,40 @@ const session = (
 });
 
 describe("learning-plan path", () => {
+	test("recovers an exhausted plan and shows the new practice session after the snapshot updates", async () => {
+		const plan = {
+			id: "plan_1",
+			status: "accepted",
+			rollingPlanEnabled: true,
+			examDateKey: "2099-09-10",
+			examDateLabel: "10. September 2099",
+		};
+		const completed = session("session_1", {
+			completed: true,
+			executionStatus: "completed",
+			contentGenerationStatus: "ready",
+		});
+		mockSnapshot = { plan, sessions: [completed] };
+		const screen = await render(<LearningPlanSessionsScreen />);
+		expect(mockRestore).toHaveBeenCalledWith({ learningPlanId: "plan_1" });
+		expect(screen.getByText("Dein nächster Lernschritt")).toBeOnTheScreen();
+		expect(screen.queryByText("Dayova plant mit dir weiter")).toBeNull();
+		mockSnapshot = {
+			plan,
+			sessions: [
+				completed,
+				session("session_2", {
+					phase: "practice",
+					title: "Steigung anwenden",
+					contentGenerationStatus: "ready",
+				}),
+			],
+		};
+		await screen.rerender(<LearningPlanSessionsScreen />);
+		expect(screen.getByText("Lernsession starten")).toBeOnTheScreen();
+		expect(screen.queryByText("Dein nächster Lernschritt")).toBeNull();
+		expect(mockRestore).toHaveBeenCalledTimes(1);
+	});
 	test("uses a named action for the available session", async () => {
 		const onOpen = jest.fn();
 		const screen = await render(
