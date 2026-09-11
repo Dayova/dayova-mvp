@@ -1,8 +1,11 @@
 /// <reference types="vite/client" />
 
+import { v } from "convex/values";
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { AI_CONSENT_VERSION } from "../src/lib/ai-consent";
 import { api, internal } from "./_generated/api";
+import { internalMutation } from "./_generated/server";
 import schema from "./schema";
 
 const sourceTransport = vi.hoisted(() => ({
@@ -217,6 +220,8 @@ const modules = import.meta.glob("./**/*.ts");
 const user = { tokenIdentifier: "test:document-transport" };
 
 beforeEach(() => {
+	vi.useFakeTimers({ toFake: ["Date"] });
+	vi.setSystemTime(new Date("2026-09-01T09:00:00Z"));
 	sourceTransport.readCount = 0;
 	modelTransport.requestCount = 0;
 	modelTransport.fail = false;
@@ -236,6 +241,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.useRealTimers();
 	vi.unstubAllGlobals();
 	vi.unstubAllEnvs();
 	vi.clearAllMocks();
@@ -247,6 +253,13 @@ const createDocument = async (
 ) =>
 	await t.run(async (ctx) => {
 		const now = Date.now();
+		await ctx.db.insert("users", {
+			clerkId: "document-transport",
+			email: "test@example.com",
+			tokenIdentifier: user.tokenIdentifier,
+			aiConsentStatus: "granted",
+			aiConsentVersion: AI_CONSENT_VERSION,
+		});
 		const learningPlanId = await ctx.db.insert("learningPlans", {
 			ownerTokenIdentifier: user.tokenIdentifier,
 			subject: "Mathematik",
@@ -500,4 +513,38 @@ test("a failed vision request still records the bytes that left the source trans
 			modelRequestCount: 1,
 		}),
 	]);
+});
+
+test("a model-request telemetry outage does not abort document extraction", async () => {
+	const t = convexTest(schema, {
+		...modules,
+		"./learningPlanAiUsage.ts": async () => ({
+			...(await import("./learningPlanAiUsage")),
+			recordModelRequest: internalMutation({
+				args: {
+					learningPlanId: v.id("learningPlans"),
+					operation: v.string(),
+					modelId: v.string(),
+					attemptId: v.string(),
+					retryIndex: v.number(),
+					batchIndex: v.optional(v.number()),
+				},
+				handler: async () => {
+					throw new Error("Telemetry unavailable");
+				},
+			}),
+		}),
+	}).withIdentity(user);
+	const { documentId } = await createDocument(t, {
+		fileName: "scan.png",
+		fileType: "image/png",
+	});
+	await expect(
+		t.action(internal.learningPlanAi.processUploadedDocument, { documentId }),
+	).resolves.toBeNull();
+	expect(modelTransport.requestCount).toBe(1);
+	const document = await t.run((ctx) =>
+		ctx.db.get("learningPlanDocuments", documentId),
+	);
+	expect(document?.processingStatus).toBe("ready");
 });

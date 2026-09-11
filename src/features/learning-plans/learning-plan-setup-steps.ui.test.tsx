@@ -6,6 +6,22 @@ import {
 	RequiredTopicsStep,
 } from "./learning-plan-setup-steps";
 
+jest.mock("~/components/ui/icon", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const Icon = (props: Record<string, unknown>) =>
+		React.createElement("Icon", props);
+	return {
+		Attachment: Icon,
+		CalendarDays: Icon,
+		ChevronDown: Icon,
+		Clock3: Icon,
+		GraduationCap: Icon,
+		Plus: Icon,
+		PropertyEdit: Icon,
+		X: Icon,
+	};
+});
+
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: {

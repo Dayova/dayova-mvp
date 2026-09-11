@@ -45,7 +45,10 @@ import {
 	type LearningPlanDocumentChunk,
 	selectLearningPlanDocumentChunks,
 } from "./learningPlanDocumentContext";
-import { DOCUMENT_PROCESSING_VERSION } from "./learningPlanDocumentProcessing";
+import {
+	DOCUMENT_CHUNK_WRITE_BATCH_SIZE,
+	DOCUMENT_PROCESSING_VERSION,
+} from "./learningPlanDocumentProcessing";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import { LEARNING_PLAN_MAX_FILE_BYTES } from "./learningPlanUploadPolicy";
 import {
@@ -254,16 +257,22 @@ const recordModelRequest = async (
 	},
 ) => {
 	if (!args.transferAttempt) return;
-	await ctx.runMutation(internal.learningPlanAiUsage.recordModelRequest, {
-		learningPlanId: args.learningPlanId,
-		operation: args.operation,
-		modelId: args.modelId,
-		attemptId: args.transferAttempt.attemptId,
-		retryIndex: args.retryIndex,
-		...(args.transferAttempt.batchIndex === undefined
-			? {}
-			: { batchIndex: args.transferAttempt.batchIndex }),
-	});
+	try {
+		await ctx.runMutation(internal.learningPlanAiUsage.recordModelRequest, {
+			learningPlanId: args.learningPlanId,
+			operation: args.operation,
+			modelId: args.modelId,
+			attemptId: args.transferAttempt.attemptId,
+			retryIndex: args.retryIndex,
+			...(args.transferAttempt.batchIndex === undefined
+				? {}
+				: { batchIndex: args.transferAttempt.batchIndex }),
+		});
+	} catch (error) {
+		logDiagnosticError("learningPlanAi.recordModelRequest", error, {
+			attemptId: args.transferAttempt.attemptId,
+		});
+	}
 };
 
 const getMonthlyCostMode = async (
@@ -1204,13 +1213,31 @@ const processClaimedDocument = async (
 			}
 			if (cleared.complete) break;
 		}
+		let storedChunkCount = 0;
+		while (chunks.length - storedChunkCount > DOCUMENT_CHUNK_WRITE_BATCH_SIZE) {
+			const accepted = await ctx.runMutation(
+				internal.learningPlanDocumentProcessing.appendChunks,
+				{
+					documentId: document.id,
+					claimId,
+					processingVersion: DOCUMENT_PROCESSING_VERSION,
+					chunks: chunks.slice(
+						storedChunkCount,
+						storedChunkCount + DOCUMENT_CHUNK_WRITE_BATCH_SIZE,
+					),
+				},
+			);
+			if (!accepted)
+				throw new Error("Document processing claim was superseded.");
+			storedChunkCount += DOCUMENT_CHUNK_WRITE_BATCH_SIZE;
+		}
 		const stored = await ctx.runMutation(
 			internal.learningPlanDocumentProcessing.complete,
 			{
 				documentId: document.id,
 				claimId,
 				processingVersion: DOCUMENT_PROCESSING_VERSION,
-				chunks,
+				chunks: chunks.slice(storedChunkCount),
 				totalTextChars: normalizedText.length,
 				extractionMethod,
 				sourceChecksum: createHash("sha256").update(buffer).digest("hex"),
@@ -3274,6 +3301,7 @@ export const evaluateWrittenAnswer = action({
 			};
 		} else {
 			try {
+				await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 				const model = createVertexModel();
 				const result = await withStructuredOutputErrorHandling(
 					() =>
@@ -3391,6 +3419,7 @@ export const ensureSessionContent = action({
 				"Die Fragen des Wissenschecks fehlen. Erstelle den Lernplan erneut.",
 			);
 		}
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 		const claimed: boolean = await ctx.runMutation(
 			internal.learningPlans.claimSessionContentGeneration,
 			{ sessionId: args.sessionId },
@@ -3442,6 +3471,7 @@ export const retryFailedSessionContent = action({
 		failedSessionCount: number;
 		isReady: boolean;
 	}> => {
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 		const generationId = crypto.randomUUID();
 		const sessionIds: Id<"learningPlanSessions">[] = await ctx.runMutation(
 			internal.learningPlans.claimIncompleteContentGenerationSessions,
@@ -3548,6 +3578,7 @@ export const addSessionWithContent = action({
 		ctx,
 		args,
 	): Promise<{ sessionId: Id<"learningPlanSessions">; itemCount: number }> => {
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 		const sessionId: Id<"learningPlanSessions"> = await ctx.runMutation(
 			api.learningPlans.addSession,
 			{ learningPlanId: args.learningPlanId },
@@ -3589,6 +3620,7 @@ export const generateKnowledgeQuestions = action({
 		learningPlanId: v.id("learningPlans"),
 	},
 	handler: async (ctx, args): Promise<{ questionCount: number }> => {
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 		const attemptId = crypto.randomUUID();
 		const started = await startTransferAttempt(ctx, {
 			learningPlanId: args.learningPlanId,
@@ -3797,6 +3829,7 @@ export const generatePlan = action({
 		contentSessionCount: number;
 		compositionEligibleSessionCount: number;
 	}> => {
+		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
 		const generationId = globalThis.crypto.randomUUID();
 		await ctx.runMutation(internal.learningPlans.beginContentGeneration, {
 			learningPlanId: args.learningPlanId,

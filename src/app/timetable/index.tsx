@@ -34,6 +34,7 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { SelectSheet } from "~/components/ui/select-sheet";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { getUploadFailureMessage } from "~/features/learning-plans/utils";
 import {
@@ -223,6 +224,7 @@ export default function TimetableScreen() {
 		requestedHorizontalPadding: 24,
 	});
 	const { user } = useAuthSession();
+	const { requestAiConsent } = useAiConsent();
 	const { isAuthenticated } = useConvexAuth();
 	const timetableState = useQuery(
 		api.timetables.getMine,
@@ -347,6 +349,7 @@ export default function TimetableScreen() {
 	};
 
 	const uploadAndExtract = async (asset: UploadAsset) => {
+		if (!(await requestAiConsent())) return;
 		const file = new File(asset.uri);
 		const fileSizeBytes = asset.size ?? file.info().size ?? 0;
 		const fileType = asset.mimeType || "application/octet-stream";

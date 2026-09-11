@@ -20,8 +20,21 @@ const easConfig = JSON.parse(
 	};
 };
 
-const workflow = parseYaml(
+const ciWorkflow = parseYaml(
 	readFileSync(new URL("../.eas/workflows/ci.yml", import.meta.url), "utf8"),
+) as {
+	defaults: {
+		tools: {
+			pnpm: string;
+		};
+	};
+};
+
+const androidPlayWorkflow = parseYaml(
+	readFileSync(
+		new URL("../.eas/workflows/android-play-test.yml", import.meta.url),
+		"utf8",
+	),
 ) as {
 	defaults: {
 		tools: {
@@ -72,7 +85,8 @@ describe("pnpm toolchain", () => {
 		const pnpmVersion = packageJson.packageManager.slice("pnpm@".length);
 
 		expect(easConfig.build.base.pnpm).toBe(pnpmVersion);
-		expect(workflow.defaults.tools.pnpm).toBe(pnpmVersion);
+		expect(ciWorkflow.defaults.tools.pnpm).toBe(pnpmVersion);
+		expect(androidPlayWorkflow.defaults.tools.pnpm).toBe(pnpmVersion);
 		expect(readme).toContain(`- pnpm ${pnpmVersion}`);
 	});
 

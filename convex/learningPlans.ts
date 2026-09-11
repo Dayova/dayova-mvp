@@ -2707,7 +2707,8 @@ export const claimIncompleteContentGenerationSessions = internalMutation({
 			args.learningPlanId,
 		);
 		if (
-			progress?.stage === "content" &&
+			progress?.generationId &&
+			progress.stage === "content" &&
 			progress.startedAt &&
 			Date.now() - progress.startedAt < STALE_CONTENT_GENERATION_MS
 		) {

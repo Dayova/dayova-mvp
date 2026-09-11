@@ -10,6 +10,7 @@ import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { SessionEditForm } from "~/features/learning-plans/learning-plan-ui";
 import type {
@@ -45,6 +46,7 @@ function LoadedSessionEditScreen({
 	const regenerateSessionContent = useAction(
 		api.learningPlanAi.ensureSessionContent,
 	);
+	const { requestAiConsent } = useAiConsent();
 	const removeSession = useMutation(api.learningPlans.removeSession);
 
 	const [isBusy, setIsBusy] = useState(false);
@@ -118,6 +120,10 @@ function LoadedSessionEditScreen({
 					durationMinutes: duration,
 				});
 				if (result.contentInvalidated) {
+					if (!(await requestAiConsent())) {
+						router.replace(reviewPath(planId));
+						return;
+					}
 					await regenerateSessionContent({ sessionId: session.id });
 				}
 				router.replace(reviewPath(planId));

@@ -2253,3 +2253,23 @@ test("generated plan sessions reject malformed control characters without replac
 		expectedOutcome: "Schüler kennt Lösungsansätze.",
 	});
 });
+
+test("a pending content update without a worker can be claimed immediately", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const learningPlanId = await createPlan(t);
+	await t.run((ctx) =>
+		ctx.db.insert("learningPlanGenerationProgress", {
+			learningPlanId,
+			ownerTokenIdentifier: user.tokenIdentifier,
+			stage: "content",
+			startedAt: Date.now(),
+			updatedAt: Date.now(),
+		}),
+	);
+	await expect(
+		t.mutation(
+			internal.learningPlans.claimIncompleteContentGenerationSessions,
+			{ learningPlanId, generationId: "retry-now" },
+		),
+	).resolves.toEqual([]);
+});

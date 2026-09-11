@@ -342,7 +342,9 @@ export default function LearningTimesScreen() {
 								>
 									<Text
 										className="font-poppins font-semibold text-body-4"
-										style={{ color: isSelected ? colors.light1 : colors.text }}
+										style={{
+											color: isSelected ? colors.onPrimary : colors.text,
+										}}
 									>
 										{day.abbreviation}
 									</Text>

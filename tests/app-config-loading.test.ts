@@ -35,4 +35,35 @@ describe("Expo app config loading", () => {
 		);
 		expect(result.status, result.stderr).toBe(0);
 	});
+
+	it("keeps URL handling limited to the Dayova app scheme", () => {
+		expect(APP_CONFIG_PATH).toBeDefined();
+
+		const result = spawnSync(
+			process.execPath,
+			[
+				"--experimental-strip-types",
+				"--eval",
+				`console.log(JSON.stringify(require(${JSON.stringify(APP_CONFIG_PATH ?? "")})))`,
+			],
+			{
+				cwd: process.cwd(),
+				encoding: "utf8",
+				env: {
+					...process.env,
+					APP_VARIANT: "development",
+				},
+			},
+		);
+
+		expect(result.status, result.stderr).toBe(0);
+		const config = JSON.parse(result.stdout) as {
+			scheme?: string | string[];
+			android?: { scheme?: string | string[] };
+			ios?: { scheme?: string | string[] };
+		};
+		expect(config.scheme).toBe("dayova");
+		expect(config.ios?.scheme).toBeUndefined();
+		expect(config.android?.scheme).toBeUndefined();
+	});
 });

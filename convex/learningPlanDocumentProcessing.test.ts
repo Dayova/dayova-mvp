@@ -348,3 +348,135 @@ test("deletes a single document context through bounded scheduled batches", asyn
 		})),
 	).toEqual({ chunks: [], contexts: [] });
 });
+
+test("large multibyte documents persist in bounded claimed batches and remain hidden until complete", async () => {
+	const { t, documentId, learningPlanId } = await createDocument();
+	const claim = {
+		documentId,
+		claimId: "batch-claim",
+		processingVersion: DOCUMENT_PROCESSING_VERSION,
+	};
+	await t.mutation(internal.learningPlanDocumentProcessing.claim, claim);
+	const chunks = Array.from({ length: 320 }, (_, chunkIndex) => ({
+		chunkIndex,
+		charStart: chunkIndex * 24000,
+		charEnd: (chunkIndex + 1) * 24000,
+		text: "界".repeat(24000),
+	}));
+	await expect(
+		t.mutation(internal.learningPlanDocumentProcessing.appendChunks, {
+			...claim,
+			chunks: chunks.slice(0, 41),
+		}),
+	).rejects.toThrow("batch exceeds");
+	for (let offset = 0; offset < 280; offset += 40) {
+		expect(
+			await t.mutation(internal.learningPlanDocumentProcessing.appendChunks, {
+				...claim,
+				chunks: chunks.slice(offset, offset + 40),
+			}),
+		).toBe(true);
+	}
+	expect(
+		await t.query(internal.learningPlanDocumentProcessing.getRelevantChunks, {
+			learningPlanId,
+			documentIds: [documentId],
+			selectionQuery: "界",
+		}),
+	).toEqual([]);
+	expect(
+		await t.mutation(internal.learningPlanDocumentProcessing.appendChunks, {
+			...claim,
+			claimId: "stale",
+			chunks: chunks.slice(280),
+		}),
+	).toBe(false);
+	await expect(
+		t.mutation(internal.learningPlanDocumentProcessing.appendChunks, {
+			...claim,
+			chunks: chunks.slice(0, 1),
+		}),
+	).rejects.toThrow("sequence");
+	expect(
+		await t.mutation(internal.learningPlanDocumentProcessing.complete, {
+			...claim,
+			chunks: chunks.slice(280),
+			totalTextChars: 320 * 24000,
+			extractionMethod: "local",
+			sourceChecksum: "large",
+		}),
+	).toBe(true);
+	const context = await t.run((ctx) =>
+		ctx.db
+			.query("learningPlanDocumentContexts")
+			.withIndex("by_documentId", (q) => q.eq("documentId", documentId))
+			.unique(),
+	);
+	expect(context).toMatchObject({ status: "ready", chunkCount: 320 });
+});
+
+test("excluded documents cannot crowd relevant school chunks out of search", async () => {
+	const { t, documentId, learningPlanId } = await createDocument();
+	const claim = {
+		documentId,
+		claimId: "school",
+		processingVersion: DOCUMENT_PROCESSING_VERSION,
+	};
+	await t.mutation(internal.learningPlanDocumentProcessing.claim, claim);
+	await t.mutation(internal.learningPlanDocumentProcessing.complete, {
+		...claim,
+		chunks: [
+			{ chunkIndex: 0, charStart: 0, charEnd: 10, text: "Einleitung" },
+			{
+				chunkIndex: 1,
+				charStart: 10,
+				charEnd: 30,
+				text: "Steigung Mathematik",
+			},
+		],
+		totalTextChars: 30,
+		extractionMethod: "local",
+		sourceChecksum: "school",
+	});
+	await t.run(async (ctx) => {
+		const doc = await ctx.db.get("learningPlanDocuments", documentId);
+		if (!doc) throw new Error("Missing fixture");
+		const { _id, _creationTime, ...fields } = doc;
+		const excluded = await ctx.db.insert("learningPlanDocuments", {
+			...fields,
+			sourceKind: "external",
+		});
+		const context = await ctx.db
+			.query("learningPlanDocumentContexts")
+			.withIndex("by_documentId", (q) => q.eq("documentId", documentId))
+			.unique();
+		if (!context) throw new Error("Missing context");
+		for (let i = 0; i < 20; i++)
+			await ctx.db.insert("learningPlanDocumentChunks", {
+				ownerTokenIdentifier: "test:user",
+				learningPlanId,
+				documentId: excluded,
+				contextId: context._id,
+				processingVersion: DOCUMENT_PROCESSING_VERSION,
+				chunkIndex: i,
+				charStart: 0,
+				charEnd: 8,
+				text: "Steigung",
+				createdAt: 0,
+			});
+	});
+	const selected = await t.query(
+		internal.learningPlanDocumentProcessing.getRelevantChunks,
+		{ learningPlanId, documentIds: [documentId], selectionQuery: "Steigung" },
+	);
+	expect(selected).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				documentId,
+				chunkIndex: 1,
+				text: "Steigung Mathematik",
+			}),
+		]),
+	);
+	expect(selected.every((chunk) => chunk.documentId === documentId)).toBe(true);
+});

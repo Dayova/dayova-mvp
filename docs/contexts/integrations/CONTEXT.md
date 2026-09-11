@@ -107,3 +107,11 @@ internal users.
 - `src/lib/analytics.ts` is the executable contract. It projects exact keys and validates values at runtime; development and tests throw, while production omits invalid optional values and drops events with invalid required values. The PostHog `before_send` hook repeats the projection as defense in depth while preserving SDK/system properties.
 - Capture integration ownership, external IDs, sync boundaries, and migration decisions here.
 - Put integrations ADRs in `docs/contexts/integrations/adr/`.
+
+## Store purchase boundary
+
+The mobile app sells digital access only through Apple In-App Purchase or
+Google Play Billing. Website billing is a separate channel: the app must not
+register RevenueCat redemption URL schemes, process web-purchase redemption
+links, or direct customers to website checkout. Mobile access continues to be
+derived from RevenueCat subscriber snapshots verified by Convex.

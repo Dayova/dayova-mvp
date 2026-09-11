@@ -1,253 +1,138 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { Image, StyleSheet, View } from "react-native";
-import type { SvgProps } from "react-native-svg";
-import Svg, { Circle } from "react-native-svg";
-import { Check, ClipboardEdit, Fire } from "~/components/ui/icon";
-import { Text } from "~/components/ui/text";
-import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import { cn } from "~/lib/utils";
+import { StyleSheet, View } from "react-native";
+import type { Id } from "#convex/_generated/dataModel";
+import {
+	type DashboardWeekProgress,
+	toDashboardAgendaItem,
+} from "~/features/dashboard/dashboard-agenda";
+import {
+	DashboardAgendaEntryCard,
+	DashboardNextStepCard,
+	DashboardWeeklyProgressCard,
+} from "~/features/dashboard/dashboard-product-cards";
 
-const ARTWORK_WIDTH = 356;
+const ARTWORK_WIDTH = 380;
 const ARTWORK_HEIGHT = 242;
-const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
-const GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
-const logoSource = require("../../../assets/onboarding/dayova-y.png");
+const PREVIEW_DAY_KEY = "2026-08-31";
 
-const taskPreviewRows = [
-	{ id: "math-homework", label: "Hausaufgabe Mathe" },
-	{ id: "german-presentation", label: "Deutsch Vortrag" },
-	{ id: "history-test", label: "Geschichte Test lernen" },
-] as const;
+type IntroTasksArtworkProps = {
+	height?: number;
+	width?: number;
+};
 
-const streakDays = [
-	{ id: "monday", label: "M", state: "question" },
-	{ id: "tuesday", label: "T", state: "complete" },
-	{ id: "wednesday", label: "W", state: "complete" },
-	{ id: "thursday", label: "T", state: "complete" },
-	{ id: "friday", label: "F", state: "complete" },
-	{ id: "saturday", label: "S", state: "current" },
-	{ id: "sunday", label: "S", state: "future" },
-] as const;
+const agendaPreview = toDashboardAgendaItem(PREVIEW_DAY_KEY, {
+	id: "intro-dashboard-task" as Id<"dayEntries">,
+	title: "Mathe lernen",
+	kind: "Hausaufgabe",
+	notes: "Funktionen üben",
+	time: "15:30",
+	durationMinutes: 30,
+});
 
-function TaskCard() {
+const nextStepPreview = toDashboardAgendaItem(PREVIEW_DAY_KEY, {
+	id: "intro-dashboard-next-step" as Id<"learningPlanSessions">,
+	relatedLearningPlanSessionId:
+		"intro-dashboard-next-step" as Id<"learningPlanSessions">,
+	title: "Lineare Funktionen verstehen",
+	kind: "Lernsession",
+	time: "16:30",
+	durationMinutes: 30,
+	executionStatus: "notStarted",
+});
+
+const progressPreview = {
+	completedLearningSessions: 4,
+	completedMinutesToday: 30,
+	completionPercent: 57,
+	remainingLearningSessions: 3,
+	totalLearningSessions: 7,
+} satisfies DashboardWeekProgress;
+
+export function IntroTasksArtwork({
+	width = ARTWORK_WIDTH,
+	height = ARTWORK_HEIGHT,
+}: IntroTasksArtworkProps) {
+	const scale = Math.min(width / ARTWORK_WIDTH, height / ARTWORK_HEIGHT);
+
 	return (
 		<View
-			className="absolute overflow-hidden rounded-[16px] border-border border-hairline bg-surface"
-			style={artworkGeometry.taskCard}
-		>
-			<View className="h-[25px] flex-row items-center gap-[5px] px-[13px]">
-				<LinearGradient
-					colors={GRADIENT.colors}
-					start={GRADIENT.start}
-					end={GRADIENT.end}
-					style={gradientBackgroundStyle}
-				/>
-				<ClipboardEdit size={10} color={COLORS.light1} strokeWidth={2} />
-				<Text className="font-poppins font-semibold text-[8px] text-white leading-3">
-					Deine Aufgaben
-				</Text>
-			</View>
-
-			<View className="pr-[7px] pl-[17px]">
-				{taskPreviewRows.map((row, index) => (
-					<View
-						key={row.id}
-						className={cn(
-							"h-[25.7px] flex-row items-center gap-1.5",
-							index < taskPreviewRows.length - 1 && "border-border border-b",
-						)}
-					>
-						<View className="h-2 w-2 rounded-full border border-primary" />
-						<Text
-							numberOfLines={1}
-							className="flex-1 font-normal font-poppins text-[6.5px] text-primary leading-[9px]"
-						>
-							{row.label}
-						</Text>
-					</View>
-				))}
-			</View>
-		</View>
-	);
-}
-
-function StreakDay({
-	label,
-	state,
-}: {
-	label: string;
-	state: (typeof streakDays)[number]["state"];
-}) {
-	return (
-		<View className="w-[17px] items-center gap-0.5">
-			<Text className="font-normal font-poppins text-[6px] text-white leading-2">
-				{label}
-			</Text>
-			{state === "question" ? (
-				<View className="h-[17px] w-[17px] items-center justify-center rounded-full bg-primary-strong">
-					<Text className="font-poppins font-semibold text-[9px] text-white leading-[11px]">
-						?
-					</Text>
-				</View>
-			) : null}
-			{state === "complete" ? (
-				<View className="h-[17px] w-[17px] items-center justify-center rounded-full bg-white">
-					<Check size={10} color={COLORS.primary} strokeWidth={3} />
-				</View>
-			) : null}
-			{state === "current" ? (
-				<Svg width={17} height={17} viewBox="0 0 17 17">
-					<Circle
-						cx={8.5}
-						cy={8.5}
-						r={6}
-						fill="none"
-						stroke={COLORS.primaryStrong}
-						strokeWidth={4}
-					/>
-					<Circle
-						cx={8.5}
-						cy={8.5}
-						r={6}
-						fill="none"
-						stroke={COLORS.light1}
-						strokeDasharray="22 38"
-						strokeLinecap="round"
-						strokeWidth={4}
-						transform="rotate(-90 8.5 8.5)"
-					/>
-				</Svg>
-			) : null}
-			{state === "future" ? (
-				<View className="h-[17px] w-[17px] rounded-full border-4 border-primary-strong" />
-			) : null}
-		</View>
-	);
-}
-
-function StreakCard() {
-	return (
-		<View
-			className="absolute rounded-[16px] shadow-black/5 shadow-sm"
-			style={artworkGeometry.streakCard}
-		>
-			<View className="h-full w-full overflow-hidden rounded-[16px] px-2 pt-2.5">
-				<LinearGradient
-					colors={GRADIENT.colors}
-					start={GRADIENT.start}
-					end={GRADIENT.end}
-					style={gradientBackgroundStyle}
-				/>
-				<View className="items-center">
-					<View className="flex-row items-center gap-[3px]">
-						<Fire size={14} color={COLORS.light1} strokeWidth={1.5} />
-						<Text className="font-poppins font-semibold text-[14px] text-white leading-[17px]">
-							4
-						</Text>
-					</View>
-					<Text className="font-normal font-poppins text-[6px] text-white leading-2">
-						Erfolgreiche Lerntage
-					</Text>
-				</View>
-
-				<View className="mt-1.5 flex-row justify-between">
-					{streakDays.map((day) => (
-						<StreakDay key={day.id} label={day.label} state={day.state} />
-					))}
-				</View>
-
-				<Text className="mt-1.5 text-center font-normal font-poppins text-[6px] text-white leading-2">
-					Weiter so! Du hast schon 4{"\n"}Lerntage abgeschlossen
-				</Text>
-			</View>
-		</View>
-	);
-}
-
-function ReminderCard() {
-	return (
-		<View
-			className="absolute flex-row items-center rounded-[16px] border-border border-hairline bg-surface px-[13.38px] shadow-black/5 shadow-sm"
-			style={artworkGeometry.reminderCard}
-		>
-			<View className="h-[35.4px] w-[35.4px] items-center justify-center rounded-full border-[0.86px] border-border bg-surface">
-				<Image source={logoSource} resizeMode="contain" className="h-6 w-6" />
-			</View>
-			<View className="mr-4 ml-[11.5px] h-[47px] w-px bg-border" />
-			<View className="flex-1 gap-0.5">
-				<Text className="font-normal font-poppins text-body-4 text-primary">
-					Mathe lernen
-				</Text>
-				<Text className="font-normal font-poppins text-body-5 text-text">
-					Deine Lernstunde startet in 60{"\n"}Minuten
-				</Text>
-			</View>
-		</View>
-	);
-}
-
-function numericDimension(
-	value: SvgProps["width"] | SvgProps["height"],
-	fallback: number,
-) {
-	return typeof value === "number" ? value : fallback;
-}
-
-export function IntroTasksArtwork({ width, height }: SvgProps) {
-	const resolvedWidth = numericDimension(width, ARTWORK_WIDTH);
-	const resolvedHeight = numericDimension(height, ARTWORK_HEIGHT);
-	const scale = Math.min(
-		resolvedWidth / ARTWORK_WIDTH,
-		resolvedHeight / ARTWORK_HEIGHT,
-	);
-
-	// Runtime viewport dimensions and responsive scaling are style-prop exceptions.
-	return (
-		<View
+			accessible={false}
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
+			pointerEvents="none"
 			className="items-center justify-center"
-			style={{ width: resolvedWidth, height: resolvedHeight }}
+			// The artwork frame dimensions are runtime component inputs.
+			style={{ width, height }}
 			testID="intro-tasks-artwork"
 		>
 			<View
-				className="relative h-[242px] w-[356px]"
+				className="h-[242px] w-[380px]"
+				// The fixed artboard scales to the runtime frame while preserving its geometry.
 				style={{ transform: [{ scale }] }}
+				testID="intro-tasks-product-composition"
 			>
-				<TaskCard />
-				<StreakCard />
-				<ReminderCard />
+				<View
+					className="absolute shadow-black/10 shadow-lg"
+					style={artworkGeometry.agenda}
+					testID="intro-tasks-agenda-layer"
+				>
+					<DashboardAgendaEntryCard
+						mode="artwork"
+						item={agendaPreview}
+						testID="intro-task-agenda-card"
+					/>
+				</View>
+				<View
+					className="absolute shadow-black/10 shadow-lg"
+					style={artworkGeometry.progress}
+					testID="intro-tasks-progress-layer"
+				>
+					<DashboardWeeklyProgressCard
+						mode="artwork"
+						progress={progressPreview}
+						testID="intro-task-progress-card"
+					/>
+				</View>
+				<View
+					className="absolute shadow-black/15 shadow-xl"
+					style={artworkGeometry.nextStep}
+					testID="intro-tasks-next-step-layer"
+				>
+					<DashboardNextStepCard
+						mode="artwork"
+						item={nextStepPreview}
+						todayKey={PREVIEW_DAY_KEY}
+						testID="intro-task-next-step-card"
+					/>
+				</View>
 			</View>
 		</View>
 	);
 }
 
-// NativeWind owns static styling above. These RN styles are intentionally
-// limited to the fixed 356x242 Figma artboard coordinates and transforms.
-// expo-linear-gradient also requires its background geometry through `style`.
-// See docs/contexts/design-system/adr/onboarding-artwork-rendering.md.
-const gradientBackgroundStyle = StyleSheet.absoluteFill;
+// The onboarding wrapper owns only the overlap, rotation, scale, and shadow.
+// Product structure and tokens stay inside the shared dashboard components.
 const artworkGeometry = StyleSheet.create({
-	taskCard: {
-		left: 6.18,
-		top: 37.54,
-		width: 179.7,
-		height: 102.7,
-		transform: [{ rotate: "-12deg" }],
+	agenda: {
+		left: 8,
+		top: 45,
+		width: 220,
+		height: 110,
+		transform: [{ rotate: "-7deg" }],
 		transformOrigin: [0, 0, 0],
 	},
-	streakCard: {
-		left: 196.43,
-		top: 13.86,
-		width: 142.44,
-		height: 110.79,
-		transform: [{ rotate: "7.823deg" }],
+	progress: {
+		left: 198,
+		top: 10,
+		width: 172,
+		height: 150,
+		transform: [{ rotate: "5deg" }],
 		transformOrigin: [0, 0, 0],
 	},
-	reminderCard: {
-		left: 38,
-		top: 127,
-		width: 268.54,
-		height: 74.18,
+	nextStep: {
+		left: 34,
+		top: 121,
+		zIndex: 2,
+		width: 312,
+		height: 110,
 	},
 });

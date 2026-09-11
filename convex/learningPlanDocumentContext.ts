@@ -185,7 +185,7 @@ export const formatLearningPlanSourceContext = (
 				chunk.sourceKind === "school"
 					? "INTERNES SCHULMATERIAL"
 					: "EXTERNE LERNHILFE";
-			return `<dayova-source document="${chunk.documentIndex + 1}" chunk="${chunk.chunkIndex + 1}" chars="${chunk.charStart}-${chunk.charEnd}" type="${sourceLabel}">\n${chunk.text}\n</dayova-source>`;
+			return `<dayova-source document="${chunk.documentIndex + 1}" chunk="${chunk.chunkIndex + 1}" chars="${chunk.charStart}-${chunk.charEnd}" type="${sourceLabel}">\n${chunk.text.replaceAll("<", "&lt;").replaceAll(">", "&gt;")}\n</dayova-source>`;
 		}),
 	].join("\n\n---\n\n");
 };

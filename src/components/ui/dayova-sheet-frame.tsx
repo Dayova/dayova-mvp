@@ -7,11 +7,20 @@ import {
 	BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import type { ReactNode, RefObject } from "react";
-import { useCallback, useEffect, useId, useMemo, useRef } from "react";
 import {
-	AccessibilityInfo,
-	findNodeHandle,
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import {
 	type AccessibilityActionEvent,
+	AccessibilityInfo,
+	BackHandler,
+	findNodeHandle,
+	Platform,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -26,7 +35,7 @@ import { cn } from "~/lib/utils";
 const MAX_SHEET_WIDTH = 560;
 
 type DayovaSheetSize = "content" | "medium";
-type DayovaSheetPhase = "closed" | "opening" | "closing";
+type DayovaSheetPhase = "closed" | "opening" | "presented" | "closing";
 
 type DayovaSheetFrameProps = {
 	visible: boolean;
@@ -72,6 +81,8 @@ function DayovaSheetFrame({
 	const setSheetOpen = sheetAccessibility?.setSheetOpen;
 	const desiredVisibleRef = useRef(visible);
 	const phaseRef = useRef<DayovaSheetPhase>("closed");
+	const [isNativeSheetActive, setIsNativeSheetActive] = useState(false);
+	const capturesAndroidBack = visible || isNativeSheetActive;
 	const insets = useSafeAreaInsets();
 	const { colors, isDark } = useDayovaTheme();
 	const {
@@ -107,6 +118,7 @@ function DayovaSheetFrame({
 
 	const presentIfDesired = useCallback(() => {
 		if (!desiredVisibleRef.current || phaseRef.current !== "closed") return;
+		setIsNativeSheetActive(true);
 		phaseRef.current = "opening";
 		sheetRef.current?.present();
 	}, []);
@@ -120,9 +132,14 @@ function DayovaSheetFrame({
 			return () => cancelAnimationFrame(frame);
 		}
 
-		if (phaseRef.current === "opening") {
+		if (phaseRef.current === "opening" || phaseRef.current === "presented") {
 			phaseRef.current = "closing";
 			sheetRef.current?.dismiss();
+			return;
+		}
+
+		if (phaseRef.current === "closed") {
+			setIsNativeSheetActive(false);
 		}
 	}, [presentIfDesired, visible]);
 
@@ -138,12 +155,34 @@ function DayovaSheetFrame({
 
 	const dismiss = useCallback(() => {
 		if (!dismissible) return;
+		if (phaseRef.current === "closed") {
+			desiredVisibleRef.current = false;
+			setIsNativeSheetActive(false);
+			onClose();
+			return;
+		}
 		sheetRef.current?.dismiss();
-	}, [dismissible]);
+	}, [dismissible, onClose]);
+
+	useEffect(() => {
+		if (!capturesAndroidBack || Platform.OS !== "android") return undefined;
+
+		const subscription = BackHandler.addEventListener(
+			"hardwareBackPress",
+			() => {
+				if (dismissible) dismiss();
+				return true;
+			},
+		);
+
+		return () => subscription.remove();
+	}, [capturesAndroidBack, dismiss, dismissible]);
 
 	const handleDismiss = useCallback(() => {
 		const wasControlledDismissal = phaseRef.current === "closing";
+		const shouldReopen = wasControlledDismissal && desiredVisibleRef.current;
 		phaseRef.current = "closed";
+		setIsNativeSheetActive(shouldReopen);
 		didMoveFocusRef.current = false;
 		setSheetOpen?.(sheetId, false);
 		if (initialFocusFrameRef.current !== null) {
@@ -179,6 +218,8 @@ function DayovaSheetFrame({
 	const handleChange = useCallback(
 		(index: number) => {
 			if (index < 0) return;
+			phaseRef.current = "presented";
+			setIsNativeSheetActive(true);
 			setSheetOpen?.(sheetId, true);
 			if (didMoveFocusRef.current) return;
 
@@ -226,6 +267,7 @@ function DayovaSheetFrame({
 
 	const canShowCloseButton = showCloseButton && dismissible;
 	const hasHeader = Boolean(title || description || canShowCloseButton);
+	const hasFixedFooter = scrollable && Boolean(footer);
 	const content = (
 		<View
 			accessibilityActions={
@@ -242,7 +284,11 @@ function DayovaSheetFrame({
 				size !== "content" && !scrollable && "flex-1",
 			)}
 			// Safe-area padding is runtime device data and cannot be a static utility.
-			style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}
+			style={{
+				paddingBottom: hasFixedFooter
+					? 12
+					: Math.max(insets.bottom + 20, 32),
+			}}
 		>
 			{!title ? (
 				<View
@@ -297,7 +343,7 @@ function DayovaSheetFrame({
 					{children}
 				</View>
 			) : null}
-			{footer ? (
+			{footer && !hasFixedFooter ? (
 				<View className={children ? "mt-6" : undefined}>{footer}</View>
 			) : null}
 		</View>
@@ -335,16 +381,26 @@ function DayovaSheetFrame({
 			}}
 		>
 			{scrollable ? (
-				<BottomSheetScrollView
-					bounces={false}
-					keyboardShouldPersistTaps="handled"
-					nestedScrollEnabled
-					showsVerticalScrollIndicator={false}
-					// Gorhom scrollables require their fill geometry through `style`.
-					style={{ flex: 1 }}
-				>
-					{content}
-				</BottomSheetScrollView>
+				<View className="flex-1 bg-card">
+					<BottomSheetScrollView
+						bounces={false}
+						keyboardShouldPersistTaps="handled"
+						nestedScrollEnabled
+						showsVerticalScrollIndicator={false}
+						// Gorhom scrollables require their fill geometry through `style`.
+						style={{ flex: 1 }}
+					>
+						{content}
+					</BottomSheetScrollView>
+					{hasFixedFooter ? (
+						<View
+							className="bg-card px-6 pt-4"
+							style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}
+						>
+							{footer}
+						</View>
+					) : null}
+				</View>
 			) : (
 				<BottomSheetView
 					// Gorhom views do not expose NativeWind class props.

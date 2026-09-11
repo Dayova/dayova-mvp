@@ -1,7 +1,14 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 import { internalMutation, internalQuery } from "./_generated/server";
-import { buildLearningPlanChunkSearchQuery } from "./learningPlanDocumentContext";
+import {
+	buildLearningPlanChunkSearchQuery,
+	LEARNING_PLAN_DOCUMENT_CHUNK_CHARS,
+	LEARNING_PLAN_DOCUMENT_MAX_CHUNKS,
+	type LearningPlanDocumentChunk,
+} from "./learningPlanDocumentContext";
 
 export const DOCUMENT_PROCESSING_VERSION = 2;
 export const STALE_DOCUMENT_PROCESSING_MS = 11 * 60_000;
@@ -167,35 +174,51 @@ export const getRelevantChunks = internalQuery({
 		}),
 	),
 	handler: async (ctx, args) => {
-		const allowedDocumentIds = new Set<string>(args.documentIds);
-		const relevant = await ctx.db
-			.query("learningPlanDocumentChunks")
-			.withSearchIndex("search_text", (q) =>
-				q
-					.search(
-						"text",
-						buildLearningPlanChunkSearchQuery(args.selectionQuery),
-					)
-					.eq("learningPlanId", args.learningPlanId),
+		const documentIds = [...new Set(args.documentIds)];
+		const selected: Doc<"learningPlanDocumentChunks">[] = [];
+		const perDocumentLimit = Math.max(
+			1,
+			Math.floor(12 / Math.max(1, documentIds.length)),
+		);
+		for (const documentId of documentIds) {
+			const context = await ctx.db
+				.query("learningPlanDocumentContexts")
+				.withIndex("by_documentId", (q) => q.eq("documentId", documentId))
+				.unique();
+			if (
+				context?.status !== "ready" ||
+				context.learningPlanId !== args.learningPlanId
 			)
-			.take(12);
-		const selected = relevant.filter((chunk) =>
-			allowedDocumentIds.has(chunk.documentId),
-		);
-		const selectedKeys = new Set(
-			selected.map((chunk) => `${chunk.documentId}:${chunk.chunkIndex}`),
-		);
-		for (const documentId of args.documentIds) {
+				continue;
+			const relevant = await ctx.db
+				.query("learningPlanDocumentChunks")
+				.withSearchIndex("search_text", (q) =>
+					q
+						.search(
+							"text",
+							buildLearningPlanChunkSearchQuery(args.selectionQuery),
+						)
+						.eq("learningPlanId", args.learningPlanId)
+						.eq("documentId", documentId),
+				)
+				.take(perDocumentLimit);
+			selected.push(
+				...relevant.filter(
+					(chunk) => chunk.processingVersion === context.processingVersion,
+				),
+			);
 			const first = await ctx.db
 				.query("learningPlanDocumentChunks")
-				.withIndex("by_documentId_and_chunkIndex", (q) =>
-					q.eq("documentId", documentId),
+				.withIndex("by_contextId_and_chunkIndex", (q) =>
+					q.eq("contextId", context._id),
 				)
-				.order("asc")
 				.first();
-			if (first && !selectedKeys.has(`${documentId}:${first.chunkIndex}`)) {
+			if (
+				first &&
+				first.processingVersion === context.processingVersion &&
+				!selected.some((chunk) => chunk._id === first._id)
+			)
 				selected.push(first);
-			}
 		}
 		return selected.map(
 			({ documentId, chunkIndex, charStart, charEnd, text }) => ({
@@ -246,6 +269,67 @@ export const clearChunksForClaim = internalMutation({
 	},
 });
 
+export const DOCUMENT_CHUNK_WRITE_BATCH_SIZE = 40;
+
+const persistChunkBatch = async (
+	ctx: MutationCtx,
+	context: Doc<"learningPlanDocumentContexts">,
+	chunks: LearningPlanDocumentChunk[],
+) => {
+	const previousCount = context.chunkCount ?? 0;
+	if (
+		chunks.length > DOCUMENT_CHUNK_WRITE_BATCH_SIZE ||
+		previousCount + chunks.length > LEARNING_PLAN_DOCUMENT_MAX_CHUNKS
+	)
+		throw new Error("Document chunk batch exceeds its limit.");
+	for (const [index, chunk] of chunks.entries()) {
+		if (
+			chunk.chunkIndex !== previousCount + index ||
+			chunk.text.length > LEARNING_PLAN_DOCUMENT_CHUNK_CHARS
+		)
+			throw new Error("Invalid document chunk sequence or size.");
+		await ctx.db.insert("learningPlanDocumentChunks", {
+			ownerTokenIdentifier: context.ownerTokenIdentifier,
+			learningPlanId: context.learningPlanId,
+			documentId: context.documentId,
+			contextId: context._id,
+			processingVersion: context.processingVersion,
+			...chunk,
+			createdAt: Date.now(),
+		});
+	}
+	return previousCount + chunks.length;
+};
+
+export const appendChunks = internalMutation({
+	args: {
+		documentId: v.id("learningPlanDocuments"),
+		claimId: v.string(),
+		processingVersion: v.number(),
+		chunks: v.array(processedChunkValidator),
+	},
+	returns: v.boolean(),
+	handler: async (ctx, args) => {
+		const context = await ctx.db
+			.query("learningPlanDocumentContexts")
+			.withIndex("by_documentId", (q) => q.eq("documentId", args.documentId))
+			.unique();
+		if (
+			!context ||
+			context.status !== "processing" ||
+			context.claimId !== args.claimId ||
+			context.processingVersion !== args.processingVersion
+		)
+			return false;
+		const chunkCount = await persistChunkBatch(ctx, context, args.chunks);
+		await ctx.db.patch("learningPlanDocumentContexts", context._id, {
+			chunkCount,
+			updatedAt: Date.now(),
+		});
+		return true;
+	},
+});
+
 export const complete = internalMutation({
 	args: {
 		documentId: v.id("learningPlanDocuments"),
@@ -269,22 +353,12 @@ export const complete = internalMutation({
 		)
 			return false;
 		const now = Date.now();
-		for (const chunk of args.chunks) {
-			await ctx.db.insert("learningPlanDocumentChunks", {
-				ownerTokenIdentifier: context.ownerTokenIdentifier,
-				learningPlanId: context.learningPlanId,
-				documentId: args.documentId,
-				contextId: context._id,
-				processingVersion: args.processingVersion,
-				...chunk,
-				createdAt: now,
-			});
-		}
+		const chunkCount = await persistChunkBatch(ctx, context, args.chunks);
 		await ctx.db.patch("learningPlanDocumentContexts", context._id, {
 			status: "ready",
 			claimId: undefined,
 			normalizedText: undefined,
-			chunkCount: args.chunks.length,
+			chunkCount,
 			totalTextChars: args.totalTextChars,
 			extractionMethod: args.extractionMethod,
 			sourceChecksum: args.sourceChecksum,

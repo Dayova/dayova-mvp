@@ -9,6 +9,7 @@ import {
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
 	getDashboardWeekProgress,
+	getNextLearningStepAccessibilityLabel,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
@@ -22,6 +23,25 @@ const entry = (overrides: Partial<DayEntry>): DayEntry =>
 	}) as DayEntry;
 
 describe("dashboard agenda", () => {
+	it("omits unavailable date and time details from the next-step announcement", () => {
+		expect(
+			getNextLearningStepAccessibilityLabel({
+				isStarted: false,
+				title: "Lineare Funktionen",
+				dateLabel: null,
+				timeLabel: null,
+			}),
+		).toBe("Nächsten Lernschritt öffnen: Lineare Funktionen");
+		expect(
+			getNextLearningStepAccessibilityLabel({
+				isStarted: true,
+				title: "Lineare Funktionen",
+				dateLabel: "Heute",
+				timeLabel: "16:00 Uhr",
+			}),
+		).toBe("Weiterlernen: Lineare Funktionen. Heute, 16:00 Uhr");
+	});
+
 	it("moves to the adjacent day in the direction of the user's swipe", () => {
 		expect(
 			getAdjacentDashboardDayKey({

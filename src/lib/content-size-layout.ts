@@ -6,6 +6,12 @@ const COMPACT_HORIZONTAL_PADDING = 20;
 const VERY_COMPACT_HORIZONTAL_PADDING = 16;
 const ENLARGED_FONT_SCALE = 1.2;
 
+// Custom-font display headings otherwise scale linearly to roughly 3x at the
+// largest iOS accessibility size. Native Dynamic Type uses a gentler curve for
+// large titles so headings preserve word integrity while body copy and controls
+// continue to receive the user's full text-size preference.
+const SEMANTIC_HEADING_MAX_FONT_SIZE_MULTIPLIER = 1.75;
+
 type ContentSizeLayoutInput = {
 	containerMaxWidth?: number;
 	fontScale: number;
@@ -48,4 +54,4 @@ function getContentSizeLayout({
 	};
 }
 
-export { getContentSizeLayout };
+export { getContentSizeLayout, SEMANTIC_HEADING_MAX_FONT_SIZE_MULTIPLIER };

@@ -32,7 +32,7 @@ if (isReleaseConfig) {
 	validatePublicEnvForRelease(undefined, { platform: releasePlatform });
 }
 
-const APP_VERSION = "1.0.3";
+const APP_VERSION = "1.0.4";
 const BACKGROUND_COLOR = "#ffffff";
 // Keep this native launch color aligned with DARK_THEME_VARIABLES["--background"].
 // theme-css.test.ts prevents the values from drifting.
@@ -123,6 +123,7 @@ const config: ExpoConfig = {
 		],
 		"./plugins/withRemovedVoicePermissions",
 		"expo-localization",
+		"./plugins/withIosInAppPurchase",
 		"./plugins/withNinjaLongPaths",
 		"./plugins/withAndroidGradleJvmMemory",
 		"./plugins/withAndroidPackagingOptions",

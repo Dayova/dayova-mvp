@@ -14,6 +14,7 @@ export const DARK_THEME_VARIABLES = {
 	"--popover": "248 10% 13%",
 	"--surface": "248 10% 13%",
 	"--primary": "196.2 100% 50%",
+	"--on-primary": "0 0% 10.2%",
 	"--primary-strong": "198.3 100% 58%",
 	"--progress-track": "195.3 56.1% 13.5%",
 	"--button-neutral": "0 0% 100%",
@@ -139,6 +140,7 @@ const darkThemeHsl = (variable: DarkThemeVariable) =>
  */
 export const DARK_THEME_COLORS = {
 	primary: darkThemeHex("--primary"),
+	onPrimary: darkThemeHex("--on-primary"),
 	primaryStrong: darkThemeHex("--primary-strong"),
 	primaryAccent: darkThemeHex("--path-7"),
 	buttonNeutral: darkThemeHex("--button-neutral"),

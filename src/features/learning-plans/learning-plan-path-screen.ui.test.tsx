@@ -3,9 +3,9 @@ import { fireEvent, render } from "@testing-library/react-native";
 import { processColor } from "react-native";
 import {
 	getExamCountdownLabel,
-	LearningPath,
 	SessionPreviewCard,
 } from "~/app/learning-plans/[planId]/index";
+import { LearningPathVisual } from "~/features/learning-plans/learning-path-visual";
 import type { PlanSession } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
@@ -30,6 +30,10 @@ jest.mock("#convex/_generated/api", () => ({
 
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { clerkId: "user_1" } }),
+}));
+
+jest.mock("~/context/AiConsentContext", () => ({
+	useAiConsent: () => ({ requestAiConsent: async () => true }),
 }));
 
 jest.mock("~/components/ui/screen", () => {
@@ -227,7 +231,8 @@ describe("learning-plan path", () => {
 			}),
 		];
 		const screen = await render(
-			<LearningPath
+			<LearningPathVisual
+				mode="screen"
 				examCountdownLabel="Noch 14 Tage"
 				examDateLabel="18. August 2026"
 				onOpenSession={onOpenSession}

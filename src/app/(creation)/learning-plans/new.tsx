@@ -477,7 +477,6 @@ export default function NewLearningPlanScreen() {
 			await runWithErrorHandling(
 				"Das Foto konnte nicht hochgeladen werden.",
 				async () => {
-					const id = await ensurePlan(topics);
 					const preparedAsset = prepareUploadAsset({
 						uri: asset.uri,
 						name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
@@ -485,6 +484,7 @@ export default function NewLearningPlanScreen() {
 						size: asset.fileSize,
 					});
 					assertUploadBatchFits([preparedAsset]);
+					const id = await ensurePlan(topics);
 					await uploadLearningPlanAsset(preparedAsset, id);
 				},
 			);

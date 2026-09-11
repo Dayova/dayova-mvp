@@ -29,6 +29,7 @@ type DateTimePickerSheetProps = {
 	doneLabel?: ReactNode;
 	onChange: (event: DateTimePickerSheetEvent, selectedDate?: Date) => void;
 	onClose: () => void;
+	onConfirm?: (selectedDate: Date) => void;
 };
 
 function buildDateTimePickerChangeEvent(
@@ -46,7 +47,14 @@ function buildDateTimePickerChangeEvent(
 const shouldCloseDateTimePickerAfterChange = (platform: string) =>
 	platform === "android";
 
-export { buildDateTimePickerChangeEvent, shouldCloseDateTimePickerAfterChange };
+const getDateTimePickerConfirmAccessibilityLabel = (doneLabel: ReactNode) =>
+	typeof doneLabel === "string" ? doneLabel : "Auswahl bestätigen";
+
+export {
+	buildDateTimePickerChangeEvent,
+	getDateTimePickerConfirmAccessibilityLabel,
+	shouldCloseDateTimePickerAfterChange,
+};
 export type {
 	DateTimePickerChangeEvent,
 	DateTimePickerDisplay,

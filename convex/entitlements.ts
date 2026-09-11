@@ -75,9 +75,13 @@ const getCurrentAccess = (
 		return toPaidAccess(entitlement);
 	}
 
-	if (now >= entitlement.trialExpiresAt) {
+	if (
+		entitlement.trialStartedAt === undefined ||
+		entitlement.trialExpiresAt === undefined ||
+		entitlement.trialReminderAt === undefined ||
+		entitlement.trialTermsVersion === undefined
+	) {
 		return {
-			...toTrialAccess(entitlement),
 			canUseApp: false,
 			managementUrl: entitlement.subscriptionManagementUrl,
 			productId: entitlement.subscriptionProductId,
@@ -89,7 +93,28 @@ const getCurrentAccess = (
 		};
 	}
 
-	return toTrialAccess(entitlement);
+	const trialAccess = toTrialAccess({
+		trialStartedAt: entitlement.trialStartedAt,
+		trialExpiresAt: entitlement.trialExpiresAt,
+		trialReminderAt: entitlement.trialReminderAt,
+		trialTermsVersion: entitlement.trialTermsVersion,
+	});
+
+	if (now >= entitlement.trialExpiresAt) {
+		return {
+			...trialAccess,
+			canUseApp: false,
+			managementUrl: entitlement.subscriptionManagementUrl,
+			productId: entitlement.subscriptionProductId,
+			state: "expired" as const,
+			store: entitlement.subscriptionStore,
+			subscriptionExpiresAt: entitlement.subscriptionExpiresAt,
+			subscriptionGraceExpiresAt: entitlement.subscriptionGraceExpiresAt,
+			willRenew: entitlement.subscriptionWillRenew ?? false,
+		};
+	}
+
+	return trialAccess;
 };
 
 const getCurrentUser = async (ctx: MutationCtx | QueryCtx) => {
@@ -148,6 +173,7 @@ export const applyRevenueCatSnapshot = internalMutation({
 		managementUrl: v.optional(v.string()),
 		verifiedAt: v.number(),
 	},
+	returns: v.object({ success: v.literal(true) }),
 	handler: async (ctx, args) => {
 		const entitlement = await ctx.db
 			.query("accessEntitlements")
@@ -156,7 +182,51 @@ export const applyRevenueCatSnapshot = internalMutation({
 			)
 			.unique();
 		if (!entitlement) {
-			throwUserFacingError("Der Dayova-Zugang konnte nicht gefunden werden.");
+			if (!args.active) {
+				return { success: true as const };
+			}
+
+			const user = await ctx.db
+				.query("users")
+				.withIndex("by_tokenIdentifier", (query) =>
+					query.eq("tokenIdentifier", args.ownerTokenIdentifier),
+				)
+				.unique();
+			if (!user) {
+				throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
+			}
+
+			await ctx.db.insert("accessEntitlements", {
+				ownerTokenIdentifier: args.ownerTokenIdentifier,
+				userId: user._id,
+				revenueCatEntitlementActive: true,
+				...(args.expiresAt !== undefined
+					? { subscriptionExpiresAt: args.expiresAt }
+					: {}),
+				...(args.graceExpiresAt !== undefined
+					? { subscriptionGraceExpiresAt: args.graceExpiresAt }
+					: {}),
+				...(args.productId !== undefined
+					? { subscriptionProductId: args.productId }
+					: {}),
+				...(args.store !== undefined ? { subscriptionStore: args.store } : {}),
+				...(args.willRenew !== undefined
+					? { subscriptionWillRenew: args.willRenew }
+					: {}),
+				...(args.billingIssueDetectedAt !== undefined
+					? {
+							subscriptionBillingIssueDetectedAt: args.billingIssueDetectedAt,
+						}
+					: {}),
+				...(args.managementUrl !== undefined
+					? { subscriptionManagementUrl: args.managementUrl }
+					: {}),
+				subscriptionVerifiedAt: args.verifiedAt,
+				createdAt: args.verifiedAt,
+				updatedAt: args.verifiedAt,
+			});
+
+			return { success: true as const };
 		}
 
 		await ctx.db.patch("accessEntitlements", entitlement._id, {
@@ -172,21 +242,42 @@ export const applyRevenueCatSnapshot = internalMutation({
 			updatedAt: args.verifiedAt,
 		});
 
-		return { success: true };
+		return { success: true as const };
 	},
 });
 
-export const findOwnerTokenIdentifierByClerkId = internalQuery({
+export const findOwnersByClerkIds = internalQuery({
 	args: {
-		clerkId: v.string(),
+		clerkIds: v.array(v.string()),
 	},
+	returns: v.array(
+		v.object({
+			clerkId: v.string(),
+			ownerTokenIdentifier: v.string(),
+		}),
+	),
 	handler: async (ctx, args) => {
-		const user = await ctx.db
-			.query("users")
-			.withIndex("by_clerkId", (query) => query.eq("clerkId", args.clerkId))
-			.unique();
+		const owners: Array<{
+			clerkId: string;
+			ownerTokenIdentifier: string;
+		}> = [];
+		const ownerTokens = new Set<string>();
 
-		return user?.tokenIdentifier ?? null;
+		for (const clerkId of args.clerkIds) {
+			const user = await ctx.db
+				.query("users")
+				.withIndex("by_clerkId", (query) => query.eq("clerkId", clerkId))
+				.unique();
+			if (user && !ownerTokens.has(user.tokenIdentifier)) {
+				ownerTokens.add(user.tokenIdentifier);
+				owners.push({
+					clerkId,
+					ownerTokenIdentifier: user.tokenIdentifier,
+				});
+			}
+		}
+
+		return owners;
 	},
 });
 

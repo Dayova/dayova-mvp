@@ -1,7 +1,14 @@
-import type { ReactElement, ReactNode } from "react";
-import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	jest,
+	test,
+} from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
-import { AccessibilityInfo, View } from "react-native";
+import type { ReactElement, ReactNode } from "react";
+import { AccessibilityInfo, BackHandler, Platform, View } from "react-native";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
 import {
 	SheetAccessibilityProvider,
@@ -103,13 +110,32 @@ describe("DayovaSheetFrame", () => {
 	let focusSpy: jest.SpiedFunction<
 		typeof AccessibilityInfo.setAccessibilityFocus
 	>;
+	let androidBackHandler:
+		| null
+		| Parameters<typeof BackHandler.addEventListener>[1];
+	let originalPlatform: typeof Platform.OS;
+	const setPlatformOS = (value: typeof Platform.OS) => {
+		Object.defineProperty(Platform, "OS", { configurable: true, value });
+	};
 
 	beforeEach(() => {
+		originalPlatform = Platform.OS;
 		jest.restoreAllMocks();
 		mockSheetHarness.present.mockReset();
 		mockSheetHarness.dismiss.mockReset();
 		mockSheetHarness.onChange = null;
 		mockSheetHarness.onDismiss = null;
+		androidBackHandler = null;
+		jest
+			.spyOn(BackHandler, "addEventListener")
+			.mockImplementation((_eventName, handler) => {
+				androidBackHandler = handler;
+				return {
+					remove: jest.fn(() => {
+						if (androidBackHandler === handler) androidBackHandler = null;
+					}),
+				};
+			});
 		focusSpy = jest
 			.spyOn(AccessibilityInfo, "setAccessibilityFocus")
 			.mockImplementation(() => undefined);
@@ -119,6 +145,10 @@ describe("DayovaSheetFrame", () => {
 			return animationFrames.length;
 		};
 		global.cancelAnimationFrame = jest.fn();
+	});
+
+	afterEach(() => {
+		setPlatformOS(originalPlatform);
 	});
 
 	const flushAnimationFrames = () => {
@@ -170,6 +200,32 @@ describe("DayovaSheetFrame", () => {
 		expect(onClose).toHaveBeenCalledTimes(1);
 	});
 
+	test("releases Android back when a controlled reopen is cancelled", async () => {
+		setPlatformOS("android");
+		const view = await render(
+			<DayovaSheetFrame visible onClose={jest.fn()} title="Auswahl" />,
+		);
+		await act(flushAnimationFrames);
+		await act(() => mockSheetHarness.onChange?.(0));
+		await act(flushAnimationFrames);
+
+		await view.rerender(
+			<DayovaSheetFrame visible={false} onClose={jest.fn()} title="Auswahl" />,
+		);
+		await view.rerender(
+			<DayovaSheetFrame visible onClose={jest.fn()} title="Auswahl" />,
+		);
+		await act(() => mockSheetHarness.onDismiss?.());
+
+		await view.rerender(
+			<DayovaSheetFrame visible={false} onClose={jest.fn()} title="Auswahl" />,
+		);
+		await act(flushAnimationFrames);
+
+		expect(mockSheetHarness.present).toHaveBeenCalledTimes(1);
+		expect(androidBackHandler).toBeNull();
+	});
+
 	test("the close control requests a native dismissal", async () => {
 		const view = await render(
 			<DayovaSheetFrame visible onClose={jest.fn()} title="Auswahl" />,
@@ -179,6 +235,68 @@ describe("DayovaSheetFrame", () => {
 		fireEvent.press(view.getByLabelText("Dialog schließen"));
 
 		expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
+	});
+
+	test("Android system back dismisses the sheet before the underlying route", async () => {
+		const onClose = jest.fn();
+		setPlatformOS("android");
+		await render(
+			<DayovaSheetFrame visible onClose={onClose} title="Auswahl" />,
+		);
+		await act(flushAnimationFrames);
+
+		expect(androidBackHandler).not.toBeNull();
+		let handled = false;
+		await act(() => {
+			handled = androidBackHandler?.(undefined as never) ?? false;
+		});
+		expect(handled).toBe(true);
+		expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
+
+		await act(() => mockSheetHarness.onDismiss?.());
+		expect(onClose).toHaveBeenCalledTimes(1);
+		expect(mockSheetHarness.present).toHaveBeenCalledTimes(1);
+	});
+
+	test("Android back cancels a deferred opening before the sheet can appear", async () => {
+		const onClose = jest.fn();
+		setPlatformOS("android");
+		await render(
+			<DayovaSheetFrame visible onClose={onClose} title="Auswahl" />,
+		);
+
+		let handled = false;
+		await act(() => {
+			handled = androidBackHandler?.(undefined as never) ?? false;
+		});
+		expect(handled).toBe(true);
+		expect(onClose).toHaveBeenCalledTimes(1);
+		await act(flushAnimationFrames);
+		expect(mockSheetHarness.present).not.toHaveBeenCalled();
+	});
+
+	test("Android back remains captured until a closing sheet is fully dismissed", async () => {
+		setPlatformOS("android");
+		const view = await render(
+			<DayovaSheetFrame visible onClose={jest.fn()} title="Auswahl" />,
+		);
+		await act(flushAnimationFrames);
+		await act(() => mockSheetHarness.onChange?.(0));
+		await act(flushAnimationFrames);
+
+		await view.rerender(
+			<DayovaSheetFrame visible={false} onClose={jest.fn()} title="Auswahl" />,
+		);
+		expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
+		expect(androidBackHandler).not.toBeNull();
+		let handled = false;
+		await act(() => {
+			handled = androidBackHandler?.(undefined as never) ?? false;
+		});
+		expect(handled).toBe(true);
+
+		await act(() => mockSheetHarness.onDismiss?.());
+		expect(androidBackHandler).toBeNull();
 	});
 
 	test("exposes modal semantics, moves focus to its heading, and handles escape", async () => {
@@ -212,6 +330,7 @@ describe("DayovaSheetFrame", () => {
 		expect(modalContent?.props.accessibilityActions).toEqual([
 			{ name: "escape", label: "Auswahl schließen" },
 		]);
+		focusSpy.mockClear();
 
 		await act(() => mockSheetHarness.onChange?.(0));
 		await act(flushAnimationFrames);

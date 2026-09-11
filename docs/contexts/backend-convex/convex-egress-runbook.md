@@ -128,7 +128,9 @@ small progress query only.
 The deterministic session fixture serialized the old combined content result
 at 6,663 bytes. Its changing progress portion is 31 bytes; answer/progress writes
 therefore no longer resend the 6,633-byte static content portion. The app uses
-separate static-content and progress subscriptions.
+separate static-content and progress subscriptions. These are independently
+serialized JSON objects: the two separate objects total 6,664 bytes, one byte
+more than the combined object because of their separate object delimiters.
 
 Notification synchronization uses the compound owner/date indexes for only the
 requested date keys instead of reading up to 200 sessions and filtering them in

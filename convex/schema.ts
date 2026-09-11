@@ -143,6 +143,16 @@ export default defineSchema({
 		avatarUrl: v.optional(v.string()),
 		validationStudentCode: v.optional(v.string()),
 		validationRole: v.optional(v.union(v.literal("founder"))),
+		aiConsentStatus: v.optional(
+			v.union(
+				v.literal("granted"),
+				v.literal("declined"),
+				v.literal("withdrawn"),
+			),
+		),
+		aiConsentVersion: v.optional(v.string()),
+		aiConsentGrantedAt: v.optional(v.number()),
+		aiConsentUpdatedAt: v.optional(v.number()),
 		learningTimesBackfillVersion: v.optional(v.number()),
 	})
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
@@ -151,10 +161,10 @@ export default defineSchema({
 	accessEntitlements: defineTable({
 		ownerTokenIdentifier: v.string(),
 		userId: v.id("users"),
-		trialStartedAt: v.number(),
-		trialExpiresAt: v.number(),
-		trialReminderAt: v.number(),
-		trialTermsVersion: v.string(),
+		trialStartedAt: v.optional(v.number()),
+		trialExpiresAt: v.optional(v.number()),
+		trialReminderAt: v.optional(v.number()),
+		trialTermsVersion: v.optional(v.string()),
 		revenueCatEntitlementActive: v.optional(v.boolean()),
 		subscriptionExpiresAt: v.optional(v.number()),
 		subscriptionGraceExpiresAt: v.optional(v.number()),
@@ -521,7 +531,7 @@ export default defineSchema({
 		.index("by_learningPlanId", ["learningPlanId"])
 		.searchIndex("search_text", {
 			searchField: "text",
-			filterFields: ["learningPlanId"],
+			filterFields: ["learningPlanId", "documentId"],
 		}),
 	learningPlanUploadRejections: defineTable({
 		ownerTokenIdentifier: v.string(),
