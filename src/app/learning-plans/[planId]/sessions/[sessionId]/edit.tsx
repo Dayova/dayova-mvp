@@ -14,7 +14,6 @@ import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { SessionEditForm } from "~/features/learning-plans/learning-plan-ui";
 import type {
-	LearningPlanSnapshot,
 	PickerTarget,
 	PlanSession,
 	SessionPhase,
@@ -247,12 +246,14 @@ export default function LearningPlanSessionEditScreen() {
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 
-	const snapshot = (useQuery(
-		api.learningPlans.getSnapshot,
-		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
-	) ?? null) as LearningPlanSnapshot | null;
+	const sessions = useQuery(
+		api.learningPlans.listSessions,
+		user && isConvexAuthenticated && planId
+			? { learningPlanId: planId }
+			: "skip",
+	);
 
-	const session = snapshot?.sessions.find((item) => item.id === sessionId) as
+	const session = sessions?.find((item) => item.id === sessionId) as
 		| PlanSession
 		| undefined;
 
