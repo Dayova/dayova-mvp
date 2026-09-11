@@ -3,6 +3,16 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import SettingsScreen from "../../app/(app)/settings";
 
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: ({
+		visible,
+		children,
+	}: {
+		visible: boolean;
+		children: ReactNode;
+	}) => (visible ? children : null),
+}));
+
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
 const mockLogout = jest.fn<() => Promise<void>>(async () => undefined);
@@ -158,6 +168,16 @@ describe("SettingsScreen", () => {
 
 		await fireEvent.press(screen.getByRole("button", { name: "Stundenplan" }));
 		expect(mockPush).toHaveBeenCalledWith("/timetable");
+	});
+
+	test("opens a support draft directly from settings", async () => {
+		const screen = await render(<SettingsScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+		);
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			expect.stringContaining("mailto:kontakt@dayova.de?"),
+		);
 	});
 
 	test("lets trial users subscribe and keeps privacy available in settings", async () => {

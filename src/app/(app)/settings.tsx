@@ -23,6 +23,7 @@ import {
 } from "~/components/ui/icon";
 import { ListRow } from "~/components/ui/list-row";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { SupportContact } from "~/components/ui/support-contact";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -61,6 +62,7 @@ function SettingsRow({
 	showDisclosure = true,
 	destructive = false,
 	accessibilityLabel,
+	buttonRef,
 }: {
 	icon: (props: {
 		size?: number;
@@ -75,12 +77,14 @@ function SettingsRow({
 	showDisclosure?: boolean;
 	destructive?: boolean;
 	accessibilityLabel?: string;
+	buttonRef?: React.ComponentProps<typeof ListRow>["ref"];
 }) {
 	const Icon = icon;
 	const { colors } = useDayovaTheme();
 
 	return (
 		<ListRow
+			ref={buttonRef}
 			accessibilityLabel={accessibilityLabel}
 			icon={
 				<Icon
@@ -340,11 +344,18 @@ export default function SettingsScreen() {
 									onPress={() => openLink(env.EXPO_PUBLIC_TERMS_URL)}
 								/>
 								<SettingsDivider />
-								<SettingsRow
-									icon={Mail}
-									label="Support"
-									onPress={() => openLink(env.EXPO_PUBLIC_SUPPORT_URL)}
-								/>
+								<SupportContact context="Einstellungen">
+									{({ onPress, busy, buttonRef }) => (
+										<SettingsRow
+											buttonRef={buttonRef}
+											icon={Mail}
+											label="Support kontaktieren"
+											onPress={onPress}
+											busy={busy}
+											disabled={busy}
+										/>
+									)}
+								</SupportContact>
 							</SettingsSection>
 							{linkError ? <ErrorMessage>{linkError}</ErrorMessage> : null}
 						</View>
