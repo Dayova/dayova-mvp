@@ -740,14 +740,14 @@ export default function NewEntryScreen() {
 		return true;
 	}, [goToStep, isHomework, pickerTarget, router, selectTarget, step]);
 
-	useBackIntent(
+	const runBackIntent = useBackIntent(
 		Boolean(selectTarget || pickerTarget || !isHomework || step !== "basics"),
 		handleBack,
 	);
 	useLearningPlanCreationProgress({
 		active: !isHomework,
 		currentStep: getExamEntryCreationProgress(step),
-		onBack: handleBack,
+		onBack: runBackIntent,
 		title: "Prüfung eintragen",
 	});
 
@@ -853,7 +853,7 @@ export default function NewEntryScreen() {
 				{isHomework ? (
 					step === "basics" ? (
 						<>
-							<HomeworkScreenHeader title="Abgabe" onBack={handleBack} />
+							<HomeworkScreenHeader title="Abgabe" onBack={runBackIntent} />
 							<View className="mb-7">
 								<Text className="font-poppins font-semibold text-body-3 text-text">
 									Hausaufgabe eintragen
@@ -916,7 +916,7 @@ export default function NewEntryScreen() {
 						</>
 					) : (
 						<>
-							<HomeworkScreenHeader title="Erledigen" onBack={handleBack} />
+							<HomeworkScreenHeader title="Erledigen" onBack={runBackIntent} />
 							<View className="mb-5">
 								<Text className="font-poppins font-semibold text-body-3 text-text">
 									Hausaufgabe eintragen
