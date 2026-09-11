@@ -1,8 +1,54 @@
 # Android release-candidate audit
 
-Audited: 2026-08-26
+Reconciled: 2026-09-11 from the 2026-09-07 build and submission evidence in
+[PR #545](https://github.com/Dayova/dayova-mvp/pull/545). No new live Console or
+artifact audit is claimed by this documentation update.
 
-## Current source
+## Current Android candidate — 1.0.5 / build 23
+
+| Item | Value |
+| --- | --- |
+| EAS build | [b8c2cdc4-076f-4569-90e2-6135fdb4bbe8](https://expo.dev/accounts/dayova/projects/dayova/builds/b8c2cdc4-076f-4569-90e2-6135fdb4bbe8) |
+| Signed AAB | [Download build 23](https://expo.dev/artifacts/eas/GbKrNvAqS0DeaLHn7TzUth8xiIGSCaHhzvMbrBTEXd8.aab) |
+| Source SHA | `f1aff0f53708ca45b884100a8693a0209b983e2a` |
+| App / runtime / version code | `1.0.5` / `1.0.5` / `23` |
+| Expo / React Native / Hermes V1 | `57.0.20` / `0.86.3` / `250829098.0.17` |
+| Package / channel / target SDK | `com.dayova` / `production` / `36` |
+| Native fingerprint | `63bf25dc5c63084519d6bd3c8e35439be0357a7e` |
+| Embedded update ID | `eb200c18-56a2-40f3-8bbe-4849b566c148` |
+| Build completed | `2026-09-07T19:03:15.395Z` |
+| AAB size | `89,096,505` bytes |
+| AAB SHA-256 | `433C18CA2083FB96598C60098704D44C0ECF506A7BC439CF21884495FCA2DCA7` |
+| EAS submission | [74999aaa-d7a9-4cda-b83a-e97e965066b7](https://expo.dev/accounts/dayova/projects/dayova/submissions/74999aaa-d7a9-4cda-b83a-e97e965066b7), finished successfully on 2026-09-07 |
+
+The recorded audit passed Bundletool validation and manifest/resource
+inspection. Jarsigner verified the signature and the upload certificate matched
+the prior Android artifact. The runtime was verified from the native resource
+and embedded app config; the legacy embedded manifest supplied the update ID.
+
+The PR records frozen installation, lint/typecheck, Expo Doctor 21/21, 715 Vitest
+tests, 204 Jest UI tests, 17 Node script tests, Android/iOS production exports,
+and cloud PR CI passing for the build source above.
+
+At submission confirmation on September 7, Play Console showed build 23
+available to Internal testers. The same bundle was promoted to Closed Alpha
+and Open testing and replaced the unfinished Production 1.0.4/code-21 draft.
+Production, Open testing, and Closed Alpha full rollouts plus resuming Open
+testing were sent for review. All three rollout percentages were 100%; Germany
+targeting was preserved and Managed publishing was off. Automated quick checks
+were still running. Play validation had no blocking errors and one missing
+deobfuscation-file warning; native debug symbols were attached.
+
+Recheck Console before further release actions. Approval, public availability,
+and Play install/billing QA were not verified by this submission record. Do not
+repeat the upload or promote an older build to finish this handoff. Keep the
+OTA baseline unchanged until both exact replacement binaries satisfy the
+[baseline requirements](../README.md). No OTA was published.
+
+## Historical source — audited 26 August 2026
+
+The remaining August records preserve provenance only. They do not identify the
+current candidate or authorize resuming an old submission sequence.
 
 | Item | Value |
 | --- | --- |
@@ -41,7 +87,7 @@ shipping immediately below that deadline.
 audited source and current native subscription implementation. Its existence is
 useful for provenance only.
 
-## Submitted boundary reconciliation
+## Historical submitted boundary reconciliation
 
 The release owner submitted app/runtime **1.0.3**, version code **20**. The exact
 artifact is EAS build `1b52de89-746d-4600-9670-7c395079ff02`, built from
@@ -49,14 +95,12 @@ artifact is EAS build `1b52de89-746d-4600-9670-7c395079ff02`, built from
 `bbcbaae5c8ae69231aa15692d7197e4e87f61cac`, and connected to Play by submission
 `d3e7d523-cac4-4be9-a55c-2245d1095972`.
 
-This is not the safe DAY-248 boundary. It would share runtime `1.0.3` with
-already distributed SDK 56 binaries, so it must be withdrawn and replaced by a
-clean SDK 57 app/runtime `1.0.4` artifact. EAS remote Android version code is
-`20`; the next production-profile build is expected to use `21`, subject to
-verification from its immutable build metadata. Never record build 20 in the
-OTA baseline, even if Google approves it before withdrawal.
+Build 20 shared runtime `1.0.3` with already distributed SDK 56 binaries and
+was rejected as the DAY-248 baseline candidate. The August audit called for a
+replacement at runtime `1.0.4`, which became build 21 below. Both Android builds
+are now superseded by build 23; neither is the new verified OTA baseline.
 
-## Replacement candidate — built, not submitted
+## Historical replacement — 1.0.4 / build 21
 
 | Item | Value |
 | --- | --- |
@@ -76,16 +120,17 @@ OTA baseline, even if Google approves it before withdrawal.
 EAS finished this clean production-profile build on 2026-08-26. Bundletool
 inspection of the signed AAB confirmed package `com.dayova`, version `1.0.4`,
 version code `21`, the production update header, and resource runtime `1.0.4`.
-The artifact is the replacement candidate, but it has not been uploaded to Play
-and is not distribution or install evidence.
+It was built but not submitted at that audit. The September 7 submission record
+confirms that the unfinished Production build-21 draft was replaced with build
+23. Keep this artifact as historical evidence only.
 
-The exact Apple submission already uses the intended boundary: iOS EAS build
+The August Apple submission used the then-intended 1.0.4 boundary: iOS EAS build
 `a218ee2f-29f1-4873-9b49-36b52625cb71`, app/runtime `1.0.4`, build `55`, source
 `82c1ff3636f17c414ced684cc404f9cb99e9b854`, fingerprint
 `78a442f2623d4417068794025c4d669bc9105be9`, submission
 `85aa2c51-c562-485d-b28b-ff53e89ae9af`.
 
-## Environment and review state
+## Historical environment and review state — 26 August 2026
 
 - Production EAS has the Android and iOS RevenueCat public SDK keys.
 - Production Convex has the RevenueCat server key; old/exposed temporary keys
@@ -108,8 +153,8 @@ The exact Apple submission already uses the intended boundary: iOS EAS build
 
 ## Evidence to capture for the new candidate
 
-Record in DAY-218/DAY-248 and the OTA baseline once the replacement is actually
-distributed:
+Record build-23 verification in DAY-218/DAY-248 after distribution. Update the
+OTA baseline only when both platforms meet the [baseline requirements](../README.md):
 
 - public approval/availability timestamp and public listing install evidence
 - exact distributed version name and version code

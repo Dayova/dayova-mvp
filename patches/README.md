@@ -7,7 +7,7 @@ When a patched package is installed, pnpm applies the matching `.patch` file to
 the package contents in `node_modules`. Keep each patch documented here so future
 dependency updates can decide whether the patch is still needed.
 
-## `expo-updates@57.0.10.patch`
+## `expo-updates@57.0.21.patch`
 
 ### Why This Patch Exists
 
@@ -27,8 +27,9 @@ and deferred React root, then resolves the root background color against the
 same trait collection. No Expo Updates loading, selection, or update behavior is
 changed.
 
-The patch was retargeted to 57.0.10 after confirming that release's deferred
-splash implementation is byte-identical to 57.0.9 at the patched Swift file.
+The patch was retargeted to 57.0.21 after inspecting its deferred splash path.
+Upstream still resolves the detached view's background without the active window
+trait; the same patch applies and the installed Swift file retains the fix.
 
 ### How To Verify
 
@@ -50,13 +51,13 @@ remain Dark; screenshots of only the settled state are insufficient.
 Recheck this patch whenever `expo-updates` changes. Remove it when the deferred
 root path resolves its splash color using the active window trait upstream.
 
-1. Delete `patches/expo-updates@57.0.10.patch`.
+1. Delete `patches/expo-updates@57.0.21.patch`.
 2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
 3. Run `pnpm install --frozen-lockfile` and the focused test.
 4. Repeat the frame-by-frame embedded-bundle Release cold-launch check in both
    Light and Dark.
 
-## `@expo/metro-config@57.0.7.patch`
+## `@expo/metro-config@57.0.12.patch`
 
 ### Why This Patch Exists
 
@@ -81,7 +82,9 @@ concurrent read/write handling in
 does not bound simultaneous reads. After the Expo SDK 57 integration,
 `@expo/metro-config@57.0.7` was tested without the patch: the deterministic
 regression test observed all 1,024 requested reads active concurrently. The
-upgrade therefore does not remove the failure.
+upgrade therefore does not remove the failure. The September 2026 upgrade to
+57.0.12 still has an unbounded read in this path; the patch applies unchanged
+and the installed-package concurrency regression test passes.
 
 ### What The Patch Changes
 
@@ -127,9 +130,9 @@ When upgrading Expo or `@expo/metro-config`:
    than pnpm's previously patched installation.
 3. Run `pnpm test:unit:metro-cache`; it must still pass against that unpatched
    package, then run the cold-cache Android integration path above on Windows.
-4. If both checks pass, delete `patches/@expo__metro-config@57.0.7.patch`.
+4. If both checks pass, delete `patches/@expo__metro-config@57.0.12.patch`.
 5. Run `pnpm install`, `pnpm check`, and `pnpm test`.
-## `@react-native__gradle-plugin@0.86.0.patch`
+## `@react-native__gradle-plugin@0.86.3.patch`
 
 ### Why This Patch Exists
 
@@ -155,7 +158,8 @@ not needed for this project.
 The patch removes only the Foojay settings plugin block from
 `@react-native/gradle-plugin/settings.gradle.kts`. It does not change React
 Native's application Gradle plugin, settings plugin, autolinking, codegen, or
-native compilation behavior.
+native compilation behavior. React Native 0.86.3 still includes this exact
+Foojay block, so the patch is retained for that version.
 
 Developers must keep a compatible JDK configured through `JAVA_HOME`; for SDK
 57 Android development in this repo, use JDK 17.
@@ -205,7 +209,7 @@ combination configures successfully on Windows without the patch.
 
 Removal checklist:
 
-1. Delete `patches/@react-native__gradle-plugin@0.86.0.patch`.
+1. Delete `patches/@react-native__gradle-plugin@0.86.3.patch`.
 2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
 3. Run `pnpm install`.
 4. Run the clean Android build and normal checks above on Windows.

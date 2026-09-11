@@ -1,10 +1,13 @@
 # Play Console submission checklist
 
-Last updated: 2026-08-26
+Last reconciled: 2026-09-11, using the 2026-09-07 submission evidence in
+[PR #545](https://github.com/Dayova/dayova-mvp/pull/545). Release sections 6–7
+reflect that dated record; other checklist evidence remains from the August
+audit and needs its own verification. This is not a fresh Console check.
 
-This checklist records the submitted state and the replacement launch work. The
-old build 15 AAB was not used as the production candidate, and reviewed build 20
-cannot remain the DAY-248 candidate because it uses runtime `1.0.3`.
+The current recorded candidate is app/runtime **1.0.5**, version code **23**.
+Builds 15, 20, and 21 are historical artifacts; do not resume their old
+withdrawal/replacement instructions.
 
 ## 1. Developer account
 
@@ -100,32 +103,20 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
 
 ## 6. Release candidate and submission
 
-- [x] Record the submitted app/runtime version `1.0.3` and Android version code
-      `20` from source
-      `31f7f25787d2c4cdfde96384379f47b3e321fc17`.
-- [x] Build `com.dayova` with EAS production profile: build
-      `1b52de89-746d-4600-9670-7c395079ff02`.
-- [x] Submit to Production for Germany: submission
-      `d3e7d523-cac4-4be9-a55c-2245d1095972`.
-- [x] Prepare the exact `1.0.3` / version-code-`20` artifact for Closed and Open
-      testing without creating another build. Configure the existing Dayova
-      internal list as the deferred Closed audience and keep Germany selected.
-- [x] Cancel the Play warning that would restart the Production review. Leave
-      all four Closed/Open changes under **Changes not yet submitted for review**
-      until the Production review resolves.
-- [ ] Withdraw build 20 from Production review because SDK 57 must use the
-      `1.0.4` runtime boundary. Keep Closed/Open untouched until the Production
-      review is no longer active.
-- [x] Build and artifact-audit clean app/runtime `1.0.4`, version code `21`:
-      EAS build `6df6e426-b361-46b5-8a17-a28f5be6d9ea`, source
-      `1e3ee7d1efc5ac979fb509adb20654c95b879c15`, fingerprint
-      `8900552bda373cf9e678669a17c6f0dded5f755e`, embedded update
-      `c782fa10-3626-4aa3-b072-921580c9c31b`, runtime/channel
-      `1.0.4`/`production`, AAB SHA-256
-      `58BDE082DE86C20DA05ADB9A04F1C94CA52E7FECCDA3A0414A695B5FB4E96CB9`.
-- [ ] After withdrawal, discard the obsolete version-code-20 testing drafts.
-- [ ] Submit and install-verify the replacement through the approved testing
-      progression, then promote the same version code to Production review.
+- [x] Build and artifact-audit app/runtime `1.0.5`, version code `23`: EAS build
+      `b8c2cdc4-076f-4569-90e2-6135fdb4bbe8`, source
+      `f1aff0f53708ca45b884100a8693a0209b983e2a`. Exact fingerprint, embedded
+      update, AAB hash, and validation are in the
+      [candidate audit](./release-candidate-audit.md).
+- [x] Upload that signed AAB once through EAS submission
+      `74999aaa-d7a9-4cda-b83a-e97e965066b7`, finished on 2026-09-07.
+- [x] Confirm Internal testing availability of `1.0.5`/code `23` in Play Console.
+- [x] Promote the same bundle to Closed Alpha and Open testing and replace the
+      unfinished Production `1.0.4`/code-21 draft.
+- [x] Send Production, Open testing, and Closed Alpha full rollouts plus resuming
+      Open testing for review, preserving Germany targeting.
+- [ ] Recheck review/track status since the September 7 submission and record
+      approval and availability. Do not repeat the completed submission.
 - [ ] Install from the Play opt-in link on a clean physical Android device and a
       supported emulator/device size.
 - [ ] Verify signup/login, onboarding, trial, plans, uploads, learning session,
@@ -137,21 +128,18 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
 
 ## 7. Production release
 
-- [x] Complete the Console release checklist and submit the selected changes to
-      Google review. Automated quick checks passed.
-- [x] Select Germany-first countries/regions.
-- [x] Decide Managed publishing:
-  - Off = fastest; the app becomes available after approval.
-  - On = approval is held for a later manual publish action.
-- [x] Create the Production release from the tested artifact; add the release
-      notes from [`store-listing-de-DE.md`](./store-listing-de-DE.md).
-- [x] Review warnings, device availability, declarations, and rollout. The
-      missing deobfuscation mapping is recorded as non-blocking.
-- [x] Obtain authorized human confirmation immediately before **Start rollout
-      to Production**.
-- [ ] Monitor Google review until coordinated withdrawal. Managed publishing is
-      off, so approval could publish automatically; build 20 must still never be
-      recorded as the OTA baseline.
-- [ ] After availability, install from the public listing and record the exact
-      replacement build in `release/production-ota-baseline.json` before relying
-      on production OTA updates.
+- [x] Submit the selected build-23 changes to Google review on 2026-09-07.
+      Automated quick checks were still running at submission confirmation.
+- [x] Preserve Germany targeting and set the Production, Open testing, and
+      Closed Alpha rollout percentages to 100%.
+- [x] Record Managed publishing off; approved changes publish automatically.
+- [x] Record no blocking Play validation errors and one nonblocking missing
+      deobfuscation-file warning; native debug symbols are attached.
+- [ ] Verify the final quick-check result, Google review outcome, and public
+      availability of `1.0.5`/code `23`.
+- [ ] After availability, install build 23 from the public listing and record
+      the exact artifact, device, and QA evidence in DAY-218/DAY-248.
+- [ ] Replace `release/production-ota-baseline.json` only after both platforms
+      satisfy the [baseline requirements](../README.md), including exact
+      distributed-binary verification and staging checks. Submission alone is
+      insufficient.
