@@ -17,6 +17,7 @@ function SettingsRow({
 	showDisclosure = true,
 	destructive = false,
 	accessibilityLabel,
+	buttonRef,
 }: {
 	icon: (props: {
 		size?: number;
@@ -32,11 +33,13 @@ function SettingsRow({
 	showDisclosure?: boolean;
 	destructive?: boolean;
 	accessibilityLabel?: string;
+	buttonRef?: React.ComponentProps<typeof ListRow>["ref"];
 }) {
 	const Icon = icon;
 	const { colors } = useDayovaTheme();
 	return (
 		<ListRow
+			ref={buttonRef}
 			accessibilityLabel={accessibilityLabel}
 			icon={
 				<Icon

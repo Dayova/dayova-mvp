@@ -7,6 +7,7 @@ import type { Id } from "#convex/_generated/dataModel";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
+import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
@@ -343,6 +344,7 @@ export default function LearningPlanGeneratingScreen() {
 									<Text>Lernzeiten anpassen</Text>
 								</Button>
 							) : null}
+							<SupportContact context="Lernplan erstellen" className="mt-3" />
 						</>
 					) : null}
 				</View>

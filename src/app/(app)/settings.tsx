@@ -17,6 +17,7 @@ import {
 	UserRound,
 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAccess } from "~/context/AccessContext";
@@ -141,17 +142,21 @@ export default function SettingsScreen() {
 						/>
 					</SettingsCard>
 
-					<View className="gap-3" testID="settings-support">
+					<View testID="settings-support">
 						<SettingsCard>
-							<SettingsRow
-								icon={Mail}
-								label="Support kontaktieren"
-								onPress={() => openLink("support", env.EXPO_PUBLIC_SUPPORT_URL)}
-							/>
+							<SupportContact context="Einstellungen">
+								{({ onPress, busy, buttonRef }) => (
+									<SettingsRow
+										buttonRef={buttonRef}
+										icon={Mail}
+										label="Support kontaktieren"
+										onPress={onPress}
+										busy={busy}
+										disabled={busy}
+									/>
+								)}
+							</SupportContact>
 						</SettingsCard>
-						{linkErrors.support ? (
-							<ErrorMessage>{linkErrors.support}</ErrorMessage>
-						) : null}
 					</View>
 
 					<SettingsSection title="Lernen">

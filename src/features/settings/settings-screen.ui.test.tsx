@@ -8,6 +8,16 @@ import {
 import type { ReactNode } from "react";
 import SettingsScreen from "../../app/(app)/settings";
 
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: ({
+		visible,
+		children,
+	}: {
+		visible: boolean;
+		children: ReactNode;
+	}) => (visible ? children : null),
+}));
+
 const mockReplace = jest.fn();
 
 const mockPush = jest.fn();
@@ -140,14 +150,13 @@ describe("SettingsScreen", () => {
 			screen.getByRole("button", { name: "Support kontaktieren" }),
 		);
 		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
-			"https://example.com/support",
+			expect.stringContaining("mailto:kontakt@dayova.de?"),
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Stundenplan" }));
 		expect(mockPush).toHaveBeenCalledWith("/timetable");
 	});
 
 	test.each([
-		["Support kontaktieren", "settings-support"],
 		["Datenschutz", "settings-legal"],
 		["Dayova, Hilfe zum Abo", "settings-subscription"],
 	])("shows a failed %s link beside its section and clears it after retry", async (label, section) => {

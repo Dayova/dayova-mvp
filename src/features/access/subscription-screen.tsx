@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "~/components/ui/button";
 import { ArrowLeft, Check } from "~/components/ui/icon";
+import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
@@ -35,6 +36,9 @@ const gradientFillStyle = StyleSheet.absoluteFill;
 // surface legible when the system theme changes.
 const primaryTextStyle = { color: BRAND_COLORS.text };
 const secondaryTextStyle = { color: BRAND_COLORS.secondaryText };
+const errorSurfaceStyle = { backgroundColor: BRAND_COLORS.surface };
+const errorTextStyle = { color: BRAND_COLORS.destructive };
+const onDarkActionTextStyle = { color: WHITE };
 // Button state styles are merged natively, so the branded Store action uses
 // fixed design tokens instead of CSS variables.
 const subscribeActionStyle = {
@@ -291,13 +295,43 @@ export function SubscriptionScreen() {
 						/>
 					</View>
 
-					{!storeClient ? (
-						<Text
-							accessibilityLiveRegion="polite"
-							className="mt-3 text-center text-body-4 text-white"
+					{error || !storeClient || (!isLoadingPlans && plans.length === 0) ? (
+						<View
+							className="mt-4 gap-3 rounded-3xl px-4 py-4"
+							style={errorSurfaceStyle}
 						>
-							{storeUnavailableMessage}
-						</Text>
+							<Text
+								accessibilityLiveRegion="polite"
+								accessibilityRole="alert"
+								className="text-center text-body-3"
+								style={errorTextStyle}
+								selectable
+							>
+								{error ??
+									(!storeClient
+										? storeUnavailableMessage
+										: "Im Store sind gerade keine Tarife verfügbar.")}
+							</Text>
+							<SupportContact context="Abonnement">
+								{({ onPress, busy, buttonRef }) => (
+									<Button
+										ref={buttonRef}
+										variant="neutral"
+										size="sm"
+										style={subscribeActionStyle}
+										accessibilityLabel="Support kontaktieren"
+										accessibilityHint="Öffnet einen E-Mail-Entwurf an das Dayova-Team."
+										accessibilityState={{ busy }}
+										disabled={busy}
+										onPress={onPress}
+									>
+										<Text style={onDarkActionTextStyle}>
+											Support kontaktieren
+										</Text>
+									</Button>
+								)}
+							</SupportContact>
+						</View>
 					) : null}
 
 					<Button
@@ -342,24 +376,24 @@ export function SubscriptionScreen() {
 						</Text>
 					</Pressable>
 
-					{error ? (
-						<View className="mt-4 rounded-3xl bg-white px-4 py-3">
-							<Text
-								accessibilityLiveRegion="polite"
-								className="text-center text-body-3 text-destructive"
-								selectable
-							>
-								{error}
-							</Text>
-						</View>
-					) : null}
-
 					<View className="flex-row flex-wrap justify-center gap-x-4 gap-y-2 px-2 pt-5">
-						<LegalLink
-							label="Support"
-							url={env.EXPO_PUBLIC_SUPPORT_URL}
-							onOpen={openLink}
-						/>
+						<SupportContact context="Abonnement">
+							{({ onPress, busy, buttonRef }) => (
+								<Pressable
+									ref={buttonRef}
+									accessibilityLabel="Support"
+									accessibilityRole="button"
+									accessibilityState={{ busy, disabled: busy }}
+									disabled={busy}
+									className="min-h-12 justify-center"
+									onPress={onPress}
+								>
+									<Text className="text-body-4 text-white underline">
+										Support
+									</Text>
+								</Pressable>
+							)}
+						</SupportContact>
 						<LegalLink
 							label="Datenschutz"
 							url={env.EXPO_PUBLIC_PRIVACY_URL}
