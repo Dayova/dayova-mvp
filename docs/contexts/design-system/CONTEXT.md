@@ -128,6 +128,15 @@ these actions. A screen-local clone is not an allowed visual variant; add a
 shared variant and update this context if a new interaction contract is truly
 needed.
 
+The empty timetable uses one full-width gradient import button and a full-width
+neutral manual-entry button. File and camera are equal sources inside the shared
+`ActionSheet`, following the school-material upload pattern. Use source rows
+instead of tiles when content-size layout requires stacking. Native pickers open
+after the sheet's `onDismiss`, and the pending selection disables competing
+entry actions. The editor keeps reimport subordinate to its existing save action.
+This decision introduces no new button appearance; see
+[DAY-378](https://linear.app/dayova/issue/DAY-378/clarify-timetable-entry-with-one-import-action-and-a-secondary-manual).
+
 The trial-activation and expired-trial payment flow are deliberate full-bleed
 branded exceptions. The expired-trial route presents one Store-only path into
 the subscription route; it must not offer payer selection, QR codes, website
