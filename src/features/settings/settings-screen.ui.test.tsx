@@ -1,17 +1,36 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import {
+	fireEvent,
+	render,
+	waitFor,
+	within,
+} from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import SettingsScreen from "../../app/(app)/settings";
 
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: ({
+		visible,
+		children,
+	}: {
+		visible: boolean;
+		children: ReactNode;
+	}) => (visible ? children : null),
+}));
+
 const mockReplace = jest.fn();
+
 const mockPush = jest.fn();
-const mockLogout = jest.fn<() => Promise<void>>(async () => undefined);
-const mockDeleteAccount = jest.fn<() => Promise<void>>(async () => undefined);
+
 const mockSetPreference = jest.fn(async () => undefined);
+
 const mockOpenAiConsentSettings = jest.fn();
+
 const mockOpenExternalUrl = jest.fn<(url?: string) => Promise<boolean>>(
 	async () => true,
 );
+let mockProfileName: string | undefined = "Test Person";
+
 let mockAccess: { state: "trial" } | { state: "paid"; store: string } = {
 	state: "trial",
 };
@@ -21,10 +40,7 @@ jest.mock("expo-router", () => ({
 }));
 
 jest.mock("~/context/AuthContext", () => ({
-	useAccountActions: () => ({
-		deleteAccount: mockDeleteAccount,
-		logout: mockLogout,
-	}),
+	useAuthSession: () => ({ user: { name: mockProfileName } }),
 }));
 
 jest.mock("~/context/AiConsentContext", () => ({
@@ -33,43 +49,6 @@ jest.mock("~/context/AiConsentContext", () => ({
 		statusLabel: "Nicht aktiv",
 	}),
 }));
-
-jest.mock("~/components/ui/confirmation-sheet", () => {
-	const React = jest.requireActual<typeof import("react")>("react");
-	const {
-		Pressable: NativePressable,
-		Text: NativeText,
-		View: NativeView,
-	} = jest.requireActual<typeof import("react-native")>("react-native");
-	return {
-		ConfirmationSheet: ({
-			confirmLabel,
-			description,
-			onConfirm,
-			title,
-			visible,
-		}: {
-			confirmLabel: string;
-			description: ReactNode;
-			onConfirm: () => void;
-			title: ReactNode;
-			visible: boolean;
-		}) =>
-			visible
-				? React.createElement(
-						NativeView,
-						null,
-						React.createElement(NativeText, null, title),
-						React.createElement(NativeText, null, description),
-						React.createElement(
-							NativePressable,
-							{ accessibilityRole: "button", onPress: onConfirm },
-							React.createElement(NativeText, null, confirmLabel),
-						),
-					)
-				: null,
-	};
-});
 
 jest.mock("~/context/AccessContext", () => ({
 	useAccess: () => ({ access: mockAccess }),
@@ -130,10 +109,6 @@ jest.mock("~/components/ui/themed-status-bar", () => ({
 
 describe("SettingsScreen", () => {
 	beforeEach(() => {
-		mockLogout.mockReset();
-		mockLogout.mockResolvedValue(undefined);
-		mockDeleteAccount.mockReset();
-		mockDeleteAccount.mockResolvedValue(undefined);
 		mockReplace.mockReset();
 		mockPush.mockReset();
 		mockSetPreference.mockReset();
@@ -141,38 +116,74 @@ describe("SettingsScreen", () => {
 		mockOpenExternalUrl.mockReset();
 		mockOpenExternalUrl.mockResolvedValue(true);
 		mockAccess = { state: "trial" };
+		mockProfileName = "Test Person";
 		mockOpenAiConsentSettings.mockReset();
 	});
 
-	test("groups destinations by learning, app, and account responsibility", async () => {
+	test("prioritizes profile and support and keeps legal destinations last", async () => {
 		const screen = await render(<SettingsScreen />);
-
 		expect(screen.getByRole("header", { name: "Lernen" })).toBeOnTheScreen();
 		expect(screen.getByRole("header", { name: "App" })).toBeOnTheScreen();
-		expect(screen.getByRole("header", { name: "Konto" })).toBeOnTheScreen();
-		expect(screen.getByRole("header", { name: "Dayova" })).toBeOnTheScreen();
 		expect(
-			screen.getByRole("header", { name: "Rechtliches & Hilfe" }),
+			screen.getByRole("header", { name: "Datenschutz & Rechtliches" }),
 		).toBeOnTheScreen();
+		expect(
+			screen.getAllByRole("header").map((heading) => heading.props.children),
+		).toEqual(["Lernen", "App", "Datenschutz & Rechtliches"]);
 		expect(screen.getByText("Nicht aktiv")).toBeOnTheScreen();
-
+		expect(screen.getByText("Test Person")).toBeOnTheScreen();
+		expect(screen.getByText("Profil & Konto")).toBeOnTheScreen();
+		expect(screen.getAllByRole("button").slice(0, 2)).toEqual([
+			screen.getByRole("button", { name: "Test Person, Profil & Konto" }),
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+		]);
+		expect(
+			screen.queryByRole("button", { name: "Passwort ändern" }),
+		).toBeNull();
+		expect(screen.queryByRole("button", { name: "Abmelden" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Konto löschen" })).toBeNull();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Test Person, Profil & Konto" }),
+		);
+		expect(mockPush).toHaveBeenCalledWith("/profile");
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+		);
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			expect.stringContaining("mailto:kontakt@dayova.de?"),
+		);
 		await fireEvent.press(screen.getByRole("button", { name: "Stundenplan" }));
 		expect(mockPush).toHaveBeenCalledWith("/timetable");
 	});
 
+	test.each([
+		["Datenschutz", "settings-legal"],
+		["Dayova, Hilfe zum Abo", "settings-subscription"],
+	])("shows a failed %s link beside its section and clears it after retry", async (label, section) => {
+		mockAccess = { state: "paid", store: "unknown" };
+		mockOpenExternalUrl.mockResolvedValueOnce(false);
+		const screen = await render(<SettingsScreen />);
+		await fireEvent.press(screen.getByRole("button", { name: label }));
+		const sectionContainer = screen.getByTestId(section);
+		expect(
+			await within(sectionContainer).findByRole("alert"),
+		).toHaveTextContent(
+			"Der Link konnte nicht geöffnet werden. Bitte versuche es erneut.",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: label }));
+		await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+	});
+
 	test("lets trial users subscribe and keeps privacy available in settings", async () => {
 		const screen = await render(<SettingsScreen />);
-
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Dayova abonnieren" }),
 		);
 		expect(mockPush).toHaveBeenCalledWith("/subscription");
-
 		await fireEvent.press(screen.getByRole("button", { name: "Datenschutz" }));
 		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
 			"https://example.com/privacy",
 		);
-
 		await fireEvent.press(
 			screen.getByRole("button", {
 				name: "KI & Datenschutz, Nicht aktiv",
@@ -192,74 +203,10 @@ describe("SettingsScreen", () => {
 		const dark = screen.getByRole("radio", {
 			name: "Dunkles Design verwenden",
 		});
-
 		expect(light.props.accessibilityState).toEqual({ checked: false });
 		expect(system.props.accessibilityState).toEqual({ checked: true });
 		expect(dark.props.accessibilityState).toEqual({ checked: false });
-
 		await fireEvent.press(light);
 		expect(mockSetPreference).toHaveBeenCalledWith("light");
-	});
-
-	test("owns one logout transaction and leaves session routing to the root guard", async () => {
-		let resolveLogout: () => void = () => undefined;
-		mockLogout.mockImplementationOnce(
-			() =>
-				new Promise<void>((resolve) => {
-					resolveLogout = resolve;
-				}),
-		);
-		const screen = await render(<SettingsScreen />);
-		const logoutButton = screen.getByRole("button", { name: "Abmelden" });
-
-		await fireEvent.press(logoutButton);
-		await fireEvent.press(logoutButton);
-
-		expect(mockLogout).toHaveBeenCalledTimes(1);
-		expect(logoutButton.props.accessibilityState).toEqual({
-			busy: true,
-			disabled: true,
-		});
-		expect(mockReplace).not.toHaveBeenCalled();
-
-		await act(async () => resolveLogout());
-	});
-
-	test("deletes the account from settings only after explicit confirmation", async () => {
-		const screen = await render(<SettingsScreen />);
-
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Konto löschen" }),
-		);
-		expect(screen.getByText("Konto wirklich löschen?")).toBeOnTheScreen();
-		expect(
-			screen.getByText(/aktives App-Store-Abo musst du zusätzlich/),
-		).toBeOnTheScreen();
-
-		const confirmationButton = screen
-			.getAllByRole("button", { name: "Konto löschen" })
-			.at(-1);
-		if (!confirmationButton) throw new Error("Confirmation button is missing.");
-		await fireEvent.press(confirmationButton);
-
-		await waitFor(() => expect(mockDeleteAccount).toHaveBeenCalledTimes(1));
-		expect(mockReplace).not.toHaveBeenCalled();
-	});
-
-	test("announces a failed logout and keeps the current route", async () => {
-		mockLogout.mockRejectedValueOnce(
-			new Error("ClerkJS: session token refresh failed with status 503"),
-		);
-		const screen = await render(<SettingsScreen />);
-
-		await fireEvent.press(screen.getByRole("button", { name: "Abmelden" }));
-
-		const error = await screen.findByRole("alert");
-		expect(error).toHaveTextContent(
-			"Die Abmeldung ist fehlgeschlagen. Bitte versuche es erneut.",
-		);
-		expect(error).not.toHaveTextContent("ClerkJS");
-		expect(error.props.accessibilityLiveRegion).toBe("polite");
-		await waitFor(() => expect(mockReplace).not.toHaveBeenCalled());
 	});
 });
