@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	jest,
+	test,
+} from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { SubscriptionScreen } from "./subscription-screen";
@@ -25,11 +32,13 @@ const mockGetPlans = jest.fn(async () => storePlans);
 const mockPurchase = jest.fn(async () => ({ status: "purchased" as const }));
 const mockRestore = jest.fn(async () => ({ status: "purchased" as const }));
 const mockRefreshPaidAccess = jest.fn(async () => true);
+let mockAccess: { state: string } | undefined;
 let mockCanGoBack = true;
 let mockStoreInitializationError: Error | null = null;
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	mockAccess = undefined;
 	mockGetPlans.mockResolvedValue(storePlans);
 	mockPurchase.mockResolvedValue({ status: "purchased" });
 	mockRestore.mockResolvedValue({ status: "purchased" });
@@ -70,7 +79,10 @@ jest.mock("react-native-safe-area-context", () => ({
 }));
 
 jest.mock("~/context/AccessContext", () => ({
-	useAccess: () => ({ refreshPaidAccess: mockRefreshPaidAccess }),
+	useAccess: () => ({
+		access: mockAccess,
+		refreshPaidAccess: mockRefreshPaidAccess,
+	}),
 }));
 
 jest.mock("~/context/AuthContext", () => ({
@@ -126,11 +138,11 @@ describe("SubscriptionScreen", () => {
 			name: /Jährlich, 155,88 €/,
 		});
 		await act(async () => {
-			fireEvent.press(annualPlan);
+			await fireEvent.press(annualPlan);
 		});
 
 		await act(async () => {
-			fireEvent.press(screen.getByTestId("subscription-checkout-button"));
+			await fireEvent.press(screen.getByTestId("subscription-checkout-button"));
 		});
 
 		await waitFor(() => {
@@ -145,7 +157,7 @@ describe("SubscriptionScreen", () => {
 		await screen.findByText("Käufe wiederherstellen");
 
 		await act(async () => {
-			fireEvent.press(screen.getByText("Käufe wiederherstellen"));
+			await fireEvent.press(screen.getByText("Käufe wiederherstellen"));
 		});
 
 		await waitFor(() => {
@@ -165,7 +177,7 @@ describe("SubscriptionScreen", () => {
 		const screen = await render(<SubscriptionScreen />);
 		const restoreButton = await screen.findByTestId("restore-purchases-link");
 
-		fireEvent.press(restoreButton);
+		await fireEvent.press(restoreButton);
 
 		await waitFor(() => {
 			expect(screen.getByTestId("restore-purchases-link")).toHaveProp(
@@ -176,7 +188,7 @@ describe("SubscriptionScreen", () => {
 				},
 			);
 		});
-		fireEvent.press(screen.getByTestId("restore-purchases-link"));
+		await fireEvent.press(screen.getByTestId("restore-purchases-link"));
 		expect(mockRestore).toHaveBeenCalledTimes(1);
 
 		await act(async () => finishRestore?.());
@@ -186,7 +198,7 @@ describe("SubscriptionScreen", () => {
 		mockCanGoBack = false;
 		const screen = await render(<SubscriptionScreen />);
 
-		fireEvent.press(screen.getByLabelText("Zurück"));
+		await fireEvent.press(screen.getByLabelText("Zurück"));
 		expect(mockBack).not.toHaveBeenCalled();
 		expect(mockReplace).toHaveBeenCalledWith("/paywall");
 	});
@@ -201,4 +213,159 @@ describe("SubscriptionScreen", () => {
 			),
 		).toBeOnTheScreen();
 	});
+});
+
+jest.mock("~/components/ui/icon", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const Icon = (props: Record<string, unknown>) =>
+		React.createElement("Icon", props);
+	return { ArrowLeft: Icon, Check: Icon };
+});
+afterEach(() => {
+	jest.useRealTimers();
+});
+
+test.each([
+	"error",
+	"inactive",
+])("keeps a confirmed purchase pending after %s and retries access without repurchasing", async (failure) => {
+	jest.useFakeTimers();
+	if (failure === "error")
+		mockRefreshPaidAccess.mockRejectedValue(new Error("offline"));
+	else mockRefreshPaidAccess.mockResolvedValue(false);
+	const screen = await render(<SubscriptionScreen />);
+	await act(async () => {
+		await fireEvent.press(screen.getByTestId("subscription-checkout-button"));
+	});
+	expect(
+		screen.queryByText("Der Kauf konnte nicht abgeschlossen werden."),
+	).not.toBeOnTheScreen();
+	expect(
+		screen.getByText(
+			"Dein Kauf war erfolgreich. Dein Zugang wird noch aktiviert.",
+		),
+	).toBeOnTheScreen();
+	await act(async () => {
+		await jest.advanceTimersByTimeAsync(10000);
+	});
+	expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(3);
+	expect(mockPurchase).toHaveBeenCalledTimes(1);
+	mockRefreshPaidAccess.mockResolvedValue(true);
+	await act(async () => {
+		await fireEvent.press(screen.getByText("Zugang erneut prüfen"));
+	});
+	expect(mockPurchase).toHaveBeenCalledTimes(1);
+	expect(mockRestore).not.toHaveBeenCalled();
+	expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
+});
+
+test("automatically recovers from a transient refresh failure", async () => {
+	jest.useFakeTimers();
+	mockRefreshPaidAccess.mockRejectedValueOnce(new Error("offline"));
+	const screen = await render(<SubscriptionScreen />);
+	await act(async () => {
+		await fireEvent.press(screen.getByTestId("subscription-checkout-button"));
+	});
+	await act(async () => {
+		await jest.advanceTimersByTimeAsync(2000);
+	});
+	expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(2);
+	expect(mockPurchase).toHaveBeenCalledTimes(1);
+	expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
+});
+
+test("continues when paid access arrives while the refresh is unresolved", async () => {
+	mockRefreshPaidAccess.mockImplementationOnce(() => new Promise(() => {}));
+	const screen = await render(<SubscriptionScreen />);
+	await act(async () => {
+		await fireEvent.press(screen.getByTestId("subscription-checkout-button"));
+	});
+	mockAccess = { state: "paid" };
+	await screen.rerender(<SubscriptionScreen />);
+	expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
+});
+
+test("retains purchase failure for a rejected store operation", async () => {
+	mockPurchase.mockRejectedValueOnce(new Error("store failure"));
+	const screen = await render(<SubscriptionScreen />);
+	await act(async () => {
+		await fireEvent.press(screen.getByTestId("subscription-checkout-button"));
+	});
+	expect(
+		screen.getByText("Der Kauf konnte nicht abgeschlossen werden."),
+	).toBeOnTheScreen();
+	expect(mockRefreshPaidAccess).not.toHaveBeenCalled();
+});
+
+test("retries restored access without calling the store again", async () => {
+	jest.useFakeTimers();
+	mockRefreshPaidAccess.mockResolvedValue(false);
+	const screen = await render(<SubscriptionScreen />);
+	await act(async () => {
+		await fireEvent.press(screen.getByTestId("restore-purchases-link"));
+	});
+	expect(
+		screen.getByText(
+			"Dein Abo wurde gefunden. Dein Zugang wird noch aktiviert.",
+		),
+	).toBeOnTheScreen();
+	await act(async () => {
+		await jest.advanceTimersByTimeAsync(10000);
+	});
+	mockRefreshPaidAccess.mockResolvedValue(true);
+	await act(async () => {
+		await fireEvent.press(screen.getByText("Zugang erneut prüfen"));
+		await fireEvent.press(screen.getByTestId("restore-purchases-link"));
+	});
+	expect(mockRestore).toHaveBeenCalledTimes(1);
+	expect(mockPurchase).not.toHaveBeenCalled();
+	expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(4);
+	expect(mockReplace).toHaveBeenCalledWith("/home");
+});
+
+test("cancels scheduled activation retries when leaving the screen", async () => {
+	jest.useFakeTimers();
+	mockRefreshPaidAccess.mockResolvedValue(false);
+	const screen = await render(<SubscriptionScreen />);
+	await act(async () => {
+		await fireEvent.press(screen.getByTestId("subscription-checkout-button"));
+	});
+	await screen.unmount();
+	await act(async () => {
+		await jest.advanceTimersByTimeAsync(10000);
+	});
+	expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(1);
+	expect(mockReplace).not.toHaveBeenCalled();
+});
+
+test("does not mistake a trial for activated paid access", async () => {
+	jest.useFakeTimers();
+	mockAccess = { state: "trial" };
+	mockRefreshPaidAccess.mockResolvedValue(false);
+	const screen = await render(<SubscriptionScreen />);
+	await act(async () => {
+		await fireEvent.press(screen.getByTestId("subscription-checkout-button"));
+	});
+	expect(mockReplace).not.toHaveBeenCalled();
+	await screen.unmount();
+});
+
+test("releases manual retry after access requests time out without backend updates", async () => {
+	jest.useFakeTimers();
+	mockRefreshPaidAccess.mockImplementation(() => new Promise(() => {}));
+	const screen = await render(<SubscriptionScreen />);
+	await act(async () => {
+		await fireEvent.press(screen.getByTestId("subscription-checkout-button"));
+	});
+	await act(async () => {
+		await jest.advanceTimersByTimeAsync(35000);
+	});
+	expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(3);
+	expect(screen.getByTestId("subscription-checkout-button")).toBeEnabled();
+	mockRefreshPaidAccess.mockResolvedValue(true);
+	await act(async () => {
+		await fireEvent.press(screen.getByText("Zugang erneut prüfen"));
+	});
+	expect(mockPurchase).toHaveBeenCalledTimes(1);
+	expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
 });
