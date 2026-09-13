@@ -256,11 +256,11 @@ export default function SettingsScreen() {
 					horizontalPadding={24}
 				>
 					<View className="gap-7">
-						<SettingsSection title="Dayova Pro">
+						<SettingsSection title="Dayova">
 							{access?.state === "trial" ? (
 								<SettingsRow
 									icon={CreditCard}
-									label="Dayova Pro abonnieren"
+									label="Dayova abonnieren"
 									onPress={() => router.push("/subscription")}
 								/>
 							) : (

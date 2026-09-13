@@ -153,7 +153,7 @@ export function PaywallScreen() {
 							</View>
 							<View className="flex-1 pt-1 pb-6">
 								<Text className="font-semibold text-body-2 text-white">
-									Dayova Pro freischalten
+									Dayova freischalten
 								</Text>
 								<Text className="mt-1 text-body-3 text-white/85">
 									Wähle im Store ein Monats- oder Jahresabo. Dein Lernstand

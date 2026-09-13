@@ -81,6 +81,11 @@ With that configuration:
 
 ## Maintenance Rules
 
+- `border-hairline` is a custom border width. Keep it registered in the
+  `border-w` class group in `src/lib/utils.ts`; otherwise `cn()` treats it as
+  a color, dropping either the border color or the width when selection adds
+  `border-primary`. `src/lib/utils.test.ts` covers selection and width overrides.
+
 - When adding or removing custom `fontSize` tokens in `tailwind.config.ts`, update the `theme.text` list in `src/lib/utils.ts`.
 - Use Tailwind's standard spacing scale. Spacing must stay on a 4px rhythm: `gap-1` is 4px, `gap-2` is 8px, `gap-3` is 12px, `gap-4` is 16px, and so on. Do not redefine spacing keys so class numbers mean raw pixels.
 - The app supports light, dark, and system theme preferences. Keep CSS tokens

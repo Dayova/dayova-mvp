@@ -101,7 +101,7 @@ describe("SubscriptionScreen", () => {
 	test("shows only localized Store plans and complete billing amounts", async () => {
 		const screen = await render(<SubscriptionScreen />);
 
-		expect(screen.getByText("Dayova Pro abonnieren")).toBeOnTheScreen();
+		expect(screen.getByText("Dayova abonnieren")).toBeOnTheScreen();
 		await waitFor(() => expect(mockGetPlans).toHaveBeenCalledTimes(1));
 		expect(
 			screen.getByRole("radio", {
@@ -120,7 +120,7 @@ describe("SubscriptionScreen", () => {
 		expect(screen.getByText(/automatisch/)).toBeOnTheScreen();
 	});
 
-	test("purchases the selected Store plan and opens the Pro welcome screen", async () => {
+	test("purchases the selected Store plan and opens the subscription success screen", async () => {
 		const screen = await render(<SubscriptionScreen />);
 		const annualPlan = await screen.findByRole("radio", {
 			name: /Jährlich, 155,88 €/,
@@ -136,7 +136,7 @@ describe("SubscriptionScreen", () => {
 		await waitFor(() => {
 			expect(mockPurchase).toHaveBeenCalledWith("annual");
 			expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(1);
-			expect(mockReplace).toHaveBeenCalledWith("/pro-welcome");
+			expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
 		});
 	});
 

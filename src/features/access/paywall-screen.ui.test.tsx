@@ -118,7 +118,7 @@ describe("PaywallScreen", () => {
 				"Dein Lernstand bleibt erhalten. Wähle jetzt, wie du mit Dayova weitermachen möchtest.",
 			),
 		).toBeOnTheScreen();
-		expect(screen.getByText("Dayova Pro freischalten")).toBeOnTheScreen();
+		expect(screen.getByText("Dayova freischalten")).toBeOnTheScreen();
 		expect(screen.getByText("Sicher über den Store")).toBeOnTheScreen();
 		expect(screen.getByText("SOFORT STARTEN")).toBeOnTheScreen();
 		expect(screen.queryByText("Meine Eltern zahlen")).toBeNull();
