@@ -225,6 +225,66 @@ Git. Copy evidence you need to retain before rerunning the same platform command
 the report/output path is reused. Inspect the failed command and screenshot to
 distinguish app configuration, auth bootstrap, launcher, and selector failures.
 
+### Run in Maestro Studio
+
+Studio's **Run Test** button runs the YAML directly. It does not invoke the
+`package.json` scripts that supply `APP_ID`, so configure the flow variables in
+Studio even if the terminal commands already work. Expo's `.env.local` is not
+the Studio environment configuration.
+
+1. Open this repository and `.maestro/flows/app-launch.yaml` in Studio.
+2. Select a disposable emulator/simulator in the device selector. This flow
+   clears app storage, including the login session, and the entire iOS simulator
+   Keychain; do not select a personal phone or a simulator with accounts to keep.
+3. Click **Env**, immediately left of **Run Test**, to open the environment
+   manager. In the desktop UI verified on 2026-09-13, the top-right settings gear
+   opens application settings; it does not contain the environment manager.
+4. Click **Create** and name the environment, for example **Android development**.
+   Add the variables below as key/value pairs. Names are case-sensitive; enter
+   values without surrounding quotes.
+5. Save the environment, select it beside **Run Test**, and run the flow.
+   Keep Metro running when testing a development client.
+
+| Variable | Android | iOS |
+| --- | --- | --- |
+| `APP_ID` | `com.dayova.dev` | `de.dayova.app-dev` |
+| `DEV_SERVER_URL` for a development client | Reachable Metro URL for this checkout | Reachable Metro URL for this checkout |
+| `DEV_SERVER_URL` for an embedded preview build | Omit or leave empty | Omit or leave empty |
+
+Development and preview builds share the non-production app ID. The difference
+here is how they load JavaScript: an embedded preview launches its own bundle,
+whereas a development client needs Metro. After the flow clears app state, a
+development client returns to Expo's **Development Build** server-selection
+screen. Setting `DEV_SERVER_URL` enables the subflow that opens the chosen server
+before checking Dayova's welcome/Login controls. Manually selecting a server
+before the test does not replace this setup, because the next run resets state.
+
+Use the server URL shown by Metro for this checkout, including its actual port.
+For LAN access, use `http://<computer-LAN-IP>:<Metro-port>` and ensure the device
+can reach the computer. Do not assume port 8081 is the right checkout: another
+worktree may have its own Dayova server on 8082 or another port. Match the
+workspace path and port in the Metro terminal before choosing a server.
+
+For an Android emulator using `http://127.0.0.1:8081`, first run
+`adb -s emulator-5554 reverse tcp:8081 tcp:8081`, replacing the device ID and port
+with the actual values. Without that forwarding, loopback points to the Android
+device itself. An iOS simulator on the same Mac can use the Mac's loopback URL.
+
+#### Recognizing setup failures
+
+| Failed step and visible screen | Meaning and next action |
+| --- | --- |
+| Initial `APP_ID` assertion, before `launchApp` | The selected Studio environment has a missing or incorrect `APP_ID`. Set the exact platform value above and select that environment. Keep the guard in place. |
+| `Login`, enabled, while Expo's server list remains visible; development subflow skipped | `DEV_SERVER_URL` is missing or empty. Set it in the selected Studio environment so the development client loads the app after reset. |
+| `Login\|Reload` after opening the server | Inspect the screenshot and Metro output. Verify URL reachability and the checkout/port; a cold bundle may still be compiling. |
+
+Cold Metro compilation can exceed the bounded startup wait. Let compilation
+finish before a warm-cache rerun and record the initial failure and cache state;
+do not describe that rerun as proof of a successful cold start. An embedded
+preview build avoids Metro setup entirely. If Dayova itself is visible but a
+control is missing, inspect the app failure rather than assuming these setup
+causes apply.
+
 ### Follow-up coverage
 
 - [DAY-311](https://linear.app/dayova/issue/DAY-311) and
