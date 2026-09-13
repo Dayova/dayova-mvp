@@ -18,18 +18,56 @@ Automated tests do not replace phone/tablet acceptance evidence. Auth session
 persistence, remote revocation, keyboard layout, and platform-native surfaces
 must be verified on the devices named by the relevant Linear issue.
 
-## Native launch smoke test
+## Native Maestro smoke suite
 
-The shared [Maestro flow](../.maestro/flows/app-launch.yaml) launches a packaged
-non-production app from clean local state, checks the welcome actions, opens
-Login, and checks the email/password fields and login/recovery/registration
-controls. It uses existing German accessibility labels, bounded condition waits,
-and scrolling to visible controls; it never signs in or submits learner data.
-The welcome controls have entrance animations, so the flow also waits briefly
-for UI stability before tapping Login; the navigation assertion still must pass.
+The [Maestro suite](../.maestro/flows) exercises a packaged non-production app
+through native controls, using German accessibility labels, bounded condition
+waits, and scrolling where needed. Each flow starts independently from clean
+local state through [the shared launch flow](../.maestro/shared/launch-unauthenticated.yaml),
+including the production app-ID guard, optional Metro bootstrap, and welcome
+animation wait. Helpers live outside the `flows/*` discovery pattern and do not
+run as standalone tests.
+
+With `DEV_SERVER_URL` set, bootstrap also dismisses the exact PostHog warning
+that says its client is disabled when no API key is configured. In development,
+that LogBox banner can cover bottom actions. The helper opens the warning,
+verifies its message, and dismisses that entry; it does not suppress other
+messages or bypass the navigation assertions.
+
+| Flow | Coverage | Tags |
+| --- | --- | --- |
+| `app-launch.yaml` | Welcome → Login, reachable form controls, Login → registration intro | `smoke` |
+| `login-validation.yaml` | Empty/malformed email, missing password, password reveal/hide | `smoke`, `auth` |
+| `password-recovery.yaml` | Email prefill, malformed/empty email rejection, cancellation, clean reopening | `smoke`, `auth` |
+| `onboarding-navigation.yaml` | Three intro pages, name validation, explicit duration/day choices, answer retention on back navigation | `smoke`, `onboarding` |
+
+These flows use synthetic input and stop before a valid auth submission. They
+do not sign in, create accounts, send reset emails, or verify backend behavior.
+The login flow deliberately leaves the password empty for its valid-format
+email submission; its later synthetic password is used only for visibility.
+Authenticated Clerk/Convex coverage belongs to DAY-321.
+
+See [DAY-410 Android validation](validation/day-410-android.md) for device results
+and known limits. Its full-suite pass used a warm development Metro started with
+`--minify`; unminified startup was intermittent on that Windows host (DAY-412).
+Minification keeps development mode and the existing test-service configuration;
+it does not replace the embedded preview reference below. The expanded iOS
+journeys await DAY-411 validation.
 
 These device tests are opt-in and are not part of `pnpm test`. They need a native
 artifact and a running virtual device. Jest and Vitest do not require Maestro.
+
+Both `test:smoke:*` scripts run all four flows. Add `--include-tags auth` for
+login/recovery or `--include-tags onboarding` for registration. To run one flow
+from the CLI, pass its path directly (with the same environment values as the
+suite); in Studio, select that file and use **Run Test**:
+
+```sh
+maestro --platform android --device emulator-5554 test -e APP_ID=com.dayova.dev .maestro/flows/login-validation.yaml
+```
+
+For development clients, also supply `-e DEV_SERVER_URL=...` as described below.
+Running a single flow still clears app storage and the entire iOS Keychain.
 
 ### Setup
 
@@ -52,7 +90,7 @@ artifact and a running virtual device. Jest and Vitest do not require Maestro.
    and a non-production Convex deployment. The app ID alone does not prove the
    backend environment is non-production. Supply the release-required public
    configuration from [`.env.example`](../.env.example) at build time; no Clerk
-   secret key, learner account, or AI credentials are needed by this flow.
+   secret key, learner account, or AI credentials are needed by these flows.
    Leave PostHog disabled unless using an isolated test project.
 
    Android requires an APK (not an AAB):
@@ -157,7 +195,7 @@ pnpm test:smoke:android --device emulator-5554
 pnpm test:smoke:ios --device <simulator-udid>
 ```
 
-For local iteration, the same flow also supports a compatible development build
+For local iteration, the same suite also supports a compatible development build
 and Metro serving this checkout with non-production public configuration.
 
 For iOS, the local Xcode recipe above can produce that development client by
@@ -203,23 +241,24 @@ not skip app reset or assertions. Do not use that option to bootstrap a fresh
 device or after changing CLI versions; inspect the driver logs first. This
 limitation is tracked in [DAY-382](https://linear.app/dayova/issue/DAY-382).
 
-Both commands discover the same flow through `.maestro/config.yaml`. They supply
+Both commands discover the same four flows through `.maestro/config.yaml`. They supply
 the non-production IDs from `app.config.cts`: `com.dayova.dev` on Android and
-`de.dayova.app-dev` on iOS. The flow rejects other IDs before clearing state.
-Run twice to check that the reset also works after the previous run ends on Login.
+`de.dayova.app-dev` on iOS. Every flow rejects other IDs before clearing state.
+Run twice to check that reset also works after the previous journeys leave
+different auth/onboarding screens open.
 App initialization still needs network access to the configured Clerk instance;
-this is a native launch/navigation check, not an offline or authenticated backend
-integration test. Runtime permissions are denied because this journey needs none.
+these are native UI checks, not offline or authenticated backend integration
+tests. Runtime permissions are denied because these journeys need none.
 
 A missing app, launch failure, or absent expected control must produce a nonzero
 exit status. Startup waits are each bounded at 60 seconds, including the cold
 native development launcher and local Metro bundle. Later navigation waits are
 shorter. Increasing a bound should follow investigation of the failure, not
-replace it. The flow uses real
+replace it. The suite uses real
 navigation from the entry screen instead of deep-linking past the launch route.
 
 Find the JUnit report at `.maestro/artifacts/<platform>/report.xml`, successful
-welcome/login screenshots and other artifacts under that platform directory,
+journey screenshots and other artifacts under that platform directory,
 and debugging output under its `debug/` subdirectory. These files are ignored by
 Git. Copy evidence you need to retain before rerunning the same platform command;
 the report/output path is reused. Inspect the failed command and screenshot to
@@ -290,9 +329,14 @@ causes apply.
 - [DAY-311](https://linear.app/dayova/issue/DAY-311) and
   [DAY-312](https://linear.app/dayova/issue/DAY-312): native Android/iOS build checks.
 - [DAY-315](https://linear.app/dayova/issue/DAY-315) and
-  [DAY-316](https://linear.app/dayova/issue/DAY-316): run this shared smoke flow in
+  [DAY-316](https://linear.app/dayova/issue/DAY-316): run this shared smoke suite in
   EAS on Android/iOS and retain failure artifacts.
 - [DAY-321](https://linear.app/dayova/issue/DAY-321): dedicated test identity,
   real Clerk sign-in, and an authenticated Convex operation.
 - [DAY-194](https://linear.app/dayova/issue/DAY-194): broader viewport, text-size,
   and interaction regression coverage.
+- [DAY-411](https://linear.app/dayova/issue/DAY-411): macOS validation of the new
+  auth/onboarding journeys on iOS; previous DAY-314 iOS evidence covers only the
+  original launch/login flow.
+- [DAY-412](https://linear.app/dayova/issue/DAY-412): investigate intermittent
+  blank development-client startup before Login becomes ready.
