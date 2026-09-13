@@ -12,12 +12,12 @@ returns to the preceding learning-time step at 50%.
 | --- | --- | --- |
 | <img src="after-topics.png" width="240" alt="Topics at 60 percent before Back" /> | <img src="after-date-preserved.png" width="240" alt="30 September 2026 retained at the 40 percent date step" /> | <img src="after-topics-restored.png" width="240" alt="Zellaufbau, Fotosynthese restored at 60 percent" /> |
 
-**Screen recordings** — the previews animate; each links to its MP4.
+**Screen recordings** — the previews animate; each links directly to its downloadable MP4.
 
 | Reported behavior | Fixed native flow |
 | --- | --- |
-| [![Before recording](reported-before.gif)](reported-before.mp4) | [![After recording](android-after.gif)](android-after.mp4) |
-| [Play/download before MP4](reported-before.mp4) | [Play/download after MP4](android-after.mp4) |
+| [![Before recording](reported-before.gif)](reported-before.mp4?raw=true) | [![After recording](android-after.gif)](android-after.mp4?raw=true) |
+| [Download before MP4](reported-before.mp4?raw=true) | [Download after MP4](android-after.mp4?raw=true) |
 
 The before excerpt comes from the user-supplied
 `signal-2026-09-13-17-47-26-609.mp4`; its source revision and device model
@@ -71,3 +71,4 @@ Coverage: 32.97-second video; 33 full-timeline frames sampled at 1 fps (1-second
 Full original recording, reviewed locally:
 
 Coverage: 46.16-second video; 46 full-timeline frames sampled at 1 fps (1-second interval); 3 contact sheet(s); 11 additional frames from 00:00:13.500 to 00:00:15.500 at 5 fps; no audio stream.
+
