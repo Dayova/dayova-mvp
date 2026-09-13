@@ -2,6 +2,12 @@
 
 Captured on 2026-09-13 for [PR #586](https://github.com/Dayova/dayova-mvp/pull/586).
 
+The follow-up [color decision evidence](color-decision/README.md) adds matched
+light/dark originals, the retained treatment, a viable darker-blue alternative,
+enlarged before/after recordings, and reproducible contrast measurements.
+The [decision record](https://app.notion.com/p/3da2e87228bf8173b2adddaab6e3f5e6)
+explains why the current colors are retained.
+
 ## Before and after
 
 ![Same tap sequence, before on the left and after on the right](before-after.gif)
