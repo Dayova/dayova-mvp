@@ -6,6 +6,7 @@ import {
 	ScrollView,
 	type TextStyle,
 	TouchableOpacity,
+	useWindowDimensions,
 	View,
 	type ViewStyle,
 } from "react-native";
@@ -27,6 +28,7 @@ import { useAuthSession } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
+import { ROUTES } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -44,6 +46,8 @@ import {
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
 import { getDashboardNextStepFallbackAction } from "./dashboard-empty-state";
+import { DashboardDayHeader } from "./dashboard-day-header";
+import { getDashboardScreenLayout } from "./dashboard-layout";
 import {
 	DashboardAgendaEntryCard,
 	DashboardNextStepCard,
@@ -566,6 +570,7 @@ export function DashboardScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const insets = useSafeAreaInsets();
+	const { fontScale, width } = useWindowDimensions();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
@@ -634,6 +639,10 @@ export function DashboardScreen() {
 		new Intl.DateTimeFormat("de-DE", { weekday: "long" }).format(selectedDate),
 	);
 	const selectedDayEntryCount = entriesByDay?.[selectedDayKey]?.length ?? 0;
+	const dashboardLayout = getDashboardScreenLayout({
+		fontScale,
+		viewportWidth: width,
+	});
 	const selectedDayAgendaLabel =
 		entriesByDay === undefined
 			? "Dein Tag wird geladen …"
@@ -711,6 +720,10 @@ export function DashboardScreen() {
 		[nextStepFallbackAction.route, router],
 	);
 	const openTimetable = useCallback(() => router.push("/timetable"), [router]);
+	const addLearningPlan = useCallback(
+		() => router.push(ROUTES.createLearningPlan),
+		[router],
+	);
 
 	return (
 		<View className="flex-1 bg-background">
@@ -736,7 +749,7 @@ export function DashboardScreen() {
 					<NotificationButton />
 				</View>
 
-				<View className="mt-10">
+				<View style={{ marginTop: dashboardLayout.headerCalendarGap }}>
 					<WeekCalendar
 						days={calendarDays}
 						selectedDayKey={selectedDayKey}
@@ -757,11 +770,18 @@ export function DashboardScreen() {
 					paddingBottom: Math.max(insets.bottom + 72, 104),
 				}}
 			>
-				<View className="flex-row gap-3 px-6 pt-10 pb-5">
+				<View
+					className={cn(
+						"gap-3 px-6 pt-6 pb-5",
+						dashboardLayout.summaryCardLayout === "side-by-side" &&
+							"flex-row",
+					)}
+				>
 					<DashboardNextStepCard
 						mode="screen"
 						fallbackAction={nextStepFallbackAction}
 						item={nextLearningStep}
+						layout={dashboardLayout.summaryCardLayout}
 						isLoading={
 							entriesByDay === undefined || learningPlans === undefined
 						}
@@ -772,6 +792,7 @@ export function DashboardScreen() {
 					<DashboardWeeklyProgressCard
 						mode="screen"
 						isLoading={entriesByDay === undefined}
+						layout={dashboardLayout.summaryCardLayout}
 						progress={weekProgress}
 						onOpenLearningPlans={openLearningPlans}
 					/>
@@ -786,17 +807,14 @@ export function DashboardScreen() {
 					) : null}
 				</View>
 
-				<View className="z-10 bg-background px-6 pt-5 pb-6">
-					<Text
-						accessibilityRole="header"
-						className="font-poppins font-semibold text-heading-2 text-text"
-					>
-						{selectedWeekday}
-					</Text>
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						{selectedDayAgendaLabel}
-					</Text>
-				</View>
+				<DashboardDayHeader
+					agendaLabel={selectedDayAgendaLabel}
+					onAddPlan={addLearningPlan}
+					showAddPlanAction={
+						entriesByDay !== undefined && selectedDayEntryCount === 0
+					}
+					weekday={selectedWeekday}
+				/>
 
 				<GestureDetector gesture={daySwipeGesture}>
 					<View
