@@ -279,7 +279,7 @@ function ExamSwitcher({
 				accessibilityLabel={`Prüfung wechseln. Ausgewählt: ${selectedLabel}`}
 				accessibilityRole="button"
 				accessibilityState={{ expanded: visible }}
-				className="h-14 w-14 items-center justify-center rounded-full border border-border bg-card shadow-black/5 shadow-sm active:bg-card/80"
+				className="h-14 w-14 items-center justify-center rounded-full border border-border bg-card active:bg-card/80"
 				hitSlop={8}
 				onPress={onOpen}
 			>

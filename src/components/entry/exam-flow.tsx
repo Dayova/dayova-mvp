@@ -143,7 +143,7 @@ function SingleSelectOption({
 					"min-h-16 flex-row items-center gap-4 rounded-[24px] border px-5 py-3 active:opacity-80",
 					selected
 						? "border-primary/40 bg-accent"
-						: "border-transparent bg-card shadow-black/5 shadow-sm",
+						: "border-border bg-card",
 				)}
 			>
 				<View

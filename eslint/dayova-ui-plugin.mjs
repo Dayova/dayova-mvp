@@ -11,6 +11,35 @@ const DATE_TIME_PICKER_PATHS = [
 ];
 const ROUTER_APP_PATH = "/src/app/";
 const TEST_MODULE_PATTERN = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
+const FLAT_INTERFACE_PATHS = [
+	"/src/app/entry/[id].tsx",
+	"/src/app/learning-plans/[planId]/sessions/[sessionId]/index.tsx",
+	"/src/app/learning-times/index.tsx",
+	"/src/app/notification-settings.tsx",
+	"/src/app/notifications.tsx",
+	"/src/app/profile.tsx",
+	"/src/components/entry/exam-flow.tsx",
+	"/src/components/notification-button.tsx",
+	"/src/components/ui/action-sheet.tsx",
+	"/src/components/ui/button.tsx",
+	"/src/components/ui/close-button.tsx",
+	"/src/components/ui/field.tsx",
+	"/src/components/ui/surface.tsx",
+	"/src/components/ui/warning-banner.tsx",
+	"/src/features/analytics/analytics-screen.tsx",
+	"/src/features/learning-plans/learning-plan-ui.tsx",
+	"/src/features/notifications/category-tabs.tsx",
+	"/src/lib/design-system.ts",
+];
+const SHADOW_STYLE_PROPERTIES = new Set([
+	"boxShadow",
+	"elevation",
+	"shadowColor",
+	"shadowOffset",
+	"shadowOpacity",
+	"shadowRadius",
+]);
+const SHADOW_CLASS_PATTERN = /\bshadow-(?!none\b)/u;
 
 const endsWithAny = (filename, paths) =>
 	paths.some((path) => filename.endsWith(path));
@@ -260,10 +289,56 @@ export const noTestModulesInRouter = {
 	},
 };
 
+export const noInterfaceShadows = {
+	meta: {
+		type: "problem",
+		docs: {
+			description:
+				"Keep app interface cards, fields, and controls flat and shadow-free.",
+		},
+		messages: {
+			shadow:
+				"Keep interface cards, fields, and controls flat. Replace {{name}} with semantic backgrounds, borders, or spacing.",
+		},
+		schema: [],
+	},
+	create(context) {
+		const filename = context.filename.replaceAll("\\", "/");
+		if (!endsWithAny(filename, FLAT_INTERFACE_PATHS)) return {};
+
+		return {
+			Literal(node) {
+				if (
+					typeof node.value === "string" &&
+					SHADOW_CLASS_PATTERN.test(node.value)
+				) {
+					context.report({
+						node,
+						messageId: "shadow",
+						data: { name: "shadow utility classes" },
+					});
+				}
+			},
+			Property(node) {
+				const propertyName =
+					node.key.type === "Identifier" ? node.key.name : node.key.value;
+				if (!SHADOW_STYLE_PROPERTIES.has(propertyName)) return;
+
+				context.report({
+					node: node.key,
+					messageId: "shadow",
+					data: { name: propertyName },
+				});
+			},
+		};
+	},
+};
+
 export const dayovaUiPlugin = {
 	rules: {
 		"no-direct-overlay-primitives": noDirectOverlayPrimitives,
 		"no-direct-native-controls": noDirectNativeControls,
+		"no-interface-shadows": noInterfaceShadows,
 		"no-test-modules-in-router": noTestModulesInRouter,
 		"require-compose-host-theme": requireComposeHostTheme,
 	},

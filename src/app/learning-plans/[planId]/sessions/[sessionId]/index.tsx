@@ -140,7 +140,7 @@ function ChoiceList({
 						disabled={disabled}
 						onPress={() => onSelect(choice.id)}
 						className={cn(
-							"min-h-14 flex-row items-center gap-3 rounded-[24px] border-border border-hairline bg-card px-4 py-3 shadow-black/5 shadow-sm",
+							"min-h-14 flex-row items-center gap-3 rounded-[24px] border-border border-hairline bg-card px-4 py-3",
 							selected && "border-primary bg-system-subtle",
 						)}
 					>
@@ -940,7 +940,7 @@ export default function LearningSessionContentScreen() {
 								<View
 									accessible
 									accessibilityLabel={`Verbleibende Zeit: ${formatRemainingTime(displayedRemainingSeconds)}`}
-									className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4 shadow-black/5 shadow-sm"
+									className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4"
 								>
 									<Timer
 										size={18}
