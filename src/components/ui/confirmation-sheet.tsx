@@ -23,6 +23,7 @@ type ConfirmationSheetProps = {
 	confirmTone?: "primary" | "destructive";
 	closeAccessibilityLabel?: string;
 	actionLayout?: ConfirmationActionLayout;
+	scrollable?: boolean;
 };
 
 function ConfirmationSheet({
@@ -38,6 +39,7 @@ function ConfirmationSheet({
 	confirmTone = "destructive",
 	closeAccessibilityLabel = "Bestätigung schließen",
 	actionLayout = "inline",
+	scrollable = false,
 }: ConfirmationSheetProps) {
 	const { colors } = useDayovaTheme();
 	const safeClose = () => {
@@ -82,6 +84,12 @@ function ConfirmationSheet({
 			<Text>{cancelLabel}</Text>
 		</Button>
 	);
+	const actions = (
+		<View className={cn("gap-3", actionLayout === "inline" && "flex-row")}>
+			{actionLayout === "stacked" ? confirmButton : cancelButton}
+			{actionLayout === "stacked" ? cancelButton : confirmButton}
+		</View>
+	);
 
 	return (
 		<DayovaSheetFrame
@@ -91,6 +99,10 @@ function ConfirmationSheet({
 			onClose={safeClose}
 			dismissible={!isBusy}
 			closeAccessibilityLabel={closeAccessibilityLabel}
+			footer={scrollable ? actions : undefined}
+			maxWidth={scrollable ? 720 : undefined}
+			scrollable={scrollable}
+			size={scrollable ? "medium" : "content"}
 		>
 			{errorMessage ? (
 				<WarningBanner
@@ -101,10 +113,7 @@ function ConfirmationSheet({
 					description={errorMessage}
 				/>
 			) : null}
-			<View className={cn("gap-3", actionLayout === "inline" && "flex-row")}>
-				{actionLayout === "stacked" ? confirmButton : cancelButton}
-				{actionLayout === "stacked" ? cancelButton : confirmButton}
-			</View>
+			{scrollable ? null : actions}
 		</DayovaSheetFrame>
 	);
 }

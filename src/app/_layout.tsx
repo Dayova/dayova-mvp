@@ -10,7 +10,7 @@ import { ThemeProvider } from "expo-router/react-navigation";
 import * as SystemUI from "expo-system-ui";
 import { vars } from "nativewind";
 import { PostHogProvider } from "posthog-react-native";
-import { useEffect, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo } from "react";
 import { Text, View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -38,6 +38,24 @@ import { DARK_THEME_VARIABLES } from "~/lib/theme-variables";
 
 const convexUrl = env.EXPO_PUBLIC_CONVEX_URL?.trim();
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
+
+function AnalyticsProvider({ children }: { children: ReactNode }) {
+	return (
+		<PostHogProvider
+			apiKey={isPostHogConfigured ? postHogApiKey : "phc_disabled"}
+			autocapture={false}
+			options={{
+				host: postHogHost,
+				disabled: !isPostHogConfigured,
+				captureAppLifecycleEvents: false,
+				before_send: validationAnalyticsBeforeSend,
+			}}
+		>
+			{children}
+		</PostHogProvider>
+	);
+}
+
 function AppNavigator() {
 	const sheetAccessibility = useSheetAccessibility();
 	const { colors } = useDayovaTheme();
@@ -153,16 +171,7 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 		<GestureHandlerRootView style={gestureRootStyle}>
 			<View style={[gestureRootStyle, themeVariables]}>
 				<KeyboardProvider preload={false}>
-					<PostHogProvider
-						apiKey={postHogApiKey}
-						autocapture={false}
-						options={{
-							host: postHogHost,
-							disabled: !isPostHogConfigured,
-							captureAppLifecycleEvents: false,
-							before_send: validationAnalyticsBeforeSend,
-						}}
-					>
+					<AnalyticsProvider>
 						{/* Native sessions persist by default; there is no per-login opt-out.
 						    Decision: https://app.notion.com/p/3a02e87228bf81bf9f65f6214759a770 */}
 						<ClerkProvider
@@ -193,7 +202,7 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 								</ThemeProvider>
 							</ConvexProviderWithClerk>
 						</ClerkProvider>
-					</PostHogProvider>
+					</AnalyticsProvider>
 				</KeyboardProvider>
 			</View>
 		</GestureHandlerRootView>

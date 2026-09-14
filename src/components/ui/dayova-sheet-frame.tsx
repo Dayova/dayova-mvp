@@ -53,6 +53,7 @@ type DayovaSheetFrameProps = {
 	accessibilityLabel?: string;
 	returnFocusRef?: RefObject<View | null>;
 	contentClassName?: string;
+	maxWidth?: number;
 };
 
 function DayovaSheetFrame({
@@ -71,6 +72,7 @@ function DayovaSheetFrame({
 	accessibilityLabel,
 	returnFocusRef,
 	contentClassName,
+	maxWidth = MAX_SHEET_WIDTH,
 }: DayovaSheetFrameProps) {
 	const sheetRef = useRef<BottomSheetModal>(null);
 	const initialFocusRef = useRef<View>(null);
@@ -90,7 +92,7 @@ function DayovaSheetFrame({
 		height: windowHeight,
 		width: windowWidth,
 	} = useWindowDimensions();
-	const sheetWidth = Math.min(windowWidth, MAX_SHEET_WIDTH);
+	const sheetWidth = Math.min(windowWidth, maxWidth);
 	const sheetHorizontalInset = Math.max((windowWidth - sheetWidth) / 2, 0);
 	const maximumHeight = Math.max(
 		240,
@@ -267,6 +269,7 @@ function DayovaSheetFrame({
 
 	const canShowCloseButton = showCloseButton && dismissible;
 	const hasHeader = Boolean(title || description || canShowCloseButton);
+	const hasFixedHeader = scrollable && hasHeader;
 	const hasFixedFooter = scrollable && Boolean(footer);
 	const content = (
 		<View
@@ -285,9 +288,7 @@ function DayovaSheetFrame({
 			)}
 			// Safe-area padding is runtime device data and cannot be a static utility.
 			style={{
-				paddingBottom: hasFixedFooter
-					? 12
-					: Math.max(insets.bottom + 20, 32),
+				paddingBottom: hasFixedFooter ? 12 : Math.max(insets.bottom + 20, 32),
 			}}
 		>
 			{!title ? (
@@ -300,7 +301,7 @@ function DayovaSheetFrame({
 					collapsable={false}
 				/>
 			) : null}
-			{hasHeader ? (
+			{hasHeader && !hasFixedHeader ? (
 				<View className="mb-6 gap-3">
 					<View className="min-h-10 flex-row items-start gap-4">
 						{title ? (
@@ -381,15 +382,65 @@ function DayovaSheetFrame({
 			}}
 		>
 			{scrollable ? (
-				<View className="flex-1 bg-card">
+				<View
+					accessibilityActions={
+						dismissible
+							? [{ name: "escape", label: closeAccessibilityLabel }]
+							: undefined
+					}
+					accessibilityViewIsModal
+					importantForAccessibility="yes"
+					onAccessibilityAction={handleAccessibilityAction}
+					onAccessibilityEscape={dismiss}
+					className="flex-1 bg-card"
+				>
+					{hasFixedHeader ? (
+						<View className="px-6 pt-1 pb-3" testID="dayova-sheet-fixed-header">
+							<View className="min-h-10 flex-row items-start gap-4">
+								{title ? (
+									<View
+										ref={initialFocusRef}
+										accessible
+										accessibilityLabel={accessibleTitle}
+										accessibilityRole="header"
+										className="flex-1"
+										collapsable={false}
+									>
+										<Text className="pt-1 font-poppins font-semibold text-body-1 text-text">
+											{title}
+										</Text>
+									</View>
+								) : (
+									<View className="flex-1" />
+								)}
+								{canShowCloseButton ? (
+									<CloseButton
+										accessibilityLabel={closeAccessibilityLabel}
+										onPress={dismiss}
+									/>
+								) : null}
+							</View>
+						</View>
+					) : null}
 					<BottomSheetScrollView
 						bounces={false}
 						keyboardShouldPersistTaps="handled"
 						nestedScrollEnabled
 						showsVerticalScrollIndicator={false}
+						testID="dayova-sheet-scroll-view"
 						// Gorhom scrollables require their fill geometry through `style`.
 						style={{ flex: 1 }}
 					>
+						{hasFixedHeader && description ? (
+							<View className="px-6 pt-1 pb-6">
+								<Text
+									className="font-poppins text-body-3 text-secondary-text"
+									testID="dayova-sheet-scroll-description"
+								>
+									{description}
+								</Text>
+							</View>
+						) : null}
 						{content}
 					</BottomSheetScrollView>
 					{hasFixedFooter ? (

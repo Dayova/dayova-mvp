@@ -42,6 +42,7 @@ export function MaterialRequiredSheet({
 			description={`${subjectInstruction}${topicInstruction}\n\nDanach kann Dayova deinen Lernplan erstellen.`}
 			onClose={onClose}
 			onConfirm={onUpload}
+			scrollable
 			title="Für diesen Lernplan fehlt Material"
 			visible={subject !== null}
 		/>

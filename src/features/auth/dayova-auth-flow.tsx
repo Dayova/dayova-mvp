@@ -45,7 +45,6 @@ import {
 	INTRO_DOT_COLLAPSED_WIDTH,
 	INTRO_DOT_EXPANDED_WIDTH,
 } from "~/components/onboarding/intro-pagination";
-import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import {
 	getOnboardingPersistenceAnswers,
 	getOnboardingRegistrationPayload,
@@ -136,6 +135,7 @@ const STUDY_DAY_SELECTION_DURATION_MS = 180;
 const STUDY_DAY_PRESS_IN_DURATION_MS = 80;
 const STUDY_DAY_PRESS_OUT_DURATION_MS = 120;
 const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
+const ONBOARDING_CONTENT_TOP_SPACING = 40;
 const CODE_LENGTH = 6;
 const OTP_CELL_KEYS = [
 	"otp-cell-1",
@@ -158,21 +158,13 @@ type PasswordResetStage =
 
 type IntroStep = {
 	kind: "intro";
-	id: "intro-upload" | "intro-path" | "intro-tasks";
+	id: "intro-upload" | "intro-path";
 	title: string;
 	description: string;
-	illustration: "path" | "tasks" | "upload";
+	illustration: "path" | "upload";
 };
 
 const INTRO_STEPS = [
-	{
-		kind: "intro",
-		id: "intro-tasks",
-		title: "Du weißt, was heute wirklich zählt.",
-		description:
-			"Ein machbarer nächster Lernschritt bringt dich jeden Tag näher an deine Prüfung.",
-		illustration: "tasks",
-	},
 	{
 		kind: "intro",
 		id: "intro-upload",
@@ -276,7 +268,7 @@ export function AuthChoiceScreen() {
 								? undefined
 								: FadeInDown.duration(520).springify().damping(18)
 						}
-						className="h-28 w-28 items-center justify-center rounded-[28px] bg-card shadow-lg"
+						className="h-28 w-28 items-center justify-center rounded-[28px] border border-border bg-card"
 					>
 						<Image
 							source={require("../../../assets/onboarding/dayova-y.png")}
@@ -398,9 +390,10 @@ export function AuthChoiceScreen() {
 								height: scaled(AUTH_CHOICE_FRAME.logoCard.size),
 								borderRadius: scaled(AUTH_CHOICE_FRAME.logoCard.radius),
 								backgroundColor: COLORS.surface,
+								borderColor: COLORS.border,
+								borderWidth: 1,
 								alignItems: "center",
 								justifyContent: "center",
-								boxShadow: `0 ${scaled(18)}px ${scaled(45)}px rgba(20, 28, 48, 0.06)`,
 							}}
 						>
 							<Image
@@ -1168,7 +1161,7 @@ function IntroArtwork({
 
 	return (
 		<View
-			className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
+			className="w-full items-center justify-center overflow-hidden"
 			// Runtime content-size mode chooses the bounded decorative-artwork height.
 			style={{ height: containerHeight }}
 		>
@@ -1182,12 +1175,6 @@ function IntroArtwork({
 				<IntroLearningPathArtwork
 					width={accessibleLayout ? 250 : compactHeight ? 284 : 330}
 					height={accessibleLayout ? 168 : compactHeight ? 208 : 254}
-				/>
-			) : null}
-			{item.illustration === "tasks" ? (
-				<IntroTasksArtwork
-					width={accessibleLayout ? 262 : compactHeight ? 294 : 345}
-					height={accessibleLayout ? 178 : compactHeight ? 200 : 236}
 				/>
 			) : null}
 		</View>
@@ -1325,7 +1312,6 @@ function QuestionStepView({
 				: null;
 	const visibleError = error ?? localValidationError;
 	const isImmersiveStep = step.kind === "fact" || step.kind === "payoff";
-	const titleTopPadding = step.kind === "text" ? 50 : 28;
 	const isLearningTimeStep = step.kind === "time";
 	const [timePickerVisible, setTimePickerVisible] = useState(false);
 	const [pendingLearningTime, setPendingLearningTime] = useState(() =>
@@ -1427,12 +1413,13 @@ function QuestionStepView({
 				}}
 			>
 				<Animated.View
+					testID="onboarding-question-content"
 					entering={reducedMotion ? undefined : FadeInDown.duration(220)}
 					// Step kind and content-size mode determine the runtime answer layout.
 					style={{
 						flex: shouldStackInlineContent ? undefined : 1,
 						alignItems: "center",
-						paddingTop: isImmersiveStep ? 16 : titleTopPadding,
+						paddingTop: ONBOARDING_CONTENT_TOP_SPACING,
 					}}
 				>
 					{!isImmersiveStep ? (
@@ -2917,7 +2904,7 @@ function OtpCodeInput({
 	const { colors: COLORS } = useDayovaTheme();
 
 	return (
-		<View>
+		<View className="w-full max-w-[420px] self-center" testID="otp-code-input">
 			<View className="flex-row gap-2">
 				{OTP_CELL_KEYS.map((cellKey, index) => {
 					const symbol = value[index] ?? "";
@@ -2966,11 +2953,14 @@ function OtpCodeInput({
 				onChangeText={onChangeText}
 				editable={!disabled}
 				keyboardType="number-pad"
+				inputMode="numeric"
+				showSoftInputOnFocus
 				textContentType="oneTimeCode"
 				autoComplete={otpAutoComplete}
 				autoCorrect={false}
 				autoCapitalize="none"
 				caretHidden
+				contextMenuHidden
 				className="absolute inset-0 opacity-[0.01]"
 				maxLength={CODE_LENGTH}
 				selectionColor="transparent"

@@ -237,6 +237,36 @@ describe("DayovaSheetFrame", () => {
 		expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
 	});
 
+	test("keeps the heading and actions fixed around scrollable content", async () => {
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				title="Material fehlt"
+				description="Eine lange Materialbeschreibung"
+				footer={<View testID="fixed-actions" />}
+				scrollable
+				size="medium"
+			>
+				<View testID="scroll-body" />
+			</DayovaSheetFrame>,
+		);
+		await act(flushAnimationFrames);
+
+		expect(view.getByTestId("dayova-sheet-fixed-header")).toBeOnTheScreen();
+		expect(
+			view.getByRole("header", { name: "Material fehlt" }),
+		).toBeOnTheScreen();
+		expect(view.getByTestId("dayova-sheet-scroll-view")).toBeOnTheScreen();
+		expect(
+			view.getByTestId("dayova-sheet-scroll-description", {
+				includeHiddenElements: true,
+			}),
+		).toHaveTextContent("Eine lange Materialbeschreibung");
+		expect(view.getByTestId("scroll-body")).toBeOnTheScreen();
+		expect(view.getByTestId("fixed-actions")).toBeOnTheScreen();
+	});
+
 	test("Android system back dismisses the sheet before the underlying route", async () => {
 		const onClose = jest.fn();
 		setPlatformOS("android");

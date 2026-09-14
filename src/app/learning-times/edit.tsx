@@ -83,7 +83,7 @@ function TimeControl({
 			<Pressable
 				accessibilityLabel={`${label}: ${value}`}
 				accessibilityRole="button"
-				className="min-h-16 flex-row items-center justify-between rounded-[28px] bg-card px-5 shadow-black/10 shadow-sm active:opacity-80"
+				className="min-h-16 flex-row items-center justify-between rounded-[28px] border border-border bg-card px-5 active:opacity-80"
 				onPress={onPress}
 				style={{ borderCurve: "continuous" }}
 			>

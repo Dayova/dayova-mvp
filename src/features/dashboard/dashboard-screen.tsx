@@ -13,6 +13,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
+import { CreateEntryButton } from "~/components/create-entry-button";
 import { NotificationButton } from "~/components/notification-button";
 import {
 	ArrowRight,
@@ -27,6 +28,7 @@ import { useAuthSession } from "~/context/AuthContext";
 import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -34,6 +36,7 @@ import type { DayEntry } from "~/types/dayEntries";
 import {
 	type DashboardAgendaItem,
 	findNextActionableAgendaItem,
+	getAdjacentDashboardWeekDayKey,
 	getAgendaEntryTitle,
 	getDashboardCalendarDayKeys,
 	getDashboardRelevantDayKeys,
@@ -44,6 +47,7 @@ import {
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
 import { getDashboardNextStepFallbackAction } from "./dashboard-empty-state";
+import { DashboardHighlightCarousel } from "./dashboard-highlight-carousel";
 import {
 	DashboardAgendaEntryCard,
 	DashboardNextStepCard,
@@ -202,7 +206,7 @@ function WeekCalendar({
 								{day.dayOfMonth}
 							</Text>
 							{day.isToday && !selected ? (
-								<View className="absolute bottom-1 h-1 w-1 rounded-full bg-primary" />
+								<View className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
 							) : null}
 						</View>
 					</TouchableOpacity>
@@ -224,33 +228,35 @@ function TimelineRail({
 	isPrimary: boolean;
 }) {
 	return (
-		<View className="w-5 items-center self-stretch">
-			{!isFirst ? (
+		<View className="w-5 self-stretch pb-5">
+			<View className="flex-1 items-center justify-center">
+				{!isFirst ? (
+					<View
+						className={cn(
+							"absolute top-0 h-1/2 w-px",
+							isPast ? "bg-path-1/60" : "bg-path-1",
+						)}
+					/>
+				) : null}
 				<View
 					className={cn(
-						"absolute top-0 h-4 w-px",
-						isPast ? "bg-path-1/60" : "bg-path-1",
+						"z-10 h-3 w-3 rounded-full border-2",
+						isPrimary
+							? "border-primary bg-primary"
+							: isPast
+								? "border-path-2 bg-background"
+								: "border-path-3 bg-background",
 					)}
 				/>
-			) : null}
-			<View
-				className={cn(
-					"z-10 mt-3 h-3 w-3 rounded-full border-2",
-					isPrimary
-						? "border-primary bg-primary"
-						: isPast
-							? "border-path-2 bg-background"
-							: "border-path-3 bg-background",
-				)}
-			/>
-			{!isLast ? (
-				<View
-					className={cn(
-						"absolute top-6 bottom-0 w-px",
-						isPast ? "bg-path-1/60" : "bg-path-1",
-					)}
-				/>
-			) : null}
+				{!isLast ? (
+					<View
+						className={cn(
+							"absolute top-1/2 -bottom-5 w-px",
+							isPast ? "bg-path-1/60" : "bg-path-1",
+						)}
+					/>
+				) : null}
+			</View>
 		</View>
 	);
 }
@@ -366,7 +372,7 @@ function AgendaItemRow({
 }) {
 	return (
 		<View className="flex-row">
-			<View className="w-12 pt-2 pr-1">
+			<View className="w-12 justify-center pr-1 pb-5">
 				<Text
 					className={cn(
 						"text-right font-poppins text-body-5",
@@ -688,6 +694,34 @@ export function DashboardScreen() {
 		[adjustSelectedDay],
 	);
 
+	const adjustSelectedWeek = useCallback(
+		(direction: -1 | 1) => {
+			const nextDayKey = getAdjacentDashboardWeekDayKey({
+				selectedDayKey,
+				direction: direction === 1 ? "next" : "previous",
+			});
+			if (!dayPagerKeys.includes(nextDayKey)) return;
+			commitSelectedDay(nextDayKey);
+			triggerDaySelectionHaptic();
+		},
+		[commitSelectedDay, dayPagerKeys, selectedDayKey],
+	);
+
+	const weekSwipeGesture = useMemo(
+		() =>
+			Gesture.Pan()
+				.activeOffsetX([-24, 24])
+				.failOffsetY([-12, 12])
+				.onEnd((event) => {
+					"worklet";
+					const passedDistance = Math.abs(event.translationX) >= 56;
+					const passedVelocity = Math.abs(event.velocityX) >= 650;
+					if (!passedDistance && !passedVelocity) return;
+					scheduleOnRN(adjustSelectedWeek, event.translationX < 0 ? 1 : -1);
+				}),
+		[adjustSelectedWeek],
+	);
+
 	const openItem = useCallback(
 		(item: DashboardAgendaItem) => {
 			if (item.kind === "schoolLesson") return;
@@ -707,7 +741,12 @@ export function DashboardScreen() {
 		[router],
 	);
 	const openNextStepFallback = useCallback(
-		() => router.push(nextStepFallbackAction.route),
+		() =>
+			router.push(
+				nextStepFallbackAction.route === ROUTES.createExam
+					? withReturnTo(nextStepFallbackAction.route, ROUTES.home)
+					: nextStepFallbackAction.route,
+			),
 		[nextStepFallbackAction.route, router],
 	);
 	const openTimetable = useCallback(() => router.push("/timetable"), [router]);
@@ -720,28 +759,34 @@ export function DashboardScreen() {
 				// Safe-area padding is runtime device geometry.
 				style={{ paddingTop: insets.top + 16 }}
 			>
-				<View className="flex-row items-center justify-between">
-					<View className="flex-1 pr-4">
-						<Text className="font-poppins text-body-4 text-secondary-text">
-							{getMonthHeading(selectedDate)}
-						</Text>
-						<Text
-							accessibilityRole="header"
-							className="font-poppins font-semibold text-heading-2 text-text"
-							numberOfLines={1}
-						>
-							{firstName ? `Hallo ${firstName}` : "Dein Tag"}
-						</Text>
+				<View className="w-full max-w-[768px] self-center">
+					<View className="flex-row items-center justify-between">
+						<View className="flex-1 pr-4">
+							<Text className="font-poppins text-body-4 text-secondary-text">
+								{getMonthHeading(selectedDate)}
+							</Text>
+							<Text
+								accessibilityRole="header"
+								className="font-poppins font-semibold text-heading-2 text-text"
+								numberOfLines={1}
+							>
+								{firstName ? `Hallo ${firstName}` : "Dein Tag"}
+							</Text>
+						</View>
+						<NotificationButton />
 					</View>
-					<NotificationButton />
-				</View>
 
-				<View className="mt-10">
-					<WeekCalendar
-						days={calendarDays}
-						selectedDayKey={selectedDayKey}
-						onSelectDay={selectDay}
-					/>
+					<View className="mt-10">
+						<GestureDetector gesture={weekSwipeGesture}>
+							<View>
+								<WeekCalendar
+									days={calendarDays}
+									selectedDayKey={selectedDayKey}
+									onSelectDay={selectDay}
+								/>
+							</View>
+						</GestureDetector>
+					</View>
 				</View>
 			</View>
 
@@ -757,7 +802,7 @@ export function DashboardScreen() {
 					paddingBottom: Math.max(insets.bottom + 72, 104),
 				}}
 			>
-				<View className="flex-row gap-3 px-6 pt-10 pb-5">
+				<DashboardHighlightCarousel>
 					<DashboardNextStepCard
 						mode="screen"
 						fallbackAction={nextStepFallbackAction}
@@ -775,7 +820,7 @@ export function DashboardScreen() {
 						progress={weekProgress}
 						onOpenLearningPlans={openLearningPlans}
 					/>
-				</View>
+				</DashboardHighlightCarousel>
 
 				<View>
 					{timetableState !== undefined && !timetableState.active ? (
@@ -786,16 +831,19 @@ export function DashboardScreen() {
 					) : null}
 				</View>
 
-				<View className="z-10 bg-background px-6 pt-5 pb-6">
-					<Text
-						accessibilityRole="header"
-						className="font-poppins font-semibold text-heading-2 text-text"
-					>
-						{selectedWeekday}
-					</Text>
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						{selectedDayAgendaLabel}
-					</Text>
+				<View className="z-10 flex-row items-center justify-between bg-background px-6 pt-5 pb-6">
+					<View className="min-w-0 flex-1 pr-4">
+						<Text
+							accessibilityRole="header"
+							className="font-poppins font-semibold text-heading-2 text-text"
+						>
+							{selectedWeekday}
+						</Text>
+						<Text className="font-poppins text-body-4 text-secondary-text">
+							{selectedDayAgendaLabel}
+						</Text>
+					</View>
+					<CreateEntryButton returnTo={ROUTES.home} />
 				</View>
 
 				<GestureDetector gesture={daySwipeGesture}>

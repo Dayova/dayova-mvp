@@ -248,16 +248,22 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 							</View>
 						) : null}
 					</View>
-					<View className="mt-4 flex-row items-end justify-between gap-2">
+					<View
+						className="mt-4 flex-row items-center justify-between gap-2"
+						testID="dashboard-next-step-footer"
+					>
 						<Text
 							className="flex-1 pr-1 font-poppins font-semibold text-body-4 text-text"
 							numberOfLines={2}
 						>
 							{footer}
 						</Text>
-						<View className="h-12 w-12 items-center justify-center rounded-full bg-primary">
+						<View
+							className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary"
+							testID="dashboard-next-step-action"
+						>
 							<ArrowRight
-								size={22}
+								size={19}
 								color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 								strokeWidth={2}
 							/>
@@ -447,10 +453,14 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 			</View>
 			<View
 				className={cn(
-					"flex-row items-end justify-between gap-2",
+					"flex-row items-center justify-between gap-2",
 					isArtwork ? "mt-1 pr-3" : "mt-4",
 				)}
-				testID={isArtwork ? "dashboard-progress-artwork-footer" : undefined}
+				testID={
+					isArtwork
+						? "dashboard-progress-artwork-footer"
+						: "dashboard-progress-footer"
+				}
 			>
 				<View className="flex-1 flex-row items-center gap-2 pr-1">
 					{hasPlannedSessions && !isLoading ? (
@@ -475,12 +485,13 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 				</View>
 				<View
 					className={cn(
-						"items-center justify-center rounded-full bg-secondary",
-						isArtwork ? "h-8 w-8" : "h-12 w-12",
+						"shrink-0 items-center justify-center rounded-full bg-secondary",
+						isArtwork ? "h-8 w-8" : "h-10 w-10",
 					)}
+					testID={isArtwork ? undefined : "dashboard-progress-action"}
 				>
 					<ArrowUpRight
-						size={isArtwork ? 16 : 22}
+						size={isArtwork ? 16 : 19}
 						color={DAYOVA_DESIGN_SYSTEM.colors.light1}
 						strokeWidth={2}
 					/>

@@ -269,13 +269,6 @@ jest.mock("~/components/onboarding/intro-learning-path-artwork", () => {
 	};
 });
 
-jest.mock("~/components/onboarding/intro-tasks-artwork", () => {
-	const React = jest.requireActual<typeof import("react")>("react");
-	return {
-		IntroTasksArtwork: () => React.createElement("IntroTasksArtwork"),
-	};
-});
-
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ bottom: 24, left: 0, right: 0, top: 24 }),
 }));
@@ -587,6 +580,21 @@ describe("LoginScreen", () => {
 			"Falls ein Konto für unknown@example.de existiert, haben wir einen sechsstelligen Code gesendet.",
 		);
 		expect(screen.getByLabelText("Bestätigungscode")).toBeOnTheScreen();
+		expect(screen.getByLabelText("Bestätigungscode")).toHaveProp(
+			"keyboardType",
+			"number-pad",
+		);
+		expect(screen.getByLabelText("Bestätigungscode")).toHaveProp(
+			"inputMode",
+			"numeric",
+		);
+		expect(screen.getByLabelText("Bestätigungscode")).toHaveProp(
+			"showSoftInputOnFocus",
+			true,
+		);
+		expect(screen.getByTestId("otp-code-input").props.className).toContain(
+			"max-w-[420px]",
+		);
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Code erneut senden" }),
 		);
@@ -1054,19 +1062,18 @@ describe("OnboardingScreen", () => {
 		});
 	});
 
-	test("teaches the product in three pages before personalized questions", async () => {
+	test("teaches the product in two focused pages before personalized questions", async () => {
 		const screen = await render(<OnboardingScreen />);
 
 		expect(
 			screen.getByRole("header", {
-				name: "Du weißt, was heute wirklich zählt.",
+				name: "Deine Prüfung. Alles an einem Ort.",
 			}),
 		).toBeOnTheScreen();
 		expect(
 			screen.getByText("Danach 11 kurze, bewusste Schritte · etwa 2 Minuten"),
 		).toBeOnTheScreen();
 
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Meinen Start personalisieren" }),
@@ -1089,7 +1096,7 @@ describe("OnboardingScreen", () => {
 		expect(screen.queryByTestId("intro-pager")).toBeNull();
 		expect(
 			screen.getByRole("header", {
-				name: "Du weißt, was heute wirklich zählt.",
+				name: "Deine Prüfung. Alles an einem Ort.",
 			}),
 		).toBeOnTheScreen();
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeOnTheScreen();
@@ -1142,9 +1149,9 @@ describe("OnboardingScreen", () => {
 		});
 		expect(screen.getByRole("progressbar")).toHaveProp("accessibilityValue", {
 			min: 1,
-			max: 3,
+			max: 2,
 			now: 1,
-			text: "Seite 1 von 3",
+			text: "Seite 1 von 2",
 		});
 	});
 
@@ -1213,8 +1220,8 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingScreen />);
 		const pager = screen.getByTestId("intro-pager");
 
-		expect(pager).toHaveProp("initialNumToRender", 3);
-		expect(pager).toHaveProp("maxToRenderPerBatch", 3);
+		expect(pager).toHaveProp("initialNumToRender", 2);
+		expect(pager).toHaveProp("maxToRenderPerBatch", 2);
 		expect(pager).toHaveProp("removeClippedSubviews", false);
 	});
 
@@ -1222,9 +1229,16 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingScreen />);
 
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
 		expect(screen.getByTestId("intro-learning-path-artwork")).toBeOnTheScreen();
+	});
+
+	test("uses one consistent gap below the progress header", async () => {
+		const screen = await render(<OnboardingStepScreen stepId="grade" />);
+
+		expect(screen.getByTestId("onboarding-question-content")).toHaveStyle({
+			paddingTop: 40,
+		});
 	});
 
 	test("does not preselect a grade and disables continuation until it is valid", async () => {

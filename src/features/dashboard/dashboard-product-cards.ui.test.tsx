@@ -185,4 +185,46 @@ describe("shared dashboard product cards", () => {
 			"max-w-16",
 		);
 	});
+
+	test("keeps both live card actions compact and vertically centered", async () => {
+		const screen = await render(
+			<View>
+				<DashboardWeeklyProgressCard
+					mode="screen"
+					isLoading={false}
+					progress={progress}
+					onOpenLearningPlans={jest.fn()}
+				/>
+				<DashboardNextStepCard
+					mode="screen"
+					fallbackAction={EMPTY_DASHBOARD_PRIMARY_ACTION}
+					isLoading={false}
+					item={nextStep}
+					todayKey={todayKey}
+					onOpenFallback={jest.fn()}
+					onOpenItem={jest.fn()}
+				/>
+			</View>,
+		);
+
+		for (const testID of [
+			"dashboard-progress-footer",
+			"dashboard-next-step-footer",
+		]) {
+			expect(screen.getByTestId(testID).props.className).toContain(
+				"items-center",
+			);
+			expect(screen.getByTestId(testID).props.className).not.toContain(
+				"items-end",
+			);
+		}
+
+		for (const testID of [
+			"dashboard-progress-action",
+			"dashboard-next-step-action",
+		]) {
+			expect(screen.getByTestId(testID).props.className).toContain("h-10");
+			expect(screen.getByTestId(testID).props.className).toContain("w-10");
+		}
+	});
 });
