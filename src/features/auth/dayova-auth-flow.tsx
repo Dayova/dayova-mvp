@@ -2917,7 +2917,7 @@ function OtpCodeInput({
 	const { colors: COLORS } = useDayovaTheme();
 
 	return (
-		<View>
+		<View className="w-full max-w-[420px] self-center" testID="otp-code-input">
 			<View className="flex-row gap-2">
 				{OTP_CELL_KEYS.map((cellKey, index) => {
 					const symbol = value[index] ?? "";
@@ -2966,11 +2966,14 @@ function OtpCodeInput({
 				onChangeText={onChangeText}
 				editable={!disabled}
 				keyboardType="number-pad"
+				inputMode="numeric"
+				showSoftInputOnFocus
 				textContentType="oneTimeCode"
 				autoComplete={otpAutoComplete}
 				autoCorrect={false}
 				autoCapitalize="none"
 				caretHidden
+				contextMenuHidden
 				className="absolute inset-0 opacity-[0.01]"
 				maxLength={CODE_LENGTH}
 				selectionColor="transparent"

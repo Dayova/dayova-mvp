@@ -587,6 +587,21 @@ describe("LoginScreen", () => {
 			"Falls ein Konto für unknown@example.de existiert, haben wir einen sechsstelligen Code gesendet.",
 		);
 		expect(screen.getByLabelText("Bestätigungscode")).toBeOnTheScreen();
+		expect(screen.getByLabelText("Bestätigungscode")).toHaveProp(
+			"keyboardType",
+			"number-pad",
+		);
+		expect(screen.getByLabelText("Bestätigungscode")).toHaveProp(
+			"inputMode",
+			"numeric",
+		);
+		expect(screen.getByLabelText("Bestätigungscode")).toHaveProp(
+			"showSoftInputOnFocus",
+			true,
+		);
+		expect(screen.getByTestId("otp-code-input").props.className).toContain(
+			"max-w-[420px]",
+		);
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Code erneut senden" }),
 		);
