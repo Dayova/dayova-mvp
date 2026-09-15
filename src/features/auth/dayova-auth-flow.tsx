@@ -3412,27 +3412,42 @@ function AuthBackgroundPattern({
 	yOffset: number;
 }) {
 	const isTablet = viewportWidth >= 700;
-	const tileScale = scale * (isTablet ? 1.16 : 1);
-	const iconScale = scale * (isTablet ? 1.26 : 1);
+	const tileScale = isTablet ? viewportWidth / AUTH_CHOICE_FRAME.width : scale;
+	const iconScale = tileScale;
 	const tileSize = AUTH_BACKGROUND_TILE.size * tileScale;
 	const columnStep = AUTH_BACKGROUND_TILE.columnStep * scale;
-	const firstColumnLeft =
-		((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 -
-			AUTH_BACKGROUND_TILE.columnStep) *
-		scale;
-	const columnCount = Math.ceil((viewportWidth - firstColumnLeft) / columnStep);
-	const columnLefts = Array.from(
-		{ length: columnCount },
-		(_, index) => firstColumnLeft + index * columnStep,
-	);
+	const firstColumnLeft = isTablet
+		? ((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 -
+				AUTH_BACKGROUND_TILE.columnStep) *
+			tileScale
+		: ((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 -
+				AUTH_BACKGROUND_TILE.columnStep) *
+			scale;
+	const columnLefts = isTablet
+		? [
+				firstColumnLeft,
+				(AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) * 0.5 * tileScale,
+				((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 +
+					AUTH_BACKGROUND_TILE.columnStep) *
+					tileScale,
+			]
+		: Array.from(
+				{
+					length: Math.ceil((viewportWidth - firstColumnLeft) / columnStep),
+				},
+				(_, index) => firstColumnLeft + index * columnStep,
+			);
 	const contentClearHalfWidth =
 		(AUTH_CHOICE_FRAME.width * scale - tileSize) / 2;
+	const frameTop = Math.max(0, yOffset - AUTH_CHOICE_FRAME.patternYOffset);
+	const tabletLogoTop = frameTop + AUTH_CHOICE_FRAME.logoCard.top * scale;
+	const tabletTitleTop = frameTop + AUTH_CHOICE_FRAME.title.top * scale;
 	const topIcons: Array<typeof Palette> = [Palette, Globe, Telescope];
 	const items: Array<{
 		icon: typeof Palette;
 		key: string;
 		left: number;
-		y: number;
+		top: number;
 	}> = [];
 
 	for (const [index, left] of columnLefts.entries()) {
@@ -3443,21 +3458,27 @@ function AuthBackgroundPattern({
 		items.push({
 			key: `top-${index}`,
 			left,
-			y: index % 3 === 1 ? 44 : 28,
+			top: isTablet
+				? Math.max(0, tabletLogoTop - tileSize - (index === 1 ? 8 : 24) * scale)
+				: ((index % 3 === 1 ? 44 : 28) + yOffset) * scale,
 			icon: topIcons[index % topIcons.length] ?? Globe,
 		});
 
-		if (!clearsCentralContent) continue;
+		if (index === 1 || (!isTablet && !clearsCentralContent)) continue;
 		items.push({
 			key: `middle-${index}`,
 			left,
-			y: side < 0 ? 196 : 188,
+			top: isTablet
+				? tabletLogoTop - (side < 0 ? 4 : 12) * scale
+				: ((side < 0 ? 196 : 188) + yOffset) * scale,
 			icon: side < 0 ? Plant : GreekHelmet,
 		});
 		items.push({
 			key: `bottom-${index}`,
 			left,
-			y: side < 0 ? 360 : 350,
+			top: isTablet
+				? tabletTitleTop - (side < 0 ? 0 : 10) * scale
+				: ((side < 0 ? 360 : 350) + yOffset) * scale,
 			icon: side < 0 ? Atom : SquareRootSquare,
 		});
 	}
@@ -3482,7 +3503,7 @@ function AuthBackgroundPattern({
 						style={{
 							position: "absolute",
 							left: item.left,
-							top: (item.y + yOffset) * scale,
+							top: item.top,
 							width: tileSize,
 							height: tileSize,
 							borderRadius: AUTH_BACKGROUND_TILE.radius * tileScale,

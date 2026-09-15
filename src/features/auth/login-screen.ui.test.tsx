@@ -499,8 +499,8 @@ describe("LoginScreen", () => {
 		const backgroundTiles = screen.getAllByTestId(
 			"auth-choice-background-tile",
 		);
-		expect(backgroundTiles.length).toBeGreaterThan(7);
-		expect(backgroundTiles[0]?.props.style.width).toBeGreaterThan(230);
+		expect(backgroundTiles).toHaveLength(7);
+		expect(backgroundTiles[0]?.props.style.width).toBeGreaterThan(300);
 		expect(screen.getAllByTestId("auth-choice-background-icon")[0]).toHaveStyle(
 			{
 				opacity: 0.2,
