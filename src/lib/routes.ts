@@ -1,6 +1,7 @@
 export const ROUTES = {
 	home: "/home",
 	settings: "/settings",
+	personalSubjects: "/personal-subjects",
 	learningTimes: "/learning-times",
 	learningPlans: "/learning-plans",
 	analytics: "/analyse",

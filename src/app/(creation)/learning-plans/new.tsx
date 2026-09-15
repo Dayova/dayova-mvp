@@ -1,4 +1,3 @@
-import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
@@ -9,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import {
 	ActionSheet,
 	actionSheetIconColor,
@@ -27,11 +27,11 @@ import {
 	examEntrySuccessPath,
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
+import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
 	MaterialUploadStep,
 	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
-import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import type {
 	LearningPlanSnapshot,
 	UploadAsset,
@@ -79,6 +79,7 @@ export default function NewLearningPlanScreen() {
 		learningPlanId?: string;
 		examDayEntryId?: string;
 		subject?: string;
+		personalSubjectId?: string;
 		examTypeLabel?: string;
 		examDateKey?: string;
 		examDateLabel?: string;
@@ -101,6 +102,9 @@ export default function NewLearningPlanScreen() {
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
 
 	const subject = params.subject?.trim() || "Fach";
+	const personalSubjectId = params.personalSubjectId as
+		| Id<"personalSubjects">
+		| undefined;
 	const examTypeLabel = params.examTypeLabel?.trim() || "Leistungskontrolle";
 	const examDateKey = params.examDateKey || getDateKey(new Date());
 	const examDateLabel =
@@ -200,6 +204,7 @@ export default function NewLearningPlanScreen() {
 			createDraftPlan({
 				examDayEntryId,
 				subject,
+				...(personalSubjectId ? { personalSubjectId } : {}),
 				examTypeLabel,
 				examDateKey,
 				examDateLabel,

@@ -5,23 +5,25 @@ import Animated, {
 	LinearTransition,
 } from "react-native-reanimated";
 import {
-	Computer,
+	Field,
+	FieldAccessory,
+	FieldLabel,
+	FieldTrigger,
+} from "~/components/ui/field";
+import {
 	CalendarDays,
 	ChevronDown,
+	Computer,
 	GraduationCap,
 	Mic,
 	NotebookPen,
 	Pencil,
 	Plus,
 } from "~/components/ui/icon";
-import {
-	Field,
-	FieldAccessory,
-	FieldLabel,
-	FieldTrigger,
-} from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
+import { InlineSubjectPicker } from "~/features/subjects/subject-picker";
+import type { SubjectSelection } from "~/features/subjects/use-subject-options";
 import { formatAccessibleExamDate } from "~/lib/exam-date";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -115,6 +117,16 @@ function ExamTypePicker({
 			) : null}
 		</View>
 	);
+}
+
+function ExamSubjectPicker({
+	selectedValue,
+	onSelect,
+}: {
+	selectedValue: SubjectSelection;
+	onSelect: (value: SubjectSelection) => void;
+}) {
+	return <InlineSubjectPicker selected={selectedValue} onSelect={onSelect} />;
 }
 
 function SingleSelectOption({
@@ -234,4 +246,9 @@ function ExamDateSelector({
 	);
 }
 
-export { ExamDateSelector, ExamTypePicker, SingleSelectOption };
+export {
+	ExamDateSelector,
+	ExamSubjectPicker,
+	ExamTypePicker,
+	SingleSelectOption,
+};

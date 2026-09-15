@@ -6,6 +6,7 @@ import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	ArrowRight,
 	Bell,
+	BookOpen,
 	CalendarDays,
 	Computer,
 	CreditCard,
@@ -32,6 +33,7 @@ import { useAccountActions } from "~/context/AuthContext";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { openExternalUrl } from "~/lib/open-external-url";
+import { ROUTES } from "~/lib/routes";
 import { env } from "~/lib/runtime-config";
 import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
@@ -128,7 +130,9 @@ function SettingsSection({
 			>
 				{title}
 			</Text>
-			<Surface className="overflow-hidden p-2">{children}</Surface>
+			<Surface className="overflow-hidden border border-border p-2">
+				{children}
+			</Surface>
 		</View>
 	);
 }
@@ -290,6 +294,12 @@ export default function SettingsScreen() {
 								icon={CalendarDays}
 								label="Stundenplan"
 								onPress={() => router.push("/timetable")}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={BookOpen}
+								label="Persönliche Fächer"
+								onPress={() => router.push(ROUTES.personalSubjects)}
 							/>
 						</SettingsSection>
 
