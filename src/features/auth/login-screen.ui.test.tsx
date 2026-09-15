@@ -269,13 +269,6 @@ jest.mock("~/components/onboarding/intro-learning-path-artwork", () => {
 	};
 });
 
-jest.mock("~/components/onboarding/intro-tasks-artwork", () => {
-	const React = jest.requireActual<typeof import("react")>("react");
-	return {
-		IntroTasksArtwork: () => React.createElement("IntroTasksArtwork"),
-	};
-});
-
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ bottom: 24, left: 0, right: 0, top: 24 }),
 }));
@@ -429,6 +422,7 @@ jest.mock("~/lib/theme", () => {
 				systemSubtle: "#F1F7FB",
 				text: "#1A1A1A",
 			},
+			isDark: false,
 		}),
 	};
 });
@@ -488,6 +482,30 @@ describe("LoginScreen", () => {
 		expect(
 			screen.getByTestId("auth-choice-logo-card").props.entering,
 		).toBeUndefined();
+	});
+
+	test("fills the iPad width with large Hugeicons background tiles", async () => {
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 1194,
+			scale: 2,
+			width: 834,
+		};
+		const screen = await render(<AuthChoiceScreen />);
+
+		expect(screen.getByTestId("auth-choice-background-pattern")).toHaveStyle({
+			width: 834,
+		});
+		const backgroundTiles = screen.getAllByTestId(
+			"auth-choice-background-tile",
+		);
+		expect(backgroundTiles).toHaveLength(7);
+		expect(backgroundTiles[0]?.props.style.width).toBeGreaterThan(300);
+		expect(screen.getAllByTestId("auth-choice-background-icon")[0]).toHaveStyle(
+			{
+				opacity: 0.2,
+			},
+		);
 	});
 
 	test("keeps password recovery reachable from sign-in", async () => {
@@ -1054,19 +1072,18 @@ describe("OnboardingScreen", () => {
 		});
 	});
 
-	test("teaches the product in three pages before personalized questions", async () => {
+	test("teaches the product in two focused pages before personalized questions", async () => {
 		const screen = await render(<OnboardingScreen />);
 
 		expect(
 			screen.getByRole("header", {
-				name: "Du weißt, was heute wirklich zählt.",
+				name: "Deine Prüfung. Alles an einem Ort.",
 			}),
 		).toBeOnTheScreen();
 		expect(
 			screen.getByText("Danach 11 kurze, bewusste Schritte · etwa 2 Minuten"),
 		).toBeOnTheScreen();
 
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Meinen Start personalisieren" }),
@@ -1089,7 +1106,7 @@ describe("OnboardingScreen", () => {
 		expect(screen.queryByTestId("intro-pager")).toBeNull();
 		expect(
 			screen.getByRole("header", {
-				name: "Du weißt, was heute wirklich zählt.",
+				name: "Deine Prüfung. Alles an einem Ort.",
 			}),
 		).toBeOnTheScreen();
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeOnTheScreen();
@@ -1142,9 +1159,9 @@ describe("OnboardingScreen", () => {
 		});
 		expect(screen.getByRole("progressbar")).toHaveProp("accessibilityValue", {
 			min: 1,
-			max: 3,
+			max: 2,
 			now: 1,
-			text: "Seite 1 von 3",
+			text: "Seite 1 von 2",
 		});
 	});
 
@@ -1213,15 +1230,14 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingScreen />);
 		const pager = screen.getByTestId("intro-pager");
 
-		expect(pager).toHaveProp("initialNumToRender", 3);
-		expect(pager).toHaveProp("maxToRenderPerBatch", 3);
+		expect(pager).toHaveProp("initialNumToRender", 2);
+		expect(pager).toHaveProp("maxToRenderPerBatch", 2);
 		expect(pager).toHaveProp("removeClippedSubviews", false);
 	});
 
 	test("renders the maintained learning-path preview on the final intro page", async () => {
 		const screen = await render(<OnboardingScreen />);
 
-		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
 		expect(screen.getByTestId("intro-learning-path-artwork")).toBeOnTheScreen();
