@@ -42,6 +42,7 @@ import type * as learningTimes from "../learningTimes.js";
 import type * as learningTimesBackfill from "../learningTimesBackfill.js";
 import type * as learningTopicMap from "../learningTopicMap.js";
 import type * as notifications from "../notifications.js";
+import type * as personalSubjects from "../personalSubjects.js";
 import type * as questionNovelty from "../questionNovelty.js";
 import type * as revenueCat from "../revenueCat.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
@@ -96,6 +97,7 @@ declare const fullApi: ApiFromModules<{
   learningTimesBackfill: typeof learningTimesBackfill;
   learningTopicMap: typeof learningTopicMap;
   notifications: typeof notifications;
+  personalSubjects: typeof personalSubjects;
   questionNovelty: typeof questionNovelty;
   revenueCat: typeof revenueCat;
   scheduleConflicts: typeof scheduleConflicts;

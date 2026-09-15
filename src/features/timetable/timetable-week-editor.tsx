@@ -9,7 +9,13 @@ import {
 	type ViewStyle,
 } from "react-native";
 import { Button } from "~/components/ui/button";
-import { CalendarDays, Clock3, Trash2 } from "~/components/ui/icon";
+import {
+	BookOpen,
+	CalendarDays,
+	ChevronDown,
+	Clock3,
+	Trash2,
+} from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import {
@@ -41,6 +47,7 @@ type TimetableWeekEditorProps = {
 	onRemoveLesson: (lessonKey: string) => void;
 	onOpenTime: (lessonKey: string, field: "startTime" | "endTime") => void;
 	onOpenDayPicker: (lessonKey: string) => void;
+	onOpenSubjectPicker: (lessonKey: string) => void;
 };
 
 function TimeButton({
@@ -84,6 +91,7 @@ function LessonEditorCard({
 	onRemove,
 	onOpenTime,
 	onOpenDayPicker,
+	onOpenSubjectPicker,
 }: {
 	lesson: TimetableLessonDraft;
 	position: number;
@@ -91,6 +99,7 @@ function LessonEditorCard({
 	onRemove: () => void;
 	onOpenTime: (field: "startTime" | "endTime") => void;
 	onOpenDayPicker: () => void;
+	onOpenSubjectPicker: () => void;
 }) {
 	const { colors } = useDayovaTheme();
 	const weekday =
@@ -136,16 +145,28 @@ function LessonEditorCard({
 				</View>
 			</View>
 
-			<View className="mt-4 h-14 justify-center rounded-2xl bg-muted px-4">
-				<Input
-					accessibilityLabel="Unterrichtsfach"
-					autoCapitalize="words"
-					maxLength={80}
-					placeholder="Fach, z. B. Mathematik"
-					value={lesson.subject}
-					onChangeText={(subject) => onChange({ subject })}
-				/>
-			</View>
+			<Pressable
+				accessibilityLabel={
+					lesson.subject
+						? `Unterrichtsfach ändern. Aktuell ${lesson.subject}`
+						: "Unterrichtsfach auswählen"
+				}
+				accessibilityRole="button"
+				className="mt-4 h-14 flex-row items-center rounded-2xl bg-muted px-4 active:opacity-75"
+				onPress={onOpenSubjectPicker}
+			>
+				<BookOpen size={19} color={colors.secondaryText} strokeWidth={2} />
+				<Text
+					className={cn(
+						"ml-3 flex-1 font-poppins text-body-2",
+						lesson.subject ? "text-text" : "text-secondary-text",
+					)}
+					numberOfLines={1}
+				>
+					{lesson.subject || "Fach auswählen"}
+				</Text>
+				<ChevronDown size={18} color={colors.secondaryText} strokeWidth={2} />
+			</Pressable>
 			<View className="mt-3 h-14 justify-center rounded-2xl bg-muted px-4">
 				<Input
 					accessibilityLabel="Raum, optional"
@@ -182,6 +203,7 @@ function TimetableWeekEditor({
 	onRemoveLesson,
 	onOpenTime,
 	onOpenDayPicker,
+	onOpenSubjectPicker,
 }: TimetableWeekEditorProps) {
 	const lessonPagerRef = useRef<ScrollView>(null);
 	const shouldAnimateLessonScrollRef = useRef(false);
@@ -344,6 +366,7 @@ function TimetableWeekEditor({
 									onRemove={() => onRemoveLesson(lesson.key)}
 									onOpenTime={(field) => onOpenTime(lesson.key, field)}
 									onOpenDayPicker={() => onOpenDayPicker(lesson.key)}
+									onOpenSubjectPicker={() => onOpenSubjectPicker(lesson.key)}
 								/>
 							</View>
 						))}
