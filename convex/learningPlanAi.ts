@@ -1693,7 +1693,7 @@ const normalizeSessions = (
 
 const getSubjectSpecificLearningInstruction = (subject: string) =>
 	subject.trim().toLocaleLowerCase("de-DE") === "latein"
-		? "Fachhinweis Latein: Plane keine modernen Konversations-, Aussprache- oder freien Sprechübungen, sofern die Schulunterlagen oder der angegebene Prüfungsstoff dies nicht ausdrücklich verlangen. Bevorzuge die im Material belegten Aufgabenformen wie Übersetzen, Formenlehre, Syntax, Wortschatz im Textzusammenhang und Interpretation."
+		? "Latin subject guidance: Do not plan modern conversation, pronunciation, or open speaking exercises unless the uploaded school material or confirmed exam scope explicitly requires them. Prefer material-grounded formats such as translation, morphology, syntax, vocabulary in context, and interpretation."
 		: "";
 
 export const __testOnlyLearningPlanAi = {
