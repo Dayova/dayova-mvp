@@ -416,14 +416,11 @@ function PlanCard({
 			className="rounded-3xl border px-5 py-4"
 			onPress={onPress}
 			testID={testID}
-			// Selection changes native glass border and shadow values at runtime.
+			// Selection changes native glass border values at runtime.
 			style={{
 				backgroundColor: planGlassSurface,
 				borderColor: selected ? BRAND_COLORS.text : planGlassBorder,
-				borderWidth: 1,
-				boxShadow: selected
-					? "inset 0 1px 0 rgba(255, 255, 255, 0.64), 0 8px 20px rgba(9, 54, 78, 0.1)"
-					: "inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 6px 16px rgba(9, 54, 78, 0.08)",
+				borderWidth: selected ? 2 : 1,
 			}}
 		>
 			<View className="flex-row items-start">

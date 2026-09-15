@@ -217,7 +217,6 @@ function ActionFrame({
 					height: actionSize,
 					borderRadius: actionSize / 2,
 					zIndex: 20,
-					elevation: 20,
 					overflow: "hidden",
 				},
 				props.style,
@@ -287,7 +286,6 @@ function ActionPressableFrame({
 					height: actionSize,
 					borderRadius: actionSize / 2,
 					zIndex: 30,
-					elevation: 30,
 					backgroundColor: "transparent",
 				}}
 			/>
