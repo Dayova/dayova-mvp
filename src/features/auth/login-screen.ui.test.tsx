@@ -496,9 +496,16 @@ describe("LoginScreen", () => {
 		expect(screen.getByTestId("auth-choice-background-pattern")).toHaveStyle({
 			width: 834,
 		});
-		expect(
-			screen.getAllByTestId("auth-choice-background-tile").length,
-		).toBeGreaterThan(7);
+		const backgroundTiles = screen.getAllByTestId(
+			"auth-choice-background-tile",
+		);
+		expect(backgroundTiles.length).toBeGreaterThan(7);
+		expect(backgroundTiles[0]?.props.style.width).toBeGreaterThan(230);
+		expect(screen.getAllByTestId("auth-choice-background-icon")[0]).toHaveStyle(
+			{
+				opacity: 0.2,
+			},
+		);
 	});
 
 	test("keeps password recovery reachable from sign-in", async () => {

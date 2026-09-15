@@ -244,6 +244,7 @@ export function AuthChoiceScreen() {
 				<ThemedStatusBar />
 				<View pointerEvents="none" className="absolute inset-0 overflow-hidden">
 					<AuthBackgroundPattern
+						iconColor={COLORS.text}
 						isDark={isDark}
 						scale={Math.max(width / AUTH_CHOICE_FRAME.width, 0.78)}
 						viewportWidth={width}
@@ -353,6 +354,7 @@ export function AuthChoiceScreen() {
 				className="absolute inset-0 overflow-hidden"
 			>
 				<AuthBackgroundPattern
+					iconColor={COLORS.text}
 					isDark={isDark}
 					scale={frameScale}
 					viewportWidth={width}
@@ -3397,17 +3399,22 @@ function AuthChoicePillButton({
 }
 
 function AuthBackgroundPattern({
+	iconColor,
 	isDark,
 	scale,
 	viewportWidth,
 	yOffset,
 }: {
+	iconColor: string;
 	isDark: boolean;
 	scale: number;
 	viewportWidth: number;
 	yOffset: number;
 }) {
-	const tileSize = AUTH_BACKGROUND_TILE.size * scale;
+	const isTablet = viewportWidth >= 700;
+	const tileScale = scale * (isTablet ? 1.16 : 1);
+	const iconScale = scale * (isTablet ? 1.26 : 1);
+	const tileSize = AUTH_BACKGROUND_TILE.size * tileScale;
 	const columnStep = AUTH_BACKGROUND_TILE.columnStep * scale;
 	const firstColumnLeft =
 		((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 -
@@ -3458,7 +3465,7 @@ function AuthBackgroundPattern({
 	const fillColors = isDark
 		? AUTH_BACKGROUND_TILE.darkFillColors
 		: AUTH_BACKGROUND_TILE.lightFillColors;
-	const iconColor = isDark ? "rgba(255,255,255,0.18)" : "rgba(26,26,26,0.20)";
+	const iconOpacity = isDark ? 0.18 : 0.2;
 
 	return (
 		<View
@@ -3478,7 +3485,7 @@ function AuthBackgroundPattern({
 							top: (item.y + yOffset) * scale,
 							width: tileSize,
 							height: tileSize,
-							borderRadius: AUTH_BACKGROUND_TILE.radius * scale,
+							borderRadius: AUTH_BACKGROUND_TILE.radius * tileScale,
 							overflow: "hidden",
 							alignItems: "center",
 							justifyContent: "center",
@@ -3494,11 +3501,16 @@ function AuthBackgroundPattern({
 								left: 0,
 							}}
 						/>
-						<Icon
-							size={AUTH_BACKGROUND_TILE.iconSize * scale}
-							color={iconColor}
-							strokeWidth={AUTH_BACKGROUND_TILE.iconStrokeWidth}
-						/>
+						<View
+							testID="auth-choice-background-icon"
+							style={{ opacity: iconOpacity }}
+						>
+							<Icon
+								size={AUTH_BACKGROUND_TILE.iconSize * iconScale}
+								color={iconColor}
+								strokeWidth={AUTH_BACKGROUND_TILE.iconStrokeWidth}
+							/>
+						</View>
 					</View>
 				);
 			})}
