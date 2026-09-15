@@ -1227,6 +1227,14 @@ describe("OnboardingScreen", () => {
 		expect(screen.getByTestId("intro-learning-path-artwork")).toBeOnTheScreen();
 	});
 
+	test("uses one consistent gap below the progress header", async () => {
+		const screen = await render(<OnboardingStepScreen stepId="grade" />);
+
+		expect(screen.getByTestId("onboarding-question-content")).toHaveStyle({
+			paddingTop: 40,
+		});
+	});
+
 	test("does not preselect a grade and disables continuation until it is valid", async () => {
 		mockOnboarding.answers.grade = "";
 		const screen = await render(<OnboardingStepScreen stepId="grade" />);
