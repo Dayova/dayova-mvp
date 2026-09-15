@@ -3,6 +3,19 @@ import { __testOnlyLearningPlanAi } from "./learningPlanAi";
 import { MAX_MULTIPLE_CHOICE_OPTION_CHARS } from "./learningSessionContentConstraints";
 
 describe("learning plan AI practice content", () => {
+	test("keeps Latin plans away from unrelated modern-language speaking tasks", () => {
+		const instruction =
+			__testOnlyLearningPlanAi.getSubjectSpecificLearningInstruction("Latein");
+
+		expect(instruction).toContain("keine modernen Konversations-");
+		expect(instruction).toContain("Übersetzen");
+		expect(
+			__testOnlyLearningPlanAi.getSubjectSpecificLearningInstruction(
+				"Spanisch",
+			),
+		).toBe("");
+	});
+
 	test("asks for an exhaustive capability-level exam topic map", () => {
 		const instruction = __testOnlyLearningPlanAi.topicMapGenerationInstruction;
 

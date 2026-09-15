@@ -1691,6 +1691,11 @@ const normalizeSessions = (
 	};
 };
 
+const getSubjectSpecificLearningInstruction = (subject: string) =>
+	subject.trim().toLocaleLowerCase("de-DE") === "latein"
+		? "Fachhinweis Latein: Plane keine modernen Konversations-, Aussprache- oder freien Sprechübungen, sofern die Schulunterlagen oder der angegebene Prüfungsstoff dies nicht ausdrücklich verlangen. Bevorzuge die im Material belegten Aufgabenformen wie Übersetzen, Formenlehre, Syntax, Wortschatz im Textzusammenhang und Interpretation."
+		: "";
+
 export const __testOnlyLearningPlanAi = {
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
@@ -1698,6 +1703,7 @@ export const __testOnlyLearningPlanAi = {
 	generatedTaskItemSchema,
 	normalizeTaskChoiceText,
 	topicMapGenerationInstruction: TOPIC_MAP_GENERATION_INSTRUCTION,
+	getSubjectSpecificLearningInstruction,
 };
 
 const buildBaseContext = (
@@ -1706,6 +1712,7 @@ const buildBaseContext = (
 	const { plan, documents } = context;
 	return [
 		`Fach: ${plan.subject}`,
+		getSubjectSpecificLearningInstruction(plan.subject),
 		`Prüfungsart: ${plan.examTypeLabel}`,
 		`Prüfungstermin: ${plan.examDateLabel}${plan.examTime ? `, ${plan.examTime}` : ""}`,
 		`Bearbeitungszeit der Prüfung: ${plan.durationMinutes} Minuten`,
