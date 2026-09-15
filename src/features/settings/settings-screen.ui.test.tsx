@@ -158,6 +158,9 @@ describe("SettingsScreen", () => {
 
 		await fireEvent.press(screen.getByRole("button", { name: "Stundenplan" }));
 		expect(mockPush).toHaveBeenCalledWith("/timetable");
+
+		await fireEvent.press(screen.getByRole("button", { name: "Profil" }));
+		expect(mockPush).toHaveBeenCalledWith("/profile");
 	});
 
 	test("lets trial users subscribe and keeps privacy available in settings", async () => {
