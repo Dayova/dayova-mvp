@@ -223,6 +223,7 @@ export default function LearningSessionContentScreen() {
 	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{
 		planId?: string;
+		repeat?: string;
 		returnTo?: string;
 		sessionId?: string;
 	}>();
@@ -260,7 +261,9 @@ export default function LearningSessionContentScreen() {
 		LearningSessionContentSnapshot["session"]["phase"] | null
 	>(null);
 	const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
-	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
+	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(() =>
+		params.repeat === "1" ? Date.now() : null,
+	);
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
 	const remainingSecondsRef = useRef<number | null>(null);
 	const [isContinuation, setIsContinuation] = useState(false);
