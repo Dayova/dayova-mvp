@@ -14,7 +14,7 @@ export function LearningSessionCompletion({
 	durationMinutes,
 	correctCount,
 	attemptCount,
-	onContinueLearning,
+	onRepeat,
 	onPrimary,
 	isBusy,
 }: {
@@ -23,7 +23,7 @@ export function LearningSessionCompletion({
 	durationMinutes: number;
 	correctCount: number;
 	attemptCount: number;
-	onContinueLearning: () => void;
+	onRepeat: () => void;
 	onPrimary: () => void;
 	isBusy: boolean;
 }) {
@@ -35,7 +35,7 @@ export function LearningSessionCompletion({
 				durationMinutes={durationMinutes}
 				correctCount={correctCount}
 				attemptCount={attemptCount}
-				onRepeat={onContinueLearning}
+				onRepeat={onRepeat}
 				onAnalysis={onPrimary}
 				isBusy={isBusy}
 			/>
@@ -74,6 +74,7 @@ export function LearningSessionCompletion({
 		: isTheory
 			? "Theorie abschließen"
 			: "Analyse ansehen";
+	const repeatLabel = isTheory ? "Nochmal lernen" : "Nochmal üben";
 
 	return (
 		<Animated.View
@@ -123,6 +124,16 @@ export function LearningSessionCompletion({
 						<Text>{primaryLabel}</Text>
 					)}
 				</Button>
+				{!isDiagnostic ? (
+					<Button
+						className="mt-3 w-full"
+						disabled={isBusy}
+						variant="neutral"
+						onPress={onRepeat}
+					>
+						<Text>{repeatLabel}</Text>
+					</Button>
+				) : null}
 			</View>
 		</Animated.View>
 	);
