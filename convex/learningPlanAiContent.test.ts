@@ -7,8 +7,8 @@ describe("learning plan AI practice content", () => {
 		const instruction =
 			__testOnlyLearningPlanAi.getSubjectSpecificLearningInstruction("Latein");
 
-		expect(instruction).toContain("keine modernen Konversations-");
-		expect(instruction).toContain("Übersetzen");
+		expect(instruction).toContain("Do not plan modern conversation");
+		expect(instruction).toContain("translation");
 		expect(
 			__testOnlyLearningPlanAi.getSubjectSpecificLearningInstruction(
 				"Spanisch",
