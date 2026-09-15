@@ -173,6 +173,11 @@ describe("SettingsScreen", () => {
 			"https://example.com/privacy",
 		);
 
+		await fireEvent.press(screen.getByRole("button", { name: "Support" }));
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			"https://example.com/support",
+		);
+
 		await fireEvent.press(
 			screen.getByRole("button", {
 				name: "KI & Datenschutz, Nicht aktiv",
