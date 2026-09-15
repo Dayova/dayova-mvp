@@ -199,20 +199,25 @@ const AUTH_CHOICE_FRAME = {
 const AUTH_BACKGROUND_TILE = {
 	size: 148,
 	radius: 32,
-	iconSize: 76,
-	leftX: -62,
-	centerX: 122.5,
-	rightX: 307,
-	fillColors: [
+	iconSize: 96,
+	columnStep: 184.5,
+	iconStrokeWidth: 2.4,
+	lightFillColors: [
 		"rgba(26,26,26,0)",
 		"rgba(26,26,26,0.06)",
 		"rgba(26,26,26,0.06)",
 		"rgba(26,26,26,0)",
 	],
+	darkFillColors: [
+		"rgba(255,255,255,0)",
+		"rgba(255,255,255,0.045)",
+		"rgba(255,255,255,0.045)",
+		"rgba(255,255,255,0)",
+	],
 } as const;
 
 export function AuthChoiceScreen() {
-	const { colors: COLORS } = useDayovaTheme();
+	const { colors: COLORS, isDark } = useDayovaTheme();
 	const { width, height, fontScale } = useWindowDimensions();
 	const insets = useSafeAreaInsets();
 	const contentSizeLayout = useContentSizeLayout({
@@ -239,7 +244,9 @@ export function AuthChoiceScreen() {
 				<ThemedStatusBar />
 				<View pointerEvents="none" className="absolute inset-0 overflow-hidden">
 					<AuthBackgroundPattern
+						isDark={isDark}
 						scale={Math.max(width / AUTH_CHOICE_FRAME.width, 0.78)}
+						viewportWidth={width}
 						yOffset={AUTH_CHOICE_FRAME.patternYOffset}
 					/>
 				</View>
@@ -340,6 +347,18 @@ export function AuthChoiceScreen() {
 		<View className="flex-1 bg-background">
 			<Stack.Screen options={{ title: "Dayova" }} />
 			<ThemedStatusBar />
+			<Animated.View
+				pointerEvents="none"
+				entering={reducedMotion ? undefined : FadeIn.duration(240)}
+				className="absolute inset-0 overflow-hidden"
+			>
+				<AuthBackgroundPattern
+					isDark={isDark}
+					scale={frameScale}
+					viewportWidth={width}
+					yOffset={verticalPadding + AUTH_CHOICE_FRAME.patternYOffset}
+				/>
+			</Animated.View>
 			<ScrollView
 				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
@@ -357,23 +376,6 @@ export function AuthChoiceScreen() {
 						height: frameHeight,
 					}}
 				>
-					<Animated.View
-						entering={reducedMotion ? undefined : FadeIn.duration(240)}
-						style={{
-							position: "absolute",
-							top: 0,
-							left: 0,
-							width: frameWidth,
-							height: frameHeight,
-							overflow: "hidden",
-						}}
-					>
-						<AuthBackgroundPattern
-							scale={frameScale}
-							yOffset={AUTH_CHOICE_FRAME.patternYOffset}
-						/>
-					</Animated.View>
-
 					<Animated.View
 						entering={reducedMotion ? undefined : FadeInDown.duration(240)}
 						style={{
@@ -3395,70 +3397,87 @@ function AuthChoicePillButton({
 }
 
 function AuthBackgroundPattern({
+	isDark,
 	scale,
+	viewportWidth,
 	yOffset,
 }: {
+	isDark: boolean;
 	scale: number;
+	viewportWidth: number;
 	yOffset: number;
 }) {
-	const items = [
-		{
-			key: "palette-top",
-			x: AUTH_BACKGROUND_TILE.leftX,
-			y: 28,
-			icon: Palette,
-		},
-		{
-			key: "globe-top",
-			x: AUTH_BACKGROUND_TILE.centerX,
-			y: 44,
-			icon: Globe,
-		},
-		{
-			key: "telescope-top",
-			x: AUTH_BACKGROUND_TILE.rightX,
-			y: 26,
-			icon: Telescope,
-		},
-		{
-			key: "plant-mid",
-			x: AUTH_BACKGROUND_TILE.leftX,
-			y: 196,
-			icon: Plant,
-		},
-		{
-			key: "helmet-mid",
-			x: AUTH_BACKGROUND_TILE.rightX,
-			y: 188,
-			icon: GreekHelmet,
-		},
-		{
-			key: "atom-bottom",
-			x: AUTH_BACKGROUND_TILE.leftX,
-			y: 360,
-			icon: Atom,
-		},
-		{
-			key: "square-root-bottom",
-			x: AUTH_BACKGROUND_TILE.rightX,
-			y: 350,
-			icon: SquareRootSquare,
-		},
-	] as const;
+	const tileSize = AUTH_BACKGROUND_TILE.size * scale;
+	const columnStep = AUTH_BACKGROUND_TILE.columnStep * scale;
+	const firstColumnLeft =
+		((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 -
+			AUTH_BACKGROUND_TILE.columnStep) *
+		scale;
+	const columnCount = Math.ceil((viewportWidth - firstColumnLeft) / columnStep);
+	const columnLefts = Array.from(
+		{ length: columnCount },
+		(_, index) => firstColumnLeft + index * columnStep,
+	);
+	const contentClearHalfWidth =
+		(AUTH_CHOICE_FRAME.width * scale - tileSize) / 2;
+	const topIcons: Array<typeof Palette> = [Palette, Globe, Telescope];
+	const items: Array<{
+		icon: typeof Palette;
+		key: string;
+		left: number;
+		y: number;
+	}> = [];
+
+	for (const [index, left] of columnLefts.entries()) {
+		const tileCenter = left + tileSize / 2;
+		const side = tileCenter < viewportWidth / 2 ? -1 : 1;
+		const clearsCentralContent =
+			Math.abs(tileCenter - viewportWidth / 2) > contentClearHalfWidth;
+		items.push({
+			key: `top-${index}`,
+			left,
+			y: index % 3 === 1 ? 44 : 28,
+			icon: topIcons[index % topIcons.length] ?? Globe,
+		});
+
+		if (!clearsCentralContent) continue;
+		items.push({
+			key: `middle-${index}`,
+			left,
+			y: side < 0 ? 196 : 188,
+			icon: side < 0 ? Plant : GreekHelmet,
+		});
+		items.push({
+			key: `bottom-${index}`,
+			left,
+			y: side < 0 ? 360 : 350,
+			icon: side < 0 ? Atom : SquareRootSquare,
+		});
+	}
+
+	const fillColors = isDark
+		? AUTH_BACKGROUND_TILE.darkFillColors
+		: AUTH_BACKGROUND_TILE.lightFillColors;
+	const iconColor = isDark ? "rgba(255,255,255,0.18)" : "rgba(26,26,26,0.20)";
 
 	return (
-		<View className="flex-1">
+		<View
+			testID="auth-choice-background-pattern"
+			className="flex-1"
+			style={{ width: viewportWidth }}
+		>
 			{items.map((item) => {
 				const Icon = item.icon;
 				return (
 					<View
 						key={item.key}
+						testID="auth-choice-background-tile"
 						style={{
 							position: "absolute",
-							left: item.x * scale,
+							left: item.left,
 							top: (item.y + yOffset) * scale,
-							width: AUTH_BACKGROUND_TILE.size * scale,
-							height: AUTH_BACKGROUND_TILE.size * scale,
+							width: tileSize,
+							height: tileSize,
 							borderRadius: AUTH_BACKGROUND_TILE.radius * scale,
 							overflow: "hidden",
 							alignItems: "center",
@@ -3466,7 +3485,7 @@ function AuthBackgroundPattern({
 						}}
 					>
 						<LinearGradient
-							colors={AUTH_BACKGROUND_TILE.fillColors}
+							colors={fillColors}
 							style={{
 								position: "absolute",
 								top: 0,
@@ -3477,8 +3496,8 @@ function AuthBackgroundPattern({
 						/>
 						<Icon
 							size={AUTH_BACKGROUND_TILE.iconSize * scale}
-							color="rgba(26,26,26,0.14)"
-							strokeWidth={1.8 * scale}
+							color={iconColor}
+							strokeWidth={AUTH_BACKGROUND_TILE.iconStrokeWidth}
 						/>
 					</View>
 				);
