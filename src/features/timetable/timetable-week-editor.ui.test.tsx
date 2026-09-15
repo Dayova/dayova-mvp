@@ -1,5 +1,5 @@
 import { describe, expect, jest, test } from "@jest/globals";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, within } from "@testing-library/react-native";
 import { TimetableWeekEditor } from "./timetable-week-editor";
 
 jest.mock("~/components/ui/icon", () => {
@@ -82,6 +82,12 @@ describe("TimetableWeekEditor", () => {
 
 		expect(monday.props.accessibilityState).toEqual({ selected: true });
 		expect(tuesday.props.accessibilityState).toEqual({ selected: false });
+		expect(monday.props.className).toContain("bg-primary");
+		expect(tuesday.props.className).toContain("bg-muted");
+		expect(within(monday).getByText("Mo").props.className).toContain("text-white");
+		expect(within(tuesday).getByText("Di").props.className).toContain(
+			"text-secondary-text",
+		);
 
 		await fireEvent.press(tuesday);
 		expect(callbacks.onSelectedDayChange).toHaveBeenCalledWith(2);
