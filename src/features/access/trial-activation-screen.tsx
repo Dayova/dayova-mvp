@@ -100,22 +100,29 @@ export function TrialActivationScreen() {
 					marginRight: insets.right,
 				}}
 				contentContainerStyle={{
+					alignItems: "center",
 					flexGrow: 1,
+					justifyContent: "center",
 					paddingBottom: Math.max(16 - insets.bottom, 0),
+					paddingHorizontal: 24,
+					paddingTop: 16,
 				}}
 			>
-				<View className="grow px-7 pt-5 pb-2">
-					<View className="gap-3 pb-7">
-						<Text className="font-semibold text-body-4 text-white/85">
+				<View
+					testID="trial-content-block"
+					className="w-full max-w-[560px] justify-center py-4"
+				>
+					<View className="items-center gap-3 pb-7">
+						<Text className="text-center font-semibold text-body-4 text-white/85">
 							14 TAGE KOSTENLOS
 						</Text>
 						<Text
 							variant="h1"
-							className="max-w-[330px] text-left font-semibold text-heading-1 text-white leading-tight"
+							className="max-w-[420px] text-center font-semibold text-heading-1 text-white leading-tight"
 						>
 							So läuft deine Testphase
 						</Text>
-						<Text className="max-w-[330px] text-body-3 text-white/90">
+						<Text className="max-w-[420px] text-center text-body-3 text-white/90">
 							Voller Zugriff. Ohne Zahlungsmittel. Ohne automatische
 							Verlängerung.
 						</Text>
@@ -195,7 +202,7 @@ export function TrialActivationScreen() {
 						) : null}
 						<Button
 							accessibilityHint="Aktiviert deine kostenlose 14-tägige Testphase."
-							className="border-white bg-white shadow-black/10 active:bg-white/90"
+							className="border-white bg-white active:bg-white/90"
 							disabled={showStarting}
 							onPress={() => void startTrial()}
 							variant="outline"
