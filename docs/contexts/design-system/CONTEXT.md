@@ -128,6 +128,15 @@ these actions. A screen-local clone is not an allowed visual variant; add a
 shared variant and update this context if a new interaction contract is truly
 needed.
 
+The empty timetable uses one full-width gradient import button and a full-width
+neutral manual-entry button. File and camera are equal sources inside the shared
+`ActionSheet`, following the school-material upload pattern. Use source rows
+instead of tiles when content-size layout requires stacking. Native pickers open
+after the sheet's `onDismiss`, and the pending selection disables competing
+entry actions. The editor keeps reimport subordinate to its existing save action.
+This decision introduces no new button appearance; see
+[DAY-378](https://linear.app/dayova/issue/DAY-378/clarify-timetable-entry-with-one-import-action-and-a-secondary-manual).
+
 The trial-activation and expired-trial payment flow are deliberate full-bleed
 branded exceptions. The expired-trial route presents one Store-only path into
 the subscription route; it must not offer payer selection, QR codes, website
@@ -187,6 +196,14 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 
 ## Notes
 
+- Use `SupportContact` for contacting the team from Settings, access screens,
+  and blocking operational errors. Put the action beside the failure and keep
+  existing recovery actions available. Pass a static, user-facing screen name
+  as `context`; never pass raw errors, account identifiers, or learning content.
+  It opens an editable email draft and provides the address, a native copy/share
+  action, and a website fallback in `DayovaSheetFrame`. Keep explicit accessible
+  labels on launch controls so returning from another app preserves their names.
+  See [DAY-381](https://linear.app/dayova/issue/DAY-381/make-support-easy-to-contact-from-app-failures).
 - Capture reusable component and styling decisions here.
 - Put design-system ADRs in `docs/contexts/design-system/adr/`.
 - Use NativeWind for static app UI. Follow the rendering-choice matrix in
