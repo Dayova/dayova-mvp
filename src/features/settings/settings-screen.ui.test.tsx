@@ -16,6 +16,10 @@ let mockAccess: { state: "trial" } | { state: "paid"; store: string } = {
 	state: "trial",
 };
 
+jest.mock("~/components/release-information-sheet", () => ({
+	ReleaseInformationSheet: () => null,
+}));
+
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }));

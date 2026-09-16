@@ -219,6 +219,13 @@ the update UUID actually running after a cold restart on each staging and store
 binary. A downloaded update does not prove the app has launched it, and a
 successful EAS job does not prove either device event.
 
+To inspect the running UUID on a device, open **Einstellungen → App-Informationen**.
+Before sign-in, tap the **Dayova** heading on the welcome screen instead. Record
+the build, channel, runtime, **Quelle**, **Laufendes Update** and **Notfallstart**
+after a cold restart. The dialog reads `Updates.updateId` and
+`Updates.isEmbeddedLaunch`; it does not display an available/downloaded candidate
+as though it were running. It is read-only and sends no diagnostic data.
+
 If a production OTA is unhealthy:
 
 1. pause further production publications and record the affected branch, update
