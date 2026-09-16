@@ -138,12 +138,24 @@ below. Follow the [Google Play command center](./google-play/README.md) and
 
 ## Staging, promotion, and rollback
 
-Build dedicated internal QA binaries for both platforms with the `ota-staging`
-profile from the exact release source. This profile uses production app config
-and EAS environment but embeds the isolated `ota-staging` channel. Publish the
-candidate to that channel, verify the result reports runtime `1.0.5`, and record
+Build dedicated QA binaries from the exact release source. Use `ota-staging`
+for an Android APK or an iOS ad-hoc build when a suitable provisioning profile
+and registered devices are available. For iOS TestFlight, use
+`ota-staging-testflight`: it inherits production signing and automatic build
+number increments while embedding the isolated `ota-staging` channel. Submit
+that exact build ID with the existing `production` submission profile and keep
+it in the internal testing group; never select a staging build for App Store
+distribution. `ota-staging-simulator` provides an unsigned iOS simulator build
+for automated OTA checks without consuming a new store build number. All three
+profiles use production app config and EAS environment. Publish the candidate
+to that channel, verify the result reports runtime `1.0.5`, and record
 the update ID actually downloaded by each QA binary. Do not remap the production
 channel or publish/republish to it for staging.
+
+Changes to `eas.json` can change fingerprints even when native code is unchanged.
+Recompute the final candidate and never copy older build hashes into a baseline
+to bypass that mismatch. Integrate DAY-414's publication and channel-verification
+runbook changes before activation.
 
 The staging builds prove the new-runtime update path without exposing production
 binaries. They are not substitutes for installing and checking the exact store
@@ -241,8 +253,12 @@ Automatic publication may resume only after all of the following are true:
 - their clean-source provenance and embedded updates are recorded in one schema 2
   baseline change;
 - the EAS production fingerprint job matches both exact builds;
-- a runtime `1.0.5` update succeeds on dedicated `ota-staging` iOS and Android
-  QA builds, with both downloaded update IDs recorded;
+- a runtime `1.0.5` update is downloaded and launched after a cold restart on
+  dedicated QA builds targeting the `ota-staging` channel: Android uses the
+  `ota-staging` profile; a physical iPhone uses `ota-staging-testflight` or the
+  ad-hoc `ota-staging` profile. Record the downloaded and running update UUIDs
+  for both platforms. An `ota-staging-simulator` check is supplementary and
+  does not replace the iPhone check or exact store-artifact installation checks;
 - a deliberately mismatched native fingerprint still fails closed; and
 - the baseline change lands on `main` and the complete main workflow is green.
 
