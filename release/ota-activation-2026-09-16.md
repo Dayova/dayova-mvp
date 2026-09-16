@@ -1,10 +1,10 @@
 # Production OTA activation evidence - 16 September 2026
 
-Status: iOS 75 and Android 25 are available to internal testers. Android 25 is
-installed through Google Play on a physical Pixel 9 and renders the normal
-welcome screen after a cold restart. iOS 75 physical installation/launch and
-iOS 74 direct running-staging-update confirmation remain pending. Production OTA
-remains blocked by the historical schema-1 baseline. Build completion, store availability,
+Status (updated September 17): iOS 75 and Android 25 passed physical-device
+installation and cold-launch checks. Both staging platforms have direct running
+OTA UUID evidence. This PR prepares the schema-2 baseline; production remains
+blocked on main until activation is merged after the final source preflight.
+Build completion, store availability,
 installation, OTA download and OTA launch are separate checks.
 
 ## Integrated source and compatibility
@@ -23,8 +23,7 @@ produced these CNG fingerprints using the production environment:
 
 Both builds record this exact source and matching fingerprints. The main workflow
 completed successfully and skipped production publication under the closed guard.
-Android store-installation evidence is recorded below. The iOS device checks
-remain required before the candidate can replace the active production baseline.
+Store-installation and device evidence for both platforms is recorded below.
 
 iOS 75 artifact SHA-256:
 `a1aa27d94a5cd7f12220c5f039ce9544cb99941b389ce6c906f28e7b9753e51a`.
@@ -35,7 +34,24 @@ verified profile listed below. EAS submission
 `006bc404-6af1-4ee7-bbdd-fd88da508532` resulted in App Store Connect build
 `c929a73d-e3f0-43f1-b02e-6be122ec224f`, upload status Complete, assigned to
 Team (Expo), four internal testers. This proves processing and availability,
-not installation on a physical device.
+not installation on a physical device by itself.
+
+### Physical TestFlight installation and cold launch
+
+The owner's 17.56-second recording shows TestFlight 1.0.5 (75) at 0.5 seconds,
+opening the app to its authenticated home at 2.0–4.0 seconds, and navigation to
+Mehr at 5.5–6.5 seconds. Complete-timeline inspection covered 35 frames at
+0.5-second intervals in three contact sheets; audio was not transcribed. The
+recording does not show a preceding force-quit. On September 17, after completing
+the separate staging check below, the owner explicitly confirmed reinstalling
+75, opening it, fully closing it and reopening it normally. The video proves
+installation/opening; the cold-launch result is owner-reported.
+
+Recording SHA-256:
+`b3e5571b575449f636a897b25025b4e02f06d326f333bb25140beb7cb0a8fa41`.
+Private original media remains local and is not committed. Build 75's embedded
+JavaScript predates the App-Informationen dialog; its absence before a production
+OTA is expected and is not evidence of a broken build.
 
 There are no changes in app source, native dependencies, patches, assets, or app
 configuration between the earlier tested source
@@ -183,8 +199,14 @@ restart, the isolated API-34 Android emulator showed build 24, channel ota-stagi
 runtime 1.0.5, source OTA, running UUID
 `01a0abc2-d336-746f-883d-5cfdc78f830b`, and emergency launch Nein. This is
 direct running-state evidence rather than an aggregate download counter.
-The iOS counterpart is `01a0abc2-d336-76de-8b56-634344dfef38`; owner
-confirmation from physical TestFlight build 74 is pending.
+On September 17, the owner's physical iPhone photo directly showed version
+1.0.5, build 74, channel ota-staging, runtime 1.0.5, source OTA, running UUID
+`01a0abc2-d336-76de-8b56-634344dfef38`, and emergency launch Nein. The owner
+reported following the requested online wait and full close/reopen procedure.
+The still photo proves the displayed running state; restart timing is
+owner-reported. Photo SHA-256:
+`47db5b8d05309fb4ae89b28a97a1a9cafd28f49d624637fdd3665ca877fdd25a`.
+Both platforms therefore have direct running-update identity evidence.
 
 ## Signing and distribution
 
@@ -208,15 +230,16 @@ adjustment. Its update-identification logic is unchanged. The merged-source
 produced the same iOS and Android native fingerprints as final builds 75/25.
 The eventual activation commit still needs its own workflow check.
 
-## Prepared baseline (inactive)
+## Prepared activation
 
-[The candidate JSON](./production-ota-baseline.candidate.json) records both exact
-artifacts, marks Android distribution verified from the physical Play check,
-and leaves iOS distribution unverified. It is not read by the production
-guard. Do not copy it over the active baseline until the remaining installation and
-staging checks above are complete. Before activation, move the historical
-schema-1 baseline into a test fixture so its rejection test remains meaningful,
-and verify fingerprints from the final activation commit itself.
+[The schema-2 baseline](./production-ota-baseline.json) records both exact
+artifacts and verified distribution evidence. The historical schema-1 baseline
+is retained in a test fixture so its rejection remains covered. This branch
+does not publish updates: before merging it, run the manual `ota-preflight.yml`
+workflow against its exact remote commit. That workflow generates production
+CNG fingerprints, compares them to the distributed binaries, and exports both
+platforms without deploying Convex or publishing an OTA. Any mismatch blocks
+activation; recorded build fingerprints must not be relabelled to bypass it.
 
 ## Activation and recovery
 

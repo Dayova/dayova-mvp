@@ -1,27 +1,53 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "channel": "production",
-  "runtimeVersion": "1.0.3",
-  "reviewedAt": "2026-07-20",
+  "appVersion": "1.0.5",
+  "runtimeVersion": "1.0.5",
+  "sdkVersion": "57.0.0",
+  "reviewedAt": "2026-09-17",
   "platforms": {
     "ios": {
-      "buildId": "8affd4cf-54c4-4506-b58a-871f4867fe25",
-      "buildVersion": "49",
-      "sourceSha": "908ed3d11fd1145e89a616d8bb1c7e62a33e87ab",
-      "fingerprint": "34e4ee95d362a57480923555057b68d1e1953495",
+      "appVersion": "1.0.5",
+      "runtimeVersion": "1.0.5",
+      "sdkVersion": "57.0.0",
+      "channel": "production",
+      "sourceSha": "96f8fe31bac3cccc6100b703d06ce7f9b27aefa5",
+      "buildId": "2ae80681-ef8f-49a6-960d-2db6de8cf20e",
+      "buildVersion": "75",
+      "fingerprint": "1b690a3f1a0c5ac4d73873da35ab9c2ca695d807",
+      "appIdentifier": "de.dayova.app",
       "distribution": {
         "status": "verified",
-        "audience": "TestFlight internal Team (Expo) and External Students groups"
+        "audience": "TestFlight internal Team (Expo); build 75 installed on the owner's physical iPhone",
+        "evidence": "release/ota-activation-2026-09-16.md — video confirms TestFlight build 75 and authenticated app opening; owner confirmed full close/reopen after reinstalling 75"
+      },
+      "embeddedUpdate": {
+        "status": "verified",
+        "runtimeVersion": "1.0.5",
+        "updateId": "e7f68437-b01d-40ed-96c3-80ecbbcb40ec",
+        "evidence": "release/ota-activation-2026-09-16.md — downloaded signed artifact manifest inspected; SHA-256 recorded"
       }
     },
     "android": {
-      "buildId": "def7bb56-9303-4b2c-8d59-aa03cc34a96d",
-      "buildVersion": "11",
-      "sourceSha": "f26df3faf277a8aab924961539ea8204f531d4fa",
-      "fingerprint": "1965558afee860310450105f65ceb015579b6c38",
+      "appVersion": "1.0.5",
+      "runtimeVersion": "1.0.5",
+      "sdkVersion": "57.0.0",
+      "channel": "production",
+      "sourceSha": "96f8fe31bac3cccc6100b703d06ce7f9b27aefa5",
+      "buildId": "d6391ea9-9f3f-4132-bf2a-f62030a236fa",
+      "buildVersion": "25",
+      "fingerprint": "d91ab0f33529c36e5e7a76ef4e9a0a3bb66f26a1",
+      "appIdentifier": "com.dayova",
       "distribution": {
-        "status": "unverified",
-        "audience": "EAS store build exists; EAS has no submission and non-EAS distribution is not yet confirmed"
+        "status": "verified",
+        "audience": "Google Play internal testing; build 25 installed by Play on the owner's physical Pixel 9 (API 37)",
+        "evidence": "release/ota-activation-2026-09-16.md — installed code 25 / com.android.vending; installed manifest and JS match the verified artifact; normal welcome screen after cold restart"
+      },
+      "embeddedUpdate": {
+        "status": "verified",
+        "runtimeVersion": "1.0.5",
+        "updateId": "24f4a03e-9a27-41b9-817c-da3a2d8335e8",
+        "evidence": "release/ota-activation-2026-09-16.md — downloaded signed artifact manifest inspected; SHA-256 recorded"
       }
     }
   }

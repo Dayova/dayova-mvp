@@ -120,8 +120,8 @@ describe("production OTA safety", () => {
 		expect(result.reason).toContain("does not match distributed build");
 	});
 
-	it("keeps the committed schema-1 baseline blocked for both platforms", () => {
-		const legacy = JSON.parse(readFileSync(new URL("../release/production-ota-baseline.json", import.meta.url), "utf8"));
+	it("keeps the historical schema-1 baseline blocked for both platforms", () => {
+		const legacy = JSON.parse(readFileSync(new URL("./fixtures/production-ota-baseline.schema-1.json", import.meta.url), "utf8"));
 		expect(evaluate({ baseline: legacy }).reason).toContain("unsupported baseline schema 1");
 	});
 	it("allows a production manifest whose fingerprints match verified distributed binaries", () => {

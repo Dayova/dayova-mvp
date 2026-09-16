@@ -1,8 +1,8 @@
 # Native release and production OTA policy
 
 `production-ota-baseline.json` is the compatibility record used by the production
-OTA guard. Its current schema-1 entries are historical, and Android distribution
-is unverified; it is not an inventory of today's store releases. The workflow
+OTA guard. Its schema-2 entries record the verified internal production-channel
+builds iOS 75 and Android 25; it is not an inventory of every store track. The workflow
 compares the current manifest and phase-equivalent EAS fingerprints with this
 manifest. It never infers safety from the previous Git commit.
 
@@ -12,10 +12,12 @@ It also records live privacy-declaration/link problems and billing configuration
 Store availability alone does not satisfy the baseline's installed-artifact checks.
 
 The [later September 16 activation evidence](./ota-activation-2026-09-16.md)
-records replacement internal candidates iOS 75 and Android 25, signed-artifact
-inspection, Android staging launch verification, and physical Play installation
-and cold launch of Android 25. Its candidate baseline is inactive; the physical
-iOS installation and running-staging-update checks are still required.
+records iOS 75 and Android 25 signed-artifact inspection, physical installation
+and cold-launch checks, and direct running-staging-update evidence on both
+platforms. Before merging baseline activation, run the manual
+`.eas/workflows/ota-preflight.yml` against the exact PR commit and require matching
+production CNG fingerprints and both platform exports. This workflow publishes
+no updates. The main push workflow rechecks compatibility before publication.
 
 ## Runtime boundary
 
