@@ -130,6 +130,10 @@ let mockWindowDimensions = {
 };
 let mockReducedMotion = false;
 
+jest.mock("~/components/release-information-sheet", () => ({
+	ReleaseInformationSheet: () => null,
+}));
+
 jest.mock("react-native/Libraries/Utilities/useWindowDimensions", () => ({
 	__esModule: true,
 	default: () => mockWindowDimensions,

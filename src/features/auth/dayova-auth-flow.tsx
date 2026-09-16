@@ -63,6 +63,7 @@ import {
 } from "~/components/onboarding/onboarding-learning-times";
 import { OnboardingSelect } from "~/components/onboarding/onboarding-select";
 import { StudyTimeFactContent } from "~/components/onboarding/study-time-fact-content";
+import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { BackButton, Button } from "~/components/ui/button";
 import {
@@ -216,6 +217,7 @@ const AUTH_BACKGROUND_TILE = {
 } as const;
 
 export function AuthChoiceScreen() {
+	const [showReleaseInformation, setShowReleaseInformation] = useState(false);
 	const { colors: COLORS, isDark } = useDayovaTheme();
 	const { width, height, fontScale } = useWindowDimensions();
 	const insets = useSafeAreaInsets();
@@ -239,6 +241,10 @@ export function AuthChoiceScreen() {
 	if (contentSizeLayout.shouldStackInlineContent) {
 		return (
 			<View className="flex-1 bg-background">
+				<ReleaseInformationSheet
+					visible={showReleaseInformation}
+					onClose={() => setShowReleaseInformation(false)}
+				/>
 				<Stack.Screen options={{ title: "Dayova" }} />
 				<ThemedStatusBar />
 				<View pointerEvents="none" className="absolute inset-0 overflow-hidden">
@@ -285,6 +291,9 @@ export function AuthChoiceScreen() {
 					</Animated.View>
 
 					<Text
+						accessibilityRole="button"
+						accessibilityLabel="Dayova, App-Informationen"
+						onPress={() => setShowReleaseInformation(true)}
 						allowFontScaling={false}
 						className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
 						style={{
@@ -345,6 +354,10 @@ export function AuthChoiceScreen() {
 
 	return (
 		<View className="flex-1 bg-background">
+			<ReleaseInformationSheet
+				visible={showReleaseInformation}
+				onClose={() => setShowReleaseInformation(false)}
+			/>
 			<Stack.Screen options={{ title: "Dayova" }} />
 			<ThemedStatusBar />
 			<Animated.View
@@ -423,6 +436,9 @@ export function AuthChoiceScreen() {
 						}}
 					>
 						<Text
+							accessibilityRole="button"
+							accessibilityLabel="Dayova, App-Informationen"
+							onPress={() => setShowReleaseInformation(true)}
 							className="text-center font-poppins font-semibold text-text"
 							style={{
 								fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
