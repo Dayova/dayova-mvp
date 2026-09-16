@@ -35,6 +35,27 @@ let mockAccess: { state: "trial" } | { state: "paid"; store: string } = {
 	state: "trial",
 };
 
+jest.mock("~/components/release-information-sheet", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const Native =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return {
+		ReleaseInformationSheet: ({
+			visible,
+			onClose,
+		}: {
+			visible: boolean;
+			onClose: () => void;
+		}) =>
+			visible
+				? React.createElement(Native.Button, {
+						title: "App-Informationen schließen",
+						onPress: onClose,
+					})
+				: null,
+	};
+});
+
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }));
@@ -154,6 +175,16 @@ describe("SettingsScreen", () => {
 		);
 		await fireEvent.press(screen.getByRole("button", { name: "Stundenplan" }));
 		expect(mockPush).toHaveBeenCalledWith("/timetable");
+	});
+
+	test("opens and closes app information from the reorganized settings", async () => {
+		const screen = await render(<SettingsScreen />);
+		expect(screen.queryByText("App-Informationen schließen")).toBeNull();
+		await fireEvent.press(
+			screen.getByRole("button", { name: "App-Informationen" }),
+		);
+		await fireEvent.press(screen.getByText("App-Informationen schließen"));
+		expect(screen.queryByText("App-Informationen schließen")).toBeNull();
 	});
 
 	test.each([

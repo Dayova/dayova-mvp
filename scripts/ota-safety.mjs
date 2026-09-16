@@ -132,6 +132,17 @@ export const evaluateProductionOta = ({
 			`baseline channel must be production; received ${baseline.channel ?? "missing"}`,
 		);
 	}
+	const targetRuntimes = platforms.map(
+		(platform) => baseline.platforms?.[platform]?.runtimeVersion,
+	);
+	if (new Set(targetRuntimes).size > 1) {
+		errors.push(
+			"schema 2 requires a shared runtime for iOS and Android; mixed native runtimes require separate compatible release sources, not runtime relabelling",
+		);
+	}
+	if (!isNonEmptyString(baseline.runtimeVersion)) {
+		errors.push("baseline runtimeVersion must be a nonempty shared runtime");
+	}
 
 	errors.push(...validateProductionManifest(config));
 

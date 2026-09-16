@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
+import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Bell,
@@ -100,6 +101,7 @@ export default function SettingsScreen() {
 	const { openAiConsentSettings, statusLabel: aiConsentStatusLabel } =
 		useAiConsent();
 	const { preference, setPreference } = useDayovaTheme();
+	const [showReleaseInformation, setShowReleaseInformation] = useState(false);
 	const [linkErrors, setLinkErrors] = useState<
 		Partial<Record<"support" | "subscription" | "legal", string>>
 	>({});
@@ -124,141 +126,157 @@ export default function SettingsScreen() {
 		access?.state === "paid" || access?.state === "billingGrace";
 
 	return (
-		<Screen>
-			<ThemedStatusBar />
-			<ScreenScroll topPadding={104} bottomPadding={120} horizontalPadding={24}>
-				<View className="gap-7">
-					<SettingsCard>
-						<SettingsRow
-							icon={UserRound}
-							label={profileName || "Profil & Konto"}
-							description={profileName ? "Profil & Konto" : undefined}
-							accessibilityLabel={
-								profileName
-									? `${profileName}, Profil & Konto`
-									: "Profil & Konto"
-							}
-							onPress={() => router.push("/profile")}
-						/>
-					</SettingsCard>
-
-					<View testID="settings-support">
+		<>
+			<Screen>
+				<ThemedStatusBar />
+				<ScreenScroll
+					topPadding={104}
+					bottomPadding={120}
+					horizontalPadding={24}
+				>
+					<View className="gap-7">
 						<SettingsCard>
-							<SupportContact context="Einstellungen">
-								{({ onPress, busy, buttonRef }) => (
-									<SettingsRow
-										buttonRef={buttonRef}
-										icon={Mail}
-										label="Support kontaktieren"
-										onPress={onPress}
-										busy={busy}
-										disabled={busy}
-									/>
-								)}
-							</SupportContact>
-						</SettingsCard>
-					</View>
-
-					<SettingsSection title="Lernen">
-						<SettingsRow
-							icon={Timer}
-							label="Lernzeiten"
-							onPress={() => router.push("/learning-times")}
-						/>
-						<SettingsDivider />
-						<SettingsRow
-							icon={CalendarDays}
-							label="Stundenplan"
-							onPress={() => router.push("/timetable")}
-						/>
-					</SettingsSection>
-
-					<SettingsSection title="App">
-						<SettingsRow
-							icon={Bell}
-							label="Mitteilungen"
-							onPress={() => router.push("/notification-settings")}
-						/>
-						<SettingsDivider />
-						<SettingsRow
-							icon={Palette}
-							label="Design"
-							trailing={
-								<ThemePreferenceToggle
-									preference={preference}
-									setPreference={setPreference}
-								/>
-							}
-						/>
-					</SettingsSection>
-
-					<View className="gap-3" testID="settings-subscription">
-						<SettingsCard>
-							{access?.state === "trial" ? (
-								<SettingsRow
-									icon={CreditCard}
-									label="Dayova abonnieren"
-									onPress={() => router.push("/subscription")}
-								/>
-							) : (
-								<SettingsRow
-									icon={CreditCard}
-									label="Dayova"
-									accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
-									description={
-										nativeManagementUrl
-											? "Abo im Store verwalten"
-											: "Hilfe zum Abo"
-									}
-									onPress={() =>
-										openLink(
-											"subscription",
-											nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
-										)
-									}
-									disabled={!isStoreSubscriber}
-								/>
-							)}
-						</SettingsCard>
-						{linkErrors.subscription ? (
-							<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
-						) : null}
-					</View>
-
-					<View className="gap-3" testID="settings-legal">
-						<SettingsSection title="Datenschutz & Rechtliches">
 							<SettingsRow
-								icon={Sparkles}
-								label="KI & Datenschutz"
-								onPress={openAiConsentSettings}
-								accessibilityLabel={`KI & Datenschutz, ${aiConsentStatusLabel}`}
-								trailing={
-									<View className="rounded-full bg-muted px-3 py-2">
-										<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
-											{aiConsentStatusLabel}
-										</Text>
-									</View>
+								icon={UserRound}
+								label={profileName || "Profil & Konto"}
+								description={profileName ? "Profil & Konto" : undefined}
+								accessibilityLabel={
+									profileName
+										? `${profileName}, Profil & Konto`
+										: "Profil & Konto"
 								}
+								onPress={() => router.push("/profile")}
+							/>
+						</SettingsCard>
+
+						<View testID="settings-support">
+							<SettingsCard>
+								<SupportContact context="Einstellungen">
+									{({ onPress, busy, buttonRef }) => (
+										<SettingsRow
+											buttonRef={buttonRef}
+											icon={Mail}
+											label="Support kontaktieren"
+											onPress={onPress}
+											busy={busy}
+											disabled={busy}
+										/>
+									)}
+								</SupportContact>
+							</SettingsCard>
+						</View>
+
+						<SettingsSection title="Lernen">
+							<SettingsRow
+								icon={Timer}
+								label="Lernzeiten"
+								onPress={() => router.push("/learning-times")}
 							/>
 							<SettingsDivider />
 							<SettingsRow
-								icon={Globe}
-								label="Datenschutz"
-								onPress={() => openLink("legal", env.EXPO_PUBLIC_PRIVACY_URL)}
-							/>
-							<SettingsDivider />
-							<SettingsRow
-								icon={Globe}
-								label="Nutzungsbedingungen"
-								onPress={() => openLink("legal", env.EXPO_PUBLIC_TERMS_URL)}
+								icon={CalendarDays}
+								label="Stundenplan"
+								onPress={() => router.push("/timetable")}
 							/>
 						</SettingsSection>
-						{linkErrors.legal ? (
-							<ErrorMessage>{linkErrors.legal}</ErrorMessage>
-						) : null}
+
+						<SettingsSection title="App">
+							<SettingsRow
+								icon={Computer}
+								label="App-Informationen"
+								onPress={() => setShowReleaseInformation(true)}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={Bell}
+								label="Mitteilungen"
+								onPress={() => router.push("/notification-settings")}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={Palette}
+								label="Design"
+								trailing={
+									<ThemePreferenceToggle
+										preference={preference}
+										setPreference={setPreference}
+									/>
+								}
+							/>
+						</SettingsSection>
+
+						<View className="gap-3" testID="settings-subscription">
+							<SettingsCard>
+								{access?.state === "trial" ? (
+									<SettingsRow
+										icon={CreditCard}
+										label="Dayova abonnieren"
+										onPress={() => router.push("/subscription")}
+									/>
+								) : (
+									<SettingsRow
+										icon={CreditCard}
+										label="Dayova"
+										accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
+										description={
+											nativeManagementUrl
+												? "Abo im Store verwalten"
+												: "Hilfe zum Abo"
+										}
+										onPress={() =>
+											openLink(
+												"subscription",
+												nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
+											)
+										}
+										disabled={!isStoreSubscriber}
+									/>
+								)}
+							</SettingsCard>
+							{linkErrors.subscription ? (
+								<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
+							) : null}
+						</View>
+
+						<View className="gap-3" testID="settings-legal">
+							<SettingsSection title="Datenschutz & Rechtliches">
+								<SettingsRow
+									icon={Sparkles}
+									label="KI & Datenschutz"
+									onPress={openAiConsentSettings}
+									accessibilityLabel={`KI & Datenschutz, ${aiConsentStatusLabel}`}
+									trailing={
+										<View className="rounded-full bg-muted px-3 py-2">
+											<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+												{aiConsentStatusLabel}
+											</Text>
+										</View>
+									}
+								/>
+								<SettingsDivider />
+								<SettingsRow
+									icon={Globe}
+									label="Datenschutz"
+									onPress={() => openLink("legal", env.EXPO_PUBLIC_PRIVACY_URL)}
+								/>
+								<SettingsDivider />
+								<SettingsRow
+									icon={Globe}
+									label="Nutzungsbedingungen"
+									onPress={() => openLink("legal", env.EXPO_PUBLIC_TERMS_URL)}
+								/>
+							</SettingsSection>
+							{linkErrors.legal ? (
+								<ErrorMessage>{linkErrors.legal}</ErrorMessage>
+							) : null}
+						</View>
 					</View>
-				</View>
-			</ScreenScroll>
-		</Screen>
+				</ScreenScroll>
+			</Screen>
+			<ReleaseInformationSheet
+				visible={showReleaseInformation}
+				onClose={() => setShowReleaseInformation(false)}
+			/>
+		</>
 	);
 }
