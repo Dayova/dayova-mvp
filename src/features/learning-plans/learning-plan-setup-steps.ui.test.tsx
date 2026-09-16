@@ -157,6 +157,44 @@ describe("learning-plan setup steps", () => {
 		).toBeNull();
 	});
 
+	test("offers the consent dialog directly when AI consent blocks the plan", async () => {
+		const onRequestAiConsent = jest.fn();
+		const screen = await render(
+			<MaterialUploadStep
+				canUpload
+				canContinue
+				documents={[
+					{
+						id: "document" as Id<"learningPlanDocuments">,
+						fileName: "Arbeitsblatt.pdf",
+						fileType: "application/pdf",
+						fileSizeBytes: 1_024,
+						sourceKind: "school",
+					},
+				]}
+				errorMessage="Die KI-Zustimmung muss erneuert werden."
+				isBusy={false}
+				isUploading={false}
+				onContinue={jest.fn()}
+				onOpenUpload={jest.fn()}
+				onRequestAiConsent={onRequestAiConsent}
+				onRemoveDocument={jest.fn()}
+				onSkip={jest.fn()}
+				openingUploadAction={null}
+				requiresAiConsent
+			/>,
+		);
+
+		const consentButton = screen.getByRole("button", {
+			name: "KI-Datenschutz bestätigen",
+		});
+		expect(consentButton).toBeEnabled();
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+
+		await fireEvent.press(consentButton);
+		expect(onRequestAiConsent).toHaveBeenCalledTimes(1);
+	});
+
 	test("still offers the no-plan path when only an external aid remains", async () => {
 		const screen = await render(
 			<MaterialUploadStep

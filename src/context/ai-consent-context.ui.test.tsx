@@ -18,6 +18,13 @@ const grantedSnapshot: AiConsentSnapshot = {
 	grantedAt: 10,
 	hasCurrentConsent: true,
 };
+const staleGrantedSnapshot: AiConsentSnapshot = {
+	status: "granted",
+	version: "1.0.4",
+	updatedAt: 5,
+	grantedAt: 5,
+	hasCurrentConsent: false,
+};
 
 let mockSnapshot: AiConsentSnapshot | undefined = emptySnapshot;
 const mockSetDecision = jest.fn(async () => grantedSnapshot);
@@ -27,6 +34,11 @@ const mockWithdraw = jest.fn(async () => ({
 	hasCurrentConsent: false,
 	updatedAt: 20,
 }));
+let mockSheetState: {
+	visible: boolean;
+	mode: "required" | "manage";
+	hasCurrentConsent: boolean;
+} | null = null;
 
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
@@ -59,16 +71,21 @@ jest.mock("~/features/privacy/ai-consent-sheet", () => ({
 			jest.requireActual<typeof import("react-native")>("react-native");
 		return ({
 			visible,
+			mode,
+			hasCurrentConsent,
 			onAccept,
 			onDecline,
 			onWithdraw,
 		}: {
 			visible: boolean;
+			mode: "required" | "manage";
+			hasCurrentConsent: boolean;
 			onAccept: () => void;
 			onDecline: () => void;
 			onWithdraw: () => void;
-		}) =>
-			visible
+		}) => {
+			mockSheetState = { visible, mode, hasCurrentConsent };
+			return visible
 				? React.createElement(
 						Native.View,
 						null,
@@ -89,6 +106,7 @@ jest.mock("~/features/privacy/ai-consent-sheet", () => ({
 						),
 					)
 				: null;
+		};
 	})(),
 }));
 
@@ -101,18 +119,30 @@ jest.mock("~/lib/runtime-config", () => ({
 }));
 
 function ConsentProbe() {
-	const { requestAiConsent } = useAiConsent();
+	const { requestAiConsent, requestAiConsentDisclosure } = useAiConsent();
 	return (
-		<Pressable
-			accessibilityRole="button"
-			onPress={() => {
-				void requestAiConsent().then((allowed) => {
-					mockResult = allowed ? "allowed" : "blocked";
-				});
-			}}
-		>
-			<Text>Request AI</Text>
-		</Pressable>
+		<>
+			<Pressable
+				accessibilityRole="button"
+				onPress={() => {
+					void requestAiConsent().then((allowed) => {
+						mockResult = allowed ? "allowed" : "blocked";
+					});
+				}}
+			>
+				<Text>Request AI</Text>
+			</Pressable>
+			<Pressable
+				accessibilityRole="button"
+				onPress={() => {
+					void requestAiConsentDisclosure().then((allowed) => {
+						mockResult = allowed ? "allowed" : "blocked";
+					});
+				}}
+			>
+				<Text>Request disclosure</Text>
+			</Pressable>
+		</>
 	);
 }
 
@@ -122,6 +152,7 @@ describe("AiConsentProvider", () => {
 	beforeEach(() => {
 		mockSnapshot = emptySnapshot;
 		mockResult = "pending";
+		mockSheetState = null;
 		mockSetDecision.mockClear();
 		mockWithdraw.mockClear();
 	});
@@ -161,6 +192,27 @@ describe("AiConsentProvider", () => {
 		await waitFor(() => expect(mockResult).toBe("blocked"));
 	});
 
+	test("requests fresh consent when a granted record has an outdated version", async () => {
+		mockSnapshot = staleGrantedSnapshot;
+		const screen = await render(
+			<AiConsentProvider>
+				<ConsentProbe />
+			</AiConsentProvider>,
+		);
+
+		await fireEvent.press(screen.getByRole("button", { name: "Request AI" }));
+		expect(mockResult).toBe("pending");
+		await fireEvent.press(
+			await screen.findByRole("button", { name: "Accept" }),
+		);
+
+		await waitFor(() => expect(mockResult).toBe("allowed"));
+		expect(mockSetDecision).toHaveBeenCalledWith({
+			decision: "granted",
+			version: AI_CONSENT_VERSION,
+		});
+	});
+
 	test("does not interrupt users who already granted the current version", async () => {
 		mockSnapshot = grantedSnapshot;
 		const screen = await render(
@@ -173,5 +225,35 @@ describe("AiConsentProvider", () => {
 
 		await waitFor(() => expect(mockResult).toBe("allowed"));
 		expect(screen.queryByRole("button", { name: "Accept" })).toBeNull();
+	});
+
+	test("forces the disclosure after the backend rejects cached current consent", async () => {
+		mockSnapshot = grantedSnapshot;
+		const screen = await render(
+			<AiConsentProvider>
+				<ConsentProbe />
+			</AiConsentProvider>,
+		);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Request disclosure" }),
+		);
+		expect(mockResult).toBe("pending");
+		expect(mockSetDecision).not.toHaveBeenCalled();
+		expect(mockSheetState).toEqual({
+			visible: true,
+			mode: "required",
+			hasCurrentConsent: false,
+		});
+
+		await fireEvent.press(
+			await screen.findByRole("button", { name: "Accept" }),
+		);
+
+		await waitFor(() => expect(mockResult).toBe("allowed"));
+		expect(mockSetDecision).toHaveBeenCalledWith({
+			decision: "granted",
+			version: AI_CONSENT_VERSION,
+		});
 	});
 });
