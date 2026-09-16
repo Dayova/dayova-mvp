@@ -69,7 +69,6 @@ import { getErrorMessage } from "~/features/learning-plans/utils";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import { getExamDatePickerRange } from "~/lib/exam-date";
 import { EXAM_TYPE_OPTIONS } from "~/lib/entry-options";
 import {
 	constrainEndTimeForStart,
@@ -78,6 +77,7 @@ import {
 	MIN_EXAM_DURATION_MINUTES,
 	shiftEndTimeForStartChange,
 } from "~/lib/entry-time";
+import { getExamDatePickerRange } from "~/lib/exam-date";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
@@ -743,6 +743,12 @@ export default function NewEntryScreen() {
 	const runBackIntent = useBackIntent(
 		Boolean(selectTarget || pickerTarget || !isHomework || step !== "basics"),
 		handleBack,
+		{
+			allowRouteRemoval:
+				!selectTarget &&
+				!pickerTarget &&
+				(step === "examType" || (isHomework && step === "basics")),
+		},
 	);
 	useLearningPlanCreationProgress({
 		active: !isHomework,

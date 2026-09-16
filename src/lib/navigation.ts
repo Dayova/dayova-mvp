@@ -31,7 +31,11 @@ const useAndroidBackHandler = (enabled: boolean, onBack: () => boolean) => {
 	);
 };
 
-export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
+export const useBackIntent = (
+	enabled: boolean,
+	onBack: () => boolean,
+	{ allowRouteRemoval = false }: { allowRouteRemoval?: boolean } = {},
+) => {
 	const navigation = useNavigation();
 	const isHandlingNativeBackRef = useRef(false);
 
@@ -39,7 +43,13 @@ export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
 		if (isHandlingNativeBackRef.current) return true;
 
 		isHandlingNativeBackRef.current = true;
-		const handled = onBack();
+		let handled: boolean;
+		try {
+			handled = onBack();
+		} catch (error) {
+			isHandlingNativeBackRef.current = false;
+			throw error;
+		}
 		if (!handled) {
 			isHandlingNativeBackRef.current = false;
 			return false;
@@ -60,9 +70,13 @@ export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
 			const unsubscribe = navigation.addListener("beforeRemove", (event) => {
 				if (!isBackRemovalAction(event)) return;
 
-				// A route removal started by runBackIntent is the intended result of
-				// the custom back control. Let that nested navigation action through.
-				if (isHandlingNativeBackRef.current) return;
+				// Expo Router dispatches queued actions after the callback returns.
+				// Exit boundaries must allow removal independently of callback timing.
+				if (allowRouteRemoval) return;
+				if (isHandlingNativeBackRef.current) {
+					event.preventDefault();
+					return;
+				}
 
 				const handled = runBackIntent();
 				if (!handled) return;
@@ -71,7 +85,7 @@ export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
 			});
 
 			return unsubscribe;
-		}, [enabled, navigation, runBackIntent]),
+		}, [allowRouteRemoval, enabled, navigation, runBackIntent]),
 	);
 
 	return runBackIntent;
