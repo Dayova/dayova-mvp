@@ -1,10 +1,10 @@
 # Play Console submission checklist
 
-Last reconciled: 2026-09-16. Checked submission items below retain the August
-audit and September 7 record in [PR #545](https://github.com/Dayova/dayova-mvp/pull/545).
-The September 15 owner report in [DAY-248](https://linear.app/dayova/issue/DAY-248)
-says Google is live. Unchecked items mean evidence is not recorded here, not
-necessarily that no one completed the work. This is not a fresh Console check.
+Last reconciled: 2026-09-16. The [live verification report](../live-verification-2026-09-16.md)
+records fresh Console, public listing, and billing configuration checks.
+Historical submission items retain the August audit and September 7 record in
+[PR #545](https://github.com/Dayova/dayova-mvp/pull/545). Unchecked items mean
+evidence is not recorded here, not necessarily that no one completed the work.
 
 The current recorded candidate is app/runtime **1.0.5**, version code **23**.
 Builds 15, 20, and 21 are historical artifacts; do not resume their old
@@ -23,9 +23,8 @@ withdrawal/replacement instructions.
       showed no alerts on 2026-08-23.
 - [ ] Have Julius open Play Console's owner-only Payments profile page and
       confirm or resolve the previously reported payments-account action.
-- [ ] Reconfirm the public developer email, address, and phone shown by Google
-      before public availability. Organization contact details may be displayed
-      on Google Play.
+- [x] Inspect the public developer email, address, and phone shown by Google
+      on September 16. This records visibility, not owner attestation of accuracy.
 
 Developer account ID: `4912315867079102345`. Jakob has Play account-level
 **Admin (all permissions)** and Payments Center **Admin, primary contact**
@@ -55,48 +54,45 @@ No account credentials or signing secrets are stored in this checklist.
 - [x] Upload [`assets/feature-graphic-1024x500.png`](./assets/feature-graphic-1024x500.png).
 - [x] Upload the eight current Android phone screenshots documented in
       [`assets/README.md`](./assets/README.md).
-- [x] Set category **Education** and support email `contact@dayova.de`.
+- [x] Verify category **Education** and current support email `kontakt@dayova.de`.
 - [x] Add `https://dayova.com/datenschutz` for the submitted review.
 - [ ] Reconcile the now-published app-inclusive policy under DAY-217/DAY-359
       with Android billing and actual release behavior; see the
       [Data safety draft](./data-safety-draft.md). Publication is not evidence
       that consent, retention, or deletion is complete.
 
-## 4. App content declarations — historical submitted answers
+## 4. App content declarations — live state
 
-The review statuses below describe the August submission, not today's state.
-Recheck each live form against the current release; preserve the September 15
-availability report without inferring that every declaration is now correct.
+Console lists ten actioned declarations with no outstanding prompts on September
+16. This is a workflow status, not proof the answers match the app.
 
-| Form | Draft response | Status |
+| Form | Observed response | Status / remaining evidence |
 | --- | --- | --- |
-| Privacy policy | `https://dayova.com/datenschutz` | Submitted in August; now redirects to the app-inclusive `https://dayova.com/privacy`. Remaining reconciliation is under DAY-217/DAY-359. |
-| App access | Restricted by login; dedicated synthetic reviewer account has permanent `dayova_full_access` | Submitted/in review; credentials exist only in Play Console. |
-| Ads | No | Submitted/in review. |
-| Content rating | Completed from current app content | Submitted/in review. |
-| Target audience and content | 13+ | Submitted/in review; DAY-357 still owns reconciliation with actual product/marketing scope. |
-| News apps | No | Confirm. |
-| COVID-19 contact/status | No | Confirm. |
-| Data safety | Submitted from the current release draft | In review; legal/technical reconciliation and privacy/deletion implementation verification remain open. |
-| Government apps | No | Confirm. |
-| Financial features | No; ordinary subscription billing does not make Dayova a financial-services app | Confirm form wording in current Console. |
-| Health apps | No | Submitted/in review. |
-| Account deletion | Console declaration submitted | DAY-183/DAY-360/DAY-362/DAY-363 remain open until the public resource and end-to-end deletion flow work. |
+| Privacy policy | `https://dayova.com/datenschutz` | Redirects to app-inclusive `https://dayova.com/privacy`; reconciliation remains under DAY-217/DAY-359. |
+| App access | Actioned; historical instructions specify a synthetic account with permanent `dayova_full_access` | Reviewer login was not exercised. Credentials remain in Console. |
+| Ads / Advertising ID | No / No | Actioned; summaries inspected. |
+| Content rating | USK all ages; PEGI 3, among other ratings | Actioned; different from the target-audience field. |
+| Target audience and content | 13–15, 16–17, 18+ | Actioned; DAY-357 still owns reconciliation with actual product/marketing scope. |
+| Data safety | **No collection/sharing** | **Incorrect no-collection claim**, confirmed in the saved form and public declaration. Reconcile with the engineering inventory before correcting the declaration. |
+| Government apps | No | Actioned; summary inspected. |
+| Financial features | No | Actioned; summary inspected. |
+| Health apps | No | Actioned; summary inspected. |
+| News / COVID-19 | Not separate entries among the ten actioned declarations | No separate answers verified; do not infer applicability. |
+| Account deletion | Historical claim of submission not independently substantiated | DAY-183/DAY-360/DAY-362/DAY-363 remain open until the public resource and end-to-end deletion flow work. |
 
 ## 5. Monetization and subscriptions
 
-- [ ] Verify monthly and annual subscriptions/base plans in Google Play; create
-      only those confirmed missing. Use
-      stable product IDs agreed with RevenueCat; do not invent IDs during setup.
-- [ ] Configure Germany pricing to match the approved commercial intent:
-      **€14.99 monthly** and **€155.88 annually** (effective €12.99/month), then
-      review taxes and Play-localized prices before activation.
-- [ ] Connect both products to the existing RevenueCat entitlement and current
-      offering.
-- [ ] Verify the RevenueCat offering exposes package `$rc_monthly` for Play
-      product `dayova_monthly` and package `$rc_annual` for Play product
-      `dayova_annual`. Package identifiers and Play product IDs are different
-      fields; the client requires these exact package identifiers.
+- [x] Verify active Germany base plans: `dayova_monthly:monthly-autorenewing`
+      and `dayova_annual:annual-autorenewing`.
+- [ ] Verify exact per-product Play prices against the commercial target of
+      **€14.99 monthly** and **€155.88 annually**. The public listing shows that
+      price range, but the annual base-plan price table failed to load.
+- [x] Verify both products are attached to RevenueCat `dayova_full_access` and
+      its default offering.
+- [x] Verify `$rc_monthly` maps to `dayova_monthly:monthly-autorenewing` and
+      `$rc_annual` maps to `dayova_annual:annual-autorenewing`. Package identifiers
+      and Play product IDs are different fields; the client requires these exact
+      package identifiers.
 - [x] Add `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` to the EAS **production**
       environment using the Android public SDK key.
 - [ ] Keep external parent web checkout disabled in the Android app unless
@@ -123,8 +119,8 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
       unfinished Production `1.0.4`/code-21 draft.
 - [x] Send Production, Open testing, and Closed Alpha full rollouts plus resuming
       Open testing for review, preserving Germany targeting.
-- [ ] Reconcile the September 15 owner availability report with current track
-      status and installed-build evidence. Do not repeat the completed submission.
+- [x] Confirm all four tracks show `1.0.5`/code `23` available on September 16.
+      Installed-build evidence remains outstanding; do not repeat submission.
 - [ ] Install from the Play opt-in link on a clean physical Android device and a
       supported emulator/device size.
 - [ ] Verify signup/login, onboarding, trial, plans, uploads, learning session,
@@ -143,8 +139,9 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
 - [x] Record Managed publishing off; approved changes publish automatically.
 - [x] Record no blocking Play validation errors and one nonblocking missing
       deobfuscation-file warning; native debug symbols are attached.
-- [ ] Record the final quick-check/review evidence and verify the reported public
-      availability of `1.0.5`/code `23` on a device.
+- [x] Verify Production availability in Console and the public German listing;
+      no unpublished changes remain. Current DEX/edge-to-edge/large-screen
+      warnings are recorded in the [live report](../live-verification-2026-09-16.md).
 - [ ] After availability, install build 23 from the public listing and record
       the exact artifact, device, and QA evidence in DAY-218/DAY-248.
 - [ ] Replace `release/production-ota-baseline.json` only after both platforms

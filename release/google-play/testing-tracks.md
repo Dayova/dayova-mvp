@@ -1,8 +1,8 @@
 # Google Play Closed and Open testing runbook
 
 Last reconciled: 2026-09-16 against the pinned EAS CLI, workflow, current Google
-guidance, and [DAY-248](https://linear.app/dayova/issue/DAY-248). Store submission
-history below is dated evidence, not a new Play Console inspection.
+guidance, [DAY-248](https://linear.app/dayova/issue/DAY-248), and a signed-in
+[live Console inspection](../live-verification-2026-09-16.md).
 
 This runbook owns Dayova's repeatable Android tester-distribution path for the
 existing Play app `com.dayova`. It does not create another Android application,
@@ -38,16 +38,18 @@ promoted to Closed Alpha and Open testing and replaced the Production
 testing were sent for review, preserving Germany targeting with Managed
 publishing off.
 
-The owner subsequently reported Google live on September 15, as recorded in
-[DAY-248](https://linear.app/dayova/issue/DAY-248). Preserve that newer report;
-do not describe the September 7 review state as today's status. Exact current
-track availability and installed-build QA still need their own evidence.
+The owner reported Google live on September 15 in
+[DAY-248](https://linear.app/dayova/issue/DAY-248). The September 16 Console
+check independently confirmed all four tracks active with 1.0.5/code 23:
+Production available on Play, Internal available to internal testers, Closed
+Alpha available to selected testers, and Open available to unlimited testers.
+Production targets Germany. Installed-build and tester-specific access QA
+remain outstanding.
 
 Recheck Console for subsequent review/availability changes before acting. Run
 install and billing QA on the exact build 23 identified in the
 [candidate audit](./release-candidate-audit.md), and record the track, device,
-and results. Public approval and successful Play install QA are not established
-by the submission record.
+and results. Live Console availability does not establish successful device QA.
 
 The August build-20 testing drafts and build-21 replacement instructions are
 superseded. Do not resume that withdrawal/replacement sequence or run the

@@ -1,16 +1,25 @@
 # Google Play Data safety draft
 
 Engineering inventory reconciled: 2026-09-16 against the PR #545 source, the live
-privacy policy, and Linear evidence. Submitted Console answers remain August
-history; no new Console inspection or production traffic audit is claimed.
+privacy policy, Linear evidence, and signed-in store inspection. See the
+[live verification](../live-verification-2026-09-16.md) for scope and limits.
+
+**Current declaration is incorrect:** the saved Play form selects **No** for
+collecting or sharing required data types, and the public listing says no data
+is collected. This contradicts the account, learner-content, and purchase
+processing below. This draft is not the saved declaration. Correct and submit
+the reconciled form under DAY-217/DAY-359; no form answers were changed by this
+audit. An assessment of service-provider sharing exceptions is still separate
+from the clear need to disclose collection.
 
 This is a conservative engineering inventory for the Play Console form. It is
 **not legal approval**. Product/legal must reconcile it with the final privacy
 policy, processor contracts, retention schedule, target audience, and the exact
 release build for the current review and every future update.
 
-The Data safety and related deletion declarations were submitted to Google in
-the recorded August review. That submission is not evidence that the policy, public
+The August handoff records submission of Data safety and deletion declarations.
+The live no-collection answer does not substantiate that deletion claim. Neither
+the historical record nor store approval is evidence that the policy, public
 deletion resource, in-app deletion flow, or downstream deletion behavior is
 complete. DAY-217/DAY-183 and their child tasks remain open.
 
@@ -20,6 +29,9 @@ It is no longer website-only. Reconcile the remaining discrepancies under
 DAY-217/DAY-359: its payment section describes iOS/web but omits Android billing,
 and its voice-permission description must match the release's removed voice
 features. Publication alone does not verify consent, retention, or deletion.
+Apple's separately configured `https://dayova.com/app/privacy` and
+`https://dayova.com/app/support` both returned 404 on September 16. The working
+root policy does not fix those store-linked routes.
 
 ## Top-level answers
 
@@ -53,6 +65,10 @@ DAY-216 remains unresolved. Its recorded ingestion is not proof of today's
 collection rate or of every profile containing those values. Verify production
 settings and a controlled event, then classify location under
 [Google's Data safety definitions](https://support.google.com/googleplay/android-developer/answer/10787469).
+The September 16 check found `anonymize_ips: true` in Production project 190091
+and GeoIP fields in the dashboard-event schema. The September 9–16 query had no
+dashboard events, so it cannot prove enrichment is now disabled. See the
+[live evidence and limitations](../live-verification-2026-09-16.md).
 
 No repository evidence was found for collecting device contacts, device calendar
 data, health/fitness data, audio recordings, SMS/messages,

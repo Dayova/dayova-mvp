@@ -2,8 +2,9 @@
 
 Reconciled: 2026-09-16. The September 7 artifact/submission record comes from
 [PR #545](https://github.com/Dayova/dayova-mvp/pull/545). Authenticated EAS build
-metadata was independently checked on September 16; no new Play Console,
-downloaded-artifact, or physical-install audit is claimed.
+metadata and signed-in store dashboards were independently checked on September
+16. See the [live verification](../live-verification-2026-09-16.md). No new
+downloaded-artifact or physical-install audit is claimed.
 
 ## Current Android candidate — 1.0.5 / build 23
 
@@ -25,7 +26,8 @@ downloaded-artifact, or physical-install audit is claimed.
 The September 16 read-only `eas-cli@18.11.0 build:view <build-id> --json` check
 confirmed `FINISHED`, Android app/runtime `1.0.5`, version code `23`, source SHA,
 production profile/channel, SDK `57.0.0`, fingerprint, artifact URL, and completion
-time above. EAS build metadata does not establish current Play availability.
+time above. The separate live Play check confirmed code 23 available on all four
+tracks, with Production targeting Germany and no unpublished changes.
 The AAB checksum/size, embedded update ID, native manifest/signature inspection,
 and submission result remain the dated September 7 evidence below.
 
@@ -56,9 +58,18 @@ OTA baseline unchanged until both exact replacement binaries satisfy the
 The later [DAY-248 record](https://linear.app/dayova/issue/DAY-248) preserves the
 owner's September 15 report that Google is live and Apple approved iOS
 1.0.4/build 72. That supersedes treating September 7's pending review as current,
-but does not replace exact installed-build QA. The current iOS record uses source
+and the September 16 browser audit independently confirmed both store states.
+Apple's listing version is **1.0**, selecting binary **1.0.4 (72)**, available
+in Germany, Austria, and Switzerland. This does not replace installed-build QA.
+The current iOS record uses source
 `e027014b4d4b053f9fc54364ab90388722e5c526` and fingerprint
 `c52495b739c9d34b8726d8a392f9e008c7e9eb31`; it is not a 1.0.5 baseline binary.
+Its EAS build is `85e250ca-ed9a-4e52-9896-f7a5f39fa967`.
+
+The current Play dashboard additionally reports DEX obfuscation at 5%, below
+its 25% threshold, with a February 2027 deadline, plus edge-to-edge and
+large-screen recommendations. This is separate from the September 7
+deobfuscation-file warning. Crash/ANR rates were unavailable, not verified zero.
 
 ## Historical source — audited 26 August 2026
 

@@ -1,9 +1,9 @@
 # Google Play store listing — de-DE
 
-Last verified/submitted: 2026-08-23
-
-Privacy-link note reconciled: 2026-09-16. Other submitted listing fields below
-remain dated records, not a fresh Play Console inspection.
+Public listing rechecked: 2026-09-16. App name, descriptions, category, support
+email, website, privacy URL, and current release notes below match the
+[German Play listing](https://play.google.com/store/apps/details?id=com.dayova&hl=de&gl=DE).
+Reviewer instructions retain the August record; reviewer login was not retested.
 
 ## Main store listing
 
@@ -34,7 +34,13 @@ Du kannst die Lernfunktionen 14 Tage lang ohne Zahlungsmittel ausprobieren. Dana
 
 Für Dayova brauchst du ein Konto und eine Internetverbindung.
 
-## Release notes
+## Current release notes — 1.0.5
+
+Verbesserte Stabilität und geringerer Speicherverbrauch.
+Überarbeitete Einführung und Verbesserungen bei der Lernplanung.
+Korrekturen an Android-Layouts und der Abo-Verwaltung.
+
+## Historical first-release notes
 
 Erste Android-Version von Dayova: Organisiere Prüfungen und Schulmaterial, erstelle persönliche Lernpläne, bearbeite fokussierte Lernsessions und behalte deine Entwicklung im Blick.
 
@@ -46,7 +52,7 @@ Erste Android-Version von Dayova: Organisiere Prüfungen und Schulmaterial, erst
 | App or game | App |
 | Free or paid | Free download; paid digital subscription after the 14-day no-card trial |
 | Category | Education |
-| Support email | contact@dayova.de |
+| Support email | kontakt@dayova.de (current public listing; supersedes the August `contact@dayova.de` record) |
 | Website | https://dayova.com/ |
 | Privacy policy | https://dayova.com/datenschutz — submitted URL; now redirects to the app-inclusive https://dayova.com/privacy. Remaining policy/implementation reconciliation is tracked under DAY-217/DAY-359; see the [Data safety draft](./data-safety-draft.md). |
 | Package name | `com.dayova` |

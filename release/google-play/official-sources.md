@@ -41,6 +41,10 @@ listed separately below; this file does not imply every source was re-audited.
 - Authenticated EAS `build:view` for Android build
   `b8c2cdc4-076f-4569-90e2-6135fdb4bbe8`: metadata fields and verification limits
   are recorded in the [candidate audit](./release-candidate-audit.md).
+- Signed-in Play Console, App Store Connect, RevenueCat, Expo, public Play and
+  Dayova pages, and Production PostHog settings were subsequently inspected.
+  Exact links, observed facts, material contradictions, and unverified items
+  are recorded in the [live verification](../live-verification-2026-09-16.md).
 
 Console wording and policy requirements can change. Reopen these sources while
 completing the live forms rather than treating this dated pack as a substitute

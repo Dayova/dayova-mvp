@@ -6,6 +6,11 @@ is unverified; it is not an inventory of today's store releases. The workflow
 compares the current manifest and phase-equivalent EAS fingerprints with this
 manifest. It never infers safety from the previous Git commit.
 
+The [September 16 live verification](./live-verification-2026-09-16.md) confirms
+Android 1.0.5/code 23 on Play and Apple listing 1.0 with binary 1.0.4/build 72.
+It also records live privacy-declaration/link problems and billing configuration.
+Store availability alone does not satisfy the baseline's installed-artifact checks.
+
 ## Runtime boundary
 
 The current app/runtime boundary is **1.0.5**. The September 2026 patch upgrade
@@ -117,7 +122,10 @@ the owner's September 15 report that Google is live and Apple has approved iOS
 1.0.4/build 72. On September 16, authenticated EAS metadata independently
 confirmed Android build 23's version, runtime, source, channel, fingerprint,
 artifact URL, and completion time; see the [candidate audit](./google-play/release-candidate-audit.md).
-This does not verify today's Play track state or an installation. Existing iOS
+The subsequent signed-in browser audit confirmed all four Play tracks active
+with code 23 and Apple distribution in Germany, Austria, and Switzerland; see
+the [live evidence](./live-verification-2026-09-16.md). Installation and billing
+lifecycle QA remain outstanding. Existing iOS
 1.0.4 cannot receive the upgraded native stack over OTA. Reuse Android build 23
 only if the reconciled production candidate's fingerprint matches; obtain the
 matching iOS native binary and installation evidence under DAY-248.
@@ -189,3 +197,8 @@ Automatic publication may resume only after all of the following are true:
 
 Release evidence is tracked in
 [DAY-248](https://linear.app/dayova/issue/DAY-248/separate-the-expo-sdk-57-runtime-before-the-next-native-release).
+
+As checked September 16, the active production channel maps to branch
+`production`; its latest published group is still July 17's runtime `1.0.3`.
+Recheck the mapping at activation. This finding does not enable publication or
+make that update compatible with the current store binaries.
