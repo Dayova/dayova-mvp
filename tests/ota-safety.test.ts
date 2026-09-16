@@ -101,6 +101,29 @@ const evaluate = (overrides: Record<string, unknown> = {}) =>
 	});
 
 describe("production OTA safety", () => {
+	it("rejects the shipped iOS 1.0.4 and Android 1.0.5 mixture under schema 2", () => {
+		const mixed = structuredClone(baseline);
+		mixed.platforms.android.appVersion = "1.0.5";
+		mixed.platforms.android.runtimeVersion = "1.0.5";
+		mixed.platforms.android.embeddedUpdate.runtimeVersion = "1.0.5";
+		const result = evaluate({ baseline: mixed });
+		expect(result.safe).toBe(false);
+		expect(result.reason).toContain("schema 2 requires a shared runtime");
+	});
+
+	it("does not accept upgraded native fingerprints merely by relabelling the runtime", () => {
+		const result = evaluate({ fingerprints: {
+			ios: "ff9c10e6269957c3df85e8f52793ec3993b0806b",
+			android: "fcca898e3a18c0709e5466248b99d67a24d2f2c8",
+		} });
+		expect(result.safe).toBe(false);
+		expect(result.reason).toContain("does not match distributed build");
+	});
+
+	it("keeps the committed schema-1 baseline blocked for both platforms", () => {
+		const legacy = JSON.parse(readFileSync(new URL("../release/production-ota-baseline.json", import.meta.url), "utf8"));
+		expect(evaluate({ baseline: legacy }).reason).toContain("unsupported baseline schema 1");
+	});
 	it("allows a production manifest whose fingerprints match verified distributed binaries", () => {
 		expect(evaluate()).toMatchObject({
 			safe: true,
@@ -441,8 +464,20 @@ describe("production release configuration", () => {
 
 		expect(sendUpdates.needs).toContain("ota_checks");
 		expect(sendUpdates.needs).toContain("production_fingerprint");
-		expect(sendUpdates.env).toEqual(otaChecks.env);
+		expect(sendUpdates.env).toEqual({
+			APP_VARIANT: "production",
+			OTA_SOURCE_SHA: "${{ github.sha }}",
+			OTA_ANDROID_FINGERPRINT: otaChecks.env.OTA_ANDROID_FINGERPRINT,
+			OTA_IOS_FINGERPRINT: otaChecks.env.OTA_IOS_FINGERPRINT,
+		});
 		expect(finalGuard.env).toBeUndefined();
+		expect(sendUpdates.needs).toContain("deploy_convex");
+		expect(workflow.jobs.deploy_convex.needs).toContain("main_checks");
+		expect(sendUpdates.if).toBe("${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}");
+		expect(otaChecks.steps).toEqual(expect.arrayContaining([
+			expect.objectContaining({ run: "pnpm exec expo export --platform ios --output-dir dist/ios" }),
+			expect.objectContaining({ env: { EAS_BUILD_PLATFORM: "android" }, run: "pnpm exec expo export --platform android --output-dir dist/android" }),
+		]));
 	});
 
 	it("requires a clean commit before EAS builds upload source", () => {
