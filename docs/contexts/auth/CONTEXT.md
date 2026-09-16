@@ -38,6 +38,14 @@ Notion is Dayova's main internal documentation and knowledge workspace. Keep thi
   onboarding retries and the trial handoff, and `useAccountActions` for other
   authenticated account mutations. Screens must not depend on a broader auth
   surface than they use.
+- Profile readiness records the successful initial sync for the current account.
+  Same-account profile refreshes keep that readiness while saving updated fields;
+  sign-out and account changes reset it. Background work must not restart the
+  global route-loading mask. Access-query refreshes retain the last verified
+  result for the current mounted account, bounded by the existing expiry/offline
+  policy, and apply confirmed denials immediately. Initial loading and confirmed
+  authentication loss still mask protected routes. `session-refresh.ui.test.tsx`
+  exercises these contracts through the real auth, access, and navigation providers.
 - Native Clerk tokens always use Clerk's secure persistent Expo token cache.
   There is no `Angemeldet bleiben` preference or memory-only cache path.
 - Pending onboarding persistence uses a separate outbox. Native builds store it
