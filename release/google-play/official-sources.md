@@ -1,6 +1,7 @@
 # Primary sources used for the Google Play audit
 
-Checked: 2026-08-25
+Original audit references: 2026-08-25. The subset rechecked on September 16 is
+listed separately below; this file does not imply every source was re-audited.
 
 - [Create and set up an app — Google Play Console Help](https://support.google.com/googleplay/android-developer/answer/9859152)
 - [Add preview assets to showcase your app — Google Play Console Help](https://support.google.com/googleplay/android-developer/answer/9866151)
@@ -20,6 +21,26 @@ Checked: 2026-08-25
 - [Manual Android submission — Expo documentation](https://docs.expo.dev/submit/android-manual/)
 - [Expo SDK 57 reference and Android target SDK table](https://docs.expo.dev/versions/v57.0.0/)
 - [Google Play Data safety — RevenueCat documentation](https://www.revenuecat.com/docs/platform-resources/google-platform-resources/google-plays-data-safety)
+
+## Reconciliation sources — 16 September 2026
+
+- [Expo rollback guide](https://docs.expo.dev/eas-update/rollbacks/) and local
+  `eas-cli@18.11.0` help for `update:rollback`, `update:republish`, and
+  `update:roll-back-to-embedded`: verified command names and supported arguments.
+- [Google testing guidance](https://support.google.com/googleplay/android-developer/answer/9845334)
+  and [publishing states](https://support.google.com/googleplay/android-developer/answer/9859751):
+  submission/approval does not guarantee immediate tester availability.
+- [Live Dayova privacy policy](https://dayova.com/privacy): app-inclusive scope,
+  Vertex AI/R2 processing, and remaining release-behavior reconciliation.
+- [DAY-216](https://linear.app/dayova/issue/DAY-216): historical production GeoIP
+  ingestion and unresolved verification; not a new production traffic audit.
+- [DAY-248](https://linear.app/dayova/issue/DAY-248): owner-reported store
+  availability and exact native-release reconciliation.
+- [DAY-414](https://linear.app/dayova/issue/DAY-414): both-platform exports and
+  guarded publication required before production baseline activation.
+- Authenticated EAS `build:view` for Android build
+  `b8c2cdc4-076f-4569-90e2-6135fdb4bbe8`: metadata fields and verification limits
+  are recorded in the [candidate audit](./release-candidate-audit.md).
 
 Console wording and policy requirements can change. Reopen these sources while
 completing the live forms rather than treating this dated pack as a substitute

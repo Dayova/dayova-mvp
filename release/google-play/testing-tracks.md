@@ -1,6 +1,8 @@
 # Google Play Closed and Open testing runbook
 
-Last updated: 2026-08-26
+Last reconciled: 2026-09-16 against the pinned EAS CLI, workflow, current Google
+guidance, and [DAY-248](https://linear.app/dayova/issue/DAY-248). Store submission
+history below is dated evidence, not a new Play Console inspection.
 
 This runbook owns Dayova's repeatable Android tester-distribution path for the
 existing Play app `com.dayova`. It does not create another Android application,
@@ -11,10 +13,15 @@ production EAS build profile and differ only in their Google Play release track.
 
 | Dayova destination | EAS Submit profile | Google Play API track | Audience | Release behavior |
 | --- | --- | --- | --- | --- |
-| Internal testing | `internal` | `internal` | Up to 100 internal testers | Publishes immediately to the configured internal audience. |
-| Closed testing | `closed` | `alpha` | Explicit email lists or Google Groups | Publishes immediately after the workflow approval gate. |
-| Open testing | `open` | `beta` | Anyone in the selected countries, optionally capped | Publishes immediately after the workflow approval gate. |
+| Internal testing | `internal` | `internal` | Up to 100 internal testers | Requests a completed release; normally available within minutes, subject to Play processing. |
+| Closed testing | `closed` | `alpha` | Explicit email lists or Google Groups | Submits after workflow approval; availability depends on Google review, publishing state, and processing. |
+| Open testing | `open` | `beta` | Anyone in the selected countries, optionally capped | Submits after workflow approval; availability depends on Google review, publishing state, and processing. |
 | Production | `production` | `production` | Public production audience | Creates a draft; production rollout remains a separate Play Console decision. |
+
+EAS submission success and `releaseStatus: completed` do not prove that testers
+can install the release. Verify **Available** in Console and an actual opt-in
+installation. See Google's [testing guidance](https://support.google.com/googleplay/android-developer/answer/9845334)
+and [publishing states](https://support.google.com/googleplay/android-developer/answer/9859751).
 
 The store build always uses EAS build profile `production`, which resolves
 `APP_VARIANT=production`, package `com.dayova`, the production EAS environment,
@@ -23,13 +30,18 @@ codes. Do not use `preview`, `apk-test`, or `com.dayova.dev` for a Play track.
 
 ## Current rollout gate
 
-The latest recorded state is the 2026-09-07 submission in
+The recorded 2026-09-07 submission in
 [PR #545](https://github.com/Dayova/dayova-mvp/pull/545): app/runtime `1.0.5`,
 version code `23`, was available to Internal testers. The same bundle was
 promoted to Closed Alpha and Open testing and replaced the Production
 `1.0.4`/code-21 draft. Full rollouts on all three tracks plus resuming Open
 testing were sent for review, preserving Germany targeting with Managed
 publishing off.
+
+The owner subsequently reported Google live on September 15, as recorded in
+[DAY-248](https://linear.app/dayova/issue/DAY-248). Preserve that newer report;
+do not describe the September 7 review state as today's status. Exact current
+track availability and installed-build QA still need their own evidence.
 
 Recheck Console for subsequent review/availability changes before acting. Run
 install and billing QA on the exact build 23 identified in the

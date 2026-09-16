@@ -1,8 +1,9 @@
 # Android release-candidate audit
 
-Reconciled: 2026-09-11 from the 2026-09-07 build and submission evidence in
-[PR #545](https://github.com/Dayova/dayova-mvp/pull/545). No new live Console or
-artifact audit is claimed by this documentation update.
+Reconciled: 2026-09-16. The September 7 artifact/submission record comes from
+[PR #545](https://github.com/Dayova/dayova-mvp/pull/545). Authenticated EAS build
+metadata was independently checked on September 16; no new Play Console,
+downloaded-artifact, or physical-install audit is claimed.
 
 ## Current Android candidate — 1.0.5 / build 23
 
@@ -20,6 +21,13 @@ artifact audit is claimed by this documentation update.
 | AAB size | `89,096,505` bytes |
 | AAB SHA-256 | `433C18CA2083FB96598C60098704D44C0ECF506A7BC439CF21884495FCA2DCA7` |
 | EAS submission | [74999aaa-d7a9-4cda-b83a-e97e965066b7](https://expo.dev/accounts/dayova/projects/dayova/submissions/74999aaa-d7a9-4cda-b83a-e97e965066b7), finished successfully on 2026-09-07 |
+
+The September 16 read-only `eas-cli@18.11.0 build:view <build-id> --json` check
+confirmed `FINISHED`, Android app/runtime `1.0.5`, version code `23`, source SHA,
+production profile/channel, SDK `57.0.0`, fingerprint, artifact URL, and completion
+time above. EAS build metadata does not establish current Play availability.
+The AAB checksum/size, embedded update ID, native manifest/signature inspection,
+and submission result remain the dated September 7 evidence below.
 
 The recorded audit passed Bundletool validation and manifest/resource
 inspection. Jarsigner verified the signature and the upload certificate matched
@@ -44,6 +52,13 @@ and Play install/billing QA were not verified by this submission record. Do not
 repeat the upload or promote an older build to finish this handoff. Keep the
 OTA baseline unchanged until both exact replacement binaries satisfy the
 [baseline requirements](../README.md). No OTA was published.
+
+The later [DAY-248 record](https://linear.app/dayova/issue/DAY-248) preserves the
+owner's September 15 report that Google is live and Apple approved iOS
+1.0.4/build 72. That supersedes treating September 7's pending review as current,
+but does not replace exact installed-build QA. The current iOS record uses source
+`e027014b4d4b053f9fc54364ab90388722e5c526` and fingerprint
+`c52495b739c9d34b8726d8a392f9e008c7e9eb31`; it is not a 1.0.5 baseline binary.
 
 ## Historical source — audited 26 August 2026
 

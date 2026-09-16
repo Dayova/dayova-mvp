@@ -1,9 +1,10 @@
 # Play Console submission checklist
 
-Last reconciled: 2026-09-11, using the 2026-09-07 submission evidence in
-[PR #545](https://github.com/Dayova/dayova-mvp/pull/545). Release sections 6–7
-reflect that dated record; other checklist evidence remains from the August
-audit and needs its own verification. This is not a fresh Console check.
+Last reconciled: 2026-09-16. Checked submission items below retain the August
+audit and September 7 record in [PR #545](https://github.com/Dayova/dayova-mvp/pull/545).
+The September 15 owner report in [DAY-248](https://linear.app/dayova/issue/DAY-248)
+says Google is live. Unchecked items mean evidence is not recorded here, not
+necessarily that no one completed the work. This is not a fresh Console check.
 
 The current recorded candidate is app/runtime **1.0.5**, version code **23**.
 Builds 15, 20, and 21 are historical artifacts; do not resume their old
@@ -12,7 +13,7 @@ withdrawal/replacement instructions.
 ## 1. Developer account
 
 - [x] Sign in to the verified Dayova **organization** developer account.
-- [ ] Complete the durable DAY-325 evidence set: account owner and developer ID
+- [ ] Reconcile the historical DAY-325 evidence set: account owner and developer ID
       are known; public developer name, fee receipt, and agreement/verification
       evidence still need one recorded source.
 - [x] Invite the release operator with the minimum permissions needed to create
@@ -56,14 +57,20 @@ No account credentials or signing secrets are stored in this checklist.
       [`assets/README.md`](./assets/README.md).
 - [x] Set category **Education** and support email `contact@dayova.de`.
 - [x] Add `https://dayova.com/datenschutz` for the submitted review.
-- [ ] Replace/extend the website-specific text with the approved app-specific
-      policy under DAY-217/DAY-359; submission is not completion evidence.
+- [ ] Reconcile the now-published app-inclusive policy under DAY-217/DAY-359
+      with Android billing and actual release behavior; see the
+      [Data safety draft](./data-safety-draft.md). Publication is not evidence
+      that consent, retention, or deletion is complete.
 
-## 4. App content declarations
+## 4. App content declarations — historical submitted answers
+
+The review statuses below describe the August submission, not today's state.
+Recheck each live form against the current release; preserve the September 15
+availability report without inferring that every declaration is now correct.
 
 | Form | Draft response | Status |
 | --- | --- | --- |
-| Privacy policy | `https://dayova.com/datenschutz` | Submitted/in review; website-specific mobile-app gap remains under DAY-217/DAY-359. |
+| Privacy policy | `https://dayova.com/datenschutz` | Submitted in August; now redirects to the app-inclusive `https://dayova.com/privacy`. Remaining reconciliation is under DAY-217/DAY-359. |
 | App access | Restricted by login; dedicated synthetic reviewer account has permanent `dayova_full_access` | Submitted/in review; credentials exist only in Play Console. |
 | Ads | No | Submitted/in review. |
 | Content rating | Completed from current app content | Submitted/in review. |
@@ -78,7 +85,8 @@ No account credentials or signing secrets are stored in this checklist.
 
 ## 5. Monetization and subscriptions
 
-- [ ] Create monthly and annual subscriptions/base plans in Google Play. Use
+- [ ] Verify monthly and annual subscriptions/base plans in Google Play; create
+      only those confirmed missing. Use
       stable product IDs agreed with RevenueCat; do not invent IDs during setup.
 - [ ] Configure Germany pricing to match the approved commercial intent:
       **€14.99 monthly** and **€155.88 annually** (effective €12.99/month), then
@@ -115,8 +123,8 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
       unfinished Production `1.0.4`/code-21 draft.
 - [x] Send Production, Open testing, and Closed Alpha full rollouts plus resuming
       Open testing for review, preserving Germany targeting.
-- [ ] Recheck review/track status since the September 7 submission and record
-      approval and availability. Do not repeat the completed submission.
+- [ ] Reconcile the September 15 owner availability report with current track
+      status and installed-build evidence. Do not repeat the completed submission.
 - [ ] Install from the Play opt-in link on a clean physical Android device and a
       supported emulator/device size.
 - [ ] Verify signup/login, onboarding, trial, plans, uploads, learning session,
@@ -135,11 +143,15 @@ values are intentionally omitted; old/exposed temporary keys were revoked.
 - [x] Record Managed publishing off; approved changes publish automatically.
 - [x] Record no blocking Play validation errors and one nonblocking missing
       deobfuscation-file warning; native debug symbols are attached.
-- [ ] Verify the final quick-check result, Google review outcome, and public
-      availability of `1.0.5`/code `23`.
+- [ ] Record the final quick-check/review evidence and verify the reported public
+      availability of `1.0.5`/code `23` on a device.
 - [ ] After availability, install build 23 from the public listing and record
       the exact artifact, device, and QA evidence in DAY-218/DAY-248.
 - [ ] Replace `release/production-ota-baseline.json` only after both platforms
       satisfy the [baseline requirements](../README.md), including exact
       distributed-binary verification and staging checks. Submission alone is
       insufficient.
+
+DAY-218/DAY-325 are completed historical tasks. Use DAY-248 for current binary
+and OTA evidence, DAY-414 for both-platform publication, and reconcile active
+ownership for any remaining account/billing work before acting on old items.

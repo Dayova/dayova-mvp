@@ -2,6 +2,9 @@
 
 Last verified/submitted: 2026-08-23
 
+Privacy-link note reconciled: 2026-09-16. Other submitted listing fields below
+remain dated records, not a fresh Play Console inspection.
+
 ## Main store listing
 
 **App name (6/30 characters)**
@@ -45,7 +48,7 @@ Erste Android-Version von Dayova: Organisiere Prüfungen und Schulmaterial, erst
 | Category | Education |
 | Support email | contact@dayova.de |
 | Website | https://dayova.com/ |
-| Privacy policy | https://dayova.com/datenschutz — submitted for review; still website-specific and must be completed under DAY-217/DAY-359 |
+| Privacy policy | https://dayova.com/datenschutz — submitted URL; now redirects to the app-inclusive https://dayova.com/privacy. Remaining policy/implementation reconciliation is tracked under DAY-217/DAY-359; see the [Data safety draft](./data-safety-draft.md). |
 | Package name | `com.dayova` |
 
 ## App access / reviewer instructions

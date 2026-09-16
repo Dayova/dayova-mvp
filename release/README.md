@@ -1,7 +1,8 @@
 # Native release and production OTA policy
 
-`production-ota-baseline.json` records the exact production binaries that are
-known to be distributed for each platform. The automatic production OTA workflow
+`production-ota-baseline.json` is the compatibility record used by the production
+OTA guard. Its current schema-1 entries are historical, and Android distribution
+is unverified; it is not an inventory of today's store releases. The workflow
 compares the current manifest and phase-equivalent EAS fingerprints with this
 manifest. It never infers safety from the previous Git commit.
 
@@ -88,9 +89,12 @@ publish without changing EAS worker behavior. If an all-platform export still
 exceeds the process limit, export or publish iOS and Android sequentially:
 
 ```sh
-DAYOVA_METRO_USE_WATCHMAN=true pnpm exec expo export --platform ios
-DAYOVA_METRO_USE_WATCHMAN=true pnpm exec expo export --platform android
+APP_VARIANT=production DAYOVA_METRO_USE_WATCHMAN=true pnpm exec expo export --platform ios
+APP_VARIANT=production DAYOVA_METRO_USE_WATCHMAN=true pnpm exec expo export --platform android
 ```
+
+These exports also require the production public environment variables described
+in [the platform context](../docs/contexts/platform/CONTEXT.md).
 
 ## Android release handoff — 7 September 2026
 
@@ -107,6 +111,16 @@ Open testing were sent for review. Germany targeting was preserved and Managed
 publishing was off. Approval, public availability, and Play install/billing QA
 were not yet verified. Recheck Console before taking further release actions;
 submission is already recorded and must not be repeated from this handoff.
+
+Subsequent evidence: [DAY-248](https://linear.app/dayova/issue/DAY-248) records
+the owner's September 15 report that Google is live and Apple has approved iOS
+1.0.4/build 72. On September 16, authenticated EAS metadata independently
+confirmed Android build 23's version, runtime, source, channel, fingerprint,
+artifact URL, and completion time; see the [candidate audit](./google-play/release-candidate-audit.md).
+This does not verify today's Play track state or an installation. Existing iOS
+1.0.4 cannot receive the upgraded native stack over OTA. Reuse Android build 23
+only if the reconciled production candidate's fingerprint matches; obtain the
+matching iOS native binary and installation evidence under DAY-248.
 
 Android builds 20 and 21 and the August iOS 1.0.4/build 55 record are historical
 provenance, not candidates for the 1.0.5 baseline. Keep the distributed OTA
@@ -129,15 +143,29 @@ artifacts, and their native fingerprints differ because the embedded channel is
 part of native configuration. After the exact production binaries are
 distributed and install-verified, the schema 2 baseline lands, and the main
 workflow is green, the automatic production job creates the production update
-from that exact main commit.
+from that exact main commit. Both-platform exports and publication under
+[DAY-414](https://linear.app/dayova/issue/DAY-414) must land first: the current
+workflow exports and publishes only iOS. The baseline-activation merge can itself
+publish, so staging and workflow readiness must precede it.
 
 If a production OTA is unhealthy:
 
-1. stop rollout expansion and record the affected update group;
-2. prefer `eas update:rollback <latest-group-id> --platform all` when the prior
-   update or embedded update is known to be state-compatible;
-3. otherwise fix forward on the same runtime; and
-4. verify both platforms and update insights before resuming rollout.
+1. pause further production publications and record the affected branch, update
+   group, runtime, and platforms. The current workflow does not set a staged
+   rollout percentage; do not assume there is an expansion phase to stop;
+2. when a prior update or the embedded update is known to be state-compatible,
+   run `pnpm exec cross-env APP_VARIANT=production pnpm dlx eas-cli@18.11.0 update:rollback`
+   and use its interactive selection flow. Verify the production branch, runtime,
+   affected platforms, and known-good target before confirming. This command
+   accepts neither a positional update-group ID nor `--platform`;
+3. for an explicitly scripted recovery, use the supported `update:republish`
+   command with the known-good `--group`, or `update:roll-back-to-embedded`,
+   after checking their pinned CLI help and selecting the exact scope;
+4. otherwise fix forward on the same runtime; and
+5. verify download and launch on each affected platform before resuming
+   production publications.
+
+See [Expo's rollback guide](https://docs.expo.dev/eas-update/rollbacks/).
 
 Never republish an update across runtime versions. Persistent-data migrations
 must be backward compatible with the selected rollback target.
@@ -147,6 +175,10 @@ must be backward compatible with the selected rollback target.
 Automatic publication may resume only after all of the following are true:
 
 - both replacement store binaries are distributed and install-verified;
+- [DAY-414](https://linear.app/dayova/issue/DAY-414)'s iOS and Android exports,
+  guarded publication, and partial-publication recovery are implemented and
+  validated while the old baseline still blocks production;
+- the live production channel-to-branch mapping is verified;
 - their clean-source provenance and embedded updates are recorded in one schema 2
   baseline change;
 - the EAS production fingerprint job matches both exact builds;
