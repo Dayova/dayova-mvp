@@ -23,6 +23,23 @@ export type DashboardWeekProgress = {
 	totalLearningSessions: number;
 };
 
+export const getNextLearningStepAccessibilityLabel = ({
+	isStarted,
+	title,
+	dateLabel,
+	timeLabel,
+}: {
+	isStarted: boolean;
+	title: string;
+	dateLabel: string | null;
+	timeLabel: string | null;
+}) => {
+	const details = [dateLabel, timeLabel]
+		.filter((label): label is string => Boolean(label))
+		.join(", ");
+	return `${isStarted ? "Weiterlernen" : "Nächsten Lernschritt öffnen"}: ${title}${details ? `. ${details}` : ""}`;
+};
+
 export const getAdjacentDashboardDayKey = ({
 	selectedDayKey,
 	direction,

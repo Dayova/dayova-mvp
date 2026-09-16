@@ -55,9 +55,13 @@ describe("auth content-size layout", () => {
 		});
 	});
 
-	it("scales range-value spacing and optical centering with enlarged text", () => {
+	it("keeps enlarged range-value lines distinct without disabling text scaling", () => {
+		expect(getRangeValueContentLayout(2)).toEqual({
+			unitMarginTop: -4,
+			verticalOffset: -4,
+		});
 		expect(getRangeValueContentLayout(3)).toEqual({
-			unitMarginTop: -28,
+			unitMarginTop: -3,
 			verticalOffset: -6,
 		});
 	});

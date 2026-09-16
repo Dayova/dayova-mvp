@@ -1,0 +1,93 @@
+name: Android Google Play test release
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        type: choice
+        description: Google Play testing track for this new release candidate
+        required: true
+        options:
+          - closed
+          - open
+
+defaults:
+  tools:
+    node: "24.18.0"
+    pnpm: "11.15.1"
+
+jobs:
+  checks:
+    name: Verify release candidate
+    type: custom
+    runs_on: linux-medium
+    environment: production
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Run lint and typecheck
+        run: pnpm check
+      - name: Run tests
+        env:
+          EAS_BUILD: "false"
+        run: pnpm test
+
+  build_android:
+    name: Build production Android App Bundle
+    needs:
+      - checks
+    type: build
+    params:
+      platform: android
+      profile: production
+      message: Google Play ${{ inputs.track }} testing candidate
+
+  review_candidate:
+    name: Review Android candidate
+    needs:
+      - build_android
+    type: doc
+    params:
+      md: |
+        ## Review before Google Play submission
+
+        - Destination: `${{ inputs.track }}` testing
+        - EAS build: `${{ needs.build_android.outputs.build_id }}`
+        - Package: `${{ needs.build_android.outputs.app_identifier }}`
+        - Version: `${{ needs.build_android.outputs.app_version }}`
+        - Version code: `${{ needs.build_android.outputs.app_build_version }}`
+        - Update channel: `${{ needs.build_android.outputs.channel }}`
+        - Source: `${{ needs.build_android.outputs.git_commit_hash }}`
+
+        Confirm that the destination, source, version code, production
+        environment, and `com.dayova` package are correct before approving.
+
+  approve_submission:
+    name: Approve Google Play submission
+    needs:
+      - review_candidate
+    type: require-approval
+
+  submit_android:
+    name: Publish to Google Play testing
+    needs:
+      - build_android
+      - approve_submission
+    type: submit
+    params:
+      build_id: ${{ needs.build_android.outputs.build_id }}
+      profile: ${{ inputs.track }}
+
+  next_steps:
+    name: Tester rollout handoff
+    needs:
+      - build_android
+      - submit_android
+    type: doc
+    params:
+      md: |
+        ## Google Play handoff
+
+        EAS submitted build `${{ needs.build_android.outputs.build_id }}` to
+        `${{ inputs.track }}` testing. Verify the release status in Play Console,
+        copy the opt-in link, and record the tester/device results in DAY-218.

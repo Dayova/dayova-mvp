@@ -38,6 +38,7 @@ __pycache__/
 # local env files
 .env.local
 .env
+.env.eas-simulator
 
 .idea
 
@@ -47,3 +48,6 @@ __pycache__/
 # generated native folders
 /ios
 /android
+
+# Downloaded store binaries are release evidence, not source artifacts.
+/release/google-play/artifacts/*.aab
