@@ -147,8 +147,9 @@ channel or publish/republish to it for staging.
 
 The staging builds prove the new-runtime update path without exposing production
 binaries. They are not substitutes for installing and checking the exact store
-artifacts, and their native fingerprints differ because the embedded channel is
-part of native configuration. After the exact production binaries are
+artifacts. Inspect each artifact's embedded channel separately: the EAS CNG
+fingerprint can be identical across production and staging profiles and does
+not prove which channel a binary requests. After the exact production binaries are
 distributed and install-verified, the schema 2 baseline lands, and the main
 workflow is green, the automatic production job creates the production update
 from that exact main commit. The workflow validates separate iOS and Android
