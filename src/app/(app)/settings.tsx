@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { type ReactNode, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
+import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
@@ -187,6 +188,7 @@ export default function SettingsScreen() {
 	const [linkError, setLinkError] = useState<string | null>(null);
 	const [isLoggingOut, setIsLoggingOut] = useState(false);
 	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+	const [showReleaseInformation, setShowReleaseInformation] = useState(false);
 	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const logoutGateRef = useRef(createAsyncActionGate());
@@ -295,6 +297,12 @@ export default function SettingsScreen() {
 
 						<SettingsSection title="App">
 							<SettingsRow
+								icon={Computer}
+								label="App-Informationen"
+								onPress={() => setShowReleaseInformation(true)}
+							/>
+							<SettingsDivider />
+							<SettingsRow
 								icon={Bell}
 								label="Mitteilungen"
 								onPress={() => router.push("/notification-settings")}
@@ -390,6 +398,10 @@ export default function SettingsScreen() {
 					</View>
 				</ScreenScroll>
 			</Screen>
+			<ReleaseInformationSheet
+				visible={showReleaseInformation}
+				onClose={() => setShowReleaseInformation(false)}
+			/>
 			<ConfirmationSheet
 				visible={showDeleteConfirmation}
 				title="Konto wirklich löschen?"
