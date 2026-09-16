@@ -123,6 +123,15 @@ Final iOS 75 is intended for internal TestFlight first; final Android 25 is
 intended for Google Play internal testing first. Neither a staging binary nor
 an uninstalled production candidate satisfies the distribution baseline.
 
+The diagnostic implementation is merged as
+[PR #637](https://github.com/Dayova/dayova-mvp/pull/637), merge
+`d95bc0ee789c194912be8bce819bb267bee151bc`. The final sheet uses the supported
+scrollable medium size; the recorded staging group above predates that sizing-only
+adjustment. Its update-identification logic is unchanged. The merged-source
+[workflow](https://expo.dev/accounts/dayova/projects/dayova/workflows/01a0abcd-4e26-7367-a1ff-36e8761c41ed)
+produced the same iOS and Android native fingerprints as final builds 75/25.
+The eventual activation commit still needs its own workflow check.
+
 ## Prepared baseline (inactive)
 
 [The candidate JSON](./production-ota-baseline.candidate.json) records both exact
@@ -140,7 +149,17 @@ installation evidence, preserve same-runtime Android compatibility evidence,
 and validate matching and deliberately mismatched fingerprints. The activation
 merge itself can publish a both-platform production OTA after CI and Convex pass.
 
-Before that first publication, record the channel mapping and rollback target.
+Before that first publication, recheck the channel mapping and rollback target.
+The recorded production mapping exclusively targets branch production (channel
+`019e9424-6df3-788a-a8ca-dc56f3deaa97`, branch
+`019e9424-4b6a-738e-afea-811d2d85ce40`). The existing July 17 production group
+`6469f3cd-078b-4d0a-b31a-f0b9c52e93ab` uses runtime 1.0.3 and is not a valid
+1.0.5 rollback target. For the first 1.0.5 publication, the planned fallback is
+the native embedded update for that runtime, after each final binary passes
+installation/health checks. The exact final embedded UUIDs are recorded above;
+older same-runtime Android 23 falls back to its own embedded update
+`eb200c18-56a2-40f3-8bbe-4849b566c148`. Verify state compatibility before issuing
+a roll-back-to-embedded directive; no recovery action has been executed.
 The production publisher's reserved `production-publication-lock` branch must
 remain empty and unmapped. Any uncertain publication leaves it in place; stop
 all publishers and inspect actual server state before recovery or removal.
