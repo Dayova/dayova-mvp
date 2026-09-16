@@ -323,8 +323,9 @@ integrated-candidate staging passed as recorded above.
 Local `pnpm check`, all 23 OTA safety tests and all 15 publication tests passed.
 With the real production config, the guard accepts the recorded build hashes
 and rejects deliberate mismatches on each platform. Those injected-hash checks
-test guard behavior; the failed cloud preflight is the actual current-source
-compatibility result.
+test guard behavior. The initial failed cloud preflight established the tooling
+input mismatch; the later successful cloud preflight above verifies the candidate
+under the independently reviewed native-equivalence policy.
 
 ## Activation and recovery
 

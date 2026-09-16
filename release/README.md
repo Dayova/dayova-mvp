@@ -15,8 +15,11 @@ The [later September 16 activation evidence](./ota-activation-2026-09-16.md)
 records iOS 75 and Android 25 signed-artifact inspection, physical installation
 and cold-launch checks, and direct running-staging-update evidence on both
 platforms. Before merging baseline activation, run the manual
-`.eas/workflows/ota-preflight.yml` against the exact PR commit and require matching
-production CNG fingerprints and both platform exports. This workflow publishes
+`.eas/workflows/ota-preflight.yml` against the release candidate and require matching
+production CNG fingerprints and both platform exports. After success, only
+evidence/documentation changes may reuse that result: verify their diff changes
+no app, dependency, native input, script or workflow. Any such input change needs
+a new preflight and appropriate staging validation. This workflow publishes
 no updates. The main push workflow rechecks compatibility before publication.
 The September 17 initial preflight exposed test-tooling-only input drift. The
 baseline now records exact reviewed equivalents separately from the immutable
