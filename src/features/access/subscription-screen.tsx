@@ -43,6 +43,7 @@ const subscribeActionStyle = {
 };
 const planGlassSurface = "rgba(255, 255, 255, 0.8)";
 const planGlassBorder = "rgba(255, 255, 255, 0.6)";
+const ACCESS_REFRESH_TIMEOUT_MS = 10_000;
 const STORE_NAME = getStoreName(process.env.EXPO_OS);
 
 const getStoreApiKey = () =>
@@ -72,7 +73,8 @@ const getPlanDescription = (
 export function SubscriptionScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const { refreshPaidAccess } = useAccess();
+	const { access, refreshPaidAccess } = useAccess();
+	const { replace } = router;
 	const { user } = useAuthSession();
 	const storeApiKey = getStoreApiKey();
 	const appUserId = user?.clerkId;
@@ -99,6 +101,77 @@ export function SubscriptionScreen() {
 	const [isPurchasing, setIsPurchasing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const storeActionInFlightRef = useRef(false);
+	const confirmedPathRef = useRef<"/home" | "/subscription-success" | null>(
+		null,
+	);
+	const [confirmation, setConfirmation] = useState<{
+		path: "/home" | "/subscription-success";
+	} | null>(null);
+	const [accessConfirmed, setAccessConfirmed] = useState(false);
+	const didNavigateRef = useRef(false);
+	const hasPaidAccess =
+		access?.state === "paid" || access?.state === "billingGrace";
+
+	useEffect(() => {
+		if (!confirmation || hasPaidAccess) return;
+		let cancelled = false;
+		let retryTimer: ReturnType<typeof setTimeout> | undefined;
+		let requestTimeout: ReturnType<typeof setTimeout> | undefined;
+		const checkAccess = async (attempt: number) => {
+			let active = false;
+			try {
+				active = await Promise.race([
+					refreshPaidAccess(),
+					new Promise<never>((_, reject) => {
+						requestTimeout = setTimeout(
+							() => reject(new Error("Access refresh timed out.")),
+							ACCESS_REFRESH_TIMEOUT_MS,
+						);
+					}),
+				]);
+			} catch (refreshError) {
+				logDiagnosticError(
+					"Unable to activate confirmed purchase.",
+					refreshError,
+					{
+						source: "paywall.access.refresh",
+						level: "warn",
+					},
+				);
+			} finally {
+				clearTimeout(requestTimeout);
+			}
+			if (cancelled) return;
+			if (active) {
+				setAccessConfirmed(true);
+			} else if (attempt < 2) {
+				retryTimer = setTimeout(
+					() => void checkAccess(attempt + 1),
+					1000 * 2 ** attempt,
+				);
+				return;
+			}
+			storeActionInFlightRef.current = false;
+			setIsPurchasing(false);
+		};
+		void checkAccess(0);
+		return () => {
+			cancelled = true;
+			clearTimeout(retryTimer);
+			clearTimeout(requestTimeout);
+		};
+	}, [confirmation, hasPaidAccess, refreshPaidAccess]);
+
+	useEffect(() => {
+		if (
+			!confirmation ||
+			(!accessConfirmed && !hasPaidAccess) ||
+			didNavigateRef.current
+		)
+			return;
+		didNavigateRef.current = true;
+		replace(confirmation.path);
+	}, [confirmation, accessConfirmed, hasPaidAccess, replace]);
 
 	useEffect(() => {
 		if (!storeClient) {
@@ -153,6 +226,11 @@ export function SubscriptionScreen() {
 		storeActionInFlightRef.current = true;
 		setError(null);
 		setIsPurchasing(true);
+		// Once the store has confirmed a purchase, every retry only checks access.
+		if (confirmedPathRef.current) {
+			setConfirmation({ path: confirmedPathRef.current });
+			return;
+		}
 		try {
 			const result = await action();
 			if (result.status === "cancelled") return;
@@ -160,12 +238,8 @@ export function SubscriptionScreen() {
 				setError("Für dieses Store-Konto wurde kein aktives Abo gefunden.");
 				return;
 			}
-			const active = await refreshPaidAccess();
-			if (active) router.replace(successPath);
-			else
-				setError(
-					"Der Kauf wird noch bestätigt. Bitte tippe gleich auf „Käufe wiederherstellen“.",
-				);
+			confirmedPathRef.current = successPath;
+			setConfirmation({ path: successPath });
 		} catch (purchaseError) {
 			logDiagnosticError(
 				"Unable to complete RevenueCat action.",
@@ -177,8 +251,10 @@ export function SubscriptionScreen() {
 			);
 			setError("Der Kauf konnte nicht abgeschlossen werden.");
 		} finally {
-			storeActionInFlightRef.current = false;
-			setIsPurchasing(false);
+			if (!confirmedPathRef.current) {
+				storeActionInFlightRef.current = false;
+				setIsPurchasing(false);
+			}
 		}
 	};
 
@@ -301,21 +377,30 @@ export function SubscriptionScreen() {
 					) : null}
 
 					<Button
-						accessibilityHint={`Öffnet den Kauf in ${STORE_NAME}.`}
+						accessibilityHint={
+							confirmation
+								? "Prüft deinen bereits bestätigten Kauf, ohne erneut zu bezahlen."
+								: `Öffnet den Kauf in ${STORE_NAME}.`
+						}
+						accessibilityState={{ busy: isPurchasing }}
 						className="mt-5"
 						disabled={
-							isLoadingPlans || isPurchasing || !storeClient || !selectedPlan
+							isPurchasing ||
+							(!confirmation &&
+								(isLoadingPlans || !storeClient || !selectedPlan))
 						}
 						variant="neutral"
 						style={subscribeActionStyle}
 						testID="subscription-checkout-button"
 						onPress={() => void purchase()}
 					>
-						{isLoadingPlans || isPurchasing ? (
+						{(!confirmation && isLoadingPlans) || isPurchasing ? (
 							<ActivityIndicator color={WHITE} />
 						) : (
 							<Text className="text-white">
-								{getStoreSubscribeLabel(process.env.EXPO_OS)}
+								{confirmation
+									? "Zugang erneut prüfen"
+									: getStoreSubscribeLabel(process.env.EXPO_OS)}
 							</Text>
 						)}
 					</Button>
@@ -342,6 +427,26 @@ export function SubscriptionScreen() {
 						</Text>
 					</Pressable>
 
+					{confirmation ? (
+						<View className="mt-4 rounded-3xl bg-white px-4 py-3">
+							<Text
+								accessibilityLiveRegion="polite"
+								className="text-center text-body-3"
+								style={primaryTextStyle}
+							>
+								{confirmation.path === "/home"
+									? "Dein Abo wurde gefunden. Dein Zugang wird noch aktiviert."
+									: "Dein Kauf war erfolgreich. Dein Zugang wird noch aktiviert."}
+							</Text>
+							<Text
+								className="mt-2 text-center text-body-4"
+								style={secondaryTextStyle}
+							>
+								Bitte kaufe nicht erneut. Du kannst deinen Zugang hier erneut
+								prüfen.
+							</Text>
+						</View>
+					) : null}
 					{error ? (
 						<View className="mt-4 rounded-3xl bg-white px-4 py-3">
 							<Text
