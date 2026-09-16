@@ -39,9 +39,9 @@
       "fingerprint": "d91ab0f33529c36e5e7a76ef4e9a0a3bb66f26a1",
       "appIdentifier": "com.dayova",
       "distribution": {
-        "status": "unverified",
-        "audience": "Google Play internal testing; exact Play-signed APK installed on isolated API-34 emulator; tester-account launch pending",
-        "evidence": "release/ota-activation-2026-09-16.md — Play availability, signature/embedded-asset inspection and clean APK installation verified; Play license check requires tester sign-in before launch verification"
+        "status": "verified",
+        "audience": "Google Play internal testing; build 25 installed by Play on the owner's physical Pixel 9 (API 37)",
+        "evidence": "release/ota-activation-2026-09-16.md — installed code 25 / com.android.vending; installed manifest and JS match the verified artifact; normal welcome screen after cold restart"
       },
       "embeddedUpdate": {
         "status": "verified",

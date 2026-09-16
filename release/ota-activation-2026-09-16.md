@@ -1,10 +1,10 @@
 # Production OTA activation evidence - 16 September 2026
 
-Status: iOS 75 and Android 25 are available to internal testers. The Play-signed
-Android 25 APK installs, but Play still blocks launch on the tested devices;
-tester enrollment alone has not yet produced a successful Play installation/launch.
-Production OTA remains blocked
-by the historical schema-1 baseline. Build completion, store availability,
+Status: iOS 75 and Android 25 are available to internal testers. Android 25 is
+installed through Google Play on a physical Pixel 9 and renders the normal
+welcome screen after a cold restart. iOS 75 physical installation/launch and
+iOS 74 direct running-staging-update confirmation remain pending. Production OTA
+remains blocked by the historical schema-1 baseline. Build completion, store availability,
 installation, OTA download and OTA launch are separate checks.
 
 ## Integrated source and compatibility
@@ -23,8 +23,8 @@ produced these CNG fingerprints using the production environment:
 
 Both builds record this exact source and matching fingerprints. The main workflow
 completed successfully and skipped production publication under the closed guard.
-Store-installation evidence remains required before either candidate becomes a
-verified production baseline.
+Android store-installation evidence is recorded below. The iOS device checks
+remain required before the candidate can replace the active production baseline.
 
 iOS 75 artifact SHA-256:
 `a1aa27d94a5cd7f12220c5f039ce9544cb99941b389ce6c906f28e7b9753e51a`.
@@ -72,7 +72,8 @@ to the Play Store sign-in screen. This is installation evidence, not a verified
 Dayova launch. A legitimate tester-account Play installation/launch remains
 required; no installer spoofing or protection bypass was performed.
 
-The owner's physical Pixel 9 (API 37) also accepted the exact Play APK through
+Before the successful Play installation described below, the owner's physical
+Pixel 9 (API 37) also accepted the exact Play APK through
 an ordinary `adb install -r`, updating code 23 to 25 while preserving the original
 first-install timestamp and app data. This is OS installation/signature-acceptance
 evidence on API 37, not a claim that the Java 17 verifier checked its hybrid
@@ -89,10 +90,41 @@ enrollment pages confirmed membership. The Pixel was switched to the associated
 account, but its listing still showed the older release after a Play Store restart.
 Another launch returned to the same Play prompt; "Update from Play" did not
 complete an installation. The web Play installer disabled the Pixel target because
-it already had the app installed. A clean Play reinstall is awaiting explicit
-owner consent because it would remove local app data. Neither final-binary launch
-nor production distribution is marked verified. The personal-device app has not
-been uninstalled or cleared.
+it already had the app installed. These attempts did not establish a healthy
+final-binary launch or Play installation.
+
+### Physical Google Play installation and cold launch
+
+The owner then explicitly approved uninstalling and reinstalling Dayova, including
+loss of local app data and sign-in. Initial Play reinstalls still delivered code
+23, including with the enrolled work account selected; code 23 opened normally.
+Play Console was rechecked: internal release 3 contained code 25, was available
+to internal testers, and had deactivated code 23 with no retained bundles.
+After clearing only the Play Store's temporary cache (not its user storage) and
+restarting Play, the phone identified the user as an internal tester and offered
+the September 16 update. This sequence resolved delivery; it does not prove that
+cache state was the sole cause of the earlier mismatch.
+
+The update completed at 23:19:22 Europe/Berlin on September 16. Android package
+metadata reports `com.dayova`, version 1.0.5, code 25, and installer
+`com.android.vending` on the Pixel 9 / API 37. The installed split package's
+`base.apk` was pulled for inspection; SHA-256:
+`46a71c664bf0ecf43db97f55d242fa61e95999257be26411dc001a992708903d`.
+Its embedded manifest and JavaScript bundle are byte-identical to the verified
+Play universal APK and submitted AAB. Their respective SHA-256 values are
+`8612598e44c6f2425a2c254722358799822df4faef76f9beff2e8ab4385c3a02`
+and `c5a8ade91d275fe2cec66d7242d2b441fbb91dd6e94fa9ffc49ea1bf3976e0d8`.
+The installed manifest identifies embedded UUID
+`24f4a03e-9a27-41b9-817c-da3a2d8335e8`; the Android manifest/resources confirm
+production channel, runtime 1.0.5, updates enabled, ALWAYS check and zero wait.
+
+The app rendered its normal welcome screen, remained open online for more than
+30 seconds, and rendered the same screen after force-stop and relaunch. Both
+the accessibility tree and screenshot show the Dayova welcome text and
+Registration/Login controls, with no Play-license prompt. This verifies the
+exact production binary's Play installation and initial/cold launch; it is not
+authenticated-flow QA or proof of a newly published production OTA. The embedded
+UUID above comes from artifact inspection, not an in-app running-UUID readout.
 
 ## Existing same-runtime Android audience
 
@@ -179,8 +211,9 @@ The eventual activation commit still needs its own workflow check.
 ## Prepared baseline (inactive)
 
 [The candidate JSON](./production-ota-baseline.candidate.json) records both exact
-artifacts and leaves distribution unverified. It is not read by the production
-guard. Do not copy it over the active baseline until the installation and
+artifacts, marks Android distribution verified from the physical Play check,
+and leaves iOS distribution unverified. It is not read by the production
+guard. Do not copy it over the active baseline until the remaining installation and
 staging checks above are complete. Before activation, move the historical
 schema-1 baseline into a test fixture so its rejection test remains meaningful,
 and verify fingerprints from the final activation commit itself.

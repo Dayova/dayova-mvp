@@ -13,8 +13,9 @@ Store availability alone does not satisfy the baseline's installed-artifact chec
 
 The [later September 16 activation evidence](./ota-activation-2026-09-16.md)
 records replacement internal candidates iOS 75 and Android 25, signed-artifact
-inspection and Android staging launch verification. Its candidate baseline is inactive;
-physical installation checks are still required.
+inspection, Android staging launch verification, and physical Play installation
+and cold launch of Android 25. Its candidate baseline is inactive; the physical
+iOS installation and running-staging-update checks are still required.
 
 ## Runtime boundary
 
