@@ -72,6 +72,9 @@ const mockRouter = {
 	push: jest.fn(),
 	replace: jest.fn(),
 };
+const mockOpenExternalUrl = jest.fn<(url?: string) => Promise<boolean>>(
+	async () => true,
+);
 const mockUseBackIntent =
 	jest.fn<(enabled: boolean, onBack: () => boolean) => void>();
 const mockStackScreens: Array<Record<string, unknown>> = [];
@@ -410,6 +413,17 @@ jest.mock("~/lib/navigation", () => ({
 		mockUseBackIntent(enabled, onBack),
 }));
 
+jest.mock("~/lib/open-external-url", () => ({
+	openExternalUrl: (url?: string) => mockOpenExternalUrl(url),
+}));
+
+jest.mock("~/lib/runtime-config", () => ({
+	env: {
+		EXPO_PUBLIC_PRIVACY_URL: "https://example.com/privacy",
+		EXPO_PUBLIC_TERMS_URL: "https://example.com/terms",
+	},
+}));
+
 jest.mock("~/lib/theme", () => {
 	const { DAYOVA_DESIGN_SYSTEM: designSystem } = jest.requireActual<
 		typeof import("~/lib/design-system")
@@ -450,6 +464,8 @@ describe("LoginScreen", () => {
 		mockResendPasswordResetCode.mockResolvedValue(undefined);
 		mockRouter.replace.mockReset();
 		mockRouter.push.mockReset();
+		mockOpenExternalUrl.mockReset();
+		mockOpenExternalUrl.mockResolvedValue(true);
 		mockStartPasswordReset.mockReset();
 		mockStartPasswordReset.mockResolvedValue(undefined);
 		mockVerifyPasswordResetCode.mockReset();
@@ -473,6 +489,26 @@ describe("LoginScreen", () => {
 		);
 
 		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding");
+	});
+
+	test("opens privacy and terms before registration without claiming privacy acceptance", async () => {
+		const screen = await render(<AuthChoiceScreen />);
+
+		expect(screen.queryByText(/Mit dem Start akzeptierst du/)).toBeNull();
+
+		await fireEvent.press(
+			screen.getByRole("link", { name: "Datenschutzerklärung" }),
+		);
+		expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(
+			"https://example.com/privacy",
+		);
+
+		await fireEvent.press(
+			screen.getByRole("link", { name: "Nutzungsbedingungen" }),
+		);
+		expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(
+			"https://example.com/terms",
+		);
 	});
 
 	test("removes the large-text auth entrance animation when reduced motion is enabled", async () => {

@@ -43,6 +43,18 @@ const revenueCatPublicEnvKeyByPlatform = {
 	android: "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY",
 } as const satisfies Record<ReleasePlatform, PublicRuntimeConfigKey>;
 
+const defaultAppRuntimeLegalUrls = {
+	EXPO_PUBLIC_PRIVACY_URL: "https://dayova.com/privacy",
+	EXPO_PUBLIC_TERMS_URL:
+		"https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+	EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL:
+		"https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+	EXPO_PUBLIC_SUPPORT_URL: "https://dayova.com/support",
+} as const satisfies Pick<
+	StrictPublicRuntimeConfigValues,
+	(typeof requiredReleasePublicEnvKeys)[number]
+>;
+
 // Expo only inlines direct process.env.EXPO_PUBLIC_* member accesses.
 export const readPublicRuntimeConfig = (): StrictPublicRuntimeConfigValues => ({
 	EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY:
@@ -67,6 +79,18 @@ const toStrictPublicRuntimeConfig = (
 	Object.fromEntries(
 		publicEnvKeys.map((key) => [key, config[key]]),
 	) as StrictPublicRuntimeConfigValues;
+
+const withAppRuntimeLegalUrlDefaults = (
+	config: PublicRuntimeConfigValues,
+): PublicRuntimeConfigValues => ({
+	...config,
+	...Object.fromEntries(
+		requiredReleasePublicEnvKeys.map((key) => [
+			key,
+			config[key]?.trim() || defaultAppRuntimeLegalUrls[key],
+		]),
+	),
+});
 
 const rawPublicRuntimeConfig = readPublicRuntimeConfig();
 
@@ -146,11 +170,16 @@ const createPublicEnvValidationError = (
 export const createPublicEnv = (
 	runtimeEnv: PublicRuntimeConfigValues,
 	options: CreatePublicEnvOptions,
-) =>
-	createEnv({
+) => {
+	const resolvedRuntimeEnv =
+		options.context === "app-runtime"
+			? withAppRuntimeLegalUrlDefaults(runtimeEnv)
+			: runtimeEnv;
+
+	return createEnv({
 		clientPrefix: "EXPO_PUBLIC_",
 		client: publicEnvSchema,
-		runtimeEnvStrict: toStrictPublicRuntimeConfig(runtimeEnv),
+		runtimeEnvStrict: toStrictPublicRuntimeConfig(resolvedRuntimeEnv),
 		emptyStringAsUndefined: true,
 		skipValidation:
 			options.context === "app-runtime" &&
@@ -159,6 +188,7 @@ export const createPublicEnv = (
 			throw createPublicEnvValidationError(runtimeEnv, issues, options);
 		},
 	});
+};
 
 export const validatePublicEnvForRelease = (
 	runtimeEnv: PublicRuntimeConfigValues = readPublicRuntimeConfig(),
