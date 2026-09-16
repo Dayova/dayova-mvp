@@ -1,8 +1,9 @@
 # Production OTA activation evidence - 16 September 2026
 
 Status: iOS 75 and Android 25 are available to internal testers. The Play-signed
-Android 25 APK installs, but its license check requires a signed-in tester before
-launch verification can finish. Production OTA remains blocked
+Android 25 APK installs, but Play still blocks launch on the tested devices;
+tester enrollment alone has not yet produced a successful Play installation/launch.
+Production OTA remains blocked
 by the historical schema-1 baseline. Build completion, store availability,
 installation, OTA download and OTA launch are separate checks.
 
@@ -70,6 +71,28 @@ and version 1.0.5. On launch, Google Play automatic protection invokes
 to the Play Store sign-in screen. This is installation evidence, not a verified
 Dayova launch. A legitimate tester-account Play installation/launch remains
 required; no installer spoofing or protection bypass was performed.
+
+The owner's physical Pixel 9 (API 37) also accepted the exact Play APK through
+an ordinary `adb install -r`, updating code 23 to 25 while preserving the original
+first-install timestamp and app data. This is OS installation/signature-acceptance
+evidence on API 37, not a claim that the Java 17 verifier checked its hybrid
+signature. The replacement reports no installer package, so it is not evidence
+of installation through the Play Store. Launch still displays "Get this app from
+Play". The owner authorized accepting the internal-test invitation for their work
+account, and the web page confirmed tester membership. After selecting that
+account on the Pixel, Play identified the existing app as associated with a
+different personal account and requested an invitation for that account. Opening
+Dayova still returned to the Play installation prompt. With separate owner consent,
+the associated personal account was then added to the same internal-test list
+and accepted its invitation; Play Console lists two testers and both web
+enrollment pages confirmed membership. The Pixel was switched to the associated
+account, but its listing still showed the older release after a Play Store restart.
+Another launch returned to the same Play prompt; "Update from Play" did not
+complete an installation. The web Play installer disabled the Pixel target because
+it already had the app installed. A clean Play reinstall is awaiting explicit
+owner consent because it would remove local app data. Neither final-binary launch
+nor production distribution is marked verified. The personal-device app has not
+been uninstalled or cleared.
 
 ## Existing same-runtime Android audience
 
