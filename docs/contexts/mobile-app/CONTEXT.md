@@ -14,7 +14,7 @@ recoverable error in the surface where the action occurred.
 
 ## Settings navigation
 
-The Mehr page prioritizes Profil, Hilfe & Support, Lernen, App, Dayova Pro,
+The Mehr page prioritizes Profil, Hilfe & Support, Lernen, App, Dayova,
 then Datenschutz & Rechtliches. Profil owns personal details, password changes,
 sign-out, and confirmed account deletion. Profile, support, and subscription
 entries use standalone cards without repeated headings; the profile card shows
