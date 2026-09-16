@@ -202,8 +202,12 @@ Automatic publication may resume only after all of the following are true:
 - their clean-source provenance and embedded updates are recorded in one schema 2
   baseline change;
 - the EAS production fingerprint job matches both exact builds;
-- a runtime `1.0.5` update succeeds on dedicated `ota-staging` iOS and Android
-  QA builds, with both downloaded update IDs recorded;
+- a runtime `1.0.5` update is downloaded and launched after a cold restart on
+  dedicated QA builds targeting the `ota-staging` channel: Android uses the
+  `ota-staging` profile; a physical iPhone uses `ota-staging-testflight` or the
+  ad-hoc `ota-staging` profile. Record the downloaded and running update UUIDs
+  for both platforms. An `ota-staging-simulator` check is supplementary and
+  does not replace the iPhone check or exact store-artifact installation checks;
 - a deliberately mismatched native fingerprint still fails closed; and
 - the baseline change lands on `main` and the complete main workflow is green.
 
