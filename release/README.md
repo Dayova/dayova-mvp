@@ -1,8 +1,8 @@
 # Native release and production OTA policy
 
 `production-ota-baseline.json` is the compatibility record used by the production
-OTA guard. Its current schema-1 entries are historical, and Android distribution
-is unverified; it is not an inventory of today's store releases. The workflow
+OTA guard. Its schema-2 entries record the verified internal production-channel
+builds iOS 75 and Android 25; it is not an inventory of every store track. The workflow
 compares the current manifest and phase-equivalent EAS fingerprints with this
 manifest. It never infers safety from the previous Git commit.
 
@@ -10,6 +10,22 @@ The [September 16 live verification](./live-verification-2026-09-16.md) confirms
 Android 1.0.5/code 23 on Play and Apple listing 1.0 with binary 1.0.4/build 72.
 It also records live privacy-declaration/link problems and billing configuration.
 Store availability alone does not satisfy the baseline's installed-artifact checks.
+
+The [later September 16 activation evidence](./ota-activation-2026-09-16.md)
+records iOS 75 and Android 25 signed-artifact inspection, physical installation
+and cold-launch checks, and direct running-staging-update evidence on both
+platforms. Before merging baseline activation, run the manual
+`.eas/workflows/ota-preflight.yml` against the release candidate and require matching
+production CNG fingerprints and both platform exports. After success, only
+evidence/documentation changes may reuse that result: verify their diff changes
+no app, dependency, native input, script or workflow. Any such input change needs
+a new preflight and appropriate staging validation. This workflow publishes
+no updates. The main push workflow rechecks compatibility before publication.
+The September 17 initial preflight exposed test-tooling-only input drift. The
+baseline now records exact reviewed equivalents separately from the immutable
+build fingerprints; see the linked audit. The integrated candidate passed both
+staging launch checks and the cloud preflight on September 17. Merge-source
+CI and compatibility checks must still succeed before production publication.
 
 ## Runtime boundary
 
@@ -58,7 +74,14 @@ generated `bareNativeDir`.
 Do not replace the workflow outputs with `expo fingerprint:generate` from the
 normal checkout and do not set `unstable_skip_cng_check`. Missing fingerprint
 outputs are classified as a preflight failure and block publication. A valid but
-different fingerprint is classified as native incompatibility and also blocks.
+different fingerprint blocks unless the same platform/build baseline contains
+that exact hash in `reviewedCompatibleFingerprints`. Such a record must bind the
+original build fingerprint, full audit source SHA and evidence of an EAS source
+comparison showing native equivalence. Never overwrite a build's actual hash,
+ignore input classes globally or approve an unknown future fingerprint. Missing
+or malformed review records fail closed. Success reports explicitly identify
+when reviewed equivalence was used; all manifest, runtime, SDK, channel,
+distribution and embedded-update checks still apply.
 
 ## Verifying and replacing the baseline
 
@@ -259,7 +282,8 @@ Automatic publication may resume only after all of the following are true:
 - the live production channel-to-branch mapping is verified;
 - their clean-source provenance and embedded updates are recorded in one schema 2
   baseline change;
-- the EAS production fingerprint job matches both exact builds;
+- the final-source EAS production fingerprint job matches each exact build's
+  original hash or its exact, independently reviewed native-equivalence record;
 - a runtime `1.0.5` update is downloaded and launched after a cold restart on
   dedicated QA builds targeting the `ota-staging` channel: Android uses the
   `ota-staging` profile; a physical iPhone uses `ota-staging-testflight` or the
