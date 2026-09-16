@@ -20,8 +20,9 @@ production CNG fingerprints and both platform exports. This workflow publishes
 no updates. The main push workflow rechecks compatibility before publication.
 The September 17 initial preflight exposed test-tooling-only input drift. The
 baseline now records exact reviewed equivalents separately from the immutable
-build fingerprints; see the linked audit. Activation still requires a successful
-final-source preflight and the integrated candidate's staging launch check.
+build fingerprints; see the linked audit. The integrated candidate passed both
+staging launch checks and the cloud preflight on September 17. Merge-source
+CI and compatibility checks must still succeed before production publication.
 
 ## Runtime boundary
 

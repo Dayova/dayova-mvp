@@ -3,9 +3,10 @@
 Status (updated September 17): iOS 75 and Android 25 passed physical-device
 installation and cold-launch checks. Both staging platforms have direct running
 OTA UUID evidence. This PR prepares the schema-2 baseline; production remains
-blocked on main pending the final preflight and integrated-candidate staging.
-The initial preflight exposed test-tooling-only fingerprint drift; the narrowly
-reviewed native-equivalence records below address that specific mismatch.
+blocked on main until the activation merge. The integrated-candidate staging
+checks and cloud preflight passed at `11c5e0f`; the evidence-only completion commit
+still requires CI before merge. The initial preflight exposed test-tooling-only
+fingerprint drift, addressed by the narrowly reviewed native-equivalence records.
 Build completion, store availability,
 installation, OTA download and OTA launch are separate checks.
 
@@ -214,6 +215,32 @@ the later integrated activation source. The latter includes subsequent main
 changes to authentication, subscriptions, learning plans and timetable/entry
 flows. Publish and verify the final candidate in staging before activation.
 
+### Final integrated-candidate staging — passed September 17
+
+Both-platform group `dd27bac8-18f1-4092-9059-357b7fc20e9c` was published to
+`ota-staging`, runtime 1.0.5, from clean source
+`11c5e0f0e95a21e3f3c22ba682b83c0b4fd6f010`.
+
+On the isolated API-34 emulator, Android staging build 24 downloaded the update
+and opened normally after force-stop/relaunch. The read-only diagnostic sheet
+directly reported source OTA, running UUID
+`01a0ac58-7933-7286-8d6b-9cf4774a6474`, channel ota-staging, runtime 1.0.5,
+and emergency launch Nein. The screenshot was inspected; SHA-256:
+`bc3b9163ffd28736301de8926fca7e6037336842277eb3dbf8ef47a47d6dac0d`.
+
+The owner explicitly confirmed the physical iPhone check on TestFlight build
+74: online wait, full close/reopen, normal app start, source OTA, running UUID
+`01a0ac58-7933-77f3-8c9f-4db126853195` and emergency launch Nein. This final
+iPhone result is owner-reported; the earlier photo proves the previous group's
+running state and is not relabelled as evidence for this group.
+
+The [final-source preflight](https://expo.dev/accounts/dayova/projects/dayova/workflows/01a0ac55-f222-7c0a-8df0-5bda2274973e)
+at the same `11c5e0f` source succeeded: production CNG hashes equal the exact
+reviewed equivalents below, the compatibility guard passed, and both platform
+exports succeeded. Subsequent evidence-only documentation changes do not change
+the app or native inputs. Main's publication job rechecks the actual merge source
+before publishing. Production publication itself is still a separate check.
+
 ## Signing and distribution
 
 The downloaded iOS 73, 74 and 75 IPAs use the same App Store provisioning profile
@@ -291,7 +318,7 @@ continues to reject every unlisted hash. This is a documented compatibility
 decision, not a claim that the build and candidate hashes are identical. The
 audit source records the comparison provenance; later JavaScript-only commits
 may retain that same reviewed native hash. Final-source cloud validation and
-integrated-candidate staging are still required before activation.
+integrated-candidate staging passed as recorded above.
 
 Local `pnpm check`, all 23 OTA safety tests and all 15 publication tests passed.
 With the real production config, the guard accepts the recorded build hashes
