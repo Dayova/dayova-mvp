@@ -505,7 +505,7 @@ describe("production release configuration", () => {
 		});
 		expect(fingerprint.params?.unstable_skip_cng_check).not.toBe(true);
 		expect(otaChecks.needs).toEqual(
-			expect.arrayContaining(["main_checks", "production_fingerprint"]),
+			expect.arrayContaining(["checks", "production_fingerprint"]),
 		);
 		expect(otaChecks.env).toEqual({
 			APP_VARIANT: "production",
@@ -533,7 +533,7 @@ describe("production release configuration", () => {
 		});
 		expect(finalGuard.env).toBeUndefined();
 		expect(sendUpdates.needs).toContain("deploy_convex");
-		expect(workflow.jobs.deploy_convex.needs).toContain("main_checks");
+		expect(workflow.jobs.deploy_convex.needs).toContain("checks");
 		expect(sendUpdates.if).toBe("${{ github.event_name == 'push' && github.ref_name == 'main' && needs.ota_checks.outputs.ota_safe == 'true' }}");
 		expect(otaChecks.steps).toEqual(expect.arrayContaining([
 			expect.objectContaining({ run: "pnpm exec expo export --platform ios --output-dir dist/ios" }),
