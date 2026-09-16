@@ -374,10 +374,7 @@ function DayovaSheetFrame({
 				<>
 					{children ? (
 						<View
-							className={cn(
-								size !== "content" && "flex-1",
-								contentClassName,
-							)}
+							className={cn(size !== "content" && "flex-1", contentClassName)}
 						>
 							{children}
 						</View>
