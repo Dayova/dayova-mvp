@@ -40,8 +40,8 @@
       "appIdentifier": "com.dayova",
       "distribution": {
         "status": "unverified",
-        "audience": "Google Play internal testing; store-generated artifact installation pending",
-        "evidence": "release/ota-activation-2026-09-16.md — available to testers; final installation evidence pending"
+        "audience": "Google Play internal testing; exact Play-signed APK installed on isolated API-34 emulator; tester-account launch pending",
+        "evidence": "release/ota-activation-2026-09-16.md — Play availability, signature/embedded-asset inspection and clean APK installation verified; Play license check requires tester sign-in before launch verification"
       },
       "embeddedUpdate": {
         "status": "verified",

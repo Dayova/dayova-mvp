@@ -1,6 +1,8 @@
 # Production OTA activation evidence - 16 September 2026
 
-Status: iOS 75 is processed in App Store Connect; Android 25 is built and submitted to Google Play internal testing. Production OTA remains blocked
+Status: iOS 75 and Android 25 are available to internal testers. The Play-signed
+Android 25 APK installs, but its license check requires a signed-in tester before
+launch verification can finish. Production OTA remains blocked
 by the historical schema-1 baseline. Build completion, store availability,
 installation, OTA download and OTA launch are separate checks.
 
@@ -46,9 +48,28 @@ Android 25 artifact SHA-256:
 The AAB embeds update `24f4a03e-9a27-41b9-817c-da3a2d8335e8`, runtime 1.0.5,
 production channel and package `com.dayova`. EAS internal submission:
 `df81769f-1ef8-403c-9e8f-1ce738798c39`; EAS submission succeeded; Play Console internal release 3 lists code 25 as available
-to internal testers (16 September, 21:53 as displayed). The Play-generated universal
-APK download was blocked by Edge with ERR_BLOCKED_BY_CLIENT; owner download and
-installation verification remain pending.
+to internal testers (16 September, 21:53 as displayed). The owner manually downloaded the Play-generated universal APK after Edge
+blocked the automated download.
+
+Play-signed APK SHA-256:
+`f34c8a06a3c8e75fec0c58424ea00bfbc4638db474e0a7407e3cf2c1f50154c6`.
+Its embedded manifest and JavaScript bundle match the submitted AAB byte for
+byte. `aapt2` confirms package com.dayova, code 25, version/runtime 1.0.5,
+production channel, enabled updates, ALWAYS launch check and zero wait.
+`apksigner` verifies v2/v3 signatures and the Google source stamp for API 24-36;
+signer certificate SHA-256:
+`aef70b4fb244ccafd0435b2ffd7fad6292a3ef175315df6ff77535c70a00c1af`.
+The installed Java 17 verifier cannot check the additional API-37 hybrid ML-DSA
+signature, so no claim is made for that separate verification.
+
+The isolated API-34 emulator successfully installed the exact Play APK at
+22:06 local time after removing its disposable staging install (the EAS upload
+key and Play app-signing key differ). Android package metadata reports code 25
+and version 1.0.5. On launch, Google Play automatic protection invokes
+`com.pairip.licensecheck.LicenseActivity` and redirects the signed-out emulator
+to the Play Store sign-in screen. This is installation evidence, not a verified
+Dayova launch. A legitimate tester-account Play installation/launch remains
+required; no installer spoofing or protection bypass was performed.
 
 ## Existing same-runtime Android audience
 
