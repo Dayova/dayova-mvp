@@ -84,7 +84,9 @@ describe("TimetableWeekEditor", () => {
 		expect(tuesday.props.accessibilityState).toEqual({ selected: false });
 		expect(monday.props.className).toContain("bg-primary");
 		expect(tuesday.props.className).toContain("bg-muted");
-		expect(within(monday).getByText("Mo").props.className).toContain("text-white");
+		expect(within(monday).getByText("Mo").props.className).toContain(
+			"text-white",
+		);
 		expect(within(tuesday).getByText("Di").props.className).toContain(
 			"text-secondary-text",
 		);
