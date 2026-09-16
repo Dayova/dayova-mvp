@@ -11,6 +11,11 @@ Android 1.0.5/code 23 on Play and Apple listing 1.0 with binary 1.0.4/build 72.
 It also records live privacy-declaration/link problems and billing configuration.
 Store availability alone does not satisfy the baseline's installed-artifact checks.
 
+The [later September 16 activation evidence](./ota-activation-2026-09-16.md)
+records replacement internal candidates iOS 75 and Android 25, signed-artifact
+inspection and Android staging launch verification. Its candidate baseline is inactive;
+physical installation checks are still required.
+
 ## Runtime boundary
 
 The current app/runtime boundary is **1.0.5**. The September 2026 patch upgrade
