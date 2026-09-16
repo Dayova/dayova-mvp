@@ -45,6 +45,7 @@ import {
 	INTRO_DOT_COLLAPSED_WIDTH,
 	INTRO_DOT_EXPANDED_WIDTH,
 } from "~/components/onboarding/intro-pagination";
+import { IntroTasksArtwork } from "~/components/onboarding/intro-tasks-artwork";
 import {
 	getOnboardingPersistenceAnswers,
 	getOnboardingRegistrationPayload,
@@ -158,13 +159,21 @@ type PasswordResetStage =
 
 type IntroStep = {
 	kind: "intro";
-	id: "intro-upload" | "intro-path";
+	id: "intro-upload" | "intro-path" | "intro-tasks";
 	title: string;
 	description: string;
-	illustration: "path" | "upload";
+	illustration: "path" | "tasks" | "upload";
 };
 
 const INTRO_STEPS = [
+	{
+		kind: "intro",
+		id: "intro-tasks",
+		title: "Du weißt, was heute wirklich zählt.",
+		description:
+			"Ein machbarer nächster Lernschritt bringt dich jeden Tag näher an deine Prüfung.",
+		illustration: "tasks",
+	},
 	{
 		kind: "intro",
 		id: "intro-upload",
@@ -1180,7 +1189,7 @@ function IntroArtwork({
 
 	return (
 		<View
-			className="w-full items-center justify-center overflow-hidden"
+			className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
 			// Runtime content-size mode chooses the bounded decorative-artwork height.
 			style={{ height: containerHeight }}
 		>
@@ -1194,6 +1203,12 @@ function IntroArtwork({
 				<IntroLearningPathArtwork
 					width={accessibleLayout ? 250 : compactHeight ? 284 : 330}
 					height={accessibleLayout ? 168 : compactHeight ? 208 : 254}
+				/>
+			) : null}
+			{item.illustration === "tasks" ? (
+				<IntroTasksArtwork
+					width={accessibleLayout ? 262 : compactHeight ? 294 : 345}
+					height={accessibleLayout ? 178 : compactHeight ? 200 : 236}
 				/>
 			) : null}
 		</View>

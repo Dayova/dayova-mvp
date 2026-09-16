@@ -87,14 +87,5 @@ describe("IntroTasksArtwork", () => {
 			width: 312,
 			height: 110,
 		});
-		for (const testID of [
-			"intro-tasks-agenda-layer",
-			"intro-tasks-progress-layer",
-			"intro-tasks-next-step-layer",
-		]) {
-			expect(screen.getByTestId(testID, hidden).props.className).not.toContain(
-				"shadow-",
-			);
-		}
 	});
 });

@@ -273,6 +273,13 @@ jest.mock("~/components/onboarding/intro-learning-path-artwork", () => {
 	};
 });
 
+jest.mock("~/components/onboarding/intro-tasks-artwork", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	return {
+		IntroTasksArtwork: () => React.createElement("IntroTasksArtwork"),
+	};
+});
+
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ bottom: 24, left: 0, right: 0, top: 24 }),
 }));
@@ -1076,18 +1083,19 @@ describe("OnboardingScreen", () => {
 		});
 	});
 
-	test("teaches the product in two focused pages before personalized questions", async () => {
+	test("teaches the product in three pages before personalized questions", async () => {
 		const screen = await render(<OnboardingScreen />);
 
 		expect(
 			screen.getByRole("header", {
-				name: "Deine Prüfung. Alles an einem Ort.",
+				name: "Du weißt, was heute wirklich zählt.",
 			}),
 		).toBeOnTheScreen();
 		expect(
 			screen.getByText("Danach 11 kurze, bewusste Schritte · etwa 2 Minuten"),
 		).toBeOnTheScreen();
 
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Meinen Start personalisieren" }),
@@ -1110,7 +1118,7 @@ describe("OnboardingScreen", () => {
 		expect(screen.queryByTestId("intro-pager")).toBeNull();
 		expect(
 			screen.getByRole("header", {
-				name: "Deine Prüfung. Alles an einem Ort.",
+				name: "Du weißt, was heute wirklich zählt.",
 			}),
 		).toBeOnTheScreen();
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeOnTheScreen();
@@ -1163,9 +1171,9 @@ describe("OnboardingScreen", () => {
 		});
 		expect(screen.getByRole("progressbar")).toHaveProp("accessibilityValue", {
 			min: 1,
-			max: 2,
+			max: 3,
 			now: 1,
-			text: "Seite 1 von 2",
+			text: "Seite 1 von 3",
 		});
 	});
 
@@ -1234,14 +1242,15 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingScreen />);
 		const pager = screen.getByTestId("intro-pager");
 
-		expect(pager).toHaveProp("initialNumToRender", 2);
-		expect(pager).toHaveProp("maxToRenderPerBatch", 2);
+		expect(pager).toHaveProp("initialNumToRender", 3);
+		expect(pager).toHaveProp("maxToRenderPerBatch", 3);
 		expect(pager).toHaveProp("removeClippedSubviews", false);
 	});
 
 	test("renders the maintained learning-path preview on the final intro page", async () => {
 		const screen = await render(<OnboardingScreen />);
 
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
 		expect(screen.getByTestId("intro-learning-path-artwork")).toBeOnTheScreen();
