@@ -158,7 +158,12 @@ guard and Convex deployment succeed, `scripts/publish-production-ota.mjs`
 checks the clean checkout against the triggering main SHA, exports both
 platforms together, reruns the compatibility guard, and verifies that the live
 production channel is active and points exclusively to branch `production`.
-It publishes that already-exported bundle once with pinned EAS CLI 18.11.0,
+It atomically creates the reserved, empty EAS branch `production-publication-lock`
+before publishing and rechecks the channel while holding that lock. EAS rejects
+duplicate branch names, so concurrent or later publishers cannot proceed while
+the lock exists. Keep this branch empty and never map a channel to it. The job
+logs its lock ID and source SHA, then publishes the already-exported bundle once
+with pinned EAS CLI 18.11.0,
 `--platform all --skip-bundler --environment production`. A failed export or
 preflight prevents either platform from publishing. PR/manual paths cannot
 enter the publication job. The baseline-activation merge can itself publish,
@@ -172,9 +177,26 @@ The publication log records the raw CLI response and then a verified summary
 containing each platform's update ID, common group ID, runtime, and source SHA.
 Success requires exactly one iOS and one Android update on branch `production`
 with the intended runtime and commit. A CLI/network failure can leave the server
-state uncertain even when no valid summary is returned. Never automatically
-retry: inspect the production branch's groups by source SHA, record whichever
-platforms were published, and pause further publication while choosing recovery.
+state uncertain even when no valid summary is returned. The publisher removes
+the lock only after verifying the complete both-platform response. An uncertain
+acquisition, publication failure, or workflow cancellation leaves the server-side
+lock in place, blocking later jobs even if the original worker never runs its
+error handler. Lock removal failure also requires inspection. Never automatically
+retry or clear an existing lock. To recover:
+
+1. stop all production publishers and wait for every worker to terminate;
+2. inspect the recorded lock ID and production groups by source SHA, recording
+   whichever platforms were published; a lost response can mean both succeeded;
+3. choose and verify recovery for the actual published state using the rollback
+   procedure below; and
+4. only after recovery is verified and no publisher remains active, delete the
+   reserved empty branch with
+   `pnpm exec cross-env APP_VARIANT=production pnpm dlx eas-cli@18.11.0 branch:delete production-publication-lock --json --non-interactive`.
+   Verify the returned ID is the inspected lock. Never delete/recreate the lock
+   while a worker is active: the CLI resolves deletion by name. If creation was
+   not confirmed, inspect EAS first; do not assume an empty log means no lock or
+   no publication. Then permit a new reviewed main run.
+
 If only one platform is live, use the rollback procedure below for that affected
 platform/group or a reviewed same-runtime fix; verify both platforms afterward.
 One CLI call reduces split publication risk but is not a cross-platform rollback

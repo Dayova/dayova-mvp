@@ -8,6 +8,7 @@ import { createReport } from "./ota-safety.mjs";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const platforms = ["ios", "android"];
+export const publicationLockBranch = "production-publication-lock";
 
 export function verifyChannel(response) {
 	const channel = response.currentPage;
@@ -97,6 +98,19 @@ export function publishProductionOta({
 	);
 	let raw;
 	try {
+		// EAS enforces unique branch names. Creation is the atomic acquire, not
+		// a read-then-write check. Leave this empty branch on any uncertain result
+		// or worker cancellation; no catch/finally/signal handler may release it.
+		const lock = JSON.parse(
+			run("eas", ["branch:create", publicationLockBranch, "--json", "--non-interactive"]),
+		);
+		if (!lock.id || lock.name !== publicationLockBranch) {
+			throw new Error("Publication lock acquisition was not confirmed.");
+		}
+		log(JSON.stringify({ status: "publication-locked", lockId: lock.id, sourceSha }));
+		verifyChannel(
+			JSON.parse(run("eas", ["channel:view", "production", "--json"])),
+		);
 		raw = run("eas", [
 			"update",
 			"--branch",
@@ -120,12 +134,19 @@ export function publishProductionOta({
 			sourceSha,
 			runtimeVersion,
 		);
+		log(JSON.stringify({ status: "publication-verified", updates: summary }));
+		const released = JSON.parse(
+			run("eas", ["branch:delete", publicationLockBranch, "--json", "--non-interactive"]),
+		);
+		if (released.id !== lock.id) {
+			throw new Error("Publication lock release was not confirmed; inspect EAS before further publication.");
+		}
 		log(JSON.stringify({ status: "published", updates: summary }));
 		return summary;
 	} catch (error) {
 		if (error.stdout?.length) log(String(error.stdout));
 		log(
-			`Publication failed or is uncertain for ${sourceSha}. Do not retry automatically. Inspect production update groups and follow release/README.md recovery steps.`,
+			`Publication failed or is uncertain for ${sourceSha}. Do not retry automatically or delete ${publicationLockBranch}. Inspect the lock and production update groups and follow release/README.md recovery steps.`,
 		);
 		throw error;
 	}
