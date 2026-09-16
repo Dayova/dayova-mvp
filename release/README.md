@@ -138,17 +138,28 @@ below. Follow the [Google Play command center](./google-play/README.md) and
 
 ## Staging, promotion, and rollback
 
-Build dedicated internal QA binaries for both platforms with the `ota-staging`
-profile from the exact release source. This profile uses production app config
-and EAS environment but embeds the isolated `ota-staging` channel. Publish the
-candidate to that channel, verify the result reports runtime `1.0.5`, and record
+Build dedicated QA binaries from the exact release source. Use `ota-staging`
+for an Android APK or an iOS ad-hoc build when a suitable provisioning profile
+and registered devices are available. For iOS TestFlight, use
+`ota-staging-testflight`: it inherits production signing and automatic build
+number increments while embedding the isolated `ota-staging` channel. Submit
+that exact build ID with the existing `production` submission profile and keep
+it in the internal testing group; never select a staging build for App Store
+distribution. `ota-staging-simulator` provides an unsigned iOS simulator build
+for automated OTA checks without consuming a new store build number. All three
+profiles use production app config and EAS environment. Publish the candidate
+to that channel, verify the result reports runtime `1.0.5`, and record
 the update ID actually downloaded by each QA binary. Do not remap the production
 channel or publish/republish to it for staging.
 
 The staging builds prove the new-runtime update path without exposing production
 binaries. They are not substitutes for installing and checking the exact store
-artifacts, and their native fingerprints differ because the embedded channel is
-part of native configuration. After the exact production binaries are
+artifacts. Inspect each artifact's embedded channel separately: the EAS CNG
+fingerprint can be identical across production and staging profiles and does
+not prove which channel a binary requests. Changes to `eas.json` can change
+fingerprints even when native code is unchanged; recompute the final candidate
+and never copy older build hashes into a baseline to bypass that mismatch.
+After the exact production binaries are
 distributed and install-verified, the schema 2 baseline lands, and the main
 workflow is green, the automatic production job creates the production update
 from that exact main commit. Both-platform exports and publication under
