@@ -278,7 +278,8 @@ Automatic publication may resume only after all of the following are true:
 - the live production channel-to-branch mapping is verified;
 - their clean-source provenance and embedded updates are recorded in one schema 2
   baseline change;
-- the EAS production fingerprint job matches both exact builds;
+- the final-source EAS production fingerprint job matches each exact build's
+  original hash or its exact, independently reviewed native-equivalence record;
 - a runtime `1.0.5` update is downloaded and launched after a cold restart on
   dedicated QA builds targeting the `ota-staging` channel: Android uses the
   `ota-staging` profile; a physical iPhone uses `ota-staging-testflight` or the
