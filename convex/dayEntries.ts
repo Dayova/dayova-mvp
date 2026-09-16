@@ -402,6 +402,57 @@ export const updateExamTopics = mutation({
 	},
 });
 
+// The exam is saved before topic setup. Returning to earlier creation steps
+// must revise that entry without creating a second exam or invalidating a plan.
+export const updatePendingExam = mutation({
+	args: {
+		id: v.id("dayEntries"),
+		dayKey: v.string(),
+		subject: v.string(),
+		examTypeLabel: v.string(),
+		plannedDateLabel: v.string(),
+		durationMinutes: v.number(),
+	},
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const entry = await ctx.db.get("dayEntries", args.id);
+		if (
+			!entry ||
+			entry.ownerTokenIdentifier !== ownerTokenIdentifier ||
+			!isExamEntry(entry)
+		) {
+			throwUserFacingError("Prüfung nicht gefunden.");
+		}
+		if (
+			entry.relatedLearningPlanId ||
+			entry.relatedLearningPlanSessionId ||
+			entry.completed
+		) {
+			throwUserFacingError(
+				"Diese Prüfung ist bereits abgeschlossen oder mit einem Lernplan verknüpft. Öffne sie unter Lernpläne.",
+			);
+		}
+		const subject = args.subject.trim();
+		const examTypeLabel = args.examTypeLabel.trim();
+		if (!subject || !examTypeLabel) {
+			throwUserFacingError("Wähle ein Fach und eine Prüfungsart aus.");
+		}
+		if (!Number.isFinite(args.durationMinutes) || args.durationMinutes <= 0) {
+			throwUserFacingError("Die Prüfungsdauer muss größer als null sein.");
+		}
+		await ctx.db.patch("dayEntries", args.id, {
+			dayKey: args.dayKey,
+			subject,
+			examTypeLabel,
+			title: `${subject} ${examTypeLabel}`,
+			plannedDateLabel: args.plannedDateLabel,
+			durationMinutes: args.durationMinutes,
+		});
+		return null;
+	},
+});
+
 export const create = mutation({
 	args: {
 		dayKey: v.string(),
