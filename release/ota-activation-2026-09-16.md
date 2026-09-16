@@ -3,7 +3,8 @@
 Status (updated September 17): iOS 75 and Android 25 passed physical-device
 installation and cold-launch checks. Both staging platforms have direct running
 OTA UUID evidence. This PR prepares the schema-2 baseline; production remains
-blocked on main until activation is merged after the final source preflight.
+blocked on main. The final-source preflight found a fingerprint mismatch, so
+this PR must not be merged for activation yet (see the blocker below).
 Build completion, store availability,
 installation, OTA download and OTA launch are separate checks.
 
@@ -206,7 +207,11 @@ reported following the requested online wait and full close/reopen procedure.
 The still photo proves the displayed running state; restart timing is
 owner-reported. Photo SHA-256:
 `47db5b8d05309fb4ae89b28a97a1a9cafd28f49d624637fdd3665ca877fdd25a`.
-Both platforms therefore have direct running-update identity evidence.
+Both platforms therefore have direct running-update identity evidence for that
+staging group. This proves the OTA delivery/launch path, not a staging check of
+the later integrated activation source. The latter includes subsequent main
+changes to authentication, subscriptions, learning plans and timetable/entry
+flows. Publish and verify the final candidate in staging before activation.
 
 ## Signing and distribution
 
@@ -240,6 +245,37 @@ workflow against its exact remote commit. That workflow generates production
 CNG fingerprints, compares them to the distributed binaries, and exports both
 platforms without deploying Convex or publishing an OTA. Any mismatch blocks
 activation; recorded build fingerprints must not be relabelled to bypass it.
+
+### Final-source preflight blocker — September 17
+
+The [manual preflight](https://expo.dev/accounts/dayova/projects/dayova/workflows/01a0ac47-b870-7022-b2b4-d03713bdb87e)
+ran against exact remote source `2700b541066c6cf50a27db25e54ca015d4564a2f`.
+Its production CNG fingerprint job succeeded, returning iOS
+`f92f0379d721a5c3c2bcee935878412d7d559857` and Android
+`df6aacec11591f424f52decf30d1522c3fe90820`. These differ from the recorded
+75/25 binaries, so the guard correctly failed before either export. Successful
+fingerprint generation is not a successful compatibility check.
+
+EAS fingerprint comparisons against both build fingerprints identified exactly
+two changed inputs on each platform, with no added or removed source entries:
+
+| Input | Build 75/25 input hash | Integrated-source input hash |
+| --- | --- | --- |
+| `.gitignore` | `75a431a2e9fb65f762fcb8a513125f435b273242` | `2bdbd5b2d579fed0d3b79b5b863bc2f64ef01197` |
+| `packageJson:scripts` | `d6b49aa9f36af0b0b2c1e8a3a151bc19e6096aa1` | `a96ea426284d7d7a9652490d73b6aee985515086` |
+
+The corresponding Git diff adds only the Maestro artifact ignore entry and two
+Maestro smoke-test commands. Other fingerprint source hashes are unchanged.
+This narrows the mismatch to test tooling inputs; it does not authorize replacing
+the stored build hashes or bypassing the exact-match guard. Resolve this
+compatibility blocker and validate the final candidate in staging before merge.
+No replacement binary or production OTA has been issued for this mismatch.
+
+Local `pnpm check`, all 23 OTA safety tests and all 15 publication tests passed.
+With the real production config, the guard accepts the recorded build hashes
+and rejects deliberate mismatches on each platform. Those injected-hash checks
+test guard behavior; the failed cloud preflight is the actual current-source
+compatibility result.
 
 ## Activation and recovery
 

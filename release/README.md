@@ -18,6 +18,10 @@ platforms. Before merging baseline activation, run the manual
 `.eas/workflows/ota-preflight.yml` against the exact PR commit and require matching
 production CNG fingerprints and both platform exports. This workflow publishes
 no updates. The main push workflow rechecks compatibility before publication.
+The September 17 preflight currently fails because the integrated source's
+fingerprints differ from builds 75/25; see the linked evidence for the exact
+test-tooling input differences. Activation remains blocked. The final integrated
+candidate also needs its own staging launch check before merge.
 
 ## Runtime boundary
 
