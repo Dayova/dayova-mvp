@@ -132,6 +132,67 @@ describe("production OTA safety", () => {
 		});
 	});
 
+	it("accepts only the exact audited equivalent and keeps unknown fingerprints blocked", () => {
+		const compatible = "3333333333333333333333333333333333333333";
+		const reviewedBaseline = structuredClone(baseline);
+		const review = {
+			fingerprint: compatible,
+			buildFingerprint: iosFingerprint,
+			sourceSha: "2700b541066c6cf50a27db25e54ca015d4564a2f",
+			evidence: "Audited source comparison: only test-tooling inputs changed",
+		};
+		const withReview = {
+			...reviewedBaseline,
+			platforms: { ...reviewedBaseline.platforms, ios: {
+				...reviewedBaseline.platforms.ios, reviewedCompatibleFingerprints: [review],
+			} },
+		};
+		const fingerprints = { ios: compatible, android: androidFingerprint };
+		expect(evaluate({ baseline: withReview, fingerprints }).safe).toBe(true);
+		expect(evaluate({ baseline: withReview, fingerprints }).reason).toContain("reviewed native equivalence");
+		expect(evaluate({ baseline: withReview, fingerprints: {
+			...fingerprints, ios: "4444444444444444444444444444444444444444",
+		} }).safe).toBe(false);
+		for (const invalidReview of [
+			{ ...review, evidence: " " },
+			{ ...review, sourceSha: "short" },
+			{ ...review, buildFingerprint: androidFingerprint },
+			null,
+		]) {
+			withReview.platforms.ios.reviewedCompatibleFingerprints = [invalidReview] as typeof review[];
+			expect(evaluate({ baseline: withReview, fingerprints }).safe).toBe(false);
+		}
+	});
+
+	it.each([null, {}, "allowed", [null]])("rejects a malformed equivalence list even for the original fingerprint (%s)", (reviews) => {
+		const result = evaluate({ baseline: { ...baseline,
+			platforms: { ...baseline.platforms, ios: { ...baseline.platforms.ios,
+				reviewedCompatibleFingerprints: reviews,
+			} },
+		} });
+		expect(result.safe).toBe(false);
+		expect(result.reason).toContain("reviewed compatible fingerprints require");
+	});
+
+	it("does not let an audited equivalent bypass distribution or runtime verification", () => {
+		const compatible = "3333333333333333333333333333333333333333";
+		const reviewedBaseline = {
+			...baseline,
+			platforms: { ...baseline.platforms, ios: { ...baseline.platforms.ios,
+				distribution: { ...baseline.platforms.ios.distribution, status: "unverified" },
+				runtimeVersion: "1.0.3",
+				reviewedCompatibleFingerprints: [{ fingerprint: compatible,
+					buildFingerprint: iosFingerprint,
+					sourceSha: "2700b541066c6cf50a27db25e54ca015d4564a2f", evidence: "Input comparison" }],
+			} },
+		};
+		const result = evaluate({ baseline: reviewedBaseline,
+			fingerprints: { ios: compatible, android: androidFingerprint } });
+		expect(result.safe).toBe(false);
+		expect(result.reason).toContain("distribution is not verified");
+		expect(result.reason).toContain("build runtime 1.0.3 does not match");
+	});
+
 	it("keeps every 1.0.3 baseline ineligible for the SDK 57 runtime", () => {
 		const legacyBaseline = {
 			...baseline,

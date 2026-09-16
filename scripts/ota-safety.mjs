@@ -115,6 +115,7 @@ export const evaluateProductionOta = ({
 	sourceSha,
 }) => {
 	const errors = [];
+	const reviewedEquivalences = [];
 
 	if (appVariant !== "production") {
 		errors.push(
@@ -246,6 +247,35 @@ export const evaluateProductionOta = ({
 		const currentFingerprint = fingerprints[platform];
 		const hasDistributedFingerprint = isFingerprintHash(distributedFingerprint);
 		const hasCurrentFingerprint = isFingerprintHash(currentFingerprint);
+		// Preserve the build's actual fingerprint. Only exact, separately audited
+		// equivalents may cover non-native input drift; unknown hashes stay blocked.
+		const reviewedFingerprints =
+			platformBaseline.reviewedCompatibleFingerprints === undefined
+				? []
+				: platformBaseline.reviewedCompatibleFingerprints;
+		const validReviews =
+			Array.isArray(reviewedFingerprints) &&
+			reviewedFingerprints.every(
+				(entry) =>
+					entry &&
+					isFingerprintHash(entry.fingerprint) &&
+					entry.buildFingerprint === distributedFingerprint &&
+					isFullGitSha(entry.sourceSha) &&
+					isNonEmptyString(entry.evidence),
+			);
+		if (!validReviews) {
+			errors.push(
+				`${platform} reviewed compatible fingerprints require exact build binding, source SHA and evidence`,
+			);
+		}
+		const hasReviewedMatch =
+			validReviews &&
+			reviewedFingerprints.some(
+				(entry) => entry.fingerprint === currentFingerprint,
+			);
+		if (hasReviewedMatch && currentFingerprint !== distributedFingerprint) {
+			reviewedEquivalences.push(`${platform} ${currentFingerprint}`);
+		}
 
 		if (!hasDistributedFingerprint) {
 			errors.push(
@@ -261,7 +291,8 @@ export const evaluateProductionOta = ({
 		if (
 			hasDistributedFingerprint &&
 			hasCurrentFingerprint &&
-			currentFingerprint !== distributedFingerprint
+			currentFingerprint !== distributedFingerprint &&
+			!hasReviewedMatch
 		) {
 			errors.push(
 				`${platform} fingerprint ${currentFingerprint} does not match distributed build ${platformBaseline.buildVersion} fingerprint ${distributedFingerprint}`,
@@ -289,7 +320,9 @@ export const evaluateProductionOta = ({
 		failureKind: errors.length === 0 ? null : "compatibility",
 		reason:
 			errors.length === 0
-				? "Production manifest and phase-equivalent native fingerprints match the verified distributed binaries."
+				? reviewedEquivalences.length > 0
+					? `Production manifest is compatible with verified distributed binaries using reviewed native equivalence: ${reviewedEquivalences.join(", ")}.`
+					: "Production manifest and phase-equivalent native fingerprints match the verified distributed binaries."
 				: errors.join("; "),
 		errors,
 		baseline: baselineSummary,

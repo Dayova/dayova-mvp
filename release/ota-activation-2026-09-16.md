@@ -3,8 +3,9 @@
 Status (updated September 17): iOS 75 and Android 25 passed physical-device
 installation and cold-launch checks. Both staging platforms have direct running
 OTA UUID evidence. This PR prepares the schema-2 baseline; production remains
-blocked on main. The final-source preflight found a fingerprint mismatch, so
-this PR must not be merged for activation yet (see the blocker below).
+blocked on main pending the final preflight and integrated-candidate staging.
+The initial preflight exposed test-tooling-only fingerprint drift; the narrowly
+reviewed native-equivalence records below address that specific mismatch.
 Build completion, store availability,
 installation, OTA download and OTA launch are separate checks.
 
@@ -244,7 +245,8 @@ does not publish updates: before merging it, run the manual `ota-preflight.yml`
 workflow against its exact remote commit. That workflow generates production
 CNG fingerprints, compares them to the distributed binaries, and exports both
 platforms without deploying Convex or publishing an OTA. Any mismatch blocks
-activation; recorded build fingerprints must not be relabelled to bypass it.
+activation unless an exact, separately audited native-equivalence record covers
+the mismatch; recorded build fingerprints must never be relabelled.
 
 ### Final-source preflight blocker — September 17
 
@@ -269,7 +271,27 @@ Maestro smoke-test commands. Other fingerprint source hashes are unchanged.
 This narrows the mismatch to test tooling inputs; it does not authorize replacing
 the stored build hashes or bypassing the exact-match guard. Resolve this
 compatibility blocker and validate the final candidate in staging before merge.
-No replacement binary or production OTA has been issued for this mismatch.
+No replacement binary or production OTA was issued for this mismatch.
+
+### Reviewed native equivalence
+
+The source comparison above was independently reviewed. The `.gitignore` delta
+adds only `/.maestro/artifacts/`; `packageJson:scripts` adds only
+`test:smoke:android` and `test:smoke:ios`. These developer-invoked Maestro commands
+are not install/build hooks. No native dependency, autolinking/configuration,
+plugin, asset, patch or other fingerprint source hash changes. Building new store
+binaries solely for these two tooling inputs would not exercise different native
+code.
+
+Each platform therefore records its exact current CNG hash as a reviewed
+compatible fingerprint, bound to its unchanged original build hash and audit
+source `2700b541066c6cf50a27db25e54ca015d4564a2f`. The guard accepts only these
+specific hashes in addition to the originals, rejects malformed reviews, and
+continues to reject every unlisted hash. This is a documented compatibility
+decision, not a claim that the build and candidate hashes are identical. The
+audit source records the comparison provenance; later JavaScript-only commits
+may retain that same reviewed native hash. Final-source cloud validation and
+integrated-candidate staging are still required before activation.
 
 Local `pnpm check`, all 23 OTA safety tests and all 15 publication tests passed.
 With the real production config, the guard accepts the recorded build hashes

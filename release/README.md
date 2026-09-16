@@ -18,10 +18,10 @@ platforms. Before merging baseline activation, run the manual
 `.eas/workflows/ota-preflight.yml` against the exact PR commit and require matching
 production CNG fingerprints and both platform exports. This workflow publishes
 no updates. The main push workflow rechecks compatibility before publication.
-The September 17 preflight currently fails because the integrated source's
-fingerprints differ from builds 75/25; see the linked evidence for the exact
-test-tooling input differences. Activation remains blocked. The final integrated
-candidate also needs its own staging launch check before merge.
+The September 17 initial preflight exposed test-tooling-only input drift. The
+baseline now records exact reviewed equivalents separately from the immutable
+build fingerprints; see the linked audit. Activation still requires a successful
+final-source preflight and the integrated candidate's staging launch check.
 
 ## Runtime boundary
 
@@ -70,7 +70,14 @@ generated `bareNativeDir`.
 Do not replace the workflow outputs with `expo fingerprint:generate` from the
 normal checkout and do not set `unstable_skip_cng_check`. Missing fingerprint
 outputs are classified as a preflight failure and block publication. A valid but
-different fingerprint is classified as native incompatibility and also blocks.
+different fingerprint blocks unless the same platform/build baseline contains
+that exact hash in `reviewedCompatibleFingerprints`. Such a record must bind the
+original build fingerprint, full audit source SHA and evidence of an EAS source
+comparison showing native equivalence. Never overwrite a build's actual hash,
+ignore input classes globally or approve an unknown future fingerprint. Missing
+or malformed review records fail closed. Success reports explicitly identify
+when reviewed equivalence was used; all manifest, runtime, SDK, channel,
+distribution and embedded-update checks still apply.
 
 ## Verifying and replacing the baseline
 
