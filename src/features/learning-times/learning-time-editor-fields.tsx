@@ -88,9 +88,7 @@ function LearningTimeEditorFields({
 								className="aspect-square max-w-12 flex-1 items-center justify-center rounded-full active:opacity-80"
 								onPress={() => onDayChange(day.label)}
 								style={{
-									backgroundColor: isSelected
-										? colors.primary
-										: colors.surface,
+									backgroundColor: isSelected ? colors.primary : colors.surface,
 									borderCurve: "continuous",
 								}}
 							>
@@ -114,11 +112,7 @@ function LearningTimeEditorFields({
 					value={startTime}
 					onPress={onStartTimePress}
 				/>
-				<TimeControl
-					label="Ende"
-					value={endTime}
-					onPress={onEndTimePress}
-				/>
+				<TimeControl label="Ende" value={endTime} onPress={onEndTimePress} />
 			</View>
 		</>
 	);

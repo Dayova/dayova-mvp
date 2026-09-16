@@ -4,14 +4,18 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { LearningTimeEditorFields } from "./learning-time-editor-fields";
 
 jest.mock("~/components/ui/icon", () => {
-	const { Text } = jest.requireActual("react-native") as typeof import("react-native");
+	const { Text } = jest.requireActual(
+		"react-native",
+	) as typeof import("react-native");
 	return { Timer: () => <Text>Timer</Text> };
 });
 
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
 		colors: (
-			jest.requireActual("~/lib/design-system") as typeof import("~/lib/design-system")
+			jest.requireActual(
+				"~/lib/design-system",
+			) as typeof import("~/lib/design-system")
 		).DAYOVA_DESIGN_SYSTEM.colors,
 	}),
 }));
