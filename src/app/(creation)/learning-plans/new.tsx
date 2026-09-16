@@ -1,4 +1,3 @@
-import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
@@ -9,6 +8,8 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { MAX_LEARNING_MATERIAL_FILE_BYTES } from "#convex/learningMaterialPolicy";
+import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import {
 	ActionSheet,
 	actionSheetIconColor,
@@ -27,11 +28,11 @@ import {
 	examEntrySuccessPath,
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
+import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
 	MaterialUploadStep,
 	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
-import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import type {
 	LearningPlanSnapshot,
 	UploadAsset,
@@ -233,10 +234,13 @@ export default function NewLearningPlanScreen() {
 		const fileSizeBytes = asset.size ?? file.info().size ?? 0;
 		const fileType = asset.mimeType || "application/octet-stream";
 
-		const validation = validateUploadFile({
-			name: asset.name,
-			size: fileSizeBytes,
-		});
+		const validation = validateUploadFile(
+			{
+				name: asset.name,
+				size: fileSizeBytes,
+			},
+			MAX_LEARNING_MATERIAL_FILE_BYTES,
+		);
 		if (!validation.valid) throw new Error(validation.message);
 
 		return { asset, file, fileSizeBytes, fileType };
@@ -650,7 +654,8 @@ export default function NewLearningPlanScreen() {
 				onClose={closeUploadSheet}
 				onDismiss={runPendingUploadAction}
 				closeAccessibilityLabel="Hochladen schließen"
-				layout="tile"
+				layout="row"
+				appearance="flat"
 				onSelect={chooseUploadAction}
 				options={[
 					{

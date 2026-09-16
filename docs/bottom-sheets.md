@@ -77,3 +77,11 @@ When those conditions are met, the migration path is:
 4. Remove `@gorhom/bottom-sheet` and `react-native-gesture-handler` from
    dependencies if they are no longer used.
 5. Re-test picker sheets on Android and iOS with long option lists.
+
+## Material-upload action sheet
+
+Learning-material upload uses `ActionSheet` with row layout and
+`appearance="flat"`: file/camera choices have borders without raised shadows,
+and the sheet uses a compact shared close control (32px circle, 20px icon,
+8px hit slop). Other action sheets retain the existing raised default.
+The compact appearance does not change dismissal, focus, or Android Back behavior.
