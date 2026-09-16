@@ -48,6 +48,7 @@ type DayovaSheetFrameProps = {
 	size?: DayovaSheetSize;
 	dismissible?: boolean;
 	showCloseButton?: boolean;
+	compactCloseButton?: boolean;
 	scrollable?: boolean;
 	closeAccessibilityLabel?: string;
 	accessibilityLabel?: string;
@@ -66,6 +67,7 @@ function DayovaSheetFrame({
 	size = "content",
 	dismissible = true,
 	showCloseButton = true,
+	compactCloseButton = false,
 	scrollable = false,
 	closeAccessibilityLabel = "Dialog schließen",
 	accessibilityLabel,
@@ -285,9 +287,7 @@ function DayovaSheetFrame({
 			)}
 			// Safe-area padding is runtime device data and cannot be a static utility.
 			style={{
-				paddingBottom: hasFixedFooter
-					? 12
-					: Math.max(insets.bottom + 20, 32),
+				paddingBottom: hasFixedFooter ? 12 : Math.max(insets.bottom + 20, 32),
 			}}
 		>
 			{!title ? (
@@ -321,6 +321,7 @@ function DayovaSheetFrame({
 						)}
 						{canShowCloseButton ? (
 							<CloseButton
+								compact={compactCloseButton}
 								accessibilityLabel={closeAccessibilityLabel}
 								onPress={dismiss}
 							/>

@@ -1,5 +1,4 @@
 const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
-const MAX_UPLOAD_FILE_LABEL = "7 MiB";
 
 export const ACCEPTED_FILE_TYPES = [
 	"application/pdf",
@@ -56,10 +55,13 @@ export const formatFileSize = (sizeBytes: number) => {
 	return `${value >= 10 ? value.toFixed(1) : value.toFixed(2)} MiB`;
 };
 
-export const validateUploadFile = (file: {
-	name: string;
-	size?: number | null;
-}) => {
+export const validateUploadFile = (
+	file: {
+		name: string;
+		size?: number | null;
+	},
+	maxFileBytes = MAX_UPLOAD_FILE_BYTES,
+) => {
 	const extension = getFileExtension(file.name);
 	if (!ACCEPTED_UPLOAD_EXTENSIONS.includes(extension)) {
 		return {
@@ -76,10 +78,10 @@ export const validateUploadFile = (file: {
 		};
 	}
 
-	if ((file.size ?? 0) > MAX_UPLOAD_FILE_BYTES) {
+	if ((file.size ?? 0) > maxFileBytes) {
 		return {
 			valid: false,
-			message: `Die Datei ist mit ${formatFileSize(file.size ?? 0)} zu groß (maximal ${MAX_UPLOAD_FILE_LABEL}).`,
+			message: `Die Datei ist mit ${formatFileSize(file.size ?? 0)} zu groß (maximal ${formatFileSize(maxFileBytes)}).`,
 		};
 	}
 

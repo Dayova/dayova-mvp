@@ -5,6 +5,7 @@ import {
 	generateText,
 	type LanguageModelUsage,
 	NoObjectGeneratedError,
+	NoOutputGeneratedError,
 	Output,
 } from "ai";
 import { v } from "convex/values";
@@ -32,6 +33,7 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
+import { MAX_LEARNING_MATERIAL_FILE_BYTES } from "./learningMaterialPolicy";
 import { estimateGeminiCostUsdMicros } from "./learningPlanAiCost";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
@@ -67,7 +69,6 @@ import {
 } from "./learningTopicMap";
 import { areSemanticallyDuplicateQuestions } from "./questionNovelty";
 
-const MAX_UPLOAD_FILE_BYTES = 7 * 1024 * 1024;
 const MAX_EXTRACTED_TEXT_CHARS = 90_000;
 const MAX_PROMPT_CONTEXT_CHARS = 70_000;
 const MAX_SESSION_TITLE_CHARS = 28;
@@ -753,11 +754,21 @@ const withGeneratedTextRetry = async <TResult>(
 			);
 		} catch (error) {
 			const isDuplicatePrompt = error instanceof DuplicateGeneratedPromptError;
+			const isEmptyOutput = NoOutputGeneratedError.isInstance(error);
 			if (
-				(isInvalidGeneratedGermanTextError(error) || isDuplicatePrompt) &&
+				(isInvalidGeneratedGermanTextError(error) ||
+					isDuplicatePrompt ||
+					isEmptyOutput) &&
 				attempt < MAX_GENERATED_TEXT_ATTEMPTS - 1
 			) {
 				continue;
+			}
+
+			if (isEmptyOutput) {
+				logDiagnosticError("learningPlanAi.emptyOutput", error, {
+					attempts: MAX_GENERATED_TEXT_ATTEMPTS,
+				});
+				throwUserFacingError(fallbackMessage);
 			}
 
 			if (isInvalidGeneratedGermanTextError(error)) {
@@ -910,7 +921,7 @@ const buildModelInputFromDocuments = async (
 	const textSections: string[] = [];
 
 	for (const document of documents) {
-		if (document.fileSizeBytes > MAX_UPLOAD_FILE_BYTES) {
+		if (document.fileSizeBytes > MAX_LEARNING_MATERIAL_FILE_BYTES) {
 			throwUserFacingError(
 				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
 			);
@@ -946,7 +957,7 @@ const buildModelInputFromDocuments = async (
 		}
 
 		const arrayBuffer = await response.arrayBuffer();
-		if (arrayBuffer.byteLength > MAX_UPLOAD_FILE_BYTES) {
+		if (arrayBuffer.byteLength > MAX_LEARNING_MATERIAL_FILE_BYTES) {
 			throwUserFacingError(
 				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
 			);
@@ -1692,6 +1703,7 @@ const normalizeSessions = (
 };
 
 export const __testOnlyLearningPlanAi = {
+	withGeneratedTextRetry,
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
 	generatedTaskChoiceSchema,
@@ -3163,7 +3175,7 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 					result.output.sourceSummary,
 				),
 			};
-		}, "Der Wissenscheck konnte nicht zuverlässig erstellt werden. Prüfe deine Schulunterlagen und versuche es erneut.");
+		}, "Der Wissenscheck konnte gerade nicht erstellt werden. Deine Schulunterlagen bleiben gespeichert. Versuche es erneut.");
 
 		await ctx.runMutation(internal.learningPlans.storeKnowledgeQuestions, {
 			learningPlanId: args.learningPlanId,
