@@ -108,13 +108,15 @@ jobs:
   pr_ota_report:
     name: PR OTA compatibility report
     type: doc
-    after:
+    after: &pr_ota_report_dependencies
       - production_fingerprint
       - ota_checks
     if: ${{ github.event_name == 'pull_request' }}
     params:
-      md: |
+      md: &pr_ota_report_markdown |
         ## PR OTA compatibility
+
+        **Checked commit:** `${{ github.sha }}` · [View EAS run](${{ workflow.url }})
 
         **Source repository:** ${{ github.event.pull_request.head.repo.full_name || 'Unavailable' }}
         **Target repository:** ${{ github.event.pull_request.base.repo.full_name || 'Unavailable' }}
@@ -135,6 +137,14 @@ jobs:
 
         This report is advisory and publishes nothing. Main rechecks the merged
         source and blocks publication unless compatibility is confirmed.
+
+  pr_ota_comment:
+    name: Post OTA report to GitHub PR
+    type: github-comment
+    after: *pr_ota_report_dependencies
+    if: ${{ github.event_name == 'pull_request' }}
+    params:
+      payload: *pr_ota_report_markdown
 
   deploy_convex:
     name: Deploy Convex

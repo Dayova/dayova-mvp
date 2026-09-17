@@ -19,6 +19,7 @@ const evaluate = (expression: string, context: Record<string, unknown>) =>
 
 const event = (eventName: string, association = "MEMBER", fork = false) => ({
 	event_name: eventName,
+	sha: "0123456789abcdef0123456789abcdef01234567",
 	ref_name: eventName === "push" ? "main" : "feature",
 	// Do not assume EAS's convenience field uses GitHub's owner/name format.
 	repository: "dayova-mvp",
@@ -68,6 +69,9 @@ describe("PR OTA workflow routing", () => {
 		expect(Boolean(evaluate(workflow.jobs.deploy_convex.if, context))).toBe(
 			isMainPush,
 		);
+		expect(Boolean(evaluate(workflow.jobs.pr_ota_comment.if, context))).toBe(
+			github.event_name === "pull_request",
+		);
 	});
 
 	it.each([
@@ -109,6 +113,9 @@ describe("PR OTA workflow routing", () => {
 		);
 		const context = {
 			github: event("pull_request"),
+			workflow: {
+				url: "https://expo.dev/accounts/dayova/projects/dayova/workflows/test-run",
+			},
 			after: {
 				production_fingerprint: { status },
 				ota_checks: { status, outputs: { ota_safe: safe } },
@@ -119,5 +126,18 @@ describe("PR OTA workflow routing", () => {
 			(expression: string) => String(evaluate(expression, context)),
 		);
 		expect(rendered).toContain(`**OTA-compatible:** ${expected}`);
+		expect(rendered).toContain(context.github.sha);
+		expect(rendered).toContain(`[View EAS run](${context.workflow.url})`);
+
+		// Both destinations render the same template, including failed assessments.
+		const comment = workflow.jobs.pr_ota_comment;
+		expect(comment.type).toBe("github-comment");
+		expect(comment.needs).toBeUndefined();
+		expect(comment.after).toEqual(report.after);
+		const commentBody = comment.params.payload.replace(
+			/\$\{\{.*?\}\}/g,
+			(expression: string) => String(evaluate(expression, context)),
+		);
+		expect(commentBody).toBe(rendered);
 	});
 });

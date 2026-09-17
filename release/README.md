@@ -73,10 +73,17 @@ production fingerprint and OTA jobs used on `main` verify both platform exports
 and compare the candidate with the distributed-binary baseline. Fork PRs do not
 run these production-environment jobs.
 
-The **PR OTA compatibility report** in the EAS workflow shows the result, reason,
-baseline and fingerprints, including an explicit unconfirmed result when an
-upstream job fails or is skipped. Incompatibility is advisory: a legitimate
-native change can merge, but production OTA remains blocked until the required
+The **PR OTA compatibility report** in the EAS workflow shows the checked commit,
+run link, result, reason, baseline and fingerprints, including an explicit
+unconfirmed result when an upstream job fails or is skipped. The native EAS
+`github-comment` job posts that same rendered report to the PR conversation using
+the existing GitHub integration; no repository token or custom comment script is
+needed. Reports are tied to their checked commit and run, so an older result is
+not evidence about a newer PR head. A canceled run may not reach the reporting
+jobs; consult the latest run before relying on an earlier comment.
+
+Incompatibility is advisory: a legitimate native change can merge, but
+production OTA remains blocked until the required
 native release or exact reviewed compatibility record is verified. Export or
 preflight execution errors fail the check rather than masquerading as a completed
 compatibility assessment.
