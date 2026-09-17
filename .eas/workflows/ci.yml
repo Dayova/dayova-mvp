@@ -141,6 +141,7 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     params:
       md: &pr_ota_report_markdown |
+        <!-- dayova-ota-report -->
         ## 📱 OTA compatibility
 
         ### ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && '✅ OTA-compatible' || after.ota_checks.outputs.ota_safe == 'false' && '⚠️ Not OTA-compatible') || '❓ Compatibility not confirmed' }}
