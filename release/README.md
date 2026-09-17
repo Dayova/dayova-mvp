@@ -71,7 +71,8 @@ CI checks OTA compatibility before merge for trusted contributors' PRs targeting
 `main` from this repository. After lint, typecheck and tests pass, the same
 production fingerprint and OTA jobs used on `main` verify both platform exports
 and compare the candidate with the distributed-binary baseline. Fork PRs do not
-run these production-environment jobs.
+run the production-scoped quality-check, fingerprint, or OTA jobs, including
+forks opened by repository owners, members, or collaborators.
 
 The **PR OTA compatibility report** in the EAS workflow shows the checked commit,
 run link, result, reason, baseline and fingerprints, including an explicit

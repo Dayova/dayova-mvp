@@ -148,12 +148,39 @@ const event = (eventName: string, association = "MEMBER", fork = false) => ({
 });
 
 describe("PR OTA workflow routing", () => {
+	it.each([undefined, null])("rejects missing repository IDs (%s)", (id) => {
+		const github = event("pull_request");
+		const pullRequest = github.event.pull_request;
+		expect(
+			Boolean(
+				evaluate(workflow.jobs.source_gate.if, {
+					github: {
+						...github,
+						event: {
+							pull_request: {
+								...pullRequest,
+								head: { repo: { ...pullRequest.head.repo, id } },
+								base: { repo: { ...pullRequest.base.repo, id } },
+							},
+						},
+					},
+				}),
+			),
+		).toBe(false);
+	});
+
 	it.each([
 		["owner PR", event("pull_request", "OWNER"), true],
 		["member PR", event("pull_request"), true],
 		["collaborator PR", event("pull_request", "COLLABORATOR"), true],
 		["untrusted PR", event("pull_request", "CONTRIBUTOR"), false],
-		["trusted fork PR", event("pull_request", "MEMBER", true), false],
+		["owner fork PR", event("pull_request", "OWNER", true), false],
+		["member fork PR", event("pull_request", "MEMBER", true), false],
+		[
+			"collaborator fork PR",
+			event("pull_request", "COLLABORATOR", true),
+			false,
+		],
 		["main push", event("push"), true],
 		["other push", { ...event("push"), ref_name: "feature" }, false],
 		["manual CI", event("workflow_dispatch"), false],
@@ -166,6 +193,9 @@ describe("PR OTA workflow routing", () => {
 				(job.needs ?? []).every(canRun)
 			);
 		};
+		expect(canRun("checks")).toBe(
+			expected || github.event_name === "workflow_dispatch",
+		);
 		expect(canRun("production_fingerprint")).toBe(expected);
 		expect(canRun("ota_checks")).toBe(expected);
 		const publicationContext = {

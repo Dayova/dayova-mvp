@@ -24,6 +24,14 @@ defaults:
     pnpm: "11.15.1"
 
 jobs:
+  source_gate:
+    name: CI source eligibility
+    type: doc
+    # Keep the repository boundary separate to fit EAS's 250-character conditions.
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
+    params:
+      md: "CI source is eligible: pull requests must originate from this repository."
+
   production_fingerprint:
     name: Production native fingerprints
     type: fingerprint
@@ -37,7 +45,9 @@ jobs:
     name: Lint, typecheck, and test
     type: custom
     runs_on: linux-medium
-    # One gate for trusted PRs, manual checks, and the merged main commit.
+    needs:
+      - source_gate
+    # This custom job uses production scope; fork code must not reach checkout.
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association)) }}
     steps:
       - uses: eas/checkout
