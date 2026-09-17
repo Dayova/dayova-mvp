@@ -28,7 +28,10 @@ jobs:
     name: Production native fingerprints
     type: fingerprint
     environment: production
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    # checks supplies the contributor trust gate; production inputs stay off forks.
+    needs:
+      - checks
+    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
 
   checks:
     name: Lint, typecheck, and test
@@ -55,7 +58,7 @@ jobs:
     needs:
       - checks
       - production_fingerprint
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
     environment: production
     env:
       APP_VARIANT: production
@@ -94,6 +97,41 @@ jobs:
           set-output ota_reason "$ota_reason"
           set-output ota_baseline "$ota_baseline"
           set-output ota_current_fingerprints "$ota_current_fingerprints"
+
+          # Native incompatibility is advisory on PRs; an incomplete check is not.
+          ota_failure_kind="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).failureKind')"
+          set-output ota_failure_kind "$ota_failure_kind"
+      - name: Require a completed PR OTA assessment
+        if: ${{ github.event_name == 'pull_request' }}
+        run: test "${{ steps.ota_guard.outputs.ota_failure_kind }}" != "preflight"
+
+  pr_ota_report:
+    name: PR OTA compatibility report
+    type: doc
+    after:
+      - production_fingerprint
+      - ota_checks
+    if: ${{ github.event_name == 'pull_request' }}
+    params:
+      md: |
+        ## PR OTA compatibility
+
+        **OTA-compatible:** ${{ after.ota_checks.status == 'success' && after.ota_checks.outputs.ota_safe || 'Not confirmed' }}
+
+        **Reason:** ${{ after.ota_checks.outputs.ota_reason || 'Assessment did not complete. Inspect the fingerprint and OTA jobs. Production checks run only for trusted, same-repository PRs after quality checks pass.' }}
+
+        **Fingerprint job:** ${{ after.production_fingerprint.status }}
+        **OTA/export job:** ${{ after.ota_checks.status }}
+        **Distributed baseline:** ${{ after.ota_checks.outputs.ota_baseline || 'Not assessed' }}
+        **Current fingerprints:** ${{ after.ota_checks.outputs.ota_current_fingerprints || 'Not assessed' }}
+
+        A false result means this source cannot ship to the recorded binaries via OTA.
+        Native changes may still merge, but need a verified native release or an
+        independently reviewed compatibility record before OTA can resume.
+        A failed or skipped assessment is not evidence of OTA compatibility.
+
+        This report is advisory and publishes nothing. Main rechecks the merged
+        source and blocks publication unless compatibility is confirmed.
 
   deploy_convex:
     name: Deploy Convex

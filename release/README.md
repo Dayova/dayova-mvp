@@ -65,6 +65,29 @@ uncommitted upload is not acceptable provenance.
 
 ## Phase-equivalent fingerprints
 
+### Pull request feedback
+
+CI checks OTA compatibility before merge for trusted contributors' PRs targeting
+`main` from this repository. After lint, typecheck and tests pass, the same
+production fingerprint and OTA jobs used on `main` verify both platform exports
+and compare the candidate with the distributed-binary baseline. Fork PRs do not
+run these production-environment jobs.
+
+The **PR OTA compatibility report** in the EAS workflow shows the result, reason,
+baseline and fingerprints, including an explicit unconfirmed result when an
+upstream job fails or is skipped. Incompatibility is advisory: a legitimate
+native change can merge, but production OTA remains blocked until the required
+native release or exact reviewed compatibility record is verified. Export or
+preflight execution errors fail the check rather than masquerading as a completed
+compatibility assessment.
+
+PR results describe the checked source and baseline; they do not authorize a
+release or prove device behavior. The merged `main` commit must pass the checks
+again before publishing. Manual CI runs remain quality-only; use
+`ota-preflight.yml` for a manual, non-publishing production assessment.
+
+### Gate inputs
+
 The production workflow uses EAS's CNG-aware `fingerprint` job with the
 `production` environment. Its iOS and Android outputs are the only accepted gate
 inputs. This is the same EAS-supported phase used to match CNG builds and avoids
