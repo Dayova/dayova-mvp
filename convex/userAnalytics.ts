@@ -294,6 +294,27 @@ const getSessionStatus = (
 ): SessionStatus =>
 	session.executionStatus ?? (session.completed ? "completed" : "notStarted");
 
+// Legacy plans store ISO timestamps; rolling plans store YYYY-MM-DD. Compare
+// calendar days before start times so a later preview cannot jump ahead of theory.
+const getNextExecutableSession = (
+	sessions: Doc<"learningPlanSessions">[],
+	todayKey: string,
+) => {
+	const eligible = sessions
+		.filter((session) => session.planningStatus !== "provisional")
+		.sort(
+			(left, right) =>
+				left.dateKey.slice(0, 10).localeCompare(right.dateKey.slice(0, 10)) ||
+				left.startTime.localeCompare(right.startTime) ||
+				left.sortOrder - right.sortOrder,
+		);
+	return (
+		eligible.find((session) => session.dateKey.slice(0, 10) >= todayKey) ??
+		eligible[0] ??
+		null
+	);
+};
+
 const isWithinPeriod = (
 	timestamp: number,
 	startDayKey: string | null,
@@ -658,16 +679,8 @@ export const getOverview = query({
 
 		const openSessions = effectiveSessions
 			.filter((session) => getSessionStatus(session) !== "completed")
-			.filter((session) => planById.has(session.learningPlanId))
-			.sort((left, right) =>
-				`${left.dateKey}-${left.startTime}`.localeCompare(
-					`${right.dateKey}-${right.startTime}`,
-				),
-			);
-		const nextSession =
-			openSessions.find((session) => session.dateKey >= args.todayKey) ??
-			openSessions.at(-1) ??
-			null;
+			.filter((session) => planById.has(session.learningPlanId));
+		const nextSession = getNextExecutableSession(openSessions, args.todayKey);
 		const nextSessionPlan = nextSession
 			? planById.get(nextSession.learningPlanId)
 			: null;
@@ -1444,21 +1457,15 @@ export const getExamAnalysis = query({
 		const primaryProblem = publicProblems[0] ?? null;
 		const secondaryProblems = publicProblems.slice(1, 3);
 
-		const openSessions = effectiveSessions
-			.filter((session) => getSessionStatus(session) !== "completed")
-			.sort((left, right) =>
-				`${left.dateKey}-${left.startTime}`.localeCompare(
-					`${right.dateKey}-${right.startTime}`,
-				),
-			);
-		const nextSession =
-			openSessions.find((session) => session.dateKey >= args.todayKey) ??
-			openSessions.at(-1) ??
-			null;
+		const openSessions = effectiveSessions.filter(
+			(session) => getSessionStatus(session) !== "completed",
+		);
+		const nextSession = getNextExecutableSession(openSessions, args.todayKey);
 		const deferredValidationSession =
 			effectiveSessions
 				.filter(
 					(session) =>
+						session.planningStatus !== "provisional" &&
 						session.phase === "theory" &&
 						session.compositionVariant === "split" &&
 						getSessionStatus(session) === "completed" &&
