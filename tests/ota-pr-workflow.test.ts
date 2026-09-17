@@ -208,10 +208,10 @@ describe("PR OTA workflow routing", () => {
 	});
 
 	it.each([
-		["success", "true", "true"],
-		["success", "false", "false"],
-		["failure", "true", "Not confirmed"],
-		["skipped", undefined, "Not confirmed"],
+		["success", "true", "✅ OTA-compatible"],
+		["success", "false", "⚠️ Not OTA-compatible"],
+		["failure", "true", "❓ Compatibility not confirmed"],
+		["skipped", undefined, "❓ Compatibility not confirmed"],
 	])("reports %s / %s without claiming unassessed safety", (status, safe, expected) => {
 		const report = workflow.jobs.pr_ota_report;
 		expect(report.needs).toBeUndefined();
@@ -232,7 +232,7 @@ describe("PR OTA workflow routing", () => {
 			/\$\{\{.*?\}\}/g,
 			(expression: string) => String(evaluate(expression, context)),
 		);
-		expect(rendered).toContain(`**OTA-compatible:** ${expected}`);
+		expect(rendered).toContain(`### ${expected}`);
 		expect(rendered).toContain(context.github.sha);
 		expect(rendered).toContain(`[View EAS run](${context.workflow.url})`);
 

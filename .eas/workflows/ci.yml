@@ -131,29 +131,34 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     params:
       md: &pr_ota_report_markdown |
-        ## PR OTA compatibility
+        ## 📱 OTA compatibility
 
-        **Checked commit:** `${{ github.sha }}` · [View EAS run](${{ workflow.url }})
+        ### ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && '✅ OTA-compatible' || after.ota_checks.outputs.ota_safe == 'false' && '⚠️ Not OTA-compatible') || '❓ Compatibility not confirmed' }}
+
+        ${{ after.ota_checks.status == 'success' && (after.ota_checks.outputs.ota_safe == 'true' && 'This commit is compatible with the recorded app builds.' || after.ota_checks.outputs.ota_safe == 'false' && 'This commit cannot ship via OTA to the recorded app builds. A verified native release or compatibility review is needed.') || 'The assessment failed or was skipped. Open the EAS run to see what needs attention.' }}
+
+        | Check | Status |
+        | --- | --- |
+        | 🧬 Native fingerprints | ${{ after.production_fingerprint.status == 'success' && '✅ Completed' || after.production_fingerprint.status == 'failure' && '❌ Failed' || '⏭️ Not completed' }} |
+        | 📦 iOS & Android exports + OTA assessment | ${{ after.ota_checks.status == 'success' && '✅ Completed' || after.ota_checks.status == 'failure' && '❌ Failed' || '⏭️ Not completed' }} |
+
+        🔎 [View EAS run](${{ workflow.url }}) · **Checked commit:** `${{ github.sha }}`
+
+        💡 **Advisory for merging.** Native changes can still merge. Nothing is published by this PR check; main rechecks the merged commit before publishing.
+
+        <details>
+        <summary>🛠️ Technical details — reason, builds & fingerprints</summary>
+
+        **Reason:** ${{ after.ota_checks.outputs.ota_reason || 'Assessment did not complete. Production checks run only for trusted, same-repository PRs after quality checks pass.' }}
+
+        **Distributed builds:** ${{ after.ota_checks.outputs.ota_baseline || 'Not assessed' }}
+
+        **Current fingerprints:** ${{ after.ota_checks.outputs.ota_current_fingerprints || 'Not assessed' }}
 
         **Source repository:** ${{ github.event.pull_request.head.repo.full_name || 'Unavailable' }}
         **Target repository:** ${{ github.event.pull_request.base.repo.full_name || 'Unavailable' }}
 
-        **OTA-compatible:** ${{ after.ota_checks.status == 'success' && after.ota_checks.outputs.ota_safe || 'Not confirmed' }}
-
-        **Reason:** ${{ after.ota_checks.outputs.ota_reason || 'Assessment did not complete. Inspect the fingerprint and OTA jobs. Production checks run only for trusted, same-repository PRs after quality checks pass.' }}
-
-        **Fingerprint job:** ${{ after.production_fingerprint.status }}
-        **OTA/export job:** ${{ after.ota_checks.status }}
-        **Distributed baseline:** ${{ after.ota_checks.outputs.ota_baseline || 'Not assessed' }}
-        **Current fingerprints:** ${{ after.ota_checks.outputs.ota_current_fingerprints || 'Not assessed' }}
-
-        A false result means this source cannot ship to the recorded binaries via OTA.
-        Native changes may still merge, but need a verified native release or an
-        independently reviewed compatibility record before OTA can resume.
-        A failed or skipped assessment is not evidence of OTA compatibility.
-
-        This report is advisory and publishes nothing. Main rechecks the merged
-        source and blocks publication unless compatibility is confirmed.
+        </details>
 
   pr_ota_comment:
     name: Post OTA report to GitHub PR
