@@ -10,6 +10,7 @@ type WeeklyLearningTime = {
 	dayOfWeek: number;
 	startTime: string;
 	endTime: string;
+	preferenceStatus?: "proposed" | "confirmed";
 };
 
 type WeeklyLearningTimesProps = {
@@ -96,6 +97,13 @@ function WeeklyLearningTimes({
 											>
 												{timeRange}
 											</Text>
+											{entry.preferenceStatus === "proposed" ? (
+												<View className="mr-2 rounded-full bg-system-subtle px-2.5 py-1">
+													<Text className="font-poppins font-semibold text-body-5 text-primary">
+														Vorschlag
+													</Text>
+												</View>
+											) : null}
 											<ArrowRight
 												size={18}
 												color={colors.secondaryText}

@@ -34,8 +34,8 @@ The next unfinished committed, timed session in a `Persönlicher Lernplan`. The 
 _Avoid_: Hard lock, hidden future sessions, fixed full-plan roadmap
 
 **Lernzeit**:
-A recurring availability window chosen by the learner in Einstellungen that tells Dayova when learning may be scheduled. It is not itself a scheduled session or learning content.
-_Avoid_: Lernsession, Lernblock, automatically invented availability
+A recurring availability window that tells Dayova when learning may be scheduled. A learner can confirm or edit it in Einstellungen. When no preference exists, Dayova may create an explicitly labeled provisional default so the first plan is immediately usable; the proposal remains distinguishable from a confirmed preference until the learner accepts or edits it. It is not itself a scheduled session or learning content.
+_Avoid_: Lernsession, Lernblock, presenting proposed defaults as user-confirmed availability
 
 **Stundenplan**:
 The learner-verified recurring weekly school schedule. It is the source of truth for school occupancy and is not expanded into months of one-off day entries.
@@ -154,6 +154,7 @@ _Avoid_: Treating Generalprobe as a fourth learner-facing phase separate from Pr
 - External learning aids and typed teacher guidance may enrich a plan but never satisfy the school-material requirement.
 - The confirmed exam scope should be an exhaustive map of distinct, assessable capabilities supported by internal school evidence, not a few broad chapter labels. Split broad areas into what the learner must explain and solve or apply, while never inventing or duplicating topics to reach a target count.
 - Learning-plan creation contains no knowledge-question or quiz step. Its first knowledge test is the scheduled, timed `Wissenscheck` with five to ten questions.
+- Manual `Lernzeit` setup is not part of the critical exam-to-plan path. When no saved availability exists, create safe provisional defaults, label them as Dayova proposals, and keep both the first learning action and later confirmation non-blocking. After the `Wissenscheck`, offer one dismissible learning-path reminder; changing availability reschedules only future sessions and preserves completed progress. See [DAY-417](https://linear.app/dayova/issue/DAY-417/remove-manual-learning-times-from-the-critical-path-and-generate-defaults).
 - An active `Persönlicher Lernplan` always exposes two future sessions with a date and start time: the committed `Nächster Lernschritt` and one provisional adaptive preview. It never materializes the complete remaining plan.
 - Completing the committed session promotes and adapts the provisional session from the latest evidence, then appends a new timed provisional session so two future sessions remain visible.
 - Uploaded timetable data remains a draft until the learner reviews and activates at least one valid `Unterrichtsstunde`.

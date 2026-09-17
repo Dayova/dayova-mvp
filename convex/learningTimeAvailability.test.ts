@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
 	deriveOnboardingLearningTimes,
+	deriveProposedLearningTimes,
 	getOnboardingLearningTimeErrorMessage,
 } from "./learningTimeAvailability";
 
@@ -73,5 +74,41 @@ describe("deriveOnboardingLearningTimes", () => {
 			ok: false,
 			reason,
 		});
+	});
+});
+
+describe("deriveProposedLearningTimes", () => {
+	test("proposes three upcoming after-school windows before the exam", () => {
+		expect(
+			deriveProposedLearningTimes({
+				currentDateKey: "2026-06-01",
+				currentTimeMinutes: 12 * 60,
+				examDateKey: "2026-06-05",
+			}),
+		).toEqual([
+			{ dayOfWeek: 1, startTime: "17:00", endTime: "17:30" },
+			{ dayOfWeek: 2, startTime: "17:00", endTime: "17:30" },
+			{ dayOfWeek: 3, startTime: "17:00", endTime: "17:30" },
+		]);
+	});
+
+	test("uses a near-term future window for an exam today", () => {
+		expect(
+			deriveProposedLearningTimes({
+				currentDateKey: "2026-06-01",
+				currentTimeMinutes: 17 * 60 + 3,
+				examDateKey: "2026-06-01",
+			}),
+		).toEqual([{ dayOfWeek: 1, startTime: "17:20", endTime: "17:50" }]);
+	});
+
+	test("returns no misleading fallback when the exam is already past", () => {
+		expect(
+			deriveProposedLearningTimes({
+				currentDateKey: "2026-06-02",
+				currentTimeMinutes: 12 * 60,
+				examDateKey: "2026-06-01",
+			}),
+		).toEqual([]);
 	});
 });

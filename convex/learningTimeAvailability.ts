@@ -28,6 +28,65 @@ export type DerivedLearningTime = {
 	endTime: string;
 };
 
+const PROPOSED_WINDOW_MINUTES = 30;
+const PROPOSED_START_MINUTES = 17 * 60;
+const MAX_PROPOSED_DAYS = 3;
+
+const parseDateKey = (value: string) => {
+	const date = new Date(`${value.slice(0, 10)}T12:00:00.000Z`);
+	return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getDayOfWeek = (date: Date) => date.getUTCDay() || 7;
+
+const roundUpToTenMinutes = (minutes: number) => Math.ceil(minutes / 10) * 10;
+
+export const deriveProposedLearningTimes = ({
+	currentDateKey,
+	currentTimeMinutes,
+	examDateKey,
+}: {
+	currentDateKey: string;
+	currentTimeMinutes: number;
+	examDateKey: string;
+}): DerivedLearningTime[] => {
+	const currentDate = parseDateKey(currentDateKey);
+	const examDate = parseDateKey(examDateKey);
+	if (!currentDate || !examDate || examDate < currentDate) return [];
+
+	const lastPlanningDate = new Date(examDate);
+	if (examDate > currentDate) {
+		lastPlanningDate.setUTCDate(lastPlanningDate.getUTCDate() - 1);
+	}
+
+	const proposed: DerivedLearningTime[] = [];
+	const usedDays = new Set<number>();
+	const cursor = new Date(currentDate);
+	while (cursor <= lastPlanningDate && proposed.length < MAX_PROPOSED_DAYS) {
+		const dayOfWeek = getDayOfWeek(cursor);
+		if (!usedDays.has(dayOfWeek)) {
+			const isToday = cursor.getTime() === currentDate.getTime();
+			const startMinutes = isToday
+				? Math.max(
+						PROPOSED_START_MINUTES,
+						roundUpToTenMinutes(currentTimeMinutes + 10),
+					)
+				: PROPOSED_START_MINUTES;
+			if (startMinutes + PROPOSED_WINDOW_MINUTES < 24 * 60) {
+				proposed.push({
+					dayOfWeek,
+					startTime: formatTime(startMinutes),
+					endTime: formatTime(startMinutes + PROPOSED_WINDOW_MINUTES),
+				});
+				usedDays.add(dayOfWeek);
+			}
+		}
+		cursor.setUTCDate(cursor.getUTCDate() + 1);
+	}
+
+	return proposed;
+};
+
 export type OnboardingLearningTimeError =
 	| "missingDays"
 	| "invalidDay"

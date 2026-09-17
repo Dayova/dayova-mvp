@@ -211,9 +211,10 @@ const getRollingSessionSchedule = async (
 	args: {
 		ownerTokenIdentifier: string;
 		plan: Doc<"learningPlans">;
-		afterSession: Doc<"learningPlanSessions">;
+		afterSession?: Doc<"learningPlanSessions">;
 		durationMinutes: number;
 		excludeSession?: Doc<"learningPlanSessions">;
+		requireFullDuration?: boolean;
 	},
 ) => {
 	const learningTimes = await ctx.db
@@ -222,20 +223,22 @@ const getRollingSessionSchedule = async (
 			q.eq("ownerTokenIdentifier", args.ownerTokenIdentifier),
 		)
 		.take(MAX_LEARNING_TIMES);
-	const afterDate = new Date(
-		`${args.afterSession.dateKey.slice(0, 10)}T12:00:00Z`,
-	);
 	const now = new Date();
 	const berlinNow = getBerlinDateTime(now);
 	const today = startOfUtcDay(new Date(`${berlinNow.dateKey}T12:00:00Z`));
+	const afterDate = args.afterSession
+		? new Date(`${args.afterSession.dateKey.slice(0, 10)}T12:00:00Z`)
+		: today;
 	const cursor = Number.isNaN(afterDate.getTime()) ? today : afterDate;
 	if (cursor < today) cursor.setTime(today.getTime());
 	const examDate = new Date(`${args.plan.examDateKey.slice(0, 10)}T12:00:00Z`);
 	if (Number.isNaN(examDate.getTime())) return null;
-	const afterDateKey = args.afterSession.dateKey.slice(0, 10);
-	const afterStartMinutes = parseTimeMinutes(args.afterSession.startTime);
+	const afterDateKey = args.afterSession?.dateKey.slice(0, 10);
+	const afterStartMinutes = args.afterSession
+		? parseTimeMinutes(args.afterSession.startTime)
+		: null;
 	const afterEndMinutes =
-		afterStartMinutes === null
+		afterStartMinutes === null || !args.afterSession
 			? null
 			: afterStartMinutes + args.afterSession.durationMinutes;
 
@@ -256,6 +259,9 @@ const getRollingSessionSchedule = async (
 			const end = parseTimeMinutes(window.endTime);
 			if (windowStart === null || end === null) return [];
 			const start = Math.max(windowStart, earliestStart);
+			if (args.requireFullDuration && start + args.durationMinutes > end) {
+				return [];
+			}
 			const windowCandidates = [];
 			for (
 				let candidateStart = start;
@@ -291,6 +297,76 @@ const getRollingSessionSchedule = async (
 		cursor.setUTCDate(cursor.getUTCDate() + 1);
 	}
 	return null;
+};
+
+export const rescheduleFutureLearningPlanSessions = async (
+	ctx: MutationCtx,
+	plan: Doc<"learningPlans">,
+	calendar: RollingPlanCalendar,
+) => {
+	const sessions = await ctx.db
+		.query("learningPlanSessions")
+		.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+			q.eq("learningPlanId", plan._id),
+		)
+		.order("asc")
+		.take(50);
+	const futureSessions = sessions.filter(
+		(session) => getSessionExecutionStatus(session) === "notStarted",
+	);
+	if (futureSessions.length === 0) {
+		return { rescheduledCount: 0, unscheduledCount: 0 };
+	}
+
+	for (const session of futureSessions) {
+		await calendar.clearSession(ctx, session);
+	}
+
+	let previousSession = sessions
+		.filter((session) => getSessionExecutionStatus(session) !== "notStarted")
+		.at(-1);
+	let rescheduledCount = 0;
+	for (const session of futureSessions) {
+		const schedule = await getRollingSessionSchedule(ctx, {
+			ownerTokenIdentifier: plan.ownerTokenIdentifier,
+			plan,
+			afterSession: previousSession,
+			durationMinutes: session.durationMinutes,
+			excludeSession: session,
+			requireFullDuration: true,
+		});
+		if (!schedule) break;
+
+		await ctx.db.patch("learningPlanSessions", session._id, {
+			dateKey: schedule.dateKey,
+			dateLabel: schedule.dateLabel,
+			startTime: schedule.startTime,
+			updatedAt: Date.now(),
+		});
+		const updatedSession = await ctx.db.get(
+			"learningPlanSessions",
+			session._id,
+		);
+		if (!updatedSession) continue;
+		if (
+			plan.status === "accepted" &&
+			updatedSession.planningStatus !== "provisional"
+		) {
+			await calendar.syncSession(ctx, plan, updatedSession);
+		}
+		previousSession = updatedSession;
+		rescheduledCount += 1;
+	}
+
+	const unscheduledCount = futureSessions.length - rescheduledCount;
+	await ctx.db.patch("learningPlans", plan._id, {
+		planningHint:
+			unscheduledCount > 0
+				? "Für einige zukünftige Lernschritte ist in deinen aktuellen Lernzeiten noch kein freier Termin verfügbar. Ergänze eine Lernzeit oder verschiebe den Prüfungstermin."
+				: undefined,
+		updatedAt: Date.now(),
+	});
+	return { rescheduledCount, unscheduledCount };
 };
 
 const isSessionScheduledInFuture = (

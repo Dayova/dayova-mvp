@@ -224,6 +224,15 @@ export type LearningPlanSnapshot = {
 			readySessionCount: number;
 			failedSessionCount: number;
 		};
+		learningTimeSuggestion?: {
+			entries: Array<{
+				dayOfWeek: number;
+				startTime: string;
+				endTime: string;
+			}>;
+			initialPromptDismissed: boolean;
+			postDiagnosticReminderDismissed: boolean;
+		};
 	};
 	documents: LearningPlanDocument[];
 	answers: LearningPlanAnswer[];
