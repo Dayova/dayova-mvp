@@ -127,6 +127,9 @@ There are no white pill buttons in the current light-mode design system. Both
 appearances are 56px tall with a 44px radius and a 0.3px inside stroke: gradient
 buttons use the vertical light-mode gradient `#00A0E6` top to `#4FD8FF` bottom
 with a white stroke, and black buttons use the light border token `#DCE6EE`.
+Destructive confirmation and delete controls are the single functional
+exception: they use the solid `destructive` red with the fixed dark
+`on-primary` text color for contrast, and are reserved for irreversible actions.
 Production screens use the shared `Button` and `BackButton` components for
 these actions. A screen-local clone is not an allowed visual variant; add a
 shared variant and update this context if a new interaction contract is truly
