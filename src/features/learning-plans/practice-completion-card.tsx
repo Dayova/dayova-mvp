@@ -213,7 +213,7 @@ export function PracticeCompletionCard({
 					variant="neutral"
 					onPress={onRepeat}
 				>
-					<Text>Nochmal üben</Text>
+					<Text>Nochmal testen</Text>
 				</Button>
 			</Surface>
 		</Animated.View>

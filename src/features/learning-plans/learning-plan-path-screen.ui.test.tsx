@@ -195,6 +195,37 @@ describe("learning-plan path", () => {
 
 		expect(screen.queryByText("Bearbeitet")).toBeNull();
 		expect(screen.queryByText(/Warum jetzt/)).toBeNull();
+		expect(screen.getByText("Nochmal lernen")).toBeOnTheScreen();
+	});
+
+	test("uses phase-specific repeat labels for completed sessions", async () => {
+		const screen = await render(
+			<SessionPreviewCard
+				canOpen
+				session={session("session_practice", {
+					completed: true,
+					executionStatus: "completed",
+					phase: "practice",
+				})}
+				onOpen={() => undefined}
+			/>,
+		);
+
+		expect(screen.getByText("Nochmal üben")).toBeOnTheScreen();
+
+		await screen.rerender(
+			<SessionPreviewCard
+				canOpen
+				session={session("session_rehearsal", {
+					completed: true,
+					executionStatus: "completed",
+					phase: "rehearsal",
+				})}
+				onOpen={() => undefined}
+			/>,
+		);
+
+		expect(screen.getByText("Nochmal testen")).toBeOnTheScreen();
 	});
 
 	test("explains that a provisional session can still change", async () => {
@@ -280,15 +311,22 @@ describe("learning-plan path", () => {
 		).toBeNull();
 
 		await fireEvent.press(
+			screen.getByTestId("learning-path-node-session_done"),
+		);
+		expect(onOpenSession).toHaveBeenCalledWith(sessions[0]);
+		expect(onSelectSession).not.toHaveBeenCalled();
+
+		await fireEvent.press(
 			screen.getByTestId("learning-path-node-session_current"),
 		);
-		expect(onOpenSession).toHaveBeenCalledWith(sessions[1]);
+		expect(onOpenSession).toHaveBeenLastCalledWith(sessions[1]);
+		expect(onOpenSession).toHaveBeenCalledTimes(2);
 		expect(onSelectSession).not.toHaveBeenCalled();
 
 		await fireEvent.press(
 			screen.getByTestId("learning-path-node-session_preview"),
 		);
-		expect(onOpenSession).toHaveBeenCalledTimes(1);
+		expect(onOpenSession).toHaveBeenCalledTimes(2);
 		expect(onSelectSession).toHaveBeenCalledWith(sessions[2]);
 	});
 
