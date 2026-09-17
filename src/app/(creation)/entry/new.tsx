@@ -294,6 +294,9 @@ export default function NewEntryScreen() {
 
 	const [step, setStep] = useState<EntryStep>(() => {
 		if (isHomework) return "basics";
+		if (params.step === "basics" || params.step === "learningAvailability") {
+			return "basics";
+		}
 		return "examType";
 	});
 	const [subject, setSubject] = useState(params.subject ?? "");
