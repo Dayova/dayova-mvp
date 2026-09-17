@@ -10,7 +10,10 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
-import { advanceRollingLearningPlan } from "./adaptiveLearningPlan";
+import {
+	advanceRollingLearningPlan,
+	rescheduleFutureLearningPlanSessions,
+} from "./adaptiveLearningPlan";
 import {
 	type AdaptiveLearningTarget,
 	adaptiveSessionCopy,
@@ -1169,7 +1172,10 @@ export const getSnapshot = query({
 			.withIndex("by_ownerTokenIdentifier", (q) =>
 				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
 			)
-			.take(1);
+			.take(MAX_LEARNING_TIMES);
+		const proposedLearningTimes = learningTimes.filter(
+			(learningTime) => learningTime.preferenceStatus === "proposed",
+		);
 		const readySessionCount = sessions.filter(
 			(session) =>
 				session.planningStatus !== "provisional" &&
@@ -1223,6 +1229,21 @@ export const getSnapshot = query({
 							failedSessionCount,
 						}
 					: undefined,
+				learningTimeSuggestion:
+					proposedLearningTimes.length > 0
+						? {
+								entries: proposedLearningTimes.map((learningTime) => ({
+									dayOfWeek: learningTime.dayOfWeek,
+									startTime: learningTime.startTime,
+									endTime: learningTime.endTime,
+								})),
+								initialPromptDismissed:
+									plan.initialLearningTimePromptDismissedAt !== undefined,
+								postDiagnosticReminderDismissed:
+									plan.postDiagnosticLearningTimeReminderDismissedAt !==
+									undefined,
+							}
+						: undefined,
 			},
 			documents: documents.map(publicDocument),
 			answers: answers.map(publicAnswer),
@@ -2612,6 +2633,43 @@ const advanceOwnedRollingLearningPlan = (
 		clearSession: clearSessionDayEntry,
 		syncSession: syncSessionDayEntry,
 	});
+
+export const rescheduleAfterLearningTimesChanged = internalMutation({
+	args: {},
+	handler: async (ctx) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const acceptedPlans = await ctx.db
+			.query("learningPlans")
+			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("status", "accepted"),
+			)
+			.order("desc")
+			.take(50);
+		const generatedPlans = await ctx.db
+			.query("learningPlans")
+			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("status", "generated"),
+			)
+			.order("desc")
+			.take(50);
+		let rescheduledCount = 0;
+		let unscheduledCount = 0;
+		for (const plan of [...acceptedPlans, ...generatedPlans]) {
+			const result = await rescheduleFutureLearningPlanSessions(ctx, plan, {
+				clearSession: clearSessionDayEntry,
+				syncSession: syncSessionDayEntry,
+			});
+			rescheduledCount += result.rescheduledCount;
+			unscheduledCount += result.unscheduledCount;
+		}
+		return { rescheduledCount, unscheduledCount };
+	},
+});
 export const startSession = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
@@ -2989,9 +3047,34 @@ export const acceptPlan = mutation({
 			status: "accepted",
 			examDayEntryId,
 			acceptedAt: now,
+			initialLearningTimePromptDismissedAt:
+				plan.initialLearningTimePromptDismissedAt ?? now,
 			updatedAt: now,
 		});
 
 		return sessions[0]?.dateKey ?? plan.examDateKey;
+	},
+});
+
+export const dismissLearningTimePrompt = mutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		kind: v.union(v.literal("initial"), v.literal("postDiagnostic")),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		const dismissedAt = Date.now();
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			...(args.kind === "initial"
+				? { initialLearningTimePromptDismissedAt: dismissedAt }
+				: { postDiagnosticLearningTimeReminderDismissedAt: dismissedAt }),
+			updatedAt: dismissedAt,
+		});
+		return dismissedAt;
 	},
 });

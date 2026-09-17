@@ -16,22 +16,15 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
+import { LearningTimeSuggestionCard } from "~/features/learning-plans/learning-time-suggestion-card";
 import { isDiagnosticLearningPlanSession } from "~/features/learning-plans/rolling-learning-window";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useBackIntent } from "~/lib/navigation";
-import { ROUTES } from "~/lib/routes";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
-
-const localDateKey = () => {
-	const today = new Date();
-	const year = today.getFullYear();
-	const month = String(today.getMonth() + 1).padStart(2, "0");
-	const day = String(today.getDate()).padStart(2, "0");
-	return `${year}-${month}-${day}`;
-};
 
 export default function LearningPlanReviewScreen() {
 	const router = useRouter();
@@ -40,6 +33,9 @@ export default function LearningPlanReviewScreen() {
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const acceptPlan = useMutation(api.learningPlans.acceptPlan);
+	const confirmProposedDefaults = useMutation(
+		api.learningTimes.confirmProposedDefaults,
+	);
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -56,9 +52,7 @@ export default function LearningPlanReviewScreen() {
 		snapshot?.plan.status === "generated" &&
 			snapshot.plan.diagnosticPlacement !== "firstSession",
 	);
-	const canStartNow = Boolean(
-		nextSession && nextSession.dateKey.slice(0, 10) <= localDateKey(),
-	);
+	const learningTimeSuggestion = snapshot?.plan.learningTimeSuggestion;
 	const goBack = () => {
 		router.replace(ROUTES.learningPlans);
 		return true;
@@ -95,11 +89,7 @@ export default function LearningPlanReviewScreen() {
 		setErrorMessage(null);
 		try {
 			await acceptPlan({ learningPlanId: planId });
-			router.replace(
-				canStartNow
-					? `/learning-plans/${planId}/sessions/${nextSession.id}`
-					: `/learning-plans/${planId}`,
-			);
+			router.replace(`/learning-plans/${planId}/sessions/${nextSession.id}`);
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(error, "Dein Lernweg konnte nicht eingetragen werden."),
@@ -107,6 +97,29 @@ export default function LearningPlanReviewScreen() {
 		} finally {
 			setIsBusy(false);
 		}
+	};
+
+	const confirmLearningTimes = async () => {
+		if (!planId || isBusy) return;
+		setIsBusy(true);
+		setErrorMessage(null);
+		try {
+			await confirmProposedDefaults({ learningPlanId: planId });
+		} catch (error) {
+			setErrorMessage(
+				getErrorMessage(
+					error,
+					"Die vorgeschlagenen Lernzeiten konnten nicht übernommen werden.",
+				),
+			);
+		} finally {
+			setIsBusy(false);
+		}
+	};
+
+	const adjustLearningTimes = () => {
+		if (!planId || isBusy) return;
+		router.push(withReturnTo(ROUTES.learningTimes, planPath(planId, "review")));
 	};
 
 	if (needsDiagnosticRegeneration) {
@@ -157,6 +170,20 @@ export default function LearningPlanReviewScreen() {
 							Ergebnisse, um den darauffolgenden Lerninhalt neu festzulegen.
 						</Text>
 					</Surface>
+
+					{learningTimeSuggestion &&
+					!learningTimeSuggestion.initialPromptDismissed ? (
+						<View className="mt-5">
+							<LearningTimeSuggestionCard
+								entries={learningTimeSuggestion.entries}
+								variant="initial"
+								isBusy={isBusy}
+								onConfirm={() => void confirmLearningTimes()}
+								onAdjust={adjustLearningTimes}
+								onContinue={() => void acceptRecommendedPath()}
+							/>
+						</View>
+					) : null}
 
 					{nextSession ? (
 						<Surface className="mt-5 rounded-[32px] px-5 py-6">
@@ -272,9 +299,7 @@ export default function LearningPlanReviewScreen() {
 							{isBusy ? (
 								<ActivityIndicator color="#FFFFFF" />
 							) : (
-								<Text>
-									{canStartNow ? "Lernschritt starten" : "Lernweg eintragen"}
-								</Text>
+								<Text>Lernschritt starten</Text>
 							)}
 						</Button>
 					</View>

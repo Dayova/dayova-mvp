@@ -610,6 +610,7 @@ type LearningPlanAiContext = {
 		dayOfWeek: number;
 		startTime: string;
 		endTime: string;
+		preferenceStatus?: "proposed" | "confirmed";
 	}>;
 	occupiedEntries: Array<{
 		dayKey: string;
@@ -1199,7 +1200,14 @@ const buildLearningSlots = (
 	const occupiedIntervalsByDay = getOccupiedIntervalsByDay(occupiedEntries);
 	const nowBerlin = getBerlinDateTime(new Date());
 	const candidates: LearningSlot[] = [];
-	for (let offset = availableDays; offset >= 1; offset -= 1) {
+	const minimumOffset =
+		availableDays === 0 &&
+		learningTimes.some(
+			(learningTime) => learningTime.preferenceStatus === "proposed",
+		)
+			? 0
+			: 1;
+	for (let offset = availableDays; offset >= minimumOffset; offset -= 1) {
 		const date = buildDateFromOffset(examDateKey, offset);
 		const dateKey = formatDateKey(date);
 		const windows = windowsByDay.get(getBerlinDayOfWeek(date)) ?? [];
@@ -3199,6 +3207,12 @@ export const generatePlan = action({
 		compositionEligibleSessionCount: number;
 	}> => {
 		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
+		await ctx.runMutation(
+			internal.learningTimes.ensureProposedDefaultsForPlan,
+			{
+				learningPlanId: args.learningPlanId,
+			},
+		);
 		const generationId = globalThis.crypto.randomUUID();
 		await ctx.runMutation(internal.learningPlans.beginContentGeneration, {
 			learningPlanId: args.learningPlanId,
