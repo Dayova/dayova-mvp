@@ -37,6 +37,7 @@ import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { cn } from "~/lib/utils";
 import type { DayEntry } from "~/types/dayEntries";
 import {
@@ -574,6 +575,7 @@ function AgendaDayPage({
 
 export function DashboardScreen() {
 	const router = useRouter();
+	const trackFeature = useFeatureAnalytics();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const insets = useSafeAreaInsets();
 	const { fontScale, width } = useWindowDimensions();
@@ -664,9 +666,10 @@ export function DashboardScreen() {
 		(dayKey: string) => {
 			const date = parseDayKey(dayKey);
 			if (!date || dayKey === selectedDayKey) return;
+			trackFeature("home.day_selected");
 			setSelectedDayKey(dayKey);
 		},
-		[selectedDayKey],
+		[selectedDayKey, trackFeature],
 	);
 
 	const selectDay = (day: CalendarDay) => {
@@ -733,6 +736,7 @@ export function DashboardScreen() {
 	const openItem = useCallback(
 		(item: DashboardAgendaItem) => {
 			if (item.kind === "schoolLesson") return;
+			trackFeature("home.entry_opened", "performed", item.entry.id);
 			const itemDate = parseDayKey(item.dayKey) ?? selectedDate;
 			const itemDayLabel = new Intl.DateTimeFormat("de-DE", {
 				weekday: "long",
@@ -741,7 +745,7 @@ export function DashboardScreen() {
 			}).format(itemDate);
 			router.push(getEntryUrl(item.entry, itemDayLabel));
 		},
-		[router, selectedDate],
+		[router, selectedDate, trackFeature],
 	);
 
 	const openLearningPlans = useCallback(

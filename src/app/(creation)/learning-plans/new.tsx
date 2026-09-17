@@ -55,6 +55,7 @@ import {
 } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
 const UPLOAD_TIMEOUT_MS = 45_000;
@@ -74,6 +75,7 @@ type PendingUploadRequest = {
 };
 
 export default function NewLearningPlanScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{
 		step?: string;
@@ -552,7 +554,14 @@ export default function NewLearningPlanScreen() {
 	const removeUploadedDocument = async (
 		documentId: Id<"learningPlanDocuments">,
 	) => {
-		await removeDocument({ id: documentId });
+		trackFeature("material.remove", "attempted", documentId);
+		try {
+			await removeDocument({ id: documentId });
+			trackFeature("material.remove", "succeeded", documentId);
+		} catch (error) {
+			trackFeature("material.remove", "failed", documentId);
+			throw error;
+		}
 	};
 
 	const exitCreation = () => {

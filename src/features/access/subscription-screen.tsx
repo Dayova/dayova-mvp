@@ -26,6 +26,7 @@ import {
 } from "~/lib/revenuecat-client";
 import { env } from "~/lib/runtime-config";
 import { getStoreName, getStoreSubscribeLabel } from "~/lib/store-subscription";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const SUBSCRIPTION_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
@@ -74,6 +75,7 @@ const getPlanDescription = (
 };
 
 export function SubscriptionScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { refreshPaidAccess } = useAccess();
@@ -155,22 +157,42 @@ export function SubscriptionScreen() {
 	) => {
 		if (storeActionInFlightRef.current) return;
 		storeActionInFlightRef.current = true;
+		const interaction =
+			successPath === "/home"
+				? "subscription.restore"
+				: "subscription.checkout";
+		const billingPeriod =
+			interaction === "subscription.checkout"
+				? selectedBillingPeriod
+				: undefined;
+		trackFeature(interaction, "attempted", undefined, billingPeriod);
 		setError(null);
 		setIsPurchasing(true);
 		try {
 			const result = await action();
-			if (result.status === "cancelled") return;
+			if (result.status === "cancelled") {
+				trackFeature(interaction, "cancelled", undefined, billingPeriod);
+				return;
+			}
 			if (result.status !== "purchased") {
+				trackFeature(interaction, "failed", undefined, billingPeriod);
 				setError("Für dieses Store-Konto wurde kein aktives Abo gefunden.");
 				return;
 			}
 			const active = await refreshPaidAccess();
+			trackFeature(
+				interaction,
+				active ? "succeeded" : "pending",
+				undefined,
+				billingPeriod,
+			);
 			if (active) router.replace(successPath);
 			else
 				setError(
 					"Der Kauf wird noch bestätigt. Bitte tippe gleich auf „Käufe wiederherstellen“.",
 				);
 		} catch (purchaseError) {
+			trackFeature(interaction, "failed", undefined, billingPeriod);
 			logDiagnosticError(
 				"Unable to complete RevenueCat action.",
 				purchaseError,
@@ -283,7 +305,15 @@ export function SubscriptionScreen() {
 							price={annualPlan?.price ?? "—"}
 							selected={selectedBillingPeriod === "annual"}
 							testID="subscription-plan-annual"
-							onPress={() => setSelectedBillingPeriod("annual")}
+							onPress={() => {
+								trackFeature(
+									"subscription.plan_selected",
+									"performed",
+									undefined,
+									"annual",
+								);
+								setSelectedBillingPeriod("annual");
+							}}
 						/>
 						<PlanCard
 							description={getPlanDescription(monthlyPlan, isLoadingPlans)}
@@ -291,7 +321,15 @@ export function SubscriptionScreen() {
 							price={monthlyPlan?.price ?? "—"}
 							selected={selectedBillingPeriod === "monthly"}
 							testID="subscription-plan-monthly"
-							onPress={() => setSelectedBillingPeriod("monthly")}
+							onPress={() => {
+								trackFeature(
+									"subscription.plan_selected",
+									"performed",
+									undefined,
+									"monthly",
+								);
+								setSelectedBillingPeriod("monthly");
+							}}
 						/>
 					</View>
 
