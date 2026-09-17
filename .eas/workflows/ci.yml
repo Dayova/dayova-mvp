@@ -106,7 +106,7 @@ jobs:
           '
 
           printf '%s\n' "$ota_report"
-          ota_reason="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).reason')"
+          ota_reason="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).reason.replace(/\b[a-f0-9]{40}\b/g, hash => "`" + hash + "`")')"
           ota_baseline="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).baseline')"
           ota_current_fingerprints="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).currentFingerprints')"
           ota_failure_kind="$(OTA_REPORT="$ota_report" node -p 'JSON.parse(process.env.OTA_REPORT).failureKind')"
@@ -151,12 +151,20 @@ jobs:
 
         **Reason:** ${{ after.ota_checks.outputs.ota_reason || 'Assessment did not complete. Production checks run only for trusted, same-repository PRs after quality checks pass.' }}
 
-        **Distributed builds:** ${{ after.ota_checks.outputs.ota_baseline || 'Not assessed' }}
+        **📦 Distributed builds:** `${{ after.ota_checks.outputs.ota_baseline || 'Not assessed' }}`
 
-        **Current fingerprints:** ${{ after.ota_checks.outputs.ota_current_fingerprints || 'Not assessed' }}
+        **🧬 Current fingerprints**
 
-        **Source repository:** ${{ github.event.pull_request.head.repo.full_name || 'Unavailable' }}
-        **Target repository:** ${{ github.event.pull_request.base.repo.full_name || 'Unavailable' }}
+        | Platform | Fingerprint |
+        | --- | --- |
+        | iOS | `${{ after.production_fingerprint.outputs.ios_fingerprint_hash || 'Not assessed' }}` |
+        | Android | `${{ after.production_fingerprint.outputs.android_fingerprint_hash || 'Not assessed' }}` |
+
+        **📂 Repositories**
+
+        | Source | Target |
+        | --- | --- |
+        | `${{ github.event.pull_request.head.repo.full_name || 'Unavailable' }}` | `${{ github.event.pull_request.base.repo.full_name || 'Unavailable' }}` |
 
         </details>
 

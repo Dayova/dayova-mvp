@@ -224,7 +224,7 @@ describe("PR OTA workflow routing", () => {
 				url: "https://expo.dev/accounts/dayova/projects/dayova/workflows/test-run",
 			},
 			after: {
-				production_fingerprint: { status },
+				production_fingerprint: { status, outputs: {} },
 				ota_checks: { status, outputs: { ota_safe: safe } },
 			},
 		};
