@@ -137,6 +137,7 @@ const STUDY_DAY_SELECTION_DURATION_MS = 180;
 const STUDY_DAY_PRESS_IN_DURATION_MS = 80;
 const STUDY_DAY_PRESS_OUT_DURATION_MS = 120;
 const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
+const ONBOARDING_CONTENT_TOP_SPACING = 40;
 const CODE_LENGTH = 6;
 const OTP_CELL_KEYS = [
 	"otp-cell-1",
@@ -1341,7 +1342,6 @@ function QuestionStepView({
 				: null;
 	const visibleError = error ?? localValidationError;
 	const isImmersiveStep = step.kind === "fact" || step.kind === "payoff";
-	const titleTopPadding = step.kind === "text" ? 50 : 28;
 	const isLearningTimeStep = step.kind === "time";
 	const [timePickerVisible, setTimePickerVisible] = useState(false);
 	const [pendingLearningTime, setPendingLearningTime] = useState(() =>
@@ -1443,12 +1443,13 @@ function QuestionStepView({
 				}}
 			>
 				<Animated.View
+					testID="onboarding-question-content"
 					entering={reducedMotion ? undefined : FadeInDown.duration(220)}
 					// Step kind and content-size mode determine the runtime answer layout.
 					style={{
 						flex: shouldStackInlineContent ? undefined : 1,
 						alignItems: "center",
-						paddingTop: isImmersiveStep ? 16 : titleTopPadding,
+						paddingTop: ONBOARDING_CONTENT_TOP_SPACING,
 					}}
 				>
 					{!isImmersiveStep ? (
