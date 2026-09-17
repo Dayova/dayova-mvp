@@ -6,6 +6,7 @@ import {
 	ScrollView,
 	type TextStyle,
 	TouchableOpacity,
+	useWindowDimensions,
 	View,
 	type ViewStyle,
 } from "react-native";
@@ -13,6 +14,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
+import { CreateEntryButton } from "~/components/create-entry-button";
 import { NotificationButton } from "~/components/notification-button";
 import {
 	ArrowRight,
@@ -24,9 +26,15 @@ import {
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
-import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
+import {
+	addDays,
+	getDayKey,
+	parseDayKey,
+	useCurrentLocalDay,
+} from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -44,6 +52,8 @@ import {
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
 import { getDashboardNextStepFallbackAction } from "./dashboard-empty-state";
+import { DashboardHighlightCarousel } from "./dashboard-highlight-carousel";
+import { getDashboardScreenLayout } from "./dashboard-layout";
 import {
 	DashboardAgendaEntryCard,
 	DashboardNextStepCard,
@@ -566,6 +576,7 @@ export function DashboardScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const insets = useSafeAreaInsets();
+	const { fontScale, width } = useWindowDimensions();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
@@ -634,6 +645,10 @@ export function DashboardScreen() {
 		new Intl.DateTimeFormat("de-DE", { weekday: "long" }).format(selectedDate),
 	);
 	const selectedDayEntryCount = entriesByDay?.[selectedDayKey]?.length ?? 0;
+	const dashboardLayout = getDashboardScreenLayout({
+		fontScale,
+		viewportWidth: width,
+	});
 	const selectedDayAgendaLabel =
 		entriesByDay === undefined
 			? "Dein Tag wird geladen …"
@@ -688,6 +703,33 @@ export function DashboardScreen() {
 		[adjustSelectedDay],
 	);
 
+	const adjustSelectedWeek = useCallback(
+		(direction: -1 | 1) => {
+			const selectedDate = parseDayKey(selectedDayKey);
+			if (!selectedDate) return;
+			const nextDayKey = getDayKey(addDays(selectedDate, direction * 7));
+			if (!dayPagerKeys.includes(nextDayKey)) return;
+			commitSelectedDay(nextDayKey);
+			triggerDaySelectionHaptic();
+		},
+		[commitSelectedDay, dayPagerKeys, selectedDayKey],
+	);
+
+	const weekSwipeGesture = useMemo(
+		() =>
+			Gesture.Pan()
+				.activeOffsetX([-24, 24])
+				.failOffsetY([-12, 12])
+				.onEnd((event) => {
+					"worklet";
+					const passedDistance = Math.abs(event.translationX) >= 56;
+					const passedVelocity = Math.abs(event.velocityX) >= 650;
+					if (!passedDistance && !passedVelocity) return;
+					scheduleOnRN(adjustSelectedWeek, event.translationX < 0 ? 1 : -1);
+				}),
+		[adjustSelectedWeek],
+	);
+
 	const openItem = useCallback(
 		(item: DashboardAgendaItem) => {
 			if (item.kind === "schoolLesson") return;
@@ -707,7 +749,12 @@ export function DashboardScreen() {
 		[router],
 	);
 	const openNextStepFallback = useCallback(
-		() => router.push(nextStepFallbackAction.route),
+		() =>
+			router.push(
+				nextStepFallbackAction.route === ROUTES.createExam
+					? withReturnTo(nextStepFallbackAction.route, ROUTES.home)
+					: nextStepFallbackAction.route,
+			),
 		[nextStepFallbackAction.route, router],
 	);
 	const openTimetable = useCallback(() => router.push("/timetable"), [router]);
@@ -736,12 +783,16 @@ export function DashboardScreen() {
 					<NotificationButton />
 				</View>
 
-				<View className="mt-10">
-					<WeekCalendar
-						days={calendarDays}
-						selectedDayKey={selectedDayKey}
-						onSelectDay={selectDay}
-					/>
+				<View style={{ marginTop: dashboardLayout.headerCalendarGap }}>
+					<GestureDetector gesture={weekSwipeGesture}>
+						<View>
+							<WeekCalendar
+								days={calendarDays}
+								selectedDayKey={selectedDayKey}
+								onSelectDay={selectDay}
+							/>
+						</View>
+					</GestureDetector>
 				</View>
 			</View>
 
@@ -757,7 +808,7 @@ export function DashboardScreen() {
 					paddingBottom: Math.max(insets.bottom + 72, 104),
 				}}
 			>
-				<View className="flex-row gap-3 px-6 pt-10 pb-5">
+				<DashboardHighlightCarousel>
 					<DashboardNextStepCard
 						mode="screen"
 						fallbackAction={nextStepFallbackAction}
@@ -775,7 +826,7 @@ export function DashboardScreen() {
 						progress={weekProgress}
 						onOpenLearningPlans={openLearningPlans}
 					/>
-				</View>
+				</DashboardHighlightCarousel>
 
 				<View>
 					{timetableState !== undefined && !timetableState.active ? (
@@ -786,16 +837,19 @@ export function DashboardScreen() {
 					) : null}
 				</View>
 
-				<View className="z-10 bg-background px-6 pt-5 pb-6">
-					<Text
-						accessibilityRole="header"
-						className="font-poppins font-semibold text-heading-2 text-text"
-					>
-						{selectedWeekday}
-					</Text>
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						{selectedDayAgendaLabel}
-					</Text>
+				<View className="z-10 flex-row items-center justify-between bg-background px-6 pt-5 pb-6">
+					<View className="min-w-0 flex-1 pr-4">
+						<Text
+							accessibilityRole="header"
+							className="font-poppins font-semibold text-heading-2 text-text"
+						>
+							{selectedWeekday}
+						</Text>
+						<Text className="font-poppins text-body-4 text-secondary-text">
+							{selectedDayAgendaLabel}
+						</Text>
+					</View>
+					<CreateEntryButton returnTo={ROUTES.home} />
 				</View>
 
 				<GestureDetector gesture={daySwipeGesture}>
