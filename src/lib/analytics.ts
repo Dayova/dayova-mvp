@@ -1,6 +1,12 @@
 import type { PostHogOptions } from "posthog-react-native";
 import { logDiagnosticError } from "./diagnostics";
 import { EXAM_TYPE_OPTIONS } from "./entry-options";
+import {
+	ANALYTICS_SCREENS,
+	FEATURE_INTERACTIONS,
+	INTERACTION_OUTCOMES,
+	INTERACTION_VALUES,
+} from "./feature-analytics";
 import { isGermanFederalState } from "./federal-states";
 import { isSupportedGrade } from "./grades";
 import { env } from "./runtime-config";
@@ -215,6 +221,16 @@ const identityOutputRules = {
 } as const satisfies EventPropertyRules;
 
 const eventPropertyRules = {
+	feature_interaction: {
+		interaction: required(oneOf(FEATURE_INTERACTIONS)),
+		outcome: required(oneOf(INTERACTION_OUTCOMES)),
+		entity_id: optional(isNonEmptyString),
+		value: optional(oneOf(INTERACTION_VALUES)),
+		screen: optional(oneOf(Object.values(ANALYTICS_SCREENS))),
+	},
+	app_screen_viewed: {
+		screen: required(oneOf(Object.values(ANALYTICS_SCREENS))),
+	},
 	onboarding_completed: {
 		local_day_key: required(isDayKey),
 		onboarding_version: required(oneOf([1, 2, 3] as const)),
@@ -617,11 +633,16 @@ export function createValidationAnalytics(
 				}
 				projectedSharedContext[rule.outputName] = value as AnalyticsProperty;
 			}
-			adapter.identify(currentDistinctId);
-			adapter.capture(eventName, {
-				...projectedSharedContext,
-				...projectedProperties,
-			});
+			try {
+				adapter.identify(currentDistinctId);
+				adapter.capture(eventName, {
+					...projectedSharedContext,
+					...projectedProperties,
+				});
+			} catch {
+				// An optional analytics transport must never turn a successful product action into a failure.
+				reportDiagnostic({ eventName });
+			}
 		},
 	};
 }

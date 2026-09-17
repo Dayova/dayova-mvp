@@ -4,6 +4,16 @@ import type { ReactNode } from "react";
 import { SEMANTIC_HEADING_MAX_FONT_SIZE_MULTIPLIER } from "~/lib/content-size-layout";
 import { TrialActivationScreen } from "./trial-activation-screen";
 
+const mockTrackFeature = jest.fn();
+jest.mock("~/lib/use-feature-analytics", () => ({
+	useFeatureAnalytics: () => mockTrackFeature,
+}));
+jest.mock("~/components/ui/icon", () => ({
+	Bell: () => null,
+	Check: () => null,
+	SquareLock: () => null,
+}));
+
 const mockActivateTrial = jest.fn(async (_termsVersion: string) => undefined);
 let mockInsets = { bottom: 34, left: 0, right: 0, top: 59 };
 
@@ -122,6 +132,12 @@ describe("TrialActivationScreen", () => {
 			screen.getByRole("button", { name: "Dayova starten" }),
 		);
 
+		expect(mockTrackFeature).toHaveBeenCalledWith("trial.start", "attempted");
+		expect(mockTrackFeature).toHaveBeenCalledWith("trial.start", "failed");
+		expect(mockTrackFeature).not.toHaveBeenCalledWith(
+			"trial.start",
+			"succeeded",
+		);
 		await waitFor(() => {
 			const error = screen.getByRole("alert", {
 				name: "Deine Testphase konnte nicht gestartet werden.",
