@@ -31,7 +31,7 @@ jobs:
     # checks supplies the contributor trust gate; production inputs stay off forks.
     needs:
       - checks
-    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
+    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
 
   checks:
     name: Lint, typecheck, and test
@@ -58,7 +58,7 @@ jobs:
     needs:
       - checks
       - production_fingerprint
-    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
+    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.id && github.event.pull_request.head.repo.id == github.event.pull_request.base.repo.id) }}
     environment: production
     env:
       APP_VARIANT: production
@@ -115,6 +115,9 @@ jobs:
     params:
       md: |
         ## PR OTA compatibility
+
+        **Source repository:** ${{ github.event.pull_request.head.repo.full_name || 'Unavailable' }}
+        **Target repository:** ${{ github.event.pull_request.base.repo.full_name || 'Unavailable' }}
 
         **OTA-compatible:** ${{ after.ota_checks.status == 'success' && after.ota_checks.outputs.ota_safe || 'Not confirmed' }}
 

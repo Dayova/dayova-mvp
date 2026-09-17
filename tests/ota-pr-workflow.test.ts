@@ -20,13 +20,18 @@ const evaluate = (expression: string, context: Record<string, unknown>) =>
 const event = (eventName: string, association = "MEMBER", fork = false) => ({
 	event_name: eventName,
 	ref_name: eventName === "push" ? "main" : "feature",
-	repository: "Dayova/dayova-mvp",
+	// Do not assume EAS's convenience field uses GitHub's owner/name format.
+	repository: "dayova-mvp",
 	event: {
 		pull_request: {
 			author_association: association,
-			head: {
-				repo: { full_name: fork ? "external/fork" : "Dayova/dayova-mvp" },
+				head: {
+				repo: {
+					id: fork ? 456 : 123,
+					full_name: fork ? "external/fork" : "Dayova/dayova-mvp",
+				},
 			},
+			base: { repo: { id: 123, full_name: "Dayova/dayova-mvp" } },
 		},
 	},
 });
@@ -103,6 +108,7 @@ describe("PR OTA workflow routing", () => {
 			expect.arrayContaining(["production_fingerprint", "ota_checks"]),
 		);
 		const context = {
+			github: event("pull_request"),
 			after: {
 				production_fingerprint: { status },
 				ota_checks: { status, outputs: { ota_safe: safe } },
