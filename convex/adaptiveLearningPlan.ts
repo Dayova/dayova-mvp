@@ -222,20 +222,23 @@ const getRollingSessionSchedule = async (
 			q.eq("ownerTokenIdentifier", args.ownerTokenIdentifier),
 		)
 		.take(MAX_LEARNING_TIMES);
-	const afterDate = new Date(
-		`${args.afterSession.dateKey.slice(0, 10)}T12:00:00Z`,
-	);
 	const now = new Date();
 	const berlinNow = getBerlinDateTime(now);
+	// Finished work no longer constrains the next appointment to its old slot.
+	const afterCompletedSession =
+		getSessionExecutionStatus(args.afterSession) === "completed";
+	const afterDateKey = afterCompletedSession
+		? berlinNow.dateKey
+		: args.afterSession.dateKey.slice(0, 10);
+	const afterDate = new Date(`${afterDateKey}T12:00:00Z`);
 	const today = startOfUtcDay(new Date(`${berlinNow.dateKey}T12:00:00Z`));
 	const cursor = Number.isNaN(afterDate.getTime()) ? today : afterDate;
 	if (cursor < today) cursor.setTime(today.getTime());
 	const examDate = new Date(`${args.plan.examDateKey.slice(0, 10)}T12:00:00Z`);
 	if (Number.isNaN(examDate.getTime())) return null;
-	const afterDateKey = args.afterSession.dateKey.slice(0, 10);
 	const afterStartMinutes = parseTimeMinutes(args.afterSession.startTime);
 	const afterEndMinutes =
-		afterStartMinutes === null
+		afterCompletedSession || afterStartMinutes === null
 			? null
 			: afterStartMinutes + args.afterSession.durationMinutes;
 
