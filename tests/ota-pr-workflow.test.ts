@@ -1,6 +1,13 @@
 // @vitest-environment node
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import {
+	mkdtempSync,
+	mkdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
@@ -9,6 +16,109 @@ import { parse } from "yaml";
 const workflow = parse(
 	readFileSync(new URL("../.eas/workflows/ci.yml", import.meta.url), "utf8"),
 );
+
+const bash =
+	process.platform === "win32"
+		? join(process.env.ProgramFiles ?? "C:/Program Files", "Git/bin/bash.exe")
+		: "bash";
+
+const validReport = {
+	safe: false,
+	failureKind: "compatibility",
+	reason: "Native fingerprint changed",
+	baseline: "Verified distributed builds",
+	currentFingerprints: "ios hash, android hash",
+};
+
+// Run the actual workflow shell with only the report producer replaced.
+const runReportGuard = (report: string, exitStatus = 1) => {
+	const directory = mkdtempSync(join(tmpdir(), "dayova-ota-report-"));
+	try {
+		mkdirSync(join(directory, "scripts"));
+		writeFileSync(
+			join(directory, "scripts/ota-safety.mjs"),
+			"process.stdout.write(process.env.OTA_TEST_REPORT); process.exitCode = Number(process.env.OTA_TEST_STATUS);",
+		);
+		const guard = workflow.jobs.ota_checks.steps.find(
+			(step: { id?: string }) => step.id === "ota_guard",
+		);
+		return spawnSync(
+			bash,
+			[
+				"-c",
+				`set-output() { printf '__OUTPUT__%s=%s\\n' "$1" "$2"; }\n${guard.run}`,
+			],
+			{
+				cwd: directory,
+				encoding: "utf8",
+				env: {
+					...process.env,
+					OTA_TEST_REPORT: report,
+					OTA_TEST_STATUS: String(exitStatus),
+				},
+			},
+		);
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
+};
+
+describe("OTA workflow report validation", () => {
+	it.each([
+		["empty", "", 1],
+		["malformed JSON", "{", 1],
+		["null", "null", 1],
+		[
+			"missing failure kind",
+			JSON.stringify({ ...validReport, failureKind: undefined }),
+			1,
+		],
+		[
+			"unknown failure kind",
+			JSON.stringify({ ...validReport, failureKind: "unexpected" }),
+			1,
+		],
+		[
+			"missing reason",
+			JSON.stringify({ ...validReport, reason: undefined }),
+			1,
+		],
+		[
+			"missing safe flag",
+			JSON.stringify({ ...validReport, safe: undefined }),
+			1,
+		],
+		[
+			"inconsistent safe flag",
+			JSON.stringify({ ...validReport, safe: true }),
+			0,
+		],
+		["inconsistent exit status", JSON.stringify(validReport), 0],
+		["unexpected process exit", JSON.stringify(validReport), 2],
+	])("rejects %s before exporting any verdict", (_label, report, status) => {
+		const result = runReportGuard(report, status);
+		expect(result.error).toBeUndefined();
+		expect(result.status).not.toBe(0);
+		expect(result.stdout).not.toContain("__OUTPUT__");
+	});
+
+	it.each([
+		[true, null, 0],
+		[false, "compatibility", 1],
+		[false, "preflight", 1],
+	])("exports a valid %s / %s assessment", (safe, failureKind, status) => {
+		const result = runReportGuard(
+			JSON.stringify({ ...validReport, safe, failureKind }),
+			status,
+		);
+		expect(result.error).toBeUndefined();
+		expect(result.status).toBe(0);
+		expect(result.stdout).toContain(`__OUTPUT__ota_safe=${safe}`);
+		expect(result.stdout).toContain(
+			`__OUTPUT__ota_failure_kind=${failureKind}`,
+		);
+	});
+});
 
 // These workflow conditions use the shared JS/EAS boolean and comparison syntax.
 const evaluate = (expression: string, context: Record<string, unknown>) =>
@@ -26,7 +136,7 @@ const event = (eventName: string, association = "MEMBER", fork = false) => ({
 	event: {
 		pull_request: {
 			author_association: association,
-				head: {
+			head: {
 				repo: {
 					id: fork ? 456 : 123,
 					full_name: fork ? "external/fork" : "Dayova/dayova-mvp",
@@ -62,7 +172,8 @@ describe("PR OTA workflow routing", () => {
 			...context,
 			needs: { ota_checks: { outputs: { ota_safe: "true" } } },
 		};
-		const isMainPush = github.event_name === "push" && github.ref_name === "main";
+		const isMainPush =
+			github.event_name === "push" && github.ref_name === "main";
 		expect(
 			Boolean(evaluate(workflow.jobs.send_updates.if, publicationContext)),
 		).toBe(isMainPush);
@@ -88,13 +199,9 @@ describe("PR OTA workflow routing", () => {
 		const context = {
 			steps: { ota_guard: { outputs: { ota_failure_kind: failureKind } } },
 		};
-		const command = step.run.replace(
-			/\$\{\{.*?\}\}/g,
-			(expression: string) => String(evaluate(expression, context)),
+		const command = step.run.replace(/\$\{\{.*?\}\}/g, (expression: string) =>
+			String(evaluate(expression, context)),
 		);
-		const bash = process.platform === "win32"
-			? join(process.env.ProgramFiles ?? "C:/Program Files", "Git/bin/bash.exe")
-			: "bash";
 		const result = spawnSync(bash, ["-c", command], { encoding: "utf8" });
 		expect(result.error).toBeUndefined();
 		expect(result.status).toBe(expected);
