@@ -16,6 +16,7 @@ import { type ActionCtx, action } from "./_generated/server";
 import { isUnknownWrittenAnswer } from "./answerEvaluation";
 import { readBooleanEnv, readOptionalEnv, readRequiredEnv } from "./env";
 import {
+	getUserFacingBackendErrorCode,
 	getUserFacingBackendErrorMessage,
 	logDiagnosticError,
 	throwUserFacingError,
@@ -708,6 +709,7 @@ const createVertexModel = () => {
 const withStructuredOutputErrorHandling = async <TResult>(
 	task: () => Promise<TResult>,
 	fallbackMessage: string,
+	errorCode?: string,
 ) => {
 	try {
 		return await task();
@@ -718,7 +720,7 @@ const withStructuredOutputErrorHandling = async <TResult>(
 				text: error.text?.slice(0, 500),
 				cause: error.cause,
 			});
-			throwUserFacingError(fallbackMessage);
+			throwUserFacingError(fallbackMessage, errorCode);
 		}
 
 		throw error;
@@ -744,12 +746,14 @@ class DuplicateGeneratedPromptError extends Error {}
 const withGeneratedTextRetry = async <TResult>(
 	task: (attempt: number) => Promise<TResult>,
 	fallbackMessage: string,
+	errorCode?: string,
 ) => {
 	for (let attempt = 0; attempt < MAX_GENERATED_TEXT_ATTEMPTS; attempt += 1) {
 		try {
 			return await withStructuredOutputErrorHandling(
 				() => task(attempt),
 				fallbackMessage,
+				errorCode,
 			);
 		} catch (error) {
 			const isDuplicatePrompt = error instanceof DuplicateGeneratedPromptError;
@@ -764,20 +768,20 @@ const withGeneratedTextRetry = async <TResult>(
 				logDiagnosticError("learningPlanAi.generatedGermanText", error, {
 					attempts: MAX_GENERATED_TEXT_ATTEMPTS,
 				});
-				throwUserFacingError(fallbackMessage);
+				throwUserFacingError(fallbackMessage, errorCode);
 			}
 			if (isDuplicatePrompt) {
 				logDiagnosticError("learningPlanAi.duplicateGeneratedPrompt", error, {
 					attempts: MAX_GENERATED_TEXT_ATTEMPTS,
 				});
-				throwUserFacingError(fallbackMessage);
+				throwUserFacingError(fallbackMessage, errorCode);
 			}
 
 			throw error;
 		}
 	}
 
-	throwUserFacingError(fallbackMessage);
+	throwUserFacingError(fallbackMessage, errorCode);
 };
 
 const runLlmGeneration = async <TResult>(
@@ -913,6 +917,7 @@ const buildModelInputFromDocuments = async (
 		if (document.fileSizeBytes > MAX_UPLOAD_FILE_BYTES) {
 			throwUserFacingError(
 				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
+				"material_processing",
 			);
 		}
 
@@ -942,6 +947,7 @@ const buildModelInputFromDocuments = async (
 			);
 			throwUserFacingError(
 				`Die Datei "${document.fileName}" konnte nicht gelesen werden. Lade sie bitte erneut hoch.`,
+				"material_processing",
 			);
 		}
 
@@ -949,6 +955,7 @@ const buildModelInputFromDocuments = async (
 		if (arrayBuffer.byteLength > MAX_UPLOAD_FILE_BYTES) {
 			throwUserFacingError(
 				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung.`,
+				"material_processing",
 			);
 		}
 
@@ -3041,6 +3048,7 @@ export const generateKnowledgeQuestions = action({
 		if (schoolDocuments.length === 0) {
 			throwUserFacingError(
 				"Lade zuerst mindestens eine Schulunterlage hoch, um einen Lernplan zu erhalten.",
+				"insufficient_material",
 			);
 		}
 
@@ -3085,85 +3093,91 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 		const { economyMode } = await getMonthlyCostMode(ctx);
 		const diagnosticModelId =
 			ENABLE_FLASH_LITE || economyMode ? FLASH_LITE_MODEL_ID : FLASH_MODEL_ID;
-		const generatedQuestions = await withGeneratedTextRetry(async (attempt) => {
-			const result = await runLlmGeneration((abortSignal) =>
-				generateText({
-					model: model(diagnosticModelId),
-					temperature: 0.2,
-					maxOutputTokens: 3_600,
-					abortSignal,
-					providerOptions: vertexProviderOptions,
-					output: Output.object({ schema: questionsSchema }),
-					system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Deutschland. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
-					messages: [{ role: "user", content: userContent }],
-				}),
-			);
-			await recordAiUsage(ctx, {
-				learningPlanId: args.learningPlanId,
-				operation: "diagnostic",
-				modelId: diagnosticModelId,
-				usage: result.usage,
-			});
-
-			const questions = result.output.questions.map((question, index) => {
-				const normalizedOptions = question.options.map((option) =>
-					normalizeAiGeneratedGermanText(option),
+		const generatedQuestions = await withGeneratedTextRetry(
+			async (attempt) => {
+				const result = await runLlmGeneration((abortSignal) =>
+					generateText({
+						model: model(diagnosticModelId),
+						temperature: 0.2,
+						maxOutputTokens: 3_600,
+						abortSignal,
+						providerOptions: vertexProviderOptions,
+						output: Output.object({ schema: questionsSchema }),
+						system: `Du bist ein präziser Lerncoach für Schüler der 10. bis 12. Klasse in Deutschland. Antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+						messages: [{ role: "user", content: userContent }],
+					}),
 				);
-				const generatedOptions = normalizedOptions.filter(Boolean);
-				const generatedCorrectAnswer =
-					question.correctOptionIndex === null
-						? undefined
-						: normalizedOptions[question.correctOptionIndex] || undefined;
-				const hasValidMultipleChoiceAnswer =
-					question.correctOptionIndex !== null &&
-					Boolean(generatedCorrectAnswer) &&
-					generatedOptions.includes(generatedCorrectAnswer ?? "");
-				const responseKind =
-					question.responseKind === "multipleChoice" &&
-					(generatedOptions.length < 2 || !hasValidMultipleChoiceAnswer)
-						? "shortText"
-						: question.responseKind;
-				const options =
-					responseKind === "multipleChoice" ? generatedOptions : [];
+				await recordAiUsage(ctx, {
+					learningPlanId: args.learningPlanId,
+					operation: "diagnostic",
+					modelId: diagnosticModelId,
+					usage: result.usage,
+				});
+
+				const questions = result.output.questions.map((question, index) => {
+					const normalizedOptions = question.options.map((option) =>
+						normalizeAiGeneratedGermanText(option),
+					);
+					const generatedOptions = normalizedOptions.filter(Boolean);
+					const generatedCorrectAnswer =
+						question.correctOptionIndex === null
+							? undefined
+							: normalizedOptions[question.correctOptionIndex] || undefined;
+					const hasValidMultipleChoiceAnswer =
+						question.correctOptionIndex !== null &&
+						Boolean(generatedCorrectAnswer) &&
+						generatedOptions.includes(generatedCorrectAnswer ?? "");
+					const responseKind =
+						question.responseKind === "multipleChoice" &&
+						(generatedOptions.length < 2 || !hasValidMultipleChoiceAnswer)
+							? "shortText"
+							: question.responseKind;
+					const options =
+						responseKind === "multipleChoice" ? generatedOptions : [];
+
+					return {
+						id: `q${index + 1}`,
+						topicId: question.topicId,
+						kind: "performance" as const,
+						evidenceDimension: question.evidenceDimension,
+						responseKind,
+						options,
+						correctAnswer:
+							responseKind === "multipleChoice"
+								? generatedCorrectAnswer
+								: undefined,
+						prompt: normalizeAiGeneratedGermanText(question.prompt),
+						targetInsight: normalizeAiGeneratedGermanText(
+							question.targetInsight,
+						),
+						idealAnswer: normalizeAiGeneratedGermanText(question.idealAnswer),
+						explanation: normalizeAiGeneratedGermanText(question.explanation),
+						evaluationKeywords: question.evaluationKeywords.map((keyword) =>
+							normalizeAiGeneratedGermanText(keyword),
+						),
+					};
+				});
 
 				return {
-					id: `q${index + 1}`,
-					topicId: question.topicId,
-					kind: "performance" as const,
-					evidenceDimension: question.evidenceDimension,
-					responseKind,
-					options,
-					correctAnswer:
-						responseKind === "multipleChoice"
-							? generatedCorrectAnswer
-							: undefined,
-					prompt: normalizeAiGeneratedGermanText(question.prompt),
-					targetInsight: normalizeAiGeneratedGermanText(question.targetInsight),
-					idealAnswer: normalizeAiGeneratedGermanText(question.idealAnswer),
-					explanation: normalizeAiGeneratedGermanText(question.explanation),
-					evaluationKeywords: question.evaluationKeywords.map((keyword) =>
-						normalizeAiGeneratedGermanText(keyword),
+					questions,
+					topics: result.output.topics.map((topic) => ({
+						id: topic.id,
+						title: normalizeAiGeneratedGermanText(topic.title),
+						learningGoal: normalizeAiGeneratedGermanText(topic.learningGoal),
+						keywords: topic.keywords.map((keyword) =>
+							normalizeAiGeneratedGermanText(keyword),
+						),
+						priority: topic.priority,
+						requiredEvidenceDimensions: topic.requiredEvidenceDimensions,
+					})),
+					sourceSummary: normalizeAiGeneratedGermanText(
+						result.output.sourceSummary,
 					),
 				};
-			});
-
-			return {
-				questions,
-				topics: result.output.topics.map((topic) => ({
-					id: topic.id,
-					title: normalizeAiGeneratedGermanText(topic.title),
-					learningGoal: normalizeAiGeneratedGermanText(topic.learningGoal),
-					keywords: topic.keywords.map((keyword) =>
-						normalizeAiGeneratedGermanText(keyword),
-					),
-					priority: topic.priority,
-					requiredEvidenceDimensions: topic.requiredEvidenceDimensions,
-				})),
-				sourceSummary: normalizeAiGeneratedGermanText(
-					result.output.sourceSummary,
-				),
-			};
-		}, "Der Wissenscheck konnte nicht zuverlässig erstellt werden. Prüfe deine Schulunterlagen und versuche es erneut.");
+			},
+			"Der Wissenscheck konnte nicht zuverlässig erstellt werden. Prüfe deine Schulunterlagen und versuche es erneut.",
+			"insufficient_material",
+		);
 
 		await ctx.runMutation(internal.learningPlans.storeKnowledgeQuestions, {
 			learningPlanId: args.learningPlanId,
@@ -3269,6 +3283,7 @@ export const generatePlan = action({
 						context.learningTimes,
 						context.occupiedEntries,
 					),
+					"scheduling_constraints",
 				);
 			}
 			const { fileParts, sourceContext } = await buildModelInputFromDocuments(
@@ -3410,28 +3425,32 @@ MVP-Vorgabe:
 				ENABLE_FLASH_LITE || initialCostMode.economyMode
 					? FLASH_LITE_MODEL_ID
 					: FLASH_MODEL_ID;
-			const generatedPlan = await withGeneratedTextRetry(async (attempt) => {
-				const result = await runLlmGeneration((abortSignal) =>
-					generateText({
-						model: model(planModelId),
-						temperature: 0.25,
-						maxOutputTokens: 3_200,
-						abortSignal,
-						providerOptions: vertexProviderOptions,
-						output: Output.object({ schema: generatedPlanSchema }),
-						system: `Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
-						messages: [{ role: "user", content: userContent }],
-					}),
-				);
-				await recordAiUsage(ctx, {
-					learningPlanId: args.learningPlanId,
-					operation: "plan",
-					modelId: planModelId,
-					usage: result.usage,
-				});
+			const generatedPlan = await withGeneratedTextRetry(
+				async (attempt) => {
+					const result = await runLlmGeneration((abortSignal) =>
+						generateText({
+							model: model(planModelId),
+							temperature: 0.25,
+							maxOutputTokens: 3_200,
+							abortSignal,
+							providerOptions: vertexProviderOptions,
+							output: Output.object({ schema: generatedPlanSchema }),
+							system: `Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+							messages: [{ role: "user", content: userContent }],
+						}),
+					);
+					await recordAiUsage(ctx, {
+						learningPlanId: args.learningPlanId,
+						operation: "plan",
+						modelId: planModelId,
+						usage: result.usage,
+					});
 
-				return normalizeGeneratedPlan(result.output);
-			}, planFallbackMessage);
+					return normalizeGeneratedPlan(result.output);
+				},
+				planFallbackMessage,
+				"insufficient_material",
+			);
 			if (
 				generatedPlan.sessions.length < (usesFirstSessionDiagnostic ? 2 : 1)
 			) {
@@ -3440,6 +3459,7 @@ MVP-Vorgabe:
 						context.learningTimes,
 						context.occupiedEntries,
 					),
+					"scheduling_constraints",
 				);
 			}
 
@@ -3505,6 +3525,7 @@ MVP-Vorgabe:
 			if (!finalState.isReady || failedSessionCount > 0) {
 				throwUserFacingError(
 					`${failedSessionCount || finalState.failedSessionCount} Lernsessionen konnten noch nicht vorbereitet werden. Versuche nur diese Sessionen erneut.`,
+					"generation_processing",
 				);
 			}
 
@@ -3516,9 +3537,23 @@ MVP-Vorgabe:
 					.filter(isLearningSessionCompositionEligible).length,
 			};
 		} catch (error) {
+			const failureCode = getUserFacingBackendErrorCode(error);
+			const failureReason =
+				failureCode === "insufficient_material"
+					? "insufficientMaterial"
+					: failureCode === "material_processing"
+						? "materialProcessing"
+						: failureCode === "scheduling_constraints"
+							? "schedulingConstraints"
+							: "generationProcessing";
+			logDiagnosticError("learningPlanAi.generatePlan", error, {
+				learningPlanId: args.learningPlanId,
+				failureReason,
+				generationId,
+			});
 			await ctx.runMutation(
 				internal.learningPlans.clearEmptyContentGeneration,
-				{ learningPlanId: args.learningPlanId, generationId },
+				{ learningPlanId: args.learningPlanId, generationId, failureReason },
 			);
 			throw error;
 		}
