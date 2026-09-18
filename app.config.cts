@@ -95,6 +95,14 @@ const config: ExpoConfig = {
 	},
 	plugins: [
 		"expo-router",
+		[
+			"expo-build-properties",
+			{
+				ios: {
+					enableSceneSupport: true,
+				},
+			},
+		],
 		"expo-status-bar",
 		[
 			"@clerk/expo",

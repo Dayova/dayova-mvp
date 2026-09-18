@@ -12,35 +12,37 @@ allowBuilds:
 patchedDependencies:
   '@expo/metro-config@57.0.12': patches/@expo__metro-config@57.0.12.patch
   '@react-native/gradle-plugin@0.86.3': patches/@react-native__gradle-plugin@0.86.3.patch
-  expo-updates@57.0.21: patches/expo-updates@57.0.21.patch
+  expo-updates@57.0.23: patches/expo-updates@57.0.23.patch
   nativewind@4.2.3: patches/nativewind@4.2.3.patch
   oxc-parser@0.130.0: patches/oxc-parser@0.130.0.patch
   react-native-keyboard-controller@1.21.9: patches/react-native-keyboard-controller@1.21.9.patch
 
 minimumReleaseAgeExclude:
-  - '@expo/cli@57.0.10'
+  - '@expo/cli@57.0.10 || 57.0.26'
   - '@expo/config-plugins@57.0.6'
   - '@expo/config@57.0.6'
   - '@expo/fingerprint@0.20.6'
   - '@expo/image-utils@0.11.4'
   - '@expo/metro-config@57.0.7'
-  - '@expo/metro-runtime@57.0.7'
+  - '@expo/metro-runtime@57.0.7 || 57.0.16'
   - '@expo/prebuild-config@57.0.9'
   - '@expo/require-utils@57.0.4'
   - '@expo/router-server@57.0.4'
   - babel-preset-expo@57.0.4
-  - expo-asset@57.0.7
-  - expo-constants@57.0.7
+  - expo-asset@57.0.7 || 57.0.18
+  - expo-constants@57.0.7 || 57.0.19
   - expo-dev-client@57.0.9
   - expo-dev-launcher@57.0.9
   - expo-dev-menu@57.0.9
-  - expo-image-picker@57.0.6
+  - expo-image-picker@57.0.6 || 57.0.19
   - expo-linking@57.0.4
   - expo-modules-autolinking@57.0.9
   - expo-modules-core@57.0.7
   - expo-modules-jsi@57.0.4
-  - expo-notifications@57.0.7
-  - expo-router@57.0.8
+  - expo-notifications@57.0.7 || 57.0.20
+  - expo-router@57.0.8 || 57.0.22
   - expo-splash-screen@57.0.5
-  - expo-updates@57.0.10
-  - expo@57.0.8
+  - expo-updates@57.0.10 || 57.0.23
+  - expo@57.0.8 || 57.0.24
+  - '@expo/ui@57.0.19'
+  - expo-build-properties@57.0.21
