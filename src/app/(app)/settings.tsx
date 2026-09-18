@@ -5,6 +5,7 @@ import { ReleaseInformationSheet } from "~/components/release-information-sheet"
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Bell,
+	BookOpen,
 	CalendarDays,
 	Computer,
 	CreditCard,
@@ -31,6 +32,7 @@ import {
 	SettingsSection,
 } from "~/features/settings/settings-list";
 import { openExternalUrl } from "~/lib/open-external-url";
+import { ROUTES } from "~/lib/routes";
 import { env } from "~/lib/runtime-config";
 import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
@@ -177,6 +179,12 @@ export default function SettingsScreen() {
 								icon={CalendarDays}
 								label="Stundenplan"
 								onPress={() => router.push("/timetable")}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={BookOpen}
+								label="Persönliche Fächer"
+								onPress={() => router.push(ROUTES.personalSubjects)}
 							/>
 						</SettingsSection>
 

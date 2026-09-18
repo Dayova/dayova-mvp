@@ -40,6 +40,14 @@ jest.mock("~/lib/theme", () => ({
 	}),
 }));
 
+jest.mock("~/features/subjects/subject-picker", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const InlineSubjectPicker = (props: Record<string, unknown>) =>
+		React.createElement("InlineSubjectPicker", props);
+
+	return { InlineSubjectPicker };
+});
+
 describe("ExamDateSelector", () => {
 	test("presents the selected date as an accessible calendar trigger", async () => {
 		const onOpen = jest.fn();
