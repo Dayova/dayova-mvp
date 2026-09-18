@@ -296,6 +296,7 @@ export default function EntryDetailScreen() {
 		const query = [
 			["examDayEntryId", entry.id],
 			["subject", subject],
+			["personalSubjectId", entry.personalSubjectId],
 			["examTypeLabel", examType ?? "Leistungskontrolle"],
 			["examDateKey", entry.dayKey ?? ""],
 			["examDateLabel", plannedDate ?? ""],
