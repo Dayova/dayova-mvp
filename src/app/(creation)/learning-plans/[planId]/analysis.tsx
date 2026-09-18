@@ -14,12 +14,17 @@ import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
-import { getErrorMessage } from "~/features/learning-plans/utils";
 import {
 	dismissToOrReplace,
 	goBackOrReplace,
 	useBackIntent,
 } from "~/lib/navigation";
+import { logDiagnosticError } from "~/lib/diagnostics";
+import {
+	getLearningPlanGenerationFailure,
+	type LearningPlanGenerationFailure,
+} from "~/features/learning-plans/generation-recovery";
+import { learningPlanTopicsPath } from "~/features/learning-plans/creation-routes";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -35,7 +40,9 @@ export default function LearningPlanAnalysisScreen() {
 		api.learningPlanAi.generateKnowledgeQuestions,
 	);
 	const [isBusy, setIsBusy] = useState(false);
-	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [failure, setFailure] = useState<LearningPlanGenerationFailure | null>(
+		null,
+	);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const didStartRef = useRef(false);
 
@@ -71,7 +78,7 @@ export default function LearningPlanAnalysisScreen() {
 		didStartRef.current = true;
 		queueMicrotask(() => {
 			setIsBusy(true);
-			setErrorMessage(null);
+			setFailure(null);
 			void requestAiConsent()
 				.then((allowed) => {
 					if (!allowed) {
@@ -82,18 +89,16 @@ export default function LearningPlanAnalysisScreen() {
 					return generateKnowledgeQuestions({ learningPlanId: planId });
 				})
 				.catch((error: unknown) => {
-					const message = getErrorMessage(
-						error,
-						"Deine Unterlagen konnten nicht zuverlässig analysiert werden.",
-					);
-					setErrorMessage(message);
+					const nextFailure = getLearningPlanGenerationFailure(error);
+					logDiagnosticError("Learning plan material analysis failed.", error, {
+						source: "learning-plans.analysis",
+						metadata: {
+							learningPlanId: planId,
+							failureReason: nextFailure.reason,
+						},
+					});
+					setFailure(nextFailure);
 					didStartRef.current = false;
-					dismissToOrReplace(
-						router,
-						learningPlanMaterialPath(planId, {
-							errorMessage: message,
-						}),
-					);
 				})
 				.finally(() => setIsBusy(false));
 		});
@@ -112,6 +117,20 @@ export default function LearningPlanAnalysisScreen() {
 			planId ? learningPlanMaterialPath(planId) : "/learning-plans/new",
 		);
 		return true;
+	};
+	const reviewTopics = () => {
+		if (!planId || !snapshot) return;
+		router.replace(
+			snapshot.plan.topicMap.length > 0
+				? planPath(planId, "scope")
+				: learningPlanTopicsPath(planId, {
+						topicDescription: snapshot.plan.topicDescription,
+					}),
+		);
+	};
+	const editMaterial = () => {
+		if (!planId) return;
+		dismissToOrReplace(router, learningPlanMaterialPath(planId));
 	};
 	useBackIntent(true, goBack);
 	useLearningPlanCreationProgress({
@@ -144,17 +163,31 @@ export default function LearningPlanAnalysisScreen() {
 						Material und bereitet den Wissenscheck für deinen ersten Lerntermin
 						vor.
 					</Text>
-					{errorMessage ? (
+					{failure ? (
 						<>
 							<ErrorMessage className="mt-6 text-center">
-								{errorMessage}
+								{failure.message}
 							</ErrorMessage>
+							{failure.canReviewTopics ? (
+								<Button className="mt-6" onPress={reviewTopics}>
+									<Text>Prüfungsstoff prüfen</Text>
+								</Button>
+							) : null}
+							{failure.canEditMaterial ? (
+								<Button
+									className={failure.canReviewTopics ? "mt-3" : "mt-6"}
+									variant={failure.canReviewTopics ? "neutral" : "default"}
+									onPress={editMaterial}
+								>
+									<Text>Material ergänzen oder ersetzen</Text>
+								</Button>
+							) : null}
 							<Button
-								className="mt-6"
+								className="mt-3"
 								disabled={isBusy}
 								onPress={() => {
 									didStartRef.current = false;
-									setErrorMessage(null);
+									setFailure(null);
 									setRetryAttempt((value) => value + 1);
 								}}
 							>
