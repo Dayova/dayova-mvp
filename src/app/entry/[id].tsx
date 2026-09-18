@@ -7,6 +7,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { BackButton, Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
+import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Attachment,
 	BookOpen,
@@ -23,9 +24,12 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
+import { getEntryCompletionAction } from "~/lib/entry-completion";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
+import { triggerSuccessHaptic } from "~/lib/safe-haptics";
+import { useDayovaTheme } from "~/lib/theme";
 
 type ParsedNotes = {
 	summary: string[];
@@ -146,6 +150,7 @@ function NotesCard({ value }: { value?: string }) {
 export default function EntryDetailScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { colors } = useDayovaTheme();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const deleteDayEntry = useMutation(api.dayEntries.remove);
@@ -225,7 +230,14 @@ export default function EntryDetailScreen() {
 	const [isDeleteVisible, setIsDeleteVisible] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const [isUpdatingCompleted, setIsUpdatingCompleted] = useState(false);
+	const [completionFeedback, setCompletionFeedback] = useState<{
+		message: string;
+		tone: "success" | "error";
+	} | null>(null);
 	const deleteActionGateRef = useRef(createAsyncActionGate());
+	const completionActionGateRef = useRef(createAsyncActionGate());
+	const completionAction = getEntryCompletionAction(isCompleted);
 
 	const handleDelete = () => {
 		if (!canDelete || !id || !user || !isConvexAuthenticated) return;
@@ -263,11 +275,31 @@ export default function EntryDetailScreen() {
 		setDeleteError(null);
 	};
 
-	const toggleCompleted = () => {
+	const toggleCompleted = async () => {
 		if (!canToggleCompleted || !id || !user || !isConvexAuthenticated) return;
-		void setDayEntryCompleted({
-			id: id as Id<"dayEntries">,
-			completed: !isCompleted,
+
+		await completionActionGateRef.current.run(async () => {
+			setIsUpdatingCompleted(true);
+			setCompletionFeedback(null);
+			try {
+				await setDayEntryCompleted({
+					id: id as Id<"dayEntries">,
+					completed: completionAction.nextCompleted,
+				});
+				setCompletionFeedback({
+					message: completionAction.successMessage,
+					tone: "success",
+				});
+				void triggerSuccessHaptic({ platform: process.env.EXPO_OS });
+			} catch {
+				setCompletionFeedback({
+					message:
+						"Der Status konnte nicht geändert werden. Bitte versuche es erneut.",
+					tone: "error",
+				});
+			} finally {
+				setIsUpdatingCompleted(false);
+			}
 		});
 	};
 
@@ -438,24 +470,56 @@ export default function EntryDetailScreen() {
 					</Button>
 				) : null}
 				{canToggleCompleted ? (
-					<Button
-						className="mt-5"
-						variant={isCompleted ? "neutral" : "default"}
-						onPress={toggleCompleted}
-					>
-						<Check
-							size={18}
-							color={isCompleted ? "#1A1A1A" : "#FFFFFF"}
-							strokeWidth={2.3}
-						/>
-						<Text>
-							{isCompleted ? "Als offen markieren" : "Als erledigt markieren"}
-						</Text>
-					</Button>
+					<>
+						<Button
+							accessibilityLabel={
+								isUpdatingCompleted
+									? "Status wird aktualisiert"
+									: completionAction.buttonLabel
+							}
+							accessibilityState={{ busy: isUpdatingCompleted }}
+							className="mt-5"
+							disabled={isUpdatingCompleted}
+							variant={isCompleted ? "neutral" : "default"}
+							onPress={() => void toggleCompleted()}
+						>
+							{isUpdatingCompleted ? (
+								<ActivityIndicator
+									color={isCompleted ? colors.background : "#FFFFFF"}
+								/>
+							) : (
+								<Check
+									size={18}
+									color={isCompleted ? colors.background : "#FFFFFF"}
+									strokeWidth={2.3}
+								/>
+							)}
+							<Text>
+								{isUpdatingCompleted
+									? "Status wird aktualisiert …"
+									: completionAction.buttonLabel}
+							</Text>
+						</Button>
+						{completionFeedback?.tone === "success" ? (
+							<View
+								accessible
+								accessibilityLiveRegion="polite"
+								className="mt-3 rounded-info bg-success-subtle px-4 py-3"
+							>
+								<Text className="text-center font-poppins font-semibold text-body-4 text-text">
+									{completionFeedback.message}
+								</Text>
+							</View>
+						) : completionFeedback ? (
+							<ErrorMessage className="mt-3 text-center font-semibold">
+								{completionFeedback.message}
+							</ErrorMessage>
+						) : null}
+					</>
 				) : null}
 				{canDelete ? (
 					<Button className="mt-5" variant="destructive" onPress={handleDelete}>
-						<Trash2 size={18} color="#FFFFFF" strokeWidth={2.3} />
+						<Trash2 size={18} color={colors.onPrimary} strokeWidth={2.3} />
 						<Text>Eintrag löschen</Text>
 					</Button>
 				) : null}
