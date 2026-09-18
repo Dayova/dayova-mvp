@@ -32,7 +32,7 @@ export default function PersonalSubjectsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
-	const { isLoading, personalOptions } = useSubjectOptions();
+	const { isLoading, loadError, personalOptions } = useSubjectOptions();
 	const renameSubject = useMutation(api.personalSubjects.rename);
 	const removeSubject = useMutation(api.personalSubjects.remove);
 	const [editingSubject, setEditingSubject] = useState<EditingSubject | null>(
@@ -126,6 +126,8 @@ export default function PersonalSubjectsScreen() {
 						>
 							<ActivityIndicator color={colors.primary} />
 						</View>
+					) : loadError ? (
+						<ErrorMessage>{loadError}</ErrorMessage>
 					) : personalOptions.length === 0 ? (
 						<Surface className="items-center border border-border px-6 py-10">
 							<View className="h-14 w-14 items-center justify-center rounded-full bg-accent">

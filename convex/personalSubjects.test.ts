@@ -259,3 +259,59 @@ test.each([
 		personalSubjectId: created.id,
 	});
 });
+
+test("legacy timetable labels cannot break personal subject loading", async () => {
+	const backend = convexTest(schema, modules).withIdentity(user);
+	await backend.mutation(api.personalSubjects.create, { name: "Französisch" });
+	await backend.run(async (ctx) => {
+		const timetableId = await ctx.db.insert("timetables", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			title: "Legacy import",
+			status: "active",
+			createdAt: 1,
+			updatedAt: 1,
+		});
+		for (const [index, subject] of [
+			"",
+			"   ",
+			"x".repeat(61),
+			"  Latein  ",
+			"latein",
+			"Mathematik",
+			"Französisch",
+		].entries()) {
+			await ctx.db.insert("timetableLessons", {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				timetableId,
+				dayOfWeek: 1,
+				subject,
+				startTime: "08:00",
+				endTime: "08:45",
+				sortOrder: index,
+				createdAt: 1,
+				updatedAt: 1,
+			});
+		}
+	});
+	const result = await backend.query(api.personalSubjects.list, {});
+	expect(result.personal).toEqual([
+		{ id: expect.any(String), name: "Französisch" },
+	]);
+	expect(result.reusableTimetableSubjects).toEqual(["latein"]);
+});
+
+test("invalid new subjects remain rejected and unauthenticated reads stay private", async () => {
+	const backend = convexTest(schema, modules);
+	await expect(backend.query(api.personalSubjects.list, {})).rejects.toThrow(
+		"Nicht authentifiziert",
+	);
+	const account = backend.withIdentity(user);
+	for (const name of ["  ", "x".repeat(61)]) {
+		await expect(
+			account.mutation(api.personalSubjects.create, { name }),
+		).rejects.toThrow();
+	}
+	expect((await account.query(api.personalSubjects.list, {})).personal).toEqual(
+		[],
+	);
+});

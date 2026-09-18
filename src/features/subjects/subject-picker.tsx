@@ -82,12 +82,14 @@ function SubjectPickerContent({
 	options,
 	selected,
 	isLoading,
+	loadError,
 	onSelect,
 	onAdd,
 }: {
 	options: SubjectOption[];
 	selected: SubjectSelection;
 	isLoading: boolean;
+	loadError?: string | null;
 	onSelect: (selection: SubjectSelection) => void;
 	onAdd: () => void;
 }) {
@@ -139,6 +141,8 @@ function SubjectPickerContent({
 					}
 				/>
 			))}
+
+			{loadError ? <ErrorMessage>{loadError}</ErrorMessage> : null}
 
 			{isLoading ? (
 				<View
@@ -309,7 +313,7 @@ function InlineSubjectPicker({
 	selected: SubjectSelection;
 	onSelect: (selection: SubjectSelection) => void;
 }) {
-	const { isLoading, options, savePermanent } = useSubjectOptions();
+	const { isLoading, loadError, options, savePermanent } = useSubjectOptions();
 	const [isAdding, setIsAdding] = useState(false);
 
 	return (
@@ -318,6 +322,7 @@ function InlineSubjectPicker({
 				options={options}
 				selected={selected}
 				isLoading={isLoading}
+				loadError={loadError}
 				onSelect={onSelect}
 				onAdd={() => setIsAdding(true)}
 			/>
@@ -347,7 +352,7 @@ function SubjectPickerSheet({
 	onClose: () => void;
 	onSelect: (selection: SubjectSelection) => void;
 }) {
-	const { isLoading, options, savePermanent } = useSubjectOptions();
+	const { isLoading, loadError, options, savePermanent } = useSubjectOptions();
 	const [isAdding, setIsAdding] = useState(false);
 	const finish = (selection: SubjectSelection) => {
 		onSelect(selection);
@@ -370,6 +375,7 @@ function SubjectPickerSheet({
 					options={options}
 					selected={selected}
 					isLoading={isLoading}
+					loadError={loadError}
 					onSelect={finish}
 					onAdd={() => setIsAdding(true)}
 				/>
