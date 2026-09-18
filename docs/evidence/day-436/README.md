@@ -32,16 +32,32 @@ The same behavior was applied to Philipp’s existing, already-running `dayova-m
 
 The connected device is an iPhone 16 with development app `de.dayova.app-dev`, version 1.0.4 (1), served by Metro on port 8081. The iOS development bundle returned HTTP 200. A reload was requested through Metro. This is a development-client handoff, not a TestFlight, production OTA or backend deployment.
 
-## Pending native evidence / review gate
+## After evidence and physical-device checks — 18 September 2026
 
-The PR stays draft. Philipp will supply the after screenshots. The handbook also requires before and after screen recordings and manual iOS/Android checks. No simulator, Android-device or physical-device interaction pass is claimed by the automated checks or export.
+Original PNG captures taken directly from Philipp’s connected iPhone 16 with `devicectl device capture screenshot`; iOS 27.0 (24A437), development app `de.dayova.app-dev` 1.0.4 (1). They show the integrated development checkout with DAY-436 code from `958a31f1b5af4270f27bea9c1203cd83df30443d`, not an isolated installation of this PR.
 
-Capture and check:
+- [Heute](after-home.png), 12:03 CEST: exactly three tabs, Einstellungen gear icon, next learning step still present, timetable setup card absent, daily count visible.
+- [Einstellungen](after-settings.png), 12:05 CEST: Lernzeiten and the integrated checkout’s existing personal-subject row remain; no timetable row. The personal-subject feature is from separate unmerged work.
 
-1. Heute: exactly three tabs; no timetable prompt for a new user, a draft import or an active timetable; no imported school lessons or inflated appointment counts.
-2. Einstellungen: no timetable row; Lernzeiten, support and account settings still work.
-3. Existing `/analyse`, `/analyse/wissensstand`, `/analyse/lernhuerde`, `/analyse/naechster-schritt`, `/analyse/development` and `/timetable` links safely return to Pläne/Heute.
-4. Create/open a homework item and an exam; create a learning plan, open a session, complete practice/diagnostic/rehearsal and return to its plan. Theory completion remains unchanged.
-5. Back navigation, light/dark appearance and large text on iOS and Android.
+Both images were visually inspected. The floating “Tools” gear is development tooling, separate from the app’s Einstellungen tab. An initial stuck development “Refreshing” banner was cleared by restarting the app; intermediate captures containing that banner were excluded. Screen capture created unmodified original PNGs.
 
-Attach the after screenshot and both recordings directly in the PR before marking it ready. Final merge/release remains with Jakob or Fabius.
+The required GitHub CI (lint, typecheck, tests) passed on the implementation commit. This follow-up changes evidence only.
+
+## Review handoff and remaining merge checks
+
+Philipp explicitly requested screenshots and release of the issue for Jakob’s review. The PR is handed over for that review; this is not a claim that all native acceptance criteria or merge requirements are complete.
+
+- Before and after screenshots are attached directly in the PR.
+- Before and after screen recordings are still missing. `devicectl device capture screen-record` returned CoreDevice error 1001: **“The capability ‘Screen Recording’ is not supported by this device.”** No recording was created; no video was fabricated from still images.
+- No Android device/emulator was available in this session. Android export passed, but manual Android checks remain open.
+- End-to-end creation/completion, large text, dark mode and comprehensive saved-link/back-navigation checks remain open. Limited screenshot checks do not establish those behaviors.
+
+Before merge, complete these checks on iOS and Android:
+
+1. New user, draft import and active timetable: no prompt or imported school lessons; correct counts.
+2. All old analysis and timetable URLs return to Pläne/Heute without a dead end.
+3. Create/open homework and exams; create a learning plan and complete practice/diagnostic/rehearsal, returning to its plan. Theory completion remains unchanged.
+4. Back navigation, light/dark appearance and large text.
+5. Attach the required before/after recordings through a supported recording method.
+
+Final acceptance, merge and release remain with Jakob or Fabius.
