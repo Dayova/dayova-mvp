@@ -31,11 +31,37 @@ const useAndroidBackHandler = (enabled: boolean, onBack: () => boolean) => {
 	);
 };
 
-export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
+export const useBackIntent = (
+	enabled: boolean,
+	onBack: () => boolean,
+	{ allowRouteRemoval = false }: { allowRouteRemoval?: boolean } = {},
+) => {
 	const navigation = useNavigation();
 	const isHandlingNativeBackRef = useRef(false);
 
-	useAndroidBackHandler(enabled, onBack);
+	const runBackIntent = useCallback(() => {
+		if (isHandlingNativeBackRef.current) return true;
+
+		isHandlingNativeBackRef.current = true;
+		let handled: boolean;
+		try {
+			handled = onBack();
+		} catch (error) {
+			isHandlingNativeBackRef.current = false;
+			throw error;
+		}
+		if (!handled) {
+			isHandlingNativeBackRef.current = false;
+			return false;
+		}
+
+		requestAnimationFrame(() => {
+			isHandlingNativeBackRef.current = false;
+		});
+		return true;
+	}, [onBack]);
+
+	useAndroidBackHandler(enabled, runBackIntent);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -44,22 +70,23 @@ export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
 			const unsubscribe = navigation.addListener("beforeRemove", (event) => {
 				if (!isBackRemovalAction(event)) return;
 
+				// Expo Router dispatches queued actions after the callback returns.
+				// Exit boundaries must allow removal independently of callback timing.
+				if (allowRouteRemoval) return;
 				if (isHandlingNativeBackRef.current) {
 					event.preventDefault();
 					return;
 				}
 
-				const handled = onBack();
+				const handled = runBackIntent();
 				if (!handled) return;
 
-				isHandlingNativeBackRef.current = true;
 				event.preventDefault();
-				requestAnimationFrame(() => {
-					isHandlingNativeBackRef.current = false;
-				});
 			});
 
 			return unsubscribe;
-		}, [enabled, navigation, onBack]),
+		}, [allowRouteRemoval, enabled, navigation, runBackIntent]),
 	);
+
+	return runBackIntent;
 };
