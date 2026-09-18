@@ -10,6 +10,7 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { advanceRollingLearningPlan } from "./adaptiveLearningPlan";
 import {
 	type AdaptiveLearningTarget,
@@ -341,6 +342,7 @@ const requireOwnerTokenIdentifier = async (ctx: QueryCtx) => {
 	if (identity === null) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	return identity.tokenIdentifier;
 };
@@ -350,6 +352,7 @@ const requireOwnerTokenIdentifierForMutation = async (ctx: MutationCtx) => {
 	if (identity === null) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	return identity.tokenIdentifier;
 };
@@ -1523,6 +1526,7 @@ export const getUploadRegistrationContext = internalQuery({
 		if (identity === null) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
@@ -1750,6 +1754,7 @@ export const getAiContext = internalQuery({
 		if (identity === null) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
@@ -1792,6 +1797,7 @@ export const getStoredKnowledgeAnswers = internalQuery({
 		if (identity === null) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
