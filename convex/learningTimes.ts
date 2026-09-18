@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { throwUserFacingError } from "./errors";
 import { markLearningTimesBackfillHandledForOwner } from "./learningTimesBackfill";
 
@@ -12,6 +13,7 @@ const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	if (!identity) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 	return identity;
 };
 
