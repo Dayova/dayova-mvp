@@ -11,6 +11,13 @@ subject and exam-type selector.
 - The frame API intentionally supports only dynamic `content` height and the
   scrollable `medium` size. Unused width, header/footer class, and `large`
   escape hatches were removed so callers cannot create one-off sheet systems.
+- Dynamic `content` sheets place their header, description, fields, and actions
+  inside the same directly measured Gorhom scrollable. Do not wrap that
+  scrollable in a `flex: 1` container or leave a header/footer outside its measured
+  content; that clips form actions during size changes.
+- Form fields inside sheets use `DayovaSheetInput`, which preserves the shared
+  `Input` styling while registering focus with Gorhom's keyboard handling.
+  Use `onPresented` for initial focus instead of focusing before presentation.
 - `visible` is controlled state. A close followed immediately by a reopen is a
   valid transition; a stale native `onDismiss` must not close the new request.
 - Android date/time selection closes in the shared adapter. Callers do not add

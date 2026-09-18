@@ -103,8 +103,17 @@ export const list = query({
 		const reusableTimetableSubjects = Array.from(
 			new Map(
 				activeLessons
-					.filter((lesson) => !lesson.subjectIsOneTime)
-					.map((lesson) => cleanSubjectName(lesson.subject))
+					.filter(
+						(lesson) =>
+							lesson.ownerTokenIdentifier === ownerTokenIdentifier &&
+							!lesson.subjectIsOneTime,
+					)
+					// Older imports predate the personal-subject length constraint.
+					// Ignore unusable suggestions without rejecting the whole list.
+					.map((lesson) => lesson.subject.trim().replace(/\s+/g, " "))
+					.filter(
+						(name) => name.length > 0 && name.length <= MAX_SUBJECT_NAME_LENGTH,
+					)
 					.filter((name) => {
 						const normalizedName = normalizeSubjectName(name);
 						return (

@@ -6,6 +6,9 @@ import { cn } from "~/lib/utils";
 type InputRef = React.ElementRef<typeof TextInput>;
 type InputProps = React.ComponentProps<typeof TextInput> & {
 	ref?: React.Ref<InputRef>;
+	renderInput?: (
+		props: React.ComponentProps<typeof TextInput>,
+	) => React.ReactElement;
 };
 
 const androidTextInputStyle = Platform.select({
@@ -21,11 +24,12 @@ function Input({
 	selectionColor,
 	style,
 	ref,
+	renderInput,
 	...props
 }: InputProps) {
 	const { colors } = useDayovaTheme();
 
-	return (
+	const input = (
 		<TextInput
 			ref={ref}
 			className={cn(
@@ -44,6 +48,7 @@ function Input({
 			{...props}
 		/>
 	);
+	return renderInput ? renderInput(input.props) : input;
 }
 
 export { Input };
