@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { act, fireEvent, render } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import NewEntryScreen from "~/app/(creation)/entry/new";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
@@ -15,7 +15,27 @@ const mockRouter = {
 };
 const mockCreateEntry = jest.fn<() => Promise<string>>();
 const mockUpdateEntry = jest.fn<() => Promise<void>>();
+const mockGenerateUploadUrl = jest.fn<() => Promise<Record<string, unknown>>>();
+const mockRegisterUploadedDocument = jest.fn<() => Promise<void>>();
 const mockCapture = jest.fn();
+const mockFetch =
+	jest.fn<
+		(_input: unknown, _init?: unknown) => Promise<Record<string, unknown>>
+	>();
+const mockRequestMediaLibraryPermissions =
+	jest.fn<() => Promise<{ granted: boolean }>>();
+const mockLaunchImageLibrary =
+	jest.fn<
+		(_options: unknown) => Promise<{
+			canceled: boolean;
+			assets: Array<{
+				fileName: string;
+				fileSize: number;
+				mimeType: string;
+				uri: string;
+			}> | null;
+		}>
+	>();
 const mockAvailability = { status: "available" };
 let mockSnapshot:
 	| { plan: { topicDescription: string }; documents: never[] }
@@ -33,13 +53,24 @@ jest.mock("convex/react", () => ({
 	useMutation: (reference: unknown) => {
 		const { getFunctionName } =
 			jest.requireActual<typeof import("convex/server")>("convex/server");
+		const functionName = getFunctionName(
+			reference as Parameters<typeof getFunctionName>[0],
+		);
+		if (functionName === "dayEntries:create") return mockCreateEntry;
+		if (functionName === "learningPlans:generateUploadUrl") {
+			return mockGenerateUploadUrl;
+		}
+		return mockUpdateEntry;
+	},
+	useAction: (reference: unknown) => {
+		const { getFunctionName } =
+			jest.requireActual<typeof import("convex/server")>("convex/server");
 		return getFunctionName(
 			reference as Parameters<typeof getFunctionName>[0],
-		) === "dayEntries:create"
-			? mockCreateEntry
-			: mockUpdateEntry;
+		) === "learningPlans:registerUploadedDocument"
+			? mockRegisterUploadedDocument
+			: jest.fn();
 	},
-	useAction: () => jest.fn(),
 }));
 jest.mock("expo-router", () => ({
 	useRouter: () => mockRouter,
@@ -67,10 +98,32 @@ jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
 jest.mock("~/lib/analytics", () => ({
 	getValidationFileSizeBucket: jest.fn(),
 }));
-jest.mock("expo/fetch", () => ({ fetch: jest.fn() }));
-jest.mock("expo-file-system", () => ({ File: jest.fn() }));
+jest.mock("expo/fetch", () => ({
+	fetch: (input: unknown, init?: unknown) => mockFetch(input, init),
+}));
+jest.mock("expo-file-system", () => ({
+	File: class MockFile {
+		uri: string;
+
+		constructor(uri: string) {
+			this.uri = uri;
+		}
+
+		info() {
+			return { size: 0 };
+		}
+	},
+}));
 jest.mock("expo-document-picker", () => ({}));
-jest.mock("expo-image-picker", () => ({}));
+jest.mock("expo-image-picker", () => ({
+	requestMediaLibraryPermissionsAsync: () =>
+		mockRequestMediaLibraryPermissions(),
+	launchImageLibraryAsync: (options: unknown) =>
+		mockLaunchImageLibrary(options),
+	UIImagePickerPreferredAssetRepresentationMode: {
+		Automatic: "automatic",
+	},
+}));
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -98,7 +151,55 @@ jest.mock("~/components/ui/screen", () => {
 		jest.requireActual<typeof import("react-native")>("react-native");
 	return { Screen: View, ScreenScroll: ScrollView };
 });
-jest.mock("~/components/ui/action-sheet", () => ({ ActionSheet: () => null }));
+jest.mock("~/components/ui/action-sheet", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const { Pressable, Text, View } =
+		jest.requireActual<typeof import("react-native")>("react-native");
+
+	return {
+		actionSheetIconColor: "#00A0E6",
+		ActionSheet: ({
+			visible,
+			options,
+			onDismiss,
+			onSelect,
+		}: {
+			visible: boolean;
+			options: Array<{
+				value: string;
+				title: string;
+				description?: string;
+				disabled?: boolean;
+			}>;
+			onDismiss?: () => void;
+			onSelect: (value: string) => void;
+		}) => {
+			if (!visible) return null;
+			return React.createElement(
+				View,
+				null,
+				...options.map((option) =>
+					React.createElement(
+						Pressable,
+						{
+							accessibilityLabel: option.description
+								? `${option.title}. ${option.description}`
+								: option.title,
+							accessibilityRole: "button",
+							disabled: option.disabled,
+							key: option.value,
+							onPress: () => {
+								onSelect(option.value);
+								onDismiss?.();
+							},
+						},
+						React.createElement(Text, null, option.title),
+					),
+				),
+			);
+		},
+	};
+});
 jest.mock("~/components/ui/confirmation-sheet", () => ({
 	ConfirmationSheet: ({ visible }: { visible: boolean }) => {
 		mockPauseVisible = visible;
@@ -125,6 +226,22 @@ beforeEach(() => {
 	jest.clearAllMocks();
 	mockCreateEntry.mockResolvedValue("exam-1");
 	mockUpdateEntry.mockResolvedValue(undefined);
+	mockGenerateUploadUrl.mockResolvedValue({
+		uploadUrl: "https://upload.dayova.test/material",
+		uploadToken: "upload-token",
+		storageId: "storage-id",
+		storageProvider: "r2",
+	});
+	mockRegisterUploadedDocument.mockResolvedValue(undefined);
+	mockFetch.mockResolvedValue({
+		headers: { forEach: jest.fn() },
+		ok: true,
+		status: 200,
+		statusText: "OK",
+		text: async () => "",
+	});
+	mockRequestMediaLibraryPermissions.mockResolvedValue({ granted: true });
+	mockLaunchImageLibrary.mockResolvedValue({ canceled: true, assets: null });
 	mockSnapshot = undefined;
 	mockPauseVisible = false;
 	mockParams = {
@@ -237,5 +354,106 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockPauseVisible).toBe(true);
 		expect(mockRouter.replace).not.toHaveBeenCalled();
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+	});
+
+	test("uploads existing gallery photos through the learning-material pipeline", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "material",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		mockLaunchImageLibrary.mockResolvedValue({
+			canceled: false,
+			assets: [
+				{
+					fileName: "mitschrift-1.jpg",
+					fileSize: 1_024,
+					mimeType: "image/jpeg",
+					uri: "file:///mitschrift-1.jpg",
+				},
+				{
+					fileName: "mitschrift-2.png",
+					fileSize: 2_048,
+					mimeType: "image/png",
+					uri: "file:///mitschrift-2.png",
+				},
+			],
+		});
+
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Mediathek. Vorhandene Fotos auswählen",
+			}),
+		);
+
+		await waitFor(() => {
+			expect(mockRegisterUploadedDocument).toHaveBeenCalledTimes(2);
+		});
+		expect(mockLaunchImageLibrary).toHaveBeenCalledWith(
+			expect.objectContaining({
+				allowsMultipleSelection: true,
+				mediaTypes: ["images"],
+				preferredAssetRepresentationMode: "automatic",
+				shouldDownloadFromNetwork: true,
+			}),
+		);
+		expect(mockRegisterUploadedDocument).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				fileName: "mitschrift-1.jpg",
+				fileType: "image/jpeg",
+				learningPlanId: "plan-1",
+				sourceKind: "school",
+			}),
+		);
+		expect(mockRegisterUploadedDocument).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				fileName: "mitschrift-2.png",
+				fileType: "image/png",
+				learningPlanId: "plan-1",
+				sourceKind: "school",
+			}),
+		);
+	});
+
+	test("keeps a denied gallery permission recoverable in the upload step", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "material",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		mockRequestMediaLibraryPermissions.mockResolvedValue({ granted: false });
+
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Schulmaterial hinzufügen" }),
+		);
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Mediathek. Vorhandene Fotos auswählen",
+			}),
+		);
+
+		await waitFor(() => {
+			expect(
+				screen.getByText(
+					"Erlaube den Zugriff auf deine Fotos, um Bilder aus deiner Mediathek hochzuladen.",
+				),
+			).toBeOnTheScreen();
+		});
+		expect(mockLaunchImageLibrary).not.toHaveBeenCalled();
 	});
 });
