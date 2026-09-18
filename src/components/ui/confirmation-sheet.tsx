@@ -5,7 +5,6 @@ import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { Text } from "~/components/ui/text";
 import { WarningBanner } from "~/components/ui/warning-banner";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 type ConfirmationActionLayout = "inline" | "stacked";
@@ -39,7 +38,6 @@ function ConfirmationSheet({
 	closeAccessibilityLabel = "Bestätigung schließen",
 	actionLayout = "inline",
 }: ConfirmationSheetProps) {
-	const { colors } = useDayovaTheme();
 	const safeClose = () => {
 		if (!isBusy) onClose();
 	};
@@ -56,13 +54,7 @@ function ConfirmationSheet({
 			variant={confirmTone === "destructive" ? "destructive" : "default"}
 		>
 			{isBusy ? (
-				<ActivityIndicator
-					color={
-						confirmTone === "destructive"
-							? colors.background
-							: DAYOVA_DESIGN_SYSTEM.colors.light1
-					}
-				/>
+				<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
 			) : (
 				<Text>{confirmLabel}</Text>
 			)}
