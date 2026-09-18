@@ -64,6 +64,7 @@ import {
 } from "~/components/onboarding/onboarding-learning-times";
 import { OnboardingSelect } from "~/components/onboarding/onboarding-select";
 import { StudyTimeFactContent } from "~/components/onboarding/study-time-fact-content";
+import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { BackButton, Button } from "~/components/ui/button";
 import {
@@ -136,6 +137,7 @@ const STUDY_DAY_SELECTION_DURATION_MS = 180;
 const STUDY_DAY_PRESS_IN_DURATION_MS = 80;
 const STUDY_DAY_PRESS_OUT_DURATION_MS = 120;
 const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
+const ONBOARDING_CONTENT_TOP_SPACING = 40;
 const CODE_LENGTH = 6;
 const OTP_CELL_KEYS = [
 	"otp-cell-1",
@@ -220,6 +222,7 @@ const AUTH_BACKGROUND_TILE = {
 } as const;
 
 export function AuthChoiceScreen() {
+	const [showReleaseInformation, setShowReleaseInformation] = useState(false);
 	const { colors: COLORS } = useDayovaTheme();
 	const { width, height, fontScale } = useWindowDimensions();
 	const insets = useSafeAreaInsets();
@@ -243,6 +246,10 @@ export function AuthChoiceScreen() {
 	if (contentSizeLayout.shouldStackInlineContent) {
 		return (
 			<View className="flex-1 bg-background">
+				<ReleaseInformationSheet
+					visible={showReleaseInformation}
+					onClose={() => setShowReleaseInformation(false)}
+				/>
 				<Stack.Screen options={{ title: "Dayova" }} />
 				<ThemedStatusBar />
 				<View pointerEvents="none" className="absolute inset-0 overflow-hidden">
@@ -286,6 +293,9 @@ export function AuthChoiceScreen() {
 					</Animated.View>
 
 					<Text
+						accessibilityRole="button"
+						accessibilityLabel="Dayova, App-Informationen"
+						onPress={() => setShowReleaseInformation(true)}
 						allowFontScaling={false}
 						className="mt-6 text-center font-poppins font-semibold text-heading-1 text-text"
 						style={{
@@ -346,6 +356,10 @@ export function AuthChoiceScreen() {
 
 	return (
 		<View className="flex-1 bg-background">
+			<ReleaseInformationSheet
+				visible={showReleaseInformation}
+				onClose={() => setShowReleaseInformation(false)}
+			/>
 			<Stack.Screen options={{ title: "Dayova" }} />
 			<ThemedStatusBar />
 			<ScrollView
@@ -427,6 +441,9 @@ export function AuthChoiceScreen() {
 						}}
 					>
 						<Text
+							accessibilityRole="button"
+							accessibilityLabel="Dayova, App-Informationen"
+							onPress={() => setShowReleaseInformation(true)}
 							className="text-center font-poppins font-semibold text-text"
 							style={{
 								fontSize: scaled(AUTH_CHOICE_FRAME.title.fontSize),
@@ -1325,7 +1342,6 @@ function QuestionStepView({
 				: null;
 	const visibleError = error ?? localValidationError;
 	const isImmersiveStep = step.kind === "fact" || step.kind === "payoff";
-	const titleTopPadding = step.kind === "text" ? 50 : 28;
 	const isLearningTimeStep = step.kind === "time";
 	const [timePickerVisible, setTimePickerVisible] = useState(false);
 	const [pendingLearningTime, setPendingLearningTime] = useState(() =>
@@ -1427,12 +1443,13 @@ function QuestionStepView({
 				}}
 			>
 				<Animated.View
+					testID="onboarding-question-content"
 					entering={reducedMotion ? undefined : FadeInDown.duration(220)}
 					// Step kind and content-size mode determine the runtime answer layout.
 					style={{
 						flex: shouldStackInlineContent ? undefined : 1,
 						alignItems: "center",
-						paddingTop: isImmersiveStep ? 16 : titleTopPadding,
+						paddingTop: ONBOARDING_CONTENT_TOP_SPACING,
 					}}
 				>
 					{!isImmersiveStep ? (
