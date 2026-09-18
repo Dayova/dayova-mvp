@@ -15,9 +15,9 @@ const PERSISTED_ONBOARDING_DURATION_MINUTES = [
 const MINUTES_PER_DAY = 24 * 60;
 
 export type PendingOnboardingSyncAnswers = {
-	dailySchoolTime: string;
-	studyDays: string;
-	learningTime: string;
+	dailySchoolTime?: string;
+	studyDays?: string;
+	learningTime?: string;
 	state: string;
 	schoolType: string;
 	grade: string;
@@ -150,12 +150,29 @@ const isValidAnswers = (
 	const schoolType = value.schoolType;
 	const grade = value.grade;
 	if (
-		typeof dailySchoolTime !== "string" ||
-		typeof studyDays !== "string" ||
-		typeof learningTime !== "string" ||
 		typeof state !== "string" ||
 		typeof schoolType !== "string" ||
 		typeof grade !== "string"
+	) {
+		return false;
+	}
+	const suppliedLearningTimeValues = [
+		dailySchoolTime,
+		studyDays,
+		learningTime,
+	].filter((value) => typeof value === "string" && value.trim().length > 0);
+	if (suppliedLearningTimeValues.length === 0) {
+		return (
+			isGermanFederalState(state) &&
+			isSupportedSchoolType(schoolType) &&
+			isSupportedGrade(grade)
+		);
+	}
+	if (
+		suppliedLearningTimeValues.length !== 3 ||
+		typeof dailySchoolTime !== "string" ||
+		typeof studyDays !== "string" ||
+		typeof learningTime !== "string"
 	) {
 		return false;
 	}

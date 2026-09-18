@@ -10,6 +10,7 @@ import {
 } from "./adaptiveLearningPlanPolicy";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { normalizeLearningTopics } from "./learningTopicMap";
+import { parseLearningWindowEnd } from "./learningTimePolicy";
 import { getScheduleConflictMessage } from "./scheduleConflicts";
 
 const MAX_LEARNING_TIMES = 50;
@@ -256,7 +257,7 @@ const getRollingSessionSchedule = async (
 		);
 		const candidates = windows.flatMap((window) => {
 			const windowStart = parseTimeMinutes(window.startTime);
-			const end = parseTimeMinutes(window.endTime);
+			const end = parseLearningWindowEnd(window.startTime, window.endTime);
 			if (windowStart === null || end === null) return [];
 			const start = Math.max(windowStart, earliestStart);
 			if (args.requireFullDuration && start + args.durationMinutes > end) {

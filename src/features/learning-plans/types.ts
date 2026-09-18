@@ -233,6 +233,17 @@ export type LearningPlanSnapshot = {
 			initialPromptDismissed: boolean;
 			postDiagnosticReminderDismissed: boolean;
 		};
+		behavioralLearningTimeSuggestion?: {
+			fingerprint: string;
+			evidenceSessionCount: number;
+			plannedStartTime: string;
+			observedStartTime: string;
+			entries: Array<{
+				dayOfWeek: number;
+				startTime: string;
+				endTime: string;
+			}>;
+		};
 	};
 	documents: LearningPlanDocument[];
 	answers: LearningPlanAnswer[];

@@ -39,7 +39,7 @@ export default function LearningTimesOverviewScreen() {
 		)?.value ?? 1;
 	const returnTo = getSafeReturnTo(params.returnTo);
 	const hasProposedTimes = learningTimes?.some(
-		(entry) => entry.preferenceStatus === "proposed",
+		(entry) => entry.preferenceStatus === "systemDefault",
 	);
 
 	const goBack = () => {

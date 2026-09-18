@@ -293,6 +293,12 @@ export default function LearningPlanSessionsScreen() {
 	const confirmProposedDefaults = useMutation(
 		api.learningTimes.confirmProposedDefaults,
 	);
+	const applyBehavioralSuggestion = useMutation(
+		api.learningTimes.applyBehavioralSuggestion,
+	);
+	const respondToBehavioralSuggestion = useMutation(
+		api.learningTimes.respondToBehavioralSuggestion,
+	);
 	const dismissLearningTimePrompt = useMutation(
 		api.learningPlans.dismissLearningTimePrompt,
 	);
@@ -302,9 +308,12 @@ export default function LearningPlanSessionsScreen() {
 	const [learningTimeActionError, setLearningTimeActionError] = useState<
 		string | null
 	>(null);
+	const [behaviorSuggestionReferenceTime] = useState(() => Date.now());
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
-		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
+		user && isConvexAuthenticated && planId
+			? { id: planId, behaviorSuggestionReferenceTime }
+			: "skip",
 	) ?? null) as LearningPlanSnapshot | null;
 	const [selectedSessionId, setSelectedSessionId] =
 		useState<Id<"learningPlanSessions"> | null>(null);
@@ -358,10 +367,15 @@ export default function LearningPlanSessionsScreen() {
 		),
 	);
 	const learningTimeSuggestion = snapshot?.plan.learningTimeSuggestion;
+	const behavioralLearningTimeSuggestion =
+		snapshot?.plan.behavioralLearningTimeSuggestion;
 	const showLearningTimeReminder = Boolean(
 		hasCompletedDiagnostic &&
 			learningTimeSuggestion &&
 			!learningTimeSuggestion.postDiagnosticReminderDismissed,
+	);
+	const showBehavioralLearningTimeSuggestion = Boolean(
+		behavioralLearningTimeSuggestion && !showLearningTimeReminder,
 	);
 
 	const prepareSession = useCallback(
@@ -515,6 +529,68 @@ export default function LearningPlanSessionsScreen() {
 											dismissLearningTimePrompt({
 												learningPlanId: snapshot.plan.id,
 												kind: "postDiagnostic",
+											}),
+										)
+									}
+								/>
+								{learningTimeActionError ? (
+									<Text
+										selectable
+										accessibilityRole="alert"
+										className="text-center font-poppins text-body-4 text-destructive"
+									>
+										{learningTimeActionError}
+									</Text>
+								) : null}
+							</View>
+						) : null}
+						{showBehavioralLearningTimeSuggestion &&
+						behavioralLearningTimeSuggestion ? (
+							<View className="gap-3">
+								<LearningTimeSuggestionCard
+									entries={behavioralLearningTimeSuggestion.entries}
+									variant="behavioral"
+									isBusy={isLearningTimeActionBusy}
+									evidenceSessionCount={
+										behavioralLearningTimeSuggestion.evidenceSessionCount
+									}
+									plannedStartTime={
+										behavioralLearningTimeSuggestion.plannedStartTime
+									}
+									observedStartTime={
+										behavioralLearningTimeSuggestion.observedStartTime
+									}
+									onConfirm={() =>
+										void runLearningTimeAction(() =>
+											applyBehavioralSuggestion({
+												fingerprint:
+													behavioralLearningTimeSuggestion.fingerprint,
+											}),
+										)
+									}
+									onAdjust={() =>
+										router.push(
+											withReturnTo(
+												ROUTES.learningTimes,
+												`/learning-plans/${snapshot.plan.id}`,
+											),
+										)
+									}
+									onKeep={() =>
+										void runLearningTimeAction(() =>
+											respondToBehavioralSuggestion({
+												fingerprint:
+													behavioralLearningTimeSuggestion.fingerprint,
+												response: "keep",
+											}),
+										)
+									}
+									onContinue={() =>
+										void runLearningTimeAction(() =>
+											respondToBehavioralSuggestion({
+												fingerprint:
+													behavioralLearningTimeSuggestion.fingerprint,
+												response: "later",
 											}),
 										)
 									}

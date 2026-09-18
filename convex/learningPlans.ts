@@ -29,6 +29,7 @@ import {
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
+import { deriveBehavioralLearningTimeSuggestion } from "./learningTimeBehavior";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
 	getDefaultPreparationDepth,
@@ -54,6 +55,8 @@ const MAX_LEARNING_TIMES = 50;
 const MAX_SCHEDULING_DAY_ENTRIES = 500;
 const MAX_SCHEDULING_LOOKAHEAD_DAYS = 366;
 const MIN_ROLLING_HORIZON_MINUTES = 20;
+const MAX_BEHAVIOR_SESSIONS = 30;
+const BEHAVIOR_SUGGESTION_SNOOZE_MS = 14 * 24 * 60 * 60 * 1_000;
 const MIN_DIAGNOSTIC_QUESTION_COUNT = 5;
 const MAX_DIAGNOSTIC_QUESTION_COUNT = 10;
 // Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
@@ -355,6 +358,29 @@ const requireOwnerTokenIdentifierForMutation = async (ctx: MutationCtx) => {
 	}
 
 	return identity.tokenIdentifier;
+};
+
+const getOwnerUser = async (
+	ctx: QueryCtx | MutationCtx,
+	ownerTokenIdentifier: string,
+) =>
+	await ctx.db
+		.query("users")
+		.withIndex("by_tokenIdentifier", (q) =>
+			q.eq("tokenIdentifier", ownerTokenIdentifier),
+		)
+		.unique();
+
+const markLearningTimeIntroPromptHandled = async (
+	ctx: MutationCtx,
+	ownerTokenIdentifier: string,
+	handledAt: number,
+) => {
+	const user = await getOwnerUser(ctx, ownerTokenIdentifier);
+	if (!user || user.learningTimeIntroPromptHandledAt !== undefined) return;
+	await ctx.db.patch("users", user._id, {
+		learningTimeIntroPromptHandledAt: handledAt,
+	});
 };
 
 type CreateLearningPlanArgs = {
@@ -1142,6 +1168,7 @@ export const getSchedulingAvailability = query({
 export const getSnapshot = query({
 	args: {
 		id: v.id("learningPlans"),
+		behaviorSuggestionReferenceTime: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -1173,8 +1200,46 @@ export const getSnapshot = query({
 				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
 			)
 			.take(MAX_LEARNING_TIMES);
+		const [user, recentSessions] = await Promise.all([
+			getOwnerUser(ctx, ownerTokenIdentifier),
+			ctx.db
+				.query("learningPlanSessions")
+				.withIndex("by_ownerTokenIdentifier", (q) =>
+					q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+				)
+				.order("desc")
+				.take(MAX_BEHAVIOR_SESSIONS),
+		]);
 		const proposedLearningTimes = learningTimes.filter(
-			(learningTime) => learningTime.preferenceStatus === "proposed",
+			(learningTime) => learningTime.preferenceStatus === "systemDefault",
+		);
+		const behavioralLearningTimeSuggestion =
+			deriveBehavioralLearningTimeSuggestion({
+				sessions: recentSessions.map((session) => ({
+					dateKey: session.dateKey,
+					startTime: session.startTime,
+					durationMinutes: session.durationMinutes,
+					startedAt: session.startedAt,
+					executionStatus: getSessionExecutionStatus(session),
+					planningStatus: session.planningStatus,
+				})),
+				learningTimes,
+				grade: user?.grade,
+			}) ?? undefined;
+		const behavioralSuggestionIsDismissed = Boolean(
+			behavioralLearningTimeSuggestion &&
+				user?.behavioralLearningTimeSuggestionDismissedFingerprint ===
+					behavioralLearningTimeSuggestion.fingerprint,
+		);
+		const behavioralSuggestionIsSnoozed = Boolean(
+			behavioralLearningTimeSuggestion &&
+				user?.behavioralLearningTimeSuggestionSnoozedFingerprint ===
+					behavioralLearningTimeSuggestion.fingerprint &&
+				user.behavioralLearningTimeSuggestionSnoozedAt !== undefined &&
+				(args.behaviorSuggestionReferenceTime === undefined ||
+					args.behaviorSuggestionReferenceTime -
+						user.behavioralLearningTimeSuggestionSnoozedAt <
+						BEHAVIOR_SUGGESTION_SNOOZE_MS),
 		);
 		const readySessionCount = sessions.filter(
 			(session) =>
@@ -1238,11 +1303,18 @@ export const getSnapshot = query({
 									endTime: learningTime.endTime,
 								})),
 								initialPromptDismissed:
-									plan.initialLearningTimePromptDismissedAt !== undefined,
+									plan.initialLearningTimePromptDismissedAt !== undefined ||
+									user?.learningTimeIntroPromptHandledAt !== undefined,
 								postDiagnosticReminderDismissed:
 									plan.postDiagnosticLearningTimeReminderDismissedAt !==
 									undefined,
 							}
+						: undefined,
+				behavioralLearningTimeSuggestion:
+					behavioralLearningTimeSuggestion &&
+					!behavioralSuggestionIsDismissed &&
+					!behavioralSuggestionIsSnoozed
+						? behavioralLearningTimeSuggestion
 						: undefined,
 			},
 			documents: documents.map(publicDocument),
@@ -1508,6 +1580,7 @@ export const saveKnowledgeAnswer = mutation({
 			}),
 			updatedAt: now,
 		});
+		await markLearningTimeIntroPromptHandled(ctx, ownerTokenIdentifier, now);
 		return answerId;
 	},
 });
@@ -3075,6 +3148,13 @@ export const dismissLearningTimePrompt = mutation({
 				: { postDiagnosticLearningTimeReminderDismissedAt: dismissedAt }),
 			updatedAt: dismissedAt,
 		});
+		if (args.kind === "initial") {
+			await markLearningTimeIntroPromptHandled(
+				ctx,
+				ownerTokenIdentifier,
+				dismissedAt,
+			);
+		}
 		return dismissedAt;
 	},
 });

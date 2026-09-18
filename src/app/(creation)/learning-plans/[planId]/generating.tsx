@@ -80,7 +80,7 @@ export default function LearningPlanGeneratingScreen() {
 			learningTimes,
 		});
 		return learningTimes.some(
-			(learningTime) => learningTime.preferenceStatus === "proposed",
+			(learningTime) => learningTime.preferenceStatus === "systemDefault",
 		)
 			? Math.max(availableMinutes, MIN_ROLLING_HORIZON_MINUTES)
 			: availableMinutes;

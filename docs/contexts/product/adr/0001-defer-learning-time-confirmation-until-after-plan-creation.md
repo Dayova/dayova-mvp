@@ -21,17 +21,45 @@ so schedule bootstrapping does not mask or relabel those recovery cases.
 - **Primary action:** start the first learning step.
 - **Friction:** defer manual availability entry and do not turn schedule
   precision into a plan-generation gate.
-- **Chosen decision:** when no learning times exist, generate conservative
-  provisional defaults, persist their proposed status, and schedule the rolling
-  two-session window from them. Offer confirmation or editing after the plan
-  exists and remind once after the Wissenscheck without interrupting learning.
+- **Chosen decision:** learning times are absent from onboarding and exam setup.
+  When no confirmed times exist, generate grade-aware system defaults, persist
+  them as unconfirmed defaults, and schedule the rolling two-session window from
+  them. Offer confirmation or editing after the plan exists and remind once
+  after the Wissenscheck without interrupting learning.
+
+## Automatic scheduling policy
+
+- Grades 5–8: 16:00–20:00.
+- Grades 9–10: 16:00–22:00.
+- Grade 11 and above: 16:00–midnight. Store midnight as `00:00` and interpret it
+  as the end of the same scheduling day.
+- Missing grade: use the conservative 16:00–20:00 fallback.
+- Choose up to three upcoming recurring days that can still fit before the exam.
+  On the current day, start after the current time instead of scheduling in the
+  past.
+
+These windows guide automatic scheduling. They never prevent a learner from
+opening a learning step earlier or later, and an explicitly confirmed preference
+remains authoritative.
+
+## Behavioral refinement
+
+Dayova compares planned and actual start times already recorded for completed
+learning sessions. It proposes changed days and times only after at least five
+eligible sessions show a consistent shift; one late or early start does not
+create a prompt. Automatic proposals remain inside the learner's grade boundary.
+
+The proposal explains the observed pattern and offers `apply`, `adjust`, `keep
+current`, and `later`. It is never applied silently. `Later` snoozes the same
+proposal for 14 days, while `keep current` suppresses that exact fingerprint
+until the behavior produces a materially different proposal.
 
 ## Consequences
 
 - Existing learning times remain authoritative and are never overwritten by
   defaults.
-- Proposed defaults are visibly distinct from confirmed preferences in the
-  plan prompt and learning-time settings.
+- System defaults are visibly distinct from confirmed preferences in the plan
+  prompt and learning-time settings.
 - Continuing to learn dismisses the initial prompt for that plan but does not
   silently confirm the proposal.
 - Accepting or editing a proposal converts the current proposed windows into
@@ -42,3 +70,5 @@ so schedule bootstrapping does not mask or relabel those recovery cases.
 - If even a safe provisional window cannot fit before the assessment, the
   learner receives a concrete recovery instruction instead of a generic plan
   generation failure.
+- Accepted behavioral suggestions update only future scheduling. Completed,
+  partially completed, missed, adjusted, and active sessions remain unchanged.

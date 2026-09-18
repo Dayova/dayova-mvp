@@ -204,7 +204,7 @@ describe("learning plan AI scheduling", () => {
 					dayOfWeek: 1,
 					startTime: "17:00",
 					endTime: "17:30",
-					preferenceStatus: "proposed",
+					preferenceStatus: "systemDefault",
 				},
 			],
 			[],

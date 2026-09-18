@@ -1,3 +1,8 @@
+import {
+	formatLearningWindowTime,
+	getAutomaticLearningWindow,
+} from "./learningTimePolicy";
+
 export const ONBOARDING_DURATION_MINUTES = [
 	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
 ] as const;
@@ -28,8 +33,7 @@ export type DerivedLearningTime = {
 	endTime: string;
 };
 
-const PROPOSED_WINDOW_MINUTES = 30;
-const PROPOSED_START_MINUTES = 17 * 60;
+const MIN_PROPOSED_WINDOW_MINUTES = 10;
 const MAX_PROPOSED_DAYS = 3;
 
 const parseDateKey = (value: string) => {
@@ -45,10 +49,12 @@ export const deriveProposedLearningTimes = ({
 	currentDateKey,
 	currentTimeMinutes,
 	examDateKey,
+	grade,
 }: {
 	currentDateKey: string;
 	currentTimeMinutes: number;
 	examDateKey: string;
+	grade?: string;
 }): DerivedLearningTime[] => {
 	const currentDate = parseDateKey(currentDateKey);
 	const examDate = parseDateKey(examDateKey);
@@ -61,6 +67,7 @@ export const deriveProposedLearningTimes = ({
 
 	const proposed: DerivedLearningTime[] = [];
 	const usedDays = new Set<number>();
+	const automaticWindow = getAutomaticLearningWindow(grade);
 	const cursor = new Date(currentDate);
 	while (cursor <= lastPlanningDate && proposed.length < MAX_PROPOSED_DAYS) {
 		const dayOfWeek = getDayOfWeek(cursor);
@@ -68,15 +75,18 @@ export const deriveProposedLearningTimes = ({
 			const isToday = cursor.getTime() === currentDate.getTime();
 			const startMinutes = isToday
 				? Math.max(
-						PROPOSED_START_MINUTES,
+						automaticWindow.startMinutes,
 						roundUpToTenMinutes(currentTimeMinutes + 10),
 					)
-				: PROPOSED_START_MINUTES;
-			if (startMinutes + PROPOSED_WINDOW_MINUTES < 24 * 60) {
+				: automaticWindow.startMinutes;
+			if (
+				startMinutes + MIN_PROPOSED_WINDOW_MINUTES <=
+				automaticWindow.endMinutes
+			) {
 				proposed.push({
 					dayOfWeek,
-					startTime: formatTime(startMinutes),
-					endTime: formatTime(startMinutes + PROPOSED_WINDOW_MINUTES),
+					startTime: formatLearningWindowTime(startMinutes),
+					endTime: automaticWindow.endTime,
 				});
 				usedDays.add(dayOfWeek);
 			}
@@ -145,12 +155,12 @@ export const deriveOnboardingLearningTimes = (
 	}
 
 	const endMinutes = startMinutes + durationMinutes;
-	if (endMinutes >= MINUTES_PER_DAY) {
+	if (endMinutes > MINUTES_PER_DAY) {
 		return { ok: false, reason: "crossesMidnight" };
 	}
 
 	const startTime = formatTime(startMinutes);
-	const endTime = formatTime(endMinutes);
+	const endTime = formatLearningWindowTime(endMinutes);
 	return {
 		ok: true,
 		windows: [...dayValues]

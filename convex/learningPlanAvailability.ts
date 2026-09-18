@@ -1,3 +1,8 @@
+import {
+	parseLearningWindowEnd,
+	parseLearningWindowTime,
+} from "./learningTimePolicy";
+
 export type LearningTimeWindow = {
 	dayOfWeek: number;
 	startTime: string;
@@ -13,23 +18,6 @@ export type OccupiedLearningTime = {
 const MIN_LEARNING_SLOT_MINUTES = 10;
 const MAX_WINDOW_MINUTES = 120;
 
-const parseTimeToMinutes = (time: string) => {
-	const [hours, minutes] = time.split(":").map(Number);
-	if (
-		!Number.isInteger(hours) ||
-		!Number.isInteger(minutes) ||
-		hours === undefined ||
-		minutes === undefined ||
-		hours < 0 ||
-		hours > 23 ||
-		minutes < 0 ||
-		minutes > 59
-	) {
-		return null;
-	}
-	return hours * 60 + minutes;
-};
-
 const getOccupiedIntervalsByDay = (occupiedEntries: OccupiedLearningTime[]) => {
 	const intervalsByDay = new Map<
 		string,
@@ -40,7 +28,7 @@ const getOccupiedIntervalsByDay = (occupiedEntries: OccupiedLearningTime[]) => {
 		if (!entry.time || !entry.durationMinutes || entry.durationMinutes <= 0) {
 			continue;
 		}
-		const start = parseTimeToMinutes(entry.time);
+		const start = parseLearningWindowTime(entry.time);
 		if (start === null) continue;
 
 		const intervals = intervalsByDay.get(entry.dayKey) ?? [];
@@ -111,8 +99,11 @@ export const calculateAvailableStudyMinutes = ({
 		const dayOfWeek = cursor.getUTCDay() || 7;
 		for (const learningTime of learningTimes) {
 			if (learningTime.dayOfWeek !== dayOfWeek) continue;
-			const start = parseTimeToMinutes(learningTime.startTime);
-			const end = parseTimeToMinutes(learningTime.endTime);
+			const start = parseLearningWindowTime(learningTime.startTime);
+			const end = parseLearningWindowEnd(
+				learningTime.startTime,
+				learningTime.endTime,
+			);
 			if (start === null || end === null || end - start < 10) continue;
 			if (
 				dayKey === fromDateKey &&
