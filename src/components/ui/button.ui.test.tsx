@@ -15,6 +15,6 @@ describe("Button visual variants", () => {
 		const label = screen.getByText("Eintrag löschen");
 		expect(button.props.className).toContain("bg-destructive");
 		expect(button.props.className).not.toContain("bg-button-neutral");
-		expect(label.props.className).toContain("text-on-primary");
+		expect(label.props.className).toContain("text-white");
 	});
 });

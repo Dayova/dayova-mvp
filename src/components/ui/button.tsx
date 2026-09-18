@@ -82,7 +82,7 @@ const buttonTextVariants = cva(
 			variant: {
 				default: "text-white",
 				neutral: "text-background",
-				destructive: "text-on-primary",
+				destructive: "text-white",
 				outline: "text-background",
 				ghost: "group-active:text-primary-strong",
 				link: cn(
