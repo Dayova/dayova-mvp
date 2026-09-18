@@ -31,21 +31,37 @@ const useAndroidBackHandler = (enabled: boolean, onBack: () => boolean) => {
 	);
 };
 
-export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
+export const useBackIntent = (
+	enabled: boolean,
+	onBack: () => boolean,
+	{ allowRouteRemoval = false }: { allowRouteRemoval?: boolean } = {},
+) => {
 	const navigation = useNavigation();
 	const isHandlingNativeBackRef = useRef(false);
-	const invokeBack = useCallback(() => {
-		if (isHandlingNativeBackRef.current) return false;
+
+	const runBackIntent = useCallback(() => {
+		if (isHandlingNativeBackRef.current) return true;
 
 		isHandlingNativeBackRef.current = true;
-		const handled = onBack();
+		let handled: boolean;
+		try {
+			handled = onBack();
+		} catch (error) {
+			isHandlingNativeBackRef.current = false;
+			throw error;
+		}
+		if (!handled) {
+			isHandlingNativeBackRef.current = false;
+			return false;
+		}
+
 		requestAnimationFrame(() => {
 			isHandlingNativeBackRef.current = false;
 		});
-		return handled;
+		return true;
 	}, [onBack]);
 
-	useAndroidBackHandler(enabled, invokeBack);
+	useAndroidBackHandler(enabled, runBackIntent);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -54,17 +70,23 @@ export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
 			const unsubscribe = navigation.addListener("beforeRemove", (event) => {
 				if (!isBackRemovalAction(event)) return;
 
-				if (isHandlingNativeBackRef.current) return;
+				// Expo Router dispatches queued actions after the callback returns.
+				// Exit boundaries must allow removal independently of callback timing.
+				if (allowRouteRemoval) return;
+				if (isHandlingNativeBackRef.current) {
+					event.preventDefault();
+					return;
+				}
 
-				const handled = invokeBack();
+				const handled = runBackIntent();
 				if (!handled) return;
 
 				event.preventDefault();
 			});
 
 			return unsubscribe;
-		}, [enabled, invokeBack, navigation]),
+		}, [allowRouteRemoval, enabled, navigation, runBackIntent]),
 	);
 
-	return invokeBack;
+	return runBackIntent;
 };

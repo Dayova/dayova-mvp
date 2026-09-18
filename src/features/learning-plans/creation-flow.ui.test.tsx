@@ -89,7 +89,7 @@ jest.mock("~/lib/navigation", () => ({
 	...jest.requireActual<typeof import("~/lib/navigation-actions")>(
 		"~/lib/navigation-actions",
 	),
-	useBackIntent: () => undefined,
+	useBackIntent: (_enabled: boolean, onBack: () => boolean) => onBack,
 }));
 jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { id: "user" } }),
