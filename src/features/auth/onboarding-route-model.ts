@@ -85,42 +85,6 @@ export const ONBOARDING_PROFILE_STEPS = [
 		textContentType: "name",
 	},
 	{
-		kind: "range",
-		id: "studyTime",
-		title: "Wie lange möchtest du pro Lerntag einplanen?",
-		description:
-			"Damit legst du die Dauer deiner ersten Lernzeiten fest. Du kannst sie später ändern.",
-		field: "studyTime",
-		values: ONBOARDING_DURATION_OPTIONS,
-	},
-	{
-		kind: "fact",
-		id: "study-time-fact",
-		title: "Dein Lernplan braucht echte Zeitfenster.",
-		description: "Dauer, Tage und Uhrzeit werden im Lernplan gespeichert.",
-	},
-	{
-		kind: "days",
-		id: "studyDays",
-		title: "An welchen Tagen kannst du lernen?",
-		description:
-			"Wähle alle passenden Tage. Für jeden entsteht dieselbe erste Lernzeit.",
-		field: "studyDays",
-	},
-	{
-		kind: "time",
-		id: "learningTime",
-		title: "Um wie viel Uhr möchtest du starten?",
-		description: "Diese Startzeit gilt für alle ausgewählten Lerntage.",
-		field: "learningTime",
-	},
-	{
-		kind: "payoff",
-		id: "learning-time-payoff",
-		title: "Deine Lernzeiten",
-		description: "Prüfe dein wiederkehrendes Zeitfenster.",
-	},
-	{
 		kind: "wheel",
 		id: "grade",
 		title: "Welche Klassenstufe besuchst du?",
@@ -167,20 +131,65 @@ export const ONBOARDING_PROFILE_STEPS = [
 	},
 ] as const satisfies readonly OnboardingProfileStep[];
 
-const stepById = new Map(
+const LEGACY_LEARNING_TIME_STEPS = [
+	{
+		kind: "range",
+		id: "studyTime",
+		title: "Wie lange möchtest du pro Lerntag einplanen?",
+		description:
+			"Damit legst du die Dauer deiner ersten Lernzeiten fest. Du kannst sie später ändern.",
+		field: "studyTime",
+		values: ONBOARDING_DURATION_OPTIONS,
+	},
+	{
+		kind: "fact",
+		id: "study-time-fact",
+		title: "Dein Lernplan braucht echte Zeitfenster.",
+		description: "Dauer, Tage und Uhrzeit werden im Lernplan gespeichert.",
+	},
+	{
+		kind: "days",
+		id: "studyDays",
+		title: "An welchen Tagen kannst du lernen?",
+		description:
+			"Wähle alle passenden Tage. Für jeden entsteht dieselbe erste Lernzeit.",
+		field: "studyDays",
+	},
+	{
+		kind: "time",
+		id: "learningTime",
+		title: "Um wie viel Uhr möchtest du starten?",
+		description: "Diese Startzeit gilt für alle ausgewählten Lerntage.",
+		field: "learningTime",
+	},
+	{
+		kind: "payoff",
+		id: "learning-time-payoff",
+		title: "Deine Lernzeiten",
+		description: "Prüfe dein wiederkehrendes Zeitfenster.",
+	},
+] as const satisfies readonly OnboardingProfileStep[];
+
+const activeStepById = new Map<OnboardingStepId, OnboardingProfileStep>(
 	ONBOARDING_PROFILE_STEPS.map((step) => [step.id, step] as const),
 );
 
+const allStepById = new Map<OnboardingStepId, OnboardingProfileStep>([
+	...activeStepById,
+	...LEGACY_LEARNING_TIME_STEPS.map((step) => [step.id, step] as const),
+]);
+
 export const isOnboardingStepId = (value: string): value is OnboardingStepId =>
-	stepById.has(value as OnboardingStepId);
+	activeStepById.has(value as OnboardingStepId);
 
 export const getOnboardingStep = (stepId: OnboardingStepId) =>
-	stepById.get(stepId) as OnboardingProfileStep;
+	allStepById.get(stepId) as OnboardingProfileStep;
 
 export const getNextOnboardingStep = (stepId: OnboardingStepId) => {
 	const index = ONBOARDING_PROFILE_STEPS.findIndex(
 		(step) => step.id === stepId,
 	);
+	if (index < 0) return null;
 	return ONBOARDING_PROFILE_STEPS[index + 1] ?? null;
 };
 

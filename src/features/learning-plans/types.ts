@@ -224,6 +224,26 @@ export type LearningPlanSnapshot = {
 			readySessionCount: number;
 			failedSessionCount: number;
 		};
+		learningTimeSuggestion?: {
+			entries: Array<{
+				dayOfWeek: number;
+				startTime: string;
+				endTime: string;
+			}>;
+			initialPromptDismissed: boolean;
+			postDiagnosticReminderDismissed: boolean;
+		};
+		behavioralLearningTimeSuggestion?: {
+			fingerprint: string;
+			evidenceSessionCount: number;
+			plannedStartTime: string;
+			observedStartTime: string;
+			entries: Array<{
+				dayOfWeek: number;
+				startTime: string;
+				endTime: string;
+			}>;
+		};
 	};
 	documents: LearningPlanDocument[];
 	answers: LearningPlanAnswer[];

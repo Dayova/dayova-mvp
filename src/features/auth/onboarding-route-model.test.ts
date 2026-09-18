@@ -9,14 +9,9 @@ import {
 } from "./onboarding-route-model";
 
 describe("onboarding native route model", () => {
-	test("keeps the accepted 11-step profile/account sequence", () => {
+	test("keeps learning-time setup out of the profile/account sequence", () => {
 		expect(ONBOARDING_PROFILE_STEPS.map((step) => step.id)).toEqual([
 			"name",
-			"studyTime",
-			"study-time-fact",
-			"studyDays",
-			"learningTime",
-			"learning-time-payoff",
 			"grade",
 			"state",
 			"schoolType",
@@ -27,34 +22,34 @@ describe("onboarding native route model", () => {
 
 	test("maps each action to a distinct native route and its successor", () => {
 		expect(getOnboardingStepPath("name")).toBe("/onboarding/name");
-		expect(getNextOnboardingStep("name")?.id).toBe("studyTime");
+		expect(getNextOnboardingStep("name")?.id).toBe("grade");
 		expect(getNextOnboardingStep("password")).toBeNull();
 		expect(getOnboardingStepProgress("name")).toEqual({
-			progress: 1 / 11,
-			stepCount: 11,
+			progress: 1 / 6,
+			stepCount: 6,
 			stepNumber: 1,
 		});
 		expect(getOnboardingStepProgress("password")).toEqual({
 			progress: 1,
-			stepCount: 11,
-			stepNumber: 11,
+			stepCount: 6,
+			stepNumber: 6,
 		});
 	});
 
 	test("rejects unknown or cold direct step entries", () => {
-		expect(isOnboardingStepId("studyTime")).toBe(true);
+		expect(isOnboardingStepId("studyTime")).toBe(false);
 		expect(isOnboardingStepId("unknown")).toBe(false);
 		expect(
 			resolveOnboardingStepEntry({
-				requestedStep: "studyTime",
+				requestedStep: "grade",
 				visitedSteps: new Set(),
 			}),
 		).toEqual({ kind: "fallback", path: "/" });
 		expect(
 			resolveOnboardingStepEntry({
-				requestedStep: "studyTime",
-				visitedSteps: new Set(["studyTime"]),
+				requestedStep: "grade",
+				visitedSteps: new Set(["grade"]),
 			}),
-		).toEqual({ kind: "step", stepId: "studyTime" });
+		).toEqual({ kind: "step", stepId: "grade" });
 	});
 });

@@ -1,4 +1,5 @@
 export const GRADE_OPTIONS = [
+	"5",
 	"6",
 	"7",
 	"8",

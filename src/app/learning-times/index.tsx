@@ -38,6 +38,9 @@ export default function LearningTimesOverviewScreen() {
 			(day) => !learningTimes?.some((entry) => entry.dayOfWeek === day.value),
 		)?.value ?? 1;
 	const returnTo = getSafeReturnTo(params.returnTo);
+	const hasProposedTimes = learningTimes?.some(
+		(entry) => entry.preferenceStatus === "systemDefault",
+	);
 
 	const goBack = () => {
 		goBackToReturnOrReplace(router, ROUTES.settings, returnTo);
@@ -96,7 +99,9 @@ export default function LearningTimesOverviewScreen() {
 					selectable
 					className="font-poppins text-body-3 text-secondary-text"
 				>
-					Dayova plant deine Lerneinheiten in diesen Zeiten.
+					{hasProposedTimes
+						? "Dayova hat diese Zeiten als Start vorgeschlagen. Sobald du eine Zeit bearbeitest oder ergänzt, gelten sie als deine bestätigten Lernzeiten."
+						: "Dayova plant deine Lerneinheiten in diesen Zeiten."}
 				</Text>
 
 				<View className="mt-7">

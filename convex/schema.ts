@@ -154,6 +154,12 @@ export default defineSchema({
 		aiConsentGrantedAt: v.optional(v.number()),
 		aiConsentUpdatedAt: v.optional(v.number()),
 		learningTimesBackfillVersion: v.optional(v.number()),
+		learningTimeIntroPromptHandledAt: v.optional(v.number()),
+		behavioralLearningTimeSuggestionDismissedFingerprint: v.optional(
+			v.string(),
+		),
+		behavioralLearningTimeSuggestionSnoozedFingerprint: v.optional(v.string()),
+		behavioralLearningTimeSuggestionSnoozedAt: v.optional(v.number()),
 	})
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
 		.index("by_clerkId", ["clerkId"])
@@ -221,6 +227,10 @@ export default defineSchema({
 		dayOfWeek: v.number(),
 		startTime: v.string(),
 		endTime: v.string(),
+		preferenceStatus: v.optional(
+			v.union(v.literal("systemDefault"), v.literal("confirmed")),
+		),
+		proposedForLearningPlanId: v.optional(v.id("learningPlans")),
 		createdAt: v.number(),
 		updatedAt: v.number(),
 	})
@@ -426,6 +436,8 @@ export default defineSchema({
 		contentGenerationId: v.optional(v.string()),
 		contentGenerationStartedAt: v.optional(v.number()),
 		sessionCompositionVariant: v.optional(sessionCompositionVariantValidator),
+		initialLearningTimePromptDismissedAt: v.optional(v.number()),
+		postDiagnosticLearningTimeReminderDismissedAt: v.optional(v.number()),
 		examDayEntryId: v.optional(v.id("dayEntries")),
 		acceptedAt: v.optional(v.number()),
 		createdAt: v.number(),
