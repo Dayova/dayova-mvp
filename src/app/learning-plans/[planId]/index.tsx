@@ -110,7 +110,18 @@ export const getExamCountdownLabel = (examDateKey: string, today: Date) => {
 const getSessionRoute = (
 	planId: Id<"learningPlans">,
 	sessionId: Id<"learningPlanSessions">,
-) => `/learning-plans/${planId}/sessions/${sessionId}` as const;
+	options: { repeat?: boolean } = {},
+) =>
+	`/learning-plans/${planId}/sessions/${sessionId}${
+		options.repeat ? "?repeat=1" : ""
+	}` as const;
+
+const getRepeatActionLabel = (session: PlanSession) => {
+	if (isDiagnosticLearningPlanSession(session)) return "Lernsession ansehen";
+	if (session.phase === "theory") return "Nochmal lernen";
+	if (session.phase === "practice") return "Nochmal üben";
+	return "Nochmal testen";
+};
 
 export function SessionPreviewCard({
 	canOpen,
@@ -137,7 +148,7 @@ export function SessionPreviewCard({
 	const description = formatGermanUiText(session.goal);
 	const hasRecordedOutcome = isLearningPlanSessionHistory(session);
 	const actionLabel = hasRecordedOutcome
-		? "Lernsession ansehen"
+		? getRepeatActionLabel(session)
 		: session.executionStatus === "started"
 			? "Weiterlernen"
 			: "Lernsession starten";
@@ -474,7 +485,11 @@ export default function LearningPlanSessionsScreen() {
 						onOpen={() => {
 							if (!canOpenSelectedSession) return;
 							router.push(
-								getSessionRoute(snapshot.plan.id, selectedSession.id),
+								getSessionRoute(snapshot.plan.id, selectedSession.id, {
+									repeat:
+										isLearningPlanSessionHistory(selectedSession) &&
+										!isDiagnosticLearningPlanSession(selectedSession),
+								}),
 							);
 						}}
 					/>
@@ -618,18 +633,34 @@ export default function LearningPlanSessionsScreen() {
 							showsAdaptiveContinuation={
 								snapshot.plan.rollingPlanEnabled === true
 							}
-							onOpenSession={(session) => {
-								if (
-									!canOpenSelectedSession ||
-									session.id !== selectedSession.id
-								) {
-									return;
-								}
-								router.push(getSessionRoute(snapshot.plan.id, session.id));
-							}}
-							onSelectSession={(session) => setSelectedSessionId(session.id)}
-						/>
-					</>
+								onOpenSession={(session) => {
+									const sessionIndex = snapshot.sessions.findIndex(
+										(candidate) => candidate.id === session.id,
+									);
+									const state = getLearningPathNodeState(
+										session,
+										sessionIndex,
+										getCommittedSessionIndex(snapshot.sessions),
+									);
+									const canOpen =
+										sessionIndex >= 0 &&
+										state !== "locked" &&
+										session.planningStatus !== "provisional" &&
+										(session.contentGenerationStatus === undefined ||
+											session.contentGenerationStatus === "ready");
+									if (!canOpen) return;
+
+									router.push(
+										getSessionRoute(snapshot.plan.id, session.id, {
+											repeat:
+												isLearningPlanSessionHistory(session) &&
+												!isDiagnosticLearningPlanSession(session),
+										}),
+									);
+								}}
+								onSelectSession={(session) => setSelectedSessionId(session.id)}
+							/>
+						</>
 				) : (
 					<View />
 				)}

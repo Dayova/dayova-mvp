@@ -529,9 +529,11 @@ function ScreenPathNode({
 			accessibilityHint={
 				isLocked
 					? "Zeigt den voraussichtlich folgenden Lernblock. Er kann sich nach der nächsten Session noch ändern."
-					: selected
-						? "Öffnet diesen Lernblock."
-						: "Wählt diesen Lernblock aus. Ein weiterer Tipp öffnet ihn."
+					: state === "completed"
+						? "Öffnet diesen abgeschlossenen Lernblock erneut."
+						: selected
+							? "Öffnet diesen Lernblock."
+							: "Wählt diesen Lernblock aus. Ein weiterer Tipp öffnet ihn."
 			}
 			accessibilityRole="button"
 			accessibilityState={{ selected }}
@@ -682,7 +684,10 @@ function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 								session={session}
 								state={state}
 								onPress={() => {
-									if (selected && state !== "locked") {
+									if (
+										state === "completed" ||
+										(selected && state !== "locked")
+									) {
 										props.onOpenSession(session);
 										return;
 									}

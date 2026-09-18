@@ -28,7 +28,6 @@ import { FeedbackView } from "~/features/learning-plans/session-feedback";
 import { getLearningSessionKeyboardLayout } from "~/features/learning-plans/session-keyboard-layout";
 import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
-	CONTINUE_LEARNING_MINUTES,
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
@@ -149,6 +148,7 @@ export default function LearningSessionContentScreen() {
 	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{
 		planId?: string;
+		repeat?: string;
 		returnTo?: string;
 		sessionId?: string;
 	}>();
@@ -163,9 +163,6 @@ export default function LearningSessionContentScreen() {
 	);
 	const finishSessionContent = useMutation(
 		api.learningSessionContent.finishSessionContent,
-	);
-	const extendSessionContent = useMutation(
-		api.learningSessionContent.extendSessionContent,
 	);
 	const startSession = useMutation(api.learningPlans.startSession);
 	const recordSessionOutcome = useMutation(
@@ -189,7 +186,9 @@ export default function LearningSessionContentScreen() {
 		LearningSessionContentSnapshot["session"]["phase"] | null
 	>(null);
 	const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
-	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
+	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(() =>
+		params.repeat === "1" ? Date.now() : null,
+	);
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
 	const [questionActionFooterHeight, setQuestionActionFooterHeight] = useState<
 		number | null
@@ -607,33 +606,22 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const startContinueLearning = async () => {
+	const repeatCurrentSession = () => {
 		if (!content || isBusy) return;
 
-		setIsBusy(true);
+		resetItemState();
 		setErrorMessage(null);
-		try {
-			await recordCompletedOutcome();
-			const extension = await extendSessionContent({
-				sessionId: content.session.id,
-				durationMinutes: CONTINUE_LEARNING_MINUTES,
-			});
-			resetItemState();
-			setRetryStartedAt(Date.now());
-			setCurrentIndex(extension.firstNewItemIndex);
-			setCompletionPhase(null);
-			setIsContinuation(true);
-			didAutoFinishRef.current = false;
-		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Das Weiterlernen konnte nicht gestartet werden.",
-				),
-			);
-		} finally {
-			setIsBusy(false);
-		}
+		setRetryStartedAt(Date.now());
+		setCurrentIndex(0);
+		setCompletionPhase(null);
+		setIsContinuation(false);
+		setRemainingSeconds(null);
+		remainingSecondsRef.current = null;
+		activeStudySecondsRef.current = 0;
+		activeStudyStartedAtRef.current = null;
+		advancedPreTheoryQuestionItemIdRef.current = null;
+		didAutoFinishRef.current = false;
+		contentScrollRef.current?.scrollTo({ y: 0, animated: false });
 	};
 
 	const continueTheory = () => {
@@ -978,7 +966,7 @@ export default function LearningSessionContentScreen() {
 						durationMinutes={content.session.durationMinutes}
 						correctCount={currentRunCorrectCount}
 						attemptCount={currentRunAttempts.length}
-						onContinueLearning={() => void startContinueLearning()}
+						onRepeat={repeatCurrentSession}
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave
