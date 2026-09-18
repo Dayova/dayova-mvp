@@ -1,14 +1,11 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, AppState, Platform, View } from "react-native";
 import {
-	ActivityIndicator,
-	AppState,
-	KeyboardAvoidingView,
-	Platform,
-	ScrollView,
-	View,
-} from "react-native";
+	type KeyboardAwareScrollViewRef,
+	KeyboardStickyView,
+} from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -17,6 +14,7 @@ import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Timer } from "~/components/ui/icon";
+import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -27,6 +25,7 @@ import { LearningSessionCompletion } from "~/features/learning-plans/learning-se
 import { getLearningSessionAnalysisDestination } from "~/features/learning-plans/session-analysis-navigation";
 import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
 import { FeedbackView } from "~/features/learning-plans/session-feedback";
+import { getLearningSessionKeyboardLayout } from "~/features/learning-plans/session-keyboard-layout";
 import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
 	CONTINUE_LEARNING_MINUTES,
@@ -192,6 +191,9 @@ export default function LearningSessionContentScreen() {
 	const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
 	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+	const [questionActionFooterHeight, setQuestionActionFooterHeight] = useState<
+		number | null
+	>(null);
 	const remainingSecondsRef = useRef<number | null>(null);
 	const [isContinuation, setIsContinuation] = useState(false);
 	const didAutoFinishRef = useRef(false);
@@ -202,7 +204,7 @@ export default function LearningSessionContentScreen() {
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
 	const appStateRef = useRef(AppState.currentState);
-	const contentScrollRef = useRef<ScrollView>(null);
+	const contentScrollRef = useRef<KeyboardAwareScrollViewRef>(null);
 	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
 		null,
 	);
@@ -752,6 +754,11 @@ export default function LearningSessionContentScreen() {
 		content && currentItem && !completionPhase && !visibleAttempt,
 	);
 	const showFeedbackAction = Boolean(visibleAttempt && !completionPhase);
+	const questionKeyboardLayout = getLearningSessionKeyboardLayout(
+		Platform.OS,
+		insets.bottom,
+		questionActionFooterHeight,
+	);
 
 	if (
 		content?.session.phase === "theory" &&
@@ -901,9 +908,14 @@ export default function LearningSessionContentScreen() {
 					) : null}
 				</View>
 			) : null}
-			<ScrollView
+			<KeyboardSafeScrollView
 				ref={contentScrollRef}
 				className="flex-1"
+				bottomOffset={
+					showQuestionActions
+						? questionKeyboardLayout.scrollBottomOffset
+						: undefined
+				}
 				bounces={
 					currentItem?.kind !== "multipleChoice" || Boolean(visibleAttempt)
 				}
@@ -912,7 +924,6 @@ export default function LearningSessionContentScreen() {
 					Boolean(visibleAttempt) ||
 					Boolean(completionPhase)
 				}
-				automaticallyAdjustKeyboardInsets={currentItem?.kind === "written"}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,
@@ -921,8 +932,6 @@ export default function LearningSessionContentScreen() {
 							? 24
 							: Math.max(insets.bottom + 28, 60),
 				}}
-				keyboardShouldPersistTaps="handled"
-				showsVerticalScrollIndicator={false}
 			>
 				{!content || content.items.length === 0 || needsTheoryContentUpgrade ? (
 					<View className="flex-1 items-center justify-center px-4 py-24">
@@ -1016,14 +1025,24 @@ export default function LearningSessionContentScreen() {
 						{errorMessage}
 					</Text>
 				) : null}
-			</ScrollView>
+			</KeyboardSafeScrollView>
 			{showQuestionActions && content ? (
-				<KeyboardAvoidingView
-					behavior={Platform.OS === "ios" ? "padding" : undefined}
+				<KeyboardStickyView
+					enabled={questionKeyboardLayout.stickyActionsEnabled}
 				>
 					<View
 						className="border-border border-t-hairline bg-background px-8 pt-4"
-						style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+						onLayout={({ nativeEvent }) => {
+							const measuredHeight = Math.ceil(nativeEvent.layout.height);
+							setQuestionActionFooterHeight((currentHeight) =>
+								currentHeight === measuredHeight
+									? currentHeight
+									: measuredHeight,
+							);
+						}}
+						style={{
+							paddingBottom: questionKeyboardLayout.footerBottomPadding,
+						}}
 					>
 						<ActionRow
 							className="mt-0"
@@ -1048,7 +1067,7 @@ export default function LearningSessionContentScreen() {
 							}
 						/>
 					</View>
-				</KeyboardAvoidingView>
+				</KeyboardStickyView>
 			) : showFeedbackAction ? (
 				<View
 					className="border-border border-t-hairline bg-background px-8 pt-4"
