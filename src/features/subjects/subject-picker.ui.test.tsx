@@ -1,7 +1,7 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import React from "react";
-import { SubjectAddFlow } from "./subject-picker";
+import { InlineSubjectPicker, SubjectAddFlow } from "./subject-picker";
 import type { SubjectSelection } from "./use-subject-options";
 
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
@@ -58,7 +58,26 @@ jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
 	const Icon = (props: Record<string, unknown>) =>
 		React.createElement("Icon", props);
-	return { Check: Icon, Plus: Icon };
+	return Object.fromEntries(
+		[
+			"Check",
+			"Plus",
+			"BookOpen",
+			"Calculator",
+			"Chemistry",
+			"Code",
+			"Dna",
+			"Earth",
+			"Football",
+			"Language",
+			"Maps",
+			"Mic",
+			"MusicNote",
+			"PaintBrush",
+			"Pencil",
+			"TimeManagement",
+		].map((name) => [name, Icon]),
+	);
 });
 
 jest.mock("~/lib/theme", () => ({
@@ -69,6 +88,15 @@ jest.mock("~/lib/theme", () => ({
 		},
 	}),
 }));
+
+jest.mock("convex/react", () => ({
+	useConvexAuth: () => ({ isAuthenticated: true, isLoading: false }),
+	useQueries: () => ({
+		subjects: new Error("[CONVEX Q(personalSubjects:list)] Server Error"),
+	}),
+	useMutation: () => jest.fn(),
+}));
+jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
 
 const personalOption = {
 	key: "personal:french",
@@ -178,4 +206,73 @@ describe("SubjectAddFlow", () => {
 		});
 		expect(onSavePermanent).not.toHaveBeenCalled();
 	});
+});
+
+test("an unavailable personal catalog does not block exam subject selection", async () => {
+	const onSelect = jest.fn();
+	const screen = await render(
+		<InlineSubjectPicker selected={{ name: "" }} onSelect={onSelect} />,
+	);
+	expect(
+		screen.getByText(/Deine persönlichen Fächer konnten nicht geladen werden/),
+	).toBeOnTheScreen();
+	await act(() =>
+		fireEvent.press(screen.getByRole("radio", { name: "Mathematik" })),
+	);
+	expect(onSelect).toHaveBeenCalledWith({ name: "Mathematik" });
+	await act(() =>
+		fireEvent.press(screen.getByRole("button", { name: "Fach hinzufügen" })),
+	);
+	await act(() =>
+		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "Spanisch"),
+	);
+	await act(() =>
+		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
+	);
+	await act(() =>
+		fireEvent.press(
+			screen.getByRole("button", { name: "Nur diesmal verwenden" }),
+		),
+	);
+	expect(onSelect).toHaveBeenLastCalledWith({
+		name: "Spanisch",
+		isOneTime: true,
+	});
+});
+
+test("a failed permanent save keeps the language form open without reporting success", async () => {
+	const onSelect = jest.fn();
+	const screen = await render(
+		<SubjectAddFlow
+			options={[]}
+			onCancel={jest.fn()}
+			onSelect={onSelect}
+			onSavePermanent={async () => {
+				throw new Error("[CONVEX M(personalSubjects:create)] Server Error");
+			}}
+		/>,
+	);
+	await act(() =>
+		fireEvent.changeText(
+			screen.getByLabelText("Name des Fachs"),
+			"Französisch",
+		),
+	);
+	await act(() =>
+		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
+	);
+	await act(async () => {
+		fireEvent.press(
+			screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
+		);
+	});
+	expect(onSelect).not.toHaveBeenCalled();
+	expect(
+		screen.getByText(
+			"Das Fach konnte nicht gespeichert werden. Bitte versuche es erneut.",
+		),
+	).toBeOnTheScreen();
+	expect(
+		screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
+	).toBeOnTheScreen();
 });
