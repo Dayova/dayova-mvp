@@ -5,6 +5,9 @@ import { InlineSubjectPicker, SubjectAddFlow } from "./subject-picker";
 import type { SubjectSelection } from "./use-subject-options";
 
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetInput: jest.requireActual<typeof import("~/components/ui/input")>(
+		"~/components/ui/input",
+	).Input,
 	DayovaSheetFrame: ({
 		visible,
 		title,
@@ -275,4 +278,74 @@ test("a failed permanent save keeps the language form open without reporting suc
 	expect(
 		screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
 	).toBeOnTheScreen();
+});
+
+test("corrects a common language typo before permanent confirmation", async () => {
+	const onSavePermanent = jest.fn<(name: string) => Promise<SubjectSelection>>(
+		async (name) => ({ name, personalSubjectId: "italian-id" as never }),
+	);
+	const screen = await render(
+		<SubjectAddFlow
+			options={[]}
+			onCancel={jest.fn()}
+			onSelect={jest.fn()}
+			onSavePermanent={onSavePermanent}
+		/>,
+	);
+	await act(() =>
+		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "italienich"),
+	);
+	await act(() =>
+		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
+	);
+	expect(screen.getByText(/Italienisch kann künftig/)).toBeOnTheScreen();
+	await act(async () => {
+		fireEvent.press(
+			screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
+		);
+	});
+	expect(onSavePermanent).toHaveBeenCalledWith("Italienisch");
+});
+
+test("settings mode offers only permanent saving and promotes timetable-only subjects", async () => {
+	const onSelect = jest.fn();
+	const onSavePermanent = jest.fn<(name: string) => Promise<SubjectSelection>>(
+		async (name) => ({ name, personalSubjectId: "latin-id" as never }),
+	);
+	const screen = await render(
+		<SubjectAddFlow
+			permanentOnly
+			options={[
+				{
+					...personalOption,
+					kind: "timetable",
+					name: "Latein",
+					personalSubjectId: undefined,
+				},
+			]}
+			onCancel={jest.fn()}
+			onSelect={onSelect}
+			onSavePermanent={onSavePermanent}
+		/>,
+	);
+	await act(() =>
+		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "Latein"),
+	);
+	await act(() =>
+		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
+	);
+	expect(onSelect).not.toHaveBeenCalled();
+	expect(
+		screen.queryByRole("button", { name: "Nur diesmal verwenden" }),
+	).toBeNull();
+	await act(async () => {
+		fireEvent.press(
+			screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
+		);
+	});
+	expect(onSavePermanent).toHaveBeenCalledWith("Latein");
+	expect(onSelect).toHaveBeenCalledWith({
+		name: "Latein",
+		personalSubjectId: "latin-id",
+	});
 });

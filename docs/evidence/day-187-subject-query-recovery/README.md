@@ -30,3 +30,14 @@ The reported iPhone screens crash while rendering Settings → Personal subjects
 Access to `sleek-bulldog-130` is required to inspect the reported request IDs, establish the actual server-side cause, confirm that the complete personal-subject schema/functions are deployed, and publish the applicable backend fix. Do not treat graceful query failure as working permanent persistence.
 
 After deployment, verify on the signed-in iPhone: open personal subjects in Settings; choose an exam type and continue to subjects; permanently add each language and reuse it in another flow; rename/delete a test subject; confirm saved entry labels survive deletion. Native device completion has not been claimed by this change.
+
+
+## Reporter follow-up: dialogs and adding from Settings
+
+The reporter subsequently confirmed that adding and permanent persistence worked on the iPhone. New still images (IMG_1796–IMG_1803) showed clipped add/confirmation/rename dialogs, a keyboard covering the subject input, and no add action in Settings.
+
+- Dynamic content sheets now measure all content in a single direct scrollable; sheet inputs register with Gorhom keyboard handling and focus after native presentation.
+- Personal-subject Settings has an always-available header plus and an add button in its empty state. Both use the shared flow in permanent-only mode.
+- Subject entry and renaming enable native spelling assistance. Known names receive canonical spelling/casing and unambiguous single-typo correction, shown before permanent-save confirmation; abbreviations and custom course names remain supported.
+- Regression coverage includes empty/populated Settings, permanent-only saving, spelling, sheet sizing structure and presentation timing. These are automated tests, not native screenshot verification. The native Simulator was unavailable in this task's UI environment.
+- The destructive-button color report is tracked separately as DAY-445 / GitHub issue #672 and is not included in this subject PR.
