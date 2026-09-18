@@ -115,7 +115,7 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => {
 			children: ReactNode;
 			contentClassName: string;
 		}) => {
-			mockDismiss = onDismiss;
+			if (visible) mockDismiss = onDismiss;
 			return visible
 				? React.createElement(
 						View,
