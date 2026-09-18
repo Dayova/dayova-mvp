@@ -6,7 +6,6 @@ import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Bell,
 	BookOpen,
-	CalendarDays,
 	Computer,
 	CreditCard,
 	Globe,
@@ -173,12 +172,6 @@ export default function SettingsScreen() {
 								icon={Timer}
 								label="Lernzeiten"
 								onPress={() => router.push("/learning-times")}
-							/>
-							<SettingsDivider />
-							<SettingsRow
-								icon={CalendarDays}
-								label="Stundenplan"
-								onPress={() => router.push("/timetable")}
 							/>
 							<SettingsDivider />
 							<SettingsRow
