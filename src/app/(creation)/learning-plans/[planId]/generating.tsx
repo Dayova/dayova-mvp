@@ -52,6 +52,9 @@ export default function LearningPlanGeneratingScreen() {
 	const setTargetStudyMinutes = useMutation(
 		api.learningPlans.setTargetStudyMinutes,
 	);
+	const prepareLearningTimeDefaults = useMutation(
+		api.learningTimes.prepareDefaultsForPlan,
+	);
 	const { capture } = useValidationAnalytics();
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -59,6 +62,7 @@ export default function LearningPlanGeneratingScreen() {
 	const [canRecoverStalledGeneration, setCanRecoverStalledGeneration] =
 		useState(false);
 	const didStartRef = useRef(false);
+	const didPrepareLearningTimesRef = useRef(false);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
@@ -68,17 +72,19 @@ export default function LearningPlanGeneratingScreen() {
 		user && isConvexAuthenticated ? {} : "skip",
 	);
 
-	const availableStudyMinutes = useMemo(
-		() =>
-			snapshot && learningTimes
-				? calculateAvailableStudyMinutes({
-						fromDateKey: getDayKey(new Date()),
-						examDateKey: snapshot.plan.examDateKey,
-						learningTimes,
-					})
-				: null,
-		[learningTimes, snapshot],
-	);
+	const availableStudyMinutes = useMemo(() => {
+		if (!snapshot || !learningTimes) return null;
+		const availableMinutes = calculateAvailableStudyMinutes({
+			fromDateKey: getDayKey(new Date()),
+			examDateKey: snapshot.plan.examDateKey,
+			learningTimes,
+		});
+		return learningTimes.some(
+			(learningTime) => learningTime.preferenceStatus === "systemDefault",
+		)
+			? Math.max(availableMinutes, MIN_ROLLING_HORIZON_MINUTES)
+			: availableMinutes;
+	}, [learningTimes, snapshot]);
 	const automaticPreparation = useMemo(
 		() =>
 			snapshot && availableStudyMinutes !== null
@@ -105,6 +111,30 @@ export default function LearningPlanGeneratingScreen() {
 	);
 
 	useEffect(() => {
+		if (
+			!planId ||
+			!snapshot ||
+			learningTimes === undefined ||
+			learningTimes.length > 0 ||
+			didPrepareLearningTimesRef.current
+		) {
+			return;
+		}
+		didPrepareLearningTimesRef.current = true;
+		void prepareLearningTimeDefaults({ learningPlanId: planId }).catch(
+			(error: unknown) => {
+				didPrepareLearningTimesRef.current = false;
+				setErrorMessage(
+					getErrorMessage(
+						error,
+						"Dayova konnte noch keine passende Lernzeit vorschlagen.",
+					),
+				);
+			},
+		);
+	}, [learningTimes, planId, prepareLearningTimeDefaults, snapshot]);
+
+	useEffect(() => {
 		const generation = snapshot?.plan.contentGeneration;
 		if (!generation || generation.stage !== "content") {
 			const timeout = setTimeout(
@@ -129,7 +159,7 @@ export default function LearningPlanGeneratingScreen() {
 
 	useEffect(() => {
 		void retryAttempt;
-		if (!planId || !snapshot) return;
+		if (!planId || !snapshot || !learningTimes?.length) return;
 
 		if (snapshot.plan.status === "generated") {
 			router.replace(planPath(planId, "review"));
@@ -206,6 +236,7 @@ export default function LearningPlanGeneratingScreen() {
 		setTargetStudyMinutes,
 		sessionCompositionVariant,
 		snapshot,
+		learningTimes,
 	]);
 
 	const retryGeneration = async () => {

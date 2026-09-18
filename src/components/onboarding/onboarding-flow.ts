@@ -1,9 +1,6 @@
 import type { OnboardingAnswers } from "~/context/OnboardingContext";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
-import {
-	getOnboardingLearningTimeValidationError,
-	parseOnboardingDurationMinutes,
-} from "./onboarding-learning-times";
+import { getOnboardingLearningTimeValidationError } from "./onboarding-learning-times";
 
 type AnswerStepKind = "days" | "time" | "wheel";
 
@@ -110,15 +107,7 @@ export const getOnboardingRegistrationPayload = (
 });
 
 export const getOnboardingPersistenceAnswers = (answers: OnboardingAnswers) => {
-	const durationMinutes = parseOnboardingDurationMinutes(answers.studyTime);
-	if (durationMinutes === null) {
-		throw new Error("Bitte wähle deine Lerndauer aus.");
-	}
-
 	return {
-		dailySchoolTime: `${durationMinutes} min`,
-		studyDays: answers.studyDays,
-		learningTime: answers.learningTime,
 		state: answers.state,
 		schoolType: answers.schoolType,
 		grade: answers.grade,

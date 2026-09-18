@@ -610,6 +610,7 @@ type LearningPlanAiContext = {
 		dayOfWeek: number;
 		startTime: string;
 		endTime: string;
+		preferenceStatus?: "systemDefault" | "confirmed";
 	}>;
 	occupiedEntries: Array<{
 		dayKey: string;
@@ -1094,6 +1095,18 @@ type LearningSlot = {
 	endMinutes: number;
 };
 
+const getLearningWindowMinutes = (learningTime: LearningTimeWindow) => {
+	const startMinutes = parseLearningTimeToMinutes(learningTime.startTime);
+	const parsedEndMinutes = parseLearningTimeToMinutes(learningTime.endTime);
+	return {
+		startMinutes,
+		endMinutes:
+			startMinutes !== null && parsedEndMinutes === 0 && startMinutes > 0
+				? 24 * 60
+				: parsedEndMinutes,
+	};
+};
+
 const getOccupiedIntervalsByDay = (occupiedEntries: OccupiedEntry[]) => {
 	const intervalsByDay = new Map<
 		string,
@@ -1181,8 +1194,7 @@ const buildLearningSlots = (
 ) => {
 	const windowsByDay = new Map<number, LearningTimeWindow[]>();
 	for (const learningTime of learningTimes) {
-		const startMinutes = parseLearningTimeToMinutes(learningTime.startTime);
-		const endMinutes = parseLearningTimeToMinutes(learningTime.endTime);
+		const { startMinutes, endMinutes } = getLearningWindowMinutes(learningTime);
 		if (
 			startMinutes === null ||
 			endMinutes === null ||
@@ -1199,14 +1211,20 @@ const buildLearningSlots = (
 	const occupiedIntervalsByDay = getOccupiedIntervalsByDay(occupiedEntries);
 	const nowBerlin = getBerlinDateTime(new Date());
 	const candidates: LearningSlot[] = [];
-	for (let offset = availableDays; offset >= 1; offset -= 1) {
+	const minimumOffset =
+		availableDays === 0 &&
+		learningTimes.some(
+			(learningTime) => learningTime.preferenceStatus === "systemDefault",
+		)
+			? 0
+			: 1;
+	for (let offset = availableDays; offset >= minimumOffset; offset -= 1) {
 		const date = buildDateFromOffset(examDateKey, offset);
 		const dateKey = formatDateKey(date);
 		const windows = windowsByDay.get(getBerlinDayOfWeek(date)) ?? [];
 
 		for (const window of windows) {
-			const startMinutes = parseLearningTimeToMinutes(window.startTime);
-			const endMinutes = parseLearningTimeToMinutes(window.endTime);
+			const { startMinutes, endMinutes } = getLearningWindowMinutes(window);
 			if (
 				startMinutes === null ||
 				endMinutes === null ||
@@ -1370,8 +1388,8 @@ const hasOccupiedLearningTimeConflict = (
 		};
 		return learningTimes.some((learningTime) => {
 			if (learningTime.dayOfWeek !== getBerlinDayOfWeek(date)) return false;
-			const start = parseLearningTimeToMinutes(learningTime.startTime);
-			const end = parseLearningTimeToMinutes(learningTime.endTime);
+			const { startMinutes: start, endMinutes: end } =
+				getLearningWindowMinutes(learningTime);
 			return (
 				start !== null &&
 				end !== null &&
@@ -3199,6 +3217,12 @@ export const generatePlan = action({
 		compositionEligibleSessionCount: number;
 	}> => {
 		await ctx.runQuery(internal.aiConsent.requireCurrentConsent, {});
+		await ctx.runMutation(
+			internal.learningTimes.ensureProposedDefaultsForPlan,
+			{
+				learningPlanId: args.learningPlanId,
+			},
+		);
 		const generationId = globalThis.crypto.randomUUID();
 		await ctx.runMutation(internal.learningPlans.beginContentGeneration, {
 			learningPlanId: args.learningPlanId,

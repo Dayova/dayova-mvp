@@ -1,3 +1,8 @@
+import {
+	formatLearningWindowTime,
+	getAutomaticLearningWindow,
+} from "./learningTimePolicy";
+
 export const ONBOARDING_DURATION_MINUTES = [
 	10, 20, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
 ] as const;
@@ -26,6 +31,70 @@ export type DerivedLearningTime = {
 	dayOfWeek: number;
 	startTime: string;
 	endTime: string;
+};
+
+const MIN_PROPOSED_WINDOW_MINUTES = 10;
+const MAX_PROPOSED_DAYS = 3;
+
+const parseDateKey = (value: string) => {
+	const date = new Date(`${value.slice(0, 10)}T12:00:00.000Z`);
+	return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getDayOfWeek = (date: Date) => date.getUTCDay() || 7;
+
+const roundUpToTenMinutes = (minutes: number) => Math.ceil(minutes / 10) * 10;
+
+export const deriveProposedLearningTimes = ({
+	currentDateKey,
+	currentTimeMinutes,
+	examDateKey,
+	grade,
+}: {
+	currentDateKey: string;
+	currentTimeMinutes: number;
+	examDateKey: string;
+	grade?: string;
+}): DerivedLearningTime[] => {
+	const currentDate = parseDateKey(currentDateKey);
+	const examDate = parseDateKey(examDateKey);
+	if (!currentDate || !examDate || examDate < currentDate) return [];
+
+	const lastPlanningDate = new Date(examDate);
+	if (examDate > currentDate) {
+		lastPlanningDate.setUTCDate(lastPlanningDate.getUTCDate() - 1);
+	}
+
+	const proposed: DerivedLearningTime[] = [];
+	const usedDays = new Set<number>();
+	const automaticWindow = getAutomaticLearningWindow(grade);
+	const cursor = new Date(currentDate);
+	while (cursor <= lastPlanningDate && proposed.length < MAX_PROPOSED_DAYS) {
+		const dayOfWeek = getDayOfWeek(cursor);
+		if (!usedDays.has(dayOfWeek)) {
+			const isToday = cursor.getTime() === currentDate.getTime();
+			const startMinutes = isToday
+				? Math.max(
+						automaticWindow.startMinutes,
+						roundUpToTenMinutes(currentTimeMinutes + 10),
+					)
+				: automaticWindow.startMinutes;
+			if (
+				startMinutes + MIN_PROPOSED_WINDOW_MINUTES <=
+				automaticWindow.endMinutes
+			) {
+				proposed.push({
+					dayOfWeek,
+					startTime: formatLearningWindowTime(startMinutes),
+					endTime: automaticWindow.endTime,
+				});
+				usedDays.add(dayOfWeek);
+			}
+		}
+		cursor.setUTCDate(cursor.getUTCDate() + 1);
+	}
+
+	return proposed;
 };
 
 export type OnboardingLearningTimeError =
@@ -86,12 +155,12 @@ export const deriveOnboardingLearningTimes = (
 	}
 
 	const endMinutes = startMinutes + durationMinutes;
-	if (endMinutes >= MINUTES_PER_DAY) {
+	if (endMinutes > MINUTES_PER_DAY) {
 		return { ok: false, reason: "crossesMidnight" };
 	}
 
 	const startTime = formatTime(startMinutes);
-	const endTime = formatTime(endMinutes);
+	const endTime = formatLearningWindowTime(endMinutes);
 	return {
 		ok: true,
 		windows: [...dayValues]
