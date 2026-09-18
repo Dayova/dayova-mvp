@@ -34,8 +34,18 @@ const useAndroidBackHandler = (enabled: boolean, onBack: () => boolean) => {
 export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
 	const navigation = useNavigation();
 	const isHandlingNativeBackRef = useRef(false);
+	const invokeBack = useCallback(() => {
+		if (isHandlingNativeBackRef.current) return false;
 
-	useAndroidBackHandler(enabled, onBack);
+		isHandlingNativeBackRef.current = true;
+		const handled = onBack();
+		requestAnimationFrame(() => {
+			isHandlingNativeBackRef.current = false;
+		});
+		return handled;
+	}, [onBack]);
+
+	useAndroidBackHandler(enabled, invokeBack);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -44,22 +54,17 @@ export const useBackIntent = (enabled: boolean, onBack: () => boolean) => {
 			const unsubscribe = navigation.addListener("beforeRemove", (event) => {
 				if (!isBackRemovalAction(event)) return;
 
-				if (isHandlingNativeBackRef.current) {
-					event.preventDefault();
-					return;
-				}
+				if (isHandlingNativeBackRef.current) return;
 
-				const handled = onBack();
+				const handled = invokeBack();
 				if (!handled) return;
 
-				isHandlingNativeBackRef.current = true;
 				event.preventDefault();
-				requestAnimationFrame(() => {
-					isHandlingNativeBackRef.current = false;
-				});
 			});
 
 			return unsubscribe;
-		}, [enabled, navigation, onBack]),
+		}, [enabled, invokeBack, navigation]),
 	);
+
+	return invokeBack;
 };

@@ -43,6 +43,7 @@ import {
 	learningTopicValidator,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
+import { resolveSubjectSelection } from "./personalSubjects";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import {
 	getActiveTimetableLessons,
@@ -386,6 +387,7 @@ const markLearningTimeIntroPromptHandled = async (
 type CreateLearningPlanArgs = {
 	examDayEntryId: Id<"dayEntries">;
 	subject: string;
+	personalSubjectId?: Id<"personalSubjects">;
 	examTypeLabel: string;
 	examDateKey: string;
 	examDateLabel: string;
@@ -411,7 +413,13 @@ const createLearningPlan = async (
 		throwUserFacingError("Ein Lernplan braucht zuerst eine Prüfung.");
 	}
 
-	const subject = args.subject.trim();
+	const resolvedSubject = await resolveSubjectSelection(ctx, {
+		ownerTokenIdentifier,
+		subject: args.subject,
+		personalSubjectId:
+			args.personalSubjectId ?? examEntry.personalSubjectId ?? undefined,
+	});
+	const subject = resolvedSubject.subject;
 	const examTypeLabel = args.examTypeLabel.trim();
 	const topicDescription = args.topicDescription.trim();
 	const notes = args.notes?.trim() ?? "";
@@ -429,6 +437,9 @@ const createLearningPlan = async (
 	const learningPlanId = await ctx.db.insert("learningPlans", {
 		ownerTokenIdentifier,
 		subject,
+		...(resolvedSubject.personalSubjectId
+			? { personalSubjectId: resolvedSubject.personalSubjectId }
+			: {}),
 		examTypeLabel,
 		examDateKey: args.examDateKey,
 		examDateLabel: args.examDateLabel,
@@ -770,6 +781,10 @@ const createSessionDayEntry = async (
 		ownerTokenIdentifier: session.ownerTokenIdentifier,
 		dayKey: session.dateKey,
 		title: getSessionDayEntryTitle(plan, session),
+		subject: plan.subject,
+		...(plan.personalSubjectId
+			? { personalSubjectId: plan.personalSubjectId }
+			: {}),
 		time: session.startTime,
 		kind: "Lernen",
 		notes: getSessionDayEntryNotes(session),
@@ -826,6 +841,8 @@ const syncSessionDayEntry = async (
 	await ctx.db.patch("dayEntries", session.dayEntryId, {
 		dayKey: session.dateKey,
 		title: getSessionDayEntryTitle(plan, session),
+		subject: plan.subject,
+		personalSubjectId: plan.personalSubjectId,
 		time: session.startTime,
 		kind: "Lernen",
 		notes: getSessionDayEntryNotes(session),
@@ -928,6 +945,7 @@ export const start = mutation({
 	args: {
 		examDayEntryId: v.id("dayEntries"),
 		subject: v.string(),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
@@ -947,6 +965,7 @@ export const createDraft = mutation({
 	args: {
 		examDayEntryId: v.id("dayEntries"),
 		subject: v.string(),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
@@ -3102,6 +3121,10 @@ export const acceptPlan = mutation({
 				ownerTokenIdentifier,
 				dayKey: plan.examDateKey,
 				title: `${plan.subject} ${plan.examTypeLabel}`,
+				subject: plan.subject,
+				...(plan.personalSubjectId
+					? { personalSubjectId: plan.personalSubjectId }
+					: {}),
 				kind: "Leistungskontrolle",
 				plannedDateLabel: plan.examDateLabel,
 				durationMinutes: plan.durationMinutes,

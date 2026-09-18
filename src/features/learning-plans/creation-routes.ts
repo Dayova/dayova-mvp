@@ -10,6 +10,7 @@ const buildRouteQuery = (entries: Array<[string, string | undefined]>) =>
 export const examEntryResumePath = (params: {
 	examDayEntryId: string;
 	subject: string;
+	personalSubjectId?: string;
 	examTypeLabel: string;
 	examDateKey: string;
 	durationMinutes: number;
@@ -19,6 +20,7 @@ export const examEntryResumePath = (params: {
 		["step", "basics"],
 		["examDayEntryId", params.examDayEntryId],
 		["subject", params.subject],
+		["personalSubjectId", params.personalSubjectId],
 		["examTypeLabel", params.examTypeLabel],
 		["dayKey", params.examDateKey],
 		["durationMinutes", String(params.durationMinutes)],
