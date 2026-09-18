@@ -28,6 +28,7 @@ import {
 	GlobeIcon,
 	GreekHelmetIcon,
 	Home02Icon,
+	Image01Icon,
 	InformationCircleIcon,
 	LanguageCircleIcon,
 	Logout03Icon,
@@ -110,6 +111,7 @@ export const GraduationCap = createIcon(Mortarboard01Icon);
 export const GreekHelmet = createIcon(GreekHelmetIcon);
 export const Globe = createIcon(GlobeIcon);
 export const Home = createIcon(Home02Icon);
+export const Photo = createIcon(Image01Icon);
 export const Info = createIcon(InformationCircleIcon);
 export const Language = createIcon(LanguageCircleIcon);
 export const Logout = createIcon(Logout03Icon);
