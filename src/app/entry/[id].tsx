@@ -69,18 +69,7 @@ function DetailTile({
 	if (!value) return null;
 
 	return (
-		<View
-			className="flex-1 rounded-[24px] bg-card px-5 py-5"
-			style={{
-				borderWidth: 1.2,
-				borderColor: "rgba(17,24,39,0.07)",
-				shadowColor: "#000000",
-				shadowOpacity: 0.04,
-				shadowRadius: 10,
-				shadowOffset: { width: 0, height: 4 },
-				elevation: 2,
-			}}
-		>
+		<View className="flex-1 rounded-[24px] border border-border bg-card px-5 py-5">
 			<View className="mb-3 flex-row items-center">
 				{icon}
 				<Text className="ml-2 font-poppins font-semibold text-body-5 text-text/50 uppercase">
@@ -99,18 +88,7 @@ function NotesCard({ value }: { value?: string }) {
 	if (!summary.length && !tasks.length) return null;
 
 	return (
-		<View
-			className="mt-5 rounded-[28px] bg-card px-5 py-5"
-			style={{
-				borderWidth: 1.2,
-				borderColor: "rgba(17,24,39,0.07)",
-				shadowColor: "#000000",
-				shadowOpacity: 0.05,
-				shadowRadius: 12,
-				shadowOffset: { width: 0, height: 5 },
-				elevation: 2,
-			}}
-		>
+		<View className="mt-5 rounded-[28px] border border-border bg-card px-5 py-5">
 			<View className="mb-4 flex-row items-center">
 				<View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
 					<NotebookPen size={18} color="#00BAFF" strokeWidth={2.2} />
