@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalMutation, mutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { throwUserFacingError } from "./errors";
 import { deriveBehavioralLearningTimeSuggestion } from "./learningTimeBehavior";
 import { deriveProposedLearningTimes } from "./learningTimeAvailability";
@@ -52,6 +53,7 @@ const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	if (!identity) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 	return identity;
 };
 

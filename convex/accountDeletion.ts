@@ -1,11 +1,164 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Id, TableNames } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
-import { mutation } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { internalMutation, internalQuery, mutation } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 import { deleteManagedFile } from "./fileStorage";
 
 const DELETE_BATCH_SIZE = 25;
+const REAUTHENTICATION_MAX_AGE_MINUTES = 10;
+const DELETION_POLICY_VERSION = "DAY-357-draft-2026-09-18";
+
+const deletionStageValidator = v.union(
+	v.literal("revokeSessions"),
+	v.literal("deleteClerkIdentity"),
+	v.literal("deleteRevenueCat"),
+	v.literal("deletePostHog"),
+	v.literal("deleteData"),
+	v.literal("complete"),
+);
+
+const processorStatusValidator = v.union(
+	v.literal("completed"),
+	v.literal("notConfigured"),
+);
+
+const deletionRequestValidator = v.object({
+	_id: v.id("accountDeletionRequests"),
+	_creationTime: v.number(),
+	requestId: v.string(),
+	ownerTokenIdentifier: v.optional(v.string()),
+	clerkUserId: v.optional(v.string()),
+	status: v.union(
+		v.literal("queued"),
+		v.literal("processing"),
+		v.literal("retryScheduled"),
+		v.literal("manualReview"),
+		v.literal("completed"),
+	),
+	stage: deletionStageValidator,
+	attemptCount: v.number(),
+	deletedRecords: v.number(),
+	lastErrorCode: v.optional(v.string()),
+	clerkStatus: v.optional(processorStatusValidator),
+	revenueCatStatus: v.optional(processorStatusValidator),
+	postHogStatus: v.optional(processorStatusValidator),
+	policyVersion: v.string(),
+	requestedAt: v.number(),
+	updatedAt: v.number(),
+	nextAttemptAt: v.optional(v.number()),
+	completedAt: v.optional(v.number()),
+});
+
+const reverificationRequired = () => ({
+	clerk_error: {
+		type: "forbidden" as const,
+		reason: "reverification-error" as const,
+		metadata: {
+			reverification: {
+				level: "first_factor" as const,
+				afterMinutes: REAUTHENTICATION_MAX_AGE_MINUTES,
+			},
+		},
+	},
+});
+
+const hasRecentFirstFactor = (factorVerificationAge: unknown) =>
+	Array.isArray(factorVerificationAge) &&
+	typeof factorVerificationAge[0] === "number" &&
+	factorVerificationAge[0] >= 0 &&
+	factorVerificationAge[0] <= REAUTHENTICATION_MAX_AGE_MINUTES;
+
+export const assertAccountActive = async (
+	ctx: QueryCtx | MutationCtx,
+	ownerTokenIdentifier: string,
+) => {
+	const deletionRequest = await ctx.db
+		.query("accountDeletionRequests")
+		.withIndex("by_ownerTokenIdentifier", (query) =>
+			query.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+		)
+		.unique();
+	if (deletionRequest) {
+		throwUserFacingError("Dieses Konto wird dauerhaft gelöscht.");
+	}
+};
+
+export const assertOwnerAccountActive = internalQuery({
+	args: { ownerTokenIdentifier: v.string() },
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		await assertAccountActive(ctx, args.ownerTokenIdentifier);
+		return null;
+	},
+});
+
+export const requestCurrentUserDeletion = mutation({
+	args: {},
+	returns: v.union(
+		v.object({ status: v.literal("accepted"), requestId: v.string() }),
+		v.object({
+			clerk_error: v.object({
+				type: v.literal("forbidden"),
+				reason: v.literal("reverification-error"),
+				metadata: v.object({
+					reverification: v.object({
+						level: v.literal("first_factor"),
+						afterMinutes: v.number(),
+					}),
+				}),
+			}),
+		}),
+	),
+	handler: async (ctx) => {
+		const identity = await ctx.auth.getUserIdentity();
+		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		if (!hasRecentFirstFactor(identity.fva)) return reverificationRequired();
+
+		const existing = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_ownerTokenIdentifier", (query) =>
+				query.eq("ownerTokenIdentifier", identity.tokenIdentifier),
+			)
+			.unique();
+		if (existing) {
+			await ctx.scheduler.runAfter(
+				0,
+				internal.accountDeletionActions.processDeletionRequest,
+				{ requestId: existing.requestId },
+			);
+			return { status: "accepted" as const, requestId: existing.requestId };
+		}
+
+		const user = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (query) =>
+				query.eq("tokenIdentifier", identity.tokenIdentifier),
+			)
+			.unique();
+		const requestId = user ? String(user._id) : identity.subject;
+		const now = Date.now();
+		await ctx.db.insert("accountDeletionRequests", {
+			requestId,
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			clerkUserId: user?.clerkId ?? identity.subject,
+			status: "queued",
+			stage: "revokeSessions",
+			attemptCount: 0,
+			deletedRecords: 0,
+			policyVersion: DELETION_POLICY_VERSION,
+			requestedAt: now,
+			updatedAt: now,
+		});
+		await ctx.scheduler.runAfter(
+			0,
+			internal.accountDeletionActions.processDeletionRequest,
+			{ requestId },
+		);
+		return { status: "accepted" as const, requestId };
+	},
+});
 
 const deleteRows = async <TableName extends TableNames>(
 	ctx: MutationCtx,
@@ -18,19 +171,152 @@ const deleteRows = async <TableName extends TableNames>(
 	return rows.length;
 };
 
-export const deleteCurrentUserDataBatch = mutation({
-	args: {},
+export const getRequestForProcessing = internalQuery({
+	args: { requestId: v.string() },
+	returns: v.union(deletionRequestValidator, v.null()),
+	handler: async (ctx, args) =>
+		ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_requestId", (query) =>
+				query.eq("requestId", args.requestId),
+			)
+			.unique(),
+});
+
+export const advanceRequestStage = internalMutation({
+	args: {
+		requestId: v.string(),
+		expectedStage: deletionStageValidator,
+		nextStage: deletionStageValidator,
+		processor: v.optional(
+			v.union(
+				v.literal("clerk"),
+				v.literal("revenueCat"),
+				v.literal("postHog"),
+			),
+		),
+		processorStatus: v.optional(
+			v.union(v.literal("completed"), v.literal("notConfigured")),
+		),
+	},
+	returns: v.boolean(),
+	handler: async (ctx, args) => {
+		const request = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_requestId", (query) =>
+				query.eq("requestId", args.requestId),
+			)
+			.unique();
+		if (
+			!request ||
+			request.stage !== args.expectedStage ||
+			request.status === "completed"
+		) {
+			return false;
+		}
+		const processorPatch =
+			args.processor === "clerk"
+				? { clerkStatus: args.processorStatus }
+				: args.processor === "revenueCat"
+					? { revenueCatStatus: args.processorStatus }
+					: args.processor === "postHog"
+						? { postHogStatus: args.processorStatus }
+						: {};
+		await ctx.db.patch("accountDeletionRequests", request._id, {
+			...processorPatch,
+			status: "processing",
+			stage: args.nextStage,
+			lastErrorCode: undefined,
+			nextAttemptAt: undefined,
+			updatedAt: Date.now(),
+		});
+		return true;
+	},
+});
+
+export const markRequestRetry = internalMutation({
+	args: {
+		requestId: v.string(),
+		expectedStage: deletionStageValidator,
+		errorCode: v.string(),
+		nextAttemptAt: v.number(),
+		shouldRetry: v.boolean(),
+	},
+	returns: v.object({ applied: v.boolean(), attemptCount: v.number() }),
+	handler: async (ctx, args) => {
+		const request = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_requestId", (query) =>
+				query.eq("requestId", args.requestId),
+			)
+			.unique();
+		if (
+			!request ||
+			request.stage !== args.expectedStage ||
+			request.status === "completed"
+		) {
+			return { applied: false, attemptCount: request?.attemptCount ?? 0 };
+		}
+		const attemptCount = request.attemptCount + 1;
+		await ctx.db.patch("accountDeletionRequests", request._id, {
+			attemptCount,
+			status: args.shouldRetry ? "retryScheduled" : "manualReview",
+			lastErrorCode: args.errorCode,
+			nextAttemptAt: args.shouldRetry ? args.nextAttemptAt : undefined,
+			updatedAt: Date.now(),
+		});
+		return { applied: true, attemptCount };
+	},
+});
+
+export const completeRequest = internalMutation({
+	args: { requestId: v.string() },
+	returns: v.boolean(),
+	handler: async (ctx, args) => {
+		const request = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_requestId", (query) =>
+				query.eq("requestId", args.requestId),
+			)
+			.unique();
+		if (!request || request.stage !== "deleteData") return false;
+		const now = Date.now();
+		await ctx.db.patch("accountDeletionRequests", request._id, {
+			ownerTokenIdentifier: undefined,
+			clerkUserId: undefined,
+			status: "completed",
+			stage: "complete",
+			lastErrorCode: undefined,
+			nextAttemptAt: undefined,
+			completedAt: now,
+			updatedAt: now,
+		});
+		return true;
+	},
+});
+
+export const deleteOwnerDataBatch = internalMutation({
+	args: { requestId: v.string() },
 	returns: v.object({
 		deletedRecords: v.number(),
 		done: v.boolean(),
 	}),
-	handler: async (ctx) => {
-		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) {
-			throwUserFacingError("Nicht authentifiziert.");
+	handler: async (ctx, args) => {
+		const deletionRequest = await ctx.db
+			.query("accountDeletionRequests")
+			.withIndex("by_requestId", (query) =>
+				query.eq("requestId", args.requestId),
+			)
+			.unique();
+		if (
+			!deletionRequest?.ownerTokenIdentifier ||
+			deletionRequest.stage !== "deleteData" ||
+			deletionRequest.status === "completed"
+		) {
+			return { deletedRecords: 0, done: true };
 		}
 
-		const ownerTokenIdentifier = identity.tokenIdentifier;
+		const ownerTokenIdentifier = deletionRequest.ownerTokenIdentifier;
 		const user = await ctx.db
 			.query("users")
 			.withIndex("by_tokenIdentifier", (query) =>
@@ -261,6 +547,18 @@ export const deleteCurrentUserDataBatch = mutation({
 			validationAttributions,
 		);
 
+		const recordedValidationAttributions = await ctx.db
+			.query("validationAttributions")
+			.withIndex("by_recordedByTokenIdentifier", (query) =>
+				query.eq("recordedByTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(DELETE_BATCH_SIZE);
+		deletedRecords += await deleteRows(
+			ctx,
+			"validationAttributions",
+			recordedValidationAttributions,
+		);
+
 		const validationUserStates = await ctx.db
 			.query("validationUserStates")
 			.withIndex("by_ownerTokenIdentifier", (query) =>
@@ -298,12 +596,23 @@ export const deleteCurrentUserDataBatch = mutation({
 		}
 
 		if (deletedRecords > 0) {
+			await ctx.db.patch("accountDeletionRequests", deletionRequest._id, {
+				deletedRecords: deletionRequest.deletedRecords + deletedRecords,
+				status: "processing",
+				updatedAt: Date.now(),
+			});
 			return { deletedRecords, done: false };
 		}
 
 		if (user) {
 			await ctx.db.delete("users", user._id);
 			deletedRecords += 1;
+		}
+		if (deletedRecords > 0) {
+			await ctx.db.patch("accountDeletionRequests", deletionRequest._id, {
+				deletedRecords: deletionRequest.deletedRecords + deletedRecords,
+				updatedAt: Date.now(),
+			});
 		}
 
 		return { deletedRecords, done: true };
