@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
@@ -9,8 +8,8 @@ import {
 	evaluateProductionOta,
 	validateProductionManifest,
 } from "../scripts/ota-safety.mjs";
+import { readExpoConfigSnapshot } from "./helpers/expo-config-contract";
 
-const require = createRequire(import.meta.url);
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 const iosFingerprint = "1111111111111111111111111111111111111111";
 const androidFingerprint = "2222222222222222222222222222222222222222";
@@ -458,18 +457,7 @@ describe("production release configuration", () => {
 	});
 
 	it("resolves the patched SDK 57 production binary behind runtime 1.0.5", () => {
-		const expoCliPath = require.resolve("expo/bin/cli");
-		const resolvedConfig = JSON.parse(
-			execFileSync(
-				process.execPath,
-				[expoCliPath, "config", "--type", "public", "--json"],
-				{
-					cwd: projectRoot,
-					encoding: "utf8",
-					env: { ...process.env, APP_VARIANT: "production" },
-				},
-			),
-		);
+		const resolvedConfig = readExpoConfigSnapshot("production", "public");
 		const packageJson = JSON.parse(
 			readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 		);
