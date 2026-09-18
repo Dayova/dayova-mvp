@@ -220,6 +220,11 @@ export type LearningPlanSnapshot = {
 		contentGeneration?: {
 			stage: "content" | "validating" | "ready" | "failed";
 			startedAt?: number;
+			failureReason?:
+				| "insufficientMaterial"
+				| "materialProcessing"
+				| "schedulingConstraints"
+				| "generationProcessing";
 			totalSessionCount: number;
 			readySessionCount: number;
 			failedSessionCount: number;

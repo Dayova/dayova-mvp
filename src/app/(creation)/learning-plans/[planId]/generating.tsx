@@ -14,15 +14,20 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
+import {
+	getLearningPlanGenerationFailure,
+	type LearningPlanGenerationFailure,
+} from "~/features/learning-plans/generation-recovery";
 import { generatePlanWithAnalytics } from "~/features/learning-plans/plan-generation-analytics";
+import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import {
 	calculateAvailableStudyMinutes,
 	getAutomaticLearningPreparation,
 	MIN_ROLLING_HORIZON_MINUTES,
 } from "~/features/learning-plans/plan-workload";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
-import { getErrorMessage } from "~/features/learning-plans/utils";
 import { getDayKey } from "~/lib/day-key";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
@@ -57,7 +62,9 @@ export default function LearningPlanGeneratingScreen() {
 	);
 	const { capture } = useValidationAnalytics();
 	const [isBusy, setIsBusy] = useState(false);
-	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [failure, setFailure] = useState<LearningPlanGenerationFailure | null>(
+		null,
+	);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const [canRecoverStalledGeneration, setCanRecoverStalledGeneration] =
 		useState(false);
@@ -109,6 +116,14 @@ export default function LearningPlanGeneratingScreen() {
 	const progressPresentation = getGenerationProgressPresentation(
 		snapshot?.plan.contentGeneration,
 	);
+	const displayedFailure =
+		failure ??
+		(snapshot?.plan.contentGeneration?.stage === "failed"
+			? getLearningPlanGenerationFailure(
+					null,
+					snapshot.plan.contentGeneration.failureReason,
+				)
+			: null);
 
 	useEffect(() => {
 		if (
@@ -124,11 +139,12 @@ export default function LearningPlanGeneratingScreen() {
 		void prepareLearningTimeDefaults({ learningPlanId: planId }).catch(
 			(error: unknown) => {
 				didPrepareLearningTimesRef.current = false;
-				setErrorMessage(
-					getErrorMessage(
-						error,
-						"Dayova konnte noch keine passende Lernzeit vorschlagen.",
-					),
+				logDiagnosticError("Learning time defaults failed.", error, {
+					source: "learning-plans.learning-time-defaults",
+					metadata: { learningPlanId: planId },
+				});
+				setFailure(
+					getLearningPlanGenerationFailure(null, "schedulingConstraints"),
 				);
 			},
 		);
@@ -179,8 +195,8 @@ export default function LearningPlanGeneratingScreen() {
 				MIN_ROLLING_HORIZON_MINUTES
 		) {
 			queueMicrotask(() => {
-				setErrorMessage(
-					"Vor deiner Prüfung sind noch nicht zwei passende Lerntermine frei. Gehe zurück und ergänze zuerst Lernzeit.",
+				setFailure(
+					getLearningPlanGenerationFailure(null, "schedulingConstraints"),
 				);
 			});
 			return;
@@ -190,7 +206,7 @@ export default function LearningPlanGeneratingScreen() {
 		didStartRef.current = true;
 		queueMicrotask(() => {
 			setIsBusy(true);
-			setErrorMessage(null);
+			setFailure(null);
 			void (async () => {
 				if (!(await requestAiConsent())) {
 					didStartRef.current = false;
@@ -216,12 +232,15 @@ export default function LearningPlanGeneratingScreen() {
 				});
 			})()
 				.catch((error: unknown) => {
-					setErrorMessage(
-						getErrorMessage(
-							error,
-							"Der Lernplan konnte nicht erstellt werden.",
-						),
-					);
+					const nextFailure = getLearningPlanGenerationFailure(error);
+					logDiagnosticError("Learning plan generation failed.", error, {
+						source: "learning-plans.generation",
+						metadata: {
+							learningPlanId: planId,
+							failureReason: nextFailure.reason,
+						},
+					});
+					setFailure(nextFailure);
 				})
 				.finally(() => setIsBusy(false));
 		});
@@ -243,7 +262,7 @@ export default function LearningPlanGeneratingScreen() {
 		if (!planId || isBusy) return;
 
 		setIsBusy(true);
-		setErrorMessage(null);
+		setFailure(null);
 		try {
 			if (!(await requestAiConsent())) return;
 			if (
@@ -274,12 +293,15 @@ export default function LearningPlanGeneratingScreen() {
 			didStartRef.current = false;
 			setRetryAttempt((value) => value + 1);
 		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die fehlenden Lernblöcke konnten nicht erstellt werden.",
-				),
-			);
+			const nextFailure = getLearningPlanGenerationFailure(error);
+			logDiagnosticError("Learning plan generation retry failed.", error, {
+				source: "learning-plans.generation.retry",
+				metadata: {
+					learningPlanId: planId,
+					failureReason: nextFailure.reason,
+				},
+			});
+			setFailure(nextFailure);
 		} finally {
 			setIsBusy(false);
 		}
@@ -291,6 +313,16 @@ export default function LearningPlanGeneratingScreen() {
 		router.push(
 			withReturnTo(ROUTES.learningTimes, planPath(planId, "generating")),
 		);
+	};
+	const reviewTopics = () => {
+		if (!planId) return;
+		didStartRef.current = false;
+		router.replace(planPath(planId, "scope"));
+	};
+	const editMaterial = () => {
+		if (!planId) return;
+		didStartRef.current = false;
+		router.replace(learningPlanMaterialPath(planId));
 	};
 
 	const goBack = () => {
@@ -335,21 +367,32 @@ export default function LearningPlanGeneratingScreen() {
 						className="mt-5 w-full max-w-[360px]"
 						progress={progressPresentation.progress}
 					/>
-					{errorMessage ||
+					{displayedFailure ||
 					progressPresentation.canRetryFailedSessions ||
 					canRecoverStalledGeneration ? (
 						<>
-							{errorMessage ? (
+							{displayedFailure ? (
 								<Text className="mt-6 text-center font-poppins text-body-4 text-destructive">
-									{errorMessage}
+									{displayedFailure.message}
 								</Text>
 							) : null}
 							<Button
 								className="mt-6"
 								disabled={isBusy}
 								onPress={() => {
-									if (needsLearningTime) {
+									if (
+										displayedFailure?.canEditLearningTimes ||
+										needsLearningTime
+									) {
 										openLearningTimes();
+										return;
+									}
+									if (displayedFailure?.canReviewTopics) {
+										reviewTopics();
+										return;
+									}
+									if (displayedFailure?.canEditMaterial) {
+										editMaterial();
 										return;
 									}
 									void retryGeneration();
@@ -359,20 +402,37 @@ export default function LearningPlanGeneratingScreen() {
 									<ActivityIndicator color="#FFFFFF" />
 								) : (
 									<Text>
-										{needsLearningTime
+										{displayedFailure?.canEditLearningTimes || needsLearningTime
 											? "Lernzeit eintragen"
-											: "Erneut versuchen"}
+											: displayedFailure?.canReviewTopics
+												? "Prüfungsstoff prüfen"
+												: displayedFailure?.canEditMaterial
+													? "Material ergänzen oder ersetzen"
+													: "Erneut versuchen"}
 									</Text>
 								)}
 							</Button>
-							{errorMessage && !needsLearningTime ? (
+							{displayedFailure?.canReviewTopics ? (
 								<Button
 									className="mt-3"
 									disabled={isBusy}
 									variant="neutral"
-									onPress={openLearningTimes}
+									onPress={editMaterial}
 								>
-									<Text>Lernzeiten anpassen</Text>
+									<Text>Material ergänzen oder ersetzen</Text>
+								</Button>
+							) : null}
+							{displayedFailure &&
+							!displayedFailure.canEditLearningTimes &&
+							(displayedFailure.canReviewTopics ||
+								displayedFailure.canEditMaterial) ? (
+								<Button
+									className="mt-3"
+									disabled={isBusy}
+									variant="neutral"
+									onPress={() => void retryGeneration()}
+								>
+									<Text>Erneut versuchen</Text>
 								</Button>
 							) : null}
 							<SupportContact context="Lernplan erstellen" className="mt-3" />

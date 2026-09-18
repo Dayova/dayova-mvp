@@ -868,12 +868,16 @@ test("claims plan generation atomically and persists an empty failed claim for e
 		t.mutation(internal.learningPlans.clearEmptyContentGeneration, {
 			learningPlanId,
 			generationId: "generation-1",
+			failureReason: "generationProcessing",
 		}),
 	).resolves.toBe(true);
 	const failed = await t.query(api.learningPlans.getSnapshot, {
 		id: learningPlanId,
 	});
 	expect(failed?.plan.contentGeneration?.stage).toBe("failed");
+	expect(failed?.plan.contentGeneration?.failureReason).toBe(
+		"generationProcessing",
+	);
 	await expect(
 		t.mutation(internal.learningPlans.beginContentGeneration, {
 			learningPlanId,
