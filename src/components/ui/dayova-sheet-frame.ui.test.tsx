@@ -6,7 +6,7 @@ import {
 	jest,
 	test,
 } from "@jest/globals";
-import { act, fireEvent, render } from "@testing-library/react-native";
+import { act, fireEvent, render, within } from "@testing-library/react-native";
 import type { ReactElement, ReactNode } from "react";
 import { AccessibilityInfo, BackHandler, Platform, View } from "react-native";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
@@ -449,5 +449,48 @@ describe("DayovaSheetFrame", () => {
 		expect(
 			view.getByTestId("background").props.accessibilityElementsHidden,
 		).toBe(false);
+	});
+	test("dynamic form sheets measure the title, description, fields and actions in one scrollable", async () => {
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				title="Fach hinzufügen"
+				description="Beschreibung"
+				scrollable
+				size="content"
+				footer={<View testID="save-action" />}
+			>
+				<View testID="subject-field" />
+			</DayovaSheetFrame>,
+		);
+		const modal = view.getByTestId("bottom-sheet-modal");
+		const scrollable = view.getByTestId("dayova-sheet-scroll-view");
+		expect(modal.props.enableDynamicSizing).toBe(true);
+		expect(scrollable.parent).toBe(modal);
+		expect(
+			within(scrollable).getByRole("header", { name: "Fach hinzufügen" }),
+		).toBeOnTheScreen();
+		expect(within(scrollable).getByTestId("subject-field")).toBeOnTheScreen();
+		expect(within(scrollable).getByTestId("save-action")).toBeOnTheScreen();
+		expect(scrollable.props.style?.flex).not.toBe(1);
+	});
+
+	test("allows input focus only after native presentation, once per opening", async () => {
+		const onPresented = jest.fn();
+		await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				onPresented={onPresented}
+				title="Fach hinzufügen"
+			/>,
+		);
+		await act(flushAnimationFrames);
+		expect(onPresented).not.toHaveBeenCalled();
+		await act(() => mockSheetHarness.onChange?.(0));
+		expect(onPresented).toHaveBeenCalledTimes(1);
+		await act(() => mockSheetHarness.onChange?.(1));
+		expect(onPresented).toHaveBeenCalledTimes(1);
 	});
 });

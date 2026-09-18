@@ -1,23 +1,29 @@
 import { useMutation } from "convex/react";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { ActivityIndicator, Keyboard, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
-import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import {
+	DayovaSheetFrame,
+	DayovaSheetInput,
+} from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { BookOpen, Pencil, Trash2 } from "~/components/ui/icon";
-import { Input } from "~/components/ui/input";
+import { BookOpen, Pencil, Plus, Trash2 } from "~/components/ui/icon";
 import { PortraitContent } from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { cleanSubjectName } from "~/features/subjects/subject-definitions";
+import {
+	cleanSubjectName,
+	correctSubjectName,
+} from "~/features/subjects/subject-definitions";
+import { SubjectAddFlow } from "~/features/subjects/subject-picker";
 import { useSubjectOptions } from "~/features/subjects/use-subject-options";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { useDayovaTheme } from "~/lib/theme";
@@ -32,7 +38,9 @@ export default function PersonalSubjectsScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
-	const { isLoading, loadError, personalOptions } = useSubjectOptions();
+	const { isLoading, loadError, personalOptions, options, savePermanent } =
+		useSubjectOptions();
+	const [isAdding, setIsAdding] = useState(false);
 	const renameSubject = useMutation(api.personalSubjects.rename);
 	const removeSubject = useMutation(api.personalSubjects.remove);
 	const [editingSubject, setEditingSubject] = useState<EditingSubject | null>(
@@ -72,7 +80,7 @@ export default function PersonalSubjectsScreen() {
 	};
 	const confirmRename = () => {
 		if (!editingSubject) return;
-		const name = cleanSubjectName(renamedValue);
+		const name = correctSubjectName(renamedValue);
 		if (!name) {
 			setErrorMessage("Gib einen Fachnamen ein.");
 			return;
@@ -83,6 +91,7 @@ export default function PersonalSubjectsScreen() {
 		}
 		runAction(async () => {
 			await renameSubject({ id: editingSubject.id, name });
+			Keyboard.dismiss();
 			setEditingSubject(null);
 		});
 	};
@@ -105,6 +114,16 @@ export default function PersonalSubjectsScreen() {
 					<ScreenHeader
 						title="Persönliche Fächer"
 						onBack={() => router.back()}
+						right={
+							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel="Persönliches Fach hinzufügen"
+								onPress={() => setIsAdding(true)}
+								className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+							>
+								<Plus size={28} color={colors.text} strokeWidth={1.8} />
+							</Pressable>
+						}
 					/>
 				</PortraitContent>
 				<ScreenScroll
@@ -137,9 +156,19 @@ export default function PersonalSubjectsScreen() {
 								Noch keine persönlichen Fächer
 							</Text>
 							<Text className="mt-2 text-center font-poppins text-body-4 text-secondary-text">
-								Beim nächsten „Fach hinzufügen“ kannst du ein Fach dauerhaft
-								speichern.
+								Füge dein erstes persönliches Fach hinzu, damit du es überall
+								wieder auswählen kannst.
 							</Text>
+							<Button
+								onPress={() => setIsAdding(true)}
+								size="sm"
+								className="mt-5"
+							>
+								<Plus size={18} color="#FFFFFF" strokeWidth={2.4} />
+								<Text className="text-body-4">
+									Persönliches Fach hinzufügen
+								</Text>
+							</Button>
 						</Surface>
 					) : (
 						<View className="gap-3">
@@ -196,6 +225,16 @@ export default function PersonalSubjectsScreen() {
 				</ScreenScroll>
 			</Screen>
 
+			{isAdding ? (
+				<SubjectAddFlow
+					options={options}
+					permanentOnly
+					onCancel={() => setIsAdding(false)}
+					onSelect={() => setIsAdding(false)}
+					onSavePermanent={savePermanent}
+				/>
+			) : null}
+
 			<DayovaSheetFrame
 				visible={Boolean(editingSubject)}
 				title="Fach umbenennen"
@@ -210,9 +249,11 @@ export default function PersonalSubjectsScreen() {
 			>
 				<View className="gap-4">
 					<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">
-						<Input
+						<DayovaSheetInput
 							accessibilityLabel="Neuer Fachname"
-							autoCapitalize="words"
+							autoCapitalize="sentences"
+							autoCorrect
+							spellCheck
 							maxLength={60}
 							returnKeyType="done"
 							value={renamedValue}
