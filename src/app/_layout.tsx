@@ -162,7 +162,10 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 			<View style={[gestureRootStyle, themeVariables]}>
 				<KeyboardProvider preload={false}>
 					<PostHogProvider
-						apiKey={postHogApiKey}
+						// The SDK treats an empty key as a runtime error even when disabled.
+						// Keep a context-backed no-op client for iOS/local development so
+						// hooks can stay mounted without blocking the app with the error overlay.
+						apiKey={postHogApiKey || "disabled"}
 						autocapture={false}
 						options={{
 							host: postHogHost,
