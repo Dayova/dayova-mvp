@@ -64,6 +64,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { useAuthSession } from "~/context/AuthContext";
 import { getExamEntryCreationProgress } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
+import { examEntryResumePath } from "~/features/learning-plans/creation-routes";
 import { LearningAvailabilityStep } from "~/features/learning-plans/learning-availability-step";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
@@ -285,6 +286,7 @@ export default function NewEntryScreen() {
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDayEntry = useMutation(api.dayEntries.create);
+	const updatePendingExam = useMutation(api.dayEntries.updatePendingExam);
 	const { capture } = useValidationAnalytics();
 	const params = useLocalSearchParams<{
 		type?: string;
@@ -293,9 +295,17 @@ export default function NewEntryScreen() {
 		step?: string;
 		subject?: string;
 		examTypeLabel?: string;
+		examDayEntryId?: string;
+		durationMinutes?: string;
+		topicDescription?: string;
 	}>();
 	const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
 	const isHomework = entryType === "homework";
+	const savedExamIdRef = useRef(
+		!isHomework
+			? (params.examDayEntryId as Id<"dayEntries"> | undefined)
+			: undefined,
+	);
 	const [initialDate] = useState(() => parseDateKey(params.dayKey));
 
 	const [step, setStep] = useState<EntryStep>(() => {
@@ -318,7 +328,14 @@ export default function NewEntryScreen() {
 	});
 	const [plannedEndTime, setPlannedEndTime] = useState(() => {
 		const next = new Date();
-		next.setHours(16, 30, 0, 0);
+		const duration =
+			!isHomework && Number.isFinite(Number(params.durationMinutes))
+				? Math.min(
+						MAX_EXAM_DURATION_MINUTES,
+						Math.max(MIN_EXAM_DURATION_MINUTES, Number(params.durationMinutes)),
+					)
+				: 30;
+		next.setHours(16, duration, 0, 0);
 		return next;
 	});
 	const [isCreating, setIsCreating] = useState(false);
@@ -539,7 +556,7 @@ export default function NewEntryScreen() {
 		try {
 			setIsCreating(true);
 			setErrorMessage(null);
-			createdEntryId = await createDayEntry({
+			const entryFields = {
 				dayKey: nextDayKey,
 				title: entryTitle,
 				subject: trimmedSubject,
@@ -555,7 +572,22 @@ export default function NewEntryScreen() {
 				plannedDateLabel: formatDate(plannedDate),
 				durationMinutes: resolvedDurationMinutes,
 				...(!isHomework ? { examTypeLabel: trimmedExamType } : {}),
-			});
+			};
+			const savedExamId = savedExamIdRef.current;
+			if (!isHomework && savedExamId) {
+				await updatePendingExam({
+					id: savedExamId,
+					dayKey: nextDayKey,
+					subject: trimmedSubject,
+					examTypeLabel: trimmedExamType,
+					plannedDateLabel: formatDate(plannedDate),
+					durationMinutes: resolvedDurationMinutes,
+				});
+				createdEntryId = savedExamId;
+			} else {
+				createdEntryId = await createDayEntry(entryFields);
+				if (!isHomework) savedExamIdRef.current = createdEntryId;
+			}
 			if (isHomework) {
 				void capture("homework_created", {
 					day_entry_id: createdEntryId,
@@ -563,7 +595,7 @@ export default function NewEntryScreen() {
 					due_day_key: getDayKey(dueDate),
 					duration_minutes: resolvedDurationMinutes,
 				});
-			} else if (selectedExamType) {
+			} else if (selectedExamType && !savedExamId) {
 				void capture("exam_created", {
 					day_entry_id: createdEntryId,
 					planned_day_key: nextDayKey,
@@ -646,12 +678,14 @@ export default function NewEntryScreen() {
 				if (!createdExam?.createdEntryId) return;
 
 				const query = [
+					["fromExamEntry", "true"],
 					["examDayEntryId", createdExam.createdEntryId],
 					["subject", trimmedSubject],
 					["examTypeLabel", trimmedExamType],
 					["examDateKey", getDayKey(plannedDate)],
 					["examDateLabel", formatDate(plannedDate)],
 					["durationMinutes", `${scheduledDurationMinutes}`],
+					["topicDescription", params.topicDescription ?? ""],
 				]
 					.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
 					.join("&");
@@ -687,6 +721,22 @@ export default function NewEntryScreen() {
 	};
 
 	const openLearningTimes = () => {
+		if (savedExamIdRef.current) {
+			router.push(
+				withReturnTo(
+					ROUTES.learningTimes,
+					examEntryResumePath({
+						examDayEntryId: savedExamIdRef.current,
+						subject: trimmedSubject,
+						examTypeLabel: trimmedExamType,
+						examDateKey: examDayKey,
+						durationMinutes: scheduledDurationMinutes,
+						topicDescription: params.topicDescription ?? "",
+					}),
+				),
+			);
+			return;
+		}
 		const query = [
 			["type", "exam"],
 			["dayKey", examDayKey],

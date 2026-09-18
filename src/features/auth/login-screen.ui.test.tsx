@@ -130,6 +130,10 @@ let mockWindowDimensions = {
 };
 let mockReducedMotion = false;
 
+jest.mock("~/components/release-information-sheet", () => ({
+	ReleaseInformationSheet: () => null,
+}));
+
 jest.mock("react-native/Libraries/Utilities/useWindowDimensions", () => ({
 	__esModule: true,
 	default: () => mockWindowDimensions,
@@ -1225,6 +1229,14 @@ describe("OnboardingScreen", () => {
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
 		expect(screen.getByTestId("intro-learning-path-artwork")).toBeOnTheScreen();
+	});
+
+	test("uses one consistent gap below the progress header", async () => {
+		const screen = await render(<OnboardingStepScreen stepId="grade" />);
+
+		expect(screen.getByTestId("onboarding-question-content")).toHaveStyle({
+			paddingTop: 40,
+		});
 	});
 
 	test("does not preselect a grade and disables continuation until it is valid", async () => {

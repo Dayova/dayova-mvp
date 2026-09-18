@@ -1,8 +1,8 @@
 # Native release and production OTA policy
 
 `production-ota-baseline.json` is the compatibility record used by the production
-OTA guard. Its current schema-1 entries are historical, and Android distribution
-is unverified; it is not an inventory of today's store releases. The workflow
+OTA guard. Its schema-2 entries record the verified internal production-channel
+builds iOS 75 and Android 25; it is not an inventory of every store track. The workflow
 compares the current manifest and phase-equivalent EAS fingerprints with this
 manifest. It never infers safety from the previous Git commit.
 
@@ -10,6 +10,22 @@ The [September 16 live verification](./live-verification-2026-09-16.md) confirms
 Android 1.0.5/code 23 on Play and Apple listing 1.0 with binary 1.0.4/build 72.
 It also records live privacy-declaration/link problems and billing configuration.
 Store availability alone does not satisfy the baseline's installed-artifact checks.
+
+The [later September 16 activation evidence](./ota-activation-2026-09-16.md)
+records iOS 75 and Android 25 signed-artifact inspection, physical installation
+and cold-launch checks, and direct running-staging-update evidence on both
+platforms. Before merging baseline activation, run the manual
+`.eas/workflows/ota-preflight.yml` against the release candidate and require matching
+production CNG fingerprints and both platform exports. After success, only
+evidence/documentation changes may reuse that result: verify their diff changes
+no app, dependency, native input, script or workflow. Any such input change needs
+a new preflight and appropriate staging validation. This workflow publishes
+no updates. The main push workflow rechecks compatibility before publication.
+The September 17 initial preflight exposed test-tooling-only input drift. The
+baseline now records exact reviewed equivalents separately from the immutable
+build fingerprints; see the linked audit. The integrated candidate passed both
+staging launch checks and the cloud preflight on September 17. Merge-source
+CI and compatibility checks must still succeed before production publication.
 
 ## Runtime boundary
 
@@ -58,7 +74,14 @@ generated `bareNativeDir`.
 Do not replace the workflow outputs with `expo fingerprint:generate` from the
 normal checkout and do not set `unstable_skip_cng_check`. Missing fingerprint
 outputs are classified as a preflight failure and block publication. A valid but
-different fingerprint is classified as native incompatibility and also blocks.
+different fingerprint blocks unless the same platform/build baseline contains
+that exact hash in `reviewedCompatibleFingerprints`. Such a record must bind the
+original build fingerprint, full audit source SHA and evidence of an EAS source
+comparison showing native equivalence. Never overwrite a build's actual hash,
+ignore input classes globally or approve an unknown future fingerprint. Missing
+or malformed review records fail closed. Success reports explicitly identify
+when reviewed equivalence was used; all manifest, runtime, SDK, channel,
+distribution and embedded-update checks still apply.
 
 ## Verifying and replacing the baseline
 
@@ -138,23 +161,93 @@ below. Follow the [Google Play command center](./google-play/README.md) and
 
 ## Staging, promotion, and rollback
 
-Build dedicated internal QA binaries for both platforms with the `ota-staging`
-profile from the exact release source. This profile uses production app config
-and EAS environment but embeds the isolated `ota-staging` channel. Publish the
-candidate to that channel, verify the result reports runtime `1.0.5`, and record
+Build dedicated QA binaries from the exact release source. Use `ota-staging`
+for an Android APK or an iOS ad-hoc build when a suitable provisioning profile
+and registered devices are available. For iOS TestFlight, use
+`ota-staging-testflight`: it inherits production signing and automatic build
+number increments while embedding the isolated `ota-staging` channel. Submit
+that exact build ID with the existing `production` submission profile and keep
+it in the internal testing group; never select a staging build for App Store
+distribution. `ota-staging-simulator` provides an unsigned iOS simulator build
+for automated OTA checks without consuming a new store build number. All three
+profiles use production app config and EAS environment. Publish the candidate
+to that channel, verify the result reports runtime `1.0.5`, and record
 the update ID actually downloaded by each QA binary. Do not remap the production
 channel or publish/republish to it for staging.
 
+Changes to `eas.json` can change fingerprints even when native code is unchanged.
+Recompute the final candidate and never copy older build hashes into a baseline
+to bypass that mismatch. Integrate DAY-414's publication and channel-verification
+runbook changes before activation.
+
 The staging builds prove the new-runtime update path without exposing production
 binaries. They are not substitutes for installing and checking the exact store
-artifacts, and their native fingerprints differ because the embedded channel is
-part of native configuration. After the exact production binaries are
+artifacts. Inspect each artifact's embedded channel separately: the EAS CNG
+fingerprint can be identical across production and staging profiles and does
+not prove which channel a binary requests. After the exact production binaries are
 distributed and install-verified, the schema 2 baseline lands, and the main
 workflow is green, the automatic production job creates the production update
-from that exact main commit. Both-platform exports and publication under
-[DAY-414](https://linear.app/dayova/issue/DAY-414) must land first: the current
-workflow exports and publishes only iOS. The baseline-activation merge can itself
-publish, so staging and workflow readiness must precede it.
+from that exact main commit. The workflow validates separate iOS and Android
+exports with their platform-specific production environment checks. After the
+guard and Convex deployment succeed, `scripts/publish-production-ota.mjs`
+checks the clean checkout against the triggering main SHA, exports both
+platforms together, reruns the compatibility guard, and verifies that the live
+production channel is active and points exclusively to branch `production`.
+It atomically creates the reserved, empty EAS branch `production-publication-lock`
+before publishing and rechecks the channel while holding that lock. EAS rejects
+duplicate branch names, so concurrent or later publishers cannot proceed while
+the lock exists. Keep this branch empty and never map a channel to it. The job
+logs its lock ID and source SHA, then publishes the already-exported bundle once
+with pinned EAS CLI 18.11.0,
+`--platform all --skip-bundler --environment production`. A failed export or
+preflight prevents either platform from publishing. PR/manual paths cannot
+enter the publication job. The baseline-activation merge can itself publish,
+so staging and workflow readiness must precede it.
+
+Schema 2 deliberately requires one shared runtime. Existing iOS 1.0.4/build 72
+and Android 1.0.5/build 23 cannot be combined in that baseline. Relabelling
+iOS as 1.0.5 does not change its native stack or fingerprint.
+
+The publication log records the raw CLI response and then a verified summary
+containing each platform's update ID, common group ID, runtime, and source SHA.
+Success requires exactly one iOS and one Android update on branch `production`
+with the intended runtime and commit. A CLI/network failure can leave the server
+state uncertain even when no valid summary is returned. The publisher removes
+the lock only after verifying the complete both-platform response. An uncertain
+acquisition, publication failure, or workflow cancellation leaves the server-side
+lock in place, blocking later jobs even if the original worker never runs its
+error handler. Lock removal failure also requires inspection. Never automatically
+retry or clear an existing lock. To recover:
+
+1. stop all production publishers and wait for every worker to terminate;
+2. inspect the recorded lock ID and production groups by source SHA, recording
+   whichever platforms were published; a lost response can mean both succeeded;
+3. choose and verify recovery for the actual published state using the rollback
+   procedure below; and
+4. only after recovery is verified and no publisher remains active, delete the
+   reserved empty branch with
+   `pnpm exec cross-env APP_VARIANT=production pnpm dlx eas-cli@18.11.0 branch:delete production-publication-lock --json --non-interactive`.
+   Verify the returned ID is the inspected lock. Never delete/recreate the lock
+   while a worker is active: the CLI resolves deletion by name. If creation was
+   not confirmed, inspect EAS first; do not assume an empty log means no lock or
+   no publication. Then permit a new reviewed main run.
+
+If only one platform is live, use the rollback procedure below for that affected
+platform/group or a reviewed same-runtime fix; verify both platforms afterward.
+One CLI call reduces split publication risk but is not a cross-platform rollback
+transaction. Preserve its logs even if post-publication validation fails.
+
+An update being published, downloaded, and launched are separate events. Record
+the update UUID actually running after a cold restart on each staging and store
+binary. A downloaded update does not prove the app has launched it, and a
+successful EAS job does not prove either device event.
+
+To inspect the running UUID on a device, open **Einstellungen → App-Informationen**.
+Before sign-in, tap the **Dayova** heading on the welcome screen instead. Record
+the build, channel, runtime, **Quelle**, **Laufendes Update** and **Notfallstart**
+after a cold restart. The dialog reads `Updates.updateId` and
+`Updates.isEmbeddedLaunch`; it does not display an available/downloaded candidate
+as though it were running. It is read-only and sends no diagnostic data.
 
 If a production OTA is unhealthy:
 
@@ -189,9 +282,14 @@ Automatic publication may resume only after all of the following are true:
 - the live production channel-to-branch mapping is verified;
 - their clean-source provenance and embedded updates are recorded in one schema 2
   baseline change;
-- the EAS production fingerprint job matches both exact builds;
-- a runtime `1.0.5` update succeeds on dedicated `ota-staging` iOS and Android
-  QA builds, with both downloaded update IDs recorded;
+- the final-source EAS production fingerprint job matches each exact build's
+  original hash or its exact, independently reviewed native-equivalence record;
+- a runtime `1.0.5` update is downloaded and launched after a cold restart on
+  dedicated QA builds targeting the `ota-staging` channel: Android uses the
+  `ota-staging` profile; a physical iPhone uses `ota-staging-testflight` or the
+  ad-hoc `ota-staging` profile. Record the downloaded and running update UUIDs
+  for both platforms. An `ota-staging-simulator` check is supplementary and
+  does not replace the iPhone check or exact store-artifact installation checks;
 - a deliberately mismatched native fingerprint still fails closed; and
 - the baseline change lands on `main` and the complete main workflow is green.
 

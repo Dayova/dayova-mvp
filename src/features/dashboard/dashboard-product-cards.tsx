@@ -29,6 +29,10 @@ import {
 	getNextLearningStepAccessibilityLabel,
 } from "./dashboard-agenda";
 import type { DashboardNextStepFallbackAction } from "./dashboard-empty-state";
+import {
+	getDashboardSummaryCardLayoutClass,
+	type DashboardSummaryCardLayout,
+} from "./dashboard-layout";
 
 type DashboardNextStepCardProps =
 	| {
@@ -41,6 +45,7 @@ type DashboardNextStepCardProps =
 			fallbackAction: DashboardNextStepFallbackAction;
 			isLoading: boolean;
 			item: DashboardAgendaItem | undefined;
+			layout?: DashboardSummaryCardLayout;
 			mode: "screen";
 			onOpenFallback: () => void;
 			onOpenItem: (item: DashboardAgendaItem) => void;
@@ -56,6 +61,7 @@ type DashboardWeeklyProgressCardProps =
 	  }
 	| {
 			isLoading: boolean;
+			layout?: DashboardSummaryCardLayout;
 			mode: "screen";
 			onOpenLearningPlans: () => void;
 			progress: DashboardWeekProgress;
@@ -172,7 +178,7 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 					"font-poppins font-semibold text-text",
 					isArtwork ? "mt-1 text-body-3" : "mt-4 text-body-1",
 				)}
-				numberOfLines={isArtwork ? 2 : 3}
+				numberOfLines={isArtwork ? 2 : undefined}
 			>
 				{title}
 			</Text>
@@ -248,7 +254,7 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 							</View>
 						) : null}
 					</View>
-					<View className="mt-4 flex-row items-end justify-between gap-2">
+					<View className="mt-4 flex-row items-center justify-between gap-2">
 						<Text
 							className="flex-1 pr-1 font-poppins font-semibold text-body-4 text-text"
 							numberOfLines={2}
@@ -319,7 +325,10 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 			disabled={props.isLoading}
 			onPress={handlePress}
 			testID={props.testID}
-			className="min-h-72 flex-1 overflow-hidden rounded-card border border-border bg-system-subtle px-4 pt-5 pb-4"
+			className={cn(
+				"min-h-72 overflow-hidden rounded-card border border-border bg-system-subtle px-4 pt-5 pb-4",
+				getDashboardSummaryCardLayoutClass(props.layout),
+			)}
 			style={continuousBorderStyle}
 		>
 			{content}
@@ -447,8 +456,8 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 			</View>
 			<View
 				className={cn(
-					"flex-row items-end justify-between gap-2",
-					isArtwork ? "mt-1 pr-3" : "mt-4",
+					"flex-row justify-between gap-2",
+					isArtwork ? "mt-1 items-end pr-3" : "mt-4 items-center",
 				)}
 				testID={isArtwork ? "dashboard-progress-artwork-footer" : undefined}
 			>
@@ -518,7 +527,10 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 			accessibilityHint="Öffnet deine persönlichen Lernpläne."
 			onPress={props.onOpenLearningPlans}
 			testID={props.testID}
-			className="min-h-72 flex-1 overflow-hidden rounded-card border border-border bg-ueben-subtle px-4 pt-5 pb-4"
+			className={cn(
+				"min-h-72 overflow-hidden rounded-card border border-border bg-ueben-subtle px-4 pt-5 pb-4",
+				getDashboardSummaryCardLayoutClass(props.layout),
+			)}
 			style={continuousBorderStyle}
 		>
 			{content}
