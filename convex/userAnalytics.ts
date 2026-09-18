@@ -5,6 +5,7 @@ import {
 	type AdaptiveTopicEvidence,
 	deriveAdaptiveDimensionStatus,
 } from "./adaptiveLearningPlanPolicy";
+import { getBerlinDayKey } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
 import type { LearningEvidenceDimension } from "./learningContentPlan";
 
@@ -294,23 +295,27 @@ const getSessionStatus = (
 ): SessionStatus =>
 	session.executionStatus ?? (session.completed ? "completed" : "notStarted");
 
-// Legacy plans store ISO timestamps; rolling plans store YYYY-MM-DD. Compare
-// calendar days before start times so a later preview cannot jump ahead of theory.
+// Match the scheduler's Berlin calendar days: legacy ISO values can represent
+// local midnight on the previous UTC day. startTime holds the session's clock time.
 const getNextExecutableSession = (
 	sessions: Doc<"learningPlanSessions">[],
 	todayKey: string,
 ) => {
 	const eligible = sessions
 		.filter((session) => session.planningStatus !== "provisional")
+		.flatMap((session) => {
+			const dayKey = getBerlinDayKey(session.dateKey);
+			return dayKey === null ? [] : [{ session, dayKey }];
+		})
 		.sort(
 			(left, right) =>
-				left.dateKey.slice(0, 10).localeCompare(right.dateKey.slice(0, 10)) ||
-				left.startTime.localeCompare(right.startTime) ||
-				left.sortOrder - right.sortOrder,
+				left.dayKey.localeCompare(right.dayKey) ||
+				left.session.startTime.localeCompare(right.session.startTime) ||
+				left.session.sortOrder - right.session.sortOrder,
 		);
 	return (
-		eligible.find((session) => session.dateKey.slice(0, 10) >= todayKey) ??
-		eligible[0] ??
+		eligible.find(({ dayKey }) => dayKey >= todayKey)?.session ??
+		eligible[0]?.session ??
 		null
 	);
 };

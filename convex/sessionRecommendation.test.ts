@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -71,6 +72,27 @@ async function fixture(normalizeDates = false, commitPractice = false) {
 	return { t, ...ids };
 }
 
+async function expectNextSession(
+	{ t, plan }: Awaited<ReturnType<typeof fixture>>,
+	todayKey: string,
+	expected: Id<"learningPlanSessions"> | null,
+) {
+	const analysis = await t.query(api.userAnalytics.getExamAnalysis, {
+		learningPlanId: plan,
+		todayKey,
+	});
+	const overview = await t.query(api.userAnalytics.getOverview, {
+		period: "all",
+		todayKey,
+		// Deliberately fixed: the current activity offset must not determine
+		// the calendar day of a session scheduled on the other side of DST.
+		timezoneOffsetMinutes: -120,
+	});
+	expect(analysis.recommendation?.sessionId ?? null).toBe(expected);
+	expect(analysis.preparation.nextSession?.id ?? null).toBe(expected);
+	expect(overview.nextSession?.id ?? null).toBe(expected);
+}
+
 for (const todayKey of ["2026-09-15", "2026-09-20", "2026-09-25"]) {
 	test(`completed check recommends loadable theory with mixed dates on ${todayKey}`, async () => {
 		const { t, plan, theory, check } = await fixture();
@@ -117,6 +139,90 @@ test("all-overdue committed sessions resume the earliest unfinished block", asyn
 		todayKey: "2026-09-25",
 	});
 	expect(a.recommendation?.sessionId).toBe(theory);
+});
+
+const editedDates = [
+	{ day: "2026-01-01", stored: "2025-12-31T23:00:00.000Z" },
+	{ day: "2026-09-20", stored: "2026-09-19T22:00:00.000Z" },
+	{ day: "2026-03-29", stored: "2026-03-28T23:00:00.000Z" },
+	{ day: "2026-03-30", stored: "2026-03-29T22:00:00.000Z" },
+	{ day: "2026-10-25", stored: "2026-10-24T22:00:00.000Z" },
+	{ day: "2026-10-26", stored: "2026-10-25T23:00:00.000Z" },
+];
+
+test.each(
+	editedDates,
+)("an edited session stored as $stored is eligible on $day", async ({
+	day,
+	stored,
+}) => {
+	const data = await fixture(false, true);
+	const { t, theory, practice } = data;
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlanSessions", practice, { dateKey: day }),
+	);
+	// Exercise the editor's actual save mutation with its legacy ISO payload.
+	await t.mutation(api.learningPlans.updateSession, {
+		id: theory,
+		phase: "theory",
+		dateKey: stored,
+		dateLabel: day,
+		startTime: "10:10",
+		durationMinutes: 10,
+	});
+	await expectNextSession(data, day, theory);
+	const content = await t.query(api.learningSessionContent.getSessionContent, {
+		sessionId: theory,
+	});
+	expect(content.session.id).toBe(theory);
+	// Reading a recommendation does not rewrite the stored date format.
+	expect(
+		(await t.run((ctx) => ctx.db.get("learningPlanSessions", theory)))?.dateKey,
+	).toBe(stored);
+});
+
+test.each(
+	editedDates,
+)("same-day clock times order edited $stored alongside date-only sessions", async ({
+	day,
+	stored,
+}) => {
+	const data = await fixture(false, true);
+	const { t, theory, practice } = data;
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlanSessions", theory, {
+			dateKey: stored,
+			startTime: "10:30",
+		});
+		await ctx.db.patch("learningPlanSessions", practice, { dateKey: day });
+	});
+	// Check both upcoming and all-overdue selection; UTC date ordering
+	// would incorrectly put the later edited session first in both cases.
+	await expectNextSession(data, "2025-12-30", practice);
+	await expectNextSession(data, "2026-12-31", practice);
+});
+
+test("equivalent ISO offsets and date-only keys use sortOrder when clock times tie", async () => {
+	const data = await fixture(false, true);
+	await data.t.run(async (ctx) => {
+		await ctx.db.patch("learningPlanSessions", data.theory, {
+			dateKey: "2026-09-20T00:00:00+02:00",
+		});
+		await ctx.db.patch("learningPlanSessions", data.practice, {
+			startTime: "10:10",
+		});
+	});
+	await expectNextSession(data, "2026-09-20", data.theory);
+});
+
+test("an unreadable legacy date cannot break recommendations", async () => {
+	const data = await fixture(false, true);
+	await data.t.run((ctx) =>
+		ctx.db.patch("learningPlanSessions", data.theory, {
+			dateKey: "invalid-date",
+		}),
+	);
+	await expectNextSession(data, "2026-09-20", data.practice);
 });
 
 for (const unavailable of ["completed", "adjusted", "deleted"] as const) {
