@@ -43,6 +43,7 @@ import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
+import { useDayovaTheme } from "~/lib/theme";
 
 const PLAN_ACTION_RAIL_WIDTH = 104;
 const PLAN_SWIPE_OPEN_THRESHOLD = 44;
@@ -548,6 +549,7 @@ function HomeworkCard({
 	onDelete: () => void;
 	onPress: () => void;
 }) {
+	const { colors } = useDayovaTheme();
 	const status = getHomeworkStatus(homework, todayKey);
 	const subject = getHomeworkSubject(homework) || "Hausaufgabe";
 	const dateLabel =
