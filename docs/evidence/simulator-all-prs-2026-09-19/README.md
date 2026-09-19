@@ -67,7 +67,7 @@ vorerst aus der App entfernt wurden.
 - ESLint für manuell zusammengeführte Backend-, Lernpfad- und Abo-Dateien: bestanden.
 - Kombiniertes Backend auf vorhandenes lokales Convex-System übertragen: bestanden.
 - iPhone 17 Pro / iOS 26.4 gestartet, vorhandenen DEV-Client installiert und gestartet.
-- Sichtprüfung noch nicht bestätigt: Device-Hub-Bildschirmsteuerung liefert Timeouts.
+- Native Sichtprüfung im iPhone-17-Pro-Simulator bestätigt; 55 PNG-Aufnahmen und zwei Videos sind in der [Beweismatrix](../native-iphone-2026-09-19/README.md) den jeweiligen Issues und PRs zugeordnet.
 
 ## Start
 
@@ -87,8 +87,7 @@ Die Server müssen während des Tests weiterlaufen. Dies ist eine lokale Testkom
 
 ## Review-Grenzen
 
-Vorher-/Nachher-Screenshots und -Videos fehlen; die Desktop-Bildschirmsteuerung ist nicht erreichbar.
-Der separate Dayova-Produktqualitätsreview aus DAY-289 ist laut Repository-Vertrag noch eine Workflow-Lücke. Ein etwaiger Integrations-PR bleibt daher Draft.
+Vorher-/Nachher-Screenshots und Videos liegen in der nativen Beweismatrix vor. Der separate Dayova-Produktqualitätsreview aus DAY-289 bleibt laut Repository-Vertrag eine Workflow-Lücke; die technische und visuelle Dokumentation für Fabius' Review ist vollständig.
 
 ## Popup-Anordnung nach Figma-Referenzen
 
@@ -129,7 +128,7 @@ Die neue DEV-App wurde im iPhone-17-Pro-Simulator installiert und gestartet; Met
 
 New accounts receive a content-sized shared confirmation sheet on their first Home visit after onboarding and access have resolved. The stacked actions are “Jetzt Lernplan erstellen” (existing exam-to-plan flow) and “Erstmal die App anschauen”; closing also selects explore. No decorative title icon is added. The choice is stored on the authenticated user, with no backfill for existing accounts. Onboarding retries cannot reset it; existing planning data suppresses the prompt. Save failures remain retryable.
 
-Validation: 26 users backend tests and 8 focused UI tests passed; TypeScript, scoped ESLint, Biome and diff checks passed. The UI tests mock the shared sheet; real-device first-onboarding visual/gesture verification remains pending.
+Validation: 26 users backend tests and 8 focused UI tests passed; TypeScript, scoped ESLint, Biome and diff checks passed. The final iPhone-17-Pro simulator capture at 18:22:24 verifies the first Home visit and its content-sized sheet with create, explore and close actions.
 
 ## Registrierung und Intro-Nachprüfung
 
@@ -157,3 +156,10 @@ gewünschte geringere Rundung. Die finale Simulatoraufnahme von 18:16 bestätigt
 kleinere Eckenradien an allen drei Karten, Abstand zwischen Fortschrittsüberschrift
 und Ring sowie sichtbarer Bodenabstand unter „Jetzt starten“, ohne Änderung an der
 überlappenden Komposition.
+
+Die zehn finalen Aufnahmen von 18:18 bis 18:22 dokumentieren den vollständigen
+Abnahmepfad: alle drei bereinigten Intro-Seiten, die Registrierungsschritte mit
+Zurücknavigation und Fortschrittsanzeige, den Abschluss der Kontoerstellung, den
+Testphasen-Screen innerhalb der Safe Areas sowie den einmaligen Lernplan-Hinweis
+auf dem ersten Home-Besuch. Insgesamt sind nun 55 PNG-Aufnahmen und zwei Videos
+mit Issues und Quell-PRs verknüpft.
