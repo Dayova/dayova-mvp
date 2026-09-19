@@ -282,12 +282,20 @@ export const listByDayKeys = query({
 			);
 		}
 
-		const learningSessions = await ctx.db
-			.query("learningPlanSessions")
-			.withIndex("by_ownerTokenIdentifier", (q) =>
-				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+		const learningSessions = (
+			await Promise.all(
+				[...queryKeyToRequestedDayKey.keys()].map((queryDayKey) =>
+					ctx.db
+						.query("learningPlanSessions")
+						.withIndex("by_ownerTokenIdentifier_and_dateKey", (q) =>
+							q
+								.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+								.eq("dateKey", queryDayKey),
+						)
+						.take(50),
+				),
 			)
-			.take(200);
+		).flat();
 		const planCache = new Map<
 			Id<"learningPlans">,
 			Doc<"learningPlans"> | null

@@ -14,7 +14,6 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
-import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
@@ -38,24 +37,24 @@ export default function LearningPlanScopeScreen() {
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-	const snapshot = (useQuery(
-		api.learningPlans.getSnapshot,
+	const plan = useQuery(
+		api.learningPlans.getPlanDetails,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
-	) ?? null) as LearningPlanSnapshot | null;
+	);
 
 	useEffect(() => {
-		if (!planId || !snapshot) return;
-		if (snapshot.plan.status === "generated") {
+		if (!planId || !plan) return;
+		if (plan.status === "generated") {
 			router.replace(planPath(planId, "review"));
 			return;
 		}
 		if (
-			snapshot.plan.diagnosticPlacement !== "firstSession" ||
-			snapshot.plan.knowledgeQuestions.length === 0
+			plan.diagnosticPlacement !== "firstSession" ||
+			plan.knowledgeQuestions.length === 0
 		) {
 			router.replace(planPath(planId, "analysis"));
 		}
-	}, [planId, router, snapshot]);
+	}, [plan, planId, router]);
 
 	const goBack = () => {
 		if (!planId) {
@@ -122,13 +121,13 @@ export default function LearningPlanScopeScreen() {
 							selectable
 							className="mt-4 font-poppins text-body-3 text-secondary-text"
 						>
-							{snapshot?.plan.sourceSummary ??
+							{plan?.sourceSummary ??
 								"Deine Unterlagen werden noch zusammengefasst."}
 						</Text>
 					</Surface>
 
 					<View className="mt-7 gap-3">
-						{snapshot?.plan.topicMap.map((topic) => (
+						{plan?.topicMap.map((topic) => (
 							<Surface
 								key={topic.id}
 								className="flex-row items-start gap-3 rounded-[24px] px-4 py-4"
@@ -163,9 +162,7 @@ export default function LearningPlanScopeScreen() {
 									? "Prüfungsstoff bestätigen, wird geladen"
 									: "Prüfungsstoff bestätigen und Lernweg vorbereiten"
 							}
-							disabled={
-								!snapshot || snapshot.plan.topicMap.length === 0 || isBusy
-							}
+							disabled={!plan || plan.topicMap.length === 0 || isBusy}
 							onPress={() => void continueToPlan()}
 						>
 							{isBusy ? (

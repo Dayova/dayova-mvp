@@ -173,16 +173,31 @@ export default function EntryDetailScreen() {
 				: "skip",
 		) ?? undefined;
 	const relatedLearningPlanId = entry?.relatedLearningPlanId;
-	const relatedPlanResult = useQuery(
-		api.learningPlans.getSnapshot,
+	const relatedPlanDetails = useQuery(
+		api.learningPlans.getPlanDetails,
 		user && isConvexAuthenticated && relatedLearningPlanId
 			? { id: relatedLearningPlanId }
 			: "skip",
-	) as LearningPlanSnapshot | null | undefined;
-	const isRelatedPlanLoading = Boolean(
-		relatedLearningPlanId && relatedPlanResult === undefined,
 	);
-	const relatedPlan = relatedPlanResult ?? null;
+	const relatedPlanDocuments = useQuery(
+		api.learningPlans.listDocuments,
+		user && isConvexAuthenticated && relatedLearningPlanId
+			? { learningPlanId: relatedLearningPlanId }
+			: "skip",
+	);
+	const isRelatedPlanLoading = Boolean(
+		relatedLearningPlanId &&
+			(relatedPlanDetails === undefined || relatedPlanDocuments === undefined),
+	);
+	const relatedPlan =
+		relatedPlanDetails && relatedPlanDocuments
+			? ({
+					plan: relatedPlanDetails,
+					documents: relatedPlanDocuments,
+					answers: [],
+					sessions: [],
+				} satisfies LearningPlanSnapshot)
+			: null;
 	const hasRelatedSchoolMaterial = Boolean(
 		relatedPlan?.documents.some((document) => document.sourceKind === "school"),
 	);
