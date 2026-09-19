@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Pressable, View } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { Button } from "~/components/ui/button";
@@ -30,16 +29,6 @@ function WeeklyLearningTimes({
 	onRemove,
 }: WeeklyLearningTimesProps) {
 	const { colors } = useDayovaTheme();
-	const [hiddenEmptyDays, setHiddenEmptyDays] = useState<ReadonlySet<number>>(
-		() => new Set(),
-	);
-	const hideEmptyDay = (dayOfWeek: number) => {
-		setHiddenEmptyDays((current) => {
-			const next = new Set(current);
-			next.add(dayOfWeek);
-			return next;
-		});
-	};
 	if (entries.length === 0) {
 		return (
 			<Surface className="items-center border border-border px-6 py-10">
@@ -62,91 +51,74 @@ function WeeklyLearningTimes({
 			</Surface>
 		);
 	}
+
+	const sortedEntries = [...entries].sort(
+		(a, b) =>
+			a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime),
+	);
+
 	return (
 		<View className="gap-3">
-			{LEARNING_DAYS.filter(
-				(day) =>
-					entries.some((entry) => entry.dayOfWeek === day.value) ||
-					!hiddenEmptyDays.has(day.value),
-			).flatMap((day) => {
-				const dayEntries = entries
-					.filter((entry) => entry.dayOfWeek === day.value)
-					.sort((a, b) => a.startTime.localeCompare(b.startTime));
-				const rows: (WeeklyLearningTime | undefined)[] = dayEntries.length
-					? dayEntries
-					: [undefined];
-				return rows.map((entry) => {
-					const key = entry?.id ?? `empty-${day.value}`;
-					const card = (
-						<Surface
-							key={key}
-							className="min-h-18 flex-row items-center border border-border px-5 py-3"
+			{sortedEntries.map((entry) => {
+				const day =
+					LEARNING_DAYS.find(
+						(candidate) => candidate.value === entry.dayOfWeek,
+					) ?? LEARNING_DAYS[0];
+				const card = (
+					<Surface className="min-h-18 flex-row items-center border border-border px-5 py-3">
+						<View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
+							<Text className="font-poppins font-semibold text-body-4 text-text">
+								{day.abbreviation}
+							</Text>
+						</View>
+						<View className="ml-4 flex-1">
+							<Text className="font-poppins font-semibold text-body-2 text-text">
+								{day.label}
+							</Text>
+							<Text className="mt-0.5 font-poppins text-body-4 text-secondary-text">
+								{entry.startTime}–{entry.endTime}
+							</Text>
+							{entry.preferenceStatus === "systemDefault" ? (
+								<Text className="font-poppins text-body-5 text-primary">
+									Vorschlag
+								</Text>
+							) : null}
+						</View>
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={`${day.label}, Lernzeit ${entry.startTime} bis ${entry.endTime} bearbeiten`}
+							className="h-11 w-11 items-center justify-center rounded-full active:bg-muted"
+							onPress={() => onEdit(entry)}
 						>
-							<View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-								<Text className="font-poppins font-semibold text-body-4 text-text">
-									{day.abbreviation}
-								</Text>
-							</View>
-							<View className="ml-4 flex-1">
-								<Text className="font-poppins font-semibold text-body-2 text-text">
-									{day.label}
-								</Text>
-								<Text className="mt-0.5 font-poppins text-body-4 text-secondary-text">
-									{entry
-										? `${entry.startTime}–${entry.endTime}`
-										: "Noch keine Lernzeit"}
-								</Text>
-								{entry?.preferenceStatus === "systemDefault" ? (
-									<Text className="font-poppins text-body-5 text-primary">
-										Vorschlag
-									</Text>
-								) : null}
-							</View>
+							<Pencil size={19} color={colors.text} strokeWidth={2} />
+						</Pressable>
+					</Surface>
+				);
+				return (
+					<ReanimatedSwipeable
+						key={entry.id}
+						overshootRight={false}
+						rightThreshold={40}
+						renderRightActions={(_progress, _translation, swipeable) => (
 							<Pressable
 								accessibilityRole="button"
-								accessibilityLabel={
-									entry
-										? `${day.label}, Lernzeit ${entry.startTime} bis ${entry.endTime} bearbeiten`
-										: `Lernzeit für ${day.label} hinzufügen`
-								}
-								className="h-11 w-11 items-center justify-center rounded-full active:bg-muted"
-								onPress={() => (entry ? onEdit(entry) : onAdd(day.value))}
+								accessibilityLabel={`${day.label}, Lernzeit ${entry.startTime} bis ${entry.endTime} löschen`}
+								className="ml-2 w-24 items-center justify-center rounded-card bg-destructive"
+								onPress={() => {
+									swipeable.close();
+									onRemove(entry);
+								}}
 							>
-								<Pencil size={19} color={colors.text} strokeWidth={2} />
+								<Trash2 size={22} color="#FFFFFF" strokeWidth={2} />
+								<Text className="mt-1 font-poppins text-body-4 text-white">
+									Löschen
+								</Text>
 							</Pressable>
-						</Surface>
-					);
-					return (
-						<ReanimatedSwipeable
-							key={key}
-							overshootRight={false}
-							rightThreshold={40}
-							renderRightActions={(_progress, _translation, swipeable) => (
-								<Pressable
-									accessibilityRole="button"
-									accessibilityLabel={
-										entry
-											? `${day.label}, Lernzeit ${entry.startTime} bis ${entry.endTime} löschen`
-											: `${day.label} aus den Lernzeiten entfernen`
-									}
-									className="ml-2 w-24 items-center justify-center rounded-card bg-destructive"
-									onPress={() => {
-										swipeable.close();
-										hideEmptyDay(day.value);
-										if (entry) onRemove(entry);
-									}}
-								>
-									<Trash2 size={22} color="#FFFFFF" strokeWidth={2} />
-									<Text className="mt-1 font-poppins text-body-4 text-white">
-										Löschen
-									</Text>
-								</Pressable>
-							)}
-						>
-							{card}
-						</ReanimatedSwipeable>
-					);
-				});
+						)}
+					>
+						{card}
+					</ReanimatedSwipeable>
+				);
 			})}
 		</View>
 	);

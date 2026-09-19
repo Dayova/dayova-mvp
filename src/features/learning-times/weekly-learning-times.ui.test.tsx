@@ -80,14 +80,39 @@ test("edits and removes the correct slot when a day has multiple learning times"
 		}),
 	);
 	expect(onRemove).toHaveBeenCalledWith(entries[0]);
-	await fireEvent.press(
-		screen.getByRole("button", { name: "Lernzeit für Dienstag hinzufügen" }),
+	expect(onAdd).not.toHaveBeenCalled();
+	expect(screen.queryByText("Dienstag")).toBeNull();
+	expect(screen.queryByText("Noch keine Lernzeit")).toBeNull();
+});
+
+test("renders only saved learning times and keeps each entry independent", async () => {
+	const entries = [
+		{ id: "monday", dayOfWeek: 1, startTime: "17:00", endTime: "17:30" },
+		{ id: "friday", dayOfWeek: 5, startTime: "16:00", endTime: "17:00" },
+	];
+	const onRemove = jest.fn();
+	const screen = await render(
+		<WeeklyLearningTimes
+			entries={entries}
+			onEdit={jest.fn()}
+			onRemove={onRemove}
+			onAdd={jest.fn()}
+		/>,
 	);
-	expect(onAdd).toHaveBeenCalledWith(2);
+
+	expect(screen.getByText("Montag")).toBeTruthy();
+	expect(screen.getByText("Freitag")).toBeTruthy();
+	expect(screen.queryByText("Dienstag")).toBeNull();
+	expect(screen.queryByText("Mittwoch")).toBeNull();
+	expect(screen.queryByText("Donnerstag")).toBeNull();
+	expect(screen.queryByText("Samstag")).toBeNull();
+	expect(screen.queryByText("Sonntag")).toBeNull();
+
 	await fireEvent.press(
 		screen.getByRole("button", {
-			name: "Dienstag aus den Lernzeiten entfernen",
+			name: "Freitag, Lernzeit 16:00 bis 17:00 löschen",
 		}),
 	);
-	expect(screen.queryByText("Dienstag")).toBeNull();
+	expect(onRemove).toHaveBeenCalledTimes(1);
+	expect(onRemove).toHaveBeenCalledWith(entries[1]);
 });
