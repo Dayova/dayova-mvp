@@ -6,6 +6,7 @@ import {
 	useMemo,
 	useState,
 } from "react";
+import { SheetSafeAreaProvider } from "~/components/ui/sheet-safe-area";
 
 type SheetAccessibilityContextValue = {
 	hasOpenSheet: boolean;
@@ -39,9 +40,11 @@ function SheetAccessibilityProvider({ children }: { children: ReactNode }) {
 	);
 
 	return (
-		<SheetAccessibilityContext.Provider value={value}>
-			{children}
-		</SheetAccessibilityContext.Provider>
+		<SheetSafeAreaProvider>
+			<SheetAccessibilityContext.Provider value={value}>
+				{children}
+			</SheetAccessibilityContext.Provider>
+		</SheetSafeAreaProvider>
 	);
 }
 
