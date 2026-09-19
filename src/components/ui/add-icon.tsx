@@ -11,12 +11,12 @@ export function AddIcon({ emphasized = false }: { emphasized?: boolean }) {
 			pointerEvents="none"
 			className={cn(
 				"h-12 w-12 shrink-0 items-center justify-center rounded-full",
-				emphasized ? "bg-primary" : "bg-primary/10",
+				emphasized ? "bg-button-neutral" : "bg-primary/10",
 			)}
 		>
 			<Plus
 				size={22}
-				color={emphasized ? "#FFFFFF" : colors.primary}
+				color={emphasized ? colors.background : colors.primary}
 				strokeWidth={2.2}
 			/>
 		</View>
