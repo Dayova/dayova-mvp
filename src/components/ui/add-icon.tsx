@@ -19,7 +19,7 @@ export function AddIcon({
 			pointerEvents="none"
 			className={cn(
 				"h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full",
-				emphasized ? "bg-button-neutral" : "bg-primary/10",
+				emphasized ? "bg-secondary-text" : "bg-primary/10",
 			)}
 		>
 			{gradient ? (
