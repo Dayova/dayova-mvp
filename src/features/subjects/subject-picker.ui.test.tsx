@@ -1,7 +1,11 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import React from "react";
-import { InlineSubjectPicker, SubjectAddFlow } from "./subject-picker";
+import {
+	InlineSubjectPicker,
+	SubjectAddFlow,
+	SubjectPickerContent,
+} from "./subject-picker";
 import type { SubjectSelection } from "./use-subject-options";
 
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
@@ -348,4 +352,66 @@ test("settings mode offers only permanent saving and promotes timetable-only sub
 		name: "Latein",
 		personalSubjectId: "latin-id",
 	});
+});
+
+test("permanent subjects appear in the regular list without a personal section", async () => {
+	const view = await render(
+		<SubjectPickerContent
+			options={[personalOption]}
+			selected={{ name: "" }}
+			isLoading={false}
+			onSelect={jest.fn()}
+			onAdd={jest.fn()}
+		/>,
+	);
+	expect(view.getByRole("radio", { name: "Französisch" })).toBeOnTheScreen();
+	expect(view.queryByText("Persönliche Fächer")).toBeNull();
+});
+
+test("one-time subjects remain selectable after switching to a permanent subject", async () => {
+	const onSelect = jest.fn();
+	const tree = (selected: SubjectSelection) => (
+		<SubjectPickerContent
+			options={[personalOption]}
+			selected={selected}
+			isLoading={false}
+			onSelect={onSelect}
+			onAdd={jest.fn()}
+		/>
+	);
+	const view = await render(tree({ name: "Italienisch", isOneTime: true }));
+	expect(view.getByText("Persönliche Fächer")).toBeOnTheScreen();
+	expect(
+		view.getByRole("radio", { name: "Italienisch" }),
+	).toBeChecked();
+	await view.rerender(
+		tree({
+			name: personalOption.name,
+			personalSubjectId: personalOption.personalSubjectId,
+		}),
+	);
+	await fireEvent.press(view.getByRole("radio", { name: "Italienisch" }));
+	expect(onSelect).toHaveBeenLastCalledWith({
+		name: "Italienisch",
+		isOneTime: true,
+	});
+});
+
+test("a newly saved subject is visible before the catalog refresh", async () => {
+	const view = await render(
+		<SubjectPickerContent
+			options={[]}
+			selected={{
+				name: "Italienisch",
+				personalSubjectId: "italian-id" as never,
+			}}
+			isLoading={false}
+			onSelect={jest.fn()}
+			onAdd={jest.fn()}
+		/>,
+	);
+	expect(
+		view.getByRole("radio", { name: "Italienisch" }),
+	).toBeChecked();
+	expect(view.queryByText("Persönliche Fächer")).toBeNull();
 });

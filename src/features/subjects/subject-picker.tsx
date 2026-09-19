@@ -14,6 +14,7 @@ import {
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Check, Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
+import { PersonalSubjectIcon } from "~/features/subjects/subject-catalog";
 import {
 	correctSubjectName,
 	normalizeSubjectName,
@@ -97,8 +98,50 @@ function SubjectPickerContent({
 	onAdd: () => void;
 }) {
 	const { colors } = useDayovaTheme();
-	const builtInOptions = options.filter((option) => option.kind === "builtIn");
-	const reusableOptions = options.filter((option) => option.kind !== "builtIn");
+	const [oneTimeSelections, setOneTimeSelections] = useState<
+		SubjectSelection[]
+	>([]);
+	const selectedKey = normalizeSubjectName(selected.name);
+	const hasRememberedSelection = oneTimeSelections.some(
+		(selection) => normalizeSubjectName(selection.name) === selectedKey,
+	);
+	const currentOneTimeSelections =
+		selected.isOneTime && selected.name && !hasRememberedSelection
+			? [...oneTimeSelections, selected]
+			: oneTimeSelections;
+	if (currentOneTimeSelections !== oneTimeSelections) {
+		setOneTimeSelections(currentOneTimeSelections);
+	}
+	const regularOptions = options.filter((option) => !option.isOneTime);
+	// Show a newly saved subject immediately, before the reactive catalog catches up.
+	if (
+		selected.personalSubjectId &&
+		!regularOptions.some(
+			(option) => option.personalSubjectId === selected.personalSubjectId,
+		)
+	) {
+		regularOptions.push({
+			...selected,
+			key: `personal:${selected.personalSubjectId}`,
+			kind: "personal",
+			Icon: PersonalSubjectIcon,
+		});
+	}
+	const oneTimeOptions: SubjectOption[] = currentOneTimeSelections
+		.filter(
+			(selection) =>
+				!regularOptions.some(
+					(option) =>
+						normalizeSubjectName(option.name) ===
+						normalizeSubjectName(selection.name),
+				),
+		)
+		.map((selection) => ({
+			...selection,
+			key: `one-time:${normalizeSubjectName(selection.name)}`,
+			kind: "personal",
+			Icon: PersonalSubjectIcon,
+		}));
 	const isSelected = (option: SubjectOption) =>
 		option.personalSubjectId
 			? option.personalSubjectId === selected.personalSubjectId
@@ -108,7 +151,7 @@ function SubjectPickerContent({
 
 	return (
 		<View accessibilityRole="radiogroup" className="gap-3">
-			{builtInOptions.map((option) => (
+			{regularOptions.map((option) => (
 				<SubjectOptionRow
 					key={option.key}
 					option={option}
@@ -124,12 +167,12 @@ function SubjectPickerContent({
 				/>
 			))}
 
-			{reusableOptions.length > 0 ? (
+			{oneTimeOptions.length > 0 ? (
 				<Text className="pt-3 pl-1 font-poppins font-semibold text-body-4 text-secondary-text">
 					Persönliche Fächer
 				</Text>
 			) : null}
-			{reusableOptions.map((option) => (
+			{oneTimeOptions.map((option) => (
 				<SubjectOptionRow
 					key={option.key}
 					option={option}
@@ -137,6 +180,7 @@ function SubjectPickerContent({
 					onPress={() =>
 						onSelect({
 							name: option.name,
+							isOneTime: true,
 							...(option.personalSubjectId
 								? { personalSubjectId: option.personalSubjectId }
 								: {}),
