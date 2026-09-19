@@ -313,7 +313,12 @@ function SubjectAddFlow({
 							<Text>Nur diesmal verwenden</Text>
 						</Button>
 					) : null}
-					<Button disabled={isBusy} variant="ghost" onPress={onCancel}>
+					<Button
+						disabled={isBusy}
+						variant="ghost"
+						className="border border-border bg-card"
+						onPress={onCancel}
+					>
 						<Text>Abbrechen</Text>
 					</Button>
 				</View>

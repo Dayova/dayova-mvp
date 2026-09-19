@@ -44,7 +44,7 @@ export function MaterialRequiredSheet({
 			onClose={onClose}
 			onConfirm={onUpload}
 			scrollable
-			size="medium"
+			size="content"
 			title="Für diesen Lernplan fehlt Material"
 			visible={subject !== null}
 		/>

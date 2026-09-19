@@ -84,7 +84,7 @@ describe("MaterialRequiredSheet", () => {
 			screen.getByTestId("confirmation-actions-stacked"),
 		).toBeOnTheScreen();
 		expect(screen.getByTestId("confirmation-sheet-layout")).toHaveTextContent(
-			"medium:scrollable:760",
+			"content:scrollable:760",
 		);
 		expect(
 			screen.getByText(
