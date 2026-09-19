@@ -176,7 +176,7 @@ export const createPublicEnv = (
 			? withAppRuntimeLegalUrlDefaults(runtimeEnv)
 			: runtimeEnv;
 
-	return createEnv({
+	const validated = createEnv({
 		clientPrefix: "EXPO_PUBLIC_",
 		client: publicEnvSchema,
 		runtimeEnvStrict: toStrictPublicRuntimeConfig(resolvedRuntimeEnv),
@@ -188,6 +188,11 @@ export const createPublicEnv = (
 			throw createPublicEnvValidationError(runtimeEnv, issues, options);
 		},
 	});
+	// React Refresh probes exports (e.g. `prototype`). Expose only a plain
+	// snapshot of validated public keys, never the env proxy or server values.
+	return Object.freeze(
+		Object.fromEntries(publicEnvKeys.map((key) => [key, validated[key]])),
+	) as typeof validated;
 };
 
 export const validatePublicEnvForRelease = (

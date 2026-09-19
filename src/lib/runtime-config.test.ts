@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
 	createPublicEnv,
 	getMissingPublicRuntimeConfig,
@@ -190,4 +190,26 @@ describe("getMissingPublicRuntimeConfig", () => {
 			),
 		).toThrowError(/EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY/);
 	});
+});
+
+it("allows React Refresh introspection in the native client without exposing server keys", () => {
+	vi.stubGlobal("window", {});
+	try {
+		const config = createPublicEnv(
+			{
+				EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+				EXPO_PUBLIC_CONVEX_URL: "https://example.convex.cloud",
+			},
+			{ context: "app-runtime" },
+		);
+		expect(() => Reflect.get(config, "prototype")).not.toThrow();
+		expect(Reflect.get(config, "prototype")).toBeUndefined();
+		expect(Reflect.get(config, "SERVER_SECRET")).toBeUndefined();
+		expect(config.EXPO_PUBLIC_CONVEX_URL).toBe("https://example.convex.cloud");
+		expect(
+			Object.keys(config).every((key) => key.startsWith("EXPO_PUBLIC_")),
+		).toBe(true);
+	} finally {
+		vi.unstubAllGlobals();
+	}
 });
