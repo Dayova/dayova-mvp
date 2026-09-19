@@ -2,6 +2,7 @@ import { useMutation } from "convex/react";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { ActivityIndicator, Keyboard, Pressable, View } from "react-native";
+import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -173,52 +174,57 @@ export default function PersonalSubjectsScreen() {
 					) : (
 						<View className="gap-3">
 							{personalOptions.map((subject) => (
-								<Surface
+								<ReanimatedSwipeable
 									key={subject.key}
-									className="min-h-18 flex-row items-center border border-border px-5 py-3"
+									overshootRight={false}
+									rightThreshold={40}
+									renderRightActions={(_progress, _translation, swipeable) => (
+										<Pressable
+											accessibilityLabel={`${subject.name} löschen`}
+											accessibilityRole="button"
+											className="ml-2 w-24 items-center justify-center rounded-card bg-destructive"
+											onPress={() => {
+												swipeable.close();
+												setErrorMessage(null);
+												setDeletingSubject({
+													id: subject.personalSubjectId as Id<"personalSubjects">,
+													name: subject.name,
+												});
+											}}
+										>
+											<Trash2 size={22} color="#FFFFFF" strokeWidth={2} />
+											<Text className="mt-1 font-poppins text-body-4 text-white">
+												Löschen
+											</Text>
+										</Pressable>
+									)}
 								>
-									<View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
-										<BookOpen
-											size={20}
-											color={colors.primary}
-											strokeWidth={2}
-										/>
-									</View>
-									<Text className="ml-4 flex-1 font-poppins font-semibold text-body-2 text-text">
-										{subject.name}
-									</Text>
-									<Pressable
-										accessibilityLabel={`${subject.name} umbenennen`}
-										accessibilityRole="button"
-										className="h-11 w-11 items-center justify-center rounded-full active:bg-muted"
-										onPress={() =>
-											startRename({
-												id: subject.personalSubjectId as Id<"personalSubjects">,
-												name: subject.name,
-											})
-										}
-									>
-										<Pencil size={19} color={colors.text} strokeWidth={2} />
-									</Pressable>
-									<Pressable
-										accessibilityLabel={`${subject.name} löschen`}
-										accessibilityRole="button"
-										className="h-11 w-11 items-center justify-center rounded-full active:bg-muted"
-										onPress={() => {
-											setErrorMessage(null);
-											setDeletingSubject({
-												id: subject.personalSubjectId as Id<"personalSubjects">,
-												name: subject.name,
-											});
-										}}
-									>
-										<Trash2
-											size={19}
-											color={colors.destructive}
-											strokeWidth={2}
-										/>
-									</Pressable>
-								</Surface>
+									<Surface className="min-h-18 flex-row items-center border border-border px-5 py-3">
+										<View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
+											<BookOpen
+												size={20}
+												color={colors.primary}
+												strokeWidth={2}
+											/>
+										</View>
+										<Text className="ml-4 flex-1 font-poppins font-semibold text-body-2 text-text">
+											{subject.name}
+										</Text>
+										<Pressable
+											accessibilityLabel={`${subject.name} umbenennen`}
+											accessibilityRole="button"
+											className="h-11 w-11 items-center justify-center rounded-full active:bg-muted"
+											onPress={() =>
+												startRename({
+													id: subject.personalSubjectId as Id<"personalSubjects">,
+													name: subject.name,
+												})
+											}
+										>
+											<Pencil size={19} color={colors.text} strokeWidth={2} />
+										</Pressable>
+									</Surface>
+								</ReanimatedSwipeable>
 							))}
 						</View>
 					)}

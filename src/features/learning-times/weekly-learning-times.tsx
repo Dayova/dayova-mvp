@@ -64,10 +64,10 @@ function WeeklyLearningTimes({
 								accessibilityLabel={`Weitere Lernzeit für ${day.label} hinzufügen`}
 								accessibilityRole="button"
 								hitSlop={6}
-								className="h-11 w-11 items-center justify-center rounded-full bg-primary/10 active:bg-primary/20"
+								className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card active:bg-muted"
 								onPress={() => onAdd(day.value)}
 							>
-								<Plus size={20} color={colors.primary} strokeWidth={2.2} />
+								<Plus size={22} color={colors.primary} strokeWidth={2.2} />
 							</Pressable>
 						</View>
 

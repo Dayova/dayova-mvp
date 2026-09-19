@@ -13,6 +13,32 @@ beforeEach(() => {
 	mockMutation.mockReset();
 	mockBack.mockClear();
 });
+jest.mock("react-native-gesture-handler/ReanimatedSwipeable", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const { View } =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return ({
+		children,
+		renderRightActions,
+	}: {
+		children: React.ReactNode;
+		renderRightActions: (
+			progress: unknown,
+			translation: unknown,
+			methods: { close: () => void },
+		) => React.ReactNode;
+	}) => {
+		const [open, setOpen] = React.useState(false);
+		return (
+			<View testID="subject-swipe-row" onTouchEnd={() => setOpen(true)}>
+				{children}
+				{open
+					? renderRightActions(null, null, { close: () => setOpen(false) })
+					: null}
+			</View>
+		);
+	};
+});
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true, isLoading: false }),
 	useQueries: () => ({ subjects: mockResponse }),
@@ -62,7 +88,25 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 	},
 }));
 jest.mock("~/components/ui/confirmation-sheet", () => ({
-	ConfirmationSheet: () => null,
+	ConfirmationSheet: ({
+		visible,
+		onConfirm,
+	}: {
+		visible: boolean;
+		onConfirm: () => void;
+	}) => {
+		const { Pressable, Text } =
+			jest.requireActual<typeof import("react-native")>("react-native");
+		return visible ? (
+			<Pressable
+				accessibilityRole="button"
+				accessibilityLabel="Fach löschen bestätigen"
+				onPress={onConfirm}
+			>
+				<Text>Fach löschen?</Text>
+			</Pressable>
+		) : null;
+	},
 }));
 jest.mock("~/components/ui/portrait-content", () => ({
 	PortraitContent: ({ children }: { children: React.ReactNode }) => children,
@@ -150,4 +194,28 @@ test("the header plus remains available when a personal subject already exists",
 		),
 	);
 	expect(screen.getByLabelText("Name des Fachs")).toBeOnTheScreen();
+});
+
+test("reveals deletion behind a swipe and requires confirmation before removing the subject", async () => {
+	mockResponse = {
+		personal: [{ id: "italian-id", name: "Italienisch" }],
+		reusableTimetableSubjects: [],
+	};
+	mockMutation.mockResolvedValue(undefined);
+	const screen = await render(<PersonalSubjectsScreen />);
+	expect(
+		screen.getByRole("button", { name: "Italienisch umbenennen" }),
+	).toBeOnTheScreen();
+	expect(
+		screen.queryByRole("button", { name: "Italienisch löschen" }),
+	).toBeNull();
+	await fireEvent(screen.getByTestId("subject-swipe-row"), "touchEnd");
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Italienisch löschen" }),
+	);
+	expect(mockMutation).not.toHaveBeenCalled();
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Fach löschen bestätigen" }),
+	);
+	expect(mockMutation).toHaveBeenCalledWith({ id: "italian-id" });
 });

@@ -73,7 +73,7 @@ export default function LearningTimesOverviewScreen() {
 					right={
 						<Button
 							accessibilityLabel="Lernzeit hinzufügen"
-							className="h-12 min-h-12 w-12 min-w-12 rounded-full border border-border bg-card px-0 active:bg-card/80"
+							className="h-12 min-h-12 w-12 min-w-12 rounded-full bg-primary/10 px-0 active:bg-primary/20"
 							onPress={() => openEditor({ dayOfWeek: firstMissingDay })}
 							size="icon"
 							variant="ghost"
