@@ -35,6 +35,7 @@ import { useAuthSession } from "~/context/AuthContext";
 import { getLearningPlanCreationOverview } from "~/features/learning-plans/creation-overview";
 import { learningPlanResumePath } from "~/features/learning-plans/creation-routes";
 import { LearningPlanCardVisual } from "~/features/learning-plans/learning-plan-card-visual";
+import { getLearningPlanStatus } from "~/features/learning-plans/learning-plan-status";
 import { MaterialRequiredSheet } from "~/features/learning-plans/material-required-sheet";
 import { getRollingLearningWindowLabel } from "~/features/learning-plans/rolling-learning-window";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
@@ -71,6 +72,8 @@ type LearningPlanOverview = {
 	completedCount?: number;
 	sessionCount?: number;
 	upcomingSessionCount?: number;
+	rollingPlanEnabled?: boolean;
+	masteryStatus?: "learning" | "mastered";
 	examDateKey?: string;
 	examDateLabel?: string;
 	currentSession?: {
@@ -155,52 +158,6 @@ const getHomeworkStatus = (
 		};
 	}
 	if (remainingDays === 1) {
-		return {
-			label: "Morgen",
-			background: STATUS_NEUTRAL_BACKGROUND,
-			foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
-		};
-	}
-	return {
-		label: "Geplant",
-		background: STATUS_NEUTRAL_BACKGROUND,
-		foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
-	};
-};
-
-const getStatus = (
-	plan: LearningPlanOverview,
-	todayKey: string,
-): { label: string; background: string; foreground: string } => {
-	const sessionCount = plan.sessionCount ?? 0;
-	const completedCount = plan.completedCount ?? 0;
-	if (sessionCount > 0 && completedCount >= sessionCount) {
-		return {
-			label: "Fertig",
-			background: DAYOVA_DESIGN_SYSTEM.colors.successSubtle,
-			foreground: DAYOVA_DESIGN_SYSTEM.colors.success,
-		};
-	}
-
-	const sessionKey = plan.currentSession?.dateKey;
-	const daysUntilSession = sessionKey
-		? differenceInCalendarDays(sessionKey, todayKey)
-		: null;
-	if (daysUntilSession !== null && daysUntilSession < 0) {
-		return {
-			label: "Fällig",
-			background: STATUS_DUE_BACKGROUND,
-			foreground: STATUS_DUE_FOREGROUND,
-		};
-	}
-	if (daysUntilSession === 0) {
-		return {
-			label: "Heute",
-			background: STATUS_NEUTRAL_BACKGROUND,
-			foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
-		};
-	}
-	if (daysUntilSession === 1) {
 		return {
 			label: "Morgen",
 			background: STATUS_NEUTRAL_BACKGROUND,
@@ -444,7 +401,7 @@ function LearningPlanCard({
 					background: STATUS_NEUTRAL_BACKGROUND,
 					foreground: DAYOVA_DESIGN_SYSTEM.colors.primary,
 				}
-			: getStatus(plan, todayKey);
+			: getLearningPlanStatus(plan, todayKey);
 	const remainingDays = Math.max(
 		0,
 		plan.examDateKey

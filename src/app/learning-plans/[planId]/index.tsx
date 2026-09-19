@@ -320,6 +320,10 @@ export default function LearningPlanSessionsScreen() {
 		string | null
 	>(null);
 	const [behaviorSuggestionReferenceTime] = useState(() => Date.now());
+	const ensureNextRepeat = useMutation(api.learningPlans.ensureNextRepeat);
+	const repeatPlanningAttemptedForPlanRef = useRef<Id<"learningPlans"> | null>(
+		null,
+	);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId
@@ -362,6 +366,13 @@ export default function LearningPlanSessionsScreen() {
 		!selectedSessionNeedsTheoryUpgrade &&
 		(selectedSession?.contentGenerationStatus === undefined ||
 			selectedSession.contentGenerationStatus === "ready");
+	const needsRepeatScheduling = Boolean(
+		snapshot?.plan.rollingPlanEnabled === true &&
+			snapshot.plan.masteryStatus !== "mastered" &&
+			!snapshot.sessions.some(
+				(session) => !isLearningPlanSessionHistory(session),
+			),
+	);
 	const preparationState =
 		selectedSession?.contentGenerationStatus === "failed"
 			? ("failed" as const)
@@ -408,6 +419,20 @@ export default function LearningPlanSessionsScreen() {
 		},
 		[ensureSessionContent, requestAiConsent],
 	);
+
+	useEffect(() => {
+		if (
+			!planId ||
+			!needsRepeatScheduling ||
+			repeatPlanningAttemptedForPlanRef.current === planId
+		) {
+			return;
+		}
+		repeatPlanningAttemptedForPlanRef.current = planId;
+		void ensureNextRepeat({ learningPlanId: planId }).catch(() => {
+			// The reactive plan state keeps the repeat affordance available for retry.
+		});
+	}, [ensureNextRepeat, needsRepeatScheduling, planId]);
 
 	useEffect(() => {
 		const needsTheoryUpgrade = Boolean(
@@ -623,6 +648,7 @@ export default function LearningPlanSessionsScreen() {
 						) : null}
 						<LearningPathVisual
 							mode="screen"
+ onAddLearningTime={() => router.push(withReturnTo(ROUTES.learningTimes, `/learning-plans/${snapshot.plan.id}`))}
 							examCountdownLabel={getExamCountdownLabel(
 								snapshot.plan.examDateKey,
 								today,
@@ -631,7 +657,7 @@ export default function LearningPlanSessionsScreen() {
 							selectedSessionId={selectedSession.id}
 							sessions={snapshot.sessions}
 							showsAdaptiveContinuation={
-								snapshot.plan.rollingPlanEnabled === true
+								snapshot.plan.rollingPlanEnabled === true && snapshot.plan.masteryStatus !== "mastered"
 							}
 								onOpenSession={(session) => {
 									const sessionIndex = snapshot.sessions.findIndex(

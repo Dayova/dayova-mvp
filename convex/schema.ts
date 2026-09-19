@@ -118,6 +118,11 @@ const learningPlanSessionPlanningStatusValidator = v.union(
 	v.literal("provisional"),
 );
 
+const learningPlanMasteryStatusValidator = v.union(
+	v.literal("learning"),
+	v.literal("mastered"),
+);
+
 const sessionContentItemKindValidator = v.union(
 	v.literal("learnCard"),
 	v.literal("multipleChoice"),
@@ -490,6 +495,7 @@ export default defineSchema({
 		insight: v.optional(planInsightValidator),
 		planningHint: v.optional(v.string()),
 		rollingPlanEnabled: v.optional(v.boolean()),
+		masteryStatus: v.optional(learningPlanMasteryStatusValidator),
 		adaptationRevision: v.optional(v.number()),
 		contentGenerationStage: v.optional(contentGenerationStageValidator),
 		contentGenerationId: v.optional(v.string()),
