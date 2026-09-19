@@ -146,8 +146,9 @@ Produktinhalte, Seitenindikatoren, Zurücknavigation und primären Aktionen blei
 unverändert. Die drei ergänzenden Aufnahmen von 17:51 bestätigen diese beiden
 Korrekturen. Der dabei noch sichtbare gemeinsame hellblaue Hintergrund hinter den
 Illustrationen wurde anschließend ebenfalls von allen drei Intro-Seiten entfernt.
-Die Aufnahme von 17:56 dokumentiert die danach noch unruhige erste Illustration.
-Ihre drei Produktkarten verwenden jetzt eine klare zweizeilige Anordnung ohne
-zufällige Drehungen oder Überlagerungen, mit einheitlichen Zwischen- und Außenabständen.
-Die abschließende Simulatoraufnahme von 18:01 bestätigt außerdem, dass alle Texte
-einschließlich der kompakten Fortschrittsangabe vollständig sichtbar sind.
+Die Aufnahme von 17:56 dokumentiert die danach noch zu engen Innenabstände der
+ersten Illustration. Der zwischenzeitliche zweizeilige Rasterversuch von 18:01
+wurde nach Review verworfen. Die finale Aufnahme von 18:07 bestätigt die
+wiederhergestellte ursprüngliche Überlagerung mit mehr Abstand zwischen Icon,
+Beschriftung, Titel, Metadaten und Aktionen innerhalb der Karten. Die kompakte
+Fortschrittsangabe bleibt vollständig sichtbar.

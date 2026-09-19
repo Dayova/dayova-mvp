@@ -11,7 +11,7 @@ import {
 } from "~/features/dashboard/dashboard-product-cards";
 
 const ARTWORK_WIDTH = 380;
-const ARTWORK_HEIGHT = 270;
+const ARTWORK_HEIGHT = 242;
 const PREVIEW_DAY_KEY = "2026-08-31";
 
 type IntroTasksArtworkProps = {
@@ -65,7 +65,7 @@ export function IntroTasksArtwork({
 			testID="intro-tasks-artwork"
 		>
 			<View
-				className="h-[270px] w-[380px]"
+				className="h-[242px] w-[380px]"
 				// The fixed artboard scales to the runtime frame while preserving its geometry.
 				style={{ transform: [{ scale }] }}
 				testID="intro-tasks-product-composition"
@@ -109,26 +109,30 @@ export function IntroTasksArtwork({
 	);
 }
 
-// The onboarding wrapper arranges the cards on a compact two-row grid.
+// The onboarding wrapper owns only the overlap, rotation, and scale.
 // Product structure and tokens stay inside the shared dashboard components.
 const artworkGeometry = StyleSheet.create({
 	agenda: {
-		left: 4,
-		top: 24,
-		width: 218,
-		height: 112,
+		left: 8,
+		top: 45,
+		width: 220,
+		height: 110,
+		transform: [{ rotate: "-7deg" }],
+		transformOrigin: [0, 0, 0],
 	},
 	progress: {
-		left: 230,
-		top: 0,
-		width: 146,
-		height: 142,
+		left: 198,
+		top: 10,
+		width: 172,
+		height: 150,
+		transform: [{ rotate: "5deg" }],
+		transformOrigin: [0, 0, 0],
 	},
 	nextStep: {
-		left: 14,
-		top: 156,
+		left: 34,
+		top: 121,
 		zIndex: 2,
-		width: 352,
+		width: 312,
 		height: 110,
 	},
 });

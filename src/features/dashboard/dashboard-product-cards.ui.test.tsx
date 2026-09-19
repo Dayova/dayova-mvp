@@ -99,6 +99,18 @@ describe("shared dashboard product cards", () => {
 		expect(
 			screen.getByText("Lineare Funktionen verstehen", hidden),
 		).toBeOnTheScreen();
+		expect(
+			screen.getByTestId("next-step-artwork", hidden).props.className,
+		).toContain("py-3");
+		expect(
+			screen.getByText("Lineare Funktionen verstehen", hidden).props.className,
+		).toContain("mt-2");
+		expect(
+			screen.getByText("Mathe-Hausaufgabe", hidden).props.className,
+		).toContain("mt-1");
+		expect(
+			screen.getByText("Lineare Funktionen üben", hidden).props.className,
+		).toContain("mt-0.5");
 		expect(screen.queryAllByRole("button", hidden)).toHaveLength(0);
 	});
 

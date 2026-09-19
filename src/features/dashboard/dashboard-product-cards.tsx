@@ -156,7 +156,9 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 				: "Lernplan öffnen";
 	const content = (
 		<>
-			<View className="flex-row items-start gap-1">
+			<View
+				className={cn("flex-row items-start", isArtwork ? "gap-2" : "gap-1")}
+			>
 				<Dumbbell
 					size={isArtwork ? 13 : 14}
 					color={colors.primaryStrong}
@@ -176,14 +178,14 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 				maxFontSizeMultiplier={isArtwork ? 1 : undefined}
 				className={cn(
 					"font-poppins font-semibold text-text",
-					isArtwork ? "mt-1 text-body-3" : "mt-4 text-body-1",
+					isArtwork ? "mt-2 text-body-3" : "mt-4 text-body-1",
 				)}
 				numberOfLines={isArtwork ? 2 : undefined}
 			>
 				{title}
 			</Text>
 			{isArtwork ? (
-				<View className="mt-auto flex-row items-end justify-between gap-2 pt-1">
+				<View className="mt-auto flex-row items-end justify-between gap-3 pt-2">
 					<View className="flex-1 gap-1">
 						{dateLabel ? (
 							<View className="flex-row items-center gap-2">
@@ -281,7 +283,7 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 				accessibilityElementsHidden
 				importantForAccessibility="no-hide-descendants"
 				testID={props.testID}
-				className="h-full w-full overflow-hidden rounded-card border border-border bg-system-subtle px-4 py-2"
+				className="h-full w-full overflow-hidden rounded-card border border-border bg-system-subtle px-4 py-3"
 				style={continuousBorderStyle}
 			>
 				{content}
@@ -367,7 +369,9 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 			: "Lernplan öffnen";
 	const content = (
 		<>
-			<View className="flex-row items-start gap-1">
+			<View
+				className={cn("flex-row items-start", isArtwork ? "gap-2" : "gap-1")}
+			>
 				<TimeManagement
 					size={isArtwork ? 13 : 14}
 					color={colors.ueben}
@@ -559,7 +563,7 @@ function DashboardAgendaEntryCard(props: DashboardAgendaEntryCardProps) {
 			>
 				<Icon size={19} color={accentColor} strokeWidth={2} />
 			</View>
-			<View className="ml-3 flex-1">
+			<View className={cn("flex-1", isArtwork ? "ml-4" : "ml-3")}>
 				<Text
 					allowFontScaling={!isArtwork}
 					maxFontSizeMultiplier={isArtwork ? 1 : undefined}
@@ -573,7 +577,10 @@ function DashboardAgendaEntryCard(props: DashboardAgendaEntryCardProps) {
 				<Text
 					allowFontScaling={!isArtwork}
 					maxFontSizeMultiplier={isArtwork ? 1 : undefined}
-					className="font-poppins font-semibold text-body-3 text-text"
+					className={cn(
+						"font-poppins font-semibold text-body-3 text-text",
+						isArtwork && "mt-1",
+					)}
 					numberOfLines={1}
 				>
 					{formatGermanUiText(getAgendaEntryTitle(props.item.entry))}
@@ -581,7 +588,10 @@ function DashboardAgendaEntryCard(props: DashboardAgendaEntryCardProps) {
 				<Text
 					allowFontScaling={!isArtwork}
 					maxFontSizeMultiplier={isArtwork ? 1 : undefined}
-					className="font-poppins text-body-4 text-secondary-text"
+					className={cn(
+						"font-poppins text-body-4 text-secondary-text",
+						isArtwork && "mt-0.5",
+					)}
 					numberOfLines={1}
 				>
 					{getEntrySummary(props.item.entry)}
