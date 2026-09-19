@@ -1,6 +1,7 @@
 import { Pressable, View } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
-import { Pencil, Trash2 } from "~/components/ui/icon";
+import { Button } from "~/components/ui/button";
+import { Pencil, TimeManagement, Trash2 } from "~/components/ui/icon";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { LEARNING_DAYS } from "~/features/learning-times/learning-time-days";
@@ -28,6 +29,28 @@ function WeeklyLearningTimes({
 	onRemove,
 }: WeeklyLearningTimesProps) {
 	const { colors } = useDayovaTheme();
+	if (entries.length === 0) {
+		return (
+			<Surface className="items-center border border-border px-6 py-10">
+				<View className="h-14 w-14 items-center justify-center rounded-full bg-muted">
+					<TimeManagement size={26} color={colors.text} strokeWidth={2} />
+				</View>
+				<Text className="mt-5 text-center font-poppins font-semibold text-body-2 text-text">
+					Noch keine Lernzeiten
+				</Text>
+				<Text className="mt-2 text-center font-poppins text-body-4 text-secondary-text">
+					Lege fest, wann Dayova deine Lerneinheiten einplanen kann.
+				</Text>
+				<Button
+					accessibilityLabel="Jetzt Lernzeit hinzufügen"
+					className="mt-5 w-full"
+					onPress={() => onAdd(1)}
+				>
+					<Text>Jetzt Lernzeit hinzufügen</Text>
+				</Button>
+			</Surface>
+		);
+	}
 	return (
 		<View className="gap-3">
 			{LEARNING_DAYS.flatMap((day) => {

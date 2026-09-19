@@ -7,6 +7,7 @@ jest.mock("~/lib/theme", () => ({
 }));
 jest.mock("~/components/ui/icon", () => ({
 	Pencil: () => null,
+	TimeManagement: () => null,
 	Trash2: () => null,
 }));
 // Expose native swipe actions to verify row-to-entry wiring, not the gesture animation.
@@ -29,6 +30,27 @@ jest.mock("react-native-gesture-handler/ReanimatedSwipeable", () => {
 			{renderRightActions(null, null, { close: jest.fn() })}
 		</View>
 	);
+});
+
+test("shows one clear add action after the last learning time is deleted", async () => {
+	const onAdd = jest.fn();
+	const screen = await render(
+		<WeeklyLearningTimes
+			entries={[]}
+			onEdit={jest.fn()}
+			onRemove={jest.fn()}
+			onAdd={onAdd}
+		/>,
+	);
+
+	expect(screen.getByText("Noch keine Lernzeiten")).toBeTruthy();
+	expect(screen.queryByText("Montag")).toBeNull();
+	expect(screen.queryByText("Noch keine Lernzeit")).toBeNull();
+
+	await fireEvent.press(
+		screen.getByRole("button", { name: "Jetzt Lernzeit hinzufügen" }),
+	);
+	expect(onAdd).toHaveBeenCalledWith(1);
 });
 test("edits and removes the correct slot when a day has multiple learning times", async () => {
 	const entries = [
