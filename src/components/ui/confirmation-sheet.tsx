@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { WarningBanner } from "~/components/ui/warning-banner";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -39,11 +40,15 @@ function ConfirmationSheet({
 	errorMessage,
 	confirmTone = "destructive",
 	closeAccessibilityLabel = "Bestätigung schließen",
-	actionLayout = "inline",
+	actionLayout: requestedActionLayout = "inline",
 	maxWidth,
-	scrollable = false,
+	scrollable = true,
 	size = "content",
 }: ConfirmationSheetProps) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const actionLayout = shouldStackInlineContent
+		? "stacked"
+		: requestedActionLayout;
 	const safeClose = () => {
 		if (!isBusy) onClose();
 	};
@@ -70,12 +75,12 @@ function ConfirmationSheet({
 		<Button
 			accessibilityLabel={cancelLabel}
 			className={cn(
-				"shadow-none",
+				"border border-border bg-card shadow-none",
 				actionLayout === "stacked" ? "w-full" : "flex-1",
 			)}
 			disabled={isBusy}
 			onPress={safeClose}
-			variant="neutral"
+			variant="ghost"
 		>
 			<Text>{cancelLabel}</Text>
 		</Button>
@@ -90,7 +95,6 @@ function ConfirmationSheet({
 		<WarningBanner
 			accessibilityLiveRegion="polite"
 			accessibilityRole="alert"
-			className={scrollable ? undefined : "mb-5"}
 			title="Das hat nicht geklappt"
 			description={errorMessage}
 		/>
@@ -100,23 +104,16 @@ function ConfirmationSheet({
 		<DayovaSheetFrame
 			visible={visible}
 			title={title}
-			description={scrollable ? undefined : description}
+			description={description}
 			onClose={safeClose}
 			dismissible={!isBusy}
 			closeAccessibilityLabel={closeAccessibilityLabel}
-			contentClassName={scrollable ? "gap-6" : undefined}
-			footer={scrollable ? actions : undefined}
+			footer={actions}
 			maxWidth={maxWidth}
 			scrollable={scrollable}
 			size={size}
 		>
-			{scrollable ? (
-				<Text className="font-poppins text-body-3 text-secondary-text">
-					{description}
-				</Text>
-			) : null}
 			{error}
-			{scrollable ? null : actions}
 		</DayovaSheetFrame>
 	);
 }

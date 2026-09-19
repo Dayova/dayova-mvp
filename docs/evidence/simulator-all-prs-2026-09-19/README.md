@@ -79,3 +79,17 @@ Die Server müssen während des Tests weiterlaufen. Dies ist eine lokale Testkom
 
 Vorher-/Nachher-Screenshots und -Videos fehlen; die Desktop-Bildschirmsteuerung ist nicht erreichbar.
 Der separate Dayova-Produktqualitätsreview aus DAY-289 ist laut Repository-Vertrag noch eine Workflow-Lücke. Ein etwaiger Integrations-PR bleibt daher Draft.
+
+## Popup-Anordnung nach Figma-Referenzen
+
+Umgesetzt nach den drei am 19. September bereitgestellten Figma-Bildern:
+- Schließen in einer eigenen oberen Zeile; Titel erhält die volle Inhaltsbreite.
+- 16 px Abstand zur Titelgruppe, 8 px zwischen Titel und Beschreibung und 24 px vor Inhalt/Aktionen.
+- Inhaltsabhängige Höhe für sämtliche app-eigenen Dialogaufrufe; lange Inhalte einschließlich Aktionen bleiben scrollbar.
+- Abbrechen/Später mit sichtbarer Umrandung. Große Systemschrift stapelt Bestätigungsaktionen und Auswahlkacheln.
+- Kompaktere Auswahlkarten, keine abgeschnittenen Beschreibungen und keine zusätzlichen Icons über Titeln.
+- Sicherheitsabstand unten berücksichtigt die Bildschirm-Safe-Area, nicht die Tab-Leiste.
+
+Bestandsprüfung: Alle app-eigenen Popups laufen über DayovaSheetFrame, ConfirmationSheet, ActionSheet oder SelectSheet. Native Android-Datums-/Zeitdialoge bleiben systemgesteuert.
+Validierung: TypeScript, 75 Jest-Suites / 329 Tests; nach der abschließenden Vereinheitlichung der Bestätigungsabstände nochmals 5 Suites / 26 Tests bestanden.
+Sichtprüfung offen: Der erneute Zugriff auf Device Hub liefert `timeoutReached (-10005)`; neue Screenshots/Videos konnten deshalb nicht aufgenommen werden. Die Änderungen sind im laufenden DEV-Teststand verfügbar. Der Draft-Status und die bereits dokumentierte DAY-289-Review-Lücke bleiben bestehen.

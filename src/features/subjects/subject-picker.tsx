@@ -390,7 +390,7 @@ function SubjectPickerSheet({
 				closeAccessibilityLabel="Fachauswahl schließen"
 				contentClassName="gap-3"
 				scrollable
-				size="medium"
+				size="content"
 			>
 				<SubjectPickerContent
 					options={options}
