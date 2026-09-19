@@ -808,7 +808,7 @@ export default function LearningPlansScreen() {
 						onPress={openCreateTypePicker}
 						className="h-12 w-12 items-center justify-center rounded-full active:opacity-80"
 					>
-						<AddIcon emphasized />
+						<AddIcon outlinedGradient />
 					</TouchableOpacity>
 				</View>
 

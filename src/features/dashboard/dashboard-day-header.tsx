@@ -37,7 +37,7 @@ function DashboardDayHeader({
 					hitSlop={4}
 					onPress={onAddPlan}
 				>
-					<AddIcon />
+					<AddIcon outlinedGradient />
 				</Pressable>
 			) : null}
 		</View>
