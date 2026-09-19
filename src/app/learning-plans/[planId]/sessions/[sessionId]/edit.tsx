@@ -30,6 +30,7 @@ import {
 } from "~/features/learning-plans/utils";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const reviewPath = (id: Id<"learningPlans">) =>
 	`/learning-plans/${id}/review` as const;
@@ -42,6 +43,7 @@ function LoadedSessionEditScreen({
 	session: PlanSession;
 }) {
 	const router = useRouter();
+	const trackFeature = useFeatureAnalytics();
 	const updateSession = useMutation(api.learningPlans.updateSession);
 	const regenerateSessionContent = useAction(
 		api.learningPlanAi.ensureSessionContent,
@@ -119,6 +121,7 @@ function LoadedSessionEditScreen({
 					startTime: editStart,
 					durationMinutes: duration,
 				});
+				trackFeature("learning_session.reschedule", "succeeded", session.id);
 				if (result.contentInvalidated) {
 					if (!(await requestAiConsent())) {
 						router.replace(reviewPath(planId));
@@ -138,6 +141,7 @@ function LoadedSessionEditScreen({
 			"Der Lerntag konnte nicht entfernt werden.",
 			async () => {
 				await removeSession({ id: session.id });
+				trackFeature("learning_session.remove", "succeeded", session.id);
 				router.replace(reviewPath(planId));
 			},
 		);

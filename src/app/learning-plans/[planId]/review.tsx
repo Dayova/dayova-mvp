@@ -21,11 +21,13 @@ import { isDiagnosticLearningPlanSession } from "~/features/learning-plans/rolli
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { useBackIntent } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
 
 export default function LearningPlanReviewScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
@@ -92,9 +94,12 @@ export default function LearningPlanReviewScreen() {
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
+			trackFeature("learning_plan.accept", "attempted", planId);
 			await acceptPlan({ learningPlanId: planId });
+			trackFeature("learning_plan.accept", "succeeded", planId);
 			router.replace(`/learning-plans/${planId}/sessions/${nextSession.id}`);
 		} catch (error) {
+			trackFeature("learning_plan.accept", "failed", planId);
 			setErrorMessage(
 				getErrorMessage(error, "Dein Lernweg konnte nicht eingetragen werden."),
 			);

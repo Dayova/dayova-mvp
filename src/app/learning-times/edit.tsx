@@ -33,6 +33,7 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { dismissToOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 type TimeField = "start" | "end";
@@ -71,6 +72,7 @@ const parseEndTimeToMinutes = (startTime: string, endTime: string) => {
 };
 
 export default function LearningTimesScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{
 		day?: string;
@@ -190,14 +192,17 @@ export default function LearningTimesScreen() {
 			setIsSaving(true);
 			setErrorMessage(null);
 			try {
+				trackFeature("learning_times.save", "attempted");
 				await saveLearningTime({
 					id: selectedEntry?.id,
 					dayOfWeek: selectedDayValue,
 					startTime,
 					endTime,
 				});
+				trackFeature("learning_times.save", "succeeded");
 				closeToOverview();
 			} catch (error) {
+				trackFeature("learning_times.save", "failed");
 				setErrorMessage(
 					getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
 						source: "learning-times.save",
@@ -216,10 +221,13 @@ export default function LearningTimesScreen() {
 			setIsSaving(true);
 			setErrorMessage(null);
 			try {
+				trackFeature("learning_times.remove", "attempted");
 				await removeLearningTime({ id: selectedEntry.id });
+				trackFeature("learning_times.remove", "succeeded");
 				setIsRemoveConfirmationVisible(false);
 				closeToOverview();
 			} catch (error) {
+				trackFeature("learning_times.remove", "failed");
 				setErrorMessage(
 					getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
 						source: "learning-times.remove",

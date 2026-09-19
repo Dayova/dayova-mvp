@@ -67,6 +67,7 @@ import {
 } from "~/lib/upload-policy";
 import { AI_CONSENT_REQUIRED_ERROR_CODE } from "~/lib/user-facing-error-contract";
 import type { UserFacingErrorCode } from "~/lib/user-facing-error-contract";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 
 const UPLOAD_TIMEOUT_MS = 45_000;
@@ -86,6 +87,7 @@ type PendingUploadRequest = {
 };
 
 export default function NewLearningPlanScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{
 		step?: string;
@@ -692,7 +694,14 @@ export default function NewLearningPlanScreen() {
 	const removeUploadedDocument = async (
 		documentId: Id<"learningPlanDocuments">,
 	) => {
-		await removeDocument({ id: documentId });
+		trackFeature("material.remove", "attempted", documentId);
+		try {
+			await removeDocument({ id: documentId });
+			trackFeature("material.remove", "succeeded", documentId);
+		} catch (error) {
+			trackFeature("material.remove", "failed", documentId);
+			throw error;
+		}
 	};
 
 	const retryUploadedDocument = async (

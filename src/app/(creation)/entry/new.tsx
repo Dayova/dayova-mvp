@@ -62,6 +62,7 @@ import { getExamDatePickerRange } from "~/lib/exam-date";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
@@ -211,6 +212,7 @@ function StickyActionFooter({
 }
 
 export default function NewEntryScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
@@ -451,7 +453,14 @@ export default function NewEntryScreen() {
 			: `${trimmedSubject} ${trimmedExamType}`;
 		let createdEntryId: Id<"dayEntries"> | null = null;
 
+		const interaction = isHomework
+			? "homework.create"
+			: savedExamIdRef.current
+				? "exam.update"
+				: "exam.create";
+
 		try {
+			trackFeature(interaction, "attempted");
 			setIsCreating(true);
 			setErrorMessage(null);
 			const entryFields = {
@@ -487,6 +496,7 @@ export default function NewEntryScreen() {
 				createdEntryId = await createDayEntry(entryFields);
 				if (!isHomework) savedExamIdRef.current = createdEntryId;
 			}
+			trackFeature(interaction, "succeeded", createdEntryId);
 			if (isHomework) {
 				void capture("homework_created", {
 					day_entry_id: createdEntryId,
@@ -503,6 +513,7 @@ export default function NewEntryScreen() {
 				});
 			}
 		} catch (error) {
+			trackFeature(interaction, "failed");
 			setErrorMessage(
 				getErrorMessage(error, "Der Eintrag konnte nicht gespeichert werden."),
 			);
@@ -585,8 +596,9 @@ export default function NewEntryScreen() {
 
 	const goToStep = useCallback((nextStep: EntryStep) => {
 		scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+		trackFeature("entry.step_changed", "performed", undefined, nextStep);
 		setStep(nextStep);
-	}, []);
+	}, [trackFeature]);
 	const handleBack = useCallback(() => {
 		if (selectTarget) {
 			setSelectTarget(null);

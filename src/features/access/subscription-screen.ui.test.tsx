@@ -16,6 +16,10 @@ jest.mock("~/components/ui/icon", () => ({
 }));
 
 const mockBack = jest.fn();
+const mockTrackFeature = jest.fn();
+jest.mock("~/lib/use-feature-analytics", () => ({
+	useFeatureAnalytics: () => mockTrackFeature,
+}));
 const mockOpenExternalUrl = jest.fn(async (_url?: string) => true);
 
 jest.mock("~/lib/open-external-url", () => ({
@@ -48,7 +52,9 @@ const storePlans = [
 	},
 ];
 const mockGetPlans = jest.fn(async () => storePlans);
-const mockPurchase = jest.fn(async () => ({ status: "purchased" as const }));
+const mockPurchase = jest.fn<
+	() => Promise<{ status: "purchased" | "cancelled" | "notEntitled" }>
+>(async () => ({ status: "purchased" }));
 const mockRestore = jest.fn(async () => ({ status: "purchased" as const }));
 const mockRefreshPaidAccess = jest.fn(async () => true);
 let mockAccess: { state: string } | undefined;
@@ -187,9 +193,50 @@ describe("SubscriptionScreen", () => {
 
 		await waitFor(() => {
 			expect(mockPurchase).toHaveBeenCalledWith("annual");
+			expect(mockTrackFeature).toHaveBeenCalledWith(
+				"subscription.checkout",
+				"attempted",
+				undefined,
+				"annual",
+			);
+			expect(mockTrackFeature).toHaveBeenCalledWith(
+				"subscription.checkout",
+				"succeeded",
+				undefined,
+				"annual",
+			);
 			expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(1);
 			expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
 		});
+	});
+
+	test("records cancellation without reporting a successful purchase", async () => {
+		mockPurchase.mockResolvedValue({ status: "cancelled" });
+		const screen = await render(<SubscriptionScreen />);
+		await screen.findByRole("radio", { name: /Jährlich, 155,88 €/ });
+		await act(async () =>
+			fireEvent.press(screen.getByTestId("subscription-checkout-button")),
+		);
+		expect(mockTrackFeature.mock.calls).toEqual([
+			["subscription.checkout", "attempted", undefined, "monthly"],
+			["subscription.checkout", "cancelled", undefined, "monthly"],
+		]);
+		expect(mockRefreshPaidAccess).not.toHaveBeenCalled();
+	});
+	test("keeps unconfirmed access pending instead of claiming paid conversion", async () => {
+		mockRefreshPaidAccess.mockResolvedValue(false);
+		const screen = await render(<SubscriptionScreen />);
+		await screen.findByRole("radio", { name: /Jährlich, 155,88 €/ });
+		await act(async () =>
+			fireEvent.press(screen.getByTestId("subscription-checkout-button")),
+		);
+		expect(mockTrackFeature).toHaveBeenLastCalledWith(
+			"subscription.checkout",
+			"pending",
+			undefined,
+			"monthly",
+		);
+		expect(mockReplace).not.toHaveBeenCalled();
 	});
 
 	test("restores existing purchases without replaying the welcome screen", async () => {

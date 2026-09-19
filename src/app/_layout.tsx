@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { AuthNavigationGate } from "~/components/auth-navigation-gate";
+import { FeatureAnalyticsProvider } from "~/components/feature-analytics-provider";
 import { NotificationSync } from "~/components/notification-sync";
 import { TrialReminderSync } from "~/components/trial-reminder-sync";
 import {
@@ -194,7 +195,9 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 													<AccessProvider>
 														<AiConsentProvider>
 															<AnalyticsIdentity />
-															<AppNavigator />
+															<FeatureAnalyticsProvider>
+																<AppNavigator />
+															</FeatureAnalyticsProvider>
 														</AiConsentProvider>
 													</AccessProvider>
 												</AuthProvider>
