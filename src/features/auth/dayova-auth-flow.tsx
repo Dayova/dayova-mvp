@@ -19,8 +19,10 @@ import {
 	Platform,
 	Pressable,
 	ScrollView,
+	type StyleProp,
 	TextInput,
 	type TextInputProps,
+	type TextStyle,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -124,7 +126,9 @@ import { GERMAN_FEDERAL_STATES } from "~/lib/federal-states";
 import { GRADE_OPTIONS } from "~/lib/grades";
 import { useBackIntent } from "~/lib/navigation";
 import { goBackOrReplace } from "~/lib/navigation-actions";
+import { openExternalUrl } from "~/lib/open-external-url";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
+import { env } from "~/lib/runtime-config";
 import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -225,6 +229,44 @@ const AUTH_BACKGROUND_TILE = {
 		"rgba(255,255,255,0)",
 	],
 } as const;
+
+function AuthChoiceLegalNotice({
+	allowFontScaling,
+	className,
+	style,
+}: {
+	allowFontScaling?: boolean;
+	className: string;
+	style: StyleProp<TextStyle>;
+}) {
+	return (
+		<Text
+			allowFontScaling={allowFontScaling}
+			className={className}
+			style={style}
+		>
+			Informationen findest du in unserer{"\n"}
+			<Text
+				accessibilityRole="link"
+				accessibilityHint="Öffnet die Dayova-Datenschutzerklärung im Browser."
+				className="underline"
+				onPress={() => void openExternalUrl(env.EXPO_PUBLIC_PRIVACY_URL)}
+			>
+				Datenschutzerklärung
+			</Text>{" "}
+			und den{" "}
+			<Text
+				accessibilityRole="link"
+				accessibilityHint="Öffnet die Nutzungsbedingungen im Browser."
+				className="underline"
+				onPress={() => void openExternalUrl(env.EXPO_PUBLIC_TERMS_URL)}
+			>
+				Nutzungsbedingungen
+			</Text>
+			.
+		</Text>
+	);
+}
 
 export function AuthChoiceScreen() {
 	const [showReleaseInformation, setShowReleaseInformation] = useState(false);
@@ -346,17 +388,14 @@ export function AuthChoiceScreen() {
 						/>
 					</View>
 
-					<Text
+					<AuthChoiceLegalNotice
 						allowFontScaling={false}
 						className="mt-7 w-full text-center font-poppins text-body-4 text-secondary-text"
 						style={{
 							fontSize: responsiveLayout.termsFontSize,
 							lineHeight: responsiveLayout.termsLineHeight,
 						}}
-					>
-						Mit dem Start akzeptierst du Daten­schutz­bestimmungen und
-						Nutzungs­bedingungen.
-					</Text>
+					/>
 				</ScrollView>
 			</View>
 		);
@@ -510,7 +549,7 @@ export function AuthChoiceScreen() {
 						/>
 					</Animated.View>
 
-					<Text
+					<AuthChoiceLegalNotice
 						className="absolute text-center font-poppins text-black-30"
 						style={{
 							top: scaled(AUTH_CHOICE_FRAME.terms.top),
@@ -520,10 +559,7 @@ export function AuthChoiceScreen() {
 							lineHeight: scaled(AUTH_CHOICE_FRAME.terms.lineHeight),
 							includeFontPadding: false,
 						}}
-					>
-						Mit dem Start akzeptierst du{"\n"}Datenschutzbestimmungen und
-						{"\n"}Nutzungsbedingungen.
-					</Text>
+					/>
 				</View>
 			</ScrollView>
 		</View>
