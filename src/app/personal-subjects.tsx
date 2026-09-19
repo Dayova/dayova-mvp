@@ -162,14 +162,12 @@ export default function PersonalSubjectsScreen() {
 								wieder auswählen kannst.
 							</Text>
 							<Button
+								accessibilityLabel="Fach hinzufügen"
 								onPress={() => setIsAdding(true)}
 								size="sm"
 								className="mt-5"
 							>
-								<AddIcon />
-								<Text className="text-body-4">
-									Persönliches Fach hinzufügen
-								</Text>
+								<Text className="text-body-4">Fach hinzufügen</Text>
 							</Button>
 						</Surface>
 					) : (

@@ -164,16 +164,20 @@ test("empty settings offers both the header plus and a first-subject action", as
 		name: "Spanisch",
 	});
 	const screen = await render(<PersonalSubjectsScreen />);
-	const actions = screen.getAllByRole("button", {
-		name: "Persönliches Fach hinzufügen",
-	});
-	expect(actions).toHaveLength(2);
-	await act(() => fireEvent.press(actions[1]));
+	expect(
+		screen.getByRole("button", { name: "Persönliches Fach hinzufügen" }),
+	).toBeOnTheScreen();
+	await act(() =>
+		fireEvent.press(screen.getByRole("button", { name: "Fach hinzufügen" })),
+	);
 	await act(() =>
 		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "spanisch"),
 	);
 	await act(async () => {
-		fireEvent.press(screen.getByRole("button", { name: "Fach hinzufügen" }));
+		const addActions = screen.getAllByRole("button", {
+			name: "Fach hinzufügen",
+		});
+		fireEvent.press(addActions[addActions.length - 1]);
 	});
 	expect(
 		screen.queryByRole("button", { name: "Nur diesmal verwenden" }),
