@@ -228,8 +228,13 @@ const getRollingSessionSchedule = async (
 	const now = new Date();
 	const berlinNow = getBerlinDateTime(now);
 	// Completed sessions no longer constrain the next slot to their original date.
-	const afterCompletedSession = !!args.afterSession && getSessionExecutionStatus(args.afterSession) === "completed";
-	const afterDateKey = afterCompletedSession || !args.afterSession ? berlinNow.dateKey : args.afterSession.dateKey.slice(0, 10);
+	const afterCompletedSession =
+		!!args.afterSession &&
+		getSessionExecutionStatus(args.afterSession) === "completed";
+	const afterDateKey =
+		afterCompletedSession || !args.afterSession
+			? berlinNow.dateKey
+			: args.afterSession.dateKey.slice(0, 10);
 	const afterDate = new Date(`${afterDateKey}T12:00:00Z`);
 	const today = startOfUtcDay(new Date(`${berlinNow.dateKey}T12:00:00Z`));
 	const cursor = Number.isNaN(afterDate.getTime()) ? today : afterDate;

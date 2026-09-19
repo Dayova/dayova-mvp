@@ -107,6 +107,9 @@ export function SubscriptionScreen() {
 	const [isPurchasing, setIsPurchasing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const storeActionInFlightRef = useRef(false);
+	const confirmedBillingPeriodRef = useRef<DayovaBillingPeriod | undefined>(
+		undefined,
+	);
 	const confirmedPathRef = useRef<"/home" | "/subscription-success" | null>(
 		null,
 	);
@@ -176,8 +179,16 @@ export function SubscriptionScreen() {
 		)
 			return;
 		didNavigateRef.current = true;
+		trackFeature(
+			confirmation.path === "/home"
+				? "subscription.restore"
+				: "subscription.checkout",
+			"succeeded",
+			undefined,
+			confirmedBillingPeriodRef.current,
+		);
 		replace(confirmation.path);
-	}, [confirmation, accessConfirmed, hasPaidAccess, replace]);
+	}, [confirmation, accessConfirmed, hasPaidAccess, replace, trackFeature]);
 
 	useEffect(() => {
 		if (!storeClient) {
@@ -258,6 +269,7 @@ export function SubscriptionScreen() {
 				return;
 			}
 			confirmedPathRef.current = successPath;
+			confirmedBillingPeriodRef.current = billingPeriod;
 			setConfirmation({ path: successPath });
 			trackFeature(interaction, "pending", undefined, billingPeriod);
 		} catch (purchaseError) {

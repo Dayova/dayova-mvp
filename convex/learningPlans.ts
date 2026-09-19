@@ -638,7 +638,7 @@ const publicPlan = (
 		hasLearningTimes,
 	}),
 	rollingPlanEnabled: plan.rollingPlanEnabled,
- masteryStatus: plan.masteryStatus,
+	masteryStatus: plan.masteryStatus,
 	adaptationRevision: plan.adaptationRevision,
 	sessionCompositionVariant: plan.sessionCompositionVariant,
 	...(contentGeneration ? { contentGeneration } : {}),
@@ -1446,13 +1446,29 @@ export const getPlanDetails = query({
 				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
 			)
 			.take(MAX_LEARNING_TIMES);
-        const user = await getOwnerUser(ctx, ownerTokenIdentifier);
-        const proposed = learningTimes.filter(time => time.preferenceStatus === "systemDefault");
-        return { ...publicPlan(plan, learningTimes.length > 0), learningTimeSuggestion: proposed.length > 0 ? {
-            entries: proposed.map(({ dayOfWeek, startTime, endTime }) => ({ dayOfWeek, startTime, endTime })),
-            initialPromptDismissed: plan.initialLearningTimePromptDismissedAt !== undefined || user?.learningTimeIntroPromptHandledAt !== undefined,
-            postDiagnosticReminderDismissed: plan.postDiagnosticLearningTimeReminderDismissedAt !== undefined,
-        } : undefined };
+		const user = await getOwnerUser(ctx, ownerTokenIdentifier);
+		const proposed = learningTimes.filter(
+			(time) => time.preferenceStatus === "systemDefault",
+		);
+		return {
+			...publicPlan(plan, learningTimes.length > 0),
+			learningTimeSuggestion:
+				proposed.length > 0
+					? {
+							entries: proposed.map(({ dayOfWeek, startTime, endTime }) => ({
+								dayOfWeek,
+								startTime,
+								endTime,
+							})),
+							initialPromptDismissed:
+								plan.initialLearningTimePromptDismissedAt !== undefined ||
+								user?.learningTimeIntroPromptHandledAt !== undefined,
+							postDiagnosticReminderDismissed:
+								plan.postDiagnosticLearningTimeReminderDismissedAt !==
+								undefined,
+						}
+					: undefined,
+		};
 	},
 });
 
@@ -1537,7 +1553,7 @@ export const getGenerationProgress = query({
 			sessionCount: sessions.length,
 			contentGeneration: {
 				stage: progress.stage,
- failureReason: progress.failureReason,
+				failureReason: progress.failureReason,
 				startedAt: progress.startedAt,
 				totalSessionCount: committedSessions.length,
 				readySessionCount: committedSessions.filter(
@@ -2862,7 +2878,11 @@ export const finalizeContentGeneration = internalMutation({
 			generationId: isReady ? undefined : progress?.generationId,
 			startedAt: isReady ? undefined : progress?.startedAt,
 			updatedAt,
-			failureReason: isReady ? undefined : failedSessionCount > 0 ? "generationProcessing" : progress?.failureReason,
+			failureReason: isReady
+				? undefined
+				: failedSessionCount > 0
+					? "generationProcessing"
+					: progress?.failureReason,
 		});
 		return { readySessionCount, failedSessionCount, isReady };
 	},

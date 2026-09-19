@@ -93,7 +93,10 @@ export default function LearningPlanAnalysisScreen() {
 					const errorCode = extractUserFacingErrorCode(error) ?? undefined;
 					if (errorCode === "aiConsentRequired") {
 						didStartRef.current = false;
-						dismissToOrReplace(router, learningPlanMaterialPath(planId, { errorCode }));
+						dismissToOrReplace(
+							router,
+							learningPlanMaterialPath(planId, { errorCode }),
+						);
 						return;
 					}
 					const nextFailure = getLearningPlanGenerationFailure(error);

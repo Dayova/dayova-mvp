@@ -594,14 +594,20 @@ function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 	const activeSegmentLimit = getActiveSegmentLimit(nodes);
 	const showsAdaptiveContinuation =
 		screenProps?.showsAdaptiveContinuation === true;
-	const needsLearningTime = showsAdaptiveContinuation && !!screenProps && screenProps.sessions.every(isLearningPlanSessionHistory);
+	const needsLearningTime =
+		showsAdaptiveContinuation &&
+		!!screenProps &&
+		screenProps.sessions.every(isLearningPlanSessionHistory);
 	const continuationSegmentIndex = Math.max(nodes.length - 1, 0);
 	const continuationPath = getSegmentPath(continuationSegmentIndex);
 	const continuationEndpoint = getSegmentEndPoint(continuationSegmentIndex);
 	const continuationTop = continuationEndpoint.y + 16;
 	const basePathHeight = getPathHeight(nodes.length, mode);
 	const pathHeight = showsAdaptiveContinuation
-		? Math.max(basePathHeight, continuationTop + (needsLearningTime ? 310 : 220))
+		? Math.max(
+				basePathHeight,
+				continuationTop + (needsLearningTime ? 310 : 220),
+			)
 		: basePathHeight;
 	const segments = nodes.slice(1).map((_, index) => ({
 		d: getSegmentPath(index),
@@ -710,13 +716,17 @@ function LearningPathSurface({ props }: { props: LearningPathVisualProps }) {
 			{showsAdaptiveContinuation && screenProps ? (
 				<View
 					accessible={!needsLearningTime}
-					accessibilityLabel={needsLearningTime ? undefined : `Dayova plant mit dir weiter. Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin. Prüfung am ${
-						screenProps.examDateLabel
-					}${
-						screenProps.examCountdownLabel
-							? `, ${screenProps.examCountdownLabel}`
-							: ""
-					}.`}
+					accessibilityLabel={
+						needsLearningTime
+							? undefined
+							: `Dayova plant mit dir weiter. Nach deinem Abschluss passt Dayova die Vorschau an und plant den nächsten Termin. Prüfung am ${
+									screenProps.examDateLabel
+								}${
+									screenProps.examCountdownLabel
+										? `, ${screenProps.examCountdownLabel}`
+										: ""
+								}.`
+					}
 					className="absolute right-2 left-2 gap-4 overflow-hidden rounded-card border border-primary/20 bg-system-subtle px-4 py-4"
 					// The top follows generated path geometry; borderCurve is a native API.
 					style={{ top: continuationTop, borderCurve: "continuous" }}

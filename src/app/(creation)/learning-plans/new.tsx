@@ -591,7 +591,13 @@ export default function NewLearningPlanScreen() {
 				},
 			);
 		} catch (error) {
-			setSetupError({ code: null, message: getErrorMessage(error, "Die Mediathek konnte nicht geöffnet werden.") });
+			setSetupError({
+				code: null,
+				message: getErrorMessage(
+					error,
+					"Die Mediathek konnte nicht geöffnet werden.",
+				),
+			});
 		} finally {
 			setIsUploading(false);
 			setOpeningUploadAction(null);

@@ -1154,9 +1154,11 @@ const processClaimedDocument = async (
 		}
 	};
 	try {
-		const maxFileBytes = getMaxUploadFileBytes(resolveMediaType(document.fileType, document.fileName));
- const maxFileLabel = `${maxFileBytes / 1024 / 1024} MiB`;
- if (document.fileSizeBytes > maxFileBytes) {
+		const maxFileBytes = getMaxUploadFileBytes(
+			resolveMediaType(document.fileType, document.fileName),
+		);
+		const maxFileLabel = `${maxFileBytes / 1024 / 1024} MiB`;
+		if (document.fileSizeBytes > maxFileBytes) {
 			throwUserFacingError(
 				`Die Datei "${document.fileName}" ist zu groß für die KI-Verarbeitung (maximal ${maxFileLabel}).`,
 				"material_processing",
@@ -3842,6 +3844,7 @@ Formuliere alle sichtbaren Texte in korrektem Deutsch mit Umlauten und Sonderzei
 					};
 				},
 				"Der Wissenscheck konnte nicht zuverlässig erstellt werden. Prüfe deine Schulunterlagen und versuche es erneut.",
+				"insufficient_material",
 			);
 
 			await ctx.runMutation(internal.learningPlans.storeKnowledgeQuestions, {
@@ -4120,37 +4123,38 @@ MVP-Vorgabe:
 				ENABLE_FLASH_LITE || initialCostMode.economyMode
 					? FLASH_LITE_MODEL_ID
 					: FLASH_MODEL_ID;
-			const generatedPlan = await withGeneratedTextRetry(async (attempt) => {
-				await recordModelRequest(ctx, {
-					learningPlanId: args.learningPlanId,
-					operation: "plan",
-					modelId: planModelId,
-					transferAttempt: {
-						attemptId: generationId,
+			const generatedPlan = await withGeneratedTextRetry(
+				async (attempt) => {
+					await recordModelRequest(ctx, {
+						learningPlanId: args.learningPlanId,
 						operation: "plan",
-					},
-					retryIndex: attempt,
-				});
-				const result = await runLlmGeneration((abortSignal) =>
-					generateText({
-						model: model(planModelId),
-						temperature: 0.25,
-						maxOutputTokens: 3_200,
-						abortSignal,
-						providerOptions: vertexProviderOptions,
-						output: Output.object({ schema: generatedPlanSchema }),
-						system: `Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
-						messages: [{ role: "user", content: userContent }],
-					}),
-				);
-				await recordAiUsage(ctx, {
-					learningPlanId: args.learningPlanId,
-					operation: "plan",
-					modelId: planModelId,
-					usage: result.usage,
-					attemptId: generationId,
-					retryIndex: attempt,
-				});
+						modelId: planModelId,
+						transferAttempt: {
+							attemptId: generationId,
+							operation: "plan",
+						},
+						retryIndex: attempt,
+					});
+					const result = await runLlmGeneration((abortSignal) =>
+						generateText({
+							model: model(planModelId),
+							temperature: 0.25,
+							maxOutputTokens: 3_200,
+							abortSignal,
+							providerOptions: vertexProviderOptions,
+							output: Output.object({ schema: generatedPlanSchema }),
+							system: `Du bist ein strenger, praxisnaher Lernplaner. Plane nur realistische, kalendereignete Lernslots und antworte ausschließlich im vorgegebenen JSON-Schema.${generatedTextRetrySystemInstruction(attempt)}`,
+							messages: [{ role: "user", content: userContent }],
+						}),
+					);
+					await recordAiUsage(ctx, {
+						learningPlanId: args.learningPlanId,
+						operation: "plan",
+						modelId: planModelId,
+						usage: result.usage,
+						attemptId: generationId,
+						retryIndex: attempt,
+					});
 
 					return normalizeGeneratedPlan(result.output);
 				},

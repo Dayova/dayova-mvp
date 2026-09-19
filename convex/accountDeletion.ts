@@ -325,10 +325,22 @@ export const deleteOwnerDataBatch = internalMutation({
 			.unique();
 		let deletedRecords = 0;
 
-		for (const table of ["learningPlanGenerationProgress", "learningPlanDocumentContexts", "learningPlanDocumentChunks", "learningPlanUploadRejections", "learningPlanAiTransferAttempts", "learningPlanAiModelRequests"] as const) {
- const rows = await ctx.db.query(table).withIndex("by_ownerTokenIdentifier", q => q.eq("ownerTokenIdentifier", ownerTokenIdentifier)).take(DELETE_BATCH_SIZE);
- deletedRecords += await deleteRows(ctx, table, rows);
- }
+		for (const table of [
+			"learningPlanGenerationProgress",
+			"learningPlanDocumentContexts",
+			"learningPlanDocumentChunks",
+			"learningPlanUploadRejections",
+			"learningPlanAiTransferAttempts",
+			"learningPlanAiModelRequests",
+		] as const) {
+			const rows = await ctx.db
+				.query(table)
+				.withIndex("by_ownerTokenIdentifier", (q) =>
+					q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+				)
+				.take(DELETE_BATCH_SIZE);
+			deletedRecords += await deleteRows(ctx, table, rows);
+		}
 
 		const learningPlanDocuments = await ctx.db
 			.query("learningPlanDocuments")

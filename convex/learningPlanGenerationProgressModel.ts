@@ -9,7 +9,11 @@ export const setLearningPlanGenerationProgress = async (
 		ownerTokenIdentifier: string;
 		learningPlanId: Id<"learningPlans">;
 		stage: GenerationStage;
- failureReason?: "insufficientMaterial" | "materialProcessing" | "schedulingConstraints" | "generationProcessing";
+		failureReason?:
+			| "insufficientMaterial"
+			| "materialProcessing"
+			| "schedulingConstraints"
+			| "generationProcessing";
 		generationId?: string;
 		startedAt?: number;
 		updatedAt: number;
@@ -25,7 +29,7 @@ export const setLearningPlanGenerationProgress = async (
 		ownerTokenIdentifier: args.ownerTokenIdentifier,
 		learningPlanId: args.learningPlanId,
 		stage: args.stage,
- failureReason: args.failureReason,
+		failureReason: args.failureReason,
 		generationId: args.generationId,
 		startedAt: args.startedAt,
 		updatedAt: args.updatedAt,

@@ -47,10 +47,13 @@ jest.mock("react-native", () => {
 
 jest.mock("react-native-safe-area-context", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
-	const SafeAreaInsetsContext = React.createContext<typeof mockSafeAreaInsets | null>(null);
+	const SafeAreaInsetsContext = React.createContext<
+		typeof mockSafeAreaInsets | null
+	>(null);
 	return {
 		SafeAreaInsetsContext,
-		useSafeAreaInsets: () => React.useContext(SafeAreaInsetsContext) ?? mockSafeAreaInsets,
+		useSafeAreaInsets: () =>
+			React.useContext(SafeAreaInsetsContext) ?? mockSafeAreaInsets,
 	};
 });
 

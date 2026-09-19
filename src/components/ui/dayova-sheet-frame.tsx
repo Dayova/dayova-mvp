@@ -299,7 +299,11 @@ function DayovaSheetFrame({
 			style={
 				scrollable && size !== "content"
 					? { flex: 1 }
-					: { paddingBottom: hasFixedFooter ? 12 : Math.max(insets.bottom + 20, 32) }
+					: {
+							paddingBottom: hasFixedFooter
+								? 12
+								: Math.max(insets.bottom + 20, 32),
+						}
 			}
 		>
 			{!title ? (
@@ -392,9 +396,7 @@ function DayovaSheetFrame({
 						</View>
 					) : null}
 					{footer ? (
-						<View
-							className={cn(children && "mt-6", scrollable && "px-6")}
-						>
+						<View className={cn(children && "mt-6", scrollable && "px-6")}>
 							{footer}
 						</View>
 					) : null}

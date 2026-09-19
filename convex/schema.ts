@@ -543,14 +543,15 @@ export default defineSchema({
 		"normalizedName",
 	]),
 	learningPlanGenerationProgress: defineTable({
- failureReason: v.optional(contentGenerationFailureReasonValidator),
+		failureReason: v.optional(contentGenerationFailureReasonValidator),
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
 		stage: contentGenerationStageValidator,
 		generationId: v.optional(v.string()),
 		startedAt: v.optional(v.number()),
 		updatedAt: v.number(),
-	}).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+	})
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
 		.index("by_learningPlanId", ["learningPlanId"])
 		.index("by_ownerTokenIdentifier_and_learningPlanId", [
 			"ownerTokenIdentifier",
@@ -606,7 +607,8 @@ export default defineSchema({
 		processedAt: v.optional(v.number()),
 		createdAt: v.number(),
 		updatedAt: v.number(),
-	}).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+	})
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
 		.index("by_documentId", ["documentId"])
 		.index("by_learningPlanId", ["learningPlanId"]),
 	learningPlanDocumentChunks: defineTable({
@@ -620,7 +622,8 @@ export default defineSchema({
 		charEnd: v.number(),
 		text: v.string(),
 		createdAt: v.number(),
-	}).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+	})
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
 		.index("by_documentId_and_chunkIndex", ["documentId", "chunkIndex"])
 		.index("by_contextId_and_chunkIndex", ["contextId", "chunkIndex"])
 		.index("by_learningPlanId", ["learningPlanId"])
@@ -651,7 +654,8 @@ export default defineSchema({
 		existingFileCount: v.optional(v.number()),
 		existingTotalBytes: v.optional(v.number()),
 		createdAt: v.number(),
-	}).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+	})
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
 		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"])
 		.index("by_ownerTokenIdentifier_and_createdAt", [
 			"ownerTokenIdentifier",
@@ -756,7 +760,8 @@ export default defineSchema({
 		startedAt: v.optional(v.number()),
 		completedAt: v.optional(v.number()),
 		createdAt: v.number(),
-	}).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+	})
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
 		.index("by_attemptId", ["attemptId"])
 		.index("by_parentAttemptId", ["parentAttemptId"])
 		.index("by_learningPlanId_and_operation_and_dedupeKey_and_status", [
@@ -793,7 +798,8 @@ export default defineSchema({
 		retryIndex: v.number(),
 		batchIndex: v.optional(v.number()),
 		createdAt: v.number(),
-	}).index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
+	})
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"])
 		.index("by_attemptId", ["attemptId"])
 		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"]),
 	learningPlanAiBudgetReservations: defineTable({

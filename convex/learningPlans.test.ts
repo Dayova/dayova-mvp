@@ -2224,7 +2224,7 @@ test("isolates generation progress from plan metadata and other users", async ()
 	await t.mutation(internal.learningPlans.clearEmptyContentGeneration, {
 		learningPlanId,
 		generationId: "generation-1",
- failureReason: "generationProcessing",
+		failureReason: "generationProcessing",
 	});
 	expect(
 		await t.query(api.learningPlans.getGenerationProgress, { learningPlanId }),

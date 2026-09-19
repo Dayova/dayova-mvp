@@ -114,6 +114,28 @@ test("deletes account data in bounded internal batches and preserves other users
 			stage: "deleteData",
 		});
 
+		for (const identity of [userIdentity, otherIdentity]) {
+			const learningPlanId = await ctx.db.insert("learningPlans", {
+				ownerTokenIdentifier: identity.tokenIdentifier,
+				subject: "Mathe",
+				examTypeLabel: "Klausur",
+				examDateKey: "2026-10-01",
+				examDateLabel: "1. Oktober 2026",
+				durationMinutes: 60,
+				topicDescription: "Lineare Funktionen",
+				status: "draft",
+				createdAt: 1,
+				updatedAt: 1,
+			});
+			await ctx.db.insert("learningPlanGenerationProgress", {
+				ownerTokenIdentifier: identity.tokenIdentifier,
+				learningPlanId,
+				stage: "failed",
+				failureReason: "materialProcessing",
+				updatedAt: 1,
+			});
+		}
+
 		const questionId = await ctx.db.insert("onboardingQuestions", {
 			key: "grade",
 			kind: "input",
@@ -183,11 +205,17 @@ test("deletes account data in bounded internal batches and preserves other users
 	expect(batches).toBeGreaterThan(1);
 	const remaining = await backend.run(async (ctx) => ({
 		dayEntries: await ctx.db.query("dayEntries").take(100),
+		generationProgress: await ctx.db
+			.query("learningPlanGenerationProgress")
+			.take(100),
 		personalSubjects: await ctx.db.query("personalSubjects").take(100),
 		onboardingAnswers: await ctx.db.query("userOnboardingAnswers").take(100),
 		requests: await ctx.db.query("accountDeletionRequests").take(10),
 		users: await ctx.db.query("users").take(10),
 	}));
+	expect(remaining.generationProgress).toMatchObject([
+		{ ownerTokenIdentifier: otherIdentity.tokenIdentifier },
+	]);
 	expect(remaining.dayEntries).toMatchObject([
 		{ ownerTokenIdentifier: otherIdentity.tokenIdentifier },
 	]);
@@ -201,7 +229,7 @@ test("deletes account data in bounded internal batches and preserves other users
 	expect(remaining.requests[0]).toMatchObject({
 		status: "completed",
 		stage: "complete",
-		deletedRecords: 34,
+		deletedRecords: 36,
 	});
 	expect(remaining.requests[0]).not.toHaveProperty("ownerTokenIdentifier");
 	expect(remaining.requests[0]).not.toHaveProperty("clerkUserId");

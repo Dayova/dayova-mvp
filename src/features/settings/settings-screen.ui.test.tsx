@@ -223,7 +223,9 @@ describe("SettingsScreen", () => {
 			"https://example.com/terms",
 		);
 
-		await fireEvent.press(screen.getByRole("button", { name: "Support kontaktieren" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+		);
 		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
 			expect.stringContaining("mailto:kontakt@dayova.de?"),
 		);

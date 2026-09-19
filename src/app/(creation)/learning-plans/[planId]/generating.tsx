@@ -126,16 +126,12 @@ export default function LearningPlanGeneratingScreen() {
 				MIN_ROLLING_HORIZON_MINUTES) < MIN_ROLLING_HORIZON_MINUTES);
 	const sessionCompositionVariant = "split" as const;
 	const contentGeneration = generationProgress?.contentGeneration ?? undefined;
-	const progressPresentation = getGenerationProgressPresentation(
-		contentGeneration,
-	);
+	const progressPresentation =
+		getGenerationProgressPresentation(contentGeneration);
 	const displayedFailure =
 		failure ??
 		(contentGeneration?.stage === "failed"
-			? getLearningPlanGenerationFailure(
-					null,
-					contentGeneration.failureReason,
-				)
+			? getLearningPlanGenerationFailure(null, contentGeneration.failureReason)
 			: null);
 
 	useEffect(() => {

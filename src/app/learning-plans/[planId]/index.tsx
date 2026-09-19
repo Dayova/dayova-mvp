@@ -1,6 +1,11 @@
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import {
+	Stack,
+	useFocusEffect,
+	useLocalSearchParams,
+	useRouter,
+} from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -335,7 +340,7 @@ export default function LearningPlanSessionsScreen() {
 	const needsNextSession = Boolean(
 		snapshot?.plan.status === "accepted" &&
 			snapshot.plan.rollingPlanEnabled &&
- snapshot.plan.masteryStatus !== "mastered" &&
+			snapshot.plan.masteryStatus !== "mastered" &&
 			(parseDayKey(snapshot.plan.examDateKey)?.getTime() ?? 0) >
 				today.getTime() &&
 			snapshot.sessions.length > 0 &&
@@ -431,7 +436,6 @@ export default function LearningPlanSessionsScreen() {
 		},
 		[ensureSessionContent, requestAiConsent],
 	);
-
 
 	useEffect(() => {
 		const needsTheoryUpgrade = Boolean(
@@ -649,7 +653,14 @@ export default function LearningPlanSessionsScreen() {
 						) : null}
 						<LearningPathVisual
 							mode="screen"
- onAddLearningTime={() => router.push(withReturnTo(ROUTES.learningTimes, `/learning-plans/${snapshot.plan.id}`))}
+							onAddLearningTime={() =>
+								router.push(
+									withReturnTo(
+										ROUTES.learningTimes,
+										`/learning-plans/${snapshot.plan.id}`,
+									),
+								)
+							}
 							examCountdownLabel={getExamCountdownLabel(
 								snapshot.plan.examDateKey,
 								today,
@@ -658,36 +669,45 @@ export default function LearningPlanSessionsScreen() {
 							selectedSessionId={selectedSession.id}
 							sessions={snapshot.sessions}
 							showsAdaptiveContinuation={
-								snapshot.plan.rollingPlanEnabled === true && snapshot.plan.masteryStatus !== "mastered" && !needsNextSession
+								snapshot.plan.rollingPlanEnabled === true &&
+								snapshot.plan.masteryStatus !== "mastered" &&
+								!needsNextSession
 							}
-								onOpenSession={(session) => {
-									const sessionIndex = snapshot.sessions.findIndex(
-										(candidate) => candidate.id === session.id,
-									);
-									const state = getLearningPathNodeState(
-										session,
-										sessionIndex,
-										getCommittedSessionIndex(snapshot.sessions),
-									);
-									const canOpen =
-										sessionIndex >= 0 &&
-										state !== "locked" &&
-										session.planningStatus !== "provisional" &&
-										(session.contentGenerationStatus === undefined ||
-											session.contentGenerationStatus === "ready");
-									if (!canOpen) return;
+							onOpenSession={(session) => {
+								const sessionIndex = snapshot.sessions.findIndex(
+									(candidate) => candidate.id === session.id,
+								);
+								const state = getLearningPathNodeState(
+									session,
+									sessionIndex,
+									getCommittedSessionIndex(snapshot.sessions),
+								);
+								const canOpen =
+									sessionIndex >= 0 &&
+									state !== "locked" &&
+									session.planningStatus !== "provisional" &&
+									(session.contentGenerationStatus === undefined ||
+										session.contentGenerationStatus === "ready");
+								if (!canOpen) return;
 
-									router.push(
-										getSessionRoute(snapshot.plan.id, session.id, {
-											repeat:
-												isLearningPlanSessionHistory(session) &&
-												!isDiagnosticLearningPlanSession(session),
-										}),
-									);
-								}}
-								onSelectSession={(session) => { trackFeature("learning_plan.session_selected", "performed", session.id); setSelectedSessionId(session.id); }}
-							/>
-						</>
+								router.push(
+									getSessionRoute(snapshot.plan.id, session.id, {
+										repeat:
+											isLearningPlanSessionHistory(session) &&
+											!isDiagnosticLearningPlanSession(session),
+									}),
+								);
+							}}
+							onSelectSession={(session) => {
+								trackFeature(
+									"learning_plan.session_selected",
+									"performed",
+									session.id,
+								);
+								setSelectedSessionId(session.id);
+							}}
+						/>
+					</>
 				) : (
 					<View />
 				)}

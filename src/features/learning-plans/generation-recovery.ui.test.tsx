@@ -35,7 +35,7 @@ const mockSnapshot = {
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useAction: () => mockGenerateKnowledgeQuestions,
-	useQuery: () => mockSnapshot,
+	useQuery: () => mockSnapshot.plan,
 }));
 jest.mock("expo-router", () => ({
 	useRouter: () => mockRouter,

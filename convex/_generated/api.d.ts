@@ -25,6 +25,7 @@ import type * as generatedGermanText from "../generatedGermanText.js";
 import type * as generatedGermanTextRepair from "../generatedGermanTextRepair.js";
 import type * as http from "../http.js";
 import type * as learningContentPlan from "../learningContentPlan.js";
+import type * as learningMaterialPolicy from "../learningMaterialPolicy.js";
 import type * as learningPlanAi from "../learningPlanAi.js";
 import type * as learningPlanAiCost from "../learningPlanAiCost.js";
 import type * as learningPlanAiTransfers from "../learningPlanAiTransfers.js";
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   generatedGermanTextRepair: typeof generatedGermanTextRepair;
   http: typeof http;
   learningContentPlan: typeof learningContentPlan;
+  learningMaterialPolicy: typeof learningMaterialPolicy;
   learningPlanAi: typeof learningPlanAi;
   learningPlanAiCost: typeof learningPlanAiCost;
   learningPlanAiTransfers: typeof learningPlanAiTransfers;

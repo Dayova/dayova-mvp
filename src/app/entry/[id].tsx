@@ -280,8 +280,15 @@ export default function EntryDetailScreen() {
 
 		await completionActionGateRef.current.run(async () => {
 			setIsUpdatingCompleted(true);
- const interaction = entry?.kind === "Hausaufgabe" ? (isCompleted ? "homework.reopen" : "homework.complete") : (isCompleted ? "entry.reopen" : "entry.complete");
- trackFeature(interaction, "attempted", id);
+			const interaction =
+				entry?.kind === "Hausaufgabe"
+					? isCompleted
+						? "homework.reopen"
+						: "homework.complete"
+					: isCompleted
+						? "entry.reopen"
+						: "entry.complete";
+			trackFeature(interaction, "attempted", id);
 			setCompletionFeedback(null);
 			try {
 				await setDayEntryCompleted({
@@ -295,7 +302,7 @@ export default function EntryDetailScreen() {
 				});
 				void triggerSuccessHaptic({ platform: process.env.EXPO_OS });
 			} catch {
- trackFeature(interaction, "failed", id);
+				trackFeature(interaction, "failed", id);
 				setCompletionFeedback({
 					message:
 						"Der Status konnte nicht geändert werden. Bitte versuche es erneut.",

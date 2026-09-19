@@ -1,7 +1,5 @@
 import { ConvexError } from "convex/values";
-import {
-	USER_FACING_ERROR_KIND,
-} from "../src/lib/user-facing-error-contract";
+import { USER_FACING_ERROR_KIND } from "../src/lib/user-facing-error-contract";
 
 export { USER_FACING_ERROR_KIND } from "../src/lib/user-facing-error-contract";
 

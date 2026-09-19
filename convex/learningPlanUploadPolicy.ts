@@ -86,7 +86,10 @@ export const validateLearningPlanUploadBatch = (
 		if (!Number.isFinite(file.size) || file.size <= 0) {
 			return { valid: false, code: "empty_file" as const };
 		}
-		const maxFileBytes = file.type?.startsWith("image/") || /\.(jpe?g|png|webp)$/i.test(file.name) ? 7 * 1024 * 1024 : LEARNING_PLAN_MAX_FILE_BYTES;
+		const maxFileBytes =
+			file.type?.startsWith("image/") || /\.(jpe?g|png|webp)$/i.test(file.name)
+				? 7 * 1024 * 1024
+				: LEARNING_PLAN_MAX_FILE_BYTES;
 		if (file.size > maxFileBytes) {
 			return { valid: false, code: "file_too_large" as const };
 		}

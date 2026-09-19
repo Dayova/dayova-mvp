@@ -38,8 +38,12 @@ jest.mock("convex/react", () => ({
 
 jest.mock("#convex/_generated/api", () => ({
 	api: {
-		learningTimes: { confirmProposedDefaults: "confirmProposedDefaults", applyBehavioralSuggestion: "applyBehavioralSuggestion", respondToBehavioralSuggestion: "respondToBehavioralSuggestion" },
- learningPlanAi: { ensureSessionContent: "ensureSessionContent" },
+		learningTimes: {
+			confirmProposedDefaults: "confirmProposedDefaults",
+			applyBehavioralSuggestion: "applyBehavioralSuggestion",
+			respondToBehavioralSuggestion: "respondToBehavioralSuggestion",
+		},
+		learningPlanAi: { ensureSessionContent: "ensureSessionContent" },
 		learningPlans: {
 			ensureNextRepeat: "ensureNextRepeat",
 			getSnapshot: "getSnapshot",
@@ -393,7 +397,8 @@ describe("learning-plan path", () => {
 			}),
 		];
 		const screen = await render(
-			<LearningPathVisual mode="screen"
+			<LearningPathVisual
+				mode="screen"
 				examCountdownLabel="Noch 1 Tag"
 				examDateLabel="15. August 2026"
 				onAddLearningTime={onAddLearningTime}

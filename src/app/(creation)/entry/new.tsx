@@ -594,11 +594,14 @@ export default function NewEntryScreen() {
 		});
 	};
 
-	const goToStep = useCallback((nextStep: EntryStep) => {
-		scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-		trackFeature("entry.step_changed", "performed", undefined, nextStep);
-		setStep(nextStep);
-	}, [trackFeature]);
+	const goToStep = useCallback(
+		(nextStep: EntryStep) => {
+			scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+			trackFeature("entry.step_changed", "performed", undefined, nextStep);
+			setStep(nextStep);
+		},
+		[trackFeature],
+	);
 	const handleBack = useCallback(() => {
 		if (selectTarget) {
 			setSelectTarget(null);
