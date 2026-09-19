@@ -102,12 +102,23 @@ export function publishProductionOta({
 		// a read-then-write check. Leave this empty branch on any uncertain result
 		// or worker cancellation; no catch/finally/signal handler may release it.
 		const lock = JSON.parse(
-			run("eas", ["branch:create", publicationLockBranch, "--json", "--non-interactive"]),
+			run("eas", [
+				"branch:create",
+				publicationLockBranch,
+				"--json",
+				"--non-interactive",
+			]),
 		);
 		if (!lock.id || lock.name !== publicationLockBranch) {
 			throw new Error("Publication lock acquisition was not confirmed.");
 		}
-		log(JSON.stringify({ status: "publication-locked", lockId: lock.id, sourceSha }));
+		log(
+			JSON.stringify({
+				status: "publication-locked",
+				lockId: lock.id,
+				sourceSha,
+			}),
+		);
 		verifyChannel(
 			JSON.parse(run("eas", ["channel:view", "production", "--json"])),
 		);
@@ -136,10 +147,17 @@ export function publishProductionOta({
 		);
 		log(JSON.stringify({ status: "publication-verified", updates: summary }));
 		const released = JSON.parse(
-			run("eas", ["branch:delete", publicationLockBranch, "--json", "--non-interactive"]),
+			run("eas", [
+				"branch:delete",
+				publicationLockBranch,
+				"--json",
+				"--non-interactive",
+			]),
 		);
 		if (released.id !== lock.id) {
-			throw new Error("Publication lock release was not confirmed; inspect EAS before further publication.");
+			throw new Error(
+				"Publication lock release was not confirmed; inspect EAS before further publication.",
+			);
 		}
 		log(JSON.stringify({ status: "published", updates: summary }));
 		return summary;

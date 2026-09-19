@@ -104,9 +104,7 @@ describe("learning session completion", () => {
 		);
 
 		expect(screen.queryByText(/Analyse/)).toBeNull();
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Zum Lernplan" }),
-		);
+		await fireEvent.press(screen.getByRole("button", { name: "Zum Lernplan" }));
 		expect(onPrimary).toHaveBeenCalledTimes(1);
 		await fireEvent.press(screen.getByRole("button", { name: "Nochmal üben" }));
 		expect(onRepeat).toHaveBeenCalledTimes(1);

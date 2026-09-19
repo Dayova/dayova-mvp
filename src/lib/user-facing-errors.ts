@@ -1,9 +1,5 @@
 import { logDiagnosticError } from "./diagnostics";
-import {
-	AI_CONSENT_REQUIRED_ERROR_CODE,
-	USER_FACING_ERROR_KIND,
-	type UserFacingErrorCode,
-} from "./user-facing-error-contract";
+import { USER_FACING_ERROR_KIND } from "./user-facing-error-contract";
 
 export { USER_FACING_ERROR_KIND } from "./user-facing-error-contract";
 

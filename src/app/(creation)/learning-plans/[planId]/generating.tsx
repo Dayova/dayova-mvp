@@ -25,7 +25,6 @@ import {
 	getAutomaticLearningPreparation,
 	MIN_ROLLING_HORIZON_MINUTES,
 } from "~/features/learning-plans/plan-workload";
-import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getDayKey } from "~/lib/day-key";
 import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
@@ -255,11 +254,9 @@ export default function LearningPlanGeneratingScreen() {
 		});
 	}, [
 		automaticPreparation,
-		answers,
 		capture,
 		contentGeneration,
 		generatePlan,
-		generationProgress,
 		plan,
 		planId,
 		requestAiConsent,
@@ -267,7 +264,6 @@ export default function LearningPlanGeneratingScreen() {
 		router,
 		setTargetStudyMinutes,
 		sessionCompositionVariant,
-		plan,
 		learningTimes,
 	]);
 

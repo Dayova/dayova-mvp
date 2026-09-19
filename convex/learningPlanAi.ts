@@ -40,7 +40,6 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
-import { MAX_LEARNING_MATERIAL_FILE_BYTES } from "./learningMaterialPolicy";
 import { estimateGeminiCostUsdMicros } from "./learningPlanAiCost";
 import {
 	chunkLearningPlanDocumentText,
@@ -53,7 +52,6 @@ import {
 	DOCUMENT_PROCESSING_VERSION,
 } from "./learningPlanDocumentProcessing";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
-import { LEARNING_PLAN_MAX_FILE_BYTES } from "./learningPlanUploadPolicy";
 import {
 	getDefaultPreparationDepth,
 	type PreparationDepth,

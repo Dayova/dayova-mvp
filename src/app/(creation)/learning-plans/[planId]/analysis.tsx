@@ -13,7 +13,6 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
-import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import {
 	dismissToOrReplace,
 	goBackOrReplace,

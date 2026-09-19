@@ -1,7 +1,6 @@
 import { TouchableOpacity, type TouchableOpacityProps } from "react-native";
 import { X } from "~/components/ui/icon";
 import { useDayovaTheme } from "~/lib/theme";
-import { cn } from "~/lib/utils";
 
 type CloseButtonProps = Omit<
 	TouchableOpacityProps,
