@@ -433,6 +433,7 @@ jest.mock("~/lib/theme", () => {
 				systemSubtle: "#F1F7FB",
 				text: "#1A1A1A",
 			},
+			isDark: false,
 		}),
 	};
 });
@@ -492,6 +493,30 @@ describe("LoginScreen", () => {
 		expect(
 			screen.getByTestId("auth-choice-logo-card").props.entering,
 		).toBeUndefined();
+	});
+
+	test("fills the iPad width with large Hugeicons background tiles", async () => {
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 1194,
+			scale: 2,
+			width: 834,
+		};
+		const screen = await render(<AuthChoiceScreen />);
+
+		expect(screen.getByTestId("auth-choice-background-pattern")).toHaveStyle({
+			width: 834,
+		});
+		const backgroundTiles = screen.getAllByTestId(
+			"auth-choice-background-tile",
+		);
+		expect(backgroundTiles).toHaveLength(7);
+		expect(backgroundTiles[0]?.props.style.width).toBeGreaterThan(300);
+		expect(screen.getAllByTestId("auth-choice-background-icon")[0]).toHaveStyle(
+			{
+				opacity: 0.2,
+			},
+		);
 	});
 
 	test("keeps password recovery reachable from sign-in", async () => {
