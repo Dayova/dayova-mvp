@@ -602,6 +602,34 @@ describe("LoginScreen", () => {
 		expect(error.props.accessibilityLiveRegion).toBe("polite");
 	});
 
+	test("enables login only after both required fields are ready", async () => {
+		const screen = await render(<LoginScreen />);
+		const button = () => screen.getByRole("button", { name: "LOGIN" });
+		expect(button()).toBeDisabled();
+		await fireEvent.changeText(
+			screen.getByLabelText("E-Mail-Adresse"),
+			"learner@example.de",
+		);
+		expect(button()).toBeDisabled();
+		await fireEvent.changeText(screen.getByLabelText("Passwort"), "sicher123");
+		expect(button()).toBeEnabled();
+		await fireEvent.changeText(
+			screen.getByLabelText("E-Mail-Adresse"),
+			"ungültig",
+		);
+		expect(button()).toBeDisabled();
+	});
+	test("enables the reset request only for a valid email", async () => {
+		const screen = await render(<LoginScreen />);
+		await fireEvent.press(screen.getByText("Passwort vergessen?"));
+		expect(screen.getByRole("button", { name: "CODE SENDEN" })).toBeDisabled();
+		await fireEvent.changeText(
+			screen.getByPlaceholderText("max.mustermann@gmail.com"),
+			"learner@example.de",
+		);
+		expect(screen.getByRole("button", { name: "CODE SENDEN" })).toBeEnabled();
+	});
+
 	test("submits the exact sign-in password without trimming valid characters", async () => {
 		const screen = await render(<LoginScreen />);
 		const exactPassword = " sicher123 ";

@@ -100,8 +100,10 @@ function LoadedSessionEditScreen({
 		});
 	};
 
+	const hasValidTimeRange =
+		minutesFromTime(editEnd) > minutesFromTime(editStart);
 	const saveEdit = async () => {
-		if (isBusy) return;
+		if (isBusy || !hasValidTimeRange) return;
 
 		await runWithErrorHandling(
 			"Der Lerntag konnte nicht gespeichert werden.",
@@ -204,6 +206,7 @@ function LoadedSessionEditScreen({
 					editEnd={editEnd}
 					editPhase={editPhase}
 					isSaving={isBusy}
+					canSave={hasValidTimeRange}
 					onChangeDate={() => setPickerTarget("editDate")}
 					onChangeStart={() => setPickerTarget("editStart")}
 					onChangeEnd={() => setPickerTarget("editEnd")}

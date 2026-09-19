@@ -93,3 +93,11 @@ Umgesetzt nach den drei am 19. September bereitgestellten Figma-Bildern:
 Bestandsprüfung: Alle app-eigenen Popups laufen über DayovaSheetFrame, ConfirmationSheet, ActionSheet oder SelectSheet. Native Android-Datums-/Zeitdialoge bleiben systemgesteuert.
 Validierung: TypeScript, 75 Jest-Suites / 329 Tests; nach der abschließenden Vereinheitlichung der Bestätigungsabstände nochmals 5 Suites / 26 Tests bestanden.
 Sichtprüfung offen: Der erneute Zugriff auf Device Hub liefert `timeoutReached (-10005)`; neue Screenshots/Videos konnten deshalb nicht aufgenommen werden. Die Änderungen sind im laufenden DEV-Teststand verfügbar. Der Draft-Status und die bereits dokumentierte DAY-289-Review-Lücke bleiben bestehen.
+
+## Prüfung erforderlicher Eingaben und Button-Zustände
+
+Geprüfte aktive Abläufe: Registrierung/Onboarding, Login, Passwortzurücksetzung und Codeprüfung, Profil, persönliche Fächer, Prüfungs-/Hausaufgabenerstellung, Lernplan-Themen und Material, Lernzeiten, Lerneinheiten und Quizantworten. Die gemeinsame Button-Komponente reduziert deaktivierte Aktionen auf 50 Prozent Deckkraft und deaktiviert ihre Bedienung.
+
+Geschlossene Lücken: Login verlangt gültige E-Mail und nicht leeres Passwort; Passwortzurücksetzung verlangt je Schritt gültige E-Mail, vollständigen Code oder übereinstimmende gültige Passwörter. Das Speichern einer bearbeiteten Lerneinheit verlangt eine Endzeit nach der Startzeit. Auswahlöffner und optionale Schritte bleiben bedienbar. Keine Änderungen an den entfernten Analyse-/Stundenplan-Abläufen.
+
+Die Prüfung erfolgte anhand des Codes und automatisierter Tests; eine vollständige visuelle Prüfung aller Zustände auf dem Gerät ist weiterhin offen.

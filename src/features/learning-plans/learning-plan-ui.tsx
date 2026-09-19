@@ -362,6 +362,7 @@ export function SessionEditForm({
 	editEnd,
 	editPhase,
 	isSaving,
+	canSave = true,
 	onChangeDate,
 	onChangeStart,
 	onChangeEnd,
@@ -375,6 +376,7 @@ export function SessionEditForm({
 	editEnd: string;
 	editPhase: SessionPhase;
 	isSaving: boolean;
+	canSave?: boolean;
 	onChangeDate: () => void;
 	onChangeStart: () => void;
 	onChangeEnd: () => void;
@@ -487,10 +489,13 @@ export function SessionEditForm({
 						isSaving ? "Speichern, wird geladen" : "Speichern"
 					}
 					accessibilityLiveRegion={isSaving ? "polite" : undefined}
-					accessibilityState={{ busy: isSaving, disabled: isSaving }}
+					accessibilityState={{
+						busy: isSaving,
+						disabled: isSaving || !canSave,
+					}}
 					className={shouldStackInlineContent ? "w-full" : "flex-1"}
 					onPress={onSave}
-					disabled={isSaving}
+					disabled={isSaving || !canSave}
 				>
 					{isSaving ? (
 						<ActivityIndicator color="#FFFFFF" />

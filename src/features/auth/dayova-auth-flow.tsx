@@ -1930,7 +1930,12 @@ export function LoginScreen() {
 									isLoading || isSubmittingLogin ? "LOGIN..." : "LOGIN"
 								}
 								onPress={submitLogin}
-								disabled={isLoading || isSubmittingLogin}
+								disabled={
+									isLoading ||
+									isSubmittingLogin ||
+									!isValidEmail(email.trim().toLowerCase()) ||
+									!password.trim()
+								}
 							>
 								<Text>
 									{isLoading || isSubmittingLogin ? "LOGIN..." : "LOGIN"}
@@ -2190,6 +2195,13 @@ function PasswordResetScreen({
 					? "SICHERHEITSCODE PRÜFEN"
 					: "CODE PRÜFEN";
 
+	const isPrimaryInputReady =
+		stage === "email"
+			? isValidEmail(email.trim().toLowerCase())
+			: stage === "new_password"
+				? meetsPasswordRequirements(password) && password === confirmPassword
+				: code.length === CODE_LENGTH;
+
 	const runPrimaryAction = () => {
 		if (stage === "email") {
 			void sendResetCode();
@@ -2355,7 +2367,7 @@ function PasswordResetScreen({
 					<View className="mt-6 w-full">
 						<Button
 							accessibilityLabel={isLoading ? `${buttonLabel}...` : buttonLabel}
-							disabled={isLoading}
+							disabled={isLoading || !isPrimaryInputReady}
 							onPress={runPrimaryAction}
 						>
 							<Text>{isLoading ? `${buttonLabel}...` : buttonLabel}</Text>
