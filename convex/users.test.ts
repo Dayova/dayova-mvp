@@ -797,3 +797,94 @@ test("profile sync maps generic legacy values and clears school names", async ()
 		),
 	).resolves.toMatchObject({ answer: "gymnasium" });
 });
+
+test("first-plan prompt becomes eligible only after onboarding and stays handled across retries", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	await t.mutation(api.users.syncCurrentUser, {});
+	expect(await t.query(api.users.shouldShowFirstPlanPrompt, {})).toBe(false);
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: onboardingAnswers(),
+	});
+	expect(await t.query(api.users.shouldShowFirstPlanPrompt, {})).toBe(true);
+	expect(
+		await t.mutation(api.users.resolveFirstPlanPrompt, { choice: "create" }),
+	).toBe(true);
+	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: onboardingAnswers(),
+	});
+	expect(await t.query(api.users.shouldShowFirstPlanPrompt, {})).toBe(false);
+	expect(
+		await t.mutation(api.users.resolveFirstPlanPrompt, { choice: "explore" }),
+	).toBe(false);
+	expect((await t.query(api.users.getMe, {}))?.firstPlanPromptStatus).toBe(
+		"create",
+	);
+});
+
+test("existing accounts are not opted into the first-plan prompt", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	await t.run((ctx) =>
+		ctx.db.insert("users", {
+			tokenIdentifier: userIdentity.tokenIdentifier,
+			clerkId: userIdentity.subject,
+			email: userIdentity.email,
+		}),
+	);
+	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: onboardingAnswers(),
+	});
+	expect(await t.query(api.users.shouldShowFirstPlanPrompt, {})).toBe(false);
+});
+
+test("exploring is persisted per account and survives a fresh authenticated client", async () => {
+	const backend = convexTest(schema, modules);
+	const t = backend.withIdentity(userIdentity);
+	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: onboardingAnswers(),
+	});
+	await t.mutation(api.users.resolveFirstPlanPrompt, { choice: "explore" });
+	expect(
+		await backend
+			.withIdentity(userIdentity)
+			.query(api.users.shouldShowFirstPlanPrompt, {}),
+	).toBe(false);
+	const other = backend.withIdentity(otherIdentity);
+	await other.mutation(api.users.syncCurrentUser, {});
+	await other.mutation(api.users.saveOnboardingAnswers, {
+		answers: onboardingAnswers(),
+	});
+	expect(await other.query(api.users.shouldShowFirstPlanPrompt, {})).toBe(true);
+});
+
+test("an existing planning entry suppresses the prompt and stale creation requests", async () => {
+	const t = convexTest(schema, modules).withIdentity(userIdentity);
+	await t.mutation(api.users.syncCurrentUser, {});
+	await t.mutation(api.users.saveOnboardingAnswers, {
+		answers: onboardingAnswers(),
+	});
+	await t.run((ctx) =>
+		ctx.db.insert("dayEntries", {
+			ownerTokenIdentifier: userIdentity.tokenIdentifier,
+			dayKey: "2026-09-25",
+			title: "Mathematik",
+			kind: "exam",
+		}),
+	);
+	expect(await t.query(api.users.shouldShowFirstPlanPrompt, {})).toBe(false);
+	expect(
+		await t.mutation(api.users.resolveFirstPlanPrompt, { choice: "create" }),
+	).toBe(false);
+});
+
+test("first-plan state requires authentication", async () => {
+	const t = convexTest(schema, modules);
+	await expect(
+		t.query(api.users.shouldShowFirstPlanPrompt, {}),
+	).rejects.toThrow();
+	await expect(
+		t.mutation(api.users.resolveFirstPlanPrompt, { choice: "explore" }),
+	).rejects.toThrow();
+});

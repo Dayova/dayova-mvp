@@ -114,3 +114,9 @@ Zusätzlicher UI-Gesamtlauf: nach acht bestandenen Suites mehrere Minuten ohne w
 
 Nativer Simulator-Build mit `APP_VARIANT=development` erfolgreich. iPhone 16 war beim Installationsversuch nicht verbunden; kein neuer Build wurde auf dem physischen Gerät installiert.
 Die neue DEV-App wurde im iPhone-17-Pro-Simulator installiert und gestartet; Metro bestätigt die Verbindung von `de.dayova.app-dev (iPhone 17 Pro)`.
+
+### DAY-388: first post-onboarding plan prompt
+
+New accounts receive a content-sized shared confirmation sheet on their first Home visit after onboarding and access have resolved. The stacked actions are “Jetzt Lernplan erstellen” (existing exam-to-plan flow) and “Erstmal die App anschauen”; closing also selects explore. No decorative title icon is added. The choice is stored on the authenticated user, with no backfill for existing accounts. Onboarding retries cannot reset it; existing planning data suppresses the prompt. Save failures remain retryable.
+
+Validation: 26 users backend tests and 8 focused UI tests passed; TypeScript, scoped ESLint, Biome and diff checks passed. The UI tests mock the shared sheet; real-device first-onboarding visual/gesture verification remains pending.

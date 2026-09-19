@@ -205,6 +205,14 @@ export default defineSchema({
 		aiConsentGrantedAt: v.optional(v.number()),
 		aiConsentUpdatedAt: v.optional(v.number()),
 		learningTimesBackfillVersion: v.optional(v.number()),
+		firstPlanPromptStatus: v.optional(
+			v.union(
+				v.literal("awaitingOnboarding"),
+				v.literal("pending"),
+				v.literal("create"),
+				v.literal("explore"),
+			),
+		),
 		learningTimeIntroPromptHandledAt: v.optional(v.number()),
 		behavioralLearningTimeSuggestionDismissedFingerprint: v.optional(
 			v.string(),
