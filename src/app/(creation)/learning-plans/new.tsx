@@ -918,6 +918,7 @@ export default function NewLearningPlanScreen() {
 			<ConfirmationSheet
 				visible={isPauseConfirmationVisible}
 				title="Lernplan-Erstellung pausieren?"
+				actionLayout="stacked"
 				description="Deine bisherigen Angaben und Unterlagen bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
 				cancelLabel="Weiter bearbeiten"
 				confirmLabel="Später fortsetzen"
