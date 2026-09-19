@@ -797,7 +797,7 @@ export default function LearningPlansScreen() {
 				}}
 			>
 				<View className="mt-7 flex-row items-center justify-between">
-					<Text className="font-poppins font-semibold text-heading-1 text-text">
+					<Text className="font-poppins font-semibold text-heading-2 text-text">
 						Deine Pläne
 					</Text>
 
