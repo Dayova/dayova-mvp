@@ -1,6 +1,9 @@
 import { ConvexError } from "convex/values";
+import {
+	USER_FACING_ERROR_KIND,
+} from "../src/lib/user-facing-error-contract";
 
-export const USER_FACING_ERROR_KIND = "userFacing";
+export { USER_FACING_ERROR_KIND } from "../src/lib/user-facing-error-contract";
 
 type UserFacingBackendErrorData = {
 	kind: typeof USER_FACING_ERROR_KIND;

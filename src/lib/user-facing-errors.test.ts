@@ -39,6 +39,17 @@ describe("getUserFacingErrorMessage", () => {
 		);
 	});
 
+	test("extracts a recognized recovery code independently from its message", () => {
+		const error = new Error("Server Error");
+		(error as Error & { data: unknown }).data = {
+			kind: USER_FACING_ERROR_KIND,
+			message: "Dieser Text darf sich ändern.",
+			code: "aiConsentRequired",
+		};
+
+		expect(extractUserFacingErrorCode(error)).toBe("aiConsentRequired");
+	});
+
 	test("does not show production Convex diagnostic wrappers to learners", () => {
 		const error = new Error(
 			"[CONVEX A(learningPlanAi:generatePlan)] Server Error\n  Called by client",

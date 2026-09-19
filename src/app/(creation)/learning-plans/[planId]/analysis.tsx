@@ -25,6 +25,7 @@ import {
 	type LearningPlanGenerationFailure,
 } from "~/features/learning-plans/generation-recovery";
 import { learningPlanTopicsPath } from "~/features/learning-plans/creation-routes";
+import { extractUserFacingErrorCode } from "~/lib/user-facing-errors";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -89,6 +90,12 @@ export default function LearningPlanAnalysisScreen() {
 					return generateKnowledgeQuestions({ learningPlanId: planId });
 				})
 				.catch((error: unknown) => {
+					const errorCode = extractUserFacingErrorCode(error) ?? undefined;
+					if (errorCode === "aiConsentRequired") {
+						didStartRef.current = false;
+						dismissToOrReplace(router, learningPlanMaterialPath(planId, { errorCode }));
+						return;
+					}
 					const nextFailure = getLearningPlanGenerationFailure(error);
 					logDiagnosticError("Learning plan material analysis failed.", error, {
 						source: "learning-plans.analysis",
