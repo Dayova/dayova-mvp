@@ -9,6 +9,10 @@ Die GitHub-PRs selbst werden nicht nach main gemergt oder geschlossen.
 37 offene PRs einschließlich Drafts geprüft. 32 PR-Head-Commits sind im Testbranch enthalten.
 Analyse und Stundenplan bleiben aus der Navigation entfernt. Bei älteren Überschneidungen bleiben die neueren Abläufe erhalten.
 
+Die frühere Zwischenzählung „18 enthalten / 19 fehlen / 13 Konflikte“ ist damit
+überholt. Sie beschrieb den Stand vor der Konfliktauflösung; die Tabelle unten ist
+der aktuelle Abgleich der gemeinsamen Testversion.
+
 | PR | Titel | Ergebnis |
 |---|---|---|
 | [#378](https://github.com/Dayova/dayova-mvp/pull/378) | Enforce per-user and per-plan AI budgets | Überholt: main hat mit PR #423 ausdrücklich den adaptiven Ablauf ohne KI-Budget-Gating übernommen (57af3f5/6d08745). |
@@ -48,6 +52,12 @@ Analyse und Stundenplan bleiben aus der Navigation entfernt. Bei älteren Übers
 | [#670](https://github.com/Dayova/dayova-mvp/pull/670) | Focus navigation on learning plans and homework (DAY-436) | Integriert. |
 | [#671](https://github.com/Dayova/dayova-mvp/pull/671) | fix: stabilize personal subject dialogs and add subjects from Settings (DAY-187) | Integriert. |
 | [#673](https://github.com/Dayova/dayova-mvp/pull/673) | fix: correct delete confirmation spacing and label contrast (DAY-445) | Integriert. |
+
+Die Analyse-PRs [#495](https://github.com/Dayova/dayova-mvp/pull/495) und
+[#646](https://github.com/Dayova/dayova-mvp/pull/646) werden nicht mehr in die
+Testversion übernommen. Zugehörige offene Analyse- oder Stundenplan-Tickets
+können mit Verweis auf DAY-436 geschlossen werden, weil diese Produktbereiche
+vorerst aus der App entfernt wurden.
 
 ## Validierung
 
@@ -120,3 +130,17 @@ Die neue DEV-App wurde im iPhone-17-Pro-Simulator installiert und gestartet; Met
 New accounts receive a content-sized shared confirmation sheet on their first Home visit after onboarding and access have resolved. The stacked actions are “Jetzt Lernplan erstellen” (existing exam-to-plan flow) and “Erstmal die App anschauen”; closing also selects explore. No decorative title icon is added. The choice is stored on the authenticated user, with no backfill for existing accounts. Onboarding retries cannot reset it; existing planning data suppresses the prompt. Save failures remain retryable.
 
 Validation: 26 users backend tests and 8 focused UI tests passed; TypeScript, scoped ESLint, Biome and diff checks passed. The UI tests mock the shared sheet; real-device first-onboarding visual/gesture verification remains pending.
+
+## Registrierung und Intro-Nachprüfung
+
+Die vier iPhone-17-Pro-Aufnahmen von 17:25 sind zusätzlich in der
+[nativen Beweismatrix](../native-iphone-2026-09-19/README.md) erfasst. Der
+Willkommensbildschirm dokumentiert den Einstieg in Registrierung/Login. Die
+drei Intro-Aufnahmen reproduzieren das beanstandete blaue Badge und die
+Onboarding-Schatten.
+
+Finale Codekorrektur: Das Badge „SO FUNKTIONIERT DAYOVA“ ist vollständig aus
+dem gemeinsamen Intro-Header entfernt. Die ausschließlich dekorativen Schatten
+der Materialkarte und der drei gestapelten Dashboardkarten sind entfernt; die
+Produktinhalte, Seitenindikatoren, Zurücknavigation und primären Aktionen bleiben
+unverändert.

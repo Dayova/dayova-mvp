@@ -71,7 +71,7 @@ export function IntroTasksArtwork({
 				testID="intro-tasks-product-composition"
 			>
 				<View
-					className="absolute shadow-black/10 shadow-lg"
+					className="absolute"
 					style={artworkGeometry.agenda}
 					testID="intro-tasks-agenda-layer"
 				>
@@ -82,7 +82,7 @@ export function IntroTasksArtwork({
 					/>
 				</View>
 				<View
-					className="absolute shadow-black/10 shadow-lg"
+					className="absolute"
 					style={artworkGeometry.progress}
 					testID="intro-tasks-progress-layer"
 				>
@@ -93,7 +93,7 @@ export function IntroTasksArtwork({
 					/>
 				</View>
 				<View
-					className="absolute shadow-black/15 shadow-xl"
+					className="absolute"
 					style={artworkGeometry.nextStep}
 					testID="intro-tasks-next-step-layer"
 				>
@@ -109,7 +109,7 @@ export function IntroTasksArtwork({
 	);
 }
 
-// The onboarding wrapper owns only the overlap, rotation, scale, and shadow.
+// The onboarding wrapper owns only the overlap, rotation, and scale.
 // Product structure and tokens stay inside the shared dashboard components.
 const artworkGeometry = StyleSheet.create({
 	agenda: {

@@ -16,11 +16,11 @@ import {
 	KeyboardAvoidingView,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
+	Text as NativeText,
 	Platform,
 	Pressable,
 	ScrollView,
 	type StyleProp,
-	Text as NativeText,
 	TextInput,
 	type TextInputProps,
 	type TextStyle,
@@ -87,7 +87,6 @@ import {
 	GreekHelmet,
 	Palette,
 	Plant,
-	Route2,
 	SquareRootSquare,
 	Telescope,
 } from "~/components/ui/icon";
@@ -1151,7 +1150,7 @@ function IntroStepView({
 				paddingBottom: Math.max(bottomInset + 20, 28),
 			}}
 		>
-			<View className="flex-row items-center px-6">
+			<View className="px-6">
 				<BackButton
 					accessibilityHint={
 						introIndex === 0
@@ -1160,14 +1159,6 @@ function IntroStepView({
 					}
 					onPress={() => onBack()}
 				/>
-				<View className="flex-1" />
-				<View className="flex-row items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
-					<Route2 size={16} color={COLORS.primary} strokeWidth={2.2} />
-					<Text className="font-poppins font-semibold text-body-5 text-primary">
-						SO FUNKTIONIERT DAYOVA
-					</Text>
-				</View>
-				<View className="w-11" />
 			</View>
 
 			<Animated.FlatList
