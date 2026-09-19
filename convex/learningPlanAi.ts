@@ -1691,6 +1691,11 @@ const normalizeSessions = (
 	};
 };
 
+const getSubjectSpecificLearningInstruction = (subject: string) =>
+	subject.trim().toLocaleLowerCase("de-DE") === "latein"
+		? "Latin subject guidance: Do not plan modern conversation, pronunciation, or open speaking exercises unless the uploaded school material or confirmed exam scope explicitly requires them. Prefer material-grounded formats such as translation, morphology, syntax, vocabulary in context, and interpretation."
+		: "";
+
 export const __testOnlyLearningPlanAi = {
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
@@ -1698,6 +1703,7 @@ export const __testOnlyLearningPlanAi = {
 	generatedTaskItemSchema,
 	normalizeTaskChoiceText,
 	topicMapGenerationInstruction: TOPIC_MAP_GENERATION_INSTRUCTION,
+	getSubjectSpecificLearningInstruction,
 };
 
 const buildBaseContext = (
@@ -1706,6 +1712,7 @@ const buildBaseContext = (
 	const { plan, documents } = context;
 	return [
 		`Fach: ${plan.subject}`,
+		getSubjectSpecificLearningInstruction(plan.subject),
 		`Prüfungsart: ${plan.examTypeLabel}`,
 		`Prüfungstermin: ${plan.examDateLabel}${plan.examTime ? `, ${plan.examTime}` : ""}`,
 		`Bearbeitungszeit der Prüfung: ${plan.durationMinutes} Minuten`,
