@@ -101,7 +101,16 @@ describe("shared dashboard product cards", () => {
 		).toBeOnTheScreen();
 		expect(
 			screen.getByTestId("next-step-artwork", hidden).props.className,
-		).toContain("py-3");
+		).toContain("rounded-2xl");
+		expect(
+			screen.getByTestId("next-step-artwork", hidden).props.className,
+		).toContain("pb-4");
+		expect(
+			screen.getByTestId("agenda-artwork", hidden).props.className,
+		).toContain("rounded-2xl");
+		expect(
+			screen.getByTestId("progress-artwork", hidden).props.className,
+		).toContain("rounded-2xl");
 		expect(
 			screen.getByText("Lineare Funktionen verstehen", hidden).props.className,
 		).toContain("mt-2");
@@ -127,6 +136,10 @@ describe("shared dashboard product cards", () => {
 		expect(
 			screen.getByTestId("dashboard-progress-artwork-ring", hidden),
 		).toHaveStyle({ width: 76, height: 76 });
+		expect(
+			screen.getByTestId("dashboard-progress-artwork-ring", hidden).parent
+				?.props.className,
+		).toContain("mt-2");
 		expect(screen.getByText("Wochenfortschritt", hidden)).toHaveProp(
 			"adjustsFontSizeToFit",
 			true,

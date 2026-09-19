@@ -283,7 +283,7 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 				accessibilityElementsHidden
 				importantForAccessibility="no-hide-descendants"
 				testID={props.testID}
-				className="h-full w-full overflow-hidden rounded-card border border-border bg-system-subtle px-4 py-3"
+				className="h-full w-full overflow-hidden rounded-2xl border border-border bg-system-subtle px-4 pt-3 pb-4"
 				style={continuousBorderStyle}
 			>
 				{content}
@@ -391,7 +391,7 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 			<View
 				className={cn(
 					"flex-1 items-center justify-center",
-					isArtwork ? "py-1" : "py-2",
+					isArtwork ? "mt-2 pb-1" : "py-2",
 				)}
 			>
 				<View
@@ -511,7 +511,7 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 				accessibilityElementsHidden
 				importantForAccessibility="no-hide-descendants"
 				testID={props.testID}
-				className="h-full w-full overflow-hidden rounded-card border border-border bg-ueben-subtle px-3 py-3"
+				className="h-full w-full overflow-hidden rounded-2xl border border-border bg-ueben-subtle px-3 py-3"
 				style={continuousBorderStyle}
 			>
 				{content}
@@ -608,7 +608,7 @@ function DashboardAgendaEntryCard(props: DashboardAgendaEntryCardProps) {
 				accessibilityElementsHidden
 				importantForAccessibility="no-hide-descendants"
 				testID={props.testID}
-				className="h-full w-full flex-row items-center rounded-3xl border border-border bg-card px-4 py-4"
+				className="h-full w-full flex-row items-center rounded-2xl border border-border bg-card px-4 py-4"
 				style={continuousBorderStyle}
 			>
 				{content}

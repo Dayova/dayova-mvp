@@ -152,3 +152,8 @@ wurde nach Review verworfen. Die finale Aufnahme von 18:07 bestätigt die
 wiederhergestellte ursprüngliche Überlagerung mit mehr Abstand zwischen Icon,
 Beschriftung, Titel, Metadaten und Aktionen innerhalb der Karten. Die kompakte
 Fortschrittsangabe bleibt vollständig sichtbar.
+Die markierte Aufnahme von 18:12 präzisiert die letzten beiden Abstände und die
+gewünschte geringere Rundung. Die finale Simulatoraufnahme von 18:16 bestätigt:
+kleinere Eckenradien an allen drei Karten, Abstand zwischen Fortschrittsüberschrift
+und Ring sowie sichtbarer Bodenabstand unter „Jetzt starten“, ohne Änderung an der
+überlappenden Komposition.

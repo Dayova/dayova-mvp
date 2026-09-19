@@ -133,6 +133,6 @@ const artworkGeometry = StyleSheet.create({
 		top: 121,
 		zIndex: 2,
 		width: 312,
-		height: 110,
+		height: 118,
 	},
 });
