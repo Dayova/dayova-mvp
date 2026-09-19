@@ -123,7 +123,7 @@ export default function PersonalSubjectsScreen() {
 								onPress={() => setIsAdding(true)}
 								className="h-12 w-12 items-center justify-center rounded-full active:opacity-80"
 							>
-								<AddIcon />
+								<AddIcon gradient />
 							</Pressable>
 						}
 					/>
