@@ -54,17 +54,12 @@ export function AddIcon({
 	const { colors } = useDayovaTheme();
 	if (outlinedGradient) {
 		return (
-			<LinearGradient
+			<View
 				pointerEvents="none"
-				colors={PRIMARY_GRADIENT.colors}
-				start={PRIMARY_GRADIENT.start}
-				end={PRIMARY_GRADIENT.end}
-				style={styles.outlinedContainer}
+				className="h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-card"
 			>
-				<View style={styles.outlinedInner}>
-					<GradientPlus />
-				</View>
-			</LinearGradient>
+				<GradientPlus />
+			</View>
 		);
 	}
 	return (
@@ -93,19 +88,3 @@ export function AddIcon({
 		</View>
 	);
 }
-
-const styles = StyleSheet.create({
-	outlinedContainer: {
-		width: 48,
-		height: 48,
-		padding: 1.5,
-		borderRadius: 24,
-	},
-	outlinedInner: {
-		flex: 1,
-		alignItems: "center",
-		justifyContent: "center",
-		borderRadius: 22.5,
-		backgroundColor: "#FFFFFF",
-	},
-});

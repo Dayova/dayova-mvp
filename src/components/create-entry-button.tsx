@@ -38,7 +38,7 @@ export function CreateEntryButton({ returnTo }: { returnTo: string }) {
 				}}
 				className="h-12 w-12 items-center justify-center rounded-full active:opacity-80"
 			>
-				<AddIcon emphasized />
+				<AddIcon outlinedGradient />
 			</TouchableOpacity>
 			<CreateTypePickerModal
 				visible={showCreateTypePicker}
