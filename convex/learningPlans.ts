@@ -31,7 +31,6 @@ import {
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
 import { isValidLearningMaterialSize } from "./learningMaterialPolicy";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
-import { deriveBehavioralLearningTimeSuggestion } from "./learningTimeBehavior";
 import {
 	clearLearningPlanGenerationProgress,
 	getLearningPlanGenerationProgress,
@@ -40,6 +39,7 @@ import {
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
 	getLearningPlanUploadRejectionMessage,
+	LEARNING_PLAN_MAX_FILE_COUNT,
 	type LearningPlanUploadRejectionCode,
 	validateLearningPlanUploadBatch,
 } from "./learningPlanUploadPolicy";
@@ -50,6 +50,7 @@ import {
 import { isLearningSessionCompositionEligible } from "./learningSessionComposition";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { alignSessionDurationReferences } from "./learningSessionDurationText";
+import { deriveBehavioralLearningTimeSuggestion } from "./learningTimeBehavior";
 import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
@@ -1278,7 +1279,7 @@ export const getSnapshot = query({
 			.query("learningPlanDocuments")
 			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
 			.order("asc")
-			.take(20);
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
 		const answers = await ctx.db
 			.query("learningPlanAnswers")
 			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
@@ -1484,7 +1485,7 @@ export const listDocuments = query({
 					.eq("learningPlanId", args.learningPlanId),
 			)
 			.order("asc")
-			.take(20);
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
 		return documents.map(publicDocument);
 	},
 });
@@ -1578,7 +1579,7 @@ export const getSetupSnapshot = query({
 			.query("learningPlanDocuments")
 			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
 			.order("asc")
-			.take(20);
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
 		return {
 			plan: { id: plan._id, topicDescription: plan.topicDescription },
 			documents: documents.map(publicDocument),
@@ -1627,7 +1628,7 @@ export const listOverview = query({
 							.withIndex("by_learningPlanId", (q) =>
 								q.eq("learningPlanId", plan._id),
 							)
-							.take(20)
+							.take(LEARNING_PLAN_MAX_FILE_COUNT + 1)
 					: [];
 			const needsSchoolMaterial =
 				plan.status === "draft" &&
@@ -1930,7 +1931,7 @@ export const storeUploadedDocument = internalMutation({
 			.withIndex("by_learningPlanId", (q) =>
 				q.eq("learningPlanId", args.learningPlanId),
 			)
-			.take(11);
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
 		const uploadValidation = validateLearningPlanUploadBatch(
 			existingDocuments,
 			[
@@ -2267,7 +2268,7 @@ export const getAiContext = internalQuery({
 			.withIndex("by_learningPlanId", (q) =>
 				q.eq("learningPlanId", args.learningPlanId),
 			)
-			.take(20);
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
 		const learningTimes = await ctx.db
 			.query("userLearningTimes")
 			.withIndex("by_ownerTokenIdentifier", (q) =>

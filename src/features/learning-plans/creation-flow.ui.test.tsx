@@ -1,3 +1,12 @@
+jest.mock("~/lib/prepare-learning-photo", () => ({
+	prepareLearningPhoto: async (uri: string, name: string) => ({
+		uri,
+		name: name.replace(/\.[^.]+$/, ".jpg"),
+		mimeType: "image/jpeg",
+		size: 1024,
+	}),
+}));
+
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import NewEntryScreen from "~/app/(creation)/entry/new";
@@ -425,8 +434,8 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockRegisterUploadedDocument).toHaveBeenNthCalledWith(
 			2,
 			expect.objectContaining({
-				fileName: "mitschrift-2.png",
-				fileType: "image/png",
+				fileName: "mitschrift-2.jpg",
+				fileType: "image/jpeg",
 				learningPlanId: "plan-1",
 				sourceKind: "school",
 			}),

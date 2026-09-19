@@ -2160,6 +2160,9 @@ test("serializes concurrent upload registration at the server-side count limit",
 			).length,
 	);
 	expect(storedCount).toBe(LEARNING_PLAN_MAX_FILE_COUNT);
+	expect(
+		await t.query(api.learningPlans.listDocuments, { learningPlanId }),
+	).toHaveLength(30);
 });
 
 test("isolates generation progress from plan metadata and other users", async () => {

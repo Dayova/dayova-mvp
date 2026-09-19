@@ -59,16 +59,17 @@ import {
 	goBackOrReplace,
 	useBackIntent,
 } from "~/lib/navigation";
+import { prepareLearningPhoto } from "~/lib/prepare-learning-photo";
 import { ROUTES } from "~/lib/routes";
 import {
 	ACCEPTED_FILE_TYPES,
 	LEARNING_PLAN_UPLOAD_LIMITS,
 	validateUploadFile,
 } from "~/lib/upload-policy";
-import { AI_CONSENT_REQUIRED_ERROR_CODE } from "~/lib/user-facing-error-contract";
-import type { UserFacingErrorCode } from "~/lib/user-facing-error-contract";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
+import type { UserFacingErrorCode } from "~/lib/user-facing-error-contract";
+import { AI_CONSENT_REQUIRED_ERROR_CODE } from "~/lib/user-facing-error-contract";
 
 const UPLOAD_TIMEOUT_MS = 45_000;
 const UPLOAD_COMPLETION_FAILURE_MESSAGE =
@@ -282,7 +283,15 @@ export default function NewLearningPlanScreen() {
 		}
 	};
 
-	const prepareUploadAsset = (asset: UploadAsset): PreparedUploadAsset => {
+	const prepareUploadAsset = async (
+		inputAsset: UploadAsset,
+	): Promise<PreparedUploadAsset> => {
+		const isPhoto =
+			inputAsset.mimeType?.startsWith("image/") ||
+			/\.(jpe?g|png|webp|heic|heif)$/i.test(inputAsset.name);
+		const asset = isPhoto
+			? await prepareLearningPhoto(inputAsset.uri, inputAsset.name)
+			: inputAsset;
 		const file = new File(asset.uri);
 		const fileSizeBytes = asset.size ?? file.info().size ?? 0;
 		const fileType = asset.mimeType || "application/octet-stream";
@@ -452,14 +461,17 @@ export default function NewLearningPlanScreen() {
 			await runWithErrorHandling(
 				"Die Datei konnte nicht hochgeladen werden.",
 				async () => {
-					const preparedAssets = result.assets.map((asset) =>
-						prepareUploadAsset({
-							uri: asset.uri,
-							name: asset.name,
-							mimeType: asset.mimeType,
-							size: asset.size,
-						}),
-					);
+					const preparedAssets: PreparedUploadAsset[] = [];
+					for (const asset of result.assets) {
+						preparedAssets.push(
+							await prepareUploadAsset({
+								uri: asset.uri,
+								name: asset.name,
+								mimeType: asset.mimeType,
+								size: asset.size,
+							}),
+						);
+					}
 					assertUploadBatchFits(preparedAssets);
 					const id = await ensurePlan(topics);
 					for (const asset of preparedAssets) {
@@ -497,7 +509,7 @@ export default function NewLearningPlanScreen() {
 			const result = await ImagePicker.launchCameraAsync({
 				mediaTypes: ["images"],
 				allowsEditing: false,
-				quality: 0.82,
+				quality: 1,
 			});
 			setOpeningUploadAction(null);
 			if (result.canceled) return;
@@ -509,7 +521,7 @@ export default function NewLearningPlanScreen() {
 			await runWithErrorHandling(
 				"Das Foto konnte nicht hochgeladen werden.",
 				async () => {
-					const preparedAsset = prepareUploadAsset({
+					const preparedAsset = await prepareUploadAsset({
 						uri: asset.uri,
 						name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
 						mimeType: asset.mimeType ?? "image/jpeg",
@@ -555,8 +567,8 @@ export default function NewLearningPlanScreen() {
 				allowsEditing: false,
 				allowsMultipleSelection: true,
 				orderedSelection: true,
-				selectionLimit: 0,
-				quality: 0.82,
+				selectionLimit: Math.max(1, uploadCapacity.remainingCount),
+				quality: 1,
 				preferredAssetRepresentationMode:
 					ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Automatic,
 				shouldDownloadFromNetwork: true,
@@ -568,22 +580,19 @@ export default function NewLearningPlanScreen() {
 			await runWithErrorHandling(
 				"Die Fotos konnten nicht hochgeladen werden.",
 				async () => {
-					const preparedAssets = result.assets.map((asset, index) => {
-						const fallbackExtension =
-							asset.mimeType === "image/png"
-								? "png"
-								: asset.mimeType === "image/webp"
-									? "webp"
-									: "jpg";
-						return prepareUploadAsset({
-							uri: asset.uri,
-							name:
-								asset.fileName ??
-								`mediathek-${Date.now()}-${index + 1}.${fallbackExtension}`,
-							mimeType: asset.mimeType ?? "image/jpeg",
-							size: asset.fileSize,
-						});
-					});
+					const preparedAssets: PreparedUploadAsset[] = [];
+					for (const [index, asset] of result.assets.entries()) {
+						preparedAssets.push(
+							await prepareUploadAsset({
+								uri: asset.uri,
+								name:
+									asset.fileName ?? `mediathek-${Date.now()}-${index + 1}.jpg`,
+								mimeType: asset.mimeType ?? "image/jpeg",
+								size: asset.fileSize,
+							}),
+						);
+					}
+					assertUploadBatchFits(preparedAssets);
 					const id = await ensurePlan(topics);
 					for (const asset of preparedAssets) {
 						await uploadLearningPlanAsset(asset, id);

@@ -118,3 +118,21 @@ test("uploaded delimiters cannot close or inject source blocks", () => {
 	expect(context.match(/<\/dayova-source>/g)).toHaveLength(1);
 	expect(context).toContain("&lt;/dayova-source&gt;&lt;dayova-source&gt;");
 });
+
+test("considers all 30 short uploaded worksheets in a mixed material pack", () => {
+	const documents = Array.from({ length: 30 }, (_, documentIndex) => ({
+		documentId: `document-${documentIndex}`,
+		documentIndex,
+		sourceKind: "school" as const,
+		chunks: chunkLearningPlanDocumentText(
+			`Arbeitsblatt ${documentIndex}: Lineare Funktionen und Steigung. `.repeat(
+				15,
+			),
+		),
+	}));
+	const selected = selectLearningPlanDocumentChunks({
+		documents,
+		selectionQuery: "Lineare Funktionen",
+	});
+	expect(new Set(selected.map((chunk) => chunk.documentId)).size).toBe(30);
+});

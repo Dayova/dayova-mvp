@@ -101,3 +101,13 @@ Geprüfte aktive Abläufe: Registrierung/Onboarding, Login, Passwortzurücksetzu
 Geschlossene Lücken: Login verlangt gültige E-Mail und nicht leeres Passwort; Passwortzurücksetzung verlangt je Schritt gültige E-Mail, vollständigen Code oder übereinstimmende gültige Passwörter. Das Speichern einer bearbeiteten Lerneinheit verlangt eine Endzeit nach der Startzeit. Auswahlöffner und optionale Schritte bleiben bedienbar. Keine Änderungen an den entfernten Analyse-/Stundenplan-Abläufen.
 
 Die Prüfung erfolgte anhand des Codes und automatisierter Tests; eine vollständige visuelle Prüfung aller Zustände auf dem Gerät ist weiterhin offen.
+
+## Größere Materialpakete und Fotoaufbereitung
+
+Upload-Kapazität pro Lernplan: 30 Dateien, zusammen 100 MiB. Einzelne Dokumente bleiben auf 25 MiB begrenzt; Fotos werden vor der Größenprüfung als JPEG mit Qualität 0,9 und maximal 3508 Pixeln an der längsten Seite aufbereitet. Kleine Bilder werden nicht hochskaliert. Die bestehende 7-MiB-Grenze für ein verarbeitetes Bild bleibt bestehen. Kamera, Mediathek und Bilddateien aus dem Dateiauswahldialog verwenden dieselbe Aufbereitung. Die Mediathek begrenzt die Auswahl auf die verbleibenden Plätze, und Client sowie Backend prüfen das Gesamtbudget.
+
+Die Dokumentabfragen für Upload-Prüfung, Übersichten und KI-Kontext berücksichtigen jetzt ebenfalls die erhöhte Dateizahl. Die KI-Kontextlängengrenze bleibt bestehen: Die Upload-Kapazität garantiert keine vollständige Verarbeitung beliebig umfangreicher Dokumente in einer einzelnen Modellanfrage.
+
+Validierung: 4 Backend-Testdateien / 80 Tests; 2 Jest-Suites / 9 Tests; TypeScript und ESLint bestanden. Enthalten sind parallele Uploads bis zur Kapazitätsgrenze, Abruf aller 30 Dokumente, Kontextauswahl für 30 kurze Arbeitsblätter und Fotoaufbereitung im Hoch-/Querformat. Reale Fotoqualität und ein vollständiger Upload auf dem Gerät sind noch nicht visuell geprüft.
+
+Zusätzlicher UI-Gesamtlauf: nach acht bestandenen Suites mehrere Minuten ohne weitere Ausgabe; beendet, daher kein neuer vollständiger UI-Suite-Nachweis. Die gezielten neun UI-/Fototests sind separat vollständig bestanden. Lokaler Xcode-Workaround: ExpoModulesJSI schreibt den generierten Buildcache nun direkt nach `/tmp/dayova-expo-jsi-build-native`, weil macOS im synchronisierten Dokumente-Ordner Finder-Attribute hinzufügte und die Signatur scheiterte. Diese lokale node_modules-Anpassung gehört nicht zum Quellcode-Diff.

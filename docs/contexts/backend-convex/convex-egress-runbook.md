@@ -47,8 +47,10 @@ from which deleted/expired manual backups could be disproved.
 
 ## Fixed material path
 
-1. Upload registration enforces one shared contract: at most 10 files, 7 MiB
-   per file and 35 MiB in total.
+1. Upload registration enforces one shared contract: at most 30 files, 25 MiB
+   per document, 7 MiB per processed image and 100 MiB in total. The native
+   client prepares photos as JPEG (quality 0.9, longest edge at most 3508 px)
+   before checking their upload size.
 2. The server finalizes the upload, uses authoritative stored bytes, then checks
    the plan total inside the document-insert transaction. Racing uploads cannot
    both cross the boundary.

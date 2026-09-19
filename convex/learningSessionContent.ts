@@ -20,6 +20,7 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
+import { LEARNING_PLAN_MAX_FILE_COUNT } from "./learningPlanUploadPolicy";
 import {
 	getLearningSessionComposition,
 	isLearningSessionCompositionEligible,
@@ -1104,7 +1105,7 @@ export const getSessionGenerationContext = internalQuery({
 			.withIndex("by_learningPlanId", (q) =>
 				q.eq("learningPlanId", session.learningPlanId),
 			)
-			.take(20);
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
 		const answers = await ctx.db
 			.query("learningPlanAnswers")
 			.withIndex("by_learningPlanId", (q) =>

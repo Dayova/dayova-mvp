@@ -1,6 +1,6 @@
-export const LEARNING_PLAN_MAX_FILE_COUNT = 10;
+export const LEARNING_PLAN_MAX_FILE_COUNT = 30;
 export const LEARNING_PLAN_MAX_FILE_BYTES = 25 * 1024 * 1024;
-export const LEARNING_PLAN_MAX_TOTAL_BYTES = 35 * 1024 * 1024;
+export const LEARNING_PLAN_MAX_TOTAL_BYTES = 100 * 1024 * 1024;
 
 export const LEARNING_PLAN_ACCEPTED_FILE_TYPES = [
 	"application/pdf",
