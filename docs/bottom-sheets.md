@@ -5,6 +5,9 @@ subject and exam-type selector.
 
 ## App-owned sheet contract
 
+- The root sheet provider captures the screen safe-area insets above navigation.
+  Sheets cover the native tab bar and must not reserve the tab screen's extra
+  bottom inset; otherwise confirmation text and buttons sit unnecessarily high.
 - App code uses `ConfirmationSheet`, `ActionSheet`, `SelectSheet`, or
   `DayovaSheetFrame`; only the frame, plus `BottomSheetModalProvider` in the
   root layout, imports Gorhom primitives.
