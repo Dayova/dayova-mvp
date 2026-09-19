@@ -72,6 +72,9 @@ const mockRouter = {
 	push: jest.fn(),
 	replace: jest.fn(),
 };
+const mockOpenExternalUrl = jest.fn<(url?: string) => Promise<boolean>>(
+	async () => true,
+);
 const mockUseBackIntent =
 	jest.fn<(enabled: boolean, onBack: () => boolean) => void>();
 const mockStackScreens: Array<Record<string, unknown>> = [];
@@ -414,6 +417,17 @@ jest.mock("~/lib/navigation", () => ({
 		mockUseBackIntent(enabled, onBack),
 }));
 
+jest.mock("~/lib/open-external-url", () => ({
+	openExternalUrl: (url?: string) => mockOpenExternalUrl(url),
+}));
+
+jest.mock("~/lib/runtime-config", () => ({
+	env: {
+		EXPO_PUBLIC_PRIVACY_URL: "https://example.com/privacy",
+		EXPO_PUBLIC_TERMS_URL: "https://example.com/terms",
+	},
+}));
+
 jest.mock("~/lib/theme", () => {
 	const { DAYOVA_DESIGN_SYSTEM: designSystem } = jest.requireActual<
 		typeof import("~/lib/design-system")
@@ -433,6 +447,7 @@ jest.mock("~/lib/theme", () => {
 				systemSubtle: "#F1F7FB",
 				text: "#1A1A1A",
 			},
+			isDark: false,
 		}),
 	};
 });
@@ -454,6 +469,8 @@ describe("LoginScreen", () => {
 		mockResendPasswordResetCode.mockResolvedValue(undefined);
 		mockRouter.replace.mockReset();
 		mockRouter.push.mockReset();
+		mockOpenExternalUrl.mockReset();
+		mockOpenExternalUrl.mockResolvedValue(true);
 		mockStartPasswordReset.mockReset();
 		mockStartPasswordReset.mockResolvedValue(undefined);
 		mockVerifyPasswordResetCode.mockReset();
@@ -479,6 +496,26 @@ describe("LoginScreen", () => {
 		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding");
 	});
 
+	test("opens privacy and terms before registration without claiming privacy acceptance", async () => {
+		const screen = await render(<AuthChoiceScreen />);
+
+		expect(screen.queryByText(/Mit dem Start akzeptierst du/)).toBeNull();
+
+		await fireEvent.press(
+			screen.getByRole("link", { name: "Datenschutzerklärung" }),
+		);
+		expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(
+			"https://example.com/privacy",
+		);
+
+		await fireEvent.press(
+			screen.getByRole("link", { name: "Nutzungsbedingungen" }),
+		);
+		expect(mockOpenExternalUrl).toHaveBeenLastCalledWith(
+			"https://example.com/terms",
+		);
+	});
+
 	test("removes the large-text auth entrance animation when reduced motion is enabled", async () => {
 		mockReducedMotion = true;
 		mockWindowDimensions = {
@@ -492,6 +529,30 @@ describe("LoginScreen", () => {
 		expect(
 			screen.getByTestId("auth-choice-logo-card").props.entering,
 		).toBeUndefined();
+	});
+
+	test("fills the iPad width with large Hugeicons background tiles", async () => {
+		mockWindowDimensions = {
+			fontScale: 1,
+			height: 1194,
+			scale: 2,
+			width: 834,
+		};
+		const screen = await render(<AuthChoiceScreen />);
+
+		expect(screen.getByTestId("auth-choice-background-pattern")).toHaveStyle({
+			width: 834,
+		});
+		const backgroundTiles = screen.getAllByTestId(
+			"auth-choice-background-tile",
+		);
+		expect(backgroundTiles).toHaveLength(7);
+		expect(backgroundTiles[0]?.props.style.width).toBeGreaterThan(300);
+		expect(screen.getAllByTestId("auth-choice-background-icon")[0]).toHaveStyle(
+			{
+				opacity: 0.2,
+			},
+		);
 	});
 
 	test("keeps password recovery reachable from sign-in", async () => {
@@ -539,6 +600,34 @@ describe("LoginScreen", () => {
 
 		const error = await screen.findByRole("alert");
 		expect(error.props.accessibilityLiveRegion).toBe("polite");
+	});
+
+	test("enables login only after both required fields are ready", async () => {
+		const screen = await render(<LoginScreen />);
+		const button = () => screen.getByRole("button", { name: "LOGIN" });
+		expect(button()).toBeDisabled();
+		await fireEvent.changeText(
+			screen.getByLabelText("E-Mail-Adresse"),
+			"learner@example.de",
+		);
+		expect(button()).toBeDisabled();
+		await fireEvent.changeText(screen.getByLabelText("Passwort"), "sicher123");
+		expect(button()).toBeEnabled();
+		await fireEvent.changeText(
+			screen.getByLabelText("E-Mail-Adresse"),
+			"ungültig",
+		);
+		expect(button()).toBeDisabled();
+	});
+	test("enables the reset request only for a valid email", async () => {
+		const screen = await render(<LoginScreen />);
+		await fireEvent.press(screen.getByText("Passwort vergessen?"));
+		expect(screen.getByRole("button", { name: "CODE SENDEN" })).toBeDisabled();
+		await fireEvent.changeText(
+			screen.getByPlaceholderText("max.mustermann@gmail.com"),
+			"learner@example.de",
+		);
+		expect(screen.getByRole("button", { name: "CODE SENDEN" })).toBeEnabled();
 	});
 
 	test("submits the exact sign-in password without trimming valid characters", async () => {
@@ -591,6 +680,21 @@ describe("LoginScreen", () => {
 			"Falls ein Konto für unknown@example.de existiert, haben wir einen sechsstelligen Code gesendet.",
 		);
 		expect(screen.getByLabelText("Bestätigungscode")).toBeOnTheScreen();
+		expect(screen.getByLabelText("Bestätigungscode")).toHaveProp(
+			"keyboardType",
+			"number-pad",
+		);
+		expect(screen.getByLabelText("Bestätigungscode")).toHaveProp(
+			"inputMode",
+			"numeric",
+		);
+		expect(screen.getByLabelText("Bestätigungscode")).toHaveProp(
+			"showSoftInputOnFocus",
+			true,
+		);
+		expect(screen.getByTestId("otp-code-input").props.className).toContain(
+			"max-w-[420px]",
+		);
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Code erneut senden" }),
 		);
@@ -1040,7 +1144,22 @@ describe("OnboardingScreen", () => {
 		mockOnboarding.answers.schoolType = "prefer_not_to_say";
 		mockOnboarding.answers.grade = "9";
 		mockOnboarding.answers.email = "test@example.com";
+		mockOnboarding.introIndex = 0;
 		mockStackScreens.length = 0;
+	});
+
+	test("offers a visible way back from registration and each intro page", async () => {
+		const screen = await render(<OnboardingScreen />);
+
+		await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+		expect(mockRouter.back).toHaveBeenCalledTimes(1);
+
+		mockRouter.back.mockClear();
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+
+		expect(mockOnboarding.setIntroIndex).toHaveBeenLastCalledWith(0);
+		expect(mockRouter.back).not.toHaveBeenCalled();
 	});
 
 	test("keeps the native route gesture only on the onboarding entry step", async () => {
@@ -1067,7 +1186,7 @@ describe("OnboardingScreen", () => {
 			}),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText("Danach 11 kurze, bewusste Schritte · etwa 2 Minuten"),
+			screen.getByText("Danach 6 kurze, bewusste Schritte · etwa 2 Minuten"),
 		).toBeOnTheScreen();
 
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
@@ -1121,12 +1240,12 @@ describe("OnboardingScreen", () => {
 		const screen = await render(<OnboardingStepScreen stepId="name" />);
 
 		expect(screen.getByTestId("onboarding-name-input")).toBeOnTheScreen();
-		expect(screen.getByText("1 von 11")).toBeOnTheScreen();
+		expect(screen.getByText("1 von 6")).toBeOnTheScreen();
 		expect(screen.getByRole("progressbar")).toBeOnTheScreen();
 		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
 
-		expect(mockVisitOnboardingStep).toHaveBeenCalledWith("studyTime");
-		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/studyTime");
+		expect(mockVisitOnboardingStep).toHaveBeenCalledWith("grade");
+		expect(mockRouter.push).toHaveBeenCalledWith("/onboarding/grade");
 	});
 
 	test("keeps intro indicators coupled to live pager scroll progress", async () => {
@@ -1531,9 +1650,6 @@ describe("OnboardingScreen", () => {
 			screen.getByRole("button", { name: "Konto erstellen" }),
 		);
 		expect(mockStageOnboardingRecovery).toHaveBeenCalledWith({
-			dailySchoolTime: "30 min",
-			studyDays: "Montag, Donnerstag, Samstag",
-			learningTime: "16:30",
 			state: "Sachsen",
 			schoolType: "prefer_not_to_say",
 			grade: "9",

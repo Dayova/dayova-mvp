@@ -10,7 +10,11 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
-import { advanceRollingLearningPlan } from "./adaptiveLearningPlan";
+import { assertAccountActive } from "./accountDeletion";
+import {
+	advanceRollingLearningPlan,
+	rescheduleFutureLearningPlanSessions,
+} from "./adaptiveLearningPlan";
 import {
 	type AdaptiveLearningTarget,
 	adaptiveSessionCopy,
@@ -18,15 +22,27 @@ import {
 } from "./adaptiveLearningPlanPolicy";
 import { getBerlinDayKey } from "./dayKeyVariants";
 import { deriveTopicReadiness } from "./diagnosticReadiness";
-import { throwUserFacingError } from "./errors";
+import { logDiagnosticError, throwUserFacingError } from "./errors";
 import {
 	deleteManagedFile,
 	getConfiguredStorageProvider,
 	getR2ConfigOrThrow,
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import { isValidLearningMaterialSize } from "./learningMaterialPolicy";
 import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
+import {
+	clearLearningPlanGenerationProgress,
+	getLearningPlanGenerationProgress,
+	setLearningPlanGenerationProgress,
+} from "./learningPlanGenerationProgressModel";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
+import {
+	getLearningPlanUploadRejectionMessage,
+	LEARNING_PLAN_MAX_FILE_COUNT,
+	type LearningPlanUploadRejectionCode,
+	validateLearningPlanUploadBatch,
+} from "./learningPlanUploadPolicy";
 import {
 	getDefaultPreparationDepth,
 	type PreparationDepth,
@@ -34,11 +50,13 @@ import {
 import { isLearningSessionCompositionEligible } from "./learningSessionComposition";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { alignSessionDurationReferences } from "./learningSessionDurationText";
+import { deriveBehavioralLearningTimeSuggestion } from "./learningTimeBehavior";
 import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
+import { resolveSubjectSelection } from "./personalSubjects";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import {
 	getActiveTimetableLessons,
@@ -51,6 +69,8 @@ const MAX_LEARNING_TIMES = 50;
 const MAX_SCHEDULING_DAY_ENTRIES = 500;
 const MAX_SCHEDULING_LOOKAHEAD_DAYS = 366;
 const MIN_ROLLING_HORIZON_MINUTES = 20;
+const MAX_BEHAVIOR_SESSIONS = 30;
+const BEHAVIOR_SUGGESTION_SNOOZE_MS = 14 * 24 * 60 * 60 * 1_000;
 const MIN_DIAGNOSTIC_QUESTION_COUNT = 5;
 const MAX_DIAGNOSTIC_QUESTION_COUNT = 10;
 // Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
@@ -75,10 +95,25 @@ const contentGenerationStatusValidator = v.union(
 	v.literal("failed"),
 );
 
+const contentGenerationFailureReasonValidator = v.union(
+	v.literal("insufficientMaterial"),
+	v.literal("materialProcessing"),
+	v.literal("schedulingConstraints"),
+	v.literal("generationProcessing"),
+);
+
 const preparationDepthValidator = v.union(
 	v.literal("compact"),
 	v.literal("thorough"),
 	v.literal("intensive"),
+);
+
+const learningPlanUploadRejectionCodeValidator = v.union(
+	v.literal("unsupported_type"),
+	v.literal("empty_file"),
+	v.literal("file_too_large"),
+	v.literal("too_many_files"),
+	v.literal("total_too_large"),
 );
 
 const missedReasonValidator = v.union(
@@ -282,6 +317,8 @@ type PublicDocument = {
 	fileType: string;
 	fileSizeBytes: number;
 	sourceKind: "school" | "external";
+	processingStatus: "queued" | "processing" | "ready" | "failed";
+	processingError?: string;
 };
 
 type PublicAnswer = {
@@ -341,6 +378,7 @@ const requireOwnerTokenIdentifier = async (ctx: QueryCtx) => {
 	if (identity === null) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	return identity.tokenIdentifier;
 };
@@ -350,13 +388,38 @@ const requireOwnerTokenIdentifierForMutation = async (ctx: MutationCtx) => {
 	if (identity === null) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	return identity.tokenIdentifier;
+};
+
+const getOwnerUser = async (
+	ctx: QueryCtx | MutationCtx,
+	ownerTokenIdentifier: string,
+) =>
+	await ctx.db
+		.query("users")
+		.withIndex("by_tokenIdentifier", (q) =>
+			q.eq("tokenIdentifier", ownerTokenIdentifier),
+		)
+		.unique();
+
+const markLearningTimeIntroPromptHandled = async (
+	ctx: MutationCtx,
+	ownerTokenIdentifier: string,
+	handledAt: number,
+) => {
+	const user = await getOwnerUser(ctx, ownerTokenIdentifier);
+	if (!user || user.learningTimeIntroPromptHandledAt !== undefined) return;
+	await ctx.db.patch("users", user._id, {
+		learningTimeIntroPromptHandledAt: handledAt,
+	});
 };
 
 type CreateLearningPlanArgs = {
 	examDayEntryId: Id<"dayEntries">;
 	subject: string;
+	personalSubjectId?: Id<"personalSubjects">;
 	examTypeLabel: string;
 	examDateKey: string;
 	examDateLabel: string;
@@ -382,7 +445,13 @@ const createLearningPlan = async (
 		throwUserFacingError("Ein Lernplan braucht zuerst eine Prüfung.");
 	}
 
-	const subject = args.subject.trim();
+	const resolvedSubject = await resolveSubjectSelection(ctx, {
+		ownerTokenIdentifier,
+		subject: args.subject,
+		personalSubjectId:
+			args.personalSubjectId ?? examEntry.personalSubjectId ?? undefined,
+	});
+	const subject = resolvedSubject.subject;
 	const examTypeLabel = args.examTypeLabel.trim();
 	const topicDescription = args.topicDescription.trim();
 	const notes = args.notes?.trim() ?? "";
@@ -400,6 +469,9 @@ const createLearningPlan = async (
 	const learningPlanId = await ctx.db.insert("learningPlans", {
 		ownerTokenIdentifier,
 		subject,
+		...(resolvedSubject.personalSubjectId
+			? { personalSubjectId: resolvedSubject.personalSubjectId }
+			: {}),
 		examTypeLabel,
 		examDateKey: args.examDateKey,
 		examDateLabel: args.examDateLabel,
@@ -427,6 +499,10 @@ const publicDocument = (
 	fileType: document.fileType,
 	fileSizeBytes: document.fileSizeBytes,
 	sourceKind: document.sourceKind ?? "school",
+	processingStatus: document.processingStatus ?? "queued",
+	...(document.processingStatus === "failed" && document.processingError
+		? { processingError: document.processingError }
+		: {}),
 });
 
 const publicAnswer = (answer: Doc<"learningPlanAnswers">): PublicAnswer => ({
@@ -477,12 +553,10 @@ const invalidateDerivedExamEvidence = async (
 		topicMap: undefined,
 		scopeConfirmedAt: undefined,
 		topicReadiness: undefined,
-		contentGenerationStage: undefined,
-		contentGenerationId: undefined,
-		contentGenerationStartedAt: undefined,
 		status: "draft",
 		updatedAt,
 	});
+	await clearLearningPlanGenerationProgress(ctx, learningPlanId);
 };
 
 const publicSession = (
@@ -524,6 +598,51 @@ const publicSession = (
 	selectionReason: session.selectionReason,
 	adaptationRevision: session.adaptationRevision,
 	sortOrder: session.sortOrder,
+});
+
+type PublicContentGeneration = {
+	stage: "content" | "validating" | "ready" | "failed";
+	startedAt?: number;
+	totalSessionCount: number;
+	readySessionCount: number;
+	failedSessionCount: number;
+};
+
+const publicPlan = (
+	plan: Doc<"learningPlans">,
+	hasLearningTimes: boolean,
+	contentGeneration?: PublicContentGeneration,
+) => ({
+	id: plan._id,
+	subject: plan.subject,
+	examTypeLabel: plan.examTypeLabel,
+	examDateKey: plan.examDateKey,
+	examDateLabel: plan.examDateLabel,
+	...(plan.examTime ? { examTime: plan.examTime } : {}),
+	durationMinutes: plan.durationMinutes,
+	targetStudyMinutes: plan.targetStudyMinutes,
+	preparationDepth:
+		(plan.preparationDepth as PreparationDepth | undefined) ??
+		getDefaultPreparationDepth(plan.examTypeLabel),
+	topicDescription: plan.topicDescription,
+	teacherGuidance: plan.teacherGuidance,
+	notes: plan.notes,
+	status: plan.status,
+	knowledgeQuestions: (plan.knowledgeQuestions ?? []).map(publicQuestion),
+	diagnosticPlacement: plan.diagnosticPlacement,
+	sourceSummary: plan.sourceSummary,
+	topicMap: plan.topicMap ?? [],
+	scopeConfirmedAt: plan.scopeConfirmedAt,
+	topicReadiness: plan.topicReadiness ?? [],
+	insight: plan.insight,
+	planningHint: getCurrentPlanningHint(plan.planningHint, {
+		hasLearningTimes,
+	}),
+	rollingPlanEnabled: plan.rollingPlanEnabled,
+	masteryStatus: plan.masteryStatus,
+	adaptationRevision: plan.adaptationRevision,
+	sessionCompositionVariant: plan.sessionCompositionVariant,
+	...(contentGeneration ? { contentGeneration } : {}),
 });
 
 const getSessionExecutionStatus = (session: Doc<"learningPlanSessions">) =>
@@ -741,6 +860,10 @@ const createSessionDayEntry = async (
 		ownerTokenIdentifier: session.ownerTokenIdentifier,
 		dayKey: session.dateKey,
 		title: getSessionDayEntryTitle(plan, session),
+		subject: plan.subject,
+		...(plan.personalSubjectId
+			? { personalSubjectId: plan.personalSubjectId }
+			: {}),
 		time: session.startTime,
 		kind: "Lernen",
 		notes: getSessionDayEntryNotes(session),
@@ -797,6 +920,8 @@ const syncSessionDayEntry = async (
 	await ctx.db.patch("dayEntries", session.dayEntryId, {
 		dayKey: session.dateKey,
 		title: getSessionDayEntryTitle(plan, session),
+		subject: plan.subject,
+		personalSubjectId: plan.personalSubjectId,
 		time: session.startTime,
 		kind: "Lernen",
 		notes: getSessionDayEntryNotes(session),
@@ -899,6 +1024,7 @@ export const start = mutation({
 	args: {
 		examDayEntryId: v.id("dayEntries"),
 		subject: v.string(),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
@@ -918,6 +1044,7 @@ export const createDraft = mutation({
 	args: {
 		examDayEntryId: v.id("dayEntries"),
 		subject: v.string(),
+		personalSubjectId: v.optional(v.id("personalSubjects")),
 		examTypeLabel: v.string(),
 		examDateKey: v.string(),
 		examDateLabel: v.string(),
@@ -1139,6 +1266,7 @@ export const getSchedulingAvailability = query({
 export const getSnapshot = query({
 	args: {
 		id: v.id("learningPlans"),
+		behaviorSuggestionReferenceTime: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
@@ -1151,7 +1279,7 @@ export const getSnapshot = query({
 			.query("learningPlanDocuments")
 			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
 			.order("asc")
-			.take(20);
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
 		const answers = await ctx.db
 			.query("learningPlanAnswers")
 			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
@@ -1169,7 +1297,56 @@ export const getSnapshot = query({
 			.withIndex("by_ownerTokenIdentifier", (q) =>
 				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
 			)
-			.take(1);
+			.take(MAX_LEARNING_TIMES);
+		const [user, recentSessions] = await Promise.all([
+			getOwnerUser(ctx, ownerTokenIdentifier),
+			ctx.db
+				.query("learningPlanSessions")
+				.withIndex("by_ownerTokenIdentifier", (q) =>
+					q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+				)
+				.order("desc")
+				.take(MAX_BEHAVIOR_SESSIONS),
+		]);
+		const proposedLearningTimes = learningTimes.filter(
+			(learningTime) => learningTime.preferenceStatus === "systemDefault",
+		);
+		const behavioralLearningTimeSuggestion =
+			deriveBehavioralLearningTimeSuggestion({
+				sessions: recentSessions.map((session) => ({
+					dateKey: session.dateKey,
+					startTime: session.startTime,
+					durationMinutes: session.durationMinutes,
+					startedAt: session.startedAt,
+					executionStatus: getSessionExecutionStatus(session),
+					planningStatus: session.planningStatus,
+				})),
+				learningTimes,
+				grade: user?.grade,
+			}) ?? undefined;
+		const behavioralSuggestionIsDismissed = Boolean(
+			behavioralLearningTimeSuggestion &&
+				user?.behavioralLearningTimeSuggestionDismissedFingerprint ===
+					behavioralLearningTimeSuggestion.fingerprint,
+		);
+		const behavioralSuggestionIsSnoozed = Boolean(
+			behavioralLearningTimeSuggestion &&
+				user?.behavioralLearningTimeSuggestionSnoozedFingerprint ===
+					behavioralLearningTimeSuggestion.fingerprint &&
+				user.behavioralLearningTimeSuggestionSnoozedAt !== undefined &&
+				(args.behaviorSuggestionReferenceTime === undefined ||
+					args.behaviorSuggestionReferenceTime -
+						user.behavioralLearningTimeSuggestionSnoozedAt <
+						BEHAVIOR_SUGGESTION_SNOOZE_MS),
+		);
+		const progress = await ctx.db
+			.query("learningPlanGenerationProgress")
+			.withIndex("by_ownerTokenIdentifier_and_learningPlanId", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("learningPlanId", args.id),
+			)
+			.unique();
 		const readySessionCount = sessions.filter(
 			(session) =>
 				session.planningStatus !== "provisional" &&
@@ -1212,21 +1389,200 @@ export const getSnapshot = query({
 					hasLearningTimes: learningTimes.length > 0,
 				}),
 				rollingPlanEnabled: plan.rollingPlanEnabled,
+				masteryStatus:
+					plan.masteryStatus ??
+					(plan.rollingPlanEnabled ? ("learning" as const) : undefined),
 				adaptationRevision: plan.adaptationRevision,
 				sessionCompositionVariant: plan.sessionCompositionVariant,
-				contentGeneration: plan.contentGenerationStage
+				contentGeneration: progress?.stage
 					? {
-							stage: plan.contentGenerationStage,
-							startedAt: plan.contentGenerationStartedAt,
+							stage: progress.stage,
+							startedAt: progress.startedAt,
+							failureReason: progress.failureReason,
 							totalSessionCount: committedSessionCount,
 							readySessionCount,
 							failedSessionCount,
 						}
 					: undefined,
+				learningTimeSuggestion:
+					proposedLearningTimes.length > 0
+						? {
+								entries: proposedLearningTimes.map((learningTime) => ({
+									dayOfWeek: learningTime.dayOfWeek,
+									startTime: learningTime.startTime,
+									endTime: learningTime.endTime,
+								})),
+								initialPromptDismissed:
+									plan.initialLearningTimePromptDismissedAt !== undefined ||
+									user?.learningTimeIntroPromptHandledAt !== undefined,
+								postDiagnosticReminderDismissed:
+									plan.postDiagnosticLearningTimeReminderDismissedAt !==
+									undefined,
+							}
+						: undefined,
+				behavioralLearningTimeSuggestion:
+					behavioralLearningTimeSuggestion &&
+					!behavioralSuggestionIsDismissed &&
+					!behavioralSuggestionIsSnoozed
+						? behavioralLearningTimeSuggestion
+						: undefined,
 			},
 			documents: documents.map(publicDocument),
 			answers: answers.map(publicAnswer),
 			sessions: sessions.map(publicSession),
+		};
+	},
+});
+
+export const getPlanDetails = query({
+	args: { id: v.id("learningPlans") },
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const plan = await ctx.db.get("learningPlans", args.id);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier)
+			return null;
+		const learningTimes = await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(MAX_LEARNING_TIMES);
+		const user = await getOwnerUser(ctx, ownerTokenIdentifier);
+		const proposed = learningTimes.filter(
+			(time) => time.preferenceStatus === "systemDefault",
+		);
+		return {
+			...publicPlan(plan, learningTimes.length > 0),
+			learningTimeSuggestion:
+				proposed.length > 0
+					? {
+							entries: proposed.map(({ dayOfWeek, startTime, endTime }) => ({
+								dayOfWeek,
+								startTime,
+								endTime,
+							})),
+							initialPromptDismissed:
+								plan.initialLearningTimePromptDismissedAt !== undefined ||
+								user?.learningTimeIntroPromptHandledAt !== undefined,
+							postDiagnosticReminderDismissed:
+								plan.postDiagnosticLearningTimeReminderDismissedAt !==
+								undefined,
+						}
+					: undefined,
+		};
+	},
+});
+
+export const listDocuments = query({
+	args: { learningPlanId: v.id("learningPlans") },
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const documents = await ctx.db
+			.query("learningPlanDocuments")
+			.withIndex("by_ownerTokenIdentifier_and_learningPlanId", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("learningPlanId", args.learningPlanId),
+			)
+			.order("asc")
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
+		return documents.map(publicDocument);
+	},
+});
+
+export const listAnswers = query({
+	args: { learningPlanId: v.id("learningPlans") },
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const answers = await ctx.db
+			.query("learningPlanAnswers")
+			.withIndex("by_ownerTokenIdentifier_and_learningPlanId", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("learningPlanId", args.learningPlanId),
+			)
+			.order("asc")
+			.take(20);
+		return answers.map(publicAnswer);
+	},
+});
+
+export const listSessions = query({
+	args: { learningPlanId: v.id("learningPlans") },
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex(
+				"by_ownerTokenIdentifier_and_learningPlanId_and_sortOrder",
+				(q) =>
+					q
+						.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+						.eq("learningPlanId", args.learningPlanId),
+			)
+			.order("asc")
+			.take(50);
+		return sessions.map(publicSession);
+	},
+});
+
+export const getGenerationProgress = query({
+	args: { learningPlanId: v.id("learningPlans") },
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const progress = await ctx.db
+			.query("learningPlanGenerationProgress")
+			.withIndex("by_ownerTokenIdentifier_and_learningPlanId", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("learningPlanId", args.learningPlanId),
+			)
+			.unique();
+		if (!progress) return null;
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex(
+				"by_ownerTokenIdentifier_and_learningPlanId_and_sortOrder",
+				(q) =>
+					q
+						.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+						.eq("learningPlanId", args.learningPlanId),
+			)
+			.take(50);
+		const committedSessions = sessions.filter(isContentCommittedSession);
+		return {
+			sessionCount: sessions.length,
+			contentGeneration: {
+				stage: progress.stage,
+				failureReason: progress.failureReason,
+				startedAt: progress.startedAt,
+				totalSessionCount: committedSessions.length,
+				readySessionCount: committedSessions.filter(
+					(session) => session.contentGenerationStatus === "ready",
+				).length,
+				failedSessionCount: committedSessions.filter(
+					(session) => session.contentGenerationStatus === "failed",
+				).length,
+			},
+		};
+	},
+});
+
+export const getSetupSnapshot = query({
+	args: { id: v.id("learningPlans") },
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const plan = await ctx.db.get("learningPlans", args.id);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier)
+			return null;
+		const documents = await ctx.db
+			.query("learningPlanDocuments")
+			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
+			.order("asc")
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
+		return {
+			plan: { id: plan._id, topicDescription: plan.topicDescription },
+			documents: documents.map(publicDocument),
 		};
 	},
 });
@@ -1272,7 +1628,7 @@ export const listOverview = query({
 							.withIndex("by_learningPlanId", (q) =>
 								q.eq("learningPlanId", plan._id),
 							)
-							.take(20)
+							.take(LEARNING_PLAN_MAX_FILE_COUNT + 1)
 					: [];
 			const needsSchoolMaterial =
 				plan.status === "draft" &&
@@ -1294,6 +1650,9 @@ export const listOverview = query({
 			).length;
 			const hasOpenRollingWindow =
 				plan.rollingPlanEnabled === true && upcomingSessionCount > 0;
+			const masteryStatus =
+				plan.masteryStatus ??
+				(plan.rollingPlanEnabled ? ("learning" as const) : undefined);
 			const currentSession =
 				sessions.find(
 					(session) =>
@@ -1325,9 +1684,9 @@ export const listOverview = query({
 						)
 					: 0;
 			const progressPercent = plan.rollingPlanEnabled
-				? hasOpenRollingWindow
-					? Math.min(99, rollingProgressPercent)
-					: rollingProgressPercent
+				? masteryStatus === "mastered"
+					? 100
+					: Math.min(99, rollingProgressPercent)
 				: sessions.length > 0
 					? Math.round((completedCount / sessions.length) * 100)
 					: 0;
@@ -1384,6 +1743,7 @@ export const listOverview = query({
 				sessionCount: sessions.length,
 				upcomingSessionCount,
 				rollingPlanEnabled: plan.rollingPlanEnabled === true,
+				masteryStatus,
 				hasOpenRollingWindow,
 				examDateKey: plan.examDateKey,
 				examDateLabel: plan.examDateLabel,
@@ -1487,6 +1847,7 @@ export const saveKnowledgeAnswer = mutation({
 			}),
 			updatedAt: now,
 		});
+		await markLearningTimeIntroPromptHandled(ctx, ownerTokenIdentifier, now);
 		return answerId;
 	},
 });
@@ -1523,6 +1884,7 @@ export const getUploadRegistrationContext = internalQuery({
 		if (identity === null) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
@@ -1547,17 +1909,65 @@ export const storeUploadedDocument = internalMutation({
 		fileSizeBytes: v.number(),
 		sourceKind: v.union(v.literal("school"), v.literal("external")),
 	},
+	returns: v.union(
+		v.object({
+			status: v.literal("stored"),
+			documentId: v.id("learningPlanDocuments"),
+		}),
+		v.object({
+			status: v.literal("rejected"),
+			code: learningPlanUploadRejectionCodeValidator,
+			existingFileCount: v.number(),
+			existingTotalBytes: v.number(),
+		}),
+	),
 	handler: async (ctx, args) => {
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== args.ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		const existingDocuments = await ctx.db
+			.query("learningPlanDocuments")
+			.withIndex("by_learningPlanId", (q) =>
+				q.eq("learningPlanId", args.learningPlanId),
+			)
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
+		const uploadValidation = validateLearningPlanUploadBatch(
+			existingDocuments,
+			[
+				{
+					name: args.fileName,
+					size: args.fileSizeBytes,
+					type: args.fileType,
+				},
+			],
+		);
+		if (!uploadValidation.valid) {
+			return {
+				status: "rejected" as const,
+				code: uploadValidation.code,
+				existingFileCount: existingDocuments.length,
+				existingTotalBytes: existingDocuments.reduce(
+					(total, document) => total + document.fileSizeBytes,
+					0,
+				),
+			};
+		}
 		const now = Date.now();
 		const documentId = await ctx.db.insert("learningPlanDocuments", {
 			...args,
+			processingStatus: "queued",
 			createdAt: now,
 		});
-		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (plan && plan.status !== "accepted" && args.sourceKind === "school") {
 			await invalidateDerivedExamEvidence(ctx, args.learningPlanId, now);
 		}
-		return documentId;
+		await ctx.scheduler.runAfter(
+			0,
+			internal.learningPlanAi.processUploadedDocument,
+			{ documentId },
+		);
+		return { status: "stored" as const, documentId };
 	},
 });
 
@@ -1582,6 +1992,10 @@ export const registerUploadedDocument = action({
 			},
 		);
 
+		if (!isValidLearningMaterialSize(args.fileSizeBytes)) {
+			throwUserFacingError("Die Datei ist leer oder zu groß (maximal 10 MiB).");
+		}
+
 		const finalizedUpload = await ctx.runMutation(
 			components.convexFilesControl.upload.finalizeUpload,
 			{
@@ -1595,16 +2009,91 @@ export const registerUploadedDocument = action({
 			throwUserFacingError("Upload konnte nicht verifiziert werden.");
 		}
 
-		return await ctx.runMutation(internal.learningPlans.storeUploadedDocument, {
-			ownerTokenIdentifier: context.ownerTokenIdentifier,
-			learningPlanId: args.learningPlanId,
-			storageId: args.storageId,
-			storageProvider: finalizedUpload.storageProvider,
-			fileName: args.fileName,
-			fileType: args.fileType || "application/octet-stream",
-			fileSizeBytes: finalizedUpload.metadata?.size ?? args.fileSizeBytes,
-			sourceKind: args.sourceKind,
-		});
+		const finalizedFileSize =
+			finalizedUpload.metadata?.size ?? args.fileSizeBytes;
+		let storeResult:
+			| { status: "stored"; documentId: Id<"learningPlanDocuments"> }
+			| {
+					status: "rejected";
+					code: LearningPlanUploadRejectionCode;
+					existingFileCount: number;
+					existingTotalBytes: number;
+			  };
+		try {
+			storeResult = await ctx.runMutation(
+				internal.learningPlans.storeUploadedDocument,
+				{
+					ownerTokenIdentifier: context.ownerTokenIdentifier,
+					learningPlanId: args.learningPlanId,
+					storageId: args.storageId,
+					storageProvider: finalizedUpload.storageProvider,
+					fileName: args.fileName,
+					fileType: args.fileType || "application/octet-stream",
+					fileSizeBytes: finalizedFileSize,
+					sourceKind: args.sourceKind,
+				},
+			);
+		} catch (error) {
+			logDiagnosticError("learningPlans.uploadRejected", error, {
+				learningPlanId: args.learningPlanId,
+				storageProvider: finalizedUpload.storageProvider,
+				fileSizeBytes: finalizedFileSize,
+			});
+			try {
+				await deleteManagedFile(ctx, {
+					storageId: args.storageId,
+					storageProvider: finalizedUpload.storageProvider,
+				});
+			} catch (cleanupError) {
+				logDiagnosticError(
+					"learningPlans.rejectedUploadCleanup",
+					cleanupError,
+					{
+						learningPlanId: args.learningPlanId,
+						storageProvider: finalizedUpload.storageProvider,
+						fileSizeBytes: finalizedFileSize,
+					},
+				);
+			}
+			throw error;
+		}
+
+		if (storeResult.status === "stored") return storeResult.documentId;
+		try {
+			await ctx.runMutation(
+				internal.learningPlanUploadTelemetry.recordRejection,
+				{
+					ownerTokenIdentifier: context.ownerTokenIdentifier,
+					learningPlanId: args.learningPlanId,
+					fileSizeBytes: finalizedFileSize,
+					fileType: args.fileType || "application/octet-stream",
+					reason: storeResult.code,
+					existingFileCount: storeResult.existingFileCount,
+					existingTotalBytes: storeResult.existingTotalBytes,
+				},
+			);
+		} catch (telemetryError) {
+			logDiagnosticError(
+				"learningPlans.uploadRejectionTelemetry",
+				telemetryError,
+				{ learningPlanId: args.learningPlanId },
+			);
+		}
+		try {
+			await deleteManagedFile(ctx, {
+				storageId: args.storageId,
+				storageProvider: finalizedUpload.storageProvider,
+			});
+		} catch (cleanupError) {
+			logDiagnosticError("learningPlans.rejectedUploadCleanup", cleanupError, {
+				learningPlanId: args.learningPlanId,
+				storageProvider: finalizedUpload.storageProvider,
+				fileSizeBytes: finalizedFileSize,
+			});
+		}
+		throwUserFacingError(
+			getLearningPlanUploadRejectionMessage(storeResult.code),
+		);
 	},
 });
 
@@ -1625,6 +2114,11 @@ export const removeDocument = mutation({
 			storageProvider: document.storageProvider,
 		});
 		await ctx.db.delete("learningPlanDocuments", args.id);
+		await ctx.scheduler.runAfter(
+			0,
+			internal.learningPlanDocumentProcessing.removeByDocument,
+			{ documentId: args.id },
+		);
 		const plan = await ctx.db.get("learningPlans", document.learningPlanId);
 		if (
 			plan &&
@@ -1672,14 +2166,6 @@ export const removePlan = mutation({
 		for (const answer of answers) {
 			await ctx.db.delete("learningPlanAnswers", answer._id);
 		}
-		const aiUsage = await ctx.db
-			.query("learningPlanAiUsage")
-			.withIndex("by_learningPlanId", (q) => q.eq("learningPlanId", args.id))
-			.take(1_000);
-		for (const usage of aiUsage) {
-			await ctx.db.delete("learningPlanAiUsage", usage._id);
-		}
-
 		const sessions = await ctx.db
 			.query("learningPlanSessions")
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
@@ -1708,35 +2194,55 @@ export const removePlan = mutation({
 
 		const localSchedules = await ctx.db
 			.query("localNotificationSchedules")
-			.withIndex("by_ownerTokenIdentifier_and_expiresAt", (q) =>
-				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			.withIndex("by_ownerTokenIdentifier_and_relatedLearningPlanId", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("relatedLearningPlanId", args.id),
 			)
 			.take(500);
 		for (const schedule of localSchedules) {
-			if (schedule.relatedLearningPlanId === args.id) {
-				await ctx.db.delete("localNotificationSchedules", schedule._id);
-			}
+			await ctx.db.delete("localNotificationSchedules", schedule._id);
 		}
 
 		const notificationHistory = await ctx.db
 			.query("notificationHistory")
-			.withIndex("by_ownerTokenIdentifier_and_createdAt", (q) =>
-				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			.withIndex(
+				"by_ownerTokenIdentifier_and_relatedLearningPlanId_and_createdAt",
+				(q) =>
+					q
+						.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+						.eq("relatedLearningPlanId", args.id),
 			)
 			.take(500);
 		const now = Date.now();
 		for (const notification of notificationHistory) {
-			if (
-				notification.relatedLearningPlanId === args.id &&
-				notification.deletedAt === undefined
-			) {
+			if (notification.deletedAt === undefined) {
 				await ctx.db.patch("notificationHistory", notification._id, {
 					deletedAt: now,
 				});
 			}
 		}
 
+		await clearLearningPlanGenerationProgress(ctx, args.id);
 		await ctx.db.delete("learningPlans", args.id);
+		await ctx.scheduler.runAfter(
+			0,
+			internal.learningPlanDocumentProcessing.removeByPlan,
+			{ learningPlanId: args.id },
+		);
+		await ctx.scheduler.runAfter(0, internal.learningPlanAiUsage.removeByPlan, {
+			learningPlanId: args.id,
+		});
+		await ctx.scheduler.runAfter(
+			0,
+			internal.learningPlanAiTransfers.removeByPlan,
+			{ learningPlanId: args.id },
+		);
+		await ctx.scheduler.runAfter(
+			0,
+			internal.learningPlanUploadTelemetry.removeByPlan,
+			{ learningPlanId: args.id },
+		);
 		return args.id;
 	},
 });
@@ -1750,6 +2256,7 @@ export const getAiContext = internalQuery({
 		if (identity === null) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
@@ -1761,7 +2268,7 @@ export const getAiContext = internalQuery({
 			.withIndex("by_learningPlanId", (q) =>
 				q.eq("learningPlanId", args.learningPlanId),
 			)
-			.take(20);
+			.take(LEARNING_PLAN_MAX_FILE_COUNT + 1);
 		const learningTimes = await ctx.db
 			.query("userLearningTimes")
 			.withIndex("by_ownerTokenIdentifier", (q) =>
@@ -1792,6 +2299,7 @@ export const getStoredKnowledgeAnswers = internalQuery({
 		if (identity === null) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== identity.tokenIdentifier) {
@@ -1873,12 +2381,10 @@ export const storeKnowledgeQuestions = internalMutation({
 			sourceSummary: normalizeGeneratedGermanText(args.sourceSummary),
 			topicMap: topics,
 			scopeConfirmedAt: undefined,
-			contentGenerationStage: undefined,
-			contentGenerationId: undefined,
-			contentGenerationStartedAt: undefined,
 			status: "questionsReady",
 			updatedAt: Date.now(),
 		});
+		await clearLearningPlanGenerationProgress(ctx, args.learningPlanId);
 	},
 });
 
@@ -1903,20 +2409,24 @@ export const beginContentGeneration = internalMutation({
 			throwUserFacingError("Bestätige zuerst den erkannten Prüfungsstoff.");
 		}
 		const now = Date.now();
+		const progress = await getLearningPlanGenerationProgress(
+			ctx,
+			args.learningPlanId,
+		);
 		if (
-			plan.contentGenerationId &&
-			plan.contentGenerationStartedAt &&
-			now - plan.contentGenerationStartedAt < STALE_CONTENT_GENERATION_MS &&
-			plan.contentGenerationStage === "content"
+			progress?.generationId &&
+			progress.startedAt &&
+			now - progress.startedAt < STALE_CONTENT_GENERATION_MS &&
+			progress.stage === "content"
 		) {
 			throwUserFacingError("Dieser Lernplan wird bereits erstellt.");
 		}
-
-		await ctx.db.patch("learningPlans", args.learningPlanId, {
-			status: "questionsReady",
-			contentGenerationStage: "content",
-			contentGenerationId: args.generationId,
-			contentGenerationStartedAt: now,
+		await setLearningPlanGenerationProgress(ctx, {
+			ownerTokenIdentifier,
+			learningPlanId: args.learningPlanId,
+			stage: "content",
+			generationId: args.generationId,
+			startedAt: now,
 			updatedAt: now,
 		});
 		return now;
@@ -1927,15 +2437,20 @@ export const clearEmptyContentGeneration = internalMutation({
 	args: {
 		learningPlanId: v.id("learningPlans"),
 		generationId: v.string(),
+		failureReason: contentGenerationFailureReasonValidator,
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
 			await requireOwnerTokenIdentifierForMutation(ctx);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		const progress = await getLearningPlanGenerationProgress(
+			ctx,
+			args.learningPlanId,
+		);
 		if (
 			!plan ||
 			plan.ownerTokenIdentifier !== ownerTokenIdentifier ||
-			plan.contentGenerationId !== args.generationId
+			progress?.generationId !== args.generationId
 		) {
 			return false;
 		}
@@ -1947,11 +2462,14 @@ export const clearEmptyContentGeneration = internalMutation({
 			.take(1);
 		if (sessions.length > 0) return false;
 
-		await ctx.db.patch("learningPlans", args.learningPlanId, {
-			contentGenerationStage: "failed",
-			contentGenerationId: undefined,
-			contentGenerationStartedAt: Date.now(),
-			updatedAt: Date.now(),
+		const failedAt = Date.now();
+		await setLearningPlanGenerationProgress(ctx, {
+			ownerTokenIdentifier,
+			learningPlanId: args.learningPlanId,
+			stage: "failed",
+			startedAt: failedAt,
+			updatedAt: failedAt,
+			failureReason: args.failureReason,
 		});
 		return true;
 	},
@@ -1974,7 +2492,11 @@ export const replaceGeneratedSessions = internalMutation({
 	handler: async (ctx, args) => {
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan) throwUserFacingError("Lernplan nicht gefunden.");
-		if (args.generationId && plan.contentGenerationId !== args.generationId) {
+		const progress = await getLearningPlanGenerationProgress(
+			ctx,
+			args.learningPlanId,
+		);
+		if (args.generationId && progress?.generationId !== args.generationId) {
 			throwUserFacingError(
 				"Diese Lernplan-Erstellung wurde durch einen neueren Versuch ersetzt.",
 			);
@@ -2208,14 +2730,24 @@ export const replaceGeneratedSessions = internalMutation({
 			sourceSummary: normalizedSourceSummary,
 			insight: normalizedInsight,
 			rollingPlanEnabled: rollingWindow,
+			masteryStatus: rollingWindow ? "learning" : undefined,
 			adaptationRevision,
 			sessionCompositionVariant: args.sessionCompositionVariant ?? "split",
 			status: args.deferReadyUntilContent ? "questionsReady" : "generated",
-			contentGenerationStage: args.deferReadyUntilContent
-				? "content"
-				: undefined,
 			updatedAt: now,
 		});
+		if (args.deferReadyUntilContent) {
+			await setLearningPlanGenerationProgress(ctx, {
+				ownerTokenIdentifier: plan.ownerTokenIdentifier,
+				learningPlanId: args.learningPlanId,
+				stage: "content",
+				generationId: args.generationId,
+				startedAt: progress?.startedAt,
+				updatedAt: now,
+			});
+		} else {
+			await clearLearningPlanGenerationProgress(ctx, args.learningPlanId);
+		}
 
 		return args.deferReadyUntilContent
 			? { sessionIds, contentSessionIds }
@@ -2296,7 +2828,11 @@ export const finalizeContentGeneration = internalMutation({
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
 		}
-		if (args.generationId && plan.contentGenerationId !== args.generationId) {
+		const progress = await getLearningPlanGenerationProgress(
+			ctx,
+			args.learningPlanId,
+		);
+		if (args.generationId && progress?.generationId !== args.generationId) {
 			throwUserFacingError(
 				"Diese Lernplan-Erstellung wurde durch einen neueren Versuch ersetzt.",
 			);
@@ -2318,25 +2854,36 @@ export const finalizeContentGeneration = internalMutation({
 			committedSessions.length > 0 &&
 			readySessionCount === committedSessions.length;
 
-		await ctx.db.patch("learningPlans", args.learningPlanId, {
-			status:
-				plan.status === "accepted"
-					? "accepted"
-					: isReady
-						? "generated"
-						: "questionsReady",
-			contentGenerationStage: isReady
-				? "ready"
+		const updatedAt = Date.now();
+		const stage = isReady
+			? ("ready" as const)
+			: failedSessionCount > 0
+				? ("failed" as const)
+				: ("content" as const);
+		const nextStatus =
+			plan.status === "accepted"
+				? "accepted"
+				: isReady
+					? "generated"
+					: "questionsReady";
+		if (nextStatus !== plan.status) {
+			await ctx.db.patch("learningPlans", args.learningPlanId, {
+				status: nextStatus,
+				updatedAt,
+			});
+		}
+		await setLearningPlanGenerationProgress(ctx, {
+			ownerTokenIdentifier,
+			learningPlanId: args.learningPlanId,
+			stage,
+			generationId: isReady ? undefined : progress?.generationId,
+			startedAt: isReady ? undefined : progress?.startedAt,
+			updatedAt,
+			failureReason: isReady
+				? undefined
 				: failedSessionCount > 0
-					? "failed"
-					: "content",
-			...(isReady
-				? {
-						contentGenerationId: undefined,
-						contentGenerationStartedAt: undefined,
-					}
-				: {}),
-			updatedAt: Date.now(),
+					? "generationProcessing"
+					: progress?.failureReason,
 		});
 		return { readySessionCount, failedSessionCount, isReady };
 	},
@@ -2354,10 +2901,15 @@ export const claimIncompleteContentGenerationSessions = internalMutation({
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
 		}
+		const progress = await getLearningPlanGenerationProgress(
+			ctx,
+			args.learningPlanId,
+		);
 		if (
-			plan.contentGenerationStage === "content" &&
-			plan.contentGenerationStartedAt &&
-			Date.now() - plan.contentGenerationStartedAt < STALE_CONTENT_GENERATION_MS
+			progress?.generationId &&
+			progress.stage === "content" &&
+			progress.startedAt &&
+			Date.now() - progress.startedAt < STALE_CONTENT_GENERATION_MS
 		) {
 			throwUserFacingError("Dieser Lernplan wird bereits erstellt.");
 		}
@@ -2376,11 +2928,18 @@ export const claimIncompleteContentGenerationSessions = internalMutation({
 			)
 			.map((session) => session._id);
 		const now = Date.now();
-		await ctx.db.patch("learningPlans", args.learningPlanId, {
-			status: "questionsReady",
-			contentGenerationStage: "content",
-			contentGenerationId: args.generationId,
-			contentGenerationStartedAt: now,
+		if (plan.status !== "questionsReady") {
+			await ctx.db.patch("learningPlans", args.learningPlanId, {
+				status: "questionsReady",
+				updatedAt: now,
+			});
+		}
+		await setLearningPlanGenerationProgress(ctx, {
+			ownerTokenIdentifier,
+			learningPlanId: args.learningPlanId,
+			stage: "content",
+			generationId: args.generationId,
+			startedAt: now,
 			updatedAt: now,
 		});
 		return sessionIds;
@@ -2399,14 +2958,27 @@ export const markContentGenerationClaimFailed = internalMutation({
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
 		}
-		if (plan.contentGenerationId !== args.generationId) return false;
+		const progress = await getLearningPlanGenerationProgress(
+			ctx,
+			args.learningPlanId,
+		);
+		if (progress?.generationId !== args.generationId) return false;
 
-		await ctx.db.patch("learningPlans", args.learningPlanId, {
-			status: plan.status === "accepted" ? "accepted" : "questionsReady",
-			contentGenerationStage: "failed",
-			contentGenerationId: undefined,
-			contentGenerationStartedAt: undefined,
-			updatedAt: Date.now(),
+		const failedAt = Date.now();
+		const nextStatus =
+			plan.status === "accepted" ? "accepted" : "questionsReady";
+		if (nextStatus !== plan.status) {
+			await ctx.db.patch("learningPlans", args.learningPlanId, {
+				status: nextStatus,
+				updatedAt: failedAt,
+			});
+		}
+		await setLearningPlanGenerationProgress(ctx, {
+			ownerTokenIdentifier,
+			learningPlanId: args.learningPlanId,
+			stage: "failed",
+			updatedAt: failedAt,
+			failureReason: "generationProcessing",
 		});
 		return true;
 	},
@@ -2470,10 +3042,19 @@ export const updateSession = mutation({
 			updatedAt: Date.now(),
 		});
 		if (contentInvalidated) {
-			await ctx.db.patch("learningPlans", plan._id, {
-				...(plan.status === "accepted" ? {} : { status: "questionsReady" }),
-				contentGenerationStage: "content",
-				updatedAt: Date.now(),
+			const updatedAt = Date.now();
+			if (plan.status !== "accepted" && plan.status !== "questionsReady") {
+				await ctx.db.patch("learningPlans", plan._id, {
+					status: "questionsReady",
+					updatedAt,
+				});
+			}
+			await setLearningPlanGenerationProgress(ctx, {
+				ownerTokenIdentifier,
+				learningPlanId: plan._id,
+				stage: "content",
+				startedAt: updatedAt,
+				updatedAt,
 			});
 		}
 		const updatedSession = await ctx.db.get("learningPlanSessions", args.id);
@@ -2563,8 +3144,13 @@ export const addSession = mutation({
 			await syncSessionDayEntry(ctx, plan, createdSession);
 		}
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
-			contentGenerationStage: "content",
-			contentGenerationStartedAt: now,
+			updatedAt: now,
+		});
+		await setLearningPlanGenerationProgress(ctx, {
+			ownerTokenIdentifier,
+			learningPlanId: args.learningPlanId,
+			stage: "content",
+			startedAt: now,
 			updatedAt: now,
 		});
 		return sessionId;
@@ -2612,6 +3198,141 @@ const advanceOwnedRollingLearningPlan = (
 		clearSession: clearSessionDayEntry,
 		syncSession: syncSessionDayEntry,
 	});
+
+export const rescheduleAfterLearningTimesChanged = internalMutation({
+	args: {},
+	handler: async (ctx) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const acceptedPlans = await ctx.db
+			.query("learningPlans")
+			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("status", "accepted"),
+			)
+			.order("desc")
+			.take(50);
+		const generatedPlans = await ctx.db
+			.query("learningPlans")
+			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
+				q
+					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+					.eq("status", "generated"),
+			)
+			.order("desc")
+			.take(50);
+		let rescheduledCount = 0;
+		let unscheduledCount = 0;
+		for (const plan of [...acceptedPlans, ...generatedPlans]) {
+			const result = await rescheduleFutureLearningPlanSessions(ctx, plan, {
+				clearSession: clearSessionDayEntry,
+				syncSession: syncSessionDayEntry,
+			});
+			rescheduledCount += result.rescheduledCount;
+			unscheduledCount += result.unscheduledCount;
+		}
+		return { rescheduledCount, unscheduledCount };
+	},
+});
+
+export const ensureNextRepeat = mutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+	},
+	returns: v.object({
+		status: v.union(
+			v.literal("notAdaptive"),
+			v.literal("scheduled"),
+			v.literal("mastered"),
+			v.literal("needsLearningTime"),
+		),
+		sessionId: v.union(v.id("learningPlanSessions"), v.null()),
+	}),
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (!plan.rollingPlanEnabled || plan.status !== "accepted") {
+			return { status: "notAdaptive" as const, sessionId: null };
+		}
+
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", args.learningPlanId),
+			)
+			.order("asc")
+			.take(50);
+		const openCommittedSession = sessions.find(
+			(session) =>
+				session.planningStatus !== "provisional" &&
+				["notStarted", "started"].includes(getSessionExecutionStatus(session)),
+		);
+		if (openCommittedSession) {
+			return {
+				status: "scheduled" as const,
+				sessionId: openCommittedSession._id,
+			};
+		}
+
+		const update = await advanceOwnedRollingLearningPlan(ctx, plan);
+		if (update?.committedSessionId) {
+			return {
+				status: "scheduled" as const,
+				sessionId: update.committedSessionId,
+			};
+		}
+
+		const updatedPlan = await ctx.db.get("learningPlans", args.learningPlanId);
+		return {
+			status:
+				updatedPlan?.masteryStatus === "mastered"
+					? ("mastered" as const)
+					: ("needsLearningTime" as const),
+			sessionId: null,
+		};
+	},
+});
+
+export const restoreNextSession = mutation({
+	args: { learningPlanId: v.id("learningPlans") },
+	returns: v.boolean(),
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (plan.status !== "accepted" || !plan.rollingPlanEnabled) return false;
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", plan._id),
+			)
+			.order("asc")
+			.take(51);
+		// The adaptive planner currently supports at most 50 sessions. Do not
+		// repair from a truncated history or create duplicate unfinished work.
+		if (sessions.length >= 50) return false;
+		if (
+			sessions.some((session) =>
+				["notStarted", "started"].includes(getSessionExecutionStatus(session)),
+			)
+		)
+			return true;
+		const lastSession = sessions.at(-1);
+		if (!lastSession || getSessionExecutionStatus(lastSession) !== "completed")
+			return false;
+		const result = await advanceOwnedRollingLearningPlan(ctx, plan);
+		return Boolean(result?.committedSessionId);
+	},
+});
+
 export const startSession = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
@@ -2847,9 +3568,14 @@ export const adjustMissedSession = mutation({
 			await syncSessionDayEntry(ctx, plan, newSession);
 		}
 		if (plan.rollingPlanEnabled) {
-			await ctx.db.patch("learningPlans", plan._id, {
-				contentGenerationStage: isDiagnosticRecovery ? "ready" : "content",
-				contentGenerationStartedAt: isDiagnosticRecovery ? undefined : now,
+			const stage = isDiagnosticRecovery
+				? ("ready" as const)
+				: ("content" as const);
+			await setLearningPlanGenerationProgress(ctx, {
+				ownerTokenIdentifier: plan.ownerTokenIdentifier,
+				learningPlanId: plan._id,
+				stage,
+				startedAt: isDiagnosticRecovery ? undefined : now,
 				updatedAt: now,
 			});
 		}
@@ -2951,7 +3677,6 @@ export const acceptPlan = mutation({
 			);
 		}
 		if (
-			plan.contentGenerationStage &&
 			sessions.some(
 				(session) =>
 					session.planningStatus !== "provisional" &&
@@ -2971,6 +3696,10 @@ export const acceptPlan = mutation({
 				ownerTokenIdentifier,
 				dayKey: plan.examDateKey,
 				title: `${plan.subject} ${plan.examTypeLabel}`,
+				subject: plan.subject,
+				...(plan.personalSubjectId
+					? { personalSubjectId: plan.personalSubjectId }
+					: {}),
 				kind: "Leistungskontrolle",
 				plannedDateLabel: plan.examDateLabel,
 				durationMinutes: plan.durationMinutes,
@@ -2989,9 +3718,41 @@ export const acceptPlan = mutation({
 			status: "accepted",
 			examDayEntryId,
 			acceptedAt: now,
+			initialLearningTimePromptDismissedAt:
+				plan.initialLearningTimePromptDismissedAt ?? now,
 			updatedAt: now,
 		});
 
 		return sessions[0]?.dateKey ?? plan.examDateKey;
+	},
+});
+
+export const dismissLearningTimePrompt = mutation({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		kind: v.union(v.literal("initial"), v.literal("postDiagnostic")),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier =
+			await requireOwnerTokenIdentifierForMutation(ctx);
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		const dismissedAt = Date.now();
+		await ctx.db.patch("learningPlans", args.learningPlanId, {
+			...(args.kind === "initial"
+				? { initialLearningTimePromptDismissedAt: dismissedAt }
+				: { postDiagnosticLearningTimeReminderDismissedAt: dismissedAt }),
+			updatedAt: dismissedAt,
+		});
+		if (args.kind === "initial") {
+			await markLearningTimeIntroPromptHandled(
+				ctx,
+				ownerTokenIdentifier,
+				dismissedAt,
+			);
+		}
+		return dismissedAt;
 	},
 });

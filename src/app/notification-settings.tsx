@@ -48,6 +48,7 @@ import {
 	type NotificationPreferenceKey,
 	removeNotificationPreferencePatchKeys,
 } from "~/lib/notification-preferences";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { cn } from "~/lib/utils";
 
 const OFFSET_OPTIONS = [5, 10, 15, 30, 60];
@@ -70,7 +71,7 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
 	return (
 		<View
 			className={cn(
-				"rounded-[24px] bg-card shadow-black/10 shadow-lg",
+				"rounded-[24px] border border-border bg-card",
 				Platform.OS === "ios" ? "px-6 py-5" : "px-5 py-4",
 			)}
 		>
@@ -138,6 +139,7 @@ function AlwaysOnBadge() {
 }
 
 export default function NotificationSettingsScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
@@ -201,6 +203,13 @@ export default function NotificationSettingsScreen() {
 
 			try {
 				await updatePreferences(patch);
+				for (const key of patchKeys)
+					trackFeature(
+						"settings.notification_changed",
+						"succeeded",
+						undefined,
+						key,
+					);
 			} catch (error) {
 				setOptimisticPreferencePatch((currentPatch) =>
 					removeNotificationPreferencePatchKeys(currentPatch, patchKeys),
@@ -212,7 +221,7 @@ export default function NotificationSettingsScreen() {
 				);
 			}
 		},
-		[updatePreferences],
+		[updatePreferences, trackFeature],
 	);
 
 	const updateSystemNotifications = useCallback(

@@ -173,8 +173,9 @@ describe("SettingsScreen", () => {
 		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
 			expect.stringContaining("mailto:kontakt@dayova.de?"),
 		);
-		await fireEvent.press(screen.getByRole("button", { name: "Stundenplan" }));
-		expect(mockPush).toHaveBeenCalledWith("/timetable");
+		expect(screen.queryByRole("button", { name: "Stundenplan" })).toBeNull();
+		await fireEvent.press(screen.getByRole("button", { name: "Lernzeiten" }));
+		expect(mockPush).toHaveBeenCalledWith("/learning-times");
 	});
 
 	test("opens and closes app information from the reorganized settings", async () => {
@@ -205,7 +206,7 @@ describe("SettingsScreen", () => {
 		await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
 	});
 
-	test("lets trial users subscribe and keeps privacy available in settings", async () => {
+	test("lets trial users subscribe and keeps every legal destination available in settings", async () => {
 		const screen = await render(<SettingsScreen />);
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Dayova abonnieren" }),
@@ -215,6 +216,20 @@ describe("SettingsScreen", () => {
 		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
 			"https://example.com/privacy",
 		);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Nutzungsbedingungen" }),
+		);
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			"https://example.com/terms",
+		);
+
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Support kontaktieren" }),
+		);
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			expect.stringContaining("mailto:kontakt@dayova.de?"),
+		);
+
 		await fireEvent.press(
 			screen.getByRole("button", {
 				name: "KI & Datenschutz, Nicht aktiv",
@@ -237,6 +252,11 @@ describe("SettingsScreen", () => {
 		expect(light.props.accessibilityState).toEqual({ checked: false });
 		expect(system.props.accessibilityState).toEqual({ checked: true });
 		expect(dark.props.accessibilityState).toEqual({ checked: false });
+		expect(
+			screen.getByTestId("theme-option-gradient-system"),
+		).toBeOnTheScreen();
+		expect(screen.queryByTestId("theme-option-gradient-light")).toBeNull();
+		expect(screen.queryByTestId("theme-option-gradient-dark")).toBeNull();
 		await fireEvent.press(light);
 		expect(mockSetPreference).toHaveBeenCalledWith("light");
 	});

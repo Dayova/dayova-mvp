@@ -1,7 +1,7 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import { processColor } from "react-native";
-import {
+import LearningPlanSessionsScreen, {
 	getExamCountdownLabel,
 	SessionPreviewCard,
 } from "~/app/learning-plans/[planId]/index";
@@ -9,22 +9,46 @@ import { LearningPathVisual } from "~/features/learning-plans/learning-path-visu
 import type { PlanSession } from "~/features/learning-plans/types";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 
+let mockSnapshot: unknown = null;
+const mockRestore = jest.fn<() => Promise<boolean>>();
+beforeEach(() => {
+	mockSnapshot = null;
+	mockRestore.mockReset().mockResolvedValue(false);
+});
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
 jest.mock("expo-router", () => ({
 	Stack: { Screen: () => null },
 	useLocalSearchParams: () => ({ planId: "plan_1" }),
 	useRouter: () => ({ push: jest.fn() }),
+	useFocusEffect: (callback: () => void) => {
+		const React = jest.requireActual<typeof import("react")>("react");
+		React.useEffect(callback, [callback]);
+	},
 }));
 
 jest.mock("convex/react", () => ({
 	useAction: () => jest.fn(),
 	useConvexAuth: () => ({ isAuthenticated: true }),
-	useQuery: () => null,
+	useQuery: () => mockSnapshot,
+	useMutation: () => mockRestore,
 }));
 
 jest.mock("#convex/_generated/api", () => ({
 	api: {
+		learningTimes: {
+			confirmProposedDefaults: "confirmProposedDefaults",
+			applyBehavioralSuggestion: "applyBehavioralSuggestion",
+			respondToBehavioralSuggestion: "respondToBehavioralSuggestion",
+		},
 		learningPlanAi: { ensureSessionContent: "ensureSessionContent" },
-		learningPlans: { getSnapshot: "getSnapshot" },
+		learningPlans: {
+			ensureNextRepeat: "ensureNextRepeat",
+			getSnapshot: "getSnapshot",
+			restoreNextSession: "restoreNextSession",
+		},
 	},
 }));
 
@@ -125,6 +149,40 @@ const session = (
 });
 
 describe("learning-plan path", () => {
+	test("recovers an exhausted plan and shows the new practice session after the snapshot updates", async () => {
+		const plan = {
+			id: "plan_1",
+			status: "accepted",
+			rollingPlanEnabled: true,
+			examDateKey: "2099-09-10",
+			examDateLabel: "10. September 2099",
+		};
+		const completed = session("session_1", {
+			completed: true,
+			executionStatus: "completed",
+			contentGenerationStatus: "ready",
+		});
+		mockSnapshot = { plan, sessions: [completed] };
+		const screen = await render(<LearningPlanSessionsScreen />);
+		expect(mockRestore).toHaveBeenCalledWith({ learningPlanId: "plan_1" });
+		expect(screen.getByText("Dein nächster Lernschritt")).toBeOnTheScreen();
+		expect(screen.queryByText("Dayova plant mit dir weiter")).toBeNull();
+		mockSnapshot = {
+			plan,
+			sessions: [
+				completed,
+				session("session_2", {
+					phase: "practice",
+					title: "Steigung anwenden",
+					contentGenerationStatus: "ready",
+				}),
+			],
+		};
+		await screen.rerender(<LearningPlanSessionsScreen />);
+		expect(screen.getByText("Lernsession starten")).toBeOnTheScreen();
+		expect(screen.queryByText("Dein nächster Lernschritt")).toBeNull();
+		expect(mockRestore).toHaveBeenCalledTimes(1);
+	});
 	test("uses a named action for the available session", async () => {
 		const onOpen = jest.fn();
 		const screen = await render(
@@ -195,6 +253,37 @@ describe("learning-plan path", () => {
 
 		expect(screen.queryByText("Bearbeitet")).toBeNull();
 		expect(screen.queryByText(/Warum jetzt/)).toBeNull();
+		expect(screen.getByText("Nochmal lernen")).toBeOnTheScreen();
+	});
+
+	test("uses phase-specific repeat labels for completed sessions", async () => {
+		const screen = await render(
+			<SessionPreviewCard
+				canOpen
+				session={session("session_practice", {
+					completed: true,
+					executionStatus: "completed",
+					phase: "practice",
+				})}
+				onOpen={() => undefined}
+			/>,
+		);
+
+		expect(screen.getByText("Nochmal üben")).toBeOnTheScreen();
+
+		await screen.rerender(
+			<SessionPreviewCard
+				canOpen
+				session={session("session_rehearsal", {
+					completed: true,
+					executionStatus: "completed",
+					phase: "rehearsal",
+				})}
+				onOpen={() => undefined}
+			/>,
+		);
+
+		expect(screen.getByText("Nochmal testen")).toBeOnTheScreen();
 	});
 
 	test("explains that a provisional session can still change", async () => {
@@ -280,16 +369,55 @@ describe("learning-plan path", () => {
 		).toBeNull();
 
 		await fireEvent.press(
+			screen.getByTestId("learning-path-node-session_done"),
+		);
+		expect(onOpenSession).toHaveBeenCalledWith(sessions[0]);
+		expect(onSelectSession).not.toHaveBeenCalled();
+
+		await fireEvent.press(
 			screen.getByTestId("learning-path-node-session_current"),
 		);
-		expect(onOpenSession).toHaveBeenCalledWith(sessions[1]);
+		expect(onOpenSession).toHaveBeenLastCalledWith(sessions[1]);
+		expect(onOpenSession).toHaveBeenCalledTimes(2);
 		expect(onSelectSession).not.toHaveBeenCalled();
 
 		await fireEvent.press(
 			screen.getByTestId("learning-path-node-session_preview"),
 		);
-		expect(onOpenSession).toHaveBeenCalledTimes(1);
+		expect(onOpenSession).toHaveBeenCalledTimes(2);
 		expect(onSelectSession).toHaveBeenCalledWith(sessions[2]);
+	});
+
+	test("asks for learning time instead of claiming an exhausted plan is finished", async () => {
+		const onAddLearningTime = jest.fn();
+		const sessions = [
+			session("session_done", {
+				completed: true,
+				executionStatus: "completed",
+			}),
+		];
+		const screen = await render(
+			<LearningPathVisual
+				mode="screen"
+				examCountdownLabel="Noch 1 Tag"
+				examDateLabel="15. August 2026"
+				onAddLearningTime={onAddLearningTime}
+				onOpenSession={() => undefined}
+				onSelectSession={() => undefined}
+				selectedSessionId={sessions[0]?.id ?? null}
+				sessions={sessions}
+				showsAdaptiveContinuation
+			/>,
+		);
+
+		expect(screen.getByText("Wiederholung offen")).toBeOnTheScreen();
+		expect(screen.queryByText("Dayova plant mit dir weiter")).toBeNull();
+		await fireEvent.press(
+			screen.getByRole("button", {
+				name: "Lernzeit für die nächste Wiederholung ergänzen",
+			}),
+		);
+		expect(onAddLearningTime).toHaveBeenCalledTimes(1);
 	});
 
 	test("formats the exam countdown for today and future dates", () => {

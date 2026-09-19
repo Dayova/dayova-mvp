@@ -19,6 +19,7 @@ import { useAccountActions } from "~/context/AuthContext";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const PAYWALL_GRADIENT = DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 const BRAND_COLORS = DAYOVA_DESIGN_SYSTEM.colors;
@@ -37,6 +38,7 @@ const primaryPayerIconStyle = {
 };
 
 export function PaywallScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const { deleteAccount, logout } = useAccountActions();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -50,7 +52,10 @@ export function PaywallScreen() {
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const deletionInFlightRef = useRef(false);
 
-	const openSubscription = () => router.push("/subscription");
+	const openSubscription = () => {
+		trackFeature("paywall.subscription_opened");
+		router.push("/subscription");
+	};
 
 	const requestAccountDeletion = () => {
 		setDeleteError(null);
@@ -275,7 +280,7 @@ function CheckoutButton({ onPress }: { onPress: () => void }) {
 			accessibilityLabel="Tarife im Store auswählen"
 			accessibilityHint="Öffnet die Aboseite mit den verfügbaren Store-Tarifen."
 			accessibilityRole="button"
-			className="mt-4 min-h-20 flex-row items-center rounded-card border px-4 py-3 shadow-black/15 shadow-md active:opacity-90"
+			className="mt-4 min-h-20 flex-row items-center rounded-card border px-4 py-3 active:opacity-90"
 			onPress={onPress}
 			style={primaryPayerSurfaceStyle}
 			testID="store-subscription-action"

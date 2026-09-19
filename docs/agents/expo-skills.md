@@ -13,8 +13,15 @@ overlay.
 - `patches/expo-skills/overrides.json` records checksum-guarded replacements.
   The native-controls source lives under `patches/expo-skills/files/` because
   incompatible upstream examples must not enter model context.
+- `scripts/agent-system-governance.mjs` records the source and per-skill owner,
+  boundary, authorization, evaluation, review, and retirement contract.
 - `docs/contexts/design-system/CONTEXT.md` owns the underlying Dayova control
   and styling decisions.
+
+Use `$maintain-dayova-agent-system` when an Expo refresh changes the curated
+set, routing, authorization, evaluation, or repository governance. Keep the
+composition mechanics in this document and the cross-source contract in
+`docs/agents/agent-system.md`.
 
 ## Supported refresh
 
@@ -104,9 +111,10 @@ Run this command when:
 
 Interpret the result as follows:
 
-- `Skill catalog and Codex Expo plugin configuration are valid.` means the
-  curated repo skill policy is valid and, if the Expo plugin is enabled locally,
-  every known duplicate plugin skill is disabled.
+- `Skill catalog, agent-system governance, and Codex Expo plugin configuration
+  are valid.` means the curated repo skill policy and governance contract are
+  valid and, if the Expo plugin is enabled locally, every known duplicate plugin
+  skill is disabled.
 - `Warning: Codex config not found...` means the repository checks ran, but the
   local Codex duplicate check was skipped because the config file was not found.
   Set `CODEX_CONFIG_PATH` if Codex is using a nonstandard config path, then rerun

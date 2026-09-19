@@ -40,8 +40,11 @@ export function MaterialRequiredSheet({
 			confirmLabel="Material hochladen"
 			confirmTone="primary"
 			description={`${subjectInstruction}${topicInstruction}\n\nDanach kann Dayova deinen Lernplan erstellen.`}
+			maxWidth={760}
 			onClose={onClose}
 			onConfirm={onUpload}
+			scrollable
+			size="content"
 			title="Für diesen Lernplan fehlt Material"
 			visible={subject !== null}
 		/>

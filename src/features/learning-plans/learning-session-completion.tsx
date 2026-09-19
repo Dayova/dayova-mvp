@@ -14,7 +14,7 @@ export function LearningSessionCompletion({
 	durationMinutes,
 	correctCount,
 	attemptCount,
-	onContinueLearning,
+	onRepeat,
 	onPrimary,
 	isBusy,
 }: {
@@ -23,7 +23,7 @@ export function LearningSessionCompletion({
 	durationMinutes: number;
 	correctCount: number;
 	attemptCount: number;
-	onContinueLearning: () => void;
+	onRepeat: () => void;
 	onPrimary: () => void;
 	isBusy: boolean;
 }) {
@@ -35,8 +35,8 @@ export function LearningSessionCompletion({
 				durationMinutes={durationMinutes}
 				correctCount={correctCount}
 				attemptCount={attemptCount}
-				onRepeat={onContinueLearning}
-				onAnalysis={onPrimary}
+				onRepeat={onRepeat}
+				onOpenLearningPlan={onPrimary}
 				isBusy={isBusy}
 			/>
 		);
@@ -44,7 +44,7 @@ export function LearningSessionCompletion({
 
 	let title = "Übung abgeschlossen";
 	let description =
-		"Du hast alle Aufgaben geschafft. Sieh dir jetzt deine Auswertung in der Analyse an.";
+		"Du hast alle Aufgaben geschafft. In deinem Lernplan findest du deinen nächsten Lernschritt.";
 	let completionLabel = "Übung geschafft";
 	let Icon = Pencil;
 	let iconClassName = "bg-ueben-subtle";
@@ -69,11 +69,9 @@ export function LearningSessionCompletion({
 		iconColor = DAYOVA_DESIGN_SYSTEM.colors.primary;
 	}
 
-	const primaryLabel = isDiagnostic
-		? "Auswertung ansehen"
-		: isTheory
-			? "Theorie abschließen"
-			: "Analyse ansehen";
+	const primaryLabel =
+		isTheory && !isDiagnostic ? "Theorie abschließen" : "Zum Lernplan";
+	const repeatLabel = isTheory ? "Nochmal lernen" : "Nochmal üben";
 
 	return (
 		<Animated.View
@@ -123,6 +121,16 @@ export function LearningSessionCompletion({
 						<Text>{primaryLabel}</Text>
 					)}
 				</Button>
+				{!isDiagnostic ? (
+					<Button
+						className="mt-3 w-full"
+						disabled={isBusy}
+						variant="neutral"
+						onPress={onRepeat}
+					>
+						<Text>{repeatLabel}</Text>
+					</Button>
+				) : null}
 			</View>
 		</Animated.View>
 	);

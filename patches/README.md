@@ -7,7 +7,7 @@ When a patched package is installed, pnpm applies the matching `.patch` file to
 the package contents in `node_modules`. Keep each patch documented here so future
 dependency updates can decide whether the patch is still needed.
 
-## `expo-updates@57.0.21.patch`
+## `expo-updates@57.0.23.patch`
 
 ### Why This Patch Exists
 
@@ -27,9 +27,9 @@ and deferred React root, then resolves the root background color against the
 same trait collection. No Expo Updates loading, selection, or update behavior is
 changed.
 
-The patch was retargeted to 57.0.21 after inspecting its deferred splash path.
-Upstream still resolves the detached view's background without the active window
-trait; the same patch applies and the installed Swift file retains the fix.
+The patch was retargeted to 57.0.23 for the iOS 27 compatibility update after
+confirming that the deferred splash implementation still requires the same
+trait-resolution change.
 
 ### How To Verify
 
@@ -51,7 +51,7 @@ remain Dark; screenshots of only the settled state are insufficient.
 Recheck this patch whenever `expo-updates` changes. Remove it when the deferred
 root path resolves its splash color using the active window trait upstream.
 
-1. Delete `patches/expo-updates@57.0.21.patch`.
+1. Delete `patches/expo-updates@57.0.23.patch`.
 2. Remove its entry from `patchedDependencies` in `pnpm-workspace.yaml`.
 3. Run `pnpm install --frozen-lockfile` and the focused test.
 4. Repeat the frame-by-frame embedded-bundle Release cold-launch check in both

@@ -8,8 +8,10 @@ import {
 	selectAdaptiveMaintenanceTarget,
 	selectNextAdaptiveLearningTarget,
 } from "./adaptiveLearningPlanPolicy";
+import { setLearningPlanGenerationProgress } from "./learningPlanGenerationProgressModel";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { normalizeLearningTopics } from "./learningTopicMap";
+import { parseLearningWindowEnd } from "./learningTimePolicy";
 import { getScheduleConflictMessage } from "./scheduleConflicts";
 
 const MAX_LEARNING_TIMES = 50;
@@ -211,9 +213,10 @@ const getRollingSessionSchedule = async (
 	args: {
 		ownerTokenIdentifier: string;
 		plan: Doc<"learningPlans">;
-		afterSession: Doc<"learningPlanSessions">;
+		afterSession?: Doc<"learningPlanSessions">;
 		durationMinutes: number;
 		excludeSession?: Doc<"learningPlanSessions">;
+		requireFullDuration?: boolean;
 	},
 ) => {
 	const learningTimes = await ctx.db
@@ -222,20 +225,27 @@ const getRollingSessionSchedule = async (
 			q.eq("ownerTokenIdentifier", args.ownerTokenIdentifier),
 		)
 		.take(MAX_LEARNING_TIMES);
-	const afterDate = new Date(
-		`${args.afterSession.dateKey.slice(0, 10)}T12:00:00Z`,
-	);
 	const now = new Date();
 	const berlinNow = getBerlinDateTime(now);
+	// Completed sessions no longer constrain the next slot to their original date.
+	const afterCompletedSession =
+		!!args.afterSession &&
+		getSessionExecutionStatus(args.afterSession) === "completed";
+	const afterDateKey =
+		afterCompletedSession || !args.afterSession
+			? berlinNow.dateKey
+			: args.afterSession.dateKey.slice(0, 10);
+	const afterDate = new Date(`${afterDateKey}T12:00:00Z`);
 	const today = startOfUtcDay(new Date(`${berlinNow.dateKey}T12:00:00Z`));
 	const cursor = Number.isNaN(afterDate.getTime()) ? today : afterDate;
 	if (cursor < today) cursor.setTime(today.getTime());
 	const examDate = new Date(`${args.plan.examDateKey.slice(0, 10)}T12:00:00Z`);
 	if (Number.isNaN(examDate.getTime())) return null;
-	const afterDateKey = args.afterSession.dateKey.slice(0, 10);
-	const afterStartMinutes = parseTimeMinutes(args.afterSession.startTime);
+	const afterStartMinutes = args.afterSession
+		? parseTimeMinutes(args.afterSession.startTime)
+		: null;
 	const afterEndMinutes =
-		afterStartMinutes === null
+		afterCompletedSession || afterStartMinutes === null || !args.afterSession
 			? null
 			: afterStartMinutes + args.afterSession.durationMinutes;
 
@@ -253,9 +263,12 @@ const getRollingSessionSchedule = async (
 		);
 		const candidates = windows.flatMap((window) => {
 			const windowStart = parseTimeMinutes(window.startTime);
-			const end = parseTimeMinutes(window.endTime);
+			const end = parseLearningWindowEnd(window.startTime, window.endTime);
 			if (windowStart === null || end === null) return [];
 			const start = Math.max(windowStart, earliestStart);
+			if (args.requireFullDuration && start + args.durationMinutes > end) {
+				return [];
+			}
 			const windowCandidates = [];
 			for (
 				let candidateStart = start;
@@ -291,6 +304,76 @@ const getRollingSessionSchedule = async (
 		cursor.setUTCDate(cursor.getUTCDate() + 1);
 	}
 	return null;
+};
+
+export const rescheduleFutureLearningPlanSessions = async (
+	ctx: MutationCtx,
+	plan: Doc<"learningPlans">,
+	calendar: RollingPlanCalendar,
+) => {
+	const sessions = await ctx.db
+		.query("learningPlanSessions")
+		.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+			q.eq("learningPlanId", plan._id),
+		)
+		.order("asc")
+		.take(50);
+	const futureSessions = sessions.filter(
+		(session) => getSessionExecutionStatus(session) === "notStarted",
+	);
+	if (futureSessions.length === 0) {
+		return { rescheduledCount: 0, unscheduledCount: 0 };
+	}
+
+	for (const session of futureSessions) {
+		await calendar.clearSession(ctx, session);
+	}
+
+	let previousSession = sessions
+		.filter((session) => getSessionExecutionStatus(session) !== "notStarted")
+		.at(-1);
+	let rescheduledCount = 0;
+	for (const session of futureSessions) {
+		const schedule = await getRollingSessionSchedule(ctx, {
+			ownerTokenIdentifier: plan.ownerTokenIdentifier,
+			plan,
+			afterSession: previousSession,
+			durationMinutes: session.durationMinutes,
+			excludeSession: session,
+			requireFullDuration: true,
+		});
+		if (!schedule) break;
+
+		await ctx.db.patch("learningPlanSessions", session._id, {
+			dateKey: schedule.dateKey,
+			dateLabel: schedule.dateLabel,
+			startTime: schedule.startTime,
+			updatedAt: Date.now(),
+		});
+		const updatedSession = await ctx.db.get(
+			"learningPlanSessions",
+			session._id,
+		);
+		if (!updatedSession) continue;
+		if (
+			plan.status === "accepted" &&
+			updatedSession.planningStatus !== "provisional"
+		) {
+			await calendar.syncSession(ctx, plan, updatedSession);
+		}
+		previousSession = updatedSession;
+		rescheduledCount += 1;
+	}
+
+	const unscheduledCount = futureSessions.length - rescheduledCount;
+	await ctx.db.patch("learningPlans", plan._id, {
+		planningHint:
+			unscheduledCount > 0
+				? "Für einige zukünftige Lernschritte ist in deinen aktuellen Lernzeiten noch kein freier Termin verfügbar. Ergänze eine Lernzeit oder verschiebe den Prüfungstermin."
+				: undefined,
+		updatedAt: Date.now(),
+	});
+	return { rescheduledCount, unscheduledCount };
 };
 
 const isSessionScheduledInFuture = (
@@ -421,13 +504,12 @@ export const advanceRollingLearningPlan = async (
 		),
 		...diagnosticReadiness,
 	];
-	const committedTarget =
-		selectNextAdaptiveLearningTarget({
-			topics,
-			initialReadiness: effectiveTopicReadiness,
-			evidence,
-			history,
-		}) ?? selectAdaptiveMaintenanceTarget({ topics, history });
+	const committedTarget = selectNextAdaptiveLearningTarget({
+		topics,
+		initialReadiness: effectiveTopicReadiness,
+		evidence,
+		history,
+	});
 	const provisionalSessions = sessions.filter(
 		(session) =>
 			session.planningStatus === "provisional" &&
@@ -443,6 +525,9 @@ export const advanceRollingLearningPlan = async (
 		if (provisional) await removeRollingSession(ctx, provisional);
 		await ctx.db.patch("learningPlans", plan._id, {
 			adaptationRevision,
+			masteryStatus: "mastered",
+			topicReadiness: effectiveTopicReadiness,
+			contentGenerationStage: "ready",
 			updatedAt: Date.now(),
 		});
 		return { committedSessionId: null, provisionalSessionId: null };
@@ -533,7 +618,16 @@ export const advanceRollingLearningPlan = async (
 			}
 		}
 	}
-	if (!committed) return null;
+	if (!committed) {
+		await ctx.db.patch("learningPlans", plan._id, {
+			adaptationRevision,
+			masteryStatus: "learning",
+			topicReadiness: effectiveTopicReadiness,
+			contentGenerationStage: "ready",
+			updatedAt: Date.now(),
+		});
+		return null;
+	}
 	const projectedHistory = [
 		...history,
 		{
@@ -601,8 +695,14 @@ export const advanceRollingLearningPlan = async (
 	}
 	await ctx.db.patch("learningPlans", plan._id, {
 		adaptationRevision,
+		masteryStatus: "learning",
 		topicReadiness: effectiveTopicReadiness,
-		contentGenerationStage: "ready",
+		updatedAt: Date.now(),
+	});
+	await setLearningPlanGenerationProgress(ctx, {
+		ownerTokenIdentifier: plan.ownerTokenIdentifier,
+		learningPlanId: plan._id,
+		stage: "ready",
 		updatedAt: Date.now(),
 	});
 	return {

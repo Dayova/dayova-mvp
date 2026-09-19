@@ -12,6 +12,7 @@ import {
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { throwUserFacingError } from "./errors";
 import {
 	deriveOnboardingLearningTimes,
@@ -177,6 +178,7 @@ const requireIdentity = async (ctx: QueryCtx | MutationCtx) => {
 	if (!identity) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 	return identity;
 };
 
@@ -432,7 +434,10 @@ export const syncCurrentUser = mutation({
 			await sanitizeLegacyOnboardingSchoolType(ctx, existingUser._id);
 			userId = existingUser._id;
 		} else {
-			userId = await ctx.db.insert("users", user);
+			userId = await ctx.db.insert("users", {
+				...user,
+				firstPlanPromptStatus: "awaitingOnboarding",
+			});
 		}
 
 		await backfillLegacyLearningTimes(ctx, {
@@ -623,9 +628,77 @@ export const saveOnboardingAnswers = mutation({
 			});
 		}
 
+		// Only accounts created with this feature become eligible. Retries never
+		// re-arm a handled prompt, and existing accounts remain unchanged.
+		if (user.firstPlanPromptStatus === "awaitingOnboarding") {
+			await ctx.db.patch("users", user._id, {
+				firstPlanPromptStatus: "pending",
+			});
+		}
+
 		return {
 			success: true,
 			learningTimesCreated: learningTimes.createdCount,
 		};
+	},
+});
+
+const hasStartedPlanning = async (
+	ctx: QueryCtx | MutationCtx,
+	owner: string,
+) => {
+	const entry = await ctx.db
+		.query("dayEntries")
+		.withIndex("by_ownerTokenIdentifier", (q) =>
+			q.eq("ownerTokenIdentifier", owner),
+		)
+		.first();
+	const plan = await ctx.db
+		.query("learningPlans")
+		.withIndex("by_ownerTokenIdentifier", (q) =>
+			q.eq("ownerTokenIdentifier", owner),
+		)
+		.first();
+	return Boolean(entry || plan);
+};
+
+export const shouldShowFirstPlanPrompt = query({
+	args: {},
+	returns: v.boolean(),
+	handler: async (ctx) => {
+		const identity = await requireIdentity(ctx);
+		const user = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) =>
+				q.eq("tokenIdentifier", identity.tokenIdentifier),
+			)
+			.unique();
+		return (
+			user?.firstPlanPromptStatus === "pending" &&
+			!(await hasStartedPlanning(ctx, identity.tokenIdentifier))
+		);
+	},
+});
+
+export const resolveFirstPlanPrompt = mutation({
+	args: { choice: v.union(v.literal("create"), v.literal("explore")) },
+	returns: v.boolean(),
+	handler: async (ctx, args) => {
+		const identity = await requireIdentity(ctx);
+		const user = await ctx.db
+			.query("users")
+			.withIndex("by_tokenIdentifier", (q) =>
+				q.eq("tokenIdentifier", identity.tokenIdentifier),
+			)
+			.unique();
+		if (user?.firstPlanPromptStatus !== "pending") return false;
+		const alreadyStarted = await hasStartedPlanning(
+			ctx,
+			identity.tokenIdentifier,
+		);
+		await ctx.db.patch("users", user._id, {
+			firstPlanPromptStatus: alreadyStarted ? "explore" : args.choice,
+		});
+		return !alreadyStarted;
 	},
 });

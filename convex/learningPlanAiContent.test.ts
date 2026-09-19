@@ -3,6 +3,28 @@ import { __testOnlyLearningPlanAi } from "./learningPlanAi";
 import { MAX_MULTIPLE_CHOICE_OPTION_CHARS } from "./learningSessionContentConstraints";
 
 describe("learning plan AI practice content", () => {
+	test("keeps Latin plans away from unrelated modern-language speaking tasks", () => {
+		const instruction =
+			__testOnlyLearningPlanAi.getSubjectSpecificLearningInstruction("Latein");
+
+		expect(instruction).toContain("Do not plan modern conversation");
+		expect(instruction).toContain("translation");
+		expect(
+			__testOnlyLearningPlanAi.getSubjectSpecificLearningInstruction(
+				"Spanisch",
+			),
+		).toBe("");
+	});
+
+	test("accepts 25 MiB documents while keeping images at 7 MiB", () => {
+		expect(
+			__testOnlyLearningPlanAi.getMaxUploadFileBytes("application/pdf"),
+		).toBe(25 * 1024 * 1024);
+		expect(__testOnlyLearningPlanAi.getMaxUploadFileBytes("image/jpeg")).toBe(
+			7 * 1024 * 1024,
+		);
+	});
+
 	test("asks for an exhaustive capability-level exam topic map", () => {
 		const instruction = __testOnlyLearningPlanAi.topicMapGenerationInstruction;
 

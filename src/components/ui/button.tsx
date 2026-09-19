@@ -15,7 +15,7 @@ const gradientFillStyle = StyleSheet.absoluteFill;
 
 const buttonVariants = cva(
 	cn(
-		"group shrink-0 flex-row items-center justify-center gap-2 overflow-hidden rounded-button px-6 shadow-primary/20 shadow-sm",
+		"group shrink-0 flex-row items-center justify-center gap-2 overflow-hidden rounded-button px-6",
 		Platform.select({
 			web: "whitespace-nowrap outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
 		}),
@@ -28,13 +28,13 @@ const buttonVariants = cva(
 					Platform.select({ web: "hover:opacity-90" }),
 				),
 				neutral: cn(
-					"border-border border-hairline bg-button-neutral shadow-black/5 active:bg-button-neutral/90",
+					"border-border border-hairline bg-button-neutral active:bg-button-neutral/90",
 					Platform.select({ web: "hover:bg-button-neutral/90" }),
 				),
 				destructive: cn(
-					"border-border border-hairline bg-button-neutral shadow-black/5 shadow-sm active:bg-button-neutral/90",
+					"border-destructive border-hairline bg-destructive active:bg-destructive/90",
 					Platform.select({
-						web: "hover:bg-button-neutral/90 focus-visible:ring-destructive/20",
+						web: "hover:bg-destructive/90 focus-visible:ring-destructive/30",
 					}),
 				),
 				outline: cn(
@@ -82,7 +82,7 @@ const buttonTextVariants = cva(
 			variant: {
 				default: "text-white",
 				neutral: "text-background",
-				destructive: "text-background",
+				destructive: "text-white",
 				outline: "text-background",
 				ghost: "group-active:text-primary-strong",
 				link: cn(
@@ -182,7 +182,7 @@ function BackButton({
 			accessibilityLabel="Zurück"
 			hitSlop={8}
 			className={cn(
-				"h-12 min-h-12 w-12 min-w-12 items-center justify-center rounded-full bg-card px-0 shadow-black/10 shadow-sm active:bg-card/80",
+				"h-12 min-h-12 w-12 min-w-12 items-center justify-center rounded-full border border-border bg-card px-0 active:bg-card/80",
 				Platform.select({ web: "hover:bg-card/90" }),
 				className,
 			)}

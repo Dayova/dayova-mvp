@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import {
 	type AdaptiveTopicEvidence,
 	deriveAdaptiveDimensionStatus,
@@ -537,6 +538,7 @@ export const getOverview = query({
 		if (!identity) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		if (parseDayKey(args.todayKey) === null) {
 			throwUserFacingError("Ungültiger Kalendertag.");
 		}
@@ -821,6 +823,7 @@ export const getTopicQuestionEvidence = query({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (
 			!plan ||
@@ -933,6 +936,7 @@ export const getExamAnalysis = query({
 		if (!identity) {
 			throwUserFacingError("Nicht authentifiziert.");
 		}
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		if (parseDayKey(args.todayKey) === null) {
 			throwUserFacingError("Ungültiger Kalendertag.");
 		}
@@ -1030,16 +1034,12 @@ export const getExamAnalysis = query({
 		const allAttempts = (
 			await ctx.db
 				.query("learningSessionAnswerAttempts")
-				.withIndex("by_ownerTokenIdentifier", (q) =>
-					q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+				.withIndex("by_learningPlanId_and_createdAt", (q) =>
+					q.eq("learningPlanId", selectedPlan._id),
 				)
 				.order("desc")
 				.take(MAX_ATTEMPTS)
-		).filter(
-			(attempt) =>
-				attempt.learningPlanId === selectedPlan._id &&
-				completedSessionIds.has(attempt.sessionId),
-		);
+		).filter((attempt) => completedSessionIds.has(attempt.sessionId));
 		const latestAttemptByItem = new Map<
 			Id<"learningSessionContentItems">,
 			Doc<"learningSessionAnswerAttempts">
@@ -1054,17 +1054,13 @@ export const getExamAnalysis = query({
 		const analyses = (
 			await ctx.db
 				.query("learningSessionAnalyses")
-				.withIndex("by_ownerTokenIdentifier", (q) =>
-					q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+				.withIndex("by_learningPlanId", (q) =>
+					q.eq("learningPlanId", selectedPlan._id),
 				)
 				.order("desc")
 				.take(MAX_ANALYSES)
 		)
-			.filter(
-				(analysis) =>
-					analysis.learningPlanId === selectedPlan._id &&
-					completedSessionIds.has(analysis.sessionId),
-			)
+			.filter((analysis) => completedSessionIds.has(analysis.sessionId))
 			.sort((left, right) => right.updatedAt - left.updatedAt);
 		const latestAnalysis = analyses[0] ?? null;
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { cn } from "~/lib/utils";
@@ -22,6 +23,7 @@ type ActionSheetProps<T extends string> = {
 	onClose: () => void;
 	onDismiss?: () => void;
 	layout?: "row" | "tile";
+	appearance?: "raised" | "flat";
 	closeAccessibilityLabel?: string;
 };
 
@@ -34,13 +36,17 @@ function ActionSheet<T extends string>({
 	onClose,
 	onDismiss,
 	layout = "row",
+	appearance = "raised",
 	closeAccessibilityLabel = "Auswahl schließen",
 }: ActionSheetProps<T>) {
-	const isTile = layout === "tile";
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const isTile = layout === "tile" && !shouldStackInlineContent;
+	const isFlat = appearance === "flat";
 
 	return (
 		<DayovaSheetFrame
 			visible={visible}
+			compactCloseButton={isFlat}
 			title={title}
 			description={description}
 			onClose={onClose}
@@ -62,19 +68,14 @@ function ActionSheet<T extends string>({
 					disabled={option.disabled}
 					onPress={() => onSelect(option.value)}
 					className={cn(
-						"border border-border/45 bg-card shadow-black/5 shadow-sm",
+						"border border-border bg-card",
 						isTile
-							? "min-h-36 flex-1 items-center justify-center gap-5 rounded-card px-4 py-5"
-							: "min-h-20 w-full flex-row items-center gap-4 rounded-card px-4 py-3",
+							? "min-h-28 flex-1 items-center justify-center gap-3 rounded-3xl px-4 py-4"
+							: "min-h-16 w-full flex-row items-center gap-3 rounded-3xl px-3 py-3",
 						option.disabled && "opacity-50",
 					)}
 				>
-					<View
-						className={cn(
-							"items-center justify-center rounded-full bg-system-subtle shadow-black/10 shadow-sm",
-							isTile ? "h-16 w-16" : "h-14 w-14",
-						)}
-					>
+					<View className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-system-subtle">
 						{option.icon}
 					</View>
 					<View className={cn(isTile ? "items-center gap-1" : "flex-1 gap-1")}>
@@ -82,10 +83,9 @@ function ActionSheet<T extends string>({
 							className={cn(
 								"font-poppins text-text",
 								isTile
-									? "text-center font-semibold text-body-1"
-									: "text-body-2",
+									? "text-center font-semibold text-body-2"
+									: "font-semibold text-body-2",
 							)}
-							numberOfLines={2}
 						>
 							{option.title}
 						</Text>
@@ -95,7 +95,6 @@ function ActionSheet<T extends string>({
 									"font-poppins text-body-4 text-secondary-text",
 									isTile && "text-center",
 								)}
-								numberOfLines={2}
 							>
 								{option.description}
 							</Text>

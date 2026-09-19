@@ -107,7 +107,7 @@ describe("learning-plan setup steps", () => {
 		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
 		expect(
 			screen.getByRole("button", {
-				name: "Ohne Lernmaterial erstellen",
+				name: "Später hinzufügen",
 			}),
 		).toBeOnTheScreen();
 
@@ -155,9 +155,92 @@ describe("learning-plan setup steps", () => {
 		).toBeNull();
 		expect(
 			screen.queryByRole("button", {
-				name: "Ohne Lernmaterial erstellen",
+				name: "Später hinzufügen",
 			}),
 		).toBeNull();
+	});
+
+	test("offers the consent dialog directly when AI consent blocks the plan", async () => {
+		const onRequestAiConsent = jest.fn();
+		const screen = await render(
+			<MaterialUploadStep
+				canUpload
+				canContinue
+				documents={[
+					{
+						id: "document" as Id<"learningPlanDocuments">,
+						fileName: "Arbeitsblatt.pdf",
+						fileType: "application/pdf",
+						fileSizeBytes: 1_024,
+						sourceKind: "school",
+					},
+				]}
+				errorMessage="Die KI-Zustimmung muss erneuert werden."
+				isBusy={false}
+				isUploading={false}
+				onContinue={jest.fn()}
+				onOpenUpload={jest.fn()}
+				onRequestAiConsent={onRequestAiConsent}
+				onRemoveDocument={jest.fn()}
+				onSkip={jest.fn()}
+				openingUploadAction={null}
+				requiresAiConsent
+			/>,
+		);
+
+		const consentButton = screen.getByRole("button", {
+			name: "KI-Datenschutz bestätigen",
+		});
+		expect(consentButton).toBeEnabled();
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+
+		await fireEvent.press(consentButton);
+		expect(onRequestAiConsent).toHaveBeenCalledTimes(1);
+	});
+
+	test("locks duplicate document retries and exposes the busy state", async () => {
+		const onRetryDocument = jest.fn(() => new Promise<void>(() => undefined));
+		const documentId = "document" as Id<"learningPlanDocuments">;
+		const props = {
+			canUpload: true,
+			canContinue: false,
+			documents: [
+				{
+					id: documentId,
+					fileName: "Arbeitsblatt.pdf",
+					fileType: "application/pdf",
+					fileSizeBytes: 1_024,
+					sourceKind: "school" as const,
+					processingStatus: "failed" as const,
+				},
+			],
+			errorMessage: null,
+			isBusy: false,
+			isUploading: false,
+			onContinue: jest.fn(),
+			onOpenUpload: jest.fn(),
+			onRemoveDocument: jest.fn(),
+			onRetryDocument,
+			onSkip: jest.fn(),
+			openingUploadAction: null,
+		};
+		const screen = await render(<MaterialUploadStep {...props} />);
+		const retry = screen.getByRole("button", {
+			name: "Arbeitsblatt.pdf erneut verarbeiten",
+		});
+
+		await fireEvent.press(retry);
+		await fireEvent.press(retry);
+
+		expect(onRetryDocument).toHaveBeenCalledTimes(1);
+		await screen.rerender(
+			<MaterialUploadStep {...props} retryingDocumentId={documentId} />,
+		);
+		expect(
+			screen.getByRole("button", {
+				name: "Arbeitsblatt.pdf erneut verarbeiten",
+			}),
+		).toBeDisabled();
 	});
 
 	test("still offers the no-plan path when only an external aid remains", async () => {
@@ -188,36 +271,8 @@ describe("learning-plan setup steps", () => {
 		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
 		expect(screen.queryByText("Lernhilfe.pdf")).toBeNull();
 		expect(
-			screen.getByRole("button", { name: "Ohne Lernmaterial erstellen" }),
+			screen.getByRole("button", { name: "Später hinzufügen" }),
 		).toBeOnTheScreen();
-	});
-
-	test("requires material when a materialless draft is resumed", async () => {
-		const screen = await render(
-			<MaterialUploadStep
-				canUpload
-				canContinue={false}
-				documents={[]}
-				errorMessage={null}
-				isBusy={false}
-				isUploading={false}
-				onContinue={jest.fn()}
-				onOpenUpload={jest.fn()}
-				onRemoveDocument={jest.fn()}
-				onSkip={jest.fn()}
-				openingUploadAction={null}
-				showSkip={false}
-			/>,
-		);
-
-		expect(
-			screen.getByText(
-				"Deine Unterlagen bilden die Grundlage für deinen Lernplan.",
-			),
-		).toBeOnTheScreen();
-		expect(
-			screen.queryByRole("button", { name: "Ohne Lernmaterial erstellen" }),
-		).toBeNull();
 	});
 
 	test("disables the topic continuation until the answer is valid", async () => {

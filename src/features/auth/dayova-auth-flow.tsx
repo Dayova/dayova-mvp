@@ -16,11 +16,14 @@ import {
 	KeyboardAvoidingView,
 	type NativeScrollEvent,
 	type NativeSyntheticEvent,
+	Text as NativeText,
 	Platform,
 	Pressable,
 	ScrollView,
+	type StyleProp,
 	TextInput,
 	type TextInputProps,
+	type TextStyle,
 	useWindowDimensions,
 	View,
 } from "react-native";
@@ -84,7 +87,6 @@ import {
 	GreekHelmet,
 	Palette,
 	Plant,
-	Route2,
 	SquareRootSquare,
 	Telescope,
 } from "~/components/ui/icon";
@@ -124,7 +126,9 @@ import { GERMAN_FEDERAL_STATES } from "~/lib/federal-states";
 import { GRADE_OPTIONS } from "~/lib/grades";
 import { useBackIntent } from "~/lib/navigation";
 import { goBackOrReplace } from "~/lib/navigation-actions";
+import { openExternalUrl } from "~/lib/open-external-url";
 import { meetsPasswordRequirements } from "~/lib/password-validation";
+import { env } from "~/lib/runtime-config";
 import { SCHOOL_TYPE_OPTIONS, SCHOOL_TYPE_VALUES } from "~/lib/school-types";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -209,21 +213,66 @@ const AUTH_CHOICE_FRAME = {
 const AUTH_BACKGROUND_TILE = {
 	size: 148,
 	radius: 32,
-	iconSize: 76,
-	leftX: -62,
-	centerX: 122.5,
-	rightX: 307,
-	fillColors: [
+	iconSize: 96,
+	columnStep: 184.5,
+	iconStrokeWidth: 2.4,
+	lightFillColors: [
 		"rgba(26,26,26,0)",
 		"rgba(26,26,26,0.06)",
 		"rgba(26,26,26,0.06)",
 		"rgba(26,26,26,0)",
 	],
+	darkFillColors: [
+		"rgba(255,255,255,0)",
+		"rgba(255,255,255,0.045)",
+		"rgba(255,255,255,0.045)",
+		"rgba(255,255,255,0)",
+	],
 } as const;
+
+function AuthChoiceLegalNotice({
+	allowFontScaling,
+	className,
+	style,
+}: {
+	allowFontScaling?: boolean;
+	className: string;
+	style: StyleProp<TextStyle>;
+}) {
+	return (
+		<Text
+			allowFontScaling={allowFontScaling}
+			className={className}
+			style={style}
+		>
+			Informationen findest du in unserer{"\n"}
+			<NativeText
+				allowFontScaling={allowFontScaling}
+				accessibilityRole="link"
+				accessibilityHint="Öffnet die Dayova-Datenschutzerklärung im Browser."
+				className="underline"
+				onPress={() => void openExternalUrl(env.EXPO_PUBLIC_PRIVACY_URL)}
+			>
+				Datenschutzerklärung
+			</NativeText>{" "}
+			und den{" "}
+			<NativeText
+				allowFontScaling={allowFontScaling}
+				accessibilityRole="link"
+				accessibilityHint="Öffnet die Nutzungsbedingungen im Browser."
+				className="underline"
+				onPress={() => void openExternalUrl(env.EXPO_PUBLIC_TERMS_URL)}
+			>
+				Nutzungsbedingungen
+			</NativeText>
+			.
+		</Text>
+	);
+}
 
 export function AuthChoiceScreen() {
 	const [showReleaseInformation, setShowReleaseInformation] = useState(false);
-	const { colors: COLORS } = useDayovaTheme();
+	const { colors: COLORS, isDark } = useDayovaTheme();
 	const { width, height, fontScale } = useWindowDimensions();
 	const insets = useSafeAreaInsets();
 	const contentSizeLayout = useContentSizeLayout({
@@ -254,7 +303,10 @@ export function AuthChoiceScreen() {
 				<ThemedStatusBar />
 				<View pointerEvents="none" className="absolute inset-0 overflow-hidden">
 					<AuthBackgroundPattern
+						iconColor={COLORS.text}
+						isDark={isDark}
 						scale={Math.max(width / AUTH_CHOICE_FRAME.width, 0.78)}
+						viewportWidth={width}
 						yOffset={AUTH_CHOICE_FRAME.patternYOffset}
 					/>
 				</View>
@@ -283,7 +335,7 @@ export function AuthChoiceScreen() {
 								? undefined
 								: FadeInDown.duration(520).springify().damping(18)
 						}
-						className="h-28 w-28 items-center justify-center rounded-[28px] bg-card shadow-lg"
+						className="h-28 w-28 items-center justify-center rounded-[28px] border border-border bg-card"
 					>
 						<Image
 							source={require("../../../assets/onboarding/dayova-y.png")}
@@ -338,17 +390,14 @@ export function AuthChoiceScreen() {
 						/>
 					</View>
 
-					<Text
+					<AuthChoiceLegalNotice
 						allowFontScaling={false}
 						className="mt-7 w-full text-center font-poppins text-body-4 text-secondary-text"
 						style={{
 							fontSize: responsiveLayout.termsFontSize,
 							lineHeight: responsiveLayout.termsLineHeight,
 						}}
-					>
-						Mit dem Start akzeptierst du Daten­schutz­bestimmungen und
-						Nutzungs­bedingungen.
-					</Text>
+					/>
 				</ScrollView>
 			</View>
 		);
@@ -362,6 +411,19 @@ export function AuthChoiceScreen() {
 			/>
 			<Stack.Screen options={{ title: "Dayova" }} />
 			<ThemedStatusBar />
+			<Animated.View
+				pointerEvents="none"
+				entering={reducedMotion ? undefined : FadeIn.duration(240)}
+				className="absolute inset-0 overflow-hidden"
+			>
+				<AuthBackgroundPattern
+					iconColor={COLORS.text}
+					isDark={isDark}
+					scale={frameScale}
+					viewportWidth={width}
+					yOffset={verticalPadding + AUTH_CHOICE_FRAME.patternYOffset}
+				/>
+			</Animated.View>
 			<ScrollView
 				contentInsetAdjustmentBehavior="never"
 				showsVerticalScrollIndicator={false}
@@ -380,23 +442,6 @@ export function AuthChoiceScreen() {
 					}}
 				>
 					<Animated.View
-						entering={reducedMotion ? undefined : FadeIn.duration(240)}
-						style={{
-							position: "absolute",
-							top: 0,
-							left: 0,
-							width: frameWidth,
-							height: frameHeight,
-							overflow: "hidden",
-						}}
-					>
-						<AuthBackgroundPattern
-							scale={frameScale}
-							yOffset={AUTH_CHOICE_FRAME.patternYOffset}
-						/>
-					</Animated.View>
-
-					<Animated.View
 						entering={reducedMotion ? undefined : FadeInDown.duration(240)}
 						style={{
 							position: "absolute",
@@ -412,9 +457,10 @@ export function AuthChoiceScreen() {
 								height: scaled(AUTH_CHOICE_FRAME.logoCard.size),
 								borderRadius: scaled(AUTH_CHOICE_FRAME.logoCard.radius),
 								backgroundColor: COLORS.surface,
+								borderColor: COLORS.border,
+								borderWidth: 1,
 								alignItems: "center",
 								justifyContent: "center",
-								boxShadow: `0 ${scaled(18)}px ${scaled(45)}px rgba(20, 28, 48, 0.06)`,
 							}}
 						>
 							<Image
@@ -505,7 +551,7 @@ export function AuthChoiceScreen() {
 						/>
 					</Animated.View>
 
-					<Text
+					<AuthChoiceLegalNotice
 						className="absolute text-center font-poppins text-black-30"
 						style={{
 							top: scaled(AUTH_CHOICE_FRAME.terms.top),
@@ -515,10 +561,7 @@ export function AuthChoiceScreen() {
 							lineHeight: scaled(AUTH_CHOICE_FRAME.terms.lineHeight),
 							includeFontPadding: false,
 						}}
-					>
-						Mit dem Start akzeptierst du{"\n"}Datenschutzbestimmungen und
-						{"\n"}Nutzungsbedingungen.
-					</Text>
+					/>
 				</View>
 			</ScrollView>
 		</View>
@@ -542,7 +585,10 @@ export function OnboardingScreen() {
 	);
 
 	const handleIntroBack = useCallback(() => {
-		if (activeIntroIndex === 0) return false;
+		if (activeIntroIndex === 0) {
+			goBackOrReplace(router, "/");
+			return true;
+		}
 		updateIntroIndex(Math.max(activeIntroIndex - 1, 0));
 		return true;
 	}, [activeIntroIndex, updateIntroIndex]);
@@ -568,6 +614,7 @@ export function OnboardingScreen() {
 				topInset={insets.top}
 				bottomInset={insets.bottom}
 				onActiveIndexChange={updateIntroIndex}
+				onBack={handleIntroBack}
 				onNext={continueFromIntro}
 			/>
 		</View>
@@ -960,12 +1007,14 @@ function IntroStepView({
 	topInset,
 	bottomInset,
 	onActiveIndexChange,
+	onBack,
 	onNext,
 }: {
 	activeIndex: number;
 	topInset: number;
 	bottomInset: number;
 	onActiveIndexChange: (index: number) => void;
+	onBack: () => boolean;
 	onNext: () => void;
 }) {
 	const { colors: COLORS } = useDayovaTheme();
@@ -1040,6 +1089,16 @@ function IntroStepView({
 						paddingHorizontal: contentSizeLayout.horizontalPadding,
 					}}
 				>
+					<View className="w-full pb-4">
+						<BackButton
+							accessibilityHint={
+								introIndex === 0
+									? "Zurück zur Anmeldung"
+									: "Zur vorherigen Einführungsseite"
+							}
+							onPress={() => onBack()}
+						/>
+					</View>
 					<View className="w-full">
 						<IntroArtwork accessibleLayout item={item} />
 					</View>
@@ -1091,13 +1150,15 @@ function IntroStepView({
 				paddingBottom: Math.max(bottomInset + 20, 28),
 			}}
 		>
-			<View className="items-center px-6">
-				<View className="flex-row items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
-					<Route2 size={16} color={COLORS.primary} strokeWidth={2.2} />
-					<Text className="font-poppins font-semibold text-body-5 text-primary">
-						SO FUNKTIONIERT DAYOVA
-					</Text>
-				</View>
+			<View className="px-6">
+				<BackButton
+					accessibilityHint={
+						introIndex === 0
+							? "Zurück zur Anmeldung"
+							: "Zur vorherigen Einführungsseite"
+					}
+					onPress={() => onBack()}
+				/>
 			</View>
 
 			<Animated.FlatList
@@ -1860,7 +1921,12 @@ export function LoginScreen() {
 									isLoading || isSubmittingLogin ? "LOGIN..." : "LOGIN"
 								}
 								onPress={submitLogin}
-								disabled={isLoading || isSubmittingLogin}
+								disabled={
+									isLoading ||
+									isSubmittingLogin ||
+									!isValidEmail(email.trim().toLowerCase()) ||
+									!password.trim()
+								}
 							>
 								<Text>
 									{isLoading || isSubmittingLogin ? "LOGIN..." : "LOGIN"}
@@ -2120,6 +2186,13 @@ function PasswordResetScreen({
 					? "SICHERHEITSCODE PRÜFEN"
 					: "CODE PRÜFEN";
 
+	const isPrimaryInputReady =
+		stage === "email"
+			? isValidEmail(email.trim().toLowerCase())
+			: stage === "new_password"
+				? meetsPasswordRequirements(password) && password === confirmPassword
+				: code.length === CODE_LENGTH;
+
 	const runPrimaryAction = () => {
 		if (stage === "email") {
 			void sendResetCode();
@@ -2285,7 +2358,7 @@ function PasswordResetScreen({
 					<View className="mt-6 w-full">
 						<Button
 							accessibilityLabel={isLoading ? `${buttonLabel}...` : buttonLabel}
-							disabled={isLoading}
+							disabled={isLoading || !isPrimaryInputReady}
 							onPress={runPrimaryAction}
 						>
 							<Text>{isLoading ? `${buttonLabel}...` : buttonLabel}</Text>
@@ -2934,7 +3007,7 @@ function OtpCodeInput({
 	const { colors: COLORS } = useDayovaTheme();
 
 	return (
-		<View>
+		<View className="w-full max-w-[420px] self-center" testID="otp-code-input">
 			<View className="flex-row gap-2">
 				{OTP_CELL_KEYS.map((cellKey, index) => {
 					const symbol = value[index] ?? "";
@@ -2983,11 +3056,14 @@ function OtpCodeInput({
 				onChangeText={onChangeText}
 				editable={!disabled}
 				keyboardType="number-pad"
+				inputMode="numeric"
+				showSoftInputOnFocus
 				textContentType="oneTimeCode"
 				autoComplete={otpAutoComplete}
 				autoCorrect={false}
 				autoCapitalize="none"
 				caretHidden
+				contextMenuHidden
 				className="absolute inset-0 opacity-[0.01]"
 				maxLength={CODE_LENGTH}
 				selectionColor="transparent"
@@ -3422,78 +3498,121 @@ function AuthChoicePillButton({
 }
 
 function AuthBackgroundPattern({
+	iconColor,
+	isDark,
 	scale,
+	viewportWidth,
 	yOffset,
 }: {
+	iconColor: string;
+	isDark: boolean;
 	scale: number;
+	viewportWidth: number;
 	yOffset: number;
 }) {
-	const items = [
-		{
-			key: "palette-top",
-			x: AUTH_BACKGROUND_TILE.leftX,
-			y: 28,
-			icon: Palette,
-		},
-		{
-			key: "globe-top",
-			x: AUTH_BACKGROUND_TILE.centerX,
-			y: 44,
-			icon: Globe,
-		},
-		{
-			key: "telescope-top",
-			x: AUTH_BACKGROUND_TILE.rightX,
-			y: 26,
-			icon: Telescope,
-		},
-		{
-			key: "plant-mid",
-			x: AUTH_BACKGROUND_TILE.leftX,
-			y: 196,
-			icon: Plant,
-		},
-		{
-			key: "helmet-mid",
-			x: AUTH_BACKGROUND_TILE.rightX,
-			y: 188,
-			icon: GreekHelmet,
-		},
-		{
-			key: "atom-bottom",
-			x: AUTH_BACKGROUND_TILE.leftX,
-			y: 360,
-			icon: Atom,
-		},
-		{
-			key: "square-root-bottom",
-			x: AUTH_BACKGROUND_TILE.rightX,
-			y: 350,
-			icon: SquareRootSquare,
-		},
-	] as const;
+	const isTablet = viewportWidth >= 700;
+	const tileScale = isTablet ? viewportWidth / AUTH_CHOICE_FRAME.width : scale;
+	const iconScale = tileScale;
+	const tileSize = AUTH_BACKGROUND_TILE.size * tileScale;
+	const columnStep = AUTH_BACKGROUND_TILE.columnStep * scale;
+	const firstColumnLeft = isTablet
+		? ((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 -
+				AUTH_BACKGROUND_TILE.columnStep) *
+			tileScale
+		: ((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 -
+				AUTH_BACKGROUND_TILE.columnStep) *
+			scale;
+	const columnLefts = isTablet
+		? [
+				firstColumnLeft,
+				(AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) * 0.5 * tileScale,
+				((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 +
+					AUTH_BACKGROUND_TILE.columnStep) *
+					tileScale,
+			]
+		: Array.from(
+				{
+					length: Math.ceil((viewportWidth - firstColumnLeft) / columnStep),
+				},
+				(_, index) => firstColumnLeft + index * columnStep,
+			);
+	const contentClearHalfWidth =
+		(AUTH_CHOICE_FRAME.width * scale - tileSize) / 2;
+	const frameTop = Math.max(0, yOffset - AUTH_CHOICE_FRAME.patternYOffset);
+	const tabletLogoTop = frameTop + AUTH_CHOICE_FRAME.logoCard.top * scale;
+	const tabletTitleTop = frameTop + AUTH_CHOICE_FRAME.title.top * scale;
+	const topIcons: Array<typeof Palette> = [Palette, Globe, Telescope];
+	const items: Array<{
+		icon: typeof Palette;
+		key: string;
+		left: number;
+		top: number;
+	}> = [];
+
+	for (const [index, left] of columnLefts.entries()) {
+		const tileCenter = left + tileSize / 2;
+		const side = tileCenter < viewportWidth / 2 ? -1 : 1;
+		const clearsCentralContent =
+			Math.abs(tileCenter - viewportWidth / 2) > contentClearHalfWidth;
+		items.push({
+			key: `top-${index}`,
+			left,
+			top: isTablet
+				? Math.max(0, tabletLogoTop - tileSize - (index === 1 ? 8 : 24) * scale)
+				: ((index % 3 === 1 ? 44 : 28) + yOffset) * scale,
+			icon: topIcons[index % topIcons.length] ?? Globe,
+		});
+
+		if (index === 1 || (!isTablet && !clearsCentralContent)) continue;
+		items.push({
+			key: `middle-${index}`,
+			left,
+			top: isTablet
+				? tabletLogoTop - (side < 0 ? 4 : 12) * scale
+				: ((side < 0 ? 196 : 188) + yOffset) * scale,
+			icon: side < 0 ? Plant : GreekHelmet,
+		});
+		items.push({
+			key: `bottom-${index}`,
+			left,
+			top: isTablet
+				? tabletTitleTop - (side < 0 ? 0 : 10) * scale
+				: ((side < 0 ? 360 : 350) + yOffset) * scale,
+			icon: side < 0 ? Atom : SquareRootSquare,
+		});
+	}
+
+	const fillColors = isDark
+		? AUTH_BACKGROUND_TILE.darkFillColors
+		: AUTH_BACKGROUND_TILE.lightFillColors;
+	const iconOpacity = isDark ? 0.18 : 0.2;
 
 	return (
-		<View className="flex-1">
+		<View
+			testID="auth-choice-background-pattern"
+			className="flex-1"
+			style={{ width: viewportWidth }}
+		>
 			{items.map((item) => {
 				const Icon = item.icon;
 				return (
 					<View
 						key={item.key}
+						testID="auth-choice-background-tile"
 						style={{
 							position: "absolute",
-							left: item.x * scale,
-							top: (item.y + yOffset) * scale,
-							width: AUTH_BACKGROUND_TILE.size * scale,
-							height: AUTH_BACKGROUND_TILE.size * scale,
-							borderRadius: AUTH_BACKGROUND_TILE.radius * scale,
+							left: item.left,
+							top: item.top,
+							width: tileSize,
+							height: tileSize,
+							borderRadius: AUTH_BACKGROUND_TILE.radius * tileScale,
 							overflow: "hidden",
 							alignItems: "center",
 							justifyContent: "center",
 						}}
 					>
 						<LinearGradient
-							colors={AUTH_BACKGROUND_TILE.fillColors}
+							colors={fillColors}
 							style={{
 								position: "absolute",
 								top: 0,
@@ -3502,11 +3621,16 @@ function AuthBackgroundPattern({
 								left: 0,
 							}}
 						/>
-						<Icon
-							size={AUTH_BACKGROUND_TILE.iconSize * scale}
-							color="rgba(26,26,26,0.14)"
-							strokeWidth={1.8 * scale}
-						/>
+						<View
+							testID="auth-choice-background-icon"
+							style={{ opacity: iconOpacity }}
+						>
+							<Icon
+								size={AUTH_BACKGROUND_TILE.iconSize * iconScale}
+								color={iconColor}
+								strokeWidth={AUTH_BACKGROUND_TILE.iconStrokeWidth}
+							/>
+						</View>
 					</View>
 				);
 			})}

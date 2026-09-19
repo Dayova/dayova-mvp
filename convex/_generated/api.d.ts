@@ -9,6 +9,7 @@
  */
 
 import type * as accountDeletion from "../accountDeletion.js";
+import type * as accountDeletionActions from "../accountDeletionActions.js";
 import type * as adaptiveLearningPlan from "../adaptiveLearningPlan.js";
 import type * as adaptiveLearningPlanPolicy from "../adaptiveLearningPlanPolicy.js";
 import type * as aiConsent from "../aiConsent.js";
@@ -24,11 +25,18 @@ import type * as generatedGermanText from "../generatedGermanText.js";
 import type * as generatedGermanTextRepair from "../generatedGermanTextRepair.js";
 import type * as http from "../http.js";
 import type * as learningContentPlan from "../learningContentPlan.js";
+import type * as learningMaterialPolicy from "../learningMaterialPolicy.js";
 import type * as learningPlanAi from "../learningPlanAi.js";
 import type * as learningPlanAiCost from "../learningPlanAiCost.js";
+import type * as learningPlanAiTransfers from "../learningPlanAiTransfers.js";
 import type * as learningPlanAiUsage from "../learningPlanAiUsage.js";
 import type * as learningPlanAvailability from "../learningPlanAvailability.js";
+import type * as learningPlanDocumentContext from "../learningPlanDocumentContext.js";
+import type * as learningPlanDocumentProcessing from "../learningPlanDocumentProcessing.js";
+import type * as learningPlanGenerationProgressModel from "../learningPlanGenerationProgressModel.js";
 import type * as learningPlanPlanningHints from "../learningPlanPlanningHints.js";
+import type * as learningPlanUploadPolicy from "../learningPlanUploadPolicy.js";
+import type * as learningPlanUploadTelemetry from "../learningPlanUploadTelemetry.js";
 import type * as learningPlans from "../learningPlans.js";
 import type * as learningPreparationPolicy from "../learningPreparationPolicy.js";
 import type * as learningSessionComposition from "../learningSessionComposition.js";
@@ -38,10 +46,13 @@ import type * as learningSessionDurationText from "../learningSessionDurationTex
 import type * as learningSessionScheduleFormatting from "../learningSessionScheduleFormatting.js";
 import type * as learningSessionSegmentation from "../learningSessionSegmentation.js";
 import type * as learningTimeAvailability from "../learningTimeAvailability.js";
+import type * as learningTimeBehavior from "../learningTimeBehavior.js";
+import type * as learningTimePolicy from "../learningTimePolicy.js";
 import type * as learningTimes from "../learningTimes.js";
 import type * as learningTimesBackfill from "../learningTimesBackfill.js";
 import type * as learningTopicMap from "../learningTopicMap.js";
 import type * as notifications from "../notifications.js";
+import type * as personalSubjects from "../personalSubjects.js";
 import type * as questionNovelty from "../questionNovelty.js";
 import type * as revenueCat from "../revenueCat.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
@@ -63,6 +74,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   accountDeletion: typeof accountDeletion;
+  accountDeletionActions: typeof accountDeletionActions;
   adaptiveLearningPlan: typeof adaptiveLearningPlan;
   adaptiveLearningPlanPolicy: typeof adaptiveLearningPlanPolicy;
   aiConsent: typeof aiConsent;
@@ -78,11 +90,18 @@ declare const fullApi: ApiFromModules<{
   generatedGermanTextRepair: typeof generatedGermanTextRepair;
   http: typeof http;
   learningContentPlan: typeof learningContentPlan;
+  learningMaterialPolicy: typeof learningMaterialPolicy;
   learningPlanAi: typeof learningPlanAi;
   learningPlanAiCost: typeof learningPlanAiCost;
+  learningPlanAiTransfers: typeof learningPlanAiTransfers;
   learningPlanAiUsage: typeof learningPlanAiUsage;
   learningPlanAvailability: typeof learningPlanAvailability;
+  learningPlanDocumentContext: typeof learningPlanDocumentContext;
+  learningPlanDocumentProcessing: typeof learningPlanDocumentProcessing;
+  learningPlanGenerationProgressModel: typeof learningPlanGenerationProgressModel;
   learningPlanPlanningHints: typeof learningPlanPlanningHints;
+  learningPlanUploadPolicy: typeof learningPlanUploadPolicy;
+  learningPlanUploadTelemetry: typeof learningPlanUploadTelemetry;
   learningPlans: typeof learningPlans;
   learningPreparationPolicy: typeof learningPreparationPolicy;
   learningSessionComposition: typeof learningSessionComposition;
@@ -92,10 +111,13 @@ declare const fullApi: ApiFromModules<{
   learningSessionScheduleFormatting: typeof learningSessionScheduleFormatting;
   learningSessionSegmentation: typeof learningSessionSegmentation;
   learningTimeAvailability: typeof learningTimeAvailability;
+  learningTimeBehavior: typeof learningTimeBehavior;
+  learningTimePolicy: typeof learningTimePolicy;
   learningTimes: typeof learningTimes;
   learningTimesBackfill: typeof learningTimesBackfill;
   learningTopicMap: typeof learningTopicMap;
   notifications: typeof notifications;
+  personalSubjects: typeof personalSubjects;
   questionNovelty: typeof questionNovelty;
   revenueCat: typeof revenueCat;
   scheduleConflicts: typeof scheduleConflicts;

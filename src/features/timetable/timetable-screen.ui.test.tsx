@@ -19,6 +19,9 @@ jest.mock("react-native-safe-area-context", () => ({
 
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: mockAuthenticated }),
+	useQueries: () => ({
+		subjects: { personal: [], reusableTimetableSubjects: [] },
+	}),
 	useQuery: () => mockState,
 	useMutation: () => mockMutation,
 	useAction: () => jest.fn(),
@@ -115,7 +118,7 @@ jest.mock("~/components/ui/dayova-sheet-frame", () => {
 			children: ReactNode;
 			contentClassName: string;
 		}) => {
-			mockDismiss = onDismiss;
+			if (visible) mockDismiss = onDismiss;
 			return visible
 				? React.createElement(
 						View,

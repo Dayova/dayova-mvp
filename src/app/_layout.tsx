@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { AuthNavigationGate } from "~/components/auth-navigation-gate";
+import { FeatureAnalyticsProvider } from "~/components/feature-analytics-provider";
 import { NotificationSync } from "~/components/notification-sync";
 import { TrialReminderSync } from "~/components/trial-reminder-sync";
 import {
@@ -88,7 +89,15 @@ function AppNavigator() {
 							}}
 						/>
 						<Stack.Screen
-							name="timetable/index"
+							name="timetable"
+							options={{
+								contentStyle: { backgroundColor: colors.background },
+								gestureEnabled: true,
+								presentation: "card",
+							}}
+						/>
+						<Stack.Screen
+							name="personal-subjects"
 							options={{
 								contentStyle: { backgroundColor: colors.background },
 								gestureEnabled: true,
@@ -154,7 +163,10 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 			<View style={[gestureRootStyle, themeVariables]}>
 				<KeyboardProvider preload={false}>
 					<PostHogProvider
-						apiKey={postHogApiKey}
+						// The SDK treats an empty key as a runtime error even when disabled.
+						// Keep a context-backed no-op client for iOS/local development so
+						// hooks can stay mounted without blocking the app with the error overlay.
+						apiKey={postHogApiKey || "disabled"}
 						autocapture={false}
 						options={{
 							host: postHogHost,
@@ -183,7 +195,9 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 													<AccessProvider>
 														<AiConsentProvider>
 															<AnalyticsIdentity />
-															<AppNavigator />
+															<FeatureAnalyticsProvider>
+																<AppNavigator />
+															</FeatureAnalyticsProvider>
 														</AiConsentProvider>
 													</AccessProvider>
 												</AuthProvider>

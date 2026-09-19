@@ -7,6 +7,7 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { BackButton, Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
+import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Attachment,
 	BookOpen,
@@ -23,9 +24,13 @@ import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
+import { getEntryCompletionAction } from "~/lib/entry-completion";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { goBackOrReplace } from "~/lib/navigation";
 import { ROUTES } from "~/lib/routes";
+import { triggerSuccessHaptic } from "~/lib/safe-haptics";
+import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 type ParsedNotes = {
 	summary: string[];
@@ -65,18 +70,7 @@ function DetailTile({
 	if (!value) return null;
 
 	return (
-		<View
-			className="flex-1 rounded-[24px] bg-card px-5 py-5"
-			style={{
-				borderWidth: 1.2,
-				borderColor: "rgba(17,24,39,0.07)",
-				shadowColor: "#000000",
-				shadowOpacity: 0.04,
-				shadowRadius: 10,
-				shadowOffset: { width: 0, height: 4 },
-				elevation: 2,
-			}}
-		>
+		<View className="flex-1 rounded-[24px] border border-border bg-card px-5 py-5">
 			<View className="mb-3 flex-row items-center">
 				{icon}
 				<Text className="ml-2 font-poppins font-semibold text-body-5 text-text/50 uppercase">
@@ -95,18 +89,7 @@ function NotesCard({ value }: { value?: string }) {
 	if (!summary.length && !tasks.length) return null;
 
 	return (
-		<View
-			className="mt-5 rounded-[28px] bg-card px-5 py-5"
-			style={{
-				borderWidth: 1.2,
-				borderColor: "rgba(17,24,39,0.07)",
-				shadowColor: "#000000",
-				shadowOpacity: 0.05,
-				shadowRadius: 12,
-				shadowOffset: { width: 0, height: 5 },
-				elevation: 2,
-			}}
-		>
+		<View className="mt-5 rounded-[28px] border border-border bg-card px-5 py-5">
 			<View className="mb-4 flex-row items-center">
 				<View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
 					<NotebookPen size={18} color="#00BAFF" strokeWidth={2.2} />
@@ -144,8 +127,10 @@ function NotesCard({ value }: { value?: string }) {
 }
 
 export default function EntryDetailScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
+	const { colors } = useDayovaTheme();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const deleteDayEntry = useMutation(api.dayEntries.remove);
@@ -173,16 +158,31 @@ export default function EntryDetailScreen() {
 				: "skip",
 		) ?? undefined;
 	const relatedLearningPlanId = entry?.relatedLearningPlanId;
-	const relatedPlanResult = useQuery(
-		api.learningPlans.getSnapshot,
+	const relatedPlanDetails = useQuery(
+		api.learningPlans.getPlanDetails,
 		user && isConvexAuthenticated && relatedLearningPlanId
 			? { id: relatedLearningPlanId }
 			: "skip",
-	) as LearningPlanSnapshot | null | undefined;
-	const isRelatedPlanLoading = Boolean(
-		relatedLearningPlanId && relatedPlanResult === undefined,
 	);
-	const relatedPlan = relatedPlanResult ?? null;
+	const relatedPlanDocuments = useQuery(
+		api.learningPlans.listDocuments,
+		user && isConvexAuthenticated && relatedLearningPlanId
+			? { learningPlanId: relatedLearningPlanId }
+			: "skip",
+	);
+	const isRelatedPlanLoading = Boolean(
+		relatedLearningPlanId &&
+			(relatedPlanDetails === undefined || relatedPlanDocuments === undefined),
+	);
+	const relatedPlan =
+		relatedPlanDetails && relatedPlanDocuments
+			? ({
+					plan: relatedPlanDetails,
+					documents: relatedPlanDocuments,
+					answers: [],
+					sessions: [],
+				} satisfies LearningPlanSnapshot)
+			: null;
 	const hasRelatedSchoolMaterial = Boolean(
 		relatedPlan?.documents.some((document) => document.sourceKind === "school"),
 	);
@@ -225,7 +225,14 @@ export default function EntryDetailScreen() {
 	const [isDeleteVisible, setIsDeleteVisible] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const [isUpdatingCompleted, setIsUpdatingCompleted] = useState(false);
+	const [completionFeedback, setCompletionFeedback] = useState<{
+		message: string;
+		tone: "success" | "error";
+	} | null>(null);
 	const deleteActionGateRef = useRef(createAsyncActionGate());
+	const completionActionGateRef = useRef(createAsyncActionGate());
+	const completionAction = getEntryCompletionAction(isCompleted);
 
 	const handleDelete = () => {
 		if (!canDelete || !id || !user || !isConvexAuthenticated) return;
@@ -245,6 +252,11 @@ export default function EntryDetailScreen() {
 				const deletedDayKey = await deleteDayEntry({
 					id: id as Id<"dayEntries">,
 				});
+				trackFeature(
+					isExam ? "exam.remove" : "homework.remove",
+					"succeeded",
+					id,
+				);
 				setIsDeleteVisible(false);
 				router.replace(
 					`/home${deletedDayKey ? `?dayKey=${encodeURIComponent(deletedDayKey)}` : ""}`,
@@ -263,11 +275,42 @@ export default function EntryDetailScreen() {
 		setDeleteError(null);
 	};
 
-	const toggleCompleted = () => {
+	const toggleCompleted = async () => {
 		if (!canToggleCompleted || !id || !user || !isConvexAuthenticated) return;
-		void setDayEntryCompleted({
-			id: id as Id<"dayEntries">,
-			completed: !isCompleted,
+
+		await completionActionGateRef.current.run(async () => {
+			setIsUpdatingCompleted(true);
+			const interaction =
+				entry?.kind === "Hausaufgabe"
+					? isCompleted
+						? "homework.reopen"
+						: "homework.complete"
+					: isCompleted
+						? "entry.reopen"
+						: "entry.complete";
+			trackFeature(interaction, "attempted", id);
+			setCompletionFeedback(null);
+			try {
+				await setDayEntryCompleted({
+					id: id as Id<"dayEntries">,
+					completed: completionAction.nextCompleted,
+				});
+				trackFeature(interaction, "succeeded", id);
+				setCompletionFeedback({
+					message: completionAction.successMessage,
+					tone: "success",
+				});
+				void triggerSuccessHaptic({ platform: process.env.EXPO_OS });
+			} catch {
+				trackFeature(interaction, "failed", id);
+				setCompletionFeedback({
+					message:
+						"Der Status konnte nicht geändert werden. Bitte versuche es erneut.",
+					tone: "error",
+				});
+			} finally {
+				setIsUpdatingCompleted(false);
+			}
 		});
 	};
 
@@ -296,6 +339,7 @@ export default function EntryDetailScreen() {
 		const query = [
 			["examDayEntryId", entry.id],
 			["subject", subject],
+			["personalSubjectId", entry.personalSubjectId],
 			["examTypeLabel", examType ?? "Leistungskontrolle"],
 			["examDateKey", entry.dayKey ?? ""],
 			["examDateLabel", plannedDate ?? ""],
@@ -438,24 +482,56 @@ export default function EntryDetailScreen() {
 					</Button>
 				) : null}
 				{canToggleCompleted ? (
-					<Button
-						className="mt-5"
-						variant={isCompleted ? "neutral" : "default"}
-						onPress={toggleCompleted}
-					>
-						<Check
-							size={18}
-							color={isCompleted ? "#1A1A1A" : "#FFFFFF"}
-							strokeWidth={2.3}
-						/>
-						<Text>
-							{isCompleted ? "Als offen markieren" : "Als erledigt markieren"}
-						</Text>
-					</Button>
+					<>
+						<Button
+							accessibilityLabel={
+								isUpdatingCompleted
+									? "Status wird aktualisiert"
+									: completionAction.buttonLabel
+							}
+							accessibilityState={{ busy: isUpdatingCompleted }}
+							className="mt-5"
+							disabled={isUpdatingCompleted}
+							variant={isCompleted ? "neutral" : "default"}
+							onPress={() => void toggleCompleted()}
+						>
+							{isUpdatingCompleted ? (
+								<ActivityIndicator
+									color={isCompleted ? colors.background : "#FFFFFF"}
+								/>
+							) : (
+								<Check
+									size={18}
+									color={isCompleted ? colors.background : "#FFFFFF"}
+									strokeWidth={2.3}
+								/>
+							)}
+							<Text>
+								{isUpdatingCompleted
+									? "Status wird aktualisiert …"
+									: completionAction.buttonLabel}
+							</Text>
+						</Button>
+						{completionFeedback?.tone === "success" ? (
+							<View
+								accessible
+								accessibilityLiveRegion="polite"
+								className="mt-3 rounded-info bg-success-subtle px-4 py-3"
+							>
+								<Text className="text-center font-poppins font-semibold text-body-4 text-text">
+									{completionFeedback.message}
+								</Text>
+							</View>
+						) : completionFeedback ? (
+							<ErrorMessage className="mt-3 text-center font-semibold">
+								{completionFeedback.message}
+							</ErrorMessage>
+						) : null}
+					</>
 				) : null}
 				{canDelete ? (
 					<Button className="mt-5" variant="destructive" onPress={handleDelete}>
-						<Trash2 size={18} color="#FFFFFF" strokeWidth={2.3} />
+						<Trash2 size={18} color={colors.onPrimary} strokeWidth={2.3} />
 						<Text>Eintrag löschen</Text>
 					</Button>
 				) : null}

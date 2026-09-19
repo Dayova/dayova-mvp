@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
 	createPublicEnv,
 	getMissingPublicRuntimeConfig,
@@ -93,6 +93,26 @@ describe("getMissingPublicRuntimeConfig", () => {
 		expect(env.EXPO_PUBLIC_POSTHOG_HOST).toBeUndefined();
 	});
 
+	it("uses canonical legal destinations in the app when overrides are absent or blank", () => {
+		const env = createPublicEnv(
+			{
+				EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+				EXPO_PUBLIC_CONVEX_URL: "https://example.convex.cloud",
+				EXPO_PUBLIC_PRIVACY_URL: "   ",
+			},
+			{ context: "app-runtime" },
+		);
+
+		expect(env.EXPO_PUBLIC_PRIVACY_URL).toBe("https://dayova.com/privacy");
+		expect(env.EXPO_PUBLIC_TERMS_URL).toBe(
+			"https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+		);
+		expect(env.EXPO_PUBLIC_SUBSCRIPTION_TERMS_URL).toBe(
+			"https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+		);
+		expect(env.EXPO_PUBLIC_SUPPORT_URL).toBe("https://dayova.com/support");
+	});
+
 	it("does not require optional PostHog analytics envs", () => {
 		expect(
 			getMissingPublicRuntimeConfig({
@@ -170,4 +190,26 @@ describe("getMissingPublicRuntimeConfig", () => {
 			),
 		).toThrowError(/EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY/);
 	});
+});
+
+it("allows React Refresh introspection in the native client without exposing server keys", () => {
+	vi.stubGlobal("window", {});
+	try {
+		const config = createPublicEnv(
+			{
+				EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+				EXPO_PUBLIC_CONVEX_URL: "https://example.convex.cloud",
+			},
+			{ context: "app-runtime" },
+		);
+		expect(() => Reflect.get(config, "prototype")).not.toThrow();
+		expect(Reflect.get(config, "prototype")).toBeUndefined();
+		expect(Reflect.get(config, "SERVER_SECRET")).toBeUndefined();
+		expect(config.EXPO_PUBLIC_CONVEX_URL).toBe("https://example.convex.cloud");
+		expect(
+			Object.keys(config).every((key) => key.startsWith("EXPO_PUBLIC_")),
+		).toBe(true);
+	} finally {
+		vi.unstubAllGlobals();
+	}
 });

@@ -25,11 +25,13 @@ import {
 } from "~/features/settings/settings-list";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { logDiagnosticError } from "~/lib/diagnostics";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value.trim());
 const isValidName = (value: string) => value.trim().length >= 2;
 
 export default function ProfileScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const { user } = useAuthSession();
 	const {
@@ -167,6 +169,7 @@ export default function ProfileScreen() {
 				return;
 			}
 
+			trackFeature("settings.profile_saved", "succeeded");
 			setFeedback({
 				tone: "success",
 				message: "Dein Profil wurde gespeichert.",
@@ -194,6 +197,7 @@ export default function ProfileScreen() {
 		setFeedback(null);
 		try {
 			await verifyProfileEmailCode(code);
+			trackFeature("settings.profile_saved", "succeeded");
 			setIsEmailVerificationPending(false);
 			setCode("");
 			setFeedback({
@@ -337,13 +341,6 @@ export default function ProfileScreen() {
 							disabled: isEmailVerificationPending ? !canVerifyCode : !canSave,
 						}}
 						onPress={isEmailVerificationPending ? verifyEmail : saveProfile}
-						style={{
-							shadowColor: "#00BAFF",
-							shadowOpacity: canSave || canVerifyCode ? 0.22 : 0,
-							shadowRadius: 12,
-							shadowOffset: { width: 0, height: 5 },
-							elevation: canSave || canVerifyCode ? 4 : 0,
-						}}
 					>
 						{isSaving ? (
 							<ActivityIndicator color="#FFFFFF" />

@@ -152,6 +152,8 @@ type LearningPlanDocument = {
 	fileType: string;
 	fileSizeBytes: number;
 	sourceKind: "school" | "external";
+	processingStatus?: "queued" | "processing" | "ready" | "failed";
+	processingError?: string;
 };
 
 export type UploadAsset = {
@@ -215,17 +217,48 @@ export type LearningPlanSnapshot = {
 		planningHint?: string;
 		diagnosticPlacement?: "firstSession";
 		rollingPlanEnabled?: boolean;
+		masteryStatus?: "learning" | "mastered";
 		adaptationRevision?: number;
 		sessionCompositionVariant?: "control" | "split";
 		contentGeneration?: {
 			stage: "content" | "validating" | "ready" | "failed";
 			startedAt?: number;
+			failureReason?:
+				| "insufficientMaterial"
+				| "materialProcessing"
+				| "schedulingConstraints"
+				| "generationProcessing";
 			totalSessionCount: number;
 			readySessionCount: number;
 			failedSessionCount: number;
+		};
+		learningTimeSuggestion?: {
+			entries: Array<{
+				dayOfWeek: number;
+				startTime: string;
+				endTime: string;
+			}>;
+			initialPromptDismissed: boolean;
+			postDiagnosticReminderDismissed: boolean;
+		};
+		behavioralLearningTimeSuggestion?: {
+			fingerprint: string;
+			evidenceSessionCount: number;
+			plannedStartTime: string;
+			observedStartTime: string;
+			entries: Array<{
+				dayOfWeek: number;
+				startTime: string;
+				endTime: string;
+			}>;
 		};
 	};
 	documents: LearningPlanDocument[];
 	answers: LearningPlanAnswer[];
 	sessions: PlanSession[];
+};
+
+export type LearningPlanSetupSnapshot = {
+	plan: Pick<LearningPlanSnapshot["plan"], "id" | "topicDescription">;
+	documents: LearningPlanSnapshot["documents"];
 };

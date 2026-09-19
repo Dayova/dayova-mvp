@@ -42,7 +42,7 @@ export function ReleaseInformationSheet({
 			visible={visible}
 			onClose={onClose}
 			title="App-Informationen"
-			size="medium"
+			size="content"
 			scrollable
 		>
 			<View className="gap-4">

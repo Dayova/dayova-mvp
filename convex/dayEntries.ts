@@ -2,8 +2,10 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { assertAccountActive } from "./accountDeletion";
 import { getBerlinDayKey, getDayKeyQueryVariants } from "./dayKeyVariants";
 import { throwUserFacingError } from "./errors";
+import { resolveSubjectSelection } from "./personalSubjects";
 import { assertNoScheduleConflict, isExamEntry } from "./scheduleConflicts";
 import {
 	getActiveTimetableLessons,
@@ -14,6 +16,7 @@ import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 type OptionalEntryFields = {
 	subject?: string;
+	personalSubjectId?: Id<"personalSubjects">;
 	time?: string;
 	kind?: string;
 	notes?: string;
@@ -59,6 +62,9 @@ const optionalEntryFields = (
 ): OptionalEntryFields => ({
 	...(entry.time !== undefined ? { time: entry.time } : {}),
 	...(entry.subject !== undefined ? { subject: entry.subject } : {}),
+	...(entry.personalSubjectId !== undefined
+		? { personalSubjectId: entry.personalSubjectId }
+		: {}),
 	...(entry.kind !== undefined ? { kind: entry.kind } : {}),
 	...(entry.notes !== undefined ? { notes: entry.notes } : {}),
 	...(entry.dueDateKey !== undefined ? { dueDateKey: entry.dueDateKey } : {}),
@@ -150,12 +156,26 @@ const optionalValuesMatch = <TValue>(
 	right: TValue | undefined,
 ) => (left ?? undefined) === (right ?? undefined);
 
+const renamedEntryTitleForResolvedSubject = (
+	title: string,
+	requestedSubject: string,
+	resolvedSubject: string,
+) => {
+	if (requestedSubject === resolvedSubject) return title;
+	if (title === requestedSubject) return resolvedSubject;
+	const prefix = `${requestedSubject} `;
+	return title.startsWith(prefix)
+		? `${resolvedSubject}${title.slice(requestedSubject.length)}`
+		: title;
+};
+
 const isSameCreatePayload = (
 	entry: Doc<"dayEntries">,
 	args: OptionalEntryFields & { title: string },
 ) =>
 	entry.title === args.title &&
 	optionalValuesMatch(entry.subject, args.subject) &&
+	optionalValuesMatch(entry.personalSubjectId, args.personalSubjectId) &&
 	optionalValuesMatch(
 		isExamEntry(entry) ? undefined : entry.time,
 		isExamEntry(args) ? undefined : args.time,
@@ -200,6 +220,7 @@ const findExistingSameEntry = async (
 const entryFields = {
 	title: v.string(),
 	subject: v.optional(v.string()),
+	personalSubjectId: v.optional(v.id("personalSubjects")),
 	time: v.optional(v.string()),
 	kind: v.optional(v.string()),
 	notes: v.optional(v.string()),
@@ -218,6 +239,7 @@ const requireOwnerTokenIdentifier = async (ctx: QueryCtx | MutationCtx) => {
 	if (identity === null) {
 		throwUserFacingError("Nicht authentifiziert.");
 	}
+	await assertAccountActive(ctx, identity.tokenIdentifier);
 
 	return identity.tokenIdentifier;
 };
@@ -282,12 +304,20 @@ export const listByDayKeys = query({
 			);
 		}
 
-		const learningSessions = await ctx.db
-			.query("learningPlanSessions")
-			.withIndex("by_ownerTokenIdentifier", (q) =>
-				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+		const learningSessions = (
+			await Promise.all(
+				[...queryKeyToRequestedDayKey.keys()].map((queryDayKey) =>
+					ctx.db
+						.query("learningPlanSessions")
+						.withIndex("by_ownerTokenIdentifier_and_dateKey", (q) =>
+							q
+								.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+								.eq("dateKey", queryDayKey),
+						)
+						.take(50),
+				),
 			)
-			.take(200);
+		).flat();
 		const planCache = new Map<
 			Id<"learningPlans">,
 			Doc<"learningPlans"> | null
@@ -460,14 +490,35 @@ export const create = mutation({
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
-		const title = args.title.trim();
-		if (!title) {
+		const submittedTitle = args.title.trim();
+		if (!submittedTitle) {
 			throwUserFacingError("Titel darf nicht leer sein.");
 		}
+		if (args.personalSubjectId && !args.subject?.trim()) {
+			throwUserFacingError("Fach fehlt.");
+		}
+		const resolvedSubject: {
+			subject?: string;
+			personalSubjectId?: Id<"personalSubjects">;
+		} = args.subject?.trim()
+			? await resolveSubjectSelection(ctx, {
+					ownerTokenIdentifier,
+					subject: args.subject,
+					personalSubjectId: args.personalSubjectId,
+				})
+			: {};
+		const title =
+			resolvedSubject.subject && args.subject
+				? renamedEntryTitleForResolvedSubject(
+						submittedTitle,
+						args.subject.trim(),
+						resolvedSubject.subject,
+					)
+				: submittedTitle;
 		const normalizedArgs = {
 			...args,
 			title,
-			...(args.subject?.trim() ? { subject: args.subject.trim() } : {}),
+			...resolvedSubject,
 			...(isExamEntry(args) ? { time: undefined } : {}),
 		};
 		const existingSameEntry = await findExistingSameEntry(ctx, {

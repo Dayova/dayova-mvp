@@ -14,15 +14,19 @@ import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import { getGenerationProgressPresentation } from "~/features/learning-plans/generation-progress";
+import {
+	getLearningPlanGenerationFailure,
+	type LearningPlanGenerationFailure,
+} from "~/features/learning-plans/generation-recovery";
 import { generatePlanWithAnalytics } from "~/features/learning-plans/plan-generation-analytics";
+import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import {
 	calculateAvailableStudyMinutes,
 	getAutomaticLearningPreparation,
 	MIN_ROLLING_HORIZON_MINUTES,
 } from "~/features/learning-plans/plan-workload";
-import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
-import { getErrorMessage } from "~/features/learning-plans/utils";
 import { getDayKey } from "~/lib/day-key";
+import { logDiagnosticError } from "~/lib/diagnostics";
 import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { ROUTES, withReturnTo } from "~/lib/routes";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
@@ -52,47 +56,67 @@ export default function LearningPlanGeneratingScreen() {
 	const setTargetStudyMinutes = useMutation(
 		api.learningPlans.setTargetStudyMinutes,
 	);
+	const prepareLearningTimeDefaults = useMutation(
+		api.learningTimes.prepareDefaultsForPlan,
+	);
 	const { capture } = useValidationAnalytics();
 	const [isBusy, setIsBusy] = useState(false);
-	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [failure, setFailure] = useState<LearningPlanGenerationFailure | null>(
+		null,
+	);
 	const [retryAttempt, setRetryAttempt] = useState(0);
 	const [canRecoverStalledGeneration, setCanRecoverStalledGeneration] =
 		useState(false);
 	const didStartRef = useRef(false);
-	const snapshot = (useQuery(
-		api.learningPlans.getSnapshot,
+	const didPrepareLearningTimesRef = useRef(false);
+	const plan = useQuery(
+		api.learningPlans.getPlanDetails,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
-	) ?? null) as LearningPlanSnapshot | null;
+	);
+	const answers = useQuery(
+		api.learningPlans.listAnswers,
+		user && isConvexAuthenticated && planId
+			? { learningPlanId: planId }
+			: "skip",
+	);
+	const generationProgress = useQuery(
+		api.learningPlans.getGenerationProgress,
+		user && isConvexAuthenticated && planId
+			? { learningPlanId: planId }
+			: "skip",
+	);
 	const learningTimes = useQuery(
 		api.learningTimes.listMine,
 		user && isConvexAuthenticated ? {} : "skip",
 	);
 
-	const availableStudyMinutes = useMemo(
-		() =>
-			snapshot && learningTimes
-				? calculateAvailableStudyMinutes({
-						fromDateKey: getDayKey(new Date()),
-						examDateKey: snapshot.plan.examDateKey,
-						learningTimes,
-					})
-				: null,
-		[learningTimes, snapshot],
-	);
+	const availableStudyMinutes = useMemo(() => {
+		if (!plan || !learningTimes) return null;
+		const availableMinutes = calculateAvailableStudyMinutes({
+			fromDateKey: getDayKey(new Date()),
+			examDateKey: plan.examDateKey,
+			learningTimes,
+		});
+		return learningTimes.some(
+			(learningTime) => learningTime.preferenceStatus === "systemDefault",
+		)
+			? Math.max(availableMinutes, MIN_ROLLING_HORIZON_MINUTES)
+			: availableMinutes;
+	}, [learningTimes, plan]);
 	const automaticPreparation = useMemo(
 		() =>
-			snapshot && availableStudyMinutes !== null
+			plan && answers && availableStudyMinutes !== null
 				? getAutomaticLearningPreparation({
-						examTypeLabel: snapshot.plan.examTypeLabel,
-						examDurationMinutes: snapshot.plan.durationMinutes,
-						preparationDepth: snapshot.plan.preparationDepth,
-						topicCount: snapshot.plan.topicMap.length,
-						answerCount: snapshot.answers.length,
-						topicReadiness: snapshot.plan.topicReadiness ?? [],
+						examTypeLabel: plan.examTypeLabel,
+						examDurationMinutes: plan.durationMinutes,
+						preparationDepth: plan.preparationDepth,
+						topicCount: plan.topicMap.length,
+						answerCount: answers.length,
+						topicReadiness: plan.topicReadiness ?? [],
 						availableMinutes: availableStudyMinutes,
 					})
 				: null,
-		[availableStudyMinutes, snapshot],
+		[answers, availableStudyMinutes, plan],
 	);
 	const needsLearningTime =
 		availableStudyMinutes !== null &&
@@ -100,12 +124,42 @@ export default function LearningPlanGeneratingScreen() {
 			(automaticPreparation?.recommendation.plannedMinutes ??
 				MIN_ROLLING_HORIZON_MINUTES) < MIN_ROLLING_HORIZON_MINUTES);
 	const sessionCompositionVariant = "split" as const;
-	const progressPresentation = getGenerationProgressPresentation(
-		snapshot?.plan.contentGeneration,
-	);
+	const contentGeneration = generationProgress?.contentGeneration ?? undefined;
+	const progressPresentation =
+		getGenerationProgressPresentation(contentGeneration);
+	const displayedFailure =
+		failure ??
+		(contentGeneration?.stage === "failed"
+			? getLearningPlanGenerationFailure(null, contentGeneration.failureReason)
+			: null);
 
 	useEffect(() => {
-		const generation = snapshot?.plan.contentGeneration;
+		if (
+			!planId ||
+			!plan ||
+			learningTimes === undefined ||
+			learningTimes.length > 0 ||
+			didPrepareLearningTimesRef.current
+		) {
+			return;
+		}
+		didPrepareLearningTimesRef.current = true;
+		void prepareLearningTimeDefaults({ learningPlanId: planId }).catch(
+			(error: unknown) => {
+				didPrepareLearningTimesRef.current = false;
+				logDiagnosticError("Learning time defaults failed.", error, {
+					source: "learning-plans.learning-time-defaults",
+					metadata: { learningPlanId: planId },
+				});
+				setFailure(
+					getLearningPlanGenerationFailure(null, "schedulingConstraints"),
+				);
+			},
+		);
+	}, [learningTimes, planId, prepareLearningTimeDefaults, plan]);
+
+	useEffect(() => {
+		const generation = contentGeneration;
 		if (!generation || generation.stage !== "content") {
 			const timeout = setTimeout(
 				() => setCanRecoverStalledGeneration(false),
@@ -125,32 +179,32 @@ export default function LearningPlanGeneratingScreen() {
 			remainingMs,
 		);
 		return () => clearTimeout(timeout);
-	}, [snapshot?.plan.contentGeneration]);
+	}, [contentGeneration]);
 
 	useEffect(() => {
 		void retryAttempt;
-		if (!planId || !snapshot) return;
+		if (!planId || !plan || !learningTimes?.length) return;
 
-		if (snapshot.plan.status === "generated") {
+		if (plan.status === "generated") {
 			router.replace(planPath(planId, "review"));
 			return;
 		}
-		if (snapshot.plan.diagnosticPlacement !== "firstSession") {
+		if (plan.diagnosticPlacement !== "firstSession") {
 			router.replace(planPath(planId, "analysis"));
 			return;
 		}
-		if (snapshot.plan.contentGeneration) return;
+		if (contentGeneration) return;
 
-		if (!snapshot.plan.targetStudyMinutes && !automaticPreparation) return;
+		if (!plan.targetStudyMinutes && !automaticPreparation) return;
 		if (
-			!snapshot.plan.targetStudyMinutes &&
+			!plan.targetStudyMinutes &&
 			automaticPreparation &&
 			automaticPreparation.recommendation.plannedMinutes <
 				MIN_ROLLING_HORIZON_MINUTES
 		) {
 			queueMicrotask(() => {
-				setErrorMessage(
-					"Vor deiner Prüfung sind noch nicht zwei passende Lerntermine frei. Gehe zurück und ergänze zuerst Lernzeit.",
+				setFailure(
+					getLearningPlanGenerationFailure(null, "schedulingConstraints"),
 				);
 			});
 			return;
@@ -160,14 +214,14 @@ export default function LearningPlanGeneratingScreen() {
 		didStartRef.current = true;
 		queueMicrotask(() => {
 			setIsBusy(true);
-			setErrorMessage(null);
+			setFailure(null);
 			void (async () => {
 				if (!(await requestAiConsent())) {
 					didStartRef.current = false;
 					router.replace(planPath(planId, "scope"));
 					return;
 				}
-				if (!snapshot.plan.targetStudyMinutes && automaticPreparation) {
+				if (!plan.targetStudyMinutes && automaticPreparation) {
 					await setTargetStudyMinutes({
 						learningPlanId: planId,
 						targetStudyMinutes:
@@ -186,47 +240,52 @@ export default function LearningPlanGeneratingScreen() {
 				});
 			})()
 				.catch((error: unknown) => {
-					setErrorMessage(
-						getErrorMessage(
-							error,
-							"Der Lernplan konnte nicht erstellt werden.",
-						),
-					);
+					const nextFailure = getLearningPlanGenerationFailure(error);
+					logDiagnosticError("Learning plan generation failed.", error, {
+						source: "learning-plans.generation",
+						metadata: {
+							learningPlanId: planId,
+							failureReason: nextFailure.reason,
+						},
+					});
+					setFailure(nextFailure);
 				})
 				.finally(() => setIsBusy(false));
 		});
 	}, [
 		automaticPreparation,
 		capture,
+		contentGeneration,
 		generatePlan,
+		plan,
 		planId,
 		requestAiConsent,
 		retryAttempt,
 		router,
 		setTargetStudyMinutes,
 		sessionCompositionVariant,
-		snapshot,
+		learningTimes,
 	]);
 
 	const retryGeneration = async () => {
 		if (!planId || isBusy) return;
 
 		setIsBusy(true);
-		setErrorMessage(null);
+		setFailure(null);
 		try {
 			if (!(await requestAiConsent())) return;
 			if (
-				snapshot?.plan.contentGeneration &&
-				snapshot.plan.contentGeneration.stage !== "ready" &&
-				snapshot.sessions.length > 0
+				contentGeneration &&
+				contentGeneration.stage !== "ready" &&
+				(generationProgress?.sessionCount ?? 0) > 0
 			) {
 				await retryFailedSessionContent({ learningPlanId: planId });
 				return;
 			}
 			if (
-				snapshot?.plan.contentGeneration &&
-				snapshot.plan.contentGeneration.stage !== "ready" &&
-				snapshot.sessions.length === 0
+				contentGeneration &&
+				contentGeneration.stage !== "ready" &&
+				(generationProgress?.sessionCount ?? 0) === 0
 			) {
 				await generatePlanWithAnalytics({
 					generatePlan,
@@ -243,12 +302,15 @@ export default function LearningPlanGeneratingScreen() {
 			didStartRef.current = false;
 			setRetryAttempt((value) => value + 1);
 		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Die fehlenden Lernblöcke konnten nicht erstellt werden.",
-				),
-			);
+			const nextFailure = getLearningPlanGenerationFailure(error);
+			logDiagnosticError("Learning plan generation retry failed.", error, {
+				source: "learning-plans.generation.retry",
+				metadata: {
+					learningPlanId: planId,
+					failureReason: nextFailure.reason,
+				},
+			});
+			setFailure(nextFailure);
 		} finally {
 			setIsBusy(false);
 		}
@@ -261,9 +323,19 @@ export default function LearningPlanGeneratingScreen() {
 			withReturnTo(ROUTES.learningTimes, planPath(planId, "generating")),
 		);
 	};
+	const reviewTopics = () => {
+		if (!planId) return;
+		didStartRef.current = false;
+		router.replace(planPath(planId, "scope"));
+	};
+	const editMaterial = () => {
+		if (!planId) return;
+		didStartRef.current = false;
+		router.replace(learningPlanMaterialPath(planId));
+	};
 
 	const goBack = () => {
-		if (planId && snapshot) {
+		if (planId && plan) {
 			router.replace(planPath(planId, "scope"));
 			return true;
 		}
@@ -304,21 +376,32 @@ export default function LearningPlanGeneratingScreen() {
 						className="mt-5 w-full max-w-[360px]"
 						progress={progressPresentation.progress}
 					/>
-					{errorMessage ||
+					{displayedFailure ||
 					progressPresentation.canRetryFailedSessions ||
 					canRecoverStalledGeneration ? (
 						<>
-							{errorMessage ? (
+							{displayedFailure ? (
 								<Text className="mt-6 text-center font-poppins text-body-4 text-destructive">
-									{errorMessage}
+									{displayedFailure.message}
 								</Text>
 							) : null}
 							<Button
 								className="mt-6"
 								disabled={isBusy}
 								onPress={() => {
-									if (needsLearningTime) {
+									if (
+										displayedFailure?.canEditLearningTimes ||
+										needsLearningTime
+									) {
 										openLearningTimes();
+										return;
+									}
+									if (displayedFailure?.canReviewTopics) {
+										reviewTopics();
+										return;
+									}
+									if (displayedFailure?.canEditMaterial) {
+										editMaterial();
 										return;
 									}
 									void retryGeneration();
@@ -328,20 +411,37 @@ export default function LearningPlanGeneratingScreen() {
 									<ActivityIndicator color="#FFFFFF" />
 								) : (
 									<Text>
-										{needsLearningTime
+										{displayedFailure?.canEditLearningTimes || needsLearningTime
 											? "Lernzeit eintragen"
-											: "Erneut versuchen"}
+											: displayedFailure?.canReviewTopics
+												? "Prüfungsstoff prüfen"
+												: displayedFailure?.canEditMaterial
+													? "Material ergänzen oder ersetzen"
+													: "Erneut versuchen"}
 									</Text>
 								)}
 							</Button>
-							{errorMessage && !needsLearningTime ? (
+							{displayedFailure?.canReviewTopics ? (
 								<Button
 									className="mt-3"
 									disabled={isBusy}
 									variant="neutral"
-									onPress={openLearningTimes}
+									onPress={editMaterial}
 								>
-									<Text>Lernzeiten anpassen</Text>
+									<Text>Material ergänzen oder ersetzen</Text>
+								</Button>
+							) : null}
+							{displayedFailure &&
+							!displayedFailure.canEditLearningTimes &&
+							(displayedFailure.canReviewTopics ||
+								displayedFailure.canEditMaterial) ? (
+								<Button
+									className="mt-3"
+									disabled={isBusy}
+									variant="neutral"
+									onPress={() => void retryGeneration()}
+								>
+									<Text>Erneut versuchen</Text>
 								</Button>
 							) : null}
 							<SupportContact context="Lernplan erstellen" className="mt-3" />

@@ -8,14 +8,20 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import {
+	getLearningPlanUploadCapacity,
+	getLearningPlanUploadRejectionMessage,
+	validateLearningPlanUploadBatch,
+} from "#convex/learningPlanUploadPolicy";
 import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import {
 	ActionSheet,
 	actionSheetIconColor,
 } from "~/components/ui/action-sheet";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
-import { Attachment, ScanImage } from "~/components/ui/icon";
+import { Attachment, Photo, ScanImage } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import {
 	getLearningPlanCreationBackIntent,
@@ -34,7 +40,7 @@ import {
 	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
 import type {
-	LearningPlanSnapshot,
+	LearningPlanSetupSnapshot,
 	UploadAsset,
 } from "~/features/learning-plans/types";
 import {
@@ -53,9 +59,17 @@ import {
 	goBackOrReplace,
 	useBackIntent,
 } from "~/lib/navigation";
+import { prepareLearningPhoto } from "~/lib/prepare-learning-photo";
 import { ROUTES } from "~/lib/routes";
-import { ACCEPTED_FILE_TYPES, validateUploadFile } from "~/lib/upload-policy";
+import {
+	ACCEPTED_FILE_TYPES,
+	LEARNING_PLAN_UPLOAD_LIMITS,
+	validateUploadFile,
+} from "~/lib/upload-policy";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
+import type { UserFacingErrorCode } from "~/lib/user-facing-error-contract";
+import { AI_CONSENT_REQUIRED_ERROR_CODE } from "~/lib/user-facing-error-contract";
 
 const UPLOAD_TIMEOUT_MS = 45_000;
 const UPLOAD_COMPLETION_FAILURE_MESSAGE =
@@ -68,18 +82,20 @@ type PreparedUploadAsset = {
 	fileType: string;
 };
 
-type PendingUploadAction = "camera" | "files";
+type PendingUploadAction = "camera" | "library" | "files";
 type PendingUploadRequest = {
 	action: PendingUploadAction;
 };
 
 export default function NewLearningPlanScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{
 		step?: string;
 		learningPlanId?: string;
 		examDayEntryId?: string;
 		subject?: string;
+		personalSubjectId?: string;
 		examTypeLabel?: string;
 		examDateKey?: string;
 		examDateLabel?: string;
@@ -87,9 +103,11 @@ export default function NewLearningPlanScreen() {
 		topicDescription?: string;
 		teacherGuidance?: string;
 		fromExamEntry?: string;
+		errorCode?: UserFacingErrorCode;
 		errorMessage?: string;
 	}>();
 	const { user } = useAuthSession();
+	const { requestAiConsentDisclosure } = useAiConsent();
 	const { capture } = useValidationAnalytics();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const createDraftPlan = useMutation(api.learningPlans.createDraft);
@@ -101,8 +119,14 @@ export default function NewLearningPlanScreen() {
 		api.learningPlans.registerUploadedDocument,
 	);
 	const removeDocument = useMutation(api.learningPlans.removeDocument);
+	const retryDocumentProcessing = useAction(
+		api.learningPlanAi.retryDocumentProcessing,
+	);
 
 	const subject = params.subject?.trim() || "Fach";
+	const personalSubjectId = params.personalSubjectId as
+		| Id<"personalSubjects">
+		| undefined;
 	const examTypeLabel = params.examTypeLabel?.trim() || "Leistungskontrolle";
 	const examDateKey = params.examDateKey || getDateKey(new Date());
 	const examDateLabel =
@@ -127,6 +151,8 @@ export default function NewLearningPlanScreen() {
 	);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
+	const [retryingDocumentId, setRetryingDocumentId] =
+		useState<Id<"learningPlanDocuments"> | null>(null);
 	const [isUploadSheetVisible, setIsUploadSheetVisible] = useState(false);
 	const [isPauseConfirmationVisible, setIsPauseConfirmationVisible] =
 		useState(false);
@@ -134,21 +160,37 @@ export default function NewLearningPlanScreen() {
 	const topicActionGateRef = useRef(createAsyncActionGate());
 	const [openingUploadAction, setOpeningUploadAction] =
 		useState<PendingUploadAction | null>(null);
-	const [errorMessage, setErrorMessage] = useState<string | null>(
-		params.errorMessage ?? null,
+	const [setupError, setSetupError] = useState<{
+		code: UserFacingErrorCode | null;
+		message: string;
+	} | null>(() =>
+		params.errorMessage
+			? { code: params.errorCode ?? null, message: params.errorMessage }
+			: null,
 	);
+	const errorMessage = setupError?.message ?? null;
 
 	const hasExamEntry = Boolean(examDayEntryId || learningPlanId);
 	const snapshot = (useQuery(
-		api.learningPlans.getSnapshot,
+		api.learningPlans.getSetupSnapshot,
 		user && isConvexAuthenticated && learningPlanId
 			? { id: learningPlanId }
 			: "skip",
-	) ?? null) as LearningPlanSnapshot | null;
+	) ?? null) as LearningPlanSetupSnapshot | null;
 	const canWrite = Boolean(user && isConvexAuthenticated);
 	const topics = topicsInput ?? snapshot?.plan.topicDescription ?? "";
 	const hasSchoolMaterial = Boolean(
 		snapshot?.documents.some((document) => document.sourceKind === "school"),
+	);
+	const uploadCapacity = getLearningPlanUploadCapacity(
+		snapshot?.documents ?? [],
+	);
+	const hasFailedMaterial = Boolean(
+		snapshot?.documents.some(
+			(document) =>
+				document.sourceKind === "school" &&
+				document.processingStatus === "failed",
+		),
 	);
 	const isPlanSnapshotLoading = Boolean(learningPlanId && snapshot === null);
 	const canUpload =
@@ -156,6 +198,8 @@ export default function NewLearningPlanScreen() {
 		!isBusy &&
 		!openingUploadAction &&
 		!isPlanSnapshotLoading &&
+		uploadCapacity.remainingCount > 0 &&
+		uploadCapacity.remainingBytes > 0 &&
 		isMeaningfulTopicDescription(topics);
 	const canContinueTopics =
 		canWrite &&
@@ -163,7 +207,12 @@ export default function NewLearningPlanScreen() {
 		!openingUploadAction &&
 		isMeaningfulTopicDescription(topics);
 	const canContinueUpload =
-		Boolean(learningPlanId) && hasSchoolMaterial && canUpload;
+		Boolean(learningPlanId) &&
+		hasSchoolMaterial &&
+		!hasFailedMaterial &&
+		canWrite &&
+		!isBusy &&
+		!isPlanSnapshotLoading;
 	const currentProgressStep =
 		setupStep === "requiredTopics"
 			? LEARNING_PLAN_CREATION_STEPS.examTopics
@@ -183,9 +232,12 @@ export default function NewLearningPlanScreen() {
 			setSetupStep("materialUpload");
 		}
 		if (params.errorMessage) {
-			setErrorMessage(params.errorMessage);
+			setSetupError({
+				code: params.errorCode ?? null,
+				message: params.errorMessage,
+			});
 		}
-	}, [params.errorMessage, params.step]);
+	}, [params.errorCode, params.errorMessage, params.step]);
 
 	const ensurePlan = async (
 		topicDescription = params.topicDescription ?? "",
@@ -202,6 +254,7 @@ export default function NewLearningPlanScreen() {
 			createDraftPlan({
 				examDayEntryId,
 				subject,
+				...(personalSubjectId ? { personalSubjectId } : {}),
 				examTypeLabel,
 				examDateKey,
 				examDateLabel,
@@ -220,28 +273,53 @@ export default function NewLearningPlanScreen() {
 		task: () => Promise<void>,
 	) => {
 		setIsBusy(true);
-		setErrorMessage(null);
+		setSetupError(null);
 		try {
 			await task();
 		} catch (error) {
-			setErrorMessage(getErrorMessage(error, fallback));
+			setSetupError({ code: null, message: getErrorMessage(error, fallback) });
 		} finally {
 			setIsBusy(false);
 		}
 	};
 
-	const prepareUploadAsset = (asset: UploadAsset): PreparedUploadAsset => {
+	const prepareUploadAsset = async (
+		inputAsset: UploadAsset,
+	): Promise<PreparedUploadAsset> => {
+		const isPhoto =
+			inputAsset.mimeType?.startsWith("image/") ||
+			/\.(jpe?g|png|webp|heic|heif)$/i.test(inputAsset.name);
+		const asset = isPhoto
+			? await prepareLearningPhoto(inputAsset.uri, inputAsset.name)
+			: inputAsset;
 		const file = new File(asset.uri);
 		const fileSizeBytes = asset.size ?? file.info().size ?? 0;
 		const fileType = asset.mimeType || "application/octet-stream";
 
-		const validation = validateUploadFile({
-			name: asset.name,
-			size: fileSizeBytes,
-		});
+		const validation = validateUploadFile(
+			{
+				name: asset.name,
+				size: fileSizeBytes,
+				type: fileType,
+			},
+			LEARNING_PLAN_UPLOAD_LIMITS,
+		);
 		if (!validation.valid) throw new Error(validation.message);
 
 		return { asset, file, fileSizeBytes, fileType };
+	};
+
+	const assertUploadBatchFits = (assets: PreparedUploadAsset[]) => {
+		const validation = validateLearningPlanUploadBatch(
+			snapshot?.documents ?? [],
+			assets.map(({ asset, fileSizeBytes }) => ({
+				name: asset.name,
+				size: fileSizeBytes,
+				type: asset.mimeType ?? undefined,
+			})),
+		);
+		if (validation.valid) return;
+		throw new Error(getLearningPlanUploadRejectionMessage(validation.code));
 	};
 
 	const uploadLearningPlanAsset = async (
@@ -369,7 +447,7 @@ export default function NewLearningPlanScreen() {
 			return;
 		}
 
-		setErrorMessage(null);
+		setSetupError(null);
 		try {
 			const result = await DocumentPicker.getDocumentAsync({
 				type: [...ACCEPTED_FILE_TYPES],
@@ -383,14 +461,18 @@ export default function NewLearningPlanScreen() {
 			await runWithErrorHandling(
 				"Die Datei konnte nicht hochgeladen werden.",
 				async () => {
-					const preparedAssets = result.assets.map((asset) =>
-						prepareUploadAsset({
-							uri: asset.uri,
-							name: asset.name,
-							mimeType: asset.mimeType,
-							size: asset.size,
-						}),
-					);
+					const preparedAssets: PreparedUploadAsset[] = [];
+					for (const asset of result.assets) {
+						preparedAssets.push(
+							await prepareUploadAsset({
+								uri: asset.uri,
+								name: asset.name,
+								mimeType: asset.mimeType,
+								size: asset.size,
+							}),
+						);
+					}
+					assertUploadBatchFits(preparedAssets);
 					const id = await ensurePlan(topics);
 					for (const asset of preparedAssets) {
 						await uploadLearningPlanAsset(asset, id);
@@ -398,12 +480,13 @@ export default function NewLearningPlanScreen() {
 				},
 			);
 		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
+			setSetupError({
+				code: null,
+				message: getErrorMessage(
 					error,
 					"Die Dateiauswahl konnte nicht geöffnet werden.",
 				),
-			);
+			});
 		} finally {
 			setIsUploading(false);
 			setOpeningUploadAction(null);
@@ -416,7 +499,7 @@ export default function NewLearningPlanScreen() {
 			return;
 		}
 
-		setErrorMessage(null);
+		setSetupError(null);
 		try {
 			const permission = await ImagePicker.requestCameraPermissionsAsync();
 			if (!permission.granted) {
@@ -426,7 +509,7 @@ export default function NewLearningPlanScreen() {
 			const result = await ImagePicker.launchCameraAsync({
 				mediaTypes: ["images"],
 				allowsEditing: false,
-				quality: 0.82,
+				quality: 1,
 			});
 			setOpeningUploadAction(null);
 			if (result.canceled) return;
@@ -438,22 +521,92 @@ export default function NewLearningPlanScreen() {
 			await runWithErrorHandling(
 				"Das Foto konnte nicht hochgeladen werden.",
 				async () => {
+					const preparedAsset = await prepareUploadAsset({
+						uri: asset.uri,
+						name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
+						mimeType: asset.mimeType ?? "image/jpeg",
+						size: asset.fileSize,
+					});
+					assertUploadBatchFits([preparedAsset]);
 					const id = await ensurePlan(topics);
-					await uploadLearningPlanAsset(
-						prepareUploadAsset({
-							uri: asset.uri,
-							name: asset.fileName ?? `mitschrift-${Date.now()}.jpg`,
-							mimeType: asset.mimeType ?? "image/jpeg",
-							size: asset.fileSize,
-						}),
-						id,
-					);
+					await uploadLearningPlanAsset(preparedAsset, id);
 				},
 			);
 		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(error, "Die Kamera konnte nicht geöffnet werden."),
+			setSetupError({
+				code: null,
+				message: getErrorMessage(
+					error,
+					"Die Kamera konnte nicht geöffnet werden.",
+				),
+			});
+		} finally {
+			setIsUploading(false);
+			setOpeningUploadAction(null);
+		}
+	};
+
+	const selectPhotos = async () => {
+		if (!canWrite || isBusy) {
+			setOpeningUploadAction(null);
+			return;
+		}
+
+		setSetupError(null);
+		try {
+			const permission =
+				await ImagePicker.requestMediaLibraryPermissionsAsync();
+			if (!permission.granted) {
+				throw new Error(
+					"Erlaube den Zugriff auf deine Fotos, um Bilder aus deiner Mediathek hochzuladen.",
+				);
+			}
+
+			const result = await ImagePicker.launchImageLibraryAsync({
+				mediaTypes: ["images"],
+				allowsEditing: false,
+				allowsMultipleSelection: true,
+				orderedSelection: true,
+				selectionLimit: Math.max(1, uploadCapacity.remainingCount),
+				quality: 1,
+				preferredAssetRepresentationMode:
+					ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Automatic,
+				shouldDownloadFromNetwork: true,
+			});
+			setOpeningUploadAction(null);
+			if (result.canceled) return;
+
+			setIsUploading(true);
+			await runWithErrorHandling(
+				"Die Fotos konnten nicht hochgeladen werden.",
+				async () => {
+					const preparedAssets: PreparedUploadAsset[] = [];
+					for (const [index, asset] of result.assets.entries()) {
+						preparedAssets.push(
+							await prepareUploadAsset({
+								uri: asset.uri,
+								name:
+									asset.fileName ?? `mediathek-${Date.now()}-${index + 1}.jpg`,
+								mimeType: asset.mimeType ?? "image/jpeg",
+								size: asset.fileSize,
+							}),
+						);
+					}
+					assertUploadBatchFits(preparedAssets);
+					const id = await ensurePlan(topics);
+					for (const asset of preparedAssets) {
+						await uploadLearningPlanAsset(asset, id);
+					}
+				},
 			);
+		} catch (error) {
+			setSetupError({
+				code: null,
+				message: getErrorMessage(
+					error,
+					"Die Mediathek konnte nicht geöffnet werden.",
+				),
+			});
 		} finally {
 			setIsUploading(false);
 			setOpeningUploadAction(null);
@@ -469,6 +622,8 @@ export default function NewLearningPlanScreen() {
 	const runUploadAction = (action: PendingUploadAction) => {
 		if (action === "files") {
 			void uploadMaterial();
+		} else if (action === "library") {
+			void selectPhotos();
 		} else {
 			void takePhoto();
 		}
@@ -500,7 +655,7 @@ export default function NewLearningPlanScreen() {
 
 		await topicActionGateRef.current.run(async () => {
 			setIsBusy(true);
-			setErrorMessage(null);
+			setSetupError(null);
 			try {
 				if (learningPlanId) {
 					await retryOnceAfterAuthResume(() =>
@@ -513,18 +668,20 @@ export default function NewLearningPlanScreen() {
 					await ensurePlan(topics);
 				}
 				router.setParams({
+					errorCode: undefined,
 					errorMessage: undefined,
 					step: "material",
 					topicDescription: topics,
 				});
 				setSetupStep("materialUpload");
 			} catch (error) {
-				setErrorMessage(
-					getErrorMessage(
+				setSetupError({
+					code: null,
+					message: getErrorMessage(
 						error,
 						"Die Prüfungsthemen konnten nicht gespeichert werden.",
 					),
-				);
+				});
 			} finally {
 				setIsBusy(false);
 			}
@@ -539,6 +696,10 @@ export default function NewLearningPlanScreen() {
 				if (!isMeaningfulTopicDescription(topics)) {
 					throw new Error("Prüfungsthemen fehlen.");
 				}
+				if (setupOrigin === "resumedDraft") {
+					dismissToOrReplace(router, ROUTES.learningPlans);
+					return;
+				}
 				router.replace(
 					examEntrySuccessPath({
 						dayKey: examDateKey,
@@ -552,7 +713,30 @@ export default function NewLearningPlanScreen() {
 	const removeUploadedDocument = async (
 		documentId: Id<"learningPlanDocuments">,
 	) => {
-		await removeDocument({ id: documentId });
+		trackFeature("material.remove", "attempted", documentId);
+		try {
+			await removeDocument({ id: documentId });
+			trackFeature("material.remove", "succeeded", documentId);
+		} catch (error) {
+			trackFeature("material.remove", "failed", documentId);
+			throw error;
+		}
+	};
+
+	const retryUploadedDocument = async (
+		documentId: Id<"learningPlanDocuments">,
+	) => {
+		setRetryingDocumentId(documentId);
+		try {
+			await runWithErrorHandling(
+				"Das Material konnte nicht erneut verarbeitet werden.",
+				async () => {
+					await retryDocumentProcessing({ documentId });
+				},
+			);
+		} finally {
+			setRetryingDocumentId(null);
+		}
 	};
 
 	const exitCreation = () => {
@@ -561,6 +745,7 @@ export default function NewLearningPlanScreen() {
 				examEntryResumePath({
 					examDayEntryId,
 					subject,
+					personalSubjectId,
 					examTypeLabel,
 					examDateKey,
 					durationMinutes,
@@ -594,8 +779,12 @@ export default function NewLearningPlanScreen() {
 		});
 		if (intent.kind === "ignore") return true;
 		if (intent.kind === "previousStep") {
-			setErrorMessage(null);
-			router.setParams({ errorMessage: undefined, step: "topic" });
+			setSetupError(null);
+			router.setParams({
+				errorCode: undefined,
+				errorMessage: undefined,
+				step: "topic",
+			});
 			setSetupStep(intent.step);
 			return true;
 		}
@@ -616,6 +805,14 @@ export default function NewLearningPlanScreen() {
 	const continueToAnalysis = () => {
 		if (!learningPlanId || !canContinueUpload) return;
 		router.push(learningPlanStepPath(learningPlanId, "analysis"));
+	};
+
+	const requestCurrentAiConsent = () => {
+		void requestAiConsentDisclosure().then((allowed) => {
+			if (!allowed) return;
+			setSetupError(null);
+			router.setParams({ errorCode: undefined, errorMessage: undefined });
+		});
 	};
 
 	if (!hasExamEntry) return null;
@@ -649,10 +846,15 @@ export default function NewLearningPlanScreen() {
 							isUploading={isUploading}
 							onContinue={continueToAnalysis}
 							onOpenUpload={() => setIsUploadSheetVisible(true)}
+							onRequestAiConsent={requestCurrentAiConsent}
 							onRemoveDocument={(id) => void removeUploadedDocument(id)}
+							onRetryDocument={retryUploadedDocument}
 							onSkip={finishWithMaterialLater}
 							openingUploadAction={openingUploadAction}
-							showSkip={setupOrigin === "newExam"}
+							requiresAiConsent={
+								setupError?.code === AI_CONSENT_REQUIRED_ERROR_CODE
+							}
+							retryingDocumentId={retryingDocumentId}
 						/>
 					)}
 				</View>
@@ -661,11 +863,11 @@ export default function NewLearningPlanScreen() {
 			<ActionSheet
 				visible={isUploadSheetVisible}
 				title="Material von deiner Schule"
-				description="Scanne oder lade Unterlagen deiner Schule oder Lehrkraft hoch."
+				description="Fotografiere oder wähle Unterlagen deiner Schule oder Lehrkraft aus."
 				onClose={closeUploadSheet}
 				onDismiss={runPendingUploadAction}
 				closeAccessibilityLabel="Hochladen schließen"
-				layout="tile"
+				layout="row"
 				onSelect={chooseUploadAction}
 				options={[
 					{
@@ -677,6 +879,22 @@ export default function NewLearningPlanScreen() {
 								<ActivityIndicator color={actionSheetIconColor} />
 							) : (
 								<ScanImage
+									size={28}
+									color={actionSheetIconColor}
+									strokeWidth={1.8}
+								/>
+							),
+					},
+					{
+						value: "library",
+						title: "Mediathek",
+						description: "Vorhandene Fotos auswählen",
+						disabled: !canUpload,
+						icon:
+							openingUploadAction === "library" || isBusy ? (
+								<ActivityIndicator color={actionSheetIconColor} />
+							) : (
+								<Photo
 									size={28}
 									color={actionSheetIconColor}
 									strokeWidth={1.8}
@@ -703,6 +921,7 @@ export default function NewLearningPlanScreen() {
 			<ConfirmationSheet
 				visible={isPauseConfirmationVisible}
 				title="Lernplan-Erstellung pausieren?"
+				actionLayout="stacked"
 				description="Deine bisherigen Angaben und Unterlagen bleiben gespeichert. Du kannst die Erstellung später unter Lernpläne fortsetzen."
 				cancelLabel="Weiter bearbeiten"
 				confirmLabel="Später fortsetzen"

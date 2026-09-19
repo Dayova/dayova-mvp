@@ -30,8 +30,10 @@ describe("validation analytics contract", () => {
 		).toBe(true);
 	});
 
-	it("exposes exactly the eleven Validation Phase event names", () => {
+	it("exposes validation events and bounded feature instrumentation", () => {
 		type ExpectedEventName =
+			| "feature_interaction"
+			| "app_screen_viewed"
 			| "onboarding_completed"
 			| "homework_created"
 			| "exam_created"

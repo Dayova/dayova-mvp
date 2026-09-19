@@ -1,15 +1,21 @@
 import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
+import {
+	getLearningPlanUploadCapacity,
+	LEARNING_PLAN_MAX_FILE_COUNT,
+} from "#convex/learningPlanUploadPolicy";
+import { AddIcon } from "~/components/ui/add-icon";
 import { Button } from "~/components/ui/button";
-import { GraduationCap, Plus } from "~/components/ui/icon";
+import { GraduationCap } from "~/components/ui/icon";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useDayovaTheme } from "~/lib/theme";
+import { formatFileSize } from "~/lib/upload-policy";
 
-type PendingUploadAction = "camera" | "files";
+type PendingUploadAction = "camera" | "library" | "files";
 
 function SetupContinueButton({
 	canContinue,
@@ -51,9 +57,11 @@ function UploadActivity({
 			<Text className="flex-1 font-poppins text-body-4 text-secondary-text">
 				{openingUploadAction === "files"
 					? "Dateiauswahl wird geöffnet …"
-					: openingUploadAction === "camera"
-						? "Kamera wird geöffnet …"
-						: "Material wird hochgeladen …"}
+					: openingUploadAction === "library"
+						? "Mediathek wird geöffnet …"
+						: openingUploadAction === "camera"
+							? "Kamera wird geöffnet …"
+							: "Material wird hochgeladen …"}
 			</Text>
 		</View>
 	);
@@ -141,7 +149,7 @@ export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
 					Themenblatt, Arbeitsblätter oder Mitschriften
 				</Text>
 			</View>
-			<Plus size={22} color={colors.primaryStrong} strokeWidth={2.2} />
+			<AddIcon />
 		</>
 	);
 	const className =
@@ -189,10 +197,13 @@ export function MaterialUploadStep({
 	isUploading,
 	onContinue,
 	onOpenUpload,
+	onRequestAiConsent,
 	onRemoveDocument,
+	requiresAiConsent = false,
+	onRetryDocument,
 	onSkip,
 	openingUploadAction,
-	showSkip = true,
+	retryingDocumentId,
 }: {
 	canUpload: boolean;
 	canContinue: boolean;
@@ -202,26 +213,34 @@ export function MaterialUploadStep({
 	isUploading: boolean;
 	onContinue: () => void;
 	onOpenUpload: () => void;
+	onRequestAiConsent?: () => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
+	requiresAiConsent?: boolean;
+	onRetryDocument?: (id: Id<"learningPlanDocuments">) => Promise<void>;
 	onSkip: () => void;
 	openingUploadAction: PendingUploadAction | null;
-	showSkip?: boolean;
+	retryingDocumentId?: Id<"learningPlanDocuments"> | null;
 }) {
 	const schoolDocuments = documents.filter(
 		(document) => document.sourceKind === "school",
 	);
 	const hasSchoolMaterial = schoolDocuments.length > 0;
+	const capacity = getLearningPlanUploadCapacity(documents);
 
 	return (
 		<View className="flex-1">
 			<MaterialUploadStepLead />
+			<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
+				Noch {capacity.remainingCount} von {LEARNING_PLAN_MAX_FILE_COUNT}{" "}
+				Dateien und {formatFileSize(capacity.remainingBytes)} verfügbar
+			</Text>
 			<MaterialUploadActionCard
 				canUpload={canUpload}
 				hasSchoolMaterial={hasSchoolMaterial}
 				onPress={onOpenUpload}
 			/>
 
-			{showSkip && !hasSchoolMaterial ? (
+			{!hasSchoolMaterial ? (
 				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
 					Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du
 					später ergänzen.
@@ -241,8 +260,13 @@ export function MaterialUploadStep({
 					{schoolDocuments.map((document) => (
 						<MaterialCard
 							key={document.id}
+							isRetrying={retryingDocumentId === document.id}
 							name={document.fileName}
 							size={document.fileSizeBytes}
+							status={document.processingStatus}
+							onRetry={
+								onRetryDocument ? () => onRetryDocument(document.id) : undefined
+							}
 							onRemove={() => onRemoveDocument(document.id)}
 						/>
 					))}
@@ -250,23 +274,32 @@ export function MaterialUploadStep({
 			) : null}
 
 			<SetupError message={errorMessage} />
+			{requiresAiConsent && onRequestAiConsent ? (
+				<Button
+					accessibilityHint="Öffnet die Informationen zur KI-Datenverarbeitung und die Auswahl zur Zustimmung."
+					className="mt-4 w-full"
+					onPress={onRequestAiConsent}
+				>
+					<Text>KI-Datenschutz bestätigen</Text>
+				</Button>
+			) : null}
 			<View className="mt-auto w-full gap-3 pt-8">
 				{hasSchoolMaterial ? (
 					<SetupContinueButton
-						canContinue={canContinue}
+						canContinue={canContinue && !requiresAiConsent}
 						isBusy={isBusy}
 						onPress={onContinue}
 					/>
-				) : showSkip ? (
+				) : (
 					<Button
 						accessibilityHint="Speichert den Lernplan-Entwurf. Material kann später hochgeladen werden."
 						variant="neutral"
 						disabled={!canUpload}
 						onPress={onSkip}
 					>
-						<Text>Ohne Lernmaterial erstellen</Text>
+						<Text>Später hinzufügen</Text>
 					</Button>
-				) : null}
+				)}
 			</View>
 		</View>
 	);

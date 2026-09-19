@@ -6,9 +6,10 @@ import {
 	jest,
 	test,
 } from "@jest/globals";
-import { act, fireEvent, render } from "@testing-library/react-native";
+import { act, fireEvent, render, within } from "@testing-library/react-native";
 import type { ReactElement, ReactNode } from "react";
 import { AccessibilityInfo, BackHandler, Platform, View } from "react-native";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { DayovaSheetFrame } from "./dayova-sheet-frame";
 import {
 	SheetAccessibilityProvider,
@@ -21,6 +22,13 @@ const mockSheetHarness = {
 	onChange: null as null | ((index: number) => void),
 	onDismiss: null as null | (() => void),
 };
+const mockWindowDimensions = {
+	fontScale: 1,
+	height: 852,
+	scale: 3,
+	width: 393,
+};
+const mockSafeAreaInsets = { bottom: 0, left: 0, right: 0, top: 0 };
 
 jest.mock("react-native", () => {
 	const actual =
@@ -29,14 +37,25 @@ jest.mock("react-native", () => {
 	return new Proxy(actual, {
 		get(target, property, receiver) {
 			if (property === "findNodeHandle") return findNodeHandle;
+			if (property === "useWindowDimensions") {
+				return () => mockWindowDimensions;
+			}
 			return Reflect.get(target, property, receiver);
 		},
 	});
 });
 
-jest.mock("react-native-safe-area-context", () => ({
-	useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }),
-}));
+jest.mock("react-native-safe-area-context", () => {
+	const React = jest.requireActual<typeof import("react")>("react");
+	const SafeAreaInsetsContext = React.createContext<
+		typeof mockSafeAreaInsets | null
+	>(null);
+	return {
+		SafeAreaInsetsContext,
+		useSafeAreaInsets: () =>
+			React.useContext(SafeAreaInsetsContext) ?? mockSafeAreaInsets,
+	};
+});
 
 jest.mock("~/lib/theme", () => ({
 	useDayovaTheme: () => ({
@@ -119,6 +138,18 @@ describe("DayovaSheetFrame", () => {
 	};
 
 	beforeEach(() => {
+		Object.assign(mockWindowDimensions, {
+			fontScale: 1,
+			height: 852,
+			scale: 3,
+			width: 393,
+		});
+		Object.assign(mockSafeAreaInsets, {
+			bottom: 0,
+			left: 0,
+			right: 0,
+			top: 0,
+		});
 		originalPlatform = Platform.OS;
 		jest.restoreAllMocks();
 		mockSheetHarness.present.mockReset();
@@ -155,6 +186,32 @@ describe("DayovaSheetFrame", () => {
 		const callbacks = animationFrames.splice(0);
 		for (const callback of callbacks) callback(performance.now());
 	};
+
+	test("uses screen safe area instead of reserving space for the tab bar", async () => {
+		const screenInsets = { bottom: 34, left: 0, right: 0, top: 59 };
+		const tree = (bottom: number) => (
+			<SafeAreaInsetsContext.Provider value={{ ...screenInsets, bottom }}>
+				<SheetAccessibilityProvider>
+					<SafeAreaInsetsContext.Provider
+						value={{ ...screenInsets, bottom: 83 }}
+					>
+						<DayovaSheetFrame
+							visible
+							onClose={jest.fn()}
+							title="Lernplan löschen"
+						>
+							<View testID="delete-actions" />
+						</DayovaSheetFrame>
+					</SafeAreaInsetsContext.Provider>
+				</SheetAccessibilityProvider>
+			</SafeAreaInsetsContext.Provider>
+		);
+		const view = await render(tree(34));
+		const content = () => view.getByTestId("delete-actions").parent?.parent;
+		expect(content()?.props.style).toEqual({ paddingBottom: 50 });
+		await view.rerender(tree(0));
+		expect(content()?.props.style).toEqual({ paddingBottom: 24 });
+	});
 
 	test("reopens after an in-flight controlled dismissal without closing the new sheet", async () => {
 		const onClose = jest.fn();
@@ -341,6 +398,58 @@ describe("DayovaSheetFrame", () => {
 		expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
 	});
 
+	test("keeps the title outside scrollable content while fixing the footer", async () => {
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				footer={<View testID="sheet-footer" />}
+				onClose={jest.fn()}
+				scrollable
+				size="medium"
+				title="Fester Titel"
+			>
+				<View testID="long-sheet-content" />
+			</DayovaSheetFrame>,
+		);
+		await act(flushAnimationFrames);
+
+		const scrollContent = view.getByTestId("dayova-sheet-scroll-content");
+		const header = view.getByTestId("dayova-sheet-header");
+		const footer = view.getByTestId("sheet-footer");
+
+		expect(scrollContent).not.toContainElement(header);
+		expect(scrollContent).toContainElement(
+			view.getByTestId("long-sheet-content"),
+		);
+		expect(scrollContent).not.toContainElement(footer);
+	});
+
+	test("respects landscape safe areas and uses the available scroll height", async () => {
+		Object.assign(mockWindowDimensions, { height: 390, width: 844 });
+		Object.assign(mockSafeAreaInsets, { left: 47, right: 21 });
+
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				maxWidth={760}
+				onClose={jest.fn()}
+				scrollable
+				size="medium"
+				title="Querformat"
+			>
+				<View />
+			</DayovaSheetFrame>,
+		);
+		await act(flushAnimationFrames);
+
+		const modal = view.getByTestId("bottom-sheet-modal");
+		expect(modal.props.style).toMatchObject({
+			marginHorizontal: 47,
+			width: 750,
+		});
+		expect(modal.props.snapPoints).toEqual([370]);
+	});
+
 	test("hides background content from screen readers while a sheet is open", async () => {
 		function BackgroundProbe() {
 			const sheetAccessibility = useSheetAccessibility();
@@ -375,5 +484,48 @@ describe("DayovaSheetFrame", () => {
 		expect(
 			view.getByTestId("background").props.accessibilityElementsHidden,
 		).toBe(false);
+	});
+	test("dynamic form sheets measure the title, description, fields and actions in one scrollable", async () => {
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				title="Fach hinzufügen"
+				description="Beschreibung"
+				scrollable
+				size="content"
+				footer={<View testID="save-action" />}
+			>
+				<View testID="subject-field" />
+			</DayovaSheetFrame>,
+		);
+		const modal = view.getByTestId("bottom-sheet-modal");
+		const scrollable = view.getByTestId("dayova-sheet-scroll-view");
+		expect(modal.props.enableDynamicSizing).toBe(true);
+		expect(scrollable.parent).toBe(modal);
+		expect(
+			within(scrollable).getByRole("header", { name: "Fach hinzufügen" }),
+		).toBeOnTheScreen();
+		expect(within(scrollable).getByTestId("subject-field")).toBeOnTheScreen();
+		expect(within(scrollable).getByTestId("save-action")).toBeOnTheScreen();
+		expect(scrollable.props.style?.flex).not.toBe(1);
+	});
+
+	test("allows input focus only after native presentation, once per opening", async () => {
+		const onPresented = jest.fn();
+		await render(
+			<DayovaSheetFrame
+				visible
+				onClose={jest.fn()}
+				onPresented={onPresented}
+				title="Fach hinzufügen"
+			/>,
+		);
+		await act(flushAnimationFrames);
+		expect(onPresented).not.toHaveBeenCalled();
+		await act(() => mockSheetHarness.onChange?.(0));
+		expect(onPresented).toHaveBeenCalledTimes(1);
+		await act(() => mockSheetHarness.onChange?.(1));
+		expect(onPresented).toHaveBeenCalledTimes(1);
 	});
 });

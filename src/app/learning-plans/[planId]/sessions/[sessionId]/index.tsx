@@ -1,14 +1,11 @@
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, AppState, Platform, View } from "react-native";
 import {
-	ActivityIndicator,
-	AppState,
-	KeyboardAvoidingView,
-	Platform,
-	ScrollView,
-	View,
-} from "react-native";
+	type KeyboardAwareScrollViewRef,
+	KeyboardStickyView,
+} from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -17,6 +14,7 @@ import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Timer } from "~/components/ui/icon";
+import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -24,12 +22,12 @@ import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { ChoiceList } from "~/features/learning-plans/choice-list";
 import { LearningSessionCompletion } from "~/features/learning-plans/learning-session-completion";
-import { getLearningSessionAnalysisDestination } from "~/features/learning-plans/session-analysis-navigation";
 import { learningSessionAnalyticsProperties } from "~/features/learning-plans/session-analytics";
+import { getLearningSessionCompletionDestination } from "~/features/learning-plans/session-completion-navigation";
 import { FeedbackView } from "~/features/learning-plans/session-feedback";
+import { getLearningSessionKeyboardLayout } from "~/features/learning-plans/session-keyboard-layout";
 import { getLearningSessionBackTarget } from "~/features/learning-plans/session-navigation";
 import {
-	CONTINUE_LEARNING_MINUTES,
 	getLearningSessionCompletionPhase,
 	getLearningSessionItems,
 	getLearningSessionTimerDurationSeconds,
@@ -49,6 +47,7 @@ import { logDiagnosticError } from "~/lib/diagnostics";
 import { dismissToOrReplace, useBackIntent } from "~/lib/navigation";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
@@ -146,10 +145,12 @@ function TextAnswer({
 }
 
 export default function LearningSessionContentScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const params = useLocalSearchParams<{
 		planId?: string;
+		repeat?: string;
 		returnTo?: string;
 		sessionId?: string;
 	}>();
@@ -164,9 +165,6 @@ export default function LearningSessionContentScreen() {
 	);
 	const finishSessionContent = useMutation(
 		api.learningSessionContent.finishSessionContent,
-	);
-	const extendSessionContent = useMutation(
-		api.learningSessionContent.extendSessionContent,
 	);
 	const startSession = useMutation(api.learningPlans.startSession);
 	const recordSessionOutcome = useMutation(
@@ -190,8 +188,13 @@ export default function LearningSessionContentScreen() {
 		LearningSessionContentSnapshot["session"]["phase"] | null
 	>(null);
 	const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
-	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
+	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(() =>
+		params.repeat === "1" ? Date.now() : null,
+	);
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+	const [questionActionFooterHeight, setQuestionActionFooterHeight] = useState<
+		number | null
+	>(null);
 	const remainingSecondsRef = useRef<number | null>(null);
 	const [isContinuation, setIsContinuation] = useState(false);
 	const didAutoFinishRef = useRef(false);
@@ -202,15 +205,35 @@ export default function LearningSessionContentScreen() {
 	const activeStudyStartedAtRef = useRef<number | null>(null);
 	const isStudyInteractionActiveRef = useRef(false);
 	const appStateRef = useRef(AppState.currentState);
-	const contentScrollRef = useRef<ScrollView>(null);
+	const contentScrollRef = useRef<KeyboardAwareScrollViewRef>(null);
 	const startSessionPromiseRef = useRef<ReturnType<typeof startSession> | null>(
 		null,
 	);
 
-	const content = (useQuery(
-		api.learningSessionContent.getSessionContent,
+	const staticContent = (useQuery(
+		api.learningSessionContent.getSessionStaticContent,
 		user && isConvexAuthenticated && sessionId ? { sessionId } : "skip",
-	) ?? null) as LearningSessionContentSnapshot | null;
+	) ?? null) as Omit<
+		LearningSessionContentSnapshot,
+		"attempts" | "analysis"
+	> | null;
+	const progress = (useQuery(
+		api.learningSessionContent.getSessionProgress,
+		user && isConvexAuthenticated && sessionId && staticContent
+			? {
+					sessionId,
+					itemIds: staticContent.items.map((item) => item.id),
+				}
+			: "skip",
+	) ?? null) as Pick<
+		LearningSessionContentSnapshot,
+		"attempts" | "analysis"
+	> | null;
+	const content = useMemo<LearningSessionContentSnapshot | null>(
+		() =>
+			staticContent && progress ? { ...staticContent, ...progress } : null,
+		[progress, staticContent],
+	);
 	const needsTheoryContentUpgrade = Boolean(
 		content &&
 			content.session.phase === "theory" &&
@@ -377,8 +400,11 @@ export default function LearningSessionContentScreen() {
 		setErrorMessage(null);
 		try {
 			if (!(await requestAiConsent())) return;
+			trackFeature("learning_session.retry", "attempted", sessionId);
 			await prepareSessionContent({ sessionId });
+			trackFeature("learning_session.retry", "succeeded", sessionId);
 		} catch (error) {
+			trackFeature("learning_session.retry", "failed", sessionId);
 			setErrorMessage(
 				getErrorMessage(
 					error,
@@ -507,6 +533,7 @@ export default function LearningSessionContentScreen() {
 
 	const repeatCurrentQuestion = () => {
 		if (!currentItem || isBusy) return;
+		trackFeature("learning_session.question_repeated", "performed", sessionId);
 		resetItemState();
 		setRepeatingItemId(currentItem.id);
 		setErrorMessage(null);
@@ -573,7 +600,7 @@ export default function LearningSessionContentScreen() {
 		}
 	};
 
-	const completeAndOpenAnalysis = async () => {
+	const completeAndOpenLearningPlan = async () => {
 		if (!sessionId || isBusy) return;
 
 		setIsBusy(true);
@@ -595,47 +622,37 @@ export default function LearningSessionContentScreen() {
 					},
 				);
 			}
-			router.dismissTo(getLearningSessionAnalysisDestination(planId));
+			router.dismissTo(getLearningSessionCompletionDestination(planId));
 		} catch (error) {
 			setErrorMessage(
-				getErrorMessage(error, "Die Analyse konnte nicht geöffnet werden."),
+				getErrorMessage(error, "Der Lernplan konnte nicht geöffnet werden."),
 			);
 		} finally {
 			setIsBusy(false);
 		}
 	};
 
-	const startContinueLearning = async () => {
+	const repeatCurrentSession = () => {
 		if (!content || isBusy) return;
 
-		setIsBusy(true);
+		resetItemState();
 		setErrorMessage(null);
-		try {
-			await recordCompletedOutcome();
-			const extension = await extendSessionContent({
-				sessionId: content.session.id,
-				durationMinutes: CONTINUE_LEARNING_MINUTES,
-			});
-			resetItemState();
-			setRetryStartedAt(Date.now());
-			setCurrentIndex(extension.firstNewItemIndex);
-			setCompletionPhase(null);
-			setIsContinuation(true);
-			didAutoFinishRef.current = false;
-		} catch (error) {
-			setErrorMessage(
-				getErrorMessage(
-					error,
-					"Das Weiterlernen konnte nicht gestartet werden.",
-				),
-			);
-		} finally {
-			setIsBusy(false);
-		}
+		setRetryStartedAt(Date.now());
+		setCurrentIndex(0);
+		setCompletionPhase(null);
+		setIsContinuation(false);
+		setRemainingSeconds(null);
+		remainingSecondsRef.current = null;
+		activeStudySecondsRef.current = 0;
+		activeStudyStartedAtRef.current = null;
+		advancedPreTheoryQuestionItemIdRef.current = null;
+		didAutoFinishRef.current = false;
+		contentScrollRef.current?.scrollTo({ y: 0, animated: false });
 	};
 
 	const continueTheory = () => {
 		if (!content || isBusy) return;
+		trackFeature("learning_session.theory_next", "performed", sessionId);
 		runTheoryTopicPrimaryAction({
 			currentIndex: theoryTopicPosition.topicIndex,
 			total: theoryTopicPosition.total,
@@ -662,6 +679,7 @@ export default function LearningSessionContentScreen() {
 
 	const showPreviousTheoryTopic = () => {
 		if (isBusy || theoryTopicPosition.previousSessionIndex === null) return;
+		trackFeature("learning_session.theory_previous", "performed", sessionId);
 		setErrorMessage(null);
 		setCurrentIndex(theoryTopicPosition.previousSessionIndex);
 	};
@@ -683,6 +701,13 @@ export default function LearningSessionContentScreen() {
 			) {
 				return;
 			}
+			trackFeature(
+				submitAsUnknown
+					? "learning_session.answer_unknown"
+					: "learning_session.answer",
+				"attempted",
+				sessionId,
+			);
 			const attempt =
 				currentItem.kind === "multipleChoice"
 					? await submitAnswer({
@@ -695,6 +720,13 @@ export default function LearningSessionContentScreen() {
 							itemId: currentItem.id,
 							answerText: writtenAnswer,
 						});
+			trackFeature(
+				submitAsUnknown
+					? "learning_session.answer_unknown"
+					: "learning_session.answer",
+				"succeeded",
+				sessionId,
+			);
 			if (attempt.rating === "correct" && !isPreTheoryQuestion) {
 				void triggerSuccessHaptic({
 					platform: process.env.EXPO_OS,
@@ -718,6 +750,13 @@ export default function LearningSessionContentScreen() {
 			}
 			setLocalAttempt(attempt as SessionAnswerAttempt);
 		} catch (error) {
+			trackFeature(
+				submitAsUnknown
+					? "learning_session.answer_unknown"
+					: "learning_session.answer",
+				"failed",
+				sessionId,
+			);
 			setErrorMessage(
 				getErrorMessage(error, "Die Antwort konnte nicht gespeichert werden."),
 			);
@@ -752,6 +791,11 @@ export default function LearningSessionContentScreen() {
 		content && currentItem && !completionPhase && !visibleAttempt,
 	);
 	const showFeedbackAction = Boolean(visibleAttempt && !completionPhase);
+	const questionKeyboardLayout = getLearningSessionKeyboardLayout(
+		Platform.OS,
+		insets.bottom,
+		questionActionFooterHeight,
+	);
 
 	if (
 		content?.session.phase === "theory" &&
@@ -866,7 +910,7 @@ export default function LearningSessionContentScreen() {
 								<View
 									accessible
 									accessibilityLabel={`Verbleibende Zeit: ${formatRemainingTime(displayedRemainingSeconds)}`}
-									className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4 shadow-black/5 shadow-sm"
+									className="min-h-12 min-w-[92px] flex-row items-center justify-center gap-2 rounded-full border-hairline border-praxis/20 bg-praxis-subtle px-4"
 								>
 									<Timer
 										size={18}
@@ -901,9 +945,14 @@ export default function LearningSessionContentScreen() {
 					) : null}
 				</View>
 			) : null}
-			<ScrollView
+			<KeyboardSafeScrollView
 				ref={contentScrollRef}
 				className="flex-1"
+				bottomOffset={
+					showQuestionActions
+						? questionKeyboardLayout.scrollBottomOffset
+						: undefined
+				}
 				bounces={
 					currentItem?.kind !== "multipleChoice" || Boolean(visibleAttempt)
 				}
@@ -912,7 +961,6 @@ export default function LearningSessionContentScreen() {
 					Boolean(visibleAttempt) ||
 					Boolean(completionPhase)
 				}
-				automaticallyAdjustKeyboardInsets={currentItem?.kind === "written"}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingHorizontal: 32,
@@ -921,8 +969,6 @@ export default function LearningSessionContentScreen() {
 							? 24
 							: Math.max(insets.bottom + 28, 60),
 				}}
-				keyboardShouldPersistTaps="handled"
-				showsVerticalScrollIndicator={false}
 			>
 				{!content || content.items.length === 0 || needsTheoryContentUpgrade ? (
 					<View className="flex-1 items-center justify-center px-4 py-24">
@@ -969,11 +1015,11 @@ export default function LearningSessionContentScreen() {
 						durationMinutes={content.session.durationMinutes}
 						correctCount={currentRunCorrectCount}
 						attemptCount={currentRunAttempts.length}
-						onContinueLearning={() => void startContinueLearning()}
+						onRepeat={repeatCurrentSession}
 						onPrimary={
 							completionPhase === "theory"
 								? completeAndLeave
-								: completeAndOpenAnalysis
+								: completeAndOpenLearningPlan
 						}
 						isBusy={isBusy}
 					/>
@@ -1016,14 +1062,24 @@ export default function LearningSessionContentScreen() {
 						{errorMessage}
 					</Text>
 				) : null}
-			</ScrollView>
+			</KeyboardSafeScrollView>
 			{showQuestionActions && content ? (
-				<KeyboardAvoidingView
-					behavior={Platform.OS === "ios" ? "padding" : undefined}
+				<KeyboardStickyView
+					enabled={questionKeyboardLayout.stickyActionsEnabled}
 				>
 					<View
 						className="border-border border-t-hairline bg-background px-8 pt-4"
-						style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+						onLayout={({ nativeEvent }) => {
+							const measuredHeight = Math.ceil(nativeEvent.layout.height);
+							setQuestionActionFooterHeight((currentHeight) =>
+								currentHeight === measuredHeight
+									? currentHeight
+									: measuredHeight,
+							);
+						}}
+						style={{
+							paddingBottom: questionKeyboardLayout.footerBottomPadding,
+						}}
 					>
 						<ActionRow
 							className="mt-0"
@@ -1048,7 +1104,7 @@ export default function LearningSessionContentScreen() {
 							}
 						/>
 					</View>
-				</KeyboardAvoidingView>
+				</KeyboardStickyView>
 			) : showFeedbackAction ? (
 				<View
 					className="border-border border-t-hairline bg-background px-8 pt-4"

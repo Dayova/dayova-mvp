@@ -5,12 +5,22 @@ subject and exam-type selector.
 
 ## App-owned sheet contract
 
+- The root sheet provider captures the screen safe-area insets above navigation.
+  Sheets cover the native tab bar and must not reserve the tab screen's extra
+  bottom inset; otherwise confirmation text and buttons sit unnecessarily high.
 - App code uses `ConfirmationSheet`, `ActionSheet`, `SelectSheet`, or
   `DayovaSheetFrame`; only the frame, plus `BottomSheetModalProvider` in the
   root layout, imports Gorhom primitives.
 - The frame API intentionally supports only dynamic `content` height and the
   scrollable `medium` size. Unused width, header/footer class, and `large`
   escape hatches were removed so callers cannot create one-off sheet systems.
+- Dynamic `content` sheets place their header, description, fields, and actions
+  inside the same directly measured Gorhom scrollable. Do not wrap that
+  scrollable in a `flex: 1` container or leave a header/footer outside its measured
+  content; that clips form actions during size changes.
+- Form fields inside sheets use `DayovaSheetInput`, which preserves the shared
+  `Input` styling while registering focus with Gorhom's keyboard handling.
+  Use `onPresented` for initial focus instead of focusing before presentation.
 - `visible` is controlled state. A close followed immediately by a reopen is a
   valid transition; a stale native `onDismiss` must not close the new request.
 - Android date/time selection closes in the shared adapter. Callers do not add
@@ -77,3 +87,11 @@ When those conditions are met, the migration path is:
 4. Remove `@gorhom/bottom-sheet` and `react-native-gesture-handler` from
    dependencies if they are no longer used.
 5. Re-test picker sheets on Android and iOS with long option lists.
+
+## Material-upload action sheet
+
+Learning-material upload uses `ActionSheet` with row layout and
+`appearance="flat"`: file/camera choices have borders without raised shadows,
+and the sheet uses a compact shared close control (32px circle, 20px icon,
+8px hit slop). Other action sheets retain the existing raised default.
+The compact appearance does not change dismissal, focus, or Android Back behavior.

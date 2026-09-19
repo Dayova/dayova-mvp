@@ -1,5 +1,6 @@
 import type { Id } from "#convex/_generated/dataModel";
 import { ROUTES } from "~/lib/routes";
+import type { UserFacingErrorCode } from "~/lib/user-facing-error-contract";
 
 const buildRouteQuery = (entries: Array<[string, string | undefined]>) =>
 	entries
@@ -10,15 +11,17 @@ const buildRouteQuery = (entries: Array<[string, string | undefined]>) =>
 export const examEntryResumePath = (params: {
 	examDayEntryId: string;
 	subject: string;
+	personalSubjectId?: string;
 	examTypeLabel: string;
 	examDateKey: string;
 	durationMinutes: number;
 	topicDescription: string;
 }) =>
 	`${ROUTES.createExam}&${buildRouteQuery([
-		["step", "learningAvailability"],
+		["step", "basics"],
 		["examDayEntryId", params.examDayEntryId],
 		["subject", params.subject],
+		["personalSubjectId", params.personalSubjectId],
 		["examTypeLabel", params.examTypeLabel],
 		["dayKey", params.examDateKey],
 		["durationMinutes", String(params.durationMinutes)],
@@ -84,11 +87,12 @@ export const learningPlanTopicsPath = (
 
 export const learningPlanMaterialPath = (
 	id: Id<"learningPlans">,
-	params: { errorMessage?: string } = {},
+	params: { errorCode?: UserFacingErrorCode; errorMessage?: string } = {},
 ) => {
 	const query = buildRouteQuery([
 		["learningPlanId", id],
 		["step", "material"],
+		["errorCode", params.errorCode],
 		["errorMessage", params.errorMessage],
 	]);
 

@@ -13,8 +13,11 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 			cancelLabel,
 			confirmLabel,
 			description,
+			maxWidth,
 			onClose,
 			onConfirm,
+			scrollable,
+			size,
 			title,
 			visible,
 		}: {
@@ -22,8 +25,11 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 			cancelLabel: string;
 			confirmLabel: string;
 			description: import("react").ReactNode;
+			maxWidth?: number;
 			onClose: () => void;
 			onConfirm: () => void;
+			scrollable?: boolean;
+			size?: "content" | "medium";
 			title: import("react").ReactNode;
 			visible: boolean;
 		}) =>
@@ -34,6 +40,11 @@ jest.mock("~/components/ui/confirmation-sheet", () => {
 							accessibilityViewIsModal: true,
 							testID: `confirmation-actions-${actionLayout ?? "inline"}`,
 						},
+						React.createElement(
+							Native.Text,
+							{ testID: "confirmation-sheet-layout" },
+							`${size ?? "content"}:${scrollable ? "scrollable" : "fixed"}:${maxWidth ?? "default"}`,
+						),
 						React.createElement(Native.Text, null, title),
 						React.createElement(Native.Text, null, description),
 						React.createElement(
@@ -72,6 +83,9 @@ describe("MaterialRequiredSheet", () => {
 		expect(
 			screen.getByTestId("confirmation-actions-stacked"),
 		).toBeOnTheScreen();
+		expect(screen.getByTestId("confirmation-sheet-layout")).toHaveTextContent(
+			"content:scrollable:760",
+		);
 		expect(
 			screen.getByText(
 				"Lade mindestens eine Schulunterlage für Mathe hoch.\n\nDafür brauchst du Material:\n• Lineare Funktionen\n• Steigung berechnen\n• Nullstellen\n• bestimmen\n\nDanach kann Dayova deinen Lernplan erstellen.",

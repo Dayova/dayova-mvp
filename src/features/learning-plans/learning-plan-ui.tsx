@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { Button } from "~/components/ui/button";
 import {
@@ -30,6 +30,7 @@ import {
 	parseDateKey,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
 import { formatFileSize } from "~/lib/upload-policy";
@@ -107,16 +108,23 @@ export function PlanningHintBanner({
 }
 
 export function MaterialCard({
+	isRetrying = false,
 	name,
-	size,
+	onRetry,
 	onRemove,
+	size,
+	status,
 }: {
+	isRetrying?: boolean;
 	name: string;
-	size: number;
+	onRetry?: () => void | Promise<void>;
 	onRemove: () => void;
+	size: number;
+	status?: "queued" | "processing" | "ready" | "failed";
 }) {
 	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
+	const retryGateRef = useRef(createAsyncActionGate());
 
 	return (
 		<Surface
@@ -135,7 +143,26 @@ export function MaterialCard({
 				</Text>
 				<Text className="mt-1 font-poppins text-body-4 text-text/50">
 					{formatFileSize(size)}
+					{status === "queued" || status === "processing"
+						? " · Wird verarbeitet …"
+						: ""}
 				</Text>
+				{status === "failed" && onRetry ? (
+					<TouchableOpacity
+						accessibilityLabel={`${name} erneut verarbeiten`}
+						accessibilityRole="button"
+						accessibilityState={{ busy: isRetrying, disabled: isRetrying }}
+						disabled={isRetrying}
+						onPress={() => {
+							void retryGateRef.current.run(async () => await onRetry());
+						}}
+						className="mt-1 self-start"
+					>
+						<Text className="font-poppins font-semibold text-body-4 text-destructive">
+							{isRetrying ? "Wird erneut verarbeitet …" : "Erneut versuchen"}
+						</Text>
+					</TouchableOpacity>
+				) : null}
 			</View>
 			<TouchableOpacity
 				accessibilityHint="Entfernt dieses hochgeladene Material aus dem Lernplan."
@@ -316,9 +343,6 @@ function SessionEditPill({
 			activeOpacity={0.86}
 			onPress={onPress}
 			className={cn("min-h-[64px] rounded-[28px] px-5", className)}
-			style={{
-				boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-			}}
 		>
 			<Text
 				className="flex-1 font-poppins text-body-2 text-text"
@@ -338,6 +362,7 @@ export function SessionEditForm({
 	editEnd,
 	editPhase,
 	isSaving,
+	canSave = true,
 	onChangeDate,
 	onChangeStart,
 	onChangeEnd,
@@ -351,6 +376,7 @@ export function SessionEditForm({
 	editEnd: string;
 	editPhase: SessionPhase;
 	isSaving: boolean;
+	canSave?: boolean;
 	onChangeDate: () => void;
 	onChangeStart: () => void;
 	onChangeEnd: () => void;
@@ -463,10 +489,13 @@ export function SessionEditForm({
 						isSaving ? "Speichern, wird geladen" : "Speichern"
 					}
 					accessibilityLiveRegion={isSaving ? "polite" : undefined}
-					accessibilityState={{ busy: isSaving, disabled: isSaving }}
+					accessibilityState={{
+						busy: isSaving,
+						disabled: isSaving || !canSave,
+					}}
 					className={shouldStackInlineContent ? "w-full" : "flex-1"}
 					onPress={onSave}
-					disabled={isSaving}
+					disabled={isSaving || !canSave}
 				>
 					{isSaving ? (
 						<ActivityIndicator color="#FFFFFF" />

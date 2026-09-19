@@ -16,7 +16,11 @@
 *.otf binary
 *.pdf binary
 *.png binary
+*.potx binary
+*.pptx binary
 *.ttf binary
 *.webp binary
 *.woff binary
 *.woff2 binary
+*.xlsx binary
+*.zip binary

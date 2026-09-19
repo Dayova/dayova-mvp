@@ -12,13 +12,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
+import { CloseButton } from "~/components/ui/close-button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	type DateTimePickerEvent,
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { Trash2, X } from "~/components/ui/icon";
+import { Trash2 } from "~/components/ui/icon";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -33,6 +34,7 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { dismissToOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 type TimeField = "start" | "end";
@@ -64,7 +66,14 @@ const parseTimeToMinutes = (time: string) => {
 	return (hours || 0) * 60 + (minutes || 0);
 };
 
+const parseEndTimeToMinutes = (startTime: string, endTime: string) => {
+	const startMinutes = parseTimeToMinutes(startTime);
+	const endMinutes = parseTimeToMinutes(endTime);
+	return endMinutes === 0 && startMinutes > 0 ? 24 * 60 : endMinutes;
+};
+
 export default function LearningTimesScreen() {
+	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
 	const params = useLocalSearchParams<{
 		day?: string;
@@ -134,7 +143,7 @@ export default function LearningTimesScreen() {
 	};
 
 	const hasValidTimeRange =
-		parseTimeToMinutes(endTime) > parseTimeToMinutes(startTime);
+		parseEndTimeToMinutes(startTime, endTime) > parseTimeToMinutes(startTime);
 	const hasChanges =
 		!isEditingExisting ||
 		selectedDayValue !== selectedEntry?.dayOfWeek ||
@@ -184,14 +193,17 @@ export default function LearningTimesScreen() {
 			setIsSaving(true);
 			setErrorMessage(null);
 			try {
+				trackFeature("learning_times.save", "attempted");
 				await saveLearningTime({
 					id: selectedEntry?.id,
 					dayOfWeek: selectedDayValue,
 					startTime,
 					endTime,
 				});
+				trackFeature("learning_times.save", "succeeded");
 				closeToOverview();
 			} catch (error) {
+				trackFeature("learning_times.save", "failed");
 				setErrorMessage(
 					getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
 						source: "learning-times.save",
@@ -210,10 +222,13 @@ export default function LearningTimesScreen() {
 			setIsSaving(true);
 			setErrorMessage(null);
 			try {
+				trackFeature("learning_times.remove", "attempted");
 				await removeLearningTime({ id: selectedEntry.id });
+				trackFeature("learning_times.remove", "succeeded");
 				setIsRemoveConfirmationVisible(false);
 				closeToOverview();
 			} catch (error) {
+				trackFeature("learning_times.remove", "failed");
 				setErrorMessage(
 					getUserFacingErrorMessage(error, "Bitte versuche es erneut.", {
 						source: "learning-times.remove",
@@ -244,15 +259,7 @@ export default function LearningTimesScreen() {
 				>
 					{isEditingExisting ? "Lernzeit bearbeiten" : "Neue Lernzeit"}
 				</Text>
-				<Pressable
-					accessibilityLabel="Lernzeit schließen"
-					accessibilityRole="button"
-					hitSlop={8}
-					className="h-10 w-10 items-center justify-center rounded-full bg-muted active:opacity-75"
-					onPress={goBack}
-				>
-					<X size={18} color={colors.text} strokeWidth={2.2} />
-				</Pressable>
+				<CloseButton accessibilityLabel="Lernzeit schließen" onPress={goBack} />
 			</View>
 
 			<ScrollView

@@ -78,7 +78,7 @@ describe("package scripts", () => {
 
 	it("checks the generated Android autolinking cache before native builds", () => {
 		expect(packageJson.scripts["preexpo:android"]).toBe(
-			"node scripts/prepare-android-autolinking-cache.cjs",
+			"node scripts/prepare-android-gradle-jvm.cjs && node scripts/prepare-android-autolinking-cache.cjs",
 		);
 	});
 
