@@ -29,6 +29,7 @@ type Env = {
   readonly POSTHOG_API_HOST: string | undefined;
   readonly POSTHOG_PERSONAL_API_KEY: string | undefined;
   readonly POSTHOG_PROJECT_ID: string | undefined;
+  readonly DAYOVA_DEPLOYMENT_ENVIRONMENT: string | undefined;
   readonly REVENUECAT_SECRET_API_KEY: string | undefined;
   readonly REVENUECAT_WEBHOOK_AUTHORIZATION: string | undefined;
 };

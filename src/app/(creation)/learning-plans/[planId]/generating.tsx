@@ -70,20 +70,32 @@ export default function LearningPlanGeneratingScreen() {
 		useState(false);
 	const didStartRef = useRef(false);
 	const didPrepareLearningTimesRef = useRef(false);
-	const snapshot = (useQuery(
-		api.learningPlans.getSnapshot,
+	const plan = useQuery(
+		api.learningPlans.getPlanDetails,
 		user && isConvexAuthenticated && planId ? { id: planId } : "skip",
-	) ?? null) as LearningPlanSnapshot | null;
+	);
+	const answers = useQuery(
+		api.learningPlans.listAnswers,
+		user && isConvexAuthenticated && planId
+			? { learningPlanId: planId }
+			: "skip",
+	);
+	const generationProgress = useQuery(
+		api.learningPlans.getGenerationProgress,
+		user && isConvexAuthenticated && planId
+			? { learningPlanId: planId }
+			: "skip",
+	);
 	const learningTimes = useQuery(
 		api.learningTimes.listMine,
 		user && isConvexAuthenticated ? {} : "skip",
 	);
 
 	const availableStudyMinutes = useMemo(() => {
-		if (!snapshot || !learningTimes) return null;
+		if (!plan || !learningTimes) return null;
 		const availableMinutes = calculateAvailableStudyMinutes({
 			fromDateKey: getDayKey(new Date()),
-			examDateKey: snapshot.plan.examDateKey,
+			examDateKey: plan.examDateKey,
 			learningTimes,
 		});
 		return learningTimes.some(
@@ -91,21 +103,21 @@ export default function LearningPlanGeneratingScreen() {
 		)
 			? Math.max(availableMinutes, MIN_ROLLING_HORIZON_MINUTES)
 			: availableMinutes;
-	}, [learningTimes, snapshot]);
+	}, [learningTimes, plan]);
 	const automaticPreparation = useMemo(
 		() =>
-			snapshot && availableStudyMinutes !== null
+			plan && answers && availableStudyMinutes !== null
 				? getAutomaticLearningPreparation({
-						examTypeLabel: snapshot.plan.examTypeLabel,
-						examDurationMinutes: snapshot.plan.durationMinutes,
-						preparationDepth: snapshot.plan.preparationDepth,
-						topicCount: snapshot.plan.topicMap.length,
-						answerCount: snapshot.answers.length,
-						topicReadiness: snapshot.plan.topicReadiness ?? [],
+						examTypeLabel: plan.examTypeLabel,
+						examDurationMinutes: plan.durationMinutes,
+						preparationDepth: plan.preparationDepth,
+						topicCount: plan.topicMap.length,
+						answerCount: answers.length,
+						topicReadiness: plan.topicReadiness ?? [],
 						availableMinutes: availableStudyMinutes,
 					})
 				: null,
-		[availableStudyMinutes, snapshot],
+		[answers, availableStudyMinutes, plan],
 	);
 	const needsLearningTime =
 		availableStudyMinutes !== null &&
@@ -113,22 +125,23 @@ export default function LearningPlanGeneratingScreen() {
 			(automaticPreparation?.recommendation.plannedMinutes ??
 				MIN_ROLLING_HORIZON_MINUTES) < MIN_ROLLING_HORIZON_MINUTES);
 	const sessionCompositionVariant = "split" as const;
+	const contentGeneration = generationProgress?.contentGeneration ?? undefined;
 	const progressPresentation = getGenerationProgressPresentation(
-		snapshot?.plan.contentGeneration,
+		contentGeneration,
 	);
 	const displayedFailure =
 		failure ??
-		(snapshot?.plan.contentGeneration?.stage === "failed"
+		(contentGeneration?.stage === "failed"
 			? getLearningPlanGenerationFailure(
 					null,
-					snapshot.plan.contentGeneration.failureReason,
+					contentGeneration.failureReason,
 				)
 			: null);
 
 	useEffect(() => {
 		if (
 			!planId ||
-			!snapshot ||
+			!plan ||
 			learningTimes === undefined ||
 			learningTimes.length > 0 ||
 			didPrepareLearningTimesRef.current
@@ -148,10 +161,10 @@ export default function LearningPlanGeneratingScreen() {
 				);
 			},
 		);
-	}, [learningTimes, planId, prepareLearningTimeDefaults, snapshot]);
+	}, [learningTimes, planId, prepareLearningTimeDefaults, plan]);
 
 	useEffect(() => {
-		const generation = snapshot?.plan.contentGeneration;
+		const generation = contentGeneration;
 		if (!generation || generation.stage !== "content") {
 			const timeout = setTimeout(
 				() => setCanRecoverStalledGeneration(false),
@@ -171,25 +184,25 @@ export default function LearningPlanGeneratingScreen() {
 			remainingMs,
 		);
 		return () => clearTimeout(timeout);
-	}, [snapshot?.plan.contentGeneration]);
+	}, [contentGeneration]);
 
 	useEffect(() => {
 		void retryAttempt;
-		if (!planId || !snapshot || !learningTimes?.length) return;
+		if (!planId || !plan || !learningTimes?.length) return;
 
-		if (snapshot.plan.status === "generated") {
+		if (plan.status === "generated") {
 			router.replace(planPath(planId, "review"));
 			return;
 		}
-		if (snapshot.plan.diagnosticPlacement !== "firstSession") {
+		if (plan.diagnosticPlacement !== "firstSession") {
 			router.replace(planPath(planId, "analysis"));
 			return;
 		}
-		if (snapshot.plan.contentGeneration) return;
+		if (contentGeneration) return;
 
-		if (!snapshot.plan.targetStudyMinutes && !automaticPreparation) return;
+		if (!plan.targetStudyMinutes && !automaticPreparation) return;
 		if (
-			!snapshot.plan.targetStudyMinutes &&
+			!plan.targetStudyMinutes &&
 			automaticPreparation &&
 			automaticPreparation.recommendation.plannedMinutes <
 				MIN_ROLLING_HORIZON_MINUTES
@@ -213,7 +226,7 @@ export default function LearningPlanGeneratingScreen() {
 					router.replace(planPath(planId, "scope"));
 					return;
 				}
-				if (!snapshot.plan.targetStudyMinutes && automaticPreparation) {
+				if (!plan.targetStudyMinutes && automaticPreparation) {
 					await setTargetStudyMinutes({
 						learningPlanId: planId,
 						targetStudyMinutes:
@@ -246,15 +259,19 @@ export default function LearningPlanGeneratingScreen() {
 		});
 	}, [
 		automaticPreparation,
+		answers,
 		capture,
+		contentGeneration,
 		generatePlan,
+		generationProgress,
+		plan,
 		planId,
 		requestAiConsent,
 		retryAttempt,
 		router,
 		setTargetStudyMinutes,
 		sessionCompositionVariant,
-		snapshot,
+		plan,
 		learningTimes,
 	]);
 
@@ -266,17 +283,17 @@ export default function LearningPlanGeneratingScreen() {
 		try {
 			if (!(await requestAiConsent())) return;
 			if (
-				snapshot?.plan.contentGeneration &&
-				snapshot.plan.contentGeneration.stage !== "ready" &&
-				snapshot.sessions.length > 0
+				contentGeneration &&
+				contentGeneration.stage !== "ready" &&
+				(generationProgress?.sessionCount ?? 0) > 0
 			) {
 				await retryFailedSessionContent({ learningPlanId: planId });
 				return;
 			}
 			if (
-				snapshot?.plan.contentGeneration &&
-				snapshot.plan.contentGeneration.stage !== "ready" &&
-				snapshot.sessions.length === 0
+				contentGeneration &&
+				contentGeneration.stage !== "ready" &&
+				(generationProgress?.sessionCount ?? 0) === 0
 			) {
 				await generatePlanWithAnalytics({
 					generatePlan,
@@ -326,7 +343,7 @@ export default function LearningPlanGeneratingScreen() {
 	};
 
 	const goBack = () => {
-		if (planId && snapshot) {
+		if (planId && plan) {
 			router.replace(planPath(planId, "scope"));
 			return true;
 		}

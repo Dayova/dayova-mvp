@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import convexPlugin from "@convex-dev/eslint-plugin";
 import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
+import { dayovaConvexPlugin } from "./eslint/dayova-convex-plugin.mjs";
 import { dayovaUiPlugin } from "./eslint/dayova-ui-plugin.mjs";
 
 const tsconfigRootDir = path.dirname(fileURLToPath(import.meta.url));
@@ -93,6 +94,7 @@ export default tseslint.config(
     },
     plugins: {
       "@convex-dev": convexPlugin,
+			"dayova-convex": dayovaConvexPlugin,
     },
     rules: {
       "@convex-dev/no-old-registered-function-syntax": "error",
@@ -101,6 +103,7 @@ export default tseslint.config(
       "@convex-dev/no-filter-in-query": "error",
       "@convex-dev/no-collect-in-query": "error",
       "@convex-dev/import-wrong-runtime": "off",
+			"dayova-convex/no-recurring-raw-learning-plan-files": "error",
     },
   },
 );

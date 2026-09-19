@@ -152,6 +152,8 @@ type LearningPlanDocument = {
 	fileType: string;
 	fileSizeBytes: number;
 	sourceKind: "school" | "external";
+	processingStatus?: "queued" | "processing" | "ready" | "failed";
+	processingError?: string;
 };
 
 export type UploadAsset = {
@@ -254,4 +256,9 @@ export type LearningPlanSnapshot = {
 	documents: LearningPlanDocument[];
 	answers: LearningPlanAnswer[];
 	sessions: PlanSession[];
+};
+
+export type LearningPlanSetupSnapshot = {
+	plan: Pick<LearningPlanSnapshot["plan"], "id" | "topicDescription">;
+	documents: LearningPlanSnapshot["documents"];
 };

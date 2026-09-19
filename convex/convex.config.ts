@@ -8,6 +8,7 @@ const app = defineApp({
 		POSTHOG_API_HOST: v.optional(v.string()),
 		POSTHOG_PERSONAL_API_KEY: v.optional(v.string()),
 		POSTHOG_PROJECT_ID: v.optional(v.string()),
+		DAYOVA_DEPLOYMENT_ENVIRONMENT: v.optional(v.string()),
 		REVENUECAT_SECRET_API_KEY: v.optional(v.string()),
 		REVENUECAT_WEBHOOK_AUTHORIZATION: v.optional(v.string()),
 	},

@@ -3,6 +3,8 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import NewEntryScreen from "~/app/(creation)/entry/new";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
 
+jest.mock("~/context/AiConsentContext", () => ({ useAiConsent: () => ({ requestAiConsent: async () => true }) }));
+
 let mockParams: Record<string, string> = {};
 let mockProgress: { currentStep: number; onBack: () => void };
 const mockRouter = {

@@ -148,6 +148,17 @@ test("session content is generated once and reused on reopen", async () => {
 		api.learningSessionContent.getSessionContent,
 		{ sessionId },
 	);
+	const staticContent = await t.query(
+		api.learningSessionContent.getSessionStaticContent,
+		{ sessionId },
+	);
+	const progress = await t.query(
+		api.learningSessionContent.getSessionProgress,
+		{
+			sessionId,
+			itemIds: staticContent.items.map((item) => item.id),
+		},
+	);
 
 	expect(firstSnapshot?.items.map((item) => item.id)).toEqual(
 		secondSnapshot?.items.map((item) => item.id),
@@ -160,6 +171,9 @@ test("session content is generated once and reused on reopen", async () => {
 			(item) => (item as { kind: string }).kind === "voice",
 		),
 	).toBe(false);
+	expect(staticContent.items).toEqual(secondSnapshot?.items);
+	expect(progress.attempts).toEqual(secondSnapshot?.attempts);
+	expect(progress.analysis).toEqual(secondSnapshot?.analysis);
 });
 
 test("theory fallback creates active recall cards instead of generic summaries", async () => {

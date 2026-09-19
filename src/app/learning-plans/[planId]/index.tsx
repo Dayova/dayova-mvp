@@ -1,3 +1,4 @@
+import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -48,10 +49,7 @@ import {
 	isDiagnosticLearningPlanSession,
 	isLearningPlanSessionHistory,
 } from "~/features/learning-plans/rolling-learning-window";
-import type {
-	LearningPlanSnapshot,
-	PlanSession,
-} from "~/features/learning-plans/types";
+import type { PlanSession } from "~/features/learning-plans/types";
 import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -321,10 +319,6 @@ export default function LearningPlanSessionsScreen() {
 		string | null
 	>(null);
 	const [behaviorSuggestionReferenceTime] = useState(() => Date.now());
-	const ensureNextRepeat = useMutation(api.learningPlans.ensureNextRepeat);
-	const repeatPlanningAttemptedForPlanRef = useRef<Id<"learningPlans"> | null>(
-		null,
-	);
 	const snapshot = (useQuery(
 		api.learningPlans.getSnapshot,
 		user && isConvexAuthenticated && planId
@@ -376,13 +370,6 @@ export default function LearningPlanSessionsScreen() {
 		!selectedSessionNeedsTheoryUpgrade &&
 		(selectedSession?.contentGenerationStatus === undefined ||
 			selectedSession.contentGenerationStatus === "ready");
-	const needsRepeatScheduling = Boolean(
-		snapshot?.plan.rollingPlanEnabled === true &&
-			snapshot.plan.masteryStatus !== "mastered" &&
-			!snapshot.sessions.some(
-				(session) => !isLearningPlanSessionHistory(session),
-			),
-	);
 	const preparationState =
 		selectedSession?.contentGenerationStatus === "failed"
 			? ("failed" as const)
@@ -430,19 +417,6 @@ export default function LearningPlanSessionsScreen() {
 		[ensureSessionContent, requestAiConsent],
 	);
 
-	useEffect(() => {
-		if (
-			!planId ||
-			!needsRepeatScheduling ||
-			repeatPlanningAttemptedForPlanRef.current === planId
-		) {
-			return;
-		}
-		repeatPlanningAttemptedForPlanRef.current = planId;
-		void ensureNextRepeat({ learningPlanId: planId }).catch(() => {
-			// The reactive plan state keeps the repeat affordance available for retry.
-		});
-	}, [ensureNextRepeat, needsRepeatScheduling, planId]);
 
 	useEffect(() => {
 		const needsTheoryUpgrade = Boolean(
