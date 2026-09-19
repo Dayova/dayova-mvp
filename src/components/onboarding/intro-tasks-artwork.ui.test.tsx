@@ -58,33 +58,31 @@ describe("IntroTasksArtwork", () => {
 		expect(artwork.props.style).toEqual({ width: 294, height: 200 });
 	});
 
-	test("keeps the agenda and progress behind the dominant next-step layer", async () => {
+	test("spaces the three cards on a deliberate two-row grid", async () => {
 		const screen = await render(<IntroTasksArtwork />);
 		const hidden = { includeHiddenElements: true };
 
 		expect(screen.getByTestId("intro-tasks-agenda-layer", hidden)).toHaveStyle({
-			left: 8,
-			top: 45,
-			width: 220,
-			height: 110,
-			transform: [{ rotate: "-7deg" }],
+			left: 4,
+			top: 24,
+			width: 218,
+			height: 112,
 		});
 		expect(
 			screen.getByTestId("intro-tasks-progress-layer", hidden),
 		).toHaveStyle({
-			left: 198,
-			top: 10,
-			width: 172,
-			height: 150,
-			transform: [{ rotate: "5deg" }],
+			left: 230,
+			top: 0,
+			width: 146,
+			height: 142,
 		});
 		expect(
 			screen.getByTestId("intro-tasks-next-step-layer", hidden),
 		).toHaveStyle({
-			left: 34,
-			top: 121,
+			left: 14,
+			top: 156,
 			zIndex: 2,
-			width: 312,
+			width: 352,
 			height: 110,
 		});
 	});

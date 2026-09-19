@@ -146,3 +146,8 @@ Produktinhalte, Seitenindikatoren, Zurücknavigation und primären Aktionen blei
 unverändert. Die drei ergänzenden Aufnahmen von 17:51 bestätigen diese beiden
 Korrekturen. Der dabei noch sichtbare gemeinsame hellblaue Hintergrund hinter den
 Illustrationen wurde anschließend ebenfalls von allen drei Intro-Seiten entfernt.
+Die Aufnahme von 17:56 dokumentiert die danach noch unruhige erste Illustration.
+Ihre drei Produktkarten verwenden jetzt eine klare zweizeilige Anordnung ohne
+zufällige Drehungen oder Überlagerungen, mit einheitlichen Zwischen- und Außenabständen.
+Die abschließende Simulatoraufnahme von 18:01 bestätigt außerdem, dass alle Texte
+einschließlich der kompakten Fortschrittsangabe vollständig sichtbar sind.

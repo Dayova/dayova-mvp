@@ -30,8 +30,8 @@ import {
 } from "./dashboard-agenda";
 import type { DashboardNextStepFallbackAction } from "./dashboard-empty-state";
 import {
-	getDashboardSummaryCardLayoutClass,
 	type DashboardSummaryCardLayout,
+	getDashboardSummaryCardLayoutClass,
 } from "./dashboard-layout";
 
 type DashboardNextStepCardProps =
@@ -361,7 +361,9 @@ function DashboardWeeklyProgressCard(props: DashboardWeeklyProgressCardProps) {
 	const footer = isLoading
 		? "Diese Woche"
 		: hasPlannedSessions
-			? `${props.progress.completedMinutesToday} Min. heute`
+			? isArtwork
+				? `${props.progress.completedMinutesToday} Min.`
+				: `${props.progress.completedMinutesToday} Min. heute`
 			: "Lernplan öffnen";
 	const content = (
 		<>

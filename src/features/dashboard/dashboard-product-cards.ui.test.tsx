@@ -126,6 +126,8 @@ describe("shared dashboard product cards", () => {
 		expect(screen.getByText("geschafft", hidden).props.className).toContain(
 			"max-w-16",
 		);
+		expect(screen.getByText("30 Min.", hidden)).toBeOnTheScreen();
+		expect(screen.queryByText("30 Min. heute", hidden)).toBeNull();
 		expect(
 			screen.getByTestId("dashboard-progress-artwork-footer", hidden).props
 				.className,
