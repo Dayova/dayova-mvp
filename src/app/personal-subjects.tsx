@@ -151,7 +151,7 @@ export default function PersonalSubjectsScreen() {
 					) : personalOptions.length === 0 ? (
 						<Surface className="items-center border border-border px-6 py-10">
 							<View className="h-14 w-14 items-center justify-center rounded-full bg-muted">
-								<BookOpen size={26} color={colors.primary} strokeWidth={2} />
+								<BookOpen size={26} color={colors.text} strokeWidth={2} />
 							</View>
 							<Text className="mt-5 text-center font-poppins font-semibold text-body-2 text-text">
 								Noch keine persönlichen Fächer
@@ -201,9 +201,9 @@ export default function PersonalSubjectsScreen() {
 								>
 									<Surface className="min-h-18 flex-row items-center border border-border px-5 py-3">
 										<View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-											<BookOpen
+											<subject.Icon
 												size={20}
-												color={colors.primary}
+												color={colors.text}
 												strokeWidth={2}
 											/>
 										</View>

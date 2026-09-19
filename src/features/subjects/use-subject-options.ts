@@ -5,7 +5,8 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import {
 	BUILT_IN_SUBJECT_OPTIONS,
-	PersonalSubjectIcon,
+	getSubjectIcon,
+	type PersonalSubjectIcon,
 } from "~/features/subjects/subject-catalog";
 import { normalizeSubjectName } from "~/features/subjects/subject-definitions";
 import { logDiagnosticError } from "~/lib/diagnostics";
@@ -54,7 +55,7 @@ function useSubjectOptions() {
 			name: subject.name,
 			personalSubjectId: subject.id,
 			kind: "personal",
-			Icon: PersonalSubjectIcon,
+			Icon: getSubjectIcon(subject.name),
 		}),
 	);
 	const timetableOptions: SubjectOption[] = (
@@ -63,7 +64,7 @@ function useSubjectOptions() {
 		key: `timetable:${normalizeSubjectName(name)}`,
 		name,
 		kind: "timetable",
-		Icon: PersonalSubjectIcon,
+		Icon: getSubjectIcon(name),
 	}));
 	const options: SubjectOption[] = [
 		...BUILT_IN_SUBJECT_OPTIONS,

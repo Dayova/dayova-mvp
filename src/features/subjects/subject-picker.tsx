@@ -14,7 +14,7 @@ import {
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Check, Plus } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
-import { PersonalSubjectIcon } from "~/features/subjects/subject-catalog";
+import { getSubjectIcon } from "~/features/subjects/subject-catalog";
 import {
 	correctSubjectName,
 	normalizeSubjectName,
@@ -110,7 +110,7 @@ function SubjectPickerContent({
 			...selected,
 			key: `personal:${selected.personalSubjectId}`,
 			kind: "personal",
-			Icon: PersonalSubjectIcon,
+			Icon: getSubjectIcon(selected.name),
 		});
 	}
 	const isSelected = (option: SubjectOption) =>

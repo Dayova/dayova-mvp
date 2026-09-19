@@ -54,6 +54,7 @@ jest.mock("~/lib/theme", () => ({
 jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
 jest.mock("~/components/ui/icon", () => ({
 	BookOpen: () => null,
+	Language: () => null,
 	Plus: () => null,
 	Pencil: () => null,
 	Trash2: () => null,
