@@ -882,13 +882,9 @@ export default function LearningPlansScreen() {
 								<Button
 									accessibilityLabel="Lernplan erstellen"
 									onPress={() => router.push(ROUTES.createExam)}
-									size="sm"
-									className="mt-2"
+									className="mt-2 w-full"
 								>
-									<AddIcon />
-									<Text className="font-poppins font-semibold text-body-4">
-										Neuen Lernplan starten
-									</Text>
+									<Text>Lernplan erstellen</Text>
 								</Button>
 							</View>
 						)}
@@ -924,15 +920,11 @@ export default function LearningPlansScreen() {
 									Übersicht erscheint.
 								</Text>
 								<Button
-									accessibilityLabel="Hausaufgabe erstellen"
+									accessibilityLabel="Hausaufgabe eintragen"
 									onPress={() => router.push(ROUTES.createHomework)}
-									size="sm"
-									className="mt-2"
+									className="mt-2 w-full"
 								>
-									<AddIcon />
-									<Text className="font-poppins font-semibold text-body-4">
-										Neue Hausaufgabe eintragen
-									</Text>
+									<Text>Hausaufgabe eintragen</Text>
 								</Button>
 							</View>
 						)}
