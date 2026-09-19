@@ -111,3 +111,6 @@ Die Dokumentabfragen für Upload-Prüfung, Übersichten und KI-Kontext berücksi
 Validierung: 4 Backend-Testdateien / 80 Tests; 2 Jest-Suites / 9 Tests; TypeScript und ESLint bestanden. Enthalten sind parallele Uploads bis zur Kapazitätsgrenze, Abruf aller 30 Dokumente, Kontextauswahl für 30 kurze Arbeitsblätter und Fotoaufbereitung im Hoch-/Querformat. Reale Fotoqualität und ein vollständiger Upload auf dem Gerät sind noch nicht visuell geprüft.
 
 Zusätzlicher UI-Gesamtlauf: nach acht bestandenen Suites mehrere Minuten ohne weitere Ausgabe; beendet, daher kein neuer vollständiger UI-Suite-Nachweis. Die gezielten neun UI-/Fototests sind separat vollständig bestanden. Lokaler Xcode-Workaround: ExpoModulesJSI schreibt den generierten Buildcache nun direkt nach `/tmp/dayova-expo-jsi-build-native`, weil macOS im synchronisierten Dokumente-Ordner Finder-Attribute hinzufügte und die Signatur scheiterte. Diese lokale node_modules-Anpassung gehört nicht zum Quellcode-Diff.
+
+Nativer Simulator-Build mit `APP_VARIANT=development` erfolgreich. iPhone 16 war beim Installationsversuch nicht verbunden; kein neuer Build wurde auf dem physischen Gerät installiert.
+Die neue DEV-App wurde im iPhone-17-Pro-Simulator installiert und gestartet; Metro bestätigt die Verbindung von `de.dayova.app-dev (iPhone 17 Pro)`.
