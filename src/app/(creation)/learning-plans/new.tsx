@@ -696,6 +696,10 @@ export default function NewLearningPlanScreen() {
 				if (!isMeaningfulTopicDescription(topics)) {
 					throw new Error("Prüfungsthemen fehlen.");
 				}
+				if (setupOrigin === "resumedDraft") {
+					dismissToOrReplace(router, ROUTES.learningPlans);
+					return;
+				}
 				router.replace(
 					examEntrySuccessPath({
 						dayKey: examDateKey,
@@ -851,7 +855,6 @@ export default function NewLearningPlanScreen() {
 								setupError?.code === AI_CONSENT_REQUIRED_ERROR_CODE
 							}
 							retryingDocumentId={retryingDocumentId}
-							showSkip={setupOrigin === "newExam"}
 						/>
 					)}
 				</View>

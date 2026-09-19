@@ -373,6 +373,24 @@ describe("exam creation across the topics boundary", () => {
 		expect(mockRouter.dismissTo).not.toHaveBeenCalled();
 	});
 
+	test("lets a resumed materialless draft be postponed again", async () => {
+		mockParams = {
+			learningPlanId: "plan-1",
+			examDayEntryId: "exam-1",
+			step: "material",
+		};
+		mockSnapshot = {
+			plan: { topicDescription: "Zellteilung und Mitose" },
+			documents: [],
+		};
+		const screen = await render(<NewLearningPlanScreen />);
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Später hinzufügen" }),
+		);
+		expect(mockRouter.dismissTo).toHaveBeenCalledWith("/learning-plans");
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+	});
+
 	test("uploads existing gallery photos through the learning-material pipeline", async () => {
 		mockParams = {
 			learningPlanId: "plan-1",

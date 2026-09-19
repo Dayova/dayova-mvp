@@ -107,7 +107,7 @@ describe("learning-plan setup steps", () => {
 		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
 		expect(
 			screen.getByRole("button", {
-				name: "Ohne Lernmaterial erstellen",
+				name: "Später hinzufügen",
 			}),
 		).toBeOnTheScreen();
 
@@ -155,7 +155,7 @@ describe("learning-plan setup steps", () => {
 		).toBeNull();
 		expect(
 			screen.queryByRole("button", {
-				name: "Ohne Lernmaterial erstellen",
+				name: "Später hinzufügen",
 			}),
 		).toBeNull();
 	});
@@ -271,36 +271,8 @@ describe("learning-plan setup steps", () => {
 		expect(screen.queryByRole("button", { name: "Weiter" })).toBeNull();
 		expect(screen.queryByText("Lernhilfe.pdf")).toBeNull();
 		expect(
-			screen.getByRole("button", { name: "Ohne Lernmaterial erstellen" }),
+			screen.getByRole("button", { name: "Später hinzufügen" }),
 		).toBeOnTheScreen();
-	});
-
-	test("requires material when a materialless draft is resumed", async () => {
-		const screen = await render(
-			<MaterialUploadStep
-				canUpload
-				canContinue={false}
-				documents={[]}
-				errorMessage={null}
-				isBusy={false}
-				isUploading={false}
-				onContinue={jest.fn()}
-				onOpenUpload={jest.fn()}
-				onRemoveDocument={jest.fn()}
-				onSkip={jest.fn()}
-				openingUploadAction={null}
-				showSkip={false}
-			/>,
-		);
-
-		expect(
-			screen.getByText(
-				"Deine Unterlagen bilden die Grundlage für deinen Lernplan.",
-			),
-		).toBeOnTheScreen();
-		expect(
-			screen.queryByRole("button", { name: "Ohne Lernmaterial erstellen" }),
-		).toBeNull();
 	});
 
 	test("disables the topic continuation until the answer is valid", async () => {
