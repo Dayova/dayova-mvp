@@ -16,13 +16,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import { CreateEntryButton } from "~/components/create-entry-button";
 import { NotificationButton } from "~/components/notification-button";
-import {
-	ArrowRight,
-	BookOpen,
-	CalendarDays,
-	Dumbbell,
-	ScanImage,
-} from "~/components/ui/icon";
+import { BookOpen, CalendarDays, Dumbbell } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
@@ -47,6 +41,7 @@ import {
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
 	getDashboardWeekProgress,
+	getVisibleDashboardEntries,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
@@ -436,45 +431,6 @@ function EmptyAgendaDay() {
 	);
 }
 
-function TimetableSetupCard({
-	hasDraft,
-	onPress,
-}: {
-	hasDraft: boolean;
-	onPress: () => void;
-}) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<TouchableOpacity
-			activeOpacity={0.84}
-			accessibilityRole="button"
-			accessibilityLabel={
-				hasDraft ? "Stundenplan-Import fortsetzen" : "Stundenplan hinzufügen"
-			}
-			accessibilityHint="Öffnet den Stundenplan zum Hochladen und Prüfen."
-			onPress={onPress}
-			className="mx-6 mb-5 flex-row items-center rounded-card border border-border bg-card px-5 py-4"
-			style={continuousBorderStyle}
-		>
-			<View className="h-12 w-12 items-center justify-center rounded-full bg-system-subtle">
-				<ScanImage size={22} color={colors.primaryStrong} strokeWidth={2} />
-			</View>
-			<View className="ml-4 flex-1">
-				<Text className="font-poppins font-semibold text-body-3 text-text">
-					{hasDraft ? "Stundenplan fertigstellen" : "Stundenplan hinzufügen"}
-				</Text>
-				<Text className="mt-1 font-poppins text-body-5 text-secondary-text">
-					{hasDraft
-						? "Prüfe die erkannten Schulstunden."
-						: "Schulstunden in deinen Tag übernehmen."}
-				</Text>
-			</View>
-			<ArrowRight size={19} color={colors.secondaryText} strokeWidth={2} />
-		</TouchableOpacity>
-	);
-}
-
 function AgendaTimeline({
 	days,
 	todayKey,
@@ -608,14 +564,19 @@ export function DashboardScreen() {
 		selectedDayKey,
 		todayKey,
 	});
-	const entriesByDay = useQuery(
+	const queriedEntriesByDay = useQuery(
 		api.dayEntries.listByDayKeys,
 		user && isConvexAuthenticated ? { dayKeys: queriedDayKeys } : "skip",
 	);
-	const timetableState = useQuery(
-		api.timetables.getMine,
-		user && isConvexAuthenticated ? {} : "skip",
-	);
+	const entriesByDay =
+		queriedEntriesByDay === undefined
+			? undefined
+			: Object.fromEntries(
+					Object.entries(queriedEntriesByDay).map(([dayKey, entries]) => [
+						dayKey,
+						getVisibleDashboardEntries(entries),
+					]),
+				);
 	const learningPlans = useQuery(
 		api.learningPlans.listOverview,
 		user && isConvexAuthenticated ? {} : "skip",
@@ -757,7 +718,6 @@ export function DashboardScreen() {
 			),
 		[nextStepFallbackAction.route, router],
 	);
-	const openTimetable = useCallback(() => router.push("/timetable"), [router]);
 
 	return (
 		<View className="flex-1 bg-background">
@@ -827,15 +787,6 @@ export function DashboardScreen() {
 						onOpenLearningPlans={openLearningPlans}
 					/>
 				</DashboardHighlightCarousel>
-
-				<View>
-					{timetableState !== undefined && !timetableState.active ? (
-						<TimetableSetupCard
-							hasDraft={Boolean(timetableState.draft)}
-							onPress={openTimetable}
-						/>
-					) : null}
-				</View>
 
 				<View className="z-10 flex-row items-center justify-between bg-background px-6 pt-5 pb-6">
 					<View className="min-w-0 flex-1 pr-4">
