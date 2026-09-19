@@ -51,6 +51,7 @@ type DayovaSheetFrameProps = {
 	size?: DayovaSheetSize;
 	dismissible?: boolean;
 	showCloseButton?: boolean;
+	compactCloseButton?: boolean;
 	scrollable?: boolean;
 	closeAccessibilityLabel?: string;
 	accessibilityLabel?: string;
@@ -71,6 +72,7 @@ function DayovaSheetFrame({
 	size = "content",
 	dismissible = true,
 	showCloseButton = true,
+	compactCloseButton = false,
 	scrollable = false,
 	closeAccessibilityLabel = "Dialog schließen",
 	accessibilityLabel,
@@ -334,6 +336,7 @@ function DayovaSheetFrame({
 						)}
 						{canShowCloseButton ? (
 							<CloseButton
+								compact={compactCloseButton}
 								accessibilityLabel={closeAccessibilityLabel}
 								onPress={dismiss}
 							/>

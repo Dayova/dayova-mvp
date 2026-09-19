@@ -1,16 +1,18 @@
 import { TouchableOpacity, type TouchableOpacityProps } from "react-native";
 import { X } from "~/components/ui/icon";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 type CloseButtonProps = Omit<
 	TouchableOpacityProps,
 	"children" | "className" | "style"
->;
+> & { compact?: boolean };
 
 function CloseButton({
 	accessibilityLabel = "Schließen",
 	activeOpacity = 0.75,
 	hitSlop = 8,
+	compact = false,
 	...props
 }: CloseButtonProps) {
 	const { colors } = useDayovaTheme();
@@ -24,7 +26,7 @@ function CloseButton({
 			className="h-10 w-10 items-center justify-center rounded-full border border-border bg-path-2"
 			{...props}
 		>
-			<X size={24} color={colors.path3} strokeWidth={2} />
+			<X size={compact ? 20 : 24} color={colors.path3} strokeWidth={2} />
 		</TouchableOpacity>
 	);
 }

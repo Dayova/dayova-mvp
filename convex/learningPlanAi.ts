@@ -5,6 +5,7 @@ import {
 	generateText,
 	type LanguageModelUsage,
 	NoObjectGeneratedError,
+	NoOutputGeneratedError,
 	Output,
 } from "ai";
 import { v } from "convex/values";
@@ -33,6 +34,7 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
+import { MAX_LEARNING_MATERIAL_FILE_BYTES } from "./learningMaterialPolicy";
 import { estimateGeminiCostUsdMicros } from "./learningPlanAiCost";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
@@ -763,11 +765,21 @@ const withGeneratedTextRetry = async <TResult>(
 			);
 		} catch (error) {
 			const isDuplicatePrompt = error instanceof DuplicateGeneratedPromptError;
+			const isEmptyOutput = NoOutputGeneratedError.isInstance(error);
 			if (
-				(isInvalidGeneratedGermanTextError(error) || isDuplicatePrompt) &&
+				(isInvalidGeneratedGermanTextError(error) ||
+					isDuplicatePrompt ||
+					isEmptyOutput) &&
 				attempt < MAX_GENERATED_TEXT_ATTEMPTS - 1
 			) {
 				continue;
+			}
+
+			if (isEmptyOutput) {
+				logDiagnosticError("learningPlanAi.emptyOutput", error, {
+					attempts: MAX_GENERATED_TEXT_ATTEMPTS,
+				});
+				throwUserFacingError(fallbackMessage);
 			}
 
 			if (isInvalidGeneratedGermanTextError(error)) {
@@ -1729,6 +1741,7 @@ const getSubjectSpecificLearningInstruction = (subject: string) =>
 		: "";
 
 export const __testOnlyLearningPlanAi = {
+	withGeneratedTextRetry,
 	normalizeSessions,
 	getEmptyScheduleErrorMessage,
 	getMaxUploadFileBytes,

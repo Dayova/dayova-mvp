@@ -22,6 +22,7 @@ type ActionSheetProps<T extends string> = {
 	onClose: () => void;
 	onDismiss?: () => void;
 	layout?: "row" | "tile";
+	appearance?: "raised" | "flat";
 	closeAccessibilityLabel?: string;
 };
 
@@ -34,13 +35,16 @@ function ActionSheet<T extends string>({
 	onClose,
 	onDismiss,
 	layout = "row",
+	appearance = "raised",
 	closeAccessibilityLabel = "Auswahl schließen",
 }: ActionSheetProps<T>) {
 	const isTile = layout === "tile";
+	const isFlat = appearance === "flat";
 
 	return (
 		<DayovaSheetFrame
 			visible={visible}
+			compactCloseButton={isFlat}
 			title={title}
 			description={description}
 			onClose={onClose}
