@@ -17,13 +17,13 @@ import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
+import { AddIcon } from "~/components/ui/add-icon";
 import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	ArrowUpRight,
 	ClipboardEdit,
 	Clock3,
-	Plus,
 	PropertyEdit,
 	Route2,
 	Trash2,
@@ -43,7 +43,6 @@ import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { ROUTES } from "~/lib/routes";
-import { useDayovaTheme } from "~/lib/theme";
 
 const PLAN_ACTION_RAIL_WIDTH = 104;
 const PLAN_SWIPE_OPEN_THRESHOLD = 44;
@@ -549,7 +548,6 @@ function HomeworkCard({
 	onDelete: () => void;
 	onPress: () => void;
 }) {
-	const { colors } = useDayovaTheme();
 	const status = getHomeworkStatus(homework, todayKey);
 	const subject = getHomeworkSubject(homework) || "Hausaufgabe";
 	const dateLabel =
@@ -696,7 +694,6 @@ function HomeworkCard({
 
 export default function LearningPlansScreen() {
 	const insets = useSafeAreaInsets();
-	const { colors } = useDayovaTheme();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const removePlan = useMutation(api.learningPlans.removePlan);
@@ -807,9 +804,9 @@ export default function LearningPlansScreen() {
 						accessibilityHint="Öffnet den Eintragserstellungsdialog, um entweder eine Prüfung oder Hausaufgabe zu erstellen."
 						activeOpacity={0.88}
 						onPress={openCreateTypePicker}
-						className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+						className="h-12 w-12 items-center justify-center rounded-full active:opacity-80"
 					>
-						<Plus size={28} color={colors.text} strokeWidth={1.8} />
+						<AddIcon />
 					</TouchableOpacity>
 				</View>
 
@@ -886,11 +883,7 @@ export default function LearningPlansScreen() {
 									size="sm"
 									className="mt-2"
 								>
-									<Plus
-										size={18}
-										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-										strokeWidth={2.4}
-									/>
+									<AddIcon />
 									<Text className="font-poppins font-semibold text-body-4">
 										Neuen Lernplan starten
 									</Text>
@@ -934,11 +927,7 @@ export default function LearningPlansScreen() {
 									size="sm"
 									className="mt-2"
 								>
-									<Plus
-										size={18}
-										color={DAYOVA_DESIGN_SYSTEM.colors.light1}
-										strokeWidth={2.4}
-									/>
+									<AddIcon />
 									<Text className="font-poppins font-semibold text-body-4">
 										Neue Hausaufgabe eintragen
 									</Text>

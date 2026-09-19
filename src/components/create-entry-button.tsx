@@ -2,9 +2,8 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { TouchableOpacity } from "react-native";
 import { CreateTypePickerModal } from "~/components/create-type-picker-modal";
-import { Plus } from "~/components/ui/icon";
+import { AddIcon } from "~/components/ui/add-icon";
 import { ROUTES, withReturnTo } from "~/lib/routes";
-import { useDayovaTheme } from "~/lib/theme";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
 
 type CreateType = "homework" | "exam";
@@ -12,7 +11,6 @@ type CreateType = "homework" | "exam";
 export function CreateEntryButton({ returnTo }: { returnTo: string }) {
 	const trackFeature = useFeatureAnalytics();
 	const router = useRouter();
-	const { colors } = useDayovaTheme();
 	const [showCreateTypePicker, setShowCreateTypePicker] = useState(false);
 
 	const selectCreateType = (type: CreateType) => {
@@ -38,9 +36,9 @@ export function CreateEntryButton({ returnTo }: { returnTo: string }) {
 					trackFeature("home.create_opened");
 					setShowCreateTypePicker(true);
 				}}
-				className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+				className="h-12 w-12 items-center justify-center rounded-full active:opacity-80"
 			>
-				<Plus size={28} color={colors.text} strokeWidth={1.8} />
+				<AddIcon />
 			</TouchableOpacity>
 			<CreateTypePickerModal
 				visible={showCreateTypePicker}

@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
+import { AddIcon } from "~/components/ui/add-icon";
 import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
@@ -14,7 +15,7 @@ import {
 	DayovaSheetInput,
 } from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { BookOpen, Pencil, Plus, Trash2 } from "~/components/ui/icon";
+import { BookOpen, Pencil, Trash2 } from "~/components/ui/icon";
 import { PortraitContent } from "~/components/ui/portrait-content";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
@@ -120,9 +121,9 @@ export default function PersonalSubjectsScreen() {
 								accessibilityRole="button"
 								accessibilityLabel="Persönliches Fach hinzufügen"
 								onPress={() => setIsAdding(true)}
-								className="h-12 w-12 items-center justify-center rounded-full border border-border bg-card"
+								className="h-12 w-12 items-center justify-center rounded-full active:opacity-80"
 							>
-								<Plus size={28} color={colors.text} strokeWidth={1.8} />
+								<AddIcon />
 							</Pressable>
 						}
 					/>
@@ -165,7 +166,7 @@ export default function PersonalSubjectsScreen() {
 								size="sm"
 								className="mt-5"
 							>
-								<Plus size={18} color="#FFFFFF" strokeWidth={2.4} />
+								<AddIcon />
 								<Text className="text-body-4">
 									Persönliches Fach hinzufügen
 								</Text>

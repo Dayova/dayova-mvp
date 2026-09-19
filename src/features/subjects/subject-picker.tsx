@@ -6,13 +6,14 @@ import {
 	type TextInput,
 	View,
 } from "react-native";
+import { AddIcon } from "~/components/ui/add-icon";
 import { Button } from "~/components/ui/button";
 import {
 	DayovaSheetFrame,
 	DayovaSheetInput,
 } from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { Check, Plus } from "~/components/ui/icon";
+import { Check } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { getSubjectIcon } from "~/features/subjects/subject-catalog";
 import {
@@ -156,9 +157,7 @@ function SubjectPickerContent({
 				className="min-h-16 flex-row items-center gap-4 rounded-[22px] border border-primary/50 border-dashed bg-card px-5 py-3 active:opacity-80"
 				onPress={onAdd}
 			>
-				<View className="h-9 w-9 items-center justify-center rounded-full bg-accent">
-					<Plus size={20} color={colors.primary} strokeWidth={2.2} />
-				</View>
+				<AddIcon />
 				<Text className="flex-1 font-poppins font-semibold text-body-2 text-primary">
 					Fach hinzufügen
 				</Text>

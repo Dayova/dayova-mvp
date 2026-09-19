@@ -6,9 +6,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
+import { AddIcon } from "~/components/ui/add-icon";
 import { Button } from "~/components/ui/button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
-import { Plus } from "~/components/ui/icon";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -22,7 +22,6 @@ import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackToReturnOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
-import { useDayovaTheme } from "~/lib/theme";
 import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 export default function LearningTimesOverviewScreen() {
@@ -30,7 +29,6 @@ export default function LearningTimesOverviewScreen() {
 	const params = useLocalSearchParams<{ returnTo?: string }>();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuthSession();
-	const { colors } = useDayovaTheme();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningTimes = useQuery(
 		api.learningTimes.listMine,
@@ -108,12 +106,12 @@ export default function LearningTimesOverviewScreen() {
 					right={
 						<Button
 							accessibilityLabel="Lernzeit hinzufügen"
-							className="h-12 min-h-12 w-12 min-w-12 rounded-full border border-border bg-card px-0 active:bg-muted"
+							className="h-12 min-h-12 w-12 min-w-12 rounded-full bg-transparent p-0 active:opacity-80"
 							onPress={() => openEditor({ dayOfWeek: firstMissingDay })}
 							size="icon"
 							variant="ghost"
 						>
-							<Plus size={28} color={colors.text} strokeWidth={1.8} />
+							<AddIcon />
 						</Button>
 					}
 				/>
