@@ -1246,7 +1246,7 @@ function IntroArtwork({
 
 	return (
 		<View
-			className="w-full items-center justify-center overflow-hidden rounded-[32px] bg-system-subtle"
+			className="w-full items-center justify-center overflow-hidden rounded-[32px]"
 			// Runtime content-size mode chooses the bounded decorative-artwork height.
 			style={{ height: containerHeight }}
 		>

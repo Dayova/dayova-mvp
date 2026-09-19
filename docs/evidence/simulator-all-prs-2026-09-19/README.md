@@ -143,4 +143,6 @@ Finale Codekorrektur: Das Badge „SO FUNKTIONIERT DAYOVA“ ist vollständig au
 dem gemeinsamen Intro-Header entfernt. Die ausschließlich dekorativen Schatten
 der Materialkarte und der drei gestapelten Dashboardkarten sind entfernt; die
 Produktinhalte, Seitenindikatoren, Zurücknavigation und primären Aktionen bleiben
-unverändert.
+unverändert. Die drei ergänzenden Aufnahmen von 17:51 bestätigen diese beiden
+Korrekturen. Der dabei noch sichtbare gemeinsame hellblaue Hintergrund hinter den
+Illustrationen wurde anschließend ebenfalls von allen drei Intro-Seiten entfernt.
