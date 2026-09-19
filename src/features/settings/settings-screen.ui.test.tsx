@@ -252,6 +252,11 @@ describe("SettingsScreen", () => {
 		expect(light.props.accessibilityState).toEqual({ checked: false });
 		expect(system.props.accessibilityState).toEqual({ checked: true });
 		expect(dark.props.accessibilityState).toEqual({ checked: false });
+		expect(
+			screen.getByTestId("theme-option-gradient-system"),
+		).toBeOnTheScreen();
+		expect(screen.queryByTestId("theme-option-gradient-light")).toBeNull();
+		expect(screen.queryByTestId("theme-option-gradient-dark")).toBeNull();
 		await fireEvent.press(light);
 		expect(mockSetPreference).toHaveBeenCalledWith("light");
 	});

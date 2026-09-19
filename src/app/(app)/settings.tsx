@@ -1,6 +1,7 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
@@ -30,6 +31,7 @@ import {
 	SettingsRow,
 	SettingsSection,
 } from "~/features/settings/settings-list";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { ROUTES } from "~/lib/routes";
 import { env } from "~/lib/runtime-config";
@@ -37,7 +39,9 @@ import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
 import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
 import { useFeatureAnalytics } from "~/lib/use-feature-analytics";
-import { cn } from "~/lib/utils";
+
+const PRIMARY_INTERACTIVE_GRADIENT =
+	DAYOVA_DESIGN_SYSTEM.gradients.primaryInteractive;
 
 const themeIconByPreference = {
 	light: Sun,
@@ -73,16 +77,23 @@ function ThemePreferenceToggle({
 						accessibilityLabel={option.accessibilityLabel}
 						accessibilityRole="radio"
 						accessibilityState={{ checked: isActive }}
-						className={cn(
-							"h-11 w-11 items-center justify-center rounded-full",
-							isActive ? "bg-primary" : "bg-transparent",
-						)}
+						className="h-11 w-11 items-center justify-center overflow-hidden rounded-full"
 						onPress={() => {
 							void setPreference(option.value).catch((error: unknown) => {
 								console.warn("Unable to save Dayova theme preference", error);
 							});
 						}}
 					>
+						{isActive ? (
+							<LinearGradient
+								testID={`theme-option-gradient-${option.value}`}
+								pointerEvents="none"
+								colors={PRIMARY_INTERACTIVE_GRADIENT.colors}
+								start={PRIMARY_INTERACTIVE_GRADIENT.start}
+								end={PRIMARY_INTERACTIVE_GRADIENT.end}
+								style={StyleSheet.absoluteFill}
+							/>
+						) : null}
 						<Icon
 							size={20}
 							color={isActive ? "#FFFFFF" : colors.secondaryText}
