@@ -127,17 +127,12 @@ test("empty settings offers both the header plus and a first-subject action", as
 	await act(() =>
 		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "spanisch"),
 	);
-	await act(() =>
-		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
-	);
+	await act(async () => {
+		fireEvent.press(screen.getByRole("button", { name: "Fach hinzufügen" }));
+	});
 	expect(
 		screen.queryByRole("button", { name: "Nur diesmal verwenden" }),
 	).toBeNull();
-	await act(async () => {
-		fireEvent.press(
-			screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
-		);
-	});
 	expect(mockMutation).toHaveBeenCalledWith({ name: "Spanisch" });
 	expect(screen.queryByText("Fach dauerhaft hinzufügen?")).toBeNull();
 });

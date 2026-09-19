@@ -228,7 +228,6 @@ export default function PersonalSubjectsScreen() {
 			{isAdding ? (
 				<SubjectAddFlow
 					options={options}
-					permanentOnly
 					onCancel={() => setIsAdding(false)}
 					onSelect={() => setIsAdding(false)}
 					onSavePermanent={savePermanent}
@@ -238,7 +237,7 @@ export default function PersonalSubjectsScreen() {
 			<DayovaSheetFrame
 				visible={Boolean(editingSubject)}
 				title="Fach umbenennen"
-				description="Der neue Name wird auch bei verknüpften Prüfungen, Hausaufgaben, Lernplänen und Stundenplan-Einträgen angezeigt."
+				description="Der neue Name wird auch bei verknüpften Prüfungen, Hausaufgaben und Lernplänen angezeigt."
 				onClose={() => {
 					if (!isBusy) setEditingSubject(null);
 				}}

@@ -935,10 +935,12 @@ export default function NewEntryScreen() {
 							}
 							onPress={() => {
 								if (step === "examType") {
+									if (!trimmedExamType) return;
 									goToStep("examDetails");
 									return;
 								}
 								if (step === "examDetails") {
+									if (!trimmedSubject) return;
 									goToStep("basics");
 									return;
 								}

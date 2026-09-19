@@ -1,11 +1,7 @@
 import { describe, expect, jest, test } from "@jest/globals";
-import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import React from "react";
-import {
-	InlineSubjectPicker,
-	SubjectAddFlow,
-	SubjectPickerContent,
-} from "./subject-picker";
+import { SubjectAddFlow, SubjectPickerContent } from "./subject-picker";
 import type { SubjectSelection } from "./use-subject-options";
 
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
@@ -114,247 +110,94 @@ const personalOption = {
 };
 
 describe("SubjectAddFlow", () => {
-	test("reuses an existing subject despite casing and whitespace", async () => {
+	const setup = async (
+		save = jest.fn<(name: string) => Promise<SubjectSelection>>(
+			async (name) => ({ name, personalSubjectId: "saved-id" as never }),
+		),
+	) => {
 		const onSelect = jest.fn();
-		const onSavePermanent =
-			jest.fn<(name: string) => Promise<SubjectSelection>>();
-		const screen = await render(
+		const view = await render(
 			<SubjectAddFlow
 				options={[personalOption]}
 				onCancel={jest.fn()}
 				onSelect={onSelect}
-				onSavePermanent={onSavePermanent}
+				onSavePermanent={save}
 			/>,
 		);
-
-		await act(() =>
-			fireEvent.changeText(
-				screen.getByLabelText("Name des Fachs"),
-				"  französisch  ",
-			),
+		return { view, save, onSelect };
+	};
+	test("requires a name and directly saves a personal subject without a one-time choice", async () => {
+		const { view, save, onSelect } = await setup();
+		expect(
+			view.getByRole("button", { name: "Fach hinzufügen" }),
+		).toBeDisabled();
+		await fireEvent.changeText(
+			view.getByLabelText("Name des Fachs"),
+			"Italienich",
 		);
-		await act(() =>
-			fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
+		await fireEvent.press(
+			view.getByRole("button", { name: "Fach hinzufügen" }),
 		);
-
+		await waitFor(() =>
+			expect(onSelect).toHaveBeenCalledWith({
+				name: "Italienisch",
+				personalSubjectId: "saved-id",
+			}),
+		);
+		expect(save).toHaveBeenCalledWith("Italienisch");
+		expect(view.queryByText("Nur diesmal verwenden")).toBeNull();
+		expect(view.queryByText("Fach dauerhaft hinzufügen?")).toBeNull();
+	});
+	test("reuses an existing subject without creating a duplicate", async () => {
+		const { view, save, onSelect } = await setup();
+		await fireEvent.changeText(
+			view.getByLabelText("Name des Fachs"),
+			"  französisch  ",
+		);
+		await fireEvent.press(
+			view.getByRole("button", { name: "Fach hinzufügen" }),
+		);
 		expect(onSelect).toHaveBeenCalledWith({
 			name: "Französisch",
 			personalSubjectId: "personal-french",
 		});
-		expect(onSavePermanent).not.toHaveBeenCalled();
+		expect(save).not.toHaveBeenCalled();
 	});
-
-	test("offers permanent and one-time use for a new subject", async () => {
-		const onSelect = jest.fn();
-		const savedSelection = {
-			name: "Latein",
-			personalSubjectId: "personal-latin" as never,
-		};
-		const onSavePermanent = jest.fn<
-			(name: string) => Promise<SubjectSelection>
-		>(async () => savedSelection);
-		const screen = await render(
-			<SubjectAddFlow
-				options={[]}
-				onCancel={jest.fn()}
-				onSelect={onSelect}
-				onSavePermanent={onSavePermanent}
-			/>,
+	test("keeps the entered name and allows retry after a failed save", async () => {
+		const save = jest
+			.fn<(name: string) => Promise<SubjectSelection>>()
+			.mockRejectedValueOnce(new Error("Server Error"))
+			.mockResolvedValueOnce({
+				name: "Latein",
+				personalSubjectId: "saved-id" as never,
+			});
+		const { view, onSelect } = await setup(save);
+		await fireEvent.changeText(view.getByLabelText("Name des Fachs"), "Latein");
+		await fireEvent.press(
+			view.getByRole("button", { name: "Fach hinzufügen" }),
 		);
-
-		await act(() =>
-			fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "Latein"),
+		await waitFor(() =>
+			expect(
+				view.getByText(
+					"Das Fach konnte nicht gespeichert werden. Bitte versuche es erneut.",
+				),
+			).toBeOnTheScreen(),
 		);
-		await act(() =>
-			fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
+		expect(onSelect).not.toHaveBeenCalled();
+		expect(view.getByLabelText("Name des Fachs").props.value).toBe("Latein");
+		await fireEvent.press(
+			view.getByRole("button", { name: "Fach hinzufügen" }),
 		);
-		expect(screen.getByText("Fach dauerhaft hinzufügen?")).toBeOnTheScreen();
-		expect(
-			screen.getByRole("button", { name: "Nur diesmal verwenden" }),
-		).toBeOnTheScreen();
-
-		await act(async () => {
-			fireEvent.press(
-				screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
-			);
-		});
-		await waitFor(() => expect(onSavePermanent).toHaveBeenCalledWith("Latein"));
-		expect(onSelect).toHaveBeenCalledWith(savedSelection);
-	});
-
-	test("uses a new subject once without persisting it", async () => {
-		const onSelect = jest.fn();
-		const onSavePermanent =
-			jest.fn<(name: string) => Promise<SubjectSelection>>();
-		const screen = await render(
-			<SubjectAddFlow
-				options={[]}
-				onCancel={jest.fn()}
-				onSelect={onSelect}
-				onSavePermanent={onSavePermanent}
-			/>,
+		await waitFor(() =>
+			expect(onSelect).toHaveBeenCalledWith({
+				name: "Latein",
+				personalSubjectId: "saved-id",
+			}),
 		);
-
-		await act(() =>
-			fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "Spanisch"),
-		);
-		await act(() =>
-			fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
-		);
-		await act(() =>
-			fireEvent.press(
-				screen.getByRole("button", { name: "Nur diesmal verwenden" }),
-			),
-		);
-
-		expect(onSelect).toHaveBeenCalledWith({
-			name: "Spanisch",
-			isOneTime: true,
-		});
-		expect(onSavePermanent).not.toHaveBeenCalled();
 	});
 });
 
-test("an unavailable personal catalog does not block exam subject selection", async () => {
-	const onSelect = jest.fn();
-	const screen = await render(
-		<InlineSubjectPicker selected={{ name: "" }} onSelect={onSelect} />,
-	);
-	expect(
-		screen.getByText(/Deine persönlichen Fächer konnten nicht geladen werden/),
-	).toBeOnTheScreen();
-	await act(() =>
-		fireEvent.press(screen.getByRole("radio", { name: "Mathematik" })),
-	);
-	expect(onSelect).toHaveBeenCalledWith({ name: "Mathematik" });
-	await act(() =>
-		fireEvent.press(screen.getByRole("button", { name: "Fach hinzufügen" })),
-	);
-	await act(() =>
-		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "Spanisch"),
-	);
-	await act(() =>
-		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
-	);
-	await act(() =>
-		fireEvent.press(
-			screen.getByRole("button", { name: "Nur diesmal verwenden" }),
-		),
-	);
-	expect(onSelect).toHaveBeenLastCalledWith({
-		name: "Spanisch",
-		isOneTime: true,
-	});
-});
-
-test("a failed permanent save keeps the language form open without reporting success", async () => {
-	const onSelect = jest.fn();
-	const screen = await render(
-		<SubjectAddFlow
-			options={[]}
-			onCancel={jest.fn()}
-			onSelect={onSelect}
-			onSavePermanent={async () => {
-				throw new Error("[CONVEX M(personalSubjects:create)] Server Error");
-			}}
-		/>,
-	);
-	await act(() =>
-		fireEvent.changeText(
-			screen.getByLabelText("Name des Fachs"),
-			"Französisch",
-		),
-	);
-	await act(() =>
-		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
-	);
-	await act(async () => {
-		fireEvent.press(
-			screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
-		);
-	});
-	expect(onSelect).not.toHaveBeenCalled();
-	expect(
-		screen.getByText(
-			"Das Fach konnte nicht gespeichert werden. Bitte versuche es erneut.",
-		),
-	).toBeOnTheScreen();
-	expect(
-		screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
-	).toBeOnTheScreen();
-});
-
-test("corrects a common language typo before permanent confirmation", async () => {
-	const onSavePermanent = jest.fn<(name: string) => Promise<SubjectSelection>>(
-		async (name) => ({ name, personalSubjectId: "italian-id" as never }),
-	);
-	const screen = await render(
-		<SubjectAddFlow
-			options={[]}
-			onCancel={jest.fn()}
-			onSelect={jest.fn()}
-			onSavePermanent={onSavePermanent}
-		/>,
-	);
-	await act(() =>
-		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "italienich"),
-	);
-	await act(() =>
-		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
-	);
-	expect(screen.getByText(/Italienisch kann künftig/)).toBeOnTheScreen();
-	await act(async () => {
-		fireEvent.press(
-			screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
-		);
-	});
-	expect(onSavePermanent).toHaveBeenCalledWith("Italienisch");
-});
-
-test("settings mode offers only permanent saving and promotes timetable-only subjects", async () => {
-	const onSelect = jest.fn();
-	const onSavePermanent = jest.fn<(name: string) => Promise<SubjectSelection>>(
-		async (name) => ({ name, personalSubjectId: "latin-id" as never }),
-	);
-	const screen = await render(
-		<SubjectAddFlow
-			permanentOnly
-			options={[
-				{
-					...personalOption,
-					kind: "timetable",
-					name: "Latein",
-					personalSubjectId: undefined,
-				},
-			]}
-			onCancel={jest.fn()}
-			onSelect={onSelect}
-			onSavePermanent={onSavePermanent}
-		/>,
-	);
-	await act(() =>
-		fireEvent.changeText(screen.getByLabelText("Name des Fachs"), "Latein"),
-	);
-	await act(() =>
-		fireEvent.press(screen.getByRole("button", { name: "Weiter" })),
-	);
-	expect(onSelect).not.toHaveBeenCalled();
-	expect(
-		screen.queryByRole("button", { name: "Nur diesmal verwenden" }),
-	).toBeNull();
-	await act(async () => {
-		fireEvent.press(
-			screen.getByRole("button", { name: "Dauerhaft hinzufügen" }),
-		);
-	});
-	expect(onSavePermanent).toHaveBeenCalledWith("Latein");
-	expect(onSelect).toHaveBeenCalledWith({
-		name: "Latein",
-		personalSubjectId: "latin-id",
-	});
-});
-
-test("permanent subjects appear in the regular list without a personal section", async () => {
+test("permanent subjects appear in the regular list without a separate section", async () => {
 	const view = await render(
 		<SubjectPickerContent
 			options={[personalOption]}
@@ -368,36 +211,7 @@ test("permanent subjects appear in the regular list without a personal section",
 	expect(view.queryByText("Persönliche Fächer")).toBeNull();
 });
 
-test("one-time subjects remain selectable after switching to a permanent subject", async () => {
-	const onSelect = jest.fn();
-	const tree = (selected: SubjectSelection) => (
-		<SubjectPickerContent
-			options={[personalOption]}
-			selected={selected}
-			isLoading={false}
-			onSelect={onSelect}
-			onAdd={jest.fn()}
-		/>
-	);
-	const view = await render(tree({ name: "Italienisch", isOneTime: true }));
-	expect(view.getByText("Persönliche Fächer")).toBeOnTheScreen();
-	expect(
-		view.getByRole("radio", { name: "Italienisch" }),
-	).toBeChecked();
-	await view.rerender(
-		tree({
-			name: personalOption.name,
-			personalSubjectId: personalOption.personalSubjectId,
-		}),
-	);
-	await fireEvent.press(view.getByRole("radio", { name: "Italienisch" }));
-	expect(onSelect).toHaveBeenLastCalledWith({
-		name: "Italienisch",
-		isOneTime: true,
-	});
-});
-
-test("a newly saved subject is visible before the catalog refresh", async () => {
+test("a newly saved subject is selected before the catalog refresh", async () => {
 	const view = await render(
 		<SubjectPickerContent
 			options={[]}
@@ -410,8 +224,5 @@ test("a newly saved subject is visible before the catalog refresh", async () => 
 			onAdd={jest.fn()}
 		/>,
 	);
-	expect(
-		view.getByRole("radio", { name: "Italienisch" }),
-	).toBeChecked();
-	expect(view.queryByText("Persönliche Fächer")).toBeNull();
+	expect(view.getByRole("radio", { name: "Italienisch" })).toBeChecked();
 });
