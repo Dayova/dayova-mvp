@@ -84,7 +84,10 @@ test("edits and removes the correct slot when a day has multiple learning times"
 		screen.getByRole("button", { name: "Lernzeit für Dienstag hinzufügen" }),
 	);
 	expect(onAdd).toHaveBeenCalledWith(2);
-	expect(
-		screen.queryByRole("button", { name: /Dienstag.*löschen/ }),
-	).toBeNull();
+	await fireEvent.press(
+		screen.getByRole("button", {
+			name: "Dienstag aus den Lernzeiten entfernen",
+		}),
+	);
+	expect(screen.queryByText("Dienstag")).toBeNull();
 });

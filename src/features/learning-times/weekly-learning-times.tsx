@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Pressable, View } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { Button } from "~/components/ui/button";
@@ -29,6 +30,16 @@ function WeeklyLearningTimes({
 	onRemove,
 }: WeeklyLearningTimesProps) {
 	const { colors } = useDayovaTheme();
+	const [hiddenEmptyDays, setHiddenEmptyDays] = useState<ReadonlySet<number>>(
+		() => new Set(),
+	);
+	const hideEmptyDay = (dayOfWeek: number) => {
+		setHiddenEmptyDays((current) => {
+			const next = new Set(current);
+			next.add(dayOfWeek);
+			return next;
+		});
+	};
 	if (entries.length === 0) {
 		return (
 			<Surface className="items-center border border-border px-6 py-10">
@@ -53,7 +64,11 @@ function WeeklyLearningTimes({
 	}
 	return (
 		<View className="gap-3">
-			{LEARNING_DAYS.flatMap((day) => {
+			{LEARNING_DAYS.filter(
+				(day) =>
+					entries.some((entry) => entry.dayOfWeek === day.value) ||
+					!hiddenEmptyDays.has(day.value),
+			).flatMap((day) => {
 				const dayEntries = entries
 					.filter((entry) => entry.dayOfWeek === day.value)
 					.sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -101,7 +116,7 @@ function WeeklyLearningTimes({
 							</Pressable>
 						</Surface>
 					);
-					return entry ? (
+					return (
 						<ReanimatedSwipeable
 							key={key}
 							overshootRight={false}
@@ -109,11 +124,16 @@ function WeeklyLearningTimes({
 							renderRightActions={(_progress, _translation, swipeable) => (
 								<Pressable
 									accessibilityRole="button"
-									accessibilityLabel={`${day.label}, Lernzeit ${entry.startTime} bis ${entry.endTime} löschen`}
+									accessibilityLabel={
+										entry
+											? `${day.label}, Lernzeit ${entry.startTime} bis ${entry.endTime} löschen`
+											: `${day.label} aus den Lernzeiten entfernen`
+									}
 									className="ml-2 w-24 items-center justify-center rounded-card bg-destructive"
 									onPress={() => {
 										swipeable.close();
-										onRemove(entry);
+										hideEmptyDay(day.value);
+										if (entry) onRemove(entry);
 									}}
 								>
 									<Trash2 size={22} color="#FFFFFF" strokeWidth={2} />
@@ -125,8 +145,6 @@ function WeeklyLearningTimes({
 						>
 							{card}
 						</ReanimatedSwipeable>
-					) : (
-						<View key={key}>{card}</View>
 					);
 				});
 			})}
