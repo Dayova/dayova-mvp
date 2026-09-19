@@ -20,6 +20,7 @@ import {
 	Pressable,
 	ScrollView,
 	type StyleProp,
+	Text as NativeText,
 	TextInput,
 	type TextInputProps,
 	type TextStyle,
@@ -246,23 +247,25 @@ function AuthChoiceLegalNotice({
 			style={style}
 		>
 			Informationen findest du in unserer{"\n"}
-			<Text
+			<NativeText
+				allowFontScaling={allowFontScaling}
 				accessibilityRole="link"
 				accessibilityHint="Öffnet die Dayova-Datenschutzerklärung im Browser."
 				className="underline"
 				onPress={() => void openExternalUrl(env.EXPO_PUBLIC_PRIVACY_URL)}
 			>
 				Datenschutzerklärung
-			</Text>{" "}
+			</NativeText>{" "}
 			und den{" "}
-			<Text
+			<NativeText
+				allowFontScaling={allowFontScaling}
 				accessibilityRole="link"
 				accessibilityHint="Öffnet die Nutzungsbedingungen im Browser."
 				className="underline"
 				onPress={() => void openExternalUrl(env.EXPO_PUBLIC_TERMS_URL)}
 			>
 				Nutzungsbedingungen
-			</Text>
+			</NativeText>
 			.
 		</Text>
 	);
