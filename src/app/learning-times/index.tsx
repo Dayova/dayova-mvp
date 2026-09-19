@@ -1,11 +1,13 @@
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
+import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import { Plus } from "~/components/ui/icon";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
@@ -16,10 +18,12 @@ import {
 	type WeeklyLearningTime,
 	WeeklyLearningTimes,
 } from "~/features/learning-times/weekly-learning-times";
+import { createAsyncActionGate } from "~/lib/async-action-gate";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackToReturnOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
+import { getUserFacingErrorMessage } from "~/lib/user-facing-errors";
 
 export default function LearningTimesOverviewScreen() {
 	const router = useRouter();
@@ -32,6 +36,37 @@ export default function LearningTimesOverviewScreen() {
 		api.learningTimes.listMine,
 		user && isConvexAuthenticated ? {} : "skip",
 	);
+
+	const removeLearningTime = useMutation(api.learningTimes.removeMine);
+	const [deletingEntry, setDeletingEntry] = useState<WeeklyLearningTime | null>(
+		null,
+	);
+	const [isDeleting, setIsDeleting] = useState(false);
+	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const deleteGate = useRef(createAsyncActionGate());
+	const confirmDelete = () => {
+		if (!deletingEntry) return;
+		void deleteGate.current.run(async () => {
+			setIsDeleting(true);
+			setDeleteError(null);
+			try {
+				await removeLearningTime({
+					id: deletingEntry.id as Id<"userLearningTimes">,
+				});
+				setDeletingEntry(null);
+			} catch (error) {
+				setDeleteError(
+					getUserFacingErrorMessage(
+						error,
+						"Die Lernzeit konnte nicht gelöscht werden.",
+						{ source: "learning-times.remove" },
+					),
+				);
+			} finally {
+				setIsDeleting(false);
+			}
+		});
+	};
 
 	const firstMissingDay =
 		LEARNING_DAYS.find(
@@ -73,12 +108,12 @@ export default function LearningTimesOverviewScreen() {
 					right={
 						<Button
 							accessibilityLabel="Lernzeit hinzufügen"
-							className="h-12 min-h-12 w-12 min-w-12 rounded-full bg-primary/10 px-0 active:bg-primary/20"
+							className="h-12 min-h-12 w-12 min-w-12 rounded-full border border-border bg-card px-0 active:bg-muted"
 							onPress={() => openEditor({ dayOfWeek: firstMissingDay })}
 							size="icon"
 							variant="ghost"
 						>
-							<Plus size={22} color={colors.primary} strokeWidth={2.2} />
+							<Plus size={28} color={colors.text} strokeWidth={1.8} />
 						</Button>
 					}
 				/>
@@ -112,6 +147,10 @@ export default function LearningTimesOverviewScreen() {
 					) : (
 						<WeeklyLearningTimes
 							entries={learningTimes}
+							onRemove={(entry) => {
+								setDeleteError(null);
+								setDeletingEntry(entry);
+							}}
 							onAdd={(dayOfWeek) => openEditor({ dayOfWeek })}
 							onEdit={(entry: WeeklyLearningTime) =>
 								openEditor({
@@ -123,6 +162,22 @@ export default function LearningTimesOverviewScreen() {
 					)}
 				</View>
 			</ScrollView>
+			<ConfirmationSheet
+				visible={Boolean(deletingEntry)}
+				title="Lernzeit löschen?"
+				description={
+					deletingEntry
+						? `Möchtest du die Lernzeit ${deletingEntry.startTime}–${deletingEntry.endTime} wirklich löschen?`
+						: ""
+				}
+				confirmLabel="Löschen"
+				isBusy={isDeleting}
+				errorMessage={deleteError}
+				onConfirm={confirmDelete}
+				onClose={() => {
+					if (!isDeleting) setDeletingEntry(null);
+				}}
+			/>
 		</Screen>
 	);
 }
