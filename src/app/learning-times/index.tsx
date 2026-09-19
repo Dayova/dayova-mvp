@@ -111,7 +111,7 @@ export default function LearningTimesOverviewScreen() {
 							size="icon"
 							variant="ghost"
 						>
-							<AddIcon gradient />
+							<AddIcon outlinedGradient />
 						</Button>
 					}
 				/>

@@ -42,11 +42,11 @@ function WeeklyLearningTimes({
 					Lege fest, wann Dayova deine Lerneinheiten einplanen kann.
 				</Text>
 				<Button
-					accessibilityLabel="Jetzt Lernzeit hinzufügen"
+					accessibilityLabel="Lernzeit eintragen"
 					className="mt-5 w-full"
 					onPress={() => onAdd(1)}
 				>
-					<Text>Jetzt Lernzeit hinzufügen</Text>
+					<Text>Lernzeit eintragen</Text>
 				</Button>
 			</Surface>
 		);

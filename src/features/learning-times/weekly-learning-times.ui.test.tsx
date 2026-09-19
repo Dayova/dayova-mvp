@@ -48,7 +48,7 @@ test("shows one clear add action after the last learning time is deleted", async
 	expect(screen.queryByText("Noch keine Lernzeit")).toBeNull();
 
 	await fireEvent.press(
-		screen.getByRole("button", { name: "Jetzt Lernzeit hinzufügen" }),
+		screen.getByRole("button", { name: "Lernzeit eintragen" }),
 	);
 	expect(onAdd).toHaveBeenCalledWith(1);
 });

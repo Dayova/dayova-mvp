@@ -38,11 +38,13 @@ export function LearningDayPicker({
 							accessibilityLabel={day.label}
 							accessibilityRole="radio"
 							accessibilityState={{ checked: isSelected }}
-							className="h-12 flex-1 items-center justify-center rounded-full active:opacity-80"
+							className="flex-1 items-center justify-center rounded-full active:opacity-80"
 							onPress={() => onSelectedDayChange(day.label)}
 							style={{
+								aspectRatio: 1,
 								backgroundColor: isSelected ? colors.primary : colors.surface,
 								borderCurve: "continuous",
+								maxWidth: 48,
 							}}
 						>
 							<Text

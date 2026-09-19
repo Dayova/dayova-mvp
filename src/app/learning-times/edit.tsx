@@ -12,13 +12,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
+import { CloseButton } from "~/components/ui/close-button";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
 import {
 	type DateTimePickerEvent,
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
-import { Trash2, X } from "~/components/ui/icon";
+import { Trash2 } from "~/components/ui/icon";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -258,15 +259,7 @@ export default function LearningTimesScreen() {
 				>
 					{isEditingExisting ? "Lernzeit bearbeiten" : "Neue Lernzeit"}
 				</Text>
-				<Pressable
-					accessibilityLabel="Lernzeit schließen"
-					accessibilityRole="button"
-					hitSlop={8}
-					className="h-10 w-10 items-center justify-center rounded-full bg-muted active:opacity-75"
-					onPress={goBack}
-				>
-					<X size={18} color={colors.text} strokeWidth={2.2} />
-				</Pressable>
+				<CloseButton accessibilityLabel="Lernzeit schließen" onPress={goBack} />
 			</View>
 
 			<ScrollView

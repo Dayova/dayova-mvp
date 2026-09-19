@@ -34,7 +34,9 @@ describe("LearningTimeEditorFields", () => {
 
 		const selectedDay = screen.getByRole("radio", { name: "Dienstag" });
 		expect(selectedDay.props.accessibilityState).toEqual({ checked: true });
-		expect(selectedDay.props.className).toContain("h-12");
+		expect(selectedDay.props.style).toEqual(
+			expect.objectContaining({ aspectRatio: 1, maxWidth: 48 }),
+		);
 		expect(within(selectedDay).getByText("Di").props.className).toContain(
 			"text-white",
 		);
