@@ -167,7 +167,7 @@ export default function PersonalSubjectsScreen() {
 								size="sm"
 								className="mt-5"
 							>
-								<Text className="text-body-4">Fach hinzufügen</Text>
+								<Text>Fach hinzufügen</Text>
 							</Button>
 						</Surface>
 					) : (
