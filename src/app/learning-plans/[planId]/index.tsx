@@ -41,6 +41,7 @@ import {
 	LearningPathVisual,
 } from "~/features/learning-plans/learning-path-visual";
 import { LearningTimeSuggestionCard } from "~/features/learning-plans/learning-time-suggestion-card";
+import { NextSessionRecovery } from "~/features/learning-plans/next-session-recovery";
 import {
 	getCommittedSessionIndex,
 	getDefaultLearningPlanSession,
@@ -335,6 +336,15 @@ export default function LearningPlanSessionsScreen() {
 	const defaultSession = snapshot
 		? getDefaultLearningPlanSession(snapshot.sessions)
 		: null;
+	const needsNextSession = Boolean(
+		snapshot?.plan.status === "accepted" &&
+			snapshot.plan.rollingPlanEnabled &&
+			(parseDayKey(snapshot.plan.examDateKey)?.getTime() ?? 0) >
+				today.getTime() &&
+			snapshot.sessions.length > 0 &&
+			snapshot.sessions.every(isLearningPlanSessionHistory) &&
+			snapshot.sessions.at(-1)?.executionStatus === "completed",
+	);
 	const selectedSession =
 		snapshot?.sessions.find((session) => session.id === selectedSessionId) ??
 		defaultSession;
@@ -500,6 +510,8 @@ export default function LearningPlanSessionsScreen() {
 							size="small"
 						/>
 					</View>
+				) : needsNextSession && planId ? (
+					<NextSessionRecovery key={planId} planId={planId} />
 				) : selectedSession ? (
 					<SessionPreviewCard
 						key={selectedSession.id}
@@ -657,7 +669,7 @@ export default function LearningPlanSessionsScreen() {
 							selectedSessionId={selectedSession.id}
 							sessions={snapshot.sessions}
 							showsAdaptiveContinuation={
-								snapshot.plan.rollingPlanEnabled === true && snapshot.plan.masteryStatus !== "mastered"
+								snapshot.plan.rollingPlanEnabled === true && snapshot.plan.masteryStatus !== "mastered" && !needsNextSession
 							}
 								onOpenSession={(session) => {
 									const sessionIndex = snapshot.sessions.findIndex(

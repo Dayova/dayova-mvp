@@ -226,20 +226,20 @@ const getRollingSessionSchedule = async (
 		.take(MAX_LEARNING_TIMES);
 	const now = new Date();
 	const berlinNow = getBerlinDateTime(now);
+	// Completed sessions no longer constrain the next slot to their original date.
+	const afterCompletedSession = !!args.afterSession && getSessionExecutionStatus(args.afterSession) === "completed";
+	const afterDateKey = afterCompletedSession || !args.afterSession ? berlinNow.dateKey : args.afterSession.dateKey.slice(0, 10);
+	const afterDate = new Date(`${afterDateKey}T12:00:00Z`);
 	const today = startOfUtcDay(new Date(`${berlinNow.dateKey}T12:00:00Z`));
-	const afterDate = args.afterSession
-		? new Date(`${args.afterSession.dateKey.slice(0, 10)}T12:00:00Z`)
-		: today;
 	const cursor = Number.isNaN(afterDate.getTime()) ? today : afterDate;
 	if (cursor < today) cursor.setTime(today.getTime());
 	const examDate = new Date(`${args.plan.examDateKey.slice(0, 10)}T12:00:00Z`);
 	if (Number.isNaN(examDate.getTime())) return null;
-	const afterDateKey = args.afterSession?.dateKey.slice(0, 10);
 	const afterStartMinutes = args.afterSession
 		? parseTimeMinutes(args.afterSession.startTime)
 		: null;
 	const afterEndMinutes =
-		afterStartMinutes === null || !args.afterSession
+		afterCompletedSession || afterStartMinutes === null || !args.afterSession
 			? null
 			: afterStartMinutes + args.afterSession.durationMinutes;
 
