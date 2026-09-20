@@ -15,7 +15,7 @@
 *.mp4 binary
 *.otf binary
 *.pdf binary
-*.png binary
+*.[pP][nN][gG] binary
 *.potx binary
 *.pptx binary
 *.ttf binary
