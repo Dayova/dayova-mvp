@@ -14,18 +14,51 @@ defaults:
     pnpm: "11.15.1"
 
 jobs:
+  verify_source:
+    name: Verify source belongs to main
+    type: custom
+    runs_on: linux-medium
+    outputs:
+      source_sha: ${{ steps.verify_source.outputs.source_sha }}
+    steps:
+      - uses: eas/checkout
+        with:
+          ref: refs/heads/main
+      - id: verify_source
+        name: Verify the requested SHA is in main history
+        run: |
+          set -euo pipefail
+          source_sha="${{ inputs.source_sha }}"
+          if ! [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "source_sha must be a full lowercase Git SHA." >&2
+            exit 1
+          fi
+          if [[ -f "$(git rev-parse --git-path shallow)" ]]; then
+            git fetch origin refs/heads/main --unshallow
+          fi
+          if ! git cat-file -e "$source_sha^{commit}"; then
+            echo "source_sha is not reachable from main." >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$source_sha" HEAD; then
+            echo "source_sha is not reachable from main." >&2
+            exit 1
+          fi
+          set-output source_sha "$source_sha"
+
   diagnose:
     name: Inspect checkout, install, and config without publishing
     type: custom
     runs_on: linux-medium
+    needs: [verify_source]
     environment: production
     env:
       APP_VARIANT: production
-      OTA_SOURCE_SHA: ${{ inputs.source_sha }}
+      OTA_SOURCE_SHA: ${{ needs.verify_source.outputs.source_sha }}
     steps:
       - uses: eas/checkout
         with:
-          ref: ${{ inputs.source_sha }}
+          ref: ${{ needs.verify_source.outputs.source_sha }}
       - name: Inspect source after checkout
         run: |
           git rev-parse HEAD
