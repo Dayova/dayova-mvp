@@ -1,0 +1,50 @@
+name: Diagnose OTA source checkout
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        type: string
+        required: true
+        description: Full commit SHA from the failed production workflow
+
+defaults:
+  tools:
+    node: "24.18.0"
+    pnpm: "11.15.1"
+
+jobs:
+  diagnose:
+    name: Inspect checkout, install, and config without publishing
+    type: custom
+    runs_on: linux-medium
+    environment: production
+    env:
+      APP_VARIANT: production
+      OTA_SOURCE_SHA: ${{ inputs.source_sha }}
+    steps:
+      - uses: eas/checkout
+        with:
+          ref: ${{ inputs.source_sha }}
+      - name: Inspect source after checkout
+        run: |
+          git rev-parse HEAD
+          git status --porcelain
+      - uses: eas/install_node_modules
+      - name: Inspect source after dependency installation
+        run: |
+          git rev-parse HEAD
+          git status --porcelain
+      - name: Resolve production config as the OTA guard does
+        run: pnpm exec expo config --type public --json > /tmp/ota-source-config.json
+      - name: Inspect source at the publication boundary
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from "node:child_process";
+          const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trimEnd();
+          const expectedSha = process.env.OTA_SOURCE_SHA;
+          const actualSha = git("rev-parse", "HEAD");
+          const gitStatus = git("status", "--porcelain");
+          console.log(JSON.stringify({ expectedSha, actualSha, gitStatus }));
+          process.exitCode = actualSha === expectedSha && !gitStatus.trim() ? 0 : 1;
+          NODE
