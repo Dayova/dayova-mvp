@@ -2,24 +2,28 @@ import { View, type ViewProps } from "react-native";
 import { BackButton } from "~/components/ui/button";
 import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
-import { LEARNING_PLAN_CREATION_TOTAL_STEPS } from "~/features/learning-plans/creation-progress";
+import {
+	getSafeLearningPlanCreationProgress,
+	LEARNING_PLAN_CREATION_TOTAL_STEPS,
+} from "~/features/learning-plans/creation-progress";
 import { cn } from "~/lib/utils";
 
 export function LearningPlanCreationProgressHeader({
 	currentStep,
 	onBack,
+	totalSteps = LEARNING_PLAN_CREATION_TOTAL_STEPS,
 	title = "Lernplan erstellen",
 	className,
 	...props
 }: ViewProps & {
 	currentStep: number;
 	onBack: () => void;
+	totalSteps?: number;
 	title?: string;
 }) {
-	const safeStep = Math.min(
-		Math.max(Math.trunc(currentStep), 1),
-		LEARNING_PLAN_CREATION_TOTAL_STEPS,
-	);
+	const { currentStep: safeProgress, totalSteps: safeTotalSteps } =
+		getSafeLearningPlanCreationProgress({ currentStep, totalSteps });
+	const progressPercentage = Math.round((safeProgress / safeTotalSteps) * 100);
 
 	return (
 		<View className={cn("flex-row items-center gap-4", className)} {...props}>
@@ -38,17 +42,17 @@ export function LearningPlanCreationProgressHeader({
 						// Tabular figures are a native text-rendering setting, not static layout.
 						style={{ fontVariant: ["tabular-nums"] }}
 					>
-						{safeStep} von {LEARNING_PLAN_CREATION_TOTAL_STEPS}
+						{progressPercentage} %
 					</Text>
 				</View>
 				<FlowProgressBar
-					progress={safeStep / LEARNING_PLAN_CREATION_TOTAL_STEPS}
+					progress={safeProgress / safeTotalSteps}
 					accessibilityRole="progressbar"
 					accessibilityValue={{
-						min: 1,
-						max: LEARNING_PLAN_CREATION_TOTAL_STEPS,
-						now: safeStep,
-						text: `Schritt ${safeStep} von ${LEARNING_PLAN_CREATION_TOTAL_STEPS}`,
+						min: 0,
+						max: 100,
+						now: progressPercentage,
+						text: `Fortschritt ${progressPercentage} Prozent`,
 					}}
 				/>
 			</View>

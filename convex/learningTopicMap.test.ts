@@ -1,8 +1,24 @@
 import { expect, test } from "vitest";
 import {
 	focusLearningTopics,
+	normalizeLearningTopics,
 	selectSessionLearningTopics,
 } from "./learningTopicMap";
+
+test("preserves only the evidence dimensions required by the exam topic", () => {
+	const [topic] = normalizeLearningTopics([
+		{
+			id: "begriffe",
+			title: "Fachbegriffe erklären",
+			learningGoal: "Die relevanten Fachbegriffe präzise erklären.",
+			keywords: ["Fachbegriffe"],
+			priority: "high",
+			requiredEvidenceDimensions: ["understanding", "understanding"],
+		},
+	]);
+
+	expect(topic?.requiredEvidenceDimensions).toEqual(["understanding"]);
+});
 
 test("focuses content on gaps instead of replaying diagnosed strengths", () => {
 	const focused = focusLearningTopics({

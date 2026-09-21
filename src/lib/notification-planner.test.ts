@@ -1,4 +1,6 @@
 import { expect, test } from "vitest";
+import type { Id } from "#convex/_generated/dataModel";
+import type { DayEntry } from "~/types/dayEntries";
 import {
 	buildLocalNotificationPlan,
 	type NotificationPlanningPreferences,
@@ -23,7 +25,7 @@ test("local notification planner creates briefing, before-event, and forgotten r
 		entriesByDay: {
 			"2026-06-16": [
 				{
-					id: "entry-1",
+					relatedDayEntryId: "entry-1" as Id<"dayEntries">,
 					title: "Mathe Hausaufgabe",
 					time: "16:00",
 					kind: "Hausaufgabe",
@@ -31,7 +33,6 @@ test("local notification planner creates briefing, before-event, and forgotten r
 					completed: false,
 				},
 				{
-					id: "entry-2",
 					title: "Deutsch Hausaufgabe",
 					time: "17:00",
 					kind: "Hausaufgabe",
@@ -62,5 +63,31 @@ test("local notification planner creates briefing, before-event, and forgotten r
 		"Heute steht 1 Eintrag an: Mathe Hausaufgabe um 16:00.",
 		"Deine Mathe Hausaufgabe startet in 15 Minuten.",
 		"Du kannst deine Mathe Hausaufgabe noch als erledigt markieren.",
+	]);
+});
+
+test("timetable lessons appear in the briefing without creating individual reminders", () => {
+	const timetableLesson = {
+		id: "timetable-lesson-1" as Id<"timetableLessons">,
+		source: "timetable",
+		title: "Mathematik",
+		time: "08:00",
+		kind: "Unterricht",
+		durationMinutes: 45,
+	} satisfies DayEntry;
+	const plan = buildLocalNotificationPlan({
+		now: new Date(2026, 6, 27, 7, 0),
+		preferences: defaultPreferences,
+		entriesByDay: {
+			"2026-07-27": [timetableLesson],
+		},
+	});
+
+	expect(plan).toEqual([
+		expect.objectContaining({
+			key: "briefing:2026-07-27:07:30",
+			type: "dailyBriefing",
+			body: "Heute steht 1 Eintrag an: Mathematik um 08:00.",
+		}),
 	]);
 });

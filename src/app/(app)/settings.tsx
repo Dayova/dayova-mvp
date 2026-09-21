@@ -1,24 +1,37 @@
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
-import { Pressable, useWindowDimensions, View } from "react-native";
+import { useState } from "react";
+import { Pressable, View } from "react-native";
+import { ReleaseInformationSheet } from "~/components/release-information-sheet";
+import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Bell,
 	Computer,
-	Logout,
+	CreditCard,
+	Globe,
+	Mail,
 	Moon,
 	Palette,
-	Settings,
-	SquareLock,
+	Sparkles,
 	Sun,
 	Timer,
+	UserRound,
 } from "~/components/ui/icon";
-import { ListRow } from "~/components/ui/list-row";
-import { ErrorMessage } from "~/components/ui/error-message";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { SupportContact } from "~/components/ui/support-contact";
+import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { useAccountActions } from "~/context/AuthContext";
-import { createAsyncActionGate } from "~/lib/async-action-gate";
-import { logDiagnosticError } from "~/lib/diagnostics";
+import { useAccess } from "~/context/AccessContext";
+import { useAiConsent } from "~/context/AiConsentContext";
+import { useAuthSession } from "~/context/AuthContext";
+import {
+	SettingsCard,
+	SettingsDivider,
+	SettingsRow,
+	SettingsSection,
+} from "~/features/settings/settings-list";
+import { openExternalUrl } from "~/lib/open-external-url";
+import { env } from "~/lib/runtime-config";
+import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
 import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
 import { cn } from "~/lib/utils";
@@ -35,43 +48,6 @@ const themeIconByPreference = {
 		strokeWidth?: number;
 	}) => React.JSX.Element
 >;
-
-function SettingsRow({
-	icon,
-	label,
-	trailing,
-	onPress,
-	disabled = false,
-	busy = false,
-}: {
-	icon: (props: {
-		size?: number;
-		color?: string;
-		strokeWidth?: number;
-	}) => React.JSX.Element;
-	label: string;
-	trailing?: React.JSX.Element;
-	onPress?: () => void;
-	disabled?: boolean;
-	busy?: boolean;
-}) {
-	const Icon = icon;
-	const { colors } = useDayovaTheme();
-
-	return (
-		<ListRow
-			icon={<Icon size={22} color={colors.text} strokeWidth={2} />}
-			label={label}
-			onPress={onPress}
-			disabled={disabled}
-			accessibilityState={{
-				busy,
-				disabled,
-			}}
-			trailing={trailing}
-		/>
-	);
-}
 
 function ThemePreferenceToggle({
 	preference,
@@ -118,88 +94,182 @@ function ThemePreferenceToggle({
 
 export default function SettingsScreen() {
 	const router = useRouter();
-	const { logout } = useAccountActions();
+	const { user } = useAuthSession();
+	const profileName = user?.name?.trim();
+	const { access } = useAccess();
+	const { openAiConsentSettings, statusLabel: aiConsentStatusLabel } =
+		useAiConsent();
 	const { preference, setPreference } = useDayovaTheme();
-	const { height } = useWindowDimensions();
-	const [logoutError, setLogoutError] = useState<string | null>(null);
-	const [isLoggingOut, setIsLoggingOut] = useState(false);
-	const logoutGateRef = useRef(createAsyncActionGate());
-	const contentMinHeight = Math.max(height - 268, 360);
-	const handleLogout = () => {
-		void logoutGateRef.current.run(async () => {
-			setLogoutError(null);
-			setIsLoggingOut(true);
-			try {
-				await logout();
-			} catch (error) {
-				logDiagnosticError("Failed to sign out.", error, {
-					source: "settings.logout",
-					level: "error",
-				});
-				setLogoutError(
-					"Die Abmeldung ist fehlgeschlagen. Bitte versuche es erneut.",
-				);
-			} finally {
-				setIsLoggingOut(false);
-			}
+	const [showReleaseInformation, setShowReleaseInformation] = useState(false);
+	const [linkErrors, setLinkErrors] = useState<
+		Partial<Record<"support" | "subscription" | "legal", string>>
+	>({});
+	const openLink = (
+		section: "support" | "subscription" | "legal",
+		url?: string,
+	) => {
+		void openExternalUrl(url).then((opened) => {
+			setLinkErrors((current) => ({
+				...current,
+				[section]: opened
+					? undefined
+					: "Der Link konnte nicht geöffnet werden. Bitte versuche es erneut.",
+			}));
 		});
 	};
+	const nativeManagementUrl = getNativeSubscriptionManagementUrl({
+		platform: process.env.EXPO_OS,
+		store: access?.store,
+	});
+	const isStoreSubscriber =
+		access?.state === "paid" || access?.state === "billingGrace";
 
 	return (
-		<Screen>
-			<ThemedStatusBar />
-			<ScreenScroll topPadding={118} bottomPadding={150} horizontalPadding={24}>
-				<View
-					style={{
-						minHeight: contentMinHeight,
-						justifyContent: "space-between",
-					}}
+		<>
+			<Screen>
+				<ThemedStatusBar />
+				<ScreenScroll
+					topPadding={104}
+					bottomPadding={120}
+					horizontalPadding={24}
 				>
-					<View className="gap-5">
-						<SettingsRow
-							icon={Bell}
-							label="Mitteilungen"
-							onPress={() => router.push("/notification-settings")}
-						/>
-						<SettingsRow
-							icon={Timer}
-							label="Lernzeiten"
-							onPress={() => router.push("/learning-times")}
-						/>
-						<SettingsRow
-							icon={Palette}
-							label="Design"
-							trailing={
-								<ThemePreferenceToggle
-									preference={preference}
-									setPreference={setPreference}
-								/>
-							}
-						/>
-					</View>
+					<View className="gap-7">
+						<SettingsCard>
+							<SettingsRow
+								icon={UserRound}
+								label={profileName || "Profil & Konto"}
+								description={profileName ? "Profil & Konto" : undefined}
+								accessibilityLabel={
+									profileName
+										? `${profileName}, Profil & Konto`
+										: "Profil & Konto"
+								}
+								onPress={() => router.push("/profile")}
+							/>
+						</SettingsCard>
 
-					<View className="gap-5">
-						<SettingsRow
-							icon={Settings}
-							label="Profil"
-							onPress={() => router.push("/profile")}
-						/>
-						<SettingsRow
-							icon={SquareLock}
-							label="Passwort ändern"
-							onPress={() => router.push("/change-password")}
-						/>
-						<SettingsRow
-							icon={Logout}
-							label="Abmelden"
-							onPress={handleLogout}
-							disabled={isLoggingOut}
-							busy={isLoggingOut}
-						/>
-						{logoutError ? <ErrorMessage>{logoutError}</ErrorMessage> : null}
+						<View testID="settings-support">
+							<SettingsCard>
+								<SupportContact context="Einstellungen">
+									{({ onPress, busy, buttonRef }) => (
+										<SettingsRow
+											buttonRef={buttonRef}
+											icon={Mail}
+											label="Support kontaktieren"
+											onPress={onPress}
+											busy={busy}
+											disabled={busy}
+										/>
+									)}
+								</SupportContact>
+							</SettingsCard>
+						</View>
+
+						<SettingsSection title="Lernen">
+							<SettingsRow
+								icon={Timer}
+								label="Lernzeiten"
+								onPress={() => router.push("/learning-times")}
+							/>
+						</SettingsSection>
+
+						<SettingsSection title="App">
+							<SettingsRow
+								icon={Computer}
+								label="App-Informationen"
+								onPress={() => setShowReleaseInformation(true)}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={Bell}
+								label="Mitteilungen"
+								onPress={() => router.push("/notification-settings")}
+							/>
+							<SettingsDivider />
+							<SettingsRow
+								icon={Palette}
+								label="Design"
+								trailing={
+									<ThemePreferenceToggle
+										preference={preference}
+										setPreference={setPreference}
+									/>
+								}
+							/>
+						</SettingsSection>
+
+						<View className="gap-3" testID="settings-subscription">
+							<SettingsCard>
+								{access?.state === "trial" ? (
+									<SettingsRow
+										icon={CreditCard}
+										label="Dayova abonnieren"
+										onPress={() => router.push("/subscription")}
+									/>
+								) : (
+									<SettingsRow
+										icon={CreditCard}
+										label="Dayova"
+										accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
+										description={
+											nativeManagementUrl
+												? "Abo im Store verwalten"
+												: "Hilfe zum Abo"
+										}
+										onPress={() =>
+											openLink(
+												"subscription",
+												nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
+											)
+										}
+										disabled={!isStoreSubscriber}
+									/>
+								)}
+							</SettingsCard>
+							{linkErrors.subscription ? (
+								<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
+							) : null}
+						</View>
+
+						<View className="gap-3" testID="settings-legal">
+							<SettingsSection title="Datenschutz & Rechtliches">
+								<SettingsRow
+									icon={Sparkles}
+									label="KI & Datenschutz"
+									onPress={openAiConsentSettings}
+									accessibilityLabel={`KI & Datenschutz, ${aiConsentStatusLabel}`}
+									trailing={
+										<View className="rounded-full bg-muted px-3 py-2">
+											<Text className="font-poppins font-semibold text-body-5 text-secondary-text">
+												{aiConsentStatusLabel}
+											</Text>
+										</View>
+									}
+								/>
+								<SettingsDivider />
+								<SettingsRow
+									icon={Globe}
+									label="Datenschutz"
+									onPress={() => openLink("legal", env.EXPO_PUBLIC_PRIVACY_URL)}
+								/>
+								<SettingsDivider />
+								<SettingsRow
+									icon={Globe}
+									label="Nutzungsbedingungen"
+									onPress={() => openLink("legal", env.EXPO_PUBLIC_TERMS_URL)}
+								/>
+							</SettingsSection>
+							{linkErrors.legal ? (
+								<ErrorMessage>{linkErrors.legal}</ErrorMessage>
+							) : null}
+						</View>
 					</View>
-				</View>
-			</ScreenScroll>
-		</Screen>
+				</ScreenScroll>
+			</Screen>
+			<ReleaseInformationSheet
+				visible={showReleaseInformation}
+				onClose={() => setShowReleaseInformation(false)}
+			/>
+		</>
 	);
 }

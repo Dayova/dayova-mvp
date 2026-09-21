@@ -15,8 +15,8 @@ usable at a large font scale.
 - The six visual verification-code cells are decorative. Assistive technology
   receives one full-size, labelled six-digit input instead of six unrelated
   cells or an invisible one-pixel target.
-- Choice chips and goals expose checkbox state. Selection sheets expose radio
-  state. Progress indicators expose a numeric progress value.
+- Multi-select weekday chips expose checkbox state. Selection sheets expose
+  radio state. Progress indicators expose a numeric progress value.
 
 ## Errors and status changes
 
@@ -30,6 +30,22 @@ usable at a large font scale.
   interrupt the user as errors.
 - Bespoke auth animations that cannot use the shared text primitive must still
   provide the same alert and live-region semantics.
+- Indeterminate visual loaders expose a progressbar name and value. Their
+  adjacent changing status copy is a polite status live region with a busy
+  state; completion must be discoverable without waiting for focus to land on
+  a newly mounted action.
+
+## Content size
+
+- Body copy, controls, errors, values, and supporting text receive the user's
+  full system text-size preference and remain reachable through vertical
+  reflow or scrolling.
+- Semantic display headings use the shared `Text` primitive's native-style
+  large-title scaling curve. This centralized heading-only bound preserves
+  whole-word readability at AXXXL without disabling Dynamic Type or capping
+  the task content beneath the heading.
+- Terminal success and recovery actions must remain inside the same vertical
+  scroll flow as their status content at enlarged text sizes.
 
 ## Bottom sheets
 

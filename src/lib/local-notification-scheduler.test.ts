@@ -1,4 +1,5 @@
 import { expect, test, vi } from "vitest";
+import type { Id } from "#convex/_generated/dataModel";
 import {
 	type RegisteredLocalNotification,
 	syncPlannedLocalNotifications,
@@ -30,7 +31,7 @@ test("syncPlannedLocalNotifications replaces Dayova-owned scheduled notification
 			title: "Hausaufgabe",
 			body: "Deine Mathe Hausaufgabe startet in 15 Minuten.",
 			triggerAt: new Date(2026, 5, 16, 15, 45),
-			relatedEntryId: "entry-1",
+			relatedDayEntryId: "entry-1" as Id<"dayEntries">,
 			registrationId: "registration-1",
 		},
 	];

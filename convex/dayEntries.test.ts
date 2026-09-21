@@ -12,6 +12,123 @@ const user = {
 	tokenIdentifier: "test:user",
 };
 
+test("revises the same pending exam after navigating back through creation", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const id = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-09-30",
+		title: "Biologie Klassenarbeit",
+		subject: "Biologie",
+		kind: "Leistungskontrolle",
+		examTypeLabel: "Klassenarbeit",
+		durationMinutes: 30,
+	});
+	await t.mutation(api.dayEntries.updatePendingExam, {
+		id,
+		dayKey: "2026-10-01",
+		subject: "Chemie",
+		examTypeLabel: "Test",
+		plannedDateLabel: "Donnerstag, 1. Oktober",
+		durationMinutes: 45,
+	});
+	const entries = await t.run((ctx) => ctx.db.query("dayEntries").take(2));
+	expect(entries).toHaveLength(1);
+	expect(entries[0]).toMatchObject({
+		_id: id,
+		dayKey: "2026-10-01",
+		subject: "Chemie",
+		title: "Chemie Test",
+		durationMinutes: 45,
+	});
+});
+
+test("pending exam edits require ownership and cannot change an exam with a learning plan", async () => {
+	const t = convexTest(schema, modules);
+	const owner = t.withIdentity(user);
+	const id = await owner.mutation(api.dayEntries.create, {
+		dayKey: "2026-09-30",
+		title: "Biologie Klassenarbeit",
+		subject: "Biologie",
+		kind: "Leistungskontrolle",
+	});
+	const edit = {
+		id,
+		dayKey: "2026-10-01",
+		subject: "Chemie",
+		examTypeLabel: "Test",
+		plannedDateLabel: "1. Oktober",
+		durationMinutes: 30,
+	};
+	await expect(
+		t
+			.withIdentity({ tokenIdentifier: "someone-else" })
+			.mutation(api.dayEntries.updatePendingExam, edit),
+	).rejects.toThrow("Prüfung nicht gefunden");
+	await owner.mutation(api.learningPlans.createDraft, {
+		examDayEntryId: id,
+		subject: "Biologie",
+		examTypeLabel: "Klassenarbeit",
+		examDateKey: "2026-09-30",
+		examDateLabel: "30. September",
+		durationMinutes: 30,
+		topicDescription: "Zellteilung und Mitose",
+		notes: "",
+	});
+	await expect(
+		owner.mutation(api.dayEntries.updatePendingExam, edit),
+	).rejects.toThrow("Lernplan");
+	await expect(owner.query(api.dayEntries.get, { id })).resolves.toMatchObject({
+		dayKey: "2026-09-30",
+		subject: "Biologie",
+	});
+});
+
+test("keeps adaptive exam entries with a stored subject schema-compatible", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	await expect(
+		t.run((ctx) =>
+			ctx.db.insert("dayEntries", {
+				ownerTokenIdentifier: user.tokenIdentifier,
+				dayKey: "2026-08-13",
+				title: "Mathematik Klausur",
+				subject: "Mathematik",
+				topicDescription: "Analysis und Integralrechnung",
+				kind: "Leistungskontrolle",
+				plannedDateLabel: "Donnerstag, 13. August",
+				durationMinutes: 30,
+				examTypeLabel: "Klausur",
+			}),
+		),
+	).resolves.toEqual(expect.any(String));
+});
+
+test("stores required exam topics without creating a learning plan", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+	const examDayEntryId = await t.mutation(api.dayEntries.create, {
+		dayKey: "2026-08-12",
+		title: "Mathematik Klausur",
+		subject: "Mathematik",
+		kind: "Leistungskontrolle",
+		examTypeLabel: "Klausur",
+		plannedDateLabel: "12. August 2026",
+		durationMinutes: 90,
+	});
+
+	await t.mutation(api.dayEntries.updateExamTopics, {
+		id: examDayEntryId,
+		topicDescription: "Lineare Funktionen, Steigung und Achsenabschnitt",
+	});
+
+	await expect(
+		t.query(api.dayEntries.get, { id: examDayEntryId }),
+	).resolves.toMatchObject({
+		topicDescription: "Lineare Funktionen, Steigung und Achsenabschnitt",
+	});
+	expect(await t.run((ctx) => ctx.db.query("learningPlans").take(1))).toEqual(
+		[],
+	);
+});
+
 test("manual timed entry overlapping an existing entry is rejected with conflict details", async () => {
 	const t = convexTest(schema, modules).withIdentity(user);
 
@@ -84,6 +201,7 @@ test("multiple exams on one day ignore supplied times and are stored untimed", a
 	await t.mutation(api.dayEntries.create, {
 		dayKey: "2026-07-16",
 		title: "Englisch Klassenarbeit",
+		subject: "Englisch",
 		time: "16:00",
 		kind: "Leistungskontrolle",
 		plannedDateLabel: "Donnerstag, 16. Juli",
@@ -109,6 +227,12 @@ test("multiple exams on one day ignore supplied times and are stored untimed", a
 
 	expect(exams).toHaveLength(2);
 	expect(exams?.every((entry) => entry.time === undefined)).toBe(true);
+	expect(
+		exams?.find((entry) => entry.title === "Englisch Klassenarbeit"),
+	).toMatchObject({
+		dayKey: "2026-07-16",
+		subject: "Englisch",
+	});
 });
 
 test("untimed exams with Berlin-midnight ISO day keys do not block homework", async () => {
@@ -306,4 +430,22 @@ test("manual entries can be marked completed and uncompleted", async () => {
 		dayKeys: ["2026-06-16"],
 	});
 	expect(entries["2026-06-16"]?.[0]?.completed).toBe(false);
+});
+
+test("legacy exam subject metadata remains schema-compatible", async () => {
+	const t = convexTest(schema, modules).withIdentity(user);
+
+	const entryId = await t.run(async (ctx) =>
+		ctx.db.insert("dayEntries", {
+			ownerTokenIdentifier: user.tokenIdentifier,
+			dayKey: "2026-08-07",
+			title: "Englisch Klassenarbeit",
+			subject: "Englisch",
+			kind: "Leistungskontrolle",
+		}),
+	);
+
+	await expect(
+		t.run(async (ctx) => ctx.db.get("dayEntries", entryId)),
+	).resolves.toMatchObject({ subject: "Englisch" });
 });

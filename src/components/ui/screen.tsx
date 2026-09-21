@@ -1,6 +1,7 @@
 import { type ScrollViewProps, View, type ViewProps } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { cn } from "~/lib/utils";
 
 type ScreenProps = ViewProps;
@@ -10,6 +11,7 @@ function Screen({ className, ...props }: ScreenProps) {
 }
 
 type ScreenScrollProps = ScrollViewProps & {
+	contentMaxWidth?: number;
 	horizontalPadding?: number;
 	topPadding?: number;
 	bottomPadding?: number;
@@ -18,6 +20,7 @@ type ScreenScrollProps = ScrollViewProps & {
 
 function ScreenScroll({
 	className,
+	contentMaxWidth = 480,
 	contentContainerStyle,
 	horizontalPadding = 32,
 	topPadding = 80,
@@ -26,6 +29,10 @@ function ScreenScroll({
 	...props
 }: ScreenScrollProps) {
 	const insets = useSafeAreaInsets();
+	const contentSizeLayout = useContentSizeLayout({
+		containerMaxWidth: contentMaxWidth,
+		requestedHorizontalPadding: horizontalPadding,
+	});
 
 	return (
 		<KeyboardSafeScrollView
@@ -35,11 +42,14 @@ function ScreenScroll({
 			// not a reliable NativeWind contentContainerClassName mapping.
 			contentContainerStyle={[
 				{
-					paddingHorizontal: horizontalPadding,
+					alignSelf: "center",
+					maxWidth: contentSizeLayout.containerMaxWidth,
+					paddingHorizontal: contentSizeLayout.horizontalPadding,
 					paddingTop: includeTopSafeArea
 						? Math.max(insets.top + 28, topPadding)
 						: topPadding,
 					paddingBottom: Math.max(insets.bottom + 36, bottomPadding),
+					width: "100%",
 				},
 				contentContainerStyle,
 			]}

@@ -15,20 +15,7 @@ describe("learning session composition", () => {
 		).toEqual([{ phase: "theory", durationMinutes: 30 }]);
 	});
 
-	test("splits the treatment into theory and practice in the same session", () => {
-		expect(
-			getLearningSessionComposition({
-				phase: "theory",
-				durationMinutes: 30,
-				variant: "split",
-			}),
-		).toEqual([
-			{ phase: "theory", durationMinutes: 20 },
-			{ phase: "practice", durationMinutes: 10 },
-		]);
-	});
-
-	test("does not alter ineligible durations or phases", () => {
+	test("keeps the full theory slot for the opener and theory pages", () => {
 		expect(
 			getLearningSessionComposition({
 				phase: "theory",
@@ -36,6 +23,16 @@ describe("learning session composition", () => {
 				variant: "split",
 			}),
 		).toEqual([{ phase: "theory", durationMinutes: 20 }]);
+	});
+
+	test("does not alter short theory slots or non-theory phases", () => {
+		expect(
+			getLearningSessionComposition({
+				phase: "theory",
+				durationMinutes: 5,
+				variant: "split",
+			}),
+		).toEqual([{ phase: "theory", durationMinutes: 5 }]);
 		expect(
 			getLearningSessionComposition({
 				phase: "practice",
@@ -45,13 +42,25 @@ describe("learning session composition", () => {
 		).toEqual([{ phase: "practice", durationMinutes: 30 }]);
 	});
 
-	test("marks only 30-minute theory sessions as experiment eligible", () => {
+	test("marks every theory session that can fit both phases as eligible", () => {
 		expect(
 			isLearningSessionCompositionEligible({
 				phase: "theory",
-				durationMinutes: 30,
+				durationMinutes: 7,
 			}),
 		).toBe(true);
+		expect(
+			isLearningSessionCompositionEligible({
+				phase: "theory",
+				durationMinutes: 20,
+			}),
+		).toBe(true);
+		expect(
+			isLearningSessionCompositionEligible({
+				phase: "theory",
+				durationMinutes: 5,
+			}),
+		).toBe(false);
 		expect(
 			isLearningSessionCompositionEligible({
 				phase: "practice",

@@ -4,6 +4,7 @@ import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { getDateTimePickerConfirmAccessibilityLabel } from "./date-time-picker-sheet.types";
 import type {
 	DateTimePickerChangeEvent,
 	DateTimePickerDisplay,
@@ -30,8 +31,16 @@ function DateTimePickerSheet({
 	doneLabel = "Fertig",
 	onChange,
 	onClose,
+	onConfirm,
 }: DateTimePickerSheetProps) {
 	const { width } = useWindowDimensions();
+	const normalizedDisplay = normalizeIosDisplay(display);
+	const pickerHeight =
+		mode === "date" && normalizedDisplay === "inline"
+			? 340
+			: mode === "datetime"
+				? 260
+				: 216;
 	const accessibilityLabel = {
 		date: "Datum auswählen",
 		time: "Uhrzeit auswählen",
@@ -39,6 +48,10 @@ function DateTimePickerSheet({
 	}[mode];
 	const handleValueChange = (event: DateTimePickerChangeEvent, date: Date) => {
 		onChange({ ...event, type: "set" }, date);
+	};
+	const handleConfirm = () => {
+		onConfirm?.(value);
+		onClose();
 	};
 
 	return (
@@ -49,7 +62,12 @@ function DateTimePickerSheet({
 			showCloseButton={false}
 			closeAccessibilityLabel="Auswahl schließen"
 			footer={
-				<Button accessibilityLabel="Auswahl schließen" onPress={onClose}>
+				<Button
+					accessibilityLabel={getDateTimePickerConfirmAccessibilityLabel(
+						doneLabel,
+					)}
+					onPress={handleConfirm}
+				>
 					<Text>{doneLabel}</Text>
 				</Button>
 			}
@@ -59,7 +77,7 @@ function DateTimePickerSheet({
 					accentColor={DAYOVA_PRIMARY}
 					value={value}
 					mode={mode}
-					display={normalizeIosDisplay(display)}
+					display={normalizedDisplay}
 					maximumDate={maximumDate}
 					minimumDate={minimumDate}
 					locale="de-DE"
@@ -67,7 +85,7 @@ function DateTimePickerSheet({
 					// Expo's native picker needs explicit measured dimensions.
 					style={{
 						width: Math.min(width, 560) - 48,
-						height: mode === "datetime" ? 260 : 216,
+						height: pickerHeight,
 					}}
 				/>
 			</View>

@@ -40,6 +40,7 @@ export default tseslint.config(
 			...reactCompilerRules,
 			"dayova-ui/no-direct-native-controls": "error",
 			"dayova-ui/no-direct-overlay-primitives": "error",
+			"dayova-ui/no-test-modules-in-router": "error",
 			"dayova-ui/require-compose-host-theme": "error",
 		},
   },
@@ -47,7 +48,6 @@ export default tseslint.config(
 		files: ["src/**/*.{test,spec}.{ts,tsx}"],
 		ignores: [
 			"src/components/onboarding/intro-tasks-artwork-assets.test.ts",
-			"src/components/onboarding/intro-upload-artwork.test.ts",
 			"src/lib/ios-appearance-module.test.ts",
 			"src/lib/theme-css.test.ts",
 		],

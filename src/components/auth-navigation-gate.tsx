@@ -1,7 +1,9 @@
 import { usePathname, useRootNavigationState, useRouter } from "expo-router";
 import { type ReactNode, useEffect } from "react";
 import { View } from "react-native";
+import { useAccess } from "~/context/AccessContext";
 import { useAuthSession } from "~/context/AuthContext";
+import { resolveAccessRoute } from "~/lib/access-policy";
 import { getAuthNavigationTarget } from "~/lib/auth-routing";
 import { cn } from "~/lib/utils";
 
@@ -13,14 +15,37 @@ export function AuthNavigationGate({ children }: AuthNavigationGateProps) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const rootNavigationState = useRootNavigationState();
-	const { user, isSessionLoading, pendingSessionTask } = useAuthSession();
-	const targetRoute = getAuthNavigationTarget({
+	const {
+		user,
+		isSessionLoading,
+		pendingSessionTask,
+		onboardingCompletionStatus,
+	} = useAuthSession();
+	const { access, isAccessLoading } = useAccess();
+	const authTargetRoute = getAuthNavigationTarget({
 		hasUser: Boolean(user),
 		isSessionLoading,
+		onboardingCompletionStatus,
 		pathname,
 		pendingSessionTask,
 	});
-	const shouldMaskRoute = isSessionLoading || targetRoute !== null;
+	const accessTargetRoute = user
+		? resolveAccessRoute({
+				accessState: access?.state,
+				isSessionLoading,
+				pathname,
+				user: { id: user.clerkId },
+			})
+		: null;
+	const targetRoute =
+		pendingSessionTask !== null || onboardingCompletionStatus !== "none"
+			? authTargetRoute
+			: (accessTargetRoute ?? authTargetRoute);
+	const shouldMaskRoute =
+		isSessionLoading ||
+		onboardingCompletionStatus === "loading" ||
+		(onboardingCompletionStatus === "none" && isAccessLoading) ||
+		targetRoute !== null;
 
 	useEffect(() => {
 		if (!targetRoute || !rootNavigationState?.key) return;

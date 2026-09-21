@@ -33,6 +33,8 @@ export const deriveTopicReadiness = ({
 		id: string;
 		topicId?: string;
 		kind?: "performance" | "confidence";
+		responseKind?: "multipleChoice" | "shortText" | "longText";
+		correctAnswer?: string;
 		evaluationKeywords?: string[];
 	}>;
 	answers: Array<{ questionId: string; answer: string }>;
@@ -47,6 +49,14 @@ export const deriveTopicReadiness = ({
 			.filter((question) => question.kind !== "confidence")
 			.map((question): TopicReadinessStatus => {
 				const answer = answersByQuestion.get(question.id) ?? "";
+				if (
+					question.responseKind === "multipleChoice" &&
+					question.correctAnswer
+				) {
+					return normalized(answer) === normalized(question.correctAnswer)
+						? "secure"
+						: "unknown";
+				}
 				if (isUncertain(answer)) return "unknown";
 				const answerText = normalized(answer);
 				const keywords = (question.evaluationKeywords ?? [])

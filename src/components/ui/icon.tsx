@@ -1,5 +1,7 @@
 import {
 	AlertCircleIcon,
+	Analytics01Icon,
+	ArrowDataTransferHorizontalIcon,
 	ArrowDown01Icon,
 	ArrowLeft01Icon,
 	ArrowRight01Icon,
@@ -16,6 +18,7 @@ import {
 	Clock03Icon,
 	CodeIcon,
 	ComputerIcon,
+	CreditCardIcon,
 	Delete02Icon,
 	Dna01Icon,
 	Dumbbell02Icon,
@@ -49,7 +52,6 @@ import {
 	ScanImageIcon,
 	Settings01Icon,
 	SparklesIcon,
-	StopIcon,
 	SquareLock02Icon,
 	SquareRootSquareIcon,
 	Sun01Icon,
@@ -62,7 +64,6 @@ import {
 	UserCircleIcon,
 	ViewIcon,
 	ViewOffIcon,
-	VolumeHighIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type HugeiconsProps } from "@hugeicons/react-native";
 
@@ -73,6 +74,10 @@ const createIcon = (icon: HugeiconsProps["icon"]) => (props: IconProps) => (
 );
 
 export const Attachment = createIcon(Attachment01Icon);
+export const Analytics = createIcon(Analytics01Icon);
+export const ArrowDataTransferHorizontal = createIcon(
+	ArrowDataTransferHorizontalIcon,
+);
 export const Atom = createIcon(Atom02Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
 export const ArrowRight = createIcon(ArrowRight01Icon);
@@ -93,6 +98,7 @@ export const ClipboardEdit = createIcon(TaskEdit01Icon);
 export const Clock3 = createIcon(Clock03Icon);
 export const Code = createIcon(CodeIcon);
 export const Computer = createIcon(ComputerIcon);
+export const CreditCard = createIcon(CreditCardIcon);
 export const Dna = createIcon(Dna01Icon);
 export const Dumbbell = createIcon(Dumbbell02Icon);
 export const Earth = createIcon(EarthIcon);
@@ -124,7 +130,6 @@ export const Repeat = createIcon(RepeatIcon);
 export const Route2 = createIcon(Route02Icon);
 export const ScanImage = createIcon(ScanImageIcon);
 export const Settings = createIcon(Settings01Icon);
-export const Stop = createIcon(StopIcon);
 export const SquareLock = createIcon(SquareLock02Icon);
 export const SquareRootSquare = createIcon(SquareRootSquareIcon);
 export const Sparkles = createIcon(SparklesIcon);
@@ -135,5 +140,4 @@ export const TimeManagement = createIcon(TimeManagementCircleIcon);
 export const Timer = createIcon(Clock03Icon);
 export const Trash2 = createIcon(Delete02Icon);
 export const UserRound = createIcon(UserCircleIcon);
-export const VolumeHigh = createIcon(VolumeHighIcon);
 export const X = createIcon(Cancel01Icon);

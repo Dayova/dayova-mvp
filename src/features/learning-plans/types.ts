@@ -3,6 +3,7 @@ import type { Id } from "#convex/_generated/dataModel";
 export type PickerTarget = "editDate" | "editStart" | "editEnd";
 
 export type SessionPhase = "theory" | "practice" | "rehearsal";
+export type SessionPurpose = "diagnostic" | "learning";
 
 export type SessionExecutionStatus =
 	| "notStarted"
@@ -29,13 +30,17 @@ export type PlanSession = {
 	dateLabel: string;
 	startTime: string;
 	durationMinutes: number;
+	sessionPurpose?: SessionPurpose;
 	compositionVariant?: "control" | "split";
+	knowledgeValidationStatus?: "pending" | "completed" | "skipped";
+	knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
 	goal: string;
 	tasks: string[];
 	expectedOutcome: string;
 	contentGenerationStatus?: "queued" | "generating" | "ready" | "failed";
 	contentGenerationError?: string;
 	contentGeneratedAt?: number;
+	contentGenerationVersion?: number;
 	sortOrder: number;
 	completed: boolean;
 	executionStatus: SessionExecutionStatus;
@@ -43,13 +48,14 @@ export type PlanSession = {
 	outcomeAt?: number;
 	missedReason?: MissedReason;
 	adjustedFromSessionId?: Id<"learningPlanSessions">;
+	planningStatus?: "committed" | "provisional";
+	targetTopicIds?: string[];
+	targetEvidenceDimension?: "understanding" | "problemSolving" | "independent";
+	selectionReason?: string;
+	adaptationRevision?: number;
 };
 
-type SessionContentItemKind =
-	| "learnCard"
-	| "multipleChoice"
-	| "written"
-	| "voice";
+type SessionContentItemKind = "learnCard" | "multipleChoice" | "written";
 
 export type SessionAnswerRating = "notCorrect" | "partiallyCorrect" | "correct";
 
@@ -78,6 +84,7 @@ export type SessionContentItem = {
 	choices: Array<{ id: string; text: string }>;
 	learningBlockIndex: number;
 	topicId: string;
+	evidenceDimension?: "understanding" | "problemSolving" | "independent";
 	questionAngle: string;
 	coverageKey: string;
 	estimatedSeconds: number;
@@ -122,7 +129,12 @@ export type LearningSessionContentSnapshot = {
 		dateLabel: string;
 		startTime: string;
 		durationMinutes: number;
+		sessionPurpose?: SessionPurpose;
 		compositionVariant: "control" | "split";
+		knowledgeValidationStatus?: "pending" | "completed" | "skipped";
+		knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
+		contentGenerationStatus?: "queued" | "generating" | "ready" | "failed";
+		contentGenerationVersion?: number;
 		goal: string;
 		expectedOutcome: string;
 		completed: boolean;
@@ -139,6 +151,7 @@ type LearningPlanDocument = {
 	fileName: string;
 	fileType: string;
 	fileSizeBytes: number;
+	sourceKind: "school" | "external";
 };
 
 export type UploadAsset = {
@@ -154,6 +167,8 @@ export type QuizQuestion = {
 	targetInsight: string;
 	topicId?: string;
 	kind?: "performance" | "confidence";
+	responseKind?: "multipleChoice" | "shortText" | "longText";
+	options?: string[];
 	evaluationKeywords?: string[];
 };
 
@@ -175,6 +190,7 @@ export type LearningPlanSnapshot = {
 		targetStudyMinutes?: number;
 		preparationDepth: "compact" | "thorough" | "intensive";
 		topicDescription: string;
+		teacherGuidance?: string;
 		notes?: string;
 		status: "draft" | "questionsReady" | "generated" | "accepted";
 		knowledgeQuestions: QuizQuestion[];
@@ -186,6 +202,7 @@ export type LearningPlanSnapshot = {
 			keywords: string[];
 			priority: "high" | "medium" | "low";
 		}>;
+		scopeConfirmedAt?: number;
 		topicReadiness?: Array<{
 			topicId: string;
 			status: "secure" | "developing" | "unknown";
@@ -196,6 +213,9 @@ export type LearningPlanSnapshot = {
 			gaps: string[];
 		};
 		planningHint?: string;
+		diagnosticPlacement?: "firstSession";
+		rollingPlanEnabled?: boolean;
+		adaptationRevision?: number;
 		sessionCompositionVariant?: "control" | "split";
 		contentGeneration?: {
 			stage: "content" | "validating" | "ready" | "failed";

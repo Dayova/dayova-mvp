@@ -9,6 +9,8 @@ const DATE_TIME_PICKER_PATHS = [
 	"/src/components/ui/date-time-picker-sheet.tsx",
 	"/src/components/ui/date-time-picker-sheet.android.tsx",
 ];
+const ROUTER_APP_PATH = "/src/app/";
+const TEST_MODULE_PATTERN = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 
 const endsWithAny = (filename, paths) =>
 	paths.some((path) => filename.endsWith(path));
@@ -229,10 +231,40 @@ export const requireComposeHostTheme = {
 	},
 };
 
+export const noTestModulesInRouter = {
+	meta: {
+		type: "problem",
+		docs: {
+			description:
+				"Keep test-only modules outside the Expo Router production route tree.",
+		},
+		messages: {
+			testModule:
+				"Test modules under src/app are bundled by Expo Router. Move this test to src/features or another non-route directory.",
+		},
+		schema: [],
+	},
+	create(context) {
+		const filename = context.filename.replaceAll("\\", "/");
+
+		return {
+			Program(node) {
+				if (
+					filename.includes(ROUTER_APP_PATH) &&
+					TEST_MODULE_PATTERN.test(filename)
+				) {
+					context.report({ node, messageId: "testModule" });
+				}
+			},
+		};
+	},
+};
+
 export const dayovaUiPlugin = {
 	rules: {
 		"no-direct-overlay-primitives": noDirectOverlayPrimitives,
 		"no-direct-native-controls": noDirectNativeControls,
+		"no-test-modules-in-router": noTestModulesInRouter,
 		"require-compose-host-theme": requireComposeHostTheme,
 	},
 };

@@ -6,6 +6,9 @@ import { Text } from "~/components/ui/text";
 import { WarningBanner } from "~/components/ui/warning-banner";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
+
+type ConfirmationActionLayout = "inline" | "stacked";
 
 type ConfirmationSheetProps = {
 	visible: boolean;
@@ -19,6 +22,7 @@ type ConfirmationSheetProps = {
 	errorMessage?: string | null;
 	confirmTone?: "primary" | "destructive";
 	closeAccessibilityLabel?: string;
+	actionLayout?: ConfirmationActionLayout;
 };
 
 function ConfirmationSheet({
@@ -33,11 +37,51 @@ function ConfirmationSheet({
 	errorMessage,
 	confirmTone = "destructive",
 	closeAccessibilityLabel = "Bestätigung schließen",
+	actionLayout = "inline",
 }: ConfirmationSheetProps) {
 	const { colors } = useDayovaTheme();
 	const safeClose = () => {
 		if (!isBusy) onClose();
 	};
+	const confirmButton = (
+		<Button
+			accessibilityLabel={
+				isBusy ? `${confirmLabel}, wird ausgeführt` : confirmLabel
+			}
+			accessibilityLiveRegion={isBusy ? "polite" : undefined}
+			accessibilityState={{ busy: isBusy, disabled: isBusy }}
+			className={actionLayout === "stacked" ? "w-full" : "flex-1"}
+			disabled={isBusy}
+			onPress={onConfirm}
+			variant={confirmTone === "destructive" ? "destructive" : "default"}
+		>
+			{isBusy ? (
+				<ActivityIndicator
+					color={
+						confirmTone === "destructive"
+							? colors.background
+							: DAYOVA_DESIGN_SYSTEM.colors.light1
+					}
+				/>
+			) : (
+				<Text>{confirmLabel}</Text>
+			)}
+		</Button>
+	);
+	const cancelButton = (
+		<Button
+			accessibilityLabel={cancelLabel}
+			className={cn(
+				"shadow-none",
+				actionLayout === "stacked" ? "w-full" : "flex-1",
+			)}
+			disabled={isBusy}
+			onPress={safeClose}
+			variant="neutral"
+		>
+			<Text>{cancelLabel}</Text>
+		</Button>
+	);
 
 	return (
 		<DayovaSheetFrame
@@ -57,39 +101,9 @@ function ConfirmationSheet({
 					description={errorMessage}
 				/>
 			) : null}
-			<View className="flex-row gap-3">
-				<Button
-					accessibilityLabel={cancelLabel}
-					className="flex-1 shadow-none"
-					disabled={isBusy}
-					onPress={safeClose}
-					variant="neutral"
-				>
-					<Text>{cancelLabel}</Text>
-				</Button>
-				<Button
-					accessibilityLabel={
-						isBusy ? `${confirmLabel}, wird ausgeführt` : confirmLabel
-					}
-					accessibilityLiveRegion={isBusy ? "polite" : undefined}
-					accessibilityState={{ busy: isBusy, disabled: isBusy }}
-					className="flex-1"
-					disabled={isBusy}
-					onPress={onConfirm}
-					variant={confirmTone === "destructive" ? "destructive" : "default"}
-				>
-					{isBusy ? (
-						<ActivityIndicator
-							color={
-								confirmTone === "destructive"
-									? colors.background
-									: DAYOVA_DESIGN_SYSTEM.colors.light1
-							}
-						/>
-					) : (
-						<Text>{confirmLabel}</Text>
-					)}
-				</Button>
+			<View className={cn("gap-3", actionLayout === "inline" && "flex-row")}>
+				{actionLayout === "stacked" ? confirmButton : cancelButton}
+				{actionLayout === "stacked" ? cancelButton : confirmButton}
 			</View>
 		</DayovaSheetFrame>
 	);

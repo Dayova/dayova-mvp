@@ -19,6 +19,7 @@ import {
 } from "~/lib/notification-permissions";
 import {
 	buildLocalNotificationPlan,
+	buildLocalNotificationRegistrationInput,
 	type NotificationPlanningPreferences,
 } from "~/lib/notification-planner";
 import type { DayEntry } from "~/types/dayEntries";
@@ -213,22 +214,9 @@ export function NotificationSync() {
 				preferences,
 				entriesByDay,
 			});
-			const registrations = await registerLocalNotificationPlan({
-				notifications: plan.map((notification) => ({
-					eventKey: notification.key,
-					category: notification.category,
-					type: notification.type,
-					title: notification.title,
-					body: notification.body,
-					...(notification.relatedEntryId
-						? {
-								relatedDayEntryId:
-									notification.relatedEntryId as Id<"dayEntries">,
-							}
-						: {}),
-					scheduledFor: notification.triggerAt.toISOString(),
-				})),
-			});
+			const registrations = await registerLocalNotificationPlan(
+				buildLocalNotificationRegistrationInput(plan),
+			);
 			const registrationBySchedule = new Map(
 				registrations.map((registration) => [
 					`${registration.eventKey}\0${registration.scheduledFor}`,

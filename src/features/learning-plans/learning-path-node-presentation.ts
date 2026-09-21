@@ -2,7 +2,7 @@ import type { SessionPhase } from "~/features/learning-plans/types";
 
 export type LearningPathNodeState = "completed" | "current" | "locked";
 export type LearningPathNodeIcon = "check" | "dumbbell" | "note" | "repeat";
-export type LearningPathNodeHalo = "none" | "segmented" | "solid";
+export type LearningPathNodeHalo = "none" | "solid";
 type LearningPathNodeMotion = "breathe" | "still";
 export type LearningPathNodeTone = "blue" | "gray";
 
@@ -18,13 +18,6 @@ export const LEARNING_PATH_BREATHING = {
 	maxScale: 1.06,
 	minScale: 0.96,
 } as const;
-
-export const LEARNING_PATH_SEGMENTED_HALO_TONES = [
-	"gray",
-	"blue",
-	"gray",
-	"blue",
-] as const satisfies readonly LearningPathNodeTone[];
 
 export const LEARNING_PATH_PHASE_ICON: Record<
 	SessionPhase,
@@ -54,15 +47,15 @@ export const getLearningPathNodePresentation = ({
 	}
 	if (state === "current") {
 		return {
-			halo: "segmented",
+			halo: selected ? "solid" : "none",
 			icon: LEARNING_PATH_PHASE_ICON[phase],
 			motion: "breathe",
-			tone: "blue",
+			tone: "gray",
 		};
 	}
 
 	return {
-		halo: "none",
+		halo: selected ? "solid" : "none",
 		icon: LEARNING_PATH_PHASE_ICON[phase],
 		motion: "still",
 		tone: "gray",

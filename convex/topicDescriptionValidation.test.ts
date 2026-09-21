@@ -16,5 +16,7 @@ describe("isMeaningfulTopicDescription", () => {
 		expect(isMeaningfulTopicDescription("test test test")).toBe(false);
 		expect(isMeaningfulTopicDescription("aaaa bbbb")).toBe(false);
 		expect(isMeaningfulTopicDescription("Mathe")).toBe(false);
+		expect(isMeaningfulTopicDescription("Mathematiktest")).toBe(false);
+		expect(isMeaningfulTopicDescription("Mathe Arbeit")).toBe(false);
 	});
 });

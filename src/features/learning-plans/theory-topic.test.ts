@@ -2,10 +2,9 @@ import { describe, expect, test } from "vitest";
 import type { SessionContentItem } from "./types";
 import {
 	adaptTheoryTopic,
-	buildTheorySpeechText,
+	getTheoryPagePresentation,
 	getTheoryTopicNavigation,
 	runTheoryTopicPrimaryAction,
-	splitTheorySpeechText,
 } from "./theory-topic";
 
 const baseItem: SessionContentItem = {
@@ -86,30 +85,23 @@ describe("theory topic adaptation", () => {
 	});
 });
 
-test("speech text includes every visible topic section in reading order", () => {
-	const speechText = buildTheorySpeechText({
-		conceptTitle: "Äquivalenzumformungen",
-		question: "Warum bleibt die Lösungsmenge gleich?",
-		explanation: "Auf beiden Seiten wird dieselbe Operation ausgeführt.",
-		keyPoints: ["Arbeite schrittweise.", "Mache eine Probe."],
-		example: "x plus 3 ist 7, also ist x gleich 4.",
-		memoryCue: "Links und rechts gehören zusammen.",
-		commonMistake: "Nur eine Seite verändern.",
+test("focused theory pages only expose the sections needed for their role", () => {
+	expect(getTheoryPagePresentation("recall")).toMatchObject({
+		sectionTitle: "Kernidee",
+		showKeyPoints: true,
+		showExample: false,
+		showCommonMistake: false,
 	});
-
-	expect(speechText).toBe(
-		"Äquivalenzumformungen. Leitfrage: Warum bleibt die Lösungsmenge gleich? Erklärung: Auf beiden Seiten wird dieselbe Operation ausgeführt. Wichtig: Arbeite schrittweise. Mache eine Probe. Beispiel: x plus 3 ist 7, also ist x gleich 4. Merksatz: Links und rechts gehören zusammen. Typischer Fehler: Nur eine Seite verändern.",
-	);
-});
-
-test("speech chunks preserve the complete topic within the platform limit", () => {
-	const speechText =
-		"Äquivalenzumformungen. Leitfrage: Warum bleibt die Lösungsmenge gleich? Erklärung: Beide Seiten werden gleich behandelt.";
-	const chunks = splitTheorySpeechText(speechText, 48);
-
-	expect(chunks.length).toBeGreaterThan(1);
-	expect(chunks.every((chunk) => chunk.length <= 48)).toBe(true);
-	expect(chunks.join(" ")).toBe(speechText);
+	expect(getTheoryPagePresentation("apply")).toMatchObject({
+		sectionTitle: "So funktioniert es",
+		showKeyPoints: false,
+		showExample: true,
+		showMemoryCue: true,
+	});
+	expect(getTheoryPagePresentation("findError")).toMatchObject({
+		sectionTitle: "Darauf musst du achten",
+		showCommonMistake: true,
+	});
 });
 
 describe("theory topic navigation", () => {

@@ -8,13 +8,18 @@ import { AnimatedFlowerLoader } from "~/components/ui/animated-flower-loader";
 import { Button } from "~/components/ui/button";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Text } from "~/components/ui/text";
+import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
+import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { dismissToOrReplace, goBackOrReplace } from "~/lib/navigation";
+import {
+	dismissToOrReplace,
+	goBackOrReplace,
+	useBackIntent,
+} from "~/lib/navigation";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -24,6 +29,7 @@ export default function LearningPlanAnalysisScreen() {
 	const params = useLocalSearchParams<{ planId?: string }>();
 	const planId = params.planId as Id<"learningPlans"> | undefined;
 	const { user } = useAuthSession();
+	const { requestAiConsent } = useAiConsent();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const generateKnowledgeQuestions = useAction(
 		api.learningPlanAi.generateKnowledgeQuestions,
@@ -42,12 +48,22 @@ export default function LearningPlanAnalysisScreen() {
 		void retryAttempt;
 		if (!planId || !snapshot) return;
 
-		if (snapshot.plan.status === "generated") {
+		if (
+			snapshot.plan.status === "generated" &&
+			snapshot.plan.diagnosticPlacement === "firstSession"
+		) {
 			router.replace(planPath(planId, "review"));
 			return;
 		}
-		if (snapshot.plan.knowledgeQuestions.length > 0) {
-			router.replace(`/learning-plans/${planId}/quiz/0`);
+		if (
+			snapshot.plan.diagnosticPlacement === "firstSession" &&
+			snapshot.plan.knowledgeQuestions.length > 0
+		) {
+			router.replace(
+				snapshot.plan.scopeConfirmedAt
+					? planPath(planId, "generating")
+					: planPath(planId, "scope"),
+			);
 			return;
 		}
 		if (didStartRef.current) return;
@@ -56,35 +72,51 @@ export default function LearningPlanAnalysisScreen() {
 		queueMicrotask(() => {
 			setIsBusy(true);
 			setErrorMessage(null);
-			void generateKnowledgeQuestions({ learningPlanId: planId })
+			void requestAiConsent()
+				.then((allowed) => {
+					if (!allowed) {
+						didStartRef.current = false;
+						dismissToOrReplace(router, learningPlanMaterialPath(planId));
+						return null;
+					}
+					return generateKnowledgeQuestions({ learningPlanId: planId });
+				})
 				.catch((error: unknown) => {
 					const message = getErrorMessage(
 						error,
-						"Die Wissensanalyse konnte nicht vorbereitet werden.",
+						"Deine Unterlagen konnten nicht zuverlässig analysiert werden.",
 					);
 					setErrorMessage(message);
 					didStartRef.current = false;
 					dismissToOrReplace(
 						router,
-						learningPlanTopicPath(planId, {
-							topicDescription: snapshot.plan.topicDescription,
+						learningPlanMaterialPath(planId, {
 							errorMessage: message,
 						}),
 					);
 				})
 				.finally(() => setIsBusy(false));
 		});
-	}, [generateKnowledgeQuestions, planId, retryAttempt, router, snapshot]);
+	}, [
+		generateKnowledgeQuestions,
+		planId,
+		requestAiConsent,
+		retryAttempt,
+		router,
+		snapshot,
+	]);
 
 	const goBack = () => {
 		goBackOrReplace(
 			router,
-			planId ? learningPlanTopicPath(planId) : "/learning-plans/new",
+			planId ? learningPlanMaterialPath(planId) : "/learning-plans/new",
 		);
+		return true;
 	};
+	useBackIntent(true, goBack);
 	useLearningPlanCreationProgress({
 		active: true,
-		currentStep: LEARNING_PLAN_CREATION_STEPS.topicDescription,
+		currentStep: LEARNING_PLAN_CREATION_STEPS.materialAnalysis,
 		onBack: goBack,
 	});
 
@@ -105,7 +137,12 @@ export default function LearningPlanAnalysisScreen() {
 						<AnimatedFlowerLoader />
 					</View>
 					<Text className="text-center font-poppins font-semibold text-heading-2 text-text">
-						Beantworte 5 kurze Fragen – bei breitem Stoff höchstens 8.
+						Wir ordnen deine Schulunterlagen.
+					</Text>
+					<Text className="mt-3 max-w-[320px] text-center font-poppins text-body-3 text-secondary-text">
+						Dayova trennt wahrscheinlichen Prüfungsstoff von zusätzlichem
+						Material und bereitet den Wissenscheck für deinen ersten Lerntermin
+						vor.
 					</Text>
 					{errorMessage ? (
 						<>
