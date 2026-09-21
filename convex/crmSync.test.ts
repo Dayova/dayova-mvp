@@ -457,6 +457,13 @@ test("changed Notion identity is skipped before PATCH and reported for manual re
 	configure();
 	const t = convexTest(schema, modules);
 	await seed(t);
+	const currentUserId = await t.run((ctx) =>
+		ctx.db.insert("users", {
+			clerkId: "user_other",
+			tokenIdentifier: "issuer|user_other",
+			email: "other@example.com",
+		}),
+	);
 	await enable(t);
 	const { patches } = mockNotion([page()], { changedIdentity: true });
 	expect(await t.action(internal.crmSync.reconcile, {})).toMatchObject({
@@ -464,10 +471,53 @@ test("changed Notion identity is skipped before PATCH and reported for manual re
 		counts: { synced: 0, failed: 1 },
 	});
 	expect(patches).toEqual([]);
+	expect(await t.run((ctx) => ctx.db.query("crmStudentLinks").take(2))).toEqual(
+		[],
+	);
 	expect(await t.query(internal.crmSyncState.status, {})).toMatchObject({
 		counts: { failed: 1 },
 		running: false,
 	});
+	mockNotion([page(pageId, "user_other")]);
+	expect(await t.action(internal.crmSync.reconcile, {})).toMatchObject({
+		status: "complete",
+		counts: { matched: 1, conflict: 0, synced: 1 },
+	});
+	expect(
+		await t.run((ctx) => ctx.db.query("crmStudentLinks").take(2)),
+	).toMatchObject([{ pageId, userId: currentUserId }]);
+});
+
+test("error reports update an existing link without creating a new mapping", async () => {
+	const t = convexTest(schema, modules);
+	const userId = await seed(t);
+	const link = { pageId, userId, clerkId };
+	expect(
+		await t.mutation(internal.crmSyncState.recordLink, {
+			...link,
+			error: "unavailable",
+		}),
+	).toBe(false);
+	expect(await t.run((ctx) => ctx.db.query("crmStudentLinks").take(2))).toEqual(
+		[],
+	);
+	expect(
+		await t.mutation(internal.crmSyncState.recordLink, {
+			...link,
+			syncedAt: 123,
+		}),
+	).toBe(true);
+	expect(
+		await t.mutation(internal.crmSyncState.recordLink, {
+			...link,
+			error: "unavailable",
+		}),
+	).toBe(true);
+	expect(
+		await t.run((ctx) => ctx.db.query("crmStudentLinks").take(2)),
+	).toMatchObject([
+		{ pageId, userId, error: "unavailable", lastSyncedAt: 123 },
+	]);
 });
 
 test("missing schema stops live writes while dry run remains usable", async () => {

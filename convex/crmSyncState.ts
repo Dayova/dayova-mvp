@@ -239,6 +239,8 @@ export const recordLink = internalMutation({
 			...(args.syncedAt !== undefined ? { lastSyncedAt: args.syncedAt } : {}),
 		};
 		if (pages[0]) await ctx.db.patch("crmStudentLinks", pages[0]._id, value);
+		// Failure reporting must not establish an unverified identity mapping.
+		else if (args.error !== undefined) return false;
 		else await ctx.db.insert("crmStudentLinks", value);
 		return true;
 	},
