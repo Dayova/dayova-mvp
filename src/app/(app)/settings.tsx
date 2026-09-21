@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
@@ -17,6 +17,7 @@ import {
 	UserRound,
 } from "~/components/ui/icon";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
+import { SelectionControl } from "~/components/ui/selection-control";
 import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -34,7 +35,6 @@ import { env } from "~/lib/runtime-config";
 import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
 import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
-import { cn } from "~/lib/utils";
 
 const themeIconByPreference = {
 	light: Sun,
@@ -65,15 +65,13 @@ function ThemePreferenceToggle({
 				const isActive = preference === option.value;
 
 				return (
-					<Pressable
+					<SelectionControl
 						key={option.value}
 						accessibilityLabel={option.accessibilityLabel}
 						accessibilityRole="radio"
-						accessibilityState={{ checked: isActive }}
-						className={cn(
-							"h-11 w-11 items-center justify-center rounded-full",
-							isActive ? "bg-primary" : "bg-transparent",
-						)}
+						selected={isActive}
+						appearance="pill"
+						contentClassName="min-h-11 w-11 border-0"
 						onPress={() => {
 							void setPreference(option.value).catch((error: unknown) => {
 								console.warn("Unable to save Dayova theme preference", error);
@@ -82,10 +80,10 @@ function ThemePreferenceToggle({
 					>
 						<Icon
 							size={20}
-							color={isActive ? "#FFFFFF" : colors.secondaryText}
+							color={isActive ? colors.onPrimary : colors.secondaryText}
 							strokeWidth={2}
 						/>
-					</Pressable>
+					</SelectionControl>
 				);
 			})}
 		</View>

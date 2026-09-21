@@ -213,3 +213,25 @@ component: path 2 background (`#D7DCE3`) with path 3 icon (`#8A8D92`).
 - Use NativeWind for static app UI. Follow the rendering-choice matrix in
   `docs/styling.md` when deciding between NativeWind, RN geometry styles, SVGs,
   and native artwork modules.
+
+## Interactive selections
+
+Use `SelectionControl` from `src/components/ui/selection-control.tsx` for
+custom radio and checkbox surfaces. It owns the motion established in
+[PR #586](https://github.com/Dayova/dayova-mvp/pull/586): a fixed outer hit area,
+90ms press feedback to 0.98 scale, a 240ms release spring, and a 180ms selection
+transition with a spring checkmark. Controlled selection commits on press;
+animations never delay or commit domain state. Reduced motion settles immediately.
+Keep the indicator slot mounted so text does not shift when a choice changes.
+
+Compose `SelectionIndicator`, `SelectionText`, and (for lettered answers)
+`SelectionBadge` inside the control. Card text keeps the theme body color; selected
+pills and cyan indicators use `onPrimary`. The payment appearance preserves the
+branded light glass surface, dark selected border, and white check on a dark circle.
+This follows the existing [selection contrast decision](https://app.notion.com/p/3da2e87228bf8173b2adddaab6e3f5e6).
+
+Consumers include learning answers, subscription plans, exam types, SelectSheet
+options, onboarding study/recovery choices, weekday editors, and theme preference.
+Native switches, calendar/carousel navigation, and decorative success/status icons
+retain their distinct semantics. New custom checkbox/radio surfaces should reuse
+this control instead of duplicating motion or checkmark styling.

@@ -2,20 +2,9 @@ import { describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import { ExamDateSelector } from "./exam-flow";
 
-jest.mock("react-native-reanimated", () => {
-	const ReactNative =
-		jest.requireActual<typeof import("react-native")>("react-native");
-	const animationBuilder = {
-		duration: () => animationBuilder,
-	};
-
-	return {
-		__esModule: true,
-		default: { View: ReactNative.View },
-		FadeInDown: animationBuilder,
-		LinearTransition: animationBuilder,
-	};
-});
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
 
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
