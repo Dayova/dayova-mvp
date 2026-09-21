@@ -337,11 +337,6 @@ function StepPuck({
 				height: puckHeight,
 				alignItems: "center",
 				borderRadius: puckHeight / 2,
-				boxShadow: isCompleted
-					? "0 5px 9px rgba(0, 160, 230, 0.2)"
-					: locked
-						? "0 5px 8px rgba(105, 117, 134, 0.16)"
-						: "0 5px 9px rgba(105, 117, 134, 0.22)",
 			}}
 		>
 			<View
