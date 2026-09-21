@@ -5,7 +5,6 @@ import { ReleaseInformationSheet } from "~/components/release-information-sheet"
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
 	Bell,
-	CalendarDays,
 	Computer,
 	CreditCard,
 	Globe,
@@ -171,12 +170,6 @@ export default function SettingsScreen() {
 								icon={Timer}
 								label="Lernzeiten"
 								onPress={() => router.push("/learning-times")}
-							/>
-							<SettingsDivider />
-							<SettingsRow
-								icon={CalendarDays}
-								label="Stundenplan"
-								onPress={() => router.push("/timetable")}
 							/>
 						</SettingsSection>
 
