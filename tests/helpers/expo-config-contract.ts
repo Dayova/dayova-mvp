@@ -28,6 +28,7 @@ export type ExpoConfigSnapshots = Record<ExpoConfigKey, ExpoConfigSnapshot>;
 declare module "vitest" {
 	export interface ProvidedContext {
 		expoConfigSnapshots: ExpoConfigSnapshots;
+		metroWatchmanOptIn: boolean;
 	}
 }
 
@@ -50,3 +51,5 @@ export const readExpoConfigSnapshot = (
 	variant: ExpoConfigVariant,
 	type: ExpoConfigType,
 ) => inject("expoConfigSnapshots")[expoConfigKey(variant, type)];
+
+export const readMetroWatchmanOptIn = () => inject("metroWatchmanOptIn");
