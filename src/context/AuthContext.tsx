@@ -630,6 +630,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	useEffect(() => {
 		void profileSyncAttempt;
+		// Keep readiness through same-account refreshes, but discard it immediately
+		// on sign-out or account changes, including while backend auth is settling.
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- Synchronize account-scoped readiness with the external identity.
+		setSyncedClerkUserId((current) =>
+			current === user?.clerkId ? current : null,
+		);
 		if (!user || !isConvexAuthenticated) return;
 
 		let cancelled = false;
@@ -653,7 +659,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			setPostAuthSyncFailure((current) =>
 				clearOwnedPostAuthSyncFailure(current, "profile"),
 			);
-			setSyncedClerkUserId(null);
 			try {
 				const result = await runWithAuthSettleRetries(() =>
 					syncCurrentUser(profile),

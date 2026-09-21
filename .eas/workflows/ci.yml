@@ -34,27 +34,15 @@ jobs:
     name: Lint, typecheck, and test
     type: custom
     runs_on: linux-medium
-    if: ${{ github.event_name == 'workflow_dispatch' || contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association) }}
+    # One gate for trusted PRs, manual checks, and the merged main commit.
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && contains('OWNER,MEMBER,COLLABORATOR', github.event.pull_request.author_association)) }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
-      - name: Run lint and typecheck
-        run: pnpm check
-      - name: Run tests
-        env:
-          EAS_BUILD: "false"
-        run: pnpm test
-
-  main_checks:
-    name: Main branch gates
-    type: custom
-    runs_on: linux-medium
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
-    steps:
-      - uses: eas/checkout
-      - uses: eas/install_node_modules
-      - name: Run lint and typecheck
-        run: pnpm check
+      - name: Run lint
+        run: pnpm lint
+      - name: Run typecheck
+        run: pnpm typecheck
       - name: Run tests
         env:
           EAS_BUILD: "false"
@@ -65,7 +53,7 @@ jobs:
     type: custom
     runs_on: linux-medium
     needs:
-      - main_checks
+      - checks
       - production_fingerprint
     if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
     environment: production
@@ -82,8 +70,12 @@ jobs:
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
-      - name: Verify Expo export
-        run: pnpm exec expo export --platform ios --output-dir dist
+      - name: Verify iOS production export
+        run: pnpm exec expo export --platform ios --output-dir dist/ios
+      - name: Verify Android production export
+        env:
+          EAS_BUILD_PLATFORM: android
+        run: pnpm exec expo export --platform android --output-dir dist/android
       - id: ota_guard
         name: Check OTA safety against distributed binaries
         run: |
@@ -108,7 +100,7 @@ jobs:
     type: custom
     runs_on: linux-medium
     needs:
-      - main_checks
+      - checks
     if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
     steps:
       - uses: eas/checkout
@@ -128,7 +120,7 @@ jobs:
     environment: production
     env:
       APP_VARIANT: production
-      EAS_BUILD_PLATFORM: ios
+      OTA_SOURCE_SHA: ${{ github.sha }}
       OTA_ANDROID_FINGERPRINT: ${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}
       OTA_IOS_FINGERPRINT: ${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}
     steps:
@@ -136,14 +128,8 @@ jobs:
       - uses: eas/install_node_modules
       - name: Verify production manifest and distributed-binary compatibility
         run: node scripts/ota-safety.mjs
-      - name: Send production OTA rollout
-        run: |
-          pnpm dlx eas-cli@18.11.0 update \
-            --branch production \
-            --environment production \
-            --platform ios \
-            --message "Production OTA from ${{ github.sha }}" \
-            --non-interactive
+      - name: Export and publish both production platforms
+        run: node scripts/publish-production-ota.mjs
 
   ota_skipped:
     name: OTA update skipped

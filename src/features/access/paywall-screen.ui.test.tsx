@@ -3,6 +3,15 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { PaywallScreen } from "./paywall-screen";
 
+jest.mock("~/components/ui/icon", () => ({
+	ArrowLeft: () => null,
+	ArrowRight: () => null,
+	CreditCard: () => null,
+	Logout: () => null,
+	SquareLock: () => null,
+	Trash2: () => null,
+}));
+
 const mockPush = jest.fn();
 const mockLogout = jest.fn();
 const mockDeleteAccount = jest.fn(async () => undefined);
@@ -118,7 +127,7 @@ describe("PaywallScreen", () => {
 				"Dein Lernstand bleibt erhalten. Wähle jetzt, wie du mit Dayova weitermachen möchtest.",
 			),
 		).toBeOnTheScreen();
-		expect(screen.getByText("Dayova Pro freischalten")).toBeOnTheScreen();
+		expect(screen.getByText("Dayova freischalten")).toBeOnTheScreen();
 		expect(screen.getByText("Sicher über den Store")).toBeOnTheScreen();
 		expect(screen.getByText("SOFORT STARTEN")).toBeOnTheScreen();
 		expect(screen.queryByText("Meine Eltern zahlen")).toBeNull();

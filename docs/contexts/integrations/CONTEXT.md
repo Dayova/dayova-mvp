@@ -108,40 +108,10 @@ internal users.
 - Capture integration ownership, external IDs, sync boundaries, and migration decisions here.
 - Put integrations ADRs in `docs/contexts/integrations/adr/`.
 
-## RevenueCat web purchase redemption
+## Store purchase boundary
 
-The public website sells RevenueCat Web Billing subscriptions anonymously. It
-must not accept a browser-controlled Clerk or RevenueCat App User ID. RevenueCat
-creates a one-time Redemption Link after checkout, includes it as `redeem_url`
-on the configured success redirect, and sends it to the billing email.
-
-The mobile app owns the account-binding step:
-
-1. Expo registers the RevenueCat web config's generated `rc-…` scheme from the
-   build-time `REVENUECAT_REDEMPTION_SCHEME` environment value.
-2. `src/app/+native-intent.tsx` captures the link in memory without placing the
-   redemption token in an Expo route or persisted storage.
-3. After Clerk and Convex identify the learner, the app configures RevenueCat
-   with the Clerk user ID, redeems the purchase, then calls Convex to verify the
-   canonical RevenueCat subscriber snapshot.
-4. Convex grants access only from that server-verified snapshot. The webhook
-   refreshes every known Dayova account in the bounded identity fields,
-   including redemption/transfer destinations and transfer sources, so access
-   is both granted and revoked from canonical subscriber snapshots. A verified
-   active purchase creates paid access directly when the account has no prior
-   trial entitlement; redeeming a purchase must never require trial activation.
-
-The website and every mobile build environment must use the matching scheme
-from the same RevenueCat web config. Enabling Redemption Links requires a new
-native build; an OTA update cannot add a URL scheme. Test the complete sandbox
-purchase and email-link flow before enabling production Redemption Links.
-Local development builds register Dayova's sandbox redemption scheme by
-default so rebuilding the simulator app cannot silently remove link support.
-Preview and production builds still take the scheme from
-`REVENUECAT_REDEMPTION_SCHEME` in their EAS environment.
-
-References:
-
-- [RevenueCat Redemption Links](https://www.revenuecat.com/docs/web/redemption-links)
-- [RevenueCat Web Purchase Links](https://www.revenuecat.com/docs/web/web-billing/web-purchase-links)
-- [RevenueCat webhook event types](https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields)
+The mobile app sells digital access only through Apple In-App Purchase or
+Google Play Billing. Website billing is a separate channel: the app must not
+register RevenueCat redemption URL schemes, process web-purchase redemption
+links, or direct customers to website checkout. Mobile access continues to be
+derived from RevenueCat subscriber snapshots verified by Convex.

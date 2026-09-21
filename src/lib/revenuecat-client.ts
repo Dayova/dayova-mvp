@@ -10,7 +10,10 @@ type RevenueCatPackage = {
 	packageType?: string;
 	product: {
 		identifier: string;
+		price: number;
+		currencyCode: string;
 		priceString: string;
+		pricePerMonth?: number | null;
 		pricePerMonthString?: string | null;
 	};
 };
@@ -58,18 +61,40 @@ const isDayovaPackage = (
 ): packageIdentifier is DayovaStorePlan["packageIdentifier"] =>
 	packageIdentifier === "$rc_annual" || packageIdentifier === "$rc_monthly";
 
+const formatStorePrice = (
+	amount: number | null | undefined,
+	currencyCode: string,
+) => {
+	if (amount == null || !Number.isFinite(amount)) return null;
+	try {
+		// Match the German paywall copy, even when the store uses an English locale.
+		return new Intl.NumberFormat("de-DE", {
+			style: "currency",
+			currency: currencyCode,
+		}).format(amount);
+	} catch {
+		return null;
+	}
+};
+
 const toStorePlan = (
 	revenueCatPackage: RevenueCatPackage,
 ): DayovaStorePlan | null => {
 	const packageIdentifier = revenueCatPackage.identifier;
 	if (!isDayovaPackage(packageIdentifier)) return null;
+	const product = revenueCatPackage.product;
 
 	return {
 		billingPeriod: PACKAGE_BILLING_PERIOD[packageIdentifier],
 		packageIdentifier,
-		price: revenueCatPackage.product.priceString,
-		pricePerMonth: revenueCatPackage.product.pricePerMonthString ?? null,
-		productIdentifier: revenueCatPackage.product.identifier,
+		price:
+			formatStorePrice(product.price, product.currencyCode) ??
+			product.priceString,
+		pricePerMonth:
+			formatStorePrice(product.pricePerMonth, product.currencyCode) ??
+			product.pricePerMonthString ??
+			null,
+		productIdentifier: product.identifier,
 	};
 };
 

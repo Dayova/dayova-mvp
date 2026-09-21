@@ -21,6 +21,20 @@ _Avoid_: User-facing message, learner error text
 - Capture platform conventions, release processes, and environment decisions here.
 - Put platform ADRs in `docs/contexts/platform/adr/`.
 
+## CI Quality Gate
+
+`.eas/workflows/ci.yml` uses one `checks` job, displayed as
+`Lint, typecheck, and test`, for trusted pull requests, manual runs, and pushes
+to `main`. Lint, TypeScript, and tests are separate sequential steps. A merge
+therefore checks the resulting `main` commit again under the same visible job
+name instead of skipping a PR-only job and repeating its commands elsewhere.
+
+Pull request checks require the author's GitHub association to be `OWNER`,
+`MEMBER`, or `COLLABORATOR`. Manual runs validate only. Production fingerprinting,
+Convex deployment, and OTA work remain restricted to pushes to `main`.
+Both Convex deployment and OTA checks depend on successful `checks`; OTA
+publication also requires successful fingerprinting, deployment, and OTA safety.
+
 ## Release Environment
 
 The native runtime boundary, clean-build provenance requirements, verified
@@ -28,6 +42,12 @@ binary baseline, staging/promotion flow, and rollback/resumption policy live in
 [`release/README.md`](../../../release/README.md). Expo SDK 57 starts at app and
 runtime version `1.0.4`; never publish SDK 57 code on the distributed SDK 56
 runtime `1.0.3`.
+
+The patched SDK 57 release uses app/runtime `1.0.5` to isolate Expo 57.0.20 and
+React Native 0.86.3 (including the Hermes V1 memory fix) from older native
+binaries. The Metro cache-read limit, Gradle toolchain resolver removal, and
+iOS update splash-screen trait patches remain required and are reapplied to
+the upgraded packages through `pnpm-workspace.yaml`.
 
 Native release builds and OTA update bundles must have these public app envs
 available while Expo bundles JavaScript:

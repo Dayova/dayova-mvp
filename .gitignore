@@ -22,6 +22,9 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
+# Local native smoke-test reports, screenshots, and logs
+/.maestro/artifacts/
+
 # debug
 npm-debug.*
 yarn-debug.*

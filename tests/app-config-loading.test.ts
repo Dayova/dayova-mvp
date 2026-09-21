@@ -36,12 +36,8 @@ describe("Expo app config loading", () => {
 		expect(result.status, result.stderr).toBe(0);
 	});
 
-	it("registers RevenueCat redemption only for Android builds", () => {
+	it("keeps URL handling limited to the Dayova app scheme", () => {
 		expect(APP_CONFIG_PATH).toBeDefined();
-		const {
-			REVENUECAT_REDEMPTION_SCHEME: _redemptionScheme,
-			...envWithoutRedemptionScheme
-		} = process.env;
 
 		const result = spawnSync(
 			process.execPath,
@@ -54,7 +50,7 @@ describe("Expo app config loading", () => {
 				cwd: process.cwd(),
 				encoding: "utf8",
 				env: {
-					...envWithoutRedemptionScheme,
+					...process.env,
 					APP_VARIANT: "development",
 				},
 			},
@@ -68,6 +64,6 @@ describe("Expo app config loading", () => {
 		};
 		expect(config.scheme).toBe("dayova");
 		expect(config.ios?.scheme).toBeUndefined();
-		expect(config.android?.scheme).toBe("rc-27a39b9faa");
+		expect(config.android?.scheme).toBeUndefined();
 	});
 });
