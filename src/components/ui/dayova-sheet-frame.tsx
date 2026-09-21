@@ -34,7 +34,7 @@ import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
-const MAX_SHEET_WIDTH = 560;
+const DEFAULT_MAX_SHEET_WIDTH = 560;
 
 type DayovaSheetSize = "content" | "medium";
 type DayovaSheetPhase = "closed" | "opening" | "presented" | "closing";
@@ -56,6 +56,7 @@ type DayovaSheetFrameProps = {
 	accessibilityLabel?: string;
 	returnFocusRef?: RefObject<View | null>;
 	contentClassName?: string;
+	maxWidth?: number;
 };
 
 function DayovaSheetFrame({
@@ -75,6 +76,7 @@ function DayovaSheetFrame({
 	accessibilityLabel,
 	returnFocusRef,
 	contentClassName,
+	maxWidth = DEFAULT_MAX_SHEET_WIDTH,
 }: DayovaSheetFrameProps) {
 	const sheetRef = useRef<BottomSheetModal>(null);
 	const initialFocusRef = useRef<View>(null);
@@ -94,14 +96,16 @@ function DayovaSheetFrame({
 		height: windowHeight,
 		width: windowWidth,
 	} = useWindowDimensions();
-	const sheetWidth = Math.min(windowWidth, MAX_SHEET_WIDTH);
+	const horizontalSafeArea = Math.max(insets.left, insets.right);
+	const availableSheetWidth = Math.max(windowWidth - horizontalSafeArea * 2, 0);
+	const sheetWidth = Math.min(availableSheetWidth, maxWidth);
 	const sheetHorizontalInset = Math.max((windowWidth - sheetWidth) / 2, 0);
 	const maximumHeight = Math.max(
 		240,
 		Math.min(windowHeight - insets.top - 20, 720),
 	);
 	const fixedHeight =
-		fontScale >= 1.2
+		scrollable || fontScale >= 1.2
 			? maximumHeight
 			: Math.min(maximumHeight, windowHeight * 0.68, 560);
 	const snapPoints = useMemo(
@@ -272,6 +276,7 @@ function DayovaSheetFrame({
 
 	const canShowCloseButton = showCloseButton && dismissible;
 	const hasHeader = Boolean(title || description || canShowCloseButton);
+	const isDynamicScrollable = scrollable && size === "content";
 	const hasFixedFooter = scrollable && size !== "content" && Boolean(footer);
 	const content = (
 		<View
@@ -285,13 +290,20 @@ function DayovaSheetFrame({
 			onAccessibilityAction={handleAccessibilityAction}
 			onAccessibilityEscape={dismiss}
 			className={cn(
-				"bg-card px-6 pt-1",
+				"bg-card pt-1",
+				(!scrollable || isDynamicScrollable) && "px-6",
 				size !== "content" && !scrollable && "flex-1",
 			)}
 			// Safe-area padding is runtime device data and cannot be a static utility.
-			style={{
-				paddingBottom: hasFixedFooter ? 12 : Math.max(insets.bottom + 20, 32),
-			}}
+			style={
+				scrollable && !isDynamicScrollable
+					? { flex: 1 }
+					: {
+							paddingBottom: hasFixedFooter
+								? 12
+								: Math.max(insets.bottom + 20, 32),
+						}
+			}
 		>
 			{!title ? (
 				<View
@@ -304,7 +316,13 @@ function DayovaSheetFrame({
 				/>
 			) : null}
 			{hasHeader ? (
-				<View className="mb-6 gap-3">
+				<View
+					className={cn(
+						"mb-6 gap-3",
+						scrollable && !isDynamicScrollable && "px-6",
+					)}
+					testID={scrollable ? "dayova-sheet-header" : undefined}
+				>
 					<View className="min-h-10 flex-row items-start gap-4">
 						{title ? (
 							<View
@@ -336,19 +354,58 @@ function DayovaSheetFrame({
 					) : null}
 				</View>
 			) : null}
-			{children ? (
-				<View
-					className={cn(
-						size !== "content" && !scrollable && "flex-1",
-						contentClassName,
-					)}
-				>
-					{children}
-				</View>
-			) : null}
-			{footer && !hasFixedFooter ? (
-				<View className={children ? "mt-6" : undefined}>{footer}</View>
-			) : null}
+			{isDynamicScrollable ? (
+				<>
+					{children ? (
+						<View className={contentClassName}>{children}</View>
+					) : null}
+					{footer ? (
+						<View className={children ? "mt-6" : undefined}>{footer}</View>
+					) : null}
+				</>
+			) : scrollable ? (
+				<>
+					<BottomSheetScrollView
+						bounces={false}
+						contentContainerStyle={{
+							paddingBottom: hasFixedFooter
+								? 12
+								: Math.max(insets.bottom + 20, 32),
+						}}
+						keyboardShouldPersistTaps="handled"
+						nestedScrollEnabled
+						showsVerticalScrollIndicator={false}
+						// Gorhom scrollables require their fill geometry through `style`.
+						style={{ flex: 1 }}
+						testID="dayova-sheet-scroll-content"
+					>
+						{children ? (
+							<View className={cn("px-6", contentClassName)}>{children}</View>
+						) : null}
+					</BottomSheetScrollView>
+					{hasFixedFooter ? (
+						<View
+							className="bg-card px-6 pt-4"
+							style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}
+						>
+							{footer}
+						</View>
+					) : null}
+				</>
+			) : (
+				<>
+					{children ? (
+						<View
+							className={cn(size !== "content" && "flex-1", contentClassName)}
+						>
+							{children}
+						</View>
+					) : null}
+					{footer ? (
+						<View className={children ? "mt-6" : undefined}>{footer}</View>
+					) : null}
+				</>
+			)}
 		</View>
 	);
 
@@ -383,7 +440,7 @@ function DayovaSheetFrame({
 				width: sheetWidth,
 			}}
 		>
-			{scrollable && size === "content" ? (
+			{isDynamicScrollable ? (
 				<BottomSheetScrollView
 					bounces={false}
 					keyboardShouldPersistTaps="handled"
@@ -393,26 +450,7 @@ function DayovaSheetFrame({
 					{content}
 				</BottomSheetScrollView>
 			) : scrollable ? (
-				<View className="flex-1 bg-card">
-					<BottomSheetScrollView
-						bounces={false}
-						keyboardShouldPersistTaps="handled"
-						nestedScrollEnabled
-						showsVerticalScrollIndicator={false}
-						// Gorhom scrollables require their fill geometry through `style`.
-						style={{ flex: 1 }}
-					>
-						{content}
-					</BottomSheetScrollView>
-					{hasFixedFooter ? (
-						<View
-							className="bg-card px-6 pt-4"
-							style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}
-						>
-							{footer}
-						</View>
-					) : null}
-				</View>
+				content
 			) : (
 				<BottomSheetView
 					// Gorhom views do not expose NativeWind class props.
