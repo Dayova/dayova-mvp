@@ -17,7 +17,6 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AnalyticsIdentity } from "~/components/analytics-identity";
 import { AuthNavigationGate } from "~/components/auth-navigation-gate";
 import { NotificationSync } from "~/components/notification-sync";
-import { RevenueCatRedemptionSync } from "~/components/revenuecat-redemption-sync";
 import { TrialReminderSync } from "~/components/trial-reminder-sync";
 import {
 	SheetAccessibilityProvider,
@@ -58,6 +57,8 @@ function AppNavigator() {
 					<Stack
 						screenOptions={{
 							headerShown: false,
+							// Keep ordinary pages on the same native transition per platform.
+							animation: "default",
 							contentStyle: { backgroundColor: colors.background },
 						}}
 					>
@@ -66,13 +67,12 @@ function AppNavigator() {
 						<Stack.Screen
 							name="subscription"
 							options={{
-								animation: "slide_from_right",
 								gestureEnabled: true,
 								presentation: "card",
 							}}
 						/>
 						<Stack.Screen
-							name="pro-welcome"
+							name="subscription-success"
 							options={{
 								animation: "none",
 								gestureEnabled: false,
@@ -82,16 +82,14 @@ function AppNavigator() {
 						<Stack.Screen
 							name="learning-times/edit"
 							options={{
-								animation: "slide_from_right",
 								contentStyle: { backgroundColor: colors.background },
 								gestureEnabled: true,
 								presentation: "card",
 							}}
 						/>
 						<Stack.Screen
-							name="timetable/index"
+							name="timetable"
 							options={{
-								animation: "slide_from_right",
 								contentStyle: { backgroundColor: colors.background },
 								gestureEnabled: true,
 								presentation: "card",
@@ -185,7 +183,6 @@ function RootProviders({ convexClient }: { convexClient: ConvexReactClient }) {
 													<AccessProvider>
 														<AiConsentProvider>
 															<AnalyticsIdentity />
-															<RevenueCatRedemptionSync />
 															<AppNavigator />
 														</AiConsentProvider>
 													</AccessProvider>

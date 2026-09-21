@@ -32,6 +32,17 @@ config.transformer = {
 };
 config.resolver = {
 	...resolver,
+	// Git refs can disappear between Metro's directory crawl and fs.watch,
+	// especially Codex's temporary turn-diff captures on Windows. Exclude the
+	// directory itself as well as descendants so the crawler never enters it.
+	blockList: [
+		...(Array.isArray(resolver.blockList)
+			? resolver.blockList
+			: resolver.blockList
+				? [resolver.blockList]
+				: []),
+		/(^|[/\\])\.git([/\\]|$)/,
+	],
 	assetExts: resolver.assetExts.filter((ext) => ext !== "svg"),
 	sourceExts: [...resolver.sourceExts, "svg"],
 };

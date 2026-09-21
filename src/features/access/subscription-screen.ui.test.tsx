@@ -3,7 +3,26 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { SubscriptionScreen } from "./subscription-screen";
 
+jest.mock("~/components/ui/icon", () => ({
+	ArrowLeft: () => null,
+	Check: () => null,
+}));
+
 const mockBack = jest.fn();
+const mockOpenExternalUrl = jest.fn(async (_url?: string) => true);
+
+jest.mock("~/lib/open-external-url", () => ({
+	openExternalUrl: (url?: string) => mockOpenExternalUrl(url),
+}));
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: ({
+		visible,
+		children,
+	}: {
+		visible: boolean;
+		children: ReactNode;
+	}) => (visible ? children : null),
+}));
 const mockReplace = jest.fn();
 const storePlans = [
 	{
@@ -98,10 +117,31 @@ jest.mock("~/lib/runtime-config", () => ({
 }));
 
 describe("SubscriptionScreen", () => {
+	test.each([
+		"failed",
+		"empty",
+	])("offers contact support when Store plans are %s", async (state) => {
+		if (state === "failed")
+			mockGetPlans.mockRejectedValueOnce(new Error("Store unavailable"));
+		else mockGetPlans.mockResolvedValueOnce([]);
+		const screen = await render(<SubscriptionScreen />);
+		const contact = await screen.findByRole("button", {
+			name: "Support kontaktieren",
+		});
+		expect(screen.getByTestId("subscription-checkout-button")).toBeDisabled();
+		await fireEvent.press(contact);
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			expect.stringContaining("mailto:kontakt@dayova.de?"),
+		);
+		expect(
+			decodeURIComponent(mockOpenExternalUrl.mock.calls[0][0] ?? ""),
+		).toContain("Bereich: Abonnement");
+	});
+
 	test("shows only localized Store plans and complete billing amounts", async () => {
 		const screen = await render(<SubscriptionScreen />);
 
-		expect(screen.getByText("Dayova Pro abonnieren")).toBeOnTheScreen();
+		expect(screen.getByText("Dayova abonnieren")).toBeOnTheScreen();
 		await waitFor(() => expect(mockGetPlans).toHaveBeenCalledTimes(1));
 		expect(
 			screen.getByRole("radio", {
@@ -120,7 +160,7 @@ describe("SubscriptionScreen", () => {
 		expect(screen.getByText(/automatisch/)).toBeOnTheScreen();
 	});
 
-	test("purchases the selected Store plan and opens the Pro welcome screen", async () => {
+	test("purchases the selected Store plan and opens the subscription success screen", async () => {
 		const screen = await render(<SubscriptionScreen />);
 		const annualPlan = await screen.findByRole("radio", {
 			name: /Jährlich, 155,88 €/,
@@ -136,7 +176,7 @@ describe("SubscriptionScreen", () => {
 		await waitFor(() => {
 			expect(mockPurchase).toHaveBeenCalledWith("annual");
 			expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(1);
-			expect(mockReplace).toHaveBeenCalledWith("/pro-welcome");
+			expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
 		});
 	});
 

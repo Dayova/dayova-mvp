@@ -1,0 +1,40 @@
+name: Production OTA preflight
+
+on:
+  workflow_dispatch: {}
+
+defaults:
+  tools:
+    node: "24.18.0"
+    pnpm: "11.15.1"
+
+jobs:
+  production_fingerprint:
+    name: Production native fingerprints
+    type: fingerprint
+    environment: production
+
+  verify:
+    name: Verify distributed-binary compatibility and exports
+    type: custom
+    runs_on: linux-medium
+    needs:
+      - production_fingerprint
+    environment: production
+    env:
+      APP_VARIANT: production
+      OTA_ANDROID_FINGERPRINT: ${{ needs.production_fingerprint.outputs.android_fingerprint_hash }}
+      OTA_IOS_FINGERPRINT: ${{ needs.production_fingerprint.outputs.ios_fingerprint_hash }}
+    steps:
+      - uses: eas/checkout
+      - uses: eas/install_node_modules
+      - name: Check OTA safety against distributed binaries
+        run: node scripts/ota-safety.mjs
+      - name: Verify iOS production export
+        env:
+          EAS_BUILD_PLATFORM: ios
+        run: pnpm exec expo export --platform ios --output-dir dist/ios
+      - name: Verify Android production export
+        env:
+          EAS_BUILD_PLATFORM: android
+        run: pnpm exec expo export --platform android --output-dir dist/android
