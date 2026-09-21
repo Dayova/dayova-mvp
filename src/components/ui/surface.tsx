@@ -5,8 +5,8 @@ import { cn } from "~/lib/utils";
 type SurfaceVariant = "default" | "soft" | "flat";
 
 const surfaceClassByVariant: Record<SurfaceVariant, string> = {
-	default: "shadow-black/5 shadow-sm",
-	soft: "shadow-black/5 shadow",
+	default: "shadow-none",
+	soft: "shadow-none",
 	flat: "shadow-none",
 };
 
