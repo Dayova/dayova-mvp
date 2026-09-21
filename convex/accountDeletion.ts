@@ -274,6 +274,11 @@ export const deleteCurrentUserDataBatch = mutation({
 		);
 
 		if (user) {
+			const crmSignups = await ctx.db
+				.query("crmStudentSignups")
+				.withIndex("by_userId", (q) => q.eq("userId", user._id))
+				.take(DELETE_BATCH_SIZE);
+			deletedRecords += await deleteRows(ctx, "crmStudentSignups", crmSignups);
 			const crmLinks = await ctx.db
 				.query("crmStudentLinks")
 				.withIndex("by_userId", (q) => q.eq("userId", user._id))

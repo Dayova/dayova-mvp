@@ -102,7 +102,8 @@ internal users.
 ## Notes
 
 - The student CRM is a read-only projection of Convex effective access, joined
-  through Clerk User ID. See [DAY-366 runtime contract and runbook](crm-sync.md)
+  through Clerk User ID. New authenticated accounts queue creation of a minimal
+  CRM contact; collisions require review. See [DAY-366 runtime contract and runbook](crm-sync.md)
   for matching, dry-run, schema, deployment isolation and recovery. PostHog never
   determines paid access; Notion edits never change it.
 

@@ -9,6 +9,7 @@ import {
 	emptyCounts,
 } from "./crmContract";
 import { CrmFailure, createNotionClient } from "./crmNotion";
+import { provisionSignups } from "./crmSignup";
 
 export const reconcile = internalAction({
 	args: { dryRun: v.optional(v.boolean()) },
@@ -123,6 +124,14 @@ export const reconcile = internalAction({
 					if (category !== "identity_changed") throw new CrmFailure(category);
 				}
 			}
+			await provisionSignups(ctx, notion, {
+				runId,
+				dataSourceId,
+				dryRun,
+				students,
+				counts,
+				matchedIds,
+			});
 			let cursor: string | null = null;
 			for (let pageNumber = 0; ; pageNumber++) {
 				if (pageNumber >= 200) throw new CrmFailure("capacity");

@@ -9,9 +9,10 @@ import {
 	normalizeLegacySchoolType,
 	SCHOOL_TYPE_VALUES,
 } from "../src/lib/school-types";
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import { env, mutation, query } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
 import {
 	deriveOnboardingLearningTimes,
@@ -395,6 +396,7 @@ export const syncCurrentUser = mutation({
 		avatarUrl: v.optional(v.string()),
 		validationStudentCode: v.optional(v.string()),
 	},
+	returns: v.id("users"),
 	handler: async (ctx, args) => {
 		const identity = await requireIdentity(ctx);
 
@@ -433,6 +435,11 @@ export const syncCurrentUser = mutation({
 			userId = existingUser._id;
 		} else {
 			userId = await ctx.db.insert("users", user);
+			// Persist with signup; an unavailable CRM must not lose the delivery intent.
+			await ctx.db.insert("crmStudentSignups", { userId, status: "pending" });
+			if (env.NOTION_CRM_MODE === "live") {
+				await ctx.scheduler.runAfter(0, internal.crmSync.reconcile, {});
+			}
 		}
 
 		await backfillLegacyLearningTimes(ctx, {

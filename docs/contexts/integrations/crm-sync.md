@@ -15,8 +15,25 @@ unnecessary. The integration also stores `Convex User ID` and a one-to-one
 `crmStudentLinks` mapping to the Notion page ID. Subsequent remapping requires
 operator review; changing Notion's ID cannot silently reassign an existing link.
 
-Only already matched existing pages receive projection writes. No contacts are
-created. Email is inspected only in dry-run mode for **exact, case-sensitive
+Existing pages receive projection writes only after matching. New authenticated
+Convex accounts enqueue CRM creation in the same transaction as `syncCurrentUser`.
+Repeated sign-ins do not enqueue again, and deploying this feature does not bulk
+create contacts for existing accounts. With mode `live`, signup schedules an
+immediate reconciliation; the hourly cron recovers pending work when the worker
+is busy or unavailable. Signup does not wait for Notion.
+
+The worker processes at most 20 pending signups per run under the same global
+lease and request budget as access synchronization. It reuses a unique Clerk-ID
+match, otherwise creates a page containing `Student` (name, or `Dayova student`),
+`Email`, Clerk ID and the allowlisted access projection. It does not copy phone,
+birth date, school data or learner content. These contact fields are initialized
+once; later reconciliation does not overwrite CRM-owned contact details.
+
+An email collision (case-insensitive, including CRM rows without a Clerk ID),
+duplicate identity or missing previously linked page goes to operator review,
+without creating or automatically merging a contact. Email is only a duplicate
+veto, never a durable join key. Legacy email matching is inspected in dry-run
+mode for **exact, case-sensitive
 one-time proposals**. An operator verifies proposed matches in a restricted
 surface and explicitly fills Clerk User ID in Notion before rerunning the
 dry run. Names are never a matching key. Duplicate Clerk IDs on either side,
@@ -67,7 +84,7 @@ batched workflow. Never just remove the limits.
 Technical owner: Jakob. CRM matching/review: Julius with Jakob.
 
 1. Use a Notion internal integration shared only with the required Students data
-   source, with read and update capabilities. Store its token in Convex's server
+   source, with read, update and insert capabilities. Store its token in Convex's server
    environment as `NOTION_CRM_TOKEN`, never an Expo env, code, issue or chat.
 2. Set `NOTION_CRM_DATA_SOURCE_ID` for that deployment and keep `NOTION_CRM_MODE`
    at `off`. Development must use a separate test database/token for live tests;
@@ -104,24 +121,48 @@ that production rollout or the real-account backfill has already happened.
 
 ## Monitoring, recovery and deletion
 
+`crmStudentSignups` stores a user ID and pending/review state, without copying
+contact data into the queue. Pending work is bounded to 20 entries per run;
+inspect its `by_status` index for backlog/review work. Aggregate reports include
+`created`, `wouldCreate` and `creationReview` when a signup batch is inspected.
+These are batch counts, not total backlog counts. `total` remains the inventory
+size before creation. Dry-run never creates pages or consumes queued signups.
+
+Before `POST /pages`, persist the attempt and destination. Unlike deterministic
+PATCH requests, creates are never retried blindly, including on network errors,
+429/5xx responses or worker crashes. The next run searches for the Clerk ID and
+recovers a successful create whose response was lost. If no unique page is found,
+the queue entry moves to review; absence from search does not prove creation
+failed. Resolve the page/identity in Notion, then set the entry back to pending
+to reuse the reviewed Clerk match. Only clear an attempt marker after explicitly
+verifying in Notion that no page was created; this permits a new create request.
+Do not reset the destination marker to redirect an uncertain create.
+
+Account deletion removes queued signups as well as mappings. The worker checks
+that the user and queue entry still exist immediately before creation. A deletion
+or external CRM edit racing an in-flight Notion request cannot be rolled back
+across systems; resolve any orphaned contact through the CRM deletion process.
+
 `crmSyncState:status` is internal/admin-only. Inspect counts, error, running,
 startedAt, finishedAt and lastSuccessAt. Alert via the deployment's existing
-operations monitoring on a failed cron, nonzero failed/conflict counts, or a live
+operations monitoring on a failed cron, nonzero failed/conflict/creationReview counts, or a live
 lastSuccessAt older than two hours. If running exceeds eleven minutes, the worker
 timed out; the next run can reclaim the lease. Warnings contain only aggregate
 counts/categories. Missing runtime configuration returns `configuration`; it must
 not be interpreted as a successful sync. Unmatched/proposed rows need CRM review.
 
 For authorization/schema errors, fix integration access or property types and
-rerun. Rate limits respect Retry-After. For mapping conflicts, pause live mode,
+rerun. Retryable reads/PATCH requests respect Retry-After; a failed create needs
+the attempt-recovery procedure above. For mapping conflicts, pause live mode,
 review Clerk ID and page ownership, correct the reviewed Notion record or remove
 only the obsolete mapping via the Convex dashboard, then dry-run before resuming.
 Never fix a CRM mismatch by changing app entitlements. Set mode `off` to pause
 future runs; an already running action may finish its current sweep.
 
 Per-user operational storage is one link row with opaque IDs, last attempt,
-last success and a controlled error. The existing account-deletion flow removes
-these link rows. Global status stores only the latest aggregate run and success
+last success and a controlled error, plus one pending/review signup row until
+delivery completes. The existing account-deletion flow removes both kinds of
+rows. Global status stores only the latest aggregate run and success
 timestamps, not an unbounded audit history. The integration does not recreate
 deleted users or silently bind a re-registration by email. Unmatched CRM rows
 retain their previous projection/timestamp and require review; they must not be
@@ -130,5 +171,6 @@ approved DAY-357/DAY-358 processor policy before live rollout; deleting the app
 account alone is not proof the independent CRM contact was deleted.
 
 API references: [query data source](https://developers.notion.com/reference/query-a-data-source),
+[create page](https://developers.notion.com/reference/post-page),
 [update page](https://developers.notion.com/reference/patch-page),
 [request limits](https://developers.notion.com/reference/request-limits).

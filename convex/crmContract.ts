@@ -13,6 +13,10 @@ export const crmError = v.union(
 );
 export type CrmError = Infer<typeof crmError>;
 export const crmCounts = v.object({
+	// Optional for aggregate status rows written before signup provisioning existed.
+	created: v.optional(v.number()),
+	wouldCreate: v.optional(v.number()),
+	creationReview: v.optional(v.number()),
 	total: v.number(),
 	matched: v.number(),
 	unmatched: v.number(),

@@ -131,6 +131,15 @@ const sessionContentChoiceValidator = v.object({
 });
 
 export default defineSchema({
+	crmStudentSignups: defineTable({
+		userId: v.id("users"),
+		status: v.union(v.literal("pending"), v.literal("review")),
+		attemptedAt: v.optional(v.number()),
+		dataSourceId: v.optional(v.string()),
+		error: v.optional(crmError),
+	})
+		.index("by_userId", ["userId"])
+		.index("by_status", ["status"]),
 	crmStudentLinks: defineTable({
 		pageId: v.string(),
 		userId: v.id("users"),

@@ -116,6 +116,7 @@ export function createNotionClient(token: string, dataSourceId: string) {
 		path: string,
 		method = "GET",
 		body?: unknown,
+		retrySafe = true,
 	): Promise<unknown> => {
 		for (let attempt = 0; attempt < 4; attempt++) {
 			await pause(Math.max(0, nextRequestAt - Date.now()));
@@ -134,7 +135,7 @@ export function createNotionClient(token: string, dataSourceId: string) {
 				});
 			} catch {
 				// PATCH success can be ambiguous. Retry the same deterministic projection.
-				if (attempt === 3) throw new CrmFailure("unavailable");
+				if (!retrySafe || attempt === 3) throw new CrmFailure("unavailable");
 				await pause(1000 * 2 ** attempt);
 				continue;
 			}
@@ -146,7 +147,7 @@ export function createNotionClient(token: string, dataSourceId: string) {
 				}
 			}
 			if (response.status === 429 || response.status >= 500) {
-				if (attempt === 3)
+				if (!retrySafe || attempt === 3)
 					throw new CrmFailure(
 						response.status === 429 ? "rate_limited" : "unavailable",
 					);
@@ -170,6 +171,53 @@ export function createNotionClient(token: string, dataSourceId: string) {
 		throw new CrmFailure("unavailable");
 	};
 	return {
+		async checkCreationSchema() {
+			const properties = object(
+				object(await request(`data_sources/${dataSourceId}`)).properties,
+			);
+			for (const [name, type] of Object.entries({
+				Student: "title",
+				Email: "email",
+			})) {
+				if (!properties[name] || object(properties[name]).type !== type)
+					throw new CrmFailure("schema");
+			}
+		},
+		async createStudent(
+			clerkId: string,
+			email: string,
+			name: string,
+			projection: CrmProjection,
+			now: number,
+		) {
+			// POST /pages has no assumed idempotency guarantee. Persist the attempt first
+			// and recover by Clerk ID; never blindly repeat an uncertain create request.
+			return parseStudent(
+				await request(
+					"pages",
+					"POST",
+					{
+						parent: { type: "data_source_id", data_source_id: dataSourceId },
+						properties: {
+							Student: {
+								title: [
+									{
+										text: {
+											content: (name.trim() || "Dayova student").slice(0, 2000),
+										},
+									},
+								],
+							},
+							Email: { email },
+							"Clerk User ID": richText(clerkId),
+							...projectionProperties(projection, now),
+						},
+					},
+					false,
+				),
+				dataSourceId,
+			);
+		},
 		async checkSchema(live: boolean) {
 			const schema = object(
 				object(await request(`data_sources/${dataSourceId}`)).properties,
