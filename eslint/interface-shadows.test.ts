@@ -20,11 +20,47 @@ ruleTester.run("no-interface-shadows", noInterfaceShadows as Rule.RuleModule, {
 			filename: "/repo/src/components/onboarding/intro-tasks-artwork.tsx",
 		},
 		{
+			code: 'const card = <View className={`bg-card shadow-none hover:shadow-none ${extra}`} />;',
+			filename: "/repo/src/components/ui/surface.tsx",
+		},
+		{
+			code: 'const artwork = <View className={`shadow shadow-lg`} />;',
+			filename: "/repo/src/components/onboarding/intro-tasks-artwork.tsx",
+		},
+		{
+			code: 'const card = <View className={`shadow-${"none"}`} />;',
+			filename: "/repo/src/components/ui/surface.tsx",
+		},
+		{
+			code: 'const card = <View className={`shadow${"-none"}`} />;',
+			filename: "/repo/src/components/ui/surface.tsx",
+		},
+		{
 			code: "const overlap = { elevation: 20 };",
 			filename: "/repo/src/components/ui/notched-action-card.tsx",
 		},
 	],
 	invalid: [
+		{
+			code: 'const card = <View className="shadow" />;',
+			filename: "/repo/src/components/ui/surface.tsx",
+			errors: [{ messageId: "shadow" }],
+		},
+		{
+			code: 'const card = <View className="hover:shadow bg-card" />;',
+			filename: "/repo/src/components/ui/surface.tsx",
+			errors: [{ messageId: "shadow" }],
+		},
+		{
+			code: 'const card = <View className={`shadow-lg`} />;',
+			filename: "/repo/src/components/ui/surface.tsx",
+			errors: [{ messageId: "shadow" }],
+		},
+		{
+			code: 'const card = <View className={`${extra} shadow bg-card`} />;',
+			filename: "/repo/src/components/ui/surface.tsx",
+			errors: [{ messageId: "shadow" }],
+		},
 		{
 			code: 'const card = <View className="bg-card shadow-black/10 shadow-sm" />;',
 			filename: "/repo/src/components/ui/surface.tsx",
