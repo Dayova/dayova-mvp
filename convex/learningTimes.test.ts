@@ -158,7 +158,16 @@ test("creates visible proposed defaults without treating them as confirmed prefe
 	expect(
 		proposed.every((entry) => entry.preferenceStatus === "systemDefault"),
 	).toBe(true);
-	expect(proposed.every((entry) => entry.startTime === "16:00")).toBe(true);
+	// Today's proposal moves forward when the default 16:00 start is already in
+	// the past; later days keep the automatic 16:00 start.
+	expect(
+		proposed.every(
+			(entry) => entry.startTime >= "16:00" && entry.startTime <= "23:50",
+		),
+	).toBe(true);
+	expect(
+		proposed.filter((entry) => entry.startTime !== "16:00").length,
+	).toBeLessThanOrEqual(1);
 	expect(proposed.every((entry) => entry.endTime === "00:00")).toBe(true);
 	const snapshot = await t.query(api.learningPlans.getSnapshot, {
 		id: learningPlanId,
