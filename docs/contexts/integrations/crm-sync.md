@@ -25,9 +25,37 @@ is busy or unavailable. Signup does not wait for Notion.
 The worker processes at most 20 pending signups per run under the same global
 lease and request budget as access synchronization. It reuses a unique Clerk-ID
 match, otherwise creates a page containing `Student` (name, or `Dayova student`),
-`Email`, Clerk ID and the allowlisted access projection. It does not copy phone,
-birth date, school data or learner content. These contact fields are initialized
-once; later reconciliation does not overwrite CRM-owned contact details.
+`Email`, Clerk ID and the allowlisted profile/access projection. Email is initialized
+once; later reconciliation preserves the CRM email. Phone, birth date, specific
+school identities, and learner content are not copied.
+
+### Student profile projection
+
+The app profile in Convex owns `Student`, `First Name`, `Last Name`, `Grade`,
+`State`, and `School Type` for matched users. Every reconciliation refreshes
+these fields, including contacts created before this extension. Changes saved
+through `syncCurrentUser` (including onboarding) or `updateProfile` schedule
+reconciliation in live mode only when a projected value changes. The hourly
+sweep repairs failures and changes arriving during an active reconciliation.
+
+- `Student` is the full app name. First/last names use the same convention as
+  Clerk registration: first whitespace-delimited part, then all remaining parts.
+  This is not an independent structured-name source. A single name clears a
+  stale last name; an explicitly empty name clears both and uses `Dayova student`
+  as the required title.
+- `Grade` is the app's supported grade (6–13); `State` maps the 16 German names
+  to the existing CRM codes (for example Bayern → BY, Nordrhein-Westfalen → NW).
+- `School Type` is a **select**, using the German labels from the app's bounded
+  school-type options. `prefer_not_to_say` clears its selection. Recognized
+  generic legacy school types are normalized; specific legacy school names are
+  never exported. The existing `School` relation remains manually owned.
+- Absent or unsupported source values are omitted, preserving existing CRM
+  values for incomplete/legacy accounts. Present supported values overwrite
+  manual edits to these app-owned columns on the next sync.
+
+Both the test and production Students schemas need the exact property names
+and types in `CRM_PROFILE_PROPERTIES`. This extension does not create CRM rows
+for older accounts that have no existing match or pending signup.
 
 An email collision (case-insensitive, including CRM rows without a Clerk ID),
 duplicate identity or missing previously linked page goes to operator review,
@@ -48,7 +76,7 @@ An active flag without `subscriptionVerifiedAt` is a conflict, never verified
 paid evidence. The integration reflects the last verified Convex snapshot; it
 does not repair upstream RevenueCat webhook delivery or promise real-time billing.
 
-Manually owned `Status`, `Payment Status`, `Subscription Plan`, contacts, notes,
+Manually owned `Status`, `Payment Status`, `Subscription Plan`, email/phone, notes,
 research and relationship fields remain separate. `Entitlement State` is the
 authoritative projection for follow-up decisions. No tokens, receipts, payment
 IDs, management URLs or raw provider payloads are projected.

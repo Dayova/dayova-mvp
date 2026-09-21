@@ -42,6 +42,12 @@ async function project(
 	const access = entitlement ? getCurrentAccess(entitlement, now) : null;
 	return {
 		userId: user._id,
+		profile: {
+			name: user.name,
+			grade: user.grade,
+			state: user.state,
+			schoolType: user.schoolType,
+		},
 		state:
 			access?.state === "billingGrace"
 				? "billing grace"

@@ -218,6 +218,8 @@ test("off and dry-run never create, live creates minimal CRM record once and sub
 	expect(creates).toHaveLength(1);
 	expect(creates[0].properties).toMatchObject({
 		Student: { title: [{ text: { content: identity.name } }] },
+		"First Name": { rich_text: [{ text: { content: "New" } }] },
+		"Last Name": { rich_text: [{ text: { content: "Student" } }] },
 		Email: { email: identity.email },
 		"Clerk User ID": { rich_text: [{ text: { content: identity.subject } }] },
 		"Convex User ID": { rich_text: [{ text: { content: userId } }] },

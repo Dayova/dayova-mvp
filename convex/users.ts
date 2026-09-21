@@ -10,7 +10,7 @@ import {
 	SCHOOL_TYPE_VALUES,
 } from "../src/lib/school-types";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { env, mutation, query } from "./_generated/server";
 import { throwUserFacingError } from "./errors";
@@ -385,6 +385,20 @@ const sanitizeLegacyOnboardingSchoolType = async (
 	}
 };
 
+async function scheduleCrmProfileSync(
+	ctx: MutationCtx,
+	previous: Doc<"users">,
+	patch: Partial<Doc<"users">>,
+) {
+	if (
+		env.NOTION_CRM_MODE === "live" &&
+		(["name", "grade", "state", "schoolType"] as const).some(
+			(key) => Object.hasOwn(patch, key) && patch[key] !== previous[key],
+		)
+	)
+		await ctx.scheduler.runAfter(0, internal.crmSync.reconcile, {});
+}
+
 export const syncCurrentUser = mutation({
 	args: {
 		name: v.optional(v.string()),
@@ -431,6 +445,7 @@ export const syncCurrentUser = mutation({
 				...user,
 				schoolType,
 			});
+			await scheduleCrmProfileSync(ctx, existingUser, { ...user, schoolType });
 			await sanitizeLegacyOnboardingSchoolType(ctx, existingUser._id);
 			userId = existingUser._id;
 		} else {
@@ -473,7 +488,9 @@ export const updateProfile = mutation({
 			throwUserFacingError("Der Nutzer konnte nicht gefunden werden.");
 		}
 
-		await ctx.db.patch("users", user._id, profileFields(args));
+		const patch = profileFields(args);
+		await ctx.db.patch("users", user._id, patch);
+		await scheduleCrmProfileSync(ctx, user, patch);
 		return { success: true };
 	},
 });

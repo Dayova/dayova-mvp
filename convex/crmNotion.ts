@@ -1,7 +1,9 @@
 import type { CrmError, CrmProjection } from "./crmContract";
+import { CRM_PROFILE_PROPERTIES, profileProperties } from "./crmProfile";
 
 export const CRM_MAX_STUDENTS = 200;
 export const CRM_PROPERTIES = {
+	...CRM_PROFILE_PROPERTIES,
 	"Clerk User ID": "rich_text",
 	"Convex User ID": "rich_text",
 	"Identity Status": "select",
@@ -88,6 +90,7 @@ const date = (value: number | null) => ({
 });
 export function projectionProperties(projection: CrmProjection, now: number) {
 	return {
+		...profileProperties(projection.profile),
 		"Convex User ID": richText(projection.userId),
 		"Identity Status": { select: { name: "matched" } },
 		"Entitlement State": { select: { name: projection.state } },

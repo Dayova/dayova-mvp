@@ -15,6 +15,7 @@ import type * as aiConsent from "../aiConsent.js";
 import type * as answerEvaluation from "../answerEvaluation.js";
 import type * as crmContract from "../crmContract.js";
 import type * as crmNotion from "../crmNotion.js";
+import type * as crmProfile from "../crmProfile.js";
 import type * as crmSignup from "../crmSignup.js";
 import type * as crmSignupState from "../crmSignupState.js";
 import type * as crmSync from "../crmSync.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   answerEvaluation: typeof answerEvaluation;
   crmContract: typeof crmContract;
   crmNotion: typeof crmNotion;
+  crmProfile: typeof crmProfile;
   crmSignup: typeof crmSignup;
   crmSignupState: typeof crmSignupState;
   crmSync: typeof crmSync;

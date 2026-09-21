@@ -353,6 +353,100 @@ test("live projection retries the same payload, preserves CRM-owned fields and r
 	).toMatchObject([{ userId, pageId }]);
 }, 15_000);
 
+test("existing linked students receive late onboarding profiles and subsequent edits without duplicates", async () => {
+	configure();
+	const t = convexTest(schema, modules);
+	const userId = await seed(t);
+	await enable(t);
+	const { patches } = mockNotion();
+	await t.action(internal.crmSync.reconcile, {});
+	// The CRM contact exists before the app has saved onboarding profile fields.
+	expect((patches[0] as { properties: unknown }).properties).not.toHaveProperty(
+		"Grade",
+	);
+	const authenticated = t.withIdentity({
+		subject: clerkId,
+		tokenIdentifier,
+		email,
+	});
+	vi.stubEnv("NOTION_CRM_MODE", "off");
+	await authenticated.mutation(api.users.syncCurrentUser, {
+		name: "Anna von Beispiel",
+		grade: "10",
+		state: "Bayern",
+		schoolType: "gymnasium",
+	});
+	await authenticated.mutation(api.users.saveOnboardingAnswers, {
+		answers: { grade: "10", state: "Bayern", schoolType: "gymnasium" },
+	});
+	vi.stubEnv("NOTION_CRM_MODE", "live");
+	await t.action(internal.crmSync.reconcile, {});
+	expect((patches[1] as { properties: unknown }).properties).toMatchObject({
+		Student: { title: [{ text: { content: "Anna von Beispiel" } }] },
+		"First Name": { rich_text: [{ text: { content: "Anna" } }] },
+		"Last Name": { rich_text: [{ text: { content: "von Beispiel" } }] },
+		Grade: { select: { name: "10" } },
+		State: { select: { name: "BY" } },
+		"School Type": { select: { name: "Gymnasium" } },
+	});
+	vi.stubEnv("NOTION_CRM_MODE", "off");
+	await authenticated.mutation(api.users.updateProfile, {
+		name: "Alex",
+		grade: "11",
+		state: "Berlin",
+		schoolType: "prefer_not_to_say",
+	});
+	vi.stubEnv("NOTION_CRM_MODE", "live");
+	await t.action(internal.crmSync.reconcile, {});
+	expect((patches[2] as { properties: unknown }).properties).toMatchObject({
+		"First Name": { rich_text: [{ text: { content: "Alex" } }] },
+		"Last Name": { rich_text: [] },
+		Grade: { select: { name: "11" } },
+		State: { select: { name: "BE" } },
+		"School Type": { select: null },
+	});
+	expect(
+		await t.run((ctx) => ctx.db.query("crmStudentLinks").take(5)),
+	).toMatchObject([{ userId, pageId }]);
+	expect(
+		await t.run((ctx) => ctx.db.query("crmStudentSignups").take(5)),
+	).toEqual([]);
+}, 15000);
+
+test("profile changes schedule live reconciliation once, while unchanged sign-ins and off mode do not", async () => {
+	const t = convexTest(schema, modules);
+	await seed(t);
+	const authenticated = t.withIdentity({
+		subject: clerkId,
+		tokenIdentifier,
+		email,
+	});
+	vi.useFakeTimers();
+	try {
+		vi.stubEnv("NOTION_CRM_MODE", "live");
+		await authenticated.mutation(api.users.syncCurrentUser, {
+			name: "Test Student",
+			grade: "10",
+		});
+		await authenticated.mutation(api.users.syncCurrentUser, {
+			name: "Test Student",
+			grade: "10",
+		});
+		await authenticated.mutation(api.users.updateProfile, { state: "Berlin" });
+		await authenticated.mutation(api.users.updateProfile, { state: "Berlin" });
+		vi.stubEnv("NOTION_CRM_MODE", "off");
+		await authenticated.mutation(api.users.updateProfile, { grade: "11" });
+		const scheduled = await t.run((ctx) =>
+			ctx.db.system.query("_scheduled_functions").take(10),
+		);
+		expect(scheduled).toHaveLength(2);
+		expect(scheduled.every((job) => job.name.includes("crmSync"))).toBe(true);
+		await t.finishAllScheduledFunctions(vi.runAllTimers);
+	} finally {
+		vi.useRealTimers();
+	}
+});
+
 test.each([
 	[
 		"trial",
