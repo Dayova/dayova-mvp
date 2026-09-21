@@ -3,6 +3,13 @@
 Prepared: 2026-08-22; uploaded to the production listing under review on
 2026-08-23
 
+Rechecked 2026-09-16: PNG dimensions, color types, and artwork byte sizes below
+match the local files; all eight composed images were visually inspected.
+The public listing has eight screenshot entries. “Current” in the August
+capture record means current on August 22, not verified against store build 23.
+Capture-to-build provenance and an installed-build visual comparison remain
+outstanding; preserve these files as the dated asset set until refreshed.
+
 ## Ready assets
 
 | File | Validated properties | Intended Console slot |
@@ -46,7 +53,7 @@ readable Android UI without a physical device frame.
 | 3 | `03-dein-weg-bis-zur-pruefung.png` | Populated learning path, completed and upcoming steps | Dayova learning path showing the next mitosis and meiosis session and the route toward the exam. |
 | 4 | `04-aktiv-lernen.png` | Active learning session and question formats | A Dayova learning session with a multiple-choice biology question about mitosis and meiosis. |
 | 5 | `05-direktes-feedback.png` | Immediate evaluation and ideal answer | Dayova feedback screen explaining a correct answer and showing the ideal answer. |
-| 6 | `06-staerken-und-luecken.png` | Topic-level analysis, evidence, learning gaps | Dayova analysis ranking biology exam topics and showing securely evidenced knowledge and gaps. |
+| 6 | `06-staerken-und-luecken.png` | Topic-level analysis and evidence statuses | Dayova analysis listing biology exam topics with evidence labels and answer counts. No learning gap is visible in this capture. |
 | 7 | `07-lernzeiten-die-passen.png` | Weekly learning availability | Dayova learning-time settings with Monday and Wednesday availability. |
 | 8 | `08-stundenplan-verbunden.png` | School timetable and class details | Dayova timetable with an active Monday mathematics class, room, and lesson times. |
 

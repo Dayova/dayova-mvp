@@ -1,36 +1,34 @@
 import { useRouter } from "expo-router";
-import { type ReactNode, useRef, useState } from "react";
+import { useState } from "react";
 import { Pressable, View } from "react-native";
-import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
+import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
-	ArrowRight,
 	Bell,
-	CalendarDays,
 	Computer,
 	CreditCard,
 	Globe,
-	Logout,
 	Mail,
 	Moon,
 	Palette,
-	Settings,
 	Sparkles,
-	SquareLock,
 	Sun,
 	Timer,
-	Trash2,
+	UserRound,
 } from "~/components/ui/icon";
-import { ListRow } from "~/components/ui/list-row";
 import { Screen, ScreenScroll } from "~/components/ui/screen";
-import { Surface } from "~/components/ui/surface";
+import { SupportContact } from "~/components/ui/support-contact";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAccess } from "~/context/AccessContext";
 import { useAiConsent } from "~/context/AiConsentContext";
-import { useAccountActions } from "~/context/AuthContext";
-import { createAsyncActionGate } from "~/lib/async-action-gate";
-import { logDiagnosticError } from "~/lib/diagnostics";
+import { useAuthSession } from "~/context/AuthContext";
+import {
+	SettingsCard,
+	SettingsDivider,
+	SettingsRow,
+	SettingsSection,
+} from "~/features/settings/settings-list";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
 import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
@@ -50,88 +48,6 @@ const themeIconByPreference = {
 		strokeWidth?: number;
 	}) => React.JSX.Element
 >;
-
-function SettingsRow({
-	icon,
-	label,
-	trailing,
-	onPress,
-	disabled = false,
-	busy = false,
-	showDisclosure = true,
-	destructive = false,
-	accessibilityLabel,
-}: {
-	icon: (props: {
-		size?: number;
-		color?: string;
-		strokeWidth?: number;
-	}) => React.JSX.Element;
-	label: string;
-	trailing?: React.JSX.Element;
-	onPress?: () => void;
-	disabled?: boolean;
-	busy?: boolean;
-	showDisclosure?: boolean;
-	destructive?: boolean;
-	accessibilityLabel?: string;
-}) {
-	const Icon = icon;
-	const { colors } = useDayovaTheme();
-
-	return (
-		<ListRow
-			accessibilityLabel={accessibilityLabel}
-			icon={
-				<Icon
-					size={22}
-					color={destructive ? colors.destructive : colors.text}
-					strokeWidth={2}
-				/>
-			}
-			label={label}
-			tone={destructive ? "destructive" : "default"}
-			onPress={onPress}
-			disabled={disabled}
-			accessibilityState={{
-				busy,
-				disabled,
-			}}
-			className="rounded-3xl bg-transparent px-3 shadow-none"
-			trailing={
-				trailing ??
-				(onPress && showDisclosure ? (
-					<ArrowRight size={18} color={colors.secondaryText} strokeWidth={2} />
-				) : undefined)
-			}
-			variant="flat"
-		/>
-	);
-}
-
-function SettingsDivider() {
-	return <View className="mx-4 h-px bg-border" />;
-}
-
-function SettingsSection({
-	children,
-	title,
-}: {
-	children: ReactNode;
-	title: string;
-}) {
-	return (
-		<View className="gap-2">
-			<Text
-				accessibilityRole="header"
-				className="px-4 font-poppins font-semibold text-body-4 text-secondary-text"
-			>
-				{title}
-			</Text>
-			<Surface className="overflow-hidden p-2">{children}</Surface>
-		</View>
-	);
-}
 
 function ThemePreferenceToggle({
 	preference,
@@ -178,65 +94,27 @@ function ThemePreferenceToggle({
 
 export default function SettingsScreen() {
 	const router = useRouter();
-	const { deleteAccount, logout } = useAccountActions();
+	const { user } = useAuthSession();
+	const profileName = user?.name?.trim();
 	const { access } = useAccess();
 	const { openAiConsentSettings, statusLabel: aiConsentStatusLabel } =
 		useAiConsent();
 	const { preference, setPreference } = useDayovaTheme();
-	const [logoutError, setLogoutError] = useState<string | null>(null);
-	const [linkError, setLinkError] = useState<string | null>(null);
-	const [isLoggingOut, setIsLoggingOut] = useState(false);
-	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-	const [deleteError, setDeleteError] = useState<string | null>(null);
-	const logoutGateRef = useRef(createAsyncActionGate());
-	const deleteGateRef = useRef(createAsyncActionGate());
-	const handleLogout = () => {
-		void logoutGateRef.current.run(async () => {
-			setLogoutError(null);
-			setIsLoggingOut(true);
-			try {
-				await logout();
-			} catch (error) {
-				logDiagnosticError("Failed to sign out.", error, {
-					source: "settings.logout",
-					level: "error",
-				});
-				setLogoutError(
-					"Die Abmeldung ist fehlgeschlagen. Bitte versuche es erneut.",
-				);
-			} finally {
-				setIsLoggingOut(false);
-			}
-		});
-	};
-	const handleDeleteAccount = () => {
-		void deleteGateRef.current.run(async () => {
-			setDeleteError(null);
-			setIsDeletingAccount(true);
-			try {
-				await deleteAccount();
-				setShowDeleteConfirmation(false);
-			} catch (error) {
-				logDiagnosticError("Failed to delete account.", error, {
-					source: "settings.accountDeletion",
-					level: "error",
-				});
-				setDeleteError(
-					"Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.",
-				);
-			} finally {
-				setIsDeletingAccount(false);
-			}
-		});
-	};
-	const openLink = (url?: string) => {
+	const [showReleaseInformation, setShowReleaseInformation] = useState(false);
+	const [linkErrors, setLinkErrors] = useState<
+		Partial<Record<"support" | "subscription" | "legal", string>>
+	>({});
+	const openLink = (
+		section: "support" | "subscription" | "legal",
+		url?: string,
+	) => {
 		void openExternalUrl(url).then((opened) => {
-			setLinkError(
-				opened
-					? null
+			setLinkErrors((current) => ({
+				...current,
+				[section]: opened
+					? undefined
 					: "Der Link konnte nicht geöffnet werden. Bitte versuche es erneut.",
-			);
+			}));
 		});
 	};
 	const nativeManagementUrl = getNativeSubscriptionManagementUrl({
@@ -256,28 +134,36 @@ export default function SettingsScreen() {
 					horizontalPadding={24}
 				>
 					<View className="gap-7">
-						<SettingsSection title="Dayova">
-							{access?.state === "trial" ? (
-								<SettingsRow
-									icon={CreditCard}
-									label="Dayova abonnieren"
-									onPress={() => router.push("/subscription")}
-								/>
-							) : (
-								<SettingsRow
-									icon={CreditCard}
-									label={
-										nativeManagementUrl
-											? "Abo im Store verwalten"
-											: "Hilfe zum Abo"
-									}
-									onPress={() =>
-										openLink(nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL)
-									}
-									disabled={!isStoreSubscriber}
-								/>
-							)}
-						</SettingsSection>
+						<SettingsCard>
+							<SettingsRow
+								icon={UserRound}
+								label={profileName || "Profil & Konto"}
+								description={profileName ? "Profil & Konto" : undefined}
+								accessibilityLabel={
+									profileName
+										? `${profileName}, Profil & Konto`
+										: "Profil & Konto"
+								}
+								onPress={() => router.push("/profile")}
+							/>
+						</SettingsCard>
+
+						<View testID="settings-support">
+							<SettingsCard>
+								<SupportContact context="Einstellungen">
+									{({ onPress, busy, buttonRef }) => (
+										<SettingsRow
+											buttonRef={buttonRef}
+											icon={Mail}
+											label="Support kontaktieren"
+											onPress={onPress}
+											busy={busy}
+											disabled={busy}
+										/>
+									)}
+								</SupportContact>
+							</SettingsCard>
+						</View>
 
 						<SettingsSection title="Lernen">
 							<SettingsRow
@@ -285,15 +171,15 @@ export default function SettingsScreen() {
 								label="Lernzeiten"
 								onPress={() => router.push("/learning-times")}
 							/>
-							<SettingsDivider />
-							<SettingsRow
-								icon={CalendarDays}
-								label="Stundenplan"
-								onPress={() => router.push("/timetable")}
-							/>
 						</SettingsSection>
 
 						<SettingsSection title="App">
+							<SettingsRow
+								icon={Computer}
+								label="App-Informationen"
+								onPress={() => setShowReleaseInformation(true)}
+							/>
+							<SettingsDivider />
 							<SettingsRow
 								icon={Bell}
 								label="Mitteilungen"
@@ -312,8 +198,41 @@ export default function SettingsScreen() {
 							/>
 						</SettingsSection>
 
-						<View className="gap-3">
-							<SettingsSection title="Rechtliches & Hilfe">
+						<View className="gap-3" testID="settings-subscription">
+							<SettingsCard>
+								{access?.state === "trial" ? (
+									<SettingsRow
+										icon={CreditCard}
+										label="Dayova abonnieren"
+										onPress={() => router.push("/subscription")}
+									/>
+								) : (
+									<SettingsRow
+										icon={CreditCard}
+										label="Dayova"
+										accessibilityLabel={`Dayova, ${nativeManagementUrl ? "Abo im Store verwalten" : "Hilfe zum Abo"}`}
+										description={
+											nativeManagementUrl
+												? "Abo im Store verwalten"
+												: "Hilfe zum Abo"
+										}
+										onPress={() =>
+											openLink(
+												"subscription",
+												nativeManagementUrl ?? env.EXPO_PUBLIC_SUPPORT_URL,
+											)
+										}
+										disabled={!isStoreSubscriber}
+									/>
+								)}
+							</SettingsCard>
+							{linkErrors.subscription ? (
+								<ErrorMessage>{linkErrors.subscription}</ErrorMessage>
+							) : null}
+						</View>
+
+						<View className="gap-3" testID="settings-legal">
+							<SettingsSection title="Datenschutz & Rechtliches">
 								<SettingsRow
 									icon={Sparkles}
 									label="KI & Datenschutz"
@@ -331,74 +250,25 @@ export default function SettingsScreen() {
 								<SettingsRow
 									icon={Globe}
 									label="Datenschutz"
-									onPress={() => openLink(env.EXPO_PUBLIC_PRIVACY_URL)}
+									onPress={() => openLink("legal", env.EXPO_PUBLIC_PRIVACY_URL)}
 								/>
 								<SettingsDivider />
 								<SettingsRow
 									icon={Globe}
 									label="Nutzungsbedingungen"
-									onPress={() => openLink(env.EXPO_PUBLIC_TERMS_URL)}
-								/>
-								<SettingsDivider />
-								<SettingsRow
-									icon={Mail}
-									label="Support"
-									onPress={() => openLink(env.EXPO_PUBLIC_SUPPORT_URL)}
+									onPress={() => openLink("legal", env.EXPO_PUBLIC_TERMS_URL)}
 								/>
 							</SettingsSection>
-							{linkError ? <ErrorMessage>{linkError}</ErrorMessage> : null}
-						</View>
-
-						<View className="gap-3">
-							<SettingsSection title="Konto">
-								<SettingsRow
-									icon={Settings}
-									label="Profil"
-									onPress={() => router.push("/profile")}
-								/>
-								<SettingsDivider />
-								<SettingsRow
-									icon={SquareLock}
-									label="Passwort ändern"
-									onPress={() => router.push("/change-password")}
-								/>
-								<SettingsDivider />
-								<SettingsRow
-									icon={Logout}
-									label="Abmelden"
-									onPress={handleLogout}
-									disabled={isLoggingOut}
-									busy={isLoggingOut}
-									showDisclosure={false}
-								/>
-								<SettingsDivider />
-								<SettingsRow
-									destructive
-									icon={Trash2}
-									label="Konto löschen"
-									onPress={() => {
-										setDeleteError(null);
-										setShowDeleteConfirmation(true);
-									}}
-									disabled={isDeletingAccount}
-									busy={isDeletingAccount}
-									showDisclosure={false}
-								/>
-							</SettingsSection>
-							{logoutError ? <ErrorMessage>{logoutError}</ErrorMessage> : null}
+							{linkErrors.legal ? (
+								<ErrorMessage>{linkErrors.legal}</ErrorMessage>
+							) : null}
 						</View>
 					</View>
 				</ScreenScroll>
 			</Screen>
-			<ConfirmationSheet
-				visible={showDeleteConfirmation}
-				title="Konto wirklich löschen?"
-				description="Dein Dayova-Konto und deine gespeicherten Daten werden dauerhaft gelöscht. Ein aktives App-Store-Abo musst du zusätzlich im App Store kündigen."
-				confirmLabel="Konto löschen"
-				isBusy={isDeletingAccount}
-				errorMessage={deleteError}
-				onClose={() => setShowDeleteConfirmation(false)}
-				onConfirm={handleDeleteAccount}
+			<ReleaseInformationSheet
+				visible={showReleaseInformation}
+				onClose={() => setShowReleaseInformation(false)}
 			/>
 		</>
 	);

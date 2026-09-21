@@ -59,9 +59,9 @@ jest.mock("react-native-reanimated", () => {
 });
 
 describe("learning session completion", () => {
-	test("uses the approved repeat action for every non-diagnostic phase", async () => {
-		const onTheoryPrimary = jest.fn();
-		const onTheoryRepeat = jest.fn();
+	test("offers the approved repeat action after theory", async () => {
+		const onPrimary = jest.fn();
+		const onRepeat = jest.fn();
 		const screen = await render(
 			<LearningSessionCompletion
 				attemptCount={0}
@@ -69,8 +69,8 @@ describe("learning session completion", () => {
 				durationMinutes={10}
 				isBusy={false}
 				isDiagnostic={false}
-				onRepeat={onTheoryRepeat}
-				onPrimary={onTheoryPrimary}
+				onRepeat={onRepeat}
+				onPrimary={onPrimary}
 				phase="theory"
 			/>,
 		);
@@ -87,70 +87,68 @@ describe("learning session completion", () => {
 			),
 		).toBeTruthy();
 
-		await fireEvent.press(
+		fireEvent.press(
 			screen.getByRole("button", { name: "Theorie abschließen" }),
 		);
-		expect(onTheoryPrimary).toHaveBeenCalledTimes(1);
-		expect(onTheoryRepeat).not.toHaveBeenCalled();
+		expect(onPrimary).toHaveBeenCalledTimes(1);
+		expect(onRepeat).not.toHaveBeenCalled();
 
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Nochmal lernen" }),
-		);
-		expect(onTheoryRepeat).toHaveBeenCalledTimes(1);
+		fireEvent.press(screen.getByRole("button", { name: "Nochmal lernen" }));
+		expect(onRepeat).toHaveBeenCalledTimes(1);
+	});
 
-		const onPracticePrimary = jest.fn();
-		const onPracticeRepeat = jest.fn();
-		await screen.rerender(
+	test("offers repeat without restoring the removed Analyse action", async () => {
+		const onPrimary = jest.fn();
+		const onRepeat = jest.fn();
+		const screen = await render(
 			<LearningSessionCompletion
 				attemptCount={5}
 				correctCount={3}
 				durationMinutes={10}
 				isBusy={false}
 				isDiagnostic={false}
-				onRepeat={onPracticeRepeat}
-				onPrimary={onPracticePrimary}
+				onRepeat={onRepeat}
+				onPrimary={onPrimary}
 				phase="practice"
 			/>,
 		);
 
-		expect(
-			screen.getByRole("button", { name: "Analyse ansehen" }),
-		).toBeEnabled();
+		expect(screen.getByRole("button", { name: "Zum Lernplan" })).toBeEnabled();
 		expect(screen.getByRole("button", { name: "Nochmal üben" })).toBeEnabled();
 		expect(screen.queryByText("Auswertung bereit")).toBeNull();
 		expect(screen.queryByText("Deine Antworten sind ausgewertet.")).toBeNull();
 
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Analyse ansehen" }),
-		);
-		expect(onPracticePrimary).toHaveBeenCalledTimes(1);
-		expect(onPracticeRepeat).not.toHaveBeenCalled();
+		fireEvent.press(screen.getByRole("button", { name: "Zum Lernplan" }));
+		expect(onPrimary).toHaveBeenCalledTimes(1);
+		expect(onRepeat).not.toHaveBeenCalled();
 
-		await fireEvent.press(screen.getByRole("button", { name: "Nochmal üben" }));
-		expect(onPracticeRepeat).toHaveBeenCalledTimes(1);
+		fireEvent.press(screen.getByRole("button", { name: "Nochmal üben" }));
+		expect(onRepeat).toHaveBeenCalledTimes(1);
+	});
 
-		const onPraxisPrimary = jest.fn();
-		const onPraxisRepeat = jest.fn();
-		await screen.rerender(
+	test("offers a fresh test after rehearsal", async () => {
+		const onPrimary = jest.fn();
+		const onRepeat = jest.fn();
+		const screen = await render(
 			<LearningSessionCompletion
 				attemptCount={5}
 				correctCount={4}
 				durationMinutes={10}
 				isBusy={false}
 				isDiagnostic={false}
-				onRepeat={onPraxisRepeat}
-				onPrimary={onPraxisPrimary}
+				onRepeat={onRepeat}
+				onPrimary={onPrimary}
 				phase="rehearsal"
 			/>,
 		);
 
-		await fireEvent.press(
-			screen.getByRole("button", { name: "Nochmal testen" }),
-		);
-		expect(onPraxisRepeat).toHaveBeenCalledTimes(1);
-		expect(onPraxisPrimary).not.toHaveBeenCalled();
+		fireEvent.press(screen.getByRole("button", { name: "Nochmal testen" }));
+		expect(onRepeat).toHaveBeenCalledTimes(1);
+		expect(onPrimary).not.toHaveBeenCalled();
+	});
 
-		await screen.rerender(
+	test("keeps diagnostic sessions non-repeatable", async () => {
+		const screen = await render(
 			<LearningSessionCompletion
 				attemptCount={5}
 				correctCount={3}
@@ -164,6 +162,33 @@ describe("learning session completion", () => {
 		);
 
 		expect(screen.queryByText("Nochmal üben")).toBeNull();
-		await screen.unmount();
+	});
+});
+
+describe("completion without Analyse", () => {
+	test.each([
+		{ phase: "practice" as const, isDiagnostic: true },
+		{ phase: "rehearsal" as const, isDiagnostic: false },
+	])("returns to the plan after $phase (diagnostic: $isDiagnostic)", async ({
+		phase,
+		isDiagnostic,
+	}) => {
+		const onPrimary = jest.fn();
+		const screen = await render(
+			<LearningSessionCompletion
+				phase={phase}
+				isDiagnostic={isDiagnostic}
+				durationMinutes={15}
+				correctCount={3}
+				attemptCount={5}
+				onPrimary={onPrimary}
+				onRepeat={jest.fn()}
+				isBusy={false}
+			/>,
+		);
+		expect(screen.queryByText(/Analyse/)).toBeNull();
+		expect(screen.queryByText("Auswertung ansehen")).toBeNull();
+		fireEvent.press(screen.getByRole("button", { name: "Zum Lernplan" }));
+		expect(onPrimary).toHaveBeenCalledTimes(1);
 	});
 });
