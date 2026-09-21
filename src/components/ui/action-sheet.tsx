@@ -62,7 +62,7 @@ function ActionSheet<T extends string>({
 					disabled={option.disabled}
 					onPress={() => onSelect(option.value)}
 					className={cn(
-						"border border-border/45 bg-card shadow-black/5 shadow-sm",
+						"border border-border bg-card",
 						isTile
 							? "min-h-36 flex-1 items-center justify-center gap-5 rounded-card px-4 py-5"
 							: "min-h-20 w-full flex-row items-center gap-4 rounded-card px-4 py-3",
@@ -71,7 +71,7 @@ function ActionSheet<T extends string>({
 				>
 					<View
 						className={cn(
-							"items-center justify-center rounded-full bg-system-subtle shadow-black/10 shadow-sm",
+							"items-center justify-center rounded-full border border-border bg-system-subtle",
 							isTile ? "h-16 w-16" : "h-14 w-14",
 						)}
 					>
