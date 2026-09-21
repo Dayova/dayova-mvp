@@ -1,7 +1,8 @@
 import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
+import { AddIcon } from "~/components/ui/add-icon";
 import { Button } from "~/components/ui/button";
-import { GraduationCap, Plus } from "~/components/ui/icon";
+import { GraduationCap } from "~/components/ui/icon";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
@@ -141,7 +142,7 @@ export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
 					Themenblatt, Arbeitsblätter oder Mitschriften
 				</Text>
 			</View>
-			<Plus size={22} color={colors.primaryStrong} strokeWidth={2.2} />
+			<AddIcon />
 		</>
 	);
 	const className =

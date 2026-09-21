@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
+import { AddIcon } from "~/components/ui/add-icon";
 import { Button } from "~/components/ui/button";
-import { Plus } from "~/components/ui/icon";
 import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -19,14 +19,12 @@ import {
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { goBackToReturnOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
-import { useDayovaTheme } from "~/lib/theme";
 
 export default function LearningTimesOverviewScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ returnTo?: string }>();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuthSession();
-	const { colors } = useDayovaTheme();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const learningTimes = useQuery(
 		api.learningTimes.listMine,
@@ -70,12 +68,12 @@ export default function LearningTimesOverviewScreen() {
 					right={
 						<Button
 							accessibilityLabel="Lernzeit hinzufügen"
-							className="h-12 min-h-12 w-12 min-w-12 rounded-full bg-card px-0 shadow-black/10 shadow-sm active:bg-card/80"
+							className="h-12 min-h-12 w-12 min-w-12 rounded-full bg-transparent p-0 active:opacity-80"
 							onPress={() => openEditor({ dayOfWeek: firstMissingDay })}
 							size="icon"
 							variant="ghost"
 						>
-							<Plus size={22} color={colors.primary} strokeWidth={2.2} />
+							<AddIcon outlinedGradient />
 						</Button>
 					}
 				/>
