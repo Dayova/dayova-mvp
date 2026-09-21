@@ -173,8 +173,9 @@ describe("SettingsScreen", () => {
 		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
 			expect.stringContaining("mailto:kontakt@dayova.de?"),
 		);
-		await fireEvent.press(screen.getByRole("button", { name: "Stundenplan" }));
-		expect(mockPush).toHaveBeenCalledWith("/timetable");
+		expect(screen.queryByRole("button", { name: "Stundenplan" })).toBeNull();
+		await fireEvent.press(screen.getByRole("button", { name: "Lernzeiten" }));
+		expect(mockPush).toHaveBeenCalledWith("/learning-times");
 	});
 
 	test("opens and closes app information from the reorganized settings", async () => {
