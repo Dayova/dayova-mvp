@@ -29,6 +29,12 @@ match, otherwise creates a page containing `Student` (name, or `Dayova student`)
 once; later reconciliation preserves the CRM email. Phone, birth date, specific
 school identities, and learner content are not copied.
 
+New pages receive the `Tags` multi-select value `Added through Integration with App`.
+It records creation provenance, not onboarding completion. Existing matched pages
+are not retroactively tagged: a match does not prove the integration created them.
+PATCH requests never include `Tags`, preserving later manual additions/removals.
+Creation schema validation requires `Tags` to be a multi-select.
+
 ### Student profile projection
 
 The app profile in Convex owns `Student`, `First Name`, `Last Name`, `Grade`,
@@ -76,10 +82,61 @@ An active flag without `subscriptionVerifiedAt` is a conflict, never verified
 paid evidence. The integration reflects the last verified Convex snapshot; it
 does not repair upstream RevenueCat webhook delivery or promise real-time billing.
 
-Manually owned `Status`, `Payment Status`, `Subscription Plan`, email/phone, notes,
-research and relationship fields remain separate. `Entitlement State` is the
-authoritative projection for follow-up decisions. No tokens, receipts, payment
-IDs, management URLs or raw provider payloads are projected.
+### Payment status and subscription plan
+
+For matched app accounts, the integration owns `Payment Status` and `Subscription
+Plan` on creation and on every subsequent reconciliation. Manual values in these
+two columns, including `want to pay`, are replaced by verified app state. Keep
+sales intent in CRM-owned notes/tags instead. Unmatched contacts are untouched.
+
+| Evidence | Payment Status | Subscription Plan |
+| --- | --- | --- |
+| No activated access | None | None |
+| Active Dayova account trial | Trial | None |
+| Active verified store trial (`period_type=trial`) | Trial | Mapped plan |
+| Active verified normal/introductory paid period | Paid | Mapped plan |
+| Active verified subscription with a billing issue, with or without grace | Overdue | Mapped plan |
+| Expired or revoked access without a valid fallback trial | Expired | None |
+| Active subscription with missing/unsupported period metadata | Unknown | Mapped plan |
+
+Turning renewal off does not end the paid period; it remains `Paid` until access
+expires. `Cancelled` is not inferred from expiry (which can also mean an expired
+trial or revocation). `Overdue` means RevenueCat reports a billing issue, not a
+claim about an outstanding invoice. A valid Dayova trial can still be the
+effective access after a subscription is revoked; that projects `Trial / None`.
+
+`crmBilling.ts` maps exact store/product identifiers verified in the
+[Dayova RevenueCat catalog](https://app.revenuecat.com/projects/413fab77/product-catalog/products)
+on 2026-09-21:
+
+| Store | Product identifier | Plan |
+| --- | --- | --- |
+| app_store | com.dayova.abonnement.monthly | Monthly |
+| app_store | com.dayova.abonnemment.yearly | Annual |
+| play_store | dayova_monthly:monthly-autorenewing (or dedicated subscription ID dayova_monthly) | Monthly |
+| play_store | dayova_annual:annual-autorenewing (or dedicated subscription ID dayova_annual) | Annual |
+
+Unknown active products map to `Unknown`, never to an inferred cadence or `None`.
+Update the mapping when adding/changing store products or base-plan cadences.
+The existing native-store access policy is unchanged: web billing, promotional
+grants and RevenueCat Test Store purchases are not promoted into native paid
+access by this CRM extension. Quarterly and School License are not inferred.
+
+The server now retains RevenueCat's optional `period_type` in
+`subscriptionPeriodType`. Existing snapshots without it show `Unknown` payment
+status until the next verified subscriber refresh; CRM reconciliation does not
+fetch RevenueCat itself. Store trial access remains unchanged in the app.
+See [RevenueCat Customer Info model](https://www.revenuecat.com/docs/api-v1/customer-info-model).
+
+Trial activation and changed verified subscription snapshots schedule an immediate
+reconciliation in live mode. Identical subscription snapshots do not schedule
+extra work just because their verification timestamp changes. The hourly sweep
+repairs failed/busy runs and handles expiry without an incoming event.
+
+Manually owned `Status`, tags after creation, email/phone, notes, research and
+relationship fields remain separate. `Entitlement State` remains the effective
+app-access projection, distinct from payment-period evidence. No tokens, receipts,
+payment IDs, management URLs or raw provider payloads are projected.
 
 ## Runtime and limits
 
@@ -120,7 +177,10 @@ Technical owner: Jakob. CRM matching/review: Julius with Jakob.
 3. Add missing projection properties with the exact types in `CRM_PROPERTIES`.
    Identity Status options: unmatched, proposed, matched, conflict. Entitlement
    State: none, trial, paid, billing grace, expired. Sync Error options use the
-   categories in `crmContract.ts`. Dry-run only requires the existing Clerk ID
+   categories in `crmContract.ts`. Payment Status also needs `None` and `Expired`;
+   Subscription Plan needs `Unknown`; Tags needs `Added through Integration with App`.
+   Preserve all existing options when extending the schema.
+   Dry-run only requires the existing Clerk ID
    property, so it can precede the schema extension.
 4. Deploy and test in development. Run a dry run using the Convex dashboard, or:
 

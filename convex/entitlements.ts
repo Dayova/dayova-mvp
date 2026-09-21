@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import {
+	env,
 	internalMutation,
 	internalQuery,
 	mutation,
@@ -13,6 +14,12 @@ import { throwUserFacingError } from "./errors";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TRIAL_DURATION_MS = 14 * DAY_MS;
 const TRIAL_REMINDER_DELAY_MS = 12 * DAY_MS;
+
+async function scheduleCrmSync(ctx: MutationCtx) {
+	if (env.NOTION_CRM_MODE === "live") {
+		await ctx.scheduler.runAfter(0, internal.crmSync.reconcile, {});
+	}
+}
 
 const getPaidThrough = (entitlement: {
 	subscriptionExpiresAt?: number;
@@ -167,6 +174,7 @@ export const applyRevenueCatSnapshot = internalMutation({
 		expiresAt: v.optional(v.number()),
 		graceExpiresAt: v.optional(v.number()),
 		productId: v.optional(v.string()),
+		periodType: v.optional(v.string()),
 		store: v.optional(v.string()),
 		willRenew: v.optional(v.boolean()),
 		billingIssueDetectedAt: v.optional(v.number()),
@@ -209,6 +217,9 @@ export const applyRevenueCatSnapshot = internalMutation({
 				...(args.productId !== undefined
 					? { subscriptionProductId: args.productId }
 					: {}),
+				...(args.periodType !== undefined
+					? { subscriptionPeriodType: args.periodType }
+					: {}),
 				...(args.store !== undefined ? { subscriptionStore: args.store } : {}),
 				...(args.willRenew !== undefined
 					? { subscriptionWillRenew: args.willRenew }
@@ -225,22 +236,33 @@ export const applyRevenueCatSnapshot = internalMutation({
 				createdAt: args.verifiedAt,
 				updatedAt: args.verifiedAt,
 			});
+			await scheduleCrmSync(ctx);
 
 			return { success: true as const };
 		}
 
-		await ctx.db.patch("accessEntitlements", entitlement._id, {
+		const subscription = {
 			revenueCatEntitlementActive: args.active,
 			subscriptionExpiresAt: args.expiresAt,
 			subscriptionGraceExpiresAt: args.graceExpiresAt,
 			subscriptionProductId: args.productId,
+			subscriptionPeriodType: args.periodType,
 			subscriptionStore: args.store,
 			subscriptionWillRenew: args.willRenew,
 			subscriptionBillingIssueDetectedAt: args.billingIssueDetectedAt,
 			subscriptionManagementUrl: args.managementUrl,
+		};
+		const changed = Object.entries(subscription).some(
+			([key, value]) => entitlement[key as keyof typeof subscription] !== value,
+		);
+		await ctx.db.patch("accessEntitlements", entitlement._id, {
+			...subscription,
 			subscriptionVerifiedAt: args.verifiedAt,
 			updatedAt: args.verifiedAt,
 		});
+		if (changed || entitlement.subscriptionVerifiedAt === undefined) {
+			await scheduleCrmSync(ctx);
+		}
 
 		return { success: true as const };
 	},
@@ -365,6 +387,7 @@ export const activateMyTrial = mutation({
 			updatedAt: now,
 		};
 		await ctx.db.insert("accessEntitlements", entitlement);
+		await scheduleCrmSync(ctx);
 		await ctx.scheduler.runAt(
 			reminderAt,
 			internal.entitlements.deliverTrialReminder,

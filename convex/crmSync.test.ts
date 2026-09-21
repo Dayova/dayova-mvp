@@ -171,7 +171,8 @@ async function seed(
 			revenueCatEntitlementActive: true,
 			subscriptionVerifiedAt: Date.now(),
 			subscriptionExpiresAt: Date.now() + 86400_000,
-			subscriptionProductId: "dayova_monthly",
+			subscriptionProductId: "com.dayova.abonnement.monthly",
+			subscriptionPeriodType: "normal",
 			subscriptionStore: "app_store",
 			subscriptionWillRenew: true,
 			createdAt: Date.now(),
@@ -334,14 +335,13 @@ test("live projection retries the same payload, preserves CRM-owned fields and r
 	expect(payload.properties["Entitlement State"]).toEqual({
 		select: { name: "paid" },
 	});
-	for (const key of [
-		"Clerk User ID",
-		"Email",
-		"Payment Status",
-		"Status",
-		"Notes",
-		"Subscription Plan",
-	])
+	expect(payload.properties["Payment Status"]).toEqual({
+		select: { name: "Paid" },
+	});
+	expect(payload.properties["Subscription Plan"]).toEqual({
+		select: { name: "Monthly" },
+	});
+	for (const key of ["Clerk User ID", "Email", "Tags", "Status", "Notes"])
 		expect(payload.properties).not.toHaveProperty(key);
 	expect(JSON.stringify(payload)).not.toContain(tokenIdentifier);
 	expect(await t.action(internal.crmSync.reconcile, {})).toMatchObject({

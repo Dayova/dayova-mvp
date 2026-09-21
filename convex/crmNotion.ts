@@ -2,6 +2,7 @@ import type { CrmError, CrmProjection } from "./crmContract";
 import { CRM_PROFILE_PROPERTIES, profileProperties } from "./crmProfile";
 
 export const CRM_MAX_STUDENTS = 200;
+export const CRM_APP_ORIGIN_TAG = "Added through Integration with App";
 export const CRM_PROPERTIES = {
 	...CRM_PROFILE_PROPERTIES,
 	"Clerk User ID": "rich_text",
@@ -9,6 +10,8 @@ export const CRM_PROPERTIES = {
 	"Identity Status": "select",
 	"Entitlement State": "select",
 	"Subscription Product": "rich_text",
+	"Payment Status": "select",
+	"Subscription Plan": "select",
 	"Subscription Store": "rich_text",
 	"Subscription Expires At": "date",
 	"Billing Grace Expires At": "date",
@@ -95,6 +98,8 @@ export function projectionProperties(projection: CrmProjection, now: number) {
 		"Identity Status": { select: { name: "matched" } },
 		"Entitlement State": { select: { name: projection.state } },
 		"Subscription Product": richText(projection.product),
+		"Payment Status": { select: { name: projection.paymentStatus } },
+		"Subscription Plan": { select: { name: projection.subscriptionPlan } },
 		"Subscription Store": richText(projection.store),
 		"Subscription Expires At": date(projection.expiresAt),
 		"Billing Grace Expires At": date(projection.graceExpiresAt),
@@ -181,6 +186,7 @@ export function createNotionClient(token: string, dataSourceId: string) {
 			for (const [name, type] of Object.entries({
 				Student: "title",
 				Email: "email",
+				Tags: "multi_select",
 			})) {
 				if (!properties[name] || object(properties[name]).type !== type)
 					throw new CrmFailure("schema");
@@ -212,6 +218,7 @@ export function createNotionClient(token: string, dataSourceId: string) {
 								],
 							},
 							Email: { email },
+							Tags: { multi_select: [{ name: CRM_APP_ORIGIN_TAG }] },
 							"Clerk User ID": richText(clerkId),
 							...projectionProperties(projection, now),
 						},

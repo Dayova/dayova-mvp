@@ -9,6 +9,7 @@ import {
 	internalQuery,
 	type QueryCtx,
 } from "./_generated/server";
+import { crmBilling } from "./crmBilling";
 import {
 	type CrmMatch,
 	type CrmProjection,
@@ -40,6 +41,10 @@ async function project(
 	)
 		return null;
 	const access = entitlement ? getCurrentAccess(entitlement, now) : null;
+	const state =
+		access?.state === "billingGrace"
+			? "billing grace"
+			: (access?.state ?? "none");
 	return {
 		userId: user._id,
 		profile: {
@@ -48,10 +53,8 @@ async function project(
 			state: user.state,
 			schoolType: user.schoolType,
 		},
-		state:
-			access?.state === "billingGrace"
-				? "billing grace"
-				: (access?.state ?? "none"),
+		state,
+		...crmBilling(entitlement, state),
 		product: entitlement?.subscriptionProductId ?? null,
 		store: entitlement?.subscriptionStore ?? null,
 		expiresAt: entitlement?.subscriptionExpiresAt ?? null,

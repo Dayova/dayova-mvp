@@ -201,6 +201,7 @@ export default defineSchema({
 		subscriptionExpiresAt: v.optional(v.number()),
 		subscriptionGraceExpiresAt: v.optional(v.number()),
 		subscriptionProductId: v.optional(v.string()),
+		subscriptionPeriodType: v.optional(v.string()),
 		subscriptionStore: v.optional(v.string()),
 		subscriptionWillRenew: v.optional(v.boolean()),
 		subscriptionBillingIssueDetectedAt: v.optional(v.number()),

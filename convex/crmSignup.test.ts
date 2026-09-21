@@ -86,6 +86,7 @@ function mockNotion(
 					...CRM_PROPERTIES,
 					Student: "title",
 					Email: "email",
+					Tags: "multi_select",
 				}).map(([name, type]) => [name, { type }]),
 			),
 		});
@@ -224,13 +225,15 @@ test("off and dry-run never create, live creates minimal CRM record once and sub
 		"Clerk User ID": { rich_text: [{ text: { content: identity.subject } }] },
 		"Convex User ID": { rich_text: [{ text: { content: userId } }] },
 		"Entitlement State": { select: { name: "none" } },
+		"Payment Status": { select: { name: "None" } },
+		"Subscription Plan": { select: { name: "None" } },
+		Tags: { multi_select: [{ name: "Added through Integration with App" }] },
 	});
 	for (const field of [
 		"Phone Number",
 		"Date of Birth",
 		"Notes",
 		"Status",
-		"Payment Status",
 		"School",
 		"Learning Challenges",
 	])

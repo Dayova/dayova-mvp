@@ -13,6 +13,7 @@ import type * as adaptiveLearningPlan from "../adaptiveLearningPlan.js";
 import type * as adaptiveLearningPlanPolicy from "../adaptiveLearningPlanPolicy.js";
 import type * as aiConsent from "../aiConsent.js";
 import type * as answerEvaluation from "../answerEvaluation.js";
+import type * as crmBilling from "../crmBilling.js";
 import type * as crmContract from "../crmContract.js";
 import type * as crmNotion from "../crmNotion.js";
 import type * as crmProfile from "../crmProfile.js";
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   adaptiveLearningPlanPolicy: typeof adaptiveLearningPlanPolicy;
   aiConsent: typeof aiConsent;
   answerEvaluation: typeof answerEvaluation;
+  crmBilling: typeof crmBilling;
   crmContract: typeof crmContract;
   crmNotion: typeof crmNotion;
   crmProfile: typeof crmProfile;
