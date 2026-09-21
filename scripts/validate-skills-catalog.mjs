@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,17 +15,17 @@ import {
 	sourceGovernance,
 } from "./agent-system-governance.mjs";
 import {
+	validateMattLockEntry,
+	validateOpenAiMetadataForSkill,
+	validateSkill,
+} from "./skill-metadata.mjs";
+import {
 	duplicateExpoPluginSkills,
 	expectedMattSkills,
 	MATT_SOURCE,
 	removedOrRenamedMattSkills,
 	userInvokedMattSkills,
 } from "./skills-policy.mjs";
-import {
-	validateMattLockEntry,
-	validateOpenAiMetadataForSkill,
-	validateSkill,
-} from "./skill-metadata.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const args = new Set(process.argv.slice(2));
