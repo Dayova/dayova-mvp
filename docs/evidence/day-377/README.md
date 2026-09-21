@@ -66,7 +66,7 @@ uses RN 0.86.0, Expo 57.0.8, Reanimated 4.5.0 and Worklets 0.10.0; the PR lockfi
 has RN 0.86.3, Expo 57.0.20, Reanimated 4.5.1 and Worklets 0.10.1. This is a
 native integration pass, not an exact-release-build or full authenticated E2E
 pass. Android verification and final lockfile-matched build verification remain
-pending; the PR stays draft.
+pending. Review readiness is managed separately from these verification results.
 
 ### Recording inspection
 
