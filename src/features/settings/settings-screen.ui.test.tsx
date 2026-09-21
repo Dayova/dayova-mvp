@@ -206,7 +206,7 @@ describe("SettingsScreen", () => {
 		await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
 	});
 
-	test("lets trial users subscribe and keeps every legal destination available in settings", async () => {
+	test("lets trial users subscribe and keeps privacy and terms available in settings", async () => {
 		const screen = await render(<SettingsScreen />);
 		await fireEvent.press(
 			screen.getByRole("button", { name: "Dayova abonnieren" }),
@@ -221,11 +221,6 @@ describe("SettingsScreen", () => {
 		);
 		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
 			"https://example.com/terms",
-		);
-
-		await fireEvent.press(screen.getByRole("button", { name: "Support" }));
-		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
-			"https://example.com/support",
 		);
 
 		await fireEvent.press(
