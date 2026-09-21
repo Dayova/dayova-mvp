@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { crmCounts, crmError } from "./crmContract";
 import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
@@ -130,6 +131,28 @@ const sessionContentChoiceValidator = v.object({
 });
 
 export default defineSchema({
+	crmStudentLinks: defineTable({
+		pageId: v.string(),
+		userId: v.id("users"),
+		lastAttemptAt: v.number(),
+		lastSyncedAt: v.optional(v.number()),
+		error: v.optional(crmError),
+	})
+		.index("by_pageId", ["pageId"])
+		.index("by_userId", ["userId"]),
+	crmSyncState: defineTable({
+		key: v.string(),
+		runId: v.string(),
+		dataSourceId: v.string(),
+		mode: v.union(v.literal("dry-run"), v.literal("live")),
+		running: v.boolean(),
+		startedAt: v.number(),
+		finishedAt: v.optional(v.number()),
+		dryRunAt: v.optional(v.number()),
+		lastSuccessAt: v.optional(v.number()),
+		counts: crmCounts,
+		error: v.optional(crmError),
+	}).index("by_key", ["key"]),
 	users: defineTable({
 		tokenIdentifier: v.string(),
 		clerkId: v.string(),

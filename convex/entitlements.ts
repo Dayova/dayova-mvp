@@ -64,7 +64,7 @@ const toPaidAccess = (entitlement: {
 	willRenew: entitlement.subscriptionWillRenew ?? false,
 });
 
-const getCurrentAccess = (
+export const getCurrentAccess = (
 	entitlement: Doc<"accessEntitlements">,
 	now: number,
 ) => {
