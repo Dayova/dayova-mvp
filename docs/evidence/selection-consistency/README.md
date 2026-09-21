@@ -38,6 +38,7 @@ This is native component verification, not a rebuilt release or store E2E test.
 - `ios-before.png`: original footer; Support is visibly below the neighboring text.
 - `ios-after.png`, `android-after.png`: common 48dp minimum target and centered text.
 - `ios-choices-light.png`, `android-choices-light.png`: native shared cards/pills.
+- `ios-choices-dark.png`, `ios-choices-large.png`, `android-choices-large-dark.png`: dark appearance and enlarged text (iOS accessibility-medium, Android font scale 2). Long answer text wraps inside its card; indicators keep their slots.
 - `ios-payment.mp4`, `android-payment.mp4`: repeated native plan changes.
 
 Run `swift assert-footer.swift <screenshot>` on macOS. Vision checks actual rendered
