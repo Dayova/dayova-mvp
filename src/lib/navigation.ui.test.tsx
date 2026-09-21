@@ -12,16 +12,23 @@ type BeforeRemoveEvent = {
 type BeforeRemoveListener = (event: BeforeRemoveEvent) => void;
 
 let mockBeforeRemoveListener: BeforeRemoveListener | undefined;
-const mockAddListener = jest.fn(
-	(_eventName: string, listener: BeforeRemoveListener) => {
-		mockBeforeRemoveListener = listener;
-		return jest.fn();
-	},
-);
+const mockDispatch = jest.fn();
+let mockIsFocused = true;
 
 jest.mock("expo-router/react-navigation", () => ({
 	useFocusEffect: (effect: () => undefined | (() => void)) => effect(),
-	useNavigation: () => ({ addListener: mockAddListener }),
+	useIsFocused: () => mockIsFocused,
+	useNavigation: () => ({ dispatch: mockDispatch }),
+	usePreventRemove: (
+		prevent: boolean,
+		callback: (event: Pick<BeforeRemoveEvent, "data">) => void,
+	) => {
+		mockBeforeRemoveListener = (event) => {
+			if (!prevent) return;
+			event.preventDefault();
+			callback({ data: event.data });
+		};
+	},
 }));
 
 const createBeforeRemoveEvent = (): BeforeRemoveEvent => ({
@@ -32,7 +39,8 @@ const createBeforeRemoveEvent = (): BeforeRemoveEvent => ({
 describe("useBackIntent", () => {
 	beforeEach(() => {
 		mockBeforeRemoveListener = undefined;
-		mockAddListener.mockClear();
+		mockDispatch.mockClear();
+		mockIsFocused = true;
 		global.requestAnimationFrame = jest.fn(() => 1);
 	});
 
@@ -91,6 +99,35 @@ describe("useBackIntent", () => {
 		});
 		expect(onBack).toHaveBeenCalledTimes(1);
 		expect(second.preventDefault).toHaveBeenCalledTimes(1);
+	});
+
+	test("resumes the original action when the back intent is unhandled", async () => {
+		const onBack = jest.fn(() => false);
+		await renderHook(() => useBackIntent(true, onBack));
+		const event = createBeforeRemoveEvent();
+		await act(async () => mockBeforeRemoveListener?.(event));
+		expect(onBack).toHaveBeenCalledTimes(1);
+		expect(mockDispatch).toHaveBeenCalledWith(event.data.action);
+	});
+
+	test("allows replacements without invoking the back intent", async () => {
+		const onBack = jest.fn(() => true);
+		await renderHook(() => useBackIntent(true, onBack));
+		const event = createBeforeRemoveEvent();
+		event.data.action.type = "REPLACE";
+		await act(async () => mockBeforeRemoveListener?.(event));
+		expect(onBack).not.toHaveBeenCalled();
+		expect(mockDispatch).toHaveBeenCalledWith(event.data.action);
+	});
+
+	test("does not intercept removal while the screen is unfocused", async () => {
+		mockIsFocused = false;
+		const onBack = jest.fn(() => true);
+		await renderHook(() => useBackIntent(true, onBack));
+		const event = createBeforeRemoveEvent();
+		await act(async () => mockBeforeRemoveListener?.(event));
+		expect(event.preventDefault).not.toHaveBeenCalled();
+		expect(onBack).not.toHaveBeenCalled();
 	});
 
 	test("uses Home once for repeated header Back when there is no history", async () => {

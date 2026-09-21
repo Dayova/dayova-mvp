@@ -1,4 +1,9 @@
-import { useFocusEffect, useNavigation } from "expo-router/react-navigation";
+import {
+	useFocusEffect,
+	useIsFocused,
+	useNavigation,
+	usePreventRemove,
+} from "expo-router/react-navigation";
 import { useCallback, useRef } from "react";
 import { BackHandler, Platform } from "react-native";
 
@@ -37,6 +42,7 @@ export const useBackIntent = (
 	{ allowRouteRemoval = false }: { allowRouteRemoval?: boolean } = {},
 ) => {
 	const navigation = useNavigation();
+	const isFocused = useIsFocused();
 	const isHandlingNativeBackRef = useRef(false);
 
 	const runBackIntent = useCallback(() => {
@@ -63,30 +69,15 @@ export const useBackIntent = (
 
 	useAndroidBackHandler(enabled, runBackIntent);
 
-	useFocusEffect(
-		useCallback(() => {
-			if (!enabled) return undefined;
-
-			const unsubscribe = navigation.addListener("beforeRemove", (event) => {
-				if (!isBackRemovalAction(event)) return;
-
-				// Expo Router dispatches queued actions after the callback returns.
-				// Exit boundaries must allow removal independently of callback timing.
-				if (allowRouteRemoval) return;
-				if (isHandlingNativeBackRef.current) {
-					event.preventDefault();
-					return;
-				}
-
-				const handled = runBackIntent();
-				if (!handled) return;
-
-				event.preventDefault();
-			});
-
-			return unsubscribe;
-		}, [allowRouteRemoval, enabled, navigation, runBackIntent]),
-	);
+	// Register prevention with the native stack as well as JS. A raw
+	// beforeRemove listener runs too late to undo an iOS swipe dismissal.
+	usePreventRemove(enabled && isFocused && !allowRouteRemoval, ({ data }) => {
+		if (!isBackRemovalAction({ data }) || !runBackIntent()) {
+			// Reuse the original action so React Navigation can skip this guard
+			// when resuming a replacement or an unhandled removal.
+			navigation.dispatch(data.action);
+		}
+	});
 
 	return runBackIntent;
 };
