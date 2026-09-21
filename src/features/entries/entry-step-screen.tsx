@@ -1,5 +1,6 @@
 import { useConvex, useConvexAuth, useMutation, useQuery } from "convex/react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, Stack, useRouter } from "expo-router";
+import { useIsFocused } from "expo-router/react-navigation";
 import {
 	type ReactNode,
 	useCallback,
@@ -18,7 +19,6 @@ import {
 	type KeyboardAwareScrollViewRef,
 	KeyboardStickyView,
 } from "react-native-keyboard-controller";
-import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -64,11 +64,9 @@ import { Textarea } from "~/components/ui/textarea";
 import { useAuthSession } from "~/context/AuthContext";
 import { getExamEntryCreationProgress } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { examEntryResumePath } from "~/features/learning-plans/creation-routes";
 import { LearningAvailabilityStep } from "~/features/learning-plans/learning-availability-step";
 import { getErrorMessage } from "~/features/learning-plans/utils";
-import { createAsyncActionGate } from "~/lib/async-action-gate";
-import { getDayKey, parseDayKey, startOfLocalDay } from "~/lib/day-key";
+import { getDayKey, startOfLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { EXAM_TYPE_OPTIONS } from "~/lib/entry-options";
 import {
@@ -85,13 +83,13 @@ import { useDayovaTheme } from "~/lib/theme";
 import { useValidationAnalytics } from "~/lib/use-validation-analytics";
 import { cn } from "~/lib/utils";
 
-type EntryType = "homework" | "exam";
-type EntryStep =
-	| "basics"
-	| "planning"
-	| "learningAvailability"
-	| "examType"
-	| "examDetails";
+import { useEntryDraft } from "./entry-draft";
+import {
+	ENTRY_AVAILABILITY_PATH,
+	type EntryStep,
+	entryStepPath,
+} from "./entry-routes";
+
 type PickerTarget =
 	| "dueDate"
 	| "plannedDate"
@@ -137,10 +135,6 @@ const subjectIconByOption = {
 	Musik: MusicNote,
 	Sport: Football,
 } satisfies Record<(typeof SUBJECT_OPTIONS)[number], typeof BookOpen>;
-
-const parseDateKey = (value?: string) => {
-	return parseDayKey(value) ?? startOfLocalDay(new Date());
-};
 
 const formatDate = (date: Date) =>
 	new Intl.DateTimeFormat("de-DE", {
@@ -276,7 +270,19 @@ function StickyActionFooter({
 	);
 }
 
-export default function NewEntryScreen() {
+export function EntryStepScreen({ step }: { step: EntryStep }) {
+	const { initialized, draft } = useEntryDraft();
+	if (
+		!initialized ||
+		(draft.type === "homework"
+			? !["basics", "planning"].includes(step)
+			: step === "planning")
+	)
+		return <Redirect href="/home" />;
+	return <EntryStepContent step={step} />;
+}
+
+function EntryStepContent({ step }: { step: EntryStep }) {
 	const router = useRouter();
 	const convex = useConvex();
 	const insets = useSafeAreaInsets();
@@ -288,56 +294,33 @@ export default function NewEntryScreen() {
 	const createDayEntry = useMutation(api.dayEntries.create);
 	const updatePendingExam = useMutation(api.dayEntries.updatePendingExam);
 	const { capture } = useValidationAnalytics();
-	const params = useLocalSearchParams<{
-		type?: string;
-		dayKey?: string;
-		dayLabel?: string;
-		step?: string;
-		subject?: string;
-		examTypeLabel?: string;
-		examDayEntryId?: string;
-		durationMinutes?: string;
-		topicDescription?: string;
-	}>();
-	const entryType: EntryType = params.type === "exam" ? "exam" : "homework";
-	const isHomework = entryType === "homework";
-	const savedExamIdRef = useRef(
-		!isHomework
-			? (params.examDayEntryId as Id<"dayEntries"> | undefined)
-			: undefined,
-	);
-	const [initialDate] = useState(() => parseDateKey(params.dayKey));
-
-	const [step, setStep] = useState<EntryStep>(() => {
-		if (isHomework) return "basics";
-		return params.step === "learningAvailability"
-			? "learningAvailability"
-			: "examType";
-	});
-	const [subject, setSubject] = useState(params.subject ?? "");
-	const [examTypeLabel, setExamTypeLabel] = useState(
-		params.examTypeLabel ?? "",
-	);
-	const [note, setNote] = useState("");
-	const [dueDate, setDueDate] = useState(initialDate);
-	const [plannedDate, setPlannedDate] = useState(initialDate);
-	const [plannedTime, setPlannedTime] = useState(() => {
-		const next = new Date();
-		next.setHours(16, 0, 0, 0);
-		return next;
-	});
-	const [plannedEndTime, setPlannedEndTime] = useState(() => {
-		const next = new Date();
-		const duration =
-			!isHomework && Number.isFinite(Number(params.durationMinutes))
-				? Math.min(
-						MAX_EXAM_DURATION_MINUTES,
-						Math.max(MIN_EXAM_DURATION_MINUTES, Number(params.durationMinutes)),
-					)
-				: 30;
-		next.setHours(16, duration, 0, 0);
-		return next;
-	});
+	const {
+		draft,
+		updateDraft,
+		initialParams: params,
+		savedExamIdRef,
+		entryCreationGateRef,
+	} = useEntryDraft();
+	const isHomework = draft.type === "homework";
+	const {
+		subject,
+		examTypeLabel,
+		note,
+		dueDate,
+		plannedDate,
+		plannedTime,
+		plannedEndTime,
+	} = draft;
+	const setSubject = (subject: string) => updateDraft({ subject });
+	const setExamTypeLabel = (examTypeLabel: string) =>
+		updateDraft({ examTypeLabel });
+	const setNote = (note: string) => updateDraft({ note });
+	const setDueDate = (dueDate: Date) => updateDraft({ dueDate });
+	const setPlannedDate = (plannedDate: Date) => updateDraft({ plannedDate });
+	const setPlannedTime = (plannedTime: Date) => updateDraft({ plannedTime });
+	const setPlannedEndTime = (plannedEndTime: Date) =>
+		updateDraft({ plannedEndTime });
+	const isFocused = useIsFocused();
 	const [isCreating, setIsCreating] = useState(false);
 	const [
 		isCheckingLearningPlanAvailability,
@@ -360,7 +343,6 @@ export default function NewEntryScreen() {
 	const keyboardDismissFrameRef = useRef<ReturnType<
 		typeof requestAnimationFrame
 	> | null>(null);
-	const entryCreationGateRef = useRef(createAsyncActionGate());
 
 	const trimmedSubject = subject.trim();
 	const trimmedExamType = examTypeLabel.trim();
@@ -380,7 +362,7 @@ export default function NewEntryScreen() {
 	const examDayKey = getDayKey(plannedDate);
 	const schedulingAvailability = useQuery(
 		api.learningPlans.getSchedulingAvailability,
-		user && isConvexAuthenticated && !isHomework
+		user && isConvexAuthenticated && !isHomework && isFocused
 			? {
 					fromDateKey: todayDayKey,
 					fromTimeMinutes: availabilityCheckTime.timeMinutes,
@@ -416,7 +398,7 @@ export default function NewEntryScreen() {
 	useEffect(() => clearPendingModalOpen, [clearPendingModalOpen]);
 
 	useEffect(() => {
-		if (isHomework) return;
+		if (isHomework || !isFocused) return;
 
 		let refreshInterval: ReturnType<typeof setInterval> | null = null;
 		const refresh = () => {
@@ -440,7 +422,7 @@ export default function NewEntryScreen() {
 			clearTimeout(refreshTimeout);
 			if (refreshInterval) clearInterval(refreshInterval);
 		};
-	}, [isHomework]);
+	}, [isHomework, isFocused]);
 
 	const openAfterKeyboardDismiss = useCallback(
 		(open: () => void) => {
@@ -710,10 +692,14 @@ export default function NewEntryScreen() {
 		router.replace(`/entry/${createdExam.createdEntryId}`);
 	};
 
-	const goToStep = useCallback((nextStep: EntryStep) => {
-		scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-		setStep(nextStep);
-	}, []);
+	const goToStep = useCallback(
+		(nextStep: EntryStep) => {
+			if (nextStep === step) return;
+			Keyboard.dismiss();
+			router.navigate(entryStepPath(nextStep, isHomework));
+		},
+		[isHomework, router, step],
+	);
 
 	const continueFromExamDate = () => {
 		if (schedulingAvailability === undefined) return;
@@ -721,33 +707,7 @@ export default function NewEntryScreen() {
 	};
 
 	const openLearningTimes = () => {
-		if (savedExamIdRef.current) {
-			router.push(
-				withReturnTo(
-					ROUTES.learningTimes,
-					examEntryResumePath({
-						examDayEntryId: savedExamIdRef.current,
-						subject: trimmedSubject,
-						examTypeLabel: trimmedExamType,
-						examDateKey: examDayKey,
-						durationMinutes: scheduledDurationMinutes,
-						topicDescription: params.topicDescription ?? "",
-					}),
-				),
-			);
-			return;
-		}
-		const query = [
-			["type", "exam"],
-			["dayKey", examDayKey],
-			["step", "learningAvailability"],
-			["subject", trimmedSubject],
-			["examTypeLabel", trimmedExamType],
-		]
-			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-			.join("&");
-		const returnTo = `/entry/new?${query}`;
-		router.push(withReturnTo(ROUTES.learningTimes, returnTo));
+		router.push(withReturnTo(ROUTES.learningTimes, ENTRY_AVAILABILITY_PATH));
 	};
 
 	const handleBack = useCallback(() => {
@@ -761,45 +721,35 @@ export default function NewEntryScreen() {
 			return true;
 		}
 
-		if (step === "planning") {
-			goToStep("basics");
+		if (
+			isCreating ||
+			isCheckingLearningPlanAvailability ||
+			entryCreationGateRef.current.isRunning
+		)
 			return true;
-		}
-
-		if (step === "learningAvailability") {
-			goToStep("basics");
-			return true;
-		}
-
-		if (step === "basics" && !isHomework) {
-			goToStep("examDetails");
-			return true;
-		}
-
-		if (step === "examDetails") {
-			goToStep("examType");
-			return true;
-		}
-
-		if (step === "examType") {
-			goBackOrReplace(router, "/home");
-			return true;
-		}
-
+		Keyboard.dismiss();
 		goBackOrReplace(router, "/home");
 		return true;
-	}, [goToStep, isHomework, pickerTarget, router, selectTarget, step]);
+	}, [
+		entryCreationGateRef,
+		isCreating,
+		isCheckingLearningPlanAvailability,
+		pickerTarget,
+		router,
+		selectTarget,
+	]);
 
+	// Ordinary steps belong to the native stack. Overlays and pending writes consume Back.
 	const runBackIntent = useBackIntent(
-		Boolean(selectTarget || pickerTarget || !isHomework || step !== "basics"),
+		Boolean(
+			selectTarget ||
+				pickerTarget ||
+				isCreating ||
+				isCheckingLearningPlanAvailability,
+		),
 		handleBack,
-		{
-			allowRouteRemoval:
-				!selectTarget &&
-				!pickerTarget &&
-				(step === "examType" || (isHomework && step === "basics")),
-		},
 	);
+
 	useLearningPlanCreationProgress({
 		active: !isHomework,
 		currentStep: getExamEntryCreationProgress(step),
@@ -888,7 +838,11 @@ export default function NewEntryScreen() {
 
 	return (
 		<View className="flex-1 bg-background">
-			<Stack.Screen options={{ gestureEnabled: true }} />
+			<Stack.Screen
+				options={{
+					gestureEnabled: !isCreating && !isCheckingLearningPlanAvailability,
+				}}
+			/>
 			{!isHomework ? (
 				<View className="px-8 pb-8">
 					<Text className="font-poppins font-semibold text-heading-2 text-text">
@@ -1032,7 +986,7 @@ export default function NewEntryScreen() {
 				) : (
 					// biome-ignore lint/complexity/noUselessFragments: Keeps the exam flow grouped as the sibling branch of the homework flow.
 					<>
-						<Animated.View key={step} entering={FadeIn.duration(220)}>
+						<View>
 							{step === "basics" ? (
 								<ExamDateSelector
 									selectedDate={plannedDate}
@@ -1068,7 +1022,7 @@ export default function NewEntryScreen() {
 									})}
 								</View>
 							)}
-						</Animated.View>
+						</View>
 					</>
 				)}
 			</KeyboardSafeScrollView>
@@ -1115,6 +1069,12 @@ export default function NewEntryScreen() {
 						) : null}
 						<View className="gap-3">
 							<Button
+								accessibilityLabel={
+									hasUsableLearningTime ? "Weiter" : "Lernzeit eintragen"
+								}
+								accessibilityState={{
+									busy: isCreating || isCheckingLearningPlanAvailability,
+								}}
 								className="w-full"
 								disabled={
 									schedulingAvailability === undefined ||

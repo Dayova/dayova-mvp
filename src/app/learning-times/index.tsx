@@ -11,13 +11,14 @@ import { Screen } from "~/components/ui/screen";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
+import { ENTRY_AVAILABILITY_PATH } from "~/features/entries/entry-routes";
 import { LEARNING_DAYS } from "~/features/learning-times/learning-time-days";
 import {
 	type WeeklyLearningTime,
 	WeeklyLearningTimes,
 } from "~/features/learning-times/weekly-learning-times";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import { goBackToReturnOrReplace } from "~/lib/navigation";
+import { dismissToOrReplace, goBackToReturnOrReplace } from "~/lib/navigation";
 import { getSafeReturnTo, ROUTES, withReturnTo } from "~/lib/routes";
 import { useDayovaTheme } from "~/lib/theme";
 
@@ -40,6 +41,10 @@ export default function LearningTimesOverviewScreen() {
 	const returnTo = getSafeReturnTo(params.returnTo);
 
 	const goBack = () => {
+		if (returnTo === ENTRY_AVAILABILITY_PATH) {
+			dismissToOrReplace(router, returnTo);
+			return;
+		}
 		goBackToReturnOrReplace(router, ROUTES.settings, returnTo);
 	};
 
