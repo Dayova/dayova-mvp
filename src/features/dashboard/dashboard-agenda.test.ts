@@ -10,6 +10,7 @@ import {
 	getDashboardWeekDayKeys,
 	getDashboardWeekProgress,
 	getNextLearningStepAccessibilityLabel,
+	getVisibleDashboardEntries,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
@@ -306,5 +307,21 @@ describe("dashboard agenda", () => {
 				currentMinutes: 12 * 60,
 			})?.entry.id,
 		).toBe("earlier");
+	});
+});
+
+describe("focused learning agenda", () => {
+	it("hides imported lessons while preserving homework, exams and learning sessions", () => {
+		const lesson = entry({ source: "timetable", title: "Mathe" });
+		const homework = entry({
+			title: "Hausaufgaben zur Unterrichtsstunde",
+			kind: "homework",
+		});
+		const exam = entry({ title: "Mathe", examTypeLabel: "Klausur" });
+		const learning = entry({ title: "Mathe üben", kind: "practice" });
+		expect(
+			getVisibleDashboardEntries([lesson, homework, exam, learning]),
+		).toEqual([homework, exam, learning]);
+		expect(getVisibleDashboardEntries([lesson])).toEqual([]);
 	});
 });
