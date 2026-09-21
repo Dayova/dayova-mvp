@@ -87,13 +87,15 @@ describe("learning session completion", () => {
 			),
 		).toBeTruthy();
 
-		fireEvent.press(
+		await fireEvent.press(
 			screen.getByRole("button", { name: "Theorie abschließen" }),
 		);
 		expect(onPrimary).toHaveBeenCalledTimes(1);
 		expect(onRepeat).not.toHaveBeenCalled();
 
-		fireEvent.press(screen.getByRole("button", { name: "Nochmal lernen" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Nochmal lernen" }),
+		);
 		expect(onRepeat).toHaveBeenCalledTimes(1);
 	});
 
@@ -118,11 +120,11 @@ describe("learning session completion", () => {
 		expect(screen.queryByText("Auswertung bereit")).toBeNull();
 		expect(screen.queryByText("Deine Antworten sind ausgewertet.")).toBeNull();
 
-		fireEvent.press(screen.getByRole("button", { name: "Zum Lernplan" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Zum Lernplan" }));
 		expect(onPrimary).toHaveBeenCalledTimes(1);
 		expect(onRepeat).not.toHaveBeenCalled();
 
-		fireEvent.press(screen.getByRole("button", { name: "Nochmal üben" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Nochmal üben" }));
 		expect(onRepeat).toHaveBeenCalledTimes(1);
 	});
 
@@ -142,7 +144,9 @@ describe("learning session completion", () => {
 			/>,
 		);
 
-		fireEvent.press(screen.getByRole("button", { name: "Nochmal testen" }));
+		await fireEvent.press(
+			screen.getByRole("button", { name: "Nochmal testen" }),
+		);
 		expect(onRepeat).toHaveBeenCalledTimes(1);
 		expect(onPrimary).not.toHaveBeenCalled();
 	});
@@ -188,7 +192,7 @@ describe("completion without Analyse", () => {
 		);
 		expect(screen.queryByText(/Analyse/)).toBeNull();
 		expect(screen.queryByText("Auswertung ansehen")).toBeNull();
-		fireEvent.press(screen.getByRole("button", { name: "Zum Lernplan" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Zum Lernplan" }));
 		expect(onPrimary).toHaveBeenCalledTimes(1);
 	});
 });
