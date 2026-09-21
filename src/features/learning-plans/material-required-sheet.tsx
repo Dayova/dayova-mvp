@@ -23,11 +23,11 @@ export function MaterialRequiredSheet({
 	const formattedSubject = subject ? formatGermanUiText(subject) : null;
 	const requiredTopics = getRequiredTopics(topicDescription);
 	const subjectInstruction = formattedSubject
-		? `Lade mindestens eine Schulunterlage für ${formattedSubject} hoch.`
-		: "Lade mindestens eine Schulunterlage hoch.";
+		? `Lade mindestens eine Schulunterlage für ${formattedSubject} hoch, damit Dayova den Lernplan auf deinem Unterricht aufbauen kann.`
+		: "Lade mindestens eine Schulunterlage hoch, damit Dayova den Lernplan auf deinem Unterricht aufbauen kann.";
 	const topicInstruction =
 		requiredTopics.length > 0
-			? `\n\nDafür brauchst du Material:\n${requiredTopics
+			? `\n\nDeine Unterlage sollte zu diesen Prüfungsthemen passen:\n${requiredTopics
 					.map((topic) => `• ${formatGermanUiText(topic)}`)
 					.join("\n")}`
 			: "";
@@ -39,13 +39,13 @@ export function MaterialRequiredSheet({
 			closeAccessibilityLabel="Materialhinweis schließen"
 			confirmLabel="Material hochladen"
 			confirmTone="primary"
-			description={`${subjectInstruction}${topicInstruction}\n\nDanach kann Dayova deinen Lernplan erstellen.`}
+			description={`${subjectInstruction}${topicInstruction}\n\nDayova bestimmt nicht, welches Dokument dir fehlt. Ohne eine Schulunterlage startet die Analyse noch nicht.`}
 			maxWidth={760}
 			onClose={onClose}
 			onConfirm={onUpload}
 			scrollable
 			size="medium"
-			title="Für diesen Lernplan fehlt Material"
+			title="Schulmaterial fehlt"
 			visible={subject !== null}
 		/>
 	);
