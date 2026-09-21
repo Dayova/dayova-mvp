@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { ReleaseInformationSheet } from "~/components/release-information-sheet";
 import { ErrorMessage } from "~/components/ui/error-message";
 import {
@@ -9,10 +9,8 @@ import {
 	CreditCard,
 	Globe,
 	Mail,
-	Moon,
 	Palette,
 	Sparkles,
-	Sun,
 	Timer,
 	UserRound,
 } from "~/components/ui/icon";
@@ -29,68 +27,11 @@ import {
 	SettingsRow,
 	SettingsSection,
 } from "~/features/settings/settings-list";
+import { ThemePreferenceToggle } from "~/features/settings/theme-preference-toggle";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { env } from "~/lib/runtime-config";
 import { getNativeSubscriptionManagementUrl } from "~/lib/store-subscription";
 import { useDayovaTheme } from "~/lib/theme";
-import { THEME_OPTIONS, type ThemePreference } from "~/lib/theme-preference";
-import { cn } from "~/lib/utils";
-
-const themeIconByPreference = {
-	light: Sun,
-	system: Computer,
-	dark: Moon,
-} satisfies Record<
-	ThemePreference,
-	(props: {
-		size?: number;
-		color?: string;
-		strokeWidth?: number;
-	}) => React.JSX.Element
->;
-
-function ThemePreferenceToggle({
-	preference,
-	setPreference,
-}: {
-	preference: ThemePreference;
-	setPreference: (preference: ThemePreference) => Promise<void>;
-}) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<View className="flex-row rounded-full border border-border/70 bg-muted p-1">
-			{THEME_OPTIONS.map((option) => {
-				const Icon = themeIconByPreference[option.value];
-				const isActive = preference === option.value;
-
-				return (
-					<Pressable
-						key={option.value}
-						accessibilityLabel={option.accessibilityLabel}
-						accessibilityRole="radio"
-						accessibilityState={{ checked: isActive }}
-						className={cn(
-							"h-11 w-11 items-center justify-center rounded-full",
-							isActive ? "bg-primary" : "bg-transparent",
-						)}
-						onPress={() => {
-							void setPreference(option.value).catch((error: unknown) => {
-								console.warn("Unable to save Dayova theme preference", error);
-							});
-						}}
-					>
-						<Icon
-							size={20}
-							color={isActive ? "#FFFFFF" : colors.secondaryText}
-							strokeWidth={2}
-						/>
-					</Pressable>
-				);
-			})}
-		</View>
-	);
-}
 
 export default function SettingsScreen() {
 	const router = useRouter();
