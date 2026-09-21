@@ -1,0 +1,42 @@
+diff --git a/plugin/build/withDevLauncher.js b/plugin/build/withDevLauncher.js
+index 55d7b0ad6772e38dbb4032a73a3908440acbd1d4..15cbcabba7fc8ec8ca230d06439c4d78c852a3fe 100644
+--- a/plugin/build/withDevLauncher.js
++++ b/plugin/build/withDevLauncher.js
+@@ -29,7 +29,7 @@ const withStripLocalNetworkKeysForRelease = (config) => {
+         if (existingPhase) {
+             return config;
+         }
+-        project.addBuildPhase([], 'PBXShellScriptBuildPhase', buildPhaseName, nativeTargetId, {
++        const addedPhase = project.addBuildPhase([], 'PBXShellScriptBuildPhase', buildPhaseName, nativeTargetId, {
+             shellPath: '/bin/sh',
+             shellScript: `# Strip dev-launcher-specific local network permission keys from non-Debug builds
+ # This only removes _expo._tcp Bonjour services and the dev-launcher usage description.
+@@ -67,6 +67,7 @@ if [ "$CONFIGURATION" != "Debug" ]; then
+ fi
+ `,
+         });
++        addedPhase.buildPhase.alwaysOutOfDate = 1;
+         const targetPhases = project.pbxNativeTargetSection()[nativeTargetId]?.buildPhases ?? [];
+         const addedIdx = targetPhases.findIndex((p) => p.comment === buildPhaseName);
+         if (addedIdx >= 0) {
+diff --git a/plugin/src/withDevLauncher.ts b/plugin/src/withDevLauncher.ts
+index 78896fec518e015bc2ce24b707233ed844f5b7df..aa69282fa6a965dbb39c5ec12c61ef73c2e04067 100644
+--- a/plugin/src/withDevLauncher.ts
++++ b/plugin/src/withDevLauncher.ts
+@@ -44,7 +44,7 @@ const withStripLocalNetworkKeysForRelease: ConfigPlugin = (config) => {
+       return config;
+     }
+ 
+-    project.addBuildPhase([], 'PBXShellScriptBuildPhase', buildPhaseName, nativeTargetId, {
++    const addedPhase = project.addBuildPhase([], 'PBXShellScriptBuildPhase', buildPhaseName, nativeTargetId, {
+       shellPath: '/bin/sh',
+       shellScript: `# Strip dev-launcher-specific local network permission keys from non-Debug builds
+ # This only removes _expo._tcp Bonjour services and the dev-launcher usage description.
+@@ -82,6 +82,7 @@ if [ "$CONFIGURATION" != "Debug" ]; then
+ fi
+ `,
+     });
++    addedPhase.buildPhase.alwaysOutOfDate = 1;
+ 
+     const targetPhases: { value: string; comment?: string }[] =
+       project.pbxNativeTargetSection()[nativeTargetId]?.buildPhases ?? [];

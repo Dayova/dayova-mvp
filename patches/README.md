@@ -7,6 +7,74 @@ When a patched package is installed, pnpm applies the matching `.patch` file to
 the package contents in `node_modules`. Keep each patch documented here so future
 dependency updates can decide whether the patch is still needed.
 
+## `expo-dev-launcher@57.0.20.patch`
+
+### Why This Patch Exists
+
+Expo Dev Launcher adds a release-only Xcode shell phase that conditionally edits
+the built Info.plist. The phase has no declared output and is left opted into
+dependency analysis, so Xcode warns that its dependencies are ambiguous on every
+build.
+
+### What The Patch Changes
+
+The config plugin creates that phase with `alwaysOutOfDate: 1`, the project-file
+equivalent of unchecking "Based on dependency analysis". The script already
+depends on build configuration and built-product state, so always running is its
+intended behavior.
+
+### How To Verify
+
+Run the focused regression test and regenerate iOS:
+
+```sh
+corepack pnpm exec vitest run tests/ios-native-build-config.test.ts
+APP_VARIANT=development corepack pnpm exec expo prebuild --platform ios --no-install
+```
+
+The generated phase must contain `alwaysOutOfDate = 1;`, and Xcode must no longer
+emit the ambiguous-dependencies warning for it.
+
+### How To Update Or Remove
+
+Recheck the patch whenever `expo-dev-launcher` changes. Remove it when upstream
+marks the phase always out of date or declares correct input/output dependencies.
+
+## `expo-modules-jsi@57.1.0.patch`
+
+### Why This Patch Exists
+
+ExpoModulesJSI builds a SwiftPM framework from a CocoaPods build phase. Upstream
+places the nested Xcode Derived Data under the package in `node_modules`. When a
+checkout lives in a macOS file-provider-backed directory, generated framework
+bundles there can receive Finder or file-provider extended attributes. Xcode's
+signing step then rejects the framework with `resource fork, Finder information,
+or similar detritus not allowed` and exits with code 65.
+
+### What The Patch Changes
+
+The nested SwiftPM build uses the parent Xcode build's `DERIVED_FILE_DIR`, keeping
+signed products in normal Xcode Derived Data instead of under `node_modules`.
+Non-Xcode callers retain the package-local fallback, and
+`EXPO_MODULES_JSI_DERIVED_DATA_PATH` can explicitly override either location.
+
+### How To Verify
+
+Run the focused source-shape regression test, then an iOS simulator build:
+
+```sh
+corepack pnpm exec vitest run tests/ios-native-build-config.test.ts
+corepack pnpm expo:ios
+```
+
+The build must not report extended-attribute or resource-fork signing errors.
+
+### How To Update Or Remove
+
+Recheck this patch whenever `expo-modules-jsi` changes. Remove it when upstream
+stores nested Derived Data outside the package or otherwise prevents extended
+attributes from reaching the framework before signing.
+
 ## `expo-updates@57.0.23.patch`
 
 ### Why This Patch Exists
