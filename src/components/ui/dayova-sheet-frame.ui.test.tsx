@@ -22,6 +22,13 @@ const mockSheetHarness = {
 	onChange: null as null | ((index: number) => void),
 	onDismiss: null as null | (() => void),
 };
+const mockWindowDimensions = {
+	fontScale: 1,
+	height: 852,
+	scale: 3,
+	width: 393,
+};
+const mockSafeAreaInsets = { bottom: 0, left: 0, right: 0, top: 0 };
 
 jest.mock("react-native", () => {
 	const actual =
@@ -30,6 +37,9 @@ jest.mock("react-native", () => {
 	return new Proxy(actual, {
 		get(target, property, receiver) {
 			if (property === "findNodeHandle") return findNodeHandle;
+			if (property === "useWindowDimensions") {
+				return () => mockWindowDimensions;
+			}
 			return Reflect.get(target, property, receiver);
 		},
 	});
@@ -37,15 +47,11 @@ jest.mock("react-native", () => {
 
 jest.mock("react-native-safe-area-context", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
-	const SafeAreaInsetsContext = React.createContext({
-		bottom: 0,
-		left: 0,
-		right: 0,
-		top: 0,
-	});
+	const SafeAreaInsetsContext = React.createContext(null);
 	return {
 		SafeAreaInsetsContext,
-		useSafeAreaInsets: () => React.useContext(SafeAreaInsetsContext),
+		useSafeAreaInsets: () =>
+			React.useContext(SafeAreaInsetsContext) ?? mockSafeAreaInsets,
 	};
 });
 
@@ -130,6 +136,18 @@ describe("DayovaSheetFrame", () => {
 	};
 
 	beforeEach(() => {
+		Object.assign(mockWindowDimensions, {
+			fontScale: 1,
+			height: 852,
+			scale: 3,
+			width: 393,
+		});
+		Object.assign(mockSafeAreaInsets, {
+			bottom: 0,
+			left: 0,
+			right: 0,
+			top: 0,
+		});
 		originalPlatform = Platform.OS;
 		jest.restoreAllMocks();
 		mockSheetHarness.present.mockReset();
@@ -376,6 +394,58 @@ describe("DayovaSheetFrame", () => {
 		if (!modalContent) throw new Error("Expected modal content container");
 		fireEvent(modalContent, "accessibilityEscape");
 		expect(mockSheetHarness.dismiss).toHaveBeenCalledTimes(1);
+	});
+
+	test("keeps the title outside scrollable content while fixing the footer", async () => {
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				footer={<View testID="sheet-footer" />}
+				onClose={jest.fn()}
+				scrollable
+				size="medium"
+				title="Fester Titel"
+			>
+				<View testID="long-sheet-content" />
+			</DayovaSheetFrame>,
+		);
+		await act(flushAnimationFrames);
+
+		const scrollContent = view.getByTestId("dayova-sheet-scroll-content");
+		const header = view.getByTestId("dayova-sheet-header");
+		const footer = view.getByTestId("sheet-footer");
+
+		expect(scrollContent).not.toContainElement(header);
+		expect(scrollContent).toContainElement(
+			view.getByTestId("long-sheet-content"),
+		);
+		expect(scrollContent).not.toContainElement(footer);
+	});
+
+	test("respects landscape safe areas and uses the available scroll height", async () => {
+		Object.assign(mockWindowDimensions, { height: 390, width: 844 });
+		Object.assign(mockSafeAreaInsets, { left: 47, right: 21 });
+
+		const view = await render(
+			<DayovaSheetFrame
+				visible
+				maxWidth={760}
+				onClose={jest.fn()}
+				scrollable
+				size="medium"
+				title="Querformat"
+			>
+				<View />
+			</DayovaSheetFrame>,
+		);
+		await act(flushAnimationFrames);
+
+		const modal = view.getByTestId("bottom-sheet-modal");
+		expect(modal.props.style).toMatchObject({
+			marginHorizontal: 47,
+			width: 750,
+		});
+		expect(modal.props.snapPoints).toEqual([370]);
 	});
 
 	test("hides background content from screen readers while a sheet is open", async () => {

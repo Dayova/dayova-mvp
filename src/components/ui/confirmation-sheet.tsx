@@ -22,6 +22,9 @@ type ConfirmationSheetProps = {
 	confirmTone?: "primary" | "destructive";
 	closeAccessibilityLabel?: string;
 	actionLayout?: ConfirmationActionLayout;
+	maxWidth?: number;
+	scrollable?: boolean;
+	size?: "content" | "medium";
 };
 
 function ConfirmationSheet({
@@ -37,6 +40,9 @@ function ConfirmationSheet({
 	confirmTone = "destructive",
 	closeAccessibilityLabel = "Bestätigung schließen",
 	actionLayout = "inline",
+	maxWidth,
+	scrollable = false,
+	size = "content",
 }: ConfirmationSheetProps) {
 	const safeClose = () => {
 		if (!isBusy) onClose();
@@ -74,29 +80,43 @@ function ConfirmationSheet({
 			<Text>{cancelLabel}</Text>
 		</Button>
 	);
+	const actions = (
+		<View className={cn("gap-3", actionLayout === "inline" && "flex-row")}>
+			{actionLayout === "stacked" ? confirmButton : cancelButton}
+			{actionLayout === "stacked" ? cancelButton : confirmButton}
+		</View>
+	);
+	const error = errorMessage ? (
+		<WarningBanner
+			accessibilityLiveRegion="polite"
+			accessibilityRole="alert"
+			className={scrollable ? undefined : "mb-5"}
+			title="Das hat nicht geklappt"
+			description={errorMessage}
+		/>
+	) : null;
 
 	return (
 		<DayovaSheetFrame
 			visible={visible}
 			title={title}
-			description={description}
+			description={scrollable ? undefined : description}
 			onClose={safeClose}
 			dismissible={!isBusy}
 			closeAccessibilityLabel={closeAccessibilityLabel}
+			contentClassName={scrollable ? "gap-6" : undefined}
+			footer={scrollable ? actions : undefined}
+			maxWidth={maxWidth}
+			scrollable={scrollable}
+			size={size}
 		>
-			{errorMessage ? (
-				<WarningBanner
-					accessibilityLiveRegion="polite"
-					accessibilityRole="alert"
-					className="mb-5"
-					title="Das hat nicht geklappt"
-					description={errorMessage}
-				/>
+			{scrollable ? (
+				<Text className="font-poppins text-body-3 text-secondary-text">
+					{description}
+				</Text>
 			) : null}
-			<View className={cn("gap-3", actionLayout === "inline" && "flex-row")}>
-				{actionLayout === "stacked" ? confirmButton : cancelButton}
-				{actionLayout === "stacked" ? cancelButton : confirmButton}
-			</View>
+			{error}
+			{scrollable ? null : actions}
 		</DayovaSheetFrame>
 	);
 }
