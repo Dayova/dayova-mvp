@@ -45,3 +45,16 @@ These checks do not establish native Android stacking, hit testing or appearance
 Before review approval, verify both learning-plan cards, action-press behavior,
 decorative mode, and an iOS visual smoke test. Keep the PR in draft until the
 native evidence is attached. Jakob/Fabius own approval and merge.
+
+## Android capture blocker (22 September 2026)
+
+The requested EAS test was attempted using the existing `development` profile
+and source commit `a0b2c1b`. No finished Android development client was available.
+[Build 48665bc0-14ee-43a2-b7b5-19d8a30fd639](https://expo.dev/accounts/dayova/projects/dayova/builds/48665bc0-14ee-43a2-b7b5-19d8a30fd639)
+failed in `READ_APP_CONFIG` before native compilation because the development
+environment lacks `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`.
+
+The remote simulator was not started because there was no usable current build.
+Resume after the Android development environment has its correct RevenueCat
+public SDK key configured, then build the development client and capture the
+comparison. No billing configuration or production environment was modified.
