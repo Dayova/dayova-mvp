@@ -85,7 +85,11 @@ async function setup(subject = "Deutsch") {
 			ownerTokenIdentifier: "owner",
 			learningPlanId: planId,
 			sessionId,
-			fingerprint: JSON.stringify([[itemId, 1]]),
+			fingerprint: JSON.stringify({
+				subject,
+				goal: "Metaphern erkennen",
+				cards: [[itemId, 1]],
+			}),
 			status: "ready",
 			attempt: 1,
 			script,
@@ -194,7 +198,7 @@ test("listening and comprehension feedback never complete a session or create ma
 			(await ctx.db.get("learningPlanSessions", sessionId))?.completed,
 		).not.toBe(true);
 		expect(
-			await ctx.db.query("learningSessionAnswerAttempts").collect(),
+			await ctx.db.query("learningSessionAnswerAttempts").take(1),
 		).toHaveLength(0);
 	});
 });
@@ -254,4 +258,81 @@ test("changed source prevents a background worker from publishing stale audio", 
 			attempt: 1,
 		}),
 	).rejects.toThrow("source changed");
+});
+
+test("hides ready audio after the source or learning goal changes", async () => {
+	const { t, owner, sessionId, itemId } = await setup();
+	expect(
+		(await owner.query(api.learningPodcasts.get, { sessionId })).episode,
+	).not.toBeNull();
+	await t.run((ctx) =>
+		ctx.db.patch("learningPlanSessions", sessionId, { goal: "Neues Lernziel" }),
+	);
+	expect(
+		(await owner.query(api.learningPodcasts.get, { sessionId })).episode,
+	).toBeNull();
+	await t.run(async (ctx) => {
+		await ctx.db.patch("learningPlanSessions", sessionId, {
+			goal: "Metaphern erkennen",
+		});
+		await ctx.db.patch("learningSessionContentItems", itemId, { updatedAt: 2 });
+	});
+	expect(
+		(await owner.query(api.learningPodcasts.get, { sessionId })).episode,
+	).toBeNull();
+});
+
+test("custom languages require owner confirmation and non-language subjects stay disabled", async () => {
+	const { t, owner, sessionId } = await setup("Kroatisch");
+	expect(
+		await owner.query(api.learningPodcasts.get, { sessionId }),
+	).toMatchObject({ eligible: false, needsLanguageConfirmation: true });
+	await expect(
+		t
+			.withIdentity({ tokenIdentifier: "other" })
+			.mutation(api.learningPodcasts.confirmLanguageSubject, { sessionId }),
+	).rejects.toThrow();
+	await owner.mutation(api.learningPodcasts.confirmLanguageSubject, {
+		sessionId,
+	});
+	expect(
+		await owner.query(api.learningPodcasts.get, { sessionId }),
+	).toMatchObject({ eligible: true, needsLanguageConfirmation: false });
+	const math = await setup("Mathematik");
+	await expect(
+		math.owner.mutation(api.learningPodcasts.confirmLanguageSubject, {
+			sessionId: math.sessionId,
+		}),
+	).rejects.toThrow("kein Sprachfach");
+});
+
+test("material access stops immediately when account deletion begins", async () => {
+	const { t, owner, planId } = await setup();
+	const documentId = await t.run(async (ctx) => {
+		const id = await ctx.db.insert("learningPlanDocuments", {
+			ownerTokenIdentifier: "owner",
+			learningPlanId: planId,
+			storageId: "test",
+			storageProvider: "r2",
+			fileName: "theory.pdf",
+			fileType: "application/pdf",
+			fileSizeBytes: 12,
+			createdAt: 1,
+		});
+		await ctx.db.insert("accountDeletionRequests", {
+			requestId: "test-delete",
+			ownerTokenIdentifier: "owner",
+			status: "queued",
+			stage: "revokeSessions",
+			attemptCount: 0,
+			deletedRecords: 0,
+			policyVersion: "test",
+			requestedAt: 1,
+			updatedAt: 1,
+		});
+		return id;
+	});
+	await expect(
+		owner.query(internal.learningPodcasts.sourceContext, { documentId }),
+	).rejects.toThrow("dauerhaft gelöscht");
 });

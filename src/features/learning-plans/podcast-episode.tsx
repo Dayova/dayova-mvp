@@ -36,6 +36,7 @@ export function PodcastPlayer({
 	const restored = useRef(false);
 	const restorePosition = useRef(initialPosition);
 	const lastSaved = useRef(initialPosition);
+	const latestPosition = useRef(initialPosition);
 	const progressRef = useRef(onProgress);
 	useEffect(() => {
 		progressRef.current = onProgress;
@@ -51,6 +52,7 @@ export function PodcastPlayer({
 	}, [player, status.isLoaded, status.duration]);
 	useEffect(() => {
 		if (!restored.current || !status.isLoaded) return;
+		latestPosition.current = status.currentTime;
 		if (
 			Math.abs(status.currentTime - lastSaved.current) >= 10 ||
 			status.didJustFinish
@@ -73,7 +75,7 @@ export function PodcastPlayer({
 		return () => {
 			subscription.remove();
 			if (restored.current)
-				void progressRef.current(player.currentTime).catch(() => undefined);
+				void progressRef.current(latestPosition.current).catch(() => undefined);
 		};
 	}, [player]);
 	async function toggle() {

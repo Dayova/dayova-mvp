@@ -1,4 +1,3 @@
-import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
 	Stack,
@@ -21,7 +20,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { isPodcastSubject } from "#convex/podcastContent";
+import { canOfferPodcast } from "#convex/podcastContent";
 import { ScreenHeader } from "~/components/screen-header";
 import { Button } from "~/components/ui/button";
 import {
@@ -55,7 +54,10 @@ import {
 	isDiagnosticLearningPlanSession,
 	isLearningPlanSessionHistory,
 } from "~/features/learning-plans/rolling-learning-window";
-import type { PlanSession } from "~/features/learning-plans/types";
+import type {
+	LearningPlanSnapshot,
+	PlanSession,
+} from "~/features/learning-plans/types";
 import { parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
@@ -527,7 +529,7 @@ export default function LearningPlanSessionsScreen() {
 						onListen={
 							selectedSession.phase === "theory" &&
 							!isDiagnosticLearningPlanSession(selectedSession) &&
-							isPodcastSubject(snapshot.plan.subject)
+							canOfferPodcast(snapshot.plan.subject)
 								? () =>
 										router.push(
 											`/learning-plans/${snapshot.plan.id}/sessions/${selectedSession.id}/podcast`,

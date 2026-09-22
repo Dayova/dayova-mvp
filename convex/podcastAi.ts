@@ -6,8 +6,7 @@ import { v } from "convex/values";
 import { GoogleAuth } from "google-auth-library";
 import { z } from "zod";
 import { components, internal } from "./_generated/api";
-import { internalAction } from "./_generated/server";
-import { readOptionalEnv, readRequiredEnv } from "./env";
+import { env, internalAction } from "./_generated/server";
 import { validatePodcastScript } from "./podcastContent";
 
 const args = { podcastId: v.id("learningPodcasts"), attempt: v.number() };
@@ -34,16 +33,23 @@ const scriptSchema = z.object({
 		.max(3),
 });
 
+function vertexProject() {
+	const project = env.GOOGLE_VERTEX_PROJECT?.trim();
+	if (!project)
+		throw new Error("GOOGLE_VERTEX_PROJECT is required without an API key");
+	return project;
+}
+
 function model() {
-	const apiKey = readOptionalEnv("GOOGLE_VERTEX_API_KEY");
+	const apiKey = env.GOOGLE_VERTEX_API_KEY?.trim();
 	const provider = apiKey
 		? createVertex({ apiKey })
 		: createVertex({
-				project: readRequiredEnv("GOOGLE_VERTEX_PROJECT"),
-				location: readOptionalEnv("GOOGLE_VERTEX_LOCATION") ?? "global",
+				project: vertexProject(),
+				location: env.GOOGLE_VERTEX_LOCATION?.trim() || "global",
 			});
 	return provider(
-		readOptionalEnv("GOOGLE_VERTEX_FLASH_MODEL") ?? "gemini-3-flash-preview",
+		env.GOOGLE_VERTEX_FLASH_MODEL?.trim() || "gemini-3-flash-preview",
 	);
 }
 
@@ -131,17 +137,17 @@ export const createAudio = internalAction({
 			job,
 		);
 		if (!episode.script) throw new Error("Missing podcast script");
-		const apiKey = readOptionalEnv("GOOGLE_VERTEX_API_KEY");
+		const apiKey = env.GOOGLE_VERTEX_API_KEY?.trim();
 		const ttsModel =
-			readOptionalEnv("GOOGLE_VERTEX_TTS_MODEL") ?? "gemini-2.5-flash-tts";
-		const location = readOptionalEnv("GOOGLE_VERTEX_LOCATION") ?? "global";
+			env.GOOGLE_VERTEX_TTS_MODEL?.trim() || "gemini-2.5-flash-tts";
+		const location = env.GOOGLE_VERTEX_LOCATION?.trim() || "global";
 		const host =
 			location === "global"
 				? "aiplatform.googleapis.com"
 				: `${location}-aiplatform.googleapis.com`;
 		const url = apiKey
 			? `https://aiplatform.googleapis.com/v1/publishers/google/models/${ttsModel}:generateContent`
-			: `https://${host}/v1/projects/${readRequiredEnv("GOOGLE_VERTEX_PROJECT")}/locations/${location}/publishers/google/models/${ttsModel}:generateContent`;
+			: `https://${host}/v1/projects/${vertexProject()}/locations/${location}/publishers/google/models/${ttsModel}:generateContent`;
 		const headers: Record<string, string> = {
 			"Content-Type": "application/json",
 		};

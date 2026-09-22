@@ -481,6 +481,7 @@ export default defineSchema({
 			"personalSubjectId",
 		]),
 	learningPlans: defineTable({
+		podcastLanguageSubject: v.optional(v.boolean()),
 		ownerTokenIdentifier: v.string(),
 		subject: v.string(),
 		personalSubjectId: v.optional(v.id("personalSubjects")),

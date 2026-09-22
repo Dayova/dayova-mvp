@@ -10,6 +10,7 @@ import { components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
 	action,
+	env,
 	internalMutation,
 	internalQuery,
 	type MutationCtx,
@@ -17,10 +18,11 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
-import { throwUserFacingError } from "./errors";
 import { assertAccountActive } from "./accountDeletion";
+import { throwUserFacingError } from "./errors";
 import { createManagedReadUrl } from "./fileStorage";
 import {
+	canOfferPodcast,
 	isPodcastSubject,
 	podcastFields,
 	podcastScriptValidator,
@@ -69,6 +71,7 @@ export const sourceContext = internalQuery({
 			document.ownerTokenIdentifier !== identity.tokenIdentifier
 		)
 			throwUserFacingError("Material nicht gefunden.");
+		await assertAccountActive(ctx, identity.tokenIdentifier);
 		return {
 			storageId: document.storageId,
 			storageProvider: document.storageProvider,
@@ -136,11 +139,14 @@ async function sourceFor(
 		throwUserFacingError(
 			"Diese Theorie-Einheit ist für einen kurzen Podcast zu umfangreich.",
 		);
+	const plan = await ctx.db.get("learningPlans", session.learningPlanId);
 	return {
 		source,
-		fingerprint: JSON.stringify(
-			cards.map((item) => [item._id, item.updatedAt]),
-		),
+		fingerprint: JSON.stringify({
+			subject: plan?.subject,
+			goal: session.goal,
+			cards: cards.map((item) => [item._id, item.updatedAt]),
+		}),
 	};
 }
 
@@ -163,6 +169,7 @@ export const get = query({
 	args: { sessionId: v.id("learningPlanSessions") },
 	returns: v.object({
 		eligible: v.boolean(),
+		needsLanguageConfirmation: v.boolean(),
 		episode: v.union(
 			v.null(),
 			v.object({
@@ -179,22 +186,50 @@ export const get = query({
 			session.phase === "theory" &&
 			session.sessionPurpose !== "diagnostic" &&
 			session.planningStatus !== "provisional" &&
-			isPodcastSubject(plan.subject);
+			(isPodcastSubject(plan.subject) || plan.podcastLanguageSubject === true);
 		const episode = await ctx.db
 			.query("learningPodcasts")
 			.withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
 			.unique();
+		// A theory upgrade can update cards in place. Never serve an episode
+		// from an older source; the same request action will replace it.
+		const currentSource =
+			eligible && episode ? await sourceFor(ctx, session) : null;
+		const currentEpisode =
+			episode && currentSource?.fingerprint === episode.fingerprint
+				? episode
+				: null;
 		return {
 			eligible,
-			episode: episode
+			needsLanguageConfirmation:
+				session.phase === "theory" &&
+				session.sessionPurpose !== "diagnostic" &&
+				session.planningStatus !== "provisional" &&
+				!eligible &&
+				canOfferPodcast(plan.subject),
+			episode: currentEpisode
 				? {
-						...episode,
-						audioUrl: episode.storageId
-							? await ctx.storage.getUrl(episode.storageId)
+						...currentEpisode,
+						audioUrl: currentEpisode.storageId
+							? await ctx.storage.getUrl(currentEpisode.storageId)
 							: null,
 					}
 				: null,
 		};
+	},
+});
+
+export const confirmLanguageSubject = mutation({
+	args: { sessionId: v.id("learningPlanSessions") },
+	returns: v.null(),
+	handler: async (ctx, { sessionId }) => {
+		const { plan } = await ownedSession(ctx, sessionId);
+		if (!canOfferPodcast(plan.subject))
+			throwUserFacingError("Dieses Fach ist kein Sprachfach.");
+		await ctx.db.patch("learningPlans", plan._id, {
+			podcastLanguageSubject: true,
+		});
+		return null;
 	},
 });
 
@@ -207,7 +242,7 @@ export const request = mutation({
 			session.phase !== "theory" ||
 			session.sessionPurpose === "diagnostic" ||
 			session.planningStatus === "provisional" ||
-			!isPodcastSubject(plan.subject)
+			!(isPodcastSubject(plan.subject) || plan.podcastLanguageSubject === true)
 		)
 			throwUserFacingError(
 				"Podcasts stehen für Theorie in sprachlichen Fächern zur Verfügung.",
@@ -236,10 +271,7 @@ export const request = mutation({
 			throwUserFacingError(
 				"Die Podcast-Erstellung ist derzeit nicht verfügbar. Bitte kontaktiere den Support.",
 			);
-		if (
-			!process.env.GOOGLE_VERTEX_API_KEY &&
-			!process.env.GOOGLE_VERTEX_PROJECT
-		)
+		if (!env.GOOGLE_VERTEX_API_KEY && !env.GOOGLE_VERTEX_PROJECT)
 			throwUserFacingError(
 				"Die Podcast-Erstellung ist noch nicht eingerichtet. Du kannst die Theorie weiterhin lesen.",
 			);

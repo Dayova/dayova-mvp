@@ -9,6 +9,7 @@
 		"ios": "run-p expo:ios convex:dev",
 		"convex:dev": "convex dev",
 		"expo:start": "cross-env APP_VARIANT=development expo start",
+		"podcast:preview": "cross-env APP_VARIANT=development EXPO_PUBLIC_PODCAST_PREVIEW=1 expo start --dev-client --lan",
 		"preexpo:android": "node scripts/prepare-android-gradle-jvm.cjs && node scripts/prepare-android-autolinking-cache.cjs",
 		"expo:android": "cross-env APP_VARIANT=development expo run:android",
 		"expo:ios": "cross-env APP_VARIANT=development expo run:ios",

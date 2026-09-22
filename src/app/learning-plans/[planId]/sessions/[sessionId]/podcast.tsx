@@ -31,6 +31,9 @@ export default function LearningPodcastScreen() {
 			: "skip",
 	);
 	const request = useMutation(api.learningPodcasts.request);
+	const confirmLanguageSubject = useMutation(
+		api.learningPodcasts.confirmLanguageSubject,
+	);
 	const progress = useMutation(api.learningPodcasts.saveProgress);
 	const answer = useMutation(api.learningPodcasts.answer);
 	const sources = useQuery(
@@ -122,6 +125,25 @@ export default function LearningPodcastScreen() {
 					accessibilityLabel="Podcast wird geladen"
 					color={colors.primary}
 				/>
+			) : snapshot.needsLanguageConfirmation ? (
+				<View className="gap-3">
+					<Text>
+						Ist dein selbst benanntes Fach ein Sprachfach? Bestätige es einmal
+						für diesen Lernplan, um Podcasts zu nutzen.
+					</Text>
+					<Button
+						disabled={busy}
+						onPress={() =>
+							void run(() =>
+								confirmLanguageSubject({
+									sessionId: sessionId as Id<"learningPlanSessions">,
+								}),
+							)
+						}
+					>
+						<Text>Das ist ein Sprachfach</Text>
+					</Button>
+				</View>
 			) : !snapshot.eligible ? (
 				<Text selectable className="text-body-2 text-secondary-text">
 					Podcasts stehen für Theorie-Einheiten in sprachlichen Fächern zur
@@ -231,7 +253,10 @@ export default function LearningPodcastScreen() {
 							onPress={() =>
 								void run(async () => {
 									const url = await openSource({ documentId: source.id });
-									await openExternalUrl(url);
+									if (!(await openExternalUrl(url)))
+										throw new Error(
+											"Das Material konnte nicht geöffnet werden.",
+										);
 								})
 							}
 						>

@@ -8,6 +8,16 @@ export function isPodcastSubject(subject: string) {
 	return LANGUAGE_SUBJECT.test(subject.normalize("NFC"));
 }
 
+// Unknown custom subjects can opt in explicitly; do not guess their language.
+export function canOfferPodcast(subject: string) {
+	return (
+		isPodcastSubject(subject) ||
+		!/\b(mathematik|mathe|physik|chemie|biologie|geschichte|politik|geografie|geographie|sport|kunst|musik|informatik|wirtschaft|religion|ethik)\b/i.test(
+			subject,
+		)
+	);
+}
+
 export const podcastScriptValidator = v.object({
 	turns: v.array(
 		v.object({

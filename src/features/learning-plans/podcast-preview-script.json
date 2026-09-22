@@ -1,0 +1,50 @@
+{
+	"turns": [
+		{
+			"speaker": "Mira",
+			"text": "Heute schauen wir uns Metaphern an. Eine Metapher überträgt Bedeutung von einem Bereich auf einen anderen. Stell dir den Satz vor: Vor der Bühne stand ein Meer aus Menschen."
+		},
+		{
+			"speaker": "Noah",
+			"text": "Ein Meer aus Menschen? Da ist doch gar kein Wasser. Was genau soll ich mir dabei vorstellen?"
+		},
+		{
+			"speaker": "Mira",
+			"text": "Genau diese Frage hilft dir bei der Analyse. Das Bild des Meeres lässt die Menschenmenge riesig und kaum überschaubar erscheinen. Die Bedeutung wird übertragen, statt wörtlich verstanden zu werden."
+		},
+		{
+			"speaker": "Noah",
+			"text": "Dann reicht es also nicht, in einer Klausur nur zu schreiben: Das ist eine Metapher. Ich sollte auch erklären, welches Bild entsteht und wie es im Text wirkt."
+		},
+		{
+			"speaker": "Mira",
+			"text": "Richtig. Und achte auf den Unterschied zum Vergleich. Die Menge wogte wie ein Meer ist ein Vergleich. Das Wort wie verbindet die beiden Bereiche ausdrücklich. Ein Meer aus Menschen setzt das Bild direkt ein."
+		},
+		{
+			"speaker": "Noah",
+			"text": "Mein Merksatz lautet: Bild erkennen, Bedeutung übertragen und Wirkung im Kontext erklären. Jetzt kannst du mit zwei kurzen Fragen prüfen, ob du den Unterschied verstanden hast."
+		}
+	],
+	"questions": [
+		{
+			"prompt": "Was vermittelt die Metapher ‚ein Meer aus Menschen‘?",
+			"options": [
+				"Eine sehr große, kaum überschaubare Menschenmenge",
+				"Menschen stehen tatsächlich im Wasser",
+				"Die Menschen sind besonders leise"
+			],
+			"correctIndex": 0,
+			"explanation": "Das Bild des Meeres überträgt Größe und Unüberschaubarkeit auf die Menschenmenge."
+		},
+		{
+			"prompt": "Welcher Satz ist ein ausdrücklicher Vergleich?",
+			"options": [
+				"Vor der Bühne stand ein Meer aus Menschen.",
+				"Die Menge wogte wie ein Meer.",
+				"Die Menschen warteten vor der Bühne."
+			],
+			"correctIndex": 1,
+			"explanation": "‚Wie‘ verbindet Menschenmenge und Meer ausdrücklich. Das kennzeichnet hier den Vergleich."
+		}
+	]
+}

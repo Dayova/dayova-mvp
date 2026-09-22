@@ -1,0 +1,28 @@
+appId: ${APP_ID}
+---
+- extendedWaitUntil:
+    visible: "Metaphern verstehen"
+    timeout: 60000
+- tapOn: "Podcast abspielen"
+- assertVisible: "Podcast pausieren"
+- tapOn: "Podcast pausieren"
+- tapOn: "Geschwindigkeit: 1-fach. Ändern"
+- assertVisible: "Geschwindigkeit: 1.25-fach. Ändern"
+- tapOn: "Lesen"
+- assertVisible: "Was ist eine Metapher?"
+- tapOn: "Anhören"
+- scrollUntilVisible:
+    element: "Transkript mitlesen"
+    direction: DOWN
+- tapOn: "Transkript mitlesen"
+- assertVisible: "Transkript schließen"
+- tapOn: "Transkript schließen"
+- scrollUntilVisible:
+    element: "Eine sehr große, kaum überschaubare Menschenmenge"
+    direction: DOWN
+- tapOn: "Eine sehr große, kaum überschaubare Menschenmenge"
+- assertVisible: "Richtig.*"
+- scrollUntilVisible:
+    element: "Metaphern verstehen"
+    direction: UP
+- takeScreenshot: podcast-preview-after
