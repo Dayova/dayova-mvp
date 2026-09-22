@@ -22,6 +22,9 @@ import {
 	type TrackFeatureInteraction,
 } from "~/lib/use-feature-analytics";
 
+const optionalExpoUpdateString = (value: string | null | undefined) =>
+	value?.trim() || undefined;
+
 export function FeatureAnalyticsProvider({
 	children,
 }: {
@@ -43,9 +46,9 @@ export function FeatureAnalyticsProvider({
 				distinctId: identity,
 				sharedContext: {
 					validationStudentCode: user?.validationStudentCode,
-					easUpdateId: Updates.updateId,
-					easChannel: Updates.channel,
-					easRuntimeVersion: Updates.runtimeVersion,
+					easUpdateId: optionalExpoUpdateString(Updates.updateId),
+					easChannel: optionalExpoUpdateString(Updates.channel),
+					easRuntimeVersion: optionalExpoUpdateString(Updates.runtimeVersion),
 					easIsEmbeddedLaunch: Updates.isEmbeddedLaunch,
 				},
 			}),

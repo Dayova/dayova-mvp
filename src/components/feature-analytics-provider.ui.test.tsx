@@ -14,6 +14,7 @@ let mockLoading = false;
 let mockSegments = ["(app)", "home"];
 let mockConfigured = true;
 let mockPathname: string | undefined;
+let mockEasChannel: string | null = "preview";
 const mockCapture = jest.fn();
 const mockClient = {};
 let track: TrackFeatureInteraction;
@@ -28,7 +29,9 @@ jest.mock("convex/react", () => ({
 }));
 jest.mock("expo-updates", () => ({
 	updateId: "update-1",
-	channel: "preview",
+	get channel() {
+		return mockEasChannel;
+	},
 	runtimeVersion: "1",
 }));
 jest.mock("~/context/AuthContext", () => ({
@@ -43,9 +46,16 @@ jest.mock("~/lib/analytics", () => ({
 	},
 	createValidationAnalytics: (
 		_client: unknown,
-		options: { configured: boolean; distinctId?: string },
+		options: {
+			configured: boolean;
+			distinctId?: string;
+			sharedContext?: { easChannel?: string | null };
+		},
 	) => ({
 		capture: (name: string, properties: unknown) => {
+			if (options.sharedContext?.easChannel === "") {
+				throw new Error("Invalid analytics property: eas_channel");
+			}
 			if (options.configured && options.distinctId)
 				mockCapture(name, properties, options.distinctId);
 		},
@@ -71,6 +81,7 @@ beforeEach(() => {
 	mockLoading = false;
 	mockConfigured = true;
 	mockPathname = undefined;
+	mockEasChannel = "preview";
 	mockSegments = ["(app)", "home"];
 	Object.defineProperty(AppState, "currentState", {
 		configurable: true,
@@ -84,6 +95,11 @@ beforeEach(() => {
 		});
 });
 describe("feature analytics observation lifecycle", () => {
+	test("does not let an unavailable local EAS channel prevent rendering", () => {
+		mockEasChannel = "";
+		expect(() => render(tree())).not.toThrow();
+	});
+
 	test("counts navigation and foreground exposure, not rerenders or repeated active callbacks", async () => {
 		const view = await render(tree());
 		await view.rerender(tree());
