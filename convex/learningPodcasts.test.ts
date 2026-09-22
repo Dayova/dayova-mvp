@@ -19,7 +19,7 @@ const script: PodcastScript = {
 		{ speaker: "Mira", text: "Sie verbindet zwei Bedeutungsbereiche." },
 		{ speaker: "Noah", text: "Ich erkläre also das Bild im Kontext." },
 	],
-	questions: [0, 1].map((index) => ({
+	questions: [0, 1, 2].map((index) => ({
 		prompt: `Frage ${index}`,
 		options: ["Bedeutungsübertragung", "Reim", "Zeitform"],
 		correctIndex: 0,
@@ -86,6 +86,7 @@ async function setup(subject = "Deutsch") {
 			learningPlanId: planId,
 			sessionId,
 			fingerprint: JSON.stringify({
+				version: 2,
 				subject,
 				goal: "Metaphern erkennen",
 				cards: [[itemId, 1]],
@@ -191,7 +192,7 @@ test("listening and comprehension feedback never complete a session or create ma
 	expect(result.episode).toMatchObject({
 		positionSeconds: 120,
 		listened: true,
-		answers: [0, -1],
+		answers: [0, -1, -1],
 	});
 	await t.run(async (ctx) => {
 		expect(
@@ -245,6 +246,50 @@ test("rejects invalid progress and answers", async () => {
 			optionIndex: 3,
 		}),
 	).rejects.toThrow();
+});
+
+test("questions require listening and are submitted sequentially", async () => {
+	const { owner, podcastId } = await setup();
+	await expect(
+		owner.mutation(api.learningPodcasts.answer, {
+			podcastId,
+			questionIndex: 0,
+			optionIndex: 0,
+		}),
+	).rejects.toThrow("zuerst den Podcast");
+	await owner.mutation(api.learningPodcasts.saveProgress, {
+		podcastId,
+		positionSeconds: 120,
+	});
+	await expect(
+		owner.mutation(api.learningPodcasts.answer, {
+			podcastId,
+			questionIndex: 1,
+			optionIndex: 0,
+		}),
+	).rejects.toThrow("vorherige Frage");
+	await owner.mutation(api.learningPodcasts.answer, {
+		podcastId,
+		questionIndex: 0,
+		optionIndex: 0,
+	});
+	await expect(
+		owner.mutation(api.learningPodcasts.answer, {
+			podcastId,
+			questionIndex: 0,
+			optionIndex: 1,
+		}),
+	).rejects.toThrow("bereits geprüft");
+	await owner.mutation(api.learningPodcasts.answer, {
+		podcastId,
+		questionIndex: 1,
+		optionIndex: 0,
+	});
+	await owner.mutation(api.learningPodcasts.answer, {
+		podcastId,
+		questionIndex: 2,
+		optionIndex: 0,
+	});
 });
 
 test("changed source prevents a background worker from publishing stale audio", async () => {

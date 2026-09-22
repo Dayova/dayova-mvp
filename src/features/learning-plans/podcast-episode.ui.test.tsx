@@ -1,8 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
-import type { PodcastScript } from "#convex/podcastContent";
-import { PodcastPlayer, PodcastStudyContent } from "./podcast-episode";
-import script from "./podcast-preview-script.json";
+import { PodcastPlayer } from "./podcast-episode";
 
 const mockPlayer = {
 	seekTo: jest.fn(async (_seconds: number) => {}),
@@ -47,35 +45,6 @@ jest.mock("~/components/ui/flow-progress-bar", () => {
 		FlowProgressBar: (props: Record<string, unknown>) =>
 			React.createElement(View, props),
 	};
-});
-
-test("transcript is optional and comprehension choices provide feedback without completion", async () => {
-	const onAnswer = jest.fn();
-	const screen = await render(
-		<PodcastStudyContent
-			script={script as PodcastScript}
-			answers={[-1, -1]}
-			onAnswer={onAnswer}
-		/>,
-	);
-	expect(screen.queryByText(script.turns[0].text)).toBeNull();
-	await fireEvent.press(screen.getByText("Transkript mitlesen"));
-	expect(screen.getByText(script.turns[0].text)).toBeTruthy();
-	await fireEvent.press(
-		screen.getByRole("radio", { name: script.questions[0].options[0] }),
-	);
-	expect(onAnswer).toHaveBeenCalledWith(0, 0);
-	await screen.rerender(
-		<PodcastStudyContent
-			script={script as PodcastScript}
-			answers={[0, -1]}
-			onAnswer={onAnswer}
-		/>,
-	);
-	expect(
-		screen.getByText(`Richtig. ${script.questions[0].explanation}`),
-	).toBeTruthy();
-	expect(screen.getByText(/Anhören allein schließt/)).toBeTruthy();
 });
 
 test("restores position without autoplay and exposes playback, seek and speed controls", async () => {

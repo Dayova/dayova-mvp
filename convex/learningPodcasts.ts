@@ -143,6 +143,7 @@ async function sourceFor(
 	return {
 		source,
 		fingerprint: JSON.stringify({
+			version: 2,
 			subject: plan?.subject,
 			goal: session.goal,
 			cards: cards.map((item) => [item._id, item.updatedAt]),
@@ -169,6 +170,8 @@ export const get = query({
 	args: { sessionId: v.id("learningPlanSessions") },
 	returns: v.object({
 		eligible: v.boolean(),
+		title: v.string(),
+		goal: v.string(),
 		needsLanguageConfirmation: v.boolean(),
 		episode: v.union(
 			v.null(),
@@ -201,6 +204,8 @@ export const get = query({
 				: null;
 		return {
 			eligible,
+			title: session.title,
+			goal: session.goal,
 			needsLanguageConfirmation:
 				session.phase === "theory" &&
 				session.sessionPurpose !== "diagnostic" &&
@@ -470,12 +475,23 @@ export const answer = mutation({
 		if (!episode) throwUserFacingError("Podcast nicht gefunden.");
 		await ownedSession(ctx, episode.sessionId);
 		const question = episode.script?.questions[args.questionIndex];
+		if (episode.status !== "ready" || !episode.listened)
+			throwUserFacingError("Höre zuerst den Podcast an.");
+		if (
+			args.questionIndex > 0 &&
+			(episode.answers[args.questionIndex - 1] ?? -1) < 0
+		)
+			throwUserFacingError("Beantworte zuerst die vorherige Frage.");
 		if (
 			!Number.isInteger(args.questionIndex) ||
 			!Number.isInteger(args.optionIndex) ||
 			!question?.options[args.optionIndex]
 		)
 			throwUserFacingError("Wähle eine gültige Antwort.");
+		if ((episode.answers[args.questionIndex] ?? -1) >= 0) {
+			if (episode.answers[args.questionIndex] === args.optionIndex) return null;
+			throwUserFacingError("Diese Antwort wurde bereits geprüft.");
+		}
 		const answers =
 			episode.script?.questions.map((_, index) =>
 				index === args.questionIndex

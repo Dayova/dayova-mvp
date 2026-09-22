@@ -66,8 +66,7 @@ export function validatePodcastScript(script: PodcastScript) {
 		new Set(script.turns.map((turn) => turn.speaker)).size !== 2 ||
 		script.turns.some((turn) => !turn.text.trim() || turn.text.length > 1800) ||
 		script.turns.reduce((sum, turn) => sum + turn.text.length, 0) > 14000 ||
-		script.questions.length < 2 ||
-		script.questions.length > 3 ||
+		script.questions.length !== 3 ||
 		script.questions.some(
 			(question) =>
 				question.options.length !== 3 ||

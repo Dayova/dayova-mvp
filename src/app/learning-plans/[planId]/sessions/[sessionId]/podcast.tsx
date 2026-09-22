@@ -7,10 +7,7 @@ import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { useAiConsent } from "~/context/AiConsentContext";
-import {
-	PodcastPlayer,
-	PodcastStudyContent,
-} from "~/features/learning-plans/podcast-episode";
+import { PodcastLesson } from "~/features/learning-plans/podcast-lesson";
 import { getErrorMessage } from "~/features/learning-plans/utils";
 import { openExternalUrl } from "~/lib/open-external-url";
 import { useDayovaTheme } from "~/lib/theme";
@@ -44,6 +41,7 @@ export default function LearningPodcastScreen() {
 	);
 	const openSource = useAction(api.learningPodcasts.openSource);
 	const gate = useRef(false);
+	const scroll = useRef<ScrollView>(null);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const episode = snapshot?.episode;
@@ -68,6 +66,82 @@ export default function LearningPodcastScreen() {
 	}
 	const generating =
 		episode?.status === "script" || episode?.status === "audio";
+	if (
+		snapshot &&
+		episode?.status === "ready" &&
+		episode.audioUrl &&
+		episode.script
+	)
+		return (
+			<ScrollView
+				ref={scroll}
+				className="flex-1 bg-background"
+				contentInsetAdjustmentBehavior="automatic"
+				contentContainerClassName="gap-6 px-6 pt-6 pb-12"
+			>
+				<Stack.Screen
+					options={{
+						headerShown: true,
+						title: "Podcast",
+						headerBackTitle: "Zurück",
+						headerTintColor: colors.text,
+						headerStyle: { backgroundColor: colors.background },
+					}}
+				/>
+				<PodcastLesson
+					key={episode._id}
+					title={snapshot.title}
+					goal={snapshot.goal}
+					script={episode.script}
+					audio={episode.audioUrl}
+					position={episode.positionSeconds}
+					listened={episode.listened}
+					answers={episode.answers}
+					onProgress={(positionSeconds) =>
+						progress({ podcastId: episode._id, positionSeconds })
+					}
+					onAnswer={(questionIndex, optionIndex) =>
+						answer({ podcastId: episode._id, questionIndex, optionIndex })
+					}
+					onExit={() => router.replace(`/learning-plans/${planId}`)}
+					onStageChange={() =>
+						scroll.current?.scrollTo({ y: 0, animated: false })
+					}
+					materials={
+						sources?.length ? (
+							<View className="gap-2">
+								{sources.map((source) => (
+									<Button
+										key={source.id}
+										variant="ghost"
+										disabled={busy}
+										onPress={() =>
+											void run(async () => {
+												const url = await openSource({ documentId: source.id });
+												if (!(await openExternalUrl(url)))
+													throw new Error(
+														"Das Material konnte nicht geöffnet werden.",
+													);
+											})
+										}
+									>
+										<Text>{source.fileName}</Text>
+									</Button>
+								))}
+							</View>
+						) : undefined
+					}
+				/>
+				{error ? (
+					<Text
+						accessibilityRole="alert"
+						className="text-body-3 text-destructive"
+					>
+						{error}
+					</Text>
+				) : null}
+			</ScrollView>
+		);
 	return (
 		<ScrollView
 			className="flex-1 bg-background"
@@ -149,79 +223,49 @@ export default function LearningPodcastScreen() {
 					Podcasts stehen für Theorie-Einheiten in sprachlichen Fächern zur
 					Verfügung.
 				</Text>
+			) : generating ? (
+				<View
+					className="gap-3 rounded-card bg-theorie-subtle p-5"
+					accessibilityLiveRegion="polite"
+				>
+					<ActivityIndicator color={colors.primary} />
+					<Text className="font-poppins font-semibold text-body-2 text-text">
+						{episode.status === "script"
+							? "Dein Lerngespräch entsteht"
+							: "Die KI-Stimmen werden vorbereitet"}
+					</Text>
+					<Text className="text-body-3 text-secondary-text">
+						Das kann einige Minuten dauern. Du kannst diese Seite verlassen und
+						später zurückkommen.
+					</Text>
+				</View>
 			) : (
-				<>
-					{generating ? (
-						<View
-							className="gap-3 rounded-card bg-theorie-subtle p-5"
-							accessibilityLiveRegion="polite"
-						>
-							<ActivityIndicator color={colors.primary} />
-							<Text className="font-poppins font-semibold text-body-2 text-text">
-								{episode.status === "script"
-									? "Dein Lerngespräch entsteht"
-									: "Die KI-Stimmen werden vorbereitet"}
-							</Text>
-							<Text className="text-body-3 text-secondary-text">
-								Das kann einige Minuten dauern. Du kannst diese Seite verlassen
-								und später zurückkommen.
-							</Text>
-						</View>
-					) : episode?.status === "ready" && episode.audioUrl ? (
-						<PodcastPlayer
-							key={episode._id}
-							url={episode.audioUrl}
-							title="Deine Theorie · KI-Lerngespräch"
-							initialPosition={episode.positionSeconds}
-							onProgress={(positionSeconds) =>
-								progress({ podcastId: episode._id, positionSeconds })
-							}
-						/>
-					) : (
-						<View className="gap-4 rounded-card bg-card p-5">
-							<Text selectable className="text-body-2 text-text">
-								{episode?.error ??
-									"Lass dir die Theorie als kurzes Gespräch zwischen Mira und Noah erklären."}
-							</Text>
-							<Button
-								disabled={busy}
-								accessibilityState={{ busy }}
-								onPress={() =>
-									void run(async () => {
-										if (await requestAiConsent())
-											await request({
-												sessionId: sessionId as Id<"learningPlanSessions">,
-											});
-									})
-								}
-							>
-								<Text>
-									{busy
-										? "Wird gestartet …"
-										: episode
-											? "Erneut versuchen"
-											: "Podcast erstellen"}
-								</Text>
-							</Button>
-						</View>
-					)}
-					{episode?.script && episode.status === "ready" ? (
-						<PodcastStudyContent
-							script={episode.script}
-							answers={episode.answers}
-							disabled={busy}
-							onAnswer={(questionIndex, optionIndex) =>
-								void run(() =>
-									answer({
-										podcastId: episode._id,
-										questionIndex,
-										optionIndex,
-									}),
-								)
-							}
-						/>
-					) : null}
-				</>
+				<View className="gap-4 rounded-card bg-card p-5">
+					<Text selectable className="text-body-2 text-text">
+						{episode?.error ??
+							"Lass dir die Theorie als kurzes Gespräch zwischen Mira und Noah erklären."}
+					</Text>
+					<Button
+						disabled={busy}
+						accessibilityState={{ busy }}
+						onPress={() =>
+							void run(async () => {
+								if (await requestAiConsent())
+									await request({
+										sessionId: sessionId as Id<"learningPlanSessions">,
+									});
+							})
+						}
+					>
+						<Text>
+							{busy
+								? "Wird gestartet …"
+								: episode
+									? "Erneut versuchen"
+									: "Podcast erstellen"}
+						</Text>
+					</Button>
+				</View>
 			)}
 			{error ? (
 				<Text

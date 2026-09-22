@@ -11,8 +11,10 @@ It uses the production player and study components with a clearly labelled sampl
 and local macOS system voices. It makes no AI calls and writes no learning-plan data.
 Use `pnpm expo:start` without `EXPO_PUBLIC_PODCAST_PREVIEW` to return to the real app.
 
-Test playback/pause, 15-second rewind, speed, switch to reading and back (resume),
-transcript, and both comprehension questions. The local sample is about one minute;
+Test playback/pause, 15-second rewind, speed and the optional transcript. No questions
+are visible during listening. After audio ends, continue explicitly to three questions,
+one per screen; select an answer, check it, read feedback and move on. Verify the final
+summary and replay. The local sample is about one minute;
 generated episodes target 3–6 minutes. `node scripts/generate-podcast-preview.mjs`
 regenerates the sample on macOS with `say` and `ffmpeg`.
 

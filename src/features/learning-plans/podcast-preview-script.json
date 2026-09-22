@@ -22,10 +22,20 @@
 		},
 		{
 			"speaker": "Noah",
-			"text": "Mein Merksatz lautet: Bild erkennen, Bedeutung übertragen und Wirkung im Kontext erklären. Jetzt kannst du mit zwei kurzen Fragen prüfen, ob du den Unterschied verstanden hast."
+			"text": "Mein Merksatz lautet: Bild erkennen, Bedeutung übertragen und Wirkung im Kontext erklären. Jetzt kannst du mit drei kurzen Fragen prüfen, ob du den Unterschied verstanden hast."
 		}
 	],
 	"questions": [
+		{
+			"prompt": "Was macht eine Metapher aus?",
+			"options": [
+				"Sie überträgt Bedeutung zwischen zwei Bereichen.",
+				"Sie verbindet immer zwei Sätze mit ‚wie‘.",
+				"Sie beschreibt ausschließlich wörtliche Tatsachen."
+			],
+			"correctIndex": 0,
+			"explanation": "Eine Metapher überträgt Bedeutung. Das sprachliche Bild ist nicht wörtlich gemeint."
+		},
 		{
 			"prompt": "Was vermittelt die Metapher ‚ein Meer aus Menschen‘?",
 			"options": [

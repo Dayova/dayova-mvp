@@ -1,16 +1,14 @@
 import {
+	type AudioSource,
 	setAudioModeAsync,
 	useAudioPlayer,
 	useAudioPlayerStatus,
 } from "expo-audio";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, Pressable, View } from "react-native";
-import type { PodcastScript } from "#convex/podcastContent";
+import { ActivityIndicator, AppState, View } from "react-native";
 import { Button } from "~/components/ui/button";
-import { FlowProgressBar } from "~/components/ui/flow-progress-bar";
 import { Text } from "~/components/ui/text";
 import { useDayovaTheme } from "~/lib/theme";
-import { cn } from "~/lib/utils";
 
 export function formatPodcastTime(seconds: number) {
 	const value = Math.max(0, Math.floor(seconds));
@@ -22,11 +20,15 @@ export function PodcastPlayer({
 	title,
 	initialPosition,
 	onProgress,
+	onFinished,
+	caption = "KI-Lerngespräch · zwei synthetische Stimmen",
 }: {
-	url: string;
+	url: AudioSource;
 	title: string;
 	initialPosition: number;
 	onProgress: (seconds: number) => Promise<unknown>;
+	onFinished?: () => void;
+	caption?: string;
 }) {
 	const { colors } = useDayovaTheme();
 	const player = useAudioPlayer(url, { updateInterval: 1000 });
@@ -38,6 +40,10 @@ export function PodcastPlayer({
 	const lastSaved = useRef(initialPosition);
 	const latestPosition = useRef(initialPosition);
 	const progressRef = useRef(onProgress);
+	const finishedRef = useRef(onFinished);
+	useEffect(() => {
+		finishedRef.current = onFinished;
+	}, [onFinished]);
 	useEffect(() => {
 		progressRef.current = onProgress;
 	}, [onProgress]);
@@ -53,6 +59,7 @@ export function PodcastPlayer({
 	useEffect(() => {
 		if (!restored.current || !status.isLoaded) return;
 		latestPosition.current = status.currentTime;
+		if (status.didJustFinish) finishedRef.current?.();
 		if (
 			Math.abs(status.currentTime - lastSaved.current) >= 10 ||
 			status.didJustFinish
@@ -104,7 +111,7 @@ export function PodcastPlayer({
 		}
 	}
 	return (
-		<View className="gap-4 rounded-card border border-border bg-card p-5">
+		<View className="gap-4 rounded-card border border-border bg-card p-6">
 			<Text
 				selectable
 				className="font-poppins font-semibold text-body-2 text-text"
@@ -112,10 +119,10 @@ export function PodcastPlayer({
 				Mira & Noah
 			</Text>
 			<Text selectable className="text-body-4 text-secondary-text">
-				Zwei KI-Stimmen erklären und hinterfragen deine Theorie.
+				{caption}
 			</Text>
-			<FlowProgressBar
-				progress={status.duration ? status.currentTime / status.duration : 0}
+			<View
+				className="h-2 overflow-hidden rounded-full bg-system-subtle"
 				accessibilityRole="progressbar"
 				accessibilityLabel="Hörfortschritt"
 				accessibilityValue={{
@@ -123,7 +130,15 @@ export function PodcastPlayer({
 					max: Math.round(status.duration),
 					now: Math.round(status.currentTime),
 				}}
-			/>
+			>
+				<View
+					className="h-full rounded-full bg-primary"
+					// Playback progress is a runtime measurement, not a spacing token.
+					style={{
+						width: `${status.duration ? Math.min(100, Math.max(0, (status.currentTime / status.duration) * 100)) : 0}%`,
+					}}
+				/>
+			</View>
 			<Text selectable className="text-body-4 text-secondary-text">
 				{formatPodcastTime(status.currentTime)} /{" "}
 				{formatPodcastTime(status.duration)}
@@ -145,7 +160,7 @@ export function PodcastPlayer({
 			</Button>
 			<View className="flex-row flex-wrap gap-3">
 				<Button
-					variant="neutral"
+					variant="ghost"
 					className="min-w-32 flex-1"
 					disabled={!status.isLoaded}
 					onPress={() =>
@@ -156,10 +171,10 @@ export function PodcastPlayer({
 							)
 					}
 				>
-					<Text>15 Sek. zurück</Text>
+					<Text className="text-body-3">15 Sek. zurück</Text>
 				</Button>
 				<Button
-					variant="neutral"
+					variant="ghost"
 					className="min-w-32 flex-1"
 					accessibilityLabel={`Geschwindigkeit: ${speed}-fach. Ändern`}
 					onPress={() => {
@@ -168,7 +183,7 @@ export function PodcastPlayer({
 						setSpeed(next);
 					}}
 				>
-					<Text>{speed}× Tempo</Text>
+					<Text className="text-body-3">{speed}× Tempo</Text>
 				</Button>
 			</View>
 			{status.error ? (
@@ -200,105 +215,6 @@ export function PodcastPlayer({
 					{error}
 				</Text>
 			) : null}
-		</View>
-	);
-}
-
-export function PodcastStudyContent({
-	script,
-	answers,
-	onAnswer,
-	disabled = false,
-}: {
-	script: PodcastScript;
-	answers: number[];
-	onAnswer: (question: number, option: number) => void;
-	disabled?: boolean;
-}) {
-	const [showTranscript, setShowTranscript] = useState(false);
-	return (
-		<View className="gap-6">
-			<Button
-				variant="neutral"
-				accessibilityState={{ expanded: showTranscript }}
-				onPress={() => setShowTranscript((value) => !value)}
-			>
-				<Text>
-					{showTranscript ? "Transkript schließen" : "Transkript mitlesen"}
-				</Text>
-			</Button>
-			{showTranscript ? (
-				<View className="gap-5 rounded-card bg-card p-5">
-					{script.turns.map((turn, index) => (
-						// biome-ignore lint/suspicious/noArrayIndexKey: A generated transcript is immutable and may repeat the same sentence.
-						<View key={`${index}-${turn.speaker}`} className="gap-1">
-							<Text className="font-poppins font-semibold text-body-4 text-primary">
-								{turn.speaker}
-							</Text>
-							<Text selectable className="text-body-2 text-text">
-								{turn.text}
-							</Text>
-						</View>
-					))}
-				</View>
-			) : null}
-			<Text
-				accessibilityRole="header"
-				className="font-poppins font-semibold text-heading-2 text-text"
-			>
-				Was hast du mitgenommen?
-			</Text>
-			<Text selectable className="text-body-3 text-secondary-text">
-				Teste dein Verständnis. Anhören allein schließt deine Lerneinheit nicht
-				ab.
-			</Text>
-			{script.questions.map((question, questionIndex) => {
-				const answer = answers[questionIndex] ?? -1;
-				return (
-					<View
-						key={question.prompt}
-						className="gap-3 rounded-card bg-card p-5"
-					>
-						<Text
-							selectable
-							className="font-poppins font-semibold text-body-2 text-text"
-						>
-							{questionIndex + 1}. {question.prompt}
-						</Text>
-						{question.options.map((option, optionIndex) => (
-							<Pressable
-								key={option}
-								disabled={disabled}
-								accessibilityRole="radio"
-								accessibilityLabel={option}
-								accessibilityState={{
-									checked: answer === optionIndex,
-									disabled,
-								}}
-								onPress={() => onAnswer(questionIndex, optionIndex)}
-								className={cn(
-									"min-h-12 justify-center rounded-2xl border border-border p-4",
-									answer === optionIndex && "border-primary bg-system-subtle",
-								)}
-							>
-								<Text className="text-body-3 text-text">{option}</Text>
-							</Pressable>
-						))}
-						{answer >= 0 ? (
-							<Text
-								selectable
-								accessibilityLiveRegion="polite"
-								className="text-body-3 text-secondary-text"
-							>
-								{answer === question.correctIndex
-									? "Richtig. "
-									: "Noch nicht ganz. "}
-								{question.explanation}
-							</Text>
-						) : null}
-					</View>
-				);
-			})}
 		</View>
 	);
 }
