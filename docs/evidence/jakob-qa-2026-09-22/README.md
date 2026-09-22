@@ -3,9 +3,21 @@
 Stand: 23. September 2026. **In Arbeit, keine vollständige Abnahme.**
 
 Neu: [Android-Lernzeiten vollständig im Testaccount geprüft](android/README.md)
-und [separater iPhone-Startnachweis](iphone/README.md). Die ältere Android-
+und [iPhone-Start und Lernzeiten-CRUD](iphone/README.md). Die ältere Android-
 Unterbrechung unten ist inzwischen geklärt; der Testalias wurde verifiziert.
-Angemeldete iPhone-Abläufe und weitere Ende-zu-Ende-Tests bleiben offen.
+iPhone-Lernzeiten-CRUD ist ebenfalls bestanden. Weitere Ende-zu-Ende-Tests bleiben offen.
+
+Aktuelle Ergänzung: [PR #653: exakter iPhone-Vorher-/Nachhervergleich mit
+zwei Screenshots und zwei geprüften Aufnahmen](../day-402-iphone-comparison/README.md).
+Der iPad-Review-HOLD bleibt offen. Die historischen Abschnitte unten dokumentieren
+den damaligen Zustand und sind nicht als aktuelle Android-/iPhone-Sperre zu lesen.
+
+Aktueller Backend-Blocker: Der echte Android-Dateiupload scheiterte in
+`learningPlans:generateUploadUrl` an fehlender R2-Konfiguration. Im verwendeten
+Development-Backend `trustworthy-skunk-257` wurde nur die Clerk-Variable
+nachgewiesen. Zugriff auf das früher dokumentierte `resilient-pika-316` ist nicht
+vorhanden. Kein erfolgreicher Upload, Wissenscheck oder vollständiger Lernplan
+wird aus den bisherigen Bildern abgeleitet. Kein Production-Deployment erfolgt.
 
 ## Herkunft und Grenzen
 
@@ -66,7 +78,7 @@ wurden sichtbar. Das ist noch kein vollständiger Ende-zu-Ende-Test.
 | Neuer entbehrlicher Testaccount | Testalias im Profil verifiziert; angemeldete Sitzung „Dayova QA Test“ vorhanden. Vollständiger Neunutzer-Nachweis noch offen |
 | Onboarding und Standardwerte | Schrittfolge und Screenshots offen |
 | Persönliche Fächer anlegen/umbenennen/löschen | iPad bestanden: Eintrag angelegt, umbenannt, bestätigt entfernt; Leerzustand und Abwesenheit des Eintrags per Maestro geprüft. Verknüpfte Einträge und Android noch offen |
-| Lernzeiten anlegen/ändern/löschen | iPad bestanden: Montag 17:00–17:30 angelegt, auf Dienstag geändert, Löschung abgebrochen und danach bestätigt; Leerzustand und Abwesenheit des Eintrags geprüft. Zeitpicker, Konfliktfälle und Android noch offen |
+| Lernzeiten anlegen/ändern/löschen | iPad, iPhone und Android bestanden: Montag 17:00–17:30 angelegt, auf Dienstag geändert, Löschung abgebrochen und danach bestätigt; Leerzustand und Abwesenheit des Eintrags geprüft. Zeitpicker und Konfliktfälle noch offen |
 | Prüfung / Lernplan-Entwurf / Fortsetzen | Geräteprüfung offen |
 | Material: Kamera, Galerie, Dateien, Grenzen und Fehlerfälle | Geräteprüfung offen |
 | Lernschritt abschließen und wiederholen | Geräteprüfung offen |
@@ -74,7 +86,7 @@ wurden sichtbar. Das ist noch kein vollständiger Ende-zu-Ende-Test.
 | Theme und Auswahlkontraste | Geräteprüfung offen |
 | Abbrechen und bestätigtes Löschen | Geräteprüfung offen |
 | Testaccount löschen und Ergebnis prüfen | ausschließlich am entbehrlichen Account, zuletzt |
-| Android-Gegenprüfung | offen; vorhandene alte Bilder sind kein Nachweis dieses QA-Stands |
+| Android-Gegenprüfung | Lernzeiten-CRUD bestanden, siehe android/README.md; übrige Abläufe offen. Alte Nutzerbilder bleiben ohne verifizierte Build-Zuordnung |
 
 Keine Passwörter oder Bestätigungscodes in Screenshot-Belege aufnehmen. Den
 persönlichen Hauptaccount nicht löschen. Erfolgszustände erst nach beobachtetem
