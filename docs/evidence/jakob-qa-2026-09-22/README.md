@@ -49,15 +49,18 @@ Backend: Development; Authentifizierung verwendet echte E-Mail-Verifizierung.
 
 Der erste Start des gemeinsamen JavaScript-Stands zeigte:
 `Cannot find native module 'ExpoImageManipulator'`.
-Der vorhandene Entwicklungsbuild ist deshalb nicht als funktionierender QA-Build
-abgenommen. Ein neuer lokaler nativer Build mit diesem Modul wurde gestartet.
+Der vorhandene Entwicklungsbuild war deshalb nicht als QA-Build geeignet.
+Ein neuer lokaler nativer Build mit diesem Modul wurde erfolgreich gebaut
+(0 Fehler, 0 Warnungen) und auf dem dedizierten iPad installiert. Nach Verbindung
+mit Port 8095 startete die App ohne diesen Fehler; Einstieg und Einstellungen
+wurden sichtbar. Das ist noch kein vollständiger Ende-zu-Ende-Test.
 
 | Ablauf | Status / noch nötiger Nachweis |
 | --- | --- |
-| Start mit passenden nativen Modulen | neuer Build und erneuter Start offen |
-| Neuer entbehrlicher Testaccount | Registrierung/Verifizierung offen |
+| Start mit passenden nativen Modulen | bestanden: neuer nativer Build, Start und Einstellungen sichtbar |
+| Neuer entbehrlicher Testaccount | Testalias im Profil verifiziert; angemeldete Sitzung „Dayova QA Test“ vorhanden. Vollständiger Neunutzer-Nachweis noch offen |
 | Onboarding und Standardwerte | Schrittfolge und Screenshots offen |
-| Persönliche Fächer anlegen/umbenennen/löschen | Geräteprüfung offen |
+| Persönliche Fächer anlegen/umbenennen/löschen | iPad bestanden: Eintrag angelegt, umbenannt, bestätigt entfernt; Leerzustand und Abwesenheit des Eintrags per Maestro geprüft. Verknüpfte Einträge und Android noch offen |
 | Lernzeiten anlegen/ändern/löschen | Geräteprüfung offen |
 | Prüfung / Lernplan-Entwurf / Fortsetzen | Geräteprüfung offen |
 | Material: Kamera, Galerie, Dateien, Grenzen und Fehlerfälle | Geräteprüfung offen |
@@ -71,6 +74,36 @@ abgenommen. Ein neuer lokaler nativer Build mit diesem Modul wurde gestartet.
 Keine Passwörter oder Bestätigungscodes in Screenshot-Belege aufnehmen. Den
 persönlichen Hauptaccount nicht löschen. Erfolgszustände erst nach beobachtetem
 Speicher-/Lösch-Ergebnis dokumentieren, nicht bereits beim Bestätigungsdialog.
+
+### Beobachtete offene Darstellung
+
+Die lange Testalias-Adresse läuft im iPad-Profil in einer zweiten Zeile über den
+unteren Rand des E-Mail-Feldes. Sichtbar am 22.09.2026, 22:53 CEST, auf dem
+nativen QA-Build; noch nicht behoben. Lokaler Diagnosebeleg (enthält E-Mail,
+nicht für ungeprüfte Veröffentlichung): `/private/tmp/dayova-qa-profile-verified.png`.
+
+## iPad-Belege dieses QA-Stands
+
+Aufgenommen am 22.09.2026, ca. 22:51–23:05 CEST, Quellstand `399eee3`.
+Die Bilder zeigen den gemeinsamen Stand, **keinen individuellen PR-Vorhervergleich**.
+Das graue Zahnrad ist ein Simulator-Overlay. Mehrere Maestro-Textselektoren
+trafen gruppierte Elemente nicht; bestätigte Ergebnisse wurden anschließend
+mit sichtbaren Trefferpunkten und Ergebnis-Assertions geprüft.
+
+| Zustand | Beleg |
+| --- | --- |
+| Einstellungen | [Bild](dayova-qa-settings-settled.png) |
+| Fächer vorher leer | [Bild](dayova-qa-subjects-open.png) |
+| Fach hinzufügen, leerer Dialog | [Bild](dayova-qa-subject-add.png) |
+| Angelegt (Testeingabe mit zusätzlichem n durch Testtrefferpunkt) | [Bild](dayova-qa-subject-result.png) |
+| Umbenennen-Dialog | [Bild](dayova-qa-rename-dialog.png) |
+| Umbenannt auf QA Latein | [Bild](dayova-qa-renamed.png) |
+| Swipe-Löschaktion | [Bild](dayova-qa-subject-swipe.png) |
+| Bestätigungsdialog | [Bild](dayova-qa-delete-second.png) |
+| Nach bestätigter Löschung wieder leer | [Bild](dayova-qa-subject-deleted-final.png) |
+
+Der entbehrliche Testeintrag wurde entfernt und kann bei Bedarf neu angelegt
+werden. Der Testaccount selbst und der persönliche Hauptaccount wurden nicht gelöscht.
 
 ## Jakobs übrige Punkte
 
