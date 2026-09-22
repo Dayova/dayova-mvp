@@ -38,6 +38,7 @@ type TheoryTopicPageProps = {
 	isCompleting: boolean;
 	onPrevious: () => void;
 	onNext: () => void;
+	onListen?: () => void;
 };
 
 function TheoryTopicProgress({
@@ -146,6 +147,7 @@ export function TheoryTopicPage({
 	isCompleting,
 	onPrevious,
 	onNext,
+	onListen,
 }: TheoryTopicPageProps) {
 	const insets = useSafeAreaInsets();
 	const { colors } = useDayovaTheme();
@@ -173,6 +175,15 @@ export function TheoryTopicPage({
 					className="gap-7"
 				>
 					<TheoryTopicIntroduction topic={topic} />
+					{onListen ? (
+						<Button
+							variant="neutral"
+							onPress={onListen}
+							accessibilityLabel="Theorie als Podcast anhören"
+						>
+							<Text>Als Podcast anhören</Text>
+						</Button>
+					) : null}
 
 					<CollapsibleTheorySection
 						chevronColor={colors.secondaryText}

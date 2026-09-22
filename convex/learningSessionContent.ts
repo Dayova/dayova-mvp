@@ -21,6 +21,7 @@ import {
 	type LearningTopic,
 } from "./learningContentPlan";
 import { LEARNING_PLAN_MAX_FILE_COUNT } from "./learningPlanUploadPolicy";
+import { deleteSessionPodcast } from "./learningPodcasts";
 import {
 	getLearningSessionComposition,
 	isLearningSessionCompositionEligible,
@@ -1058,6 +1059,7 @@ export const deleteSessionLearningDataForSession = async (
 	ctx: MutationCtx,
 	sessionId: Id<"learningPlanSessions">,
 ) => {
+	await deleteSessionPodcast(ctx, sessionId);
 	const items = await listItems(ctx, sessionId);
 	const attempts = await ctx.db
 		.query("learningSessionAnswerAttempts")

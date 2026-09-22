@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { isPodcastSubject } from "#convex/podcastContent";
 import { QuestionProgressBar } from "~/components/question-progress-bar";
 import { ScreenHeader } from "~/components/screen-header";
 import { BackButton, Button } from "~/components/ui/button";
@@ -842,6 +843,14 @@ export default function LearningSessionContentScreen() {
 				<TheoryTopicPage
 					key={currentItem.id}
 					item={currentItem}
+					onListen={
+						isPodcastSubject(content.plan.subject)
+							? () =>
+									router.push(
+										`/learning-plans/${planId}/sessions/${sessionId}/podcast`,
+									)
+							: undefined
+					}
 					currentIndex={theoryTopicPosition.topicIndex}
 					total={theoryTopicPosition.total}
 					isCompleting={isBusy}

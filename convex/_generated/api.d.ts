@@ -38,6 +38,7 @@ import type * as learningPlanPlanningHints from "../learningPlanPlanningHints.js
 import type * as learningPlanUploadPolicy from "../learningPlanUploadPolicy.js";
 import type * as learningPlanUploadTelemetry from "../learningPlanUploadTelemetry.js";
 import type * as learningPlans from "../learningPlans.js";
+import type * as learningPodcasts from "../learningPodcasts.js";
 import type * as learningPreparationPolicy from "../learningPreparationPolicy.js";
 import type * as learningSessionComposition from "../learningSessionComposition.js";
 import type * as learningSessionContent from "../learningSessionContent.js";
@@ -53,6 +54,8 @@ import type * as learningTimesBackfill from "../learningTimesBackfill.js";
 import type * as learningTopicMap from "../learningTopicMap.js";
 import type * as notifications from "../notifications.js";
 import type * as personalSubjects from "../personalSubjects.js";
+import type * as podcastAi from "../podcastAi.js";
+import type * as podcastContent from "../podcastContent.js";
 import type * as questionNovelty from "../questionNovelty.js";
 import type * as revenueCat from "../revenueCat.js";
 import type * as scheduleConflicts from "../scheduleConflicts.js";
@@ -103,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   learningPlanUploadPolicy: typeof learningPlanUploadPolicy;
   learningPlanUploadTelemetry: typeof learningPlanUploadTelemetry;
   learningPlans: typeof learningPlans;
+  learningPodcasts: typeof learningPodcasts;
   learningPreparationPolicy: typeof learningPreparationPolicy;
   learningSessionComposition: typeof learningSessionComposition;
   learningSessionContent: typeof learningSessionContent;
@@ -118,6 +122,8 @@ declare const fullApi: ApiFromModules<{
   learningTopicMap: typeof learningTopicMap;
   notifications: typeof notifications;
   personalSubjects: typeof personalSubjects;
+  podcastAi: typeof podcastAi;
+  podcastContent: typeof podcastContent;
   questionNovelty: typeof questionNovelty;
   revenueCat: typeof revenueCat;
   scheduleConflicts: typeof scheduleConflicts;
@@ -160,4 +166,6 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   convexFilesControl: import("@gilhrpenner/convex-files-control/_generated/component.js").ComponentApi<"convexFilesControl">;
+  agent: import("@convex-dev/agent/_generated/component.js").ComponentApi<"agent">;
+  workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
 };
