@@ -696,6 +696,7 @@ function HomeworkCard({
 }
 
 export default function LearningPlansScreen() {
+	const { colors } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();

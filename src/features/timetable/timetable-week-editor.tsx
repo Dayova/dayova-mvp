@@ -28,6 +28,7 @@ import {
 	type TimetableLessonDraft,
 } from "~/features/timetable/timetable-editor";
 import { useDayovaTheme } from "~/lib/theme";
+import { cn } from "~/lib/utils";
 
 // These are native rendering controls with no NativeWind equivalent.
 const continuousBorderStyle = {

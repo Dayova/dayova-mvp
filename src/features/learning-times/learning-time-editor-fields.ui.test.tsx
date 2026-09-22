@@ -1,6 +1,11 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { render, within } from "@testing-library/react-native";
+import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { LearningTimeEditorFields } from "./learning-time-editor-fields";
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
 
 jest.mock("~/components/ui/icon", () => {
 	const { Text } = jest.requireActual(
@@ -33,13 +38,12 @@ describe("LearningTimeEditorFields", () => {
 		);
 
 		const selectedDay = screen.getByRole("radio", { name: "Dienstag" });
-		expect(selectedDay.props.accessibilityState).toEqual({ checked: true });
-		expect(selectedDay.props.style).toEqual(
-			expect.objectContaining({ aspectRatio: 1, maxWidth: 48 }),
-		);
-		expect(within(selectedDay).getByText("Di").props.className).toContain(
-			"text-white",
-		);
+		expect(selectedDay).toBeChecked();
+		expect(selectedDay.props.className).toContain("aspect-square");
+		expect(selectedDay.props.className).toContain("max-w-12");
+		expect(within(selectedDay).getByText("Di")).toHaveStyle({
+			color: DAYOVA_DESIGN_SYSTEM.colors.onPrimary,
+		});
 	});
 
 	test("uses bordered time fields without drop shadows", async () => {
