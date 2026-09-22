@@ -34,6 +34,11 @@ import {
 	getTheoryTopicPosition,
 	isPairedTheoryQuestionItem,
 } from "~/features/learning-plans/session-progress";
+import {
+	captureRepeatAttemptBaseline,
+	getCurrentRunAttempts,
+	type RepeatAttemptBaseline,
+} from "~/features/learning-plans/session-repeat-attempts";
 import { runTheoryTopicPrimaryAction } from "~/features/learning-plans/theory-topic";
 import { TheoryTopicPage } from "~/features/learning-plans/theory-topic-page";
 import type {
@@ -188,8 +193,8 @@ export default function LearningSessionContentScreen() {
 		LearningSessionContentSnapshot["session"]["phase"] | null
 	>(null);
 	const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
-	const [retryStartedAt, setRetryStartedAt] = useState<number | null>(() =>
-		params.repeat === "1" ? Date.now() : null,
+	const [repeatBaseline, setRepeatBaseline] = useState<RepeatAttemptBaseline>(
+		() => (params.repeat === "1" ? "pending" : null),
 	);
 	const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
 	const [questionActionFooterHeight, setQuestionActionFooterHeight] = useState<
@@ -234,6 +239,9 @@ export default function LearningSessionContentScreen() {
 			staticContent && progress ? { ...staticContent, ...progress } : null,
 		[progress, staticContent],
 	);
+	if (repeatBaseline === "pending" && content) {
+		setRepeatBaseline(captureRepeatAttemptBaseline(content.attempts));
+	}
 	const needsTheoryContentUpgrade = Boolean(
 		content &&
 			content.session.phase === "theory" &&
@@ -270,31 +278,25 @@ export default function LearningSessionContentScreen() {
 			content.attempts.find((attempt) => attempt.itemId === currentItem.id) ??
 			null;
 		if (!attempt) return null;
-		if (retryStartedAt !== null && attempt.createdAt < retryStartedAt)
+		if (repeatBaseline === "pending" || repeatBaseline?.has(attempt.id))
 			return null;
 		return attempt;
-	}, [content, currentItem, repeatingItemId, retryStartedAt]);
+	}, [content, currentItem, repeatingItemId, repeatBaseline]);
 	const visibleAttempt =
 		isPraxisSession || isPreTheoryQuestion
 			? null
 			: localAttempt && currentItem && localAttempt.itemId === currentItem.id
 				? localAttempt
 				: persistedAttempt;
-	const currentRunAttempts = useMemo(() => {
-		const attempts =
-			content?.attempts.filter(
-				(attempt) =>
-					retryStartedAt === null || attempt.createdAt >= retryStartedAt,
-			) ?? [];
-		if (
-			!localAttempt ||
-			(retryStartedAt !== null && localAttempt.createdAt < retryStartedAt) ||
-			attempts.some((attempt) => attempt.id === localAttempt.id)
-		) {
-			return attempts;
-		}
-		return [...attempts, localAttempt];
-	}, [content?.attempts, localAttempt, retryStartedAt]);
+	const currentRunAttempts = useMemo(
+		() =>
+			getCurrentRunAttempts(
+				content?.attempts ?? [],
+				localAttempt,
+				repeatBaseline,
+			),
+		[content?.attempts, localAttempt, repeatBaseline],
+	);
 	const currentRunCorrectCount = currentRunAttempts.filter(
 		(attempt) => attempt.rating === "correct",
 	).length;
@@ -637,7 +639,9 @@ export default function LearningSessionContentScreen() {
 
 		resetItemState();
 		setErrorMessage(null);
-		setRetryStartedAt(Date.now());
+		setRepeatBaseline(
+			captureRepeatAttemptBaseline(content.attempts, localAttempt),
+		);
 		setCurrentIndex(0);
 		setCompletionPhase(null);
 		setIsContinuation(false);
