@@ -478,3 +478,49 @@ test("repairing an account-wide authorization failure automatically resumes pend
 	mockLoops();
 	expect(await deliver(t)).toMatchObject({ synced: 1 });
 });
+
+test("an identity duplicate arriving during provider lookup prevents the outbound write", async () => {
+	const { t, job } = await setup();
+	const remote = mockLoops();
+	const original = remote.mock.getMockImplementation();
+	let added = false;
+	remote.mock.mockImplementation(async (url, init) => {
+		if (url.includes("?email=") && !added) {
+			added = true;
+			await t.run((ctx) =>
+				ctx.db.insert("users", {
+					tokenIdentifier: "other-issuer|user_student",
+					clerkId: identity.subject,
+					email: "duplicate@example.com",
+				}),
+			);
+		}
+		return (await original?.(url, init)) as Response;
+	});
+	expect(await deliver(t)).toMatchObject({ skipped: 1 });
+	expect(remote.writes).toHaveLength(0);
+	await deliver(t);
+	expect(
+		await t.run((ctx) => ctx.db.get("loopsStudents", job._id)),
+	).toMatchObject({ error: "identity_conflict", status: "review" });
+});
+
+test("a failed deletion acknowledgement retains the tombstone for retry", async () => {
+	const { t, job } = await setup();
+	mockLoops();
+	await deliver(t);
+	vi.stubEnv("LOOPS_MODE", "off");
+	await t
+		.withIdentity(identity)
+		.mutation(api.accountDeletion.deleteCurrentUserDataBatch, {});
+	await t.mutation(internal.loopsState.finish, {
+		id: job._id,
+		version: job.version + 1,
+		deleted: true,
+		error: "unavailable",
+		retryAt: Date.now() + 60_000,
+	});
+	expect(
+		await t.run((ctx) => ctx.db.get("loopsStudents", job._id)),
+	).toMatchObject({ deleted: true, status: "pending", error: "unavailable" });
+});

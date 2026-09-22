@@ -110,8 +110,13 @@ export const prepare = internalMutation({
 		)
 			return false;
 		const user = await ctx.db.get("users", job.userId);
+		const matches = await ctx.db
+			.query("users")
+			.withIndex("by_clerkId", (q) => q.eq("clerkId", job.clerkId))
+			.take(2);
 		if (
 			!user ||
+			matches.length !== 1 ||
 			user.clerkId !== job.clerkId ||
 			user.validationRole === "founder"
 		)
@@ -137,7 +142,12 @@ export const finish = internalMutation({
 	handler: async (ctx, args) => {
 		const job = await ctx.db.get("loopsStudents", args.id);
 		if (!job) return null;
-		if (args.deleted && job.deleted && job.version === args.version) {
+		if (
+			args.deleted &&
+			!args.error &&
+			job.deleted &&
+			job.version === args.version
+		) {
 			await ctx.db.delete("loopsStudents", job._id);
 			return null;
 		}
