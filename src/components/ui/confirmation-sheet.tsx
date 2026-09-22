@@ -6,6 +6,7 @@ import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { WarningBanner } from "~/components/ui/warning-banner";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
+import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 type ConfirmationActionLayout = "inline" | "stacked";
@@ -42,9 +43,10 @@ function ConfirmationSheet({
 	closeAccessibilityLabel = "Bestätigung schließen",
 	actionLayout: requestedActionLayout = "inline",
 	maxWidth,
-	scrollable = true,
+	scrollable = false,
 	size = "content",
 }: ConfirmationSheetProps) {
+	const { colors } = useDayovaTheme();
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	const actionLayout = shouldStackInlineContent
 		? "stacked"
@@ -65,7 +67,13 @@ function ConfirmationSheet({
 			variant={confirmTone === "destructive" ? "destructive" : "default"}
 		>
 			{isBusy ? (
-				<ActivityIndicator color={DAYOVA_DESIGN_SYSTEM.colors.light1} />
+				<ActivityIndicator
+					color={
+						confirmTone === "destructive"
+							? colors.background
+							: DAYOVA_DESIGN_SYSTEM.colors.light1
+					}
+				/>
 			) : (
 				<Text>{confirmLabel}</Text>
 			)}
@@ -75,12 +83,12 @@ function ConfirmationSheet({
 		<Button
 			accessibilityLabel={cancelLabel}
 			className={cn(
-				"border border-border bg-card shadow-none",
+				"shadow-none",
 				actionLayout === "stacked" ? "w-full" : "flex-1",
 			)}
 			disabled={isBusy}
 			onPress={safeClose}
-			variant="ghost"
+			variant="neutral"
 		>
 			<Text>{cancelLabel}</Text>
 		</Button>
@@ -95,6 +103,7 @@ function ConfirmationSheet({
 		<WarningBanner
 			accessibilityLiveRegion="polite"
 			accessibilityRole="alert"
+			className={scrollable ? undefined : "mb-5"}
 			title="Das hat nicht geklappt"
 			description={errorMessage}
 		/>
@@ -104,16 +113,23 @@ function ConfirmationSheet({
 		<DayovaSheetFrame
 			visible={visible}
 			title={title}
-			description={description}
+			description={scrollable ? undefined : description}
 			onClose={safeClose}
 			dismissible={!isBusy}
 			closeAccessibilityLabel={closeAccessibilityLabel}
-			footer={actions}
+			contentClassName={scrollable ? "gap-6" : undefined}
+			footer={scrollable ? actions : undefined}
 			maxWidth={maxWidth}
 			scrollable={scrollable}
 			size={size}
 		>
+			{scrollable ? (
+				<Text className="font-poppins text-body-3 text-secondary-text">
+					{description}
+				</Text>
+			) : null}
 			{error}
+			{scrollable ? null : actions}
 		</DayovaSheetFrame>
 	);
 }

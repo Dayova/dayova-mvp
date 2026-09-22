@@ -39,7 +39,7 @@ const SHADOW_STYLE_PROPERTIES = new Set([
 	"shadowOpacity",
 	"shadowRadius",
 ]);
-const SHADOW_CLASS_PATTERN = /\bshadow-(?!none\b)/u;
+const SHADOW_CLASS_PATTERN = /\bshadow(?:-(?!none\b)|(?=\s|$))/u;
 
 const endsWithAny = (filename, paths) =>
 	paths.some((path) => filename.endsWith(path));
@@ -306,17 +306,37 @@ export const noInterfaceShadows = {
 		const filename = context.filename.replaceAll("\\", "/");
 		if (!endsWithAny(filename, FLAT_INTERFACE_PATHS)) return {};
 
+		const reportShadowClasses = (node) => {
+			context.report({
+				node,
+				messageId: "shadow",
+				data: { name: "shadow utility classes" },
+			});
+		};
+
 		return {
 			Literal(node) {
 				if (
 					typeof node.value === "string" &&
 					SHADOW_CLASS_PATTERN.test(node.value)
 				) {
-					context.report({
-						node,
-						messageId: "shadow",
-						data: { name: "shadow utility classes" },
-					});
+					reportShadowClasses(node);
+				}
+			},
+			TemplateLiteral(node) {
+				if (
+					node.quasis.some((part, index) => {
+						let text = part.value.cooked ?? part.value.raw;
+						// A class touching an interpolation may resolve to shadow-none.
+						// Check only complete tokens in each static segment.
+						if (index > 0) text = text.replace(/^\S*/u, "");
+						if (index < node.quasis.length - 1) {
+							text = text.replace(/\S*$/u, "");
+						}
+						return SHADOW_CLASS_PATTERN.test(text);
+					})
+				) {
+					reportShadowClasses(node);
 				}
 			},
 			Property(node) {

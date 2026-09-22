@@ -208,9 +208,9 @@ describe("DayovaSheetFrame", () => {
 		);
 		const view = await render(tree(34));
 		const content = () => view.getByTestId("delete-actions").parent?.parent;
-		expect(content()?.props.style).toEqual({ paddingBottom: 50 });
+		expect(content()?.props.style).toEqual({ paddingBottom: 54 });
 		await view.rerender(tree(0));
-		expect(content()?.props.style).toEqual({ paddingBottom: 24 });
+		expect(content()?.props.style).toEqual({ paddingBottom: 32 });
 	});
 
 	test("reopens after an in-flight controlled dismissal without closing the new sheet", async () => {

@@ -29,6 +29,7 @@ export default function AppLayout() {
 			labelVisibilityMode="labeled"
 			minimizeBehavior="onScrollDown"
 			rippleColor={colors.systemSubtle}
+			shadowColor="transparent"
 			tintColor={colors.primaryStrong}
 		>
 			<NativeTabs.Trigger

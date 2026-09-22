@@ -73,7 +73,7 @@ function DayovaSheetFrame({
 	dismissible = true,
 	showCloseButton = true,
 	compactCloseButton = false,
-	scrollable = true,
+	scrollable = false,
 	closeAccessibilityLabel = "Dialog schließen",
 	accessibilityLabel,
 	returnFocusRef,
@@ -291,7 +291,7 @@ function DayovaSheetFrame({
 			onAccessibilityAction={handleAccessibilityAction}
 			onAccessibilityEscape={dismiss}
 			className={cn(
-				"bg-card pt-4",
+				"bg-card pt-1",
 				!scrollable && "px-6",
 				size !== "content" && !scrollable && "flex-1",
 			)}
@@ -299,11 +299,7 @@ function DayovaSheetFrame({
 			style={
 				scrollable && size !== "content"
 					? { flex: 1 }
-					: {
-							paddingBottom: hasFixedFooter
-								? 12
-								: Math.max(insets.bottom + 16, 24),
-						}
+					: { paddingBottom: Math.max(insets.bottom + 20, 32) }
 			}
 		>
 			{!title ? (
@@ -318,38 +314,39 @@ function DayovaSheetFrame({
 			) : null}
 			{hasHeader ? (
 				<View
-					className={cn("mb-6 gap-4", scrollable && "px-6")}
-					testID="dayova-sheet-header"
+					className={cn("mb-6 gap-3", scrollable && "px-6")}
+					testID={scrollable ? "dayova-sheet-header" : undefined}
 				>
-					{canShowCloseButton ? (
-						<View className="items-end" testID="dayova-sheet-close-row">
-							<CloseButton
-								compact={compactCloseButton}
-								accessibilityLabel={closeAccessibilityLabel}
-								onPress={dismiss}
-							/>
-						</View>
-					) : null}
-					<View className="gap-2">
+					<View className="min-h-10 flex-row items-start gap-4">
 						{title ? (
 							<View
 								ref={initialFocusRef}
 								accessible
 								accessibilityLabel={accessibleTitle}
 								accessibilityRole="header"
+								className="flex-1"
 								collapsable={false}
 							>
-								<Text className="font-poppins font-semibold text-body-1 text-text">
+								<Text className="pt-1 font-poppins font-semibold text-body-1 text-text">
 									{title}
 								</Text>
 							</View>
-						) : null}
-						{description ? (
-							<Text className="font-poppins text-body-3 text-secondary-text">
-								{description}
-							</Text>
+						) : (
+							<View className="flex-1" />
+						)}
+						{canShowCloseButton ? (
+							<CloseButton
+								compact={compactCloseButton}
+								accessibilityLabel={closeAccessibilityLabel}
+								onPress={dismiss}
+							/>
 						) : null}
 					</View>
+					{description ? (
+						<Text className="font-poppins text-body-3 text-secondary-text">
+							{description}
+						</Text>
+					) : null}
 				</View>
 			) : null}
 			{scrollable && size !== "content" ? (
@@ -359,7 +356,7 @@ function DayovaSheetFrame({
 						contentContainerStyle={{
 							paddingBottom: hasFixedFooter
 								? 12
-								: Math.max(insets.bottom + 16, 24),
+								: Math.max(insets.bottom + 20, 32),
 						}}
 						keyboardShouldPersistTaps="handled"
 						nestedScrollEnabled
@@ -375,7 +372,7 @@ function DayovaSheetFrame({
 					{hasFixedFooter ? (
 						<View
 							className="bg-card px-6 pt-4"
-							style={{ paddingBottom: Math.max(insets.bottom + 16, 24) }}
+							style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}
 						>
 							{footer}
 						</View>
@@ -395,7 +392,9 @@ function DayovaSheetFrame({
 						</View>
 					) : null}
 					{footer ? (
-						<View className={cn(children && "mt-6", scrollable && "px-6")}>
+						<View
+							className={cn(children && "mt-6", scrollable && "px-6")}
+						>
 							{footer}
 						</View>
 					) : null}
@@ -416,7 +415,11 @@ function DayovaSheetFrame({
 			backdropComponent={renderBackdrop}
 			enableDynamicSizing={size === "content"}
 			enablePanDownToClose={dismissible}
-			handleComponent={null}
+			handleIndicatorStyle={{
+				backgroundColor: colors.border,
+				height: 4,
+				width: 44,
+			}}
 			keyboardBehavior="interactive"
 			keyboardBlurBehavior="restore"
 			maxDynamicContentSize={maximumHeight}
