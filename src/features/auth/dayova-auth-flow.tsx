@@ -263,6 +263,7 @@ export function AuthChoiceScreen() {
 						isDark={isDark}
 						scale={Math.max(width / AUTH_CHOICE_FRAME.width, 0.78)}
 						viewportWidth={width}
+						viewportHeight={height}
 						yOffset={AUTH_CHOICE_FRAME.patternYOffset}
 					/>
 				</View>
@@ -380,6 +381,7 @@ export function AuthChoiceScreen() {
 					isDark={isDark}
 					scale={frameScale}
 					viewportWidth={width}
+					viewportHeight={height}
 					yOffset={verticalPadding + AUTH_CHOICE_FRAME.patternYOffset}
 				/>
 			</Animated.View>
@@ -3431,33 +3433,43 @@ function AuthBackgroundPattern({
 	isDark,
 	scale,
 	viewportWidth,
+	viewportHeight,
 	yOffset,
 }: {
 	iconColor: string;
 	isDark: boolean;
 	scale: number;
 	viewportWidth: number;
+	viewportHeight: number;
 	yOffset: number;
 }) {
 	const isTablet = viewportWidth >= 700;
-	const tileScale = isTablet ? viewportWidth / AUTH_CHOICE_FRAME.width : scale;
+	const tileGap = 12 * scale;
+	const tileScale = isTablet
+		? Math.min(
+				viewportWidth / AUTH_CHOICE_FRAME.width,
+				(viewportHeight - 2 * tileGap) / (3 * AUTH_BACKGROUND_TILE.size),
+			)
+		: scale;
 	const iconScale = tileScale;
 	const tileSize = AUTH_BACKGROUND_TILE.size * tileScale;
 	const columnStep = AUTH_BACKGROUND_TILE.columnStep * scale;
 	const firstColumnLeft = isTablet
-		? ((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 -
-				AUTH_BACKGROUND_TILE.columnStep) *
-			tileScale
+		? viewportWidth / 2 -
+			tileSize / 2 -
+			AUTH_BACKGROUND_TILE.columnStep *
+				(viewportWidth / AUTH_CHOICE_FRAME.width)
 		: ((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 -
 				AUTH_BACKGROUND_TILE.columnStep) *
 			scale;
 	const columnLefts = isTablet
 		? [
 				firstColumnLeft,
-				(AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) * 0.5 * tileScale,
-				((AUTH_CHOICE_FRAME.width - AUTH_BACKGROUND_TILE.size) / 2 +
-					AUTH_BACKGROUND_TILE.columnStep) *
-					tileScale,
+				viewportWidth / 2 - tileSize / 2,
+				viewportWidth / 2 -
+					tileSize / 2 +
+					AUTH_BACKGROUND_TILE.columnStep *
+						(viewportWidth / AUTH_CHOICE_FRAME.width),
 			]
 		: Array.from(
 				{
@@ -3483,12 +3495,28 @@ function AuthBackgroundPattern({
 		const side = tileCenter < viewportWidth / 2 ? -1 : 1;
 		const clearsCentralContent =
 			Math.abs(tileCenter - viewportWidth / 2) > contentClearHalfWidth;
+		const topTileTop = isTablet
+			? Math.max(
+					0,
+					Math.min(
+						tabletLogoTop - tileSize - (index === 1 ? 8 : 24) * scale,
+						viewportHeight - 3 * tileSize - 2 * tileGap,
+					),
+				)
+			: ((index % 3 === 1 ? 44 : 28) + yOffset) * scale;
+		const middleTileTop = isTablet
+			? Math.min(
+					viewportHeight - 2 * tileSize - tileGap,
+					Math.max(
+						tabletLogoTop - (side < 0 ? 4 : 12) * scale,
+						topTileTop + tileSize + tileGap,
+					),
+				)
+			: ((side < 0 ? 196 : 188) + yOffset) * scale;
 		items.push({
 			key: `top-${index}`,
 			left,
-			top: isTablet
-				? Math.max(0, tabletLogoTop - tileSize - (index === 1 ? 8 : 24) * scale)
-				: ((index % 3 === 1 ? 44 : 28) + yOffset) * scale,
+			top: topTileTop,
 			icon: topIcons[index % topIcons.length] ?? Globe,
 		});
 
@@ -3496,16 +3524,20 @@ function AuthBackgroundPattern({
 		items.push({
 			key: `middle-${index}`,
 			left,
-			top: isTablet
-				? tabletLogoTop - (side < 0 ? 4 : 12) * scale
-				: ((side < 0 ? 196 : 188) + yOffset) * scale,
+			top: middleTileTop,
 			icon: side < 0 ? Plant : GreekHelmet,
 		});
 		items.push({
 			key: `bottom-${index}`,
 			left,
 			top: isTablet
-				? tabletTitleTop - (side < 0 ? 0 : 10) * scale
+				? Math.min(
+						viewportHeight - tileSize,
+						Math.max(
+							tabletTitleTop - (side < 0 ? 0 : 10) * scale,
+							middleTileTop + tileSize + tileGap,
+						),
+					)
 				: ((side < 0 ? 360 : 350) + yOffset) * scale,
 			icon: side < 0 ? Atom : SquareRootSquare,
 		});
