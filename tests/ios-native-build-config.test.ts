@@ -11,7 +11,6 @@ const EXPO_MODULES_JSI_PATCH_PATH = resolve(
 	"patches/expo-modules-jsi@57.1.0.patch",
 );
 const PNPM_WORKSPACE_PATH = resolve(process.cwd(), "pnpm-workspace.yaml");
-
 describe("iOS native build configuration", () => {
 	it("keeps ExpoModulesJSI build products outside file-provider workspaces", () => {
 		const patch = readFileSync(EXPO_MODULES_JSI_PATCH_PATH, "utf8");
