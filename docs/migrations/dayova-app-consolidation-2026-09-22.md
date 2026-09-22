@@ -53,19 +53,22 @@ deployment/site configuration. Secret values are intentionally not recorded here
   Its app behavior is represented by newer commits and implementations in the
   consolidated branch. Its local environment backup remains outside Git.
 
-## Deletion gate
+## Cleanup status
 
-Do not delete the legacy locations until this branch has passed the iOS simulator
-build and has been pushed to its pull request. After that, the following app-only
-copies are cleanup candidates:
+After the iOS simulator build passed and the consolidation branch was pushed to
+PR #712, the app-only copies inside `/Users/philipp/Documents/dayova-website`
+were deleted on 2026-09-22. This removed `.codex-dayova-prs` and the app
+worktrees `all-open-prs-simulator`, `day-187`, `day-187-base`, `day-376`,
+`day-377-batch`, `day-392-review`, `day-393`, `day-402`, `day-415-review`,
+`day-417`, `day-436`, `day-437-native-qa`, `day-445`,
+`dayova-dashboard-title`, `dayova-mvp-issue-623`, and
+`simulator-add-actions`, reclaiming approximately 21 GB.
 
-- `/Users/philipp/Documents/dayova-website/.codex-dayova-prs`
-- the app worktrees below `/Users/philipp/Documents/dayova-website/.codex-worktrees`
-  (`all-open-prs-simulator`, `day-187`, `day-187-base`, `day-376`,
-  `day-377-batch`, `day-392-review`, `day-393`, `day-402`, `day-415-review`,
-  `day-417`, `day-436`, `day-437-native-qa`, `day-445`,
-  `dayova-dashboard-title`, `dayova-mvp-issue-623`, and
-  `simulator-add-actions`);
+The website repository and its `dayova-content-seo`, `dayova-on-page-seo`, and
+`dayova-technical-seo` worktrees were retained unchanged.
+
+The following previously audited locations remain separate cleanup candidates:
+
 - `/Users/philipp/Documents/dayova-screenshot-temp-20260817`;
 - `/Users/philipp/Documents/ChatGPT/Dayova APp`.
 
