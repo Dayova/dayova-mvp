@@ -38,6 +38,17 @@ export const deleteCurrentUserDataBatch = mutation({
 			)
 			.unique();
 		let deletedRecords = 0;
+		const podcasts = await ctx.db
+			.query("learningPodcasts")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(DELETE_BATCH_SIZE);
+		for (const podcast of podcasts) {
+			if (podcast.storageId) await ctx.storage.delete(podcast.storageId);
+			await ctx.db.delete("learningPodcasts", podcast._id);
+			deletedRecords += 1;
+		}
 
 		const learningPlanDocuments = await ctx.db
 			.query("learningPlanDocuments")

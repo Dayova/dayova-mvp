@@ -19,6 +19,7 @@ import {
 	type LearningQuestionBlueprint,
 	type LearningTopic,
 } from "./learningContentPlan";
+import { deleteSessionPodcast } from "./learningPodcasts";
 import {
 	getLearningSessionComposition,
 	isLearningSessionCompositionEligible,
@@ -1055,6 +1056,7 @@ export const deleteSessionLearningDataForSession = async (
 	ctx: MutationCtx,
 	sessionId: Id<"learningPlanSessions">,
 ) => {
+	await deleteSessionPodcast(ctx, sessionId);
 	const items = await listItems(ctx, sessionId);
 	const attempts = await ctx.db
 		.query("learningSessionAnswerAttempts")

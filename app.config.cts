@@ -94,6 +94,15 @@ const config: ExpoConfig = {
 		},
 	},
 	plugins: [
+		[
+			"expo-audio",
+			{
+				microphonePermission: false,
+				recordAudioAndroid: false,
+				enableBackgroundRecording: false,
+				enableBackgroundPlayback: true,
+			},
+		],
 		"expo-router",
 		"expo-status-bar",
 		[

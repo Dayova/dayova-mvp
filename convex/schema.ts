@@ -4,6 +4,7 @@ import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
 } from "./learningTopicMap";
+import { podcastFields } from "./podcastContent";
 import { theoryContentValidator } from "./theoryContent";
 
 const planQuestionValidator = v.object({
@@ -130,6 +131,9 @@ const sessionContentChoiceValidator = v.object({
 });
 
 export default defineSchema({
+	learningPodcasts: defineTable(podcastFields)
+		.index("by_sessionId", ["sessionId"])
+		.index("by_ownerTokenIdentifier", ["ownerTokenIdentifier"]),
 	users: defineTable({
 		tokenIdentifier: v.string(),
 		clerkId: v.string(),
