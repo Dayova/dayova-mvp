@@ -1,6 +1,11 @@
 # Gemeinsamer QA-Stand für Jakobs Review
 
-Stand: 22. September 2026. **In Arbeit, keine vollständige Abnahme.**
+Stand: 23. September 2026. **In Arbeit, keine vollständige Abnahme.**
+
+Neu: [Android-Lernzeiten vollständig im Testaccount geprüft](android/README.md)
+und [separater iPhone-Startnachweis](iphone/README.md). Die ältere Android-
+Unterbrechung unten ist inzwischen geklärt; der Testalias wurde verifiziert.
+Angemeldete iPhone-Abläufe und weitere Ende-zu-Ende-Tests bleiben offen.
 
 ## Herkunft und Grenzen
 
