@@ -28,7 +28,6 @@ import {
 	View,
 } from "react-native";
 import Animated, {
-	Easing,
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
@@ -38,7 +37,6 @@ import Animated, {
 	useAnimatedStyle,
 	useReducedMotion,
 	useSharedValue,
-	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IntroUploadArtwork } from "~/components/intro-upload-artwork";
@@ -93,6 +91,11 @@ import {
 import { KeyboardSafeScrollView } from "~/components/ui/keyboard-safe-scroll-view";
 import { PasswordVisibilityButton } from "~/components/ui/password-visibility-button";
 import { useContentSizeLayout } from "~/components/ui/portrait-content";
+import {
+	SelectionControl,
+	SelectionIndicator,
+	SelectionText,
+} from "~/components/ui/selection-control";
 import { SnapCarouselSelector } from "~/components/ui/snap-carousel-selector";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
@@ -136,10 +139,6 @@ import { cn } from "~/lib/utils";
 // Password icons represent the current visibility state across this auth flow.
 // Decision: https://app.notion.com/p/39f2e87228bf81c28511c0728134c774
 const COLORS = DAYOVA_DESIGN_SYSTEM.colors;
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const STUDY_DAY_SELECTION_DURATION_MS = 180;
-const STUDY_DAY_PRESS_IN_DURATION_MS = 80;
-const STUDY_DAY_PRESS_OUT_DURATION_MS = 120;
 const QUESTION_TITLE_STYLE = DAYOVA_DESIGN_SYSTEM.typography.headline.h2;
 const ONBOARDING_CONTENT_TOP_SPACING = 40;
 const CODE_LENGTH = 6;
@@ -2571,28 +2570,19 @@ export function OnboardingRecoveryScreen({
 					{ONBOARDING_DURATION_OPTIONS.map((duration) => {
 						const selected = answers.studyTime === String(duration);
 						return (
-							<Pressable
+							<SelectionControl
 								key={duration}
 								accessibilityRole="radio"
-								accessibilityState={{ disabled: isSubmitting, selected }}
+								selected={selected}
+								appearance="pill"
 								disabled={isSubmitting}
 								onPress={() => onChange("studyTime", String(duration))}
-								className={cn(
-									"rounded-full border px-4 py-3",
-									selected
-										? "border-primary bg-primary"
-										: "border-path-1 bg-system-subtle",
-								)}
+								contentClassName="px-4 py-3"
 							>
-								<Text
-									className={cn(
-										"font-poppins font-semibold text-body-4",
-										selected ? "text-on-primary" : "text-text",
-									)}
-								>
+								<SelectionText className="font-poppins font-semibold text-body-4">
 									{duration} Minuten
-								</Text>
-							</Pressable>
+								</SelectionText>
+							</SelectionControl>
 						);
 					})}
 				</View>
@@ -2604,13 +2594,11 @@ export function OnboardingRecoveryScreen({
 					{LEARNING_DAYS.map((day) => {
 						const selected = selectedDays.has(day.label);
 						return (
-							<Pressable
+							<SelectionControl
 								key={day.label}
 								accessibilityRole="checkbox"
-								accessibilityState={{
-									checked: selected,
-									disabled: isSubmitting,
-								}}
+								selected={selected}
+								appearance="pill"
 								disabled={isSubmitting}
 								onPress={() =>
 									onChange(
@@ -2618,22 +2606,12 @@ export function OnboardingRecoveryScreen({
 										toggleOnboardingStudyDay(answers.studyDays, day.label),
 									)
 								}
-								className={cn(
-									"rounded-full border px-4 py-3",
-									selected
-										? "border-primary bg-primary"
-										: "border-path-1 bg-system-subtle",
-								)}
+								contentClassName="px-4 py-3"
 							>
-								<Text
-									className={cn(
-										"font-poppins font-semibold text-body-4",
-										selected ? "text-on-primary" : "text-text",
-									)}
-								>
+								<SelectionText className="font-poppins font-semibold text-body-4">
 									{day.label}
-								</Text>
-							</Pressable>
+								</SelectionText>
+							</SelectionControl>
 						);
 					})}
 				</View>
@@ -3154,99 +3132,24 @@ function AnimatedStudyDayPill({
 	isSelected: boolean;
 	onToggle: () => void;
 }) {
-	const { colors } = useDayovaTheme();
-	const reducedMotion = useReducedMotion();
-	const selectionProgress = useSharedValue(isSelected ? 1 : 0);
-	const pressedScale = useSharedValue(1);
-
-	useEffect(() => {
-		const nextProgress = isSelected ? 1 : 0;
-		selectionProgress.set(
-			reducedMotion
-				? nextProgress
-				: withTiming(nextProgress, {
-						duration: STUDY_DAY_SELECTION_DURATION_MS,
-						easing: Easing.out(Easing.cubic),
-					}),
-		);
-	}, [isSelected, reducedMotion, selectionProgress]);
-
-	const pillStyle = useAnimatedStyle(() => ({
-		backgroundColor: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.systemSubtle, colors.primary],
-		),
-		borderColor: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.path1, colors.primary],
-		),
-		transform: [{ scale: pressedScale.get() }],
-	}));
-	const checkStyle = useAnimatedStyle(() => {
-		const progress = selectionProgress.get();
-		return {
-			opacity: progress,
-			transform: [{ scale: 0.72 + progress * 0.28 }],
-		};
-	});
-	const labelStyle = useAnimatedStyle(() => ({
-		color: interpolateColor(
-			selectionProgress.get(),
-			[0, 1],
-			[colors.text, colors.onPrimary],
-		),
-	}));
-
-	const setPressedScale = (scale: number, duration: number) => {
-		if (reducedMotion) return;
-		pressedScale.set(
-			withTiming(scale, {
-				duration,
-				easing: Easing.out(Easing.cubic),
-			}),
-		);
-	};
-
 	return (
-		<AnimatedPressable
+		<SelectionControl
+			appearance="pill"
+			selected={isSelected}
 			accessibilityRole="checkbox"
 			accessibilityLabel={label}
-			accessibilityState={{ checked: isSelected }}
 			onPress={onToggle}
-			onPressIn={() => setPressedScale(0.97, STUDY_DAY_PRESS_IN_DURATION_MS)}
-			onPressOut={() => setPressedScale(1, STUDY_DAY_PRESS_OUT_DURATION_MS)}
-			className="min-h-12 min-w-[100px] flex-row items-center justify-center rounded-full border px-3 py-3"
-			// Runtime state and press feedback intentionally animate outside NativeWind.
-			style={pillStyle}
+			contentClassName="min-h-12 min-w-[100px] flex-row px-3 py-3"
 		>
-			<View
-				testID={`study-day-pill-check-slot-${label}`}
-				className="h-4 w-4 items-center justify-center"
-			>
-				<Animated.View
-					// Selection animates the checkmark on the UI thread.
-					style={checkStyle}
-				>
-					<Check size={16} color={colors.onPrimary} strokeWidth={2.4} />
-				</Animated.View>
-			</View>
-			<Animated.Text
-				className="ml-2 font-poppins font-semibold text-body-3"
-				// Selection animation and Android font metrics require native styles.
-				style={[
-					Platform.select({ android: { includeFontPadding: false } }),
-					labelStyle,
-				]}
-			>
+			<SelectionIndicator plain testID={`study-day-pill-check-slot-${label}`} />
+			<SelectionText className="ml-2 font-poppins font-semibold text-body-3">
 				{label}
-			</Animated.Text>
+			</SelectionText>
 			<View
 				testID={`study-day-pill-balance-slot-${label}`}
 				className="ml-2 h-4 w-4"
 			/>
-		</AnimatedPressable>
+		</SelectionControl>
 	);
 }
 

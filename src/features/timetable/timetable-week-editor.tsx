@@ -17,6 +17,10 @@ import {
 	Trash2,
 } from "~/components/ui/icon";
 import { Input } from "~/components/ui/input";
+import {
+	SelectionControl,
+	SelectionText,
+} from "~/components/ui/selection-control";
 import { Text } from "~/components/ui/text";
 import {
 	sortTimetableLessons,
@@ -24,7 +28,6 @@ import {
 	type TimetableLessonDraft,
 } from "~/features/timetable/timetable-editor";
 import { useDayovaTheme } from "~/lib/theme";
-import { cn } from "~/lib/utils";
 
 // These are native rendering controls with no NativeWind equivalent.
 const continuousBorderStyle = {
@@ -281,27 +284,18 @@ function TimetableWeekEditor({
 					const lessonCount = day.lessons.length;
 
 					return (
-						<Pressable
+						<SelectionControl
 							key={day.value}
-							accessible
+							selected={selected}
+							appearance="pill"
 							accessibilityLabel={`${day.label}, ${lessonCount} ${lessonCount === 1 ? "Stunde" : "Stunden"}`}
-							accessibilityRole="button"
-							accessibilityState={{ selected }}
-							className={cn(
-								"h-11 min-w-11 items-center justify-center rounded-full active:opacity-75",
-								selected ? "bg-primary" : "bg-muted",
-							)}
+							contentClassName="min-h-11 min-w-11 border-0"
 							onPress={() => onSelectedDayChange(day.value)}
 						>
-							<Text
-								className={cn(
-									"font-poppins font-semibold text-body-4",
-									selected ? "text-white" : "text-secondary-text",
-								)}
-							>
+							<SelectionText className="font-poppins font-semibold text-body-4">
 								{day.shortLabel}
-							</Text>
-						</Pressable>
+							</SelectionText>
+						</SelectionControl>
 					);
 				})}
 			</View>

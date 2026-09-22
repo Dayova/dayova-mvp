@@ -61,3 +61,7 @@ describe("LearningTimeEditorFields", () => {
 		}
 	});
 });
+
+jest.mock("react-native-reanimated", () =>
+	jest.requireActual("../../../tests/mocks/selection-reanimated.cjs"),
+);
