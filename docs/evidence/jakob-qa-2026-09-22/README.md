@@ -61,7 +61,7 @@ wurden sichtbar. Das ist noch kein vollständiger Ende-zu-Ende-Test.
 | Neuer entbehrlicher Testaccount | Testalias im Profil verifiziert; angemeldete Sitzung „Dayova QA Test“ vorhanden. Vollständiger Neunutzer-Nachweis noch offen |
 | Onboarding und Standardwerte | Schrittfolge und Screenshots offen |
 | Persönliche Fächer anlegen/umbenennen/löschen | iPad bestanden: Eintrag angelegt, umbenannt, bestätigt entfernt; Leerzustand und Abwesenheit des Eintrags per Maestro geprüft. Verknüpfte Einträge und Android noch offen |
-| Lernzeiten anlegen/ändern/löschen | Geräteprüfung offen |
+| Lernzeiten anlegen/ändern/löschen | iPad bestanden: Montag 17:00–17:30 angelegt, auf Dienstag geändert, Löschung abgebrochen und danach bestätigt; Leerzustand und Abwesenheit des Eintrags geprüft. Zeitpicker, Konfliktfälle und Android noch offen |
 | Prüfung / Lernplan-Entwurf / Fortsetzen | Geräteprüfung offen |
 | Material: Kamera, Galerie, Dateien, Grenzen und Fehlerfälle | Geräteprüfung offen |
 | Lernschritt abschließen und wiederholen | Geräteprüfung offen |
@@ -104,6 +104,46 @@ mit sichtbaren Trefferpunkten und Ergebnis-Assertions geprüft.
 
 Der entbehrliche Testeintrag wurde entfernt und kann bei Bedarf neu angelegt
 werden. Der Testaccount selbst und der persönliche Hauptaccount wurden nicht gelöscht.
+
+### Ergänzung: Lernzeiten, 23:19–23:28 CEST
+
+Quellstand `0400c6b`, derselbe QA-Metro auf Port 8095. Die bestätigten Maestro-
+Assertions prüfen gespeicherten Wochentag und Uhrzeit sowie den Leerzustand nach
+dem Entfernen. Der Abbruch ließ den Editor und den Eintrag bestehen. Entfernt
+wurde ausschließlich die in diesem Test angelegte Lernzeit.
+
+| Zustand | Beleg |
+| --- | --- |
+| Ausgangszustand leer | [Bild](dayova-qa-times-opened.png) |
+| Neue Lernzeit | [Bild](dayova-qa-times-add.png) |
+| Montag gespeichert | [Bild](dayova-qa-times-list.png) |
+| Auf Dienstag geändert; Löschdialog nach Abbruch erneut geöffnet | [Bild](dayova-qa-times-delete-confirm.png) |
+| Bestätigt gelöscht | [Bild](dayova-qa-times-deleted.png) |
+
+Der Löschdialog zeigt den roten Bestätigungsbutton mit weißer Beschriftung.
+Dies ist ein gemeinsamer iPad-Nachweis, kein isolierter Vorher-/Nachhervergleich
+für #711. Der anfangs leere Zustand beweist keine Neunutzer-Standardwerte für #651.
+
+Testwerkzeug-Grenzen: Klicks auf Texte ohne passenden Button-Selektor führten
+teilweise nicht zur Navigation. Die erfolgreichen Wiederholungen verwendeten
+die vollständigen Accessibility-Labels. Ein Maestro-Treiberstart während der
+Android-Kompilierung lief in einen Timeout; der Speichertest bestand danach.
+Absolute Screenshot-Pfade wurden von Maestro abgelehnt; die hier verlinkten
+Originalbilder wurden mit `simctl io ... screenshot` aufgenommen und visuell geprüft.
+
+Android: Lokaler Entwicklungsbuild erfolgreich (`assembleDebug`, 626 Tasks,
+2m 31s), anschließend auf `Dayova_Pixel_9_Android_16` installiert. Die Installation
+musste nach dem während des Builds geschlossenen Emulator separat erfolgen.
+Nach Weiterleitung von Port 8095 und erneuter Verbindung wurde die Home-Ansicht
+sichtbar. Die Sitzung zeigte nicht den auf dem iPad verifizierten QA-Namen.
+Zudem wechselte die Ansicht unerwartet bis zu einem Fach-Umbenennen-Dialog;
+deshalb wurde die Android-Bedienung zur Klärung paralleler Nutzung pausiert.
+Keine Löschung und keine bestätigte Änderung wurden auf Android ausgeführt.
+Der Account und angemeldete Ende-zu-Ende-Abläufe sind noch nicht verifiziert;
+die Android-Aufnahmen werden nicht als QA-Abnahme veröffentlicht.
+
+GitHub-Prüfung für #720: bisher nur CodeRabbit mit „Review skipped: draft pull
+request“. Dies ist keine erfolgreiche vollständige CI-Abnahme.
 
 ## Jakobs übrige Punkte
 
