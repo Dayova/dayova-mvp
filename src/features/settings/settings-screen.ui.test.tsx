@@ -8,6 +8,23 @@ import {
 import type { ReactNode } from "react";
 import SettingsScreen from "../../app/(app)/settings";
 
+jest.mock("react-native-reanimated", () => {
+	const Native =
+		jest.requireActual<typeof import("react-native")>("react-native");
+	return {
+		__esModule: true,
+		default: { View: Native.View },
+		Easing: { cubic: jest.fn(), out: (value: unknown) => value },
+		ReduceMotion: { System: "system" },
+		useAnimatedStyle: (factory: () => unknown) => factory(),
+		useSharedValue: (initial: number) => ({
+			get: () => initial,
+			set: jest.fn(),
+		}),
+		withTiming: (value: number) => value,
+	};
+});
+
 jest.mock("~/components/ui/dayova-sheet-frame", () => ({
 	DayovaSheetFrame: ({
 		visible,
