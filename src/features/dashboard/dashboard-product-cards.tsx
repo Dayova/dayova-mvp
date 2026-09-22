@@ -89,6 +89,7 @@ const continuousBorderStyle = {
 const tabularNumberStyle = {
 	fontVariant: ["tabular-nums"],
 } satisfies TextStyle;
+const LONG_NEXT_STEP_TITLE_WORD_LENGTH = 12;
 
 const formatMinutes = (minutes: number) => {
 	const hours = Math.floor(minutes / 60)
@@ -145,6 +146,9 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 		: item
 			? formatGermanUiText(getAgendaEntryTitle(item.entry))
 			: "Noch nichts geplant";
+	const hasLongTitleWord = title
+		.split(/\s+/u)
+		.some((word) => [...word].length >= LONG_NEXT_STEP_TITLE_WORD_LENGTH);
 	const dateLabel = item ? getNextStepDateLabel(item, props.todayKey) : null;
 	const timeLabel = item ? getNextStepTimeLabel(item) : null;
 	const footer = isLoading
@@ -175,12 +179,20 @@ function DashboardNextStepCard(props: DashboardNextStepCardProps) {
 			</View>
 			<Text
 				allowFontScaling={!isArtwork}
+				adjustsFontSizeToFit={!isArtwork}
+				android_hyphenationFrequency="none"
+				lineBreakStrategyIOS="standard"
 				maxFontSizeMultiplier={isArtwork ? 1 : undefined}
+				minimumFontScale={isArtwork ? 1 : 0.82}
 				className={cn(
 					"font-poppins font-semibold text-text",
-					isArtwork ? "mt-2 text-body-3" : "mt-4 text-body-1",
+					isArtwork
+						? "mt-2 text-body-3"
+						: hasLongTitleWord
+							? "mt-4 text-body-2"
+							: "mt-4 text-body-1",
 				)}
-				numberOfLines={isArtwork ? 2 : undefined}
+				numberOfLines={2}
 			>
 				{title}
 			</Text>

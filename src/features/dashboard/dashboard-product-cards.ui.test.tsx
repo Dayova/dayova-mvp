@@ -47,6 +47,16 @@ const nextStep = toDashboardAgendaItem(todayKey, {
 	durationMinutes: 30,
 	executionStatus: "notStarted",
 });
+const nextStepWithLongWord = toDashboardAgendaItem(todayKey, {
+	id: "dashboard-card-long-title" as Id<"learningPlanSessions">,
+	relatedLearningPlanSessionId:
+		"dashboard-card-long-title" as Id<"learningPlanSessions">,
+	title: "Biologie Wissenscheck",
+	kind: "Lernsession",
+	time: "17:00",
+	durationMinutes: 9,
+	executionStatus: "notStarted",
+});
 const agendaEntry = toDashboardAgendaItem(todayKey, {
 	id: "dashboard-card-task" as Id<"dayEntries">,
 	title: "Mathe-Hausaufgabe",
@@ -211,8 +221,9 @@ describe("shared dashboard product cards", () => {
 		expect(screen.getByText("geschafft").props.className).not.toContain(
 			"max-w-16",
 		);
-		expect(screen.getByText("Lineare Funktionen verstehen")).not.toHaveProp(
+		expect(screen.getByText("Lineare Funktionen verstehen")).toHaveProp(
 			"numberOfLines",
+			2,
 		);
 	});
 
@@ -243,5 +254,27 @@ describe("shared dashboard product cards", () => {
 		expect(
 			screen.getByText("30 Min. heute").parent?.parent?.props.className,
 		).toContain("items-center");
+	});
+
+	test("keeps long next-step words intact inside the live card", async () => {
+		const screen = await render(
+			<DashboardNextStepCard
+				mode="screen"
+				fallbackAction={EMPTY_DASHBOARD_PRIMARY_ACTION}
+				isLoading={false}
+				item={nextStepWithLongWord}
+				todayKey={todayKey}
+				onOpenFallback={jest.fn()}
+				onOpenItem={jest.fn()}
+			/>,
+		);
+		const title = screen.getByText("Biologie Wissenscheck");
+
+		expect(title.props.className).toContain("text-body-2");
+		expect(title).toHaveProp("numberOfLines", 2);
+		expect(title).toHaveProp("adjustsFontSizeToFit", true);
+		expect(title).toHaveProp("minimumFontScale", 0.82);
+		expect(title).toHaveProp("lineBreakStrategyIOS", "standard");
+		expect(title).toHaveProp("android_hyphenationFrequency", "none");
 	});
 });
