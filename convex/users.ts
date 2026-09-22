@@ -24,6 +24,7 @@ import {
 	LEARNING_TIMES_BACKFILL_VERSION,
 	markLearningTimesBackfillHandled,
 } from "./learningTimesBackfill";
+import { queueLoopsStudent } from "./loopsQueue";
 
 const normalizeEmail = (email?: string) => email?.trim().toLowerCase() ?? "";
 const DURATION_OPTIONS = ONBOARDING_DURATION_MINUTES.map(
@@ -446,10 +447,18 @@ export const syncCurrentUser = mutation({
 				schoolType,
 			});
 			await scheduleCrmProfileSync(ctx, existingUser, { ...user, schoolType });
+			await queueLoopsStudent(ctx, existingUser._id, {
+				accountEmail: normalizeEmail(identity.email) || undefined,
+				nameChanged: user.name !== existingUser.name,
+			});
 			await sanitizeLegacyOnboardingSchoolType(ctx, existingUser._id);
 			userId = existingUser._id;
 		} else {
 			userId = await ctx.db.insert("users", user);
+			await queueLoopsStudent(ctx, userId, {
+				signup: true,
+				accountEmail: normalizeEmail(identity.email),
+			});
 			// Persist with signup; an unavailable CRM must not lose the delivery intent.
 			await ctx.db.insert("crmStudentSignups", { userId, status: "pending" });
 			if (env.NOTION_CRM_MODE === "live") {
@@ -491,6 +500,9 @@ export const updateProfile = mutation({
 		const patch = profileFields(args);
 		await ctx.db.patch("users", user._id, patch);
 		await scheduleCrmProfileSync(ctx, user, patch);
+		await queueLoopsStudent(ctx, user._id, {
+			nameChanged: Object.hasOwn(patch, "name") && patch.name !== user.name,
+		});
 		return { success: true };
 	},
 });
