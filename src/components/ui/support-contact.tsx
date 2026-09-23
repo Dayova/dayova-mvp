@@ -148,7 +148,9 @@ export function SupportContact({
 					disabled={busy}
 					accessibilityState={{ busy }}
 				>
-					<Text>Adresse kopieren oder teilen</Text>
+					<Text className="shrink text-center">
+						Adresse kopieren oder teilen
+					</Text>
 				</Button>
 				{shareError ? (
 					<ErrorMessage className="mb-3">
@@ -163,7 +165,7 @@ export function SupportContact({
 					disabled={busy}
 					accessibilityState={{ busy }}
 				>
-					<Text>Support-Webseite öffnen</Text>
+					<Text className="shrink text-center">Support-Webseite öffnen</Text>
 				</Button>
 				{websiteError ? (
 					<ErrorMessage className="mt-3">

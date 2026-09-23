@@ -4,12 +4,12 @@ import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
-import { getDateTimePickerConfirmAccessibilityLabel } from "./date-time-picker-sheet.types";
 import type {
 	DateTimePickerChangeEvent,
 	DateTimePickerDisplay,
 	DateTimePickerSheetProps,
 } from "./date-time-picker-sheet.types";
+import { getDateTimePickerConfirmAccessibilityLabel } from "./date-time-picker-sheet.types";
 
 const DAYOVA_PRIMARY = DAYOVA_DESIGN_SYSTEM.colors.primary;
 
@@ -69,7 +69,7 @@ function DateTimePickerSheet({
 					)}
 					onPress={handleConfirm}
 				>
-					<Text>{doneLabel}</Text>
+					<Text className="shrink text-center">{doneLabel}</Text>
 				</Button>
 			}
 		>
@@ -94,5 +94,5 @@ function DateTimePickerSheet({
 	);
 }
 
-export { DateTimePickerSheet };
 export type { DateTimePickerSheetEvent as DateTimePickerEvent } from "./date-time-picker-sheet.types";
+export { DateTimePickerSheet };

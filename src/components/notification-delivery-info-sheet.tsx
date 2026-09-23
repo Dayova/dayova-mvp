@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
 import { Bell, Mail } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import type { PushNotificationDeliveryStatus } from "~/lib/notification-preferences";
@@ -49,9 +50,10 @@ function DeliveryInfoRow({
 	description: string;
 	status: ReactNode;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
 	return (
 		<View className="min-h-20 flex-row items-center gap-3 rounded-[24px] bg-muted px-4 py-3">
-			<View className="h-11 w-11 items-center justify-center rounded-full bg-card">
+			<View className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-card">
 				{icon}
 			</View>
 			<View className="flex-1">
@@ -61,8 +63,11 @@ function DeliveryInfoRow({
 				<Text className="font-poppins text-body-5 text-secondary-text">
 					{description}
 				</Text>
+				{shouldStackInlineContent ? (
+					<View className="mt-2 max-w-full self-start">{status}</View>
+				) : null}
 			</View>
-			{status}
+			{!shouldStackInlineContent ? status : null}
 		</View>
 	);
 }
@@ -124,7 +129,7 @@ function NotificationDeliveryInfoSheet({
 					className="mt-1 w-full"
 					onPress={pushAction.onPress}
 				>
-					<Text>{pushAction.label}</Text>
+					<Text className="shrink text-center">{pushAction.label}</Text>
 				</Button>
 			) : null}
 		</DayovaSheetFrame>
