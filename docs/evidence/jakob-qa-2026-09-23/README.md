@@ -29,6 +29,25 @@ registration step or successful subsequent deletion.
 
 ## Remaining acceptance gates
 
+### Follow-up verification, 23 September
+
+- PR #661's `Lint, typecheck, and test` job succeeded for head `7c0692d`:
+  [EAS CI job](https://expo.dev/accounts/dayova/projects/dayova/workflows/01a0cdad-4447-7e62-a3d0-e065bcdae2bf#job-01a0cdad-467c-79d8-ac99-19da598bef64).
+  Convex deployment, production OTA gates and Send updates were **skipped**.
+  GitHub's green check display must not be interpreted as a deployment result.
+- The iPad profile email overflow was observed again before restarting the QA
+  client. After restarting without clearing app data, the client displayed a blank
+  screen. The local Metro status, iOS manifest and bundle returned HTTP 200, and
+  the iPad appeared in Metro's debugger target list. A debugger WebSocket attempt
+  returned HTTP 401; no successful runtime-error inspection was obtained.
+  These observations do not establish the cause of the blank screen or overflow.
+- No backend was deployed and no account was deleted during this follow-up.
+  Resume the iPad visual regression test only after the QA client renders again.
+  Private diagnostic screenshots are not included because the profile capture
+  contains the test-account email address.
+
+### Still open
+
 - Account deletion: server verification correction is in PR #661. Real device
   deletion and final worker/provider completion remain unverified. The matching
   Clerk server key is absent from QA; the user assigned access/configuration to
