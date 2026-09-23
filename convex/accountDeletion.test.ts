@@ -41,7 +41,7 @@ test("HTTP password verification propagates identity without fva", async () => {
 		"https://api.clerk.com/v1/users/user/verify_password",
 	);
 	const requests = await backend.run((ctx) =>
-		ctx.db.query("accountDeletionRequests").collect(),
+		ctx.db.query("accountDeletionRequests").take(10),
 	);
 	expect(requests).toHaveLength(1);
 	expect(requests[0].ownerTokenIdentifier).toBe(userIdentity.tokenIdentifier);
