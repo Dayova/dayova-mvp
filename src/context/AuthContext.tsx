@@ -1,11 +1,11 @@
 import {
 	isClerkAPIResponseError,
 	useClerk,
-	useReverification,
 	useSignIn,
 	useUser,
 } from "@clerk/expo";
-import { useConvexAuth, useMutation } from "convex/react";
+import { ConvexHttpClient } from "convex/browser";
+import { useConvex, useConvexAuth, useMutation } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import type React from "react";
 import {
@@ -20,6 +20,7 @@ import {
 } from "react";
 import { api } from "#convex/_generated/api";
 import { useOnboarding } from "~/context/OnboardingContext";
+import { submitAccountDeletion } from "~/lib/account-deletion-request";
 import {
 	createValidationAnalytics,
 	isPostHogConfigured,
@@ -173,7 +174,7 @@ interface AccountActionsContextType {
 	verifyProfileEmailCode: (code: string) => Promise<void>;
 	changePassword: (input: PasswordChangeInput) => Promise<void>;
 	completeForcedPasswordReset: (password: string) => Promise<void>;
-	deleteAccount: () => Promise<void>;
+	deleteAccount: (currentPassword: string) => Promise<void>;
 	logout: () => Promise<void>;
 }
 
@@ -441,12 +442,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		api.validationAnalytics.markActivity,
 	);
 	const updateConvexProfile = useMutation(api.users.updateProfile);
-	const requestCurrentUserDeletion = useMutation(
-		api.accountDeletion.requestCurrentUserDeletion,
-	);
-	const requestDeletionWithReverification = useReverification(
-		requestCurrentUserDeletion,
-	);
+	const convex = useConvex();
 	const { clearAnswers } = useOnboarding();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const passwordResetHasRemoteAttemptRef = useRef(false);
@@ -1643,10 +1639,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		);
 	};
 
-	const deleteAccount = async () => {
+	const deleteAccount = async (currentPassword: string) => {
 		try {
-			await requestDeletionWithReverification({});
-			await logout();
+			const session = clerk.session;
+			if (!session) throw new Error("Bitte melde dich erneut an.");
+			await submitAccountDeletion(
+				{
+					session,
+					request: async (token) => {
+						const client = new ConvexHttpClient(convex.url);
+						client.setAuth(token);
+						return client.mutation(
+							api.accountDeletion.requestCurrentUserDeletion,
+							{},
+						);
+					},
+					logout,
+				},
+				currentPassword,
+			);
 		} catch (error) {
 			throw new Error(
 				getClerkErrorMessage(
