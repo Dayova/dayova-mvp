@@ -16,6 +16,7 @@ import type * as aiConsent from "../aiConsent.js";
 import type * as answerEvaluation from "../answerEvaluation.js";
 import type * as dayEntries from "../dayEntries.js";
 import type * as dayKeyVariants from "../dayKeyVariants.js";
+import type * as deletionPasswordHttp from "../deletionPasswordHttp.js";
 import type * as diagnosticReadiness from "../diagnosticReadiness.js";
 import type * as entitlements from "../entitlements.js";
 import type * as env from "../env.js";
@@ -81,6 +82,7 @@ declare const fullApi: ApiFromModules<{
   answerEvaluation: typeof answerEvaluation;
   dayEntries: typeof dayEntries;
   dayKeyVariants: typeof dayKeyVariants;
+  deletionPasswordHttp: typeof deletionPasswordHttp;
   diagnosticReadiness: typeof diagnosticReadiness;
   entitlements: typeof entitlements;
   env: typeof env;
