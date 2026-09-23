@@ -1,6 +1,6 @@
 import { describe, expect, jest, test } from "@jest/globals";
 import { render } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { Platform, StyleSheet, Text } from "react-native";
 import { InsetTextField } from "./text-field";
 
 jest.mock("~/lib/theme", () => ({
@@ -10,6 +10,29 @@ jest.mock("~/lib/theme", () => ({
 }));
 
 describe("InsetTextField accessibility", () => {
+	test.each([
+		"ios",
+		"android",
+	] as const)("preserves single-line metrics on %s", async (os) => {
+		const platform = jest.replaceProperty(Platform, "OS", os);
+		try {
+			const screen = await render(
+				<InsetTextField
+					label="E-Mail"
+					value="qa-long-address-layout-check@example.com"
+					style={{ lineHeight: 24, color: "red" }}
+				/>,
+			);
+			const input = screen.getByLabelText("E-Mail");
+			const style = StyleSheet.flatten(input.props.style);
+			expect(style.lineHeight).toBe(os === "ios" ? undefined : 24);
+			expect(style.color).toBe("red");
+			expect(input.props.multiline).toBe(false);
+		} finally {
+			platform.restore();
+		}
+	});
+
 	test("announces validation errors and exposes them again from the invalid field", async () => {
 		const screen = await render(
 			<InsetTextField
