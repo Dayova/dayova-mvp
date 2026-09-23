@@ -44,6 +44,11 @@ E-Mail und App-Store-Connect-Rechte sind außerhalb dieses PR-Nachweisauftrags.
 
 ## Veröffentlichung / Review
 
+Nachtrag 23.09., 16 Uhr: [Hausaufgaben-Navigation auf drei Geräten und echter
+iPad-Lernplan-Löschdialog in Light/Dark](homework-and-plan-dialog-2026-09-23/README.md)
+bestanden. Damit ist für #711 die iPad-Light/Dark-Lücke aus der historischen
+Tabellenzeile geschlossen; Loading und die anderen Plattformen bleiben offen.
+
 Neu: [drei Navigationsvideos und neun Screenshots](navigation-final-2026-09-23/README.md)
 für #698, #722 und #720. Abgebrochene/vollständige iOS-Randgeste sowie Android
 System-Back und Auswahlerhalt sind jetzt am gemeinsamen QA-Stand dokumentiert.

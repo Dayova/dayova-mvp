@@ -1,0 +1,13 @@
+appId: de.dayova.app-dev
+---
+- swipe:
+    start: 80%, 34%
+    end: 20%, 34%
+    duration: 650
+- tapOn:
+    text: Lernplan löschen
+    index: 0
+- takeScreenshot: plan-delete-light
+- assertVisible: Möchtest du den Lernplan Mathematik wirklich löschen?
+- tapOn: Abbrechen
+- assertVisible: Deine Pläne
