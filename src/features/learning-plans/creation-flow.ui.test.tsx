@@ -9,8 +9,19 @@ jest.mock("~/lib/prepare-learning-photo", () => ({
 
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import NewEntryScreen from "~/app/(creation)/entry/new";
+import {
+	createNavigatorFactory,
+	NavigationContainer,
+	type NavigatorScreenParams,
+	StackRouter,
+	useNavigationBuilder,
+} from "expo-router/react-navigation";
+import type { ReactNode } from "react";
+import { Text, View } from "react-native";
 import NewLearningPlanScreen from "~/app/(creation)/learning-plans/new";
+import { EntryDraftProvider } from "~/features/entries/entry-draft";
+import { EntryStartScreen } from "~/features/entries/entry-start-screen";
+import { EntryStepScreen } from "~/features/entries/entry-step-screen";
 
 jest.mock("~/context/AiConsentContext", () => ({
 	useAiConsent: () => ({ requestAiConsent: async () => true }),
@@ -89,13 +100,47 @@ jest.mock("convex/react", () => ({
 	},
 }));
 jest.mock("expo-router", () => ({
-	useRouter: () => mockRouter,
+	useRouter: () => {
+		// Learning-plan assertions use their existing router fixture outside a navigator.
+		const { NavigationContext } = jest.requireActual<
+			typeof import("expo-router/react-navigation")
+		>("expo-router/react-navigation");
+		const { useContext } = jest.requireActual<typeof import("react")>("react");
+		const navigation = useContext(NavigationContext);
+		return navigation
+			? {
+					...mockRouter,
+					navigate: (path: string) =>
+						navigation.navigate(path.split("/").at(-1) as never),
+					back: () => navigation.goBack(),
+					canGoBack: () => navigation.canGoBack(),
+				}
+			: mockRouter;
+	},
 	useLocalSearchParams: () => mockParams,
 	Stack: { Screen: () => null },
+	Redirect: () => null,
 }));
 jest.mock("~/features/learning-plans/creation-progress-shell", () => ({
 	useLearningPlanCreationProgress: (configuration: typeof mockProgress) => {
-		mockProgress = configuration;
+		const { NavigationContext } = jest.requireActual<
+			typeof import("expo-router/react-navigation")
+		>("expo-router/react-navigation");
+		const { useContext, useSyncExternalStore } =
+			jest.requireActual<typeof import("react")>("react");
+		const navigation = useContext(NavigationContext);
+		const focused = useSyncExternalStore(
+			(notify) => {
+				const offFocus = navigation?.addListener("focus", notify);
+				const offBlur = navigation?.addListener("blur", notify);
+				return () => {
+					offFocus?.();
+					offBlur?.();
+				};
+			},
+			() => navigation?.isFocused() ?? true,
+		);
+		if (focused) mockProgress = configuration;
 	},
 }));
 jest.mock("~/lib/navigation", () => ({
@@ -233,6 +278,46 @@ jest.mock("~/lib/theme", () => ({
 		colors: { primary: "#00A0E6", secondaryText: "#697586", text: "#111111" },
 	}),
 }));
+
+function EntryTestNavigator({ children }: { children: ReactNode }) {
+	const { state, descriptors, NavigationContent } = useNavigationBuilder(
+		StackRouter,
+		{ children },
+	);
+	return (
+		<NavigationContent>
+			<Text testID="entry-history">
+				{state.routes.map((route) => route.name).join(",")}
+			</Text>
+			{state.routes.map((route, index) => (
+				<View
+					key={route.key}
+					style={{ display: index === state.index ? "flex" : "none" }}
+				>
+					{descriptors[route.key].render()}
+				</View>
+			))}
+		</NavigationContent>
+	);
+}
+const EntryStack = createNavigatorFactory(EntryTestNavigator)();
+const Subject = () => <EntryStepScreen step="examDetails" />;
+const DateStep = () => <EntryStepScreen step="basics" />;
+const Planning = () => <EntryStepScreen step="planning" />;
+function NewEntryScreen() {
+	return (
+		<NavigationContainer>
+			<EntryDraftProvider>
+				<EntryStack.Navigator>
+					<EntryStack.Screen name="index" component={EntryStartScreen} />
+					<EntryStack.Screen name="subject" component={Subject} />
+					<EntryStack.Screen name="date" component={DateStep} />
+					<EntryStack.Screen name="planning" component={Planning} />
+				</EntryStack.Navigator>
+			</EntryDraftProvider>
+		</NavigationContainer>
+	);
+}
 
 beforeEach(() => {
 	jest.clearAllMocks();
@@ -484,4 +569,204 @@ describe("exam creation across the topics boundary", () => {
 		});
 		expect(mockLaunchImageLibrary).not.toHaveBeenCalled();
 	});
+});
+
+describe("entry native history and shared answers", () => {
+	test("preserves a personal subject identity across Back and the topics handoff", async () => {
+		mockParams.step = "basics";
+		mockParams.personalSubjectId = "personal-subject-1";
+		mockParams.examDayEntryId = "exam-1";
+		const screen = await render(<NewEntryScreen />);
+		await act(() => mockProgress.onBack());
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(mockUpdateEntry).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "exam-1",
+			}),
+		);
+		expect(followReplacement()).toBe("/learning-plans/new");
+		expect(mockParams.personalSubjectId).toBe("personal-subject-1");
+		expect(mockCreateEntry).not.toHaveBeenCalled();
+	});
+
+	test("creates one history entry per step and retains answers after native Back", async () => {
+		mockParams = { type: "exam" };
+		const screen = await render(<NewEntryScreen />);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject",
+		);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+		await fireEvent.press(screen.getByRole("radio", { name: "Chemie" }));
+		await act(() => mockProgress.onBack());
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(
+			screen.getByRole("radio", { name: "Klausur" }).props.accessibilityState
+				.checked,
+		).toBe(true);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(
+			screen.getByRole("radio", { name: "Chemie" }).props.accessibilityState
+				.checked,
+		).toBe(true);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject,date",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(followReplacement()).toBe("/learning-plans/new");
+		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
+	});
+
+	test("resumes with the full predecessor history and the saved exam identity", async () => {
+		mockParams.examDayEntryId = "exam-1";
+		const screen = await render(<NewEntryScreen />);
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject,date",
+		);
+		await act(() => mockProgress.onBack());
+		await act(() => mockProgress.onBack());
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(
+			screen.getByRole("radio", { name: "Klassenarbeit" }).props
+				.accessibilityState.checked,
+		).toBe(true);
+		expect(mockCreateEntry).not.toHaveBeenCalled();
+	});
+
+	test("starts incomplete resume links at the first step", async () => {
+		delete mockParams.subject;
+		const screen = await render(<NewEntryScreen />);
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(
+			screen.getByText("Welche Art von Prüfung ist es?"),
+		).toBeOnTheScreen();
+	});
+
+	test("a new flow cannot inherit answers from a discarded flow", async () => {
+		mockParams = { type: "exam" };
+		let screen = await render(<NewEntryScreen />);
+		await fireEvent.press(screen.getByRole("radio", { name: "Klausur" }));
+		await screen.unmount();
+		screen = await render(<NewEntryScreen />);
+		expect(
+			screen.getByRole("radio", { name: "Klausur" }).props.accessibilityState
+				.checked,
+		).toBe(false);
+		expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+	});
+
+	test("keeps homework answers and native history across its planning step", async () => {
+		mockParams = { type: "homework", subject: "Biologie" };
+		const screen = await render(<NewEntryScreen />);
+		await fireEvent.changeText(
+			screen.getByPlaceholderText("Kurze Notiz hinzufügen"),
+			"Arbeitsblatt 7",
+		);
+		await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,planning",
+		);
+		// Homework's visible Back delegates to the same navigator.
+		await fireEvent.press(screen.getByRole("button", { name: "Zurück" }));
+		expect(screen.getByTestId("entry-history").props.children).toBe("index");
+		expect(screen.getByDisplayValue("Arbeitsblatt 7")).toBeOnTheScreen();
+	});
+
+	test("blocks repeated saves and Back while a save is pending, then recovers after failure", async () => {
+		let rejectSave: (reason: Error) => void = () => {};
+		mockCreateEntry.mockImplementationOnce(
+			() =>
+				new Promise((_resolve, reject) => {
+					rejectSave = reject;
+				}),
+		);
+		const screen = await render(<NewEntryScreen />);
+		const submit = screen.getByRole("button", { name: "Weiter" });
+		await fireEvent.press(submit);
+		await fireEvent.press(submit);
+		await act(() => mockProgress.onBack());
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject,date",
+		);
+		expect(mockCreateEntry).toHaveBeenCalledTimes(1);
+		await act(() => rejectSave(new Error("Offline")));
+		expect(screen.getByText("Offline")).toBeOnTheScreen();
+		await act(() => mockProgress.onBack());
+		expect(screen.getByTestId("entry-history").props.children).toBe(
+			"index,subject",
+		);
+	});
+});
+
+test("initializes a cold resume from leaf URL params when the parent layout has none", async () => {
+	const { getStateFromPath } = jest.requireActual<
+		typeof import("expo-router/build/fork/getStateFromPath")
+	>("expo-router/build/fork/getStateFromPath");
+	const state = getStateFromPath<{
+		"(creation)": NavigatorScreenParams<{
+			"entry/new": NavigatorScreenParams<{
+				index: Record<string, string> | undefined;
+				subject: undefined;
+				date: undefined;
+				availability: undefined;
+			}>;
+		}>;
+	}>(
+		"/entry/new?type=exam&step=learningAvailability&subject=Chemie&examTypeLabel=Klausur&examDayEntryId=exam-1&dayKey=2026-10-01&durationMinutes=90",
+		{
+			screens: {
+				"(creation)": {
+					path: "",
+					screens: {
+						"entry/new": {
+							path: "entry/new",
+							screens: {
+								index: "",
+								subject: "subject",
+								date: "date",
+								availability: "availability",
+							},
+						},
+					},
+				},
+			},
+		},
+	);
+	const layout = state?.routes[0].state?.routes[0];
+	expect(layout?.params).toBeUndefined();
+	const leaf = layout?.state?.routes[0];
+	expect(leaf?.params).toMatchObject({
+		type: "exam",
+		examDayEntryId: "exam-1",
+		subject: "Chemie",
+		durationMinutes: "90",
+	});
+	mockParams = Object.fromEntries(
+		Object.entries(leaf?.params ?? {}).map(([key, value]) => [
+			key,
+			String(value),
+		]),
+	);
+	const screen = await render(<NewEntryScreen />);
+	expect(screen.getByTestId("entry-history").props.children).toBe(
+		"index,subject,date",
+	);
+	await fireEvent.press(screen.getByRole("button", { name: "Weiter" }));
+	expect(mockUpdateEntry).toHaveBeenCalledWith(
+		expect.objectContaining({
+			id: "exam-1",
+			subject: "Chemie",
+			examTypeLabel: "Klausur",
+			dayKey: "2026-10-01",
+			durationMinutes: 90,
+		}),
+	);
+	expect(mockCreateEntry).not.toHaveBeenCalled();
 });

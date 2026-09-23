@@ -1,0 +1,7 @@
+{"type":"review_context","reviewType":"uncommitted","currentBranch":"codex/entry-native-stack","baseBranch":"origin/main","workingDirectory":"<worktree>"}
+{"type":"status","phase":"connecting","status":"connecting_to_review_service"}
+{"type":"status","phase":"setup","status":"setting_up"}
+{"type":"status","phase":"analyzing","status":"summarizing"}
+{"type":"status","phase":"analyzing","status":"reviewing"}
+{"type":"heartbeat","status":"reviewing"}
+{"type":"complete","status":"review_completed","findings":0,"reviewedFiles":["docs/contexts/mobile-app/adr/0004-entry-steps-use-native-history.md","src/app/(creation)/entry/new/_layout.tsx","src/app/(creation)/entry/new/availability.tsx","src/app/(creation)/entry/new/date.tsx","src/app/(creation)/entry/new/index.tsx","src/app/(creation)/entry/new/planning.tsx","src/app/(creation)/entry/new/subject.tsx","src/app/learning-times/index.tsx","src/features/entries/entry-draft.tsx","src/features/entries/entry-routes.ts","src/features/entries/entry-start-screen.tsx","src/features/entries/entry-step-screen.tsx","src/features/learning-plans/creation-flow.ui.test.tsx"]}

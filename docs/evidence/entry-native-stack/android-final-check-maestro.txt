@@ -1,0 +1,21 @@
+Running on DAY_169_Pixel_9
+ > Flow android-final-check
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Resume exam"... COMPLETED
+Press back... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Tap on "30. September 2026"... COMPLETED
+Press back... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Swipe from (0%, 50%) to (85%, 50%) in 500 ms... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Assert that "Topics destination fixture" is visible... COMPLETED
+Tap on "Native back"... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Resume exam"... COMPLETED
+Press back... COMPLETED
+Press back... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
