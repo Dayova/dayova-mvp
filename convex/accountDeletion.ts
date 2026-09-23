@@ -64,12 +64,6 @@ const reverificationRequired = () => ({
 	},
 });
 
-const hasRecentFirstFactor = (factorVerificationAge: unknown) =>
-	Array.isArray(factorVerificationAge) &&
-	typeof factorVerificationAge[0] === "number" &&
-	factorVerificationAge[0] >= 0 &&
-	factorVerificationAge[0] <= REAUTHENTICATION_MAX_AGE_MINUTES;
-
 export const assertAccountActive = async (
 	ctx: QueryCtx | MutationCtx,
 	ownerTokenIdentifier: string,
@@ -114,7 +108,19 @@ export const requestCurrentUserDeletion = mutation({
 	handler: async (ctx) => {
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) throwUserFacingError("Nicht authentifiziert.");
-		if (!hasRecentFirstFactor(identity.fva)) return reverificationRequired();
+		// Legacy clients fail closed. Convex excludes fva from UserIdentity.
+		return reverificationRequired();
+	},
+});
+
+// Called only by the HTTP endpoint after Clerk verifies the current password.
+// Identity is propagated from the authenticated HTTP context, never arguments.
+export const enqueueVerifiedDeletion = internalMutation({
+	args: {},
+	returns: v.object({ status: v.literal("accepted"), requestId: v.string() }),
+	handler: async (ctx) => {
+		const identity = await ctx.auth.getUserIdentity();
+		if (!identity) throwUserFacingError("Nicht authentifiziert.");
 
 		const existing = await ctx.db
 			.query("accountDeletionRequests")
