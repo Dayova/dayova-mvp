@@ -1,0 +1,91 @@
+Running on DAY_169_Pixel_9
+ > Flow android-native-stack
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Open exam"... COMPLETED
+Tap on "Klausur"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Chemie"... COMPLETED
+Swipe from (0%, 50%) to (85%, 50%) in 500 ms... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Assert that "Entry native stack verification" is not visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Press back... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Swipe from (0%, 50%) to (85%, 50%) in 500 ms... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Swipe from (0%, 50%) to (85%, 50%) in 500 ms... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Swipe from (0%, 50%) to (85%, 50%) in 500 ms... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Resume exam"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Swipe from (0%, 50%) to (85%, 50%) in 500 ms... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Assert that "30. September 2026" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Topics destination fixture" is visible... COMPLETED
+Tap on "Return to exam"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Topics destination fixture" is visible... COMPLETED
+Tap on "Native back"... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Open missing times"... COMPLETED
+Tap on "Klausur"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Chemie"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Noch nicht genug Lernzeit" is visible... COMPLETED
+Tap on "Lernzeit eintragen"... COMPLETED
+Assert that "Lernzeiten" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Wann findet die Prüfung statt?" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Tap on "Ohne Lernplan speichern"... COMPLETED
+Assert that "Saved exam destination fixture" is visible... COMPLETED
+Tap on "Native back"... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Open exam"... COMPLETED
+Press back... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED
+Tap on "Resume exam"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Press back... COMPLETED
+Assert that "Ist genug Lernzeit eingeplant?" is visible... COMPLETED
+Assert that "Topics destination fixture" is visible... COMPLETED
+Tap on "Native back"... COMPLETED
+Tap on "Open homework"... COMPLETED
+Assert that "Abgabe" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Erledigen" is visible... COMPLETED
+Press back... COMPLETED
+Assert that "Abgabe" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Swipe from (0%, 50%) to (85%, 50%) in 500 ms... COMPLETED
+Assert that "Abgabe" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Entry native stack verification" is visible... COMPLETED

@@ -1,0 +1,36 @@
+Running on DAY-169 iPhone 16 - iOS 26.5 - 0D8A5A07-FCA7-414F-B61A-BE572AB2DA55
+ > Flow ios-exam-regression
+Assert that "PR 494 native verification" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Tap on "Open exam"... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Assert that "Klausur" is visible... COMPLETED
+Take screenshot evidence/ios-followup/exam-visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "PR 494 native verification" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Tap on "Open exam"... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 450 ms... COMPLETED
+Assert that "PR 494 native verification" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Tap on "Open exam"... COMPLETED
+Tap on "Klausur"... COMPLETED
+Take screenshot evidence/ios-followup/exam-selected... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 450 ms... COMPLETED
+Assert that "PR 494 native verification" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Tap on "Open exam"... COMPLETED
+Tap on "Klausur"... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Tap on "Weiter"... COMPLETED
+Assert that "Welches Fach ist es?" is visible... COMPLETED
+Swipe from (1%, 50%) to (95%, 50%) in 450 ms... COMPLETED
+Assert that "Welche Art von Prüfung ist es?" is visible... COMPLETED
+Assert that "PR 494 native verification" is not visible... COMPLETED
+Tap on "Zurück"... COMPLETED
+Assert that "PR 494 native verification" is visible... COMPLETED
+Take screenshot evidence/ios-followup/regression-returned... COMPLETED
