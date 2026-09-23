@@ -104,7 +104,6 @@ function AiConsentSheet({
 			dismissible={!isRequired && !isBusy}
 			showCloseButton={!isRequired}
 			closeAccessibilityLabel="KI-Datenschutz schließen"
-			size="medium"
 			scrollable
 			footer={footer}
 		>

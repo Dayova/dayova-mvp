@@ -56,6 +56,7 @@ function DateTimePickerSheet({
 
 	return (
 		<DayovaSheetFrame
+			scrollable={false}
 			accessibilityLabel={accessibilityLabel}
 			visible={visible}
 			onClose={onClose}

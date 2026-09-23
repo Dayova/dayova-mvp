@@ -131,7 +131,6 @@ export function SupportContact({
 				onClose={() => setShowFallback(false)}
 				returnFocusRef={buttonRef}
 				closeAccessibilityLabel="Support schließen"
-				size="medium"
 				scrollable
 			>
 				<Text selectable className="mb-3 text-body-2 text-text">
