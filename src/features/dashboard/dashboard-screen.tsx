@@ -374,7 +374,7 @@ function AgendaItemRow({
 }) {
 	return (
 		<View className="flex-row">
-			<View className="w-12 pt-2 pr-1">
+			<View className="w-16 pt-2 pr-1">
 				<Text
 					className={cn(
 						"text-right font-poppins text-body-5",

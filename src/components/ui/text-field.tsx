@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import {
 	Field,
 	FieldAccessory,
@@ -58,6 +58,12 @@ function InsetTextField({
 								: accessibilityHint
 						}
 						className={cn("text-body-2", inputClassName)}
+						// iOS single-line fields wrap long attributed text when a paragraph
+						// lineHeight is imposed. Let UIKit use the unchanged font's metrics.
+						style={[
+							inputProps.style,
+							Platform.OS === "ios" && { lineHeight: undefined },
+						]}
 						multiline={false}
 						numberOfLines={1}
 					/>
