@@ -38,3 +38,20 @@ Confirm return to signed-out UI and that the deleted account cannot sign in.
 Never publish passwords, tokens, or unredacted account identifiers in evidence.
 
 No production deployment or OTA release is certified by these checks.
+
+## Input interaction regression — 23 September, follow-up
+
+The initial native screenshot did not prove the password field was operable.
+The user reported inability to enter the password. A native Maestro probe that
+taps the visible password label, enters non-secret text, and expects the confirm
+button to become enabled **failed**. Tapping the actual field center succeeded.
+The native hierarchy showed only a 24-point-high input inside the 64-point control.
+
+The label now focuses the input explicitly, and the input fills the control's
+minimum 64-point height. The original label-tap/input/enable-button probe passed
+on the QA iPad after the correction; the probe text was erased without submitting.
+Repeatable flow: `docs/qa/flows/account-deletion-password-input.yaml`, with
+`APP_ID=de.dayova.app-dev` on iOS or `APP_ID=com.dayova.dev` on Android.
+
+This verifies input interaction, not actual password verification or deletion.
+Post-fix iPhone/Android interaction and server/provider completion remain open.
