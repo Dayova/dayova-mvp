@@ -1,0 +1,62 @@
+appId: ${APP_ID}
+---
+- extendedWaitUntil:
+    visible: Heute
+    timeout: 30000
+- tapOn: Heute
+- takeScreenshot: 01-home
+- tapOn: "Neuen Eintrag erstellen."
+- takeScreenshot: 02-create-menu
+- tapOn: ".*Neue Prüfung.*"
+- assertVisible: Welche Art von Prüfung ist es?
+- takeScreenshot: 03-exam-type
+- tapOn: Klausur
+- takeScreenshot: 04-exam-type-selected
+- tapOn: Weiter
+- assertVisible: Welches Fach ist es?
+- takeScreenshot: 05-subject
+- tapOn: Chemie
+- takeScreenshot: 06-subject-selected
+- tapOn: Weiter
+- assertVisible: Wann findet die Prüfung statt?
+- takeScreenshot: 07-date
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 1%, 50%
+          end: 95%, 50%
+          duration: 650
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- assertVisible: Welches Fach ist es?
+- takeScreenshot: 08-native-back-subject
+- tapOn: Weiter
+- assertVisible: Wann findet die Prüfung statt?
+- tapOn: Zurück
+- assertVisible: Welches Fach ist es?
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 1%, 50%
+          end: 20%, 50%
+          duration: 1500
+      - assertVisible: Welches Fach ist es?
+      - takeScreenshot: 09-cancelled-swipe
+- tapOn: Zurück
+- assertVisible: Welche Art von Prüfung ist es?
+- takeScreenshot: 10-back-type
+- tapOn: Zurück
+- assertVisible: Heute
+- takeScreenshot: 11-root-exit
+- tapOn: Einstellungen
+- tapOn: ".*Profil & Konto.*"
+- assertVisible: Deine Daten
+- takeScreenshot: 12-profile-local-only
+- tapOn: Zurück

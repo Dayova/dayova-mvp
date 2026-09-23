@@ -23,5 +23,7 @@ field size, and Android lineHeight are unchanged.
 - A synthetic-input automation asserted the intended complete value and failed:
   the edit retained a trailing character. It is not a passing value-entry test.
   No profile save or account change was submitted.
-- iPhone and Android native cross-checks remain pending. This document is not
-  evidence that the overall Jakob QA checklist is complete.
+- Native cross-checks now show a single-line field on iPad and iPhone; Android
+  remains single-line and horizontally scrolled. Account-bearing captures stay
+  local. See [combined retest](../combined-native-retest-2026-09-23/README.md).
+  This is not evidence that the overall Jakob QA checklist is complete.

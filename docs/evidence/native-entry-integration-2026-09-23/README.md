@@ -26,11 +26,12 @@ candidate, not a production release or a completed device acceptance test.
 
 ## Not yet verified
 
-The desktop device-control interface timed out. No new iPad, iPhone, or Android
-screenshots or native swipe recordings were obtained for this integration.
+The initially blocked device run was resumed with user-authorized Maestro.
+See [combined native retest](../combined-native-retest-2026-09-23/README.md)
+for the new screenshots and the exact tested scope.
 Evidence inherited under `entry-native-stack` is historical evidence for #698,
-not acceptance evidence for this combined branch. Native swipe cancellation,
-root-step exit, and OS-killed cold-link smoke tests remain required before this
-draft can be treated as accepted. The iPad profile-field overflow is a separate
-open item. AI generation remains blocked on the intended QA Vertex configuration;
+not acceptance evidence for this combined branch. OS-killed cold-link smoke tests
+and intermediate native gesture animation remain unverified. The iPad profile
+overflow correction is included in the combined branch. AI generation remains
+blocked on the intended QA Vertex configuration;
 Clerk account deletion remains outside this change as requested.
