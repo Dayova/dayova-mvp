@@ -52,22 +52,27 @@ function DeliveryInfoRow({
 }) {
 	const { shouldStackInlineContent } = useContentSizeLayout();
 	return (
-		<View className="min-h-20 flex-row items-center gap-3 rounded-[24px] bg-muted px-4 py-3">
+		<View
+			className={cn(
+				"min-h-20 gap-3 rounded-[24px] bg-muted px-4 py-3",
+				shouldStackInlineContent ? "items-start" : "flex-row items-center",
+			)}
+		>
 			<View className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-card">
 				{icon}
 			</View>
-			<View className="flex-1">
-				<Text className="font-poppins font-semibold text-body-3 text-text">
+			<View className={shouldStackInlineContent ? "w-full" : "flex-1"}>
+				<Text
+					accessibilityRole="header"
+					className="font-poppins font-semibold text-body-3 text-text"
+				>
 					{title}
 				</Text>
 				<Text className="font-poppins text-body-5 text-secondary-text">
 					{description}
 				</Text>
-				{shouldStackInlineContent ? (
-					<View className="mt-2 max-w-full self-start">{status}</View>
-				) : null}
+				<View className="mt-2 max-w-full self-start">{status}</View>
 			</View>
-			{!shouldStackInlineContent ? status : null}
 		</View>
 	);
 }

@@ -13,7 +13,9 @@ subject and exam-type selector.
   Short information, confirmation and option sheets must not reserve empty space.
 - Content scrolls by default, including the heading, so long titles and large
   system text cannot consume a fixed header and make the body unreachable.
-  Only the native date/time wheel opts out of the surrounding scroll view.
+  At font scales of 1.5 or more, the close control gets its own row so long
+  headings retain the full text width. Only the native date/time wheel opts out
+  of the surrounding scroll view.
 - Actions use Gorhom's measured footer and content inset, keeping the last row
   clear of the buttons. At font scales of 1.5 or more, viewports below 480 points,
   or measured action areas exceeding 40% of the maximum sheet height, actions
