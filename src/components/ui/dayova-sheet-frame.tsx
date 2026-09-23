@@ -4,9 +4,10 @@ import {
 	type BottomSheetBackgroundProps,
 	BottomSheetModal,
 	BottomSheetScrollView,
+	BottomSheetTextInput,
 	BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import type { ReactNode, RefObject } from "react";
+import type { ComponentProps, ReactNode, RefObject } from "react";
 import {
 	useCallback,
 	useEffect,
@@ -26,6 +27,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CloseButton } from "~/components/ui/close-button";
+import { Input } from "~/components/ui/input";
 import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -432,4 +434,14 @@ function DayovaSheetFrame({
 	);
 }
 
-export { DayovaSheetFrame };
+// Keep the keyboard-aware native primitive inside the app-owned sheet boundary.
+function DayovaSheetInput(props: ComponentProps<typeof Input>) {
+	return (
+		<Input
+			{...props}
+			renderInput={(inputProps) => <BottomSheetTextInput {...inputProps} />}
+		/>
+	);
+}
+
+export { DayovaSheetFrame, DayovaSheetInput };

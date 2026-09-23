@@ -42,6 +42,7 @@ jest.mock("@clerk/expo", () => ({
 	isClerkAPIResponseError: () => false,
 }));
 jest.mock("convex/react", () => ({
+	useConvex: () => ({ url: "https://test.convex.cloud" }),
 	useMutation: () => mockSync,
 	useAction: () => mockEntitlementSync,
 	useConvexAuth: () => ({ isAuthenticated: mockAuthenticated }),
