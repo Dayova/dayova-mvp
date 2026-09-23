@@ -1,5 +1,23 @@
 # Native account deletion follow-up (DAY-358 / PR #661)
 
+## Superseding correction: server password verification
+
+Convex excludes Clerk's `fva` from UserIdentity. The original mutation could
+therefore never validate native reauthentication, even with a fresh JWT.
+The client now posts the current password to the authenticated `/account-deletion`
+HTTP endpoint. The endpoint asks Clerk to verify that password for the subject
+derived from the verified Convex identity. Only an explicit `{ verified: true }`
+response permits the internal enqueue mutation. No password is stored in the
+database, scheduled arguments, or application logs. Legacy mutation calls fail
+closed. Provider errors are not returned to the client.
+
+Deployment prerequisite: the matching `CLERK_SECRET_KEY`, already required by the
+deletion worker. It is absent on the QA development deployment at the last check.
+Native acceptance is NOT complete until configuration and actual deletion pass.
+
+Reference: https://clerk.com/docs/reference/backend/user/verify-password
+and https://docs.convex.dev/auth/clerk#factor-verification-age .
+
 Owner: Philipp Schossig. Implementation and checks: Codex-assisted.
 
 ## Observed failure

@@ -4,7 +4,6 @@ import {
 	useSignIn,
 	useUser,
 } from "@clerk/expo";
-import { ConvexHttpClient } from "convex/browser";
 import { useConvex, useConvexAuth, useMutation } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import type React from "react";
@@ -1647,12 +1646,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				{
 					session,
 					request: async (token) => {
-						const client = new ConvexHttpClient(convex.url);
-						client.setAuth(token);
-						return client.mutation(
-							api.accountDeletion.requestCurrentUserDeletion,
-							{},
+						const endpoint = new URL(convex.url);
+						endpoint.hostname = endpoint.hostname.replace(
+							/\.convex\.cloud$/,
+							".convex.site",
 						);
+						endpoint.pathname = "/account-deletion";
+						const response = await fetch(endpoint.toString(), {
+							signal: AbortSignal.timeout(20_000),
+							method: "POST",
+							headers: {
+								Authorization: `Bearer ${token}`,
+								"Content-Type": "application/json",
+							},
+							body: JSON.stringify({ password: currentPassword }),
+						});
+						if (!response.ok)
+							throw new Error(
+								"Die Kontolöschung konnte nicht bestätigt werden.",
+							);
+						return response.json();
 					},
 					logout,
 				},
