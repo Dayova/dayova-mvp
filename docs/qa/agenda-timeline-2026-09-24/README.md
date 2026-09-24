@@ -41,6 +41,18 @@ mixed school/learning-session card heights were not visually accepted here.
 
 ## Validation and review
 
+### Additional reporter evidence — 24 September 2026, 17:42
+
+![Two agenda entries, reporter-provided iPhone screenshot](after-two-events-user-ios.png)
+
+Philipp provided this additional screenshot and confirmed the corrected timeline
+formatting. Both all-day labels and circles are centered against their respective
+exam cards. A continuous vertical connector spans the gap, bounded by the first
+and last circles. Unlike the earlier three-item fixture, this is the reporter's
+two-entry app view. Exact build SHA was not supplied with this image. It adds
+iPhone Light-mode visual evidence, not Android/iPad/Dark/large-text coverage or
+proof of production deployment.
+
 - Changed-file Biome: pass.
 - TypeScript noEmit: pass.
 - Dashboard Jest: 4 suites / 17 tests pass.
