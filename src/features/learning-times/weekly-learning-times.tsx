@@ -1,7 +1,7 @@
 import { Pressable, View } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { Button } from "~/components/ui/button";
-import { Pencil, TimeManagement, Trash2 } from "~/components/ui/icon";
+import { Pencil, TimeManagement } from "~/components/ui/icon";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { LEARNING_DAYS } from "~/features/learning-times/learning-time-days";
@@ -100,20 +100,18 @@ function WeeklyLearningTimes({
 						overshootRight={false}
 						rightThreshold={40}
 						renderRightActions={(_progress, _translation, swipeable) => (
-							<Pressable
+							<Button
 								accessibilityRole="button"
 								accessibilityLabel={`${day.label}, Lernzeit ${entry.startTime} bis ${entry.endTime} löschen`}
-								className="ml-2 w-24 items-center justify-center rounded-card bg-destructive"
+								variant="destructive"
+								className="ml-2 min-w-24 self-stretch px-3"
 								onPress={() => {
 									swipeable.close();
 									onRemove(entry);
 								}}
 							>
-								<Trash2 size={22} color="#FFFFFF" strokeWidth={2} />
-								<Text className="mt-1 font-poppins text-body-4 text-white">
-									Löschen
-								</Text>
-							</Pressable>
+								<Text className="shrink text-center">Löschen</Text>
+							</Button>
 						)}
 					>
 						{card}

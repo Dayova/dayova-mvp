@@ -266,12 +266,7 @@ function SubjectAddFlow({
 					{isBusy ? <ActivityIndicator color="#FFFFFF" /> : null}
 					<Text>{isBusy ? "Wird gespeichert …" : "Fach hinzufügen"}</Text>
 				</Button>
-				<Button
-					disabled={isBusy}
-					variant="ghost"
-					className="border border-border bg-card"
-					onPress={cancel}
-				>
+				<Button disabled={isBusy} variant="cancel" onPress={cancel}>
 					<Text>Abbrechen</Text>
 				</Button>
 			</View>

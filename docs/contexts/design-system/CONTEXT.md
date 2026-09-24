@@ -156,6 +156,14 @@ icon. `danger-action` and `danger-subtle` are paired action tokens in both theme
 the existing error/status `destructive` token is unchanged. Loading indicators
 use `dangerAction`. Keep confirmations and disabled/busy guards unchanged.
 
+Follow-up from Philipp's 24 September device review: the shared `cancel` variant
+uses a 1px border, card surface and normal theme text, matching “Fach hinzufügen”.
+Use it for all app-rendered cancellation actions instead of solid neutral fills.
+Native system picker cancellation remains platform-owned. Swipe-delete actions
+for subjects and learning times use the same icon-free destructive Button as
+confirmations. Light danger action is saturated red `#D12013` on `#FFF0EE`;
+dark tokens remain unchanged. Both pairs meet 4.5:1 text contrast.
+
 The empty timetable uses one full-width gradient import button and a full-width
 neutral manual-entry button. File and camera are equal sources inside the shared
 `ActionSheet`, following the school-material upload pattern. Use source rows
