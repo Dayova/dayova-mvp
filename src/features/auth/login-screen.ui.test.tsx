@@ -555,6 +555,41 @@ describe("LoginScreen", () => {
 		);
 	});
 
+	test.each([
+		{ width: 834, height: 1194 },
+		{ width: 1194, height: 834 },
+		{ width: 1024, height: 1366 },
+	])("keeps iPad artwork tiles separated at $width × $height", async ({
+		width,
+		height,
+	}) => {
+		mockWindowDimensions = { fontScale: 1, scale: 2, width, height };
+		const screen = await render(<AuthChoiceScreen />);
+		const tiles = screen.getAllByTestId("auth-choice-background-tile");
+		const centers = [
+			...new Set<number>(
+				tiles.map((tile) => tile.props.style.left + tile.props.style.width / 2),
+			),
+		].sort((a, b) => a - b);
+		expect(centers).toHaveLength(3);
+		expect(centers[1]).toBeCloseTo(width / 2);
+		expect((centers[0] ?? 0) + (centers[2] ?? 0)).toBeCloseTo(width);
+		for (const [index, tile] of tiles.entries()) {
+			const a = tile.props.style;
+			expect(a.top).toBeGreaterThanOrEqual(0);
+			expect(a.top + a.height).toBeLessThanOrEqual(height + 0.001);
+			for (const other of tiles.slice(index + 1)) {
+				const b = other.props.style;
+				const separated =
+					a.left + a.width <= b.left ||
+					b.left + b.width <= a.left ||
+					a.top + a.height <= b.top ||
+					b.top + b.height <= a.top;
+				expect(separated).toBe(true);
+			}
+		}
+	});
+
 	test("keeps password recovery reachable from sign-in", async () => {
 		const screen = await render(<LoginScreen />);
 		const passwordRecoveryButton = screen.getByRole("button", {
