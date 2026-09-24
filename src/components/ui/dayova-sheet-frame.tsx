@@ -4,8 +4,10 @@ import {
 	type BottomSheetBackgroundProps,
 	BottomSheetModal,
 	BottomSheetScrollView,
+	BottomSheetTextInput,
 	BottomSheetView,
 } from "@gorhom/bottom-sheet";
+import { cssInterop } from "nativewind";
 import type { ReactNode, RefObject } from "react";
 import {
 	useCallback,
@@ -26,6 +28,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CloseButton } from "~/components/ui/close-button";
+import { InputComponentContext } from "~/components/ui/input";
 import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -33,6 +36,7 @@ import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
 
 const DEFAULT_MAX_SHEET_WIDTH = 560;
+const SheetTextInput = cssInterop(BottomSheetTextInput, { className: "style" });
 
 type DayovaSheetSize = "content" | "medium";
 type DayovaSheetPhase = "closed" | "opening" | "presented" | "closing";
@@ -407,6 +411,7 @@ function DayovaSheetFrame({
 			keyboardBehavior="interactive"
 			keyboardBlurBehavior="restore"
 			maxDynamicContentSize={maximumHeight}
+			topInset={insets.top}
 			onChange={handleChange}
 			onDismiss={handleDismiss}
 			snapPoints={snapPoints}
@@ -418,16 +423,18 @@ function DayovaSheetFrame({
 				width: sheetWidth,
 			}}
 		>
-			{scrollable ? (
-				content
-			) : (
-				<BottomSheetView
-					// Gorhom views do not expose NativeWind class props.
-					style={size !== "content" ? { flex: 1 } : undefined}
-				>
-					{content}
-				</BottomSheetView>
-			)}
+			<InputComponentContext.Provider value={SheetTextInput}>
+				{scrollable ? (
+					content
+				) : (
+					<BottomSheetView
+						// Gorhom views do not expose NativeWind class props.
+						style={size !== "content" ? { flex: 1 } : undefined}
+					>
+						{content}
+					</BottomSheetView>
+				)}
+			</InputComponentContext.Provider>
 		</BottomSheetModal>
 	);
 }

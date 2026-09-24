@@ -238,7 +238,7 @@ function SubjectAddFlow({
 			dismissible={!isBusy}
 			closeAccessibilityLabel="Fach hinzufügen schließen"
 			scrollable
-			size="content"
+			size="medium"
 		>
 			{step === "input" ? (
 				<View className="gap-4">

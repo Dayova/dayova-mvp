@@ -100,7 +100,7 @@ function ExamTypePicker({
 				description="Gib eine Prüfungsart ein, die noch nicht in der Liste steht. Sie wird für diese Prüfung verwendet."
 				closeAccessibilityLabel="Prüfungsart hinzufügen schließen"
 				scrollable
-				size="content"
+				size="medium"
 			>
 				<View className="gap-4">
 					<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">
