@@ -1,0 +1,13 @@
+appId: de.dayova.app-dev
+---
+# Start with an existing QA exam on its filled topics or material step.
+- tapOn:
+    text: Weiter
+    optional: true
+- assertVisible: Schulmaterial hinzufügen
+- takeScreenshot: material-before-tap
+- tapOn: Später hinzufügen
+- extendedWaitUntil:
+    notVisible: Schulmaterial hinzufügen
+    timeout: 10000
+- takeScreenshot: material-after-tap
