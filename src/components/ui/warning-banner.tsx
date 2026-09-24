@@ -60,7 +60,7 @@ function WarningBanner({
 				{showCta ? (
 					<Button
 						accessibilityLabel={ctaAccessibilityLabel ?? ctaLabel}
-						className="mt-1 min-h-10 self-start rounded-full bg-card px-5 py-2 shadow-black/5 shadow-sm active:bg-card/85"
+						className="mt-1 min-h-10 self-start rounded-full border border-border bg-card px-5 py-2 active:bg-card/85"
 						onPress={onPressCta}
 						size="sm"
 						variant="ghost"
