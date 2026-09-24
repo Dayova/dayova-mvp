@@ -19,31 +19,37 @@ jest.mock("~/context/AuthContext", () => ({
 	useAuthSession: () => ({ user: { clerkId: "user_1" } }),
 }));
 jest.mock("#convex/_generated/api", () => ({
-	api: { learningPlans: { acceptPlan: "accept", getSnapshot: "snapshot" } },
+	api: {
+		learningPlans: {
+			acceptPlan: "accept",
+			getPlanDetails: "details",
+			listSessions: "sessions",
+		},
+	},
 }));
 jest.mock("convex/react", () => ({
 	useConvexAuth: () => ({ isAuthenticated: true }),
 	useMutation: () => jest.fn(),
-	useQuery: () => ({
-		plan: {
-			status: "generated",
-			diagnosticPlacement: "firstSession",
-			learningTimeSuggestion: {
-				initialPromptDismissed: false,
-				entries: [{ dayOfWeek: 1, startTime: "16:00", endTime: "20:00" }],
-			},
-		},
-		sessions: [
-			{
-				id: "session_1",
-				title: "Wissenscheck",
-				sessionPurpose: "diagnostic",
-				dateLabel: "24. September",
-				startTime: "17:00",
-				durationMinutes: 20,
-			},
-		],
-	}),
+	useQuery: (name: string) =>
+		name === "details"
+			? {
+					status: "generated",
+					diagnosticPlacement: "firstSession",
+					learningTimeSuggestion: {
+						initialPromptDismissed: false,
+						entries: [{ dayOfWeek: 1, startTime: "16:00", endTime: "20:00" }],
+					},
+				}
+			: [
+					{
+						id: "session_1",
+						title: "Wissenscheck",
+						sessionPurpose: "diagnostic",
+						dateLabel: "24. September",
+						startTime: "17:00",
+						durationMinutes: 20,
+					},
+				],
 }));
 jest.mock("~/components/ui/icon", () => {
 	const React = jest.requireActual<typeof import("react")>("react");
