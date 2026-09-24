@@ -95,6 +95,28 @@ export const reconcile = internalAction({
 					);
 					if (fresh.status !== "matched")
 						throw new CrmFailure("identity_changed");
+					if (!fresh.projection.email.trim())
+						throw new CrmFailure("identity_changed");
+					if (
+						current.email?.toLowerCase() !==
+						fresh.projection.email.toLowerCase()
+					) {
+						if (
+							students.some(
+								(student) =>
+									student.pageId !== row.pageId &&
+									student.email?.toLowerCase() ===
+										fresh.projection.email.toLowerCase(),
+							)
+						)
+							throw new CrmFailure("identity_changed");
+						const emailMatches = await notion.students({
+							property: "Email",
+							email: { equals: fresh.projection.email },
+						});
+						if (emailMatches.some((student) => student.pageId !== row.pageId))
+							throw new CrmFailure("identity_changed");
+					}
 					const link = {
 						pageId: row.pageId,
 						userId: fresh.projection.userId,

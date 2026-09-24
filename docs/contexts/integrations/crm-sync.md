@@ -25,9 +25,11 @@ is busy or unavailable. Signup does not wait for Notion.
 The worker processes at most 20 pending signups per run under the same global
 lease and request budget as access synchronization. It reuses a unique Clerk-ID
 match, otherwise creates a page containing `Student` (name, or `Dayova student`),
-`Email`, Clerk ID and the allowlisted profile/access projection. Email is initialized
-once; later reconciliation preserves the CRM email. Phone, birth date, specific
-school identities, and learner content are not copied.
+`Email`, Clerk ID and the allowlisted profile/access projection. For an already
+matched contact, the app account email is refreshed on reconciliation after a
+profile change; an email collision with another Notion contact blocks the write
+for review. Phone, birth date, specific school identities, and learner content
+are not copied.
 
 New pages receive the `Tags` multi-select value `Added through Integration with App`.
 It records creation provenance, not onboarding completion. Existing matched pages
@@ -45,8 +47,8 @@ Previously created contacts are not automatically backfilled by this change.
 
 ### Student profile projection
 
-The app profile in Convex owns `Student`, `First Name`, `Last Name`, `Grade`,
-`State`, `School Type`, and `OS` for matched users. Every reconciliation refreshes
+The app profile in Convex owns `Email`, `Student`, `First Name`, `Last Name`,
+`Grade`, `State`, `School Type`, and `OS` for matched users. Every reconciliation refreshes
 these fields, including contacts created before this extension. Changes saved
 through `syncCurrentUser` (including onboarding) or `updateProfile` schedule
 reconciliation in live mode only when a projected value changes. The hourly
@@ -153,8 +155,8 @@ reconciliation in live mode. Identical subscription snapshots do not schedule
 extra work just because their verification timestamp changes. The hourly sweep
 repairs failed/busy runs and handles expiry without an incoming event.
 
-Manually owned status/registration date and tags after creation, email/phone, notes, research and
-relationship fields remain separate. `Entitlement State` remains the effective
+Manually owned status/registration date and tags after creation, phone, notes,
+research and relationship fields remain separate. `Entitlement State` remains the effective
 app-access projection, distinct from payment-period evidence. No tokens, receipts,
 payment IDs, management URLs or raw provider payloads are projected.
 

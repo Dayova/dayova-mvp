@@ -47,6 +47,7 @@ export const emptyCounts = (): CrmCounts => ({
 });
 export const crmProjection = v.object({
 	userId: v.id("users"),
+	email: v.string(),
 	registeredAt: v.number(),
 	profile: v.object({
 		name: v.optional(v.string()),

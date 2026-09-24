@@ -112,7 +112,10 @@ export async function provisionSignups(
 				now: Date.now(),
 			},
 		);
-		if (match.status !== "matched") {
+		if (
+			match.status !== "matched" ||
+			match.projection.email.toLowerCase() !== email
+		) {
 			await review();
 			continue;
 		}

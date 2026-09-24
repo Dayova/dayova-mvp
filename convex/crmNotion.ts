@@ -5,6 +5,7 @@ export const CRM_MAX_STUDENTS = 200;
 export const CRM_APP_ORIGIN_TAG = "Added through Integration with App";
 export const CRM_PROPERTIES = {
 	...CRM_PROFILE_PROPERTIES,
+	Email: "email",
 	"Clerk User ID": "rich_text",
 	"Convex User ID": "rich_text",
 	"Identity Status": "select",
@@ -94,6 +95,7 @@ const date = (value: number | null) => ({
 export function projectionProperties(projection: CrmProjection, now: number) {
 	return {
 		...profileProperties(projection.profile),
+		Email: { email: projection.email },
 		"Convex User ID": richText(projection.userId),
 		"Identity Status": { select: { name: "matched" } },
 		"Entitlement State": { select: { name: projection.state } },
@@ -226,12 +228,12 @@ export function createNotionClient(token: string, dataSourceId: string) {
 									},
 								],
 							},
-							Email: { email },
 							Tags: { multi_select: [{ name: CRM_APP_ORIGIN_TAG }] },
 							Status: { status: { name: "Registered" } },
 							"Registration Date": date(projection.registeredAt),
 							"Clerk User ID": richText(clerkId),
 							...projectionProperties(projection, now),
+							Email: { email },
 						},
 					},
 					false,

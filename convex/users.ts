@@ -394,7 +394,14 @@ async function scheduleCrmProfileSync(
 	if (
 		env.NOTION_CRM_MODE === "live" &&
 		(
-			["name", "grade", "state", "schoolType", "operatingSystems"] as const
+			[
+				"email",
+				"name",
+				"grade",
+				"state",
+				"schoolType",
+				"operatingSystems",
+			] as const
 		).some((key) => Object.hasOwn(patch, key) && patch[key] !== previous[key])
 	)
 		await ctx.scheduler.runAfter(0, internal.crmSync.reconcile, {});

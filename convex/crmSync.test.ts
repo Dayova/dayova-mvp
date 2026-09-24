@@ -233,10 +233,12 @@ function mockNotion(
 			if (url.endsWith("/query")) {
 				const body = JSON.parse(String(init?.body));
 				const filtered = body.filter
-					? rows.filter(
-							(row) =>
-								row.properties["Clerk User ID"].rich_text[0].plain_text ===
-								body.filter.rich_text.equals,
+					? rows.filter((row) =>
+							body.filter.property === "Email"
+								? row.properties.Email.email.toLowerCase() ===
+									body.filter.email.equals.toLowerCase()
+								: row.properties["Clerk User ID"].rich_text[0].plain_text ===
+									body.filter.rich_text.equals,
 						)
 					: rows;
 				return Response.json({
@@ -408,7 +410,6 @@ test("live projection retries the same payload, preserves CRM-owned fields and r
 	});
 	for (const key of [
 		"Clerk User ID",
-		"Email",
 		"Tags",
 		"Status",
 		"Registration Date",
@@ -490,6 +491,49 @@ test("existing linked students receive late onboarding profiles and subsequent e
 	expect(
 		await t.run((ctx) => ctx.db.query("crmStudentSignups").take(5)),
 	).toEqual([]);
+}, 15000);
+
+test("a changed account email updates the linked Notion contact", async () => {
+	configure();
+	const t = convexTest(schema, modules);
+	const userId = await seed(t);
+	await enable(t);
+	const { patches } = mockNotion();
+	await t.action(internal.crmSync.reconcile, {});
+	vi.stubEnv("NOTION_CRM_MODE", "off");
+	await t
+		.withIdentity({ subject: clerkId, tokenIdentifier, email })
+		.mutation(api.users.updateProfile, { email: "changed@example.com" });
+	vi.stubEnv("NOTION_CRM_MODE", "live");
+	await t.action(internal.crmSync.reconcile, {});
+	expect((patches[1] as { properties: unknown }).properties).toMatchObject({
+		Email: { email: "changed@example.com" },
+	});
+	expect(
+		await t.run((ctx) => ctx.db.query("crmStudentLinks").take(5)),
+	).toMatchObject([{ userId, pageId }]);
+}, 15000);
+
+test("an email already used by another Notion contact blocks the linked update", async () => {
+	configure();
+	const t = convexTest(schema, modules);
+	await seed(t);
+	await enable(t);
+	const other = page(secondPageId, "user_other");
+	other.properties.Email.email = "CHANGED@example.com";
+	const { patches } = mockNotion([page(), other]);
+	await t.action(internal.crmSync.reconcile, {});
+	expect(patches).toHaveLength(1);
+	vi.stubEnv("NOTION_CRM_MODE", "off");
+	await t
+		.withIdentity({ subject: clerkId, tokenIdentifier, email })
+		.mutation(api.users.updateProfile, { email: "changed@example.com" });
+	vi.stubEnv("NOTION_CRM_MODE", "live");
+	expect(await t.action(internal.crmSync.reconcile, {})).toMatchObject({
+		status: "failed",
+		counts: { failed: 1, synced: 0 },
+	});
+	expect(patches).toHaveLength(1);
 }, 15000);
 
 test("OS observations accumulate per authenticated account and only new platforms schedule sync", async () => {
@@ -574,12 +618,18 @@ test("profile changes schedule live reconciliation once, while unchanged sign-in
 		});
 		await authenticated.mutation(api.users.updateProfile, { state: "Berlin" });
 		await authenticated.mutation(api.users.updateProfile, { state: "Berlin" });
+		await authenticated.mutation(api.users.updateProfile, {
+			email: "changed@example.com",
+		});
+		await authenticated.mutation(api.users.updateProfile, {
+			email: "changed@example.com",
+		});
 		vi.stubEnv("NOTION_CRM_MODE", "off");
 		await authenticated.mutation(api.users.updateProfile, { grade: "11" });
 		const scheduled = await t.run((ctx) =>
 			ctx.db.system.query("_scheduled_functions").take(10),
 		);
-		expect(scheduled).toHaveLength(2);
+		expect(scheduled).toHaveLength(3);
 		expect(scheduled.every((job) => job.name.includes("crmSync"))).toBe(true);
 		await t.finishAllScheduledFunctions(vi.runAllTimers);
 	} finally {
