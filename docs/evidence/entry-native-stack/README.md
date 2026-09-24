@@ -1,6 +1,8 @@
 # Entry native history verification — 2026-09-21
 
-This change is stacked on PR #494 at `69ba928a4be7ff01ed7f8ac333deeecc0270c4e4`.
+This change is stacked on PR #494. The original native recordings used its
+`69ba928a4be7ff01ed7f8ac333deeecc0270c4e4` head; the stack was refreshed
+against the 2026-09-24 `main` and PR #494 heads after those runs.
 The entry flow now has actual native predecessors instead of changing local step
 state inside a single native route. See mobile-app ADR 0004.
 
@@ -46,6 +48,10 @@ After this follow-up, local validation passed: 67 Jest suites / 292 tests,
 118 Vitest files / 764 tests, TypeScript, Biome, ESLint, and whitespace checks.
 The native recordings below predate this URL-validation change; they remain
 evidence for the unchanged gesture mechanics and the complete resume path.
+After refreshing the stack against the 2026-09-24 `main`, the combined branch
+passed 67 Jest suites / 298 tests, 119 Vitest files / 778 tests with two workers,
+TypeScript, Biome, ESLint, and whitespace checks. The smaller worker count avoids
+local timeouts caused by concurrent Expo config subprocesses.
 
 ## Native test scope
 
