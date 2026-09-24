@@ -51,7 +51,7 @@ export function CategoryTabs({
 
 	return (
 		<View
-			className="flex-row rounded-full bg-card"
+			className="flex-row rounded-full border border-border bg-card"
 			onLayout={({ nativeEvent }) => {
 				const nextIndicatorWidth =
 					(nativeEvent.layout.width - 8) / CATEGORIES.length;
@@ -61,7 +61,6 @@ export function CategoryTabs({
 				minHeight: 60,
 				paddingHorizontal: 4,
 				paddingVertical: 6,
-				boxShadow: "0 6px 16px rgba(20, 28, 48, 0.06)",
 			}}
 		>
 			<Animated.View
