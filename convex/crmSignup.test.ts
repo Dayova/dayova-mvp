@@ -139,10 +139,10 @@ test.each([
 		createNotionClient("test-only", source).checkCreationSchema(),
 	).rejects.toMatchObject({ category: "schema" });
 	expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(fetchMock).toHaveBeenCalledWith(
-			expect.stringContaining("/data_sources/"),
-			expect.objectContaining({ method: "GET" }),
-		);
+	expect(fetchMock).toHaveBeenCalledWith(
+		expect.stringContaining("/data_sources/"),
+		expect.objectContaining({ method: "GET" }),
+	);
 });
 afterEach(() => {
 	vi.unstubAllEnvs();
@@ -239,6 +239,9 @@ test("authenticated signup queues once, login retries do not duplicate, legacy u
 
 test("off and dry-run never create, live creates minimal CRM record once and subsequent runs reuse it", async () => {
 	const { t, userId } = await signup();
+	await t
+		.withIdentity(identity)
+		.mutation(api.users.syncCurrentUser, { operatingSystem: "Android" });
 	const registeredAt = await t.run(
 		async (ctx) => (await ctx.db.get("users", userId))?._creationTime,
 	);
@@ -273,6 +276,7 @@ test("off and dry-run never create, live creates minimal CRM record once and sub
 		"Subscription Plan": { select: { name: "None" } },
 		Tags: { multi_select: [{ name: "Added through Integration with App" }] },
 		Status: { status: { name: "Registered" } },
+		OS: { multi_select: [{ name: "Android" }] },
 		"Registration Date": {
 			date: { start: new Date(registeredAt).toISOString() },
 		},

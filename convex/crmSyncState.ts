@@ -53,6 +53,7 @@ async function project(
 			grade: user.grade,
 			state: user.state,
 			schoolType: user.schoolType,
+			operatingSystems: user.operatingSystems,
 		},
 		state,
 		...crmBilling(entitlement, state),

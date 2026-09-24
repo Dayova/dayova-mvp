@@ -1,6 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { crmCounts, crmError } from "./crmContract";
+import { crmCounts, crmError, operatingSystem } from "./crmContract";
 import {
 	learningEvidenceDimensionValidator,
 	learningTopicValidator,
@@ -172,6 +172,8 @@ export default defineSchema({
 		grade: v.optional(v.string()),
 		schoolType: v.optional(v.string()),
 		state: v.optional(v.string()),
+		// At most the three supported native platforms, accumulated on sign-in.
+		operatingSystems: v.optional(v.array(operatingSystem)),
 		avatarUrl: v.optional(v.string()),
 		validationStudentCode: v.optional(v.string()),
 		validationRole: v.optional(v.union(v.literal("founder"))),

@@ -1,4 +1,9 @@
 import { type Infer, v } from "convex/values";
+import { OPERATING_SYSTEMS } from "../src/lib/operating-systems";
+
+export const operatingSystem = v.union(
+	...OPERATING_SYSTEMS.map((value) => v.literal(value)),
+);
 
 export const crmError = v.union(
 	v.literal("configuration"),
@@ -47,6 +52,7 @@ export const crmProjection = v.object({
 		grade: v.optional(v.string()),
 		state: v.optional(v.string()),
 		schoolType: v.optional(v.string()),
+		operatingSystems: v.optional(v.array(operatingSystem)),
 	}),
 	state: v.union(
 		v.literal("none"),

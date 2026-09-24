@@ -379,6 +379,7 @@ test("existing linked students receive late onboarding profiles and subsequent e
 	vi.stubEnv("NOTION_CRM_MODE", "off");
 	await authenticated.mutation(api.users.syncCurrentUser, {
 		name: "Anna von Beispiel",
+		operatingSystem: "Android",
 		grade: "10",
 		state: "Bayern",
 		schoolType: "gymnasium",
@@ -395,8 +396,13 @@ test("existing linked students receive late onboarding profiles and subsequent e
 		Grade: { select: { name: "10" } },
 		State: { select: { name: "BY" } },
 		"School Type": { select: { name: "Gymnasium" } },
+		OS: { multi_select: [{ name: "Android" }] },
 	});
 	vi.stubEnv("NOTION_CRM_MODE", "off");
+	await authenticated.mutation(api.users.syncCurrentUser, {
+		name: "Anna von Beispiel",
+		operatingSystem: "iPadOS",
+	});
 	await authenticated.mutation(api.users.updateProfile, {
 		name: "Alex",
 		grade: "11",
@@ -411,6 +417,7 @@ test("existing linked students receive late onboarding profiles and subsequent e
 		Grade: { select: { name: "11" } },
 		State: { select: { name: "BE" } },
 		"School Type": { select: null },
+		OS: { multi_select: [{ name: "Android" }, { name: "iPadOS" }] },
 	});
 	expect(
 		await t.run((ctx) => ctx.db.query("crmStudentLinks").take(5)),
@@ -419,6 +426,67 @@ test("existing linked students receive late onboarding profiles and subsequent e
 		await t.run((ctx) => ctx.db.query("crmStudentSignups").take(5)),
 	).toEqual([]);
 }, 15000);
+
+test("OS observations accumulate per authenticated account and only new platforms schedule sync", async () => {
+	const t = convexTest(schema, modules);
+	const authenticated = t.withIdentity({
+		subject: clerkId,
+		tokenIdentifier,
+		email,
+	});
+	vi.useFakeTimers();
+	try {
+		vi.stubEnv("NOTION_CRM_MODE", "off");
+		const userId = await authenticated.mutation(api.users.syncCurrentUser, {
+			operatingSystem: "Android",
+		});
+		vi.stubEnv("NOTION_CRM_MODE", "live");
+		await authenticated.mutation(api.users.syncCurrentUser, {
+			operatingSystem: "Android",
+		});
+		await authenticated.mutation(api.users.syncCurrentUser, {});
+		expect(
+			await t.run((ctx) =>
+				ctx.db.system.query("_scheduled_functions").take(10),
+			),
+		).toHaveLength(0);
+		await authenticated.mutation(api.users.syncCurrentUser, {
+			operatingSystem: "iOS",
+		});
+		await authenticated.mutation(api.users.syncCurrentUser, {
+			operatingSystem: "iOS",
+		});
+		vi.stubEnv("NOTION_CRM_MODE", "off");
+		await authenticated.mutation(api.users.syncCurrentUser, {
+			operatingSystem: "iPadOS",
+		});
+		await authenticated.mutation(api.users.syncCurrentUser, {});
+		expect(await t.run((ctx) => ctx.db.get("users", userId))).toMatchObject({
+			operatingSystems: ["Android", "iOS", "iPadOS"],
+		});
+		expect(
+			await t.run((ctx) =>
+				ctx.db.system.query("_scheduled_functions").take(10),
+			),
+		).toHaveLength(1);
+		const otherUserId = await t
+			.withIdentity({
+				subject: "user_other",
+				tokenIdentifier: "issuer|user_other",
+				email: "other@example.com",
+			})
+			.mutation(api.users.syncCurrentUser, { operatingSystem: "iOS" });
+		expect(
+			await t.run((ctx) => ctx.db.get("users", otherUserId)),
+		).toMatchObject({ operatingSystems: ["iOS"] });
+		await expect(
+			t.mutation(api.users.syncCurrentUser, { operatingSystem: "Android" }),
+		).rejects.toThrow();
+		await t.finishAllScheduledFunctions(vi.runAllTimers);
+	} finally {
+		vi.useRealTimers();
+	}
+});
 
 test("profile changes schedule live reconciliation once, while unchanged sign-ins and off mode do not", async () => {
 	const t = convexTest(schema, modules);

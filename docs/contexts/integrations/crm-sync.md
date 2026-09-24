@@ -46,7 +46,7 @@ Previously created contacts are not automatically backfilled by this change.
 ### Student profile projection
 
 The app profile in Convex owns `Student`, `First Name`, `Last Name`, `Grade`,
-`State`, and `School Type` for matched users. Every reconciliation refreshes
+`State`, `School Type`, and `OS` for matched users. Every reconciliation refreshes
 these fields, including contacts created before this extension. Changes saved
 through `syncCurrentUser` (including onboarding) or `updateProfile` schedule
 reconciliation in live mode only when a projected value changes. The hourly
@@ -63,6 +63,15 @@ sweep repairs failures and changes arriving during an active reconciliation.
   school-type options. `prefer_not_to_say` clears its selection. Recognized
   generic legacy school types are normalized; specific legacy school names are
   never exported. The existing `School` relation remains manually owned.
+- `OS` is a **multi-select** of observed native platforms: `Android`, `iOS`,
+  and `iPadOS`. The authenticated app reports `Platform.OS` and `Platform.isPad`
+  through `syncCurrentUser`; Convex retains each platform once per account.
+  Signing in on another platform adds it; repeated sign-ins do not schedule
+  another sync. Existing accounts populate after opening/reloading the updated
+  app while signed in. Web/older clients omit the observation and preserve
+  history. Without observations, OS is omitted from Notion writes. Once observed,
+  the app-owned list replaces manual OS values; no OS version, device identifier,
+  or inferred RevenueCat store value is collected.
 - Absent or unsupported source values are omitted, preserving existing CRM
   values for incomplete/legacy accounts. Present supported values overwrite
   manual edits to these app-owned columns on the next sync.

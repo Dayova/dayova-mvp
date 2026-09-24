@@ -13,6 +13,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { env, mutation, query } from "./_generated/server";
+import { operatingSystem } from "./crmContract";
 import { throwUserFacingError } from "./errors";
 import {
 	deriveOnboardingLearningTimes,
@@ -392,15 +393,16 @@ async function scheduleCrmProfileSync(
 ) {
 	if (
 		env.NOTION_CRM_MODE === "live" &&
-		(["name", "grade", "state", "schoolType"] as const).some(
-			(key) => Object.hasOwn(patch, key) && patch[key] !== previous[key],
-		)
+		(
+			["name", "grade", "state", "schoolType", "operatingSystems"] as const
+		).some((key) => Object.hasOwn(patch, key) && patch[key] !== previous[key])
 	)
 		await ctx.scheduler.runAfter(0, internal.crmSync.reconcile, {});
 }
 
 export const syncCurrentUser = mutation({
 	args: {
+		operatingSystem: v.optional(operatingSystem),
 		name: v.optional(v.string()),
 		phone: v.optional(v.string()),
 		birthDate: v.optional(v.string()),
@@ -433,6 +435,16 @@ export const syncCurrentUser = mutation({
 			email,
 			name: args.name ?? identity.name,
 			...profileFields(args),
+			// Only patch on a new observation; omitted/older clients preserve history.
+			...(args.operatingSystem &&
+			!existingUser?.operatingSystems?.includes(args.operatingSystem)
+				? {
+						operatingSystems: [
+							...(existingUser?.operatingSystems ?? []),
+							args.operatingSystem,
+						],
+					}
+				: {}),
 		};
 
 		let userId: Id<"users">;
