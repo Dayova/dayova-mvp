@@ -310,7 +310,7 @@ export function RequiredTopicsStep({
 			</Text>
 			<Textarea
 				accessibilityLabel="Prüfungsthemen"
-				className="mt-6 h-48 flex-none rounded-[24px] bg-card px-4 py-4"
+				className="mt-6 h-48 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
 				value={topics}
 				onChangeText={onChangeTopics}
 				placeholder="Zum Beispiel: Lineare Funktionen, Steigung berechnen und den y-Achsenabschnitt bestimmen."

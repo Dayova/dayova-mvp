@@ -54,6 +54,9 @@ describe("learning-plan setup steps", () => {
 		expect(screen.getByLabelText("Prüfungsthemen")).toHaveDisplayValue(
 			"Lineare Gleichungen und Funktionen",
 		);
+		expect(screen.getByLabelText("Prüfungsthemen").props.className).toContain(
+			"border-border",
+		);
 		expect(screen.getByRole("button", { name: "Weiter" })).toBeEnabled();
 
 		await fireEvent.changeText(

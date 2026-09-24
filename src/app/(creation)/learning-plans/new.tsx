@@ -1,4 +1,3 @@
-import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { fetch } from "expo/fetch";
 import * as DocumentPicker from "expo-document-picker";
@@ -9,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
+import { isMeaningfulTopicDescription } from "#convex/topicDescriptionValidation";
 import {
 	ActionSheet,
 	actionSheetIconColor,
@@ -25,14 +25,15 @@ import {
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
 import {
+	examEntryResumePath,
 	examEntrySuccessPath,
 	learningPlanStepPath,
 } from "~/features/learning-plans/creation-routes";
+import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import {
 	MaterialUploadStep,
 	RequiredTopicsStep,
 } from "~/features/learning-plans/learning-plan-setup-steps";
-import { useLearningPlanSetupOrigin } from "~/features/learning-plans/learning-plan-setup-origin";
 import type {
 	LearningPlanSnapshot,
 	UploadAsset,
@@ -89,6 +90,7 @@ export default function NewLearningPlanScreen() {
 		topicDescription?: string;
 		teacherGuidance?: string;
 		errorCode?: UserFacingErrorCode;
+		fromExamEntry?: string;
 		errorMessage?: string;
 	}>();
 	const { user } = useAuthSession();
@@ -575,6 +577,19 @@ export default function NewLearningPlanScreen() {
 	};
 
 	const exitCreation = () => {
+		if (!learningPlanId && examDayEntryId && params.fromExamEntry === "true") {
+			router.replace(
+				examEntryResumePath({
+					examDayEntryId,
+					subject,
+					examTypeLabel,
+					examDateKey,
+					durationMinutes,
+					topicDescription: topics,
+				}),
+			);
+			return true;
+		}
 		if (learningPlanId) {
 			dismissToOrReplace(router, ROUTES.learningPlans);
 			return true;

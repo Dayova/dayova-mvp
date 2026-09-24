@@ -5,27 +5,18 @@ import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import {
-	ActivityIndicator,
-	Platform,
-	View,
-	type ViewStyle,
-} from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader } from "~/components/screen-header";
+import { ActionSheet } from "~/components/ui/action-sheet";
 import { Button } from "~/components/ui/button";
 import {
 	type DateTimePickerEvent,
 	DateTimePickerSheet,
 } from "~/components/ui/date-time-picker-sheet";
-import {
-	Attachment,
-	CalendarDays,
-	Check,
-	ScanImage,
-} from "~/components/ui/icon";
+import { Attachment, Check, ScanImage } from "~/components/ui/icon";
 import {
 	PortraitContent,
 	useContentSizeLayout,
@@ -45,6 +36,7 @@ import {
 	TIMETABLE_WEEKDAYS,
 	type TimetableLessonDraft,
 } from "~/features/timetable/timetable-editor";
+import { TimetableEntry } from "~/features/timetable/timetable-entry";
 import { TimetableWeekEditor } from "~/features/timetable/timetable-week-editor";
 import { ROUTES } from "~/lib/routes";
 import { triggerSuccessHaptic } from "~/lib/safe-haptics";
@@ -63,10 +55,7 @@ const UPLOAD_COMPLETION_FAILURE_MESSAGE =
 	"Die Datei wurde übertragen, aber Dayova konnte den Upload nicht abschließen. Bitte versuche es erneut.";
 const TIMETABLE_WEEKDAY_VALUES = TIMETABLE_WEEKDAYS.map((day) => day.value);
 
-// This is a native rendering control with no NativeWind equivalent.
-const continuousBorderStyle = {
-	borderCurve: "continuous",
-} satisfies ViewStyle;
+type ImportSource = "camera" | "files";
 
 type TimePickerTarget = {
 	lessonKey: string;
@@ -97,28 +86,6 @@ const formatTime = (date: Date) =>
 		.getMinutes()
 		.toString()
 		.padStart(2, "0")}`;
-
-function TimetableIntro() {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<View
-			className="overflow-hidden rounded-card border border-border bg-card p-6"
-			style={continuousBorderStyle}
-		>
-			<View className="h-14 w-14 items-center justify-center rounded-full bg-system-subtle">
-				<CalendarDays size={26} color={colors.primaryStrong} strokeWidth={2} />
-			</View>
-			<Text className="mt-5 font-poppins font-semibold text-heading-2 text-text">
-				Deine Schulzeiten im Tagesplan
-			</Text>
-			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
-				Lade ein Bild oder PDF hoch. Prüfe die erkannten Stunden, bevor sie bei
-				„Heute“ erscheinen und Lernzeiten blockieren.
-			</Text>
-		</View>
-	);
-}
 
 function TimetableStatus({
 	status,
@@ -177,48 +144,9 @@ function TimetableStatus({
 	return null;
 }
 
-function TimetableSourceActions({
-	isBusy,
-	isProcessing,
-	onPickFile,
-	onTakePhoto,
-}: {
-	isBusy: boolean;
-	isProcessing: boolean;
-	onPickFile: () => void;
-	onTakePhoto: () => void;
-}) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<View className="flex-row gap-3">
-			<Button
-				accessibilityLabel="Stundenplan als Datei auswählen"
-				className="flex-1 px-4"
-				size="sm"
-				disabled={isBusy || isProcessing}
-				onPress={onPickFile}
-			>
-				<Attachment size={19} color="#FFFFFF" strokeWidth={2} />
-				<Text>Datei</Text>
-			</Button>
-			<Button
-				accessibilityLabel="Stundenplan fotografieren"
-				className="flex-1 px-4"
-				size="sm"
-				variant="neutral"
-				disabled={isBusy || isProcessing}
-				onPress={onTakePhoto}
-			>
-				<ScanImage size={19} color={colors.background} strokeWidth={2} />
-				<Text>Foto</Text>
-			</Button>
-		</View>
-	);
-}
-
 export default function TimetableScreen() {
 	const router = useRouter();
+	const { colors } = useDayovaTheme();
 	const insets = useSafeAreaInsets();
 	const contentSizeLayout = useContentSizeLayout({
 		requestedHorizontalPadding: 24,
@@ -241,6 +169,10 @@ export default function TimetableScreen() {
 		timetableState?.draft ?? timetableState?.active ?? null;
 	const [editor, setEditor] = useState<EditorSession | null>(null);
 	const [isBusy, setIsBusy] = useState(false);
+	const [isImportSheetVisible, setIsImportSheetVisible] = useState(false);
+	const [openingImportSource, setOpeningImportSource] =
+		useState<ImportSource | null>(null);
+	const pendingImportSourceRef = useRef<ImportSource | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [timePickerTarget, setTimePickerTarget] =
 		useState<TimePickerTarget | null>(null);
@@ -269,11 +201,19 @@ export default function TimetableScreen() {
 			: serverLessons;
 	const validationError = getTimetableLessonError(lessons);
 	const isProcessing = selectedTimetable?.status === "processing";
+	const isImportDisabled =
+		!user ||
+		!isAuthenticated ||
+		timetableState === undefined ||
+		isBusy ||
+		isProcessing ||
+		openingImportSource !== null;
 	const canSave =
 		Boolean(selectedTimetable) &&
 		!validationError &&
 		!isBusy &&
 		!isProcessing &&
+		!openingImportSource &&
 		isAuthenticated;
 
 	const updateLessons = (
@@ -409,7 +349,7 @@ export default function TimetableScreen() {
 	};
 
 	const pickFile = () => {
-		void runTask(async () => {
+		return runTask(async () => {
 			const result = await DocumentPicker.getDocumentAsync({
 				type: TIMETABLE_FILE_TYPES,
 				multiple: false,
@@ -428,7 +368,7 @@ export default function TimetableScreen() {
 	};
 
 	const takePhoto = () => {
-		void runTask(async () => {
+		return runTask(async () => {
 			const permission = await ImagePicker.requestCameraPermissionsAsync();
 			if (!permission.granted) {
 				throw new Error(
@@ -449,6 +389,42 @@ export default function TimetableScreen() {
 				size: asset.fileSize,
 			});
 		});
+	};
+
+	const openImportSheet = () => {
+		if (isImportDisabled || taskInFlightRef.current) return;
+		setIsImportSheetVisible(true);
+	};
+
+	const closeImportSheet = () => {
+		pendingImportSourceRef.current = null;
+		setOpeningImportSource(null);
+		setIsImportSheetVisible(false);
+	};
+
+	const chooseImportSource = (source: ImportSource) => {
+		if (
+			isImportDisabled ||
+			taskInFlightRef.current ||
+			pendingImportSourceRef.current
+		)
+			return;
+		pendingImportSourceRef.current = source;
+		setOpeningImportSource(source);
+		setIsImportSheetVisible(false);
+	};
+
+	const runPendingImport = () => {
+		const source = pendingImportSourceRef.current;
+		pendingImportSourceRef.current = null;
+		if (!source) return;
+		if (!user || !isAuthenticated || isBusy || isProcessing) {
+			setOpeningImportSource(null);
+			return;
+		}
+		// Native pickers must wait for the sheet's actual dismissal, especially on iOS.
+		const importTask = source === "files" ? pickFile() : takePhoto();
+		void importTask.finally(() => setOpeningImportSource(null));
 	};
 
 	const save = () => {
@@ -481,10 +457,7 @@ export default function TimetableScreen() {
 		? lessons.find((lesson) => lesson.key === dayPickerLessonKey)
 		: null;
 	const isAddDisabled =
-		!isAuthenticated ||
-		isBusy ||
-		isProcessing ||
-		lessons.length >= MAX_TIMETABLE_LESSONS;
+		isImportDisabled || lessons.length >= MAX_TIMETABLE_LESSONS;
 	const saveAccessibilityLabel =
 		selectedTimetable?.status === "active"
 			? "Änderungen am Stundenplan speichern"
@@ -570,24 +543,13 @@ export default function TimetableScreen() {
 					) : null}
 
 					{lessons.length === 0 ? (
-						<>
-							<TimetableIntro />
-							<TimetableSourceActions
-								isBusy={isBusy}
-								isProcessing={isProcessing}
-								onPickFile={pickFile}
-								onTakePhoto={takePhoto}
-							/>
-							<Button
-								accessibilityLabel="Unterrichtsstunde manuell hinzufügen"
-								disabled={isAddDisabled}
-								size="sm"
-								variant="outline"
-								onPress={() => addManualLesson(selectedDay)}
-							>
-								<Text>Stunde manuell hinzufügen</Text>
-							</Button>
-						</>
+						<TimetableEntry
+							isImportDisabled={isImportDisabled}
+							isManualDisabled={isAddDisabled}
+							isOpeningImport={openingImportSource !== null}
+							onImport={openImportSheet}
+							onAddManualLesson={() => addManualLesson(selectedDay)}
+						/>
 					) : (
 						<>
 							{validationError ? (
@@ -622,17 +584,61 @@ export default function TimetableScreen() {
 							/>
 
 							<View className="border-border border-t pt-5">
-								<TimetableSourceActions
-									isBusy={isBusy}
-									isProcessing={isProcessing}
-									onPickFile={pickFile}
-									onTakePhoto={takePhoto}
-								/>
+								<Button
+									accessibilityLabel="Neuen Stundenplan importieren"
+									accessibilityHint="Öffnet die Auswahl zum Scannen oder Hochladen."
+									className="shadow-none"
+									disabled={isImportDisabled}
+									variant="ghost"
+									onPress={openImportSheet}
+								>
+									<Attachment size={20} color={colors.text} strokeWidth={2} />
+									<Text className="shrink text-center">
+										Neuen Plan importieren
+									</Text>
+								</Button>
 							</View>
 						</>
 					)}
 				</View>
 			</ScreenScroll>
+
+			<ActionSheet<ImportSource>
+				visible={isImportSheetVisible}
+				title="Stundenplan importieren"
+				description="Fotografiere deinen Stundenplan oder wähle ein Bild oder PDF."
+				layout={contentSizeLayout.shouldStackInlineContent ? "row" : "tile"}
+				onSelect={chooseImportSource}
+				onClose={closeImportSheet}
+				onDismiss={runPendingImport}
+				closeAccessibilityLabel="Stundenplan-Import schließen"
+				options={[
+					{
+						value: "camera",
+						title: "Scannen",
+						disabled: isImportDisabled,
+						icon: (
+							<ScanImage
+								size={28}
+								color={colors.primaryStrong}
+								strokeWidth={1.8}
+							/>
+						),
+					},
+					{
+						value: "files",
+						title: "Dateien",
+						disabled: isImportDisabled,
+						icon: (
+							<Attachment
+								size={28}
+								color={colors.primaryStrong}
+								strokeWidth={1.8}
+							/>
+						),
+					},
+				]}
+			/>
 
 			<DateTimePickerSheet
 				visible={Boolean(timePickerTarget)}

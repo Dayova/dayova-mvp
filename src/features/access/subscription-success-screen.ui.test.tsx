@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import { ProWelcomeScreen } from "./pro-welcome-screen";
+import { SubscriptionSuccessScreen } from "./subscription-success-screen";
 
 const mockReplace = jest.fn();
 
@@ -40,20 +40,20 @@ jest.mock("~/lib/safe-haptics", () => ({
 	triggerSuccessHaptic: jest.fn(async () => undefined),
 }));
 
-describe("ProWelcomeScreen", () => {
+describe("SubscriptionSuccessScreen", () => {
 	test("celebrates the unlocked subscription in the paywall visual language", async () => {
-		const screen = await render(<ProWelcomeScreen />);
+		const screen = await render(<SubscriptionSuccessScreen />);
 
-		expect(screen.getByText("DAYOVA PRO")).toBeOnTheScreen();
+		expect(screen.getByText("DAYOVA")).toBeOnTheScreen();
 		expect(screen.getByRole("header")).toHaveTextContent(
-			"Willkommen bei Dayova Pro",
+			"Willkommen bei Dayova",
 		);
 		expect(screen.getByText("Alles freigeschaltet")).toBeOnTheScreen();
 		expect(
 			screen.getByText("Dein Lernstand bleibt vollständig erhalten"),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByTestId("pro-welcome-confirmation-card").props.style,
+			screen.getByTestId("subscription-success-confirmation-card").props.style,
 		).toEqual(
 			expect.objectContaining({
 				backgroundColor: "#FFFFFF",
@@ -63,7 +63,7 @@ describe("ProWelcomeScreen", () => {
 	});
 
 	test("continues to the dashboard without returning to checkout", async () => {
-		const screen = await render(<ProWelcomeScreen />);
+		const screen = await render(<SubscriptionSuccessScreen />);
 
 		fireEvent.press(screen.getByRole("button", { name: "Jetzt loslernen" }));
 		expect(mockReplace).toHaveBeenCalledWith("/home");
