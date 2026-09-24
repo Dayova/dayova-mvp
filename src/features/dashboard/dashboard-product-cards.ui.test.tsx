@@ -184,5 +184,37 @@ describe("shared dashboard product cards", () => {
 		expect(screen.getByText("geschafft").props.className).not.toContain(
 			"max-w-16",
 		);
+		expect(screen.getByText("Lineare Funktionen verstehen")).not.toHaveProp(
+			"numberOfLines",
+		);
+	});
+
+	test("centers live card footers against their circular actions", async () => {
+		const screen = await render(
+			<View>
+				<DashboardNextStepCard
+					mode="screen"
+					fallbackAction={EMPTY_DASHBOARD_PRIMARY_ACTION}
+					isLoading={false}
+					item={nextStep}
+					onOpenFallback={jest.fn()}
+					onOpenItem={jest.fn()}
+					todayKey={todayKey}
+				/>
+				<DashboardWeeklyProgressCard
+					mode="screen"
+					isLoading={false}
+					onOpenLearningPlans={jest.fn()}
+					progress={progress}
+				/>
+			</View>,
+		);
+
+		expect(screen.getByText("Jetzt starten").parent?.props.className).toContain(
+			"items-center",
+		);
+		expect(
+			screen.getByText("30 Min. heute").parent?.parent?.props.className,
+		).toContain("items-center");
 	});
 });

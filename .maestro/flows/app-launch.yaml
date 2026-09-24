@@ -1,0 +1,27 @@
+appId: ${APP_ID}
+name: Unauthenticated app launch and login navigation
+tags:
+  - smoke
+---
+- runFlow: ../shared/launch-unauthenticated.yaml
+- takeScreenshot: welcome
+- tapOn: Login
+- extendedWaitUntil:
+    visible: Willkommen
+    timeout: 15000
+- assertVisible: E-Mail-Adresse
+- assertVisible: Passwort
+- scrollUntilVisible:
+    element:
+      text: LOGIN
+      enabled: true
+    direction: DOWN
+    timeout: 10000
+- assertVisible: Passwort vergessen
+- scrollUntilVisible:
+    element: Jetzt registrieren
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: login
+- tapOn: Jetzt registrieren
+- assertVisible: 'Du weißt, was heute wirklich zählt\.'

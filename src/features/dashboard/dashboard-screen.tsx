@@ -6,6 +6,7 @@ import {
 	ScrollView,
 	type TextStyle,
 	TouchableOpacity,
+	useWindowDimensions,
 	View,
 	type ViewStyle,
 } from "react-native";
@@ -13,20 +14,21 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import { api } from "#convex/_generated/api";
+import { CreateEntryButton } from "~/components/create-entry-button";
 import { NotificationButton } from "~/components/notification-button";
-import {
-	ArrowRight,
-	BookOpen,
-	CalendarDays,
-	Dumbbell,
-	ScanImage,
-} from "~/components/ui/icon";
+import { BookOpen, CalendarDays, Dumbbell } from "~/components/ui/icon";
 import { Text } from "~/components/ui/text";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
 import { useAuthSession } from "~/context/AuthContext";
-import { getDayKey, parseDayKey, useCurrentLocalDay } from "~/lib/day-key";
+import {
+	addDays,
+	getDayKey,
+	parseDayKey,
+	useCurrentLocalDay,
+} from "~/lib/day-key";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
 import { formatGermanUiText } from "~/lib/german-ui-text";
+import { ROUTES, withReturnTo } from "~/lib/routes";
 import { triggerSelectionHaptic } from "~/lib/safe-haptics";
 import { useDayovaTheme } from "~/lib/theme";
 import { cn } from "~/lib/utils";
@@ -39,11 +41,14 @@ import {
 	getDashboardRelevantDayKeys,
 	getDashboardWeekDayKeys,
 	getDashboardWeekProgress,
+	getVisibleDashboardEntries,
 	isDashboardAgendaItemPast,
 	sortDashboardAgendaItems,
 	toDashboardAgendaItem,
 } from "./dashboard-agenda";
 import { getDashboardNextStepFallbackAction } from "./dashboard-empty-state";
+import { DashboardHighlightCarousel } from "./dashboard-highlight-carousel";
+import { getDashboardScreenLayout } from "./dashboard-layout";
 import {
 	DashboardAgendaEntryCard,
 	DashboardNextStepCard,
@@ -426,45 +431,6 @@ function EmptyAgendaDay() {
 	);
 }
 
-function TimetableSetupCard({
-	hasDraft,
-	onPress,
-}: {
-	hasDraft: boolean;
-	onPress: () => void;
-}) {
-	const { colors } = useDayovaTheme();
-
-	return (
-		<TouchableOpacity
-			activeOpacity={0.84}
-			accessibilityRole="button"
-			accessibilityLabel={
-				hasDraft ? "Stundenplan-Import fortsetzen" : "Stundenplan hinzufügen"
-			}
-			accessibilityHint="Öffnet den Stundenplan zum Hochladen und Prüfen."
-			onPress={onPress}
-			className="mx-6 mb-5 flex-row items-center rounded-card border border-border bg-card px-5 py-4"
-			style={continuousBorderStyle}
-		>
-			<View className="h-12 w-12 items-center justify-center rounded-full bg-system-subtle">
-				<ScanImage size={22} color={colors.primaryStrong} strokeWidth={2} />
-			</View>
-			<View className="ml-4 flex-1">
-				<Text className="font-poppins font-semibold text-body-3 text-text">
-					{hasDraft ? "Stundenplan fertigstellen" : "Stundenplan hinzufügen"}
-				</Text>
-				<Text className="mt-1 font-poppins text-body-5 text-secondary-text">
-					{hasDraft
-						? "Prüfe die erkannten Schulstunden."
-						: "Schulstunden in deinen Tag übernehmen."}
-				</Text>
-			</View>
-			<ArrowRight size={19} color={colors.secondaryText} strokeWidth={2} />
-		</TouchableOpacity>
-	);
-}
-
 function AgendaTimeline({
 	days,
 	todayKey,
@@ -566,6 +532,7 @@ export function DashboardScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ dayKey?: string }>();
 	const insets = useSafeAreaInsets();
+	const { fontScale, width } = useWindowDimensions();
 	const { user } = useAuthSession();
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const today = useCurrentLocalDay();
@@ -597,14 +564,19 @@ export function DashboardScreen() {
 		selectedDayKey,
 		todayKey,
 	});
-	const entriesByDay = useQuery(
+	const queriedEntriesByDay = useQuery(
 		api.dayEntries.listByDayKeys,
 		user && isConvexAuthenticated ? { dayKeys: queriedDayKeys } : "skip",
 	);
-	const timetableState = useQuery(
-		api.timetables.getMine,
-		user && isConvexAuthenticated ? {} : "skip",
-	);
+	const entriesByDay =
+		queriedEntriesByDay === undefined
+			? undefined
+			: Object.fromEntries(
+					Object.entries(queriedEntriesByDay).map(([dayKey, entries]) => [
+						dayKey,
+						getVisibleDashboardEntries(entries),
+					]),
+				);
 	const learningPlans = useQuery(
 		api.learningPlans.listOverview,
 		user && isConvexAuthenticated ? {} : "skip",
@@ -634,6 +606,10 @@ export function DashboardScreen() {
 		new Intl.DateTimeFormat("de-DE", { weekday: "long" }).format(selectedDate),
 	);
 	const selectedDayEntryCount = entriesByDay?.[selectedDayKey]?.length ?? 0;
+	const dashboardLayout = getDashboardScreenLayout({
+		fontScale,
+		viewportWidth: width,
+	});
 	const selectedDayAgendaLabel =
 		entriesByDay === undefined
 			? "Dein Tag wird geladen …"
@@ -688,6 +664,33 @@ export function DashboardScreen() {
 		[adjustSelectedDay],
 	);
 
+	const adjustSelectedWeek = useCallback(
+		(direction: -1 | 1) => {
+			const selectedDate = parseDayKey(selectedDayKey);
+			if (!selectedDate) return;
+			const nextDayKey = getDayKey(addDays(selectedDate, direction * 7));
+			if (!dayPagerKeys.includes(nextDayKey)) return;
+			commitSelectedDay(nextDayKey);
+			triggerDaySelectionHaptic();
+		},
+		[commitSelectedDay, dayPagerKeys, selectedDayKey],
+	);
+
+	const weekSwipeGesture = useMemo(
+		() =>
+			Gesture.Pan()
+				.activeOffsetX([-24, 24])
+				.failOffsetY([-12, 12])
+				.onEnd((event) => {
+					"worklet";
+					const passedDistance = Math.abs(event.translationX) >= 56;
+					const passedVelocity = Math.abs(event.velocityX) >= 650;
+					if (!passedDistance && !passedVelocity) return;
+					scheduleOnRN(adjustSelectedWeek, event.translationX < 0 ? 1 : -1);
+				}),
+		[adjustSelectedWeek],
+	);
+
 	const openItem = useCallback(
 		(item: DashboardAgendaItem) => {
 			if (item.kind === "schoolLesson") return;
@@ -707,10 +710,14 @@ export function DashboardScreen() {
 		[router],
 	);
 	const openNextStepFallback = useCallback(
-		() => router.push(nextStepFallbackAction.route),
+		() =>
+			router.push(
+				nextStepFallbackAction.route === ROUTES.createExam
+					? withReturnTo(nextStepFallbackAction.route, ROUTES.home)
+					: nextStepFallbackAction.route,
+			),
 		[nextStepFallbackAction.route, router],
 	);
-	const openTimetable = useCallback(() => router.push("/timetable"), [router]);
 
 	return (
 		<View className="flex-1 bg-background">
@@ -736,12 +743,16 @@ export function DashboardScreen() {
 					<NotificationButton />
 				</View>
 
-				<View className="mt-10">
-					<WeekCalendar
-						days={calendarDays}
-						selectedDayKey={selectedDayKey}
-						onSelectDay={selectDay}
-					/>
+				<View style={{ marginTop: dashboardLayout.headerCalendarGap }}>
+					<GestureDetector gesture={weekSwipeGesture}>
+						<View>
+							<WeekCalendar
+								days={calendarDays}
+								selectedDayKey={selectedDayKey}
+								onSelectDay={selectDay}
+							/>
+						</View>
+					</GestureDetector>
 				</View>
 			</View>
 
@@ -757,7 +768,7 @@ export function DashboardScreen() {
 					paddingBottom: Math.max(insets.bottom + 72, 104),
 				}}
 			>
-				<View className="flex-row gap-3 px-6 pt-10 pb-5">
+				<DashboardHighlightCarousel>
 					<DashboardNextStepCard
 						mode="screen"
 						fallbackAction={nextStepFallbackAction}
@@ -775,27 +786,21 @@ export function DashboardScreen() {
 						progress={weekProgress}
 						onOpenLearningPlans={openLearningPlans}
 					/>
-				</View>
+				</DashboardHighlightCarousel>
 
-				<View>
-					{timetableState !== undefined && !timetableState.active ? (
-						<TimetableSetupCard
-							hasDraft={Boolean(timetableState.draft)}
-							onPress={openTimetable}
-						/>
-					) : null}
-				</View>
-
-				<View className="z-10 bg-background px-6 pt-5 pb-6">
-					<Text
-						accessibilityRole="header"
-						className="font-poppins font-semibold text-heading-2 text-text"
-					>
-						{selectedWeekday}
-					</Text>
-					<Text className="font-poppins text-body-4 text-secondary-text">
-						{selectedDayAgendaLabel}
-					</Text>
+				<View className="z-10 flex-row items-center justify-between bg-background px-6 pt-5 pb-6">
+					<View className="min-w-0 flex-1 pr-4">
+						<Text
+							accessibilityRole="header"
+							className="font-poppins font-semibold text-heading-2 text-text"
+						>
+							{selectedWeekday}
+						</Text>
+						<Text className="font-poppins text-body-4 text-secondary-text">
+							{selectedDayAgendaLabel}
+						</Text>
+					</View>
+					<CreateEntryButton returnTo={ROUTES.home} />
 				</View>
 
 				<GestureDetector gesture={daySwipeGesture}>

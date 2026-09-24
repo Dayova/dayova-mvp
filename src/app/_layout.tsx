@@ -57,6 +57,8 @@ function AppNavigator() {
 					<Stack
 						screenOptions={{
 							headerShown: false,
+							// Keep ordinary pages on the same native transition per platform.
+							animation: "default",
 							contentStyle: { backgroundColor: colors.background },
 						}}
 					>
@@ -65,13 +67,12 @@ function AppNavigator() {
 						<Stack.Screen
 							name="subscription"
 							options={{
-								animation: "slide_from_right",
 								gestureEnabled: true,
 								presentation: "card",
 							}}
 						/>
 						<Stack.Screen
-							name="pro-welcome"
+							name="subscription-success"
 							options={{
 								animation: "none",
 								gestureEnabled: false,
@@ -81,16 +82,14 @@ function AppNavigator() {
 						<Stack.Screen
 							name="learning-times/edit"
 							options={{
-								animation: "slide_from_right",
 								contentStyle: { backgroundColor: colors.background },
 								gestureEnabled: true,
 								presentation: "card",
 							}}
 						/>
 						<Stack.Screen
-							name="timetable/index"
+							name="timetable"
 							options={{
-								animation: "slide_from_right",
 								contentStyle: { backgroundColor: colors.background },
 								gestureEnabled: true,
 								presentation: "card",

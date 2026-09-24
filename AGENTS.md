@@ -52,6 +52,8 @@ Map the `bug` and `enhancement` category roles plus the five triage disposition 
 
 Use a multi-context documentation layout with `CONTEXT-MAP.md` at the repo root. Notion is Dayova's main internal documentation and knowledge workspace; consult it when product, business, research, or decision context materially affects the task. Repo-local context docs and ADRs contain only the code-facing guidance that must evolve with this repository. Link to relevant Notion pages instead of duplicating shared internal documentation. See `docs/agents/domain.md`.
 
+The product is always **Dayova**, including paid access. Never introduce "Dayova Pro" or another invented product tier in copy or code. See `docs/contexts/product/CONTEXT.md` for the canonical naming decision and subscription terminology.
+
 ### Skill maintenance
 
 Matt Pocock skill updates require the repo's Codex and Linear compatibility overlay to be revalidated. See `docs/agents/matt-pocock-skills.md`.

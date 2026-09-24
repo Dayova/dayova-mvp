@@ -31,7 +31,7 @@ const benefitIconStyle = {
 const primaryTextStyle = { color: BRAND_COLORS.text };
 const secondaryTextStyle = { color: BRAND_COLORS.secondaryText };
 
-export function ProWelcomeScreen() {
+export function SubscriptionSuccessScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 
@@ -64,7 +64,7 @@ export function ProWelcomeScreen() {
 			>
 				<View className="flex-1 justify-between px-7 pt-10">
 					<View className="items-center">
-						<View className="mb-8 h-32 w-32 items-center justify-center rounded-full border border-white/70 bg-white shadow-black/5 shadow-sm">
+						<View className="mb-8 h-32 w-32 items-center justify-center rounded-full border border-white/70 bg-white">
 							<Check
 								size={62}
 								color={BRAND_COLORS.primaryStrong}
@@ -73,13 +73,13 @@ export function ProWelcomeScreen() {
 						</View>
 
 						<Text className="font-semibold text-body-4 text-white/85">
-							DAYOVA PRO
+							DAYOVA
 						</Text>
 						<Text
 							accessibilityRole="header"
 							className="mt-3 max-w-[340px] text-center font-semibold text-heading-1 text-white leading-tight"
 						>
-							Willkommen bei Dayova Pro
+							Willkommen bei Dayova
 						</Text>
 						<Text className="mt-3 max-w-[340px] text-center text-body-3 text-white/90">
 							Dein Zugang ist freigeschaltet. Du kannst direkt dort
@@ -87,9 +87,9 @@ export function ProWelcomeScreen() {
 						</Text>
 
 						<View
-							className="mt-8 w-full rounded-card border px-5 py-5 shadow-black/5 shadow-sm"
+							className="mt-8 w-full rounded-card border px-5 py-5"
 							style={confirmationCardStyle}
-							testID="pro-welcome-confirmation-card"
+							testID="subscription-success-confirmation-card"
 						>
 							<Text
 								className="font-semibold text-body-2"
