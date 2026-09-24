@@ -118,6 +118,7 @@ jest.mock("~/components/ui/icon", () => {
 
 	return {
 		CalendarDays: Icon,
+		Check: Icon,
 		ChevronDown: Icon,
 		Computer: Icon,
 		GraduationCap: Icon,

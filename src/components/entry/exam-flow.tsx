@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { type TextInput, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import { useState } from "react";
+import { View } from "react-native";
 import { AddOptionButton } from "~/components/ui/add-option-button";
 import { Button } from "~/components/ui/button";
 import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
@@ -100,7 +99,6 @@ function ExamTypePicker({
 				description="Gib eine Prüfungsart ein, die noch nicht in der Liste steht. Sie wird für diese Prüfung verwendet."
 				closeAccessibilityLabel="Prüfungsart hinzufügen schließen"
 				scrollable
-				size="content"
 			>
 				<View className="gap-4">
 					<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">
@@ -118,7 +116,7 @@ function ExamTypePicker({
 					<Button disabled={!cleanedName} onPress={save}>
 						<Text>Prüfungsart hinzufügen</Text>
 					</Button>
-					<Button variant="outline" onPress={close}>
+					<Button variant="cancel" onPress={close}>
 						<Text>Abbrechen</Text>
 					</Button>
 				</View>
