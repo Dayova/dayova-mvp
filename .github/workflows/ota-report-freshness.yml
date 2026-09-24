@@ -2,8 +2,7 @@ name: Track OTA report freshness
 
 on:
   pull_request_target:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
   issue_comment:
     types: [created, edited]
 
@@ -40,7 +39,7 @@ jobs:
                (comment.body?.startsWith('## 📱 OTA compatibility\n') &&
                 comment.body.includes('<!-- eas-comment-id: ')));
             const readPr = async () => (await github.rest.pulls.get({ ...repo, pull_number: number })).data;
-            const eligible = pr => pr.state === 'open' && pr.base.ref === 'main' &&
+            const eligible = pr => pr.state === 'open' &&
               pr.head.repo?.id === pr.base.repo?.id;
             if (!eligible(await readPr())) return;
 

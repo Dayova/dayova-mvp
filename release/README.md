@@ -93,7 +93,9 @@ feedback in a single comment. The **OTA report freshness** commit status marks
 the current PR head pending while Expo's report covers an older commit, then
 marks it current when the Expo bot updates its comment. A current status only
 confirms that the report covers the head; reviewers must still read the OTA
-verdict. The status workflow does not create or edit PR comments.
+verdict. The status also covers same-repository stacked PRs; it only reads PR
+metadata and comments and does not run quality or OTA jobs. It does not create
+or edit PR comments.
 
 Incompatibility is advisory: a legitimate native change can merge, but
 production OTA remains blocked until the required

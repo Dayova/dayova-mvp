@@ -74,6 +74,22 @@ describe("OTA report freshness status", () => {
 		);
 	});
 
+	it("tracks a same-repository stacked PR without running its code", async () => {
+		expect(workflow.on.pull_request_target.branches).toBeUndefined();
+		expect(workflow.on.pull_request_target.types).toContain("edited");
+		const f = fixture();
+		f.pr.base.ref = "codex/stack-parent";
+		await reconcile(f.github, f.context);
+		expect(f.createCommitStatus).toHaveBeenCalledWith(
+			expect.objectContaining({ sha: headSha, state: "pending" }),
+		);
+		f.comment.body = report(headSha);
+		await reconcile(f.github, f.context);
+		expect(f.createCommitStatus).toHaveBeenCalledWith(
+			expect.objectContaining({ sha: headSha, state: "success" }),
+		);
+	});
+
 	it("uses an authenticated Expo event when the comment listing lags", async () => {
 		const f = fixture();
 		f.context.eventName = "issue_comment";
@@ -107,10 +123,9 @@ describe("OTA report freshness status", () => {
 		);
 	});
 
-	it("does not publish a status for closed, stacked, or fork PRs", async () => {
+	it("does not publish a status for closed or fork PRs", async () => {
 		for (const invalid of [
 			(pr: ReturnType<typeof fixture>["pr"]) => { pr.state = "closed"; },
-			(pr: ReturnType<typeof fixture>["pr"]) => { pr.base.ref = "feature"; },
 			(pr: ReturnType<typeof fixture>["pr"]) => { pr.head.repo.id = 2; },
 		]) {
 			const f = fixture();
