@@ -60,24 +60,6 @@ export const DAYOVA_DESIGN_SYSTEM = {
 			end: { x: 0.5, y: 1 },
 		},
 	},
-	elevation: {
-		// Native shadow/elevation is still expressed as style objects in the few
-		// places that need cross-platform depth beyond NativeWind's preset shadows.
-		surface: {
-			shadowColor: "#000000",
-			shadowOpacity: 0.06,
-			shadowRadius: 12,
-			shadowOffset: { width: 0, height: 4 },
-			elevation: 3,
-		},
-		soft: {
-			shadowColor: "#000000",
-			shadowOpacity: 0.05,
-			shadowRadius: 8,
-			shadowOffset: { width: 0, height: 4 },
-			elevation: 2,
-		},
-	},
 	typography: {
 		fontFamily: "Poppins",
 		display: {
