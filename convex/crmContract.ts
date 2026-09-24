@@ -22,6 +22,7 @@ export const crmCounts = v.object({
 	created: v.optional(v.number()),
 	wouldCreate: v.optional(v.number()),
 	creationReview: v.optional(v.number()),
+	missingLinkedPages: v.optional(v.number()),
 	total: v.number(),
 	matched: v.number(),
 	unmatched: v.number(),

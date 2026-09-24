@@ -37,6 +37,7 @@ function row(clerkId = identity.subject, email = identity.email): Row {
 function mockNotion(
 	rows: Row[] = [],
 	failure?: "lost" | "unavailable" | "forbidden",
+	minimalSchema = false,
 ) {
 	const creates: Array<{ properties: Record<string, unknown> }> = [];
 	const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
@@ -60,6 +61,8 @@ function mockNotion(
 			return Response.json(rows[rows.length - 1]);
 		}
 		if (url.endsWith("/query")) {
+			if (minimalSchema && body.filter?.email)
+				return new Response(null, { status: 400 });
 			const filtered = rows.filter((entry) => {
 				if (!body.filter) return true;
 				if (body.filter.email)
@@ -89,15 +92,17 @@ function mockNotion(
 					Tags: "multi_select",
 					Status: "status",
 					"Registration Date": "date",
-				}).map(([name, type]) => [
-					name,
-					{
-						type,
-						...(type === "status"
-							? { status: { options: [{ name: "Registered" }] } }
-							: {}),
-					},
-				]),
+				})
+					.filter(([name]) => !minimalSchema || name === "Clerk User ID")
+					.map(([name, type]) => [
+						name,
+						{
+							type,
+							...(type === "status"
+								? { status: { options: [{ name: "Registered" }] } }
+								: {}),
+						},
+					]),
 			),
 		});
 	});
@@ -170,6 +175,32 @@ test("live signup schedules background reconciliation without performing network
 	} finally {
 		vi.useRealTimers();
 	}
+});
+
+test("pending signups keep a pre-extension dry run usable without creation or Email schema", async () => {
+	const { t } = await signup();
+	const { creates, fetchMock } = mockNotion([], undefined, true);
+	expect(
+		await t.action(internal.crmSync.reconcile, { dryRun: true }),
+	).toMatchObject({
+		status: "complete",
+		counts: { wouldCreate: 1, created: 0, creationReview: 0 },
+	});
+	expect(creates).toEqual([]);
+	expect(
+		fetchMock.mock.calls.some(
+			([url, init]) =>
+				String(url).endsWith("/query") &&
+				JSON.parse(String(init?.body)).filter?.email,
+		),
+	).toBe(false);
+	expect(await t.query(internal.crmSignupState.pending, {})).toHaveLength(1);
+	vi.stubEnv("NOTION_CRM_MODE", "live");
+	expect(await t.action(internal.crmSync.reconcile, {})).toMatchObject({
+		status: "failed",
+		error: "schema",
+	});
+	expect(creates).toEqual([]);
 });
 
 test("dry-run holds a second new signup with the same email instead of proposing duplicate creation", async () => {

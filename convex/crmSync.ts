@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { env, internalAction } from "./_generated/server";
 import {
 	type CrmError,
@@ -132,6 +133,31 @@ export const reconcile = internalAction({
 				counts,
 				matchedIds,
 			});
+			const presentPageIds = new Set(students.map((student) => student.pageId));
+			let linkCursor: string | null = null;
+			for (let pageNumber = 0; ; pageNumber++) {
+				if (pageNumber >= 200) throw new CrmFailure("capacity");
+				const links: {
+					page: Array<{ linkId: Id<"crmStudentLinks">; pageId: string }>;
+					isDone: boolean;
+					continueCursor: string;
+				} = await ctx.runQuery(internal.crmSyncState.linkedPages, {
+					paginationOpts: { numItems: 100, cursor: linkCursor },
+				});
+				for (const link of links.page) {
+					if (presentPageIds.has(link.pageId)) continue;
+					if (
+						dryRun ||
+						(await ctx.runMutation(internal.crmSyncState.markMissingLink, {
+							...link,
+							runId,
+						}))
+					)
+						counts.missingLinkedPages = (counts.missingLinkedPages ?? 0) + 1;
+				}
+				if (links.isDone) break;
+				linkCursor = links.continueCursor;
+			}
 			let cursor: string | null = null;
 			for (let pageNumber = 0; ; pageNumber++) {
 				if (pageNumber >= 200) throw new CrmFailure("capacity");

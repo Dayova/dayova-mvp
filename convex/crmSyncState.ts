@@ -146,6 +146,49 @@ export const paidUsers = internalQuery({
 	},
 });
 
+export const linkedPages = internalQuery({
+	args: { paginationOpts: paginationOptsValidator },
+	returns: paginationResultValidator(
+		v.object({ linkId: v.id("crmStudentLinks"), pageId: v.string() }),
+	),
+	handler: async (ctx, { paginationOpts }) => {
+		const result = await ctx.db
+			.query("crmStudentLinks")
+			.paginate(paginationOpts);
+		return {
+			...result,
+			page: result.page.map((link) => ({
+				linkId: link._id,
+				pageId: link.pageId,
+			})),
+		};
+	},
+});
+
+export const markMissingLink = internalMutation({
+	args: {
+		linkId: v.id("crmStudentLinks"),
+		pageId: v.string(),
+		runId: v.string(),
+	},
+	returns: v.boolean(),
+	handler: async (ctx, args) => {
+		const state = await ctx.db
+			.query("crmSyncState")
+			.withIndex("by_key", (q) => q.eq("key", "students"))
+			.unique();
+		if (!state?.running || state.mode !== "live" || state.runId !== args.runId)
+			return false;
+		const link = await ctx.db.get("crmStudentLinks", args.linkId);
+		if (!link || link.pageId !== args.pageId) return false;
+		await ctx.db.patch("crmStudentLinks", link._id, {
+			error: "identity_changed",
+			lastAttemptAt: Date.now(),
+		});
+		return true;
+	},
+});
+
 export const begin = internalMutation({
 	args: {
 		runId: v.string(),

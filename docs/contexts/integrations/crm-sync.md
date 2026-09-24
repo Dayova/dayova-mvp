@@ -89,6 +89,9 @@ one-time proposals**. An operator verifies proposed matches in a restricted
 surface and explicitly fills Clerk User ID in Notion before rerunning the
 dry run. Names are never a matching key. Duplicate Clerk IDs on either side,
 missing users, duplicate entitlement rows and mismatched stored links are skipped.
+Each sweep compares stored page links with the Notion inventory. Missing linked
+pages contribute to `missingLinkedPages`; live runs retain the link and mark it
+`identity_changed` for operator review. Dry runs report the count without writing.
 
 Projection fields are defined in `convex/crmNotion.ts:CRM_PROPERTIES`. They
 include identity status, effective entitlement state, product/store, subscription
@@ -197,8 +200,10 @@ Technical owner: Jakob. CRM matching/review: Julius with Jakob.
    categories in `crmContract.ts`. Payment Status also needs `None` and `Expired`;
    Subscription Plan needs `Unknown`; Tags needs `Added through Integration with App`.
    Preserve all existing options when extending the schema.
-   Dry-run only requires the existing Clerk ID
-   property, so it can precede the schema extension.
+   Dry-run only requires the existing Clerk ID property, even with pending
+   signups, so it can precede the schema extension. Without an Email property,
+   `wouldCreate` is provisional: the live run verifies email collisions before
+   creating a page.
 4. Deploy and test in development. Run a dry run using the Convex dashboard, or:
 
    ```sh
@@ -207,7 +212,8 @@ Technical owner: Jakob. CRM matching/review: Julius with Jakob.
    ```
 
    The result contains total, matched, unmatched, proposed, conflict,
-   paidWithoutEntitlement, paidWithoutCrm, synced and failed counts. Proposed is
+   paidWithoutEntitlement, paidWithoutCrm, missingLinkedPages, synced and failed
+   counts. Proposed is
    separate from unmatched. `paidWithoutEntitlement` means a CRM Paid label lacks
    a **confirmed matched paid/grace entitlement**, including unresolved identities;
    it is a review count, not proof a person has not paid. Missing CRM counts include
@@ -250,7 +256,8 @@ across systems; resolve any orphaned contact through the CRM deletion process.
 
 `crmSyncState:status` is internal/admin-only. Inspect counts, error, running,
 startedAt, finishedAt and lastSuccessAt. Alert via the deployment's existing
-operations monitoring on a failed cron, nonzero failed/conflict/creationReview counts, or a live
+operations monitoring on a failed cron, nonzero failed/conflict/creationReview/
+missingLinkedPages counts, or a live
 lastSuccessAt older than two hours. If running exceeds eleven minutes, the worker
 timed out; the next run can reclaim the lease. Warnings contain only aggregate
 counts/categories. Missing runtime configuration returns `configuration`; it must

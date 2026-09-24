@@ -320,6 +320,71 @@ test("dry run aggregates exact, proposed, unmatched, duplicates, stale Paid and 
 	).toEqual([]);
 });
 
+test("missing linked pages remain mapped for operator review, including non-paid users", async () => {
+	configure();
+	const t = convexTest(schema, modules);
+	const paidUserId = await seed(t);
+	const nonPaidUserId = await t.run((ctx) =>
+		ctx.db.insert("users", {
+			clerkId: "user_nonpaid",
+			tokenIdentifier: "issuer|user_nonpaid",
+			email: "nonpaid@example.com",
+		}),
+	);
+	await t.mutation(internal.crmSyncState.recordLink, {
+		pageId,
+		userId: paidUserId,
+		clerkId,
+	});
+	await t.mutation(internal.crmSyncState.recordLink, {
+		pageId: secondPageId,
+		userId: nonPaidUserId,
+		clerkId: "user_nonpaid",
+	});
+	const { patches } = mockNotion([]);
+	expect(
+		await t.action(internal.crmSync.reconcile, { dryRun: true }),
+	).toMatchObject({
+		status: "complete",
+		counts: { total: 0, missingLinkedPages: 2, paidWithoutCrm: 1 },
+	});
+	const linksBeforeLive = await t.run((ctx) =>
+		ctx.db.query("crmStudentLinks").take(10),
+	);
+	expect(linksBeforeLive).toMatchObject([{ pageId }, { pageId: secondPageId }]);
+	expect(linksBeforeLive.every((link) => !Object.hasOwn(link, "error"))).toBe(
+		true,
+	);
+	expect(await t.action(internal.crmSync.reconcile, {})).toMatchObject({
+		status: "complete",
+		counts: { total: 0, missingLinkedPages: 2, paidWithoutCrm: 1 },
+	});
+	expect(patches).toEqual([]);
+	expect(
+		await t.run((ctx) => ctx.db.query("crmStudentLinks").take(10)),
+	).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ pageId, error: "identity_changed" }),
+			expect.objectContaining({
+				pageId: secondPageId,
+				error: "identity_changed",
+			}),
+		]),
+	);
+	mockNotion([page(), page(secondPageId, "user_nonpaid")]);
+	expect(await t.action(internal.crmSync.reconcile, {})).toMatchObject({
+		status: "complete",
+		counts: { matched: 2, synced: 2 },
+	});
+	const recoveredLinks = await t.run((ctx) =>
+		ctx.db.query("crmStudentLinks").take(10),
+	);
+	expect(recoveredLinks).toMatchObject([{ pageId }, { pageId: secondPageId }]);
+	expect(recoveredLinks.every((link) => !Object.hasOwn(link, "error"))).toBe(
+		true,
+	);
+}, 20_000);
+
 test("live projection retries the same payload, preserves CRM-owned fields and recovers on repeated runs", async () => {
 	configure();
 	const t = convexTest(schema, modules);

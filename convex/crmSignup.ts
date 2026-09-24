@@ -24,7 +24,7 @@ export async function provisionSignups(
 ) {
 	const pending = await ctx.runQuery(internal.crmSignupState.pending, {});
 	if (!pending.length) return;
-	await notion.checkCreationSchema();
+	if (!options.dryRun) await notion.checkCreationSchema();
 	const { counts } = options;
 	counts.created = 0;
 	counts.wouldCreate = 0;
@@ -97,8 +97,9 @@ export async function provisionSignups(
 		const email = user.email.trim().toLowerCase();
 		const collision =
 			reservedEmails.has(email) ||
-			(await notion.students({ property: "Email", email: { equals: email } }))
-				.length > 0;
+			(!options.dryRun &&
+				(await notion.students({ property: "Email", email: { equals: email } }))
+					.length > 0);
 		if (collision) {
 			await review();
 			continue;
