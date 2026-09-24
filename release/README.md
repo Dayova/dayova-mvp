@@ -80,19 +80,20 @@ unconfirmed result when an upstream job fails or is skipped. The native EAS
 `github-comment` job posts that same rendered report to the PR conversation using
 the existing GitHub integration.
 
-The GitHub **Keep OTA comment current** workflow marks an existing report
-**⏳ Latest commit not yet evaluated** when a PR is updated. It replaces the old
-verdict, names the latest and previously assessed commits, and links to current
-checks. The final EAS report replaces that pending message. Until then,
-compatibility remains unconfirmed, including when a run is canceled.
+Expo updates one PR comment across runs. The report puts its checked commit and
+EAS run link at the top and explicitly says that its verdict applies only to
+that commit. If the PR head differs, the visible result is outdated and OTA
+compatibility for the latest commit is unconfirmed until Expo updates the
+comment. A canceled run can leave the previous result visible, so reviewers
+must compare the checked commit with the live PR head before merging.
 
-The notifier also handles EAS comment events: it reads the live PR head and
-corrects late results for older commits, while preserving results for the current
-head. Updates are asynchronous; always compare the report's commit with the PR
-head. It edits the same Expo bot comment and preserves EAS's comment identifier.
-It uses GitHub's automatic token with issue-comment write and PR read permissions,
-does not check out or execute PR code, and needs no production credentials.
-The notifier activates after its workflow is merged into the default branch.
+The GitHub Actions token cannot edit Expo's comment. The previous notifier
+attempted that edit and failed with HTTP 403; it was removed to keep OTA
+feedback in a single comment. The **OTA report freshness** commit status marks
+the current PR head pending while Expo's report covers an older commit, then
+marks it current when the Expo bot updates its comment. A current status only
+confirms that the report covers the head; reviewers must still read the OTA
+verdict. The status workflow does not create or edit PR comments.
 
 Incompatibility is advisory: a legitimate native change can merge, but
 production OTA remains blocked until the required
