@@ -4,9 +4,10 @@ import {
 	type BottomSheetBackgroundProps,
 	BottomSheetModal,
 	BottomSheetScrollView,
+	BottomSheetTextInput,
 	BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import type { ReactNode, RefObject } from "react";
+import type { ComponentProps, ReactNode, RefObject } from "react";
 import {
 	useCallback,
 	useEffect,
@@ -26,6 +27,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CloseButton } from "~/components/ui/close-button";
+import { Input } from "~/components/ui/input";
 import { useSheetAccessibility } from "~/components/ui/sheet-accessibility";
 import { Text } from "~/components/ui/text";
 import { DAYOVA_DESIGN_SYSTEM } from "~/lib/design-system";
@@ -41,6 +43,7 @@ type DayovaSheetFrameProps = {
 	visible: boolean;
 	onClose: () => void;
 	onDismiss?: () => void;
+	onPresented?: () => void;
 	title?: ReactNode;
 	description?: ReactNode;
 	children?: ReactNode;
@@ -60,6 +63,7 @@ function DayovaSheetFrame({
 	visible,
 	onClose,
 	onDismiss,
+	onPresented,
 	title,
 	description,
 	children,
@@ -228,12 +232,13 @@ function DayovaSheetFrame({
 			if (didMoveFocusRef.current) return;
 
 			didMoveFocusRef.current = true;
+			onPresented?.();
 			initialFocusFrameRef.current = requestAnimationFrame(() => {
 				moveAccessibilityFocus(initialFocusRef.current);
 				initialFocusFrameRef.current = null;
 			});
 		},
-		[moveAccessibilityFocus, setSheetOpen, sheetId],
+		[moveAccessibilityFocus, onPresented, setSheetOpen, sheetId],
 	);
 
 	const handleAccessibilityAction = useCallback(
@@ -271,7 +276,8 @@ function DayovaSheetFrame({
 
 	const canShowCloseButton = showCloseButton && dismissible;
 	const hasHeader = Boolean(title || description || canShowCloseButton);
-	const hasFixedFooter = scrollable && Boolean(footer);
+	const isDynamicScrollable = scrollable && size === "content";
+	const hasFixedFooter = scrollable && size !== "content" && Boolean(footer);
 	const content = (
 		<View
 			accessibilityActions={
@@ -285,14 +291,18 @@ function DayovaSheetFrame({
 			onAccessibilityEscape={dismiss}
 			className={cn(
 				"bg-card pt-1",
-				!scrollable && "px-6",
+				(!scrollable || isDynamicScrollable) && "px-6",
 				size !== "content" && !scrollable && "flex-1",
 			)}
 			// Safe-area padding is runtime device data and cannot be a static utility.
 			style={
-				scrollable
+				scrollable && !isDynamicScrollable
 					? { flex: 1 }
-					: { paddingBottom: Math.max(insets.bottom + 20, 32) }
+					: {
+							paddingBottom: hasFixedFooter
+								? 12
+								: Math.max(insets.bottom + 20, 32),
+						}
 			}
 		>
 			{!title ? (
@@ -307,7 +317,10 @@ function DayovaSheetFrame({
 			) : null}
 			{hasHeader ? (
 				<View
-					className={cn("mb-6 gap-3", scrollable && "px-6")}
+					className={cn(
+						"mb-6 gap-3",
+						scrollable && !isDynamicScrollable && "px-6",
+					)}
 					testID={scrollable ? "dayova-sheet-header" : undefined}
 				>
 					<View className="min-h-10 flex-row items-start gap-4">
@@ -341,7 +354,16 @@ function DayovaSheetFrame({
 					) : null}
 				</View>
 			) : null}
-			{scrollable ? (
+			{isDynamicScrollable ? (
+				<>
+					{children ? (
+						<View className={contentClassName}>{children}</View>
+					) : null}
+					{footer ? (
+						<View className={children ? "mt-6" : undefined}>{footer}</View>
+					) : null}
+				</>
+			) : scrollable ? (
 				<>
 					<BottomSheetScrollView
 						bounces={false}
@@ -418,7 +440,16 @@ function DayovaSheetFrame({
 				width: sheetWidth,
 			}}
 		>
-			{scrollable ? (
+			{isDynamicScrollable ? (
+				<BottomSheetScrollView
+					bounces={false}
+					keyboardShouldPersistTaps="handled"
+					showsVerticalScrollIndicator={false}
+					testID="dayova-sheet-scroll-view"
+				>
+					{content}
+				</BottomSheetScrollView>
+			) : scrollable ? (
 				content
 			) : (
 				<BottomSheetView
@@ -432,4 +463,14 @@ function DayovaSheetFrame({
 	);
 }
 
-export { DayovaSheetFrame };
+// Keep the keyboard-aware native primitive inside the app-owned sheet boundary.
+function DayovaSheetInput(props: ComponentProps<typeof Input>) {
+	return (
+		<Input
+			{...props}
+			renderInput={(inputProps) => <BottomSheetTextInput {...inputProps} />}
+		/>
+	);
+}
+
+export { DayovaSheetFrame, DayovaSheetInput };

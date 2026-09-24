@@ -1,18 +1,21 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
 	ActivityIndicator,
+	Keyboard,
 	Pressable,
 	type TextInput,
 	View,
 } from "react-native";
 import { Button } from "~/components/ui/button";
-import { DayovaSheetFrame } from "~/components/ui/dayova-sheet-frame";
+import {
+	DayovaSheetFrame,
+	DayovaSheetInput,
+} from "~/components/ui/dayova-sheet-frame";
 import { ErrorMessage } from "~/components/ui/error-message";
 import { Check, Plus } from "~/components/ui/icon";
-import { Input } from "~/components/ui/input";
 import { Text } from "~/components/ui/text";
 import {
-	cleanSubjectName,
+	correctSubjectName,
 	normalizeSubjectName,
 } from "~/features/subjects/subject-definitions";
 import {
@@ -82,12 +85,14 @@ function SubjectPickerContent({
 	options,
 	selected,
 	isLoading,
+	loadError,
 	onSelect,
 	onAdd,
 }: {
 	options: SubjectOption[];
 	selected: SubjectSelection;
 	isLoading: boolean;
+	loadError?: string | null;
 	onSelect: (selection: SubjectSelection) => void;
 	onAdd: () => void;
 }) {
@@ -140,6 +145,8 @@ function SubjectPickerContent({
 				/>
 			))}
 
+			{loadError ? <ErrorMessage>{loadError}</ErrorMessage> : null}
+
 			{isLoading ? (
 				<View
 					accessibilityLabel="Persönliche Fächer werden geladen"
@@ -172,8 +179,10 @@ function SubjectAddFlow({
 	onCancel,
 	onSelect,
 	onSavePermanent,
+	permanentOnly = false,
 }: {
 	options: SubjectOption[];
+	permanentOnly?: boolean;
 	onCancel: () => void;
 	onSelect: (selection: SubjectSelection) => void;
 	onSavePermanent: (name: string) => Promise<SubjectSelection>;
@@ -183,15 +192,10 @@ function SubjectAddFlow({
 	const [step, setStep] = useState<"input" | "confirm">("input");
 	const [isBusy, setIsBusy] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const cleanedName = cleanSubjectName(name);
-
-	useEffect(() => {
-		if (step !== "input") return;
-		const frame = requestAnimationFrame(() => inputRef.current?.focus());
-		return () => cancelAnimationFrame(frame);
-	}, [step]);
+	const cleanedName = correctSubjectName(name);
 
 	const finish = (selection: SubjectSelection) => {
+		Keyboard.dismiss();
 		onSelect(selection);
 	};
 	const continueFromInput = () => {
@@ -200,11 +204,17 @@ function SubjectAddFlow({
 			setErrorMessage("Gib einen Fachnamen ein.");
 			return;
 		}
-		const existing = options.find(
-			(option) =>
-				normalizeSubjectName(option.name) === normalizeSubjectName(cleanedName),
-		);
-		if (existing) {
+		const existing =
+			options.find(
+				(option) =>
+					normalizeSubjectName(option.name) === normalizeSubjectName(name),
+			) ??
+			options.find(
+				(option) =>
+					normalizeSubjectName(option.name) ===
+					normalizeSubjectName(cleanedName),
+			);
+		if (existing && (!permanentOnly || existing.kind !== "timetable")) {
 			finish({
 				name: existing.name,
 				...(existing.personalSubjectId
@@ -213,6 +223,8 @@ function SubjectAddFlow({
 			});
 			return;
 		}
+		Keyboard.dismiss();
+		setName(existing?.name ?? cleanedName);
 		setStep("confirm");
 	};
 	const savePermanent = async () => {
@@ -245,7 +257,11 @@ function SubjectAddFlow({
 					? `${cleanedName} kann künftig bei Prüfungen, Hausaufgaben, Lernplänen und im Stundenplan ausgewählt werden.`
 					: "Gib ein Fach ein, das noch nicht in der Liste steht."
 			}
-			onClose={onCancel}
+			onClose={() => {
+				Keyboard.dismiss();
+				onCancel();
+			}}
+			onPresented={() => inputRef.current?.focus()}
 			dismissible={!isBusy}
 			closeAccessibilityLabel="Fach hinzufügen schließen"
 			scrollable
@@ -254,10 +270,12 @@ function SubjectAddFlow({
 			{step === "input" ? (
 				<View className="gap-4">
 					<View className="min-h-16 flex-row items-center rounded-input border border-border bg-card px-5">
-						<Input
+						<DayovaSheetInput
 							ref={inputRef}
 							accessibilityLabel="Name des Fachs"
-							autoCapitalize="words"
+							autoCapitalize="sentences"
+							autoCorrect
+							spellCheck
 							maxLength={MAX_SUBJECT_NAME_LENGTH}
 							placeholder="Zum Beispiel Französisch"
 							returnKeyType="next"
@@ -286,13 +304,15 @@ function SubjectAddFlow({
 							{isBusy ? "Wird gespeichert …" : "Dauerhaft hinzufügen"}
 						</Text>
 					</Button>
-					<Button
-						disabled={isBusy}
-						variant="outline"
-						onPress={() => finish({ name: cleanedName, isOneTime: true })}
-					>
-						<Text>Nur diesmal verwenden</Text>
-					</Button>
+					{!permanentOnly ? (
+						<Button
+							disabled={isBusy}
+							variant="outline"
+							onPress={() => finish({ name: cleanedName, isOneTime: true })}
+						>
+							<Text>Nur diesmal verwenden</Text>
+						</Button>
+					) : null}
 					<Button disabled={isBusy} variant="ghost" onPress={onCancel}>
 						<Text>Abbrechen</Text>
 					</Button>
@@ -309,7 +329,7 @@ function InlineSubjectPicker({
 	selected: SubjectSelection;
 	onSelect: (selection: SubjectSelection) => void;
 }) {
-	const { isLoading, options, savePermanent } = useSubjectOptions();
+	const { isLoading, loadError, options, savePermanent } = useSubjectOptions();
 	const [isAdding, setIsAdding] = useState(false);
 
 	return (
@@ -318,6 +338,7 @@ function InlineSubjectPicker({
 				options={options}
 				selected={selected}
 				isLoading={isLoading}
+				loadError={loadError}
 				onSelect={onSelect}
 				onAdd={() => setIsAdding(true)}
 			/>
@@ -347,7 +368,7 @@ function SubjectPickerSheet({
 	onClose: () => void;
 	onSelect: (selection: SubjectSelection) => void;
 }) {
-	const { isLoading, options, savePermanent } = useSubjectOptions();
+	const { isLoading, loadError, options, savePermanent } = useSubjectOptions();
 	const [isAdding, setIsAdding] = useState(false);
 	const finish = (selection: SubjectSelection) => {
 		onSelect(selection);
@@ -370,6 +391,7 @@ function SubjectPickerSheet({
 					options={options}
 					selected={selected}
 					isLoading={isLoading}
+					loadError={loadError}
 					onSelect={finish}
 					onAdd={() => setIsAdding(true)}
 				/>
