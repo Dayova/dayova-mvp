@@ -6,10 +6,11 @@ import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
 import { ScreenHeader as Header } from "~/components/screen-header";
 import { ConfirmationSheet } from "~/components/ui/confirmation-sheet";
-import { ErrorMessage } from "~/components/ui/error-message";
 import type { DateTimePickerEvent } from "~/components/ui/date-time-picker-sheet";
 import { DateTimePickerSheet } from "~/components/ui/date-time-picker-sheet";
+import { ErrorMessage } from "~/components/ui/error-message";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
+import { useAiConsent } from "~/context/AiConsentContext";
 import { useAuthSession } from "~/context/AuthContext";
 import { SessionEditForm } from "~/features/learning-plans/learning-plan-ui";
 import type {
@@ -28,8 +29,8 @@ import {
 	parseDateKey,
 	timeFromMinutes,
 } from "~/features/learning-plans/utils";
-import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 import { createAsyncActionGate } from "~/lib/async-action-gate";
+import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
 
 const reviewPath = (id: Id<"learningPlans">) =>
 	`/learning-plans/${id}/review` as const;
@@ -46,6 +47,7 @@ function LoadedSessionEditScreen({
 	const regenerateSessionContent = useAction(
 		api.learningPlanAi.ensureSessionContent,
 	);
+	const { requestAiConsent } = useAiConsent();
 	const removeSession = useMutation(api.learningPlans.removeSession);
 
 	const [isBusy, setIsBusy] = useState(false);
@@ -119,6 +121,10 @@ function LoadedSessionEditScreen({
 					durationMinutes: duration,
 				});
 				if (result.contentInvalidated) {
+					if (!(await requestAiConsent())) {
+						router.replace(reviewPath(planId));
+						return;
+					}
 					await regenerateSessionContent({ sessionId: session.id });
 				}
 				router.replace(reviewPath(planId));

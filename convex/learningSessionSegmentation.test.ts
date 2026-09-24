@@ -46,7 +46,7 @@ const session = ({
 	expectedOutcome: phaseFallbacks[phase].expectedOutcome,
 });
 
-test("turns two fragmented theory allocations into three short sessions", () => {
+test("keeps existing short theory allocations as separate sessions", () => {
 	const sessions = splitLargeTheorySessions({
 		sessions: [
 			session({ phase: "theory", startTime: "17:00", durationMinutes: 10 }),
@@ -63,10 +63,10 @@ test("turns two fragmented theory allocations into three short sessions", () => 
 		sessions
 			.filter((entry) => entry.phase === "theory")
 			.map((entry) => entry.durationMinutes),
-	).toEqual([5, 5, 10]);
+	).toEqual([10, 10]);
 });
 
-test("caps highly fragmented availability at five theory sessions", () => {
+test("rebalances a theory-heavy plan into an interleaved practice-first mix", () => {
 	const balanced = rebalanceLearningPhases({
 		sessions: [
 			...Array.from({ length: 6 }, (_, index) =>
@@ -88,8 +88,35 @@ test("caps highly fragmented availability at five theory sessions", () => {
 		maxTitleChars: 28,
 	});
 
-	expect(sessions.filter((entry) => entry.phase === "theory")).toHaveLength(5);
+	const minutesFor = (phase: "theory" | "practice" | "rehearsal") =>
+		sessions
+			.filter((entry) => entry.phase === phase)
+			.reduce((total, entry) => total + entry.durationMinutes, 0);
+	expect(minutesFor("theory")).toBe(15);
+	expect(minutesFor("practice")).toBe(30);
+	expect(minutesFor("rehearsal")).toBe(15);
+	expect(
+		sessions.every(
+			(entry, index) =>
+				entry.phase !== "theory" || sessions[index - 1]?.phase !== "theory",
+		),
+	).toBe(true);
 	expect(
 		sessions.reduce((total, entry) => total + entry.durationMinutes, 0),
 	).toBe(60);
+});
+
+test("preserves the available minutes when a short phase tail meets a short window tail", () => {
+	const sessions = [
+		session({ phase: "theory", startTime: "17:00", durationMinutes: 7 }),
+		session({ phase: "theory", startTime: "17:07", durationMinutes: 6 }),
+		session({ phase: "practice", startTime: "17:13", durationMinutes: 12 }),
+	];
+
+	const balanced = rebalanceLearningPhases({ sessions, phaseFallbacks });
+
+	expect(
+		balanced.reduce((total, entry) => total + entry.durationMinutes, 0),
+	).toBe(25);
+	expect(balanced.every((entry) => entry.durationMinutes >= 5)).toBe(true);
 });

@@ -24,10 +24,12 @@ type PhaseMetadata = Pick<
 	"title" | "goal" | "tasks" | "expectedOutcome"
 >;
 
-const MIN_THEORY_SESSION_MINUTES = 5;
+const MIN_PHASE_SESSION_MINUTES = 5;
 const MAX_THEORY_SESSION_MINUTES = 10;
-const MIN_THEORY_SESSION_COUNT = 3;
-const MAX_THEORY_SESSION_COUNT = 5;
+const MAX_PRACTICE_SESSION_MINUTES = 20;
+const MAX_REHEARSAL_SESSION_MINUTES = 20;
+const TARGET_THEORY_SHARE = 0.22;
+const TARGET_REHEARSAL_SHARE = 0.22;
 
 const theorySessionStages = [
 	{ title: "Grundlagen", verb: "Erarbeite" },
@@ -46,62 +48,18 @@ const splitDurationEvenly = (durationMinutes: number, sessionCount: number) => {
 	);
 };
 
-const getTheoryDurationsBySession = ({
-	sessions,
-	maxSessions,
-}: {
-	sessions: SchedulableLearningSession<LearningSessionPhase>[];
-	maxSessions: number;
-}) => {
-	const theorySources = sessions
-		.map((session, index) => ({ session, index }))
-		.filter(({ session }) => session.phase === "theory");
-	const availableTheorySessionCount = Math.max(
-		0,
-		maxSessions - (sessions.length - theorySources.length),
-	);
-	const requiredCountForMaximumDuration = theorySources.reduce(
-		(total, { session }) =>
-			total + Math.ceil(session.durationMinutes / MAX_THEORY_SESSION_MINUTES),
-		0,
-	);
-	const targetCount = Math.min(
-		MAX_THEORY_SESSION_COUNT,
-		availableTheorySessionCount,
-		Math.max(
-			MIN_THEORY_SESSION_COUNT,
-			theorySources.length,
-			requiredCountForMaximumDuration,
-		),
-	);
-	const fragmentCounts = theorySources.map(({ session }) =>
-		Math.max(
-			1,
-			Math.ceil(session.durationMinutes / MAX_THEORY_SESSION_MINUTES),
-		),
-	);
-	let fragmentCount = fragmentCounts.reduce((total, count) => total + count, 0);
-	while (fragmentCount < targetCount) {
-		const sourceIndex = theorySources.findIndex(
-			({ session }, index) =>
-				(fragmentCounts[index] ?? 1) <
-				Math.floor(session.durationMinutes / MIN_THEORY_SESSION_MINUTES),
-		);
-		if (sourceIndex < 0) break;
-		fragmentCounts[sourceIndex] = (fragmentCounts[sourceIndex] ?? 1) + 1;
-		fragmentCount += 1;
-	}
-
-	return new Map(
-		theorySources.map(({ session, index }, sourceIndex) => [
-			index,
-			splitDurationEvenly(
-				session.durationMinutes,
-				fragmentCounts[sourceIndex] ?? 1,
-			),
-		]),
-	);
+const splitPhaseDuration = (durationMinutes: number, maxMinutes: number) => {
+	if (durationMinutes <= 0) return [];
+	const chunkCount = Math.ceil(durationMinutes / maxMinutes);
+	return splitDurationEvenly(durationMinutes, chunkCount);
 };
+
+const roundToFiveMinutes = (durationMinutes: number) =>
+	Math.max(
+		MIN_PHASE_SESSION_MINUTES,
+		Math.round(durationMinutes / MIN_PHASE_SESSION_MINUTES) *
+			MIN_PHASE_SESSION_MINUTES,
+	);
 
 export const rebalanceLearningPhases = ({
 	sessions,
@@ -115,31 +73,110 @@ export const rebalanceLearningPhases = ({
 		0,
 	);
 	if (totalMinutes < 25) return sessions;
-
-	const theoryMinutes = Math.min(30, totalMinutes - 10);
-	const remainingMinutes = totalMinutes - theoryMinutes;
-	const rehearsalMinutes = remainingMinutes >= 20 ? 10 : 5;
+	const theoryMinutes = Math.max(
+		MAX_THEORY_SESSION_MINUTES,
+		roundToFiveMinutes(totalMinutes * TARGET_THEORY_SHARE),
+	);
+	const rehearsalMinutes = roundToFiveMinutes(
+		totalMinutes * TARGET_REHEARSAL_SHARE,
+	);
 	const phaseMinutes: Record<LearningSessionPhase, number> = {
 		theory: theoryMinutes,
-		practice: remainingMinutes - rehearsalMinutes,
+		practice: totalMinutes - theoryMinutes - rehearsalMinutes,
 		rehearsal: rehearsalMinutes,
 	};
+	const theoryChunks = splitPhaseDuration(
+		phaseMinutes.theory,
+		MAX_THEORY_SESSION_MINUTES,
+	);
+	const practiceChunks = splitPhaseDuration(
+		phaseMinutes.practice,
+		MAX_PRACTICE_SESSION_MINUTES,
+	);
+	const rehearsalChunks = splitPhaseDuration(
+		phaseMinutes.rehearsal,
+		MAX_REHEARSAL_SESSION_MINUTES,
+	);
+	const desiredChunks: Array<{
+		phase: LearningSessionPhase;
+		durationMinutes: number;
+	}> = [];
+	while (theoryChunks.length > 0 || practiceChunks.length > 0) {
+		const theoryDuration = theoryChunks.shift();
+		if (theoryDuration !== undefined) {
+			desiredChunks.push({ phase: "theory", durationMinutes: theoryDuration });
+		}
+		const practiceDuration = practiceChunks.shift();
+		if (practiceDuration !== undefined) {
+			desiredChunks.push({
+				phase: "practice",
+				durationMinutes: practiceDuration,
+			});
+		}
+	}
+	desiredChunks.push(
+		...rehearsalChunks.map((durationMinutes) => ({
+			phase: "rehearsal" as const,
+			durationMinutes,
+		})),
+	);
+	const borrowFromFollowingChunks = (afterIndex: number, minutes: number) => {
+		let remaining = minutes;
+		for (
+			let index = afterIndex + 1;
+			index < desiredChunks.length && remaining > 0;
+			index += 1
+		) {
+			const chunk = desiredChunks[index];
+			if (!chunk) continue;
+			const borrowed = Math.min(chunk.durationMinutes, remaining);
+			chunk.durationMinutes -= borrowed;
+			remaining -= borrowed;
+		}
+		return minutes - remaining;
+	};
+
 	const result: SchedulableLearningSession<LearningSessionPhase>[] = [];
-	const phases: LearningSessionPhase[] = ["theory", "practice", "rehearsal"];
-	let phaseIndex = 0;
+	let chunkIndex = 0;
+	let remainingChunkMinutes = desiredChunks[0]?.durationMinutes ?? 0;
+	const maximumDurationByPhase: Record<LearningSessionPhase, number> = {
+		theory: MAX_THEORY_SESSION_MINUTES,
+		practice: MAX_PRACTICE_SESSION_MINUTES,
+		rehearsal: MAX_REHEARSAL_SESSION_MINUTES,
+	};
 
 	for (const session of sessions) {
 		let unallocatedMinutes = session.durationMinutes;
 		let startMinutes = parseLearningTimeToMinutes(session.startTime) ?? 0;
-		while (unallocatedMinutes > 0 && phaseIndex < phases.length) {
-			const phase = phases[phaseIndex];
-			if (!phase) break;
-			if (phaseMinutes[phase] <= 0) {
-				phaseIndex += 1;
+		while (unallocatedMinutes > 0 && chunkIndex < desiredChunks.length) {
+			if (remainingChunkMinutes <= 0) {
+				chunkIndex += 1;
+				remainingChunkMinutes = desiredChunks[chunkIndex]?.durationMinutes ?? 0;
 				continue;
 			}
-
-			const durationMinutes = Math.min(unallocatedMinutes, phaseMinutes[phase]);
+			const chunk = desiredChunks[chunkIndex];
+			if (!chunk) break;
+			const phase = chunk.phase;
+			let durationMinutes = Math.min(unallocatedMinutes, remainingChunkMinutes);
+			const completesChunk = durationMinutes === remainingChunkMinutes;
+			const trailingMinutes = unallocatedMinutes - durationMinutes;
+			if (
+				completesChunk &&
+				durationMinutes < MIN_PHASE_SESSION_MINUTES &&
+				unallocatedMinutes >= MIN_PHASE_SESSION_MINUTES
+			) {
+				const needed = MIN_PHASE_SESSION_MINUTES - durationMinutes;
+				const borrowed = borrowFromFollowingChunks(chunkIndex, needed);
+				durationMinutes += borrowed;
+			} else if (
+				completesChunk &&
+				trailingMinutes > 0 &&
+				trailingMinutes < MIN_PHASE_SESSION_MINUTES &&
+				durationMinutes + trailingMinutes <= maximumDurationByPhase[chunk.phase]
+			) {
+				const borrowed = borrowFromFollowingChunks(chunkIndex, trailingMinutes);
+				durationMinutes += borrowed;
+			}
 			const metadata =
 				session.phase === phase ? session : phaseFallbacks[phase];
 			result.push({
@@ -149,24 +186,200 @@ export const rebalanceLearningPhases = ({
 				startTime: formatLearningTimeFromMinutes(startMinutes),
 				durationMinutes,
 			});
-			phaseMinutes[phase] -= durationMinutes;
 			unallocatedMinutes -= durationMinutes;
+			remainingChunkMinutes = Math.max(
+				0,
+				remainingChunkMinutes - durationMinutes,
+			);
 			startMinutes += durationMinutes;
+			if (remainingChunkMinutes === 0) {
+				chunkIndex += 1;
+				remainingChunkMinutes = desiredChunks[chunkIndex]?.durationMinutes ?? 0;
+			}
 		}
 	}
-
-	let retainedTheorySessionCount = 0;
-	return result.map((session) => {
-		if (session.phase !== "theory") return session;
-		retainedTheorySessionCount += 1;
-		if (retainedTheorySessionCount <= MAX_THEORY_SESSION_COUNT) return session;
-
-		return {
-			...session,
-			...phaseFallbacks.practice,
-			phase: "practice" as const,
-		};
+	const mergedSessions = result.reduce<
+		SchedulableLearningSession<LearningSessionPhase>[]
+	>((merged, session) => {
+		const previous = merged.at(-1);
+		const previousStart = previous
+			? parseLearningTimeToMinutes(previous.startTime)
+			: null;
+		const sessionStart = parseLearningTimeToMinutes(session.startTime);
+		if (
+			previous &&
+			previous.phase === session.phase &&
+			previous.dateKey === session.dateKey &&
+			previousStart !== null &&
+			sessionStart !== null &&
+			previousStart + previous.durationMinutes === sessionStart &&
+			previous.durationMinutes + session.durationMinutes <=
+				maximumDurationByPhase[session.phase]
+		) {
+			previous.durationMinutes += session.durationMinutes;
+			return merged;
+		}
+		merged.push(session);
+		return merged;
+	}, []);
+	const minimumSizedSessions: SchedulableLearningSession<LearningSessionPhase>[] =
+		[];
+	const mergeCandidates = mergedSessions.map((session) => ({ ...session }));
+	for (const [index, candidate] of mergeCandidates.entries()) {
+		let session = candidate;
+		if (session.durationMinutes >= MIN_PHASE_SESSION_MINUTES) {
+			minimumSizedSessions.push(session);
+			continue;
+		}
+		if (session.phase === "theory") {
+			session = {
+				...session,
+				...phaseFallbacks.practice,
+				phase: "practice",
+			};
+			mergeCandidates[index] = session;
+		}
+		const next = mergeCandidates[index + 1];
+		const sessionStart = parseLearningTimeToMinutes(session.startTime);
+		const nextStart = next ? parseLearningTimeToMinutes(next.startTime) : null;
+		if (
+			next &&
+			next.phase === session.phase &&
+			next.dateKey === session.dateKey &&
+			sessionStart !== null &&
+			nextStart === sessionStart + session.durationMinutes
+		) {
+			const [firstDuration, secondDuration] = splitDurationEvenly(
+				session.durationMinutes + next.durationMinutes,
+				2,
+			);
+			if (
+				firstDuration !== undefined &&
+				secondDuration !== undefined &&
+				firstDuration >= MIN_PHASE_SESSION_MINUTES &&
+				secondDuration >= MIN_PHASE_SESSION_MINUTES &&
+				firstDuration <= maximumDurationByPhase[session.phase] &&
+				secondDuration <= maximumDurationByPhase[next.phase]
+			) {
+				session.durationMinutes = firstDuration;
+				next.startTime = formatLearningTimeFromMinutes(
+					sessionStart + firstDuration,
+				);
+				next.durationMinutes = secondDuration;
+				minimumSizedSessions.push(session);
+				continue;
+			}
+		}
+		const previous = minimumSizedSessions.at(-1);
+		const previousStart = previous
+			? parseLearningTimeToMinutes(previous.startTime)
+			: null;
+		if (
+			previous &&
+			previous.phase === session.phase &&
+			previous.dateKey === session.dateKey &&
+			previousStart !== null &&
+			sessionStart !== null &&
+			previousStart + previous.durationMinutes === sessionStart
+		) {
+			const [firstDuration, secondDuration] = splitDurationEvenly(
+				previous.durationMinutes + session.durationMinutes,
+				2,
+			);
+			if (
+				firstDuration !== undefined &&
+				secondDuration !== undefined &&
+				firstDuration >= MIN_PHASE_SESSION_MINUTES &&
+				secondDuration >= MIN_PHASE_SESSION_MINUTES &&
+				firstDuration <= maximumDurationByPhase[previous.phase] &&
+				secondDuration <= maximumDurationByPhase[session.phase]
+			) {
+				previous.durationMinutes = firstDuration;
+				session.startTime = formatLearningTimeFromMinutes(
+					previousStart + firstDuration,
+				);
+				session.durationMinutes = secondDuration;
+				minimumSizedSessions.push(session);
+				continue;
+			}
+		}
+		if (
+			previous &&
+			previous.dateKey === session.dateKey &&
+			previousStart !== null &&
+			sessionStart !== null &&
+			previousStart + previous.durationMinutes === sessionStart &&
+			previous.durationMinutes + session.durationMinutes <=
+				maximumDurationByPhase[previous.phase]
+		) {
+			previous.durationMinutes += session.durationMinutes;
+			continue;
+		}
+		if (
+			next &&
+			next.dateKey === session.dateKey &&
+			sessionStart !== null &&
+			nextStart === sessionStart + session.durationMinutes &&
+			next.durationMinutes + session.durationMinutes <=
+				maximumDurationByPhase[next.phase]
+		) {
+			next.startTime = session.startTime;
+			next.durationMinutes += session.durationMinutes;
+			continue;
+		}
+		minimumSizedSessions.push(session);
+	}
+	let previousPhase: LearningSessionPhase | null = null;
+	let displacedTheoryMinutes = 0;
+	const withoutConsecutiveTheory = minimumSizedSessions.map((session) => {
+		if (session.phase === "theory" && previousPhase === "theory") {
+			displacedTheoryMinutes += session.durationMinutes;
+			previousPhase = "practice";
+			return {
+				...session,
+				...phaseFallbacks.practice,
+				phase: "practice" as const,
+			};
+		}
+		previousPhase = session.phase;
+		return session;
 	});
+	const restoredSessions: SchedulableLearningSession<LearningSessionPhase>[] =
+		[];
+	for (const [index, session] of withoutConsecutiveTheory.entries()) {
+		const previous = restoredSessions.at(-1);
+		const next = withoutConsecutiveTheory[index + 1];
+		const availableTheoryMinutes = Math.min(
+			MAX_THEORY_SESSION_MINUTES,
+			displacedTheoryMinutes,
+			session.durationMinutes - MIN_PHASE_SESSION_MINUTES,
+		);
+		if (
+			session.phase === "practice" &&
+			availableTheoryMinutes >= MIN_PHASE_SESSION_MINUTES &&
+			previous?.phase !== "theory" &&
+			next?.phase !== "theory"
+		) {
+			restoredSessions.push({
+				...session,
+				...phaseFallbacks.theory,
+				phase: "theory",
+				durationMinutes: availableTheoryMinutes,
+			});
+			restoredSessions.push({
+				...session,
+				startTime: formatLearningTimeFromMinutes(
+					(parseLearningTimeToMinutes(session.startTime) ?? 0) +
+						availableTheoryMinutes,
+				),
+				durationMinutes: session.durationMinutes - availableTheoryMinutes,
+			});
+			displacedTheoryMinutes -= availableTheoryMinutes;
+			continue;
+		}
+		restoredSessions.push(session);
+	}
+	return restoredSessions;
 };
 
 export const splitLargeTheorySessions = ({
@@ -180,65 +393,35 @@ export const splitLargeTheorySessions = ({
 	maxSessions: number;
 	maxTitleChars: number;
 }) => {
-	const result: SchedulableLearningSession<LearningSessionPhase>[] = [];
+	void maxSessions;
+	const theorySessionCount = sessions.filter(
+		(session) => session.phase === "theory",
+	).length;
 	let theoryTopicIndex = 0;
-	const theoryDurationsBySession = getTheoryDurationsBySession({
-		sessions,
-		maxSessions,
-	});
-	const totalTheoryFragmentCount = Array.from(
-		theoryDurationsBySession.values(),
-	).reduce((total, durations) => total + durations.length, 0);
 	const distinctTopicTitleCount = new Set(
 		topics.map((topic) => topic.title.trim().toLocaleLowerCase("de")),
 	).size;
-	const customizeTheoryMetadata = totalTheoryFragmentCount > 1;
-
-	for (const [sessionIndex, session] of sessions.entries()) {
-		const durations = theoryDurationsBySession.get(sessionIndex) ?? [
-			session.durationMinutes,
-		];
-		let startMinutes = parseLearningTimeToMinutes(session.startTime) ?? 0;
-
-		for (const [fragmentIndex, durationMinutes] of durations.entries()) {
-			if (
-				session.phase !== "theory" ||
-				(durations.length === 1 && !customizeTheoryMetadata)
-			) {
-				result.push(session);
-				if (session.phase === "theory") theoryTopicIndex += 1;
-				break;
-			}
-
-			const topic = topics[theoryTopicIndex % Math.max(topics.length, 1)];
-			const stage =
-				theorySessionStages[theoryTopicIndex % theorySessionStages.length] ??
-				theorySessionStages[0];
-			const repeatsTopic = distinctTopicTitleCount < totalTheoryFragmentCount;
-			const topicTitle = topic?.title || session.title;
-			const topicGoal = topic?.learningGoal || session.goal;
-			const title = repeatsTopic ? `${stage.title}: ${topicTitle}` : topicTitle;
-			const goal = `${stage.verb} ${topicTitle}: ${topicGoal.replace(/[.!?]+$/, "")}.`;
-			const sourceTask =
-				session.tasks[fragmentIndex % Math.max(session.tasks.length, 1)];
-
-			result.push({
-				...session,
-				title:
-					compactLearningSessionTitle(title, maxTitleChars) || session.title,
-				startTime: formatLearningTimeFromMinutes(startMinutes),
-				durationMinutes,
-				goal,
-				tasks: [
-					`${stage.verb} das Lernziel zu ${topicTitle}.`,
-					...(sourceTask ? [sourceTask] : []),
-				],
-				expectedOutcome: `Du hast ${topicTitle} im Schritt „${stage.title}“ abgeschlossen.`,
-			});
-			startMinutes += durationMinutes;
-			theoryTopicIndex += 1;
-		}
-	}
-
-	return result;
+	return sessions.map((session) => {
+		if (session.phase !== "theory" || theorySessionCount === 1) return session;
+		const topic = topics[theoryTopicIndex % Math.max(topics.length, 1)];
+		const stage =
+			theorySessionStages[theoryTopicIndex % theorySessionStages.length] ??
+			theorySessionStages[0];
+		const repeatsTopic = distinctTopicTitleCount < theorySessionCount;
+		const topicTitle = topic?.title || session.title;
+		const topicGoal = topic?.learningGoal || session.goal;
+		const title = repeatsTopic ? `${stage.title}: ${topicTitle}` : topicTitle;
+		const sourceTask = session.tasks[0];
+		theoryTopicIndex += 1;
+		return {
+			...session,
+			title: compactLearningSessionTitle(title, maxTitleChars) || session.title,
+			goal: `${stage.verb} ${topicTitle}: ${topicGoal.replace(/[.!?]+$/, "")}.`,
+			tasks: [
+				`${stage.verb} das Lernziel zu ${topicTitle}.`,
+				...(sourceTask ? [sourceTask] : []),
+			],
+			expectedOutcome: `Du hast ${topicTitle} im Schritt „${stage.title}“ abgeschlossen.`,
+		};
+	});
 };

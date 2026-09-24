@@ -95,6 +95,47 @@ const GERMAN_UI_REPLACEMENTS: ReadonlyArray<readonly [RegExp, string]> = [
 	[/\bueben\b/g, "üben"],
 ];
 
+const HTML_ENTITY_REPLACEMENTS: Readonly<Record<string, string>> = {
+	amp: "&",
+	apos: "'",
+	gt: ">",
+	lt: "<",
+	nbsp: " ",
+	quot: '"',
+	Auml: "Ä",
+	auml: "ä",
+	Ouml: "Ö",
+	ouml: "ö",
+	Uuml: "Ü",
+	uuml: "ü",
+	szlig: "ß",
+};
+
+const htmlEntityPattern =
+	/&(#(?:[xX][\dA-Fa-f]{1,6}|\d{1,7})|[A-Za-z][A-Za-z\d]+);/g;
+
+const isValidUnicodeCodePoint = (value: number) =>
+	Number.isInteger(value) &&
+	value >= 0 &&
+	value <= 0x10ffff &&
+	(value < 0xd800 || value > 0xdfff);
+
+export const decodeGeneratedTextHtmlEntities = (value: string) =>
+	value.replace(htmlEntityPattern, (match, entity: string) => {
+		if (!entity.startsWith("#")) {
+			return HTML_ENTITY_REPLACEMENTS[entity] ?? match;
+		}
+
+		const isHex = entity[1]?.toLowerCase() === "x";
+		const codePoint = Number.parseInt(
+			entity.slice(isHex ? 2 : 1),
+			isHex ? 16 : 10,
+		);
+		return isValidUnicodeCodePoint(codePoint)
+			? String.fromCodePoint(codePoint)
+			: match;
+	});
+
 const unsafeControlCharacterPattern = new RegExp(
 	["[\\u0000-\\u0008", "\\u000B\\u000C", "\\u000E-\\u001F", "\\u007F]"].join(
 		"",
@@ -117,7 +158,7 @@ export const normalizeGeneratedGermanText = (value: string) => {
 	const formatted = GERMAN_UI_REPLACEMENTS.reduce(
 		(formatted, [pattern, replacement]) =>
 			formatted.replace(pattern, replacement),
-		value,
+		decodeGeneratedTextHtmlEntities(value),
 	);
 
 	if (unsafeControlCharacterPattern.test(formatted)) {

@@ -1,16 +1,12 @@
-import {
-	TouchableOpacity,
-	type TouchableOpacityProps,
-	View,
-	type ViewProps,
-} from "react-native";
+import type { ComponentProps } from "react";
+import { TouchableOpacity, View, type ViewProps } from "react-native";
 import { cn } from "~/lib/utils";
 
 type SurfaceVariant = "default" | "soft" | "flat";
 
 const surfaceClassByVariant: Record<SurfaceVariant, string> = {
-	default: "shadow-black/5 shadow-sm",
-	soft: "shadow-black/5 shadow",
+	default: "shadow-none",
+	soft: "shadow-none",
 	flat: "shadow-none",
 };
 
@@ -39,7 +35,7 @@ function Surface({
 	);
 }
 
-type ActionSurfaceProps = TouchableOpacityProps & {
+type ActionSurfaceProps = ComponentProps<typeof TouchableOpacity> & {
 	variant?: SurfaceVariant;
 };
 

@@ -9,7 +9,9 @@ const monthlyPackage = {
 	packageType: "MONTHLY",
 	product: {
 		identifier: "dayova_monthly",
-		priceString: "14,99 €",
+		price: 14.99,
+		currencyCode: "EUR",
+		priceString: "€14.99",
 	},
 };
 const annualPackage = {
@@ -17,8 +19,11 @@ const annualPackage = {
 	packageType: "ANNUAL",
 	product: {
 		identifier: "dayova_annual",
-		pricePerMonthString: "13,33 €",
-		priceString: "159,99 €",
+		price: 155.88,
+		currencyCode: "EUR",
+		pricePerMonth: 12.99,
+		pricePerMonthString: "EUR12.99",
+		priceString: "€155.88",
 	},
 };
 
@@ -62,15 +67,16 @@ describe("createRevenueCatClient", () => {
 		await expect(client.getPlans()).resolves.toEqual([
 			{
 				billingPeriod: "annual",
-				monthlyEquivalentPrice: "13,33 €",
 				packageIdentifier: "$rc_annual",
-				price: "159,99 €",
+				price: "155,88 €",
+				pricePerMonth: "12,99 €",
 				productIdentifier: "dayova_annual",
 			},
 			{
 				billingPeriod: "monthly",
 				packageIdentifier: "$rc_monthly",
 				price: "14,99 €",
+				pricePerMonth: null,
 				productIdentifier: "dayova_monthly",
 			},
 		]);
@@ -80,6 +86,63 @@ describe("createRevenueCatClient", () => {
 		});
 	});
 
+	it("uses the store amount and currency instead of hardcoded launch prices", async () => {
+		const sdk = createSdk();
+		sdk.getOfferings = vi.fn(async () => ({
+			all: {},
+			current: {
+				availablePackages: [
+					{
+						...annualPackage,
+						product: {
+							...annualPackage.product,
+							price: 15000,
+							pricePerMonth: 1250,
+							currencyCode: "JPY",
+						},
+					},
+				],
+			},
+		}));
+		const client = createRevenueCatClient({
+			apiKey: "test",
+			appUserId: "test",
+			sdk,
+		});
+
+		await expect(client.getPlans()).resolves.toEqual([
+			expect.objectContaining({ price: "15.000 ¥", pricePerMonth: "1.250 ¥" }),
+		]);
+	});
+
+	it("preserves store text when numeric or currency data cannot be formatted", async () => {
+		const sdk = createSdk();
+		sdk.getOfferings = vi.fn(async () => ({
+			all: {},
+			current: {
+				availablePackages: [
+					{
+						...annualPackage,
+						product: {
+							...annualPackage.product,
+							currencyCode: "",
+							pricePerMonth: null,
+						},
+					},
+				],
+			},
+		}));
+		const client = createRevenueCatClient({
+			apiKey: "test",
+			appUserId: "test",
+			sdk,
+		});
+
+		await expect(client.getPlans()).resolves.toEqual([
+			expect.objectContaining({ price: "€155.88", pricePerMonth: "EUR12.99" }),
+		]);
+	});
+
 	it("unlocks only when RevenueCat returns the full-access entitlement", async () => {
 		const client = createRevenueCatClient({
 			apiKey: "appl_test",
@@ -87,7 +150,7 @@ describe("createRevenueCatClient", () => {
 			sdk: createSdk(),
 		});
 
-		await expect(client.purchase("dayova_monthly")).resolves.toEqual({
+		await expect(client.purchase("monthly")).resolves.toEqual({
 			status: "purchased",
 		});
 	});
@@ -103,7 +166,7 @@ describe("createRevenueCatClient", () => {
 			sdk,
 		});
 
-		await expect(client.purchase("dayova_monthly")).resolves.toEqual({
+		await expect(client.purchase("monthly")).resolves.toEqual({
 			status: "cancelled",
 		});
 	});

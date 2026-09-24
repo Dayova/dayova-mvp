@@ -42,6 +42,14 @@ describe("resolveAccessRoute", () => {
 				user: { id: "user_1" },
 			}),
 		).toBeNull();
+		expect(
+			resolveAccessRoute({
+				accessState: "needsActivation",
+				isSessionLoading: false,
+				pathname: "/onboarding/verification",
+				user: { id: "user_1" },
+			}),
+		).toBeNull();
 	});
 
 	it.each([
@@ -93,6 +101,39 @@ describe("resolveAccessRoute", () => {
 				accessState: "paid",
 				isSessionLoading: false,
 				pathname,
+				user: { id: "user_1" },
+			}),
+		).toBe("/home");
+	});
+
+	it("lets trial accounts subscribe before the trial expires", () => {
+		expect(
+			resolveAccessRoute({
+				accessState: "trial",
+				isSessionLoading: false,
+				pathname: "/subscription",
+				user: { id: "user_1" },
+			}),
+		).toBeNull();
+	});
+
+	it("keeps a newly paid account on the subscription success route", () => {
+		expect(
+			resolveAccessRoute({
+				accessState: "paid",
+				isSessionLoading: false,
+				pathname: "/subscription-success",
+				user: { id: "user_1" },
+			}),
+		).toBeNull();
+	});
+
+	it("does not show the subscription success route to trial accounts", () => {
+		expect(
+			resolveAccessRoute({
+				accessState: "trial",
+				isSessionLoading: false,
+				pathname: "/subscription-success",
 				user: { id: "user_1" },
 			}),
 		).toBe("/home");

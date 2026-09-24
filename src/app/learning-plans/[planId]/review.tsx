@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
-import { Button } from "~/components/ui/button";
+import { BackButton, Button } from "~/components/ui/button";
 import {
 	CalendarDays,
 	Check,
@@ -16,8 +16,11 @@ import { Screen, ScreenScroll } from "~/components/ui/screen";
 import { Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
+import { isDiagnosticLearningPlanSession } from "~/features/learning-plans/rolling-learning-window";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { useBackIntent } from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -38,7 +41,6 @@ export default function LearningPlanReviewScreen() {
 	const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
 	const acceptPlan = useMutation(api.learningPlans.acceptPlan);
 	const [isBusy, setIsBusy] = useState(false);
-	const [showRoadmap, setShowRoadmap] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
 	const snapshot = (useQuery(
@@ -47,27 +49,48 @@ export default function LearningPlanReviewScreen() {
 	) ?? null) as LearningPlanSnapshot | null;
 	const nextSession = snapshot?.sessions[0] ?? null;
 	const laterSessions = snapshot?.sessions.slice(1) ?? [];
-	const firstGap = snapshot?.plan.insight?.gaps[0] ?? null;
+	const startsWithDiagnostic = nextSession
+		? isDiagnosticLearningPlanSession(nextSession)
+		: false;
+	const needsDiagnosticRegeneration = Boolean(
+		snapshot?.plan.status === "generated" &&
+			snapshot.plan.diagnosticPlacement !== "firstSession",
+	);
 	const canStartNow = Boolean(
 		nextSession && nextSession.dateKey.slice(0, 10) <= localDateKey(),
 	);
+	const goBack = () => {
+		router.replace(ROUTES.learningPlans);
+		return true;
+	};
+	useBackIntent(true, goBack);
 
 	useEffect(() => {
 		if (!planId || !snapshot) return;
-		if (
-			snapshot.plan.status === "draft" ||
-			snapshot.plan.status === "questionsReady"
-		) {
-			router.replace(planPath(planId, "generating"));
+		if (needsDiagnosticRegeneration) {
+			router.replace(planPath(planId, "analysis"));
+			return;
+		}
+		if (snapshot.plan.status === "draft") {
+			router.replace(planPath(planId, "analysis"));
+			return;
+		}
+		if (snapshot.plan.status === "questionsReady") {
+			router.replace(planPath(planId, "analysis"));
 			return;
 		}
 		if (snapshot.plan.status === "accepted") {
 			router.replace(`/learning-plans/${planId}`);
+			return;
 		}
-	}, [planId, router, snapshot]);
+	}, [needsDiagnosticRegeneration, planId, router, snapshot]);
 
 	const acceptRecommendedPath = async () => {
 		if (!planId || !nextSession || isBusy) return;
+		if (needsDiagnosticRegeneration) {
+			router.replace(planPath(planId, "analysis"));
+			return;
+		}
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
@@ -86,21 +109,37 @@ export default function LearningPlanReviewScreen() {
 		}
 	};
 
+	if (needsDiagnosticRegeneration) {
+		return (
+			<Screen>
+				<View className="flex-1 items-center justify-center">
+					<ActivityIndicator color="#00A0E6" />
+				</View>
+			</Screen>
+		);
+	}
+
 	return (
 		<Screen>
-			<Stack.Screen options={{ gestureEnabled: false }} />
+			<Stack.Screen options={{ gestureEnabled: true }} />
 			<ScreenScroll contentContainerStyle={{ flexGrow: 1 }} includeTopSafeArea>
 				<View className="flex-1">
+					<View className="mb-6 items-start">
+						<BackButton onPress={goBack} />
+					</View>
 					<View className="items-center">
 						<View className="h-16 w-16 items-center justify-center rounded-[24px] bg-system-subtle">
 							<Sparkles size={30} color="#00A0E6" strokeWidth={2.1} />
 						</View>
 						<Text className="mt-5 text-center font-poppins font-semibold text-heading-2 text-text">
-							Du weißt jetzt, womit du anfangen solltest.
+							{startsWithDiagnostic
+								? "Dein Lernweg startet mit einem Wissenscheck."
+								: "Deine nächsten Lernschritte stehen fest."}
 						</Text>
 						<Text className="mt-3 max-w-[330px] text-center font-poppins text-body-3 text-secondary-text">
-							Dein erster Schritt basiert auf deinen Schulunterlagen, deinen
-							Antworten und der Zeit bis zur Arbeit.
+							{startsWithDiagnostic
+								? "In 5–10 kurzen Fragen prüfst du zuerst deinen aktuellen Wissensstand. Danach passt Dayova jeden nächsten Lernschritt an."
+								: "Dayova plant zunächst zwei Termine und passt die Inhalte nach jedem abgeschlossenen Lernschritt an."}
 						</Text>
 					</View>
 
@@ -110,20 +149,12 @@ export default function LearningPlanReviewScreen() {
 								<Route2 size={21} color="#FF9500" strokeWidth={2.1} />
 							</View>
 							<Text className="font-poppins font-semibold text-body-3 text-text">
-								Was wir erkannt haben
+								So wächst dein Lernweg
 							</Text>
 						</View>
-						<Text
-							selectable
-							className="mt-4 font-poppins text-body-2 text-text"
-						>
-							{firstGap ??
-								snapshot?.plan.insight?.summary ??
-								"Wir beginnen mit dem Bereich, zu dem noch die wenigste sichere Evidenz vorliegt."}
-						</Text>
-						<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-							Diesen Schritt priorisieren wir aus deinen Antworten innerhalb des
-							bestätigten Prüfungsumfangs.
+						<Text className="mt-4 font-poppins text-body-3 text-secondary-text">
+							Nach jedem abgeschlossenen Termin nutzt Dayova deine Antworten und
+							Ergebnisse, um den darauffolgenden Lerninhalt neu festzulegen.
 						</Text>
 					</Surface>
 
@@ -132,7 +163,9 @@ export default function LearningPlanReviewScreen() {
 							<View className="flex-row items-center gap-2">
 								<Check size={18} color="#34C759" strokeWidth={2.5} />
 								<Text className="font-poppins font-semibold text-body-4 text-success">
-									Dein nächster Lernschritt
+									{startsWithDiagnostic
+										? "Erster Termin · Wissenscheck"
+										: "Dein nächster Lernschritt"}
 								</Text>
 							</View>
 							<Text className="mt-4 font-poppins font-semibold text-body-1 text-text">
@@ -154,18 +187,25 @@ export default function LearningPlanReviewScreen() {
 										{nextSession.startTime} · {nextSession.durationMinutes} Min.
 									</Text>
 								</View>
+								{startsWithDiagnostic ? (
+									<View className="rounded-full bg-ueben-subtle px-3 py-2">
+										<Text className="font-poppins font-semibold text-body-4 text-ueben">
+											5–10 Fragen
+										</Text>
+									</View>
+								) : null}
 							</View>
 						</Surface>
 					) : null}
 
-					{showRoadmap ? (
+					{laterSessions.length > 0 ? (
 						<View className="mt-7">
 							<Text className="font-poppins font-semibold text-body-3 text-text">
-								Dein weiterer Lernweg
+								Danach · Vorschau
 							</Text>
 							<Text className="mt-2 font-poppins text-body-4 text-secondary-text">
-								Die Termine bleiben stabil. Die genauen Inhalte werden erst nach
-								deinem jeweils letzten Lernschritt festgelegt.
+								Der Termin steht schon fest. Was du dort lernst, wird nach
+								deinem ersten Ergebnis noch einmal angepasst.
 							</Text>
 							<View className="mt-4 gap-3">
 								{laterSessions.map((session) => (
@@ -178,13 +218,35 @@ export default function LearningPlanReviewScreen() {
 											{session.title}
 										</Text>
 										<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-											{session.dateLabel}, {session.startTime} · Inhalt wird
-											angepasst
+											{`${session.dateLabel}, ${session.startTime} · ${session.durationMinutes} Min.`}
+										</Text>
+										<Text className="mt-2 font-poppins font-semibold text-body-5 text-primary">
+											Inhalt wird nach deinem letzten Lernschritt angepasst
 										</Text>
 									</Surface>
 								))}
 							</View>
 						</View>
+					) : null}
+
+					{snapshot?.plan.rollingPlanEnabled ? (
+						<Surface className="mt-5 rounded-[28px] px-5 py-5" variant="soft">
+							<View className="flex-row items-start gap-3">
+								<View className="h-10 w-10 items-center justify-center rounded-[16px] bg-system-subtle">
+									<Sparkles size={20} color="#00A0E6" strokeWidth={2.1} />
+								</View>
+								<View className="min-w-0 flex-1">
+									<Text className="font-poppins font-semibold text-body-3 text-text">
+										Weitere Termine folgen automatisch
+									</Text>
+									<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
+										Nach jedem Abschluss plant Dayova einen weiteren Lerntermin.
+										So bleiben bis zur Prüfung immer die nächsten zwei Schritte
+										im Blick – solange noch genug Lernzeit frei ist.
+									</Text>
+								</View>
+							</View>
+						</Surface>
 					) : null}
 
 					{snapshot?.plan.planningHint ? (
@@ -215,17 +277,6 @@ export default function LearningPlanReviewScreen() {
 								</Text>
 							)}
 						</Button>
-						{laterSessions.length > 0 ? (
-							<Button
-								variant="neutral"
-								disabled={isBusy}
-								onPress={() => setShowRoadmap((value) => !value)}
-							>
-								<Text>
-									{showRoadmap ? "Lernweg ausblenden" : "Lernweg ansehen"}
-								</Text>
-							</Button>
-						) : null}
 					</View>
 				</View>
 			</ScreenScroll>

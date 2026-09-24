@@ -10,7 +10,13 @@ import {
 	type QueryCtx,
 	query,
 } from "./_generated/server";
-import { getDayKeyQueryVariants } from "./dayKeyVariants";
+import { advanceRollingLearningPlan } from "./adaptiveLearningPlan";
+import {
+	type AdaptiveLearningTarget,
+	adaptiveSessionCopy,
+	selectNextAdaptiveLearningTarget,
+} from "./adaptiveLearningPlanPolicy";
+import { getBerlinDayKey } from "./dayKeyVariants";
 import { deriveTopicReadiness } from "./diagnosticReadiness";
 import { throwUserFacingError } from "./errors";
 import {
@@ -19,15 +25,17 @@ import {
 	getR2ConfigOrThrow,
 } from "./fileStorage";
 import { normalizeGeneratedGermanText } from "./generatedGermanText";
+import { calculateAvailableStudyMinutes } from "./learningPlanAvailability";
 import { MISSING_LEARNING_TIMES_HINT } from "./learningPlanPlanningHints";
 import {
 	getDefaultPreparationDepth,
 	type PreparationDepth,
 } from "./learningPreparationPolicy";
-import { getLearningSessionComposition } from "./learningSessionComposition";
+import { isLearningSessionCompositionEligible } from "./learningSessionComposition";
 import { deleteSessionLearningDataForSession } from "./learningSessionContent";
 import { alignSessionDurationReferences } from "./learningSessionDurationText";
 import {
+	learningEvidenceDimensionValidator,
 	learningTopicValidator,
 	normalizeLearningTopics,
 } from "./learningTopicMap";
@@ -37,12 +45,14 @@ import {
 	getTimetableDayOfWeek,
 	getTimetableLessonDuration,
 } from "./timetableOccurrences";
-import {
-	assertMeaningfulTeacherGuidance,
-	assertMeaningfulTopicDescription,
-} from "./topicDescriptionValidation";
+import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 const MAX_LEARNING_TIMES = 50;
+const MAX_SCHEDULING_DAY_ENTRIES = 500;
+const MAX_SCHEDULING_LOOKAHEAD_DAYS = 366;
+const MIN_ROLLING_HORIZON_MINUTES = 20;
+const MIN_DIAGNOSTIC_QUESTION_COUNT = 5;
+const MAX_DIAGNOSTIC_QUESTION_COUNT = 10;
 // Convex Node actions have a 10-minute platform ceiling. Allow one extra minute
 // before a later request may recover work left behind by a terminated action.
 const STALE_CONTENT_GENERATION_MS = 11 * 60_000;
@@ -96,6 +106,9 @@ const planQuestionValidator = v.object({
 	),
 	options: v.optional(v.array(v.string())),
 	correctAnswer: v.optional(v.string()),
+	idealAnswer: v.optional(v.string()),
+	explanation: v.optional(v.string()),
+	evidenceDimension: v.optional(learningEvidenceDimensionValidator),
 	evaluationKeywords: v.optional(v.array(v.string())),
 });
 
@@ -116,6 +129,152 @@ const generatedSessionValidator = v.object({
 	tasks: v.array(v.string()),
 	expectedOutcome: v.string(),
 });
+
+type NormalizedGeneratedSession = {
+	phase: "theory" | "practice" | "rehearsal";
+	title: string;
+	dateKey: string;
+	dateLabel: string;
+	startTime: string;
+	durationMinutes: number;
+	goal: string;
+	tasks: string[];
+	expectedOutcome: string;
+	compositionVariant: "control" | "split";
+	sessionPurpose?: "diagnostic" | "learning";
+	planningStatus?: "committed" | "provisional";
+	targetTopicIds?: string[];
+	targetEvidenceDimension?: "understanding" | "problemSolving" | "independent";
+	selectionReason?: string;
+	adaptationRevision?: number;
+};
+
+const applyAdaptiveTargetToSession = (
+	session: NormalizedGeneratedSession,
+	target: AdaptiveLearningTarget,
+	planningStatus: "committed" | "provisional",
+	adaptationRevision: number,
+) => ({
+	...session,
+	...adaptiveSessionCopy(target),
+	phase: target.phase,
+	compositionVariant:
+		target.phase === "theory" ? ("split" as const) : ("control" as const),
+	planningStatus,
+	targetTopicIds: [target.topicId],
+	targetEvidenceDimension: target.dimension,
+	selectionReason: target.reason,
+	adaptationRevision,
+});
+
+type StoredKnowledgeQuestion = NonNullable<
+	Doc<"learningPlans">["knowledgeQuestions"]
+>[number];
+
+const validateFirstSessionDiagnosticQuestions = (
+	questions: StoredKnowledgeQuestion[],
+	topics: Doc<"learningPlans">["topicMap"],
+) => {
+	if (
+		questions.length < MIN_DIAGNOSTIC_QUESTION_COUNT ||
+		questions.length > MAX_DIAGNOSTIC_QUESTION_COUNT
+	) {
+		throwUserFacingError(
+			`Der Wissenscheck braucht ${MIN_DIAGNOSTIC_QUESTION_COUNT} bis ${MAX_DIAGNOSTIC_QUESTION_COUNT} Fragen.`,
+		);
+	}
+
+	const topicIds = new Set((topics ?? []).map((topic) => topic.id));
+	const questionIds = new Set<string>();
+	for (const question of questions) {
+		if (!question.id.trim() || questionIds.has(question.id)) {
+			throwUserFacingError(
+				"Die Fragen des Wissenschecks brauchen eindeutige Kennungen.",
+			);
+		}
+		questionIds.add(question.id);
+		if (
+			question.kind !== "performance" ||
+			!question.topicId ||
+			!topicIds.has(question.topicId) ||
+			!question.evidenceDimension ||
+			!question.idealAnswer?.trim() ||
+			!question.explanation?.trim() ||
+			!question.responseKind
+		) {
+			throwUserFacingError(
+				"Jede Frage des Wissenschecks muss Wissen prüfen und einem Prüfungsthema zugeordnet sein.",
+			);
+		}
+
+		if (question.responseKind === "multipleChoice") {
+			const options = question.options ?? [];
+			const uniqueOptions = new Set(options.map((option) => option.trim()));
+			if (
+				options.length < 2 ||
+				uniqueOptions.size !== options.length ||
+				!question.correctAnswer ||
+				!options.includes(question.correctAnswer)
+			) {
+				throwUserFacingError(
+					"Multiple-Choice-Fragen im Wissenscheck brauchen eindeutige Optionen und eine richtige Antwort.",
+				);
+			}
+		}
+	}
+};
+
+const insertFirstSessionDiagnosticItems = async (
+	ctx: MutationCtx,
+	args: {
+		plan: Doc<"learningPlans">;
+		sessionId: Id<"learningPlanSessions">;
+		questions: StoredKnowledgeQuestion[];
+		now: number;
+	},
+) => {
+	for (const [questionIndex, question] of args.questions.entries()) {
+		const choices =
+			question.responseKind === "multipleChoice"
+				? (question.options ?? []).map((option, optionIndex) => ({
+						id: `diagnostic-${questionIndex + 1}-choice-${optionIndex + 1}`,
+						text: option,
+					}))
+				: undefined;
+		const correctChoiceId = choices?.find(
+			(choice) => choice.text === question.correctAnswer,
+		)?.id;
+
+		await ctx.db.insert("learningSessionContentItems", {
+			ownerTokenIdentifier: args.plan.ownerTokenIdentifier,
+			learningPlanId: args.plan._id,
+			sessionId: args.sessionId,
+			phase: "practice",
+			kind:
+				question.responseKind === "multipleChoice"
+					? "multipleChoice"
+					: "written",
+			title: `Frage ${questionIndex + 1}`,
+			prompt: question.prompt,
+			explanation: question.explanation ?? question.targetInsight,
+			idealAnswer: question.idealAnswer ?? question.correctAnswer ?? "",
+			choices,
+			correctChoiceId,
+			evaluationKeywords: (question.evaluationKeywords ?? []).map((keyword) =>
+				keyword.toLowerCase(),
+			),
+			learningBlockIndex: 0,
+			topicId: question.topicId,
+			evidenceDimension: question.evidenceDimension,
+			questionAngle: "diagnostic",
+			coverageKey: `diagnostic:${question.id}`,
+			estimatedSeconds: 60,
+			sortOrder: questionIndex,
+			createdAt: args.now,
+			updatedAt: args.now,
+		});
+	}
+};
 
 type PublicDocument = {
 	id: Id<"learningPlanDocuments">;
@@ -140,6 +299,7 @@ type PublicSession = {
 	startTime: string;
 	durationMinutes: number;
 	compositionVariant?: "control" | "split";
+	sessionPurpose?: "diagnostic" | "learning";
 	knowledgeValidationStatus?: "pending" | "completed" | "skipped";
 	knowledgeValidationConfidence?: "unsure" | "somewhatSure" | "sure";
 	goal: string;
@@ -148,6 +308,7 @@ type PublicSession = {
 	contentGenerationStatus?: "queued" | "generating" | "ready" | "failed";
 	contentGenerationError?: string;
 	contentGeneratedAt?: number;
+	contentGenerationVersion?: number;
 	completed: boolean;
 	executionStatus:
 		| "notStarted"
@@ -167,6 +328,11 @@ type PublicSession = {
 		| "unclear"
 		| "other";
 	adjustedFromSessionId?: Id<"learningPlanSessions">;
+	planningStatus?: "committed" | "provisional";
+	targetTopicIds?: string[];
+	targetEvidenceDimension?: "understanding" | "problemSolving" | "independent";
+	selectionReason?: string;
+	adaptationRevision?: number;
 	sortOrder: number;
 };
 
@@ -239,7 +405,6 @@ const createLearningPlan = async (
 		examDateLabel: args.examDateLabel,
 		durationMinutes: args.durationMinutes,
 		topicDescription,
-		teacherGuidance: topicDescription || undefined,
 		notes,
 		status: "draft",
 		preparationDepth: getDefaultPreparationDepth(examTypeLabel),
@@ -249,6 +414,7 @@ const createLearningPlan = async (
 	});
 	await ctx.db.patch("dayEntries", args.examDayEntryId, {
 		relatedLearningPlanId: learningPlanId,
+		...(topicDescription ? { topicDescription } : {}),
 	});
 	return learningPlanId;
 };
@@ -306,10 +472,14 @@ const invalidateDerivedExamEvidence = async (
 	await ctx.db.patch("learningPlans", learningPlanId, {
 		...sourcePatch,
 		knowledgeQuestions: undefined,
+		diagnosticPlacement: undefined,
 		sourceSummary: undefined,
 		topicMap: undefined,
 		scopeConfirmedAt: undefined,
 		topicReadiness: undefined,
+		contentGenerationStage: undefined,
+		contentGenerationId: undefined,
+		contentGenerationStartedAt: undefined,
 		status: "draft",
 		updatedAt,
 	});
@@ -329,6 +499,7 @@ const publicSession = (
 	startTime: session.startTime,
 	durationMinutes: session.durationMinutes,
 	compositionVariant: session.compositionVariant,
+	sessionPurpose: session.sessionPurpose,
 	knowledgeValidationStatus: session.knowledgeValidationStatus,
 	knowledgeValidationConfidence: session.knowledgeValidationConfidence,
 	goal: alignSessionDurationReferences({
@@ -340,17 +511,55 @@ const publicSession = (
 	contentGenerationStatus: session.contentGenerationStatus,
 	contentGenerationError: session.contentGenerationError,
 	contentGeneratedAt: session.contentGeneratedAt,
+	contentGenerationVersion: session.contentGenerationVersion,
 	completed: session.completed ?? false,
 	executionStatus: getSessionExecutionStatus(session),
 	startedAt: session.startedAt,
 	outcomeAt: session.outcomeAt,
 	missedReason: session.missedReason,
 	adjustedFromSessionId: session.adjustedFromSessionId,
+	planningStatus: session.planningStatus,
+	targetTopicIds: session.targetTopicIds,
+	targetEvidenceDimension: session.targetEvidenceDimension,
+	selectionReason: session.selectionReason,
+	adaptationRevision: session.adaptationRevision,
 	sortOrder: session.sortOrder,
 });
 
 const getSessionExecutionStatus = (session: Doc<"learningPlanSessions">) =>
 	session.executionStatus ?? (session.completed ? "completed" : "notStarted");
+
+const assertDiagnosticIsComplete = async (
+	ctx: MutationCtx,
+	session: Doc<"learningPlanSessions">,
+) => {
+	if (session.sessionPurpose !== "diagnostic") return;
+	const items = await ctx.db
+		.query("learningSessionContentItems")
+		.withIndex("by_sessionId_and_sortOrder", (q) =>
+			q.eq("sessionId", session._id),
+		)
+		.take(20);
+	const attempts = await ctx.db
+		.query("learningSessionAnswerAttempts")
+		.withIndex("by_sessionId_and_createdAt", (q) =>
+			q.eq("sessionId", session._id),
+		)
+		.take(100);
+	const attemptedItemIds = new Set(attempts.map((attempt) => attempt.itemId));
+	if (
+		items.length < MIN_DIAGNOSTIC_QUESTION_COUNT ||
+		items.length > MAX_DIAGNOSTIC_QUESTION_COUNT ||
+		items.some((item) => !attemptedItemIds.has(item._id))
+	) {
+		throwUserFacingError("Beantworte zuerst alle Fragen des Wissenschecks.");
+	}
+};
+
+const isContentCommittedSession = (session: Doc<"learningPlanSessions">) =>
+	session.planningStatus === "committed" ||
+	(session.planningStatus === undefined &&
+		session.contentGenerationStatus !== undefined);
 
 const isCompletedStatus = (
 	status: ReturnType<typeof getSessionExecutionStatus>,
@@ -410,6 +619,99 @@ const getLearningPlanCalendarDayKeys = (examDateKey: string) => {
 	}
 
 	return dayKeys;
+};
+
+const getAvailabilityDayKeys = (fromDateKey: string, examDateKey: string) => {
+	const cursor = new Date(`${fromDateKey}T00:00:00.000Z`);
+	const examDate = new Date(`${examDateKey}T00:00:00.000Z`);
+	if (Number.isNaN(cursor.getTime()) || Number.isNaN(examDate.getTime())) {
+		return [];
+	}
+
+	const dayCount = Math.ceil(
+		(examDate.getTime() - cursor.getTime()) / 86_400_000,
+	);
+	// The exam-date selector exposes one year. Fail closed for malformed route
+	// params beyond that range instead of starting an unbounded database read.
+	if (dayCount > MAX_SCHEDULING_LOOKAHEAD_DAYS) return [];
+	if (dayCount <= 0) return [];
+
+	const dayKeys: string[] = [];
+	while (cursor < examDate) {
+		dayKeys.push(cursor.toISOString().slice(0, 10));
+		cursor.setUTCDate(cursor.getUTCDate() + 1);
+	}
+	return dayKeys;
+};
+
+type SchedulingOccupiedEntry = {
+	dayKey: string;
+	time?: string;
+	durationMinutes?: number;
+};
+
+const getSchedulingOccupiedEntries = async (
+	ctx: QueryCtx,
+	{
+		ownerTokenIdentifier,
+		dayKeys,
+	}: {
+		ownerTokenIdentifier: string;
+		dayKeys: string[];
+	},
+) => {
+	if (dayKeys.length === 0) {
+		return {
+			entries: [] as SchedulingOccupiedEntry[],
+			wasTruncated: false,
+		};
+	}
+
+	const requestedDayKeys = new Set(dayKeys);
+	const queryStart = new Date(`${dayKeys[0]}T00:00:00.000Z`);
+	queryStart.setUTCDate(queryStart.getUTCDate() - 1);
+	const queryEnd = new Date(`${dayKeys.at(-1)}T00:00:00.000Z`);
+	queryEnd.setUTCDate(queryEnd.getUTCDate() + 1);
+	const dayEntries = await ctx.db
+		.query("dayEntries")
+		.withIndex("by_ownerTokenIdentifier_and_dayKey", (q) =>
+			q
+				.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+				.gte("dayKey", queryStart.toISOString().slice(0, 10))
+				.lt("dayKey", queryEnd.toISOString().slice(0, 10)),
+		)
+		.take(MAX_SCHEDULING_DAY_ENTRIES + 1);
+	const wasTruncated = dayEntries.length > MAX_SCHEDULING_DAY_ENTRIES;
+	const entries: SchedulingOccupiedEntry[] = dayEntries
+		.slice(0, MAX_SCHEDULING_DAY_ENTRIES)
+		.flatMap((entry) => {
+			const dayKey = getBerlinDayKey(entry.dayKey);
+			if (!dayKey || !requestedDayKeys.has(dayKey)) return [];
+			return [
+				{
+					dayKey,
+					time: isExamEntry(entry) ? undefined : entry.time,
+					durationMinutes: entry.durationMinutes,
+				},
+			];
+		});
+	const timetableLessons = await getActiveTimetableLessons(
+		ctx,
+		ownerTokenIdentifier,
+	);
+	for (const dayKey of dayKeys) {
+		const dayOfWeek = getTimetableDayOfWeek(dayKey);
+		for (const lesson of timetableLessons) {
+			if (lesson.dayOfWeek !== dayOfWeek) continue;
+			entries.push({
+				dayKey,
+				time: lesson.startTime,
+				durationMinutes: getTimetableLessonDuration(lesson) ?? undefined,
+			});
+		}
+	}
+
+	return { entries, wasTruncated };
 };
 
 const getSessionDayEntryTitle = (
@@ -657,13 +959,18 @@ export const updateBasics = mutation({
 			notes,
 			updatedAt: Date.now(),
 		});
+		if (plan.examDayEntryId) {
+			await ctx.db.patch("dayEntries", plan.examDayEntryId, {
+				topicDescription,
+			});
+		}
 	},
 });
 
-export const updateExamEvidence = mutation({
+export const updateRequiredTopics = mutation({
 	args: {
 		id: v.id("learningPlans"),
-		teacherGuidance: v.string(),
+		topicDescription: v.string(),
 	},
 	handler: async (ctx, args) => {
 		const ownerTokenIdentifier =
@@ -676,18 +983,21 @@ export const updateExamEvidence = mutation({
 			throwUserFacingError("Dieser Lernplan wurde bereits erstellt.");
 		}
 
-		const teacherGuidance = args.teacherGuidance.trim();
-		if (teacherGuidance) {
-			assertMeaningfulTeacherGuidance(teacherGuidance);
-		}
-		if ((plan.teacherGuidance ?? "") === teacherGuidance) {
+		const topicDescription = args.topicDescription.trim();
+		assertMeaningfulTopicDescription(topicDescription);
+		if (plan.topicDescription === topicDescription && !plan.teacherGuidance) {
 			return plan.updatedAt;
 		}
 		const updatedAt = Date.now();
 		await invalidateDerivedExamEvidence(ctx, args.id, updatedAt, {
-			teacherGuidance: teacherGuidance || undefined,
-			topicDescription: teacherGuidance,
+			teacherGuidance: undefined,
+			topicDescription,
 		});
+		if (plan.examDayEntryId) {
+			await ctx.db.patch("dayEntries", plan.examDayEntryId, {
+				topicDescription,
+			});
+		}
 		return updatedAt;
 	},
 });
@@ -761,6 +1071,71 @@ export const setTargetStudyMinutes = mutation({
 	},
 });
 
+export const getSchedulingAvailability = query({
+	args: {
+		fromDateKey: v.string(),
+		fromTimeMinutes: v.number(),
+		examDateKey: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const dayKeys = getAvailabilityDayKeys(args.fromDateKey, args.examDateKey);
+		const learningTimes = await ctx.db
+			.query("userLearningTimes")
+			.withIndex("by_ownerTokenIdentifier", (q) =>
+				q.eq("ownerTokenIdentifier", ownerTokenIdentifier),
+			)
+			.take(MAX_LEARNING_TIMES);
+		const publicLearningTimes = learningTimes.map((learningTime) => ({
+			dayOfWeek: learningTime.dayOfWeek,
+			startTime: learningTime.startTime,
+			endTime: learningTime.endTime,
+		}));
+		const nominalStudyMinutes = calculateAvailableStudyMinutes({
+			fromDateKey: args.fromDateKey,
+			fromTimeMinutes: args.fromTimeMinutes,
+			examDateKey: args.examDateKey,
+			learningTimes: publicLearningTimes,
+		});
+
+		if (
+			dayKeys.length === 0 ||
+			nominalStudyMinutes < MIN_ROLLING_HORIZON_MINUTES
+		) {
+			return {
+				availableStudyMinutes: nominalStudyMinutes,
+				status: "missing" as const,
+			};
+		}
+
+		const occupied = await getSchedulingOccupiedEntries(ctx, {
+			ownerTokenIdentifier,
+			dayKeys,
+		});
+		if (occupied.wasTruncated) {
+			return {
+				availableStudyMinutes: 0,
+				status: "occupied" as const,
+			};
+		}
+
+		const availableStudyMinutes = calculateAvailableStudyMinutes({
+			fromDateKey: args.fromDateKey,
+			fromTimeMinutes: args.fromTimeMinutes,
+			examDateKey: args.examDateKey,
+			learningTimes: publicLearningTimes,
+			occupiedEntries: occupied.entries,
+		});
+		return {
+			availableStudyMinutes,
+			status:
+				availableStudyMinutes >= MIN_ROLLING_HORIZON_MINUTES
+					? ("available" as const)
+					: ("occupied" as const),
+		};
+	},
+});
+
 export const getSnapshot = query({
 	args: {
 		id: v.id("learningPlans"),
@@ -796,13 +1171,17 @@ export const getSnapshot = query({
 			)
 			.take(1);
 		const readySessionCount = sessions.filter(
-			(session) => session.contentGenerationStatus === "ready",
+			(session) =>
+				session.planningStatus !== "provisional" &&
+				session.contentGenerationStatus === "ready",
 		).length;
 		const failedSessionCount = sessions.filter(
-			(session) => session.contentGenerationStatus === "failed",
+			(session) =>
+				session.planningStatus !== "provisional" &&
+				session.contentGenerationStatus === "failed",
 		).length;
 		const committedSessionCount = sessions.filter(
-			(session) => session.contentGenerationStatus !== undefined,
+			isContentCommittedSession,
 		).length;
 
 		return {
@@ -823,6 +1202,7 @@ export const getSnapshot = query({
 				notes: plan.notes,
 				status: plan.status,
 				knowledgeQuestions: (plan.knowledgeQuestions ?? []).map(publicQuestion),
+				diagnosticPlacement: plan.diagnosticPlacement,
 				sourceSummary: plan.sourceSummary,
 				topicMap: plan.topicMap ?? [],
 				scopeConfirmedAt: plan.scopeConfirmedAt,
@@ -831,6 +1211,8 @@ export const getSnapshot = query({
 				planningHint: getCurrentPlanningHint(plan.planningHint, {
 					hasLearningTimes: learningTimes.length > 0,
 				}),
+				rollingPlanEnabled: plan.rollingPlanEnabled,
+				adaptationRevision: plan.adaptationRevision,
 				sessionCompositionVariant: plan.sessionCompositionVariant,
 				contentGeneration: plan.contentGenerationStage
 					? {
@@ -853,44 +1235,156 @@ export const listOverview = query({
 	args: {},
 	handler: async (ctx) => {
 		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
-		const plans = await ctx.db
-			.query("learningPlans")
-			.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
-				q
-					.eq("ownerTokenIdentifier", ownerTokenIdentifier)
-					.eq("status", "accepted"),
-			)
-			.order("desc")
-			.take(50);
+		const statuses = [
+			"accepted",
+			"draft",
+			"questionsReady",
+			"generated",
+		] as const;
+		const planGroups = await Promise.all(
+			statuses.map((status) =>
+				ctx.db
+					.query("learningPlans")
+					.withIndex("by_ownerTokenIdentifier_and_status", (q) =>
+						q
+							.eq("ownerTokenIdentifier", ownerTokenIdentifier)
+							.eq("status", status),
+					)
+					.order("desc")
+					.take(50),
+			),
+		);
+		const plans = planGroups
+			.flat()
+			.sort(
+				(left, right) =>
+					Number(left.status === "accepted") -
+						Number(right.status === "accepted") ||
+					right.updatedAt - left.updatedAt,
+			);
 
 		const overviews = [];
 		for (const plan of plans) {
-			const sessions = await ctx.db
-				.query("learningPlanSessions")
-				.withIndex("by_learningPlanId_and_sortOrder", (q) =>
-					q.eq("learningPlanId", plan._id),
-				)
-				.take(50);
+			const documents =
+				plan.status === "draft"
+					? await ctx.db
+							.query("learningPlanDocuments")
+							.withIndex("by_learningPlanId", (q) =>
+								q.eq("learningPlanId", plan._id),
+							)
+							.take(20)
+					: [];
+			const needsSchoolMaterial =
+				plan.status === "draft" &&
+				!documents.some((document) => document.sourceKind !== "external");
+			const sessions =
+				plan.status === "accepted"
+					? await ctx.db
+							.query("learningPlanSessions")
+							.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+								q.eq("learningPlanId", plan._id),
+							)
+							.take(50)
+					: [];
 			const completedCount = sessions.filter(
 				(session) => session.completed === true,
 			).length;
+			const upcomingSessionCount = sessions.filter((session) =>
+				["notStarted", "started"].includes(getSessionExecutionStatus(session)),
+			).length;
+			const hasOpenRollingWindow =
+				plan.rollingPlanEnabled === true && upcomingSessionCount > 0;
 			const currentSession =
-				sessions.find((session) => session.completed !== true) ??
+				sessions.find(
+					(session) =>
+						["notStarted", "started"].includes(
+							getSessionExecutionStatus(session),
+						) && session.planningStatus !== "provisional",
+				) ??
 				sessions.at(-1) ??
 				null;
-			const progressPercent =
-				sessions.length > 0
+			const completedStudyMinutes = sessions.reduce((total, session) => {
+				const status = getSessionExecutionStatus(session);
+				const activeMinutes = Math.min(
+					session.durationMinutes,
+					Math.max(0, (session.activeStudySeconds ?? 0) / 60),
+				);
+				if (status === "completed") {
+					return (
+						total +
+						(activeMinutes > 0 ? activeMinutes : session.durationMinutes)
+					);
+				}
+				return status === "partiallyCompleted" ? total + activeMinutes : total;
+			}, 0);
+			const rollingProgressPercent =
+				plan.targetStudyMinutes && plan.targetStudyMinutes > 0
+					? Math.round(
+							Math.min(1, completedStudyMinutes / plan.targetStudyMinutes) *
+								100,
+						)
+					: 0;
+			const progressPercent = plan.rollingPlanEnabled
+				? hasOpenRollingWindow
+					? Math.min(99, rollingProgressPercent)
+					: rollingProgressPercent
+				: sessions.length > 0
 					? Math.round((completedCount / sessions.length) * 100)
 					: 0;
+			let creationProgress: {
+				questionCount: number;
+				answeredQuestionCount: number;
+				firstUnansweredQuestionIndex: number | null;
+			} | null = null;
+			if (plan.status === "questionsReady") {
+				const questions = plan.knowledgeQuestions ?? [];
+				const answers = await Promise.all(
+					questions.map((question) =>
+						ctx.db
+							.query("learningPlanAnswers")
+							.withIndex("by_learningPlanId_and_questionId", (q) =>
+								q.eq("learningPlanId", plan._id).eq("questionId", question.id),
+							)
+							.unique(),
+					),
+				);
+				const answeredQuestionIds = new Set(
+					answers
+						.filter(
+							(answer): answer is NonNullable<typeof answer> =>
+								answer !== null && answer.answer.trim().length > 0,
+						)
+						.map((answer) => answer.questionId),
+				);
+				const firstUnansweredQuestionIndex = questions.findIndex(
+					(question) => !answeredQuestionIds.has(question.id),
+				);
+
+				creationProgress = {
+					questionCount: questions.length,
+					answeredQuestionCount: answeredQuestionIds.size,
+					firstUnansweredQuestionIndex:
+						firstUnansweredQuestionIndex >= 0
+							? firstUnansweredQuestionIndex
+							: null,
+				};
+			}
 
 			overviews.push({
 				id: plan._id,
 				subject: plan.subject,
 				examTypeLabel: plan.examTypeLabel,
+				topicDescription: plan.topicDescription,
 				status: plan.status,
+				needsSchoolMaterial,
+				diagnosticPlacement: plan.diagnosticPlacement,
+				scopeConfirmedAt: plan.scopeConfirmedAt,
 				progressPercent,
 				completedCount,
 				sessionCount: sessions.length,
+				upcomingSessionCount,
+				rollingPlanEnabled: plan.rollingPlanEnabled === true,
+				hasOpenRollingWindow,
 				examDateKey: plan.examDateKey,
 				examDateLabel: plan.examDateLabel,
 				currentSession: currentSession
@@ -909,8 +1403,10 @@ export const listOverview = query({
 							startTime: currentSession.startTime,
 							durationMinutes: currentSession.durationMinutes,
 							completed: currentSession.completed === true,
+							sessionPurpose: currentSession.sessionPurpose,
 						}
 					: null,
+				creationProgress,
 				updatedAt: plan.updatedAt,
 			});
 		}
@@ -1272,54 +1768,16 @@ export const getAiContext = internalQuery({
 				q.eq("ownerTokenIdentifier", identity.tokenIdentifier),
 			)
 			.take(MAX_LEARNING_TIMES);
-		const occupiedEntries: Array<{
-			dayKey: string;
-			time?: string;
-			durationMinutes?: number;
-		}> = [];
-		const timetableLessons = await getActiveTimetableLessons(
-			ctx,
-			identity.tokenIdentifier,
-		);
-		const seenEntryIds = new Set<string>();
-		for (const dayKey of getLearningPlanCalendarDayKeys(plan.examDateKey)) {
-			for (const queryDayKey of getDayKeyQueryVariants(dayKey)) {
-				const entries = await ctx.db
-					.query("dayEntries")
-					.withIndex("by_ownerTokenIdentifier_and_dayKey", (q) =>
-						q
-							.eq("ownerTokenIdentifier", identity.tokenIdentifier)
-							.eq("dayKey", queryDayKey),
-					)
-					.take(50);
-
-				for (const entry of entries) {
-					if (seenEntryIds.has(entry._id)) continue;
-					seenEntryIds.add(entry._id);
-					occupiedEntries.push({
-						dayKey,
-						time: isExamEntry(entry) ? undefined : entry.time,
-						durationMinutes: entry.durationMinutes,
-					});
-				}
-			}
-			const dayOfWeek = getTimetableDayOfWeek(dayKey);
-			for (const lesson of timetableLessons.filter(
-				(item) => item.dayOfWeek === dayOfWeek,
-			)) {
-				occupiedEntries.push({
-					dayKey,
-					time: lesson.startTime,
-					durationMinutes: getTimetableLessonDuration(lesson) ?? undefined,
-				});
-			}
-		}
+		const occupied = await getSchedulingOccupiedEntries(ctx, {
+			ownerTokenIdentifier: identity.tokenIdentifier,
+			dayKeys: getLearningPlanCalendarDayKeys(plan.examDateKey),
+		});
 
 		return {
 			plan,
 			documents,
 			learningTimes,
-			occupiedEntries,
+			occupiedEntries: occupied.entries,
 			accessKey: buildPlanAccessKey(args.learningPlanId),
 		};
 	},
@@ -1360,23 +1818,64 @@ export const storeKnowledgeQuestions = internalMutation({
 		questions: v.array(planQuestionValidator),
 		sourceSummary: v.string(),
 		topics: v.optional(v.array(learningTopicValidator)),
+		diagnosticPlacement: v.optional(v.literal("firstSession")),
 	},
 	handler: async (ctx, args) => {
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan) throwUserFacingError("Lernplan nicht gefunden.");
+		const topics = normalizeLearningTopics(args.topics ?? []);
+		const normalizedTopicIdByInputId = new Map<string, string>();
+		for (const [index, inputTopic] of (args.topics ?? []).entries()) {
+			const normalizedTopic = topics[index];
+			if (!normalizedTopic) break;
+			const inputId = inputTopic.id.trim();
+			if (inputId && !normalizedTopicIdByInputId.has(inputId)) {
+				normalizedTopicIdByInputId.set(inputId, normalizedTopic.id);
+			}
+		}
+		const questions: StoredKnowledgeQuestion[] = args.questions.map(
+			(question) => {
+				const inputTopicId = question.topicId?.trim();
+				const topicId = inputTopicId
+					? (normalizedTopicIdByInputId.get(inputTopicId) ?? inputTopicId)
+					: undefined;
+				return {
+					...question,
+					id: question.id.trim(),
+					topicId,
+					prompt: normalizeGeneratedGermanText(question.prompt),
+					targetInsight: normalizeGeneratedGermanText(question.targetInsight),
+					options: question.options?.map((option) =>
+						normalizeGeneratedGermanText(option),
+					),
+					correctAnswer: question.correctAnswer
+						? normalizeGeneratedGermanText(question.correctAnswer)
+						: undefined,
+					idealAnswer: question.idealAnswer
+						? normalizeGeneratedGermanText(question.idealAnswer)
+						: undefined,
+					explanation: question.explanation
+						? normalizeGeneratedGermanText(question.explanation)
+						: undefined,
+					evaluationKeywords: question.evaluationKeywords?.map((keyword) =>
+						normalizeGeneratedGermanText(keyword),
+					),
+				};
+			},
+		);
+		if (args.diagnosticPlacement === "firstSession") {
+			validateFirstSessionDiagnosticQuestions(questions, topics);
+		}
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
-			knowledgeQuestions: args.questions.map((question) => ({
-				...question,
-				prompt: normalizeGeneratedGermanText(question.prompt),
-				targetInsight: normalizeGeneratedGermanText(question.targetInsight),
-				correctAnswer: question.correctAnswer
-					? normalizeGeneratedGermanText(question.correctAnswer)
-					: undefined,
-			})),
+			knowledgeQuestions: questions,
+			diagnosticPlacement: args.diagnosticPlacement,
 			sourceSummary: normalizeGeneratedGermanText(args.sourceSummary),
-			topicMap: normalizeLearningTopics(args.topics ?? []),
+			topicMap: topics,
 			scopeConfirmedAt: undefined,
+			contentGenerationStage: undefined,
+			contentGenerationId: undefined,
+			contentGenerationStartedAt: undefined,
 			status: "questionsReady",
 			updatedAt: Date.now(),
 		});
@@ -1394,6 +1893,11 @@ export const beginContentGeneration = internalMutation({
 		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
 		if (!plan || plan.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		if (plan.diagnosticPlacement !== "firstSession") {
+			throwUserFacingError(
+				"Erstelle zuerst den Wissenscheck neu. Er ist der erste Block jedes Lernplans.",
+			);
 		}
 		if ((plan.topicMap ?? []).length > 0 && !plan.scopeConfirmedAt) {
 			throwUserFacingError("Bestätige zuerst den erkannten Prüfungsstoff.");
@@ -1463,6 +1967,7 @@ export const replaceGeneratedSessions = internalMutation({
 		sessionCompositionVariant: v.optional(sessionCompositionVariantValidator),
 		deferReadyUntilContent: v.optional(v.boolean()),
 		deferFutureContent: v.optional(v.boolean()),
+		rollingWindow: v.optional(v.boolean()),
 		generationId: v.optional(v.string()),
 		sessions: v.array(generatedSessionValidator),
 	},
@@ -1485,27 +1990,156 @@ export const replaceGeneratedSessions = internalMutation({
 			),
 			gaps: args.insight.gaps.map((gap) => normalizeGeneratedGermanText(gap)),
 		};
-		const normalizedSessions = args.sessions.map((session) => ({
-			phase: session.phase,
-			title: normalizeGeneratedGermanText(session.title),
-			dateKey: session.dateKey,
-			dateLabel: session.dateLabel,
-			startTime: session.startTime,
-			durationMinutes: session.durationMinutes,
-			goal: normalizeGeneratedGermanText(session.goal),
-			tasks: session.tasks.map((task) => normalizeGeneratedGermanText(task)),
-			expectedOutcome: normalizeGeneratedGermanText(session.expectedOutcome),
-			compositionVariant:
-				getLearningSessionComposition({
-					phase: session.phase,
-					durationMinutes: session.durationMinutes,
-					variant:
-						args.sessionCompositionVariant ??
-						(session.phase === "theory" ? "split" : "control"),
-				}).length > 1
-					? ("split" as const)
-					: ("control" as const),
-		}));
+		const normalizedSessions: NormalizedGeneratedSession[] = args.sessions.map(
+			(session) => ({
+				phase: session.phase,
+				title: normalizeGeneratedGermanText(session.title),
+				dateKey: session.dateKey,
+				dateLabel: session.dateLabel,
+				startTime: session.startTime,
+				durationMinutes: session.durationMinutes,
+				goal: normalizeGeneratedGermanText(session.goal),
+				tasks: session.tasks.map((task) => normalizeGeneratedGermanText(task)),
+				expectedOutcome: normalizeGeneratedGermanText(session.expectedOutcome),
+				compositionVariant:
+					session.phase === "theory" &&
+					(args.sessionCompositionVariant ?? "split") === "split" &&
+					isLearningSessionCompositionEligible({
+						phase: session.phase,
+						durationMinutes: session.durationMinutes,
+					})
+						? ("split" as const)
+						: ("control" as const),
+			}),
+		);
+		const usesFirstSessionDiagnostic =
+			plan.diagnosticPlacement === "firstSession";
+		const rollingWindow =
+			args.rollingWindow === true || usesFirstSessionDiagnostic;
+		const diagnosticQuestions = plan.knowledgeQuestions ?? [];
+		if (usesFirstSessionDiagnostic) {
+			validateFirstSessionDiagnosticQuestions(
+				diagnosticQuestions,
+				plan.topicMap,
+			);
+		}
+		const adaptationRevision = rollingWindow
+			? (plan.adaptationRevision ?? 0) + 1
+			: (plan.adaptationRevision ?? 0);
+		const sourceTopics =
+			plan.topicMap && plan.topicMap.length > 0
+				? plan.topicMap
+				: normalizeLearningTopics([
+						{
+							id: "exam-scope",
+							title: plan.topicDescription,
+							learningGoal: plan.topicDescription,
+							keywords: [plan.subject],
+							priority: "high" as const,
+						},
+					]);
+		const firstTarget = rollingWindow
+			? selectNextAdaptiveLearningTarget({
+					topics: sourceTopics,
+					initialReadiness: plan.topicReadiness ?? [],
+					evidence: [],
+				})
+			: null;
+		const secondTarget =
+			rollingWindow && firstTarget
+				? selectNextAdaptiveLearningTarget({
+						topics: sourceTopics,
+						initialReadiness: plan.topicReadiness ?? [],
+						evidence: [
+							{
+								topicId: firstTarget.topicId,
+								dimension: firstTarget.dimension,
+								rating: "correct",
+								sessionId: "projected-first-session",
+								createdAt: Date.now(),
+							},
+						],
+						history: [
+							{
+								topicId: firstTarget.topicId,
+								dimension: firstTarget.dimension,
+								targetedAt: Date.now(),
+							},
+						],
+					})
+				: null;
+		const sessionsToStore: NormalizedGeneratedSession[] =
+			usesFirstSessionDiagnostic
+				? (() => {
+						const diagnosticSlot = normalizedSessions[0];
+						const provisionalSlot = normalizedSessions[1];
+						if (!diagnosticSlot || !provisionalSlot) {
+							throwUserFacingError(
+								"Für den Wissenscheck und den nächsten Lernschritt werden zwei freie Lernzeiten benötigt.",
+							);
+						}
+						return [
+							{
+								...diagnosticSlot,
+								phase: "practice",
+								title: "Wissenscheck",
+								compositionVariant: "control",
+								sessionPurpose: "diagnostic",
+								goal: "Zeige mit kurzen Aufgaben, was du bereits sicher kannst.",
+								tasks: [
+									"Beantworte 5 bis 10 kurze Fragen ohne Lernhilfen.",
+									"Nutze dein aktuelles Wissen; der nächste Lernschritt wird danach angepasst.",
+								],
+								expectedOutcome:
+									"Dein aktueller Wissensstand ist erfasst und bestimmt den nächsten Lernschritt.",
+								planningStatus: "committed",
+								adaptationRevision,
+							},
+							firstTarget
+								? {
+										...applyAdaptiveTargetToSession(
+											provisionalSlot,
+											firstTarget,
+											"provisional",
+											adaptationRevision,
+										),
+										sessionPurpose: "learning" as const,
+									}
+								: {
+										...provisionalSlot,
+										sessionPurpose: "learning" as const,
+										planningStatus: "provisional" as const,
+										adaptationRevision,
+									},
+						];
+					})()
+				: rollingWindow
+					? normalizedSessions.slice(0, 2).flatMap((session, index) => {
+							const target = index === 0 ? firstTarget : secondTarget;
+							if (!target && index > 0) return [];
+							return [
+								target
+									? {
+											...applyAdaptiveTargetToSession(
+												session,
+												target,
+												index === 0 ? "committed" : "provisional",
+												adaptationRevision,
+											),
+											sessionPurpose: "learning" as const,
+										}
+									: {
+											...session,
+											sessionPurpose: "learning" as const,
+											planningStatus: "committed" as const,
+											adaptationRevision,
+										},
+							];
+						})
+					: normalizedSessions.map((session) => ({
+							...session,
+							sessionPurpose: "learning" as const,
+						}));
 
 		const existingSessions = await ctx.db
 			.query("learningPlanSessions")
@@ -1526,10 +2160,16 @@ export const replaceGeneratedSessions = internalMutation({
 
 		const now = Date.now();
 		const sessionIds: Id<"learningPlanSessions">[] = [];
-		for (const [index, session] of normalizedSessions.entries()) {
+		const contentSessionIds: Id<"learningPlanSessions">[] = [];
+		for (const [index, session] of sessionsToStore.entries()) {
+			const isDiagnostic = session.sessionPurpose === "diagnostic";
 			const shouldPrepareContent =
+				!isDiagnostic &&
 				args.deferReadyUntilContent &&
-				(!args.deferFutureContent || index === 0);
+				(!args.deferFutureContent ||
+					(rollingWindow
+						? session.planningStatus !== "provisional"
+						: index === 0));
 			const sessionId = await ctx.db.insert("learningPlanSessions", {
 				ownerTokenIdentifier: plan.ownerTokenIdentifier,
 				learningPlanId: args.learningPlanId,
@@ -1537,14 +2177,29 @@ export const replaceGeneratedSessions = internalMutation({
 				...(session.compositionVariant === "split"
 					? { knowledgeValidationStatus: "pending" as const }
 					: {}),
-				...(shouldPrepareContent
-					? { contentGenerationStatus: "queued" as const }
-					: {}),
+				...(isDiagnostic
+					? {
+							contentGenerationStatus: "ready" as const,
+							contentGeneratedAt: now,
+						}
+					: shouldPrepareContent
+						? { contentGenerationStatus: "queued" as const }
+						: {}),
 				sortOrder: index,
 				createdAt: now,
 				updatedAt: now,
 			});
 			sessionIds.push(sessionId);
+			if (isDiagnostic) {
+				await insertFirstSessionDiagnosticItems(ctx, {
+					plan,
+					sessionId,
+					questions: diagnosticQuestions,
+					now,
+				});
+			} else if (shouldPrepareContent) {
+				contentSessionIds.push(sessionId);
+			}
 		}
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {
@@ -1552,6 +2207,8 @@ export const replaceGeneratedSessions = internalMutation({
 			planningHint: args.planningHint,
 			sourceSummary: normalizedSourceSummary,
 			insight: normalizedInsight,
+			rollingPlanEnabled: rollingWindow,
+			adaptationRevision,
 			sessionCompositionVariant: args.sessionCompositionVariant ?? "split",
 			status: args.deferReadyUntilContent ? "questionsReady" : "generated",
 			contentGenerationStage: args.deferReadyUntilContent
@@ -1560,7 +2217,9 @@ export const replaceGeneratedSessions = internalMutation({
 			updatedAt: now,
 		});
 
-		return args.deferReadyUntilContent ? { sessionIds } : null;
+		return args.deferReadyUntilContent
+			? { sessionIds, contentSessionIds }
+			: null;
 	},
 });
 
@@ -1648,15 +2307,13 @@ export const finalizeContentGeneration = internalMutation({
 				q.eq("learningPlanId", args.learningPlanId),
 			)
 			.take(50);
-		const failedSessionCount = sessions.filter(
+		const committedSessions = sessions.filter(isContentCommittedSession);
+		const failedSessionCount = committedSessions.filter(
 			(session) => session.contentGenerationStatus === "failed",
 		).length;
-		const readySessionCount = sessions.filter(
+		const readySessionCount = committedSessions.filter(
 			(session) => session.contentGenerationStatus === "ready",
 		).length;
-		const committedSessions = sessions.filter(
-			(session) => session.contentGenerationStatus !== undefined,
-		);
 		const isReady =
 			committedSessions.length > 0 &&
 			readySessionCount === committedSessions.length;
@@ -1713,6 +2370,7 @@ export const claimIncompleteContentGenerationSessions = internalMutation({
 		const sessionIds = sessions
 			.filter(
 				(session) =>
+					session.planningStatus !== "provisional" &&
 					session.contentGenerationStatus !== undefined &&
 					session.contentGenerationStatus !== "ready",
 			)
@@ -1777,9 +2435,13 @@ export const updateSession = mutation({
 		if (args.durationMinutes <= 0) {
 			throwUserFacingError("Die Dauer muss größer als 0 sein.");
 		}
+		if (session.sessionPurpose === "diagnostic" && args.phase !== "practice") {
+			throwUserFacingError("Der Wissenscheck bleibt eine Fragensession.");
+		}
 		const contentInvalidated =
-			session.phase !== args.phase ||
-			session.durationMinutes !== args.durationMinutes;
+			session.sessionPurpose !== "diagnostic" &&
+			(session.phase !== args.phase ||
+				session.durationMinutes !== args.durationMinutes);
 		await assertNoScheduleConflict(ctx, {
 			ownerTokenIdentifier,
 			dayKey: args.dateKey,
@@ -1883,6 +2545,7 @@ export const addSession = mutation({
 			learningPlanId: args.learningPlanId,
 			phase: "practice",
 			title: "Zusatzübung",
+			sessionPurpose: "learning",
 			dateKey,
 			dateLabel: formatDateLabel(nextDate),
 			startTime,
@@ -1932,19 +2595,34 @@ export const syncSessionsToCalendar = mutation({
 			.take(50);
 
 		for (const session of sessions) {
-			await syncSessionDayEntry(ctx, plan, session);
+			if (session.planningStatus !== "provisional") {
+				await syncSessionDayEntry(ctx, plan, session);
+			}
 		}
 
 		return sessions.length;
 	},
 });
 
+const advanceOwnedRollingLearningPlan = (
+	ctx: MutationCtx,
+	plan: Doc<"learningPlans">,
+) =>
+	advanceRollingLearningPlan(ctx, plan, {
+		clearSession: clearSessionDayEntry,
+		syncSession: syncSessionDayEntry,
+	});
 export const startSession = mutation({
 	args: {
 		sessionId: v.id("learningPlanSessions"),
 	},
 	handler: async (ctx, args) => {
 		const { session, plan } = await getOwnedSessionAndPlan(ctx, args.sessionId);
+		if (session.planningStatus === "provisional") {
+			throwUserFacingError(
+				"Dieser Lernblock ist nur eine Vorschau und kann sich noch ändern.",
+			);
+		}
 		const status = getSessionExecutionStatus(session);
 		if (status !== "notStarted") {
 			throwUserFacingError("Dieser Lernblock wurde bereits gestartet.");
@@ -1988,6 +2666,14 @@ export const recordSessionOutcome = mutation({
 		if (status !== "started") {
 			throwUserFacingError("Starte den Lernblock zuerst.");
 		}
+		if (session.sessionPurpose === "diagnostic") {
+			if (args.outcome !== "completed") {
+				throwUserFacingError(
+					"Schließe den Wissenscheck vollständig ab, bevor der nächste Lernschritt festgelegt wird.",
+				);
+			}
+			await assertDiagnosticIsComplete(ctx, session);
+		}
 
 		const now = Date.now();
 		const updatedSession = await patchSessionAndSyncedEntry(
@@ -2001,11 +2687,13 @@ export const recordSessionOutcome = mutation({
 				completed: args.outcome === "completed",
 			},
 		);
+		const rollingUpdate = await advanceOwnedRollingLearningPlan(ctx, plan);
 
 		return {
 			...learningSessionEventPayload(plan, updatedSession ?? session),
 			outcome: args.outcome,
 			outcomeAt: now,
+			rollingUpdate,
 		};
 	},
 });
@@ -2074,27 +2762,79 @@ export const adjustMissedSession = mutation({
 			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
 				q.eq("learningPlanId", session.learningPlanId),
 			)
-			.order("desc")
-			.take(1);
-		const sortOrder = (sessions[0]?.sortOrder ?? -1) + 1;
+			.order("asc")
+			.take(50);
+		const provisional = plan.rollingPlanEnabled
+			? sessions.find((candidate) => candidate.planningStatus === "provisional")
+			: undefined;
+		const sortOrder = plan.rollingPlanEnabled
+			? session.sortOrder + 1
+			: (sessions.at(-1)?.sortOrder ?? -1) + 1;
+		if (provisional && provisional.sortOrder <= sortOrder) {
+			await ctx.db.patch("learningPlanSessions", provisional._id, {
+				sortOrder: sortOrder + 1,
+				updatedAt: Date.now(),
+			});
+		}
 		const now = Date.now();
+		const isDiagnosticRecovery = session.sessionPurpose === "diagnostic";
+		const diagnosticQuestions = plan.knowledgeQuestions ?? [];
+		if (isDiagnosticRecovery) {
+			validateFirstSessionDiagnosticQuestions(
+				diagnosticQuestions,
+				plan.topicMap,
+			);
+		}
 		const newSessionId = await ctx.db.insert("learningPlanSessions", {
 			ownerTokenIdentifier,
 			learningPlanId: session.learningPlanId,
-			phase: session.phase,
-			title: `Recovery: ${session.title}`,
+			phase: isDiagnosticRecovery ? "practice" : session.phase,
+			title: isDiagnosticRecovery
+				? "Wissenscheck nachholen"
+				: `Recovery: ${session.title}`,
+			sessionPurpose: session.sessionPurpose ?? "learning",
 			dateKey: args.dateKey,
 			dateLabel: args.dateLabel,
 			startTime: args.startTime,
 			durationMinutes: args.durationMinutes,
-			goal: "Den verpassten Lernblock kleiner neu starten.",
-			tasks: session.tasks.slice(0, 2),
+			goal: isDiagnosticRecovery
+				? "Zeige mit kurzen Aufgaben, was du bereits sicher kannst."
+				: "Den verpassten Lernblock kleiner neu starten.",
+			tasks: isDiagnosticRecovery
+				? ["Beantworte die kurzen Fragen ohne Lernhilfen."]
+				: session.tasks.slice(0, 2),
 			expectedOutcome: session.expectedOutcome,
 			adjustedFromSessionId: session._id,
+			...(isDiagnosticRecovery
+				? {
+						contentGenerationStatus: "ready" as const,
+						contentGeneratedAt: now,
+						planningStatus: "committed" as const,
+						adaptationRevision: plan.adaptationRevision,
+					}
+				: plan.rollingPlanEnabled
+					? {
+							contentGenerationStatus: "queued" as const,
+							planningStatus: "committed" as const,
+							targetTopicIds: session.targetTopicIds,
+							targetEvidenceDimension: session.targetEvidenceDimension,
+							selectionReason:
+								"Neu geplant: Du startest den verpassten Lernblock kleiner, bevor der nächste Schwerpunkt festgelegt wird.",
+							adaptationRevision: plan.adaptationRevision,
+						}
+					: {}),
 			sortOrder,
 			createdAt: now,
 			updatedAt: now,
 		});
+		if (isDiagnosticRecovery) {
+			await insertFirstSessionDiagnosticItems(ctx, {
+				plan,
+				sessionId: newSessionId,
+				questions: diagnosticQuestions,
+				now,
+			});
+		}
 
 		await patchSessionAndSyncedEntry(ctx, plan, session, {
 			executionStatus: "adjusted",
@@ -2105,6 +2845,13 @@ export const adjustMissedSession = mutation({
 		const newSession = await ctx.db.get("learningPlanSessions", newSessionId);
 		if (newSession && plan.status === "accepted") {
 			await syncSessionDayEntry(ctx, plan, newSession);
+		}
+		if (plan.rollingPlanEnabled) {
+			await ctx.db.patch("learningPlans", plan._id, {
+				contentGenerationStage: isDiagnosticRecovery ? "ready" : "content",
+				contentGenerationStartedAt: isDiagnosticRecovery ? undefined : now,
+				updatedAt: now,
+			});
 		}
 
 		return {
@@ -2127,6 +2874,10 @@ export const setSessionCompleted = mutation({
 	},
 	handler: async (ctx, args) => {
 		const { session, plan } = await getOwnedSessionAndPlan(ctx, args.sessionId);
+		if (args.completed && getSessionExecutionStatus(session) === "completed") {
+			return true;
+		}
+		if (args.completed) await assertDiagnosticIsComplete(ctx, session);
 		const now = Date.now();
 		await patchSessionAndSyncedEntry(ctx, plan, session, {
 			completed: args.completed,
@@ -2135,6 +2886,9 @@ export const setSessionCompleted = mutation({
 			outcomeAt: args.completed ? now : undefined,
 			missedReason: undefined,
 		});
+		if (args.completed) {
+			await advanceOwnedRollingLearningPlan(ctx, plan);
+		}
 
 		return args.completed;
 	},
@@ -2150,6 +2904,11 @@ export const removeSession = mutation({
 		const session = await ctx.db.get("learningPlanSessions", args.id);
 		if (!session || session.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			return null;
+		}
+		if (session.sessionPurpose === "diagnostic") {
+			throwUserFacingError(
+				"Der Wissenscheck ist der erste Block dieses Lernplans und kann nicht entfernt werden.",
+			);
 		}
 
 		if (session.dayEntryId) {
@@ -2184,9 +2943,18 @@ export const acceptPlan = mutation({
 			throwUserFacingError("Es gibt noch keine Lerntage zum Eintragen.");
 		}
 		if (
+			plan.diagnosticPlacement !== "firstSession" ||
+			sessions[0]?.sessionPurpose !== "diagnostic"
+		) {
+			throwUserFacingError(
+				"Erstelle zuerst den Wissenscheck neu. Er ist der erste Block jedes Lernplans.",
+			);
+		}
+		if (
 			plan.contentGenerationStage &&
 			sessions.some(
 				(session) =>
+					session.planningStatus !== "provisional" &&
 					session.contentGenerationStatus !== undefined &&
 					session.contentGenerationStatus !== "ready",
 			)
@@ -2212,7 +2980,9 @@ export const acceptPlan = mutation({
 		}
 
 		for (const session of sessions) {
-			await syncSessionDayEntry(ctx, plan, session);
+			if (session.planningStatus !== "provisional") {
+				await syncSessionDayEntry(ctx, plan, session);
+			}
 		}
 
 		await ctx.db.patch("learningPlans", args.learningPlanId, {

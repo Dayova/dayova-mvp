@@ -1,140 +1,242 @@
 import { ActivityIndicator, View } from "react-native";
 import type { Id } from "#convex/_generated/dataModel";
 import { Button } from "~/components/ui/button";
-import { Globe, GraduationCap, Plus } from "~/components/ui/icon";
-import { ActionSurface } from "~/components/ui/surface";
+import { GraduationCap, Plus } from "~/components/ui/icon";
+import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { Textarea } from "~/components/ui/textarea";
 import { MaterialCard } from "~/features/learning-plans/learning-plan-ui";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
+import { useDayovaTheme } from "~/lib/theme";
 
 type PendingUploadAction = "camera" | "files";
-type MaterialSourceKind = "school" | "external";
 
 function SetupContinueButton({
 	canContinue,
 	isBusy,
+	label = "Weiter",
 	onPress,
 }: {
 	canContinue: boolean;
 	isBusy: boolean;
+	label?: string;
 	onPress: () => void;
 }) {
 	return (
 		<Button
-			accessibilityLabel={isBusy ? "Weiter, wird geladen" : "Weiter"}
+			accessibilityLabel={isBusy ? `${label}, wird geladen` : label}
 			accessibilityLiveRegion={isBusy ? "polite" : undefined}
 			accessibilityState={{ busy: isBusy, disabled: !canContinue }}
 			disabled={!canContinue}
 			onPress={onPress}
 		>
-			{isBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text>Weiter</Text>}
+			{isBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text>{label}</Text>}
 		</Button>
 	);
 }
 
+function UploadActivity({
+	isUploading,
+	openingUploadAction,
+}: {
+	isUploading: boolean;
+	openingUploadAction: PendingUploadAction | null;
+}) {
+	const { colors } = useDayovaTheme();
+	if (!isUploading && !openingUploadAction) return null;
+
+	return (
+		<View className="mt-5 flex-row items-center gap-3 rounded-[24px] bg-system-subtle px-4 py-4">
+			<ActivityIndicator color={colors.primaryStrong} />
+			<Text className="flex-1 font-poppins text-body-4 text-secondary-text">
+				{openingUploadAction === "files"
+					? "Dateiauswahl wird geöffnet …"
+					: openingUploadAction === "camera"
+						? "Kamera wird geöffnet …"
+						: "Material wird hochgeladen …"}
+			</Text>
+		</View>
+	);
+}
+
+function SetupError({ message }: { message: string | null }) {
+	if (!message) return null;
+
+	return (
+		<Text
+			selectable
+			accessibilityRole="alert"
+			className="mt-4 w-full font-poppins text-body-4 text-destructive"
+		>
+			{message}
+		</Text>
+	);
+}
+
+export function MaterialUploadStepLead({
+	mode = "screen",
+}: {
+	mode?: "screen" | "artwork";
+}) {
+	const fixedTextScale = mode === "artwork";
+	return (
+		<>
+			<Text
+				allowFontScaling={!fixedTextScale}
+				className="font-poppins font-semibold text-body-1 text-text"
+			>
+				Schulmaterial hinzufügen
+			</Text>
+			<Text
+				allowFontScaling={!fixedTextScale}
+				className="mt-2 font-poppins text-body-3 text-secondary-text"
+			>
+				Deine Unterlagen bilden die Grundlage für deinen Lernplan.
+			</Text>
+		</>
+	);
+}
+
+type MaterialUploadActionCardProps =
+	| {
+			canUpload: boolean;
+			hasSchoolMaterial: boolean;
+			mode?: "screen";
+			onPress: () => void;
+	  }
+	| {
+			canUpload?: never;
+			hasSchoolMaterial: boolean;
+			mode: "artwork";
+			onPress?: never;
+	  };
+
+export function MaterialUploadActionCard(props: MaterialUploadActionCardProps) {
+	const { hasSchoolMaterial } = props;
+	const mode = props.mode ?? "screen";
+	const { colors } = useDayovaTheme();
+	const fixedTextScale = mode === "artwork";
+	const content = (
+		<>
+			<View className="h-12 w-12 items-center justify-center rounded-[18px] bg-system-subtle">
+				<GraduationCap
+					size={24}
+					color={colors.primaryStrong}
+					strokeWidth={2.1}
+				/>
+			</View>
+			<View className="min-w-0 flex-1 px-4">
+				<Text
+					allowFontScaling={!fixedTextScale}
+					className="font-poppins font-semibold text-body-2 text-text"
+				>
+					{hasSchoolMaterial
+						? "Weiteres Schulmaterial"
+						: "Schulmaterial hochladen"}
+				</Text>
+				<Text
+					allowFontScaling={!fixedTextScale}
+					className="mt-1 font-poppins text-body-4 text-secondary-text"
+				>
+					Themenblatt, Arbeitsblätter oder Mitschriften
+				</Text>
+			</View>
+			<Plus size={22} color={colors.primaryStrong} strokeWidth={2.2} />
+		</>
+	);
+	const className =
+		"mt-7 min-h-[112px] flex-row items-center rounded-[32px] px-5 py-5";
+
+	if (props.mode === "artwork") {
+		return (
+			<Surface
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				className={className}
+				variant="soft"
+			>
+				{content}
+			</Surface>
+		);
+	}
+
+	return (
+		<ActionSurface
+			accessibilityHint="Öffnet die Auswahl zum Scannen oder Hochladen von Schulmaterial."
+			accessibilityLabel={
+				hasSchoolMaterial
+					? "Weiteres Schulmaterial hinzufügen"
+					: "Schulmaterial hinzufügen"
+			}
+			accessibilityRole="button"
+			disabled={!props.canUpload}
+			onPress={() => props.onPress()}
+			className={className}
+			variant="soft"
+		>
+			{content}
+		</ActionSurface>
+	);
+}
+
 export function MaterialUploadStep({
+	canUpload,
 	canContinue,
 	documents,
 	errorMessage,
 	isBusy,
+	isUploading,
 	onContinue,
 	onOpenUpload,
 	onRemoveDocument,
+	onSkip,
 	openingUploadAction,
+	showSkip = true,
 }: {
+	canUpload: boolean;
 	canContinue: boolean;
 	documents: LearningPlanSnapshot["documents"];
 	errorMessage: string | null;
 	isBusy: boolean;
+	isUploading: boolean;
 	onContinue: () => void;
-	onOpenUpload: (sourceKind: MaterialSourceKind) => void;
+	onOpenUpload: () => void;
 	onRemoveDocument: (id: Id<"learningPlanDocuments">) => void;
+	onSkip: () => void;
 	openingUploadAction: PendingUploadAction | null;
+	showSkip?: boolean;
 }) {
 	const schoolDocuments = documents.filter(
 		(document) => document.sourceKind === "school",
 	);
-	const externalDocuments = documents.filter(
-		(document) => document.sourceKind === "external",
-	);
+	const hasSchoolMaterial = schoolDocuments.length > 0;
 
 	return (
 		<View className="flex-1">
-			<Text className="font-poppins font-semibold text-body-1 text-text">
-				Gib Dayova deine Unterlagen
-			</Text>
-			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
-				Schulmaterial bestimmt den wahrscheinlichen Prüfungsstoff. Zusätzliche
-				Lernhilfen unterstützen später beim Verstehen und Üben.
-			</Text>
+			<MaterialUploadStepLead />
+			<MaterialUploadActionCard
+				canUpload={canUpload}
+				hasSchoolMaterial={hasSchoolMaterial}
+				onPress={onOpenUpload}
+			/>
 
-			<View className="mt-7 gap-4">
-				<ActionSurface
-					accessibilityHint="Öffnet die Auswahl für Unterlagen deiner Schule oder Lehrkraft."
-					accessibilityLabel="Material von deiner Schule hinzufügen"
-					accessibilityRole="button"
-					disabled={!canContinue}
-					onPress={() => onOpenUpload("school")}
-					className="min-h-[132px] flex-row items-center rounded-[32px] px-5 py-5"
-					variant="soft"
-				>
-					<View className="h-14 w-14 items-center justify-center rounded-[20px] bg-system-subtle">
-						<GraduationCap size={27} color="#00A0E6" strokeWidth={2.1} />
-					</View>
-					<View className="min-w-0 flex-1 px-4">
-						<Text className="font-poppins font-semibold text-body-2 text-text">
-							Von deiner Schule
-						</Text>
-						<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-							Themenblatt, Arbeitsblätter, Mitschriften oder Hinweise deiner
-							Lehrkraft
-						</Text>
-					</View>
-					<Plus size={22} color="#00A0E6" strokeWidth={2.2} />
-				</ActionSurface>
-
-				<ActionSurface
-					accessibilityHint="Öffnet die Auswahl für zusätzliche externe Lernhilfen."
-					accessibilityLabel="Zusätzliche Lernhilfe hinzufügen"
-					accessibilityRole="button"
-					disabled={!canContinue}
-					onPress={() => onOpenUpload("external")}
-					className="min-h-[118px] flex-row items-center rounded-[32px] px-5 py-5"
-					variant="flat"
-				>
-					<View className="h-14 w-14 items-center justify-center rounded-[20px] bg-light-2">
-						<Globe size={27} color="#697586" strokeWidth={2.1} />
-					</View>
-					<View className="min-w-0 flex-1 px-4">
-						<Text className="font-poppins font-semibold text-body-2 text-text">
-							Zusätzliche Lernhilfen
-						</Text>
-						<Text className="mt-1 font-poppins text-body-4 text-secondary-text">
-							Optional · Erklärungen oder Materialien aus anderen Quellen
-						</Text>
-					</View>
-					<Plus size={22} color="#697586" strokeWidth={2.2} />
-				</ActionSurface>
-			</View>
-
-			{isBusy || openingUploadAction ? (
-				<View className="mt-5 flex-row items-center gap-3 rounded-[24px] bg-system-subtle px-4 py-4">
-					<ActivityIndicator color="#00A0E6" />
-					<Text className="flex-1 font-poppins text-body-4 text-secondary-text">
-						{openingUploadAction === "files"
-							? "Dateiauswahl wird geöffnet …"
-							: openingUploadAction === "camera"
-								? "Kamera wird geöffnet …"
-								: "Material wird hochgeladen …"}
-					</Text>
-				</View>
+			{showSkip && !hasSchoolMaterial ? (
+				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
+					Dein Lernplan-Entwurf bleibt gespeichert. Schulmaterial kannst du
+					später ergänzen.
+				</Text>
 			) : null}
 
-			{schoolDocuments.length > 0 ? (
+			<UploadActivity
+				isUploading={isUploading}
+				openingUploadAction={openingUploadAction}
+			/>
+
+			{hasSchoolMaterial ? (
 				<View className="mt-7">
 					<Text className="mb-3 font-poppins font-semibold text-body-4 text-secondary-text">
-						Von deiner Schule
+						Hochgeladen
 					</Text>
 					{schoolDocuments.map((document) => (
 						<MaterialCard
@@ -147,95 +249,61 @@ export function MaterialUploadStep({
 				</View>
 			) : null}
 
-			{externalDocuments.length > 0 ? (
-				<View className="mt-4">
-					<Text className="mb-3 font-poppins font-semibold text-body-4 text-secondary-text">
-						Zusätzliche Lernhilfen
-					</Text>
-					{externalDocuments.map((document) => (
-						<MaterialCard
-							key={document.id}
-							name={document.fileName}
-							size={document.fileSizeBytes}
-							onRemove={() => onRemoveDocument(document.id)}
-						/>
-					))}
-				</View>
-			) : null}
-
-			{errorMessage ? (
-				<Text
-					selectable
-					accessibilityRole="alert"
-					className="mb-4 w-full font-poppins text-body-4 text-destructive"
-				>
-					{errorMessage}
-				</Text>
-			) : null}
-			<View className="mt-auto w-full pt-8">
-				<SetupContinueButton
-					canContinue={canContinue}
-					isBusy={isBusy}
-					onPress={onContinue}
-				/>
+			<SetupError message={errorMessage} />
+			<View className="mt-auto w-full gap-3 pt-8">
+				{hasSchoolMaterial ? (
+					<SetupContinueButton
+						canContinue={canContinue}
+						isBusy={isBusy}
+						onPress={onContinue}
+					/>
+				) : showSkip ? (
+					<Button
+						accessibilityHint="Speichert den Lernplan-Entwurf. Material kann später hochgeladen werden."
+						variant="neutral"
+						disabled={!canUpload}
+						onPress={onSkip}
+					>
+						<Text>Ohne Lernmaterial erstellen</Text>
+					</Button>
+				) : null}
 			</View>
 		</View>
 	);
 }
 
-export function TeacherGuidanceStep({
+export function RequiredTopicsStep({
 	canContinue,
 	errorMessage,
-	hasSchoolMaterial,
 	isBusy,
-	onChangeTeacherGuidance,
+	onChangeTopics,
 	onContinue,
-	teacherGuidance,
+	topics,
 }: {
 	canContinue: boolean;
 	errorMessage: string | null;
-	hasSchoolMaterial: boolean;
 	isBusy: boolean;
-	onChangeTeacherGuidance: (value: string) => void;
+	onChangeTopics: (value: string) => void;
 	onContinue: () => void;
-	teacherGuidance: string;
+	topics: string;
 }) {
 	return (
 		<View className="flex-1">
 			<Text className="font-poppins font-semibold text-body-1 text-text">
-				Was hat deine Lehrkraft zur Arbeit gesagt?
+				Welche Themen kommen in der Prüfung dran?
 			</Text>
-			<Text className="mt-2 font-poppins text-body-3 text-secondary-text">
-				Schreibe nur auf, was ausdrücklich genannt wurde. Dayova leitet den
-				Prüfungsstoff anschließend aus diesem Hinweis und deinem Schulmaterial
-				ab.
+			<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
+				Nenne alle Themen, die du für diese Prüfung lernen musst.
 			</Text>
 			<Textarea
-				accessibilityLabel="Hinweis der Lehrkraft"
-				className="mt-4 min-h-[160px] flex-1 py-2"
-				value={teacherGuidance}
-				onChangeText={onChangeTeacherGuidance}
-				placeholder="Zum Beispiel: Kapitel 3 und 4, keine Beweisaufgaben."
+				accessibilityLabel="Prüfungsthemen"
+				className="mt-6 h-48 flex-none rounded-[24px] border border-border bg-card px-4 py-4"
+				value={topics}
+				onChangeText={onChangeTopics}
+				placeholder="Zum Beispiel: Lineare Funktionen, Steigung berechnen und den y-Achsenabschnitt bestimmen."
 			/>
-			{hasSchoolMaterial ? (
-				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-					Optional – dein hochgeladenes Schulmaterial reicht als Grundlage.
-				</Text>
-			) : (
-				<Text className="mt-3 font-poppins text-body-4 text-secondary-text">
-					Ohne Schulmaterial brauchen wir hier mindestens einen konkreten
-					Hinweis deiner Lehrkraft.
-				</Text>
-			)}
-			{errorMessage ? (
-				<Text
-					selectable
-					accessibilityRole="alert"
-					className="mt-4 font-poppins text-body-4 text-destructive"
-				>
-					{errorMessage}
-				</Text>
-			) : null}
+
+			<SetupError message={errorMessage} />
 			<View className="mt-auto pt-8">
 				<SetupContinueButton
 					canContinue={canContinue}

@@ -15,6 +15,13 @@ const lesson = (
 });
 
 describe("timetable lesson editor", () => {
+	test("creates a manual lesson for the visible weekday", () => {
+		expect(createEmptyTimetableLesson("lesson", 4)).toMatchObject({
+			key: "lesson",
+			dayOfWeek: 4,
+		});
+	});
+
 	test("requires a verified lesson", () => {
 		expect(getTimetableLessonError([])).toBe(
 			"Füge mindestens eine Unterrichtsstunde hinzu.",

@@ -1,17 +1,58 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { SubscriptionScreen } from "./subscription-screen";
 
+jest.mock("~/components/ui/icon", () => ({
+	ArrowLeft: () => null,
+	Check: () => null,
+}));
+
 const mockBack = jest.fn();
+const mockOpenExternalUrl = jest.fn(async (_url?: string) => true);
+
+jest.mock("~/lib/open-external-url", () => ({
+	openExternalUrl: (url?: string) => mockOpenExternalUrl(url),
+}));
+jest.mock("~/components/ui/dayova-sheet-frame", () => ({
+	DayovaSheetFrame: ({
+		visible,
+		children,
+	}: {
+		visible: boolean;
+		children: ReactNode;
+	}) => (visible ? children : null),
+}));
 const mockReplace = jest.fn();
-const mockGetPlans = jest.fn(async () => []);
+const storePlans = [
+	{
+		billingPeriod: "annual" as const,
+		packageIdentifier: "$rc_annual",
+		price: "155,88 €",
+		pricePerMonth: "12,99 €",
+		productIdentifier: "test_store_annual",
+	},
+	{
+		billingPeriod: "monthly" as const,
+		packageIdentifier: "$rc_monthly",
+		price: "14,99 €",
+		pricePerMonth: "14,99 €",
+		productIdentifier: "test_store_monthly",
+	},
+];
+const mockGetPlans = jest.fn(async () => storePlans);
+const mockPurchase = jest.fn(async () => ({ status: "purchased" as const }));
+const mockRestore = jest.fn(async () => ({ status: "purchased" as const }));
+const mockRefreshPaidAccess = jest.fn(async () => true);
 let mockCanGoBack = true;
 let mockStoreInitializationError: Error | null = null;
 
 beforeEach(() => {
 	jest.clearAllMocks();
-	mockGetPlans.mockResolvedValue([]);
+	mockGetPlans.mockResolvedValue(storePlans);
+	mockPurchase.mockResolvedValue({ status: "purchased" });
+	mockRestore.mockResolvedValue({ status: "purchased" });
+	mockRefreshPaidAccess.mockResolvedValue(true);
 	mockCanGoBack = true;
 	mockStoreInitializationError = null;
 });
@@ -43,30 +84,16 @@ jest.mock("expo-status-bar", () => {
 	};
 });
 
-jest.mock("react-native-qrcode-svg", () => {
-	const React = jest.requireActual<typeof import("react")>("react");
-	return {
-		__esModule: true,
-		default: (props: Record<string, unknown>) =>
-			React.createElement("QRCode", props),
-	};
-});
-
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ bottom: 34, left: 0, right: 0, top: 59 }),
 }));
 
 jest.mock("~/context/AccessContext", () => ({
-	useAccess: () => ({
-		access: null,
-		refreshPaidAccess: jest.fn(),
-	}),
+	useAccess: () => ({ refreshPaidAccess: mockRefreshPaidAccess }),
 }));
 
 jest.mock("~/context/AuthContext", () => ({
-	useAuthSession: () => ({
-		user: { clerkId: "user_123" },
-	}),
+	useAuthSession: () => ({ user: { clerkId: "user_123" } }),
 }));
 
 jest.mock("~/lib/revenuecat-client", () => ({
@@ -74,15 +101,13 @@ jest.mock("~/lib/revenuecat-client", () => ({
 		if (mockStoreInitializationError) throw mockStoreInitializationError;
 		return {
 			getPlans: mockGetPlans,
-			purchase: jest.fn(),
-			restore: jest.fn(),
+			purchase: mockPurchase,
+			restore: mockRestore,
 		};
 	},
 }));
 
-jest.mock("~/lib/diagnostics", () => ({
-	logDiagnosticError: jest.fn(),
-}));
+jest.mock("~/lib/diagnostics", () => ({ logDiagnosticError: jest.fn() }));
 
 jest.mock("~/lib/runtime-config", () => ({
 	env: {
@@ -92,67 +117,128 @@ jest.mock("~/lib/runtime-config", () => ({
 }));
 
 describe("SubscriptionScreen", () => {
-	test("shows store plans only on the dedicated self-payment page", async () => {
-		const screen = await render(<SubscriptionScreen payer="self" />);
-
-		expect(screen.getByText("Dein Dayova-Abo auswählen")).toBeOnTheScreen();
-		await waitFor(() => {
-			expect(mockGetPlans).toHaveBeenCalledTimes(1);
-			expect(screen.getByText("Tarif wählen")).toBeOnTheScreen();
+	test.each([
+		"failed",
+		"empty",
+	])("offers contact support when Store plans are %s", async (state) => {
+		if (state === "failed")
+			mockGetPlans.mockRejectedValueOnce(new Error("Store unavailable"));
+		else mockGetPlans.mockResolvedValueOnce([]);
+		const screen = await render(<SubscriptionScreen />);
+		const contact = await screen.findByRole("button", {
+			name: "Support kontaktieren",
 		});
-		expect(
-			screen.getByRole("radio", { name: /Jährlich/ }).props.accessibilityState,
-		).toEqual({ checked: false });
-		expect(
-			screen.getByRole("radio", { name: /Monatlich/ }).props.accessibilityState,
-		).toEqual({ checked: true });
-		expect(
-			screen.getByTestId("subscription-payment-surface").props.style,
-		).toEqual(
-			expect.objectContaining({
-				backgroundColor: "#FFFFFF",
-				borderColor: "#4FD8FF",
-			}),
+		expect(screen.getByTestId("subscription-checkout-button")).toBeDisabled();
+		await fireEvent.press(contact);
+		expect(mockOpenExternalUrl).toHaveBeenCalledWith(
+			expect.stringContaining("mailto:kontakt@dayova.de?"),
 		);
+		expect(
+			decodeURIComponent(mockOpenExternalUrl.mock.calls[0][0] ?? ""),
+		).toContain("Bereich: Abonnement");
 	});
 
-	test("shows the parent payment model on its own page", async () => {
-		const screen = await render(<SubscriptionScreen payer="parent" />);
+	test("shows only localized Store plans and complete billing amounts", async () => {
+		const screen = await render(<SubscriptionScreen />);
 
+		expect(screen.getByText("Dayova abonnieren")).toBeOnTheScreen();
+		await waitFor(() => expect(mockGetPlans).toHaveBeenCalledTimes(1));
 		expect(
-			screen.getByText("Mit deinen Eltern freischalten"),
+			screen.getByRole("radio", {
+				name: "Jährlich, 155,88 €. 12,99 € pro Monat bei jährlicher Abrechnung",
+			}),
 		).toBeOnTheScreen();
 		expect(
-			screen.getByText("Elternzahlung kommt mit der Dayova-Webzahlung"),
+			screen.getByRole("radio", {
+				name: "Monatlich, 14,99 €. 14,99 € pro Monat",
+			}),
 		).toBeOnTheScreen();
-		expect(screen.queryByText("Tarif wählen")).not.toBeOnTheScreen();
-		expect(mockGetPlans).not.toHaveBeenCalled();
+		expect(
+			screen.queryByText(/Elternzahlung|QR-Code|Zahlungsseite/),
+		).toBeNull();
+		expect(screen.queryByTestId("subscription-payment-surface")).toBeNull();
+		expect(screen.getByText(/automatisch/)).toBeOnTheScreen();
 	});
 
-	test("returns to payer selection from the subscription page", async () => {
-		const screen = await render(<SubscriptionScreen payer="parent" />);
+	test("purchases the selected Store plan and opens the subscription success screen", async () => {
+		const screen = await render(<SubscriptionScreen />);
+		const annualPlan = await screen.findByRole("radio", {
+			name: /Jährlich, 155,88 €/,
+		});
+		await act(async () => {
+			fireEvent.press(annualPlan);
+		});
 
-		fireEvent.press(screen.getByLabelText("Zurück"));
-		expect(mockBack).toHaveBeenCalledTimes(1);
+		await act(async () => {
+			fireEvent.press(screen.getByTestId("subscription-checkout-button"));
+		});
+
+		await waitFor(() => {
+			expect(mockPurchase).toHaveBeenCalledWith("annual");
+			expect(mockRefreshPaidAccess).toHaveBeenCalledTimes(1);
+			expect(mockReplace).toHaveBeenCalledWith("/subscription-success");
+		});
 	});
 
-	test("returns directly opened subscription links to payer selection", async () => {
+	test("restores existing purchases without replaying the welcome screen", async () => {
+		const screen = await render(<SubscriptionScreen />);
+		await screen.findByText("Käufe wiederherstellen");
+
+		await act(async () => {
+			fireEvent.press(screen.getByText("Käufe wiederherstellen"));
+		});
+
+		await waitFor(() => {
+			expect(mockRestore).toHaveBeenCalledTimes(1);
+			expect(mockReplace).toHaveBeenCalledWith("/home");
+		});
+	});
+
+	test("disables restore and exposes its busy state while a Store action runs", async () => {
+		let finishRestore: (() => void) | undefined;
+		mockRestore.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishRestore = () => resolve({ status: "purchased" });
+				}),
+		);
+		const screen = await render(<SubscriptionScreen />);
+		const restoreButton = await screen.findByTestId("restore-purchases-link");
+
+		fireEvent.press(restoreButton);
+
+		await waitFor(() => {
+			expect(screen.getByTestId("restore-purchases-link")).toHaveProp(
+				"accessibilityState",
+				{
+					busy: true,
+					disabled: true,
+				},
+			);
+		});
+		fireEvent.press(screen.getByTestId("restore-purchases-link"));
+		expect(mockRestore).toHaveBeenCalledTimes(1);
+
+		await act(async () => finishRestore?.());
+	});
+
+	test("returns direct links to the expired-access page", async () => {
 		mockCanGoBack = false;
-		const screen = await render(<SubscriptionScreen payer="parent" />);
+		const screen = await render(<SubscriptionScreen />);
 
 		fireEvent.press(screen.getByLabelText("Zurück"));
 		expect(mockBack).not.toHaveBeenCalled();
 		expect(mockReplace).toHaveBeenCalledWith("/paywall");
 	});
 
-	test("keeps self payment usable when the native store client cannot start", async () => {
+	test("explains when the native Store client cannot start", async () => {
 		mockStoreInitializationError = new Error("native module unavailable");
-		const screen = await render(<SubscriptionScreen payer="self" />);
+		const screen = await render(<SubscriptionScreen />);
 
 		expect(
-			await screen.findAllByText(
+			await screen.findByText(
 				"Store-Käufe konnten auf diesem Gerät nicht gestartet werden. Bitte öffne die App erneut oder kontaktiere den Support.",
 			),
-		).not.toHaveLength(0);
+		).toBeOnTheScreen();
 	});
 });

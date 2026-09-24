@@ -1,4 +1,6 @@
 import {
+	isOnboardingPath,
+	ONBOARDING_PATH,
 	PASSWORD_RESET_SUCCESS_PATH,
 	SESSION_TASK_RESET_PASSWORD_PATH,
 } from "~/lib/auth-routing";
@@ -50,14 +52,20 @@ export type AccessSnapshot =
 			subscriptionGraceExpiresAt: number;
 	  } & AccessMetadata);
 
-const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register", "/onboarding"]);
+const PUBLIC_AUTH_PATHS = new Set([
+	"/",
+	"/login",
+	"/register",
+	ONBOARDING_PATH,
+]);
 const ACCESS_SETUP_PATHS = new Set(["/trial", "/paywall", "/subscription"]);
 const EXPIRED_ACCESS_PATHS = new Set(["/paywall", "/subscription"]);
 const ACCESS_BYPASS_PATHS = new Set([
-	"/onboarding",
+	ONBOARDING_PATH,
 	PASSWORD_RESET_SUCCESS_PATH,
 	SESSION_TASK_RESET_PASSWORD_PATH,
 ]);
+const SUBSCRIPTION_SUCCESS_PATH = "/subscription-success";
 
 export const resolveAccessRoute = ({
 	accessState,
@@ -72,9 +80,11 @@ export const resolveAccessRoute = ({
 }) => {
 	if (isSessionLoading) return null;
 
-	const isAuthRoute = PUBLIC_AUTH_PATHS.has(pathname);
+	const isAuthRoute =
+		PUBLIC_AUTH_PATHS.has(pathname) || isOnboardingPath(pathname);
 	if (!user) return isAuthRoute ? null : "/";
-	if (ACCESS_BYPASS_PATHS.has(pathname)) return null;
+	if (ACCESS_BYPASS_PATHS.has(pathname) || isOnboardingPath(pathname))
+		return null;
 	if (!accessState) return null;
 
 	if (accessState === "needsActivation") {
@@ -82,6 +92,12 @@ export const resolveAccessRoute = ({
 	}
 	if (accessState === "expired") {
 		return EXPIRED_ACCESS_PATHS.has(pathname) ? null : "/paywall";
+	}
+	if (pathname === SUBSCRIPTION_SUCCESS_PATH) {
+		return accessState === "paid" ? null : "/home";
+	}
+	if (accessState === "trial" && pathname === "/subscription") {
+		return null;
 	}
 	if (isAuthRoute || ACCESS_SETUP_PATHS.has(pathname)) {
 		return "/home";

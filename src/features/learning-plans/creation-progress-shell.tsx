@@ -12,20 +12,24 @@ import {
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedStatusBar } from "~/components/ui/themed-status-bar";
-import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
+import {
+	LEARNING_PLAN_CREATION_STEPS,
+	LEARNING_PLAN_CREATION_TOTAL_STEPS,
+} from "~/features/learning-plans/creation-progress";
 import { LearningPlanCreationProgressHeader } from "~/features/learning-plans/creation-progress-header";
 
 type CreationProgressConfiguration = {
 	active: boolean;
 	currentStep: number;
 	onBack: () => void;
+	totalSteps?: number;
 	title?: string;
 };
 
-type CreationProgressPresentation = Pick<
-	CreationProgressConfiguration,
-	"active" | "currentStep"
-> & {
+type CreationProgressPresentation = {
+	active: boolean;
+	currentStep: number;
+	totalSteps: number;
 	title: string;
 };
 
@@ -36,6 +40,7 @@ type CreationProgressContextValue = {
 const DEFAULT_PRESENTATION: CreationProgressPresentation = {
 	active: false,
 	currentStep: LEARNING_PLAN_CREATION_STEPS.examDate,
+	totalSteps: LEARNING_PLAN_CREATION_TOTAL_STEPS,
 	title: "Prüfung eintragen",
 };
 
@@ -53,15 +58,28 @@ export function LearningPlanCreationProgressShell({
 		useState<CreationProgressPresentation>(DEFAULT_PRESENTATION);
 
 	const configure = useCallback(
-		({ active, currentStep, onBack, title }: CreationProgressConfiguration) => {
+		({
+			active,
+			currentStep,
+			onBack,
+			title,
+			totalSteps,
+		}: CreationProgressConfiguration) => {
 			onBackRef.current = onBack;
 			const nextTitle = title ?? "Lernplan erstellen";
+			const nextTotalSteps = totalSteps ?? LEARNING_PLAN_CREATION_TOTAL_STEPS;
 			setPresentation((current) =>
 				current.active === active &&
 				current.currentStep === currentStep &&
+				current.totalSteps === nextTotalSteps &&
 				current.title === nextTitle
 					? current
-					: { active, currentStep, title: nextTitle },
+					: {
+							active,
+							currentStep,
+							totalSteps: nextTotalSteps,
+							title: nextTitle,
+						},
 			);
 		},
 		[],
@@ -86,6 +104,7 @@ export function LearningPlanCreationProgressShell({
 					<LearningPlanCreationProgressHeader
 						currentStep={presentation.currentStep}
 						onBack={handleBack}
+						totalSteps={presentation.totalSteps}
 						title={presentation.title}
 					/>
 				</View>
@@ -99,6 +118,7 @@ export function useLearningPlanCreationProgress({
 	active,
 	currentStep,
 	onBack,
+	totalSteps,
 	title,
 }: CreationProgressConfiguration) {
 	const context = useContext(CreationProgressContext);
@@ -111,6 +131,6 @@ export function useLearningPlanCreationProgress({
 
 	useLayoutEffect(() => {
 		if (!isFocused) return;
-		context.configure({ active, currentStep, onBack, title });
-	}, [active, context, currentStep, isFocused, onBack, title]);
+		context.configure({ active, currentStep, onBack, title, totalSteps });
+	}, [active, context, currentStep, isFocused, onBack, title, totalSteps]);
 }

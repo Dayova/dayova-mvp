@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { query } from "./_generated/server";
+import {
+	type AdaptiveTopicEvidence,
+	deriveAdaptiveDimensionStatus,
+} from "./adaptiveLearningPlanPolicy";
 import { throwUserFacingError } from "./errors";
 import type { LearningEvidenceDimension } from "./learningContentPlan";
 
@@ -99,6 +103,29 @@ const topicEvidenceStatementValidator = v.object({
 	evidenceCount: v.number(),
 });
 
+const topicQuestionEvidenceValidator = v.object({
+	itemId: v.id("learningSessionContentItems"),
+	sessionId: v.id("learningPlanSessions"),
+	sessionTitle: v.string(),
+	phase: v.union(
+		v.literal("theory"),
+		v.literal("practice"),
+		v.literal("rehearsal"),
+	),
+	kind: v.union(v.literal("multipleChoice"), v.literal("written")),
+	prompt: v.string(),
+	answer: v.string(),
+	review: v.string(),
+	idealAnswer: v.string(),
+	rating: v.union(
+		v.literal("notCorrect"),
+		v.literal("partiallyCorrect"),
+		v.literal("correct"),
+	),
+	evidenceDimension: v.union(examEvidenceDimensionValidator, v.null()),
+	answeredAt: v.number(),
+});
+
 const examDiagnosisTypeValidator = v.union(
 	v.literal("knowledgeGap"),
 	v.literal("misconception"),
@@ -170,6 +197,7 @@ const examAnalysisValidator = v.object({
 			status: examTopicStatusValidator,
 			summary: v.string(),
 			evidenceCount: v.number(),
+			answeredQuestionCount: v.number(),
 			dimensions: v.array(topicEvidenceDimensionValidator),
 			strengths: v.array(topicEvidenceStatementValidator),
 			weaknesses: v.array(topicEvidenceStatementValidator),
@@ -221,6 +249,8 @@ const MAX_SESSIONS_PER_PLAN = 75;
 const MAX_CONTENT_ITEMS_PER_SESSION = 100;
 const MAX_ATTEMPTS = 5_000;
 const MAX_ANALYSES = 500;
+const MAX_ATTEMPTS_PER_SESSION = 500;
+const MAX_TOPIC_QUESTION_EVIDENCE = 500;
 
 const parseDayKey = (dayKey: string) => {
 	const match = DAY_KEY_PATTERN.exec(dayKey);
@@ -377,13 +407,6 @@ const getExactIssue = (
 	attempt: Doc<"learningSessionAnswerAttempts">,
 	item: Doc<"learningSessionContentItems">,
 ) => {
-	const missingKeywords = getMissingEvaluationKeywords(attempt, item);
-	if (missingKeywords.length > 0) {
-		return missingKeywords.length === 1
-			? `In deiner Antwort fehlt noch „${missingKeywords[0]}“.`
-			: `In deiner Antwort fehlen noch ${missingKeywords.map((keyword) => `„${keyword}“`).join(", ")}.`;
-	}
-
 	const feedback = attempt.feedback.trim();
 	if (
 		feedback &&
@@ -391,6 +414,13 @@ const getExactIssue = (
 		!/^Teilweise richtig\. Du triffst einen Teil/i.test(feedback)
 	) {
 		return feedback;
+	}
+
+	const missingKeywords = getMissingEvaluationKeywords(attempt, item);
+	if (missingKeywords.length > 0) {
+		return missingKeywords.length === 1
+			? `In deiner Antwort fehlt noch „${missingKeywords[0]}“.`
+			: `In deiner Antwort fehlen noch ${missingKeywords.map((keyword) => `„${keyword}“`).join(", ")}.`;
 	}
 	return null;
 };
@@ -403,12 +433,6 @@ const evidenceDimensions: LearningEvidenceDimension[] = [
 	"problemSolving",
 	"independent",
 ];
-
-const evidenceDimensionRank: Record<LearningEvidenceDimension, number> = {
-	understanding: 0,
-	problemSolving: 1,
-	independent: 2,
-};
 
 const getItemEvidenceDimension = (
 	item: Doc<"learningSessionContentItems">,
@@ -427,14 +451,6 @@ const getItemEvidenceDimension = (
 	}
 	return "understanding";
 };
-
-const attemptSupportsDimension = (
-	item: Doc<"learningSessionContentItems">,
-	dimension: LearningEvidenceDimension,
-) =>
-	evidenceDimensionRank[getItemEvidenceDimension(item)] >=
-	evidenceDimensionRank[dimension];
-
 const deriveDimensionEvidence = ({
 	dimension,
 	initialStatus,
@@ -453,42 +469,42 @@ const deriveDimensionEvidence = ({
 	reviewed: boolean;
 	topicAttempts: Doc<"learningSessionAnswerAttempts">[];
 }) => {
+	const evidence = topicAttempts.flatMap((attempt) => {
+		const item = itemById.get(attempt.itemId);
+		return item
+			? [
+					{
+						topicId: item.topicId ?? "",
+						dimension: getItemEvidenceDimension(item),
+						rating: attempt.rating,
+						sessionId: attempt.sessionId,
+						createdAt: attempt.createdAt,
+					} satisfies AdaptiveTopicEvidence,
+				]
+			: [];
+	});
+	const dimensionStatus = deriveAdaptiveDimensionStatus({
+		dimension,
+		initialStatus,
+		evidence,
+	});
 	const relevantAttempts = topicAttempts
 		.filter((attempt) => {
 			const item = itemById.get(attempt.itemId);
-			return Boolean(item && attemptSupportsDimension(item, dimension));
+			return Boolean(item && getItemEvidenceDimension(item) === dimension);
 		})
 		.sort((left, right) => right.createdAt - left.createdAt);
-	const initialEvidenceCount =
-		dimension === "understanding" && initialStatus !== "unknown" ? 1 : 0;
-	const correctOccasions = new Set(
-		relevantAttempts
-			.filter((attempt) => attempt.rating === "correct")
-			.map((attempt) => attempt.sessionId),
-	).size;
-	const latestAttempt = relevantAttempts[0];
-	const priorCorrectOccasions = new Set(
-		relevantAttempts
-			.slice(1)
-			.filter((attempt) => attempt.rating === "correct")
-			.map((attempt) => attempt.sessionId),
-	).size;
-	const evidenceCount = relevantAttempts.length + initialEvidenceCount;
-	const needsControlCheck =
-		required &&
-		Boolean(latestAttempt && latestAttempt.rating !== "correct") &&
-		priorCorrectOccasions + initialEvidenceCount >= 2;
 	const latestShowsDifficulty = Boolean(
-		latestAttempt && latestAttempt.rating !== "correct",
+		relevantAttempts[0] && relevantAttempts[0].rating !== "correct",
 	);
 	const status: TopicEvidenceStatus = !required
 		? "unknown"
-		: latestAttempt?.rating === "correct" &&
-				correctOccasions + initialEvidenceCount >= 2
+		: dimensionStatus.status === "secure"
 			? "secure"
-			: latestShowsDifficulty && !needsControlCheck
+			: latestShowsDifficulty && !dimensionStatus.needsControlCheck
 				? "uncertain"
-				: evidenceCount > 0 || (dimension === "understanding" && reviewed)
+				: dimensionStatus.evidenceCount > 0 ||
+						(dimension === "understanding" && reviewed)
 					? "developing"
 					: "unknown";
 
@@ -496,8 +512,8 @@ const deriveDimensionEvidence = ({
 		kind: dimension,
 		required,
 		status,
-		evidenceCount,
-		needsControlCheck,
+		evidenceCount: dimensionStatus.evidenceCount,
+		needsControlCheck: required && dimensionStatus.needsControlCheck,
 	};
 };
 
@@ -793,6 +809,119 @@ export const getOverview = query({
 	},
 });
 
+export const getTopicQuestionEvidence = query({
+	args: {
+		learningPlanId: v.id("learningPlans"),
+		topicId: v.string(),
+	},
+	returns: v.object({
+		historyLimited: v.boolean(),
+		questions: v.array(topicQuestionEvidenceValidator),
+	}),
+	handler: async (ctx, args) => {
+		const identity = await ctx.auth.getUserIdentity();
+		if (!identity) throwUserFacingError("Nicht authentifiziert.");
+		const plan = await ctx.db.get("learningPlans", args.learningPlanId);
+		if (
+			!plan ||
+			plan.ownerTokenIdentifier !== identity.tokenIdentifier ||
+			plan.status !== "accepted"
+		) {
+			throwUserFacingError("Lernplan nicht gefunden.");
+		}
+		const topicExists =
+			args.topicId === "exam-scope" ||
+			Boolean(plan.topicMap?.some((topic) => topic.id === args.topicId));
+		if (!topicExists) throwUserFacingError("Prüfungsthema nicht gefunden.");
+
+		const sessions = await ctx.db
+			.query("learningPlanSessions")
+			.withIndex("by_learningPlanId_and_sortOrder", (q) =>
+				q.eq("learningPlanId", plan._id),
+			)
+			.order("asc")
+			.take(MAX_SESSIONS_PER_PLAN);
+		const completedSessions = sessions.filter(
+			(session) => getSessionStatus(session) === "completed",
+		);
+		const questionGroups = await Promise.all(
+			completedSessions.map(async (session) => {
+				const items = await ctx.db
+					.query("learningSessionContentItems")
+					.withIndex("by_sessionId_and_sortOrder", (q) =>
+						q.eq("sessionId", session._id),
+					)
+					.order("asc")
+					.take(MAX_CONTENT_ITEMS_PER_SESSION);
+				const topicItems = items.filter(
+					(item) =>
+						item.kind !== "learnCard" &&
+						(item.topicId ?? "exam-scope") === args.topicId,
+				);
+				if (topicItems.length === 0) return [];
+				const attempts = await ctx.db
+					.query("learningSessionAnswerAttempts")
+					.withIndex("by_sessionId_and_createdAt", (q) =>
+						q.eq("sessionId", session._id),
+					)
+					.order("desc")
+					.take(MAX_ATTEMPTS_PER_SESSION);
+				const latestAttemptByItem = new Map<
+					Id<"learningSessionContentItems">,
+					Doc<"learningSessionAnswerAttempts">
+				>();
+				for (const attempt of attempts) {
+					if (!latestAttemptByItem.has(attempt.itemId)) {
+						latestAttemptByItem.set(attempt.itemId, attempt);
+					}
+				}
+
+				return topicItems.flatMap((item) => {
+					const attempt = latestAttemptByItem.get(item._id);
+					if (!attempt) return [];
+					const selectedChoice = item.choices?.find(
+						(choice) => choice.id === attempt.selectedChoiceId,
+					)?.text;
+					const answer =
+						attempt.answerText?.trim() ||
+						attempt.transcript?.trim() ||
+						selectedChoice ||
+						(attempt.selectedChoiceId === "unknown"
+							? "Weiß ich nicht"
+							: "Keine Antwort gespeichert");
+					return [
+						{
+							itemId: item._id,
+							sessionId: session._id,
+							sessionTitle: session.title,
+							phase: item.phase,
+							kind:
+								item.kind === "multipleChoice"
+									? ("multipleChoice" as const)
+									: ("written" as const),
+							prompt: item.prompt,
+							answer,
+							review: attempt.feedback,
+							idealAnswer: attempt.perfectAnswer,
+							rating: attempt.rating,
+							evidenceDimension: item.evidenceDimension ?? null,
+							answeredAt: attempt.createdAt,
+						},
+					];
+				});
+			}),
+		);
+		const questions = questionGroups
+			.flat()
+			.sort((left, right) => right.answeredAt - left.answeredAt);
+
+		return {
+			historyLimited: questions.length > MAX_TOPIC_QUESTION_EVIDENCE,
+			questions: questions.slice(0, MAX_TOPIC_QUESTION_EVIDENCE),
+		};
+	},
+});
+
 export const getExamAnalysis = query({
 	args: {
 		learningPlanId: v.optional(v.id("learningPlans")),
@@ -878,6 +1007,11 @@ export const getExamAnalysis = query({
 		const effectiveSessions = sessions.filter(
 			(session) => getSessionStatus(session) !== "adjusted",
 		);
+		const completedSessionIds = new Set(
+			effectiveSessions
+				.filter((session) => getSessionStatus(session) === "completed")
+				.map((session) => session._id),
+		);
 		const items = (
 			await Promise.all(
 				sessions.map((session) =>
@@ -901,7 +1035,11 @@ export const getExamAnalysis = query({
 				)
 				.order("desc")
 				.take(MAX_ATTEMPTS)
-		).filter((attempt) => attempt.learningPlanId === selectedPlan._id);
+		).filter(
+			(attempt) =>
+				attempt.learningPlanId === selectedPlan._id &&
+				completedSessionIds.has(attempt.sessionId),
+		);
 		const latestAttemptByItem = new Map<
 			Id<"learningSessionContentItems">,
 			Doc<"learningSessionAnswerAttempts">
@@ -922,7 +1060,11 @@ export const getExamAnalysis = query({
 				.order("desc")
 				.take(MAX_ANALYSES)
 		)
-			.filter((analysis) => analysis.learningPlanId === selectedPlan._id)
+			.filter(
+				(analysis) =>
+					analysis.learningPlanId === selectedPlan._id &&
+					completedSessionIds.has(analysis.sessionId),
+			)
 			.sort((left, right) => right.updatedAt - left.updatedAt);
 		const latestAnalysis = analyses[0] ?? null;
 
@@ -1015,6 +1157,7 @@ export const getExamAnalysis = query({
 				dimensions,
 				evidenceCount:
 					topicAttempts.length + (initialStatus !== "unknown" ? 1 : 0),
+				answeredQuestionCount: topicAttempts.length,
 				controlCheckReason,
 				topicAttempts,
 			};
@@ -1270,6 +1413,7 @@ export const getExamAnalysis = query({
 					status: topic.status,
 					summary,
 					evidenceCount: topic.evidenceCount,
+					answeredQuestionCount: topic.answeredQuestionCount,
 					dimensions: topic.dimensions.map(
 						({ needsControlCheck: _needsControlCheck, ...dimension }) =>
 							dimension,

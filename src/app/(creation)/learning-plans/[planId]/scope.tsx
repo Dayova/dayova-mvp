@@ -13,9 +13,11 @@ import { Text } from "~/components/ui/text";
 import { useAuthSession } from "~/context/AuthContext";
 import { LEARNING_PLAN_CREATION_STEPS } from "~/features/learning-plans/creation-progress";
 import { useLearningPlanCreationProgress } from "~/features/learning-plans/creation-progress-shell";
-import { learningPlanTopicPath } from "~/features/learning-plans/creation-routes";
+import { learningPlanMaterialPath } from "~/features/learning-plans/creation-routes";
 import type { LearningPlanSnapshot } from "~/features/learning-plans/types";
 import { getErrorMessage } from "~/features/learning-plans/utils";
+import { goBackOrReplace, useBackIntent } from "~/lib/navigation";
+import { ROUTES } from "~/lib/routes";
 
 const planPath = (id: Id<"learningPlans">, step: string) =>
 	`/learning-plans/${id}/${step}` as const;
@@ -47,33 +49,37 @@ export default function LearningPlanScopeScreen() {
 			router.replace(planPath(planId, "review"));
 			return;
 		}
-		if (snapshot.plan.knowledgeQuestions.length === 0) {
+		if (
+			snapshot.plan.diagnosticPlacement !== "firstSession" ||
+			snapshot.plan.knowledgeQuestions.length === 0
+		) {
 			router.replace(planPath(planId, "analysis"));
 		}
 	}, [planId, router, snapshot]);
 
 	const goBack = () => {
-		if (!planId || !snapshot) return;
-		router.replace(
-			learningPlanTopicPath(planId, {
-				teacherGuidance: snapshot.plan.teacherGuidance,
-			}),
-		);
+		if (!planId) {
+			goBackOrReplace(router, ROUTES.learningPlans);
+			return true;
+		}
+		router.replace(learningPlanMaterialPath(planId));
+		return true;
 	};
 
+	useBackIntent(true, goBack);
 	useLearningPlanCreationProgress({
 		active: true,
 		currentStep: LEARNING_PLAN_CREATION_STEPS.scopeConfirmation,
 		onBack: goBack,
 	});
 
-	const continueToQuestions = async () => {
+	const continueToPlan = async () => {
 		if (!planId || isBusy) return;
 		setIsBusy(true);
 		setErrorMessage(null);
 		try {
 			await confirmScope({ learningPlanId: planId });
-			router.replace(`/learning-plans/${planId}/quiz/0`);
+			router.replace(planPath(planId, "generating"));
 		} catch (error) {
 			setErrorMessage(
 				getErrorMessage(
@@ -100,7 +106,7 @@ export default function LearningPlanScopeScreen() {
 					</Text>
 					<Text className="mt-3 font-poppins text-body-3 text-secondary-text">
 						Dieser wahrscheinliche Prüfungsstoff basiert nur auf deinen
-						Schulunterlagen und den Hinweisen deiner Lehrkraft.
+						Schulunterlagen und deiner Themenangabe.
 					</Text>
 
 					<Surface className="mt-7 rounded-[32px] px-5 py-5" variant="soft">
@@ -155,21 +161,21 @@ export default function LearningPlanScopeScreen() {
 							accessibilityLabel={
 								isBusy
 									? "Prüfungsstoff bestätigen, wird geladen"
-									: "Prüfungsstoff bestätigen und Fragen starten"
+									: "Prüfungsstoff bestätigen und Lernweg vorbereiten"
 							}
 							disabled={
 								!snapshot || snapshot.plan.topicMap.length === 0 || isBusy
 							}
-							onPress={() => void continueToQuestions()}
+							onPress={() => void continueToPlan()}
 						>
 							{isBusy ? (
 								<ActivityIndicator color="#FFFFFF" />
 							) : (
-								<Text>Das passt – Fragen starten</Text>
+								<Text>Das passt – Lernweg vorbereiten</Text>
 							)}
 						</Button>
 						<Button variant="neutral" disabled={isBusy} onPress={goBack}>
-							<Text>Hinweis ergänzen</Text>
+							<Text>Material ändern</Text>
 						</Button>
 					</View>
 				</View>

@@ -10,8 +10,10 @@ import {
 	getTimetableDayOfWeek,
 	getTimetableLessonDuration,
 } from "./timetableOccurrences";
+import { assertMeaningfulTopicDescription } from "./topicDescriptionValidation";
 
 type OptionalEntryFields = {
+	subject?: string;
 	time?: string;
 	kind?: string;
 	notes?: string;
@@ -20,6 +22,7 @@ type OptionalEntryFields = {
 	plannedDateLabel?: string;
 	durationMinutes?: number;
 	examTypeLabel?: string;
+	topicDescription?: string;
 	completed?: boolean;
 	executionStatus?:
 		| "notStarted"
@@ -45,6 +48,8 @@ type OptionalEntryFields = {
 
 type PublicDayEntry = OptionalEntryFields & {
 	id: Id<"dayEntries"> | Id<"learningPlanSessions"> | Id<"timetableLessons">;
+	relatedDayEntryId?: Id<"dayEntries">;
+	dayKey?: string;
 	source?: "timetable";
 	title: string;
 };
@@ -53,6 +58,7 @@ const optionalEntryFields = (
 	entry: OptionalEntryFields,
 ): OptionalEntryFields => ({
 	...(entry.time !== undefined ? { time: entry.time } : {}),
+	...(entry.subject !== undefined ? { subject: entry.subject } : {}),
 	...(entry.kind !== undefined ? { kind: entry.kind } : {}),
 	...(entry.notes !== undefined ? { notes: entry.notes } : {}),
 	...(entry.dueDateKey !== undefined ? { dueDateKey: entry.dueDateKey } : {}),
@@ -67,6 +73,9 @@ const optionalEntryFields = (
 		: {}),
 	...(entry.examTypeLabel !== undefined
 		? { examTypeLabel: entry.examTypeLabel }
+		: {}),
+	...(entry.topicDescription !== undefined
+		? { topicDescription: entry.topicDescription }
 		: {}),
 	...(entry.completed !== undefined ? { completed: entry.completed } : {}),
 	...(entry.executionStatus !== undefined
@@ -90,6 +99,8 @@ const optionalEntryFields = (
 
 const publicEntry = (entry: Doc<"dayEntries">): PublicDayEntry => ({
 	id: entry._id,
+	relatedDayEntryId: entry._id,
+	dayKey: entry.dayKey,
 	title: entry.title,
 	...optionalEntryFields({
 		...entry,
@@ -144,6 +155,7 @@ const isSameCreatePayload = (
 	args: OptionalEntryFields & { title: string },
 ) =>
 	entry.title === args.title &&
+	optionalValuesMatch(entry.subject, args.subject) &&
 	optionalValuesMatch(
 		isExamEntry(entry) ? undefined : entry.time,
 		isExamEntry(args) ? undefined : args.time,
@@ -187,6 +199,7 @@ const findExistingSameEntry = async (
 
 const entryFields = {
 	title: v.string(),
+	subject: v.optional(v.string()),
 	time: v.optional(v.string()),
 	kind: v.optional(v.string()),
 	notes: v.optional(v.string()),
@@ -280,6 +293,7 @@ export const listByDayKeys = query({
 			Doc<"learningPlans"> | null
 		>();
 		for (const session of learningSessions) {
+			if (session.planningStatus === "provisional") continue;
 			const requestedDayKey = getRequestedDayKey(
 				session.dateKey,
 				queryKeyToRequestedDayKey,
@@ -365,6 +379,80 @@ export const get = query({
 	},
 });
 
+export const updateExamTopics = mutation({
+	args: {
+		id: v.id("dayEntries"),
+		topicDescription: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const entry = await ctx.db.get("dayEntries", args.id);
+		if (entry === null || entry.ownerTokenIdentifier !== ownerTokenIdentifier) {
+			throwUserFacingError("Prüfung nicht gefunden.");
+		}
+		if (!isExamEntry(entry)) {
+			throwUserFacingError("Prüfung nicht gefunden.");
+		}
+
+		const topicDescription = args.topicDescription.trim();
+		assertMeaningfulTopicDescription(topicDescription);
+		if (entry.topicDescription === topicDescription) return;
+
+		await ctx.db.patch("dayEntries", args.id, { topicDescription });
+	},
+});
+
+// The exam is saved before topic setup. Returning to earlier creation steps
+// must revise that entry without creating a second exam or invalidating a plan.
+export const updatePendingExam = mutation({
+	args: {
+		id: v.id("dayEntries"),
+		dayKey: v.string(),
+		subject: v.string(),
+		examTypeLabel: v.string(),
+		plannedDateLabel: v.string(),
+		durationMinutes: v.number(),
+	},
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const ownerTokenIdentifier = await requireOwnerTokenIdentifier(ctx);
+		const entry = await ctx.db.get("dayEntries", args.id);
+		if (
+			!entry ||
+			entry.ownerTokenIdentifier !== ownerTokenIdentifier ||
+			!isExamEntry(entry)
+		) {
+			throwUserFacingError("Prüfung nicht gefunden.");
+		}
+		if (
+			entry.relatedLearningPlanId ||
+			entry.relatedLearningPlanSessionId ||
+			entry.completed
+		) {
+			throwUserFacingError(
+				"Diese Prüfung ist bereits abgeschlossen oder mit einem Lernplan verknüpft. Öffne sie unter Lernpläne.",
+			);
+		}
+		const subject = args.subject.trim();
+		const examTypeLabel = args.examTypeLabel.trim();
+		if (!subject || !examTypeLabel) {
+			throwUserFacingError("Wähle ein Fach und eine Prüfungsart aus.");
+		}
+		if (!Number.isFinite(args.durationMinutes) || args.durationMinutes <= 0) {
+			throwUserFacingError("Die Prüfungsdauer muss größer als null sein.");
+		}
+		await ctx.db.patch("dayEntries", args.id, {
+			dayKey: args.dayKey,
+			subject,
+			examTypeLabel,
+			title: `${subject} ${examTypeLabel}`,
+			plannedDateLabel: args.plannedDateLabel,
+			durationMinutes: args.durationMinutes,
+		});
+		return null;
+	},
+});
+
 export const create = mutation({
 	args: {
 		dayKey: v.string(),
@@ -379,6 +467,7 @@ export const create = mutation({
 		const normalizedArgs = {
 			...args,
 			title,
+			...(args.subject?.trim() ? { subject: args.subject.trim() } : {}),
 			...(isExamEntry(args) ? { time: undefined } : {}),
 		};
 		const existingSameEntry = await findExistingSameEntry(ctx, {
@@ -417,23 +506,15 @@ export const setCompleted = mutation({
 		if (entry === null || entry.ownerTokenIdentifier !== ownerTokenIdentifier) {
 			throwUserFacingError("Eintrag nicht gefunden.");
 		}
+		if (entry.relatedLearningPlanSessionId) {
+			throwUserFacingError(
+				"Öffne den Lernblock, um ihn mit seinen Aufgaben abzuschließen.",
+			);
+		}
 
 		await ctx.db.patch("dayEntries", args.id, {
 			completed: args.completed,
 		});
-
-		if (entry.relatedLearningPlanSessionId) {
-			const session = await ctx.db.get(
-				"learningPlanSessions",
-				entry.relatedLearningPlanSessionId,
-			);
-			if (session?.ownerTokenIdentifier === ownerTokenIdentifier) {
-				await ctx.db.patch("learningPlanSessions", session._id, {
-					completed: args.completed,
-					updatedAt: Date.now(),
-				});
-			}
-		}
 
 		return args.completed;
 	},

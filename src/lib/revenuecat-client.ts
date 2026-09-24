@@ -1,12 +1,19 @@
 const ENTITLEMENT_ID = "dayova_full_access";
 const OFFERING_ID = "default";
+const PACKAGE_BILLING_PERIOD = {
+	$rc_annual: "annual",
+	$rc_monthly: "monthly",
+} as const;
 
 type RevenueCatPackage = {
 	identifier: string;
 	packageType?: string;
 	product: {
 		identifier: string;
+		price: number;
+		currencyCode: string;
 		priceString: string;
+		pricePerMonth?: number | null;
 		pricePerMonthString?: string | null;
 	};
 };
@@ -35,40 +42,59 @@ export type RevenueCatSdkBoundary = {
 };
 
 export type DayovaStorePlan = {
-	billingPeriod: "annual" | "monthly";
-	monthlyEquivalentPrice?: string;
-	packageIdentifier: string;
+	billingPeriod: DayovaBillingPeriod;
+	packageIdentifier: keyof typeof PACKAGE_BILLING_PERIOD;
 	price: string;
-	productIdentifier: "dayova_annual" | "dayova_monthly";
+	pricePerMonth: string | null;
+	productIdentifier: string;
 };
+
+export type DayovaBillingPeriod = "annual" | "monthly";
 
 type PurchaseResult =
 	| { status: "purchased" }
 	| { status: "cancelled" }
 	| { status: "notEntitled" };
 
-const isDayovaProduct = (
-	productIdentifier: string,
-): productIdentifier is DayovaStorePlan["productIdentifier"] =>
-	productIdentifier === "dayova_annual" ||
-	productIdentifier === "dayova_monthly";
+const isDayovaPackage = (
+	packageIdentifier: string,
+): packageIdentifier is DayovaStorePlan["packageIdentifier"] =>
+	packageIdentifier === "$rc_annual" || packageIdentifier === "$rc_monthly";
+
+const formatStorePrice = (
+	amount: number | null | undefined,
+	currencyCode: string,
+) => {
+	if (amount == null || !Number.isFinite(amount)) return null;
+	try {
+		// Match the German paywall copy, even when the store uses an English locale.
+		return new Intl.NumberFormat("de-DE", {
+			style: "currency",
+			currency: currencyCode,
+		}).format(amount);
+	} catch {
+		return null;
+	}
+};
 
 const toStorePlan = (
 	revenueCatPackage: RevenueCatPackage,
 ): DayovaStorePlan | null => {
-	const productIdentifier = revenueCatPackage.product.identifier;
-	if (!isDayovaProduct(productIdentifier)) return null;
+	const packageIdentifier = revenueCatPackage.identifier;
+	if (!isDayovaPackage(packageIdentifier)) return null;
+	const product = revenueCatPackage.product;
 
 	return {
-		billingPeriod: productIdentifier === "dayova_annual" ? "annual" : "monthly",
-		...(revenueCatPackage.product.pricePerMonthString
-			? {
-					monthlyEquivalentPrice: revenueCatPackage.product.pricePerMonthString,
-				}
-			: {}),
-		packageIdentifier: revenueCatPackage.identifier,
-		price: revenueCatPackage.product.priceString,
-		productIdentifier,
+		billingPeriod: PACKAGE_BILLING_PERIOD[packageIdentifier],
+		packageIdentifier,
+		price:
+			formatStorePrice(product.price, product.currencyCode) ??
+			product.priceString,
+		pricePerMonth:
+			formatStorePrice(product.pricePerMonth, product.currencyCode) ??
+			product.pricePerMonthString ??
+			null,
+		productIdentifier: product.identifier,
 	};
 };
 
@@ -120,12 +146,14 @@ export const createRevenueCatClient = ({
 				);
 		},
 		purchase: async (
-			productIdentifier: DayovaStorePlan["productIdentifier"],
+			billingPeriod: DayovaBillingPeriod,
 		): Promise<PurchaseResult> => {
 			await ready;
 			const packages = availablePackages ?? (await loadPackages());
 			const packageToPurchase = packages.find(
-				(candidate) => candidate.product.identifier === productIdentifier,
+				(candidate) =>
+					isDayovaPackage(candidate.identifier) &&
+					PACKAGE_BILLING_PERIOD[candidate.identifier] === billingPeriod,
 			);
 			if (!packageToPurchase) {
 				throw new Error("Der gewählte Tarif ist im Store nicht verfügbar.");

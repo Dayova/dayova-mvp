@@ -6,8 +6,7 @@ export type LearningSessionSegment = {
 	durationMinutes: number;
 };
 
-export const THEORY_VALIDATION_MINUTES = 3;
-export const MINIMUM_THEORY_SESSION_MINUTES = 10;
+export const MINIMUM_THEORY_SESSION_MINUTES = 6;
 
 export const isLearningSessionCompositionEligible = ({
 	phase,
@@ -26,18 +25,6 @@ export const getLearningSessionComposition = ({
 	durationMinutes: number;
 	variant: LearningSessionCompositionVariant;
 }): LearningSessionSegment[] => {
-	if (
-		variant === "split" &&
-		isLearningSessionCompositionEligible({ phase, durationMinutes })
-	) {
-		return [
-			{
-				phase: "theory",
-				durationMinutes: durationMinutes - THEORY_VALIDATION_MINUTES,
-			},
-			{ phase: "practice", durationMinutes: THEORY_VALIDATION_MINUTES },
-		];
-	}
-
+	void variant;
 	return [{ phase, durationMinutes }];
 };

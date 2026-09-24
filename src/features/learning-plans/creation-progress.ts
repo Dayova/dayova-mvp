@@ -1,21 +1,36 @@
-const DIAGNOSTIC_QUESTION_COUNT = 5;
-const DIAGNOSTIC_PROGRESS_END = 4.75;
-
 export const LEARNING_PLAN_CREATION_STEPS = {
-	examDate: 1,
-	learningAvailability: 1.25,
-	examType: 1.5,
-	examSubject: 1.75,
-	materialUpload: 2,
-	examEvidence: 2.5,
-	materialAnalysis: 2.75,
-	scopeConfirmation: 3,
-	diagnostic: 3.25,
+	examType: 1,
+	examSubject: 1.5,
+	examDate: 2,
+	learningAvailability: 2.5,
+	examTopics: 3,
+	materialUpload: 3.5,
+	materialAnalysis: 4,
+	scopeConfirmation: 4.5,
 	planGeneration: 5,
 } as const;
 
 export const LEARNING_PLAN_CREATION_TOTAL_STEPS =
 	LEARNING_PLAN_CREATION_STEPS.planGeneration;
+
+export const getSafeLearningPlanCreationProgress = ({
+	currentStep,
+	totalSteps = LEARNING_PLAN_CREATION_TOTAL_STEPS,
+}: {
+	currentStep: number;
+	totalSteps?: number;
+}) => {
+	const safeTotalSteps =
+		Number.isFinite(totalSteps) && totalSteps > 0
+			? totalSteps
+			: LEARNING_PLAN_CREATION_TOTAL_STEPS;
+	const safeCurrentStep = Math.min(
+		Math.max(Number.isFinite(currentStep) ? currentStep : 1, 1),
+		safeTotalSteps,
+	);
+
+	return { currentStep: safeCurrentStep, totalSteps: safeTotalSteps };
+};
 
 export const getExamEntryCreationProgress = (
 	step:
@@ -37,23 +52,9 @@ export const getExamEntryCreationProgress = (
 	}
 };
 
-export const getDiagnosticQuestionCreationStep = (questionIndex: number) => {
-	const safeIndex = Math.min(
-		Math.max(Math.trunc(questionIndex), 0),
-		DIAGNOSTIC_QUESTION_COUNT - 1,
-	);
-	const progressPerQuestion =
-		(DIAGNOSTIC_PROGRESS_END - LEARNING_PLAN_CREATION_STEPS.diagnostic) /
-		(DIAGNOSTIC_QUESTION_COUNT - 1);
-	return (
-		LEARNING_PLAN_CREATION_STEPS.diagnostic + safeIndex * progressPerQuestion
-	);
-};
-
 export const getLearningPlanCreationProgressPercentage = (progress: number) => {
-	const safeProgress = Math.min(
-		Math.max(progress, LEARNING_PLAN_CREATION_STEPS.examDate),
-		LEARNING_PLAN_CREATION_TOTAL_STEPS,
-	);
+	const { currentStep: safeProgress } = getSafeLearningPlanCreationProgress({
+		currentStep: progress,
+	});
 	return Math.round((safeProgress / LEARNING_PLAN_CREATION_TOTAL_STEPS) * 100);
 };

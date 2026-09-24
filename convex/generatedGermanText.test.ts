@@ -22,6 +22,14 @@ describe("normalizeGeneratedGermanText", () => {
 		);
 	});
 
+	test("decodes HTML entities in generated German display text", () => {
+		expect(
+			normalizeGeneratedGermanText(
+				"Sch&auml;den k&ouml;nnen durch Bu&szlig;gelder entstehen. &#220;berpr&uuml;fe auch x &lt; 5.",
+			),
+		).toBe("Schäden können durch Bußgelder entstehen. Überprüfe auch x < 5.");
+	});
+
 	test("repairs common technical learning prompt transliterations", () => {
 		expect(
 			normalizeGeneratedGermanText(

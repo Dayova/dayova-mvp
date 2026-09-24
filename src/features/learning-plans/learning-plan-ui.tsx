@@ -14,6 +14,7 @@ import {
 	PropertyEdit,
 	X,
 } from "~/components/ui/icon";
+import { useContentSizeLayout } from "~/components/ui/portrait-content";
 import { ActionSurface, Surface } from "~/components/ui/surface";
 import { Text } from "~/components/ui/text";
 import { WarningBanner } from "~/components/ui/warning-banner";
@@ -32,6 +33,7 @@ import {
 import { formatGermanUiText } from "~/lib/german-ui-text";
 import { useDayovaTheme } from "~/lib/theme";
 import { formatFileSize } from "~/lib/upload-policy";
+import { cn } from "~/lib/utils";
 import { MISSING_LEARNING_TIMES_HINT } from "../../../convex/learningPlanPlanningHints";
 
 const phaseEditCopy: Record<
@@ -114,6 +116,7 @@ export function MaterialCard({
 	onRemove: () => void;
 }) {
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 
 	return (
 		<Surface
@@ -125,7 +128,7 @@ export function MaterialCard({
 			</View>
 			<View className="ml-3 flex-1">
 				<Text
-					numberOfLines={1}
+					numberOfLines={shouldStackInlineContent ? undefined : 1}
 					className="font-poppins font-semibold text-body-3 text-text"
 				>
 					{name}
@@ -149,19 +152,132 @@ export function MaterialCard({
 	);
 }
 
-export function SessionCard({
-	session,
-	onEdit,
-}: {
-	session: PlanSession;
-	onEdit: () => void;
-}) {
+type SessionCardProps =
+	| {
+			session: PlanSession;
+			mode?: "screen";
+			onEdit: () => void;
+	  }
+	| {
+			session: PlanSession;
+			testID?: string;
+			mode: "artwork";
+			onEdit?: never;
+	  };
+
+const sessionCardVisualByMode = {
+	screen: {
+		card: "rounded-[28px] px-5 py-5",
+		date: "h-14 w-14",
+		dateText: "text-body-2",
+		edit: "h-11 w-11",
+		editIconSize: 19,
+		fixedTextScale: false,
+		time: "text-body-4",
+		title: "text-body-3",
+		titleNumberOfLines: undefined,
+	},
+	artwork: {
+		card: "h-[72px] rounded-[24px] px-4 py-2",
+		date: "h-12 w-12",
+		dateText: "text-body-3",
+		edit: "h-9 w-9",
+		editIconSize: 16,
+		fixedTextScale: true,
+		time: "text-body-5",
+		title: "text-body-4",
+		titleNumberOfLines: 2,
+	},
+} as const;
+
+export function SessionCard(props: SessionCardProps) {
+	const { session } = props;
+	const mode = props.mode ?? "screen";
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
+	const visual = sessionCardVisualByMode[mode];
+	const shouldStack = mode === "screen" && shouldStackInlineContent;
 	const endTime = timeFromMinutes(
 		minutesFromTime(session.startTime) + session.durationMinutes,
 	);
 	const sessionDate = parseDateKey(session.dateKey);
 	const title = formatGermanUiText(session.title);
+
+	const content = (
+		<>
+			<View
+				className={cn(
+					"items-center justify-center rounded-full bg-button-neutral",
+					visual.date,
+				)}
+			>
+				<Text
+					allowFontScaling={!visual.fixedTextScale}
+					className={cn(
+						"font-poppins font-semibold text-background",
+						visual.dateText,
+					)}
+				>
+					{formatDayOfMonth(sessionDate)}
+				</Text>
+				<Text
+					allowFontScaling={!visual.fixedTextScale}
+					className="-mt-1 font-poppins font-semibold text-background text-body-5"
+				>
+					{formatShortWeekday(sessionDate)}
+				</Text>
+			</View>
+			<View className={shouldStack ? "flex-1" : "flex-1 px-3"}>
+				<Text
+					allowFontScaling={!visual.fixedTextScale}
+					numberOfLines={visual.titleNumberOfLines}
+					className={cn("font-poppins font-semibold text-text", visual.title)}
+				>
+					{title}
+				</Text>
+				<Text
+					allowFontScaling={!visual.fixedTextScale}
+					className={cn("mt-1 font-poppins text-text/55", visual.time)}
+				>
+					{session.startTime} - {endTime}
+				</Text>
+			</View>
+			<View
+				className={cn(
+					"items-center justify-center rounded-full border border-black/10",
+					visual.edit,
+					shouldStack && "self-end",
+				)}
+			>
+				<PropertyEdit
+					size={visual.editIconSize}
+					color={colors.text}
+					strokeWidth={1.5}
+				/>
+			</View>
+		</>
+	);
+	const className = cn(
+		visual.card,
+		shouldStack ? "items-stretch gap-3" : "flex-row items-center",
+	);
+
+	if (props.mode === "artwork") {
+		return (
+			<Surface
+				accessible={false}
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				className={className}
+				testID={props.testID}
+				variant="soft"
+				// Rounded artwork geometry uses the native continuous-corner treatment.
+				style={{ borderCurve: "continuous" }}
+			>
+				{content}
+			</Surface>
+		);
+	}
 
 	return (
 		<ActionSurface
@@ -169,29 +285,11 @@ export function SessionCard({
 			accessibilityLabel={`${title}, ${session.dateLabel}, ${session.startTime} bis ${endTime} bearbeiten`}
 			accessibilityRole="button"
 			activeOpacity={0.88}
-			onPress={onEdit}
-			className="flex-row items-center rounded-[28px] px-5 py-5"
+			onPress={props.onEdit}
+			className={className}
 			variant="soft"
 		>
-			<View className="h-14 w-14 items-center justify-center rounded-full bg-button-neutral">
-				<Text className="font-poppins font-semibold text-background text-body-2">
-					{formatDayOfMonth(sessionDate)}
-				</Text>
-				<Text className="-mt-1 font-poppins font-semibold text-background text-body-5">
-					{formatShortWeekday(sessionDate)}
-				</Text>
-			</View>
-			<View className="flex-1 px-3">
-				<Text className="font-poppins font-semibold text-body-3 text-text">
-					{title}
-				</Text>
-				<Text className="mt-1 font-poppins text-body-4 text-text/55">
-					{session.startTime} - {endTime}
-				</Text>
-			</View>
-			<View className="h-11 w-11 items-center justify-center rounded-full border border-black/10">
-				<PropertyEdit size={19} color={colors.text} strokeWidth={1.5} />
-			</View>
+			{content}
 		</ActionSurface>
 	);
 }
@@ -209,20 +307,19 @@ function SessionEditPill({
 	accessibilityLabel: string;
 	className?: string;
 }) {
+	const { shouldStackInlineContent } = useContentSizeLayout();
+
 	return (
 		<FieldTrigger
 			accessibilityLabel={accessibilityLabel}
 			accessibilityRole="button"
 			activeOpacity={0.86}
 			onPress={onPress}
-			className={`min-h-[64px] rounded-[28px] px-5 ${className ?? ""}`}
-			style={{
-				boxShadow: "0 6px 13px rgba(0, 0, 0, 0.08)",
-			}}
+			className={cn("min-h-[64px] rounded-[28px] px-5", className)}
 		>
 			<Text
 				className="flex-1 font-poppins text-body-2 text-text"
-				numberOfLines={1}
+				numberOfLines={shouldStackInlineContent ? undefined : 1}
 			>
 				{value}
 			</Text>
@@ -260,6 +357,7 @@ export function SessionEditForm({
 }) {
 	const [isPhaseMenuOpen, setIsPhaseMenuOpen] = useState(false);
 	const { colors } = useDayovaTheme();
+	const { shouldStackInlineContent } = useContentSizeLayout();
 
 	return (
 		<View className="flex-1">
@@ -277,7 +375,12 @@ export function SessionEditForm({
 				icon={<CalendarDays size={20} color="#697586" strokeWidth={2.1} />}
 				onPress={onChangeDate}
 			/>
-			<View className="mt-5 mb-7 flex-row gap-3">
+			<View
+				className={cn(
+					"mt-5 mb-7 gap-3",
+					!shouldStackInlineContent && "flex-row",
+				)}
+			>
 				<View className="flex-1">
 					<SessionEditPill
 						accessibilityLabel="Startzeit ändern"
@@ -319,7 +422,7 @@ export function SessionEditForm({
 									onChangePhase(phase);
 									setIsPhaseMenuOpen(false);
 								}}
-								className="h-12 justify-center rounded-[24px] bg-card px-5"
+								className="min-h-12 justify-center rounded-[24px] bg-card px-5 py-2"
 								style={{
 									borderWidth: phase === editPhase ? 1.5 : 1,
 									borderColor:
@@ -335,10 +438,19 @@ export function SessionEditForm({
 				) : null}
 			</View>
 
-			<View className="mt-auto flex-row gap-3 pt-8">
+			<View
+				className={cn(
+					"mt-auto gap-3 pt-8",
+					!shouldStackInlineContent && "flex-row",
+				)}
+			>
 				<Button
 					variant="neutral"
-					className="flex-1 shadow-none"
+					className={
+						shouldStackInlineContent
+							? "w-full shadow-none"
+							: "flex-1 shadow-none"
+					}
 					onPress={onRemove}
 				>
 					<Text>Entfernen</Text>
@@ -349,7 +461,7 @@ export function SessionEditForm({
 					}
 					accessibilityLiveRegion={isSaving ? "polite" : undefined}
 					accessibilityState={{ busy: isSaving, disabled: isSaving }}
-					className="flex-1"
+					className={shouldStackInlineContent ? "w-full" : "flex-1"}
 					onPress={onSave}
 					disabled={isSaving}
 				>

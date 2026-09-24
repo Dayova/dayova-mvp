@@ -33,12 +33,14 @@ describe("Android DateTimePickerSheet", () => {
 	test("renders the native date dialog inside a Dayova-themed Compose host", async () => {
 		const onChange = jest.fn();
 		const onClose = jest.fn();
+		const onConfirm = jest.fn();
 		const value = new Date(2012, 8, 9, 16, 44);
 		const screen = await render(
 			<DateTimePickerSheet
 				mode="date"
 				onChange={onChange}
 				onClose={onClose}
+				onConfirm={onConfirm}
 				value={value}
 				visible
 			/>,
@@ -51,9 +53,12 @@ describe("Android DateTimePickerSheet", () => {
 		const picker = screen.getByTestId("date-picker-dialog");
 		expect(picker.props.initialDate).toBe("2012-09-09T00:00:00.000Z");
 
-		await act(() =>
-			picker.props.onDateSelected(new Date("2012-09-10T00:00:00Z")),
-		);
+		// Compose transports the selected calendar day in UTC components; the
+		// production converter intentionally reads getUTC* before restoring local time.
+		const materialDate = new Date("2012-09-10T00:00:00Z");
+		await act(() => picker.props.onDateSelected(materialDate));
+		const expectedDate = new Date(value);
+		expectedDate.setFullYear(2012, 8, 10);
 
 		expect(onChange).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -63,6 +68,32 @@ describe("Android DateTimePickerSheet", () => {
 			expect.any(Date),
 		);
 		expect(onClose).toHaveBeenCalledTimes(1);
+		expect(onConfirm).toHaveBeenCalledTimes(1);
+		expect((onConfirm.mock.calls[0]?.[0] as Date).getTime()).toBe(
+			expectedDate.getTime(),
+		);
+	});
+
+	test("keeps calendar display and selectable date bounds", async () => {
+		const minimumDate = new Date(2026, 7, 14);
+		const maximumDate = new Date(2027, 7, 14);
+		const screen = await render(
+			<DateTimePickerSheet
+				display="inline"
+				maximumDate={maximumDate}
+				minimumDate={minimumDate}
+				mode="date"
+				onChange={jest.fn()}
+				onClose={jest.fn()}
+				value={minimumDate}
+				visible
+			/>,
+		);
+
+		expect(screen.getByTestId("date-picker-dialog").props).toMatchObject({
+			selectableDates: { start: minimumDate, end: maximumDate },
+			variant: "picker",
+		});
 	});
 
 	test("continues a datetime selection from date to time before closing", async () => {

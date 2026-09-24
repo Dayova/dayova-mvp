@@ -1,6 +1,9 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { learningTopicValidator } from "./learningTopicMap";
+import {
+	learningEvidenceDimensionValidator,
+	learningTopicValidator,
+} from "./learningTopicMap";
 import { theoryContentValidator } from "./theoryContent";
 
 const planQuestionValidator = v.object({
@@ -18,6 +21,9 @@ const planQuestionValidator = v.object({
 	),
 	options: v.optional(v.array(v.string())),
 	correctAnswer: v.optional(v.string()),
+	idealAnswer: v.optional(v.string()),
+	explanation: v.optional(v.string()),
+	evidenceDimension: v.optional(learningEvidenceDimensionValidator),
 	evaluationKeywords: v.optional(v.array(v.string())),
 });
 
@@ -100,6 +106,11 @@ const contentGenerationStageValidator = v.union(
 	v.literal("failed"),
 );
 
+const learningPlanSessionPlanningStatusValidator = v.union(
+	v.literal("committed"),
+	v.literal("provisional"),
+);
+
 const sessionContentItemKindValidator = v.union(
 	v.literal("learnCard"),
 	v.literal("multipleChoice"),
@@ -132,6 +143,16 @@ export default defineSchema({
 		avatarUrl: v.optional(v.string()),
 		validationStudentCode: v.optional(v.string()),
 		validationRole: v.optional(v.union(v.literal("founder"))),
+		aiConsentStatus: v.optional(
+			v.union(
+				v.literal("granted"),
+				v.literal("declined"),
+				v.literal("withdrawn"),
+			),
+		),
+		aiConsentVersion: v.optional(v.string()),
+		aiConsentGrantedAt: v.optional(v.number()),
+		aiConsentUpdatedAt: v.optional(v.number()),
 		learningTimesBackfillVersion: v.optional(v.number()),
 	})
 		.index("by_tokenIdentifier", ["tokenIdentifier"])
@@ -140,10 +161,10 @@ export default defineSchema({
 	accessEntitlements: defineTable({
 		ownerTokenIdentifier: v.string(),
 		userId: v.id("users"),
-		trialStartedAt: v.number(),
-		trialExpiresAt: v.number(),
-		trialReminderAt: v.number(),
-		trialTermsVersion: v.string(),
+		trialStartedAt: v.optional(v.number()),
+		trialExpiresAt: v.optional(v.number()),
+		trialReminderAt: v.optional(v.number()),
+		trialTermsVersion: v.optional(v.string()),
 		revenueCatEntitlementActive: v.optional(v.boolean()),
 		subscriptionExpiresAt: v.optional(v.number()),
 		subscriptionGraceExpiresAt: v.optional(v.number()),
@@ -289,6 +310,8 @@ export default defineSchema({
 		ownerTokenIdentifier: v.string(),
 		dayKey: v.string(),
 		title: v.string(),
+		// Keep entries written by adaptive exam-planning builds schema-compatible.
+		subject: v.optional(v.string()),
 		time: v.optional(v.string()),
 		kind: v.optional(v.string()),
 		notes: v.optional(v.string()),
@@ -297,6 +320,7 @@ export default defineSchema({
 		plannedDateLabel: v.optional(v.string()),
 		durationMinutes: v.optional(v.number()),
 		examTypeLabel: v.optional(v.string()),
+		topicDescription: v.optional(v.string()),
 		completed: v.optional(v.boolean()),
 		executionStatus: v.optional(sessionExecutionStatusValidator),
 		startedAt: v.optional(v.number()),
@@ -388,6 +412,7 @@ export default defineSchema({
 			v.literal("accepted"),
 		),
 		knowledgeQuestions: v.optional(v.array(planQuestionValidator)),
+		diagnosticPlacement: v.optional(v.literal("firstSession")),
 		knowledgeAnswersJson: v.optional(v.string()),
 		sourceSummary: v.optional(v.string()),
 		topicMap: v.optional(v.array(learningTopicValidator)),
@@ -395,6 +420,8 @@ export default defineSchema({
 		topicReadiness: v.optional(v.array(topicReadinessValidator)),
 		insight: v.optional(planInsightValidator),
 		planningHint: v.optional(v.string()),
+		rollingPlanEnabled: v.optional(v.boolean()),
+		adaptationRevision: v.optional(v.number()),
 		contentGenerationStage: v.optional(contentGenerationStageValidator),
 		contentGenerationId: v.optional(v.string()),
 		contentGenerationStartedAt: v.optional(v.number()),
@@ -437,9 +464,11 @@ export default defineSchema({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
 		sessionId: v.optional(v.id("learningPlanSessions")),
+		reservationId: v.optional(v.string()),
 		operation: v.union(
 			v.literal("diagnostic"),
 			v.literal("plan"),
+			v.literal("answer_evaluation"),
 			v.literal("session_theory"),
 			v.literal("session_practice"),
 			v.literal("session_praxis"),
@@ -449,13 +478,53 @@ export default defineSchema({
 		cachedInputTokens: v.number(),
 		outputTokens: v.number(),
 		estimatedCostUsdMicros: v.number(),
+		budgetCostUsdMicros: v.optional(v.number()),
+		accountingKind: v.optional(
+			v.union(v.literal("measured"), v.literal("projected_failure")),
+		),
 		createdAt: v.number(),
 	})
 		.index("by_learningPlanId", ["learningPlanId"])
+		.index("by_ownerTokenIdentifier_and_reservationId", [
+			"ownerTokenIdentifier",
+			"reservationId",
+		])
 		.index("by_ownerTokenIdentifier_and_createdAt", [
 			"ownerTokenIdentifier",
 			"createdAt",
 		]),
+	learningPlanAiBudgetReservations: defineTable({
+		ownerTokenIdentifier: v.string(),
+		learningPlanId: v.id("learningPlans"),
+		sessionId: v.optional(v.id("learningPlanSessions")),
+		reservationId: v.string(),
+		operation: v.union(
+			v.literal("diagnostic"),
+			v.literal("plan"),
+			v.literal("session_theory"),
+			v.literal("session_practice"),
+			v.literal("session_praxis"),
+		),
+		modelId: v.string(),
+		projectedCostUsdMicros: v.number(),
+		status: v.union(
+			v.literal("active"),
+			v.literal("settled"),
+			v.literal("forfeited"),
+		),
+		monthStart: v.number(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_ownerTokenIdentifier_and_reservationId", [
+			"ownerTokenIdentifier",
+			"reservationId",
+		])
+		.index("by_ownerTokenIdentifier_and_monthStart", [
+			"ownerTokenIdentifier",
+			"monthStart",
+		])
+		.index("by_learningPlanId_and_createdAt", ["learningPlanId", "createdAt"]),
 	learningPlanSessions: defineTable({
 		ownerTokenIdentifier: v.string(),
 		learningPlanId: v.id("learningPlans"),
@@ -466,6 +535,9 @@ export default defineSchema({
 		startTime: v.string(),
 		durationMinutes: v.number(),
 		compositionVariant: v.optional(sessionCompositionVariantValidator),
+		sessionPurpose: v.optional(
+			v.union(v.literal("diagnostic"), v.literal("learning")),
+		),
 		goal: v.string(),
 		tasks: v.array(v.string()),
 		expectedOutcome: v.string(),
@@ -473,6 +545,7 @@ export default defineSchema({
 		contentGenerationError: v.optional(v.string()),
 		contentGenerationStartedAt: v.optional(v.number()),
 		contentGeneratedAt: v.optional(v.number()),
+		contentGenerationVersion: v.optional(v.number()),
 		completed: v.optional(v.boolean()),
 		executionStatus: v.optional(sessionExecutionStatusValidator),
 		startedAt: v.optional(v.number()),
@@ -484,6 +557,11 @@ export default defineSchema({
 		),
 		missedReason: v.optional(missedReasonValidator),
 		adjustedFromSessionId: v.optional(v.id("learningPlanSessions")),
+		planningStatus: v.optional(learningPlanSessionPlanningStatusValidator),
+		targetTopicIds: v.optional(v.array(v.string())),
+		targetEvidenceDimension: v.optional(learningEvidenceDimensionValidator),
+		selectionReason: v.optional(v.string()),
+		adaptationRevision: v.optional(v.number()),
 		sortOrder: v.number(),
 		dayEntryId: v.optional(v.id("dayEntries")),
 		createdAt: v.number(),
@@ -510,6 +588,7 @@ export default defineSchema({
 		evaluationKeywords: v.array(v.string()),
 		learningBlockIndex: v.optional(v.number()),
 		topicId: v.optional(v.string()),
+		evidenceDimension: v.optional(learningEvidenceDimensionValidator),
 		questionAngle: v.optional(v.string()),
 		coverageKey: v.optional(v.string()),
 		estimatedSeconds: v.optional(v.number()),

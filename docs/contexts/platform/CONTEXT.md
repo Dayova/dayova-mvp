@@ -21,7 +21,33 @@ _Avoid_: User-facing message, learner error text
 - Capture platform conventions, release processes, and environment decisions here.
 - Put platform ADRs in `docs/contexts/platform/adr/`.
 
+## CI Quality Gate
+
+`.eas/workflows/ci.yml` uses one `checks` job, displayed as
+`Lint, typecheck, and test`, for trusted pull requests, manual runs, and pushes
+to `main`. Lint, TypeScript, and tests are separate sequential steps. A merge
+therefore checks the resulting `main` commit again under the same visible job
+name instead of skipping a PR-only job and repeating its commands elsewhere.
+
+Pull request checks require the author's GitHub association to be `OWNER`,
+`MEMBER`, or `COLLABORATOR`. Manual runs validate only. Production fingerprinting,
+Convex deployment, and OTA work remain restricted to pushes to `main`.
+Both Convex deployment and OTA checks depend on successful `checks`; OTA
+publication also requires successful fingerprinting, deployment, and OTA safety.
+
 ## Release Environment
+
+The native runtime boundary, clean-build provenance requirements, verified
+binary baseline, staging/promotion flow, and rollback/resumption policy live in
+[`release/README.md`](../../../release/README.md). Expo SDK 57 starts at app and
+runtime version `1.0.4`; never publish SDK 57 code on the distributed SDK 56
+runtime `1.0.3`.
+
+The patched SDK 57 release uses app/runtime `1.0.5` to isolate Expo 57.0.20 and
+React Native 0.86.3 (including the Hermes V1 memory fix) from older native
+binaries. The Metro cache-read limit, Gradle toolchain resolver removal, and
+iOS update splash-screen trait patches remain required and are reapplied to
+the upgraded packages through `pnpm-workspace.yaml`.
 
 Native release builds and OTA update bundles must have these public app envs
 available while Expo bundles JavaScript:
@@ -29,7 +55,7 @@ available while Expo bundles JavaScript:
 - `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `EXPO_PUBLIC_CONVEX_URL`
 
-`app.config.ts` fails release config evaluation when either value is missing, so
+`app.config.cts` fails release config evaluation when either value is missing, so
 a broken artifact cannot ship and crash on startup. Set these in EAS/CI for the
 target environment before running production builds or publishing updates.
 
@@ -39,8 +65,16 @@ The mobile app reads these values through `src/lib/runtime-config.ts`, which use
 
 When adding a new required public app env, add it to `publicEnvSchema` in
 `src/lib/runtime-config.ts`. The app runtime fallback, tests, and
-`app.config.ts` release validation all derive their required-key list from that
+`app.config.cts` release validation all derive their required-key list from that
 schema.
+
+Keep the dynamic Expo config at `app.config.cts` and export it through
+`module.exports`. The config loads the shared TypeScript runtime validator with
+`require`, so the explicit CommonJS extension prevents Node and EAS Build from
+classifying the config as ESM and removing `require` from its module scope. A
+future ESM migration must convert the config and its imported TypeScript module
+as one change and keep `tests/app-config-loading.test.ts` green under Node's
+native TypeScript loader.
 
 PostHog validation analytics envs are optional public app envs:
 
@@ -87,10 +121,10 @@ as defense in depth without filtering PostHog SDK/system properties.
 Dayova uses pnpm 11.15.1 on Node 24.18.0. The pnpm version is repeated because
 each install surface selects its toolchain independently: `package.json`
 controls local Corepack, the shared `eas.json` profile controls native EAS
-Build workers, and `.eas/workflows/ci.yml` controls EAS Workflow jobs. Keep
-those pins exact and identical so no surface falls back to a different image
-default. Keep `pmOnFail: error` in `pnpm-workspace.yaml` so a mismatched pnpm
-binary fails immediately instead of downloading and running another version.
+Build workers, and the files in `.eas/workflows/` control EAS Workflow jobs.
+Keep those pins exact and identical so no surface falls back to a different
+image default. Keep `pmOnFail: error` in `pnpm-workspace.yaml` so a mismatched
+pnpm binary fails immediately instead of downloading and running another version.
 The removed pnpm 10 setting `packageManagerStrictVersion` must not be restored;
 pnpm 11 replaced it with `pmOnFail`. `tests/pnpm-toolchain.test.ts` guards this
 policy against drift.
@@ -163,19 +197,48 @@ measured build proves a different ceiling is safe. An apparent stop around
 before deleting caches; the one-shot release bundle is expected to complete
 while development builds retain watch mode.
 
+## Android Google Play Testing Releases
+
+Google Play Internal, Closed, Open, and Production releases all use the EAS
+`production` build profile. They are tracks of the same Play app and therefore
+must keep package `com.dayova`, the production EAS environment, production OTA
+channel/runtime, Play signing, and remote version-code auto-increment. Do not
+create track-specific package names or use the preview/internal-distribution
+build profiles for Play testing.
+
+The EAS Submit profile contract is:
+
+- `internal` → Play `internal`, released to the configured internal audience;
+- `closed` → Play `alpha`, released to the configured Closed audience;
+- `open` → Play `beta`, released to the configured Open audience; and
+- `production` → Play `production` as a draft, preserving a separate human
+  rollout decision.
+
+`.eas/workflows/android-play-test.yml` is the checked path for a new Closed or
+Open candidate. It runs the normal repository checks, builds a production AAB,
+shows immutable build provenance, requires approval, and only then submits to
+the selected test track. Prefer Play Console promotion when moving an already
+accepted Closed artifact to Open so the exact tested version code is retained;
+running the Open workflow creates a new candidate that must be validated again.
+
+Tester audiences, opt-in links, Open countries/cap, and promotion remain Play
+Console state and must not be encoded as secrets or personal data in Git. The
+operator runbook is `release/google-play/testing-tracks.md`.
+
 ## iOS Privacy Purpose Strings
 
-Dayova uses camera/photo upload for learning material and microphone/speech
-recognition for spoken answers. Keep these App Store privacy purpose strings in
-`app.config.ts`. If a local native `ios/Dayova/Info.plist` exists after
-prebuild, keep it in sync too:
+Dayova uses camera/photo upload for learning material. Keep these App Store
+privacy purpose strings in `app.config.cts`. If a local native
+`ios/Dayova/Info.plist` exists after prebuild, keep it in sync too:
 
-- `NSMicrophoneUsageDescription`
-- `NSSpeechRecognitionUsageDescription`
 - `NSCameraUsageDescription`
 - `NSPhotoLibraryUsageDescription`
 
-`src/lib/ios-privacy-config.test.ts` always guards `app.config.ts` and also
+Learning-session answers are typed or selected. The image-picker plugin sets
+`microphonePermission: false`, so native builds must not request microphone or
+speech-recognition access.
+
+`tests/ios-privacy-config.test.ts` always guards `app.config.cts` and also
 checks the generated native plist when it exists. Run it before an iOS release
 build so App Store Connect does not reject the uploaded bundle for missing
 purpose strings.

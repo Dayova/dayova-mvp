@@ -8,7 +8,7 @@ import {
 } from "./theme-variables";
 
 const GLOBAL_CSS_PATH = resolve(process.cwd(), "src/global.css");
-const APP_CONFIG_PATH = resolve(process.cwd(), "app.config.ts");
+const APP_CONFIG_PATH = resolve(process.cwd(), "app.config.cts");
 const THEME_PROVIDER_PATH = resolve(process.cwd(), "src/lib/theme.ts");
 
 describe("theme CSS", () => {
