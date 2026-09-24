@@ -577,7 +577,7 @@ describe("exam creation across the topics boundary", () => {
 		);
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Mediathek. Vorhandene Fotos auswählen",
+				name: "Galerie. Vorhandene Fotos auswählen",
 			}),
 		);
 
@@ -630,14 +630,14 @@ describe("exam creation across the topics boundary", () => {
 		);
 		await fireEvent.press(
 			screen.getByRole("button", {
-				name: "Mediathek. Vorhandene Fotos auswählen",
+				name: "Galerie. Vorhandene Fotos auswählen",
 			}),
 		);
 
 		await waitFor(() => {
 			expect(
 				screen.getByText(
-					"Erlaube den Zugriff auf deine Fotos, um Bilder aus deiner Mediathek hochzuladen.",
+					"Erlaube den Zugriff auf deine Fotos, um Bilder aus deiner Galerie hochzuladen.",
 				),
 			).toBeOnTheScreen();
 		});

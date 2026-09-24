@@ -562,7 +562,7 @@ export default function NewLearningPlanScreen() {
 				await ImagePicker.requestMediaLibraryPermissionsAsync();
 			if (!permission.granted) {
 				throw new Error(
-					"Erlaube den Zugriff auf deine Fotos, um Bilder aus deiner Mediathek hochzuladen.",
+					"Erlaube den Zugriff auf deine Fotos, um Bilder aus deiner Galerie hochzuladen.",
 				);
 			}
 
@@ -608,7 +608,7 @@ export default function NewLearningPlanScreen() {
 				code: null,
 				message: getErrorMessage(
 					error,
-					"Die Mediathek konnte nicht geöffnet werden.",
+					"Die Galerie konnte nicht geöffnet werden.",
 				),
 			});
 		} finally {
@@ -896,7 +896,7 @@ export default function NewLearningPlanScreen() {
 					},
 					{
 						value: "library",
-						title: "Mediathek",
+						title: "Galerie",
 						description: "Vorhandene Fotos auswählen",
 						disabled: !canUpload,
 						icon:
